@@ -27,6 +27,9 @@ __original_author__ = "David F. Crouse, Naval Research Laboratory"
 # Core utilities
 from tracker_component_library import core
 
+# Assignment algorithms (Phase 5)
+from tracker_component_library import assignment_algorithms
+
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
 
@@ -36,4 +39,5 @@ __all__ = [
     "__original_author__",
     "VERSION",
     "core",
+    "assignment_algorithms",
 ]
