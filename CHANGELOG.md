@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-30
+
+### Added
+- **Gravity Models** (`pytcl.gravity`):
+  - **Spherical Harmonics** (`spherical_harmonics.py`):
+    - `associated_legendre` - Associated Legendre polynomials (normalized/unnormalized)
+    - `associated_legendre_derivative` - Derivatives of associated Legendre polynomials
+    - `spherical_harmonic_sum` - General spherical harmonic expansion
+    - `gravity_acceleration` - Compute gravity from spherical harmonic coefficients
+  - **Gravity Models** (`models.py`):
+    - `GravityConstants` - Named tuple for gravity model constants
+    - `GravityResult` - Named tuple for gravity computation results
+    - `WGS84`, `GRS80` - Standard geodetic reference constants
+    - `normal_gravity_somigliana` - Somigliana's closed-form normal gravity
+    - `normal_gravity` - Normal gravity with free-air correction
+    - `gravity_wgs84` - Full WGS84 gravity model
+    - `gravity_j2` - J2 zonal harmonic gravity (includes oblateness)
+    - `geoid_height_j2` - Geoid undulation from J2 model
+    - `gravitational_potential` - Point-mass gravitational potential
+    - `free_air_anomaly` - Free-air gravity anomaly
+    - `bouguer_anomaly` - Bouguer gravity anomaly with terrain correction
+- **Magnetic Field Models** (`pytcl.magnetism`):
+  - **World Magnetic Model** (`wmm.py`):
+    - `MagneticResult` - Named tuple for magnetic field components (X, Y, Z, H, F, I, D)
+    - `MagneticCoefficients` - Spherical harmonic coefficients for magnetic models
+    - `WMM2020` - Pre-computed WMM2020 coefficients (valid 2020-2025)
+    - `create_wmm2020_coefficients` - Create WMM2020 coefficient set
+    - `magnetic_field_spherical` - Magnetic field in spherical coordinates
+    - `wmm` - Full WMM computation
+    - `magnetic_declination` - Magnetic declination (variation)
+    - `magnetic_inclination` - Magnetic inclination (dip angle)
+    - `magnetic_field_intensity` - Total magnetic field intensity
+  - **International Geomagnetic Reference Field** (`igrf.py`):
+    - `IGRFModel` - Named tuple for IGRF model parameters
+    - `IGRF13` - Pre-computed IGRF-13 coefficients (valid to 2025)
+    - `create_igrf13_coefficients` - Create IGRF-13 coefficient set
+    - `igrf` - Full IGRF computation
+    - `igrf_declination` - IGRF magnetic declination
+    - `igrf_inclination` - IGRF magnetic inclination
+    - `dipole_moment` - Earth's dipole moment magnitude
+    - `dipole_axis` - Orientation of geomagnetic dipole axis
+    - `magnetic_north_pole` - Location of geomagnetic north pole
+- 40 new tests for geophysical models
+
+### Changed
+- Test count increased from 625 to 665
+- Source file count increased from 105 to 109
+
 ## [0.5.1] - 2025-12-30
 
 ### Added

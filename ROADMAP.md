@@ -1,14 +1,15 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.5.1)
+## Current State (v0.6.0)
 
-- **470+ functions** implemented across 105 Python files
-- **625 tests** with comprehensive coverage
+- **500+ functions** implemented across 109 Python files
+- **665 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
+- **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13)
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -97,18 +98,35 @@
 
 ---
 
-## Phase 5: Geophysical Models
+## Completed in v0.6.0
 
-### 5.1 Gravity Models
-- [ ] Spherical harmonic evaluation
-- [ ] EGM96 model support
+### Phase 5.1: Gravity Models
+- [x] Spherical harmonic evaluation - `associated_legendre`, `spherical_harmonic_sum`
+- [x] WGS84/GRS80 gravity constants - `WGS84`, `GRS80`
+- [x] Normal gravity (Somigliana) - `normal_gravity_somigliana`, `normal_gravity`
+- [x] J2 gravity model - `gravity_j2`, `geoid_height_j2`
+- [x] WGS84 gravity model - `gravity_wgs84`
+- [x] Gravity anomalies - `free_air_anomaly`, `bouguer_anomaly`
+- **Files**: `pytcl/gravity/spherical_harmonics.py`, `pytcl/gravity/models.py`
+
+### Phase 5.2: Magnetic Field Models
+- [x] World Magnetic Model (WMM2020) - `wmm`, `magnetic_declination`, `magnetic_inclination`
+- [x] International Geomagnetic Reference Field (IGRF-13) - `igrf`, `igrf_declination`
+- [x] Geomagnetic properties - `dipole_moment`, `dipole_axis`, `magnetic_north_pole`
+- **Files**: `pytcl/magnetism/wmm.py`, `pytcl/magnetism/igrf.py`
+
+---
+
+## Phase 5 (Remaining): Geophysical Models
+
+### 5.1 Advanced Gravity Models
+- [ ] EGM96 model support (higher-degree harmonics)
 - [ ] EGM2008 model support
 - [ ] Tidal effects
 
-### 5.2 Magnetic Field Models
-- [ ] World Magnetic Model (WMM)
-- [ ] International Geomagnetic Reference Field (IGRF)
+### 5.2 Advanced Magnetic Models
 - [ ] Enhanced Magnetic Model (EMM)
+- [ ] Higher-degree coefficients (degree 12+)
 
 ### 5.3 Terrain Models
 - [ ] Digital elevation model interface
@@ -185,7 +203,8 @@
 | **P1** | Clustering | Gaussian mixture, K-means, DBSCAN, hierarchical | ✅ Complete |
 | **P2** | Static Estimation | Least squares, robust estimators, RANSAC | ✅ Complete |
 | **P2.5** | Spatial Data Structures | K-D tree, Ball tree, R-tree, VP-tree, Cover tree | ✅ Complete |
-| **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
+| **P3** | Geophysical Models | Gravity (WGS84, J2), Magnetism (WMM, IGRF) | ✅ Complete |
+| **P3.5** | Advanced Geophysical | EGM96/2008, EMM, Terrain | Pending |
 | **P4** | Astronomical | Orbit propagation, reference frames | Pending |
 | **P5** | Infrastructure | Performance, docs, tests | In progress |
 
@@ -202,7 +221,7 @@
 | **v0.4.2** | Linting fixes | Released 2025-12-30 |
 | **v0.5.0** | Static estimation, K-D/Ball trees | Released 2025-12-30 |
 | **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
-| **v0.6.0** | Gravity and magnetic models | Planned |
+| **v0.6.0** | Gravity and magnetic models (WGS84, WMM, IGRF) | Released 2025-12-30 |
 | **v0.7.0** | Complete astronomical code | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
