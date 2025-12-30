@@ -1,35 +1,43 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.2.2)
+## Current State (v0.3.1)
 
-- **380 functions** implemented across 90 Python files
-- **58% test coverage** with 355 tests
-- **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN), multi-target tracking
+- **400+ functions** implemented across 90+ Python files
+- **61% test coverage** with 408 tests
+- **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA), multi-target tracking
 - **Published on PyPI** as `nrl-tracker`
 
 ---
 
-## Phase 1: Advanced Estimation & Data Association
+## Completed in v0.3.0
 
-### 1.1 Square-Root Filters (Numerical Stability)
-- [ ] Square-root Kalman filter (Cholesky-based)
-- [ ] U-D factorization filter
-- [ ] Square-root UKF and CKF variants
+### Phase 1.1: Square-Root Filters (Numerical Stability)
+- [x] Square-root Kalman filter (Cholesky-based) - `srkf_predict`, `srkf_update`
+- [x] U-D factorization filter - `ud_factorize`, `ud_reconstruct`, `ud_predict`, `ud_update`
+- [x] Square-root UKF - `sr_ukf_predict`, `sr_ukf_update`
+- [x] Cholesky update/downdate - `cholesky_update`
+- [x] QR-based covariance propagation - `qr_update`
 
-### 1.2 Joint Probabilistic Data Association (JPDA)
-- [ ] JPDA for multi-target tracking
-- [ ] Association probability computation
-- [ ] Combined update with association probabilities
+### Phase 1.2: Joint Probabilistic Data Association (JPDA)
+- [x] JPDA for multi-target tracking - `jpda`, `jpda_update`
+- [x] Association probability computation - `jpda_probabilities`
+- [x] Combined update with association probabilities
+- [x] Support for cluttered environments with detection probability
+
+### Phase 1.4: Interacting Multiple Model (IMM)
+- [x] IMM estimator - `imm_predict`, `imm_update`
+- [x] Model probability mixing - `mix_estimates`, `combine_estimates`
+- [x] Markov transition matrix handling
+- [x] `IMMEstimator` class for stateful filtering
+
+---
+
+## Phase 1: Advanced Estimation & Data Association (Remaining)
 
 ### 1.3 Multiple Hypothesis Tracking (MHT)
 - [ ] Hypothesis tree management
 - [ ] N-scan pruning
 - [ ] Track-oriented MHT
-
-### 1.4 Interacting Multiple Model (IMM)
-- [ ] IMM estimator
-- [ ] Model probability mixing
-- [ ] Markov transition matrix handling
 
 ---
 
@@ -142,11 +150,15 @@
 - [ ] Consider Cython for hot spots
 
 ### 8.2 Documentation
-- [ ] Complete API documentation
+- [x] User guides for square-root filters, IMM, and JPDA
+- [x] API reference documentation for v0.3.0 features
+- [x] Data association user guide
+- [ ] Complete API documentation for remaining modules
 - [ ] Add tutorials and examples for new features
-- [ ] Improve Read the Docs integration
 
 ### 8.3 Testing
+- [x] 408 tests (up from 355)
+- [x] 61% coverage (up from 58%)
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
@@ -155,27 +167,28 @@
 
 ## Priority Summary
 
-| Priority | Focus Area | Key Deliverables |
-|----------|------------|------------------|
-| **P0** | Advanced Data Association | JPDA, MHT, IMM |
-| **P1** | Clustering | Gaussian mixture reduction |
-| **P2** | Static Estimation | ML, robust estimators |
-| **P3** | Geophysical Models | Gravity, magnetic, terrain |
-| **P4** | Astronomical | Orbit propagation, reference frames |
-| **P5** | Infrastructure | Performance, docs, tests |
+| Priority | Focus Area | Key Deliverables | Status |
+|----------|------------|------------------|--------|
+| **P0** | Advanced Data Association | JPDA, MHT, IMM | JPDA, IMM done; MHT pending |
+| **P1** | Clustering | Gaussian mixture reduction | Pending |
+| **P2** | Static Estimation | ML, robust estimators | Pending |
+| **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
+| **P4** | Astronomical | Orbit propagation, reference frames | Pending |
+| **P5** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
 
 ## Version Targets
 
-| Version | Focus |
-|---------|-------|
-| **v0.3.0** | Square-root filters, JPDA, IMM estimator |
-| **v0.4.0** | Clustering module, Gaussian mixture reduction |
-| **v0.5.0** | Static estimation, spatial data structures |
-| **v0.6.0** | Gravity and magnetic models |
-| **v0.7.0** | Complete astronomical code |
-| **v1.0.0** | Full feature parity, 80%+ test coverage |
+| Version | Focus | Status |
+|---------|-------|--------|
+| **v0.3.0** | Square-root filters, JPDA, IMM estimator | Released 2025-12-30 |
+| **v0.3.1** | Type annotation fix | Released 2025-12-30 |
+| **v0.4.0** | Clustering module, Gaussian mixture reduction, MHT | Planned |
+| **v0.5.0** | Static estimation, spatial data structures | Planned |
+| **v0.6.0** | Gravity and magnetic models | Planned |
+| **v0.7.0** | Complete astronomical code | Planned |
+| **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
 
