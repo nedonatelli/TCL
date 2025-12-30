@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 0.3.0
+
+### Added
+- **Square-Root Kalman Filters** for improved numerical stability:
+  - `srkf_predict`, `srkf_update` - Cholesky-based square-root KF
+  - `sr_ukf_predict`, `sr_ukf_update` - Square-root UKF
+  - `cholesky_update` - Efficient rank-1 Cholesky update/downdate
+  - `qr_update` - QR-based covariance propagation
+- **U-D Factorization Filter** (Bierman's method):
+  - `ud_factorize`, `ud_reconstruct` - U-D decomposition utilities
+  - `ud_predict`, `ud_update` - U-D filter predict/update
+  - `ud_update_scalar` - Efficient scalar measurement update
+- **Interacting Multiple Model (IMM) Estimator**:
+  - `imm_predict`, `imm_update` - IMM filter functions
+  - `IMMEstimator` class for stateful IMM filtering
+  - Mode probability mixing and combination
+- **Joint Probabilistic Data Association (JPDA)**:
+  - `jpda`, `jpda_update` - JPDA association and update
+  - `jpda_probabilities` - Compute association probabilities
+  - Support for cluttered environments with detection probability
+
+### Changed
+- Test count increased from 355 to 372
+
 ## [0.2.2] - 2025-12-30
 
 ### Fixed

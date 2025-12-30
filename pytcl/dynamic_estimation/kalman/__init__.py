@@ -7,6 +7,8 @@ This module provides:
 - Unscented Kalman filter (UKF)
 - Cubature Kalman filter (CKF)
 - Information filter
+- Square-root Kalman filters (numerically stable)
+- U-D factorization filter (Bierman's method)
 """
 
 from pytcl.dynamic_estimation.kalman.linear import (
@@ -42,6 +44,25 @@ from pytcl.dynamic_estimation.kalman.unscented import (
     ckf_update,
 )
 
+from pytcl.dynamic_estimation.kalman.square_root import (
+    SRKalmanState,
+    SRKalmanPrediction,
+    SRKalmanUpdate,
+    cholesky_update,
+    qr_update,
+    srkf_predict,
+    srkf_update,
+    srkf_predict_update,
+    UDState,
+    ud_factorize,
+    ud_reconstruct,
+    ud_predict,
+    ud_update_scalar,
+    ud_update,
+    sr_ukf_predict,
+    sr_ukf_update,
+)
+
 __all__ = [
     # Linear KF
     "KalmanState",
@@ -71,4 +92,23 @@ __all__ = [
     "ckf_spherical_cubature_points",
     "ckf_predict",
     "ckf_update",
+    # Square-root KF
+    "SRKalmanState",
+    "SRKalmanPrediction",
+    "SRKalmanUpdate",
+    "cholesky_update",
+    "qr_update",
+    "srkf_predict",
+    "srkf_update",
+    "srkf_predict_update",
+    # U-D factorization
+    "UDState",
+    "ud_factorize",
+    "ud_reconstruct",
+    "ud_predict",
+    "ud_update_scalar",
+    "ud_update",
+    # Square-root UKF
+    "sr_ukf_predict",
+    "sr_ukf_update",
 ]

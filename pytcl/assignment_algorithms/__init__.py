@@ -32,6 +32,15 @@ from pytcl.assignment_algorithms.data_association import (
     AssociationResult,
 )
 
+from pytcl.assignment_algorithms.jpda import (
+    JPDAResult,
+    JPDAUpdate,
+    jpda,
+    jpda_update,
+    jpda_probabilities,
+    compute_likelihood_matrix,
+)
+
 __all__ = [
     # 2D Assignment
     "hungarian",
@@ -52,4 +61,11 @@ __all__ = [
     "compute_association_cost",
     "gated_gnn_association",
     "AssociationResult",
+    # JPDA
+    "JPDAResult",
+    "JPDAUpdate",
+    "jpda",
+    "jpda_update",
+    "jpda_probabilities",
+    "compute_likelihood_matrix",
 ]

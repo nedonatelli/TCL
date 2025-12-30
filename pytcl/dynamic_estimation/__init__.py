@@ -3,6 +3,8 @@ Dynamic state estimation algorithms.
 
 This module provides filtering and smoothing algorithms for state estimation:
 - Kalman filter family (KF, EKF, UKF, CKF, etc.)
+- Square-root Kalman filters (numerically stable)
+- Interacting Multiple Model (IMM) estimator
 - Particle filters (bootstrap, auxiliary, regularized)
 - Batch estimation methods
 """
@@ -53,6 +55,34 @@ from pytcl.dynamic_estimation.kalman import (
     ckf_update,
 )
 
+# Square-root Kalman filters
+from pytcl.dynamic_estimation.kalman import (
+    SRKalmanState,
+    SRKalmanPrediction,
+    SRKalmanUpdate,
+    srkf_predict,
+    srkf_update,
+    srkf_predict_update,
+    UDState,
+    ud_factorize,
+    ud_reconstruct,
+    ud_predict,
+    ud_update,
+    sr_ukf_predict,
+    sr_ukf_update,
+)
+
+# IMM estimator
+from pytcl.dynamic_estimation.imm import (
+    IMMState,
+    IMMPrediction,
+    IMMUpdate,
+    imm_predict,
+    imm_update,
+    imm_predict_update,
+    IMMEstimator,
+)
+
 # Particle filters
 from pytcl.dynamic_estimation.particle_filters import (
     ParticleState,
@@ -101,6 +131,28 @@ __all__ = [
     "ckf_spherical_cubature_points",
     "ckf_predict",
     "ckf_update",
+    # Square-root KF
+    "SRKalmanState",
+    "SRKalmanPrediction",
+    "SRKalmanUpdate",
+    "srkf_predict",
+    "srkf_update",
+    "srkf_predict_update",
+    "UDState",
+    "ud_factorize",
+    "ud_reconstruct",
+    "ud_predict",
+    "ud_update",
+    "sr_ukf_predict",
+    "sr_ukf_update",
+    # IMM
+    "IMMState",
+    "IMMPrediction",
+    "IMMUpdate",
+    "imm_predict",
+    "imm_update",
+    "imm_predict_update",
+    "IMMEstimator",
     # Particle filters
     "ParticleState",
     "resample_multinomial",
