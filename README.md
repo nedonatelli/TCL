@@ -191,7 +191,7 @@ pre-commit install
 black .
 
 # Lint
-ruff check .
+flake8 pytcl
 
 # Type check
 mypy pytcl
