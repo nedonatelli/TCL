@@ -6,8 +6,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/tracker-component-library-python.git
-   cd tracker-component-library-python
+   git clone https://github.com/nedonatelli/TCL.git
+   cd TCL
    ```
 
 2. **Create a virtual environment:**
@@ -90,7 +90,7 @@ def cart2sphere(
 pytest
 
 # Run with coverage
-pytest --cov=tracker_component_library --cov-report=html
+pytest --cov=pytcl --cov-report=html
 
 # Run specific test file
 pytest tests/unit/test_core.py
@@ -209,7 +209,7 @@ When porting a function from the original MATLAB library:
    ruff check .
    
    # Type check
-   mypy tracker_component_library
+   mypy pytcl
    
    # Run tests
    pytest
