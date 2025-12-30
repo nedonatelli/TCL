@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nrl-tracker"
-version = "0.4.1"
+version = "0.4.2"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
 authors = [
