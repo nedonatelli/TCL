@@ -1,3 +1,56 @@
-"""Coordinate rotations."""
+"""
+Rotation representations and conversions.
 
-__all__ = []
+This module provides:
+- Basic rotation matrices (rotx, roty, rotz)
+- Euler angle conversions
+- Quaternion operations
+- Axis-angle and Rodrigues representations
+- Rotation interpolation (SLERP)
+"""
+
+from tracker_component_library.coordinate_systems.rotations.rotations import (
+    rotx,
+    roty,
+    rotz,
+    euler2rotmat,
+    rotmat2euler,
+    axisangle2rotmat,
+    rotmat2axisangle,
+    quat2rotmat,
+    rotmat2quat,
+    euler2quat,
+    quat2euler,
+    quat_multiply,
+    quat_conjugate,
+    quat_inverse,
+    quat_rotate,
+    slerp,
+    rodrigues2rotmat,
+    rotmat2rodrigues,
+    dcm_rate,
+    is_rotation_matrix,
+)
+
+__all__ = [
+    "rotx",
+    "roty",
+    "rotz",
+    "euler2rotmat",
+    "rotmat2euler",
+    "axisangle2rotmat",
+    "rotmat2axisangle",
+    "quat2rotmat",
+    "rotmat2quat",
+    "euler2quat",
+    "quat2euler",
+    "quat_multiply",
+    "quat_conjugate",
+    "quat_inverse",
+    "quat_rotate",
+    "slerp",
+    "rodrigues2rotmat",
+    "rotmat2rodrigues",
+    "dcm_rate",
+    "is_rotation_matrix",
+]
