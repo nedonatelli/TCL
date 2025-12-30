@@ -30,6 +30,11 @@ from tracker_component_library import core
 # Assignment algorithms (Phase 5)
 from tracker_component_library import assignment_algorithms
 
+# Specialized domains (Phase 6)
+from tracker_component_library import astronomical
+from tracker_component_library import navigation
+from tracker_component_library import atmosphere
+
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
 
@@ -40,4 +45,7 @@ __all__ = [
     "VERSION",
     "core",
     "assignment_algorithms",
+    "astronomical",
+    "navigation",
+    "atmosphere",
 ]
