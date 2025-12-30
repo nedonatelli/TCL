@@ -12,7 +12,7 @@ Gamma Functions
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        gamma, gammaln, gammainc, gammaincc, digamma,
    )
 
@@ -31,7 +31,7 @@ Error Functions
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        erf, erfc, erfinv, erfcinv,
    )
 
@@ -43,7 +43,7 @@ Bessel Functions
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        jn, yn, iv, kv,
        spherical_jn, spherical_yn,
    )
@@ -62,7 +62,7 @@ Distributions
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        Gaussian, ChiSquared, Exponential, Uniform,
    )
 
@@ -77,7 +77,7 @@ Estimators
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        weighted_mean, weighted_cov,
        sample_mean, sample_var,
        median, mad,
@@ -99,7 +99,7 @@ Interpolation
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        linear_interp, cubic_spline, pchip, akima,
    )
 
@@ -117,7 +117,7 @@ Multidimensional
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        interp2d, interp3d, rbf_interpolate,
    )
 
@@ -135,7 +135,7 @@ Gaussian Quadrature
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        gauss_legendre, gauss_hermite, gauss_laguerre,
    )
 
@@ -150,7 +150,7 @@ Adaptive Integration
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        quad, dblquad, tplquad,
    )
 
@@ -165,7 +165,7 @@ Geometry
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        point_in_polygon,
        polygon_area,
        line_intersection,
@@ -187,7 +187,7 @@ Combinatorics
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        factorial, n_choose_k, n_permute_k,
        permutations, combinations,
        stirling1, stirling2, bell_number,
@@ -205,7 +205,7 @@ Matrix Operations
 
 .. code-block:: python
 
-   from tracker_component_library.mathematical_functions import (
+   from pytcl.mathematical_functions import (
        chol_semi_def, tria, matrix_sqrt,
        vandermonde, toeplitz, hankel,
        block_diag,

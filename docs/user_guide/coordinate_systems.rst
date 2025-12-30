@@ -12,7 +12,7 @@ Cartesian and Spherical
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import cart2sphere, sphere2cart
+   from pytcl.coordinate_systems import cart2sphere, sphere2cart
 
    # Cartesian to spherical (range, azimuth, elevation)
    points = np.array([[100, 200, 50]])
@@ -29,7 +29,7 @@ Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import geodetic2ecef, ecef2geodetic
+   from pytcl.coordinate_systems import geodetic2ecef, ecef2geodetic
 
    # Geodetic to ECEF (angles in radians)
    lat = np.deg2rad(40.0)  # 40 degrees North
@@ -48,7 +48,7 @@ Local tangent plane coordinates:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import ecef2enu, enu2ecef
+   from pytcl.coordinate_systems import ecef2enu, enu2ecef
 
    # Convert ECEF to local East-North-Up
    origin_lat, origin_lon, origin_alt = np.deg2rad(40.0), np.deg2rad(-75.0), 0.0
@@ -67,7 +67,7 @@ Elementary rotations about principal axes:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import rotx, roty, rotz
+   from pytcl.coordinate_systems import rotx, roty, rotz
 
    # Rotation about x-axis by 30 degrees
    Rx = rotx(np.deg2rad(30))
@@ -82,7 +82,7 @@ Unit quaternions for 3D rotations:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import (
+   from pytcl.coordinate_systems import (
        quat_from_axis_angle,
        quat_from_rot_mat,
        quat_to_rot_mat,
@@ -107,7 +107,7 @@ Euler Angles
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import (
+   from pytcl.coordinate_systems import (
        euler_to_rot_mat,
        rot_mat_to_euler,
    )
@@ -123,7 +123,7 @@ Axis-Angle
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import (
+   from pytcl.coordinate_systems import (
        axis_angle_to_rot_mat,
        rot_mat_to_axis_angle,
    )
@@ -141,7 +141,7 @@ Jacobians for coordinate transformations are essential for filter design:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import (
+   from pytcl.coordinate_systems import (
        cart2sphere_jacobian,
        sphere2cart_jacobian,
        geodetic2ecef_jacobian,
@@ -160,7 +160,7 @@ The library uses the WGS84 ellipsoid for geodetic calculations:
 
 .. code-block:: python
 
-   from tracker_component_library.core import WGS84
+   from pytcl.core import WGS84
 
    print(f"Semi-major axis: {WGS84.a} m")
    print(f"Flattening: {WGS84.f}")

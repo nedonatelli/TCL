@@ -1,7 +1,7 @@
 Dynamic Models
 ==============
 
-.. automodule:: tracker_component_library.dynamic_models
+.. automodule:: pytcl.dynamic_models
    :members:
    :undoc-members:
    :show-inheritance:
@@ -9,7 +9,7 @@ Dynamic Models
 Discrete-Time Models
 --------------------
 
-.. automodule:: tracker_component_library.dynamic_models.discrete_time
+.. automodule:: pytcl.dynamic_models.discrete_time
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,7 +17,7 @@ Discrete-Time Models
 Polynomial Models
 ^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.discrete_time.polynomial
+.. automodule:: pytcl.dynamic_models.discrete_time.polynomial
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ Polynomial Models
 Singer Model
 ^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.discrete_time.singer
+.. automodule:: pytcl.dynamic_models.discrete_time.singer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ Singer Model
 Coordinated Turn
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.discrete_time.coordinated_turn
+.. automodule:: pytcl.dynamic_models.discrete_time.coordinated_turn
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +41,7 @@ Coordinated Turn
 Process Noise
 -------------
 
-.. automodule:: tracker_component_library.dynamic_models.process_noise
+.. automodule:: pytcl.dynamic_models.process_noise
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,7 +49,7 @@ Process Noise
 Polynomial Process Noise
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.process_noise.polynomial
+.. automodule:: pytcl.dynamic_models.process_noise.polynomial
    :members:
    :undoc-members:
    :show-inheritance:
@@ -57,7 +57,7 @@ Polynomial Process Noise
 Singer Process Noise
 ^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.process_noise.singer
+.. automodule:: pytcl.dynamic_models.process_noise.singer
    :members:
    :undoc-members:
    :show-inheritance:
@@ -65,7 +65,7 @@ Singer Process Noise
 Coordinated Turn Process Noise
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.dynamic_models.process_noise.coordinated_turn
+.. automodule:: pytcl.dynamic_models.process_noise.coordinated_turn
    :members:
    :undoc-members:
    :show-inheritance:
@@ -73,7 +73,7 @@ Coordinated Turn Process Noise
 Continuous-Time Dynamics
 ------------------------
 
-.. automodule:: tracker_component_library.dynamic_models.continuous_time
+.. automodule:: pytcl.dynamic_models.continuous_time
    :members:
    :undoc-members:
    :show-inheritance:

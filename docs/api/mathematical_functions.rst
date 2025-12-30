@@ -1,7 +1,7 @@
 Mathematical Functions
 ======================
 
-.. automodule:: tracker_component_library.mathematical_functions
+.. automodule:: pytcl.mathematical_functions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -9,7 +9,7 @@ Mathematical Functions
 Basic Matrix Operations
 -----------------------
 
-.. automodule:: tracker_component_library.mathematical_functions.basic_matrix
+.. automodule:: pytcl.mathematical_functions.basic_matrix
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,7 +17,7 @@ Basic Matrix Operations
 Decompositions
 ^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.basic_matrix.decompositions
+.. automodule:: pytcl.mathematical_functions.basic_matrix.decompositions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ Decompositions
 Special Matrices
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.basic_matrix.special_matrices
+.. automodule:: pytcl.mathematical_functions.basic_matrix.special_matrices
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ Special Matrices
 Special Functions
 -----------------
 
-.. automodule:: tracker_component_library.mathematical_functions.special_functions
+.. automodule:: pytcl.mathematical_functions.special_functions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +41,7 @@ Special Functions
 Bessel Functions
 ^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.special_functions.bessel
+.. automodule:: pytcl.mathematical_functions.special_functions.bessel
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,7 +49,7 @@ Bessel Functions
 Gamma Functions
 ^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.special_functions.gamma_functions
+.. automodule:: pytcl.mathematical_functions.special_functions.gamma_functions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -57,7 +57,7 @@ Gamma Functions
 Error Functions
 ^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.special_functions.error_functions
+.. automodule:: pytcl.mathematical_functions.special_functions.error_functions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -65,7 +65,7 @@ Error Functions
 Elliptic Functions
 ^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.special_functions.elliptic
+.. automodule:: pytcl.mathematical_functions.special_functions.elliptic
    :members:
    :undoc-members:
    :show-inheritance:
@@ -73,7 +73,7 @@ Elliptic Functions
 Statistics
 ----------
 
-.. automodule:: tracker_component_library.mathematical_functions.statistics
+.. automodule:: pytcl.mathematical_functions.statistics
    :members:
    :undoc-members:
    :show-inheritance:
@@ -81,7 +81,7 @@ Statistics
 Distributions
 ^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.statistics.distributions
+.. automodule:: pytcl.mathematical_functions.statistics.distributions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -89,7 +89,7 @@ Distributions
 Estimators
 ^^^^^^^^^^
 
-.. automodule:: tracker_component_library.mathematical_functions.statistics.estimators
+.. automodule:: pytcl.mathematical_functions.statistics.estimators
    :members:
    :undoc-members:
    :show-inheritance:
@@ -97,7 +97,7 @@ Estimators
 Interpolation
 -------------
 
-.. automodule:: tracker_component_library.mathematical_functions.interpolation
+.. automodule:: pytcl.mathematical_functions.interpolation
    :members:
    :undoc-members:
    :show-inheritance:
@@ -105,7 +105,7 @@ Interpolation
 Numerical Integration
 ---------------------
 
-.. automodule:: tracker_component_library.mathematical_functions.numerical_integration
+.. automodule:: pytcl.mathematical_functions.numerical_integration
    :members:
    :undoc-members:
    :show-inheritance:
@@ -113,7 +113,7 @@ Numerical Integration
 Geometry
 --------
 
-.. automodule:: tracker_component_library.mathematical_functions.geometry
+.. automodule:: pytcl.mathematical_functions.geometry
    :members:
    :undoc-members:
    :show-inheritance:
@@ -121,7 +121,7 @@ Geometry
 Combinatorics
 -------------
 
-.. automodule:: tracker_component_library.mathematical_functions.combinatorics
+.. automodule:: pytcl.mathematical_functions.combinatorics
    :members:
    :undoc-members:
    :show-inheritance:

@@ -52,7 +52,7 @@ covariance matrices (Q) for various motion models:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import (
+   from pytcl.dynamic_models import (
        f_constant_velocity,
        f_constant_acceleration,
        f_singer,
@@ -78,7 +78,7 @@ The library provides several filtering algorithms:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import kf_predict, kf_update
+   from pytcl.dynamic_estimation import kf_predict, kf_update
 
    pred = kf_predict(x, P, F, Q)
    upd = kf_update(pred.x, pred.P, z, H, R)
@@ -87,7 +87,7 @@ The library provides several filtering algorithms:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ekf_predict, ekf_update
+   from pytcl.dynamic_estimation import ekf_predict, ekf_update
 
    pred = ekf_predict(x, P, f_func, F_jacobian, Q)
    upd = ekf_update(pred.x, pred.P, z, h_func, H_jacobian, R)
@@ -96,7 +96,7 @@ The library provides several filtering algorithms:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ukf_predict, ukf_update
+   from pytcl.dynamic_estimation import ukf_predict, ukf_update
 
    pred = ukf_predict(x, P, f_func, Q)
    upd = ukf_update(pred.x, pred.P, z, h_func, R)
@@ -105,7 +105,7 @@ The library provides several filtering algorithms:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import (
+   from pytcl.dynamic_estimation import (
        initialize_particles,
        bootstrap_pf_step,
    )
@@ -120,7 +120,7 @@ Convert between coordinate systems:
 
 .. code-block:: python
 
-   from tracker_component_library.coordinate_systems import (
+   from pytcl.coordinate_systems import (
        cart2sphere,
        sphere2cart,
        geodetic2ecef,

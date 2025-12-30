@@ -50,8 +50,8 @@ Here's a simple example using the Kalman filter:
 .. code-block:: python
 
    import numpy as np
-   from tracker_component_library.dynamic_estimation import kf_predict, kf_update
-   from tracker_component_library.dynamic_models import f_constant_velocity, q_constant_velocity
+   from pytcl.dynamic_estimation import kf_predict, kf_update
+   from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
 
    # Initial state [x, vx, y, vy]
    x = np.array([0.0, 1.0, 0.0, 0.5])

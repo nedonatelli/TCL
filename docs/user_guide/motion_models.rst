@@ -19,7 +19,7 @@ State: ``[position, velocity]`` per dimension
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import f_constant_velocity
+   from pytcl.dynamic_models import f_constant_velocity
 
    # 2D tracking: state = [x, vx, y, vy]
    F = f_constant_velocity(T=1.0, num_dims=2)
@@ -30,7 +30,7 @@ State: ``[position, velocity, acceleration]`` per dimension
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import f_constant_acceleration
+   from pytcl.dynamic_models import f_constant_acceleration
 
    # 2D tracking: state = [x, vx, ax, y, vy, ay]
    F = f_constant_acceleration(T=1.0, num_dims=2)
@@ -49,7 +49,7 @@ where :math:`\tau` is the maneuver time constant.
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import f_singer, f_singer_2d, f_singer_3d
+   from pytcl.dynamic_models import f_singer, f_singer_2d, f_singer_3d
 
    # tau: maneuver time constant (5-20s for aircraft, 1-5s for ground vehicles)
    F = f_singer(T=1.0, tau=10.0, num_dims=2)
@@ -69,7 +69,7 @@ State: ``[x, vx, y, vy, omega]`` where omega is turn rate
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import f_coord_turn_2d
+   from pytcl.dynamic_models import f_coord_turn_2d
 
    F = f_coord_turn_2d(T=1.0, omega=0.1)  # omega in rad/s
 
@@ -77,7 +77,7 @@ State: ``[x, vx, y, vy, omega]`` where omega is turn rate
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import f_coord_turn_3d
+   from pytcl.dynamic_models import f_coord_turn_3d
 
    F = f_coord_turn_3d(T=1.0, omega=0.1)
 
@@ -89,7 +89,7 @@ Polynomial Models
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import (
+   from pytcl.dynamic_models import (
        q_constant_velocity,
        q_constant_acceleration,
        q_discrete_white_noise,
@@ -109,7 +109,7 @@ Singer Model
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import q_singer, q_singer_2d, q_singer_3d
+   from pytcl.dynamic_models import q_singer, q_singer_2d, q_singer_3d
 
    # sigma_m: RMS maneuver level (m/s^2)
    Q = q_singer(T=1.0, tau=10.0, sigma_m=1.0, num_dims=2)
@@ -123,7 +123,7 @@ Coordinated Turn
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import q_coord_turn_2d, q_coord_turn_3d
+   from pytcl.dynamic_models import q_coord_turn_2d, q_coord_turn_3d
 
    Q_2d = q_coord_turn_2d(T=1.0, sigma_a=1.0, sigma_omega=0.01)
    Q_3d = q_coord_turn_3d(T=1.0, sigma_a=1.0, sigma_omega=0.01)
@@ -135,7 +135,7 @@ For simulation or continuous-time modeling:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_models import (
+   from pytcl.dynamic_models import (
        drift_constant_velocity,
        drift_constant_acceleration,
        drift_singer,

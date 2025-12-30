@@ -21,7 +21,7 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import kf_predict
+   from pytcl.dynamic_estimation import kf_predict
 
    # x: state vector, P: covariance, F: transition matrix, Q: process noise
    prediction = kf_predict(x, P, F, Q)
@@ -32,7 +32,7 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import kf_update
+   from pytcl.dynamic_estimation import kf_update
 
    # z: measurement, H: measurement matrix, R: measurement noise
    update = kf_update(x_pred, P_pred, z, H, R)
@@ -43,7 +43,7 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import kf_predict_update
+   from pytcl.dynamic_estimation import kf_predict_update
 
    update = kf_predict_update(x, P, z, F, Q, H, R)
 
@@ -54,7 +54,7 @@ For nonlinear systems, the EKF linearizes around the current estimate:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ekf_predict, ekf_update
+   from pytcl.dynamic_estimation import ekf_predict, ekf_update
 
    # Define nonlinear dynamics and Jacobian
    def f(x):
@@ -83,7 +83,7 @@ For nonlinear systems, the EKF linearizes around the current estimate:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ekf_predict_auto, ekf_update_auto
+   from pytcl.dynamic_estimation import ekf_predict_auto, ekf_update_auto
 
    # Uses numerical differentiation
    pred = ekf_predict_auto(x, P, f, Q)
@@ -97,7 +97,7 @@ nonlinear transformations:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ukf_predict, ukf_update
+   from pytcl.dynamic_estimation import ukf_predict, ukf_update
 
    # No Jacobians needed!
    pred = ukf_predict(x, P, f, Q)
@@ -111,7 +111,7 @@ between accuracy and computational cost:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import ckf_predict, ckf_update
+   from pytcl.dynamic_estimation import ckf_predict, ckf_update
 
    pred = ckf_predict(x, P, f, Q)
    upd = ckf_update(pred.x, pred.P, z, h, R)
@@ -124,7 +124,7 @@ a flexible Monte Carlo approach:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import (
+   from pytcl.dynamic_estimation import (
        initialize_particles,
        bootstrap_pf_step,
        particle_mean,
@@ -157,7 +157,7 @@ optimal estimates using future measurements:
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import kf_smooth
+   from pytcl.dynamic_estimation import kf_smooth
 
    # After forward filtering, run backward smoothing
    x_smooth, P_smooth = kf_smooth(
@@ -174,7 +174,7 @@ the information matrix (inverse covariance):
 
 .. code-block:: python
 
-   from tracker_component_library.dynamic_estimation import (
+   from pytcl.dynamic_estimation import (
        information_filter_predict,
        information_filter_update,
    )

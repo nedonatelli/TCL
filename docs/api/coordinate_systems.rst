@@ -1,7 +1,7 @@
 Coordinate Systems
 ==================
 
-.. automodule:: tracker_component_library.coordinate_systems
+.. automodule:: pytcl.coordinate_systems
    :members:
    :undoc-members:
    :show-inheritance:
@@ -9,7 +9,7 @@ Coordinate Systems
 Conversions
 -----------
 
-.. automodule:: tracker_component_library.coordinate_systems.conversions
+.. automodule:: pytcl.coordinate_systems.conversions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,7 +17,7 @@ Conversions
 Spherical Coordinates
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.coordinate_systems.conversions.spherical
+.. automodule:: pytcl.coordinate_systems.conversions.spherical
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ Spherical Coordinates
 Geodetic Coordinates
 ^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: tracker_component_library.coordinate_systems.conversions.geodetic
+.. automodule:: pytcl.coordinate_systems.conversions.geodetic
    :members:
    :undoc-members:
    :show-inheritance:
@@ -33,7 +33,7 @@ Geodetic Coordinates
 Rotations
 ---------
 
-.. automodule:: tracker_component_library.coordinate_systems.rotations
+.. automodule:: pytcl.coordinate_systems.rotations
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +41,7 @@ Rotations
 Jacobians
 ---------
 
-.. automodule:: tracker_component_library.coordinate_systems.jacobians
+.. automodule:: pytcl.coordinate_systems.jacobians
    :members:
    :undoc-members:
    :show-inheritance:

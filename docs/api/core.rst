@@ -1,7 +1,7 @@
 Core Module
 ===========
 
-.. automodule:: tracker_component_library.core
+.. automodule:: pytcl.core
    :members:
    :undoc-members:
    :show-inheritance:
@@ -9,7 +9,7 @@ Core Module
 Constants
 ---------
 
-.. automodule:: tracker_component_library.core.constants
+.. automodule:: pytcl.core.constants
    :members:
    :undoc-members:
    :show-inheritance:
@@ -17,7 +17,7 @@ Constants
 Array Utilities
 ---------------
 
-.. automodule:: tracker_component_library.core.array_utils
+.. automodule:: pytcl.core.array_utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -25,7 +25,7 @@ Array Utilities
 Validation
 ----------
 
-.. automodule:: tracker_component_library.core.validation
+.. automodule:: pytcl.core.validation
    :members:
    :undoc-members:
    :show-inheritance:
