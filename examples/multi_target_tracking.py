@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
-import matplotlib.pyplot as plt  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
 
 from pytcl.trackers import (  # noqa: E402
     MultiTargetTracker,
@@ -158,22 +158,51 @@ def plot_results(
     track_history: List[List],
 ) -> None:
     """Plot tracking results."""
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig = go.Figure()
 
     # Plot true trajectories
     true_arr = np.array(true_states)
-    ax.plot(true_arr[:, 0], true_arr[:, 1], "g-", linewidth=2, label="Target 1 (truth)")
-    ax.plot(true_arr[:, 2], true_arr[:, 3], "b-", linewidth=2, label="Target 2 (truth)")
+    fig.add_trace(
+        go.Scatter(
+            x=true_arr[:, 0],
+            y=true_arr[:, 1],
+            mode="lines",
+            line=dict(color="green", width=2),
+            name="Target 1 (truth)",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=true_arr[:, 2],
+            y=true_arr[:, 3],
+            mode="lines",
+            line=dict(color="blue", width=2),
+            name="Target 2 (truth)",
+        )
+    )
 
-    # Plot measurements
-    for k, meas in enumerate(measurements):
+    # Collect all measurements for a single trace
+    meas_x = []
+    meas_y = []
+    for meas in measurements:
         for z in meas:
-            ax.plot(z[0], z[1], "k.", markersize=3, alpha=0.5)
+            meas_x.append(z[0])
+            meas_y.append(z[1])
+
+    fig.add_trace(
+        go.Scatter(
+            x=meas_x,
+            y=meas_y,
+            mode="markers",
+            marker=dict(color="black", size=3, opacity=0.5),
+            name="Measurements",
+        )
+    )
 
     # Plot tracks
     # Collect track positions by track ID
-    track_positions = {}
-    for k, tracks in enumerate(track_history):
+    track_positions: dict[int, list] = {}
+    for tracks in track_history:
         for track in tracks:
             if track.status == TrackStatus.CONFIRMED:
                 if track.id not in track_positions:
@@ -182,32 +211,49 @@ def plot_results(
                     (track.state[0], track.state[2])
                 )  # x, y
 
+    # Plotly color palette (similar to tab10)
+    colors = [
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
+    ]
+
     # Plot each track
-    colors = plt.cm.tab10(np.linspace(0, 1, 10))
     for i, (track_id, positions) in enumerate(track_positions.items()):
         if len(positions) > 1:
-            positions = np.array(positions)
-            ax.plot(
-                positions[:, 0],
-                positions[:, 1],
-                "o-",
-                color=colors[i % 10],
-                markersize=4,
-                linewidth=1.5,
-                label=f"Track {track_id}",
+            pos_arr = np.array(positions)
+            fig.add_trace(
+                go.Scatter(
+                    x=pos_arr[:, 0],
+                    y=pos_arr[:, 1],
+                    mode="lines+markers",
+                    line=dict(color=colors[i % 10], width=1.5),
+                    marker=dict(color=colors[i % 10], size=4),
+                    name=f"Track {track_id}",
+                )
             )
 
-    ax.set_xlabel("X Position")
-    ax.set_ylabel("Y Position")
-    ax.set_title("Multi-Target Tracking with GNN Data Association")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    ax.set_aspect("equal")
+    fig.update_layout(
+        title="Multi-Target Tracking with GNN Data Association",
+        xaxis_title="X Position",
+        yaxis_title="Y Position",
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        width=1200,
+        height=800,
+        showlegend=True,
+    )
 
-    plt.tight_layout()
-    plt.savefig("multi_target_tracking_result.png", dpi=150)
-    print("Plot saved to multi_target_tracking_result.png")
-    plt.show()
+    # Save as HTML (interactive) and PNG (static)
+    fig.write_html("multi_target_tracking_result.html")
+    print("Interactive plot saved to multi_target_tracking_result.html")
+    fig.show()
 
 
 def main():
@@ -251,7 +297,7 @@ def main():
             f"vel=({vel[0]:.1f}, {vel[1]:.1f}), status={track.status.value}"
         )
 
-    # Plot if matplotlib is available
+    # Plot if plotly is available
     try:
         plot_results(true_states, measurements, track_history)
     except Exception as e:
