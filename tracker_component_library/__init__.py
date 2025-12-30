@@ -38,6 +38,9 @@ from tracker_component_library import atmosphere
 # End-to-end trackers (Phase 7)
 from tracker_component_library import trackers
 
+# Performance evaluation
+from tracker_component_library import performance_evaluation
+
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
 
@@ -52,4 +55,5 @@ __all__ = [
     "navigation",
     "atmosphere",
     "trackers",
+    "performance_evaluation",
 ]
