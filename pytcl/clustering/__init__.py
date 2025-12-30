@@ -1,3 +1,52 @@
-"""clustering module."""
+"""
+Clustering and mixture reduction algorithms.
 
-__all__ = []
+This module provides Gaussian mixture operations and clustering algorithms
+commonly used in multi-target tracking for hypothesis management and
+track clustering.
+"""
+
+from pytcl.clustering.gaussian_mixture import (
+    GaussianComponent,
+    MergeResult,
+    ReductionResult,
+    GaussianMixture,
+    moment_match,
+    runnalls_merge_cost,
+    merge_gaussians,
+    prune_mixture,
+    reduce_mixture_runnalls,
+    west_merge_cost,
+    reduce_mixture_west,
+)
+
+from pytcl.clustering.kmeans import (
+    KMeansResult,
+    kmeans_plusplus_init,
+    assign_clusters,
+    update_centers,
+    kmeans,
+    kmeans_elbow,
+)
+
+__all__ = [
+    # Gaussian mixture
+    "GaussianComponent",
+    "MergeResult",
+    "ReductionResult",
+    "GaussianMixture",
+    "moment_match",
+    "runnalls_merge_cost",
+    "merge_gaussians",
+    "prune_mixture",
+    "reduce_mixture_runnalls",
+    "west_merge_cost",
+    "reduce_mixture_west",
+    # K-means
+    "KMeansResult",
+    "kmeans_plusplus_init",
+    "assign_clusters",
+    "update_centers",
+    "kmeans",
+    "kmeans_elbow",
+]

@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-12-30
+
+### Added
+- **Gaussian Mixture Operations** (`pytcl.clustering.gaussian_mixture`):
+  - `GaussianComponent`, `GaussianMixture` classes for mixture representation
+  - `moment_match` - Compute moment-matched mean and covariance
+  - `runnalls_merge_cost`, `west_merge_cost` - Merge cost functions
+  - `merge_gaussians` - Merge two Gaussian components
+  - `prune_mixture` - Remove low-weight components
+  - `reduce_mixture_runnalls` - Runnalls' mixture reduction algorithm
+  - `reduce_mixture_west` - West's mixture reduction algorithm
+- **K-means Clustering** (`pytcl.clustering.kmeans`):
+  - `kmeans` - K-means clustering with K-means++ initialization
+  - `kmeans_plusplus_init` - K-means++ initialization
+  - `assign_clusters`, `update_centers` - Core K-means operations
+  - `kmeans_elbow` - Helper for elbow method analysis
+- **Multiple Hypothesis Tracking (MHT)** (`pytcl.trackers.mht`):
+  - `MHTTracker` - Track-oriented MHT with N-scan pruning
+  - `MHTConfig` - Configuration for MHT parameters
+  - `MHTResult` - Result container for MHT processing
+  - `HypothesisTree` - Hypothesis tree management
+  - `generate_joint_associations` - Enumerate valid associations
+  - `n_scan_prune` - N-scan hypothesis pruning
+  - `prune_hypotheses_by_probability` - Probability-based pruning
+- 78 new tests for v0.4.0 features
+
+### Changed
+- Test count increased from 408 to 486
+- Source file count increased from 93 to 97
+
 ## [0.3.1] - 2025-12-30
 
 ### Fixed

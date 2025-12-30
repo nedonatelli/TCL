@@ -1,10 +1,12 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.3.1)
+## Current State (v0.4.0)
 
-- **400+ functions** implemented across 90+ Python files
-- **61% test coverage** with 408 tests
-- **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA), multi-target tracking
+- **420+ functions** implemented across 97 Python files
+- **486 tests** with comprehensive coverage
+- **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
+- **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
+- **K-means clustering** with K-means++ initialization
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -32,27 +34,26 @@
 
 ---
 
-## Phase 1: Advanced Estimation & Data Association (Remaining)
+## Completed in v0.4.0
 
-### 1.3 Multiple Hypothesis Tracking (MHT)
-- [ ] Hypothesis tree management
-- [ ] N-scan pruning
-- [ ] Track-oriented MHT
+### Phase 1.3: Multiple Hypothesis Tracking (MHT)
+- [x] Hypothesis tree management - `HypothesisTree` class
+- [x] N-scan pruning - `n_scan_prune`
+- [x] Track-oriented MHT - `MHTTracker` class
+- **Files**: `pytcl/trackers/mht.py`, `pytcl/trackers/hypothesis.py`
 
----
+### Phase 2.1: Gaussian Mixture Operations
+- [x] Gaussian mixture representation class - `GaussianMixture`, `GaussianComponent`
+- [x] Mixture moment matching - `moment_match`
+- [x] Runnalls' mixture reduction algorithm - `reduce_mixture_runnalls`
+- [x] West's algorithm - `reduce_mixture_west`
+- **Files**: `pytcl/clustering/gaussian_mixture.py`
 
-## Phase 2: Clustering & Mixture Reduction
-
-### 2.1 Gaussian Mixture Operations
-- [ ] Gaussian mixture representation class
-- [ ] Mixture moment matching
-- [ ] Runnalls' mixture reduction algorithm
-- [ ] West's algorithm
-
-### 2.2 Clustering Algorithms
-- [ ] K-means clustering
+### Phase 2.2: Clustering Algorithms (Partial)
+- [x] K-means clustering - `kmeans` with K-means++ initialization
 - [ ] DBSCAN
 - [ ] Hierarchical clustering for track fusion
+- **Files**: `pytcl/clustering/kmeans.py`
 
 ---
 
@@ -169,8 +170,8 @@
 
 | Priority | Focus Area | Key Deliverables | Status |
 |----------|------------|------------------|--------|
-| **P0** | Advanced Data Association | JPDA, MHT, IMM | JPDA, IMM done; MHT pending |
-| **P1** | Clustering | Gaussian mixture reduction | Pending |
+| **P0** | Advanced Data Association | JPDA, MHT, IMM | ✅ Complete |
+| **P1** | Clustering | Gaussian mixture reduction, K-means | ✅ Complete (DBSCAN/hierarchical pending) |
 | **P2** | Static Estimation | ML, robust estimators | Pending |
 | **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
 | **P4** | Astronomical | Orbit propagation, reference frames | Pending |
@@ -184,7 +185,7 @@
 |---------|-------|--------|
 | **v0.3.0** | Square-root filters, JPDA, IMM estimator | Released 2025-12-30 |
 | **v0.3.1** | Type annotation fix | Released 2025-12-30 |
-| **v0.4.0** | Clustering module, Gaussian mixture reduction, MHT | Planned |
+| **v0.4.0** | Gaussian mixture reduction, K-means, MHT | Released 2025-12-30 |
 | **v0.5.0** | Static estimation, spatial data structures | Planned |
 | **v0.6.0** | Gravity and magnetic models | Planned |
 | **v0.7.0** | Complete astronomical code | Planned |
