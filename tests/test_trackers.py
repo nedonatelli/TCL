@@ -316,9 +316,7 @@ class TestIntegration:
 
         # Set up tracker
         def F(dt):
-            return np.array(
-                [[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]]
-            )
+            return np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
 
         H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
 

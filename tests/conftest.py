@@ -71,34 +71,38 @@ def sample_covariance():
 
 class NumpyTestCase:
     """Base class with numpy assertion helpers."""
-    
+
     def assert_allclose(self, actual, expected, rtol=1e-10, atol=1e-14, **kwargs):
         """Assert arrays are close within tolerance."""
         np.testing.assert_allclose(actual, expected, rtol=rtol, atol=atol, **kwargs)
-    
+
     def assert_array_equal(self, actual, expected):
         """Assert arrays are exactly equal."""
         np.testing.assert_array_equal(actual, expected)
-    
+
     def assert_shape(self, arr, expected_shape):
         """Assert array has expected shape."""
-        assert arr.shape == expected_shape, f"Expected shape {expected_shape}, got {arr.shape}"
-    
+        assert (
+            arr.shape == expected_shape
+        ), f"Expected shape {expected_shape}, got {arr.shape}"
+
     def assert_symmetric(self, arr, rtol=1e-10):
         """Assert matrix is symmetric."""
         np.testing.assert_allclose(arr, arr.T, rtol=rtol)
-    
+
     def assert_positive_definite(self, arr, tol=1e-10):
         """Assert matrix is positive definite."""
         eigenvalues = np.linalg.eigvalsh(arr)
-        assert np.all(eigenvalues > -tol), f"Matrix not positive definite: min eigenvalue = {np.min(eigenvalues)}"
-    
+        assert np.all(
+            eigenvalues > -tol
+        ), f"Matrix not positive definite: min eigenvalue = {np.min(eigenvalues)}"
+
     def assert_orthogonal(self, arr, rtol=1e-10):
         """Assert matrix is orthogonal."""
         n = arr.shape[0]
         np.testing.assert_allclose(arr @ arr.T, np.eye(n), rtol=rtol)
         np.testing.assert_allclose(arr.T @ arr, np.eye(n), rtol=rtol)
-    
+
     def assert_rotation_matrix(self, arr, rtol=1e-10):
         """Assert matrix is a proper rotation matrix."""
         self.assert_orthogonal(arr, rtol=rtol)
