@@ -1,0 +1,74 @@
+"""
+Statistics and probability distributions.
+
+This module provides:
+- Probability distribution classes with consistent APIs
+- Descriptive statistics (mean, variance, correlation)
+- Robust estimators (MAD, IQR)
+- Filter consistency metrics (NEES, NIS)
+"""
+
+from pytcl.mathematical_functions.statistics.distributions import (
+    Distribution,
+    Gaussian,
+    MultivariateGaussian,
+    Uniform,
+    Exponential,
+    Gamma,
+    ChiSquared,
+    StudentT,
+    Beta,
+    Poisson,
+    VonMises,
+    Wishart,
+)
+
+from pytcl.mathematical_functions.statistics.estimators import (
+    weighted_mean,
+    weighted_var,
+    weighted_cov,
+    sample_mean,
+    sample_var,
+    sample_cov,
+    sample_corr,
+    median,
+    mad,
+    iqr,
+    skewness,
+    kurtosis,
+    moment,
+    nees,
+    nis,
+)
+
+__all__ = [
+    # Distributions
+    "Distribution",
+    "Gaussian",
+    "MultivariateGaussian",
+    "Uniform",
+    "Exponential",
+    "Gamma",
+    "ChiSquared",
+    "StudentT",
+    "Beta",
+    "Poisson",
+    "VonMises",
+    "Wishart",
+    # Estimators
+    "weighted_mean",
+    "weighted_var",
+    "weighted_cov",
+    "sample_mean",
+    "sample_var",
+    "sample_cov",
+    "sample_corr",
+    "median",
+    "mad",
+    "iqr",
+    "skewness",
+    "kurtosis",
+    "moment",
+    "nees",
+    "nis",
+]

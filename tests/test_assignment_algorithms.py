@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from tcl.assignment_algorithms import (
+from pytcl.assignment_algorithms import (
     # 2D Assignment
     hungarian,
     auction,

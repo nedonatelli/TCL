@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 import pytest
 
-from tcl.performance_evaluation import (
+from pytcl.performance_evaluation import (
     # Track metrics
     OSPAResult,
     MOTMetrics,

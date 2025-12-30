@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from tcl.astronomical import (
+from pytcl.astronomical import (
     cal_to_jd,
     jd_to_cal,
     mjd_to_jd,
@@ -17,7 +17,7 @@ from tcl.astronomical import (
     jd_to_unix,
 )
 
-from tcl.navigation import (
+from pytcl.navigation import (
     WGS84,
     geodetic_to_ecef,
     ecef_to_geodetic,
@@ -28,7 +28,7 @@ from tcl.navigation import (
     haversine_distance,
 )
 
-from tcl.atmosphere import (
+from pytcl.atmosphere import (
     us_standard_atmosphere_1976,
     isa_atmosphere,
     mach_number,
@@ -131,7 +131,7 @@ class TestGPSTime:
 
     def test_gps_week_at_epoch(self):
         """GPS week 0, second 0 should be at GPS epoch."""
-        from tcl.astronomical.time_systems import JD_GPS_EPOCH
+        from pytcl.astronomical.time_systems import JD_GPS_EPOCH
 
         week, seconds = gps_week_seconds(JD_GPS_EPOCH)
         assert week == 0
@@ -139,7 +139,7 @@ class TestGPSTime:
 
     def test_gps_week_calculation(self):
         """Test GPS week calculation."""
-        from tcl.astronomical.time_systems import JD_GPS_EPOCH
+        from pytcl.astronomical.time_systems import JD_GPS_EPOCH
 
         # One week after GPS epoch
         jd_gps = JD_GPS_EPOCH + 7

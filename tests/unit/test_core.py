@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from tcl.core.constants import (
+from pytcl.core.constants import (
     SPEED_OF_LIGHT,
     EARTH_SEMI_MAJOR_AXIS,
     EARTH_FLATTENING,
@@ -18,7 +18,7 @@ from tcl.core.constants import (
     RAD_TO_DEG,
     PhysicalConstants,
 )
-from tcl.core.validation import (
+from pytcl.core.validation import (
     validate_array,
     ensure_2d,
     ensure_column_vector,
@@ -27,7 +27,7 @@ from tcl.core.validation import (
     ensure_symmetric,
     ValidationError,
 )
-from tcl.core.array_utils import (
+from pytcl.core.array_utils import (
     wrap_to_pi,
     wrap_to_2pi,
     wrap_to_range,

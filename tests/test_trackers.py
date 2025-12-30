@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from tcl.trackers import (
+from pytcl.trackers import (
     SingleTargetTracker,
     TrackState,
     MultiTargetTracker,
