@@ -1,7 +1,6 @@
 """Tests for Gaussian mixture operations."""
 
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from pytcl.clustering import (
@@ -12,7 +11,6 @@ from pytcl.clustering import (
     merge_gaussians,
     prune_mixture,
     reduce_mixture_runnalls,
-    west_merge_cost,
     reduce_mixture_west,
 )
 
@@ -57,7 +55,7 @@ class TestMomentMatch:
         assert_allclose(m, [1.0, 0.0])
 
         # Covariance should include spread of means
-        # P_spread = 0.5 * outer([−1,0],[−1,0]) + 0.5 * outer([1,0],[1,0]) = [[1,0],[0,0]]
+        # P_spread = 0.5*outer([-1,0],[-1,0]) + 0.5*outer([1,0],[1,0]) = [[1,0],[0,0]]
         # P_out = 0.1*I + [[1,0],[0,0]]
         expected_cov = np.array([[1.1, 0.0], [0.0, 0.1]])
         assert_allclose(P_out, expected_cov)

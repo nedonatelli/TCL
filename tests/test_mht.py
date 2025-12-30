@@ -490,7 +490,7 @@ class TestMHTIntegration:
                 pass
 
             measurements = [np.array(pos1), np.array(pos2)]
-            result = tracker.process(measurements, dt=1.0)
+            tracker.process(measurements, dt=1.0)
 
         # Should maintain at least some hypotheses
         assert tracker.n_hypotheses >= 1
@@ -502,7 +502,10 @@ class TestMHTIntegration:
             return np.array([[1, dt], [0, 1]])
 
         H = np.array([[1, 0]])
-        Q = lambda dt: np.eye(2) * 0.1
+
+        def Q(dt):
+            return np.eye(2) * 0.1
+
         R = np.array([[0.5]])
 
         config = MHTConfig(
