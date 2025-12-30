@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-12-30
+
+### Added
+- **Maximum Likelihood Estimation** (`pytcl.static_estimation.maximum_likelihood`):
+  - `fisher_information_numerical` - Numerical Fisher information via Hessian
+  - `fisher_information_gaussian` - Analytical Fisher info for linear Gaussian models
+  - `fisher_information_exponential_family` - Fisher info for exponential family
+  - `observed_fisher_information` - Observed Fisher info from Hessian at MLE
+  - `cramer_rao_bound` - Compute Cramer-Rao lower bound from Fisher info
+  - `cramer_rao_bound_biased` - CRB for biased estimators
+  - `efficiency` - Compute estimator efficiency relative to CRB
+  - `mle_newton_raphson` - Newton-Raphson MLE optimization
+  - `mle_scoring` - Fisher scoring MLE optimization
+  - `mle_gaussian` - Closed-form Gaussian MLE
+  - `aic`, `bic`, `aicc` - Information criteria for model selection
+- **Additional Spatial Data Structures** (`pytcl.containers`):
+  - **R-Tree** (`rtree.py`):
+    - `BoundingBox` - Axis-aligned bounding box with geometric operations
+    - `merge_boxes`, `box_from_point`, `box_from_points` - Box utilities
+    - `RTree` - R-tree for spatial indexing of bounding boxes
+    - `query_intersect`, `query_contains`, `query_point`, `nearest` queries
+  - **VP-Tree** (`vptree.py`):
+    - `VPTree` - Vantage point tree for metric space nearest neighbor
+    - Custom distance metric support
+    - `query`, `query_radius` methods
+  - **Cover Tree** (`covertree.py`):
+    - `CoverTree` - Cover tree with O(c^12 log n) query guarantee
+    - Custom distance metric support
+    - `query`, `query_radius` methods
+- 51 new tests for ML estimation and spatial structures
+
+### Changed
+- Test count increased from 574 to 625
+- Source file count increased from 102 to 105
+
 ## [0.5.0] - 2025-12-30
 
 ### Added

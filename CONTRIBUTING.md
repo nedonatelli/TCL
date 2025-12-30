@@ -31,7 +31,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 We follow these conventions:
 
 - **Code formatting:** [Black](https://black.readthedocs.io/) with default settings
-- **Linting:** [Ruff](https://docs.astral.sh/ruff/)
+- **Linting:** [Flake8](https://flake8.pycqa.org/)
 - **Type hints:** Required for all public functions
 - **Docstrings:** NumPy style
 
@@ -206,7 +206,7 @@ When porting a function from the original MATLAB library:
    black .
    
    # Lint
-   ruff check .
+   flake8 pytcl tests
    
    # Type check
    mypy pytcl

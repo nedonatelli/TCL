@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nrl-tracker"
-version = "0.5.0"
+version = "0.5.1"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
 authors = [
@@ -66,7 +66,7 @@ dev = [
     "pytest-xdist>=3.0.0",
     "hypothesis>=6.0.0",
     "black>=23.0.0",
-    "ruff>=0.1.0",
+    "flake8>=7.0.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "sphinx>=6.0.0",
@@ -129,27 +129,12 @@ extend-exclude = '''
 )/
 '''
 
-[tool.ruff]
-line-length = 88
-target-version = "py310"
-select = [
-    "E",      # pycodestyle errors
-    "W",      # pycodestyle warnings
-    "F",      # Pyflakes
-    "I",      # isort
-    "B",      # flake8-bugbear
-    "C4",     # flake8-comprehensions
-    "UP",     # pyupgrade
-    "NPY",    # NumPy-specific rules
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E501"]
+per-file-ignores = [
+    "__init__.py:F401",
 ]
-ignore = [
-    "E501",   # line too long (handled by black)
-    "B008",   # do not perform function calls in argument defaults
-]
-
-[tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"]  # unused imports in __init__ are OK
-"tests/*" = ["B011"]      # assert False is OK in tests
 
 [tool.mypy]
 python_version = "3.10"

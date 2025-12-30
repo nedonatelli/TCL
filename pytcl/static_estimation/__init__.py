@@ -34,6 +34,24 @@ from pytcl.static_estimation.robust import (
     ransac_n_trials,
 )
 
+from pytcl.static_estimation.maximum_likelihood import (
+    MLResult,
+    CRBResult,
+    fisher_information_numerical,
+    fisher_information_gaussian,
+    fisher_information_exponential_family,
+    observed_fisher_information,
+    cramer_rao_bound,
+    cramer_rao_bound_biased,
+    efficiency,
+    mle_newton_raphson,
+    mle_scoring,
+    mle_gaussian,
+    aic,
+    bic,
+    aicc,
+)
+
 __all__ = [
     # Least squares results
     "LSResult",
@@ -64,4 +82,24 @@ __all__ = [
     "tukey_regression",
     "ransac",
     "ransac_n_trials",
+    # Maximum likelihood results
+    "MLResult",
+    "CRBResult",
+    # Fisher information
+    "fisher_information_numerical",
+    "fisher_information_gaussian",
+    "fisher_information_exponential_family",
+    "observed_fisher_information",
+    # Cramer-Rao bounds
+    "cramer_rao_bound",
+    "cramer_rao_bound_biased",
+    "efficiency",
+    # MLE algorithms
+    "mle_newton_raphson",
+    "mle_scoring",
+    "mle_gaussian",
+    # Information criteria
+    "aic",
+    "bic",
+    "aicc",
 ]

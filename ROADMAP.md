@@ -1,14 +1,14 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.5.0)
+## Current State (v0.5.1)
 
-- **450+ functions** implemented across 102 Python files
-- **574 tests** with comprehensive coverage
+- **470+ functions** implemented across 105 Python files
+- **625 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
-- **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC
-- **Spatial data structures**: K-D tree, Ball tree for efficient nearest neighbor queries
+- **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
+- **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -80,21 +80,20 @@
 
 ---
 
-## Phase 3 (Remaining): Static Estimation
+## Completed in v0.5.1
 
-### 3.1 Maximum Likelihood Estimation
-- [ ] ML estimator framework
-- [ ] Fisher information computation
-- [ ] Cramer-Rao bounds
+### Phase 3 (Completed): Static Estimation - Maximum Likelihood
+- [x] ML estimator framework - `mle_newton_raphson`, `mle_scoring`, `mle_gaussian`
+- [x] Fisher information computation - `fisher_information_numerical`, `fisher_information_gaussian`
+- [x] Cramer-Rao bounds - `cramer_rao_bound`, `cramer_rao_bound_biased`, `efficiency`
+- [x] Information criteria - `aic`, `bic`, `aicc`
+- **Files**: `pytcl/static_estimation/maximum_likelihood.py`
 
----
-
-## Phase 4 (Remaining): Container Data Structures
-
-### 4.2 Additional Spatial Structures
-- [ ] R-tree for bounding boxes
-- [ ] VP-tree (vantage point tree)
-- [ ] Cover tree
+### Phase 4 (Completed): Container Data Structures - Additional Spatial Structures
+- [x] R-tree for bounding boxes - `RTree`, `BoundingBox`, `query_intersect`, `query_contains`
+- [x] VP-tree (vantage point tree) - `VPTree` with custom metric support
+- [x] Cover tree - `CoverTree` with O(c^12 log n) guarantee
+- **Files**: `pytcl/containers/rtree.py`, `pytcl/containers/vptree.py`, `pytcl/containers/covertree.py`
 
 ---
 
@@ -185,7 +184,7 @@
 | **P0** | Advanced Data Association | JPDA, MHT, IMM | ✅ Complete |
 | **P1** | Clustering | Gaussian mixture, K-means, DBSCAN, hierarchical | ✅ Complete |
 | **P2** | Static Estimation | Least squares, robust estimators, RANSAC | ✅ Complete |
-| **P2.5** | Spatial Data Structures | K-D tree, Ball tree | ✅ Complete |
+| **P2.5** | Spatial Data Structures | K-D tree, Ball tree, R-tree, VP-tree, Cover tree | ✅ Complete |
 | **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
 | **P4** | Astronomical | Orbit propagation, reference frames | Pending |
 | **P5** | Infrastructure | Performance, docs, tests | In progress |
@@ -201,7 +200,8 @@
 | **v0.4.0** | Gaussian mixture reduction, K-means, MHT | Released 2025-12-30 |
 | **v0.4.1** | DBSCAN, hierarchical clustering | Released 2025-12-30 |
 | **v0.4.2** | Linting fixes | Released 2025-12-30 |
-| **v0.5.0** | Static estimation, spatial data structures | Released 2025-12-30 |
+| **v0.5.0** | Static estimation, K-D/Ball trees | Released 2025-12-30 |
+| **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models | Planned |
 | **v0.7.0** | Complete astronomical code | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |

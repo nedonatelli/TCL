@@ -135,9 +135,9 @@ pytcl/
 
 ## Documentation
 
-- [API Reference](https://tracker-component-library-python.readthedocs.io/en/latest/api/)
-- [Tutorials](https://tracker-component-library-python.readthedocs.io/en/latest/tutorials/)
-- [Examples](https://tracker-component-library-python.readthedocs.io/en/latest/examples/)
+- [API Reference](docs/api/)
+- [User Guides](docs/user_guide/)
+- [Examples](examples/)
 
 ## Comparison with Original MATLAB Library
 
