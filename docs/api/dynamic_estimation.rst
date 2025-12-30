@@ -38,6 +38,27 @@ Unscented & Cubature Kalman Filter
    :undoc-members:
    :show-inheritance:
 
+Square-Root Kalman Filters
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Numerically stable Kalman filter implementations that propagate the
+Cholesky factor of the covariance matrix.
+
+.. automodule:: pytcl.dynamic_estimation.kalman.square_root
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Interacting Multiple Model (IMM) Estimator
+------------------------------------------
+
+The IMM estimator handles systems with multiple possible dynamic modes.
+
+.. automodule:: pytcl.dynamic_estimation.imm
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Particle Filters
 ----------------
 

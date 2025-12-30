@@ -330,7 +330,6 @@ def srkf_update(
     H = np.asarray(H, dtype=np.float64)
     S_R = np.asarray(S_R, dtype=np.float64)
 
-    n = len(x)
     m = len(z)
 
     # Innovation

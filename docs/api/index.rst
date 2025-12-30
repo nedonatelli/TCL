@@ -11,3 +11,4 @@ This section provides detailed API documentation for all modules.
    coordinate_systems
    dynamic_models
    dynamic_estimation
+   assignment_algorithms

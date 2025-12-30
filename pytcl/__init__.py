@@ -44,8 +44,24 @@ from pytcl import performance_evaluation
 # Plotting utilities
 from pytcl import plotting
 
+
 # Version tuple for programmatic access
-VERSION = tuple(int(x) for x in __version__.split("."))
+# Handle dev/alpha/beta/rc suffixes by extracting only numeric parts
+def _parse_version(version_str):
+    """Parse version string into tuple of integers."""
+    import re
+
+    parts = re.split(r"[.\-]", version_str)
+    nums = []
+    for p in parts:
+        # Extract leading digits
+        match = re.match(r"^(\d+)", p)
+        if match:
+            nums.append(int(match.group(1)))
+    return tuple(nums)
+
+
+VERSION = _parse_version(__version__)
 
 __all__ = [
     "__version__",

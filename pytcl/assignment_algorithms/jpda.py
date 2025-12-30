@@ -13,7 +13,6 @@ from typing import NamedTuple, List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
-from itertools import permutations
 
 from pytcl.assignment_algorithms.gating import mahalanobis_distance
 
@@ -192,9 +191,6 @@ def jpda_probabilities(
         beta[i, n_meas] = P(track i has no measurement).
     """
     n_tracks, n_meas = likelihood_matrix.shape
-
-    # Probability of no measurement for each track
-    prob_no_detection = 1.0 - detection_prob
 
     # Initialize beta matrix (last column is for "no measurement")
     beta = np.zeros((n_tracks, n_meas + 1))

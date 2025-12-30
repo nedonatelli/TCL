@@ -12,13 +12,11 @@ The IMM algorithm consists of four steps:
 4. Output combination
 """
 
-from typing import NamedTuple, Callable, List, Optional
+from typing import NamedTuple, List, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.linear import (
-    KalmanPrediction,
-    KalmanUpdate,
     kf_predict,
     kf_update,
 )
