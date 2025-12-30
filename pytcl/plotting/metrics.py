@@ -5,9 +5,9 @@ This module provides functions for visualizing tracking and estimation
 performance metrics such as RMSE, NEES, NIS, and OSPA.
 """
 
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
 try:
     import plotly.graph_objects as go

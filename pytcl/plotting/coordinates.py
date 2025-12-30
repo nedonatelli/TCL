@@ -5,9 +5,9 @@ This module provides functions for visualizing coordinate systems,
 rotations, and transformations in 2D and 3D.
 """
 
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
 try:
     import plotly.graph_objects as go
@@ -246,7 +246,11 @@ def plot_euler_angles(
     for i in range(4):
         scene_name = f"scene{i + 1}" if i > 0 else "scene"
         fig.update_layout(
-            **{scene_name: dict(aspectmode="cube", camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)))}
+            **{
+                scene_name: dict(
+                    aspectmode="cube", camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))
+                )
+            }
         )
 
     return fig
@@ -373,7 +377,9 @@ def plot_quaternion_interpolation(
                         method="animate",
                         args=[
                             [None],
-                            dict(frame=dict(duration=0, redraw=False), mode="immediate"),
+                            dict(
+                                frame=dict(duration=0, redraw=False), mode="immediate"
+                            ),
                         ],
                     ),
                 ],

@@ -5,7 +5,7 @@ This module provides functions for visualizing uncertainty as ellipses
 in 2D and 3D spaces, commonly used in tracking and estimation applications.
 """
 
-from typing import Optional, Tuple, Union, List
+from typing import Optional, Tuple, List
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

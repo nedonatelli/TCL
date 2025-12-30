@@ -202,10 +202,12 @@ def plot_tracking_with_ellipses(data: dict) -> go.Figure:
     # Covariance ellipses (every 5 steps)
     for i in range(0, len(estimates), 5):
         pos_mean = np.array([estimates[i, 0], estimates[i, 2]])
-        pos_cov = np.array([
-            [covariances[i][0, 0], covariances[i][0, 2]],
-            [covariances[i][2, 0], covariances[i][2, 2]],
-        ])
+        pos_cov = np.array(
+            [
+                [covariances[i][0, 0], covariances[i][0, 2]],
+                [covariances[i][2, 0], covariances[i][2, 2]],
+            ]
+        )
 
         # 2-sigma ellipse
         ex, ey = covariance_ellipse(pos_mean, pos_cov, n_std=2.0)
@@ -258,24 +260,40 @@ def plot_uncertainty_evolution(data: dict) -> go.Figure:
 
     # Position uncertainties
     fig.add_trace(
-        go.Scatter(x=time, y=pos_x_std, mode="lines", name="σ_x", line=dict(color="blue")),
+        go.Scatter(
+            x=time, y=pos_x_std, mode="lines", name="σ_x", line=dict(color="blue")
+        ),
         row=1,
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=time, y=pos_y_std, mode="lines", name="σ_y", line=dict(color="red")),
+        go.Scatter(
+            x=time, y=pos_y_std, mode="lines", name="σ_y", line=dict(color="red")
+        ),
         row=1,
         col=1,
     )
 
     # Velocity uncertainties
     fig.add_trace(
-        go.Scatter(x=time, y=vel_x_std, mode="lines", name="σ_vx", line=dict(color="blue", dash="dash")),
+        go.Scatter(
+            x=time,
+            y=vel_x_std,
+            mode="lines",
+            name="σ_vx",
+            line=dict(color="blue", dash="dash"),
+        ),
         row=2,
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=time, y=vel_y_std, mode="lines", name="σ_vy", line=dict(color="red", dash="dash")),
+        go.Scatter(
+            x=time,
+            y=vel_y_std,
+            mode="lines",
+            name="σ_vy",
+            line=dict(color="red", dash="dash"),
+        ),
         row=2,
         col=1,
     )
@@ -332,7 +350,13 @@ def plot_estimation_errors(data: dict) -> go.Figure:
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=time, y=errors[:, 0], mode="lines", name="X error", line=dict(color="blue")),
+        go.Scatter(
+            x=time,
+            y=errors[:, 0],
+            mode="lines",
+            name="X error",
+            line=dict(color="blue"),
+        ),
         row=1,
         col=1,
     )
@@ -362,7 +386,9 @@ def plot_estimation_errors(data: dict) -> go.Figure:
         col=1,
     )
     fig.add_trace(
-        go.Scatter(x=time, y=errors[:, 2], mode="lines", name="Y error", line=dict(color="red")),
+        go.Scatter(
+            x=time, y=errors[:, 2], mode="lines", name="Y error", line=dict(color="red")
+        ),
         row=2,
         col=1,
     )
@@ -407,8 +433,8 @@ def plot_animated_tracking(data: dict) -> go.Figure:
     for k in range(1, n_steps + 1):
         # True trajectory up to current time
         true_trace = go.Scatter(
-            x=true_states[:k + 1, 0],
-            y=true_states[:k + 1, 2],
+            x=true_states[: k + 1, 0],
+            y=true_states[: k + 1, 2],
             mode="lines",
             line=dict(color="green", width=3),
             name="True",
@@ -425,8 +451,8 @@ def plot_animated_tracking(data: dict) -> go.Figure:
 
         # Estimates up to current time
         est_trace = go.Scatter(
-            x=estimates[:k + 1, 0],
-            y=estimates[:k + 1, 2],
+            x=estimates[: k + 1, 0],
+            y=estimates[: k + 1, 2],
             mode="lines+markers",
             line=dict(color="blue", width=2),
             marker=dict(size=4),
@@ -435,10 +461,12 @@ def plot_animated_tracking(data: dict) -> go.Figure:
 
         # Current covariance ellipse
         pos_mean = np.array([estimates[k, 0], estimates[k, 2]])
-        pos_cov = np.array([
-            [covariances[k][0, 0], covariances[k][0, 2]],
-            [covariances[k][2, 0], covariances[k][2, 2]],
-        ])
+        pos_cov = np.array(
+            [
+                [covariances[k][0, 0], covariances[k][0, 2]],
+                [covariances[k][2, 0], covariances[k][2, 2]],
+            ]
+        )
         ex, ey = covariance_ellipse(pos_mean, pos_cov, n_std=2.0)
 
         ellipse_trace = go.Scatter(
@@ -522,7 +550,10 @@ def plot_animated_tracking(data: dict) -> go.Figure:
                 active=0,
                 steps=[
                     dict(
-                        args=[[str(k)], dict(frame=dict(duration=0, redraw=True), mode="immediate")],
+                        args=[
+                            [str(k)],
+                            dict(frame=dict(duration=0, redraw=True), mode="immediate"),
+                        ],
                         label=str(k),
                         method="animate",
                     )

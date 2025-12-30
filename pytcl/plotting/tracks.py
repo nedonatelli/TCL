@@ -5,9 +5,9 @@ This module provides functions for visualizing trajectories, tracks,
 measurements, and estimation results in 2D and 3D.
 """
 
-from typing import Optional, List, Dict, Any, Union, Sequence
+from typing import Optional, List, Dict, Any
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
 try:
     import plotly.graph_objects as go
@@ -535,7 +535,9 @@ def plot_estimation_comparison(
 
         # Error bounds
         if covariances is not None:
-            sigma = n_std * np.array([np.sqrt(P[state_idx, state_idx]) for P in covariances])
+            sigma = n_std * np.array(
+                [np.sqrt(P[state_idx, state_idx]) for P in covariances]
+            )
             upper = estimates[:, state_idx] + sigma
             lower = estimates[:, state_idx] - sigma
 
@@ -737,7 +739,9 @@ def create_animated_tracking(
                         method="animate",
                         args=[
                             [None],
-                            dict(frame=dict(duration=0, redraw=False), mode="immediate"),
+                            dict(
+                                frame=dict(duration=0, redraw=False), mode="immediate"
+                            ),
                         ],
                     ),
                 ],

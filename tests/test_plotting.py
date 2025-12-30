@@ -353,9 +353,7 @@ class TestCoordinatePlotting:
         """Test coordinate axes with rotation."""
         from pytcl.plotting import plot_coordinate_axes_3d
 
-        R = np.array(
-            [[0, -1, 0], [1, 0, 0], [0, 0, 1]]
-        )  # 90 degree rotation about z
+        R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])  # 90 degree rotation about z
         traces = plot_coordinate_axes_3d(rotation_matrix=R)
 
         assert len(traces) == 3

@@ -94,12 +94,14 @@ class TestKronecker:
         B = np.eye(2)
         K = kron(A, B)
 
-        expected = np.array([
-            [1, 0, 2, 0],
-            [0, 1, 0, 2],
-            [3, 0, 4, 0],
-            [0, 3, 0, 4],
-        ])
+        expected = np.array(
+            [
+                [1, 0, 2, 0],
+                [0, 1, 0, 2],
+                [3, 0, 4, 0],
+                [0, 3, 0, 4],
+            ]
+        )
         np.testing.assert_allclose(K, expected)
 
     def test_kron_shape(self):
@@ -129,11 +131,13 @@ class TestBlockDiag:
         B = np.array([[5]])
         D = block_diag(A, B)
 
-        expected = np.array([
-            [1, 2, 0],
-            [3, 4, 0],
-            [0, 0, 5],
-        ])
+        expected = np.array(
+            [
+                [1, 2, 0],
+                [3, 4, 0],
+                [0, 0, 5],
+            ]
+        )
         np.testing.assert_allclose(D, expected)
 
     def test_block_diag_shape(self):
@@ -150,21 +154,25 @@ class TestVandermonde:
     def test_vandermonde_basic(self):
         """Test basic Vandermonde matrix."""
         V = vandermonde([1, 2, 3], 3)
-        expected = np.array([
-            [1, 1, 1],
-            [4, 2, 1],
-            [9, 3, 1],
-        ])
+        expected = np.array(
+            [
+                [1, 1, 1],
+                [4, 2, 1],
+                [9, 3, 1],
+            ]
+        )
         np.testing.assert_allclose(V, expected)
 
     def test_vandermonde_increasing(self):
         """Test Vandermonde with increasing powers."""
         V = vandermonde([1, 2, 3], 3, increasing=True)
-        expected = np.array([
-            [1, 1, 1],
-            [1, 2, 4],
-            [1, 3, 9],
-        ])
+        expected = np.array(
+            [
+                [1, 1, 1],
+                [1, 2, 4],
+                [1, 3, 9],
+            ]
+        )
         np.testing.assert_allclose(V, expected)
 
 
@@ -174,11 +182,13 @@ class TestToeplitz:
     def test_toeplitz_basic(self):
         """Test basic Toeplitz matrix."""
         T = toeplitz([1, 2, 3], [1, 4, 5])
-        expected = np.array([
-            [1, 4, 5],
-            [2, 1, 4],
-            [3, 2, 1],
-        ])
+        expected = np.array(
+            [
+                [1, 4, 5],
+                [2, 1, 4],
+                [3, 2, 1],
+            ]
+        )
         np.testing.assert_allclose(T, expected)
 
 
@@ -188,11 +198,13 @@ class TestHankel:
     def test_hankel_basic(self):
         """Test basic Hankel matrix."""
         H = hankel([1, 2, 3], [3, 4, 5])
-        expected = np.array([
-            [1, 2, 3],
-            [2, 3, 4],
-            [3, 4, 5],
-        ])
+        expected = np.array(
+            [
+                [1, 2, 3],
+                [2, 3, 4],
+                [3, 4, 5],
+            ]
+        )
         np.testing.assert_allclose(H, expected)
 
 
@@ -202,11 +214,13 @@ class TestCirculant:
     def test_circulant_basic(self):
         """Test basic circulant matrix."""
         C = circulant([1, 2, 3])
-        expected = np.array([
-            [1, 3, 2],
-            [2, 1, 3],
-            [3, 2, 1],
-        ])
+        expected = np.array(
+            [
+                [1, 3, 2],
+                [2, 1, 3],
+                [3, 2, 1],
+            ]
+        )
         np.testing.assert_allclose(C, expected)
 
 
@@ -216,11 +230,13 @@ class TestHilbert:
     def test_hilbert_basic(self):
         """Test basic Hilbert matrix."""
         H = hilbert(3)
-        expected = np.array([
-            [1, 1/2, 1/3],
-            [1/2, 1/3, 1/4],
-            [1/3, 1/4, 1/5],
-        ])
+        expected = np.array(
+            [
+                [1, 1 / 2, 1 / 3],
+                [1 / 2, 1 / 3, 1 / 4],
+                [1 / 3, 1 / 4, 1 / 5],
+            ]
+        )
         np.testing.assert_allclose(H, expected)
 
     def test_hilbert_ill_conditioned(self):
@@ -442,9 +458,9 @@ class TestBarycentricCoordinates:
     def test_centroid_coords(self):
         """Test coordinates at centroid."""
         p1, p2, p3 = [0, 0], [1, 0], [0, 1]
-        centroid = np.array([1/3, 1/3])
+        centroid = np.array([1 / 3, 1 / 3])
         coords = barycentric_coordinates(centroid, p1, p2, p3)
-        np.testing.assert_allclose(coords, [1/3, 1/3, 1/3], rtol=1e-10)
+        np.testing.assert_allclose(coords, [1 / 3, 1 / 3, 1 / 3], rtol=1e-10)
 
 
 class TestFactorial:

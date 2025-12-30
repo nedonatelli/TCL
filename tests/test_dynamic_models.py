@@ -9,7 +9,7 @@ Tests cover:
 """
 
 import numpy as np
-import pytest
+
 from pytcl.dynamic_models import (
     # Discrete-time state transition matrices
     f_poly_kal,
@@ -274,9 +274,7 @@ class TestProcessNoiseMatrices:
 
         # Check values match expected
         var = sigma_a**2
-        expected_block = var * np.array(
-            [[T**4 / 4, T**3 / 2], [T**3 / 2, T**2]]
-        )
+        expected_block = var * np.array([[T**4 / 4, T**3 / 2], [T**3 / 2, T**2]])
         np.testing.assert_allclose(Q_block, expected_block)
 
     def test_q_constant_acceleration(self):

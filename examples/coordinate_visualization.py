@@ -44,7 +44,11 @@ def plot_rotation_axes() -> go.Figure:
         rows=1,
         cols=3,
         specs=[[{"type": "scene"}, {"type": "scene"}, {"type": "scene"}]],
-        subplot_titles=["Rotation about X (45°)", "Rotation about Y (45°)", "Rotation about Z (45°)"],
+        subplot_titles=[
+            "Rotation about X (45°)",
+            "Rotation about Y (45°)",
+            "Rotation about Z (45°)",
+        ],
     )
 
     # Original axes
@@ -136,7 +140,12 @@ def plot_euler_rotation_sequence() -> go.Figure:
         rows=1,
         cols=4,
         specs=[[{"type": "scene"}] * 4],
-        subplot_titles=["Initial", "After Yaw (Z)", "After Pitch (Y)", "After Roll (X)"],
+        subplot_titles=[
+            "Initial",
+            "After Yaw (Z)",
+            "After Pitch (Y)",
+            "After Roll (X)",
+        ],
     )
 
     # Define Euler angles
@@ -158,20 +167,26 @@ def plot_euler_rotation_sequence() -> go.Figure:
     def airplane_points():
         """Generate points representing an airplane."""
         # Fuselage
-        fuselage = np.array([
-            [1, 0, 0],    # nose
-            [-1, 0, 0],   # tail
-        ])
+        fuselage = np.array(
+            [
+                [1, 0, 0],  # nose
+                [-1, 0, 0],  # tail
+            ]
+        )
         # Wings
-        wings = np.array([
-            [0, 0.8, 0],   # left wing
-            [0, -0.8, 0],  # right wing
-        ])
+        wings = np.array(
+            [
+                [0, 0.8, 0],  # left wing
+                [0, -0.8, 0],  # right wing
+            ]
+        )
         # Tail fin
-        tail = np.array([
-            [-0.8, 0, 0],
-            [-1, 0, 0.3],
-        ])
+        tail = np.array(
+            [
+                [-0.8, 0, 0],
+                [-1, 0, 0.3],
+            ]
+        )
         return fuselage, wings, tail
 
     def add_airplane(fig, R, col):
@@ -276,7 +291,10 @@ def plot_quaternion_slerp() -> go.Figure:
     t_values = np.linspace(0, 1, n_steps)
 
     # Colors for interpolation
-    colors = [f"rgb({int(255 * (1 - t))}, {int(100 + 155 * t)}, {int(255 * t)})" for t in t_values]
+    colors = [
+        f"rgb({int(255 * (1 - t))}, {int(100 + 155 * t)}, {int(255 * t)})"
+        for t in t_values
+    ]
 
     # Reference vector to rotate
     v = np.array([1, 0, 0])
@@ -350,7 +368,9 @@ def plot_spherical_coordinates() -> go.Figure:
     # Azimuth lines (constant azimuth, varying elevation)
     for az in np.linspace(0, 2 * np.pi, n_az, endpoint=False):
         el_range = np.linspace(-np.pi / 2, np.pi / 2, 50)
-        points = np.array([sphere2cart(r, az, el, system_type="az-el") for el in el_range])
+        points = np.array(
+            [sphere2cart(r, az, el, system_type="az-el") for el in el_range]
+        )
         fig.add_trace(
             go.Scatter3d(
                 x=points[:, 0],
@@ -365,7 +385,9 @@ def plot_spherical_coordinates() -> go.Figure:
     # Elevation lines (constant elevation, varying azimuth)
     for el in np.linspace(-np.pi / 2 + 0.1, np.pi / 2 - 0.1, n_el):
         az_range = np.linspace(0, 2 * np.pi, 50)
-        points = np.array([sphere2cart(r, az, el, system_type="az-el") for az in az_range])
+        points = np.array(
+            [sphere2cart(r, az, el, system_type="az-el") for az in az_range]
+        )
         fig.add_trace(
             go.Scatter3d(
                 x=points[:, 0],
