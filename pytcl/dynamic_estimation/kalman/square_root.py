@@ -12,7 +12,7 @@ Implementations include:
 - Square-root versions of UKF and CKF
 """
 
-from typing import NamedTuple, Optional
+from typing import Callable, NamedTuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import scipy.linalg
@@ -744,7 +744,7 @@ def ud_update(
 def sr_ukf_predict(
     x: ArrayLike,
     S: ArrayLike,
-    f: callable,
+    f: Callable,
     S_Q: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -843,7 +843,7 @@ def sr_ukf_update(
     x: ArrayLike,
     S: ArrayLike,
     z: ArrayLike,
-    h: callable,
+    h: Callable,
     S_R: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
