@@ -135,8 +135,8 @@ pytcl/
 
 ## Documentation
 
-- [API Reference](docs/api/)
-- [User Guides](docs/user_guide/)
+- [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
+- [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
 - [Examples](examples/)
 
 ## Comparison with Original MATLAB Library
