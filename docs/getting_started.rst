@@ -18,15 +18,15 @@ Install from PyPI
 
 .. code-block:: bash
 
-   pip install tracker-component-library
+   pip install nrl-tracker
 
 Install from Source
 ^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
-   git clone https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary.git
-   cd TrackerComponentLibrary
+   git clone https://github.com/nedonatelli/TCL.git
+   cd TCL
    pip install -e ".[dev]"
 
 Basic Concepts

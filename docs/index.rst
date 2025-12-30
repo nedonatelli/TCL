@@ -32,14 +32,14 @@ Installation
 
 .. code-block:: bash
 
-   pip install tracker-component-library
+   pip install nrl-tracker
 
 Or install from source:
 
 .. code-block:: bash
 
-   git clone https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary.git
-   cd TrackerComponentLibrary
+   git clone https://github.com/nedonatelli/TCL.git
+   cd TCL
    pip install -e .
 
 Quick Start
