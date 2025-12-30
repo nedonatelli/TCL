@@ -72,51 +72,24 @@ def f_singer(
            Electronic Systems, Vol. AES-6, No. 4, July 1970.
     """
     alpha = np.exp(-T / tau)
-
-    # Build 1D transition matrix
-    # Position row
-    f11 = 1.0
-    f12 = T
-    f13 = tau**2 * (alpha + T / tau - 1) - tau * T + T**2 / 2
-    f13 = (alpha * tau - tau + T) * tau - T**2 / 2
-    # Simplify: tau^2 * (alpha - 1) + tau*T - T^2/2
-    # More standard form:
-    f13 = tau**2 * ((1 - alpha) - T / tau * (1 - alpha / 2))
-    # Actually the standard form is:
-    f13 = (tau * T - tau**2 * (1 - alpha)) + tau**2 * (1 - alpha) - tau * T + T**2 / 2
-    # Let's use the exact form from the literature:
-    f13 = (alpha * tau - tau + T)
-
-    # Velocity row
-    f22 = 1.0
-    f23 = tau * (1 - alpha)
-
-    # Acceleration row
-    f33 = alpha
-
-    # Standard Singer F matrix coefficients
-    # F[0,2] = (alpha*tau - tau + T) for position-acceleration coupling
-    # But need to include T^2/2 term... let's use exact derivation
-
-    # More careful derivation:
-    # x(k+1) = x(k) + v(k)*T + a(k)*T^2/2 + higher order terms from a dynamics
-    # The exact solution involves integrating the a(t) trajectory
+    beta = T / tau
 
     # Using Van Loan method or direct integration:
     # F[0,2] = tau^2 * ((T/tau) - 1 + exp(-T/tau))
     # F[1,2] = tau * (1 - exp(-T/tau))
     # F[2,2] = exp(-T/tau)
-
-    beta = T / tau
     f13 = tau**2 * (beta - 1 + alpha)  # Position-acceleration coupling
     f23 = tau * (1 - alpha)  # Velocity-acceleration coupling
     f33 = alpha
 
-    F_1d = np.array([
-        [1, T, f13],
-        [0, 1, f23],
-        [0, 0, f33],
-    ], dtype=np.float64)
+    F_1d = np.array(
+        [
+            [1, T, f13],
+            [0, 1, f23],
+            [0, 0, f33],
+        ],
+        dtype=np.float64,
+    )
 
     if num_dims == 1:
         return F_1d

@@ -6,7 +6,7 @@ representations including rotation matrices, quaternions, Euler angles,
 axis-angle, and Rodrigues parameters.
 """
 
-from typing import Tuple, Literal, Optional
+from typing import Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -33,11 +33,7 @@ def rotx(angle: float) -> NDArray[np.floating]:
     """
     c = np.cos(angle)
     s = np.sin(angle)
-    return np.array([
-        [1, 0, 0],
-        [0, c, -s],
-        [0, s, c]
-    ], dtype=np.float64)
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]], dtype=np.float64)
 
 
 def roty(angle: float) -> NDArray[np.floating]:
@@ -56,11 +52,7 @@ def roty(angle: float) -> NDArray[np.floating]:
     """
     c = np.cos(angle)
     s = np.sin(angle)
-    return np.array([
-        [c, 0, s],
-        [0, 1, 0],
-        [-s, 0, c]
-    ], dtype=np.float64)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]], dtype=np.float64)
 
 
 def rotz(angle: float) -> NDArray[np.floating]:
@@ -79,11 +71,7 @@ def rotz(angle: float) -> NDArray[np.floating]:
     """
     c = np.cos(angle)
     s = np.sin(angle)
-    return np.array([
-        [c, -s, 0],
-        [s, c, 0],
-        [0, 0, 1]
-    ], dtype=np.float64)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]], dtype=np.float64)
 
 
 def euler2rotmat(
@@ -118,7 +106,7 @@ def euler2rotmat(
     """
     angles = np.asarray(angles, dtype=np.float64)
 
-    rot_funcs = {'X': rotx, 'Y': roty, 'Z': rotz}
+    rot_funcs = {"X": rotx, "Y": roty, "Z": rotz}
 
     if len(sequence) != 3:
         raise ValueError("Sequence must have exactly 3 characters")
@@ -160,7 +148,7 @@ def rotmat2euler(
     if sequence == "ZYX":
         # Aerospace convention: yaw-pitch-roll
         # R = Rz(yaw) @ Ry(pitch) @ Rx(roll)
-        sy = np.sqrt(R[0, 0]**2 + R[1, 0]**2)
+        sy = np.sqrt(R[0, 0] ** 2 + R[1, 0] ** 2)
 
         if sy > 1e-6:
             roll = np.arctan2(R[2, 1], R[2, 2])
@@ -175,7 +163,7 @@ def rotmat2euler(
         return np.array([yaw, pitch, roll], dtype=np.float64)
 
     elif sequence == "XYZ":
-        sy = np.sqrt(R[0, 0]**2 + R[0, 1]**2)
+        sy = np.sqrt(R[0, 0] ** 2 + R[0, 1] ** 2)
 
         if sy > 1e-6:
             x = np.arctan2(R[1, 2], R[2, 2])
@@ -237,11 +225,14 @@ def axisangle2rotmat(
 
     x, y, z = axis
 
-    R = np.array([
-        [t*x*x + c,    t*x*y - s*z,  t*x*z + s*y],
-        [t*x*y + s*z,  t*y*y + c,    t*y*z - s*x],
-        [t*x*z - s*y,  t*y*z + s*x,  t*z*z + c]
-    ], dtype=np.float64)
+    R = np.array(
+        [
+            [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+            [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+            [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+        ],
+        dtype=np.float64,
+    )
 
     return R
 
@@ -280,11 +271,9 @@ def rotmat2axisangle(
         return axis / np.linalg.norm(axis), float(angle)
 
     # General case
-    axis = np.array([
-        R[2, 1] - R[1, 2],
-        R[0, 2] - R[2, 0],
-        R[1, 0] - R[0, 1]
-    ]) / (2 * np.sin(angle))
+    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (
+        2 * np.sin(angle)
+    )
 
     return axis, float(angle)
 
@@ -316,11 +305,14 @@ def quat2rotmat(q: ArrayLike) -> NDArray[np.floating]:
 
     qw, qx, qy, qz = q
 
-    R = np.array([
-        [1 - 2*(qy**2 + qz**2), 2*(qx*qy - qz*qw),     2*(qx*qz + qy*qw)],
-        [2*(qx*qy + qz*qw),     1 - 2*(qx**2 + qz**2), 2*(qy*qz - qx*qw)],
-        [2*(qx*qz - qy*qw),     2*(qy*qz + qx*qw),     1 - 2*(qx**2 + qy**2)]
-    ], dtype=np.float64)
+    R = np.array(
+        [
+            [1 - 2 * (qy**2 + qz**2), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw)],
+            [2 * (qx * qy + qz * qw), 1 - 2 * (qx**2 + qz**2), 2 * (qy * qz - qx * qw)],
+            [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx**2 + qy**2)],
+        ],
+        dtype=np.float64,
+    )
 
     return R
 
@@ -454,12 +446,15 @@ def quat_multiply(q1: ArrayLike, q2: ArrayLike) -> NDArray[np.floating]:
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
 
-    return np.array([
-        w1*w2 - x1*x2 - y1*y2 - z1*z2,
-        w1*x2 + x1*w2 + y1*z2 - z1*y2,
-        w1*y2 - x1*z2 + y1*w2 + z1*x2,
-        w1*z2 + x1*y2 - y1*x2 + z1*w2
-    ], dtype=np.float64)
+    return np.array(
+        [
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+            w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+        ],
+        dtype=np.float64,
+    )
 
 
 def quat_conjugate(q: ArrayLike) -> NDArray[np.floating]:
@@ -652,11 +647,10 @@ def dcm_rate(
     R = np.asarray(R, dtype=np.float64)
     omega = np.asarray(omega, dtype=np.float64)
 
-    omega_skew = np.array([
-        [0, -omega[2], omega[1]],
-        [omega[2], 0, -omega[0]],
-        [-omega[1], omega[0], 0]
-    ], dtype=np.float64)
+    omega_skew = np.array(
+        [[0, -omega[2], omega[1]], [omega[2], 0, -omega[0]], [-omega[1], omega[0], 0]],
+        dtype=np.float64,
+    )
 
     return R @ omega_skew
 

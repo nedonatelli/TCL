@@ -53,10 +53,13 @@ def q_coord_turn_2d(
     var_a = sigma_a**2
 
     # Discrete white noise acceleration model for x and y
-    Q_pos_vel = var_a * np.array([
-        [T**4 / 4, T**3 / 2],
-        [T**3 / 2, T**2],
-    ], dtype=np.float64)
+    Q_pos_vel = var_a * np.array(
+        [
+            [T**4 / 4, T**3 / 2],
+            [T**3 / 2, T**2],
+        ],
+        dtype=np.float64,
+    )
 
     if state_type == "position_velocity_omega":
         n = 5
@@ -110,10 +113,13 @@ def q_coord_turn_3d(
     var_a = sigma_a**2
 
     # Discrete white noise acceleration model
-    Q_pos_vel = var_a * np.array([
-        [T**4 / 4, T**3 / 2],
-        [T**3 / 2, T**2],
-    ], dtype=np.float64)
+    Q_pos_vel = var_a * np.array(
+        [
+            [T**4 / 4, T**3 / 2],
+            [T**3 / 2, T**2],
+        ],
+        dtype=np.float64,
+    )
 
     if state_type == "position_velocity_omega":
         n = 7

@@ -5,7 +5,6 @@ This module provides gamma functions, factorials, and related special
 functions used in statistics and probability calculations.
 """
 
-from typing import Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import scipy.special as sp
@@ -422,7 +421,9 @@ def comb(
     --------
     scipy.special.comb : Combinations.
     """
-    return np.asarray(sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64)
+    return np.asarray(
+        sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64
+    )
 
 
 def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray:

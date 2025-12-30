@@ -15,8 +15,15 @@ def interp1d(
     x: ArrayLike,
     y: ArrayLike,
     kind: Literal[
-        "linear", "nearest", "nearest-up", "zero", "slinear",
-        "quadratic", "cubic", "previous", "next"
+        "linear",
+        "nearest",
+        "nearest-up",
+        "zero",
+        "slinear",
+        "quadratic",
+        "cubic",
+        "previous",
+        "next",
     ] = "linear",
     fill_value: Union[float, Tuple[float, float], str] = np.nan,
     bounds_error: bool = False,
@@ -317,8 +324,13 @@ def rbf_interpolate(
     points: ArrayLike,
     values: ArrayLike,
     kernel: Literal[
-        "linear", "thin_plate_spline", "cubic", "quintic",
-        "multiquadric", "inverse_multiquadric", "gaussian"
+        "linear",
+        "thin_plate_spline",
+        "cubic",
+        "quintic",
+        "multiquadric",
+        "inverse_multiquadric",
+        "gaussian",
     ] = "thin_plate_spline",
     smoothing: float = 0.0,
 ) -> interpolate.RBFInterpolator:
@@ -358,7 +370,9 @@ def rbf_interpolate(
     points = np.asarray(points, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
 
-    return interpolate.RBFInterpolator(points, values, kernel=kernel, smoothing=smoothing)
+    return interpolate.RBFInterpolator(
+        points, values, kernel=kernel, smoothing=smoothing
+    )
 
 
 def barycentric(
@@ -448,7 +462,8 @@ def spherical_interp(
     Notes
     -----
     To interpolate at new lat/lon points:
-    1. Convert lat/lon to Cartesian: x = cos(lat)*cos(lon), y = cos(lat)*sin(lon), z = sin(lat)
+    1. Convert lat/lon to Cartesian: x=cos(lat)*cos(lon), y=cos(lat)*sin(lon),
+       z=sin(lat)
     2. Call interp([[x, y, z]])
     """
     lat = np.asarray(lat, dtype=np.float64)

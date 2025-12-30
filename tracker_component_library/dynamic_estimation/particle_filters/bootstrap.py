@@ -134,8 +134,7 @@ def resample_residual(
     floor_Nw = np.floor(Nw).astype(int)
     residual = Nw - floor_Nw
 
-    # Number of deterministic copies
-    k = np.sum(floor_Nw)
+    # Number of deterministic copies (used implicitly via floor_Nw loop)
 
     # Allocate output
     resampled = np.zeros((N, n), dtype=np.float64)
@@ -258,8 +257,7 @@ def bootstrap_pf_update(
 
     # Compute likelihoods
     likelihoods = np.array(
-        [likelihood_func(z, particles[i]) for i in range(N)],
-        dtype=np.float64
+        [likelihood_func(z, particles[i]) for i in range(N)], dtype=np.float64
     )
 
     # Update weights
@@ -475,7 +473,6 @@ def initialize_particles(
     x0 = np.asarray(x0, dtype=np.float64).flatten()
     P0 = np.asarray(P0, dtype=np.float64)
 
-    n = len(x0)
     particles = rng.multivariate_normal(x0, P0, size=N)
     weights = np.ones(N) / N
 

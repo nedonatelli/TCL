@@ -5,7 +5,7 @@ This module provides geometric functions for points, lines, planes,
 polygons, and related operations used in tracking applications.
 """
 
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.spatial import ConvexHull, Delaunay
@@ -157,15 +157,12 @@ def polygon_area(vertices: ArrayLike) -> float:
     1.0
     """
     vertices = np.asarray(vertices, dtype=np.float64)
-    n = len(vertices)
 
     x = vertices[:, 0]
     y = vertices[:, 1]
 
     # Shoelace formula
-    area = 0.5 * np.abs(
-        np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))
-    )
+    area = 0.5 * np.abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1)))
     return area
 
 
@@ -184,7 +181,6 @@ def polygon_centroid(vertices: ArrayLike) -> NDArray[np.floating]:
         Centroid coordinates (x, y).
     """
     vertices = np.asarray(vertices, dtype=np.float64)
-    n = len(vertices)
 
     x = vertices[:, 0]
     y = vertices[:, 1]
@@ -553,10 +549,16 @@ def minimum_bounding_circle(
             else:
                 return circle_from_two_points(p1, p3)
 
-        ux = ((ax**2 + ay**2) * (by - cy) + (bx**2 + by**2) * (cy - ay) +
-              (cx**2 + cy**2) * (ay - by)) / d
-        uy = ((ax**2 + ay**2) * (cx - bx) + (bx**2 + by**2) * (ax - cx) +
-              (cx**2 + cy**2) * (bx - ax)) / d
+        ux = (
+            (ax**2 + ay**2) * (by - cy)
+            + (bx**2 + by**2) * (cy - ay)
+            + (cx**2 + cy**2) * (ay - by)
+        ) / d
+        uy = (
+            (ax**2 + ay**2) * (cx - bx)
+            + (bx**2 + by**2) * (ax - cx)
+            + (cx**2 + cy**2) * (bx - ax)
+        ) / d
 
         center = np.array([ux, uy])
         radius = np.linalg.norm(p1 - center)

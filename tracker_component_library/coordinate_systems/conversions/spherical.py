@@ -5,7 +5,7 @@ This module provides functions for converting between Cartesian and
 spherical/polar coordinate systems, following tracking conventions.
 """
 
-from typing import Tuple, Optional, Literal
+from typing import Tuple, Literal
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

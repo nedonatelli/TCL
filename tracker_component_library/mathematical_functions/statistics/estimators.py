@@ -5,7 +5,7 @@ This module provides functions for computing sample statistics,
 robust estimators, and related quantities used in tracking applications.
 """
 
-from typing import Optional, Tuple, Union
+from typing import Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

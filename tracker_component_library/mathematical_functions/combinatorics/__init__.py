@@ -8,7 +8,7 @@ This module provides:
 - Combinatorial numbers (Stirling, Bell, Catalan)
 """
 
-from tracker_component_library.mathematical_functions.combinatorics.combinatorics import (
+from tracker_component_library.mathematical_functions.combinatorics.combinatorics import (  # noqa: E501
     factorial,
     n_choose_k,
     n_permute_k,

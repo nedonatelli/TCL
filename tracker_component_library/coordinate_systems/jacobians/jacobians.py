@@ -123,32 +123,32 @@ def spherical_jacobian_inv(
         # x = r * sin(el) * cos(az)
         # y = r * sin(el) * sin(az)
         # z = r * cos(el)
-        J[0, 0] = sin_el * cos_az           # dx/dr
-        J[0, 1] = -r * sin_el * sin_az      # dx/daz
-        J[0, 2] = r * cos_el * cos_az       # dx/del
+        J[0, 0] = sin_el * cos_az  # dx/dr
+        J[0, 1] = -r * sin_el * sin_az  # dx/daz
+        J[0, 2] = r * cos_el * cos_az  # dx/del
 
-        J[1, 0] = sin_el * sin_az           # dy/dr
-        J[1, 1] = r * sin_el * cos_az       # dy/daz
-        J[1, 2] = r * cos_el * sin_az       # dy/del
+        J[1, 0] = sin_el * sin_az  # dy/dr
+        J[1, 1] = r * sin_el * cos_az  # dy/daz
+        J[1, 2] = r * cos_el * sin_az  # dy/del
 
-        J[2, 0] = cos_el                    # dz/dr
-        J[2, 1] = 0                         # dz/daz
-        J[2, 2] = -r * sin_el               # dz/del
+        J[2, 0] = cos_el  # dz/dr
+        J[2, 1] = 0  # dz/daz
+        J[2, 2] = -r * sin_el  # dz/del
     else:  # 'az-el'
         # x = r * cos(el) * cos(az)
         # y = r * cos(el) * sin(az)
         # z = r * sin(el)
-        J[0, 0] = cos_el * cos_az           # dx/dr
-        J[0, 1] = -r * cos_el * sin_az      # dx/daz
-        J[0, 2] = -r * sin_el * cos_az      # dx/del
+        J[0, 0] = cos_el * cos_az  # dx/dr
+        J[0, 1] = -r * cos_el * sin_az  # dx/daz
+        J[0, 2] = -r * sin_el * cos_az  # dx/del
 
-        J[1, 0] = cos_el * sin_az           # dy/dr
-        J[1, 1] = r * cos_el * cos_az       # dy/daz
-        J[1, 2] = -r * sin_el * sin_az      # dy/del
+        J[1, 0] = cos_el * sin_az  # dy/dr
+        J[1, 1] = r * cos_el * cos_az  # dy/daz
+        J[1, 2] = -r * sin_el * sin_az  # dy/del
 
-        J[2, 0] = sin_el                    # dz/dr
-        J[2, 1] = 0                         # dz/daz
-        J[2, 2] = r * cos_el                # dz/del
+        J[2, 0] = sin_el  # dz/dr
+        J[2, 1] = 0  # dz/daz
+        J[2, 2] = r * cos_el  # dz/del
 
     return J
 
@@ -177,10 +177,7 @@ def polar_jacobian(cart_point: ArrayLike) -> NDArray[np.floating]:
     if r < 1e-15:
         return np.eye(2, dtype=np.float64) * np.nan
 
-    J = np.array([
-        [x / r, y / r],
-        [-y / r**2, x / r**2]
-    ], dtype=np.float64)
+    J = np.array([[x / r, y / r], [-y / r**2, x / r**2]], dtype=np.float64)
 
     return J
 
@@ -206,10 +203,7 @@ def polar_jacobian_inv(r: float, theta: float) -> NDArray[np.floating]:
     cos_t = np.cos(theta)
     sin_t = np.sin(theta)
 
-    J = np.array([
-        [cos_t, -r * sin_t],
-        [sin_t, r * cos_t]
-    ], dtype=np.float64)
+    J = np.array([[cos_t, -r * sin_t], [sin_t, r * cos_t]], dtype=np.float64)
 
     return J
 
@@ -243,11 +237,14 @@ def ruv_jacobian(cart_point: ArrayLike) -> NDArray[np.floating]:
     r2 = r**2
     r3 = r**3
 
-    J = np.array([
-        [x/r, y/r, z/r],              # dr/d(x,y,z)
-        [(r2 - x**2)/r3, -x*y/r3, -x*z/r3],  # du/d(x,y,z)
-        [-x*y/r3, (r2 - y**2)/r3, -y*z/r3]   # dv/d(x,y,z)
-    ], dtype=np.float64)
+    J = np.array(
+        [
+            [x / r, y / r, z / r],  # dr/d(x,y,z)
+            [(r2 - x**2) / r3, -x * y / r3, -x * z / r3],  # du/d(x,y,z)
+            [-x * y / r3, (r2 - y**2) / r3, -y * z / r3],  # dv/d(x,y,z)
+        ],
+        dtype=np.float64,
+    )
 
     return J
 
@@ -279,11 +276,14 @@ def enu_jacobian(
     cos_lon = np.cos(lon)
 
     # This is actually the rotation matrix from ECEF to ENU
-    J = np.array([
-        [-sin_lon, cos_lon, 0],
-        [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
-        [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat]
-    ], dtype=np.float64)
+    J = np.array(
+        [
+            [-sin_lon, cos_lon, 0],
+            [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
+            [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat],
+        ],
+        dtype=np.float64,
+    )
 
     return J
 
@@ -313,11 +313,14 @@ def ned_jacobian(
     cos_lon = np.cos(lon)
 
     # Rotation matrix from ECEF to NED
-    J = np.array([
-        [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
-        [-sin_lon, cos_lon, 0],
-        [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat]
-    ], dtype=np.float64)
+    J = np.array(
+        [
+            [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
+            [-sin_lon, cos_lon, 0],
+            [-cos_lat * cos_lon, -cos_lat * sin_lon, -sin_lat],
+        ],
+        dtype=np.float64,
+    )
 
     return J
 
@@ -327,7 +330,7 @@ def geodetic_jacobian(
     lon: float,
     alt: float,
     a: float = 6378137.0,
-    f: float = 1/298.257223563,
+    f: float = 1 / 298.257223563,
 ) -> NDArray[np.floating]:
     """
     Compute Jacobian of geodetic to ECEF transformation.
@@ -352,7 +355,7 @@ def geodetic_jacobian(
     J : ndarray
         3x3 Jacobian matrix.
     """
-    e2 = 2*f - f**2
+    e2 = 2 * f - f**2
 
     sin_lat = np.sin(lat)
     cos_lat = np.cos(lat)
@@ -360,7 +363,7 @@ def geodetic_jacobian(
     cos_lon = np.cos(lon)
 
     N = a / np.sqrt(1 - e2 * sin_lat**2)
-    dN_dlat = a * e2 * sin_lat * cos_lat / (1 - e2 * sin_lat**2)**1.5
+    dN_dlat = a * e2 * sin_lat * cos_lat / (1 - e2 * sin_lat**2) ** 1.5
 
     # Partial derivatives
     # x = (N + alt) * cos(lat) * cos(lon)
@@ -379,11 +382,14 @@ def geodetic_jacobian(
     dz_dlon = 0
     dz_dalt = sin_lat
 
-    J = np.array([
-        [dx_dlat, dx_dlon, dx_dalt],
-        [dy_dlat, dy_dlon, dy_dalt],
-        [dz_dlat, dz_dlon, dz_dalt]
-    ], dtype=np.float64)
+    J = np.array(
+        [
+            [dx_dlat, dx_dlon, dx_dalt],
+            [dy_dlat, dy_dlon, dy_dalt],
+            [dz_dlat, dz_dlon, dz_dalt],
+        ],
+        dtype=np.float64,
+    )
 
     return J
 

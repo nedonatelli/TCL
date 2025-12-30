@@ -5,7 +5,7 @@ The EKF handles nonlinear dynamics and/or measurements by linearizing
 around the current state estimate using Jacobians.
 """
 
-from typing import Callable, Tuple, Optional, NamedTuple
+from typing import Callable
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -353,7 +353,6 @@ def iterated_ekf_update(
     R = np.asarray(R, dtype=np.float64)
 
     x_iter = x.copy()
-    P_inv = np.linalg.inv(P)
 
     for _ in range(max_iter):
         H = np.asarray(H_func(x_iter), dtype=np.float64)

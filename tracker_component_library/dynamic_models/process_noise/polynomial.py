@@ -71,9 +71,7 @@ def q_poly_kal(
             # Q[i,j] = q * T^(pi+pj+1) / ((pi+pj+1) * pi! * pj!)
             power = pi + pj + 1
             Q_1d[i, j] = (
-                q
-                * T**power
-                / (power * math.factorial(pi) * math.factorial(pj))
+                q * T**power / (power * math.factorial(pi) * math.factorial(pj))
             )
 
     if num_dims == 1:
@@ -127,25 +125,34 @@ def q_discrete_white_noise(
     """
     if dim == 2:
         # Constant velocity model (noise in acceleration)
-        Q_1d = var * np.array([
-            [T**4 / 4, T**3 / 2],
-            [T**3 / 2, T**2],
-        ], dtype=np.float64)
+        Q_1d = var * np.array(
+            [
+                [T**4 / 4, T**3 / 2],
+                [T**3 / 2, T**2],
+            ],
+            dtype=np.float64,
+        )
     elif dim == 3:
         # Constant acceleration model (noise in jerk)
-        Q_1d = var * np.array([
-            [T**6 / 36, T**5 / 12, T**4 / 6],
-            [T**5 / 12, T**4 / 4, T**3 / 2],
-            [T**4 / 6, T**3 / 2, T**2],
-        ], dtype=np.float64)
+        Q_1d = var * np.array(
+            [
+                [T**6 / 36, T**5 / 12, T**4 / 6],
+                [T**5 / 12, T**4 / 4, T**3 / 2],
+                [T**4 / 6, T**3 / 2, T**2],
+            ],
+            dtype=np.float64,
+        )
     elif dim == 4:
         # Constant jerk model (noise in snap)
-        Q_1d = var * np.array([
-            [T**8 / 576, T**7 / 144, T**6 / 48, T**5 / 24],
-            [T**7 / 144, T**6 / 36, T**5 / 12, T**4 / 6],
-            [T**6 / 48, T**5 / 12, T**4 / 4, T**3 / 2],
-            [T**5 / 24, T**4 / 6, T**3 / 2, T**2],
-        ], dtype=np.float64)
+        Q_1d = var * np.array(
+            [
+                [T**8 / 576, T**7 / 144, T**6 / 48, T**5 / 24],
+                [T**7 / 144, T**6 / 36, T**5 / 12, T**4 / 6],
+                [T**6 / 48, T**5 / 12, T**4 / 4, T**3 / 2],
+                [T**5 / 24, T**4 / 6, T**3 / 2, T**2],
+            ],
+            dtype=np.float64,
+        )
     else:
         # General case using q_poly_kal
         Q_1d = q_poly_kal(order=dim - 1, T=T, q=var, num_dims=1)
@@ -268,7 +275,9 @@ def q_continuous_white_noise(
     """
     # This is the same as q_discrete_white_noise but with spectral density
     # instead of variance (multiply by T for conversion in simple cases)
-    return q_discrete_white_noise(dim=dim, T=T, var=spectral_density, block_size=block_size)
+    return q_discrete_white_noise(
+        dim=dim, T=T, var=spectral_density, block_size=block_size
+    )
 
 
 __all__ = [

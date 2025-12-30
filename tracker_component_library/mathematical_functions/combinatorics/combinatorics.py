@@ -6,9 +6,8 @@ related operations commonly used in assignment problems and data association.
 """
 
 from typing import Iterator, List, Optional, Tuple
-import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import itertools
+from numpy.typing import ArrayLike
 from functools import lru_cache
 
 
@@ -302,7 +301,7 @@ def next_permutation(perm: ArrayLike) -> Optional[List]:
 
     # Swap and reverse
     perm[i], perm[j] = perm[j], perm[i]
-    perm[i + 1:] = reversed(perm[i + 1:])
+    perm[i + 1 :] = reversed(perm[i + 1 :])
 
     return perm
 
@@ -333,6 +332,7 @@ def partition_count(n: int, k: Optional[int] = None) -> int:
     >>> partition_count(5, 2)  # 5 = 4+1 = 3+2
     2
     """
+
     @lru_cache(maxsize=None)
     def p(n: int, max_val: int) -> int:
         if n == 0:
@@ -376,14 +376,19 @@ def partitions(n: int, k: Optional[int] = None) -> Iterator[Tuple[int, ...]]:
     >>> list(partitions(4))
     [(4,), (3, 1), (2, 2), (2, 1, 1), (1, 1, 1, 1)]
     """
-    def gen_partitions(n: int, max_val: int, prefix: Tuple[int, ...]) -> Iterator[Tuple[int, ...]]:
+
+    def gen_partitions(
+        n: int, max_val: int, prefix: Tuple[int, ...]
+    ) -> Iterator[Tuple[int, ...]]:
         if n == 0:
             yield prefix
             return
         for i in range(min(n, max_val), 0, -1):
             yield from gen_partitions(n - i, i, prefix + (i,))
 
-    def gen_partitions_k(n: int, k: int, max_val: int, prefix: Tuple[int, ...]) -> Iterator[Tuple[int, ...]]:
+    def gen_partitions_k(
+        n: int, k: int, max_val: int, prefix: Tuple[int, ...]
+    ) -> Iterator[Tuple[int, ...]]:
         if k == 0:
             if n == 0:
                 yield prefix

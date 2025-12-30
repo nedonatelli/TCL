@@ -167,7 +167,7 @@ def tria_sqrt(
         combined = A
 
     # QR of combined.T gives us the triangular factor
-    _, R = la.qr(combined.T, mode='economic')
+    _, R = la.qr(combined.T, mode="economic")
 
     # R.T @ R = combined @ combined.T, so R.T is our lower triangular factor
     # But R might have negative diagonal, so we need to ensure proper form
@@ -346,7 +346,7 @@ def rank_revealing_qr(
     A = np.asarray(A, dtype=np.float64)
     m, n = A.shape
 
-    Q, R, P = la.qr(A, pivoting=True, mode='economic')
+    Q, R, P = la.qr(A, pivoting=True, mode="economic")
 
     # Determine numerical rank
     diag_R = np.abs(np.diag(R))

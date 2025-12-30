@@ -8,7 +8,7 @@ and as a PhysicalConstants class for documentation and grouping.
 References
 ----------
 .. [1] NIST CODATA 2018 - https://physics.nist.gov/cuu/Constants/
-.. [2] IERS Conventions (2010) - https://www.iers.org/IERS/EN/Publications/TechnicalNotes/tn36.html
+.. [2] IERS Conventions (2010) - IERS Technical Note 36
 .. [3] WGS84 - https://earth-info.nga.mil/GandG/update/index.php?dir=wgs84&action=wgs84
 """
 
@@ -71,8 +71,8 @@ EARTH_ECCENTRICITY_SQ: Final[float] = 2 * EARTH_FLATTENING - EARTH_FLATTENING**2
 EARTH_ECCENTRICITY: Final[float] = math.sqrt(EARTH_ECCENTRICITY_SQ)
 
 #: Second eccentricity squared
-EARTH_ECCENTRICITY_PRIME_SQ: Final[float] = (
-    EARTH_ECCENTRICITY_SQ / (1 - EARTH_ECCENTRICITY_SQ)
+EARTH_ECCENTRICITY_PRIME_SQ: Final[float] = EARTH_ECCENTRICITY_SQ / (
+    1 - EARTH_ECCENTRICITY_SQ
 )
 
 #: Earth rotation rate [rad/s] (IERS Conventions 2010)
@@ -152,7 +152,7 @@ RAD_TO_ARCSEC: Final[float] = (180.0 * 3600.0) / math.pi
 class EllipsoidParameters:
     """
     Parameters defining a reference ellipsoid.
-    
+
     Attributes
     ----------
     a : float
@@ -165,7 +165,7 @@ class EllipsoidParameters:
         Angular rotation rate [rad/s]
     name : str
         Name of the ellipsoid
-    
+
     Properties
     ----------
     b : float
@@ -177,33 +177,33 @@ class EllipsoidParameters:
     ep2 : float
         Second eccentricity squared
     """
-    
+
     a: float
     f: float
     GM: float
     omega: float
     name: str = "Custom"
-    
+
     @property
     def b(self) -> float:
         """Semi-minor axis [m]."""
         return self.a * (1 - self.f)
-    
+
     @property
     def e2(self) -> float:
         """First eccentricity squared."""
         return 2 * self.f - self.f**2
-    
+
     @property
     def e(self) -> float:
         """First eccentricity."""
         return math.sqrt(self.e2)
-    
+
     @property
     def ep2(self) -> float:
         """Second eccentricity squared."""
         return self.e2 / (1 - self.e2)
-    
+
     @property
     def ep(self) -> float:
         """Second eccentricity."""
@@ -251,10 +251,10 @@ SPHERE_EARTH: Final[EllipsoidParameters] = EllipsoidParameters(
 class PhysicalConstants:
     """
     Container for fundamental physical constants.
-    
+
     This class groups physical constants for convenient access and documentation.
     All values follow CODATA 2018 recommendations.
-    
+
     Examples
     --------
     >>> from tracker_component_library.core.constants import PhysicalConstants
@@ -262,31 +262,31 @@ class PhysicalConstants:
     >>> print(f"Speed of light: {pc.c} m/s")
     Speed of light: 299792458.0 m/s
     """
-    
+
     #: Speed of light in vacuum [m/s]
     c: float = SPEED_OF_LIGHT
-    
+
     #: Gravitational constant [m^3 kg^-1 s^-2]
     G: float = GRAVITATIONAL_CONSTANT
-    
+
     #: Planck constant [J s]
     h: float = PLANCK_CONSTANT
-    
+
     #: Boltzmann constant [J K^-1]
     k_B: float = BOLTZMANN_CONSTANT
-    
+
     #: Stefan-Boltzmann constant [W m^-2 K^-4]
     sigma: float = STEFAN_BOLTZMANN_CONSTANT
-    
+
     #: Elementary charge [C]
     e: float = ELEMENTARY_CHARGE
-    
+
     #: Avogadro constant [mol^-1]
     N_A: float = AVOGADRO_CONSTANT
-    
+
     #: Universal gas constant [J mol^-1 K^-1]
     R: float = UNIVERSAL_GAS_CONSTANT
-    
+
     #: Standard gravity [m/s^2]
     g_0: float = STANDARD_GRAVITY
 

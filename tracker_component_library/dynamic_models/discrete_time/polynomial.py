@@ -5,7 +5,6 @@ This module provides F matrices for polynomial motion models where the state
 consists of position, velocity, and optionally acceleration components.
 """
 
-from typing import Literal
 import math
 import numpy as np
 from numpy.typing import NDArray

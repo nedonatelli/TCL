@@ -7,7 +7,7 @@ This module provides:
 - Multi-dimensional cubature rules for filtering (CKF, UKF)
 """
 
-from tracker_component_library.mathematical_functions.numerical_integration.quadrature import (
+from tracker_component_library.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
     gauss_legendre,
     gauss_hermite,
     gauss_laguerre,

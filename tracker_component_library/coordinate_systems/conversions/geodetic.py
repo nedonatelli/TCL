@@ -147,8 +147,7 @@ def ecef2geodetic(
         # Initial estimate
         theta = np.arctan2(z * a, p * b)
         lat = np.arctan2(
-            z + ep2 * b * np.sin(theta)**3,
-            p - e2 * a * np.cos(theta)**3
+            z + ep2 * b * np.sin(theta) ** 3, p - e2 * a * np.cos(theta) ** 3
         )
 
         # Iterate for improved accuracy
@@ -168,13 +167,11 @@ def ecef2geodetic(
         alt = np.where(
             np.abs(cos_lat) > 1e-10,
             p / cos_lat - N,
-            np.abs(z) / np.abs(sin_lat) - N * (1 - e2)
+            np.abs(z) / np.abs(sin_lat) - N * (1 - e2),
         )
     else:
         # Direct/closed-form method (simplified Vermeille)
         zp = np.abs(z)
-        w2 = p**2 - a**2 + b**2
-        w = np.sqrt(np.maximum(w2, 0))
 
         z2 = z**2
         r2 = p**2 + z2
@@ -198,7 +195,6 @@ def ecef2geodetic(
 
         g = 1 - e2 * ss
         rg = a / np.sqrt(g)
-        rf = 1.12 * rg  # Approximate
         u = p - rg * c
         v = zp - rg * (1 - e2) * s
         f_val = c * u + s * v
@@ -381,8 +377,18 @@ def enu2ecef(
     cos_lon = np.cos(lon_ref)
 
     # ECEF = R^T @ ENU + ECEF_ref
-    x = -sin_lon * east - sin_lat * cos_lon * north + cos_lat * cos_lon * up + ecef_ref[0]
-    y = cos_lon * east - sin_lat * sin_lon * north + cos_lat * sin_lon * up + ecef_ref[1]
+    x = (
+        -sin_lon * east
+        - sin_lat * cos_lon * north
+        + cos_lat * cos_lon * up
+        + ecef_ref[0]
+    )
+    y = (
+        cos_lon * east
+        - sin_lat * sin_lon * north
+        + cos_lat * sin_lon * up
+        + ecef_ref[1]
+    )
     z = cos_lat * north + sin_lat * up + ecef_ref[2]
 
     if x.size == 1:
@@ -546,8 +552,8 @@ def geocentric_radius(
     cos_lat = np.cos(lat)
     sin_lat = np.sin(lat)
 
-    num = (a**2 * cos_lat)**2 + (b**2 * sin_lat)**2
-    den = (a * cos_lat)**2 + (b * sin_lat)**2
+    num = (a**2 * cos_lat) ** 2 + (b**2 * sin_lat) ** 2
+    den = (a * cos_lat) ** 2 + (b * sin_lat) ** 2
 
     return np.sqrt(num / den)
 
@@ -605,7 +611,7 @@ def meridional_radius(
     lat = np.asarray(lat, dtype=np.float64)
     e2 = 2 * f - f**2
     sin_lat = np.sin(lat)
-    return a * (1 - e2) / (1 - e2 * sin_lat**2)**1.5
+    return a * (1 - e2) / (1 - e2 * sin_lat**2) ** 1.5
 
 
 __all__ = [

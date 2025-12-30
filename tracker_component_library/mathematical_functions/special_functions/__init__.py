@@ -22,7 +22,7 @@ from tracker_component_library.mathematical_functions.special_functions.bessel i
     airy,
 )
 
-from tracker_component_library.mathematical_functions.special_functions.gamma_functions import (
+from tracker_component_library.mathematical_functions.special_functions.gamma_functions import (  # noqa: E501
     gamma,
     gammaln,
     gammainc,
@@ -40,7 +40,7 @@ from tracker_component_library.mathematical_functions.special_functions.gamma_fu
     perm,
 )
 
-from tracker_component_library.mathematical_functions.special_functions.error_functions import (
+from tracker_component_library.mathematical_functions.special_functions.error_functions import (  # noqa: E501
     erf,
     erfc,
     erfcx,
@@ -53,7 +53,7 @@ from tracker_component_library.mathematical_functions.special_functions.error_fu
     voigt_profile,
 )
 
-from tracker_component_library.mathematical_functions.special_functions.elliptic import (
+from tracker_component_library.mathematical_functions.special_functions.elliptic import (  # noqa: E501
     ellipk,
     ellipkm1,
     ellipe,

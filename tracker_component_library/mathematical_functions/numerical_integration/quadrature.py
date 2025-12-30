@@ -9,7 +9,6 @@ from typing import Callable, Tuple, Optional, Literal
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import scipy.integrate as integrate
-import scipy.special as special
 
 
 def gauss_legendre(
@@ -462,11 +461,11 @@ def cubature_gauss_hermite(
     x1d, w1d = gauss_hermite(n_points_per_dim)
 
     # Create tensor product grid
-    grids = np.meshgrid(*[x1d] * n_dim, indexing='ij')
+    grids = np.meshgrid(*[x1d] * n_dim, indexing="ij")
     points = np.column_stack([g.ravel() for g in grids])
 
     # Tensor product of weights
-    weight_grids = np.meshgrid(*[w1d] * n_dim, indexing='ij')
+    weight_grids = np.meshgrid(*[w1d] * n_dim, indexing="ij")
     weights = np.prod(np.column_stack([g.ravel() for g in weight_grids]), axis=1)
 
     return points, weights

@@ -33,7 +33,7 @@ from tracker_component_library.core.array_utils import (
 __all__ = [
     # Constants
     "SPEED_OF_LIGHT",
-    "GRAVITATIONAL_CONSTANT", 
+    "GRAVITATIONAL_CONSTANT",
     "EARTH_SEMI_MAJOR_AXIS",
     "EARTH_FLATTENING",
     "EARTH_ROTATION_RATE",

@@ -9,7 +9,7 @@ stochastic differential equations of the form:
 where W is a Wiener process.
 """
 
-from typing import Callable, Tuple, Optional
+from typing import Tuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 import scipy.linalg
@@ -170,13 +170,16 @@ def drift_coordinated_turn_2d(
     x = np.asarray(x, dtype=np.float64)
     pos_x, vel_x, pos_y, vel_y, omega = x
 
-    a = np.array([
-        vel_x,  # dx/dt
-        -omega * vel_y,  # dvx/dt
-        vel_y,  # dy/dt
-        omega * vel_x,  # dvy/dt
-        0.0,  # domega/dt
-    ], dtype=np.float64)
+    a = np.array(
+        [
+            vel_x,  # dx/dt
+            -omega * vel_y,  # dvx/dt
+            vel_y,  # dy/dt
+            omega * vel_x,  # dvy/dt
+            0.0,  # domega/dt
+        ],
+        dtype=np.float64,
+    )
 
     return a
 
@@ -452,10 +455,13 @@ def state_jacobian_cv(
         Continuous-time state matrix.
     """
     n = 2  # states per dimension
-    A_1d = np.array([
-        [0, 1],
-        [0, 0],
-    ], dtype=np.float64)
+    A_1d = np.array(
+        [
+            [0, 1],
+            [0, 0],
+        ],
+        dtype=np.float64,
+    )
 
     if num_dims == 1:
         return A_1d
@@ -489,11 +495,14 @@ def state_jacobian_ca(
         Continuous-time state matrix.
     """
     n = 3  # states per dimension
-    A_1d = np.array([
-        [0, 1, 0],
-        [0, 0, 1],
-        [0, 0, 0],
-    ], dtype=np.float64)
+    A_1d = np.array(
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+            [0, 0, 0],
+        ],
+        dtype=np.float64,
+    )
 
     if num_dims == 1:
         return A_1d
@@ -530,11 +539,14 @@ def state_jacobian_singer(
         Continuous-time state matrix.
     """
     n = 3  # states per dimension
-    A_1d = np.array([
-        [0, 1, 0],
-        [0, 0, 1],
-        [0, 0, -1 / tau],
-    ], dtype=np.float64)
+    A_1d = np.array(
+        [
+            [0, 1, 0],
+            [0, 0, 1],
+            [0, 0, -1 / tau],
+        ],
+        dtype=np.float64,
+    )
 
     if num_dims == 1:
         return A_1d

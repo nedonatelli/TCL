@@ -5,7 +5,7 @@ This module provides functions for constructing special matrices commonly
 used in numerical algorithms and signal processing.
 """
 
-from typing import Optional, Sequence, Union
+from typing import Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -383,7 +383,7 @@ def dft_matrix(n: int, normalized: bool = False) -> NDArray[np.complexfloating]:
     from scipy.linalg import dft as scipy_dft
 
     if normalized:
-        return scipy_dft(n, scale='sqrtn')
+        return scipy_dft(n, scale="sqrtn")
     else:
         return scipy_dft(n, scale=None)
 
@@ -448,7 +448,7 @@ def vec(A: ArrayLike) -> NDArray[np.floating]:
     unvec : Inverse operation.
     """
     A = np.asarray(A, dtype=np.float64)
-    return A.flatten(order='F')
+    return A.flatten(order="F")
 
 
 def unvec(v: ArrayLike, m: int, n: int) -> NDArray[np.floating]:
@@ -481,7 +481,7 @@ def unvec(v: ArrayLike, m: int, n: int) -> NDArray[np.floating]:
     vec : Forward operation.
     """
     v = np.asarray(v, dtype=np.float64)
-    return v.reshape((m, n), order='F')
+    return v.reshape((m, n), order="F")
 
 
 def commutation_matrix(m: int, n: int) -> NDArray[np.floating]:

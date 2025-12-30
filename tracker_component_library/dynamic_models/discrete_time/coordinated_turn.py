@@ -68,20 +68,26 @@ def f_coord_turn_2d(
     # Handle near-zero turn rate (approaches constant velocity)
     if np.abs(omega) < 1e-10:
         if state_type == "position_velocity_omega":
-            F = np.array([
-                [1, T, 0, 0, 0],
-                [0, 1, 0, 0, 0],
-                [0, 0, 1, T, 0],
-                [0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 1],
-            ], dtype=np.float64)
+            F = np.array(
+                [
+                    [1, T, 0, 0, 0],
+                    [0, 1, 0, 0, 0],
+                    [0, 0, 1, T, 0],
+                    [0, 0, 0, 1, 0],
+                    [0, 0, 0, 0, 1],
+                ],
+                dtype=np.float64,
+            )
         else:
-            F = np.array([
-                [1, T, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, T],
-                [0, 0, 0, 1],
-            ], dtype=np.float64)
+            F = np.array(
+                [
+                    [1, T, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, T],
+                    [0, 0, 0, 1],
+                ],
+                dtype=np.float64,
+            )
         return F
 
     # Compute trigonometric terms
@@ -94,21 +100,27 @@ def f_coord_turn_2d(
 
     if state_type == "position_velocity_omega":
         # State: [x, vx, y, vy, omega]
-        F = np.array([
-            [1, s_over_w, 0, -c_minus_1_over_w, 0],
-            [0, cos_wT, 0, -sin_wT, 0],
-            [0, c_minus_1_over_w, 1, s_over_w, 0],
-            [0, sin_wT, 0, cos_wT, 0],
-            [0, 0, 0, 0, 1],
-        ], dtype=np.float64)
+        F = np.array(
+            [
+                [1, s_over_w, 0, -c_minus_1_over_w, 0],
+                [0, cos_wT, 0, -sin_wT, 0],
+                [0, c_minus_1_over_w, 1, s_over_w, 0],
+                [0, sin_wT, 0, cos_wT, 0],
+                [0, 0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
     else:
         # State: [x, vx, y, vy]
-        F = np.array([
-            [1, s_over_w, 0, -c_minus_1_over_w],
-            [0, cos_wT, 0, -sin_wT],
-            [0, c_minus_1_over_w, 1, s_over_w],
-            [0, sin_wT, 0, cos_wT],
-        ], dtype=np.float64)
+        F = np.array(
+            [
+                [1, s_over_w, 0, -c_minus_1_over_w],
+                [0, cos_wT, 0, -sin_wT],
+                [0, c_minus_1_over_w, 1, s_over_w],
+                [0, sin_wT, 0, cos_wT],
+            ],
+            dtype=np.float64,
+        )
 
     return F
 
@@ -224,13 +236,16 @@ def f_coord_turn_polar(
     # Handle near-zero turn rate
     if np.abs(omega) < 1e-10:
         # Straight line motion
-        F = np.array([
-            [1, 0, 0, T, 0],
-            [0, 1, 0, 0, 0],
-            [0, 0, 1, 0, T],
-            [0, 0, 0, 1, 0],
-            [0, 0, 0, 0, 1],
-        ], dtype=np.float64)
+        F = np.array(
+            [
+                [1, 0, 0, T, 0],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, T],
+                [0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 1],
+            ],
+            dtype=np.float64,
+        )
         return F
 
     sin_wT = np.sin(omega * T)
@@ -238,13 +253,16 @@ def f_coord_turn_polar(
 
     # Position changes due to curved path
     # This is a simplified linearization
-    F = np.array([
-        [1, 0, 0, sin_wT / omega, speed * (cos_wT - 1) / omega**2],
-        [0, 1, 0, (1 - cos_wT) / omega, speed * (sin_wT - omega * T) / omega**2],
-        [0, 0, 1, 0, T],
-        [0, 0, 0, 1, 0],
-        [0, 0, 0, 0, 1],
-    ], dtype=np.float64)
+    F = np.array(
+        [
+            [1, 0, 0, sin_wT / omega, speed * (cos_wT - 1) / omega**2],
+            [0, 1, 0, (1 - cos_wT) / omega, speed * (sin_wT - omega * T) / omega**2],
+            [0, 0, 1, 0, T],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ],
+        dtype=np.float64,
+    )
 
     return F
 
