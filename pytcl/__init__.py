@@ -41,6 +41,9 @@ from pytcl import trackers
 # Performance evaluation
 from pytcl import performance_evaluation
 
+# Plotting utilities
+from pytcl import plotting
+
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
 
@@ -56,4 +59,5 @@ __all__ = [
     "atmosphere",
     "trackers",
     "performance_evaluation",
+    "plotting",
 ]
