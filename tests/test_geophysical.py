@@ -2,21 +2,16 @@
 
 import numpy as np
 from numpy.testing import assert_allclose
-import pytest
 
 from pytcl.gravity import (
     associated_legendre,
-    associated_legendre_derivative,
     normal_gravity_somigliana,
     normal_gravity,
     gravity_wgs84,
     gravity_j2,
     geoid_height_j2,
-    gravitational_potential,
     free_air_anomaly,
     bouguer_anomaly,
-    WGS84,
-    GRS80,
 )
 
 from pytcl.magnetism import (
@@ -247,8 +242,8 @@ class TestWMM:
     def test_inclination_function(self):
         """magnetic_inclination returns correct value."""
         result = wmm(np.radians(40), np.radians(-105), 0, 2023.0)
-        I = magnetic_inclination(np.radians(40), np.radians(-105), 0, 2023.0)
-        assert_allclose(I, result.I)
+        incl = magnetic_inclination(np.radians(40), np.radians(-105), 0, 2023.0)
+        assert_allclose(incl, result.I)
 
     def test_intensity_function(self):
         """magnetic_field_intensity returns correct value."""
@@ -298,8 +293,8 @@ class TestIGRF:
 
     def test_igrf_inclination_function(self):
         """igrf_inclination returns scalar."""
-        I = igrf_inclination(np.radians(45), np.radians(-75))
-        assert isinstance(I, float)
+        incl = igrf_inclination(np.radians(45), np.radians(-75))
+        assert isinstance(incl, float)
 
 
 class TestMagneticFieldProperties:

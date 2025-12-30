@@ -14,7 +14,6 @@ References
 
 from typing import NamedTuple, Optional
 import numpy as np
-from numpy.typing import NDArray
 
 from pytcl.magnetism.wmm import (
     MagneticResult,
@@ -227,10 +226,10 @@ def igrf(
     # Derived quantities
     H = np.sqrt(X * X + Y * Y)
     F = np.sqrt(H * H + Z * Z)
-    I = np.arctan2(Z, H)
+    incl = np.arctan2(Z, H)
     D = np.arctan2(Y, X)
 
-    return MagneticResult(X=X, Y=Y, Z=Z, H=H, F=F, I=I, D=D)
+    return MagneticResult(X=X, Y=Y, Z=Z, H=H, F=F, I=incl, D=D)
 
 
 def igrf_declination(

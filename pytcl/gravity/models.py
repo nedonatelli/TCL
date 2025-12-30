@@ -11,14 +11,10 @@ References
        Gravitational Model 2008 (EGM2008)," JGR, 2012.
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
 import numpy as np
-from numpy.typing import NDArray
 
-from pytcl.gravity.spherical_harmonics import (
-    associated_legendre,
-    spherical_harmonic_sum,
-)
+from pytcl.gravity.spherical_harmonics import spherical_harmonic_sum
 
 
 class GravityConstants(NamedTuple):
@@ -140,7 +136,6 @@ def normal_gravity_somigliana(
 
     # Somigliana formula
     sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
 
     k = (b * gamma_b - a * gamma_a) / (a * gamma_a)
 

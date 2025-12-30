@@ -347,7 +347,7 @@ def wmm(
     F = np.sqrt(H * H + Z * Z)  # Total intensity
 
     # Inclination (dip angle)
-    I = np.arctan2(Z, H)
+    incl = np.arctan2(Z, H)
 
     # Declination
     D = np.arctan2(Y, X)
@@ -358,7 +358,7 @@ def wmm(
         Z=Z,
         H=H,
         F=F,
-        I=I,
+        I=incl,
         D=D,
     )
 
