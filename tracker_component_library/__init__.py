@@ -35,6 +35,9 @@ from tracker_component_library import astronomical
 from tracker_component_library import navigation
 from tracker_component_library import atmosphere
 
+# End-to-end trackers (Phase 7)
+from tracker_component_library import trackers
+
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
 
@@ -48,4 +51,5 @@ __all__ = [
     "astronomical",
     "navigation",
     "atmosphere",
+    "trackers",
 ]
