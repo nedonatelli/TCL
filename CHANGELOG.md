@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2025-12-30
+
+### Added
+- **DBSCAN Clustering** (`pytcl.clustering.dbscan`):
+  - `dbscan` - Density-based clustering algorithm
+  - `dbscan_predict` - Predict clusters for new points
+  - `compute_neighbors` - Efficient neighbor computation
+- **Hierarchical (Agglomerative) Clustering** (`pytcl.clustering.hierarchical`):
+  - `agglomerative_clustering` - Hierarchical clustering with 4 linkage methods
+  - `cut_dendrogram` - Cut dendrogram at specified level
+  - `fcluster` - scipy-compatible cluster extraction
+  - Support for single, complete, average, and Ward linkage
+- 22 new tests for DBSCAN and hierarchical clustering
+
+### Changed
+- Test count increased from 486 to 508
+- Source file count increased from 97 to 99
+
 ## [0.4.0] - 2025-12-30
 
 ### Added

@@ -29,6 +29,23 @@ from pytcl.clustering.kmeans import (
     kmeans_elbow,
 )
 
+from pytcl.clustering.dbscan import (
+    DBSCANResult,
+    compute_neighbors,
+    dbscan,
+    dbscan_predict,
+)
+
+from pytcl.clustering.hierarchical import (
+    LinkageType,
+    DendrogramNode,
+    HierarchicalResult,
+    compute_distance_matrix,
+    agglomerative_clustering,
+    cut_dendrogram,
+    fcluster,
+)
+
 __all__ = [
     # Gaussian mixture
     "GaussianComponent",
@@ -49,4 +66,17 @@ __all__ = [
     "update_centers",
     "kmeans",
     "kmeans_elbow",
+    # DBSCAN
+    "DBSCANResult",
+    "compute_neighbors",
+    "dbscan",
+    "dbscan_predict",
+    # Hierarchical
+    "LinkageType",
+    "DendrogramNode",
+    "HierarchicalResult",
+    "compute_distance_matrix",
+    "agglomerative_clustering",
+    "cut_dendrogram",
+    "fcluster",
 ]

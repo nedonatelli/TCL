@@ -1,16 +1,27 @@
-"""Tests for K-means clustering."""
+"""Tests for clustering algorithms (K-means, DBSCAN, Hierarchical)."""
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from pytcl.clustering import (
+    # K-means
     KMeansResult,
     kmeans_plusplus_init,
     assign_clusters,
     update_centers,
     kmeans,
     kmeans_elbow,
+    # DBSCAN
+    DBSCANResult,
+    dbscan,
+    dbscan_predict,
+    compute_neighbors,
+    # Hierarchical
+    HierarchicalResult,
+    agglomerative_clustering,
+    cut_dendrogram,
+    fcluster,
 )
 
 
@@ -259,3 +270,286 @@ class TestEdgeCases:
 
         assert result.centers.shape == (5, 20)
         assert result.labels.shape == (100,)
+
+
+# =============================================================================
+# DBSCAN Tests
+# =============================================================================
+
+
+class TestComputeNeighbors:
+    """Tests for neighbor computation."""
+
+    def test_self_is_neighbor(self):
+        """Each point is its own neighbor."""
+        X = np.array([[0, 0], [10, 10]])
+        neighbors = compute_neighbors(X, eps=1.0)
+
+        assert 0 in neighbors[0]
+        assert 1 in neighbors[1]
+
+    def test_close_points_are_neighbors(self):
+        """Close points are neighbors."""
+        X = np.array([[0, 0], [0.5, 0], [10, 10]])
+        neighbors = compute_neighbors(X, eps=1.0)
+
+        assert 1 in neighbors[0]
+        assert 0 in neighbors[1]
+        assert 2 not in neighbors[0]
+
+
+class TestDBSCAN:
+    """Tests for DBSCAN algorithm."""
+
+    def test_two_clusters(self):
+        """Finds two well-separated clusters."""
+        rng = np.random.default_rng(42)
+        cluster1 = rng.normal(0, 0.3, (30, 2))
+        cluster2 = rng.normal(5, 0.3, (30, 2))
+        X = np.vstack([cluster1, cluster2])
+
+        result = dbscan(X, eps=0.8, min_samples=5)
+
+        assert result.n_clusters == 2
+        assert len(np.unique(result.labels[result.labels >= 0])) == 2
+
+    def test_noise_detection(self):
+        """Detects noise points."""
+        rng = np.random.default_rng(42)
+        cluster = rng.normal(0, 0.3, (30, 2))
+        noise = np.array([[10, 10], [15, 15], [-10, -10]])
+        X = np.vstack([cluster, noise])
+
+        result = dbscan(X, eps=0.8, min_samples=5)
+
+        # Noise points should be labeled -1
+        assert result.n_noise >= 1
+        assert -1 in result.labels
+
+    def test_core_samples(self):
+        """Identifies core samples."""
+        rng = np.random.default_rng(42)
+        cluster = rng.normal(0, 0.2, (20, 2))
+        X = cluster
+
+        result = dbscan(X, eps=0.5, min_samples=3)
+
+        # Most points in dense cluster should be core samples
+        assert len(result.core_sample_indices) > 0
+
+    def test_result_type(self):
+        """Returns DBSCANResult."""
+        X = np.random.default_rng(42).standard_normal((50, 2))
+
+        result = dbscan(X, eps=0.5, min_samples=5)
+
+        assert isinstance(result, DBSCANResult)
+        assert hasattr(result, 'labels')
+        assert hasattr(result, 'n_clusters')
+        assert hasattr(result, 'core_sample_indices')
+        assert hasattr(result, 'n_noise')
+
+    def test_empty_data(self):
+        """Handles empty data."""
+        X = np.zeros((0, 2))
+
+        result = dbscan(X, eps=0.5)
+
+        assert result.n_clusters == 0
+        assert len(result.labels) == 0
+
+    def test_single_point(self):
+        """Single point is noise with min_samples > 1."""
+        X = np.array([[0.0, 0.0]])
+
+        result = dbscan(X, eps=0.5, min_samples=2)
+
+        assert result.n_clusters == 0
+        assert result.labels[0] == -1
+
+    def test_all_noise_sparse_data(self):
+        """Sparse data produces all noise."""
+        X = np.array([[0, 0], [100, 100], [200, 200]])
+
+        result = dbscan(X, eps=1.0, min_samples=2)
+
+        # All points too far apart
+        assert result.n_clusters == 0
+        assert result.n_noise == 3
+
+
+class TestDBSCANPredict:
+    """Tests for DBSCAN prediction."""
+
+    def test_predict_nearby_point(self):
+        """Predicts cluster for nearby point."""
+        # Training data: one cluster
+        X_train = np.array([[0, 0], [0.1, 0], [0, 0.1], [-0.1, 0]])
+        labels_train = np.array([0, 0, 0, 0])
+
+        X_new = np.array([[0.05, 0.05]])
+        labels_new = dbscan_predict(X_new, X_train, labels_train, eps=0.5)
+
+        assert labels_new[0] == 0
+
+    def test_predict_far_point(self):
+        """Far point gets no cluster."""
+        X_train = np.array([[0, 0], [0.1, 0]])
+        labels_train = np.array([0, 0])
+
+        X_new = np.array([[100, 100]])
+        labels_new = dbscan_predict(X_new, X_train, labels_train, eps=0.5)
+
+        assert labels_new[0] == -1
+
+
+# =============================================================================
+# Hierarchical Clustering Tests
+# =============================================================================
+
+
+class TestAgglomerativeClustering:
+    """Tests for agglomerative clustering."""
+
+    def test_two_clusters(self):
+        """Finds two well-separated clusters."""
+        rng = np.random.default_rng(42)
+        X = np.vstack([
+            rng.normal(0, 0.5, (20, 2)),
+            rng.normal(5, 0.5, (20, 2))
+        ])
+
+        result = agglomerative_clustering(X, n_clusters=2)
+
+        assert result.n_clusters == 2
+        assert len(np.unique(result.labels)) == 2
+
+    def test_linkage_methods(self):
+        """All linkage methods work."""
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((20, 2))
+
+        for linkage in ['single', 'complete', 'average', 'ward']:
+            result = agglomerative_clustering(X, n_clusters=3, linkage=linkage)
+            assert result.n_clusters == 3
+
+    def test_distance_threshold(self):
+        """Distance threshold controls number of clusters."""
+        rng = np.random.default_rng(42)
+        # Two tight clusters far apart
+        X = np.vstack([
+            rng.normal(0, 0.1, (10, 2)),
+            rng.normal(10, 0.1, (10, 2))
+        ])
+
+        result = agglomerative_clustering(X, distance_threshold=1.0)
+
+        # Should find 2 clusters (gap is ~10)
+        assert result.n_clusters == 2
+
+    def test_dendrogram(self):
+        """Builds valid dendrogram."""
+        X = np.array([[0, 0], [1, 0], [5, 0], [6, 0]])
+
+        result = agglomerative_clustering(X, n_clusters=1)
+
+        # n-1 merges for n points
+        assert len(result.dendrogram) == 3
+        assert result.linkage_matrix.shape == (3, 4)
+
+    def test_result_type(self):
+        """Returns HierarchicalResult."""
+        X = np.random.default_rng(42).standard_normal((20, 2))
+
+        result = agglomerative_clustering(X, n_clusters=3)
+
+        assert isinstance(result, HierarchicalResult)
+        assert hasattr(result, 'labels')
+        assert hasattr(result, 'n_clusters')
+        assert hasattr(result, 'linkage_matrix')
+        assert hasattr(result, 'dendrogram')
+
+    def test_empty_data(self):
+        """Handles empty data."""
+        X = np.zeros((0, 2))
+
+        result = agglomerative_clustering(X, n_clusters=2)
+
+        assert result.n_clusters == 0
+
+    def test_single_point(self):
+        """Single point forms one cluster."""
+        X = np.array([[0.0, 0.0]])
+
+        result = agglomerative_clustering(X, n_clusters=1)
+
+        assert result.n_clusters == 1
+        assert result.labels[0] == 0
+
+
+class TestCutDendrogram:
+    """Tests for dendrogram cutting."""
+
+    def test_cut_by_n_clusters(self):
+        """Cut by number of clusters."""
+        X = np.array([[0, 0], [1, 0], [10, 0], [11, 0]])
+
+        result = agglomerative_clustering(X, n_clusters=1)
+
+        # Cut to get 2 clusters
+        labels = cut_dendrogram(result.linkage_matrix, 4, n_clusters=2)
+
+        assert len(np.unique(labels)) == 2
+
+
+class TestFcluster:
+    """Tests for scipy-compatible fcluster."""
+
+    def test_maxclust(self):
+        """maxclust criterion works."""
+        X = np.array([[0, 0], [1, 0], [10, 0], [11, 0]])
+
+        result = agglomerative_clustering(X, n_clusters=1)
+
+        labels = fcluster(result.linkage_matrix, 4, 2, criterion='maxclust')
+
+        # 1-indexed labels
+        assert np.min(labels) >= 1
+        assert len(np.unique(labels)) == 2
+
+    def test_distance_criterion(self):
+        """distance criterion works."""
+        X = np.array([[0, 0], [0.1, 0], [10, 0], [10.1, 0]])
+
+        result = agglomerative_clustering(X, n_clusters=1, linkage='single')
+
+        labels = fcluster(result.linkage_matrix, 4, 1.0, criterion='distance')
+
+        # Should have 2 clusters (points 0,1 and 2,3)
+        assert len(np.unique(labels)) == 2
+
+
+class TestClusteringIntegration:
+    """Integration tests comparing clustering methods."""
+
+    def test_all_methods_find_obvious_clusters(self):
+        """All methods find obvious clusters."""
+        rng = np.random.default_rng(42)
+        # Three well-separated clusters
+        X = np.vstack([
+            rng.normal([0, 0], 0.3, (30, 2)),
+            rng.normal([5, 0], 0.3, (30, 2)),
+            rng.normal([2.5, 5], 0.3, (30, 2)),
+        ])
+
+        # K-means
+        km_result = kmeans(X, n_clusters=3, rng=rng)
+        assert len(np.unique(km_result.labels)) == 3
+
+        # DBSCAN
+        db_result = dbscan(X, eps=0.8, min_samples=5)
+        assert db_result.n_clusters == 3
+
+        # Hierarchical
+        hc_result = agglomerative_clustering(X, n_clusters=3)
+        assert hc_result.n_clusters == 3

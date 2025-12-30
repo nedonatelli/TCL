@@ -1,12 +1,12 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.4.0)
+## Current State (v0.4.1)
 
-- **420+ functions** implemented across 97 Python files
-- **486 tests** with comprehensive coverage
+- **430+ functions** implemented across 99 Python files
+- **508 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
-- **K-means clustering** with K-means++ initialization
+- **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -49,11 +49,11 @@
 - [x] West's algorithm - `reduce_mixture_west`
 - **Files**: `pytcl/clustering/gaussian_mixture.py`
 
-### Phase 2.2: Clustering Algorithms (Partial)
+### Phase 2.2: Clustering Algorithms
 - [x] K-means clustering - `kmeans` with K-means++ initialization
-- [ ] DBSCAN
-- [ ] Hierarchical clustering for track fusion
-- **Files**: `pytcl/clustering/kmeans.py`
+- [x] DBSCAN - `dbscan`, `dbscan_predict`, `compute_neighbors`
+- [x] Hierarchical clustering - `agglomerative_clustering`, `cut_dendrogram`, `fcluster`
+- **Files**: `pytcl/clustering/kmeans.py`, `pytcl/clustering/dbscan.py`, `pytcl/clustering/hierarchical.py`
 
 ---
 
@@ -171,7 +171,7 @@
 | Priority | Focus Area | Key Deliverables | Status |
 |----------|------------|------------------|--------|
 | **P0** | Advanced Data Association | JPDA, MHT, IMM | ✅ Complete |
-| **P1** | Clustering | Gaussian mixture reduction, K-means | ✅ Complete (DBSCAN/hierarchical pending) |
+| **P1** | Clustering | Gaussian mixture, K-means, DBSCAN, hierarchical | ✅ Complete |
 | **P2** | Static Estimation | ML, robust estimators | Pending |
 | **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
 | **P4** | Astronomical | Orbit propagation, reference frames | Pending |
@@ -186,6 +186,7 @@
 | **v0.3.0** | Square-root filters, JPDA, IMM estimator | Released 2025-12-30 |
 | **v0.3.1** | Type annotation fix | Released 2025-12-30 |
 | **v0.4.0** | Gaussian mixture reduction, K-means, MHT | Released 2025-12-30 |
+| **v0.4.1** | DBSCAN, hierarchical clustering | Released 2025-12-30 |
 | **v0.5.0** | Static estimation, spatial data structures | Planned |
 | **v0.6.0** | Gravity and magnetic models | Planned |
 | **v0.7.0** | Complete astronomical code | Planned |
