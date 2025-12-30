@@ -469,6 +469,6 @@ def validated_array_input(
 
             return func(*bound.args, **bound.kwargs)
 
-        return wrapper  # type: ignore
+        return wrapper
 
     return decorator
