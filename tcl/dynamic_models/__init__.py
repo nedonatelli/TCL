@@ -14,14 +14,14 @@ and utilities for discretizing continuous-time models.
 """
 
 # Import submodules for easy access
-from tracker_component_library.dynamic_models import discrete_time
-from tracker_component_library.dynamic_models import process_noise
-from tracker_component_library.dynamic_models import continuous_time
+from tcl.dynamic_models import discrete_time
+from tcl.dynamic_models import process_noise
+from tcl.dynamic_models import continuous_time
 
 # Re-export commonly used functions at the top level
 
 # Discrete-time state transition matrices
-from tracker_component_library.dynamic_models.discrete_time import (
+from tcl.dynamic_models.discrete_time import (
     f_poly_kal,
     f_constant_velocity,
     f_constant_acceleration,
@@ -36,7 +36,7 @@ from tracker_component_library.dynamic_models.discrete_time import (
 )
 
 # Process noise covariance matrices
-from tracker_component_library.dynamic_models.process_noise import (
+from tcl.dynamic_models.process_noise import (
     q_poly_kal,
     q_discrete_white_noise,
     q_constant_velocity,
@@ -51,7 +51,7 @@ from tracker_component_library.dynamic_models.process_noise import (
 )
 
 # Continuous-time dynamics
-from tracker_component_library.dynamic_models.continuous_time import (
+from tcl.dynamic_models.continuous_time import (
     drift_constant_velocity,
     drift_constant_acceleration,
     drift_singer,

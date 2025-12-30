@@ -15,14 +15,14 @@ systems commonly used in tracking applications:
 """
 
 # Import submodules for easy access
-from tracker_component_library.coordinate_systems import conversions
-from tracker_component_library.coordinate_systems import rotations
-from tracker_component_library.coordinate_systems import jacobians
+from tcl.coordinate_systems import conversions
+from tcl.coordinate_systems import rotations
+from tcl.coordinate_systems import jacobians
 
 # Re-export commonly used functions at the top level
 
 # Spherical/polar conversions
-from tracker_component_library.coordinate_systems.conversions import (
+from tcl.coordinate_systems.conversions import (
     cart2sphere,
     sphere2cart,
     cart2pol,
@@ -34,7 +34,7 @@ from tracker_component_library.coordinate_systems.conversions import (
 )
 
 # Geodetic conversions
-from tracker_component_library.coordinate_systems.conversions import (
+from tcl.coordinate_systems.conversions import (
     geodetic2ecef,
     ecef2geodetic,
     geodetic2enu,
@@ -50,7 +50,7 @@ from tracker_component_library.coordinate_systems.conversions import (
 )
 
 # Rotation operations
-from tracker_component_library.coordinate_systems.rotations import (
+from tcl.coordinate_systems.rotations import (
     rotx,
     roty,
     rotz,
@@ -74,7 +74,7 @@ from tracker_component_library.coordinate_systems.rotations import (
 )
 
 # Jacobians
-from tracker_component_library.coordinate_systems.jacobians import (
+from tcl.coordinate_systems.jacobians import (
     spherical_jacobian,
     spherical_jacobian_inv,
     polar_jacobian,

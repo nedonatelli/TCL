@@ -8,7 +8,7 @@ This module provides:
 - Filter consistency metrics (NEES, NIS)
 """
 
-from tracker_component_library.mathematical_functions.statistics.distributions import (
+from tcl.mathematical_functions.statistics.distributions import (
     Distribution,
     Gaussian,
     MultivariateGaussian,
@@ -23,7 +23,7 @@ from tracker_component_library.mathematical_functions.statistics.distributions i
     Wishart,
 )
 
-from tracker_component_library.mathematical_functions.statistics.estimators import (
+from tcl.mathematical_functions.statistics.estimators import (
     weighted_mean,
     weighted_var,
     weighted_cov,

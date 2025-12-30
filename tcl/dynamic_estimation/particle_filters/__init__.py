@@ -7,7 +7,7 @@ This module provides:
 - Particle statistics (mean, covariance, ESS)
 """
 
-from tracker_component_library.dynamic_estimation.particle_filters.bootstrap import (
+from tcl.dynamic_estimation.particle_filters.bootstrap import (
     ParticleState,
     resample_multinomial,
     resample_systematic,

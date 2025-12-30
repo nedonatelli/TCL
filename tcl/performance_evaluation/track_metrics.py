@@ -18,7 +18,7 @@ from typing import List, Optional, NamedTuple
 import numpy as np
 from numpy.typing import NDArray
 
-from tracker_component_library.assignment_algorithms import hungarian
+from tcl.assignment_algorithms import hungarian
 
 
 class OSPAResult(NamedTuple):

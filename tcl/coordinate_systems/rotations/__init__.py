@@ -9,7 +9,7 @@ This module provides:
 - Rotation interpolation (SLERP)
 """
 
-from tracker_component_library.coordinate_systems.rotations.rotations import (
+from tcl.coordinate_systems.rotations.rotations import (
     rotx,
     roty,
     rotz,

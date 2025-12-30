@@ -10,7 +10,7 @@ from typing import Tuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tracker_component_library.core.constants import WGS84
+from tcl.core.constants import WGS84
 
 
 def geodetic2ecef(

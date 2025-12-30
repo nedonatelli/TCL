@@ -5,7 +5,7 @@ This module provides optimal and suboptimal algorithms for solving
 the 2D assignment problem (bipartite matching).
 """
 
-from tracker_component_library.assignment_algorithms.two_dimensional.assignment import (
+from tcl.assignment_algorithms.two_dimensional.assignment import (
     hungarian,
     auction,
     linear_sum_assignment,

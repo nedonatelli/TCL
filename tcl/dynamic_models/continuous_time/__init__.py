@@ -5,7 +5,7 @@ This module provides drift and diffusion functions for continuous-time
 stochastic differential equations, as well as utilities for discretization.
 """
 
-from tracker_component_library.dynamic_models.continuous_time.dynamics import (
+from tcl.dynamic_models.continuous_time.dynamics import (
     drift_constant_velocity,
     drift_constant_acceleration,
     drift_singer,

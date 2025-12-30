@@ -9,9 +9,9 @@ Library originally written in MATLAB.
 
 Examples
 --------
->>> import tracker_component_library as tcl
->>> from tracker_component_library.coordinate_systems import cart2sphere
->>> from tracker_component_library.dynamic_estimation.kalman import KalmanFilter
+>>> import tcl as tcl
+>>> from tcl.coordinate_systems import cart2sphere
+>>> from tcl.dynamic_estimation.kalman import KalmanFilter
 
 References
 ----------
@@ -25,21 +25,21 @@ __author__ = "Python Port Contributors"
 __original_author__ = "David F. Crouse, Naval Research Laboratory"
 
 # Core utilities
-from tracker_component_library import core
+from tcl import core
 
 # Assignment algorithms (Phase 5)
-from tracker_component_library import assignment_algorithms
+from tcl import assignment_algorithms
 
 # Specialized domains (Phase 6)
-from tracker_component_library import astronomical
-from tracker_component_library import navigation
-from tracker_component_library import atmosphere
+from tcl import astronomical
+from tcl import navigation
+from tcl import atmosphere
 
 # End-to-end trackers (Phase 7)
-from tracker_component_library import trackers
+from tcl import trackers
 
 # Performance evaluation
-from tracker_component_library import performance_evaluation
+from tcl import performance_evaluation
 
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))

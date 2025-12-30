@@ -8,7 +8,7 @@ This module provides:
 - Direction cosine representations (r-u-v)
 """
 
-from tracker_component_library.coordinate_systems.conversions.spherical import (
+from tcl.coordinate_systems.conversions.spherical import (
     cart2sphere,
     sphere2cart,
     cart2pol,
@@ -19,7 +19,7 @@ from tracker_component_library.coordinate_systems.conversions.spherical import (
     cart2ruv,
 )
 
-from tracker_component_library.coordinate_systems.conversions.geodetic import (
+from tcl.coordinate_systems.conversions.geodetic import (
     geodetic2ecef,
     ecef2geodetic,
     geodetic2enu,

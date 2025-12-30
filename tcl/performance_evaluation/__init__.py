@@ -9,7 +9,7 @@ including:
 
 Examples
 --------
->>> from tracker_component_library.performance_evaluation import ospa, rmse, nees
+>>> from tcl.performance_evaluation import ospa, rmse, nees
 >>> import numpy as np
 
 >>> # OSPA between two point sets
@@ -27,7 +27,7 @@ RMSE: 0.100
 """
 
 # Track metrics
-from tracker_component_library.performance_evaluation.track_metrics import (
+from tcl.performance_evaluation.track_metrics import (
     OSPAResult,
     MOTMetrics,
     ospa,
@@ -39,7 +39,7 @@ from tracker_component_library.performance_evaluation.track_metrics import (
 )
 
 # Estimation metrics
-from tracker_component_library.performance_evaluation.estimation_metrics import (
+from tcl.performance_evaluation.estimation_metrics import (
     ConsistencyResult,
     rmse,
     position_rmse,

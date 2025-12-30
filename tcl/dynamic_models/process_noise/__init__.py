@@ -5,7 +5,7 @@ This module provides process noise covariance matrices (Q) for various
 motion models used in target tracking applications.
 """
 
-from tracker_component_library.dynamic_models.process_noise.polynomial import (
+from tcl.dynamic_models.process_noise.polynomial import (
     q_poly_kal,
     q_discrete_white_noise,
     q_constant_velocity,
@@ -13,13 +13,13 @@ from tracker_component_library.dynamic_models.process_noise.polynomial import (
     q_continuous_white_noise,
 )
 
-from tracker_component_library.dynamic_models.process_noise.singer import (
+from tcl.dynamic_models.process_noise.singer import (
     q_singer,
     q_singer_2d,
     q_singer_3d,
 )
 
-from tracker_component_library.dynamic_models.process_noise.coordinated_turn import (
+from tcl.dynamic_models.process_noise.coordinated_turn import (
     q_coord_turn_2d,
     q_coord_turn_3d,
     q_coord_turn_polar,

@@ -8,13 +8,13 @@ This module provides filtering and smoothing algorithms for state estimation:
 """
 
 # Import submodules for easy access
-from tracker_component_library.dynamic_estimation import kalman
-from tracker_component_library.dynamic_estimation import particle_filters
+from tcl.dynamic_estimation import kalman
+from tcl.dynamic_estimation import particle_filters
 
 # Re-export commonly used functions at the top level
 
 # Linear Kalman filter
-from tracker_component_library.dynamic_estimation.kalman import (
+from tcl.dynamic_estimation.kalman import (
     KalmanState,
     KalmanPrediction,
     KalmanUpdate,
@@ -27,7 +27,7 @@ from tracker_component_library.dynamic_estimation.kalman import (
 )
 
 # Extended Kalman filter
-from tracker_component_library.dynamic_estimation.kalman import (
+from tcl.dynamic_estimation.kalman import (
     ekf_predict,
     ekf_update,
     numerical_jacobian,
@@ -37,7 +37,7 @@ from tracker_component_library.dynamic_estimation.kalman import (
 )
 
 # Unscented Kalman filter
-from tracker_component_library.dynamic_estimation.kalman import (
+from tcl.dynamic_estimation.kalman import (
     SigmaPoints,
     sigma_points_merwe,
     sigma_points_julier,
@@ -47,14 +47,14 @@ from tracker_component_library.dynamic_estimation.kalman import (
 )
 
 # Cubature Kalman filter
-from tracker_component_library.dynamic_estimation.kalman import (
+from tcl.dynamic_estimation.kalman import (
     ckf_spherical_cubature_points,
     ckf_predict,
     ckf_update,
 )
 
 # Particle filters
-from tracker_component_library.dynamic_estimation.particle_filters import (
+from tcl.dynamic_estimation.particle_filters import (
     ParticleState,
     resample_multinomial,
     resample_systematic,

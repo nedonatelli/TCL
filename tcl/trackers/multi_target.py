@@ -10,7 +10,7 @@ from enum import Enum
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tracker_component_library.assignment_algorithms import (
+from tcl.assignment_algorithms import (
     gnn_association,
     chi2_gate_threshold,
 )

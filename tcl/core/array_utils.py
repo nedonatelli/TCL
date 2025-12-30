@@ -12,7 +12,7 @@ from typing import Any, Literal
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tracker_component_library.core.constants import PI, TWO_PI
+from tcl.core.constants import PI, TWO_PI
 
 
 def wrap_to_pi(angle: ArrayLike) -> NDArray[np.floating[Any]]:

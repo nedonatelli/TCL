@@ -257,7 +257,7 @@ class PhysicalConstants:
 
     Examples
     --------
-    >>> from tracker_component_library.core.constants import PhysicalConstants
+    >>> from tcl.core.constants import PhysicalConstants
     >>> pc = PhysicalConstants()
     >>> print(f"Speed of light: {pc.c} m/s")
     Speed of light: 299792458.0 m/s

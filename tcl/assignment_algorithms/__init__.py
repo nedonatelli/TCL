@@ -7,7 +7,7 @@ This module provides:
 - Data association algorithms (GNN, JPDA)
 """
 
-from tracker_component_library.assignment_algorithms.two_dimensional import (
+from tcl.assignment_algorithms.two_dimensional import (
     hungarian,
     auction,
     linear_sum_assignment,
@@ -15,7 +15,7 @@ from tracker_component_library.assignment_algorithms.two_dimensional import (
     AssignmentResult,
 )
 
-from tracker_component_library.assignment_algorithms.gating import (
+from tcl.assignment_algorithms.gating import (
     ellipsoidal_gate,
     rectangular_gate,
     gate_measurements,
@@ -24,7 +24,7 @@ from tracker_component_library.assignment_algorithms.gating import (
     compute_gate_volume,
 )
 
-from tracker_component_library.assignment_algorithms.data_association import (
+from tcl.assignment_algorithms.data_association import (
     gnn_association,
     nearest_neighbor,
     compute_association_cost,

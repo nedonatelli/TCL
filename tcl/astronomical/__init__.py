@@ -5,7 +5,7 @@ This module provides time system conversions and astronomical utilities
 commonly needed in tracking applications.
 """
 
-from tracker_component_library.astronomical.time_systems import (
+from tcl.astronomical.time_systems import (
     # Julian dates
     cal_to_jd,
     jd_to_cal,

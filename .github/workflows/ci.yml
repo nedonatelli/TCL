@@ -26,10 +26,10 @@ jobs:
         run: black --check .
 
       - name: Lint with flake8
-        run: flake8 tracker_component_library tests --max-line-length=100
-      
+        run: flake8 tcl tests --max-line-length=100
+
       - name: Type check with mypy
-        run: mypy tracker_component_library --ignore-missing-imports
+        run: mypy tcl --ignore-missing-imports
 
   test:
     runs-on: ${{ matrix.os }}
@@ -53,7 +53,7 @@ jobs:
           pip install -e ".[dev]"
       
       - name: Run tests
-        run: pytest --cov=tracker_component_library --cov-report=xml -v
+        run: pytest --cov=tcl --cov-report=xml -v
       
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'

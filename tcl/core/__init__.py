@@ -7,7 +7,7 @@ This module provides foundational functionality used throughout the library:
 - Array manipulation helpers compatible with MATLAB conventions
 """
 
-from tracker_component_library.core.constants import (
+from tcl.core.constants import (
     SPEED_OF_LIGHT,
     GRAVITATIONAL_CONSTANT,
     EARTH_SEMI_MAJOR_AXIS,
@@ -16,13 +16,13 @@ from tracker_component_library.core.constants import (
     WGS84,
     PhysicalConstants,
 )
-from tracker_component_library.core.validation import (
+from tcl.core.validation import (
     validate_array,
     ensure_2d,
     ensure_column_vector,
     ensure_row_vector,
 )
-from tracker_component_library.core.array_utils import (
+from tcl.core.array_utils import (
     wrap_to_pi,
     wrap_to_2pi,
     wrap_to_range,

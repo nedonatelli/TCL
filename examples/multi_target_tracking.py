@@ -20,7 +20,7 @@ from typing import List, Tuple  # noqa: E402
 import numpy as np  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 
-from tracker_component_library.trackers import (  # noqa: E402
+from tcl.trackers import (  # noqa: E402
     MultiTargetTracker,
     TrackStatus,
 )

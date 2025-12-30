@@ -88,7 +88,7 @@ all = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tracker_component_library*"]
+include = ["tcl*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -103,7 +103,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["tracker_component_library"]
+source = ["tcl"]
 branch = true
 omit = ["*/tests/*", "*/__init__.py"]
 

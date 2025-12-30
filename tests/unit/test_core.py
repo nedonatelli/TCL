@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from tracker_component_library.core.constants import (
+from tcl.core.constants import (
     SPEED_OF_LIGHT,
     EARTH_SEMI_MAJOR_AXIS,
     EARTH_FLATTENING,
@@ -18,7 +18,7 @@ from tracker_component_library.core.constants import (
     RAD_TO_DEG,
     PhysicalConstants,
 )
-from tracker_component_library.core.validation import (
+from tcl.core.validation import (
     validate_array,
     ensure_2d,
     ensure_column_vector,
@@ -27,7 +27,7 @@ from tracker_component_library.core.validation import (
     ensure_symmetric,
     ValidationError,
 )
-from tracker_component_library.core.array_utils import (
+from tcl.core.array_utils import (
     wrap_to_pi,
     wrap_to_2pi,
     wrap_to_range,

@@ -9,7 +9,7 @@ from typing import Callable
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tracker_component_library.dynamic_estimation.kalman.linear import (
+from tcl.dynamic_estimation.kalman.linear import (
     KalmanPrediction,
     KalmanUpdate,
 )

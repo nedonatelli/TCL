@@ -9,10 +9,10 @@ from typing import Optional, NamedTuple, List
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from tracker_component_library.assignment_algorithms.two_dimensional import (
+from tcl.assignment_algorithms.two_dimensional import (
     assign2d,
 )
-from tracker_component_library.assignment_algorithms.gating import (
+from tcl.assignment_algorithms.gating import (
     mahalanobis_distance,
 )
 

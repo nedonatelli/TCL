@@ -8,7 +8,7 @@ This module provides:
 - Spherical interpolation
 """
 
-from tracker_component_library.mathematical_functions.interpolation.interpolation import (  # noqa: E501
+from tcl.mathematical_functions.interpolation.interpolation import (  # noqa: E501
     interp1d,
     linear_interp,
     cubic_spline,

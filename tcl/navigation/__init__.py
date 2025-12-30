@@ -5,7 +5,7 @@ This module provides geodetic and navigation calculations commonly
 needed in tracking applications.
 """
 
-from tracker_component_library.navigation.geodesy import (
+from tcl.navigation.geodesy import (
     # Ellipsoids
     Ellipsoid,
     WGS84,

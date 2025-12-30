@@ -7,7 +7,7 @@ This module provides:
 - Matrix vectorization operations (vec, unvec, Kronecker products)
 """
 
-from tracker_component_library.mathematical_functions.basic_matrix.decompositions import (  # noqa: E501
+from tcl.mathematical_functions.basic_matrix.decompositions import (  # noqa: E501
     chol_semi_def,
     tria,
     tria_sqrt,
@@ -18,7 +18,7 @@ from tracker_component_library.mathematical_functions.basic_matrix.decomposition
     range_space,
 )
 
-from tracker_component_library.mathematical_functions.basic_matrix.special_matrices import (  # noqa: E501
+from tcl.mathematical_functions.basic_matrix.special_matrices import (  # noqa: E501
     vandermonde,
     toeplitz,
     hankel,

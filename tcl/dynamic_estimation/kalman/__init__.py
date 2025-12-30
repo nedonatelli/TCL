@@ -9,7 +9,7 @@ This module provides:
 - Information filter
 """
 
-from tracker_component_library.dynamic_estimation.kalman.linear import (
+from tcl.dynamic_estimation.kalman.linear import (
     KalmanState,
     KalmanPrediction,
     KalmanUpdate,
@@ -21,7 +21,7 @@ from tracker_component_library.dynamic_estimation.kalman.linear import (
     information_filter_update,
 )
 
-from tracker_component_library.dynamic_estimation.kalman.extended import (
+from tcl.dynamic_estimation.kalman.extended import (
     ekf_predict,
     ekf_update,
     numerical_jacobian,
@@ -30,7 +30,7 @@ from tracker_component_library.dynamic_estimation.kalman.extended import (
     iterated_ekf_update,
 )
 
-from tracker_component_library.dynamic_estimation.kalman.unscented import (
+from tcl.dynamic_estimation.kalman.unscented import (
     SigmaPoints,
     sigma_points_merwe,
     sigma_points_julier,

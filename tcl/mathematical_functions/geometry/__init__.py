@@ -9,7 +9,7 @@ This module provides:
 - Bounding box computation
 """
 
-from tracker_component_library.mathematical_functions.geometry.geometry import (
+from tcl.mathematical_functions.geometry.geometry import (
     point_in_polygon,
     points_in_polygon,
     convex_hull,

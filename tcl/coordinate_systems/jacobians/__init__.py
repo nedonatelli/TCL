@@ -10,7 +10,7 @@ This module provides:
 - Covariance transformation utilities
 """
 
-from tracker_component_library.coordinate_systems.jacobians.jacobians import (
+from tcl.coordinate_systems.jacobians.jacobians import (
     spherical_jacobian,
     spherical_jacobian_inv,
     polar_jacobian,
