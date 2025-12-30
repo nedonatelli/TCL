@@ -81,9 +81,9 @@ all = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/your-org/tracker-component-library-python"
-"Bug Tracker" = "https://github.com/your-org/tracker-component-library-python/issues"
-"Documentation" = "https://tracker-component-library-python.readthedocs.io"
+"Homepage" = "https://github.com/nedonatelli/TCL"
+"Bug Tracker" = "https://github.com/nedonatelli/TCL/issues"
+"Documentation" = "https://github.com/nedonatelli/TCL#readme"
 "Original MATLAB Library" = "https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary"
 
 [tool.setuptools.packages.find]
