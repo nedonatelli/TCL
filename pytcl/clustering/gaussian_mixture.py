@@ -722,9 +722,7 @@ class GaussianMixture:
         # Choose components based on weights
         weights = self.weights
         weights = weights / weights.sum()  # Normalize
-        component_indices = rng.choice(
-            len(self.components), size=n_samples, p=weights
-        )
+        component_indices = rng.choice(len(self.components), size=n_samples, p=weights)
 
         # Sample from chosen components
         samples = []
@@ -791,10 +789,12 @@ class GaussianMixture:
 
     def copy(self) -> "GaussianMixture":
         """Create a deep copy of the mixture."""
-        return GaussianMixture([
-            GaussianComponent(c.weight, c.mean.copy(), c.covariance.copy())
-            for c in self.components
-        ])
+        return GaussianMixture(
+            [
+                GaussianComponent(c.weight, c.mean.copy(), c.covariance.copy())
+                for c in self.components
+            ]
+        )
 
 
 __all__ = [

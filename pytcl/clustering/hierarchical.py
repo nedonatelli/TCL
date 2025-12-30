@@ -138,9 +138,12 @@ def _ward_linkage(
     """Ward's linkage: minimum variance merge."""
     total = size_i + size_j + size_k
     return np.sqrt(
-        ((size_i + size_k) * dist_i ** 2 +
-         (size_j + size_k) * dist_j ** 2 -
-         size_k * dist_ij ** 2) / total
+        (
+            (size_i + size_k) * dist_i**2
+            + (size_j + size_k) * dist_j**2
+            - size_k * dist_ij**2
+        )
+        / total
     )
 
 
@@ -246,7 +249,7 @@ def agglomerative_clustering(
 
         active_list = list(active)
         for idx_a, i in enumerate(active_list):
-            for j in active_list[idx_a + 1:]:
+            for j in active_list[idx_a + 1 :]:
                 if cluster_dist[i, j] < min_dist:
                     min_dist = cluster_dist[i, j]
                     merge_i, merge_j = i, j
@@ -264,12 +267,14 @@ def agglomerative_clustering(
         # Record merge
         size_new = cluster_sizes[merge_i] + cluster_sizes[merge_j]
         linkage_matrix.append([merge_i, merge_j, min_dist, size_new])
-        dendrogram.append(DendrogramNode(
-            left=merge_i,
-            right=merge_j,
-            distance=min_dist,
-            count=size_new,
-        ))
+        dendrogram.append(
+            DendrogramNode(
+                left=merge_i,
+                right=merge_j,
+                distance=min_dist,
+                count=size_new,
+            )
+        )
 
         # Create new cluster
         new_cluster_id = next_cluster_id
@@ -455,13 +460,9 @@ def fcluster(
         Cluster labels (1-indexed for scipy compatibility).
     """
     if criterion == "distance":
-        labels = cut_dendrogram(
-            linkage_matrix, n_samples, distance_threshold=t
-        )
+        labels = cut_dendrogram(linkage_matrix, n_samples, distance_threshold=t)
     elif criterion == "maxclust":
-        labels = cut_dendrogram(
-            linkage_matrix, n_samples, n_clusters=int(t)
-        )
+        labels = cut_dendrogram(linkage_matrix, n_samples, n_clusters=int(t))
     else:
         raise ValueError(f"Unknown criterion: {criterion}")
 

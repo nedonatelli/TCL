@@ -222,7 +222,7 @@ def compute_association_likelihood(
 
     # Clutter terms for unassigned measurements
     n_clutter = n_meas - len(used_meas)
-    likelihood *= clutter_density ** n_clutter
+    likelihood *= clutter_density**n_clutter
 
     return likelihood
 
@@ -293,7 +293,10 @@ def n_scan_prune(
                     hyp_tracks_at_cutoff.add(track_id)
 
         # Keep if tracks match (or if no tracks at cutoff)
-        if hyp_tracks_at_cutoff == best_tracks_at_cutoff or len(best_tracks_at_cutoff) == 0:
+        if (
+            hyp_tracks_at_cutoff == best_tracks_at_cutoff
+            or len(best_tracks_at_cutoff) == 0
+        ):
             pruned.append(hyp)
 
     # Renormalize probabilities

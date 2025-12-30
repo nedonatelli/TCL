@@ -53,10 +53,7 @@ class TestKMeansPlusPlusInit:
         """Centers should be spread out."""
         rng = np.random.default_rng(42)
         # Two well-separated clusters
-        X = np.vstack([
-            rng.normal(0, 0.5, (50, 2)),
-            rng.normal(10, 0.5, (50, 2))
-        ])
+        X = np.vstack([rng.normal(0, 0.5, (50, 2)), rng.normal(10, 0.5, (50, 2))])
 
         centers = kmeans_plusplus_init(X, n_clusters=2, rng=rng)
 
@@ -129,7 +126,10 @@ class TestKMeans:
         cluster_1_mean = X[result.labels == 1].mean(axis=0)
 
         # One cluster should be near (0,0), other near (10,10)
-        dist_to_origin = [np.linalg.norm(cluster_0_mean), np.linalg.norm(cluster_1_mean)]
+        dist_to_origin = [
+            np.linalg.norm(cluster_0_mean),
+            np.linalg.norm(cluster_1_mean),
+        ]
         assert min(dist_to_origin) < 2
         assert max(dist_to_origin) > 8
 
@@ -200,11 +200,11 @@ class TestKMeans:
         result = kmeans(X, n_clusters=3)
 
         assert isinstance(result, KMeansResult)
-        assert hasattr(result, 'labels')
-        assert hasattr(result, 'centers')
-        assert hasattr(result, 'inertia')
-        assert hasattr(result, 'n_iter')
-        assert hasattr(result, 'converged')
+        assert hasattr(result, "labels")
+        assert hasattr(result, "centers")
+        assert hasattr(result, "inertia")
+        assert hasattr(result, "n_iter")
+        assert hasattr(result, "converged")
 
 
 class TestKMeansElbow:
@@ -217,9 +217,9 @@ class TestKMeansElbow:
 
         results = kmeans_elbow(X, k_range=range(1, 6), rng=rng)
 
-        assert len(results['k_values']) == 5
-        assert len(results['inertias']) == 5
-        assert results['k_values'] == [1, 2, 3, 4, 5]
+        assert len(results["k_values"]) == 5
+        assert len(results["inertias"]) == 5
+        assert results["k_values"] == [1, 2, 3, 4, 5]
 
     def test_decreasing_inertia(self):
         """Inertia should generally decrease with more clusters."""
@@ -229,7 +229,7 @@ class TestKMeansElbow:
         results = kmeans_elbow(X, k_range=range(1, 6), rng=rng)
 
         # k=1 should have highest inertia
-        assert results['inertias'][0] >= results['inertias'][-1]
+        assert results["inertias"][0] >= results["inertias"][-1]
 
 
 class TestEdgeCases:
@@ -344,10 +344,10 @@ class TestDBSCAN:
         result = dbscan(X, eps=0.5, min_samples=5)
 
         assert isinstance(result, DBSCANResult)
-        assert hasattr(result, 'labels')
-        assert hasattr(result, 'n_clusters')
-        assert hasattr(result, 'core_sample_indices')
-        assert hasattr(result, 'n_noise')
+        assert hasattr(result, "labels")
+        assert hasattr(result, "n_clusters")
+        assert hasattr(result, "core_sample_indices")
+        assert hasattr(result, "n_noise")
 
     def test_empty_data(self):
         """Handles empty data."""
@@ -414,10 +414,7 @@ class TestAgglomerativeClustering:
     def test_two_clusters(self):
         """Finds two well-separated clusters."""
         rng = np.random.default_rng(42)
-        X = np.vstack([
-            rng.normal(0, 0.5, (20, 2)),
-            rng.normal(5, 0.5, (20, 2))
-        ])
+        X = np.vstack([rng.normal(0, 0.5, (20, 2)), rng.normal(5, 0.5, (20, 2))])
 
         result = agglomerative_clustering(X, n_clusters=2)
 
@@ -429,7 +426,7 @@ class TestAgglomerativeClustering:
         rng = np.random.default_rng(42)
         X = rng.standard_normal((20, 2))
 
-        for linkage in ['single', 'complete', 'average', 'ward']:
+        for linkage in ["single", "complete", "average", "ward"]:
             result = agglomerative_clustering(X, n_clusters=3, linkage=linkage)
             assert result.n_clusters == 3
 
@@ -437,10 +434,7 @@ class TestAgglomerativeClustering:
         """Distance threshold controls number of clusters."""
         rng = np.random.default_rng(42)
         # Two tight clusters far apart
-        X = np.vstack([
-            rng.normal(0, 0.1, (10, 2)),
-            rng.normal(10, 0.1, (10, 2))
-        ])
+        X = np.vstack([rng.normal(0, 0.1, (10, 2)), rng.normal(10, 0.1, (10, 2))])
 
         result = agglomerative_clustering(X, distance_threshold=1.0)
 
@@ -464,10 +458,10 @@ class TestAgglomerativeClustering:
         result = agglomerative_clustering(X, n_clusters=3)
 
         assert isinstance(result, HierarchicalResult)
-        assert hasattr(result, 'labels')
-        assert hasattr(result, 'n_clusters')
-        assert hasattr(result, 'linkage_matrix')
-        assert hasattr(result, 'dendrogram')
+        assert hasattr(result, "labels")
+        assert hasattr(result, "n_clusters")
+        assert hasattr(result, "linkage_matrix")
+        assert hasattr(result, "dendrogram")
 
     def test_empty_data(self):
         """Handles empty data."""
@@ -511,7 +505,7 @@ class TestFcluster:
 
         result = agglomerative_clustering(X, n_clusters=1)
 
-        labels = fcluster(result.linkage_matrix, 4, 2, criterion='maxclust')
+        labels = fcluster(result.linkage_matrix, 4, 2, criterion="maxclust")
 
         # 1-indexed labels
         assert np.min(labels) >= 1
@@ -521,9 +515,9 @@ class TestFcluster:
         """distance criterion works."""
         X = np.array([[0, 0], [0.1, 0], [10, 0], [10.1, 0]])
 
-        result = agglomerative_clustering(X, n_clusters=1, linkage='single')
+        result = agglomerative_clustering(X, n_clusters=1, linkage="single")
 
-        labels = fcluster(result.linkage_matrix, 4, 1.0, criterion='distance')
+        labels = fcluster(result.linkage_matrix, 4, 1.0, criterion="distance")
 
         # Should have 2 clusters (points 0,1 and 2,3)
         assert len(np.unique(labels)) == 2
@@ -536,11 +530,13 @@ class TestClusteringIntegration:
         """All methods find obvious clusters."""
         rng = np.random.default_rng(42)
         # Three well-separated clusters
-        X = np.vstack([
-            rng.normal([0, 0], 0.3, (30, 2)),
-            rng.normal([5, 0], 0.3, (30, 2)),
-            rng.normal([2.5, 5], 0.3, (30, 2)),
-        ])
+        X = np.vstack(
+            [
+                rng.normal([0, 0], 0.3, (30, 2)),
+                rng.normal([5, 0], 0.3, (30, 2)),
+                rng.normal([2.5, 5], 0.3, (30, 2)),
+            ]
+        )
 
         # K-means
         km_result = kmeans(X, n_clusters=3, rng=rng)

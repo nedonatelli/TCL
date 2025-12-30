@@ -137,12 +137,15 @@ class TestComputeAssociationLikelihood:
         likelihood_matrix = np.ones((2, 2))
 
         lik = compute_association_likelihood(
-            association, likelihood_matrix,
-            detection_prob=0.9, clutter_density=1e-6, n_meas=2
+            association,
+            likelihood_matrix,
+            detection_prob=0.9,
+            clutter_density=1e-6,
+            n_meas=2,
         )
 
         # (1-0.9)^2 * (1e-6)^2 for misses and all meas as clutter
-        expected = (0.1 ** 2) * (1e-6 ** 2)
+        expected = (0.1**2) * (1e-6**2)
         assert_allclose(lik, expected)
 
     def test_detection_increases_likelihood(self):
@@ -152,12 +155,18 @@ class TestComputeAssociationLikelihood:
         likelihood_matrix = np.array([[1.0]])  # High likelihood
 
         lik_detect = compute_association_likelihood(
-            assoc_detect, likelihood_matrix,
-            detection_prob=0.9, clutter_density=1e-6, n_meas=1
+            assoc_detect,
+            likelihood_matrix,
+            detection_prob=0.9,
+            clutter_density=1e-6,
+            n_meas=1,
         )
         lik_miss = compute_association_likelihood(
-            assoc_miss, likelihood_matrix,
-            detection_prob=0.9, clutter_density=1e-6, n_meas=1
+            assoc_miss,
+            likelihood_matrix,
+            detection_prob=0.9,
+            clutter_density=1e-6,
+            n_meas=1,
         )
 
         assert lik_detect > lik_miss
@@ -169,8 +178,18 @@ class TestNScanPrune:
     def test_no_prune_recent(self):
         """Recent hypotheses are not pruned."""
         tracks = {
-            1: MHTTrack(1, np.zeros(2), np.eye(2), 0.0,
-                       MHTTrackStatus.CONFIRMED, [0], -1, 5, 1, 0),
+            1: MHTTrack(
+                1,
+                np.zeros(2),
+                np.eye(2),
+                0.0,
+                MHTTrackStatus.CONFIRMED,
+                [0],
+                -1,
+                5,
+                1,
+                0,
+            ),
         }
         hypotheses = [
             Hypothesis(0, 0.6, [1], scan_created=5, parent_id=-1),
@@ -184,10 +203,30 @@ class TestNScanPrune:
     def test_prune_old_divergent(self):
         """Old divergent hypotheses are pruned."""
         tracks = {
-            1: MHTTrack(1, np.zeros(2), np.eye(2), 0.0,
-                       MHTTrackStatus.CONFIRMED, [0], -1, 0, 1, 0),
-            2: MHTTrack(2, np.ones(2), np.eye(2), 0.0,
-                       MHTTrackStatus.CONFIRMED, [1], -1, 0, 1, 0),
+            1: MHTTrack(
+                1,
+                np.zeros(2),
+                np.eye(2),
+                0.0,
+                MHTTrackStatus.CONFIRMED,
+                [0],
+                -1,
+                0,
+                1,
+                0,
+            ),
+            2: MHTTrack(
+                2,
+                np.ones(2),
+                np.eye(2),
+                0.0,
+                MHTTrackStatus.CONFIRMED,
+                [1],
+                -1,
+                0,
+                1,
+                0,
+            ),
         }
         hypotheses = [
             Hypothesis(0, 0.9, [1], scan_created=0, parent_id=-1),
@@ -218,10 +257,7 @@ class TestPruneHypothesesByProbability:
 
     def test_limit_count(self):
         """Respects max_hypotheses limit."""
-        hypotheses = [
-            Hypothesis(i, 1.0 / 10, [i], 0, -1)
-            for i in range(10)
-        ]
+        hypotheses = [Hypothesis(i, 1.0 / 10, [i], 0, -1) for i in range(10)]
 
         pruned = prune_hypotheses_by_probability(hypotheses, max_hypotheses=3)
 
@@ -257,10 +293,16 @@ class TestHypothesisTree:
         tree.initialize()
 
         track = MHTTrack(
-            id=-1, state=np.zeros(2), covariance=np.eye(2),
-            score=0.0, status=MHTTrackStatus.TENTATIVE,
-            history=[0], parent_id=-1, scan_created=0,
-            n_hits=1, n_misses=0
+            id=-1,
+            state=np.zeros(2),
+            covariance=np.eye(2),
+            score=0.0,
+            status=MHTTrackStatus.TENTATIVE,
+            history=[0],
+            parent_id=-1,
+            scan_created=0,
+            n_hits=1,
+            n_misses=0,
         )
 
         track_id = tree.add_track(track)
@@ -309,19 +351,12 @@ class TestMHTTracker:
     @pytest.fixture
     def simple_tracker(self):
         """Create a simple 2D tracker."""
+
         # Constant velocity model
         def F(dt):
-            return np.array([
-                [1, dt, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, dt],
-                [0, 0, 0, 1]
-            ])
+            return np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
 
-        H = np.array([
-            [1, 0, 0, 0],
-            [0, 0, 1, 0]
-        ])
+        H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
 
         def Q(dt):
             return np.eye(4) * 0.1
@@ -338,7 +373,10 @@ class TestMHTTracker:
         return MHTTracker(
             state_dim=4,
             meas_dim=2,
-            F=F, H=H, Q=Q, R=R,
+            F=F,
+            H=H,
+            Q=Q,
+            R=R,
             config=config,
         )
 
@@ -417,19 +455,12 @@ class TestMHTIntegration:
 
     def test_crossing_targets(self):
         """MHT maintains hypotheses for crossing targets."""
+
         # Two targets that cross paths
         def F(dt):
-            return np.array([
-                [1, dt, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, dt],
-                [0, 0, 0, 1]
-            ])
+            return np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
 
-        H = np.array([
-            [1, 0, 0, 0],
-            [0, 0, 1, 0]
-        ])
+        H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
 
         def Q(dt):
             return np.eye(4) * 0.01
@@ -466,6 +497,7 @@ class TestMHTIntegration:
 
     def test_track_birth_death(self):
         """MHT handles appearing and disappearing targets."""
+
         def F(dt):
             return np.array([[1, dt], [0, 1]])
 

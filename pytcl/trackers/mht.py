@@ -269,7 +269,9 @@ class MHTTracker:
 
         # Update tracks based on associations
         new_tracks_per_assoc: Dict[int, List[MHTTrack]] = {}
-        updated_tracks: Dict[int, Dict[int, MHTTrack]] = {}  # assoc_idx -> track_id -> track
+        updated_tracks: Dict[int, Dict[int, MHTTrack]] = (
+            {}
+        )  # assoc_idx -> track_id -> track
 
         for assoc_idx, assoc in enumerate(associations):
             updated_tracks[assoc_idx] = {}
@@ -572,9 +574,7 @@ class MHTTracker:
         else:
             # Keep at least one hypothesis
             if self.hypothesis_tree.hypotheses:
-                best = max(
-                    self.hypothesis_tree.hypotheses, key=lambda h: h.probability
-                )
+                best = max(self.hypothesis_tree.hypotheses, key=lambda h: h.probability)
                 self.hypothesis_tree.hypotheses = [best]
 
         # Prune

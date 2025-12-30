@@ -80,9 +80,7 @@ def kmeans_plusplus_init(
         rng = np.random.default_rng()
 
     if n_clusters > n_samples:
-        raise ValueError(
-            f"n_clusters ({n_clusters}) > n_samples ({n_samples})"
-        )
+        raise ValueError(f"n_clusters ({n_clusters}) > n_samples ({n_samples})")
 
     centers = np.empty((n_clusters, n_features), dtype=np.float64)
 
@@ -253,9 +251,7 @@ def kmeans(
     if n_clusters <= 0:
         raise ValueError("n_clusters must be positive")
     if n_clusters > n_samples:
-        raise ValueError(
-            f"n_clusters ({n_clusters}) > n_samples ({n_samples})"
-        )
+        raise ValueError(f"n_clusters ({n_clusters}) > n_samples ({n_samples})")
 
     # Check if initial centers are provided
     if isinstance(init, np.ndarray) or (

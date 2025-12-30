@@ -133,10 +133,9 @@ def dbscan(
     neighbors = compute_neighbors(X, eps)
 
     # Identify core points
-    core_samples = np.array([
-        i for i in range(n_samples)
-        if len(neighbors[i]) >= min_samples
-    ], dtype=np.intp)
+    core_samples = np.array(
+        [i for i in range(n_samples) if len(neighbors[i]) >= min_samples], dtype=np.intp
+    )
 
     core_set = set(core_samples)
 
