@@ -14,4 +14,163 @@ This module contains a wide variety of mathematical functions including:
 - Statistics and distributions
 """
 
-__all__ = []
+# Import submodules for easy access
+from tracker_component_library.mathematical_functions import basic_matrix
+from tracker_component_library.mathematical_functions import special_functions
+from tracker_component_library.mathematical_functions import statistics
+from tracker_component_library.mathematical_functions import numerical_integration
+from tracker_component_library.mathematical_functions import interpolation
+from tracker_component_library.mathematical_functions import combinatorics
+from tracker_component_library.mathematical_functions import geometry
+
+# Re-export commonly used functions at the top level for convenience
+
+# Basic matrix operations
+from tracker_component_library.mathematical_functions.basic_matrix import (
+    chol_semi_def,
+    tria,
+    tria_sqrt,
+    pinv_truncated,
+    matrix_sqrt,
+    null_space,
+    range_space,
+    block_diag,
+    kron,
+    vec,
+    unvec,
+)
+
+# Special functions
+from tracker_component_library.mathematical_functions.special_functions import (
+    gamma,
+    gammaln,
+    beta,
+    betaln,
+    erf,
+    erfc,
+    erfinv,
+    besselj,
+    bessely,
+    besseli,
+    besselk,
+)
+
+# Statistics
+from tracker_component_library.mathematical_functions.statistics import (
+    Gaussian,
+    MultivariateGaussian,
+    Uniform,
+    ChiSquared,
+    nees,
+    nis,
+    weighted_mean,
+    weighted_cov,
+    mad,
+)
+
+# Numerical integration
+from tracker_component_library.mathematical_functions.numerical_integration import (
+    gauss_legendre,
+    gauss_hermite,
+    quad,
+    spherical_cubature,
+    unscented_transform_points,
+)
+
+# Interpolation
+from tracker_component_library.mathematical_functions.interpolation import (
+    interp1d,
+    linear_interp,
+    cubic_spline,
+    interp2d,
+    rbf_interpolate,
+)
+
+# Combinatorics
+from tracker_component_library.mathematical_functions.combinatorics import (
+    factorial,
+    n_choose_k,
+    permutations,
+    combinations,
+    permutation_rank,
+    permutation_unrank,
+)
+
+# Geometry
+from tracker_component_library.mathematical_functions.geometry import (
+    point_in_polygon,
+    convex_hull,
+    polygon_area,
+    line_intersection,
+    bounding_box,
+)
+
+__all__ = [
+    # Submodules
+    "basic_matrix",
+    "special_functions",
+    "statistics",
+    "numerical_integration",
+    "interpolation",
+    "combinatorics",
+    "geometry",
+    # Basic matrix
+    "chol_semi_def",
+    "tria",
+    "tria_sqrt",
+    "pinv_truncated",
+    "matrix_sqrt",
+    "null_space",
+    "range_space",
+    "block_diag",
+    "kron",
+    "vec",
+    "unvec",
+    # Special functions
+    "gamma",
+    "gammaln",
+    "beta",
+    "betaln",
+    "erf",
+    "erfc",
+    "erfinv",
+    "besselj",
+    "bessely",
+    "besseli",
+    "besselk",
+    # Statistics
+    "Gaussian",
+    "MultivariateGaussian",
+    "Uniform",
+    "ChiSquared",
+    "nees",
+    "nis",
+    "weighted_mean",
+    "weighted_cov",
+    "mad",
+    # Numerical integration
+    "gauss_legendre",
+    "gauss_hermite",
+    "quad",
+    "spherical_cubature",
+    "unscented_transform_points",
+    # Interpolation
+    "interp1d",
+    "linear_interp",
+    "cubic_spline",
+    "interp2d",
+    "rbf_interpolate",
+    # Combinatorics
+    "factorial",
+    "n_choose_k",
+    "permutations",
+    "combinations",
+    "permutation_rank",
+    "permutation_unrank",
+    # Geometry
+    "point_in_polygon",
+    "convex_hull",
+    "polygon_area",
+    "line_intersection",
+    "bounding_box",
+]
