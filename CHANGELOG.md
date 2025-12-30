@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - 0.3.0
+## [0.3.0] - 2025-12-30
 
 ### Added
 - **Square-Root Kalman Filters** for improved numerical stability:
@@ -25,9 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `jpda`, `jpda_update` - JPDA association and update
   - `jpda_probabilities` - Compute association probabilities
   - Support for cluttered environments with detection probability
+- Comprehensive documentation for new features:
+  - User guides for square-root filters, IMM, and JPDA
+  - API reference documentation
+  - Data association user guide
 
 ### Changed
-- Test count increased from 355 to 372
+- Test count increased from 355 to 408
+- Test coverage increased from 58% to 61%
 
 ## [0.2.2] - 2025-12-30
 
