@@ -399,7 +399,7 @@ def mot_metrics(
     total_distance = 0.0
     total_matches = 0
 
-    prev_assignment = {}  # gt_idx -> est_idx from previous frame
+    prev_assignment: dict[int, int] = {}  # gt_idx -> est_idx from previous frame
 
     for k, (gt_frame, est_frame) in enumerate(zip(ground_truth, estimates)):
         n_gt = len(gt_frame)

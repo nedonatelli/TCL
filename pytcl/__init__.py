@@ -25,21 +25,21 @@ __author__ = "Python Port Contributors"
 __original_author__ = "David F. Crouse, Naval Research Laboratory"
 
 # Core utilities
-from tcl import core
+from pytcl import core
 
 # Assignment algorithms (Phase 5)
-from tcl import assignment_algorithms
+from pytcl import assignment_algorithms
 
 # Specialized domains (Phase 6)
-from tcl import astronomical
-from tcl import navigation
-from tcl import atmosphere
+from pytcl import astronomical
+from pytcl import navigation
+from pytcl import atmosphere
 
 # End-to-end trackers (Phase 7)
-from tcl import trackers
+from pytcl import trackers
 
 # Performance evaluation
-from tcl import performance_evaluation
+from pytcl import performance_evaluation
 
 # Version tuple for programmatic access
 VERSION = tuple(int(x) for x in __version__.split("."))
