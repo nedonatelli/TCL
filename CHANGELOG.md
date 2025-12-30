@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-12-30
+
+### Added
+- **Static Estimation Module** (`pytcl.static_estimation`):
+  - **Least Squares** (`least_squares.py`):
+    - `ordinary_least_squares` - SVD-based OLS with rank and singular value output
+    - `weighted_least_squares` - WLS with weight matrix or diagonal weights
+    - `total_least_squares` - TLS for errors-in-variables problems
+    - `generalized_least_squares` - GLS for correlated errors
+    - `recursive_least_squares` - RLS with forgetting factor for streaming data
+    - `ridge_regression` - L2-regularized least squares
+  - **Robust Estimation** (`robust.py`):
+    - `huber_regression`, `tukey_regression` - M-estimators for robust regression
+    - `irls` - Iteratively Reweighted Least Squares framework
+    - `huber_weight`, `tukey_weight`, `cauchy_weight` - Weight functions
+    - `huber_rho`, `tukey_rho` - Loss (rho) functions
+    - `mad`, `tau_scale` - Robust scale estimators
+    - `ransac` - RANSAC robust estimation with automatic threshold
+    - `ransac_n_trials` - Compute required RANSAC iterations
+- **Spatial Data Structures** (`pytcl.containers`):
+  - **K-D Tree** (`kd_tree.py`):
+    - `KDTree` - K-dimensional tree for O(log n) nearest neighbor queries
+    - `BallTree` - Ball tree for high-dimensional nearest neighbor queries
+    - `query` - Find k nearest neighbors
+    - `query_radius` / `query_ball_point` - Range queries within radius
+- 66 new tests for static estimation and spatial data structures
+
+### Changed
+- Test count increased from 508 to 574
+- Source file count increased from 99 to 102
+
 ## [0.4.2] - 2025-12-30
 
 ### Fixed

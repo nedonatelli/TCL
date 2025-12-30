@@ -1,12 +1,14 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.4.1)
+## Current State (v0.5.0)
 
-- **430+ functions** implemented across 99 Python files
-- **508 tests** with comprehensive coverage
+- **450+ functions** implemented across 102 Python files
+- **574 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
+- **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC
+- **Spatial data structures**: K-D tree, Ball tree for efficient nearest neighbor queries
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -57,32 +59,42 @@
 
 ---
 
-## Phase 3: Static Estimation
+## Completed in v0.5.0
+
+### Phase 3: Static Estimation
+- [x] Ordinary least squares (SVD-based) - `ordinary_least_squares`
+- [x] Weighted least squares - `weighted_least_squares`
+- [x] Total least squares - `total_least_squares`
+- [x] Generalized least squares - `generalized_least_squares`
+- [x] Recursive least squares - `recursive_least_squares`
+- [x] Ridge regression - `ridge_regression`
+- [x] Robust M-estimators - `huber_regression`, `tukey_regression`, `irls`
+- [x] RANSAC - `ransac`, `ransac_n_trials`
+- [x] Scale estimators - `mad`, `tau_scale`
+- **Files**: `pytcl/static_estimation/least_squares.py`, `pytcl/static_estimation/robust.py`
+
+### Phase 4: Spatial Data Structures
+- [x] K-D tree - `KDTree` with `query`, `query_radius`
+- [x] Ball tree - `BallTree` with `query`
+- **Files**: `pytcl/containers/kd_tree.py`
+
+---
+
+## Phase 3 (Remaining): Static Estimation
 
 ### 3.1 Maximum Likelihood Estimation
 - [ ] ML estimator framework
 - [ ] Fisher information computation
 - [ ] Cramer-Rao bounds
 
-### 3.2 Least Squares & Robust Estimation
-- [ ] Weighted least squares
-- [ ] Total least squares
-- [ ] Robust M-estimators (Huber, Tukey)
-- [ ] RANSAC
-
 ---
 
-## Phase 4: Container Data Structures
+## Phase 4 (Remaining): Container Data Structures
 
-### 4.1 Spatial Search Structures
-- [ ] k-d tree implementation
-- [ ] Ball tree
+### 4.2 Additional Spatial Structures
 - [ ] R-tree for bounding boxes
-
-### 4.2 Metric Trees
 - [ ] VP-tree (vantage point tree)
 - [ ] Cover tree
-- [ ] Efficient nearest neighbor queries
 
 ---
 
@@ -172,7 +184,8 @@
 |----------|------------|------------------|--------|
 | **P0** | Advanced Data Association | JPDA, MHT, IMM | ✅ Complete |
 | **P1** | Clustering | Gaussian mixture, K-means, DBSCAN, hierarchical | ✅ Complete |
-| **P2** | Static Estimation | ML, robust estimators | Pending |
+| **P2** | Static Estimation | Least squares, robust estimators, RANSAC | ✅ Complete |
+| **P2.5** | Spatial Data Structures | K-D tree, Ball tree | ✅ Complete |
 | **P3** | Geophysical Models | Gravity, magnetic, terrain | Pending |
 | **P4** | Astronomical | Orbit propagation, reference frames | Pending |
 | **P5** | Infrastructure | Performance, docs, tests | In progress |
@@ -187,7 +200,8 @@
 | **v0.3.1** | Type annotation fix | Released 2025-12-30 |
 | **v0.4.0** | Gaussian mixture reduction, K-means, MHT | Released 2025-12-30 |
 | **v0.4.1** | DBSCAN, hierarchical clustering | Released 2025-12-30 |
-| **v0.5.0** | Static estimation, spatial data structures | Planned |
+| **v0.4.2** | Linting fixes | Released 2025-12-30 |
+| **v0.5.0** | Static estimation, spatial data structures | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models | Planned |
 | **v0.7.0** | Complete astronomical code | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
