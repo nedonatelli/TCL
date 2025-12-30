@@ -24,33 +24,33 @@ The Tracker Component Library provides building blocks for developing target tra
 ### Basic Installation
 
 ```bash
-pip install tracker-component-library
+pip install nrl-tracker
 ```
 
 ### With Optional Dependencies
 
 ```bash
 # For astronomy features (ephemerides, celestial mechanics)
-pip install tracker-component-library[astronomy]
+pip install nrl-tracker[astronomy]
 
 # For geodesy features (coordinate transforms, map projections)
-pip install tracker-component-library[geodesy]
+pip install nrl-tracker[geodesy]
 
 # For visualization
-pip install tracker-component-library[visualization]
+pip install nrl-tracker[visualization]
 
 # For development
-pip install tracker-component-library[dev]
+pip install nrl-tracker[dev]
 
 # Install everything
-pip install tracker-component-library[all]
+pip install nrl-tracker[all]
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/your-org/tracker-component-library-python.git
-cd tracker-component-library-python
+git clone https://github.com/nedonatelli/TCL.git
+cd TCL
 pip install -e ".[dev]"
 ```
 
@@ -60,7 +60,7 @@ pip install -e ".[dev]"
 
 ```python
 import numpy as np
-from tracker_component_library.coordinate_systems import cart2sphere, sphere2cart
+from pytcl.coordinate_systems import cart2sphere, sphere2cart
 
 # Convert Cartesian to spherical coordinates
 cart_point = np.array([1.0, 1.0, 1.0])
@@ -74,8 +74,8 @@ cart_recovered = sphere2cart(r, az, el)
 ### Kalman Filter
 
 ```python
-from tracker_component_library.dynamic_estimation.kalman import KalmanFilter
-from tracker_component_library.dynamic_models import constant_velocity_model
+from pytcl.dynamic_estimation.kalman import KalmanFilter
+from pytcl.dynamic_models import constant_velocity_model
 
 # Create a constant velocity model
 dt = 0.1
@@ -97,7 +97,7 @@ x_est, P_est = kf.update(measurement)
 ### Assignment Problem
 
 ```python
-from tracker_component_library.assignment_algorithms import hungarian
+from pytcl.assignment_algorithms import hungarian
 
 # Cost matrix (tracks x measurements)
 cost_matrix = np.array([
@@ -114,7 +114,7 @@ print(f"Optimal assignment: {assignment}, Total cost: {total_cost}")
 ## Module Structure
 
 ```
-tracker_component_library/
+pytcl/
 ├── core/                    # Foundation utilities and constants
 ├── mathematical_functions/  # Basic math, statistics, special functions
 ├── coordinate_systems/      # Coordinate conversions and transforms
@@ -162,7 +162,7 @@ Key differences:
 pytest
 
 # Run with coverage
-pytest --cov=tracker_component_library
+pytest --cov=pytcl
 
 # Run only fast tests
 pytest -m "not slow"
@@ -178,8 +178,8 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ### Development Setup
 
 ```bash
-git clone https://github.com/your-org/tracker-component-library-python.git
-cd tracker-component-library-python
+git clone https://github.com/nedonatelli/TCL.git
+cd TCL
 pip install -e ".[dev]"
 pre-commit install
 ```
@@ -194,7 +194,7 @@ black .
 ruff check .
 
 # Type check
-mypy tracker_component_library
+mypy pytcl
 
 # Run all checks
 pre-commit run --all-files

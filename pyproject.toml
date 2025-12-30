@@ -1,13 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0,<75", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyTCL"
+name = "nrl-tracker"
 version = "0.1.0"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
-license = {text = "Public Domain"}
 authors = [
     {name = "Original: David F. Crouse, Naval Research Laboratory"},
 ]
@@ -77,7 +76,7 @@ dev = [
     "nbsphinx>=0.9.0",
 ]
 all = [
-    "pyTCL[astronomy,geodesy,visualization,optimization,dev]",
+    "nrl-tracker[astronomy,geodesy,visualization,optimization,dev]",
 ]
 
 [project.urls]
