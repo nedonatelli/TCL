@@ -262,6 +262,9 @@ In `docs/_static/landing.html`, update the statistics to reflect current metrics
 ### 3. Run Quality Checks
 
 ```bash
+# Sort imports
+isort pytcl tests
+
 # Format code
 black .
 
