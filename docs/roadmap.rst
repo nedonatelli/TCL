@@ -3,192 +3,163 @@ Development Roadmap
 
 This document outlines the planned development phases for the Tracker Component Library.
 
-Current State (v0.2.2)
+Current State (v0.9.0)
 ----------------------
 
-* **380 functions** implemented across 90 Python files
-* **58% test coverage** with 355 tests
-* **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN), multi-target tracking
+* **600+ functions** implemented across 121 Python files
+* **916 tests** with comprehensive coverage
+* **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
+* **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
+* **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
+* **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation
+* **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree
+* **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
+* **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
+* **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
+* **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 * **Published on PyPI** as ``nrl-tracker``
 
-Phase 1: Advanced Estimation & Data Association
------------------------------------------------
+Completed Phases
+----------------
 
-Square-Root Filters
-^^^^^^^^^^^^^^^^^^^
+Phase 1: Advanced Estimation & Data Association (v0.3.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Square-root Kalman filter (Cholesky-based)
 * U-D factorization filter
-* Square-root UKF and CKF variants
-
-Joint Probabilistic Data Association (JPDA)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Square-root UKF variants
 * JPDA for multi-target tracking
-* Association probability computation
-* Combined update with association probabilities
+* IMM estimator with model mixing
 
-Multiple Hypothesis Tracking (MHT)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* Hypothesis tree management
-* N-scan pruning
-* Track-oriented MHT
+Phase 2: Clustering & Mixture Reduction (v0.4.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Gaussian mixture representation and moment matching
+* Runnalls' and West's mixture reduction algorithms
+* K-means with K-means++ initialization
+* DBSCAN clustering
+* Hierarchical clustering
 
-Interacting Multiple Model (IMM)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* IMM estimator
-* Model probability mixing
-* Markov transition matrix handling
+Phase 3: Static Estimation (v0.5.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Least squares variants (OLS, WLS, TLS, GLS, RLS)
+* Robust M-estimators (Huber, Tukey) and RANSAC
+* Maximum likelihood estimation framework
+* Fisher information and Cramer-Rao bounds
 
-Phase 2: Clustering & Mixture Reduction
----------------------------------------
-
-Gaussian Mixture Operations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* Gaussian mixture representation class
-* Mixture moment matching
-* Runnalls' mixture reduction algorithm
-* West's algorithm
-
-Clustering Algorithms
-^^^^^^^^^^^^^^^^^^^^^
-* K-means clustering
-* DBSCAN
-* Hierarchical clustering for track fusion
-
-Phase 3: Static Estimation
---------------------------
-
-Maximum Likelihood Estimation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* ML estimator framework
-* Fisher information computation
-* Cramer-Rao bounds
-
-Least Squares & Robust Estimation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* Weighted least squares
-* Total least squares
-* Robust M-estimators (Huber, Tukey)
-* RANSAC
-
-Phase 4: Container Data Structures
-----------------------------------
-
-Spatial Search Structures
-^^^^^^^^^^^^^^^^^^^^^^^^^
-* k-d tree implementation
-* Ball tree
+Phase 4: Container Data Structures (v0.5.1)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* K-D tree and Ball tree
 * R-tree for bounding boxes
-
-Metric Trees
-^^^^^^^^^^^^
 * VP-tree (vantage point tree)
-* Cover tree
-* Efficient nearest neighbor queries
+* Cover tree with O(c^12 log n) guarantee
 
-Phase 5: Geophysical Models
----------------------------
-
-Gravity Models
-^^^^^^^^^^^^^^
+Phase 5.1-5.2: Geophysical Models (v0.6.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Spherical harmonic evaluation
-* EGM96 model support
-* EGM2008 model support
-* Tidal effects
+* WGS84/GRS80 gravity models
+* Normal gravity (Somigliana formula)
+* World Magnetic Model (WMM2020)
+* International Geomagnetic Reference Field (IGRF-13)
 
-Magnetic Field Models
-^^^^^^^^^^^^^^^^^^^^^
-* World Magnetic Model (WMM)
-* International Geomagnetic Reference Field (IGRF)
-* Enhanced Magnetic Model (EMM)
-
-Terrain Models
-^^^^^^^^^^^^^^
-* Digital elevation model interface
-* GEBCO integration
-* Earth2014 support
-* Terrain masking for visibility
-
-Phase 6: Advanced Astronomical & Navigation
--------------------------------------------
-
-Celestial Mechanics
-^^^^^^^^^^^^^^^^^^^
+Phase 6.1-6.2: Astronomical Code (v0.7.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Two-body orbit propagation
 * Kepler's equation solvers
-* Orbital element conversions
-* Lambert problem solver
+* Lambert problem solver (universal and Izzo)
+* GCRF/ITRF reference frame transformations
+* Precession/nutation models (IAU 1976/1980)
 
-Reference Frame Transformations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-* GCRF/ITRF conversions
-* Precession/nutation models
-* Earth orientation parameters (EOP)
-* Polar motion corrections
+Phase 5.3-5.4: Advanced Magnetic & Terrain (v0.8.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Enhanced Magnetic Model (EMM2017)
+* High-resolution WMM (WMMHR) - degree 790
+* Digital elevation model interface
+* GEBCO bathymetry/topography loader
+* Earth2014 terrain model loader
+* Line-of-sight and viewshed analysis
+* Terrain masking for radar coverage
 
-INS Mechanization
-^^^^^^^^^^^^^^^^^
+Phase 5.5: Map Projections (v0.9.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Mercator projection (forward/inverse)
+* Transverse Mercator projection
+* UTM with zone handling and Norway/Svalbard exceptions
+* Stereographic projection (oblique and polar)
+* Lambert Conformal Conic projection
+* Azimuthal Equidistant projection
+
+Planned Phases
+--------------
+
+Phase 5 (Remaining): Advanced Gravity Models
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* EGM96 model support (degree 360)
+* EGM2008 model support (degree 2190)
+* Clenshaw summation for numerical stability
+* Geoid height computation
+* Gravity disturbance/anomaly
+
+Phase 6 (Remaining): INS Mechanization
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Complete strapdown INS
 * Coning/sculling corrections
 * Error state models
 * INS/GNSS integration
 
 Phase 7: Signal Processing & Transforms
----------------------------------------
-
-Signal Processing
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Digital filter design
 * Matched filtering
 * Detection algorithms (CFAR)
-
-Transforms
-^^^^^^^^^^
 * Discrete Fourier transform utilities
 * Short-time Fourier transform
 * Wavelet transforms
 
 Phase 8: Performance & Infrastructure
--------------------------------------
-
-Performance Optimization
-^^^^^^^^^^^^^^^^^^^^^^^^
-* Expand Numba JIT coverage to critical paths
-* Profile and optimize bottlenecks
-* Consider Cython for hot spots
-
-Documentation
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Expand Numba JIT coverage
 * Complete API documentation
-* Add tutorials and examples for new features
-* Improve Read the Docs integration
-
-Testing
-^^^^^^^
 * Increase test coverage to 80%+
-* Add MATLAB validation tests for new functions
-* Performance regression tests
 
 Version Targets
 ---------------
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 80
+   :widths: 15 65 20
 
    * - Version
      - Focus
+     - Status
    * - **v0.3.0**
      - Square-root filters, JPDA, IMM estimator
+     - Released
    * - **v0.4.0**
-     - Clustering module, Gaussian mixture reduction
+     - Clustering module, Gaussian mixture reduction, MHT
+     - Released
    * - **v0.5.0**
      - Static estimation, spatial data structures
+     - Released
    * - **v0.6.0**
-     - Gravity and magnetic models
+     - Gravity and magnetic models (WGS84, WMM, IGRF)
+     - Released
    * - **v0.7.0**
-     - Complete astronomical code
+     - Complete astronomical code (orbit, Lambert, frames)
+     - Released
+   * - **v0.8.0**
+     - EMM/WMMHR, terrain models, visibility
+     - Released
+   * - **v0.9.0**
+     - Map projections
+     - Released
+   * - **v0.10.0**
+     - EGM96/EGM2008 gravity models
+     - Planned
+   * - **v0.11.0**
+     - INS mechanization and navigation
+     - Planned
    * - **v1.0.0**
      - Full feature parity, 80%+ test coverage
+     - Planned
 
 Contributing
 ------------

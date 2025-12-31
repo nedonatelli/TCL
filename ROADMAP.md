@@ -1,15 +1,18 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.7.0)
+## Current State (v0.10.0)
 
-- **550+ functions** implemented across 112 Python files
-- **702 tests** with comprehensive coverage
+- **620+ functions** implemented across 122 Python files
+- **963 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
-- **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13)
+- **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
+- **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
+- **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
+- **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
 - **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 - **Published on PyPI** as `nrl-tracker`
 
@@ -118,25 +121,6 @@
 
 ---
 
-## Phase 5 (Remaining): Geophysical Models
-
-### 5.1 Advanced Gravity Models
-- [ ] EGM96 model support (higher-degree harmonics)
-- [ ] EGM2008 model support
-- [ ] Tidal effects
-
-### 5.2 Advanced Magnetic Models
-- [ ] Enhanced Magnetic Model (EMM)
-- [ ] Higher-degree coefficients (degree 12+)
-
-### 5.3 Terrain Models
-- [ ] Digital elevation model interface
-- [ ] GEBCO integration
-- [ ] Earth2014 support
-- [ ] Terrain masking for visibility
-
----
-
 ## Completed in v0.7.0
 
 ### Phase 6.1: Celestial Mechanics
@@ -155,6 +139,71 @@
 - [x] Polar motion corrections - `polar_motion_matrix`
 - [x] Ecliptic/equatorial transformations - `ecliptic_to_equatorial`, `equatorial_to_ecliptic`
 - **Files**: `pytcl/astronomical/reference_frames.py`
+
+---
+
+## Completed in v0.8.0
+
+### Phase 5.3: Advanced Magnetic Models
+- [x] Enhanced Magnetic Model (EMM2017) - `emm`, `emm_declination`, `emm_inclination`
+- [x] High-resolution WMM (WMMHR) - `wmmhr`
+- [x] Degree 790 spherical harmonic support
+- **Files**: `pytcl/magnetism/emm.py`, `pytcl/magnetism/wmmhr.py`
+
+### Phase 5.4: Terrain Models
+- [x] Digital elevation model interface - `DEMGrid`, `DEMPoint`, `DEMMetadata`
+- [x] GEBCO bathymetry/topography loader - `load_gebco`, `GEBCOMetadata`
+- [x] Earth2014 terrain model loader - `load_earth2014`, `Earth2014Metadata`
+- [x] Line-of-sight analysis - `line_of_sight`, `LOSResult`
+- [x] Viewshed computation - `viewshed`, `ViewshedResult`
+- [x] Horizon computation - `compute_horizon`, `HorizonPoint`
+- [x] Terrain masking for radar - `terrain_masking_angle`, `radar_coverage_map`
+- [x] Synthetic terrain generation - `create_synthetic_terrain`, `create_flat_dem`
+- [x] Test data generators - `create_test_gebco_dem`, `create_test_earth2014_dem`
+- **Files**: `pytcl/terrain/dem.py`, `pytcl/terrain/loaders.py`, `pytcl/terrain/visibility.py`
+
+---
+
+## Completed in v0.9.0
+
+### Phase 5.5: Map Projections
+- [x] Mercator projection - `mercator`, `mercator_inverse`
+- [x] Transverse Mercator projection - `transverse_mercator`, `transverse_mercator_inverse`
+- [x] UTM with zone handling - `geodetic2utm`, `utm2geodetic`, `utm_zone`, `utm_central_meridian`
+- [x] Norway/Svalbard UTM zone exceptions
+- [x] Stereographic projection (oblique and polar) - `stereographic`, `stereographic_inverse`, `polar_stereographic`
+- [x] Lambert Conformal Conic - `lambert_conformal_conic`, `lambert_conformal_conic_inverse`
+- [x] Azimuthal Equidistant - `azimuthal_equidistant`, `azimuthal_equidistant_inverse`
+- [x] Batch UTM conversion - `geodetic2utm_batch`
+- **Files**: `pytcl/coordinate_systems/projections/projections.py`
+
+---
+
+## Completed in v0.10.0
+
+### Phase 5.6: Tidal Effects
+- [x] Solid Earth tide displacement - `solid_earth_tide_displacement`, `TidalDisplacement`
+- [x] Solid Earth tide gravity - `solid_earth_tide_gravity`, `TidalGravity`
+- [x] Ocean tide loading - `ocean_tide_loading_displacement`, `OceanTideLoading`
+- [x] Atmospheric pressure loading - `atmospheric_pressure_loading`
+- [x] Pole tide effects - `pole_tide_displacement`
+- [x] Combined tidal displacement - `total_tidal_displacement`
+- [x] Tidal gravity correction - `tidal_gravity_correction`
+- [x] Love/Shida numbers (IERS 2010) - `LOVE_H2`, `LOVE_K2`, `SHIDA_L2`
+- [x] Fundamental astronomical arguments - `fundamental_arguments`
+- [x] Moon/Sun position (low precision) - `moon_position_approximate`, `sun_position_approximate`
+- **Files**: `pytcl/gravity/tides.py`
+
+---
+
+## Phase 5 (Remaining): Advanced Gravity Models
+
+### 5.1 EGM High-Degree Models
+- [ ] EGM96 model support (degree 360)
+- [ ] EGM2008 model support (degree 2190)
+- [ ] Clenshaw summation for numerical stability
+- [ ] Geoid height computation
+- [ ] Gravity disturbance/anomaly
 
 ---
 
@@ -197,8 +246,7 @@
 - [ ] Add tutorials and examples for new features
 
 ### 8.3 Testing
-- [x] 408 tests (up from 355)
-- [x] 61% coverage (up from 58%)
+- [x] 963 tests (up from 916 in v0.9.0)
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
@@ -214,7 +262,11 @@
 | **P2** | Static Estimation | Least squares, robust estimators, RANSAC | ✅ Complete |
 | **P2.5** | Spatial Data Structures | K-D tree, Ball tree, R-tree, VP-tree, Cover tree | ✅ Complete |
 | **P3** | Geophysical Models | Gravity (WGS84, J2), Magnetism (WMM, IGRF) | ✅ Complete |
-| **P3.5** | Advanced Geophysical | EGM96/2008, EMM, Terrain | Pending |
+| **P3.5** | Advanced Magnetic | EMM, WMMHR (degree 790) | ✅ Complete |
+| **P3.6** | Terrain Models | DEM, GEBCO, Earth2014, visibility | ✅ Complete |
+| **P3.7** | Map Projections | Mercator, UTM, Stereographic, LCC, AzEq | ✅ Complete |
+| **P3.8** | Tidal Effects | Solid Earth, ocean loading, atmospheric | ✅ Complete |
+| **P3.9** | Advanced Gravity | EGM96/2008, Clenshaw summation | Pending |
 | **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
 | **P5** | INS/Navigation | Strapdown INS, coning/sculling, INS/GNSS | Pending |
 | **P6** | Infrastructure | Performance, docs, tests | In progress |
@@ -234,7 +286,11 @@
 | **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models (WGS84, WMM, IGRF) | Released 2025-12-30 |
 | **v0.7.0** | Complete astronomical code (orbit propagation, Lambert, reference frames) | Released 2025-12-30 |
-| **v0.8.0** | INS mechanization and navigation | Planned |
+| **v0.8.0** | EMM/WMMHR magnetic models, terrain (DEM, GEBCO, Earth2014, visibility) | Released 2025-12-30 |
+| **v0.9.0** | Map projections (Mercator, UTM, Stereographic, LCC, Azimuthal Equidistant) | Released 2025-12-30 |
+| **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
+| **v0.11.0** | EGM96/EGM2008 gravity models with Clenshaw summation | Planned |
+| **v0.12.0** | INS mechanization and navigation | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
