@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.13.0)
+## Current State (v0.13.1)
 
 - **720+ functions** implemented across 130 Python files
-- **1100+ tests** with comprehensive coverage
+- **1109 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -284,7 +284,7 @@
 - [ ] Add tutorials and examples for new features
 
 ### 8.3 Testing
-- [x] 1105 tests (up from 963 in v0.12.0)
+- [x] 1109 tests (up from 963 in v0.12.0)
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
@@ -333,6 +333,7 @@
 | **v0.11.0** | INS mechanization and navigation | Released 2025-12-30 |
 | **v0.12.0** | INS/GNSS integration (loosely/tightly-coupled, DOP, fault detection) | Released 2025-12-31 |
 | **v0.13.0** | Signal processing & transforms (filters, CFAR, FFT, STFT, wavelets) | Released 2025-12-31 |
+| **v0.13.1** | Numba JIT performance optimization for critical paths | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
