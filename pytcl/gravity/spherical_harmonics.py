@@ -361,9 +361,144 @@ def gravity_acceleration(
     return g_r, g_lat, g_lon
 
 
+def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
+    """Precompute scaling factors to prevent overflow in Legendre recursion.
+
+    For degrees > ~150, standard Legendre recursion can overflow in
+    double precision. These scaling factors keep intermediate values
+    in a representable range.
+
+    The scaling follows the approach of Holmes & Featherstone (2002),
+    using a factor that grows with degree to counteract the natural
+    growth of the Legendre functions.
+
+    Parameters
+    ----------
+    n_max : int
+        Maximum degree.
+
+    Returns
+    -------
+    scale : ndarray
+        Scaling factors of shape (n_max+1,). The factor for degree n
+        is 10^(-280 * n / n_max) for n_max > 150, else 1.0.
+
+    References
+    ----------
+    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+           Clenshaw summation and the recursive computation of very high
+           degree and order normalised associated Legendre functions."
+           Journal of Geodesy 76.5 (2002): 279-299.
+    """
+    scale = np.ones(n_max + 1)
+
+    if n_max > 150:
+        # Apply progressive scaling for high degrees
+        for n in range(n_max + 1):
+            # Scale factor decreases exponentially with degree
+            exponent = -280.0 * n / n_max
+            scale[n] = 10.0 ** exponent
+
+    return scale
+
+
+def associated_legendre_scaled(
+    n_max: int,
+    m_max: int,
+    x: float,
+    scale: Optional[NDArray[np.floating]] = None,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Compute scaled associated Legendre polynomials for high degrees.
+
+    For ultra-high degree computations (n > 150), standard Legendre
+    recursion overflows. This function computes scaled values that
+    stay in representable range.
+
+    Parameters
+    ----------
+    n_max : int
+        Maximum degree.
+    m_max : int
+        Maximum order (must be <= n_max).
+    x : float
+        Argument in [-1, 1], typically cos(colatitude).
+    scale : ndarray, optional
+        Precomputed scaling factors from legendre_scaling_factors().
+        If None, computed internally.
+
+    Returns
+    -------
+    P_scaled : ndarray
+        Scaled Legendre values, shape (n_max+1, m_max+1).
+        The actual value is P_scaled[n,m] * 10^scale_exp[n].
+    scale_exp : ndarray
+        Scale exponents for each degree, shape (n_max+1,).
+        Set to 0 if no scaling needed.
+
+    Notes
+    -----
+    The returned values satisfy:
+        P_n^m(x) = P_scaled[n,m] * 10^scale_exp[n]
+
+    For normal operations (n < 150), scale_exp is all zeros and
+    P_scaled equals the actual Legendre values.
+    """
+    if m_max > n_max:
+        raise ValueError("m_max must be <= n_max")
+    if not -1 <= x <= 1:
+        raise ValueError("x must be in [-1, 1]")
+
+    if scale is None:
+        scale = legendre_scaling_factors(n_max)
+
+    P_scaled = np.zeros((n_max + 1, m_max + 1))
+    scale_exp = np.zeros(n_max + 1)
+
+    # Compute exponents
+    if n_max > 150:
+        for n in range(n_max + 1):
+            scale_exp[n] = 280.0 * n / n_max
+
+    # Compute sqrt(1 - x^2) = sin(theta)
+    u = np.sqrt(1 - x * x)
+
+    # Seed: P_0^0 = 1 (scaled)
+    P_scaled[0, 0] = 1.0 * scale[0]
+
+    # Sectoral recursion: P_m^m from P_{m-1}^{m-1}
+    for m in range(1, m_max + 1):
+        factor = u * np.sqrt((2 * m + 1) / (2 * m))
+        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1] * scale[m] / scale[m - 1]
+
+    # Compute P_{m+1}^m from P_m^m
+    for m in range(m_max):
+        if m + 1 <= n_max:
+            factor = x * np.sqrt(2 * m + 3)
+            P_scaled[m + 1, m] = factor * P_scaled[m, m] * scale[m + 1] / scale[m]
+
+    # General recursion: P_n^m from P_{n-1}^m and P_{n-2}^m
+    for m in range(m_max + 1):
+        for n in range(m + 2, n_max + 1):
+            a_nm = np.sqrt((4 * n * n - 1) / (n * n - m * m))
+            b_nm = np.sqrt(((n - 1) ** 2 - m * m) / (4 * (n - 1) ** 2 - 1))
+
+            # Scale factors for recursion
+            s_ratio_1 = scale[n] / scale[n - 1]
+            s_ratio_2 = scale[n] / scale[n - 2]
+
+            P_scaled[n, m] = a_nm * (
+                x * P_scaled[n - 1, m] * s_ratio_1
+                - b_nm * P_scaled[n - 2, m] * s_ratio_2
+            )
+
+    return P_scaled, scale_exp
+
+
 __all__ = [
     "associated_legendre",
     "associated_legendre_derivative",
     "spherical_harmonic_sum",
     "gravity_acceleration",
+    "legendre_scaling_factors",
+    "associated_legendre_scaled",
 ]

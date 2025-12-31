@@ -24,6 +24,8 @@ from pytcl.gravity.spherical_harmonics import (
     associated_legendre_derivative,
     spherical_harmonic_sum,
     gravity_acceleration,
+    legendre_scaling_factors,
+    associated_legendre_scaled,
 )
 
 from pytcl.gravity.models import (
@@ -41,12 +43,35 @@ from pytcl.gravity.models import (
     bouguer_anomaly,
 )
 
+from pytcl.gravity.clenshaw import (
+    clenshaw_sum_order,
+    clenshaw_sum_order_derivative,
+    clenshaw_potential,
+    clenshaw_gravity,
+)
+
+from pytcl.gravity.egm import (
+    EGMCoefficients,
+    GeoidResult,
+    GravityDisturbance,
+    get_data_dir,
+    load_egm_coefficients,
+    geoid_height,
+    geoid_heights,
+    gravity_disturbance,
+    gravity_anomaly,
+    deflection_of_vertical,
+    create_test_coefficients,
+)
+
 __all__ = [
     # Spherical harmonics
     "associated_legendre",
     "associated_legendre_derivative",
     "spherical_harmonic_sum",
     "gravity_acceleration",
+    "legendre_scaling_factors",
+    "associated_legendre_scaled",
     # Constants and types
     "GravityConstants",
     "GravityResult",
@@ -61,4 +86,21 @@ __all__ = [
     "gravitational_potential",
     "free_air_anomaly",
     "bouguer_anomaly",
+    # Clenshaw summation (high-degree spherical harmonics)
+    "clenshaw_sum_order",
+    "clenshaw_sum_order_derivative",
+    "clenshaw_potential",
+    "clenshaw_gravity",
+    # EGM models (EGM96/EGM2008)
+    "EGMCoefficients",
+    "GeoidResult",
+    "GravityDisturbance",
+    "get_data_dir",
+    "load_egm_coefficients",
+    "geoid_height",
+    "geoid_heights",
+    "gravity_disturbance",
+    "gravity_anomaly",
+    "deflection_of_vertical",
+    "create_test_coefficients",
 ]
