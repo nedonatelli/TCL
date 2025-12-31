@@ -21,8 +21,10 @@ from pytcl.mathematical_functions import (
     geometry,
     interpolation,
     numerical_integration,
+    signal_processing,
     special_functions,
     statistics,
+    transforms,
 )
 
 # Basic matrix operations
@@ -105,8 +107,22 @@ from pytcl.mathematical_functions.statistics import (
     weighted_mean,
 )
 
-# Re-export commonly used functions at the top level for convenience
+# Signal processing
+from pytcl.mathematical_functions.signal_processing import (
+    butter_design,
+    cfar_ca,
+    matched_filter,
+)
 
+# Transforms
+from pytcl.mathematical_functions.transforms import (
+    cwt,
+    fft,
+    ifft,
+    power_spectrum,
+    spectrogram,
+    stft,
+)
 
 __all__ = [
     # Submodules
@@ -117,6 +133,8 @@ __all__ = [
     "interpolation",
     "combinatorics",
     "geometry",
+    "signal_processing",
+    "transforms",
     # Basic matrix
     "chol_semi_def",
     "tria",
@@ -176,4 +194,15 @@ __all__ = [
     "polygon_area",
     "line_intersection",
     "bounding_box",
+    # Signal processing
+    "butter_design",
+    "cfar_ca",
+    "matched_filter",
+    # Transforms
+    "fft",
+    "ifft",
+    "stft",
+    "spectrogram",
+    "power_spectrum",
+    "cwt",
 ]

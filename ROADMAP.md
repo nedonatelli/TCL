@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.12.0)
+## Current State (v0.13.0)
 
-- **680+ functions** implemented across 124 Python files
-- **1036 tests** with comprehensive coverage
+- **720+ functions** implemented across 130 Python files
+- **1100+ tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -16,6 +16,8 @@
 - **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 - **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 - **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
+- **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
+- **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -240,17 +242,27 @@
 
 ---
 
-## Phase 7: Signal Processing & Transforms
+## Completed in v0.13.0
 
-### 7.1 Signal Processing
-- [ ] Digital filter design
-- [ ] Matched filtering
-- [ ] Detection algorithms (CFAR)
+### Phase 7.1: Signal Processing
+- [x] Digital filter design - `butter_design`, `cheby1_design`, `cheby2_design`, `ellip_design`, `bessel_design`
+- [x] FIR filter design - `fir_design`, `fir_design_remez`
+- [x] Filter application - `apply_filter`, `filtfilt`, `frequency_response`, `group_delay`
+- [x] Matched filtering - `matched_filter`, `matched_filter_frequency`, `optimal_filter`
+- [x] Pulse compression - `pulse_compression`, `generate_lfm_chirp`, `generate_nlfm_chirp`, `ambiguity_function`
+- [x] CFAR detection - `cfar_ca`, `cfar_go`, `cfar_so`, `cfar_os`, `cfar_2d`
+- [x] Detection utilities - `threshold_factor`, `detection_probability`, `cluster_detections`, `snr_loss`
+- **Files**: `pytcl/mathematical_functions/signal_processing/filters.py`, `matched_filter.py`, `detection.py`
 
-### 7.2 Transforms
-- [ ] Discrete Fourier transform utilities
-- [ ] Short-time Fourier transform
-- [ ] Wavelet transforms
+### Phase 7.2: Transforms
+- [x] Fourier transforms - `fft`, `ifft`, `rfft`, `irfft`, `fft2`, `ifft2`, `fftshift`, `ifftshift`
+- [x] Frequency analysis - `frequency_axis`, `rfft_frequency_axis`, `power_spectrum`, `periodogram`
+- [x] Cross-spectral analysis - `cross_spectrum`, `coherence`, `magnitude_spectrum`, `phase_spectrum`
+- [x] Short-time Fourier transform - `stft`, `istft`, `spectrogram`, `mel_spectrogram`
+- [x] Window functions - `get_window`, `window_bandwidth`
+- [x] Wavelet transforms - `cwt`, `dwt`, `idwt`, `dwt_single_level`
+- [x] Wavelet functions - `morlet_wavelet`, `ricker_wavelet`, `gaussian_wavelet`, `scales_to_frequencies`
+- **Files**: `pytcl/mathematical_functions/transforms/fourier.py`, `stft.py`, `wavelets.py`
 
 ---
 
@@ -293,7 +305,8 @@
 | **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
 | **P5** | INS/Navigation | Strapdown INS, coning/sculling, alignment | ✅ Complete |
 | **P5.5** | INS/GNSS Integration | Loosely/tightly-coupled, DOP, fault detection | ✅ Complete |
-| **P6** | Infrastructure | Performance, docs, tests | In progress |
+| **P6** | Signal Processing & Transforms | Filters, matched filter, CFAR, FFT, STFT, wavelets | ✅ Complete |
+| **P7** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
 
@@ -316,6 +329,7 @@
 | **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
 | **v0.11.0** | INS mechanization and navigation | Released 2025-12-30 |
 | **v0.12.0** | INS/GNSS integration (loosely/tightly-coupled, DOP, fault detection) | Released 2025-12-31 |
+| **v0.13.0** | Signal processing & transforms (filters, CFAR, FFT, STFT, wavelets) | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
