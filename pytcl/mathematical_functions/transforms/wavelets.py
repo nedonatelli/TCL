@@ -24,7 +24,6 @@ from typing import Callable, List, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy import signal as scipy_signal
 
 # Try to import pywavelets for DWT support
 try:
