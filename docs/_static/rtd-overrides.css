@@ -1,0 +1,512 @@
+/**
+ * pyTCL RTD Theme Overrides
+ * Applies the pyTCL dark theme to Sphinx RTD documentation
+ */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+/* ============================================================================
+   CSS Variables (matching pytcl-theme.css)
+   ============================================================================ */
+
+:root {
+  --pytcl-bg-void: #050709;
+  --pytcl-bg-primary: #0a0e14;
+  --pytcl-bg-secondary: #0d1117;
+  --pytcl-bg-tertiary: #161b22;
+  --pytcl-bg-elevated: #1c2128;
+  --pytcl-bg-surface: #21262d;
+
+  --pytcl-cyan: #00d4ff;
+  --pytcl-cyan-bright: #4de8ff;
+  --pytcl-cyan-dim: #0099bb;
+  --pytcl-green: #00ff88;
+  --pytcl-green-dim: #00cc6a;
+  --pytcl-amber: #ffb800;
+  --pytcl-red: #ff4757;
+
+  --pytcl-text-primary: #e6edf3;
+  --pytcl-text-secondary: #8b949e;
+  --pytcl-text-muted: #484f58;
+
+  --pytcl-border-default: #30363d;
+  --pytcl-border-muted: #21262d;
+
+  --pytcl-font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --pytcl-font-body: 'IBM Plex Sans', -apple-system, sans-serif;
+  --pytcl-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ============================================================================
+   Global Styles
+   ============================================================================ */
+
+body {
+  font-family: var(--pytcl-font-body);
+  background: var(--pytcl-bg-primary);
+  color: var(--pytcl-text-primary);
+}
+
+/* ============================================================================
+   Navigation Sidebar
+   ============================================================================ */
+
+.wy-side-nav-search {
+  background: var(--pytcl-bg-secondary) !important;
+  border-bottom: 1px solid var(--pytcl-border-default);
+}
+
+.wy-side-nav-search > a {
+  color: var(--pytcl-cyan) !important;
+  font-family: var(--pytcl-font-display);
+  font-weight: 600;
+}
+
+.wy-side-nav-search input[type="text"] {
+  background: var(--pytcl-bg-tertiary);
+  border: 1px solid var(--pytcl-border-default);
+  color: var(--pytcl-text-primary);
+  border-radius: 6px;
+}
+
+.wy-side-nav-search input[type="text"]::placeholder {
+  color: var(--pytcl-text-muted);
+}
+
+.wy-nav-side {
+  background: var(--pytcl-bg-secondary) !important;
+}
+
+.wy-menu-vertical {
+  background: transparent;
+}
+
+.wy-menu-vertical a {
+  color: var(--pytcl-text-secondary) !important;
+  font-size: 0.9rem;
+}
+
+.wy-menu-vertical a:hover {
+  background: var(--pytcl-bg-tertiary) !important;
+  color: var(--pytcl-cyan) !important;
+}
+
+.wy-menu-vertical li.current > a {
+  background: var(--pytcl-bg-tertiary) !important;
+  border-left: 3px solid var(--pytcl-cyan);
+  color: var(--pytcl-cyan) !important;
+}
+
+.wy-menu-vertical li.current {
+  background: transparent !important;
+}
+
+.wy-menu-vertical li.toctree-l1.current > a {
+  background: var(--pytcl-bg-tertiary) !important;
+  border-bottom: 1px solid var(--pytcl-border-default);
+}
+
+.wy-menu-vertical li.toctree-l2.current > a,
+.wy-menu-vertical li.toctree-l2.current li.toctree-l3 > a {
+  background: var(--pytcl-bg-elevated) !important;
+}
+
+.wy-menu-vertical li span.toctree-expand {
+  color: var(--pytcl-text-muted);
+}
+
+.wy-menu-vertical li.on a span.toctree-expand,
+.wy-menu-vertical li.current > a span.toctree-expand {
+  color: var(--pytcl-cyan);
+}
+
+.wy-menu-vertical header,
+.wy-menu-vertical p.caption {
+  color: var(--pytcl-text-muted) !important;
+  font-family: var(--pytcl-font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ============================================================================
+   Main Content Area
+   ============================================================================ */
+
+.wy-nav-content-wrap {
+  background: var(--pytcl-bg-primary);
+}
+
+.wy-nav-content {
+  background: var(--pytcl-bg-primary);
+  max-width: 1000px;
+}
+
+.rst-content {
+  color: var(--pytcl-text-primary);
+}
+
+/* ============================================================================
+   Typography
+   ============================================================================ */
+
+.rst-content h1,
+.rst-content h2,
+.rst-content h3,
+.rst-content h4,
+.rst-content h5,
+.rst-content h6 {
+  font-family: var(--pytcl-font-display);
+  color: var(--pytcl-text-primary);
+  border-bottom-color: var(--pytcl-border-default);
+}
+
+.rst-content h1 {
+  font-size: 2.2rem;
+  background: linear-gradient(135deg, var(--pytcl-cyan), var(--pytcl-green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border-bottom: 2px solid var(--pytcl-cyan);
+  padding-bottom: 0.5rem;
+}
+
+.rst-content h2 {
+  font-size: 1.6rem;
+  color: var(--pytcl-cyan);
+  border-bottom: 1px solid var(--pytcl-border-default);
+}
+
+.rst-content h3 {
+  font-size: 1.3rem;
+}
+
+.rst-content a {
+  color: var(--pytcl-cyan);
+}
+
+.rst-content a:hover {
+  color: var(--pytcl-cyan-bright);
+}
+
+.rst-content a:visited {
+  color: var(--pytcl-cyan-dim);
+}
+
+/* ============================================================================
+   Code Blocks
+   ============================================================================ */
+
+.rst-content code,
+.rst-content tt {
+  font-family: var(--pytcl-font-mono);
+  background: var(--pytcl-bg-tertiary);
+  border: 1px solid var(--pytcl-border-default);
+  color: var(--pytcl-green);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.rst-content pre {
+  background: var(--pytcl-bg-secondary) !important;
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.rst-content div[class^="highlight"] {
+  background: var(--pytcl-bg-secondary) !important;
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+}
+
+.rst-content div[class^="highlight"] pre {
+  background: transparent !important;
+  border: none;
+  color: var(--pytcl-text-primary);
+  font-family: var(--pytcl-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* Syntax highlighting */
+.highlight .c1, .highlight .c { color: var(--pytcl-text-muted); } /* Comments */
+.highlight .k, .highlight .kn, .highlight .kd { color: var(--pytcl-amber); } /* Keywords */
+.highlight .n, .highlight .nv { color: var(--pytcl-text-primary); } /* Names */
+.highlight .nf, .highlight .nc { color: var(--pytcl-cyan); } /* Functions/Classes */
+.highlight .s, .highlight .s1, .highlight .s2 { color: var(--pytcl-green); } /* Strings */
+.highlight .mi, .highlight .mf, .highlight .m { color: var(--pytcl-red); } /* Numbers */
+.highlight .o, .highlight .p { color: var(--pytcl-text-secondary); } /* Operators */
+.highlight .nb, .highlight .bp { color: var(--pytcl-cyan-dim); } /* Builtins */
+.highlight .nn { color: var(--pytcl-cyan); } /* Module names */
+
+/* ============================================================================
+   Admonitions (Notes, Warnings, etc.)
+   ============================================================================ */
+
+.rst-content .admonition {
+  background: var(--pytcl-bg-tertiary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.rst-content .admonition-title {
+  font-family: var(--pytcl-font-display);
+  font-weight: 600;
+  background: transparent !important;
+  margin: -1rem -1rem 0.5rem -1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--pytcl-border-default);
+  border-radius: 7px 7px 0 0;
+}
+
+.rst-content .note {
+  border-left: 4px solid var(--pytcl-cyan);
+}
+
+.rst-content .note .admonition-title {
+  color: var(--pytcl-cyan);
+  background: rgba(0, 212, 255, 0.1) !important;
+}
+
+.rst-content .warning {
+  border-left: 4px solid var(--pytcl-amber);
+}
+
+.rst-content .warning .admonition-title {
+  color: var(--pytcl-amber);
+  background: rgba(255, 184, 0, 0.1) !important;
+}
+
+.rst-content .danger,
+.rst-content .error {
+  border-left: 4px solid var(--pytcl-red);
+}
+
+.rst-content .danger .admonition-title,
+.rst-content .error .admonition-title {
+  color: var(--pytcl-red);
+  background: rgba(255, 71, 87, 0.1) !important;
+}
+
+.rst-content .tip,
+.rst-content .hint {
+  border-left: 4px solid var(--pytcl-green);
+}
+
+.rst-content .tip .admonition-title,
+.rst-content .hint .admonition-title {
+  color: var(--pytcl-green);
+  background: rgba(0, 255, 136, 0.1) !important;
+}
+
+/* ============================================================================
+   Tables
+   ============================================================================ */
+
+.rst-content table.docutils {
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rst-content table.docutils thead {
+  background: var(--pytcl-bg-tertiary);
+}
+
+.rst-content table.docutils th {
+  background: var(--pytcl-bg-tertiary);
+  color: var(--pytcl-text-primary);
+  font-family: var(--pytcl-font-display);
+  border-color: var(--pytcl-border-default);
+}
+
+.rst-content table.docutils td {
+  background: var(--pytcl-bg-secondary);
+  color: var(--pytcl-text-primary);
+  border-color: var(--pytcl-border-default);
+}
+
+.rst-content table.docutils tr:nth-child(even) td {
+  background: var(--pytcl-bg-tertiary);
+}
+
+/* ============================================================================
+   API Documentation
+   ============================================================================ */
+
+.rst-content dl.py {
+  background: var(--pytcl-bg-secondary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.rst-content dl.py dt {
+  background: var(--pytcl-bg-tertiary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-family: var(--pytcl-font-mono);
+  font-size: 0.9rem;
+}
+
+.rst-content dl.py dt .sig-name {
+  color: var(--pytcl-cyan);
+  font-weight: 600;
+}
+
+.rst-content dl.py dt .sig-param {
+  color: var(--pytcl-text-secondary);
+}
+
+.rst-content dl.py dt .sig-paren {
+  color: var(--pytcl-text-muted);
+}
+
+.rst-content dl.py dd {
+  padding: 1rem 0 0.5rem 1rem;
+  border-left: 2px solid var(--pytcl-border-default);
+  margin-left: 1rem;
+}
+
+.rst-content .field-list dt {
+  color: var(--pytcl-amber);
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Breadcrumbs
+   ============================================================================ */
+
+.wy-breadcrumbs {
+  background: var(--pytcl-bg-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.wy-breadcrumbs li {
+  color: var(--pytcl-text-muted);
+}
+
+.wy-breadcrumbs a {
+  color: var(--pytcl-text-secondary);
+}
+
+.wy-breadcrumbs a:hover {
+  color: var(--pytcl-cyan);
+}
+
+/* ============================================================================
+   Footer
+   ============================================================================ */
+
+footer {
+  color: var(--pytcl-text-muted);
+  border-top: 1px solid var(--pytcl-border-default);
+}
+
+footer a {
+  color: var(--pytcl-text-secondary);
+}
+
+footer a:hover {
+  color: var(--pytcl-cyan);
+}
+
+/* ============================================================================
+   Scrollbar
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--pytcl-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pytcl-border-emphasis, #484f58);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pytcl-text-muted);
+}
+
+/* ============================================================================
+   Mobile Responsive
+   ============================================================================ */
+
+@media screen and (max-width: 768px) {
+  .wy-nav-top {
+    background: var(--pytcl-bg-secondary);
+  }
+
+  .wy-nav-top a {
+    color: var(--pytcl-cyan);
+  }
+
+  .wy-nav-top i {
+    color: var(--pytcl-text-primary);
+  }
+}
+
+/* ============================================================================
+   Version Badge
+   ============================================================================ */
+
+.rst-versions {
+  background: var(--pytcl-bg-tertiary) !important;
+  border-top: 1px solid var(--pytcl-border-default);
+}
+
+.rst-versions a {
+  color: var(--pytcl-text-secondary) !important;
+}
+
+.rst-versions .rst-current-version {
+  background: var(--pytcl-bg-elevated) !important;
+  color: var(--pytcl-cyan) !important;
+}
+
+/* ============================================================================
+   Search Results
+   ============================================================================ */
+
+.wy-body-for-nav .search-results {
+  background: var(--pytcl-bg-primary);
+}
+
+.wy-body-for-nav .search-results li {
+  background: var(--pytcl-bg-secondary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.wy-body-for-nav .search-results li a {
+  color: var(--pytcl-cyan);
+  font-family: var(--pytcl-font-display);
+  font-weight: 600;
+}
+
+.wy-body-for-nav .search-results .context {
+  color: var(--pytcl-text-secondary);
+}
+
+/* ============================================================================
+   MathJax
+   ============================================================================ */
+
+.MathJax {
+  color: var(--pytcl-text-primary) !important;
+}

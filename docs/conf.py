@@ -38,6 +38,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
+# Custom CSS to override RTD theme with pyTCL dark theme
+html_css_files = [
+    "rtd-overrides.css",
+]
+
 
 # -- Custom landing page setup -----------------------------------------------
 def setup(app):
