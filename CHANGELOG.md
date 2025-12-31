@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2025-12-30
+
+### Added
+- **Terrain Models** (`pytcl.terrain`):
+  - **DEM Interface** (`dem.py`):
+    - `DEMPoint`, `TerrainGradient`, `DEMMetadata` - Named tuples for DEM data
+    - `DEMGrid` - In-memory DEM grid with bilinear/nearest interpolation
+    - `get_elevation_profile` - Extract elevation profile along a path
+    - `interpolate_dem` - Resample DEM to new grid
+    - `merge_dems` - Merge multiple DEMs into single grid
+    - `create_flat_dem` - Create constant-elevation test DEM
+    - `create_synthetic_terrain` - Generate realistic test terrain
+  - **Visibility Analysis** (`visibility.py`):
+    - `LOSResult`, `ViewshedResult`, `HorizonPoint` - Named tuples for visibility results
+    - `line_of_sight` - Line-of-sight analysis with Earth curvature and refraction
+    - `viewshed` - Compute visible area from observer location
+    - `compute_horizon` - Compute terrain horizon profile
+    - `terrain_masking_angle` - Masking angle in specific direction
+    - `radar_coverage_map` - Radar coverage with minimum elevation constraint
+
+### Changed
+- **Complete WMM2020 coefficients** (`pytcl.magnetism.wmm`):
+  - Extended main field coefficients from degrees 1-5 to degrees 1-12
+  - Extended secular variation coefficients from degrees 1-3 to degrees 1-8
+- **Complete IGRF-13 coefficients** (`pytcl.magnetism.igrf`):
+  - Extended main field coefficients from degrees 1-6 to degrees 1-13
+  - Extended secular variation coefficients from degrees 1-3 to degrees 1-8
+- Test count increased from 702 to 737
+- Source file count increased from 112 to 114
+
+## [0.7.0] - 2025-12-30
+
+### Added
+- **Complete Astronomical Code** (`pytcl.astronomical`):
+  - **Orbital Mechanics** (`orbital_mechanics.py`):
+    - `OrbitalElements`, `StateVector` - Named tuples for orbital state representation
+    - `GM_SUN`, `GM_EARTH`, `GM_MOON`, `GM_MARS`, `GM_JUPITER` - Standard gravitational parameters
+    - `mean_to_eccentric_anomaly` - Kepler's equation solver (Newton-Raphson)
+    - `mean_to_hyperbolic_anomaly` - Hyperbolic Kepler's equation solver
+    - `eccentric_to_true_anomaly`, `true_to_eccentric_anomaly` - Anomaly conversions
+    - `hyperbolic_to_true_anomaly`, `true_to_hyperbolic_anomaly` - Hyperbolic anomaly conversions
+    - `eccentric_to_mean_anomaly`, `mean_to_true_anomaly`, `true_to_mean_anomaly` - Full anomaly chain
+    - `orbital_elements_to_state`, `state_to_orbital_elements` - Element/state conversions
+    - `kepler_propagate`, `kepler_propagate_state` - Two-body orbit propagation
+    - `orbital_period`, `mean_motion`, `vis_viva` - Orbital quantity calculations
+    - `specific_angular_momentum`, `specific_orbital_energy` - Conservation quantities
+    - `flight_path_angle`, `periapsis_radius`, `apoapsis_radius` - Geometric quantities
+    - `time_since_periapsis`, `orbit_radius` - Position along orbit
+    - `escape_velocity`, `circular_velocity` - Characteristic velocities
+  - **Lambert Problem Solvers** (`lambert.py`):
+    - `LambertSolution` - Named tuple for Lambert solution (v1, v2, a, e, tof, converged)
+    - `lambert_universal` - Universal variables method for Lambert's problem
+    - `lambert_izzo` - Izzo's algorithm for Lambert's problem (multi-revolution)
+    - `minimum_energy_transfer` - Compute minimum energy transfer parameters
+    - `hohmann_transfer` - Hohmann transfer (delta-v1, delta-v2, time of flight)
+    - `bi_elliptic_transfer` - Bi-elliptic transfer (3 burns)
+  - **Reference Frame Transformations** (`reference_frames.py`):
+    - `julian_centuries_j2000` - Julian centuries since J2000.0
+    - `precession_angles_iau76`, `precession_matrix_iau76` - IAU 1976 precession model
+    - `nutation_angles_iau80`, `nutation_matrix` - IAU 1980 nutation model
+    - `mean_obliquity_iau80`, `true_obliquity` - Obliquity of the ecliptic
+    - `earth_rotation_angle` - Earth Rotation Angle (ERA)
+    - `gmst_iau82`, `gast_iau82` - Greenwich sidereal time
+    - `sidereal_rotation_matrix`, `equation_of_equinoxes` - Earth rotation
+    - `polar_motion_matrix` - Polar motion transformation
+    - `gcrf_to_itrf`, `itrf_to_gcrf` - Full GCRF/ITRF transformations
+    - `eci_to_ecef`, `ecef_to_eci` - Simplified ECI/ECEF transformations
+    - `ecliptic_to_equatorial`, `equatorial_to_ecliptic` - Ecliptic plane transformations
+- 37 new tests for astronomical code
+
+### Changed
+- Test count increased from 665 to 702
+- Source file count increased from 109 to 112
+
 ## [0.6.0] - 2025-12-30
 
 ### Added

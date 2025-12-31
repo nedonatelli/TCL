@@ -1,15 +1,16 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.6.0)
+## Current State (v0.7.0)
 
-- **500+ functions** implemented across 109 Python files
-- **665 tests** with comprehensive coverage
+- **550+ functions** implemented across 112 Python files
+- **702 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
 - **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13)
+- **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -136,19 +137,28 @@
 
 ---
 
-## Phase 6: Advanced Astronomical & Navigation
+## Completed in v0.7.0
 
-### 6.1 Celestial Mechanics
-- [ ] Two-body orbit propagation
-- [ ] Kepler's equation solvers
-- [ ] Orbital element conversions
-- [ ] Lambert problem solver
+### Phase 6.1: Celestial Mechanics
+- [x] Two-body orbit propagation - `kepler_propagate`, `kepler_propagate_state`
+- [x] Kepler's equation solvers - `mean_to_eccentric_anomaly`, `mean_to_hyperbolic_anomaly`
+- [x] Orbital element conversions - `orbital_elements_to_state`, `state_to_orbital_elements`
+- [x] Lambert problem solver - `lambert_universal`, `lambert_izzo`
+- [x] Hohmann and bi-elliptic transfers - `hohmann_transfer`, `bi_elliptic_transfer`
+- **Files**: `pytcl/astronomical/orbital_mechanics.py`, `pytcl/astronomical/lambert.py`
 
-### 6.2 Reference Frame Transformations
-- [ ] GCRF/ITRF conversions
-- [ ] Precession/nutation models
-- [ ] Earth orientation parameters (EOP)
-- [ ] Polar motion corrections
+### Phase 6.2: Reference Frame Transformations
+- [x] GCRF/ITRF conversions - `gcrf_to_itrf`, `itrf_to_gcrf`
+- [x] Precession models (IAU 1976) - `precession_matrix_iau76`, `precession_angles_iau76`
+- [x] Nutation models (IAU 1980) - `nutation_matrix`, `nutation_angles_iau80`
+- [x] Earth rotation - `gmst_iau82`, `gast_iau82`, `earth_rotation_angle`
+- [x] Polar motion corrections - `polar_motion_matrix`
+- [x] Ecliptic/equatorial transformations - `ecliptic_to_equatorial`, `equatorial_to_ecliptic`
+- **Files**: `pytcl/astronomical/reference_frames.py`
+
+---
+
+## Phase 6 (Remaining): Advanced Navigation
 
 ### 6.3 INS Mechanization
 - [ ] Complete strapdown INS
@@ -205,8 +215,9 @@
 | **P2.5** | Spatial Data Structures | K-D tree, Ball tree, R-tree, VP-tree, Cover tree | ✅ Complete |
 | **P3** | Geophysical Models | Gravity (WGS84, J2), Magnetism (WMM, IGRF) | ✅ Complete |
 | **P3.5** | Advanced Geophysical | EGM96/2008, EMM, Terrain | Pending |
-| **P4** | Astronomical | Orbit propagation, reference frames | Pending |
-| **P5** | Infrastructure | Performance, docs, tests | In progress |
+| **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
+| **P5** | INS/Navigation | Strapdown INS, coning/sculling, INS/GNSS | Pending |
+| **P6** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
 
@@ -222,7 +233,8 @@
 | **v0.5.0** | Static estimation, K-D/Ball trees | Released 2025-12-30 |
 | **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models (WGS84, WMM, IGRF) | Released 2025-12-30 |
-| **v0.7.0** | Complete astronomical code | Planned |
+| **v0.7.0** | Complete astronomical code (orbit propagation, Lambert, reference frames) | Released 2025-12-30 |
+| **v0.8.0** | INS mechanization and navigation | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
