@@ -9,10 +9,10 @@ Demonstrate power spectrum and spectrogram computation.
 import numpy as np
 
 from pytcl.mathematical_functions.transforms import (
+    istft,
     power_spectrum,
     spectrogram,
     stft,
-    istft,
 )
 
 

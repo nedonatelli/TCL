@@ -8,8 +8,8 @@ Track multiple crossing targets with the GNN-based multi-target tracker.
 
 import numpy as np
 
+from pytcl.performance_evaluation import ospa
 from pytcl.trackers import MultiTargetTracker
-from pytcl.performance_evaluation import ospa_distance
 
 
 def main():
@@ -30,13 +30,14 @@ def main():
     tracker = MultiTargetTracker(
         state_dim=4,
         meas_dim=2,
-        gate_threshold=9.21,
-        min_hits=3,
+        F=F,
+        H=H,
+        Q=Q,
+        R=R,
+        gate_probability=0.99,
+        confirm_hits=3,
         max_misses=5,
-        filter_type="kf",
     )
-    tracker.set_dynamics(F, Q)
-    tracker.set_measurement_model(H, R)
 
     # Three crossing targets
     targets = [
@@ -53,7 +54,7 @@ def main():
 
     print("Multi-Target Tracking Simulation")
     print("=" * 50)
-    print(f"Targets: 3 crossing targets")
+    print("Targets: 3 crossing targets")
     print(f"Detection probability: {detection_prob}")
     print(f"Clutter rate: {clutter_rate}")
     print()
@@ -65,7 +66,7 @@ def main():
 
         for i, x in enumerate(targets):
             targets[i] = F @ x
-            truth_positions.append([targets[i][0], targets[i][2]])
+            truth_positions.append(np.array([targets[i][0], targets[i][2]]))
 
             # Detect with probability
             if np.random.rand() < detection_prob:
@@ -78,21 +79,20 @@ def main():
             measurements.append(np.random.rand(2) * 100)
 
         # Update tracker
-        if measurements:
-            tracks = tracker.update(np.array(measurements))
-        else:
-            tracks = tracker.update(np.empty((0, 2)))
+        tracks = tracker.process(measurements, dt)
 
-        n_confirmed.append(len(tracks))
+        # Count confirmed tracks
+        confirmed = [tr for tr in tracks if tr.status.value == "confirmed"]
+        n_confirmed.append(len(confirmed))
 
         # Compute OSPA
-        if tracks:
-            estimates = np.array([[tr.state[0], tr.state[2]] for tr in tracks])
+        if confirmed:
+            estimates = [np.array([tr.state[0], tr.state[2]]) for tr in confirmed]
         else:
-            estimates = np.empty((0, 2))
+            estimates = []
 
-        ospa = ospa_distance(np.array(truth_positions), estimates, p=2, c=50.0)
-        ospa_values.append(ospa.distance)
+        result = ospa(truth_positions, estimates, c=50.0, p=2)
+        ospa_values.append(result.ospa)
 
     # Summary
     print("Results")

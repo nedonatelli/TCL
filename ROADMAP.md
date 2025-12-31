@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.14.2)
+## Current State (v0.14.3)
 
 - **720+ functions** implemented across 130 Python files
 - **1,255 tests** with comprehensive coverage
@@ -342,6 +342,7 @@
 | **v0.14.0** | Documentation overhaul: tutorials, examples, landing page, dark theme | Released 2025-12-31 |
 | **v0.14.1** | Test coverage boost, release process documentation | Released 2025-12-31 |
 | **v0.14.2** | Add isort to release quality checks | Released 2025-12-31 |
+| **v0.14.3** | Fix example scripts (API compatibility, type errors, linting) | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---

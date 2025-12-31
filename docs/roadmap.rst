@@ -3,7 +3,7 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.14.2)
+Current State (v0.14.3)
 -----------------------
 
 * **720+ functions** implemented across 130 Python files
@@ -229,6 +229,9 @@ Version Targets
      - Released
    * - **v0.14.2**
      - Add isort to release quality checks
+     - Released
+   * - **v0.14.3**
+     - Fix example scripts (API compatibility, type errors, linting)
      - Released
    * - **v1.0.0**
      - Full feature parity, 80%+ test coverage
