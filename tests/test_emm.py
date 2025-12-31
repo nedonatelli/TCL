@@ -12,7 +12,6 @@ from pytcl.magnetism import (
     emm_intensity,
     create_emm_test_coefficients,
     get_emm_data_dir,
-    HighResCoefficients,
     EMM_PARAMETERS,
     wmm,
 )
@@ -90,12 +89,14 @@ class TestDataDirectory:
     def test_get_data_dir_returns_path(self):
         """get_emm_data_dir should return a Path object."""
         from pathlib import Path
+
         data_dir = get_emm_data_dir()
         assert isinstance(data_dir, Path)
 
     def test_data_dir_is_in_home(self):
         """Default data dir should be under home directory."""
         from pathlib import Path
+
         data_dir = get_emm_data_dir()
         home = Path.home()
         # Check that data_dir is under home
@@ -113,8 +114,11 @@ class TestEMMFunction:
     def test_emm_returns_magnetic_result(self, test_coefficients):
         """EMM returns MagneticResult with all expected fields."""
         result = emm(
-            np.radians(40), np.radians(-105), 1.0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40),
+            np.radians(-105),
+            1.0,
+            2020.0,
+            coefficients=test_coefficients,
         )
         assert hasattr(result, "X")
         assert hasattr(result, "Y")
@@ -127,8 +131,7 @@ class TestEMMFunction:
     def test_total_intensity_reasonable(self, test_coefficients):
         """Total field intensity should be in expected range."""
         result = emm(
-            np.radians(45), np.radians(0), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients
         )
         # Field intensity typically 25,000-65,000 nT at mid-latitudes
         # but can exceed this at high latitudes, allow up to 100,000 nT
@@ -137,8 +140,7 @@ class TestEMMFunction:
     def test_horizontal_intensity_formula(self, test_coefficients):
         """H = sqrt(X^2 + Y^2)."""
         result = emm(
-            np.radians(40), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         H_calc = np.sqrt(result.X**2 + result.Y**2)
         assert_allclose(result.H, H_calc, rtol=1e-10)
@@ -146,8 +148,7 @@ class TestEMMFunction:
     def test_total_intensity_formula(self, test_coefficients):
         """F = sqrt(H^2 + Z^2)."""
         result = emm(
-            np.radians(40), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         F_calc = np.sqrt(result.H**2 + result.Z**2)
         assert_allclose(result.F, F_calc, rtol=1e-10)
@@ -155,16 +156,14 @@ class TestEMMFunction:
     def test_declination_range(self, test_coefficients):
         """Declination should be within -180 to 180 degrees."""
         result = emm(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         assert -np.pi <= result.D <= np.pi
 
     def test_inclination_range(self, test_coefficients):
         """Inclination should be within -90 to 90 degrees."""
         result = emm(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         assert -np.pi / 2 <= result.I <= np.pi / 2
 
@@ -179,18 +178,12 @@ class TestEMMPhysicalProperties:
 
     def test_inclination_positive_north(self, test_coefficients):
         """Inclination is positive in northern hemisphere."""
-        result = emm(
-            np.radians(60), 0, 0, 2020.0,
-            coefficients=test_coefficients
-        )
+        result = emm(np.radians(60), 0, 0, 2020.0, coefficients=test_coefficients)
         assert result.I > 0  # Field points into Earth
 
     def test_inclination_negative_south(self, test_coefficients):
         """Inclination is negative in southern hemisphere."""
-        result = emm(
-            np.radians(-60), 0, 0, 2020.0,
-            coefficients=test_coefficients
-        )
+        result = emm(np.radians(-60), 0, 0, 2020.0, coefficients=test_coefficients)
         assert result.I < 0  # Field points out of Earth
 
     def test_field_stronger_at_poles(self, test_coefficients):
@@ -237,8 +230,7 @@ class TestWMMHR:
     def test_wmmhr_returns_result(self, test_coefficients):
         """WMMHR returns MagneticResult."""
         result = wmmhr(
-            np.radians(45), np.radians(-75), 0, 2025.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2025.0, coefficients=test_coefficients
         )
         assert hasattr(result, "F")
         assert hasattr(result, "D")
@@ -247,12 +239,20 @@ class TestWMMHR:
     def test_wmmhr_uses_model_coefficients(self, test_coefficients):
         """WMMHR should use the provided coefficients."""
         result1 = wmmhr(
-            np.radians(45), np.radians(-75), 0, 2025.0,
-            coefficients=test_coefficients, n_max=36
+            np.radians(45),
+            np.radians(-75),
+            0,
+            2025.0,
+            coefficients=test_coefficients,
+            n_max=36,
         )
         result2 = wmmhr(
-            np.radians(45), np.radians(-75), 0, 2025.0,
-            coefficients=test_coefficients, n_max=50
+            np.radians(45),
+            np.radians(-75),
+            0,
+            2025.0,
+            coefficients=test_coefficients,
+            n_max=50,
         )
         # Different n_max should give slightly different results
         # (due to higher degree contributions in result2)
@@ -272,60 +272,51 @@ class TestConvenienceFunctions:
     def test_emm_declination(self, test_coefficients):
         """emm_declination returns correct value."""
         result = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         D = emm_declination(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         assert_allclose(D, result.D)
 
     def test_emm_inclination(self, test_coefficients):
         """emm_inclination returns correct value."""
         result = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         incl = emm_inclination(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         assert_allclose(incl, result.I)
 
     def test_emm_intensity(self, test_coefficients):
         """emm_intensity returns correct value."""
         result = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         F = emm_intensity(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
         assert_allclose(F, result.F)
 
     def test_declination_is_scalar(self, test_coefficients):
         """Declination function returns scalar."""
         D = emm_declination(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         assert isinstance(D, float)
 
     def test_inclination_is_scalar(self, test_coefficients):
         """Inclination function returns scalar."""
         incl = emm_inclination(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         assert isinstance(incl, float)
 
     def test_intensity_is_scalar(self, test_coefficients):
         """Intensity function returns scalar."""
         F = emm_intensity(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         assert isinstance(F, float)
 
@@ -341,12 +332,10 @@ class TestSecularVariation:
     def test_field_changes_with_time(self, test_coefficients):
         """Field should change slightly between years."""
         result_2020 = emm(
-            np.radians(45), np.radians(0), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients
         )
         result_2022 = emm(
-            np.radians(45), np.radians(0), 0, 2022.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(0), 0, 2022.0, coefficients=test_coefficients
         )
         # Small but non-zero change expected
         # Secular variation is ~50-100 nT/year at mid-latitudes
@@ -355,12 +344,10 @@ class TestSecularVariation:
     def test_declination_changes_with_time(self, test_coefficients):
         """Declination should change over time."""
         D_2020 = emm_declination(
-            np.radians(45), np.radians(-75), 0, 2020.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
         D_2025 = emm_declination(
-            np.radians(45), np.radians(-75), 0, 2025.0,
-            coefficients=test_coefficients
+            np.radians(45), np.radians(-75), 0, 2025.0, coefficients=test_coefficients
         )
         # Should be different
         assert D_2020 != D_2025
@@ -383,26 +370,23 @@ class TestNumericalStability:
 
     def test_north_pole(self, test_coefficients):
         """Field computation near north pole should not produce NaN."""
-        result = emm(
-            np.radians(89.9), 0, 0, 2020.0,
-            coefficients=test_coefficients
-        )
+        result = emm(np.radians(89.9), 0, 0, 2020.0, coefficients=test_coefficients)
         assert not np.isnan(result.F)
         # Declination may be undefined at pole, but should not crash
 
     def test_south_pole(self, test_coefficients):
         """Field computation near south pole should not produce NaN."""
-        result = emm(
-            np.radians(-89.9), 0, 0, 2020.0,
-            coefficients=test_coefficients
-        )
+        result = emm(np.radians(-89.9), 0, 0, 2020.0, coefficients=test_coefficients)
         assert not np.isnan(result.F)
 
     def test_high_altitude(self, test_coefficients):
         """Field computation at high altitude should work."""
         result = emm(
-            np.radians(45), np.radians(0), 500, 2020.0,  # 500 km altitude
-            coefficients=test_coefficients
+            np.radians(45),
+            np.radians(0),
+            500,
+            2020.0,  # 500 km altitude
+            coefficients=test_coefficients,
         )
         assert not np.isnan(result.F)
         assert result.F > 0
@@ -411,8 +395,11 @@ class TestNumericalStability:
         """Test field at various longitudes."""
         for lon_deg in [0, 45, 90, 135, 180, -135, -90, -45]:
             result = emm(
-                np.radians(45), np.radians(lon_deg), 0, 2020.0,
-                coefficients=test_coefficients
+                np.radians(45),
+                np.radians(lon_deg),
+                0,
+                2020.0,
+                coefficients=test_coefficients,
             )
             assert not np.isnan(result.F)
             assert result.F > 0
@@ -425,8 +412,7 @@ class TestHighDegreeEvaluation:
         """Test with higher degree coefficients (n_max=50)."""
         coef = create_emm_test_coefficients(n_max=50)
         result = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=coef, n_max=50
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50
         )
         assert not np.isnan(result.F)
         assert result.F > 0
@@ -437,12 +423,10 @@ class TestHighDegreeEvaluation:
 
         # Evaluate at different n_max values
         result_12 = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=coef, n_max=12
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=12
         )
         result_50 = emm(
-            np.radians(40), np.radians(-105), 0, 2020.0,
-            coefficients=coef, n_max=50
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50
         )
 
         # Both should be valid

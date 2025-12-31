@@ -18,7 +18,7 @@ References
        https://ddfe.curtin.edu.au/models/Earth2014/
 """
 
-from typing import NamedTuple, Optional, Dict, Tuple, Literal
+from typing import NamedTuple, Optional, Dict, Tuple
 from pathlib import Path
 from functools import lru_cache
 import os
@@ -29,6 +29,8 @@ from .dem import DEMGrid
 
 
 # Model parameters
+_GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"
+
 GEBCO_PARAMETERS: Dict[str, Dict] = {
     "GEBCO2024": {
         "resolution_arcsec": 15.0,
@@ -36,7 +38,7 @@ GEBCO_PARAMETERS: Dict[str, Dict] = {
         "n_lon": 86400,
         "format": "NetCDF",
         "file_size_mb": 7500,
-        "url": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2024-grid",
+        "url": f"{_GEBCO_BASE_URL}/gebco2024-grid",
     },
     "GEBCO2023": {
         "resolution_arcsec": 15.0,
@@ -44,7 +46,7 @@ GEBCO_PARAMETERS: Dict[str, Dict] = {
         "n_lon": 86400,
         "format": "NetCDF",
         "file_size_mb": 7500,
-        "url": "https://www.gebco.net/data-products/gridded-bathymetry-data/gebco2023-grid",
+        "url": f"{_GEBCO_BASE_URL}/gebco2023-grid",
     },
     "GEBCO2022": {
         "resolution_arcsec": 15.0,
@@ -52,13 +54,13 @@ GEBCO_PARAMETERS: Dict[str, Dict] = {
         "n_lon": 86400,
         "format": "NetCDF",
         "file_size_mb": 7500,
-        "url": "https://www.gebco.net/data-products/gridded-bathymetry-data/",
+        "url": f"{_GEBCO_BASE_URL}/",
     },
 }
 
 EARTH2014_PARAMETERS: Dict[str, Dict] = {
     "SUR": {
-        "description": "Physical surface (topography, ice sheet surface, 0 over oceans)",
+        "description": "Physical surface (topography, ice surface, 0 over oceans)",
         "file_pattern": "Earth2014.SUR2014.1min.geod.bin",
     },
     "BED": {
@@ -66,11 +68,11 @@ EARTH2014_PARAMETERS: Dict[str, Dict] = {
         "file_pattern": "Earth2014.BED2014.1min.geod.bin",
     },
     "TBI": {
-        "description": "Topography, bedrock, ice (topo over land, bedrock over ocean, ice surface)",
+        "description": "Topography, bedrock, ice (land/ocean/ice surface)",
         "file_pattern": "Earth2014.TBI2014.1min.geod.bin",
     },
     "RET": {
-        "description": "Rock-equivalent topography (uniform 2670 kg/m³ density)",
+        "description": "Rock-equivalent topography (2670 kg/m3 density)",
         "file_pattern": "Earth2014.RET2014.1min.geod.bin",
     },
     "ICE": {
@@ -207,9 +209,10 @@ def _find_gebco_file(version: str = "GEBCO2024") -> Path:
         if matches:
             return matches[0]
 
+    url = GEBCO_PARAMETERS.get(version, {}).get("url", "https://www.gebco.net/")
     raise FileNotFoundError(
         f"GEBCO file not found for {version}\n"
-        f"Please download from: {GEBCO_PARAMETERS.get(version, {}).get('url', 'https://www.gebco.net/')}\n"
+        f"Please download from: {url}\n"
         f"Save as: {data_dir}/{version}.nc\n"
         f"Or use create_test_gebco_dem() for testing."
     )
@@ -452,7 +455,9 @@ def parse_earth2014_binary(
             f.seek(row_offset + col_offset)
 
             # Read row segment
-            row_data = np.frombuffer(f.read(n_cols * 2), dtype=">i2")  # big-endian int16
+            row_data = np.frombuffer(
+                f.read(n_cols * 2), dtype=">i2"
+            )  # big-endian int16
             data[i, :] = row_data.astype(np.float64)
 
     # Compute actual bounds

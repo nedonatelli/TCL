@@ -14,7 +14,8 @@ References
        Anomaly Grid compiled from satellite, airborne, and marine
        magnetic measurements." Geochemistry, Geophysics, Geosystems 10.8 (2009).
 .. [2] NOAA National Centers for Environmental Information,
-       "Enhanced Magnetic Model (EMM)." https://www.ncei.noaa.gov/products/enhanced-magnetic-model
+       "Enhanced Magnetic Model (EMM)."
+       https://www.ncei.noaa.gov/products/enhanced-magnetic-model
 .. [3] NOAA National Centers for Environmental Information,
        "World Magnetic Model High Resolution (WMMHR)."
        https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
@@ -27,7 +28,7 @@ import os
 import numpy as np
 from numpy.typing import NDArray
 
-from .wmm import MagneticResult, MagneticCoefficients, magnetic_field_spherical
+from .wmm import MagneticResult
 
 
 # Model parameters
@@ -371,9 +372,7 @@ def _load_coefficients_cached(
     HighResCoefficients
     """
     if model not in EMM_PARAMETERS:
-        raise ValueError(
-            f"Unknown model: {model}. Use 'EMM2017' or 'WMMHR2025'."
-        )
+        raise ValueError(f"Unknown model: {model}. Use 'EMM2017' or 'WMMHR2025'.")
 
     params = EMM_PARAMETERS[model]
 
@@ -386,11 +385,14 @@ def _load_coefficients_cached(
         if filepath.exists():
             break
     else:
+        ncei_base = "https://www.ncei.noaa.gov/products"
+        emm_url = f"{ncei_base}/enhanced-magnetic-model"
+        wmmhr_url = f"{ncei_base}/world-magnetic-model-high-resolution"
         raise FileNotFoundError(
             f"Coefficient file not found for {model}\n"
             f"Please download the {model} coefficients from:\n"
-            f"  https://www.ncei.noaa.gov/products/enhanced-magnetic-model (EMM)\n"
-            f"  https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution (WMMHR)\n"
+            f"  {emm_url} (EMM)\n"
+            f"  {wmmhr_url} (WMMHR)\n"
             f"and save to: {data_dir}/{model}.cof\n"
             f"Or use create_test_coefficients() for testing."
         )
@@ -682,7 +684,10 @@ def wmmhr(
     terms represent static crustal field.
     """
     return emm(
-        lat, lon, h, year,
+        lat,
+        lon,
+        h,
+        year,
         model="WMMHR2025",
         n_max=n_max,
         coefficients=coefficients,
