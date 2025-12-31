@@ -11,6 +11,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.assignment_algorithms.gating import (
+    mahalanobis_batch,
     mahalanobis_distance,
 )
 from pytcl.assignment_algorithms.two_dimensional import (
@@ -103,7 +104,7 @@ def compute_association_cost(
         else:
             H_per_track = H_arr
 
-    # Compute cost matrix
+    # Compute cost matrix using batch Mahalanobis distance for performance
     cost_matrix = np.full((n_tracks, n_meas), np.inf, dtype=np.float64)
 
     for i in range(n_tracks):
@@ -111,9 +112,17 @@ def compute_association_cost(
         z_pred = H @ X[i]
         S = H @ P[i] @ H.T  # Innovation covariance
 
-        for j in range(n_meas):
-            innovation = Z[j] - z_pred
-            cost_matrix[i, j] = mahalanobis_distance(innovation, S)
+        # Compute innovations for all measurements at once
+        innovations = Z - z_pred  # (n_meas, meas_dim)
+
+        # Use batch Mahalanobis distance (JIT-compiled)
+        try:
+            S_inv = np.linalg.inv(S)
+            mahalanobis_batch(innovations, S_inv, cost_matrix[i])
+        except np.linalg.LinAlgError:
+            # Fallback if S is singular
+            for j in range(n_meas):
+                cost_matrix[i, j] = mahalanobis_distance(innovations[j], S)
 
     return cost_matrix
 

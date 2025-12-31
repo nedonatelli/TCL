@@ -79,6 +79,13 @@ from pytcl.mathematical_functions.numerical_integration import (
     unscented_transform_points,
 )
 
+# Signal processing
+from pytcl.mathematical_functions.signal_processing import (
+    butter_design,
+    cfar_ca,
+    matched_filter,
+)
+
 # Special functions
 from pytcl.mathematical_functions.special_functions import (
     besseli,
@@ -105,13 +112,6 @@ from pytcl.mathematical_functions.statistics import (
     nis,
     weighted_cov,
     weighted_mean,
-)
-
-# Signal processing
-from pytcl.mathematical_functions.signal_processing import (
-    butter_design,
-    cfar_ca,
-    matched_filter,
 )
 
 # Transforms

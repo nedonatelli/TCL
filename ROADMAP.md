@@ -269,8 +269,11 @@
 ## Phase 8: Performance & Infrastructure
 
 ### 8.1 Performance Optimization
-- [ ] Expand Numba JIT coverage to critical paths
-- [ ] Profile and optimize bottlenecks
+- [x] Numba JIT for CFAR detection (CA, GO, SO, OS, 2D with parallel execution)
+- [x] Numba JIT for ambiguity function computation (parallel Doppler-delay loop)
+- [x] Numba JIT for batch Mahalanobis distance in data association
+- [x] Numba JIT for rotation matrix utilities (inplace operations)
+- [ ] Profile and optimize additional bottlenecks
 - [ ] Consider Cython for hot spots
 
 ### 8.2 Documentation
@@ -281,7 +284,7 @@
 - [ ] Add tutorials and examples for new features
 
 ### 8.3 Testing
-- [x] 963 tests (up from 916 in v0.9.0)
+- [x] 1105 tests (up from 963 in v0.12.0)
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests

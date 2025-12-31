@@ -8,8 +8,47 @@ fall within a validation region around predicted track states.
 from typing import List, Tuple
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
+
+
+@njit(cache=True, fastmath=True)
+def _mahalanobis_distance_2d(
+    innovation: np.ndarray,
+    S_inv: np.ndarray,
+) -> float:
+    """JIT-compiled Mahalanobis distance for 2D innovations."""
+    return innovation[0] * (
+        S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]
+    ) + innovation[1] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
+
+
+@njit(cache=True, fastmath=True)
+def _mahalanobis_distance_3d(
+    innovation: np.ndarray,
+    S_inv: np.ndarray,
+) -> float:
+    """JIT-compiled Mahalanobis distance for 3D innovations."""
+    result = 0.0
+    for i in range(3):
+        for j in range(3):
+            result += innovation[i] * S_inv[i, j] * innovation[j]
+    return result
+
+
+@njit(cache=True, fastmath=True)
+def _mahalanobis_distance_general(
+    innovation: np.ndarray,
+    S_inv: np.ndarray,
+) -> float:
+    """JIT-compiled Mahalanobis distance for general dimension."""
+    n = len(innovation)
+    result = 0.0
+    for i in range(n):
+        for j in range(n):
+            result += innovation[i] * S_inv[i, j] * innovation[j]
+    return result
 
 
 def mahalanobis_distance(
@@ -300,8 +339,41 @@ def compute_gate_volume(
     return float(volume)
 
 
+@njit(cache=True, fastmath=True, parallel=False)
+def mahalanobis_batch(
+    innovations: np.ndarray,
+    S_inv: np.ndarray,
+    output: np.ndarray,
+) -> None:
+    """
+    Compute Mahalanobis distances for a batch of innovations.
+
+    JIT-compiled for performance. Computes squared Mahalanobis distances
+    for multiple innovations against a single covariance matrix.
+
+    Parameters
+    ----------
+    innovations : ndarray
+        Innovations of shape (n_measurements, dim).
+    S_inv : ndarray
+        Inverse of innovation covariance matrix of shape (dim, dim).
+    output : ndarray
+        Output array of shape (n_measurements,) to store distances.
+    """
+    n_meas = innovations.shape[0]
+    dim = innovations.shape[1]
+
+    for i in range(n_meas):
+        result = 0.0
+        for j in range(dim):
+            for k in range(dim):
+                result += innovations[i, j] * S_inv[j, k] * innovations[i, k]
+        output[i] = result
+
+
 __all__ = [
     "mahalanobis_distance",
+    "mahalanobis_batch",
     "ellipsoidal_gate",
     "rectangular_gate",
     "gate_measurements",

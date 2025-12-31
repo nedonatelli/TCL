@@ -27,6 +27,7 @@ References
 from typing import NamedTuple, Optional
 
 import numpy as np
+from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
 
 # =============================================================================
@@ -207,6 +208,330 @@ def detection_probability(
 
 
 # =============================================================================
+# JIT-Compiled Kernels
+# =============================================================================
+
+
+@njit(cache=True, fastmath=True)
+def _cfar_ca_kernel(
+    signal: np.ndarray,
+    guard_cells: int,
+    ref_cells: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled CA-CFAR kernel."""
+    n = len(signal)
+    half_window = guard_cells + ref_cells
+
+    for i in range(n):
+        left_start = max(0, i - half_window)
+        left_end = max(0, i - guard_cells)
+        right_start = min(n, i + guard_cells + 1)
+        right_end = min(n, i + half_window + 1)
+
+        ref_sum = 0.0
+        n_cells = 0
+
+        for j in range(left_start, left_end):
+            ref_sum += signal[j]
+            n_cells += 1
+
+        for j in range(right_start, right_end):
+            ref_sum += signal[j]
+            n_cells += 1
+
+        if n_cells > 0:
+            noise_estimate[i] = ref_sum / n_cells
+        else:
+            noise_estimate[i] = 0.0
+
+        threshold[i] = alpha * noise_estimate[i]
+
+
+@njit(cache=True, fastmath=True)
+def _cfar_go_kernel(
+    signal: np.ndarray,
+    guard_cells: int,
+    ref_cells: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled GO-CFAR kernel."""
+    n = len(signal)
+    half_window = guard_cells + ref_cells
+
+    for i in range(n):
+        left_start = max(0, i - half_window)
+        left_end = max(0, i - guard_cells)
+        right_start = min(n, i + guard_cells + 1)
+        right_end = min(n, i + half_window + 1)
+
+        left_sum = 0.0
+        left_count = 0
+        for j in range(left_start, left_end):
+            left_sum += signal[j]
+            left_count += 1
+
+        right_sum = 0.0
+        right_count = 0
+        for j in range(right_start, right_end):
+            right_sum += signal[j]
+            right_count += 1
+
+        left_avg = left_sum / left_count if left_count > 0 else 0.0
+        right_avg = right_sum / right_count if right_count > 0 else 0.0
+
+        noise_estimate[i] = max(left_avg, right_avg)
+        threshold[i] = alpha * noise_estimate[i]
+
+
+@njit(cache=True, fastmath=True)
+def _cfar_so_kernel(
+    signal: np.ndarray,
+    guard_cells: int,
+    ref_cells: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled SO-CFAR kernel."""
+    n = len(signal)
+    half_window = guard_cells + ref_cells
+
+    for i in range(n):
+        left_start = max(0, i - half_window)
+        left_end = max(0, i - guard_cells)
+        right_start = min(n, i + guard_cells + 1)
+        right_end = min(n, i + half_window + 1)
+
+        left_sum = 0.0
+        left_count = 0
+        for j in range(left_start, left_end):
+            left_sum += signal[j]
+            left_count += 1
+
+        right_sum = 0.0
+        right_count = 0
+        for j in range(right_start, right_end):
+            right_sum += signal[j]
+            right_count += 1
+
+        left_avg = left_sum / left_count if left_count > 0 else np.inf
+        right_avg = right_sum / right_count if right_count > 0 else np.inf
+
+        noise_est = min(left_avg, right_avg)
+        if noise_est == np.inf:
+            noise_est = 0.0
+        noise_estimate[i] = noise_est
+        threshold[i] = alpha * noise_estimate[i]
+
+
+@njit(cache=True, fastmath=True)
+def _cfar_os_kernel(
+    signal: np.ndarray,
+    guard_cells: int,
+    ref_cells: int,
+    k: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled OS-CFAR kernel."""
+    n = len(signal)
+    half_window = guard_cells + ref_cells
+    max_ref = 2 * ref_cells + 4  # Buffer for edge cells
+
+    for i in range(n):
+        left_start = max(0, i - half_window)
+        left_end = max(0, i - guard_cells)
+        right_start = min(n, i + guard_cells + 1)
+        right_end = min(n, i + half_window + 1)
+
+        # Collect reference cells into temporary array
+        ref_buffer = np.empty(max_ref, dtype=np.float64)
+        n_cells = 0
+
+        for j in range(left_start, left_end):
+            if n_cells < max_ref:
+                ref_buffer[n_cells] = signal[j]
+                n_cells += 1
+
+        for j in range(right_start, right_end):
+            if n_cells < max_ref:
+                ref_buffer[n_cells] = signal[j]
+                n_cells += 1
+
+        if n_cells > 0:
+            # Sort the reference cells
+            ref_values = ref_buffer[:n_cells]
+            ref_values.sort()
+            k_index = min(k - 1, n_cells - 1)
+            noise_estimate[i] = ref_values[k_index]
+        else:
+            noise_estimate[i] = 0.0
+
+        threshold[i] = alpha * noise_estimate[i]
+
+
+@njit(cache=True, fastmath=True, parallel=True)
+def _cfar_2d_ca_kernel(
+    image: np.ndarray,
+    guard_rows: int,
+    guard_cols: int,
+    ref_rows: int,
+    ref_cols: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled 2D CA-CFAR kernel with parallel execution."""
+    n_rows, n_cols = image.shape
+    half_row = guard_rows + ref_rows
+    half_col = guard_cols + ref_cols
+
+    for i in prange(n_rows):
+        for j in range(n_cols):
+            row_min = max(0, i - half_row)
+            row_max = min(n_rows, i + half_row + 1)
+            col_min = max(0, j - half_col)
+            col_max = min(n_cols, j + half_col + 1)
+
+            guard_row_min = max(0, i - guard_rows)
+            guard_row_max = min(n_rows, i + guard_rows + 1)
+            guard_col_min = max(0, j - guard_cols)
+            guard_col_max = min(n_cols, j + guard_cols + 1)
+
+            ref_sum = 0.0
+            n_cells = 0
+
+            for ri in range(row_min, row_max):
+                for ci in range(col_min, col_max):
+                    if not (
+                        guard_row_min <= ri < guard_row_max
+                        and guard_col_min <= ci < guard_col_max
+                    ):
+                        ref_sum += image[ri, ci]
+                        n_cells += 1
+
+            if n_cells > 0:
+                noise_estimate[i, j] = ref_sum / n_cells
+            else:
+                noise_estimate[i, j] = 0.0
+
+            threshold[i, j] = alpha * noise_estimate[i, j]
+
+
+@njit(cache=True, fastmath=True, parallel=True)
+def _cfar_2d_go_kernel(
+    image: np.ndarray,
+    guard_rows: int,
+    guard_cols: int,
+    ref_rows: int,
+    ref_cols: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled 2D GO-CFAR kernel with parallel execution."""
+    n_rows, n_cols = image.shape
+    half_row = guard_rows + ref_rows
+    half_col = guard_cols + ref_cols
+
+    for i in prange(n_rows):
+        for j in range(n_cols):
+            row_min = max(0, i - half_row)
+            row_max = min(n_rows, i + half_row + 1)
+            col_min = max(0, j - half_col)
+            col_max = min(n_cols, j + half_col + 1)
+
+            guard_row_min = max(0, i - guard_rows)
+            guard_row_max = min(n_rows, i + guard_rows + 1)
+            guard_col_min = max(0, j - guard_cols)
+            guard_col_max = min(n_cols, j + guard_cols + 1)
+
+            top_sum = 0.0
+            top_count = 0
+            bottom_sum = 0.0
+            bottom_count = 0
+
+            for ri in range(row_min, row_max):
+                for ci in range(col_min, col_max):
+                    if not (
+                        guard_row_min <= ri < guard_row_max
+                        and guard_col_min <= ci < guard_col_max
+                    ):
+                        if ri < i:
+                            top_sum += image[ri, ci]
+                            top_count += 1
+                        else:
+                            bottom_sum += image[ri, ci]
+                            bottom_count += 1
+
+            top_avg = top_sum / top_count if top_count > 0 else 0.0
+            bottom_avg = bottom_sum / bottom_count if bottom_count > 0 else 0.0
+            noise_estimate[i, j] = max(top_avg, bottom_avg)
+            threshold[i, j] = alpha * noise_estimate[i, j]
+
+
+@njit(cache=True, fastmath=True, parallel=True)
+def _cfar_2d_so_kernel(
+    image: np.ndarray,
+    guard_rows: int,
+    guard_cols: int,
+    ref_rows: int,
+    ref_cols: int,
+    alpha: float,
+    noise_estimate: np.ndarray,
+    threshold: np.ndarray,
+) -> None:
+    """JIT-compiled 2D SO-CFAR kernel with parallel execution."""
+    n_rows, n_cols = image.shape
+    half_row = guard_rows + ref_rows
+    half_col = guard_cols + ref_cols
+
+    for i in prange(n_rows):
+        for j in range(n_cols):
+            row_min = max(0, i - half_row)
+            row_max = min(n_rows, i + half_row + 1)
+            col_min = max(0, j - half_col)
+            col_max = min(n_cols, j + half_col + 1)
+
+            guard_row_min = max(0, i - guard_rows)
+            guard_row_max = min(n_rows, i + guard_rows + 1)
+            guard_col_min = max(0, j - guard_cols)
+            guard_col_max = min(n_cols, j + guard_cols + 1)
+
+            top_sum = 0.0
+            top_count = 0
+            bottom_sum = 0.0
+            bottom_count = 0
+
+            for ri in range(row_min, row_max):
+                for ci in range(col_min, col_max):
+                    if not (
+                        guard_row_min <= ri < guard_row_max
+                        and guard_col_min <= ci < guard_col_max
+                    ):
+                        if ri < i:
+                            top_sum += image[ri, ci]
+                            top_count += 1
+                        else:
+                            bottom_sum += image[ri, ci]
+                            bottom_count += 1
+
+            top_avg = top_sum / top_count if top_count > 0 else np.inf
+            bottom_avg = bottom_sum / bottom_count if bottom_count > 0 else np.inf
+            noise_est = min(top_avg, bottom_avg)
+            if noise_est == np.inf:
+                noise_est = 0.0
+            noise_estimate[i, j] = noise_est
+            threshold[i, j] = alpha * noise_estimate[i, j]
+
+
+# =============================================================================
 # 1D CFAR Algorithms
 # =============================================================================
 
@@ -267,38 +592,11 @@ def cfar_ca(
     if alpha is None:
         alpha = threshold_factor(pfa, 2 * ref_cells, method="ca")
 
-    half_window = guard_cells + ref_cells
-
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
 
-    for i in range(n):
-        # Define reference window bounds
-        left_start = max(0, i - half_window)
-        left_end = max(0, i - guard_cells)
-        right_start = min(n, i + guard_cells + 1)
-        right_end = min(n, i + half_window + 1)
-
-        # Collect reference cells
-        left_cells = signal[left_start:left_end]
-        right_cells = signal[right_start:right_end]
-
-        ref_sum = 0.0
-        n_cells = 0
-
-        if len(left_cells) > 0:
-            ref_sum += np.sum(left_cells)
-            n_cells += len(left_cells)
-        if len(right_cells) > 0:
-            ref_sum += np.sum(right_cells)
-            n_cells += len(right_cells)
-
-        if n_cells > 0:
-            noise_estimate[i] = ref_sum / n_cells
-        else:
-            noise_estimate[i] = 0.0
-
-        threshold[i] = alpha * noise_estimate[i]
+    # Use JIT-compiled kernel for performance
+    _cfar_ca_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -364,26 +662,11 @@ def cfar_go(
     if alpha is None:
         alpha = threshold_factor(pfa, ref_cells, method="go")
 
-    half_window = guard_cells + ref_cells
-
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
 
-    for i in range(n):
-        left_start = max(0, i - half_window)
-        left_end = max(0, i - guard_cells)
-        right_start = min(n, i + guard_cells + 1)
-        right_end = min(n, i + half_window + 1)
-
-        left_cells = signal[left_start:left_end]
-        right_cells = signal[right_start:right_end]
-
-        left_avg = np.mean(left_cells) if len(left_cells) > 0 else 0.0
-        right_avg = np.mean(right_cells) if len(right_cells) > 0 else 0.0
-
-        # Greatest-Of: take maximum of left and right averages
-        noise_estimate[i] = max(left_avg, right_avg)
-        threshold[i] = alpha * noise_estimate[i]
+    # Use JIT-compiled kernel for performance
+    _cfar_go_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -440,28 +723,11 @@ def cfar_so(
     if alpha is None:
         alpha = threshold_factor(pfa, ref_cells, method="so")
 
-    half_window = guard_cells + ref_cells
-
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
 
-    for i in range(n):
-        left_start = max(0, i - half_window)
-        left_end = max(0, i - guard_cells)
-        right_start = min(n, i + guard_cells + 1)
-        right_end = min(n, i + half_window + 1)
-
-        left_cells = signal[left_start:left_end]
-        right_cells = signal[right_start:right_end]
-
-        left_avg = np.mean(left_cells) if len(left_cells) > 0 else np.inf
-        right_avg = np.mean(right_cells) if len(right_cells) > 0 else np.inf
-
-        # Smallest-Of: take minimum of left and right averages
-        noise_estimate[i] = min(left_avg, right_avg)
-        if noise_estimate[i] == np.inf:
-            noise_estimate[i] = 0.0
-        threshold[i] = alpha * noise_estimate[i]
+    # Use JIT-compiled kernel for performance
+    _cfar_so_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -540,30 +806,11 @@ def cfar_os(
     if alpha is None:
         alpha = threshold_factor(pfa, n_total_ref, method="os", k=k)
 
-    half_window = guard_cells + ref_cells
-
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
 
-    for i in range(n):
-        left_start = max(0, i - half_window)
-        left_end = max(0, i - guard_cells)
-        right_start = min(n, i + guard_cells + 1)
-        right_end = min(n, i + half_window + 1)
-
-        left_cells = signal[left_start:left_end]
-        right_cells = signal[right_start:right_end]
-
-        ref_cells_combined = np.concatenate([left_cells, right_cells])
-
-        if len(ref_cells_combined) > 0:
-            sorted_cells = np.sort(ref_cells_combined)
-            k_index = min(k - 1, len(sorted_cells) - 1)
-            noise_estimate[i] = sorted_cells[k_index]
-        else:
-            noise_estimate[i] = 0.0
-
-        threshold[i] = alpha * noise_estimate[i]
+    # Use JIT-compiled kernel for performance
+    _cfar_os_kernel(signal, guard_cells, ref_cells, k, alpha, noise_estimate, threshold)
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -633,7 +880,6 @@ def cfar_2d(
         - (2*guard_rows + 1) * (2*guard_cols + 1)
     """
     image = np.asarray(image, dtype=np.float64)
-    n_rows, n_cols = image.shape
 
     guard_rows, guard_cols = guard_cells
     ref_rows, ref_cols = ref_cells
@@ -651,57 +897,42 @@ def cfar_2d(
     noise_estimate = np.zeros_like(image)
     threshold = np.zeros_like(image)
 
-    half_row = guard_rows + ref_rows
-    half_col = guard_cols + ref_cols
-
-    for i in range(n_rows):
-        for j in range(n_cols):
-            # Reference window bounds
-            row_min = max(0, i - half_row)
-            row_max = min(n_rows, i + half_row + 1)
-            col_min = max(0, j - half_col)
-            col_max = min(n_cols, j + half_col + 1)
-
-            # Guard region bounds
-            guard_row_min = max(0, i - guard_rows)
-            guard_row_max = min(n_rows, i + guard_rows + 1)
-            guard_col_min = max(0, j - guard_cols)
-            guard_col_max = min(n_cols, j + guard_cols + 1)
-
-            # Collect reference cells (exclude guard region)
-            ref_values = []
-            for ri in range(row_min, row_max):
-                for ci in range(col_min, col_max):
-                    if not (
-                        guard_row_min <= ri < guard_row_max
-                        and guard_col_min <= ci < guard_col_max
-                    ):
-                        ref_values.append(image[ri, ci])
-
-            if len(ref_values) > 0:
-                ref_values = np.array(ref_values)
-
-                if method == "ca":
-                    noise_estimate[i, j] = np.mean(ref_values)
-                elif method == "go":
-                    # Split into halves and take max of averages
-                    top = ref_values[: len(ref_values) // 2]
-                    bottom = ref_values[len(ref_values) // 2 :]
-                    top_avg = np.mean(top) if len(top) > 0 else 0
-                    bottom_avg = np.mean(bottom) if len(bottom) > 0 else 0
-                    noise_estimate[i, j] = max(top_avg, bottom_avg)
-                elif method == "so":
-                    top = ref_values[: len(ref_values) // 2]
-                    bottom = ref_values[len(ref_values) // 2 :]
-                    top_avg = np.mean(top) if len(top) > 0 else np.inf
-                    bottom_avg = np.mean(bottom) if len(bottom) > 0 else np.inf
-                    noise_estimate[i, j] = min(top_avg, bottom_avg)
-                    if noise_estimate[i, j] == np.inf:
-                        noise_estimate[i, j] = 0
-            else:
-                noise_estimate[i, j] = 0.0
-
-            threshold[i, j] = alpha * noise_estimate[i, j]
+    # Use JIT-compiled kernel for performance (with parallel execution)
+    if method == "ca":
+        _cfar_2d_ca_kernel(
+            image,
+            guard_rows,
+            guard_cols,
+            ref_rows,
+            ref_cols,
+            alpha,
+            noise_estimate,
+            threshold,
+        )
+    elif method == "go":
+        _cfar_2d_go_kernel(
+            image,
+            guard_rows,
+            guard_cols,
+            ref_rows,
+            ref_cols,
+            alpha,
+            noise_estimate,
+            threshold,
+        )
+    elif method == "so":
+        _cfar_2d_so_kernel(
+            image,
+            guard_rows,
+            guard_cols,
+            ref_rows,
+            ref_cols,
+            alpha,
+            noise_estimate,
+            threshold,
+        )
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
     detections = image > threshold
 

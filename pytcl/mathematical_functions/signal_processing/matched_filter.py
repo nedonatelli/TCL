@@ -24,6 +24,7 @@ References
 from typing import NamedTuple, Optional
 
 import numpy as np
+from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
 from scipy import fft as scipy_fft
 from scipy import signal as scipy_signal
@@ -550,6 +551,101 @@ def generate_nlfm_chirp(
 # =============================================================================
 
 
+@njit(cache=True, fastmath=True, parallel=True)
+def _ambiguity_function_kernel(
+    signal: np.ndarray,
+    delays: np.ndarray,
+    dopplers: np.ndarray,
+    fs: float,
+    af: np.ndarray,
+) -> None:
+    """JIT-compiled kernel for ambiguity function computation."""
+    n_signal = len(signal)
+    n_doppler = len(dopplers)
+    n_delay = len(delays)
+    t = np.arange(n_signal) / fs
+
+    for i in prange(n_doppler):
+        doppler = dopplers[i]
+        # Compute Doppler-shifted signal
+        shifted = np.empty(n_signal, dtype=np.complex128)
+        for k in range(n_signal):
+            phase = 2.0 * np.pi * doppler * t[k]
+            shifted[k] = signal[k] * (np.cos(phase) + 1j * np.sin(phase))
+
+        for j in range(n_delay):
+            delay = delays[j]
+            delay_samples = int(delay * fs)
+
+            result = 0.0 + 0.0j
+            if delay_samples >= 0:
+                if delay_samples < n_signal:
+                    for k in range(n_signal - delay_samples):
+                        s1 = signal[delay_samples + k]
+                        s2_conj = shifted[k].real - 1j * shifted[k].imag
+                        result += s1 * s2_conj
+            else:
+                delay_samples = -delay_samples
+                if delay_samples < n_signal:
+                    for k in range(n_signal - delay_samples):
+                        s1 = signal[k]
+                        s2_conj = (
+                            shifted[delay_samples + k].real
+                            - 1j * shifted[delay_samples + k].imag
+                        )
+                        result += s1 * s2_conj
+
+            af[i, j] = result
+
+
+@njit(cache=True, fastmath=True, parallel=True)
+def _cross_ambiguity_kernel(
+    signal1: np.ndarray,
+    signal2: np.ndarray,
+    delays: np.ndarray,
+    dopplers: np.ndarray,
+    fs: float,
+    caf: np.ndarray,
+) -> None:
+    """JIT-compiled kernel for cross-ambiguity function computation."""
+    n_signal = len(signal1)
+    n_doppler = len(dopplers)
+    n_delay = len(delays)
+    t = np.arange(n_signal) / fs
+
+    for i in prange(n_doppler):
+        doppler = dopplers[i]
+        # Compute Doppler-shifted signal2
+        shifted = np.empty(n_signal, dtype=np.complex128)
+        for k in range(n_signal):
+            phase = 2.0 * np.pi * doppler * t[k]
+            shifted[k] = signal2[k] * (np.cos(phase) + 1j * np.sin(phase))
+
+        for j in range(n_delay):
+            delay = delays[j]
+            delay_samples = int(delay * fs)
+
+            result = 0.0 + 0.0j
+            if delay_samples >= 0:
+                if delay_samples < n_signal:
+                    for k in range(n_signal - delay_samples):
+                        s1 = signal1[delay_samples + k]
+                        s2_conj = shifted[k].real - 1j * shifted[k].imag
+                        result += s1 * s2_conj
+            else:
+                delay_samples = -delay_samples
+                if delay_samples < n_signal:
+                    for k in range(n_signal - delay_samples):
+                        s1 = signal1[k]
+                        s2_conj = (
+                            shifted[delay_samples + k].real
+                            - 1j * shifted[delay_samples + k].imag
+                        )
+                        result += s1 * s2_conj
+
+            caf[i, j] = result
+
+
 def ambiguity_function(
     signal: ArrayLike,
     fs: float,
@@ -608,28 +704,9 @@ def ambiguity_function(
     dopplers = np.linspace(-max_doppler, max_doppler, n_doppler)
 
     af = np.zeros((n_doppler, n_delay), dtype=np.complex128)
-    t = np.arange(n_signal) / fs
 
-    for i, doppler in enumerate(dopplers):
-        # Doppler-shifted signal
-        doppler_shift = np.exp(2j * np.pi * doppler * t)
-        shifted = signal * doppler_shift
-
-        for j, delay in enumerate(delays):
-            # Time-delayed version
-            delay_samples = int(delay * fs)
-
-            if delay_samples >= 0:
-                if delay_samples < n_signal:
-                    s1 = signal[delay_samples:]
-                    s2 = shifted[: n_signal - delay_samples]
-                    af[i, j] = np.sum(s1 * np.conj(s2))
-            else:
-                delay_samples = -delay_samples
-                if delay_samples < n_signal:
-                    s1 = signal[: n_signal - delay_samples]
-                    s2 = shifted[delay_samples:]
-                    af[i, j] = np.sum(s1 * np.conj(s2))
+    # Use JIT-compiled kernel for performance (with parallel execution)
+    _ambiguity_function_kernel(signal, delays, dopplers, fs, af)
 
     # Normalize
     af = np.abs(af) / np.max(np.abs(af))
@@ -694,26 +771,9 @@ def cross_ambiguity(
     dopplers = np.linspace(-max_doppler, max_doppler, n_doppler)
 
     caf = np.zeros((n_doppler, n_delay), dtype=np.complex128)
-    t = np.arange(n_signal) / fs
 
-    for i, doppler in enumerate(dopplers):
-        doppler_shift = np.exp(2j * np.pi * doppler * t)
-        shifted = signal2 * doppler_shift
-
-        for j, delay in enumerate(delays):
-            delay_samples = int(delay * fs)
-
-            if delay_samples >= 0:
-                if delay_samples < n_signal:
-                    s1 = signal1[delay_samples:]
-                    s2 = shifted[: n_signal - delay_samples]
-                    caf[i, j] = np.sum(s1 * np.conj(s2))
-            else:
-                delay_samples = -delay_samples
-                if delay_samples < n_signal:
-                    s1 = signal1[: n_signal - delay_samples]
-                    s2 = shifted[delay_samples:]
-                    caf[i, j] = np.sum(s1 * np.conj(s2))
+    # Use JIT-compiled kernel for performance (with parallel execution)
+    _cross_ambiguity_kernel(signal1, signal2, delays, dopplers, fs, caf)
 
     # Normalize
     max_val = np.max(np.abs(caf))
