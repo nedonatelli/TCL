@@ -19,16 +19,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 
-from pytcl.navigation import (  # noqa: E402
-    # Coordinate conversions
-    geodetic_to_ecef,
-    ecef_to_geodetic,
-    ecef_to_enu,
-    enu_to_ecef,
-    # Geodetic problems
+from pytcl.navigation import (  # noqa: E402; Coordinate conversions; Geodetic problems
     direct_geodetic,
-    inverse_geodetic,
+    ecef_to_enu,
+    ecef_to_geodetic,
+    enu_to_ecef,
+    geodetic_to_ecef,
     haversine_distance,
+    inverse_geodetic,
 )
 
 

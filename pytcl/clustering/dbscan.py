@@ -12,7 +12,8 @@ References
        with Noise," KDD 1996.
 """
 
-from typing import NamedTuple, List, Set
+from typing import List, NamedTuple, Set
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

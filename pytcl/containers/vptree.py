@@ -11,7 +11,8 @@ References
        neighbor search in general metric spaces," SODA 1993.
 """
 
-from typing import NamedTuple, Optional, List, Tuple, Callable
+from typing import Callable, List, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

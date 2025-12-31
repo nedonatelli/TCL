@@ -21,15 +21,16 @@ References
        https://earth-info.nga.mil/
 """
 
-from typing import NamedTuple, Optional, Tuple, Dict
-from pathlib import Path
-from functools import lru_cache
 import os
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 
-from .clenshaw import clenshaw_potential, clenshaw_gravity
-from .models import normal_gravity_somigliana, WGS84
+from .clenshaw import clenshaw_gravity, clenshaw_potential
+from .models import WGS84, normal_gravity_somigliana
 
 
 class EGMCoefficients(NamedTuple):

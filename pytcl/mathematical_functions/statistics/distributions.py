@@ -7,10 +7,11 @@ distributions with additional functionality useful for tracking applications.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union, Tuple
+from typing import Optional, Tuple, Union
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.stats as stats
+from numpy.typing import ArrayLike, NDArray
 
 
 class Distribution(ABC):

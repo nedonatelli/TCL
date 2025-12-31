@@ -18,15 +18,15 @@ References
        https://ddfe.curtin.edu.au/models/Earth2014/
 """
 
-from typing import NamedTuple, Optional, Dict, Tuple
-from pathlib import Path
-from functools import lru_cache
 import os
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 
 from .dem import DEMGrid
-
 
 # Model parameters
 _GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"

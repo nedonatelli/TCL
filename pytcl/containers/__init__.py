@@ -5,33 +5,30 @@ This module provides spatial data structures for efficient
 nearest neighbor queries and spatial indexing.
 """
 
-from pytcl.containers.kd_tree import (
-    KDNode,
-    NearestNeighborResult,
-    KDTree,
-    BallTree,
+from pytcl.containers.covertree import (
+    CoverTree,
+    CoverTreeNode,
+    CoverTreeResult,
 )
-
+from pytcl.containers.kd_tree import (
+    BallTree,
+    KDNode,
+    KDTree,
+    NearestNeighborResult,
+)
 from pytcl.containers.rtree import (
     BoundingBox,
-    merge_boxes,
-    box_from_point,
-    box_from_points,
+    RTree,
     RTreeNode,
     RTreeResult,
-    RTree,
+    box_from_point,
+    box_from_points,
+    merge_boxes,
 )
-
 from pytcl.containers.vptree import (
-    VPTreeResult,
     VPNode,
     VPTree,
-)
-
-from pytcl.containers.covertree import (
-    CoverTreeResult,
-    CoverTreeNode,
-    CoverTree,
+    VPTreeResult,
 )
 
 __all__ = [

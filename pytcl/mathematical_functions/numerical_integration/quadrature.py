@@ -5,10 +5,11 @@ This module provides Gaussian quadrature rules and numerical integration
 functions commonly used in state estimation and filtering.
 """
 
-from typing import Callable, Tuple, Optional, Literal
+from typing import Callable, Literal, Optional, Tuple
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.integrate as integrate
+from numpy.typing import ArrayLike, NDArray
 
 
 def gauss_legendre(

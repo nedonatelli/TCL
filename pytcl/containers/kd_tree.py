@@ -13,7 +13,8 @@ References
        Finding Best Matches in Logarithmic Expected Time," ACM TOMS, 1977.
 """
 
-from typing import NamedTuple, Optional, List, Tuple
+from typing import List, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

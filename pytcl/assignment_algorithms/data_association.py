@@ -5,15 +5,16 @@ This module provides algorithms for associating measurements to tracks,
 including Global Nearest Neighbor (GNN) and related methods.
 """
 
-from typing import Optional, NamedTuple, List
+from typing import List, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.assignment_algorithms.two_dimensional import (
-    assign2d,
-)
 from pytcl.assignment_algorithms.gating import (
     mahalanobis_distance,
+)
+from pytcl.assignment_algorithms.two_dimensional import (
+    assign2d,
 )
 
 

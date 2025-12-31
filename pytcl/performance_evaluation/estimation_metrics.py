@@ -10,7 +10,8 @@ References
        Applications to Tracking and Navigation," Wiley, 2001.
 """
 
-from typing import Optional, NamedTuple, List
+from typing import List, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy import stats

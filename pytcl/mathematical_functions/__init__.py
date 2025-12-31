@@ -15,95 +15,98 @@ This module contains a wide variety of mathematical functions including:
 """
 
 # Import submodules for easy access
-from pytcl.mathematical_functions import basic_matrix
-from pytcl.mathematical_functions import special_functions
-from pytcl.mathematical_functions import statistics
-from pytcl.mathematical_functions import numerical_integration
-from pytcl.mathematical_functions import interpolation
-from pytcl.mathematical_functions import combinatorics
-from pytcl.mathematical_functions import geometry
-
-# Re-export commonly used functions at the top level for convenience
+from pytcl.mathematical_functions import (
+    basic_matrix,
+    combinatorics,
+    geometry,
+    interpolation,
+    numerical_integration,
+    special_functions,
+    statistics,
+)
 
 # Basic matrix operations
 from pytcl.mathematical_functions.basic_matrix import (
+    block_diag,
     chol_semi_def,
-    tria,
-    tria_sqrt,
-    pinv_truncated,
+    kron,
     matrix_sqrt,
     null_space,
+    pinv_truncated,
     range_space,
-    block_diag,
-    kron,
-    vec,
+    tria,
+    tria_sqrt,
     unvec,
+    vec,
 )
 
-# Special functions
-from pytcl.mathematical_functions.special_functions import (
-    gamma,
-    gammaln,
-    beta,
-    betaln,
-    erf,
-    erfc,
-    erfinv,
-    besselj,
-    bessely,
-    besseli,
-    besselk,
+# Combinatorics
+from pytcl.mathematical_functions.combinatorics import (
+    combinations,
+    factorial,
+    n_choose_k,
+    permutation_rank,
+    permutation_unrank,
+    permutations,
 )
 
-# Statistics
-from pytcl.mathematical_functions.statistics import (
-    Gaussian,
-    MultivariateGaussian,
-    Uniform,
-    ChiSquared,
-    nees,
-    nis,
-    weighted_mean,
-    weighted_cov,
-    mad,
+# Geometry
+from pytcl.mathematical_functions.geometry import (
+    bounding_box,
+    convex_hull,
+    line_intersection,
+    point_in_polygon,
+    polygon_area,
+)
+
+# Interpolation
+from pytcl.mathematical_functions.interpolation import (
+    cubic_spline,
+    interp1d,
+    interp2d,
+    linear_interp,
+    rbf_interpolate,
 )
 
 # Numerical integration
 from pytcl.mathematical_functions.numerical_integration import (
-    gauss_legendre,
     gauss_hermite,
+    gauss_legendre,
     quad,
     spherical_cubature,
     unscented_transform_points,
 )
 
-# Interpolation
-from pytcl.mathematical_functions.interpolation import (
-    interp1d,
-    linear_interp,
-    cubic_spline,
-    interp2d,
-    rbf_interpolate,
+# Special functions
+from pytcl.mathematical_functions.special_functions import (
+    besseli,
+    besselj,
+    besselk,
+    bessely,
+    beta,
+    betaln,
+    erf,
+    erfc,
+    erfinv,
+    gamma,
+    gammaln,
 )
 
-# Combinatorics
-from pytcl.mathematical_functions.combinatorics import (
-    factorial,
-    n_choose_k,
-    permutations,
-    combinations,
-    permutation_rank,
-    permutation_unrank,
+# Statistics
+from pytcl.mathematical_functions.statistics import (
+    ChiSquared,
+    Gaussian,
+    MultivariateGaussian,
+    Uniform,
+    mad,
+    nees,
+    nis,
+    weighted_cov,
+    weighted_mean,
 )
 
-# Geometry
-from pytcl.mathematical_functions.geometry import (
-    point_in_polygon,
-    convex_hull,
-    polygon_area,
-    line_intersection,
-    bounding_box,
-)
+# Re-export commonly used functions at the top level for convenience
+
 
 __all__ = [
     # Submodules

@@ -24,25 +24,22 @@ __version__ = "0.8.0"
 __author__ = "Python Port Contributors"
 __original_author__ = "David F. Crouse, Naval Research Laboratory"
 
-# Core utilities
-from pytcl import core
-
-# Assignment algorithms (Phase 5)
-from pytcl import assignment_algorithms
-
-# Specialized domains (Phase 6)
-from pytcl import astronomical
-from pytcl import navigation
-from pytcl import atmosphere
-
-# End-to-end trackers (Phase 7)
-from pytcl import trackers
-
-# Performance evaluation
-from pytcl import performance_evaluation
-
 # Plotting utilities
-from pytcl import plotting
+# Performance evaluation
+# End-to-end trackers (Phase 7)
+# Specialized domains (Phase 6)
+# Assignment algorithms (Phase 5)
+# Core utilities
+from pytcl import (
+    assignment_algorithms,
+    astronomical,
+    atmosphere,
+    core,
+    navigation,
+    performance_evaluation,
+    plotting,
+    trackers,
+)
 
 
 # Version tuple for programmatic access

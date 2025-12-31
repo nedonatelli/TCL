@@ -11,8 +11,9 @@ References
        Psychometrika, 1967.
 """
 
-from typing import NamedTuple, Optional, List, Literal
 from enum import Enum
+from typing import List, Literal, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

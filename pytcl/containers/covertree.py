@@ -11,7 +11,8 @@ References
        neighbor," ICML 2006.
 """
 
-from typing import NamedTuple, Optional, List, Tuple, Callable, Set
+from typing import Callable, List, NamedTuple, Optional, Set, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

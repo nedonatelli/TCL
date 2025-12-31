@@ -18,28 +18,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
 
-from pytcl.coordinate_systems import (  # noqa: E402
-    # Spherical conversions
+from pytcl.coordinate_systems import (  # noqa: E402; Spherical conversions; Geodetic conversions; Rotation matrices; Quaternions; Jacobians
     cart2sphere,
-    sphere2cart,
-    # Geodetic conversions
-    geodetic2ecef,
-    ecef2geodetic,
-    ecef2enu,
-    enu2ecef,
-    ecef2ned,
-    # Rotation matrices
-    rotz,
-    euler2rotmat,
-    rotmat2euler,
-    # Quaternions
-    quat2rotmat,
-    rotmat2quat,
-    quat_multiply,
-    slerp,
-    # Jacobians
-    spherical_jacobian_inv,
     cross_covariance_transform,
+    ecef2enu,
+    ecef2geodetic,
+    ecef2ned,
+    enu2ecef,
+    euler2rotmat,
+    geodetic2ecef,
+    quat2rotmat,
+    quat_multiply,
+    rotmat2euler,
+    rotmat2quat,
+    rotz,
+    slerp,
+    sphere2cart,
+    spherical_jacobian_inv,
 )
 
 

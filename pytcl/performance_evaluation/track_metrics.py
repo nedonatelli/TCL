@@ -14,7 +14,8 @@ References
        2008.
 """
 
-from typing import List, Optional, NamedTuple
+from typing import List, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import NDArray
 

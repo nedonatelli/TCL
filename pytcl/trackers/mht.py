@@ -15,19 +15,20 @@ References
        IEEE Trans. Automatic Control, 1979.
 """
 
-from typing import NamedTuple, List, Optional, Callable, Dict, Set
+from typing import Callable, Dict, List, NamedTuple, Optional, Set
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
+from pytcl.assignment_algorithms.gating import mahalanobis_distance
 from pytcl.trackers.hypothesis import (
-    MHTTrackStatus,
-    MHTTrack,
     Hypothesis,
     HypothesisTree,
+    MHTTrack,
+    MHTTrackStatus,
     generate_joint_associations,
 )
-from pytcl.assignment_algorithms.gating import mahalanobis_distance
 
 
 class MHTConfig(NamedTuple):

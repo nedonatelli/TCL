@@ -5,14 +5,15 @@ This module provides a multi-target tracker using GNN data association
 and Kalman filtering with track management (initiation, maintenance, deletion).
 """
 
-from typing import Optional, List, Callable, NamedTuple
 from enum import Enum
+from typing import Callable, List, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.assignment_algorithms import (
-    gnn_association,
     chi2_gate_threshold,
+    gnn_association,
 )
 
 

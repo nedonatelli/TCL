@@ -11,7 +11,8 @@ References
 .. [2] O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -397,7 +398,7 @@ def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
         for n in range(n_max + 1):
             # Scale factor decreases exponentially with degree
             exponent = -280.0 * n / n_max
-            scale[n] = 10.0 ** exponent
+            scale[n] = 10.0**exponent
 
     return scale
 

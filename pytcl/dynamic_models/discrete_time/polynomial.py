@@ -6,6 +6,7 @@ consists of position, velocity, and optionally acceleration components.
 """
 
 import math
+
 import numpy as np
 from numpy.typing import NDArray
 

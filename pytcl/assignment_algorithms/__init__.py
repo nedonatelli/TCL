@@ -7,38 +7,35 @@ This module provides:
 - Data association algorithms (GNN, JPDA)
 """
 
-from pytcl.assignment_algorithms.two_dimensional import (
-    hungarian,
-    auction,
-    linear_sum_assignment,
-    assign2d,
-    AssignmentResult,
-)
-
-from pytcl.assignment_algorithms.gating import (
-    ellipsoidal_gate,
-    rectangular_gate,
-    gate_measurements,
-    mahalanobis_distance,
-    chi2_gate_threshold,
-    compute_gate_volume,
-)
-
 from pytcl.assignment_algorithms.data_association import (
-    gnn_association,
-    nearest_neighbor,
+    AssociationResult,
     compute_association_cost,
     gated_gnn_association,
-    AssociationResult,
+    gnn_association,
+    nearest_neighbor,
 )
-
+from pytcl.assignment_algorithms.gating import (
+    chi2_gate_threshold,
+    compute_gate_volume,
+    ellipsoidal_gate,
+    gate_measurements,
+    mahalanobis_distance,
+    rectangular_gate,
+)
 from pytcl.assignment_algorithms.jpda import (
     JPDAResult,
     JPDAUpdate,
-    jpda,
-    jpda_update,
-    jpda_probabilities,
     compute_likelihood_matrix,
+    jpda,
+    jpda_probabilities,
+    jpda_update,
+)
+from pytcl.assignment_algorithms.two_dimensional import (
+    AssignmentResult,
+    assign2d,
+    auction,
+    hungarian,
+    linear_sum_assignment,
 )
 
 __all__ = [

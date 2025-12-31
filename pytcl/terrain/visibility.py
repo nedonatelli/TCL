@@ -23,7 +23,8 @@ References
        on terrains: a survey." Environment and Planning B 30.5 (2003): 709-728.
 """
 
-from typing import NamedTuple, List
+from typing import List, NamedTuple
+
 import numpy as np
 from numpy.typing import NDArray
 

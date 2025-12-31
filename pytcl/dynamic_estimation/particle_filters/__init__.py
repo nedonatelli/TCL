@@ -9,17 +9,17 @@ This module provides:
 
 from pytcl.dynamic_estimation.particle_filters.bootstrap import (
     ParticleState,
-    resample_multinomial,
-    resample_systematic,
-    resample_residual,
-    effective_sample_size,
     bootstrap_pf_predict,
-    bootstrap_pf_update,
-    gaussian_likelihood,
     bootstrap_pf_step,
-    particle_mean,
-    particle_covariance,
+    bootstrap_pf_update,
+    effective_sample_size,
+    gaussian_likelihood,
     initialize_particles,
+    particle_covariance,
+    particle_mean,
+    resample_multinomial,
+    resample_residual,
+    resample_systematic,
 )
 
 __all__ = [

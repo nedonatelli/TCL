@@ -53,42 +53,42 @@ Examples
 
 # DEM interface
 from pytcl.terrain.dem import (
+    DEMGrid,
+    DEMMetadata,
     DEMPoint,
     TerrainGradient,
-    DEMMetadata,
-    DEMGrid,
+    create_flat_dem,
+    create_synthetic_terrain,
     get_elevation_profile,
     interpolate_dem,
     merge_dems,
-    create_flat_dem,
-    create_synthetic_terrain,
-)
-
-# Visibility functions
-from pytcl.terrain.visibility import (
-    LOSResult,
-    ViewshedResult,
-    HorizonPoint,
-    line_of_sight,
-    viewshed,
-    compute_horizon,
-    terrain_masking_angle,
-    radar_coverage_map,
 )
 
 # Data loaders
 from pytcl.terrain.loaders import (
-    GEBCO_PARAMETERS,
     EARTH2014_PARAMETERS,
-    GEBCOMetadata,
+    GEBCO_PARAMETERS,
     Earth2014Metadata,
-    get_data_dir,
-    load_gebco,
-    load_earth2014,
-    create_test_gebco_dem,
+    GEBCOMetadata,
     create_test_earth2014_dem,
-    get_gebco_metadata,
+    create_test_gebco_dem,
+    get_data_dir,
     get_earth2014_metadata,
+    get_gebco_metadata,
+    load_earth2014,
+    load_gebco,
+)
+
+# Visibility functions
+from pytcl.terrain.visibility import (
+    HorizonPoint,
+    LOSResult,
+    ViewshedResult,
+    compute_horizon,
+    line_of_sight,
+    radar_coverage_map,
+    terrain_masking_angle,
+    viewshed,
 )
 
 __all__ = [

@@ -13,7 +13,8 @@ References
        Journal of the Royal Statistical Society, Series B, vol. 55, no. 2, 1993.
 """
 
-from typing import NamedTuple, List, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

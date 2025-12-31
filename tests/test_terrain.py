@@ -5,30 +5,25 @@ Tests for terrain module (DEM interface and visibility).
 import numpy as np
 import pytest
 
-from pytcl.terrain import (
-    # DEM data structures
-    DEMPoint,
-    TerrainGradient,
-    DEMMetadata,
+from pytcl.terrain import (  # DEM data structures; DEM functions; Visibility data structures; Visibility functions
     DEMGrid,
-    # DEM functions
-    get_elevation_profile,
-    interpolate_dem,
-    merge_dems,
+    DEMMetadata,
+    DEMPoint,
+    HorizonPoint,
+    LOSResult,
+    TerrainGradient,
+    ViewshedResult,
+    compute_horizon,
     create_flat_dem,
     create_synthetic_terrain,
-    # Visibility data structures
-    LOSResult,
-    ViewshedResult,
-    HorizonPoint,
-    # Visibility functions
+    get_elevation_profile,
+    interpolate_dem,
     line_of_sight,
-    viewshed,
-    compute_horizon,
-    terrain_masking_angle,
+    merge_dems,
     radar_coverage_map,
+    terrain_masking_angle,
+    viewshed,
 )
-
 
 # ============================================================================
 # DEM Data Structure Tests

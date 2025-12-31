@@ -8,19 +8,19 @@ This module provides:
 """
 
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
-    gauss_legendre,
+    cubature_gauss_hermite,
+    dblquad,
+    fixed_quad,
+    gauss_chebyshev,
     gauss_hermite,
     gauss_laguerre,
-    gauss_chebyshev,
+    gauss_legendre,
     quad,
-    dblquad,
-    tplquad,
-    fixed_quad,
     romberg,
     simpson,
-    trapezoid,
-    cubature_gauss_hermite,
     spherical_cubature,
+    tplquad,
+    trapezoid,
     unscented_transform_points,
 )
 

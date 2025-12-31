@@ -12,8 +12,9 @@ References
        IEEE Trans. Automatic Control, 1979.
 """
 
-from typing import NamedTuple, List, Dict, Optional, Set, Tuple
 from enum import Enum
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 

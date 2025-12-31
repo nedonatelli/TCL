@@ -3,27 +3,25 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytcl.static_estimation import (
-    # Least squares
-    ordinary_least_squares,
-    weighted_least_squares,
-    total_least_squares,
-    generalized_least_squares,
-    recursive_least_squares,
-    ridge_regression,
-    # Robust estimation
-    huber_weight,
-    huber_rho,
-    tukey_weight,
-    tukey_rho,
+from pytcl.static_estimation import (  # Least squares; Robust estimation
     cauchy_weight,
-    mad,
-    tau_scale,
-    irls,
+    generalized_least_squares,
     huber_regression,
-    tukey_regression,
+    huber_rho,
+    huber_weight,
+    irls,
+    mad,
+    ordinary_least_squares,
     ransac,
     ransac_n_trials,
+    recursive_least_squares,
+    ridge_regression,
+    tau_scale,
+    total_least_squares,
+    tukey_regression,
+    tukey_rho,
+    tukey_weight,
+    weighted_least_squares,
 )
 
 

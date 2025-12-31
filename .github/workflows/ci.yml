@@ -20,7 +20,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black flake8 mypy numpy
+          pip install black isort flake8 mypy numpy
+
+      - name: Check import sorting with isort
+        run: isort --check-only --diff .
 
       - name: Check formatting with Black
         run: black --check .

@@ -3,26 +3,23 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytcl.assignment_algorithms import (
-    # 2D Assignment
-    hungarian,
-    auction,
-    linear_sum_assignment,
-    assign2d,
+from pytcl.assignment_algorithms import (  # 2D Assignment; Gating; Data Association
     AssignmentResult,
-    # Gating
-    ellipsoidal_gate,
-    rectangular_gate,
-    gate_measurements,
-    mahalanobis_distance,
-    chi2_gate_threshold,
-    compute_gate_volume,
-    # Data Association
-    gnn_association,
-    nearest_neighbor,
-    compute_association_cost,
-    gated_gnn_association,
     AssociationResult,
+    assign2d,
+    auction,
+    chi2_gate_threshold,
+    compute_association_cost,
+    compute_gate_volume,
+    ellipsoidal_gate,
+    gate_measurements,
+    gated_gnn_association,
+    gnn_association,
+    hungarian,
+    linear_sum_assignment,
+    mahalanobis_distance,
+    nearest_neighbor,
+    rectangular_gate,
 )
 
 

@@ -5,10 +5,11 @@ This module provides matrix decomposition functions that wrap numpy/scipy
 with consistent APIs matching the MATLAB TrackerComponentLibrary conventions.
 """
 
-from typing import Tuple, Optional, Literal
+from typing import Literal, Optional, Tuple
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.linalg as la
+from numpy.typing import ArrayLike, NDArray
 
 
 def chol_semi_def(

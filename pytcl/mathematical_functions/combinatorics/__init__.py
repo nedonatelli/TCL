@@ -9,22 +9,22 @@ This module provides:
 """
 
 from pytcl.mathematical_functions.combinatorics.combinatorics import (  # noqa: E501
-    factorial,
-    n_choose_k,
-    n_permute_k,
-    permutations,
+    bell_number,
+    catalan_number,
     combinations,
     combinations_with_replacement,
-    permutation_rank,
-    permutation_unrank,
+    derangements_count,
+    factorial,
+    multinomial_coefficient,
+    n_choose_k,
+    n_permute_k,
     next_permutation,
     partition_count,
     partitions,
-    multinomial_coefficient,
+    permutation_rank,
+    permutation_unrank,
+    permutations,
     stirling_second,
-    bell_number,
-    catalan_number,
-    derangements_count,
     subfactorial,
 )
 

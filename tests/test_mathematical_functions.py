@@ -10,45 +10,41 @@ Tests cover:
 
 import numpy as np
 import pytest
-from pytcl.mathematical_functions import (
-    # Basic matrix
+
+from pytcl.mathematical_functions import (  # Basic matrix; Geometry; Combinatorics
     block_diag,
-    kron,
-    vec,
-    unvec,
-    # Geometry
-    point_in_polygon,
-    convex_hull,
-    polygon_area,
-    line_intersection,
     bounding_box,
-    # Combinatorics
+    combinations,
+    convex_hull,
     factorial,
+    kron,
+    line_intersection,
     n_choose_k,
     permutations,
-    combinations,
+    point_in_polygon,
+    polygon_area,
+    unvec,
+    vec,
 )
-
 from pytcl.mathematical_functions.basic_matrix.special_matrices import (
-    vandermonde,
-    toeplitz,
-    hankel,
     circulant,
-    hilbert,
-    hadamard,
     commutation_matrix,
     duplication_matrix,
     elimination_matrix,
+    hadamard,
+    hankel,
+    hilbert,
+    toeplitz,
+    vandermonde,
 )
-
 from pytcl.mathematical_functions.geometry.geometry import (
-    points_in_polygon,
+    barycentric_coordinates,
     convex_hull_area,
-    polygon_centroid,
     point_to_line_distance,
     point_to_line_segment_distance,
+    points_in_polygon,
+    polygon_centroid,
     triangle_area,
-    barycentric_coordinates,
 )
 
 

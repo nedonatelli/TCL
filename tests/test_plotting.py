@@ -8,16 +8,14 @@ Plotting functions that return Plotly figures are tested for proper output types
 import numpy as np
 import pytest
 
-from pytcl.plotting import (
-    # Ellipse utilities
+from pytcl.plotting import (  # Ellipse utilities; Track utilities (non-plotting)
+    confidence_region_radius,
     covariance_ellipse_points,
     covariance_ellipsoid_points,
     ellipse_parameters,
-    confidence_region_radius,
-    # Track utilities (non-plotting)
+    plot_tracking_result,
     plot_trajectory_2d,
     plot_trajectory_3d,
-    plot_tracking_result,
 )
 
 # Check if plotly is available

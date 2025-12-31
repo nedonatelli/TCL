@@ -21,15 +21,15 @@ References
        https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
 """
 
-from typing import NamedTuple, Optional, Tuple, Dict
-from pathlib import Path
-from functools import lru_cache
 import os
+from functools import lru_cache
+from pathlib import Path
+from typing import Dict, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 
 from .wmm import MagneticResult
-
 
 # Model parameters
 EMM_PARAMETERS: Dict[str, Dict] = {

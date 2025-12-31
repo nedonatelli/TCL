@@ -20,120 +20,97 @@ Examples
 >>> sol = lambert_universal(r1, r2, 3600)
 """
 
-from pytcl.astronomical.time_systems import (
-    # Julian dates
-    cal_to_jd,
-    jd_to_cal,
-    mjd_to_jd,
-    jd_to_mjd,
-    # Time scales
-    utc_to_tai,
-    tai_to_utc,
-    tai_to_tt,
-    tt_to_tai,
-    utc_to_tt,
-    tt_to_utc,
-    tai_to_gps,
-    gps_to_tai,
-    utc_to_gps,
-    gps_to_utc,
-    # Unix time
-    unix_to_jd,
-    jd_to_unix,
-    # GPS week
-    gps_week_seconds,
-    gps_week_to_utc,
-    # Sidereal time
-    gmst,
-    gast,
-    # Leap seconds
-    get_leap_seconds,
-    LeapSecondTable,
-    # Constants
-    JD_J2000,
-    JD_UNIX_EPOCH,
-    JD_GPS_EPOCH,
-    MJD_OFFSET,
-    TT_TAI_OFFSET,
-)
-
-from pytcl.astronomical.orbital_mechanics import (
-    # Constants
-    GM_SUN,
-    GM_EARTH,
-    GM_MOON,
-    GM_MARS,
-    GM_JUPITER,
-    # Types
-    OrbitalElements,
-    StateVector,
-    # Anomaly conversions
-    mean_to_eccentric_anomaly,
-    mean_to_hyperbolic_anomaly,
-    eccentric_to_true_anomaly,
-    true_to_eccentric_anomaly,
-    hyperbolic_to_true_anomaly,
-    true_to_hyperbolic_anomaly,
-    eccentric_to_mean_anomaly,
-    mean_to_true_anomaly,
-    true_to_mean_anomaly,
-    # Element conversions
-    orbital_elements_to_state,
-    state_to_orbital_elements,
-    # Propagation
-    kepler_propagate,
-    kepler_propagate_state,
-    # Orbital quantities
-    orbital_period,
-    mean_motion,
-    vis_viva,
-    specific_angular_momentum,
-    specific_orbital_energy,
-    flight_path_angle,
-    periapsis_radius,
-    apoapsis_radius,
-    time_since_periapsis,
-    orbit_radius,
-    escape_velocity,
-    circular_velocity,
-)
-
 from pytcl.astronomical.lambert import (
     LambertSolution,
-    lambert_universal,
-    lambert_izzo,
-    minimum_energy_transfer,
-    hohmann_transfer,
     bi_elliptic_transfer,
+    hohmann_transfer,
+    lambert_izzo,
+    lambert_universal,
+    minimum_energy_transfer,
 )
-
-from pytcl.astronomical.reference_frames import (
-    # Time utilities
+from pytcl.astronomical.orbital_mechanics import (  # Constants; Types; Anomaly conversions; Element conversions; Propagation; Orbital quantities
+    GM_EARTH,
+    GM_JUPITER,
+    GM_MARS,
+    GM_MOON,
+    GM_SUN,
+    OrbitalElements,
+    StateVector,
+    apoapsis_radius,
+    circular_velocity,
+    eccentric_to_mean_anomaly,
+    eccentric_to_true_anomaly,
+    escape_velocity,
+    flight_path_angle,
+    hyperbolic_to_true_anomaly,
+    kepler_propagate,
+    kepler_propagate_state,
+    mean_motion,
+    mean_to_eccentric_anomaly,
+    mean_to_hyperbolic_anomaly,
+    mean_to_true_anomaly,
+    orbit_radius,
+    orbital_elements_to_state,
+    orbital_period,
+    periapsis_radius,
+    specific_angular_momentum,
+    specific_orbital_energy,
+    state_to_orbital_elements,
+    time_since_periapsis,
+    true_to_eccentric_anomaly,
+    true_to_hyperbolic_anomaly,
+    true_to_mean_anomaly,
+    vis_viva,
+)
+from pytcl.astronomical.reference_frames import (  # Time utilities; Precession; Nutation; Earth rotation; Polar motion; Full transformations; Ecliptic/equatorial
+    earth_rotation_angle,
+    ecef_to_eci,
+    eci_to_ecef,
+    ecliptic_to_equatorial,
+    equation_of_equinoxes,
+    equatorial_to_ecliptic,
+    gast_iau82,
+    gcrf_to_itrf,
+    gmst_iau82,
+    itrf_to_gcrf,
     julian_centuries_j2000,
-    # Precession
-    precession_angles_iau76,
-    precession_matrix_iau76,
-    # Nutation
+    mean_obliquity_iau80,
     nutation_angles_iau80,
     nutation_matrix,
-    mean_obliquity_iau80,
-    true_obliquity,
-    # Earth rotation
-    earth_rotation_angle,
-    gmst_iau82,
-    gast_iau82,
-    sidereal_rotation_matrix,
-    equation_of_equinoxes,
-    # Polar motion
     polar_motion_matrix,
-    # Full transformations
-    gcrf_to_itrf,
-    itrf_to_gcrf,
-    eci_to_ecef,
-    ecef_to_eci,
-    # Ecliptic/equatorial
-    ecliptic_to_equatorial,
-    equatorial_to_ecliptic,
+    precession_angles_iau76,
+    precession_matrix_iau76,
+    sidereal_rotation_matrix,
+    true_obliquity,
+)
+from pytcl.astronomical.time_systems import (  # Julian dates; Time scales; Unix time; GPS week; Sidereal time; Leap seconds; Constants
+    JD_GPS_EPOCH,
+    JD_J2000,
+    JD_UNIX_EPOCH,
+    MJD_OFFSET,
+    TT_TAI_OFFSET,
+    LeapSecondTable,
+    cal_to_jd,
+    gast,
+    get_leap_seconds,
+    gmst,
+    gps_to_tai,
+    gps_to_utc,
+    gps_week_seconds,
+    gps_week_to_utc,
+    jd_to_cal,
+    jd_to_mjd,
+    jd_to_unix,
+    mjd_to_jd,
+    tai_to_gps,
+    tai_to_tt,
+    tai_to_utc,
+    tt_to_tai,
+    tt_to_utc,
+    unix_to_jd,
+    utc_to_gps,
+    utc_to_tai,
+    utc_to_tt,
 )
 
 __all__ = [

@@ -6,8 +6,8 @@ applications including orbits, pendulums, and electromagnetic calculations.
 """
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.special as sp
+from numpy.typing import ArrayLike, NDArray
 
 
 def ellipk(m: ArrayLike) -> NDArray[np.floating]:

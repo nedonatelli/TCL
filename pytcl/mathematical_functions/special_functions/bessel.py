@@ -6,9 +6,10 @@ antenna theory, and scattering problems in tracking applications.
 """
 
 from typing import Union
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.special as sp
+from numpy.typing import ArrayLike, NDArray
 
 
 def besselj(

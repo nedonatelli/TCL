@@ -6,7 +6,8 @@ longitude, altitude) and Earth-centered coordinate systems (ECEF), as well
 as local tangent plane coordinates (ENU, NED).
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

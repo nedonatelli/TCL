@@ -9,7 +9,8 @@ This is more sophisticated than GNN which makes hard assignment decisions,
 as JPDA can handle measurement origin uncertainty in cluttered environments.
 """
 
-from typing import NamedTuple, List, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2

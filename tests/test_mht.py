@@ -5,17 +5,17 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.trackers import (
-    MHTTrackStatus,
-    MHTTrack,
     Hypothesis,
     HypothesisTree,
-    generate_joint_associations,
-    compute_association_likelihood,
-    n_scan_prune,
-    prune_hypotheses_by_probability,
     MHTConfig,
     MHTResult,
+    MHTTrack,
     MHTTracker,
+    MHTTrackStatus,
+    compute_association_likelihood,
+    generate_joint_associations,
+    n_scan_prune,
+    prune_hypotheses_by_probability,
 )
 
 

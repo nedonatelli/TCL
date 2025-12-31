@@ -10,22 +10,20 @@ Tests cover:
 
 import numpy as np
 
-from pytcl.dynamic_models import (
-    # Discrete-time state transition matrices
-    f_poly_kal,
-    f_constant_velocity,
+from pytcl.dynamic_models import (  # Discrete-time state transition matrices; Process noise covariance matrices
     f_constant_acceleration,
-    f_discrete_white_noise_accel,
-    f_piecewise_white_noise_jerk,
+    f_constant_velocity,
     f_coord_turn_2d,
     f_coord_turn_3d,
     f_coord_turn_polar,
-    # Process noise covariance matrices
-    q_poly_kal,
-    q_discrete_white_noise,
-    q_constant_velocity,
+    f_discrete_white_noise_accel,
+    f_piecewise_white_noise_jerk,
+    f_poly_kal,
     q_constant_acceleration,
+    q_constant_velocity,
     q_continuous_white_noise,
+    q_discrete_white_noise,
+    q_poly_kal,
 )
 
 

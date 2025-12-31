@@ -7,39 +7,39 @@ import math
 import numpy as np
 import pytest
 
+from pytcl.core.array_utils import (
+    block_diag,
+    column_vector,
+    is_positive_definite,
+    normalize_vector,
+    row_vector,
+    skew_symmetric,
+    unskew,
+    unvec,
+    vec,
+    wrap_to_2pi,
+    wrap_to_pi,
+    wrap_to_range,
+)
 from pytcl.core.constants import (
-    SPEED_OF_LIGHT,
-    EARTH_SEMI_MAJOR_AXIS,
-    EARTH_FLATTENING,
-    WGS84,
-    PI,
-    TWO_PI,
     DEG_TO_RAD,
+    EARTH_FLATTENING,
+    EARTH_SEMI_MAJOR_AXIS,
+    PI,
     RAD_TO_DEG,
+    SPEED_OF_LIGHT,
+    TWO_PI,
+    WGS84,
     PhysicalConstants,
 )
 from pytcl.core.validation import (
-    validate_array,
+    ValidationError,
     ensure_2d,
     ensure_column_vector,
     ensure_row_vector,
     ensure_square_matrix,
     ensure_symmetric,
-    ValidationError,
-)
-from pytcl.core.array_utils import (
-    wrap_to_pi,
-    wrap_to_2pi,
-    wrap_to_range,
-    column_vector,
-    row_vector,
-    skew_symmetric,
-    unskew,
-    normalize_vector,
-    vec,
-    unvec,
-    block_diag,
-    is_positive_definite,
+    validate_array,
 )
 
 

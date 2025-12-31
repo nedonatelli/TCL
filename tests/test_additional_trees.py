@@ -3,17 +3,14 @@
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 
-from pytcl.containers import (
-    # R-Tree
+from pytcl.containers import (  # R-Tree; VP-Tree; Cover Tree
     BoundingBox,
-    merge_boxes,
+    CoverTree,
+    RTree,
+    VPTree,
     box_from_point,
     box_from_points,
-    RTree,
-    # VP-Tree
-    VPTree,
-    # Cover Tree
-    CoverTree,
+    merge_boxes,
 )
 
 

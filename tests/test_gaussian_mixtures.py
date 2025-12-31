@@ -6,12 +6,12 @@ from numpy.testing import assert_allclose, assert_array_equal
 from pytcl.clustering import (
     GaussianComponent,
     GaussianMixture,
-    moment_match,
-    runnalls_merge_cost,
     merge_gaussians,
+    moment_match,
     prune_mixture,
     reduce_mixture_runnalls,
     reduce_mixture_west,
+    runnalls_merge_cost,
 )
 
 

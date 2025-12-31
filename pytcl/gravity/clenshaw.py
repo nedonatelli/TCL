@@ -19,7 +19,8 @@ References
        Journal of Geodesy 82.4-5 (2008): 223-229.
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 

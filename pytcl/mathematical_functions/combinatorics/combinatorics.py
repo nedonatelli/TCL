@@ -5,10 +5,11 @@ This module provides functions for permutations, combinations, and
 related operations commonly used in assignment problems and data association.
 """
 
-from typing import Iterator, List, Optional, Tuple
 import itertools
-from numpy.typing import ArrayLike
 from functools import lru_cache
+from typing import Iterator, List, Optional, Tuple
+
+from numpy.typing import ArrayLike
 
 
 def factorial(n: int) -> int:

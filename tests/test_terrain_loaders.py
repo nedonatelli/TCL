@@ -1,28 +1,25 @@
 """Tests for GEBCO and Earth2014 terrain data loaders."""
 
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
 from pathlib import Path
 
-from pytcl.terrain import (
-    # Loader functions
-    load_gebco,
-    load_earth2014,
-    create_test_gebco_dem,
-    create_test_earth2014_dem,
-    get_gebco_metadata,
-    get_earth2014_metadata,
-    get_data_dir,
-    # Parameters
-    GEBCO_PARAMETERS,
+import numpy as np
+import pytest
+from numpy.testing import assert_allclose
+
+from pytcl.terrain import (  # Loader functions; Parameters; Metadata types; DEM types for verification
     EARTH2014_PARAMETERS,
-    # Metadata types
-    GEBCOMetadata,
-    Earth2014Metadata,
-    # DEM types for verification
+    GEBCO_PARAMETERS,
     DEMGrid,
     DEMPoint,
+    Earth2014Metadata,
+    GEBCOMetadata,
+    create_test_earth2014_dem,
+    create_test_gebco_dem,
+    get_data_dir,
+    get_earth2014_metadata,
+    get_gebco_metadata,
+    load_earth2014,
+    load_gebco,
 )
 
 

@@ -6,6 +6,7 @@ and higher-order polynomial models.
 """
 
 import math
+
 import numpy as np
 from numpy.typing import NDArray
 

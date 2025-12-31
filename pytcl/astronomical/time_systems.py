@@ -11,9 +11,9 @@ This module provides conversions between various time systems:
 - Sidereal time (GMST, GAST)
 """
 
-from typing import Tuple, List
-import numpy as np
+from typing import List, Tuple
 
+import numpy as np
 
 # Constants
 JD_UNIX_EPOCH = 2440587.5  # Julian date of Unix epoch (1970-01-01 00:00:00 UTC)

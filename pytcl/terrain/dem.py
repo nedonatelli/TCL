@@ -25,7 +25,8 @@ References
        198.3 (2014): 1544-1555.
 """
 
-from typing import NamedTuple, Optional, List, Tuple
+from typing import List, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import NDArray
 

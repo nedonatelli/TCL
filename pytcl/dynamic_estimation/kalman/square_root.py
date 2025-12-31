@@ -13,9 +13,10 @@ Implementations include:
 """
 
 from typing import Callable, NamedTuple, Optional
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.linalg
+from numpy.typing import ArrayLike, NDArray
 
 
 class SRKalmanState(NamedTuple):

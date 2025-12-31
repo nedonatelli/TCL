@@ -5,7 +5,8 @@ This module provides the standard linear Kalman filter for systems with
 linear dynamics and linear measurements with Gaussian noise.
 """
 
-from typing import Tuple, Optional, NamedTuple
+from typing import NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

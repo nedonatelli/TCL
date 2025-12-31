@@ -5,7 +5,8 @@ This module provides standard atmosphere models used for computing
 temperature, pressure, and density at various altitudes.
 """
 
-from typing import Tuple, NamedTuple
+from typing import NamedTuple, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

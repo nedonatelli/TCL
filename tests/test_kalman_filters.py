@@ -12,35 +12,32 @@ Tests cover:
 
 import numpy as np
 import pytest
-from pytcl.dynamic_estimation.kalman import (
-    # Linear KF
-    KalmanState,
+
+from pytcl.dynamic_estimation.kalman import (  # Linear KF; EKF; UKF; CKF
     KalmanPrediction,
+    KalmanState,
     KalmanUpdate,
-    kf_predict,
-    kf_update,
-    kf_predict_update,
-    kf_smooth,
+    SigmaPoints,
+    ckf_predict,
+    ckf_spherical_cubature_points,
+    ckf_update,
+    ekf_predict,
+    ekf_predict_auto,
+    ekf_update,
+    ekf_update_auto,
     information_filter_predict,
     information_filter_update,
-    # EKF
-    ekf_predict,
-    ekf_update,
-    numerical_jacobian,
-    ekf_predict_auto,
-    ekf_update_auto,
     iterated_ekf_update,
-    # UKF
-    SigmaPoints,
-    sigma_points_merwe,
+    kf_predict,
+    kf_predict_update,
+    kf_smooth,
+    kf_update,
+    numerical_jacobian,
     sigma_points_julier,
-    unscented_transform,
+    sigma_points_merwe,
     ukf_predict,
     ukf_update,
-    # CKF
-    ckf_spherical_cubature_points,
-    ckf_predict,
-    ckf_update,
+    unscented_transform,
 )
 
 

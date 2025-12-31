@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-
 # =============================================================================
 # Square-Root Kalman Filter Comprehensive Tests
 # =============================================================================
@@ -310,10 +309,10 @@ class TestUDFactorizationComprehensive:
     def test_ud_predict_matches_standard(self):
         """Test U-D predict matches standard Kalman predict."""
         from pytcl.dynamic_estimation.kalman import (
-            ud_factorize,
-            ud_reconstruct,
-            ud_predict,
             kf_predict,
+            ud_factorize,
+            ud_predict,
+            ud_reconstruct,
         )
 
         x = np.array([1.0, 2.0, 3.0, 4.0])
@@ -337,10 +336,10 @@ class TestUDFactorizationComprehensive:
     def test_ud_update_scalar_bierman(self):
         """Test Bierman's scalar update algorithm."""
         from pytcl.dynamic_estimation.kalman import (
+            kf_update,
             ud_factorize,
             ud_reconstruct,
             ud_update_scalar,
-            kf_update,
         )
 
         x = np.array([0.0, 1.0, 0.0])
@@ -365,9 +364,9 @@ class TestUDFactorizationComprehensive:
     def test_ud_update_correlated_noise(self):
         """Test U-D update with correlated measurement noise."""
         from pytcl.dynamic_estimation.kalman import (
+            kf_update,
             ud_factorize,
             ud_update,
-            kf_update,
         )
 
         x = np.array([0.0, 1.0, 0.0, 0.5])
@@ -398,8 +397,8 @@ class TestSRUKFComprehensive:
     def test_sr_ukf_linear_matches_srkf(self):
         """Test SR-UKF matches SRKF for linear system."""
         from pytcl.dynamic_estimation.kalman import (
-            srkf_predict,
             sr_ukf_predict,
+            srkf_predict,
         )
 
         x = np.array([0.0, 1.0, 0.0, -0.5])
@@ -727,8 +726,8 @@ class TestCrossFeatureIntegration:
 
     def test_imm_with_srkf(self):
         """Test using square-root filters within IMM framework."""
-        from pytcl.dynamic_estimation.kalman import srkf_predict
         from pytcl.dynamic_estimation.imm import combine_estimates
+        from pytcl.dynamic_estimation.kalman import srkf_predict
 
         # Initial state
         x1 = np.array([0.0, 1.0, 0.0, 0.5])

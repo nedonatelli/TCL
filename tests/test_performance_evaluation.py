@@ -1,33 +1,31 @@
 """Tests for performance evaluation module."""
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
-from pytcl.performance_evaluation import (
-    # Track metrics
-    OSPAResult,
-    MOTMetrics,
-    ospa,
-    ospa_over_time,
-    track_purity,
-    track_fragmentation,
-    identity_switches,
-    mot_metrics,
-    # Estimation metrics
+from pytcl.performance_evaluation import (  # Track metrics; Estimation metrics
     ConsistencyResult,
-    rmse,
-    position_rmse,
-    velocity_rmse,
-    nees,
-    nees_sequence,
+    MOTMetrics,
+    OSPAResult,
     average_nees,
-    nis,
-    nis_sequence,
     consistency_test,
     credibility_interval,
-    monte_carlo_rmse,
     estimation_error_bounds,
+    identity_switches,
+    monte_carlo_rmse,
+    mot_metrics,
+    nees,
+    nees_sequence,
+    nis,
+    nis_sequence,
+    ospa,
+    ospa_over_time,
+    position_rmse,
+    rmse,
+    track_fragmentation,
+    track_purity,
+    velocity_rmse,
 )
 
 

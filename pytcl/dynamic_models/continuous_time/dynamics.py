@@ -9,10 +9,11 @@ stochastic differential equations of the form:
 where W is a Wiener process.
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
+
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.linalg
+from numpy.typing import ArrayLike, NDArray
 
 
 def drift_constant_velocity(

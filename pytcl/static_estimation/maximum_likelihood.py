@@ -12,7 +12,8 @@ References
        Wiley, 2001.
 """
 
-from typing import NamedTuple, Optional, Callable
+from typing import Callable, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

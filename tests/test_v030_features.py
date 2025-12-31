@@ -5,7 +5,6 @@ Tests for v0.3.0 features: Square-root filters, IMM, and JPDA.
 import numpy as np
 from numpy.testing import assert_allclose
 
-
 # =============================================================================
 # Square-Root Kalman Filter Tests
 # =============================================================================
@@ -144,9 +143,9 @@ class TestUDFactorization:
     def test_ud_update_vector(self):
         """Test vector U-D update."""
         from pytcl.dynamic_estimation.kalman import (
+            kf_update,
             ud_factorize,
             ud_update,
-            kf_update,
         )
 
         x = np.array([0.0, 1.0, 0.0, -0.5])

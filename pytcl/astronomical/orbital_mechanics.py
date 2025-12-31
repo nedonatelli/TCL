@@ -13,9 +13,9 @@ References
 """
 
 from typing import NamedTuple
+
 import numpy as np
 from numpy.typing import NDArray
-
 
 # Standard gravitational parameters (km^3/s^2)
 GM_SUN = 1.32712440018e11

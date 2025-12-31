@@ -4,10 +4,10 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from pytcl.trackers import (
-    SingleTargetTracker,
-    TrackState,
     MultiTargetTracker,
+    SingleTargetTracker,
     Track,
+    TrackState,
     TrackStatus,
 )
 

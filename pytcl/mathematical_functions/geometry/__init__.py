@@ -10,22 +10,22 @@ This module provides:
 """
 
 from pytcl.mathematical_functions.geometry.geometry import (
-    point_in_polygon,
-    points_in_polygon,
+    barycentric_coordinates,
+    bounding_box,
     convex_hull,
     convex_hull_area,
-    polygon_area,
-    polygon_centroid,
+    delaunay_triangulation,
     line_intersection,
     line_plane_intersection,
-    point_to_line_distance,
-    point_to_line_segment_distance,
-    triangle_area,
-    barycentric_coordinates,
-    delaunay_triangulation,
-    bounding_box,
     minimum_bounding_circle,
     oriented_bounding_box,
+    point_in_polygon,
+    point_to_line_distance,
+    point_to_line_segment_distance,
+    points_in_polygon,
+    polygon_area,
+    polygon_centroid,
+    triangle_area,
 )
 
 __all__ = [

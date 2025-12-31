@@ -5,27 +5,26 @@ from numpy.testing import assert_allclose
 
 from pytcl.gravity import (
     associated_legendre,
-    normal_gravity_somigliana,
-    normal_gravity,
-    gravity_wgs84,
-    gravity_j2,
-    geoid_height_j2,
-    free_air_anomaly,
     bouguer_anomaly,
+    free_air_anomaly,
+    geoid_height_j2,
+    gravity_j2,
+    gravity_wgs84,
+    normal_gravity,
+    normal_gravity_somigliana,
 )
-
 from pytcl.magnetism import (
-    wmm,
+    IGRF13,
+    WMM2020,
+    dipole_axis,
+    dipole_moment,
     igrf,
-    magnetic_declination,
-    magnetic_inclination,
-    magnetic_field_intensity,
     igrf_declination,
     igrf_inclination,
-    dipole_moment,
-    dipole_axis,
-    WMM2020,
-    IGRF13,
+    magnetic_declination,
+    magnetic_field_intensity,
+    magnetic_inclination,
+    wmm,
 )
 
 

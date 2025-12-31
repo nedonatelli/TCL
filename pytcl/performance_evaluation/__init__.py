@@ -26,33 +26,33 @@ OSPA: 1.12
 RMSE: 0.100
 """
 
-# Track metrics
-from pytcl.performance_evaluation.track_metrics import (
-    OSPAResult,
-    MOTMetrics,
-    ospa,
-    ospa_over_time,
-    track_purity,
-    track_fragmentation,
-    identity_switches,
-    mot_metrics,
-)
-
 # Estimation metrics
 from pytcl.performance_evaluation.estimation_metrics import (
     ConsistencyResult,
-    rmse,
-    position_rmse,
-    velocity_rmse,
-    nees,
-    nees_sequence,
     average_nees,
-    nis,
-    nis_sequence,
     consistency_test,
     credibility_interval,
-    monte_carlo_rmse,
     estimation_error_bounds,
+    monte_carlo_rmse,
+    nees,
+    nees_sequence,
+    nis,
+    nis_sequence,
+    position_rmse,
+    rmse,
+    velocity_rmse,
+)
+
+# Track metrics
+from pytcl.performance_evaluation.track_metrics import (
+    MOTMetrics,
+    OSPAResult,
+    identity_switches,
+    mot_metrics,
+    ospa,
+    ospa_over_time,
+    track_fragmentation,
+    track_purity,
 )
 
 __all__ = [

@@ -4,7 +4,8 @@ Single-target tracker implementation.
 This module provides a simple single-target tracker using Kalman filtering.
 """
 
-from typing import Optional, NamedTuple, Callable
+from typing import Callable, NamedTuple, Optional
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 

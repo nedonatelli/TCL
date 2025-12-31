@@ -1,19 +1,19 @@
 """Tests for Enhanced Magnetic Model (EMM) and WMMHR."""
 
 import numpy as np
-from numpy.testing import assert_allclose
 import pytest
+from numpy.testing import assert_allclose
 
 from pytcl.magnetism import (
+    EMM_PARAMETERS,
+    create_emm_test_coefficients,
     emm,
-    wmmhr,
     emm_declination,
     emm_inclination,
     emm_intensity,
-    create_emm_test_coefficients,
     get_emm_data_dir,
-    EMM_PARAMETERS,
     wmm,
+    wmmhr,
 )
 
 

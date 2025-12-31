@@ -4,24 +4,21 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
-from pytcl.clustering import (
-    # K-means
-    KMeansResult,
-    kmeans_plusplus_init,
-    assign_clusters,
-    update_centers,
-    kmeans,
-    kmeans_elbow,
-    # DBSCAN
+from pytcl.clustering import (  # K-means; DBSCAN; Hierarchical
     DBSCANResult,
+    HierarchicalResult,
+    KMeansResult,
+    agglomerative_clustering,
+    assign_clusters,
+    compute_neighbors,
+    cut_dendrogram,
     dbscan,
     dbscan_predict,
-    compute_neighbors,
-    # Hierarchical
-    HierarchicalResult,
-    agglomerative_clustering,
-    cut_dendrogram,
     fcluster,
+    kmeans,
+    kmeans_elbow,
+    kmeans_plusplus_init,
+    update_centers,
 )
 
 

@@ -6,11 +6,11 @@ the 2D assignment problem (bipartite matching).
 """
 
 from pytcl.assignment_algorithms.two_dimensional.assignment import (
-    hungarian,
-    auction,
-    linear_sum_assignment,
-    assign2d,
     AssignmentResult,
+    assign2d,
+    auction,
+    hungarian,
+    linear_sum_assignment,
 )
 
 __all__ = [

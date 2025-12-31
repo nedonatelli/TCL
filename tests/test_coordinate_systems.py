@@ -14,37 +14,36 @@ Tests cover:
 
 import numpy as np
 import pytest
-from pytcl.coordinate_systems import (
-    # Spherical/polar conversions
-    cart2sphere,
-    sphere2cart,
-    cart2pol,
-    pol2cart,
+
+from pytcl.coordinate_systems import (  # Spherical/polar conversions; Rotation operations
+    axisangle2rotmat,
     cart2cyl,
-    cyl2cart,
-    ruv2cart,
+    cart2pol,
     cart2ruv,
-    # Rotation operations
+    cart2sphere,
+    cyl2cart,
+    dcm_rate,
+    euler2quat,
+    euler2rotmat,
+    is_rotation_matrix,
+    pol2cart,
+    quat2euler,
+    quat2rotmat,
+    quat_conjugate,
+    quat_inverse,
+    quat_multiply,
+    quat_rotate,
+    rodrigues2rotmat,
+    rotmat2axisangle,
+    rotmat2euler,
+    rotmat2quat,
+    rotmat2rodrigues,
     rotx,
     roty,
     rotz,
-    euler2rotmat,
-    rotmat2euler,
-    axisangle2rotmat,
-    rotmat2axisangle,
-    quat2rotmat,
-    rotmat2quat,
-    euler2quat,
-    quat2euler,
-    quat_multiply,
-    quat_conjugate,
-    quat_inverse,
-    quat_rotate,
+    ruv2cart,
     slerp,
-    rodrigues2rotmat,
-    rotmat2rodrigues,
-    dcm_rate,
-    is_rotation_matrix,
+    sphere2cart,
 )
 
 

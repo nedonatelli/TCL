@@ -12,9 +12,9 @@ References
 .. [3] WGS84 - https://earth-info.nga.mil/GandG/update/index.php?dir=wgs84&action=wgs84
 """
 
+import math
 from dataclasses import dataclass
 from typing import Final
-import math
 
 # =============================================================================
 # Universal Physical Constants (CODATA 2018)

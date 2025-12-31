@@ -4,17 +4,17 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from pytcl.static_estimation import (
-    fisher_information_numerical,
-    fisher_information_gaussian,
+    aic,
+    aicc,
+    bic,
     cramer_rao_bound,
     cramer_rao_bound_biased,
     efficiency,
+    fisher_information_gaussian,
+    fisher_information_numerical,
+    mle_gaussian,
     mle_newton_raphson,
     mle_scoring,
-    mle_gaussian,
-    aic,
-    bic,
-    aicc,
 )
 
 

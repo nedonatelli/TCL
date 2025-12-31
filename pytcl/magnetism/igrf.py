@@ -13,11 +13,12 @@ References
 """
 
 from typing import NamedTuple, Optional
+
 import numpy as np
 
 from pytcl.magnetism.wmm import (
-    MagneticResult,
     MagneticCoefficients,
+    MagneticResult,
     magnetic_field_spherical,
 )
 

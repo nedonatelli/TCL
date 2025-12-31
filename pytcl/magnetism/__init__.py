@@ -25,41 +25,43 @@ Examples
 >>> coef = create_emm_test_coefficients(n_max=36)
 """
 
-from pytcl.magnetism.wmm import (
-    MagneticResult,
-    MagneticCoefficients,
-    WMM2020,
-    create_wmm2020_coefficients,
-    magnetic_field_spherical,
-    wmm,
-    magnetic_declination,
-    magnetic_inclination,
-    magnetic_field_intensity,
-)
-
-from pytcl.magnetism.igrf import (
-    IGRFModel,
-    IGRF13,
-    create_igrf13_coefficients,
-    igrf,
-    igrf_declination,
-    igrf_inclination,
-    dipole_moment,
-    dipole_axis,
-    magnetic_north_pole,
-)
-
 from pytcl.magnetism.emm import (
-    HighResCoefficients,
     EMM_PARAMETERS,
-    get_data_dir as get_emm_data_dir,
-    load_emm_coefficients,
-    create_test_coefficients as create_emm_test_coefficients,
+    HighResCoefficients,
+)
+from pytcl.magnetism.emm import create_test_coefficients as create_emm_test_coefficients
+from pytcl.magnetism.emm import (
     emm,
-    wmmhr,
     emm_declination,
     emm_inclination,
     emm_intensity,
+)
+from pytcl.magnetism.emm import get_data_dir as get_emm_data_dir
+from pytcl.magnetism.emm import (
+    load_emm_coefficients,
+    wmmhr,
+)
+from pytcl.magnetism.igrf import (
+    IGRF13,
+    IGRFModel,
+    create_igrf13_coefficients,
+    dipole_axis,
+    dipole_moment,
+    igrf,
+    igrf_declination,
+    igrf_inclination,
+    magnetic_north_pole,
+)
+from pytcl.magnetism.wmm import (
+    WMM2020,
+    MagneticCoefficients,
+    MagneticResult,
+    create_wmm2020_coefficients,
+    magnetic_declination,
+    magnetic_field_intensity,
+    magnetic_field_spherical,
+    magnetic_inclination,
+    wmm,
 )
 
 __all__ = [

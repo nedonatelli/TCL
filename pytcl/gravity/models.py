@@ -12,6 +12,7 @@ References
 """
 
 from typing import NamedTuple
+
 import numpy as np
 
 from pytcl.gravity.spherical_harmonics import spherical_harmonic_sum

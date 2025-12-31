@@ -22,10 +22,6 @@ import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
-from pytcl.performance_evaluation import (  # noqa: E402
-    # Track metrics
-    ospa,
-)
 from pytcl.dynamic_estimation import (  # noqa: E402
     kf_predict,
     kf_update,
@@ -33,6 +29,9 @@ from pytcl.dynamic_estimation import (  # noqa: E402
 from pytcl.dynamic_models import (  # noqa: E402
     f_constant_velocity,
     q_constant_velocity,
+)
+from pytcl.performance_evaluation import (  # noqa: E402; Track metrics
+    ospa,
 )
 
 

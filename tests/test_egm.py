@@ -4,34 +4,30 @@ Tests Clenshaw summation, coefficient loading, geoid height computation,
 and gravity disturbance calculations.
 """
 
-import numpy as np
-from numpy.testing import assert_allclose
-import pytest
 from pathlib import Path
 
-from pytcl.gravity import (
-    # Clenshaw summation
+import numpy as np
+import pytest
+from numpy.testing import assert_allclose
+
+from pytcl.gravity import (  # Clenshaw summation; EGM functions; Scaling factors; Existing functions for comparison
+    EGMCoefficients,
+    GravityDisturbance,
+    associated_legendre,
+    associated_legendre_scaled,
+    clenshaw_gravity,
+    clenshaw_potential,
     clenshaw_sum_order,
     clenshaw_sum_order_derivative,
-    clenshaw_potential,
-    clenshaw_gravity,
-    # EGM functions
-    EGMCoefficients,
-    GeoidResult,
-    GravityDisturbance,
-    get_data_dir,
+    create_test_coefficients,
+    deflection_of_vertical,
     geoid_height,
     geoid_heights,
-    gravity_disturbance,
+    get_data_dir,
     gravity_anomaly,
-    deflection_of_vertical,
-    create_test_coefficients,
-    # Scaling factors
+    gravity_disturbance,
     legendre_scaling_factors,
-    associated_legendre_scaled,
-    # Existing functions for comparison
     spherical_harmonic_sum,
-    associated_legendre,
 )
 
 
@@ -313,9 +309,7 @@ class TestGeoidHeight:
         """geoid_height returns a float."""
         # Use test coefficients
         coef = create_test_coefficients(n_max=10)
-        N = geoid_height(
-            np.radians(45), np.radians(0), coefficients=coef, n_max=10
-        )
+        N = geoid_height(np.radians(45), np.radians(0), coefficients=coef, n_max=10)
         assert isinstance(N, float)
         assert not np.isnan(N)
 
@@ -491,9 +485,7 @@ class TestNumericalStability:
         """Degree 100 computation doesn't overflow."""
         coef = create_test_coefficients(n_max=100)
 
-        N = geoid_height(
-            np.radians(45), np.radians(0), coefficients=coef, n_max=100
-        )
+        N = geoid_height(np.radians(45), np.radians(0), coefficients=coef, n_max=100)
 
         assert not np.isnan(N)
         assert not np.isinf(N)
@@ -502,9 +494,7 @@ class TestNumericalStability:
         """Degree 200 computation doesn't overflow."""
         coef = create_test_coefficients(n_max=200)
 
-        N = geoid_height(
-            np.radians(45), np.radians(0), coefficients=coef, n_max=200
-        )
+        N = geoid_height(np.radians(45), np.radians(0), coefficients=coef, n_max=200)
 
         assert not np.isnan(N)
         assert not np.isinf(N)
@@ -514,9 +504,7 @@ class TestNumericalStability:
         """Degree 360 (EGM96 full) computation doesn't overflow."""
         coef = create_test_coefficients(n_max=360)
 
-        N = geoid_height(
-            np.radians(45), np.radians(0), coefficients=coef, n_max=360
-        )
+        N = geoid_height(np.radians(45), np.radians(0), coefficients=coef, n_max=360)
 
         assert not np.isnan(N)
         assert not np.isinf(N)
@@ -590,7 +578,9 @@ class TestEdgeCases:
         """Negative longitude works correctly."""
         coef = create_test_coefficients(n_max=20)
 
-        N_pos = geoid_height(np.radians(45), np.radians(90), coefficients=coef, n_max=20)
+        N_pos = geoid_height(
+            np.radians(45), np.radians(90), coefficients=coef, n_max=20
+        )
         N_neg = geoid_height(
             np.radians(45), np.radians(-270), coefficients=coef, n_max=20
         )

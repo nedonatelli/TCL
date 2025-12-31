@@ -6,8 +6,8 @@ functions used in statistics and probability calculations.
 """
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
 import scipy.special as sp
+from numpy.typing import ArrayLike, NDArray
 
 
 def gamma(x: ArrayLike) -> NDArray[np.floating]:

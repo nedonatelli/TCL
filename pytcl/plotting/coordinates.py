@@ -5,7 +5,8 @@ This module provides functions for visualizing coordinate systems,
 rotations, and transformations in 2D and 3D.
 """
 
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike
 

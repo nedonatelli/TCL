@@ -5,7 +5,8 @@ The UKF uses the unscented transform to propagate the mean and covariance
 through nonlinear functions without requiring Jacobian computation.
 """
 
-from typing import Callable, Tuple, Optional, NamedTuple
+from typing import Callable, NamedTuple, Optional, Tuple
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
