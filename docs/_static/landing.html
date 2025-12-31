@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pyTCL - Tracker Component Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #0d1117;
+            --bg-tertiary: #161b22;
+            --accent-cyan: #00d4ff;
+            --accent-green: #00ff88;
+            --accent-amber: #ffb800;
+            --accent-red: #ff4757;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #484f58;
+            --grid-color: rgba(0, 212, 255, 0.06);
+            --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.3);
+            --glow-green: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated Grid Background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridPulse 8s ease-in-out infinite;
+        }
+
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Radar Sweep Effect */
+        .radar-container {
+            position: fixed;
+            top: -50%;
+            right: -25%;
+            width: 800px;
+            height: 800px;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.15;
+        }
+
+        .radar-sweep {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid var(--accent-cyan);
+            animation: radarSweep 6s linear infinite;
+        }
+
+        .radar-sweep::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan));
+            transform-origin: left center;
+            animation: sweepLine 6s linear infinite;
+        }
+
+        @keyframes radarSweep {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes sweepLine {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .radar-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .radar-ring:nth-child(2) { width: 75%; height: 75%; top: 12.5%; left: 12.5%; }
+        .radar-ring:nth-child(3) { width: 50%; height: 50%; top: 25%; left: 25%; }
+        .radar-ring:nth-child(4) { width: 25%; height: 25%; top: 37.5%; left: 37.5%; }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(10, 14, 20, 0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--accent-cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .logo-icon::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: blip 2s ease-in-out infinite;
+        }
+
+        @keyframes blip {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-cyan);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--accent-cyan);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6rem 2rem;
+            z-index: 10;
+        }
+
+        .hero-content {
+            max-width: 1000px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-green);
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.8s ease-out 0.1s both;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease-out 0.3s both;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), #0099cc);
+            color: var(--bg-primary);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--text-muted);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        /* Install Command */
+        .install-cmd {
+            margin-top: 3rem;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .cmd-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--text-muted);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .cmd-box code {
+            color: var(--accent-green);
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            transition: color 0.3s;
+        }
+
+        .copy-btn:hover {
+            color: var(--accent-cyan);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Stats Section */
+        .stats {
+            position: relative;
+            z-index: 10;
+            padding: 4rem 2rem;
+            background: linear-gradient(180deg, transparent, rgba(0, 212, 255, 0.02));
+        }
+
+        .stats-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(22, 27, 34, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px);
+        }
+
+        .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Features Section */
+        .features {
+            position: relative;
+            z-index: 10;
+            padding: 6rem 2rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-amber);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--text-muted);
+            border-radius: 12px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            border-color: rgba(0, 212, 255, 0.3);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .feature-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Code Example Section */
+        .code-section {
+            position: relative;
+            z-index: 10;
+            padding: 6rem 2rem;
+            background: var(--bg-secondary);
+        }
+
+        .code-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .code-block {
+            background: var(--bg-primary);
+            border: 1px solid var(--text-muted);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--text-muted);
+        }
+
+        .code-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .code-dot.red { background: #ff5f56; }
+        .code-dot.yellow { background: #ffbd2e; }
+        .code-dot.green { background: #27ca40; }
+
+        .code-content {
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            overflow-x: auto;
+        }
+
+        .code-content .comment { color: var(--text-muted); }
+        .code-content .keyword { color: var(--accent-amber); }
+        .code-content .function { color: var(--accent-cyan); }
+        .code-content .string { color: var(--accent-green); }
+        .code-content .number { color: var(--accent-red); }
+
+        /* Modules Section */
+        .modules {
+            position: relative;
+            z-index: 10;
+            padding: 6rem 2rem;
+        }
+
+        .modules-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .module-card {
+            padding: 1.5rem;
+            background: rgba(22, 27, 34, 0.5);
+            border: 1px solid var(--text-muted);
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .module-card:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        .module-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+
+        .module-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* CTA Section */
+        .cta {
+            position: relative;
+            z-index: 10;
+            padding: 8rem 2rem;
+            text-align: center;
+            background: linear-gradient(180deg, transparent, rgba(0, 212, 255, 0.03));
+        }
+
+        .cta-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta-desc {
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            z-index: 10;
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--text-muted);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-cyan);
+        }
+
+        .footer-credit {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-credit a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .modules-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .code-container {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            .modules-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="grid-bg"></div>
+    <div class="radar-container">
+        <div class="radar-sweep"></div>
+        <div class="radar-ring"></div>
+        <div class="radar-ring"></div>
+        <div class="radar-ring"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="logo">
+                <div class="logo-icon"><span></span></div>
+                pyTCL
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#modules">Modules</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="https://github.com/nedonatelli/TCL">GitHub</a></li>
+                <li><a href="docs.html">Docs</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                v0.13.2 — 720+ Functions
+            </div>
+            <h1>
+                <span class="highlight">Target Tracking</span><br>
+                Made Pythonic
+            </h1>
+            <p class="hero-subtitle">
+                A comprehensive Python port of the U.S. Naval Research Laboratory's Tracker Component Library. 
+                From Kalman filters to orbital mechanics — everything you need for state estimation and tracking.
+            </p>
+            <div class="hero-actions">
+                <a href="docs.html" class="btn btn-primary">Get Started</a>
+                <a href="https://github.com/nedonatelli/TCL" class="btn btn-secondary">View on GitHub</a>
+            </div>
+            <div class="install-cmd">
+                <div class="cmd-box">
+                    <code>pip install nrl-tracker</code>
+                    <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install nrl-tracker')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">720+</div>
+                <div class="stat-label">Functions Implemented</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1,109</div>
+                <div class="stat-label">Test Cases</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">130</div>
+                <div class="stat-label">Python Modules</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">15+</div>
+                <div class="stat-label">Algorithm Categories</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="section-header">
+            <div class="section-tag">Capabilities</div>
+            <h2 class="section-title">Comprehensive Tracking Toolkit</h2>
+            <p class="section-desc">
+                From basic Kalman filtering to advanced multi-target tracking, 
+                pyTCL provides production-ready implementations.
+            </p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📡</div>
+                <h3 class="feature-title">Dynamic Estimation</h3>
+                <p class="feature-desc">
+                    KF, EKF, UKF, CKF, square-root variants, particle filters, 
+                    IMM estimator, and smoothing algorithms.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3 class="feature-title">Data Association</h3>
+                <p class="feature-desc">
+                    GNN, JPDA, MHT, Hungarian algorithm, auction algorithms, 
+                    and multi-dimensional assignment.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌍</div>
+                <h3 class="feature-title">Coordinate Systems</h3>
+                <p class="feature-desc">
+                    Cartesian, spherical, geodetic, ECEF, ENU, NED conversions 
+                    with full Jacobian support.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛰️</div>
+                <h3 class="feature-title">Orbital Mechanics</h3>
+                <p class="feature-desc">
+                    Kepler propagation, Lambert problem, reference frame transforms, 
+                    ephemeris calculations.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧭</div>
+                <h3 class="feature-title">INS/GNSS Navigation</h3>
+                <p class="feature-desc">
+                    Strapdown mechanization, coning/sculling corrections, 
+                    loosely and tightly-coupled integration.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3 class="feature-title">Geophysical Models</h3>
+                <p class="feature-desc">
+                    Gravity (EGM2008), magnetism (WMM, IGRF), atmosphere, 
+                    terrain analysis, and tidal effects.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Code Example Section -->
+    <section class="code-section" id="examples">
+        <div class="code-container">
+            <div>
+                <div class="section-tag">Quick Start</div>
+                <h2 class="section-title">Pythonic & Intuitive</h2>
+                <p class="section-desc" style="margin-left: 0;">
+                    Clean APIs that feel natural to Python developers. 
+                    NumPy arrays, type hints, and comprehensive docstrings throughout.
+                </p>
+                <br>
+                <p class="section-desc" style="margin-left: 0; color: var(--text-muted);">
+                    The library follows consistent naming conventions — MATLAB's 
+                    <code style="color: var(--accent-cyan);">Cart2Sphere</code> becomes 
+                    <code style="color: var(--accent-green);">cart2sphere</code>.
+                </p>
+            </div>
+            <div class="code-block">
+                <div class="code-header">
+                    <span class="code-dot red"></span>
+                    <span class="code-dot yellow"></span>
+                    <span class="code-dot green"></span>
+                </div>
+                <pre class="code-content"><span class="keyword">import</span> numpy <span class="keyword">as</span> np
+<span class="keyword">from</span> pytcl.dynamic_estimation <span class="keyword">import</span> kf_predict, kf_update
+<span class="keyword">from</span> pytcl.dynamic_models <span class="keyword">import</span> f_constant_velocity, q_constant_velocity
+
+<span class="comment"># Initialize state [x, vx, y, vy]</span>
+x = np.<span class="function">array</span>([<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">0.0</span>, <span class="number">0.5</span>])
+P = np.<span class="function">eye</span>(<span class="number">4</span>) * <span class="number">0.1</span>
+
+<span class="comment"># Motion model</span>
+F = <span class="function">f_constant_velocity</span>(T=<span class="number">1.0</span>, num_dims=<span class="number">2</span>)
+Q = <span class="function">q_constant_velocity</span>(T=<span class="number">1.0</span>, sigma_a=<span class="number">0.1</span>)
+
+<span class="comment"># Predict step</span>
+pred = <span class="function">kf_predict</span>(x, P, F, Q)
+
+<span class="comment"># Update with measurement</span>
+H = np.<span class="function">array</span>([[<span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">0</span>]])
+z = np.<span class="function">array</span>([<span class="number">1.1</span>, <span class="number">0.6</span>])
+upd = <span class="function">kf_update</span>(pred.x, pred.P, z, H, R)</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Modules Section -->
+    <section class="modules" id="modules">
+        <div class="section-header">
+            <div class="section-tag">Library Structure</div>
+            <h2 class="section-title">Modular Architecture</h2>
+            <p class="section-desc">
+                Organized into logical modules for easy discovery and minimal dependencies.
+            </p>
+        </div>
+        <div class="modules-grid">
+            <div class="module-card">
+                <div class="module-name">dynamic_estimation</div>
+                <div class="module-desc">Kalman filters, particle filters, IMM</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">dynamic_models</div>
+                <div class="module-desc">CV, CA, Singer, coordinated turn</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">assignment_algorithms</div>
+                <div class="module-desc">Hungarian, JPDA, MHT, gating</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">coordinate_systems</div>
+                <div class="module-desc">Spherical, geodetic, rotations</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">astronomical</div>
+                <div class="module-desc">Orbits, Lambert, reference frames</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">navigation</div>
+                <div class="module-desc">INS, GNSS, geodesy</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">gravity</div>
+                <div class="module-desc">EGM96/2008, spherical harmonics</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">magnetism</div>
+                <div class="module-desc">WMM, IGRF, EMM models</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">terrain</div>
+                <div class="module-desc">DEM, visibility, viewshed</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">signal_processing</div>
+                <div class="module-desc">Filters, CFAR, matched filter</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">transforms</div>
+                <div class="module-desc">FFT, STFT, wavelets</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">clustering</div>
+                <div class="module-desc">K-means, DBSCAN, hierarchical</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">static_estimation</div>
+                <div class="module-desc">Least squares, MLE, robust</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">containers</div>
+                <div class="module-desc">K-D tree, Ball tree, R-tree</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">mathematical_functions</div>
+                <div class="module-desc">Special functions, statistics</div>
+            </div>
+            <div class="module-card">
+                <div class="module-name">performance_evaluation</div>
+                <div class="module-desc">OSPA, NEES, track metrics</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2 class="cta-title">Ready to Track?</h2>
+        <p class="cta-desc">
+            Start building production-grade tracking systems with pyTCL. 
+            Comprehensive docs, examples, and community support available.
+        </p>
+        <div class="hero-actions">
+            <a href="docs.html" class="btn btn-primary">Read the Docs</a>
+            <a href="https://github.com/nedonatelli/TCL" class="btn btn-secondary">Star on GitHub</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-links">
+            <a href="docs.html">Documentation</a>
+            <a href="https://github.com/nedonatelli/TCL">GitHub</a>
+            <a href="https://pypi.org/project/nrl-tracker/">PyPI</a>
+            <a href="https://github.com/nedonatelli/TCL/blob/main/CONTRIBUTING.md">Contributing</a>
+        </div>
+        <p class="footer-credit">
+            A Python port of the <a href="https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary">U.S. Naval Research Laboratory's Tracker Component Library</a>.<br>
+            Public Domain — Following the Federal Source Code Policy (OMB M-16-21)
+        </p>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Animate stats on scroll
+        const observerOptions = {
+            threshold: 0.5
+        };
+
+        const animateValue = (element, start, end, duration) => {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = value.toLocaleString() + (element.dataset.suffix || '');
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        };
+
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const statValues = entry.target.querySelectorAll('.stat-value');
+                    statValues.forEach(stat => {
+                        const text = stat.textContent;
+                        const num = parseInt(text.replace(/[^0-9]/g, ''));
+                        const suffix = text.includes('+') ? '+' : '';
+                        stat.dataset.suffix = suffix;
+                        animateValue(stat, 0, num, 1500);
+                    });
+                    statsObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        const statsSection = document.querySelector('.stats-grid');
+        if (statsSection) {
+            statsObserver.observe(statsSection);
+        }
+    </script>
+</body>
+</html>

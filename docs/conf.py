@@ -29,7 +29,7 @@ extensions = [
     "sphinx.ext.mathjax",
 ]
 
-templates_path = ["_templates"]
+templates_path = []
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -37,6 +37,39 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
+
+
+# -- Custom landing page setup -----------------------------------------------
+def setup(app):
+    """Register the build-finished event to set up landing page."""
+    app.connect("build-finished", copy_landing_page)
+
+
+def copy_landing_page(app, exception):
+    """Copy landing page as index.html and rename Sphinx index to docs.html."""
+    import shutil
+    from pathlib import Path
+
+    if exception is not None:
+        return
+
+    # Only process HTML builds
+    if app.builder.name != "html":
+        return
+
+    build_dir = Path(app.outdir)
+
+    # Rename Sphinx's index.html to docs.html
+    sphinx_index = build_dir / "index.html"
+    docs_page = build_dir / "docs.html"
+
+    if sphinx_index.exists():
+        shutil.copy(str(sphinx_index), str(docs_page))
+
+    # Copy landing page as new index.html
+    landing_src = build_dir / "_static" / "landing.html"
+    if landing_src.exists():
+        shutil.copy(str(landing_src), str(sphinx_index))
 
 # -- Extension configuration -------------------------------------------------
 

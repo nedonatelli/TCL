@@ -1,0 +1,1117 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * pyTCL Theme - Mission Control Design System
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * A dark, technical theme inspired by radar systems and aerospace interfaces.
+ * Designed for documentation, dashboards, and developer tools.
+ * 
+ * Usage:
+ *   1. Import this CSS file
+ *   2. Add class="pytcl-theme" to your <html> or <body> element
+ *   3. Use the provided utility classes and CSS custom properties
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS - Core Variables
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root,
+.pytcl-theme {
+  /* ─────────────────────────────────────────────────────────────────────────
+     Color Palette
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  /* Background Scale (darkest to lightest) */
+  --pytcl-bg-void: #050709;
+  --pytcl-bg-primary: #0a0e14;
+  --pytcl-bg-secondary: #0d1117;
+  --pytcl-bg-tertiary: #161b22;
+  --pytcl-bg-elevated: #1c2128;
+  --pytcl-bg-surface: #21262d;
+  
+  /* Accent Colors */
+  --pytcl-cyan: #00d4ff;
+  --pytcl-cyan-bright: #4de8ff;
+  --pytcl-cyan-dim: #0099bb;
+  --pytcl-cyan-muted: #006680;
+  
+  --pytcl-green: #00ff88;
+  --pytcl-green-bright: #4dffaa;
+  --pytcl-green-dim: #00cc6a;
+  --pytcl-green-muted: #008844;
+  
+  --pytcl-amber: #ffb800;
+  --pytcl-amber-bright: #ffc933;
+  --pytcl-amber-dim: #cc9300;
+  --pytcl-amber-muted: #806000;
+  
+  --pytcl-red: #ff4757;
+  --pytcl-red-bright: #ff6b7a;
+  --pytcl-red-dim: #cc3945;
+  --pytcl-red-muted: #802530;
+  
+  --pytcl-purple: #a855f7;
+  --pytcl-purple-bright: #c084fc;
+  --pytcl-purple-dim: #7c3aed;
+  
+  /* Text Colors */
+  --pytcl-text-primary: #e6edf3;
+  --pytcl-text-secondary: #8b949e;
+  --pytcl-text-muted: #484f58;
+  --pytcl-text-disabled: #30363d;
+  
+  /* Border Colors */
+  --pytcl-border-default: #30363d;
+  --pytcl-border-muted: #21262d;
+  --pytcl-border-emphasis: #484f58;
+  --pytcl-border-active: var(--pytcl-cyan);
+  
+  /* Semantic Colors */
+  --pytcl-success: var(--pytcl-green);
+  --pytcl-warning: var(--pytcl-amber);
+  --pytcl-error: var(--pytcl-red);
+  --pytcl-info: var(--pytcl-cyan);
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Effects & Shadows
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+  --pytcl-glow-cyan-strong: 0 0 40px rgba(0, 212, 255, 0.5);
+  --pytcl-glow-green: 0 0 20px rgba(0, 255, 136, 0.25);
+  --pytcl-glow-amber: 0 0 20px rgba(255, 184, 0, 0.25);
+  --pytcl-glow-red: 0 0 20px rgba(255, 71, 87, 0.25);
+  
+  --pytcl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --pytcl-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --pytcl-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+  --pytcl-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Typography
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-font-display: 'Space Grotesk', 'SF Pro Display', -apple-system, sans-serif;
+  --pytcl-font-body: 'IBM Plex Sans', 'SF Pro Text', -apple-system, sans-serif;
+  --pytcl-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  
+  /* Font Sizes */
+  --pytcl-text-xs: 0.75rem;
+  --pytcl-text-sm: 0.875rem;
+  --pytcl-text-base: 1rem;
+  --pytcl-text-lg: 1.125rem;
+  --pytcl-text-xl: 1.25rem;
+  --pytcl-text-2xl: 1.5rem;
+  --pytcl-text-3xl: 1.875rem;
+  --pytcl-text-4xl: 2.25rem;
+  --pytcl-text-5xl: 3rem;
+  --pytcl-text-6xl: 3.75rem;
+  
+  /* Font Weights */
+  --pytcl-font-light: 300;
+  --pytcl-font-normal: 400;
+  --pytcl-font-medium: 500;
+  --pytcl-font-semibold: 600;
+  --pytcl-font-bold: 700;
+  
+  /* Line Heights */
+  --pytcl-leading-none: 1;
+  --pytcl-leading-tight: 1.25;
+  --pytcl-leading-snug: 1.375;
+  --pytcl-leading-normal: 1.5;
+  --pytcl-leading-relaxed: 1.625;
+  --pytcl-leading-loose: 2;
+  
+  /* Letter Spacing */
+  --pytcl-tracking-tight: -0.025em;
+  --pytcl-tracking-normal: 0;
+  --pytcl-tracking-wide: 0.025em;
+  --pytcl-tracking-wider: 0.05em;
+  --pytcl-tracking-widest: 0.1em;
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Spacing
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-space-0: 0;
+  --pytcl-space-1: 0.25rem;
+  --pytcl-space-2: 0.5rem;
+  --pytcl-space-3: 0.75rem;
+  --pytcl-space-4: 1rem;
+  --pytcl-space-5: 1.25rem;
+  --pytcl-space-6: 1.5rem;
+  --pytcl-space-8: 2rem;
+  --pytcl-space-10: 2.5rem;
+  --pytcl-space-12: 3rem;
+  --pytcl-space-16: 4rem;
+  --pytcl-space-20: 5rem;
+  --pytcl-space-24: 6rem;
+  --pytcl-space-32: 8rem;
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Border Radius
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-radius-none: 0;
+  --pytcl-radius-sm: 4px;
+  --pytcl-radius-md: 8px;
+  --pytcl-radius-lg: 12px;
+  --pytcl-radius-xl: 16px;
+  --pytcl-radius-2xl: 24px;
+  --pytcl-radius-full: 9999px;
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Transitions
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-duration-fast: 150ms;
+  --pytcl-duration-normal: 300ms;
+  --pytcl-duration-slow: 500ms;
+  --pytcl-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --pytcl-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --pytcl-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --pytcl-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Z-Index Scale
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-z-base: 0;
+  --pytcl-z-dropdown: 100;
+  --pytcl-z-sticky: 200;
+  --pytcl-z-fixed: 300;
+  --pytcl-z-modal-backdrop: 400;
+  --pytcl-z-modal: 500;
+  --pytcl-z-popover: 600;
+  --pytcl-z-tooltip: 700;
+  
+  /* ─────────────────────────────────────────────────────────────────────────
+     Grid Pattern
+     ───────────────────────────────────────────────────────────────────────── */
+  
+  --pytcl-grid-color: rgba(0, 212, 255, 0.06);
+  --pytcl-grid-size: 50px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-theme {
+  background-color: var(--pytcl-bg-primary);
+  color: var(--pytcl-text-primary);
+  font-family: var(--pytcl-font-body);
+  font-size: var(--pytcl-text-base);
+  line-height: var(--pytcl-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.pytcl-theme *,
+.pytcl-theme *::before,
+.pytcl-theme *::after {
+  box-sizing: border-box;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPOGRAPHY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Headings */
+.pytcl-h1, .pytcl-h2, .pytcl-h3, .pytcl-h4, .pytcl-h5, .pytcl-h6 {
+  font-family: var(--pytcl-font-display);
+  font-weight: var(--pytcl-font-bold);
+  line-height: var(--pytcl-leading-tight);
+  color: var(--pytcl-text-primary);
+  margin: 0;
+}
+
+.pytcl-h1 { font-size: var(--pytcl-text-5xl); }
+.pytcl-h2 { font-size: var(--pytcl-text-4xl); }
+.pytcl-h3 { font-size: var(--pytcl-text-3xl); }
+.pytcl-h4 { font-size: var(--pytcl-text-2xl); }
+.pytcl-h5 { font-size: var(--pytcl-text-xl); }
+.pytcl-h6 { font-size: var(--pytcl-text-lg); }
+
+/* Display Headings */
+.pytcl-display {
+  font-family: var(--pytcl-font-display);
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: var(--pytcl-font-bold);
+  line-height: 1.1;
+  letter-spacing: var(--pytcl-tracking-tight);
+}
+
+/* Body Text */
+.pytcl-body { font-size: var(--pytcl-text-base); }
+.pytcl-body-lg { font-size: var(--pytcl-text-lg); }
+.pytcl-body-sm { font-size: var(--pytcl-text-sm); }
+
+/* Monospace */
+.pytcl-mono {
+  font-family: var(--pytcl-font-mono);
+}
+
+/* Text Colors */
+.pytcl-text-primary { color: var(--pytcl-text-primary); }
+.pytcl-text-secondary { color: var(--pytcl-text-secondary); }
+.pytcl-text-muted { color: var(--pytcl-text-muted); }
+.pytcl-text-cyan { color: var(--pytcl-cyan); }
+.pytcl-text-green { color: var(--pytcl-green); }
+.pytcl-text-amber { color: var(--pytcl-amber); }
+.pytcl-text-red { color: var(--pytcl-red); }
+
+/* Gradient Text */
+.pytcl-gradient-text {
+  background: linear-gradient(135deg, var(--pytcl-cyan), var(--pytcl-green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pytcl-gradient-text-warm {
+  background: linear-gradient(135deg, var(--pytcl-amber), var(--pytcl-red));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Tag/Label Style */
+.pytcl-tag {
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-xs);
+  font-weight: var(--pytcl-font-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--pytcl-tracking-widest);
+  color: var(--pytcl-amber);
+}
+
+/* Links */
+.pytcl-link {
+  color: var(--pytcl-cyan);
+  text-decoration: none;
+  transition: color var(--pytcl-duration-fast) var(--pytcl-ease-default);
+}
+
+.pytcl-link:hover {
+  color: var(--pytcl-cyan-bright);
+}
+
+.pytcl-link-underline {
+  position: relative;
+}
+
+.pytcl-link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--pytcl-cyan);
+  transition: width var(--pytcl-duration-normal) var(--pytcl-ease-default);
+}
+
+.pytcl-link-underline:hover::after {
+  width: 100%;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pytcl-space-2);
+  padding: var(--pytcl-space-3) var(--pytcl-space-6);
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-sm);
+  font-weight: var(--pytcl-font-medium);
+  line-height: 1;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--pytcl-radius-md);
+  cursor: pointer;
+  transition: all var(--pytcl-duration-normal) var(--pytcl-ease-default);
+  white-space: nowrap;
+}
+
+.pytcl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary Button */
+.pytcl-btn-primary {
+  background: linear-gradient(135deg, var(--pytcl-cyan), var(--pytcl-cyan-dim));
+  color: var(--pytcl-bg-primary);
+  box-shadow: var(--pytcl-glow-cyan);
+}
+
+.pytcl-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--pytcl-glow-cyan-strong);
+}
+
+/* Secondary Button */
+.pytcl-btn-secondary {
+  background: transparent;
+  color: var(--pytcl-text-primary);
+  border-color: var(--pytcl-border-emphasis);
+}
+
+.pytcl-btn-secondary:hover:not(:disabled) {
+  border-color: var(--pytcl-cyan);
+  color: var(--pytcl-cyan);
+}
+
+/* Ghost Button */
+.pytcl-btn-ghost {
+  background: transparent;
+  color: var(--pytcl-text-secondary);
+  border-color: transparent;
+}
+
+.pytcl-btn-ghost:hover:not(:disabled) {
+  color: var(--pytcl-cyan);
+  background: rgba(0, 212, 255, 0.1);
+}
+
+/* Success Button */
+.pytcl-btn-success {
+  background: linear-gradient(135deg, var(--pytcl-green), var(--pytcl-green-dim));
+  color: var(--pytcl-bg-primary);
+  box-shadow: var(--pytcl-glow-green);
+}
+
+/* Danger Button */
+.pytcl-btn-danger {
+  background: linear-gradient(135deg, var(--pytcl-red), var(--pytcl-red-dim));
+  color: var(--pytcl-text-primary);
+  box-shadow: var(--pytcl-glow-red);
+}
+
+/* Button Sizes */
+.pytcl-btn-sm {
+  padding: var(--pytcl-space-2) var(--pytcl-space-4);
+  font-size: var(--pytcl-text-xs);
+}
+
+.pytcl-btn-lg {
+  padding: var(--pytcl-space-4) var(--pytcl-space-8);
+  font-size: var(--pytcl-text-base);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-card {
+  background: var(--pytcl-bg-secondary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: var(--pytcl-radius-lg);
+  padding: var(--pytcl-space-6);
+  transition: all var(--pytcl-duration-normal) var(--pytcl-ease-default);
+}
+
+.pytcl-card-interactive:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  transform: translateY(-4px);
+}
+
+/* Card with Top Accent */
+.pytcl-card-accent {
+  position: relative;
+  overflow: hidden;
+}
+
+.pytcl-card-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--pytcl-cyan), var(--pytcl-green));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--pytcl-duration-normal) var(--pytcl-ease-default);
+}
+
+.pytcl-card-accent:hover::before {
+  transform: scaleX(1);
+}
+
+/* Elevated Card */
+.pytcl-card-elevated {
+  background: var(--pytcl-bg-tertiary);
+  box-shadow: var(--pytcl-shadow-lg);
+}
+
+/* Glass Card */
+.pytcl-card-glass {
+  background: rgba(13, 17, 23, 0.8);
+  backdrop-filter: blur(20px);
+  border-color: rgba(0, 212, 255, 0.1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM ELEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-input {
+  width: 100%;
+  padding: var(--pytcl-space-3) var(--pytcl-space-4);
+  font-family: var(--pytcl-font-body);
+  font-size: var(--pytcl-text-sm);
+  color: var(--pytcl-text-primary);
+  background: var(--pytcl-bg-primary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: var(--pytcl-radius-md);
+  transition: all var(--pytcl-duration-fast) var(--pytcl-ease-default);
+  outline: none;
+}
+
+.pytcl-input::placeholder {
+  color: var(--pytcl-text-muted);
+}
+
+.pytcl-input:focus {
+  border-color: var(--pytcl-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+}
+
+.pytcl-input:disabled {
+  background: var(--pytcl-bg-tertiary);
+  color: var(--pytcl-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Textarea */
+.pytcl-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Select */
+.pytcl-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: var(--pytcl-space-10);
+}
+
+/* Label */
+.pytcl-label {
+  display: block;
+  font-size: var(--pytcl-text-sm);
+  font-weight: var(--pytcl-font-medium);
+  color: var(--pytcl-text-secondary);
+  margin-bottom: var(--pytcl-space-2);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CODE BLOCKS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-code-block {
+  background: var(--pytcl-bg-primary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: var(--pytcl-radius-lg);
+  overflow: hidden;
+}
+
+.pytcl-code-header {
+  display: flex;
+  align-items: center;
+  gap: var(--pytcl-space-2);
+  padding: var(--pytcl-space-3) var(--pytcl-space-4);
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--pytcl-border-default);
+}
+
+.pytcl-code-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--pytcl-radius-full);
+}
+
+.pytcl-code-dot-red { background: #ff5f56; }
+.pytcl-code-dot-yellow { background: #ffbd2e; }
+.pytcl-code-dot-green { background: #27ca40; }
+
+.pytcl-code-content {
+  padding: var(--pytcl-space-4);
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-sm);
+  line-height: var(--pytcl-leading-relaxed);
+  overflow-x: auto;
+}
+
+/* Inline Code */
+.pytcl-code-inline {
+  font-family: var(--pytcl-font-mono);
+  font-size: 0.875em;
+  padding: 0.125em 0.375em;
+  background: var(--pytcl-bg-tertiary);
+  border-radius: var(--pytcl-radius-sm);
+  color: var(--pytcl-cyan);
+}
+
+/* Syntax Highlighting */
+.pytcl-syntax-comment { color: var(--pytcl-text-muted); }
+.pytcl-syntax-keyword { color: var(--pytcl-amber); }
+.pytcl-syntax-function { color: var(--pytcl-cyan); }
+.pytcl-syntax-string { color: var(--pytcl-green); }
+.pytcl-syntax-number { color: var(--pytcl-red); }
+.pytcl-syntax-operator { color: var(--pytcl-text-secondary); }
+.pytcl-syntax-variable { color: var(--pytcl-purple); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BADGES & PILLS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pytcl-space-2);
+  padding: var(--pytcl-space-1) var(--pytcl-space-3);
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-xs);
+  font-weight: var(--pytcl-font-medium);
+  border-radius: var(--pytcl-radius-full);
+  border: 1px solid transparent;
+}
+
+.pytcl-badge-cyan {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: var(--pytcl-cyan);
+}
+
+.pytcl-badge-green {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: var(--pytcl-green);
+}
+
+.pytcl-badge-amber {
+  background: rgba(255, 184, 0, 0.1);
+  border-color: rgba(255, 184, 0, 0.3);
+  color: var(--pytcl-amber);
+}
+
+.pytcl-badge-red {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: rgba(255, 71, 87, 0.3);
+  color: var(--pytcl-red);
+}
+
+/* Status Dot */
+.pytcl-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--pytcl-radius-full);
+  animation: pytcl-pulse 2s ease-in-out infinite;
+}
+
+.pytcl-status-dot-green { background: var(--pytcl-green); }
+.pytcl-status-dot-amber { background: var(--pytcl-amber); }
+.pytcl-status-dot-red { background: var(--pytcl-red); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: var(--pytcl-z-fixed);
+  background: rgba(10, 14, 20, 0.9);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.1);
+}
+
+.pytcl-nav-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--pytcl-space-4) var(--pytcl-space-6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pytcl-nav-links {
+  display: flex;
+  gap: var(--pytcl-space-8);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pytcl-nav-link {
+  color: var(--pytcl-text-secondary);
+  text-decoration: none;
+  font-size: var(--pytcl-text-sm);
+  font-weight: var(--pytcl-font-medium);
+  transition: color var(--pytcl-duration-fast) var(--pytcl-ease-default);
+}
+
+.pytcl-nav-link:hover {
+  color: var(--pytcl-cyan);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--pytcl-text-sm);
+}
+
+.pytcl-table th,
+.pytcl-table td {
+  padding: var(--pytcl-space-3) var(--pytcl-space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--pytcl-border-default);
+}
+
+.pytcl-table th {
+  font-weight: var(--pytcl-font-semibold);
+  color: var(--pytcl-text-secondary);
+  background: var(--pytcl-bg-tertiary);
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--pytcl-tracking-wide);
+}
+
+.pytcl-table tr:hover td {
+  background: rgba(0, 212, 255, 0.02);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALERTS & CALLOUTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-alert {
+  padding: var(--pytcl-space-4);
+  border-radius: var(--pytcl-radius-md);
+  border-left: 3px solid;
+  background: var(--pytcl-bg-secondary);
+}
+
+.pytcl-alert-info {
+  border-color: var(--pytcl-cyan);
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.pytcl-alert-success {
+  border-color: var(--pytcl-green);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.pytcl-alert-warning {
+  border-color: var(--pytcl-amber);
+  background: rgba(255, 184, 0, 0.05);
+}
+
+.pytcl-alert-error {
+  border-color: var(--pytcl-red);
+  background: rgba(255, 71, 87, 0.05);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BACKGROUNDS & EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Grid Background */
+.pytcl-bg-grid {
+  position: relative;
+}
+
+.pytcl-bg-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(var(--pytcl-grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pytcl-grid-color) 1px, transparent 1px);
+  background-size: var(--pytcl-grid-size) var(--pytcl-grid-size);
+  z-index: -1;
+}
+
+/* Noise Overlay */
+.pytcl-bg-noise::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  z-index: -1;
+}
+
+/* Gradient Backgrounds */
+.pytcl-bg-glow-top {
+  background: radial-gradient(ellipse at top, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
+}
+
+.pytcl-bg-glow-bottom {
+  background: linear-gradient(180deg, transparent, rgba(0, 212, 255, 0.03));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes pytcl-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes pytcl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pytcl-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pytcl-fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pytcl-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pytcl-glow-pulse {
+  0%, 100% { box-shadow: var(--pytcl-glow-cyan); }
+  50% { box-shadow: var(--pytcl-glow-cyan-strong); }
+}
+
+@keyframes pytcl-radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pytcl-grid-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+/* Animation Utility Classes */
+.pytcl-animate-fade-in {
+  animation: pytcl-fade-in var(--pytcl-duration-normal) var(--pytcl-ease-out);
+}
+
+.pytcl-animate-fade-in-up {
+  animation: pytcl-fade-in-up var(--pytcl-duration-normal) var(--pytcl-ease-out);
+}
+
+.pytcl-animate-pulse {
+  animation: pytcl-pulse 2s ease-in-out infinite;
+}
+
+.pytcl-animate-glow {
+  animation: pytcl-glow-pulse 3s ease-in-out infinite;
+}
+
+/* Staggered Animation Delays */
+.pytcl-delay-1 { animation-delay: 0.1s; animation-fill-mode: both; }
+.pytcl-delay-2 { animation-delay: 0.2s; animation-fill-mode: both; }
+.pytcl-delay-3 { animation-delay: 0.3s; animation-fill-mode: both; }
+.pytcl-delay-4 { animation-delay: 0.4s; animation-fill-mode: both; }
+.pytcl-delay-5 { animation-delay: 0.5s; animation-fill-mode: both; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Display */
+.pytcl-block { display: block; }
+.pytcl-inline-block { display: inline-block; }
+.pytcl-flex { display: flex; }
+.pytcl-inline-flex { display: inline-flex; }
+.pytcl-grid { display: grid; }
+.pytcl-hidden { display: none; }
+
+/* Flexbox */
+.pytcl-flex-col { flex-direction: column; }
+.pytcl-flex-row { flex-direction: row; }
+.pytcl-flex-wrap { flex-wrap: wrap; }
+.pytcl-items-center { align-items: center; }
+.pytcl-items-start { align-items: flex-start; }
+.pytcl-items-end { align-items: flex-end; }
+.pytcl-justify-center { justify-content: center; }
+.pytcl-justify-between { justify-content: space-between; }
+.pytcl-justify-start { justify-content: flex-start; }
+.pytcl-justify-end { justify-content: flex-end; }
+.pytcl-gap-1 { gap: var(--pytcl-space-1); }
+.pytcl-gap-2 { gap: var(--pytcl-space-2); }
+.pytcl-gap-4 { gap: var(--pytcl-space-4); }
+.pytcl-gap-6 { gap: var(--pytcl-space-6); }
+.pytcl-gap-8 { gap: var(--pytcl-space-8); }
+
+/* Spacing */
+.pytcl-p-0 { padding: var(--pytcl-space-0); }
+.pytcl-p-2 { padding: var(--pytcl-space-2); }
+.pytcl-p-4 { padding: var(--pytcl-space-4); }
+.pytcl-p-6 { padding: var(--pytcl-space-6); }
+.pytcl-p-8 { padding: var(--pytcl-space-8); }
+
+.pytcl-m-0 { margin: var(--pytcl-space-0); }
+.pytcl-m-auto { margin: auto; }
+.pytcl-mx-auto { margin-left: auto; margin-right: auto; }
+.pytcl-my-4 { margin-top: var(--pytcl-space-4); margin-bottom: var(--pytcl-space-4); }
+.pytcl-my-8 { margin-top: var(--pytcl-space-8); margin-bottom: var(--pytcl-space-8); }
+
+/* Sizing */
+.pytcl-w-full { width: 100%; }
+.pytcl-h-full { height: 100%; }
+.pytcl-min-h-screen { min-height: 100vh; }
+.pytcl-max-w-sm { max-width: 24rem; }
+.pytcl-max-w-md { max-width: 28rem; }
+.pytcl-max-w-lg { max-width: 32rem; }
+.pytcl-max-w-xl { max-width: 36rem; }
+.pytcl-max-w-2xl { max-width: 42rem; }
+.pytcl-max-w-4xl { max-width: 56rem; }
+.pytcl-max-w-6xl { max-width: 72rem; }
+.pytcl-max-w-7xl { max-width: 80rem; }
+
+/* Position */
+.pytcl-relative { position: relative; }
+.pytcl-absolute { position: absolute; }
+.pytcl-fixed { position: fixed; }
+.pytcl-sticky { position: sticky; }
+
+/* Text Alignment */
+.pytcl-text-left { text-align: left; }
+.pytcl-text-center { text-align: center; }
+.pytcl-text-right { text-align: right; }
+
+/* Border Radius */
+.pytcl-rounded { border-radius: var(--pytcl-radius-md); }
+.pytcl-rounded-lg { border-radius: var(--pytcl-radius-lg); }
+.pytcl-rounded-full { border-radius: var(--pytcl-radius-full); }
+
+/* Overflow */
+.pytcl-overflow-hidden { overflow: hidden; }
+.pytcl-overflow-auto { overflow: auto; }
+.pytcl-overflow-x-auto { overflow-x: auto; }
+
+/* Cursor */
+.pytcl-cursor-pointer { cursor: pointer; }
+.pytcl-cursor-not-allowed { cursor: not-allowed; }
+
+/* Opacity */
+.pytcl-opacity-50 { opacity: 0.5; }
+.pytcl-opacity-75 { opacity: 0.75; }
+
+/* Transitions */
+.pytcl-transition {
+  transition: all var(--pytcl-duration-normal) var(--pytcl-ease-default);
+}
+
+.pytcl-transition-fast {
+  transition: all var(--pytcl-duration-fast) var(--pytcl-ease-default);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .pytcl-hide-mobile { display: none !important; }
+  .pytcl-show-mobile { display: block !important; }
+}
+
+@media (min-width: 769px) {
+  .pytcl-hide-desktop { display: none !important; }
+  .pytcl-show-desktop { display: block !important; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.pytcl-theme ::-webkit-scrollbar-track {
+  background: var(--pytcl-bg-secondary);
+}
+
+.pytcl-theme ::-webkit-scrollbar-thumb {
+  background: var(--pytcl-border-emphasis);
+  border-radius: var(--pytcl-radius-full);
+}
+
+.pytcl-theme ::-webkit-scrollbar-thumb:hover {
+  background: var(--pytcl-text-muted);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SELECTION STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pytcl-theme ::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: var(--pytcl-text-primary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPECIAL COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Command Box (for terminal-style inputs) */
+.pytcl-cmd-box {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pytcl-space-4);
+  padding: var(--pytcl-space-3) var(--pytcl-space-4);
+  background: var(--pytcl-bg-secondary);
+  border: 1px solid var(--pytcl-border-default);
+  border-radius: var(--pytcl-radius-md);
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-sm);
+}
+
+.pytcl-cmd-box code {
+  color: var(--pytcl-green);
+}
+
+/* Stat Card */
+.pytcl-stat {
+  text-align: center;
+  padding: var(--pytcl-space-6);
+}
+
+.pytcl-stat-value {
+  font-family: var(--pytcl-font-display);
+  font-size: var(--pytcl-text-4xl);
+  font-weight: var(--pytcl-font-bold);
+  color: var(--pytcl-cyan);
+  line-height: 1;
+  margin-bottom: var(--pytcl-space-2);
+}
+
+.pytcl-stat-label {
+  font-size: var(--pytcl-text-sm);
+  color: var(--pytcl-text-secondary);
+}
+
+/* Icon Container */
+.pytcl-icon-box {
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: var(--pytcl-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+/* Divider */
+.pytcl-divider {
+  height: 1px;
+  background: var(--pytcl-border-default);
+  margin: var(--pytcl-space-6) 0;
+}
+
+.pytcl-divider-glow {
+  background: linear-gradient(90deg, transparent, var(--pytcl-cyan), transparent);
+  opacity: 0.3;
+}
+
+/* Logo Component */
+.pytcl-logo {
+  font-family: var(--pytcl-font-mono);
+  font-size: var(--pytcl-text-xl);
+  font-weight: var(--pytcl-font-semibold);
+  color: var(--pytcl-cyan);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: var(--pytcl-space-2);
+}
+
+.pytcl-logo-icon {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--pytcl-cyan);
+  border-radius: var(--pytcl-radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.pytcl-logo-icon::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--pytcl-green);
+  border-radius: var(--pytcl-radius-full);
+  animation: pytcl-pulse 2s ease-in-out infinite;
+}
