@@ -152,7 +152,9 @@ class TestSolidEarthTideDisplacement:
         """Displacement should vary with time (tidal cycle)."""
         mjd = 58000
         disp1 = solid_earth_tide_displacement(np.radians(45), 0, mjd)
-        disp2 = solid_earth_tide_displacement(np.radians(45), 0, mjd + 0.5)  # 12 hours later
+        disp2 = solid_earth_tide_displacement(
+            np.radians(45), 0, mjd + 0.5
+        )  # 12 hours later
         # M2 tide has ~12.4 hour period, displacements should differ
         assert disp1.radial != disp2.radial
 
@@ -160,7 +162,9 @@ class TestSolidEarthTideDisplacement:
         """Displacement should vary with location."""
         mjd = 58000
         disp1 = solid_earth_tide_displacement(np.radians(45), 0, mjd)
-        disp2 = solid_earth_tide_displacement(np.radians(45), np.pi, mjd)  # Opposite side
+        disp2 = solid_earth_tide_displacement(
+            np.radians(45), np.pi, mjd
+        )  # Opposite side
         assert disp1.radial != disp2.radial
 
 

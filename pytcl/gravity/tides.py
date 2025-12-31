@@ -896,7 +896,10 @@ def total_tidal_displacement(
     # Ocean loading
     if ocean_loading is not None:
         ocean = ocean_tide_loading_displacement(
-            mjd, ocean_loading.amplitude, ocean_loading.phase, ocean_loading.constituents
+            mjd,
+            ocean_loading.amplitude,
+            ocean_loading.phase,
+            ocean_loading.constituents,
         )
         radial += ocean.radial
         north += ocean.north
