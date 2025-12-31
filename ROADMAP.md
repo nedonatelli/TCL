@@ -9,7 +9,7 @@
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
-- **Geophysical models**: Gravity (spherical harmonics, WGS84, J2), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
+- **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
 - **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 - **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
@@ -196,14 +196,16 @@
 
 ---
 
-## Phase 5 (Remaining): Advanced Gravity Models
+## Completed in v0.7.1
 
-### 5.1 EGM High-Degree Models
-- [ ] EGM96 model support (degree 360)
-- [ ] EGM2008 model support (degree 2190)
-- [ ] Clenshaw summation for numerical stability
-- [ ] Geoid height computation
-- [ ] Gravity disturbance/anomaly
+### Phase 5.7: EGM High-Degree Gravity Models
+- [x] EGM96 model support (degree 360) - `load_egm_coefficients`, `EGMCoefficients`
+- [x] EGM2008 model support (degree 2190) - `parse_egm_file`
+- [x] Clenshaw summation for numerical stability - `clenshaw_potential`, `clenshaw_gravity`
+- [x] Geoid height computation - `geoid_height`, `geoid_heights`
+- [x] Gravity disturbance/anomaly - `gravity_disturbance`, `gravity_anomaly`
+- [x] Deflection of vertical - `deflection_of_vertical`
+- **Files**: `pytcl/gravity/egm.py`, `pytcl/gravity/clenshaw.py`
 
 ---
 
@@ -266,7 +268,7 @@
 | **P3.6** | Terrain Models | DEM, GEBCO, Earth2014, visibility | ✅ Complete |
 | **P3.7** | Map Projections | Mercator, UTM, Stereographic, LCC, AzEq | ✅ Complete |
 | **P3.8** | Tidal Effects | Solid Earth, ocean loading, atmospheric | ✅ Complete |
-| **P3.9** | Advanced Gravity | EGM96/2008, Clenshaw summation | Pending |
+| **P3.9** | Advanced Gravity | EGM96/2008, Clenshaw summation | ✅ Complete |
 | **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
 | **P5** | INS/Navigation | Strapdown INS, coning/sculling, INS/GNSS | Pending |
 | **P6** | Infrastructure | Performance, docs, tests | In progress |
@@ -286,11 +288,11 @@
 | **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models (WGS84, WMM, IGRF) | Released 2025-12-30 |
 | **v0.7.0** | Complete astronomical code (orbit propagation, Lambert, reference frames) | Released 2025-12-30 |
+| **v0.7.1** | EGM96/EGM2008 gravity models with Clenshaw summation | Released 2025-12-30 |
 | **v0.8.0** | EMM/WMMHR magnetic models, terrain (DEM, GEBCO, Earth2014, visibility) | Released 2025-12-30 |
 | **v0.9.0** | Map projections (Mercator, UTM, Stereographic, LCC, Azimuthal Equidistant) | Released 2025-12-30 |
 | **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
-| **v0.11.0** | EGM96/EGM2008 gravity models with Clenshaw summation | Planned |
-| **v0.12.0** | INS mechanization and navigation | Planned |
+| **v0.11.0** | INS mechanization and navigation | Planned |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
