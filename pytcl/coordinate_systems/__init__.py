@@ -15,7 +15,7 @@ systems commonly used in tracking applications:
 """
 
 # Import submodules for easy access
-from pytcl.coordinate_systems import conversions, jacobians, rotations
+from pytcl.coordinate_systems import conversions, jacobians, projections, rotations
 
 # Geodetic conversions
 # Spherical/polar conversions
@@ -54,6 +54,25 @@ from pytcl.coordinate_systems.jacobians import (
     ruv_jacobian,
     spherical_jacobian,
     spherical_jacobian_inv,
+)
+
+# Projections
+from pytcl.coordinate_systems.projections import (
+    azimuthal_equidistant,
+    azimuthal_equidistant_inverse,
+    geodetic2utm,
+    lambert_conformal_conic,
+    lambert_conformal_conic_inverse,
+    mercator,
+    mercator_inverse,
+    polar_stereographic,
+    stereographic,
+    stereographic_inverse,
+    transverse_mercator,
+    transverse_mercator_inverse,
+    utm2geodetic,
+    utm_central_meridian,
+    utm_zone,
 )
 
 # Rotation operations
@@ -131,6 +150,23 @@ __all__ = [
     "rotmat2rodrigues",
     "dcm_rate",
     "is_rotation_matrix",
+    # Projections
+    "projections",
+    "mercator",
+    "mercator_inverse",
+    "transverse_mercator",
+    "transverse_mercator_inverse",
+    "utm_zone",
+    "utm_central_meridian",
+    "geodetic2utm",
+    "utm2geodetic",
+    "stereographic",
+    "stereographic_inverse",
+    "polar_stereographic",
+    "lambert_conformal_conic",
+    "lambert_conformal_conic_inverse",
+    "azimuthal_equidistant",
+    "azimuthal_equidistant_inverse",
     # Jacobians
     "spherical_jacobian",
     "spherical_jacobian_inv",
