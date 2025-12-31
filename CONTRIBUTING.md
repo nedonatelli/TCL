@@ -259,26 +259,42 @@ In `docs/_static/landing.html`, update the statistics to reflect current metrics
 - **Test count** (line ~766): Run `pytest --collect-only` to get current test count
 - **Other stats** as needed (functions, modules, etc.)
 
-### 3. Run Quality Checks
+### 3. Sync Examples
+
+Copy examples from the root `examples/` directory to `docs/examples/`:
+
+```bash
+cp examples/*.py docs/examples/
+```
+
+### 4. Run Quality Checks
 
 ```bash
 # Sort imports
-isort pytcl tests
+isort pytcl tests examples docs/examples
 
 # Format code
 black .
 
 # Lint
-flake8 pytcl tests
+flake8 pytcl tests examples docs/examples
 
 # Type check
-mypy pytcl
+mypy pytcl examples docs/examples
 
 # Run full test suite with coverage
 pytest --cov=pytcl --cov-report=term-missing
 ```
 
-### 4. Update Roadmap Files
+### 5. Verify Examples Run
+
+Run each example script to ensure they execute without errors:
+
+```bash
+for f in examples/*.py; do echo "Running $f..."; python "$f" || exit 1; done
+```
+
+### 6. Update Roadmap Files
 
 Update both `ROADMAP.md` and `docs/roadmap.rst`:
 
@@ -294,12 +310,12 @@ Update both `ROADMAP.md` and `docs/roadmap.rst`:
 - Add new completed phase under "Completed Phases"
 - Update the "Version Targets" table with new release
 
-### 5. Update Documentation
+### 7. Update Documentation
 
 - Ensure all new features are documented
 - Rebuild docs locally to verify: `cd docs && make html`
 
-### 6. Create Release Commit
+### 8. Create Release Commit
 
 ```bash
 git add -A
@@ -308,7 +324,7 @@ git tag vX.Y.Z
 git push origin main --tags
 ```
 
-### 7. Publish to PyPI
+### 9. Publish to PyPI
 
 ```bash
 python -m build

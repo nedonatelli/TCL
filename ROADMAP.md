@@ -1,9 +1,10 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.14.4)
+## Current State (v0.15.0)
 
 - **720+ functions** implemented across 130 Python files
 - **1,255 tests** with comprehensive coverage
+- **10 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -19,6 +20,16 @@
 - **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 - **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 - **Published on PyPI** as `nrl-tracker`
+
+---
+
+## Completed in v0.15.0
+
+### New Comprehensive Examples
+- [x] **signal_processing.py** - Digital filters, matched filtering, CFAR detection, spectrum analysis
+- [x] **transforms.py** - FFT, STFT, spectrograms, CWT/DWT wavelets
+- [x] **ins_gnss_navigation.py** - INS mechanization, GNSS geometry, loosely-coupled integration
+- [x] Fixed and verified all 10 example scripts run without errors
 
 ---
 
