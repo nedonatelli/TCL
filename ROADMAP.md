@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.11.0)
+## Current State (v0.12.0)
 
-- **650+ functions** implemented across 123 Python files
-- **1003 tests** with comprehensive coverage
+- **680+ functions** implemented across 124 Python files
+- **1036 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -15,6 +15,7 @@
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
 - **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 - **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
+- **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -226,12 +227,16 @@
 
 ---
 
-## Phase 6 (Remaining): Advanced Navigation
+## Completed in v0.12.0
 
-### 6.4 INS/GNSS Integration
-- [ ] Loosely-coupled INS/GNSS
-- [ ] Tightly-coupled INS/GNSS
-- [ ] GNSS measurement models
+### Phase 6.4: INS/GNSS Integration
+- [x] GNSS measurement models - `GNSSMeasurement`, `SatelliteInfo`, `INSGNSSState`
+- [x] Measurement matrices - `position_measurement_matrix`, `velocity_measurement_matrix`, `pseudorange_measurement_matrix`
+- [x] Satellite geometry - `compute_line_of_sight`, `satellite_elevation_azimuth`, `compute_dop`
+- [x] Loosely-coupled integration - `loose_coupled_predict`, `loose_coupled_update`, `loose_coupled_update_position`
+- [x] Tightly-coupled integration - `tight_coupled_update`, `tight_coupled_pseudorange_innovation`
+- [x] Fault detection - `gnss_outage_detection`
+- **Files**: `pytcl/navigation/ins_gnss.py`
 
 ---
 
@@ -287,6 +292,7 @@
 | **P3.9** | Advanced Gravity | EGM96/2008, Clenshaw summation | ✅ Complete |
 | **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
 | **P5** | INS/Navigation | Strapdown INS, coning/sculling, alignment | ✅ Complete |
+| **P5.5** | INS/GNSS Integration | Loosely/tightly-coupled, DOP, fault detection | ✅ Complete |
 | **P6** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
@@ -309,6 +315,7 @@
 | **v0.9.0** | Map projections (Mercator, UTM, Stereographic, LCC, Azimuthal Equidistant) | Released 2025-12-30 |
 | **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
 | **v0.11.0** | INS mechanization and navigation | Released 2025-12-30 |
+| **v0.12.0** | INS/GNSS integration (loosely/tightly-coupled, DOP, fault detection) | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
