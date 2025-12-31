@@ -241,6 +241,77 @@ If you're looking for ways to contribute, these areas are priorities:
 - Gravity/magnetism models
 - Terrain models
 
+## Release Process
+
+When preparing a new release, follow these steps:
+
+### 1. Update Version Numbers
+
+Update the version in these files:
+- `pyproject.toml` - `version = "X.Y.Z"`
+- `docs/conf.py` - `release = "X.Y.Z"`
+- `docs/_static/landing.html` - Update the status badge version
+
+### 2. Update Landing Page Statistics
+
+In `docs/_static/landing.html`, update the statistics to reflect current metrics:
+- **Version badge** (line ~730): `vX.Y.Z — 720+ Functions`
+- **Test count** (line ~766): Run `pytest --collect-only` to get current test count
+- **Other stats** as needed (functions, modules, etc.)
+
+### 3. Run Quality Checks
+
+```bash
+# Format code
+black .
+
+# Lint
+flake8 pytcl tests
+
+# Type check
+mypy pytcl
+
+# Run full test suite with coverage
+pytest --cov=pytcl --cov-report=term-missing
+```
+
+### 4. Update Roadmap Files
+
+Update both `ROADMAP.md` and `docs/roadmap.rst`:
+
+**In `ROADMAP.md`:**
+- Check off completed items with `[x]` or ~~strikethrough~~
+- Update phase status (e.g., "✅ Completed in vX.Y.Z")
+- Add any new planned features discovered during development
+- Update version targets for upcoming phases if needed
+
+**In `docs/roadmap.rst`:**
+- Update "Current State (vX.Y.Z)" section header with new version
+- Update statistics (functions, tests, coverage)
+- Add new completed phase under "Completed Phases"
+- Update the "Version Targets" table with new release
+
+### 5. Update Documentation
+
+- Ensure all new features are documented
+- Rebuild docs locally to verify: `cd docs && make html`
+
+### 6. Create Release Commit
+
+```bash
+git add -A
+git commit -m "Release vX.Y.Z: <brief description>"
+git tag vX.Y.Z
+git push origin main --tags
+```
+
+### 7. Publish to PyPI
+
+```bash
+python -m build
+twine upload dist/*
+```
+
 ## Questions?
 
 - Open an issue for bugs or feature requests

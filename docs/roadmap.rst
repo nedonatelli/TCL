@@ -3,11 +3,11 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.14.0)
+Current State (v0.14.1)
 -----------------------
 
 * **720+ functions** implemented across 130 Python files
-* **1109 tests** with comprehensive coverage
+* **1,255 tests** with comprehensive coverage
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 * **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -151,6 +151,13 @@ Phase 8: Documentation (v0.14.0)
 * Custom landing page with dark theme
 * Sphinx RTD dark theme CSS
 
+Phase 8.1: Test Coverage & Process (v0.14.1)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Test coverage boost: geodetic conversions, Jacobians, matrix decompositions
+* Additional tests for process noise models, interpolation, statistics
+* Release process documentation in CONTRIBUTING.md
+* 1,255 tests (up from 1,109)
+
 Planned Phases
 --------------
 
@@ -216,6 +223,9 @@ Version Targets
      - Released
    * - **v0.14.0**
      - Documentation overhaul
+     - Released
+   * - **v0.14.1**
+     - Test coverage boost, release process documentation
      - Released
    * - **v1.0.0**
      - Full feature parity, 80%+ test coverage

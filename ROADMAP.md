@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.14.0)
+## Current State (v0.14.1)
 
 - **720+ functions** implemented across 130 Python files
-- **1109 tests** with comprehensive coverage
+- **1,255 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -287,7 +287,8 @@
 - [x] Dark theme CSS for Sphinx RTD documentation
 
 ### 8.3 Testing
-- [x] 1109 tests (up from 963 in v0.12.0)
+- [x] 1,255 tests (up from 1,109 in v0.14.0)
+- [x] Test coverage boost: geodetic conversions, Jacobians, matrix decompositions, process noise, interpolation, statistics
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
@@ -339,6 +340,7 @@
 | **v0.13.1** | Numba JIT performance optimization for critical paths | Released 2025-12-31 |
 | **v0.13.2** | Fix ricker_wavelet for cross-platform scipy compatibility | Released 2025-12-31 |
 | **v0.14.0** | Documentation overhaul: tutorials, examples, landing page, dark theme | Released 2025-12-31 |
+| **v0.14.1** | Test coverage boost, release process documentation | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
