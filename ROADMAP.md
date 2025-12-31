@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.13.1)
+## Current State (v0.13.2)
 
 - **720+ functions** implemented across 130 Python files
 - **1109 tests** with comprehensive coverage
@@ -334,6 +334,7 @@
 | **v0.12.0** | INS/GNSS integration (loosely/tightly-coupled, DOP, fault detection) | Released 2025-12-31 |
 | **v0.13.0** | Signal processing & transforms (filters, CFAR, FFT, STFT, wavelets) | Released 2025-12-31 |
 | **v0.13.1** | Numba JIT performance optimization for critical paths | Released 2025-12-31 |
+| **v0.13.2** | Fix ricker_wavelet for cross-platform scipy compatibility | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
