@@ -190,7 +190,14 @@ def ricker_wavelet(
 
     where f = 1/(sqrt(2)*pi*a) is the central frequency.
     """
-    return scipy_signal.ricker(points, a)
+    # Native implementation of the Ricker (Mexican hat) wavelet
+    # This avoids dependency on scipy.signal.ricker which was removed in some scipy versions
+    t = np.arange(points, dtype=np.float64) - (points - 1.0) / 2
+    A = 2 / (np.sqrt(3 * a) * (np.pi**0.25))
+    wsq = (t / a) ** 2
+    mod = 1 - wsq
+    gauss = np.exp(-wsq / 2)
+    return A * mod * gauss
 
 
 def gaussian_wavelet(
