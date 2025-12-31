@@ -18,27 +18,21 @@ def main():
 
     # State transition matrix (constant velocity model)
     # State: [x, vx, y, vy]
-    F = np.array([
-        [1, dt, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, dt],
-        [0, 0, 0, 1]
-    ])
+    F = np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
 
     # Process noise covariance
     q = 0.1  # Process noise intensity
-    Q = q * np.array([
-        [dt**3 / 3, dt**2 / 2, 0, 0],
-        [dt**2 / 2, dt, 0, 0],
-        [0, 0, dt**3 / 3, dt**2 / 2],
-        [0, 0, dt**2 / 2, dt]
-    ])
+    Q = q * np.array(
+        [
+            [dt**3 / 3, dt**2 / 2, 0, 0],
+            [dt**2 / 2, dt, 0, 0],
+            [0, 0, dt**3 / 3, dt**2 / 2],
+            [0, 0, dt**2 / 2, dt],
+        ]
+    )
 
     # Measurement matrix (position only)
-    H = np.array([
-        [1, 0, 0, 0],
-        [0, 0, 1, 0]
-    ])
+    H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
 
     # Measurement noise covariance
     R = np.eye(2) * 0.5
@@ -77,8 +71,8 @@ def main():
     estimates = np.array(estimates)
 
     pos_errors = np.sqrt(
-        (true_states[:, 0] - estimates[:, 0])**2 +
-        (true_states[:, 2] - estimates[:, 2])**2
+        (true_states[:, 0] - estimates[:, 0]) ** 2
+        + (true_states[:, 2] - estimates[:, 2]) ** 2
     )
 
     print("Kalman Filter Tracking Results")

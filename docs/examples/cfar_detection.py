@@ -58,7 +58,7 @@ def main():
     print(f"OS-CFAR detections: {os_result.detection_indices.tolist()}")
 
     # Threshold factor
-    alpha = threshold_factor(pfa, 2 * ref_cells, method='ca')
+    alpha = threshold_factor(pfa, 2 * ref_cells, method="ca")
     print(f"\nThreshold factor (CA-CFAR): {alpha:.2f}")
 
     # Detection performance
@@ -66,8 +66,9 @@ def main():
         detected = set(result.detection_indices.tolist())
         hits = len(detected.intersection(target_cells))
         false_alarms = len(detected) - hits
-        print(f"{name}-CFAR: {hits}/3 targets detected, "
-              f"{false_alarms} false alarms")
+        print(
+            f"{name}-CFAR: {hits}/3 targets detected, " f"{false_alarms} false alarms"
+        )
 
 
 if __name__ == "__main__":

@@ -80,8 +80,10 @@ def main():
 
     result = direct_geodetic(lat_ref, lon_ref, azimuth, distance, WGS84)
     print(f"\nDirect geodetic (500 km at 135°):")
-    print(f"  Destination: {np.degrees(result.latitude):.4f}°, "
-          f"{np.degrees(result.longitude):.4f}°")
+    print(
+        f"  Destination: {np.degrees(result.latitude):.4f}°, "
+        f"{np.degrees(result.longitude):.4f}°"
+    )
     print(f"  Final azimuth: {np.degrees(result.azimuth):.2f}°")
 
 

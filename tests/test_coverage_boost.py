@@ -15,12 +15,6 @@ import numpy as np
 import pytest
 import scipy.linalg
 
-
-# =============================================================================
-# Matrix Decomposition Tests
-# =============================================================================
-
-
 from pytcl.mathematical_functions.basic_matrix.decompositions import (
     chol_semi_def,
     matrix_sqrt,
@@ -31,6 +25,10 @@ from pytcl.mathematical_functions.basic_matrix.decompositions import (
     tria,
     tria_sqrt,
 )
+
+# =============================================================================
+# Matrix Decomposition Tests
+# =============================================================================
 
 
 class TestCholSemiDef:
@@ -385,15 +383,15 @@ class TestDiscretizeLTI:
 # =============================================================================
 
 
-from pytcl.dynamic_models.process_noise.singer import (
-    q_singer,
-    q_singer_2d,
-    q_singer_3d,
-)
 from pytcl.dynamic_models.process_noise.coordinated_turn import (
     q_coord_turn_2d,
     q_coord_turn_3d,
     q_coord_turn_polar,
+)
+from pytcl.dynamic_models.process_noise.singer import (
+    q_singer,
+    q_singer_2d,
+    q_singer_3d,
 )
 
 
@@ -466,13 +464,13 @@ class TestCoordinatedTurnProcessNoise:
 
 
 from pytcl.mathematical_functions.interpolation.interpolation import (
-    linear_interp,
-    cubic_spline,
-    pchip,
     akima,
     barycentric,
+    cubic_spline,
     interp1d,
     interp2d,
+    linear_interp,
+    pchip,
 )
 
 
@@ -562,15 +560,15 @@ class TestInterp2D:
 
 
 from pytcl.mathematical_functions.statistics.distributions import (
-    Gaussian,
-    MultivariateGaussian,
-    Uniform,
+    Beta,
+    ChiSquared,
     Exponential,
     Gamma,
-    ChiSquared,
-    StudentT,
-    Beta,
+    Gaussian,
+    MultivariateGaussian,
     Poisson,
+    StudentT,
+    Uniform,
     VonMises,
     Wishart,
 )
@@ -821,13 +819,13 @@ class TestWishartDistribution:
 
 
 from pytcl.mathematical_functions.signal_processing.detection import (
+    cfar_2d,
     cfar_ca,
     cfar_go,
-    cfar_so,
     cfar_os,
-    cfar_2d,
-    threshold_factor,
+    cfar_so,
     detection_probability,
+    threshold_factor,
 )
 
 

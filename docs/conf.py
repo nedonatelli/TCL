@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "Tracker Component Library"
 copyright = "2024, U.S. Naval Research Laboratory (Python port)"
 author = "U.S. Naval Research Laboratory"
-release = "0.14.1"
+release = "0.14.2"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -75,6 +75,7 @@ def copy_landing_page(app, exception):
     landing_src = build_dir / "_static" / "landing.html"
     if landing_src.exists():
         shutil.copy(str(landing_src), str(sphinx_index))
+
 
 # -- Extension configuration -------------------------------------------------
 

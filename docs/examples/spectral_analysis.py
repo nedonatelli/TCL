@@ -29,12 +29,14 @@ def main():
 
     # Signal with two tones plus noise
     f1, f2 = 50, 120  # Hz
-    signal = (np.sin(2 * np.pi * f1 * t) +
-              0.5 * np.sin(2 * np.pi * f2 * t) +
-              0.2 * np.random.randn(len(t)))
+    signal = (
+        np.sin(2 * np.pi * f1 * t)
+        + 0.5 * np.sin(2 * np.pi * f2 * t)
+        + 0.2 * np.random.randn(len(t))
+    )
 
     # Power spectrum
-    psd = power_spectrum(signal, fs, window='hann', nperseg=256)
+    psd = power_spectrum(signal, fs, window="hann", nperseg=256)
 
     # Find peaks
     peak_indices = np.argsort(psd.psd)[-5:]

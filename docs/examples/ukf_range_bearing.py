@@ -19,17 +19,12 @@ def main():
 
     # State transition (constant velocity)
     def f(x):
-        F = np.array([
-            [1, dt, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, dt],
-            [0, 0, 0, 1]
-        ])
+        F = np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
         return F @ x
 
     # Nonlinear measurement (range, bearing)
     def h(x):
-        r = np.sqrt(x[0]**2 + x[2]**2)
+        r = np.sqrt(x[0] ** 2 + x[2] ** 2)
         theta = np.arctan2(x[2], x[0])
         return np.array([r, theta])
 
@@ -66,8 +61,8 @@ def main():
     estimates = np.array(estimates)
 
     pos_errors = np.sqrt(
-        (true_states[:, 0] - estimates[:, 0])**2 +
-        (true_states[:, 2] - estimates[:, 2])**2
+        (true_states[:, 0] - estimates[:, 0]) ** 2
+        + (true_states[:, 2] - estimates[:, 2]) ** 2
     )
 
     print("UKF Range-Bearing Tracking Results")

@@ -20,12 +20,7 @@ def main():
     n_steps = 100
 
     # State transition matrix (constant velocity)
-    F = np.array([
-        [1, dt, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, dt],
-        [0, 0, 0, 1]
-    ])
+    F = np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
 
     Q = np.eye(4) * 0.01
     H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
@@ -38,16 +33,16 @@ def main():
         gate_threshold=9.21,
         min_hits=3,
         max_misses=5,
-        filter_type='kf'
+        filter_type="kf",
     )
     tracker.set_dynamics(F, Q)
     tracker.set_measurement_model(H, R)
 
     # Three crossing targets
     targets = [
-        np.array([0.0, 1.0, 50.0, 0.0]),    # Moving right
+        np.array([0.0, 1.0, 50.0, 0.0]),  # Moving right
         np.array([100.0, -1.0, 50.0, 0.0]),  # Moving left
-        np.array([50.0, 0.0, 0.0, 1.0]),     # Moving up
+        np.array([50.0, 0.0, 0.0, 1.0]),  # Moving up
     ]
 
     detection_prob = 0.9
@@ -74,9 +69,7 @@ def main():
 
             # Detect with probability
             if np.random.rand() < detection_prob:
-                z = H @ targets[i] + np.random.multivariate_normal(
-                    np.zeros(2), R
-                )
+                z = H @ targets[i] + np.random.multivariate_normal(np.zeros(2), R)
                 measurements.append(z)
 
         # Add clutter
