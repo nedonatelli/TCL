@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.10.0)
+## Current State (v0.11.0)
 
-- **620+ functions** implemented across 122 Python files
-- **963 tests** with comprehensive coverage
+- **650+ functions** implemented across 123 Python files
+- **1003 tests** with comprehensive coverage
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
@@ -14,6 +14,7 @@
 - **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
 - **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
+- **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -209,13 +210,28 @@
 
 ---
 
+## Completed in v0.11.0
+
+### Phase 6.3: INS Mechanization
+- [x] INS state representation - `INSState`, `IMUData`, `INSErrorState`
+- [x] Physical constants (WGS84) - `OMEGA_EARTH`, `GM_EARTH`, `A_EARTH`
+- [x] Gravity computation - `normal_gravity`, `gravity_ned` (Somigliana formula)
+- [x] Earth/transport rates - `earth_rate_ned`, `transport_rate_ned`, `radii_of_curvature`
+- [x] Coning/sculling corrections - `coning_correction`, `sculling_correction`, `compensate_imu_data`
+- [x] Attitude update - `update_quaternion`, `update_attitude_ned`, `skew_symmetric`
+- [x] Strapdown mechanization (NED) - `mechanize_ins_ned`, `initialize_ins_state`
+- [x] Alignment algorithms - `coarse_alignment`, `gyrocompass_alignment`
+- [x] Error state model (15-state) - `ins_error_state_matrix`, `ins_process_noise_matrix`
+- **Files**: `pytcl/navigation/ins.py`
+
+---
+
 ## Phase 6 (Remaining): Advanced Navigation
 
-### 6.3 INS Mechanization
-- [ ] Complete strapdown INS
-- [ ] Coning/sculling corrections
-- [ ] Error state models
-- [ ] INS/GNSS integration
+### 6.4 INS/GNSS Integration
+- [ ] Loosely-coupled INS/GNSS
+- [ ] Tightly-coupled INS/GNSS
+- [ ] GNSS measurement models
 
 ---
 
@@ -270,7 +286,7 @@
 | **P3.8** | Tidal Effects | Solid Earth, ocean loading, atmospheric | ✅ Complete |
 | **P3.9** | Advanced Gravity | EGM96/2008, Clenshaw summation | ✅ Complete |
 | **P4** | Astronomical | Orbit propagation, Lambert, reference frames | ✅ Complete |
-| **P5** | INS/Navigation | Strapdown INS, coning/sculling, INS/GNSS | Pending |
+| **P5** | INS/Navigation | Strapdown INS, coning/sculling, alignment | ✅ Complete |
 | **P6** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
@@ -292,7 +308,7 @@
 | **v0.8.0** | EMM/WMMHR magnetic models, terrain (DEM, GEBCO, Earth2014, visibility) | Released 2025-12-30 |
 | **v0.9.0** | Map projections (Mercator, UTM, Stereographic, LCC, Azimuthal Equidistant) | Released 2025-12-30 |
 | **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
-| **v0.11.0** | INS mechanization and navigation | Planned |
+| **v0.11.0** | INS mechanization and navigation | Released 2025-12-30 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
