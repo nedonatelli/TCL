@@ -11,6 +11,8 @@ state estimation.
 
    getting_started
    user_guide/index
+   tutorials/index
+   examples/index
    api/index
    roadmap
 
