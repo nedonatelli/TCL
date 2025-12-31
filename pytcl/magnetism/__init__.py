@@ -2,8 +2,8 @@
 Magnetism models module.
 
 This module provides implementations of geomagnetic field models including
-the World Magnetic Model (WMM) and International Geomagnetic Reference
-Field (IGRF).
+the World Magnetic Model (WMM), International Geomagnetic Reference
+Field (IGRF), and high-resolution models (EMM, WMMHR).
 
 Examples
 --------
@@ -18,6 +18,11 @@ Examples
 >>> # Just the declination
 >>> D = magnetic_declination(np.radians(40), np.radians(-105))
 >>> print(f"Declination: {np.degrees(D):.2f}°")
+
+>>> # High-resolution models (require external coefficient files)
+>>> from pytcl.magnetism import emm, wmmhr, create_emm_test_coefficients
+>>> # Create test coefficients for demonstration
+>>> coef = create_emm_test_coefficients(n_max=36)
 """
 
 from pytcl.magnetism.wmm import (
@@ -44,6 +49,19 @@ from pytcl.magnetism.igrf import (
     magnetic_north_pole,
 )
 
+from pytcl.magnetism.emm import (
+    HighResCoefficients,
+    EMM_PARAMETERS,
+    get_data_dir as get_emm_data_dir,
+    load_emm_coefficients,
+    create_test_coefficients as create_emm_test_coefficients,
+    emm,
+    wmmhr,
+    emm_declination,
+    emm_inclination,
+    emm_intensity,
+)
+
 __all__ = [
     # Types and constants
     "MagneticResult",
@@ -66,4 +84,15 @@ __all__ = [
     "dipole_moment",
     "dipole_axis",
     "magnetic_north_pole",
+    # EMM / WMMHR (high-resolution models)
+    "HighResCoefficients",
+    "EMM_PARAMETERS",
+    "get_emm_data_dir",
+    "load_emm_coefficients",
+    "create_emm_test_coefficients",
+    "emm",
+    "wmmhr",
+    "emm_declination",
+    "emm_inclination",
+    "emm_intensity",
 ]

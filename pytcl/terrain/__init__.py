@@ -5,6 +5,8 @@ This module provides tools for working with digital elevation models (DEMs)
 and computing terrain-related effects:
 
 - Digital Elevation Model interface for elevation queries
+- GEBCO bathymetry/topography data loading
+- Earth2014 global terrain model loading
 - Terrain gradient and slope calculations
 - Line-of-sight and viewshed analysis
 - Terrain masking for radar/sensor coverage
@@ -13,6 +15,8 @@ Submodules
 ----------
 dem
     DEM data structures and elevation query interface.
+loaders
+    GEBCO and Earth2014 data loaders.
 visibility
     Line-of-sight, viewshed, and terrain masking functions.
 
@@ -40,6 +44,11 @@ Examples
 ...     tgt_lat=np.radians(35.8), tgt_lon=np.radians(-119.2), tgt_height=10.0
 ... )
 >>> print(f"Visible: {los.visible}, Clearance: {los.clearance:.1f} m")
+
+>>> # Load GEBCO/Earth2014 data (requires external files)
+>>> from pytcl.terrain import load_gebco, load_earth2014, create_test_gebco_dem
+>>> # Use test data for demonstration
+>>> dem = create_test_gebco_dem()
 """
 
 # DEM interface
@@ -67,6 +76,21 @@ from pytcl.terrain.visibility import (
     radar_coverage_map,
 )
 
+# Data loaders
+from pytcl.terrain.loaders import (
+    GEBCO_PARAMETERS,
+    EARTH2014_PARAMETERS,
+    GEBCOMetadata,
+    Earth2014Metadata,
+    get_data_dir,
+    load_gebco,
+    load_earth2014,
+    create_test_gebco_dem,
+    create_test_earth2014_dem,
+    get_gebco_metadata,
+    get_earth2014_metadata,
+)
+
 __all__ = [
     # DEM data structures
     "DEMPoint",
@@ -89,4 +113,16 @@ __all__ = [
     "compute_horizon",
     "terrain_masking_angle",
     "radar_coverage_map",
+    # Data loaders
+    "GEBCO_PARAMETERS",
+    "EARTH2014_PARAMETERS",
+    "GEBCOMetadata",
+    "Earth2014Metadata",
+    "get_data_dir",
+    "load_gebco",
+    "load_earth2014",
+    "create_test_gebco_dem",
+    "create_test_earth2014_dem",
+    "get_gebco_metadata",
+    "get_earth2014_metadata",
 ]
