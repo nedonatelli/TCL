@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.13.2)
+## Current State (v0.14.0)
 
 - **720+ functions** implemented across 130 Python files
 - **1109 tests** with comprehensive coverage
@@ -281,7 +281,10 @@
 - [x] API reference documentation for v0.3.0 features
 - [x] Data association user guide
 - [x] Complete API documentation for all modules (17 new API docs added)
-- [ ] Add tutorials and examples for new features
+- [x] Tutorials: Kalman filtering, nonlinear filtering, signal processing, radar detection, INS/GNSS, multi-target tracking
+- [x] Example scripts: kalman_tracking.py, ukf_range_bearing.py, cfar_detection.py, coordinate_transforms.py, multi_target_tracking.py, spectral_analysis.py
+- [x] Custom landing page with animated radar theme
+- [x] Dark theme CSS for Sphinx RTD documentation
 
 ### 8.3 Testing
 - [x] 1109 tests (up from 963 in v0.12.0)
@@ -335,6 +338,7 @@
 | **v0.13.0** | Signal processing & transforms (filters, CFAR, FFT, STFT, wavelets) | Released 2025-12-31 |
 | **v0.13.1** | Numba JIT performance optimization for critical paths | Released 2025-12-31 |
 | **v0.13.2** | Fix ricker_wavelet for cross-platform scipy compatibility | Released 2025-12-31 |
+| **v0.14.0** | Documentation overhaul: tutorials, examples, landing page, dark theme | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---
