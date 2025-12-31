@@ -13,7 +13,6 @@ Tests cover:
 
 import numpy as np
 import pytest
-import scipy.linalg
 
 from pytcl.mathematical_functions.basic_matrix.decompositions import (
     chol_semi_def,
@@ -214,7 +213,7 @@ class TestRangeSpace:
 # =============================================================================
 
 
-from pytcl.dynamic_models.continuous_time.dynamics import (
+from pytcl.dynamic_models.continuous_time.dynamics import (  # noqa: E402
     continuous_to_discrete,
     diffusion_constant_acceleration,
     diffusion_constant_velocity,
@@ -383,12 +382,12 @@ class TestDiscretizeLTI:
 # =============================================================================
 
 
-from pytcl.dynamic_models.process_noise.coordinated_turn import (
+from pytcl.dynamic_models.process_noise.coordinated_turn import (  # noqa: E402
     q_coord_turn_2d,
     q_coord_turn_3d,
     q_coord_turn_polar,
 )
-from pytcl.dynamic_models.process_noise.singer import (
+from pytcl.dynamic_models.process_noise.singer import (  # noqa: E402
     q_singer,
     q_singer_2d,
     q_singer_3d,
@@ -463,7 +462,7 @@ class TestCoordinatedTurnProcessNoise:
 # =============================================================================
 
 
-from pytcl.mathematical_functions.interpolation.interpolation import (
+from pytcl.mathematical_functions.interpolation.interpolation import (  # noqa: E402
     akima,
     barycentric,
     cubic_spline,
@@ -559,7 +558,7 @@ class TestInterp2D:
 # =============================================================================
 
 
-from pytcl.mathematical_functions.statistics.distributions import (
+from pytcl.mathematical_functions.statistics.distributions import (  # noqa: E402
     Beta,
     ChiSquared,
     Exponential,
@@ -818,7 +817,7 @@ class TestWishartDistribution:
 # =============================================================================
 
 
-from pytcl.mathematical_functions.signal_processing.detection import (
+from pytcl.mathematical_functions.signal_processing.detection import (  # noqa: E402
     cfar_2d,
     cfar_ca,
     cfar_go,

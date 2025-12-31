@@ -512,7 +512,7 @@ class TestRandomRotations:
 # =============================================================================
 
 
-from pytcl.coordinate_systems.conversions.geodetic import (
+from pytcl.coordinate_systems.conversions.geodetic import (  # noqa: E402
     ecef2enu,
     ecef2geodetic,
     ecef2ned,
@@ -865,7 +865,7 @@ class TestRadiiOfCurvature:
 # =============================================================================
 
 
-from pytcl.coordinate_systems.jacobians.jacobians import (
+from pytcl.coordinate_systems.jacobians.jacobians import (  # noqa: E402
     cross_covariance_transform,
     enu_jacobian,
     geodetic_jacobian,
