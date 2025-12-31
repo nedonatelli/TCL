@@ -280,7 +280,7 @@
 - [x] User guides for square-root filters, IMM, and JPDA
 - [x] API reference documentation for v0.3.0 features
 - [x] Data association user guide
-- [ ] Complete API documentation for remaining modules
+- [x] Complete API documentation for all modules (17 new API docs added)
 - [ ] Add tutorials and examples for new features
 
 ### 8.3 Testing
