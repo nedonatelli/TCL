@@ -193,13 +193,10 @@ class DEMGrid:
     def _in_bounds(self, lat: float, lon: float) -> bool:
         """Check if coordinates are within DEM bounds."""
         return (
-            self.lat_min <= lat <= self.lat_max
-            and self.lon_min <= lon <= self.lon_max
+            self.lat_min <= lat <= self.lat_max and self.lon_min <= lon <= self.lon_max
         )
 
-    def _get_indices(
-        self, lat: float, lon: float
-    ) -> Tuple[int, int, float, float]:
+    def _get_indices(self, lat: float, lon: float) -> Tuple[int, int, float, float]:
         """Get grid indices and fractional parts for interpolation.
 
         Returns
@@ -452,10 +449,7 @@ def get_elevation_profile(
     earth_radius = 6371000.0
     dlat = lats - lat_start
     dlon = lons - lon_start
-    a = (
-        np.sin(dlat / 2) ** 2
-        + np.cos(lat_start) * np.cos(lats) * np.sin(dlon / 2) ** 2
-    )
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat_start) * np.cos(lats) * np.sin(dlon / 2) ** 2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     distances = earth_radius * c
 
