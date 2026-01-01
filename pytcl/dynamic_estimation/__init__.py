@@ -6,11 +6,40 @@ This module provides filtering and smoothing algorithms for state estimation:
 - Square-root Kalman filters (numerically stable)
 - Interacting Multiple Model (IMM) estimator
 - Particle filters (bootstrap, auxiliary, regularized)
+- Smoothers (RTS, fixed-lag, fixed-interval, two-filter)
+- Information filters (standard and square-root)
 - Batch estimation methods
 """
 
 # Import submodules for easy access
 from pytcl.dynamic_estimation import kalman, particle_filters
+
+# Information filter
+from pytcl.dynamic_estimation.information_filter import (
+    InformationFilterResult,
+    InformationState,
+    SRIFResult,
+    SRIFState,
+    fuse_information,
+    information_filter,
+    information_to_state,
+    srif_filter,
+    srif_predict,
+    srif_update,
+    state_to_information,
+)
+
+# Smoothers
+from pytcl.dynamic_estimation.smoothers import (
+    FixedLagResult,
+    RTSResult,
+    SmoothedState,
+    fixed_interval_smoother,
+    fixed_lag_smoother,
+    rts_smoother,
+    rts_smoother_single_step,
+    two_filter_smoother,
+)
 
 # IMM estimator
 from pytcl.dynamic_estimation.imm import (
@@ -91,6 +120,27 @@ __all__ = [
     # Submodules
     "kalman",
     "particle_filters",
+    # Smoothers
+    "SmoothedState",
+    "RTSResult",
+    "FixedLagResult",
+    "rts_smoother",
+    "fixed_lag_smoother",
+    "fixed_interval_smoother",
+    "two_filter_smoother",
+    "rts_smoother_single_step",
+    # Information filter
+    "InformationState",
+    "InformationFilterResult",
+    "SRIFState",
+    "SRIFResult",
+    "information_to_state",
+    "state_to_information",
+    "information_filter",
+    "srif_predict",
+    "srif_update",
+    "srif_filter",
+    "fuse_information",
     # Linear KF
     "KalmanState",
     "KalmanPrediction",

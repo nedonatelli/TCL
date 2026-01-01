@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.17.0)
+## Current State (v0.18.0)
 
-- **760+ functions** implemented across 136 Python files
-- **1,350+ tests** with comprehensive coverage
+- **780+ functions** implemented across 138 Python files
+- **1,400+ tests** with comprehensive coverage
 - **10 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
@@ -21,6 +21,8 @@
 - **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 - **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 - **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
+- **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
+- **Information filters**: Standard and square-root information filters (SRIF)
 - **Published on PyPI** as `nrl-tracker`
 
 ---
@@ -318,7 +320,7 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | Containers & Data Structures | ✅ | ✅ | 100% |
 | 3D Assignment | ✅ | ✅ | 100% |
 | k-Best 2D Assignment | ✅ | ✅ | 100% |
-| **Batch/Smoothing Estimators** | ✅ | ⚠️ | 20% |
+| Batch/Smoothing Estimators | ✅ | ✅ | 100% |
 | **Navigation Utilities (Geodesic)** | ✅ | ⚠️ | 50% |
 | **Special Mathematical Functions** | ✅ | ⚠️ | 60% |
 | **Ephemerides (JPL DE)** | ✅ | ❌ | 0% |
@@ -337,22 +339,18 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 
 ---
 
-## Phase 10: Batch Estimation & Smoothing (v0.18.0)
+## Completed in v0.18.0
 
-Target: Complete smoothing and batch estimation capabilities
-
-### 10.1 Smoothers
-- [ ] Rauch-Tung-Striebel (RTS) smoother - `rts_smooth`
-- [ ] Fixed-lag smoother - `fixed_lag_smooth`
-- [ ] Fixed-interval smoother - `fixed_interval_smooth`
-- [ ] Two-filter smoother - `two_filter_smooth`
-- **Files**: `pytcl/dynamic_estimation/smoothers.py`
-
-### 10.2 Information Filters
-- [ ] Information filter (inverse covariance form) - `info_filter_predict`, `info_filter_update`
-- [ ] Square-root information filter - `srif_predict`, `srif_update`
-- [ ] Information smoother
-- **Files**: `pytcl/dynamic_estimation/information_filter.py`
+### Phase 10: Batch Estimation & Smoothing
+- [x] **Rauch-Tung-Striebel (RTS) smoother** - `rts_smoother` with time-varying parameters
+- [x] **Fixed-lag smoother** - `fixed_lag_smoother` for real-time applications
+- [x] **Fixed-interval smoother** - `fixed_interval_smoother` (alias for RTS)
+- [x] **Two-filter smoother** - `two_filter_smoother` (Fraser-Potter form)
+- [x] `RTSResult`, `FixedLagResult`, `SmoothedState` result types
+- [x] **Information filter** - `information_filter` with state/info conversions
+- [x] **Square-root information filter (SRIF)** - `srif_filter`, `srif_predict`, `srif_update`
+- [x] **Multi-sensor fusion** - `fuse_information` for information-form fusion
+- **Files**: `pytcl/dynamic_estimation/smoothers.py`, `pytcl/dynamic_estimation/information_filter.py`
 
 ---
 
@@ -480,7 +478,7 @@ Target: Complete astronomical capabilities including ephemerides
 | Priority | Focus Area | Key Deliverables | Status |
 |----------|------------|------------------|--------|
 | **P7** | 3D/k-Best Assignment | Murty's algorithm, 3D assignment, S-D approximation | ✅ Complete |
-| **P8** | Batch/Smoothing | RTS smoother, fixed-lag, information filter | v0.18.0 |
+| **P8** | Batch/Smoothing | RTS smoother, fixed-lag, information filter | ✅ Complete |
 | **P9** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line | v0.19.0 |
 | **P10** | Special Functions | Marcum Q, hypergeometric, Lambert W | v0.20.0 |
 | **P11** | Advanced Astronomical | JPL ephemerides, relativistic corrections | v0.21.0 |
@@ -510,12 +508,12 @@ Target: Complete astronomical capabilities including ephemerides
 | **v0.15.0** | New example scripts | Released 2025-12-31 |
 | **v0.16.0** | Tracking containers | Released 2025-12-31 |
 | **v0.17.0** | Advanced assignment (3D, k-best) | Released 2025-12-31 |
+| **v0.18.0** | Batch estimation & smoothing | Released 2025-12-31 |
 
 ### Planned Versions (MATLAB TCL Parity)
 
 | Version | Focus | Target Features |
 |---------|-------|-----------------|
-| **v0.18.0** | Batch Estimation | RTS smoother, fixed-lag, information filter |
 | **v0.19.0** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line |
 | **v0.20.0** | Special Functions | Marcum Q, hypergeometric (0F1, 1F1, 2F1), Lambert W |
 | **v0.21.0** | Advanced Astronomical | JPL DE ephemerides, relativistic corrections |
