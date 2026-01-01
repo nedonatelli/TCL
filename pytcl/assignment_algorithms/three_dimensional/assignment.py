@@ -48,9 +48,7 @@ def _validate_cost_tensor(
 ) -> Tuple[int, int, int]:
     """Validate cost tensor and return dimensions."""
     if cost_tensor.ndim != 3:
-        raise ValueError(
-            f"Cost tensor must be 3-dimensional, got {cost_tensor.ndim}"
-        )
+        raise ValueError(f"Cost tensor must be 3-dimensional, got {cost_tensor.ndim}")
     return cost_tensor.shape
 
 

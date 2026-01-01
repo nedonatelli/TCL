@@ -280,12 +280,8 @@ def murty(
             # Determine unassigned
             all_rows = set(range(n))
             all_cols = set(range(m))
-            unassigned_rows = np.array(
-                sorted(all_rows - set(row_ind)), dtype=np.intp
-            )
-            unassigned_cols = np.array(
-                sorted(all_cols - set(col_ind)), dtype=np.intp
-            )
+            unassigned_rows = np.array(sorted(all_rows - set(row_ind)), dtype=np.intp)
+            unassigned_cols = np.array(sorted(all_cols - set(col_ind)), dtype=np.intp)
 
             result = AssignmentResult(
                 row_indices=row_ind,
@@ -339,7 +335,9 @@ def _partition_solution(
 
     for i in range(start_idx, n_assigned):
         # Require assignments 0..i-1, forbid assignment i
-        new_required = required + [(row_ind[j], col_ind[j]) for j in range(start_idx, i)]
+        new_required = required + [
+            (row_ind[j], col_ind[j]) for j in range(start_idx, i)
+        ]
         new_forbidden = forbidden + [(row_ind[i], col_ind[i])]
 
         # Solve constrained problem
@@ -358,13 +356,16 @@ def _partition_solution(
 
             if maximize:
                 # Use negative cost for max-heap behavior
-                heapq.heappush(heap, _PartitionNode(
-                    cost_matrix=cost_matrix,
-                    required=new_required,
-                    forbidden=new_forbidden,
-                    cost=-new_cost,
-                    assignment=(new_row_ind, new_col_ind),
-                ))
+                heapq.heappush(
+                    heap,
+                    _PartitionNode(
+                        cost_matrix=cost_matrix,
+                        required=new_required,
+                        forbidden=new_forbidden,
+                        cost=-new_cost,
+                        assignment=(new_row_ind, new_col_ind),
+                    ),
+                )
             else:
                 heapq.heappush(heap, node)
 
@@ -474,12 +475,8 @@ def kbest_assign2d(
 
             all_rows = set(range(n))
             all_cols = set(range(m))
-            unassigned_rows = np.array(
-                sorted(all_rows - set(row_ind)), dtype=np.intp
-            )
-            unassigned_cols = np.array(
-                sorted(all_cols - set(col_ind)), dtype=np.intp
-            )
+            unassigned_rows = np.array(sorted(all_rows - set(row_ind)), dtype=np.intp)
+            unassigned_cols = np.array(sorted(all_cols - set(col_ind)), dtype=np.intp)
 
             result = AssignmentResult(
                 row_indices=row_ind,

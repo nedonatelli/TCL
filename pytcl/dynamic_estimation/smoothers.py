@@ -12,14 +12,12 @@ The main algorithms are:
 - Two-filter smoother for parallel processing
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.linear import (
-    KalmanPrediction,
-    KalmanUpdate,
     kf_predict,
     kf_smooth,
     kf_update,
@@ -514,7 +512,6 @@ def two_filter_smoother(
     R = np.asarray(R, dtype=np.float64)
 
     n_steps = len(measurements)
-    n = len(x0_fwd)
 
     # Forward filter pass
     x_fwd: List[NDArray[np.floating]] = []

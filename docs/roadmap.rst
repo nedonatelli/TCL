@@ -3,16 +3,18 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.14.4)
+Current State (v0.18.0)
 -----------------------
 
-* **720+ functions** implemented across 130 Python files
-* **1,255 tests** with comprehensive coverage
+* **780+ functions** implemented across 138 Python files
+* **1,400+ tests** with comprehensive coverage
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
+* **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 * **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 * **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 * **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree
+* **Tracking containers**: TrackList, MeasurementSet, ClusterSet for managing tracking data
 * **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
 * **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 * **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
@@ -22,6 +24,8 @@ Current State (v0.14.4)
 * **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 * **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 * **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
+* **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
+* **Information filters**: Standard and square-root information filters (SRIF)
 * **Published on PyPI** as ``nrl-tracker``
 
 Completed Phases
@@ -143,6 +147,28 @@ Phase 7.1: Performance Optimization (v0.13.1)
 * Numba JIT for batch Mahalanobis distance
 * Numba JIT for rotation matrix utilities
 
+Phase 8: Tracking Containers (v0.16.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* TrackList container with filtering and batch operations
+* MeasurementSet for time-indexed measurements
+* ClusterSet for track clustering
+* Spatial queries and statistics
+
+Phase 9: Advanced Assignment Algorithms (v0.17.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* 3D assignment (Lagrangian relaxation, auction, greedy)
+* K-best 2D assignment (Murty's algorithm)
+* Ranked assignment enumeration
+* Unified assign3d() interface
+
+Phase 10: Batch Estimation & Smoothing (v0.18.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* RTS (Rauch-Tung-Striebel) smoother
+* Fixed-lag smoother for real-time applications
+* Fixed-interval and two-filter smoothers
+* Information filter and Square-Root Information Filter (SRIF)
+* Multi-sensor fusion in information form
+
 Phase 8: Documentation (v0.14.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Complete API documentation for all modules
@@ -236,8 +262,20 @@ Version Targets
    * - **v0.14.4**
      - Fix flake8 warnings in test files
      - Released
+   * - **v0.15.0**
+     - New example scripts
+     - Released
+   * - **v0.16.0**
+     - Tracking containers (TrackList, MeasurementSet, ClusterSet)
+     - Released
+   * - **v0.17.0**
+     - Advanced assignment algorithms (3D, k-best)
+     - Released
+   * - **v0.18.0**
+     - Batch estimation & smoothing (RTS, SRIF)
+     - Released
    * - **v1.0.0**
-     - Full feature parity, 80%+ test coverage
+     - Full MATLAB TCL parity, 80%+ test coverage
      - Planned
 
 Contributing

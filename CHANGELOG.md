@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2025-12-31
+
+### Added
+- **Batch Estimation & Smoothing** (`pytcl.dynamic_estimation`):
+  - **Smoothers** (`smoothers.py`):
+    - `SmoothedState`, `RTSResult`, `FixedLagResult` - Named tuples for smoother results
+    - `rts_smoother` - Rauch-Tung-Striebel fixed-interval smoother with time-varying parameters
+    - `fixed_lag_smoother` - Real-time smoother with configurable lag
+    - `fixed_interval_smoother` - Convenience alias for RTS smoother
+    - `two_filter_smoother` - Fraser-Potter two-filter smoother for parallel computation
+    - `rts_smoother_single_step` - Single backward step of RTS smoother
+  - **Information Filters** (`information_filter.py`):
+    - `InformationState`, `InformationFilterResult` - Information form state types
+    - `SRIFState`, `SRIFResult` - Square-root information filter types
+    - `information_filter` - Full information filter with unknown state initialization
+    - `srif_filter`, `srif_predict`, `srif_update` - Square-Root Information Filter
+    - `information_to_state`, `state_to_information` - Form conversions
+    - `fuse_information` - Multi-sensor fusion in information form
+- 19 new tests for smoothers and information filters
+
+### Changed
+- Test count increased from ~1,380 to ~1,400
+- Source file count increased from 136 to 138
+
+## [0.17.0] - 2025-12-31
+
+### Added
+- **Advanced Assignment Algorithms** (`pytcl.assignment_algorithms`):
+  - **3D Assignment** (`three_dimensional/assignment.py`):
+    - `Assignment3DResult` - Named tuple for 3D assignment results
+    - `assign3d` - Unified interface with method selection
+    - `assign3d_lagrangian` - Lagrangian relaxation for 3D assignment
+    - `assign3d_auction` - Auction algorithm for 3D matching
+    - `greedy_3d` - Fast greedy 3D assignment
+    - `decompose_to_2d` - Decompose 3D to sequential 2D problems
+  - **K-Best 2D Assignment** (`two_dimensional/kbest.py`):
+    - `KBestResult` - Named tuple for k-best results
+    - `murty` - Murty's algorithm for finding k-best assignments
+    - `kbest_assign2d` - K-best with cost thresholds and non-assignment
+    - `ranked_assignments` - Convenience function for ranked enumeration
+- 30+ new tests for assignment algorithms
+
+### Changed
+- Test count increased from ~1,350 to ~1,380
+
 ## [0.7.1] - 2025-12-30
 
 ### Added
