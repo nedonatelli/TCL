@@ -15,6 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -251,8 +255,9 @@ def plot_results(
     )
 
     # Save as HTML (interactive) and PNG (static)
-    fig.write_html("multi_target_tracking_result.html")
-    print("Interactive plot saved to multi_target_tracking_result.html")
+    output_path = OUTPUT_DIR / "multi_target_tracking_result.html"
+    fig.write_html(str(output_path))
+    print(f"Interactive plot saved to {output_path}")
     fig.show()
 
 

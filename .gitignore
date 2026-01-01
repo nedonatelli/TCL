@@ -163,9 +163,11 @@ temp/
 *.nbi
 *.nbc
 
-# Generated output files from examples
+# Generated output files from examples (except docs static files)
 *.png
 *.html
+!docs/_static/images/examples/*.png
+!docs/_static/images/examples/*.html
 
 # Advanced examples (development/experimental)
 examples/advanced/

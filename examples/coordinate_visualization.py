@@ -15,6 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -606,32 +610,32 @@ def main():
     # 1. Rotation axes
     print("\n1. Generating rotation axes visualization...")
     fig1 = plot_rotation_axes()
-    fig1.write_html("coord_viz_rotation_axes.html")
-    print("   Saved to coord_viz_rotation_axes.html")
+    fig1.write_html(str(OUTPUT_DIR / "coord_viz_rotation_axes.html"))
+    print(f"   Saved to {OUTPUT_DIR / 'coord_viz_rotation_axes.html'}")
 
     # 2. Euler rotation sequence
     print("\n2. Generating Euler rotation sequence...")
     fig2 = plot_euler_rotation_sequence()
-    fig2.write_html("coord_viz_euler_sequence.html")
-    print("   Saved to coord_viz_euler_sequence.html")
+    fig2.write_html(str(OUTPUT_DIR / "coord_viz_euler_sequence.html"))
+    print(f"   Saved to {OUTPUT_DIR / 'coord_viz_euler_sequence.html'}")
 
     # 3. Quaternion SLERP
     print("\n3. Generating quaternion SLERP visualization...")
     fig3 = plot_quaternion_slerp()
-    fig3.write_html("coord_viz_slerp.html")
-    print("   Saved to coord_viz_slerp.html")
+    fig3.write_html(str(OUTPUT_DIR / "coord_viz_slerp.html"))
+    print(f"   Saved to {OUTPUT_DIR / 'coord_viz_slerp.html'}")
 
     # 4. Spherical coordinates
     print("\n4. Generating spherical coordinates visualization...")
     fig4 = plot_spherical_coordinates()
-    fig4.write_html("coord_viz_spherical.html")
-    print("   Saved to coord_viz_spherical.html")
+    fig4.write_html(str(OUTPUT_DIR / "coord_viz_spherical.html"))
+    print(f"   Saved to {OUTPUT_DIR / 'coord_viz_spherical.html'}")
 
     # 5. Earth coordinates
     print("\n5. Generating Earth coordinates visualization...")
     fig5 = plot_earth_coordinates()
-    fig5.write_html("coord_viz_earth.html")
-    print("   Saved to coord_viz_earth.html")
+    fig5.write_html(str(OUTPUT_DIR / "coord_viz_earth.html"))
+    print(f"   Saved to {OUTPUT_DIR / 'coord_viz_earth.html'}")
 
     # Show all figures
     print("\nOpening visualizations in browser...")

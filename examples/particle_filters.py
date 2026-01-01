@@ -17,9 +17,15 @@ Particle filters are essential for nonlinear, non-Gaussian state estimation
 where Kalman filters cannot be directly applied.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -204,7 +210,7 @@ def demo_resampling_methods():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
 
-        fig.write_html("particle_resampling_comparison.html")
+        fig.write_html(str(OUTPUT_DIR / "particle_resampling_comparison.html"))
         print("\n  [Plot saved to particle_resampling_comparison.html]")
 
 
@@ -420,7 +426,7 @@ def demo_linear_tracking():
         fig.update_yaxes(title_text="Position error", row=1, col=2)
 
         fig.update_layout(height=500, width=1200)
-        fig.write_html("particle_linear_tracking.html")
+        fig.write_html(str(OUTPUT_DIR / "particle_linear_tracking.html"))
         print("\n  [Plot saved to particle_linear_tracking.html]")
 
 
@@ -696,7 +702,7 @@ def demo_nonlinear_tracking():
         fig.update_yaxes(title_text="Range (m)", row=2, col=2)
 
         fig.update_layout(height=800, width=1000, showlegend=True)
-        fig.write_html("particle_nonlinear_tracking.html")
+        fig.write_html(str(OUTPUT_DIR / "particle_nonlinear_tracking.html"))
         print("\n  [Plot saved to particle_nonlinear_tracking.html]")
 
 
@@ -835,7 +841,7 @@ def demo_multimodal():
             width=1200,
             title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)",
         )
-        fig.write_html("particle_multimodal.html")
+        fig.write_html(str(OUTPUT_DIR / "particle_multimodal.html"))
         print("\n  [Plot saved to particle_multimodal.html]")
 
 

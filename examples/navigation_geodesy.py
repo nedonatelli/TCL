@@ -16,6 +16,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 
@@ -372,7 +376,7 @@ def plot_coverage_map() -> None:
         height=700,
     )
 
-    fig.write_html("navigation_coverage_map.html")
+    fig.write_html(str(OUTPUT_DIR / "navigation_coverage_map.html"))
     print("\nInteractive coverage map saved to navigation_coverage_map.html")
     fig.show()
 
