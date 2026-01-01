@@ -7,6 +7,8 @@ needed in tracking applications, including:
 - Inertial Navigation System (INS) mechanization
 - Alignment algorithms
 - INS/GNSS integration (loosely and tightly coupled)
+- Great circle navigation
+- Rhumb line navigation
 """
 
 from pytcl.navigation.geodesy import (  # Ellipsoids; Coordinate conversions; Geodetic problems
@@ -77,6 +79,41 @@ from pytcl.navigation.ins_gnss import (  # INS/GNSS integration
     tight_coupled_pseudorange_innovation,
     tight_coupled_update,
     velocity_measurement_matrix,
+)
+from pytcl.navigation.great_circle import (  # Great circle navigation
+    EARTH_RADIUS,
+    CrossTrackResult,
+    GreatCircleResult,
+    IntersectionResult,
+    WaypointResult,
+    angular_distance,
+    cross_track_distance,
+    destination_point,
+    great_circle_azimuth,
+    great_circle_direct,
+    great_circle_distance,
+    great_circle_intersect,
+    great_circle_inverse,
+    great_circle_path_intersect,
+    great_circle_tdoa_loc,
+    great_circle_waypoint,
+    great_circle_waypoints,
+)
+from pytcl.navigation.rhumb import (  # Rhumb line navigation
+    RhumbDirectResult,
+    RhumbIntersectionResult,
+    RhumbResult,
+    compare_great_circle_rhumb,
+    direct_rhumb,
+    direct_rhumb_spherical,
+    indirect_rhumb,
+    indirect_rhumb_spherical,
+    rhumb_bearing,
+    rhumb_distance_ellipsoidal,
+    rhumb_distance_spherical,
+    rhumb_intersect,
+    rhumb_midpoint,
+    rhumb_waypoints,
 )
 
 __all__ = [
@@ -160,4 +197,37 @@ __all__ = [
     "tight_coupled_update",
     # Fault detection
     "gnss_outage_detection",
+    # Great circle navigation
+    "EARTH_RADIUS",
+    "GreatCircleResult",
+    "WaypointResult",
+    "IntersectionResult",
+    "CrossTrackResult",
+    "great_circle_distance",
+    "great_circle_azimuth",
+    "great_circle_inverse",
+    "great_circle_waypoint",
+    "great_circle_waypoints",
+    "great_circle_direct",
+    "cross_track_distance",
+    "great_circle_intersect",
+    "great_circle_path_intersect",
+    "great_circle_tdoa_loc",
+    "angular_distance",
+    "destination_point",
+    # Rhumb line navigation
+    "RhumbResult",
+    "RhumbDirectResult",
+    "RhumbIntersectionResult",
+    "rhumb_distance_spherical",
+    "rhumb_bearing",
+    "indirect_rhumb_spherical",
+    "direct_rhumb_spherical",
+    "rhumb_distance_ellipsoidal",
+    "indirect_rhumb",
+    "direct_rhumb",
+    "rhumb_intersect",
+    "rhumb_midpoint",
+    "rhumb_waypoints",
+    "compare_great_circle_rhumb",
 ]

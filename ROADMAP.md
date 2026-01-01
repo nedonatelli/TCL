@@ -321,7 +321,7 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | 3D Assignment | ✅ | ✅ | 100% |
 | k-Best 2D Assignment | ✅ | ✅ | 100% |
 | Batch/Smoothing Estimators | ✅ | ✅ | 100% |
-| **Navigation Utilities (Geodesic)** | ✅ | ⚠️ | 50% |
+| **Navigation Utilities (Geodesic)** | ✅ | ✅ | 100% |
 | **Special Mathematical Functions** | ✅ | ⚠️ | 60% |
 | **Ephemerides (JPL DE)** | ✅ | ❌ | 0% |
 | **Relativistic Corrections** | ✅ | ❌ | 0% |
@@ -354,29 +354,21 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 
 ---
 
-## Phase 11: Navigation Utilities (v0.19.0)
+## Completed in v0.20.0
 
-Target: Complete geodetic and navigation algorithms from MATLAB TCL
-
-### 11.1 Geodetic Problems
-- [ ] Direct geodetic problem (Vincenty) - `direct_geodetic_vincenty`
-- [ ] Indirect geodetic problem (Vincenty) - `indirect_geodetic_vincenty`
-- [ ] Generalized geodetic problems - `direct_geodetic_gen`, `indirect_geodetic_gen`
-- **Files**: `pytcl/navigation/geodetic.py`
-
-### 11.2 Great Circle Navigation
-- [ ] Great circle distance - `great_circle_distance`
-- [ ] Great circle azimuth - `great_circle_azimuth`
-- [ ] Great circle waypoints - `great_circle_waypoint`
-- [ ] Great circle intersection - `great_circle_intersect`
-- [ ] TDOA localization on sphere - `great_circle_tdoa_loc`
-- **Files**: `pytcl/navigation/great_circle.py`
-
-### 11.3 Rhumb Line Navigation
-- [ ] Direct rhumb problem - `direct_rhumb`, `direct_rhumb_spherical`
-- [ ] Indirect rhumb problem - `indirect_rhumb`, `indirect_rhumb_spherical`
-- [ ] Rhumb line intersection - `rhumb_intersect`
-- **Files**: `pytcl/navigation/rhumb.py`
+### Phase 11: Navigation Utilities
+- [x] **Geodetic Problems (Vincenty)** - Already in `direct_geodetic`, `inverse_geodetic`
+- [x] **Great circle distance** - `great_circle_distance`, `great_circle_azimuth`
+- [x] **Great circle waypoints** - `great_circle_waypoint`, `great_circle_waypoints`, `great_circle_direct`
+- [x] **Great circle intersection** - `great_circle_intersect`, `great_circle_path_intersect`
+- [x] **Cross-track distance** - `cross_track_distance`
+- [x] **TDOA localization** - `great_circle_tdoa_loc`
+- [x] **Rhumb line distance** - `rhumb_distance_spherical`, `rhumb_distance_ellipsoidal`
+- [x] **Rhumb line navigation** - `direct_rhumb`, `indirect_rhumb`, `rhumb_bearing`
+- [x] **Rhumb line intersection** - `rhumb_intersect`
+- [x] **Rhumb waypoints** - `rhumb_waypoints`, `rhumb_midpoint`
+- [x] **Path comparison** - `compare_great_circle_rhumb`
+- **Files**: `pytcl/navigation/great_circle.py`, `pytcl/navigation/rhumb.py`
 
 ---
 
@@ -479,7 +471,7 @@ Target: Complete astronomical capabilities including ephemerides
 |----------|------------|------------------|--------|
 | **P7** | 3D/k-Best Assignment | Murty's algorithm, 3D assignment, S-D approximation | ✅ Complete |
 | **P8** | Batch/Smoothing | RTS smoother, fixed-lag, information filter | ✅ Complete |
-| **P9** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line | v0.19.0 |
+| **P9** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line | ✅ Complete |
 | **P10** | Special Functions | Marcum Q, hypergeometric, Lambert W | v0.20.0 |
 | **P11** | Advanced Astronomical | JPL ephemerides, relativistic corrections | v0.21.0 |
 | **P12** | v1.0 Polish | 80%+ test coverage, MATLAB validation, docs | v1.0.0 |
@@ -509,14 +501,15 @@ Target: Complete astronomical capabilities including ephemerides
 | **v0.16.0** | Tracking containers | Released 2025-12-31 |
 | **v0.17.0** | Advanced assignment (3D, k-best) | Released 2025-12-31 |
 | **v0.18.0** | Batch estimation & smoothing | Released 2025-12-31 |
+| **v0.19.0** | 3D tracking example, import fixes | Released 2026-01-01 |
+| **v0.20.0** | Navigation utilities (great circle, rhumb) | Released 2026-01-01 |
 
 ### Planned Versions (MATLAB TCL Parity)
 
 | Version | Focus | Target Features |
 |---------|-------|-----------------|
-| **v0.19.0** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line |
-| **v0.20.0** | Special Functions | Marcum Q, hypergeometric (0F1, 1F1, 2F1), Lambert W |
-| **v0.21.0** | Advanced Astronomical | JPL DE ephemerides, relativistic corrections |
+| **v0.21.0** | Special Functions | Marcum Q, hypergeometric (0F1, 1F1, 2F1), Lambert W |
+| **v0.22.0** | Advanced Astronomical | JPL DE ephemerides, relativistic corrections |
 | **v1.0.0** | **Full MATLAB TCL Parity** | 100% feature coverage, 80%+ tests, MATLAB validation |
 
 ---
