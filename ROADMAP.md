@@ -1,15 +1,16 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.15.0)
+## Current State (v0.16.0)
 
-- **720+ functions** implemented across 130 Python files
-- **1,255 tests** with comprehensive coverage
+- **750+ functions** implemented across 133 Python files
+- **1,300+ tests** with comprehensive coverage
 - **10 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
+- **Tracking containers**: TrackList, MeasurementSet, ClusterSet for managing tracking data
 - **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
 - **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 - **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
@@ -20,6 +21,20 @@
 - **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 - **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 - **Published on PyPI** as `nrl-tracker`
+
+---
+
+## Completed in v0.16.0
+
+### Phase 8: Tracking Container Classes
+- [x] **TrackList** container - Collection of tracks with filtering, querying, batch operations
+- [x] **MeasurementSet** container - Time-indexed measurement collection with spatial queries
+- [x] **ClusterSet** container - Track clustering with DBSCAN/K-means support
+- [x] Properties for easy access: `confirmed`, `tentative`, `track_ids`, `times`, `sensors`
+- [x] Spatial queries: `in_region`, `nearest_to`, `clusters_in_region`
+- [x] Batch extraction: `states()`, `covariances()`, `positions()`, `values()`
+- [x] Statistics: `TrackListStats`, `ClusterStats` with velocity coherence
+- **Files**: `pytcl/containers/track_list.py`, `pytcl/containers/measurement_set.py`, `pytcl/containers/cluster_set.py`
 
 ---
 
@@ -324,6 +339,7 @@
 | **P5** | INS/Navigation | Strapdown INS, coning/sculling, alignment | ✅ Complete |
 | **P5.5** | INS/GNSS Integration | Loosely/tightly-coupled, DOP, fault detection | ✅ Complete |
 | **P6** | Signal Processing & Transforms | Filters, matched filter, CFAR, FFT, STFT, wavelets | ✅ Complete |
+| **P6.5** | Tracking Containers | TrackList, MeasurementSet, ClusterSet | ✅ Complete |
 | **P7** | Infrastructure | Performance, docs, tests | In progress |
 
 ---
@@ -355,6 +371,8 @@
 | **v0.14.2** | Add isort to release quality checks | Released 2025-12-31 |
 | **v0.14.3** | Fix example scripts (API compatibility, type errors, linting) | Released 2025-12-31 |
 | **v0.14.4** | Fix flake8 warnings in test files | Released 2025-12-31 |
+| **v0.15.0** | New example scripts (signal processing, transforms, INS/GNSS) | Released 2025-12-31 |
+| **v0.16.0** | Tracking containers (TrackList, MeasurementSet, ClusterSet) | Released 2025-12-31 |
 | **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
 
 ---

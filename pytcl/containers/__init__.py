@@ -2,9 +2,17 @@
 Containers module.
 
 This module provides spatial data structures for efficient
-nearest neighbor queries and spatial indexing.
+nearest neighbor queries, spatial indexing, and tracking containers.
 """
 
+from pytcl.containers.cluster_set import (
+    ClusterSet,
+    ClusterStats,
+    TrackCluster,
+    cluster_tracks_dbscan,
+    cluster_tracks_kmeans,
+    compute_cluster_centroid,
+)
 from pytcl.containers.covertree import (
     CoverTree,
     CoverTreeNode,
@@ -16,6 +24,11 @@ from pytcl.containers.kd_tree import (
     KDTree,
     NearestNeighborResult,
 )
+from pytcl.containers.measurement_set import (
+    Measurement,
+    MeasurementQuery,
+    MeasurementSet,
+)
 from pytcl.containers.rtree import (
     BoundingBox,
     RTree,
@@ -24,6 +37,11 @@ from pytcl.containers.rtree import (
     box_from_point,
     box_from_points,
     merge_boxes,
+)
+from pytcl.containers.track_list import (
+    TrackList,
+    TrackListStats,
+    TrackQuery,
 )
 from pytcl.containers.vptree import (
     VPNode,
@@ -53,4 +71,19 @@ __all__ = [
     "CoverTreeResult",
     "CoverTreeNode",
     "CoverTree",
+    # Track List
+    "TrackList",
+    "TrackQuery",
+    "TrackListStats",
+    # Measurement Set
+    "Measurement",
+    "MeasurementSet",
+    "MeasurementQuery",
+    # Cluster Set
+    "TrackCluster",
+    "ClusterSet",
+    "ClusterStats",
+    "cluster_tracks_dbscan",
+    "cluster_tracks_kmeans",
+    "compute_cluster_centroid",
 ]
