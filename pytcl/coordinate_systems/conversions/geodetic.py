@@ -6,12 +6,10 @@ longitude, altitude) and Earth-centered coordinate systems (ECEF), as well
 as local tangent plane coordinates (ENU, NED).
 """
 
-from typing import Optional
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from pytcl.core.constants import WGS84
 

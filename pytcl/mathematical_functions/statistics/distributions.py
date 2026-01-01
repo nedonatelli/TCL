@@ -6,16 +6,12 @@ for PDF, CDF, sampling, and moment calculations. These wrap scipy.stats
 distributions with additional functionality useful for tracking applications.
 """
 
-from abc import ABC
-from abc import abstractmethod
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from abc import ABC, abstractmethod
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import scipy.stats as stats
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class Distribution(ABC):
@@ -565,8 +561,7 @@ class VonMises(Distribution):
 
     def var(self) -> float:
         # Circular variance: 1 - I_1(kappa)/I_0(kappa)
-        from scipy.special import i0
-        from scipy.special import i1
+        from scipy.special import i0, i1
 
         return 1 - i1(self._kappa) / i0(self._kappa)
 

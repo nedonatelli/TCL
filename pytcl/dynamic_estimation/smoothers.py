@@ -12,17 +12,12 @@ The main algorithms are:
 - Two-filter smoother for parallel processing
 """
 
-from typing import List
-from typing import NamedTuple
-from typing import Optional
+from typing import List, NamedTuple, Optional
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import kf_predict
-from pytcl.dynamic_estimation.kalman.linear import kf_smooth
-from pytcl.dynamic_estimation.kalman.linear import kf_update
+from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_smooth, kf_update
 
 
 class SmoothedState(NamedTuple):

@@ -12,15 +12,11 @@ References
 """
 
 from enum import Enum
-from typing import List
-from typing import Literal
-from typing import NamedTuple
-from typing import Optional
+from typing import List, Literal, NamedTuple, Optional
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class LinkageType(Enum):

@@ -5,14 +5,11 @@ This module provides geometric functions for points, lines, planes,
 polygons, and related operations used in tracking applications.
 """
 
-from typing import Optional
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
-from scipy.spatial import ConvexHull
-from scipy.spatial import Delaunay
+from numpy.typing import ArrayLike, NDArray
+from scipy.spatial import ConvexHull, Delaunay
 
 
 def point_in_polygon(

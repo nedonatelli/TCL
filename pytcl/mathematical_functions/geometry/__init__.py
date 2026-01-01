@@ -9,24 +9,24 @@ This module provides:
 - Bounding box computation
 """
 
-from pytcl.mathematical_functions.geometry.geometry import barycentric_coordinates
-from pytcl.mathematical_functions.geometry.geometry import bounding_box
-from pytcl.mathematical_functions.geometry.geometry import convex_hull
-from pytcl.mathematical_functions.geometry.geometry import convex_hull_area
-from pytcl.mathematical_functions.geometry.geometry import delaunay_triangulation
-from pytcl.mathematical_functions.geometry.geometry import line_intersection
-from pytcl.mathematical_functions.geometry.geometry import line_plane_intersection
-from pytcl.mathematical_functions.geometry.geometry import minimum_bounding_circle
-from pytcl.mathematical_functions.geometry.geometry import oriented_bounding_box
-from pytcl.mathematical_functions.geometry.geometry import point_in_polygon
-from pytcl.mathematical_functions.geometry.geometry import point_to_line_distance
 from pytcl.mathematical_functions.geometry.geometry import (
+    barycentric_coordinates,
+    bounding_box,
+    convex_hull,
+    convex_hull_area,
+    delaunay_triangulation,
+    line_intersection,
+    line_plane_intersection,
+    minimum_bounding_circle,
+    oriented_bounding_box,
+    point_in_polygon,
+    point_to_line_distance,
     point_to_line_segment_distance,
+    points_in_polygon,
+    polygon_area,
+    polygon_centroid,
+    triangle_area,
 )
-from pytcl.mathematical_functions.geometry.geometry import points_in_polygon
-from pytcl.mathematical_functions.geometry.geometry import polygon_area
-from pytcl.mathematical_functions.geometry.geometry import polygon_centroid
-from pytcl.mathematical_functions.geometry.geometry import triangle_area
 
 __all__ = [
     "point_in_polygon",

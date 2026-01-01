@@ -9,26 +9,28 @@ This module provides:
 - Rotation interpolation (SLERP)
 """
 
-from pytcl.coordinate_systems.rotations.rotations import axisangle2rotmat
-from pytcl.coordinate_systems.rotations.rotations import dcm_rate
-from pytcl.coordinate_systems.rotations.rotations import euler2quat
-from pytcl.coordinate_systems.rotations.rotations import euler2rotmat
-from pytcl.coordinate_systems.rotations.rotations import is_rotation_matrix
-from pytcl.coordinate_systems.rotations.rotations import quat2euler
-from pytcl.coordinate_systems.rotations.rotations import quat2rotmat
-from pytcl.coordinate_systems.rotations.rotations import quat_conjugate
-from pytcl.coordinate_systems.rotations.rotations import quat_inverse
-from pytcl.coordinate_systems.rotations.rotations import quat_multiply
-from pytcl.coordinate_systems.rotations.rotations import quat_rotate
-from pytcl.coordinate_systems.rotations.rotations import rodrigues2rotmat
-from pytcl.coordinate_systems.rotations.rotations import rotmat2axisangle
-from pytcl.coordinate_systems.rotations.rotations import rotmat2euler
-from pytcl.coordinate_systems.rotations.rotations import rotmat2quat
-from pytcl.coordinate_systems.rotations.rotations import rotmat2rodrigues
-from pytcl.coordinate_systems.rotations.rotations import rotx
-from pytcl.coordinate_systems.rotations.rotations import roty
-from pytcl.coordinate_systems.rotations.rotations import rotz
-from pytcl.coordinate_systems.rotations.rotations import slerp
+from pytcl.coordinate_systems.rotations.rotations import (
+    axisangle2rotmat,
+    dcm_rate,
+    euler2quat,
+    euler2rotmat,
+    is_rotation_matrix,
+    quat2euler,
+    quat2rotmat,
+    quat_conjugate,
+    quat_inverse,
+    quat_multiply,
+    quat_rotate,
+    rodrigues2rotmat,
+    rotmat2axisangle,
+    rotmat2euler,
+    rotmat2quat,
+    rotmat2rodrigues,
+    rotx,
+    roty,
+    rotz,
+    slerp,
+)
 
 __all__ = [
     "rotx",

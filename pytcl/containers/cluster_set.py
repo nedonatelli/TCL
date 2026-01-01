@@ -7,18 +7,10 @@ that move together (formations, convoys, etc.).
 
 from __future__ import annotations
 
-from typing import Dict
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from pytcl.clustering.dbscan import dbscan
 from pytcl.clustering.kmeans import kmeans

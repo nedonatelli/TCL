@@ -6,18 +6,16 @@ This module provides algorithms for finding the k best solutions to the
 Multiple Hypothesis Tracking (MHT).
 """
 
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import linear_sum_assignment as scipy_lsa
 
-from pytcl.assignment_algorithms.two_dimensional.assignment import AssignmentResult
-from pytcl.assignment_algorithms.two_dimensional.assignment import assign2d
+from pytcl.assignment_algorithms.two_dimensional.assignment import (
+    AssignmentResult,
+    assign2d,
+)
 
 
 class KBestResult(NamedTuple):

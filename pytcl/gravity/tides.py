@@ -20,8 +20,7 @@ References
        displacements," JGR, 102, B9, 20469-20477, 1997.
 """
 
-from typing import NamedTuple
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

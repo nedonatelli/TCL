@@ -7,8 +7,7 @@ mathematical physics, probability theory, and special function evaluation.
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 def hyp0f1(

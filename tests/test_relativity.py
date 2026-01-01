@@ -4,19 +4,24 @@ Tests cover all public functions with physical validation against known results
 and edge case handling.
 """
 
-import pytest
 import numpy as np
+import pytest
+
 from pytcl.astronomical.relativity import (
-    schwarzschild_radius,
-    gravitational_time_dilation,
-    proper_time_rate,
-    shapiro_delay,
-    schwarzschild_precession_per_orbit,
-    post_newtonian_acceleration,
+    AU,
+    C_LIGHT,
+    G_GRAV,
+    GM_EARTH,
+    GM_SUN,
     geodetic_precession,
+    gravitational_time_dilation,
     lense_thirring_precession,
+    post_newtonian_acceleration,
+    proper_time_rate,
     relativistic_range_correction,
-    C_LIGHT, G_GRAV, GM_EARTH, GM_SUN, AU
+    schwarzschild_precession_per_orbit,
+    schwarzschild_radius,
+    shapiro_delay,
 )
 
 

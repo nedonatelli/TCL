@@ -10,14 +10,10 @@ References
        Careful Seeding," SODA 2007.
 """
 
-from typing import Literal
-from typing import NamedTuple
-from typing import Optional
-from typing import Union
+from typing import Literal, NamedTuple, Optional, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.spatial.distance import cdist
 
 

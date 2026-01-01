@@ -9,15 +9,10 @@ messages when inputs don't meet requirements.
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any
-from typing import Callable
-from typing import Literal
-from typing import Sequence
-from typing import TypeVar
+from typing import Any, Callable, Literal, Sequence, TypeVar
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 # Type variable for generic function signatures
 F = TypeVar("F", bound=Callable[..., Any])

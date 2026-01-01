@@ -5,46 +5,50 @@ This module provides methods for static (batch) estimation including
 least squares variants and robust estimation techniques.
 """
 
-from pytcl.static_estimation.least_squares import LSResult
-from pytcl.static_estimation.least_squares import TLSResult
-from pytcl.static_estimation.least_squares import WLSResult
-from pytcl.static_estimation.least_squares import generalized_least_squares
-from pytcl.static_estimation.least_squares import ordinary_least_squares
-from pytcl.static_estimation.least_squares import recursive_least_squares
-from pytcl.static_estimation.least_squares import ridge_regression
-from pytcl.static_estimation.least_squares import total_least_squares
-from pytcl.static_estimation.least_squares import weighted_least_squares
-from pytcl.static_estimation.maximum_likelihood import CRBResult
-from pytcl.static_estimation.maximum_likelihood import MLResult
-from pytcl.static_estimation.maximum_likelihood import aic
-from pytcl.static_estimation.maximum_likelihood import aicc
-from pytcl.static_estimation.maximum_likelihood import bic
-from pytcl.static_estimation.maximum_likelihood import cramer_rao_bound
-from pytcl.static_estimation.maximum_likelihood import cramer_rao_bound_biased
-from pytcl.static_estimation.maximum_likelihood import efficiency
-from pytcl.static_estimation.maximum_likelihood import (
-    fisher_information_exponential_family,
+from pytcl.static_estimation.least_squares import (
+    LSResult,
+    TLSResult,
+    WLSResult,
+    generalized_least_squares,
+    ordinary_least_squares,
+    recursive_least_squares,
+    ridge_regression,
+    total_least_squares,
+    weighted_least_squares,
 )
-from pytcl.static_estimation.maximum_likelihood import fisher_information_gaussian
-from pytcl.static_estimation.maximum_likelihood import fisher_information_numerical
-from pytcl.static_estimation.maximum_likelihood import mle_gaussian
-from pytcl.static_estimation.maximum_likelihood import mle_newton_raphson
-from pytcl.static_estimation.maximum_likelihood import mle_scoring
-from pytcl.static_estimation.maximum_likelihood import observed_fisher_information
-from pytcl.static_estimation.robust import RANSACResult
-from pytcl.static_estimation.robust import RobustResult
-from pytcl.static_estimation.robust import cauchy_weight
-from pytcl.static_estimation.robust import huber_regression
-from pytcl.static_estimation.robust import huber_rho
-from pytcl.static_estimation.robust import huber_weight
-from pytcl.static_estimation.robust import irls
-from pytcl.static_estimation.robust import mad
-from pytcl.static_estimation.robust import ransac
-from pytcl.static_estimation.robust import ransac_n_trials
-from pytcl.static_estimation.robust import tau_scale
-from pytcl.static_estimation.robust import tukey_regression
-from pytcl.static_estimation.robust import tukey_rho
-from pytcl.static_estimation.robust import tukey_weight
+from pytcl.static_estimation.maximum_likelihood import (
+    CRBResult,
+    MLResult,
+    aic,
+    aicc,
+    bic,
+    cramer_rao_bound,
+    cramer_rao_bound_biased,
+    efficiency,
+    fisher_information_exponential_family,
+    fisher_information_gaussian,
+    fisher_information_numerical,
+    mle_gaussian,
+    mle_newton_raphson,
+    mle_scoring,
+    observed_fisher_information,
+)
+from pytcl.static_estimation.robust import (
+    RANSACResult,
+    RobustResult,
+    cauchy_weight,
+    huber_regression,
+    huber_rho,
+    huber_weight,
+    irls,
+    mad,
+    ransac,
+    ransac_n_trials,
+    tau_scale,
+    tukey_regression,
+    tukey_rho,
+    tukey_weight,
+)
 
 __all__ = [
     # Least squares results

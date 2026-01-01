@@ -9,15 +9,11 @@ This is more sophisticated than GNN which makes hard assignment decisions,
 as JPDA can handle measurement origin uncertainty in cluttered environments.
 """
 
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
 from pytcl.assignment_algorithms.gating import mahalanobis_distance

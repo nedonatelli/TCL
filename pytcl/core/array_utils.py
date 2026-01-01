@@ -7,15 +7,12 @@ making it easier to port algorithms while maintaining Pythonic interfaces.
 
 from __future__ import annotations
 
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.constants import PI
-from pytcl.core.constants import TWO_PI
+from pytcl.core.constants import PI, TWO_PI
 
 
 def wrap_to_pi(angle: ArrayLike) -> NDArray[np.floating[Any]]:

@@ -32,42 +32,50 @@ Plotly is required for all plotting functions. Install with:
 """
 
 # Coordinate system visualization
-from pytcl.plotting.coordinates import plot_coordinate_axes_3d
-from pytcl.plotting.coordinates import plot_coordinate_transform
-from pytcl.plotting.coordinates import plot_euler_angles
-from pytcl.plotting.coordinates import plot_points_spherical
-from pytcl.plotting.coordinates import plot_quaternion_interpolation
-from pytcl.plotting.coordinates import plot_rotation_comparison
-from pytcl.plotting.coordinates import plot_spherical_grid
+from pytcl.plotting.coordinates import (
+    plot_coordinate_axes_3d,
+    plot_coordinate_transform,
+    plot_euler_angles,
+    plot_points_spherical,
+    plot_quaternion_interpolation,
+    plot_rotation_comparison,
+    plot_spherical_grid,
+)
 
 # Covariance ellipse utilities
-from pytcl.plotting.ellipses import confidence_region_radius
-from pytcl.plotting.ellipses import covariance_ellipse_points
-from pytcl.plotting.ellipses import covariance_ellipsoid_points
-from pytcl.plotting.ellipses import ellipse_parameters
-from pytcl.plotting.ellipses import plot_covariance_ellipse
-from pytcl.plotting.ellipses import plot_covariance_ellipses
-from pytcl.plotting.ellipses import plot_covariance_ellipsoid
+from pytcl.plotting.ellipses import (
+    confidence_region_radius,
+    covariance_ellipse_points,
+    covariance_ellipsoid_points,
+    ellipse_parameters,
+    plot_covariance_ellipse,
+    plot_covariance_ellipses,
+    plot_covariance_ellipsoid,
+)
 
 # Performance metric visualization
-from pytcl.plotting.metrics import plot_cardinality_over_time
-from pytcl.plotting.metrics import plot_consistency_summary
-from pytcl.plotting.metrics import plot_error_histogram
-from pytcl.plotting.metrics import plot_monte_carlo_rmse
-from pytcl.plotting.metrics import plot_nees_sequence
-from pytcl.plotting.metrics import plot_nis_sequence
-from pytcl.plotting.metrics import plot_ospa_over_time
-from pytcl.plotting.metrics import plot_rmse_over_time
+from pytcl.plotting.metrics import (
+    plot_cardinality_over_time,
+    plot_consistency_summary,
+    plot_error_histogram,
+    plot_monte_carlo_rmse,
+    plot_nees_sequence,
+    plot_nis_sequence,
+    plot_ospa_over_time,
+    plot_rmse_over_time,
+)
 
 # Track and trajectory plotting
-from pytcl.plotting.tracks import create_animated_tracking
-from pytcl.plotting.tracks import plot_estimation_comparison
-from pytcl.plotting.tracks import plot_measurements_2d
-from pytcl.plotting.tracks import plot_multi_target_tracks
-from pytcl.plotting.tracks import plot_state_time_series
-from pytcl.plotting.tracks import plot_tracking_result
-from pytcl.plotting.tracks import plot_trajectory_2d
-from pytcl.plotting.tracks import plot_trajectory_3d
+from pytcl.plotting.tracks import (
+    create_animated_tracking,
+    plot_estimation_comparison,
+    plot_measurements_2d,
+    plot_multi_target_tracks,
+    plot_state_time_series,
+    plot_tracking_result,
+    plot_trajectory_2d,
+    plot_trajectory_3d,
+)
 
 __all__ = [
     # Ellipses

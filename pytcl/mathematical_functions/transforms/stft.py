@@ -22,13 +22,10 @@ References
        Speech, and Signal Processing, 32(2), 236-243.
 """
 
-from typing import NamedTuple
-from typing import Optional
-from typing import Union
+from typing import NamedTuple, Optional, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy import signal as scipy_signal
 
 # =============================================================================

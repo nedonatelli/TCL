@@ -13,14 +13,10 @@ References
        Method for Points and Rectangles," ACM SIGMOD, 1990.
 """
 
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class BoundingBox(NamedTuple):

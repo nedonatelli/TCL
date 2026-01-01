@@ -7,17 +7,10 @@ with spatial query support.
 
 from __future__ import annotations
 
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from pytcl.containers.kd_tree import KDTree
 

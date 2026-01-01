@@ -20,15 +20,10 @@ References
 .. [2] Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
 """
 
-from typing import Callable
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Union
+from typing import Callable, List, NamedTuple, Optional, Union
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 # Try to import pywavelets for DWT support
 try:

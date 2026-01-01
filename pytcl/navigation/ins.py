@@ -18,19 +18,13 @@ References
 .. [3] J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
 """
 
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-from pytcl.coordinate_systems.rotations import quat2rotmat
-from pytcl.coordinate_systems.rotations import quat_multiply
-from pytcl.coordinate_systems.rotations import rotmat2quat
-from pytcl.navigation.geodesy import WGS84
-from pytcl.navigation.geodesy import Ellipsoid
+from pytcl.coordinate_systems.rotations import quat2rotmat, quat_multiply, rotmat2quat
+from pytcl.navigation.geodesy import WGS84, Ellipsoid
 
 # =============================================================================
 # Physical Constants

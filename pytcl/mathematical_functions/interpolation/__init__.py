@@ -9,16 +9,18 @@ This module provides:
 """
 
 from pytcl.mathematical_functions.interpolation.interpolation import akima  # noqa: E501
-from pytcl.mathematical_functions.interpolation.interpolation import barycentric
-from pytcl.mathematical_functions.interpolation.interpolation import cubic_spline
-from pytcl.mathematical_functions.interpolation.interpolation import interp1d
-from pytcl.mathematical_functions.interpolation.interpolation import interp2d
-from pytcl.mathematical_functions.interpolation.interpolation import interp3d
-from pytcl.mathematical_functions.interpolation.interpolation import krogh
-from pytcl.mathematical_functions.interpolation.interpolation import linear_interp
-from pytcl.mathematical_functions.interpolation.interpolation import pchip
-from pytcl.mathematical_functions.interpolation.interpolation import rbf_interpolate
-from pytcl.mathematical_functions.interpolation.interpolation import spherical_interp
+from pytcl.mathematical_functions.interpolation.interpolation import (
+    barycentric,
+    cubic_spline,
+    interp1d,
+    interp2d,
+    interp3d,
+    krogh,
+    linear_interp,
+    pchip,
+    rbf_interpolate,
+    spherical_interp,
+)
 
 __all__ = [
     "interp1d",

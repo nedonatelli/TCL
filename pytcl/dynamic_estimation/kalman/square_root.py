@@ -12,14 +12,11 @@ Implementations include:
 - Square-root versions of UKF and CKF
 """
 
-from typing import Callable
-from typing import NamedTuple
-from typing import Optional
+from typing import Callable, NamedTuple, Optional
 
 import numpy as np
 import scipy.linalg
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class SRKalmanState(NamedTuple):

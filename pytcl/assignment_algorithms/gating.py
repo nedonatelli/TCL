@@ -5,13 +5,11 @@ This module provides gating methods to determine which measurements
 fall within a validation region around predicted track states.
 """
 
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
 

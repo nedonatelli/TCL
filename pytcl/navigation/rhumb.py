@@ -9,14 +9,12 @@ constant-bearing paths on a sphere and ellipsoid, including:
 - Spherical and ellipsoidal formulations
 """
 
-from typing import NamedTuple
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from pytcl.navigation.geodesy import WGS84
-from pytcl.navigation.geodesy import Ellipsoid
+from pytcl.navigation.geodesy import WGS84, Ellipsoid
 
 
 class RhumbResult(NamedTuple):

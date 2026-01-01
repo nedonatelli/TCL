@@ -5,15 +5,11 @@ This module provides particle filtering algorithms for nonlinear/non-Gaussian
 state estimation.
 """
 
-from typing import Callable
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class ParticleState(NamedTuple):

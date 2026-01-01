@@ -25,9 +25,7 @@ References
        nanometers." Journal of Geodesy 85.8 (2011): 475-485.
 """
 
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

@@ -11,8 +11,7 @@ References
 .. [2] O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
 """
 
-from typing import Optional
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

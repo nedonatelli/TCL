@@ -8,8 +8,7 @@ used in numerical algorithms and signal processing.
 from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 def vandermonde(

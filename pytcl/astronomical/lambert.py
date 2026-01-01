@@ -15,8 +15,7 @@ References
        orbital boundary-value problem," Celestial Mechanics, 1990.
 """
 
-from typing import NamedTuple
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

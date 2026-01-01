@@ -10,8 +10,7 @@ from typing import Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 @njit(cache=True, fastmath=True)

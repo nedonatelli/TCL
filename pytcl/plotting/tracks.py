@@ -5,10 +5,7 @@ This module provides functions for visualizing trajectories, tracks,
 measurements, and estimation results in 2D and 3D.
 """
 
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike

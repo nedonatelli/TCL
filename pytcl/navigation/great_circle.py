@@ -10,9 +10,7 @@ computing the shortest path on a sphere, including:
 - TDOA localization on a sphere
 """
 
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

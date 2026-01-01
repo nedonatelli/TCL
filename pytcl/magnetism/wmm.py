@@ -12,8 +12,7 @@ References
 .. [2] https://www.ngdc.noaa.gov/geomag/WMM/
 """
 
-from typing import NamedTuple
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

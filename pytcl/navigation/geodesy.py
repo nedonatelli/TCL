@@ -8,12 +8,10 @@ This module provides geodetic utilities including:
 - Earth ellipsoid parameters
 """
 
-from typing import NamedTuple
-from typing import Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class Ellipsoid(NamedTuple):

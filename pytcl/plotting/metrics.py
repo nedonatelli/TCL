@@ -5,8 +5,7 @@ This module provides functions for visualizing tracking and estimation
 performance metrics such as RMSE, NEES, NIS, and OSPA.
 """
 
-from typing import List
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike

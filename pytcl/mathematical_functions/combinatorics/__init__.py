@@ -10,27 +10,23 @@ This module provides:
 
 from pytcl.mathematical_functions.combinatorics.combinatorics import (  # noqa: E501
     bell_number,
-)
-from pytcl.mathematical_functions.combinatorics.combinatorics import catalan_number
-from pytcl.mathematical_functions.combinatorics.combinatorics import combinations
-from pytcl.mathematical_functions.combinatorics.combinatorics import (
+    catalan_number,
+    combinations,
     combinations_with_replacement,
-)
-from pytcl.mathematical_functions.combinatorics.combinatorics import derangements_count
-from pytcl.mathematical_functions.combinatorics.combinatorics import factorial
-from pytcl.mathematical_functions.combinatorics.combinatorics import (
+    derangements_count,
+    factorial,
     multinomial_coefficient,
+    n_choose_k,
+    n_permute_k,
+    next_permutation,
+    partition_count,
+    partitions,
+    permutation_rank,
+    permutation_unrank,
+    permutations,
+    stirling_second,
+    subfactorial,
 )
-from pytcl.mathematical_functions.combinatorics.combinatorics import n_choose_k
-from pytcl.mathematical_functions.combinatorics.combinatorics import n_permute_k
-from pytcl.mathematical_functions.combinatorics.combinatorics import next_permutation
-from pytcl.mathematical_functions.combinatorics.combinatorics import partition_count
-from pytcl.mathematical_functions.combinatorics.combinatorics import partitions
-from pytcl.mathematical_functions.combinatorics.combinatorics import permutation_rank
-from pytcl.mathematical_functions.combinatorics.combinatorics import permutation_unrank
-from pytcl.mathematical_functions.combinatorics.combinatorics import permutations
-from pytcl.mathematical_functions.combinatorics.combinatorics import stirling_second
-from pytcl.mathematical_functions.combinatorics.combinatorics import subfactorial
 
 __all__ = [
     "factorial",

@@ -21,14 +21,11 @@ References
        IRE Transactions on Information Theory, 6(3), 311-329.
 """
 
-from typing import NamedTuple
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import numpy as np
-from numba import njit
-from numba import prange
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numba import njit, prange
+from numpy.typing import ArrayLike, NDArray
 from scipy import fft as scipy_fft
 from scipy import signal as scipy_signal
 

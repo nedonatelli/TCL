@@ -17,25 +17,20 @@ References
        Kalman Filtering", 4th ed., Wiley, 2012.
 """
 
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
-from pytcl.dynamic_estimation.kalman import kf_predict
-from pytcl.dynamic_estimation.kalman import kf_update
-from pytcl.navigation.geodesy import WGS84
-from pytcl.navigation.geodesy import Ellipsoid
-from pytcl.navigation.geodesy import geodetic_to_ecef
-from pytcl.navigation.ins import IMUData
-from pytcl.navigation.ins import INSState
-from pytcl.navigation.ins import ins_error_state_matrix
-from pytcl.navigation.ins import ins_process_noise_matrix
-from pytcl.navigation.ins import mechanize_ins_ned
+from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
+from pytcl.navigation.geodesy import WGS84, Ellipsoid, geodetic_to_ecef
+from pytcl.navigation.ins import (
+    IMUData,
+    INSState,
+    ins_error_state_matrix,
+    ins_process_noise_matrix,
+    mechanize_ins_ned,
+)
 
 # =============================================================================
 # Constants

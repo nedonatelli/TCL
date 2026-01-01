@@ -13,17 +13,18 @@ The example covers:
 6. Computing distances and velocities
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from pytcl.astronomical import (
+    AU,
     DEEphemeris,
-    sun_position,
+    barycenter_position,
+    jd_to_cal,
     moon_position,
     planet_position,
-    barycenter_position,
+    sun_position,
     utc_to_jd,
-    jd_to_cal,
-    AU,
 )
 
 

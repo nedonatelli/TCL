@@ -24,10 +24,7 @@ References
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import Dict, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

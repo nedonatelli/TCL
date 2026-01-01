@@ -5,17 +5,17 @@ This test suite validates high-precision ephemeris calculations against
 reference values from established sources (SOFA, Astropy).
 """
 
-import pytest
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose, assert_array_almost_equal
 
 try:
     from pytcl.astronomical.ephemerides import (
         DEEphemeris,
-        sun_position,
+        barycenter_position,
         moon_position,
         planet_position,
-        barycenter_position,
+        sun_position,
     )
     HAS_EPHEMERIDES = True
 except ImportError:

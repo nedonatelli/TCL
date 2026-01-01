@@ -7,10 +7,7 @@ related operations commonly used in assignment problems and data association.
 
 import itertools
 from functools import lru_cache
-from typing import Iterator
-from typing import List
-from typing import Optional
-from typing import Tuple
+from typing import Iterator, List, Optional, Tuple
 
 from numpy.typing import ArrayLike
 

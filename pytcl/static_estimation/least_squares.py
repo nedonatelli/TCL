@@ -12,12 +12,10 @@ References
        Johns Hopkins University Press, 2013.
 """
 
-from typing import NamedTuple
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 
 class LSResult(NamedTuple):

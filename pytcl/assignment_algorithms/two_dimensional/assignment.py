@@ -5,13 +5,10 @@ This module provides algorithms for solving the 2D assignment (bipartite matchin
 problem, which is fundamental to data association in target tracking.
 """
 
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import linear_sum_assignment as scipy_lsa
 
 

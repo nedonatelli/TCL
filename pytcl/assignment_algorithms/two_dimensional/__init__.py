@@ -6,15 +6,19 @@ the 2D assignment problem (bipartite matching), as well as k-best
 assignment algorithms for Multiple Hypothesis Tracking.
 """
 
-from pytcl.assignment_algorithms.two_dimensional.assignment import AssignmentResult
-from pytcl.assignment_algorithms.two_dimensional.assignment import assign2d
-from pytcl.assignment_algorithms.two_dimensional.assignment import auction
-from pytcl.assignment_algorithms.two_dimensional.assignment import hungarian
-from pytcl.assignment_algorithms.two_dimensional.assignment import linear_sum_assignment
-from pytcl.assignment_algorithms.two_dimensional.kbest import KBestResult
-from pytcl.assignment_algorithms.two_dimensional.kbest import kbest_assign2d
-from pytcl.assignment_algorithms.two_dimensional.kbest import murty
-from pytcl.assignment_algorithms.two_dimensional.kbest import ranked_assignments
+from pytcl.assignment_algorithms.two_dimensional.assignment import (
+    AssignmentResult,
+    assign2d,
+    auction,
+    hungarian,
+    linear_sum_assignment,
+)
+from pytcl.assignment_algorithms.two_dimensional.kbest import (
+    KBestResult,
+    kbest_assign2d,
+    murty,
+    ranked_assignments,
+)
 
 __all__ = [
     # 2D Assignment
