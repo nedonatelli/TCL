@@ -274,6 +274,9 @@ Version Targets
    * - **v0.18.0**
      - Batch estimation & smoothing (RTS, SRIF)
      - Released
+   * - **v0.19.0**
+     - New example scripts with matplotlib visualizations
+     - Released
    * - **v1.0.0**
      - Full MATLAB TCL parity, 80%+ test coverage
      - Planned

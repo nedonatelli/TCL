@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nrl-tracker"
-version = "0.16.0"
+version = "0.19.0"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
 authors = [
@@ -146,6 +146,7 @@ max-line-length = 100
 extend-ignore = ["E501"]
 per-file-ignores = [
     "__init__.py:F401",
+    "examples/*.py:F401,F541,F841,E402",
 ]
 
 [tool.mypy]
