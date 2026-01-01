@@ -58,8 +58,7 @@ def test_kalman_filtering():
     estimates = np.array(estimates)
     rmse = np.sqrt(
         np.mean(
-            (true_states[:, 0] - estimates[:, 0]) ** 2
-            + (true_states[:, 2] - estimates[:, 2]) ** 2
+            (true_states[:, 0] - estimates[:, 0]) ** 2 + (true_states[:, 2] - estimates[:, 2]) ** 2
         )
     )
     print(f"  Position RMSE: {rmse:.3f}")
@@ -317,8 +316,7 @@ def test_multi_target_tracking():
     gnn_result = gnn_association(cost_matrix)
     # track_to_measurement[i] gives measurement index for track i
     assignments = [
-        (i, gnn_result.track_to_measurement[i])
-        for i in range(len(gnn_result.track_to_measurement))
+        (i, gnn_result.track_to_measurement[i]) for i in range(len(gnn_result.track_to_measurement))
     ]
     print(f"  GNN assignments: {assignments}")
 

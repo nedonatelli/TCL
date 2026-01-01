@@ -274,9 +274,7 @@ def monte_carlo_demo() -> Tuple[List[float], List[float], List[float]]:
                 x, P = result.x, result.P
 
             # Position error
-            err = np.sqrt(
-                (x[0] - true_states[k][0]) ** 2 + (x[2] - true_states[k][2]) ** 2
-            )
+            err = np.sqrt((x[0] - true_states[k][0]) ** 2 + (x[2] - true_states[k][2]) ** 2)
             run_errors.append(err)
 
             # NEES
@@ -342,9 +340,7 @@ def ospa_over_time_demo() -> Tuple[List[float], List[float], List[float]]:
         if 10 <= t < 40:
             targets.append(np.array([80.0 - t * 1.5, 20.0 + t * 1.0]))
 
-        truth_history.append(
-            np.array(targets) if targets else np.array([]).reshape(0, 2)
-        )
+        truth_history.append(np.array(targets) if targets else np.array([]).reshape(0, 2))
 
     # Simulate tracker estimates (with some noise and occasional misses)
     estimate_history = []
@@ -358,14 +354,10 @@ def ospa_over_time_demo() -> Tuple[List[float], List[float], List[float]]:
 
         # 10% false alarm probability
         if np.random.rand() < 0.1:
-            false_alarm = np.array(
-                [np.random.uniform(0, 100), np.random.uniform(0, 80)]
-            )
+            false_alarm = np.array([np.random.uniform(0, 100), np.random.uniform(0, 80)])
             estimates.append(false_alarm)
 
-        estimate_history.append(
-            np.array(estimates) if estimates else np.array([]).reshape(0, 2)
-        )
+        estimate_history.append(np.array(estimates) if estimates else np.array([]).reshape(0, 2))
 
     # Compute OSPA over time
     c = 50.0

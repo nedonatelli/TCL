@@ -62,9 +62,7 @@ def generate_kalman_filter_comparison():
     linear_meas = np.zeros((n_steps, 2))
     for k in range(n_steps):
         x, y = true_states[k, 0], true_states[k, 2]
-        linear_meas[k] = np.array([x, y]) + np.random.multivariate_normal(
-            [0, 0], R_linear
-        )
+        linear_meas[k] = np.array([x, y]) + np.random.multivariate_normal([0, 0], R_linear)
 
     # Run KF
     Q = q_constant_velocity(dt, 0.1, 2)
@@ -612,9 +610,7 @@ def generate_signal_processing():
     # CFAR
     cells = np.arange(n_cells)
     fig.add_trace(
-        go.Scatter(
-            x=cells, y=signal, mode="lines", name="Signal", line=dict(color="blue")
-        ),
+        go.Scatter(x=cells, y=signal, mode="lines", name="Signal", line=dict(color="blue")),
         row=1,
         col=2,
     )
