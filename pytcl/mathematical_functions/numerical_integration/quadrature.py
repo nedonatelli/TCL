@@ -336,7 +336,8 @@ def romberg(
     f: Callable[[float], float],
     a: float,
     b: float,
-    **kwargs,
+    tol: float = 1e-8,
+    max_steps: int = 20,
 ) -> float:
     """
     Romberg integration.
@@ -351,19 +352,47 @@ def romberg(
         Lower limit.
     b : float
         Upper limit.
-    **kwargs
-        Additional arguments passed to scipy.integrate.romberg.
+    tol : float, optional
+        Desired tolerance. Default is 1e-8.
+    max_steps : int, optional
+        Maximum number of extrapolation steps. Default is 20.
 
     Returns
     -------
     result : float
         Estimated integral value.
 
-    See Also
-    --------
-    scipy.integrate.romberg : Underlying implementation.
+    Notes
+    -----
+    This is a native implementation that does not depend on scipy.integrate.romberg,
+    which was deprecated in scipy 1.12 and removed in scipy 1.15.
     """
-    return float(integrate.romberg(f, a, b, **kwargs))
+    # Romberg table
+    R = np.zeros((max_steps, max_steps), dtype=np.float64)
+
+    h = b - a
+    R[0, 0] = 0.5 * h * (f(a) + f(b))
+
+    for i in range(1, max_steps):
+        h = h / 2.0
+
+        # Composite trapezoidal rule with 2^i intervals
+        n_new = 2 ** (i - 1)
+        total = 0.0
+        for k in range(1, n_new + 1):
+            total += f(a + (2 * k - 1) * h)
+        R[i, 0] = 0.5 * R[i - 1, 0] + h * total
+
+        # Richardson extrapolation
+        for j in range(1, i + 1):
+            factor = 4**j
+            R[i, j] = (factor * R[i, j - 1] - R[i - 1, j - 1]) / (factor - 1)
+
+        # Check convergence
+        if i > 0 and abs(R[i, i] - R[i - 1, i - 1]) < tol:
+            return float(R[i, i])
+
+    return float(R[max_steps - 1, max_steps - 1])
 
 
 def simpson(
