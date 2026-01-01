@@ -5,16 +5,6 @@ Tests for smoothers and information filter modules.
 import numpy as np
 import pytest
 
-from pytcl.dynamic_estimation.smoothers import (
-    FixedLagResult,
-    RTSResult,
-    SmoothedState,
-    fixed_interval_smoother,
-    fixed_lag_smoother,
-    rts_smoother,
-    rts_smoother_single_step,
-    two_filter_smoother,
-)
 from pytcl.dynamic_estimation.information_filter import (
     InformationFilterResult,
     InformationState,
@@ -26,6 +16,16 @@ from pytcl.dynamic_estimation.information_filter import (
     srif_predict,
     srif_update,
     state_to_information,
+)
+from pytcl.dynamic_estimation.smoothers import (
+    FixedLagResult,
+    RTSResult,
+    SmoothedState,
+    fixed_interval_smoother,
+    fixed_lag_smoother,
+    rts_smoother,
+    rts_smoother_single_step,
+    two_filter_smoother,
 )
 
 

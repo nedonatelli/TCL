@@ -14,6 +14,17 @@ This module provides filtering and smoothing algorithms for state estimation:
 # Import submodules for easy access
 from pytcl.dynamic_estimation import kalman, particle_filters
 
+# IMM estimator
+from pytcl.dynamic_estimation.imm import (
+    IMMEstimator,
+    IMMPrediction,
+    IMMState,
+    IMMUpdate,
+    imm_predict,
+    imm_predict_update,
+    imm_update,
+)
+
 # Information filter
 from pytcl.dynamic_estimation.information_filter import (
     InformationFilterResult,
@@ -27,29 +38,6 @@ from pytcl.dynamic_estimation.information_filter import (
     srif_predict,
     srif_update,
     state_to_information,
-)
-
-# Smoothers
-from pytcl.dynamic_estimation.smoothers import (
-    FixedLagResult,
-    RTSResult,
-    SmoothedState,
-    fixed_interval_smoother,
-    fixed_lag_smoother,
-    rts_smoother,
-    rts_smoother_single_step,
-    two_filter_smoother,
-)
-
-# IMM estimator
-from pytcl.dynamic_estimation.imm import (
-    IMMEstimator,
-    IMMPrediction,
-    IMMState,
-    IMMUpdate,
-    imm_predict,
-    imm_predict_update,
-    imm_update,
 )
 
 # Square-root Kalman filters
@@ -111,6 +99,18 @@ from pytcl.dynamic_estimation.particle_filters import (
     resample_multinomial,
     resample_residual,
     resample_systematic,
+)
+
+# Smoothers
+from pytcl.dynamic_estimation.smoothers import (
+    FixedLagResult,
+    RTSResult,
+    SmoothedState,
+    fixed_interval_smoother,
+    fixed_lag_smoother,
+    rts_smoother,
+    rts_smoother_single_step,
+    two_filter_smoother,
 )
 
 # Re-export commonly used functions at the top level

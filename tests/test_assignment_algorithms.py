@@ -3,38 +3,33 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytcl.assignment_algorithms import (
-    # 2D Assignment
-    AssignmentResult,
-    assign2d,
-    auction,
-    hungarian,
-    linear_sum_assignment,
-    # K-Best 2D Assignment
-    KBestResult,
-    kbest_assign2d,
-    murty,
-    ranked_assignments,
-    # 3D Assignment
+from pytcl.assignment_algorithms import (  # 2D Assignment; K-Best 2D Assignment; 3D Assignment; Gating; Data Association
     Assignment3DResult,
+    AssignmentResult,
+    AssociationResult,
+    KBestResult,
+    assign2d,
     assign3d,
     assign3d_auction,
     assign3d_lagrangian,
-    decompose_to_2d,
-    greedy_3d,
-    # Gating
+    auction,
     chi2_gate_threshold,
+    compute_association_cost,
     compute_gate_volume,
+    decompose_to_2d,
     ellipsoidal_gate,
     gate_measurements,
-    mahalanobis_distance,
-    rectangular_gate,
-    # Data Association
-    AssociationResult,
-    compute_association_cost,
     gated_gnn_association,
     gnn_association,
+    greedy_3d,
+    hungarian,
+    kbest_assign2d,
+    linear_sum_assignment,
+    mahalanobis_distance,
+    murty,
     nearest_neighbor,
+    ranked_assignments,
+    rectangular_gate,
 )
 
 
