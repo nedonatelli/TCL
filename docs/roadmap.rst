@@ -3,11 +3,11 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.18.0)
+Current State (v0.20.0)
 -----------------------
 
-* **780+ functions** implemented across 138 Python files
-* **1,400+ tests** with comprehensive coverage
+* **800+ functions** implemented across 140 Python files
+* **1,450+ tests** with comprehensive coverage
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -22,6 +22,7 @@ Current State (v0.18.0)
 * **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
 * **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 * **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
+* **Navigation utilities**: Great circle navigation (distance, azimuth, waypoints, intersection), rhumb line navigation (spherical and ellipsoidal), cross-track distance, TDOA localization
 * **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 * **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 * **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
@@ -169,6 +170,18 @@ Phase 10: Batch Estimation & Smoothing (v0.18.0)
 * Information filter and Square-Root Information Filter (SRIF)
 * Multi-sensor fusion in information form
 
+Phase 11: Navigation Utilities (v0.20.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Great circle distance and azimuth calculations
+* Great circle waypoints and direct problem
+* Great circle intersection algorithms
+* Cross-track and along-track distance
+* TDOA localization on spherical Earth
+* Rhumb line distance (spherical and ellipsoidal)
+* Rhumb line direct/indirect problems
+* Rhumb line intersection
+* Great circle vs rhumb comparison utilities
+
 Phase 8: Documentation (v0.14.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Complete API documentation for all modules
@@ -276,6 +289,9 @@ Version Targets
      - Released
    * - **v0.19.0**
      - New example scripts with matplotlib visualizations
+     - Released
+   * - **v0.20.0**
+     - Navigation utilities (great circle, rhumb line)
      - Released
    * - **v1.0.0**
      - Full MATLAB TCL parity, 80%+ test coverage

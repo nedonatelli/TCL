@@ -454,6 +454,9 @@
             transition: all 0.3s;
             position: relative;
             overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
 
         .feature-card::before {
@@ -581,6 +584,9 @@
             border-radius: 8px;
             transition: all 0.3s;
             cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
 
         .module-card:hover {
@@ -727,7 +733,7 @@
         <div class="hero-content">
             <div class="status-badge">
                 <span class="status-dot"></span>
-                v0.14.4 — 720+ Functions
+                v0.20.0 — 720+ Functions
             </div>
             <h1>
                 <span class="highlight">Target Tracking</span><br>
@@ -788,54 +794,54 @@
             </p>
         </div>
         <div class="features-grid">
-            <div class="feature-card">
+            <a href="api/dynamic_estimation.html" class="feature-card">
                 <div class="feature-icon">📡</div>
                 <h3 class="feature-title">Dynamic Estimation</h3>
                 <p class="feature-desc">
-                    KF, EKF, UKF, CKF, square-root variants, particle filters, 
+                    KF, EKF, UKF, CKF, square-root variants, particle filters,
                     IMM estimator, and smoothing algorithms.
                 </p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api/assignment_algorithms.html" class="feature-card">
                 <div class="feature-icon">🎯</div>
                 <h3 class="feature-title">Data Association</h3>
                 <p class="feature-desc">
-                    GNN, JPDA, MHT, Hungarian algorithm, auction algorithms, 
+                    GNN, JPDA, MHT, Hungarian algorithm, auction algorithms,
                     and multi-dimensional assignment.
                 </p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api/coordinate_systems.html" class="feature-card">
                 <div class="feature-icon">🌍</div>
                 <h3 class="feature-title">Coordinate Systems</h3>
                 <p class="feature-desc">
-                    Cartesian, spherical, geodetic, ECEF, ENU, NED conversions 
+                    Cartesian, spherical, geodetic, ECEF, ENU, NED conversions
                     with full Jacobian support.
                 </p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api/astronomical.html" class="feature-card">
                 <div class="feature-icon">🛰️</div>
                 <h3 class="feature-title">Orbital Mechanics</h3>
                 <p class="feature-desc">
-                    Kepler propagation, Lambert problem, reference frame transforms, 
+                    Kepler propagation, Lambert problem, reference frame transforms,
                     ephemeris calculations.
                 </p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api/navigation.html" class="feature-card">
                 <div class="feature-icon">🧭</div>
                 <h3 class="feature-title">INS/GNSS Navigation</h3>
                 <p class="feature-desc">
-                    Strapdown mechanization, coning/sculling corrections, 
+                    Strapdown mechanization, coning/sculling corrections,
                     loosely and tightly-coupled integration.
                 </p>
-            </div>
-            <div class="feature-card">
+            </a>
+            <a href="api/gravity.html" class="feature-card">
                 <div class="feature-icon">🌐</div>
                 <h3 class="feature-title">Geophysical Models</h3>
                 <p class="feature-desc">
-                    Gravity (EGM2008), magnetism (WMM, IGRF), atmosphere, 
+                    Gravity (EGM2008), magnetism (WMM, IGRF), atmosphere,
                     terrain analysis, and tidal effects.
                 </p>
-            </div>
+            </a>
         </div>
     </section>
 
@@ -895,70 +901,70 @@ upd = <span class="function">kf_update</span>(pred.x, pred.P, z, H, R)</pre>
             </p>
         </div>
         <div class="modules-grid">
-            <div class="module-card">
+            <a href="api/dynamic_estimation.html" class="module-card">
                 <div class="module-name">dynamic_estimation</div>
                 <div class="module-desc">Kalman filters, particle filters, IMM</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/dynamic_models.html" class="module-card">
                 <div class="module-name">dynamic_models</div>
                 <div class="module-desc">CV, CA, Singer, coordinated turn</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/assignment_algorithms.html" class="module-card">
                 <div class="module-name">assignment_algorithms</div>
                 <div class="module-desc">Hungarian, JPDA, MHT, gating</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/coordinate_systems.html" class="module-card">
                 <div class="module-name">coordinate_systems</div>
                 <div class="module-desc">Spherical, geodetic, rotations</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/astronomical.html" class="module-card">
                 <div class="module-name">astronomical</div>
                 <div class="module-desc">Orbits, Lambert, reference frames</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/navigation.html" class="module-card">
                 <div class="module-name">navigation</div>
                 <div class="module-desc">INS, GNSS, geodesy</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/gravity.html" class="module-card">
                 <div class="module-name">gravity</div>
                 <div class="module-desc">EGM96/2008, spherical harmonics</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/magnetism.html" class="module-card">
                 <div class="module-name">magnetism</div>
                 <div class="module-desc">WMM, IGRF, EMM models</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/terrain.html" class="module-card">
                 <div class="module-name">terrain</div>
                 <div class="module-desc">DEM, visibility, viewshed</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/signal_processing.html" class="module-card">
                 <div class="module-name">signal_processing</div>
                 <div class="module-desc">Filters, CFAR, matched filter</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/transforms.html" class="module-card">
                 <div class="module-name">transforms</div>
                 <div class="module-desc">FFT, STFT, wavelets</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/clustering.html" class="module-card">
                 <div class="module-name">clustering</div>
                 <div class="module-desc">K-means, DBSCAN, hierarchical</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/static_estimation.html" class="module-card">
                 <div class="module-name">static_estimation</div>
                 <div class="module-desc">Least squares, MLE, robust</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/containers.html" class="module-card">
                 <div class="module-name">containers</div>
                 <div class="module-desc">K-D tree, Ball tree, R-tree</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/mathematical_functions.html" class="module-card">
                 <div class="module-name">mathematical_functions</div>
                 <div class="module-desc">Special functions, statistics</div>
-            </div>
-            <div class="module-card">
+            </a>
+            <a href="api/performance_evaluation.html" class="module-card">
                 <div class="module-name">performance_evaluation</div>
                 <div class="module-desc">OSPA, NEES, track metrics</div>
-            </div>
+            </a>
         </div>
     </section>
 
