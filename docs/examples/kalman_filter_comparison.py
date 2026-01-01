@@ -77,14 +77,16 @@ def generate_trajectory(
         x, y = true_states[k, 0], true_states[k, 2]
 
         # Linear measurement: direct position
-        linear_measurements[k] = np.array([x, y]) + np.random.multivariate_normal([0, 0], R_linear)
+        linear_measurements[k] = np.array([x, y]) + np.random.multivariate_normal(
+            [0, 0], R_linear
+        )
 
         # Nonlinear measurement: range and bearing from origin
         r = np.sqrt(x**2 + y**2)
         theta = np.arctan2(y, x)
-        nonlinear_measurements[k] = np.array([r, theta]) + np.random.multivariate_normal(
-            [0, 0], R_nonlinear
-        )
+        nonlinear_measurements[k] = np.array(
+            [r, theta]
+        ) + np.random.multivariate_normal([0, 0], R_nonlinear)
 
     return true_states, linear_measurements, nonlinear_measurements
 
@@ -413,13 +415,16 @@ def plot_results(
     # Position error over time
     time = np.arange(len(true_states))
     kf_pos_err = np.sqrt(
-        (kf_est[:, 0] - true_states[:, 0]) ** 2 + (kf_est[:, 2] - true_states[:, 2]) ** 2
+        (kf_est[:, 0] - true_states[:, 0]) ** 2
+        + (kf_est[:, 2] - true_states[:, 2]) ** 2
     )
     ekf_pos_err = np.sqrt(
-        (ekf_est[:, 0] - true_states[:, 0]) ** 2 + (ekf_est[:, 2] - true_states[:, 2]) ** 2
+        (ekf_est[:, 0] - true_states[:, 0]) ** 2
+        + (ekf_est[:, 2] - true_states[:, 2]) ** 2
     )
     ukf_pos_err = np.sqrt(
-        (ukf_est[:, 0] - true_states[:, 0]) ** 2 + (ukf_est[:, 2] - true_states[:, 2]) ** 2
+        (ukf_est[:, 0] - true_states[:, 0]) ** 2
+        + (ukf_est[:, 2] - true_states[:, 2]) ** 2
     )
 
     fig.add_trace(

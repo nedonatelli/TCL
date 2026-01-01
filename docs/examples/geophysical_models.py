@@ -102,7 +102,9 @@ def demo_normal_gravity():
     if SHOW_PLOTS:
         # High-resolution latitude array
         lats_fine = np.linspace(0, 90, 181)
-        g_values = np.array([normal_gravity_somigliana(np.radians(lat)) for lat in lats_fine])
+        g_values = np.array(
+            [normal_gravity_somigliana(np.radians(lat)) for lat in lats_fine]
+        )
 
         fig = make_subplots(
             rows=1,
@@ -192,7 +194,9 @@ def demo_gravity_models():
     g_j2 = gravity_j2(lat, lon, alt)
     print(f"\nJ2 gravity model:")
     print(f"  Total gravity: {g_j2.magnitude:.6f} m/s²")
-    print(f"  Difference from WGS84: {(g_j2.magnitude - g_wgs84.magnitude)*1e6:.2f} µGal")
+    print(
+        f"  Difference from WGS84: {(g_j2.magnitude - g_wgs84.magnitude)*1e6:.2f} µGal"
+    )
 
     # Compare at different altitudes
     print("\n--- Gravity vs Altitude ---")
@@ -311,7 +315,9 @@ def demo_gravity_anomalies():
     alts = np.array([100, 150, 200, 180, 120])  # meters
 
     # Simulated observed gravity (with anomaly)
-    g_normal = np.array([normal_gravity(np.radians(lat), alt) for lat, alt in zip(lats, alts)])
+    g_normal = np.array(
+        [normal_gravity(np.radians(lat), alt) for lat, alt in zip(lats, alts)]
+    )
     # Add a gravity anomaly (e.g., from subsurface density variation)
     anomaly_true = np.array([0.0, 10.0, 25.0, 15.0, 5.0]) * 1e-5  # m/s²
     g_observed = g_normal + anomaly_true
@@ -511,7 +517,9 @@ def demo_magnetic_field():
     for lat in lats_grid:
         print(f"{lat:>6}°  ", end="")
         for lon in lons_grid:
-            dec = magnetic_declination(np.radians(lat), np.radians(lon), 0.0, decimal_year)
+            dec = magnetic_declination(
+                np.radians(lat), np.radians(lon), 0.0, decimal_year
+            )
             print(f"{np.degrees(dec):>8.1f}", end="")
         print()
 
@@ -527,7 +535,9 @@ def demo_magnetic_field():
         F = np.zeros_like(LAT)
         for i in range(LAT.shape[0]):
             for j in range(LAT.shape[1]):
-                result = wmm(np.radians(LAT[i, j]), np.radians(LON[i, j]), 0.0, decimal_year)
+                result = wmm(
+                    np.radians(LAT[i, j]), np.radians(LON[i, j]), 0.0, decimal_year
+                )
                 DEC[i, j] = np.degrees(result.D)
                 F[i, j] = result.F
 

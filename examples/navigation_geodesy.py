@@ -61,12 +61,16 @@ def geodetic_basics_demo() -> None:
         print(f"\n{name}:")
         print(f"  Geodetic: {lat_deg:.4f}N, {lon_deg:.4f}E, {alt:.0f} m")
         print(
-            f"  ECEF: X={ecef[0]/1000:.1f} km, Y={ecef[1]/1000:.1f} km, " f"Z={ecef[2]/1000:.1f} km"
+            f"  ECEF: X={ecef[0]/1000:.1f} km, Y={ecef[1]/1000:.1f} km, "
+            f"Z={ecef[2]/1000:.1f} km"
         )
 
         # Convert back
         lat_r, lon_r, alt_r = ecef_to_geodetic(ecef[0], ecef[1], ecef[2])
-        print(f"  Roundtrip: {np.degrees(lat_r):.4f}N, {np.degrees(lon_r):.4f}E, " f"{alt_r:.0f} m")
+        print(
+            f"  Roundtrip: {np.degrees(lat_r):.4f}N, {np.degrees(lon_r):.4f}E, "
+            f"{alt_r:.0f} m"
+        )
 
 
 def distance_calculations_demo() -> None:
@@ -96,7 +100,9 @@ def distance_calculations_demo() -> None:
         dist_haversine = haversine_distance(lat1_rad, lon1_rad, lat2_rad, lon2_rad)
 
         # Inverse geodetic (accurate)
-        dist_geodetic, az_fwd, az_back = inverse_geodetic(lat1_rad, lon1_rad, lat2_rad, lon2_rad)
+        dist_geodetic, az_fwd, az_back = inverse_geodetic(
+            lat1_rad, lon1_rad, lat2_rad, lon2_rad
+        )
 
         print(f"\n{city1} -> {city2}:")
         print(f"  Haversine distance: {dist_haversine/1000:.1f} km")
@@ -140,7 +146,10 @@ def local_frame_demo() -> None:
 
         print(f"\n{name}:")
         print(f"  ENU: E={enu[0]:.0f} m, N={enu[1]:.0f} m, U={enu[2]:.0f} m")
-        print(f"  Geodetic: {np.degrees(lat):.4f}N, {np.degrees(lon):.4f}E, " f"{alt:.0f} m")
+        print(
+            f"  Geodetic: {np.degrees(lat):.4f}N, {np.degrees(lon):.4f}E, "
+            f"{alt:.0f} m"
+        )
 
         # Verify roundtrip
         e_r, n_r, u_r = ecef_to_enu(x, y, z, ref_lat, ref_lon, ref_alt)
@@ -200,7 +209,10 @@ def waypoint_navigation_demo() -> None:
 
     for d in np.arange(0, leg_dist, 10000):  # Every 10 km
         lat_int, lon_int, _ = direct_geodetic(lat1, lon1, az_fwd, d)
-        print(f"  {d/1000:.0f} km: {np.degrees(lat_int):.4f}N, " f"{np.degrees(lon_int):.4f}E")
+        print(
+            f"  {d/1000:.0f} km: {np.degrees(lat_int):.4f}N, "
+            f"{np.degrees(lon_int):.4f}E"
+        )
 
 
 def sensor_coverage_demo() -> None:
@@ -272,12 +284,14 @@ def sensor_coverage_demo() -> None:
             reason.append(f"range {slant_range/1000:.1f} km > {max_range/1000:.0f} km")
         if not above_horizon:
             reason.append(
-                f"elev {np.degrees(elevation):.1f} deg < " f"{np.degrees(min_elevation):.1f} deg"
+                f"elev {np.degrees(elevation):.1f} deg < "
+                f"{np.degrees(min_elevation):.1f} deg"
             )
 
         print(f"\n  {name}:")
         print(
-            f"    Range: {slant_range/1000:.1f} km, " f"Elevation: {np.degrees(elevation):.1f} deg"
+            f"    Range: {slant_range/1000:.1f} km, "
+            f"Elevation: {np.degrees(elevation):.1f} deg"
         )
         print(f"    Status: {status}")
         if reason:

@@ -223,7 +223,9 @@ class MHTTracker:
         predicted_tracks = self._predict_tracks(current_tracks, F, Q)
 
         # Compute gating and likelihoods
-        gated, likelihood_matrix = self._compute_gating_and_likelihoods(predicted_tracks, Z)
+        gated, likelihood_matrix = self._compute_gating_and_likelihoods(
+            predicted_tracks, Z
+        )
 
         # Generate associations for each hypothesis
         track_id_list = list(predicted_tracks.keys())
@@ -268,7 +270,9 @@ class MHTTracker:
 
         # Update tracks based on associations
         new_tracks_per_assoc: Dict[int, List[MHTTrack]] = {}
-        updated_tracks: Dict[int, Dict[int, MHTTrack]] = {}  # assoc_idx -> track_id -> track
+        updated_tracks: Dict[int, Dict[int, MHTTrack]] = (
+            {}
+        )  # assoc_idx -> track_id -> track
 
         for assoc_idx, assoc in enumerate(associations):
             updated_tracks[assoc_idx] = {}
@@ -291,7 +295,9 @@ class MHTTracker:
                 updated_tracks[assoc_idx][track_id] = upd_track
 
             # Handle unassigned measurements -> new tracks
-            assigned_meas = set(meas_idx for meas_idx in assoc.values() if meas_idx >= 0)
+            assigned_meas = set(
+                meas_idx for meas_idx in assoc.values() if meas_idx >= 0
+            )
             for j in range(n_meas):
                 if j not in assigned_meas:
                     new_track = self._initiate_track(Z[j], j)
@@ -402,7 +408,9 @@ class MHTTracker:
 
         # Clutter and new track terms for unassigned measurements
         n_unassigned = len(Z) - len(used_meas)
-        likelihood *= (self.config.clutter_density + self.config.new_track_weight) ** n_unassigned
+        likelihood *= (
+            self.config.clutter_density + self.config.new_track_weight
+        ) ** n_unassigned
 
         return likelihood
 
@@ -526,7 +534,9 @@ class MHTTracker:
         new_hypotheses = []
 
         for hyp in self.hypothesis_tree.hypotheses:
-            for assoc_idx, (assoc, likelihood) in enumerate(zip(associations, likelihoods)):
+            for assoc_idx, (assoc, likelihood) in enumerate(
+                zip(associations, likelihoods)
+            ):
                 # Compute new hypothesis probability
                 new_prob = hyp.probability * likelihood
 

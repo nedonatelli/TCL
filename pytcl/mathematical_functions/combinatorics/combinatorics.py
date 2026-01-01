@@ -378,7 +378,9 @@ def partitions(n: int, k: Optional[int] = None) -> Iterator[Tuple[int, ...]]:
     [(4,), (3, 1), (2, 2), (2, 1, 1), (1, 1, 1, 1)]
     """
 
-    def gen_partitions(n: int, max_val: int, prefix: Tuple[int, ...]) -> Iterator[Tuple[int, ...]]:
+    def gen_partitions(
+        n: int, max_val: int, prefix: Tuple[int, ...]
+    ) -> Iterator[Tuple[int, ...]]:
         if n == 0:
             yield prefix
             return

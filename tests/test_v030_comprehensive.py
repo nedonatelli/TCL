@@ -558,7 +558,9 @@ class TestIMMComprehensive:
         F_fast = np.array([[1, 0.2], [0, 1]])
         Q = np.eye(2) * 0.01
 
-        pred = imm_predict([x, x, x], [P, P, P], mu, Pi, [F_slow, F_med, F_fast], [Q, Q, Q])
+        pred = imm_predict(
+            [x, x, x], [P, P, P], mu, Pi, [F_slow, F_med, F_fast], [Q, Q, Q]
+        )
 
         assert pred.x.shape == (2,)
         assert len(pred.mode_probs) == 3
@@ -738,7 +740,9 @@ class TestCrossFeatureIntegration:
 
         # Models (CV and CA-like)
         F1 = np.array([[1, 0.1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0.1], [0, 0, 0, 1]])
-        F2 = np.array([[1, 0.1, 0, 0], [0, 0.95, 0, 0], [0, 0, 1, 0.1], [0, 0, 0, 0.95]])
+        F2 = np.array(
+            [[1, 0.1, 0, 0], [0, 0.95, 0, 0], [0, 0, 1, 0.1], [0, 0, 0, 0.95]]
+        )
         Q = np.eye(4) * 0.01
         S_Q = np.linalg.cholesky(Q)
 
@@ -779,7 +783,9 @@ class TestCrossFeatureIntegration:
 
         # Compute likelihood using JPDA helper
         P_rec = ud_reconstruct(U, D)
-        likelihood_matrix, gated = compute_likelihood_matrix([x], [P_rec], measurements, H, R)
+        likelihood_matrix, gated = compute_likelihood_matrix(
+            [x], [P_rec], measurements, H, R
+        )
 
         # Verify likelihoods are valid
         assert np.all(likelihood_matrix >= 0)

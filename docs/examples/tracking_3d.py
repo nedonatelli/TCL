@@ -134,7 +134,9 @@ def demo_3d_kalman_filter():
     # Generate 3D trajectory
     n_steps = 100
     dt = 1.0
-    true_states, measurements, F, Q, H, R = generate_3d_cv_trajectory(n_steps=n_steps, dt=dt)
+    true_states, measurements, F, Q, H, R = generate_3d_cv_trajectory(
+        n_steps=n_steps, dt=dt
+    )
 
     print(f"\nSimulating {n_steps} time steps of 3D tracking")
     print("State vector: [x, vx, y, vy, z, vz]")
@@ -382,7 +384,9 @@ def demo_3d_rts_smoother():
     print(f"  Filter:   {np.sqrt(np.mean(np.array(filter_vel_errors)**2)):.2f} m/s")
     print(f"  Smoother: {np.sqrt(np.mean(np.array(smooth_vel_errors)**2)):.2f} m/s")
 
-    vel_improvement = (1 - np.mean(smooth_vel_errors) / np.mean(filter_vel_errors)) * 100
+    vel_improvement = (
+        1 - np.mean(smooth_vel_errors) / np.mean(filter_vel_errors)
+    ) * 100
     print(f"  Improvement: {vel_improvement:.1f}%")
 
     # Plot comparison
@@ -1076,13 +1080,17 @@ def demo_3d_maneuvering_target():
     q_low = 0.1
     Q_low = np.zeros((6, 6))
     for i in [0, 2, 4]:
-        Q_low[i : i + 2, i : i + 2] = np.array([[dt**3 / 3, dt**2 / 2], [dt**2 / 2, dt]]) * q_low
+        Q_low[i : i + 2, i : i + 2] = (
+            np.array([[dt**3 / 3, dt**2 / 2], [dt**2 / 2, dt]]) * q_low
+        )
 
     # High process noise (handles maneuvers better)
     q_high = 5.0
     Q_high = np.zeros((6, 6))
     for i in [0, 2, 4]:
-        Q_high[i : i + 2, i : i + 2] = np.array([[dt**3 / 3, dt**2 / 2], [dt**2 / 2, dt]]) * q_high
+        Q_high[i : i + 2, i : i + 2] = (
+            np.array([[dt**3 / 3, dt**2 / 2], [dt**2 / 2, dt]]) * q_high
+        )
 
     # Track with both process noise levels
     def run_filter(Q):

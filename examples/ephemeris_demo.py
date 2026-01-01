@@ -133,7 +133,16 @@ def example_planet_positions():
 
     jd_j2000 = 2451545.0
 
-    planets = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+    planets = [
+        "Mercury",
+        "Venus",
+        "Earth",
+        "Mars",
+        "Jupiter",
+        "Saturn",
+        "Uranus",
+        "Neptune",
+    ]
     planet_ids = [1, 2, 3, 4, 5, 6, 7, 8]
 
     print(f"\nPlanetary Heliocentric Positions at J2000.0:")
@@ -178,7 +187,9 @@ def example_barycenter():
     # Compare with Sun position
     r_sun, _ = planet_position(jd_j2000, 11)  # Sun
     print(f"\nComparison with Sun position:")
-    print(f"  Sun distance from barycenter: {np.linalg.norm(r_sun - r_barycenter):.3f} m")
+    print(
+        f"  Sun distance from barycenter: {np.linalg.norm(r_sun - r_barycenter):.3f} m"
+    )
     print(f"  This offset represents Jupiter's gravitational influence")
 
 
@@ -243,8 +254,12 @@ def example_time_series():
     print(f"    Max Z: {np.max(sun_positions[:, 2])/AU:.8f} AU")
 
     print(f"\nMoon orbit statistics:")
-    print(f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km")
-    print(f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km")
+    print(
+        f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+    )
+    print(
+        f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+    )
 
 
 def example_ephemeris_versions():

@@ -152,7 +152,11 @@ def _ward_linkage(
     """Ward's linkage: minimum variance merge."""
     total = size_i + size_j + size_k
     return np.sqrt(
-        ((size_i + size_k) * dist_i**2 + (size_j + size_k) * dist_j**2 - size_k * dist_ij**2)
+        (
+            (size_i + size_k) * dist_i**2
+            + (size_j + size_k) * dist_j**2
+            - size_k * dist_ij**2
+        )
         / total
     )
 

@@ -147,7 +147,9 @@ def ecef2geodetic(
         # Bowring's iterative method
         # Initial estimate
         theta = np.arctan2(z * a, p * b)
-        lat = np.arctan2(z + ep2 * b * np.sin(theta) ** 3, p - e2 * a * np.cos(theta) ** 3)
+        lat = np.arctan2(
+            z + ep2 * b * np.sin(theta) ** 3, p - e2 * a * np.cos(theta) ** 3
+        )
 
         # Iterate for improved accuracy
         for _ in range(5):
@@ -376,8 +378,18 @@ def enu2ecef(
     cos_lon = np.cos(lon_ref)
 
     # ECEF = R^T @ ENU + ECEF_ref
-    x = -sin_lon * east - sin_lat * cos_lon * north + cos_lat * cos_lon * up + ecef_ref[0]
-    y = cos_lon * east - sin_lat * sin_lon * north + cos_lat * sin_lon * up + ecef_ref[1]
+    x = (
+        -sin_lon * east
+        - sin_lat * cos_lon * north
+        + cos_lat * cos_lon * up
+        + ecef_ref[0]
+    )
+    y = (
+        cos_lon * east
+        - sin_lat * sin_lon * north
+        + cos_lat * sin_lon * up
+        + ecef_ref[1]
+    )
     z = cos_lat * north + sin_lat * up + ecef_ref[2]
 
     if x.size == 1:

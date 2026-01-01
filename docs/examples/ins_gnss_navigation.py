@@ -64,7 +64,9 @@ def ins_basics_demo() -> None:
 
     # Gravity in NED frame
     g_ned = gravity_ned(lat, alt)
-    print(f"Gravity vector (NED): [{g_ned[0]:.6f}, {g_ned[1]:.6f}, {g_ned[2]:.6f}] m/s^2")
+    print(
+        f"Gravity vector (NED): [{g_ned[0]:.6f}, {g_ned[1]:.6f}, {g_ned[2]:.6f}] m/s^2"
+    )
 
     # Earth rate in NED
     omega_ie = earth_rate_ned(lat)
@@ -119,7 +121,9 @@ def imu_processing_demo() -> None:
     print(
         f"  Gyro: [{omega_body[0]*1e3:.3f}, {omega_body[1]*1e3:.3f}, {omega_body[2]*1e3:.3f}] mrad/s"
     )
-    print(f"  Accel: [{accel_body[0]:.4f}, {accel_body[1]:.4f}, {accel_body[2]:.4f}] m/s^2")
+    print(
+        f"  Accel: [{accel_body[0]:.4f}, {accel_body[1]:.4f}, {accel_body[2]:.4f}] m/s^2"
+    )
 
     # Coning correction (for high-frequency angular motion)
     # Simulate angular increments
@@ -178,7 +182,9 @@ def coarse_alignment_demo() -> None:
     accel_body += 0.005 * np.random.randn(3)
 
     print("\nBody-frame accelerometer reading:")
-    print(f"  Accel: [{accel_body[0]:.4f}, {accel_body[1]:.4f}, {accel_body[2]:.4f}] m/s^2")
+    print(
+        f"  Accel: [{accel_body[0]:.4f}, {accel_body[1]:.4f}, {accel_body[2]:.4f}] m/s^2"
+    )
     print(f"  (For level vehicle: [0, 0, {-normal_gravity(lat, alt):.4f}] m/s^2)")
 
     # Coarse alignment (leveling only - uses accelerometer to find roll/pitch)
@@ -306,7 +312,9 @@ def gnss_geometry_demo() -> None:
 
         if el > 0:  # Above horizon
             visible_sats.append(pos_ecef)
-            print(f"  PRN {i+1}: El={np.degrees(el):.1f} deg, Az={np.degrees(az):.1f} deg")
+            print(
+                f"  PRN {i+1}: El={np.degrees(el):.1f} deg, Az={np.degrees(az):.1f} deg"
+            )
         else:
             print(f"  PRN {i+1}: Below horizon (El={np.degrees(el):.1f} deg)")
 
@@ -459,7 +467,9 @@ def gnss_outage_demo() -> None:
     print("\nNormal innovations (should pass):")
     for i in range(3):
         innovation = np.random.multivariate_normal(np.zeros(3), innovation_cov)
-        fault = gnss_outage_detection(innovation, innovation_cov, threshold=threshold_95)
+        fault = gnss_outage_detection(
+            innovation, innovation_cov, threshold=threshold_95
+        )
         nis = innovation @ np.linalg.solve(innovation_cov, innovation)
         print(f"  Sample {i+1}: NIS={nis:.2f}, Fault={fault}")
 
@@ -467,13 +477,21 @@ def gnss_outage_demo() -> None:
     print("\nBiased innovations (should detect fault):")
     fault_bias = np.array([15.0, -10.0, 20.0])  # Large bias
     for i in range(3):
-        innovation = fault_bias + np.random.multivariate_normal(np.zeros(3), innovation_cov)
-        fault = gnss_outage_detection(innovation, innovation_cov, threshold=threshold_95)
+        innovation = fault_bias + np.random.multivariate_normal(
+            np.zeros(3), innovation_cov
+        )
+        fault = gnss_outage_detection(
+            innovation, innovation_cov, threshold=threshold_95
+        )
         nis = innovation @ np.linalg.solve(innovation_cov, innovation)
         print(f"  Sample {i+1}: NIS={nis:.2f}, Fault={fault}")
 
-    print("\nNote: NIS (Normalized Innovation Squared) should follow chi-squared distribution")
-    print(f"      with {len(innovation)} DOF. Threshold={threshold_95:.2f} (95% confidence)")
+    print(
+        "\nNote: NIS (Normalized Innovation Squared) should follow chi-squared distribution"
+    )
+    print(
+        f"      with {len(innovation)} DOF. Threshold={threshold_95:.2f} (95% confidence)"
+    )
 
 
 def main() -> None:

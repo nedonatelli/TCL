@@ -137,14 +137,16 @@ class DEEphemeris:
         """
         if version not in self._VALID_VERSIONS:
             raise ValueError(
-                f"Ephemeris version must be one of {self._VALID_VERSIONS}, " f"got '{version}'"
+                f"Ephemeris version must be one of {self._VALID_VERSIONS}, "
+                f"got '{version}'"
             )
 
         try:
             import jplephem
         except ImportError as e:
             raise ImportError(
-                "jplephem is required for ephemeris access. " "Install with: pip install jplephem"
+                "jplephem is required for ephemeris access. "
+                "Install with: pip install jplephem"
             ) from e
 
         self.version = version
@@ -170,9 +172,7 @@ class DEEphemeris:
 
                 # Try to construct kernel filename
                 kernel_name = f"de{self.version[2:]}.bsp"
-                kernel_url = (
-                    f"https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/{kernel_name}"
-                )
+                kernel_url = f"https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/{kernel_name}"
 
                 # Try to download if not exists
                 kernel_path = os.path.expanduser(f"~/.jplephem/{kernel_name}")
@@ -296,7 +296,9 @@ class DEEphemeris:
 
             # Get Moon position relative to Earth
             moon_segment = self.kernel[3, 301]
-            moon_rel_earth_pos, moon_rel_earth_vel = moon_segment.compute_and_differentiate(jd)
+            moon_rel_earth_pos, moon_rel_earth_vel = (
+                moon_segment.compute_and_differentiate(jd)
+            )
 
             # Moon position relative to SSB
             position = earth_pos + moon_rel_earth_pos
@@ -316,7 +318,9 @@ class DEEphemeris:
 
     def planet_position(
         self,
-        planet: Literal["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"],
+        planet: Literal[
+            "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"
+        ],
         jd: float,
         frame: Literal["icrf", "ecliptic"] = "icrf",
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -373,7 +377,9 @@ class DEEphemeris:
 
         return position, velocity
 
-    def barycenter_position(self, body: str, jd: float) -> Tuple[np.ndarray, np.ndarray]:
+    def barycenter_position(
+        self, body: str, jd: float
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Compute position of any body relative to Solar System Barycenter.
 
         Parameters
@@ -471,7 +477,9 @@ def moon_position(
 
 
 def planet_position(
-    planet: Literal["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"],
+    planet: Literal[
+        "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"
+    ],
     jd: float,
     frame: Literal["icrf", "ecliptic"] = "icrf",
 ) -> Tuple[np.ndarray, np.ndarray]:

@@ -108,7 +108,9 @@ def validate_array(
     if ndim is not None:
         valid_ndims = (ndim,) if isinstance(ndim, int) else ndim
         if result.ndim not in valid_ndims:
-            raise ValidationError(f"{name} must have {ndim} dimension(s), got {result.ndim}")
+            raise ValidationError(
+                f"{name} must have {ndim} dimension(s), got {result.ndim}"
+            )
 
     if min_ndim is not None and result.ndim < min_ndim:
         raise ValidationError(
@@ -123,10 +125,14 @@ def validate_array(
     # Check shape
     if shape is not None:
         if len(shape) != result.ndim:
-            raise ValidationError(f"{name} must have {len(shape)} dimensions, got {result.ndim}")
+            raise ValidationError(
+                f"{name} must have {len(shape)} dimensions, got {result.ndim}"
+            )
         for i, (expected, actual) in enumerate(zip(shape, result.shape)):
             if expected is not None and expected != actual:
-                raise ValidationError(f"{name} dimension {i} must be {expected}, got {actual}")
+                raise ValidationError(
+                    f"{name} dimension {i} must be {expected}, got {actual}"
+                )
 
     # Check finite
     if finite and not np.all(np.isfinite(result)):
@@ -253,7 +259,9 @@ def ensure_row_vector(arr: ArrayLike, name: str = "vector") -> NDArray[Any]:
         return result.reshape(1, -1)
     elif result.ndim == 2:
         if result.shape[0] != 1:
-            raise ValidationError(f"{name} must be a row vector (1, n), got shape {result.shape}")
+            raise ValidationError(
+                f"{name} must be a row vector (1, n), got shape {result.shape}"
+            )
         return result
     else:
         raise ValidationError(f"{name} must be 1D or 2D, got {result.ndim}D")
@@ -366,7 +374,8 @@ def ensure_positive_definite(
 
     if min_eigenvalue < threshold:
         raise ValidationError(
-            f"{name} must be positive definite, " f"minimum eigenvalue is {min_eigenvalue:.2e}"
+            f"{name} must be positive definite, "
+            f"minimum eigenvalue is {min_eigenvalue:.2e}"
         )
 
     return result
@@ -398,7 +407,9 @@ def validate_same_shape(*arrays: ArrayLike, names: Sequence[str] | None = None) 
 
     if not all(s == shapes[0] for s in shapes):
         shape_strs = [f"{name}: {shape}" for name, shape in zip(names, shapes)]
-        raise ValidationError(f"Arrays must have the same shape. Got: {', '.join(shape_strs)}")
+        raise ValidationError(
+            f"Arrays must have the same shape. Got: {', '.join(shape_strs)}"
+        )
 
 
 def validated_array_input(

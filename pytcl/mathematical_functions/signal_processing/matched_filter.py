@@ -590,7 +590,8 @@ def _ambiguity_function_kernel(
                     for k in range(n_signal - delay_samples):
                         s1 = signal[k]
                         s2_conj = (
-                            shifted[delay_samples + k].real - 1j * shifted[delay_samples + k].imag
+                            shifted[delay_samples + k].real
+                            - 1j * shifted[delay_samples + k].imag
                         )
                         result += s1 * s2_conj
 
@@ -637,7 +638,8 @@ def _cross_ambiguity_kernel(
                     for k in range(n_signal - delay_samples):
                         s1 = signal1[k]
                         s2_conj = (
-                            shifted[delay_samples + k].real - 1j * shifted[delay_samples + k].imag
+                            shifted[delay_samples + k].real
+                            - 1j * shifted[delay_samples + k].imag
                         )
                         result += s1 * s2_conj
 

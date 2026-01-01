@@ -94,7 +94,9 @@ def compute_measurement_likelihood(
         return 0.0
 
     mahal_sq = innovation @ np.linalg.solve(innovation_cov, innovation)
-    likelihood = detection_prob * np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
+    likelihood = (
+        detection_prob * np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
+    )
 
     return likelihood
 
@@ -208,7 +210,9 @@ def jpda_probabilities(
     if n_tracks <= 5 and n_meas <= 5:
         beta = _jpda_exact(likelihood_matrix, gated, detection_prob, clutter_density)
     else:
-        beta = _jpda_approximate(likelihood_matrix, gated, detection_prob, clutter_density)
+        beta = _jpda_approximate(
+            likelihood_matrix, gated, detection_prob, clutter_density
+        )
 
     return beta
 
@@ -254,7 +258,9 @@ def _jpda_exact(
             if gated[track_idx, meas_idx] and track_idx not in used_tracks:
                 current_assignment.append(track_idx)
                 used_tracks.add(track_idx)
-                yield from generate_hypotheses(meas_idx + 1, current_assignment, used_tracks)
+                yield from generate_hypotheses(
+                    meas_idx + 1, current_assignment, used_tracks
+                )
                 used_tracks.remove(track_idx)
                 current_assignment.pop()
 
@@ -292,7 +298,9 @@ def _jpda_exact(
         hypothesis_probs = [p / total_prob for p in hypothesis_probs]
 
     # Compute marginal association probabilities
-    for h_idx, (assignment, prob) in enumerate(zip(hypothesis_assignments, hypothesis_probs)):
+    for h_idx, (assignment, prob) in enumerate(
+        zip(hypothesis_assignments, hypothesis_probs)
+    ):
         detected_tracks = set()
         for j, track_idx in enumerate(assignment):
             if track_idx >= 0:

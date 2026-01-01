@@ -308,7 +308,8 @@ def parse_gebco_netcdf(
         import netCDF4 as nc
     except ImportError:
         raise ImportError(
-            "netCDF4 is required for loading GEBCO files.\n" "Install with: pip install netCDF4"
+            "netCDF4 is required for loading GEBCO files.\n"
+            "Install with: pip install netCDF4"
         )
 
     # Set defaults for global extent
@@ -431,9 +432,13 @@ def parse_earth2014_binary(
 
     # Compute row/column indices
     i_start = max(0, int(np.floor((np.radians(lat_min_deg) - lat_start) / d_lat)))
-    i_end = min(EARTH2014_N_LAT, int(np.ceil((np.radians(lat_max_deg) - lat_start) / d_lat)) + 1)
+    i_end = min(
+        EARTH2014_N_LAT, int(np.ceil((np.radians(lat_max_deg) - lat_start) / d_lat)) + 1
+    )
     j_start = max(0, int(np.floor((np.radians(lon_min_deg) - lon_start) / d_lon)))
-    j_end = min(EARTH2014_N_LON, int(np.ceil((np.radians(lon_max_deg) - lon_start) / d_lon)) + 1)
+    j_end = min(
+        EARTH2014_N_LON, int(np.ceil((np.radians(lon_max_deg) - lon_start) / d_lon)) + 1
+    )
 
     # Read binary data
     # File is stored as int16 big-endian, rows from south to north
@@ -450,7 +455,9 @@ def parse_earth2014_binary(
             f.seek(row_offset + col_offset)
 
             # Read row segment
-            row_data = np.frombuffer(f.read(n_cols * 2), dtype=">i2")  # big-endian int16
+            row_data = np.frombuffer(
+                f.read(n_cols * 2), dtype=">i2"
+            )  # big-endian int16
             data[i, :] = row_data.astype(np.float64)
 
     # Compute actual bounds
@@ -571,7 +578,8 @@ def load_gebco(
     """
     if version not in GEBCO_PARAMETERS:
         raise ValueError(
-            f"Unknown GEBCO version: {version}. " f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
+            f"Unknown GEBCO version: {version}. "
+            f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
         )
 
     return _load_gebco_cached(version, lat_min, lat_max, lon_min, lon_max)

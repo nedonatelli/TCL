@@ -211,7 +211,9 @@ def plot_results(
             if track.status == TrackStatus.CONFIRMED:
                 if track.id not in track_positions:
                     track_positions[track.id] = []
-                track_positions[track.id].append((track.state[0], track.state[2]))  # x, y
+                track_positions[track.id].append(
+                    (track.state[0], track.state[2])
+                )  # x, y
 
     # Plotly color palette (similar to tab10)
     colors = [

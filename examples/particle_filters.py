@@ -265,7 +265,8 @@ def demo_linear_tracking():
 
     # Generate measurements
     measurements = [
-        H @ true_states[k] + np.random.multivariate_normal(np.zeros(2), R) for k in range(n_steps)
+        H @ true_states[k] + np.random.multivariate_normal(np.zeros(2), R)
+        for k in range(n_steps)
     ]
 
     print(f"\nSimulating {n_steps} time steps")
@@ -474,7 +475,9 @@ def demo_nonlinear_tracking():
     measurements = []
     for k in range(n_steps):
         z_true = measurement_model(true_states[k])
-        noise = np.array([np.random.randn() * sigma_range, np.random.randn() * sigma_bearing])
+        noise = np.array(
+            [np.random.randn() * sigma_range, np.random.randn() * sigma_bearing]
+        )
         measurements.append(z_true + noise)
 
     print(f"\nSimulating circular motion with range-bearing sensor")
@@ -523,7 +526,9 @@ def demo_nonlinear_tracking():
             z_wrapped = z.copy()
             z_pred_wrapped = z_pred.copy()
             # Normalize bearing difference
-            bearing_diff = np.arctan2(np.sin(z[1] - z_pred[1]), np.cos(z[1] - z_pred[1]))
+            bearing_diff = np.arctan2(
+                np.sin(z[1] - z_pred[1]), np.cos(z[1] - z_pred[1])
+            )
             z_wrapped[1] = z_pred[1] + bearing_diff
             likelihood = gaussian_likelihood(z_wrapped, z_pred_wrapped, R)
             weights[i] *= likelihood

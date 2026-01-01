@@ -468,7 +468,8 @@ def magnetic_field_spherical(
                     factor = np.sqrt((n - m) * (n + m + 1))
                     if m + 1 <= n:
                         dP[n, m] = (
-                            n * cos_theta / sin_theta * P[n, m] - factor * P[n, m + 1] / sin_theta
+                            n * cos_theta / sin_theta * P[n, m]
+                            - factor * P[n, m + 1] / sin_theta
                             if m + 1 <= n_max
                             else n * cos_theta / sin_theta * P[n, m]
                         )
@@ -498,7 +499,13 @@ def magnetic_field_spherical(
             B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
 
             if abs(sin_theta) > 1e-10:
-                B_phi += r_power * m * P[n, m] / sin_theta * (gnm * sin_m_lon - hnm * cos_m_lon)
+                B_phi += (
+                    r_power
+                    * m
+                    * P[n, m]
+                    / sin_theta
+                    * (gnm * sin_m_lon - hnm * cos_m_lon)
+                )
 
     return B_r, B_theta, B_phi
 

@@ -76,8 +76,12 @@ def example_gps_time_dilation():
 
     print(f"\nPractical Impact:")
     total_daily_shift = (1 - rate) * 86400
-    print(f"  Without correction, GPS clock would drift: {total_daily_shift:.1f} seconds/day")
-    print(f"  This would cause positioning error: {total_daily_shift * C_LIGHT/2:.0f} meters/day")
+    print(
+        f"  Without correction, GPS clock would drift: {total_daily_shift:.1f} seconds/day"
+    )
+    print(
+        f"  This would cause positioning error: {total_daily_shift * C_LIGHT/2:.0f} meters/day"
+    )
     print(
         f"  GPS atomic clocks must be pre-offset by {-total_daily_shift*1e6:.1f} microseconds/day"
     )
@@ -173,7 +177,9 @@ def example_shapiro_delay():
     print(f"\nParameters:")
     print(f"  Earth distance from Sun: {np.linalg.norm(earth_pos)/AU:.3f} AU")
     print(f"  Spacecraft distance from Sun: {np.linalg.norm(spacecraft_pos)/AU:.3f} AU")
-    print(f"  Earth-spacecraft distance: {distance/AU:.3f} AU = {distance/1.496e11:.3f} AU")
+    print(
+        f"  Earth-spacecraft distance: {distance/AU:.3f} AU = {distance/1.496e11:.3f} AU"
+    )
 
     print(f"\nRanging Measurement:")
     print(f"  Signal travel time (geometric): {light_travel:.3f} seconds")
@@ -185,7 +191,9 @@ def example_shapiro_delay():
     print(f"  Mariner 10 Venus flybys: Shapiro delay ~50 microseconds")
     print(f"  Cassini Saturn probe: Shapiro delay ~100+ microseconds")
     print(f"  New Horizons: Shapiro delay ~200+ microseconds at aphelion")
-    print(f"\nWithout Shapiro delay correction, spacecraft navigation would be off by kilometers!")
+    print(
+        f"\nWithout Shapiro delay correction, spacecraft navigation would be off by kilometers!"
+    )
 
     # Shapiro delay vs Sun distance
     print(f"\n" + "-" * 70)
@@ -234,7 +242,9 @@ def example_post_newtonian_acceleration():
     print(f"\nAcceleration Comparison:")
     print(f"  Newtonian acceleration: {np.linalg.norm(a_newt):.6f} m/s²")
     print(f"  Post-Newtonian correction: {correction_magnitude:.3e} m/s²")
-    print(f"  Relative correction: {relative_correction*1e6:.1f} ppm (parts per million)")
+    print(
+        f"  Relative correction: {relative_correction*1e6:.1f} ppm (parts per million)"
+    )
 
     print(f"\nOrbit Impact Over One Day:")
     orbital_period = 2 * np.pi * r / v
@@ -297,7 +307,9 @@ def example_geodetic_precession():
     print(f"  - Geodetic precession arises from parallel transport of velocity")
     print(f"  - Also called de Sitter precession (discovered 1916)")
     print(f"  - Related to Lense-Thirring effect (frame dragging)")
-    print(f"  - At i=90°, geodetic effect vanishes (observer aligned with angular momentum)")
+    print(
+        f"  - At i=90°, geodetic effect vanishes (observer aligned with angular momentum)"
+    )
 
 
 def example_lense_thirring_precession():
@@ -324,7 +336,9 @@ def example_lense_thirring_precession():
     print(f"  Semi-major axis: {a/1e6:.2f} Mm = {(a-6.371e6)/1e3:.0f} km altitude")
     print(f"  Eccentricity: {e:.4f}")
     print(f"  Inclination: {np.degrees(i):.2f}°")
-    print(f"  Orbital period: {orbital_period/60:.0f} minutes = {orbital_period/3600:.2f} hours")
+    print(
+        f"  Orbital period: {orbital_period/60:.0f} minutes = {orbital_period/3600:.2f} hours"
+    )
 
     print(f"\nLense-Thirring Effect:")
     print(f"  Precession per orbit: {precession*206265:.3f} milliarcseconds")
@@ -381,7 +395,9 @@ def example_relativistic_range_correction():
     }
 
     for name, dist in distances.items():
-        corr = relativistic_range_correction(dist, 0.0, GM_EARTH if "Sun" not in name else GM_SUN)
+        corr = relativistic_range_correction(
+            dist, 0.0, GM_EARTH if "Sun" not in name else GM_SUN
+        )
         # Nominal range error at accuracy of 1 cm
         relative = corr / 0.01
         print(f"{name:<20} {corr:>15.2f}    {relative:>12.0f}× cm accuracy")

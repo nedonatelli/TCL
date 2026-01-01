@@ -250,7 +250,9 @@ def kmeans(
         raise ValueError(f"n_clusters ({n_clusters}) > n_samples ({n_samples})")
 
     # Check if initial centers are provided
-    if isinstance(init, np.ndarray) or (isinstance(init, (list, tuple)) and len(init) > 0):
+    if isinstance(init, np.ndarray) or (
+        isinstance(init, (list, tuple)) and len(init) > 0
+    ):
         init_centers = np.asarray(init, dtype=np.float64)
         if init_centers.shape != (n_clusters, n_features):
             raise ValueError(

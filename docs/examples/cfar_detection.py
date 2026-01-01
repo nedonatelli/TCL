@@ -66,7 +66,9 @@ def main():
         detected = set(result.detection_indices.tolist())
         hits = len(detected.intersection(target_cells))
         false_alarms = len(detected) - hits
-        print(f"{name}-CFAR: {hits}/3 targets detected, " f"{false_alarms} false alarms")
+        print(
+            f"{name}-CFAR: {hits}/3 targets detected, " f"{false_alarms} false alarms"
+        )
 
 
 if __name__ == "__main__":

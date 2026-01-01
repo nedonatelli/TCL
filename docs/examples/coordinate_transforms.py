@@ -66,7 +66,9 @@ def main():
     print(f"\nHaversine distance SF to LA: {dist / 1e3:.2f} km")
 
     # Inverse geodetic (Vincenty)
-    distance_v, azimuth1, azimuth2 = inverse_geodetic(lat_ref, lon_ref, lat_tgt, lon_tgt, WGS84)
+    distance_v, azimuth1, azimuth2 = inverse_geodetic(
+        lat_ref, lon_ref, lat_tgt, lon_tgt, WGS84
+    )
     print("\nVincenty geodesic:")
     print(f"  Distance: {distance_v / 1e3:.3f} km")
     print(f"  Forward azimuth:  {np.degrees(azimuth1):.2f}°")
@@ -77,9 +79,13 @@ def main():
     distance = 500e3  # 500 km
     azimuth = np.radians(135)  # Southeast
 
-    lat_dest, lon_dest, azimuth_final = direct_geodetic(lat_ref, lon_ref, azimuth, distance, WGS84)
+    lat_dest, lon_dest, azimuth_final = direct_geodetic(
+        lat_ref, lon_ref, azimuth, distance, WGS84
+    )
     print("\nDirect geodetic (500 km at 135 deg):")
-    print(f"  Destination: {np.degrees(lat_dest):.4f}°, " f"{np.degrees(lon_dest):.4f}°")
+    print(
+        f"  Destination: {np.degrees(lat_dest):.4f}°, " f"{np.degrees(lon_dest):.4f}°"
+    )
     print(f"  Final azimuth: {np.degrees(azimuth_final):.2f}°")
 
 

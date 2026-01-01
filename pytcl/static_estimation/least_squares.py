@@ -303,7 +303,8 @@ def total_least_squares(
     # The solution exists if V[n, n] != 0
     if abs(V[n, n]) < 1e-14:
         raise ValueError(
-            "TLS solution does not exist. The smallest singular value " "has multiplicity > 1."
+            "TLS solution does not exist. The smallest singular value "
+            "has multiplicity > 1."
         )
 
     # TLS solution: x = -V[0:n, n] / V[n, n]

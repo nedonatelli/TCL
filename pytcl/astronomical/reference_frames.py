@@ -292,7 +292,9 @@ def gmst_iau82(jd_ut1: float) -> float:
     T_u = (jd_0h - JD_J2000) / 36525.0
 
     # GMST at 0h UT1 (seconds)
-    gmst_0h_sec = 24110.54841 + 8640184.812866 * T_u + 0.093104 * T_u**2 - 6.2e-6 * T_u**3
+    gmst_0h_sec = (
+        24110.54841 + 8640184.812866 * T_u + 0.093104 * T_u**2 - 6.2e-6 * T_u**3
+    )
 
     # Add UT1 fraction
     ut1_fraction = (jd_ut1 - jd_0h) * 86400.0

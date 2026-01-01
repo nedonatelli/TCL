@@ -294,7 +294,10 @@ def plot_quaternion_slerp() -> go.Figure:
     t_values = np.linspace(0, 1, n_steps)
 
     # Colors for interpolation
-    colors = [f"rgb({int(255 * (1 - t))}, {int(100 + 155 * t)}, {int(255 * t)})" for t in t_values]
+    colors = [
+        f"rgb({int(255 * (1 - t))}, {int(100 + 155 * t)}, {int(255 * t)})"
+        for t in t_values
+    ]
 
     # Reference vector to rotate
     v = np.array([1, 0, 0])
@@ -368,7 +371,9 @@ def plot_spherical_coordinates() -> go.Figure:
     # Azimuth lines (constant azimuth, varying elevation)
     for az in np.linspace(0, 2 * np.pi, n_az, endpoint=False):
         el_range = np.linspace(-np.pi / 2, np.pi / 2, 50)
-        points = np.array([sphere2cart(r, az, el, system_type="az-el") for el in el_range])
+        points = np.array(
+            [sphere2cart(r, az, el, system_type="az-el") for el in el_range]
+        )
         fig.add_trace(
             go.Scatter3d(
                 x=points[:, 0],
@@ -383,7 +388,9 @@ def plot_spherical_coordinates() -> go.Figure:
     # Elevation lines (constant elevation, varying azimuth)
     for el in np.linspace(-np.pi / 2 + 0.1, np.pi / 2 - 0.1, n_el):
         az_range = np.linspace(0, 2 * np.pi, 50)
-        points = np.array([sphere2cart(r, az, el, system_type="az-el") for az in az_range])
+        points = np.array(
+            [sphere2cart(r, az, el, system_type="az-el") for az in az_range]
+        )
         fig.add_trace(
             go.Scatter3d(
                 x=points[:, 0],

@@ -469,8 +469,12 @@ def imm_predict_update(
     result : IMMUpdate
         Updated states, covariances, and mode probabilities.
     """
-    pred = imm_predict(mode_states, mode_covs, mode_probs, transition_matrix, F_list, Q_list)
-    return imm_update(pred.mode_states, pred.mode_covs, pred.mode_probs, z, H_list, R_list)
+    pred = imm_predict(
+        mode_states, mode_covs, mode_probs, transition_matrix, F_list, Q_list
+    )
+    return imm_update(
+        pred.mode_states, pred.mode_covs, pred.mode_probs, z, H_list, R_list
+    )
 
 
 class IMMEstimator:
@@ -672,7 +676,9 @@ class IMMEstimator:
             Update result.
         """
         if not self.H_list:
-            raise ValueError("Measurement model not set. Call set_measurement_model first.")
+            raise ValueError(
+                "Measurement model not set. Call set_measurement_model first."
+            )
 
         result = imm_update(
             self.mode_states,

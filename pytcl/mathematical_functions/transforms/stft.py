@@ -503,8 +503,12 @@ def reassigned_spectrogram(
     win_d = np.gradient(win)
 
     # STFT with modified windows
-    result_t = stft(x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
-    result_d = stft(x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
+    result_t = stft(
+        x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+    )
+    result_d = stft(
+        x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+    )
 
     # Compute reassigned coordinates
     Zxx = result1.Zxx
@@ -588,7 +592,9 @@ def mel_spectrogram(
         noverlap = nperseg // 4
 
     # Compute linear spectrogram
-    spec_result = spectrogram(x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap)
+    spec_result = spectrogram(
+        x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap
+    )
 
     # Create mel filterbank
     mel_fb = _mel_filterbank(

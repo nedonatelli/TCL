@@ -297,7 +297,8 @@ def prune_mixture(
     total_weight = sum(c.weight for c in surviving)
     if total_weight > 0:
         surviving = [
-            GaussianComponent(c.weight / total_weight, c.mean, c.covariance) for c in surviving
+            GaussianComponent(c.weight / total_weight, c.mean, c.covariance)
+            for c in surviving
         ]
 
     return surviving
@@ -391,7 +392,8 @@ def reduce_mixture_runnalls(
     total_weight = sum(c.weight for c in working)
     if total_weight > 0:
         working = [
-            GaussianComponent(c.weight / total_weight, c.mean, c.covariance) for c in working
+            GaussianComponent(c.weight / total_weight, c.mean, c.covariance)
+            for c in working
         ]
 
     return ReductionResult(working, n_original, len(working), total_cost)
@@ -531,7 +533,8 @@ def reduce_mixture_west(
     total_weight = sum(c.weight for c in working)
     if total_weight > 0:
         working = [
-            GaussianComponent(c.weight / total_weight, c.mean, c.covariance) for c in working
+            GaussianComponent(c.weight / total_weight, c.mean, c.covariance)
+            for c in working
         ]
 
     return ReductionResult(working, n_original, len(working), total_cost)
@@ -602,7 +605,8 @@ class GaussianMixture:
         total = sum(c.weight for c in self.components)
         if total > 0:
             self.components = [
-                GaussianComponent(c.weight / total, c.mean, c.covariance) for c in self.components
+                GaussianComponent(c.weight / total, c.mean, c.covariance)
+                for c in self.components
             ]
 
     @property

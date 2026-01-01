@@ -100,7 +100,9 @@ def _isometric_latitude(lat: float, e2: float = 0.0) -> float:
         )
 
 
-def _inverse_isometric_latitude(psi: float, e2: float = 0.0, max_iter: int = 20) -> float:
+def _inverse_isometric_latitude(
+    psi: float, e2: float = 0.0, max_iter: int = 20
+) -> float:
     """
     Compute geodetic latitude from isometric latitude.
 
@@ -129,7 +131,10 @@ def _inverse_isometric_latitude(psi: float, e2: float = 0.0, max_iter: int = 20)
         for _ in range(max_iter):
             sin_lat = np.sin(lat)
             lat_new = (
-                2 * np.arctan(((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2) * np.exp(psi))
+                2
+                * np.arctan(
+                    ((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2) * np.exp(psi)
+                )
                 - np.pi / 2
             )
             if abs(lat_new - lat) < 1e-12:
@@ -422,7 +427,9 @@ def indirect_rhumb(
     if abs(dlon) > np.pi:
         dlon = dlon - np.sign(dlon) * 2 * np.pi
 
-    dpsi = _isometric_latitude(lat2, ellipsoid.e2) - _isometric_latitude(lat1, ellipsoid.e2)
+    dpsi = _isometric_latitude(lat2, ellipsoid.e2) - _isometric_latitude(
+        lat1, ellipsoid.e2
+    )
     bearing = np.arctan2(dlon, dpsi) % (2 * np.pi)
 
     return RhumbResult(distance, bearing)

@@ -71,7 +71,8 @@ def main():
     estimates = np.array(estimates)
 
     pos_errors = np.sqrt(
-        (true_states[:, 0] - estimates[:, 0]) ** 2 + (true_states[:, 2] - estimates[:, 2]) ** 2
+        (true_states[:, 0] - estimates[:, 0]) ** 2
+        + (true_states[:, 2] - estimates[:, 2]) ** 2
     )
 
     print("Kalman Filter Tracking Results")
