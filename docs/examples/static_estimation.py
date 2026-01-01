@@ -93,41 +93,70 @@ def demo_ordinary_least_squares():
 
     # Plot OLS fit
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2, subplot_titles=[
-            f"Ordinary Least Squares (R² = {r_squared:.4f})",
-            "Residual Plot"
-        ])
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=[
+                f"Ordinary Least Squares (R² = {r_squared:.4f})",
+                "Residual Plot",
+            ],
+        )
 
         # Fit plot
-        fig.add_trace(go.Scatter(
-            x=x, y=y, mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Data'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Data",
+            ),
+            row=1,
+            col=1,
+        )
 
         x_line = np.linspace(x.min(), x.max(), 100)
         y_true_line = true_intercept + true_slope * x_line
         y_fit_line = result.x[0] + result.x[1] * x_line
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=y_true_line, mode='lines',
-            line=dict(color='green', width=2, dash='dash'),
-            name='True line'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=y_true_line,
+                mode="lines",
+                line=dict(color="green", width=2, dash="dash"),
+                name="True line",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=y_fit_line, mode='lines',
-            line=dict(color='red', width=2),
-            name='OLS fit'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=y_fit_line,
+                mode="lines",
+                line=dict(color="red", width=2),
+                name="OLS fit",
+            ),
+            row=1,
+            col=1,
+        )
 
         # Residuals plot
         residuals = y - (result.x[0] + result.x[1] * x)
-        fig.add_trace(go.Scatter(
-            x=x, y=residuals, mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Residuals', showlegend=False
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=residuals,
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Residuals",
+                showlegend=False,
+            ),
+            row=1,
+            col=2,
+        )
 
         fig.add_hline(y=0, line_dash="dash", line_color="red", row=1, col=2)
 
@@ -356,61 +385,108 @@ def demo_robust_estimation():
 
     # Plot robust estimation comparison
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2, subplot_titles=[
-            "Robust Estimation: OLS vs M-estimators",
-            "Tukey M-estimator Weights (red = true outliers)"
-        ])
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=[
+                "Robust Estimation: OLS vs M-estimators",
+                "Tukey M-estimator Weights (red = true outliers)",
+            ],
+        )
 
         # Fit comparison
         # Regular data points
         regular_mask = np.ones(n_samples, dtype=bool)
         regular_mask[outlier_idx] = False
 
-        fig.add_trace(go.Scatter(
-            x=x[regular_mask], y=y[regular_mask], mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Data'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x[regular_mask],
+                y=y[regular_mask],
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Data",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x[outlier_idx], y=y[outlier_idx], mode='markers',
-            marker=dict(color='red', size=10, opacity=0.8),
-            name='Outliers'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x[outlier_idx],
+                y=y[outlier_idx],
+                mode="markers",
+                marker=dict(color="red", size=10, opacity=0.8),
+                name="Outliers",
+            ),
+            row=1,
+            col=1,
+        )
 
         x_line = np.linspace(x.min(), x.max(), 100)
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=true_intercept + true_slope * x_line, mode='lines',
-            line=dict(color='green', width=2, dash='dash'),
-            name='True'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=true_intercept + true_slope * x_line,
+                mode="lines",
+                line=dict(color="green", width=2, dash="dash"),
+                name="True",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=result_ols.x[0] + result_ols.x[1] * x_line, mode='lines',
-            line=dict(color='black', width=2),
-            name='OLS'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=result_ols.x[0] + result_ols.x[1] * x_line,
+                mode="lines",
+                line=dict(color="black", width=2),
+                name="OLS",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=result_huber.x[0] + result_huber.x[1] * x_line, mode='lines',
-            line=dict(color='magenta', width=2, dash='dash'),
-            name='Huber'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=result_huber.x[0] + result_huber.x[1] * x_line,
+                mode="lines",
+                line=dict(color="magenta", width=2, dash="dash"),
+                name="Huber",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=result_tukey.x[0] + result_tukey.x[1] * x_line, mode='lines',
-            line=dict(color='cyan', width=2, dash='dot'),
-            name='Tukey'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=result_tukey.x[0] + result_tukey.x[1] * x_line,
+                mode="lines",
+                line=dict(color="cyan", width=2, dash="dot"),
+                name="Tukey",
+            ),
+            row=1,
+            col=1,
+        )
 
         # Weights from Tukey estimator
-        colors = ['red' if i in outlier_idx else 'blue' for i in range(n_samples)]
-        fig.add_trace(go.Scatter(
-            x=x, y=weights, mode='markers',
-            marker=dict(color=colors, size=8, opacity=0.7),
-            name='Weights', showlegend=False
-        ), row=1, col=2)
+        colors = ["red" if i in outlier_idx else "blue" for i in range(n_samples)]
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=weights,
+                mode="markers",
+                marker=dict(color=colors, size=8, opacity=0.7),
+                name="Weights",
+                showlegend=False,
+            ),
+            row=1,
+            col=2,
+        )
 
         fig.add_hline(y=0.1, line_dash="dash", line_color="red", row=1, col=2)
 
@@ -482,44 +558,65 @@ def demo_ransac():
         residuals = np.abs(y - y_pred)
         is_inlier = residuals < threshold
 
-        fig.add_trace(go.Scatter(
-            x=x[is_inlier], y=y[is_inlier], mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Inliers'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=x[is_inlier],
+                y=y[is_inlier],
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Inliers",
+            )
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x[~is_inlier], y=y[~is_inlier], mode='markers',
-            marker=dict(color='red', size=8, opacity=0.6),
-            name='Outliers'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=x[~is_inlier],
+                y=y[~is_inlier],
+                mode="markers",
+                marker=dict(color="red", size=8, opacity=0.6),
+                name="Outliers",
+            )
+        )
 
         x_line = np.linspace(x.min(), x.max(), 100)
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=1 + 2 * x_line, mode='lines',
-            line=dict(color='green', width=2, dash='dash'),
-            name='True line'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=1 + 2 * x_line,
+                mode="lines",
+                line=dict(color="green", width=2, dash="dash"),
+                name="True line",
+            )
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=result_ols.x[0] + result_ols.x[1] * x_line, mode='lines',
-            line=dict(color='black', width=2),
-            name='OLS'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=result_ols.x[0] + result_ols.x[1] * x_line,
+                mode="lines",
+                line=dict(color="black", width=2),
+                name="OLS",
+            )
+        )
 
-        fig.add_trace(go.Scatter(
-            x=x_line, y=result_ransac.x[0] + result_ransac.x[1] * x_line, mode='lines',
-            line=dict(color='red', width=2),
-            name='RANSAC'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=result_ransac.x[0] + result_ransac.x[1] * x_line,
+                mode="lines",
+                line=dict(color="red", width=2),
+                name="RANSAC",
+            )
+        )
 
         fig.update_layout(
             title=f"RANSAC Line Fitting ({result_ransac.n_inliers} inliers / {len(x)} total)",
             xaxis_title="x",
             yaxis_title="y",
-            height=500, width=800,
-            showlegend=True
+            height=500,
+            width=800,
+            showlegend=True,
         )
         fig.write_html("static_ransac.html")
         print("\n  [Plot saved to static_ransac.html]")
@@ -633,52 +730,87 @@ def demo_model_selection():
 
     # Plot model selection
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2, subplot_titles=[
-            "Polynomial Model Fits",
-            "Model Selection: AIC vs BIC"
-        ])
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=["Polynomial Model Fits", "Model Selection: AIC vs BIC"],
+        )
 
         # Model fits
-        fig.add_trace(go.Scatter(
-            x=x, y=y, mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Data'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Data",
+            ),
+            row=1,
+            col=1,
+        )
 
         x_line = np.linspace(x.min(), x.max(), 100)
-        fig.add_trace(go.Scatter(
-            x=x_line, y=1 + 2 * x_line + 0.5 * x_line**2, mode='lines',
-            line=dict(color='green', width=2, dash='dash'),
-            name='True (deg 2)'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=x_line,
+                y=1 + 2 * x_line + 0.5 * x_line**2,
+                mode="lines",
+                line=dict(color="green", width=2, dash="dash"),
+                name="True (deg 2)",
+            ),
+            row=1,
+            col=1,
+        )
 
         # Fit degrees 1, 2, 3
-        colors = ['red', 'green', 'purple']
+        colors = ["red", "green", "purple"]
         for i, deg in enumerate([1, 2, 3]):
             A_fit = np.column_stack([x_line**j for j in range(deg + 1)])
             A_data = np.column_stack([x**j for j in range(deg + 1)])
             coef = ordinary_least_squares(A_data, y).x
             y_fit = A_fit @ coef
-            fig.add_trace(go.Scatter(
-                x=x_line, y=y_fit, mode='lines',
-                line=dict(width=1.5, dash='solid' if deg == 2 else 'dot'),
-                name=f'Degree {deg}'
-            ), row=1, col=1)
+            fig.add_trace(
+                go.Scatter(
+                    x=x_line,
+                    y=y_fit,
+                    mode="lines",
+                    line=dict(width=1.5, dash="solid" if deg == 2 else "dot"),
+                    name=f"Degree {deg}",
+                ),
+                row=1,
+                col=1,
+            )
 
         # AIC/BIC comparison
         degrees = [r[0] for r in results]
         aic_vals = [r[3] for r in results]
         bic_vals = [r[4] for r in results]
 
-        fig.add_trace(go.Bar(
-            x=[d - 0.2 for d in degrees], y=aic_vals, width=0.35,
-            name='AIC', marker_color='blue', opacity=0.7
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Bar(
+                x=[d - 0.2 for d in degrees],
+                y=aic_vals,
+                width=0.35,
+                name="AIC",
+                marker_color="blue",
+                opacity=0.7,
+            ),
+            row=1,
+            col=2,
+        )
 
-        fig.add_trace(go.Bar(
-            x=[d + 0.2 for d in degrees], y=bic_vals, width=0.35,
-            name='BIC', marker_color='orange', opacity=0.7
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Bar(
+                x=[d + 0.2 for d in degrees],
+                y=bic_vals,
+                width=0.35,
+                name="BIC",
+                marker_color="orange",
+                opacity=0.7,
+            ),
+            row=1,
+            col=2,
+        )
 
         fig.update_xaxes(title_text="x", row=1, col=1)
         fig.update_yaxes(title_text="y", row=1, col=1)

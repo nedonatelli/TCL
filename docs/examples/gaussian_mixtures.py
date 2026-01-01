@@ -49,10 +49,15 @@ def create_ellipse_trace(mean, cov, color="blue", opacity=0.3, n_std=2, name=Non
     y_rot = x * np.sin(angle) + y * np.cos(angle) + mean[1]
 
     return go.Scatter(
-        x=x_rot, y=y_rot, mode='lines',
-        fill='toself', fillcolor=color, opacity=opacity,
+        x=x_rot,
+        y=y_rot,
+        mode="lines",
+        fill="toself",
+        fillcolor=color,
+        opacity=opacity,
         line=dict(color=color, width=2),
-        name=name, showlegend=name is not None
+        name=name,
+        showlegend=name is not None,
     )
 
 
@@ -283,41 +288,68 @@ def demo_kmeans():
 
     # Plot K-means result
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2, subplot_titles=[
-            "Ground Truth Clusters", "K-means Clustering Result"
-        ])
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=["Ground Truth Clusters", "K-means Clustering Result"],
+        )
 
         # True clusters
-        colors = ['blue', 'green', 'orange']
+        colors = ["blue", "green", "orange"]
         for i, center in enumerate(centers_true):
             mask = np.arange(len(data)) // n_per_cluster == i
-            fig.add_trace(go.Scatter(
-                x=data[mask, 0], y=data[mask, 1], mode='markers',
-                marker=dict(color=colors[i], size=6, opacity=0.6),
-                name=f'True cluster {i}'
-            ), row=1, col=1)
+            fig.add_trace(
+                go.Scatter(
+                    x=data[mask, 0],
+                    y=data[mask, 1],
+                    mode="markers",
+                    marker=dict(color=colors[i], size=6, opacity=0.6),
+                    name=f"True cluster {i}",
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig.add_trace(go.Scatter(
-            x=centers_true[:, 0], y=centers_true[:, 1], mode='markers',
-            marker=dict(color='black', size=15, symbol='x', line=dict(width=3)),
-            name='True centers'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=centers_true[:, 0],
+                y=centers_true[:, 1],
+                mode="markers",
+                marker=dict(color="black", size=15, symbol="x", line=dict(width=3)),
+                name="True centers",
+            ),
+            row=1,
+            col=1,
+        )
 
         # K-means result
-        colors_km = ['red', 'green', 'blue']
+        colors_km = ["red", "green", "blue"]
         for i in range(3):
             mask = result.labels == i
-            fig.add_trace(go.Scatter(
-                x=data[mask, 0], y=data[mask, 1], mode='markers',
-                marker=dict(color=colors_km[i], size=6, opacity=0.6),
-                name=f'Cluster {i}', showlegend=True
-            ), row=1, col=2)
+            fig.add_trace(
+                go.Scatter(
+                    x=data[mask, 0],
+                    y=data[mask, 1],
+                    mode="markers",
+                    marker=dict(color=colors_km[i], size=6, opacity=0.6),
+                    name=f"Cluster {i}",
+                    showlegend=True,
+                ),
+                row=1,
+                col=2,
+            )
 
-        fig.add_trace(go.Scatter(
-            x=result.centers[:, 0], y=result.centers[:, 1], mode='markers',
-            marker=dict(color='black', size=15, symbol='x', line=dict(width=3)),
-            name='K-means centers'
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Scatter(
+                x=result.centers[:, 0],
+                y=result.centers[:, 1],
+                mode="markers",
+                marker=dict(color="black", size=15, symbol="x", line=dict(width=3)),
+                name="K-means centers",
+            ),
+            row=1,
+            col=2,
+        )
 
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
@@ -413,22 +445,28 @@ def demo_elbow_method():
     if SHOW_PLOTS:
         fig = go.Figure()
 
-        fig.add_trace(go.Scatter(
-            x=list(k_values), y=inertias, mode='lines+markers',
-            line=dict(color='blue', width=2),
-            marker=dict(size=10),
-            name='Inertia'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=list(k_values),
+                y=inertias,
+                mode="lines+markers",
+                line=dict(color="blue", width=2),
+                marker=dict(size=10),
+                name="Inertia",
+            )
+        )
 
-        fig.add_vline(x=3, line_dash="dash", line_color="red",
-                      annotation_text="True K=3")
+        fig.add_vline(
+            x=3, line_dash="dash", line_color="red", annotation_text="True K=3"
+        )
 
         fig.update_layout(
             title="Elbow Method for K Selection",
             xaxis_title="Number of Clusters (K)",
             yaxis_title="Inertia (Within-cluster Sum of Squares)",
-            height=500, width=700,
-            showlegend=True
+            height=500,
+            width=700,
+            showlegend=True,
         )
         fig.write_html("gaussian_elbow.html")
         print("\n  [Plot saved to gaussian_elbow.html]")
@@ -473,55 +511,102 @@ def demo_dbscan():
 
     # Plot DBSCAN result
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2, subplot_titles=[
-            "Ground Truth", f"DBSCAN Result ({result.n_clusters} clusters)"
-        ])
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=[
+                "Ground Truth",
+                f"DBSCAN Result ({result.n_clusters} clusters)",
+            ],
+        )
 
         # Ground truth
-        fig.add_trace(go.Scatter(
-            x=cluster1[:, 0], y=cluster1[:, 1], mode='markers',
-            marker=dict(color='blue', size=8, opacity=0.6),
-            name='Cluster 1'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=cluster1[:, 0],
+                y=cluster1[:, 1],
+                mode="markers",
+                marker=dict(color="blue", size=8, opacity=0.6),
+                name="Cluster 1",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=cluster2[:, 0], y=cluster2[:, 1], mode='markers',
-            marker=dict(color='green', size=8, opacity=0.6),
-            name='Cluster 2'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=cluster2[:, 0],
+                y=cluster2[:, 1],
+                mode="markers",
+                marker=dict(color="green", size=8, opacity=0.6),
+                name="Cluster 2",
+            ),
+            row=1,
+            col=1,
+        )
 
-        fig.add_trace(go.Scatter(
-            x=noise[:, 0], y=noise[:, 1], mode='markers',
-            marker=dict(color='red', size=8, opacity=0.6),
-            name='Noise'
-        ), row=1, col=1)
+        fig.add_trace(
+            go.Scatter(
+                x=noise[:, 0],
+                y=noise[:, 1],
+                mode="markers",
+                marker=dict(color="red", size=8, opacity=0.6),
+                name="Noise",
+            ),
+            row=1,
+            col=1,
+        )
 
         # DBSCAN result
-        colors = ['blue', 'green', 'purple', 'orange']
+        colors = ["blue", "green", "purple", "orange"]
         for label in unique_labels:
             mask = result.labels == label
             if label == -1:
-                fig.add_trace(go.Scatter(
-                    x=data[mask, 0], y=data[mask, 1], mode='markers',
-                    marker=dict(color='red', size=8, opacity=0.6, symbol='x'),
-                    name='Noise', showlegend=True
-                ), row=1, col=2)
+                fig.add_trace(
+                    go.Scatter(
+                        x=data[mask, 0],
+                        y=data[mask, 1],
+                        mode="markers",
+                        marker=dict(color="red", size=8, opacity=0.6, symbol="x"),
+                        name="Noise",
+                        showlegend=True,
+                    ),
+                    row=1,
+                    col=2,
+                )
             else:
-                fig.add_trace(go.Scatter(
-                    x=data[mask, 0], y=data[mask, 1], mode='markers',
-                    marker=dict(color=colors[label % len(colors)], size=8, opacity=0.6),
-                    name=f'Cluster {label}', showlegend=True
-                ), row=1, col=2)
+                fig.add_trace(
+                    go.Scatter(
+                        x=data[mask, 0],
+                        y=data[mask, 1],
+                        mode="markers",
+                        marker=dict(
+                            color=colors[label % len(colors)], size=8, opacity=0.6
+                        ),
+                        name=f"Cluster {label}",
+                        showlegend=True,
+                    ),
+                    row=1,
+                    col=2,
+                )
 
         # Mark core samples
         core_mask = np.zeros(len(data), dtype=bool)
         core_mask[result.core_sample_indices] = True
-        fig.add_trace(go.Scatter(
-            x=data[core_mask, 0], y=data[core_mask, 1], mode='markers',
-            marker=dict(color='rgba(0,0,0,0)', size=15,
-                       line=dict(color='black', width=1)),
-            name='Core samples', showlegend=True
-        ), row=1, col=2)
+        fig.add_trace(
+            go.Scatter(
+                x=data[core_mask, 0],
+                y=data[core_mask, 1],
+                mode="markers",
+                marker=dict(
+                    color="rgba(0,0,0,0)", size=15, line=dict(color="black", width=1)
+                ),
+                name="Core samples",
+                showlegend=True,
+            ),
+            row=1,
+            col=2,
+        )
 
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")

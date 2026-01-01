@@ -12,7 +12,6 @@ Tests cover:
 import numpy as np
 import pytest
 
-
 # =============================================================================
 # Marcum Q Function Tests
 # =============================================================================
@@ -30,8 +29,9 @@ class TestMarcumQ:
 
     def test_marcum_q_with_zero_a(self):
         """Test Q_m(0, b) uses incomplete gamma."""
-        from pytcl.mathematical_functions.special_functions import marcum_q
         from scipy.special import gammaincc
+
+        from pytcl.mathematical_functions.special_functions import marcum_q
 
         b = 2.0
         m = 2
@@ -247,8 +247,10 @@ class TestHypergeometric:
 
     def test_hyp0f1_bessel_relation(self):
         """Test 0F1 relation to Bessel functions."""
+        from scipy.special import gamma as gamma_func
+        from scipy.special import jv
+
         from pytcl.mathematical_functions.special_functions import hyp0f1
-        from scipy.special import jv, gamma as gamma_func
 
         # J_n(x) = (x/2)^n / Gamma(n+1) * 0F1(n+1; -x^2/4)
         n, x = 2, 3.0
@@ -328,8 +330,9 @@ class TestAdvancedBessel:
 
     def test_bessel_ratio(self):
         """Test Bessel function ratio."""
-        from pytcl.mathematical_functions.special_functions import bessel_ratio
         from scipy.special import jv
+
+        from pytcl.mathematical_functions.special_functions import bessel_ratio
 
         n, x = 1, 2.0
         ratio = bessel_ratio(n, x, kind="j")
@@ -338,8 +341,9 @@ class TestAdvancedBessel:
 
     def test_bessel_ratio_modified(self):
         """Test modified Bessel function ratio."""
-        from pytcl.mathematical_functions.special_functions import bessel_ratio
         from scipy.special import iv
+
+        from pytcl.mathematical_functions.special_functions import bessel_ratio
 
         n, x = 0, 1.0
         ratio = bessel_ratio(n, x, kind="i")
@@ -348,8 +352,9 @@ class TestAdvancedBessel:
 
     def test_bessel_deriv_j0(self):
         """Test J_0'(x) = -J_1(x)."""
-        from pytcl.mathematical_functions.special_functions import bessel_deriv
         from scipy.special import jv
+
+        from pytcl.mathematical_functions.special_functions import bessel_deriv
 
         x = 2.0
         deriv = bessel_deriv(0, x, kind="j")
@@ -463,45 +468,40 @@ class TestSpecialFunctionsIntegration:
 
     def test_all_exports(self):
         """Test all functions are properly exported."""
-        from pytcl.mathematical_functions.special_functions import (
-            # Marcum Q
-            marcum_q,
-            marcum_q1,
-            log_marcum_q,
-            marcum_q_inv,
-            nuttall_q,
-            swerling_detection_probability,
-            # Lambert W
-            lambert_w,
-            lambert_w_real,
-            omega_constant,
-            wright_omega,
-            solve_exponential_equation,
-            time_delay_equation,
-            # Debye
+        from pytcl.mathematical_functions.special_functions import (  # Marcum Q; Lambert W; Debye; Hypergeometric; Advanced Bessel
+            bessel_deriv,
+            bessel_ratio,
+            bessel_zeros,
             debye,
             debye_1,
             debye_2,
             debye_3,
             debye_4,
-            debye_heat_capacity,
             debye_entropy,
-            # Hypergeometric
-            hyp0f1,
-            hyp1f1,
-            hyp2f1,
-            hyperu,
-            hyp1f1_regularized,
-            pochhammer,
+            debye_heat_capacity,
             falling_factorial,
             generalized_hypergeometric,
-            # Advanced Bessel
-            bessel_ratio,
-            bessel_deriv,
-            bessel_zeros,
+            hyp0f1,
+            hyp1f1,
+            hyp1f1_regularized,
+            hyp2f1,
+            hyperu,
+            kelvin,
+            lambert_w,
+            lambert_w_real,
+            log_marcum_q,
+            marcum_q,
+            marcum_q1,
+            marcum_q_inv,
+            nuttall_q,
+            omega_constant,
+            pochhammer,
+            solve_exponential_equation,
             struve_h,
             struve_l,
-            kelvin,
+            swerling_detection_probability,
+            time_delay_equation,
+            wright_omega,
         )
 
         # All should be callable

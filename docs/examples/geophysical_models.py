@@ -107,28 +107,56 @@ def demo_normal_gravity():
         )
 
         fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=("Normal Gravity vs Latitude (Somigliana)", "Gravity Increase from Equator")
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "Normal Gravity vs Latitude (Somigliana)",
+                "Gravity Increase from Equator",
+            ),
         )
 
         # Left plot: Gravity vs latitude
         fig.add_trace(
-            go.Scatter(x=lats_fine, y=g_values, mode='lines', name='Gravity',
-                       line=dict(color='blue', width=2)),
-            row=1, col=1
+            go.Scatter(
+                x=lats_fine,
+                y=g_values,
+                mode="lines",
+                name="Gravity",
+                line=dict(color="blue", width=2),
+            ),
+            row=1,
+            col=1,
         )
         # Mark equator and pole values
-        fig.add_hline(y=g_values[0], line_dash="dash", line_color="red",
-                      annotation_text=f"Equator: {g_values[0]:.4f}", row=1, col=1)
-        fig.add_hline(y=g_values[-1], line_dash="dash", line_color="green",
-                      annotation_text=f"Pole: {g_values[-1]:.4f}", row=1, col=1)
+        fig.add_hline(
+            y=g_values[0],
+            line_dash="dash",
+            line_color="red",
+            annotation_text=f"Equator: {g_values[0]:.4f}",
+            row=1,
+            col=1,
+        )
+        fig.add_hline(
+            y=g_values[-1],
+            line_dash="dash",
+            line_color="green",
+            annotation_text=f"Pole: {g_values[-1]:.4f}",
+            row=1,
+            col=1,
+        )
 
         # Right plot: Gravity difference from equator
         g_diff = (g_values - g_values[0]) * 1000  # mGal
         fig.add_trace(
-            go.Scatter(x=lats_fine, y=g_diff, mode='lines', name='Δg',
-                       line=dict(color='blue', width=2)),
-            row=1, col=2
+            go.Scatter(
+                x=lats_fine,
+                y=g_diff,
+                mode="lines",
+                name="Δg",
+                line=dict(color="blue", width=2),
+            ),
+            row=1,
+            col=2,
         )
 
         fig.update_xaxes(title_text="Latitude (°)", range=[0, 90], row=1, col=1)
@@ -183,8 +211,12 @@ def demo_gravity_models():
     # Plot gravity vs altitude
     if SHOW_PLOTS:
         fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=("Gravity vs Altitude (WGS84)", "Gravity Reduction with Altitude")
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "Gravity vs Altitude (WGS84)",
+                "Gravity Reduction with Altitude",
+            ),
         )
 
         # Altitude range from surface to ISS altitude
@@ -193,23 +225,40 @@ def demo_gravity_models():
 
         # Left plot: Gravity vs altitude
         fig.add_trace(
-            go.Scatter(x=alts / 1000, y=g_values, mode='lines', name='Gravity',
-                       line=dict(color='blue', width=2)),
-            row=1, col=1
+            go.Scatter(
+                x=alts / 1000,
+                y=g_values,
+                mode="lines",
+                name="Gravity",
+                line=dict(color="blue", width=2),
+            ),
+            row=1,
+            col=1,
         )
 
         # Right plot: Gravity reduction rate
         g_reduction = (g_values[0] - g_values) / g_values[0] * 100  # percent
         fig.add_trace(
-            go.Scatter(x=alts / 1000, y=g_reduction, mode='lines', name='Reduction',
-                       line=dict(color='red', width=2)),
-            row=1, col=2
+            go.Scatter(
+                x=alts / 1000,
+                y=g_reduction,
+                mode="lines",
+                name="Reduction",
+                line=dict(color="red", width=2),
+            ),
+            row=1,
+            col=2,
         )
 
         # Mark ISS at ~400 km
-        fig.add_hline(y=g_reduction[400], line_dash="dash", line_color="green",
-                      annotation_text=f"ISS (~400 km): {g_reduction[400]:.1f}% reduction",
-                      row=1, col=2)
+        fig.add_hline(
+            y=g_reduction[400],
+            line_dash="dash",
+            line_color="green",
+            annotation_text=f"ISS (~400 km): {g_reduction[400]:.1f}% reduction",
+            row=1,
+            col=2,
+        )
 
         fig.update_xaxes(title_text="Altitude (km)", row=1, col=1)
         fig.update_yaxes(title_text="Gravity (m/s²)", row=1, col=1)
@@ -351,35 +400,64 @@ def demo_tidal_effects():
             dg[i] = tidal_gravity_correction(lat, lon, jd) * 1e8  # µGal
 
         fig = make_subplots(
-            rows=2, cols=1,
-            subplot_titles=("Solid Earth Tide - Washington DC (2025-01-01)", "Tidal Gravity Variation"),
-            shared_xaxes=True
+            rows=2,
+            cols=1,
+            subplot_titles=(
+                "Solid Earth Tide - Washington DC (2025-01-01)",
+                "Tidal Gravity Variation",
+            ),
+            shared_xaxes=True,
         )
 
         # Top plot: Displacement components
         fig.add_trace(
-            go.Scatter(x=hours, y=disp_n, mode='lines', name='North',
-                       line=dict(color='blue', width=1.5)),
-            row=1, col=1
+            go.Scatter(
+                x=hours,
+                y=disp_n,
+                mode="lines",
+                name="North",
+                line=dict(color="blue", width=1.5),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=hours, y=disp_e, mode='lines', name='East',
-                       line=dict(color='green', width=1.5)),
-            row=1, col=1
+            go.Scatter(
+                x=hours,
+                y=disp_e,
+                mode="lines",
+                name="East",
+                line=dict(color="green", width=1.5),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=hours, y=disp_u, mode='lines', name='Up',
-                       line=dict(color='red', width=2)),
-            row=1, col=1
+            go.Scatter(
+                x=hours,
+                y=disp_u,
+                mode="lines",
+                name="Up",
+                line=dict(color="red", width=2),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_hline(y=0, line_color="black", line_width=0.5, row=1, col=1)
 
         # Bottom plot: Gravity change
         fig.add_trace(
-            go.Scatter(x=hours, y=dg, mode='lines', name='Gravity',
-                       line=dict(color='purple', width=2),
-                       fill='tozeroy', fillcolor='rgba(128,0,128,0.3)'),
-            row=2, col=1
+            go.Scatter(
+                x=hours,
+                y=dg,
+                mode="lines",
+                name="Gravity",
+                line=dict(color="purple", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(128,0,128,0.3)",
+            ),
+            row=2,
+            col=1,
         )
         fig.add_hline(y=0, line_color="black", line_width=0.5, row=2, col=1)
 
@@ -464,33 +542,53 @@ def demo_magnetic_field():
                 F[i, j] = result.F
 
         fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=(f"Magnetic Declination (WMM {decimal_year:.0f})",
-                           f"Magnetic Field Intensity (WMM {decimal_year:.0f})")
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                f"Magnetic Declination (WMM {decimal_year:.0f})",
+                f"Magnetic Field Intensity (WMM {decimal_year:.0f})",
+            ),
         )
 
         # Left plot: Magnetic declination
         fig.add_trace(
-            go.Contour(x=lon_grid, y=lat_grid, z=DEC.T,
-                      colorscale='RdBu_r', contours=dict(showlines=True),
-                      colorbar=dict(title="Declination (°)", x=0.45)),
-            row=1, col=1
+            go.Contour(
+                x=lon_grid,
+                y=lat_grid,
+                z=DEC.T,
+                colorscale="RdBu_r",
+                contours=dict(showlines=True),
+                colorbar=dict(title="Declination (°)", x=0.45),
+            ),
+            row=1,
+            col=1,
         )
 
         # Right plot: Total field intensity
         fig.add_trace(
-            go.Contour(x=lon_grid, y=lat_grid, z=F.T,
-                      colorscale='Viridis',
-                      colorbar=dict(title="Intensity (nT)", x=1.0)),
-            row=1, col=2
+            go.Contour(
+                x=lon_grid,
+                y=lat_grid,
+                z=F.T,
+                colorscale="Viridis",
+                colorbar=dict(title="Intensity (nT)", x=1.0),
+            ),
+            row=1,
+            col=2,
         )
 
         # Mark South Atlantic Anomaly region
         fig.add_trace(
-            go.Scatter(x=[-50], y=[-25], mode='markers',
-                      marker=dict(symbol='star', size=15, color='red'),
-                      name='South Atlantic Anomaly', showlegend=True),
-            row=1, col=2
+            go.Scatter(
+                x=[-50],
+                y=[-25],
+                mode="markers",
+                marker=dict(symbol="star", size=15, color="red"),
+                name="South Atlantic Anomaly",
+                showlegend=True,
+            ),
+            row=1,
+            col=2,
         )
 
         fig.update_xaxes(title_text="Longitude (°)", range=[-180, 180], row=1, col=1)

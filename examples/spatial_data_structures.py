@@ -91,45 +91,63 @@ def demo_kdtree_basics():
         fig = go.Figure()
 
         # All points
-        fig.add_trace(go.Scatter(
-            x=points[:, 0], y=points[:, 1], mode='markers',
-            marker=dict(color='lightblue', size=8, opacity=0.6),
-            name='Points'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=points[:, 0],
+                y=points[:, 1],
+                mode="markers",
+                marker=dict(color="lightblue", size=8, opacity=0.6),
+                name="Points",
+            )
+        )
 
         # K nearest neighbors
         nn_indices = result.indices[0]
-        fig.add_trace(go.Scatter(
-            x=points[nn_indices, 0], y=points[nn_indices, 1], mode='markers',
-            marker=dict(color='green', size=12, opacity=0.8),
-            name=f'{k} nearest neighbors'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=points[nn_indices, 0],
+                y=points[nn_indices, 1],
+                mode="markers",
+                marker=dict(color="green", size=12, opacity=0.8),
+                name=f"{k} nearest neighbors",
+            )
+        )
 
         # Query point
-        fig.add_trace(go.Scatter(
-            x=[query[0]], y=[query[1]], mode='markers',
-            marker=dict(color='red', size=15, symbol='star'),
-            name='Query'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[query[0]],
+                y=[query[1]],
+                mode="markers",
+                marker=dict(color="red", size=15, symbol="star"),
+                name="Query",
+            )
+        )
 
         # Draw circle for max distance
         max_dist = result.distances[0, -1]
         theta = np.linspace(0, 2 * np.pi, 100)
         circle_x = query[0] + max_dist * np.cos(theta)
         circle_y = query[1] + max_dist * np.sin(theta)
-        fig.add_trace(go.Scatter(
-            x=circle_x, y=circle_y, mode='lines',
-            line=dict(color='green', dash='dash', width=2),
-            name='Search radius', showlegend=True
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=circle_x,
+                y=circle_y,
+                mode="lines",
+                line=dict(color="green", dash="dash", width=2),
+                name="Search radius",
+                showlegend=True,
+            )
+        )
 
         fig.update_layout(
             title="K-D Tree: K-Nearest Neighbor Query",
             xaxis_title="x",
             yaxis_title="y",
-            height=600, width=600,
+            height=600,
+            width=600,
             showlegend=True,
-            xaxis=dict(scaleanchor="y", scaleratio=1)
+            xaxis=dict(scaleanchor="y", scaleratio=1),
         )
         fig.write_html("spatial_kdtree.html")
         print("\n  [Plot saved to spatial_kdtree.html]")
@@ -265,7 +283,7 @@ def demo_rtree():
         # Draw all boxes
         for i, box in enumerate(boxes):
             is_intersecting = i in result.indices
-            color = 'green' if is_intersecting else 'lightblue'
+            color = "green" if is_intersecting else "lightblue"
             opacity = 0.6 if is_intersecting else 0.3
 
             # Create rectangle as a filled shape
@@ -274,46 +292,64 @@ def demo_rtree():
 
             fig.add_shape(
                 type="rect",
-                x0=x0, y0=y0, x1=x1, y1=y1,
+                x0=x0,
+                y0=y0,
+                x1=x1,
+                y1=y1,
                 fillcolor=color,
-                line=dict(color='black', width=1),
-                opacity=opacity
+                line=dict(color="black", width=1),
+                opacity=opacity,
             )
 
         # Draw search region
         fig.add_shape(
             type="rect",
-            x0=search_min[0], y0=search_min[1],
-            x1=search_max[0], y1=search_max[1],
+            x0=search_min[0],
+            y0=search_min[1],
+            x1=search_max[0],
+            y1=search_max[1],
             fillcolor="rgba(0,0,0,0)",
-            line=dict(color='red', width=3, dash='dash')
+            line=dict(color="red", width=3, dash="dash"),
         )
 
         # Add legend traces (invisible points for legend)
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='markers',
-            marker=dict(size=15, color='green', opacity=0.6),
-            name='Intersecting'
-        ))
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='markers',
-            marker=dict(size=15, color='lightblue', opacity=0.3),
-            name='Non-intersecting'
-        ))
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode='lines',
-            line=dict(color='red', width=3, dash='dash'),
-            name='Search region'
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                marker=dict(size=15, color="green", opacity=0.6),
+                name="Intersecting",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                marker=dict(size=15, color="lightblue", opacity=0.3),
+                name="Non-intersecting",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="lines",
+                line=dict(color="red", width=3, dash="dash"),
+                name="Search region",
+            )
+        )
 
         fig.update_layout(
             title=f"R-Tree: {len(result.indices)} boxes intersecting search region",
             xaxis_title="x",
             yaxis_title="y",
-            height=700, width=700,
+            height=700,
+            width=700,
             showlegend=True,
             xaxis=dict(range=[-60, 60], scaleanchor="y", scaleratio=1),
-            yaxis=dict(range=[-60, 60])
+            yaxis=dict(range=[-60, 60]),
         )
         fig.write_html("spatial_rtree.html")
         print("\n  [Plot saved to spatial_rtree.html]")

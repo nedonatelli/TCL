@@ -133,49 +133,74 @@ def demo_resampling_methods():
     # Plot resampling comparison
     if SHOW_PLOTS:
         fig = make_subplots(
-            rows=2, cols=2,
+            rows=2,
+            cols=2,
             subplot_titles=(
                 f"Original Particles (ESS={effective_sample_size(weights):.0f})",
                 "After Multinomial Resampling",
                 "After Systematic Resampling",
-                "After Residual Resampling"
-            )
+                "After Residual Resampling",
+            ),
         )
 
         # Original particles with weights
         fig.add_trace(
-            go.Scatter(x=particles[:, 0], y=particles[:, 1], mode='markers',
-                      marker=dict(size=5, color=weights, colorscale='Viridis', opacity=0.6),
-                      name='Original'),
-            row=1, col=1
+            go.Scatter(
+                x=particles[:, 0],
+                y=particles[:, 1],
+                mode="markers",
+                marker=dict(size=5, color=weights, colorscale="Viridis", opacity=0.6),
+                name="Original",
+            ),
+            row=1,
+            col=1,
         )
 
         # Multinomial resampling
         fig.add_trace(
-            go.Scatter(x=particles_multi[:, 0], y=particles_multi[:, 1], mode='markers',
-                      marker=dict(size=5, color='blue', opacity=0.6),
-                      name='Multinomial'),
-            row=1, col=2
+            go.Scatter(
+                x=particles_multi[:, 0],
+                y=particles_multi[:, 1],
+                mode="markers",
+                marker=dict(size=5, color="blue", opacity=0.6),
+                name="Multinomial",
+            ),
+            row=1,
+            col=2,
         )
 
         # Systematic resampling
         fig.add_trace(
-            go.Scatter(x=particles_sys[:, 0], y=particles_sys[:, 1], mode='markers',
-                      marker=dict(size=5, color='green', opacity=0.6),
-                      name='Systematic'),
-            row=2, col=1
+            go.Scatter(
+                x=particles_sys[:, 0],
+                y=particles_sys[:, 1],
+                mode="markers",
+                marker=dict(size=5, color="green", opacity=0.6),
+                name="Systematic",
+            ),
+            row=2,
+            col=1,
         )
 
         # Residual resampling
         fig.add_trace(
-            go.Scatter(x=particles_res[:, 0], y=particles_res[:, 1], mode='markers',
-                      marker=dict(size=5, color='red', opacity=0.6),
-                      name='Residual'),
-            row=2, col=2
+            go.Scatter(
+                x=particles_res[:, 0],
+                y=particles_res[:, 1],
+                mode="markers",
+                marker=dict(size=5, color="red", opacity=0.6),
+                name="Residual",
+            ),
+            row=2,
+            col=2,
         )
 
-        fig.update_layout(height=800, width=1000, title_text="Comparison of Resampling Methods",
-                         showlegend=False)
+        fig.update_layout(
+            height=800,
+            width=1000,
+            title_text="Comparison of Resampling Methods",
+            showlegend=False,
+        )
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
 
@@ -193,27 +218,33 @@ def demo_linear_tracking():
 
     # Linear constant-velocity model
     dt = 1.0
-    F = np.array([
-        [1, dt, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, dt],
-        [0, 0, 0, 1],
-    ])
+    F = np.array(
+        [
+            [1, dt, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, dt],
+            [0, 0, 0, 1],
+        ]
+    )
 
     # Process noise
     q = 0.1
-    Q = q * np.array([
-        [dt**3 / 3, dt**2 / 2, 0, 0],
-        [dt**2 / 2, dt, 0, 0],
-        [0, 0, dt**3 / 3, dt**2 / 2],
-        [0, 0, dt**2 / 2, dt],
-    ])
+    Q = q * np.array(
+        [
+            [dt**3 / 3, dt**2 / 2, 0, 0],
+            [dt**2 / 2, dt, 0, 0],
+            [0, 0, dt**3 / 3, dt**2 / 2],
+            [0, 0, dt**2 / 2, dt],
+        ]
+    )
 
     # Measurement model (observe position only)
-    H = np.array([
-        [1, 0, 0, 0],
-        [0, 0, 1, 0],
-    ])
+    H = np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+        ]
+    )
     R = np.eye(2) * 1.0
 
     # True trajectory
@@ -293,33 +324,61 @@ def demo_linear_tracking():
 
     # Plot tracking comparison
     if SHOW_PLOTS:
-        fig = make_subplots(rows=1, cols=2,
-                           subplot_titles=("Trajectory Tracking: KF vs PF", "Position Error Over Time"))
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "Trajectory Tracking: KF vs PF",
+                "Position Error Over Time",
+            ),
+        )
 
         measurements_arr = np.array(measurements)
 
         # Trajectory plot
         fig.add_trace(
-            go.Scatter(x=true_states[:, 0], y=true_states[:, 2], mode='lines',
-                      name='True trajectory', line=dict(color='black', width=2)),
-            row=1, col=1
+            go.Scatter(
+                x=true_states[:, 0],
+                y=true_states[:, 2],
+                mode="lines",
+                name="True trajectory",
+                line=dict(color="black", width=2),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=kf_estimates[:, 0], y=kf_estimates[:, 2], mode='lines',
-                      name=f'Kalman Filter (RMSE={kf_rmse:.3f})',
-                      line=dict(color='blue', width=1.5, dash='dash')),
-            row=1, col=1
+            go.Scatter(
+                x=kf_estimates[:, 0],
+                y=kf_estimates[:, 2],
+                mode="lines",
+                name=f"Kalman Filter (RMSE={kf_rmse:.3f})",
+                line=dict(color="blue", width=1.5, dash="dash"),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=pf_estimates[:, 0], y=pf_estimates[:, 2], mode='lines',
-                      name=f'Particle Filter (RMSE={pf_rmse:.3f})',
-                      line=dict(color='red', width=1.5, dash='dot')),
-            row=1, col=1
+            go.Scatter(
+                x=pf_estimates[:, 0],
+                y=pf_estimates[:, 2],
+                mode="lines",
+                name=f"Particle Filter (RMSE={pf_rmse:.3f})",
+                line=dict(color="red", width=1.5, dash="dot"),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=measurements_arr[:, 0], y=measurements_arr[:, 1], mode='markers',
-                      name='Measurements', marker=dict(size=5, color='gray', opacity=0.5)),
-            row=1, col=1
+            go.Scatter(
+                x=measurements_arr[:, 0],
+                y=measurements_arr[:, 1],
+                mode="markers",
+                name="Measurements",
+                marker=dict(size=5, color="gray", opacity=0.5),
+            ),
+            row=1,
+            col=1,
         )
 
         # Error comparison
@@ -333,14 +392,26 @@ def demo_linear_tracking():
             + (pf_estimates[:, 2] - true_states[:, 2]) ** 2
         )
         fig.add_trace(
-            go.Scatter(x=time, y=kf_pos_err, mode='lines', name='Kalman Filter',
-                      line=dict(color='blue')),
-            row=1, col=2
+            go.Scatter(
+                x=time,
+                y=kf_pos_err,
+                mode="lines",
+                name="Kalman Filter",
+                line=dict(color="blue"),
+            ),
+            row=1,
+            col=2,
         )
         fig.add_trace(
-            go.Scatter(x=time, y=pf_pos_err, mode='lines', name='Particle Filter',
-                      line=dict(color='red')),
-            row=1, col=2
+            go.Scatter(
+                x=time,
+                y=pf_pos_err,
+                mode="lines",
+                name="Particle Filter",
+                line=dict(color="red"),
+            ),
+            row=1,
+            col=2,
         )
 
         fig.update_xaxes(title_text="x position", row=1, col=1)
@@ -425,12 +496,14 @@ def demo_nonlinear_tracking():
         """Constant velocity motion model with noise."""
         x, y, vx, vy = state
         q = 0.1
-        return np.array([
-            x + vx * dt + np.random.randn() * q * dt,
-            y + vy * dt + np.random.randn() * q * dt,
-            vx + np.random.randn() * q,
-            vy + np.random.randn() * q,
-        ])
+        return np.array(
+            [
+                x + vx * dt + np.random.randn() * q * dt,
+                y + vy * dt + np.random.randn() * q * dt,
+                vx + np.random.randn() * q,
+                vy + np.random.randn() * q,
+            ]
+        )
 
     # Run particle filter
     pf_estimates = []
@@ -498,63 +571,119 @@ def demo_nonlinear_tracking():
     # Plot nonlinear tracking results
     if SHOW_PLOTS:
         fig = make_subplots(
-            rows=2, cols=2,
+            rows=2,
+            cols=2,
             subplot_titles=(
                 "Circular Motion Tracking with Range-Bearing Sensor",
                 "Position Error Over Time",
                 "ESS History (resampling when ESS < N/2)",
-                "Range-Bearing Measurements (color=time)"
-            )
+                "Range-Bearing Measurements (color=time)",
+            ),
         )
 
         # Trajectory plot
         fig.add_trace(
-            go.Scatter(x=true_states[:, 0], y=true_states[:, 1], mode='lines',
-                      name='True trajectory', line=dict(color='black', width=2)),
-            row=1, col=1
+            go.Scatter(
+                x=true_states[:, 0],
+                y=true_states[:, 1],
+                mode="lines",
+                name="True trajectory",
+                line=dict(color="black", width=2),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=pf_estimates[:, 0], y=pf_estimates[:, 1], mode='lines',
-                      name='PF estimate', line=dict(color='red', width=1.5, dash='dash')),
-            row=1, col=1
+            go.Scatter(
+                x=pf_estimates[:, 0],
+                y=pf_estimates[:, 1],
+                mode="lines",
+                name="PF estimate",
+                line=dict(color="red", width=1.5, dash="dash"),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=[true_states[0, 0]], y=[true_states[0, 1]], mode='markers',
-                      name='Start', marker=dict(size=15, color='green', symbol='circle')),
-            row=1, col=1
+            go.Scatter(
+                x=[true_states[0, 0]],
+                y=[true_states[0, 1]],
+                mode="markers",
+                name="Start",
+                marker=dict(size=15, color="green", symbol="circle"),
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=[true_states[-1, 0]], y=[true_states[-1, 1]], mode='markers',
-                      name='End', marker=dict(size=15, color='blue', symbol='square')),
-            row=1, col=1
+            go.Scatter(
+                x=[true_states[-1, 0]],
+                y=[true_states[-1, 1]],
+                mode="markers",
+                name="End",
+                marker=dict(size=15, color="blue", symbol="square"),
+            ),
+            row=1,
+            col=1,
         )
 
         # Position error over time
         time_axis = np.arange(n_steps) * dt
         fig.add_trace(
-            go.Scatter(x=time_axis, y=pos_errors, mode='lines',
-                      line=dict(color='blue', width=1.5)),
-            row=1, col=2
+            go.Scatter(
+                x=time_axis,
+                y=pos_errors,
+                mode="lines",
+                line=dict(color="blue", width=1.5),
+            ),
+            row=1,
+            col=2,
         )
-        fig.add_hline(y=np.mean(pos_errors), line_dash="dash", line_color="red",
-                     annotation_text=f"Mean={np.mean(pos_errors):.3f}", row=1, col=2)
+        fig.add_hline(
+            y=np.mean(pos_errors),
+            line_dash="dash",
+            line_color="red",
+            annotation_text=f"Mean={np.mean(pos_errors):.3f}",
+            row=1,
+            col=2,
+        )
 
         # ESS history
         fig.add_trace(
-            go.Scatter(x=time_axis, y=ess_history, mode='lines',
-                      line=dict(color='green', width=1.5)),
-            row=2, col=1
+            go.Scatter(
+                x=time_axis,
+                y=ess_history,
+                mode="lines",
+                line=dict(color="green", width=1.5),
+            ),
+            row=2,
+            col=1,
         )
-        fig.add_hline(y=n_particles / 2, line_dash="dash", line_color="red",
-                     annotation_text="Resampling threshold", row=2, col=1)
+        fig.add_hline(
+            y=n_particles / 2,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="Resampling threshold",
+            row=2,
+            col=1,
+        )
 
         # Measurements in polar form
         meas_arr = np.array(measurements)
         fig.add_trace(
-            go.Scatter(x=np.degrees(meas_arr[:, 1]), y=meas_arr[:, 0], mode='markers',
-                      marker=dict(size=5, color=time_axis, colorscale='Viridis',
-                                 colorbar=dict(title="Time (s)", x=1.0))),
-            row=2, col=2
+            go.Scatter(
+                x=np.degrees(meas_arr[:, 1]),
+                y=meas_arr[:, 0],
+                mode="markers",
+                marker=dict(
+                    size=5,
+                    color=time_axis,
+                    colorscale="Viridis",
+                    colorbar=dict(title="Time (s)", x=1.0),
+                ),
+            ),
+            row=2,
+            col=2,
         )
 
         fig.update_xaxes(title_text="x position (m)", row=1, col=1)
@@ -635,37 +764,65 @@ def demo_multimodal():
     # Plot multimodal distribution
     if SHOW_PLOTS:
         fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=("Prior: Bimodal Distribution", "Posterior: After Measurement Update")
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "Prior: Bimodal Distribution",
+                "Posterior: After Measurement Update",
+            ),
         )
 
         # Prior distribution
         fig.add_trace(
-            go.Scatter(x=prior_particles[:, 0], y=prior_particles[:, 1], mode='markers',
-                      marker=dict(size=3, color='blue', opacity=0.3),
-                      name='Prior particles'),
-            row=1, col=1
+            go.Scatter(
+                x=prior_particles[:, 0],
+                y=prior_particles[:, 1],
+                mode="markers",
+                marker=dict(size=3, color="blue", opacity=0.3),
+                name="Prior particles",
+            ),
+            row=1,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=[mode1[0], mode2[0]], y=[mode1[1], mode2[1]], mode='markers',
-                      marker=dict(size=15, color='green', symbol='x', line=dict(width=3)),
-                      name='Modes'),
-            row=1, col=1
+            go.Scatter(
+                x=[mode1[0], mode2[0]],
+                y=[mode1[1], mode2[1]],
+                mode="markers",
+                marker=dict(size=15, color="green", symbol="x", line=dict(width=3)),
+                name="Modes",
+            ),
+            row=1,
+            col=1,
         )
 
         # Posterior distribution
         fig.add_trace(
-            go.Scatter(x=particles[:, 0], y=particles[:, 1], mode='markers',
-                      marker=dict(size=weights * n_particles * 50, color=weights,
-                                 colorscale='Reds', opacity=0.5),
-                      name='Posterior particles'),
-            row=1, col=2
+            go.Scatter(
+                x=particles[:, 0],
+                y=particles[:, 1],
+                mode="markers",
+                marker=dict(
+                    size=weights * n_particles * 50,
+                    color=weights,
+                    colorscale="Reds",
+                    opacity=0.5,
+                ),
+                name="Posterior particles",
+            ),
+            row=1,
+            col=2,
         )
         fig.add_trace(
-            go.Scatter(x=[z[0]], y=[z[1]], mode='markers',
-                      marker=dict(size=20, color='blue', symbol='star'),
-                      name='Measurement'),
-            row=1, col=2
+            go.Scatter(
+                x=[z[0]],
+                y=[z[1]],
+                mode="markers",
+                marker=dict(size=20, color="blue", symbol="star"),
+                name="Measurement",
+            ),
+            row=1,
+            col=2,
         )
 
         fig.update_xaxes(range=[-10, 10], row=1, col=1)
@@ -674,8 +831,9 @@ def demo_multimodal():
         fig.update_yaxes(range=[-5, 5], row=1, col=2)
 
         fig.update_layout(
-            height=500, width=1200,
-            title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)"
+            height=500,
+            width=1200,
+            title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)",
         )
         fig.write_html("particle_multimodal.html")
         print("\n  [Plot saved to particle_multimodal.html]")

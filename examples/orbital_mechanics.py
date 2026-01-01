@@ -163,7 +163,9 @@ def demo_kepler_equation():
     print(f"Eccentricity: {e_hyp} (hyperbolic trajectory)")
     print("For hyperbolic orbits, only a range of true anomalies is valid:")
     nu_max = np.arccos(-1 / e_hyp)
-    print(f"  Valid range: -{np.degrees(nu_max):.1f} deg < nu < {np.degrees(nu_max):.1f} deg")
+    print(
+        f"  Valid range: -{np.degrees(nu_max):.1f} deg < nu < {np.degrees(nu_max):.1f} deg"
+    )
 
 
 def demo_orbit_propagation():
@@ -236,12 +238,16 @@ def demo_orbit_propagation():
         fig = go.Figure()
 
         # Plot orbit
-        fig.add_trace(go.Scatter3d(
-            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
-            mode='lines',
-            line=dict(color='blue', width=4),
-            name='Orbit'
-        ))
+        fig.add_trace(
+            go.Scatter3d(
+                x=positions[:, 0],
+                y=positions[:, 1],
+                z=positions[:, 2],
+                mode="lines",
+                line=dict(color="blue", width=4),
+                name="Orbit",
+            )
+        )
 
         # Plot Earth (scaled for visibility)
         u = np.linspace(0, 2 * np.pi, 30)
@@ -251,30 +257,40 @@ def demo_orbit_propagation():
         y = earth_r * np.outer(np.sin(u), np.sin(v))
         z = earth_r * np.outer(np.ones(np.size(u)), np.cos(v))
 
-        fig.add_trace(go.Surface(
-            x=x, y=y, z=z,
-            colorscale=[[0, 'blue'], [1, 'blue']],
-            opacity=0.3,
-            showscale=False,
-            name='Earth'
-        ))
+        fig.add_trace(
+            go.Surface(
+                x=x,
+                y=y,
+                z=z,
+                colorscale=[[0, "blue"], [1, "blue"]],
+                opacity=0.3,
+                showscale=False,
+                name="Earth",
+            )
+        )
 
         # Mark periapsis and apoapsis
-        fig.add_trace(go.Scatter3d(
-            x=[positions[0, 0]], y=[positions[0, 1]], z=[positions[0, 2]],
-            mode='markers',
-            marker=dict(color='green', size=10, symbol='circle'),
-            name='Periapsis'
-        ))
+        fig.add_trace(
+            go.Scatter3d(
+                x=[positions[0, 0]],
+                y=[positions[0, 1]],
+                z=[positions[0, 2]],
+                mode="markers",
+                marker=dict(color="green", size=10, symbol="circle"),
+                name="Periapsis",
+            )
+        )
 
-        fig.add_trace(go.Scatter3d(
-            x=[positions[n_points // 2, 0]],
-            y=[positions[n_points // 2, 1]],
-            z=[positions[n_points // 2, 2]],
-            mode='markers',
-            marker=dict(color='red', size=10, symbol='square'),
-            name='Apoapsis'
-        ))
+        fig.add_trace(
+            go.Scatter3d(
+                x=[positions[n_points // 2, 0]],
+                y=[positions[n_points // 2, 1]],
+                z=[positions[n_points // 2, 2]],
+                mode="markers",
+                marker=dict(color="red", size=10, symbol="square"),
+                name="Apoapsis",
+            )
+        )
 
         # Equal aspect ratio
         max_range = np.max(np.abs(positions)) * 1.1
@@ -285,10 +301,11 @@ def demo_orbit_propagation():
                 xaxis=dict(title="X (km)", range=[-max_range, max_range]),
                 yaxis=dict(title="Y (km)", range=[-max_range, max_range]),
                 zaxis=dict(title="Z (km)", range=[-max_range, max_range]),
-                aspectmode='cube'
+                aspectmode="cube",
             ),
-            height=700, width=800,
-            showlegend=True
+            height=700,
+            width=800,
+            showlegend=True,
         )
         fig.write_html("orbital_propagation.html")
         print("\n  [Plot saved to orbital_propagation.html]")
