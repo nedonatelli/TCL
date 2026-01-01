@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.2] - 2026-01-01
+
+### Fixed
+- **Black Formatting**: Corrected code formatting across 39 files to pass CI workflow validation
+  - Fixed blank line formatting in example scripts
+  - Corrected line wrapping and string continuation
+  - All examples now properly formatted
+- **Flake8 Linting**: Removed 3 unused imports from test files
+  - Removed unused `assert_allclose` from test_ephemerides.py
+  - Removed unused `jplephem` import from test_ephemerides.py
+  - Removed unused `G_GRAV` constant from test_relativity.py
+
+### CI/CD
+- All GitHub Actions checks now passing (isort, black, flake8, mypy)
+- Code quality enforcement strengthened across all workflows
+
+---
+
+## [0.22.1] - 2026-01-01
+
+### Fixed
+- **Import Formatting**: Corrected import formatting across 130+ files to pass CI validation checks
+  - Applied proper multi-line import grouping consistent with CI isort configuration
+  - Ensures all imports follow project code style standards
+  - Fixes post-release CI workflow validation failures
+
+### CI/CD Improvements
+- All GitHub Actions checks now passing (isort, black, flake8, mypy)
+- CI workflow validation enforced on all pushes
+- Import formatting now compliant with strict linting standards
+
+---
+
 ## [0.22.0] - 2026-01-01
 
 ### Added
