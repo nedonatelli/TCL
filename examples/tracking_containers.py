@@ -12,6 +12,8 @@ applications with immutable design patterns and lazy spatial indexing.
 """
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from pytcl.containers import (
     ClusterSet,
@@ -455,9 +457,57 @@ def main():
     demo_cluster_set()
     demo_integration()
 
+    # Visualization
+    visualize_track_distribution()
+
     print("\n" + "=" * 70)
     print("Example complete!")
     print("=" * 70)
+
+
+def visualize_track_distribution():
+    """Visualize track spatial distribution."""
+    print("\nGenerating track distribution visualization...")
+
+    # Create sample tracks
+    tracks = create_sample_tracks(n_tracks=15)
+
+    # Extract positions
+    positions = []
+    for track in tracks:
+        if track.state is not None:
+            # Assuming state is [x, vx, y, vy]
+            pos = track.state[[0, 2]]
+            positions.append(pos)
+
+    if positions:
+        positions = np.array(positions)
+
+        # Create scatter plot
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(
+                x=positions[:, 0],
+                y=positions[:, 1],
+                mode="markers+text",
+                text=[f"T{i}" for i in range(len(positions))],
+                marker=dict(size=10, color="blue", opacity=0.7),
+                textposition="top center",
+                name="Track Positions",
+            )
+        )
+
+        fig.update_layout(
+            title="Track Spatial Distribution",
+            xaxis_title="X Position (m)",
+            yaxis_title="Y Position (m)",
+            height=600,
+            width=700,
+            showlegend=False,
+        )
+
+        fig.show()
 
 
 if __name__ == "__main__":

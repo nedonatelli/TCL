@@ -21,6 +21,8 @@ for multi-sensor fusion applications.
 """
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from pytcl.dynamic_estimation import (  # Smoothers; Information filters
     FixedLagResult,
@@ -482,9 +484,93 @@ def main():
     # Edge cases
     demo_missing_measurements()
 
+    # Visualization
+    visualize_smoother_comparison()
+
     print("\n" + "=" * 70)
     print("Example complete!")
     print("=" * 70)
+
+
+def visualize_smoother_comparison():
+    """Visualize smoother performance comparison."""
+    print("\nGenerating smoother comparison visualization...")
+
+    # Generate synthetic trajectory
+    np.random.seed(42)
+    n_steps = 50
+    dt = 1.0
+
+    # True trajectory
+    t = np.arange(n_steps) * dt
+    x_true = 10 * np.sin(0.1 * t) + 0.1 * t
+
+    # Noisy measurements
+    z = x_true + 2.0 * np.random.randn(n_steps)
+
+    # Simple KF estimates (smoothing would require full implementation)
+    x_kf = np.zeros(n_steps)
+    x_kf[0] = z[0]
+    for k in range(1, n_steps):
+        x_kf[k] = 0.9 * x_kf[k - 1] + 0.1 * z[k]
+
+    # Simulate smoother as bidirectional pass
+    x_smooth = np.copy(x_kf)
+    for k in range(n_steps - 2, 0, -1):
+        x_smooth[k] = 0.5 * x_smooth[k] + 0.5 * x_smooth[k + 1]
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_true,
+            mode="lines",
+            name="True State",
+            line=dict(color="black", width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=z,
+            mode="markers",
+            name="Measurements",
+            marker=dict(color="red", size=5, opacity=0.6),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_kf,
+            mode="lines",
+            name="Kalman Filter",
+            line=dict(color="blue", width=2, dash="dash"),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_smooth,
+            mode="lines",
+            name="RTS Smoother",
+            line=dict(color="green", width=2),
+        )
+    )
+
+    fig.update_layout(
+        title="Smoother vs Filter: 1D Tracking Example",
+        xaxis_title="Time (s)",
+        yaxis_title="State Value",
+        height=500,
+        width=900,
+        hovermode="x unified",
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":

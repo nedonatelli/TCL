@@ -29,6 +29,8 @@ measurements must be assigned to tracks optimally.
 """
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from pytcl.assignment_algorithms import (  # 2D Assignment; K-Best 2D Assignment; 3D Assignment; Gating; Data Association; JPDA
     assign2d,
@@ -560,9 +562,49 @@ def main():
     # Complete scenario
     demo_tracking_scenario()
 
+    # Visualization
+    visualize_assignment_problem()
+
     print("\n" + "=" * 70)
     print("Example complete!")
     print("=" * 70)
+
+
+def visualize_assignment_problem():
+    """Visualize a 2D assignment problem with cost heatmap."""
+    print("\nGenerating cost matrix visualization...")
+
+    # Create a cost matrix
+    np.random.seed(42)
+    n_tracks = 5
+    n_measurements = 6
+    cost = np.random.randint(1, 20, (n_tracks, n_measurements)).astype(float)
+
+    # Solve assignment
+    track_indices, measurement_indices, assignment_cost = hungarian(cost)
+
+    # Create heatmap
+    fig = go.Figure(data=go.Heatmap(z=cost, colorscale="Viridis"))
+
+    # Add assignment lines
+    for t_idx, m_idx in zip(track_indices, measurement_indices):
+        fig.add_annotation(
+            x=m_idx,
+            y=t_idx,
+            text="✓",
+            showarrow=False,
+            font=dict(color="red", size=16),
+        )
+
+    fig.update_layout(
+        title="2D Assignment Problem: Cost Matrix with Optimal Assignments",
+        xaxis_title="Measurement Index",
+        yaxis_title="Track Index",
+        height=400,
+        width=600,
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":

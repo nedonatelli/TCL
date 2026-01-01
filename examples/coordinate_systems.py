@@ -17,6 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.coordinate_systems import (  # noqa: E402; Spherical conversions; Geodetic conversions; Rotation matrices; Quaternions; Jacobians
     cart2sphere,
@@ -283,9 +285,58 @@ def main() -> None:
     quaternion_demo()
     jacobian_covariance_demo()
 
+    # Visualization
+    visualize_coordinate_transforms()
+
     print("\n" + "=" * 60)
     print("Done!")
     print("=" * 60)
+
+
+def visualize_coordinate_transforms() -> None:
+    """Visualize coordinate system transformations."""
+    print("\nGenerating coordinate transform visualization...")
+
+    # Create a grid of points in spherical coordinates
+    r = 1000.0
+    azimuths = np.linspace(0, 360, 9)
+    elevations = np.linspace(-90, 90, 5)
+
+    points_cart = []
+    for az in azimuths:
+        for el in elevations:
+            cart = sphere2cart(r, np.radians(az), np.radians(el))
+            points_cart.append(cart)
+
+    points_cart = np.array(points_cart)
+
+    # Create 3D scatter plot
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=points_cart[:, 0],
+            y=points_cart[:, 1],
+            z=points_cart[:, 2],
+            mode="markers",
+            marker=dict(size=5, color="blue", opacity=0.8),
+            name="Spherical Coords (Cartesian)",
+        )
+    )
+
+    fig.update_layout(
+        title="Spherical to Cartesian Coordinate Transformation",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)),
+        ),
+        height=600,
+        width=800,
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":

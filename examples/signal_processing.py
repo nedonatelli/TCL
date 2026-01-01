@@ -16,6 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.mathematical_functions.signal_processing import (  # noqa: E402
     apply_filter,
@@ -319,9 +321,64 @@ def main() -> None:
     cfar_detection_demo()
     spectrum_analysis_demo()
 
+    # Visualization
+    visualize_filter_response()
+
     print("\n" + "=" * 60)
     print("Done!")
     print("=" * 60)
+
+
+def visualize_filter_response() -> None:
+    """Visualize digital filter frequency response."""
+    print("\nGenerating filter response visualization...")
+
+    fs = 1000.0
+    butter_filt = butter_design(order=4, cutoff=50.0, fs=fs, btype="low")
+    fir_filt = fir_design(order=64, cutoff=50.0, fs=fs, btype="low")
+
+    # Generate frequency response
+    freq = np.linspace(0, 500, 1000)
+    w = 2 * np.pi * freq / fs
+
+    # Compute magnitude responses
+    butter_mag = np.abs(
+        frequency_response(butter_filt.b, butter_filt.a, w)
+    )
+    fir_mag = np.abs(frequency_response(fir_filt.b, [1.0], w))
+
+    fig = make_subplots(specs=[[{"secondary_y": False}]])
+
+    fig.add_trace(
+        go.Scatter(
+            x=freq,
+            y=20 * np.log10(np.maximum(butter_mag, 1e-10)),
+            mode="lines",
+            name="Butterworth (4th order)",
+            line=dict(color="blue", width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=freq,
+            y=20 * np.log10(np.maximum(fir_mag, 1e-10)),
+            mode="lines",
+            name="FIR (order 64)",
+            line=dict(color="red", width=2, dash="dash"),
+        )
+    )
+
+    fig.update_layout(
+        title="Digital Filter Frequency Response Comparison",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Magnitude (dB)",
+        height=500,
+        width=800,
+        hovermode="x unified",
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":
