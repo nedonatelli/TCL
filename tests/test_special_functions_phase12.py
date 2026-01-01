@@ -10,7 +10,6 @@ Tests cover:
 """
 
 import numpy as np
-import pytest
 
 # =============================================================================
 # Marcum Q Function Tests
@@ -505,8 +504,16 @@ class TestSpecialFunctionsIntegration:
         )
 
         # All should be callable
-        assert callable(marcum_q)
-        assert callable(lambert_w)
-        assert callable(debye_3)
-        assert callable(hyp2f1)
-        assert callable(bessel_zeros)
+        funcs = [
+            marcum_q, marcum_q1, marcum_q_inv, log_marcum_q, nuttall_q,
+            swerling_detection_probability,
+            lambert_w, lambert_w_real, wright_omega, omega_constant,
+            solve_exponential_equation, time_delay_equation,
+            debye, debye_1, debye_2, debye_3, debye_4,
+            debye_entropy, debye_heat_capacity,
+            hyp0f1, hyp1f1, hyp1f1_regularized, hyp2f1, hyperu,
+            generalized_hypergeometric, pochhammer, falling_factorial,
+            bessel_zeros, bessel_deriv, bessel_ratio, struve_h, struve_l, kelvin,
+        ]
+        for func in funcs:
+            assert callable(func)
