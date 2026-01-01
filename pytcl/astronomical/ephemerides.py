@@ -8,6 +8,13 @@ The module leverages the jplephem library, which provides optimized Fortran-base
 interpolation of ephemeris kernels. Multiple DE versions are supported (DE405,
 DE430, DE432s, DE440).
 
+Constants
+---------
+AU_PER_KM : float
+    Astronomical Unit in kilometers (1 AU = 149597870.7 km)
+KM_PER_DAY_TO_AU_PER_DAY : float
+    Conversion factor for velocity from km/day to AU/day
+
 Examples
 --------
 >>> from pytcl.astronomical.ephemerides import DEEphemeris
@@ -46,6 +53,10 @@ import numpy as np
 from typing import Tuple, Optional, Literal
 from functools import lru_cache
 import warnings
+
+# Constants for unit conversion
+AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
+KM_PER_DAY_TO_AU_PER_DAY = AU_PER_KM  # velocity conversion factor
 
 __all__ = [
     'DEEphemeris',
@@ -225,12 +236,13 @@ class DEEphemeris:
         >>> print(f"Distance: {np.linalg.norm(r):.6f} AU")
         
         """
-        # Sun position relative to SSB
-        t = self.kernel.t0 + jd
-        position, velocity = self.kernel[0, 10].compute_and_differentiate(t)
+        # Sun position relative to SSB (in km)
+        segment = self.kernel[0, 10]
+        position, velocity = segment.compute_and_differentiate(jd)
         
-        position = np.array(position)
-        velocity = np.array(velocity)
+        # Convert from km to AU
+        position = np.array(position) * AU_PER_KM
+        velocity = np.array(velocity) * KM_PER_DAY_TO_AU_PER_DAY
         
         if frame == 'ecliptic':
             from . import reference_frames
@@ -274,17 +286,27 @@ class DEEphemeris:
         >>> r, v = eph.moon_position(2451545.0, frame='earth_centered')
         
         """
-        t = self.kernel.t0 + jd
-        
         if frame == 'earth_centered':
             # Moon relative to Earth
-            position, velocity = self.kernel[3, 301].compute_and_differentiate(t)
+            segment = self.kernel[3, 301]
+            position, velocity = segment.compute_and_differentiate(jd)
         else:
-            # Moon relative to SSB
-            position, velocity = self.kernel[0, 301].compute_and_differentiate(t)
+            # Moon relative to SSB: need to compute Earth->Moon, then add Earth->SSB
+            # Get Earth barycenter position
+            earth_segment = self.kernel[0, 3]
+            earth_pos, earth_vel = earth_segment.compute_and_differentiate(jd)
+            
+            # Get Moon position relative to Earth
+            moon_segment = self.kernel[3, 301]
+            moon_rel_earth_pos, moon_rel_earth_vel = moon_segment.compute_and_differentiate(jd)
+            
+            # Moon position relative to SSB
+            position = earth_pos + moon_rel_earth_pos
+            velocity = earth_vel + moon_rel_earth_vel
         
-        position = np.array(position)
-        velocity = np.array(velocity)
+        # Convert from km to AU
+        position = np.array(position) * AU_PER_KM
+        velocity = np.array(velocity) * KM_PER_DAY_TO_AU_PER_DAY
         
         if frame == 'ecliptic':
             from . import reference_frames
@@ -338,11 +360,12 @@ class DEEphemeris:
             )
         
         planet_id = self._BODY_IDS[planet_lower]
-        t = self.kernel.t0 + jd
+        segment = self.kernel[0, planet_id]
+        position, velocity = segment.compute_and_differentiate(jd)
         
-        position, velocity = self.kernel[0, planet_id].compute_and_differentiate(t)
-        
-        position = np.array(position)
+        # Convert from km to AU
+        position = np.array(position) * AU_PER_KM
+        velocity = np.array(velocity) * KM_PER_DAY_TO_AU_PER_DAY
         velocity = np.array(velocity)
         
         if frame == 'ecliptic':
