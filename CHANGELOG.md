@@ -53,8 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Native Romberg Integration**: Replaced scipy.integrate.romberg wrapper with native implementation using Richardson extrapolation for compatibility with scipy >=1.15 (romberg deprecated in 1.12, removed in 1.15)
+- **Visualization**: Converted all example scripts from matplotlib to plotly for interactive HTML visualizations
 - Test count increased from 1,488 to 1,530 (42 new tests for special functions)
 - Source file count increased from 140 to 144
+
+### Removed
+- **matplotlib dependency**: All examples now use plotly exclusively
 
 ## [0.20.1] - 2026-01-01
 
