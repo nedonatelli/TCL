@@ -165,10 +165,7 @@ temp/
 
 # Generated output files from examples
 *.png
-*_viz*.html
-multi_target_tracking_result.html
-kalman_filter_comparison.html
-performance_evaluation.html
+*.html
 
 # Advanced examples (development/experimental)
 examples/advanced/

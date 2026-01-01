@@ -21,44 +21,39 @@ These algorithms are essential for multi-target tracking (PHD filters),
 hypothesis reduction in MHT, and general density estimation.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Ellipse
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Global flag to control plotting
 SHOW_PLOTS = True
 
 
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
-
-
-def plot_gaussian_ellipse(ax, mean, cov, color="blue", alpha=0.3, n_std=2):
-    """Plot an ellipse representing a 2D Gaussian covariance."""
+def create_ellipse_trace(mean, cov, color="blue", opacity=0.3, n_std=2, name=None):
+    """Create a plotly trace for an ellipse representing a 2D Gaussian covariance."""
     eigvals, eigvecs = np.linalg.eigh(cov)
-    angle = np.degrees(np.arctan2(eigvecs[1, 0], eigvecs[0, 0]))
-    width, height = 2 * n_std * np.sqrt(eigvals)
-    ellipse = Ellipse(
-        xy=mean,
-        width=width,
-        height=height,
-        angle=angle,
-        facecolor=color,
-        alpha=alpha,
-        edgecolor=color,
-        linewidth=2,
+    # Angle in radians
+    angle = np.arctan2(eigvecs[1, 0], eigvecs[0, 0])
+
+    # Semi-axes lengths
+    a = n_std * np.sqrt(eigvals[0])
+    b = n_std * np.sqrt(eigvals[1])
+
+    # Parametric ellipse
+    t = np.linspace(0, 2 * np.pi, 100)
+    x = a * np.cos(t)
+    y = b * np.sin(t)
+
+    # Rotate
+    x_rot = x * np.cos(angle) - y * np.sin(angle) + mean[0]
+    y_rot = x * np.sin(angle) + y * np.cos(angle) + mean[1]
+
+    return go.Scatter(
+        x=x_rot, y=y_rot, mode='lines',
+        fill='toself', fillcolor=color, opacity=opacity,
+        line=dict(color=color, width=2),
+        name=name, showlegend=name is not None
     )
-    ax.add_patch(ellipse)
-    return ellipse
 
 
 from pytcl.clustering import (  # Gaussian mixture operations; K-means; DBSCAN; Hierarchical clustering
@@ -288,62 +283,47 @@ def demo_kmeans():
 
     # Plot K-means result
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            "Ground Truth Clusters", "K-means Clustering Result"
+        ])
 
         # True clusters
-        ax = axes[0]
+        colors = ['blue', 'green', 'orange']
         for i, center in enumerate(centers_true):
             mask = np.arange(len(data)) // n_per_cluster == i
-            ax.scatter(
-                data[mask, 0], data[mask, 1], s=20, alpha=0.6, label=f"True cluster {i}"
-            )
-        ax.scatter(
-            centers_true[:, 0],
-            centers_true[:, 1],
-            c="black",
-            s=200,
-            marker="x",
-            linewidths=3,
-            label="True centers",
-        )
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Ground Truth Clusters")
-        ax.legend()
-        ax.set_aspect("equal")
+            fig.add_trace(go.Scatter(
+                x=data[mask, 0], y=data[mask, 1], mode='markers',
+                marker=dict(color=colors[i], size=6, opacity=0.6),
+                name=f'True cluster {i}'
+            ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=centers_true[:, 0], y=centers_true[:, 1], mode='markers',
+            marker=dict(color='black', size=15, symbol='x', line=dict(width=3)),
+            name='True centers'
+        ), row=1, col=1)
 
         # K-means result
-        ax = axes[1]
-        colors = ["red", "green", "blue"]
+        colors_km = ['red', 'green', 'blue']
         for i in range(3):
             mask = result.labels == i
-            ax.scatter(
-                data[mask, 0],
-                data[mask, 1],
-                c=colors[i],
-                s=20,
-                alpha=0.6,
-                label=f"Cluster {i}",
-            )
-        ax.scatter(
-            result.centers[:, 0],
-            result.centers[:, 1],
-            c="black",
-            s=200,
-            marker="x",
-            linewidths=3,
-            label="K-means centers",
-        )
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("K-means Clustering Result")
-        ax.legend()
-        ax.set_aspect("equal")
+            fig.add_trace(go.Scatter(
+                x=data[mask, 0], y=data[mask, 1], mode='markers',
+                marker=dict(color=colors_km[i], size=6, opacity=0.6),
+                name=f'Cluster {i}', showlegend=True
+            ), row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("gaussian_kmeans.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to gaussian_kmeans.png]")
+        fig.add_trace(go.Scatter(
+            x=result.centers[:, 0], y=result.centers[:, 1], mode='markers',
+            marker=dict(color='black', size=15, symbol='x', line=dict(width=3)),
+            name='K-means centers'
+        ), row=1, col=2)
+
+        fig.update_xaxes(title_text="x")
+        fig.update_yaxes(title_text="y")
+        fig.update_layout(height=500, width=1000, showlegend=True)
+        fig.write_html("gaussian_kmeans.html")
+        print("\n  [Plot saved to gaussian_kmeans.html]")
 
 
 def demo_kmeans_plusplus():
@@ -423,7 +403,7 @@ def demo_elbow_method():
     inertias = elbow_result["inertias"]
 
     for k, inertia in zip(k_values, inertias):
-        bar = "█" * int(inertia / max(inertias) * 30)
+        bar = "#" * int(inertia / max(inertias) * 30)
         print(f"  K={k}: {inertia:>8.1f} {bar}")
 
     print("\nThe 'elbow' should appear around K=3")
@@ -431,20 +411,27 @@ def demo_elbow_method():
 
     # Plot elbow method
     if SHOW_PLOTS:
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(k_values, inertias, "bo-", linewidth=2, markersize=8)
-        ax.axvline(3, color="red", linestyle="--", label="True K=3")
-        ax.set_xlabel("Number of Clusters (K)")
-        ax.set_ylabel("Inertia (Within-cluster Sum of Squares)")
-        ax.set_title("Elbow Method for K Selection")
-        ax.set_xticks(k_values)
-        ax.legend()
-        ax.grid(True)
+        fig = go.Figure()
 
-        plt.tight_layout()
-        plt.savefig("gaussian_elbow.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to gaussian_elbow.png]")
+        fig.add_trace(go.Scatter(
+            x=list(k_values), y=inertias, mode='lines+markers',
+            line=dict(color='blue', width=2),
+            marker=dict(size=10),
+            name='Inertia'
+        ))
+
+        fig.add_vline(x=3, line_dash="dash", line_color="red",
+                      annotation_text="True K=3")
+
+        fig.update_layout(
+            title="Elbow Method for K Selection",
+            xaxis_title="Number of Clusters (K)",
+            yaxis_title="Inertia (Within-cluster Sum of Squares)",
+            height=500, width=700,
+            showlegend=True
+        )
+        fig.write_html("gaussian_elbow.html")
+        print("\n  [Plot saved to gaussian_elbow.html]")
 
 
 def demo_dbscan():
@@ -486,73 +473,61 @@ def demo_dbscan():
 
     # Plot DBSCAN result
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            "Ground Truth", f"DBSCAN Result ({result.n_clusters} clusters)"
+        ])
 
         # Ground truth
-        ax = axes[0]
-        ax.scatter(
-            cluster1[:, 0], cluster1[:, 1], c="blue", s=30, alpha=0.6, label="Cluster 1"
-        )
-        ax.scatter(
-            cluster2[:, 0],
-            cluster2[:, 1],
-            c="green",
-            s=30,
-            alpha=0.6,
-            label="Cluster 2",
-        )
-        ax.scatter(noise[:, 0], noise[:, 1], c="red", s=30, alpha=0.6, label="Noise")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Ground Truth")
-        ax.legend()
-        ax.set_aspect("equal")
+        fig.add_trace(go.Scatter(
+            x=cluster1[:, 0], y=cluster1[:, 1], mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Cluster 1'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=cluster2[:, 0], y=cluster2[:, 1], mode='markers',
+            marker=dict(color='green', size=8, opacity=0.6),
+            name='Cluster 2'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=noise[:, 0], y=noise[:, 1], mode='markers',
+            marker=dict(color='red', size=8, opacity=0.6),
+            name='Noise'
+        ), row=1, col=1)
 
         # DBSCAN result
-        ax = axes[1]
-        colors = ["blue", "green", "purple", "orange"]
+        colors = ['blue', 'green', 'purple', 'orange']
         for label in unique_labels:
+            mask = result.labels == label
             if label == -1:
-                ax.scatter(
-                    data[result.labels == label, 0],
-                    data[result.labels == label, 1],
-                    c="red",
-                    s=30,
-                    alpha=0.6,
-                    marker="x",
-                    label="Noise",
-                )
+                fig.add_trace(go.Scatter(
+                    x=data[mask, 0], y=data[mask, 1], mode='markers',
+                    marker=dict(color='red', size=8, opacity=0.6, symbol='x'),
+                    name='Noise', showlegend=True
+                ), row=1, col=2)
             else:
-                ax.scatter(
-                    data[result.labels == label, 0],
-                    data[result.labels == label, 1],
-                    c=colors[label % len(colors)],
-                    s=30,
-                    alpha=0.6,
-                    label=f"Cluster {label}",
-                )
+                fig.add_trace(go.Scatter(
+                    x=data[mask, 0], y=data[mask, 1], mode='markers',
+                    marker=dict(color=colors[label % len(colors)], size=8, opacity=0.6),
+                    name=f'Cluster {label}', showlegend=True
+                ), row=1, col=2)
+
         # Mark core samples
         core_mask = np.zeros(len(data), dtype=bool)
         core_mask[result.core_sample_indices] = True
-        ax.scatter(
-            data[core_mask, 0],
-            data[core_mask, 1],
-            facecolors="none",
-            edgecolors="black",
-            s=100,
-            linewidths=1,
-            label="Core samples",
-        )
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title(f"DBSCAN Result ({result.n_clusters} clusters)")
-        ax.legend()
-        ax.set_aspect("equal")
+        fig.add_trace(go.Scatter(
+            x=data[core_mask, 0], y=data[core_mask, 1], mode='markers',
+            marker=dict(color='rgba(0,0,0,0)', size=15,
+                       line=dict(color='black', width=1)),
+            name='Core samples', showlegend=True
+        ), row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("gaussian_dbscan.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to gaussian_dbscan.png]")
+        fig.update_xaxes(title_text="x")
+        fig.update_yaxes(title_text="y")
+        fig.update_layout(height=500, width=1000, showlegend=True)
+        fig.write_html("gaussian_dbscan.html")
+        print("\n  [Plot saved to gaussian_dbscan.html]")
 
 
 def demo_hierarchical():
@@ -670,9 +645,6 @@ def main():
     print("# PyTCL Gaussian Mixtures and Clustering Example")
     print("#" * 70)
 
-    if SHOW_PLOTS:
-        setup_plot_style()
-
     # Gaussian mixture operations
     demo_gaussian_components()
     demo_moment_matching()
@@ -693,7 +665,7 @@ def main():
     print("Example complete!")
     if SHOW_PLOTS:
         print(
-            "Plots saved: gaussian_kmeans.png, gaussian_elbow.png, gaussian_dbscan.png"
+            "Plots saved: gaussian_kmeans.html, gaussian_elbow.html, gaussian_dbscan.html"
         )
     print("=" * 70)
 
