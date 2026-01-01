@@ -169,3 +169,6 @@ temp/
 multi_target_tracking_result.html
 kalman_filter_comparison.html
 performance_evaluation.html
+
+# Advanced examples (development/experimental)
+examples/advanced/
