@@ -13,7 +13,7 @@ computing the shortest path on a sphere, including:
 from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
 
 class GreatCircleResult(NamedTuple):
@@ -449,6 +449,7 @@ def great_circle_intersect(
     are identical or parallel). The returned points are the intersections
     closest to the given points.
     """
+
     # Convert to Cartesian unit vectors
     def to_cartesian(lat, lon):
         return np.array(
@@ -688,9 +689,7 @@ def great_circle_tdoa_loc(
 
         step = 0.1
         for _ in range(10):
-            new_lat = np.clip(
-                lat2 - step * df_dlat / grad_norm, -np.pi / 2, np.pi / 2
-            )
+            new_lat = np.clip(lat2 - step * df_dlat / grad_norm, -np.pi / 2, np.pi / 2)
             new_lon = lon2 - step * df_dlon / grad_norm
             if objective(new_lat, new_lon) < f:
                 lat2, lon2 = new_lat, new_lon

@@ -26,6 +26,25 @@ from pytcl.navigation.geodesy import (  # Ellipsoids; Coordinate conversions; Ge
     inverse_geodetic,
     ned_to_ecef,
 )
+from pytcl.navigation.great_circle import (  # Great circle navigation
+    EARTH_RADIUS,
+    CrossTrackResult,
+    GreatCircleResult,
+    IntersectionResult,
+    WaypointResult,
+    angular_distance,
+    cross_track_distance,
+    destination_point,
+    great_circle_azimuth,
+    great_circle_direct,
+    great_circle_distance,
+    great_circle_intersect,
+    great_circle_inverse,
+    great_circle_path_intersect,
+    great_circle_tdoa_loc,
+    great_circle_waypoint,
+    great_circle_waypoints,
+)
 from pytcl.navigation.ins import (  # Constants; State representation; Gravity and Earth rate
     A_EARTH,
     B_EARTH,
@@ -79,25 +98,6 @@ from pytcl.navigation.ins_gnss import (  # INS/GNSS integration
     tight_coupled_pseudorange_innovation,
     tight_coupled_update,
     velocity_measurement_matrix,
-)
-from pytcl.navigation.great_circle import (  # Great circle navigation
-    EARTH_RADIUS,
-    CrossTrackResult,
-    GreatCircleResult,
-    IntersectionResult,
-    WaypointResult,
-    angular_distance,
-    cross_track_distance,
-    destination_point,
-    great_circle_azimuth,
-    great_circle_direct,
-    great_circle_distance,
-    great_circle_intersect,
-    great_circle_inverse,
-    great_circle_path_intersect,
-    great_circle_tdoa_loc,
-    great_circle_waypoint,
-    great_circle_waypoints,
 )
 from pytcl.navigation.rhumb import (  # Rhumb line navigation
     RhumbDirectResult,

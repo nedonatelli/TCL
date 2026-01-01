@@ -9,12 +9,12 @@ constant-bearing paths on a sphere and ellipsoid, including:
 - Spherical and ellipsoidal formulations
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 
-from pytcl.navigation.geodesy import Ellipsoid, WGS84
+from pytcl.navigation.geodesy import WGS84, Ellipsoid
 
 
 class RhumbResult(NamedTuple):
@@ -131,7 +131,10 @@ def _inverse_isometric_latitude(
         for _ in range(max_iter):
             sin_lat = np.sin(lat)
             lat_new = (
-                2 * np.arctan(((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2) * np.exp(psi))
+                2
+                * np.arctan(
+                    ((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2) * np.exp(psi)
+                )
                 - np.pi / 2
             )
             if abs(lat_new - lat) < 1e-12:

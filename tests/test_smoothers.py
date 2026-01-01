@@ -44,8 +44,7 @@ class TestRTSSmoother:
         H = np.array([[1, 0]])
         R = np.array([[1.0]])
 
-        # Generate measurements with constant velocity
-        true_vel = 1.0
+        # Generate measurements with constant velocity (vel=1.0)
         measurements = [
             np.array([float(k) + np.random.randn() * 0.5]) for k in range(10)
         ]

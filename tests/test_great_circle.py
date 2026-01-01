@@ -4,10 +4,7 @@ import numpy as np
 import pytest
 
 from pytcl.navigation.great_circle import (
-    CrossTrackResult,
     GreatCircleResult,
-    IntersectionResult,
-    WaypointResult,
     angular_distance,
     cross_track_distance,
     destination_point,

@@ -3,10 +3,8 @@
 import numpy as np
 import pytest
 
-from pytcl.navigation.geodesy import WGS84
 from pytcl.navigation.rhumb import (
     RhumbDirectResult,
-    RhumbIntersectionResult,
     RhumbResult,
     compare_great_circle_rhumb,
     direct_rhumb,
