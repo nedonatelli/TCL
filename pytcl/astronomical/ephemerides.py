@@ -145,10 +145,49 @@ class DEEphemeris:
         
     @property
     def kernel(self):
-        """Lazy-load ephemeris kernel on first access."""
+        """Lazy-load ephemeris kernel on first access.
+        
+        Note: This requires jplephem to be installed and the kernel file
+        to be available locally or downloadable from the JPL servers.
+        """
         if self._kernel is None:
-            # jplephem.load_file() auto-downloads if needed
-            self._kernel = self._jplephem.load_file(self.version)
+            try:
+                # Try to load using jplephem SPK module
+                from jplephem.spk import SPK
+                from jplephem.daf import DAF
+                import urllib.request
+                import os
+                
+                # Try to construct kernel filename
+                kernel_name = f'de{self.version[2:]}.bsp'
+                kernel_url = f'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/{kernel_name}'
+                
+                # Try to download if not exists
+                kernel_path = os.path.expanduser(f'~/.jplephem/{kernel_name}')
+                os_dir = os.path.dirname(kernel_path)
+                if not os.path.exists(os_dir):
+                    os.makedirs(os_dir, exist_ok=True)
+                
+                if not os.path.exists(kernel_path):
+                    try:
+                        urllib.request.urlretrieve(kernel_url, kernel_path)
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Could not download ephemeris kernel from {kernel_url}. "
+                            f"Please download manually and place at {kernel_path}"
+                        ) from e
+                
+                # Load the kernel using DAF and SPK
+                daf = DAF(open(kernel_path, 'rb'))
+                self._kernel = SPK(daf)
+                
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to load ephemeris kernel for version {self.version}. "
+                    f"Ensure jplephem is installed and kernel files are accessible. "
+                    f"Error: {str(e)}"
+                ) from e
+        
         return self._kernel
     
     def sun_position(
