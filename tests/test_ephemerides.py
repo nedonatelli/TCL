@@ -7,7 +7,7 @@ reference values from established sources (SOFA, Astropy).
 
 import numpy as np
 import pytest
-from numpy.testing import assert_allclose, assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal
 
 try:
     from pytcl.astronomical.ephemerides import (
@@ -22,10 +22,9 @@ try:
 except ImportError:
     HAS_EPHEMERIDES = False
 
+HAS_JPLEPHEM = True
 try:
-    import jplephem
-
-    HAS_JPLEPHEM = True
+    import jplephem  # noqa: F401
 except ImportError:
     HAS_JPLEPHEM = False
 

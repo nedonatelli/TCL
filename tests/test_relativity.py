@@ -10,7 +10,6 @@ import pytest
 from pytcl.astronomical.relativity import (
     AU,
     C_LIGHT,
-    G_GRAV,
     GM_EARTH,
     GM_SUN,
     geodetic_precession,
