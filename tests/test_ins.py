@@ -74,9 +74,7 @@ class TestINSState:
         """Test Euler angle extraction."""
         # Create state with known roll/pitch/yaw
         roll, pitch, yaw = np.radians([10, 5, 30])
-        state = initialize_ins_state(
-            lat=0, lon=0, alt=0, roll=roll, pitch=pitch, yaw=yaw
-        )
+        state = initialize_ins_state(lat=0, lon=0, alt=0, roll=roll, pitch=pitch, yaw=yaw)
 
         euler = state.euler_angles()
         np.testing.assert_allclose(euler, [roll, pitch, yaw], atol=1e-10)

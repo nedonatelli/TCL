@@ -218,10 +218,7 @@ def demo_3d_assignment():
     print("\n--- Unified assign3d() Interface ---")
     for method in ["greedy", "decompose", "lagrangian"]:
         result = assign3d(cost, method=method)
-        print(
-            f"  {method:12s}: cost={result.cost:.3f}, "
-            f"assignments={result.tuples.shape[0]}"
-        )
+        print(f"  {method:12s}: cost={result.cost:.3f}, " f"assignments={result.tuples.shape[0]}")
 
     # Show the actual assignments from the best method
     print("\n--- Best Solution Details ---")

@@ -98,9 +98,7 @@ class TestClenshawSumOrderDerivative:
         cos_theta = 0.5
         sin_theta = np.sqrt(1 - cos_theta**2)
 
-        result = clenshaw_sum_order_derivative(
-            0, cos_theta, sin_theta, coef.C, coef.S, 10
-        )
+        result = clenshaw_sum_order_derivative(0, cos_theta, sin_theta, coef.C, coef.S, 10)
 
         assert isinstance(result, tuple)
         assert len(result) == 4
@@ -142,12 +140,8 @@ class TestClenshawPotential:
         lat = np.radians(30)
         lon = 0
 
-        V_close = clenshaw_potential(
-            lat, lon, coef.R, coef.C, coef.S, coef.R, coef.GM, 10
-        )
-        V_far = clenshaw_potential(
-            lat, lon, coef.R * 1.1, coef.C, coef.S, coef.R, coef.GM, 10
-        )
+        V_close = clenshaw_potential(lat, lon, coef.R, coef.C, coef.S, coef.R, coef.GM, 10)
+        V_far = clenshaw_potential(lat, lon, coef.R * 1.1, coef.C, coef.S, coef.R, coef.GM, 10)
 
         # Potential magnitude should decrease with distance
         assert abs(V_far) < abs(V_close)
@@ -158,12 +152,8 @@ class TestClenshawPotential:
         lon = 0
         r = coef.R
 
-        V_north = clenshaw_potential(
-            np.radians(45), lon, r, coef.C, coef.S, coef.R, coef.GM, 10
-        )
-        V_south = clenshaw_potential(
-            np.radians(-45), lon, r, coef.C, coef.S, coef.R, coef.GM, 10
-        )
+        V_north = clenshaw_potential(np.radians(45), lon, r, coef.C, coef.S, coef.R, coef.GM, 10)
+        V_south = clenshaw_potential(np.radians(-45), lon, r, coef.C, coef.S, coef.R, coef.GM, 10)
 
         # For Earth's gravity field (with small asymmetries), should be close
         # The potential is dominated by the central term, so relative difference is small
@@ -195,9 +185,7 @@ class TestClenshawGravity:
         lon = np.radians(0)
         r = coef.R
 
-        g_r, g_lat, g_lon = clenshaw_gravity(
-            lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10
-        )
+        g_r, g_lat, g_lon = clenshaw_gravity(lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10)
 
         # Full gravity includes the central term GM/r^2 which is about 9.8 m/s^2
         # The sign depends on convention - we compute -dV/dr
@@ -257,9 +245,7 @@ class TestAssociatedLegendreScaled:
             for m in range(n + 1):
                 # exp is indexed by degree only (1D array)
                 P_reconstructed = P_scaled[n, m] * (10.0 ** exp[n])
-                assert_allclose(
-                    P_reconstructed, P_unscaled[n, m], rtol=1e-8, atol=1e-12
-                )
+                assert_allclose(P_reconstructed, P_unscaled[n, m], rtol=1e-8, atol=1e-12)
 
     def test_no_overflow_high_degree(self):
         """High degree computation doesn't overflow."""
@@ -320,9 +306,7 @@ class TestGeoidHeight:
         # Test several locations
         for lat in [0, 45, -45, 90]:
             for lon in [0, 90, -90, 180]:
-                N = geoid_height(
-                    np.radians(lat), np.radians(lon), coefficients=coef, n_max=36
-                )
+                N = geoid_height(np.radians(lat), np.radians(lon), coefficients=coef, n_max=36)
                 assert not np.isnan(N)
                 assert not np.isinf(N)
 
@@ -348,9 +332,7 @@ class TestGeoidHeights:
         lon = np.radians(-75)
 
         N_single = geoid_height(lat, lon, coefficients=coef, n_max=10)
-        N_batch = geoid_heights(
-            np.array([lat]), np.array([lon]), coefficients=coef, n_max=10
-        )
+        N_batch = geoid_heights(np.array([lat]), np.array([lon]), coefficients=coef, n_max=10)
 
         assert_allclose(N_batch[0], N_single)
 
@@ -380,9 +362,7 @@ class TestGravityDisturbance:
             np.radians(30), np.radians(60), h=0.0, coefficients=coef, n_max=10
         )
 
-        expected_mag = np.sqrt(
-            result.delta_g_r**2 + result.delta_g_lat**2 + result.delta_g_lon**2
-        )
+        expected_mag = np.sqrt(result.delta_g_r**2 + result.delta_g_lat**2 + result.delta_g_lon**2)
         assert_allclose(result.magnitude, expected_mag)
 
     def test_disturbance_decreases_with_altitude(self):
@@ -392,9 +372,7 @@ class TestGravityDisturbance:
         lon = np.radians(0)
 
         result_0 = gravity_disturbance(lat, lon, h=0.0, coefficients=coef, n_max=20)
-        result_10km = gravity_disturbance(
-            lat, lon, h=10000.0, coefficients=coef, n_max=20
-        )
+        result_10km = gravity_disturbance(lat, lon, h=10000.0, coefficients=coef, n_max=20)
 
         # Disturbance magnitude should decrease with altitude
         assert result_10km.magnitude < result_0.magnitude
@@ -407,9 +385,7 @@ class TestGravityAnomaly:
         """gravity_anomaly returns a float."""
         coef = create_test_coefficients(n_max=10)
 
-        anom = gravity_anomaly(
-            np.radians(45), np.radians(-75), h=0.0, coefficients=coef, n_max=10
-        )
+        anom = gravity_anomaly(np.radians(45), np.radians(-75), h=0.0, coefficients=coef, n_max=10)
 
         assert isinstance(anom, float)
         assert not np.isnan(anom)
@@ -418,9 +394,7 @@ class TestGravityAnomaly:
         """Gravity anomaly computation produces finite values."""
         coef = create_test_coefficients(n_max=36)
 
-        anom = gravity_anomaly(
-            np.radians(45), np.radians(0), h=0.0, coefficients=coef, n_max=36
-        )
+        anom = gravity_anomaly(np.radians(45), np.radians(0), h=0.0, coefficients=coef, n_max=36)
 
         # Note: With test coefficients (including full J2), values are large
         # because J2 represents the equatorial bulge which is part of the
@@ -449,9 +423,7 @@ class TestDeflectionOfVertical:
         """Deflection values are finite."""
         coef = create_test_coefficients(n_max=36)
 
-        xi, eta = deflection_of_vertical(
-            np.radians(45), np.radians(0), coefficients=coef, n_max=36
-        )
+        xi, eta = deflection_of_vertical(np.radians(45), np.radians(0), coefficients=coef, n_max=36)
 
         # Note: Test coefficients include full J2, so deflections are larger
         # than real-world values which are typically < 60 arcseconds.
@@ -521,16 +493,12 @@ class TestClenshawVsNaive:
         r = coef.R
 
         # Compute potential using Clenshaw
-        V_clenshaw = clenshaw_potential(
-            lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10
-        )
+        V_clenshaw = clenshaw_potential(lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10)
 
         # Compute using naive spherical harmonic sum
         # spherical_harmonic_sum takes (lat, lon, r, C, S, R, GM, n_max)
         # and returns (V, dV_r, dV_lat)
-        V_naive, _, _ = spherical_harmonic_sum(
-            lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10
-        )
+        V_naive, _, _ = spherical_harmonic_sum(lat, lon, r, coef.C, coef.S, coef.R, coef.GM, 10)
 
         # Should match to reasonable precision
         # (Clenshaw and naive may have different numerical properties)
@@ -578,12 +546,8 @@ class TestEdgeCases:
         """Negative longitude works correctly."""
         coef = create_test_coefficients(n_max=20)
 
-        N_pos = geoid_height(
-            np.radians(45), np.radians(90), coefficients=coef, n_max=20
-        )
-        N_neg = geoid_height(
-            np.radians(45), np.radians(-270), coefficients=coef, n_max=20
-        )
+        N_pos = geoid_height(np.radians(45), np.radians(90), coefficients=coef, n_max=20)
+        N_neg = geoid_height(np.radians(45), np.radians(-270), coefficients=coef, n_max=20)
 
         # 90° and -270° are the same longitude
         assert_allclose(N_pos, N_neg, rtol=1e-10)

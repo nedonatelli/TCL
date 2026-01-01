@@ -121,9 +121,7 @@ class TestParticleFilters:
         def likelihood_func(z, x):
             return gaussian_likelihood(z, x, R)
 
-        new_weights, log_lik = bootstrap_pf_update(
-            particles, weights, z, likelihood_func
-        )
+        new_weights, log_lik = bootstrap_pf_update(particles, weights, z, likelihood_func)
 
         assert new_weights.shape == weights.shape
         assert np.isclose(np.sum(new_weights), 1.0)
@@ -327,9 +325,7 @@ class TestParticleFilters:
 
         mean = particle_mean(particles, weights)
 
-        expected = (
-            0.5 * np.array([0, 0]) + 0.3 * np.array([1, 1]) + 0.2 * np.array([2, 2])
-        )
+        expected = 0.5 * np.array([0, 0]) + 0.3 * np.array([1, 1]) + 0.2 * np.array([2, 2])
         assert np.allclose(mean, expected)
 
     def test_particle_covariance(self):
@@ -995,9 +991,7 @@ class TestNavigationCoverage:
         tdoa12 = 0.0
         tdoa13 = 0.0
 
-        result1, result2 = great_circle_tdoa_loc(
-            lat1, lon1, lat2, lon2, lat3, lon3, tdoa12, tdoa13
-        )
+        result1, result2 = great_circle_tdoa_loc(lat1, lon1, lat2, lon2, lat3, lon3, tdoa12, tdoa13)
 
         # Should return at least one solution
         assert result1 is not None or result2 is not None

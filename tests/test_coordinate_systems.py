@@ -403,9 +403,7 @@ class TestSlerp:
 
         # Should be 45 deg rotation about z
         expected_angle = angle / 2
-        expected = np.array(
-            [np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)]
-        )
+        expected = np.array([np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)])
         np.testing.assert_allclose(result, expected, atol=1e-10)
 
 

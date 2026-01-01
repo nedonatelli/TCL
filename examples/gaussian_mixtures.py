@@ -150,10 +150,7 @@ def demo_moment_matching():
 
     # The mean should be the weighted average
     weighted_mean = sum(w * m for w, m in zip(weights, means))
-    print(
-        f"\nVerification - weighted mean: ({weighted_mean[0]:.3f}, "
-        f"{weighted_mean[1]:.3f})"
-    )
+    print(f"\nVerification - weighted mean: ({weighted_mean[0]:.3f}, " f"{weighted_mean[1]:.3f})")
 
 
 def demo_mixture_merging():
@@ -241,10 +238,7 @@ def demo_mixture_reduction():
     print(f"  Final components: {result_runnalls.n_reduced}")
     print(f"  Total merge cost: {result_runnalls.total_cost:.4f}")
     for i, c in enumerate(result_runnalls.components):
-        print(
-            f"    {i+1}: weight={c.weight:.3f}, "
-            f"mean=({c.mean[0]:.2f}, {c.mean[1]:.2f})"
-        )
+        print(f"    {i+1}: weight={c.weight:.3f}, " f"mean=({c.mean[0]:.2f}, {c.mean[1]:.2f})")
 
     # Reduce using West's algorithm
     result_west = reduce_mixture_west(components, n_target)
@@ -400,9 +394,7 @@ def demo_kmeans_plusplus():
         result = kmeans(data, n_clusters=n_clusters, init=data[idx], n_init=1)
         results_random.append(result.inertia)
 
-    result_plusplus = kmeans(
-        data, n_clusters=n_clusters, init=plusplus_centers, n_init=1
-    )
+    result_plusplus = kmeans(data, n_clusters=n_clusters, init=plusplus_centers, n_init=1)
 
     print(f"\n  Random initialization (10 runs):")
     print(f"    Mean inertia: {np.mean(results_random):.2f}")
@@ -462,9 +454,7 @@ def demo_elbow_method():
             )
         )
 
-        fig.add_vline(
-            x=3, line_dash="dash", line_color="red", annotation_text="True K=3"
-        )
+        fig.add_vline(x=3, line_dash="dash", line_color="red", annotation_text="True K=3")
 
         fig.update_layout(
             title="Elbow Method for K Selection",
@@ -586,9 +576,7 @@ def demo_dbscan():
                         x=data[mask, 0],
                         y=data[mask, 1],
                         mode="markers",
-                        marker=dict(
-                            color=colors[label % len(colors)], size=8, opacity=0.6
-                        ),
+                        marker=dict(color=colors[label % len(colors)], size=8, opacity=0.6),
                         name=f"Cluster {label}",
                         showlegend=True,
                     ),
@@ -604,9 +592,7 @@ def demo_dbscan():
                 x=data[core_mask, 0],
                 y=data[core_mask, 1],
                 mode="markers",
-                marker=dict(
-                    color="rgba(0,0,0,0)", size=15, line=dict(color="black", width=1)
-                ),
+                marker=dict(color="rgba(0,0,0,0)", size=15, line=dict(color="black", width=1)),
                 name="Core samples",
                 showlegend=True,
             ),
@@ -658,13 +644,9 @@ def demo_hierarchical():
     # Cut at different thresholds
     n_samples = len(data)
     for threshold in [1.0, 3.0, 5.0]:
-        labels = cut_dendrogram(
-            result.linkage_matrix, n_samples, distance_threshold=threshold
-        )
+        labels = cut_dendrogram(result.linkage_matrix, n_samples, distance_threshold=threshold)
         n_clusters = len(set(labels))
-        print(
-            f"  Threshold {threshold:.1f}: {n_clusters} clusters, labels={list(labels)}"
-        )
+        print(f"  Threshold {threshold:.1f}: {n_clusters} clusters, labels={list(labels)}")
 
 
 def demo_tracking_application():
@@ -755,9 +737,7 @@ def main():
     print("\n" + "=" * 70)
     print("Example complete!")
     if SHOW_PLOTS:
-        print(
-            "Plots saved: gaussian_kmeans.html, gaussian_elbow.html, gaussian_dbscan.html"
-        )
+        print("Plots saved: gaussian_kmeans.html, gaussian_elbow.html, gaussian_dbscan.html")
     print("=" * 70)
 
 

@@ -204,9 +204,7 @@ def demo_weighted_least_squares():
     result_wls = weighted_least_squares(A, y, weights=weights)
 
     print(f"\nTrue parameters: intercept={true_intercept}, slope={true_slope}")
-    print(
-        f"\nOLS estimate: intercept={result_ols.x[0]:.4f}, slope={result_ols.x[1]:.4f}"
-    )
+    print(f"\nOLS estimate: intercept={result_ols.x[0]:.4f}, slope={result_ols.x[1]:.4f}")
     print(f"WLS estimate: intercept={result_wls.x[0]:.4f}, slope={result_wls.x[1]:.4f}")
 
     print("\nNote: WLS gives more weight to precise measurements (low variance)")
@@ -243,9 +241,7 @@ def demo_total_least_squares():
     result_tls = total_least_squares(A, y)
 
     print(f"\nTrue parameters: intercept={true_intercept}, slope={true_slope}")
-    print(
-        f"\nOLS estimate: intercept={result_ols.x[0]:.4f}, slope={result_ols.x[1]:.4f}"
-    )
+    print(f"\nOLS estimate: intercept={result_ols.x[0]:.4f}, slope={result_ols.x[1]:.4f}")
     print(f"TLS estimate: intercept={result_tls.x[0]:.4f}, slope={result_tls.x[1]:.4f}")
 
     print("\nNote: TLS is preferred when independent variables have measurement error.")
@@ -290,10 +286,7 @@ def demo_recursive_least_squares():
 
         # Print at checkpoints
         if checkpoint_idx < len(checkpoints) and i + 1 == checkpoints[checkpoint_idx]:
-            print(
-                f"  After {i+1:>3} samples: intercept={x_est[0]:.4f}, "
-                f"slope={x_est[1]:.4f}"
-            )
+            print(f"  After {i+1:>3} samples: intercept={x_est[0]:.4f}, " f"slope={x_est[1]:.4f}")
             checkpoint_idx += 1
 
     print(f"\nTrue values: intercept={true_intercept}, slope={true_slope}")
@@ -545,9 +538,7 @@ def demo_ransac():
     # RANSAC
     threshold = 1.0  # Inlier threshold (residual threshold)
 
-    result_ransac = ransac(
-        A, y, min_samples=2, residual_threshold=threshold, max_trials=100
-    )
+    result_ransac = ransac(A, y, min_samples=2, residual_threshold=threshold, max_trials=100)
 
     print(f"RANSAC: y = {result_ransac.x[1]:.4f}x + {result_ransac.x[0]:.4f}")
     print(f"  Inliers found: {result_ransac.n_inliers}/{len(x)}")
