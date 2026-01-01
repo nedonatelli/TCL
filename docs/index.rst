@@ -5,7 +5,7 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
-**v0.21.0** — 800+ functions | 144 modules | 1,530 tests
+**v0.21.1** — 800+ functions | 144 modules | 1,530 tests
 
 .. toctree::
    :maxdepth: 2

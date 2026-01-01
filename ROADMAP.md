@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.21.0)
+## Current State (v0.21.1)
 
 - **800+ functions** implemented across 144 Python files
 - **1,530 tests** with comprehensive coverage
