@@ -1223,9 +1223,18 @@ def demo_3d_maneuvering_target():
             row=1,
             col=2,
         )
-        # Add phase markers
+        # Add phase markers using shapes (more compatible with mixed subplot types)
         for boundary in [40, 80]:
-            fig.add_vline(x=boundary, line_dash="dash", line_color="gray", row=1, col=2)
+            fig.add_shape(
+                type="line",
+                x0=boundary,
+                x1=boundary,
+                y0=0,
+                y1=1,
+                yref="y2 domain",
+                xref="x2",
+                line=dict(dash="dash", color="gray"),
+            )
 
         # Altitude profile
         fig.add_trace(
@@ -1266,8 +1275,18 @@ def demo_3d_maneuvering_target():
             row=1,
             col=3,
         )
+        # Add phase markers using shapes (compatible with mixed subplot types)
         for boundary in [40, 80]:
-            fig.add_vline(x=boundary, line_dash="dash", line_color="gray", row=1, col=3)
+            fig.add_shape(
+                type="line",
+                x0=boundary,
+                x1=boundary,
+                y0=0,
+                y1=1,
+                yref="y3 domain",
+                xref="x3",
+                line=dict(dash="dash", color="gray"),
+            )
 
         fig.update_layout(
             title="Maneuvering Target Tracking",
