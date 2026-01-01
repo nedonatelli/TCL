@@ -13,11 +13,11 @@ as starting points for your own applications.
 Filtering & Estimation
 ----------------------
 
-.. figure:: /_static/images/examples/kalman_filter_comparison.png
-   :alt: Kalman Filter Comparison
-   :width: 100%
+.. raw:: html
 
-   Comparison of Linear KF, EKF, and UKF for tracking with different measurement models.
+   <iframe src="/_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Kalman Filter Comparison**: Interactive comparison of Linear KF, EKF, and UKF performance.
 
 .. list-table::
    :widths: 30 70
@@ -33,11 +33,11 @@ Filtering & Estimation
 Particle Filters
 ----------------
 
-.. figure:: /_static/images/examples/particle_filter_resampling.png
-   :alt: Particle Filter Resampling Methods
-   :width: 100%
+.. raw:: html
 
-   Comparison of multinomial, systematic, and residual resampling strategies.
+   <iframe src="/_static/images/examples/particle_linear_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Particle Filter Tracking**: Interactive visualization of particle filter with resampling.
 
 .. list-table::
    :widths: 30 70
@@ -49,11 +49,11 @@ Particle Filters
 Multi-Target Tracking
 ---------------------
 
-.. figure:: /_static/images/examples/multi_target_tracking.png
-   :alt: Multi-Target Tracking
-   :width: 100%
+.. raw:: html
 
-   GNN-based multi-target tracker following two crossing targets.
+   <iframe src="/_static/images/examples/multi_target_tracking_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Multi-Target Tracking**: Interactive GNN-based multi-target tracker visualization.
 
 .. list-table::
    :widths: 30 70
@@ -79,11 +79,11 @@ Data Association
 Performance Evaluation
 ----------------------
 
-.. figure:: /_static/images/examples/performance_evaluation.png
-   :alt: OSPA Distance Over Time
-   :width: 100%
+.. raw:: html
 
-   OSPA distance metric tracking estimation quality over time.
+   <iframe src="/_static/images/examples/performance_evaluation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Performance Evaluation**: Interactive OSPA metric and tracking quality visualization.
 
 .. list-table::
    :widths: 30 70
@@ -95,11 +95,11 @@ Performance Evaluation
 Clustering & Gaussian Mixtures
 ------------------------------
 
-.. figure:: /_static/images/examples/clustering_comparison.png
-   :alt: Clustering Comparison
-   :width: 100%
+.. raw:: html
 
-   K-Means vs DBSCAN clustering on the same dataset with noise.
+   <iframe src="/_static/images/examples/gaussian_kmeans.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Clustering Comparison**: Interactive K-Means visualization with DBSCAN comparison.
 
 .. list-table::
    :widths: 30 70
@@ -113,11 +113,11 @@ Clustering & Gaussian Mixtures
 Signal Processing
 -----------------
 
-.. figure:: /_static/images/examples/signal_processing.png
-   :alt: Signal Processing
-   :width: 100%
+.. raw:: html
 
-   Butterworth filter frequency response and CFAR detection.
+   <iframe src="/_static/images/examples/matched_filter.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Signal Processing**: Interactive matched filter and CFAR detection visualization.
 
 .. list-table::
    :widths: 30 70
@@ -129,11 +129,11 @@ Signal Processing
 Coordinate Systems
 ------------------
 
-.. figure:: /_static/images/examples/coordinate_rotations.png
-   :alt: Rotation Matrix Visualization
-   :width: 100%
+.. raw:: html
 
-   3D visualization of rotation matrices about X, Y, and Z axes.
+   <iframe src="/_static/images/examples/coord_viz_rotation_axes.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Coordinate Rotations**: Interactive 3D visualization of rotation matrices.
 
 .. list-table::
    :widths: 30 70
