@@ -2,7 +2,9 @@
 Assignment algorithms for data association in target tracking.
 
 This module provides:
-- 2D assignment algorithms (Hungarian, Auction, JVC)
+- 2D assignment algorithms (Hungarian, Auction)
+- K-best 2D assignment (Murty's algorithm)
+- 3D assignment algorithms (Lagrangian relaxation, Auction)
 - Gating methods (ellipsoidal, rectangular)
 - Data association algorithms (GNN, JPDA)
 """
@@ -30,12 +32,24 @@ from pytcl.assignment_algorithms.jpda import (
     jpda_probabilities,
     jpda_update,
 )
+from pytcl.assignment_algorithms.three_dimensional import (
+    Assignment3DResult,
+    assign3d,
+    assign3d_auction,
+    assign3d_lagrangian,
+    decompose_to_2d,
+    greedy_3d,
+)
 from pytcl.assignment_algorithms.two_dimensional import (
     AssignmentResult,
+    KBestResult,
     assign2d,
     auction,
     hungarian,
+    kbest_assign2d,
     linear_sum_assignment,
+    murty,
+    ranked_assignments,
 )
 
 __all__ = [
@@ -45,6 +59,18 @@ __all__ = [
     "linear_sum_assignment",
     "assign2d",
     "AssignmentResult",
+    # K-Best 2D Assignment
+    "KBestResult",
+    "murty",
+    "kbest_assign2d",
+    "ranked_assignments",
+    # 3D Assignment
+    "Assignment3DResult",
+    "assign3d",
+    "assign3d_lagrangian",
+    "assign3d_auction",
+    "greedy_3d",
+    "decompose_to_2d",
     # Gating
     "ellipsoidal_gate",
     "rectangular_gate",

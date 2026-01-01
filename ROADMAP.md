@@ -1,11 +1,12 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.16.0)
+## Current State (v0.17.0)
 
-- **750+ functions** implemented across 133 Python files
-- **1,300+ tests** with comprehensive coverage
+- **760+ functions** implemented across 136 Python files
+- **1,350+ tests** with comprehensive coverage
 - **10 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
+- **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
 - **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
 - **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
@@ -292,29 +293,160 @@
 
 ---
 
-## Phase 8: Performance & Infrastructure
+---
 
-### 8.1 Performance Optimization
+## Road to v1.0: MATLAB TCL Parity
+
+### Current Coverage: ~80%
+
+The following table shows feature parity with the [original MATLAB TCL](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary):
+
+| Category | MATLAB TCL | pytcl | Coverage |
+|----------|-----------|-------|----------|
+| Dynamic Estimation (KF/EKF/UKF/CKF/IMM) | ✅ | ✅ | 100% |
+| Square-root Filters (SR-KF, UD) | ✅ | ✅ | 100% |
+| 2D Assignment (Hungarian, Auction) | ✅ | ✅ | 100% |
+| GNN/JPDA/MHT Trackers | ✅ | ✅ | 100% |
+| Coordinate Systems & Projections | ✅ | ✅ | 100% |
+| Geophysical Models (Gravity, Magnetism) | ✅ | ✅ | 100% |
+| Terrain & Visibility | ✅ | ✅ | 100% |
+| Astronomical (Orbits, Lambert) | ✅ | ✅ | 100% |
+| INS/GNSS Integration | ✅ | ✅ | 100% |
+| Signal Processing & Transforms | ✅ | ✅ | 100% |
+| Clustering & Gaussian Mixtures | ✅ | ✅ | 100% |
+| Static Estimation | ✅ | ✅ | 100% |
+| Containers & Data Structures | ✅ | ✅ | 100% |
+| 3D Assignment | ✅ | ✅ | 100% |
+| k-Best 2D Assignment | ✅ | ✅ | 100% |
+| **Batch/Smoothing Estimators** | ✅ | ⚠️ | 20% |
+| **Navigation Utilities (Geodesic)** | ✅ | ⚠️ | 50% |
+| **Special Mathematical Functions** | ✅ | ⚠️ | 60% |
+| **Ephemerides (JPL DE)** | ✅ | ❌ | 0% |
+| **Relativistic Corrections** | ✅ | ❌ | 0% |
+
+---
+
+## Completed in v0.17.0
+
+### Phase 9: Advanced Assignment Algorithms
+- [x] **3D Assignment** - Lagrangian relaxation, auction, greedy, 2D decomposition
+- [x] **k-Best 2D Assignment** - Murty's algorithm, ranked enumeration, cost thresholds
+- [x] `Assignment3DResult`, `KBestResult` result types
+- [x] Unified `assign3d()` interface with method selection
+- **Files**: `pytcl/assignment_algorithms/three_dimensional/`, `pytcl/assignment_algorithms/two_dimensional/kbest.py`
+
+---
+
+## Phase 10: Batch Estimation & Smoothing (v0.18.0)
+
+Target: Complete smoothing and batch estimation capabilities
+
+### 10.1 Smoothers
+- [ ] Rauch-Tung-Striebel (RTS) smoother - `rts_smooth`
+- [ ] Fixed-lag smoother - `fixed_lag_smooth`
+- [ ] Fixed-interval smoother - `fixed_interval_smooth`
+- [ ] Two-filter smoother - `two_filter_smooth`
+- **Files**: `pytcl/dynamic_estimation/smoothers.py`
+
+### 10.2 Information Filters
+- [ ] Information filter (inverse covariance form) - `info_filter_predict`, `info_filter_update`
+- [ ] Square-root information filter - `srif_predict`, `srif_update`
+- [ ] Information smoother
+- **Files**: `pytcl/dynamic_estimation/information_filter.py`
+
+---
+
+## Phase 11: Navigation Utilities (v0.19.0)
+
+Target: Complete geodetic and navigation algorithms from MATLAB TCL
+
+### 11.1 Geodetic Problems
+- [ ] Direct geodetic problem (Vincenty) - `direct_geodetic_vincenty`
+- [ ] Indirect geodetic problem (Vincenty) - `indirect_geodetic_vincenty`
+- [ ] Generalized geodetic problems - `direct_geodetic_gen`, `indirect_geodetic_gen`
+- **Files**: `pytcl/navigation/geodetic.py`
+
+### 11.2 Great Circle Navigation
+- [ ] Great circle distance - `great_circle_distance`
+- [ ] Great circle azimuth - `great_circle_azimuth`
+- [ ] Great circle waypoints - `great_circle_waypoint`
+- [ ] Great circle intersection - `great_circle_intersect`
+- [ ] TDOA localization on sphere - `great_circle_tdoa_loc`
+- **Files**: `pytcl/navigation/great_circle.py`
+
+### 11.3 Rhumb Line Navigation
+- [ ] Direct rhumb problem - `direct_rhumb`, `direct_rhumb_spherical`
+- [ ] Indirect rhumb problem - `indirect_rhumb`, `indirect_rhumb_spherical`
+- [ ] Rhumb line intersection - `rhumb_intersect`
+- **Files**: `pytcl/navigation/rhumb.py`
+
+---
+
+## Phase 12: Special Mathematical Functions (v0.20.0)
+
+Target: Port specialized mathematical functions from MATLAB TCL
+
+### 12.1 Special Functions
+- [ ] Marcum Q function - `marcum_q`, `log_marcum_q`
+- [ ] Generalized Marcum Q - `marcum_q_generalized`
+- [ ] Lambert W function - `lambert_w`
+- [ ] Debye functions - `debye`
+- **Files**: `pytcl/mathematical_functions/special_functions.py`
+
+### 12.2 Hypergeometric Functions
+- [ ] Confluent hypergeometric 0F1 - `hyp0f1`
+- [ ] Kummer function 1F1 - `hyp1f1`
+- [ ] Gauss hypergeometric 2F1 - `hyp2f1`
+- [ ] Regularized hypergeometric - `hyp_regularized`
+- **Files**: `pytcl/mathematical_functions/hypergeometric.py`
+
+### 12.3 Advanced Bessel Functions
+- [ ] Modified Bessel ratios - `bessel_ratio`
+- [ ] Bessel function derivatives - `bessel_deriv`
+- [ ] Spherical Bessel functions - `spherical_bessel`
+- **Files**: `pytcl/mathematical_functions/bessel.py`
+
+---
+
+## Phase 13: Advanced Astronomical (v0.21.0)
+
+Target: Complete astronomical capabilities including ephemerides
+
+### 13.1 Ephemerides
+- [ ] JPL DE ephemerides reader - `load_de_ephemeris`, `DEEphemeris`
+- [ ] High-precision Sun position - `sun_position_precise`
+- [ ] High-precision Moon position - `moon_position_precise`
+- [ ] Planet positions (Mercury-Neptune) - `planet_position`
+- **Files**: `pytcl/astronomical/ephemerides.py`
+
+### 13.2 Relativistic Corrections
+- [ ] Time dilation corrections - `time_dilation`, `proper_time`
+- [ ] Shapiro delay - `shapiro_delay`
+- [ ] Relativistic coordinate corrections - `relativistic_correction`
+- [ ] Schwarzschild metric utilities
+- **Files**: `pytcl/astronomical/relativity.py`
+
+---
+
+## Infrastructure & Polish (Ongoing)
+
+### Performance Optimization
 - [x] Numba JIT for CFAR detection (CA, GO, SO, OS, 2D with parallel execution)
 - [x] Numba JIT for ambiguity function computation (parallel Doppler-delay loop)
 - [x] Numba JIT for batch Mahalanobis distance in data association
 - [x] Numba JIT for rotation matrix utilities (inplace operations)
 - [ ] Profile and optimize additional bottlenecks
-- [ ] Consider Cython for hot spots
+- [ ] Consider Cython for hot spots in assignment algorithms
 
-### 8.2 Documentation
-- [x] User guides for square-root filters, IMM, and JPDA
-- [x] API reference documentation for v0.3.0 features
-- [x] Data association user guide
-- [x] Complete API documentation for all modules (17 new API docs added)
-- [x] Tutorials: Kalman filtering, nonlinear filtering, signal processing, radar detection, INS/GNSS, multi-target tracking
-- [x] Example scripts: kalman_tracking.py, ukf_range_bearing.py, cfar_detection.py, coordinate_transforms.py, multi_target_tracking.py, spectral_analysis.py
-- [x] Custom landing page with animated radar theme
-- [x] Dark theme CSS for Sphinx RTD documentation
+### Documentation
+- [x] Complete API documentation for all modules
+- [x] Tutorials and example scripts
+- [x] Custom landing page with radar theme
+- [ ] MATLAB-to-Python migration guide
+- [ ] Algorithm reference with equations
 
-### 8.3 Testing
-- [x] 1,255 tests (up from 1,109 in v0.14.0)
-- [x] Test coverage boost: geodetic conversions, Jacobians, matrix decompositions, process noise, interpolation, statistics
+### Testing
+- [x] 1,323 tests with comprehensive coverage
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
@@ -322,6 +454,8 @@
 ---
 
 ## Priority Summary
+
+### Completed Features
 
 | Priority | Focus Area | Key Deliverables | Status |
 |----------|------------|------------------|--------|
@@ -340,40 +474,52 @@
 | **P5.5** | INS/GNSS Integration | Loosely/tightly-coupled, DOP, fault detection | ✅ Complete |
 | **P6** | Signal Processing & Transforms | Filters, matched filter, CFAR, FFT, STFT, wavelets | ✅ Complete |
 | **P6.5** | Tracking Containers | TrackList, MeasurementSet, ClusterSet | ✅ Complete |
-| **P7** | Infrastructure | Performance, docs, tests | In progress |
+
+### Road to MATLAB TCL Parity
+
+| Priority | Focus Area | Key Deliverables | Status |
+|----------|------------|------------------|--------|
+| **P7** | 3D/k-Best Assignment | Murty's algorithm, 3D assignment, S-D approximation | ✅ Complete |
+| **P8** | Batch/Smoothing | RTS smoother, fixed-lag, information filter | v0.18.0 |
+| **P9** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line | v0.19.0 |
+| **P10** | Special Functions | Marcum Q, hypergeometric, Lambert W | v0.20.0 |
+| **P11** | Advanced Astronomical | JPL ephemerides, relativistic corrections | v0.21.0 |
+| **P12** | v1.0 Polish | 80%+ test coverage, MATLAB validation, docs | v1.0.0 |
 
 ---
 
 ## Version Targets
 
+### Released Versions
+
 | Version | Focus | Status |
 |---------|-------|--------|
 | **v0.3.0** | Square-root filters, JPDA, IMM estimator | Released 2025-12-30 |
-| **v0.3.1** | Type annotation fix | Released 2025-12-30 |
 | **v0.4.0** | Gaussian mixture reduction, K-means, MHT | Released 2025-12-30 |
-| **v0.4.1** | DBSCAN, hierarchical clustering | Released 2025-12-30 |
-| **v0.4.2** | Linting fixes | Released 2025-12-30 |
 | **v0.5.0** | Static estimation, K-D/Ball trees | Released 2025-12-30 |
 | **v0.5.1** | ML estimation, R-tree, VP-tree, Cover tree | Released 2025-12-30 |
 | **v0.6.0** | Gravity and magnetic models (WGS84, WMM, IGRF) | Released 2025-12-30 |
-| **v0.7.0** | Complete astronomical code (orbit propagation, Lambert, reference frames) | Released 2025-12-30 |
-| **v0.7.1** | EGM96/EGM2008 gravity models with Clenshaw summation | Released 2025-12-30 |
-| **v0.8.0** | EMM/WMMHR magnetic models, terrain (DEM, GEBCO, Earth2014, visibility) | Released 2025-12-30 |
-| **v0.9.0** | Map projections (Mercator, UTM, Stereographic, LCC, Azimuthal Equidistant) | Released 2025-12-30 |
-| **v0.10.0** | Tidal effects (solid Earth, ocean loading, atmospheric, pole tide) | Released 2025-12-30 |
+| **v0.7.0** | Astronomical code (orbit propagation, Lambert, reference frames) | Released 2025-12-30 |
+| **v0.8.0** | EMM/WMMHR magnetic models, terrain visibility | Released 2025-12-30 |
+| **v0.9.0** | Map projections (UTM, Stereographic, LCC) | Released 2025-12-30 |
+| **v0.10.0** | Tidal effects (solid Earth, ocean loading) | Released 2025-12-30 |
 | **v0.11.0** | INS mechanization and navigation | Released 2025-12-30 |
-| **v0.12.0** | INS/GNSS integration (loosely/tightly-coupled, DOP, fault detection) | Released 2025-12-31 |
-| **v0.13.0** | Signal processing & transforms (filters, CFAR, FFT, STFT, wavelets) | Released 2025-12-31 |
-| **v0.13.1** | Numba JIT performance optimization for critical paths | Released 2025-12-31 |
-| **v0.13.2** | Fix ricker_wavelet for cross-platform scipy compatibility | Released 2025-12-31 |
-| **v0.14.0** | Documentation overhaul: tutorials, examples, landing page, dark theme | Released 2025-12-31 |
-| **v0.14.1** | Test coverage boost, release process documentation | Released 2025-12-31 |
-| **v0.14.2** | Add isort to release quality checks | Released 2025-12-31 |
-| **v0.14.3** | Fix example scripts (API compatibility, type errors, linting) | Released 2025-12-31 |
-| **v0.14.4** | Fix flake8 warnings in test files | Released 2025-12-31 |
-| **v0.15.0** | New example scripts (signal processing, transforms, INS/GNSS) | Released 2025-12-31 |
-| **v0.16.0** | Tracking containers (TrackList, MeasurementSet, ClusterSet) | Released 2025-12-31 |
-| **v1.0.0** | Full feature parity, 80%+ test coverage | Planned |
+| **v0.12.0** | INS/GNSS integration | Released 2025-12-31 |
+| **v0.13.0** | Signal processing & transforms | Released 2025-12-31 |
+| **v0.14.0** | Documentation overhaul | Released 2025-12-31 |
+| **v0.15.0** | New example scripts | Released 2025-12-31 |
+| **v0.16.0** | Tracking containers | Released 2025-12-31 |
+| **v0.17.0** | Advanced assignment (3D, k-best) | Released 2025-12-31 |
+
+### Planned Versions (MATLAB TCL Parity)
+
+| Version | Focus | Target Features |
+|---------|-------|-----------------|
+| **v0.18.0** | Batch Estimation | RTS smoother, fixed-lag, information filter |
+| **v0.19.0** | Navigation Utilities | Vincenty geodetic, great circle, rhumb line |
+| **v0.20.0** | Special Functions | Marcum Q, hypergeometric (0F1, 1F1, 2F1), Lambert W |
+| **v0.21.0** | Advanced Astronomical | JPL DE ephemerides, relativistic corrections |
+| **v1.0.0** | **Full MATLAB TCL Parity** | 100% feature coverage, 80%+ tests, MATLAB validation |
 
 ---
 
