@@ -3,11 +3,11 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.20.0)
+Current State (v0.21.0)
 -----------------------
 
-* **800+ functions** implemented across 140 Python files
-* **1,425+ tests** with comprehensive coverage
+* **800+ functions** implemented across 144 Python files
+* **1,530+ tests** with comprehensive coverage
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -23,6 +23,7 @@ Current State (v0.20.0)
 * **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 * **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 * **Navigation utilities**: Great circle navigation (distance, azimuth, waypoints, intersection), rhumb line navigation (spherical and ellipsoidal), cross-track distance, TDOA localization
+* **Special mathematical functions**: Marcum Q, Lambert W, Debye, hypergeometric, advanced Bessel functions
 * **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 * **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 * **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
@@ -182,6 +183,16 @@ Phase 11: Navigation Utilities (v0.20.0)
 * Rhumb line intersection
 * Great circle vs rhumb comparison utilities
 
+Phase 12: Special Mathematical Functions (v0.21.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Marcum Q function for radar detection probability
+* Lambert W function for delay differential equations
+* Debye functions for thermodynamic properties
+* Hypergeometric functions (0F1, 1F1, 2F1, Kummer U)
+* Advanced Bessel functions (ratios, derivatives, zeros, Struve, Kelvin)
+* MATLAB migration guide for TCL users
+* Native Romberg integration for scipy >=1.15 compatibility
+
 Phase 8: Documentation (v0.14.0)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 * Complete API documentation for all modules
@@ -292,6 +303,9 @@ Version Targets
      - Released
    * - **v0.20.0**
      - Navigation utilities (great circle, rhumb line)
+     - Released
+   * - **v0.21.0**
+     - Special mathematical functions (Marcum Q, Lambert W, Debye, hypergeometric)
      - Released
    * - **v1.0.0**
      - Full MATLAB TCL parity, 80%+ test coverage
