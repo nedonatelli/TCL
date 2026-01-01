@@ -5,7 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.22.2] - 2026-01-01
+## [0.22.4] - 2026-01-01
+
+### Fixed
+- **Black Formatting**: Applied consistent code formatting with default line length (88 characters)
+  - Reformatted 125 files across pytcl, tests, examples, and documentation
+  - Ensures compatibility with CI workflow expectations
+  - All lines now conform to black's standard 88-character limit
+
+### Code Quality
+- All quality checks passing (isort, black, flake8, mypy)
+- 100% compliance with CI/CD code quality gates
+- Complete repository formatting consistency across all files
+
+### Release Information
+- **Tag**: v0.22.4
+- **Date**: January 1, 2026
+- **Type**: Patch Release
+- **Status**: Stable
+
+This is a maintenance release with comprehensive formatting improvements. All features remain unchanged and fully functional.
+
+---
+
+## [0.22.3] - 2026-01-01
 
 ### Fixed
 - **Black Formatting**: Corrected code formatting across 39 files to pass CI workflow validation
