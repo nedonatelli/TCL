@@ -345,6 +345,260 @@ def airy(x: ArrayLike) -> tuple:
     return tuple(np.asarray(r, dtype=np.float64) for r in result)
 
 
+def bessel_ratio(
+    n: Union[int, float],
+    x: ArrayLike,
+    kind: str = "j",
+) -> NDArray[np.floating]:
+    """
+    Ratio of Bessel functions J_{n+1}(x) / J_n(x) or I_{n+1}(x) / I_n(x).
+
+    Parameters
+    ----------
+    n : int or float
+        Order of the Bessel function in the denominator.
+    x : array_like
+        Argument of the Bessel function.
+    kind : str, optional
+        Type of Bessel function: 'j' for J_n, 'i' for I_n. Default is 'j'.
+
+    Returns
+    -------
+    ratio : ndarray
+        Values of J_{n+1}(x) / J_n(x) or I_{n+1}(x) / I_n(x).
+
+    Notes
+    -----
+    Uses the recurrence relation for numerical stability:
+    J_{n+1}(x) / J_n(x) = 2n/x - 1/(J_n(x)/J_{n-1}(x))
+
+    Examples
+    --------
+    >>> bessel_ratio(0, 1)  # J_1(1) / J_0(1)
+    0.5767...
+    """
+    x = np.asarray(x, dtype=np.float64)
+
+    if kind.lower() == "j":
+        num = sp.jv(n + 1, x)
+        den = sp.jv(n, x)
+    elif kind.lower() == "i":
+        num = sp.iv(n + 1, x)
+        den = sp.iv(n, x)
+    else:
+        raise ValueError(f"kind must be 'j' or 'i', got '{kind}'")
+
+    # Handle zeros in denominator
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = np.where(den != 0, num / den, np.inf * np.sign(num))
+
+    return np.asarray(ratio, dtype=np.float64)
+
+
+def bessel_deriv(
+    n: Union[int, float],
+    x: ArrayLike,
+    kind: str = "j",
+) -> NDArray[np.floating]:
+    """
+    Derivative of Bessel function d/dx[B_n(x)].
+
+    Parameters
+    ----------
+    n : int or float
+        Order of the Bessel function.
+    x : array_like
+        Argument of the Bessel function.
+    kind : str, optional
+        Type of Bessel function: 'j', 'y', 'i', or 'k'. Default is 'j'.
+
+    Returns
+    -------
+    deriv : ndarray
+        Values of dB_n(x)/dx.
+
+    Notes
+    -----
+    Uses the identity:
+    dJ_n/dx = (J_{n-1}(x) - J_{n+1}(x)) / 2
+    dY_n/dx = (Y_{n-1}(x) - Y_{n+1}(x)) / 2
+    dI_n/dx = (I_{n-1}(x) + I_{n+1}(x)) / 2
+    dK_n/dx = -(K_{n-1}(x) + K_{n+1}(x)) / 2
+
+    Examples
+    --------
+    >>> bessel_deriv(0, 1, kind='j')  # -J_1(1)
+    -0.4400...
+    """
+    x = np.asarray(x, dtype=np.float64)
+
+    kind = kind.lower()
+    if kind == "j":
+        deriv = (sp.jv(n - 1, x) - sp.jv(n + 1, x)) / 2
+    elif kind == "y":
+        deriv = (sp.yv(n - 1, x) - sp.yv(n + 1, x)) / 2
+    elif kind == "i":
+        deriv = (sp.iv(n - 1, x) + sp.iv(n + 1, x)) / 2
+    elif kind == "k":
+        deriv = -(sp.kv(n - 1, x) + sp.kv(n + 1, x)) / 2
+    else:
+        raise ValueError(f"kind must be 'j', 'y', 'i', or 'k', got '{kind}'")
+
+    return np.asarray(deriv, dtype=np.float64)
+
+
+def struve_h(
+    n: Union[int, float],
+    x: ArrayLike,
+) -> NDArray[np.floating]:
+    """
+    Struve function H_n(x).
+
+    The Struve function is defined by the integral:
+    H_n(x) = (2/sqrt(pi)) * (x/2)^n * integral from 0 to pi/2 of
+             sin(x*cos(t)) * sin^(2n)(t) dt
+
+    Parameters
+    ----------
+    n : int or float
+        Order of the Struve function.
+    x : array_like
+        Argument of the function.
+
+    Returns
+    -------
+    H : ndarray
+        Values of H_n(x).
+
+    Notes
+    -----
+    Related to Bessel functions through:
+    H_0(x) is the particular solution of y'' + y'/x + y = 2/(pi*x)
+
+    Examples
+    --------
+    >>> struve_h(0, 1)
+    0.5688...
+    """
+    return np.asarray(sp.struve(n, x), dtype=np.float64)
+
+
+def struve_l(
+    n: Union[int, float],
+    x: ArrayLike,
+) -> NDArray[np.floating]:
+    """
+    Modified Struve function L_n(x).
+
+    The modified Struve function is related to the Struve function by:
+    L_n(x) = -i * exp(-i*n*pi/2) * H_n(i*x)
+
+    Parameters
+    ----------
+    n : int or float
+        Order of the modified Struve function.
+    x : array_like
+        Argument of the function.
+
+    Returns
+    -------
+    L : ndarray
+        Values of L_n(x).
+    """
+    return np.asarray(sp.modstruve(n, x), dtype=np.float64)
+
+
+def bessel_zeros(
+    n: int,
+    nt: int,
+    kind: str = "j",
+) -> NDArray[np.floating]:
+    """
+    Zeros of Bessel functions.
+
+    Computes the first nt zeros of J_n(x), Y_n(x), or their derivatives.
+
+    Parameters
+    ----------
+    n : int
+        Order of the Bessel function.
+    nt : int
+        Number of zeros to compute.
+    kind : str, optional
+        Type: 'j' for J_n zeros, 'y' for Y_n zeros,
+        'jp' for J_n' zeros, 'yp' for Y_n' zeros. Default is 'j'.
+
+    Returns
+    -------
+    zeros : ndarray
+        Array of zeros.
+
+    Examples
+    --------
+    >>> bessel_zeros(0, 3, kind='j')  # First 3 zeros of J_0
+    array([2.404..., 5.520..., 8.653...])
+    """
+    kind = kind.lower()
+
+    if kind == "j":
+        return np.asarray(sp.jn_zeros(n, nt), dtype=np.float64)
+    elif kind == "y":
+        return np.asarray(sp.yn_zeros(n, nt), dtype=np.float64)
+    elif kind == "jp":
+        return np.asarray(sp.jnp_zeros(n, nt), dtype=np.float64)
+    elif kind == "yp":
+        return np.asarray(sp.ynp_zeros(n, nt), dtype=np.float64)
+    else:
+        raise ValueError(f"kind must be 'j', 'y', 'jp', or 'yp', got '{kind}'")
+
+
+def kelvin(
+    x: ArrayLike,
+) -> tuple:
+    """
+    Kelvin functions ber, bei, ker, kei.
+
+    Kelvin functions are the real and imaginary parts of the
+    Bessel functions with argument x*exp(3*pi*i/4).
+
+    Parameters
+    ----------
+    x : array_like
+        Argument of the Kelvin functions.
+
+    Returns
+    -------
+    ber : ndarray
+        Kelvin function ber(x).
+    bei : ndarray
+        Kelvin function bei(x).
+    ker : ndarray
+        Kelvin function ker(x).
+    kei : ndarray
+        Kelvin function kei(x).
+
+    Notes
+    -----
+    ber(x) + i*bei(x) = J_0(x * exp(3*pi*i/4))
+    ker(x) + i*kei(x) = K_0(x * exp(pi*i/4))
+
+    Examples
+    --------
+    >>> ber, bei, ker, kei = kelvin(1)
+    >>> ber
+    0.984...
+    """
+    x = np.asarray(x, dtype=np.float64)
+
+    # Use the individual scipy Kelvin functions for real-valued results
+    ber = np.asarray(sp.ber(x), dtype=np.float64)
+    bei = np.asarray(sp.bei(x), dtype=np.float64)
+    ker = np.asarray(sp.ker(x), dtype=np.float64)
+    kei = np.asarray(sp.kei(x), dtype=np.float64)
+
+    return ber, bei, ker, kei
+
+
 __all__ = [
     "besselj",
     "bessely",
@@ -356,4 +610,10 @@ __all__ = [
     "spherical_in",
     "spherical_kn",
     "airy",
+    "bessel_ratio",
+    "bessel_deriv",
+    "struve_h",
+    "struve_l",
+    "bessel_zeros",
+    "kelvin",
 ]

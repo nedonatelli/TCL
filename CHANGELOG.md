@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-01-01
+
+### Added
+- **Special Mathematical Functions** (`pytcl.mathematical_functions.special_functions`):
+  - **Marcum Q Function** (`marcum_q.py`):
+    - `marcum_q` - Generalized Marcum Q function Q_m(a, b) for radar detection
+    - `marcum_q1` - Standard first-order Marcum Q function
+    - `log_marcum_q` - Logarithm of Marcum Q for numerical precision
+    - `marcum_q_inv` - Inverse Marcum Q function
+    - `nuttall_q` - Complementary Marcum Q (CDF of Rician distribution)
+    - `swerling_detection_probability` - Detection probability for Swerling target models
+  - **Lambert W Function** (`lambert_w.py`):
+    - `lambert_w` - Lambert W function W_k(z) with branch selection
+    - `lambert_w_real` - Real-valued Lambert W for real inputs
+    - `omega_constant` - Omega constant (W(1) ≈ 0.5671)
+    - `wright_omega` - Wright omega function
+    - `solve_exponential_equation` - Solve a*x*exp(b*x) = c
+    - `time_delay_equation` - Characteristic equation for delay systems
+  - **Debye Functions** (`debye.py`):
+    - `debye` - General Debye function D_n(x) for thermodynamics
+    - `debye_1`, `debye_2`, `debye_3`, `debye_4` - Specific orders
+    - `debye_heat_capacity` - Normalized heat capacity from Debye model
+    - `debye_entropy` - Normalized entropy from Debye model
+  - **Hypergeometric Functions** (`hypergeometric.py`):
+    - `hyp0f1` - Confluent hypergeometric limit function 0F1
+    - `hyp1f1` - Kummer's confluent hypergeometric 1F1
+    - `hyp2f1` - Gauss hypergeometric function 2F1
+    - `hyperu` - Tricomi function U(a, b, z)
+    - `hyp1f1_regularized` - Regularized 1F1
+    - `pochhammer` - Rising factorial (Pochhammer symbol)
+    - `falling_factorial` - Falling factorial
+    - `generalized_hypergeometric` - General pFq function
+  - **Advanced Bessel Functions** (in `bessel.py`):
+    - `bessel_ratio` - Ratio J_{n+1}/J_n or I_{n+1}/I_n
+    - `bessel_deriv` - Derivatives of Bessel functions
+    - `bessel_zeros` - Zeros of Bessel functions and derivatives
+    - `struve_h` - Struve function H_n(x)
+    - `struve_l` - Modified Struve function L_n(x)
+    - `kelvin` - Kelvin functions ber, bei, ker, kei
+- **MATLAB Migration Guide** (`docs/migration_guide.rst`):
+  - Comprehensive guide for MATLAB TCL users transitioning to Python
+  - Naming conventions, import structure, return values
+  - Array indexing and matrix operations differences
+  - Complete example migrations for Kalman filter, coordinate conversion, data association
+  - Module mapping reference
+
+### Changed
+- **Native Romberg Integration**: Replaced scipy.integrate.romberg wrapper with native implementation using Richardson extrapolation for compatibility with scipy >=1.15 (romberg deprecated in 1.12, removed in 1.15)
+- Test count increased from 1,488 to 1,530 (42 new tests for special functions)
+- Source file count increased from 140 to 144
+
 ## [0.20.1] - 2026-01-01
 
 ### Changed

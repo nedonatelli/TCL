@@ -372,33 +372,21 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 
 ---
 
-## Phase 12: Special Mathematical Functions (v0.20.0)
+## Completed in v0.21.0
 
-Target: Port specialized mathematical functions from MATLAB TCL
-
-### 12.1 Special Functions
-- [ ] Marcum Q function - `marcum_q`, `log_marcum_q`
-- [ ] Generalized Marcum Q - `marcum_q_generalized`
-- [ ] Lambert W function - `lambert_w`
-- [ ] Debye functions - `debye`
-- **Files**: `pytcl/mathematical_functions/special_functions.py`
-
-### 12.2 Hypergeometric Functions
-- [ ] Confluent hypergeometric 0F1 - `hyp0f1`
-- [ ] Kummer function 1F1 - `hyp1f1`
-- [ ] Gauss hypergeometric 2F1 - `hyp2f1`
-- [ ] Regularized hypergeometric - `hyp_regularized`
-- **Files**: `pytcl/mathematical_functions/hypergeometric.py`
-
-### 12.3 Advanced Bessel Functions
-- [ ] Modified Bessel ratios - `bessel_ratio`
-- [ ] Bessel function derivatives - `bessel_deriv`
-- [ ] Spherical Bessel functions - `spherical_bessel`
-- **Files**: `pytcl/mathematical_functions/bessel.py`
+### Phase 12: Special Mathematical Functions
+- [x] **Marcum Q Function** - `marcum_q`, `marcum_q1`, `log_marcum_q`, `marcum_q_inv`, `nuttall_q`, `swerling_detection_probability`
+- [x] **Lambert W Function** - `lambert_w`, `lambert_w_real`, `omega_constant`, `wright_omega`, `solve_exponential_equation`, `time_delay_equation`
+- [x] **Debye Functions** - `debye`, `debye_1`, `debye_2`, `debye_3`, `debye_4`, `debye_heat_capacity`, `debye_entropy`
+- [x] **Hypergeometric Functions** - `hyp0f1`, `hyp1f1`, `hyp2f1`, `hyperu`, `hyp1f1_regularized`, `pochhammer`, `falling_factorial`, `generalized_hypergeometric`
+- [x] **Advanced Bessel Functions** - `bessel_ratio`, `bessel_deriv`, `bessel_zeros`, `struve_h`, `struve_l`, `kelvin`
+- [x] **MATLAB Migration Guide** - Comprehensive guide for MATLAB TCL users
+- [x] **Native Romberg Integration** - Replaced deprecated scipy.integrate.romberg for scipy >=1.15 compatibility
+- **Files**: `pytcl/mathematical_functions/special_functions/marcum_q.py`, `lambert_w.py`, `debye.py`, `hypergeometric.py`, `bessel.py`
 
 ---
 
-## Phase 13: Advanced Astronomical (v0.21.0)
+## Phase 13: Advanced Astronomical (v0.22.0)
 
 Target: Complete astronomical capabilities including ephemerides
 
