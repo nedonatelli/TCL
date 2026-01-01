@@ -12,6 +12,7 @@ state estimation.
    :caption: Contents:
 
    getting_started
+   migration_guide
    user_guide/index
    tutorials/index
    examples/index

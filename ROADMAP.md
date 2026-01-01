@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.18.0)
+## Current State (v0.21.0)
 
-- **780+ functions** implemented across 138 Python files
-- **1,400+ tests** with comprehensive coverage
+- **800+ functions** implemented across 144 Python files
+- **1,530 tests** with comprehensive coverage
 - **10 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
@@ -382,7 +382,7 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 - [x] **Advanced Bessel Functions** - `bessel_ratio`, `bessel_deriv`, `bessel_zeros`, `struve_h`, `struve_l`, `kelvin`
 - [x] **MATLAB Migration Guide** - Comprehensive guide for MATLAB TCL users
 - [x] **Native Romberg Integration** - Replaced deprecated scipy.integrate.romberg for scipy >=1.15 compatibility
-- **Files**: `pytcl/mathematical_functions/special_functions/marcum_q.py`, `lambert_w.py`, `debye.py`, `hypergeometric.py`, `bessel.py`
+- **Files**: `pytcl/mathematical_functions/special_functions/marcum_q.py`, `lambert_w.py`, `debye.py`, `hypergeometric.py`, `bessel.py`, `docs/migration_guide.rst`
 
 ---
 
@@ -420,11 +420,11 @@ Target: Complete astronomical capabilities including ephemerides
 - [x] Complete API documentation for all modules
 - [x] Tutorials and example scripts
 - [x] Custom landing page with radar theme
-- [ ] MATLAB-to-Python migration guide
+- [x] MATLAB-to-Python migration guide
 - [ ] Algorithm reference with equations
 
 ### Testing
-- [x] 1,323 tests with comprehensive coverage
+- [x] 1,530 tests with comprehensive coverage
 - [ ] Increase test coverage to 80%+
 - [ ] Add MATLAB validation tests for new functions
 - [ ] Performance regression tests
