@@ -124,6 +124,19 @@ from pytcl.astronomical.time_systems import (  # Julian dates; Time scales; Unix
     utc_to_tai,
     utc_to_tt,
 )
+from pytcl.astronomical.relativity import (  # Physical constants; Schwarzschild metric; Time dilation; Shapiro delay; Precession; PN effects; Range corrections
+    C_LIGHT,
+    G_GRAV,
+    geodetic_precession,
+    gravitational_time_dilation,
+    lense_thirring_precession,
+    post_newtonian_acceleration,
+    proper_time_rate,
+    relativistic_range_correction,
+    schwarzschild_precession_per_orbit,
+    schwarzschild_radius,
+    shapiro_delay,
+)
 
 __all__ = [
     # Time systems - Julian dates
@@ -237,4 +250,17 @@ __all__ = [
     "moon_position",
     "planet_position",
     "barycenter_position",
+    # Relativity - Constants
+    "C_LIGHT",
+    "G_GRAV",
+    # Relativity - Functions
+    "schwarzschild_radius",
+    "gravitational_time_dilation",
+    "proper_time_rate",
+    "shapiro_delay",
+    "schwarzschild_precession_per_orbit",
+    "post_newtonian_acceleration",
+    "geodetic_precession",
+    "lense_thirring_precession",
+    "relativistic_range_correction",
 ]
