@@ -36,7 +36,8 @@ The Tracker Component Library provides:
 * **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF),
   tidal effects, terrain/DEM utilities
 * **Astronomical**: Orbital mechanics, Kepler propagation, Lambert problem,
-  reference frame transformations
+  reference frame transformations, JPL ephemerides (DE405/430/432s/440),
+  relativistic corrections (Schwarzschild, geodetic precession, Shapiro delay)
 * **Mathematical Functions**: Special functions (Marcum Q, Lambert W, Debye,
   hypergeometric, Bessel), statistics, numerical integration
 * **Signal Processing**: IIR/FIR filters, CFAR detection, FFT, wavelets

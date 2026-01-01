@@ -47,3 +47,23 @@ Astronomical time systems and conversions.
    :members:
    :undoc-members:
    :show-inheritance:
+
+JPL Ephemerides
+---------------
+
+High-precision celestial body positions using JPL Development Ephemeris files.
+
+.. automodule:: pytcl.astronomical.ephemerides
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Relativistic Corrections
+------------------------
+
+Relativistic effects in orbital mechanics and space-time geometry.
+
+.. automodule:: pytcl.astronomical.relativity
+   :members:
+   :undoc-members:
+   :show-inheritance:

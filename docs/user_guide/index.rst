@@ -8,4 +8,5 @@ User Guide
    data_association
    motion_models
    coordinate_systems
+   astronomy
    mathematical_functions
