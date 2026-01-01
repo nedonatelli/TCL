@@ -5,7 +5,8 @@ This module provides functions for visualizing tracking and estimation
 performance metrics such as RMSE, NEES, NIS, and OSPA.
 """
 
-from typing import List, Optional
+from typing import List
+from typing import Optional
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -148,9 +149,7 @@ def plot_nees_sequence(
     fig.add_trace(
         go.Scatter(
             x=np.concatenate([time, time[::-1]]),
-            y=np.concatenate(
-                [np.full(n_steps, upper_bound), np.full(n_steps, lower_bound)]
-            ),
+            y=np.concatenate([np.full(n_steps, upper_bound), np.full(n_steps, lower_bound)]),
             fill="toself",
             fillcolor="rgba(0, 255, 0, 0.1)",
             line=dict(color="rgba(0,0,0,0)"),
@@ -534,9 +533,7 @@ def plot_consistency_summary(
     fig.add_trace(
         go.Scatter(
             x=np.concatenate([time, time[::-1]]),
-            y=np.concatenate(
-                [np.full(n_steps, nees_upper), np.full(n_steps, nees_lower)]
-            ),
+            y=np.concatenate([np.full(n_steps, nees_upper), np.full(n_steps, nees_lower)]),
             fill="toself",
             fillcolor="rgba(0, 255, 0, 0.1)",
             line=dict(color="rgba(0,0,0,0)"),
@@ -580,9 +577,7 @@ def plot_consistency_summary(
         fig.add_trace(
             go.Scatter(
                 x=np.concatenate([time, time[::-1]]),
-                y=np.concatenate(
-                    [np.full(n_steps, nis_upper), np.full(n_steps, nis_lower)]
-                ),
+                y=np.concatenate([np.full(n_steps, nis_upper), np.full(n_steps, nis_lower)]),
                 fill="toself",
                 fillcolor="rgba(0, 255, 0, 0.1)",
                 line=dict(color="rgba(0,0,0,0)"),

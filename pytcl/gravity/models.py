@@ -190,9 +190,7 @@ def normal_gravity(
     sin2_lat = np.sin(lat) ** 2
 
     # Height correction
-    gamma = gamma_0 * (
-        1 - 2 / a * (1 + f + m - 2 * f * sin2_lat) * h + 3 / (a * a) * h * h
-    )
+    gamma = gamma_0 * (1 - 2 / a * (1 + f + m - 2 * f * sin2_lat) * h + 3 / (a * a) * h * h)
 
     return gamma
 

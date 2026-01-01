@@ -12,10 +12,13 @@ References
        Wiley, 2001.
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Callable
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class MLResult(NamedTuple):
@@ -654,9 +657,9 @@ def mle_gaussian(
         theta = np.array(theta)
 
         # Log-likelihood
-        log_lik = -n / 2 * np.log(2 * np.pi * var_mle) - np.sum(
-            (data - mean_mle) ** 2
-        ) / (2 * var_mle)
+        log_lik = -n / 2 * np.log(2 * np.pi * var_mle) - np.sum((data - mean_mle) ** 2) / (
+            2 * var_mle
+        )
 
         # Fisher information
         n_params = len(theta)

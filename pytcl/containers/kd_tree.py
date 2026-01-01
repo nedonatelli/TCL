@@ -13,10 +13,14 @@ References
        Finding Best Matches in Logarithmic Expected Time," ACM TOMS, 1977.
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class KDNode:

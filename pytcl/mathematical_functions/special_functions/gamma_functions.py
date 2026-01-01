@@ -7,7 +7,8 @@ functions used in statistics and probability calculations.
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def gamma(x: ArrayLike) -> NDArray[np.floating]:
@@ -421,9 +422,7 @@ def comb(
     --------
     scipy.special.comb : Combinations.
     """
-    return np.asarray(
-        sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64
-    )
+    return np.asarray(sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64)
 
 
 def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray:

@@ -12,15 +12,14 @@ References
 .. [2] https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html
 """
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
 
-from pytcl.magnetism.wmm import (
-    MagneticCoefficients,
-    MagneticResult,
-    magnetic_field_spherical,
-)
+from pytcl.magnetism.wmm import MagneticCoefficients
+from pytcl.magnetism.wmm import MagneticResult
+from pytcl.magnetism.wmm import magnetic_field_spherical
 
 
 class IGRFModel(NamedTuple):

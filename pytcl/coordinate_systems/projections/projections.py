@@ -25,7 +25,9 @@ References
        nanometers." Journal of Geodesy 85.8 (2011): 475-485.
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -140,9 +142,7 @@ def mercator(
 
     # Northing using isometric latitude
     sin_lat = np.sin(lat)
-    y = a * np.log(
-        np.tan(np.pi / 4 + lat / 2) * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
-    )
+    y = a * np.log(np.tan(np.pi / 4 + lat / 2) * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2))
 
     # Scale factor
     cos_lat = np.cos(lat)
@@ -203,9 +203,7 @@ def mercator_inverse(
 
     for _ in range(max_iter):
         sin_lat = np.sin(lat)
-        lat_new = np.pi / 2 - 2 * np.arctan(
-            t * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
-        )
+        lat_new = np.pi / 2 - 2 * np.arctan(t * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2))
         if abs(lat_new - lat) < tol:
             break
         lat = lat_new
@@ -583,9 +581,7 @@ def geodetic2utm(lat: float, lon: float, zone: Optional[int] = None) -> UTMResul
         northing = result.y + 10000000.0
         hemisphere = "S"
 
-    return UTMResult(
-        easting, northing, zone, hemisphere, result.scale, result.convergence
-    )
+    return UTMResult(easting, northing, zone, hemisphere, result.scale, result.convergence)
 
 
 def utm2geodetic(
@@ -696,8 +692,7 @@ def stereographic(
         return (
             2
             * np.arctan(
-                np.tan(np.pi / 4 + phi / 2)
-                * ((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2)
+                np.tan(np.pi / 4 + phi / 2) * ((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2)
             )
             - np.pi / 2
         )
@@ -785,8 +780,7 @@ def stereographic_inverse(
     chi0 = (
         2
         * np.arctan(
-            np.tan(np.pi / 4 + lat0 / 2)
-            * ((1 - e * sin_lat0) / (1 + e * sin_lat0)) ** (e / 2)
+            np.tan(np.pi / 4 + lat0 / 2) * ((1 - e * sin_lat0) / (1 + e * sin_lat0)) ** (e / 2)
         )
         - np.pi / 2
     )
@@ -821,8 +815,7 @@ def stereographic_inverse(
         lat_new = (
             2
             * np.arctan(
-                np.tan(np.pi / 4 + chi / 2)
-                * ((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2)
+                np.tan(np.pi / 4 + chi / 2) * ((1 + e * sin_lat) / (1 - e * sin_lat)) ** (e / 2)
             )
             - np.pi / 2
         )
@@ -954,9 +947,7 @@ def lambert_conformal_conic(
 
     def compute_t(phi: float) -> float:
         sin_phi = np.sin(phi)
-        return np.tan(np.pi / 4 - phi / 2) / (
-            ((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2)
-        )
+        return np.tan(np.pi / 4 - phi / 2) / (((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2))
 
     m1 = compute_m(lat1)
     m2 = compute_m(lat2)
@@ -1045,9 +1036,7 @@ def lambert_conformal_conic_inverse(
 
     def compute_t(phi: float) -> float:
         sin_phi = np.sin(phi)
-        return np.tan(np.pi / 4 - phi / 2) / (
-            ((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2)
-        )
+        return np.tan(np.pi / 4 - phi / 2) / (((1 - e * sin_phi) / (1 + e * sin_phi)) ** (e / 2))
 
     m1 = compute_m(lat1)
     m2 = compute_m(lat2)
@@ -1075,9 +1064,7 @@ def lambert_conformal_conic_inverse(
     lat = np.pi / 2 - 2 * np.arctan(t)
     for _ in range(max_iter):
         sin_lat = np.sin(lat)
-        lat_new = np.pi / 2 - 2 * np.arctan(
-            t * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
-        )
+        lat_new = np.pi / 2 - 2 * np.arctan(t * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2))
         if abs(lat_new - lat) < tol:
             break
         lat = lat_new
@@ -1141,13 +1128,7 @@ def azimuthal_equidistant(
     """
     # Use spherical approximation with authalic radius
     R = a * np.sqrt(
-        (
-            1
-            + (1 - e2)
-            / (2 * np.sqrt(1 - e2))
-            * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))
-        )
-        / 2
+        (1 + (1 - e2) / (2 * np.sqrt(1 - e2)) * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))) / 2
     )
 
     sin_lat = np.sin(lat)
@@ -1217,13 +1198,7 @@ def azimuthal_equidistant_inverse(
         (latitude, longitude) in radians.
     """
     R = a * np.sqrt(
-        (
-            1
-            + (1 - e2)
-            / (2 * np.sqrt(1 - e2))
-            * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))
-        )
-        / 2
+        (1 + (1 - e2) / (2 * np.sqrt(1 - e2)) * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))) / 2
     )
 
     rho = np.sqrt(x**2 + y**2)

@@ -10,10 +10,14 @@ References
        Careful Seeding," SODA 2007.
 """
 
-from typing import Literal, NamedTuple, Optional, Union
+from typing import Literal
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
 
@@ -250,9 +254,7 @@ def kmeans(
         raise ValueError(f"n_clusters ({n_clusters}) > n_samples ({n_samples})")
 
     # Check if initial centers are provided
-    if isinstance(init, np.ndarray) or (
-        isinstance(init, (list, tuple)) and len(init) > 0
-    ):
+    if isinstance(init, np.ndarray) or (isinstance(init, (list, tuple)) and len(init) > 0):
         init_centers = np.asarray(init, dtype=np.float64)
         if init_centers.shape != (n_clusters, n_features):
             raise ValueError(

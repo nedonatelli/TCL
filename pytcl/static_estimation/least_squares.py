@@ -12,10 +12,12 @@ References
        Johns Hopkins University Press, 2013.
 """
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class LSResult(NamedTuple):
@@ -303,8 +305,7 @@ def total_least_squares(
     # The solution exists if V[n, n] != 0
     if abs(V[n, n]) < 1e-14:
         raise ValueError(
-            "TLS solution does not exist. The smallest singular value "
-            "has multiplicity > 1."
+            "TLS solution does not exist. The smallest singular value " "has multiplicity > 1."
         )
 
     # TLS solution: x = -V[0:n, n] / V[n, n]

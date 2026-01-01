@@ -6,16 +6,18 @@ This module provides algorithms for finding the k best solutions to the
 Multiple Hypothesis Tracking (MHT).
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy.optimize import linear_sum_assignment as scipy_lsa
 
-from pytcl.assignment_algorithms.two_dimensional.assignment import (
-    AssignmentResult,
-    assign2d,
-)
+from pytcl.assignment_algorithms.two_dimensional.assignment import AssignmentResult
+from pytcl.assignment_algorithms.two_dimensional.assignment import assign2d
 
 
 class KBestResult(NamedTuple):
@@ -335,9 +337,7 @@ def _partition_solution(
 
     for i in range(start_idx, n_assigned):
         # Require assignments 0..i-1, forbid assignment i
-        new_required = required + [
-            (row_ind[j], col_ind[j]) for j in range(start_idx, i)
-        ]
+        new_required = required + [(row_ind[j], col_ind[j]) for j in range(start_idx, i)]
         new_forbidden = forbidden + [(row_ind[i], col_ind[i])]
 
         # Solve constrained problem

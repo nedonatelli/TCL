@@ -10,7 +10,9 @@ computing the shortest path on a sphere, including:
 - TDOA localization on a sphere
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -344,9 +346,7 @@ def great_circle_direct(
     """
     d = distance / radius  # Angular distance
 
-    lat2 = np.arcsin(
-        np.sin(lat1) * np.cos(d) + np.cos(lat1) * np.sin(d) * np.cos(azimuth)
-    )
+    lat2 = np.arcsin(np.sin(lat1) * np.cos(d) + np.cos(lat1) * np.sin(d) * np.cos(azimuth))
 
     lon2 = lon1 + np.arctan2(
         np.sin(azimuth) * np.sin(d) * np.cos(lat1),
@@ -408,9 +408,7 @@ def cross_track_distance(
     # Along-track distance
     dat = np.arccos(np.cos(d13) / np.cos(dxt))
 
-    return CrossTrackResult(
-        cross_track=float(dxt * radius), along_track=float(dat * radius)
-    )
+    return CrossTrackResult(cross_track=float(dxt * radius), along_track=float(dat * radius))
 
 
 def great_circle_intersect(
@@ -452,9 +450,7 @@ def great_circle_intersect(
 
     # Convert to Cartesian unit vectors
     def to_cartesian(lat, lon):
-        return np.array(
-            [np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)]
-        )
+        return np.array([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)])
 
     # Normal vectors to the great circles
     p1 = to_cartesian(lat1, lon1)
@@ -508,9 +504,7 @@ def great_circle_intersect(
     lat_i2 = -lat_i1
     lon_i2 = ((lon_i1 + np.pi) % (2 * np.pi)) - np.pi
 
-    return IntersectionResult(
-        float(lat_i1), float(lon_i1), float(lat_i2), float(lon_i2), True
-    )
+    return IntersectionResult(float(lat_i1), float(lon_i1), float(lat_i2), float(lon_i2), True)
 
 
 def great_circle_path_intersect(

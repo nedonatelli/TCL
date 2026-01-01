@@ -9,48 +9,38 @@ This module provides:
 - Data association algorithms (GNN, JPDA)
 """
 
-from pytcl.assignment_algorithms.data_association import (
-    AssociationResult,
-    compute_association_cost,
-    gated_gnn_association,
-    gnn_association,
-    nearest_neighbor,
-)
-from pytcl.assignment_algorithms.gating import (
-    chi2_gate_threshold,
-    compute_gate_volume,
-    ellipsoidal_gate,
-    gate_measurements,
-    mahalanobis_distance,
-    rectangular_gate,
-)
-from pytcl.assignment_algorithms.jpda import (
-    JPDAResult,
-    JPDAUpdate,
-    compute_likelihood_matrix,
-    jpda,
-    jpda_probabilities,
-    jpda_update,
-)
-from pytcl.assignment_algorithms.three_dimensional import (
-    Assignment3DResult,
-    assign3d,
-    assign3d_auction,
-    assign3d_lagrangian,
-    decompose_to_2d,
-    greedy_3d,
-)
-from pytcl.assignment_algorithms.two_dimensional import (
-    AssignmentResult,
-    KBestResult,
-    assign2d,
-    auction,
-    hungarian,
-    kbest_assign2d,
-    linear_sum_assignment,
-    murty,
-    ranked_assignments,
-)
+from pytcl.assignment_algorithms.data_association import AssociationResult
+from pytcl.assignment_algorithms.data_association import compute_association_cost
+from pytcl.assignment_algorithms.data_association import gated_gnn_association
+from pytcl.assignment_algorithms.data_association import gnn_association
+from pytcl.assignment_algorithms.data_association import nearest_neighbor
+from pytcl.assignment_algorithms.gating import chi2_gate_threshold
+from pytcl.assignment_algorithms.gating import compute_gate_volume
+from pytcl.assignment_algorithms.gating import ellipsoidal_gate
+from pytcl.assignment_algorithms.gating import gate_measurements
+from pytcl.assignment_algorithms.gating import mahalanobis_distance
+from pytcl.assignment_algorithms.gating import rectangular_gate
+from pytcl.assignment_algorithms.jpda import JPDAResult
+from pytcl.assignment_algorithms.jpda import JPDAUpdate
+from pytcl.assignment_algorithms.jpda import compute_likelihood_matrix
+from pytcl.assignment_algorithms.jpda import jpda
+from pytcl.assignment_algorithms.jpda import jpda_probabilities
+from pytcl.assignment_algorithms.jpda import jpda_update
+from pytcl.assignment_algorithms.three_dimensional import Assignment3DResult
+from pytcl.assignment_algorithms.three_dimensional import assign3d
+from pytcl.assignment_algorithms.three_dimensional import assign3d_auction
+from pytcl.assignment_algorithms.three_dimensional import assign3d_lagrangian
+from pytcl.assignment_algorithms.three_dimensional import decompose_to_2d
+from pytcl.assignment_algorithms.three_dimensional import greedy_3d
+from pytcl.assignment_algorithms.two_dimensional import AssignmentResult
+from pytcl.assignment_algorithms.two_dimensional import KBestResult
+from pytcl.assignment_algorithms.two_dimensional import assign2d
+from pytcl.assignment_algorithms.two_dimensional import auction
+from pytcl.assignment_algorithms.two_dimensional import hungarian
+from pytcl.assignment_algorithms.two_dimensional import kbest_assign2d
+from pytcl.assignment_algorithms.two_dimensional import linear_sum_assignment
+from pytcl.assignment_algorithms.two_dimensional import murty
+from pytcl.assignment_algorithms.two_dimensional import ranked_assignments
 
 __all__ = [
     # 2D Assignment

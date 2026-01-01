@@ -7,7 +7,10 @@ related operations commonly used in assignment problems and data association.
 
 import itertools
 from functools import lru_cache
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 from numpy.typing import ArrayLike
 
@@ -378,9 +381,7 @@ def partitions(n: int, k: Optional[int] = None) -> Iterator[Tuple[int, ...]]:
     [(4,), (3, 1), (2, 2), (2, 1, 1), (1, 1, 1, 1)]
     """
 
-    def gen_partitions(
-        n: int, max_val: int, prefix: Tuple[int, ...]
-    ) -> Iterator[Tuple[int, ...]]:
+    def gen_partitions(n: int, max_val: int, prefix: Tuple[int, ...]) -> Iterator[Tuple[int, ...]]:
         if n == 0:
             yield prefix
             return

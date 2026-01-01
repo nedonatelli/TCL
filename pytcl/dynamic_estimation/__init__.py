@@ -12,106 +12,97 @@ This module provides filtering and smoothing algorithms for state estimation:
 """
 
 # Import submodules for easy access
-from pytcl.dynamic_estimation import kalman, particle_filters
+from pytcl.dynamic_estimation import kalman
+from pytcl.dynamic_estimation import particle_filters
 
 # IMM estimator
-from pytcl.dynamic_estimation.imm import (
-    IMMEstimator,
-    IMMPrediction,
-    IMMState,
-    IMMUpdate,
-    imm_predict,
-    imm_predict_update,
-    imm_update,
-)
+from pytcl.dynamic_estimation.imm import IMMEstimator
+from pytcl.dynamic_estimation.imm import IMMPrediction
+from pytcl.dynamic_estimation.imm import IMMState
+from pytcl.dynamic_estimation.imm import IMMUpdate
+from pytcl.dynamic_estimation.imm import imm_predict
+from pytcl.dynamic_estimation.imm import imm_predict_update
+from pytcl.dynamic_estimation.imm import imm_update
 
 # Information filter
-from pytcl.dynamic_estimation.information_filter import (
-    InformationFilterResult,
-    InformationState,
-    SRIFResult,
-    SRIFState,
-    fuse_information,
-    information_filter,
-    information_to_state,
-    srif_filter,
-    srif_predict,
-    srif_update,
-    state_to_information,
-)
+from pytcl.dynamic_estimation.information_filter import InformationFilterResult
+from pytcl.dynamic_estimation.information_filter import InformationState
+from pytcl.dynamic_estimation.information_filter import SRIFResult
+from pytcl.dynamic_estimation.information_filter import SRIFState
+from pytcl.dynamic_estimation.information_filter import fuse_information
+from pytcl.dynamic_estimation.information_filter import information_filter
+from pytcl.dynamic_estimation.information_filter import information_to_state
+from pytcl.dynamic_estimation.information_filter import srif_filter
+from pytcl.dynamic_estimation.information_filter import srif_predict
+from pytcl.dynamic_estimation.information_filter import srif_update
+from pytcl.dynamic_estimation.information_filter import state_to_information
 
 # Square-root Kalman filters
 # Cubature Kalman filter
 # Unscented Kalman filter
 # Extended Kalman filter
 # Linear Kalman filter
-from pytcl.dynamic_estimation.kalman import (
-    KalmanPrediction,
-    KalmanState,
-    KalmanUpdate,
-    SigmaPoints,
-    SRKalmanPrediction,
-    SRKalmanState,
-    SRKalmanUpdate,
-    UDState,
-    ckf_predict,
-    ckf_spherical_cubature_points,
-    ckf_update,
-    ekf_predict,
-    ekf_predict_auto,
-    ekf_update,
-    ekf_update_auto,
-    information_filter_predict,
-    information_filter_update,
-    iterated_ekf_update,
-    kf_predict,
-    kf_predict_update,
-    kf_smooth,
-    kf_update,
-    numerical_jacobian,
-    sigma_points_julier,
-    sigma_points_merwe,
-    sr_ukf_predict,
-    sr_ukf_update,
-    srkf_predict,
-    srkf_predict_update,
-    srkf_update,
-    ud_factorize,
-    ud_predict,
-    ud_reconstruct,
-    ud_update,
-    ukf_predict,
-    ukf_update,
-    unscented_transform,
-)
+from pytcl.dynamic_estimation.kalman import KalmanPrediction
+from pytcl.dynamic_estimation.kalman import KalmanState
+from pytcl.dynamic_estimation.kalman import KalmanUpdate
+from pytcl.dynamic_estimation.kalman import SigmaPoints
+from pytcl.dynamic_estimation.kalman import SRKalmanPrediction
+from pytcl.dynamic_estimation.kalman import SRKalmanState
+from pytcl.dynamic_estimation.kalman import SRKalmanUpdate
+from pytcl.dynamic_estimation.kalman import UDState
+from pytcl.dynamic_estimation.kalman import ckf_predict
+from pytcl.dynamic_estimation.kalman import ckf_spherical_cubature_points
+from pytcl.dynamic_estimation.kalman import ckf_update
+from pytcl.dynamic_estimation.kalman import ekf_predict
+from pytcl.dynamic_estimation.kalman import ekf_predict_auto
+from pytcl.dynamic_estimation.kalman import ekf_update
+from pytcl.dynamic_estimation.kalman import ekf_update_auto
+from pytcl.dynamic_estimation.kalman import information_filter_predict
+from pytcl.dynamic_estimation.kalman import information_filter_update
+from pytcl.dynamic_estimation.kalman import iterated_ekf_update
+from pytcl.dynamic_estimation.kalman import kf_predict
+from pytcl.dynamic_estimation.kalman import kf_predict_update
+from pytcl.dynamic_estimation.kalman import kf_smooth
+from pytcl.dynamic_estimation.kalman import kf_update
+from pytcl.dynamic_estimation.kalman import numerical_jacobian
+from pytcl.dynamic_estimation.kalman import sigma_points_julier
+from pytcl.dynamic_estimation.kalman import sigma_points_merwe
+from pytcl.dynamic_estimation.kalman import sr_ukf_predict
+from pytcl.dynamic_estimation.kalman import sr_ukf_update
+from pytcl.dynamic_estimation.kalman import srkf_predict
+from pytcl.dynamic_estimation.kalman import srkf_predict_update
+from pytcl.dynamic_estimation.kalman import srkf_update
+from pytcl.dynamic_estimation.kalman import ud_factorize
+from pytcl.dynamic_estimation.kalman import ud_predict
+from pytcl.dynamic_estimation.kalman import ud_reconstruct
+from pytcl.dynamic_estimation.kalman import ud_update
+from pytcl.dynamic_estimation.kalman import ukf_predict
+from pytcl.dynamic_estimation.kalman import ukf_update
+from pytcl.dynamic_estimation.kalman import unscented_transform
 
 # Particle filters
-from pytcl.dynamic_estimation.particle_filters import (
-    ParticleState,
-    bootstrap_pf_predict,
-    bootstrap_pf_step,
-    bootstrap_pf_update,
-    effective_sample_size,
-    gaussian_likelihood,
-    initialize_particles,
-    particle_covariance,
-    particle_mean,
-    resample_multinomial,
-    resample_residual,
-    resample_systematic,
-)
+from pytcl.dynamic_estimation.particle_filters import ParticleState
+from pytcl.dynamic_estimation.particle_filters import bootstrap_pf_predict
+from pytcl.dynamic_estimation.particle_filters import bootstrap_pf_step
+from pytcl.dynamic_estimation.particle_filters import bootstrap_pf_update
+from pytcl.dynamic_estimation.particle_filters import effective_sample_size
+from pytcl.dynamic_estimation.particle_filters import gaussian_likelihood
+from pytcl.dynamic_estimation.particle_filters import initialize_particles
+from pytcl.dynamic_estimation.particle_filters import particle_covariance
+from pytcl.dynamic_estimation.particle_filters import particle_mean
+from pytcl.dynamic_estimation.particle_filters import resample_multinomial
+from pytcl.dynamic_estimation.particle_filters import resample_residual
+from pytcl.dynamic_estimation.particle_filters import resample_systematic
 
 # Smoothers
-from pytcl.dynamic_estimation.smoothers import (
-    FixedLagResult,
-    RTSResult,
-    SmoothedState,
-    fixed_interval_smoother,
-    fixed_lag_smoother,
-    rts_smoother,
-    rts_smoother_single_step,
-    two_filter_smoother,
-)
+from pytcl.dynamic_estimation.smoothers import FixedLagResult
+from pytcl.dynamic_estimation.smoothers import RTSResult
+from pytcl.dynamic_estimation.smoothers import SmoothedState
+from pytcl.dynamic_estimation.smoothers import fixed_interval_smoother
+from pytcl.dynamic_estimation.smoothers import fixed_lag_smoother
+from pytcl.dynamic_estimation.smoothers import rts_smoother
+from pytcl.dynamic_estimation.smoothers import rts_smoother_single_step
+from pytcl.dynamic_estimation.smoothers import two_filter_smoother
 
 # Re-export commonly used functions at the top level
 

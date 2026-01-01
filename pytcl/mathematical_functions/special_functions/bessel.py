@@ -9,7 +9,8 @@ from typing import Union
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def besselj(

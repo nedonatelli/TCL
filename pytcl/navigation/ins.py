@@ -18,17 +18,19 @@ References
 .. [3] J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.coordinate_systems.rotations import (
-    quat2rotmat,
-    quat_multiply,
-    rotmat2quat,
-)
-from pytcl.navigation.geodesy import WGS84, Ellipsoid
+from pytcl.coordinate_systems.rotations import quat2rotmat
+from pytcl.coordinate_systems.rotations import quat_multiply
+from pytcl.coordinate_systems.rotations import rotmat2quat
+from pytcl.navigation.geodesy import WGS84
+from pytcl.navigation.geodesy import Ellipsoid
 
 # =============================================================================
 # Physical Constants
@@ -248,11 +250,7 @@ def normal_gravity(lat: float, alt: float = 0.0) -> float:
 
     # Free-air correction (first-order)
     g = g0 * (
-        1
-        - 2
-        * alt
-        / A_EARTH
-        * (1 + F_EARTH + (OMEGA_EARTH**2 * A_EARTH**2 * B_EARTH) / GM_EARTH)
+        1 - 2 * alt / A_EARTH * (1 + F_EARTH + (OMEGA_EARTH**2 * A_EARTH**2 * B_EARTH) / GM_EARTH)
     )
 
     return g
@@ -576,9 +574,7 @@ def update_quaternion(
 
     if angle < 1e-10:
         # Small angle approximation
-        delta_q = np.array(
-            [1.0, 0.5 * delta_theta[0], 0.5 * delta_theta[1], 0.5 * delta_theta[2]]
-        )
+        delta_q = np.array([1.0, 0.5 * delta_theta[0], 0.5 * delta_theta[1], 0.5 * delta_theta[2]])
     else:
         # Exact quaternion for rotation
         axis = delta_theta / angle

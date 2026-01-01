@@ -24,10 +24,13 @@ References
        Wiley-Interscience.
 """
 
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy import signal as scipy_signal
 
 # =============================================================================
@@ -606,13 +609,9 @@ def filtfilt(
 
     if isinstance(coeffs, FilterCoefficients):
         if coeffs.sos is not None:
-            return scipy_signal.sosfiltfilt(
-                coeffs.sos, x, padtype=padtype, padlen=padlen
-            )
+            return scipy_signal.sosfiltfilt(coeffs.sos, x, padtype=padtype, padlen=padlen)
         else:
-            return scipy_signal.filtfilt(
-                coeffs.b, coeffs.a, x, padtype=padtype, padlen=padlen
-            )
+            return scipy_signal.filtfilt(coeffs.b, coeffs.a, x, padtype=padtype, padlen=padlen)
     elif isinstance(coeffs, tuple) and len(coeffs) == 2:
         b, a = coeffs
         return scipy_signal.filtfilt(b, a, x, padtype=padtype, padlen=padlen)

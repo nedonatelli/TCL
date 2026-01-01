@@ -7,7 +7,8 @@ applications including orbits, pendulums, and electromagnetic calculations.
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def ellipk(m: ArrayLike) -> NDArray[np.floating]:
@@ -243,9 +244,7 @@ def elliprg(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     return np.asarray(sp.elliprg(x, y, z), dtype=np.float64)
 
 
-def elliprj(
-    x: ArrayLike, y: ArrayLike, z: ArrayLike, p: ArrayLike
-) -> NDArray[np.floating]:
+def elliprj(x: ArrayLike, y: ArrayLike, z: ArrayLike, p: ArrayLike) -> NDArray[np.floating]:
     """
     Carlson symmetric elliptic integral R_J.
 

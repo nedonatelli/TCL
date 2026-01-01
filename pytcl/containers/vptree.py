@@ -11,10 +11,15 @@ References
        neighbor search in general metric spaces," SODA 1993.
 """
 
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Callable
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class VPTreeResult(NamedTuple):

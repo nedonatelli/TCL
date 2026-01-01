@@ -5,11 +5,15 @@ This module provides particle filtering algorithms for nonlinear/non-Gaussian
 state estimation.
 """
 
-from typing import Callable, NamedTuple, Optional, Tuple
+from typing import Callable
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class ParticleState(NamedTuple):
@@ -157,9 +161,7 @@ def resample_residual(
     residual = Nw - floor_Nw
 
     # Deterministic copies (JIT-compiled)
-    resampled, idx = _resample_residual_deterministic(
-        particles.astype(np.float64), floor_Nw
-    )
+    resampled, idx = _resample_residual_deterministic(particles.astype(np.float64), floor_Nw)
 
     # Multinomial resampling of residuals
     if idx < N:
@@ -271,9 +273,7 @@ def bootstrap_pf_update(
     N = len(particles)
 
     # Compute likelihoods
-    likelihoods = np.array(
-        [likelihood_func(z, particles[i]) for i in range(N)], dtype=np.float64
-    )
+    likelihoods = np.array([likelihood_func(z, particles[i]) for i in range(N)], dtype=np.float64)
 
     # Update weights
     weights_unnorm = weights * likelihoods

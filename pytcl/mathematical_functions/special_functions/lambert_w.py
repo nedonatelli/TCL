@@ -7,7 +7,8 @@ delay differential equations, combinatorics, and physics.
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def lambert_w(
@@ -108,9 +109,7 @@ def lambert_w_real(
             raise ValueError(f"For branch 0, x must be >= -1/e ≈ {branch_point:.6f}")
     elif branch == -1:
         if np.any((x < branch_point) | (x >= 0)):
-            raise ValueError(
-                f"For branch -1, x must be in [-1/e, 0) ≈ [{branch_point:.6f}, 0)"
-            )
+            raise ValueError(f"For branch -1, x must be in [-1/e, 0) ≈ [{branch_point:.6f}, 0)")
     else:
         raise ValueError(f"branch must be 0 or -1, got {branch}")
 

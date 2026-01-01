@@ -26,32 +26,36 @@ Examples
 ...                         result.zone, result.hemisphere)
 """
 
-from pytcl.coordinate_systems.projections.projections import (  # Constants; Result types; Azimuthal Equidistant; UTM; Lambert Conformal Conic; Mercator; Stereographic; Transverse Mercator
-    WGS84_A,
-    WGS84_B,
-    WGS84_E,
-    WGS84_E2,
-    WGS84_EP2,
-    WGS84_F,
-    ProjectionResult,
-    UTMResult,
-    azimuthal_equidistant,
-    azimuthal_equidistant_inverse,
-    geodetic2utm,
-    geodetic2utm_batch,
-    lambert_conformal_conic,
-    lambert_conformal_conic_inverse,
-    mercator,
-    mercator_inverse,
-    polar_stereographic,
-    stereographic,
-    stereographic_inverse,
-    transverse_mercator,
-    transverse_mercator_inverse,
-    utm2geodetic,
-    utm_central_meridian,
-    utm_zone,
+from pytcl.coordinate_systems.projections.projections import (
+    WGS84_A,  # Constants; Result types; Azimuthal Equidistant; UTM; Lambert Conformal Conic; Mercator; Stereographic; Transverse Mercator
 )
+from pytcl.coordinate_systems.projections.projections import WGS84_B
+from pytcl.coordinate_systems.projections.projections import WGS84_E
+from pytcl.coordinate_systems.projections.projections import WGS84_E2
+from pytcl.coordinate_systems.projections.projections import WGS84_EP2
+from pytcl.coordinate_systems.projections.projections import WGS84_F
+from pytcl.coordinate_systems.projections.projections import ProjectionResult
+from pytcl.coordinate_systems.projections.projections import UTMResult
+from pytcl.coordinate_systems.projections.projections import azimuthal_equidistant
+from pytcl.coordinate_systems.projections.projections import (
+    azimuthal_equidistant_inverse,
+)
+from pytcl.coordinate_systems.projections.projections import geodetic2utm
+from pytcl.coordinate_systems.projections.projections import geodetic2utm_batch
+from pytcl.coordinate_systems.projections.projections import lambert_conformal_conic
+from pytcl.coordinate_systems.projections.projections import (
+    lambert_conformal_conic_inverse,
+)
+from pytcl.coordinate_systems.projections.projections import mercator
+from pytcl.coordinate_systems.projections.projections import mercator_inverse
+from pytcl.coordinate_systems.projections.projections import polar_stereographic
+from pytcl.coordinate_systems.projections.projections import stereographic
+from pytcl.coordinate_systems.projections.projections import stereographic_inverse
+from pytcl.coordinate_systems.projections.projections import transverse_mercator
+from pytcl.coordinate_systems.projections.projections import transverse_mercator_inverse
+from pytcl.coordinate_systems.projections.projections import utm2geodetic
+from pytcl.coordinate_systems.projections.projections import utm_central_meridian
+from pytcl.coordinate_systems.projections.projections import utm_zone
 
 __all__ = [
     # Constants

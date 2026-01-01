@@ -30,16 +30,14 @@ __original_author__ = "David F. Crouse, Naval Research Laboratory"
 # Specialized domains (Phase 6)
 # Assignment algorithms (Phase 5)
 # Core utilities
-from pytcl import (
-    assignment_algorithms,
-    astronomical,
-    atmosphere,
-    core,
-    navigation,
-    performance_evaluation,
-    plotting,
-    trackers,
-)
+from pytcl import assignment_algorithms
+from pytcl import astronomical
+from pytcl import atmosphere
+from pytcl import core
+from pytcl import navigation
+from pytcl import performance_evaluation
+from pytcl import plotting
+from pytcl import trackers
 
 
 # Version tuple for programmatic access

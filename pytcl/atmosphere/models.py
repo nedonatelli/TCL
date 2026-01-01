@@ -5,10 +5,12 @@ This module provides standard atmosphere models used for computing
 temperature, pressure, and density at various altitudes.
 """
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class AtmosphereState(NamedTuple):
@@ -218,9 +220,7 @@ def isa_atmosphere(
     strat_mask = altitude > h_trop
     temperature[strat_mask] = T_trop + temperature_offset
     # Pressure at tropopause
-    P_trop = P0 * ((T0 + temperature_offset) / (T_trop + temperature_offset)) ** (
-        G0 / (R * L)
-    )
+    P_trop = P0 * ((T0 + temperature_offset) / (T_trop + temperature_offset)) ** (G0 / (R * L))
     pressure[strat_mask] = P_trop * np.exp(
         -G0 * (altitude[strat_mask] - h_trop) / (R * (T_trop + temperature_offset))
     )

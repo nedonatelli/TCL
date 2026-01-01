@@ -7,22 +7,22 @@ with filtering, querying, and batch operations.
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING
+from typing import Callable
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.trackers.multi_target import Track, TrackStatus
+from pytcl.trackers.multi_target import Track
+from pytcl.trackers.multi_target import TrackStatus
 
 if TYPE_CHECKING:
     from pytcl.trackers.multi_target import MultiTargetTracker

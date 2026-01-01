@@ -22,10 +22,13 @@ References
        Speech, and Signal Processing, 32(2), 236-243.
 """
 
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy import signal as scipy_signal
 
 # =============================================================================
@@ -503,12 +506,8 @@ def reassigned_spectrogram(
     win_d = np.gradient(win)
 
     # STFT with modified windows
-    result_t = stft(
-        x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft
-    )
-    result_d = stft(
-        x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft
-    )
+    result_t = stft(x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
+    result_d = stft(x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
 
     # Compute reassigned coordinates
     Zxx = result1.Zxx
@@ -592,9 +591,7 @@ def mel_spectrogram(
         noverlap = nperseg // 4
 
     # Compute linear spectrogram
-    spec_result = spectrogram(
-        x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap
-    )
+    spec_result = spectrogram(x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap)
 
     # Create mel filterbank
     mel_fb = _mel_filterbank(

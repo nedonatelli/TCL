@@ -8,7 +8,8 @@ robust estimators, and related quantities used in tracking applications.
 from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def weighted_mean(
@@ -364,9 +365,7 @@ def kurtosis(
     """
     from scipy.stats import kurtosis as scipy_kurtosis
 
-    return np.asarray(
-        scipy_kurtosis(x, axis=axis, fisher=fisher, bias=bias), dtype=np.float64
-    )
+    return np.asarray(scipy_kurtosis(x, axis=axis, fisher=fisher, bias=bias), dtype=np.float64)
 
 
 def moment(

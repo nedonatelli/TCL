@@ -11,10 +11,16 @@ References
        neighbor," ICML 2006.
 """
 
-from typing import Callable, List, NamedTuple, Optional, Set, Tuple
+from typing import Callable
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class CoverTreeResult(NamedTuple):

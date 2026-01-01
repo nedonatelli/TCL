@@ -20,10 +20,15 @@ References
 .. [2] Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
 """
 
-from typing import Callable, List, NamedTuple, Optional, Union
+from typing import Callable
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 # Try to import pywavelets for DWT support
 try:
@@ -526,9 +531,7 @@ def dwt(
     - 'biorN.M': Biorthogonal wavelets
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for DWT. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required for DWT. Install with: pip install pywavelets")
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -579,9 +582,7 @@ def idwt(
     True
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for IDWT. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required for IDWT. Install with: pip install pywavelets")
 
     # Reconstruct coeffs list in pywt format
     # [cA_n, cD_n, cD_n-1, ..., cD_1]
@@ -617,9 +618,7 @@ def dwt_single_level(
         Detail coefficients.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for DWT. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required for DWT. Install with: pip install pywavelets")
 
     signal = np.asarray(signal, dtype=np.float64)
     cA, cD = pywt.dwt(signal, wavelet, mode=mode)
@@ -653,9 +652,7 @@ def idwt_single_level(
         Reconstructed signal.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for IDWT. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required for IDWT. Install with: pip install pywavelets")
 
     cA = np.asarray(cA, dtype=np.float64)
     cD = np.asarray(cD, dtype=np.float64)
@@ -709,9 +706,7 @@ def wpt(
     True
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for WPT. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required for WPT. Install with: pip install pywavelets")
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -817,9 +812,7 @@ def threshold_coefficients(
         Thresholded coefficients.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required. Install with: pip install pywavelets"
-        )
+        raise ImportError("pywavelets is required. Install with: pip install pywavelets")
 
     # Estimate noise from finest detail coefficients
     if value is None:

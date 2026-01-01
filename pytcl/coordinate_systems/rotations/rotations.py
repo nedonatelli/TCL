@@ -10,7 +10,8 @@ from typing import Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 @njit(cache=True, fastmath=True)
@@ -353,9 +354,7 @@ def rotmat2axisangle(
         return axis / np.linalg.norm(axis), float(angle)
 
     # General case
-    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (
-        2 * np.sin(angle)
-    )
+    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * np.sin(angle))
 
     return axis, float(angle)
 

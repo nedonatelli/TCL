@@ -176,9 +176,7 @@ def mean_to_hyperbolic_anomaly(
         if abs(delta) < tol:
             return H
 
-    raise ValueError(
-        f"Hyperbolic Kepler's equation did not converge after {max_iter} iterations"
-    )
+    raise ValueError(f"Hyperbolic Kepler's equation did not converge after {max_iter} iterations")
 
 
 def eccentric_to_true_anomaly(E: float, e: float) -> float:

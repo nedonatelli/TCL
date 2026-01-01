@@ -6,12 +6,16 @@ for PDF, CDF, sampling, and moment calculations. These wrap scipy.stats
 distributions with additional functionality useful for tracking applications.
 """
 
-from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Union
+from abc import ABC
+from abc import abstractmethod
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import scipy.stats as stats
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class Distribution(ABC):
@@ -43,9 +47,7 @@ class Distribution(ABC):
         pass
 
     @abstractmethod
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         """Generate random samples."""
         pass
 
@@ -104,9 +106,7 @@ class Gaussian(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -167,9 +167,7 @@ class MultivariateGaussian(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         raise NotImplementedError("PPF not available for multivariate normal")
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> NDArray[np.floating]:
@@ -239,9 +237,7 @@ class Uniform(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -279,9 +275,7 @@ class Exponential(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -347,9 +341,7 @@ class Gamma(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -387,9 +379,7 @@ class ChiSquared(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -436,9 +426,7 @@ class StudentT(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -485,9 +473,7 @@ class Beta(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -528,9 +514,7 @@ class Poisson(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -573,9 +557,7 @@ class VonMises(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
@@ -583,7 +565,8 @@ class VonMises(Distribution):
 
     def var(self) -> float:
         # Circular variance: 1 - I_1(kappa)/I_0(kappa)
-        from scipy.special import i0, i1
+        from scipy.special import i0
+        from scipy.special import i1
 
         return 1 - i1(self._kappa) / i0(self._kappa)
 
@@ -628,9 +611,7 @@ class Wishart(Distribution):
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
         raise NotImplementedError("PPF not available for Wishart distribution")
 
-    def sample(
-        self, size: Optional[Union[int, Tuple[int, ...]]] = None
-    ) -> NDArray[np.floating]:
+    def sample(self, size: Optional[Union[int, Tuple[int, ...]]] = None) -> NDArray[np.floating]:
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> NDArray[np.floating]:

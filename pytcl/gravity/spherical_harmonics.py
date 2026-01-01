@@ -11,7 +11,8 @@ References
 .. [2] O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
 """
 
-from typing import Optional, Tuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -94,9 +95,7 @@ def associated_legendre(
                 b_nm = np.sqrt(((n - 1) ** 2 - m * m) / (4 * (n - 1) ** 2 - 1))
                 P[n, m] = a_nm * (x * P[n - 1, m] - b_nm * P[n - 2, m])
             else:
-                P[n, m] = (
-                    (2 * n - 1) * x * P[n - 1, m] - (n + m - 1) * P[n - 2, m]
-                ) / (n - m)
+                P[n, m] = ((2 * n - 1) * x * P[n - 1, m] - (n + m - 1) * P[n - 2, m]) / (n - m)
 
     return P
 
@@ -157,8 +156,7 @@ def associated_legendre_derivative(
                         factor = np.sqrt((n - m) * (n + m + 1))
                         if m + 1 <= m_max and n >= m + 1:
                             dP[n, m] = (
-                                n * x / u2 * P[n, m]
-                                - factor / np.sqrt(u2) * P[n, m + 1]
+                                n * x / u2 * P[n, m] - factor / np.sqrt(u2) * P[n, m + 1]
                                 if m + 1 <= n
                                 else n * x / u2 * P[n, m]
                             )
@@ -166,9 +164,7 @@ def associated_legendre_derivative(
                             dP[n, m] = n * x / u2 * P[n, m]
                 else:
                     # Unnormalized form
-                    dP[n, m] = (
-                        (n * x * P[n, m] - (n + m) * P[n - 1, m]) / u2 if n > 0 else 0
-                    )
+                    dP[n, m] = (n * x * P[n, m] - (n + m) * P[n - 1, m]) / u2 if n > 0 else 0
 
     return dP
 
@@ -488,8 +484,7 @@ def associated_legendre_scaled(
             s_ratio_2 = scale[n] / scale[n - 2]
 
             P_scaled[n, m] = a_nm * (
-                x * P_scaled[n - 1, m] * s_ratio_1
-                - b_nm * P_scaled[n - 2, m] * s_ratio_2
+                x * P_scaled[n - 1, m] * s_ratio_1 - b_nm * P_scaled[n - 2, m] * s_ratio_2
             )
 
     return P_scaled, scale_exp

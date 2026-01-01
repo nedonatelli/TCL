@@ -7,7 +7,8 @@ in probability theory and statistical analysis.
 
 import numpy as np
 import scipy.special as sp
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def erf(x: ArrayLike) -> NDArray[np.floating]:

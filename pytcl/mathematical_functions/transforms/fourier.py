@@ -23,10 +23,13 @@ References
        Electroacoustics, 15(2), 70-73.
 """
 
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple
+from typing import Optional
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy import fft as scipy_fft
 from scipy import signal as scipy_signal
 

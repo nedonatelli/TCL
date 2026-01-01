@@ -24,13 +24,18 @@ References
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional, Tuple
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
-from .clenshaw import clenshaw_gravity, clenshaw_potential
-from .models import WGS84, normal_gravity_somigliana
+from .clenshaw import clenshaw_gravity
+from .clenshaw import clenshaw_potential
+from .models import WGS84
+from .models import normal_gravity_somigliana
 
 
 class EGMCoefficients(NamedTuple):
@@ -491,9 +496,7 @@ def geoid_heights(
     # Compute for each point
     heights = np.zeros(len(lats))
     for i in range(len(lats)):
-        heights[i] = geoid_height(
-            lats[i], lons[i], model, n_max, coefficients=coefficients
-        )
+        heights[i] = geoid_height(lats[i], lons[i], model, n_max, coefficients=coefficients)
 
     return heights
 

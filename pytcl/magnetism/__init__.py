@@ -25,44 +25,34 @@ Examples
 >>> coef = create_emm_test_coefficients(n_max=36)
 """
 
-from pytcl.magnetism.emm import (
-    EMM_PARAMETERS,
-    HighResCoefficients,
-)
+from pytcl.magnetism.emm import EMM_PARAMETERS
+from pytcl.magnetism.emm import HighResCoefficients
 from pytcl.magnetism.emm import create_test_coefficients as create_emm_test_coefficients
-from pytcl.magnetism.emm import (
-    emm,
-    emm_declination,
-    emm_inclination,
-    emm_intensity,
-)
+from pytcl.magnetism.emm import emm
+from pytcl.magnetism.emm import emm_declination
+from pytcl.magnetism.emm import emm_inclination
+from pytcl.magnetism.emm import emm_intensity
 from pytcl.magnetism.emm import get_data_dir as get_emm_data_dir
-from pytcl.magnetism.emm import (
-    load_emm_coefficients,
-    wmmhr,
-)
-from pytcl.magnetism.igrf import (
-    IGRF13,
-    IGRFModel,
-    create_igrf13_coefficients,
-    dipole_axis,
-    dipole_moment,
-    igrf,
-    igrf_declination,
-    igrf_inclination,
-    magnetic_north_pole,
-)
-from pytcl.magnetism.wmm import (
-    WMM2020,
-    MagneticCoefficients,
-    MagneticResult,
-    create_wmm2020_coefficients,
-    magnetic_declination,
-    magnetic_field_intensity,
-    magnetic_field_spherical,
-    magnetic_inclination,
-    wmm,
-)
+from pytcl.magnetism.emm import load_emm_coefficients
+from pytcl.magnetism.emm import wmmhr
+from pytcl.magnetism.igrf import IGRF13
+from pytcl.magnetism.igrf import IGRFModel
+from pytcl.magnetism.igrf import create_igrf13_coefficients
+from pytcl.magnetism.igrf import dipole_axis
+from pytcl.magnetism.igrf import dipole_moment
+from pytcl.magnetism.igrf import igrf
+from pytcl.magnetism.igrf import igrf_declination
+from pytcl.magnetism.igrf import igrf_inclination
+from pytcl.magnetism.igrf import magnetic_north_pole
+from pytcl.magnetism.wmm import WMM2020
+from pytcl.magnetism.wmm import MagneticCoefficients
+from pytcl.magnetism.wmm import MagneticResult
+from pytcl.magnetism.wmm import create_wmm2020_coefficients
+from pytcl.magnetism.wmm import magnetic_declination
+from pytcl.magnetism.wmm import magnetic_field_intensity
+from pytcl.magnetism.wmm import magnetic_field_spherical
+from pytcl.magnetism.wmm import magnetic_inclination
+from pytcl.magnetism.wmm import wmm
 
 __all__ = [
     # Types and constants

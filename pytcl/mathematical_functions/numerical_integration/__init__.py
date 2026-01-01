@@ -9,18 +9,24 @@ This module provides:
 
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
     cubature_gauss_hermite,
-    dblquad,
-    fixed_quad,
+)
+from pytcl.mathematical_functions.numerical_integration.quadrature import dblquad
+from pytcl.mathematical_functions.numerical_integration.quadrature import fixed_quad
+from pytcl.mathematical_functions.numerical_integration.quadrature import (
     gauss_chebyshev,
-    gauss_hermite,
-    gauss_laguerre,
-    gauss_legendre,
-    quad,
-    romberg,
-    simpson,
+)
+from pytcl.mathematical_functions.numerical_integration.quadrature import gauss_hermite
+from pytcl.mathematical_functions.numerical_integration.quadrature import gauss_laguerre
+from pytcl.mathematical_functions.numerical_integration.quadrature import gauss_legendre
+from pytcl.mathematical_functions.numerical_integration.quadrature import quad
+from pytcl.mathematical_functions.numerical_integration.quadrature import romberg
+from pytcl.mathematical_functions.numerical_integration.quadrature import simpson
+from pytcl.mathematical_functions.numerical_integration.quadrature import (
     spherical_cubature,
-    tplquad,
-    trapezoid,
+)
+from pytcl.mathematical_functions.numerical_integration.quadrature import tplquad
+from pytcl.mathematical_functions.numerical_integration.quadrature import trapezoid
+from pytcl.mathematical_functions.numerical_integration.quadrature import (
     unscented_transform_points,
 )
 

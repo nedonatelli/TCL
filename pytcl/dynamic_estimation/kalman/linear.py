@@ -5,11 +5,15 @@ This module provides the standard linear Kalman filter for systems with
 linear dynamics and linear measurements with Gaussian noise.
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
-from scipy.linalg import cho_factor, cho_solve
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
+from scipy.linalg import cho_factor
+from scipy.linalg import cho_solve
 
 
 class KalmanState(NamedTuple):

@@ -5,10 +5,13 @@ This module provides functions for visualizing uncertainty as ellipses
 in 2D and 3D spaces, commonly used in tracking and estimation applications.
 """
 
-from typing import List, Optional, Tuple
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 try:
     import plotly.graph_objects as go

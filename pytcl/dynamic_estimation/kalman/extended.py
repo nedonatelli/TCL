@@ -8,12 +8,11 @@ around the current state estimate using Jacobians.
 from typing import Callable
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import (
-    KalmanPrediction,
-    KalmanUpdate,
-)
+from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction
+from pytcl.dynamic_estimation.kalman.linear import KalmanUpdate
 
 
 def ekf_predict(

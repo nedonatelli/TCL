@@ -12,10 +12,13 @@ References
        Cartography," Communications of the ACM, 1981.
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Callable
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class RobustResult(NamedTuple):

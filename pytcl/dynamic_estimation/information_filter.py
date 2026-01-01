@@ -16,15 +16,17 @@ This module provides:
 - Square-Root Information Filter (SRIF) for improved numerical stability
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import (
-    information_filter_predict,
-    information_filter_update,
-)
+from pytcl.dynamic_estimation.kalman.linear import information_filter_predict
+from pytcl.dynamic_estimation.kalman.linear import information_filter_update
 
 
 class InformationState(NamedTuple):

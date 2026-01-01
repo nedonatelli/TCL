@@ -7,18 +7,17 @@ with spatial query support.
 
 from __future__ import annotations
 
-from typing import (
-    Iterable,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 from pytcl.containers.kd_tree import KDTree
 
@@ -211,9 +210,7 @@ class MeasurementSet:
         MeasurementSet
             Measurements at the specified time.
         """
-        measurements = [
-            m for m in self._measurements if abs(m.time - time) <= tolerance
-        ]
+        measurements = [m for m in self._measurements if abs(m.time - time) <= tolerance]
         return MeasurementSet(measurements)
 
     def in_time_window(self, start: float, end: float) -> MeasurementSet:
@@ -354,9 +351,7 @@ class MeasurementSet:
             return np.zeros((0, 0))
         return np.array([m.value for m in self._measurements])
 
-    def values_at_time(
-        self, time: float, tolerance: float = 1e-9
-    ) -> NDArray[np.float64]:
+    def values_at_time(self, time: float, tolerance: float = 1e-9) -> NDArray[np.float64]:
         """
         Extract measurement values at a specific time.
 

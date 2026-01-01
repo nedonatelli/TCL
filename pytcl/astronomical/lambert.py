@@ -15,7 +15,8 @@ References
        orbital boundary-value problem," Celestial Mechanics, 1990.
 """
 
-from typing import NamedTuple, Tuple
+from typing import NamedTuple
+from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -198,9 +199,7 @@ def lambert_universal(
         psi = (psi_low + psi_high) / 2
 
     else:
-        raise ValueError(
-            f"Lambert's problem did not converge after {max_iter} iterations"
-        )
+        raise ValueError(f"Lambert's problem did not converge after {max_iter} iterations")
 
     # Compute f, g, f_dot, g_dot
     f = 1 - y / r1_mag
@@ -288,11 +287,7 @@ def lambert_izzo(
 
     # Cross product for angular momentum direction
     cross = np.cross(r1, r2)
-    h_hat = (
-        cross / np.linalg.norm(cross)
-        if np.linalg.norm(cross) > 1e-10
-        else np.array([0, 0, 1])
-    )
+    h_hat = cross / np.linalg.norm(cross) if np.linalg.norm(cross) > 1e-10 else np.array([0, 0, 1])
 
     # Transfer angle
     cos_dnu = np.dot(r1_hat, r2_hat)
@@ -335,13 +330,9 @@ def lambert_izzo(
 
         # Time of flight equation
         if x < 1:
-            psi = np.arccos(
-                x * lambda_param + y * np.sqrt(1 - lambda_param * lambda_param)
-            )
+            psi = np.arccos(x * lambda_param + y * np.sqrt(1 - lambda_param * lambda_param))
         else:
-            psi = np.arccosh(
-                x * lambda_param + y * np.sqrt(lambda_param * lambda_param - 1)
-            )
+            psi = np.arccosh(x * lambda_param + y * np.sqrt(lambda_param * lambda_param - 1))
 
         T_x = (
             psi + multi_rev * np.pi - (x - lambda_param * y) * np.sqrt(abs(1 - x * x))

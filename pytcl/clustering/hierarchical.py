@@ -12,11 +12,15 @@ References
 """
 
 from enum import Enum
-from typing import List, Literal, NamedTuple, Optional
+from typing import List
+from typing import Literal
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class LinkageType(Enum):
@@ -152,11 +156,7 @@ def _ward_linkage(
     """Ward's linkage: minimum variance merge."""
     total = size_i + size_j + size_k
     return np.sqrt(
-        (
-            (size_i + size_k) * dist_i**2
-            + (size_j + size_k) * dist_j**2
-            - size_k * dist_ij**2
-        )
+        ((size_i + size_k) * dist_i**2 + (size_j + size_k) * dist_j**2 - size_k * dist_ij**2)
         / total
     )
 

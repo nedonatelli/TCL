@@ -6,15 +6,17 @@ and Kalman filtering with track management (initiation, maintenance, deletion).
 """
 
 from enum import Enum
-from typing import Callable, List, NamedTuple, Optional
+from typing import Callable
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.assignment_algorithms import (
-    chi2_gate_threshold,
-    gnn_association,
-)
+from pytcl.assignment_algorithms import chi2_gate_threshold
+from pytcl.assignment_algorithms import gnn_association
 
 
 class TrackStatus(Enum):

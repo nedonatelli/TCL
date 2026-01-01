@@ -17,20 +17,25 @@ References
        Kalman Filtering", 4th ed., Wiley, 2012.
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
-from pytcl.navigation.geodesy import WGS84, Ellipsoid, geodetic_to_ecef
-from pytcl.navigation.ins import (
-    IMUData,
-    INSState,
-    ins_error_state_matrix,
-    ins_process_noise_matrix,
-    mechanize_ins_ned,
-)
+from pytcl.dynamic_estimation.kalman import kf_predict
+from pytcl.dynamic_estimation.kalman import kf_update
+from pytcl.navigation.geodesy import WGS84
+from pytcl.navigation.geodesy import Ellipsoid
+from pytcl.navigation.geodesy import geodetic_to_ecef
+from pytcl.navigation.ins import IMUData
+from pytcl.navigation.ins import INSState
+from pytcl.navigation.ins import ins_error_state_matrix
+from pytcl.navigation.ins import ins_process_noise_matrix
+from pytcl.navigation.ins import mechanize_ins_ned
 
 # =============================================================================
 # Constants
@@ -512,9 +517,7 @@ def loose_coupled_predict(
     dt = imu.dt
 
     # Propagate INS mechanization
-    ins_new = mechanize_ins_ned(
-        state.ins_state, imu, accel_prev=accel_prev, gyro_prev=gyro_prev
-    )
+    ins_new = mechanize_ins_ned(state.ins_state, imu, accel_prev=accel_prev, gyro_prev=gyro_prev)
 
     # Get error state transition matrix (continuous-time)
     F_cont = ins_error_state_matrix(state.ins_state)
@@ -576,9 +579,7 @@ def loose_coupled_update_position(
     if gnss.position_cov is not None:
         R = gnss.position_cov
     else:
-        R = np.diag(
-            [10.0**2, 10.0**2, 15.0**2]
-        )  # Default: 10m horizontal, 15m vertical
+        R = np.diag([10.0**2, 10.0**2, 15.0**2])  # Default: 10m horizontal, 15m vertical
 
     # Innovation: measured position - INS predicted position
     z = gnss.position - state.ins_state.position
@@ -695,16 +696,8 @@ def loose_coupled_update(
         # Full position + velocity update
         H = position_velocity_measurement_matrix()
 
-        R_pos = (
-            gnss.position_cov
-            if gnss.position_cov is not None
-            else np.diag([10.0**2] * 3)
-        )
-        R_vel = (
-            gnss.velocity_cov
-            if gnss.velocity_cov is not None
-            else np.diag([0.1**2] * 3)
-        )
+        R_pos = gnss.position_cov if gnss.position_cov is not None else np.diag([10.0**2] * 3)
+        R_vel = gnss.velocity_cov if gnss.velocity_cov is not None else np.diag([0.1**2] * 3)
         R = np.block([[R_pos, np.zeros((3, 3))], [np.zeros((3, 3)), R_vel]])
 
         z = np.concatenate(
@@ -846,9 +839,7 @@ def tight_coupled_measurement_matrix(
         los, _ = compute_line_of_sight(user_ecef, sat.position)
 
         # LOS components in ECEF
-        los_x, los_y, los_z = (
-            -los
-        )  # Negative because increase in user pos decreases range
+        los_x, los_y, los_z = -los  # Negative because increase in user pos decreases range
 
         # Transform LOS to geodetic derivatives
         # d(range)/d(lat), d(range)/d(lon), d(range)/d(alt)
@@ -858,9 +849,7 @@ def tight_coupled_measurement_matrix(
             + los_z * (cos_lat * N * (1 - ellipsoid.e2))
         )
         H[i, 1] = los_x * (-cos_lat * sin_lon * N) + los_y * (cos_lat * cos_lon * N)
-        H[i, 2] = (
-            los_x * cos_lat * cos_lon + los_y * cos_lat * sin_lon + los_z * sin_lat
-        )
+        H[i, 2] = los_x * cos_lat * cos_lon + los_y * cos_lat * sin_lon + los_z * sin_lat
 
         # Clock bias (state 15)
         H[i, 15] = 1.0
@@ -991,9 +980,7 @@ def _apply_error_correction(
 
     # Apply small angle rotation to quaternion
     q = ins_state.quaternion
-    delta_q = np.array(
-        [1.0, 0.5 * phi[0], 0.5 * phi[1], 0.5 * phi[2]], dtype=np.float64
-    )
+    delta_q = np.array([1.0, 0.5 * phi[0], 0.5 * phi[1], 0.5 * phi[2]], dtype=np.float64)
     delta_q = delta_q / np.linalg.norm(delta_q)
 
     # Quaternion multiplication (body frame correction)

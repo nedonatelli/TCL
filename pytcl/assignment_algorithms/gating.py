@@ -5,11 +5,13 @@ This module provides gating methods to determine which measurements
 fall within a validation region around predicted track states.
 """
 
-from typing import List, Tuple
+from typing import List
+from typing import Tuple
 
 import numpy as np
 from numba import njit
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy.stats import chi2
 
 
@@ -19,9 +21,9 @@ def _mahalanobis_distance_2d(
     S_inv: np.ndarray,
 ) -> float:
     """JIT-compiled Mahalanobis distance for 2D innovations."""
-    return innovation[0] * (
-        S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]
-    ) + innovation[1] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
+    return innovation[0] * (S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]) + innovation[
+        1
+    ] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
 
 
 @njit(cache=True, fastmath=True)

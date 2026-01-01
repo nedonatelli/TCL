@@ -7,12 +7,15 @@ making it easier to port algorithms while maintaining Pythonic interfaces.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
+from typing import Literal
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.core.constants import PI, TWO_PI
+from pytcl.core.constants import PI
+from pytcl.core.constants import TWO_PI
 
 
 def wrap_to_pi(angle: ArrayLike) -> NDArray[np.floating[Any]]:
@@ -374,10 +377,7 @@ def normalize_vector(
     v: ArrayLike,
     axis: int | None = None,
     return_norm: bool = False,
-) -> (
-    NDArray[np.floating[Any]]
-    | tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]
-):
+) -> NDArray[np.floating[Any]] | tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     Normalize vector(s) to unit length.
 

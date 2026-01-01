@@ -9,32 +9,38 @@ This module provides:
 
 from pytcl.mathematical_functions.basic_matrix.decompositions import (  # noqa: E501
     chol_semi_def,
-    matrix_sqrt,
-    null_space,
-    pinv_truncated,
-    range_space,
-    rank_revealing_qr,
-    tria,
-    tria_sqrt,
 )
+from pytcl.mathematical_functions.basic_matrix.decompositions import matrix_sqrt
+from pytcl.mathematical_functions.basic_matrix.decompositions import null_space
+from pytcl.mathematical_functions.basic_matrix.decompositions import pinv_truncated
+from pytcl.mathematical_functions.basic_matrix.decompositions import range_space
+from pytcl.mathematical_functions.basic_matrix.decompositions import rank_revealing_qr
+from pytcl.mathematical_functions.basic_matrix.decompositions import tria
+from pytcl.mathematical_functions.basic_matrix.decompositions import tria_sqrt
 from pytcl.mathematical_functions.basic_matrix.special_matrices import (  # noqa: E501
     block_diag,
-    circulant,
-    commutation_matrix,
-    companion,
-    dft_matrix,
-    duplication_matrix,
-    elimination_matrix,
-    hadamard,
-    hankel,
-    hilbert,
-    invhilbert,
-    kron,
-    toeplitz,
-    unvec,
-    vandermonde,
-    vec,
 )
+from pytcl.mathematical_functions.basic_matrix.special_matrices import circulant
+from pytcl.mathematical_functions.basic_matrix.special_matrices import (
+    commutation_matrix,
+)
+from pytcl.mathematical_functions.basic_matrix.special_matrices import companion
+from pytcl.mathematical_functions.basic_matrix.special_matrices import dft_matrix
+from pytcl.mathematical_functions.basic_matrix.special_matrices import (
+    duplication_matrix,
+)
+from pytcl.mathematical_functions.basic_matrix.special_matrices import (
+    elimination_matrix,
+)
+from pytcl.mathematical_functions.basic_matrix.special_matrices import hadamard
+from pytcl.mathematical_functions.basic_matrix.special_matrices import hankel
+from pytcl.mathematical_functions.basic_matrix.special_matrices import hilbert
+from pytcl.mathematical_functions.basic_matrix.special_matrices import invhilbert
+from pytcl.mathematical_functions.basic_matrix.special_matrices import kron
+from pytcl.mathematical_functions.basic_matrix.special_matrices import toeplitz
+from pytcl.mathematical_functions.basic_matrix.special_matrices import unvec
+from pytcl.mathematical_functions.basic_matrix.special_matrices import vandermonde
+from pytcl.mathematical_functions.basic_matrix.special_matrices import vec
 
 __all__ = [
     # Decompositions

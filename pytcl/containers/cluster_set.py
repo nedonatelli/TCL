@@ -7,19 +7,18 @@ that move together (formations, convoys, etc.).
 
 from __future__ import annotations
 
-from typing import (
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 from pytcl.clustering.dbscan import dbscan
 from pytcl.clustering.kmeans import kmeans
@@ -299,9 +298,7 @@ class ClusterSet:
             self._clusters = list(clusters)
 
         # Build lookups
-        self._id_to_idx: Dict[int, int] = {
-            c.id: i for i, c in enumerate(self._clusters)
-        }
+        self._id_to_idx: Dict[int, int] = {c.id: i for i, c in enumerate(self._clusters)}
         self._track_to_cluster: Dict[int, int] = {}
         for cluster in self._clusters:
             for track_id in cluster.track_ids:
@@ -418,9 +415,7 @@ class ClusterSet:
             return self.get_cluster(cluster_id)
         return None
 
-    def clusters_in_region(
-        self, center: ArrayLike, radius: float
-    ) -> List[TrackCluster]:
+    def clusters_in_region(self, center: ArrayLike, radius: float) -> List[TrackCluster]:
         """
         Get clusters with centroids within a spatial region.
 
@@ -569,9 +564,7 @@ class ClusterSet:
         """
         result = {}
         for cluster in self._clusters:
-            stats = self.cluster_stats(
-                cluster.id, tracks, state_indices, velocity_indices
-            )
+            stats = self.cluster_stats(cluster.id, tracks, state_indices, velocity_indices)
             if stats is not None:
                 result[cluster.id] = stats
         return result

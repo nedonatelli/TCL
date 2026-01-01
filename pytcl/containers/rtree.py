@@ -13,10 +13,14 @@ References
        Method for Points and Rectangles," ACM SIGMOD, 1990.
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 class BoundingBox(NamedTuple):
@@ -281,9 +285,7 @@ class RTree:
 
         # Simple split: sort by center x-coordinate and split in half
         if node.is_leaf:
-            sorted_entries = sorted(
-                entries, key=lambda e: e[0].center[0] if e[0] else 0
-            )
+            sorted_entries = sorted(entries, key=lambda e: e[0].center[0] if e[0] else 0)
         else:
             sorted_entries = sorted(
                 entries,
@@ -481,8 +483,7 @@ class RTree:
             else:
                 # Sort children by distance and search closest first
                 child_dists = [
-                    (min_dist_to_box(query, c.bbox) if c.bbox else np.inf, c)
-                    for c in node.children
+                    (min_dist_to_box(query, c.bbox) if c.bbox else np.inf, c) for c in node.children
                 ]
                 child_dists.sort(key=lambda x: x[0])
                 for _, child in child_dists:

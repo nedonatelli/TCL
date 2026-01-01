@@ -12,15 +12,16 @@ The IMM algorithm consists of four steps:
 4. Output combination
 """
 
-from typing import List, NamedTuple, Optional
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import (
-    kf_predict,
-    kf_update,
-)
+from pytcl.dynamic_estimation.kalman.linear import kf_predict
+from pytcl.dynamic_estimation.kalman.linear import kf_update
 
 
 class IMMState(NamedTuple):
@@ -472,12 +473,8 @@ def imm_predict_update(
     result : IMMUpdate
         Updated states, covariances, and mode probabilities.
     """
-    pred = imm_predict(
-        mode_states, mode_covs, mode_probs, transition_matrix, F_list, Q_list
-    )
-    return imm_update(
-        pred.mode_states, pred.mode_covs, pred.mode_probs, z, H_list, R_list
-    )
+    pred = imm_predict(mode_states, mode_covs, mode_probs, transition_matrix, F_list, Q_list)
+    return imm_update(pred.mode_states, pred.mode_covs, pred.mode_probs, z, H_list, R_list)
 
 
 class IMMEstimator:
@@ -679,9 +676,7 @@ class IMMEstimator:
             Update result.
         """
         if not self.H_list:
-            raise ValueError(
-                "Measurement model not set. Call set_measurement_model first."
-            )
+            raise ValueError("Measurement model not set. Call set_measurement_model first.")
 
         result = imm_update(
             self.mode_states,

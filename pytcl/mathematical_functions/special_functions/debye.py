@@ -7,7 +7,8 @@ thermodynamic properties of solids (heat capacity, entropy).
 
 import numpy as np
 import scipy.integrate as integrate
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def debye(
@@ -77,7 +78,8 @@ def debye(
             result[i] = 1.0 - n * xi / (2 * (n + 1))
         elif xi > 100:
             # Large x asymptotic
-            from scipy.special import factorial, zeta
+            from scipy.special import factorial
+            from scipy.special import zeta
 
             result[i] = factorial(n) * zeta(n + 1) * n / (xi**n)
         else:

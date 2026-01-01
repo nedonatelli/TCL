@@ -24,11 +24,14 @@ References
        Systems, 19(4), 608-621.
 """
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numba import njit, prange
-from numpy.typing import ArrayLike, NDArray
+from numba import njit
+from numba import prange
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 # =============================================================================
 # Result Types
@@ -410,8 +413,7 @@ def _cfar_2d_ca_kernel(
             for ri in range(row_min, row_max):
                 for ci in range(col_min, col_max):
                     if not (
-                        guard_row_min <= ri < guard_row_max
-                        and guard_col_min <= ci < guard_col_max
+                        guard_row_min <= ri < guard_row_max and guard_col_min <= ci < guard_col_max
                     ):
                         ref_sum += image[ri, ci]
                         n_cells += 1
@@ -460,8 +462,7 @@ def _cfar_2d_go_kernel(
             for ri in range(row_min, row_max):
                 for ci in range(col_min, col_max):
                     if not (
-                        guard_row_min <= ri < guard_row_max
-                        and guard_col_min <= ci < guard_col_max
+                        guard_row_min <= ri < guard_row_max and guard_col_min <= ci < guard_col_max
                     ):
                         if ri < i:
                             top_sum += image[ri, ci]
@@ -512,8 +513,7 @@ def _cfar_2d_so_kernel(
             for ri in range(row_min, row_max):
                 for ci in range(col_min, col_max):
                     if not (
-                        guard_row_min <= ri < guard_row_max
-                        and guard_col_min <= ci < guard_col_max
+                        guard_row_min <= ri < guard_row_max and guard_col_min <= ci < guard_col_max
                     ):
                         if ri < i:
                             top_sum += image[ri, ci]

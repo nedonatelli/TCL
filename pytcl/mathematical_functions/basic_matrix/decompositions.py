@@ -5,11 +5,14 @@ This module provides matrix decomposition functions that wrap numpy/scipy
 with consistent APIs matching the MATLAB TrackerComponentLibrary conventions.
 """
 
-from typing import Literal, Optional, Tuple
+from typing import Literal
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import scipy.linalg as la
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def chol_semi_def(
@@ -160,9 +163,7 @@ def tria_sqrt(
     if B is not None:
         B = np.asarray(B, dtype=np.float64)
         if A.shape[0] != B.shape[0]:
-            raise ValueError(
-                f"A and B must have same number of rows: {A.shape[0]} vs {B.shape[0]}"
-            )
+            raise ValueError(f"A and B must have same number of rows: {A.shape[0]} vs {B.shape[0]}")
         combined = np.hstack([A, B])
     else:
         combined = A

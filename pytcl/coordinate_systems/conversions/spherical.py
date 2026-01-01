@@ -5,10 +5,12 @@ This module provides functions for converting between Cartesian and
 spherical/polar coordinate systems, following tracking conventions.
 """
 
-from typing import Literal, Tuple
+from typing import Literal
+from typing import Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
 
 def cart2sphere(

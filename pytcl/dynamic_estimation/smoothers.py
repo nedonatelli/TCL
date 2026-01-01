@@ -12,16 +12,17 @@ The main algorithms are:
 - Two-filter smoother for parallel processing
 """
 
-from typing import List, NamedTuple, Optional
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import (
-    kf_predict,
-    kf_smooth,
-    kf_update,
-)
+from pytcl.dynamic_estimation.kalman.linear import kf_predict
+from pytcl.dynamic_estimation.kalman.linear import kf_smooth
+from pytcl.dynamic_estimation.kalman.linear import kf_update
 
 
 class SmoothedState(NamedTuple):
@@ -650,9 +651,7 @@ def rts_smoother_single_step(
     result : SmoothedState
         Smoothed state and covariance at current time.
     """
-    x_s, P_s = kf_smooth(
-        x_filt, P_filt, x_pred_next, P_pred_next, x_smooth_next, P_smooth_next, F
-    )
+    x_s, P_s = kf_smooth(x_filt, P_filt, x_pred_next, P_pred_next, x_smooth_next, P_smooth_next, F)
     return SmoothedState(x=x_s, P=P_s)
 
 

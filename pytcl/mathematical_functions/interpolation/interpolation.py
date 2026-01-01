@@ -5,10 +5,15 @@ This module provides interpolation functions for 1D, 2D, and 3D data,
 commonly used in tracking for measurement interpolation and terrain models.
 """
 
-from typing import Callable, Literal, Optional, Tuple, Union
+from typing import Callable
+from typing import Literal
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy import interpolate
 
 
@@ -371,9 +376,7 @@ def rbf_interpolate(
     points = np.asarray(points, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
 
-    return interpolate.RBFInterpolator(
-        points, values, kernel=kernel, smoothing=smoothing
-    )
+    return interpolate.RBFInterpolator(points, values, kernel=kernel, smoothing=smoothing)
 
 
 def barycentric(

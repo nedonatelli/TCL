@@ -11,7 +11,8 @@ This module provides conversions between various time systems:
 - Sidereal time (GMST, GAST)
 """
 
-from typing import List, Tuple
+from typing import List
+from typing import Tuple
 
 import numpy as np
 

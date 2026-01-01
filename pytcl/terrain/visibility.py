@@ -23,7 +23,8 @@ References
        on terrains: a survey." Environment and Planning B 30.5 (2003): 709-728.
 """
 
-from typing import List, NamedTuple
+from typing import List
+from typing import NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -184,10 +185,7 @@ def line_of_sight(
     # Compute distances from observer
     dlat = sample_lats - obs_lat
     dlon = sample_lons - obs_lon
-    a = (
-        np.sin(dlat / 2) ** 2
-        + np.cos(obs_lat) * np.cos(sample_lats) * np.sin(dlon / 2) ** 2
-    )
+    a = np.sin(dlat / 2) ** 2 + np.cos(obs_lat) * np.cos(sample_lats) * np.sin(dlon / 2) ** 2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     distances = earth_radius * c
 
@@ -250,9 +248,7 @@ def line_of_sight(
         else:
             grazing_angle = -np.pi / 2
 
-    return LOSResult(
-        visible, grazing_angle, obstacle_distance, obstacle_elevation, min_clearance
-    )
+    return LOSResult(visible, grazing_angle, obstacle_distance, obstacle_elevation, min_clearance)
 
 
 def viewshed(
