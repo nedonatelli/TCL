@@ -2,7 +2,8 @@
 Astronomical calculations for target tracking.
 
 This module provides time system conversions, orbital mechanics,
-Lambert problem solvers, and reference frame transformations.
+Lambert problem solvers, reference frame transformations, and high-precision
+ephemerides for celestial bodies.
 
 Examples
 --------
@@ -18,6 +19,10 @@ Examples
 >>> r1 = np.array([5000, 10000, 2100])
 >>> r2 = np.array([-14600, 2500, 7000])
 >>> sol = lambert_universal(r1, r2, 3600)
+
+>>> # Query Sun position with high precision
+>>> from pytcl.astronomical import sun_position
+>>> r_sun, v_sun = sun_position(2451545.0)  # J2000.0
 """
 
 from pytcl.astronomical.lambert import (
@@ -27,6 +32,13 @@ from pytcl.astronomical.lambert import (
     lambert_izzo,
     lambert_universal,
     minimum_energy_transfer,
+)
+from pytcl.astronomical.ephemerides import (
+    DEEphemeris,
+    barycenter_position,
+    moon_position,
+    planet_position,
+    sun_position,
 )
 from pytcl.astronomical.orbital_mechanics import (  # Constants; Types; Anomaly conversions; Element conversions; Propagation; Orbital quantities
     GM_EARTH,
@@ -218,4 +230,11 @@ __all__ = [
     # Reference frames - Ecliptic/equatorial
     "ecliptic_to_equatorial",
     "equatorial_to_ecliptic",
+    # Ephemerides - Classes
+    "DEEphemeris",
+    # Ephemerides - Functions
+    "sun_position",
+    "moon_position",
+    "planet_position",
+    "barycenter_position",
 ]
