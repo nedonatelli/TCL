@@ -37,3 +37,23 @@ Geodetic computations and reference ellipsoid functions.
    :members:
    :undoc-members:
    :show-inheritance:
+
+Great Circle Navigation
+-----------------------
+
+Shortest-path (orthodrome) navigation on a spherical Earth.
+
+.. automodule:: pytcl.navigation.great_circle
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Rhumb Line Navigation
+---------------------
+
+Constant-bearing (loxodrome) navigation on spherical and ellipsoidal Earth.
+
+.. automodule:: pytcl.navigation.rhumb
+   :members:
+   :undoc-members:
+   :show-inheritance:

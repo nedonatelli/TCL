@@ -13,9 +13,9 @@ sys.path.insert(0, os.path.abspath(".."))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Tracker Component Library"
-copyright = "2024, U.S. Naval Research Laboratory (Python port)"
+copyright = "2024-2026, U.S. Naval Research Laboratory (Python port)"
 author = "U.S. Naval Research Laboratory"
-release = "0.16.0"
+release = "0.20.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

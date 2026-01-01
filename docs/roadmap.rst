@@ -7,7 +7,7 @@ Current State (v0.20.0)
 -----------------------
 
 * **800+ functions** implemented across 140 Python files
-* **1,450+ tests** with comprehensive coverage
+* **1,425+ tests** with comprehensive coverage
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms

@@ -44,9 +44,9 @@ Multi-Target Tracking
 Prerequisites
 -------------
 
-All tutorials assume you have pytcl installed::
+All tutorials assume you have the library installed::
 
-   pip install pytcl
+   pip install nrl-tracker
 
 For visualization examples, matplotlib is also required::
 
@@ -54,4 +54,4 @@ For visualization examples, matplotlib is also required::
 
 For wavelet tutorials, install the signal extra::
 
-   pip install pytcl[signal]
+   pip install nrl-tracker[signal]
