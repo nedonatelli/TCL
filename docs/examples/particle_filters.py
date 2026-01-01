@@ -17,24 +17,12 @@ Particle filters are essential for nonlinear, non-Gaussian state estimation
 where Kalman filters cannot be directly applied.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Global flag to control plotting
 SHOW_PLOTS = True
-
-
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
 
 
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
@@ -144,51 +132,55 @@ def demo_resampling_methods():
 
     # Plot resampling comparison
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                f"Original Particles (ESS={effective_sample_size(weights):.0f})",
+                "After Multinomial Resampling",
+                "After Systematic Resampling",
+                "After Residual Resampling"
+            )
+        )
 
         # Original particles with weights
-        ax = axes[0, 0]
-        scatter = ax.scatter(
-            particles[:, 0],
-            particles[:, 1],
-            c=weights,
-            s=10,
-            alpha=0.6,
-            cmap="viridis",
+        fig.add_trace(
+            go.Scatter(x=particles[:, 0], y=particles[:, 1], mode='markers',
+                      marker=dict(size=5, color=weights, colorscale='Viridis', opacity=0.6),
+                      name='Original'),
+            row=1, col=1
         )
-        ax.set_title(f"Original Particles (ESS={effective_sample_size(weights):.0f})")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        plt.colorbar(scatter, ax=ax, label="Weight")
 
         # Multinomial resampling
-        ax = axes[0, 1]
-        ax.scatter(
-            particles_multi[:, 0], particles_multi[:, 1], s=10, alpha=0.6, c="blue"
+        fig.add_trace(
+            go.Scatter(x=particles_multi[:, 0], y=particles_multi[:, 1], mode='markers',
+                      marker=dict(size=5, color='blue', opacity=0.6),
+                      name='Multinomial'),
+            row=1, col=2
         )
-        ax.set_title("After Multinomial Resampling")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
 
         # Systematic resampling
-        ax = axes[1, 0]
-        ax.scatter(particles_sys[:, 0], particles_sys[:, 1], s=10, alpha=0.6, c="green")
-        ax.set_title("After Systematic Resampling")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
+        fig.add_trace(
+            go.Scatter(x=particles_sys[:, 0], y=particles_sys[:, 1], mode='markers',
+                      marker=dict(size=5, color='green', opacity=0.6),
+                      name='Systematic'),
+            row=2, col=1
+        )
 
         # Residual resampling
-        ax = axes[1, 1]
-        ax.scatter(particles_res[:, 0], particles_res[:, 1], s=10, alpha=0.6, c="red")
-        ax.set_title("After Residual Resampling")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
+        fig.add_trace(
+            go.Scatter(x=particles_res[:, 0], y=particles_res[:, 1], mode='markers',
+                      marker=dict(size=5, color='red', opacity=0.6),
+                      name='Residual'),
+            row=2, col=2
+        )
 
-        plt.suptitle("Comparison of Resampling Methods", fontsize=14)
-        plt.tight_layout()
-        plt.savefig("particle_resampling_comparison.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to particle_resampling_comparison.png]")
+        fig.update_layout(height=800, width=1000, title_text="Comparison of Resampling Methods",
+                         showlegend=False)
+        fig.update_xaxes(title_text="x")
+        fig.update_yaxes(title_text="y")
+
+        fig.write_html("particle_resampling_comparison.html")
+        print("\n  [Plot saved to particle_resampling_comparison.html]")
 
 
 def demo_linear_tracking():
@@ -201,33 +193,27 @@ def demo_linear_tracking():
 
     # Linear constant-velocity model
     dt = 1.0
-    F = np.array(
-        [
-            [1, dt, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, dt],
-            [0, 0, 0, 1],
-        ]
-    )
+    F = np.array([
+        [1, dt, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, dt],
+        [0, 0, 0, 1],
+    ])
 
     # Process noise
     q = 0.1
-    Q = q * np.array(
-        [
-            [dt**3 / 3, dt**2 / 2, 0, 0],
-            [dt**2 / 2, dt, 0, 0],
-            [0, 0, dt**3 / 3, dt**2 / 2],
-            [0, 0, dt**2 / 2, dt],
-        ]
-    )
+    Q = q * np.array([
+        [dt**3 / 3, dt**2 / 2, 0, 0],
+        [dt**2 / 2, dt, 0, 0],
+        [0, 0, dt**3 / 3, dt**2 / 2],
+        [0, 0, dt**2 / 2, dt],
+    ])
 
     # Measurement model (observe position only)
-    H = np.array(
-        [
-            [1, 0, 0, 0],
-            [0, 0, 1, 0],
-        ]
-    )
+    H = np.array([
+        [1, 0, 0, 0],
+        [0, 0, 1, 0],
+    ])
     R = np.eye(2) * 1.0
 
     # True trajectory
@@ -307,48 +293,36 @@ def demo_linear_tracking():
 
     # Plot tracking comparison
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig = make_subplots(rows=1, cols=2,
+                           subplot_titles=("Trajectory Tracking: KF vs PF", "Position Error Over Time"))
+
+        measurements_arr = np.array(measurements)
 
         # Trajectory plot
-        ax = axes[0]
-        ax.plot(
-            true_states[:, 0],
-            true_states[:, 2],
-            "k-",
-            linewidth=2,
-            label="True trajectory",
+        fig.add_trace(
+            go.Scatter(x=true_states[:, 0], y=true_states[:, 2], mode='lines',
+                      name='True trajectory', line=dict(color='black', width=2)),
+            row=1, col=1
         )
-        ax.plot(
-            kf_estimates[:, 0],
-            kf_estimates[:, 2],
-            "b--",
-            linewidth=1.5,
-            label=f"Kalman Filter (RMSE={kf_rmse:.3f})",
+        fig.add_trace(
+            go.Scatter(x=kf_estimates[:, 0], y=kf_estimates[:, 2], mode='lines',
+                      name=f'Kalman Filter (RMSE={kf_rmse:.3f})',
+                      line=dict(color='blue', width=1.5, dash='dash')),
+            row=1, col=1
         )
-        ax.plot(
-            pf_estimates[:, 0],
-            pf_estimates[:, 2],
-            "r:",
-            linewidth=1.5,
-            label=f"Particle Filter (RMSE={pf_rmse:.3f})",
+        fig.add_trace(
+            go.Scatter(x=pf_estimates[:, 0], y=pf_estimates[:, 2], mode='lines',
+                      name=f'Particle Filter (RMSE={pf_rmse:.3f})',
+                      line=dict(color='red', width=1.5, dash='dot')),
+            row=1, col=1
         )
-        measurements_arr = np.array(measurements)
-        ax.scatter(
-            measurements_arr[:, 0],
-            measurements_arr[:, 1],
-            c="gray",
-            s=20,
-            alpha=0.5,
-            label="Measurements",
+        fig.add_trace(
+            go.Scatter(x=measurements_arr[:, 0], y=measurements_arr[:, 1], mode='markers',
+                      name='Measurements', marker=dict(size=5, color='gray', opacity=0.5)),
+            row=1, col=1
         )
-        ax.set_xlabel("x position")
-        ax.set_ylabel("y position")
-        ax.set_title("Trajectory Tracking: KF vs PF")
-        ax.legend()
-        ax.set_aspect("equal")
 
         # Error comparison
-        ax = axes[1]
         time = np.arange(n_steps)
         kf_pos_err = np.sqrt(
             (kf_estimates[:, 0] - true_states[:, 0]) ** 2
@@ -358,17 +332,25 @@ def demo_linear_tracking():
             (pf_estimates[:, 0] - true_states[:, 0]) ** 2
             + (pf_estimates[:, 2] - true_states[:, 2]) ** 2
         )
-        ax.plot(time, kf_pos_err, "b-", label="Kalman Filter")
-        ax.plot(time, pf_pos_err, "r-", label="Particle Filter")
-        ax.set_xlabel("Time step")
-        ax.set_ylabel("Position error")
-        ax.set_title("Position Error Over Time")
-        ax.legend()
+        fig.add_trace(
+            go.Scatter(x=time, y=kf_pos_err, mode='lines', name='Kalman Filter',
+                      line=dict(color='blue')),
+            row=1, col=2
+        )
+        fig.add_trace(
+            go.Scatter(x=time, y=pf_pos_err, mode='lines', name='Particle Filter',
+                      line=dict(color='red')),
+            row=1, col=2
+        )
 
-        plt.tight_layout()
-        plt.savefig("particle_linear_tracking.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to particle_linear_tracking.png]")
+        fig.update_xaxes(title_text="x position", row=1, col=1)
+        fig.update_yaxes(title_text="y position", row=1, col=1)
+        fig.update_xaxes(title_text="Time step", row=1, col=2)
+        fig.update_yaxes(title_text="Position error", row=1, col=2)
+
+        fig.update_layout(height=500, width=1200)
+        fig.write_html("particle_linear_tracking.html")
+        print("\n  [Plot saved to particle_linear_tracking.html]")
 
 
 def demo_nonlinear_tracking():
@@ -443,14 +425,12 @@ def demo_nonlinear_tracking():
         """Constant velocity motion model with noise."""
         x, y, vx, vy = state
         q = 0.1
-        return np.array(
-            [
-                x + vx * dt + np.random.randn() * q * dt,
-                y + vy * dt + np.random.randn() * q * dt,
-                vx + np.random.randn() * q,
-                vy + np.random.randn() * q,
-            ]
-        )
+        return np.array([
+            x + vx * dt + np.random.randn() * q * dt,
+            y + vy * dt + np.random.randn() * q * dt,
+            vx + np.random.randn() * q,
+            vy + np.random.randn() * q,
+        ])
 
     # Run particle filter
     pf_estimates = []
@@ -517,99 +497,78 @@ def demo_nonlinear_tracking():
 
     # Plot nonlinear tracking results
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                "Circular Motion Tracking with Range-Bearing Sensor",
+                "Position Error Over Time",
+                "ESS History (resampling when ESS < N/2)",
+                "Range-Bearing Measurements (color=time)"
+            )
+        )
 
         # Trajectory plot
-        ax = axes[0, 0]
-        ax.plot(
-            true_states[:, 0],
-            true_states[:, 1],
-            "k-",
-            linewidth=2,
-            label="True trajectory",
+        fig.add_trace(
+            go.Scatter(x=true_states[:, 0], y=true_states[:, 1], mode='lines',
+                      name='True trajectory', line=dict(color='black', width=2)),
+            row=1, col=1
         )
-        ax.plot(
-            pf_estimates[:, 0],
-            pf_estimates[:, 1],
-            "r--",
-            linewidth=1.5,
-            label="PF estimate",
+        fig.add_trace(
+            go.Scatter(x=pf_estimates[:, 0], y=pf_estimates[:, 1], mode='lines',
+                      name='PF estimate', line=dict(color='red', width=1.5, dash='dash')),
+            row=1, col=1
         )
-        # Mark start and end
-        ax.scatter(
-            [true_states[0, 0]],
-            [true_states[0, 1]],
-            c="green",
-            s=100,
-            marker="o",
-            label="Start",
-            zorder=5,
+        fig.add_trace(
+            go.Scatter(x=[true_states[0, 0]], y=[true_states[0, 1]], mode='markers',
+                      name='Start', marker=dict(size=15, color='green', symbol='circle')),
+            row=1, col=1
         )
-        ax.scatter(
-            [true_states[-1, 0]],
-            [true_states[-1, 1]],
-            c="blue",
-            s=100,
-            marker="s",
-            label="End",
-            zorder=5,
+        fig.add_trace(
+            go.Scatter(x=[true_states[-1, 0]], y=[true_states[-1, 1]], mode='markers',
+                      name='End', marker=dict(size=15, color='blue', symbol='square')),
+            row=1, col=1
         )
-        ax.set_xlabel("x position (m)")
-        ax.set_ylabel("y position (m)")
-        ax.set_title("Circular Motion Tracking with Range-Bearing Sensor")
-        ax.legend()
-        ax.set_aspect("equal")
-        ax.grid(True)
 
         # Position error over time
-        ax = axes[0, 1]
         time_axis = np.arange(n_steps) * dt
-        ax.plot(time_axis, pos_errors, "b-", linewidth=1.5)
-        ax.axhline(
-            np.mean(pos_errors),
-            color="r",
-            linestyle="--",
-            label=f"Mean={np.mean(pos_errors):.3f}",
+        fig.add_trace(
+            go.Scatter(x=time_axis, y=pos_errors, mode='lines',
+                      line=dict(color='blue', width=1.5)),
+            row=1, col=2
         )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Position error (m)")
-        ax.set_title("Position Error Over Time")
-        ax.legend()
-        ax.grid(True)
+        fig.add_hline(y=np.mean(pos_errors), line_dash="dash", line_color="red",
+                     annotation_text=f"Mean={np.mean(pos_errors):.3f}", row=1, col=2)
 
         # ESS history
-        ax = axes[1, 0]
-        ax.plot(time_axis, ess_history, "g-", linewidth=1.5)
-        ax.axhline(
-            n_particles / 2, color="r", linestyle="--", label="Resampling threshold"
+        fig.add_trace(
+            go.Scatter(x=time_axis, y=ess_history, mode='lines',
+                      line=dict(color='green', width=1.5)),
+            row=2, col=1
         )
-        ax.set_xlabel("Time (s)")
-        ax.set_ylabel("Effective Sample Size")
-        ax.set_title("ESS History (resampling when ESS < N/2)")
-        ax.legend()
-        ax.grid(True)
+        fig.add_hline(y=n_particles / 2, line_dash="dash", line_color="red",
+                     annotation_text="Resampling threshold", row=2, col=1)
 
         # Measurements in polar form
-        ax = axes[1, 1]
         meas_arr = np.array(measurements)
-        ax.scatter(
-            np.degrees(meas_arr[:, 1]),
-            meas_arr[:, 0],
-            c=time_axis,
-            cmap="viridis",
-            s=20,
+        fig.add_trace(
+            go.Scatter(x=np.degrees(meas_arr[:, 1]), y=meas_arr[:, 0], mode='markers',
+                      marker=dict(size=5, color=time_axis, colorscale='Viridis',
+                                 colorbar=dict(title="Time (s)", x=1.0))),
+            row=2, col=2
         )
-        ax.set_xlabel("Bearing (degrees)")
-        ax.set_ylabel("Range (m)")
-        ax.set_title("Range-Bearing Measurements (color=time)")
-        ax.grid(True)
-        cbar = plt.colorbar(ax.collections[0], ax=ax)
-        cbar.set_label("Time (s)")
 
-        plt.tight_layout()
-        plt.savefig("particle_nonlinear_tracking.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to particle_nonlinear_tracking.png]")
+        fig.update_xaxes(title_text="x position (m)", row=1, col=1)
+        fig.update_yaxes(title_text="y position (m)", row=1, col=1)
+        fig.update_xaxes(title_text="Time (s)", row=1, col=2)
+        fig.update_yaxes(title_text="Position error (m)", row=1, col=2)
+        fig.update_xaxes(title_text="Time (s)", row=2, col=1)
+        fig.update_yaxes(title_text="Effective Sample Size", row=2, col=1)
+        fig.update_xaxes(title_text="Bearing (degrees)", row=2, col=2)
+        fig.update_yaxes(title_text="Range (m)", row=2, col=2)
+
+        fig.update_layout(height=800, width=1000, showlegend=True)
+        fig.write_html("particle_nonlinear_tracking.html")
+        print("\n  [Plot saved to particle_nonlinear_tracking.html]")
 
 
 def demo_multimodal():
@@ -648,6 +607,9 @@ def demo_multimodal():
 
     print(f"\nMeasurement received: {z}")
 
+    # Save prior particles for plotting
+    prior_particles = particles.copy()
+
     # Update weights
     for i in range(n_particles):
         z_pred = particles[i]  # Direct position observation
@@ -672,70 +634,51 @@ def demo_multimodal():
 
     # Plot multimodal distribution
     if SHOW_PLOTS:
-        # Save prior particles before update for plotting
-        np.random.seed(42)
-        state1 = initialize_particles(mode1, cov, n_particles // 2)
-        state2 = initialize_particles(mode2, cov, n_particles // 2)
-        prior_particles = np.vstack([state1.particles, state2.particles])
-
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Prior: Bimodal Distribution", "Posterior: After Measurement Update")
+        )
 
         # Prior distribution
-        ax = axes[0]
-        ax.scatter(
-            prior_particles[:, 0],
-            prior_particles[:, 1],
-            s=5,
-            alpha=0.3,
-            c="blue",
-            label="Prior particles",
+        fig.add_trace(
+            go.Scatter(x=prior_particles[:, 0], y=prior_particles[:, 1], mode='markers',
+                      marker=dict(size=3, color='blue', opacity=0.3),
+                      name='Prior particles'),
+            row=1, col=1
         )
-        ax.scatter([mode1[0]], [mode1[1]], c="green", s=100, marker="x", linewidths=3)
-        ax.scatter([mode2[0]], [mode2[1]], c="green", s=100, marker="x", linewidths=3)
-        ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
-        ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-5, 5)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Prior: Bimodal Distribution")
-        ax.text(mode1[0], mode1[1] + 1, "Mode 1", ha="center")
-        ax.text(mode2[0], mode2[1] + 1, "Mode 2", ha="center")
+        fig.add_trace(
+            go.Scatter(x=[mode1[0], mode2[0]], y=[mode1[1], mode2[1]], mode='markers',
+                      marker=dict(size=15, color='green', symbol='x', line=dict(width=3)),
+                      name='Modes'),
+            row=1, col=1
+        )
 
         # Posterior distribution
-        ax = axes[1]
-        scatter = ax.scatter(
-            particles[:, 0],
-            particles[:, 1],
-            s=weights * n_particles * 50,
-            alpha=0.5,
-            c=weights,
-            cmap="Reds",
-            label="Posterior particles",
+        fig.add_trace(
+            go.Scatter(x=particles[:, 0], y=particles[:, 1], mode='markers',
+                      marker=dict(size=weights * n_particles * 50, color=weights,
+                                 colorscale='Reds', opacity=0.5),
+                      name='Posterior particles'),
+            row=1, col=2
         )
-        ax.scatter(
-            [z[0]], [z[1]], c="blue", s=200, marker="*", label="Measurement", zorder=5
+        fig.add_trace(
+            go.Scatter(x=[z[0]], y=[z[1]], mode='markers',
+                      marker=dict(size=20, color='blue', symbol='star'),
+                      name='Measurement'),
+            row=1, col=2
         )
-        ax.scatter([mode1[0]], [mode1[1]], c="gray", s=100, marker="x", linewidths=3)
-        ax.scatter([mode2[0]], [mode2[1]], c="green", s=100, marker="x", linewidths=3)
-        ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
-        ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-5, 5)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Posterior: After Measurement Update")
-        ax.legend(loc="upper right")
 
-        plt.suptitle(
-            "Particle Filter for Multimodal Distribution\n"
-            "(Point size proportional to weight)",
-            fontsize=12,
+        fig.update_xaxes(range=[-10, 10], row=1, col=1)
+        fig.update_yaxes(range=[-5, 5], row=1, col=1)
+        fig.update_xaxes(range=[-10, 10], row=1, col=2)
+        fig.update_yaxes(range=[-5, 5], row=1, col=2)
+
+        fig.update_layout(
+            height=500, width=1200,
+            title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)"
         )
-        plt.tight_layout()
-        plt.savefig("particle_multimodal.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to particle_multimodal.png]")
+        fig.write_html("particle_multimodal.html")
+        print("\n  [Plot saved to particle_multimodal.html]")
 
 
 def main():
@@ -743,9 +686,6 @@ def main():
     print("\n" + "#" * 70)
     print("# PyTCL Particle Filters Example")
     print("#" * 70)
-
-    if SHOW_PLOTS:
-        setup_plot_style()
 
     demo_particle_basics()
     demo_resampling_methods()
@@ -756,10 +696,10 @@ def main():
     print("\n" + "=" * 70)
     print("Example complete!")
     if SHOW_PLOTS:
-        print("Plots saved: particle_resampling_comparison.png, ")
-        print("             particle_linear_tracking.png,")
-        print("             particle_nonlinear_tracking.png,")
-        print("             particle_multimodal.png")
+        print("Plots saved: particle_resampling_comparison.html, ")
+        print("             particle_linear_tracking.html,")
+        print("             particle_nonlinear_tracking.html,")
+        print("             particle_multimodal.html")
     print("=" * 70)
 
 

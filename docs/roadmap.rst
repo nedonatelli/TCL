@@ -299,7 +299,7 @@ Version Targets
      - Batch estimation & smoothing (RTS, SRIF)
      - Released
    * - **v0.19.0**
-     - New example scripts with matplotlib visualizations
+     - New example scripts with interactive plotly visualizations
      - Released
    * - **v0.20.0**
      - Navigation utilities (great circle, rhumb line)

@@ -33,25 +33,11 @@ These algorithms are essential for spacecraft trajectory design,
 orbit determination, and space situational awareness.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
+import plotly.graph_objects as go
 
 # Global flag to control plotting
 SHOW_PLOTS = True
-
-
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
 
 
 from pytcl.astronomical import (  # Orbital elements; Kepler's equation; Orbit propagation; Orbital quantities; Lambert problem; Gravitational parameters; Time systems; Reference frames
@@ -114,10 +100,10 @@ def demo_orbital_elements():
     print("\nISS-like orbit (orbital elements):")
     print(f"  Semi-major axis: {a:.1f} km")
     print(f"  Eccentricity: {e:.4f}")
-    print(f"  Inclination: {np.degrees(i):.1f}°")
-    print(f"  RAAN: {np.degrees(raan):.1f}°")
-    print(f"  Arg. of periapsis: {np.degrees(omega):.1f}°")
-    print(f"  True anomaly: {np.degrees(nu):.1f}°")
+    print(f"  Inclination: {np.degrees(i):.1f} deg")
+    print(f"  RAAN: {np.degrees(raan):.1f} deg")
+    print(f"  Arg. of periapsis: {np.degrees(omega):.1f} deg")
+    print(f"  True anomaly: {np.degrees(nu):.1f} deg")
 
     # Convert to state vector
     state = orbital_elements_to_state(elements, GM_EARTH)
@@ -156,7 +142,7 @@ def demo_kepler_equation():
 
     print(f"\nAnomaly conversions for e = {e}:")
     print("-" * 50)
-    print(f"{'M (deg)':>10} {'E (deg)':>10} {'ν (deg)':>10}")
+    print(f"{'M (deg)':>10} {'E (deg)':>10} {'nu (deg)':>10}")
     print("-" * 50)
 
     for M_deg in [0, 30, 60, 90, 120, 150, 180]:
@@ -167,7 +153,7 @@ def demo_kepler_equation():
 
     # Show the relationship
     print("\nNote: For elliptical orbits:")
-    print("  - True anomaly (ν) leads mean anomaly (M) near periapsis")
+    print("  - True anomaly (nu) leads mean anomaly (M) near periapsis")
     print("  - They are equal only at periapsis and apoapsis")
 
     # Hyperbolic orbit example
@@ -177,7 +163,7 @@ def demo_kepler_equation():
     print(f"Eccentricity: {e_hyp} (hyperbolic trajectory)")
     print("For hyperbolic orbits, only a range of true anomalies is valid:")
     nu_max = np.arccos(-1 / e_hyp)
-    print(f"  Valid range: -{np.degrees(nu_max):.1f}° < ν < {np.degrees(nu_max):.1f}°")
+    print(f"  Valid range: -{np.degrees(nu_max):.1f} deg < nu < {np.degrees(nu_max):.1f} deg")
 
 
 def demo_orbit_propagation():
@@ -202,12 +188,12 @@ def demo_orbit_propagation():
 
     print(f"\nGPS satellite orbit:")
     print(f"  Semi-major axis: {a:.0f} km")
-    print(f"  Period: {T/3600:.2f} hours (≈12 hours)")
+    print(f"  Period: {T/3600:.2f} hours (~12 hours)")
 
     # Propagate for one orbit
     print("\nPropagation around one orbit:")
     print("-" * 60)
-    print(f"{'Time (hr)':>10} {'r (km)':>12} {'v (km/s)':>10} {'ν (deg)':>10}")
+    print(f"{'Time (hr)':>10} {'r (km)':>12} {'v (km/s)':>10} {'nu (deg)':>10}")
     print("-" * 60)
 
     for frac in [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]:
@@ -241,56 +227,71 @@ def demo_orbit_propagation():
         # Propagate full orbit for plotting
         n_points = 100
         positions = []
-        for i in range(n_points + 1):
-            dt = i * T / n_points
+        for idx in range(n_points + 1):
+            dt = idx * T / n_points
             state = kepler_propagate_state(state0, dt, GM_EARTH)
             positions.append(state.r)
         positions = np.array(positions)
 
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection="3d")
+        fig = go.Figure()
 
         # Plot orbit
-        ax.plot(
-            positions[:, 0],
-            positions[:, 1],
-            positions[:, 2],
-            "b-",
-            linewidth=2,
-            label="Orbit",
-        )
+        fig.add_trace(go.Scatter3d(
+            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
+            mode='lines',
+            line=dict(color='blue', width=4),
+            name='Orbit'
+        ))
 
         # Plot Earth (scaled for visibility)
-        u = np.linspace(0, 2 * np.pi, 20)
-        v = np.linspace(0, np.pi, 10)
+        u = np.linspace(0, 2 * np.pi, 30)
+        v = np.linspace(0, np.pi, 20)
         earth_r = 6371  # km
         x = earth_r * np.outer(np.cos(u), np.sin(v))
         y = earth_r * np.outer(np.sin(u), np.sin(v))
         z = earth_r * np.outer(np.ones(np.size(u)), np.cos(v))
-        ax.plot_surface(x, y, z, color="blue", alpha=0.3)
+
+        fig.add_trace(go.Surface(
+            x=x, y=y, z=z,
+            colorscale=[[0, 'blue'], [1, 'blue']],
+            opacity=0.3,
+            showscale=False,
+            name='Earth'
+        ))
 
         # Mark periapsis and apoapsis
-        ax.scatter(*positions[0], c="green", s=100, marker="o", label="Periapsis")
-        ax.scatter(
-            *positions[n_points // 2], c="red", s=100, marker="s", label="Apoapsis"
-        )
+        fig.add_trace(go.Scatter3d(
+            x=[positions[0, 0]], y=[positions[0, 1]], z=[positions[0, 2]],
+            mode='markers',
+            marker=dict(color='green', size=10, symbol='circle'),
+            name='Periapsis'
+        ))
 
-        ax.set_xlabel("X (km)")
-        ax.set_ylabel("Y (km)")
-        ax.set_zlabel("Z (km)")
-        ax.set_title("GPS Satellite Orbit")
-        ax.legend()
+        fig.add_trace(go.Scatter3d(
+            x=[positions[n_points // 2, 0]],
+            y=[positions[n_points // 2, 1]],
+            z=[positions[n_points // 2, 2]],
+            mode='markers',
+            marker=dict(color='red', size=10, symbol='square'),
+            name='Apoapsis'
+        ))
 
         # Equal aspect ratio
         max_range = np.max(np.abs(positions)) * 1.1
-        ax.set_xlim(-max_range, max_range)
-        ax.set_ylim(-max_range, max_range)
-        ax.set_zlim(-max_range, max_range)
 
-        plt.tight_layout()
-        plt.savefig("orbital_propagation.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to orbital_propagation.png]")
+        fig.update_layout(
+            title="GPS Satellite Orbit",
+            scene=dict(
+                xaxis=dict(title="X (km)", range=[-max_range, max_range]),
+                yaxis=dict(title="Y (km)", range=[-max_range, max_range]),
+                zaxis=dict(title="Z (km)", range=[-max_range, max_range]),
+                aspectmode='cube'
+            ),
+            height=700, width=800,
+            showlegend=True
+        )
+        fig.write_html("orbital_propagation.html")
+        print("\n  [Plot saved to orbital_propagation.html]")
 
 
 def demo_lambert_problem():
@@ -304,7 +305,7 @@ def demo_lambert_problem():
     r1 = np.array([1.0, 0.0, 0.0]) * 149597870.7  # km (1 AU)
 
     # Final position: Mars at 1.52 AU (simplified circular orbit)
-    theta_mars = np.radians(135)  # 135° ahead
+    theta_mars = np.radians(135)  # 135 deg ahead
     r2 = np.array([np.cos(theta_mars), np.sin(theta_mars), 0.0]) * 1.52 * 149597870.7
 
     # Transfer time: approximately 259 days (Hohmann-like)
@@ -341,7 +342,7 @@ def demo_lambert_problem():
     v_earth = np.array([0, 29.78, 0])  # km/s (approximately)
     dv_departure = np.linalg.norm(solution.v1 - v_earth)
 
-    print(f"\n  Departure Δv: {dv_departure:.2f} km/s")
+    print(f"\n  Departure delta-v: {dv_departure:.2f} km/s")
 
 
 def demo_hohmann_transfer():
@@ -387,9 +388,9 @@ def demo_hohmann_transfer():
     print(f"  Transfer time: {tof/3600:.2f} hours")
 
     print("\nDelta-v budget:")
-    print(f"  Δv₁ (LEO departure): {dv1:.3f} km/s")
-    print(f"  Δv₂ (GEO insertion): {dv2:.3f} km/s")
-    print(f"  Total Δv: {dv1 + dv2:.3f} km/s")
+    print(f"  dv1 (LEO departure): {dv1:.3f} km/s")
+    print(f"  dv2 (GEO insertion): {dv2:.3f} km/s")
+    print(f"  Total dv: {dv1 + dv2:.3f} km/s")
 
 
 def demo_time_systems():
@@ -429,7 +430,7 @@ def demo_time_systems():
     # Sidereal time
     gst = gmst(jd)
     print(
-        f"\nGreenwich Mean Sidereal Time: {np.degrees(gst):.4f}° = "
+        f"\nGreenwich Mean Sidereal Time: {np.degrees(gst):.4f} deg = "
         f"{np.degrees(gst)/15:.4f} hours"
     )
 
@@ -475,7 +476,7 @@ def demo_reference_frames():
     equinox_now = P @ equinox_j2000
 
     angle = np.degrees(np.arccos(np.dot(equinox_j2000, equinox_now)))
-    print(f"Precession since J2000.0: {angle:.4f}°")
+    print(f"Precession since J2000.0: {angle:.4f} deg")
     print(f"  ({centuries:.2f} Julian centuries)")
 
 
@@ -516,15 +517,15 @@ def demo_orbit_determination():
     r2 = state2_true.r + np.random.randn(3) * noise_pos
 
     print(f"\nTwo position observations separated by {dt:.0f} seconds:")
-    print(f"  r₁ = ({r1[0]:.3f}, {r1[1]:.3f}, {r1[2]:.3f}) km")
-    print(f"  r₂ = ({r2[0]:.3f}, {r2[1]:.3f}, {r2[2]:.3f}) km")
+    print(f"  r1 = ({r1[0]:.3f}, {r1[1]:.3f}, {r1[2]:.3f}) km")
+    print(f"  r2 = ({r2[0]:.3f}, {r2[1]:.3f}, {r2[2]:.3f}) km")
 
     # Solve Lambert's problem to determine orbit
     solution = lambert_universal(r1, r2, dt, GM_EARTH)
 
     print("\nLambert solution (initial orbit determination):")
     print(
-        f"  v₁ = ({solution.v1[0]:.4f}, {solution.v1[1]:.4f}, "
+        f"  v1 = ({solution.v1[0]:.4f}, {solution.v1[1]:.4f}, "
         f"{solution.v1[2]:.4f}) km/s"
     )
     print(f"  Semi-major axis: {solution.a:.1f} km (true: {a_true:.1f} km)")
@@ -541,9 +542,6 @@ def main():
     print("# PyTCL Orbital Mechanics Example")
     print("#" * 70)
 
-    if SHOW_PLOTS:
-        setup_plot_style()
-
     demo_orbital_elements()
     demo_kepler_equation()
     demo_orbit_propagation()
@@ -556,7 +554,7 @@ def main():
     print("\n" + "=" * 70)
     print("Example complete!")
     if SHOW_PLOTS:
-        print("Plots saved: orbital_propagation.png")
+        print("Plots saved: orbital_propagation.html")
     print("=" * 70)
 
 

@@ -26,24 +26,12 @@ These methods are fundamental for parameter estimation, sensor calibration,
 and model fitting in the presence of noise and outliers.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Global flag to control plotting
 SHOW_PLOTS = True
-
-
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
 
 
 from pytcl.static_estimation import (  # Least squares; Robust estimation; MLE and Fisher Information; Model selection
@@ -105,36 +93,52 @@ def demo_ordinary_least_squares():
 
     # Plot OLS fit
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            f"Ordinary Least Squares (R² = {r_squared:.4f})",
+            "Residual Plot"
+        ])
 
         # Fit plot
-        ax = axes[0]
-        ax.scatter(x, y, c="blue", s=30, alpha=0.6, label="Data")
+        fig.add_trace(go.Scatter(
+            x=x, y=y, mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Data'
+        ), row=1, col=1)
+
         x_line = np.linspace(x.min(), x.max(), 100)
         y_true_line = true_intercept + true_slope * x_line
         y_fit_line = result.x[0] + result.x[1] * x_line
-        ax.plot(x_line, y_true_line, "g--", linewidth=2, label="True line")
-        ax.plot(x_line, y_fit_line, "r-", linewidth=2, label="OLS fit")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title(f"Ordinary Least Squares (R² = {r_squared:.4f})")
-        ax.legend()
-        ax.grid(True)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=y_true_line, mode='lines',
+            line=dict(color='green', width=2, dash='dash'),
+            name='True line'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=y_fit_line, mode='lines',
+            line=dict(color='red', width=2),
+            name='OLS fit'
+        ), row=1, col=1)
 
         # Residuals plot
-        ax = axes[1]
         residuals = y - (result.x[0] + result.x[1] * x)
-        ax.scatter(x, residuals, c="blue", s=30, alpha=0.6)
-        ax.axhline(0, color="red", linestyle="--")
-        ax.set_xlabel("x")
-        ax.set_ylabel("Residual")
-        ax.set_title("Residual Plot")
-        ax.grid(True)
+        fig.add_trace(go.Scatter(
+            x=x, y=residuals, mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Residuals', showlegend=False
+        ), row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("static_ols.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to static_ols.png]")
+        fig.add_hline(y=0, line_dash="dash", line_color="red", row=1, col=2)
+
+        fig.update_xaxes(title_text="x", row=1, col=1)
+        fig.update_yaxes(title_text="y", row=1, col=1)
+        fig.update_xaxes(title_text="x", row=1, col=2)
+        fig.update_yaxes(title_text="Residual", row=1, col=2)
+
+        fig.update_layout(height=500, width=1000, showlegend=True)
+        fig.write_html("static_ols.html")
+        print("\n  [Plot saved to static_ols.html]")
 
 
 def demo_weighted_least_squares():
@@ -352,64 +356,72 @@ def demo_robust_estimation():
 
     # Plot robust estimation comparison
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            "Robust Estimation: OLS vs M-estimators",
+            "Tukey M-estimator Weights (red = true outliers)"
+        ])
 
         # Fit comparison
-        ax = axes[0]
-        ax.scatter(x, y, c="blue", s=30, alpha=0.6, label="Data")
-        ax.scatter(
-            x[outlier_idx], y[outlier_idx], c="red", s=60, alpha=0.8, label="Outliers"
-        )
+        # Regular data points
+        regular_mask = np.ones(n_samples, dtype=bool)
+        regular_mask[outlier_idx] = False
+
+        fig.add_trace(go.Scatter(
+            x=x[regular_mask], y=y[regular_mask], mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Data'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=x[outlier_idx], y=y[outlier_idx], mode='markers',
+            marker=dict(color='red', size=10, opacity=0.8),
+            name='Outliers'
+        ), row=1, col=1)
+
         x_line = np.linspace(x.min(), x.max(), 100)
-        ax.plot(
-            x_line,
-            true_intercept + true_slope * x_line,
-            "g--",
-            linewidth=2,
-            label="True",
-        )
-        ax.plot(
-            x_line,
-            result_ols.x[0] + result_ols.x[1] * x_line,
-            "k-",
-            linewidth=2,
-            label="OLS",
-        )
-        ax.plot(
-            x_line,
-            result_huber.x[0] + result_huber.x[1] * x_line,
-            "m--",
-            linewidth=2,
-            label="Huber",
-        )
-        ax.plot(
-            x_line,
-            result_tukey.x[0] + result_tukey.x[1] * x_line,
-            "c:",
-            linewidth=2,
-            label="Tukey",
-        )
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Robust Estimation: OLS vs M-estimators")
-        ax.legend()
-        ax.grid(True)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=true_intercept + true_slope * x_line, mode='lines',
+            line=dict(color='green', width=2, dash='dash'),
+            name='True'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=result_ols.x[0] + result_ols.x[1] * x_line, mode='lines',
+            line=dict(color='black', width=2),
+            name='OLS'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=result_huber.x[0] + result_huber.x[1] * x_line, mode='lines',
+            line=dict(color='magenta', width=2, dash='dash'),
+            name='Huber'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=result_tukey.x[0] + result_tukey.x[1] * x_line, mode='lines',
+            line=dict(color='cyan', width=2, dash='dot'),
+            name='Tukey'
+        ), row=1, col=1)
 
         # Weights from Tukey estimator
-        ax = axes[1]
-        colors = ["red" if i in outlier_idx else "blue" for i in range(n_samples)]
-        ax.scatter(x, weights, c=colors, s=40, alpha=0.7)
-        ax.axhline(0.1, color="red", linestyle="--", label="Outlier threshold")
-        ax.set_xlabel("x")
-        ax.set_ylabel("Tukey weight")
-        ax.set_title("Tukey M-estimator Weights (red = true outliers)")
-        ax.legend()
-        ax.grid(True)
+        colors = ['red' if i in outlier_idx else 'blue' for i in range(n_samples)]
+        fig.add_trace(go.Scatter(
+            x=x, y=weights, mode='markers',
+            marker=dict(color=colors, size=8, opacity=0.7),
+            name='Weights', showlegend=False
+        ), row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("static_robust_estimation.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to static_robust_estimation.png]")
+        fig.add_hline(y=0.1, line_dash="dash", line_color="red", row=1, col=2)
+
+        fig.update_xaxes(title_text="x", row=1, col=1)
+        fig.update_yaxes(title_text="y", row=1, col=1)
+        fig.update_xaxes(title_text="x", row=1, col=2)
+        fig.update_yaxes(title_text="Tukey weight", row=1, col=2)
+
+        fig.update_layout(height=500, width=1200, showlegend=True)
+        fig.write_html("static_robust_estimation.html")
+        print("\n  [Plot saved to static_robust_estimation.html]")
 
 
 def demo_ransac():
@@ -463,49 +475,54 @@ def demo_ransac():
 
     # Plot RANSAC
     if SHOW_PLOTS:
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig = go.Figure()
 
         # Determine inliers based on RANSAC residuals
         y_pred = result_ransac.x[0] + result_ransac.x[1] * x
         residuals = np.abs(y - y_pred)
         is_inlier = residuals < threshold
 
-        ax.scatter(
-            x[is_inlier], y[is_inlier], c="blue", s=40, alpha=0.6, label="Inliers"
-        )
-        ax.scatter(
-            x[~is_inlier], y[~is_inlier], c="red", s=40, alpha=0.6, label="Outliers"
-        )
+        fig.add_trace(go.Scatter(
+            x=x[is_inlier], y=y[is_inlier], mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Inliers'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=x[~is_inlier], y=y[~is_inlier], mode='markers',
+            marker=dict(color='red', size=8, opacity=0.6),
+            name='Outliers'
+        ))
 
         x_line = np.linspace(x.min(), x.max(), 100)
-        ax.plot(x_line, 1 + 2 * x_line, "g--", linewidth=2, label="True line")
-        ax.plot(
-            x_line,
-            result_ols.x[0] + result_ols.x[1] * x_line,
-            "k-",
-            linewidth=2,
-            label="OLS",
-        )
-        ax.plot(
-            x_line,
-            result_ransac.x[0] + result_ransac.x[1] * x_line,
-            "r-",
-            linewidth=2,
-            label="RANSAC",
-        )
 
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title(
-            f"RANSAC Line Fitting ({result_ransac.n_inliers} inliers / {len(x)} total)"
-        )
-        ax.legend()
-        ax.grid(True)
+        fig.add_trace(go.Scatter(
+            x=x_line, y=1 + 2 * x_line, mode='lines',
+            line=dict(color='green', width=2, dash='dash'),
+            name='True line'
+        ))
 
-        plt.tight_layout()
-        plt.savefig("static_ransac.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to static_ransac.png]")
+        fig.add_trace(go.Scatter(
+            x=x_line, y=result_ols.x[0] + result_ols.x[1] * x_line, mode='lines',
+            line=dict(color='black', width=2),
+            name='OLS'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=x_line, y=result_ransac.x[0] + result_ransac.x[1] * x_line, mode='lines',
+            line=dict(color='red', width=2),
+            name='RANSAC'
+        ))
+
+        fig.update_layout(
+            title=f"RANSAC Line Fitting ({result_ransac.n_inliers} inliers / {len(x)} total)",
+            xaxis_title="x",
+            yaxis_title="y",
+            height=500, width=800,
+            showlegend=True
+        )
+        fig.write_html("static_ransac.html")
+        print("\n  [Plot saved to static_ransac.html]")
 
 
 def demo_mle_and_fisher():
@@ -616,84 +633,61 @@ def demo_model_selection():
 
     # Plot model selection
     if SHOW_PLOTS:
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig = make_subplots(rows=1, cols=2, subplot_titles=[
+            "Polynomial Model Fits",
+            "Model Selection: AIC vs BIC"
+        ])
 
         # Model fits
-        ax = axes[0]
-        ax.scatter(x, y, c="blue", s=30, alpha=0.6, label="Data")
+        fig.add_trace(go.Scatter(
+            x=x, y=y, mode='markers',
+            marker=dict(color='blue', size=8, opacity=0.6),
+            name='Data'
+        ), row=1, col=1)
+
         x_line = np.linspace(x.min(), x.max(), 100)
-        ax.plot(
-            x_line,
-            1 + 2 * x_line + 0.5 * x_line**2,
-            "g--",
-            linewidth=2,
-            label="True (deg 2)",
-        )
+        fig.add_trace(go.Scatter(
+            x=x_line, y=1 + 2 * x_line + 0.5 * x_line**2, mode='lines',
+            line=dict(color='green', width=2, dash='dash'),
+            name='True (deg 2)'
+        ), row=1, col=1)
 
         # Fit degrees 1, 2, 3
-        colors = ["red", "green", "purple"]
+        colors = ['red', 'green', 'purple']
         for i, deg in enumerate([1, 2, 3]):
             A_fit = np.column_stack([x_line**j for j in range(deg + 1)])
             A_data = np.column_stack([x**j for j in range(deg + 1)])
             coef = ordinary_least_squares(A_data, y).x
             y_fit = A_fit @ coef
-            ax.plot(
-                x_line,
-                y_fit,
-                linestyle="-" if deg == 2 else ":",
-                linewidth=1.5,
-                label=f"Degree {deg}",
-            )
-
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("Polynomial Model Fits")
-        ax.legend()
-        ax.grid(True)
+            fig.add_trace(go.Scatter(
+                x=x_line, y=y_fit, mode='lines',
+                line=dict(width=1.5, dash='solid' if deg == 2 else 'dot'),
+                name=f'Degree {deg}'
+            ), row=1, col=1)
 
         # AIC/BIC comparison
-        ax = axes[1]
         degrees = [r[0] for r in results]
         aic_vals = [r[3] for r in results]
         bic_vals = [r[4] for r in results]
 
-        bar_width = 0.35
-        x_bars = np.arange(len(degrees))
-        ax.bar(
-            x_bars - bar_width / 2,
-            aic_vals,
-            bar_width,
-            label="AIC",
-            color="blue",
-            alpha=0.7,
-        )
-        ax.bar(
-            x_bars + bar_width / 2,
-            bic_vals,
-            bar_width,
-            label="BIC",
-            color="orange",
-            alpha=0.7,
-        )
-        ax.set_xticks(x_bars)
-        ax.set_xticklabels(degrees)
-        ax.set_xlabel("Polynomial Degree")
-        ax.set_ylabel("Information Criterion")
-        ax.set_title("Model Selection: AIC vs BIC")
-        ax.axvline(
-            1 - bar_width / 2,
-            color="green",
-            linestyle="--",
-            alpha=0.5,
-            label="True degree",
-        )
-        ax.legend()
-        ax.grid(True, axis="y")
+        fig.add_trace(go.Bar(
+            x=[d - 0.2 for d in degrees], y=aic_vals, width=0.35,
+            name='AIC', marker_color='blue', opacity=0.7
+        ), row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("static_model_selection.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to static_model_selection.png]")
+        fig.add_trace(go.Bar(
+            x=[d + 0.2 for d in degrees], y=bic_vals, width=0.35,
+            name='BIC', marker_color='orange', opacity=0.7
+        ), row=1, col=2)
+
+        fig.update_xaxes(title_text="x", row=1, col=1)
+        fig.update_yaxes(title_text="y", row=1, col=1)
+        fig.update_xaxes(title_text="Polynomial Degree", row=1, col=2)
+        fig.update_yaxes(title_text="Information Criterion", row=1, col=2)
+
+        fig.update_layout(height=500, width=1200, showlegend=True)
+        fig.write_html("static_model_selection.html")
+        print("\n  [Plot saved to static_model_selection.html]")
 
 
 def main():
@@ -701,9 +695,6 @@ def main():
     print("\n" + "#" * 70)
     print("# PyTCL Static Estimation Example")
     print("#" * 70)
-
-    if SHOW_PLOTS:
-        setup_plot_style()
 
     # Least squares methods
     demo_ordinary_least_squares()
@@ -723,8 +714,8 @@ def main():
     print("\n" + "=" * 70)
     print("Example complete!")
     if SHOW_PLOTS:
-        print("Plots saved: static_ols.png, static_robust_estimation.png,")
-        print("             static_ransac.png, static_model_selection.png")
+        print("Plots saved: static_ols.html, static_robust_estimation.html,")
+        print("             static_ransac.html, static_model_selection.html")
     print("=" * 70)
 
 

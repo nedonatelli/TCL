@@ -48,9 +48,9 @@ All tutorials assume you have the library installed::
 
    pip install nrl-tracker
 
-For visualization examples, matplotlib is also required::
+For visualization examples, plotly is also required::
 
-   pip install matplotlib
+   pip install plotly
 
 For wavelet tutorials, install the signal extra::
 

@@ -30,25 +30,11 @@ These data structures are essential for efficient data association
 in multi-target tracking and spatial analysis applications.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Circle, Rectangle
+import plotly.graph_objects as go
 
 # Global flag to control plotting
 SHOW_PLOTS = True
-
-
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
 
 
 from pytcl.containers import (  # K-D Tree; Ball Tree; R-Tree; VP-Tree; Cover Tree
@@ -102,47 +88,51 @@ def demo_kdtree_basics():
 
     # Plot KDTree result
     if SHOW_PLOTS:
-        fig, ax = plt.subplots(figsize=(8, 8))
+        fig = go.Figure()
 
         # All points
-        ax.scatter(
-            points[:, 0], points[:, 1], c="lightblue", s=20, alpha=0.6, label="Points"
-        )
-
-        # Query point
-        ax.scatter(
-            [query[0]], [query[1]], c="red", s=100, marker="*", label="Query", zorder=5
-        )
+        fig.add_trace(go.Scatter(
+            x=points[:, 0], y=points[:, 1], mode='markers',
+            marker=dict(color='lightblue', size=8, opacity=0.6),
+            name='Points'
+        ))
 
         # K nearest neighbors
         nn_indices = result.indices[0]
-        ax.scatter(
-            points[nn_indices, 0],
-            points[nn_indices, 1],
-            c="green",
-            s=50,
-            alpha=0.8,
-            label=f"{k} nearest neighbors",
-        )
+        fig.add_trace(go.Scatter(
+            x=points[nn_indices, 0], y=points[nn_indices, 1], mode='markers',
+            marker=dict(color='green', size=12, opacity=0.8),
+            name=f'{k} nearest neighbors'
+        ))
+
+        # Query point
+        fig.add_trace(go.Scatter(
+            x=[query[0]], y=[query[1]], mode='markers',
+            marker=dict(color='red', size=15, symbol='star'),
+            name='Query'
+        ))
 
         # Draw circle for max distance
         max_dist = result.distances[0, -1]
-        circle = Circle(
-            query, max_dist, fill=False, color="green", linestyle="--", linewidth=2
+        theta = np.linspace(0, 2 * np.pi, 100)
+        circle_x = query[0] + max_dist * np.cos(theta)
+        circle_y = query[1] + max_dist * np.sin(theta)
+        fig.add_trace(go.Scatter(
+            x=circle_x, y=circle_y, mode='lines',
+            line=dict(color='green', dash='dash', width=2),
+            name='Search radius', showlegend=True
+        ))
+
+        fig.update_layout(
+            title="K-D Tree: K-Nearest Neighbor Query",
+            xaxis_title="x",
+            yaxis_title="y",
+            height=600, width=600,
+            showlegend=True,
+            xaxis=dict(scaleanchor="y", scaleratio=1)
         )
-        ax.add_patch(circle)
-
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title("K-D Tree: K-Nearest Neighbor Query")
-        ax.legend()
-        ax.set_aspect("equal")
-        ax.grid(True)
-
-        plt.tight_layout()
-        plt.savefig("spatial_kdtree.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to spatial_kdtree.png]")
+        fig.write_html("spatial_kdtree.html")
+        print("\n  [Plot saved to spatial_kdtree.html]")
 
 
 def demo_kdtree_queries():
@@ -270,70 +260,63 @@ def demo_rtree():
 
     # Plot R-Tree result
     if SHOW_PLOTS:
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig = go.Figure()
 
         # Draw all boxes
         for i, box in enumerate(boxes):
             is_intersecting = i in result.indices
-            color = "green" if is_intersecting else "lightblue"
-            alpha = 0.6 if is_intersecting else 0.3
-            width = box.max_coords[0] - box.min_coords[0]
-            height = box.max_coords[1] - box.min_coords[1]
-            rect = Rectangle(
-                box.min_coords,
-                width,
-                height,
-                fill=True,
-                facecolor=color,
-                edgecolor="black",
-                alpha=alpha,
-                linewidth=1,
+            color = 'green' if is_intersecting else 'lightblue'
+            opacity = 0.6 if is_intersecting else 0.3
+
+            # Create rectangle as a filled shape
+            x0, y0 = box.min_coords
+            x1, y1 = box.max_coords
+
+            fig.add_shape(
+                type="rect",
+                x0=x0, y0=y0, x1=x1, y1=y1,
+                fillcolor=color,
+                line=dict(color='black', width=1),
+                opacity=opacity
             )
-            ax.add_patch(rect)
 
         # Draw search region
-        width = search_max[0] - search_min[0]
-        height = search_max[1] - search_min[1]
-        search_rect = Rectangle(
-            search_min,
-            width,
-            height,
-            fill=False,
-            edgecolor="red",
-            linewidth=3,
-            linestyle="--",
-            label="Search region",
+        fig.add_shape(
+            type="rect",
+            x0=search_min[0], y0=search_min[1],
+            x1=search_max[0], y1=search_max[1],
+            fillcolor="rgba(0,0,0,0)",
+            line=dict(color='red', width=3, dash='dash')
         )
-        ax.add_patch(search_rect)
 
-        ax.set_xlim(-60, 60)
-        ax.set_ylim(-60, 60)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_title(f"R-Tree: {len(result.indices)} boxes intersecting search region")
-        ax.set_aspect("equal")
-        ax.grid(True)
+        # Add legend traces (invisible points for legend)
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='markers',
+            marker=dict(size=15, color='green', opacity=0.6),
+            name='Intersecting'
+        ))
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='markers',
+            marker=dict(size=15, color='lightblue', opacity=0.3),
+            name='Non-intersecting'
+        ))
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode='lines',
+            line=dict(color='red', width=3, dash='dash'),
+            name='Search region'
+        ))
 
-        # Custom legend
-        from matplotlib.patches import Patch
-
-        legend_elements = [
-            Patch(facecolor="green", alpha=0.6, label="Intersecting"),
-            Patch(facecolor="lightblue", alpha=0.3, label="Non-intersecting"),
-            Patch(
-                fill=False,
-                edgecolor="red",
-                linewidth=2,
-                linestyle="--",
-                label="Search region",
-            ),
-        ]
-        ax.legend(handles=legend_elements)
-
-        plt.tight_layout()
-        plt.savefig("spatial_rtree.png", dpi=150)
-        plt.show()
-        print("\n  [Plot saved to spatial_rtree.png]")
+        fig.update_layout(
+            title=f"R-Tree: {len(result.indices)} boxes intersecting search region",
+            xaxis_title="x",
+            yaxis_title="y",
+            height=700, width=700,
+            showlegend=True,
+            xaxis=dict(range=[-60, 60], scaleanchor="y", scaleratio=1),
+            yaxis=dict(range=[-60, 60])
+        )
+        fig.write_html("spatial_rtree.html")
+        print("\n  [Plot saved to spatial_rtree.html]")
 
 
 def demo_bounding_box_operations():
@@ -594,7 +577,7 @@ def demo_tracking_application():
     print("\nFirst 5 associations:")
     for m_idx, t_idx, dist in associations[:5]:
         true_assoc = m_idx == t_idx  # Simplified ground truth
-        status = "✓" if true_assoc else "?"
+        status = "+" if true_assoc else "?"
         print(f"  Meas {m_idx:>2} -> Track {t_idx:>2} " f"(dist={dist:.2f}) {status}")
 
     # Radius query for gating
@@ -611,9 +594,6 @@ def main():
     print("# PyTCL Spatial Data Structures Example")
     print("#" * 70)
 
-    if SHOW_PLOTS:
-        setup_plot_style()
-
     demo_kdtree_basics()
     demo_kdtree_queries()
     demo_balltree()
@@ -627,7 +607,7 @@ def main():
     print("\n" + "=" * 70)
     print("Example complete!")
     if SHOW_PLOTS:
-        print("Plots saved: spatial_kdtree.png, spatial_rtree.png")
+        print("Plots saved: spatial_kdtree.html, spatial_rtree.html")
     print("=" * 70)
 
 

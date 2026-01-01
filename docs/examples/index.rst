@@ -71,4 +71,4 @@ Examples require pytcl to be installed::
 
 Some examples may require additional dependencies::
 
-   pip install matplotlib  # For visualization
+   pip install plotly  # For interactive visualization

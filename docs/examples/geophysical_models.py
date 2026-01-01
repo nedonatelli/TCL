@@ -22,24 +22,12 @@ These models are essential for high-precision navigation, geodesy,
 and aerospace applications.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Global flag to control plotting
 SHOW_PLOTS = True
-
-
-def setup_plot_style():
-    """Configure matplotlib style for consistent plots."""
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.rcParams.update(
-        {
-            "figure.figsize": (10, 6),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-        }
-    )
 
 
 from pytcl.gravity import (  # Normal gravity; Gravity models; Geoid; Anomalies; Tidal effects; Constants
@@ -112,64 +100,45 @@ def demo_normal_gravity():
 
     # Plot gravity variation with latitude
     if SHOW_PLOTS:
-        setup_plot_style()
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
         # High-resolution latitude array
         lats_fine = np.linspace(0, 90, 181)
         g_values = np.array(
             [normal_gravity_somigliana(np.radians(lat)) for lat in lats_fine]
         )
 
-        # Left plot: Gravity vs latitude
-        ax1.plot(lats_fine, g_values, "b-", linewidth=2)
-        ax1.set_xlabel("Latitude (°)")
-        ax1.set_ylabel("Normal Gravity (m/s²)")
-        ax1.set_title("Normal Gravity vs Latitude (Somigliana)")
-        ax1.set_xlim(0, 90)
-        ax1.grid(True, alpha=0.3)
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Normal Gravity vs Latitude (Somigliana)", "Gravity Increase from Equator")
+        )
 
+        # Left plot: Gravity vs latitude
+        fig.add_trace(
+            go.Scatter(x=lats_fine, y=g_values, mode='lines', name='Gravity',
+                       line=dict(color='blue', width=2)),
+            row=1, col=1
+        )
         # Mark equator and pole values
-        ax1.axhline(
-            y=g_values[0],
-            color="r",
-            linestyle="--",
-            alpha=0.5,
-            label=f"Equator: {g_values[0]:.4f}",
-        )
-        ax1.axhline(
-            y=g_values[-1],
-            color="g",
-            linestyle="--",
-            alpha=0.5,
-            label=f"Pole: {g_values[-1]:.4f}",
-        )
-        ax1.legend()
+        fig.add_hline(y=g_values[0], line_dash="dash", line_color="red",
+                      annotation_text=f"Equator: {g_values[0]:.4f}", row=1, col=1)
+        fig.add_hline(y=g_values[-1], line_dash="dash", line_color="green",
+                      annotation_text=f"Pole: {g_values[-1]:.4f}", row=1, col=1)
 
         # Right plot: Gravity difference from equator
         g_diff = (g_values - g_values[0]) * 1000  # mGal
-        ax2.plot(lats_fine, g_diff, "b-", linewidth=2)
-        ax2.set_xlabel("Latitude (°)")
-        ax2.set_ylabel("Δg from Equator (mGal)")
-        ax2.set_title("Gravity Increase from Equator")
-        ax2.set_xlim(0, 90)
-        ax2.grid(True, alpha=0.3)
+        fig.add_trace(
+            go.Scatter(x=lats_fine, y=g_diff, mode='lines', name='Δg',
+                       line=dict(color='blue', width=2)),
+            row=1, col=2
+        )
 
-        # Annotate key locations
-        for lat_mark in [30, 45, 60]:
-            idx = lat_mark * 2
-            ax2.annotate(
-                f"{lat_mark}°: +{g_diff[idx]:.0f} mGal",
-                xy=(lat_mark, g_diff[idx]),
-                xytext=(lat_mark + 5, g_diff[idx] - 500),
-                fontsize=9,
-                arrowprops=dict(arrowstyle="->", alpha=0.5),
-            )
+        fig.update_xaxes(title_text="Latitude (°)", range=[0, 90], row=1, col=1)
+        fig.update_yaxes(title_text="Normal Gravity (m/s²)", row=1, col=1)
+        fig.update_xaxes(title_text="Latitude (°)", range=[0, 90], row=1, col=2)
+        fig.update_yaxes(title_text="Δg from Equator (mGal)", row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("geophysical_gravity_latitude.png", dpi=150, bbox_inches="tight")
-        print("\nPlot saved: geophysical_gravity_latitude.png")
-        plt.show()
+        fig.update_layout(height=500, width=1200, showlegend=False)
+        fig.write_html("geophysical_gravity_latitude.html")
+        print("\n  [Plot saved to geophysical_gravity_latitude.html]")
 
 
 def demo_gravity_models():
@@ -213,61 +182,43 @@ def demo_gravity_models():
 
     # Plot gravity vs altitude
     if SHOW_PLOTS:
-        setup_plot_style()
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Gravity vs Altitude (WGS84)", "Gravity Reduction with Altitude")
+        )
 
         # Altitude range from surface to ISS altitude
         alts = np.linspace(0, 500000, 500)  # 0 to 500 km
         g_values = np.array([gravity_wgs84(lat, lon, a).magnitude for a in alts])
 
         # Left plot: Gravity vs altitude
-        ax1.plot(alts / 1000, g_values, "b-", linewidth=2)
-        ax1.set_xlabel("Altitude (km)")
-        ax1.set_ylabel("Gravity (m/s²)")
-        ax1.set_title("Gravity vs Altitude (WGS84)")
-        ax1.grid(True, alpha=0.3)
-
-        # Mark key altitudes
-        key_alts = [
-            (0, "Sea level"),
-            (10, "Cruising alt"),
-            (100, "Kármán line"),
-            (400, "ISS orbit"),
-        ]
-        for alt_km, label in key_alts:
-            idx = int(alt_km * 500 / 500)
-            ax1.axvline(x=alt_km, color="gray", linestyle=":", alpha=0.5)
-            ax1.annotate(
-                label,
-                xy=(alt_km, g_values[idx]),
-                fontsize=8,
-                rotation=90,
-                va="bottom",
-                ha="right",
-            )
+        fig.add_trace(
+            go.Scatter(x=alts / 1000, y=g_values, mode='lines', name='Gravity',
+                       line=dict(color='blue', width=2)),
+            row=1, col=1
+        )
 
         # Right plot: Gravity reduction rate
         g_reduction = (g_values[0] - g_values) / g_values[0] * 100  # percent
-        ax2.plot(alts / 1000, g_reduction, "r-", linewidth=2)
-        ax2.set_xlabel("Altitude (km)")
-        ax2.set_ylabel("Gravity Reduction (%)")
-        ax2.set_title("Gravity Reduction with Altitude")
-        ax2.grid(True, alpha=0.3)
+        fig.add_trace(
+            go.Scatter(x=alts / 1000, y=g_reduction, mode='lines', name='Reduction',
+                       line=dict(color='red', width=2)),
+            row=1, col=2
+        )
 
         # Mark ISS at ~400 km
-        ax2.axhline(
-            y=g_reduction[400],
-            color="g",
-            linestyle="--",
-            alpha=0.7,
-            label=f"ISS (~400 km): {g_reduction[400]:.1f}% reduction",
-        )
-        ax2.legend()
+        fig.add_hline(y=g_reduction[400], line_dash="dash", line_color="green",
+                      annotation_text=f"ISS (~400 km): {g_reduction[400]:.1f}% reduction",
+                      row=1, col=2)
 
-        plt.tight_layout()
-        plt.savefig("geophysical_gravity_altitude.png", dpi=150, bbox_inches="tight")
-        print("\nPlot saved: geophysical_gravity_altitude.png")
-        plt.show()
+        fig.update_xaxes(title_text="Altitude (km)", row=1, col=1)
+        fig.update_yaxes(title_text="Gravity (m/s²)", row=1, col=1)
+        fig.update_xaxes(title_text="Altitude (km)", row=1, col=2)
+        fig.update_yaxes(title_text="Gravity Reduction (%)", row=1, col=2)
+
+        fig.update_layout(height=500, width=1200, showlegend=False)
+        fig.write_html("geophysical_gravity_altitude.html")
+        print("\n  [Plot saved to geophysical_gravity_altitude.html]")
 
 
 def demo_geoid():
@@ -381,9 +332,6 @@ def demo_tidal_effects():
 
     # Plot tidal effects over 24 hours
     if SHOW_PLOTS:
-        setup_plot_style()
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-
         # Time array: 24 hours at 15-minute intervals
         hours = np.linspace(0, 24, 97)
         jd_start = 2460676.5  # 2025-01-01 00:00 UTC
@@ -402,31 +350,46 @@ def demo_tidal_effects():
             disp_u[i] = disp[2] * 1000
             dg[i] = tidal_gravity_correction(lat, lon, jd) * 1e8  # µGal
 
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=("Solid Earth Tide - Washington DC (2025-01-01)", "Tidal Gravity Variation"),
+            shared_xaxes=True
+        )
+
         # Top plot: Displacement components
-        ax1.plot(hours, disp_n, "b-", linewidth=1.5, label="North")
-        ax1.plot(hours, disp_e, "g-", linewidth=1.5, label="East")
-        ax1.plot(hours, disp_u, "r-", linewidth=2, label="Up")
-        ax1.set_ylabel("Displacement (mm)")
-        ax1.set_title("Solid Earth Tide - Washington DC (2025-01-01)")
-        ax1.legend(loc="upper right")
-        ax1.grid(True, alpha=0.3)
-        ax1.axhline(y=0, color="k", linestyle="-", alpha=0.3)
+        fig.add_trace(
+            go.Scatter(x=hours, y=disp_n, mode='lines', name='North',
+                       line=dict(color='blue', width=1.5)),
+            row=1, col=1
+        )
+        fig.add_trace(
+            go.Scatter(x=hours, y=disp_e, mode='lines', name='East',
+                       line=dict(color='green', width=1.5)),
+            row=1, col=1
+        )
+        fig.add_trace(
+            go.Scatter(x=hours, y=disp_u, mode='lines', name='Up',
+                       line=dict(color='red', width=2)),
+            row=1, col=1
+        )
+        fig.add_hline(y=0, line_color="black", line_width=0.5, row=1, col=1)
 
         # Bottom plot: Gravity change
-        ax2.plot(hours, dg, "m-", linewidth=2)
-        ax2.fill_between(hours, 0, dg, alpha=0.3, color="m")
-        ax2.set_xlabel("Hour (UTC)")
-        ax2.set_ylabel("Gravity Change (µGal)")
-        ax2.set_title("Tidal Gravity Variation")
-        ax2.set_xlim(0, 24)
-        ax2.set_xticks(np.arange(0, 25, 3))
-        ax2.grid(True, alpha=0.3)
-        ax2.axhline(y=0, color="k", linestyle="-", alpha=0.3)
+        fig.add_trace(
+            go.Scatter(x=hours, y=dg, mode='lines', name='Gravity',
+                       line=dict(color='purple', width=2),
+                       fill='tozeroy', fillcolor='rgba(128,0,128,0.3)'),
+            row=2, col=1
+        )
+        fig.add_hline(y=0, line_color="black", line_width=0.5, row=2, col=1)
 
-        plt.tight_layout()
-        plt.savefig("geophysical_tides.png", dpi=150, bbox_inches="tight")
-        print("\nPlot saved: geophysical_tides.png")
-        plt.show()
+        fig.update_xaxes(title_text="Hour (UTC)", range=[0, 24], row=2, col=1)
+        fig.update_yaxes(title_text="Displacement (mm)", row=1, col=1)
+        fig.update_yaxes(title_text="Gravity Change (µGal)", row=2, col=1)
+
+        fig.update_layout(height=600, width=1000)
+        fig.write_html("geophysical_tides.html")
+        print("\n  [Plot saved to geophysical_tides.html]")
 
 
 def demo_magnetic_field():
@@ -484,9 +447,6 @@ def demo_magnetic_field():
 
     # Plot magnetic declination and field intensity maps
     if SHOW_PLOTS:
-        setup_plot_style()
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
         # Create grid for plotting
         lat_grid = np.linspace(-80, 80, 33)
         lon_grid = np.linspace(-180, 180, 73)
@@ -503,37 +463,44 @@ def demo_magnetic_field():
                 DEC[i, j] = np.degrees(result.D)
                 F[i, j] = result.F
 
-        # Left plot: Magnetic declination
-        levels_dec = np.linspace(-30, 30, 13)
-        cs1 = ax1.contourf(
-            LON, LAT, DEC, levels=levels_dec, cmap="RdBu_r", extend="both"
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=(f"Magnetic Declination (WMM {decimal_year:.0f})",
+                           f"Magnetic Field Intensity (WMM {decimal_year:.0f})")
         )
-        ax1.contour(LON, LAT, DEC, levels=[0], colors="k", linewidths=2)
-        plt.colorbar(cs1, ax=ax1, label="Declination (°)")
-        ax1.set_xlabel("Longitude (°)")
-        ax1.set_ylabel("Latitude (°)")
-        ax1.set_title(f"Magnetic Declination (WMM {decimal_year:.0f})")
-        ax1.set_xlim(-180, 180)
-        ax1.set_ylim(-80, 80)
+
+        # Left plot: Magnetic declination
+        fig.add_trace(
+            go.Contour(x=lon_grid, y=lat_grid, z=DEC.T,
+                      colorscale='RdBu_r', contours=dict(showlines=True),
+                      colorbar=dict(title="Declination (°)", x=0.45)),
+            row=1, col=1
+        )
 
         # Right plot: Total field intensity
-        levels_f = np.linspace(20000, 65000, 10)
-        cs2 = ax2.contourf(LON, LAT, F, levels=levels_f, cmap="viridis")
-        plt.colorbar(cs2, ax=ax2, label="Total Intensity (nT)")
-        ax2.set_xlabel("Longitude (°)")
-        ax2.set_ylabel("Latitude (°)")
-        ax2.set_title(f"Magnetic Field Intensity (WMM {decimal_year:.0f})")
-        ax2.set_xlim(-180, 180)
-        ax2.set_ylim(-80, 80)
+        fig.add_trace(
+            go.Contour(x=lon_grid, y=lat_grid, z=F.T,
+                      colorscale='Viridis',
+                      colorbar=dict(title="Intensity (nT)", x=1.0)),
+            row=1, col=2
+        )
 
         # Mark South Atlantic Anomaly region
-        ax2.plot(-50, -25, "r*", markersize=15, label="South Atlantic Anomaly")
-        ax2.legend(loc="lower left")
+        fig.add_trace(
+            go.Scatter(x=[-50], y=[-25], mode='markers',
+                      marker=dict(symbol='star', size=15, color='red'),
+                      name='South Atlantic Anomaly', showlegend=True),
+            row=1, col=2
+        )
 
-        plt.tight_layout()
-        plt.savefig("geophysical_magnetic_field.png", dpi=150, bbox_inches="tight")
-        print("\nPlot saved: geophysical_magnetic_field.png")
-        plt.show()
+        fig.update_xaxes(title_text="Longitude (°)", range=[-180, 180], row=1, col=1)
+        fig.update_yaxes(title_text="Latitude (°)", range=[-80, 80], row=1, col=1)
+        fig.update_xaxes(title_text="Longitude (°)", range=[-180, 180], row=1, col=2)
+        fig.update_yaxes(title_text="Latitude (°)", range=[-80, 80], row=1, col=2)
+
+        fig.update_layout(height=500, width=1400)
+        fig.write_html("geophysical_magnetic_field.html")
+        print("\n  [Plot saved to geophysical_magnetic_field.html]")
 
 
 def demo_magnetic_properties():
@@ -616,9 +583,6 @@ def demo_navigation_application():
 
 def main():
     """Run all demonstrations."""
-    if SHOW_PLOTS:
-        setup_plot_style()
-
     print("\n" + "#" * 70)
     print("# PyTCL Geophysical Models Example")
     print("#" * 70)
@@ -639,6 +603,11 @@ def main():
 
     print("\n" + "=" * 70)
     print("Example complete!")
+    if SHOW_PLOTS:
+        print("Plots saved: geophysical_gravity_latitude.html,")
+        print("             geophysical_gravity_altitude.html,")
+        print("             geophysical_tides.html,")
+        print("             geophysical_magnetic_field.html")
     print("=" * 70)
 
 

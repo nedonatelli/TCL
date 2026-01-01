@@ -95,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.19.0] - 2025-12-31
 
 ### Added
-- New example scripts with matplotlib visualizations
+- New example scripts with interactive plotly visualizations
 - Enhanced documentation with more tutorials
 
 ## [0.18.0] - 2025-12-31
