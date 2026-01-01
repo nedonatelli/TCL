@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.5] - 2026-01-01
+
+### Added
+- **Example Visualizations**: Interactive Plotly-based HTML visualizations for all example scripts
+  - 13 new visualization generation functions in `scripts/generate_example_html.py`
+  - Total of 42 interactive HTML plots embedded in documentation
+  - Visualizations cover Kalman filters, particle filters, multi-target tracking, signal processing, transforms, and more
+
+- **Plotting Enhancements**: All 23 example scripts now include Plotly visualizations
+  - `assignment_algorithms.py` - Cost matrix heatmap
+  - `coordinate_systems.py` - 3D coordinate transforms
+  - `ins_gnss_navigation.py` - Navigation trajectory
+  - `signal_processing.py` - Filter frequency response
+  - `smoothers_information_filters.py` - Smoother vs filter comparison
+  - `tracking_containers.py` - Track spatial distribution
+  - `transforms.py` - FFT analysis
+
+- **Documentation Integration**: Interactive plots now embedded in documentation examples
+  - Updated `docs/examples/index.rst` with 13 new embedded iframes
+  - Each example shows its corresponding interactive visualization
+  - Better narrative flow with descriptive titles and captions
+
+### Code Quality
+- All quality checks passing (isort, black, flake8, mypy)
+- 100% compliance with CI/CD code quality gates
+- Repository remains in excellent code health
+
+### Release Information
+- **Tag**: v0.22.5
+- **Date**: January 1, 2026
+- **Type**: Patch Release
+- **Status**: Stable
+
+This release focuses on documentation enhancements with interactive visualizations for all example scripts.
+
+---
+
 ## [0.22.4] - 2026-01-01
 
 ### Fixed

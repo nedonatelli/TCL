@@ -3,11 +3,13 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.22.0)
+Current State (v0.22.5)
 -----------------------
 
-* **800+ functions** implemented across 144 Python files
-* **1,530 tests** with comprehensive coverage
+* **830+ functions** implemented across 146 Python modules
+* **1,598 tests** with comprehensive coverage (100% pass rate)
+* **42 interactive HTML visualizations** embedded in documentation
+* **23 example scripts** with Plotly-based interactive plots
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -19,19 +21,35 @@ Current State (v0.22.0)
 * **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 * **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
 * **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
-* **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
+* **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations, JPL ephemerides, relativistic corrections
 * **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 * **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 * **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
 * **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 * **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
 * **Information filters**: Standard and square-root information filters (SRIF)
+* **Documentation**: Interactive visualization system with 42 HTML plots
+* **Code Quality**: 100% compliance with isort, black, flake8, mypy
 * **Published on PyPI** as ``nrl-tracker``
 
 Completed Phases
 ----------------
 
-Summary of major phases completed through v0.22.0. See ROADMAP.md for detailed file listings and implementation notes.
+Summary of major phases completed through v0.22.5. See ROADMAP.md for detailed file listings and implementation notes.
+
+Phase 14 (v0.22.5)
+~~~~~~~~~~~~~~~~~~
+
+**Documentation Visualizations & Interactive Examples**
+
+* Interactive Plotly-based HTML visualizations for all 23 example scripts
+* 42 total HTML plots embedded in documentation
+* Visualizations cover: Kalman filters, particle filters, multi-target tracking, signal processing, transforms, navigation, coordinate systems, and more
+* All examples now include publication-ready interactive plots
+* Documentation integration: Each example displays corresponding visualization
+
+Earlier Phases
+~~~~~~~~~~~~~~
 
 - **Phase 1 (v0.3.0)**: Square-root filters, JPDA, IMM estimator
 - **Phase 2 (v0.4.0)**: Gaussian mixture operations, clustering, MHT
@@ -51,7 +69,8 @@ Summary of major phases completed through v0.22.0. See ROADMAP.md for detailed f
 - **Phase 10 (v0.18.0)**: Batch estimation & smoothing
 - **Phase 11 (v0.20.0)**: Navigation utilities
 - **Phase 12 (v0.21.0)**: Special mathematical functions
-- **Documentation & Testing**: Complete API documentation, 1,530+ tests, example scripts
+- **Phase 13.1-13.2 (v0.22.0)**: JPL ephemerides & relativistic corrections
+- **Documentation & Testing**: Complete API documentation, 1,598+ tests, 23 example scripts with visualizations
 
 Planned
 -------
