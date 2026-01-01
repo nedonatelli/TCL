@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-01-01
+
+### Added
+- **Astronomical Module Phase 13.1: JPL Ephemerides**
+  - `DEEphemeris` class for high-precision celestial body position/velocity queries
+  - Support for DE405, DE430, DE432s, DE440 ephemeris versions
+  - `sun_position()`, `moon_position()`, `planet_position()`, `barycenter_position()` functions
+  - Automatic kernel download from JPL NAIF servers
+  - Full frame support: ICRF, ecliptic, Earth-centered coordinates
+  - 31 comprehensive tests covering all celestial bodies
+  - Module-level convenience functions for quick queries
+
+- **Astronomical Module Phase 13.2: Relativistic Corrections**
+  - 9 relativistic physics functions for orbital mechanics
+  - `schwarzschild_radius()` - Event horizon calculations
+  - `gravitational_time_dilation()` - Weak-field time dilation effects
+  - `proper_time_rate()` - Combined SR + GR time dilation
+  - `shapiro_delay()` - Light propagation delay in gravity
+  - `schwarzschild_precession_per_orbit()` - Perihelion precession (Mercury: 43 arcsec/century)
+  - `post_newtonian_acceleration()` - 1PN orbital corrections
+  - `geodetic_precession()` - De Sitter effect
+  - `lense_thirring_precession()` - Frame-dragging precession
+  - `relativistic_range_correction()` - Laser ranging corrections
+  - 37 comprehensive tests including GPS validation and Mercury precession verification
+
+- **Demonstration Examples**
+  - `examples/ephemeris_demo.py` - 7 JPL ephemerides demonstrations
+  - `examples/relativity_demo.py` - 7 relativistic effects demonstrations
+
+### Changed
+- **Dependencies**: Added jplephem>=2.18 to astronomy optional-dependencies for ephemeris support
+
+### Fixed
+- **jplephem Integration**: Corrected API usage to work with jplephem 2.23+
+  - Removed non-existent kernel.t0 attribute
+  - Added proper unit conversions from km to AU
+  - Fixed Moon position computation relative to SSB
+  - All 31 ephemerides tests now passing
+
+---
+
 ## [0.21.5] - 2026-01-01
 
 ### Changed

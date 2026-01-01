@@ -3,7 +3,7 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v0.21.5)
+Current State (v0.22.0)
 -----------------------
 
 * **800+ functions** implemented across 144 Python files
@@ -31,7 +31,7 @@ Current State (v0.21.5)
 Completed Phases
 ----------------
 
-Summary of major phases completed through v0.21.5. See ROADMAP.md for detailed file listings and implementation notes.
+Summary of major phases completed through v0.22.0. See ROADMAP.md for detailed file listings and implementation notes.
 
 - **Phase 1 (v0.3.0)**: Square-root filters, JPDA, IMM estimator
 - **Phase 2 (v0.4.0)**: Gaussian mixture operations, clustering, MHT

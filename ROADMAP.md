@@ -1,10 +1,10 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v0.21.5)
+## Current State (v0.22.0)
 
-- **800+ functions** implemented across 144 Python files
-- **1,530 tests** with comprehensive coverage
-- **10 comprehensive example scripts** covering all major library features
+- **830+ functions** implemented across 147 Python files
+- **1,598 tests** with comprehensive coverage
+- **16 comprehensive example scripts** covering all major library features
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -16,7 +16,7 @@
 - **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 - **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
-- **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations
+- **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations, JPL ephemerides, relativistic corrections
 - **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 - **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 - **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
