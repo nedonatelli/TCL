@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.2] - 2026-01-01
+
+### Added
+- **CI Security Scanning**: Added pip-audit to CI workflow for dependency vulnerability scanning
+- **GitHub Pages**: Added automated documentation deployment workflow
+
+### Fixed
+- **Documentation Theme**: Fixed sidenav background colors at deeper toctree levels
+- **Documentation Theme**: Styled buttons and tables with dark theme colors (removed white backgrounds)
+
+### Changed
+- **CI Workflow**: Added permissions configuration, removed unconfigured Black Duck workflow
+
+---
+
 ## [0.21.1] - 2026-01-01
 
 ### Fixed
