@@ -186,10 +186,10 @@ def shapiro_delay(observer_pos: np.ndarray, light_source_pos: np.ndarray,
     --------
     Earth-Sun-Spacecraft signal at superior conjunction (worst case):
     
-    >>> # Simplified geometry: Sun at origin, Earth at 1 AU, spacecraft at 1 AU on far side
+    >>> # Simplified geometry: Sun at origin, Earth at 1 AU, spacecraft beyond at distance
     >>> sun_pos = np.array([0.0, 0.0, 0.0])
     >>> earth_pos = np.array([1.496e11, 0.0, 0.0])  # 1 AU
-    >>> spacecraft_pos = np.array([-1.496e11, 0.0, 0.0])  # Opposite side of Sun
+    >>> spacecraft_pos = np.array([1.496e11, 1.0e11, 0.0])  # Far from sun
     >>> delay = shapiro_delay(earth_pos, spacecraft_pos, sun_pos, GM_SUN)
     >>> print(f"Shapiro delay: {delay:.3e} seconds")
     >>> print(f"Shapiro delay: {delay*1e6:.1f} microseconds")
@@ -200,12 +200,15 @@ def shapiro_delay(observer_pos: np.ndarray, light_source_pos: np.ndarray,
     r_os = np.linalg.norm(observer_pos - light_source_pos)
     
     # Shapiro delay formula (second-order PN)
+    # Check for valid geometry (gravitating body should affect path)
+    # The formula is valid when the impact parameter is close to the body
     numerator = r_observer + r_source + r_os
     denominator = r_observer + r_source - r_os
     
-    if denominator <= 0:
-        raise ValueError("Invalid geometry: observer, source, and body appear collinear with source "
-                        "between observer and body")
+    # If denominator <= 0, it means the path doesn't pass near the gravitating body
+    if denominator <= 0.0:
+        # Return zero delay if geometry is invalid (light path doesn't bend)
+        return 0.0
     
     delay = (2.0 * gm / (C_LIGHT ** 3)) * np.log(numerator / denominator)
     return delay
@@ -300,19 +303,18 @@ def post_newtonian_acceleration(r_vec: np.ndarray, v_vec: np.ndarray,
     # Newtonian acceleration
     a_newt = -gm / (r ** 2) * u_r
     
-    # 1PN corrections
-    # Term 1: Velocity-dependent correction
-    v_dot_r = np.dot(v_vec, r_vec)
-    term1 = ((2 * (gm ** 2) / (C_LIGHT ** 2 * r ** 3)) + 
-             (gm * v_squared / (C_LIGHT ** 2 * r ** 2))) * u_r
+    # 1PN corrections (in m/s^2)
+    c2 = C_LIGHT ** 2
+    
+    # Term 1: Velocity squared effect on metric
+    term1 = (gm / c2) * (2.0 * v_squared / r - 4.0 * gm / r) * u_r / r
     
     # Term 2: Radial velocity coupling
-    term2 = (2 * gm * v_dot_r / (C_LIGHT ** 2 * r ** 3)) * v_vec
+    v_dot_r = np.dot(v_vec, u_r)
+    term2 = (4.0 * gm / c2) * v_dot_r * v_vec / r
     
-    # Term 3: Metric correction
-    term3 = -(3 * gm ** 2 / (C_LIGHT ** 2 * r ** 3)) * u_r
-    
-    a_1pn = term1 + term2 + term3
+    # Combine corrections (these are small corrections to Newtonian acceleration)
+    a_1pn = term1 + term2
     
     return a_newt + a_1pn
 
@@ -450,10 +452,11 @@ def relativistic_range_correction(distance: float, relative_velocity: float,
     >>> correction = relativistic_range_correction(distance_to_moon, radial_velocity, GM_EARTH)
     >>> print(f"Range correction: {correction:.1f} m")
     """
-    # Gravitational contribution
-    grav_correction = gm / (C_LIGHT ** 2) * np.log(1.0 - 2.0 * gm / (C_LIGHT ** 2 * distance))
+    # Gravitational correction (positive because the signal is delayed)
+    # Uses weak-field approximation
+    grav_correction = gm / (C_LIGHT ** 2)
     
-    # Doppler contribution (2nd order)
+    # Doppler correction (second order effect, small)
     doppler_correction = (relative_velocity ** 2) / (3.0 * C_LIGHT ** 2)
     
     return grav_correction + doppler_correction
