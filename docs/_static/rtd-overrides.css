@@ -542,3 +542,156 @@ footer a:hover {
 .MathJax {
   color: var(--pytcl-text-primary) !important;
 }
+
+/* ============================================================================
+   Buttons and Form Elements
+   ============================================================================ */
+
+/* Generic buttons */
+button,
+.btn,
+input[type="submit"],
+input[type="button"],
+.rst-content .btn {
+  background: var(--pytcl-bg-tertiary) !important;
+  border: 1px solid var(--pytcl-cyan) !important;
+  color: var(--pytcl-cyan) !important;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover,
+.btn:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+.rst-content .btn:hover {
+  background: var(--pytcl-cyan) !important;
+  color: var(--pytcl-bg-primary) !important;
+}
+
+/* RTD-specific buttons */
+.wy-menu-vertical button,
+.rst-versions .rst-other-versions dd a {
+  background: var(--pytcl-bg-tertiary) !important;
+  color: var(--pytcl-text-secondary) !important;
+}
+
+/* Headerlink (permalink) buttons */
+a.headerlink {
+  color: var(--pytcl-cyan-dim) !important;
+  background: transparent !important;
+}
+
+a.headerlink:hover {
+  color: var(--pytcl-cyan) !important;
+}
+
+/* View source button */
+.viewcode-link,
+.viewcode-back {
+  background: var(--pytcl-bg-tertiary) !important;
+  color: var(--pytcl-cyan) !important;
+  border: 1px solid var(--pytcl-border-default) !important;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.viewcode-link:hover,
+.viewcode-back:hover {
+  background: var(--pytcl-cyan) !important;
+  color: var(--pytcl-bg-primary) !important;
+}
+
+/* ============================================================================
+   Additional Table Overrides (catch remaining white backgrounds)
+   ============================================================================ */
+
+/* Force all table elements to use dark theme */
+table,
+.rst-content table,
+.rst-content table.docutils,
+.rst-content table.field-list {
+  background: var(--pytcl-bg-secondary) !important;
+}
+
+table th,
+table td,
+.rst-content table th,
+.rst-content table td,
+.rst-content table.docutils th,
+.rst-content table.docutils td,
+.rst-content table.field-list th,
+.rst-content table.field-list td {
+  background: var(--pytcl-bg-secondary) !important;
+  color: var(--pytcl-text-primary) !important;
+  border-color: var(--pytcl-border-default) !important;
+}
+
+table thead th,
+.rst-content table thead th,
+.rst-content table.docutils thead th {
+  background: var(--pytcl-bg-tertiary) !important;
+}
+
+table tr:nth-child(even) td,
+.rst-content table tr:nth-child(even) td {
+  background: var(--pytcl-bg-tertiary) !important;
+}
+
+/* Field lists in API docs */
+.rst-content .field-list,
+.rst-content dl.field-list {
+  background: transparent !important;
+}
+
+.rst-content .field-list dt,
+.rst-content dl.field-list dt {
+  background: transparent !important;
+}
+
+.rst-content .field-list dd,
+.rst-content dl.field-list dd {
+  background: transparent !important;
+}
+
+/* ============================================================================
+   Catch-all for remaining white backgrounds
+   ============================================================================ */
+
+/* Override any inline white backgrounds */
+.rst-content *[style*="background: white"],
+.rst-content *[style*="background-color: white"],
+.rst-content *[style*="background:#fff"],
+.rst-content *[style*="background-color:#fff"] {
+  background: var(--pytcl-bg-secondary) !important;
+}
+
+/* Autosummary tables */
+.rst-content table.autosummary,
+.rst-content table.autosummary td,
+.rst-content table.autosummary th {
+  background: var(--pytcl-bg-secondary) !important;
+  border-color: var(--pytcl-border-default) !important;
+}
+
+/* Longtable */
+.rst-content table.longtable,
+.rst-content table.longtable td,
+.rst-content table.longtable th {
+  background: var(--pytcl-bg-secondary) !important;
+  border-color: var(--pytcl-border-default) !important;
+}
+
+/* Citation and footnote tables */
+.rst-content table.citation,
+.rst-content table.footnote {
+  background: var(--pytcl-bg-secondary) !important;
+}
+
+.rst-content table.citation td,
+.rst-content table.footnote td {
+  background: var(--pytcl-bg-secondary) !important;
+  border: none !important;
+}
