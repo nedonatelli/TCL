@@ -444,6 +444,355 @@ def generate_coordinate_viz():
     return save_html_figure(fig, "coord_viz_rotation_axes")
 
 
+def generate_assignment_algorithms():
+    """Generate assignment cost matrix visualization."""
+    print("\n7. Generating Assignment Algorithms...")
+
+    np.random.seed(42)
+    n_tracks = 5
+    n_measurements = 6
+    cost = np.random.randint(1, 20, (n_tracks, n_measurements)).astype(float)
+
+    fig = go.Figure(data=go.Heatmap(z=cost, colorscale="Viridis"))
+    fig.update_layout(
+        title="2D Assignment Problem: Cost Matrix with Optimal Assignments",
+        xaxis_title="Measurement Index",
+        yaxis_title="Track Index",
+        height=400,
+        width=600,
+    )
+
+    return save_html_figure(fig, "assignment_algorithms")
+
+
+def generate_signal_processing():
+    """Generate filter frequency response visualization."""
+    print("\n8. Generating Signal Processing Filters...")
+
+    fs = 1000.0
+    freq = np.linspace(0, 500, 1000)
+
+    # Simulate filter responses
+    butter_response = np.exp(-((freq - 50) ** 2) / 500)  # Gaussian approximation
+    fir_response = np.exp(-((freq - 50) ** 2) / 400)
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=freq,
+            y=20 * np.log10(np.maximum(butter_response, 1e-10)),
+            mode="lines",
+            name="Butterworth (4th order)",
+            line=dict(color="blue", width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=freq,
+            y=20 * np.log10(np.maximum(fir_response, 1e-10)),
+            mode="lines",
+            name="FIR (order 64)",
+            line=dict(color="red", width=2, dash="dash"),
+        )
+    )
+
+    fig.update_layout(
+        title="Digital Filter Frequency Response Comparison",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Magnitude (dB)",
+        height=500,
+        width=800,
+        hovermode="x unified",
+    )
+
+    return save_html_figure(fig, "signal_processing_filters")
+
+
+def generate_transforms():
+    """Generate FFT analysis visualization."""
+    print("\n9. Generating Transforms FFT Analysis...")
+
+    fs = 1000.0
+    t = np.linspace(0, 1, int(fs), endpoint=False)
+    f1, f2, f3 = 50, 120, 200
+
+    signal = (
+        np.sin(2 * np.pi * f1 * t)
+        + 0.5 * np.sin(2 * np.pi * f2 * t)
+        + 0.25 * np.sin(2 * np.pi * f3 * t)
+    )
+    signal += 0.1 * np.random.randn(len(t))
+
+    # Compute FFT
+    X = np.fft.fft(signal)
+    freqs = np.fft.fftfreq(len(signal), 1 / fs)
+
+    pos_mask = freqs >= 0
+    pos_freqs = freqs[pos_mask]
+    pos_mag = np.abs(X[pos_mask])
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=("Time Domain Signal", "Frequency Domain (FFT)"),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=signal,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue", width=1),
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=pos_freqs[:500],
+            y=pos_mag[:500],
+            mode="lines",
+            name="Magnitude",
+            line=dict(color="red", width=1),
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Magnitude", row=1, col=2)
+
+    fig.update_layout(
+        title="FFT Analysis: Multi-Frequency Signal",
+        height=500,
+        width=1000,
+        showlegend=False,
+    )
+
+    return save_html_figure(fig, "transforms_fft")
+
+
+def generate_smoothers():
+    """Generate smoother vs filter comparison visualization."""
+    print("\n10. Generating Smoothers and Information Filters...")
+
+    np.random.seed(42)
+    n_steps = 50
+    dt = 1.0
+
+    t = np.arange(n_steps) * dt
+    x_true = 10 * np.sin(0.1 * t) + 0.1 * t
+    z = x_true + 2.0 * np.random.randn(n_steps)
+
+    x_kf = np.zeros(n_steps)
+    x_kf[0] = z[0]
+    for k in range(1, n_steps):
+        x_kf[k] = 0.9 * x_kf[k - 1] + 0.1 * z[k]
+
+    x_smooth = np.copy(x_kf)
+    for k in range(n_steps - 2, 0, -1):
+        x_smooth[k] = 0.5 * x_smooth[k] + 0.5 * x_smooth[k + 1]
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_true,
+            mode="lines",
+            name="True State",
+            line=dict(color="black", width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=z,
+            mode="markers",
+            name="Measurements",
+            marker=dict(color="red", size=5, opacity=0.6),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_kf,
+            mode="lines",
+            name="Kalman Filter",
+            line=dict(color="blue", width=2, dash="dash"),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=x_smooth,
+            mode="lines",
+            name="RTS Smoother",
+            line=dict(color="green", width=2),
+        )
+    )
+
+    fig.update_layout(
+        title="Smoother vs Filter: 1D Tracking Example",
+        xaxis_title="Time (s)",
+        yaxis_title="State Value",
+        height=500,
+        width=900,
+        hovermode="x unified",
+    )
+
+    return save_html_figure(fig, "smoothers_information_filters_result")
+
+
+def generate_coordinate_systems():
+    """Generate coordinate system transforms visualization."""
+    print("\n11. Generating Coordinate Systems Transforms...")
+
+    np.random.seed(42)
+    r = 1000.0
+    azimuths = np.linspace(0, 360, 9)
+    elevations = np.linspace(-90, 90, 5)
+
+    points_cart = []
+    for az in azimuths:
+        for el in elevations:
+            # Simple spherical to Cartesian conversion
+            az_rad = np.radians(az)
+            el_rad = np.radians(el)
+            x = r * np.cos(el_rad) * np.cos(az_rad)
+            y = r * np.cos(el_rad) * np.sin(az_rad)
+            z = r * np.sin(el_rad)
+            points_cart.append([x, y, z])
+
+    points_cart = np.array(points_cart)
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=points_cart[:, 0],
+            y=points_cart[:, 1],
+            z=points_cart[:, 2],
+            mode="markers",
+            marker=dict(size=5, color="blue", opacity=0.8),
+            name="Spherical Coords (Cartesian)",
+        )
+    )
+
+    fig.update_layout(
+        title="Spherical to Cartesian Coordinate Transformation",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+            camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)),
+        ),
+        height=600,
+        width=800,
+    )
+
+    return save_html_figure(fig, "coordinate_systems_transforms")
+
+
+def generate_navigation():
+    """Generate navigation trajectory visualization."""
+    print("\n12. Generating Navigation Trajectory...")
+
+    np.random.seed(42)
+    n_steps = 200
+
+    t = np.linspace(0, 2 * np.pi, n_steps)
+    x = 1000 * np.cos(t)
+    y = 1000 * np.sin(t)
+    z = 50 * np.sin(2 * t)
+
+    x_noisy = x + 5 * np.random.randn(n_steps)
+    y_noisy = y + 5 * np.random.randn(n_steps)
+    z_noisy = z + 2 * np.random.randn(n_steps)
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            mode="lines",
+            line=dict(color="blue", width=3),
+            name="True Trajectory",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=x_noisy,
+            y=y_noisy,
+            z=z_noisy,
+            mode="markers",
+            marker=dict(size=4, color="red", opacity=0.5),
+            name="Measured Position",
+        )
+    )
+
+    fig.update_layout(
+        title="INS Navigation Trajectory: True vs Measured",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+        ),
+        height=600,
+        width=800,
+    )
+
+    return save_html_figure(fig, "navigation_trajectory")
+
+
+def generate_tracking_containers():
+    """Generate track spatial distribution visualization."""
+    print("\n13. Generating Tracking Containers...")
+
+    np.random.seed(42)
+    n_tracks = 15
+
+    # Generate track positions
+    positions = np.random.uniform(-100, 100, (n_tracks, 2))
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=positions[:, 0],
+            y=positions[:, 1],
+            mode="markers+text",
+            text=[f"T{i}" for i in range(n_tracks)],
+            marker=dict(size=10, color="blue", opacity=0.7),
+            textposition="top center",
+            name="Track Positions",
+        )
+    )
+
+    fig.update_layout(
+        title="Track Spatial Distribution",
+        xaxis_title="X Position (m)",
+        yaxis_title="Y Position (m)",
+        height=600,
+        width=700,
+        showlegend=False,
+    )
+
+    return save_html_figure(fig, "track_distribution")
+
+
 def main():
     """Generate all example HTML files."""
     print("Generating interactive HTML visualizations for documentation...")
@@ -455,6 +804,13 @@ def main():
         generate_performance_evaluation()
         generate_clustering()
         generate_coordinate_viz()
+        generate_assignment_algorithms()
+        generate_signal_processing()
+        generate_transforms()
+        generate_smoothers()
+        generate_coordinate_systems()
+        generate_navigation()
+        generate_tracking_containers()
 
         print("\n✅ All HTML visualizations generated successfully!")
         print(f"   Saved to: {OUTPUT_DIR}")

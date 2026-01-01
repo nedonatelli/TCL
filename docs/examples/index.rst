@@ -17,7 +17,7 @@ Filtering & Estimation
 
    <iframe src="/_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
-**Kalman Filter Comparison**: Interactive comparison of Linear KF, EKF, and UKF performance.
+**Kalman Filter Comparison**: Linear KF vs EKF vs UKF performance on 1D tracking.
 
 .. list-table::
    :widths: 30 70
@@ -27,6 +27,17 @@ Filtering & Estimation
      - Compare Linear Kalman Filter, EKF, and UKF performance
    * - :download:`filter_uncertainty_visualization.py <../../examples/filter_uncertainty_visualization.py>`
      - Visualize filter covariance ellipses and uncertainty propagation
+
+**RTS Smoother vs Kalman Filter**: Fixed-interval smoothing improves estimates using future measurements.
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
    * - :download:`smoothers_information_filters.py <../../examples/smoothers_information_filters.py>`
      - RTS smoother and information filter demonstrations
 
@@ -53,7 +64,7 @@ Multi-Target Tracking
 
    <iframe src="/_static/images/examples/multi_target_tracking_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
-**Multi-Target Tracking**: Interactive GNN-based multi-target tracker visualization.
+**Multi-Target Tracking**: GNN-based multi-target tracker with track management.
 
 .. list-table::
    :widths: 30 70
@@ -63,11 +74,28 @@ Multi-Target Tracking
      - GNN-based multi-target tracker with track management
    * - :download:`tracking_3d.py <../../examples/tracking_3d.py>`
      - 3D target tracking with range-azimuth-elevation measurements
+
+**Track Spatial Distribution**: Track positions and spatial relationships in tracking scenario.
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/track_distribution.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
    * - :download:`tracking_containers.py <../../examples/tracking_containers.py>`
      - Track and measurement container data structures
 
 Data Association
 ----------------
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Assignment Algorithms**: Interactive cost matrix visualization for 2D assignment.
 
 .. list-table::
    :widths: 30 70
@@ -115,9 +143,9 @@ Signal Processing
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/matched_filter.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="/_static/images/examples/signal_processing_filters.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
-**Signal Processing**: Interactive matched filter and CFAR detection visualization.
+**Digital Filters**: Butterworth vs FIR filter frequency response comparison.
 
 .. list-table::
    :widths: 30 70
@@ -133,7 +161,7 @@ Coordinate Systems
 
    <iframe src="/_static/images/examples/coord_viz_rotation_axes.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
-**Coordinate Rotations**: Interactive 3D visualization of rotation matrices.
+**Coordinate Rotations**: 3D visualization of rotation matrices and transformations.
 
 .. list-table::
    :widths: 30 70
@@ -144,20 +172,38 @@ Coordinate Systems
    * - :download:`coordinate_visualization.py <../../examples/coordinate_visualization.py>`
      - Interactive 3D visualizations of coordinate transforms
 
+**Spherical-Cartesian Transforms**: Converting between coordinate systems in 3D space.
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/coordinate_systems_transforms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
 Navigation & Geodesy
 --------------------
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Navigation Trajectory**: INS trajectory with measurement noise and integration errors.
 
 .. list-table::
    :widths: 30 70
    :header-rows: 0
 
-   * - :download:`navigation_geodesy.py <../../examples/navigation_geodesy.py>`
-     - Geodetic calculations, datum conversions, map projections
    * - :download:`ins_gnss_navigation.py <../../examples/ins_gnss_navigation.py>`
      - INS/GNSS integration for navigation
+   * - :download:`navigation_geodesy.py <../../examples/navigation_geodesy.py>`
+     - Geodetic calculations, datum conversions, map projections
 
 Transforms
 ----------
+
+.. raw:: html
+
+   <iframe src="/_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**FFT Analysis**: Time and frequency domain visualization of multi-frequency signal.
 
 .. list-table::
    :widths: 30 70
