@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-01-01
+
+### Changed
+- **Documentation Updates**:
+  - Updated version references throughout documentation to v0.20.0
+  - Added Great Circle and Rhumb Line sections to navigation API docs
+  - Fixed package name in tutorials (`pytcl` → `nrl-tracker`)
+  - Updated landing page statistics (800+ functions, 1,425+ tests, 140 modules)
+- **Test Coverage Improvements**:
+  - Added 60 new tests for low-coverage modules
+  - Coverage improved from 77% to 79%
+  - Test count increased from 1,428 to 1,488
+  - Key improvements: bootstrap.py (12%→88%), singer.py (22%→100%), estimators.py (21%→97%)
+- Code formatting verified with isort, black, flake8, and mypy
+
+## [0.20.0] - 2025-12-31
+
+### Added
+- **Navigation Utilities** (`pytcl.navigation`):
+  - **Great Circle Navigation** (`great_circle.py`):
+    - `great_circle_distance` - Shortest path distance on sphere
+    - `great_circle_azimuth` - Initial/final bearing calculations
+    - `great_circle_waypoint` - Intermediate point along path
+    - `great_circle_waypoints` - Generate waypoints along route
+    - `great_circle_intersection` - Intersection of two great circles
+    - `cross_track_distance` - Perpendicular distance from path
+    - `along_track_distance` - Distance along path to closest point
+    - `great_circle_tdoa_loc` - TDOA localization on spherical Earth
+  - **Rhumb Line Navigation** (`rhumb.py`):
+    - `rhumb_distance` - Constant-bearing distance (spherical)
+    - `rhumb_distance_ellipsoidal` - Rhumb distance on ellipsoid
+    - `rhumb_bearing` - Constant bearing between points
+    - `rhumb_destination` - Direct problem (given start, bearing, distance)
+    - `rhumb_intersection` - Intersection of two rhumb lines
+    - `rhumb_midpoint` - Midpoint along rhumb line
+
+## [0.19.0] - 2025-12-31
+
+### Added
+- New example scripts with matplotlib visualizations
+- Enhanced documentation with more tutorials
+
 ## [0.18.0] - 2025-12-31
 
 ### Added
