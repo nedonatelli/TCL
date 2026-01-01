@@ -342,9 +342,7 @@ def visualize_filter_response() -> None:
     w = 2 * np.pi * freq / fs
 
     # Compute magnitude responses
-    butter_mag = np.abs(
-        frequency_response(butter_filt.b, butter_filt.a, w)
-    )
+    butter_mag = np.abs(frequency_response(butter_filt.b, butter_filt.a, w))
     fir_mag = np.abs(frequency_response(fir_filt.b, [1.0], w))
 
     fig = make_subplots(specs=[[{"secondary_y": False}]])
