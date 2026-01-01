@@ -131,15 +131,16 @@ def compute_mixing_probabilities(
     # Predicted mode probabilities: c_bar[j] = sum_i Pi[i,j] * mu[i]
     c_bar = Pi.T @ mode_probs
 
-    # Mixing probabilities: mu[i|j] = Pi[i,j] * mu[i] / c_bar[j]
-    mixing_probs = np.zeros((r, r))
-    for j in range(r):
-        if c_bar[j] > 1e-15:
-            for i in range(r):
-                mixing_probs[i, j] = Pi[i, j] * mode_probs[i] / c_bar[j]
-        else:
-            # Uniform if predicted probability is zero
-            mixing_probs[:, j] = 1.0 / r
+    # Mixing probabilities: mu[i|j] = Pi[i,j] * mu[i] / c_bar[j] (vectorized)
+    # Compute numerator: Pi[i,j] * mu[i] for all i,j
+    numerator = Pi * mode_probs[:, np.newaxis]
+    # Divide by c_bar (with safe division for near-zero values)
+    safe_c_bar = np.where(c_bar > 1e-15, c_bar, 1.0)
+    mixing_probs = numerator / safe_c_bar
+    # Set uniform for columns where c_bar was too small
+    zero_mask = c_bar <= 1e-15
+    if np.any(zero_mask):
+        mixing_probs[:, zero_mask] = 1.0 / r
 
     return mixing_probs, c_bar
 
@@ -169,23 +170,30 @@ def mix_states(
         Mixed covariances for each mode.
     """
     r = len(mode_states)
-    n = len(mode_states[0])
+
+    # Stack states and covariances for vectorized operations
+    states_array = np.array(mode_states)  # shape (r, n)
+    covs_array = np.array(mode_covs)  # shape (r, n, n)
 
     mixed_states = []
     mixed_covs = []
 
     for j in range(r):
-        # Mixed state: x_0j = sum_i mu[i|j] * x_i
-        x_mixed = np.zeros(n)
-        for i in range(r):
-            x_mixed += mixing_probs[i, j] * mode_states[i]
-        mixed_states.append(x_mixed)
+        # Mixed state: x_0j = sum_i mu[i|j] * x_i (vectorized)
+        x_mixed = mixing_probs[:, j] @ states_array
 
         # Mixed covariance: P_0j = sum_i mu[i|j] * (P_i + (x_i - x_0j)(x_i - x_0j)^T)
-        P_mixed = np.zeros((n, n))
-        for i in range(r):
-            diff = mode_states[i] - x_mixed
-            P_mixed += mixing_probs[i, j] * (mode_covs[i] + np.outer(diff, diff))
+        # Compute differences for all modes at once
+        diffs = states_array - x_mixed  # shape (r, n)
+        # Weighted covariances + outer products (vectorized)
+        weights = mixing_probs[:, j]
+        # Weighted sum of covariances
+        P_mixed = np.tensordot(weights, covs_array, axes=([0], [0]))
+        # Add weighted outer products: sum_i w_i * outer(diff_i, diff_i)
+        weighted_diffs = np.sqrt(weights)[:, np.newaxis] * diffs
+        P_mixed += weighted_diffs.T @ weighted_diffs
+
+        mixed_states.append(x_mixed)
         mixed_covs.append(P_mixed)
 
     return mixed_states, mixed_covs
@@ -215,19 +223,20 @@ def combine_estimates(
     P : ndarray
         Combined covariance.
     """
-    r = len(mode_states)
-    n = len(mode_states[0])
+    # Stack states and covariances for vectorized operations
+    states_array = np.array(mode_states)  # shape (r, n)
+    covs_array = np.array(mode_covs)  # shape (r, n, n)
 
-    # Combined state: x = sum_j mu_j * x_j
-    x = np.zeros(n)
-    for j in range(r):
-        x += mode_probs[j] * mode_states[j]
+    # Combined state: x = sum_j mu_j * x_j (vectorized)
+    x = mode_probs @ states_array
 
-    # Combined covariance: P = sum_j mu_j * (P_j + (x_j - x)(x_j - x)^T)
-    P = np.zeros((n, n))
-    for j in range(r):
-        diff = mode_states[j] - x
-        P += mode_probs[j] * (mode_covs[j] + np.outer(diff, diff))
+    # Combined covariance: P = sum_j mu_j * (P_j + (x_j - x)(x_j - x)^T) (vectorized)
+    diffs = states_array - x  # shape (r, n)
+    # Weighted sum of covariances
+    P = np.tensordot(mode_probs, covs_array, axes=([0], [0]))
+    # Add weighted outer products
+    weighted_diffs = np.sqrt(mode_probs)[:, np.newaxis] * diffs
+    P += weighted_diffs.T @ weighted_diffs
 
     # Ensure symmetry
     P = (P + P.T) / 2

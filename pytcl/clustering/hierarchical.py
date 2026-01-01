@@ -15,6 +15,7 @@ from enum import Enum
 from typing import List, Literal, NamedTuple, Optional
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 
 
@@ -70,6 +71,26 @@ class HierarchicalResult(NamedTuple):
     dendrogram: List[DendrogramNode]
 
 
+@njit(cache=True)
+def _compute_distance_matrix_jit(X: np.ndarray) -> np.ndarray:
+    """JIT-compiled pairwise Euclidean distance computation."""
+    n = X.shape[0]
+    n_features = X.shape[1]
+    distances = np.zeros((n, n), dtype=np.float64)
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = 0.0
+            for k in range(n_features):
+                diff = X[i, k] - X[j, k]
+                d += diff * diff
+            d = np.sqrt(d)
+            distances[i, j] = d
+            distances[j, i] = d
+
+    return distances
+
+
 def compute_distance_matrix(
     X: NDArray[np.floating],
 ) -> NDArray[np.floating]:
@@ -86,16 +107,8 @@ def compute_distance_matrix(
     distances : ndarray
         Distance matrix, shape (n_samples, n_samples).
     """
-    n = X.shape[0]
-    distances = np.zeros((n, n))
-
-    for i in range(n):
-        for j in range(i + 1, n):
-            d = np.sqrt(np.sum((X[i] - X[j]) ** 2))
-            distances[i, j] = d
-            distances[j, i] = d
-
-    return distances
+    X = np.asarray(X, dtype=np.float64)
+    return _compute_distance_matrix_jit(X)
 
 
 def _single_linkage(

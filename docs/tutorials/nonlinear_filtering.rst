@@ -61,10 +61,12 @@ The EKF linearizes the nonlinear functions using Jacobians.
    x = np.array([100.0, -5.0, 50.0, 2.0])
    P = np.diag([10.0, 1.0, 10.0, 1.0])
 
-   # Filter step
-   pred = ekf_predict(x, P, f, F_jacobian, Q)
+   # Filter step - compute Jacobians at current/predicted state
+   F = F_jacobian(x)  # Evaluate Jacobian at current state
+   pred = ekf_predict(x, P, f, F, Q)
    z = np.array([112.0, 0.47])  # Measurement
-   upd = ekf_update(pred.x, pred.P, z, h, H_jacobian, R)
+   H = H_jacobian(pred.x)  # Evaluate Jacobian at predicted state
+   upd = ekf_update(pred.x, pred.P, z, h, H, R)
 
 Automatic Jacobian Computation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,8 +165,10 @@ Here is a complete range-bearing tracking example comparing EKF and UKF:
    P_ekf = np.diag([10.0, 1.0, 10.0, 1.0])
    ekf_est = []
    for z in measurements:
-       pred = ekf_predict(x_ekf, P_ekf, f, F_jac, Q)
-       upd = ekf_update(pred.x, pred.P, z, h, H_jac, R)
+       F = F_jac(x_ekf)  # Evaluate Jacobian at current state
+       pred = ekf_predict(x_ekf, P_ekf, f, F, Q)
+       H = H_jac(pred.x)  # Evaluate Jacobian at predicted state
+       upd = ekf_update(pred.x, pred.P, z, h, H, R)
        x_ekf, P_ekf = upd.x, upd.P
        ekf_est.append(x_ekf.copy())
 

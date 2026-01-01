@@ -15,6 +15,7 @@ References
 from typing import List, NamedTuple, Set
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 
 
@@ -40,6 +41,23 @@ class DBSCANResult(NamedTuple):
     n_noise: int
 
 
+@njit(cache=True)
+def _compute_distance_matrix(X: np.ndarray) -> np.ndarray:
+    """Compute pairwise Euclidean distance matrix (JIT-compiled)."""
+    n = X.shape[0]
+    dist = np.zeros((n, n), dtype=np.float64)
+    for i in range(n):
+        for j in range(i + 1, n):
+            d = 0.0
+            for k in range(X.shape[1]):
+                diff = X[i, k] - X[j, k]
+                d += diff * diff
+            d = np.sqrt(d)
+            dist[i, j] = d
+            dist[j, i] = d
+    return dist
+
+
 def compute_neighbors(
     X: NDArray[np.floating],
     eps: float,
@@ -60,13 +78,13 @@ def compute_neighbors(
         neighbors[i] contains indices of points within eps of point i.
     """
     n_samples = X.shape[0]
-    neighbors = []
 
+    # Use JIT-compiled distance matrix computation
+    dist_matrix = _compute_distance_matrix(X)
+
+    neighbors = []
     for i in range(n_samples):
-        # Compute distances from point i to all points
-        distances = np.sqrt(np.sum((X - X[i]) ** 2, axis=1))
-        # Find points within eps (including self)
-        neighbor_indices = np.where(distances <= eps)[0]
+        neighbor_indices = np.where(dist_matrix[i] <= eps)[0]
         neighbors.append(neighbor_indices)
 
     return neighbors

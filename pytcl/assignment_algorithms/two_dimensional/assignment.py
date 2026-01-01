@@ -211,14 +211,21 @@ def auction(
             # Compute values: value[j] = -cost[i,j] - prices[j]
             values = -cost[i, :] - prices
 
-            # Find best and second best
-            sorted_idx = np.argsort(values)[::-1]
-            best_j = sorted_idx[0]
-            best_value = values[best_j]
-
-            if len(sorted_idx) > 1:
-                second_value = values[sorted_idx[1]]
+            # Find best and second best using argpartition (O(n) vs O(n log n))
+            if len(values) >= 2:
+                # Get indices of top 2 values
+                top2_idx = np.argpartition(values, -2)[-2:]
+                # Determine which is best and second best
+                if values[top2_idx[0]] > values[top2_idx[1]]:
+                    best_j = top2_idx[0]
+                    second_value = values[top2_idx[1]]
+                else:
+                    best_j = top2_idx[1]
+                    second_value = values[top2_idx[0]]
+                best_value = values[best_j]
             else:
+                best_j = np.argmax(values)
+                best_value = values[best_j]
                 second_value = -np.inf
 
             # Bid increment

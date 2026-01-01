@@ -8,6 +8,7 @@ state estimation.
 from typing import Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 
 
@@ -99,6 +100,27 @@ def resample_systematic(
     return particles[indices].copy()
 
 
+@njit(cache=True)
+def _resample_residual_deterministic(
+    particles: np.ndarray,
+    floor_Nw: np.ndarray,
+) -> Tuple[np.ndarray, int]:
+    """JIT-compiled deterministic copy portion of residual resampling."""
+    N = particles.shape[0]
+    n = particles.shape[1]
+    resampled = np.zeros((N, n), dtype=np.float64)
+
+    idx = 0
+    for i in range(N):
+        count = floor_Nw[i]
+        for _ in range(count):
+            for k in range(n):
+                resampled[idx, k] = particles[i, k]
+            idx += 1
+
+    return resampled, idx
+
+
 def resample_residual(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
@@ -128,24 +150,16 @@ def resample_residual(
         rng = np.random.default_rng()
 
     N = len(weights)
-    n = particles.shape[1]
 
     # Integer and fractional parts
     Nw = N * weights
-    floor_Nw = np.floor(Nw).astype(int)
+    floor_Nw = np.floor(Nw).astype(np.int64)
     residual = Nw - floor_Nw
 
-    # Number of deterministic copies (used implicitly via floor_Nw loop)
-
-    # Allocate output
-    resampled = np.zeros((N, n), dtype=np.float64)
-
-    # Deterministic copies
-    idx = 0
-    for i in range(N):
-        for _ in range(floor_Nw[i]):
-            resampled[idx] = particles[i]
-            idx += 1
+    # Deterministic copies (JIT-compiled)
+    resampled, idx = _resample_residual_deterministic(
+        particles.astype(np.float64), floor_Nw
+    )
 
     # Multinomial resampling of residuals
     if idx < N:
@@ -410,6 +424,31 @@ def particle_mean(
     return np.sum(weights[:, np.newaxis] * particles, axis=0)
 
 
+@njit(cache=True)
+def _particle_covariance_core(
+    particles: np.ndarray,
+    weights: np.ndarray,
+    mean: np.ndarray,
+) -> np.ndarray:
+    """JIT-compiled core for particle covariance computation."""
+    N = particles.shape[0]
+    n = particles.shape[1]
+    cov = np.zeros((n, n), dtype=np.float64)
+
+    for i in range(N):
+        w = weights[i]
+        for j in range(n):
+            diff_j = particles[i, j] - mean[j]
+            for k in range(j, n):
+                diff_k = particles[i, k] - mean[k]
+                val = w * diff_j * diff_k
+                cov[j, k] += val
+                if j != k:
+                    cov[k, j] += val
+
+    return cov
+
+
 def particle_covariance(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
@@ -435,12 +474,11 @@ def particle_covariance(
     if mean is None:
         mean = particle_mean(particles, weights)
 
-    residuals = particles - mean
-    cov = np.zeros((particles.shape[1], particles.shape[1]), dtype=np.float64)
-    for i in range(len(particles)):
-        cov += weights[i] * np.outer(residuals[i], residuals[i])
-
-    return cov
+    return _particle_covariance_core(
+        particles.astype(np.float64),
+        weights.astype(np.float64),
+        mean.astype(np.float64),
+    )
 
 
 def initialize_particles(

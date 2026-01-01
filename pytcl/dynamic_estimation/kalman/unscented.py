@@ -203,11 +203,19 @@ def unscented_transform(
     # Weighted mean
     mean = np.sum(Wm[:, np.newaxis] * sigmas, axis=0)
 
-    # Weighted covariance
+    # Weighted covariance (vectorized: avoids loop over sigma points)
     residuals = sigmas - mean
-    cov = np.zeros((sigmas.shape[1], sigmas.shape[1]), dtype=np.float64)
-    for i in range(len(sigmas)):
-        cov += Wc[i] * np.outer(residuals[i], residuals[i])
+    # Compute weighted outer products in one operation: (W * residuals)^T @ residuals
+    weighted_residuals = np.sqrt(np.abs(Wc))[:, np.newaxis] * residuals
+    # Handle negative weights (e.g., from Merwe scaling) by adjusting sign
+    cov = weighted_residuals.T @ weighted_residuals
+    # Correct for any negative weights (subtract their contribution twice to flip sign)
+    neg_mask = Wc < 0
+    if np.any(neg_mask):
+        neg_residuals = residuals[neg_mask]
+        neg_weights = -Wc[neg_mask]
+        for i, (w, r) in enumerate(zip(neg_weights, neg_residuals)):
+            cov -= 2 * w * np.outer(r, r)
 
     if noise_cov is not None:
         cov += np.asarray(noise_cov, dtype=np.float64)
@@ -329,7 +337,6 @@ def ukf_update(
     z = np.asarray(z, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
 
-    n = len(x)
     m = len(z)
 
     # Generate sigma points
@@ -341,10 +348,11 @@ def ukf_update(
     # Predicted measurement mean and covariance
     z_pred, S = unscented_transform(sigmas_h, sp.Wm, sp.Wc, R)
 
-    # Cross-covariance between state and measurement
-    Pxz = np.zeros((n, m), dtype=np.float64)
-    for i in range(len(sp.points)):
-        Pxz += sp.Wc[i] * np.outer(sp.points[i] - x, sigmas_h[i] - z_pred)
+    # Cross-covariance between state and measurement (vectorized)
+    x_residuals = sp.points - x
+    z_residuals = sigmas_h - z_pred
+    # Weighted cross-covariance: sum of Wc[i] * outer(x_res[i], z_res[i])
+    Pxz = (sp.Wc[:, np.newaxis] * x_residuals).T @ z_residuals
 
     # Kalman gain
     K = np.linalg.solve(S.T, Pxz.T).T
@@ -467,12 +475,11 @@ def ckf_predict(
     # Predicted mean
     x_pred = np.sum(weights[:, np.newaxis] * transformed, axis=0)
 
-    # Predicted covariance
+    # Predicted covariance (vectorized)
     residuals = transformed - x_pred
-    P_pred = np.zeros((n, n), dtype=np.float64)
-    for i in range(len(cubature_pts)):
-        P_pred += weights[i] * np.outer(residuals[i], residuals[i])
-    P_pred += Q
+    # All CKF weights are equal and positive, so vectorization is straightforward
+    weighted_residuals = np.sqrt(weights)[:, np.newaxis] * residuals
+    P_pred = weighted_residuals.T @ weighted_residuals + Q
 
     P_pred = (P_pred + P_pred.T) / 2
 
@@ -533,18 +540,14 @@ def ckf_update(
     # Predicted measurement
     z_pred = np.sum(weights[:, np.newaxis] * transformed, axis=0)
 
-    # Innovation covariance
+    # Innovation covariance (vectorized)
     z_residuals = transformed - z_pred
-    S = np.zeros((m, m), dtype=np.float64)
-    for i in range(len(cubature_pts)):
-        S += weights[i] * np.outer(z_residuals[i], z_residuals[i])
-    S += R
+    weighted_z_residuals = np.sqrt(weights)[:, np.newaxis] * z_residuals
+    S = weighted_z_residuals.T @ weighted_z_residuals + R
 
-    # Cross-covariance
+    # Cross-covariance (vectorized)
     x_residuals = cubature_pts - x
-    Pxz = np.zeros((n, m), dtype=np.float64)
-    for i in range(len(cubature_pts)):
-        Pxz += weights[i] * np.outer(x_residuals[i], z_residuals[i])
+    Pxz = (weights[:, np.newaxis] * x_residuals).T @ z_residuals
 
     # Kalman gain
     K = np.linalg.solve(S.T, Pxz.T).T

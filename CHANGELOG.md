@@ -10,13 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **CI Security Scanning**: Added pip-audit to CI workflow for dependency vulnerability scanning
 - **GitHub Pages**: Added automated documentation deployment workflow
+- **Documentation Examples**: Added static PNG images for example scripts in documentation
+- **Tutorial Testing**: Added `scripts/test_tutorials.py` to verify tutorial code snippets
+- **Plot Generation**: Added `scripts/generate_example_plots.py` for documentation images
 
 ### Fixed
 - **Documentation Theme**: Fixed sidenav background colors at deeper toctree levels
 - **Documentation Theme**: Styled buttons and tables with dark theme colors (removed white backgrounds)
+- **Tutorial Code**: Fixed EKF tutorial to correctly evaluate Jacobians at current/predicted states
+- **Tutorial Code**: Fixed multi-target tracking tutorial for correct API usage (hungarian returns tuple, gnn_association returns AssociationResult)
 
 ### Changed
 - **CI Workflow**: Added permissions configuration, removed unconfigured Black Duck workflow
+- **Documentation**: Rewrote `docs/examples/index.rst` with all 20 example scripts organized by category with embedded figures
+
+### Performance
+- **Kalman Filter**: Use Cholesky decomposition for efficient solving in `kf_update` (reuses factorization for gain and likelihood)
+- **UKF**: Vectorized sigma point operations, use `cho_solve` for covariance factorization
+- **IMM**: Vectorized mode probability updates and mixing operations
+- **K-Means**: Use `scipy.spatial.distance.cdist` for vectorized distance calculations
+- **DBSCAN**: Use KD-tree for efficient neighbor queries, vectorized core point identification
+- **Hierarchical Clustering**: Vectorized pairwise distance calculations using `scipy.spatial.distance`
+- **JPDA**: Vectorized association probability calculations
+- **Particle Filters**: Vectorized weight updates and ESS calculations
+- **2D Assignment**: Use `scipy.optimize.linear_sum_assignment` for optimal performance
 
 ---
 

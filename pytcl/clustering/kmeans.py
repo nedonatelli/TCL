@@ -14,6 +14,7 @@ from typing import Literal, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.spatial.distance import cdist
 
 
 class KMeansResult(NamedTuple):
@@ -91,11 +92,8 @@ def kmeans_plusplus_init(
 
     # Subsequent centers: sample proportional to D^2
     for k in range(1, n_clusters):
-        # Compute squared distances to nearest center
-        distances_sq = np.full(n_samples, np.inf)
-        for j in range(k):
-            d_sq = np.sum((X - centers[j]) ** 2, axis=1)
-            distances_sq = np.minimum(distances_sq, d_sq)
+        # Compute squared distances to nearest center (vectorized via cdist)
+        distances_sq = cdist(X, centers[:k], metric="sqeuclidean").min(axis=1)
 
         # Sample proportional to D^2
         probs = distances_sq / distances_sq.sum()
@@ -138,12 +136,9 @@ def assign_clusters(
     centers = np.asarray(centers, dtype=np.float64)
 
     n_samples = X.shape[0]
-    n_clusters = centers.shape[0]
 
-    # Compute distances to all centers
-    distances_sq = np.zeros((n_samples, n_clusters))
-    for k in range(n_clusters):
-        distances_sq[:, k] = np.sum((X - centers[k]) ** 2, axis=1)
+    # Compute squared distances to all centers (vectorized via cdist)
+    distances_sq = cdist(X, centers, metric="sqeuclidean")
 
     # Assign to nearest center
     labels = np.argmin(distances_sq, axis=1).astype(np.intp)

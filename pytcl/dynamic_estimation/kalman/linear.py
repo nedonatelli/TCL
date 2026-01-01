@@ -9,6 +9,7 @@ from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.linalg import cho_factor, cho_solve
 
 
 class KalmanState(NamedTuple):
@@ -204,9 +205,22 @@ def kf_update(
     # Innovation covariance
     S = H @ P @ H.T + R
 
-    # Kalman gain using solve for numerical stability
-    # K = P @ H' @ S^{-1}
-    K = np.linalg.solve(S.T, H @ P.T).T
+    # Use Cholesky decomposition for efficient solving (reused for gain and likelihood)
+    # This is more numerically stable and efficient than repeated solve() calls
+    try:
+        S_cho = cho_factor(S)
+        # Kalman gain: K = P @ H' @ S^{-1}
+        K = cho_solve(S_cho, H @ P.T).T
+        # Mahalanobis distance for likelihood
+        mahal_sq = y @ cho_solve(S_cho, y)
+        # Log determinant from Cholesky factor (more stable than det)
+        log_det_S = 2 * np.sum(np.log(np.diag(S_cho[0])))
+        m = len(z)
+        likelihood = np.exp(-0.5 * (mahal_sq + log_det_S + m * np.log(2 * np.pi)))
+    except np.linalg.LinAlgError:
+        # Fallback if Cholesky fails (S not positive definite)
+        K = np.linalg.solve(S.T, H @ P.T).T
+        likelihood = 0.0
 
     # Updated state
     x_upd = x + K @ y
@@ -217,16 +231,6 @@ def kf_update(
 
     # Ensure symmetry
     P_upd = (P_upd + P_upd.T) / 2
-
-    # Compute likelihood for data association
-    # p(z|x) = N(z; H@x, S)
-    m = len(z)
-    det_S = np.linalg.det(S)
-    if det_S > 0:
-        mahal_sq = y @ np.linalg.solve(S, y)
-        likelihood = np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
-    else:
-        likelihood = 0.0
 
     return KalmanUpdate(
         x=x_upd,

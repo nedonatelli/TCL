@@ -12,6 +12,7 @@ as JPDA can handle measurement origin uncertainty in cluttered environments.
 from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
+from numba import njit
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
@@ -314,6 +315,59 @@ def _jpda_exact(
     return beta
 
 
+@njit(cache=True)
+def _jpda_approximate_core(
+    likelihood_matrix: np.ndarray,
+    gated: np.ndarray,
+    detection_prob: float,
+    clutter_density: float,
+) -> np.ndarray:
+    """JIT-compiled core of approximate JPDA computation."""
+    n_tracks = likelihood_matrix.shape[0]
+    n_meas = likelihood_matrix.shape[1]
+    beta = np.zeros((n_tracks, n_meas + 1), dtype=np.float64)
+
+    # Likelihood ratio for each measurement given each track
+    L = np.zeros((n_tracks, n_meas), dtype=np.float64)
+    for i in range(n_tracks):
+        for j in range(n_meas):
+            if gated[i, j] and clutter_density > 0:
+                L[i, j] = likelihood_matrix[i, j] / clutter_density
+            elif gated[i, j]:
+                L[i, j] = likelihood_matrix[i, j] * 1e10
+
+    # Compute delta factors (accounts for other tracks)
+    delta = np.ones((n_tracks, n_meas), dtype=np.float64)
+
+    for j in range(n_meas):
+        sum_L = 0.0
+        for i in range(n_tracks):
+            sum_L += L[i, j]
+        for i in range(n_tracks):
+            if sum_L > 0:
+                delta[i, j] = 1.0 / (1.0 + sum_L - L[i, j])
+            else:
+                delta[i, j] = 1.0
+
+    # Compute association probabilities
+    for i in range(n_tracks):
+        denom = 1.0 - detection_prob
+
+        for j in range(n_meas):
+            if gated[i, j]:
+                beta[i, j] = detection_prob * L[i, j] * delta[i, j]
+                denom += beta[i, j]
+
+        if denom > 0:
+            for j in range(n_meas):
+                beta[i, j] /= denom
+            beta[i, n_meas] = (1.0 - detection_prob) / denom
+        else:
+            beta[i, n_meas] = 1.0
+
+    return beta
+
+
 def _jpda_approximate(
     likelihood_matrix: NDArray,
     gated: NDArray,
@@ -331,52 +385,12 @@ def _jpda_approximate(
            Multitarget Tracking by Microprocessor", American Control
            Conference, 1986.
     """
-    n_tracks, n_meas = likelihood_matrix.shape
-    beta = np.zeros((n_tracks, n_meas + 1))
-
-    # For each track, compute association probabilities independently
-    # then apply correction for shared measurements
-
-    # Likelihood ratio for each measurement given each track
-    # L[i,j] = likelihood(z_j | track i) / clutter_density
-    L = np.zeros((n_tracks, n_meas))
-    for i in range(n_tracks):
-        for j in range(n_meas):
-            if gated[i, j] and clutter_density > 0:
-                L[i, j] = likelihood_matrix[i, j] / clutter_density
-            elif gated[i, j]:
-                L[i, j] = likelihood_matrix[i, j] * 1e10  # Large value
-
-    # Compute delta factors (accounts for other tracks)
-    delta = np.ones((n_tracks, n_meas))
-
-    for j in range(n_meas):
-        # Sum of likelihood ratios for measurement j
-        sum_L = np.sum(L[:, j])
-        for i in range(n_tracks):
-            if sum_L > 0:
-                delta[i, j] = 1.0 / (1.0 + sum_L - L[i, j])
-            else:
-                delta[i, j] = 1.0
-
-    # Compute association probabilities
-    for i in range(n_tracks):
-        # Denominator for normalization
-        denom = 1.0 - detection_prob
-
-        for j in range(n_meas):
-            if gated[i, j]:
-                beta[i, j] = detection_prob * L[i, j] * delta[i, j]
-                denom += beta[i, j]
-
-        # Normalize
-        if denom > 0:
-            beta[i, :n_meas] /= denom
-            beta[i, n_meas] = (1.0 - detection_prob) / denom
-        else:
-            beta[i, n_meas] = 1.0
-
-    return beta
+    return _jpda_approximate_core(
+        likelihood_matrix.astype(np.float64),
+        gated.astype(np.bool_),
+        detection_prob,
+        clutter_density,
+    )
 
 
 def jpda_update(
