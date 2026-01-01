@@ -5,6 +5,8 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
+**v0.21.0** — 800+ functions | 144 modules | 1,530 tests
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -21,14 +23,22 @@ Overview
 
 The Tracker Component Library provides:
 
-* **Mathematical Functions**: Special functions, statistics, interpolation,
-  numerical integration, geometry, and combinatorics
-* **Coordinate Systems**: Conversions between Cartesian, spherical, geodetic
-  coordinates; rotation representations; coordinate Jacobians
-* **Dynamic Models**: State transition matrices and process noise for various
-  motion models (constant velocity, constant acceleration, Singer, coordinated turn)
-* **Dynamic Estimation**: Kalman filter family (KF, EKF, UKF, CKF), particle
-  filters, and smoothing algorithms
+* **Dynamic Estimation**: Kalman filters (KF, EKF, UKF, CKF, IMM), particle filters,
+  smoothers (RTS, fixed-lag, two-filter), information filters (SRIF)
+* **Data Association**: GNN, JPDA, MHT, 2D/3D assignment (Hungarian, auction, Murty)
+* **Coordinate Systems**: Cartesian, spherical, geodetic conversions; map projections
+  (UTM, Mercator, Lambert); rotation representations
+* **Dynamic Models**: Constant velocity, acceleration, Singer, coordinated turn,
+  and polynomial motion models
+* **Navigation**: INS mechanization, INS/GNSS integration, great circle/rhumb line
+  navigation, TDOA localization
+* **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF),
+  tidal effects, terrain/DEM utilities
+* **Astronomical**: Orbital mechanics, Kepler propagation, Lambert problem,
+  reference frame transformations
+* **Mathematical Functions**: Special functions (Marcum Q, Lambert W, Debye,
+  hypergeometric, Bessel), statistics, numerical integration
+* **Signal Processing**: IIR/FIR filters, CFAR detection, FFT, wavelets
 
 Installation
 ------------
