@@ -112,6 +112,38 @@ body {
   background: var(--pytcl-bg-elevated) !important;
 }
 
+/* Fix light backgrounds at all toctree depths */
+.wy-menu-vertical li.toctree-l1.current,
+.wy-menu-vertical li.toctree-l2.current,
+.wy-menu-vertical li.toctree-l3.current,
+.wy-menu-vertical li.toctree-l4.current,
+.wy-menu-vertical li.toctree-l5.current {
+  background: transparent !important;
+}
+
+.wy-menu-vertical li.toctree-l1.current > ul,
+.wy-menu-vertical li.toctree-l2.current > ul,
+.wy-menu-vertical li.toctree-l3.current > ul,
+.wy-menu-vertical li.toctree-l4.current > ul {
+  background: var(--pytcl-bg-secondary) !important;
+}
+
+.wy-menu-vertical li.toctree-l2 > a,
+.wy-menu-vertical li.toctree-l3 > a,
+.wy-menu-vertical li.toctree-l4 > a,
+.wy-menu-vertical li.toctree-l5 > a {
+  background: transparent !important;
+}
+
+.wy-menu-vertical li.toctree-l2.current > a,
+.wy-menu-vertical li.toctree-l3.current > a,
+.wy-menu-vertical li.toctree-l4.current > a,
+.wy-menu-vertical li.toctree-l5.current > a {
+  background: var(--pytcl-bg-tertiary) !important;
+  border-left: 3px solid var(--pytcl-cyan);
+  color: var(--pytcl-cyan) !important;
+}
+
 .wy-menu-vertical li span.toctree-expand {
   color: var(--pytcl-text-muted);
 }
