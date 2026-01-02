@@ -3,7 +3,7 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v1.1.1) - CI Fix Patch
+Current State (v1.1.2) - Mypy Fix Patch
 --------------------------------------
 
 * **830+ functions** implemented across 146 Python modules
