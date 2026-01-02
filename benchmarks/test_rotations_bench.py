@@ -70,9 +70,9 @@ class TestEulerRotationBenchmarks:
         euler = rotation_test_data["single_euler"]
 
         # Warm up
-        _ = euler2rotmat(euler[0], euler[1], euler[2])
+        _ = euler2rotmat(euler)
 
-        result = benchmark(euler2rotmat, euler[0], euler[1], euler[2])
+        result = benchmark(euler2rotmat, euler)
 
         assert result.shape == (3, 3)
 
@@ -93,11 +93,11 @@ class TestEulerRotationBenchmarks:
         def convert_all():
             results = []
             for e in eulers:
-                results.append(euler2rotmat(e[0], e[1], e[2]))
+                results.append(euler2rotmat(e))
             return results
 
         # Warm up
-        _ = euler2rotmat(eulers[0, 0], eulers[0, 1], eulers[0, 2])
+        _ = euler2rotmat(eulers[0])
 
         result = benchmark(convert_all)
 

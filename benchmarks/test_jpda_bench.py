@@ -17,45 +17,48 @@ class TestJPDAProbabilityBenchmarks:
         """Benchmark JPDA with 5 tracks, 10 measurements."""
         scenario = jpda_test_data["small"]
         likelihood = scenario["likelihood_matrix"]
+        gated = scenario["gated"]
         pd = scenario["detection_prob"]
         clutter = scenario["clutter_density"]
 
         # Warm up Numba JIT
-        _ = jpda_probabilities(likelihood, pd, clutter)
+        _ = jpda_probabilities(likelihood, gated, pd, clutter)
 
-        result = benchmark(jpda_probabilities, likelihood, pd, clutter)
+        result = benchmark(jpda_probabilities, likelihood, gated, pd, clutter)
 
-        assert result.association_probs.shape == likelihood.shape
+        assert result.shape[0] == likelihood.shape[0]
 
     @pytest.mark.full
     def test_jpda_medium(self, benchmark, jpda_test_data):
         """Benchmark JPDA with 10 tracks, 20 measurements."""
         scenario = jpda_test_data["medium"]
         likelihood = scenario["likelihood_matrix"]
+        gated = scenario["gated"]
         pd = scenario["detection_prob"]
         clutter = scenario["clutter_density"]
 
         # Warm up
-        _ = jpda_probabilities(likelihood, pd, clutter)
+        _ = jpda_probabilities(likelihood, gated, pd, clutter)
 
-        result = benchmark(jpda_probabilities, likelihood, pd, clutter)
+        result = benchmark(jpda_probabilities, likelihood, gated, pd, clutter)
 
-        assert result.association_probs.shape == likelihood.shape
+        assert result.shape[0] == likelihood.shape[0]
 
     @pytest.mark.full
     def test_jpda_large(self, benchmark, jpda_test_data):
         """Benchmark JPDA with 20 tracks, 50 measurements."""
         scenario = jpda_test_data["large"]
         likelihood = scenario["likelihood_matrix"]
+        gated = scenario["gated"]
         pd = scenario["detection_prob"]
         clutter = scenario["clutter_density"]
 
         # Warm up
-        _ = jpda_probabilities(likelihood, pd, clutter)
+        _ = jpda_probabilities(likelihood, gated, pd, clutter)
 
-        result = benchmark(jpda_probabilities, likelihood, pd, clutter)
+        result = benchmark(jpda_probabilities, likelihood, gated, pd, clutter)
 
-        assert result.association_probs.shape == likelihood.shape
+        assert result.shape[0] == likelihood.shape[0]
 
 
 class TestJPDAParameterBenchmarks:
@@ -67,12 +70,13 @@ class TestJPDAParameterBenchmarks:
         """Benchmark JPDA with varying detection probability."""
         scenario = jpda_test_data["medium"]
         likelihood = scenario["likelihood_matrix"]
+        gated = scenario["gated"]
         clutter = scenario["clutter_density"]
 
         # Warm up
-        _ = jpda_probabilities(likelihood, pd, clutter)
+        _ = jpda_probabilities(likelihood, gated, pd, clutter)
 
-        result = benchmark(jpda_probabilities, likelihood, pd, clutter)
+        result = benchmark(jpda_probabilities, likelihood, gated, pd, clutter)
 
         assert result is not None
 
@@ -82,11 +86,12 @@ class TestJPDAParameterBenchmarks:
         """Benchmark JPDA with varying clutter density."""
         scenario = jpda_test_data["medium"]
         likelihood = scenario["likelihood_matrix"]
+        gated = scenario["gated"]
         pd = scenario["detection_prob"]
 
         # Warm up
-        _ = jpda_probabilities(likelihood, pd, clutter)
+        _ = jpda_probabilities(likelihood, gated, pd, clutter)
 
-        result = benchmark(jpda_probabilities, likelihood, pd, clutter)
+        result = benchmark(jpda_probabilities, likelihood, gated, pd, clutter)
 
         assert result is not None

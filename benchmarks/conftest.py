@@ -241,28 +241,34 @@ def jpda_test_data():
     scenarios = {}
 
     # Small scenario: 5 tracks, 10 measurements
+    likelihood_small = np.random.rand(5, 10) * 0.1
     scenarios["small"] = {
         "n_tracks": 5,
         "n_meas": 10,
-        "likelihood_matrix": np.random.rand(5, 10) * 0.1,
+        "likelihood_matrix": likelihood_small,
+        "gated": np.ones((5, 10), dtype=bool),  # All measurements gated to all tracks
         "detection_prob": 0.9,
         "clutter_density": 1e-6,
     }
 
     # Medium scenario: 10 tracks, 20 measurements
+    likelihood_medium = np.random.rand(10, 20) * 0.1
     scenarios["medium"] = {
         "n_tracks": 10,
         "n_meas": 20,
-        "likelihood_matrix": np.random.rand(10, 20) * 0.1,
+        "likelihood_matrix": likelihood_medium,
+        "gated": np.ones((10, 20), dtype=bool),
         "detection_prob": 0.9,
         "clutter_density": 1e-6,
     }
 
     # Large scenario: 20 tracks, 50 measurements
+    likelihood_large = np.random.rand(20, 50) * 0.1
     scenarios["large"] = {
         "n_tracks": 20,
         "n_meas": 50,
-        "likelihood_matrix": np.random.rand(20, 50) * 0.1,
+        "likelihood_matrix": likelihood_large,
+        "gated": np.ones((20, 50), dtype=bool),
         "detection_prob": 0.9,
         "clutter_density": 1e-6,
     }
