@@ -29,7 +29,9 @@ def get_git_info() -> tuple:
     """Get current git commit and branch."""
     try:
         commit = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], text=True, stderr=subprocess.DEVNULL
+            ["git", "rev-parse", "--short", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
     except subprocess.CalledProcessError:
         commit = "unknown"
