@@ -15,7 +15,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Kalman Filter Comparison**: Linear KF vs EKF vs UKF performance on 1D tracking.
 
@@ -32,7 +32,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -46,7 +46,7 @@ Particle Filters
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/particle_linear_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/particle_linear_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Particle Filter Tracking**: Interactive visualization of particle filter with resampling.
 
@@ -62,7 +62,7 @@ Multi-Target Tracking
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/multi_target_tracking_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/multi_target_tracking_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Multi-Target Tracking**: GNN-based multi-target tracker with track management.
 
@@ -79,7 +79,7 @@ Multi-Target Tracking
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/track_distribution.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/track_distribution.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -93,7 +93,7 @@ Data Association
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Assignment Algorithms**: Interactive cost matrix visualization for 2D assignment.
 
@@ -109,7 +109,7 @@ Performance Evaluation
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/performance_evaluation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/performance_evaluation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Performance Evaluation**: Interactive OSPA metric and tracking quality visualization.
 
@@ -125,7 +125,7 @@ Clustering & Gaussian Mixtures
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/gaussian_kmeans.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/gaussian_kmeans.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Clustering Comparison**: Interactive K-Means visualization with DBSCAN comparison.
 
@@ -143,7 +143,7 @@ Signal Processing
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/signal_processing_filters.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/signal_processing_filters.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Digital Filters**: Butterworth vs FIR filter frequency response comparison.
 
@@ -159,7 +159,7 @@ Coordinate Systems
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/coord_viz_rotation_axes.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/coord_viz_rotation_axes.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Coordinate Rotations**: 3D visualization of rotation matrices and transformations.
 
@@ -176,14 +176,14 @@ Coordinate Systems
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/coordinate_systems_transforms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/coordinate_systems_transforms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 Navigation & Geodesy
 --------------------
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Navigation Trajectory**: INS trajectory with measurement noise and integration errors.
 
@@ -201,7 +201,7 @@ Transforms
 
 .. raw:: html
 
-   <iframe src="/_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **FFT Analysis**: Time and frequency domain visualization of multi-frequency signal.
 
