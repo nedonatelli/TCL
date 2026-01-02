@@ -13,19 +13,17 @@ The example covers:
 6. Computing distances and velocities
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pytcl.astronomical import (
-    AU,
     DEEphemeris,
     barycenter_position,
     jd_to_cal,
     moon_position,
     planet_position,
     sun_position,
-    utc_to_jd,
 )
+from pytcl.astronomical.relativity import AU
 
 
 def example_sun_position():
@@ -134,25 +132,23 @@ def example_planet_positions():
     jd_j2000 = 2451545.0
 
     planets = [
-        "Mercury",
-        "Venus",
-        "Earth",
-        "Mars",
-        "Jupiter",
-        "Saturn",
-        "Uranus",
-        "Neptune",
+        "mercury",
+        "venus",
+        "mars",
+        "jupiter",
+        "saturn",
+        "uranus",
+        "neptune",
     ]
-    planet_ids = [1, 2, 3, 4, 5, 6, 7, 8]
 
     print(f"\nPlanetary Heliocentric Positions at J2000.0:")
     print("-" * 70)
     print(f"{'Planet':<10} {'Distance (AU)':<16} {'Longitude':<12} {'Latitude':<12}")
     print("-" * 70)
 
-    for planet_name, planet_id in zip(planets, planet_ids):
+    for planet_name in planets:
         try:
-            r, _ = planet_position(jd_j2000, planet_id)
+            r, _ = planet_position(planet_name, jd_j2000)
             dist_au = np.linalg.norm(r) / AU
 
             # Compute ecliptic coordinates
@@ -174,8 +170,8 @@ def example_barycenter():
 
     jd_j2000 = 2451545.0
 
-    # Get barycenter positions (body 0 = solar system barycenter)
-    r_barycenter, v_barycenter = barycenter_position(jd_j2000, 0)
+    # Get Sun position relative to solar system barycenter
+    r_barycenter, v_barycenter = barycenter_position("sun", jd_j2000)
 
     print(f"\nSolar System Barycenter at J2000.0:")
     print(f"  X: {r_barycenter[0]:12.3f} m")
@@ -184,13 +180,13 @@ def example_barycenter():
     print(f"  Distance from origin: {np.linalg.norm(r_barycenter):.3f} m")
     print(f"  Velocity magnitude: {np.linalg.norm(v_barycenter):.6f} m/s")
 
-    # Compare with Sun position
-    r_sun, _ = planet_position(jd_j2000, 11)  # Sun
-    print(f"\nComparison with Sun position:")
+    # Compare with Jupiter position
+    r_jupiter, _ = planet_position("jupiter", jd_j2000)
+    print(f"\nComparison with Jupiter position:")
     print(
-        f"  Sun distance from barycenter: {np.linalg.norm(r_sun - r_barycenter):.3f} m"
+        f"  Jupiter distance from barycenter: {np.linalg.norm(r_jupiter - r_barycenter):.3f} m"
     )
-    print(f"  This offset represents Jupiter's gravitational influence")
+    print(f"  This shows Jupiter's significant gravitational influence")
 
 
 def example_frame_transformations():

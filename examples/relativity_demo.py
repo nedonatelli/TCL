@@ -14,7 +14,6 @@ These effects are essential for high-precision positioning, timing,
 and fundamental physics tests.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pytcl.astronomical.relativity import (

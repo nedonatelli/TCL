@@ -335,22 +335,18 @@ def visualize_filter_response() -> None:
 
     fs = 1000.0
     butter_filt = butter_design(order=4, cutoff=50.0, fs=fs, btype="low")
-    fir_filt = fir_design(order=64, cutoff=50.0, fs=fs, btype="low")
-
-    # Generate frequency response
-    freq = np.linspace(0, 500, 1000)
-    w = 2 * np.pi * freq / fs
+    fir_filt_coeffs = fir_design(numtaps=64, cutoff=50.0, fs=fs)
 
     # Compute magnitude responses
-    butter_mag = np.abs(frequency_response(butter_filt.b, butter_filt.a, w))
-    fir_mag = np.abs(frequency_response(fir_filt.b, [1.0], w))
+    butter_resp = frequency_response(butter_filt, fs)
+    fir_resp = frequency_response(fir_filt_coeffs, fs)
 
     fig = make_subplots(specs=[[{"secondary_y": False}]])
 
     fig.add_trace(
         go.Scatter(
-            x=freq,
-            y=20 * np.log10(np.maximum(butter_mag, 1e-10)),
+            x=butter_resp.frequencies,
+            y=20 * np.log10(np.maximum(butter_resp.magnitude, 1e-10)),
             mode="lines",
             name="Butterworth (4th order)",
             line=dict(color="blue", width=2),
@@ -359,8 +355,8 @@ def visualize_filter_response() -> None:
 
     fig.add_trace(
         go.Scatter(
-            x=freq,
-            y=20 * np.log10(np.maximum(fir_mag, 1e-10)),
+            x=fir_resp.frequencies,
+            y=20 * np.log10(np.maximum(fir_resp.magnitude, 1e-10)),
             mode="lines",
             name="FIR (order 64)",
             line=dict(color="red", width=2, dash="dash"),
