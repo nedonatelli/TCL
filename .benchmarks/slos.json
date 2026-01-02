@@ -1,5 +1,5 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "updated": "2026-01-02",
   "description": "Performance SLOs for pyTCL benchmark suite (CI-calibrated)",
   "notes": "Thresholds set with 3x headroom for CI runners which are typically slower than local development machines",
@@ -239,6 +239,54 @@
         "mean_ms": 240.000,
         "p99_ms": 600.000,
         "iterations": 50
+      }
+    },
+    "benchmarks.test_special_functions_bench": {
+      "description": "Special functions (hypergeometric) benchmarks",
+      "3f2_1": {
+        "mean_ms": 0.010,
+        "p99_ms": 0.050,
+        "iterations": 50000
+      },
+      "3f2_10": {
+        "mean_ms": 0.015,
+        "p99_ms": 0.075,
+        "iterations": 50000
+      },
+      "3f2_100": {
+        "mean_ms": 0.045,
+        "p99_ms": 0.150,
+        "iterations": 20000
+      },
+      "3f2_1000": {
+        "mean_ms": 0.300,
+        "p99_ms": 0.900,
+        "iterations": 5000
+      },
+      "4f3_100": {
+        "mean_ms": 0.045,
+        "p99_ms": 0.150,
+        "iterations": 20000
+      },
+      "hyp1f1": {
+        "mean_ms": 0.015,
+        "p99_ms": 0.075,
+        "iterations": 50000
+      },
+      "hyp2f1": {
+        "mean_ms": 0.060,
+        "p99_ms": 0.180,
+        "iterations": 20000
+      },
+      "pochhammer_single": {
+        "mean_ms": 0.006,
+        "p99_ms": 0.030,
+        "iterations": 100000
+      },
+      "pochhammer_array": {
+        "mean_ms": 0.009,
+        "p99_ms": 0.045,
+        "iterations": 100000
       }
     }
   },
