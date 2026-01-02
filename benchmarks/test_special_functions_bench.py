@@ -343,3 +343,406 @@ def test_marcum_q_inverse(benchmark, marcum_test_data):
     result = benchmark(marcum_q_inv, a, q)
     assert np.all(np.isfinite(result))
     assert np.all(result >= 0)
+
+
+# =============================================================================
+# Bessel function benchmarks
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def bessel_test_data():
+    """Pre-computed test data for Bessel function benchmarks."""
+    np.random.seed(42)
+    return {
+        "x_small": np.linspace(0.1, 10, 10),
+        "x_medium": np.linspace(0.1, 50, 100),
+        "x_large": np.linspace(0.1, 100, 1000),
+        "orders": [0, 1, 2, 5, 10],
+    }
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+@pytest.mark.parametrize("order", [0, 1, 5])
+def test_besselj(benchmark, bessel_test_data, order):
+    """Benchmark Bessel function of first kind J_n(x)."""
+    from pytcl.mathematical_functions.special_functions.bessel import besselj
+
+    x = bessel_test_data["x_medium"]
+
+    result = benchmark(besselj, order, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+@pytest.mark.parametrize("order", [0, 1, 5])
+def test_besseli(benchmark, bessel_test_data, order):
+    """Benchmark modified Bessel function of first kind I_n(x)."""
+    from pytcl.mathematical_functions.special_functions.bessel import besseli
+
+    x = bessel_test_data["x_medium"]
+
+    result = benchmark(besseli, order, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_spherical_jn(benchmark, bessel_test_data):
+    """Benchmark spherical Bessel function j_n(x)."""
+    from pytcl.mathematical_functions.special_functions.bessel import spherical_jn
+
+    x = bessel_test_data["x_medium"]
+
+    result = benchmark(spherical_jn, 5, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_bessel_deriv(benchmark, bessel_test_data):
+    """Benchmark Bessel function derivative."""
+    from pytcl.mathematical_functions.special_functions.bessel import bessel_deriv
+
+    x = bessel_test_data["x_medium"]
+
+    result = benchmark(bessel_deriv, 2, x, kind="j")
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_airy(benchmark, bessel_test_data):
+    """Benchmark Airy functions."""
+    from pytcl.mathematical_functions.special_functions.bessel import airy
+
+    x = bessel_test_data["x_small"]
+
+    result = benchmark(airy, x)
+    assert len(result) == 4  # Ai, Aip, Bi, Bip
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_kelvin(benchmark, bessel_test_data):
+    """Benchmark Kelvin functions."""
+    from pytcl.mathematical_functions.special_functions.bessel import kelvin
+
+    x = bessel_test_data["x_medium"]
+
+    result = benchmark(kelvin, x)
+    assert len(result) == 4  # ber, bei, ker, kei
+
+
+# =============================================================================
+# Elliptic integral benchmarks
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def elliptic_test_data():
+    """Pre-computed test data for elliptic integral benchmarks."""
+    np.random.seed(42)
+    return {
+        "m_small": np.linspace(0.01, 0.99, 10),
+        "m_medium": np.linspace(0.01, 0.99, 100),
+        "phi": np.linspace(0.1, np.pi / 2 - 0.1, 100),
+    }
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_ellipk(benchmark, elliptic_test_data):
+    """Benchmark complete elliptic integral of first kind K(m)."""
+    from pytcl.mathematical_functions.special_functions.elliptic import ellipk
+
+    m = elliptic_test_data["m_medium"]
+
+    result = benchmark(ellipk, m)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_ellipe(benchmark, elliptic_test_data):
+    """Benchmark complete elliptic integral of second kind E(m)."""
+    from pytcl.mathematical_functions.special_functions.elliptic import ellipe
+
+    m = elliptic_test_data["m_medium"]
+
+    result = benchmark(ellipe, m)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_ellipkinc(benchmark, elliptic_test_data):
+    """Benchmark incomplete elliptic integral of first kind F(phi, m)."""
+    from pytcl.mathematical_functions.special_functions.elliptic import ellipkinc
+
+    phi = elliptic_test_data["phi"]
+    m = elliptic_test_data["m_medium"]
+
+    result = benchmark(ellipkinc, phi, m)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_elliprf(benchmark, elliptic_test_data):
+    """Benchmark Carlson symmetric elliptic integral R_F."""
+    from pytcl.mathematical_functions.special_functions.elliptic import elliprf
+
+    x = np.linspace(0.1, 1, 100)
+    y = np.linspace(0.2, 1.5, 100)
+    z = np.linspace(0.3, 2, 100)
+
+    result = benchmark(elliprf, x, y, z)
+    assert np.all(np.isfinite(result))
+
+
+# =============================================================================
+# Gamma function benchmarks
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def gamma_test_data():
+    """Pre-computed test data for gamma function benchmarks."""
+    np.random.seed(42)
+    return {
+        "x_small": np.linspace(0.5, 10, 10),
+        "x_medium": np.linspace(0.5, 50, 100),
+        "x_large": np.linspace(0.5, 100, 1000),
+        "a_b_pairs": (np.linspace(0.5, 5, 100), np.linspace(0.5, 5, 100)),
+    }
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_gamma(benchmark, gamma_test_data):
+    """Benchmark gamma function Gamma(x)."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import gamma
+
+    x = gamma_test_data["x_medium"]
+
+    result = benchmark(gamma, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_gammaln(benchmark, gamma_test_data):
+    """Benchmark log gamma function ln(Gamma(x))."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import gammaln
+
+    x = gamma_test_data["x_medium"]
+
+    result = benchmark(gammaln, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_gammainc(benchmark, gamma_test_data):
+    """Benchmark regularized lower incomplete gamma function."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import gammainc
+
+    a = gamma_test_data["x_medium"]
+    x = gamma_test_data["x_medium"] * 0.5
+
+    result = benchmark(gammainc, a, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_digamma(benchmark, gamma_test_data):
+    """Benchmark digamma (psi) function."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import digamma
+
+    x = gamma_test_data["x_medium"]
+
+    result = benchmark(digamma, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_beta(benchmark, gamma_test_data):
+    """Benchmark beta function B(a, b)."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import beta
+
+    a, b = gamma_test_data["a_b_pairs"]
+
+    result = benchmark(beta, a, b)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_betainc(benchmark, gamma_test_data):
+    """Benchmark regularized incomplete beta function."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import betainc
+
+    a, b = gamma_test_data["a_b_pairs"]
+    x = np.linspace(0.1, 0.9, 100)
+
+    result = benchmark(betainc, a, b, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_factorial(benchmark):
+    """Benchmark factorial function."""
+    from pytcl.mathematical_functions.special_functions.gamma_functions import factorial
+
+    n = np.arange(0, 100)
+
+    result = benchmark(factorial, n)
+    assert np.all(np.isfinite(result))
+
+
+# =============================================================================
+# Error function benchmarks
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def error_test_data():
+    """Pre-computed test data for error function benchmarks."""
+    np.random.seed(42)
+    return {
+        "x_small": np.linspace(-3, 3, 10),
+        "x_medium": np.linspace(-5, 5, 100),
+        "x_large": np.linspace(-10, 10, 1000),
+        "y_prob": np.linspace(-0.99, 0.99, 100),
+    }
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_erf(benchmark, error_test_data):
+    """Benchmark error function erf(x)."""
+    from pytcl.mathematical_functions.special_functions.error_functions import erf
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(erf, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_erfc(benchmark, error_test_data):
+    """Benchmark complementary error function erfc(x)."""
+    from pytcl.mathematical_functions.special_functions.error_functions import erfc
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(erfc, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_erfinv(benchmark, error_test_data):
+    """Benchmark inverse error function."""
+    from pytcl.mathematical_functions.special_functions.error_functions import erfinv
+
+    y = error_test_data["y_prob"]
+
+    result = benchmark(erfinv, y)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_erfcx(benchmark, error_test_data):
+    """Benchmark scaled complementary error function erfcx(x)."""
+    from pytcl.mathematical_functions.special_functions.error_functions import erfcx
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(erfcx, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_fresnel(benchmark, error_test_data):
+    """Benchmark Fresnel integrals."""
+    from pytcl.mathematical_functions.special_functions.error_functions import fresnel
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(fresnel, x)
+    assert len(result) == 2  # S, C
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_dawsn(benchmark, error_test_data):
+    """Benchmark Dawson's integral."""
+    from pytcl.mathematical_functions.special_functions.error_functions import dawsn
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(dawsn, x)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_voigt_profile(benchmark, error_test_data):
+    """Benchmark Voigt profile."""
+    from pytcl.mathematical_functions.special_functions.error_functions import (
+        voigt_profile,
+    )
+
+    x = error_test_data["x_medium"]
+
+    result = benchmark(voigt_profile, x, sigma=1.0, gamma=0.5)
+    assert np.all(np.isfinite(result))
+
+
+# =============================================================================
+# Lambert W function benchmarks
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def lambert_test_data():
+    """Pre-computed test data for Lambert W benchmarks."""
+    np.random.seed(42)
+    return {
+        "z_real": np.linspace(0.1, 10, 100),
+        "z_complex": np.linspace(-0.3, 10, 100) + 0.1j,
+    }
+
+
+@pytest.mark.benchmark
+@pytest.mark.light
+def test_lambert_w(benchmark, lambert_test_data):
+    """Benchmark Lambert W function (principal branch)."""
+    from pytcl.mathematical_functions.special_functions.lambert_w import lambert_w
+
+    z = lambert_test_data["z_real"]
+
+    result = benchmark(lambert_w, z)
+    assert np.all(np.isfinite(result))
+
+
+@pytest.mark.benchmark
+@pytest.mark.full
+def test_lambert_w_real(benchmark, lambert_test_data):
+    """Benchmark real-valued Lambert W function."""
+    from pytcl.mathematical_functions.special_functions.lambert_w import lambert_w_real
+
+    x = lambert_test_data["z_real"]
+
+    result = benchmark(lambert_w_real, x)
+    assert np.all(np.isfinite(result))
