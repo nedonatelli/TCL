@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v1.1.2) - Mypy Fix Patch
+## Current State (v1.1.3) - SLO Calibration Patch
 
 - **830+ functions** implemented across 146 Python modules
 - **1,598 tests** with comprehensive coverage (100% pass rate)
@@ -879,6 +879,7 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | **v1.1.0** | Performance Optimization Phase 1 | Released 2026-01-02 ✅ |
 | **v1.1.1** | CI fixes (pytest-benchmark, black) | Released 2026-01-02 ✅ |
 | **v1.1.2** | Mypy fix (unused type ignore) | Released 2026-01-02 ✅ |
+| **v1.1.3** | SLO calibration for CI runners | Released 2026-01-02 ✅ |
 
 ### Planned Versions (Performance & Advanced Features)
 

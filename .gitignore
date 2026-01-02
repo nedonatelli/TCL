@@ -171,3 +171,4 @@ temp/
 
 # Advanced examples (development/experimental)
 examples/advanced/
+benchmark_results.json
