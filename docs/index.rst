@@ -13,6 +13,7 @@ state estimation.
 
    getting_started
    migration_guide
+   gap_analysis
    user_guide/index
    tutorials/index
    examples/index
