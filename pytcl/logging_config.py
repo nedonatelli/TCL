@@ -191,7 +191,7 @@ def timed(
                 log.log(level, "%s failed after %.3fms: %s", func_name, elapsed, e)
                 raise
 
-        return wrapper  # type: ignore
+        return wrapper
 
     return decorator
 
