@@ -6,11 +6,15 @@ for spatial indexing data structures like KD-trees, VP-trees, R-trees, and
 Cover trees.
 """
 
+import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List, NamedTuple, Optional, Union
+from typing import Callable, List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+# Module logger
+_logger = logging.getLogger("pytcl.containers")
 
 
 class SpatialQueryResult(NamedTuple):
@@ -66,6 +70,12 @@ class BaseSpatialIndex(ABC):
             )
 
         self.n_samples, self.n_features = self.data.shape
+        _logger.debug(
+            "%s initialized with %d points in %d dimensions",
+            self.__class__.__name__,
+            self.n_samples,
+            self.n_features,
+        )
 
     @abstractmethod
     def query(
@@ -190,10 +200,14 @@ def validate_query_input(
         X = X.reshape(1, -1)
 
     if X.shape[1] != n_features:
-        raise ValueError(
-            f"Query has {X.shape[1]} features, expected {n_features}"
+        _logger.warning(
+            "Query feature mismatch: got %d, expected %d", X.shape[1], n_features
         )
+        raise ValueError(f"Query has {X.shape[1]} features, expected {n_features}")
 
+    _logger.debug(
+        "Validated query input: %d queries, %d features", X.shape[0], X.shape[1]
+    )
     return X
 
 

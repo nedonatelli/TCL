@@ -11,12 +11,16 @@ References
        neighbor search in general metric spaces," SODA 1993.
 """
 
+import logging
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+
+# Module logger
+_logger = logging.getLogger("pytcl.containers.vptree")
 
 
 class VPTreeResult(NamedTuple):
@@ -108,6 +112,8 @@ class VPTree(MetricSpatialIndex):
         # Build tree
         indices = np.arange(self.n_samples)
         self.root = self._build_tree(indices)
+        metric_name = metric.__name__ if metric else "euclidean"
+        _logger.debug("VPTree built with metric=%s", metric_name)
 
     def _build_tree(self, indices: NDArray[np.intp]) -> Optional[VPNode]:
         """Recursively build the VP-tree."""

@@ -13,12 +13,16 @@ References
        Finding Best Matches in Logarithmic Expected Time," ACM TOMS, 1977.
 """
 
+import logging
 from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.containers.base import BaseSpatialIndex, validate_query_input
+
+# Module logger
+_logger = logging.getLogger("pytcl.containers.kd_tree")
 
 
 class KDNode:
@@ -117,6 +121,7 @@ class KDTree(BaseSpatialIndex):
         # Build the tree
         indices = np.arange(self.n_samples)
         self.root = self._build_tree(indices, depth=0)
+        _logger.debug("KDTree built with leaf_size=%d", leaf_size)
 
     def _build_tree(
         self,
@@ -177,6 +182,7 @@ class KDTree(BaseSpatialIndex):
         """
         X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
+        _logger.debug("KDTree.query: %d queries, k=%d", n_queries, k)
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
         all_distances = np.full((n_queries, k), np.inf)
@@ -376,6 +382,7 @@ class BallTree(BaseSpatialIndex):
         self._leaf_indices: List[Optional[NDArray[np.intp]]] = []
 
         self._build_tree(self._indices)
+        _logger.debug("BallTree built with leaf_size=%d", leaf_size)
 
     def _build_tree(
         self,

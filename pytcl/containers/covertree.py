@@ -11,12 +11,16 @@ References
        neighbor," ICML 2006.
 """
 
+import logging
 from typing import Callable, List, NamedTuple, Optional, Set, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+
+# Module logger
+_logger = logging.getLogger("pytcl.containers.covertree")
 
 
 class CoverTreeResult(NamedTuple):
@@ -121,6 +125,12 @@ class CoverTree(MetricSpatialIndex):
 
         if self.n_samples > 0:
             self._build_tree()
+            _logger.debug(
+                "CoverTree built with base=%.1f, levels=%d to %d",
+                base,
+                self.min_level,
+                self.max_level,
+            )
 
     def _distance(self, i: int, j: int) -> float:
         """Get distance between points i and j (with caching)."""
