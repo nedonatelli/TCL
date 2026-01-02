@@ -1,0 +1,162 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-01-02",
+  "description": "Performance SLOs for pyTCL benchmark suite",
+  "slos": {
+    "pytcl.dynamic_estimation.kalman.linear.kf_predict": {
+      "description": "Kalman filter prediction step",
+      "state_dim_4": {
+        "mean_ms": 0.020,
+        "p99_ms": 0.100,
+        "iterations": 10000
+      },
+      "state_dim_6": {
+        "mean_ms": 0.025,
+        "p99_ms": 0.120,
+        "iterations": 10000
+      },
+      "state_dim_9": {
+        "mean_ms": 0.035,
+        "p99_ms": 0.150,
+        "iterations": 10000
+      },
+      "state_dim_12": {
+        "mean_ms": 0.050,
+        "p99_ms": 0.200,
+        "iterations": 10000
+      }
+    },
+    "pytcl.dynamic_estimation.kalman.linear.kf_update": {
+      "description": "Kalman filter update step",
+      "state_4_meas_2": {
+        "mean_ms": 0.030,
+        "p99_ms": 0.120,
+        "iterations": 10000
+      },
+      "state_6_meas_3": {
+        "mean_ms": 0.040,
+        "p99_ms": 0.150,
+        "iterations": 10000
+      },
+      "state_9_meas_3": {
+        "mean_ms": 0.050,
+        "p99_ms": 0.180,
+        "iterations": 10000
+      },
+      "state_12_meas_4": {
+        "mean_ms": 0.070,
+        "p99_ms": 0.250,
+        "iterations": 10000
+      }
+    },
+    "pytcl.assignment_algorithms.gating.mahalanobis_distance": {
+      "description": "Mahalanobis distance computation (Numba-optimized)",
+      "dim_2": {
+        "mean_ms": 0.005,
+        "p99_ms": 0.020,
+        "iterations": 50000
+      },
+      "dim_3": {
+        "mean_ms": 0.008,
+        "p99_ms": 0.030,
+        "iterations": 50000
+      },
+      "dim_6": {
+        "mean_ms": 0.015,
+        "p99_ms": 0.050,
+        "iterations": 50000
+      }
+    },
+    "pytcl.coordinate_systems.rotations.euler2rotmat": {
+      "description": "Euler angles to rotation matrix (Numba-optimized)",
+      "single": {
+        "mean_ms": 0.005,
+        "p99_ms": 0.020,
+        "iterations": 100000
+      }
+    },
+    "pytcl.coordinate_systems.rotations.quat2rotmat": {
+      "description": "Quaternion to rotation matrix",
+      "single": {
+        "mean_ms": 0.005,
+        "p99_ms": 0.020,
+        "iterations": 100000
+      }
+    },
+    "pytcl.coordinate_systems.rotations.quat_multiply": {
+      "description": "Quaternion multiplication",
+      "single": {
+        "mean_ms": 0.003,
+        "p99_ms": 0.015,
+        "iterations": 100000
+      }
+    },
+    "pytcl.coordinate_systems.rotations.quat_rotate": {
+      "description": "Quaternion vector rotation",
+      "single": {
+        "mean_ms": 0.005,
+        "p99_ms": 0.020,
+        "iterations": 100000
+      }
+    },
+    "pytcl.assignment_algorithms.jpda.jpda_probabilities": {
+      "description": "JPDA association probability computation",
+      "tracks_5_meas_10": {
+        "mean_ms": 0.200,
+        "p99_ms": 0.500,
+        "iterations": 5000
+      },
+      "tracks_10_meas_20": {
+        "mean_ms": 1.000,
+        "p99_ms": 3.000,
+        "iterations": 1000
+      },
+      "tracks_20_meas_50": {
+        "mean_ms": 5.000,
+        "p99_ms": 15.000,
+        "iterations": 500
+      }
+    },
+    "pytcl.mathematical_functions.signal_processing.detection.cfar_ca": {
+      "description": "CA-CFAR detection (Numba-optimized)",
+      "signal_1000": {
+        "mean_ms": 0.300,
+        "p99_ms": 1.000,
+        "iterations": 2000
+      },
+      "signal_5000": {
+        "mean_ms": 1.500,
+        "p99_ms": 5.000,
+        "iterations": 500
+      },
+      "signal_10000": {
+        "mean_ms": 3.000,
+        "p99_ms": 10.000,
+        "iterations": 200
+      }
+    },
+    "pytcl.clustering.dbscan._compute_distance_matrix": {
+      "description": "Pairwise distance matrix (Numba-optimized)",
+      "n_100_d_3": {
+        "mean_ms": 1.000,
+        "p99_ms": 3.000,
+        "iterations": 1000
+      },
+      "n_500_d_3": {
+        "mean_ms": 20.000,
+        "p99_ms": 50.000,
+        "iterations": 100
+      },
+      "n_1000_d_3": {
+        "mean_ms": 80.000,
+        "p99_ms": 200.000,
+        "iterations": 50
+      }
+    }
+  },
+  "regression_thresholds": {
+    "warning_percent": 15,
+    "failure_percent": 30,
+    "min_samples": 5
+  }
+}

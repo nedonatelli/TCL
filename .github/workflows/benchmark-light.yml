@@ -1,0 +1,109 @@
+name: Benchmark (Light)
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'pytcl/**'
+      - 'benchmarks/**'
+      - '.github/workflows/benchmark-light.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark-light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,benchmark]"
+
+      - name: Run light benchmarks
+        run: |
+          python -m pytest benchmarks/test_kalman_bench.py \
+                           benchmarks/test_gating_bench.py \
+                           benchmarks/test_rotations_bench.py \
+            --benchmark-only \
+            --benchmark-json=/tmp/benchmark_results.json \
+            --benchmark-warmup=on \
+            --benchmark-min-rounds=100 \
+            -m "light" \
+            -q
+
+      - name: Check for regressions
+        run: |
+          python scripts/detect_regressions.py /tmp/benchmark_results.json \
+            --slos .benchmarks/slos.json \
+            --history .benchmarks/history.jsonl
+
+      - name: Generate benchmark summary
+        if: always() && github.event_name == 'pull_request'
+        id: benchmark-summary
+        run: |
+          python -c "
+          import json
+          with open('/tmp/benchmark_results.json') as f:
+              data = json.load(f)
+
+          lines = ['## Benchmark Results (Light)', '', '| Test | Mean | StdDev | Rounds |', '|------|------|--------|--------|']
+          for bench in sorted(data.get('benchmarks', [])[:15], key=lambda b: b['name']):
+              name = bench['name'][:50]
+              mean = bench['stats']['mean'] * 1000
+              stddev = bench['stats']['stddev'] * 1000
+              rounds = bench['stats']['rounds']
+              lines.append(f'| {name} | {mean:.3f}ms | {stddev:.3f}ms | {rounds} |')
+
+          print('\n'.join(lines))
+          " > /tmp/summary.md
+
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/summary.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('/tmp/summary.md', 'utf8');
+
+            // Find existing comment
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const botComment = comments.data.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Benchmark Results (Light)')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }

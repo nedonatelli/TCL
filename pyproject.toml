@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nrl-tracker"
-version = "1.0.1"
+version = "1.1.0"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
 authors = [
@@ -78,6 +78,9 @@ dev = [
     "myst-parser>=1.0.0",
     "nbsphinx>=0.9.0",
 ]
+benchmark = [
+    "pytest-benchmark>=4.0.0",
+]
 all = [
     "nrl-tracker[astronomy,geodesy,visualization,optimization,signal,dev]",
 ]
@@ -100,6 +103,9 @@ testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "matlab_validated: tests validated against MATLAB reference output",
+    "benchmark: marks tests as benchmarks",
+    "light: marks benchmark as part of light (PR) suite",
+    "full: marks benchmark as part of full (main) suite",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

@@ -3,15 +3,18 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v1.0.0) - Production Release
---------------------------------------------
+Current State (v1.1.0) - Performance Optimization Phase 1
+----------------------------------------------------------
 
 * **830+ functions** implemented across 146 Python modules
 * **1,598 tests** with 100% pass rate - fully production-ready
 * **100% code quality** compliance with isort, black, flake8, mypy
+* **50 benchmark tests** with session-scoped fixtures for performance tracking
 * **42 interactive HTML visualizations** embedded in documentation
 * **23 comprehensive example scripts** with Plotly-based interactive plots
 * **Full MATLAB TCL parity** - 100% feature coverage achieved
+* **Benchmarking infrastructure**: Session-scoped fixtures, CI workflows, SLO tracking
+* **Logging framework**: Hierarchical logging with performance instrumentation
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -37,7 +40,21 @@ Current State (v1.0.0) - Production Release
 Completed Phases
 ----------------
 
-Summary of major phases completed through v0.22.6. See ROADMAP.md for detailed file listings and implementation notes.
+Summary of major phases completed through v1.1.0. See ROADMAP.md for detailed file listings and implementation notes.
+
+Phase 15 (v1.1.0): Performance Infrastructure ✅
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Benchmarking Framework & Logging Infrastructure**
+
+* ``benchmarks/`` directory with 50 benchmark tests across 6 files
+* Session-scoped pytest fixtures for expensive test data setup
+* Light benchmarks (Kalman, gating, rotations) for PR feedback
+* Full benchmarks (JPDA, CFAR, clustering) for main branch
+* ``.benchmarks/slos.json`` with performance SLO definitions
+* ``scripts/track_performance.py`` and ``scripts/detect_regressions.py``
+* CI workflows: ``benchmark-light.yml`` (PRs), ``benchmark-full.yml`` (main)
+* ``pytcl/logging_config.py`` with hierarchical logging and ``@timed`` decorator
 
 Phase 14 (v0.22.5)
 ~~~~~~~~~~~~~~~~~~
@@ -50,22 +67,13 @@ Phase 14 (v0.22.5)
 * All examples now include publication-ready interactive plots
 * Documentation integration: Each example displays corresponding visualization
 
-Phase 15-17 (v0.23.0 - v1.0.0): Comprehensive Refactoring & Optimization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Phase 16-17 (Planned): Comprehensive Refactoring & Optimization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Strategic modernization initiative focusing on performance optimization, code maintainability, and professional instrumentation.**
 
-Phase 15: Infrastructure Setup (Weeks 1-2)
-++++++++++++++++++++++++++++++++++++++++++
-
-- Benchmarking Framework: Session-scoped fixture caching (30-40% runtime reduction), pytest configuration
-- Performance Monitoring: SLO definitions, historical tracking, regression detection
-- CI/CD Integration: Light (2 min), full (10 min), and deep (30 min) benchmark workflows
-- Module Logging: Hierarchical loggers for all 146 modules with performance instrumentation
-- Unified Documentation: Standardized module docs covering architecture, validation, logging, performance
-
-Phase 16: Parallel Refactoring (Weeks 3-8)
-+++++++++++++++++++++++++++++++++++++++++++
+Phase 16: Parallel Refactoring
+++++++++++++++++++++++++++++++
 
 **Three concurrent tracks:**
 
@@ -89,13 +97,13 @@ Track C: Geophysical Models & Architecture
   * Create Architecture Decision Records (ADRs) for module patterns
   * Add performance instrumentation with trend tracking
 
-Phase 17: Integration & Validation (Weeks 7-8)
-+++++++++++++++++++++++++++++++++++++++++++++++
+Phase 17: Integration & Validation
+++++++++++++++++++++++++++++++++++
 
 * Cross-track integration with comprehensive testing
 * Auto-generate performance dashboards from CI benchmarks
 * Performance SLO compliance reporting
-* Release v0.23.0 with all improvements documented
+* Release with all improvements documented
 
 Key Infrastructure Details
 ++++++++++++++++++++++++++
@@ -106,11 +114,10 @@ Key Infrastructure Details
 **SLO Tracking:**
   Performance Service Level Objectives defined in ``.benchmarks/slos.json`` specify max execution times and critical functions. CI workflows enforce SLOs and block merges on regressions.
 
-**Three-Tier CI Benchmarking:**
-  
-  * **Light (2 min)**: PRs - core hot-paths only, fast feedback
-  * **Full (10 min)**: main/develop - complete suite with SLO enforcement
-  * **Deep (30 min)**: Nightly - extended parameter sweeps and statistical analysis
+**Two-Tier CI Benchmarking:**
+
+  * **Light (5 min)**: PRs - core hot-paths only (Kalman, gating, rotations), fast feedback
+  * **Full (15 min)**: main/develop - complete suite with SLO enforcement
 
 **Performance Tracking:**
   Commit-level historical tracking (``.benchmarks/history.jsonl``) with trend detection using polynomial fitting over N commits. Automatic alerts on performance degradation trends.
@@ -146,16 +153,14 @@ Earlier Phases
 - **Phase 11 (v0.20.0)**: Navigation utilities
 - **Phase 12 (v0.21.0)**: Special mathematical functions
 - **Phase 13.1-13.2 (v0.22.0)**: JPL ephemerides & relativistic corrections
-- **Documentation & Testing**: Complete API documentation, 1,598+ tests, 23 example scripts with visualizations
+- **Phase 14 (v0.22.5-v1.0.0)**: Documentation visualizations, 1,598+ tests, 23 example scripts
 
 Planned
 -------
 
-- **v1.1.0+**: Performance optimization and advanced features
-  - Benchmarking infrastructure with performance SLO tracking
+- **v1.2.0+**: Performance optimization Phase 2 and advanced features
   - Numba JIT expansion to additional functions
   - Container refactoring and validation framework
-  - Comprehensive instrumentation and logging
   - Architecture Decision Records (ADRs) for design patterns
   - Target: 3-8x performance improvement on critical paths
 

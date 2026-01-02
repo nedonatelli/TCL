@@ -1,0 +1,134 @@
+name: Benchmark (Full)
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tracking
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,benchmark]"
+
+      - name: Run full benchmark suite
+        run: |
+          python -m pytest benchmarks/ \
+            --benchmark-only \
+            --benchmark-json=/tmp/benchmark_results.json \
+            --benchmark-warmup=on \
+            --benchmark-min-rounds=500 \
+            -v
+
+      - name: Check SLO compliance
+        run: |
+          python scripts/detect_regressions.py /tmp/benchmark_results.json \
+            --slos .benchmarks/slos.json \
+            --history .benchmarks/history.jsonl \
+            --strict
+
+      - name: Track performance
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python scripts/track_performance.py \
+            --history .benchmarks/history.jsonl \
+            --no-append
+
+          # Append results manually after validation
+          python -c "
+          import json
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          # Get git info
+          commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], text=True).strip()
+          branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
+
+          # Parse results
+          with open('/tmp/benchmark_results.json') as f:
+              data = json.load(f)
+
+          timestamp = datetime.now(timezone.utc).isoformat()
+          runner = 'github-ubuntu-latest'
+
+          # Append to history
+          with open('.benchmarks/history.jsonl', 'a') as f:
+              for bench in data.get('benchmarks', []):
+                  stats = bench.get('stats', {})
+                  record = {
+                      'timestamp': timestamp,
+                      'commit': commit,
+                      'branch': branch,
+                      'test': bench.get('name', 'unknown'),
+                      'params': 'default',
+                      'mean_ms': stats.get('mean', 0) * 1000,
+                      'stddev_ms': stats.get('stddev', 0) * 1000,
+                      'min_ms': stats.get('min', 0) * 1000,
+                      'max_ms': stats.get('max', 0) * 1000,
+                      'rounds': stats.get('rounds', 0),
+                      'runner': runner
+                  }
+                  f.write(json.dumps(record) + '\n')
+          "
+
+      - name: Commit history update
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .benchmarks/history.jsonl
+          git diff --staged --quiet || git commit -m "chore: Update benchmark history [skip ci]"
+          git push
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: /tmp/benchmark_results.json
+          retention-days: 30
+
+      - name: Generate performance report
+        if: always()
+        run: |
+          echo "## Full Benchmark Results" > /tmp/report.md
+          echo "" >> /tmp/report.md
+          echo "| Test | Mean | Min | Max | Rounds |" >> /tmp/report.md
+          echo "|------|------|-----|-----|--------|" >> /tmp/report.md
+
+          python -c "
+          import json
+          with open('/tmp/benchmark_results.json') as f:
+              data = json.load(f)
+
+          for bench in sorted(data.get('benchmarks', []), key=lambda b: b['name']):
+              name = bench['name'][:60]
+              stats = bench['stats']
+              mean = stats['mean'] * 1000
+              min_t = stats['min'] * 1000
+              max_t = stats['max'] * 1000
+              rounds = stats['rounds']
+              print(f'| {name} | {mean:.3f}ms | {min_t:.3f}ms | {max_t:.3f}ms | {rounds} |')
+          " >> /tmp/report.md
+
+          cat /tmp/report.md >> $GITHUB_STEP_SUMMARY

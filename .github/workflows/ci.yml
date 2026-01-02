@@ -59,7 +59,7 @@ jobs:
           pip install -e ".[dev]"
       
       - name: Run tests
-        run: pytest --cov=pytcl --cov-report=xml -v
+        run: pytest tests/ --cov=pytcl --cov-report=xml --benchmark-skip -v
       
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'

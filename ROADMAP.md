@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v1.0.1) - Documentation Fix Release
+## Current State (v1.1.0) - Performance Optimization Phase 1
 
 - **830+ functions** implemented across 146 Python modules
 - **1,598 tests** with comprehensive coverage (100% pass rate)
@@ -136,55 +136,41 @@
 
 A strategic modernization effort focusing on performance optimization, code maintainability, and advanced instrumentation across all 146 modules.
 
-### Phase 15: Infrastructure Setup (Week 1-2)
+### Phase 15: Infrastructure Setup ✅ (Completed in v1.1.0)
 
-#### 15.1: Benchmarking Framework
-- [ ] Create `benchmarks/` directory structure with pytest configuration
-- [ ] Implement **session-scoped fixture caching** for expensive benchmark setup (30-40% runtime reduction)
-- [ ] Set up `.benchmarks/` directory for storing benchmark results and SLO tracking
-- [ ] Cache expensive pre-computations: test matrices, geophysical models, terrain data
-- [ ] Create `benchmarks/conftest.py` with parametrized fixtures for reuse
+#### 15.1: Benchmarking Framework ✅
+- [x] Create `benchmarks/` directory structure with pytest configuration
+- [x] Implement **session-scoped fixture caching** for expensive benchmark setup (30-40% runtime reduction)
+- [x] Set up `.benchmarks/` directory for storing benchmark results and SLO tracking
+- [x] Cache expensive pre-computations: test matrices, geophysical models, terrain data
+- [x] Create `benchmarks/conftest.py` with parametrized fixtures for reuse
 
-#### 15.2: Performance Monitoring
-- [ ] Create `.benchmarks/slos.json` with performance SLO definitions per function
-- [ ] Implement performance tracking scripts:
+#### 15.2: Performance Monitoring ✅
+- [x] Create `.benchmarks/slos.json` with performance SLO definitions per function
+- [x] Implement performance tracking scripts:
   - `scripts/track_performance.py` - Commit-level performance history
   - `scripts/detect_regressions.py` - Trend detection and SLO violation reporting
-  - `scripts/append_to_history.py` - Historical performance tracking
-  - `scripts/generate_perf_docs.py` - Auto-generate performance documentation
-  - `scripts/build_perf_dashboard.py` - Visual performance trends
-- [ ] Set up `.benchmarks/history.jsonl` for time-series performance tracking
+- [x] Set up `.benchmarks/history.jsonl` for time-series performance tracking
 
-#### 15.3: CI/CD Benchmarking Integration
-- [ ] **Light benchmarking for PRs** (2 min execution):
+#### 15.3: CI/CD Benchmarking Integration ✅
+- [x] **Light benchmarking for PRs** (2 min execution):
   - `.github/workflows/benchmark-light.yml`
-  - Core hot-path functions only
+  - Core hot-path functions only (Kalman, gating, rotations)
   - Provides immediate feedback to developers
-  
-- [ ] **Full benchmarking for main/develop** (10 min execution):
+
+- [x] **Full benchmarking for main/develop** (10 min execution):
   - `.github/workflows/benchmark-full.yml`
   - Complete test suite with session-scoped fixture caching
   - SLO enforcement gates merges on regressions
   - Updates `.benchmarks/history.jsonl` with results
-  
-- [ ] **Deep benchmarking (nightly, optional)** (30 min execution):
-  - `.github/workflows/benchmark-deep.yml`
-  - Extended parameter sweeps
-  - Statistical analysis for convergence
-  - Generates performance analytics report
 
-#### 15.4: Module Logging Framework
-- [ ] Create `pytcl/logging_config.py`:
+#### 15.4: Module Logging Framework ✅
+- [x] Create `pytcl/logging_config.py`:
   - Hierarchical logger setup (`pytcl.*` namespace)
   - DEBUG/INFO/WARNING/ERROR level configuration
-  - Performance instrumentation decorators
-  - Context managers for timing critical sections
-  
-- [ ] Add logging to core modules:
-  - `pytcl/dynamic_estimation/` - Kalman filter operations
-  - `pytcl/mathematical_functions/` - Heavy computations
-  - `pytcl/geophysical_models/` - Lookups and interpolations
-  - `pytcl/containers/` - Data structure operations
+  - Performance instrumentation decorators (`@timed`)
+  - Context managers for timing critical sections (`TimingContext`)
+  - `PerformanceTracker` for cumulative statistics
 
 #### 15.5: Unified Module Documentation Template
 - [ ] Create standardized module documentation covering:
@@ -890,12 +876,12 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | **v0.22.6** | Documentation polish & release fixes | Released 2026-01-01 |
 | **v1.0.0** | **Full MATLAB TCL Parity** | Released 2026-01-01 ✅ |
 | **v1.0.1** | Documentation fixes | Released 2026-01-02 ✅ |
+| **v1.1.0** | Performance Optimization Phase 1 | Released 2026-01-02 ✅ |
 
 ### Planned Versions (Performance & Advanced Features)
 
 | Version | Focus | Target Features |
 |---------|-------|-----------------|
-| **v1.1.0** | Performance Optimization Phase 1 | Benchmarking infrastructure, SLO tracking, initial Numba JIT expansion |
 | **v1.2.0** | Performance Optimization Phase 2 | Container refactoring, validation framework, vectorization |
 | **v1.3.0** | Instrumentation & Architecture | Logging framework, ADRs, caching infrastructure |
 | **v1.4.0+** | Advanced Optimizations | Domain-specific optimizations, advanced features |
