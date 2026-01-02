@@ -24,10 +24,19 @@ from pytcl.core.constants import (
     PhysicalConstants,
 )
 from pytcl.core.validation import (
+    ArraySpec,
+    ScalarSpec,
+    ValidationError,
+    check_compatible_shapes,
     ensure_2d,
     ensure_column_vector,
+    ensure_positive_definite,
     ensure_row_vector,
+    ensure_square_matrix,
+    ensure_symmetric,
     validate_array,
+    validate_inputs,
+    validate_same_shape,
 )
 
 __all__ = [
@@ -40,10 +49,19 @@ __all__ = [
     "WGS84",
     "PhysicalConstants",
     # Validation
+    "ValidationError",
     "validate_array",
+    "validate_inputs",
+    "validate_same_shape",
+    "check_compatible_shapes",
+    "ArraySpec",
+    "ScalarSpec",
     "ensure_2d",
     "ensure_column_vector",
     "ensure_row_vector",
+    "ensure_square_matrix",
+    "ensure_symmetric",
+    "ensure_positive_definite",
     # Array utilities
     "wrap_to_pi",
     "wrap_to_2pi",

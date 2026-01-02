@@ -472,3 +472,334 @@ def validated_array_input(
         return wrapper
 
     return decorator
+
+
+class ArraySpec:
+    """
+    Specification for array validation in @validate_inputs decorator.
+
+    Parameters
+    ----------
+    dtype : type or np.dtype, optional
+        Required dtype.
+    ndim : int or tuple of int, optional
+        Required dimensionality.
+    shape : tuple, optional
+        Required shape (None for any size).
+    min_ndim : int, optional
+        Minimum dimensions required.
+    max_ndim : int, optional
+        Maximum dimensions allowed.
+    finite : bool, optional
+        Require all finite values.
+    non_negative : bool, optional
+        Require all values >= 0.
+    positive : bool, optional
+        Require all values > 0.
+    allow_empty : bool, optional
+        Allow empty arrays. Default True.
+    square : bool, optional
+        Require square matrix.
+    symmetric : bool, optional
+        Require symmetric matrix.
+    positive_definite : bool, optional
+        Require positive definite matrix.
+
+    Examples
+    --------
+    >>> spec = ArraySpec(ndim=2, finite=True, square=True)
+    >>> @validate_inputs(matrix=spec)
+    ... def process_matrix(matrix):
+    ...     return np.linalg.inv(matrix)
+    """
+
+    def __init__(
+        self,
+        *,
+        dtype: type | np.dtype | None = None,
+        ndim: int | tuple[int, ...] | None = None,
+        shape: tuple[int | None, ...] | None = None,
+        min_ndim: int | None = None,
+        max_ndim: int | None = None,
+        finite: bool = False,
+        non_negative: bool = False,
+        positive: bool = False,
+        allow_empty: bool = True,
+        square: bool = False,
+        symmetric: bool = False,
+        positive_definite: bool = False,
+    ):
+        self.dtype = dtype
+        self.ndim = ndim
+        self.shape = shape
+        self.min_ndim = min_ndim
+        self.max_ndim = max_ndim
+        self.finite = finite
+        self.non_negative = non_negative
+        self.positive = positive
+        self.allow_empty = allow_empty
+        self.square = square
+        self.symmetric = symmetric
+        self.positive_definite = positive_definite
+
+    def validate(self, arr: ArrayLike, name: str) -> NDArray[Any]:
+        """Validate an array against this specification."""
+        result = validate_array(
+            arr,
+            name,
+            dtype=self.dtype,
+            ndim=self.ndim,
+            shape=self.shape,
+            min_ndim=self.min_ndim,
+            max_ndim=self.max_ndim,
+            finite=self.finite,
+            non_negative=self.non_negative,
+            positive=self.positive,
+            allow_empty=self.allow_empty,
+        )
+
+        if self.positive_definite:
+            result = ensure_positive_definite(result, name)
+        elif self.symmetric:
+            result = ensure_symmetric(result, name)
+        elif self.square:
+            result = ensure_square_matrix(result, name)
+
+        return result
+
+
+class ScalarSpec:
+    """
+    Specification for scalar validation in @validate_inputs decorator.
+
+    Parameters
+    ----------
+    dtype : type, optional
+        Required type (int, float, etc.).
+    min_value : float, optional
+        Minimum allowed value (inclusive).
+    max_value : float, optional
+        Maximum allowed value (inclusive).
+    finite : bool, optional
+        Require finite value.
+    positive : bool, optional
+        Require value > 0.
+    non_negative : bool, optional
+        Require value >= 0.
+
+    Examples
+    --------
+    >>> spec = ScalarSpec(dtype=int, min_value=1, max_value=10)
+    >>> @validate_inputs(k=spec)
+    ... def get_k_nearest(k, data):
+    ...     return data[:k]
+    """
+
+    def __init__(
+        self,
+        *,
+        dtype: type | None = None,
+        min_value: float | None = None,
+        max_value: float | None = None,
+        finite: bool = False,
+        positive: bool = False,
+        non_negative: bool = False,
+    ):
+        self.dtype = dtype
+        self.min_value = min_value
+        self.max_value = max_value
+        self.finite = finite
+        self.positive = positive
+        self.non_negative = non_negative
+
+    def validate(self, value: Any, name: str) -> Any:
+        """Validate a scalar value against this specification."""
+        # Type check
+        if self.dtype is not None:
+            if not isinstance(value, self.dtype):
+                try:
+                    value = self.dtype(value)
+                except (ValueError, TypeError) as e:
+                    raise ValidationError(
+                        f"{name} must be {self.dtype.__name__}, got {type(value).__name__}"
+                    ) from e
+
+        # Convert to float for numeric checks
+        try:
+            num_value = float(value)
+        except (ValueError, TypeError):
+            if any(
+                [
+                    self.finite,
+                    self.positive,
+                    self.non_negative,
+                    self.min_value is not None,
+                    self.max_value is not None,
+                ]
+            ):
+                raise ValidationError(
+                    f"{name} must be numeric for range validation"
+                ) from None
+            return value
+
+        # Finite check
+        if self.finite and not np.isfinite(num_value):
+            raise ValidationError(f"{name} must be finite, got {value}")
+
+        # Positive check
+        if self.positive and num_value <= 0:
+            raise ValidationError(f"{name} must be positive, got {value}")
+
+        # Non-negative check
+        if self.non_negative and num_value < 0:
+            raise ValidationError(f"{name} must be non-negative, got {value}")
+
+        # Range checks
+        if self.min_value is not None and num_value < self.min_value:
+            raise ValidationError(f"{name} must be >= {self.min_value}, got {value}")
+
+        if self.max_value is not None and num_value > self.max_value:
+            raise ValidationError(f"{name} must be <= {self.max_value}, got {value}")
+
+        return value
+
+
+def validate_inputs(
+    **param_specs: ArraySpec | ScalarSpec | dict[str, Any],
+) -> Callable[[F], F]:
+    """
+    Decorator for validating multiple function parameters.
+
+    This decorator enables declarative input validation using specification
+    objects (ArraySpec, ScalarSpec) or dictionaries of validation options.
+
+    Parameters
+    ----------
+    **param_specs : ArraySpec | ScalarSpec | dict
+        Keyword arguments mapping parameter names to validation specs.
+        Each spec can be:
+        - ArraySpec: For array validation
+        - ScalarSpec: For scalar validation
+        - dict: Options passed to ArraySpec (for convenience)
+
+    Returns
+    -------
+    Callable
+        Decorated function with input validation.
+
+    Examples
+    --------
+    >>> @validate_inputs(
+    ...     x=ArraySpec(ndim=2, finite=True),
+    ...     P=ArraySpec(ndim=2, positive_definite=True),
+    ...     k=ScalarSpec(dtype=int, min_value=1),
+    ... )
+    ... def kalman_update(x, P, z, H, R, k=1):
+    ...     # x and P are guaranteed valid here
+    ...     pass
+
+    Using dict shorthand:
+
+    >>> @validate_inputs(
+    ...     state={"ndim": 1, "finite": True},
+    ...     covariance={"ndim": 2, "positive_definite": True},
+    ... )
+    ... def predict(state, covariance, dt):
+    ...     pass
+
+    Notes
+    -----
+    Validation happens in the order parameters are defined in the decorator.
+    If any validation fails, a ValidationError is raised with a descriptive
+    message identifying the parameter and the constraint violated.
+
+    See Also
+    --------
+    ArraySpec : Specification class for array validation.
+    ScalarSpec : Specification class for scalar validation.
+    validate_array : Lower-level array validation function.
+    """
+
+    def decorator(func: F) -> F:
+        import inspect
+
+        # Pre-fetch signature for efficiency
+        sig = inspect.signature(func)
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+
+            for param_name, spec in param_specs.items():
+                if param_name not in bound.arguments:
+                    continue
+
+                value = bound.arguments[param_name]
+
+                # Convert dict to ArraySpec
+                if isinstance(spec, dict):
+                    spec = ArraySpec(**spec)
+
+                # Validate using spec
+                if isinstance(spec, (ArraySpec, ScalarSpec)):
+                    bound.arguments[param_name] = spec.validate(value, param_name)
+                else:
+                    raise TypeError(
+                        f"Invalid spec type for {param_name}: {type(spec)}. "
+                        "Use ArraySpec, ScalarSpec, or dict."
+                    )
+
+            return func(*bound.args, **bound.kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def check_compatible_shapes(
+    *shapes: tuple[int, ...],
+    names: Sequence[str] | None = None,
+    dimension: int | None = None,
+) -> None:
+    """
+    Check that array shapes are compatible for operations.
+
+    Parameters
+    ----------
+    *shapes : tuple of int
+        Shapes to check for compatibility.
+    names : sequence of str, optional
+        Names for error messages.
+    dimension : int, optional
+        If provided, only check compatibility along this dimension.
+
+    Raises
+    ------
+    ValidationError
+        If shapes are not compatible.
+
+    Examples
+    --------
+    >>> check_compatible_shapes((3, 4), (4, 5), names=["A", "B"], dimension=0)
+    # Raises: A has 3 rows but B has 4 rows
+
+    >>> check_compatible_shapes((3, 4), (4, 5), names=["A", "B"])
+    # Passes (inner dimensions compatible for matrix multiply)
+    """
+    if len(shapes) < 2:
+        return
+
+    if names is None:
+        names = [f"array_{i}" for i in range(len(shapes))]
+
+    if dimension is not None:
+        # Check specific dimension
+        dims = [s[dimension] if len(s) > dimension else None for s in shapes]
+        valid_dims = [d for d in dims if d is not None]
+        if valid_dims and not all(d == valid_dims[0] for d in valid_dims):
+            dim_strs = [f"{n}={d}" for n, d in zip(names, dims) if d is not None]
+            raise ValidationError(
+                f"Arrays have incompatible sizes along dimension {dimension}: "
+                f"{', '.join(dim_strs)}"
+            )
