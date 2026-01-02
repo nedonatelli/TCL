@@ -13,10 +13,16 @@ References
        Method for Points and Rectangles," ACM SIGMOD, 1990.
 """
 
+import logging
 from typing import List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from pytcl.containers.base import SpatialQueryResult, validate_query_input
+
+# Module logger
+_logger = logging.getLogger("pytcl.containers.rtree")
 
 
 class BoundingBox(NamedTuple):
@@ -160,12 +166,22 @@ class RTree:
     An R-tree groups nearby objects and represents them with their
     minimum bounding rectangle. This allows efficient spatial queries.
 
+    Unlike KDTree and BallTree which only index points, RTree can index
+    bounding boxes of arbitrary size. It also supports dynamic insertion.
+
     Parameters
     ----------
     max_entries : int, optional
         Maximum entries per node. Default 10.
     min_entries : int, optional
         Minimum entries per node (except root). Default max_entries // 2.
+
+    Attributes
+    ----------
+    n_entries : int
+        Number of entries in the tree.
+    n_features : int
+        Dimensionality of the data (set after first insertion).
 
     Examples
     --------
@@ -179,6 +195,11 @@ class RTree:
     -----
     This implementation uses a simplified insertion algorithm.
     For production use, consider using R*-tree or packed R-tree variants.
+
+    See Also
+    --------
+    KDTree : Point-based spatial index using axis-aligned splits.
+    BallTree : Point-based spatial index using hyperspheres.
     """
 
     def __init__(
@@ -190,10 +211,69 @@ class RTree:
         self.min_entries = min_entries or max_entries // 2
         self.root = RTreeNode(is_leaf=True)
         self.n_entries = 0
+        self.n_features: Optional[int] = None
         self._data: List[BoundingBox] = []
+        self._points: Optional[NDArray[np.floating]] = None
+        _logger.debug("RTree initialized with max_entries=%d", max_entries)
+
+    @classmethod
+    def from_points(
+        cls,
+        data: ArrayLike,
+        max_entries: int = 10,
+        min_entries: Optional[int] = None,
+    ) -> "RTree":
+        """
+        Create an RTree from point data.
+
+        This factory method provides an interface similar to KDTree and BallTree,
+        allowing RTree to be used interchangeably for point queries.
+
+        Parameters
+        ----------
+        data : array_like
+            Data points of shape (n_samples, n_features).
+        max_entries : int, optional
+            Maximum entries per node. Default 10.
+        min_entries : int, optional
+            Minimum entries per node. Default max_entries // 2.
+
+        Returns
+        -------
+        tree : RTree
+            RTree with all points inserted.
+
+        Examples
+        --------
+        >>> points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+        >>> tree = RTree.from_points(points)
+        >>> result = tree.query([[0.1, 0.1]], k=2)
+        """
+        data = np.asarray(data, dtype=np.float64)
+        if data.ndim != 2:
+            raise ValueError(
+                f"Data must be 2-dimensional (n_samples, n_features), "
+                f"got shape {data.shape}"
+            )
+
+        tree = cls(max_entries=max_entries, min_entries=min_entries)
+        tree._points = data
+        tree.n_features = data.shape[1]
+        tree.insert_points(data)
+        _logger.debug(
+            "RTree.from_points: indexed %d points in %d dimensions",
+            data.shape[0],
+            data.shape[1],
+        )
+        return tree
 
     def __len__(self) -> int:
         return self.n_entries
+
+    def __repr__(self) -> str:
+        if self.n_features is not None:
+            return f"RTree(n_entries={self.n_entries}, n_features={self.n_features})"
+        return f"RTree(n_entries={self.n_entries})"
 
     def insert(self, bbox: BoundingBox, data_index: Optional[int] = None) -> int:
         """
@@ -213,6 +293,10 @@ class RTree:
         """
         if data_index is None:
             data_index = self.n_entries
+
+        # Track dimensionality
+        if self.n_features is None:
+            self.n_features = len(bbox.min_coords)
 
         self._data.append(bbox)
 
@@ -329,6 +413,121 @@ class RTree:
         while current is not None:
             current.update_bbox()
             current = current.parent
+
+    def query(
+        self,
+        X: ArrayLike,
+        k: int = 1,
+    ) -> SpatialQueryResult:
+        """
+        Query the tree for k nearest neighbors.
+
+        This method provides API compatibility with KDTree and BallTree.
+
+        Parameters
+        ----------
+        X : array_like
+            Query points of shape (n_queries, n_features) or (n_features,).
+        k : int, optional
+            Number of nearest neighbors. Default 1.
+
+        Returns
+        -------
+        result : SpatialQueryResult
+            Indices and distances of k nearest neighbors for each query.
+
+        Examples
+        --------
+        >>> tree = RTree.from_points(np.array([[0, 0], [1, 1], [2, 2]]))
+        >>> result = tree.query([[0.5, 0.5]], k=2)
+        >>> result.indices
+        array([[0, 1]])
+        """
+        if self.n_features is None:
+            raise ValueError("Cannot query empty RTree")
+
+        X = validate_query_input(X, self.n_features)
+        n_queries = X.shape[0]
+        _logger.debug("RTree.query: %d queries, k=%d", n_queries, k)
+
+        all_indices = np.zeros((n_queries, k), dtype=np.intp)
+        all_distances = np.full((n_queries, k), np.inf)
+
+        for i in range(n_queries):
+            indices, distances = self.nearest(X[i], k=k)
+            n_found = len(indices)
+            if n_found > 0:
+                all_indices[i, :n_found] = indices
+                all_distances[i, :n_found] = distances
+
+        return SpatialQueryResult(indices=all_indices, distances=all_distances)
+
+    def query_radius(
+        self,
+        X: ArrayLike,
+        r: float,
+    ) -> List[List[int]]:
+        """
+        Query the tree for all points within radius r.
+
+        This method provides API compatibility with KDTree and BallTree.
+
+        Parameters
+        ----------
+        X : array_like
+            Query points of shape (n_queries, n_features) or (n_features,).
+        r : float
+            Query radius.
+
+        Returns
+        -------
+        indices : list of lists
+            For each query, a list of indices of points within radius r.
+
+        Examples
+        --------
+        >>> tree = RTree.from_points(np.array([[0, 0], [1, 0], [0, 1], [5, 5]]))
+        >>> tree.query_radius([[0, 0]], r=1.5)
+        [[0, 1, 2]]
+        """
+        if self.n_features is None:
+            raise ValueError("Cannot query empty RTree")
+
+        X = validate_query_input(X, self.n_features)
+        n_queries = X.shape[0]
+        results: List[List[int]] = []
+
+        for i in range(n_queries):
+            query = X[i]
+            indices: List[int] = []
+
+            def search(node: RTreeNode) -> None:
+                if node.bbox is None:
+                    return
+
+                # Minimum distance from query point to node's bounding box
+                clamped = np.clip(query, node.bbox.min_coords, node.bbox.max_coords)
+                min_dist = float(np.sqrt(np.sum((query - clamped) ** 2)))
+
+                # Prune if node is entirely outside radius
+                if min_dist > r:
+                    return
+
+                if node.is_leaf:
+                    for bbox, idx in node.entries:
+                        # Distance to point (center of zero-volume box)
+                        clamped_pt = np.clip(query, bbox.min_coords, bbox.max_coords)
+                        dist = float(np.sqrt(np.sum((query - clamped_pt) ** 2)))
+                        if dist <= r:
+                            indices.append(idx)
+                else:
+                    for child in node.children:
+                        search(child)
+
+            search(self.root)
+            results.append(indices)
+
+        return results
 
     def query_intersect(self, query_bbox: BoundingBox) -> RTreeResult:
         """
