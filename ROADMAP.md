@@ -1,11 +1,13 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v1.1.3) - SLO Calibration Patch
+## Current State (v1.2.0) - Performance Caching & Architecture
 
 - **830+ functions** implemented across 146 Python modules
-- **1,598 tests** with comprehensive coverage (100% pass rate)
+- **1,850 tests** with comprehensive coverage (100% pass rate)
 - **23 example scripts** with interactive Plotly visualizations
 - **42 interactive HTML plots** embedded in documentation
+- **Performance caching infrastructure**: LRU caching for navigation (geodesy, great circle), astronomical reference frames, and spherical harmonics
+- **Architecture documentation**: ADR-001 (geophysical caching), ADR-002 (lazy-loading architecture), module interdependencies
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 - **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 - **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
