@@ -8,10 +8,19 @@ This module provides geodetic utilities including:
 - Earth ellipsoid parameters
 """
 
+import logging
+from functools import lru_cache
 from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+# Module logger
+_logger = logging.getLogger("pytcl.navigation.geodesy")
+
+# Cache configuration for Vincenty geodetic calculations
+_VINCENTY_CACHE_DECIMALS = 10  # ~0.01mm precision
+_VINCENTY_CACHE_MAXSIZE = 128  # Max cached coordinate pairs
 
 
 class Ellipsoid(NamedTuple):
@@ -49,6 +58,198 @@ class Ellipsoid(NamedTuple):
 WGS84 = Ellipsoid(a=6378137.0, f=1.0 / 298.257223563)
 GRS80 = Ellipsoid(a=6378137.0, f=1.0 / 298.257222101)
 SPHERE = Ellipsoid(a=6371000.0, f=0.0)
+
+
+def _quantize_geodetic(val: float) -> float:
+    """Quantize geodetic coordinate for cache key compatibility."""
+    return round(val, _VINCENTY_CACHE_DECIMALS)
+
+
+@lru_cache(maxsize=_VINCENTY_CACHE_MAXSIZE)
+def _inverse_geodetic_cached(
+    lat1_q: float,
+    lon1_q: float,
+    lat2_q: float,
+    lon2_q: float,
+    a: float,
+    f: float,
+) -> Tuple[float, float, float]:
+    """Cached Vincenty inverse geodetic computation (internal).
+
+    Returns (distance, azimuth1, azimuth2).
+    """
+    b = a * (1 - f)
+
+    # Reduced latitudes
+    U1 = np.arctan((1 - f) * np.tan(lat1_q))
+    U2 = np.arctan((1 - f) * np.tan(lat2_q))
+    sin_U1, cos_U1 = np.sin(U1), np.cos(U1)
+    sin_U2, cos_U2 = np.sin(U2), np.cos(U2)
+
+    L = lon2_q - lon1_q
+    lam = L
+
+    for _ in range(100):
+        sin_lam = np.sin(lam)
+        cos_lam = np.cos(lam)
+
+        sin_sigma = np.sqrt(
+            (cos_U2 * sin_lam) ** 2 + (cos_U1 * sin_U2 - sin_U1 * cos_U2 * cos_lam) ** 2
+        )
+
+        if sin_sigma == 0:
+            # Coincident points
+            return 0.0, 0.0, 0.0
+
+        cos_sigma = sin_U1 * sin_U2 + cos_U1 * cos_U2 * cos_lam
+        sigma = np.arctan2(sin_sigma, cos_sigma)
+
+        sin_alpha = cos_U1 * cos_U2 * sin_lam / sin_sigma
+        cos2_alpha = 1 - sin_alpha**2
+
+        if cos2_alpha == 0:
+            cos_2sigma_m = 0
+        else:
+            cos_2sigma_m = cos_sigma - 2 * sin_U1 * sin_U2 / cos2_alpha
+
+        C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
+
+        lam_new = L + (1 - C) * f * sin_alpha * (
+            sigma
+            + C
+            * sin_sigma
+            * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
+        )
+
+        if abs(lam_new - lam) < 1e-12:
+            break
+        lam = lam_new
+
+    u2 = cos2_alpha * (a**2 - b**2) / b**2
+    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
+    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
+
+    delta_sigma = (
+        B
+        * sin_sigma
+        * (
+            cos_2sigma_m
+            + B
+            / 4
+            * (
+                cos_sigma * (-1 + 2 * cos_2sigma_m**2)
+                - B
+                / 6
+                * cos_2sigma_m
+                * (-3 + 4 * sin_sigma**2)
+                * (-3 + 4 * cos_2sigma_m**2)
+            )
+        )
+    )
+
+    distance = b * A * (sigma - delta_sigma)
+
+    # Azimuths
+    azimuth1 = np.arctan2(cos_U2 * sin_lam, cos_U1 * sin_U2 - sin_U1 * cos_U2 * cos_lam)
+    azimuth2 = np.arctan2(
+        cos_U1 * sin_lam, -sin_U1 * cos_U2 + cos_U1 * sin_U2 * cos_lam
+    )
+
+    return float(distance), float(azimuth1), float(azimuth2)
+
+
+@lru_cache(maxsize=_VINCENTY_CACHE_MAXSIZE)
+def _direct_geodetic_cached(
+    lat1_q: float,
+    lon1_q: float,
+    azimuth_q: float,
+    distance_q: float,
+    a: float,
+    f: float,
+) -> Tuple[float, float, float]:
+    """Cached Vincenty direct geodetic computation (internal).
+
+    Returns (lat2, lon2, azimuth2).
+    """
+    b = a * (1 - f)
+
+    sin_alpha1 = np.sin(azimuth_q)
+    cos_alpha1 = np.cos(azimuth_q)
+
+    # Reduced latitude
+    tan_U1 = (1 - f) * np.tan(lat1_q)
+    cos_U1 = 1.0 / np.sqrt(1 + tan_U1**2)
+    sin_U1 = tan_U1 * cos_U1
+
+    sigma1 = np.arctan2(tan_U1, cos_alpha1)
+    sin_alpha = cos_U1 * sin_alpha1
+    cos2_alpha = 1 - sin_alpha**2
+
+    u2 = cos2_alpha * (a**2 - b**2) / b**2
+    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
+    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
+
+    sigma = distance_q / (b * A)
+
+    for _ in range(100):
+        cos_2sigma_m = np.cos(2 * sigma1 + sigma)
+        sin_sigma = np.sin(sigma)
+        cos_sigma = np.cos(sigma)
+
+        delta_sigma = (
+            B
+            * sin_sigma
+            * (
+                cos_2sigma_m
+                + B
+                / 4
+                * (
+                    cos_sigma * (-1 + 2 * cos_2sigma_m**2)
+                    - B
+                    / 6
+                    * cos_2sigma_m
+                    * (-3 + 4 * sin_sigma**2)
+                    * (-3 + 4 * cos_2sigma_m**2)
+                )
+            )
+        )
+
+        sigma_new = distance_q / (b * A) + delta_sigma
+        if abs(sigma_new - sigma) < 1e-12:
+            break
+        sigma = sigma_new
+
+    cos_2sigma_m = np.cos(2 * sigma1 + sigma)
+    sin_sigma = np.sin(sigma)
+    cos_sigma = np.cos(sigma)
+
+    sin_U2 = sin_U1 * cos_sigma + cos_U1 * sin_sigma * cos_alpha1
+    lat2 = np.arctan2(
+        sin_U2,
+        (1 - f)
+        * np.sqrt(
+            sin_alpha**2 + (sin_U1 * sin_sigma - cos_U1 * cos_sigma * cos_alpha1) ** 2
+        ),
+    )
+
+    lam = np.arctan2(
+        sin_sigma * sin_alpha1, cos_U1 * cos_sigma - sin_U1 * sin_sigma * cos_alpha1
+    )
+
+    C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
+    L = lam - (1 - C) * f * sin_alpha * (
+        sigma
+        + C * sin_sigma * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
+    )
+
+    lon2 = lon1_q + L
+
+    # Back azimuth
+    azimuth2 = np.arctan2(
+        sin_alpha, -sin_U1 * sin_sigma + cos_U1 * cos_sigma * cos_alpha1
+    )
+
+    return float(lat2), float(lon2), float(azimuth2)
 
 
 def geodetic_to_ecef(
@@ -372,6 +573,7 @@ def direct_geodetic(
     Solve the direct geodetic problem (Vincenty).
 
     Given a starting point, azimuth, and distance, find the destination point.
+    Results are cached for repeated queries with the same parameters.
 
     Parameters
     ----------
@@ -400,87 +602,14 @@ def direct_geodetic(
     .. [1] Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
            Ellipsoid with Application of Nested Equations", Survey Review, 1975.
     """
-    a = ellipsoid.a
-    f = ellipsoid.f
-    b = ellipsoid.b
-
-    sin_alpha1 = np.sin(azimuth)
-    cos_alpha1 = np.cos(azimuth)
-
-    # Reduced latitude
-    tan_U1 = (1 - f) * np.tan(lat1)
-    cos_U1 = 1.0 / np.sqrt(1 + tan_U1**2)
-    sin_U1 = tan_U1 * cos_U1
-
-    sigma1 = np.arctan2(tan_U1, cos_alpha1)
-    sin_alpha = cos_U1 * sin_alpha1
-    cos2_alpha = 1 - sin_alpha**2
-
-    u2 = cos2_alpha * (a**2 - b**2) / b**2
-    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
-    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
-
-    sigma = distance / (b * A)
-
-    for _ in range(100):
-        cos_2sigma_m = np.cos(2 * sigma1 + sigma)
-        sin_sigma = np.sin(sigma)
-        cos_sigma = np.cos(sigma)
-
-        delta_sigma = (
-            B
-            * sin_sigma
-            * (
-                cos_2sigma_m
-                + B
-                / 4
-                * (
-                    cos_sigma * (-1 + 2 * cos_2sigma_m**2)
-                    - B
-                    / 6
-                    * cos_2sigma_m
-                    * (-3 + 4 * sin_sigma**2)
-                    * (-3 + 4 * cos_2sigma_m**2)
-                )
-            )
-        )
-
-        sigma_new = distance / (b * A) + delta_sigma
-        if abs(sigma_new - sigma) < 1e-12:
-            break
-        sigma = sigma_new
-
-    cos_2sigma_m = np.cos(2 * sigma1 + sigma)
-    sin_sigma = np.sin(sigma)
-    cos_sigma = np.cos(sigma)
-
-    sin_U2 = sin_U1 * cos_sigma + cos_U1 * sin_sigma * cos_alpha1
-    lat2 = np.arctan2(
-        sin_U2,
-        (1 - f)
-        * np.sqrt(
-            sin_alpha**2 + (sin_U1 * sin_sigma - cos_U1 * cos_sigma * cos_alpha1) ** 2
-        ),
+    return _direct_geodetic_cached(
+        _quantize_geodetic(lat1),
+        _quantize_geodetic(lon1),
+        _quantize_geodetic(azimuth),
+        round(distance, 3),  # 1mm precision for distance
+        ellipsoid.a,
+        ellipsoid.f,
     )
-
-    lam = np.arctan2(
-        sin_sigma * sin_alpha1, cos_U1 * cos_sigma - sin_U1 * sin_sigma * cos_alpha1
-    )
-
-    C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
-    L = lam - (1 - C) * f * sin_alpha * (
-        sigma
-        + C * sin_sigma * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
-    )
-
-    lon2 = lon1 + L
-
-    # Back azimuth
-    azimuth2 = np.arctan2(
-        sin_alpha, -sin_U1 * sin_sigma + cos_U1 * cos_sigma * cos_alpha1
-    )
-
-    return float(lat2), float(lon2), float(azimuth2)
 
 
 def inverse_geodetic(
@@ -494,6 +623,7 @@ def inverse_geodetic(
     Solve the inverse geodetic problem (Vincenty).
 
     Given two points, find the distance and azimuths between them.
+    Results are cached for repeated queries with the same coordinates.
 
     Parameters
     ----------
@@ -526,86 +656,14 @@ def inverse_geodetic(
     .. [1] Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
            Ellipsoid with Application of Nested Equations", Survey Review, 1975.
     """
-    a = ellipsoid.a
-    f = ellipsoid.f
-    b = ellipsoid.b
-
-    # Reduced latitudes
-    U1 = np.arctan((1 - f) * np.tan(lat1))
-    U2 = np.arctan((1 - f) * np.tan(lat2))
-    sin_U1, cos_U1 = np.sin(U1), np.cos(U1)
-    sin_U2, cos_U2 = np.sin(U2), np.cos(U2)
-
-    L = lon2 - lon1
-    lam = L
-
-    for _ in range(100):
-        sin_lam = np.sin(lam)
-        cos_lam = np.cos(lam)
-
-        sin_sigma = np.sqrt(
-            (cos_U2 * sin_lam) ** 2 + (cos_U1 * sin_U2 - sin_U1 * cos_U2 * cos_lam) ** 2
-        )
-
-        if sin_sigma == 0:
-            # Coincident points
-            return 0.0, 0.0, 0.0
-
-        cos_sigma = sin_U1 * sin_U2 + cos_U1 * cos_U2 * cos_lam
-        sigma = np.arctan2(sin_sigma, cos_sigma)
-
-        sin_alpha = cos_U1 * cos_U2 * sin_lam / sin_sigma
-        cos2_alpha = 1 - sin_alpha**2
-
-        if cos2_alpha == 0:
-            cos_2sigma_m = 0
-        else:
-            cos_2sigma_m = cos_sigma - 2 * sin_U1 * sin_U2 / cos2_alpha
-
-        C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
-
-        lam_new = L + (1 - C) * f * sin_alpha * (
-            sigma
-            + C
-            * sin_sigma
-            * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
-        )
-
-        if abs(lam_new - lam) < 1e-12:
-            break
-        lam = lam_new
-
-    u2 = cos2_alpha * (a**2 - b**2) / b**2
-    A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
-    B = u2 / 1024 * (256 + u2 * (-128 + u2 * (74 - 47 * u2)))
-
-    delta_sigma = (
-        B
-        * sin_sigma
-        * (
-            cos_2sigma_m
-            + B
-            / 4
-            * (
-                cos_sigma * (-1 + 2 * cos_2sigma_m**2)
-                - B
-                / 6
-                * cos_2sigma_m
-                * (-3 + 4 * sin_sigma**2)
-                * (-3 + 4 * cos_2sigma_m**2)
-            )
-        )
+    return _inverse_geodetic_cached(
+        _quantize_geodetic(lat1),
+        _quantize_geodetic(lon1),
+        _quantize_geodetic(lat2),
+        _quantize_geodetic(lon2),
+        ellipsoid.a,
+        ellipsoid.f,
     )
-
-    distance = b * A * (sigma - delta_sigma)
-
-    # Azimuths
-    azimuth1 = np.arctan2(cos_U2 * sin_lam, cos_U1 * sin_U2 - sin_U1 * cos_U2 * cos_lam)
-    azimuth2 = np.arctan2(
-        cos_U1 * sin_lam, -sin_U1 * cos_U2 + cos_U1 * sin_U2 * cos_lam
-    )
-
-    return float(distance), float(azimuth1), float(azimuth2)
 
 
 def haversine_distance(
@@ -646,6 +704,31 @@ def haversine_distance(
     return radius * c
 
 
+def clear_geodesy_cache() -> None:
+    """Clear all geodesy computation caches.
+
+    This can be useful to free memory after processing large datasets
+    or when cache statistics are being monitored.
+    """
+    _inverse_geodetic_cached.cache_clear()
+    _direct_geodetic_cached.cache_clear()
+    _logger.debug("Geodesy caches cleared")
+
+
+def get_geodesy_cache_info() -> dict:
+    """Get cache statistics for geodesy computations.
+
+    Returns
+    -------
+    dict
+        Dictionary with cache statistics for inverse and direct geodetic caches.
+    """
+    return {
+        "inverse_geodetic": _inverse_geodetic_cached.cache_info()._asdict(),
+        "direct_geodetic": _direct_geodetic_cached.cache_info()._asdict(),
+    }
+
+
 __all__ = [
     # Ellipsoids
     "Ellipsoid",
@@ -663,4 +746,7 @@ __all__ = [
     "direct_geodetic",
     "inverse_geodetic",
     "haversine_distance",
+    # Cache management
+    "clear_geodesy_cache",
+    "get_geodesy_cache_info",
 ]

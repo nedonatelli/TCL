@@ -10,10 +10,19 @@ computing the shortest path on a sphere, including:
 - TDOA localization on a sphere
 """
 
+import logging
+from functools import lru_cache
 from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
+
+# Module logger
+_logger = logging.getLogger("pytcl.navigation.great_circle")
+
+# Cache configuration for great circle calculations
+_GC_CACHE_DECIMALS = 10  # ~0.01mm precision at Earth's surface
+_GC_CACHE_MAXSIZE = 256  # Max cached coordinate pairs
 
 
 class GreatCircleResult(NamedTuple):
@@ -96,6 +105,50 @@ class CrossTrackResult(NamedTuple):
 EARTH_RADIUS = 6371000.0
 
 
+def _quantize_coord(val: float) -> float:
+    """Quantize coordinate value for cache key compatibility."""
+    return round(val, _GC_CACHE_DECIMALS)
+
+
+@lru_cache(maxsize=_GC_CACHE_MAXSIZE)
+def _gc_distance_cached(
+    lat1_q: float,
+    lon1_q: float,
+    lat2_q: float,
+    lon2_q: float,
+) -> float:
+    """Cached great circle distance computation (internal).
+
+    Uses haversine formula for numerical stability.
+    Returns angular distance in radians.
+    """
+    dlat = lat2_q - lat1_q
+    dlon = lon2_q - lon1_q
+
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1_q) * np.cos(lat2_q) * np.sin(dlon / 2) ** 2
+    return 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+
+
+@lru_cache(maxsize=_GC_CACHE_MAXSIZE)
+def _gc_azimuth_cached(
+    lat1_q: float,
+    lon1_q: float,
+    lat2_q: float,
+    lon2_q: float,
+) -> float:
+    """Cached great circle azimuth computation (internal).
+
+    Returns azimuth in radians [0, 2π).
+    """
+    dlon = lon2_q - lon1_q
+
+    x = np.sin(dlon) * np.cos(lat2_q)
+    y = np.cos(lat1_q) * np.sin(lat2_q) - np.sin(lat1_q) * np.cos(lat2_q) * np.cos(dlon)
+
+    azimuth = np.arctan2(x, y)
+    return azimuth % (2 * np.pi)
+
+
 def great_circle_distance(
     lat1: float,
     lon1: float,
@@ -107,6 +160,7 @@ def great_circle_distance(
     Compute great circle distance between two points.
 
     Uses the haversine formula for numerical stability at small distances.
+    Results are cached for repeated queries with the same coordinates.
 
     Parameters
     ----------
@@ -131,13 +185,14 @@ def great_circle_distance(
     >>> dist = great_circle_distance(lat1, lon1, lat2, lon2)
     >>> print(f"Distance: {dist/1000:.0f} km")
     """
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-
-    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-
-    return radius * c
+    # Use cached angular distance computation
+    angular_dist = _gc_distance_cached(
+        _quantize_coord(lat1),
+        _quantize_coord(lon1),
+        _quantize_coord(lat2),
+        _quantize_coord(lon2),
+    )
+    return radius * angular_dist
 
 
 def great_circle_azimuth(
@@ -148,6 +203,8 @@ def great_circle_azimuth(
 ) -> float:
     """
     Compute initial azimuth (bearing) from point 1 to point 2.
+
+    Results are cached for repeated queries with the same coordinates.
 
     Parameters
     ----------
@@ -170,15 +227,12 @@ def great_circle_azimuth(
     >>> az = great_circle_azimuth(lat1, lon1, lat2, lon2)
     >>> print(f"Initial bearing: {np.degrees(az):.1f}°")
     """
-    dlon = lon2 - lon1
-
-    x = np.sin(dlon) * np.cos(lat2)
-    y = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(dlon)
-
-    azimuth = np.arctan2(x, y)
-
-    # Normalize to [0, 2π)
-    return azimuth % (2 * np.pi)
+    return _gc_azimuth_cached(
+        _quantize_coord(lat1),
+        _quantize_coord(lon1),
+        _quantize_coord(lat2),
+        _quantize_coord(lon2),
+    )
 
 
 def great_circle_inverse(
@@ -771,6 +825,31 @@ def destination_point(
     return WaypointResult(float(lat2), float(lon2))
 
 
+def clear_great_circle_cache() -> None:
+    """Clear all great circle computation caches.
+
+    This can be useful to free memory after processing large datasets
+    or when cache statistics are being monitored.
+    """
+    _gc_distance_cached.cache_clear()
+    _gc_azimuth_cached.cache_clear()
+    _logger.debug("Great circle caches cleared")
+
+
+def get_cache_info() -> dict:
+    """Get cache statistics for great circle computations.
+
+    Returns
+    -------
+    dict
+        Dictionary with cache statistics for distance and azimuth caches.
+    """
+    return {
+        "distance": _gc_distance_cached.cache_info()._asdict(),
+        "azimuth": _gc_azimuth_cached.cache_info()._asdict(),
+    }
+
+
 __all__ = [
     # Constants
     "EARTH_RADIUS",
@@ -796,4 +875,7 @@ __all__ = [
     "great_circle_path_intersect",
     # TDOA
     "great_circle_tdoa_loc",
+    # Cache management
+    "clear_great_circle_cache",
+    "get_cache_info",
 ]
