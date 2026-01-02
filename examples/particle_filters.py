@@ -1,6 +1,5 @@
 """
-Particle Filters Example
-========================
+Particle Filters Example.
 
 This example demonstrates particle filtering (Sequential Monte Carlo)
 algorithms in PyTCL:
@@ -15,13 +14,14 @@ algorithms in PyTCL:
 
 Particle filters are essential for nonlinear, non-Gaussian state estimation
 where Kalman filters cannot be directly applied.
+
+Run with: python examples/particle_filters.py
 """
 
+import sys
 from pathlib import Path
 
-import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Output directory for generated plots
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
@@ -30,9 +30,12 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Global flag to control plotting
 SHOW_PLOTS = True
 
+import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
-from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
-from pytcl.dynamic_estimation.particle_filters import (
+from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update  # noqa: E402
+from pytcl.dynamic_estimation.particle_filters import (  # noqa: E402
     ParticleState,
     bootstrap_pf_predict,
     bootstrap_pf_step,
@@ -499,15 +502,17 @@ def demo_nonlinear_tracking():
     R = np.diag([sigma_range**2, sigma_bearing**2])
 
     def process_fn(state):
-        """Constant velocity motion model with noise."""
+        """Constant velocity motion model with process noise for maneuvering."""
         x, y, vx, vy = state
-        q = 0.1
+        # Higher process noise to account for maneuvering (circular motion)
+        q_pos = 0.05  # Position noise
+        q_vel = 2.0  # Velocity noise (high to adapt to turning)
         return np.array(
             [
-                x + vx * dt + np.random.randn() * q * dt,
-                y + vy * dt + np.random.randn() * q * dt,
-                vx + np.random.randn() * q,
-                vy + np.random.randn() * q,
+                x + vx * dt + np.random.randn() * q_pos,
+                y + vy * dt + np.random.randn() * q_pos,
+                vx + np.random.randn() * q_vel * dt,
+                vy + np.random.randn() * q_vel * dt,
             ]
         )
 
