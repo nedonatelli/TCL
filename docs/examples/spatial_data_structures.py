@@ -30,8 +30,14 @@ These data structures are essential for efficient data association
 in multi-target tracking and spatial analysis applications.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -149,7 +155,7 @@ def demo_kdtree_basics():
             showlegend=True,
             xaxis=dict(scaleanchor="y", scaleratio=1),
         )
-        fig.write_html("spatial_kdtree.html")
+        fig.write_html(str(OUTPUT_DIR / "spatial_kdtree.html"))
         print("\n  [Plot saved to spatial_kdtree.html]")
 
 
@@ -351,7 +357,7 @@ def demo_rtree():
             xaxis=dict(range=[-60, 60], scaleanchor="y", scaleratio=1),
             yaxis=dict(range=[-60, 60]),
         )
-        fig.write_html("spatial_rtree.html")
+        fig.write_html(str(OUTPUT_DIR / "spatial_rtree.html"))
         print("\n  [Plot saved to spatial_rtree.html]")
 
 

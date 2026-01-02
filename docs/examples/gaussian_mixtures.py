@@ -21,8 +21,14 @@ These algorithms are essential for multi-target tracking (PHD filters),
 hypothesis reduction in MHT, and general density estimation.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 from plotly.subplots import make_subplots
 
 # Global flag to control plotting
@@ -354,7 +360,7 @@ def demo_kmeans():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html("gaussian_kmeans.html")
+        fig.write_html(str(OUTPUT_DIR / "gaussian_kmeans.html"))
         print("\n  [Plot saved to gaussian_kmeans.html]")
 
 
@@ -468,7 +474,7 @@ def demo_elbow_method():
             width=700,
             showlegend=True,
         )
-        fig.write_html("gaussian_elbow.html")
+        fig.write_html(str(OUTPUT_DIR / "gaussian_elbow.html"))
         print("\n  [Plot saved to gaussian_elbow.html]")
 
 
@@ -611,7 +617,7 @@ def demo_dbscan():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html("gaussian_dbscan.html")
+        fig.write_html(str(OUTPUT_DIR / "gaussian_dbscan.html"))
         print("\n  [Plot saved to gaussian_dbscan.html]")
 
 

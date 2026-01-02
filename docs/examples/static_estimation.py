@@ -26,9 +26,15 @@ These methods are fundamental for parameter estimation, sensor calibration,
 and model fitting in the presence of noise and outliers.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -166,7 +172,7 @@ def demo_ordinary_least_squares():
         fig.update_yaxes(title_text="Residual", row=1, col=2)
 
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html("static_ols.html")
+        fig.write_html(str(OUTPUT_DIR / "static_ols.html"))
         print("\n  [Plot saved to static_ols.html]")
 
 
@@ -496,7 +502,7 @@ def demo_robust_estimation():
         fig.update_yaxes(title_text="Tukey weight", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=True)
-        fig.write_html("static_robust_estimation.html")
+        fig.write_html(str(OUTPUT_DIR / "static_robust_estimation.html"))
         print("\n  [Plot saved to static_robust_estimation.html]")
 
 
@@ -618,7 +624,7 @@ def demo_ransac():
             width=800,
             showlegend=True,
         )
-        fig.write_html("static_ransac.html")
+        fig.write_html(str(OUTPUT_DIR / "static_ransac.html"))
         print("\n  [Plot saved to static_ransac.html]")
 
 
@@ -818,7 +824,7 @@ def demo_model_selection():
         fig.update_yaxes(title_text="Information Criterion", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=True)
-        fig.write_html("static_model_selection.html")
+        fig.write_html(str(OUTPUT_DIR / "static_model_selection.html"))
         print("\n  [Plot saved to static_model_selection.html]")
 
 

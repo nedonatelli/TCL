@@ -16,6 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.mathematical_functions.signal_processing import (  # noqa: E402
     apply_filter,
@@ -319,9 +321,58 @@ def main() -> None:
     cfar_detection_demo()
     spectrum_analysis_demo()
 
+    # Visualization
+    visualize_filter_response()
+
     print("\n" + "=" * 60)
     print("Done!")
     print("=" * 60)
+
+
+def visualize_filter_response() -> None:
+    """Visualize digital filter frequency response."""
+    print("\nGenerating filter response visualization...")
+
+    fs = 1000.0
+    butter_filt = butter_design(order=4, cutoff=50.0, fs=fs, btype="low")
+    fir_filt_coeffs = fir_design(numtaps=64, cutoff=50.0, fs=fs)
+
+    # Compute magnitude responses
+    butter_resp = frequency_response(butter_filt, fs)
+    fir_resp = frequency_response(fir_filt_coeffs, fs)
+
+    fig = make_subplots(specs=[[{"secondary_y": False}]])
+
+    fig.add_trace(
+        go.Scatter(
+            x=butter_resp.frequencies,
+            y=20 * np.log10(np.maximum(butter_resp.magnitude, 1e-10)),
+            mode="lines",
+            name="Butterworth (4th order)",
+            line=dict(color="blue", width=2),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=fir_resp.frequencies,
+            y=20 * np.log10(np.maximum(fir_resp.magnitude, 1e-10)),
+            mode="lines",
+            name="FIR (order 64)",
+            line=dict(color="red", width=2, dash="dash"),
+        )
+    )
+
+    fig.update_layout(
+        title="Digital Filter Frequency Response Comparison",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Magnitude (dB)",
+        height=500,
+        width=800,
+        hovermode="x unified",
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":

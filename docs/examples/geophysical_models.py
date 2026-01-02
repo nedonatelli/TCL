@@ -22,9 +22,15 @@ These models are essential for high-precision navigation, geodesy,
 and aerospace applications.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -165,7 +171,7 @@ def demo_normal_gravity():
         fig.update_yaxes(title_text="Δg from Equator (mGal)", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=False)
-        fig.write_html("geophysical_gravity_latitude.html")
+        fig.write_html(str(OUTPUT_DIR / "geophysical_gravity_latitude.html"))
         print("\n  [Plot saved to geophysical_gravity_latitude.html]")
 
 
@@ -266,7 +272,7 @@ def demo_gravity_models():
         fig.update_yaxes(title_text="Gravity Reduction (%)", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=False)
-        fig.write_html("geophysical_gravity_altitude.html")
+        fig.write_html(str(OUTPUT_DIR / "geophysical_gravity_altitude.html"))
         print("\n  [Plot saved to geophysical_gravity_altitude.html]")
 
 
@@ -466,7 +472,7 @@ def demo_tidal_effects():
         fig.update_yaxes(title_text="Gravity Change (µGal)", row=2, col=1)
 
         fig.update_layout(height=600, width=1000)
-        fig.write_html("geophysical_tides.html")
+        fig.write_html(str(OUTPUT_DIR / "geophysical_tides.html"))
         print("\n  [Plot saved to geophysical_tides.html]")
 
 
@@ -597,7 +603,7 @@ def demo_magnetic_field():
         fig.update_yaxes(title_text="Latitude (°)", range=[-80, 80], row=1, col=2)
 
         fig.update_layout(height=500, width=1400)
-        fig.write_html("geophysical_magnetic_field.html")
+        fig.write_html(str(OUTPUT_DIR / "geophysical_magnetic_field.html"))
         print("\n  [Plot saved to geophysical_magnetic_field.html]")
 
 

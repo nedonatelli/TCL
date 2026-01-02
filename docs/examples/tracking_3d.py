@@ -25,9 +25,15 @@ Applications:
 dimension, which is essential for air and space applications.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -324,7 +330,7 @@ def demo_3d_kalman_filter():
         fig.update_xaxes(title_text="X (m)", row=1, col=3)
         fig.update_yaxes(title_text="Y (m)", row=1, col=3)
 
-        fig.write_html("tracking_3d_kalman.html")
+        fig.write_html(str(OUTPUT_DIR / "tracking_3d_kalman.html"))
         print("\n  [Plot saved to tracking_3d_kalman.html]")
 
     return estimates, true_states, measurements
@@ -496,7 +502,7 @@ def demo_3d_rts_smoother():
         fig.update_xaxes(title_text="Time step", row=1, col=3)
         fig.update_yaxes(title_text="Covariance Trace", row=1, col=3)
 
-        fig.write_html("tracking_3d_smoother.html")
+        fig.write_html(str(OUTPUT_DIR / "tracking_3d_smoother.html"))
         print("\n  [Plot saved to tracking_3d_smoother.html]")
 
 
@@ -744,7 +750,7 @@ def demo_spherical_measurements():
         fig.update_xaxes(title_text="Azimuth (deg)", row=1, col=3)
         fig.update_yaxes(title_text="Elevation (deg)", row=1, col=3)
 
-        fig.write_html("tracking_3d_radar.html")
+        fig.write_html(str(OUTPUT_DIR / "tracking_3d_radar.html"))
         print("\n  [Plot saved to tracking_3d_radar.html]")
 
 
@@ -993,7 +999,7 @@ def demo_multi_sensor_3d():
         fig.update_xaxes(title_text="X (m)", row=1, col=3)
         fig.update_yaxes(title_text="Z (m)", row=1, col=3)
 
-        fig.write_html("tracking_3d_multisensor.html")
+        fig.write_html(str(OUTPUT_DIR / "tracking_3d_multisensor.html"))
         print("\n  [Plot saved to tracking_3d_multisensor.html]")
 
 
@@ -1223,9 +1229,18 @@ def demo_3d_maneuvering_target():
             row=1,
             col=2,
         )
-        # Add phase markers
+        # Add phase markers using shapes (more compatible with mixed subplot types)
         for boundary in [40, 80]:
-            fig.add_vline(x=boundary, line_dash="dash", line_color="gray", row=1, col=2)
+            fig.add_shape(
+                type="line",
+                x0=boundary,
+                x1=boundary,
+                y0=0,
+                y1=1,
+                yref="y2 domain",
+                xref="x2",
+                line=dict(dash="dash", color="gray"),
+            )
 
         # Altitude profile
         fig.add_trace(
@@ -1266,8 +1281,18 @@ def demo_3d_maneuvering_target():
             row=1,
             col=3,
         )
+        # Add phase markers using shapes (compatible with mixed subplot types)
         for boundary in [40, 80]:
-            fig.add_vline(x=boundary, line_dash="dash", line_color="gray", row=1, col=3)
+            fig.add_shape(
+                type="line",
+                x0=boundary,
+                x1=boundary,
+                y0=0,
+                y1=1,
+                yref="y3 domain",
+                xref="x3",
+                line=dict(dash="dash", color="gray"),
+            )
 
         fig.update_layout(
             title="Maneuvering Target Tracking",
@@ -1280,7 +1305,7 @@ def demo_3d_maneuvering_target():
         fig.update_xaxes(title_text="Time step", row=1, col=3)
         fig.update_yaxes(title_text="Altitude Z (m)", row=1, col=3)
 
-        fig.write_html("tracking_3d_maneuver.html")
+        fig.write_html(str(OUTPUT_DIR / "tracking_3d_maneuver.html"))
         print("\n  [Plot saved to tracking_3d_maneuver.html]")
 
 

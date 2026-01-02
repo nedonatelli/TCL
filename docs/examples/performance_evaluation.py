@@ -16,6 +16,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -492,7 +496,7 @@ def plot_results(
     fig.update_xaxes(title_text="Time Step", row=2, col=2)
     fig.update_yaxes(title_text="Component Value", row=2, col=2)
 
-    fig.write_html("performance_evaluation.html")
+    fig.write_html(str(OUTPUT_DIR / "performance_evaluation.html"))
     print("\nInteractive plot saved to performance_evaluation.html")
     fig.show()
 

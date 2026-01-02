@@ -16,6 +16,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.mathematical_functions.transforms import (  # noqa: E402
     coherence,
@@ -352,9 +354,84 @@ def main() -> None:
     spectrogram_demo()
     wavelet_demo()
 
+    # Visualization
+    visualize_fft_analysis()
+
     print("\n" + "=" * 60)
     print("Done!")
     print("=" * 60)
+
+
+def visualize_fft_analysis() -> None:
+    """Visualize FFT analysis of multi-frequency signal."""
+    print("\nGenerating FFT analysis visualization...")
+
+    # Create test signal
+    fs = 1000.0
+    t = np.linspace(0, 1, int(fs), endpoint=False)
+    f1, f2, f3 = 50, 120, 200
+
+    signal = (
+        np.sin(2 * np.pi * f1 * t)
+        + 0.5 * np.sin(2 * np.pi * f2 * t)
+        + 0.25 * np.sin(2 * np.pi * f3 * t)
+    )
+    signal += 0.1 * np.random.randn(len(t))
+
+    # Compute FFT
+    X = fft(signal)
+    freqs = np.fft.fftfreq(len(signal), 1 / fs)
+
+    # Only positive frequencies
+    pos_mask = freqs >= 0
+    pos_freqs = freqs[pos_mask]
+    pos_mag = np.abs(X[pos_mask])
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=("Time Domain Signal", "Frequency Domain (FFT)"),
+    )
+
+    # Time domain
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=signal,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue", width=1),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Frequency domain
+    fig.add_trace(
+        go.Scatter(
+            x=pos_freqs[:500],
+            y=pos_mag[:500],
+            mode="lines",
+            name="Magnitude",
+            line=dict(color="red", width=1),
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Magnitude", row=1, col=2)
+
+    fig.update_layout(
+        title="FFT Analysis: Multi-Frequency Signal",
+        height=500,
+        width=1000,
+        showlegend=False,
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":

@@ -33,8 +33,14 @@ These algorithms are essential for spacecraft trajectory design,
 orbit determination, and space situational awareness.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
+
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Global flag to control plotting
 SHOW_PLOTS = True
@@ -307,7 +313,7 @@ def demo_orbit_propagation():
             width=800,
             showlegend=True,
         )
-        fig.write_html("orbital_propagation.html")
+        fig.write_html(str(OUTPUT_DIR / "orbital_propagation.html"))
         print("\n  [Plot saved to orbital_propagation.html]")
 
 

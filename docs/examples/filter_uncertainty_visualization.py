@@ -15,6 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Output directory for generated plots
+OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -591,25 +595,25 @@ def main():
     # 1. Tracking with ellipses
     print("\n1. Generating tracking with covariance ellipses...")
     fig1 = plot_tracking_with_ellipses(data)
-    fig1.write_html("filter_viz_tracking_ellipses.html")
+    fig1.write_html(str(OUTPUT_DIR / "filter_viz_tracking_ellipses.html"))
     print("   Saved to filter_viz_tracking_ellipses.html")
 
     # 2. Uncertainty evolution
     print("\n2. Generating uncertainty evolution plot...")
     fig2 = plot_uncertainty_evolution(data)
-    fig2.write_html("filter_viz_uncertainty_evolution.html")
+    fig2.write_html(str(OUTPUT_DIR / "filter_viz_uncertainty_evolution.html"))
     print("   Saved to filter_viz_uncertainty_evolution.html")
 
     # 3. Estimation errors
     print("\n3. Generating estimation error plot...")
     fig3 = plot_estimation_errors(data)
-    fig3.write_html("filter_viz_estimation_errors.html")
+    fig3.write_html(str(OUTPUT_DIR / "filter_viz_estimation_errors.html"))
     print("   Saved to filter_viz_estimation_errors.html")
 
     # 4. Animated tracking
     print("\n4. Generating animated tracking visualization...")
     fig4 = plot_animated_tracking(data)
-    fig4.write_html("filter_viz_animated.html")
+    fig4.write_html(str(OUTPUT_DIR / "filter_viz_animated.html"))
     print("   Saved to filter_viz_animated.html")
 
     # Show all figures

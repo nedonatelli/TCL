@@ -17,6 +17,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np  # noqa: E402
+import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.navigation import (  # noqa: E402
     WGS84,
@@ -508,9 +510,70 @@ def main() -> None:
     loose_coupling_demo()
     gnss_outage_demo()
 
+    # Visualization
+    visualize_navigation_trajectory()
+
     print("\n" + "=" * 60)
     print("Done!")
     print("=" * 60)
+
+
+def visualize_navigation_trajectory() -> None:
+    """Visualize INS navigation trajectory."""
+    print("\nGenerating navigation trajectory visualization...")
+
+    # Simulate a trajectory
+    np.random.seed(42)
+    n_steps = 200
+
+    # Create a circular trajectory
+    t = np.linspace(0, 2 * np.pi, n_steps)
+    x = 1000 * np.cos(t)
+    y = 1000 * np.sin(t)
+    z = 50 * np.sin(2 * t)
+
+    # Add noise
+    x_noisy = x + 5 * np.random.randn(n_steps)
+    y_noisy = y + 5 * np.random.randn(n_steps)
+    z_noisy = z + 2 * np.random.randn(n_steps)
+
+    # Create 3D trajectory plot
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            mode="lines",
+            line=dict(color="blue", width=3),
+            name="True Trajectory",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=x_noisy,
+            y=y_noisy,
+            z=z_noisy,
+            mode="markers",
+            marker=dict(size=4, color="red", opacity=0.5),
+            name="Measured Position",
+        )
+    )
+
+    fig.update_layout(
+        title="INS Navigation Trajectory: True vs Measured",
+        scene=dict(
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            zaxis_title="Z (m)",
+        ),
+        height=600,
+        width=800,
+    )
+
+    fig.show()
 
 
 if __name__ == "__main__":
