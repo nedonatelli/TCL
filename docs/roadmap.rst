@@ -55,6 +55,8 @@ Phase 15 (v1.1.0): Performance Infrastructure ✅
 * ``scripts/track_performance.py`` and ``scripts/detect_regressions.py``
 * CI workflows: ``benchmark-light.yml`` (PRs), ``benchmark-full.yml`` (main)
 * ``pytcl/logging_config.py`` with hierarchical logging and ``@timed`` decorator
+* ``docs/MODULE_TEMPLATE.md`` - Unified module documentation template
+* ``docs/modules/kalman_linear.md`` - Example module documentation
 
 Phase 14 (v0.22.5)
 ~~~~~~~~~~~~~~~~~~
