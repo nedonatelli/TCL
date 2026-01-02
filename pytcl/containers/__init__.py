@@ -3,8 +3,27 @@ Containers module.
 
 This module provides spatial data structures for efficient
 nearest neighbor queries, spatial indexing, and tracking containers.
+
+Spatial Index Hierarchy
+-----------------------
+All spatial index structures inherit from BaseSpatialIndex which defines
+a common interface for k-nearest neighbor and radius queries:
+
+    BaseSpatialIndex (abstract)
+    ├── KDTree - K-dimensional tree (Euclidean space)
+    ├── BallTree - Ball tree variant of KD-tree
+    ├── RTree - Rectangle tree for bounding boxes
+    └── MetricSpatialIndex (abstract)
+        ├── VPTree - Vantage point tree (any metric)
+        └── CoverTree - Cover tree (any metric)
 """
 
+from pytcl.containers.base import (
+    BaseSpatialIndex,
+    MetricSpatialIndex,
+    SpatialQueryResult,
+    validate_query_input,
+)
 from pytcl.containers.cluster_set import (
     ClusterSet,
     ClusterStats,
@@ -33,6 +52,11 @@ from pytcl.containers.track_list import TrackList, TrackListStats, TrackQuery
 from pytcl.containers.vptree import VPNode, VPTree, VPTreeResult
 
 __all__ = [
+    # Base classes
+    "BaseSpatialIndex",
+    "MetricSpatialIndex",
+    "SpatialQueryResult",
+    "validate_query_input",
     # K-D Tree
     "KDNode",
     "NearestNeighborResult",

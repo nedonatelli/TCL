@@ -16,6 +16,8 @@ from typing import Callable, List, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+
 
 class VPTreeResult(NamedTuple):
     """Result of VP-tree query.
@@ -56,7 +58,7 @@ class VPNode:
         self.right: Optional["VPNode"] = None
 
 
-class VPTree:
+class VPTree(MetricSpatialIndex):
     """
     Vantage Point Tree for metric space nearest neighbor search.
 
@@ -89,6 +91,11 @@ class VPTree:
 
     Query complexity is O(log n) on average but can degrade to O(n)
     for pathological distance distributions.
+
+    See Also
+    --------
+    MetricSpatialIndex : Abstract base class for metric-based spatial indices.
+    CoverTree : Alternative metric space index with theoretical guarantees.
     """
 
     def __init__(
@@ -96,25 +103,11 @@ class VPTree:
         data: ArrayLike,
         metric: Optional[Callable[[NDArray, NDArray], float]] = None,
     ):
-        self.data = np.asarray(data, dtype=np.float64)
-
-        if self.data.ndim != 2:
-            raise ValueError("Data must be 2-dimensional")
-
-        self.n_samples, self.n_features = self.data.shape
-
-        if metric is None:
-            self.metric = self._euclidean_distance
-        else:
-            self.metric = metric
+        super().__init__(data, metric)
 
         # Build tree
         indices = np.arange(self.n_samples)
         self.root = self._build_tree(indices)
-
-    def _euclidean_distance(self, x: NDArray, y: NDArray) -> float:
-        """Default Euclidean distance metric."""
-        return float(np.sqrt(np.sum((x - y) ** 2)))
 
     def _build_tree(self, indices: NDArray[np.intp]) -> Optional[VPNode]:
         """Recursively build the VP-tree."""
@@ -169,11 +162,7 @@ class VPTree:
         result : VPTreeResult
             Indices and distances of k nearest neighbors.
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
@@ -259,11 +248,7 @@ class VPTree:
         indices : list of lists
             For each query, list of indices within radius.
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
         results: List[List[int]] = []
 

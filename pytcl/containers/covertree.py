@@ -16,6 +16,8 @@ from typing import Callable, List, NamedTuple, Optional, Set, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+
 
 class CoverTreeResult(NamedTuple):
     """Result of Cover tree query.
@@ -60,7 +62,7 @@ class CoverTreeNode:
         self.children[level].append(child)
 
 
-class CoverTree:
+class CoverTree(MetricSpatialIndex):
     """
     Cover Tree for metric space nearest neighbor search.
 
@@ -93,6 +95,11 @@ class CoverTree:
 
     The implementation uses a simplified version of the original
     algorithm for clarity.
+
+    See Also
+    --------
+    MetricSpatialIndex : Abstract base class for metric-based spatial indices.
+    VPTree : Alternative metric space index using vantage points.
     """
 
     def __init__(
@@ -101,18 +108,8 @@ class CoverTree:
         metric: Optional[Callable[[NDArray, NDArray], float]] = None,
         base: float = 2.0,
     ):
-        self.data = np.asarray(data, dtype=np.float64)
-
-        if self.data.ndim != 2:
-            raise ValueError("Data must be 2-dimensional")
-
-        self.n_samples, self.n_features = self.data.shape
+        super().__init__(data, metric)
         self.base = base
-
-        if metric is None:
-            self.metric = self._euclidean_distance
-        else:
-            self.metric = metric
 
         # Compute distance cache for small datasets
         self._distance_cache: dict[Tuple[int, int], float] = {}
@@ -124,10 +121,6 @@ class CoverTree:
 
         if self.n_samples > 0:
             self._build_tree()
-
-    def _euclidean_distance(self, x: NDArray, y: NDArray) -> float:
-        """Default Euclidean distance metric."""
-        return float(np.sqrt(np.sum((x - y) ** 2)))
 
     def _distance(self, i: int, j: int) -> float:
         """Get distance between points i and j (with caching)."""
@@ -245,11 +238,7 @@ class CoverTree:
         result : CoverTreeResult
             Indices and distances of k nearest neighbors.
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
@@ -368,11 +357,7 @@ class CoverTree:
         indices : list of lists
             For each query, list of indices within radius.
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
         results: List[List[int]] = []
 

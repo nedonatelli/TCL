@@ -18,6 +18,8 @@ from typing import List, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.containers.base import BaseSpatialIndex, validate_query_input
+
 
 class KDNode:
     """A node in the k-d tree.
@@ -66,7 +68,7 @@ class NearestNeighborResult(NamedTuple):
     distances: NDArray[np.floating]
 
 
-class KDTree:
+class KDTree(BaseSpatialIndex):
     """
     K-D Tree for efficient spatial queries.
 
@@ -97,6 +99,11 @@ class KDTree:
 
     Query complexity is O(log n) on average for nearest neighbor search,
     though worst case is O(n) for highly unbalanced queries.
+
+    See Also
+    --------
+    BaseSpatialIndex : Abstract base class defining the spatial index interface.
+    BallTree : Alternative spatial index using hyperspheres.
     """
 
     def __init__(
@@ -104,12 +111,7 @@ class KDTree:
         data: ArrayLike,
         leaf_size: int = 10,
     ):
-        self.data = np.asarray(data, dtype=np.float64)
-
-        if self.data.ndim != 2:
-            raise ValueError("Data must be 2-dimensional (n_samples, n_features)")
-
-        self.n_samples, self.n_features = self.data.shape
+        super().__init__(data)
         self.leaf_size = leaf_size
 
         # Build the tree
@@ -173,11 +175,7 @@ class KDTree:
         >>> result.indices
         array([[0, 1]])
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
@@ -263,11 +261,7 @@ class KDTree:
         >>> tree.query_radius([[0, 0]], r=1.5)
         [[0, 1, 2]]
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
         results: List[List[int]] = []
 
@@ -331,7 +325,7 @@ class KDTree:
         return self.query_radius(X, r)
 
 
-class BallTree:
+class BallTree(BaseSpatialIndex):
     """
     Ball Tree for efficient spatial queries.
 
@@ -357,6 +351,11 @@ class BallTree:
     -----
     Ball trees have O(n log n) construction and O(log n) average-case
     query time. They can outperform k-d trees in high dimensions.
+
+    See Also
+    --------
+    BaseSpatialIndex : Abstract base class defining the spatial index interface.
+    KDTree : Alternative spatial index using axis-aligned splits.
     """
 
     def __init__(
@@ -364,12 +363,7 @@ class BallTree:
         data: ArrayLike,
         leaf_size: int = 10,
     ):
-        self.data = np.asarray(data, dtype=np.float64)
-
-        if self.data.ndim != 2:
-            raise ValueError("Data must be 2-dimensional")
-
-        self.n_samples, self.n_features = self.data.shape
+        super().__init__(data)
         self.leaf_size = leaf_size
 
         # Build tree using indices
@@ -459,11 +453,7 @@ class BallTree:
         result : NearestNeighborResult
             Indices and distances of k nearest neighbors.
         """
-        X = np.asarray(X, dtype=np.float64)
-
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-
+        X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
         all_distances = np.full((n_queries, k), np.inf)
@@ -477,6 +467,74 @@ class BallTree:
                 all_distances[i, :n_found] = distances
 
         return NearestNeighborResult(indices=all_indices, distances=all_distances)
+
+    def query_radius(
+        self,
+        X: ArrayLike,
+        r: float,
+    ) -> List[List[int]]:
+        """
+        Query the tree for all points within radius r.
+
+        Parameters
+        ----------
+        X : array_like
+            Query points of shape (n_queries, n_features) or (n_features,).
+        r : float
+            Query radius.
+
+        Returns
+        -------
+        indices : list of lists
+            For each query, a list of indices of points within radius r.
+        """
+        X = validate_query_input(X, self.n_features)
+        n_queries = X.shape[0]
+        results: List[List[int]] = []
+
+        for i in range(n_queries):
+            indices = self._query_radius_single(X[i], r)
+            results.append(indices)
+
+        return results
+
+    def _query_radius_single(
+        self,
+        query: NDArray[np.floating],
+        r: float,
+    ) -> List[int]:
+        """Find all points within radius r of query point."""
+        indices: List[int] = []
+
+        def _search(node_id: int) -> None:
+            if node_id < 0:
+                return
+
+            centroid = self._centroids[node_id]
+            radius = self._radii[node_id]
+
+            # Distance to ball surface
+            dist_to_center = np.sqrt(np.sum((query - centroid) ** 2))
+
+            # Prune if ball is farther than radius
+            if dist_to_center - radius > r:
+                return
+
+            if self._is_leaf[node_id]:
+                # Check all points in leaf
+                leaf_indices = self._leaf_indices[node_id]
+                if leaf_indices is not None:
+                    for idx in leaf_indices:
+                        dist = np.sqrt(np.sum((query - self.data[idx]) ** 2))
+                        if dist <= r:
+                            indices.append(idx)
+            else:
+                # Visit both children
+                _search(self._left[node_id])
+                _search(self._right[node_id])
+
+        _search(0)
+        return indices
 
     def _query_single(
         self,
