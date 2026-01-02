@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v1.0.0) - Production Release
+## Current State (v1.0.1) - Documentation Fix Release
 
 - **830+ functions** implemented across 146 Python modules
 - **1,598 tests** with comprehensive coverage (100% pass rate)
@@ -889,6 +889,7 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | **v0.22.5** | Documentation visualizations | Released 2026-01-01 |
 | **v0.22.6** | Documentation polish & release fixes | Released 2026-01-01 |
 | **v1.0.0** | **Full MATLAB TCL Parity** | Released 2026-01-01 ✅ |
+| **v1.0.1** | Documentation fixes | Released 2026-01-02 ✅ |
 
 ### Planned Versions (Performance & Advanced Features)
 
