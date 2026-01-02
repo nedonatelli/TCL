@@ -21,6 +21,7 @@ References
        https://earth-info.nga.mil/
 """
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -31,6 +32,9 @@ from numpy.typing import NDArray
 
 from .clenshaw import clenshaw_gravity, clenshaw_potential
 from .models import WGS84, normal_gravity_somigliana
+
+# Module logger
+_logger = logging.getLogger("pytcl.gravity.egm")
 
 
 class EGMCoefficients(NamedTuple):
@@ -317,6 +321,8 @@ def _load_coefficients_cached(
     data_dir = get_data_dir()
     filepath = data_dir / f"{model}.cof"
 
+    _logger.debug("Loading %s coefficients from %s", model, filepath)
+
     if not filepath.exists():
         raise FileNotFoundError(
             f"Coefficient file not found: {filepath}\n"
@@ -329,6 +335,13 @@ def _load_coefficients_cached(
     # Parse the file
     actual_n_max = n_max if n_max is not None else int(params["n_max_full"])
     C, S = parse_egm_file(filepath, actual_n_max)
+
+    _logger.info(
+        "Loaded %s coefficients: n_max=%d, array_size=%.1f MB",
+        model,
+        C.shape[0] - 1,
+        C.nbytes / 1024 / 1024 * 2,  # Both C and S arrays
+    )
 
     return EGMCoefficients(
         C=C,

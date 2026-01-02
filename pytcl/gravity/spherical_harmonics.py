@@ -11,10 +11,68 @@ References
 .. [2] O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
 """
 
+import logging
+from functools import lru_cache
 from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
+
+# Module logger
+_logger = logging.getLogger("pytcl.gravity.spherical_harmonics")
+
+# Cache configuration for Legendre polynomials
+_LEGENDRE_CACHE_DECIMALS = 8  # Precision for x quantization
+_LEGENDRE_CACHE_MAXSIZE = 64  # Max cached (n_max, m_max, x) combinations
+
+
+def _quantize_x(x: float) -> float:
+    """Quantize x value for cache key compatibility."""
+    return round(x, _LEGENDRE_CACHE_DECIMALS)
+
+
+@lru_cache(maxsize=_LEGENDRE_CACHE_MAXSIZE)
+def _associated_legendre_cached(
+    n_max: int,
+    m_max: int,
+    x_quantized: float,
+    normalized: bool,
+) -> tuple:
+    """Cached Legendre polynomial computation (internal).
+
+    Returns tuple of tuples for hashability.
+    """
+    P = np.zeros((n_max + 1, m_max + 1))
+    u = np.sqrt(1 - x_quantized * x_quantized)
+
+    P[0, 0] = 1.0
+
+    for m in range(1, m_max + 1):
+        if normalized:
+            P[m, m] = u * np.sqrt((2 * m + 1) / (2 * m)) * P[m - 1, m - 1]
+        else:
+            P[m, m] = (2 * m - 1) * u * P[m - 1, m - 1]
+
+    for m in range(m_max):
+        if m + 1 <= n_max:
+            if normalized:
+                P[m + 1, m] = x_quantized * np.sqrt(2 * m + 3) * P[m, m]
+            else:
+                P[m + 1, m] = x_quantized * (2 * m + 1) * P[m, m]
+
+    for m in range(m_max + 1):
+        for n in range(m + 2, n_max + 1):
+            if normalized:
+                a_nm = np.sqrt((4 * n * n - 1) / (n * n - m * m))
+                b_nm = np.sqrt(((n - 1) ** 2 - m * m) / (4 * (n - 1) ** 2 - 1))
+                P[n, m] = a_nm * (x_quantized * P[n - 1, m] - b_nm * P[n - 2, m])
+            else:
+                P[n, m] = (
+                    (2 * n - 1) * x_quantized * P[n - 1, m] - (n + m - 1) * P[n - 2, m]
+                ) / (n - m)
+
+    # Convert to tuple of tuples for hashability
+    return tuple(tuple(row) for row in P)
 
 
 def associated_legendre(
@@ -53,6 +111,9 @@ def associated_legendre(
 
         \\int_{-1}^{1} [\\bar{P}_n^m(x)]^2 dx = \\frac{2}{2n+1}
 
+    Results are cached for repeated queries with the same parameters.
+    Cache key quantizes x to 8 decimal places (~1e-8 precision).
+
     Examples
     --------
     >>> P = associated_legendre(2, 2, 0.5)
@@ -63,42 +124,10 @@ def associated_legendre(
     if not -1 <= x <= 1:
         raise ValueError("x must be in [-1, 1]")
 
-    P = np.zeros((n_max + 1, m_max + 1))
-
-    # Compute sqrt(1 - x^2) = sin(theta) for colatitude
-    u = np.sqrt(1 - x * x)
-
-    # Seed values
-    P[0, 0] = 1.0
-
-    # Sectoral recursion: P_m^m from P_{m-1}^{m-1}
-    for m in range(1, m_max + 1):
-        if normalized:
-            P[m, m] = u * np.sqrt((2 * m + 1) / (2 * m)) * P[m - 1, m - 1]
-        else:
-            P[m, m] = (2 * m - 1) * u * P[m - 1, m - 1]
-
-    # Compute P_{m+1}^m from P_m^m
-    for m in range(m_max):
-        if m + 1 <= n_max:
-            if normalized:
-                P[m + 1, m] = x * np.sqrt(2 * m + 3) * P[m, m]
-            else:
-                P[m + 1, m] = x * (2 * m + 1) * P[m, m]
-
-    # General recursion: P_n^m from P_{n-1}^m and P_{n-2}^m
-    for m in range(m_max + 1):
-        for n in range(m + 2, n_max + 1):
-            if normalized:
-                a_nm = np.sqrt((4 * n * n - 1) / (n * n - m * m))
-                b_nm = np.sqrt(((n - 1) ** 2 - m * m) / (4 * (n - 1) ** 2 - 1))
-                P[n, m] = a_nm * (x * P[n - 1, m] - b_nm * P[n - 2, m])
-            else:
-                P[n, m] = (
-                    (2 * n - 1) * x * P[n - 1, m] - (n + m - 1) * P[n - 2, m]
-                ) / (n - m)
-
-    return P
+    # Use cached computation
+    x_q = _quantize_x(x)
+    cached = _associated_legendre_cached(n_max, m_max, x_q, normalized)
+    return np.array(cached)
 
 
 def associated_legendre_derivative(
@@ -229,6 +258,14 @@ def spherical_harmonic_sum(
     """
     if n_max is None:
         n_max = C.shape[0] - 1
+
+    _logger.debug(
+        "spherical_harmonic_sum: lat=%.4f, lon=%.4f, r=%.1f, n_max=%d",
+        lat,
+        lon,
+        r,
+        n_max,
+    )
 
     # Colatitude for Legendre polynomials
     colat = np.pi / 2 - lat
@@ -495,6 +532,28 @@ def associated_legendre_scaled(
     return P_scaled, scale_exp
 
 
+def clear_legendre_cache() -> None:
+    """Clear cached Legendre polynomial results.
+
+    Call this function to clear the cached associated Legendre
+    polynomial arrays. Useful when memory is constrained or after
+    processing a batch with different colatitude values.
+    """
+    _associated_legendre_cached.cache_clear()
+    _logger.debug("Legendre polynomial cache cleared")
+
+
+def get_legendre_cache_info():
+    """Get cache statistics for Legendre polynomials.
+
+    Returns
+    -------
+    CacheInfo
+        Named tuple with hits, misses, maxsize, currsize.
+    """
+    return _associated_legendre_cached.cache_info()
+
+
 __all__ = [
     "associated_legendre",
     "associated_legendre_derivative",
@@ -502,4 +561,6 @@ __all__ = [
     "gravity_acceleration",
     "legendre_scaling_factors",
     "associated_legendre_scaled",
+    "clear_legendre_cache",
+    "get_legendre_cache_info",
 ]

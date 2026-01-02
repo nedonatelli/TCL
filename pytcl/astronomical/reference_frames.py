@@ -21,12 +21,30 @@ References
        A&A, 2003.
 """
 
+import logging
+from functools import lru_cache
 from typing import Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.astronomical.time_systems import JD_J2000
+
+# Module logger
+_logger = logging.getLogger("pytcl.astronomical.reference_frames")
+
+# Cache configuration
+_CACHE_JD_DECIMALS = 6  # ~86ms precision for JD quantization
+_CACHE_MAXSIZE = 128  # Max cached epochs
+
+
+def _quantize_jd(jd: float) -> float:
+    """Quantize Julian date for cache key compatibility.
+
+    Rounds to _CACHE_JD_DECIMALS decimal places (~86ms precision).
+    This enables cache hits for nearly identical epochs.
+    """
+    return round(jd, _CACHE_JD_DECIMALS)
 
 
 def julian_centuries_j2000(jd: float) -> float:
@@ -78,6 +96,37 @@ def precession_angles_iau76(T: float) -> Tuple[float, float, float]:
     )
 
 
+@lru_cache(maxsize=_CACHE_MAXSIZE)
+def _precession_matrix_cached(jd_quantized: float) -> tuple:
+    """Cached precession matrix computation (internal).
+
+    Returns tuple of tuples for hashability.
+    """
+    T = julian_centuries_j2000(jd_quantized)
+    zeta, theta, z = precession_angles_iau76(T)
+
+    cos_zeta = np.cos(zeta)
+    sin_zeta = np.sin(zeta)
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    cos_z = np.cos(z)
+    sin_z = np.sin(z)
+
+    return (
+        (
+            cos_zeta * cos_theta * cos_z - sin_zeta * sin_z,
+            -sin_zeta * cos_theta * cos_z - cos_zeta * sin_z,
+            -sin_theta * cos_z,
+        ),
+        (
+            cos_zeta * cos_theta * sin_z + sin_zeta * cos_z,
+            -sin_zeta * cos_theta * sin_z + cos_zeta * cos_z,
+            -sin_theta * sin_z,
+        ),
+        (cos_zeta * sin_theta, -sin_zeta * sin_theta, cos_theta),
+    )
+
+
 def precession_matrix_iau76(jd: float) -> NDArray[np.floating]:
     """
     Compute IAU 1976 precession matrix from J2000 to date.
@@ -92,34 +141,15 @@ def precession_matrix_iau76(jd: float) -> NDArray[np.floating]:
     P : ndarray
         Precession rotation matrix (3x3).
         Transforms from J2000 (GCRF) to mean of date.
+
+    Notes
+    -----
+    Results are cached for repeated queries at the same epoch.
+    Cache key is quantized to ~86ms precision.
     """
-    T = julian_centuries_j2000(jd)
-    zeta, theta, z = precession_angles_iau76(T)
-
-    cos_zeta = np.cos(zeta)
-    sin_zeta = np.sin(zeta)
-    cos_theta = np.cos(theta)
-    sin_theta = np.sin(theta)
-    cos_z = np.cos(z)
-    sin_z = np.sin(z)
-
-    P = np.array(
-        [
-            [
-                cos_zeta * cos_theta * cos_z - sin_zeta * sin_z,
-                -sin_zeta * cos_theta * cos_z - cos_zeta * sin_z,
-                -sin_theta * cos_z,
-            ],
-            [
-                cos_zeta * cos_theta * sin_z + sin_zeta * cos_z,
-                -sin_zeta * cos_theta * sin_z + cos_zeta * cos_z,
-                -sin_theta * sin_z,
-            ],
-            [cos_zeta * sin_theta, -sin_zeta * sin_theta, cos_theta],
-        ]
-    )
-
-    return P
+    jd_q = _quantize_jd(jd)
+    cached = _precession_matrix_cached(jd_q)
+    return np.array(cached)
 
 
 def nutation_angles_iau80(jd: float) -> Tuple[float, float]:
@@ -203,6 +233,38 @@ def mean_obliquity_iau80(jd: float) -> float:
     return eps0_arcsec * np.pi / (180 * 3600)
 
 
+@lru_cache(maxsize=_CACHE_MAXSIZE)
+def _nutation_matrix_cached(jd_quantized: float) -> tuple:
+    """Cached nutation matrix computation (internal).
+
+    Returns tuple of tuples for hashability.
+    """
+    dpsi, deps = nutation_angles_iau80(jd_quantized)
+    eps0 = mean_obliquity_iau80(jd_quantized)
+    eps = eps0 + deps
+
+    cos_eps0 = np.cos(eps0)
+    sin_eps0 = np.sin(eps0)
+    cos_eps = np.cos(eps)
+    sin_eps = np.sin(eps)
+    cos_dpsi = np.cos(dpsi)
+    sin_dpsi = np.sin(dpsi)
+
+    return (
+        (cos_dpsi, -sin_dpsi * cos_eps0, -sin_dpsi * sin_eps0),
+        (
+            sin_dpsi * cos_eps,
+            cos_dpsi * cos_eps0 * cos_eps + sin_eps0 * sin_eps,
+            cos_dpsi * sin_eps0 * cos_eps - cos_eps0 * sin_eps,
+        ),
+        (
+            sin_dpsi * sin_eps,
+            cos_dpsi * cos_eps0 * sin_eps - sin_eps0 * cos_eps,
+            cos_dpsi * sin_eps0 * sin_eps + cos_eps0 * cos_eps,
+        ),
+    )
+
+
 def nutation_matrix(jd: float) -> NDArray[np.floating]:
     """
     Compute nutation matrix.
@@ -217,35 +279,15 @@ def nutation_matrix(jd: float) -> NDArray[np.floating]:
     N : ndarray
         Nutation rotation matrix (3x3).
         Transforms from mean of date to true of date.
+
+    Notes
+    -----
+    Results are cached for repeated queries at the same epoch.
+    Cache key is quantized to ~86ms precision.
     """
-    dpsi, deps = nutation_angles_iau80(jd)
-    eps0 = mean_obliquity_iau80(jd)
-    eps = eps0 + deps
-
-    cos_eps0 = np.cos(eps0)
-    sin_eps0 = np.sin(eps0)
-    cos_eps = np.cos(eps)
-    sin_eps = np.sin(eps)
-    cos_dpsi = np.cos(dpsi)
-    sin_dpsi = np.sin(dpsi)
-
-    N = np.array(
-        [
-            [cos_dpsi, -sin_dpsi * cos_eps0, -sin_dpsi * sin_eps0],
-            [
-                sin_dpsi * cos_eps,
-                cos_dpsi * cos_eps0 * cos_eps + sin_eps0 * sin_eps,
-                cos_dpsi * sin_eps0 * cos_eps - cos_eps0 * sin_eps,
-            ],
-            [
-                sin_dpsi * sin_eps,
-                cos_dpsi * cos_eps0 * sin_eps - sin_eps0 * cos_eps,
-                cos_dpsi * sin_eps0 * sin_eps + cos_eps0 * cos_eps,
-            ],
-        ]
-    )
-
-    return N
+    jd_q = _quantize_jd(jd)
+    cached = _nutation_matrix_cached(jd_q)
+    return np.array(cached)
 
 
 def earth_rotation_angle(jd_ut1: float) -> float:
@@ -647,6 +689,33 @@ def equatorial_to_ecliptic(
     return R @ r_eq
 
 
+def clear_transformation_cache() -> None:
+    """Clear cached transformation matrices.
+
+    Call this function to clear all cached precession and nutation
+    matrices. Useful when memory is constrained or after processing
+    a batch of observations at different epochs.
+    """
+    _precession_matrix_cached.cache_clear()
+    _nutation_matrix_cached.cache_clear()
+    _logger.debug("Transformation matrix cache cleared")
+
+
+def get_cache_info() -> dict:
+    """Get cache statistics for transformation matrices.
+
+    Returns
+    -------
+    dict
+        Dictionary with 'precession' and 'nutation' keys, each containing
+        CacheInfo namedtuple with hits, misses, maxsize, currsize.
+    """
+    return {
+        "precession": _precession_matrix_cached.cache_info(),
+        "nutation": _nutation_matrix_cached.cache_info(),
+    }
+
+
 __all__ = [
     # Time utilities
     "julian_centuries_j2000",
@@ -674,4 +743,7 @@ __all__ = [
     # Ecliptic/equatorial
     "ecliptic_to_equatorial",
     "equatorial_to_ecliptic",
+    # Cache management
+    "clear_transformation_cache",
+    "get_cache_info",
 ]
