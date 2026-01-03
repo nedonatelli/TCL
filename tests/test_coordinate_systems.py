@@ -1202,3 +1202,121 @@ class TestNumericalJacobian:
         # Gradient: [2*x0, 2*x1, 2*x2] = [2, 4, 6]
         expected = np.array([[2, 4, 6]], dtype=np.float64)
         np.testing.assert_allclose(J, expected, atol=1e-5)
+
+
+class TestSEZConversions:
+    """Tests for SEZ (South-East-Zenith) coordinate conversions."""
+
+    def test_geodetic2sez_at_reference_point(self):
+        """SEZ at reference point should be zero."""
+        from pytcl.coordinate_systems.conversions.geodetic import geodetic2sez
+
+        lat_ref = np.radians(40.0)
+        lon_ref = np.radians(-105.0)
+        alt_ref = 1000.0  # meters
+
+        sez = geodetic2sez(lat_ref, lon_ref, alt_ref, lat_ref, lon_ref, alt_ref)
+        np.testing.assert_allclose(sez, np.zeros(3), atol=1e-10)
+
+    def test_sez_geodetic_roundtrip(self):
+        """Test SEZ <-> geodetic roundtrip."""
+        from pytcl.coordinate_systems.conversions.geodetic import (
+            geodetic2sez,
+            sez2geodetic,
+        )
+
+        lat_ref = np.radians(40.0)
+        lon_ref = np.radians(-105.0)
+        alt_ref = 1000.0
+
+        # Target point slightly offset
+        lat_tgt = np.radians(40.01)
+        lon_tgt = np.radians(-104.99)
+        alt_tgt = 1100.0
+
+        # Forward
+        sez = geodetic2sez(lat_tgt, lon_tgt, alt_tgt, lat_ref, lon_ref, alt_ref)
+
+        # Inverse
+        lat_back, lon_back, alt_back = sez2geodetic(
+            sez, lat_ref, lon_ref, alt_ref
+        )
+
+        np.testing.assert_allclose([lat_back, lon_back, alt_back], [lat_tgt, lon_tgt, alt_tgt], rtol=1e-9)
+
+    def test_sez_distance_calculation(self):
+        """Verify distance calculation using SEZ."""
+        from pytcl.coordinate_systems.conversions.geodetic import (
+            geodetic2sez,
+            geodetic2ecef,
+        )
+
+        lat_ref = np.radians(40.0)
+        lon_ref = np.radians(-105.0)
+        alt_ref = 0.0
+
+        lat_tgt = np.radians(40.01)
+        lon_tgt = np.radians(-105.01)
+        alt_tgt = 0.0
+
+        # SEZ conversion
+        sez = geodetic2sez(lat_tgt, lon_tgt, alt_tgt, lat_ref, lon_ref, alt_ref)
+        sez_distance = np.linalg.norm(sez)
+
+        # ECEF distance (should be similar for small distances)
+        ecef_ref = geodetic2ecef(lat_ref, lon_ref, alt_ref)
+        ecef_tgt = geodetic2ecef(lat_tgt, lon_tgt, alt_tgt)
+        ecef_distance = np.linalg.norm(ecef_tgt - ecef_ref)
+
+        # SEZ distance should be close to ECEF distance for small separations
+        np.testing.assert_allclose(sez_distance, ecef_distance, rtol=0.01)
+
+    def test_sez_elevation_azimuth(self):
+        """Verify elevation and azimuth computation from SEZ."""
+        from pytcl.coordinate_systems.conversions.geodetic import geodetic2sez
+
+        lat_ref = np.radians(40.0)
+        lon_ref = np.radians(-105.0)
+        alt_ref = 1000.0
+
+        # Target directly east (azimuth = 90 degrees)
+        lat_tgt = lat_ref
+        lon_tgt = lon_ref + np.radians(0.1)
+        alt_tgt = alt_ref
+
+        sez = geodetic2sez(lat_tgt, lon_tgt, alt_tgt, lat_ref, lon_ref, alt_ref)
+
+        # In SEZ: S=south, E=east, Z=zenith
+        # For eastward target: S should be small relative to E, Z~0
+        assert abs(sez[0]) < abs(sez[1]), "South component should be smaller than east"
+        assert sez[1] > 0.0, "East component should be positive"
+        assert sez[2] < 1000.0, "Zenith component should be small for same altitude"
+
+        # Compute elevation and azimuth
+        rho = np.linalg.norm(sez[:2])  # Horizontal distance
+        elevation = np.arctan2(sez[2], rho)
+        azimuth = np.arctan2(sez[1], sez[0])  # 0=South, pi/2=East
+
+        # Should be roughly east (azimuth near pi/2)
+        assert elevation < np.radians(1.0), "Low elevation for same altitude"
+
+    def test_sez_north_target(self):
+        """SEZ for northward target."""
+        from pytcl.coordinate_systems.conversions.geodetic import geodetic2sez
+
+        lat_ref = np.radians(0.0)
+        lon_ref = np.radians(0.0)
+        alt_ref = 0.0
+
+        # Target to the north
+        lat_tgt = np.radians(1.0)
+        lon_tgt = lon_ref
+        alt_tgt = alt_ref
+
+        sez = geodetic2sez(lat_tgt, lon_tgt, alt_tgt, lat_ref, lon_ref, alt_ref)
+
+        # For northward target, the magnitude should be large and east component small
+        total_distance = np.linalg.norm(sez)
+        assert total_distance > 100000, "Distance should be significant"
+        assert abs(sez[1]) < abs(sez[0]), "East component should be smaller than meridional"
+

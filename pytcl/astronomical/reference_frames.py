@@ -1302,6 +1302,106 @@ def itrf_to_tod(
     return R.T @ (W.T @ r_itrf)
 
 
+def gcrf_to_pef(
+    r_gcrf: NDArray[np.floating],
+    jd_ut1: float,
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from GCRF (inertial) to PEF (Earth-fixed, rotation only).
+
+    PEF (Pseudo-Earth Fixed) is an intermediate reference frame between
+    GCRF and ITRF. It includes precession, nutation, and Earth rotation,
+    but excludes polar motion.
+
+    Parameters
+    ----------
+    r_gcrf : ndarray
+        Position in GCRF (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_pef : ndarray
+        Position in PEF (km), shape (3,).
+
+    Notes
+    -----
+    The transformation chain is: GCRF -> MOD -> TOD -> PEF
+    - Precession: GCRF -> MOD
+    - Nutation: MOD -> TOD
+    - Sidereal rotation: TOD -> PEF
+
+    See Also
+    --------
+    pef_to_gcrf : Inverse transformation
+    gcrf_to_itrf : Includes polar motion
+
+    References
+    ----------
+    .. [1] Vallado et al., "Fundamentals of Astrodynamics and Applications", 4th ed.
+    """
+    # Precession: GCRF -> MOD
+    P = precession_matrix_iau76(jd_tt)
+    r_mod = P @ r_gcrf
+
+    # Nutation: MOD -> TOD
+    N = nutation_matrix(jd_tt)
+    r_tod = N @ r_mod
+
+    # Sidereal rotation: TOD -> PEF
+    gast = gast_iau82(jd_ut1, jd_tt)
+    R = sidereal_rotation_matrix(gast)
+    r_pef = R @ r_tod
+
+    return r_pef
+
+
+def pef_to_gcrf(
+    r_pef: NDArray[np.floating],
+    jd_ut1: float,
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from PEF (Earth-fixed, rotation only) to GCRF (inertial).
+
+    Inverse of gcrf_to_pef.
+
+    Parameters
+    ----------
+    r_pef : ndarray
+        Position in PEF (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_gcrf : ndarray
+        Position in GCRF (km), shape (3,).
+
+    See Also
+    --------
+    gcrf_to_pef : Forward transformation
+    """
+    # Compute rotation matrices
+    P = precession_matrix_iau76(jd_tt)
+    N = nutation_matrix(jd_tt)
+    gast = gast_iau82(jd_ut1, jd_tt)
+    R = sidereal_rotation_matrix(gast)
+
+    # Inverse transformation: GCRF = P.T * N.T * R.T * PEF
+    r_tod = R.T @ r_pef
+    r_mod = N.T @ r_tod
+    r_gcrf = P.T @ r_mod
+
+    return r_gcrf
+
+
 def clear_transformation_cache() -> None:
     """Clear cached transformation matrices.
 
@@ -1351,6 +1451,8 @@ __all__ = [
     # Full transformations
     "gcrf_to_itrf",
     "itrf_to_gcrf",
+    "gcrf_to_pef",
+    "pef_to_gcrf",
     "eci_to_ecef",
     "ecef_to_eci",
     # Ecliptic/equatorial

@@ -418,6 +418,31 @@ class TestReferenceFrames:
 
         assert_allclose(r_eq[0], r_ecl[0], rtol=1e-10)
 
+    def test_gcrf_pef_roundtrip(self):
+        """Test GCRF <-> PEF roundtrip."""
+        from pytcl.astronomical.reference_frames import gcrf_to_pef, pef_to_gcrf
+
+        r_gcrf = np.array([5102.5096, 6123.01152, 6378.1363])
+        jd_ut1 = JD_J2000 + 100
+        jd_tt = jd_ut1 + 32.184 / 86400
+
+        r_pef = gcrf_to_pef(r_gcrf, jd_ut1, jd_tt)
+        r_gcrf_back = pef_to_gcrf(r_pef, jd_ut1, jd_tt)
+
+        assert_allclose(r_gcrf_back, r_gcrf, rtol=1e-10)
+
+    def test_pef_magnitude_preserved(self):
+        """Magnitude should be preserved in GCRF -> PEF transformation."""
+        from pytcl.astronomical.reference_frames import gcrf_to_pef
+
+        r_gcrf = np.array([5102.5096, 6123.01152, 6378.1363])
+        jd_ut1 = JD_J2000 + 100
+        jd_tt = jd_ut1 + 32.184 / 86400
+
+        r_pef = gcrf_to_pef(r_gcrf, jd_ut1, jd_tt)
+
+        assert_allclose(np.linalg.norm(r_pef), np.linalg.norm(r_gcrf), rtol=1e-10)
+
 
 class TestIntegration:
     """Integration tests combining multiple components."""

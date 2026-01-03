@@ -525,6 +525,243 @@ def ned2enu(ned: ArrayLike) -> NDArray[np.floating]:
     return np.array([ned[1], ned[0], -ned[2]], dtype=np.float64)
 
 
+def geodetic2sez(
+    lat: ArrayLike,
+    lon: ArrayLike,
+    alt: ArrayLike,
+    lat_ref: float,
+    lon_ref: float,
+    alt_ref: float,
+    a: float = WGS84.a,
+    f: float = WGS84.f,
+) -> NDArray[np.floating]:
+    """
+    Convert geodetic coordinates to local SEZ (South-East-Zenith) coordinates.
+
+    SEZ is a horizon-relative coordinate frame where:
+    - S (South) points in the southward direction
+    - E (East) points in the eastward direction
+    - Z (Zenith) points upward (away from Earth center)
+
+    Parameters
+    ----------
+    lat : array_like
+        Geodetic latitude in radians.
+    lon : array_like
+        Geodetic longitude in radians.
+    alt : array_like
+        Altitude in meters.
+    lat_ref : float
+        Reference point latitude in radians.
+    lon_ref : float
+        Reference point longitude in radians.
+    alt_ref : float
+        Reference point altitude in meters.
+    a : float, optional
+        Semi-major axis of the reference ellipsoid.
+    f : float, optional
+        Flattening of the reference ellipsoid.
+
+    Returns
+    -------
+    sez : ndarray
+        Local SEZ coordinates [south, east, zenith] in meters.
+
+    See Also
+    --------
+    sez2geodetic : Inverse conversion.
+    ecef2sez : ECEF to SEZ conversion.
+
+    Notes
+    -----
+    SEZ is equivalent to NED when azimuth is measured from south.
+    Conversion: SEZ = [S, E, Z] = [NED[0], NED[1], -NED[2]]
+
+    Examples
+    --------
+    >>> sez = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)
+    """
+    # Convert both to ECEF
+    ecef = geodetic2ecef(lat, lon, alt, a, f)
+    ecef_ref = geodetic2ecef(lat_ref, lon_ref, alt_ref, a, f)
+
+    # Get SEZ from ECEF difference
+    return ecef2sez(ecef, lat_ref, lon_ref, ecef_ref)
+
+
+def ecef2sez(
+    ecef: ArrayLike,
+    lat_ref: float,
+    lon_ref: float,
+    ecef_ref: Optional[ArrayLike] = None,
+) -> NDArray[np.floating]:
+    """
+    Convert ECEF coordinates to local SEZ coordinates.
+
+    Parameters
+    ----------
+    ecef : array_like
+        ECEF coordinates [X, Y, Z] in meters, shape (3,) or (3, N).
+    lat_ref : float
+        Reference point latitude in radians.
+    lon_ref : float
+        Reference point longitude in radians.
+    ecef_ref : array_like, optional
+        Reference ECEF position. If None, the reference point is
+        at (lat_ref, lon_ref) with zero altitude.
+
+    Returns
+    -------
+    sez : ndarray
+        SEZ coordinates [south, east, zenith] in meters.
+
+    See Also
+    --------
+    sez2ecef : Inverse conversion.
+    """
+    ecef = np.asarray(ecef, dtype=np.float64)
+
+    if ecef_ref is None:
+        ecef_ref = geodetic2ecef(lat_ref, lon_ref, 0.0)
+    else:
+        ecef_ref = np.asarray(ecef_ref, dtype=np.float64)
+
+    # Relative position in ECEF
+    if ecef.ndim == 1:
+        delta_ecef = ecef - ecef_ref
+    else:
+        if ecef.shape[0] != 3:
+            ecef = ecef.T
+        if ecef_ref.ndim == 1:
+            delta_ecef = ecef - ecef_ref[:, np.newaxis]
+        else:
+            delta_ecef = ecef - ecef_ref[:, np.newaxis]
+
+    # Rotation matrix from ECEF to SEZ
+    sin_lat = np.sin(lat_ref)
+    cos_lat = np.cos(lat_ref)
+    sin_lon = np.sin(lon_ref)
+    cos_lon = np.cos(lon_ref)
+
+    # SEZ rotation matrix (transforms ECEF delta to SEZ)
+    # S = -sin(lat)*cos(lon)*dX - sin(lat)*sin(lon)*dY + cos(lat)*dZ
+    # E = -sin(lon)*dX + cos(lon)*dY
+    # Z = cos(lat)*cos(lon)*dX + cos(lat)*sin(lon)*dY + sin(lat)*dZ
+
+    if delta_ecef.ndim == 1:
+        s = -sin_lat * cos_lon * delta_ecef[0] - sin_lat * sin_lon * delta_ecef[1] + cos_lat * delta_ecef[2]
+        e = -sin_lon * delta_ecef[0] + cos_lon * delta_ecef[1]
+        z = cos_lat * cos_lon * delta_ecef[0] + cos_lat * sin_lon * delta_ecef[1] + sin_lat * delta_ecef[2]
+        return np.array([s, e, z], dtype=np.float64)
+    else:
+        s = -sin_lat * cos_lon * delta_ecef[0, :] - sin_lat * sin_lon * delta_ecef[1, :] + cos_lat * delta_ecef[2, :]
+        e = -sin_lon * delta_ecef[0, :] + cos_lon * delta_ecef[1, :]
+        z = cos_lat * cos_lon * delta_ecef[0, :] + cos_lat * sin_lon * delta_ecef[1, :] + sin_lat * delta_ecef[2, :]
+        return np.array([s, e, z], dtype=np.float64)
+
+
+def sez2ecef(
+    sez: ArrayLike,
+    lat_ref: float,
+    lon_ref: float,
+    ecef_ref: Optional[ArrayLike] = None,
+) -> NDArray[np.floating]:
+    """
+    Convert local SEZ coordinates to ECEF coordinates.
+
+    Parameters
+    ----------
+    sez : array_like
+        SEZ coordinates [south, east, zenith] in meters, shape (3,) or (3, N).
+    lat_ref : float
+        Reference point latitude in radians.
+    lon_ref : float
+        Reference point longitude in radians.
+    ecef_ref : array_like, optional
+        Reference ECEF position. If None, the reference point is
+        at (lat_ref, lon_ref) with zero altitude.
+
+    Returns
+    -------
+    ecef : ndarray
+        ECEF coordinates [X, Y, Z] in meters.
+
+    See Also
+    --------
+    ecef2sez : Forward conversion.
+    """
+    sez = np.asarray(sez, dtype=np.float64)
+
+    if ecef_ref is None:
+        ecef_ref = geodetic2ecef(lat_ref, lon_ref, 0.0)
+    else:
+        ecef_ref = np.asarray(ecef_ref, dtype=np.float64)
+
+    # Rotation matrix from SEZ to ECEF (transpose of ECEF to SEZ)
+    sin_lat = np.sin(lat_ref)
+    cos_lat = np.cos(lat_ref)
+    sin_lon = np.sin(lon_ref)
+    cos_lon = np.cos(lon_ref)
+
+    # Inverse rotation: ECEF = ECEF_ref + R_inv @ SEZ
+    if sez.ndim == 1:
+        dX = -sin_lat * cos_lon * sez[0] - sin_lon * sez[1] + cos_lat * cos_lon * sez[2]
+        dY = -sin_lat * sin_lon * sez[0] + cos_lon * sez[1] + cos_lat * sin_lon * sez[2]
+        dZ = cos_lat * sez[0] + sin_lat * sez[2]
+        return ecef_ref + np.array([dX, dY, dZ], dtype=np.float64)
+    else:
+        if sez.shape[0] != 3:
+            sez = sez.T
+        dX = -sin_lat * cos_lon * sez[0, :] - sin_lon * sez[1, :] + cos_lat * cos_lon * sez[2, :]
+        dY = -sin_lat * sin_lon * sez[0, :] + cos_lon * sez[1, :] + cos_lat * sin_lon * sez[2, :]
+        dZ = cos_lat * sez[0, :] + sin_lat * sez[2, :]
+        return ecef_ref[:, np.newaxis] + np.array([dX, dY, dZ], dtype=np.float64)
+
+
+def sez2geodetic(
+    sez: ArrayLike,
+    lat_ref: float,
+    lon_ref: float,
+    alt_ref: float,
+    a: float = WGS84.a,
+    f: float = WGS84.f,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Convert local SEZ coordinates to geodetic coordinates.
+
+    Parameters
+    ----------
+    sez : array_like
+        SEZ coordinates [south, east, zenith] in meters.
+    lat_ref : float
+        Reference point latitude in radians.
+    lon_ref : float
+        Reference point longitude in radians.
+    alt_ref : float
+        Reference point altitude in meters.
+    a : float, optional
+        Semi-major axis.
+    f : float, optional
+        Flattening.
+
+    Returns
+    -------
+    lat : ndarray
+        Geodetic latitude in radians.
+    lon : ndarray
+        Geodetic longitude in radians.
+    alt : ndarray
+        Altitude in meters.
+
+    See Also
+    --------
+    geodetic2sez : Forward conversion.
+    """
+    ecef_ref = geodetic2ecef(lat_ref, lon_ref, alt_ref, a, f)
+    ecef = sez2ecef(sez, lat_ref, lon_ref, ecef_ref)
+    return ecef2geodetic(ecef, a, f)
+
+
 def geocentric_radius(
     lat: ArrayLike,
     a: float = WGS84.a,
@@ -625,6 +862,10 @@ __all__ = [
     "ned2ecef",
     "enu2ned",
     "ned2enu",
+    "geodetic2sez",
+    "ecef2sez",
+    "sez2ecef",
+    "sez2geodetic",
     "geocentric_radius",
     "prime_vertical_radius",
     "meridional_radius",
