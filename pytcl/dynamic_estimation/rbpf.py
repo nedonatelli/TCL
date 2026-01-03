@@ -23,7 +23,7 @@ References:
   (IEEE SPM, 2004)
 """
 
-from typing import Callable, NamedTuple
+from typing import Any, Callable, NamedTuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,9 +46,9 @@ class RBPFParticle(NamedTuple):
         Particle weight (typically normalized to sum to 1)
     """
 
-    y: NDArray
-    x: NDArray
-    P: NDArray
+    y: NDArray[Any]
+    x: NDArray[Any]
+    P: NDArray[Any]
     w: float
 
 
@@ -96,9 +96,9 @@ class RBPFFilter:
 
     def initialize(
         self,
-        y0: NDArray,
-        x0: NDArray,
-        P0: NDArray,
+        y0: NDArray[Any],
+        x0: NDArray[Any],
+        P0: NDArray[Any],
         num_particles: int = 100,
     ) -> None:
         """Initialize particles.
@@ -132,12 +132,12 @@ class RBPFFilter:
 
     def predict(
         self,
-        g: Callable[[NDArray], NDArray],
-        G: NDArray,
-        Qy: NDArray,
-        f: Callable[[NDArray, NDArray], NDArray],
-        F: NDArray,
-        Qx: NDArray,
+        g: Callable[[NDArray[Any]], NDArray[Any]],
+        G: NDArray[Any],
+        Qy: NDArray[Any],
+        f: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
+        F: NDArray[Any],
+        Qx: NDArray[Any],
     ) -> None:
         """Predict step: propagate particles and linear states.
 
@@ -165,7 +165,7 @@ class RBPFFilter:
             y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
             # Create wrapper for linear dynamics with current y_pred
-            def f_wrapper(x: NDArray) -> NDArray:
+            def f_wrapper(x: NDArray[Any]) -> NDArray[Any]:
                 return f(x, y_pred)
 
             # Predict linear component using EKF
@@ -183,10 +183,10 @@ class RBPFFilter:
 
     def update(
         self,
-        z: NDArray,
-        h: Callable[[NDArray, NDArray], NDArray],
-        H: NDArray,
-        R: NDArray,
+        z: NDArray[Any],
+        h: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
+        H: NDArray[Any],
+        R: NDArray[Any],
     ) -> None:
         """Update step: adapt particle weights based on measurement.
 
@@ -206,7 +206,7 @@ class RBPFFilter:
 
         for i, particle in enumerate(self.particles):
             # Create wrapper for measurement function with current y
-            def h_wrapper(x: NDArray) -> NDArray:
+            def h_wrapper(x: NDArray[Any]) -> NDArray[Any]:
                 return h(x, particle.y)
 
             # Update linear component (Kalman update)
@@ -245,7 +245,7 @@ class RBPFFilter:
         # Merge if too many particles
         self._merge_particles()
 
-    def estimate(self) -> tuple[NDArray, NDArray]:
+    def estimate(self) -> tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
         """Estimate state as weighted mean and covariance.
 
         Returns
@@ -414,7 +414,7 @@ class RBPFFilter:
             ]
 
     @staticmethod
-    def _kl_divergence(P1: NDArray, P2: NDArray, x1: NDArray, x2: NDArray) -> float:
+    def _kl_divergence(P1: NDArray[Any], P2: NDArray[Any], x1: NDArray[Any], x2: NDArray[Any]) -> float:
         """Compute KL divergence between two Gaussians.
 
         KL(N(x1, P1) || N(x2, P2)) = 0.5 * [
@@ -462,12 +462,12 @@ class RBPFFilter:
 
 def rbpf_predict(
     particles: list[RBPFParticle],
-    g: Callable[[NDArray], NDArray],
-    G: NDArray,
-    Qy: NDArray,
-    f: Callable[[NDArray, NDArray], NDArray],
-    F: NDArray,
-    Qx: NDArray,
+    g: Callable[[NDArray[Any]], NDArray[Any]],
+    G: NDArray[Any],
+    Qy: NDArray[Any],
+    f: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
+    F: NDArray[Any],
+    Qx: NDArray[Any],
 ) -> list[RBPFParticle]:
     """Predict step for RBPF particles.
 
@@ -501,7 +501,7 @@ def rbpf_predict(
         y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
         # Create wrapper for linear dynamics with current y_pred
-        def f_wrapper(x: NDArray) -> NDArray:
+        def f_wrapper(x: NDArray[Any]) -> NDArray[Any]:
             return f(x, y_pred)
 
         # Predict linear component
@@ -520,10 +520,10 @@ def rbpf_predict(
 
 def rbpf_update(
     particles: list[RBPFParticle],
-    z: NDArray,
-    h: Callable[[NDArray, NDArray], NDArray],
-    H: NDArray,
-    R: NDArray,
+    z: NDArray[Any],
+    h: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
+    H: NDArray[Any],
+    R: NDArray[Any],
 ) -> list[RBPFParticle]:
     """Update step for RBPF particles.
 
@@ -550,7 +550,7 @@ def rbpf_update(
 
     for i, particle in enumerate(particles):
         # Create wrapper for measurement function with current y
-        def h_wrapper(x: NDArray) -> NDArray:
+        def h_wrapper(x: NDArray[Any]) -> NDArray[Any]:
             return h(x, particle.y)
 
         # Update linear component
