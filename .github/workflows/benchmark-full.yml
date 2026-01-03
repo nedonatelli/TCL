@@ -108,27 +108,22 @@ jobs:
           path: /tmp/benchmark_results.json
           retention-days: 30
 
-      - name: Generate performance report
+      - name: Generate SLO compliance report
         if: always()
         run: |
-          echo "## Full Benchmark Results" > /tmp/report.md
-          echo "" >> /tmp/report.md
-          echo "| Test | Mean | Min | Max | Rounds |" >> /tmp/report.md
-          echo "|------|------|-----|-----|--------|" >> /tmp/report.md
-
-          python -c "
-          import json
-          with open('/tmp/benchmark_results.json') as f:
-              data = json.load(f)
-
-          for bench in sorted(data.get('benchmarks', []), key=lambda b: b['name']):
-              name = bench['name'][:60]
-              stats = bench['stats']
-              mean = stats['mean'] * 1000
-              min_t = stats['min'] * 1000
-              max_t = stats['max'] * 1000
-              rounds = stats['rounds']
-              print(f'| {name} | {mean:.3f}ms | {min_t:.3f}ms | {max_t:.3f}ms | {rounds} |')
-          " >> /tmp/report.md
+          python scripts/generate_slo_report.py /tmp/benchmark_results.json \
+            --slos .benchmarks/slos.json \
+            --history .benchmarks/history.jsonl \
+            --format markdown \
+            --include-trends \
+            -o /tmp/report.md
 
           cat /tmp/report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Save compliance report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slo-compliance-report
+          path: /tmp/report.md
+          retention-days: 30

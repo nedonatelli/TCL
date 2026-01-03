@@ -49,25 +49,14 @@ jobs:
             --slos .benchmarks/slos.json \
             --history .benchmarks/history.jsonl
 
-      - name: Generate benchmark summary
+      - name: Generate SLO compliance report
         if: always() && github.event_name == 'pull_request'
         id: benchmark-summary
         run: |
-          python -c "
-          import json
-          with open('/tmp/benchmark_results.json') as f:
-              data = json.load(f)
-
-          lines = ['## Benchmark Results (Light)', '', '| Test | Mean | StdDev | Rounds |', '|------|------|--------|--------|']
-          for bench in sorted(data.get('benchmarks', [])[:15], key=lambda b: b['name']):
-              name = bench['name'][:50]
-              mean = bench['stats']['mean'] * 1000
-              stddev = bench['stats']['stddev'] * 1000
-              rounds = bench['stats']['rounds']
-              lines.append(f'| {name} | {mean:.3f}ms | {stddev:.3f}ms | {rounds} |')
-
-          print('\n'.join(lines))
-          " > /tmp/summary.md
+          python scripts/generate_slo_report.py /tmp/benchmark_results.json \
+            --slos .benchmarks/slos.json \
+            --format markdown \
+            -o /tmp/summary.md
 
           echo "summary<<EOF" >> $GITHUB_OUTPUT
           cat /tmp/summary.md >> $GITHUB_OUTPUT
