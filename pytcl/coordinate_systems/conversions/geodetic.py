@@ -165,11 +165,13 @@ def ecef2geodetic(
         N = a / np.sqrt(1 - e2 * sin_lat**2)
 
         # Altitude
-        alt = np.where(
-            np.abs(cos_lat) > 1e-10,
-            p / cos_lat - N,
-            np.abs(z) / np.abs(sin_lat) - N * (1 - e2),
-        )
+        # Use cos_lat when available, otherwise use sin_lat with guard against division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            alt = np.where(
+                np.abs(cos_lat) > 1e-10,
+                p / cos_lat - N,
+                np.abs(z) / np.abs(sin_lat) - N * (1 - e2),
+            )
     else:
         # Direct/closed-form method (simplified Vermeille)
         zp = np.abs(z)
