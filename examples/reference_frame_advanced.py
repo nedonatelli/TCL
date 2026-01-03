@@ -22,6 +22,7 @@ SEZ is useful for:
 """
 
 import numpy as np
+import os
 import plotly.graph_objects as go
 import plotly.subplots as sp
 
@@ -330,8 +331,12 @@ def example_leo_satellite_tracking():
         hovermode='closest'
     )
     
-    fig.write_html('leo_satellite_pass.html')
-    print(f"\nPlot saved as 'leo_satellite_pass.html'")
+    # Save output to examples/output directory instead of root
+    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, 'leo_satellite_pass.html')
+    fig.write_html(output_path)
+    print(f"\nPlot saved to '{output_path}'")
     
     return fig
 

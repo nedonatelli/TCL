@@ -11,6 +11,7 @@ Key scenarios:
 4. Temperature profile comparison across altitude range
 """
 
+import os
 import numpy as np
 import plotly.graph_objects as go
 import plotly.subplots as sp
@@ -414,22 +415,30 @@ def plot_composition_transitions():
 if __name__ == "__main__":
     print("Generating NRLMSISE-00 atmospheric modeling visualizations...")
     
+    # Create output directory
+    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    
     # Generate all plots
     fig1 = plot_density_vs_altitude()
-    fig1.write_html("nrlmsise00_density.html")
-    print("✓ Saved: nrlmsise00_density.html")
+    output_path1 = os.path.join(output_dir, "nrlmsise00_density.html")
+    fig1.write_html(output_path1)
+    print(f"✓ Saved: {output_path1}")
     
     fig2 = plot_composition_profile()
-    fig2.write_html("nrlmsise00_composition.html")
-    print("✓ Saved: nrlmsise00_composition.html")
+    output_path2 = os.path.join(output_dir, "nrlmsise00_composition.html")
+    fig2.write_html(output_path2)
+    print(f"✓ Saved: {output_path2}")
     
     fig3 = plot_temperature_profile()
-    fig3.write_html("nrlmsise00_temperature.html")
-    print("✓ Saved: nrlmsise00_temperature.html")
+    output_path3 = os.path.join(output_dir, "nrlmsise00_temperature.html")
+    fig3.write_html(output_path3)
+    print(f"✓ Saved: {output_path3}")
     
     fig4 = plot_solar_activity_effect()
-    fig4.write_html("nrlmsise00_solar_activity.html")
-    print("✓ Saved: nrlmsise00_solar_activity.html")
+    output_path4 = os.path.join(output_dir, "nrlmsise00_solar_activity.html")
+    fig4.write_html(output_path4)
+    print(f"✓ Saved: {output_path4}")
     
     fig5 = plot_composition_transitions()
     fig5.write_html("nrlmsise00_composition_transition.html")

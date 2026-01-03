@@ -9,6 +9,7 @@ Scenario: Nonlinear target tracking with constraints on valid state region.
 """
 
 import matplotlib.pyplot as plt
+import os
 import numpy as np
 
 from pytcl.dynamic_estimation.gaussian_sum_filter import (
@@ -470,8 +471,13 @@ def main():
     ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
-    plt.savefig("advanced_filters_comparison.png", dpi=150, bbox_inches="tight")
-    print("\nPlot saved to 'advanced_filters_comparison.png'")
+    
+    # Save output to examples/output directory instead of root
+    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, 'advanced_filters_comparison.png')
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    print(f"\nPlot saved to '{output_path}'")
 
     plt.show()
 

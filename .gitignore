@@ -169,6 +169,7 @@ temp/
 !docs/_static/images/examples/*.png
 !docs/_static/images/examples/*.html
 
-# Advanced examples (development/experimental)
+# Example output directories and generated files
+examples/output/
 examples/advanced/
 benchmark_results.json
