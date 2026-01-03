@@ -153,7 +153,7 @@ class DEEphemeris:
         self._cache: dict = {}
 
     @property
-    def kernel(self):
+    def kernel(self) -> Optional[object]:
         """Lazy-load ephemeris kernel on first access.
 
         Note: This requires jplephem to be installed and the kernel file

@@ -13,7 +13,7 @@ References
 
 import logging
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -539,7 +539,7 @@ def clear_legendre_cache() -> None:
     _logger.debug("Legendre polynomial cache cleared")
 
 
-def get_legendre_cache_info():
+def get_legendre_cache_info() -> Any:
     """Get cache statistics for Legendre polynomials.
 
     Returns

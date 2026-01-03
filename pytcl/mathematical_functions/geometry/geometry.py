@@ -557,10 +557,10 @@ def minimum_bounding_circle(
         radius = np.linalg.norm(p1 - center)
         return center, radius
 
-    def is_inside(c, r, p):
+    def is_inside(c: Any, r: Any, p: Any) -> Any:
         return np.linalg.norm(p - c) <= r + 1e-10
 
-    def welzl(P, R):
+    def welzl(P: Any, R: Any) -> tuple[Any, Any]:
         if len(P) == 0 or len(R) == 3:
             if len(R) == 0:
                 return np.array([0.0, 0.0]), 0.0

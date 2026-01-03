@@ -94,11 +94,11 @@ class ConstrainedEKF:
         List of active constraints.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Constrained EKF."""
         self.constraints = []
 
-    def add_constraint(self, constraint: ConstraintFunction):
+    def add_constraint(self, constraint: ConstraintFunction) -> None:
         """
         Add a constraint to the filter.
 

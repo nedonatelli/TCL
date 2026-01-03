@@ -9,7 +9,7 @@ This is more sophisticated than GNN which makes hard assignment decisions,
 as JPDA can handle measurement origin uncertainty in cluttered environments.
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Any, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numba import njit
@@ -238,7 +238,7 @@ def _jpda_exact(
         meas_idx: int,
         current_assignment: List[int],
         used_tracks: set,
-    ):
+    ) -> Any:
         """Recursively generate valid hypotheses."""
         if meas_idx == n_meas:
             yield current_assignment.copy()

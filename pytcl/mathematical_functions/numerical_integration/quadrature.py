@@ -5,7 +5,7 @@ This module provides Gaussian quadrature rules and numerical integration
 functions commonly used in state estimation and filtering.
 """
 
-from typing import Callable, Literal, Optional, Tuple
+from typing import Any, Callable, Literal, Optional, Tuple
 
 import numpy as np
 import scipy.integrate as integrate
@@ -158,7 +158,7 @@ def quad(
     f: Callable[[float], float],
     a: float,
     b: float,
-    **kwargs,
+    **kwargs: Any,
 ) -> Tuple[float, float]:
     """
     Adaptive quadrature integration.
@@ -203,7 +203,7 @@ def dblquad(
     b: float,
     gfun: Callable[[float], float],
     hfun: Callable[[float], float],
-    **kwargs,
+    **kwargs: Any,
 ) -> Tuple[float, float]:
     """
     Double integration.
@@ -248,7 +248,7 @@ def tplquad(
     hfun: Callable[[float], float],
     qfun: Callable[[float, float], float],
     rfun: Callable[[float, float], float],
-    **kwargs,
+    **kwargs: Any,
 ) -> Tuple[float, float]:
     """
     Triple integration.
