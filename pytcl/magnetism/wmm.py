@@ -12,12 +12,29 @@ References
 .. [2] https://www.ngdc.noaa.gov/geomag/WMM/
 """
 
-from typing import NamedTuple, Tuple
+from functools import lru_cache
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.gravity.spherical_harmonics import associated_legendre
+
+# =============================================================================
+# Cache Configuration
+# =============================================================================
+
+# Default cache size (number of unique location/time combinations to cache)
+_DEFAULT_CACHE_SIZE = 1024
+
+# Precision for rounding inputs (radians for lat/lon, km for radius, years for time)
+# These control how aggressively similar inputs are grouped
+_CACHE_PRECISION = {
+    "lat": 6,  # ~0.1 meter precision at Earth surface
+    "lon": 6,
+    "r": 3,  # 1 meter precision
+    "year": 2,  # ~4 day precision
+}
 
 
 class MagneticResult(NamedTuple):
@@ -404,37 +421,90 @@ def create_wmm2020_coefficients() -> MagneticCoefficients:
 WMM2020 = create_wmm2020_coefficients()
 
 
-def magnetic_field_spherical(
+# =============================================================================
+# Cached Computation Core
+# =============================================================================
+
+
+def _quantize_inputs(
+    lat: float, lon: float, r: float, year: float
+) -> Tuple[float, float, float, float]:
+    """Round inputs to cache precision for consistent cache hits."""
+    return (
+        round(lat, _CACHE_PRECISION["lat"]),
+        round(lon, _CACHE_PRECISION["lon"]),
+        round(r, _CACHE_PRECISION["r"]),
+        round(year, _CACHE_PRECISION["year"]),
+    )
+
+
+@lru_cache(maxsize=_DEFAULT_CACHE_SIZE)
+def _magnetic_field_spherical_cached(
     lat: float,
     lon: float,
     r: float,
     year: float,
-    coeffs: MagneticCoefficients = WMM2020,
+    n_max: int,
+    coeff_id: int,
 ) -> Tuple[float, float, float]:
     """
-    Compute magnetic field in spherical coordinates.
+    Cached core computation of magnetic field in spherical coordinates.
+
+    This is the internal cached version. The coefficient arrays are identified
+    by their id() since NamedTuples with numpy arrays aren't hashable.
 
     Parameters
     ----------
     lat : float
-        Geocentric latitude in radians.
+        Geocentric latitude in radians (quantized).
     lon : float
-        Longitude in radians.
+        Longitude in radians (quantized).
     r : float
-        Radial distance from Earth's center in km.
+        Radial distance in km (quantized).
     year : float
-        Decimal year (e.g., 2023.5 for mid-2023).
-    coeffs : MagneticCoefficients, optional
-        Model coefficients. Default WMM2020.
+        Decimal year (quantized).
+    n_max : int
+        Maximum spherical harmonic degree.
+    coeff_id : int
+        Unique identifier for the coefficient set.
 
     Returns
     -------
-    B_r : float
-        Radial component (positive outward) in nT.
-    B_theta : float
-        Colatitude component (positive southward) in nT.
-    B_phi : float
-        Longitude component (positive eastward) in nT.
+    B_r, B_theta, B_phi : tuple of float
+        Magnetic field components in spherical coordinates (nT).
+    """
+    # Retrieve coefficients from registry
+    coeffs = _coefficient_registry.get(coeff_id)
+    if coeffs is None:
+        raise ValueError(f"Coefficient set {coeff_id} not found in registry")
+
+    return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+
+
+# Registry to hold coefficient sets by id
+_coefficient_registry: dict = {}
+
+
+def _register_coefficients(coeffs: "MagneticCoefficients") -> int:
+    """Register a coefficient set and return its unique ID."""
+    coeff_id = id(coeffs)
+    if coeff_id not in _coefficient_registry:
+        _coefficient_registry[coeff_id] = coeffs
+    return coeff_id
+
+
+def _compute_magnetic_field_spherical_impl(
+    lat: float,
+    lon: float,
+    r: float,
+    year: float,
+    coeffs: "MagneticCoefficients",
+) -> Tuple[float, float, float]:
+    """
+    Core implementation of magnetic field computation.
+
+    This contains the actual spherical harmonic expansion logic,
+    separated for clarity and to support caching.
     """
     n_max = coeffs.n_max
     a = 6371.2  # Reference radius in km (WMM convention)
@@ -452,11 +522,9 @@ def magnetic_field_spherical(
     sin_theta = np.sin(theta)
 
     # Compute associated Legendre functions (Schmidt semi-normalized)
-    # WMM uses Schmidt semi-normalization
     P = associated_legendre(n_max, n_max, cos_theta, normalized=True)
 
-    # Compute dP/dtheta = -sin(theta) * dP/d(cos(theta))
-    # For efficiency, use recurrence relation
+    # Compute dP/dtheta
     dP = np.zeros((n_max + 1, n_max + 1))
     if abs(sin_theta) > 1e-10:
         for n in range(1, n_max + 1):
@@ -464,7 +532,6 @@ def magnetic_field_spherical(
                 if m == n:
                     dP[n, m] = n * cos_theta / sin_theta * P[n, m]
                 elif n > m:
-                    # Recurrence relation for derivative
                     factor = np.sqrt((n - m) * (n + m + 1))
                     if m + 1 <= n:
                         dP[n, m] = (
@@ -489,13 +556,10 @@ def magnetic_field_spherical(
             cos_m_lon = np.cos(m * lon)
             sin_m_lon = np.sin(m * lon)
 
-            # Gauss coefficients
             gnm = g[n, m]
             hnm = h[n, m]
 
-            # Field contributions
             B_r += (n + 1) * r_power * P[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
-
             B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
 
             if abs(sin_theta) > 1e-10:
@@ -508,6 +572,175 @@ def magnetic_field_spherical(
                 )
 
     return B_r, B_theta, B_phi
+
+
+# =============================================================================
+# Cache Management
+# =============================================================================
+
+
+def get_magnetic_cache_info() -> dict:
+    """
+    Get information about the magnetic field computation cache.
+
+    Returns
+    -------
+    info : dict
+        Dictionary containing cache statistics:
+        - hits: Number of cache hits
+        - misses: Number of cache misses
+        - maxsize: Maximum cache size
+        - currsize: Current number of cached entries
+        - hit_rate: Ratio of hits to total calls (0-1)
+
+    Examples
+    --------
+    >>> from pytcl.magnetism import get_magnetic_cache_info
+    >>> info = get_magnetic_cache_info()
+    >>> print(f"Cache hit rate: {info['hit_rate']:.1%}")
+    """
+    cache_info = _magnetic_field_spherical_cached.cache_info()
+    total = cache_info.hits + cache_info.misses
+    hit_rate = cache_info.hits / total if total > 0 else 0.0
+
+    return {
+        "hits": cache_info.hits,
+        "misses": cache_info.misses,
+        "maxsize": cache_info.maxsize,
+        "currsize": cache_info.currsize,
+        "hit_rate": hit_rate,
+    }
+
+
+def clear_magnetic_cache() -> None:
+    """
+    Clear the magnetic field computation cache.
+
+    This can be useful when memory is constrained or when switching
+    between different coefficient sets.
+
+    Examples
+    --------
+    >>> from pytcl.magnetism import clear_magnetic_cache
+    >>> clear_magnetic_cache()  # Free cached computations
+    """
+    _magnetic_field_spherical_cached.cache_clear()
+    _coefficient_registry.clear()
+
+
+def configure_magnetic_cache(
+    maxsize: Optional[int] = None,
+    precision: Optional[dict] = None,
+) -> None:
+    """
+    Configure the magnetic field computation cache.
+
+    Parameters
+    ----------
+    maxsize : int, optional
+        Maximum number of entries in the cache. If None, keeps current.
+        Set to 0 to disable caching.
+    precision : dict, optional
+        Dictionary with keys 'lat', 'lon', 'r', 'year' specifying
+        decimal places for rounding. Higher values = more precision
+        but fewer cache hits.
+
+    Notes
+    -----
+    Changing cache configuration clears the existing cache.
+
+    Examples
+    --------
+    >>> from pytcl.magnetism import configure_magnetic_cache
+    >>> # Increase cache size for batch processing
+    >>> configure_magnetic_cache(maxsize=4096)
+    >>> # Reduce precision for more cache hits
+    >>> configure_magnetic_cache(precision={'lat': 4, 'lon': 4, 'r': 2, 'year': 1})
+    """
+    global _magnetic_field_spherical_cached
+
+    if precision is not None:
+        for key in ["lat", "lon", "r", "year"]:
+            if key in precision:
+                _CACHE_PRECISION[key] = precision[key]
+
+    if maxsize is not None:
+        # Recreate the cached function with new maxsize
+        clear_magnetic_cache()
+
+        @lru_cache(maxsize=maxsize)
+        def new_cached(
+            lat: float,
+            lon: float,
+            r: float,
+            year: float,
+            n_max: int,
+            coeff_id: int,
+        ) -> Tuple[float, float, float]:
+            coeffs = _coefficient_registry.get(coeff_id)
+            if coeffs is None:
+                raise ValueError(f"Coefficient set {coeff_id} not found")
+            return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+
+        _magnetic_field_spherical_cached = new_cached
+
+
+def magnetic_field_spherical(
+    lat: float,
+    lon: float,
+    r: float,
+    year: float,
+    coeffs: MagneticCoefficients = WMM2020,
+    use_cache: bool = True,
+) -> Tuple[float, float, float]:
+    """
+    Compute magnetic field in spherical coordinates.
+
+    Parameters
+    ----------
+    lat : float
+        Geocentric latitude in radians.
+    lon : float
+        Longitude in radians.
+    r : float
+        Radial distance from Earth's center in km.
+    year : float
+        Decimal year (e.g., 2023.5 for mid-2023).
+    coeffs : MagneticCoefficients, optional
+        Model coefficients. Default WMM2020.
+    use_cache : bool, optional
+        Whether to use LRU caching for repeated queries. Default True.
+        Set to False for single-use queries or when memory is constrained.
+
+    Returns
+    -------
+    B_r : float
+        Radial component (positive outward) in nT.
+    B_theta : float
+        Colatitude component (positive southward) in nT.
+    B_phi : float
+        Longitude component (positive eastward) in nT.
+
+    Notes
+    -----
+    Results are cached by default using LRU caching. Inputs are quantized
+    to a configurable precision before caching to improve hit rates for
+    nearby queries. Use `get_magnetic_cache_info()` to check cache
+    statistics and `clear_magnetic_cache()` to free memory.
+    """
+    if use_cache:
+        # Quantize inputs for cache key
+        q_lat, q_lon, q_r, q_year = _quantize_inputs(lat, lon, r, year)
+
+        # Register coefficients and get ID
+        coeff_id = _register_coefficients(coeffs)
+
+        return _magnetic_field_spherical_cached(
+            q_lat, q_lon, q_r, q_year, coeffs.n_max, coeff_id
+        )
+    else:
+        # Direct computation without caching
+        return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
 
 
 def wmm(
@@ -706,4 +939,8 @@ __all__ = [
     "magnetic_declination",
     "magnetic_inclination",
     "magnetic_field_intensity",
+    # Cache management
+    "get_magnetic_cache_info",
+    "clear_magnetic_cache",
+    "configure_magnetic_cache",
 ]

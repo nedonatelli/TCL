@@ -45,7 +45,10 @@ from pytcl.magnetism.wmm import (
     WMM2020,
     MagneticCoefficients,
     MagneticResult,
+    clear_magnetic_cache,
+    configure_magnetic_cache,
     create_wmm2020_coefficients,
+    get_magnetic_cache_info,
     magnetic_declination,
     magnetic_field_intensity,
     magnetic_field_spherical,
@@ -66,6 +69,10 @@ __all__ = [
     "magnetic_declination",
     "magnetic_inclination",
     "magnetic_field_intensity",
+    # Cache management
+    "get_magnetic_cache_info",
+    "clear_magnetic_cache",
+    "configure_magnetic_cache",
     # IGRF
     "IGRF13",
     "create_igrf13_coefficients",
