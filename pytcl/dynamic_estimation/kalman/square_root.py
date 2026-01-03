@@ -443,6 +443,12 @@ def srkf_predict_update(
 # Backward compatibility: Re-export from submodules
 # =============================================================================
 
+# Square-root UKF (now in sr_ukf.py)
+from pytcl.dynamic_estimation.kalman.sr_ukf import (  # noqa: E402
+    sr_ukf_predict,
+    sr_ukf_update,
+)
+
 # U-D factorization filter (now in ud_filter.py)
 from pytcl.dynamic_estimation.kalman.ud_filter import (  # noqa: E402
     UDState,
@@ -451,12 +457,6 @@ from pytcl.dynamic_estimation.kalman.ud_filter import (  # noqa: E402
     ud_reconstruct,
     ud_update,
     ud_update_scalar,
-)
-
-# Square-root UKF (now in sr_ukf.py)
-from pytcl.dynamic_estimation.kalman.sr_ukf import (  # noqa: E402
-    sr_ukf_predict,
-    sr_ukf_update,
 )
 
 __all__ = [

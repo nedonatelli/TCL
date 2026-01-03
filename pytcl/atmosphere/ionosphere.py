@@ -419,10 +419,9 @@ def magnetic_latitude(
     pole_lon = np.radians(-72.8)
 
     # Spherical law of cosines for angular distance
-    cos_mag_lat = (
-        np.sin(latitude) * np.sin(pole_lat)
-        + np.cos(latitude) * np.cos(pole_lat) * np.cos(longitude - pole_lon)
-    )
+    cos_mag_lat = np.sin(latitude) * np.sin(pole_lat) + np.cos(latitude) * np.cos(
+        pole_lat
+    ) * np.cos(longitude - pole_lon)
 
     # Geomagnetic colatitude
     mag_colat = np.arccos(np.clip(cos_mag_lat, -1, 1))
