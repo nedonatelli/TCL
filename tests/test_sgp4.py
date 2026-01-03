@@ -313,8 +313,9 @@ class TestTEMETransformations:
         r_back, v_back = itrf_to_teme_with_velocity(r_itrf, v_itrf, jd_ut1)
 
         assert_allclose(r_back, r_teme, rtol=1e-10)
-        # Use slightly larger tolerance for velocity due to floating point precision
-        assert_allclose(v_back, v_teme, atol=1e-14)
+        # Use both atol and rtol for velocity due to floating point precision
+        # especially across platforms and Python versions (Windows Python 3.12 may have differences)
+        assert_allclose(v_back, v_teme, atol=1e-14, rtol=1e-12)
 
     def test_sgp4_to_itrf_integration(self):
         """Test full SGP4 -> ITRF pipeline."""
