@@ -353,9 +353,7 @@ def rotmat2axisangle(
         return axis / np.linalg.norm(axis), float(angle)
 
     # General case
-    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (
-        2 * np.sin(angle)
-    )
+    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * np.sin(angle))
 
     return axis, float(angle)
 

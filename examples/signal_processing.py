@@ -229,9 +229,7 @@ def cfar_detection_demo() -> None:
     ca_detections = ca_result.detection_indices
     print("\nCA-CFAR (Cell-Averaging):")
     print(f"  Detections: {ca_detections.tolist()}")
-    print(
-        f"  Targets detected: {len(set(ca_detections) & {t[0] for t in targets})}/{len(targets)}"
-    )
+    print(f"  Targets detected: {len(set(ca_detections) & {t[0] for t in targets})}/{len(targets)}")
 
     # Greatest-Of CFAR (good at clutter edges)
     go_result = cfar_go(signal, guard_cells, ref_cells, pfa)

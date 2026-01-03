@@ -115,6 +115,7 @@ class TestRBPFPrediction:
 
     def test_predict_propagates_particles(self):
         """Test that predict propagates both components."""
+
         def f(x, y):
             return x
 
@@ -125,13 +126,12 @@ class TestRBPFPrediction:
         new_y = [p.y for p in self.rbpf.particles]
 
         # At least some particles should have changed
-        changed = sum(
-            1 for o, n in zip(old_y, new_y) if not np.allclose(o, n)
-        )
+        changed = sum(1 for o, n in zip(old_y, new_y) if not np.allclose(o, n))
         assert changed > 0
 
     def test_predict_preserves_weights(self):
         """Test that predict preserves weights."""
+
         def f(x, y):
             return x
 
@@ -145,6 +145,7 @@ class TestRBPFPrediction:
 
     def test_predict_increases_covariance(self):
         """Test that predict increases covariance."""
+
         def f(x, y):
             return x
 
@@ -176,6 +177,7 @@ class TestRBPFUpdate:
 
     def test_update_normalizes_weights(self):
         """Test that update normalizes weights."""
+
         def h(x, y):
             return self.H @ x
 
@@ -189,6 +191,7 @@ class TestRBPFUpdate:
 
     def test_update_reduces_covariance(self):
         """Test that update reduces covariance."""
+
         def h(x, y):
             return self.H @ x
 
@@ -214,8 +217,7 @@ class TestRBPFUpdate:
         ]
 
         rbpf.particles = [
-            RBPFParticle(y=np.array([0.0, 0.0]), x=x_vals[i], P=np.eye(2), w=0.5)
-            for i in range(2)
+            RBPFParticle(y=np.array([0.0, 0.0]), x=x_vals[i], P=np.eye(2), w=0.5) for i in range(2)
         ]
 
         def h(x, y):
@@ -239,8 +241,7 @@ class TestRBPFResampling:
 
         # Create particles with highly unequal weights
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]),
-                        P=np.eye(2), w=w)
+            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w)
             for i, w in enumerate([0.99, 0.005, 0.005])
         ]
 
@@ -258,8 +259,7 @@ class TestRBPFResampling:
 
         # Highly unequal weights to trigger resampling
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]),
-                        P=np.eye(2), w=w)
+            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w)
             for i, w in enumerate([0.99, 0.005, 0.005])
         ]
 
@@ -281,14 +281,13 @@ class TestRBPFMerging:
 
         # Create 4 particles
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]),
-                        P=np.eye(2) * 0.01, w=0.25)
+            RBPFParticle(
+                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2) * 0.01, w=0.25
+            )
             for i in range(4)
         ]
 
         rbpf.particles = particles
-
-        initial_count = len(rbpf.particles)
 
         rbpf._merge_particles()
 
@@ -299,8 +298,9 @@ class TestRBPFMerging:
         rbpf = RBPFFilter(max_particles=2)
 
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]),
-                        P=np.eye(2) * 0.01, w=0.25)
+            RBPFParticle(
+                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2) * 0.01, w=0.25
+            )
             for i in range(4)
         ]
 
@@ -518,7 +518,7 @@ class TestRBPFIntegration:
 
         # Target angle (nonlinear) and range (linear)
         theta0 = np.array([0.0])  # angle
-        r0 = np.array([100.0])    # range
+        r0 = np.array([100.0])  # range
         x0 = r0
 
         P0 = np.eye(1) * 10.0

@@ -200,14 +200,10 @@ def validate_query_input(
         X = X.reshape(1, -1)
 
     if X.shape[1] != n_features:
-        _logger.warning(
-            "Query feature mismatch: got %d, expected %d", X.shape[1], n_features
-        )
+        _logger.warning("Query feature mismatch: got %d, expected %d", X.shape[1], n_features)
         raise ValueError(f"Query has {X.shape[1]} features, expected {n_features}")
 
-    _logger.debug(
-        "Validated query input: %d queries, %d features", X.shape[0], X.shape[1]
-    )
+    _logger.debug("Validated query input: %d queries, %d features", X.shape[0], X.shape[1])
     return X
 
 

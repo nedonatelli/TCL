@@ -364,9 +364,7 @@ def kurtosis(
     """
     from scipy.stats import kurtosis as scipy_kurtosis
 
-    return np.asarray(
-        scipy_kurtosis(x, axis=axis, fisher=fisher, bias=bias), dtype=np.float64
-    )
+    return np.asarray(scipy_kurtosis(x, axis=axis, fisher=fisher, bias=bias), dtype=np.float64)
 
 
 def moment(

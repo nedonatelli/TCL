@@ -107,9 +107,7 @@ class TestTransverseMercator:
         k0 = 0.9996
 
         result_0 = transverse_mercator(np.radians(45), lon0, lon0=lon0, k0=k0)
-        result_2 = transverse_mercator(
-            np.radians(45), lon0 + np.radians(2), lon0=lon0, k0=k0
-        )
+        result_2 = transverse_mercator(np.radians(45), lon0 + np.radians(2), lon0=lon0, k0=k0)
 
         assert result_2.scale > result_0.scale
 

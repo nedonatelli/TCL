@@ -252,8 +252,7 @@ class RTree:
         data = np.asarray(data, dtype=np.float64)
         if data.ndim != 2:
             raise ValueError(
-                f"Data must be 2-dimensional (n_samples, n_features), "
-                f"got shape {data.shape}"
+                f"Data must be 2-dimensional (n_samples, n_features), " f"got shape {data.shape}"
             )
 
         tree = cls(max_entries=max_entries, min_entries=min_entries)
@@ -365,9 +364,7 @@ class RTree:
 
         # Simple split: sort by center x-coordinate and split in half
         if node.is_leaf:
-            sorted_entries = sorted(
-                entries, key=lambda e: e[0].center[0] if e[0] else 0
-            )
+            sorted_entries = sorted(entries, key=lambda e: e[0].center[0] if e[0] else 0)
         else:
             sorted_entries = sorted(
                 entries,
@@ -680,8 +677,7 @@ class RTree:
             else:
                 # Sort children by distance and search closest first
                 child_dists = [
-                    (min_dist_to_box(query, c.bbox) if c.bbox else np.inf, c)
-                    for c in node.children
+                    (min_dist_to_box(query, c.bbox) if c.bbox else np.inf, c) for c in node.children
                 ]
                 child_dists.sort(key=lambda x: x[0])
                 for _, child in child_dists:

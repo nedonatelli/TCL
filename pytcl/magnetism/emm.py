@@ -531,8 +531,7 @@ def _high_res_field_spherical(
                     factor = np.sqrt((n - m) * (n + m + 1))
                     if m + 1 <= n:
                         dP[n, m] = (
-                            n * cos_theta / sin_theta * P[n, m]
-                            - factor * P[n, m + 1] / sin_theta
+                            n * cos_theta / sin_theta * P[n, m] - factor * P[n, m + 1] / sin_theta
                             if m + 1 <= n_max_eval
                             else n * cos_theta / sin_theta * P[n, m]
                         )
@@ -559,13 +558,7 @@ def _high_res_field_spherical(
             B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
 
             if abs(sin_theta) > 1e-10:
-                B_phi += (
-                    r_power
-                    * m
-                    * P[n, m]
-                    / sin_theta
-                    * (gnm * sin_m_lon - hnm * cos_m_lon)
-                )
+                B_phi += r_power * m * P[n, m] / sin_theta * (gnm * sin_m_lon - hnm * cos_m_lon)
 
     return B_r, B_theta, B_phi
 
@@ -624,9 +617,7 @@ def emm(
     r = a + h
 
     # Compute field in spherical coordinates
-    B_r, B_theta, B_phi = _high_res_field_spherical(
-        lat_gc, lon, r, year, coefficients, n_max
-    )
+    B_r, B_theta, B_phi = _high_res_field_spherical(lat_gc, lon, r, year, coefficients, n_max)
 
     # Convert to geodetic coordinates
     X = -B_theta  # North

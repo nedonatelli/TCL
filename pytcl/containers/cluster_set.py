@@ -290,9 +290,7 @@ class ClusterSet:
             self._clusters = list(clusters)
 
         # Build lookups
-        self._id_to_idx: Dict[int, int] = {
-            c.id: i for i, c in enumerate(self._clusters)
-        }
+        self._id_to_idx: Dict[int, int] = {c.id: i for i, c in enumerate(self._clusters)}
         self._track_to_cluster: Dict[int, int] = {}
         for cluster in self._clusters:
             for track_id in cluster.track_ids:
@@ -409,9 +407,7 @@ class ClusterSet:
             return self.get_cluster(cluster_id)
         return None
 
-    def clusters_in_region(
-        self, center: ArrayLike, radius: float
-    ) -> List[TrackCluster]:
+    def clusters_in_region(self, center: ArrayLike, radius: float) -> List[TrackCluster]:
         """
         Get clusters with centroids within a spatial region.
 
@@ -560,9 +556,7 @@ class ClusterSet:
         """
         result = {}
         for cluster in self._clusters:
-            stats = self.cluster_stats(
-                cluster.id, tracks, state_indices, velocity_indices
-            )
+            stats = self.cluster_stats(cluster.id, tracks, state_indices, velocity_indices)
             if stats is not None:
                 result[cluster.id] = stats
         return result

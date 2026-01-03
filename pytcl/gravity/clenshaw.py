@@ -407,9 +407,7 @@ def clenshaw_potential(
     V = 0.0
 
     for m in range(n_max + 1):
-        sum_C, sum_S = clenshaw_sum_order(
-            m, cos_theta, sin_theta, C_scaled, S_scaled, n_max
-        )
+        sum_C, sum_S = clenshaw_sum_order(m, cos_theta, sin_theta, C_scaled, S_scaled, n_max)
 
         cos_m_lon = np.cos(m * lon)
         sin_m_lon = np.sin(m * lon)
@@ -498,9 +496,7 @@ def clenshaw_gravity(
 
     for m in range(n_max + 1):
         # Value sum
-        sum_C, sum_S = clenshaw_sum_order(
-            m, cos_theta, sin_theta, C_scaled, S_scaled, n_max
-        )
+        sum_C, sum_S = clenshaw_sum_order(m, cos_theta, sin_theta, C_scaled, S_scaled, n_max)
 
         # Radial derivative sum
         sum_C_r, sum_S_r = clenshaw_sum_order(

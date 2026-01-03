@@ -244,11 +244,7 @@ def normal_gravity(lat: float, alt: float = 0.0) -> float:
 
     # Free-air correction (first-order)
     g = g0 * (
-        1
-        - 2
-        * alt
-        / A_EARTH
-        * (1 + F_EARTH + (OMEGA_EARTH**2 * A_EARTH**2 * B_EARTH) / GM_EARTH)
+        1 - 2 * alt / A_EARTH * (1 + F_EARTH + (OMEGA_EARTH**2 * A_EARTH**2 * B_EARTH) / GM_EARTH)
     )
 
     return g
@@ -572,9 +568,7 @@ def update_quaternion(
 
     if angle < 1e-10:
         # Small angle approximation
-        delta_q = np.array(
-            [1.0, 0.5 * delta_theta[0], 0.5 * delta_theta[1], 0.5 * delta_theta[2]]
-        )
+        delta_q = np.array([1.0, 0.5 * delta_theta[0], 0.5 * delta_theta[1], 0.5 * delta_theta[2]])
     else:
         # Exact quaternion for rotation
         axis = delta_theta / angle

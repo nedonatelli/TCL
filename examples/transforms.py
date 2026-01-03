@@ -208,14 +208,10 @@ def stft_demo() -> None:
     print(f"  Number of time frames: {len(result.times)}")
     print(f"  Number of frequency bins: {len(result.frequencies)}")
     print(f"  Time resolution: {result.times[1] - result.times[0]:.3f} s")
-    print(
-        f"  Frequency resolution: {result.frequencies[1] - result.frequencies[0]:.2f} Hz"
-    )
+    print(f"  Frequency resolution: {result.frequencies[1] - result.frequencies[0]:.2f} Hz")
 
     # Verify reconstruction with inverse STFT
-    t_rec, reconstructed = istft(
-        result.Zxx, fs, window="hann", nperseg=nperseg, noverlap=noverlap
-    )
+    t_rec, reconstructed = istft(result.Zxx, fs, window="hann", nperseg=nperseg, noverlap=noverlap)
     min_len = min(len(chirp), len(reconstructed))
     recon_error = np.sqrt(np.mean((chirp[:min_len] - reconstructed[:min_len]) ** 2))
     print(f"\nReconstruction RMS error: {recon_error:.6f}")
@@ -250,9 +246,7 @@ def spectrogram_demo() -> None:
     # Three segments with different frequencies
     signal = np.zeros_like(t)
     signal[t < 1] = np.sin(2 * np.pi * 50 * t[t < 1])  # 50 Hz
-    signal[(t >= 1) & (t < 2)] = np.sin(
-        2 * np.pi * 100 * t[(t >= 1) & (t < 2)]
-    )  # 100 Hz
+    signal[(t >= 1) & (t < 2)] = np.sin(2 * np.pi * 100 * t[(t >= 1) & (t < 2)])  # 100 Hz
     signal[t >= 2] = np.sin(2 * np.pi * 150 * t[t >= 2])  # 150 Hz
 
     print("\nTime-varying signal:")

@@ -44,9 +44,7 @@ class TestNetworkConstruction:
 
     def test_flow_network_rectangular(self):
         """Test flow network for rectangular assignment (more workers than tasks)."""
-        cost = np.array(
-            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
-        )  # 3 workers, 2 tasks
+        cost = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])  # 3 workers, 2 tasks
 
         edges, supplies, node_names = assignment_to_flow_network(cost)
 
@@ -83,7 +81,7 @@ class TestNetworkConstruction:
 
 class TestHighLevelMinCostAssignment:
     """Test high-level min-cost assignment interface.
-    
+
     Note: Some tests are skipped due to performance issues with the
     Bellman-Ford based solver for larger networks.
     """

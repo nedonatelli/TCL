@@ -294,10 +294,7 @@ def n_scan_prune(
                     hyp_tracks_at_cutoff.add(track_id)
 
         # Keep if tracks match (or if no tracks at cutoff)
-        if (
-            hyp_tracks_at_cutoff == best_tracks_at_cutoff
-            or len(best_tracks_at_cutoff) == 0
-        ):
+        if hyp_tracks_at_cutoff == best_tracks_at_cutoff or len(best_tracks_at_cutoff) == 0:
             pruned.append(hyp)
 
     # Renormalize probabilities
@@ -515,9 +512,7 @@ class HypothesisTree:
         new_hypotheses = []
 
         for hyp in self.hypotheses:
-            for assoc_idx, (assoc, likelihood) in enumerate(
-                zip(associations, likelihoods)
-            ):
+            for assoc_idx, (assoc, likelihood) in enumerate(zip(associations, likelihoods)):
                 # Compute new hypothesis probability
                 new_prob = hyp.probability * likelihood
 

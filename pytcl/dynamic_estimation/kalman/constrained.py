@@ -25,9 +25,12 @@ from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdat
 class ConstraintFunction:
     """Base class for state constraints."""
 
-    def __init__(self, g: Callable[[NDArray], NDArray],
-                 G: Optional[Callable[[NDArray], NDArray]] = None,
-                 constraint_type: str = 'inequality'):
+    def __init__(
+        self,
+        g: Callable[[NDArray], NDArray],
+        G: Optional[Callable[[NDArray], NDArray]] = None,
+        constraint_type: str = "inequality",
+    ):
         """
         Define a constraint: g(x) ≤ 0 (inequality) or g(x) = 0 (equality).
 
@@ -72,7 +75,7 @@ class ConstraintFunction:
     def is_satisfied(self, x: NDArray, tol: float = 1e-6) -> bool:
         """Check if constraint is satisfied."""
         g_val = self.evaluate(x)
-        if self.constraint_type == 'inequality':
+        if self.constraint_type == "inequality":
             return np.all(g_val <= tol)
         else:  # equality
             return np.allclose(g_val, 0, atol=tol)
@@ -184,7 +187,9 @@ class ConstrainedEKF:
         if self.constraints:
             x_upd, P_upd = self._project_onto_constraints(x_upd, P_upd)
 
-        return KalmanUpdate(x=x_upd, P=P_upd, y=result.y, S=result.S, K=result.K, likelihood=result.likelihood)
+        return KalmanUpdate(
+            x=x_upd, P=P_upd, y=result.y, S=result.S, K=result.K, likelihood=result.likelihood
+        )
 
     def _project_onto_constraints(
         self,
@@ -236,7 +241,7 @@ class ConstrainedEKF:
                 G = constraint.jacobian(x_proj)
 
                 # Only process violated constraints
-                if constraint.constraint_type == 'inequality':
+                if constraint.constraint_type == "inequality":
                     mask = g_val > tol
                 else:
                     mask = np.abs(g_val) > tol

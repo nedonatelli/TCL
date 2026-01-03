@@ -19,9 +19,9 @@ def _mahalanobis_distance_2d(
     S_inv: np.ndarray,
 ) -> float:
     """JIT-compiled Mahalanobis distance for 2D innovations."""
-    return innovation[0] * (
-        S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]
-    ) + innovation[1] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
+    return innovation[0] * (S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]) + innovation[
+        1
+    ] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
 
 
 @njit(cache=True, fastmath=True)

@@ -362,9 +362,7 @@ def ud_update(
         D_upd = D.copy()
 
         for i in range(m):
-            x_upd, U_upd, D_upd = ud_update_scalar(
-                x_upd, U_upd, D_upd, z[i], H[i, :], R[i, i]
-            )
+            x_upd, U_upd, D_upd = ud_update_scalar(x_upd, U_upd, D_upd, z[i], H[i, :], R[i, i])
     else:
         # Decorrelate measurements
         S_R = np.linalg.cholesky(R)
@@ -377,9 +375,7 @@ def ud_update(
         D_upd = D.copy()
 
         for i in range(m):
-            x_upd, U_upd, D_upd = ud_update_scalar(
-                x_upd, U_upd, D_upd, z_dec[i], H_dec[i, :], 1.0
-            )
+            x_upd, U_upd, D_upd = ud_update_scalar(x_upd, U_upd, D_upd, z_dec[i], H_dec[i, :], 1.0)
 
     # Compute likelihood
     P = ud_reconstruct(U, D)

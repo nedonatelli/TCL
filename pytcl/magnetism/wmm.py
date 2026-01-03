@@ -535,8 +535,7 @@ def _compute_magnetic_field_spherical_impl(
                     factor = np.sqrt((n - m) * (n + m + 1))
                     if m + 1 <= n:
                         dP[n, m] = (
-                            n * cos_theta / sin_theta * P[n, m]
-                            - factor * P[n, m + 1] / sin_theta
+                            n * cos_theta / sin_theta * P[n, m] - factor * P[n, m + 1] / sin_theta
                             if m + 1 <= n_max
                             else n * cos_theta / sin_theta * P[n, m]
                         )
@@ -563,13 +562,7 @@ def _compute_magnetic_field_spherical_impl(
             B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
 
             if abs(sin_theta) > 1e-10:
-                B_phi += (
-                    r_power
-                    * m
-                    * P[n, m]
-                    / sin_theta
-                    * (gnm * sin_m_lon - hnm * cos_m_lon)
-                )
+                B_phi += r_power * m * P[n, m] / sin_theta * (gnm * sin_m_lon - hnm * cos_m_lon)
 
     return B_r, B_theta, B_phi
 
@@ -735,9 +728,7 @@ def magnetic_field_spherical(
         # Register coefficients and get ID
         coeff_id = _register_coefficients(coeffs)
 
-        return _magnetic_field_spherical_cached(
-            q_lat, q_lon, q_r, q_year, coeffs.n_max, coeff_id
-        )
+        return _magnetic_field_spherical_cached(q_lat, q_lon, q_r, q_year, coeffs.n_max, coeff_id)
     else:
         # Direct computation without caching
         return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)

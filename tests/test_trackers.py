@@ -108,9 +108,7 @@ class TestMultiTargetTracker:
     def setup_method(self):
         """Set up test fixtures."""
         # Simple 2D position-velocity model
-        self.F = lambda dt: np.array(
-            [[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]]
-        )
+        self.F = lambda dt: np.array([[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]])
         self.H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
         self.Q = lambda dt: np.eye(4) * 0.1
         self.R = np.eye(2) * 1.0
@@ -118,18 +116,14 @@ class TestMultiTargetTracker:
 
     def test_initialization(self):
         """Test tracker initialization."""
-        tracker = MultiTargetTracker(
-            4, 2, self.F, self.H, self.Q, self.R, init_covariance=self.P0
-        )
+        tracker = MultiTargetTracker(4, 2, self.F, self.H, self.Q, self.R, init_covariance=self.P0)
 
         assert len(tracker.tracks) == 0
         assert len(tracker.confirmed_tracks) == 0
 
     def test_track_initiation(self):
         """Test new track initiation."""
-        tracker = MultiTargetTracker(
-            4, 2, self.F, self.H, self.Q, self.R, init_covariance=self.P0
-        )
+        tracker = MultiTargetTracker(4, 2, self.F, self.H, self.Q, self.R, init_covariance=self.P0)
 
         # Process single measurement
         measurements = [np.array([10.0, 20.0])]
@@ -347,6 +341,4 @@ class TestIntegration:
         for _ in range(5):
             tracker.process([], dt=1.0)
 
-        assert (
-            len(tracker.confirmed_tracks) == 0
-        ), "Target should be deleted after misses"
+        assert len(tracker.confirmed_tracks) == 0, "Target should be deleted after misses"

@@ -504,9 +504,7 @@ def geoid_heights(
     # Compute for each point
     heights = np.zeros(len(lats))
     for i in range(len(lats)):
-        heights[i] = geoid_height(
-            lats[i], lons[i], model, n_max, coefficients=coefficients
-        )
+        heights[i] = geoid_height(lats[i], lons[i], model, n_max, coefficients=coefficients)
 
     return heights
 

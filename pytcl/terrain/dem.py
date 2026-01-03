@@ -193,9 +193,7 @@ class DEMGrid:
 
     def _in_bounds(self, lat: float, lon: float) -> bool:
         """Check if coordinates are within DEM bounds."""
-        return (
-            self.lat_min <= lat <= self.lat_max and self.lon_min <= lon <= self.lon_max
-        )
+        return self.lat_min <= lat <= self.lat_max and self.lon_min <= lon <= self.lon_max
 
     def _get_indices(self, lat: float, lon: float) -> Tuple[int, int, float, float]:
         """Get grid indices and fractional parts for interpolation.
@@ -275,11 +273,7 @@ class DEMGrid:
             z00 = self.data[i, j]
             z01 = self.data[i, j + 1] if j + 1 < self.n_lon else z00
             z10 = self.data[i + 1, j] if i + 1 < self.n_lat else z00
-            z11 = (
-                self.data[i + 1, j + 1]
-                if (i + 1 < self.n_lat and j + 1 < self.n_lon)
-                else z00
-            )
+            z11 = self.data[i + 1, j + 1] if (i + 1 < self.n_lat and j + 1 < self.n_lon) else z00
 
             # Check for nodata
             values = [z00, z01, z10, z11]

@@ -438,9 +438,7 @@ class TestCoordinatedTurnProcessNoise:
         T = 0.1
         sigma_a = 1.0
         sigma_omega = 0.01
-        Q = q_coord_turn_2d(
-            T, sigma_a, sigma_omega, state_type="position_velocity_omega"
-        )
+        Q = q_coord_turn_2d(T, sigma_a, sigma_omega, state_type="position_velocity_omega")
         assert Q.shape == (5, 5)
         np.testing.assert_allclose(Q, Q.T)
 

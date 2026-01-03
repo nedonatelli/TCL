@@ -403,9 +403,7 @@ class TestSlerp:
 
         # Should be 45 deg rotation about z
         expected_angle = angle / 2
-        expected = np.array(
-            [np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)]
-        )
+        expected = np.array([np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)])
         np.testing.assert_allclose(result, expected, atol=1e-10)
 
 
@@ -1238,11 +1236,11 @@ class TestSEZConversions:
         sez = geodetic2sez(lat_tgt, lon_tgt, alt_tgt, lat_ref, lon_ref, alt_ref)
 
         # Inverse
-        lat_back, lon_back, alt_back = sez2geodetic(
-            sez, lat_ref, lon_ref, alt_ref
-        )
+        lat_back, lon_back, alt_back = sez2geodetic(sez, lat_ref, lon_ref, alt_ref)
 
-        np.testing.assert_allclose([lat_back, lon_back, alt_back], [lat_tgt, lon_tgt, alt_tgt], rtol=1e-9)
+        np.testing.assert_allclose(
+            [lat_back, lon_back, alt_back], [lat_tgt, lon_tgt, alt_tgt], rtol=1e-9
+        )
 
     def test_sez_distance_calculation(self):
         """Verify distance calculation using SEZ."""
@@ -1295,7 +1293,6 @@ class TestSEZConversions:
         # Compute elevation and azimuth
         rho = np.linalg.norm(sez[:2])  # Horizontal distance
         elevation = np.arctan2(sez[2], rho)
-        azimuth = np.arctan2(sez[1], sez[0])  # 0=South, pi/2=East
 
         # Should be roughly east (azimuth near pi/2)
         assert elevation < np.radians(1.0), "Low elevation for same altitude"
@@ -1319,4 +1316,3 @@ class TestSEZConversions:
         total_distance = np.linalg.norm(sez)
         assert total_distance > 100000, "Distance should be significant"
         assert abs(sez[1]) < abs(sez[0]), "East component should be smaller than meridional"
-

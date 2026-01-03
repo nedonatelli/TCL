@@ -369,11 +369,7 @@ def plot_multi_target_tracks(
 
     for idx, (track_id, states) in enumerate(tracks.items()):
         states = np.asarray(states)
-        color = (
-            colors.get(track_id)
-            if colors
-            else default_colors[idx % len(default_colors)]
-        )
+        color = colors.get(track_id) if colors else default_colors[idx % len(default_colors)]
 
         fig.add_trace(
             go.Scatter(
@@ -536,9 +532,7 @@ def plot_estimation_comparison(
 
         # Error bounds
         if covariances is not None:
-            sigma = n_std * np.array(
-                [np.sqrt(P[state_idx, state_idx]) for P in covariances]
-            )
+            sigma = n_std * np.array([np.sqrt(P[state_idx, state_idx]) for P in covariances])
             upper = estimates[:, state_idx] + sigma
             lower = estimates[:, state_idx] - sigma
 
@@ -740,9 +734,7 @@ def create_animated_tracking(
                         method="animate",
                         args=[
                             [None],
-                            dict(
-                                frame=dict(duration=0, redraw=False), mode="immediate"
-                            ),
+                            dict(frame=dict(duration=0, redraw=False), mode="immediate"),
                         ],
                     ),
                 ],

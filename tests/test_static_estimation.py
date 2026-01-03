@@ -204,15 +204,11 @@ class TestRecursiveLeastSquares:
 
         # Old data pointing one direction
         for _ in range(10):
-            x, P = recursive_least_squares(
-                x, P, np.array([1, 0]), 0.0, forgetting_factor=0.95
-            )
+            x, P = recursive_least_squares(x, P, np.array([1, 0]), 0.0, forgetting_factor=0.95)
 
         # New data pointing different direction
         for _ in range(10):
-            x, P = recursive_least_squares(
-                x, P, np.array([1, 0]), 1.0, forgetting_factor=0.95
-            )
+            x, P = recursive_least_squares(x, P, np.array([1, 0]), 1.0, forgetting_factor=0.95)
 
         # Should be closer to 1 than to 0
         assert x[0] > 0.5
@@ -412,9 +408,7 @@ class TestRANSAC:
 
         # Add outliers
         n_outliers = 20
-        A_outliers = np.column_stack(
-            [np.ones(n_outliers), rng.uniform(0, 10, n_outliers)]
-        )
+        A_outliers = np.column_stack([np.ones(n_outliers), rng.uniform(0, 10, n_outliers)])
         b_outliers = rng.uniform(-100, 100, n_outliers)
 
         A = np.vstack([A_inliers, A_outliers])

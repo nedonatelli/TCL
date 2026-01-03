@@ -147,9 +147,7 @@ def ecef2geodetic(
         # Bowring's iterative method
         # Initial estimate
         theta = np.arctan2(z * a, p * b)
-        lat = np.arctan2(
-            z + ep2 * b * np.sin(theta) ** 3, p - e2 * a * np.cos(theta) ** 3
-        )
+        lat = np.arctan2(z + ep2 * b * np.sin(theta) ** 3, p - e2 * a * np.cos(theta) ** 3)
 
         # Iterate for improved accuracy
         for _ in range(5):
@@ -166,7 +164,7 @@ def ecef2geodetic(
 
         # Altitude
         # Use cos_lat when available, otherwise use sin_lat with guard against division by zero
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             alt = np.where(
                 np.abs(cos_lat) > 1e-10,
                 p / cos_lat - N,
@@ -380,18 +378,8 @@ def enu2ecef(
     cos_lon = np.cos(lon_ref)
 
     # ECEF = R^T @ ENU + ECEF_ref
-    x = (
-        -sin_lon * east
-        - sin_lat * cos_lon * north
-        + cos_lat * cos_lon * up
-        + ecef_ref[0]
-    )
-    y = (
-        cos_lon * east
-        - sin_lat * sin_lon * north
-        + cos_lat * sin_lon * up
-        + ecef_ref[1]
-    )
+    x = -sin_lon * east - sin_lat * cos_lon * north + cos_lat * cos_lon * up + ecef_ref[0]
+    y = cos_lon * east - sin_lat * sin_lon * north + cos_lat * sin_lon * up + ecef_ref[1]
     z = cos_lat * north + sin_lat * up + ecef_ref[2]
 
     if x.size == 1:
@@ -651,14 +639,30 @@ def ecef2sez(
     # Z = cos(lat)*cos(lon)*dX + cos(lat)*sin(lon)*dY + sin(lat)*dZ
 
     if delta_ecef.ndim == 1:
-        s = -sin_lat * cos_lon * delta_ecef[0] - sin_lat * sin_lon * delta_ecef[1] + cos_lat * delta_ecef[2]
+        s = (
+            -sin_lat * cos_lon * delta_ecef[0]
+            - sin_lat * sin_lon * delta_ecef[1]
+            + cos_lat * delta_ecef[2]
+        )
         e = -sin_lon * delta_ecef[0] + cos_lon * delta_ecef[1]
-        z = cos_lat * cos_lon * delta_ecef[0] + cos_lat * sin_lon * delta_ecef[1] + sin_lat * delta_ecef[2]
+        z = (
+            cos_lat * cos_lon * delta_ecef[0]
+            + cos_lat * sin_lon * delta_ecef[1]
+            + sin_lat * delta_ecef[2]
+        )
         return np.array([s, e, z], dtype=np.float64)
     else:
-        s = -sin_lat * cos_lon * delta_ecef[0, :] - sin_lat * sin_lon * delta_ecef[1, :] + cos_lat * delta_ecef[2, :]
+        s = (
+            -sin_lat * cos_lon * delta_ecef[0, :]
+            - sin_lat * sin_lon * delta_ecef[1, :]
+            + cos_lat * delta_ecef[2, :]
+        )
         e = -sin_lon * delta_ecef[0, :] + cos_lon * delta_ecef[1, :]
-        z = cos_lat * cos_lon * delta_ecef[0, :] + cos_lat * sin_lon * delta_ecef[1, :] + sin_lat * delta_ecef[2, :]
+        z = (
+            cos_lat * cos_lon * delta_ecef[0, :]
+            + cos_lat * sin_lon * delta_ecef[1, :]
+            + sin_lat * delta_ecef[2, :]
+        )
         return np.array([s, e, z], dtype=np.float64)
 
 

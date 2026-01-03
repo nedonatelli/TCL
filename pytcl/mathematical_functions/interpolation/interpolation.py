@@ -371,9 +371,7 @@ def rbf_interpolate(
     points = np.asarray(points, dtype=np.float64)
     values = np.asarray(values, dtype=np.float64)
 
-    return interpolate.RBFInterpolator(
-        points, values, kernel=kernel, smoothing=smoothing
-    )
+    return interpolate.RBFInterpolator(points, values, kernel=kernel, smoothing=smoothing)
 
 
 def barycentric(

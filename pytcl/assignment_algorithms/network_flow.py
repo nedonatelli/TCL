@@ -148,10 +148,7 @@ def assignment_to_flow_network(
     supplies[sink] = float(-m)
 
     node_names = np.array(
-        ["source"]
-        + [f"worker_{i}" for i in range(m)]
-        + [f"task_{j}" for j in range(n)]
-        + ["sink"]
+        ["source"] + [f"worker_{i}" for i in range(m)] + [f"task_{j}" for j in range(n)] + ["sink"]
     )
 
     return edges, supplies, node_names
@@ -331,7 +328,9 @@ def assignment_from_flow_solution(
     assignment = np.array(assignment, dtype=np.intp)
     cost = 0.0
     if len(assignment) > 0:
-        cost = float(np.sum(flow[edge_idx] * edges[edge_idx].cost for edge_idx in range(len(edges))))
+        cost = float(
+            np.sum(flow[edge_idx] * edges[edge_idx].cost for edge_idx in range(len(edges)))
+        )
 
     return assignment, cost
 

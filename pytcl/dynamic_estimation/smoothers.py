@@ -646,9 +646,7 @@ def rts_smoother_single_step(
     result : SmoothedState
         Smoothed state and covariance at current time.
     """
-    x_s, P_s = kf_smooth(
-        x_filt, P_filt, x_pred_next, P_pred_next, x_smooth_next, P_smooth_next, F
-    )
+    x_s, P_s = kf_smooth(x_filt, P_filt, x_pred_next, P_pred_next, x_smooth_next, P_smooth_next, F)
     return SmoothedState(x=x_s, P=P_s)
 
 

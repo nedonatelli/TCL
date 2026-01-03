@@ -155,9 +155,7 @@ class TestPseudorangeGeometry:
         H = pseudorange_measurement_matrix(user, satellites, include_clock=True)
         assert H.shape == (4, 4)
 
-        H_no_clock = pseudorange_measurement_matrix(
-            user, satellites, include_clock=False
-        )
+        H_no_clock = pseudorange_measurement_matrix(user, satellites, include_clock=False)
         assert H_no_clock.shape == (4, 3)
 
     def test_pseudorange_matrix_clock_column(self):
@@ -405,9 +403,7 @@ class TestLooseCoupledIntegration:
         result = loose_coupled_update(state, gnss)
 
         # State should be unchanged
-        np.testing.assert_allclose(
-            result.state.ins_state.position, state.ins_state.position
-        )
+        np.testing.assert_allclose(result.state.ins_state.position, state.ins_state.position)
 
 
 class TestTightCoupledIntegration:
@@ -536,9 +532,7 @@ class TestIntegration:
 
     def test_predict_update_cycle(self):
         """Test complete predict-update cycle."""
-        ins_state = initialize_ins_state(
-            lat=np.radians(45), lon=np.radians(-75), alt=100, vN=10
-        )
+        ins_state = initialize_ins_state(lat=np.radians(45), lon=np.radians(-75), alt=100, vN=10)
         state = initialize_ins_gnss(ins_state)
 
         g = normal_gravity(np.radians(45), 100)

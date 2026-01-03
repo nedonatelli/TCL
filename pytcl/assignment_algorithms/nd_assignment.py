@@ -69,9 +69,7 @@ def validate_cost_tensor(cost_tensor: NDArray[np.float64]) -> Tuple[int, ...]:
         If tensor has fewer than 2 dimensions.
     """
     if cost_tensor.ndim < 2:
-        raise ValueError(
-            f"Cost tensor must have at least 2 dimensions, got {cost_tensor.ndim}"
-        )
+        raise ValueError(f"Cost tensor must have at least 2 dimensions, got {cost_tensor.ndim}")
 
     return cost_tensor.shape
 
@@ -212,10 +210,7 @@ def relaxation_assignment_nd(
         result_relaxed = greedy_assignment_nd(relaxed_cost)
 
         # Compute lower bound from relaxed solution
-        lower_bound = (
-            result_relaxed.cost
-            + sum(np.sum(lambdas[d]) for d in range(n_dims))
-        )
+        lower_bound = result_relaxed.cost + sum(np.sum(lambdas[d]) for d in range(n_dims))
 
         # Extract solution from relaxed problem
         if len(result_relaxed.assignments) > 0:
@@ -242,8 +237,7 @@ def relaxation_assignment_nd(
 
         if verbose:
             print(
-                f"Iter {iteration+1}: LB={lower_bound:.4f}, UB={best_cost:.4f}, "
-                f"Gap={gap:.6f}"
+                f"Iter {iteration+1}: LB={lower_bound:.4f}, UB={best_cost:.4f}, " f"Gap={gap:.6f}"
             )
 
         if gap < tolerance:

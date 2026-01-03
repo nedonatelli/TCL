@@ -26,10 +26,10 @@ from numpy.typing import NDArray
 class OrbitType(Enum):
     """Classification of orbit types based on eccentricity."""
 
-    CIRCULAR = 0      # e = 0
-    ELLIPTICAL = 1    # 0 < e < 1
-    PARABOLIC = 2     # e = 1 (boundary case)
-    HYPERBOLIC = 3    # e > 1
+    CIRCULAR = 0  # e = 0
+    ELLIPTICAL = 1  # 0 < e < 1
+    PARABOLIC = 2  # e = 1 (boundary case)
+    HYPERBOLIC = 3  # e > 1
 
 
 class ParabolicElements(NamedTuple):
@@ -146,9 +146,7 @@ def mean_to_parabolic_anomaly(
         if abs(delta) < tol:
             return D
 
-    raise ValueError(
-        f"Parabolic Kepler's equation did not converge after {max_iter} iterations"
-    )
+    raise ValueError(f"Parabolic Kepler's equation did not converge after {max_iter} iterations")
 
 
 def parabolic_anomaly_to_true_anomaly(D: float) -> float:
@@ -238,9 +236,7 @@ def radius_parabolic(rp: float, nu: float) -> float:
     denom = 1.0 + np.cos(nu)
 
     if denom <= 0:
-        raise ValueError(
-            f"Parabolic orbit undefined at true anomaly nu={np.degrees(nu):.2f}°"
-        )
+        raise ValueError(f"Parabolic orbit undefined at true anomaly nu={np.degrees(nu):.2f}°")
 
     r = 2.0 * rp / denom
 
@@ -303,9 +299,7 @@ def hyperbolic_anomaly_to_true_anomaly(H: float, e: float) -> float:
     if e <= 1:
         raise ValueError(f"Eccentricity must be > 1 for hyperbolic orbits, got {e}")
 
-    nu = 2.0 * np.arctan(
-        np.sqrt((e + 1.0) / (e - 1.0)) * np.tanh(H / 2.0)
-    )
+    nu = 2.0 * np.arctan(np.sqrt((e + 1.0) / (e - 1.0)) * np.tanh(H / 2.0))
 
     return nu
 
@@ -334,9 +328,7 @@ def true_anomaly_to_hyperbolic_anomaly(nu: float, e: float) -> float:
     if e <= 1:
         raise ValueError(f"Eccentricity must be > 1 for hyperbolic orbits, got {e}")
 
-    H = 2.0 * np.arctanh(
-        np.sqrt((e - 1.0) / (e + 1.0)) * np.tan(nu / 2.0)
-    )
+    H = 2.0 * np.arctanh(np.sqrt((e - 1.0) / (e + 1.0)) * np.tan(nu / 2.0))
 
     return H
 
@@ -390,9 +382,7 @@ def hyperbolic_excess_velocity(mu: float, a: float) -> float:
         If semi-major axis is not negative.
     """
     if a >= 0:
-        raise ValueError(
-            f"Semi-major axis must be negative for hyperbolic orbits, got {a}"
-        )
+        raise ValueError(f"Semi-major axis must be negative for hyperbolic orbits, got {a}")
 
     v_inf = np.sqrt(-mu / a)
     return v_inf
@@ -492,9 +482,7 @@ def semi_major_axis_from_energy(mu: float, specific_energy: float) -> float:
         If specific energy is exactly zero (parabolic case).
     """
     if abs(specific_energy) < 1e-15:
-        raise ValueError(
-            "Specific energy is zero (parabolic orbit); use alternative methods"
-        )
+        raise ValueError("Specific energy is zero (parabolic orbit); use alternative methods")
 
     a = -mu / (2.0 * specific_energy)
     return a

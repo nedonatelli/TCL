@@ -421,9 +421,7 @@ def comb(
     --------
     scipy.special.comb : Combinations.
     """
-    return np.asarray(
-        sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64
-    )
+    return np.asarray(sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64)
 
 
 def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray:

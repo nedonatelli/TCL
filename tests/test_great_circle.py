@@ -312,9 +312,7 @@ class TestGreatCirclePathIntersect:
         lat1b, lon1b = np.radians(-10), np.radians(0)
         lat2b, lon2b = np.radians(10), np.radians(0)
 
-        result = great_circle_path_intersect(
-            lat1a, lon1a, lat2a, lon2a, lat1b, lon1b, lat2b, lon2b
-        )
+        result = great_circle_path_intersect(lat1a, lon1a, lat2a, lon2a, lat1b, lon1b, lat2b, lon2b)
 
         assert result.valid
         # Intersection should be near origin

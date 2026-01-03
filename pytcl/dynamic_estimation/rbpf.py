@@ -162,9 +162,7 @@ class RBPFFilter:
             # Predict nonlinear component
             y_pred = g(particle.y)
             # Add process noise
-            y_pred = y_pred + np.random.multivariate_normal(
-                np.zeros(y_pred.shape[0]), Qy
-            )
+            y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
             # Create wrapper for linear dynamics with current y_pred
             def f_wrapper(x):
@@ -238,8 +236,7 @@ class RBPFFilter:
 
         # Update particles with new weights
         self.particles = [
-            RBPFParticle(y=p.y, x=p.x, P=p.P, w=w)
-            for p, w in zip(new_particles, weights)
+            RBPFParticle(y=p.y, x=p.x, P=p.P, w=w) for p, w in zip(new_particles, weights)
         ]
 
         # Resample if needed
@@ -341,9 +338,7 @@ class RBPFFilter:
 
         for idx in indices:
             p = self.particles[idx]
-            new_particles.append(
-                RBPFParticle(y=p.y.copy(), x=p.x.copy(), P=p.P.copy(), w=weight)
-            )
+            new_particles.append(RBPFParticle(y=p.y.copy(), x=p.x.copy(), P=p.P.copy(), w=weight))
 
         self.particles = new_particles
 
@@ -399,9 +394,7 @@ class RBPFFilter:
                     + w_j * np.outer(p_j.x - x_merged, p_j.x - x_merged)
                 )
 
-                merged_particle = RBPFParticle(
-                    y=y_merged, x=x_merged, P=P_merged, w=w_total
-                )
+                merged_particle = RBPFParticle(y=y_merged, x=x_merged, P=P_merged, w=w_total)
 
                 # Replace particles
                 if best_i < best_j:
@@ -417,14 +410,11 @@ class RBPFFilter:
         w_sum = sum(p.w for p in self.particles)
         if w_sum > 0:
             self.particles = [
-                RBPFParticle(y=p.y, x=p.x, P=p.P, w=p.w / w_sum)
-                for p in self.particles
+                RBPFParticle(y=p.y, x=p.x, P=p.P, w=p.w / w_sum) for p in self.particles
             ]
 
     @staticmethod
-    def _kl_divergence(
-        P1: NDArray, P2: NDArray, x1: NDArray, x2: NDArray
-    ) -> float:
+    def _kl_divergence(P1: NDArray, P2: NDArray, x1: NDArray, x2: NDArray) -> float:
         """Compute KL divergence between two Gaussians.
 
         KL(N(x1, P1) || N(x2, P2)) = 0.5 * [
@@ -508,9 +498,7 @@ def rbpf_predict(
     for particle in particles:
         # Predict nonlinear component
         y_pred = g(particle.y)
-        y_pred = y_pred + np.random.multivariate_normal(
-            np.zeros(y_pred.shape[0]), Qy
-        )
+        y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
         # Create wrapper for linear dynamics with current y_pred
         def f_wrapper(x):
@@ -587,7 +575,4 @@ def rbpf_update(
         weights = np.ones(len(particles)) / len(particles)
 
     # Update with new weights
-    return [
-        RBPFParticle(y=p.y, x=p.x, P=p.P, w=w)
-        for p, w in zip(new_particles, weights)
-    ]
+    return [RBPFParticle(y=p.y, x=p.x, P=p.P, w=w) for p, w in zip(new_particles, weights)]

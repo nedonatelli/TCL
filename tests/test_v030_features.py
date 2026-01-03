@@ -307,9 +307,7 @@ class TestJPDA:
         likelihood = np.array([[0.8, 0.1]])
         gated = np.array([[True, True]])
 
-        beta = jpda_probabilities(
-            likelihood, gated, detection_prob=0.9, clutter_density=0.01
-        )
+        beta = jpda_probabilities(likelihood, gated, detection_prob=0.9, clutter_density=0.01)
 
         assert beta.shape == (1, 3)  # 1 track, 2 meas + 1 for no-meas
         # Probabilities should sum to 1 for each track

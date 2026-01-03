@@ -181,19 +181,13 @@ def plot_euler_angles(
 
     # Create rotation matrices for each axis
     def rotx(a):
-        return np.array(
-            [[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]]
-        )
+        return np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
 
     def roty(a):
-        return np.array(
-            [[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]]
-        )
+        return np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])
 
     def rotz(a):
-        return np.array(
-            [[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]]
-        )
+        return np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
 
     rot_funcs = {"X": rotx, "Y": roty, "Z": rotz}
 
@@ -247,11 +241,7 @@ def plot_euler_angles(
     for i in range(4):
         scene_name = f"scene{i + 1}" if i > 0 else "scene"
         fig.update_layout(
-            **{
-                scene_name: dict(
-                    aspectmode="cube", camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))
-                )
-            }
+            **{scene_name: dict(aspectmode="cube", camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)))}
         )
 
     return fig
@@ -378,9 +368,7 @@ def plot_quaternion_interpolation(
                         method="animate",
                         args=[
                             [None],
-                            dict(
-                                frame=dict(duration=0, redraw=False), mode="immediate"
-                            ),
+                            dict(frame=dict(duration=0, redraw=False), mode="immediate"),
                         ],
                     ),
                 ],

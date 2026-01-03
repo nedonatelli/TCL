@@ -121,9 +121,7 @@ class TestGreedyAssignment2D:
 
     def test_greedy_2d_square(self):
         """Test greedy on square 2D assignment."""
-        cost = np.array(
-            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]
-        )
+        cost = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
 
         result = greedy_assignment_nd(cost, max_assignments=3)
 
@@ -247,12 +245,8 @@ class TestAuctionAssignment2D:
         """Test that smaller epsilon affects convergence."""
         cost = np.random.randn(4, 4)
 
-        result_large_eps = auction_assignment_nd(
-            cost, max_iterations=100, epsilon=0.1
-        )
-        result_small_eps = auction_assignment_nd(
-            cost, max_iterations=100, epsilon=0.001
-        )
+        result_large_eps = auction_assignment_nd(cost, max_iterations=100, epsilon=0.1)
+        result_small_eps = auction_assignment_nd(cost, max_iterations=100, epsilon=0.001)
 
         # Both should produce valid results
         assert result_large_eps.assignments.shape[0] > 0
@@ -289,9 +283,7 @@ class TestAssignmentComparison:
         cost = np.random.randn(3, 3)
 
         greedy_result = greedy_assignment_nd(cost, max_assignments=3)
-        relaxation_result = relaxation_assignment_nd(
-            cost, max_iterations=100, tolerance=1e-6
-        )
+        relaxation_result = relaxation_assignment_nd(cost, max_iterations=100, tolerance=1e-6)
 
         # Relaxation should generally find equal or better solution
         assert isinstance(greedy_result, AssignmentNDResult)
@@ -302,9 +294,7 @@ class TestAssignmentComparison:
         cost = np.random.randn(3, 3)
 
         greedy_result = greedy_assignment_nd(cost, max_assignments=3)
-        relaxation_result = relaxation_assignment_nd(
-            cost, max_iterations=100, tolerance=1e-6
-        )
+        relaxation_result = relaxation_assignment_nd(cost, max_iterations=100, tolerance=1e-6)
         auction_result = auction_assignment_nd(cost, max_iterations=100, epsilon=0.01)
 
         # All should produce valid assignments

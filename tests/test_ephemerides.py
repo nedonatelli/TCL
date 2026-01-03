@@ -155,9 +155,7 @@ class TestMoonPosition:
     def test_moon_position_earth_centered(self):
         """Test Moon position relative to Earth."""
         jd = 2451545.0
-        r_earth_centered, v_earth_centered = self.eph.moon_position(
-            jd, frame="earth_centered"
-        )
+        r_earth_centered, v_earth_centered = self.eph.moon_position(jd, frame="earth_centered")
 
         # Moon is about 385,000 km = 0.00257 AU from Earth
         distance = np.linalg.norm(r_earth_centered)
@@ -165,9 +163,7 @@ class TestMoonPosition:
         distance_km = distance * au_to_km
 
         # Should be roughly 380,000-390,000 km
-        assert (
-            370000 < distance_km < 400000
-        ), f"Moon distance {distance_km:.0f} km is unexpected"
+        assert 370000 < distance_km < 400000, f"Moon distance {distance_km:.0f} km is unexpected"
 
     def test_moon_position_frames_consistency(self):
         """Test that Moon positions are consistent across frames."""

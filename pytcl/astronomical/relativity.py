@@ -323,9 +323,7 @@ def post_newtonian_acceleration(
     return a_newt + a_1pn
 
 
-def geodetic_precession(
-    a: float, e: float, inclination: float, gm: float = GM_EARTH
-) -> float:
+def geodetic_precession(a: float, e: float, inclination: float, gm: float = GM_EARTH) -> float:
     """Compute geodetic (de Sitter) precession rate of orbital plane.
 
     The orbital plane of a satellite precesses due to frame-dragging effects

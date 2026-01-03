@@ -53,8 +53,7 @@ LOGGER_HIERARCHY = {
 # Default format strings
 FORMATS = {
     "detailed": (
-        "%(asctime)s - %(name)s - %(levelname)s - "
-        "%(funcName)s:%(lineno)d - %(message)s"
+        "%(asctime)s - %(name)s - %(levelname)s - " "%(funcName)s:%(lineno)d - %(message)s"
     ),
     "simple": "%(name)s - %(levelname)s - %(message)s",
     "performance": "%(asctime)s - PERF - %(name)s - %(message)s",

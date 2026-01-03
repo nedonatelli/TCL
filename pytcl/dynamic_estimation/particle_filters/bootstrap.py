@@ -157,9 +157,7 @@ def resample_residual(
     residual = Nw - floor_Nw
 
     # Deterministic copies (JIT-compiled)
-    resampled, idx = _resample_residual_deterministic(
-        particles.astype(np.float64), floor_Nw
-    )
+    resampled, idx = _resample_residual_deterministic(particles.astype(np.float64), floor_Nw)
 
     # Multinomial resampling of residuals
     if idx < N:
@@ -271,9 +269,7 @@ def bootstrap_pf_update(
     N = len(particles)
 
     # Compute likelihoods
-    likelihoods = np.array(
-        [likelihood_func(z, particles[i]) for i in range(N)], dtype=np.float64
-    )
+    likelihoods = np.array([likelihood_func(z, particles[i]) for i in range(N)], dtype=np.float64)
 
     # Update weights
     weights_unnorm = weights * likelihoods

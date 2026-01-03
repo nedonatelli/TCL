@@ -264,16 +264,12 @@ def plot_uncertainty_evolution(data: dict) -> go.Figure:
 
     # Position uncertainties
     fig.add_trace(
-        go.Scatter(
-            x=time, y=pos_x_std, mode="lines", name="σ_x", line=dict(color="blue")
-        ),
+        go.Scatter(x=time, y=pos_x_std, mode="lines", name="σ_x", line=dict(color="blue")),
         row=1,
         col=1,
     )
     fig.add_trace(
-        go.Scatter(
-            x=time, y=pos_y_std, mode="lines", name="σ_y", line=dict(color="red")
-        ),
+        go.Scatter(x=time, y=pos_y_std, mode="lines", name="σ_y", line=dict(color="red")),
         row=1,
         col=1,
     )
@@ -390,9 +386,7 @@ def plot_estimation_errors(data: dict) -> go.Figure:
         col=1,
     )
     fig.add_trace(
-        go.Scatter(
-            x=time, y=errors[:, 2], mode="lines", name="Y error", line=dict(color="red")
-        ),
+        go.Scatter(x=time, y=errors[:, 2], mode="lines", name="Y error", line=dict(color="red")),
         row=2,
         col=1,
     )

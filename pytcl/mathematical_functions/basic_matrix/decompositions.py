@@ -160,9 +160,7 @@ def tria_sqrt(
     if B is not None:
         B = np.asarray(B, dtype=np.float64)
         if A.shape[0] != B.shape[0]:
-            raise ValueError(
-                f"A and B must have same number of rows: {A.shape[0]} vs {B.shape[0]}"
-            )
+            raise ValueError(f"A and B must have same number of rows: {A.shape[0]} vs {B.shape[0]}")
         combined = np.hstack([A, B])
     else:
         combined = A

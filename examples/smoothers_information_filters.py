@@ -158,16 +158,12 @@ def demo_rts_smoother():
     print("\nPosition RMSE comparison:")
     print(f"  Filter:   {np.mean(filter_rmse_pos):.3f}")
     print(f"  Smoother: {np.mean(smooth_rmse_pos):.3f}")
-    print(
-        f"  Improvement: {(1 - np.mean(smooth_rmse_pos)/np.mean(filter_rmse_pos))*100:.1f}%"
-    )
+    print(f"  Improvement: {(1 - np.mean(smooth_rmse_pos)/np.mean(filter_rmse_pos))*100:.1f}%")
 
     print("\nVelocity RMSE comparison:")
     print(f"  Filter:   {np.mean(filter_rmse_vel):.3f}")
     print(f"  Smoother: {np.mean(smooth_rmse_vel):.3f}")
-    print(
-        f"  Improvement: {(1 - np.mean(smooth_rmse_vel)/np.mean(filter_rmse_vel))*100:.1f}%"
-    )
+    print(f"  Improvement: {(1 - np.mean(smooth_rmse_vel)/np.mean(filter_rmse_vel))*100:.1f}%")
 
     # Covariance comparison (trace as measure of uncertainty)
     filter_trace = [np.trace(result.P_filt[k]) for k in range(n_steps)]
@@ -234,9 +230,7 @@ def demo_two_filter_smoother():
     P0_bwd = np.diag([1000, 100, 1000, 100])  # Very large uncertainty
 
     # Run two-filter smoother
-    result = two_filter_smoother(
-        x0_fwd, P0_fwd, x0_bwd, P0_bwd, measurements, F, Q, H, R
-    )
+    result = two_filter_smoother(x0_fwd, P0_fwd, x0_bwd, P0_bwd, measurements, F, Q, H, R)
 
     print(f"\nTwo-filter smoother completed: {len(result.x_smooth)} time steps")
 
@@ -246,12 +240,8 @@ def demo_two_filter_smoother():
     two_filter_rmse = []
     rts_rmse = []
     for k in range(n_steps):
-        two_filter_rmse.append(
-            np.linalg.norm(result.x_smooth[k][[0, 2]] - true_states[k][[0, 2]])
-        )
-        rts_rmse.append(
-            np.linalg.norm(rts_result.x_smooth[k][[0, 2]] - true_states[k][[0, 2]])
-        )
+        two_filter_rmse.append(np.linalg.norm(result.x_smooth[k][[0, 2]] - true_states[k][[0, 2]]))
+        rts_rmse.append(np.linalg.norm(rts_result.x_smooth[k][[0, 2]] - true_states[k][[0, 2]]))
 
     print("\nComparison with RTS smoother:")
     print(f"  Two-filter RMSE: {np.mean(two_filter_rmse):.3f}")
@@ -399,10 +389,7 @@ def demo_multi_sensor_fusion():
 
     print("\nFused estimate:")
     print(f"  Position: ({x_fused[0]:.2f}, {x_fused[1]:.2f})")
-    print(
-        f"  Uncertainty (std): ({np.sqrt(P_fused[0, 0]):.3f}, "
-        f"{np.sqrt(P_fused[1, 1]):.3f})"
-    )
+    print(f"  Uncertainty (std): ({np.sqrt(P_fused[0, 0]):.3f}, " f"{np.sqrt(P_fused[1, 1]):.3f})")
 
     error = np.linalg.norm(x_fused - true_state)
     print(f"  Error: {error:.3f}")

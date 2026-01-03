@@ -158,9 +158,7 @@ def ospa(
     loc_component = (localization_sum / n) ** (1.0 / p) if localization_sum > 0 else 0.0
     card_component = (cardinality_penalty / n) ** (1.0 / p) if n > m else 0.0
 
-    return OSPAResult(
-        ospa=ospa_val, localization=loc_component, cardinality=card_component
-    )
+    return OSPAResult(ospa=ospa_val, localization=loc_component, cardinality=card_component)
 
 
 def ospa_over_time(

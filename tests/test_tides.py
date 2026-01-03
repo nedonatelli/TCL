@@ -152,9 +152,7 @@ class TestSolidEarthTideDisplacement:
         """Displacement should vary with time (tidal cycle)."""
         mjd = 58000
         disp1 = solid_earth_tide_displacement(np.radians(45), 0, mjd)
-        disp2 = solid_earth_tide_displacement(
-            np.radians(45), 0, mjd + 0.5
-        )  # 12 hours later
+        disp2 = solid_earth_tide_displacement(np.radians(45), 0, mjd + 0.5)  # 12 hours later
         # M2 tide has ~12.4 hour period, displacements should differ
         assert disp1.radial != disp2.radial
 
@@ -162,9 +160,7 @@ class TestSolidEarthTideDisplacement:
         """Displacement should vary with location."""
         mjd = 58000
         disp1 = solid_earth_tide_displacement(np.radians(45), 0, mjd)
-        disp2 = solid_earth_tide_displacement(
-            np.radians(45), np.pi, mjd
-        )  # Opposite side
+        disp2 = solid_earth_tide_displacement(np.radians(45), np.pi, mjd)  # Opposite side
         assert disp1.radial != disp2.radial
 
 
@@ -330,9 +326,7 @@ class TestOceanTideLoadingType:
         """Should be able to create OceanTideLoading."""
         amp = np.array([[0.01, 0.005], [0.002, 0.001], [0.002, 0.001]])
         phase = np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
-        loading = OceanTideLoading(
-            amplitude=amp, phase=phase, constituents=("M2", "S2")
-        )
+        loading = OceanTideLoading(amplitude=amp, phase=phase, constituents=("M2", "S2"))
         assert loading.constituents == ("M2", "S2")
         assert loading.amplitude.shape == (3, 2)
 
@@ -340,9 +334,7 @@ class TestOceanTideLoadingType:
         """OceanTideLoading should work with total_tidal_displacement."""
         amp = np.array([[0.01, 0.005], [0.002, 0.001], [0.002, 0.001]])
         phase = np.array([[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]])
-        loading = OceanTideLoading(
-            amplitude=amp, phase=phase, constituents=("M2", "S2")
-        )
+        loading = OceanTideLoading(amplitude=amp, phase=phase, constituents=("M2", "S2"))
         disp = total_tidal_displacement(np.radians(45), 0, 58000, ocean_loading=loading)
         assert isinstance(disp, TidalDisplacement)
 

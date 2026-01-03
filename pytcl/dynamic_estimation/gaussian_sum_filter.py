@@ -108,9 +108,7 @@ class GaussianSumFilter:
                 x = x0.copy()
             else:
                 # Slight perturbation for diversity
-                x = x0 + np.random.randn(x0.shape[0]) * np.sqrt(
-                    np.diag(P0)
-                ) * 0.1
+                x = x0 + np.random.randn(x0.shape[0]) * np.sqrt(np.diag(P0)) * 0.1
 
             self.components.append(GaussianComponent(x=x, P=P0.copy(), w=weight))
 
@@ -138,9 +136,7 @@ class GaussianSumFilter:
         for comp in self.components:
             # EKF predict for each component
             pred = ekf_predict(comp.x, comp.P, f, F, Q)
-            new_components.append(
-                GaussianComponent(x=pred.x, P=pred.P, w=comp.w)
-            )
+            new_components.append(GaussianComponent(x=pred.x, P=pred.P, w=comp.w))
 
         self.components = new_components
 
@@ -179,9 +175,7 @@ class GaussianSumFilter:
             # Likelihood from this measurement
             likelihood = upd.likelihood
 
-            updated_components.append(
-                GaussianComponent(x=upd.x, P=upd.P, w=comp.w)
-            )
+            updated_components.append(GaussianComponent(x=upd.x, P=upd.P, w=comp.w))
             likelihoods.append(likelihood)
 
         # Adapt weights based on measurement likelihood
@@ -200,8 +194,7 @@ class GaussianSumFilter:
 
         # Update components with new weights
         self.components = [
-            GaussianComponent(x=c.x, P=c.P, w=w)
-            for c, w in zip(updated_components, weights)
+            GaussianComponent(x=c.x, P=c.P, w=w) for c, w in zip(updated_components, weights)
         ]
 
         # Manage components (prune, merge)
@@ -210,35 +203,28 @@ class GaussianSumFilter:
 
     def _prune_components(self) -> None:
         """Remove components with weight below threshold."""
-        self.components = [
-            c for c in self.components if c.w >= self.prune_threshold
-        ]
+        self.components = [c for c in self.components if c.w >= self.prune_threshold]
 
         if len(self.components) == 0:
             # Failsafe: keep best component
-            self.components = [
-                max(self.components, key=lambda c: c.w)
-            ]
+            self.components = [max(self.components, key=lambda c: c.w)]
 
         # Renormalize weights
         total_weight = sum(c.w for c in self.components)
         if total_weight > 0:
             self.components = [
-                GaussianComponent(x=c.x, P=c.P, w=c.w / total_weight)
-                for c in self.components
+                GaussianComponent(x=c.x, P=c.P, w=c.w / total_weight) for c in self.components
             ]
 
     def _merge_components(self) -> None:
         """Merge similar components to keep count manageable."""
         while len(self.components) > self.max_components:
             # Find pair with smallest KL divergence
-            best_i, best_j, best_kl = 0, 1, float('inf')
+            best_i, best_j, best_kl = 0, 1, float("inf")
 
             for i in range(len(self.components)):
                 for j in range(i + 1, len(self.components)):
-                    kl = self._kl_divergence(
-                        self.components[i], self.components[j]
-                    )
+                    kl = self._kl_divergence(self.components[i], self.components[j])
                     if kl < best_kl:
                         best_kl = kl
                         best_i = best_j = i
@@ -260,18 +246,14 @@ class GaussianSumFilter:
                 P_new = (ci.w * ci.P + cj.w * cj.P) / w_new
                 dx_i = ci.x - x_new
                 dx_j = cj.x - x_new
-                P_new += (
-                    ci.w * np.outer(dx_i, dx_i)
-                    + cj.w * np.outer(dx_j, dx_j)
-                ) / w_new
+                P_new += (ci.w * np.outer(dx_i, dx_i) + cj.w * np.outer(dx_j, dx_j)) / w_new
 
                 # Create merged component
                 merged = GaussianComponent(x=x_new, P=P_new, w=w_new)
 
                 # Replace with merged, remove old
                 self.components = [
-                    c for i, c in enumerate(self.components)
-                    if i != best_i and i != best_j
+                    c for i, c in enumerate(self.components) if i != best_i and i != best_j
                 ]
                 self.components.append(merged)
             else:
@@ -300,9 +282,7 @@ class GaussianSumFilter:
 
         try:
             P2_inv = np.linalg.inv(c2.P)
-            logdet_ratio = np.linalg.slogdet(c2.P)[1] - np.linalg.slogdet(
-                c1.P
-            )[1]
+            logdet_ratio = np.linalg.slogdet(c2.P)[1] - np.linalg.slogdet(c1.P)[1]
 
             trace_term = np.trace(P2_inv @ c1.P)
             quad_term = dx @ P2_inv @ dx
@@ -384,9 +364,7 @@ def gaussian_sum_filter_predict(
     new_components = []
     for comp in components:
         pred = ekf_predict(comp.x, comp.P, f, F, Q)
-        new_components.append(
-            GaussianComponent(x=pred.x, P=pred.P, w=comp.w)
-        )
+        new_components.append(GaussianComponent(x=pred.x, P=pred.P, w=comp.w))
 
     return new_components
 
@@ -429,9 +407,7 @@ def gaussian_sum_filter_update(
         upd = ekf_update(comp.x, comp.P, z, h, H, R)
         likelihood = upd.likelihood
 
-        updated_components.append(
-            GaussianComponent(x=upd.x, P=upd.P, w=comp.w)
-        )
+        updated_components.append(GaussianComponent(x=upd.x, P=upd.P, w=comp.w))
         likelihoods.append(likelihood)
 
     # Adapt weights
@@ -446,7 +422,4 @@ def gaussian_sum_filter_update(
     else:
         weights = np.ones(len(updated_components)) / len(updated_components)
 
-    return [
-        GaussianComponent(x=c.x, P=c.P, w=w)
-        for c, w in zip(updated_components, weights)
-    ]
+    return [GaussianComponent(x=c.x, P=c.P, w=w) for c, w in zip(updated_components, weights)]

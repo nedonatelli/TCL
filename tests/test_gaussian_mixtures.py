@@ -207,8 +207,7 @@ class TestReduceMixtureRunnalls:
     def test_weights_sum_to_one(self):
         """Weights sum to 1 after reduction."""
         comps = [
-            GaussianComponent(0.2, np.array([i * 0.1, 0.0]), np.eye(2) * 0.1)
-            for i in range(5)
+            GaussianComponent(0.2, np.array([i * 0.1, 0.0]), np.eye(2) * 0.1) for i in range(5)
         ]
 
         result = reduce_mixture_runnalls(comps, max_components=2)

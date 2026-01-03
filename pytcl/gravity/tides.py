@@ -179,36 +179,31 @@ def fundamental_arguments(T: float) -> Tuple[float, float, float, float, float]:
     # Mean anomaly of the Moon (l)
     l_moon = (
         134.96340251
-        + (1717915923.2178 * T + 31.8792 * T**2 + 0.051635 * T**3 - 0.00024470 * T**4)
-        / 3600.0
+        + (1717915923.2178 * T + 31.8792 * T**2 + 0.051635 * T**3 - 0.00024470 * T**4) / 3600.0
     ) * deg2rad
 
     # Mean anomaly of the Sun (l')
     l_sun = (
         357.52910918
-        + (129596581.0481 * T - 0.5532 * T**2 + 0.000136 * T**3 - 0.00001149 * T**4)
-        / 3600.0
+        + (129596581.0481 * T - 0.5532 * T**2 + 0.000136 * T**3 - 0.00001149 * T**4) / 3600.0
     ) * deg2rad
 
     # Mean argument of latitude of the Moon (F)
     F = (
         93.27209062
-        + (1739527262.8478 * T - 12.7512 * T**2 - 0.001037 * T**3 + 0.00000417 * T**4)
-        / 3600.0
+        + (1739527262.8478 * T - 12.7512 * T**2 - 0.001037 * T**3 + 0.00000417 * T**4) / 3600.0
     ) * deg2rad
 
     # Mean elongation of the Moon from the Sun (D)
     D = (
         297.85019547
-        + (1602961601.2090 * T - 6.3706 * T**2 + 0.006593 * T**3 - 0.00003169 * T**4)
-        / 3600.0
+        + (1602961601.2090 * T - 6.3706 * T**2 + 0.006593 * T**3 - 0.00003169 * T**4) / 3600.0
     ) * deg2rad
 
     # Mean longitude of the ascending node of the Moon (Omega)
     Omega = (
         125.04455501
-        + (-6962890.5431 * T + 7.4722 * T**2 + 0.007702 * T**3 - 0.00005939 * T**4)
-        / 3600.0
+        + (-6962890.5431 * T + 7.4722 * T**2 + 0.007702 * T**3 - 0.00005939 * T**4) / 3600.0
     ) * deg2rad
 
     return (
@@ -279,9 +274,7 @@ def moon_position_approximate(mjd: float) -> Tuple[float, float, float]:
 
     # Distance perturbations (km)
     r_pert = (
-        -20.905355 * np.cos(M_prime)
-        - 3.699111 * np.cos(2 * D - M_prime)
-        - 2.955968 * np.cos(2 * D)
+        -20.905355 * np.cos(M_prime) - 3.699111 * np.cos(2 * D - M_prime) - 2.955968 * np.cos(2 * D)
     ) * 1000  # Convert to km
 
     # Final position
@@ -586,9 +579,7 @@ def solid_earth_tide_gravity(
     delta_g_north = 0.0
     delta_g_east = 0.0
 
-    return TidalGravity(
-        delta_g=delta_g, delta_g_north=delta_g_north, delta_g_east=delta_g_east
-    )
+    return TidalGravity(delta_g=delta_g, delta_g_north=delta_g_north, delta_g_east=delta_g_east)
 
 
 def ocean_tide_loading_displacement(

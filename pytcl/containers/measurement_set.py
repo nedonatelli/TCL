@@ -203,9 +203,7 @@ class MeasurementSet:
         MeasurementSet
             Measurements at the specified time.
         """
-        measurements = [
-            m for m in self._measurements if abs(m.time - time) <= tolerance
-        ]
+        measurements = [m for m in self._measurements if abs(m.time - time) <= tolerance]
         return MeasurementSet(measurements)
 
     def in_time_window(self, start: float, end: float) -> MeasurementSet:
@@ -346,9 +344,7 @@ class MeasurementSet:
             return np.zeros((0, 0))
         return np.array([m.value for m in self._measurements])
 
-    def values_at_time(
-        self, time: float, tolerance: float = 1e-9
-    ) -> NDArray[np.float64]:
+    def values_at_time(self, time: float, tolerance: float = 1e-9) -> NDArray[np.float64]:
         """
         Extract measurement values at a specific time.
 

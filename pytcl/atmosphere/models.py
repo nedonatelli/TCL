@@ -218,9 +218,7 @@ def isa_atmosphere(
     strat_mask = altitude > h_trop
     temperature[strat_mask] = T_trop + temperature_offset
     # Pressure at tropopause
-    P_trop = P0 * ((T0 + temperature_offset) / (T_trop + temperature_offset)) ** (
-        G0 / (R * L)
-    )
+    P_trop = P0 * ((T0 + temperature_offset) / (T_trop + temperature_offset)) ** (G0 / (R * L))
     pressure[strat_mask] = P_trop * np.exp(
         -G0 * (altitude[strat_mask] - h_trop) / (R * (T_trop + temperature_offset))
     )

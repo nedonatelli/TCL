@@ -177,9 +177,7 @@ class TestShapiroDelay:
         """Shapiro delay formula handles collinear geometries."""
         obs = np.array([2.0e11, 0.0, 0.0])
         body = np.array([0.0, 0.0, 0.0])
-        source = np.array(
-            [0.5e11, 0.0, 0.0]
-        )  # Between body and observer (on same line)
+        source = np.array([0.5e11, 0.0, 0.0])  # Between body and observer (on same line)
 
         # For collinear geometry, formula is less meaningful but should still return finite value
         delay = shapiro_delay(obs, source, body, GM_SUN)
@@ -195,9 +193,7 @@ class TestSchwarzchildPrecession:
         e_mercury = 0.20563593  # Eccentricity
 
         # Precession per orbit
-        precession_rad = schwarzschild_precession_per_orbit(
-            a_mercury, e_mercury, GM_SUN
-        )
+        precession_rad = schwarzschild_precession_per_orbit(a_mercury, e_mercury, GM_SUN)
         precession_arcsec = precession_rad * 206265  # Convert to arcseconds
 
         # Mercury orbital period
@@ -208,9 +204,7 @@ class TestSchwarzchildPrecession:
 
         # Expected: ~43 arcsec/century from GR
         # (Observed is ~5600 arcsec/century, but includes Newtonian precession)
-        assert (
-            40 < precession_per_century < 45
-        ), f"Got {precession_per_century:.1f} arcsec/century"
+        assert 40 < precession_per_century < 45, f"Got {precession_per_century:.1f} arcsec/century"
 
     def test_circular_orbit_zero_ecc(self):
         """Circular orbit (e=0) should give precession for any semi-major axis."""

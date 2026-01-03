@@ -47,12 +47,14 @@ class TargetTrackingScenario:
 
         # System matrices
         self.dt = 0.1
-        self.F = np.array([
-            [1, 0, self.dt, 0],
-            [0, 1, 0, self.dt],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ])
+        self.F = np.array(
+            [
+                [1, 0, self.dt, 0],
+                [0, 1, 0, self.dt],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
 
         self.Q = np.diag([0, 0, 0.001, 0.001])  # Process noise
 
@@ -128,10 +130,12 @@ class TargetTrackingScenario:
 
         if r < 0.01:
             # Avoid singularity
-            return np.array([
-                [0, 0, 0, 0],
-                [0, 0, 0, 0],
-            ])
+            return np.array(
+                [
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ]
+            )
 
         H = np.zeros((2, 4))
 
@@ -172,9 +176,7 @@ class TargetTrackingScenario:
 
             # Measurement
             z_true = self.h(x_true[k])
-            measurements[k] = z_true + np.random.multivariate_normal(
-                np.zeros(2), self.R
-            )
+            measurements[k] = z_true + np.random.multivariate_normal(np.zeros(2), self.R)
 
         return x_true, measurements
 
@@ -332,10 +334,12 @@ def run_rbpf_filter(
 
     for k, z in enumerate(measurements):
         # Predict nonlinear: position dynamics
-        g = lambda y: y + scenario.dt * np.array([
-            np.random.normal(0, 0.1),  # noise
-            np.random.normal(0, 0.1),
-        ])
+        g = lambda y: y + scenario.dt * np.array(
+            [
+                np.random.normal(0, 0.1),  # noise
+                np.random.normal(0, 0.1),
+            ]
+        )
 
         G = np.eye(2)
         Qy = np.eye(2) * 0.001
@@ -472,11 +476,11 @@ def main():
     ax.grid(True, alpha=0.3, axis="y")
 
     plt.tight_layout()
-    
+
     # Save output to examples/output directory instead of root
-    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    output_dir = os.path.join(os.path.dirname(__file__), "output")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, 'advanced_filters_comparison.png')
+    output_path = os.path.join(output_dir, "advanced_filters_comparison.png")
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     print(f"\nPlot saved to '{output_path}'")
 

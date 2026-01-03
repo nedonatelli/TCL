@@ -116,6 +116,7 @@ class TestGaussianSumFilterPrediction:
 
     def test_predict_increases_covariance(self):
         """Test that predict increases covariance due to process noise."""
+
         def f(x):
             return self.F @ x
 
@@ -165,6 +166,7 @@ class TestGaussianSumFilterUpdate:
 
     def test_update_normalizes_weights(self):
         """Test that update normalizes component weights."""
+
         def h(x):
             return self.H @ x
 
@@ -284,11 +286,7 @@ class TestGaussianSumFilterMerging:
 
         # 4 components
         for i in range(4):
-            comp = GaussianComponent(
-                x=np.array([float(i), 0.0]),
-                P=np.eye(2),
-                w=0.25
-            )
+            comp = GaussianComponent(x=np.array([float(i), 0.0]), P=np.eye(2), w=0.25)
             gsf.components.append(comp)
 
         gsf._merge_components()
@@ -359,9 +357,7 @@ class TestGaussianSumFilterConvenience:
         new_comps = gaussian_sum_filter_predict(components, f, F, Q)
 
         assert len(new_comps) == 2
-        assert np.allclose(
-            sum(c.w for c in new_comps), 1.0
-        )
+        assert np.allclose(sum(c.w for c in new_comps), 1.0)
 
     def test_gsf_update_function(self):
         """Test gaussian_sum_filter_update function."""
@@ -381,9 +377,7 @@ class TestGaussianSumFilterConvenience:
         def h(x):
             return H @ x
 
-        updated_comps = gaussian_sum_filter_update(
-            components, z, h, H, R
-        )
+        updated_comps = gaussian_sum_filter_update(components, z, h, H, R)
 
         assert len(updated_comps) == 2
         assert np.isclose(sum(c.w for c in updated_comps), 1.0)
