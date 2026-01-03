@@ -6,7 +6,7 @@ coordinate transformations, essential for error propagation in tracking
 filters (e.g., converting measurement covariances between coordinate systems).
 """
 
-from typing import Literal
+from typing import Callable, Literal
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -431,7 +431,7 @@ def cross_covariance_transform(
 
 
 def numerical_jacobian(
-    func,
+    func: Callable[[ArrayLike], ArrayLike],
     x: ArrayLike,
     dx: float = 1e-7,
 ) -> NDArray[np.floating]:

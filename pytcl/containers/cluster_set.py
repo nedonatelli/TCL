@@ -7,7 +7,7 @@ that move together (formations, convoys, etc.).
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -301,7 +301,7 @@ class ClusterSet:
         cls,
         tracks: TrackList,
         method: str = "dbscan",
-        **kwargs,
+        **kwargs: Any,
     ) -> ClusterSet:
         """
         Create a ClusterSet by clustering tracks.

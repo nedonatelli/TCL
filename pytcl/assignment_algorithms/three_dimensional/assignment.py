@@ -11,7 +11,7 @@ cost subject to the constraint that each index appears in at most one
 selected tuple.
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Any, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -585,7 +585,7 @@ def assign3d(
     cost_tensor: ArrayLike,
     method: str = "lagrangian",
     maximize: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> Assignment3DResult:
     """
     Solve 3D assignment problem.

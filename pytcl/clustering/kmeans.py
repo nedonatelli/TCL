@@ -10,7 +10,7 @@ References
        Careful Seeding," SODA 2007.
 """
 
-from typing import Literal, NamedTuple, Optional, Union
+from typing import Any, Literal, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -334,7 +334,7 @@ def _kmeans_single(
 def kmeans_elbow(
     X: ArrayLike,
     k_range: Optional[range] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> dict:
     """
     Compute K-means for a range of k values for elbow method.
