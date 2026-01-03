@@ -155,7 +155,7 @@ def generate_joint_associations(
         track_idx: int,
         current: Dict[int, int],
         used_meas: Set[int],
-    ):
+    ) -> None:
         """Recursively enumerate associations."""
         if track_idx == n_tracks:
             associations.append(current.copy())

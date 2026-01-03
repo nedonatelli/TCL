@@ -12,7 +12,7 @@ computing the shortest path on a sphere, including:
 
 import logging
 from functools import lru_cache
-from typing import NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -501,7 +501,7 @@ def great_circle_intersect(
     """
 
     # Convert to Cartesian unit vectors
-    def to_cartesian(lat, lon):
+    def to_cartesian(lat: Any, lon: Any) -> NDArray[np.float64]:
         return np.array([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)])
 
     # Normal vectors to the great circles
@@ -653,7 +653,7 @@ def great_circle_tdoa_loc(
     delta_d12 = delta_r12 / radius
     delta_d13 = delta_r13 / radius
 
-    def objective(lat, lon):
+    def objective(lat: Any, lon: Any) -> Any:
         """Objective function: difference between computed and observed TDOAs."""
         d1 = great_circle_distance(lat, lon, lat1, lon1, radius=1.0)
         d2 = great_circle_distance(lat, lon, lat2, lon2, radius=1.0)

@@ -26,7 +26,7 @@ import functools
 import logging
 import time
 from contextlib import contextmanager
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Generator, Optional, TypeVar
 
 # Type variable for decorated functions
 F = TypeVar("F", bound=Callable[..., Any])
@@ -200,7 +200,7 @@ def TimingContext(
     logger: Optional[logging.Logger] = None,
     name: str = "operation",
     level: int = logging.DEBUG,
-):
+) -> Generator[None, None, None]:
     """
     Context manager for timing code blocks.
 
@@ -267,7 +267,7 @@ class PerformanceTracker:
         self.max_ms = 0.0
 
     @contextmanager
-    def track(self):
+    def track(self) -> Generator[None, None, None]:
         """Track a single operation."""
         start = time.perf_counter()
         try:

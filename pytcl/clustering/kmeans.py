@@ -303,7 +303,7 @@ def _kmeans_single(
 
         # Handle empty clusters: keep old center
         for k in range(n_clusters):
-            if np.all(new_centers[k] == 0) and np.any(labels == k) is False:
+            if np.all(new_centers[k] == 0) and not np.any(labels == k):
                 new_centers[k] = centers[k]
 
         # Check convergence

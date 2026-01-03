@@ -5,10 +5,10 @@ This module provides functions for visualizing coordinate systems,
 rotations, and transformations in 2D and 3D.
 """
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 try:
     import plotly.graph_objects as go
@@ -180,13 +180,13 @@ def plot_euler_angles(
     angles = np.asarray(angles)
 
     # Create rotation matrices for each axis
-    def rotx(a):
+    def rotx(a: Any) -> NDArray[np.float64]:
         return np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
 
-    def roty(a):
+    def roty(a: Any) -> NDArray[np.float64]:
         return np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])
 
-    def rotz(a):
+    def rotz(a: Any) -> NDArray[np.float64]:
         return np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
 
     rot_funcs = {"X": rotx, "Y": roty, "Z": rotz}
@@ -283,7 +283,7 @@ def plot_quaternion_interpolation(
     q_end = q_end / np.linalg.norm(q_end)
 
     # SLERP interpolation
-    def quat_slerp(q1, q2, t):
+    def quat_slerp(q1: Any, q2: Any, t: Any) -> NDArray[np.float64]:
         dot = np.dot(q1, q2)
         if dot < 0:
             q2 = -q2
@@ -293,7 +293,7 @@ def plot_quaternion_interpolation(
         theta = np.arccos(dot)
         return (np.sin((1 - t) * theta) * q1 + np.sin(t * theta) * q2) / np.sin(theta)
 
-    def quat_to_rotmat(q):
+    def quat_to_rotmat(q: Any) -> NDArray[np.float64]:
         w, x, y, z = q
         return np.array(
             [

@@ -5,7 +5,7 @@ This module provides geometric functions for points, lines, planes,
 polygons, and related operations used in tracking applications.
 """
 
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -523,12 +523,12 @@ def minimum_bounding_circle(
     """
     points = np.asarray(points, dtype=np.float64)
 
-    def circle_from_two_points(p1, p2):
+    def circle_from_two_points(p1: Any, p2: Any) -> tuple[Any, Any]:
         center = (p1 + p2) / 2
         radius = np.linalg.norm(p1 - center)
         return center, radius
 
-    def circle_from_three_points(p1, p2, p3):
+    def circle_from_three_points(p1: Any, p2: Any, p3: Any) -> tuple[Any, Any]:
         ax, ay = p1
         bx, by = p2
         cx, cy = p3
