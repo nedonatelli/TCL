@@ -20,6 +20,15 @@ from pytcl.dynamic_estimation.kalman.extended import (
     iterated_ekf_update,
     numerical_jacobian,
 )
+from pytcl.dynamic_estimation.kalman.h_infinity import (
+    HInfinityPrediction,
+    HInfinityUpdate,
+    extended_hinf_update,
+    find_min_gamma,
+    hinf_predict,
+    hinf_predict_update,
+    hinf_update,
+)
 from pytcl.dynamic_estimation.kalman.linear import (
     KalmanPrediction,
     KalmanState,
@@ -59,15 +68,6 @@ from pytcl.dynamic_estimation.kalman.unscented import (
     ukf_predict,
     ukf_update,
     unscented_transform,
-)
-from pytcl.dynamic_estimation.kalman.h_infinity import (
-    HInfinityPrediction,
-    HInfinityUpdate,
-    extended_hinf_update,
-    find_min_gamma,
-    hinf_predict,
-    hinf_predict_update,
-    hinf_update,
 )
 
 __all__ = [

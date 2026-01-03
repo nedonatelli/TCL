@@ -1,17 +1,34 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-## Current State (v1.5.0) - Maintenance Release
+## Current State (v1.6.0) - 99% MATLAB Parity Release
 
-- **840+ functions** implemented across 148 Python modules
-- **1,850 tests** with comprehensive coverage (100% pass rate)
+- **1,070+ functions** implemented across 150+ Python modules
+- **1,922 tests** with comprehensive coverage (100% pass rate)
+- **99% MATLAB TCL parity** achieved
 - **23 example scripts** with interactive Plotly visualizations
 - **42 interactive HTML plots** embedded in documentation
+
+### New in v1.6.0
+- **H-infinity filter**: Robust minimax filtering for systems with model uncertainty
+  - `hinf_predict`, `hinf_update`, `hinf_predict_update` for standard H-infinity filtering
+  - `extended_hinf_update` for nonlinear measurement models
+  - `find_min_gamma` to compute minimum feasible performance bound
+- **TOD/MOD reference frames**: Legacy True of Date and Mean of Date transformations
+  - `gcrf_to_mod`, `mod_to_gcrf` (precession only)
+  - `gcrf_to_tod`, `tod_to_gcrf` (precession + nutation)
+  - `tod_to_itrf`, `itrf_to_tod` (with GAST rotation)
+- **SGP4/SDP4 satellite propagation**: Full TLE-based propagation
+  - TLE parsing (2-line and 3-line formats)
+  - Near-Earth (SGP4) and deep-space (SDP4) propagation
+  - TEME reference frame transformations
+
+### Core Features
 - **Performance SLO compliance reporting**: Automated reports with markdown/JSON output, trend analysis
 - **Unified architecture documentation**: PERFORMANCE.md dashboard, ARCHITECTURE.md overview
 - **Performance caching infrastructure**: LRU caching for navigation, magnetism, astronomical reference frames, and spherical harmonics
 - **Ionospheric models**: Klobuchar delay, dual-frequency TEC, simplified IRI, scintillation index
 - **Magnetism caching**: LRU cache for WMM/IGRF computations with configurable precision
-- **Modular Kalman filters**: Square-root, U-D factorization, and SR-UKF in focused submodules
+- **Modular Kalman filters**: Square-root, U-D factorization, SR-UKF, and H-infinity in focused submodules
 - **RTree API compatibility**: `from_points()`, `query()`, `query_radius()` matching KDTree/BallTree
 - **Architecture documentation**: ADR-001 (geophysical caching), ADR-002 (lazy-loading architecture), module interdependencies
 - **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
@@ -25,7 +42,7 @@
 - **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
 - **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
-- **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations, JPL ephemerides, relativistic corrections
+- **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations (GCRF, ITRF, TEME, TOD, MOD), JPL ephemerides, relativistic corrections, SGP4/SDP4 propagation
 - **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
 - **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
 - **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
@@ -35,7 +52,6 @@
 - **Documentation**: Interactive visualization system with Plotly for all examples
 - **Code Quality**: 100% compliance with isort, black, flake8, mypy
 - **Published on PyPI** as `nrl-tracker`
-- **MATLAB TCL Parity**: 100% feature coverage achieved
 
 ---
 
@@ -841,12 +857,15 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | **v1.1.3** | SLO calibration for CI runners | Released 2026-01-02 ✅ |
 | **v1.2.0** | Performance caching & architecture | Released 2026-01-02 ✅ |
 | **v1.3.0** | Phase 16 complete: Ionosphere, magnetism caching, modular Kalman | Released 2026-01-02 ✅ |
+| **v1.4.0** | Integration & Validation | Released 2026-01-02 ✅ |
+| **v1.5.0** | Maintenance Release | Released 2026-01-02 ✅ |
+| **v1.6.0** | **99% MATLAB Parity**: H-infinity filter, TOD/MOD frames, SGP4/SDP4 | Released 2026-01-02 ✅ |
 
 ### Planned Versions (Performance & Advanced Features)
 
 | Version | Focus | Target Features |
 |---------|-------|-----------------|
-| **v1.4.0+** | Advanced Optimizations | Domain-specific optimizations, advanced features |
+| **v1.7.0+** | Advanced Optimizations | Domain-specific optimizations, advanced features |
 
 ---
 
