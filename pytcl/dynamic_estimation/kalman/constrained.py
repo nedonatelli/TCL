@@ -13,7 +13,7 @@ References
        density function truncation. Journal of Guidance, Control, and Dynamics.
 """
 
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -27,8 +27,8 @@ class ConstraintFunction:
 
     def __init__(
         self,
-        g: Callable[[NDArray], NDArray],
-        G: Optional[Callable[[NDArray], NDArray]] = None,
+        g: Callable[[NDArray[Any]], NDArray[Any]],
+        G: Optional[Callable[[NDArray[Any]], NDArray[Any]]] = None,
         constraint_type: str = "inequality",
     ):
         """
@@ -50,11 +50,11 @@ class ConstraintFunction:
         self.G = G
         self.constraint_type = constraint_type
 
-    def evaluate(self, x: NDArray) -> NDArray:
+    def evaluate(self, x: NDArray[Any]) -> NDArray[Any]:
         """Evaluate constraint at state x."""
         return np.atleast_1d(np.asarray(self.g(x), dtype=np.float64))
 
-    def jacobian(self, x: NDArray) -> NDArray:
+    def jacobian(self, x: NDArray[Any]) -> NDArray[Any]:
         """Compute constraint Jacobian at x."""
         if self.G is not None:
             return np.atleast_2d(np.asarray(self.G(x), dtype=np.float64))
@@ -72,7 +72,7 @@ class ConstraintFunction:
                 J[:, i] = (g_plus - g_x) / eps
             return J
 
-    def is_satisfied(self, x: NDArray, tol: float = 1e-6) -> bool:
+    def is_satisfied(self, x: NDArray[Any], tol: float = 1e-6) -> bool:
         """Check if constraint is satisfied."""
         g_val = self.evaluate(x)
         if self.constraint_type == "inequality":
@@ -96,7 +96,7 @@ class ConstrainedEKF:
 
     def __init__(self) -> None:
         """Initialize Constrained EKF."""
-        self.constraints = []
+        self.constraints: list[ConstraintFunction] = []
 
     def add_constraint(self, constraint: ConstraintFunction) -> None:
         """
@@ -113,7 +113,7 @@ class ConstrainedEKF:
         self,
         x: ArrayLike,
         P: ArrayLike,
-        f: Callable[[NDArray], NDArray],
+        f: Callable[[NDArray[Any]], NDArray[Any]],
         F: ArrayLike,
         Q: ArrayLike,
     ) -> KalmanPrediction:
@@ -148,7 +148,7 @@ class ConstrainedEKF:
         x: ArrayLike,
         P: ArrayLike,
         z: ArrayLike,
-        h: Callable[[NDArray], NDArray],
+        h: Callable[[NDArray[Any]], NDArray[Any]],
         H: ArrayLike,
         R: ArrayLike,
     ) -> KalmanUpdate:
@@ -193,11 +193,11 @@ class ConstrainedEKF:
 
     def _project_onto_constraints(
         self,
-        x: NDArray,
-        P: NDArray,
+        x: NDArray[Any],
+        P: NDArray[Any],
         max_iter: int = 10,
         tol: float = 1e-6,
-    ) -> tuple[NDArray, NDArray]:
+    ) -> tuple[NDArray[Any], NDArray[Any]]:
         """
         Project state and covariance onto constraint manifold.
 
@@ -227,7 +227,7 @@ class ConstrainedEKF:
         P_proj = P.copy()
 
         # Check which constraints are violated
-        violated = [c for c in self.constraints if not c.is_satisfied(x_proj)]
+        violated: list[ConstraintFunction] = [c for c in self.constraints if not c.is_satisfied(x_proj)]
 
         if not violated:
             return x_proj, P_proj
@@ -297,7 +297,7 @@ class ConstrainedEKF:
 def constrained_ekf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     F: ArrayLike,
     Q: ArrayLike,
 ) -> KalmanPrediction:
@@ -330,10 +330,10 @@ def constrained_ekf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
     H: ArrayLike,
     R: ArrayLike,
-    constraints: Optional[list] = None,
+    constraints: Optional[list[ConstraintFunction]] = None,
 ) -> KalmanUpdate:
     """
     Convenience function for constrained EKF update.
