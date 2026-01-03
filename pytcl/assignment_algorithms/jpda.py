@@ -24,7 +24,7 @@ class JPDAResult(NamedTuple):
 
     Attributes
     ----------
-    association_probs : ndarray
+    association_probs : ndarray[Any]
         Association probability matrix of shape (n_tracks, n_measurements + 1).
         association_probs[i, j] is the probability that track i is associated
         with measurement j. The last column (j = n_measurements) represents
@@ -32,9 +32,9 @@ class JPDAResult(NamedTuple):
     marginal_probs : list of ndarray
         List of marginal association probabilities for each track.
         marginal_probs[i][j] = P(measurement j originated from track i).
-    likelihood_matrix : ndarray
+    likelihood_matrix : ndarray[Any]
         Measurement likelihood matrix of shape (n_tracks, n_measurements).
-    gated : ndarray
+    gated : ndarray[Any]
         Boolean matrix indicating which track-measurement pairs passed gating.
     """
 
@@ -53,7 +53,7 @@ class JPDAUpdate(NamedTuple):
         Updated state estimates for each track.
     covariances : list of ndarray
         Updated covariances for each track (includes spread of means).
-    association_probs : ndarray
+    association_probs : ndarray[Any]
         Association probability matrix.
     innovations : list of ndarray
         Combined weighted innovations for each track.
@@ -66,8 +66,8 @@ class JPDAUpdate(NamedTuple):
 
 
 def compute_measurement_likelihood(
-    innovation: NDArray,
-    innovation_cov: NDArray,
+    innovation: NDArray[Any],
+    innovation_cov: NDArray[Any],
     detection_prob: float = 1.0,
 ) -> float:
     """
@@ -75,9 +75,9 @@ def compute_measurement_likelihood(
 
     Parameters
     ----------
-    innovation : ndarray
+    innovation : ndarray[Any]
         Measurement innovation (residual), shape (m,).
-    innovation_cov : ndarray
+    innovation_cov : ndarray[Any]
         Innovation covariance, shape (m, m).
     detection_prob : float
         Probability of detection (Pd).
@@ -102,12 +102,12 @@ def compute_measurement_likelihood(
 def compute_likelihood_matrix(
     track_states: List[NDArray],
     track_covariances: List[NDArray],
-    measurements: NDArray,
-    H: NDArray,
-    R: NDArray,
+    measurements: NDArray[Any],
+    H: NDArray[Any],
+    R: NDArray[Any],
     detection_prob: float = 1.0,
     gate_threshold: Optional[float] = None,
-) -> Tuple[NDArray, NDArray]:
+) -> Tuple[NDArray[Any], NDArray[Any]]:
     """
     Compute likelihood matrix for all track-measurement pairs.
 
@@ -117,11 +117,11 @@ def compute_likelihood_matrix(
         State estimates for each track.
     track_covariances : list of ndarray
         Covariances for each track.
-    measurements : ndarray
+    measurements : ndarray[Any]
         Measurements, shape (n_meas, m).
-    H : ndarray
+    H : ndarray[Any]
         Measurement matrix, shape (m, n).
-    R : ndarray
+    R : ndarray[Any]
         Measurement noise covariance, shape (m, m).
     detection_prob : float
         Probability of detection.
@@ -130,9 +130,9 @@ def compute_likelihood_matrix(
 
     Returns
     -------
-    likelihood_matrix : ndarray
+    likelihood_matrix : ndarray[Any]
         Likelihood values, shape (n_tracks, n_meas).
-    gated : ndarray
+    gated : ndarray[Any]
         Boolean gating matrix, shape (n_tracks, n_meas).
     """
     n_tracks = len(track_states)
@@ -161,11 +161,11 @@ def compute_likelihood_matrix(
 
 
 def jpda_probabilities(
-    likelihood_matrix: NDArray,
-    gated: NDArray,
+    likelihood_matrix: NDArray[Any],
+    gated: NDArray[Any],
     detection_prob: float = 1.0,
     clutter_density: float = 1e-6,
-) -> NDArray:
+) -> NDArray[Any]:
     """
     Compute JPDA association probabilities.
 
@@ -174,9 +174,9 @@ def jpda_probabilities(
 
     Parameters
     ----------
-    likelihood_matrix : ndarray
+    likelihood_matrix : ndarray[Any]
         Likelihood values, shape (n_tracks, n_meas).
-    gated : ndarray
+    gated : ndarray[Any]
         Boolean gating matrix, shape (n_tracks, n_meas).
     detection_prob : float
         Probability of detection (Pd).
@@ -185,7 +185,7 @@ def jpda_probabilities(
 
     Returns
     -------
-    beta : ndarray
+    beta : ndarray[Any]
         Association probability matrix, shape (n_tracks, n_meas + 1).
         beta[i, j] = P(measurement j is from track i) for j < n_meas.
         beta[i, n_meas] = P(track i has no measurement).
@@ -214,11 +214,11 @@ def jpda_probabilities(
 
 
 def _jpda_exact(
-    likelihood_matrix: NDArray,
-    gated: NDArray,
+    likelihood_matrix: NDArray[Any],
+    gated: NDArray[Any],
     detection_prob: float,
     clutter_density: float,
-) -> NDArray:
+) -> NDArray[Any]:
     """
     Exact JPDA computation via hypothesis enumeration.
 
@@ -237,7 +237,7 @@ def _jpda_exact(
     def generate_hypotheses(
         meas_idx: int,
         current_assignment: List[int],
-        used_tracks: set,
+        used_tracks: set[Any],
     ) -> Any:
         """Recursively generate valid hypotheses."""
         if meas_idx == n_meas:
@@ -262,11 +262,11 @@ def _jpda_exact(
     hypothesis_probs = []
     hypothesis_assignments = []
 
-    for assignment in generate_hypotheses(0, [], set()):
+    for assignment in generate_hypotheses(0, [], set[Any]()):
         # Compute probability of this hypothesis
         prob = 1.0
 
-        detected_tracks = set()
+        detected_tracks = set[Any]()
         for j, track_idx in enumerate(assignment):
             if track_idx == -1:
                 # Measurement j is clutter
@@ -293,7 +293,7 @@ def _jpda_exact(
 
     # Compute marginal association probabilities
     for h_idx, (assignment, prob) in enumerate(zip(hypothesis_assignments, hypothesis_probs)):
-        detected_tracks = set()
+        detected_tracks = set[Any]()
         for j, track_idx in enumerate(assignment):
             if track_idx >= 0:
                 beta[track_idx, j] += prob
@@ -361,11 +361,11 @@ def _jpda_approximate_core(
 
 
 def _jpda_approximate(
-    likelihood_matrix: NDArray,
-    gated: NDArray,
+    likelihood_matrix: NDArray[Any],
+    gated: NDArray[Any],
     detection_prob: float,
     clutter_density: float,
-) -> NDArray:
+) -> NDArray[Any]:
     """
     Approximate JPDA using parametric approach.
 
