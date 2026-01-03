@@ -22,7 +22,8 @@ SEZ is useful for:
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.subplots as sp
 
 from pytcl.astronomical.reference_frames import (
     gcrf_to_pef,
@@ -224,61 +225,113 @@ def example_leo_satellite_tracking():
     if horizon_points:
         print(f"  Horizon crossing points: {len(horizon_points)}")
     
-    # Plot the pass
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-    fig.suptitle('LEO Satellite Pass Tracking', fontsize=14, fontweight='bold')
+    # Plot the pass using Plotly
+    fig = sp.make_subplots(
+        rows=2, cols=2,
+        subplot_titles=("Elevation Angle", "Azimuth Angle", "Slant Range", "Ground Station View"),
+        specs=[[{"type": "scatter"}, {"type": "scatter"}],
+               [{"type": "scatter"}, {"type": "scatterpolar"}]]
+    )
     
     # Elevation vs time
-    ax = axes[0, 0]
-    ax.plot(t_pass, elevation_pass, 'b-', linewidth=2)
-    ax.axhline(y=0, color='k', linestyle='--', alpha=0.3)
-    ax.set_xlabel('Time in Pass (min)')
-    ax.set_ylabel('Elevation (deg)')
-    ax.set_title('Elevation Angle')
-    ax.grid(True, alpha=0.3)
+    fig.add_trace(
+        go.Scatter(x=t_pass, y=elevation_pass, mode='lines', name='Elevation',
+                   line=dict(color='blue', width=2)),
+        row=1, col=1
+    )
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", row=1, col=1)
     
     # Azimuth vs time
-    ax = axes[0, 1]
-    ax.plot(t_pass, azimuth_pass, 'r-', linewidth=2)
-    ax.set_xlabel('Time in Pass (min)')
-    ax.set_ylabel('Azimuth (deg)')
-    ax.set_title('Azimuth Angle')
-    ax.set_ylim([0, 360])
-    ax.grid(True, alpha=0.3)
+    fig.add_trace(
+        go.Scatter(x=t_pass, y=azimuth_pass, mode='lines', name='Azimuth',
+                   line=dict(color='red', width=2)),
+        row=1, col=2
+    )
     
     # Range vs time
-    ax = axes[1, 0]
-    ax.plot(t_pass, range_pass, 'g-', linewidth=2)
-    ax.set_xlabel('Time in Pass (min)')
-    ax.set_ylabel('Range (km)')
-    ax.set_title('Slant Range')
-    ax.grid(True, alpha=0.3)
+    fig.add_trace(
+        go.Scatter(x=t_pass, y=range_pass, mode='lines', name='Range',
+                   line=dict(color='green', width=2)),
+        row=2, col=1
+    )
     
-    # Azimuth/Elevation (polar plot)
-    ax = axes[1, 1]
-    ax = plt.subplot(2, 2, 4, projection='polar')
+    # Azimuth/Elevation polar plot
+    fig.add_trace(
+        go.Scatterpolar(
+            r=90 - np.array(elevation_pass),
+            theta=azimuth_pass,
+            mode='lines',
+            name='Satellite Pass',
+            line=dict(color='blue', width=2),
+            fill='toself',
+            fillcolor='rgba(0, 100, 200, 0.1)'
+        ),
+        row=2, col=2
+    )
     
-    # Convert to radians for polar plot
-    az_rad = np.radians(azimuth_pass)
-    el_rad = np.radians(elevation_pass)
+    # Mark start, peak, and end on polar plot
+    fig.add_trace(
+        go.Scatterpolar(
+            r=[90 - elevation_pass[0]],
+            theta=[azimuth_pass[0]],
+            mode='markers',
+            name='Start',
+            marker=dict(size=10, color='green'),
+            showlegend=False
+        ),
+        row=2, col=2
+    )
     
-    # Plot pass
-    ax.plot(az_rad, 90 - np.array(elevation_pass), 'b-', linewidth=2, label='Satellite pass')
+    fig.add_trace(
+        go.Scatterpolar(
+            r=[90 - elevation_pass[max_el_idx]],
+            theta=[azimuth_pass[max_el_idx]],
+            mode='markers',
+            name='Max Elevation',
+            marker=dict(size=15, color='red', symbol='star'),
+            showlegend=False
+        ),
+        row=2, col=2
+    )
     
-    # Mark start, peak, and end
-    ax.plot([az_rad[0]], [90 - elevation_pass[0]], 'go', markersize=8, label='Start')
-    ax.plot([az_rad[max_el_idx]], [90 - elevation_pass[max_el_idx]], 'r*', markersize=15, label='Max elevation')
-    ax.plot([az_rad[-1]], [90 - elevation_pass[-1]], 'rx', markersize=8, label='End')
+    fig.add_trace(
+        go.Scatterpolar(
+            r=[90 - elevation_pass[-1]],
+            theta=[azimuth_pass[-1]],
+            mode='markers',
+            name='End',
+            marker=dict(size=10, color='red', symbol='x'),
+            showlegend=False
+        ),
+        row=2, col=2
+    )
     
-    ax.set_theta_zero_location('N')
-    ax.set_theta_direction(-1)
-    ax.set_ylim([0, 90])
-    ax.set_title('Ground Station View (Az/El Polar Plot)', pad=20)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+    # Update axes labels
+    fig.update_xaxes(title_text="Time in Pass (min)", row=1, col=1)
+    fig.update_yaxes(title_text="Elevation (deg)", row=1, col=1)
     
-    plt.tight_layout()
-    plt.savefig('leo_satellite_pass.png', dpi=100, bbox_inches='tight')
-    print(f"\nPlot saved as 'leo_satellite_pass.png'")
+    fig.update_xaxes(title_text="Time in Pass (min)", row=1, col=2)
+    fig.update_yaxes(title_text="Azimuth (deg)", row=1, col=2)
+    
+    fig.update_xaxes(title_text="Time in Pass (min)", row=2, col=1)
+    fig.update_yaxes(title_text="Range (km)", row=2, col=1)
+    
+    # Update polar plot
+    fig.update_polars(
+        radialaxis=dict(range=[0, 90], ticksuffix="°"),
+        angularaxis=dict(tickprefix="", ticksuffix="°"),
+        row=2, col=2
+    )
+    
+    fig.update_layout(
+        title_text="LEO Satellite Pass Tracking",
+        height=800,
+        width=1200,
+        hovermode='closest'
+    )
+    
+    fig.write_html('leo_satellite_pass.html')
+    print(f"\nPlot saved as 'leo_satellite_pass.html'")
     
     return fig
 
