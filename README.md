@@ -1,14 +1,14 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.0.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.5.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests](https://img.shields.io/badge/tests-1598%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Tests](https://img.shields.io/badge/tests-1850%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**800+ functions** | **144 modules** | **1,598 tests** | **15+ algorithm categories**
+**840+ functions** | **148 modules** | **1,850 tests** | **15+ algorithm categories**
 
 ## Overview
 

@@ -5,6 +5,139 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-03
+
+### Maintenance Release
+
+Version bump and documentation updates.
+
+### Changed
+- Updated README.md with current statistics (840+ functions, 148 modules, 1,850 tests)
+- Updated all version badges to v1.5.0
+
+### Release Information
+- **Tag**: v1.5.0
+- **Date**: January 3, 2026
+- **Type**: Maintenance Release
+- **Status**: Production-Ready
+
+---
+
+## [1.4.0] - 2026-01-03
+
+### Phase 17 Complete: Integration & Validation
+
+This release completes Phase 17, finalizing the comprehensive refactoring and optimization initiative.
+
+### Added
+- **SLO Compliance Reporting** (`scripts/generate_slo_report.py`):
+  - Automated performance compliance reports
+  - Multiple output formats: text, markdown, JSON
+  - Per-category SLO compliance tables
+  - Trend analysis from historical benchmark data
+  - CI integration for PR comments and GitHub step summaries
+- **Unified Architecture Documentation**:
+  - `docs/architecture/PERFORMANCE.md` - Performance SLO dashboard with latency targets
+  - `docs/architecture/ARCHITECTURE.md` - Consolidated architecture overview from ADRs
+
+### Changed
+- Enhanced CI workflows:
+  - `benchmark-light.yml` generates formatted SLO reports for PR comments
+  - `benchmark-full.yml` includes trend analysis and saves compliance reports as artifacts
+
+### Release Information
+- **Tag**: v1.4.0
+- **Date**: January 3, 2026
+- **Type**: Minor Release
+- **Status**: Production-Ready
+
+---
+
+## [1.3.0] - 2026-01-02
+
+### Phase 16 Complete: Geophysical & Architecture
+
+This release completes Phase 16, the comprehensive refactoring and optimization initiative.
+
+### Added
+- **Magnetism Caching** (`pytcl/magnetism/wmm.py`):
+  - LRU cache for WMM/IGRF computations with configurable precision
+  - `get_magnetic_cache_info()`, `clear_magnetic_cache()`, `configure_magnetic_cache()`
+  - Coefficient registry pattern for hashable numpy arrays
+  - 600x speedup on repeated computations
+
+- **Architecture Decision Records**:
+  - ADR-001: Geophysical Module Caching Strategy
+  - ADR-002: Lazy-Loading Architecture
+  - Module interdependencies documentation
+
+### Changed
+- **Three concurrent tracks completed**:
+  - Track A: Mathematical Functions & Performance (Numba JIT, vectorization)
+  - Track B: Containers & Maintainability (modular Kalman filters, validation decorators)
+  - Track C: Geophysical Models & Architecture (LRU caching, ADRs)
+
+### Release Information
+- **Tag**: v1.3.0
+- **Date**: January 2, 2026
+- **Type**: Minor Release
+- **Status**: Production-Ready
+
+---
+
+## [1.2.0] - 2026-01-02
+
+### Phase 16 Track C: Geophysical Caching
+
+### Added
+- **Navigation Caching** (`pytcl/navigation/`):
+  - LRU caching for great circle and geodesy calculations
+  - 5-20x speedup on repeated computations
+- **Ionospheric Models** (`pytcl/atmosphere/ionosphere.py`):
+  - Klobuchar delay model for GPS/GNSS corrections
+  - Dual-frequency TEC estimation
+  - Simplified IRI electron density profiles
+  - Scintillation index calculations
+
+### Release Information
+- **Tag**: v1.2.0
+- **Date**: January 2, 2026
+- **Type**: Minor Release
+- **Status**: Production-Ready
+
+---
+
+## [1.1.0] - 2026-01-01
+
+### Phase 15 Complete: Performance Infrastructure
+
+### Added
+- **Benchmarking Framework** (`benchmarks/`):
+  - 50 benchmark tests across 6 files
+  - Session-scoped pytest fixtures for expensive test data setup
+  - Light benchmarks (Kalman, gating, rotations) for PR feedback
+  - Full benchmarks (JPDA, CFAR, clustering) for main branch
+- **SLO Infrastructure** (`.benchmarks/`):
+  - `slos.json` with performance SLO definitions
+  - `history.jsonl` for time-series benchmark tracking
+- **Performance Scripts** (`scripts/`):
+  - `track_performance.py` - Run benchmarks, append to history
+  - `detect_regressions.py` - Compare results against SLOs and history
+- **CI Workflows**:
+  - `benchmark-light.yml` - 5-min PR benchmarks
+  - `benchmark-full.yml` - 15-min main branch benchmarks with SLO enforcement
+- **Logging Framework** (`pytcl/logging_config.py`):
+  - Hierarchical logging with `@timed` decorator
+  - `TimingContext` and `PerformanceTracker` utilities
+
+### Release Information
+- **Tag**: v1.1.0
+- **Date**: January 1, 2026
+- **Type**: Minor Release
+- **Status**: Production-Ready
+
+---
+
 ## [1.0.0] - 2026-01-01
 
 ### Major Release: Full MATLAB TCL Parity Achieved
