@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-01-03
+
+### Patch Release
+
+Bugfix release for type annotation compliance.
+
+### Fixed
+- Fixed mypy type annotation error in `pytcl/dynamic_estimation/kalman/h_infinity.py`:
+  - Changed `callable` type hint to `Callable` from typing module in `extended_hinf_update` function
+  - Ensures full mypy compliance across all 154 source files
+
+### Release Information
+- **Tag**: v1.6.1
+- **Date**: January 3, 2026
+- **Type**: Patch Release
+- **Status**: Production-Ready
+
+---
+
 ## [1.5.0] - 2026-01-03
 
 ### Maintenance Release
