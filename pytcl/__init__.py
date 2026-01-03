@@ -44,7 +44,7 @@ from pytcl import (
 
 # Version tuple for programmatic access
 # Handle dev/alpha/beta/rc suffixes by extracting only numeric parts
-def _parse_version(version_str):
+def _parse_version(version_str: str) -> tuple[int, ...]:
     """Parse version string into tuple of integers."""
     import re
 

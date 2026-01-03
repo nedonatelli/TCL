@@ -165,7 +165,7 @@ class RBPFFilter:
             y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
             # Create wrapper for linear dynamics with current y_pred
-            def f_wrapper(x):
+            def f_wrapper(x: NDArray) -> NDArray:
                 return f(x, y_pred)
 
             # Predict linear component using EKF
@@ -206,7 +206,7 @@ class RBPFFilter:
 
         for i, particle in enumerate(self.particles):
             # Create wrapper for measurement function with current y
-            def h_wrapper(x):
+            def h_wrapper(x: NDArray) -> NDArray:
                 return h(x, particle.y)
 
             # Update linear component (Kalman update)
@@ -501,7 +501,7 @@ def rbpf_predict(
         y_pred = y_pred + np.random.multivariate_normal(np.zeros(y_pred.shape[0]), Qy)
 
         # Create wrapper for linear dynamics with current y_pred
-        def f_wrapper(x):
+        def f_wrapper(x: NDArray) -> NDArray:
             return f(x, y_pred)
 
         # Predict linear component
@@ -550,7 +550,7 @@ def rbpf_update(
 
     for i, particle in enumerate(particles):
         # Create wrapper for measurement function with current y
-        def h_wrapper(x):
+        def h_wrapper(x: NDArray) -> NDArray:
             return h(x, particle.y)
 
         # Update linear component

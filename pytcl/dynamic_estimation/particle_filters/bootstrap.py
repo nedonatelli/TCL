@@ -5,7 +5,7 @@ This module provides particle filtering algorithms for nonlinear/non-Gaussian
 state estimation.
 """
 
-from typing import Callable, NamedTuple, Optional, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numba import njit
@@ -374,7 +374,7 @@ def bootstrap_pf_step(
     particles_pred = bootstrap_pf_predict(particles, f, Q_sample, rng)
 
     # Update
-    def likelihood_func(z, x):
+    def likelihood_func(z: NDArray, x: NDArray) -> Any:
         z_pred = h(x)
         return gaussian_likelihood(z, z_pred, R)
 
