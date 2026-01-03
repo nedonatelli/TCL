@@ -26,18 +26,18 @@ import plotly.graph_objects as go
 import plotly.subplots as sp
 
 from pytcl.astronomical.reference_frames import (
-    gcrf_to_pef,
-    pef_to_gcrf,
     gcrf_to_itrf,
+    gcrf_to_pef,
     itrf_to_gcrf,
+    pef_to_gcrf,
 )
+from pytcl.astronomical.time_systems import JD_J2000, cal_to_jd
 from pytcl.coordinate_systems.conversions.geodetic import (
+    ecef2geodetic,
+    geodetic2ecef,
     geodetic2sez,
     sez2geodetic,
-    geodetic2ecef,
-    ecef2geodetic,
 )
-from pytcl.astronomical.time_systems import cal_to_jd, JD_J2000
 
 
 def example_pef_intermediate_frame():

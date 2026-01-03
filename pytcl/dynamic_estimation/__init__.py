@@ -14,6 +14,14 @@ This module provides filtering and smoothing algorithms for state estimation:
 # Import submodules for easy access
 from pytcl.dynamic_estimation import kalman, particle_filters
 
+# Gaussian Sum Filter
+from pytcl.dynamic_estimation.gaussian_sum_filter import (
+    GaussianComponent,
+    GaussianSumFilter,
+    gaussian_sum_filter_predict,
+    gaussian_sum_filter_update,
+)
+
 # IMM estimator
 from pytcl.dynamic_estimation.imm import (
     IMMEstimator,
@@ -23,14 +31,6 @@ from pytcl.dynamic_estimation.imm import (
     imm_predict,
     imm_predict_update,
     imm_update,
-)
-
-# Gaussian Sum Filter
-from pytcl.dynamic_estimation.gaussian_sum_filter import (
-    GaussianComponent,
-    GaussianSumFilter,
-    gaussian_sum_filter_predict,
-    gaussian_sum_filter_update,
 )
 
 # Information filter
@@ -93,14 +93,6 @@ from pytcl.dynamic_estimation.kalman import (
     unscented_transform,
 )
 
-# Rao-Blackwellized Particle Filter
-from pytcl.dynamic_estimation.rbpf import (
-    RBPFFilter,
-    RBPFParticle,
-    rbpf_predict,
-    rbpf_update,
-)
-
 # Particle filters
 from pytcl.dynamic_estimation.particle_filters import (
     ParticleState,
@@ -115,6 +107,14 @@ from pytcl.dynamic_estimation.particle_filters import (
     resample_multinomial,
     resample_residual,
     resample_systematic,
+)
+
+# Rao-Blackwellized Particle Filter
+from pytcl.dynamic_estimation.rbpf import (
+    RBPFFilter,
+    RBPFParticle,
+    rbpf_predict,
+    rbpf_update,
 )
 
 # Smoothers

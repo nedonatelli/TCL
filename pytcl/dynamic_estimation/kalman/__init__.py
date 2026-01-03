@@ -14,8 +14,8 @@ This module provides:
 """
 
 from pytcl.dynamic_estimation.kalman.constrained import (
-    ConstraintFunction,
     ConstrainedEKF,
+    ConstraintFunction,
     constrained_ekf_predict,
     constrained_ekf_update,
 )

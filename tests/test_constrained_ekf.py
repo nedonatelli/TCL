@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 
 from pytcl.dynamic_estimation.kalman import (
-    ConstraintFunction,
     ConstrainedEKF,
+    ConstraintFunction,
     constrained_ekf_predict,
     constrained_ekf_update,
 )

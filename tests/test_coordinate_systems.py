@@ -1247,8 +1247,8 @@ class TestSEZConversions:
     def test_sez_distance_calculation(self):
         """Verify distance calculation using SEZ."""
         from pytcl.coordinate_systems.conversions.geodetic import (
-            geodetic2sez,
             geodetic2ecef,
+            geodetic2sez,
         )
 
         lat_ref = np.radians(40.0)

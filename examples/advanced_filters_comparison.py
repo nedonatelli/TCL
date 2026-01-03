@@ -8,16 +8,16 @@ Demonstrates three advanced filtering techniques:
 Scenario: Nonlinear target tracking with constraints on valid state region.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from pytcl.dynamic_estimation.kalman.constrained import (
-    ConstraintFunction,
-    ConstrainedEKF,
-)
 from pytcl.dynamic_estimation.gaussian_sum_filter import (
     GaussianComponent,
     GaussianSumFilter,
+)
+from pytcl.dynamic_estimation.kalman.constrained import (
+    ConstrainedEKF,
+    ConstraintFunction,
 )
 from pytcl.dynamic_estimation.rbpf import RBPFFilter
 

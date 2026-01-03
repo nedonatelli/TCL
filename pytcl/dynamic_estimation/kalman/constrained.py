@@ -18,8 +18,8 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
+from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
 
 
 class ConstraintFunction:

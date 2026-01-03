@@ -130,6 +130,12 @@ from pytcl.astronomical.relativity import (
     schwarzschild_radius,
     shapiro_delay,
 )
+from pytcl.astronomical.sgp4 import (
+    SGP4Satellite,
+    SGP4State,
+    sgp4_propagate,
+    sgp4_propagate_batch,
+)
 from pytcl.astronomical.special_orbits import (
     OrbitType,
     classify_orbit,
@@ -147,12 +153,6 @@ from pytcl.astronomical.special_orbits import (
     true_anomaly_to_hyperbolic_anomaly,
     true_anomaly_to_parabolic_anomaly,
     velocity_parabolic,
-)
-from pytcl.astronomical.sgp4 import (
-    SGP4Satellite,
-    SGP4State,
-    sgp4_propagate,
-    sgp4_propagate_batch,
 )
 from pytcl.astronomical.time_systems import (
     JD_GPS_EPOCH,  # Julian dates; Time scales; Unix time; GPS week; Sidereal time; Leap seconds; Constants

@@ -8,7 +8,7 @@ and composition profiles across altitude range -5 to 1000 km.
 import numpy as np
 import pytest
 
-from pytcl.atmosphere import NRLMSISE00, nrlmsise00, NRLMSISE00Output
+from pytcl.atmosphere import NRLMSISE00, NRLMSISE00Output, nrlmsise00
 
 
 class TestNRLMSISE00Basic:
