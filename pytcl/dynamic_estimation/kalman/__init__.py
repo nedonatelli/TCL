@@ -4,6 +4,7 @@ Kalman filter family implementations.
 This module provides:
 - Linear Kalman filter (predict, update, smoothing)
 - Extended Kalman filter (EKF)
+- Constrained Extended Kalman filter (CEKF)
 - Unscented Kalman filter (UKF)
 - Cubature Kalman filter (CKF)
 - Information filter
@@ -12,6 +13,12 @@ This module provides:
 - H-infinity filter (robust filtering)
 """
 
+from pytcl.dynamic_estimation.kalman.constrained import (
+    ConstraintFunction,
+    ConstrainedEKF,
+    constrained_ekf_predict,
+    constrained_ekf_update,
+)
 from pytcl.dynamic_estimation.kalman.extended import (
     ekf_predict,
     ekf_predict_auto,
@@ -71,6 +78,11 @@ from pytcl.dynamic_estimation.kalman.unscented import (
 )
 
 __all__ = [
+    # Constrained EKF
+    "ConstraintFunction",
+    "ConstrainedEKF",
+    "constrained_ekf_predict",
+    "constrained_ekf_update",
     # Linear KF
     "KalmanState",
     "KalmanPrediction",

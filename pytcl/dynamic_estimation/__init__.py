@@ -25,6 +25,14 @@ from pytcl.dynamic_estimation.imm import (
     imm_update,
 )
 
+# Gaussian Sum Filter
+from pytcl.dynamic_estimation.gaussian_sum_filter import (
+    GaussianComponent,
+    GaussianSumFilter,
+    gaussian_sum_filter_predict,
+    gaussian_sum_filter_update,
+)
+
 # Information filter
 from pytcl.dynamic_estimation.information_filter import (
     InformationFilterResult,
@@ -83,6 +91,14 @@ from pytcl.dynamic_estimation.kalman import (
     ukf_predict,
     ukf_update,
     unscented_transform,
+)
+
+# Rao-Blackwellized Particle Filter
+from pytcl.dynamic_estimation.rbpf import (
+    RBPFFilter,
+    RBPFParticle,
+    rbpf_predict,
+    rbpf_update,
 )
 
 # Particle filters
@@ -192,6 +208,16 @@ __all__ = [
     "imm_predict_update",
     "IMMEstimator",
     # Particle filters
+    # Gaussian Sum Filter
+    "GaussianComponent",
+    "GaussianSumFilter",
+    "gaussian_sum_filter_predict",
+    "gaussian_sum_filter_update",
+    # Rao-Blackwellized Particle Filter
+    "RBPFParticle",
+    "RBPFFilter",
+    "rbpf_predict",
+    "rbpf_update",
     "ParticleState",
     "resample_multinomial",
     "resample_systematic",

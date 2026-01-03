@@ -51,6 +51,21 @@ from pytcl.assignment_algorithms.two_dimensional import (
     murty,
     ranked_assignments,
 )
+from pytcl.assignment_algorithms.nd_assignment import (
+    AssignmentNDResult,
+    auction_assignment_nd,
+    detect_dimension_conflicts,
+    greedy_assignment_nd,
+    relaxation_assignment_nd,
+    validate_cost_tensor,
+)
+from pytcl.assignment_algorithms.network_flow import (
+    FlowStatus,
+    MinCostFlowResult,
+    assignment_to_flow_network,
+    min_cost_assignment_via_flow,
+    min_cost_flow_successive_shortest_paths,
+)
 
 __all__ = [
     # 2D Assignment
@@ -91,4 +106,17 @@ __all__ = [
     "jpda_update",
     "jpda_probabilities",
     "compute_likelihood_matrix",
+    # N-Dimensional Assignment (4D+)
+    "AssignmentNDResult",
+    "validate_cost_tensor",
+    "greedy_assignment_nd",
+    "relaxation_assignment_nd",
+    "auction_assignment_nd",
+    "detect_dimension_conflicts",
+    # Network Flow-Based Assignment
+    "FlowStatus",
+    "MinCostFlowResult",
+    "assignment_to_flow_network",
+    "min_cost_flow_successive_shortest_paths",
+    "min_cost_assignment_via_flow",
 ]

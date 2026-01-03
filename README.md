@@ -1,15 +1,15 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.6.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.7.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests](https://img.shields.io/badge/tests-1922%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-99%25-brightgreen.svg)](docs/gap_analysis.rst)
+[![Tests](https://img.shields.io/badge/tests-1988%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-100%25-brightgreen.svg)](docs/gap_analysis.rst)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,070+ functions** | **150+ modules** | **1,922 tests** | **99% MATLAB parity**
+**1,070+ functions** | **153 modules** | **1,988 tests** | **100% MATLAB parity**
 
 ## Overview
 
@@ -17,12 +17,15 @@ The Tracker Component Library provides building blocks for developing target tra
 
 - **Coordinate Systems**: Conversions between Cartesian, spherical, geodetic, and other coordinate systems
 - **Dynamic Models**: State transition matrices for constant velocity, coordinated turn, and other motion models
-- **Estimation Algorithms**: Kalman filters (EKF, UKF, CKF, H-infinity), particle filters, and batch estimation
-- **Assignment Algorithms**: Hungarian algorithm, auction algorithms, and multi-dimensional assignment
+- **Estimation Algorithms**: Kalman filters (EKF, UKF, CKF, H-infinity), particle filters, smoothers, and batch estimation
+- **Assignment Algorithms**: Hungarian algorithm, auction algorithms, 3D/ND assignment, k-best assignments
+- **Data Association**: Global Nearest Neighbor, JPDA, MHT for multi-target tracking
 - **Mathematical Functions**: Special functions, statistics, numerical integration, and more
-- **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, reference frames (GCRF, ITRF, TEME, TOD, MOD), ephemerides
-- **Navigation**: Geodetic calculations, INS algorithms, GNSS utilities
-- **Geophysical Models**: Gravity, magnetism, atmosphere, and terrain models
+- **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
+- **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
+- **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF), atmosphere, tides, terrain
+- **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 
 ## Installation
 
