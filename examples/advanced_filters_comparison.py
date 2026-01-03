@@ -8,8 +8,9 @@ Demonstrates three advanced filtering techniques:
 Scenario: Nonlinear target tracking with constraints on valid state region.
 """
 
-import matplotlib.pyplot as plt
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 from pytcl.dynamic_estimation.gaussian_sum_filter import (

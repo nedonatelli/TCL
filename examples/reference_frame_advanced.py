@@ -21,8 +21,9 @@ SEZ is useful for:
 - Sensor target tracking from ground stations
 """
 
-import numpy as np
 import os
+
+import numpy as np
 import plotly.graph_objects as go
 import plotly.subplots as sp
 
