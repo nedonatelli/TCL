@@ -24,6 +24,12 @@ from pytcl.atmosphere.ionosphere import (
     simple_iri,
 )
 from pytcl.atmosphere.models import G0  # Constants
+from pytcl.atmosphere.nrlmsise00 import (
+    F107Index,
+    NRLMSISE00,
+    NRLMSISE00Output,
+    nrlmsise00,
+)
 from pytcl.atmosphere.models import (
     GAMMA,
     P0,
@@ -46,6 +52,11 @@ __all__ = [
     "altitude_from_pressure",
     "mach_number",
     "true_airspeed_from_mach",
+    # NRLMSISE-00 High-Fidelity Model
+    "NRLMSISE00",
+    "NRLMSISE00Output",
+    "F107Index",
+    "nrlmsise00",
     # Atmosphere constants
     "T0",
     "P0",
