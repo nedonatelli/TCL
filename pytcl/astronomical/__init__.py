@@ -87,16 +87,32 @@ from pytcl.astronomical.reference_frames import (
     equatorial_to_ecliptic,
     gast_iau82,
     gcrf_to_itrf,
+    gcrf_to_mod,
+    gcrf_to_teme,
+    gcrf_to_tod,
     gmst_iau82,
     itrf_to_gcrf,
+    itrf_to_teme,
+    itrf_to_teme_with_velocity,
+    itrf_to_tod,
     julian_centuries_j2000,
     mean_obliquity_iau80,
+    mod_to_gcrf,
+    mod_to_tod,
     nutation_angles_iau80,
     nutation_matrix,
+    pef_to_teme,
     polar_motion_matrix,
     precession_angles_iau76,
     precession_matrix_iau76,
     sidereal_rotation_matrix,
+    teme_to_gcrf,
+    teme_to_itrf,
+    teme_to_itrf_with_velocity,
+    teme_to_pef,
+    tod_to_gcrf,
+    tod_to_itrf,
+    tod_to_mod,
     true_obliquity,
 )
 from pytcl.astronomical.relativity import (
@@ -113,6 +129,12 @@ from pytcl.astronomical.relativity import (
     schwarzschild_precession_per_orbit,
     schwarzschild_radius,
     shapiro_delay,
+)
+from pytcl.astronomical.sgp4 import (
+    SGP4Satellite,
+    SGP4State,
+    sgp4_propagate,
+    sgp4_propagate_batch,
 )
 from pytcl.astronomical.time_systems import (
     JD_GPS_EPOCH,  # Julian dates; Time scales; Unix time; GPS week; Sidereal time; Leap seconds; Constants
@@ -144,6 +166,17 @@ from pytcl.astronomical.time_systems import (
     utc_to_gps,
     utc_to_tai,
     utc_to_tt,
+)
+from pytcl.astronomical.tle import (
+    TLE,
+    format_tle,
+    is_deep_space,
+    orbital_period_from_tle,
+    parse_tle,
+    parse_tle_3line,
+    semi_major_axis_from_mean_motion,
+    tle_epoch_to_datetime,
+    tle_epoch_to_jd,
 )
 
 __all__ = [
@@ -251,6 +284,39 @@ __all__ = [
     # Reference frames - Ecliptic/equatorial
     "ecliptic_to_equatorial",
     "equatorial_to_ecliptic",
+    # Reference frames - TEME (for SGP4/SDP4)
+    "teme_to_pef",
+    "pef_to_teme",
+    "teme_to_itrf",
+    "itrf_to_teme",
+    "teme_to_gcrf",
+    "gcrf_to_teme",
+    "teme_to_itrf_with_velocity",
+    "itrf_to_teme_with_velocity",
+    # Reference frames - TOD/MOD (legacy conventions)
+    "gcrf_to_mod",
+    "mod_to_gcrf",
+    "gcrf_to_tod",
+    "tod_to_gcrf",
+    "mod_to_tod",
+    "tod_to_mod",
+    "tod_to_itrf",
+    "itrf_to_tod",
+    # TLE parsing
+    "TLE",
+    "parse_tle",
+    "parse_tle_3line",
+    "tle_epoch_to_jd",
+    "tle_epoch_to_datetime",
+    "format_tle",
+    "is_deep_space",
+    "semi_major_axis_from_mean_motion",
+    "orbital_period_from_tle",
+    # SGP4/SDP4 propagation
+    "SGP4State",
+    "SGP4Satellite",
+    "sgp4_propagate",
+    "sgp4_propagate_batch",
     # Ephemerides - Classes
     "DEEphemeris",
     # Ephemerides - Functions

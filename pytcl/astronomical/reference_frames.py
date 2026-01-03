@@ -23,7 +23,7 @@ References
 
 import logging
 from functools import lru_cache
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -689,6 +689,619 @@ def equatorial_to_ecliptic(
     return R @ r_eq
 
 
+# =============================================================================
+# TEME Frame Transformations
+# =============================================================================
+
+
+def teme_to_pef(
+    r_teme: NDArray[np.floating],
+    jd_ut1: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TEME to PEF (Pseudo Earth-Fixed).
+
+    TEME is the True Equator, Mean Equinox frame used by SGP4.
+    This transformation applies only the GMST rotation.
+
+    Parameters
+    ----------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+
+    Returns
+    -------
+    r_pef : ndarray
+        Position in PEF frame (km), shape (3,).
+    """
+    gmst = gmst_iau82(jd_ut1)
+    R = sidereal_rotation_matrix(gmst)
+    return R @ r_teme
+
+
+def pef_to_teme(
+    r_pef: NDArray[np.floating],
+    jd_ut1: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from PEF to TEME.
+
+    Parameters
+    ----------
+    r_pef : ndarray
+        Position in PEF frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+
+    Returns
+    -------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    """
+    gmst = gmst_iau82(jd_ut1)
+    R = sidereal_rotation_matrix(gmst)
+    return R.T @ r_pef
+
+
+def teme_to_itrf(
+    r_teme: NDArray[np.floating],
+    jd_ut1: float,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TEME to ITRF (Earth-fixed).
+
+    TEME is the True Equator, Mean Equinox frame used by SGP4/SDP4.
+    This is the frame in which TLE-propagated positions are expressed.
+
+    Parameters
+    ----------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+
+    Notes
+    -----
+    TEME is a quasi-inertial frame that uses the mean equinox instead
+    of the true equinox. The transformation sequence is:
+
+    TEME -> PEF (via GMST rotation) -> ITRF (via polar motion)
+
+    Examples
+    --------
+    >>> from pytcl.astronomical.sgp4 import sgp4_propagate
+    >>> from pytcl.astronomical.tle import parse_tle
+    >>> tle = parse_tle(line1, line2)
+    >>> state = sgp4_propagate(tle, 0.0)
+    >>> r_itrf = teme_to_itrf(state.r, jd_ut1)
+    """
+    r_pef = teme_to_pef(r_teme, jd_ut1)
+    W = polar_motion_matrix(xp, yp)
+    return W @ r_pef
+
+
+def itrf_to_teme(
+    r_itrf: NDArray[np.floating],
+    jd_ut1: float,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> NDArray[np.floating]:
+    """
+    Transform position from ITRF to TEME.
+
+    Parameters
+    ----------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    """
+    W = polar_motion_matrix(xp, yp)
+    r_pef = W.T @ r_itrf
+    return pef_to_teme(r_pef, jd_ut1)
+
+
+def teme_to_gcrf(
+    r_teme: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TEME to GCRF (inertial).
+
+    This transformation accounts for the difference between
+    the mean and true equinox (equation of equinoxes) and then
+    applies precession and nutation to go from TOD to GCRF.
+
+    Parameters
+    ----------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT (Terrestrial Time).
+
+    Returns
+    -------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+
+    Notes
+    -----
+    The transformation sequence is:
+
+    TEME -> TOD (via equation of equinoxes)
+    TOD -> MOD (via nutation, inverse)
+    MOD -> GCRF (via precession, inverse)
+
+    Examples
+    --------
+    >>> state = sgp4_propagate(tle, 60.0)
+    >>> r_gcrf = teme_to_gcrf(state.r, jd_tt)
+    """
+    eq_eq = equation_of_equinoxes(jd_tt)
+
+    # TEME to TOD: rotate by equation of equinoxes
+    cos_eq = np.cos(-eq_eq)
+    sin_eq = np.sin(-eq_eq)
+
+    R_eq = np.array([[cos_eq, -sin_eq, 0], [sin_eq, cos_eq, 0], [0, 0, 1]])
+
+    r_tod = R_eq @ r_teme
+
+    # TOD to MOD (inverse nutation)
+    N = nutation_matrix(jd_tt)
+    r_mod = N.T @ r_tod
+
+    # MOD to GCRF (inverse precession)
+    P = precession_matrix_iau76(jd_tt)
+    return P.T @ r_mod
+
+
+def gcrf_to_teme(
+    r_gcrf: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from GCRF to TEME.
+
+    Parameters
+    ----------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    """
+    # GCRF to MOD (precession)
+    P = precession_matrix_iau76(jd_tt)
+    r_mod = P @ r_gcrf
+
+    # MOD to TOD (nutation)
+    N = nutation_matrix(jd_tt)
+    r_tod = N @ r_mod
+
+    # TOD to TEME: rotate by equation of equinoxes
+    eq_eq = equation_of_equinoxes(jd_tt)
+    cos_eq = np.cos(eq_eq)
+    sin_eq = np.sin(eq_eq)
+
+    R_eq = np.array([[cos_eq, -sin_eq, 0], [sin_eq, cos_eq, 0], [0, 0, 1]])
+
+    return R_eq @ r_tod
+
+
+def teme_to_itrf_with_velocity(
+    r_teme: NDArray[np.floating],
+    v_teme: NDArray[np.floating],
+    jd_ut1: float,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Transform position and velocity from TEME to ITRF.
+
+    This properly accounts for the velocity transformation including
+    the Earth's rotation rate.
+
+    Parameters
+    ----------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    v_teme : ndarray
+        Velocity in TEME frame (km/s), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+    v_itrf : ndarray
+        Velocity in ITRF frame (km/s), shape (3,).
+    """
+    omega_earth = 7.29211514670698e-5  # rad/s
+
+    gmst = gmst_iau82(jd_ut1)
+    R = sidereal_rotation_matrix(gmst)
+    W = polar_motion_matrix(xp, yp)
+
+    # Position transformation
+    r_pef = R @ r_teme
+    r_itrf = W @ r_pef
+
+    # Velocity includes Earth rotation effect
+    omega_vec = np.array([0.0, 0.0, omega_earth])
+    v_pef = R @ v_teme - np.cross(omega_vec, r_pef)
+    v_itrf = W @ v_pef
+
+    return r_itrf, v_itrf
+
+
+def itrf_to_teme_with_velocity(
+    r_itrf: NDArray[np.floating],
+    v_itrf: NDArray[np.floating],
+    jd_ut1: float,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Transform position and velocity from ITRF to TEME.
+
+    Parameters
+    ----------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+    v_itrf : ndarray
+        Velocity in ITRF frame (km/s), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_teme : ndarray
+        Position in TEME frame (km), shape (3,).
+    v_teme : ndarray
+        Velocity in TEME frame (km/s), shape (3,).
+    """
+    omega_earth = 7.29211514670698e-5  # rad/s
+
+    gmst = gmst_iau82(jd_ut1)
+    R = sidereal_rotation_matrix(gmst)
+    W = polar_motion_matrix(xp, yp)
+
+    # Position transformation
+    r_pef = W.T @ r_itrf
+    r_teme = R.T @ r_pef
+
+    # Velocity includes Earth rotation effect
+    omega_vec = np.array([0.0, 0.0, omega_earth])
+    v_pef = W.T @ v_itrf
+    v_teme = R.T @ (v_pef + np.cross(omega_vec, r_pef))
+
+    return r_teme, v_teme
+
+
+# =============================================================================
+# TOD/MOD Frame Transformations (Legacy Conventions)
+# =============================================================================
+
+
+def gcrf_to_mod(
+    r_gcrf: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from GCRF to MOD (Mean of Date).
+
+    MOD is the mean equator and mean equinox of date frame.
+    This applies only the precession transformation.
+
+    Parameters
+    ----------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT (Terrestrial Time).
+
+    Returns
+    -------
+    r_mod : ndarray
+        Position in MOD frame (km), shape (3,).
+
+    Notes
+    -----
+    MOD is a legacy frame convention. For most modern applications,
+    GCRF (J2000) is preferred. MOD was historically used in older
+    software and publications.
+
+    The transformation is simply the precession matrix:
+        r_mod = P @ r_gcrf
+
+    See Also
+    --------
+    mod_to_gcrf : Inverse transformation.
+    gcrf_to_tod : Includes nutation for true of date.
+    """
+    P = precession_matrix_iau76(jd_tt)
+    return P @ r_gcrf
+
+
+def mod_to_gcrf(
+    r_mod: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from MOD (Mean of Date) to GCRF.
+
+    Parameters
+    ----------
+    r_mod : ndarray
+        Position in MOD frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+
+    See Also
+    --------
+    gcrf_to_mod : Forward transformation.
+    """
+    P = precession_matrix_iau76(jd_tt)
+    return P.T @ r_mod
+
+
+def gcrf_to_tod(
+    r_gcrf: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from GCRF to TOD (True of Date).
+
+    TOD is the true equator and true equinox of date frame.
+    This applies both precession and nutation transformations.
+
+    Parameters
+    ----------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT (Terrestrial Time).
+
+    Returns
+    -------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+
+    Notes
+    -----
+    TOD is a legacy frame convention. The transformation is:
+        r_mod = P @ r_gcrf
+        r_tod = N @ r_mod
+
+    where P is the precession matrix and N is the nutation matrix.
+
+    See Also
+    --------
+    tod_to_gcrf : Inverse transformation.
+    gcrf_to_mod : Mean of date (without nutation).
+    """
+    P = precession_matrix_iau76(jd_tt)
+    N = nutation_matrix(jd_tt)
+    return N @ (P @ r_gcrf)
+
+
+def tod_to_gcrf(
+    r_tod: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TOD (True of Date) to GCRF.
+
+    Parameters
+    ----------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_gcrf : ndarray
+        Position in GCRF frame (km), shape (3,).
+
+    See Also
+    --------
+    gcrf_to_tod : Forward transformation.
+    """
+    P = precession_matrix_iau76(jd_tt)
+    N = nutation_matrix(jd_tt)
+    return P.T @ (N.T @ r_tod)
+
+
+def mod_to_tod(
+    r_mod: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from MOD (Mean of Date) to TOD (True of Date).
+
+    This applies only the nutation transformation.
+
+    Parameters
+    ----------
+    r_mod : ndarray
+        Position in MOD frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+
+    Notes
+    -----
+    The transformation is simply the nutation matrix:
+        r_tod = N @ r_mod
+
+    See Also
+    --------
+    tod_to_mod : Inverse transformation.
+    """
+    N = nutation_matrix(jd_tt)
+    return N @ r_mod
+
+
+def tod_to_mod(
+    r_tod: NDArray[np.floating],
+    jd_tt: float,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TOD (True of Date) to MOD (Mean of Date).
+
+    Parameters
+    ----------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+    jd_tt : float
+        Julian date in TT.
+
+    Returns
+    -------
+    r_mod : ndarray
+        Position in MOD frame (km), shape (3,).
+
+    See Also
+    --------
+    mod_to_tod : Forward transformation.
+    """
+    N = nutation_matrix(jd_tt)
+    return N.T @ r_tod
+
+
+def tod_to_itrf(
+    r_tod: NDArray[np.floating],
+    jd_ut1: float,
+    jd_tt: Optional[float] = None,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> NDArray[np.floating]:
+    """
+    Transform position from TOD (True of Date) to ITRF.
+
+    Parameters
+    ----------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    jd_tt : float, optional
+        Julian date in TT. If not provided, assumed equal to jd_ut1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+
+    Notes
+    -----
+    The transformation applies the sidereal rotation (using GAST)
+    and polar motion:
+        r_pef = R(GAST) @ r_tod
+        r_itrf = W @ r_pef
+
+    See Also
+    --------
+    itrf_to_tod : Inverse transformation.
+    """
+    if jd_tt is None:
+        jd_tt = jd_ut1
+    gast = gast_iau82(jd_ut1, jd_tt)
+    R = sidereal_rotation_matrix(gast)
+    W = polar_motion_matrix(xp, yp)
+    return W @ (R @ r_tod)
+
+
+def itrf_to_tod(
+    r_itrf: NDArray[np.floating],
+    jd_ut1: float,
+    jd_tt: Optional[float] = None,
+    xp: float = 0.0,
+    yp: float = 0.0,
+) -> NDArray[np.floating]:
+    """
+    Transform position from ITRF to TOD (True of Date).
+
+    Parameters
+    ----------
+    r_itrf : ndarray
+        Position in ITRF frame (km), shape (3,).
+    jd_ut1 : float
+        Julian date in UT1.
+    jd_tt : float, optional
+        Julian date in TT. If not provided, assumed equal to jd_ut1.
+    xp : float, optional
+        Polar motion x (radians). Default 0.
+    yp : float, optional
+        Polar motion y (radians). Default 0.
+
+    Returns
+    -------
+    r_tod : ndarray
+        Position in TOD frame (km), shape (3,).
+
+    See Also
+    --------
+    tod_to_itrf : Forward transformation.
+    """
+    if jd_tt is None:
+        jd_tt = jd_ut1
+    gast = gast_iau82(jd_ut1, jd_tt)
+    R = sidereal_rotation_matrix(gast)
+    W = polar_motion_matrix(xp, yp)
+    return R.T @ (W.T @ r_itrf)
+
+
 def clear_transformation_cache() -> None:
     """Clear cached transformation matrices.
 
@@ -743,6 +1356,24 @@ __all__ = [
     # Ecliptic/equatorial
     "ecliptic_to_equatorial",
     "equatorial_to_ecliptic",
+    # TEME transformations (for SGP4/SDP4)
+    "teme_to_pef",
+    "pef_to_teme",
+    "teme_to_itrf",
+    "itrf_to_teme",
+    "teme_to_gcrf",
+    "gcrf_to_teme",
+    "teme_to_itrf_with_velocity",
+    "itrf_to_teme_with_velocity",
+    # TOD/MOD transformations (legacy conventions)
+    "gcrf_to_mod",
+    "mod_to_gcrf",
+    "gcrf_to_tod",
+    "tod_to_gcrf",
+    "mod_to_tod",
+    "tod_to_mod",
+    "tod_to_itrf",
+    "itrf_to_tod",
     # Cache management
     "clear_transformation_cache",
     "get_cache_info",

@@ -9,6 +9,7 @@ This module provides:
 - Information filter
 - Square-root Kalman filters (numerically stable)
 - U-D factorization filter (Bierman's method)
+- H-infinity filter (robust filtering)
 """
 
 from pytcl.dynamic_estimation.kalman.extended import (
@@ -59,6 +60,15 @@ from pytcl.dynamic_estimation.kalman.unscented import (
     ukf_update,
     unscented_transform,
 )
+from pytcl.dynamic_estimation.kalman.h_infinity import (
+    HInfinityPrediction,
+    HInfinityUpdate,
+    extended_hinf_update,
+    find_min_gamma,
+    hinf_predict,
+    hinf_predict_update,
+    hinf_update,
+)
 
 __all__ = [
     # Linear KF
@@ -108,4 +118,12 @@ __all__ = [
     # Square-root UKF
     "sr_ukf_predict",
     "sr_ukf_update",
+    # H-infinity filter
+    "HInfinityPrediction",
+    "HInfinityUpdate",
+    "hinf_predict",
+    "hinf_update",
+    "hinf_predict_update",
+    "extended_hinf_update",
+    "find_min_gamma",
 ]
