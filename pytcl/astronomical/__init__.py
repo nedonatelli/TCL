@@ -79,8 +79,8 @@ from pytcl.astronomical.orbital_mechanics import (
 from pytcl.astronomical.reference_frames import (
     earth_rotation_angle,  # Time utilities; Precession; Nutation
 )
+from pytcl.astronomical.reference_frames import ecef_to_eci  # Time utilities
 from pytcl.astronomical.reference_frames import (
-    ecef_to_eci,  # Time utilities
     eci_to_ecef,
     ecliptic_to_equatorial,
     equation_of_equinoxes,
