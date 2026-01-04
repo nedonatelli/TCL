@@ -173,3 +173,4 @@ temp/
 examples/output/
 examples/advanced/
 benchmark_results.json
+docs/_static/images/examples/*.html
