@@ -86,8 +86,6 @@ class TestHighLevelMinCostAssignment:
     Bellman-Ford based solver for larger networks.
     """
 
-    @pytest.mark.skip(reason="Bellman-Ford solver too slow for 2x2")
-    @pytest.mark.skip(reason="Bellman-Ford solver too slow for 2x2")
     def test_min_cost_assignment_2x2(self):
         """Test min-cost assignment on 2x2 problem."""
         cost = np.array([[1.0, 100.0], [100.0, 1.0]])
@@ -96,9 +94,7 @@ class TestHighLevelMinCostAssignment:
 
         assert isinstance(assignment, np.ndarray)
         assert np.isfinite(total_cost)
-@pytest.mark.skip(reason="Bellman-Ford solver too slow for 3x3")
     
-    @pytest.mark.skip(reason="Bellman-Ford solver too slow for 3x3")
     def test_min_cost_assignment_3x3(self):
         """Test min-cost assignment on 3x3 problem."""
         cost = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
@@ -106,57 +102,46 @@ class TestHighLevelMinCostAssignment:
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
         assert isinstance(assignment, np.ndarray)
-    @pytest.mark.skip(reason="Bellman-Ford solver too slow for rectangular")
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver too slow for rectangular")
     def test_min_cost_assignment_rectangular(self):
         """Test min-cost assignment on rectangular problem."""
         cost = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
 
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         assert isinstance(assignment, np.ndarray)
         assert assignment.shape[1] == 2  # [worker, task] pairs
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_all_same(self):
         """Test min-cost assignment when all costs are the same."""
         cost = np.ones((3, 3))
 
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         # Cost should be reasonable (number of assignments * 1.0)
         assert np.isfinite(total_cost)
         assert total_cost >= 0
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_negative_costs(self):
         """Test min-cost assignment with negative costs."""
         cost = np.array([[-1.0, -2.0], [-3.0, -4.0]])
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
         # Should handle negative costs
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_single_element(self):
         """Test single element assignment."""
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         cost = np.array([[5.0]])
 
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_large_costs(self):
         """Test with very large costs."""
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         cost = np.array([[1e6, 1e7], [1e7, 1e6]])
 
         assignment, total_cost = min_cost_assignment_via_flow(cost)
@@ -164,8 +149,6 @@ class TestHighLevelMinCostAssignment:
         assert np.isfinite(total_cost)
         assert total_cost > 0
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_small_costs(self):
         """Test with very small costs."""
         cost = np.array([[1e-6, 1e-5], [1e-5, 1e-6]])
@@ -174,8 +157,6 @@ class TestHighLevelMinCostAssignment:
 
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_mixed_sign_costs(self):
         """Test with mixed positive and negative costs."""
         cost = np.array([[-1.0, 2.0], [3.0, -4.0]])
@@ -184,8 +165,6 @@ class TestHighLevelMinCostAssignment:
 
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_zero_costs(self):
         """Test with all-zero cost matrix."""
         cost = np.zeros((3, 3))
@@ -195,14 +174,12 @@ class TestHighLevelMinCostAssignment:
         # Cost should be zero for all-zero matrix
         assert np.isclose(total_cost, 0.0)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_min_cost_assignment_result_validity(self):
         """Test that assignment result is valid."""
         cost = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
 
         assignment, total_cost = min_cost_assignment_via_flow(cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
         # Each assignment should be a valid [worker, task] pair
         if assignment.shape[0] > 0:
             assert assignment.shape[1] == 2
@@ -212,10 +189,8 @@ class TestHighLevelMinCostAssignment:
 
 
 class TestNetworkFlowEdgeCases:
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     """Test edge cases for network flow."""
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_diagonal_cost_matrix(self):
         """Test diagonal cost matrix (optimal = identity permutation)."""
         cost = np.diag([1.0, 2.0, 3.0])
@@ -225,7 +200,6 @@ class TestNetworkFlowEdgeCases:
         # Total cost should be close to 6 (1+2+3)
         assert np.isfinite(total_cost)
 
-    @pytest.mark.skip(reason="Bellman-Ford solver performance")
     def test_permutation_matrix(self):
         """Test assignment requiring permutation."""
         cost = np.array([[100.0, 100.0, 1.0], [1.0, 100.0, 100.0], [100.0, 1.0, 100.0]])
