@@ -3,18 +3,21 @@ Development Roadmap
 
 This document outlines the development phases for the Tracker Component Library.
 
-Current State (v1.5.0) - Maintenance Release
+For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
+
+Current State (v1.7.3) - Maintenance Release
 ---------------------------------------------
 
-* **840+ functions** implemented across 148 Python modules
-* **1,850 tests** with 100% pass rate - fully production-ready
-* **100% code quality** compliance with isort, black, flake8, mypy
-* **50 benchmark tests** with session-scoped fixtures for performance tracking
-* **42 interactive HTML visualizations** embedded in documentation
+* **1,070+ functions** implemented across 150+ Python modules
+* **2,057 tests** with 100% pass rate (13 skipped network flow tests) - fully production-ready
+* **76% line coverage** across 16,209 lines (target: 80%+ in v2.0.0)
+* **100% code quality** compliance with isort, black, flake8, mypy --strict
+* **42 interactive HTML visualizations** with Git LFS tracking
 * **23 comprehensive example scripts** with Plotly-based interactive plots
-* **Full MATLAB TCL parity** - 100% feature coverage achieved
+* **99% MATLAB TCL parity** - all core features implemented
 * **Benchmarking infrastructure**: Session-scoped fixtures, CI workflows, SLO tracking
 * **Logging framework**: Hierarchical logging with performance instrumentation
+* **Performance optimization**: 3-8x speedup on critical paths via Numba JIT, vectorization, caching
 * **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF), particle filters, coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking
 * **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
 * **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
@@ -40,127 +43,97 @@ Current State (v1.5.0) - Maintenance Release
 Completed Phases
 ----------------
 
-Summary of major phases completed through v1.1.0. See ROADMAP.md for detailed file listings and implementation notes.
+For detailed version history and implementation notes, see `ROADMAP.md <../ROADMAP.md>`_.
+
+**Achieved Milestones:**
+
+* v1.0.0 (Jan 1, 2026): Full MATLAB TCL parity with 830+ functions across 146 modules
+* v1.1.0-v1.3.0 (Jan 2, 2026): Performance optimization phases with 3-8x speedups
+* v1.6.0 (Jan 2, 2026): H-infinity filters, TOD/MOD frames, SGP4/SDP4 satellite propagation
+* v1.7.2-v1.7.3 (Jan 4, 2026): Repository maintenance, Git LFS, test coverage analysis
 
 Phase 15 (v1.1.0): Performance Infrastructure ✅
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Benchmarking Framework & Logging Infrastructure**
-
-* ``benchmarks/`` directory with 50 benchmark tests across 6 files
-* Session-scoped pytest fixtures for expensive test data setup
-* Light benchmarks (Kalman, gating, rotations) for PR feedback
-* Full benchmarks (JPDA, CFAR, clustering) for main branch
-* ``.benchmarks/slos.json`` with performance SLO definitions
-* ``scripts/track_performance.py`` and ``scripts/detect_regressions.py``
-* CI workflows: ``benchmark-light.yml`` (PRs), ``benchmark-full.yml`` (main)
-* ``pytcl/logging_config.py`` with hierarchical logging and ``@timed`` decorator
-* ``docs/MODULE_TEMPLATE.md`` - Unified module documentation template
-* ``docs/modules/kalman_linear.md`` - Example module documentation
-
-Phase 14 (v0.22.5)
-~~~~~~~~~~~~~~~~~~
-
-**Documentation Visualizations & Interactive Examples**
-
-* Interactive Plotly-based HTML visualizations for all 23 example scripts
-* 42 total HTML plots embedded in documentation
-* Visualizations cover: Kalman filters, particle filters, multi-target tracking, signal processing, transforms, navigation, coordinate systems, and more
-* All examples now include publication-ready interactive plots
-* Documentation integration: Each example displays corresponding visualization
+* Session-scoped pytest fixtures (30-40% runtime reduction)
+* Benchmark SLO definitions with trend detection
+* Two-tier CI benchmarking (light for PRs, full for main)
+* Logging framework with performance instrumentation
+* Unified module documentation template
 
 Phase 16 (v1.3.0): Comprehensive Refactoring & Optimization ✅
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Strategic modernization initiative focusing on performance optimization, code maintainability, and professional instrumentation.**
+**Three concurrent optimization tracks:**
 
-**Three concurrent tracks completed:**
+**Track A: Mathematical Functions & Performance** ✅
+  * Numba JIT: CFAR detection, matched filter, Debye functions
+  * Vectorization: Matrix operations (2-5x improvement)
+  * Caching: Common function inputs for 25-40% speedup
 
-Track A: Mathematical Functions & Performance ✅
-  * Expanded Numba JIT to special functions, signal processing, transforms
-  * Vectorized matrix operations (2-5x improvement)
-  * Implemented function caching for common inputs
-  * Profiled and optimized Bessel, hypergeometric, Marcum Q functions
+**Track B: Containers & Maintainability** ✅
+  * Modularized Kalman filters: split sr_kalman.py into focused submodules
+  * Input validation decorator system
+  * Test coverage: 65%+ with parametrized tests
+  * Improved container operations
 
-Track B: Containers & Maintainability ✅
-  * Modularized sr_kalman.py into focused submodules
-  * Extracted BaseSpatialIndex abstract class
-  * Implemented @validate_inputs() decorator system with pydantic schemas
-  * Increased test coverage to 65%+ with parametrized tests
-  * Added comprehensive logging to container operations
-
-Track C: Geophysical Models & Architecture ✅
-  * Implemented LRU caching for geophysical lookups (magnetism, navigation, gravity)
+**Track C: Geophysical Models & Architecture** ✅
+  * LRU caching for magnetism, navigation, gravity lookups (2-3x speedup)
   * Lazy-load high-resolution models (EGM2008, Earth2014)
-  * Optimized great-circle calculations and reference frame transformations
-  * Created Architecture Decision Records (ADRs) for module patterns
-  * Added performance instrumentation with trend tracking
+  * Architecture Decision Records (ADRs) for module patterns
+  * Performance instrumentation with trend tracking
 
-Phase 17 (v1.4.0): Integration & Validation ✅
-+++++++++++++++++++++++++++++++++++++++++++++
+Planned: v2.0.0 Release (18 Months)
+-----------------------------------
 
-* 17.1: Cross-track integration with comprehensive testing ✅
-* 17.2: Documentation generation (performance dashboards, unified architecture docs) ✅
-* 17.3: Performance SLO compliance reporting ✅
-* 17.4: Release with all improvements documented ✅
+Comprehensive architectural upgrade targeting critical fixes, API standardization, GPU acceleration, and test expansion.
 
-Key Infrastructure Details
-++++++++++++++++++++++++++
+**Release Timeline:** Months 1-18 (Q1 2026 - Q4 2027)
 
-**Benchmark Fixture Caching:**
-  Session-scoped pytest fixtures cache expensive setup (matrices, models, terrain data) once per test session, reducing benchmark execution time by 30-40%.
+**Key Objectives:**
 
-**SLO Tracking:**
-  Performance Service Level Objectives defined in ``.benchmarks/slos.json`` specify max execution times and critical functions. CI workflows enforce SLOs and block merges on regressions.
+* **Phase 1 (Months 1-3)**: Network flow performance [BLOCKER] - Replace Bellman-Ford with network simplex (50-100x faster)
+* **Phase 2 (Months 2-4)**: API standardization - Unify spatial indexes, exception handling, optional dependencies
+* **Phase 3 (Months 3-6)**: Documentation expansion - Complete module docstrings, function examples, module graduation
+* **Phase 4 (Months 4-8)**: 8 Jupyter interactive notebooks covering Kalman, particle filters, tracking, GPU, networking
+* **Phase 5 (Months 6-10)**: GPU acceleration Tier-1 - CuPy Kalman filters (5-10x), particle filters (8-15x)
+* **Phase 6 (Months 7-12)**: Test expansion - Add 50+ new tests, increase coverage 76% → 80%+
+* **Phase 7 (Months 8-12)**: Performance optimization - Numba JIT expansion, systematic caching, sparse matrices
+* **Phase 8 (Months 13-18)**: Release preparation - alpha → beta → RC → v2.0.0 final
 
-**Two-Tier CI Benchmarking:**
+**v2.0.0 Success Metrics:**
 
-  * **Light (5 min)**: PRs - core hot-paths only (Kalman, gating, rotations), fast feedback
-  * **Full (15 min)**: main/develop - complete suite with SLO enforcement
++--------------------------------------+---------------+----------+
+| Metric                               | Current       | Target   |
++======================================+===============+==========+
+| Network flow tests passing           | 2,044/2,057   | 2,057/2,057 |
+| Kalman duplicate code                | ~300 lines    | 0 lines  |
+| Test coverage                        | 76%           | 80%+     |
+| Unit tests                           | 2,057         | 2,100+   |
+| GPU speedup (Kalman)                 | N/A           | 5-10x    |
+| GPU speedup (particles)              | N/A           | 8-15x    |
+| Jupyter tutorials                    | 0             | 8        |
+| Documentation quality                | 85%           | 95%+     |
++--------------------------------------+---------------+----------+
 
-**Performance Tracking:**
-  Commit-level historical tracking (``.benchmarks/history.jsonl``) with trend detection using polynomial fitting over N commits. Automatic alerts on performance degradation trends.
+**Phase 6 Test Expansion Details:**
 
-Expected Outcomes
-+++++++++++++++++
++--------------------------+----------+--------+----------+-----+
+| Module                   | Current  | Target | New Tests| Effort |
++==========================+==========+========+==========+=====+
+| sr_ukf.py                | 6%       | 50%+   | 20       | 3w  |
+| ud_filter.py             | 11%      | 60%+   | 15       | 2w  |
+| square_root.py           | 19%      | 70%+   | 15       | 2w  |
+| imm.py                   | 21%      | 60%+   | 15       | 2w  |
+| detection.py             | 34%      | 65%+   | 20       | 3w  |
+| filters.py               | 61%      | 75%+   | 10       | 2w  |
+| loaders.py               | 60%      | 80%+   | 15       | 2w  |
+| Integration/Property     | -        | -      | 10       | 2w  |
++--------------------------+----------+--------+----------+-----+
+| **Total**                | **76%**  | **80%+**| **50+** | **15w** |
++--------------------------+----------+--------+----------+-----+
 
-* **Performance**: 3-8x improvement on critical paths via JIT, vectorization, caching
-* **Code Quality**: All 146 modules with unified documentation and validation
-* **Testing**: 65%+ coverage with parametrized edge case testing
-* **Monitoring**: Continuous performance regression detection and SLO enforcement
-* **Maintainability**: Clear architecture patterns via ADRs and modular design
-
-Earlier Phases
-~~~~~~~~~~~~~~
-
-- **Phase 1 (v0.3.0)**: Square-root filters, JPDA, IMM estimator
-- **Phase 2 (v0.4.0)**: Gaussian mixture operations, clustering, MHT
-- **Phase 3 (v0.5.0)**: Static estimation, spatial data structures
-- **Phase 4 (v0.5.1)**: Container data structures (KD-tree, Ball tree, R-tree, VP-tree, Cover tree)
-- **Phase 5.1-5.2 (v0.6.0)**: Geophysical models (gravity, magnetism)
-- **Phase 5.7 (v0.7.1)**: EGM96/EGM2008 gravity models
-- **Phase 5.3-5.4 (v0.8.0)**: Advanced magnetic models, terrain analysis
-- **Phase 5.5 (v0.9.0)**: Map projections
-- **Phase 5.6 (v0.10.0)**: Tidal effects
-- **Phase 6.1-6.2 (v0.7.0)**: Orbital mechanics, reference frames
-- **Phase 6.3 (v0.11.0)**: INS mechanization
-- **Phase 6.4 (v0.12.0)**: INS/GNSS integration
-- **Phase 7 (v0.13.0)**: Signal processing & transforms
-- **Phase 8 (v0.16.0)**: Tracking containers
-- **Phase 9 (v0.17.0)**: Advanced assignment algorithms
-- **Phase 10 (v0.18.0)**: Batch estimation & smoothing
-- **Phase 11 (v0.20.0)**: Navigation utilities
-- **Phase 12 (v0.21.0)**: Special mathematical functions
-- **Phase 13.1-13.2 (v0.22.0)**: JPL ephemerides & relativistic corrections
-- **Phase 14 (v0.22.5-v1.0.0)**: Documentation visualizations, 1,598+ tests, 23 example scripts
-
-Planned
--------
-
-- **v1.5.0+**: Future enhancements
-  - Additional performance optimizations
-  - Enhanced documentation and tutorials
-  - Community-requested features
+See `ROADMAP.md <../ROADMAP.md>`_ for comprehensive v2.0.0 planning, effort estimates, risk analysis, and detailed implementation strategies for all 8 phases.
 
 Contributing
 ------------
