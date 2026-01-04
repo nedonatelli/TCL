@@ -197,7 +197,9 @@ class TestGaussianSumFilterUpdate:
     def test_update_adapts_weights_based_on_likelihood(self):
         """Test weight adaptation based on measurement likelihood."""
         # Initialize with different means
-        gsf = GaussianSumFilter(prune_threshold=0.01)  # Higher threshold to preserve components
+        gsf = GaussianSumFilter(
+            prune_threshold=0.01
+        )  # Higher threshold to preserve components
         x1 = np.array([0.0, 0.0])
         x2 = np.array([5.0, 0.0])
 

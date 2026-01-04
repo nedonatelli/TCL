@@ -82,7 +82,9 @@ class NumpyTestCase:
 
     def assert_shape(self, arr, expected_shape):
         """Assert array has expected shape."""
-        assert arr.shape == expected_shape, f"Expected shape {expected_shape}, got {arr.shape}"
+        assert (
+            arr.shape == expected_shape
+        ), f"Expected shape {expected_shape}, got {arr.shape}"
 
     def assert_symmetric(self, arr, rtol=1e-10):
         """Assert matrix is symmetric."""

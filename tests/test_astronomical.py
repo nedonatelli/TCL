@@ -150,7 +150,9 @@ class TestOrbitalElementConversions:
 
     def test_roundtrip_elements_state(self):
         """Test elements -> state -> elements roundtrip."""
-        elements_orig = OrbitalElements(a=8000, e=0.2, i=0.5, raan=0.3, omega=0.8, nu=1.0)
+        elements_orig = OrbitalElements(
+            a=8000, e=0.2, i=0.5, raan=0.3, omega=0.8, nu=1.0
+        )
         state = orbital_elements_to_state(elements_orig)
         elements_back = state_to_orbital_elements(state)
 

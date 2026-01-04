@@ -169,7 +169,9 @@ def demo_kepler_equation():
     print(f"Eccentricity: {e_hyp} (hyperbolic trajectory)")
     print("For hyperbolic orbits, only a range of true anomalies is valid:")
     nu_max = np.arccos(-1 / e_hyp)
-    print(f"  Valid range: -{np.degrees(nu_max):.1f} deg < nu < {np.degrees(nu_max):.1f} deg")
+    print(
+        f"  Valid range: -{np.degrees(nu_max):.1f} deg < nu < {np.degrees(nu_max):.1f} deg"
+    )
 
 
 def demo_orbit_propagation():
@@ -211,7 +213,8 @@ def demo_orbit_propagation():
         v_mag = np.linalg.norm(state.v)
 
         print(
-            f"{dt/3600:>10.2f} {r_mag:>12.1f} {v_mag:>10.4f} " f"{np.degrees(elements.nu):>10.1f}"
+            f"{dt/3600:>10.2f} {r_mag:>12.1f} {v_mag:>10.4f} "
+            f"{np.degrees(elements.nu):>10.1f}"
         )
 
     # Verify vis-viva equation
@@ -223,7 +226,8 @@ def demo_orbit_propagation():
         v_actual = np.linalg.norm(state.v)
         v_visviva = vis_viva(r, a, GM_EARTH)
         print(
-            f"  t={frac*T/3600:.1f}h: v_actual={v_actual:.4f}, " f"v_visviva={v_visviva:.4f} km/s"
+            f"  t={frac*T/3600:.1f}h: v_actual={v_actual:.4f}, "
+            f"v_visviva={v_visviva:.4f} km/s"
         )
 
     # Plot orbit
@@ -331,8 +335,14 @@ def demo_lambert_problem():
     tof = 259 * 86400  # seconds
 
     print("\nEarth-Mars transfer scenario:")
-    print(f"  Departure: Earth at ({r1[0]/149597870.7:.2f}, " f"{r1[1]/149597870.7:.2f}, 0) AU")
-    print(f"  Arrival: Mars at ({r2[0]/149597870.7:.2f}, " f"{r2[1]/149597870.7:.2f}, 0) AU")
+    print(
+        f"  Departure: Earth at ({r1[0]/149597870.7:.2f}, "
+        f"{r1[1]/149597870.7:.2f}, 0) AU"
+    )
+    print(
+        f"  Arrival: Mars at ({r2[0]/149597870.7:.2f}, "
+        f"{r2[1]/149597870.7:.2f}, 0) AU"
+    )
     print(f"  Time of flight: {tof/86400:.0f} days")
 
     # Solve Lambert's problem
@@ -419,13 +429,16 @@ def demo_time_systems():
     # Convert to Julian Date
     jd = cal_to_jd(year, month, day, hour, minute, second)
 
-    print(f"\nDate: {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:05.2f} UTC")
+    print(
+        f"\nDate: {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:05.2f} UTC"
+    )
     print(f"Julian Date: {jd:.6f}")
 
     # Convert back
     y, mo, d, h, mi, s = jd_to_cal(jd)
     print(
-        f"Roundtrip: {int(y)}-{int(mo):02d}-{int(d):02d} " f"{int(h):02d}:{int(mi):02d}:{s:05.2f}"
+        f"Roundtrip: {int(y)}-{int(mo):02d}-{int(d):02d} "
+        f"{int(h):02d}:{int(mi):02d}:{s:05.2f}"
     )
 
     # Time scales - use calendar date directly
@@ -470,7 +483,8 @@ def demo_reference_frames():
     # Transform back
     r_gcrf_back = itrf_to_gcrf(r_itrf, jd_ut1, jd_tt)
     print(
-        f"Back to GCRF: ({r_gcrf_back[0]:.3f}, {r_gcrf_back[1]:.3f}, " f"{r_gcrf_back[2]:.3f}) km"
+        f"Back to GCRF: ({r_gcrf_back[0]:.3f}, {r_gcrf_back[1]:.3f}, "
+        f"{r_gcrf_back[2]:.3f}) km"
     )
 
     # Show precession effect
@@ -533,7 +547,10 @@ def demo_orbit_determination():
     solution = lambert_universal(r1, r2, dt, GM_EARTH)
 
     print("\nLambert solution (initial orbit determination):")
-    print(f"  v1 = ({solution.v1[0]:.4f}, {solution.v1[1]:.4f}, " f"{solution.v1[2]:.4f}) km/s")
+    print(
+        f"  v1 = ({solution.v1[0]:.4f}, {solution.v1[1]:.4f}, "
+        f"{solution.v1[2]:.4f}) km/s"
+    )
     print(f"  Semi-major axis: {solution.a:.1f} km (true: {a_true:.1f} km)")
     print(f"  Eccentricity: {solution.e:.4f} (true: {e_true:.4f})")
 

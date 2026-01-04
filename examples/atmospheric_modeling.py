@@ -67,7 +67,9 @@ def plot_density_vs_altitude():
 
     # US Standard Atmosphere for comparison (up to 85 km only)
     altitudes_short = altitudes_km[altitudes_km <= 85]
-    output_us76 = np.array([us_standard_atmosphere_1976(h * 1000).density for h in altitudes_short])
+    output_us76 = np.array(
+        [us_standard_atmosphere_1976(h * 1000).density for h in altitudes_short]
+    )
 
     fig = sp.make_subplots(rows=1, cols=1, specs=[[{"secondary_y": True}]])
 
@@ -187,7 +189,9 @@ def plot_temperature_profile():
     """
     Plot temperature vs. altitude across full range.
     """
-    altitudes_km = np.concatenate([np.linspace(0, 100, 50), np.linspace(100, 1000, 100)])
+    altitudes_km = np.concatenate(
+        [np.linspace(0, 100, 50), np.linspace(100, 1000, 100)]
+    )
     altitudes_m = altitudes_km * 1000
 
     model = NRLMSISE00()
@@ -222,7 +226,9 @@ def plot_temperature_profile():
                 name=label,
                 mode="lines",
                 line=dict(color=color, width=2.5),
-                hovertemplate="<b>" + label + "</b><br>T: %{x:.0f} K<br>Alt: %{y:.1f} km",
+                hovertemplate="<b>"
+                + label
+                + "</b><br>T: %{x:.0f} K<br>Alt: %{y:.1f} km",
             )
         )
 
@@ -269,7 +275,9 @@ def plot_solar_activity_effect():
         densities.append(output.density)
         temperatures.append(output.temperature)
 
-    fig = sp.make_subplots(rows=1, cols=2, specs=[[{"secondary_y": False}, {"secondary_y": False}]])
+    fig = sp.make_subplots(
+        rows=1, cols=2, specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+    )
 
     # Density vs F107
     fig.add_trace(

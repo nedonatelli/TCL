@@ -88,12 +88,22 @@ class TestAltitudeRange:
         """Test at troposphere (-5 km to 11 km)."""
         # Sea level
         output_sea = nrlmsise00(
-            latitude=0, longitude=0, altitude=0, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=0,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # 10 km
         output_10km = nrlmsise00(
-            latitude=0, longitude=0, altitude=10_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=10_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # Density should decrease with altitude
@@ -106,7 +116,12 @@ class TestAltitudeRange:
     def test_mesosphere(self):
         """Test at mesosphere (50-85 km)."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=75_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=75_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # N2 and O2 still dominant
@@ -119,7 +134,12 @@ class TestAltitudeRange:
     def test_thermosphere_low(self):
         """Test at lower thermosphere (100-200 km)."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=150_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=150_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # O and O2 become comparable
@@ -130,7 +150,12 @@ class TestAltitudeRange:
     def test_thermosphere_high(self):
         """Test at upper thermosphere (300-800 km)."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=500_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=500_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # O significant even at extreme altitude
@@ -143,7 +168,12 @@ class TestAltitudeRange:
     def test_exosphere(self):
         """Test at exosphere (>600 km)."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=800_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=800_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # H and He significant
@@ -285,7 +315,12 @@ class TestLatitudeVariation:
     def test_equator_vs_pole(self):
         """Test density variation between equator and pole."""
         output_equator = nrlmsise00(
-            latitude=0, longitude=0, altitude=300_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=300_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         output_pole = nrlmsise00(
@@ -309,11 +344,21 @@ class TestTemperatureProfile:
     def test_troposphere_lapse_rate(self):
         """Test troposphere lapse rate (~-6.5 K/km)."""
         output_sea = nrlmsise00(
-            latitude=0, longitude=0, altitude=0, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=0,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         output_5km = nrlmsise00(
-            latitude=0, longitude=0, altitude=5_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=5_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # Temperature decreases in troposphere
@@ -326,11 +371,21 @@ class TestTemperatureProfile:
     def test_stratosphere_warming(self):
         """Test stratosphere temperature inversion (warming)."""
         output_11km = nrlmsise00(
-            latitude=0, longitude=0, altitude=11_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=11_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         output_20km = nrlmsise00(
-            latitude=0, longitude=0, altitude=20_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=20_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # Temperature increases in stratosphere
@@ -361,7 +416,12 @@ class TestCompositionMixes:
     def test_total_density_from_species(self):
         """Test total density matches sum of species."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=150_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=150_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # Sum of mass densities (convert number density to mass density)
@@ -396,7 +456,12 @@ class TestCompositionMixes:
     def test_n2_dominant_low_alt(self):
         """Test N2 dominance at low altitudes."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=20_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=20_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # N2 should be much larger than other species
@@ -407,7 +472,12 @@ class TestCompositionMixes:
     def test_atomic_oxygen_high_alt(self):
         """Test atomic oxygen becomes dominant above ~130 km."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=200_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=200_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # O should be significant at 200 km
@@ -418,7 +488,12 @@ class TestCompositionMixes:
     def test_helium_exosphere(self):
         """Test helium significant in exosphere."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=400_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=400_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # He should be significant at 400 km
@@ -432,7 +507,12 @@ class TestEdgeCases:
     def test_very_low_altitude(self):
         """Test at sea level and below."""
         output_sea = nrlmsise00(
-            latitude=0, longitude=0, altitude=0, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=0,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         # Sea level density should be reasonable (ISA = 1.225 kg/m³)
@@ -444,7 +524,12 @@ class TestEdgeCases:
     def test_very_high_altitude(self):
         """Test at exosphere (800+ km)."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=800_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=800_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         assert output.density > 1e-15
@@ -576,7 +661,12 @@ class TestPhysicalMonotonicity:
     def test_n2_dominance_in_lower_atm(self):
         """Test N2 is dominant species at low altitudes."""
         output = nrlmsise00(
-            latitude=0, longitude=0, altitude=10_000, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=0,
+            longitude=0,
+            altitude=10_000,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         assert output.n2_density > output.o2_density
@@ -627,7 +717,12 @@ class TestVectorization:
         alt = np.array([200_000, 200_000, 200_000])
 
         output = nrlmsise00(
-            latitude=lat, longitude=lon, altitude=alt, year=2024, day_of_year=1, seconds_in_day=0
+            latitude=lat,
+            longitude=lon,
+            altitude=alt,
+            year=2024,
+            day_of_year=1,
+            seconds_in_day=0,
         )
 
         assert output.density.shape == (3,)

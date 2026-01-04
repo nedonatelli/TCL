@@ -403,7 +403,9 @@ class TestSlerp:
 
         # Should be 45 deg rotation about z
         expected_angle = angle / 2
-        expected = np.array([np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)])
+        expected = np.array(
+            [np.cos(expected_angle / 2), 0, 0, np.sin(expected_angle / 2)]
+        )
         np.testing.assert_allclose(result, expected, atol=1e-10)
 
 
@@ -1315,4 +1317,6 @@ class TestSEZConversions:
         # For northward target, the magnitude should be large and east component small
         total_distance = np.linalg.norm(sez)
         assert total_distance > 100000, "Distance should be significant"
-        assert abs(sez[1]) < abs(sez[0]), "East component should be smaller than meridional"
+        assert abs(sez[1]) < abs(
+            sez[0]
+        ), "East component should be smaller than meridional"

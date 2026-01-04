@@ -217,7 +217,8 @@ class TestRBPFUpdate:
         ]
 
         rbpf.particles = [
-            RBPFParticle(y=np.array([0.0, 0.0]), x=x_vals[i], P=np.eye(2), w=0.5) for i in range(2)
+            RBPFParticle(y=np.array([0.0, 0.0]), x=x_vals[i], P=np.eye(2), w=0.5)
+            for i in range(2)
         ]
 
         def h(x, y):
@@ -241,7 +242,9 @@ class TestRBPFResampling:
 
         # Create particles with highly unequal weights
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w)
+            RBPFParticle(
+                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w
+            )
             for i, w in enumerate([0.99, 0.005, 0.005])
         ]
 
@@ -259,7 +262,9 @@ class TestRBPFResampling:
 
         # Highly unequal weights to trigger resampling
         particles = [
-            RBPFParticle(y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w)
+            RBPFParticle(
+                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2), w=w
+            )
             for i, w in enumerate([0.99, 0.005, 0.005])
         ]
 
@@ -282,7 +287,10 @@ class TestRBPFMerging:
         # Create 4 particles
         particles = [
             RBPFParticle(
-                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2) * 0.01, w=0.25
+                y=np.array([float(i), 0.0]),
+                x=np.array([0.0, 0.0]),
+                P=np.eye(2) * 0.01,
+                w=0.25,
             )
             for i in range(4)
         ]
@@ -299,7 +307,10 @@ class TestRBPFMerging:
 
         particles = [
             RBPFParticle(
-                y=np.array([float(i), 0.0]), x=np.array([0.0, 0.0]), P=np.eye(2) * 0.01, w=0.25
+                y=np.array([float(i), 0.0]),
+                x=np.array([0.0, 0.0]),
+                P=np.eye(2) * 0.01,
+                w=0.25,
             )
             for i in range(4)
         ]

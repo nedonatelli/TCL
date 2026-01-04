@@ -45,7 +45,9 @@ class TestRTSSmoother:
         R = np.array([[1.0]])
 
         # Generate measurements with constant velocity (vel=1.0)
-        measurements = [np.array([float(k) + np.random.randn() * 0.5]) for k in range(10)]
+        measurements = [
+            np.array([float(k) + np.random.randn() * 0.5]) for k in range(10)
+        ]
 
         result = rts_smoother(x0, P0, measurements, F, Q, H, R)
 
@@ -76,7 +78,9 @@ class TestRTSSmoother:
         # Time-varying Q
         Q_list = [np.eye(n) * (0.1 + 0.01 * k) for k in range(5)]
 
-        measurements = [np.array([1.0, 2.0]) + np.random.randn(2) * 0.1 for _ in range(5)]
+        measurements = [
+            np.array([1.0, 2.0]) + np.random.randn(2) * 0.1 for _ in range(5)
+        ]
 
         result = rts_smoother(x0, P0, measurements, F, Q, H, R, Q_list=Q_list)
 
@@ -183,7 +187,9 @@ class TestTwoFilterSmoother:
 
         measurements = [np.array([float(k)]) for k in range(10)]
 
-        result = two_filter_smoother(x0_fwd, P0_fwd, x0_bwd, P0_bwd, measurements, F, Q, H, R)
+        result = two_filter_smoother(
+            x0_fwd, P0_fwd, x0_bwd, P0_bwd, measurements, F, Q, H, R
+        )
 
         assert isinstance(result, RTSResult)
         assert len(result.x_smooth) == 10
@@ -411,7 +417,9 @@ class TestSmootherConsistency:
 
         # Generate measurements following the CV model
         n_steps = 20
-        measurements = [np.array([float(k) + np.random.randn() * 0.5]) for k in range(n_steps)]
+        measurements = [
+            np.array([float(k) + np.random.randn() * 0.5]) for k in range(n_steps)
+        ]
 
         result = rts_smoother(x0, P0, measurements, F, Q, H, R)
 

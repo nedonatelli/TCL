@@ -130,31 +130,41 @@ class TestEMMFunction:
 
     def test_total_intensity_reasonable(self, test_coefficients):
         """Total field intensity should be in expected range."""
-        result = emm(np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients
+        )
         # Field intensity typically 25,000-65,000 nT at mid-latitudes
         # but can exceed this at high latitudes, allow up to 100,000 nT
         assert 20000 < result.F < 100000
 
     def test_horizontal_intensity_formula(self, test_coefficients):
         """H = sqrt(X^2 + Y^2)."""
-        result = emm(np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
+        )
         H_calc = np.sqrt(result.X**2 + result.Y**2)
         assert_allclose(result.H, H_calc, rtol=1e-10)
 
     def test_total_intensity_formula(self, test_coefficients):
         """F = sqrt(H^2 + Z^2)."""
-        result = emm(np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(40), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
+        )
         F_calc = np.sqrt(result.H**2 + result.Z**2)
         assert_allclose(result.F, F_calc, rtol=1e-10)
 
     def test_declination_range(self, test_coefficients):
         """Declination should be within -180 to 180 degrees."""
-        result = emm(np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
+        )
         assert -np.pi <= result.D <= np.pi
 
     def test_inclination_range(self, test_coefficients):
         """Inclination should be within -90 to 90 degrees."""
-        result = emm(np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
+        )
         assert -np.pi / 2 <= result.I <= np.pi / 2
 
 
@@ -219,7 +229,9 @@ class TestWMMHR:
 
     def test_wmmhr_returns_result(self, test_coefficients):
         """WMMHR returns MagneticResult."""
-        result = wmmhr(np.radians(45), np.radians(-75), 0, 2025.0, coefficients=test_coefficients)
+        result = wmmhr(
+            np.radians(45), np.radians(-75), 0, 2025.0, coefficients=test_coefficients
+        )
         assert hasattr(result, "F")
         assert hasattr(result, "D")
         assert hasattr(result, "I")
@@ -259,7 +271,9 @@ class TestConvenienceFunctions:
 
     def test_emm_declination(self, test_coefficients):
         """emm_declination returns correct value."""
-        result = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
+        )
         D = emm_declination(
             np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
@@ -267,7 +281,9 @@ class TestConvenienceFunctions:
 
     def test_emm_inclination(self, test_coefficients):
         """emm_inclination returns correct value."""
-        result = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
+        )
         incl = emm_inclination(
             np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
@@ -275,7 +291,9 @@ class TestConvenienceFunctions:
 
     def test_emm_intensity(self, test_coefficients):
         """emm_intensity returns correct value."""
-        result = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients)
+        result = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
+        )
         F = emm_intensity(
             np.radians(40), np.radians(-105), 0, 2020.0, coefficients=test_coefficients
         )
@@ -313,8 +331,12 @@ class TestSecularVariation:
 
     def test_field_changes_with_time(self, test_coefficients):
         """Field should change slightly between years."""
-        result_2020 = emm(np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients)
-        result_2022 = emm(np.radians(45), np.radians(0), 0, 2022.0, coefficients=test_coefficients)
+        result_2020 = emm(
+            np.radians(45), np.radians(0), 0, 2020.0, coefficients=test_coefficients
+        )
+        result_2022 = emm(
+            np.radians(45), np.radians(0), 0, 2022.0, coefficients=test_coefficients
+        )
         # Small but non-zero change expected
         # Secular variation is ~50-100 nT/year at mid-latitudes
         assert result_2020.F != result_2022.F
@@ -389,7 +411,9 @@ class TestHighDegreeEvaluation:
     def test_higher_degree_coefficients(self):
         """Test with higher degree coefficients (n_max=50)."""
         coef = create_emm_test_coefficients(n_max=50)
-        result = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50)
+        result = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50
+        )
         assert not np.isnan(result.F)
         assert result.F > 0
 
@@ -398,8 +422,12 @@ class TestHighDegreeEvaluation:
         coef = create_emm_test_coefficients(n_max=50)
 
         # Evaluate at different n_max values
-        result_12 = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=12)
-        result_50 = emm(np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50)
+        result_12 = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=12
+        )
+        result_50 = emm(
+            np.radians(40), np.radians(-105), 0, 2020.0, coefficients=coef, n_max=50
+        )
 
         # Both should be valid
         assert result_12.F > 0

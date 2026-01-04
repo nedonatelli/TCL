@@ -80,7 +80,9 @@ def example_pef_intermediate_frame():
 
     # Polar motion effect
     polar_motion_effect = np.linalg.norm(r_itrf - r_pef)
-    print(f"\nPolar motion effect (PEF vs ITRF difference): {polar_motion_effect:.4f} km")
+    print(
+        f"\nPolar motion effect (PEF vs ITRF difference): {polar_motion_effect:.4f} km"
+    )
     print(f"Relative effect: {100 * polar_motion_effect / np.linalg.norm(r_gcrf):.6f}%")
 
     # Verify roundtrip
@@ -118,7 +120,12 @@ def example_sez_radar_observations():
 
     # Convert satellite position to SEZ relative to station
     sez_position = geodetic2sez(
-        lat_satellite, lon_satellite, alt_satellite, lat_station, lon_station, alt_station
+        lat_satellite,
+        lon_satellite,
+        alt_satellite,
+        lat_station,
+        lon_station,
+        alt_station,
     )
 
     print(f"\nSatellite position in SEZ:")
@@ -217,7 +224,9 @@ def example_leo_satellite_tracking():
     azimuth_at_max = azimuth_pass[max_el_idx]
     min_range = range_pass[max_el_idx]
 
-    print(f"\nSatellite pass over {np.degrees(lat_station):.2f}°, {np.degrees(lon_station):.2f}°:")
+    print(
+        f"\nSatellite pass over {np.degrees(lat_station):.2f}°, {np.degrees(lon_station):.2f}°:"
+    )
     print(f"  Maximum elevation: {max_elevation:.2f}°")
     print(f"  Azimuth at max el: {azimuth_at_max:.2f}°")
     print(f"  Minimum range:     {min_range:.2f} km")
@@ -235,7 +244,12 @@ def example_leo_satellite_tracking():
     fig = sp.make_subplots(
         rows=2,
         cols=2,
-        subplot_titles=("Elevation Angle", "Azimuth Angle", "Slant Range", "Ground Station View"),
+        subplot_titles=(
+            "Elevation Angle",
+            "Azimuth Angle",
+            "Slant Range",
+            "Ground Station View",
+        ),
         specs=[
             [{"type": "scatter"}, {"type": "scatter"}],
             [{"type": "scatter"}, {"type": "scatterpolar"}],
@@ -259,7 +273,11 @@ def example_leo_satellite_tracking():
     # Azimuth vs time
     fig.add_trace(
         go.Scatter(
-            x=t_pass, y=azimuth_pass, mode="lines", name="Azimuth", line=dict(color="red", width=2)
+            x=t_pass,
+            y=azimuth_pass,
+            mode="lines",
+            name="Azimuth",
+            line=dict(color="red", width=2),
         ),
         row=1,
         col=2,
@@ -268,7 +286,11 @@ def example_leo_satellite_tracking():
     # Range vs time
     fig.add_trace(
         go.Scatter(
-            x=t_pass, y=range_pass, mode="lines", name="Range", line=dict(color="green", width=2)
+            x=t_pass,
+            y=range_pass,
+            mode="lines",
+            name="Range",
+            line=dict(color="green", width=2),
         ),
         row=2,
         col=1,
@@ -348,7 +370,10 @@ def example_leo_satellite_tracking():
     )
 
     fig.update_layout(
-        title_text="LEO Satellite Pass Tracking", height=800, width=1200, hovermode="closest"
+        title_text="LEO Satellite Pass Tracking",
+        height=800,
+        width=1200,
+        hovermode="closest",
     )
 
     # Save output to examples/output directory instead of root
@@ -389,10 +414,14 @@ def example_earth_observation():
     observer_alt = 800_000  # 800 km altitude
 
     print(f"\nObserver satellite:")
-    print(f"  Position: {np.degrees(observer_lat):.2f}°N, {np.degrees(observer_lon):.2f}°W")
+    print(
+        f"  Position: {np.degrees(observer_lat):.2f}°N, {np.degrees(observer_lon):.2f}°W"
+    )
     print(f"  Altitude: {observer_alt/1000:.0f} km")
 
-    print(f"\nTarget location: {np.degrees(target_lat):.2f}°N, {np.degrees(target_lon):.2f}°W")
+    print(
+        f"\nTarget location: {np.degrees(target_lat):.2f}°N, {np.degrees(target_lon):.2f}°W"
+    )
 
     print(f"\nObservation feasibility from different ground stations:")
     print(f"{'Station':<12} {'Lat':<8} {'Lon':<8} {'El to Sat':<12} {'Visible?':<10}")
@@ -401,7 +430,12 @@ def example_earth_observation():
     for station_name, station_lat, station_lon, station_alt in stations:
         # Find elevation angle from station to satellite
         sez_to_sat = geodetic2sez(
-            observer_lat, observer_lon, observer_alt, station_lat, station_lon, station_alt
+            observer_lat,
+            observer_lon,
+            observer_alt,
+            station_lat,
+            station_lon,
+            station_alt,
         )
 
         horiz = np.sqrt(sez_to_sat[0] ** 2 + sez_to_sat[1] ** 2)

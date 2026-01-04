@@ -183,7 +183,9 @@ def example_barycenter():
     # Compare with Jupiter position
     r_jupiter, _ = planet_position("jupiter", jd_j2000)
     print(f"\nComparison with Jupiter position:")
-    print(f"  Jupiter distance from barycenter: {np.linalg.norm(r_jupiter - r_barycenter):.3f} m")
+    print(
+        f"  Jupiter distance from barycenter: {np.linalg.norm(r_jupiter - r_barycenter):.3f} m"
+    )
     print(f"  This shows Jupiter's significant gravitational influence")
 
 
@@ -248,8 +250,12 @@ def example_time_series():
     print(f"    Max Z: {np.max(sun_positions[:, 2])/AU:.8f} AU")
 
     print(f"\nMoon orbit statistics:")
-    print(f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km")
-    print(f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km")
+    print(
+        f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+    )
+    print(
+        f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+    )
 
 
 def example_ephemeris_versions():

@@ -176,7 +176,9 @@ class TargetTrackingScenario:
 
             # Measurement
             z_true = self.h(x_true[k])
-            measurements[k] = z_true + np.random.multivariate_normal(np.zeros(2), self.R)
+            measurements[k] = z_true + np.random.multivariate_normal(
+                np.zeros(2), self.R
+            )
 
         return x_true, measurements
 
@@ -419,9 +421,15 @@ def main():
     print("\n" + "=" * 60)
     print("FILTER COMPARISON RESULTS")
     print("=" * 60)
-    print(f"CEKF - Mean Error: {np.mean(err_cekf):.4f}, Mean Uncertainty: {np.mean(unc_cekf):.4f}")
-    print(f"GSF  - Mean Error: {np.mean(err_gsf):.4f}, Mean Uncertainty: {np.mean(unc_gsf):.4f}")
-    print(f"RBPF - Mean Error: {np.mean(err_rbpf):.4f}, Mean Uncertainty: {np.mean(unc_rbpf):.4f}")
+    print(
+        f"CEKF - Mean Error: {np.mean(err_cekf):.4f}, Mean Uncertainty: {np.mean(unc_cekf):.4f}"
+    )
+    print(
+        f"GSF  - Mean Error: {np.mean(err_gsf):.4f}, Mean Uncertainty: {np.mean(unc_gsf):.4f}"
+    )
+    print(
+        f"RBPF - Mean Error: {np.mean(err_rbpf):.4f}, Mean Uncertainty: {np.mean(unc_rbpf):.4f}"
+    )
     print("=" * 60)
 
     # Create plots
@@ -433,7 +441,9 @@ def main():
     ax.plot(x_cekf[:, 0], x_cekf[:, 1], "b--", alpha=0.7, label="CEKF")
     ax.plot(x_gsf[:, 0], x_gsf[:, 1], "g--", alpha=0.7, label="GSF")
     ax.plot(x_rbpf[:, 0], x_rbpf[:, 1], "r--", alpha=0.7, label="RBPF")
-    circle = plt.Circle((5, 5), 10, fill=False, color="gray", linestyle=":", label="Constraint")
+    circle = plt.Circle(
+        (5, 5), 10, fill=False, color="gray", linestyle=":", label="Constraint"
+    )
     ax.add_patch(circle)
     ax.set_xlabel("X Position")
     ax.set_ylabel("Y Position")
