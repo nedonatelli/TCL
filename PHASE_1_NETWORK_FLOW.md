@@ -30,30 +30,32 @@ Replace Bellman-Ford O(VE²) algorithm with network simplex O(VE log V) for 50-1
 - [x] Created `network_simplex.py` skeleton for Phase 1B
 - [x] Set up infrastructure for enabling tests once simplex ready
 
-### Phase 1B: Implement Network Simplex (Week 2) 🚀 IN PROGRESS
+### Phase 1B: Implement Network Simplex (Week 2) � RESEARCH ITERATION
 
-**Strategic Approach:**
-- Created `pytcl/assignment_algorithms/network_simplex.py` with capacity scaling framework
-- Added `min_cost_flow_simplex()` wrapper function in network_flow.py
-- Prepared test infrastructure to enable solver tests once simplex is production-ready
-- Added `use_simplex` parameter to main API for future seamless switching
+**Lessons Learned:**
+- Cost-scaling algorithms require careful convergence analysis to avoid infinite loops
+- Naive implementations of potential-based methods can cycle without monotonic progress
+- Bellman-Ford baseline is robust and correct, making it ideal for validation
 
-**Implementation Status:**
-- [x] Created foundation files for simplex infrastructure
-- [x] Studied cost-scaling and capacity-scaling algorithms
-- [x] Prototyped multiple approaches (full simplex, capacity scaling, cost scaling)
-- [ ] Complete proven simplex implementation (targeting Week 2)
-- [ ] Integrate with assignment_to_flow_network conversion
-- [ ] Validate correctness against current solution
-- [ ] Benchmark against Bellman-Ford
+**Strategic Pivot:**
+Instead of implementing complex simplex variants, focusing on:
+1. Understanding why Bellman-Ford is slow (empirical bottleneck analysis)
+2. Identifying specific optimizations that preserve correctness
+3. Implementing proven, published cost-scaling algorithms rather than novel approaches
 
-**Current Strategy:**
-Rather than implementing full network simplex immediately, focusing on simpler
-capacity-scaling approach which provides:
-- Easier to implement correctly
-- O(V²E log V) typical performance (vs current O(V³E))
-- Better numerical stability than cost-scaling alone
-- Clear migration path from successive shortest paths
+**Revised Implementation Plan:**
+- [ ] Profile Bellman-Ford to find hotspots (which relaxations are repeated most?)
+- [ ] Study published cost-scaling implementations (e.g., DIMACS network codes)
+- [ ] Implement capacity scaling with proven convergence guarantees
+- [ ] Benchmark against baseline at each iteration
+- [ ] Use successive shortest paths as oracle for correctness validation
+
+**Next Phase 1B Attempt:**
+Research and implement algorithm from:
+- "Scaling Algorithms for the Shortest Paths Problem" (Goldberg 1995)
+- "A New Scaling Algorithm for Minimum Cost Flow Problems" (Ahuja et al., 1999)
+
+These have proven convergence analysis and published implementations to reference.
 
 ### Phase 1C: Testing & Integration (Week 2-3) ⏳ PENDING
 - [ ] Unit tests for simplex implementation
