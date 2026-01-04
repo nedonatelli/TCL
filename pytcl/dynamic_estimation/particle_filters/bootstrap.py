@@ -102,9 +102,9 @@ def resample_systematic(
 
 @njit(cache=True)
 def _resample_residual_deterministic(
-    particles: np.ndarray,
-    floor_Nw: np.ndarray,
-) -> Tuple[np.ndarray, int]:
+    particles: np.ndarray[Any, Any],
+    floor_Nw: np.ndarray[Any, Any],
+) -> Tuple[np.ndarray[Any, Any], int]:
     """JIT-compiled deterministic copy portion of residual resampling."""
     N = particles.shape[0]
     n = particles.shape[1]
@@ -194,8 +194,8 @@ def effective_sample_size(weights: NDArray[np.floating]) -> float:
 
 def bootstrap_pf_predict(
     particles: NDArray[np.floating],
-    f: Callable[[NDArray], NDArray],
-    Q_sample: Callable[[int, Optional[np.random.Generator]], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
+    Q_sample: Callable[[int, Optional[np.random.Generator]], NDArray[Any]],
     rng: Optional[np.random.Generator] = None,
 ) -> NDArray[np.floating]:
     """
@@ -240,7 +240,7 @@ def bootstrap_pf_update(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
     z: ArrayLike,
-    likelihood_func: Callable[[NDArray, NDArray], float],
+    likelihood_func: Callable[[NDArray[Any], NDArray[Any]], float],
 ) -> Tuple[NDArray[np.floating], float]:
     """
     Bootstrap particle filter update step.
@@ -324,9 +324,9 @@ def bootstrap_pf_step(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
     z: ArrayLike,
-    f: Callable[[NDArray], NDArray],
-    h: Callable[[NDArray], NDArray],
-    Q_sample: Callable[[int, Optional[np.random.Generator]], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
+    Q_sample: Callable[[int, Optional[np.random.Generator]], NDArray[Any]],
     R: ArrayLike,
     resample_threshold: float = 0.5,
     resample_method: str = "systematic",
@@ -374,7 +374,7 @@ def bootstrap_pf_step(
     particles_pred = bootstrap_pf_predict(particles, f, Q_sample, rng)
 
     # Update
-    def likelihood_func(z: NDArray, x: NDArray) -> Any:
+    def likelihood_func(z: NDArray[Any], x: NDArray[Any]) -> Any:
         z_pred = h(x)
         return gaussian_likelihood(z, z_pred, R)
 
@@ -422,10 +422,10 @@ def particle_mean(
 
 @njit(cache=True)
 def _particle_covariance_core(
-    particles: np.ndarray,
-    weights: np.ndarray,
-    mean: np.ndarray,
-) -> np.ndarray:
+    particles: np.ndarray[Any, Any],
+    weights: np.ndarray[Any, Any],
+    mean: np.ndarray[Any, Any],
+) -> np.ndarray[Any, Any]:
     """JIT-compiled core for particle covariance computation."""
     N = particles.shape[0]
     n = particles.shape[1]
