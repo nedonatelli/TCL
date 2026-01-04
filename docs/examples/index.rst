@@ -252,6 +252,19 @@ Orbital Mechanics
    * - :download:`orbital_mechanics.py <../../examples/orbital_mechanics.py>`
      - Orbit propagation, Kepler's equation, Lambert problem
 
+**Relativistic Effects**: Gravitational time dilation and relativity effects in space systems.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/relativity_effects.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :download:`relativity_demo.py <../../examples/relativity_demo.py>`
+     - Relativistic effects: time dilation, precession, Shapiro delay
+
 Geophysical Models
 ------------------
 

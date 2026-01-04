@@ -1216,6 +1216,53 @@ def generate_particle_filters_demo():
 
 
 # ============================================================================
+# Relativity Effects
+# ============================================================================
+def generate_relativity_effects():
+    """Generate relativity effects visualization."""
+    print("\n17. Generating Relativity Effects...")
+    
+    try:
+        import numpy as np
+        
+        # Time dilation effect vs orbital altitude
+        altitudes = np.linspace(0, 100000, 100)  # 0 to 100,000 km
+        
+        # Simplified time dilation factor (proper time rate)
+        # Based on gravitational time dilation for Earth orbit
+        # Rate = sqrt(1 - 2*GM/(c^2*r))
+        R_earth = 6371  # km
+        r = R_earth + altitudes
+        
+        # Simplified formula: time dilation increases with altitude
+        dilation_factor = 1 + 5.3e-10 * altitudes / 1000  # PPM per 1000 km
+        
+        fig = go.Figure()
+        
+        # Time dilation
+        fig.add_trace(go.Scatter(
+            x=altitudes,
+            y=dilation_factor * 1e9,  # Convert to nano-seconds per second
+            mode='lines',
+            name='Time Dilation',
+            line=dict(color='blue', width=3)
+        ))
+        
+        fig.update_layout(
+            title='Gravitational Time Dilation vs Orbital Altitude',
+            xaxis_title='Altitude (km)',
+            yaxis_title='Time Rate Difference (nanoseconds/second)',
+            height=600,
+            width=900,
+            hovermode='x unified'
+        )
+        
+        save_figure(fig, "relativity_effects")
+    except Exception as e:
+        print(f"  Error generating relativity effects: {e}")
+
+
+# ============================================================================
 # Advanced Filters Comparison
 # ============================================================================
 def generate_advanced_filters():
@@ -1322,6 +1369,7 @@ def main():
     generate_gaussian_mixtures()
     generate_particle_filters_demo()
     generate_advanced_filters()
+    generate_relativity_effects()
 
     print("\n" + "=" * 50)
     print("All plots generated successfully!")
