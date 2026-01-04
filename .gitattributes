@@ -1,2 +1,3 @@
-# Generated HTML files are excluded from version control
-# Regenerate locally with: python scripts/generate_example_plots.py
+# Generated HTML files for documentation examples
+# These are tracked as regular git files (not LFS) to render properly on GitHub
+# Regenerate with: python scripts/generate_example_plots.py

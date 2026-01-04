@@ -167,6 +167,7 @@ temp/
 *.png
 *.html
 !docs/_static/images/examples/*.png
+!docs/_static/images/examples/*.html
 
 # Example output directories and generated files
 examples/output/
