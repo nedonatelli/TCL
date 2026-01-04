@@ -121,7 +121,7 @@ def demo_bessel_functions() -> None:
         showlegend=True,
         legend=dict(x=0.02, y=0.98),
     )
-    
+
     if SHOW_PLOTS:
         fig.show()
     else:
@@ -170,7 +170,7 @@ def demo_higher_order_bessel() -> None:
         showlegend=True,
         legend=dict(x=0.65, y=0.95),
     )
-    
+
     if SHOW_PLOTS:
         fig.show()
     else:

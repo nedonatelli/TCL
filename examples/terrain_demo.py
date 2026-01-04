@@ -52,7 +52,7 @@ def demo_flat_dem() -> None:
         max_size = 500
         stride = max(1, max(dem.data.shape) // max_size)
         z_display = dem.data[::stride, ::stride]
-        
+
         fig = go.Figure(
             data=go.Heatmap(
                 z=z_display,
@@ -110,7 +110,7 @@ def demo_synthetic_terrain() -> None:
         max_size = 500
         stride = max(1, max(dem.data.shape) // max_size)
         z_display = dem.data[::stride, ::stride]
-        
+
         fig = go.Figure(
             data=go.Heatmap(
                 z=z_display,
@@ -227,7 +227,7 @@ def demo_terrain_analysis() -> None:
         max_size = 500
         stride_slope = max(1, max(slope.shape) // max_size)
         z_slope_display = slope[::stride_slope, ::stride_slope]
-        
+
         fig_slope = go.Figure(
             data=go.Heatmap(
                 z=z_slope_display,
