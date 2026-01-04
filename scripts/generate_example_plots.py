@@ -1092,9 +1092,135 @@ def generate_tracking_3d():
 # ============================================================================
 # Advanced Filters Comparison
 # ============================================================================
+def generate_gaussian_mixtures():
+    """Generate Gaussian mixture visualization."""
+    print("\n14. Generating Gaussian Mixtures...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        n_samples = 300
+        
+        # Generate mixture of Gaussians
+        centers = np.array([[0, 0], [5, 5], [-5, 5]])
+        data = np.vstack([
+            np.random.randn(n_samples // 3, 2) + centers[0],
+            np.random.randn(n_samples // 3, 2) + centers[1],
+            np.random.randn(n_samples // 3, 2) + centers[2]
+        ])
+        
+        fig = go.Figure()
+        
+        # Scatter plot colored by cluster
+        for i, center in enumerate(centers):
+            cluster_data = data[i*100:(i+1)*100]
+            fig.add_trace(go.Scatter(
+                x=cluster_data[:, 0],
+                y=cluster_data[:, 1],
+                mode='markers',
+                name=f'Cluster {i+1}',
+                marker=dict(size=6)
+            ))
+        
+        # Cluster centers
+        fig.add_trace(go.Scatter(
+            x=centers[:, 0],
+            y=centers[:, 1],
+            mode='markers',
+            name='Cluster Centers',
+            marker=dict(size=12, symbol='star', color='red')
+        ))
+        
+        fig.update_layout(
+            title='Gaussian Mixture Model Clustering',
+            xaxis_title='X',
+            yaxis_title='Y',
+            height=600,
+            width=800
+        )
+        
+        save_figure(fig, "gaussian_mixtures")
+    except Exception as e:
+        print(f"  Error generating Gaussian mixtures: {e}")
+
+
+# ============================================================================
+# Particle Filters
+# ============================================================================
+def generate_particle_filters_demo():
+    """Generate particle filter demonstration visualization."""
+    print("\n15. Generating Particle Filters...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        n_steps = 100
+        n_particles = 100
+        
+        # True nonlinear trajectory
+        t = np.linspace(0, 4*np.pi, n_steps)
+        x_true = 10 * np.cos(t)
+        y_true = 10 * np.sin(t)
+        
+        # Measurements (with noise)
+        measurement_noise = 2.0
+        x_meas = x_true + measurement_noise * np.random.randn(n_steps)
+        y_meas = y_true + measurement_noise * np.random.randn(n_steps)
+        
+        # Generate random particles at each time step (simplified representation)
+        particle_x = x_true + 5 * np.random.randn(n_particles)
+        particle_y = y_true + 5 * np.random.randn(n_particles)
+        
+        fig = go.Figure()
+        
+        # Particles (sample at end of trajectory)
+        fig.add_trace(go.Scatter(
+            x=particle_x,
+            y=particle_y,
+            mode='markers',
+            name='Particles',
+            marker=dict(color='lightblue', size=4, opacity=0.6)
+        ))
+        
+        # True trajectory
+        fig.add_trace(go.Scatter(
+            x=x_true,
+            y=y_true,
+            mode='lines',
+            name='True Trajectory',
+            line=dict(color='green', width=3)
+        ))
+        
+        # Measurements
+        fig.add_trace(go.Scatter(
+            x=x_meas,
+            y=y_meas,
+            mode='markers',
+            name='Measurements',
+            marker=dict(color='red', size=5)
+        ))
+        
+        fig.update_layout(
+            title='Particle Filter Tracking',
+            xaxis_title='X (m)',
+            yaxis_title='Y (m)',
+            height=600,
+            width=800
+        )
+        
+        save_figure(fig, "particle_filters_demo")
+    except Exception as e:
+        print(f"  Error generating particle filters: {e}")
+
+
+# ============================================================================
+# Advanced Filters Comparison
+# ============================================================================
 def generate_advanced_filters():
     """Generate advanced filters comparison visualization."""
-    print("\n14. Generating Advanced Filters Comparison...")
+    print("\n16. Generating Advanced Filters Comparison...")
     
     try:
         import numpy as np
@@ -1193,6 +1319,8 @@ def main():
     generate_navigation_trajectory()
     generate_orbital_mechanics()
     generate_tracking_3d()
+    generate_gaussian_mixtures()
+    generate_particle_filters_demo()
     generate_advanced_filters()
 
     print("\n" + "=" * 50)

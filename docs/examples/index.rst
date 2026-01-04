@@ -66,6 +66,19 @@ Particle Filters
    * - :download:`particle_filters.py <../../examples/particle_filters.py>`
      - Bootstrap particle filter with different resampling methods
 
+**Particle Filtering for Nonlinear Tracking**: Tracking nonlinear trajectories using particle filter.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/particle_filters_demo.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :download:`particle_filters.py <../../examples/particle_filters.py>`
+     - Additional particle filter demonstrations and comparison
+
 Multi-Target Tracking
 ---------------------
 
@@ -147,6 +160,17 @@ Clustering & Gaussian Mixtures
 
    * - :download:`gaussian_mixtures.py <../../examples/gaussian_mixtures.py>`
      - Gaussian mixture operations, K-means, DBSCAN, hierarchical clustering
+
+**Gaussian Mixture Model**: Clustering with Gaussian mixture models showing cluster centers.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/gaussian_mixtures.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
    * - :download:`spatial_data_structures.py <../../examples/spatial_data_structures.py>`
      - KD-trees and R-trees for efficient spatial queries
 
