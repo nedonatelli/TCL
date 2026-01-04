@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.4] - 2026-01-04
+
+### Documentation & Roadmap Consolidation
+
+Consolidated roadmap planning and updated all documentation to reflect current v1.7.3 status and comprehensive v2.0.0 planning.
+
+### Added
+- Comprehensive v2.0.0 roadmap with 8-phase, 18-month timeline
+- Phase 6 test expansion plan: +50 new tests targeting 80%+ coverage
+- Detailed module coverage analysis and improvement targets
+- Success metrics and risk mitigation strategies for v2.0.0
+
+### Changed
+- Consolidated ROADMAP.md and V2_0_0_ROADMAP.md into single comprehensive file
+- Updated docs/roadmap.rst with v1.7.3 status and v2.0.0 overview
+- Improved roadmap navigation with table of contents
+- Reorganized completed phases summary (Phases 15-16)
+
+### Documentation
+- **ROADMAP.md**: 669 lines, complete 18-month plan with 8 phases
+- **docs/roadmap.rst**: Updated with current metrics and v2.0.0 section
+- **CLAUDE.md**: Updated with latest work summary
+
+### Quality Metrics
+- ✅ 2,057 tests passing (13 network flow tests skipped, marked for re-enablement in Phase 1)
+- ✅ 76% line coverage (16,209 lines, target 80%+ in v2.0.0)
+- ✅ 100% code quality compliance: isort, black, flake8, mypy --strict
+- ✅ 1,070+ functions across 150+ modules
+- ✅ 99% MATLAB TCL parity
+
 ## [1.7.3] - 2026-01-04
 
 ### Repository Maintenance & Git LFS Setup
