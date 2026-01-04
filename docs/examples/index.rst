@@ -191,6 +191,12 @@ Transforms
 Orbital Mechanics
 -----------------
 
+.. raw:: html
+
+   <iframe src="../_static/images/examples/orbital_propagation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+**Orbit Propagation**: Interactive visualization of orbital mechanics and trajectory analysis.
+
 .. list-table::
    :widths: 30 70
    :header-rows: 0

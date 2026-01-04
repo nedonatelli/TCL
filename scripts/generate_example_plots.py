@@ -1012,6 +1012,25 @@ def generate_navigation_trajectory():
 
 
 # ============================================================================
+# Orbital Mechanics
+# ============================================================================
+def generate_orbital_mechanics():
+    """Generate orbital mechanics plot by running the example script."""
+    print("\n12. Generating Orbital Mechanics...")
+    
+    # Import and run the orbital mechanics example
+    import sys
+    sys.path.insert(0, str(ROOT / "examples"))
+    
+    try:
+        # Import the module to get the visualization output
+        exec(open(str(ROOT / "examples" / "orbital_mechanics.py")).read())
+        print("  Saved: orbital_propagation.html")
+    except Exception as e:
+        print(f"  Error generating orbital mechanics: {e}")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 def main():
@@ -1031,6 +1050,7 @@ def main():
     generate_assignment_algorithms()
     generate_transforms_fft()
     generate_navigation_trajectory()
+    generate_orbital_mechanics()
 
     print("\n" + "=" * 50)
     print("All plots generated successfully!")
