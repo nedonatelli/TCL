@@ -12,8 +12,9 @@ Topics covered:
   - Track management with confirmation/deletion logic
 """
 
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.optimize import linear_sum_assignment

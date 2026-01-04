@@ -12,8 +12,9 @@ Topics covered:
   - Comparison with Kalman filters for nonlinear systems
 """
 
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
