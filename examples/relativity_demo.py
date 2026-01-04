@@ -14,6 +14,8 @@ These effects are essential for high-precision positioning, timing,
 and fundamental physics tests.
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 
@@ -101,6 +103,8 @@ def plot_precession_effects() -> None:
 
     if SHOW_PLOTS:
         fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
 
 
 def plot_time_dilation_with_altitude() -> None:
@@ -179,6 +183,8 @@ def plot_time_dilation_with_altitude() -> None:
 
     if SHOW_PLOTS:
         fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
 
 
 def example_gps_time_dilation():
@@ -572,6 +578,9 @@ if __name__ == "__main__":
     example_geodetic_precession()
     example_lense_thirring_precession()
     example_relativistic_range_correction()
+
+OUTPUT_DIR = Path("docs/_static/images/examples")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "=" * 70)
     print("All relativity examples completed successfully!")

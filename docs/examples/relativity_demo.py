@@ -14,7 +14,10 @@ These effects are essential for high-precision positioning, timing,
 and fundamental physics tests.
 """
 
+from pathlib import Path
+
 import numpy as np
+import plotly.graph_objects as go
 
 from pytcl.astronomical.relativity import (
     AU,
@@ -33,12 +36,165 @@ from pytcl.astronomical.relativity import (
     shapiro_delay,
 )
 
+SHOW_PLOTS = True
+
+
+def plot_precession_effects() -> None:
+    """Visualize relativistic precession effects for different orbits."""
+    # Schwarzschild precession for different orbital radii around the Sun
+    # Using Mercury-like eccentricity (0.206)
+    radii_au = np.linspace(0.4, 0.7, 50)  # Mercury to Venus range
+    radii_m = radii_au * AU
+    mercury_eccentricity = 0.20563593
+
+    # Compute precession for each radius (in arcsec per century)
+    precessions = np.array(
+        [
+            schwarzschild_precession_per_orbit(r_m, mercury_eccentricity, GM_SUN)
+            * 36525
+            * 3600
+            for r_m in radii_m
+        ]
+    )
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=radii_au,
+            y=precessions,
+            mode="lines+markers",
+            name="Schwarzschild Precession",
+            line=dict(color="steelblue", width=2),
+            marker=dict(size=6),
+            hovertemplate="<b>Orbital Radius</b><br>%{x:.2f} AU<br>"
+            "<b>Precession</b><br>%{y:.2f} arcsec/century<extra></extra>",
+        )
+    )
+
+    # Mercury actual position
+    mercury_precession = (
+        schwarzschild_precession_per_orbit(0.387 * AU, mercury_eccentricity, GM_SUN)
+        * 36525
+        * 3600
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[0.387],
+            y=[mercury_precession],
+            mode="markers+text",
+            name="Mercury (Observed)",
+            marker=dict(size=12, color="red", symbol="star"),
+            text=['Mercury\n43"/century'],
+            textposition="top center",
+            hovertemplate="<b>Mercury</b><br>Radius: 0.387 AU<br>Precession: %{y:.2f} arcsec/century<extra></extra>",
+        )
+    )
+
+    fig.update_layout(
+        title="Relativistic Perihelion Precession Around the Sun",
+        xaxis_title="Orbital Radius (AU)",
+        yaxis_title="Precession (arcsec/century)",
+        hovermode="x unified",
+        height=500,
+        plot_bgcolor="rgba(240,240,240,0.5)",
+        showlegend=True,
+    )
+
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
+
+
+def plot_time_dilation_with_altitude() -> None:
+    """Visualize gravitational and special relativistic time dilation."""
+    altitudes_km = np.linspace(0, 35786, 100)  # From Earth surface to geostationary
+    altitudes_m = altitudes_km * 1e3 + 6.371e6  # Convert to meters from center
+
+    # Orbital velocities for circular orbits at each altitude
+    orbital_velocities = np.sqrt(GM_EARTH / altitudes_m)
+
+    # Time dilation factors
+    grav_dilation = np.array(
+        [gravitational_time_dilation(r, GM_EARTH) for r in altitudes_m]
+    )
+    sr_effect = (orbital_velocities**2) / (2.0 * C_LIGHT**2)
+    net_rate = grav_dilation - sr_effect
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=altitudes_km,
+            y=(1 - grav_dilation) * 1e9,
+            mode="lines",
+            name="Gravitational Effect",
+            line=dict(color="blue", width=2),
+            hovertemplate="<b>Altitude:</b> %{x:.0f} km<br>"
+            "<b>Time gain rate:</b> %{y:.2f} ns/s<extra></extra>",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=altitudes_km,
+            y=sr_effect * 1e9,
+            mode="lines",
+            name="Special Relativistic Effect",
+            line=dict(color="red", width=2),
+            hovertemplate="<b>Altitude:</b> %{x:.0f} km<br>"
+            "<b>Time loss rate:</b> %{y:.2f} ns/s<extra></extra>",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=altitudes_km,
+            y=(1 - net_rate) * 1e9,
+            mode="lines",
+            name="Net Effect",
+            line=dict(color="green", width=2.5, dash="dash"),
+            hovertemplate="<b>Altitude:</b> %{x:.0f} km<br>"
+            "<b>Net time rate:</b> %{y:.2f} ns/s<extra></extra>",
+        )
+    )
+
+    # Mark GPS orbit
+    gps_alt = 20200
+    idx_gps = np.argmin(np.abs(altitudes_km - gps_alt))
+    fig.add_vline(
+        x=gps_alt,
+        line_dash="dash",
+        line_color="gray",
+        annotation_text="GPS Orbit",
+        annotation_position="top right",
+    )
+
+    fig.update_layout(
+        title="Relativistic Time Dilation vs Altitude",
+        xaxis_title="Altitude (km)",
+        yaxis_title="Time Rate Difference (ns/s)",
+        hovermode="x unified",
+        height=550,
+        plot_bgcolor="rgba(240,240,240,0.5)",
+        legend=dict(x=0.65, y=0.05),
+    )
+
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
+
 
 def example_gps_time_dilation():
     """Demonstrate time dilation effects in GPS satellites."""
     print("=" * 70)
     print("EXAMPLE 1: GPS Time Dilation Effects")
     print("=" * 70)
+
+    # Show visualization
+    plot_time_dilation_with_altitude()
 
     # GPS orbital parameters
     r_gps = 26.56e6  # meters (~20,200 km altitude)
@@ -116,6 +272,9 @@ def example_mercury_precession():
     print("\n" + "=" * 70)
     print("EXAMPLE 2: Mercury's Perihelion Precession")
     print("=" * 70)
+
+    # Show visualization
+    plot_precession_effects()
 
     # Mercury orbital elements
     a_mercury = 0.38709927 * AU  # Semi-major axis
@@ -419,6 +578,9 @@ if __name__ == "__main__":
     example_geodetic_precession()
     example_lense_thirring_precession()
     example_relativistic_range_correction()
+
+OUTPUT_DIR = Path("docs/_static/images/examples")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "=" * 70)
     print("All relativity examples completed successfully!")

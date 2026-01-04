@@ -265,7 +265,10 @@ def plot_euler_rotation_sequence() -> go.Figure:
         )
 
     fig.update_layout(
-        title=f"Euler Rotation Sequence (ZYX): Yaw={np.degrees(yaw):.0f}°, Pitch={np.degrees(pitch):.0f}°, Roll={np.degrees(roll):.0f}°",
+        title=(
+            f"Euler Rotation Sequence (ZYX): Yaw={np.degrees(yaw):.0f}°, "
+            f"Pitch={np.degrees(pitch):.0f}°, Roll={np.degrees(roll):.0f}°"
+        ),
         width=1600,
         height=500,
     )

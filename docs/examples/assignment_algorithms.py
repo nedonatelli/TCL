@@ -32,7 +32,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from pytcl.assignment_algorithms import (  # 2D Assignment; K-Best 2D Assignment; 3D Assignment; Gating; Data Association; JPDA
+from pytcl.assignment_algorithms import (  # 2D Assignment
     assign2d,
     assign3d,
     assign3d_auction,

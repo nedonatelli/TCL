@@ -46,7 +46,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = True
 
 
-from pytcl.astronomical import (  # Orbital elements; Kepler's equation; Orbit propagation; Orbital quantities; Lambert problem; Gravitational parameters; Time systems; Reference frames
+from pytcl.astronomical import (  # Orbital elements; Kepler's equation
     GM_EARTH,
     GM_SUN,
     OrbitalElements,

@@ -13,6 +13,8 @@ The example covers:
 6. Computing distances and velocities
 """
 
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -28,6 +30,8 @@ from pytcl.astronomical import (
 from pytcl.astronomical.relativity import AU
 
 SHOW_PLOTS = True
+OUTPUT_DIR = Path("docs/_static/images/examples")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def plot_sun_earth_moon_positions(
@@ -129,6 +133,8 @@ def plot_sun_earth_moon_positions(
 
     if SHOW_PLOTS:
         fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "ephemeris_demo.html"))
 
 
 def plot_orbital_distances(
@@ -188,6 +194,8 @@ def plot_orbital_distances(
 
     if SHOW_PLOTS:
         fig.show()
+    else:
+        fig.write_html(str(OUTPUT_DIR / "ephemeris_demo_distance.html"))
 
 
 def example_sun_position():
@@ -470,6 +478,9 @@ if __name__ == "__main__":
     example_frame_transformations()
     example_time_series()
     example_ephemeris_versions()
+
+OUTPUT_DIR = Path("docs/_static/images/examples")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "=" * 70)
     print("All ephemeris examples completed successfully!")

@@ -20,7 +20,7 @@ import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
-from pytcl.coordinate_systems import (  # noqa: E402; Spherical conversions; Geodetic conversions; Rotation matrices; Quaternions; Jacobians
+from pytcl.coordinate_systems import (  # noqa: E402
     cart2sphere,
     cross_covariance_transform,
     ecef2enu,
