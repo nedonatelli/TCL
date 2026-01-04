@@ -4,6 +4,10 @@ Multi-Target Tracking Tutorial
 This tutorial covers multi-target tracking algorithms for scenarios with
 multiple objects and measurement-to-track association challenges.
 
+.. raw:: html
+
+   <iframe src="../_static/images/tutorials/multi_target_tracking.html" width="100%" height="450" frameborder="0"></iframe>
+
 Problem Overview
 ----------------
 

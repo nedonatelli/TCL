@@ -4,6 +4,10 @@ Kalman Filtering Tutorial
 This tutorial demonstrates how to implement a Kalman filter for tracking
 a moving object using noisy position measurements.
 
+.. raw:: html
+
+   <iframe src="../_static/images/tutorials/kalman_filtering.html" width="100%" height="450" frameborder="0"></iframe>
+
 Problem Setup
 -------------
 

@@ -4,6 +4,10 @@ Signal Processing Tutorial
 This tutorial covers digital filtering, spectral analysis, and wavelet
 transforms for signal processing applications.
 
+.. raw:: html
+
+   <iframe src="../_static/images/tutorials/signal_processing.html" width="100%" height="450" frameborder="0"></iframe>
+
 Digital Filter Design
 ---------------------
 

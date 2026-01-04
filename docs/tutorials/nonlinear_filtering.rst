@@ -4,6 +4,10 @@ Nonlinear Filtering Tutorial
 This tutorial covers Extended Kalman Filter (EKF) and Unscented Kalman
 Filter (UKF) for tracking with nonlinear measurements.
 
+.. raw:: html
+
+   <iframe src="../_static/images/tutorials/nonlinear_filtering.html" width="100%" height="450" frameborder="0"></iframe>
+
 Problem Setup
 -------------
 
