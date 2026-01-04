@@ -9,6 +9,7 @@ Replace Bellman-Ford O(VE²) algorithm with network simplex O(VE log V) for 50-1
 - **Bottleneck:** Bellman-Ford distance computation on dense graphs
 - **Skipped Tests:** 13 performance tests due to timeout
 - **File:** `pytcl/assignment_algorithms/network_flow.py`
+- **Status:** Phase 1A Complete, Phase 1B Starting
 
 ## Target Algorithm
 **Network Simplex Method (NSM)**
@@ -21,27 +22,30 @@ Replace Bellman-Ford O(VE²) algorithm with network simplex O(VE log V) for 50-1
 
 ## Implementation Plan
 
-### Phase 1A: Research & Benchmarking (Week 1)
-- [ ] Profile current implementation to identify bottlenecks
-- [ ] Benchmark performance on varying problem sizes
-- [ ] Document baseline metrics
-- [ ] Study network simplex algorithm variants
+### Phase 1A: Research & Benchmarking (Week 1)  ✅ COMPLETE
+- [x] Profile current implementation to identify bottlenecks
+- [x] Benchmark performance on varying problem sizes (confirmed: 2x2 times out)
+- [x] Document baseline metrics in profiling scripts
+- [x] Study network simplex algorithm variants
+- [x] Created `network_simplex.py` skeleton for Phase 1B
+- [x] Set up infrastructure for enabling tests once simplex ready
 
-### Phase 1B: Implement Network Simplex (Week 2)
-- [ ] Create `min_cost_flow_simplex()` function
-- [ ] Implement tree data structure management
-- [ ] Add pivot operations (enter/leave)
-- [ ] Handle degenerate cases
+### Phase 1B: Implement Network Simplex (Week 2) 🚀 IN PROGRESS
+- [ ] Complete NetworkSimplex class with full algorithm
+- [ ] Implement tree data structure management (spanning tree with threading)
+- [ ] Add proper pivot operations (find entering/leaving edges)
+- [ ] Handle degenerate cases and numerical stability
 - [ ] Implement cost scaling for numerical stability
+- [ ] Integrate with existing `min_cost_flow_simplex()` wrapper
 
-### Phase 1C: Testing & Integration (Week 2-3)
+### Phase 1C: Testing & Integration (Week 2-3) ⏳ PENDING
 - [ ] Unit tests for simplex implementation
 - [ ] Correctness validation against current solution
 - [ ] Re-enable 13 skipped tests
 - [ ] Benchmark improvement (target: 50-100x)
 - [ ] Integration testing
 
-### Phase 1D: Optimization & Validation (Week 3)
+### Phase 1D: Optimization & Validation (Week 3) ⏳ PENDING
 - [ ] Performance tuning
 - [ ] Memory optimization
 - [ ] Fallback to Bellman-Ford for edge cases
