@@ -35,7 +35,7 @@ def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=Fals
     name : str
         Base name for the output files (without extension)
     width : int
-        Figure width in pixels
+        Figure width in pixels (used for PNG only, HTML is responsive)
     height : int
         Figure height in pixels
     save_html : bool
@@ -45,8 +45,15 @@ def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=Fals
     """
     if save_html:
         html_path = OUTPUT_DIR / f"{name}.html"
+        # Remove fixed width from layout to allow responsive behavior
+        fig.update_layout(width=None, autosize=True)
         # Use external CDN for Plotly to reduce file size from 4.5MB to ~50KB
-        fig.write_html(str(html_path), include_plotlyjs="cdn")
+        # Set config for responsive behavior
+        fig.write_html(
+            str(html_path),
+            include_plotlyjs="cdn",
+            config={"responsive": True},
+        )
         print(f"  Saved: {html_path.name}")
 
     if save_png:
