@@ -12,7 +12,7 @@ The IMM algorithm consists of four steps:
 4. Output combination
 """
 
-from typing import List, NamedTuple, Optional
+from typing import Any, List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -101,7 +101,7 @@ class IMMUpdate(NamedTuple):
 def compute_mixing_probabilities(
     mode_probs: ArrayLike,
     transition_matrix: ArrayLike,
-) -> tuple[NDArray, NDArray]:
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """
     Compute mixing probabilities and predicted mode probabilities.
 
@@ -143,10 +143,10 @@ def compute_mixing_probabilities(
 
 
 def mix_states(
-    mode_states: List[NDArray],
-    mode_covs: List[NDArray],
-    mixing_probs: NDArray,
-) -> tuple[List[NDArray], List[NDArray]]:
+    mode_states: List[NDArray[Any]],
+    mode_covs: List[NDArray[Any]],
+    mixing_probs: NDArray[Any],
+) -> tuple[List[NDArray[Any]], List[NDArray[Any]]]:
     """
     Mix states and covariances for interaction step.
 
@@ -197,10 +197,10 @@ def mix_states(
 
 
 def combine_estimates(
-    mode_states: List[NDArray],
-    mode_covs: List[NDArray],
-    mode_probs: NDArray,
-) -> tuple[NDArray, NDArray]:
+    mode_states: List[NDArray[Any]],
+    mode_covs: List[NDArray[Any]],
+    mode_probs: NDArray[Any],
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """
     Combine mode-conditioned estimates into overall estimate.
 
@@ -542,10 +542,10 @@ class IMMEstimator:
         self.mode_covs = [np.eye(state_dim) for _ in range(n_modes)]
 
         # Mode-specific models (must be set by user)
-        self.F_list: List[NDArray] = [np.eye(state_dim) for _ in range(n_modes)]
-        self.Q_list: List[NDArray] = [np.eye(state_dim) for _ in range(n_modes)]
-        self.H_list: List[NDArray] = []
-        self.R_list: List[NDArray] = []
+        self.F_list: List[NDArray[Any]] = [np.eye(state_dim) for _ in range(n_modes)]
+        self.Q_list: List[NDArray[Any]] = [np.eye(state_dim) for _ in range(n_modes)]
+        self.H_list: List[NDArray[Any]] = []
+        self.R_list: List[NDArray[Any]] = []
 
         # Combined estimates
         self.x = np.zeros(state_dim)
