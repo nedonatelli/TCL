@@ -222,7 +222,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.7.5  
+**Version:** v1.8.0  
 **MATLAB Parity:** 100% ✅  
 **Test Suite:** 2,057 tests passing (13 skipped for Phase 1 optimization)  
 **Code Coverage:** 76% (target 80%+ in v2.0.0)  
@@ -301,10 +301,10 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.7.5):
+Current metrics (v1.8.0):
 - **Functions:** 1,070+
 - **Modules:** 150+
-- **Tests:** 2,057 (13 skipped)
+- **Tests:** 2,070 (all passing)
 - **Coverage:** 76%
 - **MATLAB Parity:** 100%
 

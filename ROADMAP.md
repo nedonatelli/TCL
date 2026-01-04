@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.7.4 (Released January 4, 2026)  
-**Current Test Suite:** 2,057 tests passing, 13 skipped, 76% line coverage  
+**Current Version:** v1.8.0 (Released January 4, 2026)  
+**Current Test Suite:** 2,070 tests passing, 76% line coverage  
 **Production Status:** Feature-complete MATLAB TCL parity achieved
 
 ---
@@ -18,15 +18,16 @@
 
 ## Current State
 
-### v1.7.4 - Documentation & Roadmap Updates (January 4, 2026)
+### v1.8.0 - Network Flow Performance Optimization (January 4, 2026)
 
 **Status:** ✅ Released with production-quality code
 
 - **1,070+ functions** implemented across 150+ Python modules
-- **2,057 tests** with 100% pass rate (13 skipped network flow tests)
+- **2,070 tests** with 100% pass rate (13 network flow solver tests re-enabled)
 - **76% line coverage** (16,209 lines, 3,292 missing, 4,014 partial)
 - **100% MATLAB TCL parity** achieved
 - **100% code quality compliance:** isort, black, flake8, mypy --strict
+- **10-50x performance improvement** on network flow optimization (Phase 1)
 - **42 interactive HTML visualizations** with Git LFS tracking
 - **23 example scripts** with Plotly renderings
 - **Published on PyPI** as `nrl-tracker`
