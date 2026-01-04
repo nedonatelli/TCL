@@ -601,7 +601,7 @@ def generate_signal_processing():
 
     # Filter design
     filt = butter_design(order=4, cutoff=50.0, fs=fs, btype="low")
-    resp = frequency_response(filt.b, filt.a, fs)
+    resp = frequency_response(filt, fs, n_points=512)
 
     # CFAR detection
     n_cells = 200
