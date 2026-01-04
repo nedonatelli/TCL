@@ -5,23 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.2] - 2026-01-04
+
+### Code Quality & Examples Validation
+
+Comprehensive validation and optimization of all example and tutorial files with code quality improvements.
 
 ### Added
-- Validated all 29 example files for execution without errors (100% pass rate)
-- Validated all 10 tutorial files for execution without errors (100% pass rate)
-- Optimized terrain_demo.py with fast heatmap visualizations instead of slow 3D Surface plots
-- Comprehensive batch testing infrastructure for examples and tutorials
+- Comprehensive validation report for all 39 example/tutorial files (VALIDATION_REPORT.md)
+- Examples guide with categorized examples and execution instructions
+- Updated landing page statistics (100% validation pass rate)
 
 ### Fixed
-- Fixed indentation errors in dynamic_models_demo.py (line 146)
-- Fixed indentation errors in ephemeris_demo.py (line 485)
-- Fixed indentation errors in relativity_demo.py (line 585)
-- Optimized terrain_demo.py performance by replacing Surface plots with downsampled Heatmaps
+- Fixed 4 runtime errors in example files (indentation in 3 files, performance in 1 file)
+- Optimized terrain_demo.py performance (57s → 24s) by replacing 3D Surface plots with fast 2D Heatmaps
+- Fixed flake8 E731 error in ephemeris_demo.py (lambda assignment)
+- Applied black formatting to 2 example files
+- Consolidated imports with isort in astronomical/__init__.py
 
 ### Changed
-- Terrain visualizations now use fast 2D heatmaps with 500×500 max resolution instead of 3D surface plots
-- Example execution time reduced from ~57s to ~24s for terrain_demo.py
+- All 29 examples validated: 100% pass rate ✅
+- All 10 tutorials validated: 100% pass rate ✅
+- Black: 243 files formatted (2 files updated)
+- isort: 243 files organized (1 file updated)
+- flake8: 0 errors across all 243 files
+- mypy: pytcl/ passes --strict (161 files, 0 errors)
+- Landing page statistics updated: 1,988 tests, 153 modules, 100% MATLAB parity
+
+### Quality Metrics
+- **Examples/Tutorials**: 39/39 PASS (100% execution success)
+- **Code Formatting**: 100% black compliance
+- **Import Organization**: 100% isort compliance
+- **Linting**: 0 flake8 errors
+- **Type Safety**: mypy --strict compliance
 
 ## [1.7.1] - 2026-01-03
 
