@@ -297,6 +297,40 @@ def min_cost_flow_successive_shortest_paths(
     )
 
 
+def min_cost_flow_simplex(
+    edges: list[FlowEdge],
+    supplies: NDArray[np.float64],
+    max_iterations: int = 10000,
+) -> MinCostFlowResult:
+    """
+    Solve min-cost flow using successive shortest paths (fallback to Bellman-Ford).
+
+    This is currently a wrapper around successive shortest paths. A full network
+    simplex implementation will be added in Phase 1B.
+
+    Parameters
+    ----------
+    edges : list[FlowEdge]
+        List of edges with capacities and costs.
+    supplies : ndarray
+        Supply/demand at each node.
+    max_iterations : int, optional
+        Maximum iterations (default 10000).
+
+    Returns
+    -------
+    MinCostFlowResult
+        Solution with flow values, cost, status, and iterations.
+
+    Notes
+    -----
+    This implementation currently delegates to successive_shortest_paths.
+    Phase 1B will implement a full network simplex with O(VE log V) complexity.
+    """
+    # For now, delegate to existing solver while we develop proper simplex
+    return min_cost_flow_successive_shortest_paths(edges, supplies, max_iterations)
+
+
 def assignment_from_flow_solution(
     flow: NDArray[np.float64],
     edges: list[FlowEdge],
@@ -346,6 +380,7 @@ def assignment_from_flow_solution(
 
 def min_cost_assignment_via_flow(
     cost_matrix: NDArray[np.float64],
+    use_simplex: bool = False,
 ) -> Tuple[NDArray[np.intp], float]:
     """
     Solve 2D assignment problem via min-cost flow network.
@@ -354,6 +389,10 @@ def min_cost_assignment_via_flow(
     ----------
     cost_matrix : ndarray
         Cost matrix of shape (m, n).
+    use_simplex : bool, optional
+        Use network simplex (experimental, defaults to False).
+        When False, uses robust Bellman-Ford based algorithm.
+        The simplex algorithm will be fully implemented in Phase 1B.
 
     Returns
     -------
@@ -361,9 +400,19 @@ def min_cost_assignment_via_flow(
         Assignment array of shape (n_assignments, 2).
     total_cost : float
         Total assignment cost.
+
+    Notes
+    -----
+    Network Simplex implementation is in progress (Phase 1B).
+    Current default uses successive shortest paths with Bellman-Ford,
+    which has O(V²E) complexity but is reliable.
     """
     edges, supplies, _ = assignment_to_flow_network(cost_matrix)
+
+    # For now, always use Bellman-Ford-based successive shortest paths
+    # Phase 1B will implement full network simplex algorithm
     result = min_cost_flow_successive_shortest_paths(edges, supplies)
+
     assignment, cost = assignment_from_flow_solution(
         result.flow, edges, cost_matrix.shape
     )
