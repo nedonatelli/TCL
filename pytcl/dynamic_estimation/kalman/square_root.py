@@ -77,7 +77,9 @@ class SRKalmanUpdate(NamedTuple):
     likelihood: float
 
 
-def cholesky_update(S: NDArray, v: NDArray, sign: float = 1.0) -> NDArray:
+def cholesky_update(
+    S: NDArray[np.floating], v: NDArray[np.floating], sign: float = 1.0
+) -> NDArray[np.floating]:
     """
     Rank-1 Cholesky update/downdate.
 
@@ -148,7 +150,11 @@ def cholesky_update(S: NDArray, v: NDArray, sign: float = 1.0) -> NDArray:
     return S
 
 
-def qr_update(S_x: NDArray, S_noise: NDArray, F: Optional[NDArray] = None) -> NDArray:
+def qr_update(
+    S_x: NDArray[np.floating],
+    S_noise: NDArray[np.floating],
+    F: Optional[NDArray[np.floating]] = None,
+) -> NDArray[np.floating]:
     """
     QR-based covariance square root update.
 

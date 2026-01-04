@@ -11,6 +11,8 @@ core, providing ~10-50x speedup for batch computations compared to
 scipy.integrate.quad.
 """
 
+from typing import Any
+
 import numpy as np
 from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
@@ -90,7 +92,9 @@ def _debye_small_x(x: float, n: int) -> float:
 
 
 @njit(cache=True, fastmath=True, parallel=True)
-def _debye_batch(n: int, x_arr: np.ndarray, zeta_n_plus_1: float) -> np.ndarray:
+def _debye_batch(
+    n: int, x_arr: np.ndarray[Any, Any], zeta_n_plus_1: float
+) -> np.ndarray[Any, Any]:
     """
     Batch computation of Debye function for array input.
 

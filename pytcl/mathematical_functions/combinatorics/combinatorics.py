@@ -7,7 +7,7 @@ related operations commonly used in assignment problems and data association.
 
 import itertools
 from functools import lru_cache
-from typing import Iterator, List, Optional, Tuple
+from typing import Any, Iterator, List, Optional, Tuple
 
 from numpy.typing import ArrayLike
 
@@ -108,7 +108,7 @@ def n_permute_k(n: int, k: int) -> int:
 def permutations(
     items: ArrayLike,
     k: Optional[int] = None,
-) -> Iterator[Tuple]:
+) -> Iterator[tuple[Any, ...]]:
     """
     Generate all k-permutations of items.
 
@@ -136,7 +136,7 @@ def permutations(
 def combinations(
     items: ArrayLike,
     k: int,
-) -> Iterator[Tuple]:
+) -> Iterator[tuple[Any, ...]]:
     """
     Generate all k-combinations of items.
 
@@ -164,7 +164,7 @@ def combinations(
 def combinations_with_replacement(
     items: ArrayLike,
     k: int,
-) -> Iterator[Tuple]:
+) -> Iterator[tuple[Any, ...]]:
     """
     Generate all k-combinations with replacement.
 
@@ -263,7 +263,7 @@ def permutation_unrank(rank: int, n: int) -> List[int]:
     return perm
 
 
-def next_permutation(perm: ArrayLike) -> Optional[List]:
+def next_permutation(perm: ArrayLike) -> Optional[List[Any]]:
     """
     Generate the next permutation in lexicographic order.
 
@@ -378,7 +378,9 @@ def partitions(n: int, k: Optional[int] = None) -> Iterator[Tuple[int, ...]]:
     [(4,), (3, 1), (2, 2), (2, 1, 1), (1, 1, 1, 1)]
     """
 
-    def gen_partitions(n: int, max_val: int, prefix: Tuple[int, ...]) -> Iterator[Tuple[int, ...]]:
+    def gen_partitions(
+        n: int, max_val: int, prefix: Tuple[int, ...]
+    ) -> Iterator[Tuple[int, ...]]:
         if n == 0:
             yield prefix
             return

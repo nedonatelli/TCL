@@ -247,8 +247,8 @@ def irfft(
 
 def fft2(
     x: ArrayLike,
-    s: Optional[tuple] = None,
-    axes: tuple = (-2, -1),
+    s: Optional[tuple[int, ...]] = None,
+    axes: tuple[int, ...] = (-2, -1),
     norm: Optional[str] = None,
 ) -> NDArray[np.complexfloating]:
     """
@@ -284,8 +284,8 @@ def fft2(
 
 def ifft2(
     X: ArrayLike,
-    s: Optional[tuple] = None,
-    axes: tuple = (-2, -1),
+    s: Optional[tuple[int, ...]] = None,
+    axes: tuple[int, ...] = (-2, -1),
     norm: Optional[str] = None,
 ) -> NDArray[np.complexfloating]:
     """
@@ -313,8 +313,8 @@ def ifft2(
 
 def fftshift(
     x: ArrayLike,
-    axes: Optional[Union[int, tuple]] = None,
-) -> NDArray:
+    axes: Optional[Union[int, tuple[int, ...]]] = None,
+) -> NDArray[np.floating]:
     """
     Shift the zero-frequency component to the center of the spectrum.
 
@@ -345,8 +345,8 @@ def fftshift(
 
 def ifftshift(
     x: ArrayLike,
-    axes: Optional[Union[int, tuple]] = None,
-) -> NDArray:
+    axes: Optional[Union[int, tuple[int, ...]]] = None,
+) -> NDArray[np.floating]:
     """
     Inverse of fftshift. Shift zero-frequency back to beginning.
 

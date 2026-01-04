@@ -9,7 +9,7 @@ This is more sophisticated than GNN which makes hard assignment decisions,
 as JPDA can handle measurement origin uncertainty in cluttered environments.
 """
 
-from typing import Any, List, NamedTuple, Optional, Tuple
+from typing import Any, List, NamedTuple, Optional
 
 import numpy as np
 from numba import njit
@@ -94,20 +94,22 @@ def compute_measurement_likelihood(
         return 0.0
 
     mahal_sq = innovation @ np.linalg.solve(innovation_cov, innovation)
-    likelihood = detection_prob * np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
+    likelihood = (
+        detection_prob * np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
+    )
 
     return likelihood
 
 
 def compute_likelihood_matrix(
-    track_states: List[NDArray],
-    track_covariances: List[NDArray],
+    track_states: list[NDArray[Any]],
+    track_covariances: list[NDArray[Any]],
     measurements: NDArray[Any],
     H: NDArray[Any],
     R: NDArray[Any],
     detection_prob: float = 1.0,
     gate_threshold: Optional[float] = None,
-) -> Tuple[NDArray[Any], NDArray[Any]]:
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """
     Compute likelihood matrix for all track-measurement pairs.
 
@@ -208,7 +210,9 @@ def jpda_probabilities(
     if n_tracks <= 5 and n_meas <= 5:
         beta = _jpda_exact(likelihood_matrix, gated, detection_prob, clutter_density)
     else:
-        beta = _jpda_approximate(likelihood_matrix, gated, detection_prob, clutter_density)
+        beta = _jpda_approximate(
+            likelihood_matrix, gated, detection_prob, clutter_density
+        )
 
     return beta
 
@@ -254,7 +258,9 @@ def _jpda_exact(
             if gated[track_idx, meas_idx] and track_idx not in used_tracks:
                 current_assignment.append(track_idx)
                 used_tracks.add(track_idx)
-                yield from generate_hypotheses(meas_idx + 1, current_assignment, used_tracks)
+                yield from generate_hypotheses(
+                    meas_idx + 1, current_assignment, used_tracks
+                )
                 used_tracks.remove(track_idx)
                 current_assignment.pop()
 
@@ -292,7 +298,9 @@ def _jpda_exact(
         hypothesis_probs = [p / total_prob for p in hypothesis_probs]
 
     # Compute marginal association probabilities
-    for h_idx, (assignment, prob) in enumerate(zip(hypothesis_assignments, hypothesis_probs)):
+    for h_idx, (assignment, prob) in enumerate(
+        zip(hypothesis_assignments, hypothesis_probs)
+    ):
         detected_tracks = set[Any]()
         for j, track_idx in enumerate(assignment):
             if track_idx >= 0:
@@ -309,11 +317,11 @@ def _jpda_exact(
 
 @njit(cache=True)
 def _jpda_approximate_core(
-    likelihood_matrix: np.ndarray,
-    gated: np.ndarray,
+    likelihood_matrix: np.ndarray[Any, Any],
+    gated: np.ndarray[Any, Any],
     detection_prob: float,
     clutter_density: float,
-) -> np.ndarray:
+) -> np.ndarray[Any, Any]:
     """JIT-compiled core of approximate JPDA computation."""
     n_tracks = likelihood_matrix.shape[0]
     n_meas = likelihood_matrix.shape[1]

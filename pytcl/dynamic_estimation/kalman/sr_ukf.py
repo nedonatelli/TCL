@@ -14,7 +14,7 @@ References
        Estimation," Proceedings of the IEEE, 2004.
 """
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 import scipy.linalg
@@ -30,7 +30,7 @@ from pytcl.dynamic_estimation.kalman.square_root import (
 def sr_ukf_predict(
     x: ArrayLike,
     S: ArrayLike,
-    f: Callable,
+    f: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     S_Q: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -143,7 +143,7 @@ def sr_ukf_update(
     x: ArrayLike,
     S: ArrayLike,
     z: ArrayLike,
-    h: Callable,
+    h: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     S_R: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,

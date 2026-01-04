@@ -22,7 +22,7 @@ References
        Proc. IEEE CDC, 1992.
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -379,7 +379,7 @@ def extended_hinf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable,
+    h: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     H: ArrayLike,
     R: ArrayLike,
     gamma: float,

@@ -398,7 +398,9 @@ def great_circle_direct(
     """
     d = distance / radius  # Angular distance
 
-    lat2 = np.arcsin(np.sin(lat1) * np.cos(d) + np.cos(lat1) * np.sin(d) * np.cos(azimuth))
+    lat2 = np.arcsin(
+        np.sin(lat1) * np.cos(d) + np.cos(lat1) * np.sin(d) * np.cos(azimuth)
+    )
 
     lon2 = lon1 + np.arctan2(
         np.sin(azimuth) * np.sin(d) * np.cos(lat1),
@@ -460,7 +462,9 @@ def cross_track_distance(
     # Along-track distance
     dat = np.arccos(np.cos(d13) / np.cos(dxt))
 
-    return CrossTrackResult(cross_track=float(dxt * radius), along_track=float(dat * radius))
+    return CrossTrackResult(
+        cross_track=float(dxt * radius), along_track=float(dat * radius)
+    )
 
 
 def great_circle_intersect(
@@ -502,7 +506,9 @@ def great_circle_intersect(
 
     # Convert to Cartesian unit vectors
     def to_cartesian(lat: Any, lon: Any) -> NDArray[np.float64]:
-        return np.array([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)])
+        return np.array(
+            [np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)]
+        )
 
     # Normal vectors to the great circles
     p1 = to_cartesian(lat1, lon1)
@@ -556,7 +562,9 @@ def great_circle_intersect(
     lat_i2 = -lat_i1
     lon_i2 = ((lon_i1 + np.pi) % (2 * np.pi)) - np.pi
 
-    return IntersectionResult(float(lat_i1), float(lon_i1), float(lat_i2), float(lon_i2), True)
+    return IntersectionResult(
+        float(lat_i1), float(lon_i1), float(lat_i2), float(lon_i2), True
+    )
 
 
 def great_circle_path_intersect(
@@ -828,12 +836,12 @@ def clear_great_circle_cache() -> None:
     _logger.debug("Great circle caches cleared")
 
 
-def get_cache_info() -> dict:
+def get_cache_info() -> dict[str, Any]:
     """Get cache statistics for great circle computations.
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with cache statistics for distance and azimuth caches.
     """
     return {

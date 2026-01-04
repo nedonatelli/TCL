@@ -6,7 +6,7 @@ representations including rotation matrices, quaternions, Euler angles,
 axis-angle, and Rodrigues parameters.
 """
 
-from typing import Tuple
+from typing import Any, Tuple
 
 import numpy as np
 from numba import njit
@@ -14,7 +14,7 @@ from numpy.typing import ArrayLike, NDArray
 
 
 @njit(cache=True, fastmath=True)
-def _rotx_inplace(angle: float, R: np.ndarray) -> None:
+def _rotx_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
     """JIT-compiled rotation about x-axis (fills existing matrix)."""
     c = np.cos(angle)
     s = np.sin(angle)
@@ -30,7 +30,7 @@ def _rotx_inplace(angle: float, R: np.ndarray) -> None:
 
 
 @njit(cache=True, fastmath=True)
-def _roty_inplace(angle: float, R: np.ndarray) -> None:
+def _roty_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
     """JIT-compiled rotation about y-axis (fills existing matrix)."""
     c = np.cos(angle)
     s = np.sin(angle)
@@ -46,7 +46,7 @@ def _roty_inplace(angle: float, R: np.ndarray) -> None:
 
 
 @njit(cache=True, fastmath=True)
-def _rotz_inplace(angle: float, R: np.ndarray) -> None:
+def _rotz_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
     """JIT-compiled rotation about z-axis (fills existing matrix)."""
     c = np.cos(angle)
     s = np.sin(angle)
@@ -62,7 +62,9 @@ def _rotz_inplace(angle: float, R: np.ndarray) -> None:
 
 
 @njit(cache=True, fastmath=True)
-def _euler_zyx_to_rotmat(yaw: float, pitch: float, roll: float, R: np.ndarray) -> None:
+def _euler_zyx_to_rotmat(
+    yaw: float, pitch: float, roll: float, R: np.ndarray[Any, Any]
+) -> None:
     """JIT-compiled ZYX Euler angles to rotation matrix."""
     cy = np.cos(yaw)
     sy = np.sin(yaw)
@@ -84,7 +86,9 @@ def _euler_zyx_to_rotmat(yaw: float, pitch: float, roll: float, R: np.ndarray) -
 
 
 @njit(cache=True, fastmath=True)
-def _matmul_3x3(A: np.ndarray, B: np.ndarray, C: np.ndarray) -> None:
+def _matmul_3x3(
+    A: np.ndarray[Any, Any], B: np.ndarray[Any, Any], C: np.ndarray[Any, Any]
+) -> None:
     """JIT-compiled 3x3 matrix multiplication C = A @ B."""
     for i in range(3):
         for j in range(3):
@@ -353,7 +357,9 @@ def rotmat2axisangle(
         return axis / np.linalg.norm(axis), float(angle)
 
     # General case
-    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (2 * np.sin(angle))
+    axis = np.array([R[2, 1] - R[1, 2], R[0, 2] - R[2, 0], R[1, 0] - R[0, 1]]) / (
+        2 * np.sin(angle)
+    )
 
     return axis, float(angle)
 

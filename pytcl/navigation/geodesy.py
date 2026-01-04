@@ -10,7 +10,7 @@ This module provides geodetic utilities including:
 
 import logging
 from functools import lru_cache
-from typing import NamedTuple, Tuple
+from typing import Any, NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -115,7 +115,10 @@ def _inverse_geodetic_cached(
         C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
 
         lam_new = L + (1 - C) * f * sin_alpha * (
-            sigma + C * sin_sigma * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
+            sigma
+            + C
+            * sin_sigma
+            * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
         )
 
         if abs(lam_new - lam) < 1e-12:
@@ -135,7 +138,11 @@ def _inverse_geodetic_cached(
             / 4
             * (
                 cos_sigma * (-1 + 2 * cos_2sigma_m**2)
-                - B / 6 * cos_2sigma_m * (-3 + 4 * sin_sigma**2) * (-3 + 4 * cos_2sigma_m**2)
+                - B
+                / 6
+                * cos_2sigma_m
+                * (-3 + 4 * sin_sigma**2)
+                * (-3 + 4 * cos_2sigma_m**2)
             )
         )
     )
@@ -144,7 +151,9 @@ def _inverse_geodetic_cached(
 
     # Azimuths
     azimuth1 = np.arctan2(cos_U2 * sin_lam, cos_U1 * sin_U2 - sin_U1 * cos_U2 * cos_lam)
-    azimuth2 = np.arctan2(cos_U1 * sin_lam, -sin_U1 * cos_U2 + cos_U1 * sin_U2 * cos_lam)
+    azimuth2 = np.arctan2(
+        cos_U1 * sin_lam, -sin_U1 * cos_U2 + cos_U1 * sin_U2 * cos_lam
+    )
 
     return float(distance), float(azimuth1), float(azimuth2)
 
@@ -196,7 +205,11 @@ def _direct_geodetic_cached(
                 / 4
                 * (
                     cos_sigma * (-1 + 2 * cos_2sigma_m**2)
-                    - B / 6 * cos_2sigma_m * (-3 + 4 * sin_sigma**2) * (-3 + 4 * cos_2sigma_m**2)
+                    - B
+                    / 6
+                    * cos_2sigma_m
+                    * (-3 + 4 * sin_sigma**2)
+                    * (-3 + 4 * cos_2sigma_m**2)
                 )
             )
         )
@@ -214,20 +227,27 @@ def _direct_geodetic_cached(
     lat2 = np.arctan2(
         sin_U2,
         (1 - f)
-        * np.sqrt(sin_alpha**2 + (sin_U1 * sin_sigma - cos_U1 * cos_sigma * cos_alpha1) ** 2),
+        * np.sqrt(
+            sin_alpha**2 + (sin_U1 * sin_sigma - cos_U1 * cos_sigma * cos_alpha1) ** 2
+        ),
     )
 
-    lam = np.arctan2(sin_sigma * sin_alpha1, cos_U1 * cos_sigma - sin_U1 * sin_sigma * cos_alpha1)
+    lam = np.arctan2(
+        sin_sigma * sin_alpha1, cos_U1 * cos_sigma - sin_U1 * sin_sigma * cos_alpha1
+    )
 
     C = f / 16 * cos2_alpha * (4 + f * (4 - 3 * cos2_alpha))
     L = lam - (1 - C) * f * sin_alpha * (
-        sigma + C * sin_sigma * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
+        sigma
+        + C * sin_sigma * (cos_2sigma_m + C * cos_sigma * (-1 + 2 * cos_2sigma_m**2))
     )
 
     lon2 = lon1_q + L
 
     # Back azimuth
-    azimuth2 = np.arctan2(sin_alpha, -sin_U1 * sin_sigma + cos_U1 * cos_sigma * cos_alpha1)
+    azimuth2 = np.arctan2(
+        sin_alpha, -sin_U1 * sin_sigma + cos_U1 * cos_sigma * cos_alpha1
+    )
 
     return float(lat2), float(lon2), float(azimuth2)
 
@@ -537,7 +557,9 @@ def ned_to_ecef(
     x, y, z : ndarray
         ECEF coordinates in meters.
     """
-    return enu_to_ecef(east, north, -np.asarray(down), lat_ref, lon_ref, alt_ref, ellipsoid)
+    return enu_to_ecef(
+        east, north, -np.asarray(down), lat_ref, lon_ref, alt_ref, ellipsoid
+    )
 
 
 def direct_geodetic(
@@ -693,12 +715,12 @@ def clear_geodesy_cache() -> None:
     _logger.debug("Geodesy caches cleared")
 
 
-def get_geodesy_cache_info() -> dict:
+def get_geodesy_cache_info() -> dict[str, Any]:
     """Get cache statistics for geodesy computations.
 
     Returns
     -------
-    dict
+    dict[str, Any]
         Dictionary with cache statistics for inverse and direct geodetic caches.
     """
     return {

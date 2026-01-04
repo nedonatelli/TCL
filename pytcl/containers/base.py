@@ -8,7 +8,7 @@ Cover trees.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List, NamedTuple, Optional
+from typing import Any, Callable, List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -155,7 +155,7 @@ class MetricSpatialIndex(BaseSpatialIndex):
     def __init__(
         self,
         data: ArrayLike,
-        metric: Optional[Callable[[NDArray, NDArray], float]] = None,
+        metric: Optional[Callable[[NDArray[Any], NDArray[Any]], float]] = None,
     ):
         super().__init__(data)
 
@@ -165,7 +165,7 @@ class MetricSpatialIndex(BaseSpatialIndex):
             self.metric = metric
 
     @staticmethod
-    def _euclidean_distance(x: NDArray, y: NDArray) -> float:
+    def _euclidean_distance(x: NDArray[Any], y: NDArray[Any]) -> float:
         """Default Euclidean distance metric."""
         return float(np.sqrt(np.sum((x - y) ** 2)))
 
@@ -200,10 +200,14 @@ def validate_query_input(
         X = X.reshape(1, -1)
 
     if X.shape[1] != n_features:
-        _logger.warning("Query feature mismatch: got %d, expected %d", X.shape[1], n_features)
+        _logger.warning(
+            "Query feature mismatch: got %d, expected %d", X.shape[1], n_features
+        )
         raise ValueError(f"Query has {X.shape[1]} features, expected {n_features}")
 
-    _logger.debug("Validated query input: %d queries, %d features", X.shape[0], X.shape[1])
+    _logger.debug(
+        "Validated query input: %d queries, %d features", X.shape[0], X.shape[1]
+    )
     return X
 
 

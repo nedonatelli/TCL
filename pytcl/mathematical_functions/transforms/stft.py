@@ -22,7 +22,7 @@ References
        Speech, and Signal Processing, 32(2), 236-243.
 """
 
-from typing import NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -77,7 +77,7 @@ class Spectrogram(NamedTuple):
 
 
 def get_window(
-    window: Union[str, tuple, ArrayLike],
+    window: Union[str, tuple[str, Any], ArrayLike],
     length: int,
     fftbins: bool = True,
 ) -> NDArray[np.floating]:
@@ -174,7 +174,7 @@ def window_bandwidth(
 def stft(
     x: ArrayLike,
     fs: float = 1.0,
-    window: Union[str, tuple, ArrayLike] = "hann",
+    window: Union[str, tuple[str, Any], ArrayLike] = "hann",
     nperseg: int = 256,
     noverlap: Optional[int] = None,
     nfft: Optional[int] = None,
@@ -264,13 +264,13 @@ def stft(
 def istft(
     Zxx: ArrayLike,
     fs: float = 1.0,
-    window: Union[str, tuple, ArrayLike] = "hann",
+    window: Union[str, tuple[str, Any], ArrayLike] = "hann",
     nperseg: Optional[int] = None,
     noverlap: Optional[int] = None,
     nfft: Optional[int] = None,
     input_onesided: bool = True,
     boundary: bool = True,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute the inverse Short-Time Fourier Transform.
 
@@ -351,7 +351,7 @@ def istft(
 def spectrogram(
     x: ArrayLike,
     fs: float = 1.0,
-    window: Union[str, tuple, ArrayLike] = "hann",
+    window: Union[str, tuple[str, Any], ArrayLike] = "hann",
     nperseg: int = 256,
     noverlap: Optional[int] = None,
     nfft: Optional[int] = None,
@@ -436,11 +436,11 @@ def spectrogram(
 def reassigned_spectrogram(
     x: ArrayLike,
     fs: float = 1.0,
-    window: Union[str, tuple, ArrayLike] = "hann",
+    window: Union[str, tuple[str, Any], ArrayLike] = "hann",
     nperseg: int = 256,
     noverlap: Optional[int] = None,
     nfft: Optional[int] = None,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute reassigned spectrogram for improved time-frequency resolution.
 
@@ -503,8 +503,12 @@ def reassigned_spectrogram(
     win_d = np.gradient(win)
 
     # STFT with modified windows
-    result_t = stft(x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
-    result_d = stft(x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
+    result_t = stft(
+        x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+    )
+    result_d = stft(
+        x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+    )
 
     # Compute reassigned coordinates
     Zxx = result1.Zxx
@@ -534,7 +538,7 @@ def mel_spectrogram(
     window: str = "hann",
     nperseg: int = 2048,
     noverlap: Optional[int] = None,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute mel-scaled spectrogram.
 
@@ -588,7 +592,9 @@ def mel_spectrogram(
         noverlap = nperseg // 4
 
     # Compute linear spectrogram
-    spec_result = spectrogram(x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap)
+    spec_result = spectrogram(
+        x, fs=fs, window=window, nperseg=nperseg, noverlap=noverlap
+    )
 
     # Create mel filterbank
     mel_fb = _mel_filterbank(
@@ -605,15 +611,15 @@ def mel_spectrogram(
     # Mel frequency centers
     mel_freqs = _mel_frequencies(n_mels, fmin, fmax)
 
-    return mel_freqs, spec_result.times, mel_spec
+    return (mel_freqs, spec_result.times, mel_spec)
 
 
-def _hz_to_mel(hz: Union[float, ArrayLike]) -> Union[float, NDArray]:
+def _hz_to_mel(hz: Union[float, ArrayLike]) -> Union[float, NDArray[np.floating]]:
     """Convert frequency in Hz to mel scale."""
     return 2595.0 * np.log10(1.0 + np.asarray(hz) / 700.0)
 
 
-def _mel_to_hz(mel: Union[float, ArrayLike]) -> Union[float, NDArray]:
+def _mel_to_hz(mel: Union[float, ArrayLike]) -> Union[float, NDArray[np.floating]]:
     """Convert mel scale to frequency in Hz."""
     return 700.0 * (10.0 ** (np.asarray(mel) / 2595.0) - 1.0)
 

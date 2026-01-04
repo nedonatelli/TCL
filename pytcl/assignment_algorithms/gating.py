@@ -5,7 +5,7 @@ This module provides gating methods to determine which measurements
 fall within a validation region around predicted track states.
 """
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 from numba import njit
@@ -15,19 +15,19 @@ from scipy.stats import chi2
 
 @njit(cache=True, fastmath=True)
 def _mahalanobis_distance_2d(
-    innovation: np.ndarray,
-    S_inv: np.ndarray,
+    innovation: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
 ) -> float:
     """JIT-compiled Mahalanobis distance for 2D innovations."""
-    return innovation[0] * (S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]) + innovation[
-        1
-    ] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
+    return innovation[0] * (
+        S_inv[0, 0] * innovation[0] + S_inv[0, 1] * innovation[1]
+    ) + innovation[1] * (S_inv[1, 0] * innovation[0] + S_inv[1, 1] * innovation[1])
 
 
 @njit(cache=True, fastmath=True)
 def _mahalanobis_distance_3d(
-    innovation: np.ndarray,
-    S_inv: np.ndarray,
+    innovation: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
 ) -> float:
     """JIT-compiled Mahalanobis distance for 3D innovations."""
     result = 0.0
@@ -39,8 +39,8 @@ def _mahalanobis_distance_3d(
 
 @njit(cache=True, fastmath=True)
 def _mahalanobis_distance_general(
-    innovation: np.ndarray,
-    S_inv: np.ndarray,
+    innovation: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
 ) -> float:
     """JIT-compiled Mahalanobis distance for general dimension."""
     n = len(innovation)
@@ -341,9 +341,9 @@ def compute_gate_volume(
 
 @njit(cache=True, fastmath=True, parallel=False)
 def mahalanobis_batch(
-    innovations: np.ndarray,
-    S_inv: np.ndarray,
-    output: np.ndarray,
+    innovations: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
+    output: np.ndarray[Any, Any],
 ) -> None:
     """
     Compute Mahalanobis distances for a batch of innovations.

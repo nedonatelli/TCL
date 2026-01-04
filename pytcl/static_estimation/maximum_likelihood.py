@@ -12,7 +12,7 @@ References
        Wiley, 2001.
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -75,10 +75,10 @@ class CRBResult(NamedTuple):
 
 
 def fisher_information_numerical(
-    log_likelihood: Callable[[NDArray], float],
+    log_likelihood: Callable[[np.ndarray[Any, Any]], float],
     theta: ArrayLike,
     h: float = 1e-5,
-) -> NDArray[np.floating]:
+) -> np.ndarray[Any, Any]:
     """
     Compute Fisher information matrix numerically.
 
@@ -189,11 +189,13 @@ def fisher_information_gaussian(
 
 
 def fisher_information_exponential_family(
-    sufficient_stats: Callable[[NDArray, NDArray], NDArray],
+    sufficient_stats: Callable[
+        [np.ndarray[Any, Any], np.ndarray[Any, Any]], np.ndarray[Any, Any]
+    ],
     theta: ArrayLike,
     data: ArrayLike,
     h: float = 1e-5,
-) -> NDArray[np.floating]:
+) -> np.ndarray[Any, Any]:
     """
     Fisher information for exponential family distributions.
 
@@ -232,10 +234,10 @@ def fisher_information_exponential_family(
 
 
 def observed_fisher_information(
-    log_likelihood: Callable[[NDArray], float],
+    log_likelihood: Callable[[np.ndarray[Any, Any]], float],
     theta: ArrayLike,
     h: float = 1e-5,
-) -> NDArray[np.floating]:
+) -> np.ndarray[Any, Any]:
     """
     Compute observed Fisher information (negative Hessian).
 
@@ -409,10 +411,10 @@ def efficiency(
 
 
 def mle_newton_raphson(
-    log_likelihood: Callable[[NDArray], float],
-    score: Callable[[NDArray], NDArray],
+    log_likelihood: Callable[[np.ndarray[Any, Any]], float],
+    score: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     theta_init: ArrayLike,
-    hessian: Optional[Callable[[NDArray], NDArray]] = None,
+    hessian: Optional[Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]]] = None,
     max_iter: int = 100,
     tol: float = 1e-8,
     h: float = 1e-5,
@@ -460,7 +462,7 @@ def mle_newton_raphson(
 
     converged = False
 
-    def numerical_hessian(t: NDArray) -> NDArray:
+    def numerical_hessian(t: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         H = np.zeros((n_params, n_params))
         for i in range(n_params):
             for j in range(i, n_params):
@@ -532,9 +534,9 @@ def mle_newton_raphson(
 
 
 def mle_scoring(
-    log_likelihood: Callable[[NDArray], float],
-    score: Callable[[NDArray], NDArray],
-    fisher_info: Callable[[NDArray], NDArray],
+    log_likelihood: Callable[[np.ndarray[Any, Any]], float],
+    score: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
+    fisher_info: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     theta_init: ArrayLike,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -654,9 +656,9 @@ def mle_gaussian(
         theta = np.array(theta)
 
         # Log-likelihood
-        log_lik = -n / 2 * np.log(2 * np.pi * var_mle) - np.sum((data - mean_mle) ** 2) / (
-            2 * var_mle
-        )
+        log_lik = -n / 2 * np.log(2 * np.pi * var_mle) - np.sum(
+            (data - mean_mle) ** 2
+        ) / (2 * var_mle)
 
         # Fisher information
         n_params = len(theta)

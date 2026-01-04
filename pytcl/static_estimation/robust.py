@@ -12,7 +12,7 @@ References
        Cartography," Communications of the ACM, 1981.
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -313,8 +313,8 @@ def tau_scale(
 def irls(
     A: ArrayLike,
     b: ArrayLike,
-    weight_func: Callable[[NDArray], NDArray] = huber_weight,
-    scale_func: Callable[[NDArray], float] = mad,
+    weight_func: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]] = huber_weight,
+    scale_func: Callable[[np.ndarray[Any, Any]], float] = mad,
     max_iter: int = 50,
     tol: float = 1e-6,
 ) -> RobustResult:
@@ -455,7 +455,7 @@ def huber_regression(
     Gaussian errors and resistance to outliers.
     """
 
-    def weight_func(r: NDArray) -> NDArray:
+    def weight_func(r: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         return huber_weight(r, c)
 
     return irls(A, b, weight_func=weight_func, max_iter=max_iter, tol=tol)
@@ -504,7 +504,7 @@ def tukey_regression(
     Huber for gross outliers.
     """
 
-    def weight_func(r: NDArray) -> NDArray:
+    def weight_func(r: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
         return tukey_weight(r, c)
 
     return irls(A, b, weight_func=weight_func, max_iter=max_iter, tol=tol)

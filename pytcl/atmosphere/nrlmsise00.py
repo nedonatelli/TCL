@@ -242,7 +242,9 @@ class NRLMSISE00:
         texo = self._exosphere_temperature(f107, f107a, ap_val)
 
         # Calculate temperature profile
-        temperature = self._temperature_profile(alt_km, lat, lon, day_of_year, seconds_in_day, texo)
+        temperature = self._temperature_profile(
+            alt_km, lat, lon, day_of_year, seconds_in_day, texo
+        )
 
         # Calculate species densities
         n2_dens = self._n2_density(alt_km, lat, temperature, f107a, ap_val)
@@ -478,7 +480,9 @@ class NRLMSISE00:
         if np.any(mask_thermo):
             # Smooth transition above 85 km with faster decay
             h_trans = 20.0
-            transition_factor = np.exp(-(alt_km[mask_thermo] - transition_alt) / h_trans)
+            transition_factor = np.exp(
+                -(alt_km[mask_thermo] - transition_alt) / h_trans
+            )
             n2_dens[mask_thermo] *= transition_factor
 
         return np.maximum(n2_dens, 1e10)
@@ -513,7 +517,9 @@ class NRLMSISE00:
 
         if np.any(mask_thermo):
             h_trans = 15.0  # Faster decay than N2
-            transition_factor = np.exp(-(alt_km[mask_thermo] - transition_alt) / h_trans)
+            transition_factor = np.exp(
+                -(alt_km[mask_thermo] - transition_alt) / h_trans
+            )
             o2_dens[mask_thermo] *= transition_factor
 
         return np.maximum(o2_dens, 1e10)

@@ -20,7 +20,7 @@ References
 """
 
 from enum import Enum
-from typing import NamedTuple, Tuple
+from typing import Any, NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -79,7 +79,7 @@ class FlowEdge(NamedTuple):
 
 def assignment_to_flow_network(
     cost_matrix: NDArray[np.float64],
-) -> Tuple[list, NDArray, NDArray]:
+) -> Tuple[list[FlowEdge], NDArray[np.floating], NDArray[Any]]:
     """
     Convert 2D assignment problem to min-cost flow network.
 
@@ -140,7 +140,9 @@ def assignment_to_flow_network(
     # Tasks to sink: capacity 1, cost 0
     for j in range(1, n + 1):
         task_node = m + j
-        edges.append(FlowEdge(from_node=task_node, to_node=sink, capacity=1.0, cost=0.0))
+        edges.append(
+            FlowEdge(from_node=task_node, to_node=sink, capacity=1.0, cost=0.0)
+        )
 
     # Supply/demand: source supplies m units, sink demands m units
     supplies = np.zeros(n_nodes)
@@ -148,14 +150,17 @@ def assignment_to_flow_network(
     supplies[sink] = float(-m)
 
     node_names = np.array(
-        ["source"] + [f"worker_{i}" for i in range(m)] + [f"task_{j}" for j in range(n)] + ["sink"]
+        ["source"]
+        + [f"worker_{i}" for i in range(m)]
+        + [f"task_{j}" for j in range(n)]
+        + ["sink"]
     )
 
     return edges, supplies, node_names
 
 
 def min_cost_flow_successive_shortest_paths(
-    edges: list,
+    edges: list[FlowEdge],
     supplies: NDArray[np.float64],
     max_iterations: int = 1000,
 ) -> MinCostFlowResult:
@@ -257,7 +262,9 @@ def min_cost_flow_successive_shortest_paths(
 
         # Find minimum capacity along path
         min_flow = min(residual_capacity[e] for e in path_edges)
-        min_flow = min(min_flow, current_supplies[excess_node], -current_supplies[deficit_node])
+        min_flow = min(
+            min_flow, current_supplies[excess_node], -current_supplies[deficit_node]
+        )
 
         # Push flow along path
         total_cost = 0.0
@@ -292,7 +299,7 @@ def min_cost_flow_successive_shortest_paths(
 
 def assignment_from_flow_solution(
     flow: NDArray[np.float64],
-    edges: list,
+    edges: list[FlowEdge],
     cost_matrix_shape: Tuple[int, int],
 ) -> Tuple[NDArray[np.intp], float]:
     """
@@ -329,7 +336,9 @@ def assignment_from_flow_solution(
     cost = 0.0
     if len(assignment) > 0:
         cost = float(
-            np.sum(flow[edge_idx] * edges[edge_idx].cost for edge_idx in range(len(edges)))
+            np.sum(
+                flow[edge_idx] * edges[edge_idx].cost for edge_idx in range(len(edges))
+            )
         )
 
     return assignment, cost
@@ -355,6 +364,8 @@ def min_cost_assignment_via_flow(
     """
     edges, supplies, _ = assignment_to_flow_network(cost_matrix)
     result = min_cost_flow_successive_shortest_paths(edges, supplies)
-    assignment, cost = assignment_from_flow_solution(result.flow, edges, cost_matrix.shape)
+    assignment, cost = assignment_from_flow_solution(
+        result.flow, edges, cost_matrix.shape
+    )
 
     return assignment, cost

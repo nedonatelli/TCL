@@ -188,7 +188,12 @@ class ConstrainedEKF:
             x_upd, P_upd = self._project_onto_constraints(x_upd, P_upd)
 
         return KalmanUpdate(
-            x=x_upd, P=P_upd, y=result.y, S=result.S, K=result.K, likelihood=result.likelihood
+            x=x_upd,
+            P=P_upd,
+            y=result.y,
+            S=result.S,
+            K=result.K,
+            likelihood=result.likelihood,
         )
 
     def _project_onto_constraints(
@@ -227,7 +232,9 @@ class ConstrainedEKF:
         P_proj = P.copy()
 
         # Check which constraints are violated
-        violated: list[ConstraintFunction] = [c for c in self.constraints if not c.is_satisfied(x_proj)]
+        violated: list[ConstraintFunction] = [
+            c for c in self.constraints if not c.is_satisfied(x_proj)
+        ]
 
         if not violated:
             return x_proj, P_proj

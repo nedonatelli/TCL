@@ -5,7 +5,7 @@ The EKF handles nonlinear dynamics and/or measurements by linearizing
 around the current state estimate using Jacobians.
 """
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -16,7 +16,7 @@ from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdat
 def ekf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     F: ArrayLike,
     Q: ArrayLike,
 ) -> KalmanPrediction:
@@ -86,7 +86,7 @@ def ekf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
     H: ArrayLike,
     R: ArrayLike,
 ) -> KalmanUpdate:
@@ -183,7 +183,7 @@ def ekf_update(
 
 
 def numerical_jacobian(
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     x: ArrayLike,
     dx: float = 1e-7,
 ) -> NDArray[np.floating]:
@@ -239,7 +239,7 @@ def numerical_jacobian(
 def ekf_predict_auto(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     Q: ArrayLike,
     dx: float = 1e-7,
 ) -> KalmanPrediction:
@@ -273,7 +273,7 @@ def ekf_update_auto(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
     dx: float = 1e-7,
 ) -> KalmanUpdate:
@@ -309,8 +309,8 @@ def iterated_ekf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
-    H_func: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
+    H_func: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
     max_iter: int = 10,
     tol: float = 1e-6,

@@ -23,7 +23,7 @@ References
 
 import logging
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -97,7 +97,9 @@ def precession_angles_iau76(T: float) -> Tuple[float, float, float]:
 
 
 @lru_cache(maxsize=_CACHE_MAXSIZE)
-def _precession_matrix_cached(jd_quantized: float) -> tuple:
+def _precession_matrix_cached(
+    jd_quantized: float,
+) -> tuple[tuple[np.ndarray[Any, Any], ...], ...]:
     """Cached precession matrix computation (internal).
 
     Returns tuple of tuples for hashability.
@@ -234,7 +236,9 @@ def mean_obliquity_iau80(jd: float) -> float:
 
 
 @lru_cache(maxsize=_CACHE_MAXSIZE)
-def _nutation_matrix_cached(jd_quantized: float) -> tuple:
+def _nutation_matrix_cached(
+    jd_quantized: float,
+) -> tuple[tuple[np.ndarray[Any, Any], ...], ...]:
     """Cached nutation matrix computation (internal).
 
     Returns tuple of tuples for hashability.
@@ -334,7 +338,9 @@ def gmst_iau82(jd_ut1: float) -> float:
     T_u = (jd_0h - JD_J2000) / 36525.0
 
     # GMST at 0h UT1 (seconds)
-    gmst_0h_sec = 24110.54841 + 8640184.812866 * T_u + 0.093104 * T_u**2 - 6.2e-6 * T_u**3
+    gmst_0h_sec = (
+        24110.54841 + 8640184.812866 * T_u + 0.093104 * T_u**2 - 6.2e-6 * T_u**3
+    )
 
     # Add UT1 fraction
     ut1_fraction = (jd_ut1 - jd_0h) * 86400.0
@@ -1412,7 +1418,7 @@ def clear_transformation_cache() -> None:
     _logger.debug("Transformation matrix cache cleared")
 
 
-def get_cache_info() -> dict:
+def get_cache_info() -> dict[str, Any]:
     """Get cache statistics for transformation matrices.
 
     Returns

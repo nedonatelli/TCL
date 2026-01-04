@@ -20,6 +20,7 @@ References:
 """
 
 import numpy as np
+from numpy.typing import NDArray
 
 # Physical constants (CODATA 2018 values)
 C_LIGHT = 299792458.0  # Speed of light (m/s)
@@ -154,9 +155,9 @@ def proper_time_rate(v: float, r: float, gm: float = GM_EARTH) -> float:
 
 
 def shapiro_delay(
-    observer_pos: np.ndarray,
-    light_source_pos: np.ndarray,
-    gravitating_body_pos: np.ndarray,
+    observer_pos: NDArray[np.floating],
+    light_source_pos: NDArray[np.floating],
+    gravitating_body_pos: NDArray[np.floating],
     gm: float = GM_SUN,
 ) -> float:
     """Compute Shapiro time delay for light propagation through gravitational field.
@@ -263,8 +264,8 @@ def schwarzschild_precession_per_orbit(a: float, e: float, gm: float = GM_SUN) -
 
 
 def post_newtonian_acceleration(
-    r_vec: np.ndarray, v_vec: np.ndarray, gm: float = GM_EARTH
-) -> np.ndarray:
+    r_vec: NDArray[np.floating], v_vec: NDArray[np.floating], gm: float = GM_EARTH
+) -> NDArray[np.floating]:
     """Compute post-Newtonian acceleration corrections (1PN order).
 
     Extends Newtonian gravity with first-order post-Newtonian corrections.
@@ -323,7 +324,9 @@ def post_newtonian_acceleration(
     return a_newt + a_1pn
 
 
-def geodetic_precession(a: float, e: float, inclination: float, gm: float = GM_EARTH) -> float:
+def geodetic_precession(
+    a: float, e: float, inclination: float, gm: float = GM_EARTH
+) -> float:
     """Compute geodetic (de Sitter) precession rate of orbital plane.
 
     The orbital plane of a satellite precesses due to frame-dragging effects

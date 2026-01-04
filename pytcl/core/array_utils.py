@@ -374,7 +374,10 @@ def normalize_vector(
     v: ArrayLike,
     axis: int | None = None,
     return_norm: bool = False,
-) -> NDArray[np.floating[Any]] | tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+) -> (
+    NDArray[np.floating[Any]]
+    | tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]
+):
     """
     Normalize vector(s) to unit length.
 

@@ -511,7 +511,7 @@ def assign3d_auction(
     assign_i: List[Optional[Tuple[int, int]]] = [None] * n1
 
     # Reverse: which i is assigned to (j, k)
-    reverse: dict = {}
+    reverse: dict[tuple[int, int], int] = {}
 
     converged = False
 

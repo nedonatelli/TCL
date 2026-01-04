@@ -606,9 +606,13 @@ def filtfilt(
 
     if isinstance(coeffs, FilterCoefficients):
         if coeffs.sos is not None:
-            return scipy_signal.sosfiltfilt(coeffs.sos, x, padtype=padtype, padlen=padlen)
+            return scipy_signal.sosfiltfilt(
+                coeffs.sos, x, padtype=padtype, padlen=padlen
+            )
         else:
-            return scipy_signal.filtfilt(coeffs.b, coeffs.a, x, padtype=padtype, padlen=padlen)
+            return scipy_signal.filtfilt(
+                coeffs.b, coeffs.a, x, padtype=padtype, padlen=padlen
+            )
     elif isinstance(coeffs, tuple) and len(coeffs) == 2:
         b, a = coeffs
         return scipy_signal.filtfilt(b, a, x, padtype=padtype, padlen=padlen)

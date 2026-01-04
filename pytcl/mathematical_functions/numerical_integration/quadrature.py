@@ -290,11 +290,11 @@ def tplquad(
 
 
 def fixed_quad(
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[np.ndarray[Any, Any]], np.ndarray[Any, Any]],
     a: float,
     b: float,
     n: int = 5,
-) -> Tuple[float, None]:
+) -> tuple[float, None]:
     """
     Fixed-order Gaussian quadrature.
 

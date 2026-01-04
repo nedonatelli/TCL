@@ -318,7 +318,7 @@ def betaincinv(a: ArrayLike, b: ArrayLike, y: ArrayLike) -> NDArray[np.floating]
     return np.asarray(sp.betaincinv(a, b, y), dtype=np.float64)
 
 
-def factorial(n: ArrayLike, exact: bool = False) -> NDArray:
+def factorial(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     """
     Factorial function.
 
@@ -351,7 +351,7 @@ def factorial(n: ArrayLike, exact: bool = False) -> NDArray:
     return np.asarray(sp.factorial(n, exact=exact), dtype=np.float64)
 
 
-def factorial2(n: ArrayLike, exact: bool = False) -> NDArray:
+def factorial2(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     """
     Double factorial.
 
@@ -388,7 +388,7 @@ def comb(
     k: ArrayLike,
     exact: bool = False,
     repetition: bool = False,
-) -> NDArray:
+) -> NDArray[np.floating]:
     """
     Binomial coefficient (combinations).
 
@@ -421,10 +421,12 @@ def comb(
     --------
     scipy.special.comb : Combinations.
     """
-    return np.asarray(sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64)
+    return np.asarray(
+        sp.comb(n, k, exact=exact, repetition=repetition), dtype=np.float64
+    )
 
 
-def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray:
+def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     """
     Permutation coefficient.
 

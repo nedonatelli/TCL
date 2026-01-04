@@ -146,7 +146,9 @@ def mean_to_parabolic_anomaly(
         if abs(delta) < tol:
             return D
 
-    raise ValueError(f"Parabolic Kepler's equation did not converge after {max_iter} iterations")
+    raise ValueError(
+        f"Parabolic Kepler's equation did not converge after {max_iter} iterations"
+    )
 
 
 def parabolic_anomaly_to_true_anomaly(D: float) -> float:
@@ -236,7 +238,9 @@ def radius_parabolic(rp: float, nu: float) -> float:
     denom = 1.0 + np.cos(nu)
 
     if denom <= 0:
-        raise ValueError(f"Parabolic orbit undefined at true anomaly nu={np.degrees(nu):.2f}°")
+        raise ValueError(
+            f"Parabolic orbit undefined at true anomaly nu={np.degrees(nu):.2f}°"
+        )
 
     r = 2.0 * rp / denom
 
@@ -382,7 +386,9 @@ def hyperbolic_excess_velocity(mu: float, a: float) -> float:
         If semi-major axis is not negative.
     """
     if a >= 0:
-        raise ValueError(f"Semi-major axis must be negative for hyperbolic orbits, got {a}")
+        raise ValueError(
+            f"Semi-major axis must be negative for hyperbolic orbits, got {a}"
+        )
 
     v_inf = np.sqrt(-mu / a)
     return v_inf
@@ -482,17 +488,19 @@ def semi_major_axis_from_energy(mu: float, specific_energy: float) -> float:
         If specific energy is exactly zero (parabolic case).
     """
     if abs(specific_energy) < 1e-15:
-        raise ValueError("Specific energy is zero (parabolic orbit); use alternative methods")
+        raise ValueError(
+            "Specific energy is zero (parabolic orbit); use alternative methods"
+        )
 
     a = -mu / (2.0 * specific_energy)
     return a
 
 
 def eccentricity_vector(
-    r: NDArray,
-    v: NDArray,
+    r: NDArray[np.floating],
+    v: NDArray[np.floating],
     mu: float,
-) -> NDArray:
+) -> NDArray[np.floating]:
     """
     Compute eccentricity vector from position and velocity.
 

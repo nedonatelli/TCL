@@ -31,8 +31,8 @@ from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 class GaussianComponent(NamedTuple):
     """Single Gaussian component in mixture."""
 
-    x: NDArray  # State estimate
-    P: NDArray  # Covariance
+    x: NDArray[np.floating]  # State estimate
+    P: NDArray[np.floating]  # Covariance
     w: float  # Weight (probability)
 
 
@@ -114,7 +114,7 @@ class GaussianSumFilter:
 
     def predict(
         self,
-        f: Callable,
+        f: Callable[[NDArray[np.floating]], NDArray[np.floating]],
         F: ArrayLike,
         Q: ArrayLike,
     ) -> None:
@@ -143,7 +143,7 @@ class GaussianSumFilter:
     def update(
         self,
         z: ArrayLike,
-        h: Callable,
+        h: Callable[[NDArray[np.floating]], NDArray[np.floating]],
         H: ArrayLike,
         R: ArrayLike,
     ) -> None:
@@ -194,7 +194,8 @@ class GaussianSumFilter:
 
         # Update components with new weights
         self.components = [
-            GaussianComponent(x=c.x, P=c.P, w=w) for c, w in zip(updated_components, weights)
+            GaussianComponent(x=c.x, P=c.P, w=w)
+            for c, w in zip(updated_components, weights)
         ]
 
         # Manage components (prune, merge)
@@ -213,7 +214,8 @@ class GaussianSumFilter:
         total_weight = sum(c.w for c in self.components)
         if total_weight > 0:
             self.components = [
-                GaussianComponent(x=c.x, P=c.P, w=c.w / total_weight) for c in self.components
+                GaussianComponent(x=c.x, P=c.P, w=c.w / total_weight)
+                for c in self.components
             ]
 
     def _merge_components(self) -> None:
@@ -246,14 +248,18 @@ class GaussianSumFilter:
                 P_new = (ci.w * ci.P + cj.w * cj.P) / w_new
                 dx_i = ci.x - x_new
                 dx_j = cj.x - x_new
-                P_new += (ci.w * np.outer(dx_i, dx_i) + cj.w * np.outer(dx_j, dx_j)) / w_new
+                P_new += (
+                    ci.w * np.outer(dx_i, dx_i) + cj.w * np.outer(dx_j, dx_j)
+                ) / w_new
 
                 # Create merged component
                 merged = GaussianComponent(x=x_new, P=P_new, w=w_new)
 
                 # Replace with merged, remove old
                 self.components = [
-                    c for i, c in enumerate(self.components) if i != best_i and i != best_j
+                    c
+                    for i, c in enumerate(self.components)
+                    if i != best_i and i != best_j
                 ]
                 self.components.append(merged)
             else:
@@ -293,7 +299,7 @@ class GaussianSumFilter:
             # Singular matrix, return large KL
             return 1e6
 
-    def estimate(self) -> tuple[NDArray, NDArray]:
+    def estimate(self) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Get overall state estimate (weighted mean and covariance).
 
         Returns
@@ -336,7 +342,7 @@ class GaussianSumFilter:
 
 def gaussian_sum_filter_predict(
     components: List[GaussianComponent],
-    f: Callable,
+    f: Callable[[NDArray[np.floating]], NDArray[np.floating]],
     F: ArrayLike,
     Q: ArrayLike,
 ) -> List[GaussianComponent]:
@@ -372,7 +378,7 @@ def gaussian_sum_filter_predict(
 def gaussian_sum_filter_update(
     components: List[GaussianComponent],
     z: ArrayLike,
-    h: Callable,
+    h: Callable[[NDArray[np.floating]], NDArray[np.floating]],
     H: ArrayLike,
     R: ArrayLike,
 ) -> List[GaussianComponent]:
@@ -422,4 +428,7 @@ def gaussian_sum_filter_update(
     else:
         weights = np.ones(len(updated_components)) / len(updated_components)
 
-    return [GaussianComponent(x=c.x, P=c.P, w=w) for c, w in zip(updated_components, weights)]
+    return [
+        GaussianComponent(x=c.x, P=c.P, w=w)
+        for c, w in zip(updated_components, weights)
+    ]

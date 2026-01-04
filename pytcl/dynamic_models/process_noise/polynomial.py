@@ -71,7 +71,9 @@ def q_poly_kal(
 
             # Q[i,j] = q * T^(pi+pj+1) / ((pi+pj+1) * pi! * pj!)
             power = pi + pj + 1
-            Q_1d[i, j] = q * T**power / (power * math.factorial(pi) * math.factorial(pj))
+            Q_1d[i, j] = (
+                q * T**power / (power * math.factorial(pi) * math.factorial(pj))
+            )
 
     if num_dims == 1:
         return Q_1d
@@ -274,7 +276,9 @@ def q_continuous_white_noise(
     """
     # This is the same as q_discrete_white_noise but with spectral density
     # instead of variance (multiply by T for conversion in simple cases)
-    return q_discrete_white_noise(dim=dim, T=T, var=spectral_density, block_size=block_size)
+    return q_discrete_white_noise(
+        dim=dim, T=T, var=spectral_density, block_size=block_size
+    )
 
 
 __all__ = [

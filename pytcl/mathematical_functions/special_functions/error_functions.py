@@ -5,6 +5,8 @@ This module provides error functions and their variants, commonly used
 in probability theory and statistical analysis.
 """
 
+from typing import Any
+
 import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
@@ -216,7 +218,7 @@ def dawsn(x: ArrayLike) -> NDArray[np.floating]:
     return np.asarray(sp.dawsn(x), dtype=np.float64)
 
 
-def fresnel(x: ArrayLike) -> tuple:
+def fresnel(x: ArrayLike) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """
     Fresnel integrals.
 

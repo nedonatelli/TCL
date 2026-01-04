@@ -206,7 +206,12 @@ class SGP4Satellite:
             * self.no_kozai
             * (
                 self.ao * (1.0 + 1.5 * etasq + eeta * (4.0 + etasq))
-                + 0.75 * K2 * tsi / psisq * self.x3thm1 * (8.0 + 3.0 * etasq * (8.0 + etasq))
+                + 0.75
+                * K2
+                * tsi
+                / psisq
+                * self.x3thm1
+                * (8.0 + 3.0 * etasq * (8.0 + etasq))
             )
         )
         self.c1 = self.bstar * c2
@@ -234,7 +239,13 @@ class SGP4Satellite:
             )
         )
 
-        self.c5 = 2.0 * coef1 * self.ao * self.betao2 * (1.0 + 2.75 * (etasq + eeta) + eeta * etasq)
+        self.c5 = (
+            2.0
+            * coef1
+            * self.ao
+            * self.betao2
+            * (1.0 + 2.75 * (etasq + eeta) + eeta * etasq)
+        )
 
         theta4 = theta2 * theta2
         temp1 = 3.0 * K2 * pinvsq * self.no_kozai
@@ -266,10 +277,16 @@ class SGP4Satellite:
         # Additional constants for non-simplified propagation
         if abs(1.0 + self.cosio) > 1.5e-12:
             self.xlcof = (
-                0.125 * A30_OVER_K2 * self.sinio * (3.0 + 5.0 * self.cosio) / (1.0 + self.cosio)
+                0.125
+                * A30_OVER_K2
+                * self.sinio
+                * (3.0 + 5.0 * self.cosio)
+                / (1.0 + self.cosio)
             )
         else:
-            self.xlcof = 0.125 * A30_OVER_K2 * self.sinio * (3.0 + 5.0 * self.cosio) / 1.5e-12
+            self.xlcof = (
+                0.125 * A30_OVER_K2 * self.sinio * (3.0 + 5.0 * self.cosio) / 1.5e-12
+            )
 
         self.aycof = 0.25 * A30_OVER_K2 * self.sinio
         self.x7thm1 = 7.0 * theta2 - 1.0
@@ -362,7 +379,9 @@ class SGP4Satellite:
             temp = delomg + delm
             xmdf = xmdf + temp
             argpdf = argpdf - temp
-            tempa = tempa - self.c1 * tsince * self.c5 * (np.cos(xmdf) - np.cos(self.mo))
+            tempa = tempa - self.c1 * tsince * self.c5 * (
+                np.cos(xmdf) - np.cos(self.mo)
+            )
             tempe = tempe - self.c1 * self.c5 * (np.sin(xmdf) - np.sin(self.mo))
 
         a = self.ao * tempa * tempa
@@ -425,12 +444,18 @@ class SGP4Satellite:
         temp2 = temp1 * temp
 
         # Update for short-period periodics
-        rk = r * (1.0 - 1.5 * temp2 * betal * self.x3thm1) + 0.5 * temp1 * self.x1mth2 * cos2u
+        rk = (
+            r * (1.0 - 1.5 * temp2 * betal * self.x3thm1)
+            + 0.5 * temp1 * self.x1mth2 * cos2u
+        )
         uk = u - 0.25 * temp2 * self.x7thm1 * sin2u
         xnodek = xnode + 1.5 * temp2 * self.cosio * sin2u
         xinck = self.inclo + 1.5 * temp2 * self.cosio * self.sinio * cos2u
         rdotk = rdot - KE * temp1 * self.x1mth2 * sin2u / self.no_kozai
-        rvdotk = rvdot + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
+        rvdotk = (
+            rvdot
+            + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
+        )
 
         # Orientation vectors
         sinuk = np.sin(uk)
@@ -456,7 +481,9 @@ class SGP4Satellite:
         # Velocity: rdotk/rvdotk are in ER/min, convert to km/s
         r_teme = rk * np.array([ux, uy, uz]) * RADIUS_EARTH
         v_teme = (
-            (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz])) * RADIUS_EARTH / 60.0
+            (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz]))
+            * RADIUS_EARTH
+            / 60.0
         )
 
         return SGP4State(r=r_teme, v=v_teme, error=0)
@@ -541,12 +568,18 @@ class SGP4Satellite:
         temp2 = temp1 * temp
 
         # Update for short-period periodics
-        rk = r * (1.0 - 1.5 * temp2 * betal * self.x3thm1) + 0.5 * temp1 * self.x1mth2 * cos2u
+        rk = (
+            r * (1.0 - 1.5 * temp2 * betal * self.x3thm1)
+            + 0.5 * temp1 * self.x1mth2 * cos2u
+        )
         uk = u - 0.25 * temp2 * self.x7thm1 * sin2u
         xnodek = xnode + 1.5 * temp2 * self.cosio * sin2u
         xinck = self.inclo + 1.5 * temp2 * self.cosio * self.sinio * cos2u
         rdotk = rdot - KE * temp1 * self.x1mth2 * sin2u / self.no_kozai
-        rvdotk = rvdot + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
+        rvdotk = (
+            rvdot
+            + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
+        )
 
         # Orientation vectors
         sinuk = np.sin(uk)
@@ -570,7 +603,9 @@ class SGP4Satellite:
         # Position and velocity in TEME
         r_teme = rk * np.array([ux, uy, uz]) * RADIUS_EARTH
         v_teme = (
-            (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz])) * RADIUS_EARTH / 60.0
+            (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz]))
+            * RADIUS_EARTH
+            / 60.0
         )
 
         return SGP4State(r=r_teme, v=v_teme, error=0)

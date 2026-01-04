@@ -15,7 +15,7 @@ References
        IEEE Trans. Automatic Control, 1979.
 """
 
-from typing import Callable, Dict, List, NamedTuple, Optional, Set
+from typing import Callable, Dict, List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -223,7 +223,9 @@ class MHTTracker:
         predicted_tracks = self._predict_tracks(current_tracks, F, Q)
 
         # Compute gating and likelihoods
-        gated, likelihood_matrix = self._compute_gating_and_likelihoods(predicted_tracks, Z)
+        gated, likelihood_matrix = self._compute_gating_and_likelihoods(
+            predicted_tracks, Z
+        )
 
         # Generate associations for each hypothesis
         track_id_list = list(predicted_tracks.keys())
@@ -268,7 +270,9 @@ class MHTTracker:
 
         # Update tracks based on associations
         new_tracks_per_assoc: Dict[int, List[MHTTrack]] = {}
-        updated_tracks: Dict[int, Dict[int, MHTTrack]] = {}  # assoc_idx -> track_id -> track
+        updated_tracks: Dict[int, Dict[int, MHTTrack]] = (
+            {}
+        )  # assoc_idx -> track_id -> track
 
         for assoc_idx, assoc in enumerate(associations):
             updated_tracks[assoc_idx] = {}
@@ -291,7 +295,9 @@ class MHTTracker:
                 updated_tracks[assoc_idx][track_id] = upd_track
 
             # Handle unassigned measurements -> new tracks
-            assigned_meas = set(meas_idx for meas_idx in assoc.values() if meas_idx >= 0)
+            assigned_meas = set(
+                meas_idx for meas_idx in assoc.values() if meas_idx >= 0
+            )
             for j in range(n_meas):
                 if j not in assigned_meas:
                     new_track = self._initiate_track(Z[j], j)
@@ -316,8 +322,8 @@ class MHTTracker:
     def _predict_tracks(
         self,
         tracks: Dict[int, MHTTrack],
-        F: NDArray,
-        Q: NDArray,
+        F: NDArray[np.floating],
+        Q: NDArray[np.floating],
     ) -> Dict[int, MHTTrack]:
         """Predict all tracks forward in time."""
         predicted = {}
@@ -346,8 +352,8 @@ class MHTTracker:
     def _compute_gating_and_likelihoods(
         self,
         tracks: Dict[int, MHTTrack],
-        Z: NDArray,
-    ) -> tuple[Set[tuple], Dict[tuple, float]]:
+        Z: NDArray[np.floating],
+    ) -> tuple[set[tuple[int, int]], dict[tuple[int, int], float]]:
         """Compute gating matrix and likelihood values."""
         gated = set()
         likelihood_matrix = {}
@@ -381,8 +387,8 @@ class MHTTracker:
         self,
         association: Dict[int, int],
         tracks: Dict[int, MHTTrack],
-        Z: NDArray,
-        likelihood_matrix: Dict[tuple, float],
+        Z: NDArray[np.floating],
+        likelihood_matrix: dict[tuple[int, int], float],
     ) -> float:
         """Compute likelihood of a joint association."""
         likelihood = 1.0
@@ -402,14 +408,16 @@ class MHTTracker:
 
         # Clutter and new track terms for unassigned measurements
         n_unassigned = len(Z) - len(used_meas)
-        likelihood *= (self.config.clutter_density + self.config.new_track_weight) ** n_unassigned
+        likelihood *= (
+            self.config.clutter_density + self.config.new_track_weight
+        ) ** n_unassigned
 
         return likelihood
 
     def _update_track(
         self,
         track: MHTTrack,
-        measurement: NDArray,
+        measurement: NDArray[np.floating],
         meas_idx: int,
     ) -> MHTTrack:
         """Update a track with a measurement."""
@@ -494,7 +502,7 @@ class MHTTracker:
 
     def _initiate_track(
         self,
-        measurement: NDArray,
+        measurement: NDArray[np.floating],
         meas_idx: int,
     ) -> MHTTrack:
         """Initiate a new track from a measurement."""
@@ -526,7 +534,9 @@ class MHTTracker:
         new_hypotheses = []
 
         for hyp in self.hypothesis_tree.hypotheses:
-            for assoc_idx, (assoc, likelihood) in enumerate(zip(associations, likelihoods)):
+            for assoc_idx, (assoc, likelihood) in enumerate(
+                zip(associations, likelihoods)
+            ):
                 # Compute new hypothesis probability
                 new_prob = hyp.probability * likelihood
 

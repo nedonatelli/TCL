@@ -225,7 +225,7 @@ class MultiTargetTracker:
                 track.covariance = F @ track.covariance @ F.T + Q
                 track.time = self._time
 
-    def _associate(self, Z: NDArray[np.float64]) -> dict:
+    def _associate(self, Z: NDArray[np.float64]) -> dict[int, int]:
         """
         Associate measurements to tracks using GNN.
 

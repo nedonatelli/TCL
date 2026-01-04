@@ -49,9 +49,10 @@ References
 
 """
 
-from typing import Literal, Optional, Tuple
+from typing import Any, Literal, Optional, Tuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 # Constants for unit conversion
 AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
@@ -137,20 +138,22 @@ class DEEphemeris:
         """
         if version not in self._VALID_VERSIONS:
             raise ValueError(
-                f"Ephemeris version must be one of {self._VALID_VERSIONS}, " f"got '{version}'"
+                f"Ephemeris version must be one of {self._VALID_VERSIONS}, "
+                f"got '{version}'"
             )
 
         try:
             import jplephem
         except ImportError as e:
             raise ImportError(
-                "jplephem is required for ephemeris access. " "Install with: pip install jplephem"
+                "jplephem is required for ephemeris access. "
+                "Install with: pip install jplephem"
             ) from e
 
         self.version = version
         self._jplephem = jplephem
         self._kernel: Optional[object] = None
-        self._cache: dict = {}
+        self._cache: dict[str, Any] = {}
 
     @property
     def kernel(self) -> Optional[object]:
@@ -170,9 +173,7 @@ class DEEphemeris:
 
                 # Try to construct kernel filename
                 kernel_name = f"de{self.version[2:]}.bsp"
-                kernel_url = (
-                    f"https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/{kernel_name}"
-                )
+                kernel_url = f"https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/{kernel_name}"
 
                 # Try to download if not exists
                 kernel_path = os.path.expanduser(f"~/.jplephem/{kernel_name}")
@@ -204,7 +205,7 @@ class DEEphemeris:
 
     def sun_position(
         self, jd: float, frame: Literal["icrf", "ecliptic"] = "icrf"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Compute Sun position and velocity.
 
         Parameters
@@ -253,7 +254,7 @@ class DEEphemeris:
 
     def moon_position(
         self, jd: float, frame: Literal["icrf", "ecliptic", "earth_centered"] = "icrf"
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Compute Moon position and velocity.
 
         Parameters
@@ -296,7 +297,9 @@ class DEEphemeris:
 
             # Get Moon position relative to Earth
             moon_segment = self.kernel[3, 301]
-            moon_rel_earth_pos, moon_rel_earth_vel = moon_segment.compute_and_differentiate(jd)
+            moon_rel_earth_pos, moon_rel_earth_vel = (
+                moon_segment.compute_and_differentiate(jd)
+            )
 
             # Moon position relative to SSB
             position = earth_pos + moon_rel_earth_pos
@@ -316,10 +319,12 @@ class DEEphemeris:
 
     def planet_position(
         self,
-        planet: Literal["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"],
+        planet: Literal[
+            "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"
+        ],
         jd: float,
         frame: Literal["icrf", "ecliptic"] = "icrf",
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
         """Compute planet position and velocity.
 
         Parameters
@@ -373,7 +378,9 @@ class DEEphemeris:
 
         return position, velocity
 
-    def barycenter_position(self, body: str, jd: float) -> Tuple[np.ndarray, np.ndarray]:
+    def barycenter_position(
+        self, body: str, jd: float
+    ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Compute position of any body relative to Solar System Barycenter.
 
         Parameters
@@ -418,7 +425,7 @@ def _get_default_ephemeris() -> DEEphemeris:
 
 def sun_position(
     jd: float, frame: Literal["icrf", "ecliptic"] = "icrf"
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Convenience function: Compute Sun position and velocity.
 
     Parameters
@@ -445,7 +452,7 @@ def sun_position(
 
 def moon_position(
     jd: float, frame: Literal["icrf", "ecliptic", "earth_centered"] = "icrf"
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Convenience function: Compute Moon position and velocity.
 
     Parameters
@@ -471,10 +478,12 @@ def moon_position(
 
 
 def planet_position(
-    planet: Literal["mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"],
+    planet: Literal[
+        "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune"
+    ],
     jd: float,
     frame: Literal["icrf", "ecliptic"] = "icrf",
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     """Convenience function: Compute planet position and velocity.
 
     Parameters
@@ -501,7 +510,9 @@ def planet_position(
     return _get_default_ephemeris().planet_position(planet, jd, frame=frame)
 
 
-def barycenter_position(body: str, jd: float) -> Tuple[np.ndarray, np.ndarray]:
+def barycenter_position(
+    body: str, jd: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Convenience function: Position relative to Solar System Barycenter.
 
     Parameters

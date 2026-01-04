@@ -12,7 +12,7 @@ References
 """
 
 import logging
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Any, Callable, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -105,7 +105,9 @@ class VPTree(MetricSpatialIndex):
     def __init__(
         self,
         data: ArrayLike,
-        metric: Optional[Callable[[NDArray, NDArray], float]] = None,
+        metric: Optional[
+            Callable[[np.ndarray[Any, Any], np.ndarray[Any, Any]], float]
+        ] = None,
     ):
         super().__init__(data, metric)
 

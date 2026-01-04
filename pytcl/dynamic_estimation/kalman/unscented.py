@@ -5,7 +5,7 @@ The UKF uses the unscented transform to propagate the mean and covariance
 through nonlinear functions without requiring Jacobian computation.
 """
 
-from typing import Callable, NamedTuple, Optional, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -226,7 +226,7 @@ def unscented_transform(
 def ukf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     Q: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -292,7 +292,7 @@ def ukf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -382,7 +382,9 @@ def ukf_update(
     )
 
 
-def ckf_spherical_cubature_points(n: int) -> Tuple[NDArray, NDArray]:
+def ckf_spherical_cubature_points(
+    n: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Generate cubature points for Cubature Kalman Filter.
 
@@ -418,7 +420,7 @@ def ckf_spherical_cubature_points(n: int) -> Tuple[NDArray, NDArray]:
 def ckf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[Any]], NDArray[Any]],
     Q: ArrayLike,
 ) -> KalmanPrediction:
     """
@@ -487,7 +489,7 @@ def ckf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
 ) -> KalmanUpdate:
     """

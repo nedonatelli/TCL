@@ -21,7 +21,7 @@ References
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -31,7 +31,7 @@ from .dem import DEMGrid
 # Model parameters
 _GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"
 
-GEBCO_PARAMETERS: Dict[str, Dict] = {
+GEBCO_PARAMETERS: dict[str, dict[str, Any]] = {
     "GEBCO2024": {
         "resolution_arcsec": 15.0,
         "n_lat": 43200,
@@ -58,7 +58,7 @@ GEBCO_PARAMETERS: Dict[str, Dict] = {
     },
 }
 
-EARTH2014_PARAMETERS: Dict[str, Dict] = {
+EARTH2014_PARAMETERS: dict[str, dict[str, Any]] = {
     "SUR": {
         "description": "Physical surface (topography, ice surface, 0 over oceans)",
         "file_pattern": "Earth2014.SUR2014.1min.geod.bin",
@@ -275,7 +275,7 @@ def parse_gebco_netcdf(
     lat_max: Optional[float] = None,
     lon_min: Optional[float] = None,
     lon_max: Optional[float] = None,
-) -> Tuple[NDArray, float, float, float, float]:
+) -> tuple[NDArray[np.floating], float, float, float, float]:
     """Parse GEBCO NetCDF file and extract region.
 
     Parameters
@@ -308,7 +308,8 @@ def parse_gebco_netcdf(
         import netCDF4 as nc
     except ImportError:
         raise ImportError(
-            "netCDF4 is required for loading GEBCO files.\n" "Install with: pip install netCDF4"
+            "netCDF4 is required for loading GEBCO files.\n"
+            "Install with: pip install netCDF4"
         )
 
     # Set defaults for global extent
@@ -368,7 +369,7 @@ def parse_earth2014_binary(
     lat_max: Optional[float] = None,
     lon_min: Optional[float] = None,
     lon_max: Optional[float] = None,
-) -> Tuple[NDArray, float, float, float, float]:
+) -> tuple[NDArray[np.floating], float, float, float, float]:
     """Parse Earth2014 binary file and extract region.
 
     Earth2014 files are stored as int16 big-endian binary data,
@@ -431,9 +432,13 @@ def parse_earth2014_binary(
 
     # Compute row/column indices
     i_start = max(0, int(np.floor((np.radians(lat_min_deg) - lat_start) / d_lat)))
-    i_end = min(EARTH2014_N_LAT, int(np.ceil((np.radians(lat_max_deg) - lat_start) / d_lat)) + 1)
+    i_end = min(
+        EARTH2014_N_LAT, int(np.ceil((np.radians(lat_max_deg) - lat_start) / d_lat)) + 1
+    )
     j_start = max(0, int(np.floor((np.radians(lon_min_deg) - lon_start) / d_lon)))
-    j_end = min(EARTH2014_N_LON, int(np.ceil((np.radians(lon_max_deg) - lon_start) / d_lon)) + 1)
+    j_end = min(
+        EARTH2014_N_LON, int(np.ceil((np.radians(lon_max_deg) - lon_start) / d_lon)) + 1
+    )
 
     # Read binary data
     # File is stored as int16 big-endian, rows from south to north
@@ -450,7 +455,9 @@ def parse_earth2014_binary(
             f.seek(row_offset + col_offset)
 
             # Read row segment
-            row_data = np.frombuffer(f.read(n_cols * 2), dtype=">i2")  # big-endian int16
+            row_data = np.frombuffer(
+                f.read(n_cols * 2), dtype=">i2"
+            )  # big-endian int16
             data[i, :] = row_data.astype(np.float64)
 
     # Compute actual bounds
@@ -571,7 +578,8 @@ def load_gebco(
     """
     if version not in GEBCO_PARAMETERS:
         raise ValueError(
-            f"Unknown GEBCO version: {version}. " f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
+            f"Unknown GEBCO version: {version}. "
+            f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
         )
 
     return _load_gebco_cached(version, lat_min, lat_max, lon_min, lon_max)

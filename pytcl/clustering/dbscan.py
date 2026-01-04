@@ -12,7 +12,7 @@ References
        with Noise," KDD 1996.
 """
 
-from typing import List, NamedTuple, Set
+from typing import Any, List, NamedTuple, Set
 
 import numpy as np
 from numba import njit
@@ -42,7 +42,7 @@ class DBSCANResult(NamedTuple):
 
 
 @njit(cache=True)
-def _compute_distance_matrix(X: np.ndarray) -> np.ndarray:
+def _compute_distance_matrix(X: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """Compute pairwise Euclidean distance matrix (JIT-compiled)."""
     n = X.shape[0]
     dist = np.zeros((n, n), dtype=np.float64)

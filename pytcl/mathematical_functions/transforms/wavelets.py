@@ -20,7 +20,7 @@ References
 .. [2] Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
 """
 
-from typing import Callable, List, NamedTuple, Optional, Union
+from typing import Any, Callable, List, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -262,7 +262,7 @@ def gaussian_wavelet(
 def cwt(
     signal: ArrayLike,
     scales: ArrayLike,
-    wavelet: Union[str, Callable[[int], NDArray]] = "morlet",
+    wavelet: Union[str, Callable[[int], NDArray[np.floating]]] = "morlet",
     fs: float = 1.0,
     method: str = "fft",
 ) -> CWTResult:
@@ -312,16 +312,16 @@ def cwt(
     n = len(signal)
 
     # Determine wavelet function
-    def _morlet_default(M: int) -> NDArray:
+    def _morlet_default(M: int) -> NDArray[np.floating]:
         return morlet_wavelet(M, w=5.0)
 
-    def _ricker_default(M: int) -> NDArray:
+    def _ricker_default(M: int) -> NDArray[np.floating]:
         return ricker_wavelet(M, a=1.0)
 
-    def _gaussian1_default(M: int) -> NDArray:
+    def _gaussian1_default(M: int) -> NDArray[np.floating]:
         return gaussian_wavelet(M, order=1)
 
-    def _gaussian2_default(M: int) -> NDArray:
+    def _gaussian2_default(M: int) -> NDArray[np.floating]:
         return gaussian_wavelet(M, order=2)
 
     if callable(wavelet):
@@ -526,7 +526,9 @@ def dwt(
     - 'biorN.M': Biorthogonal wavelets
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required for DWT. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required for DWT. Install with: pip install pywavelets"
+        )
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -577,7 +579,9 @@ def idwt(
     True
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required for IDWT. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required for IDWT. Install with: pip install pywavelets"
+        )
 
     # Reconstruct coeffs list in pywt format
     # [cA_n, cD_n, cD_n-1, ..., cD_1]
@@ -592,7 +596,7 @@ def dwt_single_level(
     signal: ArrayLike,
     wavelet: str = "db4",
     mode: str = "symmetric",
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute single-level DWT decomposition.
 
@@ -613,7 +617,9 @@ def dwt_single_level(
         Detail coefficients.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required for DWT. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required for DWT. Install with: pip install pywavelets"
+        )
 
     signal = np.asarray(signal, dtype=np.float64)
     cA, cD = pywt.dwt(signal, wavelet, mode=mode)
@@ -647,7 +653,9 @@ def idwt_single_level(
         Reconstructed signal.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required for IDWT. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required for IDWT. Install with: pip install pywavelets"
+        )
 
     cA = np.asarray(cA, dtype=np.float64)
     cD = np.asarray(cD, dtype=np.float64)
@@ -665,7 +673,7 @@ def wpt(
     wavelet: str = "db4",
     level: Optional[int] = None,
     mode: str = "symmetric",
-) -> dict:
+) -> dict[str, NDArray[np.floating]]:
     """
     Compute the Wavelet Packet Transform.
 
@@ -701,7 +709,9 @@ def wpt(
     True
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required for WPT. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required for WPT. Install with: pip install pywavelets"
+        )
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -738,7 +748,7 @@ def available_wavelets() -> List[str]:
     return pywt.wavelist()
 
 
-def wavelet_info(wavelet: str) -> dict:
+def wavelet_info(wavelet: str) -> dict[str, Any]:
     """
     Get information about a wavelet.
 
@@ -807,7 +817,9 @@ def threshold_coefficients(
         Thresholded coefficients.
     """
     if not PYWT_AVAILABLE:
-        raise ImportError("pywavelets is required. Install with: pip install pywavelets")
+        raise ImportError(
+            "pywavelets is required. Install with: pip install pywavelets"
+        )
 
     # Estimate noise from finest detail coefficients
     if value is None:

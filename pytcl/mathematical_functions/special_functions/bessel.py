@@ -5,7 +5,7 @@ This module provides Bessel functions commonly used in signal processing,
 antenna theory, and scattering problems in tracking applications.
 """
 
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
 import scipy.special as sp
@@ -315,7 +315,14 @@ def spherical_kn(
     return np.asarray(sp.spherical_kn(n, x, derivative=derivative), dtype=np.float64)
 
 
-def airy(x: ArrayLike) -> tuple:
+def airy(
+    x: ArrayLike,
+) -> tuple[
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+]:
     """
     Airy functions and their derivatives.
 
@@ -554,7 +561,12 @@ def bessel_zeros(
 
 def kelvin(
     x: ArrayLike,
-) -> tuple:
+) -> tuple[
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+]:
     """
     Kelvin functions ber, bei, ker, kei.
 

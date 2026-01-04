@@ -11,6 +11,8 @@ the series summation loop, providing significant speedup for the general
 case (p > 2 or q > 1).
 """
 
+from typing import Any
+
 import numpy as np
 import scipy.special as sp
 from numba import njit
@@ -19,12 +21,12 @@ from numpy.typing import ArrayLike, NDArray
 
 @njit(cache=True, fastmath=True)
 def _hypergeometric_series(
-    a: np.ndarray,
-    b: np.ndarray,
-    z: np.ndarray,
+    a: np.ndarray[Any, Any],
+    b: np.ndarray[Any, Any],
+    z: np.ndarray[Any, Any],
     max_terms: int,
     tol: float,
-) -> np.ndarray:
+) -> np.ndarray[Any, Any]:
     """
     Numba-optimized series summation for generalized hypergeometric function.
 

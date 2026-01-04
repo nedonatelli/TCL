@@ -243,7 +243,9 @@ def elliprg(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     return np.asarray(sp.elliprg(x, y, z), dtype=np.float64)
 
 
-def elliprj(x: ArrayLike, y: ArrayLike, z: ArrayLike, p: ArrayLike) -> NDArray[np.floating]:
+def elliprj(
+    x: ArrayLike, y: ArrayLike, z: ArrayLike, p: ArrayLike
+) -> NDArray[np.floating]:
     """
     Carlson symmetric elliptic integral R_J.
 

@@ -12,7 +12,7 @@ References
 """
 
 import logging
-from typing import Callable, List, NamedTuple, Optional, Set, Tuple
+from typing import Any, Callable, List, NamedTuple, Optional, Set, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -109,7 +109,9 @@ class CoverTree(MetricSpatialIndex):
     def __init__(
         self,
         data: ArrayLike,
-        metric: Optional[Callable[[NDArray, NDArray], float]] = None,
+        metric: Optional[
+            Callable[[np.ndarray[Any, Any], np.ndarray[Any, Any]], float]
+        ] = None,
         base: float = 2.0,
     ):
         super().__init__(data, metric)
@@ -141,7 +143,7 @@ class CoverTree(MetricSpatialIndex):
             self._distance_cache[key] = self.metric(self.data[i], self.data[j])
         return self._distance_cache[key]
 
-    def _distance_to_point(self, idx: int, query: NDArray) -> float:
+    def _distance_to_point(self, idx: int, query: NDArray[np.floating]) -> float:
         """Distance from data point to query point."""
         return self.metric(self.data[idx], query)
 

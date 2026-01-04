@@ -41,7 +41,7 @@ class UDState(NamedTuple):
     D: NDArray[np.floating]
 
 
-def ud_factorize(P: ArrayLike) -> tuple[NDArray, NDArray]:
+def ud_factorize(P: ArrayLike) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute U-D factorization of a symmetric positive definite matrix.
 
@@ -91,7 +91,7 @@ def ud_factorize(P: ArrayLike) -> tuple[NDArray, NDArray]:
     return U, D
 
 
-def ud_reconstruct(U: ArrayLike, D: ArrayLike) -> NDArray:
+def ud_reconstruct(U: ArrayLike, D: ArrayLike) -> NDArray[np.floating]:
     """
     Reconstruct covariance matrix from U-D factors.
 
@@ -128,7 +128,7 @@ def ud_predict(
     D: ArrayLike,
     F: ArrayLike,
     Q: ArrayLike,
-) -> tuple[NDArray, NDArray, NDArray]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     U-D filter prediction step.
 
@@ -193,7 +193,7 @@ def ud_update_scalar(
     z: float,
     h: ArrayLike,
     r: float,
-) -> tuple[NDArray, NDArray, NDArray]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     U-D filter scalar measurement update (Bierman's algorithm).
 
@@ -290,7 +290,13 @@ def ud_update(
     z: ArrayLike,
     H: ArrayLike,
     R: ArrayLike,
-) -> tuple[NDArray, NDArray, NDArray, NDArray, float]:
+) -> tuple[
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    NDArray[np.floating],
+    float,
+]:
     """
     U-D filter vector measurement update.
 
@@ -362,7 +368,9 @@ def ud_update(
         D_upd = D.copy()
 
         for i in range(m):
-            x_upd, U_upd, D_upd = ud_update_scalar(x_upd, U_upd, D_upd, z[i], H[i, :], R[i, i])
+            x_upd, U_upd, D_upd = ud_update_scalar(
+                x_upd, U_upd, D_upd, z[i], H[i, :], R[i, i]
+            )
     else:
         # Decorrelate measurements
         S_R = np.linalg.cholesky(R)
@@ -375,7 +383,9 @@ def ud_update(
         D_upd = D.copy()
 
         for i in range(m):
-            x_upd, U_upd, D_upd = ud_update_scalar(x_upd, U_upd, D_upd, z_dec[i], H_dec[i, :], 1.0)
+            x_upd, U_upd, D_upd = ud_update_scalar(
+                x_upd, U_upd, D_upd, z_dec[i], H_dec[i, :], 1.0
+            )
 
     # Compute likelihood
     P = ud_reconstruct(U, D)

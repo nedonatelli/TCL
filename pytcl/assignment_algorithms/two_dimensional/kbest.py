@@ -335,7 +335,9 @@ def _partition_solution(
 
     for i in range(start_idx, n_assigned):
         # Require assignments 0..i-1, forbid assignment i
-        new_required = required + [(row_ind[j], col_ind[j]) for j in range(start_idx, i)]
+        new_required = required + [
+            (row_ind[j], col_ind[j]) for j in range(start_idx, i)
+        ]
         new_forbidden = forbidden + [(row_ind[i], col_ind[i])]
 
         # Solve constrained problem

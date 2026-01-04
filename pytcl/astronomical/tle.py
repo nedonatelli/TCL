@@ -307,7 +307,9 @@ def parse_tle(
     # Parse line 2
     catalog_number_2 = int(line2[2:7])
     if catalog_number_2 != catalog_number:
-        raise ValueError(f"Catalog number mismatch: {catalog_number} vs {catalog_number_2}")
+        raise ValueError(
+            f"Catalog number mismatch: {catalog_number} vs {catalog_number_2}"
+        )
 
     # Angles in degrees
     inclination_deg = float(line2[8:16])
