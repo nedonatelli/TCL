@@ -6,8 +6,8 @@ systems, dynamic models, estimation algorithms, and mathematical functions.
 
 This is a Python port of the U.S. Naval Research Laboratory's Tracker Component
 Library originally written in MATLAB.
-**Current Version:** 1.7.4 (January 4, 2026)
-**Status:** Production-ready, 2,057 tests passing, 76% line coverage
+**Current Version:** 1.8.0 (January 4, 2026)
+**Status:** Production-ready, 2,070 tests passing, 76% line coverage
 Examples
 --------
 >>> import pytcl as pytcl
