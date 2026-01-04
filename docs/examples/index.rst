@@ -15,7 +15,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/kalman_filter_comparison.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Kalman Filter Comparison**: Linear KF vs EKF vs UKF performance on 1D tracking.
 
@@ -30,7 +30,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/filter_uncertainty.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/filter_uncertainty.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -43,7 +43,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/advanced_filters_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/advanced_filters_comparison.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -56,7 +56,7 @@ Filtering & Estimation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -70,7 +70,7 @@ Particle Filters
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/particle_filter_resampling.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/particle_filter_resampling.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Particle Filter Tracking**: Interactive visualization of particle filter with resampling.
 
@@ -85,7 +85,7 @@ Particle Filters
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/particle_filters_demo.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/particle_filters_demo.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -99,7 +99,7 @@ Multi-Target Tracking
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/multi_target_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/multi_target_tracking.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Multi-Target Tracking**: GNN-based multi-target tracker with track management.
 
@@ -114,7 +114,7 @@ Multi-Target Tracking
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/tracking_3d.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/tracking_3d.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -139,7 +139,7 @@ Data Association
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -153,7 +153,7 @@ Performance Evaluation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/performance_evaluation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/performance_evaluation.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Performance Evaluation**: Interactive OSPA metric and tracking quality visualization.
 
@@ -169,7 +169,7 @@ Clustering & Gaussian Mixtures
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/clustering_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/clustering_comparison.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Clustering Comparison**: Interactive K-Means visualization with DBSCAN comparison.
 
@@ -184,7 +184,7 @@ Clustering & Gaussian Mixtures
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/gaussian_mixtures.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/gaussian_mixtures.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -198,7 +198,7 @@ Signal Processing
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/signal_processing.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/signal_processing.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Digital Filters**: Butterworth vs FIR filter frequency response comparison.
 
@@ -214,7 +214,7 @@ Coordinate Systems
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/coordinate_rotations.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/coordinate_rotations.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Coordinate Rotations**: 3D visualization of rotation matrices and transformations.
 
@@ -236,7 +236,7 @@ Navigation & Geodesy
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -254,7 +254,7 @@ Transforms
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -268,7 +268,7 @@ Orbital Mechanics
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/orbital_propagation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/orbital_propagation.html" width="100%" height="600" frameborder="0"></iframe>
 
 **Orbit Propagation**: Interactive visualization of orbital mechanics and trajectory analysis.
 
@@ -283,7 +283,7 @@ Orbital Mechanics
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/relativity_effects.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/relativity_effects.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -299,7 +299,7 @@ Geophysical Models
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/geophysical_models.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/geophysical_models.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -315,7 +315,7 @@ Static Estimation
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/static_estimation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/static_estimation.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -331,7 +331,7 @@ Special Functions
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/special_functions.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/special_functions.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -347,7 +347,7 @@ Ephemeris & Celestial Mechanics
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/ephemeris_demo.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/ephemeris_demo.html" width="100%" height="600" frameborder="0"></iframe>
 
 .. list-table::
    :widths: 30 70
