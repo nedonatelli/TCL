@@ -336,12 +336,13 @@ def run_rbpf_filter(
 
     for k, z in enumerate(measurements):
         # Predict nonlinear: position dynamics
-        g = lambda y: y + scenario.dt * np.array(
-            [
-                np.random.normal(0, 0.1),  # noise
-                np.random.normal(0, 0.1),
-            ]
-        )
+        def g(y):
+            return y + scenario.dt * np.array(
+                [
+                    np.random.normal(0, 0.1),  # noise
+                    np.random.normal(0, 0.1),
+                ]
+            )
 
         G = np.eye(2)
         Qy = np.eye(2) * 0.001

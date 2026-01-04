@@ -271,7 +271,8 @@ def ins_mechanization_demo() -> None:
         f"  North: {np.degrees(state.latitude - lat) * 111000:.1f} m (expected: {vN * n_steps * dt:.1f} m)"
     )
     print(
-        f"  East: {np.degrees(state.longitude - lon) * 111000 * np.cos(lat):.1f} m (expected: {vE * n_steps * dt:.1f} m)"
+        f"  East: {np.degrees(state.longitude - lon) * 111000 * np.cos(lat):.1f} m "
+        f"(expected: {vE * n_steps * dt:.1f} m)"
     )
 
 

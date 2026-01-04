@@ -77,10 +77,10 @@ from pytcl.astronomical.orbital_mechanics import (
     vis_viva,
 )
 from pytcl.astronomical.reference_frames import (
-    earth_rotation_angle,  # Time utilities; Precession; Nutation; Earth rotation; Polar motion; Full transformations; Ecliptic/equatorial
+    earth_rotation_angle,  # Time utilities; Precession; Nutation
 )
 from pytcl.astronomical.reference_frames import (
-    ecef_to_eci,
+    ecef_to_eci,  # Time utilities
     eci_to_ecef,
     ecliptic_to_equatorial,
     equation_of_equinoxes,
@@ -116,7 +116,7 @@ from pytcl.astronomical.reference_frames import (
     true_obliquity,
 )
 from pytcl.astronomical.relativity import (
-    C_LIGHT,  # Physical constants; Schwarzschild metric; Time dilation; Shapiro delay; Precession; PN effects; Range corrections
+    C_LIGHT,  # Physical constants; Schwarzschild metric; Time dilation
 )
 from pytcl.astronomical.relativity import (
     G_GRAV,

@@ -27,7 +27,7 @@ Examples
 """
 
 from pytcl.coordinate_systems.projections.projections import (
-    WGS84_A,  # Constants; Result types; Azimuthal Equidistant; UTM; Lambert Conformal Conic; Mercator; Stereographic; Transverse Mercator
+    WGS84_A,  # Constants; Result types
 )
 from pytcl.coordinate_systems.projections.projections import (
     WGS84_B,

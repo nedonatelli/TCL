@@ -403,11 +403,15 @@ class TestRBPFConvenience:
             for i in range(10)
         ]
 
-        g = lambda y: 0.9 * y
+        def g(y):
+            return 0.9 * y
+
         G = np.eye(2) * 0.9
         Qy = np.eye(2) * 0.001
 
-        f = lambda x, y: x
+        def f(x, y):
+            return x
+
         F = np.eye(2)
         Qx = np.eye(2) * 0.001
 
@@ -455,12 +459,16 @@ class TestRBPFIntegration:
         rbpf.initialize(y0, x0, P0, num_particles=10)
 
         # Nonlinear system
-        g = lambda y: 0.95 * y
+        def g(y):
+            return 0.95 * y
+
         G = np.eye(2) * 0.95
         Qy = np.eye(2) * 0.001
 
         # Linear system
-        f = lambda x, y: 0.99 * x
+        def f(x, y):
+            return 0.99 * x
+
         F = np.eye(2) * 0.99
         Qx = np.eye(2) * 0.001
 
@@ -495,11 +503,15 @@ class TestRBPFIntegration:
 
         rbpf.initialize(y0, x0, P0, num_particles=20)
 
-        g = lambda y: 0.95 * y
+        def g(y):
+            return 0.95 * y
+
         G = np.eye(2) * 0.95
         Qy = np.eye(2) * 0.005
 
-        f = lambda x, y: x + 0.01 * y
+        def f(x, y):
+            return x + 0.01 * y
+
         F = np.eye(2)
         Qx = np.eye(2) * 0.001
 
@@ -537,12 +549,16 @@ class TestRBPFIntegration:
         rbpf.initialize(theta0, x0, P0, num_particles=30)
 
         # Nonlinear dynamics: angle increases
-        g = lambda y: y + 0.05 + np.random.randn(1) * 0.01
+        def g(y):
+            return y + 0.05 + np.random.randn(1) * 0.01
+
         G = np.array([[1.0]])
         Qy = np.array([[0.001]])
 
         # Linear dynamics: range constant
-        f = lambda x, y: x
+        def f(x, y):
+            return x
+
         F = np.array([[1.0]])
         Qx = np.array([[0.5]])
 
@@ -576,11 +592,15 @@ class TestRBPFIntegration:
 
         rbpf.initialize(y0, x0, P0, num_particles=20)
 
-        g = lambda y: y
+        def g(y):
+            return y
+
         G = np.array([[1.0]])
         Qy = np.array([[0.1]])
 
-        f = lambda x, y: x
+        def f(x, y):
+            return x
+
         F = np.array([[1.0]])
         Qx = np.array([[0.1]])
 

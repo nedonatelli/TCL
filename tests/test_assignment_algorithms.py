@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytcl.assignment_algorithms import (  # 2D Assignment; K-Best 2D Assignment; 3D Assignment; Gating; Data Association
+from pytcl.assignment_algorithms import (  # 2D Assignment
     Assignment3DResult,
     AssignmentResult,
     AssociationResult,

@@ -467,7 +467,7 @@ class TestSpecialFunctionsIntegration:
 
     def test_all_exports(self):
         """Test all functions are properly exported."""
-        from pytcl.mathematical_functions.special_functions import (  # Marcum Q; Lambert W; Debye; Hypergeometric; Advanced Bessel
+        from pytcl.mathematical_functions.special_functions import (  # Marcum Q
             bessel_deriv,
             bessel_ratio,
             bessel_zeros,
