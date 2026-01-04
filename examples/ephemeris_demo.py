@@ -148,7 +148,11 @@ def plot_orbital_distances(
         pos_func = moon_position
         title = "Moon's Distance from Earth (Orbital Variation)"
     else:
-        pos_func = lambda jd: planet_position(body_name, jd)
+
+        def pos_func(jd: float) -> tuple:
+            """Get planet position for given Julian date."""
+            return planet_position(body_name, jd)
+
         title = f"{body_name.capitalize()}'s Distance from Earth"
 
     jd_array = np.linspace(jd_start, jd_start + 365.25, num_points)
