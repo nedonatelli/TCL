@@ -303,10 +303,11 @@ def min_cost_flow_simplex(
     max_iterations: int = 10000,
 ) -> MinCostFlowResult:
     """
-    Solve min-cost flow using successive shortest paths (fallback to Bellman-Ford).
+    Solve min-cost flow using successive shortest paths (temporary fallback).
 
-    This is currently a wrapper around successive shortest paths. A full network
-    simplex implementation will be added in Phase 1B.
+    Note: Phase 1B complex simplex implementation is being developed.
+    This version falls back to proven successive shortest paths algorithm
+    while maintaining the interface for future optimization.
 
     Parameters
     ----------
@@ -321,13 +322,10 @@ def min_cost_flow_simplex(
     -------
     MinCostFlowResult
         Solution with flow values, cost, status, and iterations.
-
-    Notes
-    -----
-    This implementation currently delegates to successive_shortest_paths.
-    Phase 1B will implement a full network simplex with O(VE log V) complexity.
     """
-    # For now, delegate to existing solver while we develop proper simplex
+    # For Phase 1B: Using successive shortest paths as baseline
+    # This ensures correctness while we develop optimized simplex
+    # Phase 1B focus: Optimize this to use capacity scaling
     return min_cost_flow_successive_shortest_paths(edges, supplies, max_iterations)
 
 
@@ -390,9 +388,8 @@ def min_cost_assignment_via_flow(
     cost_matrix : ndarray
         Cost matrix of shape (m, n).
     use_simplex : bool, optional
-        Use network simplex (experimental, defaults to False).
-        When False, uses robust Bellman-Ford based algorithm.
-        The simplex algorithm will be fully implemented in Phase 1B.
+        Use simplex algorithm (default False, currently falling back to Bellman-Ford).
+        Phase 1B will optimize this for production performance.
 
     Returns
     -------
@@ -403,14 +400,13 @@ def min_cost_assignment_via_flow(
 
     Notes
     -----
-    Network Simplex implementation is in progress (Phase 1B).
-    Current default uses successive shortest paths with Bellman-Ford,
-    which has O(V²E) complexity but is reliable.
+    Phase 1B: Network Simplex under development.
+    Currently uses successive shortest paths (proven Bellman-Ford) as default.
     """
     edges, supplies, _ = assignment_to_flow_network(cost_matrix)
 
-    # For now, always use Bellman-Ford-based successive shortest paths
-    # Phase 1B will implement full network simplex algorithm
+    # Phase 1B: use_simplex parameter prepared for future optimization
+    # Currently always uses proven Bellman-Ford algorithm
     result = min_cost_flow_successive_shortest_paths(edges, supplies)
 
     assignment, cost = assignment_from_flow_solution(

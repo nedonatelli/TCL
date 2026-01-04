@@ -31,12 +31,29 @@ Replace Bellman-Ford O(VE²) algorithm with network simplex O(VE log V) for 50-1
 - [x] Set up infrastructure for enabling tests once simplex ready
 
 ### Phase 1B: Implement Network Simplex (Week 2) 🚀 IN PROGRESS
-- [ ] Complete NetworkSimplex class with full algorithm
-- [ ] Implement tree data structure management (spanning tree with threading)
-- [ ] Add proper pivot operations (find entering/leaving edges)
-- [ ] Handle degenerate cases and numerical stability
-- [ ] Implement cost scaling for numerical stability
-- [ ] Integrate with existing `min_cost_flow_simplex()` wrapper
+
+**Strategic Approach:**
+- Created `pytcl/assignment_algorithms/network_simplex.py` with capacity scaling framework
+- Added `min_cost_flow_simplex()` wrapper function in network_flow.py
+- Prepared test infrastructure to enable solver tests once simplex is production-ready
+- Added `use_simplex` parameter to main API for future seamless switching
+
+**Implementation Status:**
+- [x] Created foundation files for simplex infrastructure
+- [x] Studied cost-scaling and capacity-scaling algorithms
+- [x] Prototyped multiple approaches (full simplex, capacity scaling, cost scaling)
+- [ ] Complete proven simplex implementation (targeting Week 2)
+- [ ] Integrate with assignment_to_flow_network conversion
+- [ ] Validate correctness against current solution
+- [ ] Benchmark against Bellman-Ford
+
+**Current Strategy:**
+Rather than implementing full network simplex immediately, focusing on simpler
+capacity-scaling approach which provides:
+- Easier to implement correctly
+- O(V²E log V) typical performance (vs current O(V³E))
+- Better numerical stability than cost-scaling alone
+- Clear migration path from successive shortest paths
 
 ### Phase 1C: Testing & Integration (Week 2-3) ⏳ PENDING
 - [ ] Unit tests for simplex implementation
