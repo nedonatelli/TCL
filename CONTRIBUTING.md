@@ -220,26 +220,57 @@ When porting a function from the original MATLAB library:
    - Reference any related issues
    - Ensure CI passes
 
-## Priority Areas
+## Current Development Status
 
-If you're looking for ways to contribute, these areas are priorities:
+**Version:** v1.7.5  
+**MATLAB Parity:** 100% ✅  
+**Test Suite:** 2,057 tests passing (13 skipped for Phase 1 optimization)  
+**Code Coverage:** 76% (target 80%+ in v2.0.0)  
+**Quality:** 100% compliance (black, isort, flake8, mypy --strict)
 
-### High Priority
-- Coordinate system conversions (`coordinate_systems/conversions/`)
-- Basic Kalman filter implementation (`dynamic_estimation/kalman/`)
-- Constant velocity/acceleration models (`dynamic_models/discrete_time/`)
-- Hungarian algorithm for assignment (`assignment_algorithms/`)
+## v2.0.0 Roadmap - 8 Phases Over 18 Months
 
-### Medium Priority  
-- UKF and EKF implementations
-- Coordinated turn models
-- JPDA data association
-- OSPA metric
+### Phase 1: Network Flow Performance (NEXT)
+**Focus:** Replace Bellman-Ford O(VE²) with network simplex O(VE log V)
+- **Impact:** 50-100x faster network flow computations
+- **Location:** `pytcl/assignment/network_flow.py`
+- **Tests:** Will re-enable 13 currently skipped tests
+- **Estimated:** 2-3 weeks
 
-### Lower Priority
+### Phases 2-5: Algorithm Optimization
+- Phase 2: Kalman filter performance
+- Phase 3: Tracking algorithm improvements
+- Phase 4: Signal processing optimization
+- Phase 5: Advanced estimation methods
+
+### Phase 6: Test Expansion
+- **Goal:** +50 new tests, target 80%+ coverage
+- **Focus:** Edge cases, numerical stability, batch operations
+
+### Phases 7-8: Documentation & Final Polish
+- Phase 7: Documentation updates and examples
+- Phase 8: Performance tuning and optimization
+
+## Priority Areas for Contributors
+
+If you're looking for ways to contribute:
+
+### High Priority (v2.0.0 Phase 1)
+- Network flow algorithm optimization (`assignment/network_flow.py`)
+- Performance profiling and benchmarking
+- Algorithm optimization and refactoring
+
+### Medium Priority
+- New test cases (especially edge cases)
+- Documentation improvements
+- Example script enhancements
+- Bug fixes and code review
+
+### Other Areas
 - Astronomical code (consider using astropy)
 - Gravity/magnetism models
 - Terrain models
+- Domain-specific optimizations
 
 ## Release Process
 
@@ -249,15 +280,33 @@ When preparing a new release, follow these steps:
 
 Update the version in these files:
 - `pyproject.toml` - `version = "X.Y.Z"`
-- `docs/conf.py` - `release = "X.Y.Z"`
-- `docs/_static/landing.html` - Update the status badge version
+- `pytcl/__init__.py` - `__version__ = "X.Y.Z"`
+- `CHANGELOG.md` - Add new version entry at top
+- `ROADMAP.md` - Update version references if applicable
 
-### 2. Update Landing Page Statistics
+### 2. Verify Current Metrics
 
-In `docs/_static/landing.html`, update the statistics to reflect current metrics:
-- **Version badge** (line ~730): `vX.Y.Z — 720+ Functions`
-- **Test count** (line ~766): Run `pytest --collect-only` to get current test count
-- **Other stats** as needed (functions, modules, etc.)
+Before release, verify these metrics:
+```bash
+# Count functions
+grep -r "^def " pytcl/ | wc -l
+
+# Count modules
+find pytcl -name "*.py" -type f | wc -l
+
+# Run tests with collection
+pytest --collect-only -q | tail -1
+
+# Get coverage
+pytest --cov=pytcl --cov-report=term
+```
+
+Current metrics (v1.7.5):
+- **Functions:** 1,070+
+- **Modules:** 150+
+- **Tests:** 2,057 (13 skipped)
+- **Coverage:** 76%
+- **MATLAB Parity:** 100%
 
 ### 3. Sync Examples
 
@@ -271,19 +320,25 @@ cp examples/*.py docs/examples/
 
 ```bash
 # Sort imports
-isort pytcl tests examples docs/examples
+isort pytcl tests examples docs/examples scripts
 
 # Format code
 black .
 
 # Lint
-flake8 pytcl tests examples docs/examples
+flake8 pytcl tests examples docs/examples scripts
 
-# Type check
-mypy pytcl examples docs/examples
+# Type check (strict mode)
+mypy --strict pytcl
 
 # Run full test suite with coverage
-pytest --cov=pytcl --cov-report=term-missing
+pytest tests/ --cov=pytcl --cov-report=term-missing
+
+# Run benchmark tests
+pytest benchmarks/ -v
+
+# Verify all pass
+echo "All checks complete!"
 ```
 
 ### 5. Verify Examples Run
@@ -315,19 +370,49 @@ Update both `ROADMAP.md` and `docs/roadmap.rst`:
 - Ensure all new features are documented
 - Rebuild docs locally to verify: `cd docs && make html`
 
-### 8. Create Release Commit
+### 8. Create Release Commit and Tag
 
 ```bash
+# Stage all changes
 git add -A
-git commit -m "Release vX.Y.Z: <brief description>"
-git tag vX.Y.Z
-git push origin main --tags
+
+# Create commit with comprehensive message
+git commit -m "vX.Y.Z: Release description
+
+- Feature 1
+- Feature 2
+- Bug fix 1
+- Documentation updates
+
+Quality metrics:
+- Tests: #### passed
+- Coverage: ##%
+- MATLAB Parity: 100%"
+
+# Create annotated tag with release notes
+git tag -a vX.Y.Z -m "vX.Y.Z - Release Title
+
+Release description and highlights"
+
+# Push commits and tags
+git push origin main
+git push origin vX.Y.Z
 ```
 
-### 9. Publish to PyPI
+### 9. Create GitHub Release
 
 ```bash
+# Use GitHub CLI to create release
+gh release create vX.Y.Z --title "vX.Y.Z - Release Title" --notes-file release_notes.md
+```
+
+### 10. Publish to PyPI (Optional)
+
+```bash
+# Build distribution
 python -m build
+
+# Upload to PyPI (requires credentials)
 twine upload dist/*
 ```
 
