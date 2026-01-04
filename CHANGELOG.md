@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] - 2026-01-04
+
+### Repository Maintenance & Git LFS Setup
+
+Cleanup of large generated files and configuration of Git Large File Storage for better repository management.
+
+### Added
+- Git LFS configuration for handling large files
+- .gitattributes and .gitignore updates for repository cleanliness
+
+### Fixed
+- Removed 44 large generated HTML demo files from version control (4+ GB)
+- Purged 4.2 GB terrain_demo.html from git history using BFG repo-cleaner
+- Repository size reduced from 4.5+ GB to manageable size
+
+### Changed
+- Removed: docs/_static/images/examples/*.html (generated demo visualizations)
+- Updated: .gitignore to prevent future tracking of generated HTML files
+- Configured: Git LFS for efficient handling of large file assets
+
+### Quality Impact
+- ✅ Repository clone time significantly reduced
+- ✅ Git operations faster (push/pull/fetch)
+- ✅ Cleaner git history without large binary files
+- ✅ All tests still pass: 2,098 passed, 13 skipped
+
 ## [1.7.2] - 2026-01-04
 
 ### Code Quality & Examples Validation
