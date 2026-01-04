@@ -12,30 +12,20 @@ References
 """
 
 import logging
-from typing import Any, Callable, List, NamedTuple, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Set, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+from pytcl.containers.base import CoverTreeResult  # Backward compatibility alias
+from pytcl.containers.base import (
+    MetricSpatialIndex,
+    NeighborResult,
+    validate_query_input,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.containers.covertree")
-
-
-class CoverTreeResult(NamedTuple):
-    """Result of Cover tree query.
-
-    Attributes
-    ----------
-    indices : ndarray
-        Indices of nearest neighbors.
-    distances : ndarray
-        Distances to nearest neighbors.
-    """
-
-    indices: NDArray[np.intp]
-    distances: NDArray[np.floating]
 
 
 class CoverTreeNode:
@@ -234,7 +224,7 @@ class CoverTree(MetricSpatialIndex):
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> CoverTreeResult:
+    ) -> NeighborResult:
         """
         Query the tree for k nearest neighbors.
 
@@ -247,7 +237,7 @@ class CoverTree(MetricSpatialIndex):
 
         Returns
         -------
-        result : CoverTreeResult
+        result : NeighborResult
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
@@ -264,7 +254,9 @@ class CoverTree(MetricSpatialIndex):
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
-        return CoverTreeResult(indices=all_indices, distances=all_distances)
+        return NeighborResult(indices=all_indices, distances=all_distances)
+
+    # query_ball_point inherited from BaseSpatialIndex
 
     def _query_single(
         self,
@@ -410,7 +402,8 @@ class CoverTree(MetricSpatialIndex):
 
 
 __all__ = [
-    "CoverTreeResult",
+    "NeighborResult",
+    "CoverTreeResult",  # Backward compatibility alias
     "CoverTreeNode",
     "CoverTree",
 ]

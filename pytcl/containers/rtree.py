@@ -19,7 +19,11 @@ from typing import List, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import SpatialQueryResult, validate_query_input
+from pytcl.containers.base import SpatialQueryResult  # Backward compatibility alias
+from pytcl.containers.base import (
+    NeighborResult,
+    validate_query_input,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.containers.rtree")
@@ -418,7 +422,7 @@ class RTree:
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> SpatialQueryResult:
+    ) -> NeighborResult:
         """
         Query the tree for k nearest neighbors.
 
@@ -433,7 +437,7 @@ class RTree:
 
         Returns
         -------
-        result : SpatialQueryResult
+        result : NeighborResult
             Indices and distances of k nearest neighbors for each query.
 
         Examples
@@ -460,7 +464,7 @@ class RTree:
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
-        return SpatialQueryResult(indices=all_indices, distances=all_distances)
+        return NeighborResult(indices=all_indices, distances=all_distances)
 
     def query_radius(
         self,
@@ -528,6 +532,36 @@ class RTree:
             results.append(indices)
 
         return results
+
+    def query_ball_point(
+        self,
+        X: ArrayLike,
+        r: float,
+    ) -> List[List[int]]:
+        """
+        Query the tree for all points within radius r.
+
+        This is an alias for :meth:`query_radius` provided for compatibility
+        with scipy.spatial.KDTree.
+
+        Parameters
+        ----------
+        X : array_like
+            Query points of shape (n_queries, n_features) or (n_features,).
+        r : float
+            Search radius.
+
+        Returns
+        -------
+        indices : list of list of int
+            For each query point, a list of indices of data points
+            within distance r.
+
+        See Also
+        --------
+        query_radius : The underlying implementation.
+        """
+        return self.query_radius(X, r)
 
     def query_intersect(self, query_bbox: BoundingBox) -> RTreeResult:
         """
@@ -695,10 +729,15 @@ class RTree:
 
 
 __all__ = [
+    # Result types
+    "NeighborResult",
+    "SpatialQueryResult",  # Backward compatibility alias
+    # Bounding box utilities
     "BoundingBox",
     "merge_boxes",
     "box_from_point",
     "box_from_points",
+    # R-tree components
     "RTreeNode",
     "RTreeResult",
     "RTree",

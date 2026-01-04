@@ -54,6 +54,8 @@ from typing import Any, Literal, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.exceptions import DependencyError
+
 # Constants for unit conversion
 AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
 KM_PER_DAY_TO_AU_PER_DAY = AU_PER_KM  # velocity conversion factor
@@ -94,7 +96,7 @@ class DEEphemeris:
 
     Raises
     ------
-    ImportError
+    DependencyError
         If jplephem is not installed
     ValueError
         If version is not recognized
@@ -145,9 +147,11 @@ class DEEphemeris:
         try:
             import jplephem
         except ImportError as e:
-            raise ImportError(
-                "jplephem is required for ephemeris access. "
-                "Install with: pip install jplephem"
+            raise DependencyError(
+                "jplephem is required for ephemeris access.",
+                package="jplephem",
+                feature="JPL ephemeris access",
+                install_command="pip install pytcl[astronomy]",
             ) from e
 
         self.version = version

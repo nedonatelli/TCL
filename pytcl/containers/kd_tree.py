@@ -14,12 +14,17 @@ References
 """
 
 import logging
-from typing import List, NamedTuple, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import BaseSpatialIndex, validate_query_input
+from pytcl.containers.base import NearestNeighborResult  # Backward compatibility alias
+from pytcl.containers.base import (
+    BaseSpatialIndex,
+    NeighborResult,
+    validate_query_input,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.containers.kd_tree")
@@ -55,21 +60,6 @@ class KDNode:
         self.split_dim = split_dim
         self.left: Optional["KDNode"] = None
         self.right: Optional["KDNode"] = None
-
-
-class NearestNeighborResult(NamedTuple):
-    """Result of nearest neighbor query.
-
-    Attributes
-    ----------
-    indices : ndarray
-        Indices of nearest neighbors.
-    distances : ndarray
-        Distances to nearest neighbors.
-    """
-
-    indices: NDArray[np.intp]
-    distances: NDArray[np.floating]
 
 
 class KDTree(BaseSpatialIndex):
@@ -157,7 +147,7 @@ class KDTree(BaseSpatialIndex):
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> NearestNeighborResult:
+    ) -> NeighborResult:
         """
         Query the tree for k nearest neighbors.
 
@@ -170,7 +160,7 @@ class KDTree(BaseSpatialIndex):
 
         Returns
         -------
-        result : NearestNeighborResult
+        result : NeighborResult
             Indices and distances of k nearest neighbors for each query.
 
         Examples
@@ -195,7 +185,7 @@ class KDTree(BaseSpatialIndex):
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
-        return NearestNeighborResult(indices=all_indices, distances=all_distances)
+        return NeighborResult(indices=all_indices, distances=all_distances)
 
     def _query_single(
         self,
@@ -308,27 +298,7 @@ class KDTree(BaseSpatialIndex):
         _search(self.root)
         return indices
 
-    def query_ball_point(
-        self,
-        X: ArrayLike,
-        r: float,
-    ) -> List[List[int]]:
-        """
-        Alias for query_radius (scipy compatibility).
-
-        Parameters
-        ----------
-        X : array_like
-            Query points.
-        r : float
-            Query radius.
-
-        Returns
-        -------
-        indices : list of lists
-            Indices of points within radius.
-        """
-        return self.query_radius(X, r)
+    # query_ball_point inherited from BaseSpatialIndex
 
 
 class BallTree(BaseSpatialIndex):
@@ -444,7 +414,7 @@ class BallTree(BaseSpatialIndex):
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> NearestNeighborResult:
+    ) -> NeighborResult:
         """
         Query the tree for k nearest neighbors.
 
@@ -457,7 +427,7 @@ class BallTree(BaseSpatialIndex):
 
         Returns
         -------
-        result : NearestNeighborResult
+        result : NeighborResult
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
@@ -473,7 +443,9 @@ class BallTree(BaseSpatialIndex):
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
-        return NearestNeighborResult(indices=all_indices, distances=all_distances)
+        return NeighborResult(indices=all_indices, distances=all_distances)
+
+    # query_ball_point inherited from BaseSpatialIndex
 
     def query_radius(
         self,
@@ -606,7 +578,8 @@ class BallTree(BaseSpatialIndex):
 
 __all__ = [
     "KDNode",
-    "NearestNeighborResult",
+    "NeighborResult",
+    "NearestNeighborResult",  # Backward compatibility alias
     "KDTree",
     "BallTree",
 ]

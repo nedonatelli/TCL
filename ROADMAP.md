@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.8.0 (Released January 4, 2026)  
-**Current Test Suite:** 2,070 tests passing, 76% line coverage  
+**Current Version:** v1.9.0 (Released January 4, 2026)
+**Current Test Suite:** 2,133 tests passing, 76% line coverage
 **Production Status:** Feature-complete MATLAB TCL parity achieved
 
 ---
@@ -18,19 +18,28 @@
 
 ## Current State
 
-### v1.8.0 - Network Flow Performance Optimization (January 4, 2026)
+### v1.9.0 - Infrastructure Improvements (January 4, 2026)
 
 **Status:** ✅ Released with production-quality code
 
 - **1,070+ functions** implemented across 150+ Python modules
-- **2,070 tests** with 100% pass rate (13 network flow solver tests re-enabled)
+- **2,133 tests** with 100% pass rate
 - **76% line coverage** (16,209 lines, 3,292 missing, 4,014 partial)
 - **100% MATLAB TCL parity** achieved
 - **100% code quality compliance:** isort, black, flake8, mypy --strict
-- **10-50x performance improvement** on network flow optimization (Phase 1)
+- **Unified spatial index interface** (BaseSpatialIndex, NeighborResult)
+- **Custom exception hierarchy** (16 exception types for consistent error handling)
+- **Optional dependencies system** (is_available, @requires decorator, DependencyError)
 - **42 interactive HTML visualizations** with Git LFS tracking
 - **23 example scripts** with Plotly renderings
 - **Published on PyPI** as `nrl-tracker`
+
+### v1.8.0 - Network Flow Performance Optimization (January 4, 2026)
+
+**Status:** ✅ Released
+
+- **10-50x performance improvement** on network flow optimization
+- **13 network flow solver tests re-enabled**
 
 #### New in v1.7.x Series
 
@@ -274,51 +283,44 @@ v2.0.0 targets architectural improvements, performance optimization, GPU acceler
 | Test coverage | 76% | 80%+ |
 | Documentation quality | ~85% | 95%+ |
 
-### Phase 1: Critical Fixes & Foundation (Months 1-3)
+### Phase 1: Critical Fixes & Foundation ✅ COMPLETE (January 4, 2026)
 
-#### 1.1 Network Flow Performance [BLOCKER]
+#### 1.1 Network Flow Performance [BLOCKER] ✅
 
-**Problem:** 13 skipped tests due to Bellman-Ford O(VE²) timeout limitation
+**Status:** Complete (v1.8.0)
 
-**Solution:** Implement network simplex algorithm with O(VE log V) complexity
-- Create `pytcl/assignment_algorithms/network_flow_simplex.py`
-- Maintain 100% backward API compatibility
-- Target: 50-100x faster for 100+ node problems
-- Add 10+ new tests for simplex edge cases (degeneracy, cycling)
+- Dijkstra-optimized successive shortest paths algorithm implemented
+- All 18 network flow tests passing (13 re-enabled)
+- 10-50x performance improvement achieved
 
-**Effort:** HIGH (3 weeks)
+#### 1.2 Circular Imports Resolution ✅
 
-**Acceptance Criteria:**
-- All 13 tests pass without skip markers
-- Simplex benchmark ≥50x faster than Bellman-Ford on 20x20
-- 100% backward compatibility
+**Status:** Complete (January 4, 2026)
 
-#### 1.2 Circular Imports Resolution
+- Created `pytcl/dynamic_estimation/kalman/types.py` for shared NamedTuple types
+- Created `pytcl/dynamic_estimation/kalman/matrix_utils.py` for utility functions
+- Refactored `sr_ukf.py` and `square_root.py` to use centralized modules
+- Removed all `# noqa: E402` late import comments
 
-**Problem:** Late imports in `kalman/sr_ukf.py` use `# noqa: E402`
+#### 1.3 Empty Module Exports ✅
 
-**Solution:** Refactor using TYPE_CHECKING blocks
-- Use `from typing import TYPE_CHECKING` for forward references
-- Move runtime imports to function-level scope
-- Document dependency graph
+**Status:** Complete (January 4, 2026)
 
-**Effort:** MEDIUM (2 weeks)
+Added comprehensive `__all__` exports to:
+- `pytcl/core/constants.py` (52 exports)
+- `pytcl/astronomical/relativity.py` (14 exports)
+- `pytcl/mathematical_functions/signal_processing/detection.py` (12 exports)
 
-#### 1.3 Empty Module Exports
+#### 1.4 Kalman Filter Code Consolidation ✅
 
-**Problem:** Three modules have empty/incomplete `__all__` exports
+**Status:** Complete (January 4, 2026)
 
-**Solution:** Define clear public APIs or consolidate
-
-**Effort:** LOW (1 week)
-
-#### 1.4 Kalman Filter Code Consolidation
-
-**Problem:** ~300 lines of duplicate matrix operations across 4 implementations
-
-**Solution:** Extract to `kalman/matrix_utils.py`
-
-**Effort:** MEDIUM (2 weeks)
+Extracted to `pytcl/dynamic_estimation/kalman/matrix_utils.py`:
+- `ensure_symmetric()` - Covariance matrix symmetry enforcement
+- `compute_matrix_sqrt()` - Cholesky with eigendecomposition fallback
+- `compute_innovation_likelihood()` - Gaussian likelihood computation
+- `compute_mahalanobis_distance()` - Distance metric computation
+- `compute_merwe_weights()` - UKF sigma point weights
 
 ### Phase 2: API Standardization & Infrastructure (Months 2-4)
 
@@ -330,11 +332,19 @@ v2.0.0 targets architectural improvements, performance optimization, GPU acceler
 
 **Effort:** MEDIUM (3 weeks)
 
-#### 2.2 Custom Exception Hierarchy
+#### 2.2 Custom Exception Hierarchy ✅
 
-**Problem:** 50+ generic ValueError/ImportError across modules
+**Status:** Complete (January 4, 2026)
 
-**Solution:** Define custom exception hierarchy in `pytcl.core.exceptions`
+Created `pytcl/core/exceptions.py` with comprehensive exception hierarchy:
+- `TCLError` - Base exception for all TCL errors
+- `ValidationError` - Input validation failures (DimensionError, ParameterError, RangeError)
+- `ComputationError` - Numerical failures (ConvergenceError, NumericalError, SingularMatrixError)
+- `StateError` - Object state violations (UninitializedError, EmptyContainerError)
+- `ConfigurationError` - Configuration issues (MethodError, DependencyError)
+- `DataError` - Data format/structure issues (FormatError, ParseError)
+
+All 16 exception classes support dual inheritance (e.g., ValidationError extends both TCLError and ValueError).
 
 **Effort:** MEDIUM (2 weeks)
 
@@ -611,8 +621,8 @@ Eight comprehensive notebooks covering:
 
 | Phase | Duration | Focus Area | Status |
 |-------|----------|-----------|--------|
-| **1** | Months 1-3 | Network flow, circular imports, consolidation | 🔄 Planned |
-| **2** | Months 2-4 | API standardization, exceptions, optdeps | 🔄 Planned |
+| **1** | Months 1-3 | Network flow, circular imports, consolidation | ✅ Complete |
+| **2** | Months 2-4 | API standardization, exceptions, optdeps | 🔄 In Progress |
 | **3** | Months 3-6 | Documentation, module graduation | 🔄 Planned |
 | **4** | Months 4-8 | 8 Jupyter notebooks + CI integration | 🔄 Planned |
 | **5** | Months 6-10 | GPU acceleration (CuPy Kalman, particles) | 🔄 Planned |

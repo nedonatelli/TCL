@@ -10,15 +10,13 @@ from typing import Any, List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-try:
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
+from pytcl.core.optional_deps import is_available, requires
 
-    HAS_PLOTLY = True
-except ImportError:
-    HAS_PLOTLY = False
+# Lazy flag for backward compatibility
+HAS_PLOTLY = is_available("plotly")
 
 
+@requires("plotly", extra="visualization")
 def plot_coordinate_axes_3d(
     origin: ArrayLike = (0, 0, 0),
     rotation_matrix: Optional[ArrayLike] = None,
@@ -28,7 +26,7 @@ def plot_coordinate_axes_3d(
     line_width: int = 4,
     showlegend: bool = True,
     name_prefix: str = "",
-) -> List["go.Scatter3d"]:
+) -> List[Any]:
     """
     Create Plotly traces for 3D coordinate axes.
 
@@ -56,8 +54,7 @@ def plot_coordinate_axes_3d(
     traces : list of go.Scatter3d
         List of three Plotly traces for the axes.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     origin = np.asarray(origin, dtype=np.float64)
     if rotation_matrix is None:
@@ -90,12 +87,13 @@ def plot_coordinate_axes_3d(
     return traces
 
 
+@requires("plotly", extra="visualization")
 def plot_rotation_comparison(
     R1: ArrayLike,
     R2: ArrayLike,
     labels: Tuple[str, str] = ("Original", "Rotated"),
     title: str = "Rotation Comparison",
-) -> "go.Figure":
+) -> Any:
     """
     Compare two rotation matrices by visualizing their coordinate frames.
 
@@ -115,8 +113,7 @@ def plot_rotation_comparison(
     fig : go.Figure
         Plotly figure.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     fig = go.Figure()
 
@@ -152,11 +149,12 @@ def plot_rotation_comparison(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_euler_angles(
     angles: ArrayLike,
     sequence: str = "ZYX",
     title: Optional[str] = None,
-) -> "go.Figure":
+) -> Any:
     """
     Visualize Euler angle rotations step by step.
 
@@ -174,8 +172,7 @@ def plot_euler_angles(
     fig : go.Figure
         Plotly figure with subplots showing each rotation step.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    from plotly.subplots import make_subplots
 
     angles = np.asarray(angles)
 
@@ -257,12 +254,13 @@ def plot_euler_angles(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_quaternion_interpolation(
     q_start: ArrayLike,
     q_end: ArrayLike,
     n_steps: int = 10,
     title: str = "Quaternion SLERP Interpolation",
-) -> "go.Figure":
+) -> Any:
     """
     Visualize quaternion interpolation (SLERP) between two orientations.
 
@@ -282,8 +280,7 @@ def plot_quaternion_interpolation(
     fig : go.Figure
         Plotly figure with animation.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     q_start = np.asarray(q_start)
     q_end = np.asarray(q_end)
@@ -410,6 +407,7 @@ def plot_quaternion_interpolation(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_spherical_grid(
     r: float = 1.0,
     n_lat: int = 10,
@@ -417,7 +415,7 @@ def plot_spherical_grid(
     color: str = "lightblue",
     opacity: float = 0.5,
     title: str = "Spherical Coordinate Grid",
-) -> "go.Figure":
+) -> Any:
     """
     Plot a spherical coordinate grid.
 
@@ -441,8 +439,7 @@ def plot_spherical_grid(
     fig : go.Figure
         Plotly figure.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     # Generate sphere surface
     theta = np.linspace(0, 2 * np.pi, n_lon)
@@ -485,6 +482,7 @@ def plot_spherical_grid(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_points_spherical(
     points_spherical: ArrayLike,
     r_idx: int = 0,
@@ -494,7 +492,7 @@ def plot_points_spherical(
     size: int = 5,
     name: str = "Points",
     title: str = "Points in Spherical Coordinates",
-) -> "go.Figure":
+) -> Any:
     """
     Plot points given in spherical coordinates.
 
@@ -522,8 +520,7 @@ def plot_points_spherical(
     fig : go.Figure
         Plotly figure.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     points = np.asarray(points_spherical)
     r = points[:, r_idx]
@@ -567,12 +564,13 @@ def plot_points_spherical(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_coordinate_transform(
     points_original: ArrayLike,
     points_transformed: ArrayLike,
     transform_name: str = "Transform",
     title: Optional[str] = None,
-) -> "go.Figure":
+) -> Any:
     """
     Visualize a coordinate transformation between two point sets.
 
@@ -592,8 +590,8 @@ def plot_coordinate_transform(
     fig : go.Figure
         Plotly figure with two subplots.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     points_original = np.asarray(points_original)
     points_transformed = np.asarray(points_transformed)

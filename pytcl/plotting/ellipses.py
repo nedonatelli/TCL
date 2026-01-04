@@ -5,17 +5,15 @@ This module provides functions for visualizing uncertainty as ellipses
 in 2D and 3D spaces, commonly used in tracking and estimation applications.
 """
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-try:
-    import plotly.graph_objects as go
+from pytcl.core.optional_deps import is_available, requires
 
-    HAS_PLOTLY = True
-except ImportError:
-    HAS_PLOTLY = False
+# Lazy flag for backward compatibility
+HAS_PLOTLY = is_available("plotly")
 
 
 def covariance_ellipse_points(
@@ -240,6 +238,7 @@ def confidence_region_radius(n_dims: int, confidence: float = 0.95) -> float:
     return np.sqrt(chi2_val)
 
 
+@requires("plotly", extra="visualization")
 def plot_covariance_ellipse(
     mean: ArrayLike,
     cov: ArrayLike,
@@ -249,7 +248,7 @@ def plot_covariance_ellipse(
     opacity: float = 0.3,
     name: Optional[str] = None,
     showlegend: bool = True,
-) -> "go.Scatter":
+) -> Any:
     """
     Create a Plotly trace for a covariance ellipse.
 
@@ -279,11 +278,10 @@ def plot_covariance_ellipse(
 
     Raises
     ------
-    ImportError
+    DependencyError
         If plotly is not installed.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     x, y = covariance_ellipse_points(mean, cov, n_std=n_std)
 
@@ -309,6 +307,7 @@ def plot_covariance_ellipse(
         )
 
 
+@requires("plotly", extra="visualization")
 def plot_covariance_ellipses(
     means: List[ArrayLike],
     covariances: List[ArrayLike],
@@ -316,7 +315,7 @@ def plot_covariance_ellipses(
     colors: Optional[List[str]] = None,
     opacity: float = 0.3,
     show_centers: bool = True,
-) -> "go.Figure":
+) -> Any:
     """
     Create a figure with multiple covariance ellipses.
 
@@ -340,8 +339,7 @@ def plot_covariance_ellipses(
     fig : go.Figure
         Plotly figure with the ellipses.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     fig = go.Figure()
 
@@ -394,6 +392,7 @@ def plot_covariance_ellipses(
     return fig
 
 
+@requires("plotly", extra="visualization")
 def plot_covariance_ellipsoid(
     mean: ArrayLike,
     cov: ArrayLike,
@@ -401,7 +400,7 @@ def plot_covariance_ellipsoid(
     color: str = "blue",
     opacity: float = 0.5,
     name: Optional[str] = None,
-) -> "go.Surface":
+) -> Any:
     """
     Create a Plotly surface trace for a 3D covariance ellipsoid.
 
@@ -425,8 +424,7 @@ def plot_covariance_ellipsoid(
     trace : go.Surface
         Plotly surface trace for the ellipsoid.
     """
-    if not HAS_PLOTLY:
-        raise ImportError("plotly is required for plotting functions")
+    import plotly.graph_objects as go
 
     x, y, z = covariance_ellipsoid_points(mean, cov, n_std=n_std)
 

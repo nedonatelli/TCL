@@ -26,6 +26,8 @@ from typing import Any, NamedTuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.exceptions import DependencyError
+
 from .dem import DEMGrid
 
 # Model parameters
@@ -306,11 +308,13 @@ def parse_gebco_netcdf(
     """
     try:
         import netCDF4 as nc
-    except ImportError:
-        raise ImportError(
-            "netCDF4 is required for loading GEBCO files.\n"
-            "Install with: pip install netCDF4"
-        )
+    except ImportError as e:
+        raise DependencyError(
+            "netCDF4 is required for loading GEBCO files.",
+            package="netCDF4",
+            feature="NetCDF file reading",
+            install_command="pip install pytcl[terrain]",
+        ) from e
 
     # Set defaults for global extent
     if lat_min is None:
@@ -554,7 +558,7 @@ def load_gebco(
     ------
     FileNotFoundError
         If the GEBCO file is not found.
-    ImportError
+    DependencyError
         If netCDF4 is not installed.
 
     Examples

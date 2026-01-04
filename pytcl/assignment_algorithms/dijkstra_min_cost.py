@@ -21,7 +21,6 @@ This is based on:
 """
 
 import heapq
-from collections.abc import Sequence
 from typing import Any
 
 import numpy as np

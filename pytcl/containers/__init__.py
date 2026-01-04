@@ -20,8 +20,17 @@ a common interface for k-nearest neighbor and radius queries:
 
 from pytcl.containers.base import (
     BaseSpatialIndex,
+    CoverTreeResult,
     MetricSpatialIndex,
+    NearestNeighborResult,
+    NeighborResult,
+)
+from pytcl.containers.base import (
+    RTreeResult as RTreeQueryResult,  # Backward compatibility aliases; Avoid conflict with rtree.RTreeResult
+)
+from pytcl.containers.base import (
     SpatialQueryResult,
+    VPTreeResult,
     validate_query_input,
 )
 from pytcl.containers.cluster_set import (
@@ -32,8 +41,8 @@ from pytcl.containers.cluster_set import (
     cluster_tracks_kmeans,
     compute_cluster_centroid,
 )
-from pytcl.containers.covertree import CoverTree, CoverTreeNode, CoverTreeResult
-from pytcl.containers.kd_tree import BallTree, KDNode, KDTree, NearestNeighborResult
+from pytcl.containers.covertree import CoverTree, CoverTreeNode
+from pytcl.containers.kd_tree import BallTree, KDNode, KDTree
 from pytcl.containers.measurement_set import (
     Measurement,
     MeasurementQuery,
@@ -49,17 +58,21 @@ from pytcl.containers.rtree import (
     merge_boxes,
 )
 from pytcl.containers.track_list import TrackList, TrackListStats, TrackQuery
-from pytcl.containers.vptree import VPNode, VPTree, VPTreeResult
+from pytcl.containers.vptree import VPNode, VPTree
 
 __all__ = [
-    # Base classes
+    # Base classes and unified result type
     "BaseSpatialIndex",
     "MetricSpatialIndex",
-    "SpatialQueryResult",
+    "NeighborResult",
     "validate_query_input",
+    # Backward compatibility aliases for result types
+    "SpatialQueryResult",
+    "NearestNeighborResult",
+    "VPTreeResult",
+    "CoverTreeResult",
     # K-D Tree
     "KDNode",
-    "NearestNeighborResult",
     "KDTree",
     "BallTree",
     # R-Tree
@@ -71,11 +84,9 @@ __all__ = [
     "RTreeResult",
     "RTree",
     # VP-Tree
-    "VPTreeResult",
     "VPNode",
     "VPTree",
     # Cover Tree
-    "CoverTreeResult",
     "CoverTreeNode",
     "CoverTree",
     # Track List

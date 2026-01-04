@@ -14,14 +14,12 @@ from typing import Any, Callable, Literal, Sequence, TypeVar
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+# Import ValidationError from exceptions module for consistency
+# Re-export for backward compatibility
+from pytcl.core.exceptions import ValidationError
+
 # Type variable for generic function signatures
 F = TypeVar("F", bound=Callable[..., Any])
-
-
-class ValidationError(ValueError):
-    """Exception raised when input validation fails."""
-
-    pass
 
 
 def validate_array(

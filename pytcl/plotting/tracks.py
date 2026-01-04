@@ -10,15 +10,16 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from numpy.typing import ArrayLike
 
-try:
+from pytcl.core.optional_deps import is_available
+from pytcl.plotting.ellipses import covariance_ellipse_points
+
+# Use the unified availability check
+HAS_PLOTLY = is_available("plotly")
+
+# Import plotly if available (for use in functions)
+if HAS_PLOTLY:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
-
-    HAS_PLOTLY = True
-except ImportError:
-    HAS_PLOTLY = False
-
-from pytcl.plotting.ellipses import covariance_ellipse_points
 
 
 def plot_trajectory_2d(

@@ -5,6 +5,145 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-01-04
+
+### Phase 2 Infrastructure Improvements
+
+Major infrastructure release completing Phase 2 of the v2.0.0 roadmap: unified spatial index interface, custom exception hierarchy, and optional dependencies system.
+
+### Added
+
+**Phase 2.1 - Spatial Index Interface Standardization**
+- **Base classes** (`pytcl/containers/base.py`):
+  - `BaseSpatialIndex` - Abstract base for all spatial indices
+  - `MetricSpatialIndex` - Abstract base for metric-space indices
+  - `NeighborResult` - Unified query result type (indices + distances)
+  - `validate_query_input()` - Common input validation
+- **Unified query interface** across KDTree, BallTree, RTree, VPTree, CoverTree:
+  - `query(X, k)` → `NeighborResult` (k-nearest neighbors)
+  - `query_ball_point(X, r)` → `List[List[int]]` (radius search)
+  - `query_radius(X, r)` → `List[List[int]]` (alias for compatibility)
+- **Backward compatibility aliases**: `SpatialQueryResult`, `NearestNeighborResult`, `VPTreeResult`, `CoverTreeResult`
+
+**Phase 2.2 - Custom Exception Hierarchy**
+- **16 exception types** in `pytcl/core/exceptions.py`:
+  - `TCLError` - Base exception for all TCL errors
+  - Validation: `ValidationError`, `DimensionError`, `ParameterError`, `RangeError`
+  - Computation: `ComputationError`, `ConvergenceError`, `NumericalError`, `SingularMatrixError`
+  - State: `StateError`, `UninitializedError`, `EmptyContainerError`
+  - Configuration: `ConfigurationError`, `MethodError`, `DependencyError`
+  - Data: `DataError`, `FormatError`, `ParseError`
+
+**Phase 2.3 - Optional Dependencies System**
+- **Core module** (`pytcl/core/optional_deps.py`):
+  - `is_available(package)` - Cached availability check
+  - `import_optional(module, ...)` - Import with DependencyError
+  - `@requires(*packages)` - Decorator for optional dependency functions
+  - `check_dependencies(*packages)` - Validate multiple packages
+  - `LazyModule` - Deferred module loading
+  - `PACKAGE_EXTRAS` / `PACKAGE_FEATURES` - Configuration mappings
+- **Updated modules** to use new system:
+  - `pytcl/plotting/coordinates.py` - `@requires("plotly")` decorator
+  - `pytcl/plotting/ellipses.py` - `@requires("plotly")` decorator
+  - `pytcl/plotting/tracks.py` - `is_available("plotly")` pattern
+  - `pytcl/plotting/metrics.py` - `is_available("plotly")` pattern
+  - `pytcl/mathematical_functions/transforms/wavelets.py` - `is_available("pywt")`
+  - `pytcl/astronomical/ephemerides.py` - `DependencyError` for jplephem
+  - `pytcl/terrain/loaders.py` - `DependencyError` for netCDF4
+
+### Changed
+- All spatial index classes now inherit from `BaseSpatialIndex` or `MetricSpatialIndex`
+- Query methods return `NeighborResult` NamedTuple instead of separate arrays
+- Optional dependency errors now raise `DependencyError` with install hints
+
+### Quality Metrics
+- ✅ **2,133 tests** passing (63 new tests for Phase 2)
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+- ✅ **Full backward compatibility** maintained
+
+## [1.8.2] - 2026-01-04
+
+### Phase 2.2 Custom Exception Hierarchy
+
+Implemented comprehensive custom exception hierarchy for consistent error handling across the library.
+
+### Added
+- **Custom exception module** (`pytcl/core/exceptions.py`):
+  - `TCLError` - Base exception for all TCL errors
+  - **Validation errors** (extend ValueError):
+    - `ValidationError` - Input validation failures
+    - `DimensionError` - Array shape/dimension mismatches
+    - `ParameterError` - Invalid parameter values
+    - `RangeError` - Out-of-range values
+  - **Computation errors** (extend RuntimeError):
+    - `ComputationError` - Numerical computation failures
+    - `ConvergenceError` - Iterative algorithm non-convergence
+    - `NumericalError` - Numerical stability issues
+    - `SingularMatrixError` - Singular matrix operations
+  - **State errors**:
+    - `StateError` - Object state violations
+    - `UninitializedError` - Object not initialized
+    - `EmptyContainerError` - Container has no elements
+  - **Configuration errors**:
+    - `ConfigurationError` - Configuration/setup issues
+    - `MethodError` - Invalid method selection (extends ValueError)
+    - `DependencyError` - Missing optional dependency (extends ImportError)
+  - **Data errors**:
+    - `DataError` - Data format/structure issues
+    - `FormatError` - Invalid data format
+    - `ParseError` - Data parsing failures
+
+- **Exception tests** (`tests/test_exceptions.py`):
+  - 29 tests covering hierarchy, attributes, and catching patterns
+
+### Changed
+- `pytcl/core/validation.py` now imports `ValidationError` from exceptions module
+- `pytcl/core/__init__.py` exports all 16 exception classes
+
+### Quality Metrics
+- ✅ **2,099 tests** passing (29 new exception tests)
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+
+## [1.8.1] - 2026-01-04
+
+### Phase 1 v2.0.0 Completion: Architecture & Code Quality
+
+Completed all Phase 1 items from the v2.0.0 roadmap: circular imports resolution, module exports, and Kalman filter code consolidation.
+
+### Added
+- **Kalman filter types module** (`pytcl/dynamic_estimation/kalman/types.py`):
+  - Centralized NamedTuple types: `SRKalmanState`, `SRKalmanPrediction`, `SRKalmanUpdate`, `UDState`
+  - Eliminates circular imports between `sr_ukf.py` and `square_root.py`
+
+- **Matrix utilities module** (`pytcl/dynamic_estimation/kalman/matrix_utils.py`):
+  - `cholesky_update()` - Rank-1 Cholesky update/downdate (moved from square_root.py)
+  - `qr_update()` - QR-based covariance square root update (moved from square_root.py)
+  - `ensure_symmetric()` - Covariance matrix symmetry enforcement
+  - `compute_matrix_sqrt()` - Cholesky with eigendecomposition fallback
+  - `compute_innovation_likelihood()` - Gaussian likelihood computation
+  - `compute_mahalanobis_distance()` - Mahalanobis distance metric
+  - `compute_merwe_weights()` - Van der Merwe scaled UKF sigma point weights
+
+- **Module `__all__` exports** for public API definition:
+  - `pytcl/core/constants.py` - 52 exports (physical constants, ellipsoids, time constants)
+  - `pytcl/astronomical/relativity.py` - 14 exports (5 constants + 9 functions)
+  - `pytcl/mathematical_functions/signal_processing/detection.py` - 12 exports (CFAR functions)
+
+### Changed
+- **Circular import resolution**: Refactored `sr_ukf.py` and `square_root.py` to import from centralized `types.py` and `matrix_utils.py` modules
+- **Removed `# noqa: E402` comments**: All late imports in `square_root.py` moved to top level
+- **Backward compatibility maintained**: All existing imports continue to work
+
+### Fixed
+- Circular import between `sr_ukf.py` and `square_root.py` (Phase 1.2)
+- Missing `__all__` exports in 3 modules (Phase 1.3)
+- Code duplication across Kalman filter implementations (Phase 1.4)
+
+### Quality Metrics
+- ✅ **2,070 tests** passing
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+- ✅ **No circular imports** in Kalman filter module
+
 ## [1.8.0] - 2026-01-04
 
 ### Major Performance Improvements

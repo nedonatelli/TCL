@@ -25,13 +25,14 @@ from typing import Any, Callable, List, NamedTuple, Optional, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-# Try to import pywavelets for DWT support
-try:
-    import pywt
+from pytcl.core.optional_deps import is_available
 
-    PYWT_AVAILABLE = True
-except ImportError:
-    PYWT_AVAILABLE = False
+# Use the unified availability check
+PYWT_AVAILABLE = is_available("pywt")
+
+# Import pywavelets if available (for use in functions)
+if PYWT_AVAILABLE:
+    import pywt
 
 
 # =============================================================================

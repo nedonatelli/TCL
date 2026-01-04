@@ -8,23 +8,15 @@ as starting points for your own applications.
 
 .. raw:: html
 
-   <script>
-   // Auto-resize iframes based on content height
-   window.addEventListener('message', function(e) {
-       if (e.data && e.data.type === 'iframe-resize') {
-           var iframes = document.querySelectorAll('iframe');
-           iframes.forEach(function(iframe) {
-               try {
-                   if (iframe.contentWindow === e.source) {
-                       iframe.style.height = (e.data.height + 20) + 'px';
-                   }
-               } catch(err) {}
-           });
-       }
-   });
-   </script>
    <style>
-   .plotly-iframe { min-height: 400px; border: none; }
+   .plotly-iframe {
+       width: 100%;
+       height: 550px;
+       border: none;
+       border-radius: 8px;
+       background: var(--pytcl-bg-secondary, #0d1117);
+       margin-bottom: 1rem;
+   }
    </style>
 
 .. contents:: Example Categories

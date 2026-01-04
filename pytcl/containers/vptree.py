@@ -12,30 +12,20 @@ References
 """
 
 import logging
-from typing import Any, Callable, List, NamedTuple, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import MetricSpatialIndex, validate_query_input
+from pytcl.containers.base import VPTreeResult  # Backward compatibility alias
+from pytcl.containers.base import (
+    MetricSpatialIndex,
+    NeighborResult,
+    validate_query_input,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.containers.vptree")
-
-
-class VPTreeResult(NamedTuple):
-    """Result of VP-tree query.
-
-    Attributes
-    ----------
-    indices : ndarray
-        Indices of nearest neighbors.
-    distances : ndarray
-        Distances to nearest neighbors.
-    """
-
-    indices: NDArray[np.intp]
-    distances: NDArray[np.floating]
 
 
 class VPNode:
@@ -154,7 +144,7 @@ class VPTree(MetricSpatialIndex):
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> VPTreeResult:
+    ) -> NeighborResult:
         """
         Query the tree for k nearest neighbors.
 
@@ -167,7 +157,7 @@ class VPTree(MetricSpatialIndex):
 
         Returns
         -------
-        result : VPTreeResult
+        result : NeighborResult
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
@@ -184,7 +174,9 @@ class VPTree(MetricSpatialIndex):
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
-        return VPTreeResult(indices=all_indices, distances=all_distances)
+        return NeighborResult(indices=all_indices, distances=all_distances)
+
+    # query_ball_point inherited from BaseSpatialIndex
 
     def _query_single(
         self,
@@ -295,7 +287,8 @@ class VPTree(MetricSpatialIndex):
 
 
 __all__ = [
-    "VPTreeResult",
+    "NeighborResult",
+    "VPTreeResult",  # Backward compatibility alias
     "VPNode",
     "VPTree",
 ]

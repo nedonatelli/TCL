@@ -21,8 +21,6 @@ This is empirically faster than pure successive shortest paths because:
 - Better cache locality
 """
 
-from typing import Any
-
 import numpy as np
 from numpy.typing import NDArray
 

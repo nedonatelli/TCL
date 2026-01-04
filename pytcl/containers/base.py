@@ -4,6 +4,11 @@ Base classes for spatial data structures.
 This module provides abstract base classes that define the common interface
 for spatial indexing data structures like KD-trees, VP-trees, R-trees, and
 Cover trees.
+
+The unified interface ensures all spatial indices provide consistent:
+- Constructor patterns (data, optional parameters)
+- Query methods (query, query_radius, query_ball_point)
+- Return types (NeighborResult)
 """
 
 import logging
@@ -17,19 +22,50 @@ from numpy.typing import ArrayLike, NDArray
 _logger = logging.getLogger("pytcl.containers")
 
 
-class SpatialQueryResult(NamedTuple):
-    """Result of a spatial query.
+class NeighborResult(NamedTuple):
+    """
+    Unified result type for spatial index queries.
+
+    All spatial index implementations (KDTree, BallTree, VPTree, CoverTree,
+    RTree) return this type from their query methods, ensuring a consistent
+    interface across the library.
 
     Attributes
     ----------
-    indices : ndarray
-        Indices of matching points in the original data.
-    distances : ndarray
-        Distances to matching points.
+    indices : ndarray of shape (n_queries, k) or (n_queries,)
+        Indices of the k nearest neighbors in the original data array.
+        For k=1, may be 1D. For k>1, shape is (n_queries, k).
+    distances : ndarray of shape (n_queries, k) or (n_queries,)
+        Distances to the k nearest neighbors.
+        Same shape as indices.
+
+    Examples
+    --------
+    >>> from pytcl.containers import KDTree
+    >>> import numpy as np
+    >>> points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+    >>> tree = KDTree(points)
+    >>> result = tree.query([[0.1, 0.1]], k=2)
+    >>> result.indices
+    array([[0, 2]])
+    >>> result.distances
+    array([[0.14142136, 0.9       ]])
+
+    See Also
+    --------
+    BaseSpatialIndex : Abstract base class for spatial indices.
     """
 
     indices: NDArray[np.intp]
     distances: NDArray[np.floating]
+
+
+# Backward compatibility aliases - all map to NeighborResult
+SpatialQueryResult = NeighborResult
+NearestNeighborResult = NeighborResult
+VPTreeResult = NeighborResult
+CoverTreeResult = NeighborResult
+RTreeResult = NeighborResult
 
 
 class BaseSpatialIndex(ABC):
@@ -82,7 +118,7 @@ class BaseSpatialIndex(ABC):
         self,
         X: ArrayLike,
         k: int = 1,
-    ) -> SpatialQueryResult:
+    ) -> NeighborResult:
         """
         Query the index for k nearest neighbors.
 
@@ -95,7 +131,7 @@ class BaseSpatialIndex(ABC):
 
         Returns
         -------
-        result : SpatialQueryResult
+        result : NeighborResult
             Named tuple with indices and distances of k nearest neighbors
             for each query point.
         """
@@ -124,6 +160,36 @@ class BaseSpatialIndex(ABC):
             within distance r.
         """
         pass
+
+    def query_ball_point(
+        self,
+        X: ArrayLike,
+        r: float,
+    ) -> List[List[int]]:
+        """
+        Query the index for all points within radius r.
+
+        This is an alias for :meth:`query_radius` provided for compatibility
+        with scipy.spatial.KDTree.
+
+        Parameters
+        ----------
+        X : array_like
+            Query points of shape (n_queries, n_features) or (n_features,).
+        r : float
+            Search radius.
+
+        Returns
+        -------
+        indices : list of list of int
+            For each query point, a list of indices of data points
+            within distance r.
+
+        See Also
+        --------
+        query_radius : The underlying implementation.
+        """
+        return self.query_radius(X, r)
 
     def __len__(self) -> int:
         """Return number of indexed points."""
@@ -212,8 +278,15 @@ def validate_query_input(
 
 
 __all__ = [
-    "SpatialQueryResult",
+    # Primary types
+    "NeighborResult",
     "BaseSpatialIndex",
     "MetricSpatialIndex",
     "validate_query_input",
+    # Backward compatibility aliases
+    "SpatialQueryResult",
+    "NearestNeighborResult",
+    "VPTreeResult",
+    "CoverTreeResult",
+    "RTreeResult",
 ]
