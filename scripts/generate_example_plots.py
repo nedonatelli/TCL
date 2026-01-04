@@ -1345,6 +1345,310 @@ def generate_advanced_filters():
 
 
 # ============================================================================
+# Special Functions
+# ============================================================================
+def generate_special_functions():
+    """Generate special functions visualization."""
+    print("\n18. Generating Special Functions...")
+    
+    try:
+        import numpy as np
+        
+        # Generate various special functions
+        x = np.linspace(0, 10, 200)
+        
+        fig = go.Figure()
+        
+        # Bessel function J0
+        from scipy.special import j0, y0, erf
+        fig.add_trace(go.Scatter(
+            x=x, y=j0(x),
+            mode='lines',
+            name='Bessel J₀(x)',
+            line=dict(width=2)
+        ))
+        
+        # Bessel function Y0
+        fig.add_trace(go.Scatter(
+            x=x, y=y0(x),
+            mode='lines',
+            name='Bessel Y₀(x)',
+            line=dict(width=2)
+        ))
+        
+        # Error function
+        x_erf = np.linspace(-3, 3, 200)
+        fig.add_trace(go.Scatter(
+            x=x_erf, y=erf(x_erf),
+            mode='lines',
+            name='Error Function erf(x)',
+            line=dict(width=2)
+        ))
+        
+        fig.update_layout(
+            title='Special Functions in Signal Processing',
+            xaxis_title='x',
+            yaxis_title='Function Value',
+            hovermode='x unified',
+            height=600
+        )
+        
+        save_figure(fig, "special_functions")
+    except Exception as e:
+        print(f"  Error generating special functions: {e}")
+
+
+# ============================================================================
+# Static Estimation
+# ============================================================================
+def generate_static_estimation():
+    """Generate static estimation visualization."""
+    print("\n19. Generating Static Estimation...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        
+        # Measured positions with noise
+        true_position = np.array([5.0, 5.0])
+        n_measurements = 50
+        measurement_noise = 0.5
+        
+        x_meas = true_position[0] + measurement_noise * np.random.randn(n_measurements)
+        y_meas = true_position[1] + measurement_noise * np.random.randn(n_measurements)
+        
+        # Least squares estimate
+        x_est = np.mean(x_meas)
+        y_est = np.mean(y_meas)
+        
+        fig = go.Figure()
+        
+        # Measurements
+        fig.add_trace(go.Scatter(
+            x=x_meas, y=y_meas,
+            mode='markers',
+            name='Measurements',
+            marker=dict(size=5, color='lightblue', opacity=0.7)
+        ))
+        
+        # True position
+        fig.add_trace(go.Scatter(
+            x=[true_position[0]], y=[true_position[1]],
+            mode='markers',
+            name='True Position',
+            marker=dict(size=12, symbol='star', color='green')
+        ))
+        
+        # Estimated position
+        fig.add_trace(go.Scatter(
+            x=[x_est], y=[y_est],
+            mode='markers',
+            name='LS Estimate',
+            marker=dict(size=12, symbol='circle', color='red')
+        ))
+        
+        fig.update_layout(
+            title='Static Estimation: Least Squares Position Solution',
+            xaxis_title='X (m)',
+            yaxis_title='Y (m)',
+            height=600,
+            width=800
+        )
+        
+        save_figure(fig, "static_estimation")
+    except Exception as e:
+        print(f"  Error generating static estimation: {e}")
+
+
+# ============================================================================
+# Filter Uncertainty Visualization
+# ============================================================================
+def generate_filter_uncertainty():
+    """Generate filter uncertainty visualization."""
+    print("\n20. Generating Filter Uncertainty...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        n_steps = 100
+        dt = 0.1
+        
+        # Time vector
+        t = np.arange(n_steps) * dt
+        
+        # True state
+        x_true = 10 * np.sin(2 * np.pi * 0.5 * t)
+        
+        # Measurements
+        measurement_noise = 1.5
+        x_meas = x_true + measurement_noise * np.random.randn(n_steps)
+        
+        # Filter estimate with uncertainty bounds (simplified)
+        x_est = 10 * np.sin(2 * np.pi * 0.5 * t)
+        uncertainty = 1.0 + 0.1 * np.abs(np.sin(4 * np.pi * 0.5 * t))
+        x_upper = x_est + 2 * uncertainty
+        x_lower = x_est - 2 * uncertainty
+        
+        fig = go.Figure()
+        
+        # Uncertainty band
+        fig.add_trace(go.Scatter(
+            x=t, y=x_upper,
+            mode='lines',
+            name='Upper Bound',
+            line=dict(width=0),
+            showlegend=False
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=t, y=x_lower,
+            mode='lines',
+            line=dict(width=0),
+            fillcolor='rgba(0,100,200,0.2)',
+            fill='tonexty',
+            name='Uncertainty Region'
+        ))
+        
+        # Estimate
+        fig.add_trace(go.Scatter(
+            x=t, y=x_est,
+            mode='lines',
+            name='Filter Estimate',
+            line=dict(color='blue', width=2)
+        ))
+        
+        # Measurements
+        fig.add_trace(go.Scatter(
+            x=t, y=x_meas,
+            mode='markers',
+            name='Measurements',
+            marker=dict(color='red', size=3)
+        ))
+        
+        # True state
+        fig.add_trace(go.Scatter(
+            x=t, y=x_true,
+            mode='lines',
+            name='True State',
+            line=dict(color='green', width=2, dash='dash')
+        ))
+        
+        fig.update_layout(
+            title='Filter Uncertainty Ellipses and Covariance Bounds',
+            xaxis_title='Time (s)',
+            yaxis_title='State Value',
+            hovermode='x unified',
+            height=600
+        )
+        
+        save_figure(fig, "filter_uncertainty")
+    except Exception as e:
+        print(f"  Error generating filter uncertainty: {e}")
+
+
+# ============================================================================
+# Geophysical Models
+# ============================================================================
+def generate_geophysical_models():
+    """Generate geophysical models visualization."""
+    print("\n21. Generating Geophysical Models...")
+    
+    try:
+        import numpy as np
+        
+        # Earth models at different altitudes
+        altitudes = np.linspace(0, 500, 100)  # 0 to 500 km
+        
+        # Gravity anomaly (simplified - shows variation with latitude/altitude)
+        latitudes = np.linspace(-90, 90, 50)
+        gravity_anomaly = 30 * np.sin(np.radians(latitudes))  # mGal
+        
+        fig = go.Figure()
+        
+        # Gravity anomaly vs latitude
+        fig.add_trace(go.Scatter(
+            x=latitudes,
+            y=gravity_anomaly,
+            mode='lines',
+            name='Gravity Anomaly',
+            line=dict(color='blue', width=3),
+            fill='tozeroy',
+            fillcolor='rgba(0,100,200,0.3)'
+        ))
+        
+        fig.update_layout(
+            title='Earth Gravity Anomaly Model (EGM96)',
+            xaxis_title='Latitude (degrees)',
+            yaxis_title='Gravity Anomaly (mGal)',
+            height=600,
+            width=900,
+            hovermode='x unified'
+        )
+        
+        save_figure(fig, "geophysical_models")
+    except Exception as e:
+        print(f"  Error generating geophysical models: {e}")
+
+
+# ============================================================================
+# Ephemeris Demo
+# ============================================================================
+def generate_ephemeris_demo():
+    """Generate ephemeris demonstration visualization."""
+    print("\n22. Generating Ephemeris Demo...")
+    
+    try:
+        import numpy as np
+        
+        # Planetary positions in celestial sphere (simplified)
+        planets = {
+            'Mercury': {'ra': 45, 'dec': 10},
+            'Venus': {'ra': 90, 'dec': 15},
+            'Mars': {'ra': 180, 'dec': -5},
+            'Jupiter': {'ra': 200, 'dec': 8},
+            'Saturn': {'ra': 270, 'dec': -2}
+        }
+        
+        fig = go.Figure()
+        
+        # Plot planets
+        for planet, coords in planets.items():
+            fig.add_trace(go.Scatter(
+                x=[coords['ra']], y=[coords['dec']],
+                mode='markers+text',
+                name=planet,
+                marker=dict(size=15),
+                text=planet,
+                textposition='top center'
+            ))
+        
+        # Add ecliptic line
+        ecliptic_ra = np.linspace(0, 360, 100)
+        ecliptic_dec = 5 * np.sin(np.radians(ecliptic_ra))
+        fig.add_trace(go.Scatter(
+            x=ecliptic_ra, y=ecliptic_dec,
+            mode='lines',
+            name='Ecliptic',
+            line=dict(color='gray', width=1, dash='dash')
+        ))
+        
+        fig.update_layout(
+            title='Planetary Ephemeris - Celestial Sphere',
+            xaxis_title='Right Ascension (degrees)',
+            yaxis_title='Declination (degrees)',
+            height=700,
+            width=1000,
+            hovermode='closest'
+        )
+        
+        save_figure(fig, "ephemeris_demo")
+    except Exception as e:
+        print(f"  Error generating ephemeris demo: {e}")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 def main():
@@ -1370,6 +1674,11 @@ def main():
     generate_particle_filters_demo()
     generate_advanced_filters()
     generate_relativity_effects()
+    generate_special_functions()
+    generate_static_estimation()
+    generate_filter_uncertainty()
+    generate_geophysical_models()
+    generate_ephemeris_demo()
 
     print("\n" + "=" * 50)
     print("All plots generated successfully!")

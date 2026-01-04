@@ -25,6 +25,17 @@ Filtering & Estimation
 
    * - :download:`kalman_filter_comparison.py <../../examples/kalman_filter_comparison.py>`
      - Compare Linear Kalman Filter, EKF, and UKF performance
+
+**Filter Uncertainty Visualization**: Visualize filter covariance ellipses and uncertainty propagation.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/filter_uncertainty.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
    * - :download:`filter_uncertainty_visualization.py <../../examples/filter_uncertainty_visualization.py>`
      - Visualize filter covariance ellipses and uncertainty propagation
 
@@ -42,6 +53,10 @@ Filtering & Estimation
      - Constrained EKF, Gaussian Sum Filter, and Rao-Blackwellized Particle Filter
 
 **RTS Smoother vs Kalman Filter**: Fixed-interval smoothing improves estimates using future measurements.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -121,6 +136,10 @@ Data Association
 ----------------
 
 **Assignment Algorithms**: Interactive cost matrix visualization for 2D assignment.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -215,6 +234,10 @@ Navigation & Geodesy
 
 **Navigation Trajectory**: INS trajectory with measurement noise and integration errors.
 
+.. raw:: html
+
+   <iframe src="../_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
 .. list-table::
    :widths: 30 70
    :header-rows: 0
@@ -228,6 +251,10 @@ Transforms
 ----------
 
 **FFT Analysis**: Time and frequency domain visualization of multi-frequency signal.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 .. list-table::
    :widths: 30 70
@@ -268,6 +295,12 @@ Orbital Mechanics
 Geophysical Models
 ------------------
 
+**Earth Gravity and Magnetic Field Models**: EGM96/EGM2008 gravity anomaly and WMM/IGRF magnetic field.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/geophysical_models.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
 .. list-table::
    :widths: 30 70
    :header-rows: 0
@@ -278,12 +311,50 @@ Geophysical Models
 Static Estimation
 -----------------
 
+**Static Position Estimation**: Least squares, weighted least squares, and RANSAC estimation.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/static_estimation.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
 .. list-table::
    :widths: 30 70
    :header-rows: 0
 
    * - :download:`static_estimation.py <../../examples/static_estimation.py>`
      - Weighted least squares, RANSAC, batch estimation
+
+Special Functions
+-----------------
+
+**Mathematical Special Functions**: Bessel functions, error function, and other special functions used in signal processing.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/special_functions.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :download:`special_functions_demo.py <../../examples/special_functions_demo.py>`
+     - Bessel, Marcum Q, Lambert W, hypergeometric functions
+
+Ephemeris & Celestial Mechanics
+-------------------------------
+
+**Planetary Ephemeris**: JPL Development Ephemeris (DE) planetary positions and celestial mechanics.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/ephemeris_demo.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :download:`ephemeris_demo.py <../../examples/ephemeris_demo.py>`
+     - JPL ephemeris access, planetary positions, celestial coordinates
 
 
 Running Examples
