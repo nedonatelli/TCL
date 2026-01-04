@@ -12,7 +12,7 @@ References
 """
 
 from enum import Enum
-from typing import List, Literal, NamedTuple, Optional
+from typing import Any, List, Literal, NamedTuple, Optional
 
 import numpy as np
 from numba import njit
@@ -72,7 +72,7 @@ class HierarchicalResult(NamedTuple):
 
 
 @njit(cache=True)
-def _compute_distance_matrix_jit(X: np.ndarray) -> np.ndarray:
+def _compute_distance_matrix_jit(X: np.ndarray[Any, Any]) -> np.ndarray[Any, Any]:
     """JIT-compiled pairwise Euclidean distance computation."""
     n = X.shape[0]
     n_features = X.shape[1]
@@ -112,43 +112,43 @@ def compute_distance_matrix(
 
 
 def _single_linkage(
-    dist_i: NDArray,
-    dist_j: NDArray,
+    dist_i: NDArray[Any],
+    dist_j: NDArray[Any],
     size_i: int,
     size_j: int,
-) -> NDArray:
+) -> NDArray[Any]:
     """Single linkage: minimum of distances."""
     return np.minimum(dist_i, dist_j)
 
 
 def _complete_linkage(
-    dist_i: NDArray,
-    dist_j: NDArray,
+    dist_i: NDArray[Any],
+    dist_j: NDArray[Any],
     size_i: int,
     size_j: int,
-) -> NDArray:
+) -> NDArray[Any]:
     """Complete linkage: maximum of distances."""
     return np.maximum(dist_i, dist_j)
 
 
 def _average_linkage(
-    dist_i: NDArray,
-    dist_j: NDArray,
+    dist_i: NDArray[Any],
+    dist_j: NDArray[Any],
     size_i: int,
     size_j: int,
-) -> NDArray:
+) -> NDArray[Any]:
     """Average linkage: weighted average of distances."""
     return (size_i * dist_i + size_j * dist_j) / (size_i + size_j)
 
 
 def _ward_linkage(
-    dist_i: NDArray,
-    dist_j: NDArray,
+    dist_i: NDArray[Any],
+    dist_j: NDArray[Any],
     size_i: int,
     size_j: int,
-    size_k: NDArray,
+    size_k: NDArray[Any],
     dist_ij: float,
-) -> NDArray:
+) -> NDArray[Any]:
     """Ward's linkage: minimum variance merge."""
     total = size_i + size_j + size_k
     return np.sqrt(
