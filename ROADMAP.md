@@ -866,6 +866,81 @@ The following table shows feature parity with the [original MATLAB TCL](https://
 | Version | Focus | Target Features |
 |---------|-------|-----------------|
 | **v1.7.0+** | Advanced Optimizations | Domain-specific optimizations, advanced features |
+| **v1.7.2** | Repository Maintenance | Git LFS cleanup, test consolidation |
+| **v1.7.3** | Maintenance Release | Repository cleanup, test framework updates |
+| **v2.0.0** | **Major Architectural Upgrade** | See [V2_0_0_ROADMAP.md](V2_0_0_ROADMAP.md) for comprehensive 18-month plan |
+
+### v2.0.0 Phase 6: Test Expansion & Coverage Improvement
+
+**Current Status:** 2,057 tests, 76% line coverage | **Target:** 2,100+ tests, 80%+ line coverage
+
+**Timeline:** Months 7-12 (concurrent with GPU optimization)
+
+#### Key Coverage Improvements
+
+| Module | Current | Target | Test Count | Focus Areas |
+|--------|---------|--------|-----------|-------------|
+| `kalman/sr_ukf.py` | 6% | 50%+ | 20 new | State prediction, covariance updates, numerical stability |
+| `kalman/ud_filter.py` | 11% | 60%+ | 15 new | U-D factorization, measurement updates, positive definite maintenance |
+| `kalman/square_root.py` | 19% | 70%+ | 15 new | Square-root decomposition, Cholesky updates, singular recovery |
+| `dynamic_estimation/imm.py` | 21% | 60%+ | 15 new | Mode transitions, likelihood evaluation, state merging |
+| `signal_processing/detection.py` | 34% | 65%+ | 20 new | CFAR variants, ROC curves, threshold selection |
+| `signal_processing/filters.py` | 61% | 75%+ | 10 new | Filter design, frequency response, phase distortion |
+| `terrain/loaders.py` | 60% | 80%+ | 15 new | Error paths, invalid formats, coordinate validation |
+| **Network Flow** (13 skipped) | 0% pass | 100% pass | Re-enable | Bellman-Ford → Network simplex algorithm (Phase 1) |
+| **Integration & Property Tests** | - | - | 10 new | Workflow validation, algorithmic invariants |
+| **Total** | **76%** | **80%+** | **+50 tests** | **15 weeks effort** |
+
+#### Implementation Strategy
+
+1. **Kalman Filter Variants (20 tests, 3 weeks)**
+   - Unit tests for state prediction accuracy across dimensions (1D-100D)
+   - Covariance update tests ensuring positive definiteness
+   - Edge cases: singular initial conditions, large noise, low SNR scenarios
+   - Benchmarks: numerical stability vs standard Kalman filters
+
+2. **IMM Filter (15 tests, 2 weeks)**
+   - Mode probability transition validation
+   - Multi-model likelihood evaluation
+   - State estimate merging consistency
+   - Real-world scenarios: target maneuvers, mode switches
+
+3. **Detection (20 tests, 3 weeks)**
+   - CFAR detector variants (CA-CFAR, OS-CFAR, GO-CFAR)
+   - ROC curve generation and validation
+   - Threshold selection algorithms
+   - Multi-hypothesis detection scenarios
+
+4. **Signal Processing Filters (10 tests, 2 weeks)**
+   - Filter design edge cases
+   - Frequency response validation
+   - Phase distortion analysis
+   - Low/high pass transition behavior
+
+5. **Terrain Loaders (15 tests, 2 weeks)**
+   - Missing file error handling
+   - Corrupted data detection
+   - Invalid format rejection
+   - Out-of-bounds query handling
+   - Permission error management
+
+6. **Integration & Property Tests (10 tests, 2 weeks)**
+   - Hypothesis property-based tests for algorithm invariants
+   - End-to-end tracking pipeline validation
+   - Cross-module data flow verification
+   - Coordinate transform round-trip properties
+
+#### Network Flow Tests Re-enablement
+
+**Phase 1 Prerequisite:** Implement network simplex algorithm (replaces O(VE²) Bellman-Ford with O(VE log V))
+
+**Outcome:** 13 currently skipped tests in `test_network_flow.py` (lines 85-215) will pass automatically once Phase 1 completes
+
+**Acceptance Criteria:**
+- All 50+ new tests added and passing
+- Coverage metrics reach 80%+ for targeted modules
+- No test flakiness or performance regressions
+- Documented test patterns for future enhancements
 
 ---
 
