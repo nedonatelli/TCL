@@ -60,7 +60,8 @@ def demo_bessel_functions() -> None:
                 y=j0,
                 mode="lines",
                 name="J₀(x)",
-                line=dict(color="blue"),
+                line=dict(color="blue", width=2),
+                hovertemplate="<b>J₀(x)</b><br>x: %{x:.3f}<br>J₀(x): %{y:.6f}<extra></extra>",
             ),
             row=1,
             col=1,
@@ -71,7 +72,8 @@ def demo_bessel_functions() -> None:
                 y=j1,
                 mode="lines",
                 name="J₁(x)",
-                line=dict(color="red"),
+                line=dict(color="red", width=2),
+                hovertemplate="<b>J₁(x)</b><br>x: %{x:.3f}<br>J₁(x): %{y:.6f}<extra></extra>",
             ),
             row=1,
             col=1,
@@ -84,7 +86,8 @@ def demo_bessel_functions() -> None:
                 y=y0,
                 mode="lines",
                 name="Y₀(x)",
-                line=dict(color="blue"),
+                line=dict(color="blue", width=2),
+                hovertemplate="<b>Y₀(x)</b><br>x: %{x:.3f}<br>Y₀(x): %{y:.6f}<extra></extra>",
             ),
             row=1,
             col=2,
@@ -95,7 +98,8 @@ def demo_bessel_functions() -> None:
                 y=y1,
                 mode="lines",
                 name="Y₁(x)",
-                line=dict(color="red"),
+                line=dict(color="red", width=2),
+                hovertemplate="<b>Y₁(x)</b><br>x: %{x:.3f}<br>Y₁(x): %{y:.6f}<extra></extra>",
             ),
             row=1,
             col=2,
@@ -106,7 +110,14 @@ def demo_bessel_functions() -> None:
         fig.update_xaxes(title_text="x", row=1, col=2)
         fig.update_yaxes(title_text="Function Value", row=1, col=2)
 
-        fig.update_layout(height=500, title_text="Bessel Functions")
+        fig.update_layout(
+            height=500,
+            title_text="Bessel Functions of the First and Second Kind",
+            hovermode="x unified",
+            plot_bgcolor="rgba(240,240,240,0.5)",
+            showlegend=True,
+            legend=dict(x=0.02, y=0.98),
+        )
         fig.show()
 
 
@@ -129,6 +140,7 @@ def demo_higher_order_bessel() -> None:
         # Plot multiple orders
         fig = go.Figure()
 
+        colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
         for n in range(5):
             jn_vals = besselj(n, x)
             fig.add_trace(
@@ -137,7 +149,8 @@ def demo_higher_order_bessel() -> None:
                     y=jn_vals,
                     mode="lines",
                     name=f"J_{n}(x)",
-                    line=dict(width=2),
+                    line=dict(width=2.5, color=colors[n]),
+                    hovertemplate=f"<b>J_{n}(x)</b><br>x: %{{x:.3f}}<br>J_{n}(x): %{{y:.6f}}<extra></extra>",
                 )
             )
 
@@ -147,6 +160,9 @@ def demo_higher_order_bessel() -> None:
             yaxis_title="J_n(x)",
             height=500,
             hovermode="x unified",
+            plot_bgcolor="rgba(240,240,240,0.5)",
+            showlegend=True,
+            legend=dict(x=0.65, y=0.95),
         )
         fig.show()
 

@@ -14,6 +14,8 @@ The example covers:
 """
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from pytcl.astronomical import (
     DEEphemeris,
@@ -24,6 +26,168 @@ from pytcl.astronomical import (
     sun_position,
 )
 from pytcl.astronomical.relativity import AU
+
+SHOW_PLOTS = True
+
+
+def plot_sun_earth_moon_positions(
+    jd: float, title: str = "Sun-Earth-Moon System Configuration"
+) -> None:
+    """Plot Sun, Earth, and Moon positions in 3D."""
+    earth_pos = np.array([1.0, 0.0, 0.0]) * AU  # Earth at ~1 AU
+    r_sun, _ = sun_position(jd)
+    r_moon, _ = moon_position(jd)
+
+    fig = go.Figure()
+
+    # Sun (scaled down for visibility)
+    fig.add_trace(
+        go.Scatter3d(
+            x=[r_sun[0] / AU],
+            y=[r_sun[1] / AU],
+            z=[r_sun[2] / AU],
+            mode="markers+text",
+            marker=dict(size=12, color="yellow", symbol="circle"),
+            text=["Sun"],
+            textposition="top center",
+            name="Sun",
+            hovertemplate="<b>Sun</b><br>Distance from origin: "
+            f"{np.linalg.norm(r_sun)/AU:.3f} AU<extra></extra>",
+        )
+    )
+
+    # Earth
+    fig.add_trace(
+        go.Scatter3d(
+            x=[earth_pos[0] / AU],
+            y=[earth_pos[1] / AU],
+            z=[earth_pos[2] / AU],
+            mode="markers+text",
+            marker=dict(size=8, color="blue", symbol="circle"),
+            text=["Earth"],
+            textposition="top center",
+            name="Earth",
+            hovertemplate="<b>Earth</b><br>Distance from Sun: "
+            f"{np.linalg.norm(earth_pos - r_sun)/AU:.3f} AU<extra></extra>",
+        )
+    )
+
+    # Moon (displaced from Earth for visibility)
+    moon_distance = np.linalg.norm(r_moon) / 1e6
+    fig.add_trace(
+        go.Scatter3d(
+            x=[r_moon[0] / AU],
+            y=[r_moon[1] / AU],
+            z=[r_moon[2] / AU],
+            mode="markers+text",
+            marker=dict(size=5, color="gray", symbol="circle"),
+            text=["Moon"],
+            textposition="top center",
+            name="Moon",
+            hovertemplate="<b>Moon</b><br>Distance from Earth: "
+            f"{moon_distance:.1f} km<extra></extra>",
+        )
+    )
+
+    # Orbital connections
+    fig.add_trace(
+        go.Scatter3d(
+            x=[r_sun[0] / AU, earth_pos[0] / AU],
+            y=[r_sun[1] / AU, earth_pos[1] / AU],
+            z=[r_sun[2] / AU, earth_pos[2] / AU],
+            mode="lines",
+            line=dict(color="orange", width=2),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[earth_pos[0] / AU, r_moon[0] / AU],
+            y=[earth_pos[1] / AU, r_moon[1] / AU],
+            z=[earth_pos[2] / AU, r_moon[2] / AU],
+            mode="lines",
+            line=dict(color="lightblue", width=1, dash="dash"),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+    fig.update_layout(
+        title=title,
+        scene=dict(
+            xaxis_title="X (AU)",
+            yaxis_title="Y (AU)",
+            zaxis_title="Z (AU)",
+            aspectmode="data",
+        ),
+        hovermode="closest",
+        height=600,
+        showlegend=True,
+    )
+
+    if SHOW_PLOTS:
+        fig.show()
+
+
+def plot_orbital_distances(
+    body_name: str, jd_start: float, num_points: int = 100
+) -> None:
+    """Plot distance variation over one year."""
+    if body_name.lower() == "sun":
+        pos_func = sun_position
+        title = "Sun's Distance from Earth (Eccentricity Effect)"
+    elif body_name.lower() == "moon":
+        pos_func = moon_position
+        title = "Moon's Distance from Earth (Orbital Variation)"
+    else:
+        pos_func = lambda jd: planet_position(body_name, jd)
+        title = f"{body_name.capitalize()}'s Distance from Earth"
+
+    jd_array = np.linspace(jd_start, jd_start + 365.25, num_points)
+    distances = []
+    dates = []
+
+    for jd in jd_array:
+        r, _ = pos_func(jd)
+        distances.append(
+            np.linalg.norm(r) / AU
+            if body_name.lower() != "moon"
+            else np.linalg.norm(r) / 1e6
+        )
+        year, month, day, _, _, _ = jd_to_cal(jd)
+        dates.append(f"{year:04d}-{month:02d}-{day:02d}")
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=dates,
+            y=distances,
+            mode="lines+markers",
+            name=f"{body_name} Distance",
+            line=dict(color="steelblue", width=2),
+            marker=dict(size=4),
+            hovertemplate="<b>Date:</b> %{x}<br><b>Distance:</b> %{y:.3f} "
+            + ("AU" if body_name.lower() != "moon" else "km")
+            + "<extra></extra>",
+        )
+    )
+
+    y_label = "Distance (AU)" if body_name.lower() != "moon" else "Distance (km)"
+    fig.update_layout(
+        title=title,
+        xaxis_title="Date",
+        yaxis_title=y_label,
+        hovermode="x unified",
+        height=500,
+        plot_bgcolor="rgba(240,240,240,0.5)",
+        xaxis_tickangle=-45,
+    )
+
+    if SHOW_PLOTS:
+        fig.show()
 
 
 def example_sun_position():
@@ -76,6 +240,9 @@ def example_sun_position():
         f"({100*(max(distances)-min(distances))/np.mean(distances):.2f}%)"
     )
 
+    # Visualize the Sun's orbital distance throughout the year
+    plot_orbital_distances("sun", jd_j2000, num_points=365)
+
 
 def example_moon_position():
     """Query the Moon's position and properties."""
@@ -121,6 +288,13 @@ def example_moon_position():
         f"Variation:          {max(distances) - min(distances):.1f} km "
         f"({100*(max(distances)-min(distances))/np.mean(distances):.1f}%)"
     )
+
+    # Visualize the Sun-Earth-Moon configuration
+    jd_j2000 = 2451545.0
+    plot_sun_earth_moon_positions(jd_j2000)
+
+    # Visualize the Moon's orbital distance variation
+    plot_orbital_distances("moon", jd_j2000, num_points=365)
 
 
 def example_planet_positions():
