@@ -1,1 +1,9 @@
+# Git LFS tracking for generated HTML files (interactive visualizations)
+# These are tracked with LFS to prevent repository bloating while allowing
+# visualization files to be committed. Regenerate with:
+#   python scripts/generate_example_plots.py
 docs/_static/images/examples/*.html filter=lfs diff=lfs merge=lfs -text
+
+# Exclude problematic large files that caused Git LFS issues
+# terrain_demo.html was 4.2GB and should be generated locally if needed
+# docs/_static/images/examples/terrain_demo.html should not be committed

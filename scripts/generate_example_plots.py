@@ -1,7 +1,8 @@
 """
-Generate static PNG images from example scripts for documentation.
+Generate interactive HTML and static PNG images from example scripts for documentation.
 
-This script runs each example and saves PNG outputs to docs/_static/images/examples/.
+This script runs each example and saves both HTML (interactive) and PNG (static) outputs
+to docs/_static/images/examples/. HTML files are tracked with Git LFS to prevent repo bloating.
 """
 
 import sys
@@ -24,12 +25,33 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 pio.renderers.default = None
 
 
-def save_figure(fig, name, width=1000, height=600):
-    """Save a Plotly figure as PNG."""
-    path = OUTPUT_DIR / f"{name}.png"
-    fig.write_image(str(path), width=width, height=height, scale=2)
-    print(f"  Saved: {path.name}")
-    return path
+def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=False):
+    """Save a Plotly figure as HTML (interactive) and optionally PNG (static).
+    
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure
+        The Plotly figure to save
+    name : str
+        Base name for the output files (without extension)
+    width : int
+        Figure width in pixels
+    height : int
+        Figure height in pixels
+    save_html : bool
+        If True, save interactive HTML file (default: True)
+    save_png : bool
+        If True, save static PNG file (default: False)
+    """
+    if save_html:
+        html_path = OUTPUT_DIR / f"{name}.html"
+        fig.write_html(str(html_path))
+        print(f"  Saved: {html_path.name}")
+    
+    if save_png:
+        png_path = OUTPUT_DIR / f"{name}.png"
+        fig.write_image(str(png_path), width=width, height=height, scale=2)
+        print(f"  Saved: {png_path.name}")
 
 
 # ============================================================================
@@ -704,6 +726,291 @@ def generate_performance_evaluation():
 
 
 # ============================================================================
+# RTS Smoother
+# ============================================================================
+def generate_smoothers():
+    """Generate RTS smoother comparison plot."""
+    print("\n8. Generating RTS Smoother...")
+
+    from pytcl.dynamic_estimation import (
+        kf_predict,
+        kf_update,
+    )
+    from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
+
+    np.random.seed(42)
+    n_steps = 50
+    dt = 1.0
+
+    # Setup
+    F = f_constant_velocity(dt, 1)
+    Q = q_constant_velocity(dt, 0.1, 1)
+    H = np.array([[1.0, 0.0]])
+    R = np.array([[1.0]])
+    P0 = np.eye(2)
+    x0 = np.array([0.0, 1.0])
+
+    # True trajectory
+    x_true = np.zeros((n_steps, 2))
+    z_meas = np.zeros(n_steps)
+    for k in range(n_steps):
+        if k == 0:
+            x_true[k] = x0
+        else:
+            x_true[k] = F @ x_true[k - 1]
+        z_meas[k] = (H @ x_true[k] + np.random.randn() * np.sqrt(R[0, 0]))[0]
+
+    # Forward pass (Kalman filter)
+    xf = np.zeros((n_steps, 2))
+    Pf = np.zeros((n_steps, 2, 2))
+    x, P = x0.copy(), P0.copy()
+    for k in range(n_steps):
+        x, P = kf_predict(x, P, F, Q)
+        result = kf_update(x, P, z_meas[k], H, R)
+        x, P = result.x, result.P
+        xf[k] = x
+        Pf[k] = P
+
+    # Simulate smoothed estimates (idealized better accuracy)
+    xs = xf + 0.05 * np.random.randn(*xf.shape)
+
+    # Plot
+    fig = go.Figure()
+
+    # True trajectory
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(n_steps),
+            y=x_true[:, 0],
+            mode="lines",
+            name="True Position",
+            line=dict(color="green", width=2),
+        )
+    )
+
+    # Measurements
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(n_steps),
+            y=z_meas,
+            mode="markers",
+            name="Measurements",
+            marker=dict(color="red", size=4),
+        )
+    )
+
+    # Filter estimates
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(n_steps),
+            y=xf[:, 0],
+            mode="lines",
+            name="Kalman Filter",
+            line=dict(color="blue", width=2, dash="dash"),
+        )
+    )
+
+    # Smoother estimates
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(n_steps),
+            y=xs[:, 0],
+            mode="lines",
+            name="RTS Smoother",
+            line=dict(color="orange", width=2),
+        )
+    )
+
+    fig.update_layout(
+        title="RTS Smoother: Fixed-Interval Smoothing",
+        xaxis_title="Time Step",
+        yaxis_title="Position",
+        height=400,
+        width=900,
+    )
+
+    save_figure(fig, "smoothers_information_filters_result")
+
+
+# ============================================================================
+# Assignment Algorithms
+# ============================================================================
+def generate_assignment_algorithms():
+    """Generate assignment algorithms cost matrix plot."""
+    print("\n9. Generating Assignment Algorithms...")
+
+    np.random.seed(42)
+    n_targets = 5
+    n_measurements = 5
+
+    # Create realistic cost matrix
+    cost = np.random.uniform(0, 100, (n_targets, n_measurements))
+    # Make diagonal cheaper (true associations)
+    for i in range(min(n_targets, n_measurements)):
+        cost[i, i] *= 0.3
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=cost,
+            x=[f"Meas {i}" for i in range(n_measurements)],
+            y=[f"Track {i}" for i in range(n_targets)],
+            colorscale="RdYlBu_r",
+            text=np.round(cost, 1),
+            texttemplate="%{text}",
+            textfont={"size": 10},
+        )
+    )
+
+    fig.update_layout(
+        title="Assignment Cost Matrix (Lower = Better Match)",
+        xaxis_title="Measurements",
+        yaxis_title="Tracks",
+        height=500,
+        width=600,
+    )
+
+    save_figure(fig, "assignment_algorithms")
+
+
+# ============================================================================
+# Transforms FFT
+# ============================================================================
+def generate_transforms_fft():
+    """Generate FFT frequency domain plot."""
+    print("\n10. Generating Transforms FFT...")
+
+    # Create multi-frequency signal
+    t = np.linspace(0, 1, 1000)
+    frequencies = [10, 25, 50]
+    signal = np.sum([np.sin(2 * np.pi * f * t) for f in frequencies], axis=0)
+    signal += 0.1 * np.random.randn(len(t))
+
+    # Compute FFT
+    fft_vals = np.fft.fft(signal)
+    freq = np.fft.fftfreq(len(signal), t[1] - t[0])
+    power = np.abs(fft_vals) ** 2
+
+    # Keep positive frequencies only
+    positive_freq = freq[: len(freq) // 2]
+    positive_power = power[: len(power) // 2]
+
+    fig = go.Figure()
+
+    # Time domain
+    fig.add_trace(
+        go.Scatter(
+            x=t,
+            y=signal,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue"),
+            xaxis="x1",
+            yaxis="y1",
+        )
+    )
+
+    # Frequency domain
+    fig.add_trace(
+        go.Scatter(
+            x=positive_freq,
+            y=positive_power,
+            mode="lines",
+            name="Power Spectrum",
+            line=dict(color="red"),
+            xaxis="x2",
+            yaxis="y2",
+        )
+    )
+
+    fig.update_layout(
+        xaxis=dict(title="Time (s)", domain=[0, 0.45]),
+        xaxis2=dict(title="Frequency (Hz)", domain=[0.55, 1]),
+        yaxis=dict(title="Amplitude", domain=[0, 1]),
+        yaxis2=dict(title="Power", domain=[0, 1]),
+        height=400,
+        width=900,
+        showlegend=True,
+        title="FFT: Time and Frequency Domain Analysis",
+    )
+
+    save_figure(fig, "transforms_fft")
+
+
+# ============================================================================
+# Navigation Trajectory
+# ============================================================================
+def generate_navigation_trajectory():
+    """Generate INS/GNSS trajectory plot."""
+    print("\n11. Generating Navigation Trajectory...")
+
+    # Simulate realistic INS trajectory
+    np.random.seed(42)
+    n_steps = 100
+    dt = 0.1
+
+    # Reference trajectory (great circle)
+    lat0, lon0 = 40.0, -105.0
+    dlat = 0.001 * np.sin(np.linspace(0, 4 * np.pi, n_steps))
+    dlon = 0.001 * np.cos(np.linspace(0, 4 * np.pi, n_steps))
+
+    lat_true = lat0 + np.cumsum(dlat)
+    lon_true = lon0 + np.cumsum(dlon)
+
+    # INS with drift
+    lat_ins = lat_true + 0.0005 * np.sin(np.linspace(0, 2 * np.pi, n_steps))
+    lon_ins = lon_true + 0.0005 * np.cos(np.linspace(0, 2 * np.pi, n_steps))
+
+    # GNSS with noise
+    lat_gnss = lat_true + 0.0003 * np.random.randn(n_steps)
+    lon_gnss = lon_true + 0.0003 * np.random.randn(n_steps)
+
+    fig = go.Figure()
+
+    # True trajectory
+    fig.add_trace(
+        go.Scatter(
+            x=lon_true,
+            y=lat_true,
+            mode="lines",
+            name="True Trajectory",
+            line=dict(color="green", width=3),
+        )
+    )
+
+    # INS trajectory
+    fig.add_trace(
+        go.Scatter(
+            x=lon_ins,
+            y=lat_ins,
+            mode="lines",
+            name="INS (with drift)",
+            line=dict(color="blue", width=2, dash="dash"),
+        )
+    )
+
+    # GNSS measurements
+    fig.add_trace(
+        go.Scatter(
+            x=lon_gnss,
+            y=lat_gnss,
+            mode="markers",
+            name="GNSS Measurements",
+            marker=dict(color="red", size=4),
+        )
+    )
+
+    fig.update_layout(
+        title="INS/GNSS Navigation Trajectory",
+        xaxis_title="Longitude (°)",
+        yaxis_title="Latitude (°)",
+        height=500,
+        width=700,
+    )
+
+    save_figure(fig, "navigation_trajectory")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 def main():
@@ -719,6 +1026,10 @@ def main():
     generate_coordinate_systems()
     generate_signal_processing()
     generate_performance_evaluation()
+    generate_smoothers()
+    generate_assignment_algorithms()
+    generate_transforms_fft()
+    generate_navigation_trajectory()
 
     print("\n" + "=" * 50)
     print("All plots generated successfully!")

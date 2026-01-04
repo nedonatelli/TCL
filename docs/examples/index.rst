@@ -30,9 +30,9 @@ Filtering & Estimation
 
 **RTS Smoother vs Kalman Filter**: Fixed-interval smoothing improves estimates using future measurements.
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/smoothers_information_filters_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/kalman_filter_comparison.png
+   :width: 100%
+   :alt: RTS Smoother demonstration
 
 .. list-table::
    :widths: 30 70
@@ -46,7 +46,7 @@ Particle Filters
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/particle_linear_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/particle_filter_resampling.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Particle Filter Tracking**: Interactive visualization of particle filter with resampling.
 
@@ -62,7 +62,7 @@ Multi-Target Tracking
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/multi_target_tracking_result.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/multi_target_tracking.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Multi-Target Tracking**: GNN-based multi-target tracker with track management.
 
@@ -77,9 +77,9 @@ Multi-Target Tracking
 
 **Track Spatial Distribution**: Track positions and spatial relationships in tracking scenario.
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/track_distribution.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/multi_target_tracking.png
+   :width: 100%
+   :alt: Track spatial distribution
 
 .. list-table::
    :widths: 30 70
@@ -91,9 +91,9 @@ Multi-Target Tracking
 Data Association
 ----------------
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/assignment_algorithms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/clustering_comparison.png
+   :width: 100%
+   :alt: Assignment algorithms cost matrix
 
 **Assignment Algorithms**: Interactive cost matrix visualization for 2D assignment.
 
@@ -125,7 +125,7 @@ Clustering & Gaussian Mixtures
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/gaussian_kmeans.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/clustering_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Clustering Comparison**: Interactive K-Means visualization with DBSCAN comparison.
 
@@ -143,7 +143,7 @@ Signal Processing
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/signal_processing_filters.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/signal_processing.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Digital Filters**: Butterworth vs FIR filter frequency response comparison.
 
@@ -159,7 +159,7 @@ Coordinate Systems
 
 .. raw:: html
 
-   <iframe src="../_static/images/examples/coord_viz_rotation_axes.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+   <iframe src="../_static/images/examples/coordinate_rotations.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
 
 **Coordinate Rotations**: 3D visualization of rotation matrices and transformations.
 
@@ -174,16 +174,16 @@ Coordinate Systems
 
 **Spherical-Cartesian Transforms**: Converting between coordinate systems in 3D space.
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/coordinate_systems_transforms.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/coordinate_rotations.png
+   :width: 100%
+   :alt: Spherical-Cartesian coordinate transforms
 
 Navigation & Geodesy
 --------------------
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/navigation_trajectory.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/coordinate_rotations.png
+   :width: 100%
+   :alt: INS/GNSS navigation trajectory
 
 **Navigation Trajectory**: INS trajectory with measurement noise and integration errors.
 
@@ -199,9 +199,9 @@ Navigation & Geodesy
 Transforms
 ----------
 
-.. raw:: html
-
-   <iframe src="../_static/images/examples/transforms_fft.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+.. image:: ../_static/images/examples/signal_processing.png
+   :width: 100%
+   :alt: FFT and frequency domain analysis
 
 **FFT Analysis**: Time and frequency domain visualization of multi-frequency signal.
 
