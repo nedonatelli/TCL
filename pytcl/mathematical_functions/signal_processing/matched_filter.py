@@ -21,7 +21,7 @@ References
        IRE Transactions on Information Theory, 6(3), 311-329.
 """
 
-from typing import NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 
 import numpy as np
 from numba import njit, prange
@@ -553,11 +553,11 @@ def generate_nlfm_chirp(
 
 @njit(cache=True, fastmath=True, parallel=True)
 def _ambiguity_function_kernel(
-    signal: np.ndarray,
-    delays: np.ndarray,
-    dopplers: np.ndarray,
+    signal: np.ndarray[Any, Any],
+    delays: np.ndarray[Any, Any],
+    dopplers: np.ndarray[Any, Any],
     fs: float,
-    af: np.ndarray,
+    af: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled kernel for ambiguity function computation."""
     n_signal = len(signal)
@@ -599,12 +599,12 @@ def _ambiguity_function_kernel(
 
 @njit(cache=True, fastmath=True, parallel=True)
 def _cross_ambiguity_kernel(
-    signal1: np.ndarray,
-    signal2: np.ndarray,
-    delays: np.ndarray,
-    dopplers: np.ndarray,
+    signal1: np.ndarray[Any, Any],
+    signal2: np.ndarray[Any, Any],
+    delays: np.ndarray[Any, Any],
+    dopplers: np.ndarray[Any, Any],
     fs: float,
-    caf: np.ndarray,
+    caf: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled kernel for cross-ambiguity function computation."""
     n_signal = len(signal1)
@@ -651,7 +651,7 @@ def ambiguity_function(
     max_doppler: Optional[float] = None,
     n_delay: int = 256,
     n_doppler: int = 256,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.complexfloating]]:
     """
     Compute the ambiguity function of a signal.
 
@@ -720,7 +720,7 @@ def cross_ambiguity(
     max_doppler: Optional[float] = None,
     n_delay: int = 256,
     n_doppler: int = 256,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.complexfloating]]:
     """
     Compute the cross-ambiguity function between two signals.
 
