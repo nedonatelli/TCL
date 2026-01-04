@@ -30,10 +30,6 @@ Filtering & Estimation
 
 **RTS Smoother vs Kalman Filter**: Fixed-interval smoothing improves estimates using future measurements.
 
-.. image:: ../_static/images/examples/kalman_filter_comparison.png
-   :width: 100%
-   :alt: RTS Smoother demonstration
-
 .. list-table::
    :widths: 30 70
    :header-rows: 0
@@ -77,10 +73,6 @@ Multi-Target Tracking
 
 **Track Spatial Distribution**: Track positions and spatial relationships in tracking scenario.
 
-.. image:: ../_static/images/examples/multi_target_tracking.png
-   :width: 100%
-   :alt: Track spatial distribution
-
 .. list-table::
    :widths: 30 70
    :header-rows: 0
@@ -90,10 +82,6 @@ Multi-Target Tracking
 
 Data Association
 ----------------
-
-.. image:: ../_static/images/examples/clustering_comparison.png
-   :width: 100%
-   :alt: Assignment algorithms cost matrix
 
 **Assignment Algorithms**: Interactive cost matrix visualization for 2D assignment.
 
@@ -174,16 +162,8 @@ Coordinate Systems
 
 **Spherical-Cartesian Transforms**: Converting between coordinate systems in 3D space.
 
-.. image:: ../_static/images/examples/coordinate_rotations.png
-   :width: 100%
-   :alt: Spherical-Cartesian coordinate transforms
-
 Navigation & Geodesy
 --------------------
-
-.. image:: ../_static/images/examples/coordinate_rotations.png
-   :width: 100%
-   :alt: INS/GNSS navigation trajectory
 
 **Navigation Trajectory**: INS trajectory with measurement noise and integration errors.
 
@@ -198,10 +178,6 @@ Navigation & Geodesy
 
 Transforms
 ----------
-
-.. image:: ../_static/images/examples/signal_processing.png
-   :width: 100%
-   :alt: FFT and frequency domain analysis
 
 **FFT Analysis**: Time and frequency domain visualization of multi-frequency signal.
 
