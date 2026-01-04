@@ -322,7 +322,7 @@ def generate_multi_target_tracking():
     )
 
     # Plot tracks
-    track_positions = {}
+    track_positions: dict[int, list] = {}
     for tracks in track_history:
         for track in tracks:
             if track.status == TrackStatus.CONFIRMED:
@@ -987,7 +987,6 @@ def generate_navigation_trajectory():
     # Simulate realistic INS trajectory
     np.random.seed(42)
     n_steps = 100
-    dt = 0.1
 
     # Reference trajectory (great circle)
     lat0, lon0 = 40.0, -105.0
@@ -1057,11 +1056,12 @@ def generate_navigation_trajectory():
 def generate_orbital_mechanics():
     """Generate orbital mechanics plot by running the example script."""
     print("\n12. Generating Orbital Mechanics...")
-    
+
     # Import and run the orbital mechanics example
     import sys
+
     sys.path.insert(0, str(ROOT / "examples"))
-    
+
     try:
         # Import the module to get the visualization output
         exec(open(str(ROOT / "examples" / "orbital_mechanics.py")).read())
@@ -1076,54 +1076,57 @@ def generate_orbital_mechanics():
 def generate_tracking_3d():
     """Generate 3D tracking visualization."""
     print("\n13. Generating 3D Tracking...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
         n_steps = 50
-        dt = 1.0
-        
+
         # True trajectory (helical path)
-        t = np.linspace(0, 4*np.pi, n_steps)
+        t = np.linspace(0, 4 * np.pi, n_steps)
         x_true = 10 * np.cos(t)
         y_true = 10 * np.sin(t)
         z_true = np.linspace(0, 100, n_steps)
-        
+
         # Measurements with noise
         measurement_noise = 1.0
         x_meas = x_true + measurement_noise * np.random.randn(n_steps)
         y_meas = y_true + measurement_noise * np.random.randn(n_steps)
         z_meas = z_true + measurement_noise * np.random.randn(n_steps)
-        
+
         fig = go.Figure()
-        
+
         # True trajectory
-        fig.add_trace(go.Scatter3d(
-            x=x_true, y=y_true, z=z_true,
-            mode='lines',
-            name='True Trajectory',
-            line=dict(color='green', width=4)
-        ))
-        
-        # Measurements
-        fig.add_trace(go.Scatter3d(
-            x=x_meas, y=y_meas, z=z_meas,
-            mode='markers',
-            name='Measurements',
-            marker=dict(color='red', size=4)
-        ))
-        
-        fig.update_layout(
-            title='3D Tracking (Helical Path)',
-            scene=dict(
-                xaxis_title='X (m)',
-                yaxis_title='Y (m)',
-                zaxis_title='Z (m)'
-            ),
-            height=700
+        fig.add_trace(
+            go.Scatter3d(
+                x=x_true,
+                y=y_true,
+                z=z_true,
+                mode="lines",
+                name="True Trajectory",
+                line=dict(color="green", width=4),
+            )
         )
-        
+
+        # Measurements
+        fig.add_trace(
+            go.Scatter3d(
+                x=x_meas,
+                y=y_meas,
+                z=z_meas,
+                mode="markers",
+                name="Measurements",
+                marker=dict(color="red", size=4),
+            )
+        )
+
+        fig.update_layout(
+            title="3D Tracking (Helical Path)",
+            scene=dict(xaxis_title="X (m)", yaxis_title="Y (m)", zaxis_title="Z (m)"),
+            height=700,
+        )
+
         save_figure(fig, "tracking_3d")
     except Exception as e:
         print(f"  Error generating 3D tracking: {e}")
@@ -1135,51 +1138,57 @@ def generate_tracking_3d():
 def generate_gaussian_mixtures():
     """Generate Gaussian mixture visualization."""
     print("\n14. Generating Gaussian Mixtures...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
         n_samples = 300
-        
+
         # Generate mixture of Gaussians
         centers = np.array([[0, 0], [5, 5], [-5, 5]])
-        data = np.vstack([
-            np.random.randn(n_samples // 3, 2) + centers[0],
-            np.random.randn(n_samples // 3, 2) + centers[1],
-            np.random.randn(n_samples // 3, 2) + centers[2]
-        ])
-        
+        data = np.vstack(
+            [
+                np.random.randn(n_samples // 3, 2) + centers[0],
+                np.random.randn(n_samples // 3, 2) + centers[1],
+                np.random.randn(n_samples // 3, 2) + centers[2],
+            ]
+        )
+
         fig = go.Figure()
-        
+
         # Scatter plot colored by cluster
         for i, center in enumerate(centers):
-            cluster_data = data[i*100:(i+1)*100]
-            fig.add_trace(go.Scatter(
-                x=cluster_data[:, 0],
-                y=cluster_data[:, 1],
-                mode='markers',
-                name=f'Cluster {i+1}',
-                marker=dict(size=6)
-            ))
-        
+            cluster_data = data[i * 100 : (i + 1) * 100]
+            fig.add_trace(
+                go.Scatter(
+                    x=cluster_data[:, 0],
+                    y=cluster_data[:, 1],
+                    mode="markers",
+                    name=f"Cluster {i+1}",
+                    marker=dict(size=6),
+                )
+            )
+
         # Cluster centers
-        fig.add_trace(go.Scatter(
-            x=centers[:, 0],
-            y=centers[:, 1],
-            mode='markers',
-            name='Cluster Centers',
-            marker=dict(size=12, symbol='star', color='red')
-        ))
-        
-        fig.update_layout(
-            title='Gaussian Mixture Model Clustering',
-            xaxis_title='X',
-            yaxis_title='Y',
-            height=600,
-            width=800
+        fig.add_trace(
+            go.Scatter(
+                x=centers[:, 0],
+                y=centers[:, 1],
+                mode="markers",
+                name="Cluster Centers",
+                marker=dict(size=12, symbol="star", color="red"),
+            )
         )
-        
+
+        fig.update_layout(
+            title="Gaussian Mixture Model Clustering",
+            xaxis_title="X",
+            yaxis_title="Y",
+            height=600,
+            width=800,
+        )
+
         save_figure(fig, "gaussian_mixtures")
     except Exception as e:
         print(f"  Error generating Gaussian mixtures: {e}")
@@ -1191,65 +1200,71 @@ def generate_gaussian_mixtures():
 def generate_particle_filters_demo():
     """Generate particle filter demonstration visualization."""
     print("\n15. Generating Particle Filters...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
         n_steps = 100
         n_particles = 100
-        
+
         # True nonlinear trajectory
-        t = np.linspace(0, 4*np.pi, n_steps)
+        t = np.linspace(0, 4 * np.pi, n_steps)
         x_true = 10 * np.cos(t)
         y_true = 10 * np.sin(t)
-        
+
         # Measurements (with noise)
         measurement_noise = 2.0
         x_meas = x_true + measurement_noise * np.random.randn(n_steps)
         y_meas = y_true + measurement_noise * np.random.randn(n_steps)
-        
+
         # Generate random particles at each time step (simplified representation)
         particle_x = x_true + 5 * np.random.randn(n_particles)
         particle_y = y_true + 5 * np.random.randn(n_particles)
-        
+
         fig = go.Figure()
-        
+
         # Particles (sample at end of trajectory)
-        fig.add_trace(go.Scatter(
-            x=particle_x,
-            y=particle_y,
-            mode='markers',
-            name='Particles',
-            marker=dict(color='lightblue', size=4, opacity=0.6)
-        ))
-        
-        # True trajectory
-        fig.add_trace(go.Scatter(
-            x=x_true,
-            y=y_true,
-            mode='lines',
-            name='True Trajectory',
-            line=dict(color='green', width=3)
-        ))
-        
-        # Measurements
-        fig.add_trace(go.Scatter(
-            x=x_meas,
-            y=y_meas,
-            mode='markers',
-            name='Measurements',
-            marker=dict(color='red', size=5)
-        ))
-        
-        fig.update_layout(
-            title='Particle Filter Tracking',
-            xaxis_title='X (m)',
-            yaxis_title='Y (m)',
-            height=600,
-            width=800
+        fig.add_trace(
+            go.Scatter(
+                x=particle_x,
+                y=particle_y,
+                mode="markers",
+                name="Particles",
+                marker=dict(color="lightblue", size=4, opacity=0.6),
+            )
         )
-        
+
+        # True trajectory
+        fig.add_trace(
+            go.Scatter(
+                x=x_true,
+                y=y_true,
+                mode="lines",
+                name="True Trajectory",
+                line=dict(color="green", width=3),
+            )
+        )
+
+        # Measurements
+        fig.add_trace(
+            go.Scatter(
+                x=x_meas,
+                y=y_meas,
+                mode="markers",
+                name="Measurements",
+                marker=dict(color="red", size=5),
+            )
+        )
+
+        fig.update_layout(
+            title="Particle Filter Tracking",
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            height=600,
+            width=800,
+        )
+
         save_figure(fig, "particle_filters_demo")
     except Exception as e:
         print(f"  Error generating particle filters: {e}")
@@ -1261,42 +1276,42 @@ def generate_particle_filters_demo():
 def generate_relativity_effects():
     """Generate relativity effects visualization."""
     print("\n17. Generating Relativity Effects...")
-    
+
     try:
         import numpy as np
-        
+
         # Time dilation effect vs orbital altitude
         altitudes = np.linspace(0, 100000, 100)  # 0 to 100,000 km
-        
+
         # Simplified time dilation factor (proper time rate)
         # Based on gravitational time dilation for Earth orbit
         # Rate = sqrt(1 - 2*GM/(c^2*r))
-        R_earth = 6371  # km
-        r = R_earth + altitudes
-        
+
         # Simplified formula: time dilation increases with altitude
         dilation_factor = 1 + 5.3e-10 * altitudes / 1000  # PPM per 1000 km
-        
+
         fig = go.Figure()
-        
+
         # Time dilation
-        fig.add_trace(go.Scatter(
-            x=altitudes,
-            y=dilation_factor * 1e9,  # Convert to nano-seconds per second
-            mode='lines',
-            name='Time Dilation',
-            line=dict(color='blue', width=3)
-        ))
-        
+        fig.add_trace(
+            go.Scatter(
+                x=altitudes,
+                y=dilation_factor * 1e9,  # Convert to nano-seconds per second
+                mode="lines",
+                name="Time Dilation",
+                line=dict(color="blue", width=3),
+            )
+        )
+
         fig.update_layout(
-            title='Gravitational Time Dilation vs Orbital Altitude',
-            xaxis_title='Altitude (km)',
-            yaxis_title='Time Rate Difference (nanoseconds/second)',
+            title="Gravitational Time Dilation vs Orbital Altitude",
+            xaxis_title="Altitude (km)",
+            yaxis_title="Time Rate Difference (nanoseconds/second)",
             height=600,
             width=900,
-            hovermode='x unified'
+            hovermode="x unified",
         )
-        
+
         save_figure(fig, "relativity_effects")
     except Exception as e:
         print(f"  Error generating relativity effects: {e}")
@@ -1308,77 +1323,92 @@ def generate_relativity_effects():
 def generate_advanced_filters():
     """Generate advanced filters comparison visualization."""
     print("\n16. Generating Advanced Filters Comparison...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
         n_steps = 100
-        
+
         # Simulated filter comparison data
         t = np.arange(n_steps)
-        
+
         # True state
         x_true = 10 * np.sin(0.1 * t) + 5 * np.cos(0.05 * t)
-        
+
         # Filter estimates with different characteristics
         x_ekf = x_true + 0.5 * np.sin(0.3 * t)  # EKF tracking
         x_gsf = x_true + 0.3 * np.random.randn(n_steps)  # GSF tracking
         x_rbpf = x_true + 0.4 * np.cos(0.2 * t)  # RBPF tracking
-        
+
         # Measurements
         x_meas = x_true + 1.0 * np.random.randn(n_steps)
-        
+
         fig = go.Figure()
-        
+
         # True state
-        fig.add_trace(go.Scatter(
-            x=t, y=x_true,
-            mode='lines',
-            name='True State',
-            line=dict(color='black', width=3, dash='dash')
-        ))
-        
-        # Measurements
-        fig.add_trace(go.Scatter(
-            x=t, y=x_meas,
-            mode='markers',
-            name='Measurements',
-            marker=dict(color='red', size=3, opacity=0.6)
-        ))
-        
-        # EKF
-        fig.add_trace(go.Scatter(
-            x=t, y=x_ekf,
-            mode='lines',
-            name='Extended KF',
-            line=dict(color='blue', width=2)
-        ))
-        
-        # GSF
-        fig.add_trace(go.Scatter(
-            x=t, y=x_gsf,
-            mode='lines',
-            name='Gaussian Sum Filter',
-            line=dict(color='green', width=2)
-        ))
-        
-        # RBPF
-        fig.add_trace(go.Scatter(
-            x=t, y=x_rbpf,
-            mode='lines',
-            name='Rao-Blackwellized PF',
-            line=dict(color='orange', width=2)
-        ))
-        
-        fig.update_layout(
-            title='Advanced Filters Comparison',
-            xaxis_title='Time Step',
-            yaxis_title='State Value',
-            hovermode='x unified',
-            height=500
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_true,
+                mode="lines",
+                name="True State",
+                line=dict(color="black", width=3, dash="dash"),
+            )
         )
-        
+
+        # Measurements
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_meas,
+                mode="markers",
+                name="Measurements",
+                marker=dict(color="red", size=3, opacity=0.6),
+            )
+        )
+
+        # EKF
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_ekf,
+                mode="lines",
+                name="Extended KF",
+                line=dict(color="blue", width=2),
+            )
+        )
+
+        # GSF
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_gsf,
+                mode="lines",
+                name="Gaussian Sum Filter",
+                line=dict(color="green", width=2),
+            )
+        )
+
+        # RBPF
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_rbpf,
+                mode="lines",
+                name="Rao-Blackwellized PF",
+                line=dict(color="orange", width=2),
+            )
+        )
+
+        fig.update_layout(
+            title="Advanced Filters Comparison",
+            xaxis_title="Time Step",
+            yaxis_title="State Value",
+            hovermode="x unified",
+            height=500,
+        )
+
         save_figure(fig, "advanced_filters_comparison")
     except Exception as e:
         print(f"  Error generating advanced filters: {e}")
@@ -1390,49 +1420,51 @@ def generate_advanced_filters():
 def generate_special_functions():
     """Generate special functions visualization."""
     print("\n18. Generating Special Functions...")
-    
+
     try:
         import numpy as np
-        
+
         # Generate various special functions
         x = np.linspace(0, 10, 200)
-        
+
         fig = go.Figure()
-        
+
         # Bessel function J0
-        from scipy.special import j0, y0, erf
-        fig.add_trace(go.Scatter(
-            x=x, y=j0(x),
-            mode='lines',
-            name='Bessel J₀(x)',
-            line=dict(width=2)
-        ))
-        
+        from scipy.special import erf, j0, y0
+
+        fig.add_trace(
+            go.Scatter(
+                x=x, y=j0(x), mode="lines", name="Bessel J₀(x)", line=dict(width=2)
+            )
+        )
+
         # Bessel function Y0
-        fig.add_trace(go.Scatter(
-            x=x, y=y0(x),
-            mode='lines',
-            name='Bessel Y₀(x)',
-            line=dict(width=2)
-        ))
-        
+        fig.add_trace(
+            go.Scatter(
+                x=x, y=y0(x), mode="lines", name="Bessel Y₀(x)", line=dict(width=2)
+            )
+        )
+
         # Error function
         x_erf = np.linspace(-3, 3, 200)
-        fig.add_trace(go.Scatter(
-            x=x_erf, y=erf(x_erf),
-            mode='lines',
-            name='Error Function erf(x)',
-            line=dict(width=2)
-        ))
-        
-        fig.update_layout(
-            title='Special Functions in Signal Processing',
-            xaxis_title='x',
-            yaxis_title='Function Value',
-            hovermode='x unified',
-            height=600
+        fig.add_trace(
+            go.Scatter(
+                x=x_erf,
+                y=erf(x_erf),
+                mode="lines",
+                name="Error Function erf(x)",
+                line=dict(width=2),
+            )
         )
-        
+
+        fig.update_layout(
+            title="Special Functions in Signal Processing",
+            xaxis_title="x",
+            yaxis_title="Function Value",
+            hovermode="x unified",
+            height=600,
+        )
+
         save_figure(fig, "special_functions")
     except Exception as e:
         print(f"  Error generating special functions: {e}")
@@ -1444,58 +1476,67 @@ def generate_special_functions():
 def generate_static_estimation():
     """Generate static estimation visualization."""
     print("\n19. Generating Static Estimation...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
-        
+
         # Measured positions with noise
         true_position = np.array([5.0, 5.0])
         n_measurements = 50
         measurement_noise = 0.5
-        
+
         x_meas = true_position[0] + measurement_noise * np.random.randn(n_measurements)
         y_meas = true_position[1] + measurement_noise * np.random.randn(n_measurements)
-        
+
         # Least squares estimate
         x_est = np.mean(x_meas)
         y_est = np.mean(y_meas)
-        
+
         fig = go.Figure()
-        
+
         # Measurements
-        fig.add_trace(go.Scatter(
-            x=x_meas, y=y_meas,
-            mode='markers',
-            name='Measurements',
-            marker=dict(size=5, color='lightblue', opacity=0.7)
-        ))
-        
-        # True position
-        fig.add_trace(go.Scatter(
-            x=[true_position[0]], y=[true_position[1]],
-            mode='markers',
-            name='True Position',
-            marker=dict(size=12, symbol='star', color='green')
-        ))
-        
-        # Estimated position
-        fig.add_trace(go.Scatter(
-            x=[x_est], y=[y_est],
-            mode='markers',
-            name='LS Estimate',
-            marker=dict(size=12, symbol='circle', color='red')
-        ))
-        
-        fig.update_layout(
-            title='Static Estimation: Least Squares Position Solution',
-            xaxis_title='X (m)',
-            yaxis_title='Y (m)',
-            height=600,
-            width=800
+        fig.add_trace(
+            go.Scatter(
+                x=x_meas,
+                y=y_meas,
+                mode="markers",
+                name="Measurements",
+                marker=dict(size=5, color="lightblue", opacity=0.7),
+            )
         )
-        
+
+        # True position
+        fig.add_trace(
+            go.Scatter(
+                x=[true_position[0]],
+                y=[true_position[1]],
+                mode="markers",
+                name="True Position",
+                marker=dict(size=12, symbol="star", color="green"),
+            )
+        )
+
+        # Estimated position
+        fig.add_trace(
+            go.Scatter(
+                x=[x_est],
+                y=[y_est],
+                mode="markers",
+                name="LS Estimate",
+                marker=dict(size=12, symbol="circle", color="red"),
+            )
+        )
+
+        fig.update_layout(
+            title="Static Estimation: Least Squares Position Solution",
+            xaxis_title="X (m)",
+            yaxis_title="Y (m)",
+            height=600,
+            width=800,
+        )
+
         save_figure(fig, "static_estimation")
     except Exception as e:
         print(f"  Error generating static estimation: {e}")
@@ -1507,82 +1548,97 @@ def generate_static_estimation():
 def generate_filter_uncertainty():
     """Generate filter uncertainty visualization."""
     print("\n20. Generating Filter Uncertainty...")
-    
+
     try:
         import numpy as np
-        
+
         np.random.seed(42)
         n_steps = 100
         dt = 0.1
-        
+
         # Time vector
         t = np.arange(n_steps) * dt
-        
+
         # True state
         x_true = 10 * np.sin(2 * np.pi * 0.5 * t)
-        
+
         # Measurements
         measurement_noise = 1.5
         x_meas = x_true + measurement_noise * np.random.randn(n_steps)
-        
+
         # Filter estimate with uncertainty bounds (simplified)
         x_est = 10 * np.sin(2 * np.pi * 0.5 * t)
         uncertainty = 1.0 + 0.1 * np.abs(np.sin(4 * np.pi * 0.5 * t))
         x_upper = x_est + 2 * uncertainty
         x_lower = x_est - 2 * uncertainty
-        
+
         fig = go.Figure()
-        
+
         # Uncertainty band
-        fig.add_trace(go.Scatter(
-            x=t, y=x_upper,
-            mode='lines',
-            name='Upper Bound',
-            line=dict(width=0),
-            showlegend=False
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=t, y=x_lower,
-            mode='lines',
-            line=dict(width=0),
-            fillcolor='rgba(0,100,200,0.2)',
-            fill='tonexty',
-            name='Uncertainty Region'
-        ))
-        
-        # Estimate
-        fig.add_trace(go.Scatter(
-            x=t, y=x_est,
-            mode='lines',
-            name='Filter Estimate',
-            line=dict(color='blue', width=2)
-        ))
-        
-        # Measurements
-        fig.add_trace(go.Scatter(
-            x=t, y=x_meas,
-            mode='markers',
-            name='Measurements',
-            marker=dict(color='red', size=3)
-        ))
-        
-        # True state
-        fig.add_trace(go.Scatter(
-            x=t, y=x_true,
-            mode='lines',
-            name='True State',
-            line=dict(color='green', width=2, dash='dash')
-        ))
-        
-        fig.update_layout(
-            title='Filter Uncertainty Ellipses and Covariance Bounds',
-            xaxis_title='Time (s)',
-            yaxis_title='State Value',
-            hovermode='x unified',
-            height=600
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_upper,
+                mode="lines",
+                name="Upper Bound",
+                line=dict(width=0),
+                showlegend=False,
+            )
         )
-        
+
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_lower,
+                mode="lines",
+                line=dict(width=0),
+                fillcolor="rgba(0,100,200,0.2)",
+                fill="tonexty",
+                name="Uncertainty Region",
+            )
+        )
+
+        # Estimate
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_est,
+                mode="lines",
+                name="Filter Estimate",
+                line=dict(color="blue", width=2),
+            )
+        )
+
+        # Measurements
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_meas,
+                mode="markers",
+                name="Measurements",
+                marker=dict(color="red", size=3),
+            )
+        )
+
+        # True state
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=x_true,
+                mode="lines",
+                name="True State",
+                line=dict(color="green", width=2, dash="dash"),
+            )
+        )
+
+        fig.update_layout(
+            title="Filter Uncertainty Ellipses and Covariance Bounds",
+            xaxis_title="Time (s)",
+            yaxis_title="State Value",
+            hovermode="x unified",
+            height=600,
+        )
+
         save_figure(fig, "filter_uncertainty")
     except Exception as e:
         print(f"  Error generating filter uncertainty: {e}")
@@ -1594,39 +1650,38 @@ def generate_filter_uncertainty():
 def generate_geophysical_models():
     """Generate geophysical models visualization."""
     print("\n21. Generating Geophysical Models...")
-    
+
     try:
         import numpy as np
-        
-        # Earth models at different altitudes
-        altitudes = np.linspace(0, 500, 100)  # 0 to 500 km
-        
+
         # Gravity anomaly (simplified - shows variation with latitude/altitude)
         latitudes = np.linspace(-90, 90, 50)
         gravity_anomaly = 30 * np.sin(np.radians(latitudes))  # mGal
-        
+
         fig = go.Figure()
-        
+
         # Gravity anomaly vs latitude
-        fig.add_trace(go.Scatter(
-            x=latitudes,
-            y=gravity_anomaly,
-            mode='lines',
-            name='Gravity Anomaly',
-            line=dict(color='blue', width=3),
-            fill='tozeroy',
-            fillcolor='rgba(0,100,200,0.3)'
-        ))
-        
+        fig.add_trace(
+            go.Scatter(
+                x=latitudes,
+                y=gravity_anomaly,
+                mode="lines",
+                name="Gravity Anomaly",
+                line=dict(color="blue", width=3),
+                fill="tozeroy",
+                fillcolor="rgba(0,100,200,0.3)",
+            )
+        )
+
         fig.update_layout(
-            title='Earth Gravity Anomaly Model (EGM96)',
-            xaxis_title='Latitude (degrees)',
-            yaxis_title='Gravity Anomaly (mGal)',
+            title="Earth Gravity Anomaly Model (EGM96)",
+            xaxis_title="Latitude (degrees)",
+            yaxis_title="Gravity Anomaly (mGal)",
             height=600,
             width=900,
-            hovermode='x unified'
+            hovermode="x unified",
         )
-        
+
         save_figure(fig, "geophysical_models")
     except Exception as e:
         print(f"  Error generating geophysical models: {e}")
@@ -1638,51 +1693,57 @@ def generate_geophysical_models():
 def generate_ephemeris_demo():
     """Generate ephemeris demonstration visualization."""
     print("\n22. Generating Ephemeris Demo...")
-    
+
     try:
         import numpy as np
-        
+
         # Planetary positions in celestial sphere (simplified)
         planets = {
-            'Mercury': {'ra': 45, 'dec': 10},
-            'Venus': {'ra': 90, 'dec': 15},
-            'Mars': {'ra': 180, 'dec': -5},
-            'Jupiter': {'ra': 200, 'dec': 8},
-            'Saturn': {'ra': 270, 'dec': -2}
+            "Mercury": {"ra": 45, "dec": 10},
+            "Venus": {"ra": 90, "dec": 15},
+            "Mars": {"ra": 180, "dec": -5},
+            "Jupiter": {"ra": 200, "dec": 8},
+            "Saturn": {"ra": 270, "dec": -2},
         }
-        
+
         fig = go.Figure()
-        
+
         # Plot planets
         for planet, coords in planets.items():
-            fig.add_trace(go.Scatter(
-                x=[coords['ra']], y=[coords['dec']],
-                mode='markers+text',
-                name=planet,
-                marker=dict(size=15),
-                text=planet,
-                textposition='top center'
-            ))
-        
+            fig.add_trace(
+                go.Scatter(
+                    x=[coords["ra"]],
+                    y=[coords["dec"]],
+                    mode="markers+text",
+                    name=planet,
+                    marker=dict(size=15),
+                    text=planet,
+                    textposition="top center",
+                )
+            )
+
         # Add ecliptic line
         ecliptic_ra = np.linspace(0, 360, 100)
         ecliptic_dec = 5 * np.sin(np.radians(ecliptic_ra))
-        fig.add_trace(go.Scatter(
-            x=ecliptic_ra, y=ecliptic_dec,
-            mode='lines',
-            name='Ecliptic',
-            line=dict(color='gray', width=1, dash='dash')
-        ))
-        
+        fig.add_trace(
+            go.Scatter(
+                x=ecliptic_ra,
+                y=ecliptic_dec,
+                mode="lines",
+                name="Ecliptic",
+                line=dict(color="gray", width=1, dash="dash"),
+            )
+        )
+
         fig.update_layout(
-            title='Planetary Ephemeris - Celestial Sphere',
-            xaxis_title='Right Ascension (degrees)',
-            yaxis_title='Declination (degrees)',
+            title="Planetary Ephemeris - Celestial Sphere",
+            xaxis_title="Right Ascension (degrees)",
+            yaxis_title="Declination (degrees)",
             height=700,
             width=1000,
-            hovermode='closest'
+            hovermode="closest",
         )
-        
+
         save_figure(fig, "ephemeris_demo")
     except Exception as e:
         print(f"  Error generating ephemeris demo: {e}")

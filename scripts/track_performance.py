@@ -101,7 +101,6 @@ def parse_benchmark_results(json_file: Path) -> list:
     for bench in data.get("benchmarks", []):
         # Extract function name and parameters
         name = bench.get("name", "unknown")
-        group = bench.get("group", None)
         fullname = bench.get("fullname", name)
 
         # Extract parameters from name or params dict

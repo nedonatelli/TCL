@@ -90,7 +90,7 @@ def load_slos(slo_file: Path) -> dict:
 
 def load_history(history_file: Path, limit: int = 50) -> list:
     """Load recent history records."""
-    records = []
+    records: list[dict] = []
     if not history_file.exists():
         return records
 

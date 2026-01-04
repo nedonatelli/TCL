@@ -10,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
-import plotly.io as pio
 from plotly.subplots import make_subplots
 
 # Add pytcl to path
@@ -219,7 +218,6 @@ def generate_multi_target_tracking():
 
     # Create synthetic multi-target scenario
     np.random.seed(42)
-    n_targets = 3
     n_steps = 30
 
     # Target trajectories
@@ -470,7 +468,6 @@ def generate_signal_processing():
     """Generate filter frequency response visualization."""
     print("\n8. Generating Signal Processing Filters...")
 
-    fs = 1000.0
     freq = np.linspace(0, 500, 1000)
 
     # Simulate filter responses

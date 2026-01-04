@@ -104,9 +104,7 @@ def generate_kalman_filtering_tutorial():
     true_states, measurements = [], []
     for _ in range(n_steps):
         true_states.append(x_true.copy())
-        measurements.append(
-            H @ x_true + np.random.multivariate_normal(np.zeros(2), R)
-        )
+        measurements.append(H @ x_true + np.random.multivariate_normal(np.zeros(2), R))
         x_true = F @ x_true + np.random.multivariate_normal(np.zeros(4), Q)
 
     # Filter
@@ -189,9 +187,7 @@ def generate_kalman_filtering_tutorial():
     )
 
     # Add 3-sigma bound from covariance
-    sigma_bounds = np.array(
-        [3 * np.sqrt(P[0, 0] + P[2, 2]) for P in covariances]
-    )
+    sigma_bounds = np.array([3 * np.sqrt(P[0, 0] + P[2, 2]) for P in covariances])
     fig.add_trace(
         go.Scatter(
             x=time,
@@ -243,7 +239,7 @@ def generate_nonlinear_filtering_tutorial():
     # Bearing measurements from origin with noise
     true_bearings = np.arctan2(y_true, x_true)
     bearing_noise = 0.1  # radians
-    measured_bearings = true_bearings + bearing_noise * np.random.randn(n_steps)
+    _ = true_bearings + bearing_noise * np.random.randn(n_steps)  # measured_bearings
 
     # Simulated EKF and UKF estimates (simplified)
     ekf_x = x_true + 0.8 * np.random.randn(n_steps)

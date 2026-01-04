@@ -38,7 +38,7 @@ def load_slos(slo_file: Path) -> dict:
 
 def load_history(history_file: Path, limit: int = 100) -> list:
     """Load recent history records."""
-    records = []
+    records: list[dict] = []
     if not history_file.exists():
         return records
 
@@ -111,7 +111,7 @@ def _match_score(test_name: str, param_key: str) -> int:
 
 def check_slo_violations(results: list, slos: dict) -> list:
     """Check for SLO violations."""
-    issues = []
+    issues: list[dict] = []
 
     if not slos:
         return issues
@@ -182,7 +182,7 @@ def check_historical_regressions(
     results: list, history: list, thresholds: dict
 ) -> list:
     """Check for regressions against recent history."""
-    issues = []
+    issues: list[dict] = []
 
     if not history:
         return issues
