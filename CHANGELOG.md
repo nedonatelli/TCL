@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.5] - 2026-01-04
+
+### Bug Fixes
+- Fixed black formatting issues in demo files (indentation and code structure)
+- Fixed flake8 E231 whitespace violations in f-strings
+- Resolved HTML file rendering by removing LFS tracking
+
+### Changed
+- HTML example visualizations now tracked as regular git files for proper GitHub rendering
+- Removed LFS filters from .gitattributes for HTML files
+- Updated .gitignore to properly track documentation examples
+
+### Maintenance
+- Code quality: 100% compliance (isort, black, flake8, mypy --strict)
+- All 2,057 tests passing
+- Repository cleanup and optimization
+
 ## [1.7.4] - 2026-01-04
 
 ### Documentation & Roadmap Consolidation
