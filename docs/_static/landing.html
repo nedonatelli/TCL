@@ -1038,7 +1038,10 @@ upd = <span class="function">kf_update</span>(pred.x, pred.P, z, H, R)</pre>
                     statValues.forEach(stat => {
                         const text = stat.textContent;
                         const num = parseInt(text.replace(/[^0-9]/g, ''));
-                        const suffix = text.includes('+') ? '+' : '';
+                        // Detect suffix: + or %
+                        let suffix = '';
+                        if (text.includes('+')) suffix = '+';
+                        else if (text.includes('%')) suffix = '%';
                         stat.dataset.suffix = suffix;
                         animateValue(stat, 0, num, 1500);
                     });
