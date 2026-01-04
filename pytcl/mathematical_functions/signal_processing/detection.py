@@ -1045,3 +1045,22 @@ def snr_loss(
         raise ValueError(f"Unknown method: {method}")
 
     return float(loss_db)
+
+
+__all__ = [
+    # Result Types
+    "CFARResult",
+    "CFARResult2D",
+    # Threshold and Detection Probability
+    "threshold_factor",
+    "detection_probability",
+    # CFAR Detectors
+    "cfar_ca",
+    "cfar_go",
+    "cfar_so",
+    "cfar_os",
+    "cfar_2d",
+    # Utilities
+    "cluster_detections",
+    "snr_loss",
+]

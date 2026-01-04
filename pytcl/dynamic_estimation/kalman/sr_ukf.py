@@ -20,11 +20,11 @@ import numpy as np
 import scipy.linalg
 from numpy.typing import ArrayLike
 
-from pytcl.dynamic_estimation.kalman.square_root import (
-    SRKalmanPrediction,
-    SRKalmanUpdate,
-    cholesky_update,
-)
+# Import utility function from matrix_utils to avoid circular imports
+from pytcl.dynamic_estimation.kalman.matrix_utils import cholesky_update
+
+# Import types from centralized types module to avoid circular imports
+from pytcl.dynamic_estimation.kalman.types import SRKalmanPrediction, SRKalmanUpdate
 
 
 def sr_ukf_predict(

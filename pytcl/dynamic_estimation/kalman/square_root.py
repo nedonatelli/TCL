@@ -13,205 +13,32 @@ For U-D factorization filters, see :mod:`pytcl.dynamic_estimation.kalman.ud_filt
 For square-root UKF, see :mod:`pytcl.dynamic_estimation.kalman.sr_ukf`.
 """
 
-from typing import NamedTuple, Optional
+from typing import Optional
 
 import numpy as np
 import scipy.linalg
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import ArrayLike
 
+# Import matrix utilities from centralized module to avoid circular imports
+from pytcl.dynamic_estimation.kalman.matrix_utils import cholesky_update, qr_update
 
-class SRKalmanState(NamedTuple):
-    """State of a square-root Kalman filter.
+# Import from submodules for backward compatibility (now at top level, no circular import)
+from pytcl.dynamic_estimation.kalman.sr_ukf import sr_ukf_predict, sr_ukf_update
 
-    Attributes
-    ----------
-    x : ndarray
-        State estimate.
-    S : ndarray
-        Lower triangular Cholesky factor of covariance (P = S @ S.T).
-    """
-
-    x: NDArray[np.floating]
-    S: NDArray[np.floating]
-
-
-class SRKalmanPrediction(NamedTuple):
-    """Result of square-root Kalman filter prediction step.
-
-    Attributes
-    ----------
-    x : ndarray
-        Predicted state estimate.
-    S : ndarray
-        Lower triangular Cholesky factor of predicted covariance.
-    """
-
-    x: NDArray[np.floating]
-    S: NDArray[np.floating]
-
-
-class SRKalmanUpdate(NamedTuple):
-    """Result of square-root Kalman filter update step.
-
-    Attributes
-    ----------
-    x : ndarray
-        Updated state estimate.
-    S : ndarray
-        Lower triangular Cholesky factor of updated covariance.
-    y : ndarray
-        Innovation (measurement residual).
-    S_y : ndarray
-        Lower triangular Cholesky factor of innovation covariance.
-    K : ndarray
-        Kalman gain.
-    likelihood : float
-        Measurement likelihood (for association).
-    """
-
-    x: NDArray[np.floating]
-    S: NDArray[np.floating]
-    y: NDArray[np.floating]
-    S_y: NDArray[np.floating]
-    K: NDArray[np.floating]
-    likelihood: float
-
-
-def cholesky_update(
-    S: NDArray[np.floating], v: NDArray[np.floating], sign: float = 1.0
-) -> NDArray[np.floating]:
-    """
-    Rank-1 Cholesky update/downdate.
-
-    Computes the Cholesky factor of P ± v @ v.T given S where P = S @ S.T.
-
-    Parameters
-    ----------
-    S : ndarray
-        Lower triangular Cholesky factor, shape (n, n).
-    v : ndarray
-        Vector for rank-1 update, shape (n,).
-    sign : float
-        +1 for update (addition), -1 for downdate (subtraction).
-
-    Returns
-    -------
-    S_new : ndarray
-        Updated lower triangular Cholesky factor.
-
-    Notes
-    -----
-    Uses the efficient O(n²) algorithm from [1].
-
-    References
-    ----------
-    .. [1] P. E. Gill, G. H. Golub, W. Murray, and M. A. Saunders,
-           "Methods for modifying matrix factorizations,"
-           Mathematics of Computation, vol. 28, pp. 505-535, 1974.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> S = np.linalg.cholesky(np.eye(2))
-    >>> v = np.array([0.5, 0.5])
-    >>> S_updated = cholesky_update(S, v, sign=1.0)
-    >>> P_updated = S_updated @ S_updated.T
-    >>> np.allclose(P_updated, np.eye(2) + np.outer(v, v))
-    True
-    """
-    S = np.asarray(S, dtype=np.float64).copy()
-    v = np.asarray(v, dtype=np.float64).flatten().copy()
-    n = len(v)
-
-    if sign > 0:
-        # Cholesky update
-        for k in range(n):
-            r = np.sqrt(S[k, k] ** 2 + v[k] ** 2)
-            c = r / S[k, k]
-            s = v[k] / S[k, k]
-            S[k, k] = r
-            if k < n - 1:
-                S[k + 1 :, k] = (S[k + 1 :, k] + s * v[k + 1 :]) / c
-                v[k + 1 :] = c * v[k + 1 :] - s * S[k + 1 :, k]
-    else:
-        # Cholesky downdate
-        for k in range(n):
-            r_sq = S[k, k] ** 2 - v[k] ** 2
-            if r_sq < 0:
-                raise ValueError("Downdate would make matrix non-positive definite")
-            r = np.sqrt(r_sq)
-            c = r / S[k, k]
-            s = v[k] / S[k, k]
-            S[k, k] = r
-            if k < n - 1:
-                S[k + 1 :, k] = (S[k + 1 :, k] - s * v[k + 1 :]) / c
-                v[k + 1 :] = c * v[k + 1 :] - s * S[k + 1 :, k]
-
-    return S
-
-
-def qr_update(
-    S_x: NDArray[np.floating],
-    S_noise: NDArray[np.floating],
-    F: Optional[NDArray[np.floating]] = None,
-) -> NDArray[np.floating]:
-    """
-    QR-based covariance square root update.
-
-    Computes the Cholesky factor of F @ P @ F.T + Q given S_x (where P = S_x @ S_x.T)
-    and S_noise (where Q = S_noise @ S_noise.T).
-
-    Parameters
-    ----------
-    S_x : ndarray
-        Lower triangular Cholesky factor of state covariance, shape (n, n).
-    S_noise : ndarray
-        Lower triangular Cholesky factor of noise covariance, shape (n, n).
-    F : ndarray, optional
-        State transition matrix, shape (n, n). If None, uses identity.
-
-    Returns
-    -------
-    S_new : ndarray
-        Lower triangular Cholesky factor of the updated covariance.
-
-    Notes
-    -----
-    Uses QR decomposition for numerical stability. The compound matrix
-    [F @ S_x, S_noise].T is QR decomposed, and R.T gives the new Cholesky factor.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> S_x = np.linalg.cholesky(np.eye(2) * 0.1)
-    >>> S_noise = np.linalg.cholesky(np.eye(2) * 0.01)
-    >>> F = np.array([[1, 1], [0, 1]])
-    >>> S_new = qr_update(S_x, S_noise, F)
-    """
-    S_x = np.asarray(S_x, dtype=np.float64)
-    S_noise = np.asarray(S_noise, dtype=np.float64)
-    n = S_x.shape[0]
-
-    if F is not None:
-        F = np.asarray(F, dtype=np.float64)
-        FS = F @ S_x
-    else:
-        FS = S_x
-
-    # Stack the matrices: [F @ S_x; S_noise]
-    compound = np.vstack([FS.T, S_noise.T])
-
-    # QR decomposition
-    _, R = np.linalg.qr(compound)
-
-    # The upper triangular R gives us the new Cholesky factor
-    # Take absolute values on diagonal to ensure positive
-    S_new = R[:n, :n].T
-    for i in range(n):
-        if S_new[i, i] < 0:
-            S_new[i:, i] = -S_new[i:, i]
-
-    return S_new
+# Import types from centralized types module
+from pytcl.dynamic_estimation.kalman.types import (
+    SRKalmanPrediction,
+    SRKalmanState,
+    SRKalmanUpdate,
+)
+from pytcl.dynamic_estimation.kalman.ud_filter import (
+    UDState,
+    ud_factorize,
+    ud_predict,
+    ud_reconstruct,
+    ud_update,
+    ud_update_scalar,
+)
 
 
 def srkf_predict(
@@ -444,26 +271,6 @@ def srkf_predict_update(
     pred = srkf_predict(x, S, F, S_Q, B, u)
     return srkf_update(pred.x, pred.S, z, H, S_R)
 
-
-# =============================================================================
-# Backward compatibility: Re-export from submodules
-# =============================================================================
-
-# Square-root UKF (now in sr_ukf.py)
-from pytcl.dynamic_estimation.kalman.sr_ukf import (  # noqa: E402
-    sr_ukf_predict,
-    sr_ukf_update,
-)
-
-# U-D factorization filter (now in ud_filter.py)
-from pytcl.dynamic_estimation.kalman.ud_filter import (  # noqa: E402
-    UDState,
-    ud_factorize,
-    ud_predict,
-    ud_reconstruct,
-    ud_update,
-    ud_update_scalar,
-)
 
 __all__ = [
     # Square-root KF types
