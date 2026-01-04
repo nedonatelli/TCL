@@ -24,7 +24,7 @@ References
        Systems, 19(4), 608-621.
 """
 
-from typing import NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 
 import numpy as np
 from numba import njit, prange
@@ -214,12 +214,12 @@ def detection_probability(
 
 @njit(cache=True, fastmath=True)
 def _cfar_ca_kernel(
-    signal: np.ndarray,
+    signal: np.ndarray[Any, Any],
     guard_cells: int,
     ref_cells: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled CA-CFAR kernel."""
     n = len(signal)
@@ -252,12 +252,12 @@ def _cfar_ca_kernel(
 
 @njit(cache=True, fastmath=True)
 def _cfar_go_kernel(
-    signal: np.ndarray,
+    signal: np.ndarray[Any, Any],
     guard_cells: int,
     ref_cells: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled GO-CFAR kernel."""
     n = len(signal)
@@ -290,12 +290,12 @@ def _cfar_go_kernel(
 
 @njit(cache=True, fastmath=True)
 def _cfar_so_kernel(
-    signal: np.ndarray,
+    signal: np.ndarray[Any, Any],
     guard_cells: int,
     ref_cells: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled SO-CFAR kernel."""
     n = len(signal)
@@ -331,13 +331,13 @@ def _cfar_so_kernel(
 
 @njit(cache=True, fastmath=True)
 def _cfar_os_kernel(
-    signal: np.ndarray,
+    signal: np.ndarray[Any, Any],
     guard_cells: int,
     ref_cells: int,
     k: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled OS-CFAR kernel."""
     n = len(signal)
@@ -378,14 +378,14 @@ def _cfar_os_kernel(
 
 @njit(cache=True, fastmath=True, parallel=True)
 def _cfar_2d_ca_kernel(
-    image: np.ndarray,
+    image: np.ndarray[Any, Any],
     guard_rows: int,
     guard_cols: int,
     ref_rows: int,
     ref_cols: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled 2D CA-CFAR kernel with parallel execution."""
     n_rows, n_cols = image.shape
@@ -425,14 +425,14 @@ def _cfar_2d_ca_kernel(
 
 @njit(cache=True, fastmath=True, parallel=True)
 def _cfar_2d_go_kernel(
-    image: np.ndarray,
+    image: np.ndarray[Any, Any],
     guard_rows: int,
     guard_cols: int,
     ref_rows: int,
     ref_cols: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled 2D GO-CFAR kernel with parallel execution."""
     n_rows, n_cols = image.shape
@@ -476,14 +476,14 @@ def _cfar_2d_go_kernel(
 
 @njit(cache=True, fastmath=True, parallel=True)
 def _cfar_2d_so_kernel(
-    image: np.ndarray,
+    image: np.ndarray[Any, Any],
     guard_rows: int,
     guard_cols: int,
     ref_rows: int,
     ref_cols: int,
     alpha: float,
-    noise_estimate: np.ndarray,
-    threshold: np.ndarray,
+    noise_estimate: np.ndarray[Any, Any],
+    threshold: np.ndarray[Any, Any],
 ) -> None:
     """JIT-compiled 2D SO-CFAR kernel with parallel execution."""
     n_rows, n_cols = image.shape
@@ -827,8 +827,8 @@ def cfar_os(
 
 def cfar_2d(
     image: ArrayLike,
-    guard_cells: tuple,
-    ref_cells: tuple,
+    guard_cells: tuple[int, int],
+    ref_cells: tuple[int, int],
     pfa: float = 1e-6,
     method: str = "ca",
     alpha: Optional[float] = None,
