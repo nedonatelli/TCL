@@ -28,6 +28,19 @@ Filtering & Estimation
    * - :download:`filter_uncertainty_visualization.py <../../examples/filter_uncertainty_visualization.py>`
      - Visualize filter covariance ellipses and uncertainty propagation
 
+**Advanced Filters**: Extended Kalman Filter, Gaussian Sum Filter, and Rao-Blackwellized Particle Filter comparison.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/advanced_filters_comparison.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - :download:`advanced_filters_comparison.py <../../examples/advanced_filters_comparison.py>`
+     - Constrained EKF, Gaussian Sum Filter, and Rao-Blackwellized Particle Filter
+
 **RTS Smoother vs Kalman Filter**: Fixed-interval smoothing improves estimates using future measurements.
 
 .. list-table::
@@ -68,8 +81,19 @@ Multi-Target Tracking
 
    * - :download:`multi_target_tracking.py <../../examples/multi_target_tracking.py>`
      - GNN-based multi-target tracker with track management
+
+**3D Target Tracking**: Helical trajectory tracking with noisy measurements in 3D space.
+
+.. raw:: html
+
+   <iframe src="../_static/images/examples/tracking_3d.html" width="100%" height="600" frameborder="0" style="margin: 20px 0;"></iframe>
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
    * - :download:`tracking_3d.py <../../examples/tracking_3d.py>`
-     - 3D target tracking with range-azimuth-elevation measurements
+     - Advanced 3D target tracking with range-azimuth-elevation measurements
 
 **Track Spatial Distribution**: Track positions and spatial relationships in tracking scenario.
 

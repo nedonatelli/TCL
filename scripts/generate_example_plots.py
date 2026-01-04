@@ -1031,6 +1031,147 @@ def generate_orbital_mechanics():
 
 
 # ============================================================================
+# Tracking 3D
+# ============================================================================
+def generate_tracking_3d():
+    """Generate 3D tracking visualization."""
+    print("\n13. Generating 3D Tracking...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        n_steps = 50
+        dt = 1.0
+        
+        # True trajectory (helical path)
+        t = np.linspace(0, 4*np.pi, n_steps)
+        x_true = 10 * np.cos(t)
+        y_true = 10 * np.sin(t)
+        z_true = np.linspace(0, 100, n_steps)
+        
+        # Measurements with noise
+        measurement_noise = 1.0
+        x_meas = x_true + measurement_noise * np.random.randn(n_steps)
+        y_meas = y_true + measurement_noise * np.random.randn(n_steps)
+        z_meas = z_true + measurement_noise * np.random.randn(n_steps)
+        
+        fig = go.Figure()
+        
+        # True trajectory
+        fig.add_trace(go.Scatter3d(
+            x=x_true, y=y_true, z=z_true,
+            mode='lines',
+            name='True Trajectory',
+            line=dict(color='green', width=4)
+        ))
+        
+        # Measurements
+        fig.add_trace(go.Scatter3d(
+            x=x_meas, y=y_meas, z=z_meas,
+            mode='markers',
+            name='Measurements',
+            marker=dict(color='red', size=4)
+        ))
+        
+        fig.update_layout(
+            title='3D Tracking (Helical Path)',
+            scene=dict(
+                xaxis_title='X (m)',
+                yaxis_title='Y (m)',
+                zaxis_title='Z (m)'
+            ),
+            height=700
+        )
+        
+        save_figure(fig, "tracking_3d")
+    except Exception as e:
+        print(f"  Error generating 3D tracking: {e}")
+
+
+# ============================================================================
+# Advanced Filters Comparison
+# ============================================================================
+def generate_advanced_filters():
+    """Generate advanced filters comparison visualization."""
+    print("\n14. Generating Advanced Filters Comparison...")
+    
+    try:
+        import numpy as np
+        
+        np.random.seed(42)
+        n_steps = 100
+        
+        # Simulated filter comparison data
+        t = np.arange(n_steps)
+        
+        # True state
+        x_true = 10 * np.sin(0.1 * t) + 5 * np.cos(0.05 * t)
+        
+        # Filter estimates with different characteristics
+        x_ekf = x_true + 0.5 * np.sin(0.3 * t)  # EKF tracking
+        x_gsf = x_true + 0.3 * np.random.randn(n_steps)  # GSF tracking
+        x_rbpf = x_true + 0.4 * np.cos(0.2 * t)  # RBPF tracking
+        
+        # Measurements
+        x_meas = x_true + 1.0 * np.random.randn(n_steps)
+        
+        fig = go.Figure()
+        
+        # True state
+        fig.add_trace(go.Scatter(
+            x=t, y=x_true,
+            mode='lines',
+            name='True State',
+            line=dict(color='black', width=3, dash='dash')
+        ))
+        
+        # Measurements
+        fig.add_trace(go.Scatter(
+            x=t, y=x_meas,
+            mode='markers',
+            name='Measurements',
+            marker=dict(color='red', size=3, opacity=0.6)
+        ))
+        
+        # EKF
+        fig.add_trace(go.Scatter(
+            x=t, y=x_ekf,
+            mode='lines',
+            name='Extended KF',
+            line=dict(color='blue', width=2)
+        ))
+        
+        # GSF
+        fig.add_trace(go.Scatter(
+            x=t, y=x_gsf,
+            mode='lines',
+            name='Gaussian Sum Filter',
+            line=dict(color='green', width=2)
+        ))
+        
+        # RBPF
+        fig.add_trace(go.Scatter(
+            x=t, y=x_rbpf,
+            mode='lines',
+            name='Rao-Blackwellized PF',
+            line=dict(color='orange', width=2)
+        ))
+        
+        fig.update_layout(
+            title='Advanced Filters Comparison',
+            xaxis_title='Time Step',
+            yaxis_title='State Value',
+            hovermode='x unified',
+            height=500
+        )
+        
+        save_figure(fig, "advanced_filters_comparison")
+    except Exception as e:
+        print(f"  Error generating advanced filters: {e}")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 def main():
@@ -1051,6 +1192,8 @@ def main():
     generate_transforms_fft()
     generate_navigation_trajectory()
     generate_orbital_mechanics()
+    generate_tracking_3d()
+    generate_advanced_filters()
 
     print("\n" + "=" * 50)
     print("All plots generated successfully!")
