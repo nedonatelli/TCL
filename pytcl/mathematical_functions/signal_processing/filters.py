@@ -24,7 +24,7 @@ References
        Wiley-Interscience.
 """
 
-from typing import NamedTuple, Optional, Union
+from typing import Any, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -80,7 +80,7 @@ class FrequencyResponse(NamedTuple):
 
 def butter_design(
     order: int,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     btype: str = "low",
     output: str = "sos",
@@ -141,7 +141,7 @@ def butter_design(
 def cheby1_design(
     order: int,
     ripple: float,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     btype: str = "low",
     output: str = "sos",
@@ -198,7 +198,7 @@ def cheby1_design(
 def cheby2_design(
     order: int,
     attenuation: float,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     btype: str = "low",
     output: str = "sos",
@@ -255,7 +255,7 @@ def ellip_design(
     order: int,
     passband_ripple: float,
     stopband_attenuation: float,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     btype: str = "low",
     output: str = "sos",
@@ -317,7 +317,7 @@ def ellip_design(
 
 def bessel_design(
     order: int,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     btype: str = "low",
     norm: str = "phase",
@@ -383,7 +383,7 @@ def bessel_design(
 
 def fir_design(
     numtaps: int,
-    cutoff: Union[float, tuple],
+    cutoff: Union[float, tuple[float, ...]],
     fs: float,
     window: str = "hamming",
     pass_zero: Union[bool, str] = True,
@@ -499,10 +499,10 @@ def fir_design_remez(
 
 
 def apply_filter(
-    coeffs: Union[FilterCoefficients, tuple, NDArray],
+    coeffs: Union[FilterCoefficients, tuple[Any, ...], NDArray[Any]],
     x: ArrayLike,
     zi: Optional[ArrayLike] = None,
-) -> Union[NDArray[np.floating], tuple]:
+) -> Union[NDArray[np.floating], tuple[NDArray[np.floating], Any]]:
     """
     Apply a digital filter to a signal.
 
@@ -559,7 +559,7 @@ def apply_filter(
 
 
 def filtfilt(
-    coeffs: Union[FilterCoefficients, tuple, NDArray],
+    coeffs: Union[FilterCoefficients, tuple[Any, ...], NDArray[Any]],
     x: ArrayLike,
     padtype: str = "odd",
     padlen: Optional[int] = None,
@@ -623,7 +623,7 @@ def filtfilt(
 
 
 def frequency_response(
-    coeffs: Union[FilterCoefficients, tuple, NDArray],
+    coeffs: Union[FilterCoefficients, tuple[Any, ...], NDArray[Any]],
     fs: float,
     n_points: int = 512,
     whole: bool = False,
@@ -680,10 +680,10 @@ def frequency_response(
 
 
 def group_delay(
-    coeffs: Union[FilterCoefficients, tuple, NDArray],
+    coeffs: Union[FilterCoefficients, tuple[Any, ...], NDArray[Any]],
     fs: float,
     n_points: int = 512,
-) -> tuple:
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute the group delay of a digital filter.
 
@@ -789,7 +789,7 @@ def filter_order(
     return int(order)
 
 
-def sos_to_zpk(sos: ArrayLike) -> tuple:
+def sos_to_zpk(sos: ArrayLike) -> tuple[NDArray[Any], NDArray[Any], Any]:
     """
     Convert second-order sections to zeros, poles, gain.
 
