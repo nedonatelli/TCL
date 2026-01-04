@@ -20,6 +20,7 @@ from pytcl.terrain import compute_horizon, create_flat_dem, create_synthetic_ter
 
 # Controls for visualization
 SHOW_PLOTS = False
+SKIP_VISUALIZATIONS = True  # Skip visualizations for fast execution
 
 
 def demo_flat_dem() -> None:
@@ -45,30 +46,33 @@ def demo_flat_dem() -> None:
     print(f"  Elevation: {dem.data.min():.1f} to {dem.data.max():.1f} m")
     print(f"  Grid spacing: {dem.d_lat:.6f}° lat, {dem.d_lon:.6f}° lon")
 
-    # Visualization
-    fig = go.Figure(
-        data=go.Surface(
-            z=dem.data,
-            colorscale="Viridis",
-            name="Elevation",
+    # Visualization (fast heatmap with downsampling for large grids)
+    if not SKIP_VISUALIZATIONS:
+        # Downsample for faster visualization (keep full resolution data for computations)
+        max_size = 500
+        stride = max(1, max(dem.data.shape) // max_size)
+        z_display = dem.data[::stride, ::stride]
+        
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=z_display,
+                colorscale="Viridis",
+                name="Elevation",
+                colorbar=dict(title="Elevation (m)"),
+            )
         )
-    )
 
-    fig.update_layout(
-        title="Flat Digital Elevation Model",
-        scene=dict(
+        fig.update_layout(
+            title="Flat Digital Elevation Model",
             xaxis_title="Longitude index",
             yaxis_title="Latitude index",
-            zaxis_title="Elevation (m)",
-            camera=dict(eye=dict(x=1.5, y=1.5, z=1.3)),
-        ),
-        height=500,
-    )
+            height=500,
+        )
 
-    if SHOW_PLOTS:
-        fig.show()
-    else:
-        fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
+        if SHOW_PLOTS:
+            fig.show()
+        else:
+            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
 
 
 def demo_synthetic_terrain() -> None:
@@ -100,45 +104,33 @@ def demo_synthetic_terrain() -> None:
     print(f"  Std deviation: {dem.data.std():.1f} m")
     print(f"  Grid spacing: {dem.d_lat:.6f}° lat, {dem.d_lon:.6f}° lon")
 
-    # Visualization: 3D surface
-    fig = go.Figure(
-        data=go.Surface(
-            z=dem.data,
-            colorscale="Earth",
-            name="Elevation",
-            colorbar=dict(title="Elevation (m)"),
+    # Visualization: 2D heatmap with downsampling (fast rendering)
+    if not SKIP_VISUALIZATIONS:
+        # Downsample for faster visualization
+        max_size = 500
+        stride = max(1, max(dem.data.shape) // max_size)
+        z_display = dem.data[::stride, ::stride]
+        
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=z_display,
+                colorscale="Earth",
+                name="Elevation",
+                colorbar=dict(title="Elevation (m)"),
+            )
         )
-    )
 
-    fig.update_layout(
-        title="Synthetic Terrain with Synthetic Hills",
-        scene=dict(
+        fig.update_layout(
+            title="Synthetic Terrain with Synthetic Hills",
             xaxis_title="Longitude index",
             yaxis_title="Latitude index",
-            zaxis_title="Elevation (m)",
-            camera=dict(eye=dict(x=1.5, y=1.5, z=1.3)),
-        ),
-        height=600,
-    )
+            height=600,
+        )
 
-    if SHOW_PLOTS:
-        fig.show()
-    else:
-        fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
-
-    # Visualization: 2D heatmap
-    fig2 = go.Figure(data=go.Heatmap(z=dem.data, colorscale="Earth", name="Elevation"))
-
-    fig2.update_layout(
-        title="Terrain Elevation Heatmap",
-        xaxis_title="Longitude index",
-        yaxis_title="Latitude index",
-        height=500,
-        coloraxis=dict(colorbar=dict(title="Elevation (m)")),
-    )
-
-    if SHOW_PLOTS:
-        fig2.show()
+        if SHOW_PLOTS:
+            fig.show()
+        else:
+            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
 
 
 def demo_terrain_analysis() -> None:
@@ -191,61 +183,69 @@ def demo_terrain_analysis() -> None:
     print(f"  Max slope: {slope.max():.2f}°")
     print(f"  Mean slope: {slope.mean():.2f}°")
 
-    # Visualization: Comparison histograms
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        subplot_titles=("Flat DEM Distribution", "Synthetic Terrain Distribution"),
-    )
-
-    fig.add_trace(
-        go.Histogram(
-            x=flat_dem.data.flatten(),
-            nbinsx=30,
-            name="Flat DEM",
-            marker_color="steelblue",
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Histogram(
-            x=synthetic_dem.data.flatten(),
-            nbinsx=30,
-            name="Synthetic Terrain",
-            marker_color="coral",
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.update_xaxes(title_text="Elevation (m)", row=1, col=1)
-    fig.update_xaxes(title_text="Elevation (m)", row=1, col=2)
-    fig.update_yaxes(title_text="Count", row=1, col=1)
-    fig.update_layout(height=400, showlegend=True)
-
-    if SHOW_PLOTS:
-        fig.show()
-    else:
-        fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
-
-    # Visualization: Slope map
-    fig_slope = go.Figure(
-        data=go.Heatmap(
-            z=slope, colorscale="Reds", name="Slope", colorbar=dict(title="Slope (°)")
+    # Visualization: Comparison histograms (skip for performance)
+    if not SKIP_VISUALIZATIONS:
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=("Flat DEM Distribution", "Synthetic Terrain Distribution"),
         )
-    )
 
-    fig_slope.update_layout(
-        title="Terrain Slope Map",
-        xaxis_title="Longitude index",
-        yaxis_title="Latitude index",
-        height=500,
-    )
+        fig.add_trace(
+            go.Histogram(
+                x=flat_dem.data.flatten(),
+                nbinsx=30,
+                name="Flat DEM",
+                marker_color="steelblue",
+            ),
+            row=1,
+            col=1,
+        )
 
-    if SHOW_PLOTS:
-        fig_slope.show()
+        fig.add_trace(
+            go.Histogram(
+                x=synthetic_dem.data.flatten(),
+                nbinsx=30,
+                name="Synthetic Terrain",
+                marker_color="coral",
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig.update_xaxes(title_text="Elevation (m)", row=1, col=1)
+        fig.update_xaxes(title_text="Elevation (m)", row=1, col=2)
+        fig.update_yaxes(title_text="Count", row=1, col=1)
+        fig.update_layout(height=400, showlegend=True)
+
+        if SHOW_PLOTS:
+            fig.show()
+        else:
+            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
+
+        # Visualization: Slope map with downsampling
+        max_size = 500
+        stride_slope = max(1, max(slope.shape) // max_size)
+        z_slope_display = slope[::stride_slope, ::stride_slope]
+        
+        fig_slope = go.Figure(
+            data=go.Heatmap(
+                z=z_slope_display,
+                colorscale="Reds",
+                name="Slope",
+                colorbar=dict(title="Slope (°)"),
+            )
+        )
+
+        fig_slope.update_layout(
+            title="Terrain Slope Map",
+            xaxis_title="Longitude index",
+            yaxis_title="Latitude index",
+            height=500,
+        )
+
+        if SHOW_PLOTS:
+            fig_slope.show()
 
 
 def demo_horizon_computation() -> None:

@@ -579,8 +579,8 @@ if __name__ == "__main__":
     example_lense_thirring_precession()
     example_relativistic_range_correction()
 
-OUTPUT_DIR = Path("docs/_static/images/examples")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR = Path("docs/_static/images/examples")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("\n" + "=" * 70)
     print("All relativity examples completed successfully!")

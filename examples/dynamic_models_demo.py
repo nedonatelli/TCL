@@ -143,9 +143,9 @@ def demo_continuous_to_discrete_conversion() -> None:
         )
 
         if SHOW_PLOTS:
-        fig.show()
-    else:
-        fig.write_html(str(OUTPUT_DIR / "dynamic_models_demo.html"))
+            fig.show()
+        else:
+            fig.write_html(str(OUTPUT_DIR / "dynamic_models_demo.html"))
 
 
 def main() -> None:

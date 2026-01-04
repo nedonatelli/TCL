@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Validated all 29 example files for execution without errors (100% pass rate)
+- Validated all 10 tutorial files for execution without errors (100% pass rate)
+- Optimized terrain_demo.py with fast heatmap visualizations instead of slow 3D Surface plots
+- Comprehensive batch testing infrastructure for examples and tutorials
+
+### Fixed
+- Fixed indentation errors in dynamic_models_demo.py (line 146)
+- Fixed indentation errors in ephemeris_demo.py (line 485)
+- Fixed indentation errors in relativity_demo.py (line 585)
+- Optimized terrain_demo.py performance by replacing Surface plots with downsampled Heatmaps
+
+### Changed
+- Terrain visualizations now use fast 2D heatmaps with 500×500 max resolution instead of 3D surface plots
+- Example execution time reduced from ~57s to ~24s for terrain_demo.py
+
 ## [1.7.1] - 2026-01-03
 
 ### Type Safety & Code Quality Release

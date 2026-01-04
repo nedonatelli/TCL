@@ -146,7 +146,46 @@ pytcl/
 
 - [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
 - [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
-- [Examples](examples/)
+- [Examples](examples/) - 29 validated example scripts
+- [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
+
+## Examples & Tutorials
+
+The library includes 39 runnable code examples demonstrating all major features:
+
+### Examples (29 files in `/examples/`)
+
+Comprehensive demonstrations of library functionality:
+- **Tracking & Estimation**: Kalman filters, particle filters, smoothers
+- **Assignment**: Hungarian algorithm, k-best assignments, 3D assignment
+- **Coordinates**: Frame conversions, transformations, geodetic calculations
+- **Dynamics**: State models, motion models, dynamic systems
+- **Filtering**: Uncertainty visualization, multi-target tracking
+- **Astronomy**: Ephemerides, orbital mechanics, relativistic corrections
+- **Navigation**: INS/GNSS integration, geophysical modeling
+- **Signal Processing**: Detection, filtering, transforms
+- **Terrain & Atmosphere**: Elevation models, atmospheric properties
+
+**Status**: ✅ All 29 examples validated and passing (100% execution success)
+
+### Tutorials (10 modules in `/docs/tutorials/`)
+
+Interactive learning modules with visualizations:
+- Assignment algorithms and 3D assignment problems
+- Atmospheric and geophysical models
+- Dynamical systems and reference frames
+- Filtering and smoothing techniques
+- Sensor fusion and advanced filtering
+- Special functions and mathematical tools
+
+**Status**: ✅ All 10 tutorials validated and passing (100% execution success)
+
+## Documentation
+
+- [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
+- [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
+- [Examples](examples/) - 29 validated example scripts
+- [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
 ## Comparison with Original MATLAB Library
 
