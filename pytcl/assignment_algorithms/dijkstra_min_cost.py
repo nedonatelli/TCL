@@ -21,6 +21,9 @@ This is based on:
 """
 
 import heapq
+from collections.abc import Sequence
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -57,20 +60,20 @@ def min_cost_flow_dijkstra_potentials(
     iterations : int
         Iterations used
     """
-    n_edges = len(edges)
-
     # Build edge structures
-    graph = [[] for _ in range(n_nodes)]
-    edge_data = []
+    graph: list[list[int]] = [[] for _ in range(n_nodes)]
+    edge_data: list[dict[str, Any]] = []
 
     for idx, (u, v, cap, cost) in enumerate(edges):
-        edge_data.append({
-            'from': u,
-            'to': v,
-            'capacity': cap,
-            'cost': float(cost),
-            'flow': 0.0,
-        })
+        edge_data.append(
+            {
+                "from": u,
+                "to": v,
+                "capacity": cap,
+                "cost": float(cost),
+                "flow": 0.0,
+            }
+        )
         graph[u].append(idx)
 
     # Initialize potentials to zero
@@ -82,11 +85,11 @@ def min_cost_flow_dijkstra_potentials(
         for u in range(n_nodes):
             for edge_idx in graph[u]:
                 e = edge_data[edge_idx]
-                v = e['to']
-                if e['flow'] < e['capacity'] - 1e-10:
-                    reduced = e['cost'] + potential[u] - potential[v]
+                v = e["to"]
+                if e["flow"] < e["capacity"] - 1e-10:
+                    reduced = e["cost"] + potential[u] - potential[v]
                     if reduced < -1e-10:
-                        potential[v] = potential[u] + e['cost']
+                        potential[v] = potential[u] + e["cost"]
 
     # Main loop
     current_supplies = supplies.copy()
@@ -127,11 +130,11 @@ def min_cost_flow_dijkstra_potentials(
 
             for edge_idx in graph[u]:
                 e = edge_data[edge_idx]
-                v = e['to']
+                v = e["to"]
 
-                if e['flow'] < e['capacity'] - 1e-10:
+                if e["flow"] < e["capacity"] - 1e-10:
                     # Reduced cost using potentials
-                    reduced = e['cost'] + potential[u] - potential[v]
+                    reduced = e["cost"] + potential[u] - potential[v]
                     new_dist = dist[u] + reduced
 
                     if new_dist < dist[v] - 1e-10:
@@ -153,8 +156,7 @@ def min_cost_flow_dijkstra_potentials(
 
         # Find bottleneck
         min_flow = min(
-            edge_data[e]['capacity'] - edge_data[e]['flow']
-            for e in path_edges
+            edge_data[e]["capacity"] - edge_data[e]["flow"] for e in path_edges
         )
         min_flow = min(
             min_flow,
@@ -164,7 +166,7 @@ def min_cost_flow_dijkstra_potentials(
 
         # Push flow
         for edge_idx in path_edges:
-            edge_data[edge_idx]['flow'] += min_flow
+            edge_data[edge_idx]["flow"] += min_flow
 
         current_supplies[source] -= min_flow
         current_supplies[sink] += min_flow
@@ -176,7 +178,7 @@ def min_cost_flow_dijkstra_potentials(
                 potential[node] += dist[node]
 
     # Extract solution
-    result_flow = np.array([e['flow'] for e in edge_data])
-    total_cost = sum(e['flow'] * e['cost'] for e in edge_data)
+    result_flow = np.array([e["flow"] for e in edge_data])
+    total_cost = sum(e["flow"] * e["cost"] for e in edge_data)
 
     return result_flow, total_cost, iteration + 1

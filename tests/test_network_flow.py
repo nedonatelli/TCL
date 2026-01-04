@@ -94,7 +94,7 @@ class TestHighLevelMinCostAssignment:
 
         assert isinstance(assignment, np.ndarray)
         assert np.isfinite(total_cost)
-    
+
     def test_min_cost_assignment_3x3(self):
         """Test min-cost assignment on 3x3 problem."""
         cost = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])

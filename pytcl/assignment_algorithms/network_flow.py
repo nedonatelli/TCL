@@ -345,10 +345,7 @@ def min_cost_flow_simplex(
     n_nodes = len(supplies)
 
     # Convert FlowEdge objects to tuples
-    edge_tuples = [
-        (e.from_node, e.to_node, e.capacity, e.cost)
-        for e in edges
-    ]
+    edge_tuples = [(e.from_node, e.to_node, e.capacity, e.cost) for e in edges]
 
     # Run optimized Dijkstra-based algorithm
     flow, total_cost, iterations = min_cost_flow_dijkstra_potentials(

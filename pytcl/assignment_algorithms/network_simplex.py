@@ -21,9 +21,10 @@ This is empirically faster than pure successive shortest paths because:
 - Better cache locality
 """
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
-from collections import deque
 
 
 def min_cost_flow_cost_scaling(
@@ -69,17 +70,19 @@ def min_cost_flow_cost_scaling(
     edges_list = []
 
     for idx, (u, v, cap, cost) in enumerate(edges):
-        edges_list.append({
-            'from': u,
-            'to': v,
-            'capacity': cap,
-            'cost': float(cost),
-        })
+        edges_list.append(
+            {
+                "from": u,
+                "to": v,
+                "capacity": cap,
+                "cost": float(cost),
+            }
+        )
 
     # Build adjacency list
-    adj = [[] for _ in range(n_nodes)]
+    adj: list[list[int]] = [[] for _ in range(n_nodes)]
     for idx, e in enumerate(edges_list):
-        adj[e['from']].append(idx)
+        adj[e["from"]].append(idx)
 
     # Dual variables (node potentials)
     potential = np.zeros(n_nodes)
@@ -88,10 +91,10 @@ def min_cost_flow_cost_scaling(
     for u in range(n_nodes):
         for edge_idx in adj[u]:
             e = edges_list[edge_idx]
-            v = e['to']
-            reduced = e['cost'] + potential[u] - potential[v]
+            v = e["to"]
+            reduced = e["cost"] + potential[u] - potential[v]
             if reduced < -1e-10:
-                potential[v] = min(potential[v], potential[u] + e['cost'])
+                potential[v] = min(potential[v], potential[u] + e["cost"])
 
     iteration = 0
     max_no_progress = 0
@@ -100,8 +103,8 @@ def min_cost_flow_cost_scaling(
         # Compute residual supplies/demands
         residual = supplies.copy()
         for i, f in enumerate(flow):
-            residual[edges_list[i]['from']] -= f
-            residual[edges_list[i]['to']] += f
+            residual[edges_list[i]["from"]] -= f
+            residual[edges_list[i]["to"]] += f
 
         # Check convergence
         if np.allclose(residual, 0, atol=1e-8):
@@ -117,10 +120,10 @@ def min_cost_flow_cost_scaling(
                 best_reduced_cost = 1e10
 
                 for edge_idx in adj[u]:
-                    if flow[edge_idx] < edges_list[edge_idx]['capacity'] - 1e-10:
+                    if flow[edge_idx] < edges_list[edge_idx]["capacity"] - 1e-10:
                         e = edges_list[edge_idx]
-                        v = e['to']
-                        reduced = e['cost'] + potential[u] - potential[v]
+                        v = e["to"]
+                        reduced = e["cost"] + potential[u] - potential[v]
 
                         if reduced < best_reduced_cost:
                             best_reduced_cost = reduced
@@ -131,7 +134,7 @@ def min_cost_flow_cost_scaling(
                     e = edges_list[best_edge_idx]
                     delta = min(
                         residual[u],
-                        e['capacity'] - flow[best_edge_idx],
+                        e["capacity"] - flow[best_edge_idx],
                     )
                     flow[best_edge_idx] += delta
                     improved = True
@@ -144,13 +147,13 @@ def min_cost_flow_cost_scaling(
             for _ in range(min(n_nodes, 5)):  # Limited iterations
                 for u in range(n_nodes):
                     for edge_idx in adj[u]:
-                        if flow[edge_idx] < edges_list[edge_idx]['capacity'] - 1e-10:
+                        if flow[edge_idx] < edges_list[edge_idx]["capacity"] - 1e-10:
                             e = edges_list[edge_idx]
-                            v = e['to']
-                            reduced = e['cost'] + potential[u] - potential[v]
+                            v = e["to"]
+                            reduced = e["cost"] + potential[u] - potential[v]
 
                             if reduced < -1e-10:
-                                potential[v] = potential[u] + e['cost']
+                                potential[v] = potential[u] + e["cost"]
                                 improved_potential = True
 
             if not improved_potential:
@@ -159,6 +162,6 @@ def min_cost_flow_cost_scaling(
                     break
 
     # Compute total cost
-    total_cost = float(np.sum(flow[i] * edges_list[i]['cost'] for i in range(n_edges)))
+    total_cost = float(np.sum(flow[i] * edges_list[i]["cost"] for i in range(n_edges)))
 
     return flow, total_cost, iteration + 1
