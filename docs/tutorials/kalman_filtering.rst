@@ -6,7 +6,25 @@ a moving object using noisy position measurements.
 
 .. raw:: html
 
-   <iframe src="../_static/images/tutorials/kalman_filtering.html" width="100%" height="450" frameborder="0"></iframe>
+   <script>
+   // Auto-resize iframes based on content height
+   window.addEventListener('message', function(e) {
+       if (e.data && e.data.type === 'iframe-resize') {
+           var iframes = document.querySelectorAll('iframe');
+           iframes.forEach(function(iframe) {
+               try {
+                   if (iframe.contentWindow === e.source) {
+                       iframe.style.height = (e.data.height + 20) + 'px';
+                   }
+               } catch(err) {}
+           });
+       }
+   });
+   </script>
+   <style>
+   .plotly-iframe { min-height: 400px; border: none; }
+   </style>
+   <iframe class="plotly-iframe" src="../_static/images/tutorials/kalman_filtering.html" width="100%" frameborder="0"></iframe>
 
 Problem Setup
 -------------

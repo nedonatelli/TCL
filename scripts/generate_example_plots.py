@@ -24,6 +24,37 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # Disable interactive display
 pio.renderers.default = None
 
+# JavaScript to inject into HTML files for iframe auto-resize
+IFRAME_RESIZE_SCRIPT = """
+<script>
+// Send height to parent for iframe auto-resize
+function sendHeight() {
+    var height = document.body.scrollHeight;
+    window.parent.postMessage({type: 'iframe-resize', height: height}, '*');
+}
+// Send on load and resize
+window.addEventListener('load', function() {
+    sendHeight();
+    // Also send after Plotly renders
+    setTimeout(sendHeight, 100);
+    setTimeout(sendHeight, 500);
+});
+window.addEventListener('resize', sendHeight);
+// Observe DOM changes for dynamic content
+var observer = new MutationObserver(sendHeight);
+observer.observe(document.body, {childList: true, subtree: true});
+</script>
+"""
+
+
+def _inject_iframe_resize_script(html_path):
+    """Inject iframe resize script into HTML file."""
+    content = html_path.read_text()
+    # Insert script before closing body tag
+    if "</body>" in content:
+        content = content.replace("</body>", IFRAME_RESIZE_SCRIPT + "</body>")
+        html_path.write_text(content)
+
 
 def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=False):
     """Save a Plotly figure as HTML (interactive) and optionally PNG (static).
@@ -54,6 +85,8 @@ def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=Fals
             include_plotlyjs="cdn",
             config={"responsive": True},
         )
+        # Inject script to communicate height to parent iframe
+        _inject_iframe_resize_script(html_path)
         print(f"  Saved: {html_path.name}")
 
     if save_png:
