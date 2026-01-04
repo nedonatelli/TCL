@@ -27,7 +27,7 @@ pio.renderers.default = None
 
 def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=False):
     """Save a Plotly figure as HTML (interactive) and optionally PNG (static).
-    
+
     Parameters
     ----------
     fig : plotly.graph_objects.Figure
@@ -47,7 +47,7 @@ def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=Fals
         html_path = OUTPUT_DIR / f"{name}.html"
         fig.write_html(str(html_path))
         print(f"  Saved: {html_path.name}")
-    
+
     if save_png:
         png_path = OUTPUT_DIR / f"{name}.png"
         fig.write_image(str(png_path), width=width, height=height, scale=2)

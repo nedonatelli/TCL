@@ -479,9 +479,10 @@ if __name__ == "__main__":
     example_time_series()
     example_ephemeris_versions()
 
-OUTPUT_DIR = Path("docs/_static/images/examples")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     print("\n" + "=" * 70)
     print("All ephemeris examples completed successfully!")
     print("=" * 70 + "\n")
+
+
+OUTPUT_DIR = Path("docs/_static/images/examples")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
