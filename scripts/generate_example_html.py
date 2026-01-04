@@ -25,7 +25,8 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 def save_html_figure(fig, name):
     """Save a Plotly figure as interactive HTML."""
     path = OUTPUT_DIR / f"{name}.html"
-    fig.write_html(str(path))
+    # Use external CDN for Plotly to reduce file size from 4.5MB to ~50KB
+    fig.write_html(str(path), include_plotlyjs="cdn")
     print(f"  Saved: {path.name}")
     return path
 

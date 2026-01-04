@@ -45,7 +45,8 @@ def save_figure(fig, name, width=1000, height=600, save_html=True, save_png=Fals
     """
     if save_html:
         html_path = OUTPUT_DIR / f"{name}.html"
-        fig.write_html(str(html_path))
+        # Use external CDN for Plotly to reduce file size from 4.5MB to ~50KB
+        fig.write_html(str(html_path), include_plotlyjs="cdn")
         print(f"  Saved: {html_path.name}")
 
     if save_png:
