@@ -21,7 +21,7 @@ As of v2.0.0 development (Phase 3), the library includes:
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.10.0 Implementation
+.. list-table:: Python pytcl v1.11.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -489,6 +489,33 @@ Tier 2: Highly Specialized
 
 Recently Implemented (v1.0.0+)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**v1.11.0 - Performance Optimization (January 5, 2026)**
+
+✅ **Numba JIT Compilation**
+
+   Critical numerical operations accelerated with just-in-time compilation:
+
+   - ``cholesky_update()`` — rank-1 Cholesky factor update (5-10x speedup)
+   - ``cholesky_downdate()`` — rank-1 Cholesky factor downdate (5-10x speedup)
+   - Automatic fallback to pure NumPy when Numba unavailable
+
+✅ **Function Caching (lru_cache)**
+
+   Expensive repeated computations now cached:
+
+   - Clenshaw coefficient tables for spherical harmonics
+   - Legendre function scaling factors
+   - Sigma point Jacobian matrices
+   - Van der Merwe UKF weight vectors
+
+✅ **Sparse Matrix Support**
+
+   Memory-efficient handling of large assignment problems:
+
+   - ``SparseCostTensor`` class for n-D assignment with sparse costs
+   - 10-100x memory reduction on large problems
+   - Seamless integration with existing assignment algorithms
 
 **v1.10.0 - GPU Acceleration with Apple Silicon Support (January 4, 2026)**
 

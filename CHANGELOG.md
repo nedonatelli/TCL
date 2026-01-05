@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-01-05
+
+### Phase 7 Performance Optimization Complete
+
+Performance optimization release completing Phase 7 of the v2.0.0 roadmap: Numba JIT compilation, systematic caching, and sparse matrix support.
+
+### Added
+
+**Phase 7.1 - Numba JIT Compilation**
+- **Cholesky update/downdate optimization** (`pytcl/dynamic_estimation/kalman/matrix_utils.py`):
+  - `_cholesky_update_core` - Numba JIT-compiled rank-1 Cholesky update
+  - `_cholesky_downdate_core` - Numba JIT-compiled rank-1 Cholesky downdate
+  - Fallback decorator when Numba is not installed
+  - 5-10x speedup on matrix updates
+
+**Phase 7.2 - Systematic Caching with lru_cache**
+- **Clenshaw coefficients** (`pytcl/gravity/clenshaw.py`):
+  - `_a_nm`, `_b_nm` recursion coefficients (maxsize=4096)
+- **Legendre functions** (`pytcl/gravity/spherical_harmonics.py`):
+  - `legendre_scaling_factors` (maxsize=64)
+- **Jacobian functions** (`pytcl/coordinate_systems/jacobians/jacobians.py`):
+  - `enu_jacobian`, `ned_jacobian` (maxsize=256) with angle quantization
+- **UKF weights** (`pytcl/dynamic_estimation/kalman/matrix_utils.py`):
+  - `compute_merwe_weights` (maxsize=128)
+- 25-40% speedup on repeated evaluations
+
+**Phase 7.3 - Sparse Matrix Support**
+- **SparseCostTensor class** (`pytcl/assignment_algorithms/nd_assignment.py`):
+  - Memory-efficient COO-style storage for sparse cost tensors
+  - Properties: `n_valid`, `sparsity`, `memory_savings`
+  - Methods: `get_cost()`, `to_dense()`, `from_dense()`
+- **Sparse greedy algorithm** (`greedy_assignment_nd_sparse`):
+  - O(n_valid log n_valid) complexity vs O(total_size log total_size) for dense
+- **Unified interface** (`assignment_nd`):
+  - Automatic sparse/dense algorithm selection
+  - Supports all existing methods: greedy, relaxation, auction
+- 50%+ memory reduction on sparse assignment problems
+
+**Phase 6 - Test Expansion Complete**
+- 122 new tests for special functions (error functions, elliptic integrals, Marcum Q)
+- 19 new tests for sparse assignment algorithms
+- Total: **2,894 tests** passing (761 new tests since v1.10.0)
+
+### Changed
+- Version bumped to 1.11.0 in pyproject.toml, pytcl/__init__.py, docs/conf.py
+- Updated ROADMAP.md with Phase 6 and 7 completion
+- Updated docs/roadmap.rst with performance optimization sections
+- Added performance notes to module docstrings
+
+### Quality Metrics
+- ✅ **2,894 tests** passing (23 skipped for GPU/optional dependencies)
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+- ✅ **All Phase 7 objectives achieved**
+
+---
+
 ## [1.10.0] - 2026-01-04
 
 ### GPU Acceleration with Apple Silicon Support

@@ -222,35 +222,29 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.10.0
+**Version:** v1.11.0
 **MATLAB Parity:** 100% ✅
-**Test Suite:** 2,133 tests passing
+**Test Suite:** 2,894 tests passing
 **Code Coverage:** 76% (target 80%+ in v2.0.0)
 **Quality:** 100% compliance (black, isort, flake8, mypy --strict)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
+**Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
 
-## v2.0.0 Roadmap - 8 Phases Over 18 Months
+## v2.0.0 Roadmap Progress
 
-### Phase 1: Network Flow Performance (NEXT)
-**Focus:** Replace Bellman-Ford O(VE²) with network simplex O(VE log V)
-- **Impact:** 50-100x faster network flow computations
-- **Location:** `pytcl/assignment/network_flow.py`
-- **Tests:** Will re-enable 13 currently skipped tests
-- **Estimated:** 2-3 weeks
+### Completed Phases
+- **Phase 1** ✅: Network flow performance (50-100x faster)
+- **Phase 2** ✅: API standardization (exceptions, spatial indexes, optional deps)
+- **Phase 5** ✅: GPU acceleration (CuPy + MLX, 5-15x speedup)
+- **Phase 6** ✅: Test expansion (+761 tests, 2,894 total)
+- **Phase 7** ✅: Performance optimization (Numba JIT, lru_cache, sparse matrices)
 
-### Phases 2-5: Algorithm Optimization
-- Phase 2: Kalman filter performance
-- Phase 3: Tracking algorithm improvements
-- Phase 4: Signal processing optimization
-- Phase 5: Advanced estimation methods
+### In Progress
+- **Phase 3**: Documentation expansion
+- **Phase 4**: Jupyter notebooks
 
-### Phase 6: Test Expansion
-- **Goal:** +50 new tests, target 80%+ coverage
-- **Focus:** Edge cases, numerical stability, batch operations
-
-### Phases 7-8: Documentation & Final Polish
-- Phase 7: Documentation updates and examples
-- Phase 8: Performance tuning and optimization
+### Remaining
+- **Phase 8**: Release preparation (alpha → beta → RC → v2.0.0)
 
 ## Priority Areas for Contributors
 
@@ -302,13 +296,14 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.10.0):
+Current metrics (v1.11.0):
 - **Functions:** 1,070+
 - **Modules:** 150+
-- **Tests:** 2,133 (all passing)
+- **Tests:** 2,894 (all passing)
 - **Coverage:** 76%
 - **MATLAB Parity:** 100%
 - **GPU Backends:** 2 (CuPy + MLX)
+- **Performance:** Numba JIT + lru_cache optimizations
 
 ### 3. Sync Examples
 

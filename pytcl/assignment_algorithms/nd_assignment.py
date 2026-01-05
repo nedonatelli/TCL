@@ -9,6 +9,11 @@ enabling more complex assignment scenarios such as:
 The module provides a unified interface for solving high-dimensional
 assignment problems using generalized relaxation methods.
 
+Performance Notes
+-----------------
+For sparse cost tensors (mostly invalid assignments), use SparseCostTensor
+to reduce memory usage by up to 50% and improve performance on large problems.
+
 References
 ----------
 .. [1] Poore, A. B., "Multidimensional Assignment Problem and Data
@@ -18,7 +23,7 @@ References
        Drug Discovery," Perspectives in Drug Discovery and Design, 2003.
 """
 
-from typing import NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -442,3 +447,356 @@ def detect_dimension_conflicts(
             return True
 
     return False
+
+
+class SparseCostTensor:
+    """
+    Sparse representation of N-dimensional cost tensor.
+
+    For assignment problems where most entries represent invalid
+    assignments (infinite cost), storing only valid entries reduces
+    memory by 50% or more and speeds up greedy algorithms.
+
+    Attributes
+    ----------
+    dims : tuple
+        Shape of the full tensor (n1, n2, ..., nk).
+    indices : ndarray
+        Array of shape (n_valid, n_dims) with valid entry indices.
+    costs : ndarray
+        Array of shape (n_valid,) with costs for valid entries.
+    default_cost : float
+        Cost for entries not explicitly stored (default: inf).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Create sparse tensor for 10x10x10 problem with 50 valid entries
+    >>> dims = (10, 10, 10)
+    >>> valid_indices = np.random.randint(0, 10, size=(50, 3))
+    >>> valid_costs = np.random.rand(50)
+    >>> sparse = SparseCostTensor(dims, valid_indices, valid_costs)
+    >>> sparse.n_valid
+    50
+    >>> sparse.sparsity  # Fraction of valid entries
+    0.05
+
+    >>> # Convert from dense tensor with inf for invalid
+    >>> dense = np.full((5, 5, 5), np.inf)
+    >>> dense[0, 0, 0] = 1.0
+    >>> dense[1, 1, 1] = 2.0
+    >>> sparse = SparseCostTensor.from_dense(dense)
+    >>> sparse.n_valid
+    2
+    """
+
+    def __init__(
+        self,
+        dims: Tuple[int, ...],
+        indices: NDArray[np.intp],
+        costs: NDArray[np.float64],
+        default_cost: float = np.inf,
+    ):
+        """
+        Initialize sparse cost tensor.
+
+        Parameters
+        ----------
+        dims : tuple
+            Shape of the full tensor.
+        indices : ndarray
+            Valid entry indices, shape (n_valid, n_dims).
+        costs : ndarray
+            Costs for valid entries, shape (n_valid,).
+        default_cost : float
+            Cost for invalid (unstored) entries.
+        """
+        self.dims = dims
+        self.indices = np.asarray(indices, dtype=np.intp)
+        self.costs = np.asarray(costs, dtype=np.float64)
+        self.default_cost = default_cost
+
+        # Build lookup for O(1) cost retrieval
+        self._cost_map: dict[Tuple[int, ...], float] = {}
+        for i in range(len(self.costs)):
+            key = tuple(self.indices[i])
+            self._cost_map[key] = self.costs[i]
+
+    @property
+    def n_dims(self) -> int:
+        """Number of dimensions."""
+        return len(self.dims)
+
+    @property
+    def n_valid(self) -> int:
+        """Number of valid (finite cost) entries."""
+        return len(self.costs)
+
+    @property
+    def sparsity(self) -> float:
+        """Fraction of tensor that is valid (0 to 1)."""
+        total_size = int(np.prod(self.dims))
+        return self.n_valid / total_size if total_size > 0 else 0.0
+
+    @property
+    def memory_savings(self) -> float:
+        """Estimated memory savings vs dense representation (0 to 1)."""
+        dense_size = np.prod(self.dims) * 8  # 8 bytes per float64
+        sparse_size = self.n_valid * (8 + self.n_dims * 8)  # cost + indices
+        return max(0, 1 - sparse_size / dense_size) if dense_size > 0 else 0.0
+
+    def get_cost(self, index: Tuple[int, ...]) -> float:
+        """Get cost for a specific index tuple."""
+        return self._cost_map.get(index, self.default_cost)
+
+    def to_dense(self) -> NDArray[np.float64]:
+        """
+        Convert to dense tensor representation.
+
+        Returns
+        -------
+        dense : ndarray
+            Full tensor with default_cost for unstored entries.
+
+        Notes
+        -----
+        May use significant memory for large tensors.
+        """
+        dense = np.full(self.dims, self.default_cost, dtype=np.float64)
+        for i in range(len(self.costs)):
+            dense[tuple(self.indices[i])] = self.costs[i]
+        return dense
+
+    @classmethod
+    def from_dense(
+        cls,
+        dense: NDArray[np.float64],
+        threshold: float = 1e10,
+    ) -> "SparseCostTensor":
+        """
+        Create sparse tensor from dense array.
+
+        Parameters
+        ----------
+        dense : ndarray
+            Dense cost tensor.
+        threshold : float
+            Entries above this value are considered invalid.
+            Default 1e10 (catches np.inf and large values).
+
+        Returns
+        -------
+        SparseCostTensor
+            Sparse representation.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> dense = np.array([[[1, np.inf], [np.inf, 2]],
+        ...                   [[np.inf, 3], [4, np.inf]]])
+        >>> sparse = SparseCostTensor.from_dense(dense)
+        >>> sparse.n_valid
+        4
+        """
+        valid_mask = dense < threshold
+        indices = np.array(np.where(valid_mask)).T
+        costs = dense[valid_mask]
+        return cls(dense.shape, indices, costs, default_cost=np.inf)
+
+
+def greedy_assignment_nd_sparse(
+    sparse_cost: SparseCostTensor,
+    max_assignments: Optional[int] = None,
+) -> AssignmentNDResult:
+    """
+    Greedy solver for sparse N-dimensional assignment.
+
+    Selects minimum-cost tuples from valid entries only, which is much
+    faster than dense greedy when sparsity < 0.5.
+
+    Parameters
+    ----------
+    sparse_cost : SparseCostTensor
+        Sparse cost tensor with valid entries only.
+    max_assignments : int, optional
+        Maximum number of assignments (default: min(dimensions)).
+
+    Returns
+    -------
+    AssignmentNDResult
+        Assignments, total cost, and algorithm info.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Create sparse problem
+    >>> dims = (10, 10, 10)
+    >>> # Only 20 valid assignments out of 1000
+    >>> indices = np.array([[i, i, i] for i in range(10)] +
+    ...                    [[i, (i+1)%10, (i+2)%10] for i in range(10)])
+    >>> costs = np.random.rand(20)
+    >>> sparse = SparseCostTensor(dims, indices, costs)
+    >>> result = greedy_assignment_nd_sparse(sparse)
+    >>> result.converged
+    True
+
+    Notes
+    -----
+    Time complexity is O(n_valid * log(n_valid)) vs O(total_size * log(total_size))
+    for dense greedy. For a 10x10x10 tensor with 50 valid entries, this is
+    50*log(50) vs 1000*log(1000), about 20x faster.
+    """
+    dims = sparse_cost.dims
+    n_dims = sparse_cost.n_dims
+
+    if max_assignments is None:
+        max_assignments = min(dims)
+
+    # Sort valid entries by cost
+    sorted_indices = np.argsort(sparse_cost.costs)
+
+    assignments: List[Tuple[int, ...]] = []
+    used_indices: List[set[int]] = [set() for _ in range(n_dims)]
+    total_cost = 0.0
+
+    for sorted_idx in sorted_indices:
+        if len(assignments) >= max_assignments:
+            break
+
+        multi_idx = tuple(sparse_cost.indices[sorted_idx])
+
+        # Check if any dimension index is already used
+        conflict = False
+        for d, idx in enumerate(multi_idx):
+            if idx in used_indices[d]:
+                conflict = True
+                break
+
+        if not conflict:
+            assignments.append(multi_idx)
+            total_cost += sparse_cost.costs[sorted_idx]
+            for d, idx in enumerate(multi_idx):
+                used_indices[d].add(idx)
+
+    assignments_array = np.array(assignments, dtype=np.intp)
+    if assignments_array.size == 0:
+        assignments_array = np.empty((0, n_dims), dtype=np.intp)
+
+    return AssignmentNDResult(
+        assignments=assignments_array,
+        cost=total_cost,
+        converged=True,
+        n_iterations=1,
+        gap=0.0,
+    )
+
+
+def assignment_nd(
+    cost: Union[NDArray[np.float64], SparseCostTensor],
+    method: str = "auto",
+    max_assignments: Optional[int] = None,
+    max_iterations: int = 100,
+    tolerance: float = 1e-6,
+    epsilon: float = 0.01,
+    verbose: bool = False,
+) -> AssignmentNDResult:
+    """
+    Unified interface for N-dimensional assignment.
+
+    Automatically selects between dense and sparse algorithms based on
+    input type and sparsity.
+
+    Parameters
+    ----------
+    cost : ndarray or SparseCostTensor
+        Cost tensor (dense) or sparse cost representation.
+    method : str
+        Algorithm to use: 'auto', 'greedy', 'relaxation', 'auction'.
+        'auto' selects greedy for sparse, relaxation for dense.
+    max_assignments : int, optional
+        Maximum number of assignments for greedy methods.
+    max_iterations : int
+        Maximum iterations for iterative methods.
+    tolerance : float
+        Convergence tolerance for relaxation.
+    epsilon : float
+        Price increment for auction algorithm.
+    verbose : bool
+        Print progress information.
+
+    Returns
+    -------
+    AssignmentNDResult
+        Assignment solution.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Dense usage
+    >>> cost = np.random.rand(4, 4, 4)
+    >>> result = assignment_nd(cost, method='greedy')
+    >>> result.converged
+    True
+
+    >>> # Sparse usage (more efficient for large sparse problems)
+    >>> dense = np.full((20, 20, 20), np.inf)
+    >>> for i in range(20):
+    ...     dense[i, i, i] = np.random.rand()
+    >>> sparse = SparseCostTensor.from_dense(dense)
+    >>> result = assignment_nd(sparse, method='auto')
+    >>> result.converged
+    True
+
+    See Also
+    --------
+    greedy_assignment_nd : Dense greedy algorithm.
+    greedy_assignment_nd_sparse : Sparse greedy algorithm.
+    relaxation_assignment_nd : Lagrangian relaxation.
+    auction_assignment_nd : Auction algorithm.
+    """
+    if isinstance(cost, SparseCostTensor):
+        # Sparse input - use sparse algorithm
+        if method in ("auto", "greedy"):
+            return greedy_assignment_nd_sparse(cost, max_assignments)
+        else:
+            # Convert to dense for other methods
+            dense = cost.to_dense()
+            if method == "relaxation":
+                return relaxation_assignment_nd(
+                    dense, max_iterations, tolerance, verbose
+                )
+            elif method == "auction":
+                return auction_assignment_nd(
+                    dense, max_iterations, epsilon=epsilon, verbose=verbose
+                )
+            else:
+                raise ValueError(f"Unknown method: {method}")
+    else:
+        # Dense input
+        cost = np.asarray(cost, dtype=np.float64)
+        if method == "auto":
+            # Use relaxation for better solutions on dense
+            return relaxation_assignment_nd(cost, max_iterations, tolerance, verbose)
+        elif method == "greedy":
+            return greedy_assignment_nd(cost, max_assignments)
+        elif method == "relaxation":
+            return relaxation_assignment_nd(cost, max_iterations, tolerance, verbose)
+        elif method == "auction":
+            return auction_assignment_nd(
+                cost, max_iterations, epsilon=epsilon, verbose=verbose
+            )
+        else:
+            raise ValueError(f"Unknown method: {method}")
+
+
+__all__ = [
+    "AssignmentNDResult",
+    "SparseCostTensor",
+    "validate_cost_tensor",
+    "greedy_assignment_nd",
+    "greedy_assignment_nd_sparse",
+    "relaxation_assignment_nd",
+    "auction_assignment_nd",
+    "detect_dimension_conflicts",
+    "assignment_nd",
+]

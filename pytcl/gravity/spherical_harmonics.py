@@ -433,6 +433,22 @@ def gravity_acceleration(
     return g_r, g_lat, g_lon
 
 
+@lru_cache(maxsize=64)
+def _legendre_scaling_factors_cached(n_max: int) -> Tuple[float, ...]:
+    """Cached computation of Legendre scaling factors.
+
+    Returns tuple for hashability.
+    """
+    if n_max <= 150:
+        return tuple([1.0] * (n_max + 1))
+
+    scale = []
+    for n in range(n_max + 1):
+        exponent = -280.0 * n / n_max
+        scale.append(10.0**exponent)
+    return tuple(scale)
+
+
 def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
     """Precompute scaling factors to prevent overflow in Legendre recursion.
 
@@ -474,16 +490,7 @@ def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
     >>> scale_high[200] < scale_high[0]  # Higher degrees scaled down
     True
     """
-    scale = np.ones(n_max + 1)
-
-    if n_max > 150:
-        # Apply progressive scaling for high degrees
-        for n in range(n_max + 1):
-            # Scale factor decreases exponentially with degree
-            exponent = -280.0 * n / n_max
-            scale[n] = 10.0**exponent
-
-    return scale
+    return np.array(_legendre_scaling_factors_cached(n_max))
 
 
 def associated_legendre_scaled(

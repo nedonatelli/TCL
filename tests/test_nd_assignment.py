@@ -14,9 +14,12 @@ import pytest
 
 from pytcl.assignment_algorithms.nd_assignment import (
     AssignmentNDResult,
+    SparseCostTensor,
+    assignment_nd,
     auction_assignment_nd,
     detect_dimension_conflicts,
     greedy_assignment_nd,
+    greedy_assignment_nd_sparse,
     relaxation_assignment_nd,
     validate_cost_tensor,
 )
@@ -331,6 +334,230 @@ class TestResultDataStructure:
 
         with pytest.raises(AttributeError):
             result.cost = 0.0
+
+
+class TestSparseCostTensor:
+    """Test SparseCostTensor class for sparse n-D assignment."""
+
+    def test_sparse_tensor_creation(self):
+        """Test creating a sparse cost tensor."""
+        dims = (3, 3, 3)
+        indices = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
+        costs = np.array([1.0, 2.0, 3.0])
+
+        sparse = SparseCostTensor(dims, indices, costs)
+
+        assert sparse.dims == dims
+        assert sparse.n_valid == 3
+        assert sparse.default_cost == np.inf
+
+    def test_sparse_tensor_get_cost(self):
+        """Test getting cost from sparse tensor."""
+        dims = (3, 3)
+        indices = np.array([[0, 0], [1, 1]])
+        costs = np.array([1.0, 2.0])
+
+        sparse = SparseCostTensor(dims, indices, costs, default_cost=100.0)
+
+        assert sparse.get_cost((0, 0)) == 1.0
+        assert sparse.get_cost((1, 1)) == 2.0
+        assert sparse.get_cost((0, 1)) == 100.0  # Default cost
+
+    def test_sparse_tensor_sparsity(self):
+        """Test sparsity calculation."""
+        dims = (10, 10)
+        indices = np.array([[0, 0], [1, 1], [2, 2]])
+        costs = np.array([1.0, 2.0, 3.0])
+
+        sparse = SparseCostTensor(dims, indices, costs)
+
+        assert sparse.sparsity == 3 / 100
+
+    def test_sparse_tensor_memory_savings(self):
+        """Test memory savings calculation."""
+        dims = (10, 10, 10)  # 1000 elements
+        indices = np.array([[0, 0, 0], [1, 1, 1]])  # 2 elements
+        costs = np.array([1.0, 2.0])
+
+        sparse = SparseCostTensor(dims, indices, costs)
+
+        # Should have significant memory savings
+        assert sparse.memory_savings > 0.9  # >90% savings
+
+    def test_sparse_tensor_to_dense(self):
+        """Test converting sparse tensor to dense."""
+        dims = (3, 3)
+        indices = np.array([[0, 0], [1, 1], [2, 2]])
+        costs = np.array([1.0, 2.0, 3.0])
+
+        sparse = SparseCostTensor(dims, indices, costs, default_cost=np.inf)
+        dense = sparse.to_dense()
+
+        assert dense.shape == dims
+        assert dense[0, 0] == 1.0
+        assert dense[1, 1] == 2.0
+        assert dense[2, 2] == 3.0
+        assert np.isinf(dense[0, 1])
+
+    def test_sparse_tensor_from_dense(self):
+        """Test creating sparse tensor from dense array."""
+        dense = np.array([[1.0, np.inf], [np.inf, 2.0]])
+
+        sparse = SparseCostTensor.from_dense(dense, threshold=1e10)
+
+        assert sparse.dims == (2, 2)
+        assert sparse.n_valid == 2
+        assert sparse.get_cost((0, 0)) == 1.0
+        assert sparse.get_cost((1, 1)) == 2.0
+
+    def test_sparse_tensor_roundtrip(self):
+        """Test dense -> sparse -> dense roundtrip."""
+        original = np.random.randn(4, 4)
+        original[original > 0.5] = np.inf  # Make some entries sparse
+
+        sparse = SparseCostTensor.from_dense(original, threshold=1e10)
+        recovered = sparse.to_dense()
+
+        # Finite values should match
+        finite_mask = np.isfinite(original)
+        np.testing.assert_array_almost_equal(
+            original[finite_mask], recovered[finite_mask]
+        )
+
+
+class TestGreedyAssignmentNDSparse:
+    """Test sparse greedy assignment algorithm."""
+
+    def test_sparse_greedy_simple(self):
+        """Test sparse greedy on simple problem."""
+        dims = (3, 3)
+        indices = np.array([[0, 0], [1, 1], [2, 2], [0, 1], [1, 0]])
+        costs = np.array([1.0, 1.0, 1.0, 10.0, 10.0])
+
+        sparse = SparseCostTensor(dims, indices, costs)
+        result = greedy_assignment_nd_sparse(sparse, max_assignments=3)
+
+        assert isinstance(result, AssignmentNDResult)
+        assert result.cost <= 3.0  # Optimal is diagonal
+
+    def test_sparse_greedy_respects_max_assignments(self):
+        """Test sparse greedy respects max_assignments."""
+        dims = (10, 10)
+        indices = np.array([[i, i] for i in range(10)])
+        costs = np.ones(10)
+
+        sparse = SparseCostTensor(dims, indices, costs)
+        result = greedy_assignment_nd_sparse(sparse, max_assignments=3)
+
+        assert result.assignments.shape[0] <= 3
+
+    def test_sparse_greedy_4d(self):
+        """Test sparse greedy on 4D problem."""
+        dims = (3, 3, 3, 3)
+        # Create diagonal entries
+        indices = np.array([[i, i, i, i] for i in range(3)])
+        costs = np.array([1.0, 2.0, 3.0])
+
+        sparse = SparseCostTensor(dims, indices, costs)
+        result = greedy_assignment_nd_sparse(sparse, max_assignments=3)
+
+        assert result.assignments.shape[1] == 4
+        assert result.cost <= 6.0
+
+    def test_sparse_greedy_no_valid_entries(self):
+        """Test sparse greedy with no valid entries."""
+        dims = (3, 3)
+        indices = np.empty((0, 2), dtype=np.intp)
+        costs = np.empty(0)
+
+        sparse = SparseCostTensor(dims, indices, costs)
+        result = greedy_assignment_nd_sparse(sparse, max_assignments=3)
+
+        assert result.assignments.shape[0] == 0
+        assert result.cost == 0.0
+
+
+class TestAssignmentNDUnified:
+    """Test unified assignment_nd interface."""
+
+    def test_assignment_nd_auto_dense(self):
+        """Test assignment_nd with auto method on dense array."""
+        cost = np.random.randn(3, 3)
+
+        result = assignment_nd(cost, method="auto", max_assignments=3)
+
+        assert isinstance(result, AssignmentNDResult)
+        assert result.assignments.shape[0] <= 3
+
+    def test_assignment_nd_auto_sparse(self):
+        """Test assignment_nd with auto method on sparse tensor."""
+        dims = (3, 3)
+        indices = np.array([[0, 0], [1, 1], [2, 2]])
+        costs = np.array([1.0, 2.0, 3.0])
+        sparse = SparseCostTensor(dims, indices, costs)
+
+        result = assignment_nd(sparse, method="auto", max_assignments=3)
+
+        assert isinstance(result, AssignmentNDResult)
+
+    def test_assignment_nd_greedy_dense(self):
+        """Test assignment_nd with greedy method on dense array."""
+        cost = np.random.randn(3, 3)
+
+        result = assignment_nd(cost, method="greedy", max_assignments=3)
+
+        assert isinstance(result, AssignmentNDResult)
+
+    def test_assignment_nd_greedy_sparse(self):
+        """Test assignment_nd with greedy method on sparse tensor."""
+        dims = (3, 3)
+        indices = np.array([[0, 0], [1, 1], [2, 2]])
+        costs = np.array([1.0, 2.0, 3.0])
+        sparse = SparseCostTensor(dims, indices, costs)
+
+        result = assignment_nd(sparse, method="greedy", max_assignments=3)
+
+        assert isinstance(result, AssignmentNDResult)
+
+    def test_assignment_nd_relaxation(self):
+        """Test assignment_nd with relaxation method."""
+        cost = np.random.randn(3, 3)
+
+        result = assignment_nd(
+            cost, method="relaxation", max_iterations=100, tolerance=1e-6
+        )
+
+        assert isinstance(result, AssignmentNDResult)
+
+    def test_assignment_nd_auction(self):
+        """Test assignment_nd with auction method."""
+        cost = np.random.randn(3, 3)
+
+        result = assignment_nd(cost, method="auction", max_iterations=100, epsilon=0.01)
+
+        assert isinstance(result, AssignmentNDResult)
+
+    def test_assignment_nd_invalid_method(self):
+        """Test assignment_nd with invalid method raises error."""
+        cost = np.random.randn(3, 3)
+
+        with pytest.raises(ValueError, match="Unknown method"):
+            assignment_nd(cost, method="invalid_method")
+
+    def test_assignment_nd_sparse_equivalent_to_dense(self):
+        """Test sparse and dense give similar results on same problem."""
+        # Create a small dense cost matrix
+        dense_cost = np.array([[1.0, 10.0, 10.0], [10.0, 2.0, 10.0], [10.0, 10.0, 3.0]])
+
+        # Convert to sparse
+        sparse_cost = SparseCostTensor.from_dense(dense_cost, threshold=5.0)
+
+        result_dense = assignment_nd(dense_cost, method="greedy", max_assignments=3)
+        result_sparse = assignment_nd(sparse_cost, method="greedy", max_assignments=3)
+
+        # Both should find the diagonal solution (optimal)
+        assert result_dense.cost <= 6.0
+        assert result_sparse.cost <= 6.0
 
 
 if __name__ == "__main__":
