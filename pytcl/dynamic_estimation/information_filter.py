@@ -119,6 +119,20 @@ def information_to_state(
         State estimate.
     P : ndarray
         State covariance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Information form: Y = inv(P), y = Y @ x
+    >>> x_true = np.array([1.0, 2.0])
+    >>> P_true = np.eye(2) * 0.5
+    >>> Y = np.linalg.inv(P_true)  # Information matrix
+    >>> y = Y @ x_true              # Information vector
+    >>> x_recovered, P_recovered = information_to_state(y, Y)
+    >>> np.allclose(x_recovered, x_true)
+    True
+    >>> np.allclose(P_recovered, P_true)
+    True
     """
     y = np.asarray(y, dtype=np.float64).flatten()
     Y = np.asarray(Y, dtype=np.float64)
@@ -149,6 +163,18 @@ def state_to_information(
         Information vector.
     Y : ndarray
         Information matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.array([1.0, 2.0])
+    >>> P = np.eye(2) * 0.5  # Covariance
+    >>> y, Y = state_to_information(x, P)
+    >>> Y  # Should be inv(P) = 2*I
+    array([[2., 0.],
+           [0., 2.]])
+    >>> y  # Should be Y @ x = [2, 4]
+    array([2., 4.])
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)
@@ -323,6 +349,24 @@ def srif_predict(
     R_pred : ndarray
         Predicted square root information matrix.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> n = 2
+    >>> # Initialize with known state
+    >>> P0 = np.eye(n)
+    >>> R0 = np.linalg.inv(np.linalg.cholesky(P0)).T
+    >>> x0 = np.array([1.0, 0.5])
+    >>> r0 = R0 @ x0
+    >>> # Prediction step
+    >>> F = np.array([[1, 1], [0, 1]])
+    >>> Q = np.eye(2) * 0.1
+    >>> r_pred, R_pred = srif_predict(r0, R0, F, Q)
+    >>> r_pred.shape
+    (2,)
+    >>> R_pred.shape
+    (2, 2)
+
     Notes
     -----
     The SRIF prediction uses:
@@ -399,6 +443,26 @@ def srif_update(
         Updated information vector.
     R_upd : ndarray
         Updated square root information matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> n = 2
+    >>> # Prior in SRIF form
+    >>> P_prior = np.eye(n) * 2.0
+    >>> R_prior = np.linalg.inv(np.linalg.cholesky(P_prior)).T
+    >>> x_prior = np.array([1.0, 0.5])
+    >>> r_prior = R_prior @ x_prior
+    >>> # Measurement update
+    >>> z = np.array([1.2])  # Position measurement
+    >>> H = np.array([[1, 0]])
+    >>> R_meas = np.array([[0.5]])  # Measurement noise covariance
+    >>> r_upd, R_upd = srif_update(r_prior, R_prior, z, H, R_meas)
+    >>> r_upd.shape
+    (2,)
+    >>> # Updated information matrix has more information (higher values)
+    >>> np.linalg.det(R_upd.T @ R_upd) > np.linalg.det(R_prior.T @ R_prior)
+    True
 
     Notes
     -----

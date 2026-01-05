@@ -123,6 +123,12 @@ def f_singer_2d(T: float, tau: float) -> NDArray[np.floating]:
     F : ndarray
         State transition matrix of shape (6, 6).
 
+    Examples
+    --------
+    >>> F = f_singer_2d(T=1.0, tau=10.0)
+    >>> F.shape
+    (6, 6)
+
     See Also
     --------
     f_singer : General Singer model.
@@ -147,6 +153,12 @@ def f_singer_3d(T: float, tau: float) -> NDArray[np.floating]:
     -------
     F : ndarray
         State transition matrix of shape (9, 9).
+
+    Examples
+    --------
+    >>> F = f_singer_3d(T=1.0, tau=10.0)
+    >>> F.shape
+    (9, 9)
 
     See Also
     --------

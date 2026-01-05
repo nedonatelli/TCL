@@ -208,6 +208,29 @@ def compute_association_likelihood(
     -------
     likelihood : float
         Joint likelihood of the association.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 2 tracks, 2 measurements
+    >>> likelihood_matrix = np.array([[0.9, 0.1],
+    ...                                [0.1, 0.8]])
+    >>> # Association: track 0 -> meas 0, track 1 -> meas 1
+    >>> association = {0: 0, 1: 1}
+    >>> lik = compute_association_likelihood(
+    ...     association, likelihood_matrix,
+    ...     detection_prob=0.9, clutter_density=1e-6, n_meas=2
+    ... )
+    >>> lik > 0
+    True
+    >>> # Association with missed detection
+    >>> assoc_miss = {0: 0, 1: -1}  # track 1 misses
+    >>> lik_miss = compute_association_likelihood(
+    ...     assoc_miss, likelihood_matrix,
+    ...     detection_prob=0.9, clutter_density=1e-6, n_meas=2
+    ... )
+    >>> lik > lik_miss  # Full detection more likely
+    True
     """
     likelihood = 1.0
 
@@ -258,6 +281,31 @@ def n_scan_prune(
         Hypotheses surviving pruning.
     committed_track_ids : set
         Track IDs that are now committed (survived N-scan).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.trackers.hypothesis import (
+    ...     Hypothesis, MHTTrack, MHTTrackStatus, n_scan_prune
+    ... )
+    >>> # Two hypotheses, tracks with different creation scans
+    >>> track1 = MHTTrack(id=0, state=np.zeros(2), covariance=np.eye(2),
+    ...                   score=1.0, status=MHTTrackStatus.CONFIRMED,
+    ...                   history=[0], parent_id=-1, scan_created=0,
+    ...                   n_hits=3, n_misses=0)
+    >>> track2 = MHTTrack(id=1, state=np.zeros(2), covariance=np.eye(2),
+    ...                   score=0.5, status=MHTTrackStatus.TENTATIVE,
+    ...                   history=[1], parent_id=-1, scan_created=2,
+    ...                   n_hits=1, n_misses=0)
+    >>> tracks = {0: track1, 1: track2}
+    >>> hyp1 = Hypothesis(id=0, probability=0.8, track_ids=[0],
+    ...                   scan_created=0, parent_id=-1)
+    >>> hyp2 = Hypothesis(id=1, probability=0.2, track_ids=[1],
+    ...                   scan_created=2, parent_id=-1)
+    >>> pruned, committed = n_scan_prune([hyp1, hyp2], tracks, n_scan=2,
+    ...                                   current_scan=3)
+    >>> len(pruned) >= 1
+    True
 
     Notes
     -----
@@ -338,6 +386,23 @@ def prune_hypotheses_by_probability(
     -------
     pruned : list of Hypothesis
         Pruned and renormalized hypotheses.
+
+    Examples
+    --------
+    >>> from pytcl.trackers.hypothesis import Hypothesis, prune_hypotheses_by_probability
+    >>> # 5 hypotheses with varying probabilities
+    >>> hyps = [
+    ...     Hypothesis(id=0, probability=0.5, track_ids=[0], scan_created=0, parent_id=-1),
+    ...     Hypothesis(id=1, probability=0.3, track_ids=[1], scan_created=0, parent_id=-1),
+    ...     Hypothesis(id=2, probability=0.1, track_ids=[2], scan_created=0, parent_id=-1),
+    ...     Hypothesis(id=3, probability=0.05, track_ids=[3], scan_created=0, parent_id=-1),
+    ...     Hypothesis(id=4, probability=1e-8, track_ids=[4], scan_created=0, parent_id=-1),
+    ... ]
+    >>> pruned = prune_hypotheses_by_probability(hyps, max_hypotheses=3)
+    >>> len(pruned)  # Only top 3 kept
+    3
+    >>> sum(h.probability for h in pruned)  # Renormalized to 1
+    1.0
     """
     if not hypotheses:
         return []

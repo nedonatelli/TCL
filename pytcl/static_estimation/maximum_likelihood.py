@@ -222,6 +222,14 @@ def fisher_information_exponential_family(
     -----
     For exponential families, I(theta) = Var[T(X)] = d^2 A(theta) / d theta^2,
     where A(theta) is the log-partition function.
+
+    Examples
+    --------
+    >>> def suff_stats(x, theta):
+    ...     return np.array([x, x**2])  # Mean and second moment
+    >>> data = np.random.normal(0, 1, 100)
+    >>> theta = np.array([0.0, 1.0])
+    >>> F = fisher_information_exponential_family(suff_stats, theta, data)
     """
     theta = np.asarray(theta, dtype=np.float64)
     data = np.asarray(data, dtype=np.float64)
@@ -263,6 +271,14 @@ def observed_fisher_information(
     The observed Fisher information is often more accurate for
     finite samples and is asymptotically equivalent to the
     expected Fisher information.
+
+    Examples
+    --------
+    >>> data = np.array([1.2, 0.8, 1.1, 0.9, 1.0])
+    >>> def log_lik(theta):
+    ...     return -0.5 * np.sum((data - theta[0])**2 / theta[1]) - 2.5 * np.log(theta[1])
+    >>> theta = np.array([1.0, 0.1])
+    >>> F_obs = observed_fisher_information(log_lik, theta)
     """
     return fisher_information_numerical(log_likelihood, theta, h)
 
@@ -361,6 +377,14 @@ def cramer_rao_bound_biased(
     -----
     For a biased estimator with bias b(theta), the CRB becomes:
         Var(theta_hat) >= (I + db/dtheta) I^{-1} (I + db/dtheta)^T
+
+    Examples
+    --------
+    >>> F = np.array([[10.0, 0], [0, 5.0]])  # Fisher info
+    >>> db = np.array([[0.1, 0], [0, 0.2]])  # Bias gradient
+    >>> crb_biased = cramer_rao_bound_biased(F, db)
+    >>> crb_biased.shape
+    (2, 2)
     """
     F = np.asarray(fisher_info, dtype=np.float64)
     db = np.asarray(bias_gradient, dtype=np.float64)
@@ -571,6 +595,17 @@ def mle_scoring(
     -----
     Fisher scoring update: theta_{n+1} = theta_n + I(theta_n)^{-1} @ score
     This is equivalent to Newton-Raphson when I(theta) = -E[H].
+
+    Examples
+    --------
+    >>> data = np.array([1.0, 1.1, 0.9, 1.2, 0.8])
+    >>> def log_lik(theta):
+    ...     return -0.5 * len(data) * np.log(2*np.pi) - np.sum((data - theta[0])**2) / 2
+    >>> def score(theta):
+    ...     return np.array([np.sum(data - theta[0])])
+    >>> def fisher(theta):
+    ...     return np.array([[len(data)]])
+    >>> result = mle_scoring(log_lik, score, fisher, np.array([0.0]))
     """
     theta = np.asarray(theta_init, dtype=np.float64).copy()
 
@@ -729,6 +764,13 @@ def aic(log_likelihood: float, n_params: int) -> float:
     Notes
     -----
     AIC = -2 * log_likelihood + 2 * n_params
+
+    Examples
+    --------
+    >>> log_lik = -100.0
+    >>> n_params = 3
+    >>> aic(log_lik, n_params)
+    206.0
     """
     return -2 * log_likelihood + 2 * n_params
 
@@ -754,6 +796,12 @@ def bic(log_likelihood: float, n_params: int, n_samples: int) -> float:
     Notes
     -----
     BIC = -2 * log_likelihood + n_params * log(n_samples)
+
+    Examples
+    --------
+    >>> log_lik = -100.0
+    >>> bic(log_lik, n_params=3, n_samples=100)
+    213.81551055796427
     """
     return -2 * log_likelihood + n_params * np.log(n_samples)
 
@@ -780,6 +828,12 @@ def aicc(log_likelihood: float, n_params: int, n_samples: int) -> float:
     -----
     AICc adds a correction for small sample sizes:
     AICc = AIC + 2*k*(k+1)/(n-k-1)
+
+    Examples
+    --------
+    >>> log_lik = -50.0
+    >>> aicc(log_lik, n_params=3, n_samples=20)
+    109.5
     """
     k = n_params
     n = n_samples

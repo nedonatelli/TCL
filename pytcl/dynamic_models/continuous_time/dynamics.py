@@ -79,6 +79,13 @@ def drift_constant_acceleration(
     -------
     a : ndarray
         Drift vector.
+
+    Examples
+    --------
+    >>> x = np.array([0, 10, 1])  # 1D: pos=0, vel=10, acc=1
+    >>> a = drift_constant_acceleration(x, num_dims=1)
+    >>> a  # [vel, acc, 0]
+    array([10.,  1.,  0.])
     """
     x = np.asarray(x, dtype=np.float64)
     n = 3  # states per dimension
@@ -124,6 +131,13 @@ def drift_singer(
     -----
     The Singer model has acceleration following a first-order Markov process:
         da/dt = -a/tau + w(t)
+
+    Examples
+    --------
+    >>> x = np.array([0, 10, 2])  # 1D: pos=0, vel=10, acc=2
+    >>> a = drift_singer(x, tau=5.0, num_dims=1)
+    >>> a  # [vel, acc, -acc/tau]
+    array([10. ,  2. , -0.4])
     """
     x = np.asarray(x, dtype=np.float64)
     n = 3  # states per dimension
@@ -167,6 +181,14 @@ def drift_coordinated_turn_2d(
         dy/dt = vy
         dvy/dt = omega * vx
         domega/dt = 0
+
+    Examples
+    --------
+    >>> # Aircraft at origin with velocity [100, 0] and turn rate 0.1 rad/s
+    >>> x = np.array([0, 100, 0, 0, 0.1])
+    >>> a = drift_coordinated_turn_2d(x)
+    >>> a  # [vx, -omega*vy, vy, omega*vx, 0]
+    array([ 100.,   -0.,    0.,   10.,    0.])
     """
     x = np.asarray(x, dtype=np.float64)
     pos_x, vel_x, pos_y, vel_y, omega = x
@@ -209,6 +231,18 @@ def diffusion_constant_velocity(
     -------
     D : ndarray
         Diffusion matrix (noise enters through velocity derivative).
+
+    Examples
+    --------
+    >>> x = np.array([0, 1, 0, 2])  # 2D state (not used)
+    >>> D = diffusion_constant_velocity(x, sigma_a=0.5, num_dims=2)
+    >>> D.shape
+    (4, 2)
+    >>> D  # Noise enters velocity states only
+    array([[0. , 0. ],
+           [0.5, 0. ],
+           [0. , 0. ],
+           [0. , 0.5]])
     """
     n = 2 * num_dims
     D = np.zeros((n, num_dims), dtype=np.float64)
@@ -244,6 +278,17 @@ def diffusion_constant_acceleration(
     -------
     D : ndarray
         Diffusion matrix.
+
+    Examples
+    --------
+    >>> x = np.array([0, 1, 0.5])  # 1D state (not used)
+    >>> D = diffusion_constant_acceleration(x, sigma_j=0.1, num_dims=1)
+    >>> D.shape
+    (3, 1)
+    >>> D  # Noise enters acceleration state only
+    array([[0. ],
+           [0. ],
+           [0.1]])
     """
     n = 3 * num_dims
     D = np.zeros((n, num_dims), dtype=np.float64)
@@ -286,6 +331,15 @@ def diffusion_singer(
     Notes
     -----
     The diffusion coefficient for Singer is sqrt(2*sigma_m^2/tau).
+
+    Examples
+    --------
+    >>> x = np.array([0, 1, 0.5])  # 1D state (not used)
+    >>> D = diffusion_singer(x, sigma_m=1.0, tau=10.0, num_dims=1)
+    >>> D.shape
+    (3, 1)
+    >>> D[2, 0]  # sqrt(2*1^2/10) = sqrt(0.2)
+    0.4472135954999579
     """
     n = 3 * num_dims
     D = np.zeros((n, num_dims), dtype=np.float64)
@@ -355,6 +409,17 @@ def continuous_to_discrete(
     ----------
     .. [1] Van Loan, C.F., "Computing Integrals Involving the Matrix
            Exponential", IEEE Trans. Automatic Control, 1978.
+
+    Examples
+    --------
+    >>> # 1D constant velocity model
+    >>> A = np.array([[0, 1], [0, 0]])
+    >>> G = np.array([[0], [1]])
+    >>> Q_c = np.array([[1.0]])  # acceleration variance
+    >>> F, Q_d = continuous_to_discrete(A, G, Q_c, T=0.1)
+    >>> F  # State transition matrix
+    array([[1. , 0.1],
+           [0. , 1. ]])
     """
     A = np.asarray(A, dtype=np.float64)
     G = np.asarray(G, dtype=np.float64)
@@ -411,6 +476,19 @@ def discretize_lti(
         Discrete-time state transition matrix.
     G : ndarray or None
         Discrete-time input matrix (None if B is None).
+
+    Examples
+    --------
+    >>> # 1D constant velocity: dx/dt = v, dv/dt = u (control input)
+    >>> A = np.array([[0, 1], [0, 0]])
+    >>> B = np.array([[0], [1]])
+    >>> F, G = discretize_lti(A, B, T=0.1)
+    >>> F  # State transition
+    array([[1. , 0.1],
+           [0. , 1. ]])
+    >>> G  # Input matrix
+    array([[0.005],
+           [0.1  ]])
     """
     A = np.asarray(A, dtype=np.float64)
     n = A.shape[0]
@@ -454,6 +532,14 @@ def state_jacobian_cv(
     -------
     A : ndarray
         Continuous-time state matrix.
+
+    Examples
+    --------
+    >>> x = np.array([0, 1])  # 1D state (not used)
+    >>> A = state_jacobian_cv(x, num_dims=1)
+    >>> A
+    array([[0., 1.],
+           [0., 0.]])
     """
     n = 2  # states per dimension
     A_1d = np.array(
@@ -494,6 +580,15 @@ def state_jacobian_ca(
     -------
     A : ndarray
         Continuous-time state matrix.
+
+    Examples
+    --------
+    >>> x = np.array([0, 1, 0.5])  # 1D state (not used)
+    >>> A = state_jacobian_ca(x, num_dims=1)
+    >>> A
+    array([[0., 1., 0.],
+           [0., 0., 1.],
+           [0., 0., 0.]])
     """
     n = 3  # states per dimension
     A_1d = np.array(
@@ -538,6 +633,15 @@ def state_jacobian_singer(
     -------
     A : ndarray
         Continuous-time state matrix.
+
+    Examples
+    --------
+    >>> x = np.array([0, 1, 0.5])  # 1D state (not used)
+    >>> A = state_jacobian_singer(x, tau=5.0, num_dims=1)
+    >>> A
+    array([[ 0. ,  1. ,  0. ],
+           [ 0. ,  0. ,  1. ],
+           [ 0. ,  0. , -0.2]])
     """
     n = 3  # states per dimension
     A_1d = np.array(

@@ -67,6 +67,20 @@ def validate_cost_tensor(cost_tensor: NDArray[np.float64]) -> Tuple[int, ...]:
     ------
     ValueError
         If tensor has fewer than 2 dimensions.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> cost = np.random.rand(3, 4, 5)
+    >>> dims = validate_cost_tensor(cost)
+    >>> dims
+    (3, 4, 5)
+    >>> # 1D tensor should raise error
+    >>> try:
+    ...     validate_cost_tensor(np.array([1, 2, 3]))
+    ... except ValueError:
+    ...     print("Caught expected error")
+    Caught expected error
     """
     if cost_tensor.ndim < 2:
         raise ValueError(

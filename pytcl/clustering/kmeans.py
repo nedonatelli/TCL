@@ -171,6 +171,15 @@ def update_centers(
     centers : ndarray
         Updated cluster centers, shape (n_clusters, n_features).
         Empty clusters retain their previous position (zeros).
+
+    Examples
+    --------
+    >>> X = np.array([[0, 0], [1, 0], [10, 10], [11, 10]])
+    >>> labels = np.array([0, 0, 1, 1])
+    >>> centers = update_centers(X, labels, n_clusters=2)
+    >>> centers
+    array([[ 0.5,  0. ],
+           [10.5, 10. ]])
     """
     X = np.asarray(X, dtype=np.float64)
     labels = np.asarray(labels, dtype=np.intp)

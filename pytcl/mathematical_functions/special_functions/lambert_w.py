@@ -170,6 +170,11 @@ def wright_omega(z: ArrayLike) -> NDArray[np.complexfloating]:
 
     It is entire (analytic everywhere) unlike the Lambert W function.
 
+    Examples
+    --------
+    >>> wright_omega(0)  # Omega constant
+    (0.5671...+0j)
+
     References
     ----------
     .. [1] Wright, E.M. (1959). "Solution of the equation z*exp(z) = a".

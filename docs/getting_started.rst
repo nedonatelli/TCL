@@ -89,8 +89,11 @@ The library provides several filtering algorithms:
 
    from pytcl.dynamic_estimation import ekf_predict, ekf_update
 
-   pred = ekf_predict(x, P, f_func, F_jacobian, Q)
-   upd = ekf_update(pred.x, pred.P, z, h_func, H_jacobian, R)
+   # F and H are the Jacobian matrices evaluated at the current state
+   F = F_jacobian(x)  # Jacobian of f at x
+   H = H_jacobian(x)  # Jacobian of h at x
+   pred = ekf_predict(x, P, f_func, F, Q)
+   upd = ekf_update(pred.x, pred.P, z, h_func, H, R)
 
 **Unscented Kalman Filter** - For highly nonlinear systems:
 
@@ -109,6 +112,12 @@ The library provides several filtering algorithms:
        initialize_particles,
        bootstrap_pf_step,
    )
+
+   # Q_sample is a callable that samples process noise
+   def Q_sample(n_particles, rng=None):
+       if rng is None:
+           rng = np.random.default_rng()
+       return rng.multivariate_normal(np.zeros(n), Q_cov, size=n_particles)
 
    state = initialize_particles(x0, P0, N=1000)
    state = bootstrap_pf_step(state.particles, state.weights, z, f, h, Q_sample, R)

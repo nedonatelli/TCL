@@ -363,6 +363,33 @@ def gaussian_sum_filter_predict(
     -------
     components_new : list[GaussianComponent]
         Predicted components.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.dynamic_estimation.gaussian_sum_filter import GaussianComponent
+    >>> # Two-component mixture for position-velocity state
+    >>> comp1 = GaussianComponent(
+    ...     x=np.array([0.0, 1.0]),  # moving right
+    ...     P=np.eye(2) * 0.5,
+    ...     w=0.5
+    ... )
+    >>> comp2 = GaussianComponent(
+    ...     x=np.array([0.0, -1.0]),  # moving left
+    ...     P=np.eye(2) * 0.5,
+    ...     w=0.5
+    ... )
+    >>> components = [comp1, comp2]
+    >>> # Constant velocity dynamics
+    >>> dt = 0.1
+    >>> f = lambda x: np.array([x[0] + x[1] * dt, x[1]])
+    >>> F = np.array([[1, dt], [0, 1]])
+    >>> Q = np.eye(2) * 0.01
+    >>> predicted = gaussian_sum_filter_predict(components, f, F, Q)
+    >>> len(predicted)
+    2
+    >>> predicted[0].w  # weights unchanged in prediction
+    0.5
     """
     F = np.asarray(F, dtype=np.float64)
     Q = np.asarray(Q, dtype=np.float64)
@@ -401,6 +428,34 @@ def gaussian_sum_filter_update(
     -------
     components_new : list[GaussianComponent]
         Updated components with adapted weights.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.dynamic_estimation.gaussian_sum_filter import GaussianComponent
+    >>> # Two-component mixture
+    >>> comp1 = GaussianComponent(
+    ...     x=np.array([1.0, 0.5]),
+    ...     P=np.eye(2) * 0.5,
+    ...     w=0.5
+    ... )
+    >>> comp2 = GaussianComponent(
+    ...     x=np.array([3.0, 0.5]),
+    ...     P=np.eye(2) * 0.5,
+    ...     w=0.5
+    ... )
+    >>> components = [comp1, comp2]
+    >>> # Position measurement near component 1
+    >>> z = np.array([1.1])
+    >>> h = lambda x: np.array([x[0]])
+    >>> H = np.array([[1, 0]])
+    >>> R = np.array([[0.1]])
+    >>> updated = gaussian_sum_filter_update(components, z, h, H, R)
+    >>> len(updated)
+    2
+    >>> # Component 1 should have higher weight (closer to measurement)
+    >>> updated[0].w > updated[1].w
+    True
     """
     z = np.asarray(z, dtype=np.float64)
     H = np.asarray(H, dtype=np.float64)

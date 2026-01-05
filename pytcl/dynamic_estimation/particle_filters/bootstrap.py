@@ -163,6 +163,18 @@ def resample_residual(
     -------
     resampled : ndarray
         Resampled particles.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(42)
+    >>> particles = np.array([[1.0], [2.0], [3.0], [4.0]])
+    >>> weights = np.array([0.1, 0.2, 0.3, 0.4])
+    >>> resampled = resample_residual(particles, weights, rng)
+    >>> resampled.shape
+    (4, 1)
+    >>> # High-weight particles are copied deterministically
+    >>> np.sum(resampled == 4.0) >= 1
+    True
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -249,6 +261,29 @@ def bootstrap_pf_predict(
     -------
     particles_pred : ndarray
         Predicted particles.
+
+    Examples
+    --------
+    Predict particles through constant velocity dynamics:
+
+    >>> import numpy as np
+    >>> rng = np.random.default_rng(42)
+    >>> # 50 particles for 2D state [position, velocity]
+    >>> particles = np.column_stack([
+    ...     np.zeros(50),  # position
+    ...     np.ones(50)    # velocity = 1
+    ... ])
+    >>> dt = 0.1
+    >>> # x_next = [pos + vel*dt, vel]
+    >>> f = lambda x: np.array([x[0] + x[1] * dt, x[1]])
+    >>> # Process noise sampler
+    >>> Q_sample = lambda n, r: r.normal(0, 0.01, (n, 2))
+    >>> pred = bootstrap_pf_predict(particles, f, Q_sample, rng)
+    >>> pred.shape
+    (50, 2)
+    >>> # Positions moved forward by ~0.1
+    >>> np.mean(pred[:, 0])  # doctest: +ELLIPSIS
+    0.1...
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -295,6 +330,25 @@ def bootstrap_pf_update(
         Updated normalized weights.
     log_likelihood : float
         Log marginal likelihood of measurement.
+
+    Examples
+    --------
+    Update particle weights with a position measurement:
+
+    >>> import numpy as np
+    >>> # 4 particles at different positions
+    >>> particles = np.array([[0.0], [1.0], [2.0], [3.0]])
+    >>> weights = np.ones(4) / 4  # uniform initial weights
+    >>> z = np.array([2.0])  # measured position
+    >>> # Gaussian likelihood centered on measurement
+    >>> def likelihood(z, x):
+    ...     return np.exp(-0.5 * (z[0] - x[0])**2)
+    >>> new_weights, log_lik = bootstrap_pf_update(particles, weights, z, likelihood)
+    >>> # Particle at x=2 should have highest weight
+    >>> np.argmax(new_weights)
+    2
+    >>> np.sum(new_weights)  # weights sum to 1
+    1.0
     """
     z = np.asarray(z, dtype=np.float64)
     N = len(particles)
@@ -341,6 +395,19 @@ def gaussian_likelihood(
     -------
     likelihood : float
         p(z|x) = N(z; z_pred, R).
+
+    Examples
+    --------
+    >>> z = np.array([1.0, 2.0])  # actual measurement
+    >>> z_pred = np.array([1.0, 2.0])  # perfect prediction
+    >>> R = np.eye(2) * 0.1  # measurement noise covariance
+    >>> lik = gaussian_likelihood(z, z_pred, R)
+    >>> lik > 0
+    True
+    >>> # Zero innovation -> maximum likelihood
+    >>> z_off = np.array([10.0, 10.0])
+    >>> gaussian_likelihood(z_off, z_pred, R) < lik
+    True
     """
     m = len(z)
     innovation = z - z_pred

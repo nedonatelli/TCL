@@ -95,6 +95,11 @@ def gammainc(a: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
     -----
     This is the CDF of the gamma distribution.
 
+    Examples
+    --------
+    >>> gammainc(1, 1)  # 1 - exp(-1)
+    0.632...
+
     See Also
     --------
     scipy.special.gammainc : Regularized lower incomplete gamma function.
@@ -121,6 +126,11 @@ def gammaincc(a: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
     Q : ndarray
         Values of the regularized upper incomplete gamma function.
 
+    Examples
+    --------
+    >>> gammaincc(1, 1)  # exp(-1)
+    0.367...
+
     See Also
     --------
     scipy.special.gammaincc : Regularized upper incomplete gamma function.
@@ -146,6 +156,11 @@ def gammaincinv(a: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
     x : ndarray
         Values where P(a, x) = y.
 
+    Examples
+    --------
+    >>> gammaincinv(1, 0.5)  # Median of exponential distribution
+    0.693...
+
     See Also
     --------
     scipy.special.gammaincinv : Inverse of lower incomplete gamma.
@@ -168,6 +183,11 @@ def digamma(x: ArrayLike) -> NDArray[np.floating]:
     -------
     ψ : ndarray
         Values of the digamma function.
+
+    Examples
+    --------
+    >>> digamma(1)  # -γ (negative Euler-Mascheroni constant)
+    -0.577...
 
     See Also
     --------
@@ -194,6 +214,13 @@ def polygamma(n: int, x: ArrayLike) -> NDArray[np.floating]:
     -------
     ψn : ndarray
         Values of the n-th polygamma function.
+
+    Examples
+    --------
+    >>> polygamma(0, 1)  # Digamma at 1 = -γ
+    -0.577...
+    >>> polygamma(1, 1)  # Trigamma at 1 = π²/6
+    1.644...
 
     See Also
     --------
@@ -252,6 +279,12 @@ def betaln(a: ArrayLike, b: ArrayLike) -> NDArray[np.floating]:
     lnB : ndarray
         Values of ln(B(a, b)).
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> betaln(100, 100)  # More stable than log(beta(100, 100))
+    -137.74...
+
     See Also
     --------
     scipy.special.betaln : Log of beta function.
@@ -284,6 +317,11 @@ def betainc(a: ArrayLike, b: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
     -----
     This is the CDF of the beta distribution.
 
+    Examples
+    --------
+    >>> betainc(1, 1, 0.5)  # Uniform distribution CDF at 0.5
+    0.5
+
     See Also
     --------
     scipy.special.betainc : Regularized incomplete beta function.
@@ -310,6 +348,11 @@ def betaincinv(a: ArrayLike, b: ArrayLike, y: ArrayLike) -> NDArray[np.floating]
     -------
     x : ndarray
         Values where I_x(a, b) = y.
+
+    Examples
+    --------
+    >>> betaincinv(1, 1, 0.5)  # Median of uniform distribution
+    0.5
 
     See Also
     --------

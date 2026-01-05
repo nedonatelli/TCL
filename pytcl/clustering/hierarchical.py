@@ -106,6 +106,15 @@ def compute_distance_matrix(
     -------
     distances : ndarray
         Distance matrix, shape (n_samples, n_samples).
+
+    Examples
+    --------
+    >>> X = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+    >>> D = compute_distance_matrix(X)
+    >>> D.shape
+    (3, 3)
+    >>> D[0, 1]  # Distance between points 0 and 1
+    1.0
     """
     X = np.asarray(X, dtype=np.float64)
     return _compute_distance_matrix_jit(X)
@@ -402,6 +411,16 @@ def cut_dendrogram(
     -------
     labels : ndarray
         Cluster labels, shape (n_samples,).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> rng = np.random.default_rng(42)
+    >>> X = np.vstack([rng.normal(0, 0.5, (10, 2)), rng.normal(3, 0.5, (10, 2))])
+    >>> result = agglomerative_clustering(X)
+    >>> labels = cut_dendrogram(result.linkage_matrix, n_samples=20, n_clusters=2)
+    >>> len(np.unique(labels))
+    2
     """
     linkage_matrix = np.asarray(linkage_matrix)
 
@@ -472,6 +491,16 @@ def fcluster(
     -------
     labels : ndarray
         Cluster labels (1-indexed for scipy compatibility).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> rng = np.random.default_rng(42)
+    >>> X = np.vstack([rng.normal(0, 0.5, (10, 2)), rng.normal(3, 0.5, (10, 2))])
+    >>> result = agglomerative_clustering(X)
+    >>> labels = fcluster(result.linkage_matrix, n_samples=20, t=2, criterion='maxclust')
+    >>> labels.min()  # 1-indexed
+    1
     """
     if criterion == "distance":
         labels = cut_dendrogram(linkage_matrix, n_samples, distance_threshold=t)

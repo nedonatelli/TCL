@@ -72,6 +72,11 @@ def bessely(
     -----
     Y_n(x) is singular at x = 0.
 
+    Examples
+    --------
+    >>> bessely(0, 1)
+    0.088...
+
     See Also
     --------
     scipy.special.yv : Bessel function of second kind of real order.
@@ -137,6 +142,13 @@ def besselk(
     -----
     K_n(x) is singular at x = 0.
 
+    Examples
+    --------
+    >>> besselk(0, 1)
+    0.421...
+    >>> besselk(1, 2)
+    0.139...
+
     See Also
     --------
     scipy.special.kv : Modified Bessel function of second kind.
@@ -173,6 +185,14 @@ def besselh(
     -----
     H^(1)_n(x) = J_n(x) + i*Y_n(x)
     H^(2)_n(x) = J_n(x) - i*Y_n(x)
+
+    Examples
+    --------
+    >>> h = besselh(0, 1, 1)  # H^(1)_0(1)
+    >>> h.real
+    0.765...
+    >>> h.imag
+    0.088...
 
     See Also
     --------
@@ -215,6 +235,13 @@ def spherical_jn(
     -----
     j_n(x) = sqrt(pi / (2*x)) * J_{n+1/2}(x)
 
+    Examples
+    --------
+    >>> spherical_jn(0, 1)  # sin(1)/1
+    0.841...
+    >>> spherical_jn(0, 1, derivative=True)  # Derivative
+    0.301...
+
     See Also
     --------
     scipy.special.spherical_jn : Spherical Bessel function of first kind.
@@ -245,6 +272,11 @@ def spherical_yn(
     -------
     y : ndarray
         Values of y_n(x) or y_n'(x).
+
+    Examples
+    --------
+    >>> spherical_yn(0, 1)  # -cos(1)/1
+    -0.540...
 
     See Also
     --------
@@ -277,6 +309,11 @@ def spherical_in(
     i : ndarray
         Values of i_n(x) or i_n'(x).
 
+    Examples
+    --------
+    >>> spherical_in(0, 1)  # sinh(1)/1
+    1.175...
+
     See Also
     --------
     scipy.special.spherical_in : Modified spherical Bessel function of first kind.
@@ -307,6 +344,11 @@ def spherical_kn(
     -------
     k : ndarray
         Values of k_n(x) or k_n'(x).
+
+    Examples
+    --------
+    >>> spherical_kn(0, 1)  # (pi/2) * exp(-1)
+    0.578...
 
     See Also
     --------
@@ -343,6 +385,14 @@ def airy(
         Airy function Bi(x).
     Bip : ndarray
         Derivative of Airy function Bi'(x).
+
+    Examples
+    --------
+    >>> Ai, Aip, Bi, Bip = airy(0)
+    >>> Ai
+    0.355...
+    >>> Bi
+    0.614...
 
     See Also
     --------
@@ -511,6 +561,11 @@ def struve_l(
     -------
     L : ndarray
         Values of L_n(x).
+
+    Examples
+    --------
+    >>> struve_l(0, 1)
+    0.710...
     """
     return np.asarray(sp.modstruve(n, x), dtype=np.float64)
 

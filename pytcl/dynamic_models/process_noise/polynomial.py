@@ -229,6 +229,12 @@ def q_constant_acceleration(
     Q : ndarray
         Process noise covariance matrix.
 
+    Examples
+    --------
+    >>> Q = q_constant_acceleration(T=1.0, sigma_j=0.1, num_dims=2)
+    >>> Q.shape
+    (6, 6)
+
     See Also
     --------
     f_constant_acceleration : State transition matrix for CA model.

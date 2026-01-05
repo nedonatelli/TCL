@@ -112,6 +112,11 @@ def marcum_q1(
     Q : ndarray
         Values of Q_1(a, b).
 
+    Examples
+    --------
+    >>> marcum_q1(2, 2)
+    0.735...
+
     See Also
     --------
     marcum_q : Generalized Marcum Q function.
@@ -274,6 +279,11 @@ def nuttall_q(
     -----
     This is the probability P(X <= b^2) for X ~ chi^2(2, a^2).
 
+    Examples
+    --------
+    >>> nuttall_q(2, 2)  # 1 - Q_1(2, 2)
+    0.264...
+
     See Also
     --------
     marcum_q : Marcum Q function.
@@ -321,6 +331,12 @@ def swerling_detection_probability(
 
     For Swerling 1:
         P_d = exp(-threshold / (2 + 2*n*SNR)) * (1 + n*SNR/...)
+
+    Examples
+    --------
+    >>> pd = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=0)
+    >>> pd > 0.9  # High probability of detection with 10 dB SNR
+    True
 
     References
     ----------

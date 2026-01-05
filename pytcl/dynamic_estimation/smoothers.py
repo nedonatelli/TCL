@@ -423,6 +423,25 @@ def fixed_interval_smoother(
     result : RTSResult
         Smoothed estimates over the interval.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 1D constant velocity model
+    >>> x0 = np.array([0.0, 1.0])  # [position, velocity]
+    >>> P0 = np.eye(2) * 5.0
+    >>> F = np.array([[1, 1], [0, 1]])
+    >>> Q = np.array([[0.25, 0.5], [0.5, 1.0]]) * 0.01
+    >>> H = np.array([[1, 0]])
+    >>> R = np.array([[0.5]])
+    >>> measurements = [np.array([0.9]), np.array([2.1]), np.array([3.0]),
+    ...                 np.array([4.2]), np.array([4.9])]
+    >>> result = fixed_interval_smoother(x0, P0, measurements, F, Q, H, R)
+    >>> len(result.x_smooth)
+    5
+    >>> # Smoothed estimates have lower uncertainty
+    >>> np.trace(result.P_smooth[2]) < np.trace(result.P_filt[2])
+    True
+
     See Also
     --------
     rts_smoother : Full RTS smoother with time-varying parameters.
@@ -477,6 +496,26 @@ def two_filter_smoother(
     -------
     result : RTSResult
         Smoothed estimates.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 1D position-velocity system
+    >>> x0_fwd = np.array([0.0, 1.0])
+    >>> P0_fwd = np.eye(2) * 5.0
+    >>> # Backward filter starts with diffuse (high uncertainty) prior
+    >>> x0_bwd = np.array([5.0, 1.0])  # approximate final state
+    >>> P0_bwd = np.eye(2) * 100.0     # diffuse prior
+    >>> F = np.array([[1, 1], [0, 1]])
+    >>> Q = np.eye(2) * 0.1
+    >>> H = np.array([[1, 0]])
+    >>> R = np.array([[1.0]])
+    >>> measurements = [np.array([0.8]), np.array([1.9]), np.array([3.1]),
+    ...                 np.array([4.0]), np.array([5.2])]
+    >>> result = two_filter_smoother(x0_fwd, P0_fwd, x0_bwd, P0_bwd,
+    ...                               measurements, F, Q, H, R)
+    >>> len(result.x_smooth)
+    5
 
     Notes
     -----
@@ -645,6 +684,25 @@ def rts_smoother_single_step(
     -------
     result : SmoothedState
         Smoothed state and covariance at current time.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # After running forward filter and getting smoothed estimate at k+1
+    >>> x_filt = np.array([1.0, 0.5])      # filtered state at k
+    >>> P_filt = np.eye(2) * 0.5           # filtered covariance at k
+    >>> x_pred_next = np.array([1.5, 0.5]) # predicted state at k+1
+    >>> P_pred_next = np.eye(2) * 0.6      # predicted covariance at k+1
+    >>> x_smooth_next = np.array([1.4, 0.6])  # smoothed state at k+1
+    >>> P_smooth_next = np.eye(2) * 0.3       # smoothed covariance at k+1
+    >>> F = np.array([[1, 1], [0, 1]])
+    >>> result = rts_smoother_single_step(x_filt, P_filt, x_pred_next,
+    ...                                    P_pred_next, x_smooth_next,
+    ...                                    P_smooth_next, F)
+    >>> result.x.shape
+    (2,)
+    >>> result.P.shape
+    (2, 2)
     """
     x_s, P_s = kf_smooth(
         x_filt, P_filt, x_pred_next, P_pred_next, x_smooth_next, P_smooth_next, F

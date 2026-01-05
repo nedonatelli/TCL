@@ -142,6 +142,15 @@ def julian_centuries_j2000(mjd: float) -> float:
     -------
     T : float
         Julian centuries since J2000.0.
+
+    Examples
+    --------
+    >>> T = julian_centuries_j2000(51544.5)  # J2000.0 epoch
+    >>> abs(T) < 1e-10  # Should be zero at J2000
+    True
+    >>> T = julian_centuries_j2000(51544.5 + 36525)  # One century later
+    >>> abs(T - 1.0) < 1e-10
+    True
     """
     # J2000.0 = JD 2451545.0 = MJD 51544.5
     return (mjd - 51544.5) / 36525.0
@@ -172,6 +181,14 @@ def fundamental_arguments(T: float) -> Tuple[float, float, float, float, float]:
     Notes
     -----
     Based on IERS Conventions (2010) expressions.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> T = 0.0  # J2000.0
+    >>> l, lp, F, D, Om = fundamental_arguments(T)
+    >>> all(0 <= x < 2*np.pi for x in [l, lp, F, D, Om])  # All in [0, 2pi)
+    True
     """
     # Convert degrees to radians
     deg2rad = np.pi / 180.0
@@ -241,6 +258,15 @@ def moon_position_approximate(mjd: float) -> Tuple[float, float, float]:
     Notes
     -----
     Low-precision formula adequate for tidal computations.
+
+    Examples
+    --------
+    >>> r, lat, lon = moon_position_approximate(58000)
+    >>> 350000e3 < r < 410000e3  # Distance in km range
+    True
+    >>> import numpy as np
+    >>> -np.pi/2 <= lat <= np.pi/2  # Valid latitude
+    True
     """
     T = julian_centuries_j2000(mjd)
 
@@ -313,6 +339,14 @@ def sun_position_approximate(mjd: float) -> Tuple[float, float, float]:
     Notes
     -----
     Low-precision formula adequate for tidal computations.
+
+    Examples
+    --------
+    >>> r, lat, lon = sun_position_approximate(58000)
+    >>> 1.47e11 < r < 1.52e11  # Distance ~1 AU
+    True
+    >>> lat == 0.0  # Sun on ecliptic
+    True
     """
     T = julian_centuries_j2000(mjd)
 

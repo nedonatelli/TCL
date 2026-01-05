@@ -131,6 +131,12 @@ def get_data_dir() -> Path:
     -------
     Path
         Path to the data directory.
+
+    Examples
+    --------
+    >>> data_dir = get_data_dir()
+    >>> str(data_dir).endswith('.pytcl/data') or 'PYTCL_DATA_DIR' in dir()
+    True
     """
     env_dir = os.environ.get("PYTCL_DATA_DIR")
     if env_dir:
@@ -242,6 +248,16 @@ def create_test_coefficients(n_max: int = 36) -> EGMCoefficients:
     -------
     EGMCoefficients
         Test coefficient set.
+
+    Examples
+    --------
+    >>> coef = create_test_coefficients(n_max=10)
+    >>> coef.n_max
+    10
+    >>> coef.C[0, 0]  # Central term
+    1.0
+    >>> abs(coef.C[2, 0]) > 0  # J2 term present
+    True
     """
     C = np.zeros((n_max + 1, n_max + 1))
     S = np.zeros((n_max + 1, n_max + 1))
@@ -496,6 +512,16 @@ def geoid_heights(
     -------
     ndarray
         Geoid heights in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> coef = create_test_coefficients(n_max=10)
+    >>> lats = np.array([0.0, np.pi/4])  # Equator and 45°N
+    >>> lons = np.array([0.0, np.pi/2])  # Prime meridian and 90°E
+    >>> heights = geoid_heights(lats, lons, coefficients=coef)
+    >>> len(heights)
+    2
     """
     # Load coefficients once
     if coefficients is None:
@@ -543,6 +569,13 @@ def gravity_disturbance(
     -------
     GravityDisturbance
         Gravity disturbance components.
+
+    Examples
+    --------
+    >>> coef = create_test_coefficients(n_max=10)
+    >>> dist = gravity_disturbance(0, 0, h=0, coefficients=coef)
+    >>> isinstance(dist.magnitude, float)
+    True
     """
     if coefficients is None:
         coefficients = load_egm_coefficients(model, n_max)
@@ -613,6 +646,13 @@ def gravity_anomaly(
     -------
     float
         Gravity anomaly in m/s^2 (typically reported in mGal = 1e-5 m/s^2).
+
+    Examples
+    --------
+    >>> coef = create_test_coefficients(n_max=10)
+    >>> anomaly = gravity_anomaly(0, 0, h=0, coefficients=coef)
+    >>> isinstance(anomaly, float)
+    True
     """
     disturbance = gravity_disturbance(lat, lon, h, model, n_max, coefficients)
 
@@ -657,6 +697,13 @@ def deflection_of_vertical(
     -----
     Positive xi means the plumb line points more north than the normal.
     Positive eta means the plumb line points more east than the normal.
+
+    Examples
+    --------
+    >>> coef = create_test_coefficients(n_max=10)
+    >>> xi, eta = deflection_of_vertical(0, 0, coefficients=coef)
+    >>> isinstance(xi, float) and isinstance(eta, float)
+    True
     """
     if coefficients is None:
         coefficients = load_egm_coefficients(model, n_max)

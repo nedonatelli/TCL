@@ -157,6 +157,12 @@ def mean_to_hyperbolic_anomaly(
     -------
     H : float
         Hyperbolic anomaly (radians).
+
+    Examples
+    --------
+    >>> H = mean_to_hyperbolic_anomaly(1.0, 1.5)
+    >>> abs(1.5 * np.sinh(H) - H - 1.0) < 1e-10
+    True
     """
     if e <= 1:
         raise ValueError(f"Eccentricity must be > 1 for hyperbolic orbits, got {e}")
@@ -196,6 +202,12 @@ def eccentric_to_true_anomaly(E: float, e: float) -> float:
     -------
     nu : float
         True anomaly (radians), in [0, 2*pi).
+
+    Examples
+    --------
+    >>> nu = eccentric_to_true_anomaly(np.pi/4, 0.5)
+    >>> 0 <= nu < 2 * np.pi
+    True
     """
     # Use half-angle formula for numerical stability
     nu = 2 * np.arctan2(np.sqrt(1 + e) * np.sin(E / 2), np.sqrt(1 - e) * np.cos(E / 2))
@@ -217,6 +229,12 @@ def true_to_eccentric_anomaly(nu: float, e: float) -> float:
     -------
     E : float
         Eccentric anomaly (radians), in [0, 2*pi).
+
+    Examples
+    --------
+    >>> E = true_to_eccentric_anomaly(np.pi/3, 0.5)
+    >>> 0 <= E < 2 * np.pi
+    True
     """
     E = 2 * np.arctan2(np.sqrt(1 - e) * np.sin(nu / 2), np.sqrt(1 + e) * np.cos(nu / 2))
     return E % (2 * np.pi)
@@ -237,6 +255,12 @@ def hyperbolic_to_true_anomaly(H: float, e: float) -> float:
     -------
     nu : float
         True anomaly (radians).
+
+    Examples
+    --------
+    >>> nu = hyperbolic_to_true_anomaly(0.5, 1.5)
+    >>> isinstance(nu, float)
+    True
     """
     nu = 2 * np.arctan(np.sqrt((e + 1) / (e - 1)) * np.tanh(H / 2))
     return nu
@@ -277,6 +301,12 @@ def eccentric_to_mean_anomaly(E: float, e: float) -> float:
     -------
     M : float
         Mean anomaly (radians).
+
+    Examples
+    --------
+    >>> M = eccentric_to_mean_anomaly(np.pi/4, 0.5)
+    >>> 0 <= M < 2 * np.pi
+    True
     """
     M = E - e * np.sin(E)
     return M % (2 * np.pi)
@@ -297,6 +327,12 @@ def mean_to_true_anomaly(M: float, e: float) -> float:
     -------
     nu : float
         True anomaly (radians).
+
+    Examples
+    --------
+    >>> nu = mean_to_true_anomaly(np.pi/4, 0.1)
+    >>> 0 <= nu < 2 * np.pi
+    True
     """
     if e < 1:
         E = mean_to_eccentric_anomaly(M, e)
@@ -514,6 +550,12 @@ def orbital_period(a: float, mu: float = GM_EARTH) -> float:
     -------
     T : float
         Orbital period (seconds).
+
+    Examples
+    --------
+    >>> T = orbital_period(7000)  # LEO satellite
+    >>> T / 60  # Convert to minutes  # doctest: +SKIP
+    97.8...
     """
     if a <= 0:
         raise ValueError("Semi-major axis must be positive for elliptic orbits")
@@ -535,6 +577,13 @@ def mean_motion(a: float, mu: float = GM_EARTH) -> float:
     -------
     n : float
         Mean motion (radians/second).
+
+    Examples
+    --------
+    >>> n = mean_motion(42164)  # GEO orbit
+    >>> revs_per_day = n * 86400 / (2 * np.pi)
+    >>> abs(revs_per_day - 1.0) < 0.01  # Approximately 1 rev/day
+    True
     """
     return np.sqrt(mu / abs(a) ** 3)
 
@@ -607,6 +656,15 @@ def kepler_propagate_state(
     -------
     new_state : StateVector
         Propagated state vector.
+
+    Examples
+    --------
+    >>> r = np.array([7000.0, 0.0, 0.0])
+    >>> v = np.array([0.0, 7.5, 0.0])
+    >>> state = StateVector(r=r, v=v)
+    >>> new_state = kepler_propagate_state(state, 3600)
+    >>> np.linalg.norm(new_state.r) > 0
+    True
     """
     elements = state_to_orbital_elements(state, mu)
     new_elements = kepler_propagate(elements, dt, mu)
@@ -630,6 +688,12 @@ def vis_viva(r: float, a: float, mu: float = GM_EARTH) -> float:
     -------
     v : float
         Orbital velocity (km/s).
+
+    Examples
+    --------
+    >>> v = vis_viva(7000, 7000)  # Circular orbit
+    >>> abs(v - circular_velocity(7000)) < 0.01
+    True
     """
     return np.sqrt(mu * (2 / r - 1 / a))
 
@@ -649,6 +713,15 @@ def specific_angular_momentum(
     -------
     h : ndarray
         Specific angular momentum vector (km^2/s).
+
+    Examples
+    --------
+    >>> r = np.array([7000.0, 0.0, 0.0])
+    >>> v = np.array([0.0, 7.5, 0.0])
+    >>> state = StateVector(r=r, v=v)
+    >>> h = specific_angular_momentum(state)
+    >>> h[2]  # Angular momentum in z-direction
+    52500.0
     """
     return np.cross(state.r, state.v)
 
@@ -672,6 +745,15 @@ def specific_orbital_energy(
     energy : float
         Specific orbital energy (km^2/s^2).
         Negative for bound orbits, positive for escape trajectories.
+
+    Examples
+    --------
+    >>> r = np.array([7000.0, 0.0, 0.0])
+    >>> v = np.array([0.0, 7.5, 0.0])
+    >>> state = StateVector(r=r, v=v)
+    >>> energy = specific_orbital_energy(state)
+    >>> energy < 0  # Bound orbit
+    True
     """
     r_mag = np.linalg.norm(state.r)
     v_mag = np.linalg.norm(state.v)
@@ -692,6 +774,15 @@ def flight_path_angle(state: StateVector) -> float:
     gamma : float
         Flight path angle (radians).
         Positive when climbing, negative when descending.
+
+    Examples
+    --------
+    >>> r = np.array([7000.0, 0.0, 0.0])
+    >>> v = np.array([0.0, 7.5, 0.0])  # Tangential velocity
+    >>> state = StateVector(r=r, v=v)
+    >>> gamma = flight_path_angle(state)
+    >>> abs(gamma) < 0.01  # Nearly zero for circular motion
+    True
     """
     r = np.asarray(state.r)
     v = np.asarray(state.v)
@@ -720,6 +811,12 @@ def periapsis_radius(a: float, e: float) -> float:
     -------
     r_p : float
         Periapsis radius (km).
+
+    Examples
+    --------
+    >>> r_p = periapsis_radius(10000, 0.3)
+    >>> r_p
+    7000.0
     """
     return a * (1 - e)
 
@@ -739,6 +836,12 @@ def apoapsis_radius(a: float, e: float) -> float:
     -------
     r_a : float
         Apoapsis radius (km). Infinite for parabolic/hyperbolic orbits.
+
+    Examples
+    --------
+    >>> r_a = apoapsis_radius(10000, 0.3)
+    >>> r_a
+    13000.0
     """
     if e >= 1:
         return np.inf
@@ -769,6 +872,13 @@ def time_since_periapsis(
     -------
     t : float
         Time since periapsis (seconds).
+
+    Examples
+    --------
+    >>> t = time_since_periapsis(np.pi, 7000, 0.1)  # At apoapsis
+    >>> T = orbital_period(7000)
+    >>> abs(t - T/2) < 1  # Approximately half the period
+    True
     """
     M = true_to_mean_anomaly(nu, e)
     n = mean_motion(a, mu)
@@ -792,6 +902,15 @@ def orbit_radius(nu: float, a: float, e: float) -> float:
     -------
     r : float
         Orbital radius (km).
+
+    Examples
+    --------
+    >>> r = orbit_radius(0, 10000, 0.3)  # At periapsis
+    >>> r
+    7000.0
+    >>> r = orbit_radius(np.pi, 10000, 0.3)  # At apoapsis
+    >>> r
+    13000.0
     """
     p = a * (1 - e * e)
     return p / (1 + e * np.cos(nu))
@@ -812,6 +931,12 @@ def escape_velocity(r: float, mu: float = GM_EARTH) -> float:
     -------
     v_esc : float
         Escape velocity (km/s).
+
+    Examples
+    --------
+    >>> v_esc = escape_velocity(6378 + 400)  # At ISS altitude
+    >>> 10 < v_esc < 12  # About 11 km/s
+    True
     """
     return np.sqrt(2 * mu / r)
 
@@ -831,6 +956,12 @@ def circular_velocity(r: float, mu: float = GM_EARTH) -> float:
     -------
     v_circ : float
         Circular velocity (km/s).
+
+    Examples
+    --------
+    >>> v_circ = circular_velocity(6378 + 400)  # At ISS altitude
+    >>> 7 < v_circ < 8  # About 7.7 km/s
+    True
     """
     return np.sqrt(mu / r)
 

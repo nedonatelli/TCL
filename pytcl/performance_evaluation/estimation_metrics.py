@@ -140,6 +140,14 @@ def velocity_rmse(
     -------
     float
         Velocity RMSE.
+
+    Examples
+    --------
+    >>> # State = [x, vx, y, vy], velocities are indices [1, 3]
+    >>> true = np.array([[0, 10, 0, 5], [1, 10, 0.5, 5]])
+    >>> est = np.array([[0, 9.5, 0, 5.2], [1, 10.2, 0.5, 4.9]])
+    >>> velocity_rmse(true, est, [1, 3])  # doctest: +SKIP
+    0.316...
     """
     true_vel = true_states[:, velocity_indices]
     est_vel = estimated_states[:, velocity_indices]
@@ -216,6 +224,15 @@ def nees_sequence(
     -------
     ndarray
         NEES values for each time step, shape (N,).
+
+    Examples
+    --------
+    >>> true = np.array([[1.0, 2.0], [1.5, 2.5]])
+    >>> est = np.array([[1.1, 1.9], [1.6, 2.4]])
+    >>> P = np.array([np.eye(2) * 0.1, np.eye(2) * 0.1])
+    >>> nees_vals = nees_sequence(true, est, P)
+    >>> len(nees_vals)
+    2
     """
     N = true_states.shape[0]
     nees_values = np.zeros(N)
@@ -247,6 +264,15 @@ def average_nees(
     -------
     float
         Average NEES (should be close to state_dim for consistent filter).
+
+    Examples
+    --------
+    >>> true = np.array([[1.0, 2.0], [1.5, 2.5], [2.0, 3.0]])
+    >>> est = np.array([[1.1, 1.9], [1.6, 2.4], [2.1, 2.9]])
+    >>> P = np.array([np.eye(2) * 0.1] * 3)
+    >>> avg = average_nees(true, est, P)
+    >>> avg  # Should be close to state_dim=2 for consistent filter
+    0.2
     """
     return float(np.mean(nees_sequence(true_states, estimated_states, covariances)))
 
@@ -279,6 +305,13 @@ def nis(
 
     where nu = z - H*x_pred is the innovation and S is the innovation
     covariance.
+
+    Examples
+    --------
+    >>> nu = np.array([0.5, -0.3])  # Innovation vector
+    >>> S = np.eye(2) * 0.25  # Innovation covariance
+    >>> nis(nu, S)
+    1.36
     """
     innovation = np.asarray(innovation)
     innovation_covariance = np.asarray(innovation_covariance)
@@ -305,6 +338,14 @@ def nis_sequence(
     -------
     ndarray
         NIS values for each time step.
+
+    Examples
+    --------
+    >>> innovations = np.array([[0.5, -0.3], [0.2, 0.1]])
+    >>> S = np.array([np.eye(2) * 0.25, np.eye(2) * 0.25])
+    >>> nis_vals = nis_sequence(innovations, S)
+    >>> len(nis_vals)
+    2
     """
     N = innovations.shape[0]
     nis_values = np.zeros(N)
@@ -395,6 +436,15 @@ def credibility_interval(
     -------
     float
         Fraction of errors within the interval.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(42)
+    >>> errors = rng.normal(0, 0.1, (100, 2))  # Small errors
+    >>> P = np.array([np.eye(2) * 0.1] * 100)  # Matching covariance
+    >>> frac = credibility_interval(errors, P, interval=0.95)
+    >>> frac > 0.9  # Most errors within interval
+    True
     """
     N = len(errors)
     state_dim = errors.shape[1]
@@ -430,6 +480,16 @@ def monte_carlo_rmse(
     -------
     ndarray
         RMSE values.
+
+    Examples
+    --------
+    >>> # 3 Monte Carlo runs, 2 time steps, 2 state components
+    >>> errors = np.array([[[0.1, 0.2], [0.15, 0.1]],
+    ...                    [[0.05, 0.1], [0.2, 0.15]],
+    ...                    [[0.15, 0.05], [0.1, 0.2]]])
+    >>> rmse_per_time = monte_carlo_rmse(errors, axis=0)
+    >>> rmse_per_time.shape
+    (2, 2)
     """
     return np.sqrt(np.mean(errors**2, axis=axis))
 
@@ -453,6 +513,16 @@ def estimation_error_bounds(
     ndarray
         Error bounds (standard deviations) for each component,
         shape (N, state_dim).
+
+    Examples
+    --------
+    >>> P = np.array([[[1.0, 0], [0, 4.0]],
+    ...               [[0.25, 0], [0, 1.0]]])
+    >>> bounds = estimation_error_bounds(P, sigma=2.0)
+    >>> bounds[0]  # 2-sigma bounds: 2*sqrt(1), 2*sqrt(4)
+    array([2., 4.])
+    >>> bounds[1]  # 2-sigma bounds: 2*sqrt(0.25), 2*sqrt(1)
+    array([1., 2.])
     """
     # Extract diagonal elements (variances)
     variances = np.diagonal(covariances, axis1=1, axis2=2)

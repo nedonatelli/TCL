@@ -136,6 +136,22 @@ def compute_likelihood_matrix(
         Likelihood values, shape (n_tracks, n_meas).
     gated : ndarray[Any]
         Boolean gating matrix, shape (n_tracks, n_meas).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Two tracks, two measurements
+    >>> states = [np.array([0.0, 1.0]), np.array([5.0, 0.0])]
+    >>> covs = [np.eye(2) * 0.5, np.eye(2) * 0.5]
+    >>> measurements = np.array([[0.1], [5.2]])
+    >>> H = np.array([[1, 0]])
+    >>> R = np.array([[0.1]])
+    >>> L, gated = compute_likelihood_matrix(states, covs, measurements, H, R)
+    >>> L.shape
+    (2, 2)
+    >>> # Track 0 should have high likelihood for measurement 0
+    >>> L[0, 0] > L[0, 1]
+    True
     """
     n_tracks = len(track_states)
     n_meas = len(measurements)
@@ -191,6 +207,23 @@ def jpda_probabilities(
         Association probability matrix, shape (n_tracks, n_meas + 1).
         beta[i, j] = P(measurement j is from track i) for j < n_meas.
         beta[i, n_meas] = P(track i has no measurement).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Likelihood matrix: 2 tracks, 2 measurements
+    >>> # Track 0 has high likelihood for meas 0
+    >>> # Track 1 has high likelihood for meas 1
+    >>> likelihood = np.array([[0.9, 0.1],
+    ...                        [0.1, 0.8]])
+    >>> gated = np.array([[True, True],
+    ...                   [True, True]])
+    >>> beta = jpda_probabilities(likelihood, gated, detection_prob=0.9)
+    >>> beta.shape  # 2 tracks, 3 columns (2 meas + 1 miss)
+    (2, 3)
+    >>> # Track 0 most likely associated with measurement 0
+    >>> np.argmax(beta[0, :2])
+    0
     """
     n_tracks, n_meas = likelihood_matrix.shape
 

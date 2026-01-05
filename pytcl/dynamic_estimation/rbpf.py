@@ -501,6 +501,32 @@ def rbpf_predict(
     -------
     list[RBPFParticle]
         Predicted particles
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.dynamic_estimation.rbpf import RBPFParticle
+    >>> np.random.seed(42)
+    >>> # 3 particles with nonlinear bearing and linear position
+    >>> particles = [
+    ...     RBPFParticle(y=np.array([0.1]), x=np.array([0.0, 1.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ...     RBPFParticle(y=np.array([0.0]), x=np.array([0.0, 1.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ...     RBPFParticle(y=np.array([-0.1]), x=np.array([0.0, 1.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ... ]
+    >>> # Nonlinear dynamics for bearing
+    >>> g = lambda y: y  # bearing stays constant
+    >>> G = np.eye(1)
+    >>> Qy = np.eye(1) * 0.01
+    >>> # Linear dynamics for position
+    >>> f = lambda x, y: np.array([x[0] + x[1] * 0.1, x[1]])
+    >>> F = np.array([[1, 0.1], [0, 1]])
+    >>> Qx = np.eye(2) * 0.01
+    >>> predicted = rbpf_predict(particles, g, G, Qy, f, F, Qx)
+    >>> len(predicted)
+    3
     """
     new_particles = []
 
@@ -553,6 +579,31 @@ def rbpf_update(
     -------
     list[RBPFParticle]
         Updated particles with adapted weights
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.dynamic_estimation.rbpf import RBPFParticle
+    >>> # 3 particles at different bearings
+    >>> particles = [
+    ...     RBPFParticle(y=np.array([0.5]), x=np.array([1.0, 0.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ...     RBPFParticle(y=np.array([0.0]), x=np.array([1.0, 0.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ...     RBPFParticle(y=np.array([-0.5]), x=np.array([1.0, 0.0]),
+    ...                  P=np.eye(2) * 0.5, w=1/3),
+    ... ]
+    >>> # Position measurement
+    >>> z = np.array([1.1])
+    >>> h = lambda x, y: np.array([x[0]])  # measure position
+    >>> H = np.array([[1, 0]])
+    >>> R = np.array([[0.1]])
+    >>> updated = rbpf_update(particles, z, h, H, R)
+    >>> len(updated)
+    3
+    >>> # Weights should sum to 1
+    >>> abs(sum(p.w for p in updated) - 1.0) < 1e-10
+    True
     """
     weights = np.zeros(len(particles))
     new_particles = []

@@ -99,6 +99,15 @@ def huber_weight(r: ArrayLike, c: float = 1.345) -> NDArray[np.floating]:
     The Huber weight function is:
         w(r) = 1           if |r| <= c
         w(r) = c / |r|     if |r| > c
+
+    Examples
+    --------
+    >>> r = np.array([0.5, 1.0, 2.0, 5.0])  # Standardized residuals
+    >>> w = huber_weight(r, c=1.345)
+    >>> w[0]  # Small residual gets weight 1
+    1.0
+    >>> w[3] < 0.5  # Large residual gets reduced weight
+    True
     """
     r = np.asarray(r, dtype=np.float64)
     abs_r = np.abs(r)
@@ -129,6 +138,13 @@ def huber_rho(r: ArrayLike, c: float = 1.345) -> NDArray[np.floating]:
     The Huber rho function is:
         rho(r) = r^2 / 2           if |r| <= c
         rho(r) = c * |r| - c^2/2   if |r| > c
+
+    Examples
+    --------
+    >>> r = np.array([0.5, 1.0, 2.0])
+    >>> rho = huber_rho(r, c=1.345)
+    >>> rho[0]  # Small residual: r^2/2
+    0.125
     """
     r = np.asarray(r, dtype=np.float64)
     abs_r = np.abs(r)
@@ -160,6 +176,15 @@ def tukey_weight(r: ArrayLike, c: float = 4.685) -> NDArray[np.floating]:
         w(r) = 0                 if |r| > c
 
     This provides complete rejection of large outliers.
+
+    Examples
+    --------
+    >>> r = np.array([0.5, 2.0, 5.0, 10.0])
+    >>> w = tukey_weight(r, c=4.685)
+    >>> w[0] > 0.9  # Small residual gets high weight
+    True
+    >>> w[3]  # Large residual completely rejected
+    0.0
     """
     r = np.asarray(r, dtype=np.float64)
     abs_r = np.abs(r)
@@ -190,6 +215,15 @@ def tukey_rho(r: ArrayLike, c: float = 4.685) -> NDArray[np.floating]:
     The Tukey rho function is:
         rho(r) = c^2/6 * (1 - (1 - (r/c)^2)^3)   if |r| <= c
         rho(r) = c^2/6                            if |r| > c
+
+    Examples
+    --------
+    >>> r = np.array([0.0, 2.0, 10.0])
+    >>> rho = tukey_rho(r, c=4.685)
+    >>> rho[0]  # Zero residual
+    0.0
+    >>> rho[2] == rho[2]  # Large residuals saturate at c^2/6
+    True
     """
     r = np.asarray(r, dtype=np.float64)
     abs_r = np.abs(r)
@@ -219,6 +253,15 @@ def cauchy_weight(r: ArrayLike, c: float = 2.385) -> NDArray[np.floating]:
     -----
     The Cauchy weight function is:
         w(r) = 1 / (1 + (r/c)^2)
+
+    Examples
+    --------
+    >>> r = np.array([0.0, 1.0, 5.0])
+    >>> w = cauchy_weight(r, c=2.385)
+    >>> w[0]  # Zero residual gets weight 1
+    1.0
+    >>> 0 < w[2] < 1  # Large residuals get reduced weight (but never zero)
+    True
     """
     r = np.asarray(r, dtype=np.float64)
     return 1 / (1 + (r / c) ** 2)
@@ -251,6 +294,13 @@ def mad(residuals: ArrayLike, c: float = 1.4826) -> float:
     MAD = c * median(|r - median(r)|)
 
     This is a robust scale estimator with 50% breakdown point.
+
+    Examples
+    --------
+    >>> residuals = np.array([1.0, 1.1, 0.9, 1.0, 100.0])  # One outlier
+    >>> scale = mad(residuals)
+    >>> scale < 1.0  # Robust to the outlier
+    True
     """
     r = np.asarray(residuals, dtype=np.float64)
     return c * float(np.median(np.abs(r - np.median(r))))
@@ -279,6 +329,13 @@ def tau_scale(
     Notes
     -----
     Tau scale combines high breakdown point with efficiency.
+
+    Examples
+    --------
+    >>> residuals = np.array([1.0, 1.1, 0.9, 1.0, 1.2, 100.0])  # One outlier
+    >>> scale = tau_scale(residuals)
+    >>> scale < 10.0  # Robust to the outlier
+    True
     """
     r = np.asarray(residuals, dtype=np.float64)
     n = len(r)

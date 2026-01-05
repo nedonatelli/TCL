@@ -232,6 +232,12 @@ def f_coord_turn_polar(
     - psi is heading angle
     - v is speed magnitude
     - omega is turn rate
+
+    Examples
+    --------
+    >>> F = f_coord_turn_polar(T=1.0, omega=0.1, speed=100.0)
+    >>> F.shape
+    (5, 5)
     """
     # Handle near-zero turn rate
     if np.abs(omega) < 1e-10:

@@ -317,6 +317,13 @@ def axisangle2rotmat(
     R : ndarray
         3x3 rotation matrix.
 
+    Examples
+    --------
+    >>> axis = [0, 0, 1]  # Z-axis
+    >>> R = axisangle2rotmat(axis, np.pi/2)  # 90 deg about Z
+    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
+    array([0., 1., 0.])
+
     Notes
     -----
     Uses Rodrigues' rotation formula.
@@ -359,6 +366,15 @@ def rotmat2axisangle(
         Unit vector rotation axis.
     angle : float
         Rotation angle in radians [0, π].
+
+    Examples
+    --------
+    >>> R = rotz(np.pi/2)  # 90 deg about Z
+    >>> axis, angle = rotmat2axisangle(R)
+    >>> axis  # Z-axis
+    array([0., 0., 1.])
+    >>> np.degrees(angle)
+    90.0
     """
     R = np.asarray(R, dtype=np.float64)
 
@@ -435,6 +451,12 @@ def rotmat2quat(R: ArrayLike) -> NDArray[np.floating]:
     -------
     q : ndarray
         Quaternion [qw, qx, qy, qz] (scalar-first, positive qw).
+
+    Examples
+    --------
+    >>> R = np.eye(3)  # Identity rotation
+    >>> rotmat2quat(R)
+    array([1., 0., 0., 0.])
 
     Notes
     -----
@@ -538,6 +560,13 @@ def quat2euler(
     -------
     angles : ndarray
         Three Euler angles in radians.
+
+    Examples
+    --------
+    >>> q = [1, 0, 0, 0]  # Identity quaternion
+    >>> angles = quat2euler(q, 'ZYX')
+    >>> np.allclose(angles, [0, 0, 0])
+    True
     """
     R = quat2rotmat(q)
     return rotmat2euler(R, sequence)
@@ -614,6 +643,11 @@ def quat_conjugate(q: ArrayLike) -> NDArray[np.floating]:
     -------
     q_conj : ndarray
         Conjugate quaternion [qw, -qx, -qy, -qz].
+
+    Examples
+    --------
+    >>> quat_conjugate([0.707, 0.707, 0, 0])
+    array([ 0.707, -0.707, -0.   , -0.   ])
     """
     q = np.asarray(q, dtype=np.float64)
     return np.array([q[0], -q[1], -q[2], -q[3]], dtype=np.float64)
@@ -632,6 +666,13 @@ def quat_inverse(q: ArrayLike) -> NDArray[np.floating]:
     -------
     q_inv : ndarray
         Inverse quaternion.
+
+    Examples
+    --------
+    >>> q = euler2quat(np.radians([45, 0, 0]), 'ZYX')
+    >>> q_inv = quat_inverse(q)
+    >>> quat_multiply(q, q_inv)  # Should be identity
+    array([1., 0., 0., 0.])
 
     Notes
     -----
@@ -750,6 +791,13 @@ def rodrigues2rotmat(rvec: ArrayLike) -> NDArray[np.floating]:
     R : ndarray
         3x3 rotation matrix.
 
+    Examples
+    --------
+    >>> rvec = [0, 0, np.pi/2]  # 90 deg about Z
+    >>> R = rodrigues2rotmat(rvec)
+    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
+    array([0., 1., 0.])
+
     Notes
     -----
     The Rodrigues vector encodes both the rotation axis and angle:
@@ -778,6 +826,13 @@ def rotmat2rodrigues(R: ArrayLike) -> NDArray[np.floating]:
     -------
     rvec : ndarray
         Rodrigues vector (axis * angle).
+
+    Examples
+    --------
+    >>> R = rotz(np.pi/2)  # 90 deg about Z
+    >>> rvec = rotmat2rodrigues(R)
+    >>> np.linalg.norm(rvec)  # magnitude is the angle
+    1.5707...
     """
     axis, angle = rotmat2axisangle(R)
     return axis * angle
@@ -801,6 +856,14 @@ def dcm_rate(
     -------
     R_dot : ndarray
         Time derivative of R.
+
+    Examples
+    --------
+    >>> R = np.eye(3)
+    >>> omega = [0, 0, 1]  # 1 rad/s about Z
+    >>> R_dot = dcm_rate(R, omega)
+    >>> R_dot[0, 1]  # Off-diagonal elements show rotation
+    -1.0
 
     Notes
     -----

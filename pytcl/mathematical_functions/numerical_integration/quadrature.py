@@ -599,6 +599,16 @@ def spherical_cubature(
     References
     ----------
     Arasaratnam & Haykin, "Cubature Kalman Filters", IEEE TAC, 2009.
+
+    Examples
+    --------
+    >>> points, weights = spherical_cubature(3)
+    >>> points.shape  # 2*n = 6 points in 3D
+    (6, 3)
+    >>> weights.shape
+    (6,)
+    >>> np.sum(weights)  # Weights sum to 1
+    1.0
     """
     # Points at ±√n along each axis
     sqrt_n = np.sqrt(n_dim)
@@ -657,6 +667,16 @@ def unscented_transform_points(
     ----------
     Julier & Uhlmann, "Unscented Filtering and Nonlinear Estimation",
     Proc. IEEE, 2004.
+
+    Examples
+    --------
+    >>> sigma_points, wm, wc = unscented_transform_points(3)
+    >>> sigma_points.shape  # 2*n+1 = 7 points in 3D
+    (7, 3)
+    >>> wm.shape
+    (7,)
+    >>> np.abs(np.sum(wm) - 1.0) < 1e-10  # Mean weights sum to 1
+    True
     """
     if kappa is None:
         kappa = 3.0 - n_dim

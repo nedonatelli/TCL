@@ -157,6 +157,16 @@ def associated_legendre_derivative(
     -------
     dP : ndarray
         Array of shape (n_max+1, m_max+1) containing dP_n^m/dx.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.cos(np.radians(45))  # cos of 45 degrees
+    >>> dP = associated_legendre_derivative(2, 2, x)
+    >>> dP.shape
+    (3, 3)
+    >>> abs(dP[0, 0]) < 1e-10  # dP_0^0/dx = 0
+    True
     """
     if P is None:
         P = associated_legendre(n_max, m_max, x, normalized)
@@ -255,6 +265,18 @@ def spherical_harmonic_sum(
         V = \\frac{GM}{r} \\sum_{n=0}^{N} \\left(\\frac{R}{r}\\right)^n
             \\sum_{m=0}^{n} \\bar{P}_n^m(\\sin\\phi)
             (C_{nm}\\cos m\\lambda + S_{nm}\\sin m\\lambda)
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Simple monopole (degree 0 only)
+    >>> C = np.array([[1.0]])
+    >>> S = np.array([[0.0]])
+    >>> R = 6.378e6  # meters
+    >>> GM = 3.986e14  # m^3/s^2
+    >>> V, dV_r, dV_lat = spherical_harmonic_sum(0, 0, R, C, S, R, GM, n_max=0)
+    >>> abs(V - GM/R) / (GM/R) < 1e-10  # V = GM/r for degree 0
+    True
     """
     if n_max is None:
         n_max = C.shape[0] - 1
@@ -382,6 +404,18 @@ def gravity_acceleration(
         Northward component of gravity.
     g_lon : float
         Eastward component of gravity.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Simple monopole field
+    >>> C = np.array([[1.0]])
+    >>> S = np.array([[0.0]])
+    >>> R = 6.378e6
+    >>> GM = 3.986e14
+    >>> g_r, g_lat, g_lon = gravity_acceleration(0, 0, 0, C, S, R, GM, n_max=0)
+    >>> g_r < 0  # Gravity points inward (negative radial)
+    True
     """
     # Approximate radial distance (simplified, ignoring ellipsoid flattening)
     r = R + h
@@ -427,6 +461,18 @@ def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
            Clenshaw summation and the recursive computation of very high
            degree and order normalised associated Legendre functions."
            Journal of Geodesy 76.5 (2002): 279-299.
+
+    Examples
+    --------
+    >>> scale = legendre_scaling_factors(100)
+    >>> len(scale)
+    101
+    >>> scale[0]  # No scaling for low degrees
+    1.0
+
+    >>> scale_high = legendre_scaling_factors(200)
+    >>> scale_high[200] < scale_high[0]  # Higher degrees scaled down
+    True
     """
     scale = np.ones(n_max + 1)
 
@@ -480,6 +526,16 @@ def associated_legendre_scaled(
 
     For normal operations (n < 150), scale_exp is all zeros and
     P_scaled equals the actual Legendre values.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.cos(np.radians(45))
+    >>> P_scaled, scale_exp = associated_legendre_scaled(10, 10, x)
+    >>> P_scaled.shape
+    (11, 11)
+    >>> all(scale_exp == 0)  # No scaling needed for n_max < 150
+    True
     """
     if m_max > n_max:
         raise ValueError("m_max must be <= n_max")
@@ -538,6 +594,15 @@ def clear_legendre_cache() -> None:
     Call this function to clear the cached associated Legendre
     polynomial arrays. Useful when memory is constrained or after
     processing a batch with different colatitude values.
+
+    Examples
+    --------
+    >>> _ = associated_legendre(10, 10, 0.5)  # Populate cache
+    >>> info = get_legendre_cache_info()
+    >>> clear_legendre_cache()
+    >>> info_after = get_legendre_cache_info()
+    >>> info_after.currsize
+    0
     """
     _associated_legendre_cached.cache_clear()
     _logger.debug("Legendre polynomial cache cleared")
@@ -550,6 +615,14 @@ def get_legendre_cache_info() -> Any:
     -------
     CacheInfo
         Named tuple with hits, misses, maxsize, currsize.
+
+    Examples
+    --------
+    >>> clear_legendre_cache()  # Start fresh
+    >>> _ = associated_legendre(5, 5, 0.5)
+    >>> info = get_legendre_cache_info()
+    >>> info.currsize >= 1  # At least one entry cached
+    True
     """
     return _associated_legendre_cached.cache_info()
 

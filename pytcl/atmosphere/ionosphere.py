@@ -222,6 +222,15 @@ def dual_frequency_tec(
     tec : ndarray
         Total Electron Content in TECU (10^16 electrons/m²).
 
+    Examples
+    --------
+    >>> # Pseudorange measurements from dual-frequency receiver
+    >>> p_l1 = 22000000.0  # L1 pseudorange in meters
+    >>> p_l2 = 22000002.5  # L2 pseudorange (slightly delayed)
+    >>> tec = dual_frequency_tec(p_l1, p_l2)
+    >>> tec > 0  # TEC should be positive
+    True
+
     Notes
     -----
     The ionospheric delay is proportional to TEC and inversely
@@ -270,6 +279,17 @@ def ionospheric_delay_from_tec(
     -------
     delay : ndarray
         Ionospheric delay in meters.
+
+    Examples
+    --------
+    >>> # Typical mid-latitude TEC of 20 TECU
+    >>> delay = ionospheric_delay_from_tec(20.0)
+    >>> delay > 0
+    True
+    >>> # Delay at L2 is larger than at L1 (lower frequency)
+    >>> delay_l2 = ionospheric_delay_from_tec(20.0, frequency=F_L2)
+    >>> delay_l2 > delay
+    True
 
     Notes
     -----
@@ -410,6 +430,18 @@ def magnetic_latitude(
     -------
     mag_lat : ndarray
         Geomagnetic latitude in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # New York City (40.7°N, 74°W)
+    >>> mag_lat = magnetic_latitude(np.radians(40.7), np.radians(-74))
+    >>> np.degrees(mag_lat)  # doctest: +ELLIPSIS
+    51.4...
+    >>> # Equator at 0° longitude
+    >>> mag_lat_eq = magnetic_latitude(0.0, 0.0)
+    >>> np.abs(np.degrees(mag_lat_eq)) < 15  # Near magnetic equator
+    True
     """
     latitude = np.asarray(latitude, dtype=np.float64)
     longitude = np.asarray(longitude, dtype=np.float64)
@@ -456,6 +488,18 @@ def scintillation_index(
     -------
     s4 : ndarray
         S4 amplitude scintillation index (0-1).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Equatorial region at night (high scintillation risk)
+    >>> s4 = scintillation_index(np.radians(10), 21, kp_index=5.0)
+    >>> s4 > 0.3  # Moderate to strong scintillation
+    True
+    >>> # Mid-latitude during daytime (low scintillation)
+    >>> s4_low = scintillation_index(np.radians(45), 12, kp_index=1.0)
+    >>> s4_low < 0.2
+    True
 
     Notes
     -----

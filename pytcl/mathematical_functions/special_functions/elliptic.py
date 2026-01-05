@@ -61,6 +61,11 @@ def ellipkm1(p: ArrayLike) -> NDArray[np.floating]:
     K : ndarray
         Values of K(1 - p).
 
+    Examples
+    --------
+    >>> ellipkm1(0.1)  # K(0.9)
+    2.578...
+
     See Also
     --------
     scipy.special.ellipkm1 : Elliptic integral near m = 1.
@@ -117,6 +122,12 @@ def ellipeinc(phi: ArrayLike, m: ArrayLike) -> NDArray[np.floating]:
     E : ndarray
         Values of the incomplete elliptic integral of the second kind.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> ellipeinc(np.pi/2, 0)  # Same as ellipe(0) = π/2
+    1.5707...
+
     See Also
     --------
     scipy.special.ellipeinc : Incomplete elliptic integral of second kind.
@@ -141,6 +152,12 @@ def ellipkinc(phi: ArrayLike, m: ArrayLike) -> NDArray[np.floating]:
     -------
     F : ndarray
         Values of the incomplete elliptic integral of the first kind.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> ellipkinc(np.pi/2, 0)  # Same as ellipk(0) = π/2
+    1.5707...
 
     See Also
     --------
@@ -169,6 +186,11 @@ def elliprd(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     -------
     R_D : ndarray
         Values of the Carlson R_D integral.
+
+    Examples
+    --------
+    >>> elliprd(1, 2, 3)
+    0.297...
 
     See Also
     --------
@@ -204,6 +226,11 @@ def elliprf(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     The complete elliptic integral of the first kind is:
     K(m) = R_F(0, 1-m, 1)
 
+    Examples
+    --------
+    >>> elliprf(1, 1, 1)  # R_F(a, a, a) = 1/sqrt(a)
+    1.0
+
     See Also
     --------
     scipy.special.elliprf : Carlson R_F integral.
@@ -235,6 +262,11 @@ def elliprg(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     -----
     The complete elliptic integral of the second kind is:
     E(m) = 2 * R_G(0, 1-m, 1)
+
+    Examples
+    --------
+    >>> elliprg(1, 1, 1)  # R_G(a, a, a) = sqrt(a)
+    1.0
 
     See Also
     --------
@@ -272,6 +304,11 @@ def elliprj(
     -----
     The complete elliptic integral of the third kind can be computed using R_J.
 
+    Examples
+    --------
+    >>> elliprj(1, 2, 3, 4)
+    0.213...
+
     See Also
     --------
     scipy.special.elliprj : Carlson R_J integral.
@@ -301,6 +338,11 @@ def elliprc(x: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
     -----
     - R_C(x, y) = arctan(sqrt((x-y)/y)) / sqrt(x-y) for x > y
     - R_C(x, y) = arctanh(sqrt((y-x)/y)) / sqrt(y-x) for x < y
+
+    Examples
+    --------
+    >>> elliprc(1, 1)  # R_C(a, a) = 1/sqrt(a)
+    1.0
 
     See Also
     --------

@@ -260,6 +260,16 @@ def altitude_from_pressure(
     altitude : ndarray
         Geometric altitude in meters.
 
+    Examples
+    --------
+    >>> # Sea level pressure
+    >>> altitude_from_pressure(101325)
+    0.0
+    >>> # Pressure at approximately 5000m
+    >>> alt = altitude_from_pressure(54000)
+    >>> 4800 < alt < 5200
+    True
+
     Notes
     -----
     This is an approximate inversion of the ISA model, valid primarily
@@ -292,6 +302,15 @@ def mach_number(
     -------
     mach : ndarray
         Mach number.
+
+    Examples
+    --------
+    >>> # Aircraft at 300 m/s at sea level
+    >>> mach_number(300, 0)  # doctest: +ELLIPSIS
+    0.88...
+    >>> # Same speed at 10 km altitude (lower speed of sound)
+    >>> mach_number(300, 10000)  # doctest: +ELLIPSIS
+    1.00...
     """
     velocity = np.asarray(velocity, dtype=np.float64)
     altitude = np.asarray(altitude, dtype=np.float64)
@@ -318,6 +337,16 @@ def true_airspeed_from_mach(
     -------
     velocity : ndarray
         True airspeed in m/s.
+
+    Examples
+    --------
+    >>> # Mach 0.8 at cruise altitude (10 km)
+    >>> tas = true_airspeed_from_mach(0.8, 10000)
+    >>> 230 < tas < 250  # approximately 240 m/s
+    True
+    >>> # Supersonic at sea level
+    >>> true_airspeed_from_mach(1.0, 0)  # doctest: +ELLIPSIS
+    340.2...
     """
     mach = np.asarray(mach, dtype=np.float64)
     altitude = np.asarray(altitude, dtype=np.float64)

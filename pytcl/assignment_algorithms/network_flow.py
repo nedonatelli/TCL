@@ -104,6 +104,20 @@ def assignment_to_flow_network(
         Positive = supply, negative = demand.
     node_names : ndarray
         Names of nodes for reference.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 2 workers, 3 tasks
+    >>> cost = np.array([[1.0, 2.0, 3.0],
+    ...                  [4.0, 5.0, 6.0]])
+    >>> edges, supplies, names = assignment_to_flow_network(cost)
+    >>> len(edges)  # source->workers + workers->tasks + tasks->sink
+    11
+    >>> supplies[0]  # source supplies 2 (num workers)
+    2.0
+    >>> names[0]
+    'source'
     """
     m, n = cost_matrix.shape
 
@@ -186,6 +200,20 @@ def min_cost_flow_successive_shortest_paths(
     -------
     MinCostFlowResult
         Solution with flow values, cost, status, and iterations.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.assignment_algorithms.network_flow import (
+    ...     FlowEdge, assignment_to_flow_network
+    ... )
+    >>> cost = np.array([[1.0, 5.0], [4.0, 2.0]])
+    >>> edges, supplies, _ = assignment_to_flow_network(cost)
+    >>> result = min_cost_flow_successive_shortest_paths(edges, supplies)
+    >>> result.status == FlowStatus.OPTIMAL
+    True
+    >>> result.cost  # Optimal is 1+2=3 (diagonal)
+    3.0
 
     Notes
     -----
@@ -444,6 +472,18 @@ def min_cost_assignment_via_flow(
         Assignment array of shape (n_assignments, 2).
     total_cost : float
         Total assignment cost.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> cost = np.array([[1.0, 5.0, 9.0],
+    ...                  [3.0, 2.0, 8.0],
+    ...                  [7.0, 6.0, 4.0]])
+    >>> assignment, total_cost = min_cost_assignment_via_flow(cost)
+    >>> total_cost  # Optimal assignment: (0,0), (1,1), (2,2) = 1+2+4 = 7
+    7.0
+    >>> len(assignment)
+    3
 
     Notes
     -----

@@ -192,6 +192,17 @@ def ospa_over_time(
     ------
     ValueError
         If sequences have different lengths.
+
+    Examples
+    --------
+    >>> # Two time steps with ground truth and estimates
+    >>> X_seq = [[np.array([0, 0]), np.array([10, 10])],
+    ...          [np.array([1, 0]), np.array([11, 10])]]
+    >>> Y_seq = [[np.array([0.5, 0]), np.array([10, 10.5])],
+    ...          [np.array([1.5, 0]), np.array([11, 10.5])]]
+    >>> ospa_vals = ospa_over_time(X_seq, Y_seq, c=100, p=2)
+    >>> len(ospa_vals)
+    2
     """
     if len(X_sequence) != len(Y_sequence):
         raise ValueError("Sequences must have the same length")
@@ -340,6 +351,13 @@ def identity_switches(
     -------
     int
         Number of identity switches.
+
+    Examples
+    --------
+    >>> true_labels = np.array([0, 0, 1, 1])
+    >>> estimated_labels = np.array([0, 0, 0, 0])  # Track 0 switches targets
+    >>> identity_switches(true_labels, estimated_labels)
+    1
     """
     true_labels = np.asarray(true_labels)
     estimated_labels = np.asarray(estimated_labels)
@@ -391,6 +409,18 @@ def mot_metrics(
     MOTA (Multiple Object Tracking Accuracy) accounts for false positives,
     misses, and identity switches. MOTP (Precision) measures localization
     accuracy for correctly matched pairs.
+
+    Examples
+    --------
+    >>> gt = [[np.array([0, 0]), np.array([10, 10])],
+    ...       [np.array([1, 0]), np.array([11, 10])]]
+    >>> est = [[np.array([0.5, 0]), np.array([10.5, 10])],
+    ...        [np.array([1.5, 0]), np.array([11.5, 10])]]
+    >>> result = mot_metrics(gt, est, threshold=5.0)
+    >>> result.mota  # High accuracy with small errors
+    1.0
+    >>> result.motp < 1.0  # Some localization error
+    True
     """
     total_gt = 0
     total_fp = 0

@@ -263,6 +263,15 @@ def indirect_rhumb_spherical(
     -------
     RhumbResult
         Distance and constant bearing.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)  # New York
+    >>> lat2, lon2 = np.radians(51), np.radians(0)   # London
+    >>> result = indirect_rhumb_spherical(lat1, lon1, lat2, lon2)
+    >>> result.distance > 5000000  # Over 5000 km
+    True
     """
     distance = rhumb_distance_spherical(lat1, lon1, lat2, lon2, radius)
     bearing = rhumb_bearing(lat1, lon1, lat2, lon2)
@@ -354,6 +363,15 @@ def rhumb_distance_ellipsoidal(
     -------
     float
         Rhumb line distance in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)
+    >>> lat2, lon2 = np.radians(51), np.radians(0)
+    >>> dist = rhumb_distance_ellipsoidal(lat1, lon1, lat2, lon2)
+    >>> dist > 5000000  # Over 5000 km
+    True
     """
     a = ellipsoid.a
     e2 = ellipsoid.e2
@@ -419,6 +437,15 @@ def indirect_rhumb(
     -------
     RhumbResult
         Distance and constant bearing.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)  # New York
+    >>> lat2, lon2 = np.radians(51), np.radians(0)   # London
+    >>> result = indirect_rhumb(lat1, lon1, lat2, lon2)
+    >>> 0 < result.bearing < np.pi  # Eastward bearing
+    True
     """
     distance = rhumb_distance_ellipsoidal(lat1, lon1, lat2, lon2, ellipsoid)
 
@@ -460,6 +487,15 @@ def direct_rhumb(
     -------
     RhumbDirectResult
         Destination latitude and longitude.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat, lon = np.radians(40), np.radians(-74)
+    >>> bearing = np.radians(90)  # Due east
+    >>> dest = direct_rhumb(lat, lon, bearing, 100000)  # 100 km
+    >>> np.degrees(dest.lon) > -74  # Moved east
+    True
     """
     a = ellipsoid.a
     e2 = ellipsoid.e2
@@ -533,6 +569,17 @@ def rhumb_intersect(
     -------
     RhumbIntersectionResult
         Intersection point and validity flag.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)
+    >>> lat2, lon2 = np.radians(51), np.radians(0)
+    >>> bearing1 = np.radians(45)
+    >>> bearing2 = np.radians(270)
+    >>> result = rhumb_intersect(lat1, lon1, bearing1, lat2, lon2, bearing2)
+    >>> result.valid  # May or may not intersect
+    True
 
     Notes
     -----
@@ -612,6 +659,15 @@ def rhumb_midpoint(
     -------
     RhumbDirectResult
         Midpoint latitude and longitude.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(0), np.radians(0)
+    >>> lat2, lon2 = np.radians(10), np.radians(10)
+    >>> mid = rhumb_midpoint(lat1, lon1, lat2, lon2)
+    >>> np.isclose(np.degrees(mid.lat), 5, atol=0.1)
+    True
     """
     result = indirect_rhumb_spherical(lat1, lon1, lat2, lon2)
     return direct_rhumb_spherical(lat1, lon1, result.bearing, result.distance / 2)
@@ -643,6 +699,15 @@ def rhumb_waypoints(
     -------
     lats, lons : ndarray
         Arrays of waypoint latitudes and longitudes in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)
+    >>> lat2, lon2 = np.radians(51), np.radians(0)
+    >>> lats, lons = rhumb_waypoints(lat1, lon1, lat2, lon2, 5)
+    >>> len(lats)
+    5
     """
     result = indirect_rhumb_spherical(lat1, lon1, lat2, lon2, radius)
 
@@ -685,6 +750,15 @@ def compare_great_circle_rhumb(
         Rhumb line distance in meters.
     difference_percent : float
         Percentage difference (rhumb is longer).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat1, lon1 = np.radians(40), np.radians(-74)  # NYC
+    >>> lat2, lon2 = np.radians(51), np.radians(0)   # London
+    >>> gc, rhumb, diff = compare_great_circle_rhumb(lat1, lon1, lat2, lon2)
+    >>> rhumb > gc  # Rhumb is always longer
+    True
     """
     from pytcl.navigation.great_circle import great_circle_distance
 

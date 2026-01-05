@@ -8,12 +8,20 @@ This document provides a detailed comparison between the Python port (pytcl) and
 
 **Overall Completeness: 99%** ✅
 
-The Python port achieves comprehensive feature parity with the original MATLAB TCL library. With **1,070+ functions** across **150+ modules**, the implementation covers virtually all practical tracking, estimation, and navigation algorithms, including SGP4/SDP4 satellite propagation, H-infinity robust filtering, and legacy TOD/MOD reference frames.
+The Python port achieves comprehensive feature parity with the original MATLAB TCL library. With **860+ functions** across **113 modules**, the implementation covers virtually all practical tracking, estimation, and navigation algorithms, including SGP4/SDP4 satellite propagation, H-infinity robust filtering, and legacy TOD/MOD reference frames.
+
+**Documentation Status: Phase 3 In Progress** 📖
+
+As of v2.0.0 development (Phase 3), the library includes:
+
+- **194 functions** with comprehensive docstring examples
+- **79 modules** classified by maturity level (26 STABLE, 43 MATURE, 10 EXPERIMENTAL)
+- All module docstrings expanded to include purpose, examples, and references
 
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.0.0 Implementation
+.. list-table:: Python pytcl v1.9.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -23,51 +31,51 @@ Code Statistics
      - Classes
    * - Mathematical Functions
      - 22
-     - 342
+     - 243
      - 25
    * - Containers & Data Structures
-     - 7
-     - 87
+     - 8
+     - 8
      - 23
    * - Astronomical & Orbital
-     - 6
-     - 90
-     - 5
+     - 9
+     - 128
+     - 10
    * - Navigation
      - 5
-     - 81
+     - 69
      - 16
    * - Coordinate Systems
      - 5
-     - 71
+     - 70
      - 2
    * - Gravity & Geophysical
      - 5
-     - 39
+     - 41
      - 8
    * - Dynamic Estimation
-     - 8
-     - 69
-     - 20
+     - 16
+     - 77
+     - 29
    * - Clustering
      - 4
-     - 33
+     - 19
      - 9
    * - Terrain & Visibility
      - 3
-     - 23
+     - 19
      - 9
    * - Plotting & Visualization
      - 4
-     - 35
+     - 30
      - 0
    * - Assignment Algorithms
-     - 6
-     - 29
-     - 6
+     - 10
+     - 40
+     - 11
    * - Static Estimation
      - 3
-     - 34
+     - 31
      - 7
    * - Dynamic Models
      - 7
@@ -75,24 +83,24 @@ Code Statistics
      - 0
    * - Trackers
      - 4
-     - 25
-     - 13
+     - 4
+     - 14
    * - Performance Evaluation
      - 2
      - 18
      - 3
    * - Magnetism Models
      - 3
-     - 22
+     - 25
      - 4
    * - Atmosphere Models
-     - 1
-     - 5
-     - 1
+     - 3
+     - 12
+     - 6
    * - **TOTAL**
-     - **98**
-     - **1,072**
-     - **154**
+     - **113**
+     - **868**
+     - **176**
 
 Detailed Analysis
 -----------------
@@ -233,7 +241,7 @@ Mathematical Functions
 
 **Status: 98% Complete** ✅
 
-With **342 functions** in this category, pytcl provides comprehensive mathematical support.
+With **243 functions** in this category, pytcl provides comprehensive mathematical support.
 
 **Special Functions:**
 
@@ -482,6 +490,48 @@ Tier 2: Highly Specialized
 Recently Implemented (v1.0.0+)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+**v1.9.0 - Infrastructure Improvements (January 4, 2026)**
+
+✅ **Unified Spatial Index Interface**
+
+   All spatial data structures now share a consistent API:
+
+   - ``BaseSpatialIndex`` and ``MetricSpatialIndex`` abstract base classes
+   - ``NeighborResult`` unified return type for all queries
+   - Consistent ``query()``, ``query_radius()``, ``query_ball_point()`` methods
+   - Works across KDTree, BallTree, RTree, VPTree, CoverTree
+
+✅ **Custom Exception Hierarchy**
+
+   16 specialized exception types for consistent error handling:
+
+   - ``TCLError`` base class for all library errors
+   - Validation: ``DimensionError``, ``ParameterError``, ``RangeError``
+   - Computation: ``ConvergenceError``, ``NumericalError``, ``SingularMatrixError``
+   - State: ``UninitializedError``, ``EmptyContainerError``
+   - Configuration: ``MethodError``, ``DependencyError``
+
+✅ **Optional Dependencies System**
+
+   Clean handling of optional packages:
+
+   - ``is_available(package)`` - Check if package is installed
+   - ``@requires(*packages)`` - Decorator for optional dependency functions
+   - ``DependencyError`` with helpful install hints
+   - Used for plotly, jplephem, netCDF4, pywt
+
+**v1.8.0 - Network Flow Performance (January 4, 2026)**
+
+✅ **Network Flow Optimization**
+
+   10-50x performance improvement on assignment problems:
+
+   - Dijkstra-optimized successive shortest paths algorithm
+   - All 13 network flow tests re-enabled
+   - Johnson's potentials for efficient path finding
+
+**v1.6.0 - v1.7.x Series**
+
 ✅ **SGP4/SDP4 Propagation**
 
    Full SGP4/SDP4 satellite propagation from TLEs is now supported:
@@ -519,6 +569,83 @@ Recently Implemented (v1.0.0+)
    - ``mod_to_tod`` / ``tod_to_mod`` — nutation-only transformation
    - ``tod_to_itrf`` / ``itrf_to_tod`` — Earth-fixed with GAST rotation
    - Polar motion correction support
+
+**v1.1.0 - v1.4.0 Series**
+
+✅ **Performance Infrastructure**
+
+   Comprehensive benchmarking and monitoring:
+
+   - 50 benchmark tests across 6 files
+   - SLO (Service Level Objective) definitions and enforcement
+   - ``@timed`` decorator and ``PerformanceTracker`` utilities
+   - CI workflows for light (PR) and full (main) benchmarks
+
+✅ **Geophysical Caching**
+
+   LRU caching for expensive computations:
+
+   - WMM/IGRF magnetic field caching (600x speedup on repeated queries)
+   - Great circle and geodesy calculation caching
+   - Ionospheric models (Klobuchar, dual-frequency TEC, simplified IRI)
+
+
+Documentation Status
+--------------------
+
+**Phase 3: Documentation Expansion** 📖
+
+v2.0.0 development includes comprehensive documentation improvements:
+
+**Phase 3.1 - Module Docstrings** ✅
+
+All modules now have comprehensive docstrings with:
+
+- Purpose and scope descriptions
+- Available functions and classes
+- Mathematical background
+- References and "See Also" sections
+
+**Phase 3.2 - Function Examples** 🔄
+
+Added docstring examples to **142 functions** across:
+
+- **Kalman Filters:** ``kf_predict_update``, ``ukf_update``, ``ekf_predict_auto``, ``information_filter_predict``
+- **Coordinate Systems:** ``ecef2enu``, ``enu2ecef``, ``euler2quat``, ``quat_multiply``
+- **Rotations:** ``roty``, ``rotz``, ``rotmat2euler``, ``quat_rotate``, ``slerp``
+- **Data Association:** ``jpda``, ``compute_gate_volume``
+- **Particle Filters:** ``bootstrap_pf_step``, ``resample_systematic``, ``effective_sample_size``
+- **Navigation/Geodesy:** ``geodetic_to_ecef``, ``direct_geodetic``, ``haversine_distance``
+- **Performance Evaluation:** ``ospa_over_time``, ``identity_switches``, ``mot_metrics``, ``nees_sequence``, ``nis``
+- **Dynamic Models:** ``f_singer_2d``, ``f_singer_3d``, ``f_coord_turn_polar``, ``q_constant_acceleration``
+- **Robust/ML Estimation:** ``huber_weight``, ``mad``, ``aic``, ``bic``, ``fisher_information_exponential_family``
+- **Clustering:** ``update_centers``, ``compute_distance_matrix``, ``cut_dendrogram``, ``fcluster``
+- **Orbital Mechanics:** ``orbital_period``, ``mean_motion``, ``vis_viva``, ``escape_velocity``, ``circular_velocity``
+- **Great Circle Navigation:** ``great_circle_inverse``, ``cross_track_distance``, ``destination_point``
+- **Ephemerides:** ``sun_position``, ``moon_position``, ``barycenter_position``
+
+~40 functions remain to be documented with examples.
+
+**Phase 3.3 - Module Maturity Classification** ✅
+
+All 79 modules classified by production-readiness:
+
+.. list-table:: Module Maturity Levels
+   :header-rows: 1
+   :widths: 20 10 50
+
+   * - Level
+     - Count
+     - Description
+   * - STABLE
+     - 26
+     - Frozen API, production-ready (core, Kalman filters, coordinate systems)
+   * - MATURE
+     - 43
+     - Production-ready, possible minor changes (advanced filters, navigation)
+   * - EXPERIMENTAL
+     - 10
+     - Functional, API may change (geophysical, terrain, relativity)
 
 
 Recommendations

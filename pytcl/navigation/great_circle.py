@@ -260,6 +260,14 @@ def great_circle_inverse(
     -------
     GreatCircleResult
         Distance and azimuths.
+
+    Examples
+    --------
+    >>> lat1, lon1 = np.radians(40.7128), np.radians(-74.0060)  # NYC
+    >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)   # London
+    >>> result = great_circle_inverse(lat1, lon1, lat2, lon2)
+    >>> result.distance > 5000000  # Over 5000 km
+    True
     """
     distance = great_circle_distance(lat1, lon1, lat2, lon2, radius)
     azimuth1 = great_circle_azimuth(lat1, lon1, lat2, lon2)
@@ -346,6 +354,14 @@ def great_circle_waypoints(
     -------
     lats, lons : ndarray
         Arrays of waypoint latitudes and longitudes in radians.
+
+    Examples
+    --------
+    >>> lat1, lon1 = 0.0, 0.0
+    >>> lat2, lon2 = np.pi/4, np.pi/4
+    >>> lats, lons = great_circle_waypoints(lat1, lon1, lat2, lon2, 5)
+    >>> len(lats)
+    5
     """
     fractions = np.linspace(0, 1, n_points)
     lats = np.zeros(n_points)
@@ -448,6 +464,16 @@ def cross_track_distance(
     -----
     Positive cross-track means the point is to the right of the path
     (when traveling from start to end).
+
+    Examples
+    --------
+    >>> # Point near a path from origin to northeast
+    >>> lat_pt, lon_pt = np.radians(5), np.radians(2)
+    >>> lat1, lon1 = 0.0, 0.0
+    >>> lat2, lon2 = np.radians(10), np.radians(10)
+    >>> result = cross_track_distance(lat_pt, lon_pt, lat1, lon1, lat2, lon2)
+    >>> abs(result.cross_track) < 500000  # Within 500 km
+    True
     """
     # Angular distance from start to point
     d13 = great_circle_distance(lat1, lon1, lat_point, lon_point, radius=1.0)
@@ -502,6 +528,16 @@ def great_circle_intersect(
     Great circles always intersect at two antipodal points (unless they
     are identical or parallel). The returned points are the intersections
     closest to the given points.
+
+    Examples
+    --------
+    >>> lat1, lon1 = 0.0, 0.0
+    >>> az1 = np.radians(45)  # Northeast
+    >>> lat2, lon2 = 0.0, np.radians(10)
+    >>> az2 = np.radians(315)  # Northwest
+    >>> result = great_circle_intersect(lat1, lon1, az1, lat2, lon2, az2)
+    >>> result.valid
+    True
     """
 
     # Convert to Cartesian unit vectors
@@ -595,6 +631,16 @@ def great_circle_path_intersect(
     -------
     IntersectionResult
         Intersection points and validity.
+
+    Examples
+    --------
+    >>> # Two crossing paths
+    >>> result = great_circle_path_intersect(
+    ...     0.0, 0.0, np.radians(10), np.radians(10),  # Path A
+    ...     0.0, np.radians(10), np.radians(10), 0.0    # Path B
+    ... )
+    >>> result.valid
+    True
     """
     # Get bearings from start points
     az1 = great_circle_azimuth(lat1a, lon1a, lat2a, lon2a)
@@ -825,6 +871,15 @@ def destination_point(
     -------
     WaypointResult
         Destination coordinates.
+
+    Examples
+    --------
+    >>> lat, lon = 0.0, 0.0
+    >>> bearing = np.radians(90)  # Due East
+    >>> ang_dist = np.radians(10)  # 10 degrees
+    >>> dest = destination_point(lat, lon, bearing, ang_dist)
+    >>> np.degrees(dest.lon)  # Should be ~10 degrees East
+    10.0
     """
     lat2 = np.arcsin(
         np.sin(lat) * np.cos(angular_distance)

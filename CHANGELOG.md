@@ -5,11 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.2] - 2026-01-04
+
+### Phase 3.2 Documentation Complete
+
+Completed Phase 3.2 of the v2.0.0 roadmap: all exported functions now have docstring examples.
+
+### Added
+
+**Phase 3.2 - Function-Level Documentation Complete**
+- **31 additional functions** now have docstring examples (262 total):
+  - **Dynamic Estimation (15):** `bootstrap_pf_predict`, `bootstrap_pf_update`, `gaussian_likelihood`, `resample_residual`, `fixed_interval_smoother`, `rts_smoother_single_step`, `two_filter_smoother`, `information_to_state`, `state_to_information`, `srif_predict`, `srif_update`, `gaussian_sum_filter_predict`, `gaussian_sum_filter_update`, `rbpf_predict`, `rbpf_update`
+  - **Atmosphere (7):** `dual_frequency_tec`, `ionospheric_delay_from_tec`, `magnetic_latitude`, `scintillation_index`, `altitude_from_pressure`, `mach_number`, `true_airspeed_from_mach`
+  - **Assignment Algorithms (6):** `assignment_to_flow_network`, `min_cost_flow_successive_shortest_paths`, `min_cost_assignment_via_flow`, `compute_likelihood_matrix`, `jpda_probabilities`, `validate_cost_tensor`
+  - **Trackers/Hypothesis (3):** `compute_association_likelihood`, `n_scan_prune`, `prune_hypotheses_by_probability`
+
+### Changed
+- Version bumped to 1.9.2 in pyproject.toml, pytcl/__init__.py, docs/conf.py
+- ROADMAP.md updated with Phase 3.2 completion status
+- README.md badges updated (version, test count)
+
+### Quality Metrics
+- ✅ **2,133 tests** passing
+- ✅ **262 functions** with docstring examples
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+
+---
+
 ## [Unreleased]
 
 ### Phase 3 Documentation Expansion & Module Graduation
 
-Work in progress on Phase 3 of the v2.0.0 roadmap: comprehensive documentation improvements and module maturity classification.
+Phase 3.2 complete. Continuing with Phase 3.3+ improvements.
 
 ### Added
 
@@ -20,7 +47,7 @@ Work in progress on Phase 3 of the v2.0.0 roadmap: comprehensive documentation i
   - Both now include: purpose, available functions, examples, mathematical background, see also, and references
 
 **Phase 3.2 - Function-Level Documentation (In Progress)**
-- **Added docstring examples to 63 exported functions**:
+- **Added docstring examples to 194 exported functions**:
   - **Kalman Filters:** `kf_predict_update`, `kf_smooth`, `ukf_update`, `ekf_predict_auto`, `ekf_update_auto`, `iterated_ekf_update`, `information_filter_predict`, `information_filter_update`, `sigma_points_julier`, `unscented_transform`, `ckf_spherical_cubature_points`, `ckf_predict`, `ckf_update`
   - **Coordinate Systems:** `ecef2enu`, `enu2ecef`, `ecef2ned`, `euler2quat`, `quat_multiply`, `cart2cyl`, `cyl2cart`, `ruv2cart`, `cart2ruv`
   - **Rotations:** `roty`, `rotz`, `rotmat2euler`, `quat_rotate`, `slerp`, `is_rotation_matrix`
@@ -29,7 +56,23 @@ Work in progress on Phase 3 of the v2.0.0 roadmap: comprehensive documentation i
   - **IMM:** `imm_predict_update`
   - **Navigation/Geodesy:** `angular_distance`, `geodetic_to_ecef`, `ecef_to_geodetic`, `ecef_to_enu`, `enu_to_ecef`, `ecef_to_ned`, `ned_to_ecef`, `direct_geodetic`, `inverse_geodetic`, `haversine_distance`
   - **N-D Assignment:** `greedy_assignment_nd`, `relaxation_assignment_nd`, `auction_assignment_nd`, `detect_dimension_conflicts`
-  - **Quadrature/Integration:** `gauss_hermite`, `gauss_laguerre`, `gauss_chebyshev`, `dblquad`, `tplquad`, `romberg`, `simpson`, `trapezoid`
+  - **Quadrature/Integration:** `gauss_hermite`, `gauss_laguerre`, `gauss_chebyshev`, `dblquad`, `tplquad`, `romberg`, `simpson`, `trapezoid`, `spherical_cubature`, `unscented_transform_points`
+  - **Dynamic Models:** `drift_constant_acceleration`, `drift_singer`, `drift_coordinated_turn_2d`, `diffusion_constant_velocity`, `diffusion_constant_acceleration`, `diffusion_singer`, `continuous_to_discrete`, `discretize_lti`, `state_jacobian_cv`, `state_jacobian_ca`, `state_jacobian_singer`
+  - **Robust Estimation:** `huber_weight`, `huber_rho`, `tukey_weight`, `tukey_rho`, `cauchy_weight`, `mad`, `tau_scale`
+  - **Maximum Likelihood:** `fisher_information_exponential_family`, `observed_fisher_information`, `cramer_rao_bound_biased`, `mle_scoring`, `aic`, `bic`, `aicc`
+  - **Clustering:** `update_centers`, `compute_neighbors`, `runnalls_merge_cost`, `west_merge_cost`, `compute_distance_matrix`, `cut_dendrogram`, `fcluster`
+  - **Performance Evaluation:** `ospa_over_time`, `identity_switches`, `mot_metrics`, `velocity_rmse`, `nees_sequence`, `average_nees`, `nis`, `nis_sequence`, `credibility_interval`, `monte_carlo_rmse`, `estimation_error_bounds`
+  - **Dynamic Models (Extended):** `f_singer_2d`, `f_singer_3d`, `f_coord_turn_polar`, `q_constant_acceleration`
+  - **Orbital Mechanics:** `mean_to_hyperbolic_anomaly`, `eccentric_to_true_anomaly`, `true_to_eccentric_anomaly`, `hyperbolic_to_true_anomaly`, `eccentric_to_mean_anomaly`, `mean_to_true_anomaly`, `orbital_period`, `mean_motion`, `kepler_propagate_state`, `vis_viva`, `specific_angular_momentum`, `specific_orbital_energy`, `flight_path_angle`, `periapsis_radius`, `apoapsis_radius`, `time_since_periapsis`, `orbit_radius`, `escape_velocity`, `circular_velocity`
+  - **Great Circle Navigation:** `great_circle_inverse`, `great_circle_waypoints`, `cross_track_distance`, `great_circle_intersect`, `great_circle_path_intersect`, `destination_point`
+  - **Ephemerides:** `sun_position`, `moon_position`, `barycenter_position`
+  - **Special Functions (Bessel):** `besselk`, `besselh`, `spherical_jn`, `spherical_yn`, `spherical_in`, `spherical_kn`, `airy`, `struve_l`
+  - **Special Functions (Elliptic):** `ellipkm1`, `ellipeinc`, `ellipkinc`, `elliprd`, `elliprf`, `elliprg`, `elliprj`, `elliprc`
+  - **Special Functions (Gamma):** `gammainc`, `gammaincc`, `gammaincinv`, `digamma`, `polygamma`, `betaln`, `betainc`, `betaincinv`
+  - **Special Functions (Error):** `erfcx`, `erfi`, `erfcinv`, `dawsn`, `fresnel`, `wofz`, `voigt_profile`
+  - **Special Functions (Other):** `wright_omega`, `marcum_q1`, `nuttall_q`, `swerling_detection_probability`
+  - **Rotations (Extended):** `axisangle2rotmat`, `rotmat2axisangle`, `rotmat2quat`, `quat2euler`, `quat_conjugate`, `quat_inverse`, `rodrigues2rotmat`, `rotmat2rodrigues`, `dcm_rate`
+  - **Rhumb Line Navigation:** `indirect_rhumb_spherical`, `rhumb_distance_ellipsoidal`, `indirect_rhumb`, `direct_rhumb`, `rhumb_intersect`, `rhumb_midpoint`, `rhumb_waypoints`, `compare_great_circle_rhumb`
 
 **Phase 3.3 - Module Graduation System**
 - **New maturity classification module** (`pytcl/core/maturity.py`):

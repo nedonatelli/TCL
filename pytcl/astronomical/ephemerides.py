@@ -446,6 +446,12 @@ def sun_position(
     velocity : ndarray, shape (3,)
         Sun velocity in AU/day
 
+    Examples
+    --------
+    >>> r, v = sun_position(2451545.0)  # J2000.0  # doctest: +SKIP
+    >>> np.linalg.norm(r)  # Distance from SSB  # doctest: +SKIP
+    0.00...
+
     See Also
     --------
     DEEphemeris.sun_position : Full ephemeris class with caching
@@ -472,6 +478,12 @@ def moon_position(
         Moon position in AU
     velocity : ndarray, shape (3,)
         Moon velocity in AU/day
+
+    Examples
+    --------
+    >>> r, v = moon_position(2451545.0, 'earth_centered')  # doctest: +SKIP
+    >>> np.linalg.norm(r) * 149597870.7  # Distance in km  # doctest: +SKIP
+    402...
 
     See Also
     --------
@@ -532,6 +544,12 @@ def barycenter_position(
         Position in AU
     velocity : ndarray, shape (3,)
         Velocity in AU/day
+
+    Examples
+    --------
+    >>> r, v = barycenter_position('mars', 2451545.0)  # doctest: +SKIP
+    >>> np.linalg.norm(r)  # Mars distance from SSB  # doctest: +SKIP
+    1.4...
 
     """
     return _get_default_ephemeris().barycenter_position(body, jd)

@@ -160,6 +160,20 @@ def line_of_sight(
     The refraction coefficient models atmospheric bending of radio waves.
     A typical value for radio frequencies is 0.13 (4/3 Earth model).
     For optical line of sight, use 0.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.terrain.dem import create_flat_dem
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> result = line_of_sight(
+    ...     dem,
+    ...     np.radians(35.3), np.radians(-119.7), 10,
+    ...     np.radians(35.7), np.radians(-119.3), 10)
+    >>> result.visible  # Clear LOS over flat terrain
+    True
     """
     # Effective Earth radius for refraction
     if refraction_coeff > 0:
@@ -296,6 +310,19 @@ def viewshed(
     -------
     ViewshedResult
         Viewshed computation result with visibility grid.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.terrain.dem import create_flat_dem
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> result = viewshed(
+    ...     dem, np.radians(35.5), np.radians(-119.5), 20,
+    ...     max_range=10000, n_radials=36, samples_per_radial=10)
+    >>> result.visible.any()  # Some cells visible
+    True
     """
     # Convert max range to angular distance
     max_angular_range = max_range / earth_radius
@@ -428,6 +455,19 @@ def compute_horizon(
     -------
     list of HorizonPoint
         Horizon points for each azimuth direction.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.terrain.dem import create_flat_dem
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> horizon = compute_horizon(
+    ...     dem, np.radians(35.5), np.radians(-119.5), 10,
+    ...     n_azimuths=8, max_range=10000, samples_per_radial=10)
+    >>> len(horizon)
+    8
     """
     max_angular_range = max_range / earth_radius
 
@@ -534,6 +574,18 @@ def terrain_masking_angle(
     -------
     float
         Masking angle in radians above horizontal.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.terrain.dem import create_flat_dem
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> angle = terrain_masking_angle(
+    ...     dem, np.radians(35.5), np.radians(-119.5), 10, azimuth=0)
+    >>> -np.pi/2 <= angle <= np.pi/2  # Valid angle range
+    True
     """
     max_angular_range = max_range / earth_radius
 
@@ -628,6 +680,19 @@ def radar_coverage_map(
     -------
     ViewshedResult
         Radar coverage map.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.terrain.dem import create_flat_dem
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> coverage = radar_coverage_map(
+    ...     dem, np.radians(35.5), np.radians(-119.5), 30,
+    ...     max_range=20000, n_radials=36, samples_per_radial=20)
+    >>> coverage.visible.any()  # Some coverage exists
+    True
     """
     # Compute basic viewshed with refraction
     result = viewshed(

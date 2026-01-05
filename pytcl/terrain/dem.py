@@ -438,6 +438,19 @@ def get_elevation_profile(
         Array of distances from start in meters.
     elevations : ndarray
         Array of elevation values in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119),
+    ...     elevation=500)
+    >>> dists, elevs = get_elevation_profile(
+    ...     dem, np.radians(35.2), np.radians(-119.8),
+    ...     np.radians(35.8), np.radians(-119.2), n_points=10)
+    >>> len(dists) == 10
+    True
     """
     # Generate points along path
     lats = np.linspace(lat_start, lat_end, n_points)
@@ -492,6 +505,21 @@ def interpolate_dem(
     -------
     DEMGrid
         New interpolated DEM grid.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119),
+    ...     elevation=100)
+    >>> new_dem = interpolate_dem(
+    ...     dem,
+    ...     np.radians(35.2), np.radians(35.8),
+    ...     np.radians(-119.8), np.radians(-119.2),
+    ...     new_n_lat=5, new_n_lon=5)
+    >>> new_dem.data.shape
+    (5, 5)
     """
     # Create new coordinate arrays
     new_lats = np.linspace(new_lat_min, new_lat_max, new_n_lat)
@@ -547,6 +575,22 @@ def merge_dems(
     -------
     DEMGrid
         Merged DEM grid.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> dem1 = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119), elevation=100)
+    >>> dem2 = create_flat_dem(
+    ...     np.radians(36), np.radians(37),
+    ...     np.radians(-120), np.radians(-119), elevation=200)
+    >>> merged = merge_dems(
+    ...     [dem1, dem2],
+    ...     np.radians(35), np.radians(37),
+    ...     np.radians(-120), np.radians(-119))
+    >>> merged.name
+    'Merged DEM'
     """
     # Compute output grid dimensions
     d_lat = np.radians(resolution_arcsec / 3600)
@@ -611,6 +655,19 @@ def create_flat_dem(
     -------
     DEMGrid
         Flat DEM grid.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> dem = create_flat_dem(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119),
+    ...     elevation=500)
+    >>> dem.name
+    'Flat DEM'
+    >>> result = dem.get_elevation(np.radians(35.5), np.radians(-119.5))
+    >>> abs(result.elevation - 500) < 1
+    True
     """
     d_lat = np.radians(resolution_arcsec / 3600)
     d_lon = np.radians(resolution_arcsec / 3600)
@@ -672,6 +729,18 @@ def create_synthetic_terrain(
     -------
     DEMGrid
         Synthetic terrain DEM.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> dem = create_synthetic_terrain(
+    ...     np.radians(35), np.radians(36),
+    ...     np.radians(-120), np.radians(-119),
+    ...     base_elevation=500, amplitude=200, seed=42)
+    >>> dem.name
+    'Synthetic Terrain'
+    >>> dem.data.min() < dem.data.max()  # Has elevation variation
+    True
     """
     if seed is not None:
         np.random.seed(seed)

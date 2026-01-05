@@ -267,6 +267,12 @@ def gravity_j2(
     -------
     result : GravityResult
         Gravity components and magnitude.
+
+    Examples
+    --------
+    >>> result = gravity_j2(0, 0, 0)  # At equator, sea level
+    >>> abs(result.magnitude - 9.78) < 0.01
+    True
     """
     GM = constants.GM
     a = constants.a
@@ -328,6 +334,12 @@ def geoid_height_j2(
     N : float
         Geoid height (geoid - ellipsoid) in meters.
 
+    Examples
+    --------
+    >>> N = geoid_height_j2(0)  # At equator
+    >>> N > 0  # Equator bulges outward
+    True
+
     Notes
     -----
     This is a simplified model. For accurate geoid heights,
@@ -371,6 +383,12 @@ def gravitational_potential(
     -------
     U : float
         Gravitational potential (m^2/s^2).
+
+    Examples
+    --------
+    >>> U = gravitational_potential(0, 0, 6.4e6)  # Near Earth surface
+    >>> U < 0  # Potential is negative
+    True
     """
     GM = constants.GM
     a = constants.a
@@ -415,6 +433,14 @@ def free_air_anomaly(
     delta_g : float
         Free-air anomaly in m/s^2 (or mGal if multiplied by 1e5).
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Observed gravity slightly higher than normal
+    >>> delta_g = free_air_anomaly(9.81, np.radians(45), 100)
+    >>> isinstance(delta_g, float)
+    True
+
     Notes
     -----
     The free-air anomaly is the difference between observed gravity
@@ -451,6 +477,14 @@ def bouguer_anomaly(
     -------
     delta_g : float
         Bouguer anomaly in m/s^2.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Bouguer anomaly at mountain location
+    >>> delta_g = bouguer_anomaly(9.81, np.radians(45), 1000)
+    >>> isinstance(delta_g, float)
+    True
 
     Notes
     -----

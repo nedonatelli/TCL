@@ -106,6 +106,17 @@ def clenshaw_sum_order(
         Sum of C terms weighted by Legendre functions.
     sum_S : float
         Sum of S terms weighted by Legendre functions.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> C = np.zeros((5, 5))
+    >>> S = np.zeros((5, 5))
+    >>> C[2, 0] = 1.0  # Only C20 term
+    >>> cos_theta, sin_theta = np.cos(np.pi/4), np.sin(np.pi/4)
+    >>> sum_C, sum_S = clenshaw_sum_order(0, cos_theta, sin_theta, C, S, 4)
+    >>> isinstance(sum_C, float)
+    True
     """
     # Handle edge case
     if m > n_max:
@@ -187,6 +198,18 @@ def clenshaw_sum_order_derivative(
         Derivative of sum_C with respect to theta.
     dsum_S : float
         Derivative of sum_S with respect to theta.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> C = np.zeros((5, 5))
+    >>> S = np.zeros((5, 5))
+    >>> C[2, 0] = -0.0005  # J2-like term
+    >>> cos_theta, sin_theta = np.cos(np.pi/4), np.sin(np.pi/4)
+    >>> sum_C, sum_S, dsum_C, dsum_S = clenshaw_sum_order_derivative(
+    ...     0, cos_theta, sin_theta, C, S, 4)
+    >>> len([sum_C, sum_S, dsum_C, dsum_S])
+    4
     """
     if m > n_max:
         return 0.0, 0.0, 0.0, 0.0
@@ -298,6 +321,19 @@ def clenshaw_geoid(
             \\sum_{m=0}^{n} P_n^m(\\sin\\phi) (C_{nm}\\cos m\\lambda + S_{nm}\\sin m\\lambda)
 
     The n=0 and n=1 terms are excluded as they represent the reference field.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> C = np.zeros((5, 5))
+    >>> S = np.zeros((5, 5))
+    >>> C[0, 0] = 1.0
+    >>> R = 6.378e6
+    >>> GM = 3.986e14
+    >>> gamma = 9.81
+    >>> N = clenshaw_geoid(0, 0, C, S, R, GM, gamma)
+    >>> isinstance(N, float)
+    True
     """
     if n_max is None:
         n_max = C.shape[0] - 1
@@ -381,6 +417,18 @@ def clenshaw_potential(
     -------
     float
         Gravitational potential in m^2/s^2.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> C = np.zeros((5, 5))
+    >>> S = np.zeros((5, 5))
+    >>> C[0, 0] = 1.0  # Central term only
+    >>> R = 6.378e6
+    >>> GM = 3.986e14
+    >>> V = clenshaw_potential(0, 0, R, C, S, R, GM)
+    >>> abs(V - GM/R) / (GM/R) < 0.01  # ~GM/r for central term
+    True
     """
     if n_max is None:
         n_max = C.shape[0] - 1
@@ -464,6 +512,18 @@ def clenshaw_gravity(
         Northward component of gravity disturbance in m/s^2.
     g_lon : float
         Eastward component of gravity disturbance in m/s^2.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> C = np.zeros((5, 5))
+    >>> S = np.zeros((5, 5))
+    >>> C[0, 0] = 1.0
+    >>> R = 6.378e6
+    >>> GM = 3.986e14
+    >>> g_r, g_lat, g_lon = clenshaw_gravity(0, 0, R, C, S, R, GM)
+    >>> g_r < 0  # Gravity points inward
+    True
     """
     if n_max is None:
         n_max = C.shape[0] - 1

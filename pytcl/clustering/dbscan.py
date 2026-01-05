@@ -76,6 +76,15 @@ def compute_neighbors(
     -------
     neighbors : list of ndarray
         neighbors[i] contains indices of points within eps of point i.
+
+    Examples
+    --------
+    >>> X = np.array([[0.0, 0.0], [0.5, 0.0], [3.0, 0.0]])
+    >>> neighbors = compute_neighbors(X, eps=1.0)
+    >>> 0 in neighbors[1] and 1 in neighbors[0]  # Points 0 and 1 are neighbors
+    True
+    >>> 2 in neighbors[0]  # Point 2 is far from point 0
+    False
     """
     n_samples = X.shape[0]
 

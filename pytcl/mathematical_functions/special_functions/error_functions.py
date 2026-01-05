@@ -107,6 +107,13 @@ def erfcx(x: ArrayLike) -> NDArray[np.floating]:
     This function is useful when erfc(x) underflows but the scaled
     version remains representable.
 
+    Examples
+    --------
+    >>> erfcx(0)
+    1.0
+    >>> erfcx(10)  # Remains finite even when erfc(10) underflows
+    0.056...
+
     See Also
     --------
     scipy.special.erfcx : Scaled complementary error function.
@@ -129,6 +136,13 @@ def erfi(x: ArrayLike) -> NDArray[np.floating]:
     -------
     y : ndarray
         Values of erfi(x).
+
+    Examples
+    --------
+    >>> erfi(0)
+    0.0
+    >>> erfi(1)
+    1.650...
 
     See Also
     --------
@@ -183,6 +197,13 @@ def erfcinv(y: ArrayLike) -> NDArray[np.floating]:
     x : ndarray
         Inverse complementary error function values.
 
+    Examples
+    --------
+    >>> erfcinv(1)
+    0.0
+    >>> erfc(erfcinv(0.5))
+    0.5
+
     See Also
     --------
     scipy.special.erfcinv : Inverse complementary error function.
@@ -211,6 +232,13 @@ def dawsn(x: ArrayLike) -> NDArray[np.floating]:
     Dawson's integral is related to the imaginary error function by:
     F(x) = (√π/2) * exp(-x²) * erfi(x)
 
+    Examples
+    --------
+    >>> dawsn(0)
+    0.0
+    >>> dawsn(1)
+    0.538...
+
     See Also
     --------
     scipy.special.dawsn : Dawson's integral.
@@ -237,6 +265,14 @@ def fresnel(x: ArrayLike) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
         Fresnel sine integral.
     C : ndarray
         Fresnel cosine integral.
+
+    Examples
+    --------
+    >>> S, C = fresnel(1)
+    >>> S
+    0.438...
+    >>> C
+    0.779...
 
     See Also
     --------
@@ -266,6 +302,14 @@ def wofz(z: ArrayLike) -> NDArray[np.complexfloating]:
     -----
     This function is useful in spectral line modeling and plasma physics.
 
+    Examples
+    --------
+    >>> w = wofz(0)
+    >>> w.real
+    1.0
+    >>> w.imag
+    0.0
+
     See Also
     --------
     scipy.special.wofz : Faddeeva function.
@@ -293,6 +337,11 @@ def voigt_profile(x: ArrayLike, sigma: float, gamma: float) -> NDArray[np.floati
     -------
     V : ndarray
         Voigt profile values (normalized to unit area).
+
+    Examples
+    --------
+    >>> voigt_profile(0, 1, 0)  # Pure Gaussian at x=0
+    0.398...
 
     See Also
     --------

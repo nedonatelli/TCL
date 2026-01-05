@@ -168,6 +168,16 @@ def runnalls_merge_cost(
         cost = 0.5 * [w_m * log|P_m| - w_1 * log|P_1| - w_2 * log|P_2|]
 
     where w_m = w_1 + w_2, P_m is the moment-matched covariance.
+
+    Examples
+    --------
+    >>> c1 = GaussianComponent(0.3, np.array([0., 0.]), np.eye(2) * 0.1)
+    >>> c2 = GaussianComponent(0.2, np.array([0.1, 0.]), np.eye(2) * 0.1)  # Close
+    >>> c3 = GaussianComponent(0.2, np.array([5., 5.]), np.eye(2) * 0.1)  # Far
+    >>> cost_close = runnalls_merge_cost(c1, c2)
+    >>> cost_far = runnalls_merge_cost(c1, c3)
+    >>> cost_close < cost_far  # Closer components have lower merge cost
+    True
     """
     w1, w2 = c1.weight, c2.weight
     w_merged = w1 + w2
@@ -420,6 +430,16 @@ def west_merge_cost(
     -------
     cost : float
         Merge cost based on weighted mean separation.
+
+    Examples
+    --------
+    >>> c1 = GaussianComponent(0.3, np.array([0., 0.]), np.eye(2) * 0.1)
+    >>> c2 = GaussianComponent(0.2, np.array([0.1, 0.]), np.eye(2) * 0.1)  # Close
+    >>> c3 = GaussianComponent(0.2, np.array([5., 5.]), np.eye(2) * 0.1)  # Far
+    >>> cost_close = west_merge_cost(c1, c2)
+    >>> cost_far = west_merge_cost(c1, c3)
+    >>> cost_close < cost_far  # Closer components have lower merge cost
+    True
     """
     w1, w2 = c1.weight, c2.weight
     w_merged = w1 + w2
