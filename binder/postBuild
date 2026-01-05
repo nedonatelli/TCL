@@ -1,0 +1,13 @@
+#!/bin/bash
+# Post-build script for Binder
+# This runs after the environment is created
+
+# Enable Jupyter extensions
+jupyter labextension enable @jupyter-widgets/jupyterlab-manager || true
+
+# Generate sample datasets if not present
+if [ ! -f examples/data/tracking_scenarios.npz ]; then
+    python examples/data/generate_datasets.py
+fi
+
+echo "Binder environment ready!"

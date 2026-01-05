@@ -1,0 +1,21 @@
+# Binder environment configuration for pyTCL notebooks
+# This file defines the conda environment for mybinder.org
+
+name: pytcl
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - numpy>=1.24
+  - scipy>=1.10
+  - numba>=0.57
+  - matplotlib>=3.7
+  - jupyter>=1.0
+  - jupyterlab>=4.0
+  - ipywidgets>=8.0
+  - plotly>=5.15
+  - pip
+  - pip:
+    - nrl-tracker
