@@ -138,6 +138,17 @@ def sigma_points_julier(
     result : SigmaPoints
         Sigma points and weights.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.array([1.0, 2.0])
+    >>> P = np.eye(2) * 0.1
+    >>> sp = sigma_points_julier(x, P, kappa=1.0)
+    >>> sp.points.shape  # 2*n+1 = 5 points for n=2
+    (5, 2)
+    >>> np.allclose(sp.Wm.sum(), 1.0)
+    True
+
     Notes
     -----
     Julier's method is a special case of Merwe's with alpha=1, beta=0.
@@ -196,6 +207,21 @@ def unscented_transform(
         Weighted mean, shape (m,).
     cov : ndarray
         Weighted covariance, shape (m, m).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Generate sigma points
+    >>> x = np.array([0.0, 0.0])
+    >>> P = np.eye(2)
+    >>> sp = sigma_points_merwe(x, P)
+    >>> # Pass through nonlinear function
+    >>> def f(x):
+    ...     return np.array([x[0]**2, x[1]])
+    >>> sigmas_f = np.array([f(sp.points[i]) for i in range(len(sp.points))])
+    >>> mean, cov = unscented_transform(sigmas_f, sp.Wm, sp.Wc)
+    >>> mean.shape
+    (2,)
     """
     # Weighted mean
     mean = np.sum(Wm[:, np.newaxis] * sigmas, axis=0)
@@ -325,6 +351,24 @@ def ukf_update(
     result : KalmanUpdate
         Updated state, covariance, and innovation statistics.
 
+    Examples
+    --------
+    Update with a range-bearing measurement:
+
+    >>> import numpy as np
+    >>> # State: [x, y], range-bearing measurement
+    >>> def h_rb(x):
+    ...     r = np.sqrt(x[0]**2 + x[1]**2)
+    ...     theta = np.arctan2(x[1], x[0])
+    ...     return np.array([r, theta])
+    >>> x = np.array([100.0, 50.0])
+    >>> P = np.eye(2) * 10.0
+    >>> z = np.array([112.0, 0.46])  # measured range and bearing
+    >>> R = np.diag([1.0, 0.01])  # measurement noise
+    >>> upd = ukf_update(x, P, z, h_rb, R)
+    >>> upd.x.shape
+    (2,)
+
     See Also
     --------
     ukf_predict : UKF prediction step.
@@ -400,6 +444,15 @@ def ckf_spherical_cubature_points(
     weights : ndarray
         Cubature weights.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> points, weights = ckf_spherical_cubature_points(3)
+    >>> points.shape  # 2n = 6 points for n=3
+    (6, 3)
+    >>> np.allclose(weights.sum(), 1.0)
+    True
+
     Notes
     -----
     The CKF uses a third-degree spherical-radial cubature rule with
@@ -444,6 +497,20 @@ def ckf_predict(
     -------
     result : KalmanPrediction
         Predicted state and covariance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Linear dynamics: x_k+1 = F @ x_k
+    >>> def f(x):
+    ...     F = np.array([[1, 1], [0, 1]])
+    ...     return F @ x
+    >>> x = np.array([0.0, 1.0])
+    >>> P = np.eye(2) * 0.1
+    >>> Q = np.eye(2) * 0.01
+    >>> pred = ckf_predict(x, P, f, Q)
+    >>> pred.x  # Should be approximately [1, 1]
+    array([1., 1.])
 
     References
     ----------
@@ -512,6 +579,20 @@ def ckf_update(
     -------
     result : KalmanUpdate
         Updated state and covariance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Position measurement h(x) = x[0]
+    >>> def h(x):
+    ...     return np.array([x[0]])
+    >>> x = np.array([3.0, 1.0])  # predicted [position, velocity]
+    >>> P = np.eye(2) * 0.5
+    >>> z = np.array([3.1])  # measurement
+    >>> R = np.array([[0.1]])
+    >>> upd = ckf_update(x, P, z, h, R)
+    >>> upd.x.shape
+    (2,)
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)

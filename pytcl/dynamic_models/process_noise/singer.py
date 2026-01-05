@@ -1,5 +1,57 @@
 """
 Process noise covariance matrices for Singer acceleration model.
+
+This module provides functions to construct process noise covariance matrices
+(Q matrices) for the Singer acceleration motion model. The Singer model
+treats target acceleration as a first-order Gauss-Markov process, making it
+well-suited for tracking maneuvering targets with random accelerations.
+
+The Singer model is characterized by:
+- A maneuver time constant (tau) that controls how quickly acceleration
+  correlations decay
+- An RMS maneuver level (sigma_m) that sets the expected acceleration magnitude
+- State vector [position, velocity, acceleration] per dimension
+
+The model dynamics are:
+    da/dt = -a/tau + w(t)
+
+where w(t) is white noise with spectral density 2*sigma_m²/tau.
+
+Available functions:
+- ``q_singer``: Generic N-dimensional Singer process noise
+- ``q_singer_2d``: 2D Singer model (6x6 state)
+- ``q_singer_3d``: 3D Singer model (9x9 state)
+
+These Q matrices are designed to work with the corresponding state transition
+matrices in :mod:`pytcl.dynamic_models.singer`.
+
+Examples
+--------
+Create process noise for tracking a maneuvering aircraft:
+
+>>> from pytcl.dynamic_models.process_noise import q_singer
+>>> Q = q_singer(T=1.0, tau=20.0, sigma_m=3.0)  # tau=20s, 3g maneuvers
+>>> Q.shape
+(3, 3)
+
+For 3D tracking:
+
+>>> Q = q_singer_3d(T=0.1, tau=10.0, sigma_m=2.0)
+>>> Q.shape
+(9, 9)
+
+See Also
+--------
+pytcl.dynamic_models.singer : State transition matrices
+pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
+
+References
+----------
+.. [1] Singer, R.A., "Estimating Optimal Tracking Filter Performance for
+       Manned Maneuvering Targets", IEEE Trans. Aerospace and Electronic
+       Systems, Vol. AES-6, No. 4, July 1970, pp. 473-483.
+.. [2] Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
+       Applications to Tracking and Navigation", Wiley, 2001, Chapter 6.
 """
 
 import numpy as np

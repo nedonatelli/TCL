@@ -71,6 +71,14 @@ def gauss_hermite(
     w : ndarray
         Quadrature weights of shape (n,).
 
+    Examples
+    --------
+    >>> x, w = gauss_hermite(5)
+    >>> # Compute E[X^2] for X ~ N(0, 1) (exact = 1)
+    >>> result = np.sum(w * (np.sqrt(2) * x)**2) / np.sqrt(np.pi)
+    >>> abs(result - 1.0) < 1e-10
+    True
+
     Notes
     -----
     For computing E[f(X)] where X ~ N(μ, σ²):
@@ -105,6 +113,13 @@ def gauss_laguerre(
     w : ndarray
         Quadrature weights of shape (n,).
 
+    Examples
+    --------
+    >>> x, w = gauss_laguerre(5)
+    >>> # Integrate x * exp(-x) from 0 to inf (exact = 1)
+    >>> np.sum(w * x)
+    1.0
+
     See Also
     --------
     numpy.polynomial.laguerre.laggauss : Equivalent function.
@@ -136,6 +151,12 @@ def gauss_chebyshev(
         Quadrature points of shape (n,).
     w : ndarray
         Quadrature weights of shape (n,).
+
+    Examples
+    --------
+    >>> x, w = gauss_chebyshev(5, kind=1)
+    >>> x.shape
+    (5,)
 
     See Also
     --------
@@ -232,6 +253,13 @@ def dblquad(
     error : float
         Estimate of the absolute error.
 
+    Examples
+    --------
+    >>> # Integrate x*y over unit square
+    >>> result, error = dblquad(lambda y, x: x*y, 0, 1, lambda x: 0, lambda x: 1)
+    >>> result  # Should be 0.25
+    0.25
+
     See Also
     --------
     scipy.integrate.dblquad : Underlying implementation.
@@ -280,6 +308,18 @@ def tplquad(
         Estimated integral value.
     error : float
         Estimate of the absolute error.
+
+    Examples
+    --------
+    >>> # Integrate x*y*z over unit cube
+    >>> result, error = tplquad(
+    ...     lambda z, y, x: x*y*z,
+    ...     0, 1,
+    ...     lambda x: 0, lambda x: 1,
+    ...     lambda x, y: 0, lambda x, y: 1
+    ... )
+    >>> abs(result - 0.125) < 1e-6  # 1/8
+    True
 
     See Also
     --------
@@ -362,6 +402,13 @@ def romberg(
     result : float
         Estimated integral value.
 
+    Examples
+    --------
+    >>> # Integrate x^2 from 0 to 1 (exact = 1/3)
+    >>> result = romberg(lambda x: x**2, 0, 1)
+    >>> abs(result - 1/3) < 1e-8
+    True
+
     Notes
     -----
     This is a native implementation that does not depend on scipy.integrate.romberg,
@@ -417,6 +464,15 @@ def simpson(
     result : float
         Estimated integral.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.linspace(0, np.pi, 101)
+    >>> y = np.sin(x)
+    >>> result = simpson(y, x)  # Should be ~2.0
+    >>> abs(result - 2.0) < 1e-5
+    True
+
     See Also
     --------
     scipy.integrate.simpson : Underlying implementation.
@@ -445,6 +501,15 @@ def trapezoid(
     -------
     result : float
         Estimated integral.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.linspace(0, 1, 11)
+    >>> y = x**2  # Integrate x^2 from 0 to 1
+    >>> result = trapezoid(y, x)
+    >>> abs(result - 1/3) < 0.01  # Approximation
+    True
 
     See Also
     --------

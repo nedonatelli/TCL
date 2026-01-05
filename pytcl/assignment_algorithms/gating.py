@@ -322,6 +322,24 @@ def compute_gate_volume(
         V = c_m * sqrt(det(S)) * gamma^(m/2)
 
     where c_m is the volume of the unit hypersphere in m dimensions.
+
+    Examples
+    --------
+    Compute gate volume for a 2D measurement with 99% gate probability:
+
+    >>> import numpy as np
+    >>> from scipy.stats import chi2
+    >>> S = np.array([[4.0, 0.0], [0.0, 1.0]])  # innovation covariance
+    >>> gate_prob = 0.99
+    >>> threshold = chi2.ppf(gate_prob, df=2)
+    >>> volume = compute_gate_volume(S, threshold)
+    >>> volume > 0
+    True
+
+    See Also
+    --------
+    ellipsoidal_gate : Test if measurement passes gate.
+    mahalanobis_distance : Compute distance used in gating.
     """
     S = np.asarray(innovation_covariance, dtype=np.float64)
     m = S.shape[0]

@@ -135,6 +135,12 @@ def roty(angle: float) -> NDArray[np.floating]:
     -------
     R : ndarray
         3x3 rotation matrix.
+
+    Examples
+    --------
+    >>> R = roty(np.pi/2)  # 90 degree rotation about y
+    >>> R @ [1, 0, 0]  # x-axis maps to -z-axis
+    array([ 0.,  0., -1.])
     """
     c = np.cos(angle)
     s = np.sin(angle)
@@ -154,6 +160,12 @@ def rotz(angle: float) -> NDArray[np.floating]:
     -------
     R : ndarray
         3x3 rotation matrix.
+
+    Examples
+    --------
+    >>> R = rotz(np.pi/2)  # 90 degree rotation about z
+    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
+    array([0., 1., 0.])
     """
     c = np.cos(angle)
     s = np.sin(angle)
@@ -224,6 +236,13 @@ def rotmat2euler(
     -------
     angles : ndarray
         Three Euler angles in radians.
+
+    Examples
+    --------
+    >>> R = rotz(np.radians(45)) @ roty(np.radians(30)) @ rotx(np.radians(15))
+    >>> angles = rotmat2euler(R, 'ZYX')
+    >>> np.degrees(angles)
+    array([45., 30., 15.])
 
     Notes
     -----
@@ -477,6 +496,25 @@ def euler2quat(
     -------
     q : ndarray
         Quaternion [qw, qx, qy, qz].
+
+    Examples
+    --------
+    Convert yaw-pitch-roll angles to quaternion:
+
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems.rotations import euler2quat
+    >>> # 45° yaw, 30° pitch, 0° roll
+    >>> angles = np.radians([45, 30, 0])
+    >>> q = euler2quat(angles, sequence='ZYX')
+    >>> q.shape
+    (4,)
+    >>> np.abs(q[0]) > 0.5  # scalar part should be significant
+    True
+
+    See Also
+    --------
+    quat2euler : Inverse conversion.
+    euler2rotmat : Convert to rotation matrix instead.
     """
     R = euler2rotmat(angles, sequence)
     return rotmat2quat(R)
@@ -525,6 +563,26 @@ def quat_multiply(q1: ArrayLike, q2: ArrayLike) -> NDArray[np.floating]:
     -----
     Quaternion multiplication represents composition of rotations.
     q1 * q2 applies q2 first, then q1.
+
+    Examples
+    --------
+    Combine two rotations using quaternion multiplication:
+
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems.rotations import quat_multiply, euler2quat
+    >>> # 90° rotation about Z, then 45° about X
+    >>> q_z90 = euler2quat(np.radians([90, 0, 0]), 'ZYX')
+    >>> q_x45 = euler2quat(np.radians([0, 0, 45]), 'ZYX')
+    >>> q_combined = quat_multiply(q_z90, q_x45)
+    >>> q_combined.shape
+    (4,)
+    >>> np.isclose(np.linalg.norm(q_combined), 1.0)  # unit quaternion
+    True
+
+    See Also
+    --------
+    quat_inverse : Compute quaternion inverse.
+    quat_rotate : Rotate a vector by a quaternion.
     """
     q1 = np.asarray(q1, dtype=np.float64)
     q2 = np.asarray(q2, dtype=np.float64)
@@ -599,6 +657,15 @@ def quat_rotate(q: ArrayLike, v: ArrayLike) -> NDArray[np.floating]:
     v_rot : ndarray
         Rotated vector.
 
+    Examples
+    --------
+    >>> # 90 degree rotation about z-axis
+    >>> q = euler2quat(np.radians([90, 0, 0]), 'ZYX')
+    >>> v = np.array([1.0, 0.0, 0.0])
+    >>> v_rot = quat_rotate(q, v)
+    >>> v_rot  # x-axis becomes y-axis
+    array([0., 1., 0.])
+
     Notes
     -----
     Computes q * v * q^(-1) where v is treated as a pure quaternion.
@@ -632,6 +699,15 @@ def slerp(
     -------
     q : ndarray
         Interpolated quaternion.
+
+    Examples
+    --------
+    >>> q1 = np.array([1, 0, 0, 0])  # identity
+    >>> q2 = euler2quat(np.radians([90, 0, 0]), 'ZYX')  # 90 deg about z
+    >>> q_mid = slerp(q1, q2, 0.5)  # halfway = 45 deg
+    >>> angles = quat2euler(q_mid, 'ZYX')
+    >>> np.degrees(angles[0])  # yaw should be ~45
+    45.0...
     """
     q1 = np.asarray(q1, dtype=np.float64)
     q2 = np.asarray(q2, dtype=np.float64)
@@ -756,6 +832,14 @@ def is_rotation_matrix(R: ArrayLike, tol: float = 1e-6) -> bool:
     -------
     valid : bool
         True if R is a valid rotation matrix.
+
+    Examples
+    --------
+    >>> R = rotx(np.pi/4)
+    >>> is_rotation_matrix(R)
+    True
+    >>> is_rotation_matrix(np.eye(3) * 2)  # not orthonormal
+    False
     """
     R = np.asarray(R, dtype=np.float64)
 

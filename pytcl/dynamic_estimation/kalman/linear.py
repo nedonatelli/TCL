@@ -282,6 +282,22 @@ def kf_predict_update(
     result : KalmanUpdate
         Updated state and covariance with innovation statistics.
 
+    Examples
+    --------
+    Track a 1D constant-velocity target with position measurements:
+
+    >>> import numpy as np
+    >>> x = np.array([0.0, 1.0])  # [position, velocity]
+    >>> P = np.eye(2) * 0.1
+    >>> F = np.array([[1, 1], [0, 1]])  # CV model, T=1s
+    >>> Q = np.array([[0.25, 0.5], [0.5, 1.0]])  # process noise
+    >>> H = np.array([[1, 0]])  # measure position only
+    >>> R = np.array([[0.5]])  # measurement noise variance
+    >>> z = np.array([1.1])  # measured position
+    >>> result = kf_predict_update(x, P, z, F, Q, H, R)
+    >>> result.x  # updated state
+    array([1.0..., 1.0...])
+
     See Also
     --------
     kf_predict : Prediction step only.
@@ -336,6 +352,30 @@ def kf_smooth(
         G = P_filt @ F' @ P_pred^{-1}
         x_smooth = x_filt + G @ (x_smooth_next - x_pred)
         P_smooth = P_filt + G @ (P_smooth_next - P_pred) @ G'
+
+    Examples
+    --------
+    Apply RTS smoothing to improve a filtered estimate:
+
+    >>> import numpy as np
+    >>> # Filtered estimate at time k
+    >>> x_filt = np.array([1.0, 0.9])
+    >>> P_filt = np.array([[0.1, 0.05], [0.05, 0.2]])
+    >>> # Predicted estimate at time k+1 (from forward pass)
+    >>> x_pred = np.array([1.9, 0.9])
+    >>> P_pred = np.array([[0.35, 0.25], [0.25, 0.4]])
+    >>> # Smoothed estimate at time k+1 (already computed)
+    >>> x_smooth_next = np.array([2.0, 1.0])
+    >>> P_smooth_next = np.array([[0.08, 0.03], [0.03, 0.15]])
+    >>> F = np.array([[1, 1], [0, 1]])  # CV model
+    >>> x_s, P_s = kf_smooth(x_filt, P_filt, x_pred, P_pred,
+    ...                      x_smooth_next, P_smooth_next, F)
+    >>> x_s  # smoothed state at time k
+    array([1.0..., 0.9...])
+
+    See Also
+    --------
+    kf_predict_update : Forward filtering step.
     """
     x_filt = np.asarray(x_filt, dtype=np.float64).flatten()
     P_filt = np.asarray(P_filt, dtype=np.float64)
@@ -389,6 +429,21 @@ def information_filter_predict(
         Predicted information vector.
     Y_pred : ndarray
         Predicted information matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Convert from state form to information form
+    >>> x = np.array([1.0, 0.5])
+    >>> P = np.eye(2) * 0.1
+    >>> Y = np.linalg.inv(P)
+    >>> y = Y @ x
+    >>> # Predict with constant velocity model
+    >>> F = np.array([[1, 1], [0, 1]])
+    >>> Q = np.eye(2) * 0.01
+    >>> y_pred, Y_pred = information_filter_predict(y, Y, F, Q)
+    >>> y_pred.shape
+    (2,)
 
     Notes
     -----
@@ -444,6 +499,20 @@ def information_filter_update(
         Updated information vector.
     Y_upd : ndarray
         Updated information matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Initial information form (from prior)
+    >>> Y = np.eye(2) * 10.0  # High prior information
+    >>> y = np.array([10.0, 5.0])  # Corresponds to state [1.0, 0.5]
+    >>> # Measurement z = H @ x + noise
+    >>> z = np.array([1.1])
+    >>> H = np.array([[1, 0]])  # Measure position only
+    >>> R = np.array([[0.1]])
+    >>> y_upd, Y_upd = information_filter_update(y, Y, z, H, R)
+    >>> Y_upd[0, 0] > Y[0, 0]  # Information increased
+    True
 
     Notes
     -----

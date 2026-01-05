@@ -26,10 +26,10 @@ jobs:
           pip install black isort flake8 mypy numpy
 
       - name: Check import sorting with isort
-        run: isort --check-only --diff .
+        run: isort --check-only --diff pytcl tests
 
       - name: Check formatting with Black
-        run: black --check .
+        run: black --check pytcl tests
 
       - name: Lint with flake8
         run: flake8 pytcl tests

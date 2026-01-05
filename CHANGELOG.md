@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Phase 3 Documentation Expansion & Module Graduation
+
+Work in progress on Phase 3 of the v2.0.0 roadmap: comprehensive documentation improvements and module maturity classification.
+
+### Added
+
+**Phase 3.1 - Module Docstring Expansion**
+- **Expanded module docstrings** from minimal 1-line descriptions to comprehensive 40+ line documentation:
+  - `pytcl/dynamic_models/process_noise/coordinated_turn.py` - Full coordinated turn process noise documentation
+  - `pytcl/dynamic_models/process_noise/singer.py` - Complete Singer acceleration model documentation
+  - Both now include: purpose, available functions, examples, mathematical background, see also, and references
+
+**Phase 3.2 - Function-Level Documentation (In Progress)**
+- **Added docstring examples to 63 exported functions**:
+  - **Kalman Filters:** `kf_predict_update`, `kf_smooth`, `ukf_update`, `ekf_predict_auto`, `ekf_update_auto`, `iterated_ekf_update`, `information_filter_predict`, `information_filter_update`, `sigma_points_julier`, `unscented_transform`, `ckf_spherical_cubature_points`, `ckf_predict`, `ckf_update`
+  - **Coordinate Systems:** `ecef2enu`, `enu2ecef`, `ecef2ned`, `euler2quat`, `quat_multiply`, `cart2cyl`, `cyl2cart`, `ruv2cart`, `cart2ruv`
+  - **Rotations:** `roty`, `rotz`, `rotmat2euler`, `quat_rotate`, `slerp`, `is_rotation_matrix`
+  - **Data Association:** `jpda`, `compute_gate_volume`
+  - **Particle Filters:** `bootstrap_pf_step`, `resample_multinomial`, `resample_systematic`, `effective_sample_size`, `particle_mean`, `particle_covariance`, `initialize_particles`
+  - **IMM:** `imm_predict_update`
+  - **Navigation/Geodesy:** `angular_distance`, `geodetic_to_ecef`, `ecef_to_geodetic`, `ecef_to_enu`, `enu_to_ecef`, `ecef_to_ned`, `ned_to_ecef`, `direct_geodetic`, `inverse_geodetic`, `haversine_distance`
+  - **N-D Assignment:** `greedy_assignment_nd`, `relaxation_assignment_nd`, `auction_assignment_nd`, `detect_dimension_conflicts`
+  - **Quadrature/Integration:** `gauss_hermite`, `gauss_laguerre`, `gauss_chebyshev`, `dblquad`, `tplquad`, `romberg`, `simpson`, `trapezoid`
+
+**Phase 3.3 - Module Graduation System**
+- **New maturity classification module** (`pytcl/core/maturity.py`):
+  - `MaturityLevel` enum: STABLE (3), MATURE (2), EXPERIMENTAL (1), DEPRECATED (0)
+  - `MODULE_MATURITY` registry: 79 modules classified by production-readiness
+  - `get_maturity(module_path)` - Get maturity level of a module
+  - `get_modules_by_maturity(level)` - List all modules at a given level
+  - `get_maturity_summary()` - Summary count by maturity level
+  - `is_stable(module_path)` - Check if module has frozen API
+  - `is_production_ready(module_path)` - Check if STABLE or MATURE
+  - `format_maturity_badge(level)` - Badge string for documentation
+- **Module classifications**:
+  - 26 STABLE modules (core, Kalman filters, motion models, coordinate systems)
+  - 43 MATURE modules (advanced filters, smoothers, navigation, clustering)
+  - 10 EXPERIMENTAL modules (Gaussian sum, geophysical, terrain, relativity)
+- **Core exports** updated in `pytcl/core/__init__.py`
+
+### Changed
+- ROADMAP.md updated with Phase 3 progress
+- docs/roadmap.rst updated with Phase 1 and Phase 2 completion status
+
+### Quality Metrics
+- ✅ **2,133 tests** passing
+- ✅ **100% code quality compliance:** isort, black, flake8, mypy --strict
+
+---
+
 ## [1.9.0] - 2026-01-04
 
 ### Phase 2 Infrastructure Improvements

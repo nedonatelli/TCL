@@ -264,6 +264,16 @@ def cart2cyl(
     z : ndarray
         Height (same as Cartesian z).
 
+    Examples
+    --------
+    >>> rho, phi, z = cart2cyl([1, 1, 5])
+    >>> rho
+    1.4142135623730951
+    >>> np.degrees(phi)
+    45.0
+    >>> z
+    5.0
+
     See Also
     --------
     cyl2cart : Inverse conversion.
@@ -310,6 +320,12 @@ def cyl2cart(
     cart_points : ndarray
         Cartesian coordinates of shape (3,) or (3, n).
 
+    Examples
+    --------
+    >>> cart = cyl2cart(1.414, np.radians(45), 5.0)
+    >>> cart
+    array([1.00..., 1.00..., 5.  ])
+
     See Also
     --------
     cart2cyl : Inverse conversion.
@@ -354,6 +370,16 @@ def ruv2cart(
     cart_points : ndarray
         Cartesian coordinates.
 
+    Examples
+    --------
+    >>> # Target at 45 deg azimuth, 30 deg elevation, range 100
+    >>> az, el = np.radians(45), np.radians(30)
+    >>> u = np.cos(az) * np.cos(el)
+    >>> v = np.sin(az) * np.cos(el)
+    >>> cart = ruv2cart(100, u, v)
+    >>> cart
+    array([61.23..., 61.23..., 50.  ])
+
     Notes
     -----
     This representation is common in radar tracking systems.
@@ -395,6 +421,15 @@ def cart2ruv(
         Direction cosine along x-axis (x/r).
     v : ndarray
         Direction cosine along y-axis (y/r).
+
+    Examples
+    --------
+    >>> r, u, v = cart2ruv([100, 0, 0])
+    >>> r, u, v
+    (100.0, 1.0, 0.0)
+    >>> r, u, v = cart2ruv([50, 50, 50])
+    >>> r
+    86.602...
 
     See Also
     --------

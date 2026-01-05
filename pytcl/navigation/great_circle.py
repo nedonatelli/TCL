@@ -783,6 +783,22 @@ def angular_distance(
     -------
     float
         Angular distance in radians.
+
+    Examples
+    --------
+    Compute angular distance between New York and London:
+
+    >>> import numpy as np
+    >>> # NYC: 40.7°N, 74.0°W; London: 51.5°N, 0.1°W
+    >>> lat1, lon1 = np.radians(40.7), np.radians(-74.0)
+    >>> lat2, lon2 = np.radians(51.5), np.radians(-0.1)
+    >>> angle = angular_distance(lat1, lon1, lat2, lon2)
+    >>> np.degrees(angle)  # about 50 degrees
+    49.9...
+
+    See Also
+    --------
+    great_circle_distance : Compute distance on sphere with given radius.
     """
     return great_circle_distance(lat1, lon1, lat2, lon2, radius=1.0)
 

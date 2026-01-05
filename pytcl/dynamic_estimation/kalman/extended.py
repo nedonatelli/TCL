@@ -263,6 +263,23 @@ def ekf_predict_auto(
     -------
     result : KalmanPrediction
         Predicted state and covariance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Simple nonlinear dynamics
+    >>> def f(x):
+    ...     return np.array([x[0] + x[1], 0.9 * x[1]])
+    >>> x = np.array([0.0, 1.0])
+    >>> P = np.eye(2) * 0.1
+    >>> Q = np.eye(2) * 0.01
+    >>> pred = ekf_predict_auto(x, P, f, Q)
+    >>> pred.x
+    array([1., 0.9])
+
+    See Also
+    --------
+    ekf_predict : EKF prediction with explicit Jacobian.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     F = numerical_jacobian(f, x, dx)
@@ -299,6 +316,24 @@ def ekf_update_auto(
     -------
     result : KalmanUpdate
         Updated state and covariance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Range measurement h(x) = sqrt(x[0]^2 + x[1]^2)
+    >>> def h(x):
+    ...     return np.array([np.sqrt(x[0]**2 + x[1]**2)])
+    >>> x = np.array([3.0, 4.0])  # predicted position
+    >>> P = np.eye(2) * 0.5
+    >>> z = np.array([5.1])  # measured range
+    >>> R = np.array([[0.1]])
+    >>> upd = ekf_update_auto(x, P, z, h, R)
+    >>> np.linalg.norm(upd.x)  # estimate moves toward measurement
+    5.0...
+
+    See Also
+    --------
+    ekf_update : EKF update with explicit Jacobian.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     H = numerical_jacobian(h, x, dx)
@@ -344,6 +379,27 @@ def iterated_ekf_update(
     -------
     result : KalmanUpdate
         Updated state and covariance after convergence.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Bearing-only measurement (highly nonlinear)
+    >>> def h(x):
+    ...     return np.array([np.arctan2(x[1], x[0])])
+    >>> def H_func(x):
+    ...     r2 = x[0]**2 + x[1]**2
+    ...     return np.array([[-x[1]/r2, x[0]/r2]])
+    >>> x = np.array([10.0, 10.0])
+    >>> P = np.eye(2) * 5.0
+    >>> z = np.array([np.radians(50)])  # measured bearing
+    >>> R = np.array([[0.01]])
+    >>> upd = iterated_ekf_update(x, P, z, h, H_func, R)
+    >>> upd.x.shape
+    (2,)
+
+    See Also
+    --------
+    ekf_update : Standard (non-iterated) EKF update.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)

@@ -468,6 +468,35 @@ def imm_predict_update(
     -------
     result : IMMUpdate
         Updated states, covariances, and mode probabilities.
+
+    Examples
+    --------
+    Track a target with 2 motion modes (CV and CA):
+
+    >>> import numpy as np
+    >>> # Two modes: constant velocity and constant acceleration
+    >>> states = [np.array([0, 1, 0, 1]), np.array([0, 1, 0, 1])]
+    >>> covs = [np.eye(4) * 0.1, np.eye(4) * 0.1]
+    >>> probs = np.array([0.9, 0.1])  # likely CV mode
+    >>> # Mode transition matrix (90% stay, 10% switch)
+    >>> trans = np.array([[0.9, 0.1], [0.1, 0.9]])
+    >>> # Dynamics and measurement matrices for each mode
+    >>> F_cv = np.array([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]])
+    >>> F_ca = F_cv.copy()  # simplified
+    >>> H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
+    >>> Q = np.eye(4) * 0.01
+    >>> R = np.eye(2) * 0.1
+    >>> z = np.array([1.0, 1.0])
+    >>> result = imm_predict_update(states, covs, probs, trans, z,
+    ...                             [F_cv, F_ca], [Q, Q], [H, H], [R, R])
+    >>> len(result.mode_probs)
+    2
+
+    See Also
+    --------
+    imm_predict : IMM prediction step only.
+    imm_update : IMM update step only.
+    IMMEstimator : Object-oriented interface.
     """
     pred = imm_predict(
         mode_states, mode_covs, mode_probs, transition_matrix, F_list, Q_list

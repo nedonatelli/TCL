@@ -1,5 +1,51 @@
 """
 Process noise covariance matrices for coordinated turn models.
+
+This module provides functions to construct process noise covariance matrices
+(Q matrices) for coordinated turn motion models used in target tracking.
+Coordinated turn models describe targets that maintain a constant turn rate,
+such as aircraft executing banking maneuvers.
+
+The process noise captures uncertainty in the target's motion, including:
+- Linear acceleration uncertainty along the velocity direction
+- Turn rate (angular velocity) uncertainty
+
+Available functions:
+- ``q_coord_turn_2d``: 2D coordinated turn (planar motion)
+- ``q_coord_turn_3d``: 3D coordinated turn (spatial motion)
+- ``q_coord_turn_polar``: Polar/heading-speed representation
+
+These Q matrices are designed to work with the corresponding state transition
+matrices in :mod:`pytcl.dynamic_models.coordinated_turn`.
+
+Examples
+--------
+Create process noise for a 2D coordinated turn tracker:
+
+>>> from pytcl.dynamic_models.process_noise import q_coord_turn_2d
+>>> Q = q_coord_turn_2d(T=0.1, sigma_a=2.0)  # 0.1s step, 2 m/s² accel noise
+>>> Q.shape
+(4, 4)
+
+With turn rate state estimation:
+
+>>> Q = q_coord_turn_2d(T=0.1, sigma_a=2.0, sigma_omega=0.01,
+...                     state_type='position_velocity_omega')
+>>> Q.shape
+(5, 5)
+
+See Also
+--------
+pytcl.dynamic_models.coordinated_turn : State transition matrices
+pytcl.dynamic_models.process_noise.constant_velocity : CV process noise
+pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
+
+References
+----------
+.. [1] Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
+       Applications to Tracking and Navigation", Wiley, 2001.
+.. [2] Blackman, S. and Popoli, R., "Design and Analysis of Modern
+       Tracking Systems", Artech House, 1999.
 """
 
 import numpy as np

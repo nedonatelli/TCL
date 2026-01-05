@@ -7,6 +7,7 @@ This module provides foundational functionality used throughout the library:
 - Array manipulation helpers compatible with MATLAB conventions
 - Custom exception hierarchy for consistent error handling
 - Optional dependency management
+- Module maturity classification system
 """
 
 from pytcl.core.array_utils import (
@@ -44,6 +45,14 @@ from pytcl.core.exceptions import (
     TCLError,
     UninitializedError,
     ValidationError,
+)
+from pytcl.core.maturity import (
+    MaturityLevel,
+    get_maturity,
+    get_maturity_summary,
+    get_modules_by_maturity,
+    is_production_ready,
+    is_stable,
 )
 from pytcl.core.optional_deps import (
     LazyModule,
@@ -125,4 +134,11 @@ __all__ = [
     "requires",
     "check_dependencies",
     "LazyModule",
+    # Maturity classification
+    "MaturityLevel",
+    "get_maturity",
+    "get_modules_by_maturity",
+    "get_maturity_summary",
+    "is_stable",
+    "is_production_ready",
 ]

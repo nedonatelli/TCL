@@ -98,6 +98,21 @@ def greedy_assignment_nd(
     AssignmentNDResult
         Assignments, total cost, and algorithm info.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 3D cost tensor: 3 measurements x 2 tracks x 2 hypotheses
+    >>> cost = np.array([
+    ...     [[1.0, 5.0], [3.0, 2.0]],   # meas 0
+    ...     [[4.0, 1.0], [2.0, 6.0]],   # meas 1
+    ...     [[2.0, 3.0], [5.0, 1.0]],   # meas 2
+    ... ])
+    >>> result = greedy_assignment_nd(cost)
+    >>> result.cost  # Total cost of greedy solution
+    4.0
+    >>> len(result.assignments)  # Number of assignments made
+    2
+
     Notes
     -----
     Greedy assignment is fast O(n log n) but not optimal. Used as
@@ -177,6 +192,18 @@ def relaxation_assignment_nd(
     -------
     AssignmentNDResult
         Assignments, total cost, convergence info, and optimality gap.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 3x3x3 assignment problem
+    >>> np.random.seed(42)
+    >>> cost = np.random.rand(3, 3, 3)
+    >>> result = relaxation_assignment_nd(cost, max_iterations=50)
+    >>> result.converged
+    True
+    >>> result.assignments.shape[1]  # 3D assignments
+    3
 
     Notes
     -----
@@ -297,6 +324,18 @@ def auction_assignment_nd(
     AssignmentNDResult
         Assignments, total cost, convergence info, gap estimate.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # 4D assignment: sensors x measurements x tracks x hypotheses
+    >>> np.random.seed(123)
+    >>> cost = np.random.rand(2, 3, 3, 2) * 10
+    >>> result = auction_assignment_nd(cost, max_iterations=50, epsilon=0.1)
+    >>> len(result.assignments) > 0
+    True
+    >>> result.n_iterations <= 50
+    True
+
     Notes
     -----
     The algorithm maintains a "price" for each index and allows bidding
@@ -368,6 +407,18 @@ def detect_dimension_conflicts(
     -------
     has_conflicts : bool
         True if any index appears more than once in any dimension.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Valid assignment: no index repeated in any dimension
+    >>> assignments = np.array([[0, 0], [1, 1]])
+    >>> detect_dimension_conflicts(assignments, (3, 3))
+    False
+    >>> # Invalid: index 0 used twice in first dimension
+    >>> assignments = np.array([[0, 0], [0, 1]])
+    >>> detect_dimension_conflicts(assignments, (3, 3))
+    True
     """
     n_dims = len(dims)
 

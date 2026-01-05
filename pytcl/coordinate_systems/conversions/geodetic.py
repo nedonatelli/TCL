@@ -295,9 +295,25 @@ def ecef2enu(
     enu : ndarray
         Local ENU coordinates [east, north, up] in meters.
 
+    Examples
+    --------
+    Convert an aircraft position from ECEF to local ENU frame:
+
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems.conversions import ecef2enu, geodetic2ecef
+    >>> # Reference point (airport at 38.9°N, 77.0°W)
+    >>> lat_ref = np.radians(38.9)
+    >>> lon_ref = np.radians(-77.0)
+    >>> # Aircraft ECEF position
+    >>> ecef_aircraft = np.array([1130000.0, -4830000.0, 3990000.0])
+    >>> enu = ecef2enu(ecef_aircraft, lat_ref, lon_ref)
+    >>> enu.shape
+    (3,)
+
     See Also
     --------
     enu2ecef : Inverse conversion.
+    ecef2ned : Convert to NED (North-East-Down) frame.
     """
     ecef = np.asarray(ecef, dtype=np.float64)
 
@@ -354,6 +370,21 @@ def enu2ecef(
     -------
     ecef : ndarray
         ECEF coordinates [x, y, z] in meters.
+
+    Examples
+    --------
+    Convert local ENU offset to ECEF coordinates:
+
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems.conversions import enu2ecef
+    >>> # Reference point (airport at 38.9°N, 77.0°W)
+    >>> lat_ref = np.radians(38.9)
+    >>> lon_ref = np.radians(-77.0)
+    >>> # Aircraft 1km east, 2km north, 500m up
+    >>> enu = np.array([1000.0, 2000.0, 500.0])
+    >>> ecef = enu2ecef(enu, lat_ref, lon_ref)
+    >>> ecef.shape
+    (3,)
 
     See Also
     --------
@@ -424,6 +455,21 @@ def ecef2ned(
     -------
     ned : ndarray
         Local NED coordinates [north, east, down] in meters.
+
+    Examples
+    --------
+    Convert aircraft ECEF position to local NED frame:
+
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems.conversions import ecef2ned, geodetic2ecef
+    >>> # Reference point (airport)
+    >>> lat_ref = np.radians(38.9)
+    >>> lon_ref = np.radians(-77.0)
+    >>> # Aircraft ECEF position
+    >>> ecef_aircraft = np.array([1130000.0, -4830000.0, 3990000.0])
+    >>> ned = ecef2ned(ecef_aircraft, lat_ref, lon_ref)
+    >>> ned.shape  # [north, east, down]
+    (3,)
 
     See Also
     --------

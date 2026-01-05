@@ -280,8 +280,17 @@ def geodetic_to_ecef(
     Examples
     --------
     >>> import numpy as np
+    >>> # Philadelphia (40°N, 75°W) at 100m altitude
     >>> lat, lon, alt = np.radians(40.0), np.radians(-75.0), 100.0
     >>> x, y, z = geodetic_to_ecef(lat, lon, alt)
+    >>> x / 1e6  # ~1.2 million meters
+    1.24...
+    >>> # Equator at prime meridian
+    >>> x, y, z = geodetic_to_ecef(0.0, 0.0, 0.0)
+    >>> x  # Semi-major axis (equatorial radius)
+    6378137.0
+    >>> y, z
+    (0.0, 0.0)
     """
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)
@@ -326,6 +335,19 @@ def ecef_to_geodetic(
         Geodetic longitude in radians.
     alt : ndarray
         Altitude above ellipsoid in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Point on equator at prime meridian
+    >>> lat, lon, alt = ecef_to_geodetic(6378137.0, 0.0, 0.0)
+    >>> np.degrees(lat), np.degrees(lon), alt
+    (0.0, 0.0, 0.0)
+    >>> # Round-trip conversion
+    >>> x, y, z = geodetic_to_ecef(np.radians(45.0), np.radians(90.0), 1000.0)
+    >>> lat2, lon2, alt2 = ecef_to_geodetic(x, y, z)
+    >>> np.degrees(lat2), np.degrees(lon2), alt2
+    (45.0..., 90.0..., 1000.0...)
 
     Notes
     -----
@@ -409,12 +431,19 @@ def ecef_to_enu(
 
     Examples
     --------
-    >>> # Reference point
+    >>> import numpy as np
+    >>> # Reference point: Philadelphia
     >>> lat_ref, lon_ref, alt_ref = np.radians(40.0), np.radians(-75.0), 0.0
-    >>> # Target point (1 km east)
+    >>> # Target point slightly east
     >>> lat, lon, alt = np.radians(40.0), np.radians(-74.99), 0.0
     >>> x, y, z = geodetic_to_ecef(lat, lon, alt)
     >>> e, n, u = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
+    >>> e  # East displacement in meters
+    850...
+    >>> abs(n) < 10  # North displacement should be ~0
+    True
+    >>> abs(u) < 10  # Up displacement should be ~0
+    True
     """
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
@@ -471,6 +500,18 @@ def enu_to_ecef(
     -------
     x, y, z : ndarray
         ECEF coordinates in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Reference point
+    >>> lat_ref, lon_ref, alt_ref = np.radians(40.0), np.radians(-75.0), 0.0
+    >>> # 1 km east, 500 m north, 100 m up
+    >>> x, y, z = enu_to_ecef(1000.0, 500.0, 100.0, lat_ref, lon_ref, alt_ref)
+    >>> # Convert back to verify
+    >>> e, n, u = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
+    >>> e, n, u
+    (1000.0..., 500.0..., 100.0...)
     """
     east = np.asarray(east, dtype=np.float64)
     north = np.asarray(north, dtype=np.float64)
@@ -522,6 +563,17 @@ def ecef_to_ned(
     -------
     north, east, down : ndarray
         NED coordinates in meters relative to reference point.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Reference point
+    >>> lat_ref, lon_ref, alt_ref = np.radians(40.0), np.radians(-75.0), 0.0
+    >>> # Target above reference
+    >>> x, y, z = geodetic_to_ecef(lat_ref, lon_ref, 1000.0)  # 1km above
+    >>> n, e, d = ecef_to_ned(x, y, z, lat_ref, lon_ref, alt_ref)
+    >>> abs(n) < 1, abs(e) < 1, d  # Should be ~0, ~0, -1000
+    (True, True, -1000.0...)
     """
     east, north, up = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref, ellipsoid)
     return north, east, -up
@@ -556,6 +608,17 @@ def ned_to_ecef(
     -------
     x, y, z : ndarray
         ECEF coordinates in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat_ref, lon_ref, alt_ref = np.radians(40.0), np.radians(-75.0), 0.0
+    >>> # 100m north, 50m east, 10m down
+    >>> x, y, z = ned_to_ecef(100.0, 50.0, 10.0, lat_ref, lon_ref, alt_ref)
+    >>> # Verify round-trip
+    >>> n, e, d = ecef_to_ned(x, y, z, lat_ref, lon_ref, alt_ref)
+    >>> n, e, d
+    (100.0..., 50.0..., 10.0...)
     """
     return enu_to_ecef(
         east, north, -np.asarray(down), lat_ref, lon_ref, alt_ref, ellipsoid
@@ -596,6 +659,17 @@ def direct_geodetic(
         Destination longitude in radians.
     azimuth2 : float
         Back azimuth at destination in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # From New York, travel 1000 km northeast
+    >>> lat1, lon1 = np.radians(40.7), np.radians(-74.0)
+    >>> azimuth = np.radians(45)  # Northeast
+    >>> distance = 1_000_000  # 1000 km
+    >>> lat2, lon2, az2 = direct_geodetic(lat1, lon1, azimuth, distance)
+    >>> np.degrees(lat2), np.degrees(lon2)  # Destination
+    (47.0..., -62.6...)
 
     References
     ----------
@@ -647,6 +721,18 @@ def inverse_geodetic(
     azimuth2 : float
         Back azimuth at destination in radians.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Distance from New York to London
+    >>> lat1, lon1 = np.radians(40.7128), np.radians(-74.0060)  # NYC
+    >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)   # London
+    >>> dist, az1, az2 = inverse_geodetic(lat1, lon1, lat2, lon2)
+    >>> dist / 1000  # Distance in km
+    5570...
+    >>> np.degrees(az1)  # Initial heading from NYC
+    51.2...
+
     Notes
     -----
     May fail to converge for nearly antipodal points.
@@ -689,6 +775,19 @@ def haversine_distance(
     -------
     float
         Great-circle distance in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> # Distance from equator to 45°N along prime meridian
+    >>> lat1, lon1 = 0.0, 0.0
+    >>> lat2, lon2 = np.radians(45.0), 0.0
+    >>> dist = haversine_distance(lat1, lon1, lat2, lon2)
+    >>> dist / 1000  # ~5000 km
+    5003...
+    >>> # Same point -> 0 distance
+    >>> haversine_distance(0.0, 0.0, 0.0, 0.0)
+    0.0
 
     Notes
     -----

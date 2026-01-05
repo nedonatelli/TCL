@@ -48,6 +48,15 @@ def resample_multinomial(
     -------
     resampled : ndarray
         Resampled particles with uniform weights.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(42)
+    >>> particles = np.array([[1.0], [2.0], [3.0], [4.0]])
+    >>> weights = np.array([0.1, 0.1, 0.1, 0.7])  # particle 4 dominant
+    >>> resampled = resample_multinomial(particles, weights, rng)
+    >>> resampled.shape
+    (4, 1)
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -80,6 +89,15 @@ def resample_systematic(
     -------
     resampled : ndarray
         Resampled particles.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(42)
+    >>> particles = np.array([[0.0], [1.0], [2.0], [3.0]])
+    >>> weights = np.array([0.25, 0.25, 0.25, 0.25])
+    >>> resampled = resample_systematic(particles, weights, rng)
+    >>> resampled.shape
+    (4, 1)
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -183,6 +201,17 @@ def effective_sample_size(weights: NDArray[np.floating]) -> float:
     -------
     ess : float
         Effective sample size, in range [1, N].
+
+    Examples
+    --------
+    >>> # Uniform weights -> ESS = N
+    >>> weights = np.array([0.25, 0.25, 0.25, 0.25])
+    >>> effective_sample_size(weights)
+    4.0
+    >>> # Degenerate weights -> ESS approaches 1
+    >>> weights = np.array([0.97, 0.01, 0.01, 0.01])
+    >>> effective_sample_size(weights)
+    1.06...
 
     Notes
     -----
@@ -366,6 +395,30 @@ def bootstrap_pf_step(
     -------
     state : ParticleState
         Updated particles and weights.
+
+    Examples
+    --------
+    Track a 1D random walk with position measurements:
+
+    >>> import numpy as np
+    >>> rng = np.random.default_rng(42)
+    >>> # 100 particles for 1D state
+    >>> particles = rng.normal(0, 1, (100, 1))
+    >>> weights = np.ones(100) / 100
+    >>> # Simple dynamics: x_k+1 = x_k + w
+    >>> f = lambda x: x
+    >>> h = lambda x: x  # measure position directly
+    >>> Q_sample = lambda n, r: r.normal(0, 0.1, (n, 1))
+    >>> R = np.array([[0.5]])  # measurement noise
+    >>> z = np.array([0.5])  # measurement
+    >>> state = bootstrap_pf_step(particles, weights, z, f, h, Q_sample, R, rng=rng)
+    >>> state.particles.shape
+    (100, 1)
+
+    See Also
+    --------
+    bootstrap_pf_predict : Prediction step only.
+    bootstrap_pf_update : Update step only.
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -420,6 +473,13 @@ def particle_mean(
     -------
     mean : ndarray
         Weighted mean estimate.
+
+    Examples
+    --------
+    >>> particles = np.array([[0.0], [1.0], [2.0], [3.0]])
+    >>> weights = np.array([0.1, 0.2, 0.3, 0.4])
+    >>> particle_mean(particles, weights)
+    array([2.])
     """
     return np.sum(weights[:, np.newaxis] * particles, axis=0)
 
@@ -470,6 +530,14 @@ def particle_covariance(
     -------
     cov : ndarray
         Weighted covariance.
+
+    Examples
+    --------
+    >>> particles = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    >>> weights = np.array([0.25, 0.25, 0.25, 0.25])
+    >>> cov = particle_covariance(particles, weights)
+    >>> cov.shape
+    (2, 2)
     """
     if mean is None:
         mean = particle_mean(particles, weights)
@@ -505,6 +573,17 @@ def initialize_particles(
     -------
     state : ParticleState
         Initial particles with uniform weights.
+
+    Examples
+    --------
+    >>> rng = np.random.default_rng(42)
+    >>> x0 = np.array([0.0, 0.0])
+    >>> P0 = np.eye(2) * 0.1
+    >>> state = initialize_particles(x0, P0, N=100, rng=rng)
+    >>> state.particles.shape
+    (100, 2)
+    >>> np.allclose(state.weights, 0.01)  # uniform 1/N
+    True
     """
     if rng is None:
         rng = np.random.default_rng()

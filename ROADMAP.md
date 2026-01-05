@@ -272,14 +272,14 @@ v2.0.0 targets architectural improvements, performance optimization, GPU acceler
 
 | Metric | Current | Target (v2.0) |
 |--------|---------|---------------|
-| Network flow tests skipped | 13 | 0 |
-| Kalman filter duplicate code | ~300 lines | 0 |
-| Spatial index implementations standardized | 0/7 | 7/7 |
+| Network flow tests skipped | 0 ✅ | 0 |
+| Kalman filter duplicate code | 0 ✅ | 0 |
+| Spatial index implementations standardized | 7/7 ✅ | 7/7 |
 | Module docstring quality | 85% | 95%+ |
 | Jupyter tutorials | 0 | 8 |
 | GPU speedup (Kalman batch) | N/A | 5-10x |
 | GPU speedup (particle filters) | N/A | 8-15x |
-| Unit tests | 2,057 | 2,100+ |
+| Unit tests | 2,133 | 2,200+ |
 | Test coverage | 76% | 80%+ |
 | Documentation quality | ~85% | 95%+ |
 
@@ -322,15 +322,16 @@ Extracted to `pytcl/dynamic_estimation/kalman/matrix_utils.py`:
 - `compute_mahalanobis_distance()` - Distance metric computation
 - `compute_merwe_weights()` - UKF sigma point weights
 
-### Phase 2: API Standardization & Infrastructure (Months 2-4)
+### Phase 2: API Standardization & Infrastructure ✅ COMPLETE (January 4, 2026)
 
-#### 2.1 Spatial Index Interface Standardization
+#### 2.1 Spatial Index Interface Standardization ✅
 
-**Problem:** 7 spatial index implementations have inconsistent interfaces
+**Status:** Complete (January 4, 2026)
 
-**Solution:** Standardize to unified interface with `NeighborResult` NamedTuple
-
-**Effort:** MEDIUM (3 weeks)
+- Created `pytcl/containers/base.py` with unified `NeighborResult` NamedTuple
+- All 7 spatial indexes (KDTree, BallTree, RTree, VPTree, CoverTree) now use consistent interface
+- Added `query()`, `query_radius()`, `query_ball_point()` methods across all implementations
+- Backward compatibility aliases preserved (SpatialQueryResult, NearestNeighborResult, etc.)
 
 #### 2.2 Custom Exception Hierarchy ✅
 
@@ -346,35 +347,64 @@ Created `pytcl/core/exceptions.py` with comprehensive exception hierarchy:
 
 All 16 exception classes support dual inheritance (e.g., ValidationError extends both TCLError and ValueError).
 
-**Effort:** MEDIUM (2 weeks)
+#### 2.3 Optional Dependencies System ✅
 
-#### 2.3 Optional Dependencies System
+**Status:** Complete (January 4, 2026)
 
-**Problem:** Plotly imports scattered without consistent error handling
+Created `pytcl/core/optional_deps.py` with comprehensive optional dependency handling:
+- `is_available(package)` - Check if package is installed
+- `import_optional(module, ...)` - Import with helpful DependencyError on failure
+- `@requires(*packages)` - Decorator to mark functions requiring optional deps
+- `check_dependencies(*packages)` - Explicit dependency check
+- `LazyModule` - Lazy-loading module wrapper
+- `PACKAGE_EXTRAS` and `PACKAGE_FEATURES` configuration for install hints
 
-**Solution:** Implement `pytcl.optdeps` with decorators and installation groups
+Integrated with `DependencyError` exception for consistent error handling across:
+- `pytcl/terrain/loaders.py` (netCDF4)
+- `pytcl/astronomical/ephemerides.py` (jplephem)
+- `pytcl/plotting/*.py` (plotly)
 
-**Effort:** MEDIUM (2 weeks)
+### Phase 3: Documentation Expansion & Module Graduation (Months 3-6) 🔄 IN PROGRESS
 
-### Phase 3: Documentation Expansion & Module Graduation (Months 3-6)
+#### 3.1 Module Docstring Expansion ✅
 
-#### 3.1 Module Docstring Expansion
+**Status:** Complete (January 4, 2026)
 
-**Problem:** 4 modules have minimal 1-line docstrings
+- Identified 2 modules with minimal (1-line) docstrings
+- Expanded `pytcl/dynamic_models/process_noise/coordinated_turn.py` (1 → 45 lines)
+- Expanded `pytcl/dynamic_models/process_noise/singer.py` (1 → 48 lines)
+- Added examples, references, and See Also sections
 
-**Effort:** LOW (1 week)
+#### 3.2 Function-Level Documentation 🔄
 
-#### 3.2 Function-Level Documentation
+**Status:** In Progress (January 4, 2026)
 
-**Problem:** 20+ high-level functions lack docstring examples
+- Identified 182+ exported functions lacking examples
+- Added examples to 63 key functions across multiple categories:
+  - **Kalman Filters:** `kf_predict_update`, `kf_smooth`, `ukf_update`, `ekf_predict_auto`, `ekf_update_auto`, `iterated_ekf_update`, `information_filter_predict`, `information_filter_update`, `sigma_points_julier`, `unscented_transform`, `ckf_spherical_cubature_points`, `ckf_predict`, `ckf_update`
+  - **Coordinate Systems:** `ecef2enu`, `enu2ecef`, `ecef2ned`, `euler2quat`, `quat_multiply`, `cart2cyl`, `cyl2cart`, `ruv2cart`, `cart2ruv`
+  - **Rotations:** `roty`, `rotz`, `rotmat2euler`, `quat_rotate`, `slerp`, `is_rotation_matrix`
+  - **Data Association:** `jpda`, `compute_gate_volume`
+  - **Particle Filters:** `bootstrap_pf_step`, `resample_multinomial`, `resample_systematic`, `effective_sample_size`, `particle_mean`, `particle_covariance`, `initialize_particles`
+  - **IMM:** `imm_predict_update`
+  - **Navigation/Geodesy:** `angular_distance`, `geodetic_to_ecef`, `ecef_to_geodetic`, `ecef_to_enu`, `enu_to_ecef`, `ecef_to_ned`, `ned_to_ecef`, `direct_geodetic`, `inverse_geodetic`, `haversine_distance`
+  - **N-D Assignment:** `greedy_assignment_nd`, `relaxation_assignment_nd`, `auction_assignment_nd`, `detect_dimension_conflicts`
+  - **Quadrature/Integration:** `gauss_hermite`, `gauss_laguerre`, `gauss_chebyshev`, `dblquad`, `tplquad`, `romberg`, `simpson`, `trapezoid`
 
-**Effort:** LOW-MEDIUM (2 weeks)
+**Remaining:** ~119 functions need examples (ongoing effort)
 
-#### 3.3 Module Graduation System
+#### 3.3 Module Graduation System ✅
 
-**Problem:** 25 modules mixed maturity levels; unclear production-readiness
+**Status:** Complete (January 4, 2026)
 
-**Effort:** MEDIUM (2 weeks)
+Created `pytcl/core/maturity.py` with:
+- `MaturityLevel` enum: DEPRECATED, EXPERIMENTAL, MATURE, STABLE
+- 79 modules classified:
+  - **STABLE (26)**: Production-ready with frozen API (core, linear Kalman, coordinate conversions)
+  - **MATURE (43)**: Production-ready with possible minor changes (advanced filters, navigation)
+  - **EXPERIMENTAL (10)**: Functional but API may change (geophysical, terrain, relativity)
+- Helper functions: `get_maturity()`, `is_stable()`, `is_production_ready()`
+- Exported from `pytcl.core` for easy access
 
 ### Phase 4: Jupyter Interactive Tutorials (Months 4-8)
 
@@ -622,8 +652,8 @@ Eight comprehensive notebooks covering:
 | Phase | Duration | Focus Area | Status |
 |-------|----------|-----------|--------|
 | **1** | Months 1-3 | Network flow, circular imports, consolidation | ✅ Complete |
-| **2** | Months 2-4 | API standardization, exceptions, optdeps | 🔄 In Progress |
-| **3** | Months 3-6 | Documentation, module graduation | 🔄 Planned |
+| **2** | Months 2-4 | API standardization, exceptions, optdeps | ✅ Complete |
+| **3** | Months 3-6 | Documentation, module graduation | 🔄 In Progress |
 | **4** | Months 4-8 | 8 Jupyter notebooks + CI integration | 🔄 Planned |
 | **5** | Months 6-10 | GPU acceleration (CuPy Kalman, particles) | 🔄 Planned |
 | **6** | Months 7-12 | +50 tests, 80%+ coverage, network flow re-enable | 🔄 Planned |

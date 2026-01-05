@@ -591,6 +591,29 @@ def jpda(
     -------
     result : JPDAResult
         Association probabilities and related information.
+
+    Examples
+    --------
+    Compute association probabilities for 2 tracks and 3 measurements:
+
+    >>> import numpy as np
+    >>> # Two tracks with [x, vx] state
+    >>> states = [np.array([0.0, 1.0]), np.array([10.0, -0.5])]
+    >>> covariances = [np.eye(2) * 0.5, np.eye(2) * 0.5]
+    >>> # Three position measurements
+    >>> measurements = np.array([[0.1], [9.8], [5.0]])
+    >>> H = np.array([[1, 0]])  # measure position only
+    >>> R = np.array([[0.1]])
+    >>> result = jpda(states, covariances, measurements, H, R)
+    >>> result.association_probs.shape  # (2 tracks, 4 columns: 3 meas + miss)
+    (2, 4)
+    >>> # Track 0 should have high prob for measurement 0
+    >>> result.association_probs[0, 0] > 0.5
+    True
+
+    See Also
+    --------
+    jpda_update : JPDA with state update.
     """
     # Convert inputs
     track_states = [np.asarray(x, dtype=np.float64).flatten() for x in track_states]
