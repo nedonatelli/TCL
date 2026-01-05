@@ -27,7 +27,13 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
+    "nbsphinx",
 ]
+
+# nbsphinx settings
+nbsphinx_execute = "never"  # Don't execute notebooks during build
+nbsphinx_allow_errors = True  # Continue build even if notebook has errors
+nbsphinx_kernel_name = "python3"
 
 templates_path = []
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]

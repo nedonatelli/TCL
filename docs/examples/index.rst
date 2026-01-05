@@ -6,6 +6,41 @@ Standalone example scripts demonstrating pytcl functionality.
 These examples are complete, runnable Python scripts that you can use
 as starting points for your own applications.
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Individual Examples
+
+   kalman_filter_comparison
+   filter_uncertainty_visualization
+   advanced_filters_comparison
+   smoothers_information_filters
+   particle_filters
+   multi_target_tracking
+   tracking_3d
+   tracking_containers
+   assignment_algorithms
+   performance_evaluation
+   gaussian_mixtures
+   spatial_data_structures
+   signal_processing
+   coordinate_systems
+   coordinate_visualization
+   ins_gnss_navigation
+   navigation_geodesy
+   transforms
+   orbital_mechanics
+   relativity_demo
+   ephemeris_demo
+   geophysical_models
+   magnetism_demo
+   atmospheric_modeling
+   dynamic_models_demo
+   reference_frame_advanced
+   special_functions_demo
+   static_estimation
+   terrain_demo
+
 .. raw:: html
 
    <style>

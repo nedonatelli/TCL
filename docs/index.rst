@@ -22,6 +22,7 @@ state estimation.
    gap_analysis
    user_guide/index
    tutorials/index
+   notebooks/index
    examples/index
    api/index
    roadmap
