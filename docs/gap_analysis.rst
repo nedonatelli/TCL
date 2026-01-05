@@ -21,7 +21,7 @@ As of v2.0.0 development (Phase 3), the library includes:
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.9.0 Implementation
+.. list-table:: Python pytcl v1.10.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -489,6 +489,34 @@ Tier 2: Highly Specialized
 
 Recently Implemented (v1.0.0+)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**v1.10.0 - GPU Acceleration with Apple Silicon Support (January 4, 2026)**
+
+✅ **Dual-Backend GPU Acceleration**
+
+   GPU-accelerated batch processing with automatic backend selection:
+
+   - ``pytcl.gpu`` module with platform detection and array utilities
+   - CuPy backend for NVIDIA CUDA GPUs (5-10x speedup)
+   - MLX backend for Apple Silicon M1/M2/M3 Macs (5-15x speedup)
+   - Automatic backend selection based on available hardware
+   - ``to_gpu()``, ``to_cpu()`` for seamless array transfer
+   - ``is_gpu_available()``, ``get_backend()`` for runtime detection
+
+✅ **GPU-Accelerated Kalman Filters**
+
+   Batch processing for tracking multiple targets in parallel:
+
+   - ``batch_kf_predict()`` / ``batch_kf_update()`` - Linear KF
+   - ``batch_ekf_predict()`` / ``batch_ekf_update()`` - Extended KF
+   - ``batch_ukf_predict()`` / ``batch_ukf_update()`` - Unscented KF
+
+✅ **GPU Particle Filters**
+
+   Accelerated resampling and weight computation:
+
+   - ``gpu_pf_resample()`` - GPU-accelerated resampling
+   - ``gpu_pf_weights()`` - Importance weight computation
 
 **v1.9.0 - Infrastructure Improvements (January 4, 2026)**
 

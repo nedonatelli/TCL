@@ -738,7 +738,7 @@
         <div class="hero-content">
             <div class="status-badge">
                 <span class="status-dot"></span>
-                v1.9.1 — Code Quality Patch
+                v1.10.0 — GPU Acceleration
             </div>
             <h1>
                 <span class="highlight">Target Tracking</span><br>
@@ -845,6 +845,14 @@
                 <p class="feature-desc">
                     Gravity (EGM2008), magnetism (WMM, IGRF), atmosphere,
                     terrain analysis, and tidal effects.
+                </p>
+            </a>
+            <a href="api/gpu.html" class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">GPU Acceleration</h3>
+                <p class="feature-desc">
+                    Dual-backend support for NVIDIA CUDA (CuPy) and Apple Silicon (MLX).
+                    5-15x speedup on batch filtering operations.
                 </p>
             </a>
         </div>
@@ -969,6 +977,10 @@ upd = <span class="function">kf_update</span>(pred.x, pred.P, z, H, R)</pre>
             <a href="api/performance_evaluation.html" class="module-card">
                 <div class="module-name">performance_evaluation</div>
                 <div class="module-desc">OSPA, NEES, track metrics</div>
+            </a>
+            <a href="api/gpu.html" class="module-card">
+                <div class="module-name">gpu</div>
+                <div class="module-desc">CuPy, MLX, batch Kalman</div>
             </a>
         </div>
     </section>

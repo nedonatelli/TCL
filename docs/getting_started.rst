@@ -29,6 +29,25 @@ Install from Source
    cd TCL
    pip install -e ".[dev]"
 
+Optional Dependencies
+^^^^^^^^^^^^^^^^^^^^^
+
+Install optional features as needed:
+
+.. code-block:: bash
+
+   # For astronomy features (ephemerides, celestial mechanics)
+   pip install nrl-tracker[astronomy]
+
+   # For geodesy features (coordinate transforms)
+   pip install nrl-tracker[geodesy]
+
+   # For GPU acceleration (NVIDIA CUDA)
+   pip install nrl-tracker[gpu]
+
+   # For GPU acceleration (Apple Silicon M1/M2/M3)
+   pip install nrl-tracker[gpu-apple]
+
 Basic Concepts
 --------------
 

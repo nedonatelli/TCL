@@ -69,6 +69,10 @@ PACKAGE_EXTRAS: dict[str, tuple[str, str]] = {
     "pywavelets": ("signal", "pywavelets"),
     # Terrain data
     "netCDF4": ("terrain", "netCDF4"),
+    # GPU acceleration
+    "cupy": ("gpu", "cupy-cuda12x"),
+    # Apple Silicon GPU acceleration
+    "mlx": ("gpu-apple", "mlx"),
 }
 
 # Friendly names for features provided by each package
@@ -82,6 +86,8 @@ PACKAGE_FEATURES: dict[str, str] = {
     "pywt": "wavelet transforms",
     "pywavelets": "wavelet transforms",
     "netCDF4": "NetCDF file reading",
+    "cupy": "GPU acceleration",
+    "mlx": "Apple Silicon GPU acceleration",
 }
 
 
@@ -374,6 +380,16 @@ class _AvailabilityFlags:
         """True if netCDF4 is available."""
         return is_available("netCDF4")
 
+    @property
+    def HAS_CUPY(self) -> bool:
+        """True if cupy is available."""
+        return is_available("cupy")
+
+    @property
+    def HAS_MLX(self) -> bool:
+        """True if mlx is available (Apple Silicon)."""
+        return is_available("mlx")
+
 
 # Create singleton instance
 _flags = _AvailabilityFlags()
@@ -387,6 +403,8 @@ HAS_ASTROPY = property(lambda self: _flags.HAS_ASTROPY)
 HAS_PYPROJ = property(lambda self: _flags.HAS_PYPROJ)
 HAS_CVXPY = property(lambda self: _flags.HAS_CVXPY)
 HAS_NETCDF4 = property(lambda self: _flags.HAS_NETCDF4)
+HAS_CUPY = property(lambda self: _flags.HAS_CUPY)
+HAS_MLX = property(lambda self: _flags.HAS_MLX)
 
 
 # =============================================================================
@@ -525,6 +543,8 @@ __all__ = [
     "HAS_PYPROJ",
     "HAS_CVXPY",
     "HAS_NETCDF4",
+    "HAS_CUPY",
+    "HAS_MLX",
     # Internal (for testing)
     "_clear_cache",
     "_flags",

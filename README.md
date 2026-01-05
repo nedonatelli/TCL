@@ -1,6 +1,6 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.9.2-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.10.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -27,6 +27,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
 - **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF), atmosphere, tides, terrain
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
+- **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 
 ## Installation
 
@@ -47,6 +48,12 @@ pip install nrl-tracker[geodesy]
 
 # For visualization
 pip install nrl-tracker[visualization]
+
+# For GPU acceleration (NVIDIA CUDA)
+pip install nrl-tracker[gpu]
+
+# For GPU acceleration (Apple Silicon M1/M2/M3)
+pip install nrl-tracker[gpu-apple]
 
 # For development
 pip install nrl-tracker[dev]
@@ -120,6 +127,35 @@ assignment, total_cost = hungarian(cost_matrix)
 print(f"Optimal assignment: {assignment}, Total cost: {total_cost}")
 ```
 
+### GPU Acceleration
+
+The library supports GPU acceleration for batch processing of multiple tracks:
+
+```python
+from pytcl.gpu import is_gpu_available, get_backend, to_gpu, to_cpu
+
+# Check GPU availability (auto-detects CUDA or Apple Silicon)
+if is_gpu_available():
+    print(f"GPU available, using {get_backend()} backend")
+
+    # Transfer data to GPU
+    x_gpu = to_gpu(states)  # (n_tracks, state_dim)
+    P_gpu = to_gpu(covariances)  # (n_tracks, state_dim, state_dim)
+
+    # Use batch Kalman filter operations
+    from pytcl.gpu import batch_kf_predict
+    x_pred, P_pred = batch_kf_predict(x_gpu, P_gpu, F, Q)
+
+    # Transfer results back to CPU
+    x_pred_cpu = to_cpu(x_pred)
+```
+
+**Supported backends:**
+- **NVIDIA CUDA**: Via CuPy (`pip install nrl-tracker[gpu]`)
+- **Apple Silicon**: Via MLX (`pip install nrl-tracker[gpu-apple]`)
+
+The backend is automatically selected based on your platform.
+
 ## Module Structure
 
 ```
@@ -139,6 +175,7 @@ pytcl/
 ├── gravity/                 # Gravity models
 ├── magnetism/               # Magnetic field models
 ├── terrain/                 # Terrain elevation models
+├── gpu/                     # GPU acceleration (CuPy/MLX)
 └── misc/                    # Utilities, visualization
 ```
 

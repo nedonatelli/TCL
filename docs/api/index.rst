@@ -55,6 +55,14 @@ Estimation & Tracking
    trackers
    clustering
 
+GPU Acceleration
+----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   gpu
+
 Utilities
 ---------
 
