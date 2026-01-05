@@ -75,52 +75,6 @@ as starting points for your own applications.
 
    dynamic_models_demo
 
-.. raw:: html
-
-   <style>
-   .plotly-container {
-       position: relative;
-       width: 100%;
-       padding-bottom: 56.25%; /* 16:9 aspect ratio */
-       margin-bottom: 1rem;
-       overflow: hidden;
-       border-radius: 8px;
-       background: var(--pytcl-bg-secondary, #0d1117);
-   }
-   .plotly-container.aspect-4-3 {
-       padding-bottom: 75%; /* 4:3 aspect ratio for some plots */
-   }
-   .plotly-container.aspect-wide {
-       padding-bottom: 45%; /* Wider aspect ratio */
-   }
-   .plotly-container.aspect-square {
-       padding-bottom: 80%; /* Taller for 3D plots */
-   }
-   .plotly-iframe {
-       position: absolute;
-       top: 0;
-       left: 0;
-       width: 100%;
-       height: 100%;
-       border: none;
-       border-radius: 8px;
-   }
-   /* Fallback for older approach */
-   iframe.plotly-iframe:not(.plotly-container iframe) {
-       width: 100%;
-       height: 550px;
-       border: none;
-       border-radius: 8px;
-       background: var(--pytcl-bg-secondary, #0d1117);
-       margin-bottom: 1rem;
-   }
-   @media (max-width: 768px) {
-       .plotly-container {
-           padding-bottom: 75%; /* Taller on mobile */
-       }
-   }
-   </style>
-
 .. contents:: Example Categories
    :local:
    :depth: 1

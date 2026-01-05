@@ -701,41 +701,50 @@ table tr:nth-child(even) td,
    ============================================================================ */
 
 .plotly-container {
-  position: relative;
   width: 100%;
-  min-height: 500px;
   margin-bottom: 1.5rem;
-  overflow: hidden;
   border-radius: 8px;
   background: var(--pytcl-bg-secondary);
   border: 1px solid var(--pytcl-border-default);
 }
 
-.plotly-container.aspect-4-3 {
-  min-height: 600px;
-}
-
-.plotly-container.aspect-wide {
-  min-height: 450px;
-}
-
-.plotly-container.aspect-square {
-  min-height: 650px;
-}
-
 .plotly-iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
+  display: block;
   width: 100%;
-  height: 100%;
-  min-height: 500px;
+  height: 550px;
   border: none;
   border-radius: 8px;
 }
 
+/* Aspect ratio variants - use these classes on the iframe for different heights */
+.plotly-iframe.aspect-wide,
+.plotly-container.aspect-wide .plotly-iframe {
+  height: 450px;
+}
+
+.plotly-iframe.aspect-4-3,
+.plotly-container.aspect-4-3 .plotly-iframe {
+  height: 600px;
+}
+
+.plotly-iframe.aspect-square,
+.plotly-container.aspect-square .plotly-iframe {
+  height: 650px;
+}
+
+.plotly-iframe.aspect-tall,
+.plotly-container.aspect-tall .plotly-iframe {
+  height: 800px;
+}
+
+.plotly-iframe.aspect-extra-tall,
+.plotly-container.aspect-extra-tall .plotly-iframe {
+  height: 1000px;
+}
+
 /* Fallback for iframes without container */
 iframe.plotly-iframe:not(.plotly-container iframe) {
+  display: block;
   width: 100%;
   height: 550px;
   border: none;
@@ -746,15 +755,27 @@ iframe.plotly-iframe:not(.plotly-container iframe) {
 
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
-  .plotly-container {
-    min-height: 400px;
+  .plotly-iframe {
+    height: 450px;
   }
 
-  .plotly-container.aspect-wide {
-    min-height: 350px;
+  .plotly-iframe.aspect-wide,
+  .plotly-container.aspect-wide .plotly-iframe {
+    height: 350px;
   }
 
-  .plotly-container.aspect-square {
-    min-height: 500px;
+  .plotly-iframe.aspect-square,
+  .plotly-container.aspect-square .plotly-iframe {
+    height: 500px;
+  }
+
+  .plotly-iframe.aspect-tall,
+  .plotly-container.aspect-tall .plotly-iframe {
+    height: 650px;
+  }
+
+  .plotly-iframe.aspect-extra-tall,
+  .plotly-container.aspect-extra-tall .plotly-iframe {
+    height: 800px;
   }
 }
