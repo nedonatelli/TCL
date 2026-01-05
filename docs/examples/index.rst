@@ -8,7 +8,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Filtering & Estimation
 
    kalman_filter_comparison
@@ -20,7 +19,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Multi-Target Tracking
 
    multi_target_tracking
@@ -31,7 +29,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Clustering & Data Structures
 
    gaussian_mixtures
@@ -39,7 +36,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Signal Processing & Transforms
 
    signal_processing
@@ -48,7 +44,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Coordinate Systems & Navigation
 
    coordinate_systems
@@ -58,7 +53,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Orbital & Celestial Mechanics
 
    orbital_mechanics
@@ -68,7 +62,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Geophysical & Atmospheric
 
    geophysical_models
@@ -78,7 +71,6 @@ as starting points for your own applications.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
    :caption: Dynamic Models
 
    dynamic_models_demo
