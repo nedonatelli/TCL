@@ -25,7 +25,7 @@ Examples
 >>> x_pred, P_pred = batch_ukf_predict(x, P, f_dynamics, Q)
 """
 
-from typing import Callable, NamedTuple, Optional, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -78,7 +78,7 @@ def _compute_sigma_weights(
     alpha: float = 1e-3,
     beta: float = 2.0,
     kappa: float = 0.0,
-) -> Tuple[NDArray, NDArray]:
+) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     Compute UKF sigma point weights (Merwe scaled sigma points).
 
@@ -119,7 +119,7 @@ def _generate_sigma_points(
     P: ArrayLike,
     alpha: float = 1e-3,
     kappa: float = 0.0,
-) -> NDArray:
+) -> NDArray[np.floating[Any]]:
     """
     Generate sigma points for batch of tracks.
 
@@ -183,7 +183,7 @@ def _generate_sigma_points(
 def batch_ukf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
+    f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
     Q: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -262,7 +262,7 @@ def batch_ukf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
+    h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
     R: ArrayLike,
     alpha: float = 1e-3,
     beta: float = 2.0,
@@ -419,8 +419,8 @@ class CuPyUnscentedKalmanFilter:
         self,
         state_dim: int,
         meas_dim: int,
-        f: Callable[[NDArray], NDArray],
-        h: Callable[[NDArray], NDArray],
+        f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+        h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
         Q: Optional[ArrayLike] = None,
         R: Optional[ArrayLike] = None,
         alpha: float = 1e-3,

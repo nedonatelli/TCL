@@ -25,8 +25,9 @@ Examples
 
 import logging
 from contextlib import contextmanager
-from typing import Generator, Optional, Tuple
+from typing import Any, Generator, Optional, Tuple
 
+import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.core.optional_deps import import_optional, is_available, requires
@@ -37,7 +38,7 @@ _logger = logging.getLogger("pytcl.gpu.matrix_utils")
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray:
+def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated Cholesky decomposition.
 
@@ -89,7 +90,7 @@ def gpu_cholesky_safe(
     A: ArrayLike,
     lower: bool = True,
     regularization: float = 1e-10,
-) -> Tuple[NDArray, bool]:
+) -> Tuple[NDArray[np.floating[Any]], bool]:
     """
     GPU Cholesky decomposition with fallback for non-positive-definite matrices.
 
@@ -151,7 +152,7 @@ def gpu_cholesky_safe(
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_qr(A: ArrayLike, mode: str = "reduced") -> Tuple[NDArray, NDArray]:
+def gpu_qr(A: ArrayLike, mode: str = "reduced") -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     GPU-accelerated QR decomposition.
 
@@ -189,7 +190,7 @@ def gpu_qr(A: ArrayLike, mode: str = "reduced") -> Tuple[NDArray, NDArray]:
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray:
+def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated linear system solve.
 
@@ -228,7 +229,7 @@ def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray:
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_inv(A: ArrayLike) -> NDArray:
+def gpu_inv(A: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated matrix inversion.
 
@@ -260,7 +261,7 @@ def gpu_inv(A: ArrayLike) -> NDArray:
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_eigh(A: ArrayLike) -> Tuple[NDArray, NDArray]:
+def gpu_eigh(A: ArrayLike) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     GPU-accelerated eigendecomposition for symmetric matrices.
 
@@ -296,7 +297,7 @@ def gpu_eigh(A: ArrayLike) -> Tuple[NDArray, NDArray]:
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_matrix_sqrt(A: ArrayLike) -> NDArray:
+def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated matrix square root for positive definite matrices.
 
@@ -368,7 +369,7 @@ class MemoryPool:
     >>> pool.free_all()
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize memory pool manager."""
         if not is_available("cupy"):
             _logger.warning("CuPy not available, MemoryPool is a no-op")

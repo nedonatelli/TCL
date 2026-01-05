@@ -97,7 +97,7 @@ __all__ = [
 
 
 # Lazy imports for GPU implementations (only loaded if CuPy is available)
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     """Lazy import GPU implementations."""
     if name in ("CuPyKalmanFilter", "batch_kf_predict", "batch_kf_update"):
         from pytcl.gpu.kalman import CuPyKalmanFilter, batch_kf_predict, batch_kf_update

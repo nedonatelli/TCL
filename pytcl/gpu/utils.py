@@ -344,7 +344,7 @@ def to_gpu(arr: ArrayLike, dtype: Any = None, backend: BackendType = None) -> GP
         return cp.asarray(arr_np)
 
 
-def _numpy_dtype_to_mlx(mx, dtype) -> Any:
+def _numpy_dtype_to_mlx(mx: Any, dtype: Any) -> Any:
     """Convert numpy dtype to MLX dtype."""
     dtype_map = {
         np.float32: mx.float32,
@@ -476,7 +476,7 @@ def sync_gpu() -> None:
         cp.cuda.Stream.null.synchronize()
 
 
-def get_gpu_memory_info() -> dict[str, int]:
+def get_gpu_memory_info() -> dict[str, Union[str, int]]:
     """
     Get GPU memory usage information.
 

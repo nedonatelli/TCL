@@ -36,7 +36,7 @@ Examples
 >>> pf.update(measurement, likelihood)
 """
 
-from typing import Callable, NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -211,7 +211,7 @@ def gpu_resample_stratified(weights: ArrayLike) -> NDArray[np.intp]:
 
 
 @requires("cupy", extra="gpu", feature="GPU particle filter")
-def gpu_normalize_weights(log_weights: ArrayLike) -> Tuple[NDArray, float]:
+def gpu_normalize_weights(log_weights: ArrayLike) -> Tuple[NDArray[np.floating[Any]], float]:
     """
     Normalize log weights to proper weights on GPU.
 
@@ -364,9 +364,9 @@ class CuPyParticleFilter:
 
     def predict(
         self,
-        dynamics_fn: Callable[[NDArray], NDArray],
-        *args,
-        **kwargs,
+        dynamics_fn: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """
         Propagate particles through dynamics.
@@ -390,7 +390,7 @@ class CuPyParticleFilter:
     def update(
         self,
         measurement: ArrayLike,
-        likelihood_fn: Callable[[NDArray, NDArray], NDArray],
+        likelihood_fn: Callable[[NDArray[np.floating[Any]], NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
     ) -> float:
         """
         Update weights based on measurement likelihood.
@@ -499,8 +499,8 @@ def batch_particle_filter_update(
     particles: ArrayLike,
     weights: ArrayLike,
     measurements: ArrayLike,
-    likelihood_fn: Callable[[NDArray, NDArray], NDArray],
-) -> Tuple[NDArray, NDArray, NDArray]:
+    likelihood_fn: Callable[[NDArray[np.floating[Any]], NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     Batch update for multiple particle filters.
 

@@ -31,7 +31,7 @@ Examples
 >>> x_pred, P_pred = batch_ekf_predict(x, P, f_dynamics, F_jacobian, Q)
 """
 
-from typing import Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -83,10 +83,10 @@ class BatchEKFUpdate(NamedTuple):
 
 
 def _compute_numerical_jacobian(
-    f: Callable[[NDArray], NDArray],
-    x: NDArray,
+    f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+    x: NDArray[np.floating[Any]],
     eps: float = 1e-7,
-) -> NDArray:
+) -> NDArray[np.floating[Any]]:
     """
     Compute numerical Jacobian using central differences.
 
@@ -126,8 +126,8 @@ def _compute_numerical_jacobian(
 def batch_ekf_predict(
     x: ArrayLike,
     P: ArrayLike,
-    f: Callable[[NDArray], NDArray],
-    F_jacobian: Optional[Callable[[NDArray], NDArray]],
+    f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+    F_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]],
     Q: ArrayLike,
 ) -> BatchEKFPrediction:
     """
@@ -208,8 +208,8 @@ def batch_ekf_update(
     x: ArrayLike,
     P: ArrayLike,
     z: ArrayLike,
-    h: Callable[[NDArray], NDArray],
-    H_jacobian: Optional[Callable[[NDArray], NDArray]],
+    h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+    H_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]],
     R: ArrayLike,
 ) -> BatchEKFUpdate:
     """
@@ -362,10 +362,10 @@ class CuPyExtendedKalmanFilter:
         self,
         state_dim: int,
         meas_dim: int,
-        f: Callable[[NDArray], NDArray],
-        h: Callable[[NDArray], NDArray],
-        F_jacobian: Optional[Callable[[NDArray], NDArray]] = None,
-        H_jacobian: Optional[Callable[[NDArray], NDArray]] = None,
+        f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+        h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
+        F_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]] = None,
+        H_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]] = None,
         Q: Optional[ArrayLike] = None,
         R: Optional[ArrayLike] = None,
     ):
