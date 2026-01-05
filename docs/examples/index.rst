@@ -9,37 +9,79 @@ as starting points for your own applications.
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Individual Examples
+   :caption: Filtering & Estimation
 
    kalman_filter_comparison
    filter_uncertainty_visualization
    advanced_filters_comparison
    smoothers_information_filters
    particle_filters
+   static_estimation
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Multi-Target Tracking
+
    multi_target_tracking
    tracking_3d
    tracking_containers
    assignment_algorithms
    performance_evaluation
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Clustering & Data Structures
+
    gaussian_mixtures
    spatial_data_structures
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Signal Processing & Transforms
+
    signal_processing
+   transforms
+   special_functions_demo
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Coordinate Systems & Navigation
+
    coordinate_systems
    coordinate_visualization
    ins_gnss_navigation
    navigation_geodesy
-   transforms
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Orbital & Celestial Mechanics
+
    orbital_mechanics
    relativity_demo
    ephemeris_demo
+   reference_frame_advanced
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Geophysical & Atmospheric
+
    geophysical_models
    magnetism_demo
    atmospheric_modeling
-   dynamic_models_demo
-   reference_frame_advanced
-   special_functions_demo
-   static_estimation
    terrain_demo
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Dynamic Models
+
+   dynamic_models_demo
 
 .. raw:: html
 
