@@ -5,7 +5,7 @@ This example demonstrates coordinate conversions, rotations, and projections.
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/coordinate_rotations.html"></iframe>
    </div>
 

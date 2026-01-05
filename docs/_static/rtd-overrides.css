@@ -695,3 +695,66 @@ table tr:nth-child(even) td,
   background: var(--pytcl-bg-secondary) !important;
   border: none !important;
 }
+
+/* ============================================================================
+   Plotly Interactive Visualizations
+   ============================================================================ */
+
+.plotly-container {
+  position: relative;
+  width: 100%;
+  min-height: 500px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--pytcl-bg-secondary);
+  border: 1px solid var(--pytcl-border-default);
+}
+
+.plotly-container.aspect-4-3 {
+  min-height: 600px;
+}
+
+.plotly-container.aspect-wide {
+  min-height: 450px;
+}
+
+.plotly-container.aspect-square {
+  min-height: 650px;
+}
+
+.plotly-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: none;
+  border-radius: 8px;
+}
+
+/* Fallback for iframes without container */
+iframe.plotly-iframe:not(.plotly-container iframe) {
+  width: 100%;
+  height: 550px;
+  border: none;
+  border-radius: 8px;
+  background: var(--pytcl-bg-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .plotly-container {
+    min-height: 400px;
+  }
+
+  .plotly-container.aspect-wide {
+    min-height: 350px;
+  }
+
+  .plotly-container.aspect-square {
+    min-height: 500px;
+  }
+}

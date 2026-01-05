@@ -5,7 +5,7 @@ This example demonstrates different Kalman filter variants for target tracking.
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/kalman_filter_comparison.html"></iframe>
    </div>
 

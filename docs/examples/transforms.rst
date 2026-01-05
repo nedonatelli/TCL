@@ -5,7 +5,7 @@ This example demonstrates FFT, power spectrum, wavelets, and other transforms.
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/transforms_fft.html"></iframe>
    </div>
 

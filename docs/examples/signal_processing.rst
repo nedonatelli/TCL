@@ -5,7 +5,7 @@ This example demonstrates digital filter design, matched filtering, and CFAR det
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/signal_processing.html"></iframe>
    </div>
 

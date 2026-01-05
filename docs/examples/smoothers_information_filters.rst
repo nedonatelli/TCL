@@ -5,7 +5,7 @@ This example demonstrates fixed-interval smoothing and information filter formul
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/smoothers_information_filters_result.html"></iframe>
    </div>
 

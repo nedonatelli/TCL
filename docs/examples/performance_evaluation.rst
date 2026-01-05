@@ -5,7 +5,7 @@ This example demonstrates tracking performance metrics and evaluation.
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/performance_evaluation.html"></iframe>
    </div>
 

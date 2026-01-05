@@ -5,7 +5,7 @@ This example demonstrates Gaussian mixture operations and clustering algorithms.
 
 .. raw:: html
 
-   <div class="plotly-container aspect-wide">
+   <div class="plotly-container">
        <iframe class="plotly-iframe" src="../_static/images/examples/clustering_comparison.html"></iframe>
    </div>
 
