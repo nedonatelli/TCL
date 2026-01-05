@@ -5,13 +5,13 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
-**v1.10.0** — 1,070+ functions | 153 modules | 2,275 tests | 100% mypy --strict | GPU acceleration
+**v1.11.0** — 1,070+ functions | 153 modules | 2,894 tests | 100% mypy --strict | GPU acceleration
 
 .. note::
 
-   **Type Safety**: This release achieves full mypy --strict compliance with zero
-   type-arg errors. All generic types are properly annotated for enhanced IDE support
-   and runtime safety.
+   **Performance Optimization**: This release adds Numba JIT compilation, intelligent
+   caching with lru_cache, and SparseCostTensor for efficient large-scale assignment
+   problems. Type safety maintained with full mypy --strict compliance.
 
 .. toctree::
    :maxdepth: 2
