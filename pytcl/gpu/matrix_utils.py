@@ -152,7 +152,9 @@ def gpu_cholesky_safe(
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_qr(A: ArrayLike, mode: str = "reduced") -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+def gpu_qr(
+    A: ArrayLike, mode: str = "reduced"
+) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     GPU-accelerated QR decomposition.
 
@@ -261,7 +263,9 @@ def gpu_inv(A: ArrayLike) -> NDArray[np.floating[Any]]:
 
 
 @requires("cupy", extra="gpu", feature="GPU matrix utilities")
-def gpu_eigh(A: ArrayLike) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+def gpu_eigh(
+    A: ArrayLike,
+) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
     """
     GPU-accelerated eigendecomposition for symmetric matrices.
 

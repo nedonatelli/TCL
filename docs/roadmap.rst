@@ -190,8 +190,8 @@ Comprehensive architectural upgrade targeting critical fixes, API standardizatio
 | Spatial index standardization        | 7/7 ✅            | Complete    |
 | Custom exception hierarchy           | 16 types ✅       | Complete    |
 | Optional deps system                 | Complete ✅       | Complete    |
-| Test coverage                        | 76%               | 80%+        |
-| Unit tests                           | 2,133             | 2,200+      |
+| Test coverage                        | 75%               | 80%+        |
+| Unit tests                           | 2,275 ✅          | 2,200+      |
 | GPU speedup (Kalman)                 | 5-10x ✅          | 5-10x       |
 | GPU speedup (particles)              | 8-15x ✅          | 8-15x       |
 | GPU backends                         | 2 (CuPy+MLX) ✅   | 2           |
@@ -201,20 +201,20 @@ Comprehensive architectural upgrade targeting critical fixes, API standardizatio
 
 **Phase 6 Test Expansion Details:**
 
-+--------------------------+----------+--------+----------+-----+
-| Module                   | Current  | Target | New Tests| Effort |
-+==========================+==========+========+==========+=====+
-| sr_ukf.py                | 6%       | 50%+   | 20       | 3w  |
-| ud_filter.py             | 11%      | 60%+   | 15       | 2w  |
-| square_root.py           | 19%      | 70%+   | 15       | 2w  |
-| imm.py                   | 21%      | 60%+   | 15       | 2w  |
-| detection.py             | 34%      | 65%+   | 20       | 3w  |
-| filters.py               | 61%      | 75%+   | 10       | 2w  |
-| loaders.py               | 60%      | 80%+   | 15       | 2w  |
-| Integration/Property     | -        | -      | 10       | 2w  |
-+--------------------------+----------+--------+----------+-----+
-| **Total**                | **76%**  | **80%+**| **50+** | **15w** |
-+--------------------------+----------+--------+----------+-----+
++--------------------------+----------+--------+----------+------------+
+| Module                   | Current  | Target | New Tests| Status     |
++==========================+==========+========+==========+============+
+| sr_ukf.py                | 86% ✅   | 50%+   | 20       | Complete   |
+| matrix_utils.py          | 87% ✅   | 50%+   | 15       | Complete   |
+| ud_filter.py             | 89% ✅   | 60%+   | 15       | Complete   |
+| square_root.py           | 95% ✅   | 70%+   | 15       | Complete   |
+| imm.py                   | 95% ✅   | 60%+   | 30       | Complete   |
+| detection.py             | 45%      | 65%+   | 58       | In Progress|
+| filters.py               | 61%      | 75%+   | 10       | Pending    |
+| loaders.py               | 60%      | 80%+   | 15       | Pending    |
++--------------------------+----------+--------+----------+------------+
+| **Total**                | **75%**  | **80%+**| **129**  | **In Progress** |
++--------------------------+----------+--------+----------+------------+
 
 See `ROADMAP.md <../ROADMAP.md>`_ for comprehensive v2.0.0 planning, effort estimates, risk analysis, and detailed implementation strategies for all 8 phases.
 

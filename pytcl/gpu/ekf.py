@@ -31,7 +31,7 @@ Examples
 >>> x_pred, P_pred = batch_ekf_predict(x, P, f_dynamics, F_jacobian, Q)
 """
 
-from typing import Any, Callable, NamedTuple, Optional, Tuple
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -127,7 +127,9 @@ def batch_ekf_predict(
     x: ArrayLike,
     P: ArrayLike,
     f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
-    F_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]],
+    F_jacobian: Optional[
+        Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]
+    ],
     Q: ArrayLike,
 ) -> BatchEKFPrediction:
     """
@@ -209,7 +211,9 @@ def batch_ekf_update(
     P: ArrayLike,
     z: ArrayLike,
     h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
-    H_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]],
+    H_jacobian: Optional[
+        Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]
+    ],
     R: ArrayLike,
 ) -> BatchEKFUpdate:
     """
@@ -364,8 +368,12 @@ class CuPyExtendedKalmanFilter:
         meas_dim: int,
         f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
         h: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
-        F_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]] = None,
-        H_jacobian: Optional[Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]] = None,
+        F_jacobian: Optional[
+            Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]
+        ] = None,
+        H_jacobian: Optional[
+            Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]]
+        ] = None,
         Q: Optional[ArrayLike] = None,
         R: Optional[ArrayLike] = None,
     ):
