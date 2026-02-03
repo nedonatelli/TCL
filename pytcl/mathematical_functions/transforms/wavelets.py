@@ -816,6 +816,31 @@ def threshold_coefficients(
     -------
     result : DWTResult
         Thresholded coefficients.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.transforms import dwt, threshold_coefficients, idwt
+    >>> # Create noisy signal
+    >>> t = np.linspace(0, 1, 256)
+    >>> signal = np.sin(2 * np.pi * 5 * t)
+    >>> noise = 0.5 * np.random.randn(256)
+    >>> noisy_signal = signal + noise
+    >>> # Denoise using wavelet thresholding
+    >>> coeffs = dwt(noisy_signal, wavelet='db4', level=3)
+    >>> # Apply soft threshold (default automatic threshold value)
+    >>> coeffs_denoised = threshold_coefficients(coeffs, threshold='soft')
+    >>> # Reconstruct signal from thresholded coefficients
+    >>> signal_denoised = idwt(coeffs_denoised)
+    >>> len(signal_denoised) == len(noisy_signal)
+    True
+
+    Notes
+    -----
+    When value is None, the universal threshold is computed as:
+        sigma * sqrt(2 * log(n))
+    where sigma is estimated from the finest detail coefficients
+    and n is the total number of coefficients.
     """
     if not PYWT_AVAILABLE:
         raise ImportError(

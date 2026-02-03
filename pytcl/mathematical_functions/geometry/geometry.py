@@ -288,6 +288,25 @@ def line_plane_intersection(
     -------
     intersection : ndarray or None
         Intersection point, or None if line is parallel to plane.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.geometry import line_plane_intersection
+    >>> # Line: passes through origin with direction (0, 0, 1) [vertical]
+    >>> line_point = np.array([0.0, 0.0, 0.0])
+    >>> line_dir = np.array([0.0, 0.0, 1.0])
+    >>> # Plane: z = 5, normal is (0, 0, 1)
+    >>> plane_point = np.array([0.0, 0.0, 5.0])
+    >>> plane_normal = np.array([0.0, 0.0, 1.0])
+    >>> intersection = line_plane_intersection(line_point, line_dir, plane_point, plane_normal)
+    >>> np.allclose(intersection, [0, 0, 5])
+    True
+    >>> # Parallel case: line and plane parallel, no intersection
+    >>> line_dir_parallel = np.array([1.0, 0.0, 0.0])
+    >>> intersection = line_plane_intersection(line_point, line_dir_parallel, plane_point, plane_normal)
+    >>> intersection is None
+    True
     """
     line_point = np.asarray(line_point, dtype=np.float64)
     line_dir = np.asarray(line_dir, dtype=np.float64)
