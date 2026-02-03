@@ -311,6 +311,23 @@ def hyp1f1_regularized(
     F : ndarray
         Values of 1F1(a; b; z) / Gamma(b).
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.special_functions import hyp1f1_regularized
+    >>> # Regularized form avoids overflow for problematic b values
+    >>> a, b, z = 0.5, 1.5, 1.0
+    >>> f_reg = hyp1f1_regularized(a, b, z)
+    >>> # Should give finite, non-overflowing result
+    >>> np.isfinite(f_reg)
+    True
+    >>> # Compare to regular hypergeometric computation
+    >>> from pytcl.mathematical_functions.special_functions import hyp1f1
+    >>> import scipy.special as sp
+    >>> f_normal = hyp1f1(a, b, z) / sp.gamma(b)
+    >>> np.allclose(f_reg, f_normal)
+    True
+
     Notes
     -----
     This function remains finite even when b is a non-positive integer,

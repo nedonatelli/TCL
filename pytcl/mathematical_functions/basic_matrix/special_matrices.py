@@ -539,6 +539,22 @@ def duplication_matrix(n: int) -> NDArray[np.floating]:
     -------
     D : ndarray
         Duplication matrix of shape (n*n, n*(n+1)/2).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions import duplication_matrix, vech, vec
+    >>> # Create duplication matrix for 2x2 symmetric matrices
+    >>> D = duplication_matrix(2)
+    >>> D.shape
+    (4, 3)
+    >>> # For symmetric matrix A = [[1, 2], [2, 3]], half-vec has 3 elements
+    >>> A = np.array([[1.0, 2.0], [2.0, 3.0]])
+    >>> vech_A = vech(A)
+    >>> # Duplication matrix should reconstruct full vectorization
+    >>> vec_A = D @ vech_A
+    >>> np.allclose(vec_A, vec(A))
+    True
     """
     m = n * (n + 1) // 2
     D = np.zeros((n * n, m), dtype=np.float64)
@@ -574,6 +590,21 @@ def elimination_matrix(n: int) -> NDArray[np.floating]:
     -------
     L : ndarray
         Elimination matrix of shape (n*(n+1)/2, n*n).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions import elimination_matrix, vec
+    >>> # Create elimination matrix for 2x2 matrices
+    >>> L = elimination_matrix(2)
+    >>> L.shape
+    (3, 4)
+    >>> # For matrix A, extracts unique elements: [A[0,0], A[1,0], A[1,1]]
+    >>> A = np.array([[1.0, 2.0], [3.0, 4.0]])
+    >>> # Elimination extracts lower-triangular elements
+    >>> vech_A = L @ vec(A)
+    >>> np.allclose(vech_A, [1.0, 3.0, 4.0])
+    True
     """
     m = n * (n + 1) // 2
     L = np.zeros((m, n * n), dtype=np.float64)

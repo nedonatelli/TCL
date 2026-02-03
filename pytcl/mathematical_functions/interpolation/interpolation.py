@@ -397,6 +397,23 @@ def barycentric(
     p : BarycentricInterpolator
         Barycentric interpolator object.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.interpolation import barycentric
+    >>> # Interpolate a polynomial at Chebyshev nodes (most stable)
+    >>> n = 5
+    >>> x = np.cos(np.linspace(0, np.pi, n))  # Chebyshev nodes
+    >>> y = x**2 + 2*x + 1  # Quadratic function
+    >>> poly = barycentric(x, y)
+    >>> # Evaluate interpolant at new points
+    >>> x_new = np.linspace(-0.8, 0.8, 3)
+    >>> y_interp = poly(x_new)
+    >>> # Should match the original function well
+    >>> y_exact = x_new**2 + 2*x_new + 1
+    >>> np.allclose(y_interp, y_exact, atol=0.01)
+    True
+
     See Also
     --------
     scipy.interpolate.BarycentricInterpolator : Underlying implementation.
@@ -426,6 +443,25 @@ def krogh(
     -------
     k : KroghInterpolator
         Krogh interpolator object.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.interpolation import krogh
+    >>> # Hermite interpolation with function values and derivatives
+    >>> x = np.array([0, 1, 2])
+    >>> # For Hermite interpolation, y rows are: function values, then derivatives
+    >>> y = np.array([
+    ...     [1, 2, 3],      # Function values at x=0, 1, 2
+    ...     [0, 1, 2],      # Derivatives at x=0, 1, 2
+    ... ])
+    >>> k = krogh(x, y)
+    >>> # Evaluate interpolant at new points
+    >>> x_new = np.array([0.5, 1.5])
+    >>> y_interp = k(x_new)
+    >>> # Interpolant passes through original points and matches derivatives
+    >>> np.allclose(k(x), y[0])
+    True
 
     See Also
     --------
