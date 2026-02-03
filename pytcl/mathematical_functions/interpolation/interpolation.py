@@ -185,6 +185,21 @@ def pchip(
     p : PchipInterpolator
         PCHIP interpolator object.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.interpolation import pchip
+    >>> # Monotonic data: stock prices (should not overshoot)
+    >>> x = np.array([0, 1, 2, 3, 4])
+    >>> y = np.array([10, 12, 11, 15, 18])  # Non-monotonic but generally increasing
+    >>> p = pchip(x, y)
+    >>> # Evaluate at intermediate points
+    >>> x_new = np.array([0.5, 1.5, 2.5])
+    >>> y_new = p(x_new)
+    >>> # PCHIP preserves bounds: should stay within observed values
+    >>> np.all((y_new >= y.min()) & (y_new <= y.max()))
+    True
+
     Notes
     -----
     Unlike cubic splines, PCHIP will not overshoot if the data is
@@ -221,6 +236,21 @@ def akima(
     -------
     a : Akima1DInterpolator
         Akima interpolator object.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.interpolation import akima
+    >>> # Noisy data where smoothness without oscillation is desired
+    >>> x = np.array([0, 1, 2, 3, 4, 5])
+    >>> y = np.array([0, 1, 1.5, 1.2, 2.0, 2.5])  # Noisy measurements
+    >>> a = akima(x, y)
+    >>> # Evaluate at intermediate points
+    >>> x_new = np.array([0.5, 1.5, 3.5])
+    >>> y_new = a(x_new)
+    >>> # Akima should produce smooth, non-oscillating results
+    >>> y_new.shape
+    (3,)
 
     See Also
     --------
@@ -306,6 +336,23 @@ def interp3d(
     -------
     f : RegularGridInterpolator
         Interpolation function.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.interpolation import interp3d
+    >>> # Create a 3D grid: temperature field
+    >>> x = np.array([0, 1, 2])
+    >>> y = np.array([0, 1, 2])
+    >>> z = np.array([0, 1])
+    >>> # Temperature values at grid points (3x3x2)
+    >>> values = np.arange(18).reshape((3, 3, 2), order='C').astype(float)
+    >>> f = interp3d(x, y, z, values, kind='linear')
+    >>> # Interpolate at intermediate points
+    >>> pts = np.array([[0.5, 0.5, 0.5], [1.5, 1.5, 0.5]])
+    >>> result = f(pts)
+    >>> result.shape
+    (2,)
 
     See Also
     --------
