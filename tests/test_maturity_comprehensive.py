@@ -9,7 +9,6 @@ Tests coverage for:
 - Maturity badge formatting
 """
 
-import pytest
 
 from pytcl.core.maturity import (
     MODULE_MATURITY,
@@ -175,28 +174,28 @@ class TestStabilityChecks:
     def test_is_stable_stable_module(self):
         """Test is_stable for known stable module."""
         # core.constants should be stable
-        assert is_stable("core.constants") == True
+        assert is_stable("core.constants") is True
 
     def test_is_stable_experimental_module(self):
         """Test is_stable for experimental modules."""
         experimental = get_modules_by_maturity(MaturityLevel.EXPERIMENTAL)
         if experimental:
             module = experimental[0]
-            assert is_stable(module) == False
+            assert is_stable(module) is False
 
     def test_is_production_ready_stable(self):
         """Test is_production_ready for stable modules."""
         stable = get_modules_by_maturity(MaturityLevel.STABLE)
         if stable:
             module = stable[0]
-            assert is_production_ready(module) == True
+            assert is_production_ready(module) is True
 
     def test_is_production_ready_mature(self):
         """Test is_production_ready for mature modules."""
         mature = get_modules_by_maturity(MaturityLevel.MATURE)
         if mature:
             module = mature[0]
-            assert is_production_ready(module) == True
+            assert is_production_ready(module) is True
 
     def test_is_production_ready_experimental(self):
         """Test is_production_ready for experimental modules."""
@@ -204,14 +203,14 @@ class TestStabilityChecks:
         if experimental:
             module = experimental[0]
             # Experimental should not be production ready
-            assert is_production_ready(module) == False
+            assert is_production_ready(module) is False
 
     def test_is_production_ready_deprecated(self):
         """Test is_production_ready for deprecated modules."""
         deprecated = get_modules_by_maturity(MaturityLevel.DEPRECATED)
         if deprecated:
             module = deprecated[0]
-            assert is_production_ready(module) == False
+            assert is_production_ready(module) is False
 
 
 class TestMaturityBadges:

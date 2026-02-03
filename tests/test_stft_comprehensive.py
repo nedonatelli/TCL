@@ -10,7 +10,6 @@ Tests cover:
 """
 
 import numpy as np
-import pytest
 
 from pytcl.mathematical_functions.transforms.stft import (
     get_window,

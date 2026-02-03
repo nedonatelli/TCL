@@ -8,7 +8,6 @@ Tests coverage for:
 """
 
 import numpy as np
-import pytest
 
 from pytcl.mathematical_functions.special_functions.debye import (
     debye,

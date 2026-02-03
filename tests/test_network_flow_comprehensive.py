@@ -9,7 +9,6 @@ Tests coverage for:
 """
 
 import numpy as np
-import pytest
 
 from pytcl.assignment_algorithms.network_flow import (
     FlowEdge,

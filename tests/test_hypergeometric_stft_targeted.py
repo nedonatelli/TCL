@@ -7,15 +7,10 @@ Focus areas:
 """
 
 import numpy as np
-import pytest
-from scipy import signal, special, stats
+from scipy import signal, special
 
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
-    generalized_hypergeometric,
-    hyp0f1,
-    hyp1f1,
     hyp2f1,
-    hyperu,
 )
 from pytcl.mathematical_functions.transforms.stft import (
     istft,
@@ -54,32 +49,22 @@ class TestHypergeometricSeries:
 
     def test_1f1_series_convergence(self):
         """Test 1F1 series convergence with various parameters."""
-        result = hyp1f1(2, 5, 1.0)
-        expected = special.hyp1f1(2, 5, 1.0)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_1f1_large_argument(self):
         """Test 1F1 with larger argument values."""
-        result = hyp1f1(1, 2, 2.0)
-        expected = special.hyp1f1(1, 2, 2.0)
         assert np.isclose(result, expected, rtol=1e-9)
 
     def test_0f1_convergence(self):
         """Test 0F1 convergence behavior."""
-        result = hyp0f1(2.5, 1.0)
-        expected = special.hyp0f1(2.5, 1.0)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_0f1_negative_argument(self):
         """Test 0F1 with negative argument."""
-        result = hyp0f1(1.5, -0.5)
-        expected = special.hyp0f1(1.5, -0.5)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_1f1_negative_argument(self):
         """Test 1F1 with negative argument."""
-        result = hyp1f1(0.5, 1.5, -1.0)
-        expected = special.hyp1f1(0.5, 1.5, -1.0)
         assert np.isclose(result, expected, rtol=1e-9)
 
     def test_2f1_array_multiple_convergence(self):
@@ -97,8 +82,6 @@ class TestHypergeometricSeries:
 
     def test_1f1_integer_parameters(self):
         """Test 1F1 with integer parameters."""
-        result = hyp1f1(3, 4, 0.5)
-        expected = special.hyp1f1(3, 4, 0.5)
         assert np.isclose(result, expected, rtol=1e-10)
 
 

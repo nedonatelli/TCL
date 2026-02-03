@@ -9,7 +9,6 @@ Tests coverage for:
 """
 
 import numpy as np
-import pytest
 
 from pytcl.mathematical_functions.signal_processing.detection import (
     cfar_2d,
