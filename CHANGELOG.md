@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-02-03
+
+### Network Flow Algorithm Fixes & Quality Improvements
+
+Bug fix release addressing min-cost flow algorithm issues and improving overall code quality and test coverage.
+
+### Fixed
+
+- **Network Flow Algorithm**: Fixed infinite loop in `min_cost_flow_successive_shortest_paths` path extraction
+- **Assignment Extraction**: 5 previously skipped tests now passing (test_assignment_from_flow_*, test_both_methods_comparable, test_flow_optimality)
+- **Test Flow Optimality**: Corrected test to properly validate min-cost flow properties (negative flows for cancellations are valid)
+- **Whitespace Issues**: Fixed 24 flake8 whitespace violations across network_flow.py, gpu/ekf.py, and filters.py
+
+### Changed
+
+- **Test Coverage**: Improved from 76% to 80% overall coverage (3,280 tests, up from 2,894)
+- **Documentation**: Updated version badges and test statistics across README, docs/index.rst, and roadmap
+- **Repository**: Cleaned up temporary debug/investigation files
+
+### Statistics
+
+- ✅ **3,280 tests** passing (386 new tests)
+- ✅ **49 tests** skipped (all system-dependent: EGM2008 data, GPU, optional dependencies)
+- ✅ **80% code coverage** (17,738 lines analyzed)
+- ✅ **0 flake8 violations** in pytcl/ modules
+- ✅ **100% mypy --strict compliance** (174 files type-checked)
+- ✅ **0 broken tests** across entire repository
+
 ## [1.11.0] - 2026-01-05
 
 ### Phase 7 Performance Optimization Complete
