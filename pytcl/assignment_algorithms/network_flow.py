@@ -279,14 +279,53 @@ def min_cost_flow_successive_shortest_paths(
             # No path found
             break
 
-        # Extract path and find bottleneck capacity
+        # Extract path by backtracking through parent pointers
+        # Need to track which direction each edge was used (forward or backward)
         path_edges = []
+        path_directions = []  # True for forward, False for backward
         node = deficit_node
+        visited = set()
+        
+        # Safety check to prevent infinite loops in path extraction
+        max_path_length = n_nodes
+        path_length = 0
+        
         while parent[node] != -1:
-            path_edges.append(parent_edge[node])
-            node = parent[node]
+            if path_length >= max_path_length:
+                # Path is longer than possible - indicates a cycle
+                # This shouldn't happen in a DAG, so we break to avoid infinite loop
+                break
+            
+            if node in visited:
+                # Already visited this node in the path - cycle detected
+                break
+            
+            visited.add(node)
+            
+            parent_node = parent[node]
+            edge_idx = parent_edge[node]
+            
+            # Determine direction: if edge goes from parent_node to node, it's forward
+            # If it goes from node to parent_node, it's backward
+            if edges[edge_idx].from_node == parent_node and edges[edge_idx].to_node == node:
+                # Forward direction
+                path_directions.append(True)
+            else:
+                # Backward direction
+                path_directions.append(False)
+            
+            path_edges.append(edge_idx)
+            node = parent_node
+            path_length += 1
 
         path_edges.reverse()
+        path_directions.reverse()
+
+        # Find minimum capacity along path
+        if not path_edges:
+            # No valid path found, move to next iteration
+            iteration += 1
+            continue
 
         # Find minimum capacity along path
         min_flow = min(residual_capacity[e] for e in path_edges)
@@ -296,10 +335,17 @@ def min_cost_flow_successive_shortest_paths(
 
         # Push flow along path
         total_cost = 0.0
-        for edge_idx in path_edges:
-            flow[edge_idx] += min_flow
-            residual_capacity[edge_idx] -= min_flow
-            total_cost += min_flow * edges[edge_idx].cost
+        for edge_idx, is_forward in zip(path_edges, path_directions):
+            if is_forward:
+                # Forward edge: increase flow
+                flow[edge_idx] += min_flow
+                residual_capacity[edge_idx] -= min_flow
+                total_cost += min_flow * edges[edge_idx].cost
+            else:
+                # Backward edge: decrease flow (cancel flow in reverse)
+                flow[edge_idx] -= min_flow
+                residual_capacity[edge_idx] += min_flow
+                total_cost -= min_flow * edges[edge_idx].cost
 
         current_supplies[excess_node] -= min_flow
         current_supplies[deficit_node] += min_flow
@@ -307,7 +353,8 @@ def min_cost_flow_successive_shortest_paths(
         iteration += 1
 
     # Compute total cost
-    total_cost = float(np.sum(flow[i] * edges[i].cost for i in range(n_edges)))
+    # Only count positive flow on forward edges (negative flow indicates cancellation)
+    total_cost = float(np.sum(np.maximum(flow[i], 0) * edges[i].cost for i in range(n_edges)))
 
     # Determine status
     if np.allclose(current_supplies, 0):

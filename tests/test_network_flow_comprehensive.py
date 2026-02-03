@@ -114,10 +114,12 @@ class TestMinCostFlowSuccessiveShortestPaths:
     """Tests for min-cost flow using successive shortest paths.
     
     Note: These tests are skipped as the successive shortest paths algorithm
-    has a known issue with infinite loops in path extraction.
+    implementation has issues with violating assignment constraints for rectangular
+    or larger matrices. The algorithm may find feasible flow solutions but not proper
+    assignments. The high-level API (min_cost_assignment_via_flow) uses simplex instead.
     """
     
-    @pytest.mark.skip(reason="Algorithm has infinite loop in path extraction")
+    @pytest.mark.skip(reason="Algorithm violates assignment constraints for non-2x2 matrices")
     def test_successive_shortest_paths_basic(self):
         """Test basic successive shortest paths computation."""
         cost_matrix = np.array([
@@ -131,7 +133,7 @@ class TestMinCostFlowSuccessiveShortestPaths:
         assert isinstance(result, MinCostFlowResult)
         assert isinstance(result.status, FlowStatus)
     
-    @pytest.mark.skip(reason="Algorithm has infinite loop in path extraction")
+    @pytest.mark.skip(reason="Algorithm violates assignment constraints for non-2x2 matrices")
     def test_successive_shortest_paths_square(self):
         """Test with square cost matrix."""
         cost_matrix = np.array([
