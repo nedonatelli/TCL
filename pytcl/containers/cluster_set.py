@@ -94,6 +94,23 @@ def compute_cluster_centroid(
     -------
     centroid : ndarray
         Centroid position [x, y].
+
+    Examples
+    --------
+    >>> from pytcl.trackers.multi_target import Track
+    >>> import numpy as np
+    >>> # Create sample tracks with [x, vx, y, vy] state vectors
+    >>> track1 = Track(state=np.array([0.0, 1.0, 0.0, 1.0]))
+    >>> track2 = Track(state=np.array([2.0, 1.0, 2.0, 1.0]))
+    >>> track3 = Track(state=np.array([4.0, 1.0, 4.0, 1.0]))
+    >>> tracks = [track1, track2, track3]
+    >>> centroid = compute_cluster_centroid(tracks)
+    >>> centroid
+    array([2., 2.])
+
+    See Also
+    --------
+    compute_cluster_covariance : Compute covariance of track positions.
     """
     track_list = list(tracks)
     if len(track_list) == 0:
@@ -122,6 +139,25 @@ def compute_cluster_covariance(
     -------
     covariance : ndarray
         Position covariance matrix (2x2).
+
+    Examples
+    --------
+    >>> from pytcl.trackers.multi_target import Track
+    >>> import numpy as np
+    >>> # Create collinear tracks (high variance along x-axis)
+    >>> track1 = Track(state=np.array([0.0, 1.0, 0.0, 0.0]))
+    >>> track2 = Track(state=np.array([1.0, 1.0, 0.0, 0.0]))
+    >>> track3 = Track(state=np.array([2.0, 1.0, 0.0, 0.0]))
+    >>> tracks = [track1, track2, track3]
+    >>> cov = compute_cluster_covariance(tracks)
+    >>> cov.shape
+    (2, 2)
+    >>> cov[0, 0] > cov[1, 1]  # More spread in x than y
+    True
+
+    See Also
+    --------
+    compute_cluster_centroid : Compute centroid of track positions.
     """
     track_list = list(tracks)
     if len(track_list) < 2:

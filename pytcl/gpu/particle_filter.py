@@ -252,6 +252,17 @@ def gpu_normalize_weights(
         Normalized weights, shape (n_particles,).
     log_likelihood : float
         Log of the normalization constant.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.particle_filter import gpu_normalize_weights
+    >>> log_w = np.array([-1.0, -0.5, -2.0])
+    >>> weights, log_likelihood = gpu_normalize_weights(log_w)
+    >>> np.allclose(weights.sum(), 1.0)
+    True
+    >>> log_likelihood < 0
+    True
     """
     cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
 

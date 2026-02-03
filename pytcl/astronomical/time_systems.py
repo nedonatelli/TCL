@@ -269,6 +269,13 @@ def mjd_to_jd(mjd: float) -> float:
     float
         Julian Date.
 
+    Examples
+    --------
+    >>> mjd = 44239.0  # 1980-01-01
+    >>> jd = mjd_to_jd(mjd)
+    >>> jd
+    2444239.5
+
     Notes
     -----
     MJD = JD - 2400000.5
@@ -289,6 +296,13 @@ def jd_to_mjd(jd: float) -> float:
     -------
     float
         Modified Julian Date.
+
+    Examples
+    --------
+    >>> jd = 2444239.5  # 1980-01-01
+    >>> mjd = jd_to_mjd(jd)
+    >>> mjd
+    44239.0
     """
     return jd - MJD_OFFSET
 
@@ -328,6 +342,13 @@ def jd_to_unix(jd: float) -> float:
     -------
     float
         Unix timestamp.
+
+    Examples
+    --------
+    >>> jd = 2440587.5  # 1970-01-01 00:00:00 UTC
+    >>> unix_to_jd = jd_to_unix(jd)
+    >>> unix_to_jd
+    0.0
     """
     return (jd - JD_UNIX_EPOCH) * 86400.0
 

@@ -393,6 +393,16 @@ class MemoryPool:
         -------
         stats : dict
             Dictionary with 'used', 'total', and 'free' bytes.
+
+        Examples
+        --------
+        >>> from pytcl.gpu.matrix_utils import get_memory_pool
+        >>> pool = get_memory_pool()
+        >>> stats = pool.get_stats()
+        >>> stats.keys()
+        dict_keys(['used', 'total', 'free', 'device_total'])
+        >>> stats['used'] >= 0
+        True
         """
         if self._pool is None:
             return {"used": 0, "total": 0, "free": 0}
@@ -409,7 +419,19 @@ class MemoryPool:
         }
 
     def free_all(self) -> None:
-        """Free all cached memory blocks."""
+        """
+        Free all cached memory blocks.
+
+        Clears the memory pool cache, which can help free up GPU memory
+        when operations are complete.
+
+        Examples
+        --------
+        >>> from pytcl.gpu.matrix_utils import get_memory_pool
+        >>> pool = get_memory_pool()
+        >>> # After allocations
+        >>> pool.free_all()  # Clear cached blocks
+        """
         if self._pool is not None:
             self._pool.free_all_blocks()
         if self._pinned_pool is not None:
@@ -423,6 +445,15 @@ class MemoryPool:
         ----------
         limit : int or None
             Maximum bytes to allocate. None for no limit.
+
+        Examples
+        --------
+        >>> from pytcl.gpu.matrix_utils import get_memory_pool
+        >>> pool = get_memory_pool()
+        >>> # Limit to 2 GB
+        >>> pool.set_limit(2 * 1024**3)
+        >>> # Reset to unlimited
+        >>> pool.set_limit(None)
         """
         if self._pool is not None:
             if limit is None:
@@ -471,6 +502,18 @@ def get_memory_pool() -> MemoryPool:
     -------
     pool : MemoryPool
         Global memory pool instance.
+
+    Examples
+    --------
+    >>> from pytcl.gpu.matrix_utils import get_memory_pool
+    >>> pool = get_memory_pool()
+    >>> # Get current memory stats
+    >>> stats = pool.get_stats()
+    >>> print(f"Used: {stats['used']} bytes")
+    >>> # Set memory limit
+    >>> pool.set_limit(1024**3)  # 1 GB limit
+    >>> # Free cached blocks
+    >>> pool.free_all()
     """
     global _memory_pool
     if _memory_pool is None:

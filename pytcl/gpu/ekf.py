@@ -262,6 +262,28 @@ def batch_ekf_update(
     -------
     result : BatchEKFUpdate
         Update results including states, covariances, and statistics.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.ekf import batch_ekf_update
+    >>> # Polar measurement from Cartesian state
+    >>> def h_polar(x):
+    ...     r = np.sqrt(x[0]**2 + x[1]**2)
+    ...     theta = np.arctan2(x[1], x[0])
+    ...     return np.array([r, theta])
+    >>> def H_jacobian(x):
+    ...     r = np.sqrt(x[0]**2 + x[1]**2)
+    ...     return np.array([[x[0]/r, x[1]/r],
+    ...                      [-x[1]/r**2, x[0]/r**2]])
+    >>> n_tracks = 20
+    >>> x = np.random.randn(n_tracks, 2)
+    >>> P = np.tile(np.eye(2), (n_tracks, 1, 1))
+    >>> z = np.random.randn(n_tracks, 2) * [100, 0.1]  # r, theta
+    >>> R = np.diag([10.0, 0.01])
+    >>> result = batch_ekf_update(x, P, z, h_polar, H_jacobian, R)
+    >>> result.x.shape
+    (20, 2)
     """
     cp = import_optional("cupy", extra="gpu", feature="GPU Extended Kalman filter")
 
