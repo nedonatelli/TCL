@@ -491,6 +491,18 @@ def igrf_declination(
     -------
     D : float
         Declination in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import igrf_declination
+    >>> # Declination at Denver (40°N, 105°W)
+    >>> lat = np.radians(40)
+    >>> lon = np.radians(-105)
+    >>> D = igrf_declination(lat, lon, 1.6, 2023.0)
+    >>> # Eastern US has westerly declination (~10-20° W)
+    >>> -0.35 < D < 0  # West is negative
+    True
     """
     return igrf(lat, lon, h, year).D
 
@@ -519,6 +531,19 @@ def igrf_inclination(
     -------
     I : float
         Inclination in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import igrf_inclination
+    >>> # Inclination comparison: equator vs pole
+    >>> I_eq = igrf_inclination(0, 0, 0, 2023.0)  # Equator
+    >>> I_pole = igrf_inclination(np.radians(85), 0, 0, 2023.0)  # Near pole
+    >>> # At equator, inclination is ~0; at poles it's ~90 degrees
+    >>> abs(I_eq) < 0.2  # ~11 degrees
+    True
+    >>> abs(I_pole) > 1.4  # ~80 degrees
+    True
     """
     return igrf(lat, lon, h, year).I
 
@@ -541,6 +566,16 @@ def dipole_moment(coeffs: MagneticCoefficients = IGRF13) -> float:
     -----
     The dipole moment is computed from the n=1 Gauss coefficients:
     M = a^3 * sqrt(g10^2 + g11^2 + h11^2)
+
+    Examples
+    --------
+    >>> from pytcl.magnetism import dipole_moment, IGRF13
+    >>> # Compute Earth's dipole moment from IGRF-13
+    >>> M = dipole_moment(IGRF13)
+    >>> # Earth's dipole moment is approximately 7.9 × 10^22 A·m²
+    >>> # In nT·km³ units, this is about 7.9 × 10^15
+    >>> 7e15 < M < 8.5e15
+    True
     """
     a = 6371.2  # Reference radius in km
     g10 = coeffs.g[1, 0]
@@ -573,6 +608,18 @@ def dipole_axis(
     -----
     The geomagnetic pole is where the centered dipole axis
     intersects the Earth's surface.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import dipole_axis, IGRF13
+    >>> # Compute geomagnetic pole location
+    >>> lat, lon = dipole_axis(IGRF13)
+    >>> # Geomagnetic north pole is around 80°N, 72°W
+    >>> 70 < np.degrees(lat) < 85
+    True
+    >>> -100 < np.degrees(lon) < -60
+    True
     """
     g10 = coeffs.g[1, 0]
     g11 = coeffs.g[1, 1]
@@ -619,6 +666,23 @@ def magnetic_north_pole(
     -----
     This uses an iterative search starting from the dipole pole.
     The magnetic pole moves over time.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import magnetic_north_pole, dipole_axis
+    >>> # Magnetic north pole location (2023)
+    >>> lat, lon = magnetic_north_pole(2023.0)
+    >>> # Should be in Canadian Arctic, around 80-85°N
+    >>> 75 < np.degrees(lat) < 90
+    True
+    >>> -150 < np.degrees(lon) < -60
+    True
+    >>> # Compare with geomagnetic pole
+    >>> geo_lat, geo_lon = dipole_axis()
+    >>> # Magnetic pole differs from geomagnetic pole
+    >>> abs(lat - geo_lat) > 0.01  # Different locations
+    True
     """
     # Start from dipole pole
     lat, lon = dipole_axis(coeffs)

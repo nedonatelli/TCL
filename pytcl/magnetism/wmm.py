@@ -735,6 +735,19 @@ def magnetic_field_spherical(
     to a configurable precision before caching to improve hit rates for
     nearby queries. Use `get_magnetic_cache_info()` to check cache
     statistics and `clear_magnetic_cache()` to free memory.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import magnetic_field_spherical
+    >>> # Compute at Earth's surface (40°N, 105°W, sea level)
+    >>> lat = np.radians(40)
+    >>> lon = np.radians(-105)
+    >>> r = 6371.2  # Earth mean radius in km
+    >>> B_r, B_theta, B_phi = magnetic_field_spherical(lat, lon, r, 2023.0)
+    >>> # All components should be on order of tens to tens of thousands of nT
+    >>> 20000 < (B_r**2 + B_theta**2 + B_phi**2)**0.5 < 70000
+    True
     """
     if use_cache:
         # Quantize inputs for cache key
@@ -900,6 +913,21 @@ def magnetic_inclination(
         Magnetic inclination in radians.
         Positive = field points into Earth (Northern hemisphere).
         Negative = field points out of Earth (Southern hemisphere).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import magnetic_inclination
+    >>> # Inclination at 40°N, 105°W (Denver)
+    >>> lat = np.radians(40)
+    >>> lon = np.radians(-105)
+    >>> I = magnetic_inclination(lat, lon, 1.6, 2023.0)
+    >>> # Northern hemisphere: inclination should be positive
+    >>> I > 0
+    True
+    >>> # Typical values in US are 50-70 degrees
+    >>> 0.8 < I < 1.3  # ~46-74 degrees
+    True
     """
     result = wmm(lat, lon, h, year, coeffs)
     return result.I
@@ -932,6 +960,22 @@ def magnetic_field_intensity(
     -------
     F : float
         Total magnetic field intensity in nT.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.magnetism import magnetic_field_intensity
+    >>> # Field intensity at magnetic equator vs pole
+    >>> F_eq = magnetic_field_intensity(0, 0, 0, 2023.0)  # Equator
+    >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2023.0)  # Near pole
+    >>> # Field is stronger at poles
+    >>> F_pole > F_eq
+    True
+    >>> # Typical Earth field is 25,000 to 65,000 nT
+    >>> 25000 < F_eq < 35000  # Equatorial field is weaker
+    True
+    >>> 55000 < F_pole < 65000  # Polar field is stronger
+    True
     """
     result = wmm(lat, lon, h, year, coeffs)
     return result.F
