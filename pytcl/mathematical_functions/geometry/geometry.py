@@ -132,6 +132,13 @@ def convex_hull_area(points: ArrayLike) -> float:
     -------
     area : float
         Area (2D) or volume (3D) of the convex hull.
+
+    Examples
+    --------
+    >>> points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
+    >>> area = convex_hull_area(points)
+    >>> area
+    1.0
     """
     points = np.asarray(points, dtype=np.float64)
     hull = ConvexHull(points)
@@ -180,6 +187,13 @@ def polygon_centroid(vertices: ArrayLike) -> NDArray[np.floating]:
     -------
     centroid : ndarray
         Centroid coordinates (x, y).
+
+    Examples
+    --------
+    >>> polygon = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
+    >>> centroid = polygon_centroid(polygon)
+    >>> np.allclose(centroid, [0.5, 0.5])
+    True
     """
     vertices = np.asarray(vertices, dtype=np.float64)
 
