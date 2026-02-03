@@ -871,3 +871,25 @@ def zpk_to_sos(
     >>> z2, p2, k2 = sos_to_zpk(sos)
     >>> np.allclose(z, z2) and np.allclose(p, p2)
     True
+    """
+    return scipy_signal.zpk2sos(np.asarray(z), np.asarray(p), k, pairing=pairing)
+
+
+__all__ = [
+    "FilterCoefficients",
+    "FrequencyResponse",
+    "butter_design",
+    "cheby1_design",
+    "cheby2_design",
+    "ellip_design",
+    "bessel_design",
+    "fir_design",
+    "fir_design_remez",
+    "apply_filter",
+    "filtfilt",
+    "frequency_response",
+    "group_delay",
+    "filter_order",
+    "sos_to_zpk",
+    "zpk_to_sos",
+]
