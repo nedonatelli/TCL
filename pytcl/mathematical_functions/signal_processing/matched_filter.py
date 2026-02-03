@@ -273,10 +273,21 @@ def optimal_filter(
     Examples
     --------
     >>> import numpy as np
+    >>> # White noise case (simple matched filter)
     >>> signal = np.random.randn(256)
     >>> template = np.ones(16)
-    >>> noise_psd = np.ones(256)  # White noise
+    >>> noise_psd = np.ones(256)  # White noise (flat PSD)
     >>> output = optimal_filter(signal, template, noise_psd)
+    >>> len(output) == len(signal)
+    True
+    >>> # Colored noise case (Wiener filtering optimal)
+    >>> # Create signal with target embedded in colored noise
+    >>> target = np.array([1, 2, 3, 2, 1])
+    >>> noise_freq = np.linspace(0, 1, 256)
+    >>> colored_noise_psd = 1.0 + 2.0 * np.exp(-5 * noise_freq)  # Red noise
+    >>> colored_noise = np.random.randn(256) * np.sqrt(colored_noise_psd)
+    >>> signal = np.concatenate([colored_noise, target, colored_noise])
+    >>> output = optimal_filter(signal, target, colored_noise_psd)
     >>> len(output) == len(signal)
     True
 
@@ -751,6 +762,26 @@ def cross_ambiguity(
         Doppler frequency values in Hz.
     caf : ndarray
         Cross-ambiguity function (2D, complex).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.signal_processing import (
+    ...     cross_ambiguity, generate_lfm_chirp
+    ... )
+    >>> # Generate two LFM chirps for correlation analysis
+    >>> fs = 10000  # 10 kHz sampling
+    >>> signal1 = generate_lfm_chirp(0.001, 1000, 2000, fs)  # 1 ms chirp
+    >>> signal2 = generate_lfm_chirp(0.001, 1000, 2000, fs)  # Identical chirp
+    >>> # Compute cross-ambiguity function
+    >>> delays, dopplers, caf = cross_ambiguity(
+    ...     signal1, signal2, fs, n_delay=64, n_doppler=64
+    ... )
+    >>> # Auto-correlation should have peak near zero delay/Doppler
+    >>> caf.shape
+    (64, 64)
+    >>> np.max(np.abs(caf)) > 0.9  # High correlation for identical signals
+    True
     """
     signal1 = np.asarray(signal1, dtype=np.complex128)
     signal2 = np.asarray(signal2, dtype=np.complex128)

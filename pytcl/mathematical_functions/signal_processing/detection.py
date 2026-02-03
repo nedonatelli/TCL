@@ -711,6 +711,21 @@ def cfar_so(
     result : CFARResult
         Named tuple with detection results.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.signal_processing import cfar_so
+    >>> # Create test signal with closely spaced targets in clutter
+    >>> np.random.seed(42)
+    >>> signal = np.random.exponential(1.0, 500)
+    >>> signal[200:205] = [30, 40, 35, 45, 38]  # Target cluster
+    >>> signal[350] = 50  # Isolated target
+    >>> # Detect using SO-CFAR
+    >>> result = cfar_so(signal, guard_cells=2, ref_cells=16, pfa=1e-4)
+    >>> # SO-CFAR good for clutter edge detection
+    >>> len(result.detection_indices) >= 2  # Should find multiple targets
+    True
+
     Notes
     -----
     SO-CFAR is complementary to GO-CFAR. It is more sensitive near
@@ -966,6 +981,22 @@ def cluster_detections(
     -------
     peak_indices : ndarray
         Indices of detection peaks after clustering.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.mathematical_functions.signal_processing import cluster_detections
+    >>> # CFAR detection result with closely spaced detections
+    >>> detections = np.zeros(100, dtype=bool)
+    >>> detections[20:24] = True  # Cluster 1 (4 adjacent detections)
+    >>> detections[60] = True      # Cluster 2 (single detection)
+    >>> detections[62] = True      # Close to cluster 2
+    >>> # Cluster with min_separation=1 (adjacent counts as same cluster)
+    >>> peaks = cluster_detections(detections, min_separation=1)
+    >>> len(peaks)  # Should find 2 clusters
+    2
+    >>> peaks[0]  # Center of first cluster (indices 20-23)
+    21
     """
     detections = np.asarray(detections)
 

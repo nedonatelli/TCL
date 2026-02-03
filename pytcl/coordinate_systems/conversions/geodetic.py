@@ -257,6 +257,27 @@ def geodetic2enu(
     enu : ndarray
         Local ENU coordinates [east, north, up] in meters.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems import geodetic2enu
+    >>> # Reference point: San Francisco Airport (-122.375°, 37.615°)
+    >>> lat_ref = np.radians(37.615)
+    >>> lon_ref = np.radians(-122.375)
+    >>> alt_ref = 0
+    >>> # Target point: 2 km north, 1 km east of reference
+    >>> # Approximate location using small offsets
+    >>> lat_target = lat_ref + np.radians(0.01)
+    >>> lon_target = lon_ref + np.radians(0.01)
+    >>> alt_target = 100  # 100 m elevation
+    >>> enu = geodetic2enu(lat_target, lon_target, alt_target,
+    ...                      lat_ref, lon_ref, alt_ref)
+    >>> # ENU coordinates should show positive north and east offsets
+    >>> enu[0] > 0 and enu[1] > 0  # East > 0, North > 0
+    True
+    >>> enu[2] > 100  # Up should be approximately the altitude difference
+    True
+
     See Also
     --------
     enu2geodetic : Inverse conversion.
@@ -508,6 +529,25 @@ def ned2ecef(
     -------
     ecef : ndarray
         ECEF coordinates [x, y, z] in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems import ned2ecef, geodetic2ecef
+    >>> # Reference point: Kennedy Space Center (28.5°N, 80.65°W)
+    >>> lat_ref = np.radians(28.5)
+    >>> lon_ref = np.radians(-80.65)
+    >>> # NED offset from reference: 5 km north, 3 km east, 1 km down
+    >>> ned = np.array([5000.0, 3000.0, 1000.0])
+    >>> # Convert to ECEF coordinates
+    >>> ecef = ned2ecef(ned, lat_ref, lon_ref)
+    >>> ecef.shape
+    (3,)
+    >>> # Verify roundtrip conversion
+    >>> from pytcl.coordinate_systems import ecef2ned
+    >>> ned_back = ecef2ned(ecef, lat_ref, lon_ref)
+    >>> np.allclose(ned, ned_back, atol=0.1)  # Allow small numerical error
+    True
 
     See Also
     --------
@@ -824,6 +864,24 @@ def sez2geodetic(
         Geodetic longitude in radians.
     alt : ndarray
         Altitude in meters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.coordinate_systems import sez2geodetic, geodetic2sez
+    >>> # Observer location: Arecibo Observatory (18.3°N, 66.75°W)
+    >>> lat_ref = np.radians(18.3)
+    >>> lon_ref = np.radians(-66.75)
+    >>> alt_ref = 500  # m
+    >>> # Observed satellite: 30 km south, 20 km east, 35 km zenith
+    >>> sez = np.array([-30000.0, 20000.0, 35000.0])
+    >>> # Convert to geodetic coordinates
+    >>> lat, lon, alt = sez2geodetic(sez, lat_ref, lon_ref, alt_ref)
+    >>> # Verify roundtrip conversion
+    >>> from pytcl.coordinate_systems import geodetic2sez
+    >>> sez_back = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)
+    >>> np.allclose(sez, sez_back, atol=1.0)  # Allow ~1m numerical error
+    True
 
     See Also
     --------
