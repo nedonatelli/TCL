@@ -901,6 +901,19 @@ def clear_great_circle_cache() -> None:
 
     This can be useful to free memory after processing large datasets
     or when cache statistics are being monitored.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.navigation import great_circle_distance, clear_great_circle_cache
+    >>> # Compute a few distances (cached)
+    >>> d1 = great_circle_distance(0, 0, np.radians(1), 0)
+    >>> d2 = great_circle_distance(0, 0, np.radians(2), 0)
+    >>> # Check cache state before clear
+    >>> cache_before = great_circle_distance.__wrapped__.__self__.cache_info()
+    >>> # Clear all cached values
+    >>> clear_great_circle_cache()
+    >>> # Cache is now empty
     """
     _gc_distance_cached.cache_clear()
     _gc_azimuth_cached.cache_clear()
@@ -914,6 +927,26 @@ def get_cache_info() -> dict[str, Any]:
     -------
     dict[str, Any]
         Dictionary with cache statistics for distance and azimuth caches.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.navigation import great_circle_distance, get_cache_info, clear_great_circle_cache
+    >>> # Clear cache first
+    >>> clear_great_circle_cache()
+    >>> # Compute some distances (multiple calls to test cache hits)
+    >>> d1 = great_circle_distance(0, 0, np.radians(1), 0)
+    >>> d1_again = great_circle_distance(0, 0, np.radians(1), 0)  # Cache hit
+    >>> # Get cache statistics
+    >>> info = get_cache_info()
+    >>> info['distance']['hits'] > 0  # Should have at least one hit
+    True
+    >>> info['distance']['currsize'] > 0  # Cache is not empty
+    True
+
+    See Also
+    --------
+    clear_great_circle_cache : Clear all cached values.
     """
     return {
         "distance": _gc_distance_cached.cache_info()._asdict(),
