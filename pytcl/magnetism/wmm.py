@@ -103,6 +103,14 @@ def create_wmm2020_coefficients() -> MagneticCoefficients:
     coeffs : MagneticCoefficients
         WMM2020 spherical harmonic coefficients.
 
+    Examples
+    --------
+    >>> coeffs = create_wmm2020_coefficients()
+    >>> coeffs.epoch
+    2020.0
+    >>> coeffs.n_max
+    12
+
     Notes
     -----
     These are the official WMM2020 coefficients valid from 2020.0 to 2025.0.

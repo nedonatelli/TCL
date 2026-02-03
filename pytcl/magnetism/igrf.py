@@ -53,6 +53,14 @@ def create_igrf13_coefficients() -> MagneticCoefficients:
     coeffs : MagneticCoefficients
         IGRF-13 spherical harmonic coefficients.
 
+    Examples
+    --------
+    >>> coeffs = create_igrf13_coefficients()
+    >>> coeffs.epoch
+    2020.0
+    >>> coeffs.n_max
+    13
+
     Notes
     -----
     IGRF-13 is valid from 1900.0 to 2025.0. This function returns
