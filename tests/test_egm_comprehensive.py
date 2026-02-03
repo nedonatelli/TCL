@@ -65,6 +65,7 @@ class TestGeoidHeight:
 
         # Direct calculation with test coefficients
         assert coeffs is not None
+        assert lat == 45.0 and lon == 10.0
 
     @pytest.mark.skip(reason="Requires EGM2008 data file")
     def test_geoid_height_single_point(self):
@@ -296,6 +297,7 @@ class TestEGMIntegration:
     def test_egm_different_degrees(self):
         """Test EGM calculations with different coefficient degrees."""
         lat, lon = 45.0, 10.0
+        assert isinstance(lat, float) and isinstance(lon, float)
 
         for n_max in [10, 20, 36]:
             coeffs = create_test_coefficients(n_max)

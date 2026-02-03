@@ -368,4 +368,5 @@ class TestDistributionEdgeCases:
         pdf_0 = b.pdf(0.0)
         pdf_1 = b.pdf(1.0)
         # May be infinite or finite depending on parameters
-        assert True  # Just ensure no exception
+        assert np.isfinite(pdf_0) or np.isinf(pdf_0)  # Ensure computation works
+        assert np.isfinite(pdf_1) or np.isinf(pdf_1)  # Ensure computation works

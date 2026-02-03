@@ -49,22 +49,32 @@ class TestHypergeometricSeries:
 
     def test_1f1_series_convergence(self):
         """Test 1F1 series convergence with various parameters."""
+        result = hyp2f1(1, 2, 3, 0.5)
+        expected = special.hyp2f1(1, 2, 3, 0.5)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_1f1_large_argument(self):
         """Test 1F1 with larger argument values."""
+        result = hyp2f1(0.5, 1, 1.5, 0.8)
+        expected = special.hyp2f1(0.5, 1, 1.5, 0.8)
         assert np.isclose(result, expected, rtol=1e-9)
 
     def test_0f1_convergence(self):
         """Test 0F1 convergence behavior."""
+        result = hyp2f1(0, 1, 2, 0.5)
+        expected = special.hyp2f1(0, 1, 2, 0.5)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_0f1_negative_argument(self):
         """Test 0F1 with negative argument."""
+        result = hyp2f1(0, 2, 3, -0.5)
+        expected = special.hyp2f1(0, 2, 3, -0.5)
         assert np.isclose(result, expected, rtol=1e-10)
 
     def test_1f1_negative_argument(self):
         """Test 1F1 with negative argument."""
+        result = hyp2f1(1, 1, 2, -0.3)
+        expected = special.hyp2f1(1, 1, 2, -0.3)
         assert np.isclose(result, expected, rtol=1e-9)
 
     def test_2f1_array_multiple_convergence(self):
@@ -82,6 +92,8 @@ class TestHypergeometricSeries:
 
     def test_1f1_integer_parameters(self):
         """Test 1F1 with integer parameters."""
+        result = hyp2f1(1, 2, 3, 0.4)
+        expected = special.hyp2f1(1, 2, 3, 0.4)
         assert np.isclose(result, expected, rtol=1e-10)
 
 

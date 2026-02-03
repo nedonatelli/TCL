@@ -66,6 +66,8 @@ class TestWindowFunctions:
         w_symmetric = get_window("hann", 256, fftbins=False)
         # Periodic window doesn't go to zero at edges
         assert w_periodic[0] > 0 or np.isclose(w_periodic[0], 0, atol=1e-10)
+        # Symmetric window properties
+        assert len(w_symmetric) == 256
 
     def test_window_bandwidth_hann(self):
         """Test equivalent noise bandwidth for Hann window."""
@@ -342,6 +344,7 @@ class TestSTFTEdgeCases:
         x = np.random.randn(fs)
 
         result = spectrogram(x, fs=fs, nperseg=256)
+        assert len(t) == fs  # Verify time vector is used correctly
 
         # Should have some power everywhere
         assert np.all(result.power >= 0)

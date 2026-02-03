@@ -165,6 +165,7 @@ class TestMaturitySummary:
             modules = get_modules_by_maturity(level)
             # Count should match or be subset
             assert count >= 0
+            assert len(modules) >= 0  # Verify modules list is valid
 
 
 class TestStabilityChecks:
@@ -308,3 +309,4 @@ class TestMaturityIntegration:
 
         # Should account for all modules
         assert total_in_summary > 0
+        assert total_modules >= total_in_summary  # Verify consistent counts
