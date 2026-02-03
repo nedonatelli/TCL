@@ -210,6 +210,13 @@ def pinv_truncated(
     A_pinv : ndarray
         Pseudo-inverse of A with shape (n, m).
 
+    Examples
+    --------
+    >>> A = np.array([[1, 2], [3, 4], [5, 6]])
+    >>> A_pinv = pinv_truncated(A)
+    >>> np.allclose(A @ A_pinv @ A, A)
+    True
+
     See Also
     --------
     numpy.linalg.pinv : Standard pseudo-inverse.
