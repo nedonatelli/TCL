@@ -13,18 +13,18 @@ import numpy as np
 import pytest
 
 from pytcl.gpu.utils import (
-    is_apple_silicon,
-    is_mlx_available,
-    is_cupy_available,
-    get_backend,
-    is_gpu_available,
-    get_array_module,
-    to_gpu,
-    to_cpu,
-    ensure_gpu_array,
-    sync_gpu,
-    get_gpu_memory_info,
     clear_gpu_memory,
+    ensure_gpu_array,
+    get_array_module,
+    get_backend,
+    get_gpu_memory_info,
+    is_apple_silicon,
+    is_cupy_available,
+    is_gpu_available,
+    is_mlx_available,
+    sync_gpu,
+    to_cpu,
+    to_gpu,
 )
 
 

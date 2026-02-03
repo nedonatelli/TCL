@@ -14,14 +14,14 @@ import numpy as np
 import pytest
 
 from pytcl.astronomical.lambert import (
-    lambert_universal,
-    lambert_izzo,
-    minimum_energy_transfer,
-    hohmann_transfer,
-    bi_elliptic_transfer,
     LambertSolution,
     _stumpff_c2,
     _stumpff_c3,
+    bi_elliptic_transfer,
+    hohmann_transfer,
+    lambert_izzo,
+    lambert_universal,
+    minimum_energy_transfer,
 )
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 

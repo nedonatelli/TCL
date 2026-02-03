@@ -11,16 +11,16 @@ import pytest
 from scipy import signal, special, stats
 
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
-    hyp2f1,
-    hyp1f1,
-    hyp0f1,
-    hyperu,
     generalized_hypergeometric,
+    hyp0f1,
+    hyp1f1,
+    hyp2f1,
+    hyperu,
 )
 from pytcl.mathematical_functions.transforms.stft import (
-    stft,
     istft,
     spectrogram,
+    stft,
     window_bandwidth,
 )
 

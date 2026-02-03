@@ -12,13 +12,13 @@ import numpy as np
 import pytest
 
 from pytcl.mathematical_functions.signal_processing.detection import (
-    threshold_factor,
+    cfar_2d,
     cfar_ca,
     cfar_go,
-    cfar_so,
     cfar_os,
-    cfar_2d,
+    cfar_so,
     detection_probability,
+    threshold_factor,
 )
 
 

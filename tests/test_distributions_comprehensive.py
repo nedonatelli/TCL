@@ -17,14 +17,14 @@ import pytest
 from scipy import stats
 
 from pytcl.mathematical_functions.statistics.distributions import (
-    Gaussian,
-    Uniform,
+    Beta,
+    ChiSquared,
     Exponential,
     Gamma,
-    ChiSquared,
-    StudentT,
-    Beta,
+    Gaussian,
     Poisson,
+    StudentT,
+    Uniform,
 )
 
 

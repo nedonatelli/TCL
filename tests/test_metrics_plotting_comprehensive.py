@@ -21,14 +21,14 @@ except ImportError:
     HAS_PLOTLY = False
 
 from pytcl.plotting.metrics import (
-    plot_rmse_over_time,
-    plot_nees_sequence,
-    plot_nis_sequence,
-    plot_ospa_over_time,
     plot_cardinality_over_time,
     plot_consistency_summary,
     plot_error_histogram,
     plot_monte_carlo_rmse,
+    plot_nees_sequence,
+    plot_nis_sequence,
+    plot_ospa_over_time,
+    plot_rmse_over_time,
 )
 
 

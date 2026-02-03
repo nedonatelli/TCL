@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
-    hyp2f1,
-    hyp1f1,
-    hyp0f1,
     generalized_hypergeometric,
+    hyp0f1,
+    hyp1f1,
+    hyp2f1,
 )
 
 

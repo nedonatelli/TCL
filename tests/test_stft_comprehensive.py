@@ -13,10 +13,10 @@ import numpy as np
 import pytest
 
 from pytcl.mathematical_functions.transforms.stft import (
-    stft,
+    get_window,
     istft,
     spectrogram,
-    get_window,
+    stft,
     window_bandwidth,
 )
 

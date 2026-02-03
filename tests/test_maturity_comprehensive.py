@@ -12,14 +12,14 @@ Tests coverage for:
 import pytest
 
 from pytcl.core.maturity import (
-    MaturityLevel,
-    get_maturity,
-    get_modules_by_maturity,
-    get_maturity_summary,
-    is_stable,
-    is_production_ready,
-    format_maturity_badge,
     MODULE_MATURITY,
+    MaturityLevel,
+    format_maturity_badge,
+    get_maturity,
+    get_maturity_summary,
+    get_modules_by_maturity,
+    is_production_ready,
+    is_stable,
 )
 
 

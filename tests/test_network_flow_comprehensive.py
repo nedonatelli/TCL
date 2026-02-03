@@ -12,14 +12,14 @@ import numpy as np
 import pytest
 
 from pytcl.assignment_algorithms.network_flow import (
-    assignment_to_flow_network,
-    min_cost_flow_successive_shortest_paths,
-    min_cost_flow_simplex,
-    assignment_from_flow_solution,
-    min_cost_assignment_via_flow,
+    FlowEdge,
     FlowStatus,
     MinCostFlowResult,
-    FlowEdge,
+    assignment_from_flow_solution,
+    assignment_to_flow_network,
+    min_cost_assignment_via_flow,
+    min_cost_flow_simplex,
+    min_cost_flow_successive_shortest_paths,
 )
 
 

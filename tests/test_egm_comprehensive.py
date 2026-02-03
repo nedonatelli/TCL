@@ -13,13 +13,13 @@ import numpy as np
 import pytest
 
 from pytcl.gravity.egm import (
+    EGMCoefficients,
     create_test_coefficients,
+    deflection_of_vertical,
     geoid_height,
     geoid_heights,
-    gravity_disturbance,
     gravity_anomaly,
-    deflection_of_vertical,
-    EGMCoefficients,
+    gravity_disturbance,
 )
 
 

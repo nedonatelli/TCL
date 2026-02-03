@@ -16,8 +16,8 @@ from pytcl.mathematical_functions.special_functions.debye import (
     debye_2,
     debye_3,
     debye_4,
-    debye_heat_capacity,
     debye_entropy,
+    debye_heat_capacity,
 )
 
 
