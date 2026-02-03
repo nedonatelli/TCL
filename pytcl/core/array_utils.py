@@ -269,6 +269,16 @@ def unvec(
     -------
     NDArray
         Matrix with specified shape.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.array_utils import unvec
+    >>> v = np.array([1, 2, 3, 4, 5, 6])
+    >>> M = unvec(v, (2, 3))
+    >>> M
+    array([[1, 3, 5],
+           [2, 4, 6]])
     """
     v = np.asarray(v).flatten()
     return v.reshape(shape, order=order)
@@ -362,6 +372,16 @@ def unskew(S: ArrayLike) -> NDArray[np.floating[Any]]:
     -------
     NDArray
         3-element vector.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.array_utils import unskew, skew_symmetric
+    >>> v = np.array([1, 2, 3])
+    >>> S = skew_symmetric(v)
+    >>> v_recovered = unskew(S)
+    >>> np.allclose(v, v_recovered)
+    True
     """
     S = np.asarray(S, dtype=np.float64)
     if S.shape != (3, 3):
@@ -503,6 +523,20 @@ def meshgrid_ij(
     -------
     tuple of NDArray
         Coordinate matrices.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.array_utils import meshgrid_ij
+    >>> x = np.array([1, 2, 3])
+    >>> y = np.array([4, 5])
+    >>> X, Y = meshgrid_ij(x, y)
+    >>> X
+    array([[1, 2, 3],
+           [1, 2, 3]])
+    >>> Y
+    array([[4, 4, 4],
+           [5, 5, 5]])
     """
     return np.meshgrid(*xi, indexing=indexing)
 
@@ -563,6 +597,15 @@ def nearest_positive_definite(A: ArrayLike) -> NDArray[np.floating[Any]]:
     -------
     NDArray
         Nearest positive definite matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.array_utils import nearest_positive_definite
+    >>> A = np.array([[1, -2], [-2, 1]])  # Not PD
+    >>> A_pd = nearest_positive_definite(A)
+    >>> np.all(np.linalg.eigvalsh(A_pd) > 0)
+    True
     """
     A = np.asarray(A, dtype=np.float64)
 
@@ -614,6 +657,15 @@ def safe_cholesky(
     ------
     np.linalg.LinAlgError
         If Cholesky decomposition fails after all attempts.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.array_utils import safe_cholesky
+    >>> A = np.array([[4, 2], [2, 3]])  # PD matrix
+    >>> L = safe_cholesky(A)
+    >>> np.allclose(L @ L.T, A)
+    True
     """
     A = np.asarray(A, dtype=np.float64)
 

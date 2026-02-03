@@ -115,6 +115,12 @@ def is_cupy_available() -> bool:
     -------
     bool
         True if CuPy acceleration is available.
+
+    Examples
+    --------
+    >>> from pytcl.gpu.utils import is_cupy_available
+    >>> if is_cupy_available():
+    ...     print("CUDA GPU available")
     """
     if not is_available("cupy"):
         _logger.debug("CuPy not installed")
@@ -430,6 +436,15 @@ def ensure_gpu_array(
     -------
     GPUArray
         Array on GPU with specified dtype (cupy.ndarray or mlx.array).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.utils import ensure_gpu_array, is_gpu_available
+    >>> x = np.array([1, 2, 3])
+    >>> if is_gpu_available():
+    ...     x_gpu = ensure_gpu_array(x, dtype=np.float32)
+    ...     print(x_gpu.dtype)
     """
     gpu_arr = to_gpu(arr, backend=backend)
 
