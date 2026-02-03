@@ -68,6 +68,13 @@ def weighted_var(
     -------
     var : ndarray
         Weighted variance.
+
+    Examples
+    --------
+    >>> x = [1, 2, 3]
+    >>> weights = [1, 1, 2]
+    >>> weighted_var(x, weights)
+    0.5625
     """
     x = np.asarray(x, dtype=np.float64)
     weights = np.asarray(weights, dtype=np.float64)
@@ -106,6 +113,14 @@ def weighted_cov(
     -------
     cov : ndarray
         Weighted covariance matrix of shape (n_features, n_features).
+
+    Examples
+    --------
+    >>> x = [[1, 2], [2, 3], [3, 4]]
+    >>> weights = [1, 1, 1]
+    >>> cov = weighted_cov(x, weights)
+    >>> cov.shape
+    (2, 2)
     """
     x = np.asarray(x, dtype=np.float64)
     weights = np.asarray(weights, dtype=np.float64)
@@ -173,6 +188,12 @@ def sample_var(
     -------
     var : ndarray
         Sample variance.
+
+    Examples
+    --------
+    >>> x = [1, 2, 3, 4, 5]
+    >>> sample_var(x)
+    2.5
     """
     return np.var(x, ddof=ddof, axis=axis, dtype=np.float64)
 
@@ -198,6 +219,13 @@ def sample_cov(
     -------
     cov : ndarray
         Covariance matrix.
+
+    Examples
+    --------
+    >>> x = [[1, 2], [2, 3], [3, 4]]
+    >>> cov = sample_cov(x)
+    >>> cov.shape
+    (2, 2)
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -224,6 +252,15 @@ def sample_corr(x: ArrayLike) -> NDArray[np.floating]:
     -------
     corr : ndarray
         Correlation matrix of shape (n_features, n_features).
+
+    Examples
+    --------
+    >>> x = [[1, 2], [2, 3], [3, 4]]
+    >>> corr = sample_corr(x)
+    >>> corr.shape
+    (2, 2)
+    >>> corr[0, 0]  # Correlation of feature 1 with itself
+    1.0
     """
     return np.corrcoef(np.asarray(x, dtype=np.float64).T)
 
@@ -246,6 +283,13 @@ def median(
     -------
     med : ndarray
         Median value(s).
+
+    Examples
+    --------
+    >>> median([1, 2, 3, 4, 5])
+    3.0
+    >>> median([1, 2, 3, 4])
+    2.5
     """
     return np.median(x, axis=axis)
 
@@ -275,6 +319,11 @@ def mad(
     mad : ndarray
         MAD value(s).
 
+    Examples
+    --------
+    >>> mad([1, 2, 3, 4, 5])
+    1.4826
+
     Notes
     -----
     For normally distributed data, scale * MAD approximates the
@@ -303,6 +352,11 @@ def iqr(
     -------
     iqr : ndarray
         Interquartile range (Q3 - Q1).
+
+    Examples
+    --------
+    >>> iqr([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    4.5
     """
     x = np.asarray(x, dtype=np.float64)
     q75, q25 = np.percentile(x, [75, 25], axis=axis)
@@ -330,6 +384,11 @@ def skewness(
     -------
     skew : ndarray
         Skewness value(s).
+
+    Examples
+    --------
+    >>> skewness([1, 2, 3, 4, 5])
+    0.0
     """
     from scipy.stats import skew as scipy_skew
 
@@ -361,6 +420,11 @@ def kurtosis(
     -------
     kurt : ndarray
         Kurtosis value(s).
+
+    Examples
+    --------
+    >>> kurtosis([1, 2, 3, 4, 5])
+    -1.2
     """
     from scipy.stats import kurtosis as scipy_kurtosis
 
@@ -393,6 +457,13 @@ def moment(
     -------
     m : ndarray
         Moment value(s).
+
+    Examples
+    --------
+    >>> moment([1, 2, 3, 4, 5], order=2)
+    2.0
+    >>> moment([1, 2, 3, 4, 5], order=2, central=False)
+    11.0
     """
     from scipy.stats import moment as scipy_moment
 
