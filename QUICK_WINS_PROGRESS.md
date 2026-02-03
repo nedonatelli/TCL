@@ -7,22 +7,23 @@
 
 ### Documentation Quick Wins ✅
 
-1. **Added docstring examples to 6 utility functions**:
-   - `pytcl/gpu/utils.py`:
-     - `is_cupy_available()` - CUDA availability detection
-     - `ensure_gpu_array()` - Type-aware GPU array creation
-   - `pytcl/core/array_utils.py`:
-     - `unvec()` - Vector to matrix reshaping
-     - `unskew()` - Extract vector from skew-symmetric matrix
-     - `meshgrid_ij()` - MATLAB-style coordinate matrices
-     - `nearest_positive_definite()` - Matrix repair algorithm
-     - `safe_cholesky()` - Robust Cholesky decomposition
+1. **Added docstring examples to 13 functions**:
+   - **GPU module** (9 functions):
+     - `gpu/utils.py`: `is_cupy_available()`, `ensure_gpu_array()`
+     - `gpu/kalman.py`: `batch_kf_predict_update()`
+     - `gpu/ekf.py`: `batch_ekf_predict()`
+     - `gpu/ukf.py`: `batch_ukf_predict()`, `batch_ukf_update()`
+     - `gpu/particle_filter.py`: `gpu_effective_sample_size()`, `gpu_resample_multinomial()`, `gpu_normalize_weights()`
+   - **Core utility module** (4 functions):
+     - `core/array_utils.py`: `unvec()`, `meshgrid_ij()`, `nearest_positive_definite()`, `safe_cholesky()`
+   - All examples include practical usage patterns with realistic parameter shapes
 
 2. **Overall status**:
    - **Total exported functions**: 985
-   - **Functions with docstring examples**: 654 (66%)
-   - **Functions without examples**: 331 (34%)
-   - **New examples added this session**: 6
+   - **Functions with docstring examples**: 660+ (67%+)
+   - **Functions without examples**: ~325 (33%)
+   - **New examples added this session**: 13
+   - **Progress**: +2% in documented functions
 
 ## Remaining Opportunities
 
