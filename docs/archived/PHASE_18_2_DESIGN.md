@@ -151,8 +151,8 @@ N_density(z, lat, lon, T, Texo, F107a, Ap) → n_N
 ```python
 class NRLMSISE00:
     """High-fidelity atmosphere model (-5 to 1000 km)"""
-    
-    def __call__(self, latitude, longitude, altitude, 
+
+    def __call__(self, latitude, longitude, altitude,
                  year, day_of_year, seconds_in_day,
                  f107, f107a, ap):
         # Returns NRLMSISE00Output with 8 species densities

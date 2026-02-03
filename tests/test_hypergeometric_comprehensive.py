@@ -68,7 +68,7 @@ class TestHypergeometric2F1:
             (2.0, 2.0, 4.0, 0.3),
             (0.25, 0.75, 1.25, 0.4),
         ]
-        
+
         for a, b, c, z in test_cases:
             result = hyp2f1(a, b, c, z)
             assert np.isfinite(result), f"2F1({a},{b};{c};{z}) not finite"
@@ -86,7 +86,7 @@ class TestHypergeometric2F1:
         a, b, c = 1.0, 2.0, 3.0
         z_arr = np.array([0.1, 0.2, 0.3, 0.4])
         results = np.array([hyp2f1(a, b, c, z) for z in z_arr])
-        
+
         # Results should be monotonically increasing for these parameters
         assert np.all(np.diff(results) > 0)
 
@@ -96,13 +96,13 @@ class TestHypergeometric2F1:
             from scipy.special import hyp2f1 as scipy_hyp2f1
         except ImportError:
             pytest.skip("scipy not available")
-        
+
         test_cases = [
             (0.5, 1.0, 1.5, 0.1),
             (1.0, 2.0, 3.0, 0.3),
             (2.0, 3.0, 4.0, 0.2),
         ]
-        
+
         for a, b, c, z in test_cases:
             our_result = hyp2f1(a, b, c, z)
             scipy_result = scipy_hyp2f1(a, b, c, z)
@@ -128,7 +128,7 @@ class TestHypergeometric0F1:
             (3.0, 1.0),
             (2.5, 2.0),
         ]
-        
+
         for b, z in test_cases:
             result = hyp0f1(b, z)
             assert np.isfinite(result), f"0F1(;{b};{z}) not finite"
@@ -146,7 +146,7 @@ class TestHypergeometric0F1:
         b = 2.0
         z_arr = np.linspace(0, 1, 5)
         results = np.array([hyp0f1(b, z) for z in z_arr])
-        
+
         assert len(results) == len(z_arr)
         assert np.all(np.isfinite(results))
 
@@ -169,7 +169,7 @@ class TestHypergeometric1F1:
             (2.0, 3.0, 1.0),
             (1.5, 2.5, 2.0),
         ]
-        
+
         for a, b, z in test_cases:
             result = hyp1f1(a, b, z)
             assert np.isfinite(result), f"1F1({a};{b};{z}) not finite"
@@ -196,7 +196,7 @@ class TestHypergeometric1F1:
         a, b = 1.0, 2.0
         z_vals = np.array([0.1, 0.5, 1.0, 2.0])
         results = np.array([hyp1f1(a, b, z) for z in z_vals])
-        
+
         # For positive a, b, z, 1F1 should increase with z
         assert np.all(np.diff(results) > 0)
 
@@ -205,7 +205,7 @@ class TestHypergeometric1F1:
         a, b = 1.0, 2.0
         z_arr = np.linspace(0, 1, 5)
         results = np.array([hyp1f1(a, b, z) for z in z_arr])
-        
+
         assert len(results) == len(z_arr)
         assert np.all(np.isfinite(results))
 
@@ -215,13 +215,13 @@ class TestHypergeometric1F1:
             from scipy.special import hyp1f1 as scipy_hyp1f1
         except ImportError:
             pytest.skip("scipy not available")
-        
+
         test_cases = [
             (0.5, 1.5, 0.5),
             (1.0, 2.0, 1.0),
             (2.0, 3.0, 0.5),
         ]
-        
+
         for a, b, z in test_cases:
             our_result = hyp1f1(a, b, z)
             scipy_result = scipy_hyp1f1(a, b, z)

@@ -41,7 +41,7 @@ dynamic_estimation/
 ## 1. Constrained Extended Kalman Filter
 
 ### Purpose
-Enforce state constraints (linear and nonlinear) while maintaining Kalman 
+Enforce state constraints (linear and nonlinear) while maintaining Kalman
 optimality as closely as possible.
 
 ### Key Algorithms
@@ -55,7 +55,7 @@ optimality as closely as possible.
 ```python
 class ConstrainedEKF:
     """Extended Kalman Filter with state constraints."""
-    
+
     def __init__(self, constraint_type='linear'):
         """
         Parameters
@@ -63,16 +63,16 @@ class ConstrainedEKF:
         constraint_type : {'linear', 'nonlinear', 'mixed'}
             Type of constraints to enforce.
         """
-    
+
     def add_constraint(self, constraint_fcn, constraint_jac=None):
         """Register a constraint function."""
-    
+
     def predict(self, x, P, f, F, Q):
         """Standard EKF prediction (no constraints)."""
-    
+
     def update(self, x, P, z, h, H, R):
         """Standard EKF update (no constraints)."""
-    
+
     def enforce_constraints(self, x, P):
         """Project solution onto constraint manifold."""
 ```
@@ -108,7 +108,7 @@ the pdf as sum of Gaussians (mixture model).
 ```python
 class GaussianSumFilter:
     """Nonlinear filter using mixture of Gaussians."""
-    
+
     def __init__(self, n_components=5):
         """
         Parameters
@@ -117,19 +117,19 @@ class GaussianSumFilter:
             Initial number of mixture components.
         """
         self.components = []  # List of (x, P, weight)
-    
+
     def predict(self, f, F_list, Q_list):
         """Predict each component forward."""
-    
+
     def update(self, z, h, H_list, R):
         """Update weights based on measurement likelihood."""
-    
+
     def prune_components(self, threshold=1e-3):
         """Remove low-weight components."""
-    
+
     def merge_components(self, max_components=5):
         """Merge similar components."""
-    
+
     def estimate(self):
         """Return weighted mean and covariance."""
 ```
@@ -164,7 +164,7 @@ Each particle carries a Kalman filter for linear component.
 ```python
 class RaoBlackwellizedParticleFilter:
     """Particle filter with Kalman filtering of linear subspace."""
-    
+
     def __init__(self, n_particles=100, resampling='systematic'):
         """
         Parameters
@@ -175,29 +175,29 @@ class RaoBlackwellizedParticleFilter:
             Resampling strategy.
         """
         self.particles = []  # List of (x_nl, x_l, P_l, weight)
-    
+
     def predict(self, f_nl, f_l, F_l_list, Q_nl, Q_l_list):
         """
         Predict particles and Kalman filters.
-        
+
         For each particle:
         1. Propagate nonlinear part via f_nl
         2. Propagate Kalman filter with f_l(particle), F_l, Q_l
         """
-    
+
     def update(self, z, h_nl, h_l, H_l_list, R):
         """
         Update weights and Kalman filters.
-        
+
         For each particle:
         1. Evaluate measurement via h_nl(particle) + h_l(x_l)
         2. Update Kalman filter with this measurement
         3. Weight ∝ likelihood from Kalman filter
         """
-    
+
     def resample_if_needed(self, threshold=None):
         """Resample particles if Neff < threshold."""
-    
+
     def estimate(self):
         """Return weighted mean and covariance."""
 ```

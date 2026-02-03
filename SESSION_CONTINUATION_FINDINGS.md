@@ -55,7 +55,7 @@ __all__ = [
 
 #### Verified Present (No Action Needed):
 - **CFAR Detection** (5 functions): All have complete examples
-- **Filter Design** (8 functions): All have complete examples  
+- **Filter Design** (8 functions): All have complete examples
 - **Signal Processing Analysis** (4 functions): All have complete examples
 - **N-D Assignment** (3 functions): All have complete examples
 - **JPDA** (3 functions): All have complete examples

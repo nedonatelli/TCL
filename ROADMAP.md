@@ -283,8 +283,8 @@
 
 ## v2.0.0 Comprehensive Roadmap
 
-**Release Target:** 18 months (Months 1-18, starting Q1 2026)  
-**Status:** Planning Phase  
+**Release Target:** 18 months (Months 1-18, starting Q1 2026)
+**Status:** Planning Phase
 **Last Updated:** January 4, 2026
 
 ### Executive Summary
@@ -487,8 +487,8 @@ Eight comprehensive notebooks covering:
 
 #### 4.2 Supporting Infrastructure
 
-**Dataset Handling:** Create `examples/data/` directory  
-**Binder Integration:** Set up cloud execution  
+**Dataset Handling:** Create `examples/data/` directory
+**Binder Integration:** Set up cloud execution
 **CI Validation:** `pytest --nbval` integration
 
 **Effort:** MEDIUM (2 weeks)
@@ -549,8 +549,8 @@ Eight comprehensive notebooks covering:
 
 ### Phase 6: Test Expansion & Coverage Improvement (Months 7-12)
 
-**Current Status:** 2,057 tests, 76% line coverage  
-**Target:** 2,100+ tests, 80%+ line coverage  
+**Current Status:** 2,057 tests, 76% line coverage
+**Target:** 2,100+ tests, 80%+ line coverage
 **Timeline:** Months 7-12 (15 weeks effort, concurrent with Phase 5 GPU work)
 
 #### 6.1 Network Flow Tests Re-enablement

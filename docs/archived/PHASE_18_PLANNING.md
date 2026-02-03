@@ -1,7 +1,7 @@
 # Phase 18+ Planning: Beyond 99% MATLAB Parity
 
-**Current Status:** v1.6.1 (99% MATLAB parity achieved)  
-**Planning Date:** January 3, 2026  
+**Current Status:** v1.6.1 (99% MATLAB parity achieved)
+**Planning Date:** January 3, 2026
 **Scope:** Strategic planning for Phase 18 and beyond
 
 ---
@@ -30,7 +30,7 @@ The project has successfully achieved **99% MATLAB TCL parity** with v1.6.0/v1.6
   - TEME reference frame (Two-Line Element Mean Equator)
   - TOD/MOD frames (True/Mean of Date)
   - SGP4/SDP4 satellite propagation
-  
+
 **Remaining Gaps:**
 - [ ] **PEF (Pseudo-Earth Fixed)** - Intermediate frame in GCRF→ITRF chain
 - [ ] **SEZ (South-East-Zenith)** - Horizon-relative frame for radar/antennas
@@ -42,19 +42,19 @@ The project has successfully achieved **99% MATLAB TCL parity** with v1.6.0/v1.6
 Task 1: Add PEF frame
   - gcrf_to_pef(), pef_to_gcrf()
   - Integration with ITRF chain
-  
-Task 2: Add SEZ frame  
+
+Task 2: Add SEZ frame
   - geodetic_to_sez(), sez_to_geodetic()
   - Horizon angle computations
-  
+
 Task 3: Implement IAU2000 nutation
   - CIO locator X,Y coordinates
   - Optional: IAU2006, IAU2013
-  
+
 Task 4: Documentation & validation
   - Reference implementations against SOFA library
   - Example: Earth observation, antenna pointing
-  
+
 Files:
   - pytcl/astronomical/reference_frames.py (extend)
   - tests/test_reference_frames.py (expand)
@@ -80,15 +80,15 @@ Task 1: NRLMSISE-00 (Medium Priority)
   - Density, temperature, composition at altitude
   - Solar activity (F10.7, Ap index) inputs
   - Altitude range: -5 to 1000 km
-  
+
 Task 2: HWM (Lower Priority)
   - Zonal/meridional winds
   - Seasonal variation models
-  
+
 Task 3: Reference data
   - Atmospheric drag lookup tables
   - CdA (drag coefficient × area) database
-  
+
 Files:
   - pytcl/geophysical/atmosphere.py (expand)
   - data/atmosphere_models/ (NRLMSISE coefficients)
@@ -115,17 +115,17 @@ Task 1: Constrained EKF
   - Inequality constraints: x > 0, x < 1, etc.
   - Equality constraints: sum(x) = 1
   - Projection onto constraint manifold
-  
+
 Task 2: Gaussian Sum Filter
   - Multi-component representation
   - Merging heuristics (Runnalls, West)
   - Application: multi-hypothesis tracking
-  
+
 Task 3: Rao-Blackwellized PF
   - Factorization for linear subcomponents
   - Reduced dimensionality for particles
   - Application: nonlinear bearing-only tracking
-  
+
 Files:
   - pytcl/dynamic_estimation/kalman/constrained_ekf.py (new)
   - pytcl/dynamic_estimation/gaussian_sum_filter.py (new)
@@ -171,18 +171,18 @@ Task 1: Run detailed profiling
     - Spherical harmonics (gravity/magnetism)
     - Assignment algorithms (Hungarian, 3D)
     - Matrix operations
-  
+
 Task 2: Target optimizations
   - Numba JIT compilation (already partial)
   - Cython for critical loops
   - BLAS/LAPACK library tuning
   - Vectorization improvements
-  
+
 Task 3: Benchmark validation
   - Verify speedups don't break accuracy
   - Update SLO targets
   - Document performance characteristics
-  
+
 Files:
   - scripts/profile_analysis.py (new)
   - benchmarks/ (extend with more profiles)
@@ -228,12 +228,12 @@ Example: Assignment algorithms
   - Medium (100 < n < 1000): Auction
   - Large (n > 1000): Approximate greedy
   - 3D: Lagrangian/auction based on size
-  
+
 Example: Orbital propagation
   - Near-Earth (SGP4): TLE-based propagation
   - Precision required: Switch to Runge-Kutta
   - Long term (years): Analytical propagation
-  
+
 Implementation:
   - pytcl/dynamic_estimation/optimizer_selection.py (new)
   - Heuristics + benchmarking
@@ -261,20 +261,20 @@ Implementation:
 Task 1: MATLAB bridge
   - pythonengine or network API
   - Serialize/deserialize common structures
-  
+
 Task 2: ROS support
   - Define .msg files for tracks, measurements
   - pytcl node examples
-  
+
 Task 3: Live dashboards
   - Streamlit app for filter visualization
   - Real-time track display
-  
+
 Task 4: Format support
   - RINEX (GNSS data)
   - NMEA (GPS sentences)
   - CZml (visualization)
-  
+
 Files:
   - pytcl/bridges/matlab_interface.py
   - pytcl/io/rinex_loader.py
@@ -404,16 +404,16 @@ Files:
 1. Extend benchmark suite:
    - Add more realistic scenarios
    - Hardware-specific tests
-   
+
 2. Create dashboard (GitHub Pages):
    - Performance trends
    - Regression alerts
    - SLO compliance status
-   
+
 3. CI integration:
    - Fail builds if SLO violated
    - Comment performance delta on PRs
-   
+
 Files:
   - benchmarks/hardware_profiles/ (new)
   - scripts/benchmark_dashboard.py (enhance)

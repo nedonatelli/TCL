@@ -148,8 +148,8 @@ from scipy.io import loadmat
 import numpy as np
 
 data = loadmat('cart2sphere_reference.mat')
-np.savez('cart2sphere_reference.npz', 
-         input=data['input'], 
+np.savez('cart2sphere_reference.npz',
+         input=data['input'],
          expected=data['output'])
 ```
 
@@ -176,10 +176,10 @@ When porting a function from the original MATLAB library:
    Notes
    -----
    This is a port of Cart2Sphere.m from the MATLAB Tracker Component Library.
-   
+
    References
    ----------
-   .. [1] Original implementation: 
+   .. [1] Original implementation:
           https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary
    ```
 
@@ -204,13 +204,13 @@ When porting a function from the original MATLAB library:
    ```bash
    # Format code
    black .
-   
+
    # Lint
    flake8 pytcl tests
-   
+
    # Type check
    mypy pytcl
-   
+
    # Run tests
    pytest
    ```

@@ -860,7 +860,7 @@ def zpk_to_sos(
     ... )
     >>> # Create a simple 2nd order Butterworth-like filter
     >>> z = np.array([-1.0, -1.0])  # Zeros at -1
-    >>> p = np.array([0.7071 * np.exp(1j * np.pi / 4), 
+    >>> p = np.array([0.7071 * np.exp(1j * np.pi / 4),
     ...               0.7071 * np.exp(-1j * np.pi / 4)])  # Complex poles
     >>> k = 1.0
     >>> sos = zpk_to_sos(z, p, k)

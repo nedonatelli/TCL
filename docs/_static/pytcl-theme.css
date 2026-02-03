@@ -2,15 +2,15 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * pyTCL Theme - Mission Control Design System
  * ═══════════════════════════════════════════════════════════════════════════
- * 
+ *
  * A dark, technical theme inspired by radar systems and aerospace interfaces.
  * Designed for documentation, dashboards, and developer tools.
- * 
+ *
  * Usage:
  *   1. Import this CSS file
  *   2. Add class="pytcl-theme" to your <html> or <body> element
  *   3. Use the provided utility classes and CSS custom properties
- * 
+ *
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -23,7 +23,7 @@
   /* ─────────────────────────────────────────────────────────────────────────
      Color Palette
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   /* Background Scale (darkest to lightest) */
   --pytcl-bg-void: #050709;
   --pytcl-bg-primary: #0a0e14;
@@ -31,73 +31,73 @@
   --pytcl-bg-tertiary: #161b22;
   --pytcl-bg-elevated: #1c2128;
   --pytcl-bg-surface: #21262d;
-  
+
   /* Accent Colors */
   --pytcl-cyan: #00d4ff;
   --pytcl-cyan-bright: #4de8ff;
   --pytcl-cyan-dim: #0099bb;
   --pytcl-cyan-muted: #006680;
-  
+
   --pytcl-green: #00ff88;
   --pytcl-green-bright: #4dffaa;
   --pytcl-green-dim: #00cc6a;
   --pytcl-green-muted: #008844;
-  
+
   --pytcl-amber: #ffb800;
   --pytcl-amber-bright: #ffc933;
   --pytcl-amber-dim: #cc9300;
   --pytcl-amber-muted: #806000;
-  
+
   --pytcl-red: #ff4757;
   --pytcl-red-bright: #ff6b7a;
   --pytcl-red-dim: #cc3945;
   --pytcl-red-muted: #802530;
-  
+
   --pytcl-purple: #a855f7;
   --pytcl-purple-bright: #c084fc;
   --pytcl-purple-dim: #7c3aed;
-  
+
   /* Text Colors */
   --pytcl-text-primary: #e6edf3;
   --pytcl-text-secondary: #8b949e;
   --pytcl-text-muted: #484f58;
   --pytcl-text-disabled: #30363d;
-  
+
   /* Border Colors */
   --pytcl-border-default: #30363d;
   --pytcl-border-muted: #21262d;
   --pytcl-border-emphasis: #484f58;
   --pytcl-border-active: var(--pytcl-cyan);
-  
+
   /* Semantic Colors */
   --pytcl-success: var(--pytcl-green);
   --pytcl-warning: var(--pytcl-amber);
   --pytcl-error: var(--pytcl-red);
   --pytcl-info: var(--pytcl-cyan);
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Effects & Shadows
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
   --pytcl-glow-cyan-strong: 0 0 40px rgba(0, 212, 255, 0.5);
   --pytcl-glow-green: 0 0 20px rgba(0, 255, 136, 0.25);
   --pytcl-glow-amber: 0 0 20px rgba(255, 184, 0, 0.25);
   --pytcl-glow-red: 0 0 20px rgba(255, 71, 87, 0.25);
-  
+
   --pytcl-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --pytcl-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
   --pytcl-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
   --pytcl-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Typography
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-font-display: 'Space Grotesk', 'SF Pro Display', -apple-system, sans-serif;
   --pytcl-font-body: 'IBM Plex Sans', 'SF Pro Text', -apple-system, sans-serif;
   --pytcl-font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-  
+
   /* Font Sizes */
   --pytcl-text-xs: 0.75rem;
   --pytcl-text-sm: 0.875rem;
@@ -109,14 +109,14 @@
   --pytcl-text-4xl: 2.25rem;
   --pytcl-text-5xl: 3rem;
   --pytcl-text-6xl: 3.75rem;
-  
+
   /* Font Weights */
   --pytcl-font-light: 300;
   --pytcl-font-normal: 400;
   --pytcl-font-medium: 500;
   --pytcl-font-semibold: 600;
   --pytcl-font-bold: 700;
-  
+
   /* Line Heights */
   --pytcl-leading-none: 1;
   --pytcl-leading-tight: 1.25;
@@ -124,18 +124,18 @@
   --pytcl-leading-normal: 1.5;
   --pytcl-leading-relaxed: 1.625;
   --pytcl-leading-loose: 2;
-  
+
   /* Letter Spacing */
   --pytcl-tracking-tight: -0.025em;
   --pytcl-tracking-normal: 0;
   --pytcl-tracking-wide: 0.025em;
   --pytcl-tracking-wider: 0.05em;
   --pytcl-tracking-widest: 0.1em;
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Spacing
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-space-0: 0;
   --pytcl-space-1: 0.25rem;
   --pytcl-space-2: 0.5rem;
@@ -150,11 +150,11 @@
   --pytcl-space-20: 5rem;
   --pytcl-space-24: 6rem;
   --pytcl-space-32: 8rem;
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Border Radius
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-radius-none: 0;
   --pytcl-radius-sm: 4px;
   --pytcl-radius-md: 8px;
@@ -162,11 +162,11 @@
   --pytcl-radius-xl: 16px;
   --pytcl-radius-2xl: 24px;
   --pytcl-radius-full: 9999px;
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Transitions
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-duration-fast: 150ms;
   --pytcl-duration-normal: 300ms;
   --pytcl-duration-slow: 500ms;
@@ -174,11 +174,11 @@
   --pytcl-ease-in: cubic-bezier(0.4, 0, 1, 1);
   --pytcl-ease-out: cubic-bezier(0, 0, 0.2, 1);
   --pytcl-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Z-Index Scale
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-z-base: 0;
   --pytcl-z-dropdown: 100;
   --pytcl-z-sticky: 200;
@@ -187,11 +187,11 @@
   --pytcl-z-modal: 500;
   --pytcl-z-popover: 600;
   --pytcl-z-tooltip: 700;
-  
+
   /* ─────────────────────────────────────────────────────────────────────────
      Grid Pattern
      ───────────────────────────────────────────────────────────────────────── */
-  
+
   --pytcl-grid-color: rgba(0, 212, 255, 0.06);
   --pytcl-grid-size: 50px;
 }
@@ -759,7 +759,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  background-image: 
+  background-image:
     linear-gradient(var(--pytcl-grid-color) 1px, transparent 1px),
     linear-gradient(90deg, var(--pytcl-grid-color) 1px, transparent 1px);
   background-size: var(--pytcl-grid-size) var(--pytcl-grid-size);

@@ -8,7 +8,7 @@ Comprehensive collection of 10 interactive tutorial modules demonstrating the Tr
 
 #### 1. **Kalman Filtering** (`kalman_filtering.py`)
 - **Topics**: Linear Kalman filter, state-space models, trajectory estimation
-- **Key Concepts**: 
+- **Key Concepts**:
   - Filter initialization and covariance propagation
   - Measurement update and state prediction
   - Performance metrics (RMSE)
@@ -169,7 +169,7 @@ Recommended progression for learning TCL:
 3. **Advanced**: Particle Filters → non-Gaussian systems
 4. **Refinement**: Smoothing Algorithms → improve estimates with future data
 5. **Robustness**: Robust Estimation → handle outliers
-6. **Applications**: 
+6. **Applications**:
    - Signal Processing → pre/post-processing
    - Radar Detection → specific application
    - INS-GNSS Integration → multi-sensor fusion
@@ -182,7 +182,7 @@ These tutorials are designed to be embedded in Sphinx documentation via:
 ```rst
 .. raw:: html
 
-   <iframe src="../_static/images/tutorials/kalman_filtering.html" 
+   <iframe src="../_static/images/tutorials/kalman_filtering.html"
            width="100%" height="800" frameborder="0"></iframe>
 ```
 

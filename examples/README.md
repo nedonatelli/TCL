@@ -126,13 +126,13 @@ def demo_feature() -> None:
     """Demonstrate a specific feature."""
     print("\nFeature Demonstration")
     print("=" * 60)
-    
+
     # Feature implementation
     result = Function1(data)
-    
+
     # Output results
     print(f"Result: {result}")
-    
+
     # Optional: Create visualization
     if not SKIP_VISUALIZATIONS:
         fig = go.Figure(...)

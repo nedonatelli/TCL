@@ -26,7 +26,7 @@ class TestWindowFunctions:
 
     def test_get_window_hann(self):
         """Test Hann window generation."""
-        w = get_window('hann', 256)
+        w = get_window("hann", 256)
         assert len(w) == 256
         # Hann window should be close to zero at edges (for periodic=True)
         assert w[0] < 0.01
@@ -36,7 +36,7 @@ class TestWindowFunctions:
 
     def test_get_window_hamming(self):
         """Test Hamming window generation."""
-        w = get_window('hamming', 256)
+        w = get_window("hamming", 256)
         assert len(w) == 256
         # Hamming window never quite reaches zero at edges
         assert w[0] > 0.05
@@ -44,14 +44,14 @@ class TestWindowFunctions:
 
     def test_get_window_blackman(self):
         """Test Blackman window generation."""
-        w = get_window('blackman', 256)
+        w = get_window("blackman", 256)
         assert len(w) == 256
         assert w[0] < 0.001  # Very close to zero
         assert w[-1] < 0.001  # Very close to zero
 
     def test_get_window_kaiser_parameterized(self):
         """Test Kaiser window with parameter."""
-        w = get_window(('kaiser', 8.0), 256)
+        w = get_window(("kaiser", 8.0), 256)
         assert len(w) == 256
         assert np.all(np.isfinite(w))
 
@@ -63,24 +63,23 @@ class TestWindowFunctions:
 
     def test_get_window_periodicity(self):
         """Test periodic vs symmetric window."""
-        w_periodic = get_window('hann', 256, fftbins=True)
-        w_symmetric = get_window('hann', 256, fftbins=False)
+        w_periodic = get_window("hann", 256, fftbins=True)
+        w_symmetric = get_window("hann", 256, fftbins=False)
         # Periodic window doesn't go to zero at edges
         assert w_periodic[0] > 0 or np.isclose(w_periodic[0], 0, atol=1e-10)
 
     def test_window_bandwidth_hann(self):
         """Test equivalent noise bandwidth for Hann window."""
-        enbw = window_bandwidth('hann', 256)
+        enbw = window_bandwidth("hann", 256)
         # Hann window has ENBW ≈ 1.5 bins
         assert 1.4 < enbw < 1.6
 
     def test_window_bandwidth_different_lengths(self):
         """Test window bandwidth is independent of length."""
-        enbw_256 = window_bandwidth('hann', 256)
-        enbw_512 = window_bandwidth('hann', 512)
+        enbw_256 = window_bandwidth("hann", 256)
+        enbw_512 = window_bandwidth("hann", 512)
         # Should be approximately the same
         assert np.isclose(enbw_256, enbw_512, rtol=0.01)
-
 
 
 class TestSTFT:
@@ -91,18 +90,18 @@ class TestSTFT:
         fs = 1000  # 1 kHz sampling rate
         duration = 1.0  # 1 second
         freq = 50  # 50 Hz tone
-        
+
         t = np.arange(int(fs * duration)) / fs
         x = np.sin(2 * np.pi * freq * t)
-        
+
         result = stft(x, fs=fs, nperseg=256)
-        
+
         # Check output shapes
         assert result.Zxx.shape[0] == 129  # (nperseg // 2 + 1) = 129
         assert result.Zxx.shape[1] > 1
         assert len(result.frequencies) == 129
         assert len(result.times) == result.Zxx.shape[1]
-        
+
         # Frequencies should be non-negative and monotonically increasing
         assert np.all(result.frequencies >= 0)
         assert np.all(np.diff(result.frequencies) > 0)
@@ -113,11 +112,11 @@ class TestSTFT:
         duration = 0.5
         t = np.arange(int(fs * duration)) / fs
         x = np.sin(2 * np.pi * 100 * t)
-        
+
         result = stft(x, fs=fs, nperseg=256)
-        
+
         # Energy should be concentrated in time-frequency
-        power = np.abs(result.Zxx)**2
+        power = np.abs(result.Zxx) ** 2
         assert np.max(power) > 0
         assert np.any(power > 0)  # Should have some non-zero values
 
@@ -126,19 +125,19 @@ class TestSTFT:
         fs = 1000
         duration = 1.0
         t = np.arange(int(fs * duration)) / fs
-        
+
         # Signal with two frequency components
         x = np.sin(2 * np.pi * 50 * t) + 0.5 * np.sin(2 * np.pi * 150 * t)
-        
+
         result = stft(x, fs=fs, nperseg=256)
-        
+
         # Power should have peaks around 50 Hz and 150 Hz
-        power_sum = np.mean(np.abs(result.Zxx)**2, axis=1)
-        
+        power_sum = np.mean(np.abs(result.Zxx) ** 2, axis=1)
+
         # Find frequency indices of 50 Hz and 150 Hz
         idx_50 = np.argmin(np.abs(result.frequencies - 50))
         idx_150 = np.argmin(np.abs(result.frequencies - 150))
-        
+
         # Power at these frequencies should be relatively high
         assert power_sum[idx_50] > power_sum[0]  # More than DC
         assert power_sum[idx_150] > power_sum[0]  # More than DC
@@ -148,10 +147,10 @@ class TestSTFT:
         fs = 1000
         t = np.arange(fs) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
-        result_hann = stft(x, fs=fs, window='hann')
-        result_hamming = stft(x, fs=fs, window='hamming')
-        
+
+        result_hann = stft(x, fs=fs, window="hann")
+        result_hamming = stft(x, fs=fs, window="hamming")
+
         # Both should produce valid results
         assert result_hann.Zxx.shape == result_hamming.Zxx.shape
         assert np.all(np.isfinite(result_hann.Zxx))
@@ -162,10 +161,10 @@ class TestSTFT:
         fs = 1000
         t = np.arange(fs) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
+
         result_half_overlap = stft(x, fs=fs, nperseg=256, noverlap=128)
         result_quarter_overlap = stft(x, fs=fs, nperseg=256, noverlap=64)
-        
+
         # Smaller hop length = more time frames
         assert result_half_overlap.Zxx.shape[1] > result_quarter_overlap.Zxx.shape[1]
 
@@ -174,15 +173,15 @@ class TestSTFT:
         fs = 1000
         t = np.arange(fs) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
+
         result = stft(x, fs=fs)
-        
+
         # STFT should be complex
         assert np.iscomplexobj(result.Zxx)
-        
+
         # All values should be finite
         assert np.all(np.isfinite(result.Zxx))
-        
+
         # Times should be monotonically increasing
         assert np.all(np.diff(result.times) > 0)
 
@@ -196,11 +195,11 @@ class TestInverseSTFT:
         duration = 0.5
         t = np.arange(int(fs * duration)) / fs
         x_original = np.sin(2 * np.pi * 50 * t)
-        
+
         # STFT then ISTFT
         result = stft(x_original, fs=fs, nperseg=256)
-        t_recon, x_reconstructed = istft(result.Zxx, fs=fs, window='hann', nperseg=256)
-        
+        t_recon, x_reconstructed = istft(result.Zxx, fs=fs, window="hann", nperseg=256)
+
         # Should return valid output
         assert x_reconstructed is not None
         assert len(x_reconstructed) > 0
@@ -210,10 +209,10 @@ class TestInverseSTFT:
         fs = 1000
         t = np.arange(256) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
+
         result = stft(x, fs=fs, nperseg=256)
         t_recon, x_reconstructed = istft(result.Zxx, fs=fs, nperseg=256)
-        
+
         assert len(x_reconstructed) > 0
         assert np.all(np.isfinite(x_reconstructed))
 
@@ -222,10 +221,10 @@ class TestInverseSTFT:
         fs = 1000
         t = np.arange(512) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
+
         result = stft(x, fs=fs, nperseg=256)
         output = istft(result.Zxx, fs=fs, nperseg=256)
-        
+
         # Should return tuple of (times, signal)
         assert isinstance(output, tuple)
         assert len(output) == 2
@@ -242,12 +241,12 @@ class TestSpectrogram:
         duration = 1.0
         t = np.arange(int(fs * duration)) / fs
         x = np.sin(2 * np.pi * 50 * t)
-        
+
         result = spectrogram(x, fs=fs, nperseg=256)
-        
+
         # Power should be non-negative
         assert np.all(result.power >= 0)
-        
+
         # Shapes should be consistent
         assert len(result.frequencies) == result.power.shape[0]
         assert len(result.times) == result.power.shape[1]
@@ -257,13 +256,13 @@ class TestSpectrogram:
         fs = 1000
         t = np.arange(fs) / fs
         x = np.sin(2 * np.pi * 100 * t)
-        
+
         result = spectrogram(x, fs=fs, nperseg=256)
-        
+
         # Maximum power should occur in the middle of the frequency range (where 100 Hz is)
         max_idx = np.argmax(np.mean(result.power, axis=1))
         max_freq = result.frequencies[max_idx]
-        
+
         # Should be somewhere near 100 Hz
         assert 50 < max_freq < 150
 
@@ -272,18 +271,18 @@ class TestSpectrogram:
         fs = 1000
         duration = 1.0
         t = np.arange(int(fs * duration)) / fs
-        
+
         # Chirp from 10 Hz to 100 Hz
         x = signal.chirp(t, f0=10, f1=100, t1=duration)
-        
+
         result = spectrogram(x, fs=fs, nperseg=256)
-        
+
         # Should have valid power output
         assert result.power is not None
         assert np.all(result.power >= 0)
         assert result.power.shape[0] > 0
         assert result.power.shape[1] > 0
-        
+
         # Max power index should be within bounds
         max_power_idx = np.argmax(result.power)
         assert max_power_idx >= 0
@@ -292,12 +291,12 @@ class TestSpectrogram:
         """Test spectrogram output dimensions."""
         fs = 1000
         x = np.random.randn(2000)
-        
+
         result = spectrogram(x, fs=fs, nperseg=256, noverlap=128)
-        
+
         # Frequency dimension should be (nperseg//2 + 1)
         assert result.power.shape[0] == 129
-        
+
         # Time dimension should match the number of frames
         assert result.power.shape[1] == len(result.times)
 
@@ -342,9 +341,9 @@ class TestSTFTEdgeCases:
         t = np.arange(fs) / fs
         # Pure noise
         x = np.random.randn(fs)
-        
+
         result = spectrogram(x, fs=fs, nperseg=256)
-        
+
         # Should have some power everywhere
         assert np.all(result.power >= 0)
         assert np.mean(result.power) > 0
@@ -354,11 +353,11 @@ class TestSTFTEdgeCases:
         fs = 1000
         t = np.arange(fs) / fs
         x_real = np.sin(2 * np.pi * 50 * t)
-        x_complex = x_real + 1j * np.sin(2 * np.pi * 50 * t + np.pi/4)
-        
+        x_complex = x_real + 1j * np.sin(2 * np.pi * 50 * t + np.pi / 4)
+
         result_real = stft(x_real, fs=fs)
         result_complex = stft(x_complex, fs=fs)
-        
+
         # Both should produce valid STFT
         assert np.all(np.isfinite(result_real.Zxx))
         assert np.all(np.isfinite(result_complex.Zxx))

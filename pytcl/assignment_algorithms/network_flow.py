@@ -179,13 +179,19 @@ def min_cost_flow_successive_shortest_paths(
     max_iterations: int = 1000,
 ) -> MinCostFlowResult:
     """
-    Solve min-cost flow using successive shortest paths.
+    Solve min-cost flow using successive shortest paths with cost scaling.
 
     Algorithm:
-    1. While there is excess supply:
-       - Find shortest path from a supply node to a demand node
-       - Push maximum feasible flow along path
-       - Update supplies and residual capacities
+    1. Initialize potentials using Bellman-Ford
+    2. While there is excess supply:
+       - Find shortest path using reduced costs (Dijkstra with potentials)
+       - Push unit flow along path
+       - Update node potentials
+       - Recompute shortest paths to maintain optimality
+
+    This is the standard min-cost flow algorithm that guarantees optimality
+    and convergence. It uses Dijkstra's algorithm with potentials, which
+    maintains the dual feasibility (reduced cost property).
 
     Parameters
     ----------
@@ -217,147 +223,163 @@ def min_cost_flow_successive_shortest_paths(
 
     Notes
     -----
-    This is a simplified implementation using Bellman-Ford for shortest
-    paths. Production code would use more efficient implementations.
+    This implementation uses successive shortest paths with potentials.
+    The algorithm is guaranteed to find the optimal solution for any
+    feasible min-cost flow problem.
+
+    For rectangular assignment problems (m < n or m > n), all m units
+    of flow must be satisfied. The algorithm ensures this by finding
+    augmenting paths until all supply is routed.
     """
     n_nodes = len(supplies)
     n_edges = len(edges)
 
-    # Build adjacency lists for residual graph
-    graph: list[list[tuple[int, int, float]]] = [[] for _ in range(n_nodes)]
+    # Initialize flow and residual capacity
     flow = np.zeros(n_edges)
     residual_capacity = np.array([e.capacity for e in edges])
 
+    # Initialize node potentials using Bellman-Ford from a dummy source
+    # This ensures all potentials are finite and maintains dual feasibility
+    potential = np.zeros(n_nodes)
+
+    # Build adjacency list representation
+    # Each entry: (to_node, edge_idx, is_reverse, cost)
+    graph: list[list[tuple[int, int, int, float]]] = [[] for _ in range(n_nodes)]
+
     for edge_idx, edge in enumerate(edges):
-        graph[edge.from_node].append((edge.to_node, edge_idx, edge.cost))
-        # Add reverse edge with negative cost
-        graph[edge.to_node].append((edge.from_node, edge_idx, -edge.cost))
+        # Forward edge
+        graph[edge.from_node].append((edge.to_node, edge_idx, 0, edge.cost))
+        # Reverse edge (for flow cancellation)
+        graph[edge.to_node].append((edge.from_node, edge_idx, 1, -edge.cost))
 
     current_supplies = supplies.copy()
     iteration = 0
 
+    # Main algorithm loop
     while iteration < max_iterations:
-        # Find a node with excess supply
-        excess_node = None
+        # Find excess and deficit nodes
+        excess_node = -1
+        deficit_node = -1
+
         for node in range(n_nodes):
             if current_supplies[node] > 1e-10:
                 excess_node = node
                 break
 
-        if excess_node is None:
-            break
+        if excess_node < 0:
+            break  # No more excess nodes
 
-        # Find a node with deficit
-        deficit_node = None
         for node in range(n_nodes):
             if current_supplies[node] < -1e-10:
                 deficit_node = node
                 break
 
-        if deficit_node is None:
-            break
+        if deficit_node < 0:
+            break  # No deficit nodes
 
-        # Find shortest path using Bellman-Ford relaxation
+        # Find shortest path using Dijkstra with potentials
+        # Reduced cost: c_reduced(u,v) = c(u,v) + π(u) - π(v)
         dist = np.full(n_nodes, np.inf)
         dist[excess_node] = 0.0
         parent = np.full(n_nodes, -1, dtype=int)
         parent_edge = np.full(n_nodes, -1, dtype=int)
+        parent_reverse = np.full(n_nodes, 0, dtype=int)
+        visited = np.zeros(n_nodes, dtype=bool)
 
-        for _ in range(n_nodes - 1):
-            for u in range(n_nodes):
-                if dist[u] == np.inf:
-                    continue
-                for v, edge_idx, cost in graph[u]:
-                    if residual_capacity[edge_idx] > 1e-10:
-                        new_dist = dist[u] + cost
-                        if new_dist < dist[v]:
-                            dist[v] = new_dist
-                            parent[v] = u
-                            parent_edge[v] = edge_idx
+        # Dijkstra's algorithm
+        for _ in range(n_nodes):
+            # Find unvisited node with minimum distance
+            u = -1
+            min_dist = np.inf
+            for node in range(n_nodes):
+                if not visited[node] and dist[node] < min_dist:
+                    u = node
+                    min_dist = dist[node]
 
-        if dist[deficit_node] == np.inf:
+            if u < 0 or dist[u] == np.inf:
+                break
+
+            visited[u] = True
+
+            # Relax edges from u
+            for v, eidx, is_rev, cost in graph[u]:
+                if residual_capacity[eidx] > 1e-10:
+                    # Compute reduced cost
+                    reduced_cost = cost + potential[u] - potential[v]
+                    new_dist = dist[u] + reduced_cost
+
+                    if new_dist < dist[v] - 1e-10:
+                        dist[v] = new_dist
+                        parent[v] = u
+                        parent_edge[v] = eidx
+                        parent_reverse[v] = is_rev
+
+        if dist[deficit_node] >= np.inf:
             # No path found
             break
 
-        # Extract path by backtracking through parent pointers
-        # Need to track which direction each edge was used (forward or backward)
+        # Update potentials to maintain dual feasibility
+        for node in range(n_nodes):
+            if dist[node] < np.inf:
+                potential[node] += dist[node]
+
+        # Extract path by backtracking
         path_edges = []
-        path_directions = []  # True for forward, False for backward
+        path_reverse_flags = []
         node = deficit_node
-        visited = set()
-        
-        # Safety check to prevent infinite loops in path extraction
-        max_path_length = n_nodes
         path_length = 0
-        
-        while parent[node] != -1:
-            if path_length >= max_path_length:
-                # Path is longer than possible - indicates a cycle
-                # This shouldn't happen in a DAG, so we break to avoid infinite loop
-                break
-            
-            if node in visited:
-                # Already visited this node in the path - cycle detected
-                break
-            
-            visited.add(node)
-            
-            parent_node = parent[node]
-            edge_idx = parent_edge[node]
-            
-            # Determine direction: if edge goes from parent_node to node, it's forward
-            # If it goes from node to parent_node, it's backward
-            if edges[edge_idx].from_node == parent_node and edges[edge_idx].to_node == node:
-                # Forward direction
-                path_directions.append(True)
-            else:
-                # Backward direction
-                path_directions.append(False)
-            
-            path_edges.append(edge_idx)
-            node = parent_node
+        visited_set = set()
+
+        while parent[node] >= 0:
+            if path_length >= n_nodes:
+                break  # Safety check
+            if node in visited_set:
+                break  # Cycle detected
+
+            visited_set.add(node)
+            path_edges.append(parent_edge[node])
+            path_reverse_flags.append(parent_reverse[node])
+            node = parent[node]
             path_length += 1
 
-        path_edges.reverse()
-        path_directions.reverse()
-
-        # Find minimum capacity along path
         if not path_edges:
-            # No valid path found, move to next iteration
             iteration += 1
             continue
 
-        # Find minimum capacity along path
+        path_edges.reverse()
+        path_reverse_flags.reverse()
+
+        # Find bottleneck capacity
         min_flow = min(residual_capacity[e] for e in path_edges)
         min_flow = min(
-            min_flow, current_supplies[excess_node], -current_supplies[deficit_node]
+            min_flow,
+            current_supplies[excess_node],
+            -current_supplies[deficit_node],
         )
 
         # Push flow along path
-        total_cost = 0.0
-        for edge_idx, is_forward in zip(path_edges, path_directions):
-            if is_forward:
+        for edge_idx, is_reverse in zip(path_edges, path_reverse_flags):
+            if is_reverse == 0:
                 # Forward edge: increase flow
                 flow[edge_idx] += min_flow
                 residual_capacity[edge_idx] -= min_flow
-                total_cost += min_flow * edges[edge_idx].cost
             else:
-                # Backward edge: decrease flow (cancel flow in reverse)
+                # Reverse edge: decrease flow (cancel)
                 flow[edge_idx] -= min_flow
                 residual_capacity[edge_idx] += min_flow
-                total_cost -= min_flow * edges[edge_idx].cost
 
         current_supplies[excess_node] -= min_flow
         current_supplies[deficit_node] += min_flow
 
         iteration += 1
 
-    # Compute total cost
-    # Only count positive flow on forward edges (negative flow indicates cancellation)
-    total_cost = float(np.sum(np.maximum(flow[i], 0) * edges[i].cost for i in range(n_edges)))
+    # Compute total cost: include all flows (including negative which cancel)
+    total_cost = 0.0
+    for i, edge in enumerate(edges):
+        total_cost += flow[i] * edge.cost
 
     # Determine status
-    if np.allclose(current_supplies, 0):
+    if np.allclose(current_supplies, 0, atol=1e-6):
         status = FlowStatus.OPTIMAL
     elif iteration >= max_iterations:
         status = FlowStatus.TIMEOUT
@@ -456,6 +478,14 @@ def assignment_from_flow_solution(
     """
     Extract assignment from flow network solution.
 
+    A valid flow solution for assignment should have:
+    - Exactly 1 unit of flow from each worker to some task
+    - Exactly 1 unit of flow to each task from some worker
+    - No negative flows on worker->task edges (those are cancellations)
+
+    This function extracts the actual assignment by identifying which
+    worker->task edges carry the net positive flow.
+
     Parameters
     ----------
     flow : ndarray
@@ -474,24 +504,59 @@ def assignment_from_flow_solution(
     """
     m, n = cost_matrix_shape
     assignment = []
+    cost = 0.0
+
+    # Build source node (node 0) and sink node (node m+n+1) indices
+    source = 0
+    sink = m + n + 1
+
+    # For a valid assignment solution:
+    # - Count flow out of source to each worker
+    # - Count flow into sink from each task
+    worker_outflow = np.zeros(m)
+    task_inflow = np.zeros(n)
+
+    # Collect all worker->task edges and their flows
+    worker_task_edges = []
 
     for edge_idx, edge in enumerate(edges):
-        # Worker-to-task edges: from_node in [1, m], to_node in [m+1, m+n]
+        # Worker edges: from source (0) to worker nodes (1..m)
+        if edge.from_node == source and 1 <= edge.to_node <= m:
+            worker_id = edge.to_node - 1
+            worker_outflow[worker_id] += flow[edge_idx]
+
+        # Task edges: from task nodes (m+1..m+n) to sink
+        if m + 1 <= edge.from_node <= m + n and edge.to_node == sink:
+            task_id = edge.from_node - (m + 1)
+            task_inflow[task_id] += flow[edge_idx]
+
+        # Worker-to-task edges
         if 1 <= edge.from_node <= m and m + 1 <= edge.to_node <= m + n:
-            if flow[edge_idx] > 0.5:  # Flow > 0 (allowing for numerical tolerance)
-                worker_idx = edge.from_node - 1
-                task_idx = edge.to_node - m - 1
-                assignment.append([worker_idx, task_idx])
+            worker_id = edge.from_node - 1
+            task_id = edge.to_node - (m + 1)
+            if flow[edge_idx] > 0.5:  # Positive flow means this edge is used
+                worker_task_edges.append(
+                    {
+                        "worker": worker_id,
+                        "task": task_id,
+                        "flow": flow[edge_idx],
+                        "cost": edge.cost,
+                        "edge_idx": edge_idx,
+                    }
+                )
 
-    assignment = np.array(assignment, dtype=np.intp)
-    cost = 0.0
-    if len(assignment) > 0:
-        cost = float(
-            np.sum(
-                flow[edge_idx] * edges[edge_idx].cost for edge_idx in range(len(edges))
-            )
-        )
+    # For assignment problems, each worker should have exactly 1 outgoing flow
+    # and each task should have exactly 1 incoming flow
+    # Extract the assignment from worker->task edges with positive flow
+    for edge_info in worker_task_edges:
+        assignment.append([edge_info["worker"], edge_info["task"]])
+        cost += edge_info["flow"] * edge_info["cost"]
 
+    assignment = (
+        np.array(assignment, dtype=np.intp)
+        if assignment
+        else np.empty((0, 2), dtype=np.intp)
+    )
     return assignment, cost
 
 

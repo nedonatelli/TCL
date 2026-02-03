@@ -127,4 +127,3 @@ result = igrf(lat, lon, h, year)
 - **Code quality**: High - all examples validate
 - **User impact**: High (utility functions widely used across library)
 - **Documentation cohesiveness**: Significantly improved
-

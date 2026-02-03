@@ -162,7 +162,7 @@ def batch_ekf_predict(
     >>> # Nonlinear dynamics: coordinated turn
     >>> def f_turn(x):
     ...     w = 0.01  # Turn rate
-    ...     return np.array([x[0] + np.cos(w)*x[2], 
+    ...     return np.array([x[0] + np.cos(w)*x[2],
     ...                      x[1] + np.sin(w)*x[3],
     ...                      x[2], x[3]])
     >>> def F_jacobian(x):
