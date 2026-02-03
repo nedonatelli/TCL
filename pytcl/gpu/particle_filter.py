@@ -79,6 +79,17 @@ def gpu_effective_sample_size(weights: ArrayLike) -> float:
     -------
     ess : float
         Effective sample size.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.particle_filter import gpu_effective_sample_size
+    >>> weights = np.array([0.1, 0.2, 0.3, 0.4])
+    >>> ess = gpu_effective_sample_size(weights)
+    >>> ess > 0
+    True
+    >>> ess <= len(weights)
+    True
     """
     cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
     w = ensure_gpu_array(weights, dtype=cp.float64)
@@ -150,6 +161,17 @@ def gpu_resample_multinomial(weights: ArrayLike) -> NDArray[np.intp]:
     -------
     indices : ndarray
         Resampled particle indices, shape (n_particles,).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.particle_filter import gpu_resample_multinomial
+    >>> weights = np.array([0.1, 0.4, 0.5])
+    >>> indices = gpu_resample_multinomial(weights)
+    >>> indices.shape
+    (3,)
+    >>> np.all(indices < 3)
+    True
 
     Notes
     -----

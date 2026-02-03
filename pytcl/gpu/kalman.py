@@ -353,6 +353,22 @@ def batch_kf_predict_update(
     -------
     result : BatchKalmanUpdate
         Named tuple with updated states, covariances, and statistics.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.kalman import batch_kf_predict_update
+    >>> n_tracks = 50
+    >>> x = np.random.randn(n_tracks, 2)
+    >>> P = np.tile(np.eye(2), (n_tracks, 1, 1))
+    >>> z = np.random.randn(n_tracks, 2)  # Measurements
+    >>> F = np.array([[1, 0.1], [0, 1]])  # Constant velocity
+    >>> Q = np.eye(2) * 0.01
+    >>> H = np.eye(2)
+    >>> R = np.eye(2) * 0.1
+    >>> result = batch_kf_predict_update(x, P, z, F, Q, H, R)
+    >>> result.x.shape
+    (50, 2)
     """
     pred = batch_kf_predict(x, P, F, Q, B, u)
     return batch_kf_update(pred.x, pred.P, z, H, R)

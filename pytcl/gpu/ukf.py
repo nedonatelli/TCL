@@ -209,6 +209,21 @@ def batch_ukf_predict(
     -------
     result : BatchUKFPrediction
         Predicted states and covariances.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.ukf import batch_ukf_predict
+    >>> # Nonlinear dynamics example
+    >>> def f_dynamics(x):
+    ...     return np.array([x[0] + 0.1*x[1], x[1] * 0.99])
+    >>> n_tracks = 50
+    >>> x = np.random.randn(n_tracks, 2)
+    >>> P = np.tile(np.eye(2) * 0.01, (n_tracks, 1, 1))
+    >>> Q = np.eye(2) * 0.001
+    >>> result = batch_ukf_predict(x, P, f_dynamics, Q)
+    >>> result.x.shape
+    (50, 2)
     """
     cp = import_optional("cupy", extra="gpu", feature="GPU Unscented Kalman filter")
 
@@ -290,6 +305,22 @@ def batch_ukf_update(
     -------
     result : BatchUKFUpdate
         Update results.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.ukf import batch_ukf_update
+    >>> # Nonlinear measurement example
+    >>> def h_measurement(x):
+    ...     return np.sqrt(x[0]**2 + x[1]**2)  # Range-only
+    >>> n_tracks = 40
+    >>> x = np.random.randn(n_tracks, 2)
+    >>> P = np.tile(np.eye(2), (n_tracks, 1, 1))
+    >>> z = np.random.randn(n_tracks, 1) * 10 + 100
+    >>> R = np.array([[1.0]])
+    >>> result = batch_ukf_update(x, P, z, h_measurement, R)
+    >>> result.x.shape
+    (40, 2)
     """
     cp = import_optional("cupy", extra="gpu", feature="GPU Unscented Kalman filter")
 

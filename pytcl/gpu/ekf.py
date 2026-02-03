@@ -155,6 +155,30 @@ def batch_ekf_predict(
     result : BatchEKFPrediction
         Predicted states and covariances.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.gpu.ekf import batch_ekf_predict
+    >>> # Nonlinear dynamics: coordinated turn
+    >>> def f_turn(x):
+    ...     w = 0.01  # Turn rate
+    ...     return np.array([x[0] + np.cos(w)*x[2], 
+    ...                      x[1] + np.sin(w)*x[3],
+    ...                      x[2], x[3]])
+    >>> def F_jacobian(x):
+    ...     w = 0.01
+    ...     return np.array([[1, 0, np.cos(w), 0],
+    ...                      [0, 1, np.sin(w), 0],
+    ...                      [0, 0, 1, 0],
+    ...                      [0, 0, 0, 1]])
+    >>> n_tracks = 30
+    >>> x = np.random.randn(n_tracks, 4) * 0.1
+    >>> P = np.tile(np.eye(4) * 0.01, (n_tracks, 1, 1))
+    >>> Q = np.eye(4) * 0.001
+    >>> result = batch_ekf_predict(x, P, f_turn, F_jacobian, Q)
+    >>> result.x.shape
+    (30, 4)
+
     Notes
     -----
     The nonlinear dynamics are applied on CPU (Python function), then
