@@ -5,7 +5,7 @@ This document outlines the development phases for the Tracker Component Library.
 
 For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
 
-Current State (v1.11.1) - Performance Optimization + Network Flow Fix
+Current State (v1.12.1) - Performance Optimization + Network Flow Fix + Linting Fixes
 ----------------------------------------------------------------------
 
 * **Performance Optimization**: Numba JIT compilation, lru_cache, sparse matrix support
