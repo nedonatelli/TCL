@@ -9,7 +9,6 @@ Tests coverage for:
 - Maturity badge formatting
 """
 
-
 from pytcl.core.maturity import (
     MODULE_MATURITY,
     MaturityLevel,
