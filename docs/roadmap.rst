@@ -5,15 +5,18 @@ This document outlines the development phases for the Tracker Component Library.
 
 For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
 
-Current State (v1.12.1) - Performance Optimization + Network Flow Fix + Linting Fixes
-----------------------------------------------------------------------
+Current State (v1.13.0) - Phase 4 Complete: Jupyter Interactive Notebooks
+--------------------------------------------------------------------------
 
+* **Phase 4 Complete**: 8 comprehensive Jupyter notebooks, 175+ cells, 4-week curricula
+* **Notebooks cover**: Kalman filters, particle filters, multi-target tracking, coordinate systems, GPU acceleration, network flow, INS/GNSS integration, performance optimization
+* **Learning features**: 50+ progressive exercises, advanced topics, references, API documentation, Plotly visualizations
 * **Performance Optimization**: Numba JIT compilation, lru_cache, sparse matrix support
 * **GPU Acceleration**: Dual-backend support (CuPy for NVIDIA CUDA, MLX for Apple Silicon)
 * **Automatic backend selection**: System auto-detects best available GPU backend
 * **Batch Kalman filters**: GPU-accelerated Linear, Extended, and Unscented KF (5-10x speedup)
 * **GPU particle filters**: Accelerated resampling and weight computation (8-15x speedup)
-* **1,070+ functions** implemented across 150+ Python modules
+* **1,070+ functions** implemented across 153 Python modules
 * **3,280 tests** with 100% pass rate - fully production-ready
 * **80% line coverage** across 17,738 lines (comprehensive coverage achieved)
 * **100% code quality** compliance with isort, black, flake8, mypy --strict
@@ -42,7 +45,7 @@ Current State (v1.12.1) - Performance Optimization + Network Flow Fix + Linting 
 * **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
 * **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
 * **Information filters**: Standard and square-root information filters (SRIF)
-* **Documentation**: Interactive visualization system with 42 HTML plots
+* **Documentation**: Interactive visualization system with 42 HTML plots + 8 interactive notebooks
 * **Code Quality**: 100% compliance with isort, black, flake8, mypy
 * **Published on PyPI** as ``nrl-tracker``
 
@@ -62,6 +65,7 @@ For detailed version history and implementation notes, see `ROADMAP.md <../ROADM
 * v1.10.0 (Jan 4, 2026): GPU acceleration with dual-backend support (CuPy + MLX)
 * v1.10.x (Jan 5, 2026): Phase 6 Test Expansion - 761 new tests (2,894 total)
 * v1.11.0 (Jan 5, 2026): Phase 7 Performance - Numba JIT, lru_cache, sparse assignment
+* v1.13.0 (Feb 25, 2026): Phase 4 Complete - 8 comprehensive Jupyter notebooks (175+ cells)
 
 Phase 15 (v1.1.0): Performance Infrastructure ✅
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -242,7 +246,7 @@ Comprehensive architectural upgrade targeting critical fixes, API standardizatio
 +--------------------------------------+-------------------+-------------+
 | GPU backends                         | 2 (CuPy+MLX) ✅   | 2           |
 +--------------------------------------+-------------------+-------------+
-| Jupyter tutorials                    | 0                 | 8           |
+| Jupyter tutorials                    | 8 ✅              | 8           |
 +--------------------------------------+-------------------+-------------+
 | Documentation quality                | 85%               | 95%+        |
 +--------------------------------------+-------------------+-------------+
