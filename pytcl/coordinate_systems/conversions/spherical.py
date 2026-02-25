@@ -146,7 +146,14 @@ def sphere2cart(
         z = r * np.sin(el)
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
+        return np.array(
+            [
+                x.item() if hasattr(x, "item") else x,
+                y.item() if hasattr(y, "item") else y,
+                z.item() if hasattr(z, "item") else z,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([x, y, z], dtype=np.float64)
 
@@ -239,7 +246,13 @@ def pol2cart(
     y = r * np.sin(theta)
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y], dtype=np.float64)
+        return np.array(
+            [
+                x.item() if hasattr(x, "item") else x,
+                y.item() if hasattr(y, "item") else y,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([x, y], dtype=np.float64)
 
@@ -338,7 +351,14 @@ def cyl2cart(
     y = rho * np.sin(phi)
 
     if np.isscalar(rho) or rho.size == 1:
-        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
+        return np.array(
+            [
+                x.item() if hasattr(x, "item") else x,
+                y.item() if hasattr(y, "item") else y,
+                z.item() if hasattr(z, "item") else z,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([x, y, z], dtype=np.float64)
 
@@ -397,7 +417,14 @@ def ruv2cart(
     z = r * w
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
+        return np.array(
+            [
+                x.item() if hasattr(x, "item") else x,
+                y.item() if hasattr(y, "item") else y,
+                z.item() if hasattr(z, "item") else z,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([x, y, z], dtype=np.float64)
 
