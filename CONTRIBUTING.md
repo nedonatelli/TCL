@@ -222,10 +222,10 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.11.0
+**Version:** v1.12.1
 **MATLAB Parity:** 100% ✅
-**Test Suite:** 2,894 tests passing
-**Code Coverage:** 76% (target 80%+ in v2.0.0)
+**Test Suite:** 3,280 tests passing
+**Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
 **Quality:** 100% compliance (black, isort, flake8, mypy --strict)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
 **Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
@@ -296,11 +296,11 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.11.0):
+Current metrics (v1.12.1):
 - **Functions:** 1,070+
-- **Modules:** 150+
-- **Tests:** 2,894 (all passing)
-- **Coverage:** 76%
+- **Modules:** 153
+- **Tests:** 3,280 (all passing)
+- **Coverage:** 80%
 - **MATLAB Parity:** 100%
 - **GPU Backends:** 2 (CuPy + MLX)
 - **Performance:** Numba JIT + lru_cache optimizations

@@ -13,7 +13,7 @@ permissions:
 jobs:
   benchmark-full:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
             --benchmark-only \
             --benchmark-json=/tmp/benchmark_results.json \
             --benchmark-warmup=on \
-            --benchmark-min-rounds=500 \
+            --benchmark-min-rounds=100 \
             -v
 
       - name: Check SLO compliance

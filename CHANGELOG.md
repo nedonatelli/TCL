@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] - 2026-02-04
+
+### Documentation & Build Configuration Update
+
+Minor release updating documentation and build configuration for ReadTheDocs compatibility and version consistency.
+
+### Changed
+
+- **Documentation**: Updated all version references to 1.12.1 across README.md, docs/index.rst, and roadmap
+- **Build Configuration**: Updated ReadTheDocs configuration for proper version detection
+- **Version Consistency**: Ensured all package metadata reflects v1.12.1
+
+### Quality Metrics
+
+- ✅ **3,280 tests** passing
+- ✅ **80% code coverage**
+- ✅ **100% mypy --strict compliance**
+
 ## [1.11.1] - 2026-02-03
 
 ### Network Flow Algorithm Fixes & Quality Improvements

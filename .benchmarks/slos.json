@@ -1,0 +1,25 @@
+{
+  "description": "Service Level Objectives for benchmarks",
+  "benchmarks": {
+    "test_cfar_ca_1000": {
+      "max_mean_us": 50.0,
+      "max_p99_us": 100.0
+    },
+    "test_cfar_ca_5000": {
+      "max_mean_us": 200.0,
+      "max_p99_us": 400.0
+    },
+    "test_cfar_ca_10000": {
+      "max_mean_us": 400.0,
+      "max_p99_us": 800.0
+    },
+    "test_kf_predict": {
+      "max_mean_us": 50.0,
+      "max_p99_us": 100.0
+    },
+    "test_kf_update": {
+      "max_mean_us": 100.0,
+      "max_p99_us": 200.0
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.11.0 (Released January 5, 2026)
-**Current Test Suite:** 2,894 tests passing, 76% line coverage
+**Current Version:** v1.12.1 (Released February 4, 2026)
+**Current Test Suite:** 3,280 tests passing, 80% line coverage
 **Production Status:** Feature-complete MATLAB TCL parity achieved
 
 ---
@@ -17,6 +17,97 @@
 ---
 
 ## Current State
+
+### v1.12.1 - Documentation & Build Configuration Update (February 4, 2026)
+
+**Status:** ✅ Released (Current)
+
+**Minor release updating documentation and build configuration for ReadTheDocs compatibility and version consistency.**
+
+- **Documentation**: Updated all version references to 1.12.1 across README.md, docs/index.rst, and roadmap
+- **Build Configuration**: Updated ReadTheDocs configuration for proper version detection
+- **Version Consistency**: Ensured all package metadata reflects v1.12.1
+
+**Quality Metrics:**
+- **3,280 tests** passing
+- **80% code coverage** (17,738 lines analyzed)
+- **100% mypy --strict compliance**
+
+### v1.12.0 - Version Refinement (February 3, 2026)
+
+**Status:** ✅ Released
+
+**Minor version bump maintaining full feature parity with v1.11.1**
+
+- Version updated across package metadata (pyproject.toml, pytcl/__init__.py, docs/conf.py)
+- All v1.11.1 features and fixes included
+- Continued 3,280 test passing rate
+
+### v1.11.1 - Network Flow Algorithm Fixes & Quality Improvements (February 3, 2026)
+
+**Status:** ✅ Released
+
+**Bug fix release addressing min-cost flow algorithm issues and improving code quality.**
+
+**Fixed Issues:**
+- **Network Flow Algorithm**: Fixed infinite loop in `min_cost_flow_successive_shortest_paths` path extraction
+- **Assignment Extraction**: 5 previously skipped tests now passing
+  - `test_assignment_from_flow_*` 
+  - `test_both_methods_comparable`
+  - `test_flow_optimality`
+- **Test Validation**: Corrected test to properly validate min-cost flow properties (negative flows for cancellations are valid)
+- **Code Quality**: Fixed 24 flake8 whitespace violations
+
+**Test Coverage Improvements:**
+- Improved from 76% → 80% overall coverage
+- **3,280 tests** passing (up from 2,894)
+- **49 tests skipped** (system-dependent: EGM2008 data, GPU, optional dependencies)
+- **386 new tests** added in this release cycle
+
+**Quality Metrics:**
+- **3,280 tests** passing
+- **80% code coverage** (17,738 lines analyzed)
+- **0 flake8 violations** in pytcl/ modules
+- **100% mypy --strict compliance**
+
+### v1.11.0 - Phase 7 Performance Optimization Complete (January 5, 2026)
+
+**Status:** ✅ Released
+
+**Performance optimization release implementing Numba JIT compilation, systematic caching, and sparse matrix support.**
+
+**Phase 7.1 - Numba JIT Compilation:**
+- **Cholesky update/downdate optimization**:
+  - `_cholesky_update_core` - Rank-1 Cholesky update (5-10x speedup)
+  - `_cholesky_downdate_core` - Rank-1 Cholesky downdate
+  - Numba JIT-compiled with fallback decorator
+- Applied to: Matrix operations in `pytcl/dynamic_estimation/kalman/matrix_utils.py`
+
+**Phase 7.2 - Systematic Caching with lru_cache:**
+- **Clenshaw coefficients** (`_a_nm`, `_b_nm` recursion coefficients - maxsize=4096)
+- **Legendre functions** (`legendre_scaling_factors` - maxsize=64)
+- **Jacobian functions** (`enu_jacobian`, `ned_jacobian` - maxsize=256 with angle quantization)
+- **UKF weights** (`compute_merwe_weights` - maxsize=128)
+- **Performance gain**: 25-40% speedup on repeated evaluations
+
+**Phase 7.3 - Sparse Matrix Support:**
+- **SparseCostTensor class** - Memory-efficient COO-style storage
+  - Properties: `n_valid`, `sparsity`, `memory_savings`
+  - Methods: `get_cost()`, `to_dense()`, `from_dense()`
+- **Sparse greedy algorithm** (`greedy_assignment_nd_sparse`)
+  - O(n_valid log n_valid) complexity vs O(total_size log total_size)
+- **Unified interface** (`assignment_nd`) with automatic sparse/dense selection
+- **Memory savings**: 50%+ reduction on sparse assignment problems
+
+**Phase 6 - Test Expansion:**
+- **122 new tests** for special functions (error functions, elliptic integrals, Marcum Q)
+- **19 new tests** for sparse assignment algorithms
+- **761 new tests** total since v1.10.0
+
+**Quality Metrics:**
+- **2,894 tests** passing (23 skipped for GPU/optional deps)
+- **100% code quality compliance**: isort, black, flake8, mypy --strict
+- **All Phase 7 objectives achieved**
 
 ### v1.10.0 - GPU Acceleration with Apple Silicon Support (January 4, 2026)
 
@@ -467,31 +558,69 @@ Created `pytcl/core/maturity.py` with:
 - Helper functions: `get_maturity()`, `is_stable()`, `is_production_ready()`
 - Exported from `pytcl.core` for easy access
 
-### Phase 4: Jupyter Interactive Tutorials (Months 4-8)
+### Phase 4: Jupyter Interactive Tutorials (Months 4-8) 🔄 IN PROGRESS
 
-#### 4.1 Notebook Creation (8 notebooks)
+#### 4.1 Notebook Creation (8 notebooks) 🟡 1/8 Actively Enhanced
 
-**Location:** `docs/notebooks/` with `.gitattributes` for `nbstripout`
+**Status:** 1 enhanced to template quality, 7 awaiting enhancement
 
-Eight comprehensive notebooks covering:
-1. Kalman Filters - Fundamentals to advanced filtering
-2. Particle Filters - Resampling strategies and applications
-3. Multi-Target Tracking - Data association, JPDA, MHT
-4. Coordinate Systems - Transformations and projections
-5. GPU Acceleration - CuPy integration and performance
-6. Network Flow Solver - Simplex algorithm walkthrough
-7. INS/GNSS Integration - Navigation system integration
-8. Performance Optimization - Profiling and benchmarking
+**Location:** `docs/notebooks/` with `.gitattributes` for `nbstripout` ✅
 
-**Effort:** HIGH (6 weeks)
+**Infrastructure Complete:**
+- ✅ nbstripout configured in .gitattributes
+- ✅ conftest.py set up for pytest-nbval validation
+- ✅ Binder integration configured
+- ✅ README.md with navigation
+- ✅ Sample notebooks structure established
+- ✅ PHASE4_ENHANCEMENT_PLAN.md created with detailed specifications
 
-#### 4.2 Supporting Infrastructure
+Eight comprehensive notebooks **(1 enhanced, 7 pending):**
+1. **Kalman Filters** ✅ ENHANCED - Theory, EKF/UKF examples, parameter tuning, 5 exercises
+2. **Particle Filters** - Bootstrap PF, resampling strategies, ESS monitoring
+3. **Multi-Target Tracking** - Data association, JPDA, track management
+4. **Coordinate Systems** - ECEF/Geodetic, ENU/NED, quaternions, projections
+5. **GPU Acceleration** - CuPy batch processing, memory profiling, MLX support
+6. **Network Flow Solver** - Min-cost assignment, simplex algorithm, real-world scenarios
+7. **INS/GNSS Integration** - Strapdown mechanization, loosely-coupled, DOP analysis
+8. **Performance Optimization** - Profiling, Numba JIT, vectorization, caching
 
-**Dataset Handling:** Create `examples/data/` directory
-**Binder Integration:** Set up cloud execution
-**CI Validation:** `pytest --nbval` integration
+**Kalman Filters Notebook (✅ Template Complete) - 22 cells:**
+- **Markdown**: 12 cells covering KF, EKF, UKF, SR-KF theory
+- **Code**: 10 execution examples with matplotlib visualizations
+- **Exercises**: 5 progressive challenges (noise tuning → NEES consistency → multi-sensor fusion)
+- **Features**: Parameter grid search, performance metrics, learning path
 
-**Effort:** MEDIUM (2 weeks)
+**Per-Notebook Target:**
+- **Theory sections**: 2-3 markdown cells with LaTeX equations
+- **Code examples**: 3-4 practical examples (~20-40 lines each)
+- **Visualizations**: 2-3 matplotlib/plotly plots
+- **Interactive exploration**: Parameter tuning with clear commentary
+- **Exercises**: 2-3 practical challenges for users
+- **Estimated read+run time**: 20-40 minutes
+- **Total cells**: 22-27 cells per notebook (8-10 markdown + 14-17 code)
+
+**Effort:** HIGH (6-8 weeks for complete enhancement)
+
+**Implementation Phases:**
+- **Phase 4.1a**: Kalman Filters + Coordinate Systems + GPU (Foundational)
+- **Phase 4.1b**: Multi-Target Tracking + INS/GNSS (Applications)
+- **Phase 4.1c**: Particle Filters + Network Flow + Performance (Advanced)
+
+#### 4.2 Supporting Infrastructure ✅ Complete
+
+**Dataset Handling:** ✅ `examples/data/` directory exists
+**Binder Integration:** ✅ Configured and ready
+**CI Validation:** ✅ `pytest --nbval` configured in conftest.py
+**Output Stripping:** ✅ nbstripout in .gitattributes
+
+**Documentation:** ✅ Created PHASE4_ENHANCEMENT_PLAN.md with detailed specifications
+
+**Validation:**
+- All notebooks can run locally with `jupyter lab docs/notebooks/`
+- Cloud execution via Binder: mybinder.org integration ready
+- CI validates notebooks on Python 3.10/3.11/3.12
+
+**Effort:** COMPLETE
 
 ### Phase 5: GPU Acceleration Tier-1 (Months 6-10) ✅ COMPLETE
 
