@@ -215,7 +215,7 @@ def ecef2geodetic(
     lat = np.sign(z) * np.abs(lat)
 
     if lat.size == 1:
-        return float(lat), float(lon), float(alt)
+        return lat.item(), lon.item(), alt.item()
 
     return lat, lon, alt
 

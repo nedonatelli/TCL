@@ -336,7 +336,7 @@ class TestDistributionProperties:
         x = np.linspace(0, 1, 1000)
         pdf_vals = u.pdf(x)
         # Approximate integration using trapezoid rule
-        integral = np.trapz(pdf_vals, x)
+        integral = np.trapezoid(pdf_vals, x)
         assert np.isclose(integral, 1.0, atol=0.01)
 
 

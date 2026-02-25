@@ -90,7 +90,7 @@ def cart2sphere(
 
     # Squeeze if single point
     if r.size == 1:
-        return float(r), float(az), float(el)
+        return r.item(), az.item(), el.item()
 
     return r, az, el
 
@@ -146,7 +146,7 @@ def sphere2cart(
         z = r * np.sin(el)
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([float(x), float(y), float(z)], dtype=np.float64)
+        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
 
     return np.array([x, y, z], dtype=np.float64)
 
@@ -198,7 +198,7 @@ def cart2pol(
     theta = np.arctan2(y, x)
 
     if r.size == 1:
-        return float(r), float(theta)
+        return r.item(), theta.item()
 
     return r, theta
 
@@ -239,7 +239,7 @@ def pol2cart(
     y = r * np.sin(theta)
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([float(x), float(y)], dtype=np.float64)
+        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y], dtype=np.float64)
 
     return np.array([x, y], dtype=np.float64)
 
@@ -293,7 +293,7 @@ def cart2cyl(
     phi = np.arctan2(y, x)
 
     if rho.size == 1:
-        return float(rho), float(phi), float(z)
+        return rho.item(), phi.item(), z.item()
 
     return rho, phi, z
 
@@ -338,7 +338,7 @@ def cyl2cart(
     y = rho * np.sin(phi)
 
     if np.isscalar(rho) or rho.size == 1:
-        return np.array([float(x), float(y), float(z)], dtype=np.float64)
+        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
 
     return np.array([x, y, z], dtype=np.float64)
 
@@ -397,7 +397,7 @@ def ruv2cart(
     z = r * w
 
     if np.isscalar(r) or r.size == 1:
-        return np.array([float(x), float(y), float(z)], dtype=np.float64)
+        return np.array([x.item() if hasattr(x, 'item') else x, y.item() if hasattr(y, 'item') else y, z.item() if hasattr(z, 'item') else z], dtype=np.float64)
 
     return np.array([x, y, z], dtype=np.float64)
 
@@ -453,7 +453,7 @@ def cart2ruv(
     v = y / r_safe
 
     if r.size == 1:
-        return float(r), float(u), float(v)
+        return r.item(), u.item(), v.item()
 
     return r, u, v
 
