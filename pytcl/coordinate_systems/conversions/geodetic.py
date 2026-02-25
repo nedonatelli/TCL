@@ -362,7 +362,14 @@ def ecef2enu(
     up = cos_lat * cos_lon * d[0] + cos_lat * sin_lon * d[1] + sin_lat * d[2]
 
     if east.size == 1:
-        return np.array([float(east), float(north), float(up)], dtype=np.float64)
+        return np.array(
+            [
+                east.item() if hasattr(east, "item") else east,
+                north.item() if hasattr(north, "item") else north,
+                up.item() if hasattr(up, "item") else up,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([east.flatten(), north.flatten(), up.flatten()], dtype=np.float64)
 
@@ -447,7 +454,14 @@ def enu2ecef(
     z = cos_lat * north + sin_lat * up + ecef_ref[2]
 
     if x.size == 1:
-        return np.array([float(x), float(y), float(z)], dtype=np.float64)
+        return np.array(
+            [
+                x.item() if hasattr(x, "item") else x,
+                y.item() if hasattr(y, "item") else y,
+                z.item() if hasattr(z, "item") else z,
+            ],
+            dtype=np.float64,
+        )
 
     return np.array([x.flatten(), y.flatten(), z.flatten()], dtype=np.float64)
 
