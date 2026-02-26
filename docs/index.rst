@@ -21,6 +21,8 @@ state estimation.
    architecture
    api_navigation
    recipes
+   coordinate_systems
+   astronomical
    troubleshooting
    migration_guide
    gap_analysis
