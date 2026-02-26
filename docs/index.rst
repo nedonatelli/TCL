@@ -18,6 +18,8 @@ state estimation.
    :caption: Contents:
 
    getting_started
+   architecture
+   api_navigation
    migration_guide
    gap_analysis
    gpu_acceleration
