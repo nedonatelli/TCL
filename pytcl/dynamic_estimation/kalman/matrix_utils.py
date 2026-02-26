@@ -20,7 +20,7 @@ Critical functions use Numba JIT compilation for 5-10x speedup:
 """
 
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -33,10 +33,12 @@ except ImportError:
     NUMBA_AVAILABLE = False
 
     # Fallback decorator that does nothing
-    def njit(*args, **kwargs):  # type: ignore[misc,unused-ignore]
+    def njit(
+        *args: Any, **kwargs: Any
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """No-op decorator when Numba is not available."""
 
-        def decorator(func):  # type: ignore[no-untyped-def,unused-ignore]
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             return func
 
         if len(args) == 1 and callable(args[0]):
@@ -46,8 +48,8 @@ except ImportError:
 
 @njit(cache=True)
 def _cholesky_update_core(
-    S: np.ndarray, v: np.ndarray, n: int
-) -> Tuple[np.ndarray, bool]:
+    S: NDArray[np.floating[Any]], v: NDArray[np.floating[Any]], n: int
+) -> Tuple[NDArray[np.floating[Any]], bool]:
     """
     Numba-optimized core loop for Cholesky update.
 
@@ -81,8 +83,8 @@ def _cholesky_update_core(
 
 @njit(cache=True)
 def _cholesky_downdate_core(
-    S: np.ndarray, v: np.ndarray, n: int
-) -> Tuple[np.ndarray, bool]:
+    S: NDArray[np.floating[Any]], v: NDArray[np.floating[Any]], n: int
+) -> Tuple[NDArray[np.floating[Any]], bool]:
     """
     Numba-optimized core loop for Cholesky downdate.
 
