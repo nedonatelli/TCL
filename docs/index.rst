@@ -30,6 +30,7 @@ state estimation.
    particle_filters
    smoothing
    adaptive_filtering
+   information_filters
    troubleshooting
    migration_guide
    gap_analysis
