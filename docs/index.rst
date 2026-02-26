@@ -20,6 +20,9 @@ state estimation.
    getting_started
    migration_guide
    gap_analysis
+   gpu_acceleration
+   kalman_filter_tuning
+   performance_optimization
    user_guide/index
    tutorials/index
    notebooks/index
