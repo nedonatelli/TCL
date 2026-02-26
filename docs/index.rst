@@ -27,6 +27,7 @@ state estimation.
    navigation_ins
    data_structures
    assignment_association
+   particle_filters
    troubleshooting
    migration_guide
    gap_analysis
