@@ -69,7 +69,14 @@ def copy_landing_page(app, exception):
     - @GITHUB_URL@ → GitHub repository URL
     """
     import shutil
+    import sys
     from pathlib import Path
+    
+    # Add docs dir to path to import project_metadata
+    docs_dir = Path(__file__).parent
+    if str(docs_dir) not in sys.path:
+        sys.path.insert(0, str(docs_dir))
+    
     from project_metadata import get_project_metadata
 
     if exception is not None:
