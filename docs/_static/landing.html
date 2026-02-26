@@ -750,12 +750,12 @@
             </p>
             <div class="hero-actions">
                 <a href="docs.html" class="btn btn-primary">Get Started</a>
-                <a href="https://github.com/nedonatelli/TCL" class="btn btn-secondary">View on GitHub</a>
+                <a href="@GITHUB_URL@" class="btn btn-secondary">View on GitHub</a>
             </div>
             <div class="install-cmd">
                 <div class="cmd-box">
-                    <code>pip install nrl-tracker</code>
-                    <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install nrl-tracker')">
+                    <code>pip install @PACKAGE_NAME@</code>
+                    <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install @PACKAGE_NAME@')">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -770,19 +770,19 @@
     <section class="stats">
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-value">1,070+</div>
+                <div class="stat-value">@FUNCTIONS@</div>
                 <div class="stat-label">Functions Implemented</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">2,894</div>
+                <div class="stat-value">@TESTS@</div>
                 <div class="stat-label">Test Cases</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">153</div>
+                <div class="stat-value">@MODULES@</div>
                 <div class="stat-label">Python Modules</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">100<span class="stat-percent">%</span></div>
+                <div class="stat-value">@MATLAB_PARITY@<span class="stat-percent">%</span></div>
                 <div class="stat-label">MATLAB Parity</div>
             </div>
         </div>

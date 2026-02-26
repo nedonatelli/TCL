@@ -59,10 +59,18 @@ def setup(app):
 def copy_landing_page(app, exception):
     """Copy landing page as index.html and rename Sphinx index to docs.html.
     
-    Also replaces @VERSION@ placeholder with the actual release version.
+    Also replaces placeholders with actual project metadata:
+    - @VERSION@ → release version
+    - @FUNCTIONS@ → function count
+    - @TESTS@ → test case count
+    - @MODULES@ → module count
+    - @MATLAB_PARITY@ → MATLAB feature parity percentage
+    - @PACKAGE_NAME@ → PyPI package name
+    - @GITHUB_URL@ → GitHub repository URL
     """
     import shutil
     from pathlib import Path
+    from project_metadata import get_project_metadata
 
     if exception is not None:
         return
@@ -80,15 +88,29 @@ def copy_landing_page(app, exception):
     if sphinx_index.exists():
         shutil.copy(str(sphinx_index), str(docs_page))
 
-    # Copy landing page as new index.html and inject version
+    # Copy landing page as new index.html and inject metadata
     landing_src = build_dir / "_static" / "landing.html"
     if landing_src.exists():
         # Read landing page content
         with open(landing_src, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Replace version placeholder with actual version from config
-        content = content.replace("@VERSION@", app.config.release)
+        # Get all project metadata
+        metadata = get_project_metadata()
+        
+        # Replace all placeholders with actual metadata
+        replacements = {
+            "@VERSION@": metadata["version"],
+            "@FUNCTIONS@": metadata["functions"],
+            "@TESTS@": metadata["tests"],
+            "@MODULES@": metadata["modules"],
+            "@MATLAB_PARITY@": metadata["matlab_parity"],
+            "@PACKAGE_NAME@": metadata["package_name"],
+            "@GITHUB_URL@": metadata["github_url"],
+        }
+        
+        for placeholder, value in replacements.items():
+            content = content.replace(placeholder, str(value))
         
         # Write to destination
         with open(sphinx_index, "w", encoding="utf-8") as f:
