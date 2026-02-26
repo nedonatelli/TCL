@@ -29,6 +29,7 @@ state estimation.
    assignment_association
    particle_filters
    smoothing
+   adaptive_filtering
    troubleshooting
    migration_guide
    gap_analysis
