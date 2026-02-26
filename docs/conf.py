@@ -57,7 +57,10 @@ def setup(app):
 
 
 def copy_landing_page(app, exception):
-    """Copy landing page as index.html and rename Sphinx index to docs.html."""
+    """Copy landing page as index.html and rename Sphinx index to docs.html.
+    
+    Also replaces @VERSION@ placeholder with the actual release version.
+    """
     import shutil
     from pathlib import Path
 
@@ -77,10 +80,19 @@ def copy_landing_page(app, exception):
     if sphinx_index.exists():
         shutil.copy(str(sphinx_index), str(docs_page))
 
-    # Copy landing page as new index.html
+    # Copy landing page as new index.html and inject version
     landing_src = build_dir / "_static" / "landing.html"
     if landing_src.exists():
-        shutil.copy(str(landing_src), str(sphinx_index))
+        # Read landing page content
+        with open(landing_src, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Replace version placeholder with actual version from config
+        content = content.replace("@VERSION@", app.config.release)
+        
+        # Write to destination
+        with open(sphinx_index, "w", encoding="utf-8") as f:
+            f.write(content)
 
 
 # -- Extension configuration -------------------------------------------------
