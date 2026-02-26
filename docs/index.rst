@@ -23,6 +23,7 @@ state estimation.
    recipes
    coordinate_systems
    astronomical
+   signal_processing
    troubleshooting
    migration_guide
    gap_analysis
