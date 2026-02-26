@@ -32,6 +32,7 @@ state estimation.
    adaptive_filtering
    information_filters
    advanced_kf_variants
+   custom_filter_implementation
    troubleshooting
    migration_guide
    gap_analysis
