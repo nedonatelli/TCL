@@ -25,6 +25,7 @@ state estimation.
    astronomical
    signal_processing
    navigation_ins
+   data_structures
    troubleshooting
    migration_guide
    gap_analysis
