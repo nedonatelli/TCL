@@ -26,6 +26,7 @@ state estimation.
    signal_processing
    navigation_ins
    data_structures
+   assignment_association
    troubleshooting
    migration_guide
    gap_analysis
