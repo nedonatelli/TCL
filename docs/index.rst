@@ -20,6 +20,7 @@ state estimation.
    getting_started
    architecture
    api_navigation
+   recipes
    troubleshooting
    migration_guide
    gap_analysis
