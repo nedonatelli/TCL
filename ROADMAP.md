@@ -415,9 +415,9 @@
 
 ## v2.0.0 Comprehensive Roadmap
 
-**Release Target:** 18 months (Months 1-18, starting Q1 2026)
-**Status:** Planning Phase
-**Last Updated:** January 4, 2026
+**Release Target:** 18 months total (Started Q1 2026, currently Month 3 of 18, Targeting Q4 2026)
+**Status:** Phase 8 - Release Preparation (Active)
+**Last Updated:** March 2, 2026
 
 ### Executive Summary
 
@@ -527,7 +527,7 @@ Integrated with `DependencyError` exception for consistent error handling across
 - `pytcl/astronomical/ephemerides.py` (jplephem)
 - `pytcl/plotting/*.py` (plotly)
 
-### Phase 3: Documentation Expansion & Module Graduation (Months 3-6) 🔄 IN PROGRESS
+### Phase 3: Documentation Expansion & Module Graduation (Months 3-6) ✅ COMPLETE
 
 #### 3.1 Module Docstring Expansion ✅
 
@@ -915,6 +915,12 @@ Eight comprehensive notebooks **(all complete):**
 
 **Target Release** with all improvements integrated, estimated October 2026
 
+**Timeline Breakdown (Phase 8: Months 13-18)**
+- April-May 2026: Alpha release preparation
+- June-July 2026: Beta release and community testing
+- August-September 2026: Release Candidate cycles
+- October 2026: v2.0.0 production release
+
 ### v2.0.0 Timeline
 
 | Phase | Duration | Focus Area | Status |
@@ -926,7 +932,7 @@ Eight comprehensive notebooks **(all complete):**
 | **5** | Months 6-10 | GPU acceleration (CuPy + MLX, Kalman, particles) | ✅ Complete (v1.10.0) |
 | **6** | Months 7-12 | +50 tests, 80%+ coverage, network flow re-enable | ✅ Complete (v1.10.x) |
 | **7** | Months 8-12 | Numba JIT, caching, sparse matrices | ✅ Complete (v1.11.0) |
-| **8** | Months 13-18 | Alpha → Beta → RC → Release | 🔄 In Progress (Targeting Q4 2026) |
+| **8** | Months 13-18 | Alpha → Beta → RC → Release | 🔄 In Progress (March 2026 onwards, Targeting October 2026) |
 
 ### v2.0.0 Risks & Mitigations
 
@@ -1419,7 +1425,8 @@ See the [original MATLAB library](https://github.com/USNavalResearchLaboratory/T
 ---
 
 **Last Updated:** March 2, 2026
-**Next Review:** May 2026 (after v2.0-alpha preparation)
-**v2.0.0 Target Release:** October 2026 (Completed Phases 1-7, Phase 8 in progress)
-**v2.1.0 Target Release:** Q3 2027 (RAPIDS, distributed tracking, advanced diagnostics)
+**Current Phase:** Phase 8 - Release Preparation (In Progress)
+**Next Milestone:** Alpha release (April 2026)
+**v2.0.0 Target Release:** October 2026 (7 months away; Phases 1-7 complete, Phase 8 in progress)
+**v2.1.0 Target Release:** Q3 2027 (12 months after v2.0.0; RAPIDS, distributed tracking, advanced diagnostics)
 **Long-term Horizon:** v3.0.0 planned for 2030+ (async/await, WASM, federated learning, quantum backends)
