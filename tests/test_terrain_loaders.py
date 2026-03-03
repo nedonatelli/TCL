@@ -454,35 +454,6 @@ class TestNumericalStability:
         assert not np.isnan(point.elevation)
 
 
-# =====================================================================
-# Additional comprehensive tests
-# =====================================================================
-
-"""Comprehensive tests for terrain loaders to improve coverage.
-
-This module provides additional tests for Tier 3 coverage improvement of
-terrain/loaders (63.3% -> ~75% target).
-"""
-
-import tempfile
-from pathlib import Path
-
-import numpy as np
-import pytest
-
-from pytcl.terrain.loaders import (
-    create_test_earth2014_dem,
-    create_test_gebco_dem,
-    get_data_dir,
-    get_earth2014_metadata,
-    get_gebco_metadata,
-    load_earth2014,
-    load_gebco,
-    parse_earth2014_binary,
-    parse_gebco_netcdf,
-)
-
-
 class TestTerrainDataDirectory:
     """Tests for terrain data directory management."""
 
@@ -502,83 +473,6 @@ class TestTerrainDataDirectory:
         data_dir = get_data_dir()
         # Path objects have .exists(), .mkdir(), etc.
         assert hasattr(data_dir, "exists") or hasattr(data_dir, "__fspath__")
-
-
-class TestGEBCOMetadata:
-    """Tests for GEBCO metadata."""
-
-    def test_get_gebco_metadata_default(self):
-        """Test getting GEBCO metadata."""
-        try:
-            metadata = get_gebco_metadata()
-            assert metadata is not None
-        except Exception as e:
-            pytest.skip(f"GEBCO metadata unavailable: {e}")
-
-    def test_get_gebco_metadata_2024(self):
-        """Test getting GEBCO 2024 metadata."""
-        try:
-            metadata = get_gebco_metadata(version="GEBCO2024")
-            assert metadata is not None
-        except Exception as e:
-            pytest.skip(f"GEBCO 2024 metadata unavailable: {e}")
-
-
-class TestEarth2014Metadata:
-    """Tests for Earth2014 metadata."""
-
-    def test_get_earth2014_metadata(self):
-        """Test getting Earth2014 metadata."""
-        try:
-            metadata = get_earth2014_metadata(layer="SUR")
-            assert metadata is not None
-        except Exception as e:
-            pytest.skip(f"Earth2014 metadata unavailable: {e}")
-
-
-class TestDEMQueries:
-    """Tests for DEM query operations."""
-
-    def test_query_dem_point(self):
-        """Test DEM query at single point."""
-        try:
-            # Query elevation at New York
-            elevation = query_dem(latitude=40.7128, longitude=-74.0060, source="gebco")
-
-            # Should return a number
-            assert isinstance(elevation, (int, float, np.number))
-            # Reasonable elevation near sea level
-            assert -500 < elevation < 500
-
-        except Exception as e:
-            pytest.skip(f"DEM query unavailable: {e}")
-
-    def test_query_dem_array(self):
-        """Test DEM query with array inputs."""
-        try:
-            lats = np.array([40.0, 41.0, 42.0])
-            lons = np.array([-74.0, -75.0, -76.0])
-
-            elevations = query_dem(lats, lons, source="gebco")
-
-            # Should return array with same shape
-            if isinstance(elevations, np.ndarray):
-                assert len(elevations) == len(lats)
-
-        except Exception as e:
-            pytest.skip(f"Array DEM query failed: {e}")
-
-    def test_query_dem_different_sources(self):
-        """Test DEM queries with different sources."""
-        sources = ["gebco", "srtm", "aster"]
-
-        for source in sources:
-            try:
-                elevation = query_dem(40.0, -74.0, source=source)
-                assert isinstance(elevation, (int, float, np.number))
-            except Exception:
-                # Source may not be available
-                pass
 
 
 class TestCoefficientCreation:

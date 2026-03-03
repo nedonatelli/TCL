@@ -1,5 +1,8 @@
 """Tests for Enhanced Magnetic Model (EMM) and WMMHR."""
 
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -14,6 +17,12 @@ from pytcl.magnetism import (
     get_emm_data_dir,
     wmm,
     wmmhr,
+)
+from pytcl.magnetism.emm import (
+    HighResCoefficients,
+    create_test_coefficients,
+    get_data_dir,
+    parse_emm_file,
 )
 
 
@@ -441,31 +450,6 @@ class TestHighDegreeEvaluation:
 # =====================================================================
 # Additional comprehensive tests
 # =====================================================================
-
-"""Comprehensive tests for magnetism EMM to improve coverage.
-
-This module provides additional tests for Tier 3 coverage improvement of
-magnetism/emm (66.8% -> ~75% target).
-"""
-
-import tempfile
-from pathlib import Path
-
-import numpy as np
-import pytest
-
-from pytcl.magnetism.emm import (
-    HighResCoefficients,
-    create_test_coefficients,
-    emm,
-    emm_declination,
-    emm_inclination,
-    emm_intensity,
-    get_data_dir,
-    load_emm_coefficients,
-    parse_emm_file,
-    wmmhr,
-)
 
 
 class TestEMMDataManagement:

@@ -573,34 +573,6 @@ class TestRotationIntegration:
 # Additional comprehensive tests
 # =====================================================================
 
-"""Comprehensive tests for coordinate rotations to improve coverage.
-
-This module provides additional tests for Tier 3 coverage improvement of
-coordinate_systems/rotations (67.8% -> ~75% target).
-"""
-
-import numpy as np
-import pytest
-
-from pytcl.coordinate_systems.rotations import (
-    axisangle2rotmat,
-    euler2quat,
-    euler2rotmat,
-    quat2euler,
-    quat2rotmat,
-    quat_conjugate,
-    quat_inverse,
-    quat_multiply,
-    quat_rotate,
-    rotmat2axisangle,
-    rotmat2euler,
-    rotmat2quat,
-    rotx,
-    roty,
-    rotz,
-    slerp,
-)
-
 
 class TestBasicRotationMatrices:
     """Tests for basic rotation matrix generation."""
@@ -816,8 +788,8 @@ class TestEulerQuaternionConversions:
             )
 
 
-class TestQuaternionOperations:
-    """Tests for quaternion arithmetic."""
+class TestQuaternionOperationsComprehensive:
+    """Comprehensive tests for quaternion arithmetic."""
 
     def test_quat_multiply_identity(self):
         """Test multiplication by identity quaternion."""

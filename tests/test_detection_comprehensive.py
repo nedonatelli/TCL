@@ -9,6 +9,7 @@ Tests coverage for:
 """
 
 import numpy as np
+import pytest
 
 from pytcl.mathematical_functions.signal_processing.detection import (
     cfar_2d,
@@ -16,7 +17,9 @@ from pytcl.mathematical_functions.signal_processing.detection import (
     cfar_go,
     cfar_os,
     cfar_so,
+    cluster_detections,
     detection_probability,
+    snr_loss,
     threshold_factor,
 )
 
@@ -392,28 +395,6 @@ class TestCFARIntegration:
         # Both should return valid results
         assert result_low.detections.dtype == np.bool_
         assert result_high.detections.dtype == np.bool_
-
-
-"""Comprehensive tests for signal detection to improve coverage.
-
-This module provides additional tests for Tier 2 coverage improvement of
-signal detection (47% -> ~70% target).
-"""
-
-import numpy as np
-import pytest
-
-from pytcl.mathematical_functions.signal_processing.detection import (
-    cfar_2d,
-    cfar_ca,
-    cfar_go,
-    cfar_os,
-    cfar_so,
-    cluster_detections,
-    detection_probability,
-    snr_loss,
-    threshold_factor,
-)
 
 
 class TestCFARDetectionComprehensive:

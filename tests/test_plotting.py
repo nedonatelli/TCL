@@ -17,14 +17,25 @@ from pytcl.plotting import (  # Ellipse utilities; Track utilities (non-plotting
     plot_trajectory_2d,
     plot_trajectory_3d,
 )
+from pytcl.plotting.coordinates import (
+    plot_coordinate_axes_3d,
+    plot_coordinate_transform,
+    plot_euler_angles,
+    plot_points_spherical,
+    plot_quaternion_interpolation,
+    plot_rotation_comparison,
+    plot_spherical_grid,
+)
 
 # Check if plotly is available
 try:
     import plotly.graph_objects as go
 
     HAS_PLOTLY = True
+    PLOTLY_AVAILABLE = True
 except ImportError:
     HAS_PLOTLY = False
+    PLOTLY_AVAILABLE = False
 
 
 class TestCovarianceEllipsePoints:
@@ -454,32 +465,6 @@ class TestAnimatedTracking:
 # =====================================================================
 # Additional comprehensive tests
 # =====================================================================
-
-"""Comprehensive tests for coordinate plotting to improve coverage.
-
-This module provides additional tests for Tier 2 coverage improvement of
-coordinate plotting (40.4% -> ~70% target).
-"""
-
-import numpy as np
-import pytest
-
-try:
-    import plotly.graph_objects as go
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
-from pytcl.plotting.coordinates import (
-    plot_coordinate_axes_3d,
-    plot_coordinate_transform,
-    plot_euler_angles,
-    plot_points_spherical,
-    plot_quaternion_interpolation,
-    plot_rotation_comparison,
-    plot_spherical_grid,
-)
 
 
 @pytest.mark.skipif(not PLOTLY_AVAILABLE, reason="Plotly not available")

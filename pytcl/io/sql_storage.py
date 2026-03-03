@@ -301,9 +301,11 @@ class SQLStorage(StorageBackend):
             )
         else:
             # List all keys
-            self._cursor.execute(f"""SELECT name FROM {self._arrays_table}
+            self._cursor.execute(
+                f"""SELECT name FROM {self._arrays_table}
                    UNION
-                   SELECT key FROM {self._metadata_table}""")
+                   SELECT key FROM {self._metadata_table}"""
+            )
 
         return [row[0] for row in self._cursor.fetchall()]
 
@@ -377,19 +379,23 @@ class SQLStorage(StorageBackend):
             return
 
         # Metadata table
-        self._cursor.execute(f"""CREATE TABLE IF NOT EXISTS {self._metadata_table} (
+        self._cursor.execute(
+            f"""CREATE TABLE IF NOT EXISTS {self._metadata_table} (
                key TEXT PRIMARY KEY,
                value TEXT,
                metadata TEXT DEFAULT '{{}}'
-           )""")
+           )"""
+        )
 
         # Arrays table
-        self._cursor.execute(f"""CREATE TABLE IF NOT EXISTS {self._arrays_table} (
+        self._cursor.execute(
+            f"""CREATE TABLE IF NOT EXISTS {self._arrays_table} (
                name TEXT PRIMARY KEY,
                dtype TEXT,
                shape TEXT,
                data BLOB,
                metadata TEXT DEFAULT '{{}}'
-           )""")
+           )"""
+        )
 
         self._connection.commit()

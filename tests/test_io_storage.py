@@ -7,7 +7,15 @@ import pytest
 
 from pytcl.io import HDF5Storage, SQLStorage, StorageBackend
 
+try:
+    import h5py  # noqa: F401
 
+    HAS_H5PY = True
+except ImportError:
+    HAS_H5PY = False
+
+
+@pytest.mark.skipif(not HAS_H5PY, reason="h5py not installed")
 class TestHDF5Storage:
     """Tests for HDF5 storage backend."""
 
@@ -268,6 +276,7 @@ class TestStorageBackend:
 class TestStorageInteroperability:
     """Test compatibility between storage backends."""
 
+    @pytest.mark.skipif(not HAS_H5PY, reason="h5py not installed")
     def test_array_compatibility(self):
         """Test that arrays stored in one format can be understood by others."""
         data_1d = np.array([1, 2, 3, 4, 5])
