@@ -11,12 +11,8 @@ from pathlib import Path
 from typing import Dict, Any
 
 
-# Manually maintained statistics (updated with each release)
-# These reflect the current state of the project
+# Manually maintained statistics that cannot be auto-calculated
 RELEASE_STATS = {
-    "functions": "1,070+",
-    "modules": "153",
-    "tests": "3,280",
     "matlab_parity": "100",
     "coverage": "80",
 }
@@ -62,6 +58,33 @@ def read_pyproject_metadata() -> Dict[str, Any]:
         print(f"Warning: Could not read pyproject.toml: {e}")
     
     return metadata
+
+
+def count_public_functions() -> int:
+    """Count public functions and methods in pytcl package.
+
+    Returns
+    -------
+    int
+        Number of public (non-underscore-prefixed) function and method defs.
+    """
+    pytcl_path = Path(__file__).parent.parent / "pytcl"
+    if not pytcl_path.exists():
+        return 0
+
+    count = 0
+    for py_file in pytcl_path.rglob("*.py"):
+        if "__pycache__" in str(py_file):
+            continue
+        try:
+            content = py_file.read_text(encoding="utf-8")
+            # Top-level public functions
+            count += len(re.findall(r"^def [a-zA-Z]\w*", content, re.MULTILINE))
+            # Public methods (single indent)
+            count += len(re.findall(r"    def [a-zA-Z]\w*", content, re.MULTILINE))
+        except Exception:
+            pass
+    return count
 
 
 def count_python_modules() -> int:
@@ -138,10 +161,12 @@ def get_project_metadata() -> Dict[str, str]:
         "github_url": PROJECT_INFO["github_url"],
         "organization": PROJECT_INFO["organization"],
         
-        # Statistics (manually maintained in RELEASE_STATS)
-        "functions": RELEASE_STATS["functions"],
-        "modules": RELEASE_STATS["modules"],
-        "tests": RELEASE_STATS["tests"],
+        # Auto-calculated statistics
+        "functions": f"{count_public_functions():,}",
+        "modules": f"{count_python_modules():,}",
+        "tests": f"{count_test_functions():,}",
+
+        # Manually maintained statistics
         "matlab_parity": RELEASE_STATS["matlab_parity"],
         "coverage": RELEASE_STATS["coverage"],
     }

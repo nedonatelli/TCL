@@ -8,6 +8,15 @@ import sys
 
 # Add the project root to the path for autodoc
 sys.path.insert(0, os.path.abspath(".."))
+# Add docs dir to path for project_metadata
+sys.path.insert(0, os.path.abspath("."))
+
+from project_metadata import (
+    count_public_functions,
+    count_python_modules,
+    count_test_functions,
+    read_pyproject_metadata,
+)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -15,7 +24,20 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "Tracker Component Library"
 copyright = "2024-2026, U.S. Naval Research Laboratory (Python port)"
 author = "U.S. Naval Research Laboratory"
-release = "1.14.0"
+release = read_pyproject_metadata().get("version", "0.0.0")
+
+# Dynamic project stats for RST substitutions
+_n_functions = f"{count_public_functions():,}"
+_n_modules = f"{count_python_modules():,}"
+_n_tests = f"{count_test_functions():,}"
+
+# RST substitutions available in all .rst files
+rst_epilog = f"""
+.. |version_badge| replace:: **v{release}**
+.. |n_functions| replace:: {_n_functions}
+.. |n_modules| replace:: {_n_modules}
+.. |n_tests| replace:: {_n_tests}
+"""
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

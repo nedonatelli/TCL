@@ -5,7 +5,7 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
-**v1.13.2** — 868 functions | 113 modules | 3,396 tests | 100% MATLAB parity | 100% mypy --strict | 80% coverage | 8 Interactive Notebooks | GPU acceleration
+|version_badge| — |n_functions| functions | |n_modules| modules | |n_tests| tests | 100% MATLAB parity | 100% mypy --strict | 80% coverage | 8 Interactive Notebooks | GPU acceleration
 
 .. note::
 
