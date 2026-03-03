@@ -620,7 +620,7 @@ Best Practices
    ❌ Don't prematurely optimize
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`architecture` - Module organization and patterns
 - :doc:`getting_started` - Quick start guide

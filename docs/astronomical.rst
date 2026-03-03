@@ -684,7 +684,7 @@ Common Orbital Scenarios
        return np.degrees(i_solution)
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`architecture` - Module organization
 - :doc:`coordinate_systems` - Coordinate transformations

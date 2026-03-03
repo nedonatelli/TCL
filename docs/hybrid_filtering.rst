@@ -341,7 +341,7 @@ Use RBPF in multi-target tracking:
        track.state = rbpf_update(track.state, ...)
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`getting_started` - Basic particle filtering
 - :doc:`particle_filters` - Standard particle filter reference

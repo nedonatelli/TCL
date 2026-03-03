@@ -720,7 +720,7 @@ Troubleshooting
 
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`recipes` - Ready-to-use particle filter examples
 - :doc:`troubleshooting` - Common particle filter issues

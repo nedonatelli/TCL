@@ -636,7 +636,7 @@ Data Association with Gating
    assignments = assignment_nd(cost_matrix)
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`architecture` - Module organization
 - :doc:`api_navigation` - Function discovery

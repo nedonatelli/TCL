@@ -792,7 +792,7 @@ Conversion Decision Tree
        └─ Want ECEF? → Need time → eci2ecef(x, time)
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`architecture` - Module organization
 - :doc:`api_navigation` - Finding coordinate functions

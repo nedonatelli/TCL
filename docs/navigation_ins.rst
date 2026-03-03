@@ -526,7 +526,7 @@ References & Further Reading
 - **TCWG Standards** (RFP-004): INS/GNSS Integration
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`coordinate_systems` - Coordinate transformations for navigation frames
 - :doc:`astronomical` - Precision reference frames (ECEF/ECI)

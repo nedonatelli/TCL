@@ -622,7 +622,7 @@ Performance Considerations
            return detection
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`architecture` - Module organization
 - :doc:`api_navigation` - Finding signal processing functions

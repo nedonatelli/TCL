@@ -708,7 +708,7 @@ Getting Help
    x_pred, P_pred = kf_predict(x, P, F, Q)
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`kalman_filter_tuning` - Filter parameter tuning
 - :doc:`performance_optimization` - Performance profiling

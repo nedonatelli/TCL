@@ -947,7 +947,7 @@ Common Pitfalls
 ---
 
 See Also
-========
+~~~~~~~~
 
 - [Kalman Filter Tuning](kalman_filter_tuning.rst) — Standard filtering approach
 - [Smoothing Algorithms](smoothing.rst) — RTS smoother for trajectory refinement

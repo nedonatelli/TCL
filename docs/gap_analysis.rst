@@ -767,7 +767,7 @@ The Python implementation also surpasses the MATLAB original with GPU accelerati
 
 
 See Also
---------
+~~~~~~~~
 
 **Documentation for Verified Components**
 

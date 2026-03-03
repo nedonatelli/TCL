@@ -1054,7 +1054,7 @@ Common Pitfalls
 ---
 
 See Also
-========
+~~~~~~~~
 
 - [Kalman Filter Tuning Guide](kalman_filter_tuning.rst) — Static parameter selection
 - [Particle Filters](particle_filters.rst) — Non-adaptive but handles non-Gaussian distributions

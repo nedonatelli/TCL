@@ -381,7 +381,7 @@ Resources
 - `SciPy Optimization <https://docs.scipy.org/doc/scipy/reference/optimize.html>`_
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`gpu_acceleration` - GPU-accelerated operations
 - :doc:`kalman_filter_tuning` - Filter parameter tuning

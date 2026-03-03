@@ -752,7 +752,7 @@ Troubleshooting
 
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`recipes` - Ready-to-use smoothing implementations
 - :doc:`kalman_filter_tuning` - Parameter selection for smoothers

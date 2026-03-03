@@ -380,7 +380,7 @@ Use NRLMSISE-00 in SGP4 propagator:
        # (implementation depends on propagator interface)
 
 See Also
---------
+~~~~~~~~
 
 - **NOAA Space Weather Prediction Center**: https://www.swpc.noaa.gov
   - Daily F10.7 and Kp index values

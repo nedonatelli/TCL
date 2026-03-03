@@ -627,7 +627,7 @@ Best Practices by Use Case
   → Validate with ``kalman_filter_tuning`` diagnostics
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`kalman_filter_tuning` - Detailed filter parameter tuning
 - :doc:`gpu_acceleration` - Using GPU computation

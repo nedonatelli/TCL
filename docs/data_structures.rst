@@ -623,7 +623,7 @@ References & Further Reading
 - Efficient data structure design for real-time systems
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`recipes` - Multi-target tracking workflows using TrackSet
 - :doc:`api_navigation` - Finding Track and TrackSet functions

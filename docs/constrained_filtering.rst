@@ -267,7 +267,7 @@ For real-time applications:
    )
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`getting_started` - Basic filter usage
 - :doc:`adaptive_filtering` - Adaptive constraint handling

@@ -965,7 +965,7 @@ Common Pitfalls
 ---
 
 See Also
-========
+~~~~~~~~
 
 - [Kalman Filter Tuning](kalman_filter_tuning.rst) — Basics and standard Kalman
 - [Adaptive Filtering](adaptive_filtering.rst) — Parameter tuning online

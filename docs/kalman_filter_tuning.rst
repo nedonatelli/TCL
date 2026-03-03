@@ -428,7 +428,7 @@ References
 - Bierman, G. J. (1977). Factorization Methods for Discrete Sequential Estimation
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`gpu_acceleration` - GPU-accelerated filtering
 - Module: ``pytcl.dynamic_estimation.kalman``

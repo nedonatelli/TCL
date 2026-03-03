@@ -272,7 +272,7 @@ For systems with multiple GPUs:
            pass
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`performance_optimization` - CPU optimization techniques
 - :doc:`kalman_filter_tuning` - Filter tuning and diagnostics

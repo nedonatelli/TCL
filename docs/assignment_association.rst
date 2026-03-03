@@ -716,7 +716,7 @@ Diagnosis: Check innovation sequences:
 
 
 See Also
---------
+~~~~~~~~
 
 - :doc:`recipes` - Multi-target tracking with data association
 - :doc:`data_structures` - TrackSet management for associations
