@@ -30,6 +30,17 @@ Extended Kalman Filter
    :undoc-members:
    :show-inheritance:
 
+Constrained Extended Kalman Filter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+State-constrained filtering using Lagrange multiplier methods. Enforces
+equality and inequality constraints on the state estimate.
+
+.. automodule:: pytcl.dynamic_estimation.kalman.constrained
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Unscented & Cubature Kalman Filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -71,6 +82,18 @@ Bootstrap Particle Filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: pytcl.dynamic_estimation.particle_filters.bootstrap
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Rao-Blackwellized Particle Filter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Hybrid particle filter for systems with nonlinear and linear subsystems. Each
+particle maintains an independent Kalman filter for the linear components,
+reducing estimator variance.
+
+.. automodule:: pytcl.dynamic_estimation.rbpf
    :members:
    :undoc-members:
    :show-inheritance:

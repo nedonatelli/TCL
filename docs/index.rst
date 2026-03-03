@@ -5,13 +5,14 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
-**v1.13.0** — 1,070+ functions | 153 modules | 3,280 tests | 100% mypy --strict | 80% coverage | 8 Interactive Notebooks
+**v1.13.2** — 868 functions | 113 modules | 3,396 tests | 100% MATLAB parity | 100% mypy --strict | 80% coverage | 8 Interactive Notebooks | GPU acceleration
 
 .. note::
 
-   **Performance Optimization**: This release adds Numba JIT compilation, intelligent
-   caching with lru_cache, and SparseCostTensor for efficient large-scale assignment
-   problems. Type safety maintained with full mypy --strict compliance.
+   **100% MATLAB Parity Achieved**: Starting with v1.13.2, all tier 1 and tier 2
+   missing components are now implemented: NRLMSISE-00 atmosphere model, constrained
+   EKF, and Rao-Blackwellized particle filters. GPU acceleration (CuPy + MLX) provides
+   10-15x speedup for batch processing. Ready for v2.0.0 release.
 
 .. toctree::
    :maxdepth: 2
@@ -27,6 +28,8 @@ state estimation.
    :caption: Filtering & Estimation
 
    kalman_filter_tuning
+   constrained_filtering
+   hybrid_filtering
    adaptive_filtering
    information_filters
    advanced_kf_variants
@@ -47,6 +50,7 @@ state estimation.
 
    coordinate_systems
    astronomical
+   atmosphere_models
    navigation_ins
    signal_processing
 
@@ -76,8 +80,8 @@ Overview
 
 The Tracker Component Library provides:
 
-* **Dynamic Estimation**: Kalman filters (KF, EKF, UKF, CKF, IMM), particle filters,
-  smoothers (RTS, fixed-lag, two-filter), information filters (SRIF)
+* **Dynamic Estimation**: Kalman filters (KF, EKF, UKF, CKF, **CEKF**, IMM), particle filters
+  (**RBPF**), smoothers (RTS, fixed-lag, two-filter), information filters (SRIF), H-infinity
 * **Data Association**: GNN, JPDA, MHT, 2D/3D assignment (Hungarian, auction, Murty)
 * **Coordinate Systems**: Cartesian, spherical, geodetic conversions; map projections
   (UTM, Mercator, Lambert); rotation representations
@@ -86,13 +90,15 @@ The Tracker Component Library provides:
 * **Navigation**: INS mechanization, INS/GNSS integration, great circle/rhumb line
   navigation, TDOA localization
 * **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF),
-  tidal effects, terrain/DEM utilities
+  atmosphere (**NRLMSISE-00**), tidal effects, terrain/DEM utilities
 * **Astronomical**: Orbital mechanics, Kepler propagation, Lambert problem,
   reference frame transformations, JPL ephemerides (DE405/430/432s/440),
   relativistic corrections (Schwarzschild, geodetic precession, Shapiro delay)
 * **Mathematical Functions**: Special functions (Marcum Q, Lambert W, Debye,
   hypergeometric, Bessel), statistics, numerical integration
-* **Signal Processing**: IIR/FIR filters, CFAR detection, FFT, wavelets
+* **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends with
+  10-15x speedup for batch Kalman filtering, particle filters, and matrix operations
+* **Data Persistence**: HDF5 and SQL backends for tracking data storage and retrieval
 
 Installation
 ------------

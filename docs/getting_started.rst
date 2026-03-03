@@ -141,6 +141,51 @@ The library provides several filtering algorithms:
    state = initialize_particles(x0, P0, N=1000)
    state = bootstrap_pf_step(state.particles, state.weights, z, f, h, Q_sample, R)
 
+**Constrained Extended Kalman Filter** - For state constraints (e.g., bounded positions):
+
+.. code-block:: python
+
+   from pytcl.dynamic_estimation.kalman import (
+       constrained_ekf_predict,
+       constrained_ekf_update,
+       ConstraintFunction,
+   )
+
+   # Define constraint: 0 <= x[0] <= 100 (position within bounds)
+   def constraint_lower(x):
+       return -x[0]  # g(x) <= 0 means x[0] >= 0
+   
+   def constraint_upper(x):
+       return x[0] - 100.0  # g(x) <= 0 means x[0] <= 100
+
+   constraint_lower_obj = ConstraintFunction(constraint_lower)
+   constraint_upper_obj = ConstraintFunction(constraint_upper)
+
+   pred = constrained_ekf_predict(x, P, f_func, F_jacobian, Q, constraints=[...])
+   upd = constrained_ekf_update(pred.x, pred.P, z, h_func, H_jacobian, R, constraints=[...])
+
+**Rao-Blackwellized Particle Filter** - Hybrid linear/nonlinear filtering:
+
+.. code-block:: python
+
+   from pytcl.dynamic_estimation import (
+       rbpf_predict,
+       rbpf_update,
+       RBPFFilter,
+   )
+
+   # For systems with nonlinear dynamics in 'y' and linear dynamics in 'x'
+   # Each particle maintains its own Kalman filter for the linear part
+   filter = RBPFFilter(
+       y0=np.array([...]),  # Nonlinear state (particle positions)
+       x0_fn=lambda y: np.array([...]),  # Linear state given y
+       P0=P_linear,
+       N_particles=500,
+   )
+
+   filter = rbpf_predict(filter, f_nonlinear, F_linear, Q_linear, Q_nonlinear)
+   filter = rbpf_update(filter, z, h_func, R)
+
 Coordinate Systems
 ^^^^^^^^^^^^^^^^^^
 
@@ -160,3 +205,39 @@ Convert between coordinate systems:
 
    # Geodetic to ECEF
    x, y, z = geodetic2ecef(lat=40.0, lon=-75.0, alt=100.0)
+
+Atmospheric Models
+^^^^^^^^^^^^^^^^^^
+
+Get atmospheric density for satellite drag calculations:
+
+.. code-block:: python
+
+   from pytcl.atmosphere import nrlmsise00
+
+   # NRLMSISE-00 model with solar/geomagnetic activity
+   density = nrlmsise00.get_density(
+       altitude_km=400.0,
+       latitude_deg=45.0,
+       longitude_deg=-75.0,
+       year=2024,
+       day_of_year=100,
+       hour_utc=12.0,
+       f107=150.0,  # 10.7 cm solar flux (SFU)
+       f107a=130.0,  # 81-day average
+       kp=3.0,  # Geomagnetic activity index
+   )
+   print(f"Density: {density:.3e} kg/m³")
+
+   # Get atmospheric composition
+   composition = nrlmsise00.get_composition(
+       altitude_km=400.0,
+       latitude_deg=0.0,
+       longitude_deg=0.0,
+       year=2024,
+       day_of_year=100,
+       hour_utc=12.0,
+       f107=150.0,
+       f107a=130.0,
+       kp=3.0,
+   )
