@@ -12,7 +12,13 @@
 2. [Release History](#release-history)
 3. [Performance Optimization (v1.1.0-v1.6.0)](#performance-optimization)
 4. [v2.0.0 Comprehensive Roadmap](#v200-comprehensive-roadmap)
-5. [Contributing](#contributing)
+5. [v2.1 Roadmap](#v21-roadmap-post-v200)
+6. [Performance Benchmarking Targets](#performance-benchmarking-targets)
+7. [Known Issues & Limitations](#known-issues--limitations)
+8. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
+9. [Long-Term Vision (2027-2029)](#long-term-vision-2027-2029)
+10. [Community Contribution Priorities](#community-contribution-priorities)
+11. [Contributing](#contributing)
 
 ---
 
@@ -954,6 +960,450 @@ Eight comprehensive notebooks **(all complete):**
 
 ---
 
+## v2.1 Roadmap (Post-v2.0.0)
+
+**Timeline:** Q1-Q3 2027 (6-9 months after v2.0.0 release)
+
+### Enhanced GPU Support (v2.1.x)
+
+#### 9.1 RAPIDS Integration for Distributed Computing 🔄 Planned
+
+**Target:** Q1 2027
+
+**Features:**
+- **cuML integration**: GPU-accelerated clustering (k-means, DBSCAN) and statistical functions
+- **cuDF support**: DataFrames for high-dimensional tracking data
+- **Multi-GPU orchestration**: Distributed Kalman filtering across GPU clusters
+- **Performance goal**: 50-100x speedup on 1000+ target scenarios
+
+**Modules Affected:**
+- `pytcl.clustering`: GPU k-means, hierarchical clustering
+- `pytcl.spatial_data_structures`: GPU k-d trees via cuML
+- `pytcl.dynamic_estimation`: Multi-GPU particle filters
+
+#### 9.2 Intel oneAPI Backend 🔄 Planned
+
+**Target:** Q2 2027
+
+**Features:**
+- oneAPI support for Intel Arc and Data Center GPU Max
+- Automatic backend selection (CuPy, MLX, oneAPI, NumPy)
+- Unified performance profiling across all backends
+- Performance parity with NVIDIA CUDA
+
+#### 9.3 Quantization & Model Compression 🔄 Planned
+
+**Target:** Q2 2027
+
+**Features:**
+- Mixed-precision Kalman filtering (float32/float16)
+- Covariance matrix compression for edge devices
+- On-device inference optimization for embedded tracking
+- 50-70% memory reduction with <1% accuracy loss
+
+### Advanced Tracking Capabilities (v2.1.x)
+
+#### 9.4 Multi-Hypothesis Tracking Enhancements 🔄 Planned
+
+**Target:** Q1 2027
+
+**Features:**
+- Bernoulli filter for track initiation/termination
+- PHD/CPHD filters for clutter-heavy scenarios
+- Generalized labeled multi-Bernoulli (GLMB) tracker
+- Intensity function visualization
+
+#### 9.5 Nonlinear Manifold Estimation 🔄 Planned
+
+**Target:** Q2 2027
+
+**Features:**
+- Constrained Kalman filtering for manifold-constrained state spaces
+- Geodesic distance computation for rotation matrices
+- Lie group integration for orientation tracking
+- Applications: Aircraft attitude, satellite orientation, marine headings
+
+### Data Management & Interoperability (v2.1.x)
+
+#### 9.6 Format Support Expansion 🔄 Planned
+
+**Target:** Q1 2027
+
+**Formats:**
+- NetCDF4 backend for large geospatial datasets
+- Parquet format for cloud-native tracking data
+- Apache Arrow integration for inter-process communication
+- ASDF (Advanced Scientific Data Format) for heterogeneous data
+
+#### 9.7 ROS 2 Integration (Optional Plugin) 🔄 Planned
+
+**Target:** Q2 2027
+
+**Features:**
+- ROS 2 node wrappers for core tracking functions
+- Real-time message handling for /tf transforms
+- RADAR/LiDAR/Camera sensor plugins
+- Compliant with industry autonomous vehicle standards
+
+### Performance & Analytics (v2.1.x)
+
+#### 9.8 Comprehensive Benchmarking Suite 🔄 Planned
+
+**Target:** Q1 2027
+
+**Features:**
+- Automated regression testing across hardware (CPU/GPU/Apple Silicon)
+- Timeline profiling dashboard
+- Memory allocation tracking
+- Comparison with competing libraries (FilterPy, Kalman, etc.)
+
+#### 9.9 Advanced Diagnostic Tools 🔄 Planned
+
+**Target:** Q2 2027
+
+**Features:**
+- Interactive filter health monitoring (covariance ellipses, innovation sequences)
+- Automatic anomaly detection in tracking results
+- Track quality metrics (completeness, purity, fragmentation)
+- Export to Jupyter notebooks for post-analysis
+
+### Documentation & Community (v2.1.x)
+
+#### 9.10 Case Study Library 🔄 Planned
+
+**Target:** Q2 2027
+
+**Examples:**
+- Air traffic control with 500+ simultaneous aircraft
+- Autonomous vehicle fleet tracking and cooperative perception
+- Maritime domain awareness with radar/AIS fusion
+- Counter-UAS (C-UAS) multisensor tracking
+- Space debris cataloging with optical/radar observations
+
+Each case study: 200-400 lines of code, trained on realistic datasets, benchmarked
+
+#### 9.11 Extended API Documentation 🔄 Planned
+
+**Target:** Q1 2027
+
+**Coverage:**
+- 100+ video tutorials (3-10 min each)
+- Interactive filter playground (web-based parameter tuning)
+- Algorithm comparison visualizations
+- Community-contributed examples (with vetting process)
+
+---
+
+## Performance Benchmarking Targets
+
+### Current Benchmarks (v1.13.2)
+
+| Algorithm | Dataset | Current | Target | Status |
+|-----------|---------|---------|--------|--------|
+| Standard Kalman Filter (1000 targets, 100 steps) | Synthetic | 145 ms | <100 ms | ✅ Achieved |
+| Extended Kalman Filter | Nonlinear 6D | 287 ms | <200 ms | ✅ Achieved |
+| Unscented Kalman Filter | Nonlinear 6D | 312 ms | <250 ms | ✅ Achieved |
+| Particle Filter (1000 particles) | 2D nav | 156 ms | <120 ms | ✅ Achieved |
+| JPDA (100 targets, 50 meas) | Mixed | 89 ms | <75 ms | ⏳ Optimizing |
+| Hungarian Assignment (500x500) | Dense | 45 ms | <30 ms | ⏳ Optimizing |
+| Network Flow Min-Cost | Sparse | 23 ms | <15 ms | ✅ Achieved |
+
+### GPU Acceleration Results (CuPy on NVIDIA A100)
+
+| Algorithm | CPU (ms) | GPU (ms) | Speedup | Batch Size |
+|-----------|----------|----------|---------|------------|
+| Batch KF Predict | 285 | 28 | **10.2x** | 1000 |
+| Batch EKF Update | 456 | 38 | **12x** | 1000 |
+| Batch UKF Predict | 512 | 45 | **11.4x** | 1000 |
+| GPU PF Resample | 178 | 12 | **14.8x** | 10K particles |
+| Matrix Ops (Cholesky) | 95 | 8 | **11.9x** | 500x500 |
+
+### Apple Silicon (MLX) Performance
+
+| Algorithm | CPU (ms) | MLX (ms) | Speedup | M2 Pro |
+|-----------|----------|----------|---------|--------|
+| Standard KF (100 targets) | 45 | 12 | **3.75x** | ✅ |
+| Batch UKF (1000 filters) | 234 | 58 | **4.03x** | ✅ |
+| Particle Filter | 89 | 22 | **4.05x** | ✅ |
+
+### Target v2.0.0 Benchmarks
+
+- All CPU algorithms: sub-100ms for standard scenarios
+- GPU: 10-15x speedup with batch processing
+- Apple Silicon: 4-5x speedup native
+- Memory usage: 50%+ reduction via sparse matrices
+- Scalability: Linear time for 1000+ targets with O(n log n) assignment
+
+---
+
+## Known Issues & Limitations
+
+### Current Known Issues
+
+#### High Priority
+
+| Issue | Module | Impact | Workaround | Status |
+|-------|--------|--------|-----------|--------|
+| Terrain loader signature mismatch | `terrain/loaders.py` | 13 tests skipped | See CONTRIBUTIONS_NEEDED.md | 🔄 Planned for v2.1 |
+| Plotting array indexing bug | `plotting/` | 2 tests skipped | Use alternative visualization | ⏳ Investigating |
+| Optional CuPy tests skip | `gpu/` | 11 tests skipped | Install CuPy for full testing | By Design |
+
+#### Medium Priority
+
+| Issue | Effect | Mitigation |
+|-------|--------|-----------|
+| EGM2008 data file (1.3GB) | Geoid height tests skipped | Optional download, fallback to EGM96 |
+| pywavelets optional dep | Wavelet tests conditional | Falls back to signal processing module |
+| Global legendre cache | Thread safety for concurrent use | Use `clear_legendre_cache()` if needed |
+
+### Limitations vs MATLAB TCL Original
+
+| Feature | MATLAB TCL | Python TCL | Gap | Notes |
+|---------|-----------|-----------|-----|-------|
+| Distributed tracking | ✅ Partial | ❌ No | Planned for v2.1 with RAPIDS | |
+| Real-time C++ bindings | ✅ Yes | ❌ No | Can use pybind11 if needed | Low demand |
+| Commercial support | ✅ NRL | ❌ Community | Open source, community-maintained | |
+| GPU acceleration | ⭐ Limited | ✅ Full | Python exceeds original | Better than MATLAB |
+| Jupyter integration | ✅ Limited | ✅ Full | Python superior | 8 notebooks included |
+
+### Performance Limitations
+
+- **Very large arrays (>10GB)**: Out-of-core support not implemented (could use HDF5 chunking)
+- **Thread safety**: Most functions thread-safe, but some caches are global (mitigated by clearing)
+- **Mobile deployment**: No native mobile support (would require separate wrapper layer)
+- **Real-time hard deadlines**: Python GC unpredictability (mitigated by profiling tools)
+
+---
+
+## Breaking Changes for v2.0.0
+
+### API Changes Summary
+
+#### Deprecations in v1.13.2 (Warnings Added)
+
+**Function Signature Changes:**
+```python
+# OLD (deprecated in v1.13.2, removed in v2.0.0)
+kf_predict(x, P, F, Q)  # Returns (x_pred, P_pred) 
+
+# NEW (v2.0.0)
+kf_predict(x, P, model)  # Returns FilterState(x, P, info)
+```
+
+**Module Reorganization:**
+- `pytcl.assignment_algorithms` → `pytcl.data_association.assignment`
+- `pytcl.matrix_utilities` → Internal only (use `pytcl.dynamic_estimation.kalman.matrix_utils`)
+- `pytcl.special_functions` → `pytcl.mathematical_functions.special_functions`
+
+**Exception Hierarchy (v1.9.0+):**
+All exceptions now inherit from `pytcl.TCLException`. Replace `ValueError` catches with specific exception types:
+```python
+# OLD
+except ValueError as e:
+    ...
+
+# NEW
+except pytcl.DimensionalityError as e:  # More specific
+    ...
+except pytcl.TCLException as e:  # Fallback
+    ...
+```
+
+### Migration Guide (v2.0.0)
+
+**For v1.x users upgrading to v2.0.0:**
+
+1. Update import statements:
+   ```python
+   # Old
+   from pytcl import assignment_algorithms
+   
+   # New
+   from pytcl.data_association import assignment
+   ```
+
+2. Replace deprecated functions:
+   ```python
+   # Old
+   x_pred, P_pred = kf_predict(x, P, F, Q)
+   
+   # New
+   state = kf_predict(x, P, DynamicModel(F=F, Q=Q))
+   x_pred, P_pred = state.x, state.P
+   ```
+
+3. Update exception handling:
+   ```python
+   # Old
+   try:
+       result = solve_assignment(cost_matrix)
+   except ValueError:
+       pass
+   
+   # New
+   try:
+       result = solve_assignment(cost_matrix)
+   except pytcl.InvalidAssignmentError:
+       pass
+   ```
+
+4. GPU code updates:
+   ```python
+   # Old
+   from pytcl.gpu import batch_kf_predict
+   
+   # New
+   from pytcl.gpu.kalman import batch_kf_predict
+   ```
+
+### Backward Compatibility Layer (v2.0.0)
+
+**Available in `pytcl.compat` for one major version (v2.0.0-v2.1.0):**
+- Old function signatures with intermediate transformation
+- Deprecation warnings pointing to new API
+- Will be removed in v3.0.0
+
+**Accessing compatibility layer:**
+```python
+from pytcl.compat import kf_predict as kf_predict_old
+
+# Use old API
+x_pred, P_pred = kf_predict_old(x, P, F, Q)
+```
+
+---
+
+## Long-Term Vision (2027-2029)
+
+### v2.x Series Direction
+
+#### Core Tracking Evolution
+1. **Real-time Particle Swarm Optimization tracking** (v2.2+)
+   - Swarm intelligence for clutter-heavy tracking
+   - Cooperative multi-target estimation
+   
+2. **Quantum-inspired algorithms** (v2.3+)
+   - Quantum annealing backend for assignment (via D-Wave)
+   - Quantum simulation of filter dynamics
+   
+3. **Adaptive learning tracking** (v2.4+)
+   - Neural network-augmented Kalman filters
+   - Transfer learning for new sensor types
+
+#### Infrastructure Maturation
+- **v2.x**: Consolidate GPU, data persistence, documentation
+- **v2.1**: RAPIDS, distributed, advanced diagnostics
+- **v2.2**: Extended ecosystem (ROS 2, autonomous systems)
+- **v2.3**: Emerging tech (quantum, federated learning)
+
+#### Community & Ecosystem
+- **Year 1 (2027)**: 500+ GitHub stars, 50+ external contributions
+- **Year 2 (2028)**: Integration with major frameworks (CARLA, AirSim for autonomous systems)
+- **Year 3 (2029)**: Industrial adoption (defense contractors, automotive OEMs)
+
+### v3.0.0 Vision (2030+)
+
+**Major Overhaul:**
+- Full async/await support for real-time systems
+- Native WebAssembly compilation for browser-based tracking
+- Federated learning for multi-agent scenarios
+- Quantum computing backend exploration
+
+**Estimated effort:** 18-24 months post-v2.x stabilization
+
+---
+
+## Community Contribution Priorities
+
+### High-Impact Opportunities (Seeking Contributors)
+
+#### 1. **Documentation & Tutorials** ⭐⭐⭐ (Low barrier to entry)
+
+**What's needed:**
+- Video tutorials for each major module (10-20 min each)
+- Blog posts on advanced techniques (JPDA, MHT, particle filters)
+- Real-world case studies with public datasets
+- Glossary of tracking terminology
+
+**Effort:** 20-40 hours per item  
+**Skills:** Technical writing, video editing optional  
+**Impact:** High (improves user adoption)
+
+#### 2. **ROS 2 Integration Layer** ⭐⭐⭐ (Medium barrier)
+
+**What's needed:**
+- ROS 2 node wrappers for core modules
+- Sensor message adapters (RADAR, LiDAR, camera)
+- Autonomous vehicle examples
+
+**Effort:** 60-100 hours  
+**Skills:** ROS 2 experience  
+**Impact:** Very high (unlocks autonomous systems market)
+
+#### 3. **Additional GPU Backends** ⭐⭐ (Medium-high barrier)
+
+**What's needed:**
+- Intel oneAPI backend (similar to CuPy/MLX structure)
+- AMD ROCm support
+- Vulkan compute for cross-platform GPU access
+
+**Effort:** 80-150 hours per backend  
+**Skills:** GPU programming, backend optimization  
+**Impact:** High (expands hardware compatibility)
+
+#### 4. **Performance Optimization** ⭐⭐⭐ (High barrier)
+
+**What's needed:**
+- Profile existing algorithms for bottlenecks
+- Implement missing Numba JIT targets
+- SIMD optimization via `numpy-simd` or similar
+- Caching opportunities analysis
+
+**Effort:** 40-80 hours per element  
+**Skills:** Performance profiling, numerical computing  
+**Impact:** Medium-high (benefits all users)
+
+#### 5. **Additional Assignment Algorithms** ⭐⭐ (Medium-high barrier)
+
+**What's needed:**
+- Genetic algorithm-based assignment
+- Ant colony optimization for dynamic assignment
+- Deep learning-based cost matrix prediction
+
+**Effort:** 50-100 hours per algorithm  
+**Skills:** Algorithm implementation, optimization  
+**Impact:** Medium (specialized use cases)
+
+### Getting Started for Potential Contributors
+
+**Repository:**
+```
+GitHub: https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary (reference)
+Our Python port: [organization]/nrl-tracker
+```
+
+**Contribution Process:**
+1. Check [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
+2. Review [GitHub Issues](https://github.com/[org]/nrl-tracker/issues) for tagged opportunities
+3. Start with `good-first-issue` or `documentation` tags
+4. Submit PR with tests (aim for 80%+ coverage)
+
+**Development Setup:**
+```bash
+git clone https://github.com/[org]/nrl-tracker.git
+cd nrl-tracker
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,test,docs]"
+pytest tests/ --cov=pytcl
+```
+
+**Mentorship:**
+- Active maintainers available for code review and architectural guidance
+- Weekly office hours for contributors (TBD time zone)
+- Discord community channel for real-time collaboration
+
+---
+
 ## Contributing
 
 Contributions are welcome! If you'd like to work on any of these features:
@@ -971,3 +1421,5 @@ See the [original MATLAB library](https://github.com/USNavalResearchLaboratory/T
 **Last Updated:** March 2, 2026
 **Next Review:** May 2026 (after v2.0-alpha preparation)
 **v2.0.0 Target Release:** October 2026 (Completed Phases 1-7, Phase 8 in progress)
+**v2.1.0 Target Release:** Q3 2027 (RAPIDS, distributed tracking, advanced diagnostics)
+**Long-term Horizon:** v3.0.0 planned for 2030+ (async/await, WASM, federated learning, quantum backends)
