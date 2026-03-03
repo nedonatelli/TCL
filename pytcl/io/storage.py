@@ -7,13 +7,12 @@ in different formats (HDF5, SQL, etc.).
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
-import numpy as np
-from numpy.typing import NDArray, ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 
 class StorageBackend(ABC):
     """Abstract base class for storage backends.
-    
+
     Provides a unified interface for storing and retrieving arrays,
     metadata, and structured data in various formats.
     """
@@ -21,7 +20,7 @@ class StorageBackend(ABC):
     @abstractmethod
     def open(self, path: str, mode: str = "r") -> None:
         """Open a storage file or database connection.
-        
+
         Parameters
         ----------
         path : str
@@ -54,7 +53,7 @@ class StorageBackend(ABC):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Store a numpy array.
-        
+
         Parameters
         ----------
         name : str
@@ -69,12 +68,12 @@ class StorageBackend(ABC):
     @abstractmethod
     def retrieve_array(self, name: str) -> NDArray:
         """Retrieve a stored numpy array.
-        
+
         Parameters
         ----------
         name : str
             Dataset name/key
-            
+
         Returns
         -------
         ndarray
@@ -90,7 +89,7 @@ class StorageBackend(ABC):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Store a scalar value.
-        
+
         Parameters
         ----------
         name : str
@@ -105,12 +104,12 @@ class StorageBackend(ABC):
     @abstractmethod
     def retrieve_scalar(self, name: str) -> Union[int, float, str, bool]:
         """Retrieve a stored scalar value.
-        
+
         Parameters
         ----------
         name : str
             Scalar name/key
-            
+
         Returns
         -------
         Scalar value
@@ -120,7 +119,7 @@ class StorageBackend(ABC):
     @abstractmethod
     def store_group(self, name: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Create a logical group/container for related data.
-        
+
         Parameters
         ----------
         name : str
@@ -133,12 +132,12 @@ class StorageBackend(ABC):
     @abstractmethod
     def list_keys(self, group: str = "/") -> List[str]:
         """List all stored keys/datasets in a group.
-        
+
         Parameters
         ----------
         group : str, optional
             Group path. Default is root ("/")
-            
+
         Returns
         -------
         list of str
@@ -149,12 +148,12 @@ class StorageBackend(ABC):
     @abstractmethod
     def get_metadata(self, name: str) -> Dict[str, Any]:
         """Get metadata associated with a dataset.
-        
+
         Parameters
         ----------
         name : str
             Dataset name
-            
+
         Returns
         -------
         dict
@@ -165,7 +164,7 @@ class StorageBackend(ABC):
     @abstractmethod
     def delete(self, name: str) -> None:
         """Delete a dataset or group.
-        
+
         Parameters
         ----------
         name : str

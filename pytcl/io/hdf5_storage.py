@@ -9,13 +9,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from numpy.typing import NDArray, ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
 
-
 try:
     import h5py
+
     HAS_H5PY = True
 except ImportError:
     HAS_H5PY = False
@@ -23,10 +23,10 @@ except ImportError:
 
 class HDF5Storage(StorageBackend):
     """HDF5-based storage backend.
-    
+
     Efficiently stores large arrays and structured data using HDF5 format.
     Ideal for numerical data, model coefficients, and time series.
-    
+
     Examples
     --------
     >>> from pytcl.io import HDF5Storage
@@ -39,14 +39,16 @@ class HDF5Storage(StorageBackend):
 
     def __init__(self):
         if not HAS_H5PY:
-            raise ImportError("h5py is required for HDF5Storage. Install with: pip install h5py")
+            raise ImportError(
+                "h5py is required for HDF5Storage. Install with: pip install h5py"
+            )
         self._file = None
         self._path = None
         self._mode = None
 
     def open(self, path: str, mode: str = "r") -> None:
         """Open an HDF5 file.
-        
+
         Parameters
         ----------
         path : str
@@ -77,7 +79,7 @@ class HDF5Storage(StorageBackend):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Store a numpy array as an HDF5 dataset.
-        
+
         Parameters
         ----------
         name : str
@@ -89,14 +91,14 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         # Ensure parent groups exist
         self._ensure_groups(name)
-        
+
         # Store array
         arr = np.asarray(data)
         dataset = self._file.create_dataset(name, data=arr)
-        
+
         # Store metadata as attributes
         if metadata:
             for key, value in metadata.items():
@@ -108,12 +110,12 @@ class HDF5Storage(StorageBackend):
 
     def retrieve_array(self, name: str) -> NDArray:
         """Retrieve a stored array.
-        
+
         Parameters
         ----------
         name : str
             Dataset path
-            
+
         Returns
         -------
         ndarray
@@ -121,10 +123,10 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         if name not in self._file:
             raise KeyError(f"Dataset '{name}' not found in HDF5 file")
-        
+
         return np.array(self._file[name])
 
     def store_scalar(
@@ -134,7 +136,7 @@ class HDF5Storage(StorageBackend):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Store a scalar value.
-        
+
         Parameters
         ----------
         name : str
@@ -146,13 +148,13 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         # Ensure parent groups exist
         self._ensure_groups(name)
-        
+
         # Store as dataset with shape ()
         dataset = self._file.create_dataset(name, data=value)
-        
+
         if metadata:
             for key, val in metadata.items():
                 try:
@@ -162,31 +164,31 @@ class HDF5Storage(StorageBackend):
 
     def retrieve_scalar(self, name: str) -> Union[int, float, str, bool]:
         """Retrieve a scalar value.
-        
+
         Parameters
         ----------
         name : str
             Scalar name/path
-            
+
         Returns
         -------
         Scalar value
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         if name not in self._file:
             raise KeyError(f"Scalar '{name}' not found in HDF5 file")
-        
+
         value = self._file[name][()]
         # Handle bytes (HDF5 stores strings as bytes)
         if isinstance(value, bytes):
-            return value.decode('utf-8')
-        return value.item() if hasattr(value, 'item') else value
+            return value.decode("utf-8")
+        return value.item() if hasattr(value, "item") else value
 
     def store_group(self, name: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """Create a group for organizing related datasets.
-        
+
         Parameters
         ----------
         name : str
@@ -196,11 +198,11 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         # Create groups recursively if they don't already exist
         if name not in self._file:
             self._file.create_group(name)
-        
+
         if metadata:
             group = self._file[name]
             for key, val in metadata.items():
@@ -211,12 +213,12 @@ class HDF5Storage(StorageBackend):
 
     def list_keys(self, group: str = "/") -> List[str]:
         """List datasets and groups in a location.
-        
+
         Parameters
         ----------
         group : str, optional
             Group path. Default is root.
-            
+
         Returns
         -------
         list of str
@@ -224,7 +226,7 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         try:
             return list(self._file[group].keys())
         except KeyError:
@@ -232,12 +234,12 @@ class HDF5Storage(StorageBackend):
 
     def get_metadata(self, name: str) -> Dict[str, Any]:
         """Get metadata for a dataset or group.
-        
+
         Parameters
         ----------
         name : str
             Dataset/group name
-            
+
         Returns
         -------
         dict
@@ -245,24 +247,24 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         if name not in self._file:
             raise KeyError(f"'{name}' not found in HDF5 file")
-        
+
         obj = self._file[name]
         metadata = {}
-        
+
         for key, value in obj.attrs.items():
             try:
                 metadata[key] = json.loads(value) if isinstance(value, str) else value
             except (json.JSONDecodeError, TypeError):
                 metadata[key] = value
-        
+
         return metadata
 
     def delete(self, name: str) -> None:
         """Delete a dataset or group.
-        
+
         Parameters
         ----------
         name : str
@@ -270,7 +272,7 @@ class HDF5Storage(StorageBackend):
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
-        
+
         if name in self._file:
             del self._file[name]
 
@@ -281,7 +283,7 @@ class HDF5Storage(StorageBackend):
 
     def _ensure_groups(self, path: str, is_group: bool = False) -> None:
         """Ensure parent groups exist, creating them if needed.
-        
+
         Parameters
         ----------
         path : str
@@ -291,12 +293,12 @@ class HDF5Storage(StorageBackend):
         """
         if "/" not in path:
             return
-        
+
         # Get parent path
         if is_group:
             parent = path
         else:
             parent = path.rsplit("/", 1)[0]
-        
+
         if parent and parent != "/" and parent not in self._file:
             self._file.create_group(parent)

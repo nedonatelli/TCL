@@ -16,7 +16,7 @@ Store tracking data in HDF5:
 
 Query structured data in SQL:
 
->>> from pytcl.io import SQLStorage  
+>>> from pytcl.io import SQLStorage
 >>> with SQLStorage() as store:
 ...     store.open("tracking.db", mode="a")
 ...     store.store_group("mission")
