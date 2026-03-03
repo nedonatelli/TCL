@@ -1,17 +1,17 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.13.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.13.2-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests](https://img.shields.io/badge/tests-3280%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Tests](https://img.shields.io/badge/tests-3396%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 [![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-100%25-brightgreen.svg)](docs/gap_analysis.rst)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen.svg)](htmlcov/index.html)
 [![Type Checking](https://img.shields.io/badge/mypy--strict-passing-brightgreen.svg)](mypy.ini)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,070+ functions** | **153 modules** | **3,280 tests** | **100% MATLAB parity**
+**868 functions** | **113 modules** | **3,396 tests** | **100% MATLAB parity**
 
 ## Overview
 
