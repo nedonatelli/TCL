@@ -2,7 +2,7 @@
 Comprehensive tests for statistical distributions module.
 
 Tests coverage for various probability distribution classes including:
-- Gaussian
+- Gaussian, MultivariateGaussian
 - Uniform
 - Exponential
 - Gamma
@@ -10,6 +10,8 @@ Tests coverage for various probability distribution classes including:
 - StudentT
 - Beta
 - Poisson
+- VonMises
+- Wishart
 """
 
 import numpy as np
@@ -22,9 +24,12 @@ from pytcl.mathematical_functions.statistics.distributions import (
     Exponential,
     Gamma,
     Gaussian,
+    MultivariateGaussian,
     Poisson,
     StudentT,
     Uniform,
+    VonMises,
+    Wishart,
 )
 
 
@@ -370,3 +375,100 @@ class TestDistributionEdgeCases:
         # May be infinite or finite depending on parameters
         assert np.isfinite(pdf_0) or np.isinf(pdf_0)  # Ensure computation works
         assert np.isfinite(pdf_1) or np.isinf(pdf_1)  # Ensure computation works
+
+
+# =============================================================================
+# Additional distribution classes
+# =============================================================================
+
+
+class TestMultivariateGaussian:
+    """Tests for multivariate Gaussian distribution."""
+
+    def test_multivariate_gaussian_pdf(self):
+        """Test multivariate Gaussian PDF."""
+        mean = np.array([0, 0])
+        cov = np.eye(2)
+        mg = MultivariateGaussian(mean=mean, cov=cov)
+        x = np.array([0, 0])
+        pdf = mg.pdf(x)
+        expected = 1 / (2 * np.pi)  # 2D standard normal at origin
+        np.testing.assert_allclose(pdf, expected)
+
+    def test_multivariate_gaussian_sample(self):
+        """Test multivariate Gaussian sampling."""
+        mean = np.array([0, 0])
+        cov = np.eye(2)
+        mg = MultivariateGaussian(mean=mean, cov=cov)
+        samples = mg.sample(100)
+        assert samples.shape == (100, 2)
+
+    def test_multivariate_gaussian_mahalanobis(self):
+        """Test Mahalanobis distance."""
+        mean = np.array([0, 0])
+        cov = np.eye(2)
+        mg = MultivariateGaussian(mean=mean, cov=cov)
+        dist = mg.mahalanobis(np.array([0, 0]))
+        np.testing.assert_allclose(dist, 0.0)
+
+
+class TestVonMisesDistribution:
+    """Tests for Von Mises distribution."""
+
+    def test_vonmises_pdf(self):
+        """Test Von Mises PDF at mean."""
+        vm = VonMises(mu=0, kappa=2)
+        pdf_at_mean = vm.pdf(0)
+        assert pdf_at_mean > 0
+
+    def test_vonmises_symmetry(self):
+        """Test Von Mises PDF symmetry."""
+        vm = VonMises(mu=0, kappa=2)
+        pdf_pos = vm.pdf(0.5)
+        pdf_neg = vm.pdf(-0.5)
+        np.testing.assert_allclose(pdf_pos, pdf_neg)
+
+
+class TestWishartDistribution:
+    """Tests for Wishart distribution."""
+
+    def test_wishart_pdf(self):
+        """Test Wishart PDF."""
+        scale = np.eye(2)
+        w = Wishart(df=3, scale=scale)
+        X = np.eye(2) * 2
+        pdf = w.pdf(X)
+        assert pdf > 0
+
+    def test_wishart_sample(self):
+        """Test Wishart sampling."""
+        scale = np.eye(2)
+        w = Wishart(df=3, scale=scale)
+        sample = w.sample(size=1)
+        assert sample.shape == (2, 2)
+
+
+class TestGaussianAdvanced:
+    """Additional Gaussian distribution tests."""
+
+    def test_gaussian_ppf_inverse(self):
+        """Test PPF is inverse of CDF."""
+        g = Gaussian(mean=0, var=1)
+        x = 1.5
+        cdf_val = g.cdf(x)
+        x_recovered = g.ppf(cdf_val)
+        np.testing.assert_allclose(x_recovered, x)
+
+    def test_gaussian_cdf_symmetry(self):
+        """Test CDF symmetry."""
+        g = Gaussian(mean=0, var=1)
+        cdf_pos = g.cdf(1)
+        cdf_neg = g.cdf(-1)
+        np.testing.assert_allclose(cdf_pos + cdf_neg, 1.0)
+
+    def test_gaussian_mean_var_std(self):
+        """Test mean, var, and std accessors."""
+        g = Gaussian(mean=5, var=4)
+        assert g.mean() == 5
+        assert g.var() == 4
+        np.testing.assert_allclose(g.std(), 2)

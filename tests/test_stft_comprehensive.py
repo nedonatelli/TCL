@@ -370,3 +370,116 @@ try:
     from scipy import signal
 except ImportError:
     signal = None
+
+
+# =============================================================================
+# Window bandwidth tests (from targeted file)
+# =============================================================================
+
+
+class TestWindowBandwidthExtended:
+    """Extended tests for window bandwidth calculation."""
+
+    def test_window_bandwidth_hamming(self):
+        """Test window bandwidth for Hamming window."""
+        enbw = window_bandwidth("hamming", 256)
+        assert 1.2 < enbw < 1.4
+
+    def test_window_bandwidth_blackman(self):
+        """Test window bandwidth for Blackman window."""
+        enbw = window_bandwidth("blackman", 256)
+        assert 1.6 < enbw < 1.9
+
+    def test_window_bandwidth_custom_array(self):
+        """Test window bandwidth with custom window array."""
+        from scipy import signal as sig
+
+        w = sig.get_window("hann", 256)
+        enbw = window_bandwidth(w, 256)
+        assert 1.4 < enbw < 1.6
+
+    def test_window_bandwidth_rectangular(self):
+        """Test window bandwidth for rectangular window."""
+        enbw = window_bandwidth("boxcar", 256)
+        assert np.isclose(enbw, 1.0, atol=0.01)
+
+
+# =============================================================================
+# STFT parameter handling tests (from targeted file)
+# =============================================================================
+
+
+class TestSTFTParameterHandling:
+    """Tests for STFT parameter handling and edge cases."""
+
+    def test_stft_default_parameters(self):
+        """Test STFT with minimal parameters."""
+        x = np.random.randn(1024)
+        result = stft(x)
+        assert result.Zxx is not None
+        assert result.Zxx.ndim == 2
+
+    def test_stft_auto_nfft(self):
+        """Test STFT with automatic NFFT."""
+        x = np.random.randn(512)
+        result = stft(x, nperseg=256)
+        assert result.Zxx.shape[0] == 129  # (256/2 + 1)
+
+    def test_stft_complex_input(self):
+        """Test STFT with complex input."""
+        x = np.random.randn(1024) + 1j * np.random.randn(1024)
+        result = stft(x)
+        assert result.Zxx.dtype == np.complex128
+
+    def test_stft_detrending_options(self):
+        """Test STFT with different detrending options."""
+        x = np.random.randn(1024)
+        for detrend_opt in ["constant", "linear", False]:
+            result = stft(x, nperseg=256, detrend=detrend_opt)
+            assert result.Zxx is not None
+
+    def test_stft_boundary_options(self):
+        """Test STFT with different boundary options."""
+        x = np.random.randn(1024)
+        for boundary_opt in ["even", "odd", "constant", "zeros"]:
+            result = stft(x, nperseg=256, boundary=boundary_opt)
+            assert result.Zxx is not None
+
+    def test_stft_zero_padding_effect(self):
+        """Test STFT with zero padding increases frequency resolution."""
+        x = np.random.randn(256)
+        result_padded = stft(x, nperseg=256, nfft=512)
+        result_unpadded = stft(x, nperseg=256, nfft=256)
+        assert result_padded.Zxx.shape[0] > result_unpadded.Zxx.shape[0]
+
+
+# =============================================================================
+# Spectrogram format tests (from targeted file)
+# =============================================================================
+
+
+class TestSpectrogramFormats:
+    """Tests for spectrogram with different output formats."""
+
+    def test_spectrogram_default(self):
+        """Test spectrogram default computation."""
+        x = np.random.randn(1024)
+        result = spectrogram(x)
+        assert result.power is not None
+        assert result.frequencies is not None
+        assert result.times is not None
+
+    def test_spectrogram_with_frequency_scale(self):
+        """Test spectrogram power scaling."""
+        x = np.sin(2 * np.pi * 50 * np.arange(1024) / 1024)
+        result = spectrogram(x, fs=1024)
+        peak_freq_idx = np.argmax(np.mean(result.power, axis=1))
+        peak_freq = result.frequencies[peak_freq_idx]
+        assert 45 < peak_freq < 55
+
+    def test_spectrogram_energy_conservation(self):
+        """Test spectrogram energy is reasonable."""
+        x = np.random.randn(1024)
+        result = spectrogram(x)
+        total_power = np.sum(result.power)
+        assert total_power > 0

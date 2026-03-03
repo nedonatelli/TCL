@@ -1,11 +1,10 @@
-"""
-Parametrized tests for spatial container edge cases.
+"""Tests for spatial container data structures.
 
-This module provides comprehensive edge case testing for:
+Comprehensive parametrized tests for:
 - KDTree, BallTree, VPTree, CoverTree
 - BaseSpatialIndex and MetricSpatialIndex contracts
-- Input validation edge cases
-- Numerical edge cases (NaN, Inf, empty, single point)
+- Input validation, numerical edge cases, query patterns
+- Custom metrics, radius queries, correctness verification
 """
 
 import numpy as np
@@ -18,6 +17,7 @@ from pytcl.containers import (
     CoverTree,
     KDTree,
     MetricSpatialIndex,
+    NearestNeighborResult,
     VPTree,
 )
 
@@ -63,7 +63,6 @@ class TestDimensionalityParametrized:
         assert tree.n_features == n_dims
         assert tree.n_samples == n_points
 
-        # Query should work
         result = tree.query(points[:3], k=5)
         assert result.indices.shape == (3, 5)
         assert result.distances.shape == (3, 5)
@@ -78,7 +77,6 @@ class TestDimensionalityParametrized:
         assert tree.n_samples == n_points
         assert len(tree) == n_points
 
-        # Query for min(k, n_points) neighbors
         k = min(5, n_points)
         result = tree.query(points[:1], k=k)
         assert result.indices.shape == (1, k)
@@ -95,10 +93,10 @@ class TestDataPatterns:
     @pytest.mark.parametrize(
         "pattern,expected_shape",
         [
-            ("grid", (16, 2)),  # 4x4 grid
-            ("collinear", (10, 2)),  # Points on a line
-            ("clustered", (20, 2)),  # Two clusters
-            ("uniform", (50, 2)),  # Uniform random
+            ("grid", (16, 2)),
+            ("collinear", (10, 2)),
+            ("clustered", (20, 2)),
+            ("uniform", (50, 2)),
         ],
     )
     def test_data_patterns(self, tree_class, pattern, expected_shape):
@@ -114,13 +112,12 @@ class TestDataPatterns:
             cluster1 = rng.normal(0, 0.1, (10, 2))
             cluster2 = rng.normal(10, 0.1, (10, 2))
             points = np.vstack([cluster1, cluster2])
-        else:  # uniform
+        else:
             points = rng.uniform(0, 10, expected_shape)
 
         tree = tree_class(points)
         assert tree.n_samples == expected_shape[0]
 
-        # Query should work
         result = tree.query(points[:1], k=min(3, expected_shape[0]))
         assert result.indices.shape[0] == 1
 
@@ -130,9 +127,7 @@ class TestDataPatterns:
         tree = tree_class(points)
 
         result = tree.query([[0, 0]], k=3)
-        # Should find 3 neighbors (duplicates count separately)
         assert result.indices.shape == (1, 3)
-        # Distances should all be 0 for the duplicates
         assert np.sum(result.distances[0] == 0) >= 1
 
     def test_near_duplicate_points(self, tree_class):
@@ -151,8 +146,15 @@ class TestDataPatterns:
 
         result = tree.query([[0, 0]], k=4)
         assert result.indices.shape == (1, 4)
-        # First 4 neighbors should be the clustered points
         assert np.all(result.distances[0] < 0.1)
+
+    def test_collinear_points_nearest(self):
+        """Test nearest neighbor query with collinear points."""
+        points = np.array([[0, 0], [1, 0], [2, 0], [3, 0]])
+        tree = KDTree(points)
+
+        result = tree.query([[1.5, 0]], k=2)
+        assert set(result.indices[0]) == {1, 2}
 
 
 # =============================================================================
@@ -176,7 +178,6 @@ class TestQueryEdgeCases:
 
         assert result.indices.shape == (1, k_actual)
         assert result.distances.shape == (1, k_actual)
-        # Distances should be sorted
         assert np.all(result.distances[0, :-1] <= result.distances[0, 1:])
 
     def test_k_equals_n(self, tree_class):
@@ -186,12 +187,9 @@ class TestQueryEdgeCases:
 
         result = tree.query([[0.5, 0.5]], k=5)
         assert result.indices.shape == (1, 5)
-        # Should return valid indices (may not be all points for some implementations)
-        # CoverTree uses a different traversal that may not guarantee all points
         valid_indices = set(result.indices[0])
         assert all(0 <= idx < 5 for idx in valid_indices)
-        # At minimum, should find the query point which is in the dataset
-        assert 4 in valid_indices  # index of [0.5, 0.5]
+        assert 4 in valid_indices
 
     @pytest.mark.parametrize("n_queries", [1, 5, 10, 50])
     def test_batch_queries(self, tree_class, n_queries):
@@ -222,8 +220,27 @@ class TestQueryEdgeCases:
 
         result = tree.query([[1000, 1000]], k=1)
         assert result.indices.shape == (1, 1)
-        # Distance should be large
         assert result.distances[0, 0] > 1000
+
+    def test_1d_query_vector(self):
+        """Test handles 1D query vector."""
+        points = np.array([[0, 0], [1, 0], [0, 1]])
+        tree = KDTree(points)
+
+        result = tree.query(np.array([0.5, 0.5]), k=1)
+        assert result.indices.shape == (1, 1)
+
+    def test_multiple_queries_indices(self):
+        """Test multiple query points return correct indices."""
+        points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+        tree = KDTree(points)
+
+        queries = np.array([[0, 0], [1, 1]])
+        result = tree.query(queries, k=1)
+
+        assert result.indices.shape == (2, 1)
+        assert result.indices[0, 0] == 0
+        assert result.indices[1, 0] == 3
 
 
 # =============================================================================
@@ -243,7 +260,6 @@ class TestRadiusQueryParametrized:
         result = tree.query_radius([[0, 0]], r=radius)
         assert len(result) == 1
 
-        # Count expected points within radius
         expected = sum(1 for p in points if np.sqrt(np.sum(p**2)) <= radius)
         assert len(result[0]) == expected
 
@@ -253,7 +269,6 @@ class TestRadiusQueryParametrized:
         tree = tree_class(points)
 
         result = tree.query_radius([[0, 0]], r=0.0)
-        # Should find exactly the query point if it exists
         assert len(result[0]) == 1
         assert result[0][0] == 0
 
@@ -264,7 +279,6 @@ class TestRadiusQueryParametrized:
         tree = tree_class(points)
 
         result = tree.query_radius([[5, 5, 5]], r=1000.0)
-        # Should find all points
         assert len(result[0]) == 50
 
     def test_batch_radius_query(self, tree_class):
@@ -276,10 +290,36 @@ class TestRadiusQueryParametrized:
         result = tree.query_radius(queries, r=1.0)
 
         assert len(result) == 3
-        # Each query point should find itself
         assert 0 in result[0]
         assert 1 in result[1]
         assert 2 in result[2]
+
+    def test_empty_radius_query(self):
+        """Test radius query with no results."""
+        points = np.array([[0, 0], [1, 0]])
+        tree = KDTree(points)
+
+        indices = tree.query_radius([[10, 10]], r=1.0)
+        assert len(indices[0]) == 0
+
+    def test_query_ball_point_alias(self):
+        """Test query_ball_point is alias for query_radius."""
+        points = np.array([[0, 0], [1, 0], [0, 1]])
+        tree = KDTree(points)
+
+        result1 = tree.query_radius([[0, 0]], r=1.5)
+        result2 = tree.query_ball_point([[0, 0]], r=1.5)
+
+        assert result1 == result2
+
+    def test_radius_boundary_inclusion(self):
+        """Test points exactly on radius boundary are included."""
+        points = np.array([[0, 0], [1, 0], [0, 1]])
+        tree = KDTree(points)
+
+        result = tree.query_radius([[0, 0]], r=1.0)
+        assert 1 in result[0]
+        assert 2 in result[0]
 
 
 # =============================================================================
@@ -300,7 +340,6 @@ class TestCustomMetrics:
         tree = metric_tree_class(points, metric=manhattan)
 
         result = tree.query([[0.5, 0.5]], k=2)
-        # All corner points have Manhattan distance 1.0 from center
         assert result.indices.shape == (1, 2)
 
     def test_chebyshev_metric(self, metric_tree_class):
@@ -313,7 +352,7 @@ class TestCustomMetrics:
         tree = metric_tree_class(points, metric=chebyshev)
 
         result = tree.query([[0.5, 0.5]], k=1)
-        assert result.indices[0, 0] == 4  # Closest is center point
+        assert result.indices[0, 0] == 4
 
     def test_weighted_euclidean(self, metric_tree_class):
         """Test with weighted Euclidean distance."""
@@ -353,7 +392,7 @@ class TestInputValidation:
         tree = tree_class(points)
 
         with pytest.raises(ValueError, match="features"):
-            tree.query([[0, 0, 0]], k=1)  # 3 features, expected 2
+            tree.query([[0, 0, 0]], k=1)
 
     def test_empty_query(self, tree_class):
         """Test empty query array."""
@@ -397,7 +436,6 @@ class TestNumericalStability:
 
         result = tree.query(points, k=2)
         assert result.indices.shape == (5, 2)
-        # First neighbor of each should be itself
         assert_array_equal(result.indices[:, 0], np.arange(5))
 
 
@@ -462,6 +500,113 @@ class TestMetricSpatialIndexContract:
         points = np.array([[0, 0], [1, 0], [0, 1]])
         tree = metric_tree_class(points)
 
-        # Test default metric gives Euclidean distance
         dist = tree.metric(np.array([0, 0]), np.array([3, 4]))
         assert_allclose(dist, 5.0)
+
+
+# =============================================================================
+# Correctness Verification Tests
+# =============================================================================
+
+
+class TestCorrectness:
+    """Correctness verification tests."""
+
+    def test_exact_distances(self):
+        """Distances are computed correctly."""
+        points = np.array([[0, 0], [3, 4]])  # Distance = 5
+        tree = KDTree(points)
+
+        result = tree.query([[0, 0]], k=2)
+
+        assert_allclose(result.distances[0, 0], 0.0)
+        assert_allclose(result.distances[0, 1], 5.0)
+
+    def test_finds_exact_match(self):
+        """Finds exact match as nearest neighbor."""
+        rng = np.random.default_rng(42)
+        points = rng.uniform(0, 10, (100, 3))
+        tree = KDTree(points)
+
+        result = tree.query(points, k=1)
+
+        assert_array_equal(result.indices[:, 0], np.arange(100))
+        assert_allclose(result.distances[:, 0], 0.0)
+
+    def test_distances_sorted(self):
+        """Distances are returned in sorted order."""
+        rng = np.random.default_rng(42)
+        points = rng.uniform(0, 10, (20, 2))
+        tree = KDTree(points)
+
+        result = tree.query([[5, 5]], k=10)
+
+        distances = result.distances[0]
+        assert np.all(distances[:-1] <= distances[1:])
+
+    def test_balltree_matches_kdtree(self):
+        """BallTree results match KDTree."""
+        rng = np.random.default_rng(42)
+        points = rng.uniform(0, 10, (50, 3))
+
+        kd = KDTree(points)
+        ball = BallTree(points)
+
+        queries = rng.uniform(0, 10, (10, 3))
+
+        kd_result = kd.query(queries, k=5)
+        ball_result = ball.query(queries, k=5)
+
+        for i in range(10):
+            kd_set = set(kd_result.indices[i])
+            ball_set = set(ball_result.indices[i])
+            assert len(kd_set & ball_set) >= 4
+
+
+# =============================================================================
+# Result Type Tests
+# =============================================================================
+
+
+class TestNearestNeighborResultType:
+    """Tests for NearestNeighborResult."""
+
+    def test_namedtuple(self):
+        """Is a proper named tuple."""
+        result = NearestNeighborResult(
+            indices=np.array([[0, 1]]),
+            distances=np.array([[0.0, 1.0]]),
+        )
+
+        assert_array_equal(result.indices, [[0, 1]])
+        assert_array_equal(result.distances, [[0.0, 1.0]])
+
+
+# =============================================================================
+# Performance Tests
+# =============================================================================
+
+
+class TestSpatialTreePerformance:
+    """Performance-related tests."""
+
+    def test_query_large_dataset(self):
+        """Tree query works for larger datasets."""
+        rng = np.random.default_rng(42)
+        points = rng.uniform(0, 100, (500, 3))
+        queries = rng.uniform(0, 100, (10, 3))
+
+        tree = KDTree(points)
+        result = tree.query(queries, k=10)
+
+        assert result.indices.shape == (10, 10)
+
+    def test_radius_query_efficiency(self):
+        """Radius query is efficient."""
+        rng = np.random.default_rng(42)
+        points = rng.uniform(0, 100, (500, 2))
+
+        tree = KDTree(points)
+        result = tree.query_radius([[50, 50]], r=5)
+
+        assert isinstance(result[0], list)

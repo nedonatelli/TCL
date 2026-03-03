@@ -6,6 +6,7 @@ Tests cover:
 - Special convenience functions D_1, D_2, D_3, D_4
 - Physical applications: heat capacity, entropy
 - Limiting behavior (small x, large x)
+- Array, scalar, and list input handling
 """
 
 import numpy as np
@@ -49,6 +50,11 @@ class TestDebye:
         assert np.isfinite(result[0])
         assert result[0] > 0
         assert result[0] < 1
+
+    def test_debye_scalar_input(self):
+        """Test Debye function with scalar input."""
+        result = debye(1, 1.5)
+        assert np.isfinite(result)
 
     def test_debye_small_x(self):
         """Test D_n(x) for small x using series expansion."""
@@ -108,6 +114,19 @@ class TestDebye:
         assert np.isfinite(result[0])
         assert result[0] > 0
 
+    def test_debye_zero_behavior(self):
+        """Test Debye function behavior near zero."""
+        x_small = np.array([1e-6, 1e-5, 1e-4, 0.001])
+        result = debye(1, x_small)
+        assert np.all(np.isfinite(result))
+
+    def test_debye_with_zeros_in_array(self):
+        """Test Debye with array containing near-zero values."""
+        x = np.array([0.0, 0.001, 0.01, 0.1, 1.0])
+        result = debye_1(x)
+        assert result.shape == x.shape
+        assert np.all(np.isfinite(result))
+
 
 # =============================================================================
 # Tests for convenience functions D_1, D_2, D_3, D_4
@@ -164,6 +183,40 @@ class TestDebyeConvenienceFunctions:
         result1 = debye_4(x)
         result2 = debye(4, x)
         np.testing.assert_allclose(result1, result2)
+
+    def test_debye_1_scalar(self):
+        """Test Debye D_1 with scalar."""
+        result = debye_1(1.5)
+        assert np.isfinite(result)
+
+    def test_debye_2_scalar(self):
+        """Test Debye D_2 with scalar."""
+        result = debye_2(1.5)
+        assert np.isfinite(result)
+
+    def test_debye_3_scalar(self):
+        """Test Debye D_3 with scalar."""
+        result = debye_3(1.5)
+        assert np.isfinite(result)
+
+    def test_debye_4_scalar(self):
+        """Test Debye D_4 with scalar."""
+        result = debye_4(1.5)
+        assert np.isfinite(result)
+
+    def test_debye_1_list_input(self):
+        """Test Debye D_1 with list input."""
+        result = debye_1([0.5, 1.0, 2.0])
+        assert result.shape == (3,)
+        assert np.all(np.isfinite(result))
+
+    def test_debye_consistency_across_orders(self):
+        """Test consistency of convenience vs general debye function."""
+        x = 1.5
+        assert np.isclose(debye_1(x), debye(1, x))
+        assert np.isclose(debye_2(x), debye(2, x))
+        assert np.isclose(debye_3(x), debye(3, x))
+        assert np.isclose(debye_4(x), debye(4, x))
 
 
 # =============================================================================
@@ -230,6 +283,14 @@ class TestDebyeHeatCapacity:
         # At room temperature (T < Theta_D), heat capacity is between 0 and 1
         assert 0.5 < result[0] < 0.8
 
+    def test_heat_capacity_different_debye_temps(self):
+        """Test heat capacity with different Debye temperatures."""
+        T = np.array([50, 100, 200])
+        for theta_d in [100, 250, 500]:
+            c_v = debye_heat_capacity(T, theta_d)
+            assert c_v.shape == T.shape
+            assert np.all(np.isfinite(c_v))
+
 
 # =============================================================================
 # Tests for entropy
@@ -288,6 +349,21 @@ class TestDebyeEntropy:
         assert np.isfinite(result)
         assert result > 0
 
+    def test_entropy_positive(self):
+        """Test that Debye entropy is positive."""
+        T = np.array([50, 100, 200, 300])
+        theta_d = 250
+        S = debye_entropy(T, theta_d)
+        assert np.all(S >= 0)
+
+    def test_entropy_different_debye_temps(self):
+        """Test entropy with different Debye temperatures."""
+        T = np.array([50, 100, 200])
+        for theta_d in [100, 250, 500]:
+            S = debye_entropy(T, theta_d)
+            assert S.shape == T.shape
+            assert np.all(np.isfinite(S))
+
 
 # =============================================================================
 # Integration tests
@@ -342,3 +418,25 @@ class TestDebyeIntegration:
 
         # Check ordering
         assert small[0] > medium[0] > large[0]
+
+    def test_debye_physical_parameters(self):
+        """Test Debye functions with typical material parameters."""
+        materials = {"Cu": 343, "Al": 428, "Fe": 467, "Pb": 105}
+        T = np.array([100, 200, 300])
+        for _, theta_d in materials.items():
+            c_v = debye_heat_capacity(T, theta_d)
+            S = debye_entropy(T, theta_d)
+            assert np.all(np.isfinite(c_v))
+            assert np.all(np.isfinite(S))
+
+    def test_debye_continuous_evaluation(self):
+        """Test continuous evaluation of Debye functions."""
+        x = np.linspace(0.01, 20, 1000)
+        d1 = debye_1(x)
+        d2 = debye_2(x)
+        d3 = debye_3(x)
+        d4 = debye_4(x)
+        assert np.all(np.isfinite(d1))
+        assert np.all(np.isfinite(d2))
+        assert np.all(np.isfinite(d3))
+        assert np.all(np.isfinite(d4))

@@ -4,13 +4,12 @@ Tests for dynamic_models module.
 Tests cover:
 - Polynomial state transition matrices (constant velocity, constant acceleration)
 - Coordinated turn models (2D and 3D)
-- Process noise covariance matrices
-- Singer acceleration model
+- Model consistency checks
 """
 
 import numpy as np
 
-from pytcl.dynamic_models import (  # Discrete-time state transition matrices; Process noise covariance matrices
+from pytcl.dynamic_models import (
     f_constant_acceleration,
     f_constant_velocity,
     f_coord_turn_2d,
@@ -21,9 +20,6 @@ from pytcl.dynamic_models import (  # Discrete-time state transition matrices; P
     f_poly_kal,
     q_constant_acceleration,
     q_constant_velocity,
-    q_continuous_white_noise,
-    q_discrete_white_noise,
-    q_poly_kal,
 )
 
 
@@ -219,91 +215,6 @@ class TestCircularMotion:
         # Should return close to origin after full circle
         assert np.abs(x[0]) < 10.0  # x close to 0
         assert np.abs(x[2]) < 10.0  # y close to 0
-
-
-class TestProcessNoiseMatrices:
-    """Tests for process noise covariance matrices."""
-
-    def test_q_poly_kal_shape(self):
-        """Test Q matrix shape."""
-        Q = q_poly_kal(order=1, T=1.0, q=1.0, num_dims=2)
-        assert Q.shape == (4, 4)
-
-    def test_q_poly_kal_symmetric(self):
-        """Test Q matrix is symmetric."""
-        Q = q_poly_kal(order=2, T=0.5, q=0.1, num_dims=3)
-        np.testing.assert_allclose(Q, Q.T)
-
-    def test_q_poly_kal_positive_definite(self):
-        """Test Q matrix is positive definite."""
-        Q = q_poly_kal(order=1, T=1.0, q=1.0, num_dims=1)
-        eigenvalues = np.linalg.eigvalsh(Q)
-        assert np.all(eigenvalues > 0)
-
-    def test_q_discrete_white_noise_cv(self):
-        """Test discrete white noise for CV model."""
-        T = 1.0
-        var = 1.0
-        Q = q_discrete_white_noise(dim=2, T=T, var=var)
-
-        # Check known values for CV model
-        expected = var * np.array([[T**4 / 4, T**3 / 2], [T**3 / 2, T**2]])
-        np.testing.assert_allclose(Q, expected)
-
-    def test_q_discrete_white_noise_ca(self):
-        """Test discrete white noise for CA model."""
-        T = 1.0
-        var = 1.0
-        Q = q_discrete_white_noise(dim=3, T=T, var=var)
-        assert Q.shape == (3, 3)
-        # Check symmetric
-        np.testing.assert_allclose(Q, Q.T)
-
-    def test_q_constant_velocity(self):
-        """Test constant velocity process noise."""
-        T = 0.5
-        sigma_a = 0.1
-        Q = q_constant_velocity(T=T, sigma_a=sigma_a, num_dims=2)
-        assert Q.shape == (4, 4)
-
-        # Check block diagonal
-        Q_block = Q[:2, :2]
-        np.testing.assert_allclose(Q[:2, 2:], np.zeros((2, 2)))
-
-        # Check values match expected
-        var = sigma_a**2
-        expected_block = var * np.array([[T**4 / 4, T**3 / 2], [T**3 / 2, T**2]])
-        np.testing.assert_allclose(Q_block, expected_block)
-
-    def test_q_constant_acceleration(self):
-        """Test constant acceleration process noise."""
-        T = 0.5
-        sigma_j = 0.1
-        Q = q_constant_acceleration(T=T, sigma_j=sigma_j, num_dims=2)
-        assert Q.shape == (6, 6)
-
-    def test_q_continuous_white_noise(self):
-        """Test continuous white noise process noise."""
-        Q = q_continuous_white_noise(dim=2, T=1.0, spectral_density=1.0, block_size=2)
-        assert Q.shape == (4, 4)
-
-
-class TestProcessNoiseScaling:
-    """Test that process noise scales correctly."""
-
-    def test_q_scales_with_variance(self):
-        """Test Q scales linearly with variance."""
-        T = 0.5
-        Q1 = q_constant_velocity(T=T, sigma_a=1.0, num_dims=1)
-        Q2 = q_constant_velocity(T=T, sigma_a=2.0, num_dims=1)
-
-        # Q should scale with sigma^2
-        np.testing.assert_allclose(Q2, 4.0 * Q1)
-
-    def test_q_cv_zero_time(self):
-        """Test Q with T=0 is zero matrix."""
-        Q = q_constant_velocity(T=0.0, sigma_a=1.0, num_dims=2)
-        np.testing.assert_allclose(Q, np.zeros((4, 4)))
 
 
 class TestModelConsistency:

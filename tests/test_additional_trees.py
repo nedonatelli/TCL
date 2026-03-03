@@ -1,9 +1,9 @@
-"""Tests for additional spatial tree structures (R-tree, VP-tree, Cover tree)."""
+"""Tests for additional spatial tree structures (R-tree, bounding boxes)."""
 
 import numpy as np
-from numpy.testing import assert_allclose, assert_array_equal
+from numpy.testing import assert_array_equal
 
-from pytcl.containers import (  # R-Tree; VP-Tree; Cover Tree
+from pytcl.containers import (
     BoundingBox,
     CoverTree,
     RTree,
@@ -197,128 +197,6 @@ class TestRTree:
 
         assert indices[0] == 0
         assert distances[0] == 0.0  # Point is inside box
-
-
-class TestVPTree:
-    """Tests for VP-tree."""
-
-    def test_construction(self):
-        """Basic VP-tree construction."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        tree = VPTree(points)
-
-        assert tree.n_samples == 4
-        assert tree.n_features == 2
-
-    def test_query_single(self):
-        """Find single nearest neighbor."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        tree = VPTree(points)
-
-        result = tree.query([[0.1, 0.1]], k=1)
-
-        assert result.indices[0, 0] == 0
-
-    def test_query_multiple(self):
-        """Find multiple nearest neighbors."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [10, 10]])
-        tree = VPTree(points)
-
-        result = tree.query([[0.1, 0.1]], k=3)
-
-        # First 3 should be the close points
-        assert set(result.indices[0]) == {0, 1, 2}
-
-    def test_query_radius(self):
-        """Find all points within radius."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [5, 5]])
-        tree = VPTree(points)
-
-        indices = tree.query_radius([[0, 0]], r=1.5)
-
-        assert len(indices) == 1
-        assert set(indices[0]) == {0, 1, 2}
-
-    def test_custom_metric(self):
-        """VP-tree with custom distance metric."""
-
-        def manhattan(x, y):
-            return float(np.sum(np.abs(x - y)))
-
-        points = np.array([[0, 0], [1, 0], [0, 1]])
-        tree = VPTree(points, metric=manhattan)
-
-        result = tree.query([[0.5, 0.5]], k=1)
-
-        # All points are equidistant in Manhattan metric
-        assert result.indices[0, 0] in [0, 1, 2]
-
-    def test_self_query(self):
-        """Querying with points from dataset."""
-        rng = np.random.default_rng(42)
-        points = rng.uniform(0, 10, (50, 3))
-        tree = VPTree(points)
-
-        result = tree.query(points, k=1)
-
-        # Each point should find itself
-        assert_array_equal(result.indices[:, 0], np.arange(50))
-        assert_allclose(result.distances[:, 0], 0.0)
-
-
-class TestCoverTree:
-    """Tests for Cover tree."""
-
-    def test_construction(self):
-        """Basic Cover tree construction."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        tree = CoverTree(points)
-
-        assert tree.n_samples == 4
-        assert tree.n_features == 2
-
-    def test_query_single(self):
-        """Find single nearest neighbor."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
-        tree = CoverTree(points)
-
-        result = tree.query([[0.1, 0.1]], k=1)
-
-        assert result.indices[0, 0] == 0
-
-    def test_query_multiple(self):
-        """Find multiple nearest neighbors."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [10, 10]])
-        tree = CoverTree(points)
-
-        result = tree.query([[0.1, 0.1]], k=3)
-
-        # First 3 should be the close points
-        found = set(result.indices[0])
-        assert 0 in found  # Origin point should be found
-
-    def test_query_radius(self):
-        """Find all points within radius."""
-        points = np.array([[0, 0], [1, 0], [0, 1], [5, 5]])
-        tree = CoverTree(points)
-
-        indices = tree.query_radius([[0, 0]], r=1.5)
-
-        assert len(indices) == 1
-        assert 0 in indices[0]
-
-    def test_custom_metric(self):
-        """Cover tree with custom distance metric."""
-
-        def manhattan(x, y):
-            return float(np.sum(np.abs(x - y)))
-
-        points = np.array([[0, 0], [1, 0], [0, 1]])
-        tree = CoverTree(points, metric=manhattan)
-
-        result = tree.query([[0.5, 0.5]], k=1)
-
-        assert result.indices[0, 0] in [0, 1, 2]
 
 
 class TestTreeComparison:

@@ -1,11 +1,10 @@
 """
-Unit tests for core module (constants, validation, array utilities).
+Unit tests for core module (constants, array utilities).
 """
 
 import math
 
 import numpy as np
-import pytest
 
 from pytcl.core.array_utils import (
     block_diag,
@@ -31,15 +30,6 @@ from pytcl.core.constants import (
     TWO_PI,
     WGS84,
     PhysicalConstants,
-)
-from pytcl.core.validation import (
-    ValidationError,
-    ensure_2d,
-    ensure_column_vector,
-    ensure_row_vector,
-    ensure_square_matrix,
-    ensure_symmetric,
-    validate_array,
 )
 
 
@@ -80,103 +70,6 @@ class TestConstants:
         pc = PhysicalConstants()
         assert pc.c == SPEED_OF_LIGHT
         assert pc.g_0 == 9.80665
-
-
-class TestValidation:
-    """Tests for input validation functions."""
-
-    def test_validate_array_basic(self):
-        """Basic array validation should work."""
-        result = validate_array([1, 2, 3], "test")
-        assert isinstance(result, np.ndarray)
-        np.testing.assert_array_equal(result, [1, 2, 3])
-
-    def test_validate_array_ndim(self):
-        """Array dimension validation should work."""
-        # Should pass
-        validate_array([[1, 2], [3, 4]], "matrix", ndim=2)
-
-        # Should fail
-        with pytest.raises(ValidationError):
-            validate_array([1, 2, 3], "vector", ndim=2)
-
-    def test_validate_array_shape(self):
-        """Array shape validation should work."""
-        # Should pass
-        validate_array([[1, 2, 3]], "row", shape=(1, 3))
-
-        # Should fail
-        with pytest.raises(ValidationError):
-            validate_array([[1, 2], [3, 4]], "matrix", shape=(3, 2))
-
-    def test_validate_array_finite(self):
-        """Finite value validation should work."""
-        # Should pass
-        validate_array([1, 2, 3], "test", finite=True)
-
-        # Should fail with inf
-        with pytest.raises(ValidationError):
-            validate_array([1, np.inf, 3], "test", finite=True)
-
-        # Should fail with nan
-        with pytest.raises(ValidationError):
-            validate_array([1, np.nan, 3], "test", finite=True)
-
-    def test_validate_array_non_negative(self):
-        """Non-negative validation should work."""
-        # Should pass
-        validate_array([0, 1, 2], "test", non_negative=True)
-
-        # Should fail
-        with pytest.raises(ValidationError):
-            validate_array([-1, 0, 1], "test", non_negative=True)
-
-    def test_ensure_2d(self):
-        """Ensure 2D should promote 1D arrays correctly."""
-        # Column vector (default)
-        result = ensure_2d([1, 2, 3])
-        assert result.shape == (3, 1)
-
-        # Row vector
-        result = ensure_2d([1, 2, 3], axis="row")
-        assert result.shape == (1, 3)
-
-        # Already 2D should stay unchanged
-        result = ensure_2d([[1, 2], [3, 4]])
-        assert result.shape == (2, 2)
-
-    def test_ensure_column_vector(self):
-        """Ensure column vector should work correctly."""
-        result = ensure_column_vector([1, 2, 3])
-        assert result.shape == (3, 1)
-        np.testing.assert_array_equal(result.flatten(), [1, 2, 3])
-
-    def test_ensure_row_vector(self):
-        """Ensure row vector should work correctly."""
-        result = ensure_row_vector([1, 2, 3])
-        assert result.shape == (1, 3)
-        np.testing.assert_array_equal(result.flatten(), [1, 2, 3])
-
-    def test_ensure_square_matrix(self):
-        """Ensure square matrix should work correctly."""
-        # Should pass
-        result = ensure_square_matrix([[1, 2], [3, 4]])
-        assert result.shape == (2, 2)
-
-        # Should fail
-        with pytest.raises(ValidationError):
-            ensure_square_matrix([[1, 2, 3], [4, 5, 6]])
-
-    def test_ensure_symmetric(self):
-        """Ensure symmetric should work correctly."""
-        # Should pass and symmetrize
-        A = np.array([[1.0, 2.0], [2.0 + 1e-12, 3.0]])
-        result = ensure_symmetric(A)
-        np.testing.assert_allclose(result, result.T)
-
-        # Should fail for non-symmetric
-        with pytest.raises(ValidationError):
-            ensure_symmetric([[1, 2], [3, 4]])
 
 
 class TestArrayUtils:
@@ -342,13 +235,13 @@ class TestWrapConsistency:
         np.testing.assert_allclose(wrapped_once, wrapped_twice)
 
     def test_wrap_preserves_differences(self):
-        """Angle differences should be preserved (mod 2π)."""
+        """Angle differences should be preserved (mod 2pi)."""
         a1, a2 = 0.5, 1.5
 
         # Original difference
         diff_original = a2 - a1
 
-        # After adding multiples of 2π
+        # After adding multiples of 2pi
         a1_shifted = a1 + 4 * np.pi
         a2_shifted = a2 - 2 * np.pi
 

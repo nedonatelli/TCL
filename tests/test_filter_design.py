@@ -1,28 +1,26 @@
-"""Tests for signal processing module."""
+"""
+Tests for digital filter design functions.
+
+Tests cover:
+- Butterworth, Chebyshev, elliptic, Bessel filter design
+- FIR filter design (windowed and Remez)
+- Frequency response, group delay, filter order estimation
+- Filter application and zero-phase filtering
+- Integration tests (filter + detect pipeline)
+"""
 
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.signal_processing import (
-    CFARResult,
-    CFARResult2D,
     FilterCoefficients,
     FrequencyResponse,
-    MatchedFilterResult,
-    PulseCompressionResult,
     apply_filter,
     bessel_design,
     butter_design,
-    cfar_2d,
     cfar_ca,
-    cfar_go,
-    cfar_os,
-    cfar_so,
     cheby1_design,
     cheby2_design,
-    cluster_detections,
-    detection_probability,
     ellip_design,
     filter_order,
     filtfilt,
@@ -30,14 +28,8 @@ from pytcl.mathematical_functions.signal_processing import (
     fir_design_remez,
     frequency_response,
     generate_lfm_chirp,
-    generate_nlfm_chirp,
     group_delay,
-    matched_filter,
-    matched_filter_frequency,
-    optimal_filter,
     pulse_compression,
-    snr_loss,
-    threshold_factor,
 )
 
 
@@ -172,167 +164,8 @@ class TestFilterDesign:
         assert abs(peak_x - peak_y) <= 1
 
 
-class TestMatchedFilter:
-    """Tests for matched filtering functions."""
-
-    def test_matched_filter_pulse(self):
-        """Test matched filter with simple pulse."""
-        template = np.ones(10)
-        signal = np.zeros(100)
-        signal[50:60] = 1.0
-
-        result = matched_filter(signal, template)
-
-        assert isinstance(result, MatchedFilterResult)
-        assert 50 <= result.peak_index <= 60
-        assert result.snr_gain > 0
-
-    def test_matched_filter_chirp(self):
-        """Test matched filter with chirp signal."""
-        fs = 1000
-        chirp = generate_lfm_chirp(0.01, 50, 200, fs)
-        signal = np.zeros(500)
-        signal[200 : 200 + len(chirp)] = chirp
-
-        result = matched_filter(signal, chirp)
-
-        assert 200 <= result.peak_index <= 200 + len(chirp)
-
-    def test_matched_filter_frequency(self):
-        """Test frequency-domain matched filter."""
-        template = np.sin(2 * np.pi * 0.1 * np.arange(50))
-        signal = np.zeros(200)
-        signal[100:150] = template
-
-        result = matched_filter_frequency(signal, template)
-
-        assert isinstance(result, MatchedFilterResult)
-        assert 100 <= result.peak_index <= 150
-
-    def test_optimal_filter(self):
-        """Test optimal filter with white noise."""
-        signal = np.random.randn(256)
-        template = np.ones(16)
-        noise_psd = np.ones(256)  # White noise
-
-        output = optimal_filter(signal, template, noise_psd)
-
-        assert len(output) == len(signal)
-
-    def test_pulse_compression(self):
-        """Test pulse compression."""
-        fs = 1000
-        chirp = generate_lfm_chirp(0.05, 50, 200, fs)
-        signal = np.zeros(1000)
-        signal[300 : 300 + len(chirp)] = chirp
-
-        result = pulse_compression(signal, chirp)
-
-        assert isinstance(result, PulseCompressionResult)
-        assert result.compression_ratio > 1
-
-    def test_lfm_chirp_generation(self):
-        """Test LFM chirp generation."""
-        chirp = generate_lfm_chirp(0.001, 1000, 5000, 44100)
-
-        assert len(chirp) == 44
-        assert chirp[0] == pytest.approx(1.0, abs=0.01)
-
-    def test_nlfm_chirp_generation(self):
-        """Test NLFM chirp generation."""
-        chirp = generate_nlfm_chirp(0.001, 1000, 5000, 44100, beta=2.0)
-
-        assert len(chirp) == 44
-
-
-class TestCFAR:
-    """Tests for CFAR detection algorithms."""
-
-    def test_cfar_ca_detection(self):
-        """Test CA-CFAR detection."""
-        np.random.seed(42)
-        signal = np.random.exponential(1.0, 1000)
-        signal[500] = 100  # Strong target
-
-        result = cfar_ca(signal, guard_cells=2, ref_cells=16, pfa=1e-4)
-
-        assert isinstance(result, CFARResult)
-        assert 500 in result.detection_indices
-
-    def test_cfar_go_detection(self):
-        """Test GO-CFAR detection."""
-        np.random.seed(42)
-        signal = np.random.exponential(1.0, 500)
-        signal[250] = 50
-
-        result = cfar_go(signal, guard_cells=2, ref_cells=16, pfa=1e-4)
-
-        assert isinstance(result, CFARResult)
-        assert len(result.detection_indices) >= 1
-
-    def test_cfar_so_detection(self):
-        """Test SO-CFAR detection."""
-        np.random.seed(42)
-        signal = np.random.exponential(1.0, 500)
-        signal[250] = 50
-
-        result = cfar_so(signal, guard_cells=2, ref_cells=16, pfa=1e-4)
-
-        assert isinstance(result, CFARResult)
-
-    def test_cfar_os_detection(self):
-        """Test OS-CFAR detection."""
-        np.random.seed(42)
-        signal = np.random.exponential(1.0, 500)
-        signal[250] = 50
-        signal[260] = 40  # Closely spaced targets
-
-        result = cfar_os(signal, guard_cells=2, ref_cells=16, pfa=1e-4)
-
-        assert isinstance(result, CFARResult)
-
-    def test_cfar_2d(self):
-        """Test 2D CFAR detection."""
-        np.random.seed(42)
-        image = np.random.exponential(1.0, (100, 100))
-        image[50, 50] = 100
-
-        result = cfar_2d(image, guard_cells=(2, 2), ref_cells=(8, 8), pfa=1e-4)
-
-        assert isinstance(result, CFARResult2D)
-        assert result.detections[50, 50]
-
-    def test_threshold_factor(self):
-        """Test CFAR threshold factor computation."""
-        alpha = threshold_factor(1e-6, 32, method="ca")
-
-        assert alpha > 1
-
-    def test_detection_probability(self):
-        """Test detection probability computation."""
-        pd = detection_probability(snr=10, pfa=1e-6, n_ref=32)
-
-        assert 0 < pd < 1
-
-    def test_cluster_detections(self):
-        """Test detection clustering."""
-        detections = np.array([False] * 100)
-        detections[50:55] = True  # Cluster of 5
-
-        peaks = cluster_detections(detections, min_separation=2)
-
-        assert len(peaks) == 1
-        assert 50 <= peaks[0] <= 54
-
-    def test_snr_loss(self):
-        """Test CFAR SNR loss computation."""
-        loss = snr_loss(32, method="ca")
-
-        assert 0 < loss < 1  # Small loss for many cells
-
-
 class TestEdgeCases:
-    """Test edge cases and error handling."""
+    """Test edge cases for filter design."""
 
     def test_filter_with_fir(self):
         """Test applying FIR filter."""
@@ -342,27 +175,9 @@ class TestEdgeCases:
 
         assert len(y) == len(x)
 
-    def test_cfar_short_signal(self):
-        """Test CFAR with short signal."""
-        signal = np.array([1, 2, 100, 2, 1])
-
-        result = cfar_ca(signal, guard_cells=0, ref_cells=1, pfa=1e-2)
-
-        assert len(result.detections) == 5
-
-    def test_matched_filter_identical_signals(self):
-        """Test matched filter with identical signal and template."""
-        template = np.random.randn(50)
-        signal = template.copy()
-
-        result = matched_filter(signal, template, normalize=True)
-
-        # Peak should be near 1 for normalized auto-correlation
-        assert result.peak_value > 0
-
 
 class TestIntegration:
-    """Integration tests combining multiple functions."""
+    """Integration tests combining filtering and detection."""
 
     def test_filter_and_detect(self):
         """Test filtering followed by CFAR detection."""

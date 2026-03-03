@@ -1,44 +1,30 @@
-"""Tests for transforms module."""
+"""Tests for Fourier transform functions."""
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.transforms import (
-    PYWT_AVAILABLE,
     CoherenceResult,
     CrossSpectrum,
-    CWTResult,
     PowerSpectrum,
-    Spectrogram,
-    STFTResult,
     coherence,
     cross_spectrum,
-    cwt,
     fft,
     fft2,
     fftshift,
     frequency_axis,
-    gaussian_wavelet,
-    get_window,
     ifft,
     ifft2,
     ifftshift,
     irfft,
-    istft,
     magnitude_spectrum,
-    mel_spectrogram,
-    morlet_wavelet,
     periodogram,
     phase_spectrum,
     power_spectrum,
     rfft,
     rfft_frequency_axis,
-    ricker_wavelet,
-    scales_to_frequencies,
     spectrogram,
-    stft,
-    window_bandwidth,
 )
 
 
@@ -180,175 +166,6 @@ class TestFourier:
         assert_allclose(phase, [0, np.pi / 2, np.pi, -np.pi / 2], atol=1e-10)
 
 
-class TestSTFT:
-    """Tests for Short-Time Fourier Transform functions."""
-
-    def test_stft_shape(self):
-        """Test STFT output shape."""
-        fs = 1000
-        t = np.arange(0, 1, 1 / fs)
-        x = np.sin(2 * np.pi * 50 * t)
-
-        result = stft(x, fs=fs, nperseg=128)
-
-        assert isinstance(result, STFTResult)
-        assert result.Zxx.shape[0] == 65  # n_freq = nperseg//2 + 1
-
-    def test_stft_istft_roundtrip(self):
-        """Test STFT and inverse STFT roundtrip."""
-        fs = 1000
-        t = np.arange(0, 1, 1 / fs)
-        x = np.sin(2 * np.pi * 50 * t)
-
-        result = stft(x, fs=fs, nperseg=128)
-        t_rec, x_rec = istft(result.Zxx, fs=fs, nperseg=128)
-
-        # Allow some tolerance due to boundary effects
-        assert_allclose(x, x_rec[: len(x)], atol=1e-10)
-
-    def test_spectrogram_shape(self):
-        """Test spectrogram output shape."""
-        fs = 1000
-        t = np.arange(0, 2, 1 / fs)
-        x = np.sin(2 * np.pi * (50 + 75 * t) * t)  # Chirp
-
-        result = spectrogram(x, fs=fs, nperseg=128)
-
-        assert isinstance(result, Spectrogram)
-        assert result.power.shape[0] == 65  # n_freq
-
-    def test_get_window(self):
-        """Test window generation."""
-        w = get_window("hann", 256)
-
-        assert len(w) == 256
-        assert w[0] == pytest.approx(0.0, abs=0.01)
-        assert w[128] == pytest.approx(1.0, abs=0.01)
-
-    def test_get_window_kaiser(self):
-        """Test Kaiser window with parameter."""
-        w = get_window(("kaiser", 8.0), 256)
-
-        assert len(w) == 256
-
-    def test_window_bandwidth(self):
-        """Test window equivalent noise bandwidth."""
-        enbw = window_bandwidth("hann", 256)
-
-        # Hann window ENBW is about 1.5 bins
-        assert 1.4 < enbw < 1.6
-
-    def test_mel_spectrogram(self):
-        """Test mel spectrogram computation."""
-        np.random.seed(42)
-        fs = 22050
-        x = np.random.randn(fs)  # 1 second
-
-        mel_freqs, times, mel_spec = mel_spectrogram(x, fs, n_mels=64)
-
-        assert mel_spec.shape[0] == 64
-
-
-class TestWavelets:
-    """Tests for wavelet transform functions."""
-
-    def test_morlet_wavelet_shape(self):
-        """Test Morlet wavelet generation."""
-        wav = morlet_wavelet(128, w=5.0)
-
-        assert len(wav) == 128
-        assert np.iscomplexobj(wav)
-
-    def test_morlet_wavelet_center(self):
-        """Test Morlet wavelet peak at center."""
-        wav = morlet_wavelet(128, w=5.0)
-
-        # Peak magnitude should be near center
-        peak_idx = np.argmax(np.abs(wav))
-        assert abs(peak_idx - 64) < 5
-
-    def test_ricker_wavelet_shape(self):
-        """Test Ricker wavelet generation."""
-        wav = ricker_wavelet(128, a=4.0)
-
-        assert len(wav) == 128
-        # Peak should be at or near center
-        peak_idx = np.argmax(wav)
-        assert abs(peak_idx - 64) < 5
-
-    def test_gaussian_wavelet(self):
-        """Test Gaussian wavelet generation."""
-        wav = gaussian_wavelet(128, order=1)
-
-        assert len(wav) == 128
-
-    def test_cwt_sine(self):
-        """Test CWT of sine wave."""
-        fs = 1000
-        t = np.arange(0, 1, 1 / fs)
-        x = np.sin(2 * np.pi * 50 * t)
-        scales = np.arange(1, 64)
-
-        result = cwt(x, scales, wavelet="morlet", fs=fs)
-
-        assert isinstance(result, CWTResult)
-        assert result.coefficients.shape == (len(scales), len(x))
-
-    def test_cwt_frequencies(self):
-        """Test CWT frequency estimation."""
-        scales = np.array([1, 2, 4, 8, 16])
-        freqs = scales_to_frequencies(scales, wavelet="morlet", fs=1000)
-
-        assert len(freqs) == 5
-        # Smaller scale = higher frequency
-        assert freqs[0] > freqs[-1]
-
-
-@pytest.mark.skipif(not PYWT_AVAILABLE, reason="pywavelets not installed")
-class TestDWT:
-    """Tests for Discrete Wavelet Transform (requires pywavelets)."""
-
-    def test_dwt_shape(self):
-        """Test DWT output shape."""
-        from pytcl.mathematical_functions.transforms import dwt
-
-        x = np.random.randn(256)
-        result = dwt(x, wavelet="db4", level=4)
-
-        assert result.levels == 4
-        assert len(result.cD) == 4
-
-    def test_dwt_idwt_roundtrip(self):
-        """Test DWT and inverse DWT roundtrip."""
-        from pytcl.mathematical_functions.transforms import dwt, idwt
-
-        x = np.random.randn(256)
-        result = dwt(x, wavelet="db4", level=4)
-        x_rec = idwt(result)
-
-        assert_allclose(x, x_rec, atol=1e-10)
-
-    def test_dwt_single_level(self):
-        """Test single-level DWT."""
-        from pytcl.mathematical_functions.transforms import dwt_single_level
-
-        x = np.random.randn(256)
-        cA, cD = dwt_single_level(x, wavelet="db4")
-
-        assert len(cA) == 128 + 3  # Half length plus filter overlap
-        assert len(cD) == 128 + 3
-
-    def test_dwt_different_wavelets(self):
-        """Test DWT with different wavelets."""
-        from pytcl.mathematical_functions.transforms import dwt
-
-        x = np.random.randn(256)
-
-        for wavelet in ["haar", "db4", "sym4", "coif2"]:
-            result = dwt(x, wavelet=wavelet, level=3)
-            assert result.wavelet == wavelet
-
-
 class TestEdgeCases:
     """Test edge cases and error handling."""
 
@@ -365,24 +182,6 @@ class TestEdgeCases:
         result = power_spectrum(x, fs=100, nperseg=32)
 
         assert len(result.frequencies) > 0
-
-    def test_stft_short_signal(self):
-        """Test STFT with signal shorter than nperseg."""
-        x = np.random.randn(64)
-        # Use smaller nperseg for short signal
-        result = stft(x, fs=100, nperseg=32)
-
-        # Should handle gracefully
-        assert result.Zxx.shape[1] > 0
-
-    def test_cwt_single_scale(self):
-        """Test CWT with single scale."""
-        x = np.random.randn(256)
-        scales = np.array([10])
-
-        result = cwt(x, scales)
-
-        assert result.coefficients.shape[0] == 1
 
 
 class TestIntegration:

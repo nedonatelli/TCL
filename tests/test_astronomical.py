@@ -1,4 +1,7 @@
-"""Tests for astronomical module (orbital mechanics, Lambert, reference frames)."""
+"""Tests for astronomical module (orbital mechanics, reference frames).
+
+Lambert problem tests are in test_lambert.py.
+"""
 
 import numpy as np
 from numpy.testing import assert_allclose
@@ -8,7 +11,6 @@ from pytcl.astronomical import (  # Orbital mechanics; Lambert; Reference frames
     OrbitalElements,
     StateVector,
     apoapsis_radius,
-    bi_elliptic_transfer,
     circular_velocity,
     eccentric_to_mean_anomaly,
     eccentric_to_true_anomaly,
@@ -24,7 +26,6 @@ from pytcl.astronomical import (  # Orbital mechanics; Lambert; Reference frames
     julian_centuries_j2000,
     kepler_propagate,
     kepler_propagate_state,
-    lambert_universal,
     mean_motion,
     mean_obliquity_iau80,
     mean_to_eccentric_anomaly,
@@ -254,67 +255,6 @@ class TestOrbitalQuantities:
         v_esc = escape_velocity(r)
         v_circ = circular_velocity(r)
         assert_allclose(v_esc, v_circ * np.sqrt(2), rtol=1e-10)
-
-
-class TestLambert:
-    """Tests for Lambert problem solver."""
-
-    def test_lambert_basic(self):
-        """Test basic Lambert solution."""
-        r1 = np.array([5000.0, 10000.0, 2100.0])
-        r2 = np.array([-14600.0, 2500.0, 7000.0])
-        tof = 3600  # 1 hour
-
-        sol = lambert_universal(r1, r2, tof)
-
-        # Verify velocities produce correct end states
-        assert sol.v1 is not None
-        assert sol.v2 is not None
-        assert len(sol.v1) == 3
-        assert len(sol.v2) == 3
-
-    def test_lambert_short_transfer(self):
-        """Test Lambert with short transfer."""
-        # Simple coplanar transfer
-        r1 = np.array([7000.0, 0.0, 0.0])
-        r2 = np.array([0.0, 8000.0, 0.0])
-        tof = 1500
-
-        sol = lambert_universal(r1, r2, tof)
-
-        # Initial velocity should have positive y component
-        assert sol.v1[1] > 0
-
-    def test_hohmann_transfer(self):
-        """Test Hohmann transfer calculation."""
-        r1 = 6678  # LEO
-        r2 = 42164  # GEO
-
-        dv1, dv2, tof = hohmann_transfer(r1, r2)
-
-        # Total delta-v for LEO to GEO should be ~3.9 km/s
-        total_dv = dv1 + dv2
-        assert 3.8 < total_dv < 4.1
-
-        # Transfer time should be about 5 hours
-        assert 17000 < tof < 20000
-
-    def test_bi_elliptic_transfer(self):
-        """Test bi-elliptic transfer."""
-        r1 = 7000
-        r2 = 70000
-        r_int = 100000
-
-        dv1, dv2, dv3, tof = bi_elliptic_transfer(r1, r2, r_int)
-
-        # All delta-v's should be positive
-        assert dv1 > 0
-        assert dv2 > 0
-        assert dv3 > 0
-
-        # Transfer time should be longer than Hohmann
-        _, _, tof_hohmann = hohmann_transfer(r1, r2)
-        assert tof > tof_hohmann
 
 
 class TestReferenceFrames:

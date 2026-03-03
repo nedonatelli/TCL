@@ -10,6 +10,8 @@ Tests cover:
 - Pochhammer symbol (rising factorial)
 - Falling factorial
 - Generalized pFq hypergeometric function
+- Transformations and identities
+- SciPy consistency
 """
 
 import numpy as np
@@ -65,6 +67,13 @@ class TestHyp0F1:
             result = hyp0f1(b, 1.0)
             assert np.isfinite(result)
 
+    def test_hyp0f1_real_values(self):
+        """Test 0F1 with various real values."""
+        test_cases = [(1.5, 0.1), (2.0, 0.5), (3.0, 1.0), (2.5, 2.0)]
+        for b, z in test_cases:
+            result = hyp0f1(b, z)
+            assert np.isfinite(result), f"0F1(;{b};{z}) not finite"
+
 
 # =============================================================================
 # Tests for 1F1 (Kummer's function M)
@@ -111,6 +120,33 @@ class TestHyp1F1:
         assert np.isfinite(result)
         assert 0 < result < 1  # Decreasing for negative z
 
+    def test_hyp1f1_negative_integer_parameter(self):
+        """Test 1F1 with negative integer a (polynomial termination)."""
+        result = hyp1f1(-2.0, 2.0, 0.5)
+        assert np.isfinite(result)
+
+    def test_hyp1f1_increasing_z(self):
+        """Test behavior of 1F1 as z increases."""
+        z_vals = np.array([0.1, 0.5, 1.0, 2.0])
+        results = np.array([hyp1f1(1.0, 2.0, z) for z in z_vals])
+        # For positive a, b, z, 1F1 should increase with z
+        assert np.all(np.diff(results) > 0)
+
+    def test_hyp1f1_consistency_with_scipy(self):
+        """Test consistency with scipy.special.hyp1f1."""
+        from scipy.special import hyp1f1 as scipy_hyp1f1
+
+        test_cases = [(0.5, 1.5, 0.5), (1.0, 2.0, 1.0), (2.0, 3.0, 0.5)]
+        for a, b, z in test_cases:
+            our_result = hyp1f1(a, b, z)
+            scipy_result = scipy_hyp1f1(a, b, z)
+            assert np.isclose(our_result, scipy_result, rtol=1e-4)
+
+    def test_hyp1f1_large_z(self):
+        """Test 1F1 with large z."""
+        result = hyp1f1(0.5, 1.0, 5.0)
+        assert np.isfinite(result)
+
 
 # =============================================================================
 # Tests for 2F1 (Gauss hypergeometric)
@@ -156,6 +192,67 @@ class TestHyp2F1:
         expected = np.arcsin(z) / z
         assert result == pytest.approx(expected, rel=1e-6)
 
+    def test_hyp2f1_pfaffian_transformation(self):
+        """Test Pfaff transformation: 2F1(a,b;c;z) = (1-z)^(-a) * 2F1(a,c-b;c;z/(z-1))."""
+        a, b, c = 0.5, 1.5, 2.0
+        z = 0.3
+        lhs = hyp2f1(a, b, c, z)
+        z_new = z / (z - 1)
+        rhs = (1 - z) ** (-a) * hyp2f1(a, c - b, c, z_new)
+        assert np.isclose(lhs, rhs, atol=1e-6)
+
+    def test_hyp2f1_symmetry_in_parameters(self):
+        """Test symmetry: 2F1(a,b;c;z) = 2F1(b,a;c;z)."""
+        a, b, c, z = 1.5, 2.5, 3.5, 0.3
+        result1 = hyp2f1(a, b, c, z)
+        result2 = hyp2f1(b, a, c, z)
+        assert np.isclose(result1, result2, atol=1e-10)
+
+    def test_hyp2f1_negative_integer_numerator(self):
+        """Test 2F1 with negative integer parameter (terminates)."""
+        result = hyp2f1(-2.0, 1.0, 2.0, 0.5)
+        assert np.isfinite(result)
+
+    def test_hyp2f1_small_z_expansion(self):
+        """Test 2F1 behaves correctly for small |z|."""
+        z_small = 1e-4
+        result = hyp2f1(2.0, 3.0, 4.0, z_small)
+        assert 0.99 < result < 1.01
+
+    def test_hyp2f1_near_singularity(self):
+        """Test 2F1 with z close to 1."""
+        result = hyp2f1(0.5, 1.0, 1.5, 0.99)
+        assert np.isfinite(result)
+
+    def test_hyp2f1_consistency_with_scipy(self):
+        """Test consistency with scipy.special.hyp2f1."""
+        from scipy.special import hyp2f1 as scipy_hyp2f1
+
+        test_cases = [
+            (0.5, 1.0, 1.5, 0.1),
+            (1.0, 2.0, 3.0, 0.3),
+            (2.0, 3.0, 4.0, 0.2),
+        ]
+        for a, b, c, z in test_cases:
+            our_result = hyp2f1(a, b, c, z)
+            scipy_result = scipy_hyp2f1(a, b, c, z)
+            assert np.isclose(our_result, scipy_result, rtol=1e-4)
+
+    def test_hyp2f1_large_parameters(self):
+        """Test 2F1 with large parameter values."""
+        result = hyp2f1(10, 20, 30, 0.1)
+        assert np.isfinite(result)
+
+    def test_hyp2f1_array_multiple_convergence(self):
+        """Test 2F1 with array inputs requiring different convergence rates."""
+        from scipy.special import hyp2f1 as scipy_hyp2f1
+
+        z = np.array([0.01, 0.1, 0.5, 0.9])
+        results = hyp2f1(1, 1, 2, z)
+        assert np.all(np.isfinite(results))
+        expected = scipy_hyp2f1(1, 1, 2, z)
+        assert np.allclose(results, expected, rtol=1e-10)
+
 
 # =============================================================================
 # Tests for U (Tricomi function)
@@ -178,7 +275,6 @@ class TestHyperU:
         z = 100.0
         result = hyperu(a, b, z)
         expected_asymp = z ** (-a)
-        # Should be close to z^(-a) for large z
         assert result == pytest.approx(expected_asymp, rel=0.1)
 
     def test_hyperu_array_input(self):
@@ -316,7 +412,6 @@ class TestGeneralizedHypergeometric:
 
     def test_pFq_general_case(self):
         """Test generalized pFq for p=3, q=2."""
-        # 3F2 with known values
         a = [1.0, 1.0, 1.0]
         b = [2.0, 2.0]
         z = 0.5
@@ -349,7 +444,6 @@ class TestGeneralizedHypergeometric:
         z = 0.3
         result1 = generalized_hypergeometric(a, b, z, tol=1e-10)
         result2 = generalized_hypergeometric(a, b, z, tol=1e-15)
-        # Both should give similar results
         assert result1 == pytest.approx(result2, rel=1e-6)
 
     def test_pFq_max_terms(self):
@@ -360,6 +454,16 @@ class TestGeneralizedHypergeometric:
         result = generalized_hypergeometric(a, b, z, max_terms=100)
         expected = hyp2f1(1.0, 1.0, 2.0, 0.5)
         assert result == pytest.approx(expected, rel=1e-8)
+
+    def test_pFq_at_zero(self):
+        """Test pFq(a,b;0) = 1."""
+        result = generalized_hypergeometric([1.0, 2.0], [2.0, 3.0], 0.0)
+        assert np.isclose(result, 1.0, atol=1e-10)
+
+    def test_pFq_multiple_params(self):
+        """Test with multiple parameters."""
+        result = generalized_hypergeometric([0.5, 1.0], [1.5, 2.0], 0.3)
+        assert np.isfinite(result)
 
 
 # =============================================================================
@@ -381,8 +485,6 @@ class TestHypergeometricIntegration:
         """Test Gauss's summation: 2F1(a,b;c;1) for convergent case."""
         # 2F1(a, b; c; 1) = Gamma(c)*Gamma(c-a-b) / (Gamma(c-a)*Gamma(c-b))
         # when Re(c-a-b) > 0
-        from scipy.special import gamma
-
         a, b, c = 0.5, 0.5, 2.0  # c - a - b = 1 > 0
         result = hyp2f1(a, b, c, 1.0)
         expected = gamma(c) * gamma(c - a - b) / (gamma(c - a) * gamma(c - b))
