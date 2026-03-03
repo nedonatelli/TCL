@@ -1002,6 +1002,86 @@ db.prune_old_detections(age_threshold=60)  # Remove detections >1 min old
 - Optional feature: users can use SQLStorage directly or TrackDatabaseManager for convenience
 - Compatible with Jupyter notebooks for interactive track analysis
 
+#### 8.2 HDF5 Track Storage Extensions
+
+**Target:** Phase 8 (May-August 2026), parallel with TrackDatabaseManager
+
+High-performance HDF5 backend for efficient storage and retrieval of large-scale tracking datasets:
+
+**TrackHDF5Storage class** (`pytcl/io/hdf5_track_storage.py`):
+- **Hierarchical Track Storage:**
+  - `/tracks/{track_id}/` - Group per track with state evolution
+  - `/tracks/{track_id}/state_history` - Time-series of state vectors
+  - `/tracks/{track_id}/covariance_history` - Covariance matrix evolution
+  - `/tracks/{track_id}/metadata` - Track attributes and annotations
+  - `/detections/{detection_id}/` - Raw measurements and associations
+
+- **Efficient Numerical Storage:**
+  - Chunked I/O with configurable block sizes (default 1000 timesteps)
+  - Compression (gzip level 4 default, configurable)
+  - Support for both float32 and float64 precision
+  - Memory-mapped access for out-of-core datasets
+
+- **Time-Series Queries:**
+  - `get_track_trajectory(track_id, start_time, end_time)` - Extract track segment
+  - `get_state_at_time(track_id, time)` - Interpolated state retrieval
+  - `get_tracks_in_region(bbox, time_range)` - Spatial-temporal queries
+  - `get_associated_detections(track_id)` - Linked detection retrieval
+
+- **Batch Operations:**
+  - `store_tracking_scenario(scenario_id, all_tracks, all_detections)` - Scenario archival
+  - `retrieve_tracking_scenario(scenario_id)` - Scenario replay
+  - `export_to_sql(track_dataset)` - Convert HDF5 tracks to SQL database
+  - `compare_scenarios(scenario_id1, scenario_id2)` - Scenario comparison
+
+**Usage Example:**
+```python
+from pytcl.io import TrackHDF5Storage
+
+# Store large tracking dataset
+store = TrackHDF5Storage("tracking_archive.h5")
+store.open(mode="w")
+
+# Store complete scenario
+store.store_tracking_scenario(
+    scenario_id="mission_001",
+    tracks={
+        "trk_001": {"states": state_array, "covariances": P_array},
+        "trk_002": {"states": state_array, "covariances": P_array},
+    },
+    detections={
+        "det_001": {"measurement": z, "sensor": "RADAR_1", "time": t},
+        "det_002": {"measurement": z, "sensor": "RADAR_1", "time": t},
+    }
+)
+
+# Query stored trajectories
+trajectory = store.get_track_trajectory("trk_001", t_start=0, t_end=100)
+
+# Retrieve for post-analysis
+scenario = store.retrieve_tracking_scenario("mission_001")
+states, covs = scenario["trk_001"]["states"], scenario["trk_001"]["covariances"]
+
+# Spatial-temporal query
+tracks_in_region = store.get_tracks_in_region(
+    bbox=[-100, -100, 100, 100],  # [x_min, y_min, x_max, y_max]
+    time_range=[t_start, t_end]
+)
+```
+
+**Quality Metrics:**
+- 20+ tests for HDF5 track storage
+- Compression ratio: 5-10x for typical tracking data
+- Query latency: <50ms for trajectory retrieval, <200ms for spatial queries
+- Support for datasets >10GB
+- 100% type hints on public API
+- Seamless integration with TrackDatabaseManager (export/import support)
+
+**When to Use:**
+- **HDF5 Track Storage:** Large datasets, scientific analysis, archival (millions of states)
+- **SQL TrackDatabaseManager:** Real-time operations, detection queries, lifecycle management (100s-1000s tracks)
+- Both backends work together for comprehensive tracking pipelines
+
 ### Phase 9: Release Preparation & Packaging (Months 17-18) 🔄 PLANNED
 
 **Target:** August-October 2026
@@ -1012,7 +1092,7 @@ Final packaging, testing, documentation, and release of v2.0.0 with all complete
 
 **Deliverables:**
 - ✅ All phases 1-8 work complete and integrated
-- ✅ Track management extensions (Phase 8) fully tested  
+- ✅ Track management (SQL + HDF5) fully tested  
 - Final integration testing across all subsystems
 - Performance benchmarking documentation
 - Alpha release notes
@@ -1040,7 +1120,7 @@ Final packaging, testing, documentation, and release of v2.0.0 with all complete
 **Target Release:** October 2026
 
 Production release with all improvements integrated:
-- Complete track management capabilities
+- Complete track management (SQL TrackDatabaseManager + HDF5 track storage)
 - Full GPU acceleration (CuPy + MLX)
 - Comprehensive documentation (8 Jupyter notebooks + examples)
 - 3,396+ tests passing (80%+ coverage)
@@ -1059,7 +1139,7 @@ Production release with all improvements integrated:
 | **5** | Months 6-10 | GPU acceleration (CuPy + MLX, Kalman, particles) | ✅ Complete (v1.10.0) |
 | **6** | Months 7-12 | +50 tests, 80%+ coverage, network flow re-enable | ✅ Complete (v1.10.x) |
 | **7** | Months 8-12 | Numba JIT, caching, sparse matrices | ✅ Complete (v1.11.0) |
-| **8** | Months 13-16 | Track management extensions (detection/initiation/maintenance) | 🔄 In Progress (May-August 2026) |
+| **8** | Months 13-16 | Track management (SQL) + HDF5 track storage | 🔄 In Progress (May-August 2026) |
 | **9** | Months 17-18 | Packaging, testing, documentation, release (alpha → beta → RC → v2.0.0) | 🔄 Planned (August-October 2026) |
 
 ### v2.0.0 Risks & Mitigations
