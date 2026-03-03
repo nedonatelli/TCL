@@ -30,12 +30,14 @@ __original_author__ = "David F. Crouse, Naval Research Laboratory"
 # End-to-end trackers (Phase 7)
 # Specialized domains (Phase 6)
 # Assignment algorithms (Phase 5)
+# I/O and storage
 # Core utilities
 from pytcl import (
     assignment_algorithms,
     astronomical,
     atmosphere,
     core,
+    io,
     navigation,
     performance_evaluation,
     plotting,
@@ -69,6 +71,7 @@ __all__ = [
     "core",
     "assignment_algorithms",
     "astronomical",
+    "io",
     "navigation",
     "atmosphere",
     "trackers",
