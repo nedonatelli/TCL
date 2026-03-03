@@ -918,48 +918,9 @@ Eight comprehensive notebooks **(all complete):**
 
 **Performance:** 50%+ memory reduction on sparse assignment problems
 
-### Phase 8: Release Preparation (Months 13-18) 🔄 IN PROGRESS
+### Phase 8: Track Management Extensions (Months 13-16) 🔄 IN PROGRESS
 
-#### 8.1 v2.0-alpha Target (Q2 2026)
-
-**Deliverables Completed:**
-- ✅ Network flow simplex algorithm implemented and tested
-- ✅ Kalman filter code consolidated
-- ✅ Module graduation completed
-- ✅ API standardization complete
-- ✅ GPU Tier-1 working and benchmarked
-- ✅ Test coverage 80%+ achieved
-- ✅ All 8 Jupyter notebooks complete and verified
-- ✅ Documentation expansion (262 functions with examples)
-- ✅ 50+ new tests integrated (76% → 80% coverage)
-- ✅ Numba JIT compilation, caching, sparse matrices
-- ✅ Data persistence layer (HDF5, SQL backends)
-
-**Remaining for Alpha:**
-- Track management extensions (detection/initiation/maintenance)
-- Final integration testing across all phases
-- Performance benchmarking documentation
-- Migration guide from v1.x to v2.0
-
-#### 8.2 v2.0-beta (Q3 2026)
-
-**Target Deliverables:**
-- Performance benchmarks published
-- Deprecation path finalized
-- Extended GPU performance testing
-- Community feedback integration
-
-#### 8.3 v2.0-RC1 (Q3 2026)
-
-**Target Deliverables:**
-- Migration guide complete
-- Deprecation warnings in place  
-- Performance benchmarks documented
-- Installation instructions finalized
-
-#### 8.4 Track Management Extensions 🔄 PLANNED
-
-**Target:** Phase 8 (May-August 2026)
+**Target:** May-August 2026
 
 Higher-level tracking capabilities built on top of the SQL storage backend for complete track lifecycle management:
 
@@ -1041,28 +1002,65 @@ db.prune_old_detections(age_threshold=60)  # Remove detections >1 min old
 - Optional feature: users can use SQLStorage directly or TrackDatabaseManager for convenience
 - Compatible with Jupyter notebooks for interactive track analysis
 
-#### 8.5 v2.0.0 (Q4 2026)
+### Phase 9: Release Preparation & Packaging (Months 17-18) 🔄 PLANNED
 
-**Target Release** with all improvements integrated, estimated October 2026
+**Target:** August-October 2026
 
-**Timeline Breakdown (Phase 8: Months 13-18)**
-- April-May 2026: Alpha release preparation
-- June-July 2026: Beta release and community testing
-- August-September 2026: Release Candidate cycles
-- October 2026: v2.0.0 production release
+Final packaging, testing, documentation, and release of v2.0.0 with all completed work.
+
+#### 9.1 v2.0-alpha (August 2026)
+
+**Deliverables:**
+- ✅ All phases 1-8 work complete and integrated
+- ✅ Track management extensions (Phase 8) fully tested  
+- Final integration testing across all subsystems
+- Performance benchmarking documentation
+- Alpha release notes
+
+#### 9.2 v2.0-beta (September 2026)
+
+**Target Deliverables:**
+- Beta release for community testing
+- Performance benchmarks published
+- Deprecation path finalized
+- Extended GPU performance validation
+- Community feedback integration
+
+#### 9.3 v2.0-RC1 (September 2026)
+
+**Target Deliverables:**
+- Release Candidate cycle(s)
+- Migration guide from v1.x to v2.0.0 complete
+- Deprecation warnings in place  
+- Performance benchmarks finalized
+- Installation and upgrade instructions documented
+
+#### 9.4 v2.0.0 (October 2026)
+
+**Target Release:** October 2026
+
+Production release with all improvements integrated:
+- Complete track management capabilities
+- Full GPU acceleration (CuPy + MLX)
+- Comprehensive documentation (8 Jupyter notebooks + examples)
+- 3,396+ tests passing (80%+ coverage)
+- Performance optimizations (Numba, caching, sparse matrices)
+- Data persistence layer (HDF5 + SQL with track management)
+- Backward compatibility layer for v1.x users
 
 ### v2.0.0 Timeline
 
 | Phase | Duration | Focus Area | Status |
 |-------|----------|-----------|--------|
 | **1** | Months 1-3 | Network flow, circular imports, consolidation | ✅ Complete (v1.8.0) |
-| **2** | Months 2-4 | API standardization, exceptions, optdeps | ✅ Complete (v1.9.0) |
+| **2** | Months 2-4 | API standardization, exceptions, optdeps, data persistence | ✅ Complete (v1.9.0 + v1.13.2) |
 | **3** | Months 3-6 | Documentation, module graduation | ✅ Complete (v1.12.0) |
 | **4** | Months 4-8 | 8 Jupyter notebooks + CI integration | ✅ Complete (v1.13.0) |
 | **5** | Months 6-10 | GPU acceleration (CuPy + MLX, Kalman, particles) | ✅ Complete (v1.10.0) |
 | **6** | Months 7-12 | +50 tests, 80%+ coverage, network flow re-enable | ✅ Complete (v1.10.x) |
 | **7** | Months 8-12 | Numba JIT, caching, sparse matrices | ✅ Complete (v1.11.0) |
-| **8** | Months 13-18 | Alpha → Beta → RC → Release | 🔄 In Progress (March 2026 onwards, Targeting October 2026) |
+| **8** | Months 13-16 | Track management extensions (detection/initiation/maintenance) | 🔄 In Progress (May-August 2026) |
+| **9** | Months 17-18 | Packaging, testing, documentation, release (alpha → beta → RC → v2.0.0) | 🔄 Planned (August-October 2026) |
 
 ### v2.0.0 Risks & Mitigations
 
