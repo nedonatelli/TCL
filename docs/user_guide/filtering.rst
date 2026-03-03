@@ -350,3 +350,18 @@ For stateful IMM filtering:
    for z in measurements:
        result = imm.predict_update(z)
        print(f"State: {result.x}, Mode probs: {imm.mode_probs}")
+See Also
+--------
+
+**Advanced Filtering Topics:**
+
+- :doc:`../constrained_filtering` — Apply state constraints during filtering (geofenced tracking, bounded velocities)
+- :doc:`../hybrid_filtering` — Hybrid particle/Kalman filtering for mixed linear/nonlinear systems
+- :doc:`../adaptive_filtering` — Adaptive noise tuning and filter parameters
+- :doc:`../information_filters` — Information representation and filter variants
+- :doc:`../particle_filters` — Bootstrap and advanced particle filtering techniques
+
+**Related Guides:**
+
+- :doc:`../kalman_filter_tuning` — Tuning filter parameters and covariance
+- :doc:`../smoothing` — Batch estimation and smoothing algorithms

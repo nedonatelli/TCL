@@ -19,14 +19,14 @@ The Tracker Component Library provides building blocks for developing target tra
 
 - **Coordinate Systems**: Conversions between Cartesian, spherical, geodetic, and other coordinate systems
 - **Dynamic Models**: State transition matrices for constant velocity, coordinated turn, and other motion models
-- **Estimation Algorithms**: Kalman filters (EKF, UKF, CKF, H-infinity), particle filters, smoothers, and batch estimation
+- **Estimation Algorithms**: Kalman filters (KF, EKF, UKF, CKF, *CEKF*, H-infinity), particle filters (bootstrap, *RBPF*), smoothers, and batch estimation
 - **Assignment Algorithms**: Hungarian algorithm, auction algorithms, 3D/ND assignment, k-best assignments
 - **Data Association**: Global Nearest Neighbor, JPDA, MHT for multi-target tracking
 - **Mathematical Functions**: Special functions, statistics, numerical integration, and more
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
-- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF), atmosphere, tides, terrain
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF), *atmosphere (NRLMSISE-00)*, tides, terrain
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 

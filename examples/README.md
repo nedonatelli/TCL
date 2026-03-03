@@ -51,7 +51,10 @@ python examples/orbital_mechanics.py
 
 - **[ephemeris_demo.py](ephemeris_demo.py)** - Sun, moon, planet positions at any epoch
 - **[magnetic_field_demo.py](magnetism_demo.py)** - WMM and IGRF magnetic field models
-- **[atmospheric_modeling.py](atmospheric_modeling.py)** - Atmosphere density, refraction effects
+
+### Geophysical Models (1 example)
+
+- **[atmospheric_modeling.py](atmospheric_modeling.py)** - NRLMSISE-00 high-fidelity atmosphere model with solar/geomagnetic activity effects
 
 ### Filtering & Signal Processing (2 examples)
 
@@ -66,7 +69,7 @@ python examples/orbital_mechanics.py
 
 ### Advanced Filters (2 examples)
 
-- **[advanced_filters_comparison.py](advanced_filters_comparison.py)** - Advanced filtering techniques
+- **[advanced_filters_comparison.py](advanced_filters_comparison.py)** - Constrained EKF (CEKF), Rao-Blackwellized Particle Filter (RBPF), H-infinity robust filtering
 - **[static_estimation.py](static_estimation.py)** - Maximum likelihood and least squares estimation
 
 ## Running All Examples
