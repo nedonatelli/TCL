@@ -1082,6 +1082,217 @@ tracks_in_region = store.get_tracks_in_region(
 - **SQL TrackDatabaseManager:** Real-time operations, detection queries, lifecycle management (100s-1000s tracks)
 - Both backends work together for comprehensive tracking pipelines
 
+#### 8.3 Integration & Workflow Examples
+
+**Target:** Phase 8 (May-August 2026)
+
+Practical examples demonstrating complete tracking pipelines using SQL and HDF5 backends:
+
+**End-to-End Workflow Examples** (`pytcl/examples/track_management_workflows.py`):
+```python
+# Real-time tracking with SQL → Archive to HDF5
+from pytcl.io import TrackDatabaseManager, TrackHDF5Storage
+
+# Phase 1: Real-time operations (SQL)
+sql_db = TrackDatabaseManager("realtime.db")
+sql_db.open(mode="a")
+
+# Process live measurements
+for detection in incoming_detections:
+    sql_db.store_detection(detection.id, detection.z, detection.sensor_id, detection.time)
+    
+    # Run association and filtering
+    associated_tracks = associate_detections(sql_db.get_detections())
+    for track_id, state, P in update_filters(associated_tracks):
+        sql_db.update_track_state(track_id, state, P)
+
+# Phase 2: End-of-mission archival (HDF5)
+h5_store = TrackHDF5Storage("mission_archive.h5")
+h5_store.open(mode="w")
+
+# Export complete scenario from SQL to HDF5
+all_tracks = sql_db.retrieve_all_tracks()
+all_detections = sql_db.retrieve_all_detections()
+
+h5_store.store_tracking_scenario(
+    scenario_id="mission_001",
+    tracks=all_tracks,
+    detections=all_detections
+)
+
+# Phase 3: Post-analysis queries
+trajectory = h5_store.get_track_trajectory("trk_001", t_start, t_end)
+tracks_in_area = h5_store.get_tracks_in_region(bbox, time_range)
+```
+
+**Included Examples:**
+- Single-sensor RADAR tracking pipeline
+- Multi-sensor fusion (RADAR + LiDAR)
+- Real-time to archive workflow
+- Track comparison (before/after filtering)
+- Scenario replay and validation
+- Detection clutter handling
+
+**Documentation:**
+- 5+ worked examples (200-400 lines each)
+- Performance characteristics for each scenario
+- Integration points with existing Kalman filters, JPDA, MHT
+
+#### 8.4 Track Management Jupyter Notebook
+
+**Target:** Phase 8 (May-August 2026)
+
+Interactive tutorial on track lifecycle management complementing the existing 8 notebooks:
+
+**"Track Management & Data Persistence" Notebook** (`docs/notebooks/track_management.ipynb`):
+- **Theory Section:** Detection/track association, lifecycle states, database design
+- **SQL Tutorial:** Creating/querying tracks, state updates, bulk operations
+- **HDF5 Tutorial:** Scenario archival, time-series retrieval, compression analysis
+- **Workflow Demo:** Real-time SQL → archival HDF5 pipeline
+- **Interactive Exploration:** Parameter tuning, query performance analysis
+- **Exercises:** 3-4 practical assignments on track management operations
+
+**Purpose:**
+- Teaches users how to leverage new tracking data persistence
+- Shows practical integration with filtering algorithms
+- Demonstrates performance characteristics of both backends
+- Includes real-world scenario replays
+
+#### 8.5 Performance Benchmarking Suite
+
+**Target:** Phase 8 (May-August 2026)
+
+Comprehensive performance validation under realistic tracking loads:
+
+**Benchmarking Tests** (`benchmarks/test_track_management_bench.py`):
+- **SQL Benchmarks:**
+  - Detection storage rate (inserts/sec)
+  - Track state update throughput
+  - Query latency (by track_id, by time, by region)
+  - Concurrent access patterns
+  - Database size growth over mission duration
+
+- **HDF5 Benchmarks:**
+  - Scenario archival rate (1000s tracks → disk)
+  - Scenario retrieval performance
+  - Compression ratio analysis
+  - Query latency (trajectory, spatial-temporal)
+  - Memory usage for large datasets
+
+- **Integration Benchmarks:**
+  - SQL → HDF5 export time (1000, 10K, 100K tracks)
+  - Filter update latency with track management overhead
+  - Memory impact of TrackDatabaseManager
+  - CPU utilization during concurrent operations
+
+**Targets:**
+- SQL detection storage: >1000 detections/sec
+- Track state updates: <10ms per track
+- Query latency: <100ms for typical scenarios
+- HDF5 compression: 5-10x ratio
+- Export throughput: >100 tracks/sec
+
+#### 8.6 Multi-Sensor Validation Suite
+
+**Target:** Phase 8 (May-August 2026)
+
+Real-world scenario testing with diverse tracking conditions:
+
+**Test Scenarios** (`tests/test_track_management_scenarios.py`):
+1. **Single-Sensor Scenarios:**
+   - Clean environment (100 tracks, 50 detections/frame)
+   - Clutter environment (100 tracks, 200 false detections/frame)
+   - High-dynamic targets (maneuvering aircraft, fast vehicles)
+
+2. **Multi-Sensor Fusion:**
+   - RADAR + LiDAR (complementary strengths)
+   - RADAR + Camera (different modalities)
+   - Asynchronous sensor timing
+
+3. **Track Lifecycle Stress Tests:**
+   - Rapid track initiation (100 new tracks/second)
+   - Track merging under uncertainty
+   - Track pruning at configurable thresholds
+   - Long-duration missions (100,000+ timesteps)
+
+4. **Data Integrity Checks:**
+   - Track state consistency (before/after database round-trip)
+   - Detection-track association correctness
+   - Timestamp ordering validation
+   - Covariance matrix positive-definiteness
+
+**Quality Metrics:**
+- 40+ integration tests across scenarios
+- 100% scenario replay accuracy (SQL → HDF5 → SQL)
+- All tasks pass with realistic tracking data
+
+#### 8.7 Backward Compatibility & Seamless Integration
+
+**Target:** Phase 8 (May-August 2026)
+
+Ensure new track management layers integrate smoothly with existing v1.13.2 filters:
+
+**Compatibility Layer** (`pytcl/io/compat.py`):
+- Adapter classes mapping v1.x Kalman filter outputs to TrackDatabaseManager
+- Helper functions to convert legacy tracking code to new track management
+- Examples showing v1.x → v2.0.0 migration patterns
+- Full parity with existing EKF, UKF, JPDA, MHT implementations
+
+**Integration Tested:**
+- ✅ Linear Kalman filter + track management
+- ✅ Extended/Unscented Kalman filters + track management
+- ✅ JPDA with SQL detection queries
+- ✅ Multi-Hypothesis Tracking with track state persistence
+- ✅ IMM filters updating track history
+- ✅ Particle filters with HDF5 archival
+
+**Documentation:**
+- Migration guides with code examples
+- FAQ for common integration questions
+- Troubleshooting guide for mixed v1.x/v2.0.0 codebases
+
+#### 8.8 Migration Tools for v1.x Users
+
+**Target:** Phase 8 (May-August 2026)
+
+Utilities helping users transition tracking pipelines from v1.13.2 to v2.0.0:
+
+**Migration Toolkit** (`pytcl/io/migration.py`):
+
+```python
+from pytcl.io.migration import MigrationHelper
+
+helper = MigrationHelper()
+
+# Analyze existing tracking pipeline
+analysis = helper.analyze_v1_code("legacy_tracker.py")
+print(analysis.recommendations)  # Suggests TrackDatabaseManager or HDF5
+
+# Convert legacy track format to SQL
+helper.convert_legacy_tracks_to_sql(
+    legacy_track_file="old_tracks.pkl",
+    output_db="new_tracks.db"
+)
+
+# Generate v2.0.0 template code
+template = helper.generate_v2_template(
+    legacy_code="old_tracking.py",
+    target_backend="sql"  # or "hdf5" or "both"
+)
+```
+
+**Features:**
+- Automatic v1.x code analysis and recommendations
+- Data format converters (pickle → SQL/HDF5)
+- Code generation for v2.0.0 equivalents
+- Performance comparison tools (v1.x vs v2.0.0)
+
+**Included:**
+- 5 complete migration examples
+- Before/after code comparisons
+- Performance impact analysis
+- Validation checklist for migrated code
+
 ### Phase 9: Release Preparation & Packaging (Months 17-18) 🔄 PLANNED
 
 **Target:** August-October 2026
@@ -1092,10 +1303,15 @@ Final packaging, testing, documentation, and release of v2.0.0 with all complete
 
 **Deliverables:**
 - ✅ All phases 1-8 work complete and integrated
-- ✅ Track management (SQL + HDF5) fully tested  
-- Final integration testing across all subsystems
-- Performance benchmarking documentation
-- Alpha release notes
+- ✅ Track management (SQL TrackDatabaseManager + HDF5 storage) fully tested
+- ✅ Integration examples and workflows validated
+- ✅ Track management Jupyter notebook verified
+- ✅ Performance benchmarking complete (latencies, throughput, compression)
+- ✅ Multi-sensor validation scenarios passing
+- ✅ Backward compatibility with v1.x filters confirmed
+- ✅ Migration tools validated with real legacy code
+- Final alpha integration testing across all subsystems
+- Alpha release notes and documentation
 
 #### 9.2 v2.0-beta (September 2026)
 
@@ -1120,13 +1336,19 @@ Final packaging, testing, documentation, and release of v2.0.0 with all complete
 **Target Release:** October 2026
 
 Production release with all improvements integrated:
-- Complete track management (SQL TrackDatabaseManager + HDF5 track storage)
-- Full GPU acceleration (CuPy + MLX)
-- Comprehensive documentation (8 Jupyter notebooks + examples)
-- 3,396+ tests passing (80%+ coverage)
-- Performance optimizations (Numba, caching, sparse matrices)
-- Data persistence layer (HDF5 + SQL with track management)
-- Backward compatibility layer for v1.x users
+- **Track Management:** SQL TrackDatabaseManager + HDF5 storage with full lifecycle support
+- **Integration & Workflows:** 5+ end-to-end examples (single/multi-sensor, real-time, archival)
+- **Educational:** Track management Jupyter notebook with interactive examples
+- **Performance:** Validated benchmarks (>1000 det/sec, <10ms track updates, 5-10x compression)
+- **Robustness:** 40+ multi-sensor validation scenarios, stress tests
+- **Compatibility:** Full backward compatibility with v1.13.2, seamless filter integration
+- **Migration:** Tools and guides for v1.x → v2.0.0 transition
+- **GPU Acceleration:** Full CuPy + MLX support for batch operations
+- **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
+- **Testing:** 3,396+ tests (80%+ coverage), including legacy scenario validation
+- **Performance:** Numba JIT, systematic caching, sparse matrices
+- **Data Persistence:** HDF5 + SQL with track management
+- **Backward Compatibility:** Compatibility layer for v1.x users
 
 ### v2.0.0 Timeline
 
@@ -1139,8 +1361,8 @@ Production release with all improvements integrated:
 | **5** | Months 6-10 | GPU acceleration (CuPy + MLX, Kalman, particles) | ✅ Complete (v1.10.0) |
 | **6** | Months 7-12 | +50 tests, 80%+ coverage, network flow re-enable | ✅ Complete (v1.10.x) |
 | **7** | Months 8-12 | Numba JIT, caching, sparse matrices | ✅ Complete (v1.11.0) |
-| **8** | Months 13-16 | Track management (SQL) + HDF5 track storage | 🔄 In Progress (May-August 2026) |
-| **9** | Months 17-18 | Packaging, testing, documentation, release (alpha → beta → RC → v2.0.0) | 🔄 Planned (August-October 2026) |
+| **8** | Months 13-16 | Track management (SQL+HDF5), examples, benchmarks, validation, migration tools | 🔄 In Progress (May-August 2026) |
+| **9** | Months 17-18 | Packaging, testing, release pipeline (alpha → beta → RC → v2.0.0) | 🔄 Planned (August-October 2026) |
 
 ### v2.0.0 Risks & Mitigations
 
