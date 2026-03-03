@@ -25,11 +25,16 @@ Query structured data in SQL:
 """
 
 from pytcl.io.hdf5_storage import HDF5Storage
+from pytcl.io.hdf5_track_storage import TrackHDF5Storage
 from pytcl.io.sql_storage import SQLStorage
 from pytcl.io.storage import StorageBackend
+from pytcl.io.track_database import TrackDatabaseManager, TrackDatabaseStatus
 
 __all__ = [
     "StorageBackend",
     "HDF5Storage",
     "SQLStorage",
+    "TrackDatabaseManager",
+    "TrackDatabaseStatus",
+    "TrackHDF5Storage",
 ]
