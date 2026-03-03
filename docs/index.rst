@@ -15,36 +15,61 @@ state estimation.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Start Here
 
    getting_started
    architecture
    api_navigation
    recipes
-   coordinate_systems
-   astronomical
-   signal_processing
-   navigation_ins
-   data_structures
-   assignment_association
-   particle_filters
-   smoothing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Filtering & Estimation
+
+   kalman_filter_tuning
    adaptive_filtering
    information_filters
    advanced_kf_variants
    custom_filter_implementation
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tracking & Association
+
+   assignment_association
+   particle_filters
+   smoothing
+   data_structures
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Domain-Specific
+
+   coordinate_systems
+   astronomical
+   navigation_ins
+   signal_processing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Performance & Advanced
+
+   gpu_acceleration
+   performance_optimization
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference & Learning
+
    troubleshooting
    migration_guide
    gap_analysis
-   gpu_acceleration
-   kalman_filter_tuning
-   performance_optimization
+   roadmap
    user_guide/index
    tutorials/index
    notebooks/index
    examples/index
    api/index
-   roadmap
 
 Overview
 --------
