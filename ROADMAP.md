@@ -936,6 +936,7 @@ Eight comprehensive notebooks **(all complete):**
 - ✅ Data persistence layer (HDF5, SQL backends)
 
 **Remaining for Alpha:**
+- Track management extensions (detection/initiation/maintenance)
 - Final integration testing across all phases
 - Performance benchmarking documentation
 - Migration guide from v1.x to v2.0
@@ -956,7 +957,91 @@ Eight comprehensive notebooks **(all complete):**
 - Performance benchmarks documented
 - Installation instructions finalized
 
-#### 8.4 v2.0.0 (Q4 2026)
+#### 8.4 Track Management Extensions 🔄 PLANNED
+
+**Target:** Phase 8 (May-August 2026)
+
+Higher-level tracking capabilities built on top of the SQL storage backend for complete track lifecycle management:
+
+**TrackDatabaseManager class** (`pytcl/io/track_database.py`):
+- **Detection Management:**
+  - `store_detection()` - Record measurements with sensor metadata
+  - `retrieve_detections()` - Query detections by time/location/sensor
+  - `associate_detection()` - Link detection to track with confidence
+  - Detection tables with timestamp, sensor_id, measurement_vector, association_status
+
+- **Track Initiation:**
+  - `initiate_track()` - Create new track with initial state estimate
+  - `get_initiation_queue()` - Query detections awaiting confirmation
+  - `confirm_track()` - Promote provisional track to confirmed
+  - Track metadata: birth_time, initial_state, covariance, confidence_score
+
+- **Track State Maintenance:**
+  - `update_track_state()` - Record filter updates (predictions, measurements)
+  - `store_track_history()` - Maintain state timeline for smoothing
+  - `get_track_state()` - Query current estimated state
+  - Track history tables with timestamp, state_vector, covariance, residual
+
+- **Track Lifecycle Management:**
+  - `mark_track_tentative()` / `mark_track_confirmed()` - Track status transitions
+  - `prune_old_detections()` - Remove aged detections
+  - `prune_dead_tracks()` - Archive or delete inactive tracks (age threshold configurable)
+  - `merge_tracks()` - Combine duplicate track estimates
+  - Track status enum: TENTATIVE, CONFIRMED, COASTING, DEAD
+
+**Query Examples:**
+```python
+from pytcl.io import TrackDatabaseManager
+
+db = TrackDatabaseManager("tracking.db")
+db.open(mode="a")
+
+# Store detection
+db.store_detection(
+    detection_id="det_001",
+    measurement=[x, y, vx, vy],
+    sensor_id="RADAR_1",
+    timestamp=1234567890.5
+)
+
+# Initiate track
+db.initiate_track(
+    track_id="trk_001",
+    initial_state=np.array([x, y, vx, vy]),
+    initial_covariance=P,
+    metadata={"sensor_source": "RADAR_1"}
+)
+
+# Update track state after filter prediction
+db.update_track_state(
+    track_id="trk_001",
+    state=predicted_state,
+    covariance=P_predicted,
+    residual=innovation
+)
+
+# Query track history
+history = db.get_track_history("trk_001", start_time, end_time)
+states, covariances = history['states'], history['covariances']
+
+# Maintenance operations
+db.prune_dead_tracks(age_threshold=300)  # Remove tracks inactive >5 min
+db.prune_old_detections(age_threshold=60)  # Remove detections >1 min old
+```
+
+**Quality Metrics:**
+- 30+ tests for detection/track management
+- 100% type hints on public API
+- Backward compatible with generic SQLStorage interface
+- Transaction support for atomic track updates
+- Query performance <100ms for typical scenarios (100s tracks, 1000s detections)
+
+**Integration:**
+- Works with all existing Kalman filters and data association algorithms
+- Optional feature: users can use SQLStorage directly or TrackDatabaseManager for convenience
+- Compatible with Jupyter notebooks for interactive track analysis
+
+#### 8.5 v2.0.0 (Q4 2026)
 
 **Target Release** with all improvements integrated, estimated October 2026
 
