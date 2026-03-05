@@ -1082,13 +1082,13 @@ tracks_in_region = store.get_tracks_in_region(
 - **SQL TrackDatabaseManager:** Real-time operations, detection queries, lifecycle management (100s-1000s tracks)
 - Both backends work together for comprehensive tracking pipelines
 
-#### 8.3 Integration & Workflow Examples
+#### 8.3 Integration & Workflow Examples ✅ COMPLETE
 
 **Target:** Phase 8 (May-August 2026)
 
 Practical examples demonstrating complete tracking pipelines using SQL and HDF5 backends:
 
-**End-to-End Workflow Examples** (`pytcl/examples/track_management_workflows.py`):
+**End-to-End Workflow Examples** (`examples/track_management_workflows.py`):
 ```python
 # Real-time tracking with SQL → Archive to HDF5
 from pytcl.io import TrackDatabaseManager, TrackHDF5Storage

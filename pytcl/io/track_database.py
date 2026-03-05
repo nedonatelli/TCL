@@ -128,7 +128,7 @@ class TrackDatabaseManager:
             cov = np.asarray(covariance, dtype=np.float64)
             cov_bytes = cov.tobytes()
 
-        meta_json = json.dumps(metadata or {})
+        meta_json = self._sanitize_metadata(metadata)
 
         self._cursor.execute(
             """INSERT INTO detections
@@ -318,7 +318,7 @@ class TrackDatabaseManager:
         self._check_open()
         state = np.asarray(initial_state, dtype=np.float64)
         cov = np.asarray(initial_covariance, dtype=np.float64)
-        meta_json = json.dumps(metadata or {})
+        meta_json = self._sanitize_metadata(metadata)
 
         self._cursor.execute(
             """INSERT INTO tracks
@@ -920,6 +920,22 @@ class TrackDatabaseManager:
         """Verify the database is open."""
         if self._cursor is None:
             raise RuntimeError("Database not open. Call open() first.")
+
+    @staticmethod
+    def _sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> str:
+        """Serialize metadata to JSON, converting numpy types to native Python."""
+        meta = metadata or {}
+        cleaned: Dict[str, Any] = {}
+        for k, v in meta.items():
+            if isinstance(v, (np.integer,)):
+                cleaned[k] = int(v)
+            elif isinstance(v, (np.floating,)):
+                cleaned[k] = float(v)
+            elif isinstance(v, np.ndarray):
+                cleaned[k] = v.tolist()
+            else:
+                cleaned[k] = v
+        return json.dumps(cleaned)
 
     def _set_track_status(self, track_id: str, status: TrackDatabaseStatus) -> None:
         """Update a track's status."""
