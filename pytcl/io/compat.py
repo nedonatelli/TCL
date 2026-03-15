@@ -134,7 +134,10 @@ class KalmanTrackAdapter:
         pred = kf_predict(self._x, self._P, self._F, self._Q)
         self._x, self._P = pred.x, pred.P
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp,
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
             update_type="prediction",
         )
 
@@ -169,15 +172,23 @@ class KalmanTrackAdapter:
         self._x, self._P = upd.x, upd.P
 
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp,
-            residual=residual, update_type="update",
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
+            residual=residual,
+            update_type="update",
         )
 
         # Store and associate detection
         if detection_id is None:
             detection_id = f"{self._track_id}_det_{timestamp:.6f}"
         self._db.store_detection(
-            detection_id, z, sensor_id, timestamp, covariance=self._R,
+            detection_id,
+            z,
+            sensor_id,
+            timestamp,
+            covariance=self._R,
         )
         self._db.associate_detection(detection_id, self._track_id)
 
@@ -285,7 +296,10 @@ class EKFTrackAdapter:
         pred = ekf_predict(self._x, self._P, self._f, F, self._Q)
         self._x, self._P = pred.x, pred.P
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp,
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
             update_type="prediction",
         )
 
@@ -301,7 +315,11 @@ class EKFTrackAdapter:
         upd = ekf_update(self._x, self._P, z, self._h, H, self._R)
         self._x, self._P = upd.x, upd.P
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp, update_type="update",
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
+            update_type="update",
         )
 
 
@@ -383,12 +401,20 @@ class UKFTrackAdapter:
             raise RuntimeError("Track not initialized.")
 
         pred = ukf_predict(
-            self._x, self._P, self._f, self._Q,
-            self._alpha, self._beta, self._kappa,
+            self._x,
+            self._P,
+            self._f,
+            self._Q,
+            self._alpha,
+            self._beta,
+            self._kappa,
         )
         self._x, self._P = pred.x, pred.P
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp,
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
             update_type="prediction",
         )
 
@@ -401,12 +427,22 @@ class UKFTrackAdapter:
 
         z = np.asarray(measurement, dtype=np.float64)
         upd = ukf_update(
-            self._x, self._P, z, self._h, self._R,
-            self._alpha, self._beta, self._kappa,
+            self._x,
+            self._P,
+            z,
+            self._h,
+            self._R,
+            self._alpha,
+            self._beta,
+            self._kappa,
         )
         self._x, self._P = upd.x, upd.P
         self._db.update_track_state(
-            self._track_id, self._x, self._P, timestamp, update_type="update",
+            self._track_id,
+            self._x,
+            self._P,
+            timestamp,
+            update_type="update",
         )
 
 
@@ -477,7 +513,10 @@ class TrackerDatabaseAdapter:
         for j, z in enumerate(measurements):
             det_id = f"det_{timestamp:.6f}_{j:04d}"
             self._db.store_detection(
-                det_id, np.asarray(z), sensor_id, timestamp,
+                det_id,
+                np.asarray(z),
+                sensor_id,
+                timestamp,
             )
 
         # Run tracker
@@ -494,13 +533,19 @@ class TrackerDatabaseAdapter:
             if tid not in self._known_tracks:
                 # New track
                 self._db.initiate_track(
-                    db_tid, track.state, track.covariance, timestamp,
+                    db_tid,
+                    track.state,
+                    track.covariance,
+                    timestamp,
                 )
                 self._known_tracks[tid] = db_tid
             else:
                 # Existing track: update state
                 self._db.update_track_state(
-                    db_tid, track.state, track.covariance, timestamp,
+                    db_tid,
+                    track.state,
+                    track.covariance,
+                    timestamp,
                 )
 
             # Status management
@@ -579,7 +624,11 @@ class IMMTrackAdapter:
         self._imm.predict()
         x, P = self._imm.x, self._imm.P
         self._db.update_track_state(
-            self._track_id, x, P, timestamp, update_type="prediction",
+            self._track_id,
+            x,
+            P,
+            timestamp,
+            update_type="prediction",
         )
 
     def update(self, measurement: ArrayLike, timestamp: float) -> None:
@@ -591,7 +640,11 @@ class IMMTrackAdapter:
         self._imm.update(z)
         x, P = self._imm.x, self._imm.P
         self._db.update_track_state(
-            self._track_id, x, P, timestamp, update_type="update",
+            self._track_id,
+            x,
+            P,
+            timestamp,
+            update_type="update",
         )
 
     @property
@@ -681,7 +734,8 @@ class ParticleFilterTrackAdapter:
 
         # Q_sample: draws process noise for N particles
         def q_sample(
-            n: int, rng: Optional[np.random.Generator] = None,
+            n: int,
+            rng: Optional[np.random.Generator] = None,
         ) -> NDArray[np.float64]:
             if rng is None:
                 rng = np.random.default_rng()
@@ -694,12 +748,17 @@ class ParticleFilterTrackAdapter:
 
         # Predict
         self._particles = bootstrap_pf_predict(
-            self._particles, self._f, q_sample,
+            self._particles,
+            self._f,
+            q_sample,
         )
 
         # Update weights
         self._weights, _ = bootstrap_pf_update(
-            self._particles, self._weights, z, lik_func,
+            self._particles,
+            self._weights,
+            z,
+            lik_func,
         )
 
         # Resample
@@ -711,7 +770,11 @@ class ParticleFilterTrackAdapter:
         P_est = particle_covariance(self._particles, self._weights, x_est)
 
         self._db.update_track_state(
-            self._track_id, x_est, P_est, timestamp, update_type="update",
+            self._track_id,
+            x_est,
+            P_est,
+            timestamp,
+            update_type="update",
         )
 
     @property
@@ -768,6 +831,10 @@ def store_filter_result(
         residual = np.asarray(result.y, dtype=np.float64)
 
     db.update_track_state(
-        track_id, x, P, timestamp,
-        residual=residual, update_type=update_type,
+        track_id,
+        x,
+        P,
+        timestamp,
+        residual=residual,
+        update_type=update_type,
     )

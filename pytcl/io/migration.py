@@ -28,10 +28,9 @@ Generate a v2.0.0 template:
 
 import os
 import re
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
-from numpy.typing import NDArray
 
 
 class AnalysisResult:
@@ -101,7 +100,9 @@ class MigrationHelper:
         "srkf": [r"srkf_predict", r"srkf_update", r"sr_ukf_predict"],
         "imm": [r"IMMEstimator", r"imm_predict", r"imm_update"],
         "particle": [
-            r"bootstrap_pf", r"particle_mean", r"initialize_particles",
+            r"bootstrap_pf",
+            r"particle_mean",
+            r"initialize_particles",
         ],
         "mht": [r"MHTTracker", r"MHTConfig"],
         "jpda": [r"jpda_probabilities", r"jpda_update", r"jpda\b"],
@@ -167,8 +168,7 @@ class MigrationHelper:
         # Estimate complexity
         n_filters = len(result.filter_types)
         has_multi = any(
-            f in result.filter_types
-            for f in ["mht", "jpda", "multi_target", "imm"]
+            f in result.filter_types for f in ["mht", "jpda", "multi_target", "imm"]
         )
         if n_filters <= 1 and not has_multi:
             result.estimated_complexity = "low"
