@@ -42,6 +42,18 @@ Install optional features as needed:
    # For geodesy features (coordinate transforms)
    pip install nrl-tracker[geodesy]
 
+   # For terrain data (GEBCO, Earth2014 via NetCDF)
+   pip install nrl-tracker[terrain]
+
+   # For visualization (Plotly)
+   pip install nrl-tracker[visualization]
+
+   # For optimization (CVXPY)
+   pip install nrl-tracker[optimization]
+
+   # For signal processing (wavelets)
+   pip install nrl-tracker[signal]
+
    # For GPU acceleration (NVIDIA CUDA)
    pip install nrl-tracker[gpu]
 

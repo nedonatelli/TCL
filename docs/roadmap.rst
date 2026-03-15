@@ -5,8 +5,8 @@ This document outlines the development phases for the Tracker Component Library.
 
 For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
 
-Current State (v1.13.2) - Phase 4 Complete: 100% MATLAB Parity Achieved
-------------------------------------------------------------------------
+Current State (v1.14.0) - Phase 4 Complete: 100% MATLAB Parity Achieved
+-----------------------------------------------------------------------
 
 * **Phase 4 Complete**: 8 comprehensive Jupyter notebooks, 175+ cells, 4-week curricula
 * **Notebooks cover**: Kalman filters, particle filters, multi-target tracking, coordinate systems, GPU acceleration, network flow, INS/GNSS integration, performance optimization
@@ -19,8 +19,8 @@ Current State (v1.13.2) - Phase 4 Complete: 100% MATLAB Parity Achieved
 * **Automatic backend selection**: System auto-detects best available GPU backend
 * **Batch Kalman filters**: GPU-accelerated Linear, Extended, and Unscented KF (5-10x speedup)
 * **GPU particle filters**: Accelerated resampling and weight computation (8-15x speedup)
-* **868 functions** implemented across 113 Python modules (refined accurate count)
-* **3,396 tests** with 100% pass rate - fully production-ready (+116 from v1.13.0)
+* **1,048 functions** implemented across 133 Python modules
+* **3,306 tests** with 100% pass rate - fully production-ready
 * **80% line coverage** across 18,022 lines (comprehensive coverage achieved)
 * **100% code quality** compliance with isort, black, flake8, mypy --strict
 * **10-50x performance improvement** on network flow solver (Phase 1 complete)
@@ -37,9 +37,9 @@ Current State (v1.13.2) - Phase 4 Complete: 100% MATLAB Parity Achieved
 * **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
 * **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
 * **Tracking containers**: TrackList, MeasurementSet, ClusterSet for managing tracking data
-* **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM2020, IGRF-13, EMM, WMMHR)
+* **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM, IGRF-13, EMM, WMMHR2025)
 * **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
-* **Terrain models**: DEM interface, GEBCO/Earth2014 loaders, line-of-sight, viewshed analysis
+* **Terrain models**: DEM interface, GEBCO 2025/Earth2014 loaders, line-of-sight, viewshed analysis
 * **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
 * **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations, JPL ephemerides, relativistic corrections
 * **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
@@ -69,6 +69,7 @@ For detailed version history and implementation notes, see `ROADMAP.md <../ROADM
 * v1.10.x (Jan 5, 2026): Phase 6 Test Expansion - 761 new tests (2,894 total)
 * v1.11.0 (Jan 5, 2026): Phase 7 Performance - Numba JIT, lru_cache, sparse assignment
 * v1.13.0 (Feb 25, 2026): Phase 4 Complete - 8 comprehensive Jupyter notebooks (175+ cells)
+* v1.14.0 (Mar 15, 2026): GEBCO 2025 default, WMMHR2025 support, EMM array inputs, terrain extra
 
 Phase 15 (v1.1.0): Performance Infrastructure ✅
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

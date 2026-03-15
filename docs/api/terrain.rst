@@ -21,7 +21,8 @@ Digital Elevation Model interface and operations.
 Data Loaders
 ------------
 
-GEBCO and Earth2014 terrain data loaders.
+GEBCO and Earth2014 terrain data loaders. The default GEBCO version is
+GEBCO 2025. Requires ``pip install nrl-tracker[terrain]`` for NetCDF support.
 
 .. automodule:: pytcl.terrain.loaders
    :members:

@@ -104,7 +104,7 @@ class GEBCOMetadata(NamedTuple):
     Attributes
     ----------
     version : str
-        GEBCO version (e.g., "GEBCO2024").
+        GEBCO version (e.g., "GEBCO2025").
     resolution_arcsec : float
         Grid resolution in arc-seconds.
     lat_min : float
@@ -191,7 +191,7 @@ def _find_gebco_file(version: str = "GEBCO2025") -> Path:
     Parameters
     ----------
     version : str
-        GEBCO version (e.g., "GEBCO2024", "GEBCO2023").
+        GEBCO version (e.g., "GEBCO2025", "GEBCO2024").
 
     Returns
     -------

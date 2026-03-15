@@ -11,7 +11,7 @@ Earth magnetic field models and computations.
 World Magnetic Model (WMM)
 --------------------------
 
-WMM2020 magnetic field model implementation.
+World Magnetic Model implementation (WMM2020 epoch, valid 2020-2025).
 
 .. automodule:: pytcl.magnetism.wmm
    :members:
@@ -28,10 +28,11 @@ International Geomagnetic Reference Field (IGRF-13) implementation.
    :undoc-members:
    :show-inheritance:
 
-Enhanced Magnetic Model (EMM)
------------------------------
+Enhanced Magnetic Model (EMM) and WMMHR2025
+--------------------------------------------
 
-High-resolution Enhanced Magnetic Model implementation.
+High-resolution magnetic field models: EMM2017 (degree 790) and WMMHR2025
+(degree 133). Both support scalar and array inputs for lat/lon/height.
 
 .. automodule:: pytcl.magnetism.emm
    :members:

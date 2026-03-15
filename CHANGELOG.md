@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-03-15
+
+### Added
+
+- **GEBCO 2025 support**: Added GEBCO2025 to terrain parameters and made it the default version for `load_gebco()` and `get_gebco_metadata()`
+- **WMMHR2025 support**: World Magnetic Model High Resolution 2025 (degree 133) available via `wmmhr()` and `emm(model="WMMHR2025")`
+- **EMM array inputs**: `emm()`, `emm_declination()`, `emm_inclination()`, and `emm_intensity()` now accept array lat/lon/h inputs
+- **`terrain` optional dependency**: `pip install nrl-tracker[terrain]` installs netCDF4 for GEBCO/Earth2014 data loading
+- **`GEBCO_YYYY.nc` file pattern**: `_find_gebco_file()` now recognizes the GEBCO download naming convention
+
+### Fixed
+
+- **Terrain loader tests**: Corrected degrees-vs-radians bugs, wrong return type assertions (`dict` → `DEMGrid`), and invalid Earth2014 layer names (`"RES"`, `"TGR"` → `"BED"`, `"TBI"`)
+- **EMM tests**: Fixed parameter names, units, and dead assertion (`abs(x) >= 0` → `x != 0`)
+- **Test skip guards**: Narrowed broad `except Exception → pytest.skip()` to only catch `FileNotFoundError`/`DependencyError`, so real bugs surface immediately
+
+### Changed
+
+- Default GEBCO version: `"GEBCO2024"` → `"GEBCO2025"` across all public APIs
+- `[all]` extra now includes `terrain` alongside astronomy, geodesy, visualization, optimization, signal, dev
+
+### Quality Metrics
+
+- **1,048 functions** across **133 modules**
+- **3,306 tests** — 0 skipped when all data files are installed
+
 ## [1.13.2] - 2026-03-02
 
 ### Major Release: 100% MATLAB Parity Achievement
