@@ -140,7 +140,7 @@ class TestConvertLegacyTracks:
             "trk_1": {
                 "states": rng.normal(0, 1, (15, 4)),
                 "covariances": None,  # Should default to identity
-                "timestamps": None,   # Should default to 0..14
+                "timestamps": None,  # Should default to 0..14
             },
         }
 
@@ -176,7 +176,9 @@ class TestConvertLegacyTracks:
 
         h5_path = str(tmp_path / "converted.h5")
         count = helper.convert_legacy_tracks_to_hdf5(
-            legacy, h5_path, scenario_id="legacy_import",
+            legacy,
+            h5_path,
+            scenario_id="legacy_import",
         )
         assert count == 1
 
@@ -232,7 +234,8 @@ class TestGenerateTemplate:
     def test_fallback_template(self, helper):
         """Unknown filter_type falls back gracefully."""
         template = helper.generate_v2_template(
-            backend="sql", filter_type="unknown_filter",
+            backend="sql",
+            filter_type="unknown_filter",
         )
         assert len(template) > 0
 

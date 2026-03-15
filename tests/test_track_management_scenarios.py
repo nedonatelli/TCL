@@ -23,19 +23,23 @@ from pytcl.io import TrackDatabaseManager, TrackDatabaseStatus, TrackHDF5Storage
 
 def _cv_model(dt: float = 1.0):
     """Return constant-velocity F, Q, H, R matrices (4-state, 2-meas)."""
-    F = np.array([
-        [1, dt, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, dt],
-        [0, 0, 0, 1],
-    ])
+    F = np.array(
+        [
+            [1, dt, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, dt],
+            [0, 0, 0, 1],
+        ]
+    )
     q = 0.1
-    Q = q * np.array([
-        [dt**3 / 3, dt**2 / 2, 0, 0],
-        [dt**2 / 2, dt, 0, 0],
-        [0, 0, dt**3 / 3, dt**2 / 2],
-        [0, 0, dt**2 / 2, dt],
-    ])
+    Q = q * np.array(
+        [
+            [dt**3 / 3, dt**2 / 2, 0, 0],
+            [dt**2 / 2, dt, 0, 0],
+            [0, 0, dt**3 / 3, dt**2 / 2],
+            [0, 0, dt**2 / 2, dt],
+        ]
+    )
     H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
     R = np.eye(2) * 4.0
     return F, Q, H, R
@@ -46,12 +50,14 @@ def _simulate_cv_targets(n_targets, n_steps, dt=1.0, seed=42):
     rng = np.random.default_rng(seed)
     starts = []
     for _ in range(n_targets):
-        x0 = np.array([
-            rng.uniform(-100, 100),
-            rng.uniform(-3, 3),
-            rng.uniform(-100, 100),
-            rng.uniform(-3, 3),
-        ])
+        x0 = np.array(
+            [
+                rng.uniform(-100, 100),
+                rng.uniform(-3, 3),
+                rng.uniform(-100, 100),
+                rng.uniform(-3, 3),
+            ]
+        )
         starts.append(x0)
 
     F, Q, _, _ = _cv_model(dt)
@@ -64,8 +70,9 @@ def _simulate_cv_targets(n_targets, n_steps, dt=1.0, seed=42):
     return true_states
 
 
-def _generate_detections(true_states, R, pd=0.9, fa_rate=0.0,
-                         bounds=(-200, -200, 200, 200), seed=42):
+def _generate_detections(
+    true_states, R, pd=0.9, fa_rate=0.0, bounds=(-200, -200, 200, 200), seed=42
+):
     """Generate noisy detections with missed detections and false alarms."""
     rng = np.random.default_rng(seed)
     H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
@@ -82,10 +89,12 @@ def _generate_detections(true_states, R, pd=0.9, fa_rate=0.0,
         # False alarms
         n_fa = rng.poisson(fa_rate)
         for _ in range(n_fa):
-            fa = np.array([
-                rng.uniform(bounds[0], bounds[2]),
-                rng.uniform(bounds[1], bounds[3]),
-            ])
+            fa = np.array(
+                [
+                    rng.uniform(bounds[0], bounds[2]),
+                    rng.uniform(bounds[1], bounds[3]),
+                ]
+            )
             scan.append((fa, None))
         rng.shuffle(scan)
         all_detections.append(scan)
@@ -318,7 +327,7 @@ class TestMultiSensorFusion:
         rng = np.random.default_rng(40)
 
         R_radar = np.eye(2) * 25.0  # 5m std
-        R_lidar = np.eye(2) * 1.0   # 1m std
+        R_lidar = np.eye(2) * 1.0  # 1m std
 
         db = TrackDatabaseManager(str(tmp_path / "radar_lidar.db"))
         db.open(mode="w")
@@ -333,10 +342,14 @@ class TestMultiSensorFusion:
             for i in range(3):
                 tid = f"trk_{i:02d}"
                 if tid not in filters:
-                    x0 = np.array([
-                        true_states[i, k, 0], 0.0,
-                        true_states[i, k, 2], 0.0,
-                    ])
+                    x0 = np.array(
+                        [
+                            true_states[i, k, 0],
+                            0.0,
+                            true_states[i, k, 2],
+                            0.0,
+                        ]
+                    )
                     db.initiate_track(tid, x0, P0, t)
                     filters[tid] = (x0, P0.copy())
 
@@ -398,10 +411,14 @@ class TestMultiSensorFusion:
             for i in range(2):
                 tid = f"trk_{i:02d}"
                 if tid not in filters:
-                    x0 = np.array([
-                        true_states[i, k, 0], 0.0,
-                        true_states[i, k, 2], 0.0,
-                    ])
+                    x0 = np.array(
+                        [
+                            true_states[i, k, 0],
+                            0.0,
+                            true_states[i, k, 2],
+                            0.0,
+                        ]
+                    )
                     db.initiate_track(tid, x0, P0, t)
                     filters[tid] = (x0, P0.copy())
 
@@ -537,8 +554,15 @@ class TestTrackMerging:
 
         # Add state history to both
         for k in range(1, 10):
-            db.update_track_state("trk_keep", np.array([1 + k, 0, 1 + k, 0], dtype=float), P0, float(k))
-            db.update_track_state("trk_merge", np.array([1.1 + k, 0, 0.9 + k, 0], dtype=float), P0, float(k))
+            db.update_track_state(
+                "trk_keep", np.array([1 + k, 0, 1 + k, 0], dtype=float), P0, float(k)
+            )
+            db.update_track_state(
+                "trk_merge",
+                np.array([1.1 + k, 0, 0.9 + k, 0], dtype=float),
+                P0,
+                float(k),
+            )
 
         # Store detections for trk_merge
         db.store_detection("det_m0", np.array([1.1, 0.9]), "radar", 0.5)
@@ -578,7 +602,9 @@ class TestTrackMerging:
 
         hist_a_before = db.get_track_history("a")
         hist_b_before = db.get_track_history("b")
-        total_before = len(hist_a_before["timestamps"]) + len(hist_b_before["timestamps"])
+        total_before = len(hist_a_before["timestamps"]) + len(
+            hist_b_before["timestamps"]
+        )
 
         db.merge_tracks("a", "b")
 
@@ -621,7 +647,9 @@ class TestTrackPruning:
         db.open(mode="w")
 
         for i in range(20):
-            db.store_detection(f"det_{i:02d}", np.array([i, i], dtype=float), "radar", float(i))
+            db.store_detection(
+                f"det_{i:02d}", np.array([i, i], dtype=float), "radar", float(i)
+            )
 
         pruned = db.prune_old_detections(age_threshold=5.0)
         assert pruned > 0
@@ -686,8 +714,9 @@ class TestLongDuration:
         assert len(archived_tracks) == n_tracks
 
         # Verify trajectory retrieval on archived data
-        traj = store.get_track_trajectory("trk_00", scenario_id="long_mission",
-                                          start_time=100.0, end_time=200.0)
+        traj = store.get_track_trajectory(
+            "trk_00", scenario_id="long_mission", start_time=100.0, end_time=200.0
+        )
         assert len(traj["timestamps"]) > 0
 
         store.close()
@@ -924,9 +953,9 @@ class TestCovariancePositiveDefiniteness:
         history = db.get_track_history("trk_0")
         for i, cov in enumerate(history["covariances"]):
             eigenvalues = np.linalg.eigvalsh(cov)
-            assert np.all(eigenvalues > 0), (
-                f"Step {i}: Non-PD covariance, eigenvalues={eigenvalues}"
-            )
+            assert np.all(
+                eigenvalues > 0
+            ), f"Step {i}: Non-PD covariance, eigenvalues={eigenvalues}"
         db.close()
 
     def test_hdf5_covariance_pd_preserved(self, tmp_path):
@@ -951,9 +980,9 @@ class TestCovariancePositiveDefiniteness:
         retrieved = store.retrieve_track("trk_0")
         for i, cov in enumerate(retrieved["covariances"]):
             eigenvalues = np.linalg.eigvalsh(cov)
-            assert np.all(eigenvalues > 0), (
-                f"Step {i}: Non-PD after HDF5 round-trip, eigenvalues={eigenvalues}"
-            )
+            assert np.all(
+                eigenvalues > 0
+            ), f"Step {i}: Non-PD after HDF5 round-trip, eigenvalues={eigenvalues}"
         store.close()
 
 

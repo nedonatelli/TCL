@@ -121,10 +121,14 @@ class TestEKFTrackAdapter:
             return np.array([x[0] + x[1] * dt, x[1], x[2] + x[3] * dt, x[3]])
 
         def F_jac(x):
-            return np.array([
-                [1, dt, 0, 0], [0, 1, 0, 0],
-                [0, 0, 1, dt], [0, 0, 0, 1],
-            ])
+            return np.array(
+                [
+                    [1, dt, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1, dt],
+                    [0, 0, 0, 1],
+                ]
+            )
 
         def h(x):
             r = np.sqrt(x[0] ** 2 + x[2] ** 2)
@@ -133,10 +137,12 @@ class TestEKFTrackAdapter:
 
         def H_jac(x):
             r = max(np.sqrt(x[0] ** 2 + x[2] ** 2), 1e-10)
-            return np.array([
-                [x[0] / r, 0, x[2] / r, 0],
-                [-x[2] / r ** 2, 0, x[0] / r ** 2, 0],
-            ])
+            return np.array(
+                [
+                    [x[0] / r, 0, x[2] / r, 0],
+                    [-x[2] / r**2, 0, x[0] / r**2, 0],
+                ]
+            )
 
         adapter = EKFTrackAdapter(db, "trk_ekf", f, F_jac, h, H_jac, Q, R)
         adapter.initialize(np.array([10.0, 1.0, 10.0, 0.5]), np.eye(4) * 10.0, 0.0)
@@ -194,7 +200,8 @@ class TestTrackerDatabaseAdapter:
         from pytcl.trackers import MultiTargetTracker
 
         tracker = MultiTargetTracker(
-            state_dim=4, meas_dim=2,
+            state_dim=4,
+            meas_dim=2,
             F=np.array([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]]),
             H=np.array([[1, 0, 0, 0], [0, 0, 1, 0]]),
             Q=0.1 * np.eye(4),
@@ -217,9 +224,12 @@ class TestTrackerDatabaseAdapter:
         from pytcl.trackers import MultiTargetTracker
 
         tracker = MultiTargetTracker(
-            state_dim=4, meas_dim=2,
-            F=np.eye(4), H=np.array([[1, 0, 0, 0], [0, 0, 1, 0]]),
-            Q=0.1 * np.eye(4), R=np.eye(2),
+            state_dim=4,
+            meas_dim=2,
+            F=np.eye(4),
+            H=np.array([[1, 0, 0, 0], [0, 0, 1, 0]]),
+            Q=0.1 * np.eye(4),
+            R=np.eye(2),
         )
 
         adapter = TrackerDatabaseAdapter(db, tracker)
@@ -289,7 +299,13 @@ class TestParticleFilterTrackAdapter:
             return H @ x
 
         adapter = ParticleFilterTrackAdapter(
-            db, "trk_pf", f, h, Q, R, n_particles=100,
+            db,
+            "trk_pf",
+            f,
+            h,
+            Q,
+            R,
+            n_particles=100,
         )
         adapter.initialize(np.zeros(4), np.eye(4) * 10.0, 0.0)
 
