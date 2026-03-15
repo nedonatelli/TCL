@@ -16,7 +16,6 @@ import pytest
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 from pytcl.io import TrackDatabaseManager, TrackDatabaseStatus, TrackHDF5Storage
 
-
 # =============================================================================
 # Helpers
 # =============================================================================

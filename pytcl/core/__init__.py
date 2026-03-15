@@ -54,16 +54,16 @@ from pytcl.core.maturity import (
     is_production_ready,
     is_stable,
 )
-from pytcl.core.paths import (
-    ensure_data_dir,
-    get_data_dir,
-)
 from pytcl.core.optional_deps import (
     LazyModule,
     check_dependencies,
     import_optional,
     is_available,
     requires,
+)
+from pytcl.core.paths import (
+    ensure_data_dir,
+    get_data_dir,
 )
 from pytcl.core.validation import (
     ArraySpec,
