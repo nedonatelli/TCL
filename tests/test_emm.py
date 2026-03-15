@@ -611,7 +611,10 @@ class TestMagneticComponentsFromEMM:
         coeff = create_test_coefficients(n_max=36)
 
         decl = emm_declination(
-            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            np.radians(40.0),
+            np.radians(-75.0),
+            0.0,
+            2020.0,
             coefficients=coeff,
         )
 
@@ -622,7 +625,10 @@ class TestMagneticComponentsFromEMM:
         coeff = create_test_coefficients(n_max=36)
 
         incl = emm_inclination(
-            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            np.radians(40.0),
+            np.radians(-75.0),
+            0.0,
+            2020.0,
             coefficients=coeff,
         )
 
@@ -633,7 +639,10 @@ class TestMagneticComponentsFromEMM:
         coeff = create_test_coefficients(n_max=36)
 
         intensity = emm_intensity(
-            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            np.radians(40.0),
+            np.radians(-75.0),
+            0.0,
+            2020.0,
             coefficients=coeff,
         )
 

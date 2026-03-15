@@ -63,6 +63,9 @@ optimization = [
 terrain = [
     "netCDF4>=1.6.0",
 ]
+storage = [
+    "h5py>=3.8.0",
+]
 signal = [
     "pywavelets>=1.4.0",
 ]
@@ -96,7 +99,7 @@ benchmark = [
     "pytest-benchmark>=4.0.0",
 ]
 all = [
-    "nrl-tracker[astronomy,geodesy,terrain,visualization,optimization,signal,dev]",
+    "nrl-tracker[astronomy,geodesy,terrain,storage,visualization,optimization,signal,dev]",
 ]
 
 [project.urls]
