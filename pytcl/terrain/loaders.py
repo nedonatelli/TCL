@@ -10,7 +10,7 @@ Users should download files from the official sources and place them in ~/.pytcl
 
 References
 ----------
-.. [1] GEBCO Compilation Group (2024) GEBCO 2024 Grid.
+.. [1] GEBCO Compilation Group (2025) GEBCO 2025 Grid.
        https://www.gebco.net/data-products/gridded-bathymetry-data/
 .. [2] Hirt, C. and Rexer, M. (2015) Earth2014: 1 arc-min shape, topography,
        bedrock and ice-sheet models - available as gridded data and degree-10,800
@@ -34,6 +34,14 @@ from .dem import DEMGrid
 _GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"
 
 GEBCO_PARAMETERS: dict[str, dict[str, Any]] = {
+    "GEBCO2025": {
+        "resolution_arcsec": 15.0,
+        "n_lat": 43200,
+        "n_lon": 86400,
+        "format": "NetCDF",
+        "file_size_mb": 7500,
+        "url": f"{_GEBCO_BASE_URL}/gebco2025-grid",
+    },
     "GEBCO2024": {
         "resolution_arcsec": 15.0,
         "n_lat": 43200,
@@ -177,7 +185,7 @@ def _ensure_data_dir() -> Path:
     return data_dir
 
 
-def _find_gebco_file(version: str = "GEBCO2024") -> Path:
+def _find_gebco_file(version: str = "GEBCO2025") -> Path:
     """Find GEBCO NetCDF file in data directory.
 
     Parameters
@@ -203,6 +211,7 @@ def _find_gebco_file(version: str = "GEBCO2024") -> Path:
         f"{version}_*.nc",
         f"{version.lower()}.nc",
         f"GEBCO_{version[-4:]}_Grid.nc",
+        f"GEBCO_{version[-4:]}.nc",
         f"gebco_{version[-4:]}.nc",
     ]
 
@@ -528,7 +537,7 @@ def load_gebco(
     lat_max: float,
     lon_min: float,
     lon_max: float,
-    version: str = "GEBCO2024",
+    version: str = "GEBCO2025",
 ) -> DEMGrid:
     """Load GEBCO bathymetry/topography data for a region.
 
@@ -546,8 +555,8 @@ def load_gebco(
     lon_max : float
         Maximum longitude in radians.
     version : str, optional
-        GEBCO version ("GEBCO2024", "GEBCO2023", "GEBCO2022").
-        Default is "GEBCO2024".
+        GEBCO version ("GEBCO2025", "GEBCO2024", "GEBCO2023", "GEBCO2022").
+        Default is "GEBCO2025".
 
     Returns
     -------
@@ -569,7 +578,7 @@ def load_gebco(
     ...     lat_max=np.radians(40.0),
     ...     lon_min=np.radians(-125.0),
     ...     lon_max=np.radians(-120.0),
-    ...     version="GEBCO2024"
+    ...     version="GEBCO2025"
     ... )
     >>> point = dem.get_elevation(np.radians(37.5), np.radians(-122.5))
     >>> print(f"Elevation: {point.elevation:.1f} m")
@@ -578,7 +587,7 @@ def load_gebco(
     -----
     GEBCO data files are not included in the package due to their size (~7.5 GB).
     Download from: https://www.gebco.net/data-products/gridded-bathymetry-data/
-    Save to: ~/.pytcl/data/GEBCO2024.nc
+    Save to: ~/.pytcl/data/GEBCO2025.nc
     """
     if version not in GEBCO_PARAMETERS:
         raise ValueError(
@@ -845,7 +854,7 @@ def create_test_earth2014_dem(
     )
 
 
-def get_gebco_metadata(version: str = "GEBCO2024") -> GEBCOMetadata:
+def get_gebco_metadata(version: str = "GEBCO2025") -> GEBCOMetadata:
     """Get metadata for a GEBCO version.
 
     Parameters

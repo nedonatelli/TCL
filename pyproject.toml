@@ -60,6 +60,9 @@ visualization = [
 optimization = [
     "cvxpy>=1.3.0",
 ]
+terrain = [
+    "netCDF4>=1.6.0",
+]
 signal = [
     "pywavelets>=1.4.0",
 ]
@@ -93,7 +96,7 @@ benchmark = [
     "pytest-benchmark>=4.0.0",
 ]
 all = [
-    "nrl-tracker[astronomy,geodesy,visualization,optimization,signal,dev]",
+    "nrl-tracker[astronomy,geodesy,terrain,visualization,optimization,signal,dev]",
 ]
 
 [project.urls]

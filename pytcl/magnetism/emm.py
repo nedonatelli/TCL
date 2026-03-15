@@ -625,6 +625,26 @@ def emm(
     if coefficients is None:
         coefficients = load_emm_coefficients(model, n_max)
 
+    # Handle array inputs by iterating (spherical harmonic sum is scalar)
+    lat_arr = np.asarray(lat)
+    if lat_arr.ndim > 0:
+        lon_arr = np.asarray(lon)
+        h_arr = np.broadcast_to(np.asarray(h), lat_arr.shape)
+        results = [
+            emm(float(la), float(lo), float(hi), year, model, n_max, coefficients)
+            for la, lo, hi in zip(lat_arr.ravel(), lon_arr.ravel(), h_arr.ravel())
+        ]
+        shape = lat_arr.shape
+        return MagneticResult(
+            X=np.array([r.X for r in results]).reshape(shape),
+            Y=np.array([r.Y for r in results]).reshape(shape),
+            Z=np.array([r.Z for r in results]).reshape(shape),
+            H=np.array([r.H for r in results]).reshape(shape),
+            F=np.array([r.F for r in results]).reshape(shape),
+            I=np.array([r.I for r in results]).reshape(shape),
+            D=np.array([r.D for r in results]).reshape(shape),
+        )
+
     # Geocentric approximation
     a = 6371.2  # km
     lat_gc = lat

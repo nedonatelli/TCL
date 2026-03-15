@@ -26,6 +26,10 @@ from pytcl.terrain import (  # Loader functions; Parameters; Metadata types; DEM
 class TestGEBCOParameters:
     """Tests for GEBCO parameter definitions."""
 
+    def test_gebco2025_defined(self):
+        """GEBCO2025 parameters are defined."""
+        assert "GEBCO2025" in GEBCO_PARAMETERS
+
     def test_gebco2024_defined(self):
         """GEBCO2024 parameters are defined."""
         assert "GEBCO2024" in GEBCO_PARAMETERS
@@ -36,12 +40,13 @@ class TestGEBCOParameters:
 
     def test_resolution_15_arcsec(self):
         """GEBCO resolution is 15 arc-seconds."""
+        assert GEBCO_PARAMETERS["GEBCO2025"]["resolution_arcsec"] == 15.0
         assert GEBCO_PARAMETERS["GEBCO2024"]["resolution_arcsec"] == 15.0
         assert GEBCO_PARAMETERS["GEBCO2023"]["resolution_arcsec"] == 15.0
 
     def test_grid_dimensions(self):
         """GEBCO grid dimensions are correct."""
-        params = GEBCO_PARAMETERS["GEBCO2024"]
+        params = GEBCO_PARAMETERS["GEBCO2025"]
         assert params["n_lat"] == 43200
         assert params["n_lon"] == 86400
 
@@ -102,22 +107,22 @@ class TestGEBCOMetadata:
 
     def test_get_metadata_returns_type(self):
         """get_gebco_metadata returns GEBCOMetadata."""
-        meta = get_gebco_metadata("GEBCO2024")
+        meta = get_gebco_metadata("GEBCO2025")
         assert isinstance(meta, GEBCOMetadata)
 
     def test_metadata_version(self):
         """Metadata contains correct version."""
-        meta = get_gebco_metadata("GEBCO2024")
-        assert meta.version == "GEBCO2024"
+        meta = get_gebco_metadata("GEBCO2025")
+        assert meta.version == "GEBCO2025"
 
     def test_metadata_resolution(self):
         """Metadata contains correct resolution."""
-        meta = get_gebco_metadata("GEBCO2024")
+        meta = get_gebco_metadata("GEBCO2025")
         assert meta.resolution_arcsec == 15.0
 
     def test_metadata_global_extent(self):
         """Metadata has global extent."""
-        meta = get_gebco_metadata("GEBCO2024")
+        meta = get_gebco_metadata("GEBCO2025")
         assert_allclose(meta.lat_min, np.radians(-90.0))
         assert_allclose(meta.lat_max, np.radians(90.0))
         assert_allclose(meta.lon_min, np.radians(-180.0))
@@ -355,17 +360,21 @@ class TestLoadGEBCOErrors:
                 version="GEBCO1900",
             )
 
-    def test_missing_file_raises(self):
+    def test_missing_file_raises(self, tmp_path, monkeypatch):
         """Missing GEBCO file raises FileNotFoundError."""
-        # This will fail because the file doesn't exist
+        monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+        from pytcl.terrain.loaders import _load_gebco_cached
+
+        _load_gebco_cached.cache_clear()
         with pytest.raises(FileNotFoundError):
             load_gebco(
                 lat_min=np.radians(35.0),
                 lat_max=np.radians(40.0),
                 lon_min=np.radians(-125.0),
                 lon_max=np.radians(-120.0),
-                version="GEBCO2024",
+                version="GEBCO2025",
             )
+        _load_gebco_cached.cache_clear()
 
 
 class TestLoadEarth2014Errors:
@@ -382,8 +391,12 @@ class TestLoadEarth2014Errors:
                 layer="INVALID",
             )
 
-    def test_missing_file_raises(self):
+    def test_missing_file_raises(self, tmp_path, monkeypatch):
         """Missing Earth2014 file raises FileNotFoundError."""
+        monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+        from pytcl.terrain.loaders import _load_earth2014_cached
+
+        _load_earth2014_cached.cache_clear()
         with pytest.raises(FileNotFoundError):
             load_earth2014(
                 lat_min=np.radians(35.0),
@@ -392,6 +405,7 @@ class TestLoadEarth2014Errors:
                 lon_max=np.radians(-120.0),
                 layer="SUR",
             )
+        _load_earth2014_cached.cache_clear()
 
 
 class TestResolutionHandling:
@@ -516,11 +530,13 @@ class TestDEMQueries:
     def test_load_gebco_minimal(self):
         """Test loading GEBCO data with minimal parameters."""
         try:
-            # Try loading GEBCO for a region
-            dem = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
-
-            if dem is not None:
-                assert "elevation" in dem or "data" in dem or isinstance(dem, dict)
+            dem = load_gebco(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"GEBCO loading unavailable: {e}")
@@ -529,11 +545,13 @@ class TestDEMQueries:
         """Test loading Earth2014 data."""
         try:
             dem = load_earth2014(
-                min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0, layer="SUR"
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+                layer="SUR",
             )
-
-            if dem is not None:
-                assert isinstance(dem, dict)
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Earth2014 loading unavailable: {e}")
@@ -545,15 +563,20 @@ class TestTerrainInterpolation:
     def test_gebco_coverage_global(self):
         """Test GEBCO covers global regions."""
         try:
-            # Query at various locations
-            dem1 = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
-            dem2 = load_gebco(min_lat=50.0, max_lat=51.0, min_lon=0.0, max_lon=1.0)
-
-            # Both should succeed or both fail (consistency)
-            if dem1 is None:
-                assert dem2 is None
-            if dem1 is not None:
-                assert isinstance(dem1, dict)
+            dem1 = load_gebco(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+            )
+            dem2 = load_gebco(
+                lat_min=np.radians(50.0),
+                lat_max=np.radians(51.0),
+                lon_min=np.radians(0.0),
+                lon_max=np.radians(1.0),
+            )
+            assert isinstance(dem1, DEMGrid)
+            assert isinstance(dem2, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"GEBCO coverage test failed: {e}")
@@ -561,21 +584,19 @@ class TestTerrainInterpolation:
     def test_earth2014_layers(self):
         """Test different Earth2014 layers."""
         try:
-            layers = ["SUR", "RES", "TGR"]
+            layers = ["SUR", "BED", "TBI"]
 
             for layer in layers:
                 try:
                     dem = load_earth2014(
-                        min_lat=40.0,
-                        max_lat=41.0,
-                        min_lon=-74.0,
-                        max_lon=-73.0,
+                        lat_min=np.radians(40.0),
+                        lat_max=np.radians(41.0),
+                        lon_min=np.radians(-74.0),
+                        lon_max=np.radians(-73.0),
                         layer=layer,
                     )
-                    if dem is not None:
-                        assert isinstance(dem, dict)
-                except Exception:
-                    # Some layers may not be available
+                    assert isinstance(dem, DEMGrid)
+                except FileNotFoundError:
                     pass
 
         except Exception as e:
@@ -588,9 +609,13 @@ class TestDEMBounds:
     def test_gebco_equatorial_region(self):
         """Test GEBCO at equatorial region."""
         try:
-            dem = load_gebco(min_lat=-1.0, max_lat=1.0, min_lon=-1.0, max_lon=1.0)
-            if dem is not None:
-                assert isinstance(dem, dict) or isinstance(dem, np.ndarray)
+            dem = load_gebco(
+                lat_min=np.radians(-1.0),
+                lat_max=np.radians(1.0),
+                lon_min=np.radians(-1.0),
+                lon_max=np.radians(1.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Equatorial GEBCO failed: {e}")
@@ -598,10 +623,13 @@ class TestDEMBounds:
     def test_gebco_poles(self):
         """Test GEBCO near poles."""
         try:
-            # GEBCO covers poles
-            dem = load_gebco(min_lat=80.0, max_lat=85.0, min_lon=-180.0, max_lon=180.0)
-            if dem is not None:
-                assert isinstance(dem, dict) or isinstance(dem, np.ndarray)
+            dem = load_gebco(
+                lat_min=np.radians(80.0),
+                lat_max=np.radians(85.0),
+                lon_min=np.radians(-180.0),
+                lon_max=np.radians(180.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Polar GEBCO unavailable: {e}")
@@ -609,9 +637,13 @@ class TestDEMBounds:
     def test_gebco_prime_meridian(self):
         """Test GEBCO crossing prime meridian."""
         try:
-            dem = load_gebco(min_lat=50.0, max_lat=55.0, min_lon=-5.0, max_lon=5.0)
-            if dem is not None:
-                assert isinstance(dem, dict) or isinstance(dem, np.ndarray)
+            dem = load_gebco(
+                lat_min=np.radians(50.0),
+                lat_max=np.radians(55.0),
+                lon_min=np.radians(-5.0),
+                lon_max=np.radians(5.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Prime meridian GEBCO failed: {e}")
@@ -619,9 +651,13 @@ class TestDEMBounds:
     def test_gebco_date_line(self):
         """Test GEBCO crossing international date line."""
         try:
-            dem = load_gebco(min_lat=0.0, max_lat=5.0, min_lon=175.0, max_lon=-175.0)
-            if dem is not None:
-                assert isinstance(dem, dict) or isinstance(dem, np.ndarray)
+            dem = load_gebco(
+                lat_min=np.radians(0.0),
+                lat_max=np.radians(5.0),
+                lon_min=np.radians(175.0),
+                lon_max=np.radians(180.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Date line GEBCO unavailable: {e}")
@@ -633,17 +669,16 @@ class TestTerrainStatistics:
     def test_gebco_dem_structure(self):
         """Test GEBCO DEM has expected structure."""
         try:
-            dem = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
-
-            if dem is not None:
-                # Should have dictionary with lat/lon/elevation or be an array
-                if isinstance(dem, dict):
-                    assert (
-                        "latitude" in dem
-                        or "lat" in dem
-                        or "elevation" in dem
-                        or "data" in dem
-                    )
+            dem = load_gebco(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+            )
+            assert isinstance(dem, DEMGrid)
+            assert dem.data is not None
+            assert dem.data.shape[0] > 0
+            assert dem.data.shape[1] > 0
 
         except Exception as e:
             pytest.skip(f"GEBCO structure test failed: {e}")
@@ -652,11 +687,14 @@ class TestTerrainStatistics:
         """Test Earth2014 DEM has expected structure."""
         try:
             dem = load_earth2014(
-                min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0, layer="SUR"
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+                layer="SUR",
             )
-
-            if dem is not None:
-                assert isinstance(dem, dict)
+            assert isinstance(dem, DEMGrid)
+            assert dem.data is not None
 
         except Exception as e:
             pytest.skip(f"Earth2014 structure test failed: {e}")
@@ -665,26 +703,31 @@ class TestTerrainStatistics:
 class TestDEMDataTypes:
     """Tests for DEM data types and formats."""
 
-    def test_gebco_returns_dict(self):
-        """Test that GEBCO returns proper dict format."""
+    def test_gebco_returns_demgrid(self):
+        """Test that GEBCO returns DEMGrid."""
         try:
-            dem = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
-
-            if dem is not None:
-                assert isinstance(dem, dict)
+            dem = load_gebco(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+            )
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"GEBCO return type test failed: {e}")
 
-    def test_earth2014_returns_dict(self):
-        """Test that Earth2014 returns proper dict format."""
+    def test_earth2014_returns_demgrid(self):
+        """Test that Earth2014 returns DEMGrid."""
         try:
             dem = load_earth2014(
-                min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0, layer="SUR"
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+                layer="SUR",
             )
-
-            if dem is not None:
-                assert isinstance(dem, dict)
+            assert isinstance(dem, DEMGrid)
 
         except Exception as e:
             pytest.skip(f"Earth2014 return type test failed: {e}")
@@ -696,14 +739,17 @@ class TestDEMCacheAndPerformance:
     def test_repeated_gebco_consistency(self):
         """Test that repeated GEBCO queries return consistent results."""
         try:
-            dem1 = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
-            dem2 = load_gebco(min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0)
+            args = dict(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
+            )
+            dem1 = load_gebco(**args)
+            dem2 = load_gebco(**args)
 
-            # Both should succeed or both fail
-            if dem1 is None:
-                assert dem2 is None
-            if dem1 is not None:
-                assert dem2 is not None
+            # Cached load should return the same object
+            assert dem1 is dem2
 
         except Exception as e:
             pytest.skip(f"GEBCO consistency test failed: {e}")
@@ -711,17 +757,16 @@ class TestDEMCacheAndPerformance:
     def test_repeated_earth2014_consistency(self):
         """Test that repeated Earth2014 queries return consistent results."""
         try:
-            dem1 = load_earth2014(
-                min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0
+            args = dict(
+                lat_min=np.radians(40.0),
+                lat_max=np.radians(41.0),
+                lon_min=np.radians(-74.0),
+                lon_max=np.radians(-73.0),
             )
-            dem2 = load_earth2014(
-                min_lat=40.0, max_lat=41.0, min_lon=-74.0, max_lon=-73.0
-            )
+            dem1 = load_earth2014(**args)
+            dem2 = load_earth2014(**args)
 
-            if dem1 is None:
-                assert dem2 is None
-            if dem1 is not None:
-                assert dem2 is not None
+            assert dem1 is dem2
 
         except Exception as e:
             pytest.skip(f"Earth2014 consistency test failed: {e}")
