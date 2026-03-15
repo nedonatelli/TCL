@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.13.2 (Released March 2, 2026)
-**Current Test Suite:** 3,396 tests passing, 80% line coverage
+**Current Version:** v1.14.0 (Released March 15, 2026)
+**Current Test Suite:** 3,306 tests passing, 80% line coverage
 **Production Status:** Feature-complete MATLAB TCL parity achieved, v2.0.0 actively in development
 
 ---
@@ -235,9 +235,9 @@
 - **Static estimation**: OLS, WLS, TLS, GLS, RLS, M-estimators, RANSAC, MLE
 - **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree
 - **Tracking containers**: TrackList, MeasurementSet, ClusterSet for data management
-- **Geophysical models**: Gravity (WGS84, J2, EGM96/EGM2008), Magnetism (WMM, IGRF, EMM, WMMHR)
+- **Geophysical models**: Gravity (WGS84, J2, EGM96/EGM2008), Magnetism (WMM, IGRF, EMM, WMMHR2025)
 - **Tidal effects**: Solid Earth tides, ocean loading, atmospheric pressure, pole tide
-- **Terrain models**: DEM interface, GEBCO/Earth2014, line-of-sight, viewshed analysis
+- **Terrain models**: DEM interface, GEBCO 2025/Earth2014, line-of-sight, viewshed analysis
 - **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conic, Azimuthal
 - **Astronomical code**: Orbits, Lambert, reference frames (GCRF, ITRF, TEME, TOD, MOD), ephemerides, relativity
 - **INS/Navigation**: Strapdown mechanization, coning/sculling, alignment, great circle, rhumb line
