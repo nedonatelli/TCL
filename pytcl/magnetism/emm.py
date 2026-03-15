@@ -475,23 +475,18 @@ def _high_res_field_spherical(
     else:
         n_max_eval = min(n_max_eval, coeffs.n_max)
 
+    N = n_max_eval
     a = 6371.2  # Reference radius in km
 
-    # Time adjustment
+    # Time adjustment — vectorized over lower-left triangle
     dt = year - coeffs.epoch
+    g = coeffs.g[: N + 1, : N + 1].copy()
+    h = coeffs.h[: N + 1, : N + 1].copy()
 
-    # Create time-adjusted coefficients
-    # Main field always uses full n_max
-    g = coeffs.g.copy()
-    h = coeffs.h.copy()
-
-    # Secular variation only up to n_max_sv
-    n_max_sv = min(coeffs.n_max_sv, n_max_eval)
-    for n in range(1, n_max_sv + 1):
-        for m in range(n + 1):
-            if n < coeffs.g_dot.shape[0] and m < coeffs.g_dot.shape[1]:
-                g[n, m] += dt * coeffs.g_dot[n, m]
-                h[n, m] += dt * coeffs.h_dot[n, m]
+    n_max_sv = min(coeffs.n_max_sv, N)
+    sv_n = n_max_sv + 1
+    g[:sv_n, :sv_n] += dt * coeffs.g_dot[:sv_n, :sv_n]
+    h[:sv_n, :sv_n] += dt * coeffs.h_dot[:sv_n, :sv_n]
 
     # Colatitude
     theta = np.pi / 2 - lat
@@ -499,54 +494,52 @@ def _high_res_field_spherical(
     sin_theta = np.sin(theta)
 
     # Compute associated Legendre functions
-    P = associated_legendre(n_max_eval, n_max_eval, cos_theta, normalized=True)
+    P = associated_legendre(N, N, cos_theta, normalized=True)
 
-    # Compute dP/dtheta
-    dP = np.zeros((n_max_eval + 1, n_max_eval + 1))
+    # Compute dP/dtheta — vectorized
+    dP = np.zeros((N + 1, N + 1))
     if abs(sin_theta) > 1e-10:
-        for n in range(1, n_max_eval + 1):
-            for m in range(n + 1):
-                if m == n:
-                    dP[n, m] = n * cos_theta / sin_theta * P[n, m]
-                elif n > m:
-                    factor = np.sqrt((n - m) * (n + m + 1))
-                    if m + 1 <= n:
-                        dP[n, m] = (
-                            n * cos_theta / sin_theta * P[n, m]
-                            - factor * P[n, m + 1] / sin_theta
-                            if m + 1 <= n_max_eval
-                            else n * cos_theta / sin_theta * P[n, m]
-                        )
+        cot = cos_theta / sin_theta
+        csc = 1.0 / sin_theta
+        for n in range(1, N + 1):
+            # Diagonal: m == n
+            dP[n, n] = n * cot * P[n, n]
+            # Off-diagonal: m < n
+            ms = np.arange(0, n)
+            factors = np.sqrt((n - ms) * (n + ms + 1))
+            dP[n, :n] = n * cot * P[n, :n] - factors * P[n, 1 : n + 1] * csc
 
-    # Initialize field components
-    B_r = 0.0
-    B_theta = 0.0
-    B_phi = 0.0
-
-    # Sum over spherical harmonic degrees and orders
+    # Precompute radial power: (a/r)^(n+2) for n = 0..N
     r_ratio = a / r
+    ns = np.arange(N + 1)
+    r_powers = r_ratio ** (ns + 2)  # shape (N+1,)
 
-    for n in range(1, n_max_eval + 1):
-        r_power = r_ratio ** (n + 2)
+    # Precompute trig: cos(m*lon), sin(m*lon) for m = 0..N
+    ms = np.arange(N + 1)
+    cos_m_lon = np.cos(ms * lon)  # shape (N+1,)
+    sin_m_lon = np.sin(ms * lon)  # shape (N+1,)
 
-        for m in range(n + 1):
-            cos_m_lon = np.cos(m * lon)
-            sin_m_lon = np.sin(m * lon)
+    # Build lower-triangular mask (n, m) where m <= n, n >= 1
+    n_idx, m_idx = np.meshgrid(ns, ms, indexing="ij")
+    mask = (m_idx <= n_idx) & (n_idx >= 1)
 
-            gnm = g[n, m]
-            hnm = h[n, m]
+    # Compute field terms for all (n, m) at once
+    gh_cos = g * cos_m_lon[np.newaxis, :] + h * sin_m_lon[np.newaxis, :]  # (N+1, N+1)
+    gh_sin = g * sin_m_lon[np.newaxis, :] - h * cos_m_lon[np.newaxis, :]  # (N+1, N+1)
 
-            B_r += (n + 1) * r_power * P[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
-            B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
+    rp = r_powers[:, np.newaxis]  # (N+1, 1)
+    np1 = (ns + 1)[:, np.newaxis]  # (N+1, 1)
 
-            if abs(sin_theta) > 1e-10:
-                B_phi += (
-                    r_power
-                    * m
-                    * P[n, m]
-                    / sin_theta
-                    * (gnm * sin_m_lon - hnm * cos_m_lon)
-                )
+    B_r_terms = np1 * rp * P * gh_cos
+    B_theta_terms = -rp * dP * gh_cos
+    B_r = np.sum(B_r_terms[mask])
+    B_theta = np.sum(B_theta_terms[mask])
+
+    if abs(sin_theta) > 1e-10:
+        B_phi_terms = rp * m_idx * P / sin_theta * gh_sin
+        B_phi = np.sum(B_phi_terms[mask])
+    else:
+        B_phi = 0.0
 
     return B_r, B_theta, B_phi
 
