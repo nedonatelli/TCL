@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **WMMHR2025 support**: World Magnetic Model High Resolution 2025 (degree 133) available via `wmmhr()` and `emm(model="WMMHR2025")`
 - **EMM array inputs**: `emm()`, `emm_declination()`, `emm_inclination()`, and `emm_intensity()` now accept array lat/lon/h inputs
 - **`terrain` optional dependency**: `pip install nrl-tracker[terrain]` installs netCDF4 for GEBCO/Earth2014 data loading
-- **`storage` optional dependency**: `pip install nrl-tracker[storage]` installs h5py for HDF5 track storage
+- **h5py core dependency**: HDF5 track storage now available out of the box (h5py>=3.8.0)
 - **`GEBCO_YYYY.nc` file pattern**: `_find_gebco_file()` now recognizes the GEBCO download naming convention
 - **CLAUDE.md**: Project conventions and setup guide for AI-assisted development
 
@@ -28,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Default GEBCO version: `"GEBCO2024"` → `"GEBCO2025"` across all public APIs
-- `[all]` extra now includes `terrain`, `storage` alongside astronomy, geodesy, visualization, optimization, signal, dev
+- `[all]` extra now includes `terrain` alongside astronomy, geodesy, visualization, optimization, signal, dev
+- h5py moved from optional `[storage]` extra to core dependency
 - Centralized `get_data_dir()` into `pytcl.core.paths` (was duplicated in terrain, magnetism, gravity)
 - Vectorized EMM spherical harmonic summation: 6-12x speedup (e.g., WMMHR2025 single point 17ms → 1.5ms)
 

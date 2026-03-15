@@ -43,13 +43,12 @@ Key Features
    | 10 points (n_max=133)    | 204 ms   | 60 ms   | 3.4x    |
    +--------------------------+----------+---------+---------+
 
-New Optional Extras
-~~~~~~~~~~~~~~~~~~~
+Dependency Changes
+~~~~~~~~~~~~~~~~~~
 
+- **h5py** is now a core dependency (``h5py>=3.8.0``). HDF5 track storage
+  works out of the box — no extra install needed.
 - ``pip install nrl-tracker[terrain]`` — installs netCDF4 for GEBCO/Earth2014 loading
-- ``pip install nrl-tracker[storage]`` — installs h5py for HDF5 track storage
-
-Both are included in ``pip install nrl-tracker[all]``.
 
 Refactoring
 ~~~~~~~~~~~
@@ -99,9 +98,9 @@ Upgrade Guide
 3. ``get_data_dir()`` is now canonical in ``pytcl.core.paths``. The re-exports
    from ``pytcl.terrain.loaders`` and ``pytcl.magnetism.emm`` still work.
 
-4. Install new extras if needed:
+4. h5py is now a core dependency — no extra install needed for HDF5 storage.
+   For terrain data, install the extra:
 
    .. code-block:: bash
 
       pip install nrl-tracker[terrain]   # for GEBCO/Earth2014
-      pip install nrl-tracker[storage]   # for HDF5 track storage

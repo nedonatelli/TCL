@@ -35,7 +35,7 @@
 - **WMMHR2025**: World Magnetic Model High Resolution (degree 133) support
 - **EMM array inputs**: `emm()` and convenience functions now accept array lat/lon/h
 - **`terrain` extra**: `pip install nrl-tracker[terrain]` for NetCDF support
-- **`storage` extra**: `pip install nrl-tracker[storage]` for HDF5 support
+- **h5py core dependency**: HDF5 track storage now available out of the box
 
 **Refactoring:**
 - Centralized `get_data_dir()` into `pytcl.core.paths` (was duplicated 3x)

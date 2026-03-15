@@ -43,6 +43,7 @@ dependencies = [
     "numpy>=1.24.0",
     "scipy>=1.10.0",
     "numba>=0.57.0",
+    "h5py>=3.8.0",
 ]
 
 [project.optional-dependencies]
@@ -62,9 +63,6 @@ optimization = [
 ]
 terrain = [
     "netCDF4>=1.6.0",
-]
-storage = [
-    "h5py>=3.8.0",
 ]
 signal = [
     "pywavelets>=1.4.0",
@@ -99,7 +97,7 @@ benchmark = [
     "pytest-benchmark>=4.0.0",
 ]
 all = [
-    "nrl-tracker[astronomy,geodesy,terrain,storage,visualization,optimization,signal,dev]",
+    "nrl-tracker[astronomy,geodesy,terrain,visualization,optimization,signal,dev]",
 ]
 
 [project.urls]
