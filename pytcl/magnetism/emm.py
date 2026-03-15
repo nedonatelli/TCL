@@ -21,10 +21,9 @@ References
        https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
 """
 
-import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -89,31 +88,7 @@ class HighResCoefficients(NamedTuple):
     model_name: str
 
 
-def get_data_dir() -> Path:
-    """Get the pytcl data directory for magnetic coefficients.
-
-    The data directory is located at ~/.pytcl/data/ by default.
-    Can be overridden by setting the PYTCL_DATA_DIR environment variable.
-
-    Returns
-    -------
-    Path
-        Path to the data directory.
-    """
-    env_dir = os.environ.get("PYTCL_DATA_DIR")
-    if env_dir:
-        data_dir = Path(env_dir)
-    else:
-        data_dir = Path.home() / ".pytcl" / "data"
-
-    return data_dir
-
-
-def _ensure_data_dir() -> Path:
-    """Ensure the data directory exists and return its path."""
-    data_dir = get_data_dir()
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir
+from pytcl.core.paths import get_data_dir  # noqa: E402
 
 
 def parse_emm_file(
@@ -628,7 +603,7 @@ def emm(
     # Handle array inputs by iterating (spherical harmonic sum is scalar)
     lat_arr = np.asarray(lat)
     if lat_arr.ndim > 0:
-        lon_arr = np.asarray(lon)
+        lon_arr = np.broadcast_to(np.asarray(lon), lat_arr.shape)
         h_arr = np.broadcast_to(np.asarray(h), lat_arr.shape)
         results = [
             emm(float(la), float(lo), float(hi), year, model, n_max, coefficients)
@@ -721,24 +696,27 @@ def wmmhr(
     )
 
 
+_ScalarOrArray = Union[float, NDArray[np.floating]]
+
+
 def emm_declination(
-    lat: float,
-    lon: float,
-    h: float = 0.0,
+    lat: _ScalarOrArray,
+    lon: _ScalarOrArray,
+    h: _ScalarOrArray = 0.0,
     year: float = 2020.0,
     model: str = "EMM2017",
     n_max: Optional[int] = None,
     coefficients: Optional[HighResCoefficients] = None,
-) -> float:
+) -> _ScalarOrArray:
     """Compute magnetic declination using EMM/WMMHR.
 
     Parameters
     ----------
-    lat : float
+    lat : float or ndarray
         Geodetic latitude in radians.
-    lon : float
+    lon : float or ndarray
         Longitude in radians.
-    h : float, optional
+    h : float or ndarray, optional
         Height above WGS84 ellipsoid in km.
     year : float, optional
         Decimal year.
@@ -751,7 +729,7 @@ def emm_declination(
 
     Returns
     -------
-    float
+    float or ndarray
         Magnetic declination in radians.
     """
     result = emm(lat, lon, h, year, model, n_max, coefficients)
@@ -759,23 +737,23 @@ def emm_declination(
 
 
 def emm_inclination(
-    lat: float,
-    lon: float,
-    h: float = 0.0,
+    lat: _ScalarOrArray,
+    lon: _ScalarOrArray,
+    h: _ScalarOrArray = 0.0,
     year: float = 2020.0,
     model: str = "EMM2017",
     n_max: Optional[int] = None,
     coefficients: Optional[HighResCoefficients] = None,
-) -> float:
+) -> _ScalarOrArray:
     """Compute magnetic inclination using EMM/WMMHR.
 
     Parameters
     ----------
-    lat : float
+    lat : float or ndarray
         Geodetic latitude in radians.
-    lon : float
+    lon : float or ndarray
         Longitude in radians.
-    h : float, optional
+    h : float or ndarray, optional
         Height above WGS84 ellipsoid in km.
     year : float, optional
         Decimal year.
@@ -788,7 +766,7 @@ def emm_inclination(
 
     Returns
     -------
-    float
+    float or ndarray
         Magnetic inclination (dip) in radians.
     """
     result = emm(lat, lon, h, year, model, n_max, coefficients)
@@ -796,23 +774,23 @@ def emm_inclination(
 
 
 def emm_intensity(
-    lat: float,
-    lon: float,
-    h: float = 0.0,
+    lat: _ScalarOrArray,
+    lon: _ScalarOrArray,
+    h: _ScalarOrArray = 0.0,
     year: float = 2020.0,
     model: str = "EMM2017",
     n_max: Optional[int] = None,
     coefficients: Optional[HighResCoefficients] = None,
-) -> float:
+) -> _ScalarOrArray:
     """Compute total magnetic field intensity using EMM/WMMHR.
 
     Parameters
     ----------
-    lat : float
+    lat : float or ndarray
         Geodetic latitude in radians.
-    lon : float
+    lon : float or ndarray
         Longitude in radians.
-    h : float, optional
+    h : float or ndarray, optional
         Height above WGS84 ellipsoid in km.
     year : float, optional
         Decimal year.
@@ -825,7 +803,7 @@ def emm_intensity(
 
     Returns
     -------
-    float
+    float or ndarray
         Total magnetic field intensity in nT.
     """
     result = emm(lat, lon, h, year, model, n_max, coefficients)

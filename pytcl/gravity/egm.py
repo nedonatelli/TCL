@@ -22,7 +22,6 @@ References
 """
 
 import logging
-import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, NamedTuple, Optional, Tuple
@@ -121,37 +120,7 @@ EGM_PARAMETERS: Dict[str, Dict[str, float]] = {
 }
 
 
-def get_data_dir() -> Path:
-    """Get the pytcl data directory.
-
-    The data directory is located at ~/.pytcl/data/ by default.
-    Can be overridden by setting the PYTCL_DATA_DIR environment variable.
-
-    Returns
-    -------
-    Path
-        Path to the data directory.
-
-    Examples
-    --------
-    >>> data_dir = get_data_dir()
-    >>> str(data_dir).endswith('.pytcl/data') or 'PYTCL_DATA_DIR' in dir()
-    True
-    """
-    env_dir = os.environ.get("PYTCL_DATA_DIR")
-    if env_dir:
-        data_dir = Path(env_dir)
-    else:
-        data_dir = Path.home() / ".pytcl" / "data"
-
-    return data_dir
-
-
-def _ensure_data_dir() -> Path:
-    """Ensure the data directory exists and return its path."""
-    data_dir = get_data_dir()
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return data_dir
+from pytcl.core.paths import get_data_dir  # noqa: E402
 
 
 def parse_egm_file(

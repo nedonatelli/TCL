@@ -10,6 +10,14 @@ from pytcl.core.exceptions import DependencyError
 
 _data_skip = (FileNotFoundError, DependencyError)
 
+# Common test region (New York area, ~1° x 1°)
+_NYC = dict(
+    lat_min=np.radians(40.0),
+    lat_max=np.radians(41.0),
+    lon_min=np.radians(-74.0),
+    lon_max=np.radians(-73.0),
+)
+
 from pytcl.terrain import (  # Loader functions; Parameters; Metadata types; DEM types for verification
     EARTH2014_PARAMETERS,
     GEBCO_PARAMETERS,
@@ -525,10 +533,7 @@ class TestDEMQueries:
         """Test loading GEBCO data with minimal parameters."""
         try:
             dem = load_gebco(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
             )
         except _data_skip:
             pytest.skip("GEBCO data file not available")
@@ -538,10 +543,7 @@ class TestDEMQueries:
         """Test loading Earth2014 data."""
         try:
             dem = load_earth2014(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
                 layer="SUR",
             )
         except _data_skip:
@@ -556,10 +558,7 @@ class TestTerrainInterpolation:
         """Test GEBCO covers global regions."""
         try:
             dem1 = load_gebco(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
             )
         except _data_skip:
             pytest.skip("GEBCO data file not available")
@@ -576,10 +575,7 @@ class TestTerrainInterpolation:
         """Test different Earth2014 layers."""
         try:
             dem = load_earth2014(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
                 layer="SUR",
             )
         except _data_skip:
@@ -587,10 +583,7 @@ class TestTerrainInterpolation:
 
         for layer in ["SUR", "BED", "TBI"]:
             dem = load_earth2014(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
                 layer=layer,
             )
             assert isinstance(dem, DEMGrid)
@@ -659,10 +652,7 @@ class TestTerrainStatistics:
         """Test GEBCO DEM has expected structure."""
         try:
             dem = load_gebco(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
             )
         except _data_skip:
             pytest.skip("GEBCO data file not available")
@@ -675,10 +665,7 @@ class TestTerrainStatistics:
         """Test Earth2014 DEM has expected structure."""
         try:
             dem = load_earth2014(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
                 layer="SUR",
             )
         except _data_skip:
@@ -694,10 +681,7 @@ class TestDEMDataTypes:
         """Test that GEBCO returns DEMGrid."""
         try:
             dem = load_gebco(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
             )
         except _data_skip:
             pytest.skip("GEBCO data file not available")
@@ -707,10 +691,7 @@ class TestDEMDataTypes:
         """Test that Earth2014 returns DEMGrid."""
         try:
             dem = load_earth2014(
-                lat_min=np.radians(40.0),
-                lat_max=np.radians(41.0),
-                lon_min=np.radians(-74.0),
-                lon_max=np.radians(-73.0),
+                **_NYC,
                 layer="SUR",
             )
         except _data_skip:
@@ -723,12 +704,7 @@ class TestDEMCacheAndPerformance:
 
     def test_repeated_gebco_consistency(self):
         """Test that repeated GEBCO queries return consistent results."""
-        args = dict(
-            lat_min=np.radians(40.0),
-            lat_max=np.radians(41.0),
-            lon_min=np.radians(-74.0),
-            lon_max=np.radians(-73.0),
-        )
+        args = dict(**_NYC)
         try:
             dem1 = load_gebco(**args)
         except _data_skip:
@@ -740,12 +716,7 @@ class TestDEMCacheAndPerformance:
 
     def test_repeated_earth2014_consistency(self):
         """Test that repeated Earth2014 queries return consistent results."""
-        args = dict(
-            lat_min=np.radians(40.0),
-            lat_max=np.radians(41.0),
-            lon_min=np.radians(-74.0),
-            lon_max=np.radians(-73.0),
-        )
+        args = dict(**_NYC)
         try:
             dem1 = load_earth2014(**args)
         except _data_skip:
