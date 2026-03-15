@@ -1,17 +1,17 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.13.2-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.14.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests](https://img.shields.io/badge/tests-3396%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Tests](https://img.shields.io/badge/tests-3306%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 [![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-100%25-brightgreen.svg)](docs/gap_analysis.rst)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen.svg)](htmlcov/index.html)
 [![Type Checking](https://img.shields.io/badge/mypy--strict-passing-brightgreen.svg)](mypy.ini)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**868 functions** | **113 modules** | **3,396 tests** | **100% MATLAB parity**
+**1,048 functions** | **133 modules** | **3,306 tests** | **100% MATLAB parity**
 
 ## Overview
 
@@ -26,7 +26,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
-- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF), *atmosphere (NRLMSISE-00)*, tides, terrain
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (NRLMSISE-00), tides, terrain (GEBCO 2025, Earth2014)
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 
@@ -47,8 +47,17 @@ pip install nrl-tracker[astronomy]
 # For geodesy features (coordinate transforms, map projections)
 pip install nrl-tracker[geodesy]
 
+# For terrain data (GEBCO, Earth2014 via NetCDF)
+pip install nrl-tracker[terrain]
+
 # For visualization
 pip install nrl-tracker[visualization]
+
+# For optimization (CVXPY)
+pip install nrl-tracker[optimization]
+
+# For signal processing (wavelets)
+pip install nrl-tracker[signal]
 
 # For GPU acceleration (NVIDIA CUDA)
 pip install nrl-tracker[gpu]
@@ -179,13 +188,6 @@ pytcl/
 ├── gpu/                     # GPU acceleration (CuPy/MLX)
 └── misc/                    # Utilities, visualization
 ```
-
-## Documentation
-
-- [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
-- [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
-- [Examples](examples/) - 29 validated example scripts
-- [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
 ## Examples & Tutorials
 
