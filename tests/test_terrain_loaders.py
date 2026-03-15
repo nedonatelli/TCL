@@ -7,18 +7,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.core.exceptions import DependencyError
-
-_data_skip = (FileNotFoundError, DependencyError)
-
-# Common test region (New York area, ~1° x 1°)
-_NYC = dict(
-    lat_min=np.radians(40.0),
-    lat_max=np.radians(41.0),
-    lon_min=np.radians(-74.0),
-    lon_max=np.radians(-73.0),
-)
-
-from pytcl.terrain import (  # Loader functions; Parameters; Metadata types; DEM types for verification
+from pytcl.terrain import (
     EARTH2014_PARAMETERS,
     GEBCO_PARAMETERS,
     DEMGrid,
@@ -32,6 +21,16 @@ from pytcl.terrain import (  # Loader functions; Parameters; Metadata types; DEM
     get_gebco_metadata,
     load_earth2014,
     load_gebco,
+)
+
+_data_skip = (FileNotFoundError, DependencyError)
+
+# Common test region (New York area, ~1° x 1°)
+_NYC = dict(
+    lat_min=np.radians(40.0),
+    lat_max=np.radians(41.0),
+    lon_min=np.radians(-74.0),
+    lon_max=np.radians(-73.0),
 )
 
 

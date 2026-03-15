@@ -10,8 +10,6 @@ Real-world scenario testing with diverse tracking conditions:
 Target: 40+ integration tests across all scenario categories.
 """
 
-import os
-
 import numpy as np
 import pytest
 
@@ -261,7 +259,6 @@ class TestSingleSensorHighDynamic:
 
     def test_maneuvering_target(self, tmp_path):
         """Target with sinusoidal trajectory (simulating turns)."""
-        rng = np.random.default_rng(30)
         n_steps = 50
         true_states = np.zeros((1, n_steps, 4))
         for k in range(n_steps):
@@ -286,7 +283,6 @@ class TestSingleSensorHighDynamic:
 
     def test_fast_target(self, tmp_path):
         """High-speed target (100 m/s)."""
-        rng = np.random.default_rng(31)
         n_steps = 30
         true_states = np.zeros((1, n_steps, 4))
         for k in range(n_steps):
@@ -472,9 +468,9 @@ class TestMultiSensorFusion:
         db.store_detection("l0", np.array([1.0, 2.0]), "lidar", 0.0, covariance=R_lidar)
 
         r = db.retrieve_detection("r0")
-        l = db.retrieve_detection("l0")
+        lidar_det = db.retrieve_detection("l0")
         np.testing.assert_allclose(r["covariance"], R_radar)
-        np.testing.assert_allclose(l["covariance"], R_lidar)
+        np.testing.assert_allclose(lidar_det["covariance"], R_lidar)
         db.close()
 
 
