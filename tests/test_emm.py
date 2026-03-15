@@ -544,63 +544,48 @@ class TestEMMFieldCalculations:
 
     def test_emm_basic(self):
         """Test basic EMM field calculation."""
-        try:
-            # Use test coefficients
-            coeff = create_test_coefficients(n_max=36)
-            result = emm(
-                lat=np.radians(40.0),
-                lon=np.radians(-75.0),
-                h=0.0,
-                year=2020.0,
-                coefficients=coeff,
-            )
+        coeff = create_test_coefficients(n_max=36)
+        result = emm(
+            lat=np.radians(40.0),
+            lon=np.radians(-75.0),
+            h=0.0,
+            year=2020.0,
+            coefficients=coeff,
+        )
 
-            # Result should be MagneticResult with X/Y/Z components
-            assert hasattr(result, "X")
-            assert hasattr(result, "Y")
-            assert hasattr(result, "Z")
-
-        except Exception as e:
-            pytest.skip(f"EMM calculation failed: {e}")
+        assert hasattr(result, "X")
+        assert hasattr(result, "Y")
+        assert hasattr(result, "Z")
 
     def test_emm_array_inputs(self):
         """Test EMM with array inputs."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            latitudes = np.radians(np.array([40.0, 45.0, 50.0]))
-            longitudes = np.radians(np.array([-75.0, -80.0, -85.0]))
-            heights = np.array([0.0, 100.0, 200.0])
+        latitudes = np.radians(np.array([40.0, 45.0, 50.0]))
+        longitudes = np.radians(np.array([-75.0, -80.0, -85.0]))
+        heights = np.array([0.0, 100.0, 200.0])
 
-            result = emm(
-                lat=latitudes,
-                lon=longitudes,
-                h=heights,
-                year=2020.0,
-                coefficients=coeff,
-            )
+        result = emm(
+            lat=latitudes,
+            lon=longitudes,
+            h=heights,
+            year=2020.0,
+            coefficients=coeff,
+        )
 
-            # Results should have same shape as inputs
-            assert len(result.X) == len(latitudes)
-
-        except Exception as e:
-            pytest.skip(f"Array EMM calculation failed: {e}")
+        assert len(result.X) == len(latitudes)
 
     def test_emm_different_years(self):
         """Test EMM at different years."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            lat_r = np.radians(40.0)
-            lon_r = np.radians(-75.0)
-            result_2020 = emm(lat_r, lon_r, 0.0, 2020.0, coefficients=coeff)
-            result_2025 = emm(lat_r, lon_r, 0.0, 2025.0, coefficients=coeff)
+        lat_r = np.radians(40.0)
+        lon_r = np.radians(-75.0)
+        result_2020 = emm(lat_r, lon_r, 0.0, 2020.0, coefficients=coeff)
+        result_2025 = emm(lat_r, lon_r, 0.0, 2025.0, coefficients=coeff)
 
-            # Results should be different (secular variation)
-            assert abs(result_2020.X - result_2025.X) >= 0
-
-        except Exception as e:
-            pytest.skip(f"Year variation test failed: {e}")
+        # Secular variation should produce different results
+        assert result_2020.X != result_2025.X
 
 
 class TestWMMHRCalculations:
@@ -610,13 +595,12 @@ class TestWMMHRCalculations:
         """Test basic WMMHR calculation."""
         try:
             result = wmmhr(np.radians(40.0), np.radians(-75.0), 0.0, 2025.0)
+        except FileNotFoundError:
+            pytest.skip("WMMHR2025 coefficient file not installed")
 
-            assert hasattr(result, "X")
-            assert hasattr(result, "Y")
-            assert hasattr(result, "Z")
-
-        except Exception as e:
-            pytest.skip(f"WMMHR calculation unavailable: {e}")
+        assert hasattr(result, "X")
+        assert hasattr(result, "Y")
+        assert hasattr(result, "Z")
 
 
 class TestMagneticComponentsFromEMM:
@@ -624,51 +608,36 @@ class TestMagneticComponentsFromEMM:
 
     def test_emm_declination(self):
         """Test EMM declination calculation."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            decl = emm_declination(
-                np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
-                coefficients=coeff,
-            )
+        decl = emm_declination(
+            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            coefficients=coeff,
+        )
 
-            # Declination in radians should be in (-pi, pi)
-            assert -np.pi <= decl <= np.pi
-
-        except Exception as e:
-            pytest.skip(f"Declination calculation failed: {e}")
+        assert -np.pi <= decl <= np.pi
 
     def test_emm_inclination(self):
         """Test EMM inclination calculation."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            incl = emm_inclination(
-                np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
-                coefficients=coeff,
-            )
+        incl = emm_inclination(
+            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            coefficients=coeff,
+        )
 
-            # Inclination in radians should be in (-pi/2, pi/2)
-            assert -np.pi / 2 <= incl <= np.pi / 2
-
-        except Exception as e:
-            pytest.skip(f"Inclination calculation failed: {e}")
+        assert -np.pi / 2 <= incl <= np.pi / 2
 
     def test_emm_intensity(self):
         """Test EMM total intensity calculation."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            intensity = emm_intensity(
-                np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
-                coefficients=coeff,
-            )
+        intensity = emm_intensity(
+            np.radians(40.0), np.radians(-75.0), 0.0, 2020.0,
+            coefficients=coeff,
+        )
 
-            # Intensity should be positive (in nanoTesla)
-            assert float(intensity) > 0
-
-        except Exception as e:
-            pytest.skip(f"Intensity calculation failed: {e}")
+        assert float(intensity) > 0
 
 
 class TestMagneticArrayOperations:
@@ -676,41 +645,31 @@ class TestMagneticArrayOperations:
 
     def test_declination_arrays(self):
         """Test declination with array inputs."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            lats = np.radians(np.array([40.0, 45.0, 50.0]))
-            lons = np.radians(np.array([-75.0, -80.0, -85.0]))
-            heights = np.array([0.0, 100.0, 200.0])
+        lats = np.radians(np.array([40.0, 45.0, 50.0]))
+        lons = np.radians(np.array([-75.0, -80.0, -85.0]))
+        heights = np.array([0.0, 100.0, 200.0])
 
-            decl = emm_declination(lats, lons, heights, 2020.0, coefficients=coeff)
+        decl = emm_declination(lats, lons, heights, 2020.0, coefficients=coeff)
 
-            # Should return array with values in (-pi, pi)
-            if isinstance(decl, np.ndarray):
-                assert len(decl) == 3
-                assert np.all(np.abs(decl) <= np.pi)
-
-        except Exception as e:
-            pytest.skip(f"Array declination failed: {e}")
+        assert isinstance(decl, np.ndarray)
+        assert len(decl) == 3
+        assert np.all(np.abs(decl) <= np.pi)
 
     def test_inclination_arrays(self):
         """Test inclination with array inputs."""
-        try:
-            coeff = create_test_coefficients(n_max=36)
+        coeff = create_test_coefficients(n_max=36)
 
-            lats = np.radians(np.array([40.0, 45.0, 50.0]))
-            lons = np.radians(np.array([-75.0, -80.0, -85.0]))
-            heights = np.array([0.0, 100.0, 200.0])
+        lats = np.radians(np.array([40.0, 45.0, 50.0]))
+        lons = np.radians(np.array([-75.0, -80.0, -85.0]))
+        heights = np.array([0.0, 100.0, 200.0])
 
-            incl = emm_inclination(lats, lons, heights, 2020.0, coefficients=coeff)
+        incl = emm_inclination(lats, lons, heights, 2020.0, coefficients=coeff)
 
-            # Should return array with values in (-pi/2, pi/2)
-            if isinstance(incl, np.ndarray):
-                assert len(incl) == 3
-                assert np.all(np.abs(incl) <= np.pi / 2)
-
-        except Exception as e:
-            pytest.skip(f"Array inclination failed: {e}")
+        assert isinstance(incl, np.ndarray)
+        assert len(incl) == 3
+        assert np.all(np.abs(incl) <= np.pi / 2)
 
 
 class TestCoefficientDimensions:
