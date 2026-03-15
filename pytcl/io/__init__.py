@@ -24,8 +24,18 @@ Query structured data in SQL:
 ...     keys = store.list_keys("mission")
 """
 
+from pytcl.io.compat import (
+    EKFTrackAdapter,
+    IMMTrackAdapter,
+    KalmanTrackAdapter,
+    ParticleFilterTrackAdapter,
+    TrackerDatabaseAdapter,
+    UKFTrackAdapter,
+    store_filter_result,
+)
 from pytcl.io.hdf5_storage import HDF5Storage
 from pytcl.io.hdf5_track_storage import TrackHDF5Storage
+from pytcl.io.migration import MigrationHelper
 from pytcl.io.sql_storage import SQLStorage
 from pytcl.io.storage import StorageBackend
 from pytcl.io.track_database import TrackDatabaseManager, TrackDatabaseStatus
@@ -37,4 +47,12 @@ __all__ = [
     "TrackDatabaseManager",
     "TrackDatabaseStatus",
     "TrackHDF5Storage",
+    "KalmanTrackAdapter",
+    "EKFTrackAdapter",
+    "UKFTrackAdapter",
+    "IMMTrackAdapter",
+    "ParticleFilterTrackAdapter",
+    "TrackerDatabaseAdapter",
+    "store_filter_result",
+    "MigrationHelper",
 ]
