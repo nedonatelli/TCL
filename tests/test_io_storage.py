@@ -277,38 +277,36 @@ class TestStorageInteroperability:
     """Test compatibility between storage backends."""
 
     @pytest.mark.skipif(not HAS_H5PY, reason="h5py not installed")
-    def test_array_compatibility(self):
+    def test_array_compatibility(self, tmp_path):
         """Test that arrays stored in one format can be understood by others."""
         data_1d = np.array([1, 2, 3, 4, 5])
         data_2d = np.array([[1, 2], [3, 4], [5, 6]])
 
-        with (
-            tempfile.NamedTemporaryFile(suffix=".h5") as hf,
-            tempfile.NamedTemporaryFile(suffix=".db") as sf,
-        ):
+        h5_path = str(tmp_path / "compat.h5")
+        db_path = str(tmp_path / "compat.db")
 
-            # Store in HDF5
-            with HDF5Storage() as store:
-                store.open(hf.name, mode="w")
-                store.store_array("data1d", data_1d)
-                store.store_array("data2d", data_2d)
+        # Store in HDF5
+        with HDF5Storage() as store:
+            store.open(h5_path, mode="w")
+            store.store_array("data1d", data_1d)
+            store.store_array("data2d", data_2d)
 
-            # Store in SQL
-            with SQLStorage() as store:
-                store.open(sf.name, mode="w")
-                store.store_array("data1d", data_1d)
-                store.store_array("data2d", data_2d)
+        # Store in SQL
+        with SQLStorage() as store:
+            store.open(db_path, mode="w")
+            store.store_array("data1d", data_1d)
+            store.store_array("data2d", data_2d)
 
-            # Verify matching results
-            with HDF5Storage() as h_store:
-                h_store.open(hf.name, mode="r")
-                h_data1d = h_store.retrieve_array("data1d")
-                h_data2d = h_store.retrieve_array("data2d")
+        # Verify matching results
+        with HDF5Storage() as h_store:
+            h_store.open(h5_path, mode="r")
+            h_data1d = h_store.retrieve_array("data1d")
+            h_data2d = h_store.retrieve_array("data2d")
 
-            with SQLStorage() as s_store:
-                s_store.open(sf.name, mode="r")
-                s_data1d = s_store.retrieve_array("data1d")
-                s_data2d = s_store.retrieve_array("data2d")
+        with SQLStorage() as s_store:
+            s_store.open(db_path, mode="r")
+            s_data1d = s_store.retrieve_array("data1d")
+            s_data2d = s_store.retrieve_array("data2d")
 
-            np.testing.assert_array_equal(h_data1d, s_data1d)
-            np.testing.assert_array_equal(h_data2d, s_data2d)
+        np.testing.assert_array_equal(h_data1d, s_data1d)
+        np.testing.assert_array_equal(h_data2d, s_data2d)
