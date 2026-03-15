@@ -268,26 +268,18 @@ class TestHohmannTransfer:
 
     def test_hohmann_transfer_velocity_changes(self):
         """Test Hohmann transfer delta-v calculations."""
-        r_initial = 6678  # LEO altitude
-        r_final = 42164  # GEO altitude
+        dv1, dv2, tof = hohmann_transfer(6678, 42164)
 
-        result = hohmann_transfer(r_initial, r_final)
-
-        if isinstance(result, dict):
-            if "delta_v_total" in result:
-                assert np.isfinite(result["delta_v_total"])
+        assert np.isfinite(dv1) and dv1 > 0
+        assert np.isfinite(dv2) and dv2 > 0
+        assert np.isfinite(dv1 + dv2)
 
     def test_hohmann_transfer_times(self):
         """Test Hohmann transfer time of flight."""
-        r_initial = 6678
-        r_final = 42164
+        dv1, dv2, tof = hohmann_transfer(6678, 42164)
 
-        result = hohmann_transfer(r_initial, r_final)
-
-        if isinstance(result, dict):
-            if "tof" in result:
-                assert np.isfinite(result["tof"])
-                assert result["tof"] > 0
+        assert np.isfinite(tof)
+        assert tof > 0
 
     def test_hohmann_transfer_different_orbits(self):
         """Test Hohmann transfer between different orbit pairs."""
@@ -314,24 +306,19 @@ class TestBiEllipticTransfer:
         r_intermediate = 30000  # Intermediate radius
         r_final = 42164  # GEO
 
-        result = bi_elliptic_transfer(r_initial, r_intermediate, r_final)
+        dv1, dv2, dv3, tof = bi_elliptic_transfer(r_initial, r_intermediate, r_final)
 
-        assert result is not None
-        if isinstance(result, dict):
-            assert result is not None
+        assert np.isfinite(dv1)
+        assert np.isfinite(dv2)
+        assert np.isfinite(dv3)
 
     def test_bi_elliptic_transfer_velocity_changes(self):
         """Test bi-elliptic transfer delta-v calculations."""
-        r_initial = 6678
-        r_intermediate = 30000
-        r_final = 42164
+        dv1, dv2, dv3, tof = bi_elliptic_transfer(6678, 30000, 42164)
 
-        result = bi_elliptic_transfer(r_initial, r_intermediate, r_final)
-
-        if isinstance(result, dict):
-            if "delta_v_total" in result:
-                assert np.isfinite(result["delta_v_total"])
-                assert result["delta_v_total"] > 0
+        total_dv = dv1 + dv2 + dv3
+        assert np.isfinite(total_dv)
+        assert total_dv > 0
 
     def test_bi_elliptic_transfer_vs_hohmann(self):
         """Test bi-elliptic vs Hohmann for same initial/final orbits."""

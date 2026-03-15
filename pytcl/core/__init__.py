@@ -54,6 +54,10 @@ from pytcl.core.maturity import (
     is_production_ready,
     is_stable,
 )
+from pytcl.core.paths import (
+    ensure_data_dir,
+    get_data_dir,
+)
 from pytcl.core.optional_deps import (
     LazyModule,
     check_dependencies,
@@ -134,6 +138,9 @@ __all__ = [
     "requires",
     "check_dependencies",
     "LazyModule",
+    # Data directory
+    "get_data_dir",
+    "ensure_data_dir",
     # Maturity classification
     "MaturityLevel",
     "get_maturity",

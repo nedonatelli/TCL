@@ -28,6 +28,8 @@ from typing import Any, NamedTuple, Optional, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.paths import get_data_dir
+
 from .wmm import MagneticResult
 
 # Model parameters
@@ -86,9 +88,6 @@ class HighResCoefficients(NamedTuple):
     n_max: int
     n_max_sv: int
     model_name: str
-
-
-from pytcl.core.paths import get_data_dir  # noqa: E402
 
 
 def parse_emm_file(

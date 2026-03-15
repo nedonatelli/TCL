@@ -29,6 +29,8 @@ from typing import Dict, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.paths import get_data_dir
+
 from .clenshaw import clenshaw_gravity, clenshaw_potential
 from .models import WGS84, normal_gravity_somigliana
 
@@ -118,9 +120,6 @@ EGM_PARAMETERS: Dict[str, Dict[str, float]] = {
         "n_max_full": 2190,
     },
 }
-
-
-from pytcl.core.paths import get_data_dir  # noqa: E402
 
 
 def parse_egm_file(

@@ -26,6 +26,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.core.exceptions import DependencyError
+from pytcl.core.paths import get_data_dir
 
 from .dem import DEMGrid
 
@@ -155,9 +156,6 @@ class Earth2014Metadata(NamedTuple):
     lat_max: float
     lon_min: float
     lon_max: float
-
-
-from pytcl.core.paths import get_data_dir  # noqa: E402
 
 
 def _find_gebco_file(version: str = "GEBCO2025") -> Path:
