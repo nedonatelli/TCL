@@ -18,4 +18,4 @@ dependencies:
   - plotly>=5.15
   - pip
   - pip:
-    - nrl-tracker
+    - nrl-tracker[astronomy,geodesy,visualization]

@@ -165,35 +165,5 @@ known_first_party = ["pytcl"]
 skip_gitignore = true
 extend_skip = [".eggs", "build", "dist"]
 
-[tool.flake8]
-max-line-length = 100
-extend-ignore = ["E501"]
-per-file-ignores = [
-    "__init__.py:F401",
-    "examples/*.py:F401,F541,F841,E402",
-]
-
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-plugins = ["numpy.typing.mypy_plugin"]
-
-[[tool.mypy.overrides]]
-module = [
-    "scipy.*",
-    "numba.*",
-    "astropy.*",
-    "jplephem.*",
-    "pyproj.*",
-    "geographiclib.*",
-    "plotly.*",
-    "cvxpy.*",
-    "pywt.*",
-    "cupy.*",
-    "mlx.*",
-]
-ignore_missing_imports = true
+# Note: flake8 config lives in .flake8 (flake8 does not read pyproject.toml)
+# Note: mypy config lives in mypy.ini
