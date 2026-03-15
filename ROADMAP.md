@@ -24,9 +24,34 @@
 
 ## Current State
 
-### v1.13.2 - Data Storage Module & Test Framework Enhancement (March 2, 2026)
+### v1.14.0 - Geophysical Data & EMM Enhancements (March 15, 2026)
 
 **Status:** ✅ Released (Current)
+
+**Feature release upgrading terrain and magnetic field model support with performance optimizations.**
+
+**New Features:**
+- **GEBCO 2025**: Default terrain dataset upgraded from GEBCO 2024 to 2025
+- **WMMHR2025**: World Magnetic Model High Resolution (degree 133) support
+- **EMM array inputs**: `emm()` and convenience functions now accept array lat/lon/h
+- **`terrain` extra**: `pip install nrl-tracker[terrain]` for NetCDF support
+- **`storage` extra**: `pip install nrl-tracker[storage]` for HDF5 support
+
+**Refactoring:**
+- Centralized `get_data_dir()` into `pytcl.core.paths` (was duplicated 3x)
+- Vectorized EMM spherical harmonic summation (6-12x speedup)
+- Tightened test skip guards: `FileNotFoundError`/`DependencyError` only
+- Fixed ~30 broken/dead test assertions across terrain, EMM, and lambert tests
+
+**Quality Metrics:**
+- **1,048 functions** across **133 modules**
+- **3,306 tests** passing (0 skipped with all data files installed)
+- **80% code coverage**
+- **100% mypy --strict compliance**
+
+### v1.13.2 - Data Storage Module & Test Framework Enhancement (March 2, 2026)
+
+**Status:** ✅ Released
 
 **Feature release adding data persistence capabilities with HDF5 and SQL backends, completing comprehensive testing infrastructure.**
 
@@ -38,7 +63,7 @@
 - **Test consolidation**: Integrated coverage tests into existing test modules for cleaner organization
 
 **Quality Metrics:**
-- **3,396 tests** passing
+- **3,396 tests** passing (at time of release)
 - **80% code coverage** (18,022 lines analyzed)
 - **100% mypy --strict compliance**
 - **20/20 storage backend tests passing** (new IO module)
@@ -443,7 +468,7 @@ v2.0.0 targets architectural improvements, performance optimization, GPU acceler
 | GPU speedup (particle filters) | 8-15x ✅ | 8-15x |
 | GPU backends | 2 (CuPy + MLX) ✅ | 2 |
 | Data persistence backends | 2 (HDF5 + SQL) ✅ | 2+ |
-| Unit tests | 3,396 ✅ | 2,200+ |
+| Unit tests | 3,306 ✅ | 2,200+ |
 | Test coverage | 80% ✅ | 80%+ |
 | Documentation quality | ~85% | 95%+ |
 
