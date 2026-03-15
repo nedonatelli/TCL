@@ -21,7 +21,16 @@ import numpy as np
 import pytest
 
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
-from pytcl.io import TrackDatabaseManager, TrackDatabaseStatus, TrackHDF5Storage
+from pytcl.io import TrackDatabaseManager, TrackDatabaseStatus
+
+try:
+    from pytcl.io import TrackHDF5Storage
+
+    HAS_H5PY = True
+except ImportError:
+    HAS_H5PY = False
+
+requires_h5py = pytest.mark.skipif(not HAS_H5PY, reason="h5py not installed")
 
 
 # =============================================================================
@@ -93,9 +102,7 @@ def populated_sql_db(tmp_path, track_management_data):
         tid = f"trk_{i:04d}"
         db.initiate_track(tid, d["states"][i, 0], d["covs"][i, 0], 0.0)
         for k in range(1, n_s):
-            db.update_track_state(
-                tid, d["states"][i, k], d["covs"][i, k], float(k)
-            )
+            db.update_track_state(tid, d["states"][i, k], d["covs"][i, k], float(k))
         db.confirm_track(tid)
 
         # Store detections
@@ -319,9 +326,7 @@ class TestSQLQueryLatency:
         """Benchmark listing tracks filtered by status."""
 
         def query():
-            populated_sql_db.retrieve_all_tracks(
-                status=TrackDatabaseStatus.CONFIRMED
-            )
+            populated_sql_db.retrieve_all_tracks(status=TrackDatabaseStatus.CONFIRMED)
 
         benchmark(query)
 
@@ -373,6 +378,7 @@ class TestSQLLifecycle:
 # =============================================================================
 
 
+@requires_h5py
 class TestHDF5WritePerformance:
     """Benchmark HDF5 write operations."""
 
@@ -440,6 +446,7 @@ class TestHDF5WritePerformance:
         benchmark(append)
 
 
+@requires_h5py
 class TestHDF5ReadPerformance:
     """Benchmark HDF5 read/query operations."""
 
@@ -461,9 +468,7 @@ class TestHDF5ReadPerformance:
 
         def query():
             tid = f"trk_{rng.integers(0, 50):04d}"
-            populated_h5_store.get_track_trajectory(
-                tid, start_time=10.0, end_time=30.0
-            )
+            populated_h5_store.get_track_trajectory(tid, start_time=10.0, end_time=30.0)
 
         benchmark(query)
 
@@ -504,6 +509,7 @@ class TestHDF5ReadPerformance:
         benchmark(populated_h5_store.list_tracks)
 
 
+@requires_h5py
 class TestHDF5Compression:
     """Benchmark HDF5 compression ratios."""
 
@@ -561,6 +567,7 @@ class TestHDF5Compression:
 # =============================================================================
 
 
+@requires_h5py
 class TestSQLToHDF5Export:
     """Benchmark SQL → HDF5 export pipeline."""
 
@@ -651,9 +658,7 @@ class TestFilterWithTrackManagement:
     """Benchmark Kalman filter with track management overhead."""
 
     @pytest.mark.light
-    def test_kf_cycle_with_sql_storage(
-        self, benchmark, sql_db, track_management_data
-    ):
+    def test_kf_cycle_with_sql_storage(self, benchmark, sql_db, track_management_data):
         """Benchmark KF predict+update+store cycle (measures overhead)."""
         d = track_management_data
         tid = "trk_kf_bench"
