@@ -452,7 +452,7 @@ Summary Table
 Full Parity Achieved
 --------------------
 
-As of v1.14.0, **all gaps have been closed** (components added in v1.13.2):
+As of v1.13.2 (March 2, 2026), **all gaps have been closed**:
 
 ✅ **NRLMSISE-00 Atmosphere Model (v1.13.2+)**
 
@@ -739,7 +739,7 @@ Recommendations
 
 **Final Verdict:** pytcl achieves **100% feature parity** with the original MATLAB TCL library. All algorithms from basic Kalman filtering to advanced multi-target tracking, constrained estimation, robust H-infinity filtering, and high-fidelity atmospheric modeling are production-ready.
 
-**Verified Completeness (v1.13.2+)**
+**Verified Completeness (v1.13.2)**
 
 All three tier 1-2 "missing" components are fully implemented and tested:
 
