@@ -3,7 +3,7 @@
 ## Project Overview
 
 Python port of the U.S. Naval Research Laboratory's Tracker Component Library (TCL).
-**Version:** 1.14.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
+**Version:** 1.15.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
 
 ## Quick Reference
 
@@ -55,6 +55,6 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 ## Key Decisions
 
-- GEBCO 2025 is the default version (changed from 2024 in v1.14.0)
+- GEBCO 2025 is the default version (changed from 2024 in v1.15.0)
 - EMM/WMMHR functions accept both scalar and array inputs
 - `get_data_dir()` is centralized in `pytcl/core/paths.py` — do not duplicate

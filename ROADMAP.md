@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.14.0 (Released March 15, 2026)
+**Current Version:** v1.15.0 (Released March 15, 2026)
 **Current Test Suite:** 3,306 tests passing, 80% line coverage
 **Production Status:** Feature-complete MATLAB TCL parity achieved, v2.0.0 actively in development
 
@@ -24,7 +24,7 @@
 
 ## Current State
 
-### v1.14.0 - Geophysical Data & EMM Enhancements (March 15, 2026)
+### v1.15.0 - Geophysical Data & EMM Enhancements (March 15, 2026)
 
 **Status:** ✅ Released (Current)
 
@@ -1255,7 +1255,7 @@ Real-world scenario testing with diverse tracking conditions:
 
 **Target:** Phase 8 (May-August 2026)
 
-Ensure new track management layers integrate smoothly with existing v1.14.0 filters:
+Ensure new track management layers integrate smoothly with existing v1.15.0 filters:
 
 **Compatibility Layer** (`pytcl/io/compat.py`):
 - Adapter classes mapping v1.x Kalman filter outputs to TrackDatabaseManager
@@ -1280,7 +1280,7 @@ Ensure new track management layers integrate smoothly with existing v1.14.0 filt
 
 **Target:** Phase 8 (May-August 2026)
 
-Utilities helping users transition tracking pipelines from v1.14.0 to v2.0.0:
+Utilities helping users transition tracking pipelines from v1.15.0 to v2.0.0:
 
 **Migration Toolkit** (`pytcl/io/migration.py`):
 
@@ -1366,7 +1366,7 @@ Production release with all improvements integrated:
 - **Educational:** Track management Jupyter notebook with interactive examples
 - **Performance:** Validated benchmarks (>1000 det/sec, <10ms track updates, 5-10x compression)
 - **Robustness:** 40+ multi-sensor validation scenarios, stress tests
-- **Compatibility:** Full backward compatibility with v1.14.0, seamless filter integration
+- **Compatibility:** Full backward compatibility with v1.15.0, seamless filter integration
 - **Migration:** Tools and guides for v1.x → v2.0.0 transition
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
@@ -1557,7 +1557,7 @@ Each case study: 200-400 lines of code, trained on realistic datasets, benchmark
 
 ## Performance Benchmarking Targets
 
-### Current Benchmarks (v1.14.0)
+### Current Benchmarks (v1.15.0)
 
 | Algorithm | Dataset | Current | Target | Status |
 |-----------|---------|---------|--------|--------|

@@ -1,4 +1,4 @@
-v1.14.0 Release Notes
+v1.15.0 Release Notes
 =====================
 
 Release Date: March 15, 2026
@@ -6,7 +6,7 @@ Release Date: March 15, 2026
 Overview
 --------
 
-**v1.14.0 upgrades geophysical data support and delivers significant performance
+**v1.15.0 upgrades geophysical data support and delivers significant performance
 improvements to the Enhanced Magnetic Model.** This release adds GEBCO 2025 terrain
 data, WMMHR2025 magnetic model support, EMM array input handling, and a 6-12x
 speedup in spherical harmonic evaluation.

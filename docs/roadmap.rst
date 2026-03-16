@@ -5,7 +5,7 @@ This document outlines the development phases for the Tracker Component Library.
 
 For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
 
-Current State (v1.14.0) - Phase 4 Complete: 100% MATLAB Parity Achieved
+Current State (v1.15.0) - Phase 4 Complete: 100% MATLAB Parity Achieved
 -----------------------------------------------------------------------
 
 * **Phase 4 Complete**: 8 comprehensive Jupyter notebooks, 175+ cells, 4-week curricula
@@ -69,7 +69,7 @@ For detailed version history and implementation notes, see `ROADMAP.md <../ROADM
 * v1.10.x (Jan 5, 2026): Phase 6 Test Expansion - 761 new tests (2,894 total)
 * v1.11.0 (Jan 5, 2026): Phase 7 Performance - Numba JIT, lru_cache, sparse assignment
 * v1.13.0 (Feb 25, 2026): Phase 4 Complete - 8 comprehensive Jupyter notebooks (175+ cells)
-* v1.14.0 (Mar 15, 2026): GEBCO 2025 default, WMMHR2025 support, EMM array inputs, terrain extra
+* v1.15.0 (Mar 15, 2026): GEBCO 2025 default, WMMHR2025 support, EMM array inputs, terrain extra
 
 Phase 15 (v1.1.0): Performance Infrastructure ✅
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

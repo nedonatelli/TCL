@@ -12,7 +12,7 @@ The Python port achieves **full feature parity** with the original MATLAB TCL li
 
 **Documentation Status: Phase 3 Complete** ✅
 
-As of v1.14.0, the library includes:
+As of v1.15.0, the library includes:
 
 - **1,048 functions** with comprehensive docstring examples
 - **133 modules** classified by maturity level
@@ -21,7 +21,7 @@ As of v1.14.0, the library includes:
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.14.0 Implementation
+.. list-table:: Python pytcl v1.15.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
