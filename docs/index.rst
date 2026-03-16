@@ -9,7 +9,7 @@ state estimation.
 
 .. note::
 
-   **100% MATLAB Parity Achieved**: Starting with v1.13.2, all tier 1 and tier 2
+   **100% MATLAB Parity Achieved**: Starting with v1.14.0, all tier 1 and tier 2
    missing components are now implemented: NRLMSISE-00 atmosphere model, constrained
    EKF, and Rao-Blackwellized particle filters. GPU acceleration (CuPy + MLX) provides
    10-15x speedup for batch processing. Ready for v2.0.0 release.

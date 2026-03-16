@@ -80,7 +80,7 @@ def setup(app):
 
 def copy_landing_page(app, exception):
     """Copy landing page as index.html and rename Sphinx index to docs.html.
-    
+
     Also replaces placeholders with actual project metadata:
     - @VERSION@ → release version
     - @FUNCTIONS@ → function count
@@ -93,12 +93,12 @@ def copy_landing_page(app, exception):
     import shutil
     import sys
     from pathlib import Path
-    
+
     # Add docs dir to path to import project_metadata
     docs_dir = Path(__file__).parent
     if str(docs_dir) not in sys.path:
         sys.path.insert(0, str(docs_dir))
-    
+
     from project_metadata import get_project_metadata
 
     if exception is not None:
@@ -123,10 +123,10 @@ def copy_landing_page(app, exception):
         # Read landing page content
         with open(landing_src, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # Get all project metadata
         metadata = get_project_metadata()
-        
+
         # Replace all placeholders with actual metadata
         replacements = {
             "@VERSION@": metadata["version"],
@@ -137,10 +137,10 @@ def copy_landing_page(app, exception):
             "@PACKAGE_NAME@": metadata["package_name"],
             "@GITHUB_URL@": metadata["github_url"],
         }
-        
+
         for placeholder, value in replacements.items():
             content = content.replace(placeholder, str(value))
-        
+
         # Write to destination
         with open(sphinx_index, "w", encoding="utf-8") as f:
             f.write(content)

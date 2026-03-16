@@ -1255,7 +1255,7 @@ Real-world scenario testing with diverse tracking conditions:
 
 **Target:** Phase 8 (May-August 2026)
 
-Ensure new track management layers integrate smoothly with existing v1.13.2 filters:
+Ensure new track management layers integrate smoothly with existing v1.14.0 filters:
 
 **Compatibility Layer** (`pytcl/io/compat.py`):
 - Adapter classes mapping v1.x Kalman filter outputs to TrackDatabaseManager
@@ -1280,7 +1280,7 @@ Ensure new track management layers integrate smoothly with existing v1.13.2 filt
 
 **Target:** Phase 8 (May-August 2026)
 
-Utilities helping users transition tracking pipelines from v1.13.2 to v2.0.0:
+Utilities helping users transition tracking pipelines from v1.14.0 to v2.0.0:
 
 **Migration Toolkit** (`pytcl/io/migration.py`):
 
@@ -1366,11 +1366,11 @@ Production release with all improvements integrated:
 - **Educational:** Track management Jupyter notebook with interactive examples
 - **Performance:** Validated benchmarks (>1000 det/sec, <10ms track updates, 5-10x compression)
 - **Robustness:** 40+ multi-sensor validation scenarios, stress tests
-- **Compatibility:** Full backward compatibility with v1.13.2, seamless filter integration
+- **Compatibility:** Full backward compatibility with v1.14.0, seamless filter integration
 - **Migration:** Tools and guides for v1.x → v2.0.0 transition
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
-- **Testing:** 3,396+ tests (80%+ coverage), including legacy scenario validation
+- **Testing:** 3,306+ tests (80%+ coverage), including legacy scenario validation
 - **Performance:** Numba JIT, systematic caching, sparse matrices
 - **Data Persistence:** HDF5 + SQL with track management
 - **Backward Compatibility:** Compatibility layer for v1.x users
@@ -1557,7 +1557,7 @@ Each case study: 200-400 lines of code, trained on realistic datasets, benchmark
 
 ## Performance Benchmarking Targets
 
-### Current Benchmarks (v1.13.2)
+### Current Benchmarks (v1.14.0)
 
 | Algorithm | Dataset | Current | Target | Status |
 |-----------|---------|---------|--------|--------|

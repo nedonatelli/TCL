@@ -8,20 +8,20 @@ This document provides a detailed comparison between the Python port (pytcl) and
 
 **Overall Completeness: 100%** ✅
 
-The Python port achieves **full feature parity** with the original MATLAB TCL library. With **868 functions** across **113 modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and NRLMSISE-00 atmosphere modeling.
+The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,048 functions** across **133 modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and NRLMSISE-00 atmosphere modeling.
 
 **Documentation Status: Phase 3 Complete** ✅
 
-As of v1.13.2, the library includes:
+As of v1.14.0, the library includes:
 
-- **868 functions** with comprehensive docstring examples
-- **113 modules** classified by maturity level (26 STABLE, 43 MATURE, 10 EXPERIMENTAL)
+- **1,048 functions** with comprehensive docstring examples
+- **133 modules** classified by maturity level
 - All module docstrings expanded to include purpose, examples, and references
 
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.13.2 Implementation
+.. list-table:: Python pytcl v1.14.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -452,7 +452,7 @@ Summary Table
 Full Parity Achieved
 --------------------
 
-As of v1.13.2 (March 2, 2026), **all gaps have been closed**:
+As of v1.14.0, **all gaps have been closed** (components added in v1.13.2):
 
 ✅ **NRLMSISE-00 Atmosphere Model (v1.13.2+)**
 
@@ -739,7 +739,7 @@ Recommendations
 
 **Final Verdict:** pytcl achieves **100% feature parity** with the original MATLAB TCL library. All algorithms from basic Kalman filtering to advanced multi-target tracking, constrained estimation, robust H-infinity filtering, and high-fidelity atmospheric modeling are production-ready.
 
-**Verified Completeness (v1.13.2)**
+**Verified Completeness (v1.13.2+)**
 
 All three tier 1-2 "missing" components are fully implemented and tested:
 
@@ -763,7 +763,7 @@ All three tier 1-2 "missing" components are fully implemented and tested:
      - **81 ✅**
      - **Complete with tutorials**
 
-The Python implementation also surpasses the MATLAB original with GPU acceleration (10-15x speedup), 8 interactive Jupyter notebooks, comprehensive documentation with 1600+ lines of new guides, and 3,396 passing tests at 80% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance.
+The Python implementation also surpasses the MATLAB original with GPU acceleration (10-15x speedup), 8 interactive Jupyter notebooks, comprehensive documentation with 1600+ lines of new guides, and 3,306 passing tests at 80% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance.
 
 
 See Also

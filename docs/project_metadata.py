@@ -10,7 +10,6 @@ import re
 from pathlib import Path
 from typing import Dict, Any
 
-
 # Manually maintained statistics that cannot be auto-calculated
 RELEASE_STATS = {
     "matlab_parity": "100",
@@ -27,36 +26,36 @@ PROJECT_INFO = {
 
 def read_pyproject_metadata() -> Dict[str, Any]:
     """Read metadata from pyproject.toml.
-    
+
     Returns
     -------
     dict
         Dictionary containing 'version', 'description', 'name', 'urls'
     """
     pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
-    
+
     metadata = {}
     try:
         with open(pyproject_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # Extract version
         version_match = re.search(r'version\s*=\s*"([^"]+)"', content)
         if version_match:
             metadata["version"] = version_match.group(1)
-        
+
         # Extract name
         name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
         if name_match:
             metadata["name"] = name_match.group(1)
-        
+
         # Extract description
         desc_match = re.search(r'description\s*=\s*"([^"]+)"', content)
         if desc_match:
             metadata["description"] = desc_match.group(1)
     except Exception as e:
         print(f"Warning: Could not read pyproject.toml: {e}")
-    
+
     return metadata
 
 
@@ -89,7 +88,7 @@ def count_public_functions() -> int:
 
 def count_python_modules() -> int:
     """Count Python modules in pytcl package.
-    
+
     Returns
     -------
     int
@@ -98,7 +97,7 @@ def count_python_modules() -> int:
     pytcl_path = Path(__file__).parent.parent / "pytcl"
     if not pytcl_path.exists():
         return 0
-    
+
     # Count .py files recursively
     count = len(list(pytcl_path.rglob("*.py")))
     return count
@@ -106,7 +105,7 @@ def count_python_modules() -> int:
 
 def count_test_functions() -> int:
     """Count test functions in tests directory.
-    
+
     Returns
     -------
     int
@@ -115,7 +114,7 @@ def count_test_functions() -> int:
     tests_path = Path(__file__).parent.parent / "tests"
     if not tests_path.exists():
         return 0
-    
+
     count = 0
     for test_file in tests_path.rglob("test_*.py"):
         try:
@@ -126,13 +125,13 @@ def count_test_functions() -> int:
             count += len(matches)
         except Exception:
             pass
-    
+
     return count
 
 
 def get_project_metadata() -> Dict[str, str]:
     """Get all project metadata for landing page injection.
-    
+
     Returns
     -------
     dict
@@ -147,30 +146,27 @@ def get_project_metadata() -> Dict[str, str]:
         - coverage: Code coverage percentage
     """
     pyproject = read_pyproject_metadata()
-    
+
     metadata = {
         # From pyproject.toml
         "version": pyproject.get("version", "0.0.0"),
         "package_name": pyproject.get("name", PROJECT_INFO["package_name"]),
         "description": pyproject.get(
             "description",
-            "Python port of the U.S. Naval Research Laboratory's Tracker Component Library"
+            "Python port of the U.S. Naval Research Laboratory's Tracker Component Library",
         ),
-        
         # From PROJECT_INFO
         "github_url": PROJECT_INFO["github_url"],
         "organization": PROJECT_INFO["organization"],
-        
         # Auto-calculated statistics
         "functions": f"{count_public_functions():,}",
         "modules": f"{count_python_modules():,}",
         "tests": f"{count_test_functions():,}",
-
         # Manually maintained statistics
         "matlab_parity": RELEASE_STATS["matlab_parity"],
         "coverage": RELEASE_STATS["coverage"],
     }
-    
+
     return metadata
 
 
