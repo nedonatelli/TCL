@@ -335,7 +335,7 @@ def axisangle2rotmat(
     s = np.sin(angle)
     t = 1 - c
 
-    x, y, z = axis
+    x, y, z = float(axis[0]), float(axis[1]), float(axis[2])
 
     R = np.array(
         [
@@ -424,7 +424,7 @@ def quat2rotmat(q: ArrayLike) -> NDArray[np.floating]:
     q = np.asarray(q, dtype=np.float64)
     q = q / np.linalg.norm(q)
 
-    qw, qx, qy, qz = q
+    qw, qx, qy, qz = (float(q[0]), float(q[1]), float(q[2]), float(q[3]))
 
     R = np.array(
         [

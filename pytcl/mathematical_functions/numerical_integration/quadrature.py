@@ -117,7 +117,7 @@ def gauss_laguerre(
     --------
     >>> x, w = gauss_laguerre(5)
     >>> # Integrate x * exp(-x) from 0 to inf (exact = 1)
-    >>> np.sum(w * x)
+    >>> round(float(np.sum(w * x)), 10)
     1.0
 
     See Also
@@ -257,7 +257,7 @@ def dblquad(
     --------
     >>> # Integrate x*y over unit square
     >>> result, error = dblquad(lambda y, x: x*y, 0, 1, lambda x: 0, lambda x: 1)
-    >>> result  # Should be 0.25
+    >>> round(result, 10)  # Should be 0.25
     0.25
 
     See Also

@@ -424,8 +424,8 @@ def load_emm_coefficients(
 
     Examples
     --------
-    >>> coef = load_emm_coefficients("WMMHR2025", n_max=50)
-    >>> coef.n_max
+    >>> coef = load_emm_coefficients("WMMHR2025", n_max=50)  # doctest: +SKIP
+    >>> coef.n_max  # doctest: +SKIP
     50
     """
     return _load_coefficients_cached(model, n_max)

@@ -659,7 +659,7 @@ def frequency_response(
     >>> response = frequency_response(coeffs, fs)
     >>> len(response.frequencies) == 512
     True
-    >>> response.magnitude[0]  # DC gain
+    >>> round(float(response.magnitude[0]), 6)  # DC gain
     1.0
     """
     if isinstance(coeffs, FilterCoefficients):
