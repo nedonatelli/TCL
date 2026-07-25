@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.15.0 (Released March 15, 2026)
+**Current Version:** v1.15.1 (Released July 25, 2026)
 **Test Suite:** 3,306 tests passing, 80% line coverage, 100% mypy --strict compliance
 **Status:** Feature-complete MATLAB TCL parity achieved. All v2.0.0 development phases (1-8)
 are complete; remaining work is release preparation (Phase 9).
