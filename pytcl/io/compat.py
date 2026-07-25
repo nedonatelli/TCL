@@ -9,16 +9,16 @@ Examples
 Wrap a Kalman filter loop with SQL persistence:
 
 >>> from pytcl.io.compat import KalmanTrackAdapter
->>> adapter = KalmanTrackAdapter(db, "trk_001", F, H, Q, R)
->>> adapter.initialize(x0, P0, timestamp=0.0)
->>> for k, z in enumerate(measurements):
+>>> adapter = KalmanTrackAdapter(db, "trk_001", F, H, Q, R)  # doctest: +SKIP
+>>> adapter.initialize(x0, P0, timestamp=0.0)  # doctest: +SKIP
+>>> for k, z in enumerate(measurements):  # doctest: +SKIP
 ...     adapter.predict_update(z, timestamp=float(k + 1))
 
 Use with MultiTargetTracker:
 
 >>> from pytcl.io.compat import TrackerDatabaseAdapter
->>> adapter = TrackerDatabaseAdapter(db, tracker)
->>> for k, measurements in enumerate(scans):
+>>> adapter = TrackerDatabaseAdapter(db, tracker)  # doctest: +SKIP
+>>> for k, measurements in enumerate(scans):  # doctest: +SKIP
 ...     adapter.process_scan(measurements, dt=1.0, timestamp=float(k))
 """
 
@@ -53,10 +53,10 @@ class KalmanTrackAdapter:
 
     Examples
     --------
-    >>> adapter = KalmanTrackAdapter(db, "trk_001", F, H, Q, R)
-    >>> adapter.initialize(x0, P0, timestamp=0.0)
-    >>> adapter.predict(dt=1.0, timestamp=1.0)
-    >>> adapter.update(z, timestamp=1.0)
+    >>> adapter = KalmanTrackAdapter(db, "trk_001", F, H, Q, R)  # doctest: +SKIP
+    >>> adapter.initialize(x0, P0, timestamp=0.0)  # doctest: +SKIP
+    >>> adapter.predict(dt=1.0, timestamp=1.0)  # doctest: +SKIP
+    >>> adapter.update(z, timestamp=1.0)  # doctest: +SKIP
     """
 
     def __init__(
@@ -466,8 +466,8 @@ class TrackerDatabaseAdapter:
 
     Examples
     --------
-    >>> adapter = TrackerDatabaseAdapter(db, tracker)
-    >>> for k, meas in enumerate(scans):
+    >>> adapter = TrackerDatabaseAdapter(db, tracker)  # doctest: +SKIP
+    >>> for k, meas in enumerate(scans):  # doctest: +SKIP
     ...     tracks = adapter.process_scan(meas, dt=1.0, timestamp=float(k))
     """
 

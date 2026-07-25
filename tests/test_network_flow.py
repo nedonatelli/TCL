@@ -489,6 +489,24 @@ class TestNetworkFlowIntegration:
             workers = assignment[:, 0]
             assert len(np.unique(workers)) == len(workers)
 
+    def test_flows_nonnegative_and_cost_optimal(self):
+        """Reverse arcs must only cancel existing flow (regression).
+
+        The relaxation previously treated zero-flow reverse arcs as
+        traversable at negative cost, producing negative flows and
+        cost -7.0 on this matrix instead of the optimal 3.0.
+        """
+        from scipy.optimize import linear_sum_assignment
+
+        cost_matrix = np.array([[1.0, 5.0], [4.0, 2.0]])
+        edges, supplies, _ = assignment_to_flow_network(cost_matrix)
+        result = min_cost_flow_successive_shortest_paths(edges, supplies)
+
+        assert result.status == FlowStatus.OPTIMAL
+        assert np.all(np.asarray(result.flow) >= -1e-9)
+        rows, cols = linear_sum_assignment(cost_matrix)
+        assert result.cost == pytest.approx(cost_matrix[rows, cols].sum())
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

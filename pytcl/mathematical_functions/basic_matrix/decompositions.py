@@ -77,13 +77,12 @@ def chol_semi_def(
     sqrt_eig = np.sqrt(eigenvalues)
     factor = eigenvectors @ np.diag(sqrt_eig)
 
-    # Convert to triangular form via QR
+    # Convert to triangular form: factor.T = Q R gives
+    # A = factor @ factor.T = R.T @ R, so R is the upper factor
+    Q, R = la.qr(factor.T)
     if upper:
-        Q, R = la.qr(factor.T)
         return R
-    else:
-        Q, R = la.qr(factor)
-        return R.T
+    return R.T
 
 
 def tria(A: ArrayLike) -> NDArray[np.floating]:

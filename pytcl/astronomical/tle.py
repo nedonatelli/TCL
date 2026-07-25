@@ -255,10 +255,11 @@ def parse_tle(
 
     Examples
     --------
-    >>> line1 = "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9993"
-    >>> line2 = "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479001"
+    >>> line1 = "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997"
+    >>> line2 = "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003"
     >>> tle = parse_tle(line1, line2, name="ISS (ZARYA)")
     >>> print(f"Inclination: {np.degrees(tle.inclination):.4f} deg")
+    Inclination: 51.6400 deg
     """
     # Validate line lengths
     line1 = line1.rstrip()
@@ -370,8 +371,8 @@ def parse_tle_3line(lines: str) -> TLE:
     Examples
     --------
     >>> tle_text = '''ISS (ZARYA)
-    ... 1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9993
-    ... 2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479001'''
+    ... 1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997
+    ... 2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003'''
     >>> tle = parse_tle_3line(tle_text)
     >>> print(tle.name)
     ISS (ZARYA)
@@ -403,8 +404,12 @@ def tle_epoch_to_jd(tle: TLE) -> float:
 
     Examples
     --------
+    >>> line1 = "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997"
+    >>> line2 = "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003"
     >>> tle = parse_tle(line1, line2)
     >>> jd = tle_epoch_to_jd(tle)
+    >>> print(f"{jd:.1f}")  # 2024 January 1.5
+    2460311.0
     """
     # Start of year
     year = tle.epoch_year

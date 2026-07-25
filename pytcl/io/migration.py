@@ -10,12 +10,12 @@ Analyze a legacy tracking script:
 
 >>> from pytcl.io.migration import MigrationHelper
 >>> helper = MigrationHelper()
->>> analysis = helper.analyze_v1_code("legacy_tracker.py")
->>> print(analysis["recommendations"])
+>>> analysis = helper.analyze_v1_code("legacy_tracker.py")  # doctest: +SKIP
+>>> print(analysis.recommendations)  # doctest: +SKIP
 
 Convert legacy pickle tracks to SQL:
 
->>> helper.convert_legacy_tracks_to_sql(
+>>> helper.convert_legacy_tracks_to_sql(  # doctest: +SKIP
 ...     legacy_data={"trk_0": {"states": states, "times": times}},
 ...     output_db="new_tracks.db",
 ... )
@@ -23,7 +23,7 @@ Convert legacy pickle tracks to SQL:
 Generate a v2.0.0 template:
 
 >>> template = helper.generate_v2_template(backend="sql")
->>> print(template)
+>>> print(template)  # doctest: +SKIP
 """
 
 import os
@@ -87,8 +87,8 @@ class MigrationHelper:
     Examples
     --------
     >>> helper = MigrationHelper()
-    >>> result = helper.analyze_v1_code("my_tracker.py")
-    >>> print(result.summary())
+    >>> result = helper.analyze_v1_code("my_tracker.py")  # doctest: +SKIP
+    >>> print(result.summary())  # doctest: +SKIP
     """
 
     # Patterns for detecting filter usage

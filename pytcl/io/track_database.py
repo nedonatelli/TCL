@@ -39,14 +39,19 @@ class TrackDatabaseManager:
 
     Examples
     --------
+    >>> import os
+    >>> import tempfile
     >>> from pytcl.io import TrackDatabaseManager
-    >>> with TrackDatabaseManager("tracking.db") as db:
+    >>> tmpdir = tempfile.TemporaryDirectory()
+    >>> path = os.path.join(tmpdir.name, "tracking.db")
+    >>> with TrackDatabaseManager(path) as db:
     ...     db.open(mode="w")
     ...     db.store_detection("det_001", np.array([1.0, 2.0]), "radar", 0.0)
     ...     db.initiate_track("trk_001", np.array([1, 2, 0, 0]),
     ...                       np.eye(4), 0.0)
     ...     db.update_track_state("trk_001", np.array([1.1, 2.1, 0, 0]),
     ...                           np.eye(4) * 0.9, 1.0)
+    >>> tmpdir.cleanup()
     """
 
     def __init__(self, path: str) -> None:

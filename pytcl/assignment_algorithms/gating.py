@@ -160,10 +160,10 @@ def chi2_gate_threshold(
 
     Examples
     --------
-    >>> chi2_gate_threshold(0.99, 2)  # 2D measurement, 99% probability
-    9.210340371976184
-    >>> chi2_gate_threshold(0.99, 3)  # 3D measurement, 99% probability
-    11.344866730144373
+    >>> round(chi2_gate_threshold(0.99, 2), 6)  # 2D measurement, 99% probability
+    9.21034
+    >>> round(chi2_gate_threshold(0.99, 3), 6)  # 3D measurement, 99% probability
+    11.344867
     """
     return float(chi2.ppf(probability, df=num_dimensions))
 

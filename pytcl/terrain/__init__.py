@@ -30,11 +30,13 @@ Examples
 ...     lat_max=np.radians(36.0),
 ...     lon_min=np.radians(-120.0),
 ...     lon_max=np.radians(-119.0),
-...     amplitude=500.0
+...     amplitude=500.0,
+...     seed=42
 ... )
 >>> # Query elevation
 >>> point = dem.get_elevation(np.radians(35.5), np.radians(-119.5))
 >>> print(f"Elevation: {point.elevation:.1f} m")
+Elevation: 180.2 m
 
 >>> # Check line of sight
 >>> from pytcl.terrain import line_of_sight
@@ -44,6 +46,7 @@ Examples
 ...     tgt_lat=np.radians(35.8), tgt_lon=np.radians(-119.2), tgt_height=10.0
 ... )
 >>> print(f"Visible: {los.visible}, Clearance: {los.clearance:.1f} m")
+Visible: False, Clearance: -101.1 m
 
 >>> # Load GEBCO/Earth2014 data (requires external files)
 >>> from pytcl.terrain import load_gebco, load_earth2014, create_test_gebco_dem

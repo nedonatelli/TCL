@@ -37,8 +37,8 @@ def gauss_legendre(
     --------
     >>> x, w = gauss_legendre(5)
     >>> # Integrate x^2 from -1 to 1 (exact = 2/3)
-    >>> np.sum(w * x**2)
-    0.6666666666666666
+    >>> round(float(np.sum(w * x**2)), 6)
+    0.666667
 
     See Also
     --------
@@ -207,8 +207,8 @@ def quad(
     Examples
     --------
     >>> result, error = quad(lambda x: x**2, 0, 1)
-    >>> result
-    0.33333333333333337
+    >>> round(result, 6)
+    0.333333
 
     See Also
     --------
@@ -361,8 +361,8 @@ def fixed_quad(
     Examples
     --------
     >>> result, _ = fixed_quad(lambda x: x**2, 0, 1, n=5)
-    >>> result
-    0.3333333333333333
+    >>> round(result, 6)
+    0.333333
 
     See Also
     --------
@@ -607,7 +607,7 @@ def spherical_cubature(
     (6, 3)
     >>> weights.shape
     (6,)
-    >>> np.sum(weights)  # Weights sum to 1
+    >>> round(float(np.sum(weights)), 6)  # Weights sum to 1
     1.0
     """
     # Points at ±√n along each axis

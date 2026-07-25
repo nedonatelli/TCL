@@ -33,10 +33,10 @@ def ellipk(m: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> ellipk(0)  # K(0) = π/2
-    1.5707963267948966
-    >>> ellipk(0.5)
-    1.8540746773013719
+    >>> round(float(ellipk(0)), 6)  # K(0) = π/2
+    1.570796
+    >>> round(float(ellipk(0.5)), 6)
+    1.854075
 
     See Also
     --------
@@ -63,8 +63,8 @@ def ellipkm1(p: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> ellipkm1(0.1)  # K(0.9)
-    2.578...
+    >>> round(float(ellipkm1(0.1)), 6)  # K(0.9)
+    2.578092
 
     See Also
     --------
@@ -92,9 +92,9 @@ def ellipe(m: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> ellipe(0)  # E(0) = π/2
-    1.5707963267948966
-    >>> ellipe(1)  # E(1) = 1
+    >>> round(float(ellipe(0)), 6)  # E(0) = π/2
+    1.570796
+    >>> float(ellipe(1))  # E(1) = 1
     1.0
 
     See Also
@@ -125,8 +125,8 @@ def ellipeinc(phi: ArrayLike, m: ArrayLike) -> NDArray[np.floating]:
     Examples
     --------
     >>> import numpy as np
-    >>> ellipeinc(np.pi/2, 0)  # Same as ellipe(0) = π/2
-    1.5707...
+    >>> round(float(ellipeinc(np.pi/2, 0)), 6)  # Same as ellipe(0) = π/2
+    1.570796
 
     See Also
     --------
@@ -156,8 +156,8 @@ def ellipkinc(phi: ArrayLike, m: ArrayLike) -> NDArray[np.floating]:
     Examples
     --------
     >>> import numpy as np
-    >>> ellipkinc(np.pi/2, 0)  # Same as ellipk(0) = π/2
-    1.5707...
+    >>> round(float(ellipkinc(np.pi/2, 0)), 6)  # Same as ellipk(0) = π/2
+    1.570796
 
     See Also
     --------
@@ -189,8 +189,8 @@ def elliprd(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> elliprd(1, 2, 3)
-    0.297...
+    >>> round(float(elliprd(1, 2, 3)), 6)
+    0.29046
 
     See Also
     --------
@@ -228,7 +228,7 @@ def elliprf(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> elliprf(1, 1, 1)  # R_F(a, a, a) = 1/sqrt(a)
+    >>> float(elliprf(1, 1, 1))  # R_F(a, a, a) = 1/sqrt(a)
     1.0
 
     See Also
@@ -265,7 +265,7 @@ def elliprg(x: ArrayLike, y: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> elliprg(1, 1, 1)  # R_G(a, a, a) = sqrt(a)
+    >>> float(elliprg(1, 1, 1))  # R_G(a, a, a) = sqrt(a)
     1.0
 
     See Also
@@ -306,8 +306,8 @@ def elliprj(
 
     Examples
     --------
-    >>> elliprj(1, 2, 3, 4)
-    0.213...
+    >>> round(float(elliprj(1, 2, 3, 4)), 6)
+    0.239848
 
     See Also
     --------
@@ -341,7 +341,7 @@ def elliprc(x: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> elliprc(1, 1)  # R_C(a, a) = 1/sqrt(a)
+    >>> float(elliprc(1, 1))  # R_C(a, a) = 1/sqrt(a)
     1.0
 
     See Also

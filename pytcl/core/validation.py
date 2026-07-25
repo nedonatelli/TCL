@@ -779,11 +779,17 @@ def check_compatible_shapes(
 
     Examples
     --------
+    Incompatible sizes along a specific dimension raise:
+
     >>> check_compatible_shapes((3, 4), (4, 5), names=["A", "B"], dimension=0)
-    # Raises: A has 3 rows but B has 4 rows
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ValidationError: Arrays have incompatible sizes along dimension 0: A=3, B=4
+
+    Without a dimension constraint this passes (inner dimensions are
+    compatible for matrix multiply):
 
     >>> check_compatible_shapes((3, 4), (4, 5), names=["A", "B"])
-    # Passes (inner dimensions compatible for matrix multiply)
     """
     if len(shapes) < 2:
         return

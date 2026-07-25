@@ -303,7 +303,9 @@ def min_cost_flow_successive_shortest_paths(
 
             # Relax edges from u
             for v, eidx, is_rev, cost in graph[u]:
-                if residual_capacity[eidx] > 1e-10:
+                # A reverse arc can only cancel flow already on the edge
+                available = flow[eidx] if is_rev else residual_capacity[eidx]
+                if available > 1e-10:
                     # Compute reduced cost
                     reduced_cost = cost + potential[u] - potential[v]
                     new_dist = dist[u] + reduced_cost
@@ -349,8 +351,11 @@ def min_cost_flow_successive_shortest_paths(
         path_edges.reverse()
         path_reverse_flags.reverse()
 
-        # Find bottleneck capacity
-        min_flow = min(residual_capacity[e] for e in path_edges)
+        # Find bottleneck capacity (reverse arcs are limited by cancelable flow)
+        min_flow = min(
+            flow[e] if is_rev else residual_capacity[e]
+            for e, is_rev in zip(path_edges, path_reverse_flags)
+        )
         min_flow = min(
             min_flow,
             current_supplies[excess_node],

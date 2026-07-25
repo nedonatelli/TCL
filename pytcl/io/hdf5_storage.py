@@ -30,7 +30,7 @@ class HDF5Storage(StorageBackend):
     Examples
     --------
     >>> from pytcl.io import HDF5Storage
-    >>> with HDF5Storage() as store:
+    >>> with HDF5Storage() as store:  # doctest: +SKIP
     ...     store.open("data.h5", mode="w")
     ...     store.store_array("gravity/egm96", coefficients)
     ...     store.store_scalar("header/version", 1)

@@ -532,11 +532,13 @@ def meshgrid_ij(
     >>> y = np.array([4, 5])
     >>> X, Y = meshgrid_ij(x, y)
     >>> X
-    array([[1, 2, 3],
-           [1, 2, 3]])
+    array([[1, 1],
+           [2, 2],
+           [3, 3]])
     >>> Y
-    array([[4, 4, 4],
-           [5, 5, 5]])
+    array([[4, 5],
+           [4, 5],
+           [4, 5]])
     """
     return np.meshgrid(*xi, indexing=indexing)
 

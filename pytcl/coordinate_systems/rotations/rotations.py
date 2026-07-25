@@ -114,8 +114,8 @@ def rotx(angle: float) -> NDArray[np.floating]:
     Examples
     --------
     >>> R = rotx(np.pi/2)  # 90 degree rotation about x
-    >>> R @ [0, 1, 0]  # y-axis maps to z-axis
-    array([0., 0., 1.])
+    >>> bool(np.allclose(R @ [0, 1, 0], [0, 0, 1]))  # y-axis maps to z-axis
+    True
     """
     c = np.cos(angle)
     s = np.sin(angle)
@@ -139,8 +139,8 @@ def roty(angle: float) -> NDArray[np.floating]:
     Examples
     --------
     >>> R = roty(np.pi/2)  # 90 degree rotation about y
-    >>> R @ [1, 0, 0]  # x-axis maps to -z-axis
-    array([ 0.,  0., -1.])
+    >>> bool(np.allclose(R @ [1, 0, 0], [0, 0, -1]))  # x-axis maps to -z-axis
+    True
     """
     c = np.cos(angle)
     s = np.sin(angle)
@@ -164,8 +164,8 @@ def rotz(angle: float) -> NDArray[np.floating]:
     Examples
     --------
     >>> R = rotz(np.pi/2)  # 90 degree rotation about z
-    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
-    array([0., 1., 0.])
+    >>> bool(np.allclose(R @ [1, 0, 0], [0, 1, 0]))  # x-axis maps to y-axis
+    True
     """
     c = np.cos(angle)
     s = np.sin(angle)
@@ -321,8 +321,8 @@ def axisangle2rotmat(
     --------
     >>> axis = [0, 0, 1]  # Z-axis
     >>> R = axisangle2rotmat(axis, np.pi/2)  # 90 deg about Z
-    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
-    array([0., 1., 0.])
+    >>> bool(np.allclose(R @ [1, 0, 0], [0, 1, 0]))  # x-axis maps to y-axis
+    True
 
     Notes
     -----
@@ -704,8 +704,8 @@ def quat_rotate(q: ArrayLike, v: ArrayLike) -> NDArray[np.floating]:
     >>> q = euler2quat(np.radians([90, 0, 0]), 'ZYX')
     >>> v = np.array([1.0, 0.0, 0.0])
     >>> v_rot = quat_rotate(q, v)
-    >>> v_rot  # x-axis becomes y-axis
-    array([0., 1., 0.])
+    >>> bool(np.allclose(v_rot, [0, 1, 0]))  # x-axis becomes y-axis
+    True
 
     Notes
     -----
@@ -795,8 +795,8 @@ def rodrigues2rotmat(rvec: ArrayLike) -> NDArray[np.floating]:
     --------
     >>> rvec = [0, 0, np.pi/2]  # 90 deg about Z
     >>> R = rodrigues2rotmat(rvec)
-    >>> R @ [1, 0, 0]  # x-axis maps to y-axis
-    array([0., 1., 0.])
+    >>> bool(np.allclose(R @ [1, 0, 0], [0, 1, 0]))  # x-axis maps to y-axis
+    True
 
     Notes
     -----

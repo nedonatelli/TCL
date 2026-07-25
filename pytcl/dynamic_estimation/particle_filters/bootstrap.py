@@ -282,8 +282,8 @@ def bootstrap_pf_predict(
     >>> pred.shape
     (50, 2)
     >>> # Positions moved forward by ~0.1
-    >>> np.mean(pred[:, 0])  # doctest: +ELLIPSIS
-    0.1...
+    >>> float(np.round(np.mean(pred[:, 0]), 2))
+    0.1
     """
     if rng is None:
         rng = np.random.default_rng()

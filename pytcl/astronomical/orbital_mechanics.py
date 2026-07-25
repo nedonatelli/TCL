@@ -105,6 +105,7 @@ def mean_to_eccentric_anomaly(
     >>> import numpy as np
     >>> E = mean_to_eccentric_anomaly(np.pi/4, 0.5)
     >>> print(f"E = {np.degrees(E):.4f} degrees")
+    E = 72.2903 degrees
     """
     if e < 0 or e >= 1:
         raise ValueError(f"Eccentricity must be in [0, 1) for elliptic orbits, got {e}")
@@ -389,7 +390,8 @@ def orbital_elements_to_state(
     --------
     >>> elements = OrbitalElements(a=7000, e=0.01, i=0.5, raan=0, omega=0, nu=0)
     >>> state = orbital_elements_to_state(elements)
-    >>> print(f"r = {state.r}")
+    >>> print(f"r = {state.r}")  # Perigee radius a*(1-e) = 6930 km along x
+    r = [6930.    0.    0.]
     """
     a, e, i, raan, omega, nu = elements
 

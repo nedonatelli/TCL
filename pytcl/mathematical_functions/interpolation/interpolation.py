@@ -110,7 +110,7 @@ def linear_interp(
 
     Examples
     --------
-    >>> linear_interp(2.5, [1, 2, 3], [1, 4, 9])
+    >>> float(linear_interp(2.5, [1, 2, 3], [1, 4, 9]))
     6.5
 
     See Also
@@ -151,8 +151,8 @@ def cubic_spline(
     >>> x = np.linspace(0, 2*np.pi, 10)
     >>> y = np.sin(x)
     >>> cs = cubic_spline(x, y)
-    >>> cs(np.pi/2)
-    array(0.99999...)
+    >>> round(float(cs(np.pi/2)), 6)
+    0.999912
 
     See Also
     --------
@@ -495,20 +495,13 @@ def krogh(
     --------
     >>> import numpy as np
     >>> from pytcl.mathematical_functions.interpolation import krogh
-    >>> # Hermite interpolation with function values and derivatives
-    >>> x = np.array([0, 1, 2])
-    >>> # For Hermite interpolation, y rows are: function values, then derivatives
-    >>> y = np.array([
-    ...     [1, 2, 3],      # Function values at x=0, 1, 2
-    ...     [0, 1, 2],      # Derivatives at x=0, 1, 2
-    ... ])
+    >>> # Hermite interpolation: repeat a sample point to specify its derivative
+    >>> x = np.array([0.0, 0.0, 1.0, 1.0])
+    >>> y = np.array([1.0, 0.0, 2.0, 1.0])  # f(0)=1, f'(0)=0, f(1)=2, f'(1)=1
     >>> k = krogh(x, y)
-    >>> # Evaluate interpolant at new points
-    >>> x_new = np.array([0.5, 1.5])
-    >>> y_interp = k(x_new)
-    >>> # Interpolant passes through original points and matches derivatives
-    >>> np.allclose(k(x), y[0])
-    True
+    >>> # Interpolant passes through the specified function values
+    >>> float(k(0.0)), float(k(1.0))
+    (1.0, 2.0)
 
     See Also
     --------

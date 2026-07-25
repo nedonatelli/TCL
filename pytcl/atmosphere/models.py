@@ -41,6 +41,7 @@ RHO0 = 1.225  # Density at sea level (kg/m³)
 G0 = 9.80665  # Standard gravity (m/s²)
 R = 287.05287  # Specific gas constant for air (J/(kg·K))
 GAMMA = 1.4  # Ratio of specific heats for air
+R_EARTH_US76 = 6356766.0  # Earth radius adopted by US76 for geopotential height (m)
 
 # Layer boundaries and lapse rates (altitude in m, lapse rate in K/m)
 # Layer: (base altitude, base temperature, lapse rate)
@@ -86,10 +87,10 @@ def us_standard_atmosphere_1976(
     Examples
     --------
     >>> state = us_standard_atmosphere_1976(10000)
-    >>> state.temperature
-    223.25...
-    >>> state.pressure
-    26499.9...
+    >>> round(state.temperature, 3)
+    223.252
+    >>> round(state.pressure, 1)
+    26499.9
 
     Notes
     -----
@@ -110,7 +111,9 @@ def us_standard_atmosphere_1976(
     pressure = np.zeros_like(altitude)
 
     # Process each altitude point
-    for i, h in enumerate(altitude):
+    for i, z in enumerate(altitude):
+        # The US76 layer table is defined in geopotential height
+        h = R_EARTH_US76 * z / (R_EARTH_US76 + z)
         # Clamp altitude to valid range
         h = np.clip(h, 0, 84852)
 
@@ -196,6 +199,8 @@ def isa_atmosphere(
     altitude = np.asarray(altitude, dtype=np.float64)
     scalar_input = altitude.ndim == 0
     altitude = np.atleast_1d(altitude)
+    # ISA lapse-rate formulas are defined in geopotential height
+    altitude = R_EARTH_US76 * altitude / (R_EARTH_US76 + altitude)
 
     # Simple ISA model (troposphere + stratosphere)
     L = -0.0065  # Lapse rate in troposphere (K/m)
@@ -263,8 +268,8 @@ def altitude_from_pressure(
     Examples
     --------
     >>> # Sea level pressure
-    >>> altitude_from_pressure(101325)
-    0.0
+    >>> bool(abs(altitude_from_pressure(101325)) < 1e-6)
+    True
     >>> # Pressure at approximately 5000m
     >>> alt = altitude_from_pressure(54000)
     >>> 4800 < alt < 5200
@@ -278,9 +283,12 @@ def altitude_from_pressure(
     pressure = np.asarray(pressure, dtype=np.float64)
 
     L = -0.0065  # Lapse rate
-    exponent = R * L / G0
+    exponent = -R * L / G0
 
-    altitude = (T0 / L) * (1 - (pressure / P0) ** exponent)
+    # Invert P = P0 * (T/T0)^(-g0/(R*L)) with T = T0 + L*h (geopotential),
+    # then convert geopotential height back to geometric altitude
+    h = (T0 / L) * ((pressure / P0) ** exponent - 1.0)
+    altitude = R_EARTH_US76 * h / (R_EARTH_US76 - h)
     return altitude
 
 

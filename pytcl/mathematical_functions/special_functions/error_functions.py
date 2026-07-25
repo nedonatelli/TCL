@@ -39,10 +39,10 @@ def erf(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erf(0)
+    >>> float(erf(0))
     0.0
-    >>> erf(1)
-    0.8427007929497149
+    >>> round(float(erf(1)), 6)
+    0.842701
 
     See Also
     --------
@@ -74,10 +74,10 @@ def erfc(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erfc(0)
+    >>> float(erfc(0))
     1.0
-    >>> erfc(3)  # Very small
-    2.2090496998585438e-05
+    >>> round(float(erfc(3)), 10)  # Very small
+    2.20905e-05
 
     See Also
     --------
@@ -109,10 +109,10 @@ def erfcx(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erfcx(0)
+    >>> float(erfcx(0))
     1.0
-    >>> erfcx(10)  # Remains finite even when erfc(10) underflows
-    0.056...
+    >>> round(float(erfcx(10)), 6)  # Remains finite even when erfc(10) underflows
+    0.056141
 
     See Also
     --------
@@ -139,10 +139,10 @@ def erfi(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erfi(0)
+    >>> float(erfi(0))
     0.0
-    >>> erfi(1)
-    1.650...
+    >>> round(float(erfi(1)), 6)
+    1.650426
 
     See Also
     --------
@@ -169,9 +169,9 @@ def erfinv(y: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erfinv(0)
+    >>> float(erfinv(0))
     0.0
-    >>> erf(erfinv(0.5))
+    >>> round(float(erf(erfinv(0.5))), 6)
     0.5
 
     See Also
@@ -199,9 +199,9 @@ def erfcinv(y: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> erfcinv(1)
+    >>> abs(float(erfcinv(1)))
     0.0
-    >>> erfc(erfcinv(0.5))
+    >>> round(float(erfc(erfcinv(0.5))), 6)
     0.5
 
     See Also
@@ -234,10 +234,10 @@ def dawsn(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> dawsn(0)
+    >>> float(dawsn(0))
     0.0
-    >>> dawsn(1)
-    0.538...
+    >>> round(float(dawsn(1)), 6)
+    0.53808
 
     See Also
     --------
@@ -269,10 +269,10 @@ def fresnel(x: ArrayLike) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
     Examples
     --------
     >>> S, C = fresnel(1)
-    >>> S
-    0.438...
-    >>> C
-    0.779...
+    >>> round(float(S), 6)
+    0.438259
+    >>> round(float(C), 6)
+    0.779893
 
     See Also
     --------
@@ -305,9 +305,9 @@ def wofz(z: ArrayLike) -> NDArray[np.complexfloating]:
     Examples
     --------
     >>> w = wofz(0)
-    >>> w.real
+    >>> float(w.real)
     1.0
-    >>> w.imag
+    >>> float(w.imag)
     0.0
 
     See Also
@@ -340,8 +340,8 @@ def voigt_profile(x: ArrayLike, sigma: float, gamma: float) -> NDArray[np.floati
 
     Examples
     --------
-    >>> voigt_profile(0, 1, 0)  # Pure Gaussian at x=0
-    0.398...
+    >>> round(float(voigt_profile(0, 1, 0)), 6)  # Pure Gaussian at x=0
+    0.398942
 
     See Also
     --------

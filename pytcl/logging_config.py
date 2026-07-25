@@ -9,15 +9,15 @@ Provides:
 
 Usage
 -----
->>> from pytcl.logging_config import get_logger, timed, TimingContext
->>> logger = get_logger(__name__)
->>> logger.debug("Processing measurement batch")
+>>> from pytcl.logging_config import get_logger, timed, TimingContext  # doctest: +SKIP
+>>> logger = get_logger(__name__)  # doctest: +SKIP
+>>> logger.debug("Processing measurement batch")  # doctest: +SKIP
 
->>> @timed(logger, "kf_predict")
+>>> @timed(logger, "kf_predict")  # doctest: +SKIP
 ... def kf_predict(x, P, F, Q):
 ...     ...
 
->>> with TimingContext(logger, "update_loop"):
+>>> with TimingContext(logger, "update_loop"):  # doctest: +SKIP
 ...     for _ in range(100):
 ...         do_update()
 """
@@ -86,9 +86,9 @@ def configure_logging(
 
     Examples
     --------
-    >>> import logging
-    >>> from pytcl.logging_config import configure_logging
-    >>> configure_logging(level=logging.DEBUG, format_style="detailed")
+    >>> import logging  # doctest: +SKIP
+    >>> from pytcl.logging_config import configure_logging  # doctest: +SKIP
+    >>> configure_logging(level=logging.DEBUG, format_style="detailed")  # doctest: +SKIP
     """
     root = logging.getLogger(PYTCL_LOGGER)
     root.setLevel(level)
@@ -128,8 +128,8 @@ def get_logger(name: str) -> logging.Logger:
 
     Examples
     --------
-    >>> logger = get_logger("dynamic_estimation.kalman")
-    >>> logger.name
+    >>> logger = get_logger("dynamic_estimation.kalman")  # doctest: +SKIP
+    >>> logger.name  # doctest: +SKIP
     'pytcl.dynamic_estimation.kalman'
     """
     if not name.startswith(PYTCL_LOGGER):
@@ -169,7 +169,7 @@ def timed(
 
     Examples
     --------
-    >>> @timed(logger, "kf_predict")
+    >>> @timed(logger, "kf_predict")  # doctest: +SKIP
     ... def kf_predict(x, P, F, Q):
     ...     return do_prediction(x, P, F, Q)
     """
@@ -221,10 +221,10 @@ def TimingContext(
 
     Examples
     --------
-    >>> with TimingContext(logger, "update_loop") as timing:
+    >>> with TimingContext(logger, "update_loop") as timing:  # doctest: +SKIP
     ...     for _ in range(100):
     ...         do_update()
-    >>> print(f"Elapsed: {timing['elapsed_ms']:.2f}ms")
+    >>> print(f"Elapsed: {timing['elapsed_ms']:.2f}ms")  # doctest: +SKIP
     """
     log = logger or _perf_logger
     timing: dict[str, float] = {"elapsed_ms": 0.0}
@@ -252,11 +252,11 @@ class PerformanceTracker:
 
     Examples
     --------
-    >>> tracker = PerformanceTracker("filter_cycles")
-    >>> for _ in range(1000):
+    >>> tracker = PerformanceTracker("filter_cycles")  # doctest: +SKIP
+    >>> for _ in range(1000):  # doctest: +SKIP
     ...     with tracker.track():
     ...         do_filter_step()
-    >>> tracker.log_summary()
+    >>> tracker.log_summary()  # doctest: +SKIP
     """
 
     def __init__(self, name: str, logger: Optional[logging.Logger] = None):

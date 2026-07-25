@@ -49,8 +49,8 @@ def geodetic2ecef(
     --------
     >>> lat, lon, alt = np.radians(45), np.radians(-75), 100.0
     >>> ecef = geodetic2ecef(lat, lon, alt)
-    >>> ecef / 1e6  # In millions of meters
-    array([ 1.14..., -4.29...,  4.48...])
+    >>> np.round(ecef / 1e6, 3)  # In millions of meters
+    array([ 1.169, -4.364,  4.487])
 
     See Also
     --------
@@ -112,10 +112,12 @@ def ecef2geodetic(
 
     Examples
     --------
-    >>> ecef = np.array([1.14e6, -4.29e6, 4.48e6])
+    >>> ecef = geodetic2ecef(np.radians(45), np.radians(-75), 100.0)
     >>> lat, lon, alt = ecef2geodetic(ecef)
-    >>> np.degrees(lat), np.degrees(lon)
-    (45.0..., -75.0...)
+    >>> round(float(np.degrees(lat)), 6), round(float(np.degrees(lon)), 6)
+    (45.0, -75.0)
+    >>> round(float(alt), 3)
+    100.0
 
     See Also
     --------
@@ -275,7 +277,7 @@ def geodetic2enu(
     >>> # ENU coordinates should show positive north and east offsets
     >>> enu[0] > 0 and enu[1] > 0  # East > 0, North > 0
     True
-    >>> enu[2] > 100  # Up should be approximately the altitude difference
+    >>> bool(abs(enu[2] - 100) < 1)  # Up approximately the altitude difference
     True
 
     See Also
@@ -681,7 +683,7 @@ def geodetic2sez(
 
     Examples
     --------
-    >>> sez = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)
+    >>> sez = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)  # doctest: +SKIP
     """
     # Convert both to ECEF
     ecef = geodetic2ecef(lat, lon, alt, a, f)
@@ -882,7 +884,8 @@ def sez2geodetic(
     Examples
     --------
     >>> import numpy as np
-    >>> from pytcl.coordinate_systems import sez2geodetic, geodetic2sez
+    >>> from pytcl.coordinate_systems.conversions.geodetic import (
+    ...     sez2geodetic, geodetic2sez)
     >>> # Observer location: Arecibo Observatory (18.3°N, 66.75°W)
     >>> lat_ref = np.radians(18.3)
     >>> lon_ref = np.radians(-66.75)
@@ -892,9 +895,8 @@ def sez2geodetic(
     >>> # Convert to geodetic coordinates
     >>> lat, lon, alt = sez2geodetic(sez, lat_ref, lon_ref, alt_ref)
     >>> # Verify roundtrip conversion
-    >>> from pytcl.coordinate_systems import geodetic2sez
     >>> sez_back = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)
-    >>> np.allclose(sez, sez_back, atol=1.0)  # Allow ~1m numerical error
+    >>> bool(np.allclose(sez, sez_back, atol=1.0))  # Allow ~1m numerical error
     True
 
     See Also

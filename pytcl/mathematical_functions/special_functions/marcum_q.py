@@ -50,10 +50,10 @@ def marcum_q(
 
     Examples
     --------
-    >>> marcum_q(0, 0)  # Q_1(0, 0) = 1
+    >>> float(marcum_q(0, 0))  # Q_1(0, 0) = 1
     1.0
-    >>> marcum_q(3, 4)  # Standard Marcum Q
-    0.17789...
+    >>> round(float(marcum_q(3, 4)), 6)  # Standard Marcum Q
+    0.196512
 
     References
     ----------
@@ -114,8 +114,8 @@ def marcum_q1(
 
     Examples
     --------
-    >>> marcum_q1(2, 2)
-    0.735...
+    >>> round(float(marcum_q1(2, 2)), 6)
+    0.603501
 
     See Also
     --------
@@ -156,8 +156,8 @@ def log_marcum_q(
 
     Examples
     --------
-    >>> log_marcum_q(1, 5)  # log(Q_1(1, 5))
-    -10.96...
+    >>> round(float(log_marcum_q(1, 5)), 6)  # log(Q_1(1, 5))
+    -9.506564
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -230,7 +230,7 @@ def marcum_q_inv(
     Examples
     --------
     >>> b = marcum_q_inv(3, 0.5)  # Find b where Q_1(3, b) = 0.5
-    >>> marcum_q(3, b)  # Verify
+    >>> round(float(marcum_q(3, b)), 6)  # Verify
     0.5
     """
     a = np.asarray(a, dtype=np.float64)
@@ -281,8 +281,8 @@ def nuttall_q(
 
     Examples
     --------
-    >>> nuttall_q(2, 2)  # 1 - Q_1(2, 2)
-    0.264...
+    >>> round(float(nuttall_q(2, 2)), 6)  # 1 - Q_1(2, 2)
+    0.396499
 
     See Also
     --------
@@ -346,8 +346,8 @@ def swerling_detection_probability(
     snr = np.asarray(snr, dtype=np.float64)
 
     # Detection threshold from false alarm probability
-    # For chi-squared with 2*n_pulses DOF: P(X > T) = pfa
-    threshold = -2 * n_pulses * np.log(pfa)
+    # For chi-squared with 2*n_pulses DOF: P(X > T) = Q(n, T/2) = pfa
+    threshold = 2 * sp.gammainccinv(n_pulses, pfa)
 
     if swerling_case == 0:
         # Non-fluctuating (Marcum case)

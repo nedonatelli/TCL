@@ -815,13 +815,13 @@ def sos_to_zpk(sos: ArrayLike) -> tuple[NDArray[Any], NDArray[Any], Any]:
     --------
     >>> import numpy as np
     >>> from pytcl.mathematical_functions.signal_processing import (
-    ...     sos_to_zpk, butter_sos
+    ...     sos_to_zpk, butter_design
     ... )
     >>> # Design a Butterworth filter and convert to ZPK form
-    >>> sos = butter_sos(4, 0.3)  # 4th order Butterworth lowpass
-    >>> z, p, k = sos_to_zpk(sos)
+    >>> coeffs = butter_design(4, 100, fs=1000)  # 4th order Butterworth lowpass
+    >>> z, p, k = sos_to_zpk(coeffs.sos)
     >>> # Check filter stability: poles must be inside unit circle
-    >>> np.all(np.abs(p) < 1.0)
+    >>> bool(np.all(np.abs(p) < 1.0))
     True
     >>> # Verify number of poles matches filter order
     >>> len(p) == 4

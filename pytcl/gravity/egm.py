@@ -364,8 +364,8 @@ def load_egm_coefficients(
 
     Examples
     --------
-    >>> coef = load_egm_coefficients("EGM2008", n_max=360)
-    >>> coef.n_max
+    >>> coef = load_egm_coefficients("EGM2008", n_max=360)  # doctest: +SKIP
+    >>> coef.n_max  # doctest: +SKIP
     360
     """
     return _load_coefficients_cached(model, n_max)
@@ -405,7 +405,7 @@ def geoid_height(
     Examples
     --------
     >>> # Geoid height at equator, prime meridian
-    >>> N = geoid_height(0, 0)  # Should be approximately 17 m
+    >>> N = geoid_height(0, 0)  # Should be approximately 17 m  # doctest: +SKIP
     """
     if coefficients is None:
         coefficients = load_egm_coefficients(model, n_max)

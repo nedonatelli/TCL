@@ -53,8 +53,8 @@ def cart2sphere(
     1.7320508075688772
     >>> np.degrees(az)
     45.0
-    >>> np.degrees(el)
-    35.26438968275465
+    >>> round(float(np.degrees(el)), 6)
+    35.26439
 
     See Also
     --------
@@ -335,9 +335,9 @@ def cyl2cart(
 
     Examples
     --------
-    >>> cart = cyl2cart(1.414, np.radians(45), 5.0)
+    >>> cart = cyl2cart(np.sqrt(2), np.radians(45), 5.0)
     >>> cart
-    array([1.00..., 1.00..., 5.  ])
+    array([1., 1., 5.])
 
     See Also
     --------
@@ -398,7 +398,7 @@ def ruv2cart(
     >>> v = np.sin(az) * np.cos(el)
     >>> cart = ruv2cart(100, u, v)
     >>> cart
-    array([61.23..., 61.23..., 50.  ])
+    array([61.23724357, 61.23724357, 50.        ])
 
     Notes
     -----

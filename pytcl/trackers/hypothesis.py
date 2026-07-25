@@ -147,7 +147,7 @@ def generate_joint_associations(
     >>> gated = np.array([[True, True], [True, True]])
     >>> associations = generate_joint_associations(gated, 2, 2)
     >>> len(associations)  # All valid 2-track, 2-measurement associations
-    9
+    7
     """
     associations = []
 

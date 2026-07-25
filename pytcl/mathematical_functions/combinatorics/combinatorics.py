@@ -281,7 +281,7 @@ def next_permutation(perm: ArrayLike) -> Optional[List[Any]]:
     --------
     >>> next_permutation([1, 2, 3])
     [1, 3, 2]
-    >>> next_permutation([3, 2, 1])  # Last permutation
+    >>> print(next_permutation([3, 2, 1]))  # Last permutation
     None
     """
     perm = list(perm)

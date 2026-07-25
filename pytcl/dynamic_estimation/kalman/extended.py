@@ -275,7 +275,7 @@ def ekf_predict_auto(
     >>> Q = np.eye(2) * 0.01
     >>> pred = ekf_predict_auto(x, P, f, Q)
     >>> pred.x
-    array([1., 0.9])
+    array([1. , 0.9])
 
     See Also
     --------

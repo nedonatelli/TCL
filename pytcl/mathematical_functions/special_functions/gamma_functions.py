@@ -32,10 +32,10 @@ def gamma(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> gamma(5)  # 4! = 24
+    >>> float(gamma(5))  # 4! = 24
     24.0
-    >>> gamma(0.5)  # sqrt(pi)
-    1.7724538509055159
+    >>> round(float(gamma(0.5)), 6)  # sqrt(pi)
+    1.772454
 
     See Also
     --------
@@ -63,8 +63,8 @@ def gammaln(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> gammaln(100)  # log(99!)
-    359.1342053695754
+    >>> round(float(gammaln(100)), 6)  # log(99!)
+    359.134205
 
     See Also
     --------
@@ -97,8 +97,8 @@ def gammainc(a: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> gammainc(1, 1)  # 1 - exp(-1)
-    0.632...
+    >>> round(float(gammainc(1, 1)), 6)  # 1 - exp(-1)
+    0.632121
 
     See Also
     --------
@@ -128,8 +128,8 @@ def gammaincc(a: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> gammaincc(1, 1)  # exp(-1)
-    0.367...
+    >>> round(float(gammaincc(1, 1)), 6)  # exp(-1)
+    0.367879
 
     See Also
     --------
@@ -158,8 +158,8 @@ def gammaincinv(a: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> gammaincinv(1, 0.5)  # Median of exponential distribution
-    0.693...
+    >>> round(float(gammaincinv(1, 0.5)), 6)  # Median of exponential distribution
+    0.693147
 
     See Also
     --------
@@ -186,8 +186,8 @@ def digamma(x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> digamma(1)  # -γ (negative Euler-Mascheroni constant)
-    -0.577...
+    >>> round(float(digamma(1)), 6)  # -γ (negative Euler-Mascheroni constant)
+    -0.577216
 
     See Also
     --------
@@ -217,10 +217,10 @@ def polygamma(n: int, x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> polygamma(0, 1)  # Digamma at 1 = -γ
-    -0.577...
-    >>> polygamma(1, 1)  # Trigamma at 1 = π²/6
-    1.644...
+    >>> round(float(polygamma(0, 1)), 6)  # Digamma at 1 = -γ
+    -0.577216
+    >>> round(float(polygamma(1, 1)), 6)  # Trigamma at 1 = π²/6
+    1.644934
 
     See Also
     --------
@@ -249,10 +249,10 @@ def beta(a: ArrayLike, b: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> beta(1, 1)
+    >>> float(beta(1, 1))
     1.0
-    >>> beta(0.5, 0.5)  # pi
-    3.141592653589793
+    >>> round(float(beta(0.5, 0.5)), 6)  # pi
+    3.141593
 
     See Also
     --------
@@ -282,8 +282,8 @@ def betaln(a: ArrayLike, b: ArrayLike) -> NDArray[np.floating]:
     Examples
     --------
     >>> import numpy as np
-    >>> betaln(100, 100)  # More stable than log(beta(100, 100))
-    -137.74...
+    >>> round(float(betaln(100, 100)), 6)  # More stable than log(beta(100, 100))
+    -139.665259
 
     See Also
     --------
@@ -319,7 +319,7 @@ def betainc(a: ArrayLike, b: ArrayLike, x: ArrayLike) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> betainc(1, 1, 0.5)  # Uniform distribution CDF at 0.5
+    >>> round(float(betainc(1, 1, 0.5)), 6)  # Uniform distribution CDF at 0.5
     0.5
 
     See Also
@@ -351,7 +351,7 @@ def betaincinv(a: ArrayLike, b: ArrayLike, y: ArrayLike) -> NDArray[np.floating]
 
     Examples
     --------
-    >>> betaincinv(1, 1, 0.5)  # Median of uniform distribution
+    >>> round(float(betaincinv(1, 1, 0.5)), 6)  # Median of uniform distribution
     0.5
 
     See Also
@@ -382,7 +382,7 @@ def factorial(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> factorial(5)
+    >>> float(factorial(5))
     120.0
     >>> factorial(np.array([1, 2, 3, 4, 5]))
     array([  1.,   2.,   6.,  24., 120.])
@@ -414,9 +414,9 @@ def factorial2(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
 
     Examples
     --------
-    >>> factorial2(5)  # 5 * 3 * 1 = 15
+    >>> round(float(factorial2(5)), 6)  # 5 * 3 * 1 = 15
     15.0
-    >>> factorial2(6)  # 6 * 4 * 2 = 48
+    >>> round(float(factorial2(6)), 6)  # 6 * 4 * 2 = 48
     48.0
 
     See Also
@@ -455,9 +455,9 @@ def comb(
 
     Examples
     --------
-    >>> comb(5, 2)
+    >>> float(comb(5, 2))
     10.0
-    >>> comb(10, 3)
+    >>> float(comb(10, 3))
     120.0
 
     See Also
@@ -491,7 +491,7 @@ def perm(n: ArrayLike, k: ArrayLike, exact: bool = False) -> NDArray[np.floating
 
     Examples
     --------
-    >>> perm(5, 2)
+    >>> float(perm(5, 2))
     20.0
 
     See Also

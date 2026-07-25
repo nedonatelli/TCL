@@ -30,7 +30,7 @@ class SQLStorage(StorageBackend):
     Examples
     --------
     >>> from pytcl.io import SQLStorage
-    >>> with SQLStorage() as store:
+    >>> with SQLStorage() as store:  # doctest: +SKIP
     ...     store.open("tracking.db", mode="w")
     ...     store.store_array("tracks", track_states)
     ...     store.store_scalar("mission/start_time", 1234567890)

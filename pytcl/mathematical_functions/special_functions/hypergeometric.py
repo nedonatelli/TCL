@@ -115,10 +115,10 @@ def hyp0f1(
 
     Examples
     --------
-    >>> hyp0f1(1, 0)  # 0F1(1; 0) = 1
+    >>> float(hyp0f1(1, 0))  # 0F1(1; 0) = 1
     1.0
-    >>> hyp0f1(1, 1)
-    2.279585...
+    >>> round(float(hyp0f1(1, 1)), 6)
+    2.279585
 
     References
     ----------
@@ -169,10 +169,10 @@ def hyp1f1(
 
     Examples
     --------
-    >>> hyp1f1(1, 1, 1)  # exp(1)
-    2.718281828...
-    >>> hyp1f1(0.5, 1.5, -1)  # Related to erf
-    0.842700...
+    >>> round(float(hyp1f1(1, 1, 1)), 6)  # exp(1)
+    2.718282
+    >>> round(float(hyp1f1(0.5, 1.5, -1)), 6)  # erf(1) * sqrt(pi) / 2
+    0.746824
 
     References
     ----------
@@ -225,10 +225,10 @@ def hyp2f1(
 
     Examples
     --------
-    >>> hyp2f1(1, 1, 2, 0.5)  # -log(1-0.5)/0.5 = log(2)
-    1.386294...
-    >>> hyp2f1(0.5, 0.5, 1.5, 0.25)  # Related to arcsin
-    1.072379...
+    >>> round(float(hyp2f1(1, 1, 2, 0.5)), 6)  # -log(1-0.5)/0.5 = 2*log(2)
+    1.386294
+    >>> round(float(hyp2f1(0.5, 0.5, 1.5, 0.25)), 6)  # arcsin(0.5)/0.5 = pi/3
+    1.047198
 
     References
     ----------
@@ -277,8 +277,8 @@ def hyperu(
 
     Examples
     --------
-    >>> hyperu(1, 1, 1)
-    0.596347...
+    >>> round(float(hyperu(1, 1, 1)), 6)
+    0.596347
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -371,9 +371,9 @@ def pochhammer(
 
     Examples
     --------
-    >>> pochhammer(1, 5)  # 5!
+    >>> float(pochhammer(1, 5))  # 5!
     120.0
-    >>> pochhammer(3, 4)  # 3*4*5*6
+    >>> float(pochhammer(3, 4))  # 3*4*5*6
     360.0
     """
     a = np.asarray(a, dtype=np.float64)
@@ -411,7 +411,7 @@ def falling_factorial(
 
     Examples
     --------
-    >>> falling_factorial(5, 3)  # 5*4*3
+    >>> float(falling_factorial(5, 3))  # 5*4*3
     60.0
     """
     a = np.asarray(a, dtype=np.float64)
@@ -466,8 +466,8 @@ def generalized_hypergeometric(
 
     Examples
     --------
-    >>> generalized_hypergeometric([1], [2], 1)  # 1F1(1; 2; 1) ~ 1.718...
-    1.718281...
+    >>> round(float(generalized_hypergeometric([1], [2], 1)), 6)  # 1F1(1; 2; 1) = e - 1
+    1.718282
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)

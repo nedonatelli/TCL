@@ -184,6 +184,7 @@ def great_circle_distance(
     >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)
     >>> dist = great_circle_distance(lat1, lon1, lat2, lon2)
     >>> print(f"Distance: {dist/1000:.0f} km")
+    Distance: 5570 km
     """
     # Use cached angular distance computation
     angular_dist = _gc_distance_cached(
@@ -226,6 +227,7 @@ def great_circle_azimuth(
     >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)
     >>> az = great_circle_azimuth(lat1, lon1, lat2, lon2)
     >>> print(f"Initial bearing: {np.degrees(az):.1f}°")
+    Initial bearing: 51.2°
     """
     return _gc_azimuth_cached(
         _quantize_coord(lat1),
@@ -311,6 +313,7 @@ def great_circle_waypoint(
     >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)
     >>> mid = great_circle_waypoint(lat1, lon1, lat2, lon2, 0.5)
     >>> print(f"Midpoint: {np.degrees(mid.lat):.2f}°, {np.degrees(mid.lon):.2f}°")
+    Midpoint: 52.37°, -41.29°
     """
     # Angular distance
     d = great_circle_distance(lat1, lon1, lat2, lon2, radius=1.0)
@@ -411,6 +414,7 @@ def great_circle_direct(
     >>> az = np.radians(45)  # Northeast
     >>> dest = great_circle_direct(lat, lon, az, 1000000)
     >>> print(f"Destination: {np.degrees(dest.lat):.2f}°, {np.degrees(dest.lon):.2f}°")
+    Destination: 6.35°, 6.39°
     """
     d = distance / radius  # Angular distance
 
@@ -839,8 +843,8 @@ def angular_distance(
     >>> lat1, lon1 = np.radians(40.7), np.radians(-74.0)
     >>> lat2, lon2 = np.radians(51.5), np.radians(-0.1)
     >>> angle = angular_distance(lat1, lon1, lat2, lon2)
-    >>> np.degrees(angle)  # about 50 degrees
-    49.9...
+    >>> round(np.degrees(angle), 2)  # about 50 degrees
+    50.12
 
     See Also
     --------
@@ -878,7 +882,7 @@ def destination_point(
     >>> bearing = np.radians(90)  # Due East
     >>> ang_dist = np.radians(10)  # 10 degrees
     >>> dest = destination_point(lat, lon, bearing, ang_dist)
-    >>> np.degrees(dest.lon)  # Should be ~10 degrees East
+    >>> round(np.degrees(dest.lon), 6)  # Should be ~10 degrees East
     10.0
     """
     lat2 = np.arcsin(
@@ -905,15 +909,16 @@ def clear_great_circle_cache() -> None:
     Examples
     --------
     >>> import numpy as np
-    >>> from pytcl.navigation import great_circle_distance, clear_great_circle_cache
+    >>> from pytcl.navigation import great_circle_distance
+    >>> from pytcl.navigation.great_circle import clear_great_circle_cache, get_cache_info
     >>> # Compute a few distances (cached)
     >>> d1 = great_circle_distance(0, 0, np.radians(1), 0)
     >>> d2 = great_circle_distance(0, 0, np.radians(2), 0)
-    >>> # Check cache state before clear
-    >>> cache_before = great_circle_distance.__wrapped__.__self__.cache_info()
     >>> # Clear all cached values
     >>> clear_great_circle_cache()
     >>> # Cache is now empty
+    >>> get_cache_info()['distance']['currsize']
+    0
     """
     _gc_distance_cached.cache_clear()
     _gc_azimuth_cached.cache_clear()
@@ -931,7 +936,8 @@ def get_cache_info() -> dict[str, Any]:
     Examples
     --------
     >>> import numpy as np
-    >>> from pytcl.navigation import great_circle_distance, get_cache_info, clear_great_circle_cache
+    >>> from pytcl.navigation import great_circle_distance
+    >>> from pytcl.navigation.great_circle import get_cache_info, clear_great_circle_cache
     >>> # Clear cache first
     >>> clear_great_circle_cache()
     >>> # Compute some distances (multiple calls to test cache hits)

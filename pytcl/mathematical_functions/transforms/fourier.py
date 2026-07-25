@@ -120,7 +120,7 @@ def fft(
     >>> import numpy as np
     >>> x = np.array([1.0, 2.0, 1.0, -1.0])
     >>> X = fft(x)
-    >>> np.allclose(X, [3.+0.j, 0.-2.j, 1.+0.j, 0.+2.j])
+    >>> bool(np.allclose(X, [3.+0.j, 0.-3.j, 1.+0.j, 0.+3.j]))
     True
     """
     x = np.asarray(x)
@@ -155,9 +155,9 @@ def ifft(
     Examples
     --------
     >>> import numpy as np
-    >>> X = np.array([3.+0.j, 0.-2.j, 1.+0.j, 0.+2.j])
+    >>> X = np.array([3.+0.j, 0.-3.j, 1.+0.j, 0.+3.j])
     >>> x = ifft(X)
-    >>> np.allclose(x, [1.0, 2.0, 1.0, -1.0])
+    >>> bool(np.allclose(x, [1.0, 2.0, 1.0, -1.0]))
     True
     """
     X = np.asarray(X)

@@ -19,6 +19,7 @@ from pytcl.astronomical import (
 from pytcl.atmosphere import (
     P0,
     T0,
+    altitude_from_pressure,
     isa_atmosphere,
     mach_number,
     us_standard_atmosphere_1976,
@@ -334,6 +335,19 @@ class TestAtmosphereModels:
         state = us_standard_atmosphere_1976(0)
         # Sea level speed of sound is about 340 m/s
         assert_allclose(state.speed_of_sound, 340.3, rtol=0.01)
+
+    def test_us76_table_values_10km(self):
+        """Match published US76 table values at 10 km geometric altitude."""
+        state = us_standard_atmosphere_1976(10000)
+        # US Standard Atmosphere 1976, Table I (geometric 10 km)
+        assert_allclose(state.temperature, 223.252, atol=0.01)
+        assert_allclose(state.pressure, 26499.9, rtol=1e-4)
+
+    def test_altitude_from_pressure_round_trip(self):
+        """Inverting the forward model must recover the input altitude."""
+        for h in [0.0, 2000.0, 5000.0, 10000.0]:
+            p = us_standard_atmosphere_1976(h).pressure
+            assert_allclose(altitude_from_pressure(p), h, atol=5.0)
 
     def test_array_input(self):
         """Test with array altitude input."""

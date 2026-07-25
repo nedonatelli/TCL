@@ -45,11 +45,11 @@ class NeighborResult(NamedTuple):
     >>> import numpy as np
     >>> points = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
     >>> tree = KDTree(points)
-    >>> result = tree.query([[0.1, 0.1]], k=2)
+    >>> result = tree.query([[0.1, 0.2]], k=2)
     >>> result.indices
     array([[0, 2]])
     >>> result.distances
-    array([[0.14142136, 0.9       ]])
+    array([[0.2236068 , 0.80622577]])
 
     See Also
     --------

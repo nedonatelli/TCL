@@ -97,13 +97,15 @@ def compute_cluster_centroid(
 
     Examples
     --------
-    >>> from pytcl.trackers.multi_target import Track
+    >>> from pytcl.trackers.multi_target import Track, TrackStatus
     >>> import numpy as np
+    >>> def make_track(tid, state):
+    ...     return Track(id=tid, state=np.asarray(state), covariance=np.eye(4),
+    ...                  status=TrackStatus.CONFIRMED, hits=1, misses=0, time=0.0)
     >>> # Create sample tracks with [x, vx, y, vy] state vectors
-    >>> track1 = Track(state=np.array([0.0, 1.0, 0.0, 1.0]))
-    >>> track2 = Track(state=np.array([2.0, 1.0, 2.0, 1.0]))
-    >>> track3 = Track(state=np.array([4.0, 1.0, 4.0, 1.0]))
-    >>> tracks = [track1, track2, track3]
+    >>> tracks = [make_track(0, [0.0, 1.0, 0.0, 1.0]),
+    ...           make_track(1, [2.0, 1.0, 2.0, 1.0]),
+    ...           make_track(2, [4.0, 1.0, 4.0, 1.0])]
     >>> centroid = compute_cluster_centroid(tracks)
     >>> centroid
     array([2., 2.])
@@ -142,13 +144,15 @@ def compute_cluster_covariance(
 
     Examples
     --------
-    >>> from pytcl.trackers.multi_target import Track
+    >>> from pytcl.trackers.multi_target import Track, TrackStatus
     >>> import numpy as np
+    >>> def make_track(tid, state):
+    ...     return Track(id=tid, state=np.asarray(state), covariance=np.eye(4),
+    ...                  status=TrackStatus.CONFIRMED, hits=1, misses=0, time=0.0)
     >>> # Create collinear tracks (high variance along x-axis)
-    >>> track1 = Track(state=np.array([0.0, 1.0, 0.0, 0.0]))
-    >>> track2 = Track(state=np.array([1.0, 1.0, 0.0, 0.0]))
-    >>> track3 = Track(state=np.array([2.0, 1.0, 0.0, 0.0]))
-    >>> tracks = [track1, track2, track3]
+    >>> tracks = [make_track(0, [0.0, 1.0, 0.0, 0.0]),
+    ...           make_track(1, [1.0, 1.0, 0.0, 0.0]),
+    ...           make_track(2, [2.0, 1.0, 0.0, 0.0])]
     >>> cov = compute_cluster_covariance(tracks)
     >>> cov.shape
     (2, 2)
@@ -372,8 +376,8 @@ class ClusterSet:
 
         Examples
         --------
-        >>> clusters = ClusterSet.from_tracks(tracks, method='dbscan', eps=2.0)
-        >>> clusters = ClusterSet.from_tracks(tracks, method='kmeans', n_clusters=3)
+        >>> clusters = ClusterSet.from_tracks(tracks, method='dbscan', eps=2.0)  # doctest: +SKIP
+        >>> clusters = ClusterSet.from_tracks(tracks, method='kmeans', n_clusters=3)  # doctest: +SKIP
         """
         if method == "dbscan":
             return cluster_tracks_dbscan(tracks, **kwargs)

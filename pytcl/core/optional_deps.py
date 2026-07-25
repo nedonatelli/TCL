@@ -280,7 +280,7 @@ def requires(
     ...     return go.Figure(data)
     >>>
     >>> # This will raise DependencyError if plotly is not installed
-    >>> create_plot([1, 2, 3])
+    >>> fig = create_plot([1, 2, 3])  # doctest: +SKIP
 
     Multiple packages:
 

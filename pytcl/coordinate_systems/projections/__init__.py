@@ -21,6 +21,7 @@ Examples
 >>> result = geodetic2utm(np.radians(45.0), np.radians(-75.5))
 >>> print(f"Zone {result.zone}{result.hemisphere}: "
 ...       f"E={result.easting:.1f}, N={result.northing:.1f}")
+Zone 18N: E=460592.4, N=4983072.0
 >>> # Convert back
 >>> lat, lon = utm2geodetic(result.easting, result.northing,
 ...                         result.zone, result.hemisphere)

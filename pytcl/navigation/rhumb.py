@@ -224,6 +224,7 @@ def rhumb_bearing(
     >>> lat2, lon2 = np.radians(51), np.radians(0)
     >>> bearing = rhumb_bearing(lat1, lon1, lat2, lon2)
     >>> print(f"Bearing: {np.degrees(bearing):.1f}°")
+    Bearing: 78.0°
     """
     dlon = lon2 - lon1
 

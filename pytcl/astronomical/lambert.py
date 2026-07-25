@@ -126,7 +126,8 @@ def lambert_universal(
     >>> r2 = np.array([-14600, 2500, 7000])  # km
     >>> tof = 3600  # 1 hour
     >>> sol = lambert_universal(r1, r2, tof)
-    >>> print(f"v1 = {sol.v1} km/s")
+    >>> bool(np.allclose(sol.v1, [-5.9925, 1.9254, 3.2456], atol=1e-3))  # Curtis Ex. 5.2
+    True
     """
     r1 = np.asarray(r1, dtype=float)
     r2 = np.asarray(r2, dtype=float)
@@ -483,6 +484,7 @@ def hohmann_transfer(
     --------
     >>> dv1, dv2, tof = hohmann_transfer(6678, 42164)  # LEO to GEO
     >>> print(f"Total dv = {dv1 + dv2:.3f} km/s")
+    Total dv = 3.893 km/s
     """
     # Transfer orbit semi-major axis
     a_transfer = (r1 + r2) / 2

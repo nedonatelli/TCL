@@ -40,14 +40,14 @@ def vandermonde(
     Examples
     --------
     >>> vandermonde([1, 2, 3], 3)
-    array([[1, 1, 1],
-           [4, 2, 1],
-           [9, 3, 1]])
+    array([[1., 1., 1.],
+           [4., 2., 1.],
+           [9., 3., 1.]])
 
     >>> vandermonde([1, 2, 3], 3, increasing=True)
-    array([[1, 1, 1],
-           [1, 2, 4],
-           [1, 3, 9]])
+    array([[1., 1., 1.],
+           [1., 2., 4.],
+           [1., 3., 9.]])
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     m = len(x)
@@ -87,9 +87,9 @@ def toeplitz(
     Examples
     --------
     >>> toeplitz([1, 2, 3], [1, 4, 5])
-    array([[1, 4, 5],
-           [2, 1, 4],
-           [3, 2, 1]])
+    array([[1., 4., 5.],
+           [2., 1., 4.],
+           [3., 2., 1.]])
 
     See Also
     --------
@@ -130,9 +130,9 @@ def hankel(
     Examples
     --------
     >>> hankel([1, 2, 3], [3, 4, 5])
-    array([[1, 2, 3],
-           [2, 3, 4],
-           [3, 4, 5]])
+    array([[1., 2., 3.],
+           [2., 3., 4.],
+           [3., 4., 5.]])
 
     See Also
     --------
@@ -167,9 +167,9 @@ def circulant(c: ArrayLike) -> NDArray[np.floating]:
     Examples
     --------
     >>> circulant([1, 2, 3])
-    array([[1, 3, 2],
-           [2, 1, 3],
-           [3, 2, 1]])
+    array([[1., 3., 2.],
+           [2., 1., 3.],
+           [3., 2., 1.]])
 
     Notes
     -----
@@ -204,9 +204,9 @@ def block_diag(*arrs: ArrayLike) -> NDArray[np.floating]:
     >>> A = np.array([[1, 2], [3, 4]])
     >>> B = np.array([[5, 6, 7]])
     >>> block_diag(A, B)
-    array([[1, 2, 0, 0, 0],
-           [3, 4, 0, 0, 0],
-           [0, 0, 5, 6, 7]])
+    array([[1., 2., 0., 0., 0.],
+           [3., 4., 0., 0., 0.],
+           [0., 0., 5., 6., 7.]])
 
     See Also
     --------
@@ -337,10 +337,10 @@ def hadamard(n: int) -> NDArray[np.floating]:
     Examples
     --------
     >>> hadamard(4)
-    array([[ 1,  1,  1,  1],
-           [ 1, -1,  1, -1],
-           [ 1,  1, -1, -1],
-           [ 1, -1, -1,  1]])
+    array([[ 1.,  1.,  1.,  1.],
+           [ 1., -1.,  1., -1.],
+           [ 1.,  1., -1., -1.],
+           [ 1., -1., -1.,  1.]])
 
     See Also
     --------
@@ -410,10 +410,10 @@ def kron(a: ArrayLike, b: ArrayLike) -> NDArray[np.floating]:
     >>> a = np.array([[1, 2], [3, 4]])
     >>> b = np.array([[1, 0], [0, 1]])
     >>> kron(a, b)
-    array([[1, 0, 2, 0],
-           [0, 1, 0, 2],
-           [3, 0, 4, 0],
-           [0, 3, 0, 4]])
+    array([[1., 0., 2., 0.],
+           [0., 1., 0., 2.],
+           [3., 0., 4., 0.],
+           [0., 3., 0., 4.]])
 
     See Also
     --------
@@ -442,7 +442,7 @@ def vec(A: ArrayLike) -> NDArray[np.floating]:
     --------
     >>> A = np.array([[1, 2], [3, 4]])
     >>> vec(A)
-    array([1, 3, 2, 4])
+    array([1., 3., 2., 4.])
 
     See Also
     --------
@@ -474,8 +474,8 @@ def unvec(v: ArrayLike, m: int, n: int) -> NDArray[np.floating]:
     --------
     >>> v = np.array([1, 3, 2, 4])
     >>> unvec(v, 2, 2)
-    array([[1, 2],
-           [3, 4]])
+    array([[1., 2.],
+           [3., 4.]])
 
     See Also
     --------
@@ -543,17 +543,17 @@ def duplication_matrix(n: int) -> NDArray[np.floating]:
     Examples
     --------
     >>> import numpy as np
-    >>> from pytcl.mathematical_functions import duplication_matrix, vech, vec
+    >>> from pytcl.mathematical_functions.basic_matrix import duplication_matrix, vec
     >>> # Create duplication matrix for 2x2 symmetric matrices
     >>> D = duplication_matrix(2)
     >>> D.shape
     (4, 3)
     >>> # For symmetric matrix A = [[1, 2], [2, 3]], half-vec has 3 elements
     >>> A = np.array([[1.0, 2.0], [2.0, 3.0]])
-    >>> vech_A = vech(A)
+    >>> vech_A = A[np.tril_indices(2)]  # Half-vectorization [1, 2, 3]
     >>> # Duplication matrix should reconstruct full vectorization
     >>> vec_A = D @ vech_A
-    >>> np.allclose(vec_A, vec(A))
+    >>> bool(np.allclose(vec_A, vec(A)))
     True
     """
     m = n * (n + 1) // 2
@@ -594,7 +594,7 @@ def elimination_matrix(n: int) -> NDArray[np.floating]:
     Examples
     --------
     >>> import numpy as np
-    >>> from pytcl.mathematical_functions import elimination_matrix, vec
+    >>> from pytcl.mathematical_functions.basic_matrix import elimination_matrix, vec
     >>> # Create elimination matrix for 2x2 matrices
     >>> L = elimination_matrix(2)
     >>> L.shape
@@ -603,7 +603,7 @@ def elimination_matrix(n: int) -> NDArray[np.floating]:
     >>> A = np.array([[1.0, 2.0], [3.0, 4.0]])
     >>> # Elimination extracts lower-triangular elements
     >>> vech_A = L @ vec(A)
-    >>> np.allclose(vech_A, [1.0, 3.0, 4.0])
+    >>> bool(np.allclose(vech_A, [1.0, 3.0, 4.0]))
     True
     """
     m = n * (n + 1) // 2

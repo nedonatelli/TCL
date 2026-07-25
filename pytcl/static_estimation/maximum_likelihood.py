@@ -100,10 +100,13 @@ def fisher_information_numerical(
 
     Examples
     --------
+    >>> data = np.array([-1.0, 0.0, 1.0])
     >>> def log_lik(theta):
     ...     return -0.5 * np.sum((data - theta[0])**2 / theta[1])
     >>> theta = np.array([0.0, 1.0])
     >>> F = fisher_information_numerical(log_lik, theta)
+    >>> bool(np.allclose(F, [[3, 0], [0, 2]], atol=1e-4))
+    True
 
     Notes
     -----
@@ -420,7 +423,7 @@ def efficiency(
     >>> var_est = np.array([0.12, 0.25])
     >>> crb = np.array([0.1, 0.2])
     >>> efficiency(var_est, crb)
-    array([0.833, 0.8])
+    array([0.83333333, 0.8       ])
     """
     var = np.asarray(estimator_variance, dtype=np.float64)
     crb = np.asarray(crb, dtype=np.float64)
@@ -470,11 +473,14 @@ def mle_newton_raphson(
 
     Examples
     --------
+    >>> data = np.array([1.0, 2.0, 3.0])
     >>> def log_lik(theta):
     ...     return -0.5 * np.sum((data - theta[0])**2)
     >>> def score(theta):
     ...     return np.array([np.sum(data - theta[0])])
     >>> result = mle_newton_raphson(log_lik, score, np.array([0.0]))
+    >>> float(np.round(result.theta[0], 6))  # MLE is the sample mean
+    2.0
 
     Notes
     -----
@@ -672,9 +678,13 @@ def mle_gaussian(
 
     Examples
     --------
-    >>> data = np.random.normal(5, 2, 1000)
+    >>> rng = np.random.default_rng(42)
+    >>> data = rng.normal(5, 2, 1000)
     >>> result = mle_gaussian(data)
-    >>> result.theta  # [mean, variance]
+    >>> np.round(result.theta, 2)  # [mean, variance]
+    array([4.94, 3.91])
+    >>> bool(np.allclose(result.theta, [np.mean(data), np.var(data)]))
+    True
     """
     data = np.asarray(data, dtype=np.float64)
 
@@ -833,7 +843,7 @@ def aicc(log_likelihood: float, n_params: int, n_samples: int) -> float:
     --------
     >>> log_lik = -50.0
     >>> aicc(log_lik, n_params=3, n_samples=20)
-    109.5
+    107.5
     """
     k = n_params
     n = n_samples

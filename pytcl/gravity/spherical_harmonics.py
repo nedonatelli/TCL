@@ -117,7 +117,8 @@ def associated_legendre(
     Examples
     --------
     >>> P = associated_legendre(2, 2, 0.5)
-    >>> P[2, 0]  # P_2^0(0.5)
+    >>> float(round(P[2, 0], 6))  # Fully normalized: sqrt(5) * (3x^2 - 1)/2
+    -0.279508
     """
     if m_max > n_max:
         raise ValueError("m_max must be <= n_max")
@@ -185,29 +186,16 @@ def associated_legendre_derivative(
         for m in range(min(n, m_max) + 1):
             if n == 0:
                 dP[n, m] = 0.0
-            elif m == n:
-                # dP_n^n/dx = n * x / (1-x^2) * P_n^n
-                dP[n, m] = n * x / u2 * P[n, m]
+            elif normalized:
+                # (1-x^2) dP_nm/dx = f_nm * P_(n-1)m - n*x*P_nm with
+                # f_nm = sqrt((n^2-m^2)(2n+1)/(2n-1)); f_nn = 0 covers m == n
+                f_nm = np.sqrt((n * n - m * m) * (2 * n + 1) / (2 * n - 1))
+                P_prev = P[n - 1, m] if m <= n - 1 else 0.0
+                dP[n, m] = (f_nm * P_prev - n * x * P[n, m]) / u2
             else:
-                # General formula using recurrence
-                if normalized:
-                    # Normalized form
-                    if n > m:
-                        factor = np.sqrt((n - m) * (n + m + 1))
-                        if m + 1 <= m_max and n >= m + 1:
-                            dP[n, m] = (
-                                n * x / u2 * P[n, m]
-                                - factor / np.sqrt(u2) * P[n, m + 1]
-                                if m + 1 <= n
-                                else n * x / u2 * P[n, m]
-                            )
-                        else:
-                            dP[n, m] = n * x / u2 * P[n, m]
-                else:
-                    # Unnormalized form
-                    dP[n, m] = (
-                        (n * x * P[n, m] - (n + m) * P[n - 1, m]) / u2 if n > 0 else 0
-                    )
+                # (1-x^2) dP_nm/dx = (n+m) P_(n-1)m - n*x*P_nm
+                P_prev = P[n - 1, m] if m <= n - 1 else 0.0
+                dP[n, m] = ((n + m) * P_prev - n * x * P[n, m]) / u2
 
     return dP
 
@@ -422,9 +410,10 @@ def gravity_acceleration(
 
     V, dV_r, dV_lat = spherical_harmonic_sum(lat, lon, r, C, S, R, GM, n_max)
 
-    # Gravity is negative gradient of potential
-    g_r = -dV_r
-    g_lat = -dV_lat
+    # spherical_harmonic_sum uses the geodesy-positive potential (V = +GM/r),
+    # for which gravity is g = +grad(V); dV_r = -GM/r^2 already points inward
+    g_r = dV_r
+    g_lat = dV_lat
 
     # Longitude component (for non-zonal terms)
     # This would require additional computation for full accuracy

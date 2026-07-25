@@ -49,11 +49,11 @@ def lambert_w(
 
     Examples
     --------
-    >>> lambert_w(0)  # W(0) = 0
+    >>> float(lambert_w(0).real)  # W(0) = 0
     0.0
-    >>> lambert_w(np.e)  # W(e) = 1
+    >>> float(lambert_w(np.e).real)  # W(e) = 1
     1.0
-    >>> lambert_w(-np.exp(-1))  # W(-1/e) = -1
+    >>> float(lambert_w(-np.exp(-1)).real)  # W(-1/e) = -1
     -1.0
 
     References
@@ -62,7 +62,16 @@ def lambert_w(
            Advances in Computational Mathematics, 5, 329-359.
     """
     z = np.asarray(z)
-    return np.asarray(sp.lambertw(z, k=k, tol=tol), dtype=np.complex128)
+    w = np.asarray(sp.lambertw(z, k=k, tol=tol), dtype=np.complex128)
+    if k in (0, -1):
+        # scipy.special.lambertw returns nan at the branch point z = -1/e,
+        # where both real branches take the exact value W = -1
+        at_branch_point = np.isnan(w) & np.isclose(
+            z, -np.exp(-1.0), rtol=0.0, atol=5e-17
+        )
+        if np.any(at_branch_point):
+            w = np.where(at_branch_point, -1.0 + 0.0j, w)
+    return w
 
 
 def lambert_w_real(
@@ -94,10 +103,10 @@ def lambert_w_real(
 
     Examples
     --------
-    >>> lambert_w_real(1)
-    0.5671432904097838
-    >>> lambert_w_real(-0.2, branch=-1)
-    -2.5426413577735264
+    >>> round(float(lambert_w_real(1)), 6)
+    0.567143
+    >>> round(float(lambert_w_real(-0.2, branch=-1)), 6)
+    -2.542641
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -172,8 +181,8 @@ def wright_omega(z: ArrayLike) -> NDArray[np.complexfloating]:
 
     Examples
     --------
-    >>> wright_omega(0)  # Omega constant
-    (0.5671...+0j)
+    >>> round(float(wright_omega(0).real), 6)  # Omega constant
+    0.567143
 
     References
     ----------
@@ -218,7 +227,7 @@ def solve_exponential_equation(
     Examples
     --------
     >>> x = solve_exponential_equation(1, 1, np.e)  # x*exp(x) = e
-    >>> x  # Should be 1
+    >>> round(float(x.real), 6)  # Should be 1
     1.0
     """
     a = np.asarray(a, dtype=np.complex128)
@@ -270,8 +279,8 @@ def time_delay_equation(
     Examples
     --------
     >>> s = time_delay_equation(1, 1)  # s + exp(-s) = 0
-    >>> s + np.exp(-s)  # Should be approximately 0
-    ~0
+    >>> bool(abs(s + np.exp(-s)) < 1e-10)  # Should be approximately 0
+    True
     """
     a = np.asarray(a, dtype=np.complex128)
     tau = np.asarray(tau, dtype=np.complex128)

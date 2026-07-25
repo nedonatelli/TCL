@@ -67,8 +67,10 @@ class SingleTargetTracker:
     >>> R = np.eye(2) * 0.5
     >>> tracker = SingleTargetTracker(4, 2, F, H, Q, R)
     >>> tracker.initialize(np.array([0, 1, 0, 1]), np.eye(4))
-    >>> tracker.predict(1.0)
-    >>> tracker.update(np.array([1.1, 1.2]))
+    >>> predicted = tracker.predict(1.0)
+    >>> predicted.state
+    array([1., 1., 1., 1.])
+    >>> updated = tracker.update(np.array([1.1, 1.2]))
     """
 
     def __init__(
