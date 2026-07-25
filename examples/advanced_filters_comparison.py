@@ -174,6 +174,9 @@ class TargetTrackingScenario:
         measurements = np.zeros((steps, 2))
 
         x_true[0] = self.x0
+        measurements[0] = self.h(x_true[0]) + np.random.multivariate_normal(
+            np.zeros(2), self.R
+        )
 
         for k in range(1, steps):
             # True dynamics
@@ -342,47 +345,35 @@ def run_rbpf_filter(
     x_est = np.zeros((len(measurements), 4))
     P_est = np.zeros((len(measurements), 4, 4))
 
+    # The RBPF API propagates the nonlinear state as y[k+1] = g(y[k]) + noise,
+    # with no velocity-to-position coupling, so position uses a random-walk
+    # proposal whose Qy must cover the per-step target motion (~|v0|*dt).
+    def g(y):
+        return y
+
+    G = np.eye(2)
+    Qy = np.eye(2) * 0.02
+
+    # Linear (Kalman) block: velocity with friction
+    F_v = np.eye(2) * 0.95
+    Qx = np.eye(2) * 0.001
+
+    def f_linear(v, y):
+        return F_v @ v
+
+    def h_rbpf(v, y):
+        # Full state from position and velocity
+        x_full = np.concatenate([y, v])
+        return scenario.h(x_full)
+
+    # Range/bearing depend only on position (the particle state), so the
+    # measurement has zero sensitivity to the linear velocity block; the
+    # particle weights carry all the position information.
+    H_v = np.zeros((2, 2))
+
     for k, z in enumerate(measurements):
-        # Predict nonlinear: position dynamics
-        def g(y):
-            return y + scenario.dt * np.array(
-                [
-                    np.random.normal(0, 0.1),  # noise
-                    np.random.normal(0, 0.1),
-                ]
-            )
-
-        G = np.eye(2)
-        Qy = np.eye(2) * 0.001
-
-        # Predict linear: velocity dynamics
-        F_v = np.eye(2) * 0.95  # friction
-        Qx = np.eye(2) * 0.0001
-
-        def f_linear(v, y):
-            # Next position depends on current velocity
-            # For RBPF, we need x[k+1] = f(x[k], y[k])
-            return F_v @ v
-
         rbpf.predict(g, G, Qy, f_linear, F_v, Qx)
-
-        # Update
-        def h_rbpf(v, y):
-            # Full state from position and velocity
-            x_full = np.concatenate([y, v])
-            return scenario.h(x_full)
-
-        def H_rbpf_func(y):
-            # For measurement jacobian, need position
-            return scenario.h_jacobian(np.concatenate([y, np.zeros(2)]))
-
-        # Get H for first particle
-        if rbpf.particles:
-            H = H_rbpf_func(rbpf.particles[0].y)
-        else:
-            H = scenario.h_jacobian(scenario.x0)
-
-        rbpf.update(z, h_rbpf, H, scenario.R)
+        rbpf.update(z, h_rbpf, H_v, scenario.R)
 
         # Estimate
         y_est, v_est, P_v = rbpf.estimate()
@@ -647,13 +638,7 @@ def main():
     x_gsf, P_gsf = run_gsf_filter(scenario, measurements)
 
     print("Running RBPF...")
-    try:
-        x_rbpf, P_rbpf = run_rbpf_filter(scenario, measurements)
-    except (ValueError, IndexError):
-        # RBPF implementation has dimension issues; use perturbed GSF as fallback
-        print("  (RBPF skipped due to implementation constraints)")
-        x_rbpf = x_gsf + np.random.randn(*x_gsf.shape) * 0.5
-        P_rbpf = P_gsf.copy()
+    x_rbpf, P_rbpf = run_rbpf_filter(scenario, measurements)
 
     # Print statistics
     err_cekf = np.linalg.norm(x_cekf - x_true, axis=1)
