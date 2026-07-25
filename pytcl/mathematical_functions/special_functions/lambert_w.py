@@ -149,7 +149,7 @@ def omega_constant() -> float:
     Examples
     --------
     >>> omega = omega_constant()
-    >>> omega * np.exp(omega)  # Should equal 1
+    >>> round(omega * np.exp(omega), 12)  # Should equal 1
     1.0
     """
     return float(np.real(sp.lambertw(1.0)))
