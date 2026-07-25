@@ -367,8 +367,8 @@ def demo_3d_rts_smoother():
         smooth_pos_errors.append(np.linalg.norm(smooth_pos - true))
 
     print("\n3D Position RMSE comparison:")
-    print(f"  Filter:   {np.sqrt(np.mean(np.array(filter_pos_errors)**2)):.2f} m")
-    print(f"  Smoother: {np.sqrt(np.mean(np.array(smooth_pos_errors)**2)):.2f} m")
+    print(f"  Filter:   {np.sqrt(np.mean(np.array(filter_pos_errors) ** 2)):.2f} m")
+    print(f"  Smoother: {np.sqrt(np.mean(np.array(smooth_pos_errors) ** 2)):.2f} m")
 
     improvement = (1 - np.mean(smooth_pos_errors) / np.mean(filter_pos_errors)) * 100
     print(f"  Improvement: {improvement:.1f}%")
@@ -387,8 +387,8 @@ def demo_3d_rts_smoother():
         smooth_vel_errors.append(np.linalg.norm(smooth_vel - true))
 
     print("\n3D Velocity RMSE comparison:")
-    print(f"  Filter:   {np.sqrt(np.mean(np.array(filter_vel_errors)**2)):.2f} m/s")
-    print(f"  Smoother: {np.sqrt(np.mean(np.array(smooth_vel_errors)**2)):.2f} m/s")
+    print(f"  Filter:   {np.sqrt(np.mean(np.array(filter_vel_errors) ** 2)):.2f} m/s")
+    print(f"  Smoother: {np.sqrt(np.mean(np.array(smooth_vel_errors) ** 2)):.2f} m/s")
 
     vel_improvement = (
         1 - np.mean(smooth_vel_errors) / np.mean(filter_vel_errors)
@@ -547,12 +547,12 @@ def demo_spherical_measurements():
 
     print("\nScenario: Aircraft tracking with radar")
     print(
-        f"  Initial position: ({true_states[0, 0]/1000:.1f}, "
-        f"{true_states[0, 2]/1000:.1f}, {true_states[0, 4]/1000:.1f}) km"
+        f"  Initial position: ({true_states[0, 0] / 1000:.1f}, "
+        f"{true_states[0, 2] / 1000:.1f}, {true_states[0, 4] / 1000:.1f}) km"
     )
     print(
-        f"  Final position: ({true_states[-1, 0]/1000:.1f}, "
-        f"{true_states[-1, 2]/1000:.1f}, {true_states[-1, 4]/1000:.1f}) km"
+        f"  Final position: ({true_states[-1, 0] / 1000:.1f}, "
+        f"{true_states[-1, 2] / 1000:.1f}, {true_states[-1, 4] / 1000:.1f}) km"
     )
 
     # Radar measurement function: Cartesian -> (range, azimuth, elevation)
@@ -652,7 +652,7 @@ def demo_spherical_measurements():
 
     # Show range over time
     ranges = [np.sqrt(s[0] ** 2 + s[2] ** 2 + s[4] ** 2) for s in true_states]
-    print(f"\nRange: {ranges[0]/1000:.1f} km -> {ranges[-1]/1000:.1f} km")
+    print(f"\nRange: {ranges[0] / 1000:.1f} km -> {ranges[-1] / 1000:.1f} km")
 
     # Plot
     if SHOW_PLOTS:

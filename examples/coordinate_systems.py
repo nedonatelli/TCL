@@ -91,9 +91,9 @@ def geodetic_conversions_demo() -> None:
     # Convert to ECEF
     ecef = geodetic2ecef(lat, lon, alt)
     print("\nECEF coordinates:")
-    print(f"  X: {ecef[0]/1000:.3f} km")
-    print(f"  Y: {ecef[1]/1000:.3f} km")
-    print(f"  Z: {ecef[2]/1000:.3f} km")
+    print(f"  X: {ecef[0] / 1000:.3f} km")
+    print(f"  Y: {ecef[1] / 1000:.3f} km")
+    print(f"  Z: {ecef[2] / 1000:.3f} km")
 
     # Convert back to geodetic
     lat_r, lon_r, alt_r = ecef2geodetic(ecef)
@@ -126,9 +126,9 @@ def local_tangent_plane_demo() -> None:
     # Convert ENU to ECEF
     target_ecef = enu2ecef(enu_offset, ref_lat, ref_lon, ref_ecef)
     print("\nTarget ECEF coordinates:")
-    print(f"  X: {target_ecef[0]/1000:.3f} km")
-    print(f"  Y: {target_ecef[1]/1000:.3f} km")
-    print(f"  Z: {target_ecef[2]/1000:.3f} km")
+    print(f"  X: {target_ecef[0] / 1000:.3f} km")
+    print(f"  Y: {target_ecef[1] / 1000:.3f} km")
+    print(f"  Z: {target_ecef[2] / 1000:.3f} km")
 
     # Convert ECEF back to ENU
     enu_recovered = ecef2enu(target_ecef, ref_lat, ref_lon, ref_ecef)

@@ -130,7 +130,7 @@ def kalman_filtering_tutorial():
     estimates = np.array(estimates)
 
     print(
-        f"Filter complete. RMSE: {np.sqrt(np.mean((estimates - true_states)**2)):.4f}"
+        f"Filter complete. RMSE: {np.sqrt(np.mean((estimates - true_states) ** 2)):.4f}"
     )
 
     # Step 5: Visualize Results

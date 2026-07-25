@@ -979,6 +979,6 @@ class TestSEZConversions:
         # For northward target, the magnitude should be large and east component small
         total_distance = np.linalg.norm(sez)
         assert total_distance > 100000, "Distance should be significant"
-        assert abs(sez[1]) < abs(
-            sez[0]
-        ), "East component should be smaller than meridional"
+        assert abs(sez[1]) < abs(sez[0]), (
+            "East component should be smaller than meridional"
+        )

@@ -17,8 +17,8 @@ from typing import Any, Callable, List, Optional, Set, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import CoverTreeResult  # Backward compatibility alias
 from pytcl.containers.base import (
+    CoverTreeResult,  # Backward compatibility alias
     MetricSpatialIndex,
     NeighborResult,
     validate_query_input,

@@ -291,7 +291,7 @@ def demo_recursive_least_squares():
         # Print at checkpoints
         if checkpoint_idx < len(checkpoints) and i + 1 == checkpoints[checkpoint_idx]:
             print(
-                f"  After {i+1:>3} samples: intercept={x_est[0]:.4f}, "
+                f"  After {i + 1:>3} samples: intercept={x_est[0]:.4f}, "
                 f"slope={x_est[1]:.4f}"
             )
             checkpoint_idx += 1
@@ -336,7 +336,7 @@ def demo_ridge_regression():
             x_hat = result_ols.x
         else:
             x_hat = ridge_regression(A, y, alpha=lam)  # Returns array directly
-        print(f"{lam:>10.2f} {x_hat[0]:>12.4f} {x_hat[1]:>12.4f} " f"{x_hat[2]:>12.4f}")
+        print(f"{lam:>10.2f} {x_hat[0]:>12.4f} {x_hat[1]:>12.4f} {x_hat[2]:>12.4f}")
 
     print("\nNote: Ridge regression shrinks coefficients toward zero,")
     print("which helps stabilize estimates for collinear predictors.")

@@ -87,9 +87,7 @@ def multi_target_tracking_tutorial():
     np.random.seed(42)
 
     all_measurements = []
-    measurement_association = (
-        []
-    )  # Ground truth: which measurement came from which target
+    measurement_association = []  # Ground truth: which measurement came from which target
 
     for i in range(n_steps):
         step_measurements = []
@@ -114,7 +112,7 @@ def multi_target_tracking_tutorial():
         all_measurements.append(step_measurements)
         measurement_association.append(step_association)
 
-    print(f"Measurement statistics:")
+    print("Measurement statistics:")
     print(f"  Detection probability: {detection_probability}")
     print(f"  False alarm rate: {false_alarm_rate}")
     print(f"  Measurement noise: {measurement_noise}")
@@ -202,7 +200,7 @@ def multi_target_tracking_tutorial():
             # Remove old tracks
             tracks = [t for t in tracks if t.age > 2]
 
-    print(f"GNN association complete")
+    print("GNN association complete")
     print(f"Tracks initiated: {track_counter}")
 
     # Step 4: Visualize Results

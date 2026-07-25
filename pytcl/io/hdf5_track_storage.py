@@ -56,8 +56,7 @@ class TrackHDF5Storage:
     ) -> None:
         if not HAS_H5PY:
             raise ImportError(
-                "h5py is required for TrackHDF5Storage. "
-                "Install with: pip install h5py"
+                "h5py is required for TrackHDF5Storage. Install with: pip install h5py"
             )
         self._path = path
         self._chunk_size = chunk_size

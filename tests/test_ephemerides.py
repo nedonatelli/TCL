@@ -165,9 +165,9 @@ class TestMoonPosition:
         distance_km = distance * au_to_km
 
         # Should be roughly 380,000-390,000 km
-        assert (
-            370000 < distance_km < 400000
-        ), f"Moon distance {distance_km:.0f} km is unexpected"
+        assert 370000 < distance_km < 400000, (
+            f"Moon distance {distance_km:.0f} km is unexpected"
+        )
 
     def test_moon_position_frames_consistency(self):
         """Test that Moon positions are consistent across frames."""
@@ -223,9 +223,9 @@ class TestPlanetPosition:
             r, _ = self.eph.planet_position(planet, jd)
             distance = np.linalg.norm(r)
             # Allow 25% tolerance for orbital position variation
-            assert (
-                0.75 * expected_a < distance < 1.25 * expected_a
-            ), f"{planet.capitalize()} distance {distance:.3f} AU != {expected_a:.3f} AU ± 25%"
+            assert 0.75 * expected_a < distance < 1.25 * expected_a, (
+                f"{planet.capitalize()} distance {distance:.3f} AU != {expected_a:.3f} AU ± 25%"
+            )
 
     def test_planet_invalid_name(self):
         """Test that invalid planet name raises ValueError."""

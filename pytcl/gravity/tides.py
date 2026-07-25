@@ -673,7 +673,7 @@ def ocean_tide_loading_displacement(
     True
     """
     T = julian_centuries_j2000(mjd)
-    l, l_prime, F, D, Omega = fundamental_arguments(T)
+    l, l_prime, F, D, Omega = fundamental_arguments(T)  # noqa: E741
 
     # Days since J2000.0
     days = mjd - 51544.5

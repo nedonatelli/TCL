@@ -603,7 +603,11 @@ class TestIonosphereIntegration:
 
         # Get Klobuchar prediction (need elevation/azimuth for zenith)
         klobuchar_delay_val = klobuchar_delay(
-            lat, lon, np.radians(90), 0, hour * 3600  # Zenith
+            lat,
+            lon,
+            np.radians(90),
+            0,
+            hour * 3600,  # Zenith
         )
 
         # Both should be same order of magnitude

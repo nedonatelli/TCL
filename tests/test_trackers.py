@@ -66,7 +66,13 @@ class TestSingleTargetTracker:
     def test_gating(self):
         """Test measurement gating."""
         tracker = SingleTargetTracker(
-            4, 2, self.F, self.H, self.Q, self.R, gate_threshold=9.21  # 99% chi2 for 2D
+            4,
+            2,
+            self.F,
+            self.H,
+            self.Q,
+            self.R,
+            gate_threshold=9.21,  # 99% chi2 for 2D
         )
         tracker.initialize(np.array([0, 1, 0, 1]), np.eye(4) * 0.1)
         tracker.predict(1.0)
@@ -347,6 +353,6 @@ class TestIntegration:
         for _ in range(5):
             tracker.process([], dt=1.0)
 
-        assert (
-            len(tracker.confirmed_tracks) == 0
-        ), "Target should be deleted after misses"
+        assert len(tracker.confirmed_tracks) == 0, (
+            "Target should be deleted after misses"
+        )

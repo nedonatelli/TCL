@@ -23,8 +23,8 @@ from pytcl.atmosphere.ionosphere import (
     scintillation_index,
     simple_iri,
 )
-from pytcl.atmosphere.models import G0  # Constants
 from pytcl.atmosphere.models import (
+    G0,  # Constants
     GAMMA,
     P0,
     RHO0,

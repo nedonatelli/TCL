@@ -159,14 +159,14 @@ def demo_rts_smoother():
     print(f"  Filter:   {np.mean(filter_rmse_pos):.3f}")
     print(f"  Smoother: {np.mean(smooth_rmse_pos):.3f}")
     print(
-        f"  Improvement: {(1 - np.mean(smooth_rmse_pos)/np.mean(filter_rmse_pos))*100:.1f}%"
+        f"  Improvement: {(1 - np.mean(smooth_rmse_pos) / np.mean(filter_rmse_pos)) * 100:.1f}%"
     )
 
     print("\nVelocity RMSE comparison:")
     print(f"  Filter:   {np.mean(filter_rmse_vel):.3f}")
     print(f"  Smoother: {np.mean(smooth_rmse_vel):.3f}")
     print(
-        f"  Improvement: {(1 - np.mean(smooth_rmse_vel)/np.mean(filter_rmse_vel))*100:.1f}%"
+        f"  Improvement: {(1 - np.mean(smooth_rmse_vel) / np.mean(filter_rmse_vel)) * 100:.1f}%"
     )
 
     # Covariance comparison (trace as measure of uncertainty)
@@ -176,7 +176,9 @@ def demo_rts_smoother():
     print("\nUncertainty (avg covariance trace):")
     print(f"  Filter:   {np.mean(filter_trace):.3f}")
     print(f"  Smoother: {np.mean(smooth_trace):.3f}")
-    print(f"  Reduction: {(1 - np.mean(smooth_trace)/np.mean(filter_trace))*100:.1f}%")
+    print(
+        f"  Reduction: {(1 - np.mean(smooth_trace) / np.mean(filter_trace)) * 100:.1f}%"
+    )
 
 
 def demo_fixed_lag_smoother():

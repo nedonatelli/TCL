@@ -90,7 +90,7 @@ def demo_kdtree_basics():
     print(f"\n{k} nearest neighbors:")
     # indices/distances are 2D arrays, extract the first row for single query
     for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
-        print(f"  {i+1}. Point {idx}: {points[idx]} (distance={dist:.4f})")
+        print(f"  {i + 1}. Point {idx}: {points[idx]} (distance={dist:.4f})")
 
     # Plot KDTree result
     if SHOW_PLOTS:
@@ -226,7 +226,7 @@ def demo_balltree():
     print(f"\nQuery: origin in {n_dims}D")
     print(f"{k} nearest neighbors:")
     for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
-        print(f"  {i+1}. Point {idx}: distance = {dist:.4f}")
+        print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: Ball Tree is often more efficient than K-D Tree")
     print("for higher dimensional data (curse of dimensionality).")
@@ -443,7 +443,7 @@ def demo_vptree():
     print(f"\nQuery point: {query}")
     print(f"{k} nearest neighbors:")
     for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
-        print(f"  {i+1}. Point {idx}: distance = {dist:.4f}")
+        print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: VP-Tree works with any distance metric,")
     print("not just Euclidean distance.")
@@ -474,7 +474,7 @@ def demo_covertree():
     print(f"\nQuery: origin in 4D")
     print(f"{k} nearest neighbors:")
     for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
-        print(f"  {i+1}. Point {idx}: distance = {dist:.4f}")
+        print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: Cover Tree provides O(c^12 log n) query complexity")
     print("where c is the expansion constant of the data.")
@@ -557,7 +557,7 @@ def demo_performance_comparison():
     print(f"{'Structure':<15} {'Build (ms)':>12} {'Query (ms)':>12}")
     print("-" * 50)
     for name, (build, query) in results.items():
-        print(f"{name:<15} {build*1000:>12.2f} {query*1000:>12.2f}")
+        print(f"{name:<15} {build * 1000:>12.2f} {query * 1000:>12.2f}")
 
     print("\nNote: Performance depends on data distribution and dimensionality.")
 
@@ -620,7 +620,7 @@ def demo_tracking_application():
     for m_idx, t_idx, dist in associations[:5]:
         true_assoc = m_idx == t_idx  # Simplified ground truth
         status = "+" if true_assoc else "?"
-        print(f"  Meas {m_idx:>2} -> Track {t_idx:>2} " f"(dist={dist:.2f}) {status}")
+        print(f"  Meas {m_idx:>2} -> Track {t_idx:>2} (dist={dist:.2f}) {status}")
 
     # Radius query for gating
     print("\n--- Using Radius Query for Gating ---")

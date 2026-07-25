@@ -117,7 +117,7 @@ def radar_detection_tutorial():
             detection_map[d, r] = power_data[d, r] > threshold
 
     num_detections = np.sum(detection_map)
-    print(f"OS-CFAR parameters:")
+    print("OS-CFAR parameters:")
     print(f"  Guard cells: {guard_cells}")
     print(f"  Training cells: {train_cells}")
     print(f"  Target PFA: {pfa}")

@@ -40,8 +40,8 @@ from pytcl.mathematical_functions.special_functions.debye import (
     debye_entropy,
     debye_heat_capacity,
 )
-from pytcl.mathematical_functions.special_functions.elliptic import ellipe  # noqa: E501
 from pytcl.mathematical_functions.special_functions.elliptic import (
+    ellipe,  # noqa: E501
     ellipeinc,
     ellipk,
     ellipkinc,

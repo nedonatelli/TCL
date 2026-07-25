@@ -686,15 +686,15 @@ class TestAssign3D:
             ("decompose", result_decompose),
         ]:
             if result.tuples.shape[0] > 0:
-                assert (
-                    len(set(result.tuples[:, 0])) == result.tuples.shape[0]
-                ), f"{name} has duplicate i"
-                assert (
-                    len(set(result.tuples[:, 1])) == result.tuples.shape[0]
-                ), f"{name} has duplicate j"
-                assert (
-                    len(set(result.tuples[:, 2])) == result.tuples.shape[0]
-                ), f"{name} has duplicate k"
+                assert len(set(result.tuples[:, 0])) == result.tuples.shape[0], (
+                    f"{name} has duplicate i"
+                )
+                assert len(set(result.tuples[:, 1])) == result.tuples.shape[0], (
+                    f"{name} has duplicate j"
+                )
+                assert len(set(result.tuples[:, 2])) == result.tuples.shape[0], (
+                    f"{name} has duplicate k"
+                )
 
 
 class TestAssignment3DResult:

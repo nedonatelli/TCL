@@ -575,7 +575,7 @@ def demo_nonlinear_tracking():
         est_pos = pf_estimates[t, :2]
         err = pos_errors[t]
         print(
-            f"  t={t*dt:.1f}s: True=({true_pos[0]:.2f}, {true_pos[1]:.2f}), "
+            f"  t={t * dt:.1f}s: True=({true_pos[0]:.2f}, {true_pos[1]:.2f}), "
             f"Est=({est_pos[0]:.2f}, {est_pos[1]:.2f}), Err={err:.3f}m"
         )
 

@@ -213,7 +213,7 @@ def example_gps_time_dilation():
     rate = proper_time_rate(v_gps, r_gps, GM_EARTH)
 
     print(f"\nGPS Satellite Orbital Parameters:")
-    print(f"  Altitude: {(r_gps - 6.371e6)/1e3:.1f} km")
+    print(f"  Altitude: {(r_gps - 6.371e6) / 1e3:.1f} km")
     print(f"  Orbital velocity: {v_gps:.1f} m/s")
     print(f"  Orbital period: ~12 hours")
 
@@ -222,11 +222,11 @@ def example_gps_time_dilation():
     print(f"    (Time runs slower in gravity field)")
 
     print(f"\nTime Rate Comparison (per day):")
-    print(f"  Special relativistic effect: -{sr_effect*86400*1e9:.1f} ns/day")
+    print(f"  Special relativistic effect: -{sr_effect * 86400 * 1e9:.1f} ns/day")
     print(f"    (Satellite moving fast, slows down time)")
-    print(f"  General relativistic effect: +{gr_effect*86400*1e9:.1f} ns/day")
+    print(f"  General relativistic effect: +{gr_effect * 86400 * 1e9:.1f} ns/day")
     print(f"    (Weaker gravity field, speeds up time)")
-    print(f"  Net effect: {(1-rate)*86400*1e9:.1f} ns/day")
+    print(f"  Net effect: {(1 - rate) * 86400 * 1e9:.1f} ns/day")
     print(f"    (Net toward weaker field = time speeds up in orbit)")
 
     print(f"\nPractical Impact:")
@@ -235,10 +235,10 @@ def example_gps_time_dilation():
         f"  Without correction, GPS clock would drift: {total_daily_shift:.1f} seconds/day"
     )
     print(
-        f"  This would cause positioning error: {total_daily_shift * C_LIGHT/2:.0f} meters/day"
+        f"  This would cause positioning error: {total_daily_shift * C_LIGHT / 2:.0f} meters/day"
     )
     print(
-        f"  GPS atomic clocks must be pre-offset by {-total_daily_shift*1e6:.1f} microseconds/day"
+        f"  GPS atomic clocks must be pre-offset by {-total_daily_shift * 1e6:.1f} microseconds/day"
     )
 
     # Time dilation vs altitude
@@ -290,7 +290,7 @@ def example_mercury_precession():
     precession_per_century = precession_arcsec * orbits_per_century
 
     print(f"\nMercury Orbital Parameters:")
-    print(f"  Semi-major axis: {a_mercury/AU:.8f} AU = {a_mercury/1e9:.3f} Gm")
+    print(f"  Semi-major axis: {a_mercury / AU:.8f} AU = {a_mercury / 1e9:.3f} Gm")
     print(f"  Eccentricity: {e_mercury:.8f}")
     print(f"  Orbital period: {orbital_period:.3f} days")
     print(f"  Perturbing body: Sun (GM = {GM_SUN:.3e} m³/s²)")
@@ -333,15 +333,17 @@ def example_shapiro_delay():
     light_travel = distance / C_LIGHT
 
     print(f"\nParameters:")
-    print(f"  Earth distance from Sun: {np.linalg.norm(earth_pos)/AU:.3f} AU")
-    print(f"  Spacecraft distance from Sun: {np.linalg.norm(spacecraft_pos)/AU:.3f} AU")
+    print(f"  Earth distance from Sun: {np.linalg.norm(earth_pos) / AU:.3f} AU")
     print(
-        f"  Earth-spacecraft distance: {distance/AU:.3f} AU = {distance/1.496e11:.3f} AU"
+        f"  Spacecraft distance from Sun: {np.linalg.norm(spacecraft_pos) / AU:.3f} AU"
+    )
+    print(
+        f"  Earth-spacecraft distance: {distance / AU:.3f} AU = {distance / 1.496e11:.3f} AU"
     )
 
     print(f"\nRanging Measurement:")
     print(f"  Signal travel time (geometric): {light_travel:.3f} seconds")
-    print(f"  Shapiro delay (GR correction): {delay*1e6:.1f} microseconds")
+    print(f"  Shapiro delay (GR correction): {delay * 1e6:.1f} microseconds")
     print(f"  Total propagation time: {light_travel + delay:.3f} seconds")
     print(f"  Error if uncorrected: {delay * C_LIGHT / 2:.0f} meters")
 
@@ -364,7 +366,7 @@ def example_shapiro_delay():
         craft = np.array([-(au_dist * AU + 0.8 * AU), 0.0, 0.0])
 
         delay_var = shapiro_delay(earth_var, craft, sun_pos, GM_SUN)
-        print(f"  Earth at {au_dist:.1f} AU: {delay_var*1e6:.1f} microseconds")
+        print(f"  Earth at {au_dist:.1f} AU: {delay_var * 1e6:.1f} microseconds")
 
 
 def example_post_newtonian_acceleration():
@@ -393,15 +395,15 @@ def example_post_newtonian_acceleration():
     relative_correction = correction_magnitude / np.linalg.norm(a_newt)
 
     print(f"\nLEO Satellite Parameters:")
-    print(f"  Altitude: {(r - 6.371e6)/1e3:.0f} km")
+    print(f"  Altitude: {(r - 6.371e6) / 1e3:.0f} km")
     print(f"  Orbital velocity: {v:.1f} m/s")
-    print(f"  Orbital period: {2*np.pi*r/v/60:.1f} minutes")
+    print(f"  Orbital period: {2 * np.pi * r / v / 60:.1f} minutes")
 
     print(f"\nAcceleration Comparison:")
     print(f"  Newtonian acceleration: {np.linalg.norm(a_newt):.6f} m/s²")
     print(f"  Post-Newtonian correction: {correction_magnitude:.3e} m/s²")
     print(
-        f"  Relative correction: {relative_correction*1e6:.1f} ppm (parts per million)"
+        f"  Relative correction: {relative_correction * 1e6:.1f} ppm (parts per million)"
     )
 
     print(f"\nOrbit Impact Over One Day:")
@@ -491,15 +493,17 @@ def example_lense_thirring_precession():
     precession_per_year = precession * orbits_per_year * 206265  # arcsec/year
 
     print(f"\nLAGEOS Satellite (Test of General Relativity):")
-    print(f"  Semi-major axis: {a/1e6:.2f} Mm = {(a-6.371e6)/1e3:.0f} km altitude")
+    print(
+        f"  Semi-major axis: {a / 1e6:.2f} Mm = {(a - 6.371e6) / 1e3:.0f} km altitude"
+    )
     print(f"  Eccentricity: {e:.4f}")
     print(f"  Inclination: {np.degrees(i):.2f}°")
     print(
-        f"  Orbital period: {orbital_period/60:.0f} minutes = {orbital_period/3600:.2f} hours"
+        f"  Orbital period: {orbital_period / 60:.0f} minutes = {orbital_period / 3600:.2f} hours"
     )
 
     print(f"\nLense-Thirring Effect:")
-    print(f"  Precession per orbit: {precession*206265:.3f} milliarcseconds")
+    print(f"  Precession per orbit: {precession * 206265:.3f} milliarcseconds")
     print(f"  Precession per year: {precession_per_year:.3f} arcsecond")
     print(f"  Detection method: Laser ranging (~mm precision on altitude)")
 
@@ -533,10 +537,10 @@ def example_relativistic_range_correction():
 
     print(f"\nLunar Laser Ranging (LLR):")
     print(f"  Target: Apollo 11, 14, 15 retroreflectors on Moon")
-    print(f"  Distance: {d_moon/1e6:.0f} km")
+    print(f"  Distance: {d_moon / 1e6:.0f} km")
     print(f"  Relativistic correction: {r_corr_moon:.1f} meters")
     print(f"  Precision of LLR: ~2-3 cm")
-    print(f"  Relativistic correction: {r_corr_moon*100:.0f}% of measurement error")
+    print(f"  Relativistic correction: {r_corr_moon * 100:.0f}% of measurement error")
 
     print(f"\n" + "-" * 70)
     print("Relativistic range corrections at various distances:")

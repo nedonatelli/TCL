@@ -18,8 +18,8 @@ source .venv/bin/activate
 .venv/bin/python -m pytest tests/test_terrain_loaders.py -x -q
 
 # Lint and format
-.venv/bin/python -m black .
-.venv/bin/python -m flake8 pytcl --max-line-length=100
+.venv/bin/ruff check . --fix
+.venv/bin/ruff format .
 ```
 
 ## Architecture
@@ -47,7 +47,7 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 ## Code Conventions
 
 - **Units:** All angles in radians (not degrees) at API boundaries
-- **Style:** black formatting, flake8 linting, max line length 100
+- **Style:** ruff (format + lint + import sorting), line length 88, config in pyproject.toml
 - **Docstrings:** NumPy style
 - **Naming:** `snake_case` functions, `PascalCase` classes
 - **Tests:** pytest, use `_data_skip = (FileNotFoundError, DependencyError)` for tests needing external data — never bare `except Exception`

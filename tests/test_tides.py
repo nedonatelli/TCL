@@ -75,7 +75,7 @@ class TestTimeConversions:
     def test_fundamental_arguments_range(self):
         """Fundamental arguments should be in [0, 2*pi)."""
         T = 0.1  # Some time
-        l, l_prime, F, D, Omega = fundamental_arguments(T)
+        l, l_prime, F, D, Omega = fundamental_arguments(T)  # noqa: E741
 
         assert 0 <= l < 2 * np.pi
         assert 0 <= l_prime < 2 * np.pi

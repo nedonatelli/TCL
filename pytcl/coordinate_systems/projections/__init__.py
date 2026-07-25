@@ -29,8 +29,6 @@ Zone 18N: E=460592.4, N=4983072.0
 
 from pytcl.coordinate_systems.projections.projections import (
     WGS84_A,  # Constants; Result types
-)
-from pytcl.coordinate_systems.projections.projections import (
     WGS84_B,
     WGS84_E,
     WGS84_E2,

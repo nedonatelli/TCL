@@ -56,7 +56,7 @@ def plot_sun_earth_moon_positions(
             textposition="top center",
             name="Sun",
             hovertemplate="<b>Sun</b><br>Distance from origin: "
-            f"{np.linalg.norm(r_sun)/AU:.3f} AU<extra></extra>",
+            f"{np.linalg.norm(r_sun) / AU:.3f} AU<extra></extra>",
         )
     )
 
@@ -72,7 +72,7 @@ def plot_sun_earth_moon_positions(
             textposition="top center",
             name="Earth",
             hovertemplate="<b>Earth</b><br>Distance from Sun: "
-            f"{np.linalg.norm(earth_pos - r_sun)/AU:.3f} AU<extra></extra>",
+            f"{np.linalg.norm(earth_pos - r_sun) / AU:.3f} AU<extra></extra>",
         )
     )
 
@@ -215,10 +215,10 @@ def example_sun_position():
 
     print(f"\nJ2000.0 Epoch: JD {jd_j2000}")
     print(f"Sun Position (ICRF):")
-    print(f"  X: {r_sun[0]:15.3f} m = {r_sun[0]/AU:10.6f} AU")
-    print(f"  Y: {r_sun[1]:15.3f} m = {r_sun[1]/AU:10.6f} AU")
-    print(f"  Z: {r_sun[2]:15.3f} m = {r_sun[2]/AU:10.6f} AU")
-    print(f"  Distance: {np.linalg.norm(r_sun)/AU:.6f} AU")
+    print(f"  X: {r_sun[0]:15.3f} m = {r_sun[0] / AU:10.6f} AU")
+    print(f"  Y: {r_sun[1]:15.3f} m = {r_sun[1] / AU:10.6f} AU")
+    print(f"  Z: {r_sun[2]:15.3f} m = {r_sun[2] / AU:10.6f} AU")
+    print(f"  Distance: {np.linalg.norm(r_sun) / AU:.6f} AU")
 
     print(f"\nSun Velocity (ICRF):")
     print(f"  VX: {v_sun[0]:12.3f} m/s")
@@ -245,7 +245,7 @@ def example_sun_position():
     print(f"Apogee (maximum):  {max(distances):.6f} AU")
     print(
         f"Variation:         {max(distances) - min(distances):.6f} AU "
-        f"({100*(max(distances)-min(distances))/np.mean(distances):.2f}%)"
+        f"({100 * (max(distances) - min(distances)) / np.mean(distances):.2f}%)"
     )
 
     # Visualize the Sun's orbital distance throughout the year
@@ -265,14 +265,14 @@ def example_moon_position():
 
     print(f"\nJ2000.0 Epoch: JD {jd_j2000}")
     print(f"Moon Position (Earth-centered ICRF):")
-    print(f"  X: {r_moon[0]:12.3f} m = {r_moon[0]/1e6:10.1f} km")
-    print(f"  Y: {r_moon[1]:12.3f} m = {r_moon[1]/1e6:10.1f} km")
-    print(f"  Z: {r_moon[2]:12.3f} m = {r_moon[2]/1e6:10.1f} km")
-    print(f"  Distance: {np.linalg.norm(r_moon)/1e6:.1f} km")
+    print(f"  X: {r_moon[0]:12.3f} m = {r_moon[0] / 1e6:10.1f} km")
+    print(f"  Y: {r_moon[1]:12.3f} m = {r_moon[1] / 1e6:10.1f} km")
+    print(f"  Z: {r_moon[2]:12.3f} m = {r_moon[2] / 1e6:10.1f} km")
+    print(f"  Distance: {np.linalg.norm(r_moon) / 1e6:.1f} km")
 
     print(f"\nMoon Velocity (Earth-centered ICRF):")
     print(
-        f"  Speed: {np.linalg.norm(v_moon):.3f} m/s = {np.linalg.norm(v_moon)*86400/1e3:.1f} km/day"
+        f"  Speed: {np.linalg.norm(v_moon):.3f} m/s = {np.linalg.norm(v_moon) * 86400 / 1e3:.1f} km/day"
     )
 
     # Lunar distance variation (orbital ellipticity)
@@ -294,7 +294,7 @@ def example_moon_position():
     print(f"Mean distance:      {np.mean(distances):.1f} km")
     print(
         f"Variation:          {max(distances) - min(distances):.1f} km "
-        f"({100*(max(distances)-min(distances))/np.mean(distances):.1f}%)"
+        f"({100 * (max(distances) - min(distances)) / np.mean(distances):.1f}%)"
     )
 
     # Visualize the Sun-Earth-Moon configuration
@@ -386,17 +386,17 @@ def example_frame_transformations():
     # ICRF (default)
     r_icrf, _ = eph.sun_position(jd_j2000, frame="ICRF")
     print(f"ICRF Frame (International Celestial Reference Frame):")
-    print(f"  X: {r_icrf[0]/AU:10.6f} AU")
-    print(f"  Y: {r_icrf[1]/AU:10.6f} AU")
-    print(f"  Z: {r_icrf[2]/AU:10.6f} AU")
+    print(f"  X: {r_icrf[0] / AU:10.6f} AU")
+    print(f"  Y: {r_icrf[1] / AU:10.6f} AU")
+    print(f"  Z: {r_icrf[2] / AU:10.6f} AU")
 
     # Ecliptic frame
     try:
         r_ecliptic, _ = eph.sun_position(jd_j2000, frame="ecliptic")
         print(f"\nEcliptic Frame:")
-        print(f"  X: {r_ecliptic[0]/AU:10.6f} AU")
-        print(f"  Y: {r_ecliptic[1]/AU:10.6f} AU")
-        print(f"  Z: {r_ecliptic[2]/AU:10.6f} AU (small, as expected)")
+        print(f"  X: {r_ecliptic[0] / AU:10.6f} AU")
+        print(f"  Y: {r_ecliptic[1] / AU:10.6f} AU")
+        print(f"  Z: {r_ecliptic[2] / AU:10.6f} AU (small, as expected)")
     except NotImplementedError:
         print("\nEcliptic frame transformation would be applied here")
 
@@ -425,18 +425,22 @@ def example_time_series():
 
     print(f"Computed {len(dates)} positions for Sun and Moon")
     print(f"\nSun orbit statistics:")
-    print(f"  Min distance: {np.min(np.linalg.norm(sun_positions, axis=1))/AU:.6f} AU")
-    print(f"  Max distance: {np.max(np.linalg.norm(sun_positions, axis=1))/AU:.6f} AU")
+    print(
+        f"  Min distance: {np.min(np.linalg.norm(sun_positions, axis=1)) / AU:.6f} AU"
+    )
+    print(
+        f"  Max distance: {np.max(np.linalg.norm(sun_positions, axis=1)) / AU:.6f} AU"
+    )
     print(f"  Orbit plane:")
-    print(f"    Min Z: {np.min(sun_positions[:, 2])/AU:.8f} AU")
-    print(f"    Max Z: {np.max(sun_positions[:, 2])/AU:.8f} AU")
+    print(f"    Min Z: {np.min(sun_positions[:, 2]) / AU:.8f} AU")
+    print(f"    Max Z: {np.max(sun_positions[:, 2]) / AU:.8f} AU")
 
     print(f"\nMoon orbit statistics:")
     print(
-        f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+        f"  Min distance: {np.min(np.linalg.norm(moon_positions, axis=1)) / 1e6:.1f} km"
     )
     print(
-        f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1))/1e6:.1f} km"
+        f"  Max distance: {np.max(np.linalg.norm(moon_positions, axis=1)) / 1e6:.1f} km"
     )
 
 
@@ -458,7 +462,7 @@ def example_ephemeris_versions():
 
     eph = DEEphemeris(version="DE440")
     r_sun, _ = eph.sun_position(jd_test)
-    print(f"\nSun position (DE440 at J2000.0): {np.linalg.norm(r_sun)/AU:.6f} AU")
+    print(f"\nSun position (DE440 at J2000.0): {np.linalg.norm(r_sun) / AU:.6f} AU")
 
 
 if __name__ == "__main__":

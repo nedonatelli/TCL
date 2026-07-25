@@ -91,6 +91,7 @@ Performance-critical functions use Numba JIT compilation:
 ```python
 from numba import njit
 
+
 @njit(cache=True)
 def _mahalanobis_distance_impl(x, mean, cov_inv):
     diff = x - mean
@@ -135,7 +136,11 @@ from pytcl.navigation.great_circle import clear_great_circle_cache, get_cache_in
 from pytcl.navigation.geodesy import clear_geodesy_cache, get_geodesy_cache_info
 
 # Magnetism caching
-from pytcl.magnetism import clear_magnetic_cache, get_magnetic_cache_info, configure_magnetic_cache
+from pytcl.magnetism import (
+    clear_magnetic_cache,
+    get_magnetic_cache_info,
+    configure_magnetic_cache,
+)
 
 # Check statistics
 print(get_cache_info())
@@ -213,7 +218,7 @@ def compute_something(lat, lon, altitude):
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)
 
-    if np.any(np.abs(lat) > np.pi/2):
+    if np.any(np.abs(lat) > np.pi / 2):
         raise ValueError("Latitude must be in [-π/2, π/2]")
 
     # Internal functions can skip validation
@@ -230,6 +235,7 @@ try:
 except ImportError:
     # Fall back to lower-resolution model
     from pytcl.gravity import egm96 as egm2008
+
     warnings.warn("EGM2008 coefficients not found, using EGM96")
 ```
 

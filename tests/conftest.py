@@ -82,9 +82,9 @@ class NumpyTestCase:
 
     def assert_shape(self, arr, expected_shape):
         """Assert array has expected shape."""
-        assert (
-            arr.shape == expected_shape
-        ), f"Expected shape {expected_shape}, got {arr.shape}"
+        assert arr.shape == expected_shape, (
+            f"Expected shape {expected_shape}, got {arr.shape}"
+        )
 
     def assert_symmetric(self, arr, rtol=1e-10):
         """Assert matrix is symmetric."""
@@ -93,9 +93,9 @@ class NumpyTestCase:
     def assert_positive_definite(self, arr, tol=1e-10):
         """Assert matrix is positive definite."""
         eigenvalues = np.linalg.eigvalsh(arr)
-        assert np.all(
-            eigenvalues > -tol
-        ), f"Matrix not positive definite: min eigenvalue = {np.min(eigenvalues)}"
+        assert np.all(eigenvalues > -tol), (
+            f"Matrix not positive definite: min eigenvalue = {np.min(eigenvalues)}"
+        )
 
     def assert_orthogonal(self, arr, rtol=1e-10):
         """Assert matrix is orthogonal."""

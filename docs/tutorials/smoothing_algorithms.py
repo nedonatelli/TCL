@@ -46,7 +46,7 @@ def smoothing_tutorial():
     R = np.array([[0.1]])  # measurement noise
 
     print("System: Constant velocity model")
-    print(f"  State: [position, velocity]")
+    print("  State: [position, velocity]")
     print(f"  Process noise cov Q: {Q[0, 0]:.3f}")
     print(f"  Measurement noise std: {np.sqrt(R[0, 0]):.3f}")
 

@@ -139,7 +139,7 @@ def demo_moment_matching():
 
     print("\nOriginal mixture (3 components):")
     for i, (w, m) in enumerate(zip(weights, means)):
-        print(f"  Component {i+1}: weight={w:.1f}, mean={m}")
+        print(f"  Component {i + 1}: weight={w:.1f}, mean={m}")
 
     # Moment match to single Gaussian - takes (weights, means, covariances)
     mean, cov = moment_match(weights, means, covariances)
@@ -242,7 +242,7 @@ def demo_mixture_reduction():
     print(f"  Total merge cost: {result_runnalls.total_cost:.4f}")
     for i, c in enumerate(result_runnalls.components):
         print(
-            f"    {i+1}: weight={c.weight:.3f}, "
+            f"    {i + 1}: weight={c.weight:.3f}, "
             f"mean=({c.mean[0]:.2f}, {c.mean[1]:.2f})"
         )
 
@@ -689,7 +689,7 @@ def demo_tracking_application():
 
     print(f"\nTrue target positions: {len(true_targets)} targets")
     for i, t in enumerate(true_targets):
-        print(f"  Target {i+1}: ({t[0]:.1f}, {t[1]:.1f})")
+        print(f"  Target {i + 1}: ({t[0]:.1f}, {t[1]:.1f})")
 
     # Create mixture with components clustered around true targets
     # Plus some spurious components (false alarms, etc.)
@@ -725,8 +725,8 @@ def demo_tracking_application():
         closest = np.argmin(dists)
         error = min(dists)
         print(
-            f"  Estimate {i+1}: ({c.mean[0]:.1f}, {c.mean[1]:.1f}), "
-            f"weight={c.weight:.2f}, error to target {closest+1}={error:.2f}"
+            f"  Estimate {i + 1}: ({c.mean[0]:.1f}, {c.mean[1]:.1f}), "
+            f"weight={c.weight:.2f}, error to target {closest + 1}={error:.2f}"
         )
 
 

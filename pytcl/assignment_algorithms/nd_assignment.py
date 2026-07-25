@@ -289,13 +289,13 @@ def relaxation_assignment_nd(
 
         if verbose:
             print(
-                f"Iter {iteration+1}: LB={lower_bound:.4f}, UB={best_cost:.4f}, "
+                f"Iter {iteration + 1}: LB={lower_bound:.4f}, UB={best_cost:.4f}, "
                 f"Gap={gap:.6f}"
             )
 
         if gap < tolerance:
             if verbose:
-                print(f"Converged at iteration {iteration+1}")
+                print(f"Converged at iteration {iteration + 1}")
             break
 
     if best_assignments is None:
@@ -392,7 +392,7 @@ def auction_assignment_nd(
 
         if verbose and (iteration + 1) % 10 == 0:
             actual_cost = float(np.sum(cost_tensor[tuple(result.assignments.T)]))
-            print(f"Iter {iteration+1}: Cost={actual_cost:.4f}")
+            print(f"Iter {iteration + 1}: Cost={actual_cost:.4f}")
 
     # Final solution
     result = greedy_assignment_nd(cost_tensor)

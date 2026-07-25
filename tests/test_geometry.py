@@ -250,7 +250,10 @@ class TestLinePlaneIntersection:
     def test_line_parallel_to_plane(self):
         """Test line parallel to plane."""
         result = line_plane_intersection(
-            [0, 0, 0], [1, 0, 0], [0, 0, 1], [0, 0, 1]  # x-direction  # xy plane at z=1
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, 0, 1],  # x-direction  # xy plane at z=1
         )
         assert result is None
 

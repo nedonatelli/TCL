@@ -953,9 +953,9 @@ class TestCovariancePositiveDefiniteness:
         history = db.get_track_history("trk_0")
         for i, cov in enumerate(history["covariances"]):
             eigenvalues = np.linalg.eigvalsh(cov)
-            assert np.all(
-                eigenvalues > 0
-            ), f"Step {i}: Non-PD covariance, eigenvalues={eigenvalues}"
+            assert np.all(eigenvalues > 0), (
+                f"Step {i}: Non-PD covariance, eigenvalues={eigenvalues}"
+            )
         db.close()
 
     def test_hdf5_covariance_pd_preserved(self, tmp_path):
@@ -980,9 +980,9 @@ class TestCovariancePositiveDefiniteness:
         retrieved = store.retrieve_track("trk_0")
         for i, cov in enumerate(retrieved["covariances"]):
             eigenvalues = np.linalg.eigvalsh(cov)
-            assert np.all(
-                eigenvalues > 0
-            ), f"Step {i}: Non-PD after HDF5 round-trip, eigenvalues={eigenvalues}"
+            assert np.all(eigenvalues > 0), (
+                f"Step {i}: Non-PD after HDF5 round-trip, eigenvalues={eigenvalues}"
+            )
         store.close()
 
 
