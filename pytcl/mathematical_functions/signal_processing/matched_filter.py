@@ -286,7 +286,8 @@ def optimal_filter(
     >>> noise_freq = np.linspace(0, 1, 256)
     >>> colored_noise_psd = 1.0 + 2.0 * np.exp(-5 * noise_freq)  # Red noise
     >>> colored_noise = np.random.randn(256) * np.sqrt(colored_noise_psd)
-    >>> signal = np.concatenate([colored_noise, target, colored_noise])
+    >>> signal = colored_noise.copy()
+    >>> signal[100:105] += target  # Embed target; len(signal) == len(noise_psd)
     >>> output = optimal_filter(signal, target, colored_noise_psd)
     >>> len(output) == len(signal)
     True

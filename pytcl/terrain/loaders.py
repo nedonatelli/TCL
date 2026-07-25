@@ -552,9 +552,11 @@ def load_gebco(
     ...     lon_min=np.radians(-125.0),
     ...     lon_max=np.radians(-120.0),
     ...     version="GEBCO2025"
-    ... )
-    >>> point = dem.get_elevation(np.radians(37.5), np.radians(-122.5))
-    >>> print(f"Elevation: {point.elevation:.1f} m")
+    ... )  # doctest: +SKIP
+    >>> point = dem.get_elevation(
+    ...     np.radians(37.5), np.radians(-122.5))  # doctest: +SKIP
+    >>> print(f"Elevation: {point.elevation:.1f} m")  # doctest: +SKIP
+    Elevation: 12.2 m
 
     Notes
     -----
@@ -623,9 +625,11 @@ def load_earth2014(
     ...     lon_min=np.radians(-125.0),
     ...     lon_max=np.radians(-120.0),
     ...     layer="SUR"
-    ... )
-    >>> point = dem.get_elevation(np.radians(37.5), np.radians(-122.5))
-    >>> print(f"Elevation: {point.elevation:.1f} m")
+    ... )  # doctest: +SKIP
+    >>> point = dem.get_elevation(
+    ...     np.radians(37.5), np.radians(-122.5))  # doctest: +SKIP
+    >>> print(f"Elevation: {point.elevation:.1f} m")  # doctest: +SKIP
+    Elevation: 5.2 m
 
     Notes
     -----

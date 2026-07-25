@@ -58,9 +58,10 @@ jobs:
             --format markdown \
             -o /tmp/summary.md
 
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "summary<<BENCH_SUMMARY_EOF" >> $GITHUB_OUTPUT
           cat /tmp/summary.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "BENCH_SUMMARY_EOF" >> $GITHUB_OUTPUT
 
       - name: Comment on PR
         if: always() && github.event_name == 'pull_request'

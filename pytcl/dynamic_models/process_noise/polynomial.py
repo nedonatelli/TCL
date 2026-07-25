@@ -43,16 +43,18 @@ def q_poly_kal(
 
     Examples
     --------
-    >>> # 1D constant velocity with acceleration noise variance of 1 m²/s⁴
+    >>> # 1D constant velocity with power spectral density of 1 m²/s³
     >>> Q = q_poly_kal(order=1, T=0.1, q=1.0)
     >>> Q
-    array([[0.000025  , 0.0005    ],
-           [0.0005    , 0.01      ]])
+    array([[0.00033333, 0.005     ],
+           [0.005     , 0.1       ]])
 
     Notes
     -----
-    The process noise assumes discrete white noise on the highest derivative.
-    For continuous-time models, use q_poly_kal_continuous.
+    This is the discretization of continuous white noise on the highest
+    derivative (e.g., Q = q*[[T³/3, T²/2], [T²/2, T]] for order=1), matching
+    QPolyKal in the MATLAB Tracker Component Library. For the discrete white
+    noise model, use q_discrete_white_noise.
     """
     n = order + 1
 

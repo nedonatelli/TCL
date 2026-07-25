@@ -117,6 +117,30 @@ class TestTransverseMercator:
 class TestUTM:
     """Tests for UTM projection."""
 
+    def test_utm_against_epsg_reference(self):
+        """Match EPSG-projected coordinates (regression).
+
+        The meridian-arc series previously used conformal-latitude
+        coefficients, putting northings off by ~10.7 km at 45 deg.
+        Reference values computed with pyproj (EPSG:32618/32756).
+        """
+        cases = [
+            (45.0, -75.5, 18, "N", 460592.351, 4983071.988),
+            (-33.9, 151.2, 56, "S", 333568.941, 6247473.337),
+        ]
+        for lat, lon, zone, hemi, easting, northing in cases:
+            r = geodetic2utm(np.radians(lat), np.radians(lon))
+            assert r.zone == zone
+            assert r.hemisphere == hemi
+            assert_allclose(r.easting, easting, atol=0.01)
+            assert_allclose(r.northing, northing, atol=0.01)
+
+            lat_back, lon_back = utm2geodetic(
+                r.easting, r.northing, r.zone, r.hemisphere
+            )
+            assert_allclose(np.degrees(lat_back), lat, atol=1e-7)
+            assert_allclose(np.degrees(lon_back), lon, atol=1e-7)
+
     def test_utm_zone_calculation(self):
         """Test UTM zone calculation."""
         # Zone 18 covers -78 to -72 degrees

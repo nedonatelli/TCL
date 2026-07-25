@@ -78,9 +78,9 @@ class Gaussian(Distribution):
     Examples
     --------
     >>> g = Gaussian(mean=0, var=1)
-    >>> g.pdf(0)
-    0.3989422804014327
-    >>> g.cdf(0)
+    >>> round(float(g.pdf(0)), 6)
+    0.398942
+    >>> round(float(g.cdf(0)), 6)
     0.5
     """
 
@@ -130,8 +130,8 @@ class MultivariateGaussian(Distribution):
     Examples
     --------
     >>> mg = MultivariateGaussian(mean=[0, 0], cov=[[1, 0], [0, 1]])
-    >>> mg.pdf([0, 0])
-    0.15915494309189535
+    >>> round(float(mg.pdf([0, 0])), 6)
+    0.159155
     """
 
     def __init__(self, mean: ArrayLike, cov: ArrayLike):

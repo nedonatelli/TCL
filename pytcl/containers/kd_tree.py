@@ -166,7 +166,7 @@ class KDTree(BaseSpatialIndex):
         Examples
         --------
         >>> tree = KDTree(np.array([[0, 0], [1, 1], [2, 2]]))
-        >>> result = tree.query([[0.5, 0.5]], k=2)
+        >>> result = tree.query([[0.4, 0.4]], k=2)
         >>> result.indices
         array([[0, 1]])
         """
@@ -254,8 +254,8 @@ class KDTree(BaseSpatialIndex):
         Examples
         --------
         >>> tree = KDTree(np.array([[0, 0], [1, 0], [0, 1], [5, 5]]))
-        >>> tree.query_radius([[0, 0]], r=1.5)
-        [[0, 1, 2]]
+        >>> sorted(tree.query_radius([[0, 0]], r=1.5)[0])
+        [0, 1, 2]
         """
         X = validate_query_input(X, self.n_features)
         n_queries = X.shape[0]

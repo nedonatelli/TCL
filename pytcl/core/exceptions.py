@@ -31,7 +31,7 @@ Examples
 Catching specific exception types:
 
 >>> from pytcl.core.exceptions import ConvergenceError, ParameterError
->>> try:
+>>> try:  # doctest: +SKIP
 ...     result = solve_kepler(M=1.5, e=1.5)  # Invalid eccentricity
 ... except ParameterError as e:
 ...     print(f"Invalid parameter: {e}")
@@ -39,7 +39,7 @@ Catching specific exception types:
 Catching all TCL errors:
 
 >>> from pytcl.core.exceptions import TCLError
->>> try:
+>>> try:  # doctest: +SKIP
 ...     result = compute_orbit(...)
 ... except TCLError as e:
 ...     print(f"TCL error: {e}")
@@ -66,6 +66,9 @@ class TCLError(Exception):
     Examples
     --------
     >>> raise TCLError("Something went wrong", details={"value": 42})
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.TCLError: Something went wrong (value=42)
     """
 
     def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
@@ -112,6 +115,9 @@ class ValidationError(TCLError, ValueError):
     ...     expected="3x3 matrix",
     ...     actual="2x4 array"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ValidationError: Invalid matrix dimensions (parameter=P, expected=3x3 matrix, actual=2x4 array)
     """
 
     def __init__(
@@ -162,6 +168,9 @@ class DimensionError(ValidationError):
     ...     actual_shape=(2, 4),
     ...     parameter="P"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.DimensionError: Covariance matrix must be 3x3 (parameter=P, expected_shape=(3, 3), actual_shape=(2, 4))
     """
 
     def __init__(
@@ -208,6 +217,9 @@ class ParameterError(ValidationError):
     ...     value=-1.0,
     ...     constraint="must be > 0"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ParameterError: Variance must be positive (parameter=variance, value=-1.0, constraint=must be > 0)
     """
 
     def __init__(
@@ -256,6 +268,9 @@ class RangeError(ValidationError):
     ...     min_value=0.0,
     ...     max_value=1.0
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.RangeError: Eccentricity must be in [0, 1) for elliptic orbits (parameter=e, value=1.5, min=0.0, max=1.0)
     """
 
     def __init__(
@@ -306,6 +321,9 @@ class ComputationError(TCLError, RuntimeError):
     ...     "Failed to compute eigenvalues",
     ...     algorithm="numpy.linalg.eig"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ComputationError: Failed to compute eigenvalues (algorithm=numpy.linalg.eig)
     """
 
     def __init__(
@@ -354,6 +372,9 @@ class ConvergenceError(ComputationError):
     ...     residual=1e-5,
     ...     tolerance=1e-12
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ConvergenceError: Kepler's equation did not converge (algorithm=Newton-Raphson, iterations=100, max_iterations=100, residual=1e-05, tolerance=1e-12)
     """
 
     def __init__(
@@ -405,6 +426,9 @@ class NumericalError(ComputationError):
     ...     operation="matrix inversion",
     ...     condition_number=1e16
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.NumericalError: Matrix is ill-conditioned (operation=matrix inversion, condition_number=1e+16)
     """
 
     def __init__(
@@ -447,6 +471,9 @@ class SingularMatrixError(ComputationError):
     ...     matrix_name="P",
     ...     determinant=1e-20
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.SingularMatrixError: Covariance matrix is singular (matrix=P, determinant=1e-20)
     """
 
     def __init__(
@@ -497,6 +524,9 @@ class StateError(TCLError):
     ...     current_state="uninitialized",
     ...     required_state="predicted"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.StateError: Cannot update without prediction (object_type=KalmanFilter, current_state=uninitialized, required_state=predicted)
     """
 
     def __init__(
@@ -544,6 +574,9 @@ class UninitializedError(StateError):
     ...     object_type="SingleTargetTracker",
     ...     required_initialization="call initialize() first"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.UninitializedError: Tracker not initialized (object_type=SingleTargetTracker, current_state=uninitialized, required_state=call initialize() first)
     """
 
     def __init__(
@@ -585,6 +618,9 @@ class EmptyContainerError(StateError):
     ...     container_type="RTree",
     ...     operation="nearest neighbor query"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.EmptyContainerError: Cannot query empty RTree (object_type=RTree, current_state=empty, operation=nearest neighbor query)
     """
 
     def __init__(
@@ -626,6 +662,9 @@ class ConfigurationError(TCLError):
     Examples
     --------
     >>> raise ConfigurationError("Invalid filter configuration")
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ConfigurationError: Invalid filter configuration
     """
 
     pass
@@ -653,6 +692,9 @@ class MethodError(ConfigurationError, ValueError):
     ...     method="invalid_method",
     ...     valid_methods=["hungarian", "auction", "greedy"]
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.MethodError: Unknown assignment method (method=invalid_method, valid_methods=['hungarian', 'auction', 'greedy'])
     """
 
     def __init__(
@@ -697,6 +739,9 @@ class DependencyError(ConfigurationError, ImportError):
     ...     feature="3D visualization",
     ...     install_command="pip install plotly"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.DependencyError: plotly is required for interactive plotting (package=plotly, feature=3D visualization, install=pip install plotly)
     """
 
     def __init__(
@@ -739,6 +784,9 @@ class DataError(TCLError):
     Examples
     --------
     >>> raise DataError("Invalid input data format")
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.DataError: Invalid input data format
     """
 
     pass
@@ -766,6 +814,9 @@ class FormatError(DataError, ValueError):
     ...     expected_format="69 characters per line",
     ...     actual_format="line 1 has 65 characters"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.FormatError: Invalid TLE format (expected=69 characters per line, actual=line 1 has 65 characters)
     """
 
     def __init__(
@@ -810,6 +861,9 @@ class ParseError(DataError, ValueError):
     ...     position=68,
     ...     reason="invalid checksum digit"
     ... )
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ParseError: Failed to parse TLE checksum (data_type=TLE, position=68, reason=invalid checksum digit)
     """
 
     def __init__(

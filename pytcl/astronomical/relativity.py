@@ -1,5 +1,11 @@
 """Relativistic corrections for precision astronomy and satellite positioning.
 
+.. warning::
+    geodetic_precession, lense_thirring_precession, post_newtonian_acceleration,
+    and relativistic_range_correction have dimensionally inconsistent formulas
+    and return unphysical values. See
+    https://github.com/nedonatelli/TCL/issues/3.
+
 This module provides utilities for computing relativistic effects in orbital mechanics,
 including gravitational time dilation, Shapiro delay, and coordinate transformations
 in the Schwarzschild metric. These effects are critical for high-precision applications
@@ -54,7 +60,7 @@ def schwarzschild_radius(mass: float) -> float:
 
     >>> r_s_sun = schwarzschild_radius(1.989e30)  # Sun's mass
     >>> print(f"Sun's Schwarzschild radius: {r_s_sun:.3e} m")
-    Sun's Schwarzschild radius: 2.952e+03 m
+    Sun's Schwarzschild radius: 2.954e+03 m
     """
     return 2.0 * G_GRAV * mass / (C_LIGHT**2)
 
@@ -92,7 +98,7 @@ def gravitational_time_dilation(r: float, gm: float = GM_EARTH) -> float:
     >>> r_earth = 6.371e6  # meters
     >>> dilation = gravitational_time_dilation(r_earth)
     >>> print(f"Time dilation at surface: {dilation:.15f}")
-    Time dilation at surface: 0.999999999300693
+    Time dilation at surface: 0.999999999303873
 
     At GPS orbital altitude (~20,200 km):
 
@@ -100,6 +106,7 @@ def gravitational_time_dilation(r: float, gm: float = GM_EARTH) -> float:
     >>> dilation_gps = gravitational_time_dilation(r_gps)
     >>> time_shift = (1 - dilation_gps) * 86400 * 1e9  # nanoseconds per day
     >>> print(f"Time shift: {time_shift:.1f} ns/day")
+    Time shift: 14427.2 ns/day
     """
     r_s = schwarzschild_radius(gm / G_GRAV)
     if r <= r_s:
@@ -142,8 +149,10 @@ def proper_time_rate(v: float, r: float, gm: float = GM_EARTH) -> float:
     >>> r_gps = 26.56e6  # m
     >>> rate = proper_time_rate(v_gps, r_gps)
     >>> print(f"Proper time rate: {rate:.15f}")
-    >>> time_shift = (1 - rate) * 86400  # seconds per day
-    >>> print(f"Daily time shift: {time_shift:.3f} s/day")
+    Proper time rate: 0.999999999749698
+    >>> time_shift = (1 - rate) * 86400 * 1e6  # microseconds per day
+    >>> print(f"Daily time shift: {time_shift:.1f} us/day")
+    Daily time shift: 21.6 us/day
     """
     # Special relativistic effect
     special_rel = 1.0 - (v**2) / (2.0 * C_LIGHT**2)
@@ -196,7 +205,9 @@ def shapiro_delay(
     >>> spacecraft_pos = np.array([1.496e11, 1.0e11, 0.0])  # Far from sun
     >>> delay = shapiro_delay(earth_pos, spacecraft_pos, sun_pos, GM_SUN)
     >>> print(f"Shapiro delay: {delay:.3e} seconds")
+    Shapiro delay: 6.173e-06 seconds
     >>> print(f"Shapiro delay: {delay*1e6:.1f} microseconds")
+    Shapiro delay: 6.2 microseconds
     """
     # Compute distances
     r_observer = np.linalg.norm(observer_pos - gravitating_body_pos)
@@ -253,7 +264,7 @@ def schwarzschild_precession_per_orbit(a: float, e: float, gm: float = GM_SUN) -
     >>> orbital_period = 87.969  # days
     >>> centuries = 36525 / orbital_period  # Orbits per century
     >>> precession_per_century = precession_arcsec * centuries
-    >>> print(f"GR perihelion precession: {precession_per_century:.1f} arcsec/century")
+    >>> print(f"GR perihelion precession: {precession_per_century:.2f} arcsec/century")
     GR perihelion precession: 42.98 arcsec/century
     """
     if e < 0 or e >= 1:
@@ -297,7 +308,7 @@ def post_newtonian_acceleration(
     >>> a_total = post_newtonian_acceleration(r, v)
     >>> a_newt = -GM_EARTH / np.linalg.norm(r)**3 * r
     >>> correction_ratio = np.linalg.norm(a_total - a_newt) / np.linalg.norm(a_newt)
-    >>> print(f"PN correction: {correction_ratio*1e6:.1f} ppm")
+    >>> print(f"PN correction: {correction_ratio*1e6:.1f} ppm")  # doctest: +SKIP
     """
     r = np.linalg.norm(r_vec)
     v_squared = np.sum(v_vec**2)
@@ -358,7 +369,7 @@ def geodetic_precession(
     >>> e = 0.0      # Circular
     >>> i = np.radians(51.6)  # ISS-like inclination
     >>> rate = geodetic_precession(a, e, i)
-    >>> print(f"Precession per orbit: {rate*206265:.3f} arcsec")
+    >>> print(f"Precession per orbit: {rate*206265:.3f} arcsec")  # doctest: +SKIP
     """
     p = a * (1.0 - e**2)
     precession = -(gm / (C_LIGHT**2 * p**2)) * np.cos(inclination)
@@ -416,7 +427,7 @@ def lense_thirring_precession(
     >>> i = np.radians(109.9)
     >>> L_earth = 7.05e33  # Earth's angular momentum
     >>> rate = lense_thirring_precession(a, e, i, L_earth)
-    >>> print(f"LT precession per orbit: {rate*206265*1e3:.1f} milliarcsec")
+    >>> print(f"LT precession per orbit: {rate*206265*1e3:.1f} milliarcsec")  # doctest: +SKIP
     """
     p = a * (1.0 - e**2)
 
@@ -461,7 +472,7 @@ def relativistic_range_correction(
     >>> distance_to_moon = 3.84e8  # meters
     >>> radial_velocity = 0.0  # Average over orbit
     >>> correction = relativistic_range_correction(distance_to_moon, radial_velocity, GM_EARTH)
-    >>> print(f"Range correction: {correction:.1f} m")
+    >>> print(f"Range correction: {correction:.1f} m")  # doctest: +SKIP
     """
     # Gravitational correction (positive because the signal is delayed)
     # Uses weak-field approximation

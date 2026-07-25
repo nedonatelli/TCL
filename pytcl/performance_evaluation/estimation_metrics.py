@@ -191,7 +191,7 @@ def nees(
     >>> true = np.array([1.0, 2.0])
     >>> est = np.array([1.1, 1.9])
     >>> P = np.eye(2) * 0.1
-    >>> nees(true, est, P)
+    >>> round(nees(true, est, P), 6)
     0.2
     """
     true_state = np.asarray(true_state)
@@ -271,7 +271,7 @@ def average_nees(
     >>> est = np.array([[1.1, 1.9], [1.6, 2.4], [2.1, 2.9]])
     >>> P = np.array([np.eye(2) * 0.1] * 3)
     >>> avg = average_nees(true, est, P)
-    >>> avg  # Should be close to state_dim=2 for consistent filter
+    >>> round(avg, 6)  # Should be close to state_dim=2 for consistent filter
     0.2
     """
     return float(np.mean(nees_sequence(true_states, estimated_states, covariances)))
@@ -310,7 +310,7 @@ def nis(
     --------
     >>> nu = np.array([0.5, -0.3])  # Innovation vector
     >>> S = np.eye(2) * 0.25  # Innovation covariance
-    >>> nis(nu, S)
+    >>> round(nis(nu, S), 6)
     1.36
     """
     innovation = np.asarray(innovation)

@@ -597,20 +597,19 @@ def clenshaw_gravity(
 
     # Scale by GM/r
     scale = GM / r
-    dV_r = dV_r * GM  # Already has 1/r factor
+    dV_r = dV_r * scale  # C_r_scaled already carries one 1/r; total GM/r^2
     dV_theta *= scale / r  # (1/r) * dV/d_theta
     dV_lon *= scale / (r * sin_theta)  # (1/(r*sin_theta)) * dV/d_lon
 
-    # Convert to gravity (negative gradient)
-    # g_r is radial (positive outward means positive gravity pulls outward,
-    # but gravity points inward, so g_r = -dV_r)
-    g_r = -dV_r
+    # Geodesy-positive potential (V = +GM/r * sum): gravity is g = +grad(V),
+    # so the radial component dV_r = -GM/r^2 already points inward
+    g_r = dV_r
 
-    # g_lat = -(1/r) * dV/d_lat = (1/r) * dV/d_colat (opposite sign)
-    g_lat = dV_theta  # Points north (toward decreasing colatitude)
+    # g_lat = (1/r) * dV/d_lat = -(1/r) * dV/d_colat
+    g_lat = -dV_theta  # Points north (toward decreasing colatitude)
 
-    # g_lon = -(1/(r*sin_theta)) * dV/d_lon
-    g_lon = -dV_lon
+    # g_lon = (1/(r*sin_theta)) * dV/d_lon
+    g_lon = dV_lon
 
     return g_r, g_lat, g_lon
 

@@ -114,8 +114,8 @@ def ud_reconstruct(U: ArrayLike, D: ArrayLike) -> NDArray[np.floating]:
     >>> D = np.array([2.0, 1.0])
     >>> P = ud_reconstruct(U, D)
     >>> P
-    array([[2.5, 0.5],
-           [0.5, 1. ]])
+    array([[2.25, 0.5 ],
+           [0.5 , 1.  ]])
     """
     U = np.asarray(U, dtype=np.float64)
     D = np.asarray(D, dtype=np.float64)

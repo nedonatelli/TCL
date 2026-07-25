@@ -212,7 +212,7 @@ def murty(
     >>> result.n_found
     3
     >>> result.costs  # Three lowest-cost assignments
-    array([15., 17., 18.])
+    array([17., 23., 25.])
 
     Notes
     -----
@@ -407,7 +407,7 @@ def kbest_assign2d(
     >>> cost = np.array([[10, 5, 13], [3, 15, 8], [12, 7, 9]])
     >>> result = kbest_assign2d(cost, k=10, cost_threshold=20)
     >>> result.n_found  # Only assignments with cost <= 20
-    4
+    1
 
     Notes
     -----
@@ -542,7 +542,7 @@ def ranked_assignments(
     >>> len(result.assignments)
     2
     >>> result.costs
-    array([12., 20.])
+    array([ 8., 25.])
 
     Notes
     -----

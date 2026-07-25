@@ -80,10 +80,13 @@ def srkf_predict(
     >>> x = np.array([0.0, 1.0])
     >>> S = np.linalg.cholesky(np.eye(2) * 0.1)
     >>> F = np.array([[1, 1], [0, 1]])
-    >>> S_Q = np.linalg.cholesky(np.array([[0.25, 0.5], [0.5, 1.0]]))
+    >>> S_Q = np.linalg.cholesky(np.array([[0.25, 0.1], [0.1, 1.0]]))
     >>> pred = srkf_predict(x, S, F, S_Q)
     >>> pred.x
     array([1., 1.])
+    >>> P_pred = F @ (S @ S.T) @ F.T + S_Q @ S_Q.T
+    >>> bool(np.allclose(pred.S @ pred.S.T, P_pred))
+    True
 
     See Also
     --------

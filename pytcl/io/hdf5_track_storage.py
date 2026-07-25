@@ -40,7 +40,7 @@ class TrackHDF5Storage:
     Examples
     --------
     >>> from pytcl.io import TrackHDF5Storage
-    >>> with TrackHDF5Storage("scenario.h5") as store:
+    >>> with TrackHDF5Storage("scenario.h5") as store:  # doctest: +SKIP
     ...     store.open(mode="w")
     ...     store.store_track("trk_001", states, covariances, timestamps)
     ...     traj = store.get_track_trajectory("trk_001", start_time=0.0)

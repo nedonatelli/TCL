@@ -13,10 +13,12 @@ Examples
 >>> # Normal gravity at 45° latitude, sea level
 >>> g = normal_gravity(np.radians(45), 0)
 >>> print(f"Gravity: {g:.4f} m/s^2")
+Gravity: 9.8062 m/s^2
 
 >>> # Full gravity vector
 >>> result = gravity_wgs84(np.radians(45), 0, 1000)
 >>> print(f"Gravity magnitude: {result.magnitude:.4f} m/s^2")
+Gravity magnitude: 9.8031 m/s^2
 """
 
 from pytcl.gravity.clenshaw import (

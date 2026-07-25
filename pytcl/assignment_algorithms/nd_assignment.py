@@ -128,7 +128,7 @@ def greedy_assignment_nd(
     ... ])
     >>> result = greedy_assignment_nd(cost)
     >>> result.cost  # Total cost of greedy solution
-    4.0
+    2.0
     >>> len(result.assignments)  # Number of assignments made
     2
 

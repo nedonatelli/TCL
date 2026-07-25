@@ -106,8 +106,8 @@ def get_window(
     >>> w = get_window('hann', 256)
     >>> len(w)
     256
-    >>> w[0], w[-1]  # Near-zero at edges
-    (0.0, 0.0038...)
+    >>> float(w[0]), round(float(w[-1]), 6)  # Near-zero at edges (periodic window)
+    (0.0, 0.000151)
     >>> w = get_window(('kaiser', 8.0), 256)  # Kaiser with beta=8
     >>> len(w)
     256
@@ -225,7 +225,7 @@ def stft(
     >>> x = np.sin(2 * np.pi * 50 * t)  # 50 Hz sine
     >>> result = stft(x, fs=fs, nperseg=128)
     >>> result.Zxx.shape  # (n_freq, n_time)
-    (65, 16)
+    (65, 17)
 
     Notes
     -----
@@ -398,7 +398,7 @@ def spectrogram(
     >>> x = np.sin(2 * np.pi * (50 + 75*t) * t)
     >>> result = spectrogram(x, fs=fs, nperseg=128)
     >>> result.power.shape  # (n_freq, n_time)
-    (65, 31)
+    (65, 17)
 
     Notes
     -----

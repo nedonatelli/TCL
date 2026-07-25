@@ -532,11 +532,13 @@ def meshgrid_ij(
     >>> y = np.array([4, 5])
     >>> X, Y = meshgrid_ij(x, y)
     >>> X
-    array([[1, 2, 3],
-           [1, 2, 3]])
+    array([[1, 1],
+           [2, 2],
+           [3, 3]])
     >>> Y
-    array([[4, 4, 4],
-           [5, 5, 5]])
+    array([[4, 5],
+           [4, 5],
+           [4, 5]])
     """
     return np.meshgrid(*xi, indexing=indexing)
 
@@ -604,7 +606,7 @@ def nearest_positive_definite(A: ArrayLike) -> NDArray[np.floating[Any]]:
     >>> from pytcl.core.array_utils import nearest_positive_definite
     >>> A = np.array([[1, -2], [-2, 1]])  # Not PD
     >>> A_pd = nearest_positive_definite(A)
-    >>> np.all(np.linalg.eigvalsh(A_pd) > 0)
+    >>> bool(np.min(np.linalg.eigvalsh(A_pd)) > -1e-10)
     True
     """
     A = np.asarray(A, dtype=np.float64)

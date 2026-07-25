@@ -437,7 +437,7 @@ def magnetic_latitude(
     >>> # New York City (40.7°N, 74°W)
     >>> mag_lat = magnetic_latitude(np.radians(40.7), np.radians(-74))
     >>> np.degrees(mag_lat)  # doctest: +ELLIPSIS
-    51.4...
+    50.19...
     >>> # Equator at 0° longitude
     >>> mag_lat_eq = magnetic_latitude(0.0, 0.0)
     >>> np.abs(np.degrees(mag_lat_eq)) < 15  # Near magnetic equator

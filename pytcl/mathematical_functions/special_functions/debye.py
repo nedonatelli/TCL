@@ -172,12 +172,12 @@ def debye(
 
     Examples
     --------
-    >>> debye(3, 0)  # D_3(0) = 1
+    >>> float(debye(3, 0)[0])  # D_3(0) = 1
     1.0
-    >>> debye(3, 1)
-    0.674...
-    >>> debye(3, 10)
-    0.0192...
+    >>> round(float(debye(3, 1)[0]), 6)
+    0.674416
+    >>> round(float(debye(3, 10)[0]), 6)
+    0.019296
 
     References
     ----------

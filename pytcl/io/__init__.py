@@ -9,7 +9,7 @@ Examples
 Store tracking data in HDF5:
 
 >>> from pytcl.io import HDF5Storage
->>> with HDF5Storage() as store:
+>>> with HDF5Storage() as store:  # doctest: +SKIP
 ...     store.open("tracking.h5", mode="w")
 ...     store.store_array("states", track_states)
 ...     store.store_scalar("num_tracks", 42)
@@ -17,7 +17,7 @@ Store tracking data in HDF5:
 Query structured data in SQL:
 
 >>> from pytcl.io import SQLStorage
->>> with SQLStorage() as store:
+>>> with SQLStorage() as store:  # doctest: +SKIP
 ...     store.open("tracking.db", mode="a")
 ...     store.store_group("mission")
 ...     store.store_scalar("mission/start_time", 1234567890)

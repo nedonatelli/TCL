@@ -403,10 +403,11 @@ def irls(
 
     Examples
     --------
-    >>> A = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 10]])
-    >>> b = np.array([2, 3, 4, 5, 100])  # Last point is outlier
+    >>> A = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5]])
+    >>> b = np.array([2.0, 3.0, 4.0, 100.0, 6.0])  # Fourth point is outlier
     >>> result = irls(A, b)
-    >>> result.x  # Should be close to [1, 1] ignoring outlier
+    >>> bool(np.allclose(result.x, [1, 1], atol=0.05))  # Outlier ignored
+    True
 
     Notes
     -----
@@ -621,7 +622,8 @@ def ransac(
     >>> # Add outliers
     >>> b[90:] = 1000
     >>> result = ransac(A, b, random_state=42)
-    >>> result.x  # Should be close to [2, 3]
+    >>> bool(np.allclose(result.x, [2, 3], atol=0.1))  # Close to [2, 3]
+    True
 
     Notes
     -----
@@ -755,7 +757,7 @@ def ransac_n_trials(
     Examples
     --------
     >>> ransac_n_trials(100, 30, 2)  # 30% outliers, 2 samples per trial
-    10
+    7
 
     Notes
     -----

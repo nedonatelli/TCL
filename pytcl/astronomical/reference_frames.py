@@ -786,11 +786,18 @@ def teme_to_itrf(
 
     Examples
     --------
+    >>> r_teme = np.array([7000.0, 0.0, 0.0])  # km
+    >>> r_itrf = teme_to_itrf(r_teme, 2460311.0)
+    >>> bool(np.isclose(np.linalg.norm(r_itrf), 7000.0))  # Rotation preserves norm
+    True
+
+    Typical use with SGP4 output (requires a parsed TLE):
+
     >>> from pytcl.astronomical.sgp4 import sgp4_propagate
     >>> from pytcl.astronomical.tle import parse_tle
-    >>> tle = parse_tle(line1, line2)
-    >>> state = sgp4_propagate(tle, 0.0)
-    >>> r_itrf = teme_to_itrf(state.r, jd_ut1)
+    >>> tle = parse_tle(line1, line2)  # doctest: +SKIP
+    >>> state = sgp4_propagate(tle, 0.0)  # doctest: +SKIP
+    >>> r_itrf = teme_to_itrf(state.r, jd_ut1)  # doctest: +SKIP
     """
     r_pef = teme_to_pef(r_teme, jd_ut1)
     W = polar_motion_matrix(xp, yp)
@@ -860,8 +867,15 @@ def teme_to_gcrf(
 
     Examples
     --------
-    >>> state = sgp4_propagate(tle, 60.0)
-    >>> r_gcrf = teme_to_gcrf(state.r, jd_tt)
+    >>> r_teme = np.array([7000.0, 0.0, 0.0])  # km
+    >>> r_gcrf = teme_to_gcrf(r_teme, 2460311.0)
+    >>> bool(np.isclose(np.linalg.norm(r_gcrf), 7000.0))  # Rotation preserves norm
+    True
+
+    Typical use with SGP4 output (requires a parsed TLE):
+
+    >>> state = sgp4_propagate(tle, 60.0)  # doctest: +SKIP
+    >>> r_gcrf = teme_to_gcrf(state.r, jd_tt)  # doctest: +SKIP
     """
     eq_eq = equation_of_equinoxes(jd_tt)
 

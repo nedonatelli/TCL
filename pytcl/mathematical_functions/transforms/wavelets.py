@@ -180,8 +180,8 @@ def ricker_wavelet(
     >>> wav = ricker_wavelet(128, a=4.0)
     >>> len(wav)
     128
-    >>> wav[len(wav)//2]  # Peak at center
-    1.0
+    >>> round(float(wav[len(wav)//2]), 6)  # Near-peak sample (amplitude 2/(sqrt(3a)*pi**0.25))
+    0.423565
 
     Notes
     -----

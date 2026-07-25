@@ -35,7 +35,7 @@ def besselj(
 
     Examples
     --------
-    >>> besselj(0, 0)
+    >>> float(besselj(0, 0))
     1.0
     >>> besselj(1, np.array([0, 1, 2]))
     array([0.        , 0.44005059, 0.57672481])
@@ -74,8 +74,8 @@ def bessely(
 
     Examples
     --------
-    >>> bessely(0, 1)
-    0.088...
+    >>> round(float(bessely(0, 1)), 6)
+    0.088257
 
     See Also
     --------
@@ -107,7 +107,7 @@ def besseli(
 
     Examples
     --------
-    >>> besseli(0, 0)
+    >>> float(besseli(0, 0))
     1.0
 
     See Also
@@ -144,10 +144,10 @@ def besselk(
 
     Examples
     --------
-    >>> besselk(0, 1)
-    0.421...
-    >>> besselk(1, 2)
-    0.139...
+    >>> round(float(besselk(0, 1)), 6)
+    0.421024
+    >>> round(float(besselk(1, 2)), 6)
+    0.139866
 
     See Also
     --------
@@ -189,10 +189,10 @@ def besselh(
     Examples
     --------
     >>> h = besselh(0, 1, 1)  # H^(1)_0(1)
-    >>> h.real
-    0.765...
-    >>> h.imag
-    0.088...
+    >>> round(float(h.real), 6)
+    0.765198
+    >>> round(float(h.imag), 6)
+    0.088257
 
     See Also
     --------
@@ -237,10 +237,10 @@ def spherical_jn(
 
     Examples
     --------
-    >>> spherical_jn(0, 1)  # sin(1)/1
-    0.841...
-    >>> spherical_jn(0, 1, derivative=True)  # Derivative
-    0.301...
+    >>> round(float(spherical_jn(0, 1)), 6)  # sin(1)/1
+    0.841471
+    >>> round(float(spherical_jn(0, 1, derivative=True)), 6)  # Derivative
+    -0.301169
 
     See Also
     --------
@@ -275,8 +275,8 @@ def spherical_yn(
 
     Examples
     --------
-    >>> spherical_yn(0, 1)  # -cos(1)/1
-    -0.540...
+    >>> round(float(spherical_yn(0, 1)), 6)  # -cos(1)/1
+    -0.540302
 
     See Also
     --------
@@ -311,8 +311,8 @@ def spherical_in(
 
     Examples
     --------
-    >>> spherical_in(0, 1)  # sinh(1)/1
-    1.175...
+    >>> round(float(spherical_in(0, 1)), 6)  # sinh(1)/1
+    1.175201
 
     See Also
     --------
@@ -347,8 +347,8 @@ def spherical_kn(
 
     Examples
     --------
-    >>> spherical_kn(0, 1)  # (pi/2) * exp(-1)
-    0.578...
+    >>> round(float(spherical_kn(0, 1)), 6)  # (pi/2) * exp(-1)
+    0.577864
 
     See Also
     --------
@@ -389,10 +389,10 @@ def airy(
     Examples
     --------
     >>> Ai, Aip, Bi, Bip = airy(0)
-    >>> Ai
-    0.355...
-    >>> Bi
-    0.614...
+    >>> round(float(Ai), 6)
+    0.355028
+    >>> round(float(Bi), 6)
+    0.614927
 
     See Also
     --------
@@ -431,8 +431,8 @@ def bessel_ratio(
 
     Examples
     --------
-    >>> bessel_ratio(0, 1)  # J_1(1) / J_0(1)
-    0.5767...
+    >>> round(float(bessel_ratio(0, 1)), 6)  # J_1(1) / J_0(1)
+    0.575081
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -484,8 +484,8 @@ def bessel_deriv(
 
     Examples
     --------
-    >>> bessel_deriv(0, 1, kind='j')  # -J_1(1)
-    -0.4400...
+    >>> round(float(bessel_deriv(0, 1, kind='j')), 6)  # -J_1(1)
+    -0.440051
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -534,8 +534,8 @@ def struve_h(
 
     Examples
     --------
-    >>> struve_h(0, 1)
-    0.5688...
+    >>> round(float(struve_h(0, 1)), 6)
+    0.568657
     """
     return np.asarray(sp.struve(n, x), dtype=np.float64)
 
@@ -564,8 +564,8 @@ def struve_l(
 
     Examples
     --------
-    >>> struve_l(0, 1)
-    0.710...
+    >>> round(float(struve_l(0, 1)), 6)
+    0.710243
     """
     return np.asarray(sp.modstruve(n, x), dtype=np.float64)
 
@@ -598,7 +598,7 @@ def bessel_zeros(
     Examples
     --------
     >>> bessel_zeros(0, 3, kind='j')  # First 3 zeros of J_0
-    array([2.404..., 5.520..., 8.653...])
+    array([2.40482556, 5.52007811, 8.65372791])
     """
     kind = kind.lower()
 
@@ -652,8 +652,8 @@ def kelvin(
     Examples
     --------
     >>> ber, bei, ker, kei = kelvin(1)
-    >>> ber
-    0.984...
+    >>> round(float(ber), 6)
+    0.984382
     """
     x = np.asarray(x, dtype=np.float64)
 

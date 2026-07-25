@@ -283,8 +283,8 @@ def geodetic_to_ecef(
     >>> # Philadelphia (40°N, 75°W) at 100m altitude
     >>> lat, lon, alt = np.radians(40.0), np.radians(-75.0), 100.0
     >>> x, y, z = geodetic_to_ecef(lat, lon, alt)
-    >>> x / 1e6  # ~1.2 million meters
-    1.24...
+    >>> round(x / 1e6, 4)  # ~1.27 million meters
+    1.2663
     >>> # Equator at prime meridian
     >>> x, y, z = geodetic_to_ecef(0.0, 0.0, 0.0)
     >>> x  # Semi-major axis (equatorial radius)
@@ -341,13 +341,13 @@ def ecef_to_geodetic(
     >>> import numpy as np
     >>> # Point on equator at prime meridian
     >>> lat, lon, alt = ecef_to_geodetic(6378137.0, 0.0, 0.0)
-    >>> np.degrees(lat), np.degrees(lon), alt
+    >>> np.degrees(lat), np.degrees(lon), float(alt)
     (0.0, 0.0, 0.0)
     >>> # Round-trip conversion
     >>> x, y, z = geodetic_to_ecef(np.radians(45.0), np.radians(90.0), 1000.0)
     >>> lat2, lon2, alt2 = ecef_to_geodetic(x, y, z)
-    >>> np.degrees(lat2), np.degrees(lon2), alt2
-    (45.0..., 90.0..., 1000.0...)
+    >>> round(np.degrees(lat2), 6), round(np.degrees(lon2), 6), round(float(alt2), 3)
+    (45.0, 90.0, 1000.0)
 
     Notes
     -----
@@ -438,8 +438,8 @@ def ecef_to_enu(
     >>> lat, lon, alt = np.radians(40.0), np.radians(-74.99), 0.0
     >>> x, y, z = geodetic_to_ecef(lat, lon, alt)
     >>> e, n, u = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
-    >>> e  # East displacement in meters
-    850...
+    >>> round(e, 1)  # East displacement in meters
+    853.9
     >>> abs(n) < 10  # North displacement should be ~0
     True
     >>> abs(u) < 10  # Up displacement should be ~0
@@ -510,8 +510,8 @@ def enu_to_ecef(
     >>> x, y, z = enu_to_ecef(1000.0, 500.0, 100.0, lat_ref, lon_ref, alt_ref)
     >>> # Convert back to verify
     >>> e, n, u = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
-    >>> e, n, u
-    (1000.0..., 500.0..., 100.0...)
+    >>> round(e, 3), round(n, 3), round(u, 3)
+    (1000.0, 500.0, 100.0)
     """
     east = np.asarray(east, dtype=np.float64)
     north = np.asarray(north, dtype=np.float64)
@@ -668,8 +668,8 @@ def direct_geodetic(
     >>> azimuth = np.radians(45)  # Northeast
     >>> distance = 1_000_000  # 1000 km
     >>> lat2, lon2, az2 = direct_geodetic(lat1, lon1, azimuth, distance)
-    >>> np.degrees(lat2), np.degrees(lon2)  # Destination
-    (47.0..., -62.6...)
+    >>> round(np.degrees(lat2), 4), round(np.degrees(lon2), 4)  # Destination
+    (46.7148, -64.7496)
 
     References
     ----------
@@ -728,8 +728,8 @@ def inverse_geodetic(
     >>> lat1, lon1 = np.radians(40.7128), np.radians(-74.0060)  # NYC
     >>> lat2, lon2 = np.radians(51.5074), np.radians(-0.1278)   # London
     >>> dist, az1, az2 = inverse_geodetic(lat1, lon1, lat2, lon2)
-    >>> dist / 1000  # Distance in km
-    5570...
+    >>> round(dist / 1000, 1)  # Geodesic distance in km
+    5585.2
     >>> np.degrees(az1)  # Initial heading from NYC
     51.2...
 

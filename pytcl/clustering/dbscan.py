@@ -242,9 +242,12 @@ def dbscan_predict(
 
     Examples
     --------
-    >>> # After running dbscan on X_train
+    >>> X_train = np.array([[0.0, 0.0], [0.2, 0.0], [0.0, 0.2],
+    ...                     [5.0, 5.0], [5.2, 5.0], [5.0, 5.2]])
+    >>> result = dbscan(X_train, eps=0.5, min_samples=2)
     >>> X_new = np.array([[0.1, 0.1], [10.0, 10.0]])
-    >>> labels_new = dbscan_predict(X_new, X_train, result.labels, eps=0.5)
+    >>> dbscan_predict(X_new, X_train, result.labels, eps=0.5)
+    array([ 0, -1])
     """
     X_new = np.asarray(X_new, dtype=np.float64)
     X_train = np.asarray(X_train, dtype=np.float64)

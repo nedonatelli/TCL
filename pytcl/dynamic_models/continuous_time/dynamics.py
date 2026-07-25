@@ -188,7 +188,7 @@ def drift_coordinated_turn_2d(
     >>> x = np.array([0, 100, 0, 0, 0.1])
     >>> a = drift_coordinated_turn_2d(x)
     >>> a  # [vx, -omega*vy, vy, omega*vx, 0]
-    array([ 100.,   -0.,    0.,   10.,    0.])
+    array([100.,  -0.,   0.,  10.,   0.])
     """
     x = np.asarray(x, dtype=np.float64)
     pos_x, vel_x, pos_y, vel_y, omega = x

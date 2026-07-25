@@ -134,6 +134,7 @@ def mercator(
     >>> import numpy as np
     >>> result = mercator(np.radians(45), np.radians(-75))
     >>> print(f"x={result.x:.1f}, y={result.y:.1f}")
+    x=-8348961.8, y=5591295.9
     """
     # Easting
     x = a * (lon - lon0)
@@ -270,13 +271,14 @@ def transverse_mercator(
     ep2 = e2 / (1 - e2)  # Second eccentricity squared
     n = (a - WGS84_B) / (a + WGS84_B)  # Third flattening
 
-    # Compute meridian arc length from equator
+    # Compute meridian arc length from equator (Helmert series in
+    # geodetic latitude: M = A*(lat - a1*sin2lat + a2*sin4lat - a3*sin6lat))
     A = a / (1 + n) * (1 + n**2 / 4 + n**4 / 64)
     alpha = [
         0,  # alpha[0] unused
-        n / 2 - 2 * n**2 / 3 + 5 * n**3 / 16,
-        13 * n**2 / 48 - 3 * n**3 / 5,
-        61 * n**3 / 240,
+        3 * n / 2 - 9 * n**3 / 16,
+        -(15 * n**2 / 16 - 15 * n**4 / 32),
+        35 * n**3 / 48,
     ]
 
     # Conformal latitude
@@ -394,20 +396,21 @@ def transverse_mercator_inverse(
     n = (a - WGS84_B) / (a + WGS84_B)
 
     A = a / (1 + n) * (1 + n**2 / 4 + n**4 / 64)
+    # Rectifying -> geodetic (footpoint) latitude series
     beta = [
         0,
-        n / 2 - 2 * n**2 / 3 + 37 * n**3 / 96,
-        n**2 / 48 + n**3 / 15,
-        17 * n**3 / 480,
+        3 * n / 2 - 27 * n**3 / 32,
+        21 * n**2 / 16 - 55 * n**4 / 32,
+        151 * n**3 / 96,
     ]
 
-    # Arc length from origin latitude
+    # Arc length from origin latitude (must match the forward series)
     sigma0 = lat0
     alpha = [
         0,
-        n / 2 - 2 * n**2 / 3 + 5 * n**3 / 16,
-        13 * n**2 / 48 - 3 * n**3 / 5,
-        61 * n**3 / 240,
+        3 * n / 2 - 9 * n**3 / 16,
+        -(15 * n**2 / 16 - 15 * n**4 / 32),
+        35 * n**3 / 48,
     ]
     for i in range(1, 4):
         sigma0 -= alpha[i] * np.sin(2 * i * lat0)
@@ -559,6 +562,7 @@ def geodetic2utm(lat: float, lon: float, zone: Optional[int] = None) -> UTMResul
     >>> result = geodetic2utm(np.radians(45.0), np.radians(-75.5))
     >>> print(f"Zone {result.zone}{result.hemisphere}: "
     ...       f"E={result.easting:.1f}, N={result.northing:.1f}")
+    Zone 18N: E=460592.4, N=4983072.0
     """
     # Determine zone
     if zone is None:
@@ -617,6 +621,7 @@ def utm2geodetic(
     --------
     >>> lat, lon = utm2geodetic(500000, 5000000, 18, 'N')
     >>> print(f"Lat: {np.degrees(lat):.4f}, Lon: {np.degrees(lon):.4f}")
+    Lat: 45.1535, Lon: -75.0000
     """
     # Remove false easting/northing
     x = easting - 500000.0

@@ -12,7 +12,7 @@ Examples
 --------
 >>> import pytcl as pytcl
 >>> from pytcl.coordinate_systems import cart2sphere
->>> from pytcl.dynamic_estimation.kalman import KalmanFilter
+>>> from pytcl.dynamic_estimation import kf_predict, kf_update
 
 References
 ----------

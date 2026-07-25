@@ -145,6 +145,7 @@ class NRLMSISE00:
     ...     ap=5
     ... )
     >>> print(f"Density: {output.density:.2e} kg/m³")
+    Density: 2.85e-12 kg/m³
 
     Notes
     -----
@@ -786,6 +787,7 @@ def nrlmsise00(
     ...     ap=5  # Quiet conditions
     ... )
     >>> print(f"Density at ISS: {output.density:.2e} kg/m³")
+    Density at ISS: 2.89e-12 kg/m³
     """
     model = NRLMSISE00()
     return model(

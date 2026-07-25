@@ -991,11 +991,11 @@ def cluster_detections(
     >>> detections[20:24] = True  # Cluster 1 (4 adjacent detections)
     >>> detections[60] = True      # Cluster 2 (single detection)
     >>> detections[62] = True      # Close to cluster 2
-    >>> # Cluster with min_separation=1 (adjacent counts as same cluster)
-    >>> peaks = cluster_detections(detections, min_separation=1)
+    >>> # Gaps <= min_separation merge into the same cluster
+    >>> peaks = cluster_detections(detections, min_separation=2)
     >>> len(peaks)  # Should find 2 clusters
     2
-    >>> peaks[0]  # Center of first cluster (indices 20-23)
+    >>> int(peaks[0])  # Center of first cluster (indices 20-23)
     21
     """
     detections = np.asarray(detections)

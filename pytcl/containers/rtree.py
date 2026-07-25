@@ -191,7 +191,9 @@ class RTree:
     --------
     >>> tree = RTree()
     >>> tree.insert(BoundingBox(np.array([0, 0]), np.array([1, 1])), 0)
+    0
     >>> tree.insert(BoundingBox(np.array([2, 2]), np.array([3, 3])), 1)
+    1
     >>> query_box = BoundingBox(np.array([0.5, 0.5]), np.array([2.5, 2.5]))
     >>> result = tree.query_intersect(query_box)
 

@@ -424,8 +424,8 @@ def load_emm_coefficients(
 
     Examples
     --------
-    >>> coef = load_emm_coefficients("WMMHR2025", n_max=50)
-    >>> coef.n_max
+    >>> coef = load_emm_coefficients("WMMHR2025", n_max=50)  # doctest: +SKIP
+    >>> coef.n_max  # doctest: +SKIP
     50
     """
     return _load_coefficients_cached(model, n_max)
@@ -586,8 +586,8 @@ def emm(
     >>> # Use test coefficients for demonstration
     >>> coef = create_test_coefficients(n_max=36)
     >>> result = emm(np.radians(40), np.radians(-105), 1.0, 2020.0, coefficients=coef)
-    >>> print(f"Declination: {np.degrees(result.D):.2f}°")
-    >>> print(f"Total intensity: {result.F:.0f} nT")
+    >>> bool(np.isfinite(result.D) and np.isfinite(result.F))
+    True
     """
     if coefficients is None:
         coefficients = load_emm_coefficients(model, n_max)

@@ -18,25 +18,26 @@ KM_PER_DAY_TO_AU_PER_DAY : float
 Examples
 --------
 >>> from pytcl.astronomical.ephemerides import DEEphemeris
->>> from datetime import datetime
 >>>
 >>> # Load ephemeris (auto-downloads if needed)
->>> eph = DEEphemeris(version='DE440')
+>>> eph = DEEphemeris(version='DE440')  # doctest: +SKIP
 >>>
->>> # Query Sun position (AU)
+>>> # Query Sun position relative to the Solar System Barycenter (AU).
+>>> # The Sun orbits the SSB within ~1-2 solar radii, so this is small.
 >>> jd = 2451545.0  # J2000.0
->>> r_sun, v_sun = eph.sun_position(jd)
->>> print(f"Sun distance: {np.linalg.norm(r_sun):.6f} AU")
-Sun distance: 0.983327 AU
+>>> r_sun, v_sun = eph.sun_position(jd)  # doctest: +SKIP
+>>> print(f"Sun distance from SSB: {np.linalg.norm(r_sun):.6f} AU")  # doctest: +SKIP
+Sun distance from SSB: 0.007668 AU
 >>>
 >>> # Query Moon position
->>> r_moon, v_moon = eph.moon_position(jd)
+>>> r_moon, v_moon = eph.moon_position(jd)  # doctest: +SKIP
 
 Notes
 -----
 - Ephemeris files are auto-downloaded to ~/.jplephem/ on first use
 - Time input is Julian Day (JD) in Terrestrial Time (TT) scale
-- Positions returned in AU, velocities in AU/day in ICRF frame
+- Positions returned in AU, velocities in AU/day in ICRF frame,
+  relative to the Solar System Barycenter (SSB) unless stated otherwise
 - For highest precision, use DE440 (latest release) or DE432s (2013)
 
 References
@@ -235,9 +236,10 @@ class DEEphemeris:
 
         Examples
         --------
-        >>> eph = DEEphemeris()
-        >>> r, v = eph.sun_position(2451545.0)
-        >>> print(f"Distance: {np.linalg.norm(r):.6f} AU")
+        >>> eph = DEEphemeris()  # doctest: +SKIP
+        >>> r, v = eph.sun_position(2451545.0)  # doctest: +SKIP
+        >>> print(f"Distance from SSB: {np.linalg.norm(r):.6f} AU")  # doctest: +SKIP
+        Distance from SSB: 0.007668 AU
 
         """
         # Sun position relative to SSB (in km)

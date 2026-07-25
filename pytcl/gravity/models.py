@@ -387,7 +387,7 @@ def gravitational_potential(
     Examples
     --------
     >>> U = gravitational_potential(0, 0, 6.4e6)  # Near Earth surface
-    >>> U < 0  # Potential is negative
+    >>> bool(6.1e7 < U < 6.4e7)  # Positive ~GM/r (geodesy sign convention)
     True
     """
     GM = constants.GM

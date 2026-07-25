@@ -73,8 +73,8 @@ def weighted_var(
     --------
     >>> x = [1, 2, 3]
     >>> weights = [1, 1, 2]
-    >>> weighted_var(x, weights)
-    0.5625
+    >>> float(weighted_var(x, weights))
+    0.6875
     """
     x = np.asarray(x, dtype=np.float64)
     weights = np.asarray(weights, dtype=np.float64)
@@ -355,8 +355,8 @@ def iqr(
 
     Examples
     --------
-    >>> iqr([1, 2, 3, 4, 5, 6, 7, 8, 9])
-    4.5
+    >>> float(iqr([1, 2, 3, 4, 5, 6, 7, 8, 9]))
+    4.0
     """
     x = np.asarray(x, dtype=np.float64)
     q75, q25 = np.percentile(x, [75, 25], axis=axis)
@@ -387,7 +387,7 @@ def skewness(
 
     Examples
     --------
-    >>> skewness([1, 2, 3, 4, 5])
+    >>> float(skewness([1, 2, 3, 4, 5]))
     0.0
     """
     from scipy.stats import skew as scipy_skew
@@ -423,8 +423,8 @@ def kurtosis(
 
     Examples
     --------
-    >>> kurtosis([1, 2, 3, 4, 5])
-    -1.2
+    >>> float(kurtosis([1, 2, 3, 4, 5]))
+    -1.3
     """
     from scipy.stats import kurtosis as scipy_kurtosis
 
@@ -460,9 +460,9 @@ def moment(
 
     Examples
     --------
-    >>> moment([1, 2, 3, 4, 5], order=2)
+    >>> float(moment([1, 2, 3, 4, 5], order=2))
     2.0
-    >>> moment([1, 2, 3, 4, 5], order=2, central=False)
+    >>> float(moment([1, 2, 3, 4, 5], order=2, central=False))
     11.0
     """
     from scipy.stats import moment as scipy_moment

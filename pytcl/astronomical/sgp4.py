@@ -114,10 +114,14 @@ class SGP4Satellite:
 
     Examples
     --------
+    >>> from pytcl.astronomical.tle import parse_tle
+    >>> line1 = "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997"
+    >>> line2 = "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003"
     >>> tle = parse_tle(line1, line2, name="ISS")
     >>> sat = SGP4Satellite(tle)
     >>> state = sat.propagate(0.0)  # At epoch
-    >>> print(f"Position: {state.r} km")
+    >>> bool(6700 < np.linalg.norm(state.r) < 6900)  # ISS orbital radius (km)
+    True
     >>> state = sat.propagate(60.0)  # 60 minutes later
     """
 
@@ -338,6 +342,10 @@ class SGP4Satellite:
 
         Examples
         --------
+        >>> from pytcl.astronomical.tle import parse_tle
+        >>> tle = parse_tle(
+        ...     "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997",
+        ...     "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003")
         >>> sat = SGP4Satellite(tle)
         >>> state = sat.propagate(0.0)  # At TLE epoch
         >>> state = sat.propagate(60.0)  # 60 minutes later
@@ -646,9 +654,13 @@ def sgp4_propagate(tle: TLE, tsince: float) -> SGP4State:
 
     Examples
     --------
-    >>> tle = parse_tle(line1, line2)
+    >>> from pytcl.astronomical.tle import parse_tle
+    >>> tle = parse_tle(
+    ...     "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997",
+    ...     "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003")
     >>> state = sgp4_propagate(tle, 60.0)  # 60 minutes after epoch
-    >>> print(f"Position: {state.r} km")
+    >>> bool(6700 < np.linalg.norm(state.r) < 6900)  # ISS orbital radius (km)
+    True
     """
     sat = SGP4Satellite(tle)
     return sat.propagate(tsince)
@@ -676,9 +688,14 @@ def sgp4_propagate_batch(
 
     Examples
     --------
-    >>> tle = parse_tle(line1, line2)
+    >>> from pytcl.astronomical.tle import parse_tle
+    >>> tle = parse_tle(
+    ...     "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997",
+    ...     "2 25544  51.6400 247.4627 0006703 130.5360 325.0288 15.49815350479003")
     >>> times = np.linspace(0, 90, 100)  # 0 to 90 minutes
     >>> r, v = sgp4_propagate_batch(tle, times)
+    >>> r.shape
+    (100, 3)
     """
     sat = SGP4Satellite(tle)
     n = len(times)
