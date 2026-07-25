@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-07-25
+
+### Fixed
+
+- **Network flow solver**: reverse arcs in `min_cost_flow_successive_shortest_paths` treated zero-flow edges as cancelable at negative cost, producing negative flows and wrong costs (e.g. -7.0 where the optimum is 3.0); now matches `scipy.optimize.linear_sum_assignment`
+- **UTM / transverse Mercator**: the meridian-arc series used conformal-latitude coefficients, putting northings off by ~10.7 km at 45° latitude; forward and inverse now agree with pyproj (EPSG) to sub-millimeter
+- **`altitude_from_pressure`**: barometric exponent sign was flipped (13% error at 5 km); now round-trips the forward model to <5 m
+- **US76 / ISA atmosphere**: missing geometric-to-geopotential conversion; temperature and pressure now match published US76 table values exactly
+- **`associated_legendre_derivative`**: wrong signs/coefficients in every branch; now matches finite differences to 4e-9 for all n, m ≤ 8, both normalizations
+- **`gravity_acceleration` / `clenshaw_gravity`**: sign-convention errors (gravity pointed outward) and a missing 1/r factor in the Clenshaw radial derivative; the two implementations now agree exactly
+- **`chol_semi_def`**: the positive-semi-definite fallback QR-ed the wrong matrix, returning a factor of `diag(eigenvalues)` instead of `A`
+- **`swerling_detection_probability`**: detection threshold `-2n·ln(pfa)` is only valid for single-pulse; now uses the inverse regularized gamma for 2n degrees of freedom
+- **`lambert_w`**: returns -1 at the branch point -1/e instead of propagating scipy's NaN
+- **`advanced_filters_comparison` example**: first measurement was never generated (garbage range-0/bearing-0 update), and a silently-caught RBPF crash was replaced with fabricated GSF-plus-noise data; all three filters now track correctly
+
+### Changed
+
+- **~280 docstring examples repaired**: expected values corrected against independent references; data-dependent and illustrative examples marked `# doctest: +SKIP`; docstring examples now run in CI (`pytest --doctest-modules`)
+- **Lint/format tooling migrated to ruff** (replaces black + isort + flake8); config in `pyproject.toml`, tool versions pinned in CI
+- **Known accuracy bugs documented**: WMM/IGRF magnetic synthesis, four relativity functions, and the `ecef2sez` axis convention are tracked in [#3](https://github.com/nedonatelli/TCL/issues/3) with warnings in the affected module docstrings
+
 ## [1.15.0] - 2026-03-15
 
 ### Added
