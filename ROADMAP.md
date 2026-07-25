@@ -195,6 +195,14 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 
 ## Known Issues & Planned Fixes
 
+### Critical (tracked in [#3](https://github.com/nedonatelli/TCL/issues/3))
+
+| Issue | Module | Impact | Status |
+|-------|--------|--------|--------|
+| WMM/IGRF synthesis: wrong Legendre normalization, corrupted WMM2020 coefficient table above degree 4, no geodetic-to-geocentric conversion | `magnetism/` | Field values unreliable (declination ~180 deg off at NOAA test point); EMM/WMMHR needs accuracy audit | Open — fix before v2.0.0 |
+| Dimensionally inconsistent relativity formulas (geodetic precession, Lense-Thirring, 1PN acceleration, range correction) | `astronomical/relativity.py` | Unphysical outputs | Open — fix before v2.0.0 |
+| `ecef2sez` S-axis points north, contradicting standard SEZ (Vallado) | `coordinate_systems/conversions/geodetic.py` | Sign-flipped S components | Needs convention decision |
+
 ### High Priority
 
 | Issue | Module | Impact | Status |
@@ -202,6 +210,7 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 | Terrain loader signature mismatch | `terrain/loaders.py` | 13 tests skipped | Planned for v2.1 |
 | Plotting array indexing bug ("too many indices for array") | `plotting/` | 2 tests skipped | Investigating |
 | CuPy tests skip without NVIDIA GPU | `gpu/` | 11 tests skipped | By design |
+| Dead modules: `assignment_algorithms/network_simplex.py`, `logging_config.py` | — | 0% coverage, referenced nowhere | Remove in v2.0.0 |
 
 ### Medium Priority
 
