@@ -400,7 +400,7 @@ Contributions are welcome! If you'd like to work on any of these features:
 
 1. Open an issue to discuss your planned implementation
 2. Fork the repository and create a feature branch
-3. Follow the existing code style (black formatting, NumPy docstrings)
+3. Follow the existing code style (ruff formatting, NumPy docstrings)
 4. Add tests for new functionality (aim for 80%+ coverage)
 5. Submit a pull request
 
