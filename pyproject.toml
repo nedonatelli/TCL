@@ -81,9 +81,7 @@ dev = [
     "pytest-timeout>=2.0.0",
     "nbval>=0.10.0",
     "hypothesis>=6.0.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=7.0.0",
+    "ruff>=0.16.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "sphinx>=6.0.0",
@@ -140,28 +138,22 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-    \.eggs
-    | \.git
-    | \.mypy_cache
-    | \.pytest_cache
-    | \.venv
-    | build
-    | dist
-)/
-'''
+target-version = "py310"
+extend-exclude = ["build", "dist", "*.ipynb"]
 
-[tool.isort]
-profile = "black"
-line_length = 88
-known_first_party = ["pytcl"]
-skip_gitignore = true
-extend_skip = [".eggs", "build", "dist"]
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 
-# Note: flake8 config lives in .flake8 (flake8 does not read pyproject.toml)
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"examples/*.py" = ["F401", "F541", "F841", "E402", "E731"]
+"docs/examples/*.py" = ["F401", "F541", "F841", "E402", "E731"]
+"docs/tutorials/*.py" = ["F401", "F541", "F841", "E402", "E731"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pytcl"]
+
 # Note: mypy config lives in mypy.ini

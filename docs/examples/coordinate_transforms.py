@@ -83,9 +83,7 @@ def main():
         lat_ref, lon_ref, azimuth, distance, WGS84
     )
     print("\nDirect geodetic (500 km at 135 deg):")
-    print(
-        f"  Destination: {np.degrees(lat_dest):.4f}°, " f"{np.degrees(lon_dest):.4f}°"
-    )
+    print(f"  Destination: {np.degrees(lat_dest):.4f}°, {np.degrees(lon_dest):.4f}°")
     print(f"  Final azimuth: {np.degrees(azimuth_final):.2f}°")
 
 

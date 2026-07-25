@@ -1098,10 +1098,10 @@ class TrackDatabaseManager:
 
         # Create indices
         self._cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_det_time " "ON detections(timestamp)"
+            "CREATE INDEX IF NOT EXISTS idx_det_time ON detections(timestamp)"
         )
         self._cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_det_sensor " "ON detections(sensor_id)"
+            "CREATE INDEX IF NOT EXISTS idx_det_sensor ON detections(sensor_id)"
         )
         self._cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_det_status "
@@ -1112,14 +1112,13 @@ class TrackDatabaseManager:
             "ON track_states(track_id, timestamp)"
         )
         self._cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_trk_status " "ON tracks(status)"
+            "CREATE INDEX IF NOT EXISTS idx_trk_status ON tracks(status)"
         )
         self._cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_trk_update " "ON tracks(last_update_time)"
+            "CREATE INDEX IF NOT EXISTS idx_trk_update ON tracks(last_update_time)"
         )
         self._cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_assoc_track "
-            "ON track_associations(track_id)"
+            "CREATE INDEX IF NOT EXISTS idx_assoc_track ON track_associations(track_id)"
         )
         self._cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_assoc_det "

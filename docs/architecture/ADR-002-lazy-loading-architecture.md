@@ -44,6 +44,7 @@ def __getattr__(name):
     """Lazy-load submodules on first access."""
     if name == "gravity":
         from pytcl import gravity as _gravity
+
         globals()["gravity"] = _gravity
         return _gravity
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

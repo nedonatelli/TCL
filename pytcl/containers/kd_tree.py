@@ -19,9 +19,9 @@ from typing import List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.containers.base import NearestNeighborResult  # Backward compatibility alias
 from pytcl.containers.base import (
     BaseSpatialIndex,
+    NearestNeighborResult,  # Backward compatibility alias
     NeighborResult,
     validate_query_input,
 )

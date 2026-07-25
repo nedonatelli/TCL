@@ -69,7 +69,7 @@ class MagneticResult(NamedTuple):
     Z: float
     H: float
     F: float
-    I: float
+    I: float  # noqa: E741
     D: float
 
 

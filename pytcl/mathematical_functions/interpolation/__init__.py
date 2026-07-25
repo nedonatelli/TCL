@@ -8,8 +8,8 @@ This module provides:
 - Spherical interpolation
 """
 
-from pytcl.mathematical_functions.interpolation.interpolation import akima  # noqa: E501
 from pytcl.mathematical_functions.interpolation.interpolation import (
+    akima,  # noqa: E501
     barycentric,
     cubic_spline,
     interp1d,

@@ -201,7 +201,7 @@ def demo_gravity_models():
     print(f"\nJ2 gravity model:")
     print(f"  Total gravity: {g_j2.magnitude:.6f} m/s²")
     print(
-        f"  Difference from WGS84: {(g_j2.magnitude - g_wgs84.magnitude)*1e6:.2f} µGal"
+        f"  Difference from WGS84: {(g_j2.magnitude - g_wgs84.magnitude) * 1e6:.2f} µGal"
     )
 
     # Compare at different altitudes
@@ -337,8 +337,8 @@ def demo_gravity_anomalies():
         lat_rad = np.radians(lats[i])
         faa = free_air_anomaly(g_observed[i], lat_rad, alts[i])
         print(
-            f"{i+1:>5} {lats[i]:>7.2f} {alts[i]:>7.0f} "
-            f"{g_observed[i]:>12.6f} {faa*1e5:>12.2f} mGal"
+            f"{i + 1:>5} {lats[i]:>7.2f} {alts[i]:>7.0f} "
+            f"{g_observed[i]:>12.6f} {faa * 1e5:>12.2f} mGal"
         )
 
     print("\nNote: Free-air anomaly removes the effect of elevation")
@@ -377,10 +377,10 @@ def demo_tidal_effects():
 
         print(f"\n{time_str}:")
         print(
-            f"  Displacement: ({disp[0]*1000:.1f}, {disp[1]*1000:.1f}, "
-            f"{disp[2]*1000:.1f}) mm (N, E, Up)"
+            f"  Displacement: ({disp[0] * 1000:.1f}, {disp[1] * 1000:.1f}, "
+            f"{disp[2] * 1000:.1f}) mm (N, E, Up)"
         )
-        print(f"  Gravity change: {dg*1e8:.2f} µGal")
+        print(f"  Gravity change: {dg * 1e8:.2f} µGal")
 
     print("\nNote: Solid Earth tides cause displacements of ~30 cm")
     print("and gravity changes of ~300 µGal peak-to-peak.")
@@ -515,7 +515,8 @@ def demo_magnetic_field():
     lats_grid = np.array([-60, -30, 0, 30, 60])
     lons_grid = np.array([-120, -60, 0, 60, 120])
 
-    print(f"{'Lat\\Lon':<8}", end="")
+    header = "Lat\\Lon"
+    print(f"{header:<8}", end="")
     for lon in lons_grid:
         print(f"{lon:>8}°", end="")
     print()
@@ -676,7 +677,7 @@ def demo_navigation_application():
     print(f"  → Used for vertical channel in INS")
 
     # Deflection of vertical (simplified)
-    print(f"\n  Gravity deflection (N): {g_result.g_north*1e6:.2f} µrad")
+    print(f"\n  Gravity deflection (N): {g_result.g_north * 1e6:.2f} µrad")
     print(f"  → Correction for inertial alignment")
 
     # Geoid for altitude reference (J2 approximation - latitude only)

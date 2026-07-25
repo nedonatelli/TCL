@@ -53,7 +53,7 @@ def ins_gnss_tutorial():
         true_velocity[i, 0] = speed * np.cos(true_heading[i])
         true_velocity[i, 1] = speed * np.sin(true_heading[i])
 
-    print(f"Trajectory: {n_steps} steps at {1/dt} Hz")
+    print(f"Trajectory: {n_steps} steps at {1 / dt} Hz")
     print(f"Vehicle path: Circular with radius {radius} m, speed {speed} m/s")
 
     # Step 2: Simulate INS
@@ -94,7 +94,7 @@ def ins_gnss_tutorial():
     position_drift = np.cumsum(np.random.randn(n_steps, 2) * 0.05, axis=0)
     ins_position = ins_position + position_drift
 
-    print(f"INS drift simulated with realistic noise and bias")
+    print("INS drift simulated with realistic noise and bias")
     print(
         f"Heading error accumulation: {np.abs(ins_heading[-1] - true_heading[-1]):.2f} rad"
     )
@@ -179,7 +179,7 @@ def ins_gnss_tutorial():
 
     fused_error = np.linalg.norm(fused_position - true_position, axis=1)
 
-    print(f"Fusion complete:")
+    print("Fusion complete:")
     print(f"  INS RMSE: {np.sqrt(np.mean(ins_error**2)):.2f} m")
     print(f"  GNSS RMSE: {np.nanmean(gnss_error):.2f} m (sparse measurements)")
     print(f"  Fused RMSE: {np.sqrt(np.mean(fused_error**2)):.2f} m")

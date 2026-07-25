@@ -8,7 +8,7 @@ or manually maintained for release information.
 
 import re
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Manually maintained statistics that cannot be auto-calculated
 RELEASE_STATS = {

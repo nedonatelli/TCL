@@ -229,7 +229,7 @@ def import_optional(
 
         install_cmd = _get_install_command(package, extra)
 
-        msg = f"{package} is required for {feature}. " f"Install with: {install_cmd}"
+        msg = f"{package} is required for {feature}. Install with: {install_cmd}"
         _logger.warning("Failed to import optional module '%s': %s", module_name, e)
         raise DependencyError(
             msg,

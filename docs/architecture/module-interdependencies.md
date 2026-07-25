@@ -188,6 +188,7 @@ pytcl
 Configure logging:
 ```python
 import logging
+
 logging.getLogger("pytcl").setLevel(logging.DEBUG)
 ```
 

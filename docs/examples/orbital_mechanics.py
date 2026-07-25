@@ -125,8 +125,8 @@ def demo_orbital_elements():
     v_esc = escape_velocity(a, GM_EARTH)
 
     print("\nOrbital quantities:")
-    print(f"  Period: {T:.1f} s ({T/60:.1f} min)")
-    print(f"  Mean motion: {n*86400/(2*np.pi):.2f} rev/day")
+    print(f"  Period: {T:.1f} s ({T / 60:.1f} min)")
+    print(f"  Mean motion: {n * 86400 / (2 * np.pi):.2f} rev/day")
     print(f"  Circular velocity: {v_circ:.3f} km/s")
     print(f"  Escape velocity: {v_esc:.3f} km/s")
 
@@ -196,7 +196,7 @@ def demo_orbit_propagation():
 
     print(f"\nGPS satellite orbit:")
     print(f"  Semi-major axis: {a:.0f} km")
-    print(f"  Period: {T/3600:.2f} hours (~12 hours)")
+    print(f"  Period: {T / 3600:.2f} hours (~12 hours)")
 
     # Propagate for one orbit
     print("\nPropagation around one orbit:")
@@ -213,7 +213,7 @@ def demo_orbit_propagation():
         v_mag = np.linalg.norm(state.v)
 
         print(
-            f"{dt/3600:>10.2f} {r_mag:>12.1f} {v_mag:>10.4f} "
+            f"{dt / 3600:>10.2f} {r_mag:>12.1f} {v_mag:>10.4f} "
             f"{np.degrees(elements.nu):>10.1f}"
         )
 
@@ -226,7 +226,7 @@ def demo_orbit_propagation():
         v_actual = np.linalg.norm(state.v)
         v_visviva = vis_viva(r, a, GM_EARTH)
         print(
-            f"  t={frac*T/3600:.1f}h: v_actual={v_actual:.4f}, "
+            f"  t={frac * T / 3600:.1f}h: v_actual={v_actual:.4f}, "
             f"v_visviva={v_visviva:.4f} km/s"
         )
 
@@ -339,14 +339,14 @@ def demo_lambert_problem():
 
     print("\nEarth-Mars transfer scenario:")
     print(
-        f"  Departure: Earth at ({r1[0]/149597870.7:.2f}, "
-        f"{r1[1]/149597870.7:.2f}, 0) AU"
+        f"  Departure: Earth at ({r1[0] / 149597870.7:.2f}, "
+        f"{r1[1] / 149597870.7:.2f}, 0) AU"
     )
     print(
-        f"  Arrival: Mars at ({r2[0]/149597870.7:.2f}, "
-        f"{r2[1]/149597870.7:.2f}, 0) AU"
+        f"  Arrival: Mars at ({r2[0] / 149597870.7:.2f}, "
+        f"{r2[1] / 149597870.7:.2f}, 0) AU"
     )
-    print(f"  Time of flight: {tof/86400:.0f} days")
+    print(f"  Time of flight: {tof / 86400:.0f} days")
 
     # Solve Lambert's problem
     solution = lambert_universal(r1, r2, tof, GM_SUN)
@@ -360,7 +360,7 @@ def demo_lambert_problem():
         f"  Arrival velocity: ({solution.v2[0]:.3f}, {solution.v2[1]:.3f}, "
         f"{solution.v2[2]:.3f}) km/s"
     )
-    print(f"  Transfer orbit semi-major axis: {solution.a/149597870.7:.3f} AU")
+    print(f"  Transfer orbit semi-major axis: {solution.a / 149597870.7:.3f} AU")
     print(f"  Transfer orbit eccentricity: {solution.e:.4f}")
 
     # Delta-v calculations (simplified)
@@ -382,8 +382,8 @@ def demo_hohmann_transfer():
     r_geo = 42164.0  # km (GEO radius)
 
     print("\nLEO to GEO Hohmann transfer:")
-    print(f"  Initial orbit (LEO): r = {r_leo:.0f} km (alt = {r_leo-6378:.0f} km)")
-    print(f"  Final orbit (GEO): r = {r_geo:.0f} km (alt = {r_geo-6378:.0f} km)")
+    print(f"  Initial orbit (LEO): r = {r_leo:.0f} km (alt = {r_leo - 6378:.0f} km)")
+    print(f"  Final orbit (GEO): r = {r_geo:.0f} km (alt = {r_geo - 6378:.0f} km)")
 
     # Velocities in circular orbits
     v_leo = circular_velocity(r_leo, GM_EARTH)
@@ -411,7 +411,7 @@ def demo_hohmann_transfer():
 
     print("\nTransfer orbit:")
     print(f"  Semi-major axis: {a_transfer:.0f} km")
-    print(f"  Transfer time: {tof/3600:.2f} hours")
+    print(f"  Transfer time: {tof / 3600:.2f} hours")
 
     print("\nDelta-v budget:")
     print(f"  dv1 (LEO departure): {dv1:.3f} km/s")
@@ -457,7 +457,7 @@ def demo_time_systems():
     gst = gmst(jd)
     print(
         f"\nGreenwich Mean Sidereal Time: {np.degrees(gst):.4f} deg = "
-        f"{np.degrees(gst)/15:.4f} hours"
+        f"{np.degrees(gst) / 15:.4f} hours"
     )
 
 
@@ -559,7 +559,7 @@ def demo_orbit_determination():
 
     # Compare with true velocity
     v1_error = np.linalg.norm(solution.v1 - state1_true.v)
-    print(f"\n  Velocity error: {v1_error*1000:.1f} m/s")
+    print(f"\n  Velocity error: {v1_error * 1000:.1f} m/s")
 
 
 def main():

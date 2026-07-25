@@ -846,9 +846,11 @@ def tight_coupled_measurement_matrix(
         los, _ = compute_line_of_sight(user_ecef, sat.position)
 
         # LOS components in ECEF
-        los_x, los_y, los_z = (
-            -los
-        )  # Negative because increase in user pos decreases range
+        (
+            los_x,
+            los_y,
+            los_z,
+        ) = -los  # Negative because increase in user pos decreases range
 
         # Transform LOS to geodetic derivatives
         # d(range)/d(lat), d(range)/d(lon), d(range)/d(alt)

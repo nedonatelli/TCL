@@ -51,8 +51,8 @@ def data_association_tutorial():
     )
 
     print(f"Created {n_targets} targets with linear trajectories")
-    print(f"Measurement noise: 0.5 m std")
-    print(f"Clutter rate: 40% of measurements")
+    print("Measurement noise: 0.5 m std")
+    print("Clutter rate: 40% of measurements")
 
     # Step 2: Generate measurements
     print("\nStep 2: Generate Synthetic Measurements")

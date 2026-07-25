@@ -13,8 +13,6 @@ needed in tracking applications, including:
 
 from pytcl.navigation.geodesy import (
     GRS80,  # Ellipsoids; Coordinate conversions; Geodetic problems
-)
-from pytcl.navigation.geodesy import (
     SPHERE,
     WGS84,
     Ellipsoid,
@@ -28,8 +26,8 @@ from pytcl.navigation.geodesy import (
     inverse_geodetic,
     ned_to_ecef,
 )
-from pytcl.navigation.great_circle import EARTH_RADIUS  # Great circle navigation
 from pytcl.navigation.great_circle import (
+    EARTH_RADIUS,  # Great circle navigation
     CrossTrackResult,
     GreatCircleResult,
     IntersectionResult,
@@ -49,8 +47,6 @@ from pytcl.navigation.great_circle import (
 )
 from pytcl.navigation.ins import (
     A_EARTH,  # Constants; State representation; Gravity and Earth rate
-)
-from pytcl.navigation.ins import (
     B_EARTH,
     E2_EARTH,
     F_EARTH,
@@ -77,8 +73,8 @@ from pytcl.navigation.ins import (
     update_attitude_ned,
     update_quaternion,
 )
-from pytcl.navigation.ins_gnss import GPS_L1_FREQ  # INS/GNSS integration
 from pytcl.navigation.ins_gnss import (
+    GPS_L1_FREQ,  # INS/GNSS integration
     GPS_L1_WAVELENGTH,
     SPEED_OF_LIGHT,
     GNSSMeasurement,
@@ -103,8 +99,8 @@ from pytcl.navigation.ins_gnss import (
     tight_coupled_update,
     velocity_measurement_matrix,
 )
-from pytcl.navigation.rhumb import RhumbDirectResult  # Rhumb line navigation
 from pytcl.navigation.rhumb import (
+    RhumbDirectResult,  # Rhumb line navigation
     RhumbIntersectionResult,
     RhumbResult,
     compare_great_circle_rhumb,

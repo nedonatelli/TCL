@@ -42,8 +42,6 @@ from pytcl.astronomical.lambert import (
 )
 from pytcl.astronomical.orbital_mechanics import (
     GM_EARTH,  # Constants; Types; Anomaly conversions; Element conversions; Propagation; Orbital quantities
-)
-from pytcl.astronomical.orbital_mechanics import (
     GM_JUPITER,
     GM_MARS,
     GM_MOON,
@@ -78,9 +76,7 @@ from pytcl.astronomical.orbital_mechanics import (
 )
 from pytcl.astronomical.reference_frames import (
     earth_rotation_angle,  # Time utilities; Precession; Nutation
-)
-from pytcl.astronomical.reference_frames import ecef_to_eci  # Time utilities
-from pytcl.astronomical.reference_frames import (
+    ecef_to_eci,  # Time utilities
     eci_to_ecef,
     ecliptic_to_equatorial,
     equation_of_equinoxes,
@@ -117,8 +113,6 @@ from pytcl.astronomical.reference_frames import (
 )
 from pytcl.astronomical.relativity import (
     C_LIGHT,  # Physical constants; Schwarzschild metric; Time dilation
-)
-from pytcl.astronomical.relativity import (
     G_GRAV,
     geodetic_precession,
     gravitational_time_dilation,
@@ -156,8 +150,6 @@ from pytcl.astronomical.special_orbits import (
 )
 from pytcl.astronomical.time_systems import (
     JD_GPS_EPOCH,  # Julian dates; Time scales; Unix time; GPS week; Sidereal time; Leap seconds; Constants
-)
-from pytcl.astronomical.time_systems import (
     JD_J2000,
     JD_UNIX_EPOCH,
     MJD_OFFSET,

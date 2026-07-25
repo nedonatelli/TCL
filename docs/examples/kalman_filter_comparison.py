@@ -26,7 +26,7 @@ import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
-from pytcl.dynamic_estimation import (  # noqa: E402; Linear Kalman Filter; Unscented Kalman Filter
+from pytcl.dynamic_estimation import (
     kf_predict,
     kf_update,
     sigma_points_merwe,

@@ -1165,7 +1165,7 @@ def generate_gaussian_mixtures():
                     x=cluster_data[:, 0],
                     y=cluster_data[:, 1],
                     mode="markers",
-                    name=f"Cluster {i+1}",
+                    name=f"Cluster {i + 1}",
                     marker=dict(size=6),
                 )
             )

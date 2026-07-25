@@ -30,8 +30,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 We follow these conventions:
 
-- **Code formatting:** [Black](https://black.readthedocs.io/) with default settings
-- **Linting:** [Flake8](https://flake8.pycqa.org/)
+- **Code formatting:** [Ruff](https://docs.astral.sh/ruff/) (`ruff format`, black-compatible style)
+- **Linting & import sorting:** [Ruff](https://docs.astral.sh/ruff/) (`ruff check`)
 - **Type hints:** Required for all public functions
 - **Docstrings:** NumPy style
 
@@ -111,14 +111,13 @@ pytest -m "not slow"
 
 2. **Use descriptive test names:**
    ```python
-   def test_cart2sphere_single_point():
-       ...
+   def test_cart2sphere_single_point(): ...
 
-   def test_cart2sphere_multiple_points():
-       ...
 
-   def test_cart2sphere_raises_on_invalid_input():
-       ...
+   def test_cart2sphere_multiple_points(): ...
+
+
+   def test_cart2sphere_raises_on_invalid_input(): ...
    ```
 
 3. **Test against MATLAB reference values:**
@@ -126,9 +125,9 @@ pytest -m "not slow"
    @pytest.mark.matlab_validated
    def test_cart2sphere_matches_matlab():
        # Load reference values generated from MATLAB
-       ref = np.load('tests/fixtures/cart2sphere_reference.npz')
-       result = cart2sphere(ref['input'])
-       np.testing.assert_allclose(result, ref['expected'], rtol=1e-12)
+       ref = np.load("tests/fixtures/cart2sphere_reference.npz")
+       result = cart2sphere(ref["input"])
+       np.testing.assert_allclose(result, ref["expected"], rtol=1e-12)
    ```
 
 ### Generating MATLAB Reference Data
@@ -147,10 +146,8 @@ Then convert to NumPy format:
 from scipy.io import loadmat
 import numpy as np
 
-data = loadmat('cart2sphere_reference.mat')
-np.savez('cart2sphere_reference.npz',
-         input=data['input'],
-         expected=data['output'])
+data = loadmat("cart2sphere_reference.mat")
+np.savez("cart2sphere_reference.npz", input=data["input"], expected=data["output"])
 ```
 
 ## Porting Functions from MATLAB
@@ -203,10 +200,10 @@ When porting a function from the original MATLAB library:
 3. **Run quality checks:**
    ```bash
    # Format code
-   black .
+   ruff format .
 
-   # Lint
-   flake8 pytcl tests
+   # Lint (includes import sorting)
+   ruff check .
 
    # Type check
    mypy pytcl
@@ -226,7 +223,7 @@ When porting a function from the original MATLAB library:
 **MATLAB Parity:** 100% ✅ (all tier 1-2 missing components verified)
 **Test Suite:** 3,306 tests passing
 **Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
-**Quality:** 100% compliance (black, isort, flake8, mypy --strict)
+**Quality:** 100% compliance (ruff check, ruff format, mypy --strict)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
 **Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
 
@@ -316,14 +313,11 @@ cp examples/*.py docs/examples/
 ### 4. Run Quality Checks
 
 ```bash
-# Sort imports
-isort pytcl tests examples docs/examples scripts
+# Format code (also sorts imports via ruff check --fix)
+ruff format .
 
-# Format code
-black .
-
-# Lint
-flake8 pytcl tests examples docs/examples scripts
+# Lint (includes import sorting)
+ruff check .
 
 # Type check (strict mode)
 mypy --strict pytcl

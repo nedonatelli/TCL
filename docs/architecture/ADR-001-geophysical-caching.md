@@ -70,10 +70,12 @@ We will implement a multi-level caching strategy using Python's `functools.lru_c
 ```python
 from functools import lru_cache
 
+
 # For floating-point inputs, quantize to enable cache hits
 def _quantize_float(x: float, decimals: int = 6) -> float:
     """Quantize float for cache key compatibility."""
     return round(x, decimals)
+
 
 @lru_cache(maxsize=64)
 def _associated_legendre_cached(

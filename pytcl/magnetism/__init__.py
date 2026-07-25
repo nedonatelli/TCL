@@ -25,11 +25,18 @@ Examples
 >>> coef = create_emm_test_coefficients(n_max=36)
 """
 
-from pytcl.magnetism.emm import EMM_PARAMETERS, HighResCoefficients
+from pytcl.magnetism.emm import (
+    EMM_PARAMETERS,
+    HighResCoefficients,
+    emm,
+    emm_declination,
+    emm_inclination,
+    emm_intensity,
+    load_emm_coefficients,
+    wmmhr,
+)
 from pytcl.magnetism.emm import create_test_coefficients as create_emm_test_coefficients
-from pytcl.magnetism.emm import emm, emm_declination, emm_inclination, emm_intensity
 from pytcl.magnetism.emm import get_data_dir as get_emm_data_dir
-from pytcl.magnetism.emm import load_emm_coefficients, wmmhr
 from pytcl.magnetism.igrf import (
     IGRF13,
     IGRFModel,

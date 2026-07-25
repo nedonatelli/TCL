@@ -34,7 +34,7 @@ from pytcl.dynamic_models import (  # noqa: E402
     f_constant_velocity,
     q_constant_velocity,
 )
-from pytcl.performance_evaluation import (  # noqa: E402; Track metrics
+from pytcl.performance_evaluation import (
     ospa,
 )
 
@@ -61,7 +61,7 @@ def ospa_demo() -> None:
 
     print(f"\nGround truth: {len(truth)} targets")
     for i, pos in enumerate(truth):
-        print(f"  Target {i+1}: ({pos[0]:.1f}, {pos[1]:.1f})")
+        print(f"  Target {i + 1}: ({pos[0]:.1f}, {pos[1]:.1f})")
 
     # Different estimate scenarios
     scenarios = [

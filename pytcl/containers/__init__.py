@@ -24,14 +24,12 @@ from pytcl.containers.base import (
     MetricSpatialIndex,
     NearestNeighborResult,
     NeighborResult,
-)
-from pytcl.containers.base import (
-    RTreeResult as RTreeQueryResult,  # Backward compatibility aliases; Avoid conflict with rtree.RTreeResult
-)
-from pytcl.containers.base import (
     SpatialQueryResult,
     VPTreeResult,
     validate_query_input,
+)
+from pytcl.containers.base import (
+    RTreeResult as RTreeQueryResult,  # Backward compatibility aliases; Avoid conflict with rtree.RTreeResult
 )
 from pytcl.containers.cluster_set import (
     ClusterSet,

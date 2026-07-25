@@ -23,7 +23,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 
-from pytcl.navigation import (  # noqa: E402; Coordinate conversions; Geodetic problems
+from pytcl.navigation import (
     direct_geodetic,
     ecef_to_enu,
     ecef_to_geodetic,
@@ -61,8 +61,8 @@ def geodetic_basics_demo() -> None:
         print(f"\n{name}:")
         print(f"  Geodetic: {lat_deg:.4f}N, {lon_deg:.4f}E, {alt:.0f} m")
         print(
-            f"  ECEF: X={ecef[0]/1000:.1f} km, Y={ecef[1]/1000:.1f} km, "
-            f"Z={ecef[2]/1000:.1f} km"
+            f"  ECEF: X={ecef[0] / 1000:.1f} km, Y={ecef[1] / 1000:.1f} km, "
+            f"Z={ecef[2] / 1000:.1f} km"
         )
 
         # Convert back
@@ -105,8 +105,8 @@ def distance_calculations_demo() -> None:
         )
 
         print(f"\n{city1} -> {city2}:")
-        print(f"  Haversine distance: {dist_haversine/1000:.1f} km")
-        print(f"  Geodetic distance:  {dist_geodetic/1000:.1f} km")
+        print(f"  Haversine distance: {dist_haversine / 1000:.1f} km")
+        print(f"  Geodetic distance:  {dist_geodetic / 1000:.1f} km")
         print(f"  Forward azimuth:    {np.degrees(az_fwd):.1f} deg")
         print(f"  Back azimuth:       {np.degrees(az_back):.1f} deg")
 
@@ -147,8 +147,7 @@ def local_frame_demo() -> None:
         print(f"\n{name}:")
         print(f"  ENU: E={enu[0]:.0f} m, N={enu[1]:.0f} m, U={enu[2]:.0f} m")
         print(
-            f"  Geodetic: {np.degrees(lat):.4f}N, {np.degrees(lon):.4f}E, "
-            f"{alt:.0f} m"
+            f"  Geodetic: {np.degrees(lat):.4f}N, {np.degrees(lon):.4f}E, {alt:.0f} m"
         )
 
         # Verify roundtrip
@@ -177,7 +176,7 @@ def waypoint_navigation_demo() -> None:
 
     total_distance = 0.0
     for i, (name, lat, lon) in enumerate(waypoints):
-        print(f"\n{i+1}. {name}: {lat:.4f}N, {lon:.4f}E")
+        print(f"\n{i + 1}. {name}: {lat:.4f}N, {lon:.4f}E")
 
         if i > 0:
             # Calculate leg distance and heading
@@ -192,9 +191,9 @@ def waypoint_navigation_demo() -> None:
 
             print(f"   From {prev_name}:")
             heading = np.degrees(az_fwd)
-            print(f"   Distance: {dist/1000:.1f} km, Heading: {heading:.1f} deg")
+            print(f"   Distance: {dist / 1000:.1f} km, Heading: {heading:.1f} deg")
 
-    print(f"\nTotal flight distance: {total_distance/1000:.1f} km")
+    print(f"\nTotal flight distance: {total_distance / 1000:.1f} km")
 
     # Compute intermediate points along each leg using direct geodetic
     print("\nIntermediate points along first leg (every 10 km):")
@@ -210,7 +209,7 @@ def waypoint_navigation_demo() -> None:
     for d in np.arange(0, leg_dist, 10000):  # Every 10 km
         lat_int, lon_int, _ = direct_geodetic(lat1, lon1, az_fwd, d)
         print(
-            f"  {d/1000:.0f} km: {np.degrees(lat_int):.4f}N, "
+            f"  {d / 1000:.0f} km: {np.degrees(lat_int):.4f}N, "
             f"{np.degrees(lon_int):.4f}E"
         )
 
@@ -230,7 +229,7 @@ def sensor_coverage_demo() -> None:
 
     print("\nRadar sensor location: Washington DC")
     print(f"  Height: {sensor_alt} m")
-    print(f"  Max range: {max_range/1000:.0f} km")
+    print(f"  Max range: {max_range / 1000:.0f} km")
     print(f"  Min elevation: {np.degrees(min_elevation):.1f} deg")
 
     # Calculate coverage at different altitudes
@@ -254,9 +253,9 @@ def sensor_coverage_demo() -> None:
         else:
             ground_range = 0
 
-        print(f"  Target at {alt_m:.0f} m ({alt_m/0.3048:.0f} ft):")
-        print(f"    Effective slant range: {effective_range/1000:.1f} km")
-        print(f"    Ground coverage radius: {ground_range/1000:.1f} km")
+        print(f"  Target at {alt_m:.0f} m ({alt_m / 0.3048:.0f} ft):")
+        print(f"    Effective slant range: {effective_range / 1000:.1f} km")
+        print(f"    Ground coverage radius: {ground_range / 1000:.1f} km")
 
     # Check if specific targets are in coverage
     print("\nTarget detection check:")
@@ -281,7 +280,9 @@ def sensor_coverage_demo() -> None:
         status = "DETECTABLE" if detectable else "NOT DETECTABLE"
         reason = []
         if not in_range:
-            reason.append(f"range {slant_range/1000:.1f} km > {max_range/1000:.0f} km")
+            reason.append(
+                f"range {slant_range / 1000:.1f} km > {max_range / 1000:.0f} km"
+            )
         if not above_horizon:
             reason.append(
                 f"elev {np.degrees(elevation):.1f} deg < "
@@ -290,7 +291,7 @@ def sensor_coverage_demo() -> None:
 
         print(f"\n  {name}:")
         print(
-            f"    Range: {slant_range/1000:.1f} km, "
+            f"    Range: {slant_range / 1000:.1f} km, "
             f"Elevation: {np.degrees(elevation):.1f} deg"
         )
         print(f"    Status: {status}")
@@ -358,7 +359,7 @@ def plot_coverage_map() -> None:
                 lat=lats,
                 mode="lines",
                 line=dict(width=2, color=color),
-                name=f"Coverage at {alt}m ({alt*3.28084:.0f}ft)",
+                name=f"Coverage at {alt}m ({alt * 3.28084:.0f}ft)",
             )
         )
 

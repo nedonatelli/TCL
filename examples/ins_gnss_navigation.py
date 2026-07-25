@@ -102,12 +102,12 @@ def imu_processing_demo() -> None:
 
     # Generate IMU samples
     n_samples = 100
-    print(f"\nSimulating {n_samples} IMU samples at {1/dt:.0f} Hz")
+    print(f"\nSimulating {n_samples} IMU samples at {1 / dt:.0f} Hz")
     print(
-        f"  Gyro bias: [{gyro_bias[0]*1e3:.2f}, {gyro_bias[1]*1e3:.2f}, {gyro_bias[2]*1e3:.2f}] mrad/s"
+        f"  Gyro bias: [{gyro_bias[0] * 1e3:.2f}, {gyro_bias[1] * 1e3:.2f}, {gyro_bias[2] * 1e3:.2f}] mrad/s"
     )
     print(
-        f"  Accel bias: [{accel_bias[0]*1e3:.1f}, {accel_bias[1]*1e3:.1f}, {accel_bias[2]*1e3:.1f}] mm/s^2"
+        f"  Accel bias: [{accel_bias[0] * 1e3:.1f}, {accel_bias[1] * 1e3:.1f}, {accel_bias[2] * 1e3:.1f}] mm/s^2"
     )
 
     # Stationary sensor: gyro measures Earth rate, accel measures gravity
@@ -121,7 +121,7 @@ def imu_processing_demo() -> None:
 
     print("\nRaw IMU readings (stationary):")
     print(
-        f"  Gyro: [{omega_body[0]*1e3:.3f}, {omega_body[1]*1e3:.3f}, {omega_body[2]*1e3:.3f}] mrad/s"
+        f"  Gyro: [{omega_body[0] * 1e3:.3f}, {omega_body[1] * 1e3:.3f}, {omega_body[2] * 1e3:.3f}] mrad/s"
     )
     print(
         f"  Accel: [{accel_body[0]:.4f}, {accel_body[1]:.4f}, {accel_body[2]:.4f}] m/s^2"
@@ -133,14 +133,16 @@ def imu_processing_demo() -> None:
     alpha_curr = omega_body * dt + 1e-6 * np.random.randn(3)
 
     coning = coning_correction(alpha_prev, alpha_curr)
-    print(f"\nConing correction magnitude: {np.linalg.norm(coning)*1e9:.3f} nano-rad")
+    print(f"\nConing correction magnitude: {np.linalg.norm(coning) * 1e9:.3f} nano-rad")
 
     # Sculling correction
     dv_prev = accel_body * dt
     dv_curr = accel_body * dt
 
     sculling = sculling_correction(alpha_prev, alpha_curr, dv_prev, dv_curr)
-    print(f"Sculling correction magnitude: {np.linalg.norm(sculling)*1e9:.3f} nano-m/s")
+    print(
+        f"Sculling correction magnitude: {np.linalg.norm(sculling) * 1e9:.3f} nano-m/s"
+    )
 
 
 def coarse_alignment_demo() -> None:
@@ -242,7 +244,7 @@ def ins_mechanization_demo() -> None:
     accel_body = -g_ned  # Only gravity
     gyro_body = omega_ie + omega_en  # Earth rate + transport rate
 
-    print(f"\nSimulating {n_steps} navigation steps at {1/dt:.0f} Hz")
+    print(f"\nSimulating {n_steps} navigation steps at {1 / dt:.0f} Hz")
 
     # Integrate
     for _ in range(n_steps):
@@ -316,10 +318,10 @@ def gnss_geometry_demo() -> None:
         if el > 0:  # Above horizon
             visible_sats.append(pos_ecef)
             print(
-                f"  PRN {i+1}: El={np.degrees(el):.1f} deg, Az={np.degrees(az):.1f} deg"
+                f"  PRN {i + 1}: El={np.degrees(el):.1f} deg, Az={np.degrees(az):.1f} deg"
             )
         else:
-            print(f"  PRN {i+1}: Below horizon (El={np.degrees(el):.1f} deg)")
+            print(f"  PRN {i + 1}: Below horizon (El={np.degrees(el):.1f} deg)")
 
     # Compute DOP from geometry matrix
     if len(visible_sats) >= 4:
@@ -474,7 +476,7 @@ def gnss_outage_demo() -> None:
             innovation, innovation_cov, threshold=threshold_95
         )
         nis = innovation @ np.linalg.solve(innovation_cov, innovation)
-        print(f"  Sample {i+1}: NIS={nis:.2f}, Fault={fault}")
+        print(f"  Sample {i + 1}: NIS={nis:.2f}, Fault={fault}")
 
     # Test with biased innovations (simulating fault)
     print("\nBiased innovations (should detect fault):")
@@ -487,7 +489,7 @@ def gnss_outage_demo() -> None:
             innovation, innovation_cov, threshold=threshold_95
         )
         nis = innovation @ np.linalg.solve(innovation_cov, innovation)
-        print(f"  Sample {i+1}: NIS={nis:.2f}, Fault={fault}")
+        print(f"  Sample {i + 1}: NIS={nis:.2f}, Fault={fault}")
 
     print(
         "\nNote: NIS (Normalized Innovation Squared) should follow chi-squared distribution"

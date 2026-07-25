@@ -208,9 +208,9 @@ class TestSchwarzchildPrecession:
 
         # Expected: ~43 arcsec/century from GR
         # (Observed is ~5600 arcsec/century, but includes Newtonian precession)
-        assert (
-            40 < precession_per_century < 45
-        ), f"Got {precession_per_century:.1f} arcsec/century"
+        assert 40 < precession_per_century < 45, (
+            f"Got {precession_per_century:.1f} arcsec/century"
+        )
 
     def test_circular_orbit_zero_ecc(self):
         """Circular orbit (e=0) should give precession for any semi-major axis."""

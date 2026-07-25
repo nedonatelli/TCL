@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from scipy.signal import butter, lfilter, spectrogram, stft
+from scipy.signal import butter, lfilter, spectrogram
 
 # Output directory for plots
 OUTPUT_DIR = Path("../_static/images/tutorials")
@@ -50,7 +50,7 @@ def signal_processing_tutorial():
 
     print(f"Signal created: {len(t)} samples at {fs} Hz")
     print(
-        f"Signal components: 50 Hz (1.0), 150 Hz (0.5), 200 Hz (0.3), Gaussian noise (0.2)"
+        "Signal components: 50 Hz (1.0), 150 Hz (0.5), 200 Hz (0.3), Gaussian noise (0.2)"
     )
 
     # Step 2: Frequency Domain Analysis
@@ -84,7 +84,7 @@ def signal_processing_tutorial():
     filtered_signal = lfilter(b, a, signal)
 
     print(f"Filter designed: Order {order}, Cutoff {cutoff} Hz")
-    print(f"Expected: Remove 150 Hz and 200 Hz components")
+    print("Expected: Remove 150 Hz and 200 Hz components")
 
     # Analyze filtered signal
     fft_filtered = np.fft.fft(filtered_signal)

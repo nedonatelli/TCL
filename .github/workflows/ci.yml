@@ -23,16 +23,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black isort flake8 mypy==2.3.0 numpy
+          pip install ruff mypy numpy
 
-      - name: Check import sorting with isort
-        run: isort --check-only --diff pytcl tests
+      - name: Lint with ruff
+        run: ruff check .
 
-      - name: Check formatting with Black
-        run: black --check pytcl tests
-
-      - name: Lint with flake8
-        run: flake8 pytcl tests
+      - name: Check formatting with ruff
+        run: ruff format --check .
 
       - name: Type check with mypy
         run: mypy pytcl --ignore-missing-imports

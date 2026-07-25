@@ -129,9 +129,9 @@ def example_sez_radar_observations():
     )
 
     print(f"\nSatellite position in SEZ:")
-    print(f"  South component:  {sez_position[0]/1000:8.2f} km")
-    print(f"  East component:   {sez_position[1]/1000:8.2f} km")
-    print(f"  Zenith component: {sez_position[2]/1000:8.2f} km")
+    print(f"  South component:  {sez_position[0] / 1000:8.2f} km")
+    print(f"  East component:   {sez_position[1] / 1000:8.2f} km")
+    print(f"  Zenith component: {sez_position[2] / 1000:8.2f} km")
 
     # Compute range, azimuth, elevation
     range_km = np.linalg.norm(sez_position) / 1000
@@ -417,7 +417,7 @@ def example_earth_observation():
     print(
         f"  Position: {np.degrees(observer_lat):.2f}°N, {np.degrees(observer_lon):.2f}°W"
     )
-    print(f"  Altitude: {observer_alt/1000:.0f} km")
+    print(f"  Altitude: {observer_alt / 1000:.0f} km")
 
     print(
         f"\nTarget location: {np.degrees(target_lat):.2f}°N, {np.degrees(target_lon):.2f}°W"

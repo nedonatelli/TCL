@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/badge/pypi-v1.15.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-3306%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 [![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-100%25-brightgreen.svg)](docs/gap_analysis.rst)
 [![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen.svg)](htmlcov/index.html)
@@ -91,7 +91,9 @@ from pytcl.coordinate_systems import cart2sphere, sphere2cart
 # Convert Cartesian to spherical coordinates
 cart_point = np.array([1.0, 1.0, 1.0])
 r, az, el = cart2sphere(cart_point)
-print(f"Range: {r:.3f}, Azimuth: {np.degrees(az):.1f}°, Elevation: {np.degrees(el):.1f}°")
+print(
+    f"Range: {r:.3f}, Azimuth: {np.degrees(az):.1f}°, Elevation: {np.degrees(el):.1f}°"
+)
 
 # Convert back
 cart_recovered = sphere2cart(r, az, el)
@@ -126,11 +128,13 @@ x_est, P_est = kf.update(measurement)
 from pytcl.assignment_algorithms import hungarian
 
 # Cost matrix (tracks x measurements)
-cost_matrix = np.array([
-    [10, 5, 13],
-    [3, 15, 8],
-    [7, 9, 12],
-])
+cost_matrix = np.array(
+    [
+        [10, 5, 13],
+        [3, 15, 8],
+        [7, 9, 12],
+    ]
+)
 
 # Solve assignment
 assignment, total_cost = hungarian(cost_matrix)
@@ -154,6 +158,7 @@ if is_gpu_available():
 
     # Use batch Kalman filter operations
     from pytcl.gpu import batch_kf_predict
+
     x_pred, P_pred = batch_kf_predict(x_gpu, P_gpu, F, Q)
 
     # Transfer results back to CPU
@@ -276,10 +281,10 @@ pre-commit install
 
 ```bash
 # Format code
-black .
+ruff format .
 
-# Lint
-flake8 pytcl
+# Lint (includes import sorting)
+ruff check .
 
 # Type check
 mypy pytcl

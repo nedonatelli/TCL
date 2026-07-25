@@ -980,9 +980,7 @@ def workflow_scenario_replay(
     print(f"  TrackList: {len(track_list)} tracks")
     if len(track_list) > 0:
         stats = track_list.stats()
-        print(
-            f"  Stats: {stats.n_confirmed} confirmed, " f"{stats.n_tentative} tentative"
-        )
+        print(f"  Stats: {stats.n_confirmed} confirmed, {stats.n_tentative} tentative")
 
     db.close()
     h5.close()
@@ -1101,9 +1099,7 @@ def workflow_clutter_handling(
     print(f"    Total detections: {total_dets}")
     print(f"    Associated: {len(associated_dets)} ({assoc_rate:.1f}%)")
     print(f"    Unassociated: {len(unassociated_dets)}")
-    print(
-        f"    Tracks initiated: {len(all_tracks_info)}, " f"confirmed: {len(confirmed)}"
-    )
+    print(f"    Tracks initiated: {len(all_tracks_info)}, confirmed: {len(confirmed)}")
     print(f"    Avg initiation queue depth: {avg_queue:.1f}")
     print(f"\n  Pruning results:")
     print(f"    Pruned (5s threshold): {pruned_5s} → {remaining} remaining")

@@ -270,9 +270,9 @@ class MHTTracker:
 
         # Update tracks based on associations
         new_tracks_per_assoc: Dict[int, List[MHTTrack]] = {}
-        updated_tracks: Dict[int, Dict[int, MHTTrack]] = (
-            {}
-        )  # assoc_idx -> track_id -> track
+        updated_tracks: Dict[
+            int, Dict[int, MHTTrack]
+        ] = {}  # assoc_idx -> track_id -> track
 
         for assoc_idx, assoc in enumerate(associations):
             updated_tracks[assoc_idx] = {}
