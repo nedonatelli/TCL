@@ -15,10 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Relativity module** ([#3](https://github.com/nedonatelli/TCL/issues/3)): `geodetic_precession`, `lense_thirring_precession`, `post_newtonian_acceleration`, and `relativistic_range_correction` had dimensionally inconsistent formulas; all four rewritten and validated against literature values (de Sitter 1.92 arcsec/century, LAGEOS ~31 mas/yr)
 - **`ecef2sez`/`sez2ecef`**: S axis now points south per the standard (Vallado) SEZ convention; previously it pointed north
 
+### Added
+
+- **WMM2025 support**: official WMM2025 coefficients (valid 2025.0-2030.0) embedded from the NOAA distribution and validated against an independent implementation to <0.02 nT; available as `WMM2025` / `create_wmm2025_coefficients()`
+
 ### Changed
 
+- **WMM2025 is now the default model** for `wmm()` and the declination/inclination/intensity convenience functions (default year 2025.0); WMM2020 had left its 2020-2025 validity window. Pass `coeffs=WMM2020` for the previous model
 - **Breaking**: `relativistic_range_correction` signature is now `(r1, r2, rho, gm)` (Shapiro delay between two radii); the old `(distance, velocity, gm)` form was dimensionally invalid
 - **Breaking**: `lense_thirring_precession` returns rad/s (was mislabeled rad/orbit); `ecef2sez` S components flip sign relative to previous (incorrect) outputs
+- Plotting tests for `plot_points_spherical` / `plot_coordinate_transform` fixed to call the documented API (the functions were never broken; the tests were)
 
 ## [1.15.1] - 2026-07-25
 

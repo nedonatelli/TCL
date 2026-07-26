@@ -13,14 +13,14 @@ Examples
 >>> # Magnetic field at a location
 >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
 >>> print(f"Declination: {np.degrees(result.D):.2f}°")
-Declination: 7.79°
+Declination: 7.83°
 >>> print(f"Total intensity: {result.F:.0f} nT")
-Total intensity: 51572 nT
+Total intensity: 51573 nT
 
 >>> # Just the declination
 >>> D = magnetic_declination(np.radians(40), np.radians(-105))
 >>> print(f"Declination: {np.degrees(D):.2f}°")
-Declination: 7.79°
+Declination: 7.67°
 
 >>> # High-resolution models (require external coefficient files)
 >>> from pytcl.magnetism import emm, wmmhr, create_emm_test_coefficients
@@ -53,11 +53,13 @@ from pytcl.magnetism.igrf import (
 )
 from pytcl.magnetism.wmm import (
     WMM2020,
+    WMM2025,
     MagneticCoefficients,
     MagneticResult,
     clear_magnetic_cache,
     configure_magnetic_cache,
     create_wmm2020_coefficients,
+    create_wmm2025_coefficients,
     get_magnetic_cache_info,
     magnetic_declination,
     magnetic_field_intensity,
@@ -73,7 +75,9 @@ __all__ = [
     "IGRFModel",
     # WMM
     "WMM2020",
+    "WMM2025",
     "create_wmm2020_coefficients",
+    "create_wmm2025_coefficients",
     "magnetic_field_spherical",
     "wmm",
     "magnetic_declination",

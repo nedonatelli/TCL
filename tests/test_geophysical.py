@@ -273,7 +273,7 @@ class TestWMMReferenceValues:
     def test_wmm2020_reference_points(self):
         """Field components match the reference to within 1 nT / 0.01 deg."""
         for lat, lon, alt, year, D, inc, X, Y, Z in self.REFERENCE:
-            r = wmm(np.radians(lat), np.radians(lon), alt, year)
+            r = wmm(np.radians(lat), np.radians(lon), alt, year, WMM2020)
             assert abs(r.X - X) < 1.0, f"X at ({lat},{lon})"
             assert abs(r.Y - Y) < 1.0, f"Y at ({lat},{lon})"
             assert abs(r.Z - Z) < 1.0, f"Z at ({lat},{lon})"
@@ -284,6 +284,38 @@ class TestWMMReferenceValues:
         """Denver has ~+8 deg (easterly) declination, not westerly."""
         r = wmm(np.radians(39.74), np.radians(-104.99), 1.6, 2023.0)
         assert 7.0 < np.degrees(r.D) < 9.0
+
+
+class TestWMM2025ReferenceValues:
+    """Regression tests for the WMM2025 model (the current default).
+
+    Reference values computed with pygeomag's WMM_2025.COF implementation.
+    """
+
+    # (lat_deg, lon_deg, alt_km, year, D_deg)
+    REFERENCE = [
+        (80.0, 0.0, 0.0, 2025.0, 1.281),
+        (0.0, 120.0, 0.0, 2025.0, -0.158),
+        (-80.0, 240.0, 0.0, 2025.0, 68.775),
+        (40.0, -105.0, 0.0, 2026.5, 7.547),
+    ]
+
+    def test_wmm2025_reference_points(self):
+        """Declination matches the independent reference to 0.01 deg."""
+        from pytcl.magnetism import WMM2025
+
+        for lat, lon, alt, year, D in self.REFERENCE:
+            r = wmm(np.radians(lat), np.radians(lon), alt, year, WMM2025)
+            assert abs(np.degrees(r.D) - D) < 0.01, f"D at ({lat},{lon})"
+
+    def test_default_model_is_wmm2025(self):
+        """The default model epoch covers the current validity window."""
+        from pytcl.magnetism import WMM2025
+
+        assert WMM2025.epoch == 2025.0
+        r_default = wmm(np.radians(40.0), np.radians(-105.0), 0.0, 2026.0)
+        r_explicit = wmm(np.radians(40.0), np.radians(-105.0), 0.0, 2026.0, WMM2025)
+        assert r_default.F == r_explicit.F
 
 
 class TestIGRF:
