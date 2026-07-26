@@ -26,8 +26,8 @@ Key Parameters
   - Drives high-latitude thermospheric heating
 
 - **Ap Index**: Magnetic planetary three-hour index
-  - Average of Ap values over previous 12 hours
-  - Alternative to Kp for averaging
+  - Linear-scale counterpart of Kp (Kp 3 corresponds to Ap 15)
+  - This is the geomagnetic input of ``pytcl``'s ``nrlmsise00`` (``ap`` parameter)
 
 Applications
 ~~~~~~~~~~~~
@@ -57,42 +57,41 @@ Basic Usage
    from pytcl.atmosphere import nrlmsise00
 
    # Get atmospheric density at ISS altitude
-   density = nrlmsise00.get_density(
-       altitude_km=400.0,
-       latitude_deg=51.6,      # ISS inclination
-       longitude_deg=0.0,
+   output = nrlmsise00(
+       latitude=np.deg2rad(51.6),   # ISS inclination (radians)
+       longitude=0.0,
+       altitude=400e3,              # meters
        year=2024,
-       day_of_year=100,        # April 9, 2024
-       hour_utc=12.0,
-       f107=150.0,             # Moderate solar activity
-       f107a=130.0,            # 81-day average
-       kp=3.0,                 # Quiet geomagnetic conditions
+       day_of_year=100,             # April 9, 2024
+       seconds_in_day=12 * 3600.0,  # 12:00 UTC
+       f107=150.0,                  # Moderate solar activity
+       f107a=130.0,                 # 81-day average
+       ap=15.0,                     # Quiet geomagnetic conditions (Kp ~ 3)
    )
 
-   print(f"ISS density: {density:.3e} kg/m³")
-   # ISS density: 3.165e-12 kg/m³ (typical value)
+   print(f"ISS density: {output.density:.3e} kg/m³")
+   # ISS density: 2.872e-12 kg/m³
 
 Density Calculation
 ~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-   # Density varies with altitude
+   # Density varies with altitude (the model accepts array inputs)
    altitudes_km = np.linspace(200, 500, 50)
-   densities = np.zeros_like(altitudes_km)
 
-   for i, alt in enumerate(altitudes_km):
-       densities[i] = nrlmsise00.get_density(
-           altitude_km=alt,
-           latitude_deg=0.0,
-           longitude_deg=0.0,
-           year=2024,
-           day_of_year=1,
-           hour_utc=12.0,
-           f107=120.0,
-           f107a=120.0,
-           kp=0.0,
-       )
+   output = nrlmsise00(
+       latitude=0.0,
+       longitude=0.0,
+       altitude=altitudes_km * 1e3,  # meters
+       year=2024,
+       day_of_year=1,
+       seconds_in_day=12 * 3600.0,
+       f107=120.0,
+       f107a=120.0,
+       ap=4.0,
+   )
+   densities = output.density
 
    # Plot density profile
    import matplotlib.pyplot as plt
@@ -105,48 +104,46 @@ Density Calculation
 Atmospheric Composition
 -----------------------
 
-Get individual species densities (number/cm³):
+Get individual species densities (number/m³):
 
 .. code-block:: python
 
+   import numpy as np
    from pytcl.atmosphere import nrlmsise00
 
-   composition = nrlmsise00.get_composition(
-       altitude_km=400.0,
-       latitude_deg=0.0,
-       longitude_deg=0.0,
+   output = nrlmsise00(
+       latitude=0.0,
+       longitude=0.0,
+       altitude=400e3,
        year=2024,
        day_of_year=100,
-       hour_utc=12.0,
+       seconds_in_day=12 * 3600.0,
        f107=150.0,
        f107a=130.0,
-       kp=3.0,
+       ap=15.0,
    )
 
-   # Return structure (dict-like):
-   # {
-   #     'n2': number_density_N2,      # N2 (dominant, ~78%)
-   #     'o2': number_density_O2,      # O2 (~21%)
-   #     'o': number_density_O,        # O (significant at alt>200km)
-   #     'he': number_density_He,      # Helium (light, escapes slowly)
-   #     'ar': number_density_Ar,      # Argon (~1%)
-   #     'h': number_density_H,        # Hydrogen (very light)
-   #     'n': number_density_N,        # Nitrogen atoms
-   #     'temperature': temperature_kelvin,
-   #     'exospheric_temp': T_exo,     # Temperature at infinity
-   # }
+   # NRLMSISE00Output fields (number densities in m^-3):
+   #   n2_density   N2 (dominant at low altitude)
+   #   o2_density   O2
+   #   o_density    Atomic O (dominant at ~400 km)
+   #   he_density   Helium (light, escapes slowly)
+   #   ar_density   Argon
+   #   h_density    Hydrogen (very light)
+   #   n_density    Atomic nitrogen
+   #   temperature            Temperature at altitude (K)
+   #   exosphere_temperature  Temperature at infinity (K)
 
-   # Verify composition sums correctly
-   total_density = (
-       composition['n2'] +
-       composition['o2'] +
-       composition['o'] +
-       composition['he'] +
-       composition['ar'] +
-       composition['h'] +
-       composition['n']
+   total_number_density = (
+       output.n2_density +
+       output.o2_density +
+       output.o_density +
+       output.he_density +
+       output.ar_density +
+       output.h_density +
+       output.n_density
    )
-   print(f"Total density: {total_density:.3e} particles/cm³")
+   print(f"Total number density: {total_number_density:.3e} particles/m³")
 
 Real-World Example: LEO Satellite Drag
 ---------------------------------------
@@ -172,20 +169,20 @@ Calculate drag force on a satellite:
    # Solar activity (check NOAA for current values)
    f107 = 150.0     # 10.7 cm solar flux
    f107a = 130.0    # 81-day average
-   kp = 2.0         # Geomagnetic index
+   ap = 7.0         # Planetary magnetic index (Kp ~ 2)
 
    # Calculate atmospheric density
-   rho = nrlmsise00.get_density(
-       altitude_km=altitude_km,
-       latitude_deg=latitude_deg,
-       longitude_deg=longitude_deg,
+   rho = nrlmsise00(
+       latitude=np.deg2rad(latitude_deg),
+       longitude=np.deg2rad(longitude_deg),
+       altitude=altitude_km * 1e3,
        year=2024,
        day_of_year=100,
-       hour_utc=12.0,
+       seconds_in_day=12 * 3600.0,
        f107=f107,
        f107a=f107a,
-       kp=kp,
-   )
+       ap=ap,
+   ).density
 
    # Drag force: F = 0.5 * rho * v² * Cd * A
    v_ms = velocity_kmps * 1000.0  # Convert to m/s
@@ -223,22 +220,22 @@ Comparison with in-situ measurements:
 
    # NRLMSISE-00 predictions
    model_params = {
-       "latitude_deg": 51.6,
-       "longitude_deg": 0.0,
+       "latitude": np.deg2rad(51.6),
+       "longitude": 0.0,
        "year": 2024,
        "day_of_year": 100,
-       "hour_utc": 12.0,
+       "seconds_in_day": 12 * 3600.0,
        "f107": 150.0,
        "f107a": 130.0,
-       "kp": 3.0,
+       "ap": 15.0,
    }
 
    errors = []
    for data in measured_data:
-       model_density = nrlmsise00.get_density(
-           altitude_km=data["alt"],
+       model_density = nrlmsise00(
+           altitude=data["alt"] * 1e3,
            **model_params
-       )
+       ).density
        relative_error = abs(model_density - data["density"]) / data["density"]
        errors.append(relative_error)
        print(f"Alt {data['alt']} km: Measured {data['density']:.3e}, "
@@ -260,44 +257,44 @@ Observe density changes with different solar activity levels:
    import matplotlib.pyplot as plt
 
    # Fixed parameters
-   alt = 400.0
+   alt = 400e3  # meters
    lat, lon = 0.0, 0.0
-   year, doy, hour = 2024, 100, 12.0
+   year, doy, seconds = 2024, 100, 12 * 3600.0
 
    # Vary F10.7 (quiet to active)
    f107_values = np.linspace(70, 200, 20)
    densities_solar = []
 
    for f107 in f107_values:
-       rho = nrlmsise00.get_density(
-           altitude_km=alt,
-           latitude_deg=lat,
-           longitude_deg=lon,
+       rho = nrlmsise00(
+           latitude=lat,
+           longitude=lon,
+           altitude=alt,
            year=year,
            day_of_year=doy,
-           hour_utc=hour,
+           seconds_in_day=seconds,
            f107=f107,
            f107a=f107,  # Assume same as daily
-           kp=0.0,      # Quiet conditions
-       )
+           ap=4.0,      # Quiet conditions
+       ).density
        densities_solar.append(rho)
 
-   # Vary Kp (quiet to severe storm)
-   kp_values = np.linspace(0, 8, 20)
+   # Vary Ap (quiet to severe storm)
+   ap_values = np.linspace(0, 200, 20)
    densities_geomag = []
 
-   for kp in kp_values:
-       rho = nrlmsise00.get_density(
-           altitude_km=alt,
-           latitude_deg=lat,
-           longitude_deg=lon,
+   for ap in ap_values:
+       rho = nrlmsise00(
+           latitude=lat,
+           longitude=lon,
+           altitude=alt,
            year=year,
            day_of_year=doy,
-           hour_utc=hour,
+           seconds_in_day=seconds,
            f107=150.0,
            f107a=130.0,
-           kp=kp,
-       )
+           ap=ap,
+       ).density
        densities_geomag.append(rho)
 
    # Plot effects
@@ -309,8 +306,8 @@ Observe density changes with different solar activity levels:
    ax1.set_title('Density vs Solar Activity')
    ax1.grid()
 
-   ax2.semilogy(kp_values, densities_geomag, 'r-o')
-   ax2.set_xlabel('Kp Geomagnetic Index')
+   ax2.semilogy(ap_values, densities_geomag, 'r-o')
+   ax2.set_xlabel('Ap Geomagnetic Index')
    ax2.set_ylabel('Density (kg/m³)')
    ax2.set_title('Density vs Geomagnetic Activity')
    ax2.grid()
@@ -348,36 +345,28 @@ Use NRLMSISE-00 in SGP4 propagator:
 
    import numpy as np
    from pytcl.atmosphere import nrlmsise00
-   from pytcl.dynamic_models import sgp4_propagator
 
-   # TLE for ISS
-   tle_line1 = "1 25544U 98067A   24100.50000000  .00016717  00000-0  29800-3 0  9990"
-   tle_line2 = "2 25544  51.6400 339.8014 0002006  34.5857  120.4689 15.50582022450261"
-
-   # Initial conditions from TLE
-   state0 = sgp4_propagator.tle_to_state(tle_line1, tle_line2)
-
-   # Propagate with NRLMSISE-00 drag
+   # Inside a propagation loop, evaluate density at the current
+   # geodetic position and epoch of the satellite state:
    for i in range(100):
-       time_utc = /* compute UTC time at step i */
-       doy = /* day of year */
+       # ... propagate to step i, then convert the position to
+       # geodetic latitude/longitude/altitude and the epoch to
+       # (year, day_of_year, seconds_in_day) ...
 
-       # Get current density
-       altitude_km = state0['position'].magnitude / 1000.0
-       rho = nrlmsise00.get_density(
-           altitude_km=altitude_km,
-           latitude_deg=state0['latitude'],
-           longitude_deg=state0['longitude'],
-           year=time_utc.year,
+       rho = nrlmsise00(
+           latitude=lat,              # radians
+           longitude=lon,             # radians
+           altitude=alt,              # meters
+           year=year,
            day_of_year=doy,
-           hour_utc=time_utc.hour + time_utc.minute/60,
-           f107=150.0,  # Use latest NOAA value
+           seconds_in_day=seconds,
+           f107=150.0,   # Use latest NOAA value
            f107a=130.0,
-           kp=kp,  # Use latest Kp from NOAA
-       )
+           ap=15.0,      # Use latest Ap from NOAA
+       ).density
 
-       # Apply drag force to state0
-       # (implementation depends on propagator interface)
+       # Apply drag acceleration a = -0.5 * rho * |v| * (Cd*A/m) * v
+       # to the propagated state.
 
 See Also
 ~~~~~~~~

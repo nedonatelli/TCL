@@ -495,39 +495,53 @@ Lambert's Problem
 Relativistic Corrections
 ------------------------
 
-**Schwarzschild Effect** (main relativistic correction for GPS/timing)
+**Clock Rate (Proper Time)** (main relativistic correction for GPS/timing)
 
 .. code-block:: python
 
-   from pytcl.astronomical.relativity import schwarzschild_correction
-   
-   # Satellite state
-   sat_pos = np.array([6600e3, 0, 0])  # meters
-   sat_vel = np.array([0, 7500, 0])    # m/s
-   
-   # Relativistic frequency correction
+   from pytcl.astronomical.relativity import proper_time_rate
+
+   # GPS satellite: orbital radius and speed
+   rate_sat = proper_time_rate(v=3874.0, r=26560e3)
+
+   # Ground clock on the rotating equator
+   rate_ground = proper_time_rate(v=465.0, r=6378e3)
+
    # GPS satellite clocks run ~38 microseconds/day faster than ground clocks
-   delta_f_over_f = schwarzschild_correction(sat_pos, sat_vel)
-   
-   print(f"Frequency correction: {delta_f_over_f:.2e}")
-   print(f"Clock rate difference: {delta_f_over_f * 1e9:.1f} ns/s")
+   delta = rate_sat - rate_ground
+   print(f"Fractional rate difference: {delta:.2e}")
+   print(f"Clock offset: {delta * 86400 * 1e6:.1f} microseconds/day")
 
 **Shapiro Delay** (photon traveling through spacetime curvature)
 
 .. code-block:: python
 
-   from pytcl.astronomical.relativity import shapiro_delay
-   
-   # Satellite position
-   sat_eci = np.array([6600e3, 0, 0])  # meters
-   
-   # Ground station position  
-   station_eci = np.array([6378e3, 0, 0])  # Ground (equator)
-   
-   # Signal delay due to spacetime curvature
-   delay = shapiro_delay(sat_eci, station_eci)
-   
-   print(f"Shapiro delay: {delay * 1e9:.2f} nanoseconds")
+   from pytcl.astronomical.relativity import shapiro_delay, GM_EARTH
+
+   # Ground station position (ECEF, equator)
+   station = np.array([6378e3, 0, 0])  # meters
+
+   # GPS satellite position
+   sat = np.array([26560e3, 0, 0])  # meters
+
+   # Signal delay due to Earth's spacetime curvature
+   # (observer, light source, gravitating body position, GM)
+   delay = shapiro_delay(station, sat, np.zeros(3), GM_EARTH)
+
+   print(f"Shapiro delay: {delay * 1e12:.1f} picoseconds")
+
+**Relativistic Range Correction** (Shapiro delay as an equivalent range)
+
+.. code-block:: python
+
+   from pytcl.astronomical.relativity import relativistic_range_correction, GM_EARTH
+
+   r1 = 6378e3          # Station geocentric radius (m)
+   r2 = 26560e3         # Satellite geocentric radius (m)
+   rho = r2 - r1        # Station-satellite range (m)
+
+   dr = relativistic_range_correction(r1, r2, rho, GM_EARTH)
+   print(f"Range correction: {dr * 1000:.1f} mm")
 
 Complete Satellite Tracking Example
 -----------------------------------

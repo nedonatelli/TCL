@@ -4,7 +4,7 @@ API Navigation Guide
 Overview
 --------
 
-The Tracker Component Library provides **1,070+ functions** across **153 modules**. This guide shows how to discover and use them effectively.
+The Tracker Component Library provides **1,400+ functions** across **180+ modules**. This guide shows how to discover and use them effectively.
 
 Key Resources:
 
@@ -254,7 +254,7 @@ Function Naming Conventions
 
    get_sun_position()              # Astronomy
    compute_distance()              # Math
-   get_magnetic_field()            # Geophysics
+   get_magnetic_cache_info()       # Geophysics
 
 **Check/Validate Functions**: ``is_noun`` or ``check_noun``
 
@@ -320,13 +320,13 @@ Navigation and Geomatics
    
    # Projections (map coordinates)
    from pytcl.coordinate_systems.projections import (
-       geographic2utm, utm2geographic
+       geodetic2utm, utm2geodetic
    )
-   
+
    # Geophysical models
-   from pytcl.gravity import gravity_models
-   from pytcl.magnetism import magnetic_models
-   from pytcl.atmosphere import atmosphere_models
+   from pytcl.gravity import models as gravity_models
+   from pytcl.magnetism import wmm, igrf
+   from pytcl.atmosphere import models as atmosphere_models
 
 **See**: :doc:`architecture` section "Pattern 3: INS/GNSS Navigation"
 
@@ -353,8 +353,8 @@ Satellite Operations
    # SGP4 (TLE propagation)
    from pytcl.astronomical.sgp4 import sgp4_propagator
    
-   # Perturbations
-   from pytcl.astronomical.relativity import schwarzschild_correction
+   # Relativistic corrections
+   from pytcl.astronomical.relativity import proper_time_rate, shapiro_delay
 
 **See**: :doc:`architecture` section "Pattern 4: Satellite Propagation"
 

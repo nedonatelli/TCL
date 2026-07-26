@@ -451,18 +451,20 @@ Good for local areas with minimal distortion.
 .. code-block:: python
 
    from pytcl.coordinate_systems.projections import (
-       geographic2utm, utm2geographic
+       geodetic2utm, utm2geodetic
    )
-   
-   # Geodetic to UTM
-   geodetic = np.array([40.7128, -74.0060, 0.0])  # NYC
-   easting, northing, zone = geographic2utm(geodetic)
-   
-   print(f"UTM Zone: {zone}")
-   print(f"Easting: {easting:.1f}m, Northing: {northing:.1f}m")
-   
+
+   # Geodetic to UTM (angles in radians)
+   lat, lon = np.deg2rad(40.7128), np.deg2rad(-74.0060)  # NYC
+   result = geodetic2utm(lat, lon)
+
+   print(f"UTM Zone: {result.zone}{result.hemisphere}")
+   print(f"Easting: {result.easting:.1f}m, Northing: {result.northing:.1f}m")
+
    # UTM back to Geodetic
-   geodetic_back = utm2geographic(easting, northing, zone)
+   lat_back, lon_back = utm2geodetic(
+       result.easting, result.northing, result.zone, result.hemisphere
+   )
 
 **Mercator Projection**
 

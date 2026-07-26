@@ -259,7 +259,7 @@ Geophysical Subsystem
 **Modules**:
 
 - ``gravity`` - WGS84 ellipsoid, EGM96/2008 geoid, gravity anomalies
-- ``magnetism`` - World Magnetic Model (WMM), IGRF
+- ``magnetism`` - World Magnetic Model (WMM2025 default, WMM2020), IGRF-13, EMM
 - ``atmosphere`` - NRLMSISE-00 model for density, temperature
 - ``terrain`` - Terrain elevation from digital elevation models
 
@@ -267,20 +267,21 @@ Geophysical Subsystem
 
 .. code-block:: python
 
-   from pytcl.gravity.gravity_models import gravity_force
-   from pytcl.magnetism.magnetic_models import magnetic_field
-   from pytcl.atmosphere.nrlmsise00 import atmospheric_density
-   
-   # Compute gravitational acceleration
-   ecef_pos = np.array([6378000, 0, 0])  # Earth surface
-   g_accel = gravity_force(ecef_pos)  # m/s^2
-   
-   # Magnetic field
-   mag_field = magnetic_field(ecef_pos)  # nT
-   
-   # Atmospheric density
-   lat, lon, alt = 40.0, -74.0, 35000  # 35,000 feet
-   rho = atmospheric_density(lat, lon, alt)
+   import numpy as np
+   from pytcl.gravity.models import normal_gravity
+   from pytcl.magnetism import wmm
+   from pytcl.atmosphere.models import us_standard_atmosphere_1976
+
+   # Normal gravity at 45 deg latitude, sea level
+   g_accel = normal_gravity(np.deg2rad(45.0))  # m/s^2
+
+   # Magnetic field (WMM2025 is the default model); result fields in nT
+   result = wmm(np.deg2rad(40.0), np.deg2rad(-74.0), h=0.0, year=2025.0)
+   total_intensity = result.F  # nT
+
+   # Atmospheric state at ~35,000 ft (10,668 m geometric altitude)
+   atm = us_standard_atmosphere_1976(10668.0)
+   rho = atm.density  # kg/m^3
 
 **Dependency Graph**:
   - Depends on: ``coordinate_systems``, ``mathematical_functions``

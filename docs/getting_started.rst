@@ -215,8 +215,8 @@ Convert between coordinate systems:
    # Cartesian to spherical
    r, az, el = cart2sphere(np.array([[100, 200, 50]]))
 
-   # Geodetic to ECEF
-   x, y, z = geodetic2ecef(lat=40.0, lon=-75.0, alt=100.0)
+   # Geodetic to ECEF (angles in radians)
+   x, y, z = geodetic2ecef(lat=np.deg2rad(40.0), lon=np.deg2rad(-75.0), alt=100.0)
 
 Atmospheric Models
 ^^^^^^^^^^^^^^^^^^
@@ -225,31 +225,23 @@ Get atmospheric density for satellite drag calculations:
 
 .. code-block:: python
 
+   import numpy as np
    from pytcl.atmosphere import nrlmsise00
 
    # NRLMSISE-00 model with solar/geomagnetic activity
-   density = nrlmsise00.get_density(
-       altitude_km=400.0,
-       latitude_deg=45.0,
-       longitude_deg=-75.0,
+   output = nrlmsise00(
+       latitude=np.deg2rad(45.0),
+       longitude=np.deg2rad(-75.0),
+       altitude=400e3,          # meters
        year=2024,
        day_of_year=100,
-       hour_utc=12.0,
-       f107=150.0,  # 10.7 cm solar flux (SFU)
+       seconds_in_day=12 * 3600.0,
+       f107=150.0,   # 10.7 cm solar flux (SFU)
        f107a=130.0,  # 81-day average
-       kp=3.0,  # Geomagnetic activity index
+       ap=15.0,      # Planetary magnetic index
    )
-   print(f"Density: {density:.3e} kg/m³")
+   print(f"Density: {output.density:.3e} kg/m³")
 
-   # Get atmospheric composition
-   composition = nrlmsise00.get_composition(
-       altitude_km=400.0,
-       latitude_deg=0.0,
-       longitude_deg=0.0,
-       year=2024,
-       day_of_year=100,
-       hour_utc=12.0,
-       f107=150.0,
-       f107a=130.0,
-       kp=3.0,
-   )
+   # Composition is available on the same result
+   print(f"Atomic oxygen: {output.o_density:.3e} m^-3")
+   print(f"Temperature: {output.temperature:.1f} K")

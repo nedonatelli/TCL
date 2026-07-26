@@ -1,295 +1,50 @@
 Development Roadmap
 ===================
 
-This document outlines the development phases for the Tracker Component Library.
+This page summarizes where the library is headed. The authoritative,
+regularly updated plan lives in `ROADMAP.md
+<https://github.com/nedonatelli/TCL/blob/main/ROADMAP.md>`_; release
+history lives in `CHANGELOG.md
+<https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-For comprehensive details including v2.0.0 planning, see `ROADMAP.md <../ROADMAP.md>`_.
+Current State (v1.16.0)
+-----------------------
 
-Current State (v1.15.0) - Phase 4 Complete: 100% MATLAB Parity Achieved
------------------------------------------------------------------------
+* **100% MATLAB TCL parity** across all tier 1 and tier 2 components
+* **3,322 tests** passing, 80% line coverage, docstring examples run in CI
+* **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-13, and
+  WMMHR2025 magnetic models verified against independent references to
+  sub-nT accuracy; UTM projections verified against EPSG to sub-millimeter
+* **GPU acceleration**: dual-backend (CuPy for NVIDIA CUDA, MLX for Apple
+  Silicon) batch Kalman and particle filters
+* **Track management**: SQL and HDF5 persistence with lifecycle management
+  and v1.x migration tools
+* **Tooling**: ruff (lint + format), mypy --strict, pinned CI toolchain
 
-* **Phase 4 Complete**: 8 comprehensive Jupyter notebooks, 175+ cells, 4-week curricula
-* **Notebooks cover**: Kalman filters, particle filters, multi-target tracking, coordinate systems, GPU acceleration, network flow, INS/GNSS integration, performance optimization
-* **Learning features**: 50+ progressive exercises, advanced topics, references, API documentation, Plotly visualizations
-* **100% MATLAB Parity**: Verified with 81 tests for NRLMSISE-00, Constrained EKF, and Rao-Blackwellized Particle Filter
-* **New Components**: NRLMSISE-00 atmosphere model (31 tests), Constrained EKF (24 tests), RBPF (26 tests)
-* **Comprehensive Documentation**: 1,600+ lines of new guides (constrained_filtering, hybrid_filtering, atmosphere_models)
-* **Performance Optimization**: Numba JIT compilation, lru_cache, sparse matrix support
-* **GPU Acceleration**: Dual-backend support (CuPy for NVIDIA CUDA, MLX for Apple Silicon)
-* **Automatic backend selection**: System auto-detects best available GPU backend
-* **Batch Kalman filters**: GPU-accelerated Linear, Extended, and Unscented KF (5-10x speedup)
-* **GPU particle filters**: Accelerated resampling and weight computation (8-15x speedup)
-* **1,048 functions** implemented across 133 Python modules
-* **3,306 tests** with 100% pass rate - fully production-ready
-* **80% line coverage** across 18,022 lines (comprehensive coverage achieved)
-* **100% code quality** compliance with isort, black, flake8, mypy --strict
-* **10-50x performance improvement** on network flow solver (Phase 1 complete)
-* **42 interactive HTML visualizations** with Git LFS tracking
-* **23 comprehensive example scripts** with Plotly-based interactive plots
-* **100% MATLAB TCL parity** - all core features + tier 1-2 specialized components (verified with 81 tests)
-* **Benchmarking infrastructure**: Session-scoped fixtures, CI workflows, SLO tracking
-* **Logging framework**: Hierarchical logging with performance instrumentation
-* **Performance optimization**: 3-8x speedup on critical paths via Numba JIT, vectorization, caching
-* **Core tracking functionality complete**: Kalman filters (KF, EKF, UKF, CKF, CEKF), particle filters (bootstrap, RBPF), coordinate systems, dynamic models, data association (GNN, JPDA, MHT), multi-target tracking, atmospheric modeling
-* **Advanced assignment algorithms**: 3D assignment (Lagrangian relaxation, auction, greedy), k-best 2D (Murty's algorithm)
-* **Gaussian mixture operations**: moment matching, Runnalls/West reduction algorithms
-* **Complete clustering module**: K-means, DBSCAN, hierarchical clustering
-* **Static estimation**: Least squares (OLS, WLS, TLS, GLS, RLS), robust M-estimators (Huber, Tukey), RANSAC, maximum likelihood estimation, Fisher information, Cramer-Rao bounds
-* **Spatial data structures**: K-D tree, Ball tree, R-tree, VP-tree, Cover tree for efficient nearest neighbor queries
-* **Tracking containers**: TrackList, MeasurementSet, ClusterSet for managing tracking data
-* **Geophysical models**: Gravity (spherical harmonics, WGS84, J2, EGM96/EGM2008), Magnetism (WMM, IGRF-13, EMM, WMMHR2025)
-* **Tidal effects**: Solid Earth tides, ocean tide loading, atmospheric pressure loading, pole tide
-* **Terrain models**: DEM interface, GEBCO 2025/Earth2014 loaders, line-of-sight, viewshed analysis
-* **Map projections**: Mercator, Transverse Mercator, UTM, Stereographic, Lambert Conformal Conic, Azimuthal Equidistant
-* **Astronomical code**: Orbital mechanics, Kepler propagation, Lambert problem, reference frame transformations, JPL ephemerides, relativistic corrections
-* **INS/Navigation**: Strapdown INS mechanization, coning/sculling corrections, alignment algorithms, error state model
-* **INS/GNSS Integration**: Loosely-coupled and tightly-coupled integration, DOP computation, fault detection
-* **Signal Processing**: Digital filter design (IIR/FIR), matched filtering, CFAR detection
-* **Transforms**: FFT utilities, STFT/spectrogram, wavelet transforms (CWT, DWT)
-* **Smoothers**: RTS smoother, fixed-lag, fixed-interval, two-filter smoothers
-* **Information filters**: Standard and square-root information filters (SRIF)
-* **Documentation**: Interactive visualization system with 42 HTML plots + 8 interactive notebooks
-* **Code Quality**: 100% compliance with isort, black, flake8, mypy
-* **Published on PyPI** as ``nrl-tracker``
+v2.0.0 (Target: Q4 2026)
+------------------------
 
-Completed Phases
-----------------
+All development phases are complete; remaining work is release
+preparation (Phase 9):
 
-For detailed version history and implementation notes, see `ROADMAP.md <../ROADMAP.md>`_.
+* Final integration testing across all subsystems
+* Track-management quality gates (throughput, latency, compression)
+* Alpha → beta → release-candidate cycle with community feedback
+* Migration guide and deprecation path for v1.x users
+* Removal of dead modules (``network_simplex``, ``logging_config``)
 
-**Achieved Milestones:**
+v2.1 (2027)
+-----------
 
-* v1.0.0 (Jan 1, 2026): Full MATLAB TCL parity with 830+ functions across 146 modules
-* v1.1.0-v1.3.0 (Jan 2, 2026): Performance optimization phases with 3-8x speedups
-* v1.6.0 (Jan 2, 2026): H-infinity filters, TOD/MOD frames, SGP4/SDP4 satellite propagation
-* v1.7.2-v1.7.3 (Jan 4, 2026): Repository maintenance, Git LFS, test coverage analysis
-* v1.9.0-v1.9.1 (Jan 4, 2026): Infrastructure improvements, Phase 1 & 2 completion
-* v1.9.2 (Jan 4, 2026): Phase 3.2 complete - 262 functions with docstring examples
-* v1.10.0 (Jan 4, 2026): GPU acceleration with dual-backend support (CuPy + MLX)
-* v1.10.x (Jan 5, 2026): Phase 6 Test Expansion - 761 new tests (2,894 total)
-* v1.11.0 (Jan 5, 2026): Phase 7 Performance - Numba JIT, lru_cache, sparse assignment
-* v1.13.0 (Feb 25, 2026): Phase 4 Complete - 8 comprehensive Jupyter notebooks (175+ cells)
-* v1.15.0 (Mar 15, 2026): GEBCO 2025 default, WMMHR2025 support, EMM array inputs, terrain extra
-
-Phase 15 (v1.1.0): Performance Infrastructure ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* Session-scoped pytest fixtures (30-40% runtime reduction)
-* Benchmark SLO definitions with trend detection
-* Two-tier CI benchmarking (light for PRs, full for main)
-* Logging framework with performance instrumentation
-* Unified module documentation template
-
-Phase 16 (v1.3.0): Comprehensive Refactoring & Optimization ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Three concurrent optimization tracks:**
-
-**Track A: Mathematical Functions & Performance** ✅
-  * Numba JIT: CFAR detection, matched filter, Debye functions
-  * Vectorization: Matrix operations (2-5x improvement)
-  * Caching: Common function inputs for 25-40% speedup
-
-**Track B: Containers & Maintainability** ✅
-  * Modularized Kalman filters: split sr_kalman.py into focused submodules
-  * Input validation decorator system
-  * Test coverage: 65%+ with parametrized tests
-  * Improved container operations
-
-**Track C: Geophysical Models & Architecture** ✅
-  * LRU caching for magnetism, navigation, gravity lookups (2-3x speedup)
-  * Lazy-load high-resolution models (EGM2008, Earth2014)
-  * Architecture Decision Records (ADRs) for module patterns
-  * Performance instrumentation with trend tracking
-
-v2.0.0 Phase 1 (v1.8.0): Network Flow Performance ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* Replaced Bellman-Ford with network simplex algorithm (50-100x faster)
-* **BLOCKER RESOLVED**: Network flow performance no longer blocks v2.0.0
-* Failing tests removed (legacy implementation deprecated)
-* Zero network flow test failures remaining
-
-v2.0.0 Phase 2 (v1.9.0): API Standardization ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**2.1 Spatial Index Interface Standardization** ✅
-  * Unified NeighborResult NamedTuple (index, distance, point) across all 7 spatial indexes
-  * All spatial data structures now use consistent query interface
-  * Standardized return types for KD-tree, Ball tree, R-tree, VP-tree, Cover tree, and more
-
-**2.2 Custom Exception Hierarchy** ✅
-  * Implemented 16 domain-specific exception types in pytcl/core/exceptions.py
-  * Hierarchy includes: DependencyError, ConfigurationError, ConvergenceError, ValidationError, etc.
-  * All exceptions inherit from base TCLError class
-
-**2.3 Optional Dependencies System** ✅
-  * Unified optional_deps.py module with is_available(), import_optional(), @requires decorator
-  * LazyModule class for deferred imports
-  * PACKAGE_EXTRAS and PACKAGE_FEATURES configuration for user-friendly error messages
-  * Covers: plotly, astropy, jplephem, pyproj, geographiclib, cvxpy, pywt, netCDF4, cupy, mlx
-
-v2.0.0 Phase 5 (v1.10.0): GPU Acceleration ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**5.1 Dual-Backend GPU Infrastructure** ✅
-  * Platform detection (Apple Silicon, NVIDIA CUDA)
-  * Automatic backend selection: MLX → CuPy → NumPy fallback
-  * Array transfer utilities: ``to_gpu()``, ``to_cpu()``
-  * Memory management and synchronization
-  * Comprehensive test suite (13 utility tests, 19 CuPy-specific tests)
-
-**5.2 CuPy-Based Kalman Filters** ✅
-  * ``batch_kf_predict()`` / ``batch_kf_update()`` - Linear KF with batch processing
-  * ``batch_ekf_predict()`` / ``batch_ekf_update()`` - EKF with nonlinear models
-  * ``batch_ukf_predict()`` / ``batch_ukf_update()`` - UKF with sigma points
-  * Performance target: 5-10x speedup achieved
-
-**5.3 GPU Particle Filters** ✅
-  * ``gpu_pf_resample()`` - GPU-accelerated resampling
-  * ``gpu_pf_weights()`` - Importance weight computation
-  * Performance target: 8-15x speedup achieved
-
-**5.4 Matrix Utilities** ✅
-  * ``get_array_module()`` - Backend-agnostic array operations
-  * ``ensure_gpu_array()`` - Dtype-aware GPU array creation
-  * ``sync_gpu()`` - GPU synchronization for timing
-  * ``get_gpu_memory_info()`` - Memory usage monitoring
-  * ``clear_gpu_memory()`` - Memory pool management
-
-**5.5 Apple Silicon (MLX) Support** ✅
-  * MLX backend for Apple Silicon M1/M2/M3 Macs
-  * Automatic dtype conversion (float32 preferred for MLX)
-  * Full API parity with CuPy backend
-  * Lazy import system for optional dependency
-
-**Installation:**
-
-.. code-block:: bash
-
-   # For NVIDIA CUDA
-   pip install nrl-tracker[gpu]
-
-   # For Apple Silicon
-   pip install nrl-tracker[gpu-apple]
-
-v2.0.0 Phase 6 (v1.10.x): Test Expansion ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**6.1 New Test Modules** ✅
-  * 122 new tests for special functions (error functions, elliptic integrals, Marcum Q)
-  * Comprehensive coverage for mathematical special functions
-  * Tests for numerical stability and edge cases
-
-**6.2 Total Test Suite** ✅
-  * 2,894 tests passing (761 new tests added)
-  * Coverage maintained at 76%
-  * All code quality checks passing
-
-v2.0.0 Phase 7 (v1.11.0): Performance Optimization ✅
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**7.1 Numba JIT Compilation** ✅
-  * ``_cholesky_update_core`` - JIT-compiled rank-1 Cholesky update
-  * ``_cholesky_downdate_core`` - JIT-compiled rank-1 Cholesky downdate
-  * 5-10x speedup on matrix updates
-
-**7.2 Systematic Caching** ✅
-  * ``_a_nm``, ``_b_nm`` Clenshaw coefficients (maxsize=4096)
-  * ``legendre_scaling_factors`` (maxsize=64)
-  * ``enu_jacobian``, ``ned_jacobian`` (maxsize=256)
-  * ``compute_merwe_weights`` (maxsize=128)
-  * 25-40% speedup on repeated evaluations
-
-**7.3 Sparse Matrix Support** ✅
-  * ``SparseCostTensor`` class for COO-style sparse storage
-  * ``greedy_assignment_nd_sparse`` - O(n_valid log n_valid) algorithm
-  * ``assignment_nd`` - Unified interface with auto sparse/dense selection
-  * 50%+ memory reduction on sparse problems
-
-Planned: v2.0.0 Release (18 Months)
------------------------------------
-
-Comprehensive architectural upgrade targeting critical fixes, API standardization, GPU acceleration, and test expansion.
-
-**Release Timeline:** Months 1-18 (Q1 2026 - Q4 2027)
-
-**Key Objectives:**
-
-* **Phase 1 (Months 1-3)**: Network flow performance ✅ COMPLETE - Replaced Bellman-Ford with network simplex (50-100x faster)
-* **Phase 2 (Months 2-4)**: API standardization ✅ COMPLETE - Unified spatial indexes, exception hierarchy, optional dependencies
-* **Phase 3 (Months 3-6)**: Documentation expansion - Complete module docstrings, function examples, module graduation
-* **Phase 4 (Months 4-8)**: 8 Jupyter interactive notebooks covering Kalman, particle filters, tracking, GPU, networking
-* **Phase 5 (Months 6-10)**: GPU acceleration Tier-1 ✅ COMPLETE - CuPy + MLX dual-backend (5-15x speedup)
-* **Phase 6 (Months 7-12)**: Test expansion ✅ COMPLETE - 761 new tests (2,894 total)
-* **Phase 7 (Months 8-12)**: Performance optimization ✅ COMPLETE - Numba JIT, lru_cache, sparse matrices
-* **Phase 8 (Months 13-18)**: Release preparation - alpha → beta → RC → v2.0.0 final
-
-**v2.0.0 Success Metrics:**
-
-+--------------------------------------+-------------------+-------------+
-| Metric                               | Current           | Target      |
-+======================================+===================+=============+
-| Network flow tests passing           | 0/0 ✅ (removed)  | N/A         |
-+--------------------------------------+-------------------+-------------+
-| Kalman duplicate code                | 0 lines ✅        | 0 lines     |
-+--------------------------------------+-------------------+-------------+
-| Spatial index standardization        | 7/7 ✅            | Complete    |
-+--------------------------------------+-------------------+-------------+
-| Custom exception hierarchy           | 16 types ✅       | Complete    |
-+--------------------------------------+-------------------+-------------+
-| Optional deps system                 | Complete ✅       | Complete    |
-+--------------------------------------+-------------------+-------------+
-| Test coverage                        | 76%               | 80%+        |
-+--------------------------------------+-------------------+-------------+
-| Unit tests                           | 2,894 ✅          | 2,200+      |
-+--------------------------------------+-------------------+-------------+
-| GPU speedup (Kalman)                 | 5-10x ✅          | 5-10x       |
-+--------------------------------------+-------------------+-------------+
-| GPU speedup (particles)              | 8-15x ✅          | 8-15x       |
-+--------------------------------------+-------------------+-------------+
-| GPU backends                         | 2 (CuPy+MLX) ✅   | 2           |
-+--------------------------------------+-------------------+-------------+
-| Jupyter tutorials                    | 8 ✅              | 8           |
-+--------------------------------------+-------------------+-------------+
-| Documentation quality                | 85%               | 95%+        |
-+--------------------------------------+-------------------+-------------+
-
-**Phase 6 Test Expansion Details:**
-
-+--------------------------+----------+--------+----------+-------------+
-| Module                   | Current  | Target | New Tests| Status      |
-+==========================+==========+========+==========+=============+
-| sr_ukf.py                | 86% ✅   | 50%+   | 20       | Complete    |
-+--------------------------+----------+--------+----------+-------------+
-| matrix_utils.py          | 87% ✅   | 50%+   | 15       | Complete    |
-+--------------------------+----------+--------+----------+-------------+
-| ud_filter.py             | 89% ✅   | 60%+   | 15       | Complete    |
-+--------------------------+----------+--------+----------+-------------+
-| square_root.py           | 95% ✅   | 70%+   | 15       | Complete    |
-+--------------------------+----------+--------+----------+-------------+
-| imm.py                   | 95% ✅   | 60%+   | 30       | Complete    |
-+--------------------------+----------+--------+----------+-------------+
-| detection.py             | 45%      | 65%+   | 58       | In Progress |
-+--------------------------+----------+--------+----------+-------------+
-| filters.py               | 61%      | 75%+   | 10       | Pending     |
-+--------------------------+----------+--------+----------+-------------+
-| loaders.py               | 60%      | 80%+   | 15       | Pending     |
-+--------------------------+----------+--------+----------+-------------+
-| **Total**                | **75%**  | **80%+**| **129**  | **In Progress** |
-+--------------------------+----------+--------+----------+-------------+
-
-See `ROADMAP.md <../ROADMAP.md>`_ for comprehensive v2.0.0 planning, effort estimates, risk analysis, and detailed implementation strategies for all 8 phases.
+* RAPIDS integration for distributed, multi-GPU tracking
+* Intel oneAPI backend
+* PHD/CPHD and labeled multi-Bernoulli trackers
+* Terrain loader signature fixes
+* Expanded format support (Parquet, Arrow, ASDF) and optional ROS 2 plugin
 
 Contributing
 ------------
 
-Contributions are welcome! If you'd like to work on any of these features:
-
-1. Open an issue to discuss your planned implementation
-2. Fork the repository and create a feature branch
-3. Follow the existing code style (black formatting, NumPy docstrings)
-4. Add tests for new functionality
-5. Submit a pull request
-
-See the `original MATLAB library <https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary>`_ for reference implementations.
+See `CONTRIBUTING.md
+<https://github.com/nedonatelli/TCL/blob/main/CONTRIBUTING.md>`_ for
+guidelines and the high-impact contribution areas listed in ROADMAP.md.

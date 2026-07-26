@@ -195,5 +195,5 @@ These tutorials are designed to be embedded in Sphinx documentation via:
 - **Examples**: `examples/` directory
 
 ---
-Generated: January 4, 2026
-TCL Version: 1.7.1
+Generated: January 4, 2026 (last reviewed for v1.16.0)
+TCL Version: 1.16.0
