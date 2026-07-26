@@ -241,7 +241,8 @@ def total_least_squares(
     Total least squares (TLS) estimation.
 
     Solves the errors-in-variables problem where both the design matrix
-    and observations may have errors:
+    and observations may have errors::
+
         min_{E, r} ||[E | r]||_F  subject to  (A + E) @ x = b + r
 
     Parameters

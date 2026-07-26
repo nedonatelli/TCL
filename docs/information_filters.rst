@@ -579,25 +579,25 @@ Comparison: Information Filter vs Kalman Filter
 
 **Numerical Behavior:**
 
-+----------------------------------+--------------------+---------------------+
-| Aspect                           | Kalman Filter      | Information Filter  |
-+==================================+====================+=====================+
-| State representation             | x̂, P (covariance) | y, Y (information)  |
-+----------------------------------+--------------------+---------------------+
-| Measurement update               | Multiplicative (K) | Additive (Y, y)     |
-+----------------------------------+--------------------+---------------------+
-| Prediction step                  | Direct (P_pred)    | Requires inversion  |
-+----------------------------------+--------------------+---------------------+
-| Weak measurement (R → ∞)         | Kalman gain → 0    | Information → 0     |
-+----------------------------------+--------------------+---------------------+
-| Rank-deficient R                 | Ill-conditioned    | Natural             |
-+----------------------------------+--------------------+---------------------+
-| Numerical stability              | Good               | Better (SRIF)       |
-+----------------------------------+--------------------+---------------------+
-| Batch processing                 | Awkward            | Natural             |
-+----------------------------------+--------------------+---------------------+
-| Decentralized fusion             | Complex            | Trivial (add info)  |
-+----------------------------------+--------------------+---------------------+
++----------------------------------+-----------------------+---------------------+
+| Aspect                           | Kalman Filter         | Information Filter  |
++==================================+=======================+=====================+
+| State representation             | x-hat, P (covariance) | y, Y (information)  |
++----------------------------------+-----------------------+---------------------+
+| Measurement update               | Multiplicative (K)    | Additive (Y, y)     |
++----------------------------------+-----------------------+---------------------+
+| Prediction step                  | Direct (P_pred)       | Requires inversion  |
++----------------------------------+-----------------------+---------------------+
+| Weak measurement (R → ∞)         | Kalman gain → 0       | Information → 0     |
++----------------------------------+-----------------------+---------------------+
+| Rank-deficient R                 | Ill-conditioned       | Natural             |
++----------------------------------+-----------------------+---------------------+
+| Numerical stability              | Good                  | Better (SRIF)       |
++----------------------------------+-----------------------+---------------------+
+| Batch processing                 | Awkward               | Natural             |
++----------------------------------+-----------------------+---------------------+
+| Decentralized fusion             | Complex               | Trivial (add info)  |
++----------------------------------+-----------------------+---------------------+
 
 **When Information Filter Excels:**
 
@@ -947,7 +947,7 @@ Common Pitfalls
 ---
 
 See Also
-~~~~~~~~
+========
 
 - [Kalman Filter Tuning](kalman_filter_tuning.rst) — Standard filtering approach
 - [Smoothing Algorithms](smoothing.rst) — RTS smoother for trajectory refinement

@@ -735,27 +735,27 @@ Comparison: Advanced KF Variants
 
 **Accuracy and Computational Cost:**
 
-+------------------------+--------+----------+----------+----------+
-| Filter Type            | CKF    | UKF      | CDKF     | EnKF     |
-+========================+========+==========+==========+==========+
-| **Accuracy**           |        |          |          |          |
-|  Nonlinearity (mild)   | EKF+   | EKF+     | EKF+     | EKF+     |
-|  Nonlinearity (strong) | UKF    | Good     | EKF      | UKF      |
-|  Non-Gaussian errors   | Fair   | Fair     | Fair     | **Good** |
-+------------------------+--------+----------+----------+----------+
-| **Speed** (relative to EKF) |  |          |          |          |
-|  Single step           | 1.5×   | 1.3×     | 2.0×     | N×       |
-|  Dimension (n)         | 4n     | 2n+1     | 2n       | N members|
-+------------------------+--------+----------+----------+----------+
-| **Jacobian Required**   | No     | No       | Yes*     | No       |
-|  (*estimates internally)|        |          |          |          |
-+------------------------+--------+----------+----------+----------+
-| **Memory (relative)**   | 1×     | 1×       | 1×       | N×       |
-+------------------------+--------+----------+----------+----------+
-| **Parallelizable**      | No     | No       | No       | **Yes**  |
-+------------------------+--------+----------+----------+----------+
-| **High Dimensions** (n>1000) | ✗ | ✗      | ✗        | ✓        |
-+------------------------+--------+----------+----------+----------+
++--------------------------------+----------+-----------+-----------+-----------+
+| Filter Type                    | CKF      | UKF       | CDKF      | EnKF      |
++================================+==========+===========+===========+===========+
+| **Accuracy**                   |          |           |           |           |
+|  Nonlinearity (mild)           | EKF+     | EKF+      | EKF+      | EKF+      |
+|  Nonlinearity (strong)         | UKF      | Good      | EKF       | UKF       |
+|  Non-Gaussian errors           | Fair     | Fair      | Fair      | **Good**  |
++--------------------------------+----------+-----------+-----------+-----------+
+| **Speed** (relative to EKF)    |          |           |           |           |
+|  Single step                   | 1.5×     | 1.3×      | 2.0×      | N×        |
+|  Dimension (n)                 | 4n       | 2n+1      | 2n        | N members |
++--------------------------------+----------+-----------+-----------+-----------+
+| **Jacobian Required**          | No       | No        | Yes*      | No        |
+|  (estimates internally)        |          |           |           |           |
++--------------------------------+----------+-----------+-----------+-----------+
+| **Memory (relative)**          | 1×       | 1×        | 1×        | N×        |
++--------------------------------+----------+-----------+-----------+-----------+
+| **Parallelizable**             | No       | No        | No        | **Yes**   |
++--------------------------------+----------+-----------+-----------+-----------+
+| **High Dimensions** (n>1000)   | ✗        | ✗         | ✗         | ✓         |
++--------------------------------+----------+-----------+-----------+-----------+
 
 **When to Use Each:**
 
@@ -965,7 +965,7 @@ Common Pitfalls
 ---
 
 See Also
-~~~~~~~~
+========
 
 - [Kalman Filter Tuning](kalman_filter_tuning.rst) — Basics and standard Kalman
 - [Adaptive Filtering](adaptive_filtering.rst) — Parameter tuning online

@@ -538,10 +538,11 @@ def spherical_interp(
 
     Notes
     -----
-    To interpolate at new lat/lon points:
-    1. Convert lat/lon to Cartesian: x=cos(lat)*cos(lon), y=cos(lat)*sin(lon),
-       z=sin(lat)
-    2. Call interp([[x, y, z]])
+    To interpolate at new lat/lon points::
+
+        1. Convert lat/lon to Cartesian: x=cos(lat)*cos(lon),
+           y=cos(lat)*sin(lon), z=sin(lat)
+        2. Call interp([[x, y, z]])
     """
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)

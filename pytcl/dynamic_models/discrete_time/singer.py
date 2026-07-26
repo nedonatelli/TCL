@@ -46,14 +46,16 @@ def f_singer(
 
     Notes
     -----
-    The continuous-time model is:
+    The continuous-time model is::
+
         dx/dt = v
         dv/dt = a
         da/dt = -a/tau + w(t)
 
     where w(t) is white noise.
 
-    The discrete-time transition is:
+    The discrete-time transition is::
+
         alpha = exp(-T/tau)
         F = [[1, T, (alpha*T + tau - tau*alpha - T)/alpha_tau],
              [0, 1, tau*(1 - alpha)],

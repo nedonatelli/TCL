@@ -511,9 +511,10 @@ def struve_h(
     """
     Struve function H_n(x).
 
-    The Struve function is defined by the integral:
-    H_n(x) = (2/sqrt(pi)) * (x/2)^n * integral from 0 to pi/2 of
-             sin(x*cos(t)) * sin^(2n)(t) dt
+    The Struve function is defined by the integral::
+
+        H_n(x) = (2/sqrt(pi)) * (x/2)^n * integral from 0 to pi/2 of
+                 sin(x*cos(t)) * sin^(2n)(t) dt
 
     Parameters
     ----------

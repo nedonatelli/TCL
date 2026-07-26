@@ -173,7 +173,8 @@ def tukey_weight(r: ArrayLike, c: float = 4.685) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Tukey bisquare weight function is:
+    The Tukey bisquare weight function is::
+
         w(r) = (1 - (r/c)^2)^2   if |r| <= c
         w(r) = 0                 if |r| > c
 
@@ -295,7 +296,9 @@ def mad(residuals: ArrayLike, c: float = 1.4826) -> float:
 
     Notes
     -----
-    MAD = c * median(|r - median(r)|)
+    The MAD estimator is::
+
+        MAD = c * median(|r - median(r)|)
 
     This is a robust scale estimator with 50% breakdown point.
 

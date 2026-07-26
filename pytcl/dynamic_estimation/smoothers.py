@@ -524,7 +524,8 @@ def two_filter_smoother(
     - Backward filter: uses measurements z_N, ..., z_{k+1}
 
     The smoothed estimate combines both filters using information
-    fusion:
+    fusion::
+
         Y_k|N = Y_k|k^{fwd} + Y_k|k^{bwd}
         y_k|N = y_k|k^{fwd} + y_k|k^{bwd}
 

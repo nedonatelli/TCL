@@ -992,19 +992,19 @@ Tuning Guidelines
 
 **Choose Adaptation Strategy:**
 
-+---------------------------+---------------+----------+------------------+
-| Method                    | Convergence   | Robustness | Computational   |
-+===========================+===============+==========+==================+
-| Static tuning             | N/A (fixed)   | High     | Low              |
-+---------------------------+---------------+----------+------------------+
-| Gain adaptation (β scaling)| Medium        | High     | Very Low         |
-+---------------------------+---------------+----------+------------------+
-| R estimation (adaptive)   | Medium        | Medium   | Low              |
-+---------------------------+---------------+----------+------------------+
-| LMS                       | Slow          | Low      | Very Low         |
-+---------------------------+---------------+----------+------------------+
-| RLS                       | Fast          | Medium   | Medium           |
-+---------------------------+---------------+----------+------------------+
++-----------------------------+-------------+------------+---------------+
+| Method                      | Convergence | Robustness | Computational |
++=============================+=============+============+===============+
+| Static tuning               | N/A (fixed) | High       | Low           |
++-----------------------------+-------------+------------+---------------+
+| Gain adaptation (β scaling) | Medium      | High       | Very Low      |
++-----------------------------+-------------+------------+---------------+
+| R estimation (adaptive)     | Medium      | Medium     | Low           |
++-----------------------------+-------------+------------+---------------+
+| LMS                         | Slow        | Low        | Very Low      |
++-----------------------------+-------------+------------+---------------+
+| RLS                         | Fast        | Medium     | Medium        |
++-----------------------------+-------------+------------+---------------+
 
 **Parameter Selection:**
 
@@ -1054,7 +1054,7 @@ Common Pitfalls
 ---
 
 See Also
-~~~~~~~~
+========
 
 - [Kalman Filter Tuning Guide](kalman_filter_tuning.rst) — Static parameter selection
 - [Particle Filters](particle_filters.rst) — Non-adaptive but handles non-Gaussian distributions

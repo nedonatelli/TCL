@@ -234,10 +234,12 @@ def dual_frequency_tec(
     Notes
     -----
     The ionospheric delay is proportional to TEC and inversely
-    proportional to frequency squared:
+    proportional to frequency squared::
+
         delay = 40.3 * TEC / f²
 
-    The difference in delays at L1 and L2 gives:
+    The difference in delays at L1 and L2 gives::
+
         P2 - P1 = 40.3 * TEC * (1/f1² - 1/f2²)
 
     This is the standard dual-frequency ionospheric correction method.

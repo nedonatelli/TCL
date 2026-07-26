@@ -800,8 +800,9 @@ def rodrigues2rotmat(rvec: ArrayLike) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Rodrigues vector encodes both the rotation axis and angle:
-    rvec = axis * angle, where |rvec| = angle.
+    The Rodrigues vector encodes both the rotation axis and angle::
+
+        rvec = axis * angle, where |rvec| = angle
     """
     rvec = np.asarray(rvec, dtype=np.float64)
     angle = np.linalg.norm(rvec)

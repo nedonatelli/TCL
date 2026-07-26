@@ -1168,7 +1168,7 @@ Common Pitfalls and Solutions
 ---
 
 See Also
-~~~~~~~~
+========
 
 - [Kalman Filter Tuning](kalman_filter_tuning.rst) — Tuning custom filters
 - [Advanced KF Variants](advanced_kf_variants.rst) — Other filter types to extend

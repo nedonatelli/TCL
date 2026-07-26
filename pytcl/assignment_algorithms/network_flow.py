@@ -181,13 +181,14 @@ def min_cost_flow_successive_shortest_paths(
     """
     Solve min-cost flow using successive shortest paths with cost scaling.
 
-    Algorithm:
-    1. Initialize potentials using Bellman-Ford
-    2. While there is excess supply:
-       - Find shortest path using reduced costs (Dijkstra with potentials)
-       - Push unit flow along path
-       - Update node potentials
-       - Recompute shortest paths to maintain optimality
+    Algorithm::
+
+        1. Initialize potentials using Bellman-Ford
+        2. While there is excess supply:
+           - Find shortest path using reduced costs (Dijkstra with potentials)
+           - Push unit flow along path
+           - Update node potentials
+           - Recompute shortest paths to maintain optimality
 
     This is the standard min-cost flow algorithm that guarantees optimality
     and convergence. It uses Dijkstra's algorithm with potentials, which

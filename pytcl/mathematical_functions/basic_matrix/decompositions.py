@@ -329,8 +329,8 @@ def rank_revealing_qr(
         Input matrix of shape (m, n).
     tol : float, optional
         Tolerance for determining numerical rank. Diagonal elements of R
-        below tol * |R[0,0]| indicate rank deficiency.
-        Default is max(m, n) * eps * |R[0,0]|.
+        below ``tol * |R[0,0]|`` indicate rank deficiency.
+        Default is ``max(m, n) * eps * |R[0,0]|``.
 
     Returns
     -------
