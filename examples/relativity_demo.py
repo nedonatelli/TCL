@@ -443,8 +443,8 @@ def example_geodetic_precession():
     ]
 
     print(f"\nGeodetic Precession (causes orbital plane to rotate):")
-    print(f"  Formula: Ω_geodetic = -GM/(c² a³(1-e²)²) cos(i)")
-    print(f"  (Negative = retrograde precession)")
+    print(f"  Formula: Δω_geodetic = 3π GM / (c² a (1-e²)) per orbit")
+    print(f"  (Positive = prograde; magnitude independent of inclination)")
     print("-" * 70)
     print(f"{'Orbit':<12} {'Altitude':<12} {'Inclination':<16} {'Precession':<20}")
     print("-" * 70)
@@ -463,13 +463,17 @@ def example_geodetic_precession():
             f"{name:<12} {alt_km:>7.0f} km   {inc_deg:>6.1f}°         {prec_per_year:>8.2f} arcsec/year"
         )
 
+    # De Sitter precession of the Earth-Moon gyroscope orbiting the Sun
+    prec_sun = geodetic_precession(AU, 0.0167, 0.0, GM_SUN)
+    per_century = prec_sun * 100 * 206265  # ~100 orbits per century
+    print(f"\nDe Sitter precession of the Earth-Moon system around the Sun:")
+    print(f"  {per_century:.2f} arcsec/century (confirmed by lunar laser ranging)")
+
     print(f"\nPhysical Interpretation:")
     print(f"  - Geodetic precession arises from parallel transport of velocity")
     print(f"  - Also called de Sitter precession (discovered 1916)")
     print(f"  - Related to Lense-Thirring effect (frame dragging)")
-    print(
-        f"  - At i=90°, geodetic effect vanishes (observer aligned with angular momentum)"
-    )
+    print(f"  - Magnitude depends only on orbit size and eccentricity, not inclination")
 
 
 def example_lense_thirring_precession():
@@ -482,15 +486,15 @@ def example_lense_thirring_precession():
     a = 12.27e6  # Semi-major axis
     e = 0.0045
     i = np.radians(109.9)
-    L_earth = 7.05e33  # Earth's angular momentum (kg·m²/s)
+    L_earth = 5.86e33  # Earth's spin angular momentum (kg·m²/s)
 
-    # Compute Lense-Thirring precession
-    precession = lense_thirring_precession(a, e, i, L_earth, GM_EARTH)
+    # Compute Lense-Thirring nodal precession rate (rad/s)
+    rate = lense_thirring_precession(a, e, i, L_earth, GM_EARTH)
 
-    # Convert to observable rates
+    # Convert to observable amounts
     orbital_period = 2 * np.pi * np.sqrt(a**3 / GM_EARTH)
-    orbits_per_year = 365.25 * 86400 / orbital_period
-    precession_per_year = precession * orbits_per_year * 206265  # arcsec/year
+    precession_per_orbit = rate * orbital_period  # radians per orbit
+    mas_per_year = rate * 86400 * 365.25 * 206265 * 1e3
 
     print(f"\nLAGEOS Satellite (Test of General Relativity):")
     print(
@@ -503,15 +507,18 @@ def example_lense_thirring_precession():
     )
 
     print(f"\nLense-Thirring Effect:")
-    print(f"  Precession per orbit: {precession * 206265:.3f} milliarcseconds")
-    print(f"  Precession per year: {precession_per_year:.3f} arcsecond")
+    print(f"  Nodal precession rate: {rate:.3e} rad/s (prograde)")
+    print(
+        f"  Precession per orbit: {precession_per_orbit * 206265 * 1e6:.1f} microarcseconds"
+    )
+    print(f"  Precession per year: {mas_per_year:.1f} milliarcseconds")
     print(f"  Detection method: Laser ranging (~mm precision on altitude)")
 
     print(f"\nHistorical Context:")
     print(f"  - Predicted by Lense & Thirring (1918)")
     print(f"  - Represents frame-dragging effect of rotating body")
     print(f"  - LAGEOS confirmed at ~20% accuracy (1998)")
-    print(f"  - GRAVITY Probe B tested at higher precision (~0.5%)")
+    print(f"  - Gravity Probe B tested at higher precision (~0.5%)")
 
     print(f"\nPhysical Interpretation:")
     print(f"  - Earth's rotation 'drags' spacetime around it")
@@ -529,40 +536,61 @@ def example_relativistic_range_correction():
     print(f"  - Send light signal to reflector (satellite or corner cube)")
     print(f"  - Measure round-trip travel time: t = 2d/c")
     print(f"  - Compute distance: d = ct/2")
-    print(f"\nRelativistic corrections modify measured distance:")
+    print(f"\nSpacetime curvature (Shapiro delay) makes the measured range")
+    print(f"slightly longer than the geometric distance between the endpoints:")
+    print(f"  Δρ = (2GM/c²) ln((r1 + r2 + ρ) / (r1 + r2 - ρ))")
 
-    # Lunar laser ranging
-    d_moon = 3.84e8  # meters
-    r_corr_moon = relativistic_range_correction(d_moon, 0.0, GM_EARTH)
+    # Lunar laser ranging: ground station to a lunar retroreflector,
+    # through Earth's gravitational field
+    r_station = 6.371e6  # Ground station geocentric radius (m)
+    r_moon = 3.844e8  # Lunar retroreflector geocentric radius (m)
+    rho_moon = r_moon - r_station
+    r_corr_moon = relativistic_range_correction(r_station, r_moon, rho_moon, GM_EARTH)
 
     print(f"\nLunar Laser Ranging (LLR):")
     print(f"  Target: Apollo 11, 14, 15 retroreflectors on Moon")
-    print(f"  Distance: {d_moon / 1e6:.0f} km")
-    print(f"  Relativistic correction: {r_corr_moon:.1f} meters")
+    print(f"  Range: {rho_moon / 1e3:,.0f} km")
+    print(f"  Relativistic correction: {r_corr_moon * 1e3:.1f} mm (one-way)")
     print(f"  Precision of LLR: ~2-3 cm")
-    print(f"  Relativistic correction: {r_corr_moon * 100:.0f}% of measurement error")
+    print(f"  The correction exceeds the measurement precision,")
+    print(f"  so it must be modeled in the ranging analysis.")
+
+    # GPS pseudoranging: satellite at zenith above the station
+    r_gps = 26.561e6  # GPS orbit radius (m)
+    rho_gps = r_gps - r_station
+    r_corr_gps = relativistic_range_correction(r_station, r_gps, rho_gps, GM_EARTH)
+
+    print(f"\nGPS Pseudoranging (satellite at zenith):")
+    print(f"  Range: {rho_gps / 1e3:,.0f} km")
+    print(f"  Relativistic correction: {r_corr_gps * 1e3:.2f} mm")
 
     print(f"\n" + "-" * 70)
-    print("Relativistic range corrections at various distances:")
+    print("Shapiro range correction, ground station to overhead target:")
     print("-" * 70)
-    print(f"{'Distance':<20} {'Correction (m)':<20} {'Relative':<15}")
+    print(f"{'Target':<22} {'Range (km)':<14} {'Correction (mm)':<18}")
     print("-" * 70)
 
-    distances = {
-        "TDRSS (42,000 km)": 42.16e6,
-        "GPS (26,600 km)": 26.56e6,
+    targets = {
         "ISS (400 km)": 6.771e6,
-        "Moon (384,400 km)": 3.84e8,
-        "Sun (150 M km)": 1.5e11,
+        "GPS (20,200 km)": 26.56e6,
+        "GEO (35,800 km)": 42.16e6,
+        "Moon (384,000 km)": 3.844e8,
     }
 
-    for name, dist in distances.items():
-        corr = relativistic_range_correction(
-            dist, 0.0, GM_EARTH if "Sun" not in name else GM_SUN
-        )
-        # Nominal range error at accuracy of 1 cm
-        relative = corr / 0.01
-        print(f"{name:<20} {corr:>15.2f}    {relative:>12.0f}× cm accuracy")
+    for name, r_target in targets.items():
+        rho = r_target - r_station
+        corr = relativistic_range_correction(r_station, r_target, rho, GM_EARTH)
+        print(f"{name:<22} {rho / 1e3:>10,.0f}    {corr * 1e3:>14.2f}")
+
+    # Ranging through the Sun's field: Earth to the solar photosphere
+    r_sun_surface = 6.96e8  # Solar radius (m)
+    rho_sun = AU - r_sun_surface
+    corr_sun = relativistic_range_correction(AU, r_sun_surface, rho_sun, GM_SUN)
+    print("-" * 70)
+    print(f"\nRanging from Earth down to the solar surface (through the Sun's")
+    print(f"own field) picks up ≈ {corr_sun / 1e3:.1f} km of Shapiro correction —")
+    print(f"this is why the delay dominates interplanetary ranging near")
+    print(f"superior conjunction.")
 
 
 if __name__ == "__main__":

@@ -704,5 +704,32 @@ class TestCoefficientDimensions:
         assert coeff.h_dot.shape[0] <= coeff.h.shape[0]
 
 
+class TestWMMHRReferenceValues:
+    """Regression tests against independently computed WMMHR2025 values.
+
+    Reference values computed with pygeomag's high-resolution WMMHR2025
+    implementation. The old synthesis used the wrong Legendre
+    normalization and no geodetic-to-geocentric conversion (issue #3).
+    """
+
+    # (lat_deg, lon_deg, alt_km, year, D_deg, I_deg)
+    REFERENCE = [
+        (80.0, 0.0, 0.0, 2025.0, 1.273, 83.204),
+        (0.0, 120.0, 0.0, 2025.0, -0.145, -14.944),
+        (-80.0, 240.0, 0.0, 2025.0, 68.702, -72.033),
+        (40.0, -105.0, 0.0, 2026.5, 7.731, 66.076),
+    ]
+
+    def test_wmmhr2025_reference_points(self):
+        """Declination/inclination match reference to within 0.01 deg."""
+        try:
+            for lat, lon, alt, year, D, inc in self.REFERENCE:
+                r = wmmhr(np.radians(lat), np.radians(lon), alt, year)
+                assert abs(np.degrees(r.D) - D) < 0.01, f"D at ({lat},{lon})"
+                assert abs(np.degrees(r.I) - inc) < 0.01, f"I at ({lat},{lon})"
+        except FileNotFoundError:
+            pytest.skip("WMMHR2025 coefficient file not installed")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

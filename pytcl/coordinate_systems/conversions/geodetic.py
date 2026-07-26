@@ -678,12 +678,20 @@ def geodetic2sez(
 
     Notes
     -----
-    SEZ is equivalent to NED when azimuth is measured from south.
-    Conversion: SEZ = [S, E, Z] = [NED[0], NED[1], -NED[2]]
+    Standard SEZ convention (Vallado): S points south, E east, Z up.
+    Relative to NED: SEZ = [S, E, Z] = [-NED[0], NED[1], -NED[2]]
 
     Examples
     --------
-    >>> sez = geodetic2sez(lat, lon, alt, lat_ref, lon_ref, alt_ref)  # doctest: +SKIP
+    >>> import numpy as np
+    >>> # A target 0.1 deg NORTH of the reference has a NEGATIVE S component
+    >>> sez = geodetic2sez(
+    ...     np.radians(45.1), np.radians(-75.0), 0.0,
+    ...     np.radians(45.0), np.radians(-75.0), 0.0)
+    >>> bool(sez[0] < 0)
+    True
+    >>> round(float(sez[1]), 6)  # Due north: no east component
+    0.0
     """
     # Convert both to ECEF
     ecef = geodetic2ecef(lat, lon, alt, a, f)
@@ -748,15 +756,16 @@ def ecef2sez(
     cos_lon = np.cos(lon_ref)
 
     # SEZ rotation matrix (transforms ECEF delta to SEZ)
-    # S = -sin(lat)*cos(lon)*dX - sin(lat)*sin(lon)*dY + cos(lat)*dZ
+    # Standard SEZ (Vallado): S points SOUTH, E east, Z up (zenith)
+    # S = sin(lat)*cos(lon)*dX + sin(lat)*sin(lon)*dY - cos(lat)*dZ
     # E = -sin(lon)*dX + cos(lon)*dY
     # Z = cos(lat)*cos(lon)*dX + cos(lat)*sin(lon)*dY + sin(lat)*dZ
 
     if delta_ecef.ndim == 1:
         s = (
-            -sin_lat * cos_lon * delta_ecef[0]
-            - sin_lat * sin_lon * delta_ecef[1]
-            + cos_lat * delta_ecef[2]
+            sin_lat * cos_lon * delta_ecef[0]
+            + sin_lat * sin_lon * delta_ecef[1]
+            - cos_lat * delta_ecef[2]
         )
         e = -sin_lon * delta_ecef[0] + cos_lon * delta_ecef[1]
         z = (
@@ -767,9 +776,9 @@ def ecef2sez(
         return np.array([s, e, z], dtype=np.float64)
     else:
         s = (
-            -sin_lat * cos_lon * delta_ecef[0, :]
-            - sin_lat * sin_lon * delta_ecef[1, :]
-            + cos_lat * delta_ecef[2, :]
+            sin_lat * cos_lon * delta_ecef[0, :]
+            + sin_lat * sin_lon * delta_ecef[1, :]
+            - cos_lat * delta_ecef[2, :]
         )
         e = -sin_lon * delta_ecef[0, :] + cos_lon * delta_ecef[1, :]
         z = (
@@ -825,24 +834,24 @@ def sez2ecef(
 
     # Inverse rotation: ECEF = ECEF_ref + R_inv @ SEZ
     if sez.ndim == 1:
-        dX = -sin_lat * cos_lon * sez[0] - sin_lon * sez[1] + cos_lat * cos_lon * sez[2]
-        dY = -sin_lat * sin_lon * sez[0] + cos_lon * sez[1] + cos_lat * sin_lon * sez[2]
-        dZ = cos_lat * sez[0] + sin_lat * sez[2]
+        dX = sin_lat * cos_lon * sez[0] - sin_lon * sez[1] + cos_lat * cos_lon * sez[2]
+        dY = sin_lat * sin_lon * sez[0] + cos_lon * sez[1] + cos_lat * sin_lon * sez[2]
+        dZ = -cos_lat * sez[0] + sin_lat * sez[2]
         return ecef_ref + np.array([dX, dY, dZ], dtype=np.float64)
     else:
         if sez.shape[0] != 3:
             sez = sez.T
         dX = (
-            -sin_lat * cos_lon * sez[0, :]
+            sin_lat * cos_lon * sez[0, :]
             - sin_lon * sez[1, :]
             + cos_lat * cos_lon * sez[2, :]
         )
         dY = (
-            -sin_lat * sin_lon * sez[0, :]
+            sin_lat * sin_lon * sez[0, :]
             + cos_lon * sez[1, :]
             + cos_lat * sin_lon * sez[2, :]
         )
-        dZ = cos_lat * sez[0, :] + sin_lat * sez[2, :]
+        dZ = -cos_lat * sez[0, :] + sin_lat * sez[2, :]
         return ecef_ref[:, np.newaxis] + np.array([dX, dY, dZ], dtype=np.float64)
 
 

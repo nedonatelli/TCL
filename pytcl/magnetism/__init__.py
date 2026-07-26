@@ -12,12 +12,15 @@ Examples
 
 >>> # Magnetic field at a location
 >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
->>> print(f"Declination: {np.degrees(result.D):.2f}°")  # doctest: +SKIP
->>> print(f"Total intensity: {result.F:.0f} nT")  # doctest: +SKIP
+>>> print(f"Declination: {np.degrees(result.D):.2f}°")
+Declination: 7.79°
+>>> print(f"Total intensity: {result.F:.0f} nT")
+Total intensity: 51572 nT
 
 >>> # Just the declination
 >>> D = magnetic_declination(np.radians(40), np.radians(-105))
->>> print(f"Declination: {np.degrees(D):.2f}°")  # doctest: +SKIP
+>>> print(f"Declination: {np.degrees(D):.2f}°")
+Declination: 7.79°
 
 >>> # High-resolution models (require external coefficient files)
 >>> from pytcl.magnetism import emm, wmmhr, create_emm_test_coefficients

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **WMM/IGRF/EMM magnetic field synthesis rebuilt** ([#3](https://github.com/nedonatelli/TCL/issues/3)): the synthesis used the wrong Legendre normalization, the built-in WMM2020/IGRF-13 coefficient tables were corrupted above degree 4, and geodetic latitude was fed into the geocentric expansion unconverted — declination was ~180° off at NOAA's test point. Coefficients are now embedded verbatim from the official NOAA/IAGA distribution files, the synthesis uses proper Schmidt semi-normalized functions with WGS84 geodetic-to-geocentric conversion, and results match independent references (pygeomag / official WMM2020 test values) to <0.1 nT for WMM2020, IGRF-13, and WMMHR2025
+- **`dipole_axis`** returned the south geomagnetic pole; now returns the north pole (80.59°N, 72.68°W for IGRF-13 2020)
+- **`magnetic_north_pole`** used a broken search; now grid-seeded minimization of horizontal intensity, returning the dip pole (86.5°N, 163°E for 2020)
+- **Relativity module** ([#3](https://github.com/nedonatelli/TCL/issues/3)): `geodetic_precession`, `lense_thirring_precession`, `post_newtonian_acceleration`, and `relativistic_range_correction` had dimensionally inconsistent formulas; all four rewritten and validated against literature values (de Sitter 1.92 arcsec/century, LAGEOS ~31 mas/yr)
+- **`ecef2sez`/`sez2ecef`**: S axis now points south per the standard (Vallado) SEZ convention; previously it pointed north
+
+### Changed
+
+- **Breaking**: `relativistic_range_correction` signature is now `(r1, r2, rho, gm)` (Shapiro delay between two radii); the old `(distance, velocity, gm)` form was dimensionally invalid
+- **Breaking**: `lense_thirring_precession` returns rad/s (was mislabeled rad/orbit); `ecef2sez` S components flip sign relative to previous (incorrect) outputs
+
 ## [1.15.1] - 2026-07-25
 
 ### Fixed
