@@ -251,6 +251,73 @@ class TestWMM:
         assert_allclose(F, result.F)
 
 
+class TestWMMReferenceValues:
+    """Regression tests against independently computed WMM2020 values.
+
+    Reference X/Y/Z/D/I computed with pygeomag (agrees with the official
+    NOAA WMM2020 test values). The old synthesis used the wrong Legendre
+    normalization, a corrupted coefficient table, and no geodetic-to-
+    geocentric conversion (issue #3), giving errors up to ~180 deg in
+    declination.
+    """
+
+    # (lat_deg, lon_deg, alt_km, year, D_deg, I_deg, X_nT, Y_nT, Z_nT)
+    REFERENCE = [
+        (80.0, 0.0, 0.0, 2020.0, -1.276, 83.137, 6570.4, -146.3, 54606.0),
+        (0.0, 120.0, 0.0, 2020.0, 0.159, -15.424, 39624.3, 109.9, -10932.5),
+        (-80.0, 240.0, 0.0, 2020.0, 69.361, -72.196, 5940.6, 15772.1, -52480.8),
+        (80.0, 0.0, 100.0, 2022.5, -0.409, 83.242, 6224.0, -44.5, 52527.0),
+        (40.0, -105.0, 0.0, 2023.0, 7.790, 66.236, 20600.6, 2818.4, 47223.0),
+    ]
+
+    def test_wmm2020_reference_points(self):
+        """Field components match the reference to within 1 nT / 0.01 deg."""
+        for lat, lon, alt, year, D, inc, X, Y, Z in self.REFERENCE:
+            r = wmm(np.radians(lat), np.radians(lon), alt, year, WMM2020)
+            assert abs(r.X - X) < 1.0, f"X at ({lat},{lon})"
+            assert abs(r.Y - Y) < 1.0, f"Y at ({lat},{lon})"
+            assert abs(r.Z - Z) < 1.0, f"Z at ({lat},{lon})"
+            assert abs(np.degrees(r.D) - D) < 0.01, f"D at ({lat},{lon})"
+            assert abs(np.degrees(r.I) - inc) < 0.01, f"I at ({lat},{lon})"
+
+    def test_denver_declination_easterly(self):
+        """Denver has ~+8 deg (easterly) declination, not westerly."""
+        r = wmm(np.radians(39.74), np.radians(-104.99), 1.6, 2023.0)
+        assert 7.0 < np.degrees(r.D) < 9.0
+
+
+class TestWMM2025ReferenceValues:
+    """Regression tests for the WMM2025 model (the current default).
+
+    Reference values computed with pygeomag's WMM_2025.COF implementation.
+    """
+
+    # (lat_deg, lon_deg, alt_km, year, D_deg)
+    REFERENCE = [
+        (80.0, 0.0, 0.0, 2025.0, 1.281),
+        (0.0, 120.0, 0.0, 2025.0, -0.158),
+        (-80.0, 240.0, 0.0, 2025.0, 68.775),
+        (40.0, -105.0, 0.0, 2026.5, 7.547),
+    ]
+
+    def test_wmm2025_reference_points(self):
+        """Declination matches the independent reference to 0.01 deg."""
+        from pytcl.magnetism import WMM2025
+
+        for lat, lon, alt, year, D in self.REFERENCE:
+            r = wmm(np.radians(lat), np.radians(lon), alt, year, WMM2025)
+            assert abs(np.degrees(r.D) - D) < 0.01, f"D at ({lat},{lon})"
+
+    def test_default_model_is_wmm2025(self):
+        """The default model epoch covers the current validity window."""
+        from pytcl.magnetism import WMM2025
+
+        assert WMM2025.epoch == 2025.0
+        r_default = wmm(np.radians(40.0), np.radians(-105.0), 0.0, 2026.0)
+        r_explicit = wmm(np.radians(40.0), np.radians(-105.0), 0.0, 2026.0, WMM2025)
+        assert r_default.F == r_explicit.F
+
+
 class TestIGRF:
     """Tests for International Geomagnetic Reference Field."""
 
@@ -284,6 +351,23 @@ class TestIGRF:
         assert -np.pi / 2 <= lat <= np.pi / 2
         # Longitude should be in valid range
         assert -np.pi <= lon <= np.pi
+
+    def test_dipole_axis_north_geomagnetic_pole(self):
+        """North geomagnetic pole ~ (80.6N, 72.7W) for IGRF-13 2020.
+
+        Regression: the previous implementation returned the SOUTH pole.
+        """
+        lat, lon = dipole_axis()
+        assert 79.5 < np.degrees(lat) < 81.5
+        assert -74.0 < np.degrees(lon) < -71.5
+
+    def test_dip_pole_location(self):
+        """Magnetic dip pole 2020 ~ (86.5N, 164E), in the Arctic."""
+        from pytcl.magnetism import magnetic_north_pole
+
+        lat, lon = magnetic_north_pole(2020.0)
+        assert 85.0 < np.degrees(lat) < 88.0
+        assert 150.0 < np.degrees(lon) < 175.0
 
     def test_igrf_declination_function(self):
         """igrf_declination returns scalar."""

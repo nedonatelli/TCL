@@ -493,21 +493,26 @@ def _high_res_field_spherical(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    # Compute associated Legendre functions
-    P = associated_legendre(N, N, cos_theta, normalized=True)
+    # Magnetic Gauss coefficients require Schmidt semi-normalized Legendre
+    # functions. associated_legendre's normalization is
+    # sqrt(2n+1)*sqrt((n-m)!/(n+m)!) (no sqrt(2) sectoral factor), so
+    # Schmidt = full / sqrt(2n+1), with m > 0 terms scaled by sqrt(2).
+    P_full = associated_legendre(N, N, cos_theta, normalized=True)
+    scale = np.ones((N + 1, N + 1))
+    scale /= np.sqrt(2 * np.arange(N + 1) + 1)[:, np.newaxis]
+    scale[:, 1:] *= np.sqrt(2.0)
+    P = P_full * scale
 
-    # Compute dP/dtheta — vectorized
+    # dP/dtheta via the Schmidt-basis recursion:
+    # sin(theta) * dP(n,m)/dtheta = n*cos(theta)*P(n,m) - sqrt(n^2-m^2)*P(n-1,m)
     dP = np.zeros((N + 1, N + 1))
     if abs(sin_theta) > 1e-10:
-        cot = cos_theta / sin_theta
-        csc = 1.0 / sin_theta
         for n in range(1, N + 1):
-            # Diagonal: m == n
-            dP[n, n] = n * cot * P[n, n]
-            # Off-diagonal: m < n
-            ms = np.arange(0, n)
-            factors = np.sqrt((n - ms) * (n + ms + 1))
-            dP[n, :n] = n * cot * P[n, :n] - factors * P[n, 1 : n + 1] * csc
+            ms = np.arange(0, n + 1)
+            f = np.sqrt((n - ms) * (n + ms))  # zero at m == n
+            prev = np.zeros(n + 1)
+            prev[:n] = P[n - 1, :n]
+            dP[n, : n + 1] = (n * cos_theta * P[n, : n + 1] - f * prev) / sin_theta
 
     # Precompute radial power: (a/r)^(n+2) for n = 0..N
     r_ratio = a / r
@@ -612,20 +617,33 @@ def emm(
             D=np.array([r.D for r in results]).reshape(shape),
         )
 
-    # Geocentric approximation
-    a = 6371.2  # km
-    lat_gc = lat
-    r = a + h
+    # Convert geodetic (WGS84) to geocentric spherical coordinates
+    a_wgs = 6378.137  # WGS84 semi-major axis, km
+    e2 = 6.694379990141e-3  # WGS84 first eccentricity squared
 
-    # Compute field in spherical coordinates
+    sin_lat = np.sin(lat)
+    cos_lat = np.cos(lat)
+    rc = a_wgs / np.sqrt(1.0 - e2 * sin_lat * sin_lat)
+    p = (rc + h) * cos_lat
+    z = (rc * (1.0 - e2) + h) * sin_lat
+    r = np.sqrt(p * p + z * z)
+    lat_gc = np.arcsin(z / r)
+
+    # Compute field in geocentric spherical coordinates
     B_r, B_theta, B_phi = _high_res_field_spherical(
         lat_gc, lon, r, year, coefficients, n_max
     )
 
-    # Convert to geodetic coordinates
-    X = -B_theta  # North
+    # Geocentric NED, then rotate to the geodetic frame
+    X_gc = -B_theta  # North
     Y = B_phi  # East
-    Z = -B_r  # Down
+    Z_gc = -B_r  # Down
+
+    psi = lat_gc - lat
+    cos_psi = np.cos(psi)
+    sin_psi = np.sin(psi)
+    X = X_gc * cos_psi - Z_gc * sin_psi
+    Z = X_gc * sin_psi + Z_gc * cos_psi
 
     # Derived quantities
     H = np.sqrt(X * X + Y * Y)

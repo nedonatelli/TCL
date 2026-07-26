@@ -1,12 +1,6 @@
 """
 World Magnetic Model (WMM) implementation.
 
-.. warning::
-    Known accuracy bugs: the synthesis uses the wrong Legendre normalization,
-    the built-in WMM2020 coefficient table is corrupted above degree 4, and
-    geodetic latitude is not converted to geocentric. Field values are
-    currently unreliable. See https://github.com/nedonatelli/TCL/issues/3.
-
 The WMM is the standard model used by the U.S. Department of Defense,
 the U.K. Ministry of Defence, NATO, and the International Hydrographic
 Organization for navigation, attitude, and heading referencing.
@@ -24,7 +18,10 @@ from typing import Any, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from pytcl.gravity.spherical_harmonics import associated_legendre
+from pytcl.gravity.spherical_harmonics import (
+    associated_legendre,
+    associated_legendre_derivative,
+)
 
 # =============================================================================
 # Cache Configuration
@@ -100,6 +97,102 @@ class MagneticCoefficients(NamedTuple):
     n_max: int
 
 
+# Official WMM2020 coefficients (NOAA/NCEI WMM.COF, epoch 2020.0):
+# columns are n, m, g (nT), h (nT), g_dot (nT/yr), h_dot (nT/yr)
+_WMM2020_COF = """\
+  1  0  -29404.5       0.0        6.7        0.0
+  1  1   -1450.7    4652.9        7.7      -25.1
+  2  0   -2500.0       0.0      -11.5        0.0
+  2  1    2982.0   -2991.6       -7.1      -30.2
+  2  2    1676.8    -734.8       -2.2      -23.9
+  3  0    1363.9       0.0        2.8        0.0
+  3  1   -2381.0     -82.2       -6.2        5.7
+  3  2    1236.2     241.8        3.4       -1.0
+  3  3     525.7    -542.9      -12.2        1.1
+  4  0     903.1       0.0       -1.1        0.0
+  4  1     809.4     282.0       -1.6        0.2
+  4  2      86.2    -158.4       -6.0        6.9
+  4  3    -309.4     199.8        5.4        3.7
+  4  4      47.9    -350.1       -5.5       -5.6
+  5  0    -234.4       0.0       -0.3        0.0
+  5  1     363.1      47.7        0.6        0.1
+  5  2     187.8     208.4       -0.7        2.5
+  5  3    -140.7    -121.3        0.1       -0.9
+  5  4    -151.2      32.2        1.2        3.0
+  5  5      13.7      99.1        1.0        0.5
+  6  0      65.9       0.0       -0.6        0.0
+  6  1      65.6     -19.1       -0.4        0.1
+  6  2      73.0      25.0        0.5       -1.8
+  6  3    -121.5      52.7        1.4       -1.4
+  6  4     -36.2     -64.4       -1.4        0.9
+  6  5      13.5       9.0       -0.0        0.1
+  6  6     -64.7      68.1        0.8        1.0
+  7  0      80.6       0.0       -0.1        0.0
+  7  1     -76.8     -51.4       -0.3        0.5
+  7  2      -8.3     -16.8       -0.1        0.6
+  7  3      56.5       2.3        0.7       -0.7
+  7  4      15.8      23.5        0.2       -0.2
+  7  5       6.4      -2.2       -0.5       -1.2
+  7  6      -7.2     -27.2       -0.8        0.2
+  7  7       9.8      -1.9        1.0        0.3
+  8  0      23.6       0.0       -0.1        0.0
+  8  1       9.8       8.4        0.1       -0.3
+  8  2     -17.5     -15.3       -0.1        0.7
+  8  3      -0.4      12.8        0.5       -0.2
+  8  4     -21.1     -11.8       -0.1        0.5
+  8  5      15.3      14.9        0.4       -0.3
+  8  6      13.7       3.6        0.5       -0.5
+  8  7     -16.5      -6.9        0.0        0.4
+  8  8      -0.3       2.8        0.4        0.1
+  9  0       5.0       0.0       -0.1        0.0
+  9  1       8.2     -23.3       -0.2       -0.3
+  9  2       2.9      11.1       -0.0        0.2
+  9  3      -1.4       9.8        0.4       -0.4
+  9  4      -1.1      -5.1       -0.3        0.4
+  9  5     -13.3      -6.2       -0.0        0.1
+  9  6       1.1       7.8        0.3       -0.0
+  9  7       8.9       0.4       -0.0       -0.2
+  9  8      -9.3      -1.5       -0.0        0.5
+  9  9     -11.9       9.7       -0.4        0.2
+ 10  0      -1.9       0.0        0.0        0.0
+ 10  1      -6.2       3.4       -0.0       -0.0
+ 10  2      -0.1      -0.2       -0.0        0.1
+ 10  3       1.7       3.5        0.2       -0.3
+ 10  4      -0.9       4.8       -0.1        0.1
+ 10  5       0.6      -8.6       -0.2       -0.2
+ 10  6      -0.9      -0.1       -0.0        0.1
+ 10  7       1.9      -4.2       -0.1       -0.0
+ 10  8       1.4      -3.4       -0.2       -0.1
+ 10  9      -2.4      -0.1       -0.1        0.2
+ 10 10      -3.9      -8.8       -0.0       -0.0
+ 11  0       3.0       0.0       -0.0        0.0
+ 11  1      -1.4      -0.0       -0.1       -0.0
+ 11  2      -2.5       2.6       -0.0        0.1
+ 11  3       2.4      -0.5        0.0        0.0
+ 11  4      -0.9      -0.4       -0.0        0.2
+ 11  5       0.3       0.6       -0.1       -0.0
+ 11  6      -0.7      -0.2        0.0        0.0
+ 11  7      -0.1      -1.7       -0.0        0.1
+ 11  8       1.4      -1.6       -0.1       -0.0
+ 11  9      -0.6      -3.0       -0.1       -0.1
+ 11 10       0.2      -2.0       -0.1        0.0
+ 11 11       3.1      -2.6       -0.1       -0.0
+ 12  0      -2.0       0.0        0.0        0.0
+ 12  1      -0.1      -1.2       -0.0       -0.0
+ 12  2       0.5       0.5       -0.0        0.0
+ 12  3       1.3       1.3        0.0       -0.1
+ 12  4      -1.2      -1.8       -0.0        0.1
+ 12  5       0.7       0.1       -0.0       -0.0
+ 12  6       0.3       0.7        0.0        0.0
+ 12  7       0.5      -0.1       -0.0       -0.0
+ 12  8      -0.2       0.6        0.0        0.1
+ 12  9      -0.5       0.2       -0.0       -0.0
+ 12 10       0.1      -0.9       -0.0       -0.0
+ 12 11      -1.1      -0.0       -0.0        0.0
+ 12 12      -0.3       0.5       -0.1       -0.1
+"""
+
+
 def create_wmm2020_coefficients() -> MagneticCoefficients:
     """
     Create WMM2020 model coefficients.
@@ -119,7 +212,8 @@ def create_wmm2020_coefficients() -> MagneticCoefficients:
 
     Notes
     -----
-    These are the official WMM2020 coefficients valid from 2020.0 to 2025.0.
+    These are the official WMM2020 coefficients valid from 2020.0 to 2025.0,
+    embedded verbatim from the NOAA/NCEI WMM.COF distribution file.
     For use beyond 2025, updated coefficients should be obtained from NOAA.
     """
     n_max = 12
@@ -128,311 +222,158 @@ def create_wmm2020_coefficients() -> MagneticCoefficients:
     g_dot = np.zeros((n_max + 1, n_max + 1))
     h_dot = np.zeros((n_max + 1, n_max + 1))
 
-    # WMM2020 main field coefficients (selected low-degree terms)
-    # Full model has coefficients up to n=12
-    # Units: nT (nanotesla)
-
-    # n=1
-    g[1, 0] = -29404.5
-    g[1, 1] = -1450.7
-    h[1, 1] = 4652.9
-
-    # n=2
-    g[2, 0] = -2500.0
-    g[2, 1] = 2982.0
-    g[2, 2] = 1676.8
-    h[2, 1] = -2991.6
-    h[2, 2] = -734.8
-
-    # n=3
-    g[3, 0] = 1363.9
-    g[3, 1] = -2381.0
-    g[3, 2] = 1236.2
-    g[3, 3] = 525.7
-    h[3, 1] = -82.2
-    h[3, 2] = 241.8
-    h[3, 3] = -542.9
-
-    # n=4
-    g[4, 0] = 903.1
-    g[4, 1] = 809.4
-    g[4, 2] = 86.2
-    g[4, 3] = -309.4
-    g[4, 4] = 47.9
-    h[4, 1] = 282.0
-    h[4, 2] = -158.4
-    h[4, 3] = 199.8
-    h[4, 4] = -350.1
-
-    # n=5
-    g[5, 0] = -234.4
-    g[5, 1] = 363.1
-    g[5, 2] = 47.7
-    g[5, 3] = 187.8
-    g[5, 4] = -140.7
-    g[5, 5] = -151.2
-    h[5, 1] = 46.7
-    h[5, 2] = 196.9
-    h[5, 3] = -119.4
-    h[5, 4] = 16.0
-    h[5, 5] = 100.1
-
-    # n=6
-    g[6, 0] = 65.6
-    g[6, 1] = 65.5
-    g[6, 2] = -19.1
-    g[6, 3] = 73.0
-    g[6, 4] = -62.7
-    g[6, 5] = 0.6
-    g[6, 6] = -24.2
-    h[6, 1] = -76.7
-    h[6, 2] = 25.4
-    h[6, 3] = -9.2
-    h[6, 4] = 55.9
-    h[6, 5] = -17.0
-    h[6, 6] = 8.4
-
-    # n=7
-    g[7, 0] = 80.6
-    g[7, 1] = -76.7
-    g[7, 2] = -8.2
-    g[7, 3] = -26.6
-    g[7, 4] = 3.0
-    g[7, 5] = -14.9
-    g[7, 6] = 10.4
-    g[7, 7] = -18.3
-    h[7, 1] = 0.2
-    h[7, 2] = -21.5
-    h[7, 3] = 15.5
-    h[7, 4] = 13.8
-    h[7, 5] = -13.5
-    h[7, 6] = -0.1
-    h[7, 7] = 8.8
-
-    # n=8
-    g[8, 0] = 24.4
-    g[8, 1] = 6.0
-    g[8, 2] = -2.0
-    g[8, 3] = -5.8
-    g[8, 4] = 0.1
-    g[8, 5] = 10.9
-    g[8, 6] = -1.3
-    g[8, 7] = -6.5
-    g[8, 8] = -2.0
-    h[8, 1] = -20.4
-    h[8, 2] = 13.4
-    h[8, 3] = 12.1
-    h[8, 4] = -6.4
-    h[8, 5] = -8.4
-    h[8, 6] = 8.6
-    h[8, 7] = 2.2
-    h[8, 8] = -7.0
-
-    # n=9
-    g[9, 0] = 5.0
-    g[9, 1] = 8.4
-    g[9, 2] = 3.0
-    g[9, 3] = -1.5
-    g[9, 4] = 0.1
-    g[9, 5] = -3.8
-    g[9, 6] = 4.3
-    g[9, 7] = -1.4
-    g[9, 8] = -2.4
-    g[9, 9] = -6.0
-    h[9, 1] = 0.9
-    h[9, 2] = -1.4
-    h[9, 3] = 3.8
-    h[9, 4] = -5.3
-    h[9, 5] = -0.3
-    h[9, 6] = 0.4
-    h[9, 7] = 1.7
-    h[9, 8] = -0.9
-    h[9, 9] = 4.6
-
-    # n=10
-    g[10, 0] = -1.8
-    g[10, 1] = -0.7
-    g[10, 2] = 2.1
-    g[10, 3] = 2.1
-    g[10, 4] = -2.4
-    g[10, 5] = -1.8
-    g[10, 6] = -0.5
-    g[10, 7] = 0.6
-    g[10, 8] = 0.9
-    g[10, 9] = -0.8
-    g[10, 10] = -0.2
-    h[10, 1] = 0.8
-    h[10, 2] = -0.4
-    h[10, 3] = -0.2
-    h[10, 4] = 0.7
-    h[10, 5] = 0.3
-    h[10, 6] = 2.2
-    h[10, 7] = -2.5
-    h[10, 8] = 0.5
-    h[10, 9] = 0.6
-    h[10, 10] = -0.4
-
-    # n=11
-    g[11, 0] = 3.0
-    g[11, 1] = -1.5
-    g[11, 2] = -0.2
-    g[11, 3] = -0.3
-    g[11, 4] = 0.5
-    g[11, 5] = 1.3
-    g[11, 6] = -1.2
-    g[11, 7] = 0.7
-    g[11, 8] = 0.4
-    g[11, 9] = 0.0
-    g[11, 10] = 0.6
-    g[11, 11] = -0.5
-    h[11, 1] = -0.2
-    h[11, 2] = 0.4
-    h[11, 3] = 0.5
-    h[11, 4] = 0.4
-    h[11, 5] = -0.6
-    h[11, 6] = 0.3
-    h[11, 7] = 0.0
-    h[11, 8] = -0.4
-    h[11, 9] = 0.1
-    h[11, 10] = -0.3
-    h[11, 11] = -0.3
-
-    # n=12
-    g[12, 0] = -0.2
-    g[12, 1] = -0.2
-    g[12, 2] = -0.1
-    g[12, 3] = 0.1
-    g[12, 4] = 0.5
-    g[12, 5] = 1.1
-    g[12, 6] = -0.3
-    g[12, 7] = -0.4
-    g[12, 8] = -0.3
-    g[12, 9] = 0.2
-    g[12, 10] = -0.5
-    g[12, 11] = 0.4
-    g[12, 12] = -0.2
-    h[12, 1] = 0.1
-    h[12, 2] = 0.5
-    h[12, 3] = 0.0
-    h[12, 4] = -0.2
-    h[12, 5] = 0.3
-    h[12, 6] = -0.4
-    h[12, 7] = 0.3
-    h[12, 8] = 0.3
-    h[12, 9] = -0.1
-    h[12, 10] = -0.1
-    h[12, 11] = -0.1
-    h[12, 12] = -0.2
-
-    # Secular variation (nT/year) - all terms
-    # n=1
-    g_dot[1, 0] = 6.7
-    g_dot[1, 1] = 7.7
-    h_dot[1, 1] = -25.1
-
-    # n=2
-    g_dot[2, 0] = -11.5
-    g_dot[2, 1] = -7.1
-    g_dot[2, 2] = -2.2
-    h_dot[2, 1] = -30.2
-    h_dot[2, 2] = -23.9
-
-    # n=3
-    g_dot[3, 0] = 2.8
-    g_dot[3, 1] = -6.2
-    g_dot[3, 2] = 3.4
-    g_dot[3, 3] = -12.2
-    h_dot[3, 1] = 5.7
-    h_dot[3, 2] = -1.0
-    h_dot[3, 3] = 1.1
-
-    # n=4
-    g_dot[4, 0] = -1.1
-    g_dot[4, 1] = -1.6
-    g_dot[4, 2] = -6.0
-    g_dot[4, 3] = 5.4
-    g_dot[4, 4] = -5.5
-    h_dot[4, 1] = 0.2
-    h_dot[4, 2] = 6.4
-    h_dot[4, 3] = 3.1
-    h_dot[4, 4] = -12.0
-
-    # n=5
-    g_dot[5, 0] = -0.3
-    g_dot[5, 1] = 0.1
-    g_dot[5, 2] = -0.6
-    g_dot[5, 3] = 0.2
-    g_dot[5, 4] = 0.3
-    g_dot[5, 5] = 1.0
-    h_dot[5, 1] = -0.4
-    h_dot[5, 2] = 2.1
-    h_dot[5, 3] = 3.4
-    h_dot[5, 4] = -0.9
-    h_dot[5, 5] = -1.2
-
-    # n=6
-    g_dot[6, 0] = -0.6
-    g_dot[6, 1] = -0.4
-    g_dot[6, 2] = 0.5
-    g_dot[6, 3] = 1.4
-    g_dot[6, 4] = -1.4
-    g_dot[6, 5] = 0.0
-    g_dot[6, 6] = 0.8
-    h_dot[6, 1] = -0.2
-    h_dot[6, 2] = -0.9
-    h_dot[6, 3] = 0.3
-    h_dot[6, 4] = 0.1
-    h_dot[6, 5] = -0.1
-    h_dot[6, 6] = 0.4
-
-    # n=7
-    g_dot[7, 0] = -0.1
-    g_dot[7, 1] = -0.3
-    g_dot[7, 2] = 0.3
-    g_dot[7, 3] = 0.2
-    g_dot[7, 4] = -0.5
-    g_dot[7, 5] = 0.2
-    g_dot[7, 6] = -0.2
-    g_dot[7, 7] = 0.6
-    h_dot[7, 1] = -0.5
-    h_dot[7, 2] = 0.4
-    h_dot[7, 3] = 0.1
-    h_dot[7, 4] = 0.4
-    h_dot[7, 5] = -0.2
-    h_dot[7, 6] = 0.4
-    h_dot[7, 7] = 0.3
-
-    # n=8
-    g_dot[8, 0] = 0.0
-    g_dot[8, 1] = 0.0
-    g_dot[8, 2] = 0.1
-    g_dot[8, 3] = -0.2
-    g_dot[8, 4] = 0.4
-    g_dot[8, 5] = 0.3
-    g_dot[8, 6] = 0.0
-    g_dot[8, 7] = 0.1
-    g_dot[8, 8] = -0.1
-    h_dot[8, 1] = 0.1
-    h_dot[8, 2] = -0.1
-    h_dot[8, 3] = 0.3
-    h_dot[8, 4] = 0.0
-    h_dot[8, 5] = 0.2
-    h_dot[8, 6] = -0.1
-    h_dot[8, 7] = -0.1
-    h_dot[8, 8] = 0.0
+    for line in _WMM2020_COF.strip().split("\n"):
+        n_s, m_s, g_s, h_s, gd_s, hd_s = line.split()
+        n, m = int(n_s), int(m_s)
+        g[n, m] = float(g_s)
+        h[n, m] = float(h_s)
+        g_dot[n, m] = float(gd_s)
+        h_dot[n, m] = float(hd_s)
 
     return MagneticCoefficients(
-        g=g,
-        h=h,
-        g_dot=g_dot,
-        h_dot=h_dot,
-        epoch=2020.0,
-        n_max=n_max,
+        g=g, h=h, g_dot=g_dot, h_dot=h_dot, epoch=2020.0, n_max=n_max
     )
 
 
-# Default WMM2020 coefficients
+# Official WMM2025 coefficients (NOAA/NCEI WMM.COF, epoch 2025.0):
+# columns are n, m, g (nT), h (nT), g_dot (nT/yr), h_dot (nT/yr)
+_WMM2025_COF = """\
+  1  0  -29351.8       0.0       12.0        0.0
+  1  1   -1410.8    4545.4        9.7      -21.5
+  2  0   -2556.6       0.0      -11.6        0.0
+  2  1    2951.1   -3133.6       -5.2      -27.7
+  2  2    1649.3    -815.1       -8.0      -12.1
+  3  0    1361.0       0.0       -1.3        0.0
+  3  1   -2404.1     -56.6       -4.2        4.0
+  3  2    1243.8     237.5        0.4       -0.3
+  3  3     453.6    -549.5      -15.6       -4.1
+  4  0     895.0       0.0       -1.6        0.0
+  4  1     799.5     278.6       -2.4       -1.1
+  4  2      55.7    -133.9       -6.0        4.1
+  4  3    -281.1     212.0        5.6        1.6
+  4  4      12.1    -375.6       -7.0       -4.4
+  5  0    -233.2       0.0        0.6        0.0
+  5  1     368.9      45.4        1.4       -0.5
+  5  2     187.2     220.2        0.0        2.2
+  5  3    -138.7    -122.9        0.6        0.4
+  5  4    -142.0      43.0        2.2        1.7
+  5  5      20.9     106.1        0.9        1.9
+  6  0      64.4       0.0       -0.2        0.0
+  6  1      63.8     -18.4       -0.4        0.3
+  6  2      76.9      16.8        0.9       -1.6
+  6  3    -115.7      48.8        1.2       -0.4
+  6  4     -40.9     -59.8       -0.9        0.9
+  6  5      14.9      10.9        0.3        0.7
+  6  6     -60.7      72.7        0.9        0.9
+  7  0      79.5       0.0       -0.0        0.0
+  7  1     -77.0     -48.9       -0.1        0.6
+  7  2      -8.8     -14.4       -0.1        0.5
+  7  3      59.3      -1.0        0.5       -0.8
+  7  4      15.8      23.4       -0.1        0.0
+  7  5       2.5      -7.4       -0.8       -1.0
+  7  6     -11.1     -25.1       -0.8        0.6
+  7  7      14.2      -2.3        0.8       -0.2
+  8  0      23.2       0.0       -0.1        0.0
+  8  1      10.8       7.1        0.2       -0.2
+  8  2     -17.5     -12.6        0.0        0.5
+  8  3       2.0      11.4        0.5       -0.4
+  8  4     -21.7      -9.7       -0.1        0.4
+  8  5      16.9      12.7        0.3       -0.5
+  8  6      15.0       0.7        0.2       -0.6
+  8  7     -16.8      -5.2       -0.0        0.3
+  8  8       0.9       3.9        0.2        0.2
+  9  0       4.6       0.0       -0.0        0.0
+  9  1       7.8     -24.8       -0.1       -0.3
+  9  2       3.0      12.2        0.1        0.3
+  9  3      -0.2       8.3        0.3       -0.3
+  9  4      -2.5      -3.3       -0.3        0.3
+  9  5     -13.1      -5.2        0.0        0.2
+  9  6       2.4       7.2        0.3       -0.1
+  9  7       8.6      -0.6       -0.1       -0.2
+  9  8      -8.7       0.8        0.1        0.4
+  9  9     -12.9      10.0       -0.1        0.1
+ 10  0      -1.3       0.0        0.1        0.0
+ 10  1      -6.4       3.3        0.0        0.0
+ 10  2       0.2       0.0        0.1       -0.0
+ 10  3       2.0       2.4        0.1       -0.2
+ 10  4      -1.0       5.3       -0.0        0.1
+ 10  5      -0.6      -9.1       -0.3       -0.1
+ 10  6      -0.9       0.4        0.0        0.1
+ 10  7       1.5      -4.2       -0.1        0.0
+ 10  8       0.9      -3.8       -0.1       -0.1
+ 10  9      -2.7       0.9       -0.0        0.2
+ 10 10      -3.9      -9.1       -0.0       -0.0
+ 11  0       2.9       0.0        0.0        0.0
+ 11  1      -1.5       0.0       -0.0       -0.0
+ 11  2      -2.5       2.9        0.0        0.1
+ 11  3       2.4      -0.6        0.0       -0.0
+ 11  4      -0.6       0.2        0.0        0.1
+ 11  5      -0.1       0.5       -0.1       -0.0
+ 11  6      -0.6      -0.3        0.0       -0.0
+ 11  7      -0.1      -1.2       -0.0        0.1
+ 11  8       1.1      -1.7       -0.1       -0.0
+ 11  9      -1.0      -2.9       -0.1        0.0
+ 11 10      -0.2      -1.8       -0.1        0.0
+ 11 11       2.6      -2.3       -0.1        0.0
+ 12  0      -2.0       0.0        0.0        0.0
+ 12  1      -0.2      -1.3        0.0       -0.0
+ 12  2       0.3       0.7       -0.0        0.0
+ 12  3       1.2       1.0       -0.0       -0.1
+ 12  4      -1.3      -1.4       -0.0        0.1
+ 12  5       0.6      -0.0       -0.0       -0.0
+ 12  6       0.6       0.6        0.1       -0.0
+ 12  7       0.5      -0.1       -0.0       -0.0
+ 12  8      -0.1       0.8        0.0        0.0
+ 12  9      -0.4       0.1        0.0       -0.0
+ 12 10      -0.2      -1.0       -0.1       -0.0
+ 12 11      -1.3       0.1       -0.0        0.0
+ 12 12      -0.7       0.2       -0.1       -0.1
+"""
+
+
+def create_wmm2025_coefficients() -> MagneticCoefficients:
+    """
+    Create WMM2025 model coefficients.
+
+    Returns
+    -------
+    coeffs : MagneticCoefficients
+        WMM2025 spherical harmonic coefficients.
+
+    Examples
+    --------
+    >>> coeffs = create_wmm2025_coefficients()
+    >>> coeffs.epoch
+    2025.0
+    >>> coeffs.n_max
+    12
+
+    Notes
+    -----
+    These are the official WMM2025 coefficients valid from 2025.0 to 2030.0,
+    embedded verbatim from the NOAA/NCEI WMM.COF distribution file.
+    """
+    n_max = 12
+    g = np.zeros((n_max + 1, n_max + 1))
+    h = np.zeros((n_max + 1, n_max + 1))
+    g_dot = np.zeros((n_max + 1, n_max + 1))
+    h_dot = np.zeros((n_max + 1, n_max + 1))
+
+    for line in _WMM2025_COF.strip().split("\n"):
+        n_s, m_s, g_s, h_s, gd_s, hd_s = line.split()
+        n, m = int(n_s), int(m_s)
+        g[n, m] = float(g_s)
+        h[n, m] = float(h_s)
+        g_dot[n, m] = float(gd_s)
+        h_dot[n, m] = float(hd_s)
+
+    return MagneticCoefficients(
+        g=g, h=h, g_dot=g_dot, h_dot=h_dot, epoch=2025.0, n_max=n_max
+    )
+
+
 WMM2020 = create_wmm2020_coefficients()
+WMM2025 = create_wmm2025_coefficients()
 
 
 # =============================================================================
@@ -535,25 +476,22 @@ def _compute_magnetic_field_spherical_impl(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    # Compute associated Legendre functions (Schmidt semi-normalized)
-    P = associated_legendre(n_max, n_max, cos_theta, normalized=True)
-
-    # Compute dP/dtheta
-    dP = np.zeros((n_max + 1, n_max + 1))
-    if abs(sin_theta) > 1e-10:
-        for n in range(1, n_max + 1):
-            for m in range(n + 1):
-                if m == n:
-                    dP[n, m] = n * cos_theta / sin_theta * P[n, m]
-                elif n > m:
-                    factor = np.sqrt((n - m) * (n + m + 1))
-                    if m + 1 <= n:
-                        dP[n, m] = (
-                            n * cos_theta / sin_theta * P[n, m]
-                            - factor * P[n, m + 1] / sin_theta
-                            if m + 1 <= n_max
-                            else n * cos_theta / sin_theta * P[n, m]
-                        )
+    # WMM Gauss coefficients require Schmidt semi-normalized Legendre
+    # functions: P_schmidt = P_full / sqrt(2n+1). Derive both P and
+    # dP/dtheta from the fully normalized implementations, using
+    # dP/dtheta = -sin(theta) * dP/dx with x = cos(theta).
+    P_full = associated_legendre(n_max, n_max, cos_theta, normalized=True)
+    dP_full = associated_legendre_derivative(
+        n_max, n_max, cos_theta, P_full, normalized=True
+    )
+    # associated_legendre's normalization is sqrt(2n+1)*sqrt((n-m)!/(n+m)!)
+    # (no sqrt(2) sectoral factor), so Schmidt requires dividing by
+    # sqrt(2n+1) and multiplying m > 0 terms by sqrt(2).
+    scale = np.ones((n_max + 1, n_max + 1))
+    scale /= np.sqrt(2 * np.arange(n_max + 1) + 1)[:, np.newaxis]
+    scale[:, 1:] *= np.sqrt(2.0)
+    P = P_full * scale
+    dP = -sin_theta * dP_full * scale
 
     # Initialize field components
     B_r = 0.0
@@ -671,6 +609,8 @@ def configure_magnetic_cache(
     >>> configure_magnetic_cache(maxsize=4096)
     >>> # Reduce precision for more cache hits
     >>> configure_magnetic_cache(precision={'lat': 4, 'lon': 4, 'r': 2, 'year': 1})
+    >>> # Restore the default precision
+    >>> configure_magnetic_cache(precision={'lat': 6, 'lon': 6, 'r': 3, 'year': 2})
     """
     global _magnetic_field_spherical_cached
 
@@ -705,7 +645,7 @@ def magnetic_field_spherical(
     lon: float,
     r: float,
     year: float,
-    coeffs: MagneticCoefficients = WMM2020,
+    coeffs: MagneticCoefficients = WMM2025,
     use_cache: bool = True,
 ) -> Tuple[float, float, float]:
     """
@@ -753,7 +693,7 @@ def magnetic_field_spherical(
     >>> r = 6371.2  # Earth mean radius in km
     >>> B_r, B_theta, B_phi = magnetic_field_spherical(lat, lon, r, 2023.0)
     >>> # All components should be on order of tens to tens of thousands of nT
-    >>> 20000 < (B_r**2 + B_theta**2 + B_phi**2)**0.5 < 70000  # doctest: +SKIP
+    >>> bool(20000 < (B_r**2 + B_theta**2 + B_phi**2)**0.5 < 70000)
     True
     """
     if use_cache:
@@ -775,8 +715,8 @@ def wmm(
     lat: float,
     lon: float,
     h: float = 0.0,
-    year: float = 2023.0,
-    coeffs: MagneticCoefficients = WMM2020,
+    year: float = 2025.0,
+    coeffs: MagneticCoefficients = WMM2025,
 ) -> MagneticResult:
     """
     Compute magnetic field using World Magnetic Model.
@@ -803,31 +743,39 @@ def wmm(
     --------
     >>> import numpy as np
     >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
-    >>> print(f"Declination: {np.degrees(result.D):.2f}°")  # doctest: +SKIP
-    >>> print(f"Inclination: {np.degrees(result.I):.2f}°")  # doctest: +SKIP
-    >>> print(f"Total intensity: {result.F:.0f} nT")  # doctest: +SKIP
+    >>> print(f"Declination: {np.degrees(result.D):.2f}°")
+    Declination: 7.83°
+    >>> print(f"Inclination: {np.degrees(result.I):.2f}°")
+    Inclination: 66.23°
+    >>> print(f"Total intensity: {result.F:.0f} nT")
+    Total intensity: 51573 nT
     """
-    # Convert geodetic to geocentric
-    # Simplified: assume spherical Earth for radius calculation
-    a = 6371.2  # km
+    # Convert geodetic (WGS84) to geocentric spherical coordinates
+    a_wgs = 6378.137  # WGS84 semi-major axis, km
+    e2 = 6.694379990141e-3  # WGS84 first eccentricity squared
 
-    # Geocentric latitude (approximate, ignoring ellipticity for simplicity)
-    lat_gc = lat
-    r = a + h
+    sin_lat = np.sin(lat)
+    cos_lat = np.cos(lat)
+    rc = a_wgs / np.sqrt(1.0 - e2 * sin_lat * sin_lat)
+    p = (rc + h) * cos_lat
+    z = (rc * (1.0 - e2) + h) * sin_lat
+    r = np.sqrt(p * p + z * z)
+    lat_gc = np.arcsin(z / r)
 
-    # Compute field in spherical coordinates
+    # Compute field in geocentric spherical coordinates
     B_r, B_theta, B_phi = magnetic_field_spherical(lat_gc, lon, r, year, coeffs)
 
-    # Convert to geodetic coordinates (X, Y, Z)
-    # X = North, Y = East, Z = Down
-    # For spherical approximation:
-    # X = -B_theta (theta increases southward)
-    # Y = B_phi
-    # Z = -B_r (r increases outward, Z positive down)
-
-    X = -B_theta
+    # Geocentric NED components
+    X_gc = -B_theta  # theta increases southward
     Y = B_phi
-    Z = -B_r
+    Z_gc = -B_r  # r increases outward, Z positive down
+
+    # Rotate from geocentric to geodetic frame (WMM report, eq. 17)
+    psi = lat_gc - lat
+    cos_psi = np.cos(psi)
+    sin_psi = np.sin(psi)
+    X = X_gc * cos_psi - Z_gc * sin_psi
+    Z = X_gc * sin_psi + Z_gc * cos_psi
 
     # Derived quantities
     H = np.sqrt(X * X + Y * Y)  # Horizontal intensity
@@ -854,8 +802,8 @@ def magnetic_declination(
     lat: float,
     lon: float,
     h: float = 0.0,
-    year: float = 2023.0,
-    coeffs: MagneticCoefficients = WMM2020,
+    year: float = 2025.0,
+    coeffs: MagneticCoefficients = WMM2025,
 ) -> float:
     """
     Compute magnetic declination (variation).
@@ -883,9 +831,10 @@ def magnetic_declination(
     Examples
     --------
     >>> import numpy as np
-    >>> # Declination in Denver, CO
+    >>> # Declination in Denver, CO (easterly, i.e. positive)
     >>> D = magnetic_declination(np.radians(39.7), np.radians(-105.0))
-    >>> print(f"Declination: {np.degrees(D):.1f}°")  # doctest: +SKIP
+    >>> print(f"Declination: {np.degrees(D):.1f}°")
+    Declination: 7.6°
     """
     result = wmm(lat, lon, h, year, coeffs)
     return result.D
@@ -895,8 +844,8 @@ def magnetic_inclination(
     lat: float,
     lon: float,
     h: float = 0.0,
-    year: float = 2023.0,
-    coeffs: MagneticCoefficients = WMM2020,
+    year: float = 2025.0,
+    coeffs: MagneticCoefficients = WMM2025,
 ) -> float:
     """
     Compute magnetic inclination (dip angle).
@@ -930,10 +879,10 @@ def magnetic_inclination(
     >>> lon = np.radians(-105)
     >>> I = magnetic_inclination(lat, lon, 1.6, 2023.0)
     >>> # Northern hemisphere: inclination should be positive
-    >>> I > 0
+    >>> bool(I > 0)
     True
     >>> # Typical values in US are 50-70 degrees
-    >>> 0.8 < I < 1.3  # ~46-74 degrees  # doctest: +SKIP
+    >>> bool(0.8 < I < 1.3)  # ~46-74 degrees
     True
     """
     result = wmm(lat, lon, h, year, coeffs)
@@ -944,8 +893,8 @@ def magnetic_field_intensity(
     lat: float,
     lon: float,
     h: float = 0.0,
-    year: float = 2023.0,
-    coeffs: MagneticCoefficients = WMM2020,
+    year: float = 2025.0,
+    coeffs: MagneticCoefficients = WMM2025,
 ) -> float:
     """
     Compute total magnetic field intensity.
@@ -976,12 +925,12 @@ def magnetic_field_intensity(
     >>> F_eq = magnetic_field_intensity(0, 0, 0, 2023.0)  # Equator
     >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2023.0)  # Near pole
     >>> # Field is stronger at poles
-    >>> F_pole > F_eq
+    >>> bool(F_pole > F_eq)
     True
     >>> # Typical Earth field is 25,000 to 65,000 nT
-    >>> 25000 < F_eq < 35000  # Equatorial field is weaker  # doctest: +SKIP
+    >>> bool(25000 < F_eq < 35000)  # Equatorial field is weaker
     True
-    >>> 55000 < F_pole < 65000  # Polar field is stronger  # doctest: +SKIP
+    >>> bool(55000 < F_pole < 65000)  # Polar field is stronger
     True
     """
     result = wmm(lat, lon, h, year, coeffs)
@@ -992,7 +941,9 @@ __all__ = [
     "MagneticResult",
     "MagneticCoefficients",
     "WMM2020",
+    "WMM2025",
     "create_wmm2020_coefficients",
+    "create_wmm2025_coefficients",
     "magnetic_field_spherical",
     "wmm",
     "magnetic_declination",

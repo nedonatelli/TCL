@@ -524,26 +524,28 @@ class TestCoordinatePlottingBasic:
             pytest.skip(f"Function not available: {e}")
 
     def test_plot_points_spherical_with_valid_shapes(self):
-        """Test spherical points plotting with integer indices."""
-        try:
-            # Create spherical coordinates as integers to avoid indexing issues
-            azimuths = np.array([0, 1, 2], dtype=int)
-            elevations = np.array([0, 1, 2], dtype=int)
-            radii = np.array([1, 1, 1], dtype=int)
-            fig = plot_points_spherical(azimuths, elevations, radii)
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function has implementation issues: {e}")
+        """Spherical points plotting takes an (n, 3) array of (r, theta, phi)."""
+        points = np.column_stack(
+            [
+                np.array([1.0, 2.0, 3.0]),  # r
+                np.array([0.1, 0.5, 1.0]),  # theta
+                np.array([0.2, 0.4, 0.6]),  # phi
+            ]
+        )
+        fig = plot_points_spherical(points)
+        assert fig is not None
+        assert len(fig.data) > 0
 
     def test_plot_coordinate_transform_basic(self):
-        """Test coordinate transform plotting."""
-        try:
-            dcm = np.eye(3)
-            position = np.array([1, 0, 0])
-            fig = plot_coordinate_transform(dcm, position)
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function has implementation issues: {e}")
+        """Coordinate transform plotting takes original and transformed points."""
+        rng = np.random.default_rng(42)
+        points = rng.normal(size=(5, 3))
+        rotated = points @ np.array(
+            [[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]
+        )
+        fig = plot_coordinate_transform(points, rotated, transform_name="Rz(90)")
+        assert fig is not None
+        assert len(fig.data) > 0
 
 
 class TestCoordinateTransformMath:

@@ -1,11 +1,5 @@
 """Relativistic corrections for precision astronomy and satellite positioning.
 
-.. warning::
-    geodetic_precession, lense_thirring_precession, post_newtonian_acceleration,
-    and relativistic_range_correction have dimensionally inconsistent formulas
-    and return unphysical values. See
-    https://github.com/nedonatelli/TCL/issues/3.
-
 This module provides utilities for computing relativistic effects in orbital mechanics,
 including gravitational time dilation, Shapiro delay, and coordinate transformations
 in the Schwarzschild metric. These effects are critical for high-precision applications
@@ -277,13 +271,12 @@ def schwarzschild_precession_per_orbit(a: float, e: float, gm: float = GM_SUN) -
 def post_newtonian_acceleration(
     r_vec: NDArray[np.floating], v_vec: NDArray[np.floating], gm: float = GM_EARTH
 ) -> NDArray[np.floating]:
-    """Compute post-Newtonian acceleration corrections (1PN order).
+    """Compute total acceleration including first post-Newtonian corrections.
 
-    Extends Newtonian gravity with first-order post-Newtonian corrections.
+    Extends Newtonian gravity with the first post-Newtonian (Schwarzschild)
+    correction in harmonic coordinates:
 
-    a_PN = -GM/r^2 * u_r + a_1PN
-
-    where a_1PN includes velocity-dependent and metric perturbation terms.
+    a_1PN = (GM / (c^2 * r^3)) * [(4*GM/r - v.v) * r_vec + 4*(r_vec . v_vec) * v_vec]
 
     Parameters
     ----------
@@ -301,36 +294,27 @@ def post_newtonian_acceleration(
 
     Examples
     --------
-    Compare Newtonian and PN acceleration for LEO satellite:
+    Compare Newtonian and PN acceleration for a circular LEO satellite:
 
     >>> r = np.array([6.678e6, 0.0, 0.0])  # ~300 km altitude
     >>> v = np.array([0.0, 7.7e3, 0.0])    # Circular orbit velocity
     >>> a_total = post_newtonian_acceleration(r, v)
     >>> a_newt = -GM_EARTH / np.linalg.norm(r)**3 * r
-    >>> correction_ratio = np.linalg.norm(a_total - a_newt) / np.linalg.norm(a_newt)
-    >>> print(f"PN correction: {correction_ratio*1e6:.1f} ppm")  # doctest: +SKIP
+    >>> ratio = np.linalg.norm(a_total - a_newt) / np.linalg.norm(a_newt)
+    >>> print(f"PN correction ratio: {ratio:.3e}")
+    PN correction ratio: 1.997e-09
     """
     r = np.linalg.norm(r_vec)
-    v_squared = np.sum(v_vec**2)
-
-    # Unit vector
-    u_r = r_vec / r
+    v_squared = np.dot(v_vec, v_vec)
+    r_dot_v = np.dot(r_vec, v_vec)
 
     # Newtonian acceleration
-    a_newt = -gm / (r**2) * u_r
+    a_newt = -gm / (r**3) * r_vec
 
-    # 1PN corrections (in m/s^2)
-    c2 = C_LIGHT**2
-
-    # Term 1: Velocity squared effect on metric
-    term1 = (gm / c2) * (2.0 * v_squared / r - 4.0 * gm / r) * u_r / r
-
-    # Term 2: Radial velocity coupling
-    v_dot_r = np.dot(v_vec, u_r)
-    term2 = (4.0 * gm / c2) * v_dot_r * v_vec / r
-
-    # Combine corrections (these are small corrections to Newtonian acceleration)
-    a_1pn = term1 + term2
+    # First post-Newtonian (Schwarzschild) correction, harmonic coordinates
+    a_1pn = (gm / (C_LIGHT**2 * r**3)) * (
+        (4.0 * gm / r - v_squared) * r_vec + 4.0 * r_dot_v * v_vec
+    )
 
     return a_newt + a_1pn
 
@@ -338,12 +322,16 @@ def post_newtonian_acceleration(
 def geodetic_precession(
     a: float, e: float, inclination: float, gm: float = GM_EARTH
 ) -> float:
-    """Compute geodetic (de Sitter) precession rate of orbital plane.
+    """Compute geodetic (de Sitter) precession per orbit.
 
-    The orbital plane of a satellite precesses due to frame-dragging effects
-    and spacetime curvature. The geodetic precession rate is:
+    A gyroscope (or the orbital angular momentum vector of a satellite)
+    transported around a central mass precesses due to spacetime curvature.
+    The geodetic precession accumulated over one orbit is:
 
-    Ω_geodetic = -GM/(c^2 * a^3 * (1 - e^2)^2) * cos(i)
+    Δω = 3π * GM / (c^2 * a * (1 - e^2))
+
+    The result is positive (prograde) and its magnitude is independent of
+    the orbital inclination.
 
     Parameters
     ----------
@@ -352,14 +340,15 @@ def geodetic_precession(
     e : float
         Eccentricity (dimensionless)
     inclination : float
-        Orbital inclination (radians)
+        Orbital inclination (radians). Retained for API compatibility;
+        the geodetic precession magnitude does not depend on it.
     gm : float, optional
         Gravitational parameter (m^3/s^2). Default is GM_EARTH.
 
     Returns
     -------
     float
-        Geodetic precession rate (radians per orbit)
+        Geodetic precession per orbit (radians), positive (prograde).
 
     Examples
     --------
@@ -369,10 +358,17 @@ def geodetic_precession(
     >>> e = 0.0      # Circular
     >>> i = np.radians(51.6)  # ISS-like inclination
     >>> rate = geodetic_precession(a, e, i)
-    >>> print(f"Precession per orbit: {rate*206265:.3f} arcsec")  # doctest: +SKIP
+    >>> print(f"Precession per orbit: {rate:.3e} rad")
+    Precession per orbit: 6.259e-09 rad
+
+    De Sitter precession of the Earth-Moon gyroscope orbiting the Sun:
+
+    >>> rate = geodetic_precession(AU, 0.0167, 0.0, GM_SUN)
+    >>> per_century = rate * 100 * 206264.806  # ~100 orbits per century
+    >>> print(f"De Sitter precession: {per_century:.2f} arcsec/century")
+    De Sitter precession: 1.92 arcsec/century
     """
-    p = a * (1.0 - e**2)
-    precession = -(gm / (C_LIGHT**2 * p**2)) * np.cos(inclination)
+    precession = 3.0 * np.pi * gm / (C_LIGHT**2 * a * (1.0 - e**2))
     return precession
 
 
@@ -383,15 +379,16 @@ def lense_thirring_precession(
     angular_momentum: float,
     gm: float = GM_EARTH,
 ) -> float:
-    """Compute Lense-Thirring (frame-dragging) precession of orbital node.
+    """Compute Lense-Thirring (frame-dragging) nodal precession rate.
 
     A rotating central body drags the orbital plane of nearby objects.
-    The nodal precession rate due to this effect is:
+    The precession rate of the ascending node due to this effect is:
 
-    Ω_LT = (2GM * J_2 * a * ω) / (c^2 * p^2) * f(e, i)
+    Ω̇_LT = 2*G*J / (c^2 * a^3 * (1 - e^2)^(3/2))
 
-    where J_2 is the quadrupole moment, ω is angular velocity, and f depends
-    on eccentricity and inclination.
+    where J is the spin angular momentum of the central body. The rate is
+    independent of the orbital inclination. Multiply by the orbital period
+    to obtain the precession per orbit.
 
     Parameters
     ----------
@@ -400,88 +397,90 @@ def lense_thirring_precession(
     e : float
         Eccentricity (dimensionless)
     inclination : float
-        Orbital inclination (radians)
+        Orbital inclination (radians). Retained for API compatibility;
+        the nodal Lense-Thirring rate does not depend on it.
     angular_momentum : float
-        Angular momentum of central body (kg·m^2/s)
+        Spin angular momentum J of central body (kg·m^2/s).
+        For Earth, J ≈ 5.86e33 kg·m^2/s.
     gm : float, optional
         Gravitational parameter (m^3/s^2). Default is GM_EARTH.
+        Retained for API compatibility; the rate depends on G*J, not GM.
 
     Returns
     -------
     float
-        Lense-Thirring precession rate (radians per orbit)
+        Lense-Thirring nodal precession rate (radians per second),
+        positive (prograde).
 
     Notes
     -----
-    This is a simplified version. For Earth, J_2 effects typically dominate
-    classical nodal precession, while Lense-Thirring is a small correction
-    (~1 arcsec per year for typical satellites).
+    For Earth satellites, classical J_2 nodal precession dominates by many
+    orders of magnitude; Lense-Thirring is a small correction (~31 mas/year
+    for LAGEOS), first measured with the LAGEOS satellites.
 
     Examples
     --------
-    Lense-Thirring effect for LAGEOS satellite:
+    Lense-Thirring effect for the LAGEOS satellite:
 
-    >>> # LAGEOS parameters
-    >>> a = 12.27e6  # Semi-major axis
+    >>> a = 12.27e6  # Semi-major axis (m)
     >>> e = 0.0045
     >>> i = np.radians(109.9)
-    >>> L_earth = 7.05e33  # Earth's angular momentum
-    >>> rate = lense_thirring_precession(a, e, i, L_earth)
-    >>> print(f"LT precession per orbit: {rate*206265*1e3:.1f} milliarcsec")  # doctest: +SKIP
+    >>> J_earth = 5.86e33  # Earth's spin angular momentum (kg m^2/s)
+    >>> rate = lense_thirring_precession(a, e, i, J_earth)
+    >>> mas_per_year = rate * 86400 * 365.25 * 206264.806 * 1e3
+    >>> print(f"LT nodal precession: {mas_per_year:.1f} mas/year")
+    LT nodal precession: 30.7 mas/year
     """
-    p = a * (1.0 - e**2)
+    precession_rate = (2.0 * G_GRAV * angular_momentum) / (
+        C_LIGHT**2 * a**3 * (1.0 - e**2) ** 1.5
+    )
 
-    # Simplified Lense-Thirring term (second-order PN effect)
-    # For a sphere: Lense-Thirring parameter = 2GM*L/(c^2*M*r^3)
-    precession = (2.0 * angular_momentum * gm) / (C_LIGHT**2 * p**3)
-
-    return precession
+    return precession_rate
 
 
 def relativistic_range_correction(
-    distance: float, relative_velocity: float, gm: float = GM_EARTH
+    r1: float, r2: float, rho: float, gm: float = GM_EARTH
 ) -> float:
-    """Compute relativistic range correction for ranging measurements.
+    """Compute relativistic (Shapiro) range correction for ranging measurements.
 
-    When measuring distance to a satellite or spacecraft using ranging
-    (e.g., laser ranging), relativistic effects introduce corrections to
-    the measured range.
+    When measuring the distance between two points through a gravitational
+    field (e.g., satellite laser ranging or GNSS pseudoranging), spacetime
+    curvature delays the signal. The equivalent one-way range correction is:
 
-    The main contributions are:
-    - Gravitational time dilation
-    - Relativistic Doppler effect
+    Δρ = (2*GM/c^2) * ln((r1 + r2 + ρ) / (r1 + r2 - ρ))
+
+    where r1 and r2 are the distances of the endpoints from the center of
+    the gravitating body and ρ is the geometric distance between them.
 
     Parameters
     ----------
-    distance : float
-        Distance to object (m)
-    relative_velocity : float
-        Radial velocity component (m/s, positive = receding)
+    r1 : float
+        Distance of first endpoint from the mass center (m)
+    r2 : float
+        Distance of second endpoint from the mass center (m)
+    rho : float
+        Geometric distance between the two endpoints (m)
     gm : float, optional
         Gravitational parameter (m^3/s^2). Default is GM_EARTH.
 
     Returns
     -------
     float
-        Range correction (m)
+        One-way range correction (m), always positive (the measured range
+        is longer than the geometric range).
 
     Examples
     --------
-    Range correction for lunar laser ranging:
+    Shapiro range correction for GPS-to-ground ranging (satellite overhead):
 
-    >>> distance_to_moon = 3.84e8  # meters
-    >>> radial_velocity = 0.0  # Average over orbit
-    >>> correction = relativistic_range_correction(distance_to_moon, radial_velocity, GM_EARTH)
-    >>> print(f"Range correction: {correction:.1f} m")  # doctest: +SKIP
+    >>> r_ground = 6.371e6   # Ground station radius (m)
+    >>> r_gps = 26.561e6     # GPS orbit radius (m)
+    >>> rho = r_gps - r_ground
+    >>> correction = relativistic_range_correction(r_ground, r_gps, rho)
+    >>> print(f"Range correction: {correction*1e3:.2f} mm")
+    Range correction: 12.66 mm
     """
-    # Gravitational correction (positive because the signal is delayed)
-    # Uses weak-field approximation
-    grav_correction = gm / (C_LIGHT**2)
-
-    # Doppler correction (second order effect, small)
-    doppler_correction = (relative_velocity**2) / (3.0 * C_LIGHT**2)
-
-    return grav_correction + doppler_correction
+    return (2.0 * gm / C_LIGHT**2) * np.log((r1 + r2 + rho) / (r1 + r2 - rho))
 
 
 __all__ = [

@@ -260,6 +260,36 @@ class TestPostNewtonianAcceleration:
         # Check that PN effects exist and are measurable (ppm level)
         assert np.linalg.norm(correction) > 0.0
 
+    def test_leo_pn_ratio(self):
+        """|a_1PN| / |a_Newton| for LEO should be ~2e-9 (3*GM/(c^2*r))."""
+        r = 6.678e6
+        v = np.sqrt(GM_EARTH / r)  # Exactly circular
+
+        r_vec = np.array([r, 0.0, 0.0])
+        v_vec = np.array([0.0, v, 0.0])
+
+        a_total = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH)
+        a_newt = -GM_EARTH / r**3 * r_vec
+        ratio = np.linalg.norm(a_total - a_newt) / np.linalg.norm(a_newt)
+
+        # For circular orbit: (4*GM/r - v^2)/c^2 = 3*GM/(c^2*r)
+        expected = 3.0 * GM_EARTH / (C_LIGHT**2 * r)
+        assert np.isclose(ratio, expected, rtol=1e-9)
+        assert 3e-10 < ratio < 1e-8
+
+    def test_circular_pn_correction_outward(self):
+        """For a circular orbit, the 1PN correction points radially outward."""
+        r = 6.678e6
+        v = np.sqrt(GM_EARTH / r)
+        r_vec = np.array([r, 0.0, 0.0])
+        v_vec = np.array([0.0, v, 0.0])
+
+        correction = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH) - (
+            -GM_EARTH / r**3 * r_vec
+        )
+        assert correction[0] > 0.0
+        assert np.allclose(correction[1:], 0.0)
+
     def test_zero_velocity(self):
         """At zero velocity, PN terms should reduce with Newtonian as dominant."""
         r_vec = np.array([1e7, 0.0, 0.0])
@@ -283,47 +313,42 @@ class TestPostNewtonianAcceleration:
         a_tan = post_newtonian_acceleration(r_vec, v_tan, GM_EARTH)
 
         # Radial vs tangential velocity should affect the PN term differently
-        # At minimum, they should produce different accelerations
         a_newt = -GM_EARTH / np.linalg.norm(r_vec) ** 2 * np.array([1.0, 0.0, 0.0])
 
         # Both should be different from pure Newtonian
-        assert not np.allclose(a_rad, a_newt, atol=1e-10)
-        assert not np.allclose(a_tan, a_newt, atol=1e-10)
+        assert np.linalg.norm(a_rad - a_newt) > 0.0
+        assert np.linalg.norm(a_tan - a_newt) > 0.0
+        # Radial velocity adds a 4*(r.v)*v term absent for tangential motion
+        assert not np.array_equal(a_rad, a_tan)
 
 
 class TestGeodeticPrecession:
     """Test geodetic (de Sitter) precession."""
 
-    def test_equatorial_orbit(self):
-        """Equatorial orbit (i=0) should have maximum geodetic precession."""
-        a = 6.678e6
-        e = 0.0
-        i = 0.0
+    def test_prograde(self):
+        """Geodetic precession should be positive (prograde)."""
+        precession = geodetic_precession(6.678e6, 0.0, np.radians(51.6), GM_EARTH)
+        assert precession > 0.0
 
-        precession = geodetic_precession(a, e, i, GM_EARTH)
-        assert precession < 0.0  # Negative (retrograde)
+    def test_leo_magnitude(self):
+        """LEO satellite should precess ~6.3e-9 rad per orbit."""
+        precession = geodetic_precession(6.678e6, 0.0, 0.0, GM_EARTH)
+        expected = 3.0 * np.pi * GM_EARTH / (C_LIGHT**2 * 6.678e6)
+        assert np.isclose(precession, expected, rtol=1e-12)
+        assert 5e-9 < precession < 8e-9
 
-    def test_polar_orbit(self):
-        """Polar orbit (i=90°) should have zero geodetic precession."""
-        a = 6.678e6
-        e = 0.0
-        i = np.pi / 2
+    def test_earth_sun_de_sitter(self):
+        """Earth orbit around Sun accumulates ~1.92 arcsec/century (de Sitter)."""
+        per_orbit = geodetic_precession(AU, 0.0167, 0.0, GM_SUN)
+        arcsec_per_century = per_orbit * (36525.0 / 365.25636) * 206264.806
+        assert 1.85 < arcsec_per_century < 2.0
 
-        precession = geodetic_precession(a, e, i, GM_EARTH)
-        assert abs(precession) < 1e-15
-
-    def test_inclination_effect(self):
-        """Precession should scale with cos(inclination)."""
-        a = 6.678e6
-        e = 0.0
-        i1 = np.radians(30)
-        i2 = np.radians(60)
-
-        p1 = geodetic_precession(a, e, i1, GM_EARTH)
-        p2 = geodetic_precession(a, e, i2, GM_EARTH)
-
-        # |p2| < |p1| because cos(60°) < cos(30°)
-        assert abs(p2) < abs(p1)
+    def test_inclination_independent(self):
+        """Geodetic precession magnitude does not depend on inclination."""
+        a, e = 6.678e6, 0.0
+        p1 = geodetic_precession(a, e, 0.0, GM_EARTH)
+        p2 = geodetic_precession(a, e, np.pi / 2, GM_EARTH)
+        assert p1 == p2
 
     def test_altitude_effect(self):
         """Higher altitude should reduce precession magnitude."""
@@ -343,15 +368,29 @@ class TestGeodeticPrecession:
 class TestLenseThirringPrecession:
     """Test Lense-Thirring (frame-dragging) precession."""
 
+    J_EARTH = 5.86e33  # Earth's spin angular momentum (kg m^2/s)
+
     def test_lense_thirring_positive(self):
         """Lense-Thirring effect should cause prograde precession."""
         a = 12.27e6  # LAGEOS
         e = 0.0045
         i = np.radians(109.9)
-        L = 7.05e33  # Earth's angular momentum
 
-        precession = lense_thirring_precession(a, e, i, L, GM_EARTH)
+        precession = lense_thirring_precession(a, e, i, self.J_EARTH, GM_EARTH)
         assert precession > 0.0  # Prograde
+
+    def test_lageos_nodal_drag(self):
+        """LAGEOS nodal Lense-Thirring precession should be ~31 mas/year."""
+        a = 12.27e6
+        e = 0.0045
+        i = np.radians(109.9)
+
+        rate = lense_thirring_precession(a, e, i, self.J_EARTH, GM_EARTH)
+        mas_per_year = rate * 86400 * 365.25 * 206264.806 * 1e3
+
+        assert 31.0 * 0.8 < mas_per_year < 31.0 * 1.2, (
+            f"Got {mas_per_year:.1f} mas/year"
+        )
 
     def test_no_rotation_no_precession(self):
         """Zero angular momentum should give zero Lense-Thirring effect."""
@@ -366,64 +405,77 @@ class TestLenseThirringPrecession:
         """Higher altitude should reduce Lense-Thirring effect."""
         e = 0.0
         i = np.radians(51.6)
-        L = 7.05e33
 
         a_leo = 6.678e6
         a_geo = 42.164e6
 
-        p_leo = lense_thirring_precession(a_leo, e, i, L, GM_EARTH)
-        p_geo = lense_thirring_precession(a_geo, e, i, L, GM_EARTH)
+        p_leo = lense_thirring_precession(a_leo, e, i, self.J_EARTH, GM_EARTH)
+        p_geo = lense_thirring_precession(a_geo, e, i, self.J_EARTH, GM_EARTH)
 
         assert p_geo < p_leo
 
 
 class TestRelativisticsRangeCorrection:
-    """Test relativistic range corrections for ranging measurements."""
+    """Test relativistic (Shapiro) range corrections for ranging measurements."""
 
     def test_range_correction_positive(self):
-        """Range correction should be non-negative."""
-        distance = 3.84e8  # Lunar distance
-        velocity = 0.0
+        """Range correction should be positive (measured range is longer)."""
+        r1 = 6.371e6  # Ground station
+        r2 = 3.84e8  # Moon
+        rho = r2 - r1
 
-        correction = relativistic_range_correction(distance, velocity, GM_EARTH)
-        # Should be a small positive value
-        assert correction >= 0.0
+        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
+        assert correction > 0.0
 
-    def test_lunar_laser_ranging(self):
-        """Lunar laser ranging correction should be small but measurable."""
-        distance = 3.84e8  # meters
-        velocity = 0.0
+    def test_gps_ranging_centimeter_scale(self):
+        """GPS-to-ground Shapiro range correction should be ~1 cm scale."""
+        r_ground = 6.371e6
+        r_gps = 26.561e6
+        rho = r_gps - r_ground  # Satellite at zenith
 
-        correction = relativistic_range_correction(distance, velocity, GM_EARTH)
+        correction = relativistic_range_correction(r_ground, r_gps, rho, GM_EARTH)
 
-        # Should be a small positive number (order of cm to m)
-        # Gravitational correction is ~gm/c^2 for Earth ~1.5 mm
-        assert 0.0 <= correction <= 0.1  # Allow up to 10 cm
+        # Expected: (2*GM/c^2) * ln((r1+r2+rho)/(r1+r2-rho)) ~ 12.7 mm
+        assert 1e-3 < correction < 0.1, f"Got {correction * 1e3:.2f} mm"
 
-    def test_velocity_effect(self):
-        """Higher radial velocity should increase correction."""
-        distance = 3.84e8
-        v1 = 0.0
-        v2 = 100.0  # m/s
+    def test_matches_closed_form(self):
+        """Result should match the Shapiro logarithmic formula exactly."""
+        r1, r2, rho = 6.371e6, 26.561e6, 25.0e6
 
-        c1 = relativistic_range_correction(distance, v1, GM_EARTH)
-        c2 = relativistic_range_correction(distance, v2, GM_EARTH)
+        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
+        expected = (2.0 * GM_EARTH / C_LIGHT**2) * np.log(
+            (r1 + r2 + rho) / (r1 + r2 - rho)
+        )
+        assert np.isclose(correction, expected, rtol=1e-14)
 
-        assert c2 > c1  # Velocity increases correction
+    def test_grazing_path_larger_correction(self):
+        """A path passing closer to the mass has a larger correction."""
+        r1 = 6.371e6
+        r2 = 26.561e6
 
-    def test_distance_effect(self):
-        """Range correction doesn't depend on distance (weak-field approximation)."""
-        v = 0.0
+        rho_radial = r2 - r1  # Satellite at zenith
+        # Low-elevation geometry: longer path, closer approach to Earth
+        rho_grazing = np.sqrt(r2**2 - r1**2)
 
-        # In weak-field approximation, correction is constant (gm/c^2)
-        d_earth = 6.371e6  # At Earth surface
-        d_moon = 3.84e8  # To Moon
+        c_radial = relativistic_range_correction(r1, r2, rho_radial, GM_EARTH)
+        c_grazing = relativistic_range_correction(r1, r2, rho_grazing, GM_EARTH)
 
-        c_earth = relativistic_range_correction(d_earth, v, GM_EARTH)
-        c_moon = relativistic_range_correction(d_moon, v, GM_EARTH)
+        assert c_grazing > c_radial
 
-        # Should be approximately the same (weak-field limit)
-        assert np.isclose(c_moon, c_earth, rtol=1e-10)
+    def test_consistent_with_shapiro_delay(self):
+        """Range correction should equal c times the Shapiro time delay."""
+        obs = np.array([6.371e6, 0.0, 0.0])
+        src = np.array([0.0, 26.561e6, 0.0])
+        body = np.array([0.0, 0.0, 0.0])
+
+        r1 = np.linalg.norm(obs)
+        r2 = np.linalg.norm(src)
+        rho = np.linalg.norm(obs - src)
+
+        delay = shapiro_delay(obs, src, body, GM_EARTH)
+        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
+
+        assert np.isclose(correction, C_LIGHT * delay, rtol=1e-12)
 
 
 class TestPhysicalConsistency:
