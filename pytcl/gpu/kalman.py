@@ -1,16 +1,23 @@
 """
-GPU-accelerated Linear Kalman Filter using CuPy.
+GPU-accelerated Linear Kalman Filter.
 
-This module provides GPU-accelerated implementations of the linear Kalman filter
-for batch processing of multiple tracks. The implementations achieve 5-10x
-speedup compared to CPU for batch sizes > 100.
+Batch implementations of the linear Kalman filter for processing many tracks
+in parallel. Runs on either GPU backend: CuPy (NVIDIA CUDA, double precision)
+or MLX (Apple Silicon, single precision). The backend is selected
+automatically; see :mod:`pytcl.gpu._backend`.
 
 Key Features
 ------------
 - Batch processing of multiple tracks in parallel
-- Memory-efficient operations using CuPy's memory pool
-- Compatible API with CPU implementations
-- Automatic fallback to CPU if GPU unavailable
+- Backend-agnostic: CuPy and MLX share one implementation
+- Compatible API with the CPU implementations in
+  :mod:`pytcl.dynamic_estimation.kalman`
+
+Notes
+-----
+On the MLX backend all computation is float32 (MLX does not support float64
+on the GPU), so results agree with the CPU implementations to roughly float32
+precision rather than to machine epsilon.
 
 Examples
 --------
@@ -37,8 +44,7 @@ from typing import NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.optional_deps import import_optional, requires
-from pytcl.gpu.utils import ensure_gpu_array
+from pytcl.gpu._backend import get_compute_backend
 
 
 class BatchKalmanPrediction(NamedTuple):
@@ -83,7 +89,6 @@ class BatchKalmanUpdate(NamedTuple):
     likelihood: NDArray[np.floating]
 
 
-@requires("cupy", extra="gpu", feature="GPU Kalman filter")
 def batch_kf_predict(
     x: ArrayLike,
     P: ArrayLike,
@@ -135,13 +140,13 @@ def batch_kf_predict(
     >>> pred.x.shape
     (100, 4)
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU Kalman filter")
+    b = get_compute_backend()
 
     # Move arrays to GPU
-    x_gpu = ensure_gpu_array(x, dtype=cp.float64)
-    P_gpu = ensure_gpu_array(P, dtype=cp.float64)
-    F_gpu = ensure_gpu_array(F, dtype=cp.float64)
-    Q_gpu = ensure_gpu_array(Q, dtype=cp.float64)
+    x_gpu = b.asarray(x)
+    P_gpu = b.asarray(P)
+    F_gpu = b.asarray(F)
+    Q_gpu = b.asarray(Q)
 
     n_tracks = x_gpu.shape[0]
     state_dim = x_gpu.shape[1]
@@ -149,43 +154,42 @@ def batch_kf_predict(
     # Handle F matrix dimensions
     if F_gpu.ndim == 2:
         # Broadcast F to all tracks: (n, n) -> (n_tracks, n, n)
-        F_batch = cp.broadcast_to(F_gpu, (n_tracks, state_dim, state_dim))
+        F_batch = b.broadcast_to(F_gpu, (n_tracks, state_dim, state_dim))
     else:
         F_batch = F_gpu
 
     # Handle Q matrix dimensions
     if Q_gpu.ndim == 2:
-        Q_batch = cp.broadcast_to(Q_gpu, (n_tracks, state_dim, state_dim))
+        Q_batch = b.broadcast_to(Q_gpu, (n_tracks, state_dim, state_dim))
     else:
         Q_batch = Q_gpu
 
     # Batch prediction: x_pred = F @ x
     # Use einsum for batched matrix-vector multiplication
-    x_pred = cp.einsum("nij,nj->ni", F_batch, x_gpu)
+    x_pred = b.einsum("nij,nj->ni", F_batch, x_gpu)
 
     # Add control input if provided
     if B is not None and u is not None:
-        B_gpu = ensure_gpu_array(B, dtype=cp.float64)
-        u_gpu = ensure_gpu_array(u, dtype=cp.float64)
+        B_gpu = b.asarray(B)
+        u_gpu = b.asarray(u)
         if B_gpu.ndim == 2:
             # Broadcast B
-            x_pred += cp.einsum("ij,nj->ni", B_gpu, u_gpu)
+            x_pred = x_pred + b.einsum("ij,nj->ni", B_gpu, u_gpu)
         else:
-            x_pred += cp.einsum("nij,nj->ni", B_gpu, u_gpu)
+            x_pred = x_pred + b.einsum("nij,nj->ni", B_gpu, u_gpu)
 
     # Batch covariance prediction: P_pred = F @ P @ F' + Q
     # Step 1: FP = F @ P
-    FP = cp.einsum("nij,njk->nik", F_batch, P_gpu)
+    FP = b.einsum("nij,njk->nik", F_batch, P_gpu)
     # Step 2: P_pred = FP @ F' + Q
-    P_pred = cp.einsum("nij,nkj->nik", FP, F_batch) + Q_batch
+    P_pred = b.einsum("nij,nkj->nik", FP, F_batch) + Q_batch
 
     # Ensure symmetry
-    P_pred = (P_pred + cp.swapaxes(P_pred, -2, -1)) / 2
+    P_pred = (P_pred + b.swapaxes(P_pred, -2, -1)) / 2
 
     return BatchKalmanPrediction(x=x_pred, P=P_pred)
 
 
-@requires("cupy", extra="gpu", feature="GPU Kalman filter")
 def batch_kf_update(
     x: ArrayLike,
     P: ArrayLike,
@@ -237,14 +241,14 @@ def batch_kf_update(
     >>> upd.x.shape
     (100, 4)
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU Kalman filter")
+    b = get_compute_backend()
 
     # Move arrays to GPU
-    x_gpu = ensure_gpu_array(x, dtype=cp.float64)
-    P_gpu = ensure_gpu_array(P, dtype=cp.float64)
-    z_gpu = ensure_gpu_array(z, dtype=cp.float64)
-    H_gpu = ensure_gpu_array(H, dtype=cp.float64)
-    R_gpu = ensure_gpu_array(R, dtype=cp.float64)
+    x_gpu = b.asarray(x)
+    P_gpu = b.asarray(P)
+    z_gpu = b.asarray(z)
+    H_gpu = b.asarray(H)
+    R_gpu = b.asarray(R)
 
     n_tracks = x_gpu.shape[0]
     state_dim = x_gpu.shape[1]
@@ -252,56 +256,56 @@ def batch_kf_update(
 
     # Handle H matrix dimensions
     if H_gpu.ndim == 2:
-        H_batch = cp.broadcast_to(H_gpu, (n_tracks, meas_dim, state_dim))
+        H_batch = b.broadcast_to(H_gpu, (n_tracks, meas_dim, state_dim))
     else:
         H_batch = H_gpu
 
     # Handle R matrix dimensions
     if R_gpu.ndim == 2:
-        R_batch = cp.broadcast_to(R_gpu, (n_tracks, meas_dim, meas_dim))
+        R_batch = b.broadcast_to(R_gpu, (n_tracks, meas_dim, meas_dim))
     else:
         R_batch = R_gpu
 
     # Innovation: y = z - H @ x
-    z_pred = cp.einsum("nij,nj->ni", H_batch, x_gpu)
+    z_pred = b.einsum("nij,nj->ni", H_batch, x_gpu)
     y = z_gpu - z_pred
 
     # Innovation covariance: S = H @ P @ H' + R
-    HP = cp.einsum("nij,njk->nik", H_batch, P_gpu)
-    S = cp.einsum("nij,nkj->nik", HP, H_batch) + R_batch
+    HP = b.einsum("nij,njk->nik", H_batch, P_gpu)
+    S = b.einsum("nij,nkj->nik", HP, H_batch) + R_batch
 
     # Kalman gain: K = P @ H' @ S^{-1}
     # First compute P @ H'
-    PHT = cp.einsum("nij,nkj->nik", P_gpu, H_batch)
+    PHT = b.einsum("nij,nkj->nik", P_gpu, H_batch)
 
     # Batch matrix inverse using batched solve
     # K = PHT @ S^{-1} is equivalent to solving S @ K' = PHT' for K
     # But for efficiency, we solve S @ X = I for S^{-1}, then compute K = PHT @ S^{-1}
-    S_inv = cp.linalg.inv(S)
-    K = cp.einsum("nij,njk->nik", PHT, S_inv)
+    S_inv = b.inv(S)
+    K = b.einsum("nij,njk->nik", PHT, S_inv)
 
     # Updated state: x_upd = x + K @ y
-    x_upd = x_gpu + cp.einsum("nij,nj->ni", K, y)
+    x_upd = x_gpu + b.einsum("nij,nj->ni", K, y)
 
     # Updated covariance using Joseph form: P_upd = (I - K @ H) @ P @ (I - K @ H)' + K @ R @ K'
-    eye = cp.eye(state_dim, dtype=cp.float64)
-    I_KH = eye - cp.einsum("nij,njk->nik", K, H_batch)
+    eye = b.eye(state_dim)
+    I_KH = eye - b.einsum("nij,njk->nik", K, H_batch)
 
     # Joseph form for numerical stability
-    P_upd = cp.einsum("nij,njk->nik", I_KH, P_gpu)
-    P_upd = cp.einsum("nij,nkj->nik", P_upd, I_KH)
-    KRK = cp.einsum("nij,njk,nlk->nil", K, R_batch, K)
+    P_upd = b.einsum("nij,njk->nik", I_KH, P_gpu)
+    P_upd = b.einsum("nij,nkj->nik", P_upd, I_KH)
+    KRK = b.einsum("nij,njk,nlk->nil", K, R_batch, K)
     P_upd = P_upd + KRK
 
     # Ensure symmetry
-    P_upd = (P_upd + cp.swapaxes(P_upd, -2, -1)) / 2
+    P_upd = (P_upd + b.swapaxes(P_upd, -2, -1)) / 2
 
     # Compute likelihoods
     # log(L) = -0.5 * (y' @ S^{-1} @ y + log(det(S)) + m*log(2*pi))
-    mahal_sq = cp.einsum("ni,nij,nj->n", y, S_inv, y)
-    sign, logdet = cp.linalg.slogdet(S)
+    mahal_sq = b.einsum("ni,nij,nj->n", y, S_inv, y)
+    sign, logdet = b.slogdet(S)
     log_likelihood = -0.5 * (mahal_sq + logdet + meas_dim * np.log(2 * np.pi))
-    likelihood = cp.exp(log_likelihood)
+    likelihood = b.exp(log_likelihood)
 
     return BatchKalmanUpdate(
         x=x_upd,
@@ -313,7 +317,6 @@ def batch_kf_update(
     )
 
 
-@requires("cupy", extra="gpu", feature="GPU Kalman filter")
 def batch_kf_predict_update(
     x: ArrayLike,
     P: ArrayLike,
@@ -424,7 +427,6 @@ class CuPyKalmanFilter:
     >>> result = kf.update(x_pred, P_pred, z)
     """
 
-    @requires("cupy", extra="gpu", feature="GPU Kalman filter")
     def __init__(
         self,
         state_dim: int,
@@ -434,32 +436,35 @@ class CuPyKalmanFilter:
         Q: Optional[ArrayLike] = None,
         R: Optional[ArrayLike] = None,
     ):
-        cp = import_optional("cupy", extra="gpu", feature="GPU Kalman filter")
+        b = get_compute_backend()
 
         self.state_dim = state_dim
         self.meas_dim = meas_dim
 
         # Initialize matrices on GPU
         if F is None:
-            self.F = cp.eye(state_dim, dtype=cp.float64)
+            self.F = b.eye(state_dim)
         else:
-            self.F = ensure_gpu_array(F, dtype=cp.float64)
+            self.F = b.asarray(F)
 
         if H is None:
-            self.H = cp.zeros((meas_dim, state_dim), dtype=cp.float64)
-            self.H[:meas_dim, :meas_dim] = cp.eye(meas_dim, dtype=cp.float64)
+            # Measure the leading meas_dim states. Built with numpy and
+            # converted, because backend arrays do not support item assignment.
+            H_default = np.zeros((meas_dim, state_dim))
+            H_default[:meas_dim, :meas_dim] = np.eye(meas_dim)
+            self.H = b.asarray(H_default)
         else:
-            self.H = ensure_gpu_array(H, dtype=cp.float64)
+            self.H = b.asarray(H)
 
         if Q is None:
-            self.Q = cp.eye(state_dim, dtype=cp.float64) * 0.01
+            self.Q = b.eye(state_dim) * 0.01
         else:
-            self.Q = ensure_gpu_array(Q, dtype=cp.float64)
+            self.Q = b.asarray(Q)
 
         if R is None:
-            self.R = cp.eye(meas_dim, dtype=cp.float64)
+            self.R = b.eye(meas_dim)
         else:
-            self.R = ensure_gpu_array(R, dtype=cp.float64)
+            self.R = b.asarray(R)
 
     def predict(
         self,

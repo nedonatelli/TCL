@@ -1,20 +1,37 @@
 """Tests for GPU acceleration module.
 
 These tests verify the GPU-accelerated implementations produce results
-consistent with CPU implementations. Tests are skipped if CuPy is not available.
+consistent with CPU implementations. They run on whichever GPU compute
+backend is installed -- CuPy (NVIDIA, float64) or MLX (Apple Silicon,
+float32) -- and are skipped only when neither is available.
+
+Tolerances are backend-dependent: CuPy keeps the original float64
+tolerances, MLX relaxes to float32-appropriate values.
 """
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-from pytcl.core.optional_deps import is_available
+from pytcl.gpu._backend import compute_backend_available, get_compute_backend
 
-# Skip all tests if CuPy is not available
+# Skip all tests if no GPU compute backend is available
 pytestmark = pytest.mark.skipif(
-    not is_available("cupy"),
-    reason="CuPy not available",
+    not compute_backend_available(),
+    reason="no GPU compute backend (cupy or mlx) available",
 )
+
+_FLOAT64 = compute_backend_available() and get_compute_backend().supports_float64
+# float32 backends resolve ~1e-7; keep float64 backends at their original
+# strict tolerances so CuPy validation is not weakened.
+RTOL_TIGHT = 1e-10 if _FLOAT64 else 1e-5
+RTOL_LOOSE = 1e-9 if _FLOAT64 else 1e-5
+RTOL_MED = 1e-8 if _FLOAT64 else 1e-4
+# An absolute floor is required alongside rtol: these fixtures use unseeded
+# random data, so state components land arbitrarily close to zero, where a
+# pure relative tolerance can never be met in float32 (1e-7 absolute noise
+# on a 1e-3 element is 1e-4 relative).
+ATOL = 0.0 if _FLOAT64 else 1e-6
 
 
 class TestGPUUtils:
@@ -51,11 +68,10 @@ class TestGPUUtils:
         assert xp is np
 
         if is_gpu_available():
-            import cupy as cp
-
+            # The module depends on which backend is active
             x_gpu = to_gpu(x_np)
             xp = get_array_module(x_gpu)
-            assert xp is cp
+            assert xp is get_compute_backend().xp
 
 
 class TestBatchKalmanFilter:
@@ -109,8 +125,8 @@ class TestBatchKalmanFilter:
         # CPU predictions
         for i in range(n_tracks):
             cpu_result = kf_predict(x[i], P[i], F, Q)
-            assert_allclose(x_pred_gpu[i], cpu_result.x, rtol=1e-10)
-            assert_allclose(P_pred_gpu[i], cpu_result.P, rtol=1e-10)
+            assert_allclose(x_pred_gpu[i], cpu_result.x, rtol=RTOL_TIGHT, atol=ATOL)
+            assert_allclose(P_pred_gpu[i], cpu_result.P, rtol=RTOL_TIGHT, atol=ATOL)
 
     def test_batch_kf_update_shapes(self):
         """Test batch KF update output shapes."""
@@ -166,8 +182,8 @@ class TestBatchKalmanFilter:
         # CPU updates
         for i in range(n_tracks):
             cpu_result = kf_update(x[i], P[i], z[i], H, R)
-            assert_allclose(x_upd_gpu[i], cpu_result.x, rtol=1e-9)
-            assert_allclose(P_upd_gpu[i], cpu_result.P, rtol=1e-9)
+            assert_allclose(x_upd_gpu[i], cpu_result.x, rtol=RTOL_LOOSE, atol=ATOL)
+            assert_allclose(P_upd_gpu[i], cpu_result.P, rtol=RTOL_LOOSE, atol=ATOL)
 
     def test_cupy_kalman_filter_class(self):
         """Test CuPyKalmanFilter class interface."""
@@ -251,13 +267,13 @@ class TestGPUParticleFilter:
         n = 100
         weights = np.ones(n) / n
         ess = gpu_effective_sample_size(weights)
-        assert_allclose(ess, n, rtol=1e-10)
+        assert_allclose(ess, n, rtol=RTOL_TIGHT, atol=ATOL)
 
         # Single dominant particle should give ESS ≈ 1
         weights = np.zeros(n)
         weights[0] = 1.0
         ess = gpu_effective_sample_size(weights)
-        assert_allclose(ess, 1.0, rtol=1e-10)
+        assert_allclose(ess, 1.0, rtol=RTOL_TIGHT, atol=ATOL)
 
     def test_cupy_particle_filter_class(self):
         """Test CuPyParticleFilter class interface."""
@@ -301,7 +317,7 @@ class TestGPUMatrixUtils:
         L_cpu = to_cpu(L)
 
         # Verify L @ L.T = A
-        assert_allclose(L_cpu @ L_cpu.T, A, rtol=1e-10)
+        assert_allclose(L_cpu @ L_cpu.T, A, rtol=RTOL_TIGHT, atol=ATOL)
 
     def test_gpu_qr(self):
         """Test GPU QR decomposition."""
@@ -317,10 +333,13 @@ class TestGPUMatrixUtils:
         R_cpu = to_cpu(R)
 
         # Verify Q @ R = A
-        assert_allclose(Q_cpu @ R_cpu, A, rtol=1e-10)
+        assert_allclose(Q_cpu @ R_cpu, A, rtol=RTOL_TIGHT, atol=ATOL)
 
         # Verify Q is orthogonal
-        assert_allclose(Q_cpu.T @ Q_cpu, np.eye(3), rtol=1e-10)
+        # Orthogonality: compare against identity with an ABSOLUTE tolerance.
+        # The off-diagonal targets are exactly 0, which no relative tolerance
+        # can satisfy.
+        assert_allclose(Q_cpu.T @ Q_cpu, np.eye(3), atol=1e-10 if _FLOAT64 else 1e-5)
 
     def test_gpu_solve(self):
         """Test GPU linear system solve."""
@@ -337,7 +356,7 @@ class TestGPUMatrixUtils:
         x_cpu = to_cpu(x)
 
         # Verify A @ x = b
-        assert_allclose(A @ x_cpu, b, rtol=1e-10)
+        assert_allclose(A @ x_cpu, b, rtol=RTOL_TIGHT, atol=ATOL)
 
     def test_gpu_inv(self):
         """Test GPU matrix inversion."""
@@ -352,7 +371,7 @@ class TestGPUMatrixUtils:
         A_inv_cpu = to_cpu(A_inv)
 
         # Verify A @ A_inv = I
-        assert_allclose(A @ A_inv_cpu, np.eye(2), rtol=1e-10)
+        assert_allclose(A @ A_inv_cpu, np.eye(2), rtol=RTOL_TIGHT, atol=ATOL)
 
     def test_memory_pool(self):
         """Test memory pool manager."""

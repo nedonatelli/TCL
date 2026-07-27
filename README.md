@@ -166,10 +166,20 @@ if is_gpu_available():
 ```
 
 **Supported backends:**
-- **NVIDIA CUDA**: Via CuPy (`pip install nrl-tracker[gpu]`)
-- **Apple Silicon**: Via MLX (`pip install nrl-tracker[gpu-apple]`)
+- **NVIDIA CUDA**: Via CuPy (`pip install nrl-tracker[gpu]`) — float64
+- **Apple Silicon**: Via MLX (`pip install nrl-tracker[gpu-apple]`) — float32
 
-The backend is automatically selected based on your platform.
+The backend is automatically selected based on your platform. Batch Kalman,
+EKF, UKF, particle-filter, and matrix operations all run on either backend.
+
+Measured on Apple Silicon (MLX), batch linear Kalman predict+update versus a
+per-track CPU loop: **3.4x at 100 tracks, 18x at 1,000, 38x at 20,000**.
+
+> **Precision note:** MLX computes in float32 (it raises on float64 GPU
+> operations), so results match the CPU implementations to ~1e-7 relative
+> rather than machine epsilon. The unscented filter is especially sensitive:
+> its default `alpha=1e-3` yields sigma-point weights of order 1e6, which
+> float32 cannot resolve — use `alpha >= 0.1` on MLX (the library warns).
 
 ## Module Structure
 

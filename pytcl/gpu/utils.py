@@ -519,16 +519,21 @@ def get_gpu_memory_info() -> dict[str, Union[str, int]]:
         return {"backend": "numpy", "free": 0, "total": 0, "used": 0}
 
     if backend == "mlx":
-        # MLX doesn't expose memory info directly, but we can get device info
         import mlx.core as mx
 
         device = mx.default_device()
+        # MLX reports allocator state rather than device totals. On Apple
+        # Silicon the GPU shares system memory, so there is no separate
+        # device total to report; 'total' stays -1.
+        active = int(mx.get_active_memory())
         return {
             "backend": "mlx",
             "device": str(device),
-            "free": -1,  # Not available
-            "total": -1,  # Not available
-            "used": -1,  # Not available
+            "free": -1,  # Unified memory: no distinct device pool
+            "total": -1,  # Unified memory: no distinct device total
+            "used": active,
+            "peak": int(mx.get_peak_memory()),
+            "cache": int(mx.get_cache_memory()),
         }
 
     # CuPy backend
