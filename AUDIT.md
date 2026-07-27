@@ -20,11 +20,11 @@ Inventory (2026-07-26): **1,351 public functions/methods, 226 classes** across
 | coordinate_systems (UTM, SEZ) | — | ✅ REFERENCE | UTM vs pyproj (sub-mm); SEZ convention + round trips |
 | assignment_algorithms (flow) | — | ✅ REFERENCE | min-cost flow vs scipy linear_sum_assignment |
 | gravity (Legendre, synthesis) | — | ✅ PROPERTY | derivative vs finite differences (4e-9); dual-implementation agreement |
-| coordinate_systems (rest) | 70 | 🔄 Wave 1 | rotations vs scipy Rotation; projections vs pyproj |
-| mathematical_functions (special/quad/interp) | ~150 | 🔄 Wave 1 | vs scipy/mpmath + analytic identities |
-| mathematical_functions (signal/transforms/stats/matrix) | ~180 | 🔄 Wave 1 | vs scipy.signal/linalg/stats, PyWavelets |
-| navigation | 83 | 🔄 Wave 1 | vs geographiclib; INS invariants |
-| containers + clustering | 118 | 🔄 Wave 1 | vs brute force + sklearn |
+| coordinate_systems | 70 | ✅ Wave 1 done | 37 REFERENCE + 32 PROPERTY + 1 structural; 5 bugs fixed (ecef2geodetic direct, polar stereographic S, rotmat2euler XYZ, azimuthal radius, axis-angle near pi) |
+| mathematical_functions (special/quad/interp) | 103 | ✅ Wave 1 done | 76 REFERENCE + 27 PROPERTY, 0 untested; 8 bugs fixed (Debye family ×4, Swerling 1-4, wright_omega, marcum broadcasting ×2) |
+| mathematical_functions (signal/transforms/stats/matrix) | 134 | ✅ Wave 1 done | 107 REFERENCE + 22 PROPERTY; 5 bugs fixed (CWT dilation, OS/GO/SO-CFAR thresholds, wavelet scale map, gaussian wavelet) |
+| navigation | 69 | ✅ Wave 1 done | 42 REFERENCE + 20 PROPERTY + 7 structural; gyrocompass_alignment fixed (45 deg heading errors) |
+| containers + clustering | 118 | ✅ Wave 1 done | 96 REFERENCE + 5 PROPERTY, 0 untested; CoverTree search rewritten (669 brute-force failures → 0) |
 | dynamic_estimation | 101 | ⬜ Wave 2 | linear-Gaussian identities, filterpy cross-check |
 | astronomical (rest) | 137 | ⬜ Wave 2 | Kepler identities, astropy cross-checks |
 | assignment_algorithms (rest) + static_estimation | 80 | ⬜ Wave 2 | scipy.optimize, lstsq references |
@@ -43,3 +43,4 @@ suspected-but-unconfirmed issues get GitHub issues and are linked here.
 |------|---------|---------|------------|
 | 2026-07-25 | multiple | 9 library bugs (network flow, UTM, atmosphere ×2, Legendre derivative, gravity signs, chol_semi_def, Swerling, lambert_w) | Fixed in v1.15.1 |
 | 2026-07-25/26 | magnetism, relativity, SEZ | Issue #3 (synthesis normalization, coefficient corruption, formula errors, convention) | Fixed in v1.16.0 |
+| 2026-07-26 | Wave 1 (5 packages) | 21 bugs fixed: CWT never dilated, OS-CFAR 14x design pfa, CoverTree invalid search, gyrocompass 45-deg errors, ecef2geodetic 37 km, polar stereographic S hemisphere, rotmat2euler XYZ negated, Debye family, Swerling 1-4, wright_omega overflow, more | Fixed on audit branch; ~15 ambiguous items for triage |

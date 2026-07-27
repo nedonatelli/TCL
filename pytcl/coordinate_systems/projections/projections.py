@@ -873,23 +873,47 @@ def polar_stereographic(
 
     Examples
     --------
+    Notes
+    -----
+    Uses the exact ellipsoidal polar stereographic equations
+    (Snyder 1987, eqs. 15-9 and 21-33/21-34), matching standard
+    UPS/EPSG implementations.
+
+    Examples
+    --------
     >>> import numpy as np
     >>> # Arctic location
     >>> result = polar_stereographic(np.radians(80), np.radians(45))
     """
-    lat0 = np.pi / 2 if north else -np.pi / 2
-    lon0 = 0.0
+    e = np.sqrt(e2)
 
+    # Work in the north-polar aspect; mirror for the south
+    if north:
+        phi, lam = lat, lon
+    else:
+        phi, lam = -lat, -lon
+
+    sin_phi = np.sin(phi)
+    t = np.tan(np.pi / 4 - phi / 2) * ((1 + e * sin_phi) / (1 - e * sin_phi)) ** (e / 2)
+    rho = 2 * a * k0 * t / np.sqrt((1 + e) ** (1 + e) * (1 - e) ** (1 - e))
+
+    x = rho * np.sin(lam)
+    y = -rho * np.cos(lam)
     if not north:
-        lat = -lat
-        lon = -lon
+        x, y = -x, -y
 
-    result = stereographic(lat, lon, lat0, lon0, k0, a, e2)
+    # Scale factor k = rho / (a * m); at the pole the limit is k0
+    cos_phi = np.cos(phi)
+    if cos_phi > 1e-12:
+        m = cos_phi / np.sqrt(1 - e2 * sin_phi**2)
+        scale = rho / (a * m)
+    else:
+        scale = k0
 
-    if not north:
-        return ProjectionResult(-result.x, -result.y, result.scale, -result.convergence)
+    # Grid convergence: +dlon (north aspect), -dlon (south aspect)
+    convergence = lam
 
-    return result
+    return ProjectionResult(x, y, scale, convergence)
 
 
 # =============================================================================
@@ -1098,6 +1122,15 @@ def lambert_conformal_conic_inverse(
 # =============================================================================
 
 
+def _authalic_radius(a: float, e2: float) -> float:
+    """Radius of the sphere with the same surface area as the ellipsoid."""
+    if e2 == 0:
+        return a
+    e = np.sqrt(e2)
+    q_p = 1 + (1 - e2) / (2 * e) * np.log((1 + e) / (1 - e))
+    return a * np.sqrt(q_p / 2)
+
+
 def azimuthal_equidistant(
     lat: float,
     lon: float,
@@ -1145,15 +1178,7 @@ def azimuthal_equidistant(
     ...                                np.radians(38.9), np.radians(-77))
     """
     # Use spherical approximation with authalic radius
-    R = a * np.sqrt(
-        (
-            1
-            + (1 - e2)
-            / (2 * np.sqrt(1 - e2))
-            * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))
-        )
-        / 2
-    )
+    R = _authalic_radius(a, e2)
 
     sin_lat = np.sin(lat)
     cos_lat = np.cos(lat)
@@ -1221,15 +1246,7 @@ def azimuthal_equidistant_inverse(
     Tuple[float, float]
         (latitude, longitude) in radians.
     """
-    R = a * np.sqrt(
-        (
-            1
-            + (1 - e2)
-            / (2 * np.sqrt(1 - e2))
-            * np.log((1 + np.sqrt(1 - e2)) / np.sqrt(e2))
-        )
-        / 2
-    )
+    R = _authalic_radius(a, e2)
 
     rho = np.sqrt(x**2 + y**2)
 

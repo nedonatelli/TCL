@@ -336,8 +336,8 @@ def elliprc(x: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
 
     Notes
     -----
-    - R_C(x, y) = arctan(sqrt((x-y)/y)) / sqrt(x-y) for x > y
-    - R_C(x, y) = arctanh(sqrt((y-x)/y)) / sqrt(y-x) for x < y
+    - R_C(x, y) = arctanh(sqrt((x-y)/x)) / sqrt(x-y) for x > y
+    - R_C(x, y) = arctan(sqrt((y-x)/x)) / sqrt(y-x) for x < y
 
     Examples
     --------

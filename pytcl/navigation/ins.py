@@ -934,7 +934,7 @@ def gyrocompass_alignment(
     gx_h = gyro[0] * cp + gyro[1] * sp * sr + gyro[2] * sp * cr
 
     # Heading from horizontal gyro components
-    yaw = np.arctan2(-gy_h, gx_h / omega_h) if abs(omega_h) > 1e-10 else 0.0
+    yaw = np.arctan2(-gy_h, gx_h) if abs(omega_h) > 1e-10 else 0.0
 
     return float(yaw)
 

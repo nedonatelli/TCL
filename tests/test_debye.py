@@ -280,8 +280,8 @@ class TestDebyeHeatCapacity:
         theta_D = 428.0  # Aluminum Debye temperature
         T_room = 300.0
         result = debye_heat_capacity(T_room, theta_D)
-        # At room temperature (T < Theta_D), heat capacity is between 0 and 1
-        assert 0.5 < result[0] < 0.8
+        # C_V/(3*N*k_B) = 4*D_3(x) - 3*x/(e^x - 1) at x = 428/300 is ~0.905
+        assert np.isclose(result[0], 0.90518982126177901, rtol=1e-10)
 
     def test_heat_capacity_different_debye_temps(self):
         """Test heat capacity with different Debye temperatures."""
