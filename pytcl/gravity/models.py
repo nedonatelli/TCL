@@ -185,7 +185,9 @@ def normal_gravity(
     # Free-air correction (second-order)
     a = constants.a
     f = constants.f
-    m = constants.omega**2 * a**2 / constants.GM
+    b = a * (1 - f)
+    # Geodetic parameter m = omega^2 a^2 b / GM (Heiskanen & Moritz 2-123)
+    m = constants.omega**2 * a**2 * b / constants.GM
 
     sin2_lat = np.sin(lat) ** 2
 
@@ -295,15 +297,18 @@ def gravity_j2(
     # Radial component (positive outward)
     g_r = -GM / r2 * (1 - 3 / 2 * J2 * a2_r2 * (3 * sin_lat**2 - 1))
 
-    # Latitudinal component
-    g_lat = -GM / r2 * (-3 * J2 * a2_r2 * sin_lat * cos_lat)
+    # Latitudinal component (northward): (1/r) dV/dlat with
+    # V = GM/r * (1 - J2 (a/r)^2 P2(sin(lat)))
+    g_lat = -GM / r2 * 3 * J2 * a2_r2 * sin_lat * cos_lat
 
-    # Add centrifugal acceleration
+    # Centrifugal acceleration (points away from the rotation axis):
+    # local up component +centrifugal*cos_lat, north component
+    # -centrifugal*sin_lat (toward the equator)
     centrifugal = omega**2 * r * cos_lat
 
     # Convert to local level frame (down, north, east)
     g_down = -g_r - centrifugal * cos_lat
-    g_north = -g_lat + centrifugal * sin_lat
+    g_north = g_lat - centrifugal * sin_lat
 
     magnitude = np.sqrt(g_down**2 + g_north**2)
 
@@ -332,7 +337,8 @@ def geoid_height_j2(
     Returns
     -------
     N : float
-        Geoid height (geoid - ellipsoid) in meters.
+        Deviation of the J2 equipotential surface from a mean sphere,
+        in meters (equal to -a * J2 * P2(sin(lat))).
 
     Examples
     --------
@@ -342,8 +348,10 @@ def geoid_height_j2(
 
     Notes
     -----
-    This is a simplified model. For accurate geoid heights,
-    use a full geoid model like EGM2008.
+    This is a simplified model: it gives the shape of the J2-only
+    (non-rotating) level surface relative to a sphere of radius a, NOT
+    the geoid height above the reference ellipsoid (which is what full
+    geoid models like EGM2008 provide; those values are within ~±100 m).
     """
     a = constants.a
     J2 = constants.J2

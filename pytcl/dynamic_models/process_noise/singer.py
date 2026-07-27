@@ -112,39 +112,44 @@ def q_singer(
     .. [1] Singer, R.A., "Estimating Optimal Tracking Filter Performance
            for Manned Maneuvering Targets", IEEE Trans. AES, 1970.
     """
-    # Use the standard formulas from Bar-Shalom, Li, Kirubarajan
-    # "Estimation with Applications to Tracking"
+    # Standard formulas from Bar-Shalom, Li, Kirubarajan,
+    # "Estimation with Applications to Tracking", Ch. 8 (with alpha = 1/tau),
+    # verified against Van Loan discretization of the continuous-time model.
     alpha = np.exp(-T / tau)
     alpha2 = alpha * alpha
+    beta = T / tau
     tau2 = tau * tau
     tau3 = tau2 * tau
     tau4 = tau3 * tau
     tau5 = tau4 * tau
-    T2 = T * T
-    T3 = T2 * T
 
     q_c = 2 * sigma_m**2 / tau
 
     Q_1d = np.zeros((3, 3), dtype=np.float64)
 
-    Q_1d[0, 0] = q_c * (
-        tau5 / 2 * (1 - alpha2 + 2 * T / tau * alpha2)
-        - tau4 * T * (1 - alpha) ** 2
-        - tau3 * T2 * (1 - alpha)
-        + tau2 * T3 / 3
-    )
+    if beta < 0.05:
+        # The exact expressions below suffer catastrophic cancellation for
+        # small T/tau (they can even go negative), so use Taylor series in
+        # beta = T/tau, accurate to ~1e-7 relative error at the threshold.
+        b00 = beta**5 / 10 - beta**6 / 18 + 5 * beta**7 / 252 - beta**8 / 180
+        b01 = beta**4 / 4 - beta**5 / 6 + 5 * beta**6 / 72 - beta**7 / 45
+        b02 = beta**3 / 3 - beta**4 / 3 + 11 * beta**5 / 60 - 13 * beta**6 / 180
+        b11 = 2 * beta**3 / 3 - beta**4 / 2 + 7 * beta**5 / 30 - beta**6 / 12
+    else:
+        b00 = 1 - alpha2 + 2 * beta + 2 * beta**3 / 3 - 2 * beta**2 - 4 * beta * alpha
+        b01 = alpha2 + 1 - 2 * alpha + 2 * beta * alpha - 2 * beta + beta**2
+        b02 = 1 - alpha2 - 2 * beta * alpha
+        b11 = 4 * alpha - alpha2 - 3 + 2 * beta
 
-    Q_1d[0, 1] = q_c * (
-        tau4 / 2 * (alpha2 - 1 + 2 * T / tau - 2 * T / tau * alpha)
-        + tau3 * T * (1 - alpha)
-        - tau2 * T2 / 2
-    )
+    Q_1d[0, 0] = q_c * tau5 / 2 * b00
+
+    Q_1d[0, 1] = q_c * tau4 / 2 * b01
     Q_1d[1, 0] = Q_1d[0, 1]
 
-    Q_1d[0, 2] = q_c * tau3 / 2 * (1 - alpha) ** 2
+    Q_1d[0, 2] = q_c * tau3 / 2 * b02
     Q_1d[2, 0] = Q_1d[0, 2]
 
-    Q_1d[1, 1] = q_c * tau3 / 2 * (4 * alpha - alpha2 - 3 + 2 * T / tau)
+    Q_1d[1, 1] = q_c * tau3 / 2 * b11
 
     Q_1d[1, 2] = q_c * tau2 / 2 * (1 - 2 * alpha + alpha2)
     Q_1d[2, 1] = Q_1d[1, 2]

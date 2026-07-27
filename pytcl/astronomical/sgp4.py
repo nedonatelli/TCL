@@ -262,8 +262,10 @@ class SGP4Satellite:
             + 0.0625 * temp2 * self.betao * (13.0 - 78.0 * theta2 + 137.0 * theta4)
         )
 
+        # con42 = 1 - 5*cos^2(i) (Vallado's notation)
+        con42 = 1.0 - 5.0 * theta2
         self.argpdot = (
-            -0.5 * temp1 * self.x1mth2
+            -0.5 * temp1 * con42
             + 0.0625 * temp2 * (7.0 - 114.0 * theta2 + 395.0 * theta4)
             + temp3 * (3.0 - 36.0 * theta2 + 49.0 * theta4)
         )
@@ -294,6 +296,45 @@ class SGP4Satellite:
 
         self.aycof = 0.25 * A30_OVER_K2 * self.sinio
         self.x7thm1 = 7.0 * theta2 - 1.0
+
+        # Drag periodic coefficients (Vallado's omgcof/xmcof/delmo/sinmao)
+        if self.ecco > 1.0e-4:
+            c3 = coef * tsi * A30_OVER_K2 * self.no_kozai * self.sinio / self.ecco
+            self.xmcof = -TWO_THIRDS * coef * self.bstar / eeta
+        else:
+            c3 = 0.0
+            self.xmcof = 0.0
+        self.omgcof = self.bstar * c3 * np.cos(self.argpo)
+        self.delmo = (1.0 + self.eta * np.cos(self.mo)) ** 3
+        self.sinmao = np.sin(self.mo)
+
+        # Simplified drag flag: skip higher-order drag terms for very low
+        # perigees (< 220 km) and for deep-space orbits (Vallado's isimp)
+        rp = self.ao * (1.0 - self.ecco)
+        self.isimp = self.is_deep_space or rp < (220.0 / RADIUS_EARTH + 1.0)
+
+        # Higher-order drag coefficients (d2-d4, t3cof-t5cof)
+        if not self.isimp:
+            c1sq = self.c1 * self.c1
+            self.d2 = 4.0 * self.ao * tsi * c1sq
+            temp = self.d2 * tsi * self.c1 / 3.0
+            self.d3 = (17.0 * self.ao + s4) * temp
+            self.d4 = (
+                0.5 * temp * self.ao * tsi * (221.0 * self.ao + 31.0 * s4) * self.c1
+            )
+            self.t3cof = self.d2 + 2.0 * c1sq
+            self.t4cof = 0.25 * (
+                3.0 * self.d3 + self.c1 * (12.0 * self.d2 + 10.0 * c1sq)
+            )
+            self.t5cof = 0.2 * (
+                3.0 * self.d4
+                + 12.0 * self.c1 * self.d3
+                + 6.0 * self.d2 * self.d2
+                + 15.0 * c1sq * (2.0 * self.d2 + c1sq)
+            )
+        else:
+            self.d2 = self.d3 = self.d4 = 0.0
+            self.t3cof = self.t4cof = self.t5cof = 0.0
 
         # For deep space
         self._ds_initialized = False
@@ -351,13 +392,23 @@ class SGP4Satellite:
         >>> state = sat.propagate(60.0)  # 60 minutes later
         >>> state = sat.propagate(-30.0)  # 30 minutes before epoch
         """
-        if self.is_deep_space:
-            return self._propagate_sdp4(tsince)
-        else:
-            return self._propagate_sgp4(tsince)
+        return self._propagate_core(tsince)
 
     def _propagate_sgp4(self, tsince: float) -> SGP4State:
         """SGP4 propagation (near-Earth satellites)."""
+        return self._propagate_core(tsince)
+
+    def _propagate_sdp4(self, tsince: float) -> SGP4State:
+        """SDP4 propagation (deep-space satellites).
+
+        This is a simplified implementation that applies the SGP4
+        secular and periodic terms but not the full lunar-solar
+        perturbations and resonance effects of SDP4.
+        """
+        return self._propagate_core(tsince)
+
+    def _propagate_core(self, tsince: float) -> SGP4State:
+        """Shared SGP4 propagation core (Vallado's reference algorithm)."""
         # Secular effects of atmospheric drag and gravitational perturbations
         xmdf = self.mo + self.mdot * tsince
         argpdf = self.argpo + self.argpdot * tsince
@@ -369,32 +420,28 @@ class SGP4Satellite:
         tempe = self.bstar * self.c4 * tsince
         templ = self.t2cof * tsq
 
-        # Handle higher-order effects for non-circular orbits
-        if self.ecco > 1.0e-4:
-            delomg = self.c5 * (np.sin(xmdf) - np.sin(self.mo))
-            delm = (
-                (
-                    self.c1
-                    * self.qzms24
-                    * (self.ao * self.betao2) ** 3
-                    * (1.0 + self.eta * np.cos(xmdf)) ** 3
-                    - (1.0 + self.eta * np.cos(self.mo)) ** 3
-                )
-                * tempe
-                / self.eta
-                / self.betao2
-            )
+        argpm = argpdf
+        mm = xmdf
+
+        # Higher-order drag effects (skipped for low perigee / deep space)
+        if not self.isimp:
+            delomg = self.omgcof * tsince
+            delmtemp = 1.0 + self.eta * np.cos(xmdf)
+            delm = self.xmcof * (delmtemp**3 - self.delmo)
             temp = delomg + delm
-            xmdf = xmdf + temp
-            argpdf = argpdf - temp
-            tempa = tempa - self.c1 * tsince * self.c5 * (
-                np.cos(xmdf) - np.cos(self.mo)
+            mm = xmdf + temp
+            argpm = argpdf - temp
+            tcube = tsq * tsince
+            tfour = tcube * tsince
+            tempa = tempa - self.d2 * tsq - self.d3 * tcube - self.d4 * tfour
+            tempe = tempe + self.bstar * self.c5 * (np.sin(mm) - self.sinmao)
+            templ = (
+                templ + self.t3cof * tcube + tfour * (self.t4cof + tsince * self.t5cof)
             )
-            tempe = tempe - self.c1 * self.c5 * (np.sin(xmdf) - np.sin(self.mo))
 
         a = self.ao * tempa * tempa
+        nm = KE / a**1.5  # Mean motion for current (drag-decayed) orbit
         e = self.ecco - tempe
-        xl = xmdf + argpdf + xnode + self.no_kozai * templ
 
         # Limit eccentricity
         if e < 1.0e-6:
@@ -402,11 +449,13 @@ class SGP4Satellite:
         if e > 0.999999:
             e = 0.999999
 
+        mm = mm + self.no_kozai * templ
+
         # Long-period periodics
-        axnl = e * np.cos(argpdf)
+        axnl = e * np.cos(argpm)
         temp = 1.0 / (a * (1.0 - e * e))
-        aynl = e * np.sin(argpdf) + temp * self.aycof
-        xlt = xl + temp * self.xlcof * axnl
+        aynl = e * np.sin(argpm) + temp * self.aycof
+        xlt = mm + argpm + xnode + temp * self.xlcof * axnl
 
         # Solve Kepler's equation
         u = (xlt - xnode) % (2.0 * np.pi)
@@ -417,6 +466,11 @@ class SGP4Satellite:
             f = u - eo1 + axnl * sineo1 - aynl * coseo1
             fp = 1.0 - axnl * coseo1 - aynl * sineo1
             delta = f / fp
+            # Limit Newton step for robustness (as in reference code)
+            if delta > 0.95:
+                delta = 0.95
+            elif delta < -0.95:
+                delta = -0.95
             eo1 = eo1 + delta
             if abs(delta) < 1.0e-12:
                 break
@@ -430,17 +484,10 @@ class SGP4Satellite:
             temp = SMALL
         pl = a * temp
         r = a * (1.0 - ecose)
-        # Velocity factor: in SGP4, rdot and rvdot must be multiplied by
-        # the mean motion to get proper velocity units (ER/min)
         rdot = KE * np.sqrt(a) * esine / r
         rvdot = KE * np.sqrt(pl) / r
 
         betal = np.sqrt(temp)
-        temp = ecose - axnl
-        if temp < 0.0:
-            temp = -temp
-        if temp < SMALL:
-            temp = SMALL
         sinu = a / r * (sineo1 - aynl - axnl * esine / (1.0 + betal))
         cosu = a / r * (coseo1 - axnl + aynl * esine / (1.0 + betal))
         u = np.arctan2(sinu, cosu)
@@ -448,7 +495,8 @@ class SGP4Satellite:
         sin2u = 2.0 * sinu * cosu
         cos2u = 2.0 * cosu * cosu - 1.0
         temp = 1.0 / pl
-        temp1 = 0.5 * K2 * temp
+        # J2 short-period coefficient: 0.5 * J2 / p (note K2 = J2 / 2)
+        temp1 = K2 * temp
         temp2 = temp1 * temp
 
         # Update for short-period periodics
@@ -459,11 +507,8 @@ class SGP4Satellite:
         uk = u - 0.25 * temp2 * self.x7thm1 * sin2u
         xnodek = xnode + 1.5 * temp2 * self.cosio * sin2u
         xinck = self.inclo + 1.5 * temp2 * self.cosio * self.sinio * cos2u
-        rdotk = rdot - KE * temp1 * self.x1mth2 * sin2u / self.no_kozai
-        rvdotk = (
-            rvdot
-            + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
-        )
+        rdotk = rdot - nm * temp1 * self.x1mth2 * sin2u
+        rvdotk = rvdot + nm * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1)
 
         # Orientation vectors
         sinuk = np.sin(uk)
@@ -487,128 +532,6 @@ class SGP4Satellite:
         # Position and velocity in TEME
         # Position: rk is in Earth radii, multiply by RADIUS_EARTH for km
         # Velocity: rdotk/rvdotk are in ER/min, convert to km/s
-        r_teme = rk * np.array([ux, uy, uz]) * RADIUS_EARTH
-        v_teme = (
-            (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz]))
-            * RADIUS_EARTH
-            / 60.0
-        )
-
-        return SGP4State(r=r_teme, v=v_teme, error=0)
-
-    def _propagate_sdp4(self, tsince: float) -> SGP4State:
-        """SDP4 propagation (deep-space satellites).
-
-        This is a simplified implementation that includes the basic
-        deep-space secular and long-period effects, but not the full
-        lunar-solar periodics.
-        """
-        # For satellites with period >= 225 minutes, the SDP4 model
-        # adds lunar-solar perturbations.
-
-        # Start with SGP4 secular terms
-        xmdf = self.mo + self.mdot * tsince
-        argpdf = self.argpo + self.argpdot * tsince
-        xnoddf = self.nodeo + self.nodedot * tsince
-
-        tsq = tsince * tsince
-        xnode = xnoddf + self.xnodcf * tsq
-        tempa = 1.0 - self.c1 * tsince
-        tempe = self.bstar * self.c4 * tsince
-        templ = self.t2cof * tsq
-
-        # Deep space secular effects (simplified)
-        # In full SDP4, these would include lunar-solar perturbations
-        # computed from stored initialization values
-
-        # For now, use SGP4-like propagation with period check
-        a = self.ao * tempa * tempa
-        e = self.ecco - tempe
-        xl = xmdf + argpdf + xnode + self.no_kozai * templ
-
-        # Limit eccentricity
-        if e < 1.0e-6:
-            e = 1.0e-6
-        if e > 0.999999:
-            e = 0.999999
-
-        # Long-period periodics
-        axnl = e * np.cos(argpdf)
-        temp = 1.0 / (a * (1.0 - e * e))
-        aynl = e * np.sin(argpdf) + temp * self.aycof
-        xlt = xl + temp * self.xlcof * axnl
-
-        # Solve Kepler's equation
-        u = (xlt - xnode) % (2.0 * np.pi)
-        eo1 = u
-        for _ in range(10):
-            sineo1 = np.sin(eo1)
-            coseo1 = np.cos(eo1)
-            f = u - eo1 + axnl * sineo1 - aynl * coseo1
-            fp = 1.0 - axnl * coseo1 - aynl * sineo1
-            delta = f / fp
-            eo1 = eo1 + delta
-            if abs(delta) < 1.0e-12:
-                break
-
-        # Short-period preliminary quantities
-        ecose = axnl * coseo1 + aynl * sineo1
-        esine = axnl * sineo1 - aynl * coseo1
-        elsq = axnl * axnl + aynl * aynl
-        temp = 1.0 - elsq
-        if temp < SMALL:
-            temp = SMALL
-        pl = a * temp
-        r = a * (1.0 - ecose)
-        # Velocity factor
-        rdot = KE * np.sqrt(a) * esine / r
-        rvdot = KE * np.sqrt(pl) / r
-
-        betal = np.sqrt(temp)
-        sinu = a / r * (sineo1 - aynl - axnl * esine / (1.0 + betal))
-        cosu = a / r * (coseo1 - axnl + aynl * esine / (1.0 + betal))
-        u = np.arctan2(sinu, cosu)
-
-        sin2u = 2.0 * sinu * cosu
-        cos2u = 2.0 * cosu * cosu - 1.0
-        temp = 1.0 / pl
-        temp1 = 0.5 * K2 * temp
-        temp2 = temp1 * temp
-
-        # Update for short-period periodics
-        rk = (
-            r * (1.0 - 1.5 * temp2 * betal * self.x3thm1)
-            + 0.5 * temp1 * self.x1mth2 * cos2u
-        )
-        uk = u - 0.25 * temp2 * self.x7thm1 * sin2u
-        xnodek = xnode + 1.5 * temp2 * self.cosio * sin2u
-        xinck = self.inclo + 1.5 * temp2 * self.cosio * self.sinio * cos2u
-        rdotk = rdot - KE * temp1 * self.x1mth2 * sin2u / self.no_kozai
-        rvdotk = (
-            rvdot
-            + KE * temp1 * (self.x1mth2 * cos2u + 1.5 * self.x3thm1) / self.no_kozai
-        )
-
-        # Orientation vectors
-        sinuk = np.sin(uk)
-        cosuk = np.cos(uk)
-        sinik = np.sin(xinck)
-        cosik = np.cos(xinck)
-        sinnok = np.sin(xnodek)
-        cosnok = np.cos(xnodek)
-
-        xmx = -sinnok * cosik
-        xmy = cosnok * cosik
-
-        ux = xmx * sinuk + cosnok * cosuk
-        uy = xmy * sinuk + sinnok * cosuk
-        uz = sinik * sinuk
-
-        vx = xmx * cosuk - cosnok * sinuk
-        vy = xmy * cosuk - sinnok * sinuk
-        vz = sinik * cosuk
-
-        # Position and velocity in TEME
         r_teme = rk * np.array([ux, uy, uz]) * RADIUS_EARTH
         v_teme = (
             (rdotk * np.array([ux, uy, uz]) + rvdotk * np.array([vx, vy, vz]))

@@ -243,10 +243,11 @@ def gaussian_wavelet(
     elif order == 4:
         wavelet = (3 - 6 * x**2 + x**4) * gauss
     else:
-        # General case using Hermite polynomials
-        from scipy.special import hermite
+        # General case using probabilists' Hermite polynomials:
+        # d^n/dx^n exp(-x^2/2) = (-1)^n He_n(x) exp(-x^2/2)
+        from scipy.special import hermitenorm
 
-        Hn = hermite(order)
+        Hn = hermitenorm(order)
         wavelet = ((-1) ** order) * Hn(x) * gauss
 
     # Normalize
@@ -312,21 +313,25 @@ def cwt(
     scales = np.asarray(scales, dtype=np.float64)
     n = len(signal)
 
-    # Determine wavelet function
-    def _morlet_default(M: int) -> NDArray[np.floating]:
-        return morlet_wavelet(M, w=5.0)
+    # Determine wavelet function. Named wavelets are dilated by the scale
+    # parameter so that each row of the CWT responds to a different frequency.
+    def _morlet_default(M: int, scale: float) -> NDArray[np.floating]:
+        return morlet_wavelet(M, w=5.0, s=scale)
 
-    def _ricker_default(M: int) -> NDArray[np.floating]:
-        return ricker_wavelet(M, a=1.0)
+    def _ricker_default(M: int, scale: float) -> NDArray[np.floating]:
+        return ricker_wavelet(M, a=scale)
 
-    def _gaussian1_default(M: int) -> NDArray[np.floating]:
-        return gaussian_wavelet(M, order=1)
+    def _gaussian1_default(M: int, scale: float) -> NDArray[np.floating]:
+        return gaussian_wavelet(M, order=1, sigma=scale)
 
-    def _gaussian2_default(M: int) -> NDArray[np.floating]:
-        return gaussian_wavelet(M, order=2)
+    def _gaussian2_default(M: int, scale: float) -> NDArray[np.floating]:
+        return gaussian_wavelet(M, order=2, sigma=scale)
 
     if callable(wavelet):
-        wavelet_func = wavelet
+
+        def wavelet_func(M: int, scale: float) -> NDArray[np.floating]:
+            return wavelet(M)
+
         wavelet_name = "custom"
     elif wavelet == "morlet":
         wavelet_func = _morlet_default
@@ -353,7 +358,7 @@ def cwt(
         if wavelet_length < 3:
             wavelet_length = 3
 
-        psi = wavelet_func(wavelet_length)
+        psi = wavelet_func(wavelet_length, scale)
 
         # Normalize by sqrt(scale)
         psi = psi / np.sqrt(scale)
@@ -465,6 +470,10 @@ def frequencies_to_scales(
         center_freq = 5.0 / (2 * np.pi)
     elif wavelet == "ricker":
         center_freq = 1.0 / (np.sqrt(2) * np.pi)
+    elif wavelet == "gaussian1":
+        center_freq = 0.5
+    elif wavelet == "gaussian2":
+        center_freq = 0.5
     else:
         center_freq = 1.0
 

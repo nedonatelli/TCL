@@ -9,21 +9,17 @@ from typing import Iterator
 import numpy as np
 import pytest
 
-# GPU doctests require a CuPy/MLX backend; mirror the skip behavior of
-# tests/test_gpu.py at collection time so --doctest-modules works everywhere.
+# GPU compute doctests require CuPy specifically: the batch filter examples
+# are CuPy-gated even on Apple Silicon (MLX covers only transfer/detection
+# utilities today — see AUDIT.md). Collect them only when CuPy is importable.
 try:
     import cupy  # noqa: F401
 
-    _HAS_GPU_BACKEND = True
+    _HAS_CUPY = True
 except Exception:
-    try:
-        import mlx.core  # noqa: F401
+    _HAS_CUPY = False
 
-        _HAS_GPU_BACKEND = True
-    except Exception:
-        _HAS_GPU_BACKEND = False
-
-collect_ignore_glob = [] if _HAS_GPU_BACKEND else ["pytcl/gpu/*"]
+collect_ignore_glob = [] if _HAS_CUPY else ["pytcl/gpu/*"]
 
 
 @pytest.fixture(autouse=True)

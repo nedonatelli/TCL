@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+**72 reference-verified bugs from the full-codebase correctness audit** (see
+[AUDIT.md](AUDIT.md); every public function is now validated against
+independent references — scipy, pyproj, geographiclib, astropy, the official
+sgp4 package, mpmath, sklearn, brute force, or hand derivation). Highlights:
+
+- **SGP4**: four compounding errors gave 728 km propagation error at 24 h;
+  now matches the official Vallado reference to <1 mm over ±3 days
+- **`lambert_izzo`** rewritten per Izzo (2015) — was structurally unable to
+  return hyperbolic solutions, with 3,500–10,800 km boundary errors
+- **`gmst`** double-counted the sidereal excess (up to 0.74°; exactly zero at
+  0h UT1, where the old tests sampled); TEME conversions had a sign-flipped
+  equation-of-equinoxes rotation; IAU-1980 nutation used wrong arguments
+- **Solid Earth tides had no semidiurnal component** (ecliptic positions used
+  as Earth-fixed); amplitudes 1.5×; tidal gravity sign inverted; pole tide
+  formulas wrong; atmospheric loading 100× too large
+- **`associated_legendre` was missing the √2 sectoral factor at the source**
+  (the root cause behind v1.16.0's magnetism fix); geoid heights never
+  subtracted the reference field (±3.4 km artifact); EGM parser read real NGA
+  files as zeros (Fortran D exponents)
+- **Filter core**: UD covariance recursion, SRIF prediction, two-filter
+  smoother double-counting, bootstrap PF likelihood off by −log N,
+  information-filter diffuse start never propagating, SR-UKF skipping its
+  covariance downdate (~900×), Gaussian-sum prune failsafe crash
+- **Assignment**: Murty k-best corrupted four ways; the default
+  `min_cost_assignment_via_flow` path suboptimal on 64% of random matrices;
+  JPDA applied Pd twice and understated covariance; 3D auction returned
+  infeasible assignments; `total_least_squares` sign error
+- **`cwt` never dilated the wavelet** (every scale row identical); OS-CFAR
+  delivered 14× the design false-alarm rate; GO/SO-CFAR double-halved;
+  Swerling 1–4 detection probabilities all wrong (SW2 always 1.0); Debye
+  functions and thermodynamic wrappers wrong
+- **`line_of_sight` Earth-curvature sign inverted** (beyond-horizon paths
+  reported visible; refraction reduced visibility)
+- **CoverTree search violated its pruning invariant** (duplicate/missing
+  neighbors); `gyrocompass_alignment` heading errors up to 45°;
+  `ecef2geodetic(method='direct')` off by 37 km; `polar_stereographic`
+  southern hemisphere unusable; `rotmat2euler('XYZ')` negated;
+  `q_singer` process noise off by four orders of magnitude and non-PSD
+- **io**: HDF5 metadata corruption of JSON-like strings, SQL export residual
+  off-by-one, migration templates emitting invalid Python
+- **GPU**: UKF sigma-point fallback crash/invalid square root; `sync_gpu` and
+  `clear_gpu_memory` were silent no-ops on MLX
+
+### Added
+
+- ~1,100 audit tests pinning every fix to an independent reference
+- [AUDIT.md](AUDIT.md) validation ledger; development-process rules in
+  CONTRIBUTING.md (REFERENCE/PROPERTY test classes required for numerical code)
+- CI: docs job now actually builds Sphinx (was a placeholder) and fails on
+  errors; coverage floor enforced
+
+### Known issues
+
+- The advertised Apple Silicon (MLX) acceleration does not exist for compute:
+  all batch filters are CuPy-only. Tracked with other design-level audit
+  findings in [#9](https://github.com/nedonatelli/TCL/issues/9)
+
 ## [1.16.0] - 2026-07-26
 
 ### Fixed

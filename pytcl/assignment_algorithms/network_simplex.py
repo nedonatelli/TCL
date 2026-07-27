@@ -160,6 +160,6 @@ def min_cost_flow_cost_scaling(
                     break
 
     # Compute total cost
-    total_cost = float(np.sum(flow[i] * edges_list[i]["cost"] for i in range(n_edges)))
+    total_cost = float(sum(flow[i] * edges_list[i]["cost"] for i in range(n_edges)))
 
     return flow, total_cost, iteration + 1

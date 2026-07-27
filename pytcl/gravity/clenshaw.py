@@ -155,14 +155,14 @@ def clenshaw_sum_order(
     # After loop, s_c_np1 = s_m, s_s_np1 = s_m (the result)
     # Need to multiply by P_m^m(cos_theta) to get the actual sum
 
-    # Compute P_m^m(cos_theta) using the sectoral formula
-    # P_m^m = (-1)^m * (2m-1)!! * sin^m(theta) (unnormalized)
-    # For normalized: P_m^m = sqrt((2m+1)/(2m)) * sin(theta) * P_{m-1}^{m-1}
-    # Starting from P_0^0 = 1
+    # Compute fully normalized P_m^m(cos_theta) using the sectoral recursion
+    # P_m^m = sqrt((2m+1)/(2m)) * sin(theta) * P_{m-1}^{m-1} for m > 1,
+    # with the m = 1 factor sqrt(3) supplying the sqrt(2 - delta_0m)
+    # full-normalization factor. Starting from P_0^0 = 1.
 
     P_mm = 1.0  # P_0^0 = 1
     for k in range(1, m + 1):
-        factor = np.sqrt((2 * k + 1) / (2 * k))
+        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
         P_mm = sin_theta * factor * P_mm
 
     return P_mm * s_c_np1, P_mm * s_s_np1
@@ -259,7 +259,7 @@ def clenshaw_sum_order_derivative(
     dP_mm = 0.0  # d(P_m^m)/d_theta
 
     for k in range(1, m + 1):
-        factor = np.sqrt((2 * k + 1) / (2 * k))
+        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
         # P_k^k = sin(theta) * factor * P_{k-1}^{k-1}
         # dP_k^k/d_theta = cos(theta) * factor * P_{k-1}^{k-1}
         #                  + sin(theta) * factor * dP_{k-1}^{k-1}/d_theta
@@ -340,8 +340,8 @@ def clenshaw_geoid(
     >>> GM = 3.986e14
     >>> gamma = 9.81
     >>> N = clenshaw_geoid(0, 0, C, S, R, GM, gamma)
-    >>> isinstance(N, float)
-    True
+    >>> N  # n=0,1 terms are excluded, so a pure central term gives 0
+    0.0
     """
     if n_max is None:
         n_max = C.shape[0] - 1
@@ -351,37 +351,30 @@ def clenshaw_geoid(
     cos_theta = np.cos(colat)
     sin_theta = np.sin(colat)
 
-    # On the reference ellipsoid, r ≈ R (simplified)
+    # Exclude the n=0,1 terms (reference field), as documented
+    C_dist = np.array(C, dtype=float, copy=True)
+    S_dist = np.array(S, dtype=float, copy=True)
+    nz = min(2, C_dist.shape[0])
+    C_dist[:nz, :] = 0.0
+    S_dist[:nz, :] = 0.0
+
+    # On the reference ellipsoid, r ≈ R (simplified), so (R/r)^n = 1
     r = R
-    r_ratio = R / r  # = 1 for geoid on reference sphere
 
     # Sum over all orders m
     V = 0.0
-    r_power_cache = np.zeros(n_max + 1)
-    r_power_cache[0] = 1.0
-    for n in range(1, n_max + 1):
-        r_power_cache[n] = r_power_cache[n - 1] * r_ratio
-
     for m in range(n_max + 1):
         # Get the Clenshaw sum for this order
-        sum_C, sum_S = clenshaw_sum_order(m, cos_theta, sin_theta, C, S, n_max)
+        sum_C, sum_S = clenshaw_sum_order(
+            m, cos_theta, sin_theta, C_dist, S_dist, n_max
+        )
 
-        # Compute cos(m*lon) and sin(m*lon)
         cos_m_lon = np.cos(m * lon)
         sin_m_lon = np.sin(m * lon)
 
-        # This gives sum_{n=m}^{n_max} P_n^m * C[n,m], etc.
-        # But we need to weight by (R/r)^n which is uniform for each n
-        # The Clenshaw sum already weights all n from m to n_max equally,
-        # so we need a different approach for r-weighting
-
-        # For now, sum contribution
         V += sum_C * cos_m_lon + sum_S * sin_m_lon
 
-    # Note: The above is a simplified version. For proper r-weighting,
-    # we need to incorporate (R/r)^n into the recursion.
-
-    # Scale by GM/(r*gamma)
+    # Bruns' formula: N = T / gamma with T = GM/r * V
     N = GM / (r * gamma) * V
 
     return N

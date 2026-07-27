@@ -129,6 +129,42 @@ def _normalize_angle(angle: float) -> float:
     return angle % (2 * np.pi)
 
 
+# Mean obliquity of the ecliptic at J2000.0 (radians)
+_OBLIQUITY_J2000 = np.radians(23.4392911)
+
+
+def _gmst_radians(mjd: float) -> float:
+    """Greenwich Mean Sidereal Time in radians (approximate, ~arcsec level)."""
+    d = mjd - 51544.5
+    return np.radians((280.46061837 + 360.98564736629 * d) % 360.0)
+
+
+def _body_unit_earth_fixed(
+    mjd: float, lat_ecl: float, lon_ecl: float
+) -> Tuple[float, float, float]:
+    """Convert a geocentric ecliptic direction to an Earth-fixed unit vector.
+
+    Rotates ecliptic coordinates to the equatorial frame (by the mean
+    obliquity) and then into the rotating Earth-fixed frame (by GMST),
+    so that dot products with station unit vectors give the correct
+    zenith angles including the Earth's rotation.
+    """
+    x = np.cos(lat_ecl) * np.cos(lon_ecl)
+    y = np.cos(lat_ecl) * np.sin(lon_ecl)
+    z = np.sin(lat_ecl)
+
+    # Ecliptic -> equatorial (rotation about the x-axis by the obliquity)
+    eps = _OBLIQUITY_J2000
+    y_eq = y * np.cos(eps) - z * np.sin(eps)
+    z_eq = y * np.sin(eps) + z * np.cos(eps)
+
+    # Equatorial -> Earth-fixed (rotation about the pole by GMST)
+    theta = _gmst_radians(mjd)
+    x_ef = x * np.cos(theta) + y_eq * np.sin(theta)
+    y_ef = -x * np.sin(theta) + y_eq * np.cos(theta)
+    return x_ef, y_ef, z_eq
+
+
 def julian_centuries_j2000(mjd: float) -> float:
     """
     Convert Modified Julian Date to Julian centuries since J2000.0.
@@ -419,7 +455,7 @@ def solid_earth_tide_displacement(
     >>> import numpy as np
     >>> # Displacement at 45N, 0E on MJD 58000
     >>> disp = solid_earth_tide_displacement(np.radians(45), 0, 58000)
-    >>> abs(disp.radial) < 0.5  # Radial displacement typically < 50cm
+    >>> abs(disp.radial) < 0.4  # Radial displacement typically < 40cm
     True
     """
     # Station geocentric position (approximate)
@@ -428,34 +464,30 @@ def solid_earth_tide_displacement(
     sin_lon = np.sin(lon)
     cos_lon = np.cos(lon)
 
-    # Station unit vector in geocentric frame
+    # Station unit vector in the Earth-fixed frame
     station_x = cos_lat * cos_lon
     station_y = cos_lat * sin_lon
     station_z = sin_lat
 
-    # Get Moon and Sun positions
+    # Get Moon and Sun positions (geocentric ecliptic coordinates)
     r_moon, lat_moon, lon_moon = moon_position_approximate(mjd)
     r_sun, lat_sun, lon_sun = sun_position_approximate(mjd)
 
-    # Moon unit vector
-    moon_x = np.cos(lat_moon) * np.cos(lon_moon)
-    moon_y = np.cos(lat_moon) * np.sin(lon_moon)
-    moon_z = np.sin(lat_moon)
-
-    # Sun unit vector
-    sun_x = np.cos(lat_sun) * np.cos(lon_sun)
-    sun_y = np.cos(lat_sun) * np.sin(lon_sun)
-    sun_z = np.sin(lat_sun)
+    # Body unit vectors in the Earth-fixed frame (accounts for the
+    # obliquity of the ecliptic and the Earth's rotation)
+    moon_x, moon_y, moon_z = _body_unit_earth_fixed(mjd, lat_moon, lon_moon)
+    sun_x, sun_y, sun_z = _body_unit_earth_fixed(mjd, lat_sun, lon_sun)
 
     # Zenith angle cosines
     cos_psi_moon = station_x * moon_x + station_y * moon_y + station_z * moon_z
-    cos_psi_sun = station_x * sun_x + station_y * sun_y + sun_z * station_z
+    cos_psi_sun = station_x * sun_x + station_y * sun_y + station_z * sun_z
 
-    # Tide-generating potential amplitude factors
-    # Amplitude = (3/2) * (GM_body/GM_earth) * (R_earth/r_body)^3 * R_earth
+    # Tide-generating potential amplitude, expressed as an equivalent
+    # displacement: W2/g = (GM_body/GM_earth) * (R_earth/r_body)^3 * R_earth
+    # (the degree-2 potential is W2 = GM_b R^2 / r_b^3 * P2(cos psi))
     R = EARTH_RADIUS
-    amp_moon = 1.5 * (MOON_GM / EARTH_GM) * (R / r_moon) ** 3 * R
-    amp_sun = 1.5 * (SUN_GM / EARTH_GM) * (R / r_sun) ** 3 * R
+    amp_moon = (MOON_GM / EARTH_GM) * (R / r_moon) ** 3 * R
+    amp_sun = (SUN_GM / EARTH_GM) * (R / r_sun) ** 3 * R
 
     # Legendre polynomial P2(cos(psi))
     P2_moon = 0.5 * (3 * cos_psi_moon**2 - 1)
@@ -567,7 +599,7 @@ def solid_earth_tide_gravity(
     --------
     >>> import numpy as np
     >>> grav = solid_earth_tide_gravity(np.radians(45), 0, 58000)
-    >>> abs(grav.delta_g) < 3e-6  # Typically < 3 microGal
+    >>> abs(grav.delta_g) < 2e-6  # Typically < 200 microGal
     True
     """
     # Station position
@@ -580,38 +612,35 @@ def solid_earth_tide_gravity(
     station_y = cos_lat * sin_lon
     station_z = sin_lat
 
-    # Get Moon and Sun positions
+    # Get Moon and Sun positions (geocentric ecliptic coordinates)
     r_moon, lat_moon, lon_moon = moon_position_approximate(mjd)
     r_sun, lat_sun, lon_sun = sun_position_approximate(mjd)
 
-    # Body unit vectors
-    moon_x = np.cos(lat_moon) * np.cos(lon_moon)
-    moon_y = np.cos(lat_moon) * np.sin(lon_moon)
-    moon_z = np.sin(lat_moon)
-
-    sun_x = np.cos(lat_sun) * np.cos(lon_sun)
-    sun_y = np.cos(lat_sun) * np.sin(lon_sun)
-    sun_z = np.sin(lat_sun)
+    # Body unit vectors in the Earth-fixed frame
+    moon_x, moon_y, moon_z = _body_unit_earth_fixed(mjd, lat_moon, lon_moon)
+    sun_x, sun_y, sun_z = _body_unit_earth_fixed(mjd, lat_sun, lon_sun)
 
     # Zenith angle cosines
     cos_psi_moon = station_x * moon_x + station_y * moon_y + station_z * moon_z
     cos_psi_sun = station_x * sun_x + station_y * sun_y + station_z * sun_z
 
-    # Gravity potential amplitude factors (m/s^2 equivalent)
+    # Tidal potential amplitude expressed as acceleration:
+    # W2/R * (R/g scaling) -> (GM_body/GM_earth) * (R_earth/r_body)^3 * g
     R = EARTH_RADIUS
     g = 9.80665  # Standard gravity
 
-    amp_moon = 1.5 * (MOON_GM / EARTH_GM) * (R / r_moon) ** 3 * g
-    amp_sun = 1.5 * (SUN_GM / EARTH_GM) * (R / r_sun) ** 3 * g
+    amp_moon = (MOON_GM / EARTH_GM) * (R / r_moon) ** 3 * g
+    amp_sun = (SUN_GM / EARTH_GM) * (R / r_sun) ** 3 * g
 
-    # Vertical tidal gravity: delta * amplitude * dP2/dr
-    # For gravity, we differentiate the potential
-    # dP2/d(cos_psi) = 3 * cos_psi
+    # Vertical tidal gravity change: the outward tidal acceleration at the
+    # surface is dW2/dr = 2*W2/R, scaled by the gravimetric factor delta.
+    # Measured (downward) gravity decreases when the body is overhead
+    # (P2 > 0), hence the negative sign.
     P2_moon = 0.5 * (3 * cos_psi_moon**2 - 1)
     P2_sun = 0.5 * (3 * cos_psi_sun**2 - 1)
 
-    delta_g_moon = delta * amp_moon * 2 * P2_moon
-    delta_g_sun = delta * amp_sun * 2 * P2_sun
+    delta_g_moon = -delta * amp_moon * 2 * P2_moon
+    delta_g_sun = -delta * amp_sun * 2 * P2_sun
 
     delta_g = delta_g_moon + delta_g_sun
 
@@ -738,7 +767,7 @@ def atmospheric_pressure_loading(
     lon: float,
     pressure: float,
     reference_pressure: float = 101325.0,
-    admittance: float = -0.35e-3,
+    admittance: float = -3.5e-6,
 ) -> TidalDisplacement:
     """
     Compute atmospheric pressure loading displacement.
@@ -754,7 +783,8 @@ def atmospheric_pressure_loading(
     reference_pressure : float, optional
         Reference pressure in Pascals. Default is 101325 Pa (1 atm).
     admittance : float, optional
-        Pressure admittance in m/Pa. Default is -0.35 mm/hPa.
+        Pressure admittance in m/Pa. Default is -3.5e-6 m/Pa
+        (i.e., -0.35 mm per hPa).
 
     Returns
     -------
@@ -848,33 +878,41 @@ def pole_tide_displacement(
     # Convert arcseconds to radians
     arcsec2rad = np.pi / (180.0 * 3600.0)
 
-    # Pole position anomaly
+    # Wobble parameters (IERS 2010, eq. 7.24: note the sign of m2)
     m1 = (xp - xp_mean) * arcsec2rad
-    m2 = (yp - yp_mean) * arcsec2rad
+    m2 = -(yp - yp_mean) * arcsec2rad
 
     # Angular velocity
     omega = WGS84.omega
     R = EARTH_RADIUS
 
-    # Pole tide potential coefficient
-    # Omega^2 * R^2 / g
+    # Pole tide potential coefficient: Omega^2 * R^2 / g
     g = 9.80665
     coeff = omega**2 * R**2 / g
 
     sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
     sin_2lat = np.sin(2 * lat)
+    cos_2lat = np.cos(2 * lat)
     cos_lon = np.cos(lon)
     sin_lon = np.sin(lon)
 
-    # Radial displacement
-    radial = -h2 * coeff * sin_2lat * (m1 * cos_lon + m2 * sin_lon)
+    # IERS Conventions (2010), Sec. 7.1.4, with theta = colatitude:
+    #   dV = -(Omega^2 r^2 / 2) sin(2 theta) (m1 cos lambda + m2 sin lambda)
+    #   S_r      = h2 dV / g
+    #   S_theta  = (l2/g) d(dV)/d(theta)          (southward)
+    #   S_lambda = (l2/(g sin theta)) d(dV)/d(lambda)  (eastward)
+    # Expressed in latitude: sin(2 theta) = sin(2 lat),
+    # cos(2 theta) = -cos(2 lat), cos(theta) = sin(lat).
+    lon_factor = m1 * cos_lon + m2 * sin_lon
 
-    # North displacement
-    north = l2 * coeff * 2 * cos_lat * (m1 * cos_lon + m2 * sin_lon)
+    # Radial displacement (about -33 mm/arcsec at 45 deg latitude)
+    radial = -0.5 * h2 * coeff * sin_2lat * lon_factor
 
-    # East displacement
-    east = l2 * coeff * 2 * sin_lat * (-m1 * sin_lon + m2 * cos_lon)
+    # North displacement = -S_theta (about 9 mm/arcsec)
+    north = -l2 * coeff * cos_2lat * lon_factor
+
+    # East displacement (about 9 mm/arcsec)
+    east = l2 * coeff * sin_lat * (m1 * sin_lon - m2 * cos_lon)
 
     return TidalDisplacement(radial=radial, north=north, east=east)
 

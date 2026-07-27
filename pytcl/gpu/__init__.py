@@ -23,7 +23,7 @@ For NVIDIA GPUs:
 
 For Apple Silicon:
 - macOS with Apple Silicon (M1, M2, M3, etc.)
-- MLX >= 0.5.0
+- MLX >= 0.16.0
 
 Installation
 ------------

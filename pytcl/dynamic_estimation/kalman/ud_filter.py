@@ -269,9 +269,11 @@ def ud_update_scalar(
     for j in range(n):
         D_upd[j] = D[j] * alpha[j] / alpha[j + 1]
         if j > 0:
-            gamma = g[j]
+            # Bierman's recursion: U_new[i,j] = U[i,j] - (f[j]/alpha[j]) * b_i
+            # where b accumulates the unnormalized gain (stored in g).
+            lam = -f[j] / alpha[j]
             for i in range(j):
-                U_upd[i, j] = U[i, j] + (gamma / alpha[j]) * (f[i] - U[i, j] * f[j])
+                U_upd[i, j] = U[i, j] + lam * g[i]
                 g[i] = g[i] + g[j] * U[i, j]
 
     # Kalman gain

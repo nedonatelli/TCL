@@ -122,6 +122,42 @@ EGM_PARAMETERS: Dict[str, Dict[str, float]] = {
 }
 
 
+def _subtract_reference_field(C: NDArray[np.floating], n_max: int) -> None:
+    """Subtract the WGS84 normal field's even zonal harmonics in place.
+
+    The disturbing potential T = W - U requires removing the reference
+    ellipsoid's normal potential U, whose only nonzero coefficients are
+    the even zonal harmonics J2, J4, J6, ... computed from the ellipsoid
+    parameters (Heiskanen & Moritz, "Physical Geodesy", eq. 2-92).
+    Without this step the geoid height / gravity disturbance would be
+    dominated by the full C20 term (a ~3 km false zonal signal).
+    """
+    f = WGS84.f
+    e2 = f * (2.0 - f)  # First eccentricity squared
+    J2 = WGS84.J2
+    for k in range(1, 6):  # Degrees 2, 4, 6, 8, 10
+        n = 2 * k
+        if n > n_max:
+            break
+        J2k = (
+            (-1) ** (k + 1)
+            * (3.0 * e2**k)
+            / ((2 * k + 1) * (2 * k + 3))
+            * (1.0 - k + 5.0 * k * J2 / e2)
+        )
+        # Fully normalized zonal coefficient of the normal field
+        C[n, 0] -= -J2k / np.sqrt(2 * n + 1)
+
+
+def _parse_coefficient(token: str) -> float:
+    """Parse a coefficient value, accepting Fortran D-exponent notation.
+
+    NGA EGM coefficient files use Fortran double-precision notation
+    (e.g., ``-0.484165143790815D-03``), which ``float()`` rejects.
+    """
+    return float(token.replace("D", "E").replace("d", "e"))
+
+
 def parse_egm_file(
     filepath: Path,
     n_max: Optional[int] = None,
@@ -133,6 +169,7 @@ def parse_egm_file(
 
     where n is degree, m is order, C_nm and S_nm are the normalized
     coefficients, and sigma values are optional uncertainties.
+    Coefficient values may use Fortran D exponents (e.g. ``1.0D-06``).
 
     Parameters
     ----------
@@ -157,7 +194,10 @@ def parse_egm_file(
                 continue
             parts = line.split()
             if len(parts) >= 4:
-                n = int(parts[0])
+                try:
+                    n = int(parts[0])
+                except ValueError:
+                    continue  # Header or comment line
                 max_n_in_file = max(max_n_in_file, n)
 
     # Determine actual n_max to use
@@ -184,8 +224,11 @@ def parse_egm_file(
             if len(parts) < 4:
                 continue
 
-            n = int(parts[0])
-            m = int(parts[1])
+            try:
+                n = int(parts[0])
+                m = int(parts[1])
+            except ValueError:
+                continue  # Header or comment line
 
             if n > actual_n_max:
                 continue
@@ -193,8 +236,8 @@ def parse_egm_file(
                 continue
 
             try:
-                C[n, m] = float(parts[2])
-                S[n, m] = float(parts[3])
+                C[n, m] = _parse_coefficient(parts[2])
+                S[n, m] = _parse_coefficient(parts[3])
             except (ValueError, IndexError):
                 continue
 
@@ -426,13 +469,14 @@ def geoid_height(
     r = coefficients.R
 
     # Compute disturbing potential using Clenshaw summation
-    # Exclude n=0,1 terms (reference field)
+    # Exclude n=0,1 terms and the normal field (reference field)
     C_dist = coefficients.C.copy()
     S_dist = coefficients.S.copy()
     C_dist[0, 0] = 0.0  # Remove central term
     if coefficients.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
+    _subtract_reference_field(C_dist, coefficients.n_max)
 
     T = clenshaw_potential(
         lat,
@@ -552,13 +596,14 @@ def gravity_disturbance(
     r = coefficients.R + h
 
     # Compute gravity disturbance using Clenshaw summation
-    # Exclude n=0,1 terms
+    # Exclude n=0,1 terms and the normal field (reference field)
     C_dist = coefficients.C.copy()
     S_dist = coefficients.S.copy()
     C_dist[0, 0] = 0.0
     if coefficients.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
+    _subtract_reference_field(C_dist, coefficients.n_max)
 
     g_r, g_lat, g_lon = clenshaw_gravity(
         lat,

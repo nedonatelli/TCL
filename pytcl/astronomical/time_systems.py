@@ -668,17 +668,16 @@ def gmst(jd_ut1: float) -> float:
     ----------
     .. [1] Explanatory Supplement to the Astronomical Almanac, 3rd ed.
     """
-    # Julian centuries from J2000.0
-    T = (jd_ut1 - JD_J2000) / 36525.0
+    # Julian centuries from J2000.0 at the preceding 0h UT1
+    jd_0h = np.floor(jd_ut1 - 0.5) + 0.5
+    T = (jd_0h - JD_J2000) / 36525.0
 
-    # GMST in seconds at 0h UT1
+    # GMST in seconds at 0h UT1 (IAU 1982 expression)
     gmst_sec = 24110.54841 + 8640184.812866 * T + 0.093104 * T**2 - 6.2e-6 * T**3
 
-    # Add rotation for time of day
-    jd_frac = jd_ut1 - int(jd_ut1) - 0.5
-    if jd_frac < 0:
-        jd_frac += 1.0
-    gmst_sec += jd_frac * 86400.0 * 1.00273790935
+    # Add rotation for time of day (sidereal/solar day ratio)
+    ut1_seconds = (jd_ut1 - jd_0h) * 86400.0
+    gmst_sec += ut1_seconds * 1.00273790935
 
     # Normalize to [0, 86400)
     gmst_sec = gmst_sec % 86400.0

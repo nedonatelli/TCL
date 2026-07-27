@@ -191,9 +191,9 @@ def wright_omega(z: ArrayLike) -> NDArray[np.complexfloating]:
     """
     z = np.asarray(z, dtype=np.complex128)
 
-    # Wright omega is W(exp(z)) for appropriate branch
-    # For most z, use principal branch
-    return np.asarray(sp.lambertw(np.exp(z)), dtype=np.complex128)
+    # scipy.special.wrightomega selects the correct branch (unwinding number)
+    # and avoids overflow of exp(z) for large Re(z)
+    return np.asarray(sp.wrightomega(z), dtype=np.complex128)
 
 
 def solve_exponential_equation(

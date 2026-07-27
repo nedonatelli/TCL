@@ -6,8 +6,9 @@ thermodynamic properties of solids (heat capacity, entropy).
 
 Performance
 -----------
-This module uses Numba JIT compilation for the numerical integration
-core, providing ~10-50x speedup for batch computations compared to
+This module uses Numba JIT compilation with rapidly convergent series
+expansions (Abramowitz & Stegun 27.1.1-27.1.3), providing high accuracy
+(~1e-14 relative) and ~10-50x speedup for batch computations compared to
 scipy.integrate.quad.
 """
 
@@ -21,79 +22,72 @@ from scipy.special import zeta
 # Pre-compute zeta values for common orders (n=1 to 10)
 _ZETA_VALUES = np.array([zeta(k + 1) for k in range(11)])
 
+# B_{2k} / (2k)! for k = 1..10 (Bernoulli numbers over factorials), used in
+# the small-x expansion of t/(e^t - 1) = 1 - t/2 + sum B_{2k} t^{2k}/(2k)!
+_BERNOULLI_COEF = np.array(
+    [
+        1.0 / 12.0,
+        -1.0 / 720.0,
+        1.0 / 30240.0,
+        -1.0 / 1209600.0,
+        1.0 / 47900160.0,
+        -691.0 / 1307674368000.0,
+        1.0 / 74724249600.0,
+        -3617.0 / 10670622842880000.0,
+        43867.0 / 5109094217170944000.0,
+        -174611.0 / 802857662698291200000.0,
+    ]
+)
 
-@njit(cache=True, fastmath=True)
-def _debye_integrand(t: float, n: int) -> float:
+
+@njit(cache=True)
+def _debye_small_x(x: float, n: int, coef: np.ndarray[Any, Any]) -> float:
     """
-    Integrand t^n / (exp(t) - 1) with numerical stability.
+    Bernoulli series expansion for x < 1 (converges for |x| < 2*pi).
 
-    Uses t^n * exp(-t) / (1 - exp(-t)) to avoid overflow.
+    D_n(x) = 1 - n*x/(2*(n+1)) + n * sum_k B_{2k}/(2k)! * x^{2k}/(2k+n)
     """
-    if t == 0.0:
-        return 0.0
-    exp_neg_t = np.exp(-t)
-    return (t**n) * exp_neg_t / (1.0 - exp_neg_t)
+    result = 1.0 - n * x / (2.0 * (n + 1))
+    x2 = x * x
+    xp = 1.0
+    for k in range(len(coef)):
+        xp *= x2
+        result += n * coef[k] * xp / (2 * (k + 1) + n)
+    return result
 
 
-@njit(cache=True, fastmath=True)
-def _debye_integrate_trapezoidal(x: float, n: int, num_points: int = 1000) -> float:
+@njit(cache=True)
+def _debye_large_x(x: float, n: int, n_fact: float, zeta_n_plus_1: float) -> float:
     """
-    Trapezoidal integration for the Debye integral.
+    Complement series for x >= 1 (A&S 27.1.2-27.1.3).
 
-    Parameters
-    ----------
-    x : float
-        Upper limit of integration.
-    n : int
-        Order of the Debye function.
-    num_points : int
-        Number of integration points.
-
-    Returns
-    -------
-    float
-        Integral value from 0 to x of t^n / (exp(t) - 1) dt.
+    D_n(x) = (n/x^n) * [n! * zeta(n+1)
+             - sum_{j>=1} e^{-jx} * (n!/j^{n+1}) * sum_{i=0}^{n} (jx)^i/i!]
     """
-    if x <= 0.0:
-        return 0.0
-
-    # Use adaptive step size - more points near t=0 where integrand changes rapidly
-    h = x / num_points
-    integral = 0.0
-
-    # Skip t=0 (integrand is 0 there by L'Hopital's rule)
-    # Start from small t to avoid singularity
-    for i in range(1, num_points):
-        t = i * h
-        integral += _debye_integrand(t, n)
-
-    # Trapezoidal rule: add half of endpoints (but t=0 contributes 0)
-    integral += 0.5 * _debye_integrand(x, n)
-
-    return integral * h
-
-
-@njit(cache=True, fastmath=True)
-def _debye_small_x(x: float, n: int) -> float:
-    """
-    Series expansion for small x.
-
-    D_n(x) ≈ 1 - n*x/(2*(n+1)) + n*x^2/(6*(n+2)) - ...
-    Uses first 4 terms for accuracy to ~1e-12 when x < 0.1.
-    """
-    # Bernoulli number coefficients for the series expansion
-    # D_n(x) = 1 - n*B_1*x/(n+1) + n*(n-1)*B_2*x^2/(2!*(n+2)) + ...
-    # B_1 = 1/2, B_2 = 1/6, B_4 = -1/30, B_6 = 1/42
-    term1 = 1.0
-    term2 = -n * x / (2.0 * (n + 1))
-    term3 = n * x * x / (6.0 * (n + 2))
-    term4 = -n * (x**3) / (60.0 * (n + 3))
-    return term1 + term2 + term3 + term4
+    total = n_fact * zeta_n_plus_1
+    for j in range(1, 500):
+        jx = j * x
+        if jx > 700.0:
+            break
+        # Partial exponential sum: sum_{i=0}^{n} (jx)^i / i!
+        s = 1.0
+        term = 1.0
+        for i in range(1, n + 1):
+            term *= jx / i
+            s += term
+        contrib = np.exp(-jx) * n_fact / float(j) ** (n + 1) * s
+        total -= contrib
+        if contrib < 1e-17 * total:
+            break
+    return n / x**n * total
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, parallel=True)
 def _debye_batch(
-    n: int, x_arr: np.ndarray[Any, Any], zeta_n_plus_1: float
+    n: int,
+    x_arr: np.ndarray[Any, Any],
+    zeta_n_plus_1: float,
+    coef: np.ndarray[Any, Any],
 ) -> np.ndarray[Any, Any]:
     """
     Batch computation of Debye function for array input.
@@ -106,6 +100,8 @@ def _debye_batch(
         Array of x values.
     zeta_n_plus_1 : float
         Pre-computed zeta(n+1) value.
+    coef : ndarray
+        Bernoulli coefficients B_{2k}/(2k)! for the small-x series.
 
     Returns
     -------
@@ -121,16 +117,10 @@ def _debye_batch(
         xi = x_arr[i]
         if xi == 0.0:
             result[i] = 1.0
-        elif xi < 0.1:
-            # Small x series expansion
-            result[i] = _debye_small_x(xi, n)
-        elif xi > 100.0:
-            # Large x asymptotic: D_n(x) -> n! * zeta(n+1) * n / x^n
-            result[i] = n_fact * zeta_n_plus_1 * n / (xi**n)
+        elif xi < 1.0:
+            result[i] = _debye_small_x(xi, n, coef)
         else:
-            # General case: numerical integration
-            integral = _debye_integrate_trapezoidal(xi, n, 2000)
-            result[i] = (n / xi**n) * integral
+            result[i] = _debye_large_x(xi, n, n_fact, zeta_n_plus_1)
 
     return result
 
@@ -195,7 +185,7 @@ def debye(
     else:
         zeta_n_plus_1 = zeta(n + 1)
 
-    return _debye_batch(n, x, zeta_n_plus_1)
+    return _debye_batch(n, x, zeta_n_plus_1, _BERNOULLI_COEF)
 
 
 def debye_1(x: ArrayLike) -> NDArray[np.floating]:
@@ -317,16 +307,16 @@ def debye_heat_capacity(
     Notes
     -----
     The Debye model heat capacity is:
-    C_V / (3*N*k_B) = 3 * (T/Θ_D)^3 * D_3(Θ_D/T)
+    C_V / (3*N*k_B) = 4*D_3(x) - 3*x/(e^x - 1), with x = Θ_D/T
 
     Limits:
     - High T (T >> Θ_D): C_V -> 3*N*k_B (classical)
-    - Low T (T << Θ_D): C_V ~ (T/Θ_D)^3 (quantum)
+    - Low T (T << Θ_D): C_V ~ (4*π^4/5) * (T/Θ_D)^3 (quantum)
 
     Examples
     --------
     >>> # Aluminum at room temperature (Θ_D ≈ 428 K)
-    >>> cv = debye_heat_capacity(300, 428)  # ~0.95
+    >>> cv = debye_heat_capacity(300, 428)  # ~0.91
     """
     T = np.asarray(temperature, dtype=np.float64)
     theta_D = float(debye_temperature)
@@ -336,12 +326,12 @@ def debye_heat_capacity(
     if theta_D <= 0:
         raise ValueError("Debye temperature must be positive")
 
-    x = theta_D / T
-    # C_V / (3*N*k_B) approaches 1 as T -> infinity (classical limit)
-    # The formula is: C_V = 3*N*k_B * D_3(x) where D_3 is the Debye function
-    # Note: Some sources use 3 * (T/Theta)^3 * integral, but the normalized
-    # heat capacity simply equals D_3(Theta/T) for the standard formulation
-    return debye(3, x)
+    x = np.atleast_1d(theta_D / T)
+    # C_V / (3*N*k_B) = 4*D_3(x) - 3*x/(e^x - 1)
+    # (obtained by integrating the Debye phonon spectrum by parts)
+    with np.errstate(over="ignore"):
+        boltzmann_term = np.where(x > 500, 0.0, 3.0 * x / np.expm1(np.minimum(x, 700)))
+    return 4.0 * debye(3, x) - boltzmann_term
 
 
 def debye_entropy(
@@ -368,7 +358,7 @@ def debye_entropy(
     Notes
     -----
     The entropy in the Debye model is:
-    S / (3*N*k_B) = 4*D_3(Θ_D/T) - 3*ln(1 - exp(-Θ_D/T))
+    S / (3*N*k_B) = (4/3)*D_3(Θ_D/T) - ln(1 - exp(-Θ_D/T))
     """
     T = np.asarray(temperature, dtype=np.float64)
     theta_D = float(debye_temperature)
@@ -378,13 +368,13 @@ def debye_entropy(
     if theta_D <= 0:
         raise ValueError("Debye temperature must be positive")
 
-    x = theta_D / T
+    x = np.atleast_1d(theta_D / T)
 
-    # Avoid overflow for large x
-    exp_neg_x = np.exp(-x)
-    log_term = np.where(x > 100, -x, np.log(1 - exp_neg_x))
+    # log1p(-e^{-x}) is accurate for all x > 0, including large x where
+    # e^{-x} underflows harmlessly to 0
+    log_term = np.log1p(-np.exp(-np.minimum(x, 700)))
 
-    return 4.0 * debye(3, x) - log_term
+    return (4.0 / 3.0) * debye(3, x) - log_term
 
 
 __all__ = [

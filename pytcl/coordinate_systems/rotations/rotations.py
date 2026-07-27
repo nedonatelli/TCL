@@ -268,16 +268,18 @@ def rotmat2euler(
         return np.array([yaw, pitch, roll], dtype=np.float64)
 
     elif sequence == "XYZ":
-        sy = np.sqrt(R[0, 0] ** 2 + R[0, 1] ** 2)
+        # R = Rx(x) @ Ry(y) @ Rz(z), so R[0, 2] = sin(y)
+        cy = np.sqrt(R[0, 0] ** 2 + R[0, 1] ** 2)
 
-        if sy > 1e-6:
-            x = np.arctan2(R[1, 2], R[2, 2])
-            y = np.arctan2(-R[0, 2], sy)
-            z = np.arctan2(R[0, 1], R[0, 0])
+        if cy > 1e-6:
+            x = np.arctan2(-R[1, 2], R[2, 2])
+            y = np.arctan2(R[0, 2], cy)
+            z = np.arctan2(-R[0, 1], R[0, 0])
         else:
-            x = np.arctan2(-R[2, 1], R[1, 1])
-            y = np.arctan2(-R[0, 2], sy)
-            z = 0
+            # Gimbal lock: y = +-pi/2, only x -+ z is determined; set z = 0
+            x = np.arctan2(np.sign(R[0, 2]) * R[1, 0], R[1, 1])
+            y = np.arctan2(R[0, 2], cy)
+            z = 0.0
 
         return np.array([x, y, z], dtype=np.float64)
 
@@ -384,8 +386,9 @@ def rotmat2axisangle(
         # No rotation
         return np.array([0, 0, 1], dtype=np.float64), 0.0
 
-    if np.abs(angle - np.pi) < 1e-10:
-        # 180 degree rotation - axis from eigenvector
+    if np.abs(angle - np.pi) < 1e-6:
+        # Near 180 degrees R - R.T vanishes; take the axis from the
+        # eigenvector of R with eigenvalue 1 instead.
         eigenvalues, eigenvectors = np.linalg.eig(R)
         idx = np.argmin(np.abs(eigenvalues - 1))
         axis = np.real(eigenvectors[:, idx])
@@ -396,7 +399,7 @@ def rotmat2axisangle(
         2 * np.sin(angle)
     )
 
-    return axis, float(angle)
+    return axis / np.linalg.norm(axis), float(angle)
 
 
 def quat2rotmat(q: ArrayLike) -> NDArray[np.floating]:

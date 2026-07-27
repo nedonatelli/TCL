@@ -59,8 +59,10 @@ def min_cost_flow_dijkstra_potentials(
     iterations : int
         Iterations used
     """
-    # Build edge structures
-    graph: list[list[int]] = [[] for _ in range(n_nodes)]
+    # Build edge structures. Each adjacency entry is (edge_idx, is_reverse):
+    # forward arcs consume remaining capacity; reverse arcs cancel existing
+    # flow at negated cost (residual network).
+    graph: list[list[tuple[int, int]]] = [[] for _ in range(n_nodes)]
     edge_data: list[dict[str, Any]] = []
 
     for idx, (u, v, cap, cost) in enumerate(edges):
@@ -73,16 +75,20 @@ def min_cost_flow_dijkstra_potentials(
                 "flow": 0.0,
             }
         )
-        graph[u].append(idx)
+        graph[u].append((idx, 0))
+        graph[v].append((idx, 1))
 
     # Initialize potentials to zero
     potential = np.zeros(n_nodes)
 
-    # Single Bellman-Ford pass to initialize potentials
+    # Bellman-Ford passes to initialize potentials
     # This ensures all reduced costs are non-negative at start
+    # (only forward arcs carry residual capacity while flow is zero)
     for _ in range(n_nodes - 1):
         for u in range(n_nodes):
-            for edge_idx in graph[u]:
+            for edge_idx, is_rev in graph[u]:
+                if is_rev:
+                    continue
                 e = edge_data[edge_idx]
                 v = e["to"]
                 if e["flow"] < e["capacity"] - 1e-10:
@@ -108,11 +114,12 @@ def min_cost_flow_dijkstra_potentials(
         if source == -1 or sink == -1:
             break
 
-        # Dijkstra with potentials
+        # Dijkstra with potentials over the residual network
         dist = np.full(n_nodes, np.inf)
         dist[source] = 0.0
         parent = np.full(n_nodes, -1, dtype=int)
         parent_edge = np.full(n_nodes, -1, dtype=int)
+        parent_rev = np.full(n_nodes, 0, dtype=int)
 
         pq = [(0.0, source)]
         visited = set()
@@ -127,19 +134,27 @@ def min_cost_flow_dijkstra_potentials(
             if d > dist[u] + 1e-10:
                 continue
 
-            for edge_idx in graph[u]:
+            for edge_idx, is_rev in graph[u]:
                 e = edge_data[edge_idx]
-                v = e["to"]
+                if is_rev:
+                    v = e["from"]
+                    arc_cost = -e["cost"]
+                    available = e["flow"]
+                else:
+                    v = e["to"]
+                    arc_cost = e["cost"]
+                    available = e["capacity"] - e["flow"]
 
-                if e["flow"] < e["capacity"] - 1e-10:
+                if available > 1e-10:
                     # Reduced cost using potentials
-                    reduced = e["cost"] + potential[u] - potential[v]
+                    reduced = arc_cost + potential[u] - potential[v]
                     new_dist = dist[u] + reduced
 
                     if new_dist < dist[v] - 1e-10:
                         dist[v] = new_dist
                         parent[v] = u
                         parent_edge[v] = edge_idx
+                        parent_rev[v] = is_rev
                         heapq.heappush(pq, (new_dist, v))
 
         if dist[sink] == np.inf:
@@ -147,15 +162,21 @@ def min_cost_flow_dijkstra_potentials(
 
         # Extract path
         path_edges = []
+        path_revs = []
         node = sink
         while parent[node] != -1:
             path_edges.append(parent_edge[node])
+            path_revs.append(parent_rev[node])
             node = parent[node]
         path_edges.reverse()
+        path_revs.reverse()
 
-        # Find bottleneck
+        # Find bottleneck (reverse arcs limited by cancelable flow)
         min_flow = min(
-            edge_data[e]["capacity"] - edge_data[e]["flow"] for e in path_edges
+            edge_data[e]["flow"]
+            if r
+            else edge_data[e]["capacity"] - edge_data[e]["flow"]
+            for e, r in zip(path_edges, path_revs)
         )
         min_flow = min(
             min_flow,
@@ -163,9 +184,12 @@ def min_cost_flow_dijkstra_potentials(
             -current_supplies[sink],
         )
 
-        # Push flow
-        for edge_idx in path_edges:
-            edge_data[edge_idx]["flow"] += min_flow
+        # Push flow (reverse arcs cancel existing flow)
+        for edge_idx, is_rev in zip(path_edges, path_revs):
+            if is_rev:
+                edge_data[edge_idx]["flow"] -= min_flow
+            else:
+                edge_data[edge_idx]["flow"] += min_flow
 
         current_supplies[source] -= min_flow
         current_supplies[sink] += min_flow

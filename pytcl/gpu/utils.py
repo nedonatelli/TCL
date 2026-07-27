@@ -484,7 +484,9 @@ def sync_gpu() -> None:
     if backend == "mlx":
         import mlx.core as mx
 
-        mx.eval()  # MLX uses lazy evaluation, eval() forces execution
+        # mx.eval() with no arguments is a no-op; synchronize() blocks until
+        # all queued GPU work completes.
+        mx.synchronize()
     elif backend == "cupy":
         import cupy as cp
 
@@ -564,9 +566,8 @@ def clear_gpu_memory() -> None:
     if backend == "mlx":
         import mlx.core as mx
 
-        # MLX has automatic memory management, but we can force a sync
-        mx.eval()
-        # Note: MLX doesn't have explicit memory pool clearing like CuPy
+        # Free cached buffers held by MLX's allocator
+        mx.clear_cache()
     elif backend == "cupy":
         import cupy as cp
 

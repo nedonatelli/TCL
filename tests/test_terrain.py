@@ -450,7 +450,24 @@ class TestLineOfSight:
         )
 
     def test_los_flat_terrain_visible(self, flat_dem):
-        """Test LOS over flat terrain is visible."""
+        """Test LOS over flat terrain is visible (short path, above the
+        earth-bulge for 10 m antennas)."""
+        result = line_of_sight(
+            flat_dem,
+            obs_lat=np.radians(35.45),
+            obs_lon=np.radians(-119.55),
+            obs_height=10.0,
+            tgt_lat=np.radians(35.55),
+            tgt_lon=np.radians(-119.45),
+            tgt_height=10.0,
+        )
+
+        assert result.visible
+        assert result.clearance > 0
+
+    def test_los_flat_terrain_beyond_horizon_blocked(self, flat_dem):
+        """A 94 km path with 10 m antennas is blocked by Earth curvature:
+        each antenna's optical horizon is only ~11 km away."""
         result = line_of_sight(
             flat_dem,
             obs_lat=np.radians(35.2),
@@ -461,8 +478,8 @@ class TestLineOfSight:
             tgt_height=10.0,
         )
 
-        assert result.visible
-        assert result.clearance > 0
+        assert not result.visible
+        assert result.clearance < 0
 
     def test_los_same_point(self, flat_dem):
         """Test LOS to same point."""
@@ -507,19 +524,24 @@ class TestLineOfSight:
         assert result.clearance < 0
 
     def test_los_with_refraction(self, flat_dem):
-        """Test LOS with atmospheric refraction."""
-        result = line_of_sight(
-            flat_dem,
-            obs_lat=np.radians(35.2),
-            obs_lon=np.radians(-119.8),
+        """Refraction (4/3 Earth) shrinks the earth bulge, extending
+        visibility on a marginal path that is blocked without it."""
+        # ~23.3 km path: bulge ~10.7 m > 10 m antennas (blocked optically),
+        # but 0.87 * bulge ~9.3 m < 10 m (visible with k=0.13).
+        args = dict(
+            obs_lat=np.radians(35.40),
+            obs_lon=np.radians(-119.5),
             obs_height=10.0,
-            tgt_lat=np.radians(35.8),
-            tgt_lon=np.radians(-119.2),
+            tgt_lat=np.radians(35.61),
+            tgt_lon=np.radians(-119.5),
             tgt_height=10.0,
-            refraction_coeff=0.13,  # 4/3 Earth model
         )
+        blocked = line_of_sight(flat_dem, **args, refraction_coeff=0.0)
+        result = line_of_sight(flat_dem, **args, refraction_coeff=0.13)
 
+        assert not blocked.visible
         assert result.visible
+        assert result.clearance > blocked.clearance
 
 
 # ============================================================================

@@ -500,20 +500,21 @@ def jpda_update(
 
     n_tracks = len(track_states)
     n_meas = len(measurements)
-    n_state = len(track_states[0]) if n_tracks > 0 else 0
     m = H.shape[0]
 
     # Compute gate threshold
     gate_threshold = chi2.ppf(gate_probability, df=m)
 
-    # Compute likelihood matrix and gating
+    # Compute likelihood matrix and gating.
+    # Pass detection_prob=1.0 so the likelihoods are pure Gaussian densities;
+    # jpda_probabilities applies Pd itself (passing Pd here would count it twice).
     likelihood_matrix, gated = compute_likelihood_matrix(
         track_states,
         track_covariances,
         measurements,
         H,
         R,
-        detection_prob,
+        1.0,
         gate_threshold,
     )
 
@@ -560,13 +561,15 @@ def jpda_update(
         # Covariance reduction from update
         P_c = P - K @ S @ K.T
 
-        # Spread of means
-        P_spread = np.zeros((n_state, n_state))
+        # Spread of innovations (Bar-Shalom):
+        # P_spread = K (sum_j beta_j y_j y_j^T - y_comb y_comb^T) K^T
+        y_outer_sum = np.zeros((m, m))
         for j in range(n_meas):
             if gated[i, j]:
                 innovation_j = measurements[j] - z_pred
-                y_weighted = innovation_j - combined_innovation
-                P_spread += beta[i, j] * K @ np.outer(y_weighted, y_weighted) @ K.T
+                y_outer_sum += beta[i, j] * np.outer(innovation_j, innovation_j)
+        y_outer_sum -= np.outer(combined_innovation, combined_innovation)
+        P_spread = K @ y_outer_sum @ K.T
 
         # Combined covariance
         P_upd = beta_0 * P + (1 - beta_0) * P_c + P_spread
@@ -660,14 +663,16 @@ def jpda(
     # Compute gate threshold
     gate_threshold = chi2.ppf(gate_probability, df=m)
 
-    # Compute likelihood matrix and gating
+    # Compute likelihood matrix and gating.
+    # Pass detection_prob=1.0 so the likelihoods are pure Gaussian densities;
+    # jpda_probabilities applies Pd itself (passing Pd here would count it twice).
     likelihood_matrix, gated = compute_likelihood_matrix(
         track_states,
         track_covariances,
         measurements,
         H,
         R,
-        detection_prob,
+        1.0,
         gate_threshold,
     )
 

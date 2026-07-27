@@ -365,7 +365,9 @@ def bootstrap_pf_update(
     sum_weights = np.sum(weights_unnorm)
     if sum_weights > 0:
         weights_new = weights_unnorm / sum_weights
-        log_likelihood = np.log(sum_weights / N)
+        # Marginal likelihood estimate: p(z) ~= sum_i w_i * p(z|x_i)
+        # (weights are assumed normalized on input)
+        log_likelihood = np.log(sum_weights)
     else:
         # All weights zero - degenerate case
         weights_new = np.ones(N) / N

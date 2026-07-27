@@ -204,11 +204,12 @@ class GaussianSumFilter:
 
     def _prune_components(self) -> None:
         """Remove components with weight below threshold."""
-        self.components = [c for c in self.components if c.w >= self.prune_threshold]
+        all_components = self.components
+        self.components = [c for c in all_components if c.w >= self.prune_threshold]
 
-        if len(self.components) == 0:
+        if len(self.components) == 0 and all_components:
             # Failsafe: keep best component
-            self.components = [max(self.components, key=lambda c: c.w)]
+            self.components = [max(all_components, key=lambda c: c.w)]
 
         # Renormalize weights
         total_weight = sum(c.w for c in self.components)

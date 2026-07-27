@@ -12,7 +12,7 @@ References
 """
 
 import logging
-from typing import Any, Callable, List, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -39,15 +39,19 @@ class CoverTreeNode:
         Level in the tree (determines covering radius 2^level).
     children : dict
         Children organized by level.
+    max_desc : float
+        Covering radius: maximum distance from this node's point to any
+        point in its subtree. Used for exact query pruning.
     """
 
-    __slots__ = ["index", "level", "children"]
+    __slots__ = ["index", "level", "children", "max_desc"]
 
     def __init__(self, index: int, level: int):
         self.index = index
         self.level = level
         # Children at each level
         self.children: dict[int, List["CoverTreeNode"]] = {}
+        self.max_desc = 0.0
 
     def add_child(self, level: int, child: "CoverTreeNode") -> None:
         """Add a child at the specified level."""
@@ -164,6 +168,23 @@ class CoverTree(MetricSpatialIndex):
         for i in range(1, self.n_samples):
             self._insert(i)
 
+        # Compute exact covering radii for query pruning. The simplified
+        # insertion does not maintain the strict cover invariant
+        # (d(parent, child) <= base^level), so queries prune using the
+        # actual maximum descendant distance instead of level bounds.
+        self._compute_covering_radii(self.root)
+
+    def _compute_covering_radii(self, node: CoverTreeNode) -> float:
+        """Compute max distance from node's point to any point in its subtree."""
+        max_desc = 0.0
+        for children in node.children.values():
+            for child in children:
+                child_radius = self._compute_covering_radii(child)
+                d = self._distance(node.index, child.index)
+                max_desc = max(max_desc, d + child_radius)
+        node.max_desc = max_desc
+        return max_desc
+
     def _insert(self, point_idx: int) -> None:
         """Insert a point into the cover tree."""
         if self.root is None:
@@ -269,76 +290,32 @@ class CoverTree(MetricSpatialIndex):
 
         neighbors: List[Tuple[int, float]] = []
 
-        # Queue of (node, level) pairs to explore
-        # Start with root
-        Q: Set[Tuple[int, int]] = {(self.root.index, self.max_level)}
+        def search(node: CoverTreeNode, dist: float) -> None:
+            # Each data point appears in exactly one node, so visiting
+            # each node once yields no duplicate indices.
+            if len(neighbors) < k:
+                neighbors.append((node.index, dist))
+                neighbors.sort(key=lambda x: x[1])
+            elif dist < neighbors[-1][1]:
+                neighbors[-1] = (node.index, dist)
+                neighbors.sort(key=lambda x: x[1])
 
-        def get_nodes_at_level(indices: Set[int], level: int) -> List[CoverTreeNode]:
-            """Get all nodes at a level given their indices."""
-            result = []
+            # Gather children with their distances, visit closest first
+            child_dists: List[Tuple[float, CoverTreeNode]] = []
+            for children in node.children.values():
+                for child in children:
+                    child_dists.append(
+                        (self._distance_to_point(child.index, query), child)
+                    )
+            child_dists.sort(key=lambda x: x[0])
 
-            # This is a simplification - in practice we'd maintain node references
-            # For now, search from root
-            def find_nodes(node: CoverTreeNode, target_level: int) -> None:
-                if node.index in indices and node.level >= target_level:
-                    result.append(node)
-                for child_level, children in node.children.items():
-                    for child in children:
-                        find_nodes(child, target_level)
+            for child_dist, child in child_dists:
+                # Any point in child's subtree is at distance
+                # >= child_dist - child.max_desc from the query.
+                if len(neighbors) < k or child_dist - child.max_desc < neighbors[-1][1]:
+                    search(child, child_dist)
 
-            if self.root:
-                find_nodes(self.root, level)
-            return result
-
-        level = self.max_level
-
-        while level >= self.min_level and Q:
-            # Compute distances to all points in Q
-            Q_dist = [(idx, self._distance_to_point(idx, query)) for idx, _ in Q]
-
-            # Update neighbors
-            for idx, dist in Q_dist:
-                if len(neighbors) < k:
-                    neighbors.append((idx, dist))
-                    neighbors.sort(key=lambda x: x[1])
-                elif dist < neighbors[-1][1]:
-                    neighbors[-1] = (idx, dist)
-                    neighbors.sort(key=lambda x: x[1])
-
-            # Current radius bound
-            if len(neighbors) >= k:
-                tau = neighbors[-1][1]
-
-                # Prune: keep only points within tau + 2^level of query
-                cover_dist = self._cover_distance(level)
-                Q_next: Set[Tuple[int, int]] = set()
-
-                for idx, dist in Q_dist:
-                    if dist <= tau + cover_dist:
-                        Q_next.add((idx, level - 1))
-
-                        # Find children of this node
-                        nodes = get_nodes_at_level({idx}, level)
-                        for node in nodes:
-                            for child in node.children.get(level - 1, []):
-                                child_dist = self._distance_to_point(child.index, query)
-                                if child_dist <= tau + cover_dist:
-                                    Q_next.add((child.index, level - 1))
-
-                Q = Q_next
-            else:
-                # Haven't found k neighbors yet, expand all
-                Q_next_expand: Set[Tuple[int, int]] = set()
-                for idx, _ in Q:
-                    Q_next_expand.add((idx, level - 1))
-                    nodes = get_nodes_at_level({idx}, level)
-                    for node in nodes:
-                        for child in node.children.get(level - 1, []):
-                            Q_next_expand.add((child.index, level - 1))
-                Q = Q_next_expand
-
-            level -= 1
-
+        search(self.root, self._distance_to_point(self.root.index, query))
         return neighbors
 
     def query_radius(
@@ -382,22 +359,21 @@ class CoverTree(MetricSpatialIndex):
 
         indices: List[int] = []
 
-        def search(node: CoverTreeNode, level: int) -> None:
-            dist = self._distance_to_point(node.index, query)
-
+        def search(node: CoverTreeNode, dist: float) -> None:
             # Check if this point is within radius
             if dist <= r:
                 indices.append(node.index)
 
-            # Check if children could be within radius
-            cover_dist = self._cover_distance(level)
-            if dist <= r + cover_dist:
-                # Search children at all levels
-                for child_level, children in node.children.items():
-                    for child in children:
-                        search(child, child_level)
+            # Any point in a child's subtree is at distance
+            # >= d(query, child) - child.max_desc, so descend only into
+            # children whose subtree could intersect the query ball.
+            for children in node.children.values():
+                for child in children:
+                    child_dist = self._distance_to_point(child.index, query)
+                    if child_dist - child.max_desc <= r:
+                        search(child, child_dist)
 
-        search(self.root, self.max_level)
+        search(self.root, self._distance_to_point(self.root.index, query))
         return indices
 
 

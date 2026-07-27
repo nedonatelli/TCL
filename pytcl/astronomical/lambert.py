@@ -276,6 +276,13 @@ def lambert_izzo(
     -----
     For multi-revolution transfers, there may be two solutions
     (low and high energy). This returns the low energy solution.
+
+    Raises
+    ------
+    ValueError
+        If the iteration does not converge (e.g. the requested time of
+        flight is below the minimum for the requested number of
+        revolutions).
     """
     r1 = np.asarray(r1, dtype=float)
     r2 = np.asarray(r2, dtype=float)
@@ -289,95 +296,133 @@ def lambert_izzo(
 
     # Cross product for angular momentum direction
     cross = np.cross(r1, r2)
-    h_hat = (
-        cross / np.linalg.norm(cross)
-        if np.linalg.norm(cross) > 1e-10
-        else np.array([0, 0, 1])
-    )
+    cross_mag = np.linalg.norm(cross)
+    if cross_mag < 1e-10:
+        raise ValueError("Cannot solve Lambert problem: collinear positions")
+    h_hat = cross / cross_mag
 
     # Transfer angle
     cos_dnu = np.dot(r1_hat, r2_hat)
     cos_dnu = np.clip(cos_dnu, -1, 1)
 
-    # Determine direction
+    # Determine direction and actual orbit normal
     if prograde:
         if h_hat[2] >= 0:
             dnu = np.arccos(cos_dnu)
+            n_hat = h_hat
         else:
             dnu = 2 * np.pi - np.arccos(cos_dnu)
+            n_hat = -h_hat
     else:
         if h_hat[2] < 0:
             dnu = np.arccos(cos_dnu)
+            n_hat = h_hat
         else:
             dnu = 2 * np.pi - np.arccos(cos_dnu)
+            n_hat = -h_hat
 
-    # Non-dimensional parameter
+    # Geometry parameters
     c = np.sqrt(r1_mag * r1_mag + r2_mag * r2_mag - 2 * r1_mag * r2_mag * np.cos(dnu))
     s = (r1_mag + r2_mag + c) / 2
 
-    # Characteristic velocity
-    lambda_param = np.sqrt(r1_mag * r2_mag) * np.cos(dnu / 2) / s
+    # Lambda parameter (negative for transfer angles > pi)
+    lam = np.sqrt(r1_mag * r2_mag) * np.cos(dnu / 2) / s
 
-    # Time of flight normalization
+    # Non-dimensional time of flight
     T = np.sqrt(2 * mu / s**3) * tof
 
-    # Use Householder iteration for x parameter
-    if multi_rev == 0:
-        # Single revolution - start with parabolic guess
-        x = 0.0
-    else:
-        # Multi-revolution - start closer to elliptic
-        x = 0.5
-
-    # Householder iteration
-    for _ in range(max_iter):
-        # Battin's x-parameter equations
-        y = np.sqrt(1 - lambda_param * lambda_param * (1 - x * x))
-
-        # Time of flight equation
-        if x < 1:
-            psi = np.arccos(
-                x * lambda_param + y * np.sqrt(1 - lambda_param * lambda_param)
-            )
+    def tof_from_x(x: float) -> Tuple[float, float]:
+        """Izzo (2015) time-of-flight equation. Returns (T(x), y(x))."""
+        y = np.sqrt(1.0 - lam * lam * (1.0 - x * x))
+        if abs(1.0 - x) < 1e-13 and multi_rev == 0:
+            # Parabolic limit
+            return (2.0 / 3.0) * (1.0 - lam**3), y
+        if x < 1.0:
+            psi = np.arccos(np.clip(x * y + lam * (1.0 - x * x), -1.0, 1.0))
         else:
-            psi = np.arccosh(
-                x * lambda_param + y * np.sqrt(lambda_param * lambda_param - 1)
-            )
+            psi = np.arccosh(x * y - lam * (x * x - 1.0))
+        one_m_x2 = 1.0 - x * x
+        T_x = ((psi + multi_rev * np.pi) / np.sqrt(abs(one_m_x2)) - x + lam * y) / (
+            one_m_x2
+        )
+        return T_x, y
 
-        T_x = (
-            psi + multi_rev * np.pi - (x - lambda_param * y) * np.sqrt(abs(1 - x * x))
-        ) / np.sqrt(abs(1 - x * x)) ** 3
+    # Initial guess (Izzo 2015)
+    T00 = np.arccos(lam) + lam * np.sqrt(1.0 - lam * lam)
+    T0 = T00 + multi_rev * np.pi
+    T1 = (2.0 / 3.0) * (1.0 - lam**3)
+    if multi_rev == 0:
+        if T >= T0:
+            x = (T0 / T) ** (2.0 / 3.0) - 1.0
+        elif T < T1:
+            x = 2.5 * T1 * (T1 - T) / (T * (1.0 - lam**5)) + 1.0
+        else:
+            x = (T0 / T) ** (np.log2(T1 / T0)) - 1.0
+    else:
+        # Low-energy (left branch) starter for multi-revolution transfers
+        tmp = ((multi_rev * np.pi + np.pi) / (8.0 * T)) ** (2.0 / 3.0)
+        x = (tmp - 1.0) / (tmp + 1.0)
 
-        # Check convergence
-        if abs(T_x - T) < tol:
+    # Householder third-order iteration (Izzo 2015, eq. 22 derivatives)
+    converged = False
+    y = np.sqrt(1.0 - lam * lam * (1.0 - x * x))
+    for _ in range(max_iter):
+        T_x, y = tof_from_x(x)
+        delta = T_x - T
+        if abs(delta) < tol:
+            converged = True
             break
 
-        # Derivative for Newton update
-        if abs(1 - x * x) > 1e-10:
-            dT_dx = (3 * T_x * x - 2 - 2 * lambda_param**3 * y) / (1 - x * x)
-        else:
-            dT_dx = 1.0  # Avoid division by zero
+        one_m_x2 = 1.0 - x * x
+        dT = (3.0 * T_x * x - 2.0 + 2.0 * lam**3 * x / y) / one_m_x2
+        ddT = (3.0 * T_x + 5.0 * x * dT + 2.0 * (1.0 - lam * lam) * lam**3 / y**3) / (
+            one_m_x2
+        )
+        dddT = (
+            7.0 * x * ddT + 8.0 * dT - 6.0 * (1.0 - lam * lam) * lam**5 * x / y**5
+        ) / one_m_x2
 
-        x = x - (T_x - T) / dT_dx
-        x = np.clip(x, -0.999, 0.999)  # Keep in bounds
+        dT2 = dT * dT
+        denom = dT * (dT2 - delta * ddT) + dddT * delta * delta / 6.0
+        if denom == 0.0:
+            break
+        x_new = x - delta * (dT2 - delta * ddT / 2.0) / denom
+        if multi_rev > 0 or x_new <= -1.0:
+            # Keep elliptic for multi-rev; never allow x <= -1
+            x_new = max(x_new, -1.0 + 1e-12)
+        if multi_rev > 0:
+            x_new = min(x_new, 1.0 - 1e-12)
+        if abs(x_new - x) < 1e-14:
+            x = x_new
+            T_x, y = tof_from_x(x)
+            converged = abs(T_x - T) < max(tol, 1e-9 * T)
+            break
+        x = x_new
+    else:
+        T_x, y = tof_from_x(x)
+        converged = abs(T_x - T) < max(tol, 1e-9 * T)
 
-    # Compute velocities
+    if not converged:
+        raise ValueError(
+            f"Izzo Lambert solver did not converge after {max_iter} iterations"
+        )
+
+    # Compute velocities (Izzo 2015)
     gamma = np.sqrt(mu * s / 2)
 
     rho = (r1_mag - r2_mag) / c
     sigma = np.sqrt(1 - rho * rho)
 
     # Radial and transverse velocity components
-    v_r1 = gamma * ((lambda_param * y - x) - rho * (lambda_param * y + x)) / r1_mag
-    v_r2 = -gamma * ((lambda_param * y - x) + rho * (lambda_param * y + x)) / r2_mag
+    v_r1 = gamma * ((lam * y - x) - rho * (lam * y + x)) / r1_mag
+    v_r2 = -gamma * ((lam * y - x) + rho * (lam * y + x)) / r2_mag
 
-    v_t1 = gamma * sigma * (y + lambda_param * x) / r1_mag
-    v_t2 = gamma * sigma * (y + lambda_param * x) / r2_mag
+    v_t1 = gamma * sigma * (y + lam * x) / r1_mag
+    v_t2 = gamma * sigma * (y + lam * x) / r2_mag
 
-    # Construct velocity vectors
-    # Transverse unit vector
-    t1_hat = np.cross(h_hat, r1_hat)
-    t2_hat = np.cross(h_hat, r2_hat)
+    # Construct velocity vectors using the actual orbit normal
+    t1_hat = np.cross(n_hat, r1_hat)
+    t2_hat = np.cross(n_hat, r2_hat)
 
     v1 = v_r1 * r1_hat + v_t1 * t1_hat
     v2 = v_r2 * r2_hat + v_t2 * t2_hat

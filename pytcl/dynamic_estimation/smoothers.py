@@ -589,7 +589,14 @@ def two_filter_smoother(
         x_pred = F_inv @ x
         P_pred = F_inv @ P @ F_inv.T + F_inv @ Q @ F_inv.T
 
-        # Backward update
+        # Store the backward *predicted* estimate at time k: it contains
+        # information from z_{k+1}, ..., z_N only. The forward filter already
+        # contains z_k, so fusing the backward-updated estimate here would
+        # double-count z_k.
+        x_bwd[k] = x_pred.copy()
+        P_bwd[k] = P_pred.copy()
+
+        # Backward update with z_k (used for earlier time steps)
         z = measurements[k]
         if z is not None:
             z = np.asarray(z, dtype=np.float64).flatten()
@@ -599,9 +606,6 @@ def two_filter_smoother(
         else:
             x = x_pred
             P = P_pred
-
-        x_bwd[k] = x.copy()
-        P_bwd[k] = P.copy()
 
     # Fuse forward and backward estimates using information form
     x_smooth: List[NDArray[np.floating]] = []

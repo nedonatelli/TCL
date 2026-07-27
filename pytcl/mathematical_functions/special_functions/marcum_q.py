@@ -68,8 +68,11 @@ def marcum_q(
     if m < 1:
         raise ValueError(f"Order m must be >= 1, got {m}")
 
+    # Broadcast so boolean masking works for any scalar/array combination
+    a, b = (np.array(v, dtype=np.float64) for v in np.broadcast_arrays(a, b))
+
     # Handle edge cases
-    result = np.ones_like(a * b, dtype=np.float64)
+    result = np.ones(a.shape, dtype=np.float64)
 
     # Where b == 0, Q_m(a, 0) = 1
     b_zero = b == 0
@@ -165,31 +168,23 @@ def log_marcum_q(
     if m < 1:
         raise ValueError(f"Order m must be >= 1, got {m}")
 
-    # For moderate Q values, compute directly
-    q_val = marcum_q(a, b, m)
+    out_shape = np.broadcast_shapes(a.shape, b.shape)
+    a_b = np.broadcast_to(a, out_shape).ravel()
+    b_b = np.broadcast_to(b, out_shape).ravel()
 
-    # Handle edge cases
-    result = np.log(q_val)
+    q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
 
-    # For very small Q values, use log survival function
+    with np.errstate(divide="ignore"):
+        result = np.log(q_val)
+
+    # For very small Q values, use log survival function for precision
     small_q = q_val < 1e-10
     if np.any(small_q):
         from scipy.stats import ncx2
 
-        # Use logsf for better precision
-        a_small = np.atleast_1d(a)[small_q] if np.atleast_1d(a).size > 1 else a
-        b_small = np.atleast_1d(b)[small_q] if np.atleast_1d(b).size > 1 else b
+        result[small_q] = ncx2.logsf(b_b[small_q] ** 2, 2 * m, a_b[small_q] ** 2)
 
-        if np.isscalar(a) and not np.isscalar(b):
-            a_small = np.full_like(b_small, a)
-        if np.isscalar(b) and not np.isscalar(a):
-            b_small = np.full_like(a_small, b)
-
-        result_arr = np.atleast_1d(result)
-        result_arr[small_q] = ncx2.logsf(b_small**2, 2 * m, a_small**2)
-        result = result_arr[0] if result.ndim == 0 else result_arr
-
-    return result
+    return result.reshape(out_shape)
 
 
 def marcum_q_inv(
@@ -326,11 +321,17 @@ def swerling_detection_probability(
 
     Notes
     -----
-    For Swerling 0 (non-fluctuating):
-        P_d = Q_n(sqrt(2*n*SNR), sqrt(threshold))
+    The detection threshold T is set from the false alarm probability via
+    pfa = gammaincc(n, T/2) (square-law detector, n integrated pulses).
 
-    For Swerling 1:
-        P_d = exp(-threshold / (2 + 2*n*SNR)) * (1 + n*SNR/...)
+    For Swerling 0 (non-fluctuating):
+        P_d = Q_n(sqrt(2*n*SNR), sqrt(T))
+
+    Swerling 1 and 2 use the exact closed forms for chi-squared (2 DOF)
+    target fluctuation with scan-to-scan (1) or pulse-to-pulse (2)
+    decorrelation. Swerling 3 uses the DiFranco-Rubin closed form for
+    chi-squared (4 DOF) scan-to-scan fluctuation, and Swerling 4 the exact
+    finite-sum for pulse-to-pulse chi-squared (4 DOF) fluctuation.
 
     Examples
     --------
@@ -344,33 +345,63 @@ def swerling_detection_probability(
            Targets". IRE Trans. on Information Theory, IT-6, 269-308.
     """
     snr = np.asarray(snr, dtype=np.float64)
+    n = n_pulses
 
     # Detection threshold from false alarm probability
     # For chi-squared with 2*n_pulses DOF: P(X > T) = Q(n, T/2) = pfa
-    threshold = 2 * sp.gammainccinv(n_pulses, pfa)
+    threshold = 2 * sp.gammainccinv(n, pfa)
+    vt = threshold / 2.0  # normalized threshold
 
     if swerling_case == 0:
         # Non-fluctuating (Marcum case)
-        a = np.sqrt(2 * n_pulses * snr)
+        a = np.sqrt(2 * n * snr)
         b = np.sqrt(threshold)
-        return marcum_q(a, b, m=n_pulses)
+        return marcum_q(a, b, m=n)
 
     elif swerling_case == 1:
-        # Slow Rayleigh fluctuation
-        avg_snr = snr
-        return np.exp(-threshold / (2 * (1 + n_pulses * avg_snr)))
+        # Scan-to-scan Rayleigh fluctuation (exact, DiFranco & Rubin)
+        if n == 1:
+            return np.exp(-vt / (1 + snr))
+        c = 1 + 1 / (n * snr)
+        return np.asarray(
+            1
+            - sp.gammainc(n - 1, vt)
+            + c ** (n - 1) * sp.gammainc(n - 1, vt / c) * np.exp(-vt / (1 + n * snr)),
+            dtype=np.float64,
+        )
 
     elif swerling_case == 2:
-        # Fast Rayleigh fluctuation (chi-squared fading)
-        avg_snr = snr
-        gamma_factor = 1 / (1 + n_pulses * avg_snr)
-        return sp.gammaincc(n_pulses, threshold * gamma_factor / 2)
+        # Pulse-to-pulse Rayleigh fluctuation (exact): the integrated sum is
+        # gamma-distributed with shape n and per-pulse scale (1 + snr)
+        return np.asarray(sp.gammaincc(n, vt / (1 + snr)), dtype=np.float64)
 
-    elif swerling_case in (3, 4):
-        # Chi-squared with 4 DOF (one dominant + Rayleigh)
-        avg_snr = snr
-        x = threshold / (1 + 0.5 * n_pulses * avg_snr)
-        return (1 + x / 2) * np.exp(-x / 2)
+    elif swerling_case == 3:
+        # Scan-to-scan chi-squared 4 DOF fluctuation (exact closed form)
+        k = 1 + n * snr / 2
+        return np.asarray(
+            (1 + 2 / (n * snr)) ** (n - 2)
+            * (1 + vt / k - 2 * (n - 2) / (n * snr))
+            * np.exp(-vt / k),
+            dtype=np.float64,
+        )
+
+    elif swerling_case == 4:
+        # Pulse-to-pulse chi-squared 4 DOF fluctuation (exact finite sum).
+        # Per-pulse MGF is (1-2s)/(1-(2+snr)s)^2, so the n-pulse sum expands
+        # into a finite mixture of gamma tails.
+        beta = 2 + snr
+        ratio = snr / beta
+        pd = np.zeros(snr.shape, dtype=np.float64)
+        for k in range(n + 1):
+            for j in range(k + 1):
+                pd += (
+                    sp.comb(n, k, exact=True)
+                    * sp.comb(k, j, exact=True)
+                    * (-1.0) ** j
+                    * ratio**k
+                    * sp.gammaincc(n + k - j, threshold / beta)
+                )
+        return pd
 
     else:
         raise ValueError(f"swerling_case must be 0-4, got {swerling_case}")

@@ -175,46 +175,22 @@ def ecef2geodetic(
                 np.abs(z) / np.abs(sin_lat) - N * (1 - e2),
             )
     else:
-        # Direct/closed-form method (simplified Vermeille)
-        zp = np.abs(z)
+        # Direct/closed-form method (Vermeille 2002)
+        e4 = e2**2
+        p_n = (x**2 + y**2) / a**2
+        q = (1 - e2) * z**2 / a**2
+        r = (p_n + q - e4) / 6
+        s = e4 * p_n * q / (4 * r**3)
+        t = np.cbrt(1 + s + np.sqrt(s * (2 + s)))
+        u = r * (1 + t + 1 / t)
+        v = np.sqrt(u**2 + e4 * q)
+        w = e2 * (u + v - q) / (2 * v)
+        k = np.sqrt(u + v + w**2) - w
+        D = k * p / (k + e2)
+        dist = np.sqrt(D**2 + z**2)
 
-        z2 = z**2
-        r2 = p**2 + z2
-        r = np.sqrt(r2)
-
-        s2 = z2 / r2
-        c2 = p**2 / r2
-        u = a**2 / r
-        v = b**2 / r
-
-        if np.any(c2 > 0.3):
-            s = (zp / r) * (1 + c2 * (a - b) / r)
-            lat = np.arcsin(s)
-            ss = s**2
-            c = np.sqrt(1 - ss)
-        else:
-            c = (p / r) * (1 - s2 * (a - b) / r)
-            lat = np.arccos(c)
-            ss = 1 - c**2
-            s = np.sqrt(ss)
-
-        g = 1 - e2 * ss
-        rg = a / np.sqrt(g)
-        u = p - rg * c
-        v = zp - rg * (1 - e2) * s
-        f_val = c * u + s * v
-        m = c * v - s * u
-        p2 = f_val + 0.5 * m**2 / rg
-
-        lat = np.arctan2(zp * (1 - e2), p * np.sqrt(g))
-        alt = p2 - a + rg * (1 - np.cos(lat - np.arctan2(zp, p)))
-
-        sin_lat = np.sin(lat)
-        N = a / np.sqrt(1 - e2 * sin_lat**2)
-        alt = p / np.cos(lat) - N
-
-    # Handle sign of latitude for southern hemisphere
-    lat = np.sign(z) * np.abs(lat)
+        lat = 2 * np.arctan2(z, D + dist)
+        alt = (k + e2 - 1) / k * dist
 
     if lat.size == 1:
         return lat.item(), lon.item(), alt.item()

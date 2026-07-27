@@ -46,7 +46,7 @@ Elevation: 180.2 m
 ...     tgt_lat=np.radians(35.8), tgt_lon=np.radians(-119.2), tgt_height=10.0
 ... )
 >>> print(f"Visible: {los.visible}, Clearance: {los.clearance:.1f} m")
-Visible: False, Clearance: -101.1 m
+Visible: False, Clearance: -249.8 m
 
 >>> # Load GEBCO/Earth2014 data (requires external files)
 >>> from pytcl.terrain import load_gebco, load_earth2014, create_test_gebco_dem

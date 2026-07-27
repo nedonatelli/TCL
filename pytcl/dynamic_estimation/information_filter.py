@@ -69,9 +69,9 @@ class SRIFState(NamedTuple):
     Attributes
     ----------
     r : ndarray
-        Information vector (R^{-T} @ x where Y = R @ R.T).
+        Information vector (R @ x where Y = R.T @ R).
     R : ndarray
-        Upper triangular square root of information matrix (Y = R @ R.T).
+        Upper triangular square root of information matrix (Y = R.T @ R).
     """
 
     r: NDArray[np.floating]
@@ -289,9 +289,29 @@ def information_filter(
         if np.linalg.matrix_rank(Y) == Y.shape[0]:
             y, Y = information_filter_predict(y, Y, F_k, Q_k)
         else:
-            # For singular Y (unknown state), just add process noise
-            # This is a special case for initialization
-            pass
+            # Singular Y (partially/fully unknown state): use the
+            # information-form prediction, which is well-defined for
+            # singular Y as long as F and Q are invertible:
+            #   M = F^{-T} Y F^{-1}
+            #   Y_pred = M - M (M + Q^{-1})^{-1} M
+            #   y_pred = (I - M (M + Q^{-1})^{-1}) F^{-T} y
+            try:
+                n = Y.shape[0]
+                F_inv = np.linalg.inv(F_k)
+                # Regularize a singular Q negligibly so Q^{-1} exists; the
+                # error is transient (the exact path takes over once Y
+                # becomes full rank).
+                eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
+                Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
+                M = F_inv.T @ Y @ F_inv
+                M = (M + M.T) / 2
+                L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
+                Y = M - L @ M
+                Y = (Y + Y.T) / 2
+                y = (np.eye(n) - L) @ (F_inv.T @ y)
+            except np.linalg.LinAlgError:
+                # F singular: leave information unchanged
+                pass
 
         # Update if measurement available
         z = measurements[k]
@@ -399,8 +419,9 @@ def srif_predict(
     # Convert back to square root information form
     # Y_pred = inv(P_pred), R_pred s.t. R_pred.T @ R_pred = Y_pred
     try:
-        L_pred = np.linalg.cholesky(P_pred)
-        R_pred = np.linalg.inv(L_pred).T  # Upper triangular
+        Y_pred = np.linalg.inv(P_pred)
+        Y_pred = (Y_pred + Y_pred.T) / 2
+        R_pred = np.linalg.cholesky(Y_pred).T  # Upper triangular
     except np.linalg.LinAlgError:
         # Fallback using SVD
         U, s, Vt = np.linalg.svd(P_pred)

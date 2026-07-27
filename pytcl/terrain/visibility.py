@@ -170,9 +170,9 @@ def line_of_sight(
     ...     np.radians(-120), np.radians(-119), elevation=100)
     >>> result = line_of_sight(
     ...     dem,
-    ...     np.radians(35.3), np.radians(-119.7), 10,
-    ...     np.radians(35.7), np.radians(-119.3), 10)
-    >>> result.visible  # Clear LOS over flat terrain
+    ...     np.radians(35.48), np.radians(-119.52), 10,
+    ...     np.radians(35.52), np.radians(-119.48), 10)
+    >>> result.visible  # Clear LOS over flat terrain (short path)
     True
     """
     # Effective Earth radius for refraction
@@ -213,10 +213,12 @@ def line_of_sight(
     t = distances / total_distance
     los_heights = obs_total * (1 - t) + tgt_total * t
 
-    # Apply Earth curvature correction
-    # For a spherical Earth, the drop due to curvature is approximately:
-    # h_drop = d^2 / (2 * R_effective)
-    curvature_drop = distances * (total_distance - distances) / (2 * effective_radius)
+    # Apply Earth curvature correction (earth bulge)
+    # Relative to the straight chord between the endpoints, the spherical
+    # Earth's surface bulges upward by approximately:
+    # h_bulge = d1 * d2 / (2 * R_effective)
+    # where d1 and d2 are the distances to the two endpoints.
+    earth_bulge = distances * (total_distance - distances) / (2 * effective_radius)
 
     # Get terrain elevations along path
     terrain_elevs = np.zeros(n_samples)
@@ -225,8 +227,8 @@ def line_of_sight(
         terrain_elevs[i] = result.elevation if result.valid else 0.0
 
     # Compute clearance (LOS height above terrain, accounting for curvature)
-    # The terrain appears lower by curvature_drop due to Earth's curvature
-    effective_terrain = terrain_elevs - curvature_drop
+    # The terrain is effectively raised by the earth bulge, reducing clearance
+    effective_terrain = terrain_elevs + earth_bulge
     clearances = los_heights - effective_terrain
 
     # Find minimum clearance (skip endpoints)

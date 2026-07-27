@@ -24,11 +24,13 @@ References
        Systems, 19(4), 608-621.
 """
 
-from typing import Any, NamedTuple, Optional
+from math import comb
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
+from scipy.optimize import brentq
 
 # =============================================================================
 # Result Types
@@ -81,6 +83,40 @@ class CFARResult2D(NamedTuple):
 # =============================================================================
 
 
+def _pfa_ca(alpha: float, n: int) -> float:
+    """Exact Pfa for CA-CFAR with n reference cells (exponential noise)."""
+    return float((1.0 + alpha / n) ** (-n))
+
+
+def _pfa_so(alpha: float, n: int) -> float:
+    """Exact Pfa for SO-CFAR with n cells per half window (Gandhi & Kassam 1988)."""
+    r = 2.0 + alpha / n
+    return float(2.0 * sum(comb(n + j - 1, j) * r ** (-(n + j)) for j in range(n)))
+
+
+def _pfa_go(alpha: float, n: int) -> float:
+    """Exact Pfa for GO-CFAR with n cells per half window (Gandhi & Kassam 1988)."""
+    return 2.0 * _pfa_ca(alpha, n) - _pfa_so(alpha, n)
+
+
+def _pfa_os(alpha: float, n: int, k: int) -> float:
+    """Exact Pfa for OS-CFAR using the k-th order statistic of n cells (Rohling 1983)."""
+    p = 1.0
+    for i in range(k):
+        p *= (n - i) / (n - i + alpha)
+    return p
+
+
+def _solve_alpha(pfa_func: Callable[[float], float], pfa: float) -> float:
+    """Solve pfa_func(alpha) = pfa for alpha (pfa_func monotone decreasing)."""
+    hi = 1.0
+    while pfa_func(hi) > pfa:
+        hi *= 2.0
+        if hi > 1e12:
+            break
+    return float(brentq(lambda a: pfa_func(a) - pfa, 0.0, hi))
+
+
 def threshold_factor(
     pfa: float,
     n_ref: int,
@@ -95,7 +131,8 @@ def threshold_factor(
     pfa : float
         Desired probability of false alarm (0 < pfa < 1).
     n_ref : int
-        Number of reference cells.
+        Total number of reference cells. For GO/SO-CFAR each half window
+        contains n_ref // 2 cells.
     method : {'ca', 'go', 'so', 'os'}, optional
         CFAR method. Default is 'ca'.
     k : int, optional
@@ -122,6 +159,13 @@ def threshold_factor(
     Solving for alpha::
 
         alpha = n_ref * (Pfa^(-1/n_ref) - 1)
+
+    For GO/SO-CFAR the exact expressions from Gandhi & Kassam (1988) are
+    solved numerically. For OS-CFAR the exact Rohling (1983) relation::
+
+        Pfa = prod_{i=0}^{k-1} (n_ref - i) / (n_ref - i + alpha)
+
+    is solved numerically.
     """
     if pfa <= 0 or pfa >= 1:
         raise ValueError("pfa must be between 0 and 1")
@@ -129,22 +173,19 @@ def threshold_factor(
         raise ValueError("n_ref must be at least 1")
 
     if method == "ca":
-        # CA-CFAR threshold factor
+        # CA-CFAR threshold factor (exact closed form)
         alpha = n_ref * (pfa ** (-1.0 / n_ref) - 1)
     elif method == "go" or method == "so":
-        # For GO/SO CFAR, use CA formula with half the cells as approximation
-        n_half = n_ref // 2
-        if n_half < 1:
-            n_half = 1
-        alpha = n_half * (pfa ** (-1.0 / n_half) - 1)
+        # Exact GO/SO-CFAR threshold with n_ref // 2 cells per half window
+        n_half = max(1, n_ref // 2)
+        pfa_func = _pfa_go if method == "go" else _pfa_so
+        alpha = _solve_alpha(lambda a: pfa_func(a, n_half), pfa)
     elif method == "os":
         if k is None:
             k = int(0.75 * n_ref)  # Default: 75th percentile
-        # OS-CFAR uses order statistics
-        # Approximate formula based on Rohling (1983)
-        alpha = n_ref * (pfa ** (-1.0 / n_ref) - 1)
-        # Adjustment factor for order statistic
-        alpha = alpha * (n_ref - k + 1) / n_ref
+        k = max(1, min(int(k), n_ref))
+        # Exact OS-CFAR threshold from Rohling (1983)
+        alpha = _solve_alpha(lambda a: _pfa_os(a, n_ref, k), pfa)
     else:
         raise ValueError(f"Unknown method: {method}")
 
@@ -188,10 +229,14 @@ def detection_probability(
 
     Notes
     -----
-    For a non-fluctuating target (Swerling 0/Marcum case) with CA-CFAR:
+    The implemented formula::
+
         Pd = (1 + alpha/(n_ref*(1+snr)))^(-n_ref)
 
-    where alpha is the threshold factor for the given Pfa.
+    (alpha being the threshold factor for the given Pfa) is exact for a
+    Swerling 1 (exponentially fluctuating) target with CA-CFAR. For the
+    non-fluctuating (Swerling 0/Marcum) and other Swerling cases it is only
+    an approximation and underestimates Pd for steady targets.
     """
     alpha = threshold_factor(pfa, n_ref, method=method)
 
@@ -662,7 +707,7 @@ def cfar_go(
     n = len(signal)
 
     if alpha is None:
-        alpha = threshold_factor(pfa, ref_cells, method="go")
+        alpha = threshold_factor(pfa, 2 * ref_cells, method="go")
 
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
@@ -738,7 +783,7 @@ def cfar_so(
     n = len(signal)
 
     if alpha is None:
-        alpha = threshold_factor(pfa, ref_cells, method="so")
+        alpha = threshold_factor(pfa, 2 * ref_cells, method="so")
 
     noise_estimate = np.zeros(n, dtype=np.float64)
     threshold = np.zeros(n, dtype=np.float64)
