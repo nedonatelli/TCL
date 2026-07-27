@@ -115,10 +115,12 @@ def threshold_factor(
     Notes
     -----
     For CA-CFAR with n_ref reference cells, the relationship between
-    threshold factor alpha and Pfa is:
+    threshold factor alpha and Pfa is::
+
         Pfa = (1 + alpha/n_ref)^(-n_ref)
 
-    Solving for alpha:
+    Solving for alpha::
+
         alpha = n_ref * (Pfa^(-1/n_ref) - 1)
     """
     if pfa <= 0 or pfa >= 1:
@@ -890,7 +892,8 @@ def cfar_2d(
     Notes
     -----
     The 2D reference window forms a rectangular annulus around the cell
-    under test. The total number of reference cells is:
+    under test. The total number of reference cells is::
+
         (2*guard_rows + 2*ref_rows + 1) * (2*guard_cols + 2*ref_cols + 1)
         - (2*guard_rows + 1) * (2*guard_cols + 1)
     """

@@ -5,22 +5,24 @@ a linear part (handled by Kalman filters for each particle). This provides
 better estimation quality than plain particle filters for systems with both
 nonlinear and linear dynamics.
 
-The algorithm:
-1. Maintain N particles, each with:
-   - Position in nonlinear state space (y)
-   - Kalman filter state (x, P) for linear subspace
-   - Weight w based on measurement likelihood
-2. For each time step:
-   - Predict: Propagate nonlinear particles, update KF for each
-   - Update: Compute measurement likelihood, adapt weights
-   - Resample: When effective sample size is low, draw new particles
-   - Merge: Combine nearby particles to reduce variance
+The algorithm::
 
-References:
-- Doucet et al., "On Sequential Monte Carlo Sampling with Adaptive Weights"
-  (Doucet & Tadic, 2003)
-- Andrieu et al., "Particle Methods for Change Detection, System Identification"
-  (IEEE SPM, 2004)
+    1. Maintain N particles, each with:
+       - Position in nonlinear state space (y)
+       - Kalman filter state (x, P) for linear subspace
+       - Weight w based on measurement likelihood
+    2. For each time step:
+       - Predict: Propagate nonlinear particles, update KF for each
+       - Update: Compute measurement likelihood, adapt weights
+       - Resample: When effective sample size is low, draw new particles
+       - Merge: Combine nearby particles to reduce variance
+
+References::
+
+    - Doucet et al., "On Sequential Monte Carlo Sampling with Adaptive Weights"
+      (Doucet & Tadic, 2003)
+    - Andrieu et al., "Particle Methods for Change Detection, System
+      Identification" (IEEE SPM, 2004)
 """
 
 from typing import Any, Callable, NamedTuple
@@ -56,7 +58,8 @@ class RBPFFilter:
     """Rao-Blackwellized Particle Filter.
 
     Combines particle filtering for nonlinear states with Kalman filtering
-    for conditionally-linear states. For a system partitioned as:
+    for conditionally-linear states. For a system partitioned as::
+
         - y: nonlinear state (particles)
         - x: linear state given y (Kalman filter)
 

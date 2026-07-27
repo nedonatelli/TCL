@@ -8,20 +8,20 @@ This document provides a detailed comparison between the Python port (pytcl) and
 
 **Overall Completeness: 100%** ✅
 
-The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,048 functions** across **133 modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and NRLMSISE-00 atmosphere modeling.
+The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,400+ functions** across **180+ modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and NRLMSISE-00 atmosphere modeling.
 
 **Documentation Status: Phase 3 Complete** ✅
 
-As of v1.15.0, the library includes:
+As of v1.16.0, the library includes:
 
-- **1,048 functions** with comprehensive docstring examples
-- **133 modules** classified by maturity level
+- **1,400+ functions** with comprehensive docstring examples
+- **180+ modules** classified by maturity level
 - All module docstrings expanded to include purpose, examples, and references
 
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.15.0 Implementation
+.. list-table:: Python pytcl v1.16.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -200,22 +200,23 @@ Magnetic Field Models
 
 ✅ **Complete:**
 
+- WMM2025 (World Magnetic Model — default) and WMM2020
 - IGRF-13 (International Geomagnetic Reference Field)
-- WMM (World Magnetic Model) — current version
 - EMM (Enhanced Magnetic Model)
 - Dipole field approximations
 
 Atmospheric Models
 ^^^^^^^^^^^^^^^^^^
 
-⚠️ **Basic Only:**
+✅ **Complete:**
 
+- NRLMSISE-00 (high-fidelity thermosphere density model)
+- U.S. Standard Atmosphere 1976 / ISA
 - Simple exponential model
 - Polytropic atmosphere model
 
 **Not Implemented:**
 
-- NRLMSISE-00 (more accurate density modeling)
 - HWM14/HWM21 (horizontal wind models)
 
 **Impact:** Low-orbit satellite work with atmospheric drag.
@@ -733,10 +734,6 @@ Recommendations
 - Multi-sensor data fusion
 - Real-time applications
 
-**⚠️ May Require External Libraries:**
-
-- High-precision atmospheric drag modeling (use NRLMSISE-00 from external library)
-
 **Final Verdict:** pytcl achieves **100% feature parity** with the original MATLAB TCL library. All algorithms from basic Kalman filtering to advanced multi-target tracking, constrained estimation, robust H-infinity filtering, and high-fidelity atmospheric modeling are production-ready.
 
 **Verified Completeness (v1.13.2)**
@@ -763,7 +760,7 @@ All three tier 1-2 "missing" components are fully implemented and tested:
      - **81 ✅**
      - **Complete with tutorials**
 
-The Python implementation also surpasses the MATLAB original with GPU acceleration (10-15x speedup), 8 interactive Jupyter notebooks, comprehensive documentation with 1600+ lines of new guides, and 3,306 passing tests at 80% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance.
+The Python implementation also surpasses the MATLAB original with GPU acceleration (10-15x speedup), 8 interactive Jupyter notebooks, comprehensive documentation with 1600+ lines of new guides, and 3,322 passing tests at 80% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance.
 
 
 See Also

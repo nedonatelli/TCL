@@ -303,14 +303,14 @@ As filter runs, most particles get zero weight (weight collapse). Solution: resa
 
 **Resampling Comparison:**
 
-========== ================ ============== ================
-Method     Complexity       Variance       Stability
-========== ================ ============== ================
-Multinomial O(N log N)      O(1)           Unstable
-Systematic O(N)             O(1/N²)        Robust
-Stratified O(N)             O(1/N)         Very Good
-Residual   O(N log N)       ~0             Excellent
-========== ================ ============== ================
+=========== ================ ============== ================
+Method      Complexity       Variance       Stability
+=========== ================ ============== ================
+Multinomial O(N log N)       O(1)           Unstable
+Systematic  O(N)             O(1/N²)        Robust
+Stratified  O(N)             O(1/N)         Very Good
+Residual    O(N log N)       ~0             Excellent
+=========== ================ ============== ================
 
 **Recommended:** Systematic or stratified for most applications.
 

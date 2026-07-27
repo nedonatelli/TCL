@@ -1264,7 +1264,8 @@ def tod_to_itrf(
     Notes
     -----
     The transformation applies the sidereal rotation (using GAST)
-    and polar motion:
+    and polar motion::
+
         r_pef = R(GAST) @ r_tod
         r_itrf = W @ r_pef
 

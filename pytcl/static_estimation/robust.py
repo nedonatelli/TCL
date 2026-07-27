@@ -96,7 +96,8 @@ def huber_weight(r: ArrayLike, c: float = 1.345) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Huber weight function is:
+    The Huber weight function is::
+
         w(r) = 1           if |r| <= c
         w(r) = c / |r|     if |r| > c
 
@@ -135,7 +136,8 @@ def huber_rho(r: ArrayLike, c: float = 1.345) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Huber rho function is:
+    The Huber rho function is::
+
         rho(r) = r^2 / 2           if |r| <= c
         rho(r) = c * |r| - c^2/2   if |r| > c
 
@@ -171,7 +173,8 @@ def tukey_weight(r: ArrayLike, c: float = 4.685) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Tukey bisquare weight function is:
+    The Tukey bisquare weight function is::
+
         w(r) = (1 - (r/c)^2)^2   if |r| <= c
         w(r) = 0                 if |r| > c
 
@@ -212,7 +215,8 @@ def tukey_rho(r: ArrayLike, c: float = 4.685) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Tukey rho function is:
+    The Tukey rho function is::
+
         rho(r) = c^2/6 * (1 - (1 - (r/c)^2)^3)   if |r| <= c
         rho(r) = c^2/6                            if |r| > c
 
@@ -251,7 +255,8 @@ def cauchy_weight(r: ArrayLike, c: float = 2.385) -> NDArray[np.floating]:
 
     Notes
     -----
-    The Cauchy weight function is:
+    The Cauchy weight function is::
+
         w(r) = 1 / (1 + (r/c)^2)
 
     Examples
@@ -291,7 +296,9 @@ def mad(residuals: ArrayLike, c: float = 1.4826) -> float:
 
     Notes
     -----
-    MAD = c * median(|r - median(r)|)
+    The MAD estimator is::
+
+        MAD = c * median(|r - median(r)|)
 
     This is a robust scale estimator with 50% breakdown point.
 

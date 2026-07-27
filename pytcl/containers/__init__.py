@@ -7,7 +7,7 @@ nearest neighbor queries, spatial indexing, and tracking containers.
 Spatial Index Hierarchy
 -----------------------
 All spatial index structures inherit from BaseSpatialIndex which defines
-a common interface for k-nearest neighbor and radius queries:
+a common interface for k-nearest neighbor and radius queries::
 
     BaseSpatialIndex (abstract)
     ├── KDTree - K-dimensional tree (Euclidean space)

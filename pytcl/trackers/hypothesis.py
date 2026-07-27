@@ -309,10 +309,11 @@ def n_scan_prune(
 
     Notes
     -----
-    N-scan pruning works by:
-    1. Finding tracks that agree across all high-probability hypotheses
-       at scan (current_scan - n_scan)
-    2. Removing hypotheses that disagree with the "committed" decision
+    N-scan pruning works by::
+
+        1. Finding tracks that agree across all high-probability hypotheses
+           at scan (current_scan - n_scan)
+        2. Removing hypotheses that disagree with the "committed" decision
     """
     if not hypotheses or n_scan <= 0:
         return hypotheses, set()

@@ -219,9 +219,9 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.15.0
+**Version:** v1.16.0
 **MATLAB Parity:** 100% ✅ (all tier 1-2 missing components verified)
-**Test Suite:** 3,306 tests passing
+**Test Suite:** 3,322 tests passing (docstring examples also run in CI)
 **Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
 **Quality:** 100% compliance (ruff check, ruff format, mypy --strict)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
@@ -233,22 +233,22 @@ When porting a function from the original MATLAB library:
 - **Phase 1** ✅: Network flow performance (50-100x faster)
 - **Phase 2** ✅: API standardization (exceptions, spatial indexes, optional deps)
 - **Phase 5** ✅: GPU acceleration (CuPy + MLX, 5-15x speedup)
-- **Phase 6** ✅: Test expansion (+761 tests, 2,894 total)
+- **Phase 6** ✅: Test expansion
 - **Phase 7** ✅: Performance optimization (Numba JIT, lru_cache, sparse matrices)
 
-### In Progress
-- **Phase 3**: Documentation expansion
-- **Phase 4**: Jupyter notebooks
+- **Phase 3** ✅: Documentation expansion
+- **Phase 4** ✅: Jupyter notebooks (9 verified in CI)
+- **Phase 8** ✅: Track management (SQL + HDF5, migration tools)
 
-### Remaining
-- **Phase 8**: Release preparation (alpha → beta → RC → v2.0.0)
+### In Progress
+- **Phase 9**: Release preparation (alpha → beta → RC → v2.0.0)
 
 ## Priority Areas for Contributors
 
 If you're looking for ways to contribute:
 
-### High Priority (v2.0.0 Phase 1)
-- Network flow algorithm optimization (`assignment/network_flow.py`)
+### High Priority
+- v2.0.0 release preparation and validation (see ROADMAP.md Phase 9)
 - Performance profiling and benchmarking
 - Algorithm optimization and refactoring
 
@@ -293,10 +293,10 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.15.0):
-- **Functions:** 1,048
+Current metrics (v1.16.0):
+- **Functions:** 1,048+
 - **Modules:** 133
-- **Tests:** 3,306 (all passing)
+- **Tests:** 3,322 (all passing)
 - **Coverage:** 80%
 - **MATLAB Parity:** 100% (NRLMSISE-00, CEKF, RBPF verified)
 - **GPU Backends:** 2 (CuPy + MLX)

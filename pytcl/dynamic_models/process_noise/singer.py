@@ -7,17 +7,20 @@ treats target acceleration as a first-order Gauss-Markov process, making it
 well-suited for tracking maneuvering targets with random accelerations.
 
 The Singer model is characterized by:
+
 - A maneuver time constant (tau) that controls how quickly acceleration
   correlations decay
 - An RMS maneuver level (sigma_m) that sets the expected acceleration magnitude
 - State vector [position, velocity, acceleration] per dimension
 
-The model dynamics are:
+The model dynamics are::
+
     da/dt = -a/tau + w(t)
 
 where w(t) is white noise with spectral density 2*sigma_m²/tau.
 
 Available functions:
+
 - ``q_singer``: Generic N-dimensional Singer process noise
 - ``q_singer_2d``: 2D Singer model (6x6 state)
 - ``q_singer_3d``: 3D Singer model (9x9 state)

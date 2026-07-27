@@ -194,10 +194,11 @@ def hyp2f1(
     """
     Gauss hypergeometric function 2F1(a, b; c; z).
 
-    The function 2F1(a, b; c; z) is defined by the series:
-    2F1(a, b; c; z) = sum_{k=0}^inf (a)_k * (b)_k * z^k / ((c)_k * k!)
+    The function 2F1(a, b; c; z) is defined by the series::
 
-    converging for |z| < 1.
+        2F1(a, b; c; z) = sum_{k=0}^inf (a)_k * (b)_k * z^k / ((c)_k * k!)
+
+    converging for ``|z| < 1``.
 
     Parameters
     ----------
@@ -208,7 +209,8 @@ def hyp2f1(
     c : array_like
         Denominator parameter. Must not be a non-positive integer.
     z : array_like
-        Argument of the function. For |z| >= 1, analytic continuation is used.
+        Argument of the function. For ``|z| >= 1``, analytic continuation
+        is used.
 
     Returns
     -------
@@ -250,9 +252,10 @@ def hyperu(
     """
     Confluent hypergeometric function U(a, b, z) (Tricomi function).
 
-    The function U(a, b, z) is defined as:
-    U(a, b, z) = Gamma(1-b)/Gamma(a-b+1) * 1F1(a; b; z)
-                 + Gamma(b-1)/Gamma(a) * z^(1-b) * 1F1(a-b+1; 2-b; z)
+    The function U(a, b, z) is defined as::
+
+        U(a, b, z) = Gamma(1-b)/Gamma(a-b+1) * 1F1(a; b; z)
+                     + Gamma(b-1)/Gamma(a) * z^(1-b) * 1F1(a-b+1; 2-b; z)
 
     Parameters
     ----------
@@ -454,13 +457,12 @@ def generalized_hypergeometric(
 
     Notes
     -----
-    The series converges for:
-    - p <= q: all z
-    - p = q + 1: |z| < 1
-    - p > q + 1: diverges except for polynomial cases
+    The series converges for::
 
-    Performance
-    -----------
+        - p <= q: all z
+        - p = q + 1: |z| < 1
+        - p > q + 1: diverges except for polynomial cases
+
     Uses Numba JIT compilation for the general case (p > 2 or q > 1),
     providing 5-10x speedup over pure Python loops.
 
