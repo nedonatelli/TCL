@@ -484,12 +484,11 @@ def _compute_magnetic_field_spherical_impl(
     dP_full = associated_legendre_derivative(
         n_max, n_max, cos_theta, P_full, normalized=True
     )
-    # associated_legendre's normalization is sqrt(2n+1)*sqrt((n-m)!/(n+m)!)
-    # (no sqrt(2) sectoral factor), so Schmidt requires dividing by
-    # sqrt(2n+1) and multiplying m > 0 terms by sqrt(2).
+    # associated_legendre is geodesy fully normalized:
+    # sqrt((2 - delta_0m)(2n+1)(n-m)!/(n+m)!). Schmidt semi-normalization
+    # keeps the sqrt(2 - delta_0m) factor, so Schmidt = full / sqrt(2n+1).
     scale = np.ones((n_max + 1, n_max + 1))
     scale /= np.sqrt(2 * np.arange(n_max + 1) + 1)[:, np.newaxis]
-    scale[:, 1:] *= np.sqrt(2.0)
     P = P_full * scale
     dP = -sin_theta * dP_full * scale
 

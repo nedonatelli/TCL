@@ -21,8 +21,10 @@ from numpy.typing import NDArray
 # Module logger
 _logger = logging.getLogger("pytcl.gravity.spherical_harmonics")
 
-# Cache configuration for Legendre polynomials
-_LEGENDRE_CACHE_DECIMALS = 8  # Precision for x quantization
+# Cache configuration for Legendre polynomials.
+# Quantization must be fine enough that the induced error (~n^2 * 0.5*10^-d
+# in relative terms) stays negligible at high degree.
+_LEGENDRE_CACHE_DECIMALS = 12  # Precision for x quantization
 _LEGENDRE_CACHE_MAXSIZE = 64  # Max cached (n_max, m_max, x) combinations
 
 
@@ -49,7 +51,11 @@ def _associated_legendre_cached(
 
     for m in range(1, m_max + 1):
         if normalized:
-            P[m, m] = u * np.sqrt((2 * m + 1) / (2 * m)) * P[m - 1, m - 1]
+            # Geodesy full normalization includes sqrt(2 - delta_0m); the
+            # sectoral recursion factor is sqrt(3) for m = 1 and
+            # sqrt((2m+1)/(2m)) for m > 1 (Holmes & Featherstone 2002).
+            factor = np.sqrt(3.0) if m == 1 else np.sqrt((2 * m + 1) / (2 * m))
+            P[m, m] = u * factor * P[m - 1, m - 1]
         else:
             P[m, m] = (2 * m - 1) * u * P[m - 1, m - 1]
 
@@ -105,14 +111,16 @@ def associated_legendre(
 
     Notes
     -----
-    The fully normalized associated Legendre functions satisfy:
+    The fully normalized (geodesy convention) associated Legendre
+    functions include the factor sqrt((2 - delta_0m)(2n+1)(n-m)!/(n+m)!)
+    and satisfy:
 
     .. math::
 
-        \\int_{-1}^{1} [\\bar{P}_n^m(x)]^2 dx = \\frac{2}{2n+1}
+        \\int_{-1}^{1} [\\bar{P}_n^m(x)]^2 dx = 2(2 - \\delta_{0m})
 
     Results are cached for repeated queries with the same parameters.
-    Cache key quantizes x to 8 decimal places (~1e-8 precision).
+    Cache key quantizes x to 12 decimal places (~1e-12 precision).
 
     Examples
     --------
@@ -313,8 +321,9 @@ def spherical_harmonic_sum(
             # Potential contribution
             V += r_power_n * P[n, m] * coeff
 
-            # Radial derivative contribution
-            dV_r += -(n + 1) * r_power_n / r * P[n, m] * coeff
+            # Radial derivative contribution:
+            # d/dr [(R/r)^n / r] = -(n+1) (R/r)^n / r^2
+            dV_r += -(n + 1) * r_power_n * P[n, m] * coeff
 
             # Colatitude derivative contribution
             # dP/d(colat) = -sin(colat) * dP/d(cos(colat))
@@ -328,22 +337,6 @@ def spherical_harmonic_sum(
     # Scale by GM/r
     scale = GM / r
     V *= scale
-    dV_r = dV_r * GM + V / r * (-1)  # Product rule
-    dV_r = -GM / (r * r) * (V / scale) + scale * dV_r / scale
-
-    # Correct radial derivative
-    dV_r = 0.0
-    r_power = 1.0
-    for n in range(n_max + 1):
-        for m in range(n + 1):
-            cos_m_lon = np.cos(m * lon)
-            sin_m_lon = np.sin(m * lon)
-            Cnm = C[n, m] if n < C.shape[0] and m < C.shape[1] else 0.0
-            Snm = S[n, m] if n < S.shape[0] and m < S.shape[1] else 0.0
-            coeff = Cnm * cos_m_lon + Snm * sin_m_lon
-            dV_r += -(n + 1) * r_power * P[n, m] * coeff
-        r_power *= r_ratio
-
     dV_r *= GM / (r * r)
 
     # Convert colatitude derivative to latitude derivative
@@ -556,15 +549,17 @@ def associated_legendre_scaled(
     P_scaled[0, 0] = 1.0 * scale[0]
 
     # Sectoral recursion: P_m^m from P_{m-1}^{m-1}
+    # (sqrt(3) for m=1 gives the sqrt(2 - delta_0m) full-normalization factor)
     for m in range(1, m_max + 1):
-        factor = u * np.sqrt((2 * m + 1) / (2 * m))
-        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1] * scale[m] / scale[m - 1]
+        factor = u * (np.sqrt(3.0) if m == 1 else np.sqrt((2 * m + 1) / (2 * m)))
+        # Apply the scale as a ratio to avoid intermediate underflow
+        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1] * (scale[m] / scale[m - 1])
 
     # Compute P_{m+1}^m from P_m^m
     for m in range(m_max):
         if m + 1 <= n_max:
             factor = x * np.sqrt(2 * m + 3)
-            P_scaled[m + 1, m] = factor * P_scaled[m, m] * scale[m + 1] / scale[m]
+            P_scaled[m + 1, m] = factor * P_scaled[m, m] * (scale[m + 1] / scale[m])
 
     # General recursion: P_n^m from P_{n-1}^m and P_{n-2}^m
     for m in range(m_max + 1):

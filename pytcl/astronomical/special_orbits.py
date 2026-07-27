@@ -430,9 +430,9 @@ def hyperbolic_deflection_angle(e: float) -> float:
     """
     Compute the deflection angle for a hyperbolic orbit.
 
-    The deflection angle is the angle through which the velocity vector
-    is deflected from its asymptotic direction:
-    delta = pi - 2*nu_inf = pi - 2*arccos(-1/e)
+    The deflection (turn) angle is the angle through which the velocity
+    vector is rotated between the incoming and outgoing asymptotes:
+    delta = 2*arcsin(1/e), equivalently 2*nu_inf - pi.
 
     Parameters
     ----------
@@ -452,8 +452,7 @@ def hyperbolic_deflection_angle(e: float) -> float:
     if e <= 1:
         raise ValueError(f"Eccentricity must be > 1 for hyperbolic orbits, got {e}")
 
-    nu_inf = hyperbolic_asymptote_angle(e)
-    delta = np.pi - 2.0 * nu_inf
+    delta = 2.0 * np.arcsin(1.0 / e)
 
     return delta
 

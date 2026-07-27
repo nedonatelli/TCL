@@ -312,11 +312,13 @@ def total_least_squares(
     x = -V[:n, n] / V[n, n]
 
     # Compute corrections using truncated SVD
-    # [E | r] = sum_{i=rank}^{n} s_i * u_i * v_i^T
+    # [E | r] = -sum_{i=rank}^{n} s_i * u_i * v_i^T
+    # so that (A + E) @ x = b + r holds exactly (C + [E|r] is rank-deficient
+    # with null vector [x; -1]).
     E_r = np.zeros_like(C)
     for i in range(rank, min(m, n + 1)):
         if i < len(s):
-            E_r += s[i] * np.outer(U[:, i], V[:, i])
+            E_r -= s[i] * np.outer(U[:, i], V[:, i])
 
     residuals_A = E_r[:, :n]
     residuals_b = E_r[:, n].flatten()

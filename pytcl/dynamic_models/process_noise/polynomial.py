@@ -281,12 +281,11 @@ def q_continuous_white_noise(
         Q = integral_0^T exp(A*t) * G * q * G' * exp(A'*t) dt
 
     This function computes this integral analytically for polynomial models.
+    For dim=2 (constant velocity) this gives q*[[T^3/3, T^2/2], [T^2/2, T]],
+    matching the Van Loan discretization. For the discrete white noise model
+    (q*[[T^4/4, T^3/2], [T^3/2, T^2]]), use q_discrete_white_noise.
     """
-    # This is the same as q_discrete_white_noise but with spectral density
-    # instead of variance (multiply by T for conversion in simple cases)
-    return q_discrete_white_noise(
-        dim=dim, T=T, var=spectral_density, block_size=block_size
-    )
+    return q_poly_kal(order=dim - 1, T=T, q=spectral_density, num_dims=block_size)
 
 
 __all__ = [

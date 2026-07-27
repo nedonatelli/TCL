@@ -494,13 +494,12 @@ def _high_res_field_spherical(
     sin_theta = np.sin(theta)
 
     # Magnetic Gauss coefficients require Schmidt semi-normalized Legendre
-    # functions. associated_legendre's normalization is
-    # sqrt(2n+1)*sqrt((n-m)!/(n+m)!) (no sqrt(2) sectoral factor), so
-    # Schmidt = full / sqrt(2n+1), with m > 0 terms scaled by sqrt(2).
+    # functions. associated_legendre is geodesy fully normalized:
+    # sqrt((2 - delta_0m)(2n+1)(n-m)!/(n+m)!). Schmidt keeps the
+    # sqrt(2 - delta_0m) factor, so Schmidt = full / sqrt(2n+1).
     P_full = associated_legendre(N, N, cos_theta, normalized=True)
     scale = np.ones((N + 1, N + 1))
     scale /= np.sqrt(2 * np.arange(N + 1) + 1)[:, np.newaxis]
-    scale[:, 1:] *= np.sqrt(2.0)
     P = P_full * scale
 
     # dP/dtheta via the Schmidt-basis recursion:

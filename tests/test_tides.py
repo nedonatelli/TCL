@@ -249,8 +249,8 @@ class TestAtmosphericPressureLoading:
     def test_displacement_magnitude(self):
         """10 hPa pressure change should give ~3.5 mm displacement."""
         disp = atmospheric_pressure_loading(np.radians(45), 0, 102325)  # +10 hPa
-        # Default admittance is -0.35 mm/hPa = -0.35e-3 m/Pa
-        expected = -0.35e-3 * 1000  # 10 hPa = 1000 Pa
+        # Default admittance is -0.35 mm/hPa = -3.5e-6 m/Pa
+        expected = -3.5e-6 * 1000  # 10 hPa = 1000 Pa
         assert_allclose(disp.radial, expected, rtol=0.01)
 
 

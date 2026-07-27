@@ -131,16 +131,17 @@ def _solve_constrained(
     # Build reduced cost matrix
     reduced_cost = C[np.ix_(free_rows, free_cols)]
 
-    # Check if feasible (no row/column is all infinity)
-    if not maximize:
-        if np.any(np.all(reduced_cost == np.inf, axis=1)):
+    # Check feasibility along the binding dimension only. In a rectangular
+    # problem the longer dimension has leftover rows/columns that may
+    # legitimately be all-infinity (they simply go unassigned); an all-inf
+    # line in the shorter dimension makes the problem infeasible.
+    inf_val = -np.inf if maximize else np.inf
+    n_free_rows, n_free_cols = reduced_cost.shape
+    if n_free_rows <= n_free_cols:
+        if np.any(np.all(reduced_cost == inf_val, axis=1)):
             return None
-        if np.any(np.all(reduced_cost == np.inf, axis=0)):
-            return None
-    else:
-        if np.any(np.all(reduced_cost == -np.inf, axis=1)):
-            return None
-        if np.any(np.all(reduced_cost == -np.inf, axis=0)):
+    if n_free_cols <= n_free_rows:
+        if np.any(np.all(reduced_cost == inf_val, axis=0)):
             return None
 
     # Solve reduced problem
@@ -153,8 +154,8 @@ def _solve_constrained(
     orig_row_ind = [free_rows[i] for i in red_row_ind]
     orig_col_ind = [free_cols[j] for j in red_col_ind]
 
-    # Combine with required
-    all_rows = list(required_rows) + orig_row_ind
+    # Combine with required (keep row/col pairing from the required list)
+    all_rows = [r for r, c in required] + orig_row_ind
     all_cols = [c for r, c in required] + orig_col_ind
 
     row_ind = np.array(all_rows, dtype=np.intp)
@@ -273,6 +274,9 @@ def murty(
         # Get the best remaining node
         node = heapq.heappop(heap)
 
+        # Heap costs are negated for maximization; recover the actual cost
+        actual_cost = -node.cost if maximize else node.cost
+
         # Create assignment result
         if node.assignment is not None:
             row_ind, col_ind = node.assignment
@@ -286,13 +290,13 @@ def murty(
             result = AssignmentResult(
                 row_indices=row_ind,
                 col_indices=col_ind,
-                cost=node.cost,
+                cost=actual_cost,
                 unassigned_rows=unassigned_rows,
                 unassigned_cols=unassigned_cols,
             )
 
             assignments.append(result)
-            costs.append(node.cost)
+            costs.append(actual_cost)
 
             # Partition this solution for more candidates
             _partition_solution(
@@ -328,17 +332,20 @@ def _partition_solution(
     """
     import heapq
 
-    n_assigned = len(row_ind)
+    # Partition over the pairs of this solution that are not already required.
+    # The solution's pairs are sorted by row, so required pairs may appear at
+    # arbitrary positions; identify the free (non-required) pairs explicitly.
+    required_set = set(required)
+    free_pairs = [
+        (int(r), int(c))
+        for r, c in zip(row_ind, col_ind)
+        if (int(r), int(c)) not in required_set
+    ]
 
-    # Start after required assignments
-    start_idx = len(required)
-
-    for i in range(start_idx, n_assigned):
-        # Require assignments 0..i-1, forbid assignment i
-        new_required = required + [
-            (row_ind[j], col_ind[j]) for j in range(start_idx, i)
-        ]
-        new_forbidden = forbidden + [(row_ind[i], col_ind[i])]
+    for i, pair in enumerate(free_pairs):
+        # Require free pairs 0..i-1, forbid free pair i
+        new_required = required + free_pairs[:i]
+        new_forbidden = forbidden + [pair]
 
         # Solve constrained problem
         result = _solve_constrained(cost_matrix, new_required, new_forbidden, maximize)
@@ -346,28 +353,18 @@ def _partition_solution(
         if result is not None:
             new_row_ind, new_col_ind, new_cost = result
 
-            node = _PartitionNode(
-                cost_matrix=cost_matrix,
-                required=new_required,
-                forbidden=new_forbidden,
-                cost=new_cost,
-                assignment=(new_row_ind, new_col_ind),
+            # Use negated cost for max-heap behavior when maximizing
+            heap_cost = -new_cost if maximize else new_cost
+            heapq.heappush(
+                heap,
+                _PartitionNode(
+                    cost_matrix=cost_matrix,
+                    required=new_required,
+                    forbidden=new_forbidden,
+                    cost=heap_cost,
+                    assignment=(new_row_ind, new_col_ind),
+                ),
             )
-
-            if maximize:
-                # Use negative cost for max-heap behavior
-                heapq.heappush(
-                    heap,
-                    _PartitionNode(
-                        cost_matrix=cost_matrix,
-                        required=new_required,
-                        forbidden=new_forbidden,
-                        cost=-new_cost,
-                        assignment=(new_row_ind, new_col_ind),
-                    ),
-                )
-            else:
-                heapq.heappush(heap, node)
 
 
 def kbest_assign2d(

@@ -367,6 +367,11 @@ def auction_assignment_nd(
     # Initialize prices (one per dimension per index)
     prices = [np.zeros(dim) for dim in dims]
 
+    # Track the best feasible assignment (by actual cost) over all iterations.
+    # Iteration 0 has zero prices, so the plain greedy solution is included.
+    best_cost = np.inf
+    best_assignments = np.empty((0, n_dims), dtype=np.intp)
+
     for iteration in range(max_iterations):
         # Compute profit: cost - price penalty
         profit = cost_tensor.copy()
@@ -381,6 +386,14 @@ def auction_assignment_nd(
         if len(result.assignments) == 0:
             break
 
+        # Evaluate at actual costs and keep the best solution found
+        actual_cost = float(np.sum(cost_tensor[tuple(result.assignments.T)]))
+        if actual_cost < best_cost or (
+            actual_cost == best_cost and len(result.assignments) > len(best_assignments)
+        ):
+            best_cost = actual_cost
+            best_assignments = result.assignments
+
         # Update prices: increase price for "in-demand" indices
         demands = [np.zeros(dim) for dim in dims]
         for assignment in result.assignments:
@@ -391,15 +404,14 @@ def auction_assignment_nd(
             prices[d] += epsilon * (demands[d] - 1.0)
 
         if verbose and (iteration + 1) % 10 == 0:
-            actual_cost = float(np.sum(cost_tensor[tuple(result.assignments.T)]))
             print(f"Iter {iteration + 1}: Cost={actual_cost:.4f}")
 
-    # Final solution
-    result = greedy_assignment_nd(cost_tensor)
+    if not np.isfinite(best_cost):
+        best_cost = 0.0
 
     return AssignmentNDResult(
-        assignments=result.assignments,
-        cost=result.cost,
+        assignments=best_assignments,
+        cost=best_cost,
         converged=True,
         n_iterations=iteration + 1,
         gap=0.0,  # Auction algorithm doesn't track gap formally

@@ -173,10 +173,6 @@ def nutation_angles_iau80(jd: float) -> Tuple[float, float]:
     T = julian_centuries_j2000(jd)
 
     # Fundamental arguments (degrees)
-    # Mean anomaly of the Moon
-    l_moon = 134.96340251 + 477198.8675605 * T
-    # Mean anomaly of the Sun
-    l_prime = 357.52910918 + 35999.0502911 * T
     # Mean argument of latitude of the Moon
     F = 93.27209062 + 483202.0174577 * T
     # Mean elongation of the Moon from the Sun
@@ -186,25 +182,29 @@ def nutation_angles_iau80(jd: float) -> Tuple[float, float]:
 
     # Convert to radians
     deg_to_rad = np.pi / 180
-    l_moon = l_moon * deg_to_rad
-    l_prime = l_prime * deg_to_rad
     F = F * deg_to_rad
     D = D * deg_to_rad
     Omega = Omega * deg_to_rad
+
+    # Arguments of the largest solar and lunar terms:
+    # twice the mean longitude of the Sun (2F - 2D + 2*Omega) and
+    # twice the mean longitude of the Moon (2F + 2*Omega)
+    two_L_sun = 2.0 * (F - D + Omega)
+    two_L_moon = 2.0 * (F + Omega)
 
     # Nutation in longitude and obliquity (arcseconds)
     # Using only the largest terms (106 terms in full theory)
     dpsi_arcsec = (
         -17.2 * np.sin(Omega)
-        - 1.32 * np.sin(2 * l_moon)
-        - 0.23 * np.sin(2 * F)
+        - 1.32 * np.sin(two_L_sun)
+        - 0.23 * np.sin(two_L_moon)
         + 0.21 * np.sin(2 * Omega)
     )
 
     deps_arcsec = (
         9.2 * np.cos(Omega)
-        + 0.57 * np.cos(2 * l_moon)
-        + 0.10 * np.cos(2 * F)
+        + 0.57 * np.cos(two_L_sun)
+        + 0.10 * np.cos(two_L_moon)
         - 0.09 * np.cos(2 * Omega)
     )
 
@@ -879,9 +879,10 @@ def teme_to_gcrf(
     """
     eq_eq = equation_of_equinoxes(jd_tt)
 
-    # TEME to TOD: rotate by equation of equinoxes
-    cos_eq = np.cos(-eq_eq)
-    sin_eq = np.sin(-eq_eq)
+    # TEME to TOD: frame rotation by -eq_eq about z, since
+    # R3(GMST) r_TEME = R3(GAST) r_TOD  =>  r_TOD = R3(-eq_eq) r_TEME
+    cos_eq = np.cos(eq_eq)
+    sin_eq = np.sin(eq_eq)
 
     R_eq = np.array([[cos_eq, -sin_eq, 0], [sin_eq, cos_eq, 0], [0, 0, 1]])
 
@@ -923,12 +924,12 @@ def gcrf_to_teme(
     N = nutation_matrix(jd_tt)
     r_tod = N @ r_mod
 
-    # TOD to TEME: rotate by equation of equinoxes
+    # TOD to TEME: frame rotation by +eq_eq about z (inverse of TEME -> TOD)
     eq_eq = equation_of_equinoxes(jd_tt)
     cos_eq = np.cos(eq_eq)
     sin_eq = np.sin(eq_eq)
 
-    R_eq = np.array([[cos_eq, -sin_eq, 0], [sin_eq, cos_eq, 0], [0, 0, 1]])
+    R_eq = np.array([[cos_eq, sin_eq, 0], [-sin_eq, cos_eq, 0], [0, 0, 1]])
 
     return R_eq @ r_tod
 

@@ -242,6 +242,12 @@ def sr_ukf_update(
     v_z = Z[:, 0] - z_pred
     if W_c[0] >= 0:
         S_y = cholesky_update(S_y, np.sqrt(W_c[0]) * v_z, sign=1.0)
+    else:
+        try:
+            S_y = cholesky_update(S_y, np.sqrt(np.abs(W_c[0])) * v_z, sign=-1.0)
+        except ValueError:
+            # Downdate would make S_y indefinite; keep the QR factor
+            pass
 
     for i in range(m):
         if S_y[i, i] < 0:

@@ -559,13 +559,50 @@ def assign3d_auction(
             assign_i[i] = (j, k)
             reverse[(j, k)] = i
 
-    # Build result
-    assignments = []
+    # Build result. Prices are indexed by (j, k) pairs, so the bidding only
+    # enforces uniqueness of pairs; two rows may hold pairs sharing a j or k.
+    # Resolve such conflicts greedily by cost, then complete with the
+    # cheapest feasible tuples for any rows left unassigned.
+    raw_assignments = []
     for i in range(n1):
         if assign_i[i] is not None:
             j, k = assign_i[i]
-            assignments.append((i, j, k))
+            raw_assignments.append((i, j, k))
+    raw_assignments.sort(key=lambda t: cost[t[0], t[1], t[2]])
 
+    assignments = []
+    used_i_set: set[int] = set()
+    used_j_set: set[int] = set()
+    used_k_set: set[int] = set()
+    for i, j, k in raw_assignments:
+        if i not in used_i_set and j not in used_j_set and k not in used_k_set:
+            assignments.append((i, j, k))
+            used_i_set.add(i)
+            used_j_set.add(j)
+            used_k_set.add(k)
+
+    for i in range(n1):
+        if i in used_i_set:
+            continue
+        best_cost = np.inf
+        best_jk = None
+        for j in range(n2):
+            if j in used_j_set:
+                continue
+            for k in range(n3):
+                if k in used_k_set:
+                    continue
+                if cost[i, j, k] < best_cost:
+                    best_cost = cost[i, j, k]
+                    best_jk = (j, k)
+        if best_jk is not None and np.isfinite(best_cost):
+            j, k = best_jk
+            assignments.append((i, j, k))
+            used_i_set.add(i)
+            used_j_set.add(j)
+            used_k_set.add(k)
+
+    assignments.sort()
     tuples = np.array(assignments, dtype=np.intp).reshape(-1, 3)
     total_cost = sum(cost[i, j, k] for i, j, k in assignments) if assignments else 0.0
 
