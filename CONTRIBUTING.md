@@ -81,6 +81,53 @@ def cart2sphere(
     ...
 ```
 
+## Development Process
+
+Every change to this codebase follows the same pipeline. These rules exist
+because structural tests once passed while the magnetic field model was ~180°
+wrong — passing tests are necessary, not sufficient.
+
+### The pipeline
+
+1. **Branch** — never commit to `main`. One feature branch per unit of work.
+2. **Validate** — new or changed numerical code needs a *validation-class*
+   test (see below), not just a smoke test.
+3. **PR with green CI** — lint (ruff, pinned), types (mypy, pinned), tests
+   (3 OS × 3 Python), docstring examples (`--doctest-modules`), docs build
+   (zero docutils errors), benchmarks (SLO enforcement on main).
+4. **Merge, then release deliberately** — releases follow the checklist in
+   the Release Process section; every user-facing fix gets a CHANGELOG entry
+   when it lands, not at release time.
+
+### Test validation classes
+
+Every public function belongs to one of these classes, tracked in
+[AUDIT.md](AUDIT.md). New code must land at REFERENCE or PROPERTY class;
+STRUCTURAL-only tests are not accepted for numerical code.
+
+| Class | Meaning | Example |
+|-------|---------|---------|
+| **REFERENCE** | Output compared against an independent implementation or published values | WMM vs. NOAA test values; UTM vs. pyproj; geodesics vs. geographiclib |
+| **PROPERTY** | Mathematical invariants verified | round-trips, orthogonality, moment preservation, quadrature exactness |
+| **STRUCTURAL** | Only shape/type/no-crash checked | `assert result.F > 0` |
+| **UNTESTED** | No test exercises it | — |
+
+Rules of thumb:
+- If scipy/numpy/pyproj/geographiclib/astropy/sklearn implements it, compare
+  against it (mind convention differences — document the mapping in the test).
+- If no reference exists, test invariants the math guarantees.
+- Reference values in tests must state their source in a comment.
+- Docstring examples are executable documentation — they run in CI; keep
+  outputs platform-robust (`round()`, `bool()`, seeds).
+- Known-broken behavior is never silently skipped: mark it
+  `# doctest: +SKIP (known bug: gh-NNN)` with a tracking issue.
+
+### Tooling discipline
+
+- CI tool versions are **pinned** (ruff, mypy); bump deliberately in a PR
+  that also fixes whatever the new version flags.
+- Generated artifacts (benchmark history, plots) never mix into feature PRs.
+
 ## Testing
 
 ### Running Tests

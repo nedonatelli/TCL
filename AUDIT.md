@@ -1,0 +1,45 @@
+# Correctness Audit Ledger
+
+Tracks the validation status of every public function, method, and class in
+`pytcl/` ahead of v2.0.0. Definitions of the validation classes are in
+[CONTRIBUTING.md](CONTRIBUTING.md#test-validation-classes).
+
+**Goal:** zero UNTESTED, and REFERENCE or PROPERTY class for all numerical
+code, before v2.0.0-alpha.
+
+Inventory (2026-07-26): **1,351 public functions/methods, 226 classes** across
+21 packages.
+
+## Status by package
+
+| Package | Public API | Status | Notes |
+|---------|-----------:|--------|-------|
+| magnetism | 25 | ✅ REFERENCE | WMM2020/WMM2025/IGRF-13/WMMHR2025 vs pygeomag + NOAA test values (<0.1 nT), poles vs published locations |
+| atmosphere (models) | 12 | ✅ REFERENCE | US76 vs published tables; NRLMSISE-00 range-checked; ionosphere property-tested |
+| astronomical (relativity) | — | ✅ REFERENCE | de Sitter, Lense–Thirring, 1PN, Shapiro vs literature values |
+| coordinate_systems (UTM, SEZ) | — | ✅ REFERENCE | UTM vs pyproj (sub-mm); SEZ convention + round trips |
+| assignment_algorithms (flow) | — | ✅ REFERENCE | min-cost flow vs scipy linear_sum_assignment |
+| gravity (Legendre, synthesis) | — | ✅ PROPERTY | derivative vs finite differences (4e-9); dual-implementation agreement |
+| coordinate_systems (rest) | 70 | 🔄 Wave 1 | rotations vs scipy Rotation; projections vs pyproj |
+| mathematical_functions (special/quad/interp) | ~150 | 🔄 Wave 1 | vs scipy/mpmath + analytic identities |
+| mathematical_functions (signal/transforms/stats/matrix) | ~180 | 🔄 Wave 1 | vs scipy.signal/linalg/stats, PyWavelets |
+| navigation | 83 | 🔄 Wave 1 | vs geographiclib; INS invariants |
+| containers + clustering | 118 | 🔄 Wave 1 | vs brute force + sklearn |
+| dynamic_estimation | 101 | ⬜ Wave 2 | linear-Gaussian identities, filterpy cross-check |
+| astronomical (rest) | 137 | ⬜ Wave 2 | Kepler identities, astropy cross-checks |
+| assignment_algorithms (rest) + static_estimation | 80 | ⬜ Wave 2 | scipy.optimize, lstsq references |
+| gravity (rest) + tides | 40 | ⬜ Wave 2 | EGM spot values, tidal magnitudes |
+| dynamic_models + performance_evaluation + trackers | 76 | ⬜ Wave 2 | discretization identities, metric hand-calcs |
+| io | 113 | ⬜ Wave 3 | round-trip/property (HDF5/SQL) |
+| core + terrain + plotting + misc | ~100 | ⬜ Wave 3 | behavioral contracts |
+| gpu | 56 | ⬜ Wave 3 | MLX backend on Apple Silicon; CuPy needs NVIDIA hardware |
+
+## Findings log
+
+Confirmed bugs found and fixed during the audit are recorded in CHANGELOG.md;
+suspected-but-unconfirmed issues get GitHub issues and are linked here.
+
+| Date | Package | Finding | Resolution |
+|------|---------|---------|------------|
+| 2026-07-25 | multiple | 9 library bugs (network flow, UTM, atmosphere ×2, Legendre derivative, gravity signs, chol_semi_def, Swerling, lambert_w) | Fixed in v1.15.1 |
+| 2026-07-25/26 | magnetism, relativity, SEZ | Issue #3 (synthesis normalization, coefficient corruption, formula errors, convention) | Fixed in v1.16.0 |

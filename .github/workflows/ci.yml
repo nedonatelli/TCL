@@ -74,7 +74,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ --cov=pytcl --cov-report=xml --benchmark-skip -v
+        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -v
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -99,11 +99,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Build docs
+      - name: Build docs (fail on docutils errors)
         run: |
-          cd docs
-          # sphinx-build -b html . _build/html
-          echo "Documentation build placeholder"
+          pip install sphinx-rtd-theme nbsphinx
+          sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
+          if grep -q "ERROR" /tmp/sphinx.log; then
+            echo "::error::Sphinx build produced docutils ERRORs"
+            grep "ERROR" /tmp/sphinx.log
+            exit 1
+          fi
 
   notebooks:
     runs-on: ubuntu-latest
