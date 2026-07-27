@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.16.0 (Released July 26, 2026)
-**Test Suite:** 3,306 tests passing, 80% line coverage, 100% mypy --strict compliance
+**Current Version:** v1.17.0 (Released July 27, 2026)
+**Test Suite:** 4,622 tests passing, 80% line coverage, 100% mypy --strict compliance
 **Status:** Feature-complete MATLAB TCL parity achieved. All v2.0.0 development phases (1-8)
 are complete; remaining work is release preparation (Phase 9).
 
@@ -70,7 +70,7 @@ polish:
 - **Migration:** Tools and guides for v1.x → v2.0.0 transition, `pytcl.compat` layer
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
-- **Testing:** 3,306+ tests, 80%+ coverage, multi-sensor validation scenarios
+- **Testing:** 4,622+ tests, 80%+ coverage, multi-sensor validation scenarios
 
 ### v2.0.0 Release Risks
 
@@ -195,22 +195,29 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 
 ## Known Issues & Planned Fixes
 
-### Critical (tracked in [#3](https://github.com/nedonatelli/TCL/issues/3))
+The v1.15.1-v1.17.0 correctness campaign closed the previously listed critical
+issues (magnetism synthesis, relativity formulas, SEZ convention) and 72 further
+reference-verified bugs. Per-package validation status is tracked in
+[AUDIT.md](AUDIT.md).
+
+### Critical (tracked in [#9](https://github.com/nedonatelli/TCL/issues/9))
 
 | Issue | Module | Impact | Status |
 |-------|--------|--------|--------|
-| WMM/IGRF synthesis: wrong Legendre normalization, corrupted WMM2020 coefficient table above degree 4, no geodetic-to-geocentric conversion | `magnetism/` | Field values unreliable (declination ~180 deg off at NOAA test point); EMM/WMMHR needs accuracy audit | Open — fix before v2.0.0 |
-| Dimensionally inconsistent relativity formulas (geodetic precession, Lense-Thirring, 1PN acceleration, range correction) | `astronomical/relativity.py` | Unphysical outputs | Open — fix before v2.0.0 |
-| `ecef2sez` S-axis points north, contradicting standard SEZ (Vallado) | `coordinate_systems/conversions/geodetic.py` | Sign-flipped S components | Needs convention decision |
+| No MLX compute backend: all batch filters are `@requires('cupy')` despite advertised Apple Silicon acceleration | `gpu/` | Documented feature unusable on Apple Silicon | Implement or retract claim before v2.0.0 |
+| SDP4 has no deep-space physics (no lunar-solar terms, no resonance) | `astronomical/sgp4.py` | GEO/Molniya 15-75 km/day vs reference | Port ~700 lines or document scope |
+| Invalid Lagrangian bounds produce false convergence certificates | `assignment_algorithms/` (N-D relaxation, 3D Lagrangian) | `converged=True` while suboptimal | Fix bound or remove the certificate |
+| Murty k-best with finite `cost_of_non_assignment` returns an incomplete sequence | `assignment_algorithms/two_dimensional/kbest.py` | Missing k-best solutions | Partition over the augmented problem |
+| Scaled Legendre scheme breaks for n_max >= 1000 | `gravity/spherical_harmonics.py` | EGM2008 (n=2190) unreachable; validated to n=500 | Holmes-Featherstone order-wise scaling |
 
 ### High Priority
 
 | Issue | Module | Impact | Status |
 |-------|--------|--------|--------|
 | Terrain loader signature mismatch | `terrain/loaders.py` | 13 tests skipped | Planned for v2.1 |
-| Plotting array indexing bug ("too many indices for array") | `plotting/` | 2 tests skipped | Investigating |
-| CuPy tests skip without NVIDIA GPU | `gpu/` | 11 tests skipped | By design |
+| CuPy tests skip without NVIDIA GPU | `gpu/` | Hardware-gated (algorithm-validated via shim) | By design |
 | Dead modules: `assignment_algorithms/network_simplex.py`, `logging_config.py` | — | 0% coverage, referenced nowhere | Remove in v2.0.0 |
+| API/contract cleanups from the audit (see [#9](https://github.com/nedonatelli/TCL/issues/9)) | multiple | Misleading names, dead parameters, install hints naming the wrong package | Triage before v2.0.0 |
 
 ### Medium Priority
 
