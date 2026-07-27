@@ -129,7 +129,11 @@ from pytcl.dynamic_estimation.smoothers import (
 # ---------------------------------------------------------------------------
 
 F = np.array([[1.0, 1.0], [0.0, 1.0]])
-Q = np.array([[0.25, 0.5], [0.5, 1.0]]) * 0.1
+# Strictly positive definite: the pure gain-vector form [[0.25, 0.5], [0.5, 1.0]]
+# has det == 0 exactly, and Cholesky on it is BLAS-roundoff luck (passes on
+# Accelerate, raises on OpenBLAS). The jitter keeps every filter variant on
+# the same well-posed problem.
+Q = np.array([[0.25, 0.5], [0.5, 1.0]]) * 0.1 + np.eye(2) * 1e-6
 H = np.array([[1.0, 0.0]])
 R = np.array([[0.5]])
 X0 = np.array([0.0, 1.0])
