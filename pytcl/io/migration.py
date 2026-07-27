@@ -93,9 +93,9 @@ class MigrationHelper:
 
     # Patterns for detecting filter usage
     _FILTER_PATTERNS: Dict[str, List[str]] = {
-        "kf": [r"kf_predict", r"kf_update", r"kf_predict_update"],
+        "kf": [r"\bkf_predict", r"\bkf_update", r"\bkf_predict_update"],
         "ekf": [r"ekf_predict", r"ekf_update", r"ekf_predict_auto"],
-        "ukf": [r"ukf_predict", r"ukf_update"],
+        "ukf": [r"\bukf_predict", r"\bukf_update"],
         "ckf": [r"ckf_predict", r"ckf_update"],
         "srkf": [r"srkf_predict", r"srkf_update", r"sr_ukf_predict"],
         "imm": [r"IMMEstimator", r"imm_predict", r"imm_update"],
@@ -434,7 +434,7 @@ for k in range(n_steps):
 # Query results
 for i in range({n_targets}):
     history = db.get_track_history(f"trk_{{i:02d}}")
-    print(f"Track {{i}}: {{len(history[\\'timestamps\\'])}} state entries")
+    print(f"Track {{i}}: {{len(history['timestamps'])}} state entries")
 
 db.close()
 '''
@@ -522,7 +522,7 @@ store.store_tracking_scenario("mission_001", tracks)
 
 # Query archived data
 traj = store.get_track_trajectory("trk_00", start_time=10, end_time=50)
-print(f"Trajectory slice: {{traj[\\'states\\'].shape}}")
+print(f"Trajectory slice: {{traj['states'].shape}}")
 
 store.close()
 '''

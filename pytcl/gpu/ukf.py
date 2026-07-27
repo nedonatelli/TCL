@@ -159,8 +159,8 @@ def _generate_sigma_points(
         # Fallback: eigendecomposition for non-positive-definite
         eigvals, eigvecs = cp.linalg.eigh(P_gpu)
         eigvals = cp.maximum(eigvals, 1e-10)
-        L = eigvecs @ cp.diag(cp.sqrt(eigvals)).T
-        L = cp.swapaxes(L, -2, -1)  # Make it "lower triangular-like"
+        # Per-track V @ diag(sqrt(w)) so that L @ L.T == V @ diag(w) @ V.T ~= P
+        L = eigvecs * cp.sqrt(eigvals)[..., None, :]
 
     # Scale by gamma
     scaled_L = gamma * L  # shape: (n_tracks, n, n)

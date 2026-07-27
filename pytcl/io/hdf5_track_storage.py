@@ -800,12 +800,13 @@ class TrackHDF5Storage:
                 )
 
                 if len(states) > 1:
+                    residuals = track_data.get("residuals")
                     db_manager.store_track_history(
                         tid,
                         states[1:],
                         covs[1:],
                         timestamps[1:],
-                        residuals=track_data.get("residuals"),
+                        residuals=residuals[1:] if residuals is not None else None,
                     )
 
         for did in self.list_detections(scenario_id):

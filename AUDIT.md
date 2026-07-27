@@ -7,6 +7,11 @@ Tracks the validation status of every public function, method, and class in
 **Goal:** zero UNTESTED, and REFERENCE or PROPERTY class for all numerical
 code, before v2.0.0-alpha.
 
+**STATUS: COMPLETE (2026-07-26).** All 21 packages audited across three waves.
+72 reference/contract-verified bugs fixed, ~1,100 audit tests added, zero
+UNTESTED public items (24 CuPy paths hardware-gated, algorithm-validated via
+shim). Design-level findings tracked in the triage issue.
+
 Inventory (2026-07-26): **1,351 public functions/methods, 226 classes** across
 21 packages.
 
@@ -30,9 +35,9 @@ Inventory (2026-07-26): **1,351 public functions/methods, 226 classes** across
 | assignment_algorithms + static_estimation | 91 | ✅ Wave 2 done | 62 REFERENCE + 10 PROPERTY; 11 bugs fixed (Murty x4, default flow path suboptimal 64%, JPDA Pd^2 + covariance, 3D auction infeasible, TLS sign, more); 7 design issues reported |
 | gravity + tides | 60 | ✅ Wave 2 done | 36 REFERENCE + 4 PROPERTY; 12 bugs fixed (Legendre sqrt2 at source, solid tide frame/amplitude/sign, pole tide, atm loading 100x, geoid reference field, EGM parser D-exponents); degree>500 scaling limit flagged |
 | dynamic_models + performance_evaluation + trackers | 72 | ✅ Wave 2 done | 55 REFERENCE + 4 PROPERTY; 2 bugs fixed (q_singer 4 orders off/non-PSD, q_continuous_white_noise); CT Jacobian + MHT score + dead frag counter reported |
-| io | 113 | ⬜ Wave 3 | round-trip/property (HDF5/SQL) |
-| core + terrain + plotting + misc | ~100 | ⬜ Wave 3 | behavioral contracts |
-| gpu | 56 | ⬜ Wave 3 | MLX backend on Apple Silicon; CuPy needs NVIDIA hardware |
+| io | 125 | ✅ Wave 3 done | 104 VALIDATED + 4 PROPERTY; 5 bugs fixed (metadata corruption, residual off-by-one, invalid migration templates); 3 design items reported |
+| core + terrain + plotting | 186 | ✅ Wave 3 done | 172 VALIDATED (all constants CODATA/WGS84-checked) + 12 PROPERTY; line_of_sight curvature sign inverted (fixed), HAS_* flags always truthy (fixed); Moon GM inconsistency reported |
+| gpu | 47 | ✅ Wave 3 done | 12 VALIDATED on real MLX + 24 HARDWARE_GATED (algorithm-validated via shim); 3 bugs fixed. **MAJOR: no MLX compute backend exists — all batch filters are CuPy-only despite advertised Apple Silicon acceleration** |
 
 ## Findings log
 
@@ -45,3 +50,4 @@ suspected-but-unconfirmed issues get GitHub issues and are linked here.
 | 2026-07-25/26 | magnetism, relativity, SEZ | Issue #3 (synthesis normalization, coefficient corruption, formula errors, convention) | Fixed in v1.16.0 |
 | 2026-07-26 | Wave 1 (5 packages) | 21 bugs fixed: CWT never dilated, OS-CFAR 14x design pfa, CoverTree invalid search, gyrocompass 45-deg errors, ecef2geodetic 37 km, polar stereographic S hemisphere, rotmat2euler XYZ negated, Debye family, Swerling 1-4, wright_omega overflow, more | Fixed on audit branch; ~15 ambiguous items for triage |
 | 2026-07-26 | Wave 2 (5 groups) | 41 bugs fixed: SGP4 x4 (728 km/day → <1 mm), GMST double-count, lambert_izzo rewrite, solid tides had no semidiurnal component, atm loading 100x, Legendre sqrt2 root cause, UD/SRIF/smoother/PF/IF/SR-UKF filter-core errors, Murty x4, JPDA Pd^2, default assignment path suboptimal, q_singer, more | Fixed on audit branch; ~12 design-level items for triage |
+| 2026-07-26 | Wave 3 (3 groups) | 10 bugs fixed: line_of_sight Earth-curvature sign inverted, HDF5 metadata corruption, SQL residual off-by-one, invalid migration templates, UKF GPU sigma fallback, MLX sync/clear no-ops, HAS_* flags always truthy | Fixed on audit branch. MAJOR finding: MLX compute backend absent (docs claim Apple Silicon acceleration; all batch filters CuPy-gated) |

@@ -894,6 +894,7 @@ class TrackDatabaseManager:
         timestamp : float, optional
             Override timestamp. Uses track.time if not provided.
         """
+        self._check_open()
         t = timestamp if timestamp is not None else track.time
         track_id = f"trk_{track.id}"
 

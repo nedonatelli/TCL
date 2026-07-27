@@ -394,17 +394,28 @@ class _AvailabilityFlags:
 # Create singleton instance
 _flags = _AvailabilityFlags()
 
-# Export individual flags for convenient access
-HAS_PLOTLY = property(lambda self: _flags.HAS_PLOTLY)
-HAS_PYWT = property(lambda self: _flags.HAS_PYWT)
-PYWT_AVAILABLE = property(lambda self: _flags.PYWT_AVAILABLE)
-HAS_JPLEPHEM = property(lambda self: _flags.HAS_JPLEPHEM)
-HAS_ASTROPY = property(lambda self: _flags.HAS_ASTROPY)
-HAS_PYPROJ = property(lambda self: _flags.HAS_PYPROJ)
-HAS_CVXPY = property(lambda self: _flags.HAS_CVXPY)
-HAS_NETCDF4 = property(lambda self: _flags.HAS_NETCDF4)
-HAS_CUPY = property(lambda self: _flags.HAS_CUPY)
-HAS_MLX = property(lambda self: _flags.HAS_MLX)
+# Mapping of exported flag names to the package they report on.
+# Resolved lazily via the module-level __getattr__ below (PEP 562) so that
+# each access returns a real, current bool.
+_FLAG_PACKAGES: dict[str, str] = {
+    "HAS_PLOTLY": "plotly",
+    "HAS_PYWT": "pywt",
+    "PYWT_AVAILABLE": "pywt",
+    "HAS_JPLEPHEM": "jplephem",
+    "HAS_ASTROPY": "astropy",
+    "HAS_PYPROJ": "pyproj",
+    "HAS_CVXPY": "cvxpy",
+    "HAS_NETCDF4": "netCDF4",
+    "HAS_CUPY": "cupy",
+    "HAS_MLX": "mlx",
+}
+
+
+def __getattr__(name: str) -> bool:
+    """Resolve availability flags lazily as real booleans."""
+    if name in _FLAG_PACKAGES:
+        return is_available(_FLAG_PACKAGES[name])
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # =============================================================================
@@ -534,18 +545,8 @@ __all__ = [
     # Configuration
     "PACKAGE_EXTRAS",
     "PACKAGE_FEATURES",
-    # Availability flags (backward compatibility)
-    "HAS_PLOTLY",
-    "HAS_PYWT",
-    "PYWT_AVAILABLE",
-    "HAS_JPLEPHEM",
-    "HAS_ASTROPY",
-    "HAS_PYPROJ",
-    "HAS_CVXPY",
-    "HAS_NETCDF4",
-    "HAS_CUPY",
-    "HAS_MLX",
     # Internal (for testing)
     "_clear_cache",
     "_flags",
-]
+    # Availability flags (backward compatibility, resolved via __getattr__)
+] + list(_FLAG_PACKAGES)

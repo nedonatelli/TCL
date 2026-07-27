@@ -255,9 +255,17 @@ class HDF5Storage(StorageBackend):
         metadata = {}
 
         for key, value in obj.attrs.items():
-            try:
-                metadata[key] = json.loads(value) if isinstance(value, str) else value
-            except (json.JSONDecodeError, TypeError):
+            if isinstance(value, str):
+                # store_* serializes non-native values as json.dumps(str(v)),
+                # which always decodes back to a str. Only reverse that case;
+                # leave user strings that happen to parse as JSON (e.g. "123",
+                # "true") untouched so string metadata round-trips exactly.
+                try:
+                    parsed = json.loads(value)
+                    metadata[key] = parsed if isinstance(parsed, str) else value
+                except (json.JSONDecodeError, TypeError):
+                    metadata[key] = value
+            else:
                 metadata[key] = value
 
         return metadata
