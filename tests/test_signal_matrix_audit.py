@@ -9,7 +9,6 @@ rates, Parseval relations, quadrature of PDFs, geometric invariants).
 
 import numpy as np
 import pytest
-import pywt
 import scipy.linalg
 import scipy.signal
 import scipy.stats
@@ -155,6 +154,15 @@ from pytcl.mathematical_functions.transforms.stft import (
     stft,
     window_bandwidth,
 )
+
+try:
+    import pywt
+
+    HAS_PYWT = True
+except ImportError:
+    pywt = None
+    HAS_PYWT = False
+
 from pytcl.mathematical_functions.transforms.wavelets import (
     cwt,
     dwt,
@@ -825,6 +833,7 @@ class TestCWT:
             assert_allclose(s2, s, rtol=1e-12, err_msg=name)
 
 
+@pytest.mark.skipif(not HAS_PYWT, reason="pywavelets not installed")
 class TestDWT:
     def test_dwt_matches_pywt(self):
         rng = np.random.default_rng(15)

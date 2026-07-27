@@ -871,8 +871,6 @@ def polar_stereographic(
     ProjectionResult
         Projected coordinates with scale and convergence.
 
-    Examples
-    --------
     Notes
     -----
     Uses the exact ellipsoidal polar stereographic equations
