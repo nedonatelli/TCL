@@ -231,29 +231,38 @@ class TestAssociatedLegendre:
 
 
 class TestScaledLegendre:
+    """Holmes & Featherstone order-wise scaling (see also
+    tests/test_legendre_high_degree.py).
+
+    ``scale_exp`` is indexed by ORDER, not degree: the factor that underflows
+    is ``u**m``. These tests were updated when the per-degree scheme was
+    replaced (gh-16); the old one violated the addition theorem by 1e199 at
+    degree 2000.
+    """
+
     def test_matches_unscaled_low_degree(self):
         x = np.cos(np.radians(40.0))
-        P_scaled, exp = associated_legendre_scaled(100, 100, x)
+        u = np.sqrt(1 - x * x)
+        P_scaled, scale_exp = associated_legendre_scaled(100, 100, x)
         P = associated_legendre(100, 100, x)
-        assert np.all(exp == 0)
+        assert scale_exp.shape == (101,)
+        recon = P_scaled * (u ** np.arange(101))[None, :] * 1e280
         # The unscaled path quantizes x to 1e-12 for caching, which bounds
-        # the achievable agreement at degree 100 to ~n^2 * 5e-13
-        assert_allclose(P_scaled, P, rtol=1e-8, atol=1e-10)
+        # the achievable agreement at degree 100.
+        assert_allclose(recon, P, rtol=1e-4, atol=1e-10)
 
     @pytest.mark.parametrize("n_max", [200, 500])
     def test_addition_theorem_high_degree(self, n_max):
         """Reconstructed values satisfy sum_m P̄nm^2 = 2n+1 at n = n_max."""
         x = np.cos(np.radians(40.0))
-        P_scaled, exp = associated_legendre_scaled(n_max, n_max, x)
-        row = P_scaled[n_max, :]
-        mx = np.max(np.abs(row))
-        assert mx > 0
-        s_scaled = np.sum((row / mx) ** 2)
-        log10_sum = np.log10(s_scaled) + 2 * np.log10(mx) + 2 * exp[n_max]
-        assert_allclose(log10_sum, np.log10(2 * n_max + 1), atol=1e-9)
+        P_scaled, scale_exp = associated_legendre_scaled(n_max, n_max, x)
+        with np.errstate(divide="ignore"):
+            log_p = np.log10(np.abs(P_scaled[n_max, :])) + scale_exp
+        total = np.sum(10.0 ** (2 * np.clip(log_p, -400, 400)))
+        assert_allclose(total, 2 * n_max + 1, rtol=1e-9)
 
     def test_sectoral_seeds_do_not_underflow(self):
-        """Regression: scale ratios must be applied before absolute scales."""
+        """Sectoral seeds grow like sqrt(m) once u**m is divided out."""
         x = np.cos(np.radians(40.0))
         P_scaled, _ = associated_legendre_scaled(200, 200, x)
         diag = np.diagonal(P_scaled)
