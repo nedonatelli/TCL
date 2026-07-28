@@ -83,7 +83,7 @@ def _problem(seed=5, n_tracks=8):
 
 
 def _max_rel(actual, reference):
-    """Max absolute deviation normalised by the reference's own scale."""
+    """Max absolute deviation normalized by the reference's own scale."""
     actual = np.asarray(actual, dtype=np.float64)
     reference = np.asarray(reference, dtype=np.float64)
     scale = max(float(np.abs(reference).max()), 1e-12)

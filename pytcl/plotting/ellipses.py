@@ -452,7 +452,7 @@ def _color_to_rgb(color: str) -> str:
         "yellow": "255, 255, 0",
         "black": "0, 0, 0",
         "gray": "128, 128, 128",
-        "grey": "128, 128, 128",
+        "grey": "128, 128, 128",  # British spelling accepted as an alias
     }
     return color_map.get(color.lower(), "0, 100, 255")
 

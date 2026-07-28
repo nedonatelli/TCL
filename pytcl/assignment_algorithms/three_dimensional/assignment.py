@@ -327,7 +327,7 @@ def assign3d_lagrangian(
     Notes
     -----
     The Lagrangian dualizes the third-dimension constraint. For multipliers
-    ``mu``, the inner problem separates: minimising ``cost[i, j, k] - mu[k]``
+    ``mu``, the inner problem separates: minimizing ``cost[i, j, k] - mu[k]``
     over ``k`` for each ``(i, j)`` leaves a 2-D assignment problem, which is
     solved **exactly**. Solving that inner problem exactly is what makes
     ``L(mu)`` a valid lower bound -- an approximate inner solve does not bound

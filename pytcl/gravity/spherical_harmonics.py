@@ -619,7 +619,7 @@ def spherical_harmonic_sum_high_degree(
     r : float
         Radial distance in metres.
     C, S : ndarray
-        Fully normalised cosine and sine coefficients, shape (n_max+1, n_max+1).
+        Fully normalized cosine and sine coefficients, shape (n_max+1, n_max+1).
     R : float
         Reference radius in metres.
     GM : float

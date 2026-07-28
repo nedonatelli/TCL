@@ -35,7 +35,7 @@ from pytcl.gravity.spherical_harmonics import (
 R_EARTH = 6.378137e6
 GM_EARTH = 3.986004418e14
 
-# Fully normalised (geodesy 4pi) values at x = cos(45 deg), from mpmath dps=60.
+# Fully normalized (geodesy 4pi) values at x = cos(45 deg), from mpmath dps=60.
 MPMATH_REFERENCE = {
     (10, 3): -1.978527585e00,
     (50, 25): 2.227570466e00,
@@ -168,7 +168,7 @@ class TestHighDegreeSynthesis:
 
     @pytest.mark.slow
     def test_consistent_across_colatitude_at_high_degree(self):
-        """A smooth field must not jump between neighbouring colatitudes."""
+        """A smooth field must not jump between neighboring colatitudes."""
         n_max = 2190
         C, S = self._coefficients(n_max)
         values = [
