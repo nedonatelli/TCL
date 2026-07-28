@@ -14,7 +14,6 @@ from scipy.optimize import linear_sum_assignment as scipy_lsa
 
 from pytcl.assignment_algorithms.two_dimensional.assignment import (
     AssignmentResult,
-    assign2d,
 )
 
 
@@ -172,6 +171,93 @@ def _solve_constrained(
     return row_ind, col_ind, total_cost
 
 
+def _augmented_for_non_assignment(
+    cost: NDArray[np.float64],
+    cost_of_non_assignment: float,
+    maximize: bool,
+) -> Tuple[NDArray[np.float64], float]:
+    """Encode optional non-assignment as a plain rectangular assignment.
+
+    ``assign2d`` charges ``cost_of_non_assignment`` for every unassigned row
+    *and* every unassigned column. For a solution with ``r`` pairs that total
+    is::
+
+        sum(C[i, j] for pairs) + cna * (n - r) + cna * (m - r)
+      = sum(C[i, j] - 2 * cna for pairs) + cna * (n + m)
+
+    so the problem is a rectangular assignment on ``C - 2 * cna`` in which each
+    row may instead take a private zero-cost dummy column. Every real solution
+    has exactly one representation in this encoding, which is what makes it
+    usable for k-best enumeration: the square ``(n + m) x (n + m)`` form used
+    by :func:`assign2d` has a zero-cost dummy-to-dummy block, so a solution
+    with ``r`` pairs appears ``r!`` times and Murty would return duplicates.
+
+    Parameters
+    ----------
+    cost : ndarray
+        Original cost matrix, shape (n, m).
+    cost_of_non_assignment : float
+        Finite cost charged per unassigned row and per unassigned column.
+    maximize : bool
+        If True, build the encoding for a maximization problem.
+
+    Returns
+    -------
+    augmented : ndarray
+        Matrix of shape (n, m + n). Columns ``[0, m)`` are the shifted real
+        costs; column ``m + i`` is row ``i``'s private dummy.
+    constant : float
+        Additive constant relating the augmented objective to the real one.
+    """
+    n, m = cost.shape
+    fill = -np.inf if maximize else np.inf
+    shift = 2.0 * cost_of_non_assignment
+
+    augmented = np.full((n, m + n), fill, dtype=np.float64)
+    if maximize:
+        augmented[:, :m] = cost + shift
+        constant = -cost_of_non_assignment * (n + m)
+    else:
+        augmented[:, :m] = cost - shift
+        constant = cost_of_non_assignment * (n + m)
+
+    for i in range(n):
+        augmented[i, m + i] = 0.0
+
+    return augmented, constant
+
+
+def _decode_augmented(
+    row_ind: NDArray[np.intp],
+    col_ind: NDArray[np.intp],
+    n_real_cols: int,
+) -> Tuple[NDArray[np.intp], NDArray[np.intp]]:
+    """Drop dummy columns, leaving the real assignment pairs."""
+    keep = col_ind < n_real_cols
+    return row_ind[keep], col_ind[keep]
+
+
+def _make_result(
+    cost: NDArray[np.float64],
+    row_ind: NDArray[np.intp],
+    col_ind: NDArray[np.intp],
+    total_cost: float,
+) -> AssignmentResult:
+    """Build an AssignmentResult from real (decoded) assignment pairs."""
+    n, m = cost.shape
+    return AssignmentResult(
+        row_indices=row_ind,
+        col_indices=col_ind,
+        cost=total_cost,
+        unassigned_rows=np.array(
+            sorted(set(range(n)) - set(row_ind.tolist())), dtype=np.intp
+        ),
+        unassigned_cols=np.array(
+            sorted(set(range(m)) - set(col_ind.tolist())), dtype=np.intp
+        ),
+    )
+
+
 def murty(
     cost_matrix: ArrayLike,
     k: int,
@@ -237,15 +323,30 @@ def murty(
     if k <= 0:
         return KBestResult(assignments=[], costs=np.array([]), n_found=0)
 
-    # Find the optimal assignment first
-    first_result = assign2d(cost, cost_of_non_assignment, maximize)
+    # With a finite non-assignment cost, enumerate over an augmented problem in
+    # which each row may take a private dummy column. Partitioning on the raw
+    # matrix would only ever produce complete matchings, silently truncating
+    # the ranked list (gh-15).
+    allow_non_assignment = np.isfinite(cost_of_non_assignment)
+    if allow_non_assignment:
+        work, constant = _augmented_for_non_assignment(
+            cost, float(cost_of_non_assignment), maximize
+        )
+    else:
+        work, constant = cost, 0.0
 
-    if len(first_result.row_indices) == 0 and cost_of_non_assignment == np.inf:
-        # No valid assignment
+    first = _solve_constrained(work, [], [], maximize)
+    if first is None:
         return KBestResult(assignments=[], costs=np.array([]), n_found=0)
 
-    assignments: List[AssignmentResult] = [first_result]
-    costs: List[float] = [first_result.cost]
+    first_rows, first_cols, first_work_cost = first
+    real_rows, real_cols = _decode_augmented(first_rows, first_cols, m)
+    first_cost = float(first_work_cost) + constant
+
+    assignments: List[AssignmentResult] = [
+        _make_result(cost, real_rows, real_cols, first_cost)
+    ]
+    costs: List[float] = [first_cost]
 
     if k == 1:
         return KBestResult(
@@ -260,47 +361,27 @@ def murty(
     heap: List[_PartitionNode] = []
 
     # Create initial partition nodes from the first solution
-    _partition_solution(
-        cost,
-        first_result.row_indices,
-        first_result.col_indices,
-        [],
-        [],
-        heap,
-        maximize,
-    )
+    _partition_solution(work, first_rows, first_cols, [], [], heap, maximize)
 
     while len(assignments) < k and heap:
         # Get the best remaining node
         node = heapq.heappop(heap)
 
         # Heap costs are negated for maximization; recover the actual cost
-        actual_cost = -node.cost if maximize else node.cost
+        work_cost = -node.cost if maximize else node.cost
+        actual_cost = float(work_cost) + constant
 
         # Create assignment result
         if node.assignment is not None:
             row_ind, col_ind = node.assignment
+            real_rows, real_cols = _decode_augmented(row_ind, col_ind, m)
 
-            # Determine unassigned
-            all_rows = set(range(n))
-            all_cols = set(range(m))
-            unassigned_rows = np.array(sorted(all_rows - set(row_ind)), dtype=np.intp)
-            unassigned_cols = np.array(sorted(all_cols - set(col_ind)), dtype=np.intp)
-
-            result = AssignmentResult(
-                row_indices=row_ind,
-                col_indices=col_ind,
-                cost=actual_cost,
-                unassigned_rows=unassigned_rows,
-                unassigned_cols=unassigned_cols,
-            )
-
-            assignments.append(result)
+            assignments.append(_make_result(cost, real_rows, real_cols, actual_cost))
             costs.append(actual_cost)
 
             # Partition this solution for more candidates
             _partition_solution(
-                cost,
+                work,
                 row_ind,
                 col_ind,
                 node.required,
@@ -417,21 +498,35 @@ def kbest_assign2d(
     if k <= 0:
         return KBestResult(assignments=[], costs=np.array([]), n_found=0)
 
-    # Find the optimal assignment first
-    first_result = assign2d(cost, cost_of_non_assignment, maximize)
+    # See murty(): a finite non-assignment cost requires enumerating over the
+    # augmented problem, otherwise only complete matchings are produced.
+    allow_non_assignment = np.isfinite(cost_of_non_assignment)
+    if allow_non_assignment:
+        work, constant = _augmented_for_non_assignment(
+            cost, float(cost_of_non_assignment), maximize
+        )
+    else:
+        work, constant = cost, 0.0
 
-    if len(first_result.row_indices) == 0 and cost_of_non_assignment == np.inf:
+    first = _solve_constrained(work, [], [], maximize)
+    if first is None:
         return KBestResult(assignments=[], costs=np.array([]), n_found=0)
+
+    first_rows, first_cols, first_work_cost = first
+    first_cost = float(first_work_cost) + constant
 
     # Check threshold on first solution
     if cost_threshold is not None:
-        if not maximize and first_result.cost > cost_threshold:
+        if not maximize and first_cost > cost_threshold:
             return KBestResult(assignments=[], costs=np.array([]), n_found=0)
-        if maximize and first_result.cost < cost_threshold:
+        if maximize and first_cost < cost_threshold:
             return KBestResult(assignments=[], costs=np.array([]), n_found=0)
 
-    assignments: List[AssignmentResult] = [first_result]
-    costs: List[float] = [first_result.cost]
+    real_rows, real_cols = _decode_augmented(first_rows, first_cols, m)
+    assignments: List[AssignmentResult] = [
+        _make_result(cost, real_rows, real_cols, first_cost)
+    ]
+    costs: List[float] = [first_cost]
 
     if k == 1:
         return KBestResult(
@@ -444,21 +539,14 @@ def kbest_assign2d(
 
     heap: List[_PartitionNode] = []
 
-    _partition_solution(
-        cost,
-        first_result.row_indices,
-        first_result.col_indices,
-        [],
-        [],
-        heap,
-        maximize,
-    )
+    _partition_solution(work, first_rows, first_cols, [], [], heap, maximize)
 
     while len(assignments) < k and heap:
         node = heapq.heappop(heap)
 
         # Adjust cost for maximization
-        actual_cost = -node.cost if maximize else node.cost
+        work_cost = -node.cost if maximize else node.cost
+        actual_cost = float(work_cost) + constant
 
         # Check threshold
         if cost_threshold is not None:
@@ -469,25 +557,13 @@ def kbest_assign2d(
 
         if node.assignment is not None:
             row_ind, col_ind = node.assignment
+            real_rows, real_cols = _decode_augmented(row_ind, col_ind, m)
 
-            all_rows = set(range(n))
-            all_cols = set(range(m))
-            unassigned_rows = np.array(sorted(all_rows - set(row_ind)), dtype=np.intp)
-            unassigned_cols = np.array(sorted(all_cols - set(col_ind)), dtype=np.intp)
-
-            result = AssignmentResult(
-                row_indices=row_ind,
-                col_indices=col_ind,
-                cost=actual_cost,
-                unassigned_rows=unassigned_rows,
-                unassigned_cols=unassigned_cols,
-            )
-
-            assignments.append(result)
+            assignments.append(_make_result(cost, real_rows, real_cols, actual_cost))
             costs.append(actual_cost)
 
             _partition_solution(
-                cost,
+                work,
                 row_ind,
                 col_ind,
                 node.required,
