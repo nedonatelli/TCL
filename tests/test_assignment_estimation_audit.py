@@ -385,6 +385,23 @@ class Test3DAssignment:
             if len(res.tuples) == 3:
                 assert res.cost >= opt - 1e-9
 
+    def test_lagrangian_certificate_is_honest(self):
+        """converged=True must mean provably optimal (gh-14)."""
+        rng = np.random.default_rng(101)
+        certified = 0
+        for _ in range(40):
+            n = int(rng.integers(2, 5))
+            C = rng.uniform(0, 10, size=(n, n, n))
+            opt = _brute_3d_optimal(C)
+            res = assign3d_lagrangian(C, max_iter=60)
+            lower_bound = res.cost - res.gap
+            # The reported lower bound must never exceed the true optimum.
+            assert lower_bound <= opt + 1e-9
+            if res.converged:
+                certified += 1
+                assert res.cost <= opt + 1e-6, "false optimality certificate"
+        assert certified > 0, "no instance certified; test would be vacuous"
+
     def test_lagrangian_finds_obvious_diagonal(self):
         C = np.full((3, 3, 3), 100.0)
         for i in range(3):
@@ -465,10 +482,9 @@ class TestNDAssignment:
         assert len(res.assignments) == 2
 
     def test_relaxation_nd_feasible_upper_bound(self):
-        # NOTE: relaxation_assignment_nd's "lower bound" is not a valid
-        # Lagrangian bound (greedy is not the relaxed minimizer), so its
-        # converged/gap certificate can be wrong; here we validate only
-        # feasibility and that its cost is a true upper bound.
+        # The Lagrangian bound is now valid (the inner relaxed problem is
+        # solved exactly), so the certificate is checked separately in
+        # TestLagrangianBoundValidity below.
         rng = np.random.default_rng(32)
         for _ in range(10):
             C = rng.uniform(0, 10, size=(3, 3, 3))

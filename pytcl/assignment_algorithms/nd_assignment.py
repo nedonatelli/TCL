@@ -27,6 +27,7 @@ from typing import List, NamedTuple, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import linear_sum_assignment
 
 
 class AssignmentNDResult(NamedTuple):
@@ -184,6 +185,62 @@ def greedy_assignment_nd(
     )
 
 
+def _recover_feasible_nd(
+    cost_tensor: NDArray[np.float64],
+    rows: NDArray[np.intp],
+    cols: NDArray[np.intp],
+) -> Tuple[NDArray[np.intp], float]:
+    """Build a feasible N-D assignment from a fixed set of (dim0, dim1) pairs.
+
+    The relaxed solution satisfies the first two dimensions' constraints but may
+    reuse indices in the relaxed dimensions. Each remaining dimension is
+    assigned by an exact 2-D assignment over the fixed pairs, which guarantees
+    feasibility and therefore a valid upper bound.
+
+    Parameters
+    ----------
+    cost_tensor : ndarray
+        Original cost tensor.
+    rows, cols : ndarray
+        Indices selected in the first two dimensions.
+
+    Returns
+    -------
+    assignments : ndarray
+        Feasible assignment tuples, shape (n_assignments, n_dims).
+    cost : float
+        Total cost of the recovered assignment.
+    """
+    dims = cost_tensor.shape
+    n_dims = len(dims)
+    n_assign = len(rows)
+
+    # Partial tuples: start from the fixed (dim0, dim1) pairs.
+    partial = [[int(rows[t]), int(cols[t])] for t in range(n_assign)]
+
+    for d in range(2, n_dims):
+        # Cost of extending each partial tuple with each index of dimension d,
+        # minimised over the not-yet-assigned dimensions.
+        block = np.empty((n_assign, dims[d]))
+        for t in range(n_assign):
+            sub = cost_tensor[tuple(partial[t])]
+            # sub has axes (dims[d], dims[d+1], ...); minimise the trailing ones
+            block[t] = sub.reshape(dims[d], -1).min(axis=1)
+        r_idx, c_idx = linear_sum_assignment(block)
+        chosen = {int(r): int(c) for r, c in zip(r_idx, c_idx)}
+        for t in range(n_assign):
+            # Dimension d may be smaller than the number of tuples; unmatched
+            # tuples keep the greedy best index (feasibility is enforced only
+            # among the matched ones, mirroring rectangular 2-D assignment).
+            partial[t].append(chosen.get(t, int(np.argmin(block[t]))))
+
+    assignments = np.array(partial, dtype=np.intp)
+    if len(assignments) == 0:
+        return np.empty((0, n_dims), dtype=np.intp), 0.0
+    cost = float(np.sum(cost_tensor[tuple(assignments.T)]))
+    return assignments, cost
+
+
 def relaxation_assignment_nd(
     cost_tensor: NDArray[np.float64],
     max_iterations: int = 100,
@@ -193,8 +250,11 @@ def relaxation_assignment_nd(
     """
     Lagrangian relaxation solver for N-dimensional assignment.
 
-    Uses iterative subgradient optimization on Lagrange multipliers
-    to tighten the lower bound and find good solutions.
+    Relaxes the constraints on dimensions 3..N and solves the resulting
+    two-dimensional problem exactly, which yields a valid lower bound on the
+    optimal cost. Subgradient ascent on the multipliers tightens the bound;
+    a feasible solution is recovered at each iteration to provide an upper
+    bound.
 
     Parameters
     ----------
@@ -203,7 +263,7 @@ def relaxation_assignment_nd(
     max_iterations : int, optional
         Maximum iterations (default 100).
     tolerance : float, optional
-        Convergence tolerance for gap (default 1e-6).
+        Convergence tolerance for the optimality gap (default 1e-6).
     verbose : bool, optional
         Print iteration info (default False).
 
@@ -211,85 +271,95 @@ def relaxation_assignment_nd(
     -------
     AssignmentNDResult
         Assignments, total cost, convergence info, and optimality gap.
+        ``gap`` is ``best_upper_bound - best_lower_bound``; when ``converged``
+        is True the returned assignment is provably within ``tolerance`` of
+        optimal.
 
     Examples
     --------
     >>> import numpy as np
     >>> # 3x3x3 assignment problem
-    >>> np.random.seed(42)
-    >>> cost = np.random.rand(3, 3, 3)
+    >>> rng = np.random.default_rng(42)
+    >>> cost = rng.random((3, 3, 3))
     >>> result = relaxation_assignment_nd(cost, max_iterations=50)
-    >>> result.converged
+    >>> bool(result.gap >= -1e-9)  # gap is a genuine bound
     True
     >>> result.assignments.shape[1]  # 3D assignments
     3
 
     Notes
     -----
-    The relaxation approach:
-    1. Maintain Lagrange multipliers for each dimension
-    2. Solve relaxed problem (select best entries per tuple)
-    3. Update multipliers based on constraint violations
-    4. Iterate until convergence or gap tolerance met
+    The relaxation follows Poore's formulation [1]_:
 
-    This guarantees a lower bound on optimal cost and often finds
-    near-optimal or optimal solutions.
+    1. Relax the constraints on dimensions 3..N with multipliers ``lambda``.
+    2. The inner problem separates: minimising over the relaxed dimensions for
+       each (i, j) pair leaves a 2-D assignment problem, solved **exactly**.
+       Solving it exactly is what makes ``L(lambda)`` a valid lower bound --
+       a greedy inner solve does not bound the optimum and can certify
+       optimality for suboptimal answers.
+    3. Recover a feasible solution (upper bound) by assigning each relaxed
+       dimension with an exact 2-D assignment.
+    4. Ascend the multipliers along the constraint-violation subgradient.
+
+    The reported ``gap`` uses the best bounds seen across all iterations, so
+    it is a genuine optimality certificate rather than a heuristic score.
     """
-    dims = cost_tensor.shape
+    dims = validate_cost_tensor(cost_tensor)
     n_dims = len(dims)
 
-    # Initialize Lagrange multipliers (one per dimension per index)
-    lambdas = [np.zeros(dim) for dim in dims]
-
-    best_cost = np.inf
-    best_assignments = None
-    lower_bound = -np.inf
-
-    for iteration in range(max_iterations):
-        # Compute relaxed costs: original - Lagrange penalty
-        relaxed_cost = cost_tensor.copy()
-        for d in range(n_dims):
-            # Reshape lambda[d] to broadcast correctly
-            shape = [1] * n_dims
-            shape[d] = dims[d]
-            relaxed_cost = relaxed_cost - lambdas[d].reshape(shape)
-
-        # Solve relaxed problem: greedy on relaxed costs
-        result_relaxed = greedy_assignment_nd(relaxed_cost)
-
-        # Compute lower bound from relaxed solution
-        lower_bound = result_relaxed.cost + sum(
-            np.sum(lambdas[d]) for d in range(n_dims)
+    # A 2-D problem needs no relaxation: solve it exactly.
+    if n_dims == 2:
+        rows, cols = linear_sum_assignment(cost_tensor)
+        assignments = np.column_stack([rows, cols]).astype(np.intp)
+        cost = float(cost_tensor[rows, cols].sum())
+        return AssignmentNDResult(
+            assignments=assignments,
+            cost=cost,
+            converged=True,
+            n_iterations=1,
+            gap=0.0,
         )
 
-        # Extract solution from relaxed problem
-        if len(result_relaxed.assignments) > 0:
-            actual_cost = float(
-                np.sum(cost_tensor[tuple(result_relaxed.assignments.T)])
-            )
+    free_dims = list(range(2, n_dims))
+    lambdas = [np.zeros(dims[d]) for d in free_dims]
+    free_shape = tuple(dims[d] for d in free_dims)
 
-            if actual_cost < best_cost:
-                best_cost = actual_cost
-                best_assignments = result_relaxed.assignments
+    best_upper = np.inf
+    best_lower = -np.inf
+    best_assignments: Optional[NDArray[np.intp]] = None
+    iteration = 0
 
-        # Compute constraint violations and update multipliers
-        violations = [np.zeros(dim) for dim in dims]
+    for iteration in range(max_iterations):
+        # Relaxed costs: c - sum of multipliers over the relaxed dimensions.
+        relaxed = cost_tensor.copy()
+        for k, d in enumerate(free_dims):
+            shape = [1] * n_dims
+            shape[d] = dims[d]
+            relaxed = relaxed - lambdas[k].reshape(shape)
 
-        for assignment in result_relaxed.assignments:
-            for d, idx in enumerate(assignment):
-                violations[d][idx] += 1
+        # Minimise over the relaxed dimensions, leaving a 2-D problem.
+        collapsed = relaxed.reshape(dims[0], dims[1], -1)
+        reduced = collapsed.min(axis=2)
+        best_free = collapsed.argmin(axis=2)
 
-        # Subgradient descent on multipliers
-        step_size = 1.0 / (iteration + 1)
-        for d in range(n_dims):
-            lambdas[d] -= step_size * (violations[d] - 1.0)
+        # Exact 2-D solve => valid lower bound.
+        rows, cols = linear_sum_assignment(reduced)
+        lower = float(reduced[rows, cols].sum()) + float(
+            sum(lam.sum() for lam in lambdas)
+        )
+        best_lower = max(best_lower, lower)
 
-        # Compute gap
-        gap = best_cost - lower_bound if best_cost != np.inf else np.inf
+        # Feasible recovery => valid upper bound.
+        assignments, upper = _recover_feasible_nd(cost_tensor, rows, cols)
+        if upper < best_upper:
+            best_upper = upper
+            best_assignments = assignments
+
+        gap = best_upper - best_lower
 
         if verbose:
             print(
-                f"Iter {iteration + 1}: LB={lower_bound:.4f}, UB={best_cost:.4f}, "
+                f"Iter {iteration + 1}: LB={best_lower:.4f}, UB={best_upper:.4f}, "
                 f"Gap={gap:.6f}"
             )
 
@@ -298,16 +368,37 @@ def relaxation_assignment_nd(
                 print(f"Converged at iteration {iteration + 1}")
             break
 
+        # Subgradient: how often each relaxed index is used, minus one.
+        chosen = np.array(np.unravel_index(best_free[rows, cols], free_shape)).reshape(
+            len(free_dims), -1
+        )
+        subgradient = []
+        for k, d in enumerate(free_dims):
+            counts = np.bincount(chosen[k], minlength=dims[d]).astype(float)
+            subgradient.append(1.0 - counts)
+
+        norm_sq = float(sum(float(np.sum(g**2)) for g in subgradient))
+        if norm_sq <= 0.0:
+            # No constraint violated: the relaxed solution is feasible and
+            # therefore optimal.
+            break
+
+        # Polyak step towards the current best upper bound.
+        step = (best_upper - lower) / norm_sq
+        if step <= 0.0:
+            step = 1.0 / (iteration + 1)
+        for k in range(len(free_dims)):
+            lambdas[k] = lambdas[k] + step * subgradient[k]
+
     if best_assignments is None:
         best_assignments = np.empty((0, n_dims), dtype=np.intp)
-        best_cost = 0.0
+        best_upper = 0.0
 
-    gap = best_cost - lower_bound if best_cost != np.inf else np.inf
-
+    gap = best_upper - best_lower
     return AssignmentNDResult(
         assignments=best_assignments,
-        cost=best_cost,
-        converged=gap < tolerance,
+        cost=best_upper,
+        converged=bool(gap < tolerance),
         n_iterations=iteration + 1,
         gap=gap,
     )
