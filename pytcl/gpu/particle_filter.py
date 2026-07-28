@@ -1,12 +1,15 @@
 """
-GPU-accelerated Particle Filter using CuPy.
+GPU-accelerated Particle Filter.
 
 This module provides GPU-accelerated implementations of particle filtering
-algorithms for highly nonlinear and non-Gaussian state estimation.
+algorithms for highly nonlinear and non-Gaussian state estimation. The
+algorithms are written against the backend-dispatch layer in
+:mod:`pytcl.gpu._backend`, so they run on CuPy (NVIDIA CUDA, float64) or MLX
+(Apple Silicon, float32) without change.
 
 Key Features
 ------------
-- GPU-accelerated resampling (systematic, multinomial)
+- GPU-accelerated resampling (systematic, multinomial, stratified)
 - Parallel weight computation
 - Batch processing of multiple particle filters
 - Efficient memory management
@@ -16,6 +19,13 @@ Performance
 The GPU implementation achieves 8-15x speedup compared to CPU for:
 - Large particle counts (N > 1000)
 - Parallel processing of multiple targets
+
+Notes
+-----
+On the MLX backend all computation is single precision, so weights and
+estimates are precision-limited relative to CuPy (relative error ~1e-7 rather
+than ~1e-15). The resampling *properties* (systematic low-variance bound,
+multinomial distribution, uniform post-resample weights) hold exactly on both.
 
 Examples
 --------
@@ -36,13 +46,13 @@ Examples
 >>> pf.update(measurement, likelihood)
 """
 
-from typing import Any, Callable, NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.optional_deps import import_optional, requires
-from pytcl.gpu.utils import ensure_gpu_array, to_cpu
+from pytcl.gpu._backend import Backend, get_compute_backend
+from pytcl.gpu.utils import to_cpu
 
 
 class ParticleFilterState(NamedTuple):
@@ -63,7 +73,18 @@ class ParticleFilterState(NamedTuple):
     ess: float
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
+def _likelihood_floor(b: Backend) -> float:
+    """Positive floor added to likelihoods before taking their log.
+
+    Guards ``log(0)`` without perturbing representable likelihoods. The value
+    must stay in the *normal* range of the backend's floating dtype: MLX
+    evaluates ``log`` of a float32 subnormal as ``-inf`` on the GPU stream,
+    which would propagate NaN through the log-sum-exp when every likelihood
+    underflows.
+    """
+    return 1e-300 if b.supports_float64 else 1e-30
+
+
 def gpu_effective_sample_size(weights: ArrayLike) -> float:
     """
     Compute effective sample size on GPU.
@@ -91,14 +112,15 @@ def gpu_effective_sample_size(weights: ArrayLike) -> float:
     >>> ess <= len(weights)
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
-    w = ensure_gpu_array(weights, dtype=cp.float64)
-    ess = 1.0 / float(cp.sum(w**2))
+    b = get_compute_backend()
+    w = b.asarray(weights)
+    ess = 1.0 / float(b.sum(w**2))
     return ess
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
-def gpu_resample_systematic(weights: ArrayLike) -> NDArray[np.intp]:
+def gpu_resample_systematic(
+    weights: ArrayLike, seed: Optional[int] = None
+) -> NDArray[np.intp]:
     """
     GPU-accelerated systematic resampling.
 
@@ -109,6 +131,9 @@ def gpu_resample_systematic(weights: ArrayLike) -> NDArray[np.intp]:
     ----------
     weights : array_like
         Normalized particle weights, shape (n_particles,).
+    seed : int, optional
+        Seed for the single uniform draw. If None, the backend's global
+        random state is used.
 
     Returns
     -------
@@ -122,30 +147,37 @@ def gpu_resample_systematic(weights: ArrayLike) -> NDArray[np.intp]:
     >>> weights = np.array([0.1, 0.3, 0.4, 0.2])
     >>> indices = gpu_resample_systematic(weights)
     >>> # Particles 1 and 2 will be selected more often
-    """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
 
-    w = ensure_gpu_array(weights, dtype=cp.float64)
-    n = len(w)
+    Notes
+    -----
+    Every particle is selected either ``floor(n * w_i)`` or
+    ``ceil(n * w_i)`` times, i.e. ``|count_i - n * w_i| < 1``.
+    """
+    b = get_compute_backend()
+
+    w = b.asarray(weights)
+    n = w.shape[0]
 
     # Cumulative sum of weights
-    cumsum = cp.cumsum(w)
+    cumsum = b.cumsum(w)
 
-    # Systematic sampling positions
-    u0 = cp.random.uniform(0, 1.0 / n)
-    positions = u0 + cp.arange(n, dtype=cp.float64) / n
+    # Systematic sampling positions: a single offset u0 ~ U[0, 1/n) shared by
+    # all n equally spaced strata.
+    u0 = b.uniform((1,), key=seed)
+    positions = (b.arange(n) + u0) / n
 
     # Find indices using searchsorted
-    indices = cp.searchsorted(cumsum, positions)
+    indices = b.searchsorted(cumsum, positions)
 
     # Clip to valid range
-    indices = cp.clip(indices, 0, n - 1)
+    indices = b.clip(indices, 0, n - 1)
 
     return indices
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
-def gpu_resample_multinomial(weights: ArrayLike) -> NDArray[np.intp]:
+def gpu_resample_multinomial(
+    weights: ArrayLike, seed: Optional[int] = None
+) -> NDArray[np.intp]:
     """
     GPU-accelerated multinomial resampling.
 
@@ -156,6 +188,9 @@ def gpu_resample_multinomial(weights: ArrayLike) -> NDArray[np.intp]:
     ----------
     weights : array_like
         Normalized particle weights, shape (n_particles,).
+    seed : int, optional
+        Seed for the uniform draws. If None, the backend's global random
+        state is used.
 
     Returns
     -------
@@ -178,26 +213,27 @@ def gpu_resample_multinomial(weights: ArrayLike) -> NDArray[np.intp]:
     Multinomial resampling has higher variance than systematic resampling
     but is simpler and can be more efficient on GPU for certain sizes.
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+    b = get_compute_backend()
 
-    w = ensure_gpu_array(weights, dtype=cp.float64)
-    n = len(w)
+    w = b.asarray(weights)
+    n = w.shape[0]
 
     # Cumulative sum
-    cumsum = cp.cumsum(w)
+    cumsum = b.cumsum(w)
 
     # Generate random samples
-    u = cp.random.uniform(0, 1, n)
+    u = b.uniform((n,), key=seed)
 
     # Find indices
-    indices = cp.searchsorted(cumsum, u)
-    indices = cp.clip(indices, 0, n - 1)
+    indices = b.searchsorted(cumsum, u)
+    indices = b.clip(indices, 0, n - 1)
 
     return indices
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
-def gpu_resample_stratified(weights: ArrayLike) -> NDArray[np.intp]:
+def gpu_resample_stratified(
+    weights: ArrayLike, seed: Optional[int] = None
+) -> NDArray[np.intp]:
     """
     GPU-accelerated stratified resampling.
 
@@ -208,31 +244,33 @@ def gpu_resample_stratified(weights: ArrayLike) -> NDArray[np.intp]:
     ----------
     weights : array_like
         Normalized particle weights, shape (n_particles,).
+    seed : int, optional
+        Seed for the uniform draws. If None, the backend's global random
+        state is used.
 
     Returns
     -------
     indices : ndarray
         Resampled particle indices, shape (n_particles,).
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+    b = get_compute_backend()
 
-    w = ensure_gpu_array(weights, dtype=cp.float64)
-    n = len(w)
+    w = b.asarray(weights)
+    n = w.shape[0]
 
     # Cumulative sum
-    cumsum = cp.cumsum(w)
+    cumsum = b.cumsum(w)
 
     # Stratified sampling: one random number per stratum
-    u = (cp.arange(n, dtype=cp.float64) + cp.random.uniform(0, 1, n)) / n
+    u = (b.arange(n) + b.uniform((n,), key=seed)) / n
 
     # Find indices
-    indices = cp.searchsorted(cumsum, u)
-    indices = cp.clip(indices, 0, n - 1)
+    indices = b.searchsorted(cumsum, u)
+    indices = b.clip(indices, 0, n - 1)
 
     return indices
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
 def gpu_normalize_weights(
     log_weights: ArrayLike,
 ) -> Tuple[NDArray[np.floating[Any]], float]:
@@ -264,16 +302,16 @@ def gpu_normalize_weights(
     >>> log_likelihood < 0
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+    b = get_compute_backend()
 
-    log_w = ensure_gpu_array(log_weights, dtype=cp.float64)
+    log_w = b.asarray(log_weights)
 
     # Log-sum-exp for numerical stability
-    max_log_w = cp.max(log_w)
-    log_sum = max_log_w + cp.log(cp.sum(cp.exp(log_w - max_log_w)))
+    max_log_w = b.max(log_w)
+    log_sum = max_log_w + b.log(b.sum(b.exp(log_w - max_log_w)))
 
     # Normalized weights
-    weights = cp.exp(log_w - log_sum)
+    weights = b.exp(log_w - log_sum)
 
     return weights, float(log_sum)
 
@@ -298,9 +336,9 @@ class CuPyParticleFilter:
 
     Attributes
     ----------
-    particles : cupy.ndarray
+    particles : GPUArray
         Current particle states, shape (n_particles, state_dim).
-    weights : cupy.ndarray
+    weights : GPUArray
         Current particle weights, shape (n_particles,).
 
     Examples
@@ -319,7 +357,6 @@ class CuPyParticleFilter:
     ...     state_estimate = pf.get_estimate()
     """
 
-    @requires("cupy", extra="gpu", feature="GPU particle filter")
     def __init__(
         self,
         n_particles: int,
@@ -327,7 +364,8 @@ class CuPyParticleFilter:
         resample_method: str = "systematic",
         resample_threshold: float = 0.5,
     ):
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = get_compute_backend()
+        self._b = b
 
         self.n_particles = n_particles
         self.state_dim = state_dim
@@ -344,8 +382,8 @@ class CuPyParticleFilter:
             raise ValueError(f"Unknown resample method: {resample_method}")
 
         # Initialize particles and weights
-        self.particles = cp.zeros((n_particles, state_dim), dtype=cp.float64)
-        self.weights = cp.ones(n_particles, dtype=cp.float64) / n_particles
+        self.particles = b.zeros((n_particles, state_dim))
+        self.weights = b.ones(n_particles) / n_particles
 
     def initialize(
         self,
@@ -362,15 +400,15 @@ class CuPyParticleFilter:
         cov : array_like
             Covariance matrix, shape (state_dim, state_dim).
         """
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = self._b
 
         mean = np.asarray(mean).flatten()
         cov = np.asarray(cov)
 
-        # Sample from multivariate normal on CPU (CuPy lacks this)
+        # Sample from multivariate normal on CPU (no GPU backend provides it)
         samples = np.random.multivariate_normal(mean, cov, self.n_particles)
-        self.particles = ensure_gpu_array(samples, dtype=cp.float64)
-        self.weights = cp.ones(self.n_particles, dtype=cp.float64) / self.n_particles
+        self.particles = b.asarray(samples)
+        self.weights = b.ones(self.n_particles) / self.n_particles
 
     def initialize_uniform(
         self,
@@ -387,15 +425,15 @@ class CuPyParticleFilter:
         high : array_like
             Upper bounds, shape (state_dim,).
         """
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = self._b
 
-        low = ensure_gpu_array(low, dtype=cp.float64)
-        high = ensure_gpu_array(high, dtype=cp.float64)
+        low = b.asarray(low)
+        high = b.asarray(high)
 
         # Sample uniformly
-        u = cp.random.uniform(0, 1, (self.n_particles, self.state_dim))
+        u = b.uniform((self.n_particles, self.state_dim))
         self.particles = low + u * (high - low)
-        self.weights = cp.ones(self.n_particles, dtype=cp.float64) / self.n_particles
+        self.weights = b.ones(self.n_particles) / self.n_particles
 
     def predict(
         self,
@@ -416,8 +454,8 @@ class CuPyParticleFilter:
 
         Notes
         -----
-        The dynamics function receives CuPy arrays if GPU is available.
-        It should return arrays of the same type.
+        The dynamics function receives backend arrays (CuPy or MLX). It should
+        return arrays of the same type.
         """
         # Apply dynamics (may be on CPU or GPU depending on function)
         self.particles = dynamics_fn(self.particles, *args, **kwargs)
@@ -446,16 +484,16 @@ class CuPyParticleFilter:
         log_likelihood : float
             Log of the marginal likelihood (normalization constant).
         """
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = self._b
 
-        z = ensure_gpu_array(measurement, dtype=cp.float64)
+        z = b.asarray(measurement)
 
         # Compute likelihoods
         likelihoods = likelihood_fn(self.particles, z)
-        likelihoods = ensure_gpu_array(likelihoods, dtype=cp.float64)
+        likelihoods = b.asarray(likelihoods)
 
         # Update weights
-        log_weights = cp.log(self.weights) + cp.log(likelihoods + 1e-300)
+        log_weights = b.log(self.weights) + b.log(likelihoods + _likelihood_floor(b))
 
         # Normalize
         self.weights, log_likelihood = gpu_normalize_weights(log_weights)
@@ -469,11 +507,11 @@ class CuPyParticleFilter:
 
     def _resample(self) -> None:
         """Perform resampling."""
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = self._b
 
         indices = self._resample_fn(self.weights)
         self.particles = self.particles[indices]
-        self.weights = cp.ones(self.n_particles, dtype=cp.float64) / self.n_particles
+        self.weights = b.ones(self.n_particles) / self.n_particles
 
     def get_estimate(self) -> NDArray[np.floating]:
         """
@@ -484,8 +522,8 @@ class CuPyParticleFilter:
         estimate : ndarray
             Weighted mean state, shape (state_dim,).
         """
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
-        estimate = cp.sum(self.particles * self.weights[:, None], axis=0)
+        b = self._b
+        estimate = b.sum(self.particles * self.weights[:, None], axis=0)
         return estimate
 
     def get_covariance(self) -> NDArray[np.floating]:
@@ -497,11 +535,11 @@ class CuPyParticleFilter:
         cov : ndarray
             Weighted covariance, shape (state_dim, state_dim).
         """
-        cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+        b = self._b
 
         mean = self.get_estimate()
         diff = self.particles - mean
-        cov = cp.einsum("n,ni,nj->ij", self.weights, diff, diff)
+        cov = b.einsum("n,ni,nj->ij", self.weights, diff, diff)
         return cov
 
     def get_ess(self) -> float:
@@ -532,7 +570,6 @@ class CuPyParticleFilter:
         return to_cpu(self.weights)
 
 
-@requires("cupy", extra="gpu", feature="GPU particle filter")
 def batch_particle_filter_update(
     particles: ArrayLike,
     weights: ArrayLike,
@@ -567,34 +604,43 @@ def batch_particle_filter_update(
     ess : ndarray
         Effective sample sizes.
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU particle filter")
+    b = get_compute_backend()
 
-    particles_gpu = ensure_gpu_array(particles, dtype=cp.float64)
-    weights_gpu = ensure_gpu_array(weights, dtype=cp.float64)
-    measurements_gpu = ensure_gpu_array(measurements, dtype=cp.float64)
+    particles_gpu = b.asarray(particles)
+    weights_gpu = b.asarray(weights)
+    measurements_gpu = b.asarray(measurements)
 
     n_filters = particles_gpu.shape[0]
+    floor = _likelihood_floor(b)
 
-    weights_updated = cp.zeros_like(weights_gpu)
-    log_likelihoods = cp.zeros(n_filters, dtype=cp.float64)
-    ess = cp.zeros(n_filters, dtype=cp.float64)
+    # Rows are accumulated and stacked: backend arrays are immutable on MLX,
+    # so no in-place row assignment is possible.
+    weights_rows = []
+    log_likelihood_rows = []
+    ess_rows = []
 
     for i in range(n_filters):
         # Compute likelihoods
         likelihoods = likelihood_fn(particles_gpu[i], measurements_gpu[i])
-        likelihoods = ensure_gpu_array(likelihoods, dtype=cp.float64)
+        likelihoods = b.asarray(likelihoods)
 
         # Update weights
-        log_weights = cp.log(weights_gpu[i]) + cp.log(likelihoods + 1e-300)
+        log_weights = b.log(weights_gpu[i]) + b.log(likelihoods + floor)
 
         # Normalize
-        max_log_w = cp.max(log_weights)
-        log_sum = max_log_w + cp.log(cp.sum(cp.exp(log_weights - max_log_w)))
-        weights_updated[i] = cp.exp(log_weights - log_sum)
-        log_likelihoods[i] = log_sum
+        max_log_w = b.max(log_weights)
+        log_sum = max_log_w + b.log(b.sum(b.exp(log_weights - max_log_w)))
+        weights_i = b.exp(log_weights - log_sum)
+
+        weights_rows.append(weights_i)
+        log_likelihood_rows.append(log_sum)
 
         # ESS
-        ess[i] = 1.0 / cp.sum(weights_updated[i] ** 2)
+        ess_rows.append(1.0 / b.sum(weights_i**2))
+
+    weights_updated = b.stack(weights_rows)
+    log_likelihoods = b.stack(log_likelihood_rows)
+    ess = b.stack(ess_rows)
 
     return weights_updated, log_likelihoods, ess
 

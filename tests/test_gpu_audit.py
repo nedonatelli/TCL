@@ -73,6 +73,9 @@ class _CupyShim(types.ModuleType):
     """numpy masquerading as cupy (their APIs coincide for the ops used)."""
 
     def __getattr__(self, name):
+        if name == "asnumpy":
+            # CuPy's device->host transfer; a no-op for numpy arrays.
+            return np.asarray
         return getattr(np, name)
 
 
@@ -93,11 +96,18 @@ def numpy_cupy(monkeypatch):
     def to_cpu_np(arr):
         return np.asarray(arr)
 
+    # Modules ported to the backend-dispatch layer no longer import
+    # ensure_gpu_array; there the shim above is picked up by CuPyBackend, which
+    # imports cupy (i.e. numpy) directly.
     for mod in (gpu_kalman, gpu_ekf, gpu_ukf, gpu_pf, gpu_matrix_utils):
-        monkeypatch.setattr(mod, "ensure_gpu_array", ensure_np)
+        monkeypatch.setattr(mod, "ensure_gpu_array", ensure_np, raising=False)
         if hasattr(mod, "to_cpu"):
             monkeypatch.setattr(mod, "to_cpu", to_cpu_np)
     yield shim
+
+
+def _raise_import_error(self, *args, **kwargs):
+    raise ImportError("no compute backend")
 
 
 def _random_spd(rng, n, scale=1.0, jitter=1.0):
@@ -222,15 +232,19 @@ class TestMLXTransfer:
         assert info["backend"] == "mlx"
         gpu_utils.clear_gpu_memory()
 
-    def test_memory_pool_noop_without_cupy(self):
+    def test_memory_pool_uses_mlx_without_cupy(self):
+        """Issue #12: MemoryPool reports real MLX numbers instead of no-op zeros."""
         if _HAS_REAL_CUPY:
-            pytest.skip("CuPy present; no-op path not reachable")
+            pytest.skip("CuPy present; MLX path not reachable")
         pool = gpu_matrix_utils.MemoryPool()
-        assert pool.get_stats() == {"used": 0, "total": 0, "free": 0}
+        stats = pool.get_stats()
+        assert sorted(stats) == ["device_total", "free", "total", "used"]
+        assert stats["device_total"] > 0
+        assert stats["used"] >= 0
         pool.free_all()
-        pool.set_limit(1024)
-        with pool.limit_memory(1024):
+        with pool.limit_memory(1 << 30):
             pass
+        pool.set_limit(None)
         assert isinstance(
             gpu_matrix_utils.get_memory_pool(), gpu_matrix_utils.MemoryPool
         )
@@ -242,24 +256,29 @@ class TestMLXTransfer:
 
 
 @pytest.mark.skipif(_HAS_REAL_CUPY, reason="only meaningful without CuPy")
-class TestBatchOpsAreCupyOnly:
-    """pytcl.gpu docs advertise MLX for batch ops, but every batch/PF/matrix
-    function is @requires("cupy"). On this MLX machine they must raise
-    DependencyError (they do) — i.e. there is no MLX compute backend."""
+class TestBatchOpsRunOnMLX:
+    """The gap this class used to document is closed: the batch filters, the
+    particle filter, and the matrix utilities are backend-dispatched and run on
+    MLX here. Without a compute backend at all they still raise
+    DependencyError, naming both extras."""
 
-    def test_batch_kf_requires_cupy(self):
-        x = np.zeros((2, 2))
-        P = np.tile(np.eye(2), (2, 1, 1))
-        with pytest.raises(DependencyError):
-            gpu_kalman.batch_kf_predict(x, P, np.eye(2), np.eye(2))
+    def test_particle_filter_runs_on_mlx(self):
+        """Issue #12: the PF is backend-dispatched, no CuPy required."""
+        idx = np.asarray(gpu_pf.gpu_resample_systematic(np.full(4, 0.25)))
+        assert idx.shape == (4,)
+        assert idx.min() >= 0 and idx.max() < 4
 
-    def test_pf_and_matrix_utils_require_cupy(self):
-        with pytest.raises(DependencyError):
+    def test_no_backend_raises_dependency_error(self, monkeypatch):
+        from pytcl.gpu import _backend
+
+        monkeypatch.setattr(
+            _backend.CuPyBackend, "__init__", _raise_import_error, raising=True
+        )
+        monkeypatch.setattr(
+            _backend.MLXBackend, "__init__", _raise_import_error, raising=True
+        )
+        with pytest.raises(DependencyError, match="cupy"):
             gpu_pf.gpu_resample_systematic(np.full(4, 0.25))
-        with pytest.raises(DependencyError):
-            gpu_matrix_utils.gpu_cholesky(np.eye(2))
-        with pytest.raises(DependencyError):
-            gpu_kalman.CuPyKalmanFilter(state_dim=2, meas_dim=1)
 
 
 # ---------------------------------------------------------------------------

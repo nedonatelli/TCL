@@ -2,14 +2,33 @@
 GPU-accelerated algorithms for the Tracker Component Library.
 
 This module provides GPU-accelerated implementations of key tracking algorithms
-using CuPy (NVIDIA GPUs) or MLX (Apple Silicon). These implementations offer
-significant speedups (5-15x) for batch processing of multiple tracks or large
-particle sets.
+using CuPy (NVIDIA GPUs) or MLX (Apple Silicon). The batch implementations are
+written once against a backend-dispatch layer (:mod:`pytcl.gpu._backend`) and
+run unmodified on either backend.
+
+Measured on Apple Silicon (MLX 0.32), batch linear Kalman predict+update
+against a per-track CPU loop: 3.4x at 100 tracks, 18x at 1,000, 38x at 20,000.
 
 The module automatically selects the best available backend:
-- On Apple Silicon (M1/M2/M3): Uses MLX if installed
-- On systems with NVIDIA GPUs: Uses CuPy if installed
+- On systems with NVIDIA GPUs: Uses CuPy if installed (float64)
+- On Apple Silicon (M1/M2/M3): Uses MLX if installed (float32)
 - Falls back to CPU (numpy) if no GPU backend is available
+
+Precision
+---------
+The MLX backend computes in **float32**: MLX raises on float64 GPU operations.
+Batch results therefore agree with the reference CPU implementations to roughly
+float32 precision (measured ~1e-7 relative for the linear and extended Kalman
+filters) rather than to machine epsilon. Two consequences worth knowing:
+
+- The **unscented** filter is sensitive to this. Merwe weights scale as
+  1/alpha^2, so the common default ``alpha=1e-3`` produces weights of order
+  1e6 and, in float32, a result with no significant digits (measured relative
+  error ~1e2). ``batch_ukf_*`` emits a ``RuntimeWarning`` below
+  ``alpha=1e-2``; use ``alpha >= 0.1`` on MLX, or a float64 backend.
+- MLX linear-algebra kernels (``inv``, ``cholesky``, ``solve``, ``eigh``) run
+  on the CPU stream, which the dispatch layer handles transparently. Unified
+  memory makes this a scheduling change, not a copy.
 
 The GPU implementations mirror the CPU API but accept GPU arrays and return
 GPU arrays. Use the utility functions to seamlessly transfer data between
@@ -28,12 +47,12 @@ For Apple Silicon:
 Installation
 ------------
 For NVIDIA CUDA:
-    pip install pytcl[gpu]
+    pip install nrl-tracker[gpu]
     # or directly:
     pip install cupy-cuda12x  # For CUDA 12.x
 
 For Apple Silicon:
-    pip install pytcl[gpu-apple]
+    pip install nrl-tracker[gpu-apple]
     # or directly:
     pip install mlx
 

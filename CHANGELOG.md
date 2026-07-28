@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **MLX compute backend for Apple Silicon** ([#12](https://github.com/nedonatelli/TCL/issues/12)).
+  The GPU package advertised "dual-backend (CuPy + MLX)" acceleration since
+  v1.10.0, but every batch compute function was `@requires("cupy")` — on Apple
+  Silicon they all raised `DependencyError`. The batch filters are now written
+  against a backend-dispatch layer (`pytcl.gpu._backend`) and run on either
+  backend: batch KF/EKF/UKF, particle filters, and matrix utilities.
+  Measured speedup on MLX versus a per-track CPU loop: 3.4x at 100 tracks,
+  18x at 1,000, 38x at 20,000.
+- ~100 validation tests (`tests/test_gpu_mlx_*.py`) checking every ported
+  function against the reference-validated CPU implementations on real MLX
+  hardware, including proof that the error is precision-limited (flat across
+  batch sizes) rather than algorithmic.
+
+### Fixed
+
+- **`tests/test_gpu.py` skipped its entire suite unless CuPy was installed**, so
+  19 tests never ran on Apple Silicon. They are now backend-aware (CuPy keeps
+  its float64 tolerances) and all 19 pass on MLX. Two latent test bugs surfaced:
+  a hard-coded `import cupy`, and an orthogonality check comparing against
+  `eye()` with a *relative* tolerance, which zeros can never satisfy.
+- **`batch_ekf_predict`/`batch_ekf_update` corrupted integer input**:
+  `np.zeros_like` inherited the integer dtype and truncated the propagated
+  state, and the numerical-Jacobian perturbation `x + 1e-7` was a no-op on
+  integer arrays, silently producing a zero Jacobian.
+- **`gpu_cholesky_safe` contract**: its own docstring example (an indefinite
+  matrix) raised instead of returning `success=False`. It now falls back to a
+  nearest-positive-definite projection. Non-PD detection no longer relies on
+  exceptions — MLX returns a *partial* factorization with no NaN and no raise,
+  and CuPy can return NaNs, so both backends are checked via the factor
+  diagonal.
+- **`sync_gpu` and `clear_gpu_memory` were silent no-ops on MLX**
+  (`mx.eval()` with no arguments); they now call `mx.synchronize()` and
+  `mx.clear_cache()`. `get_gpu_memory_info` reports real MLX allocator stats
+  instead of `-1` sentinels.
+- **Particle-filter likelihood floor underflowed on MLX**: `log()` of a float32
+  subnormal returns `-inf` on the Metal stream, so the `1e-300` floor produced
+  all-NaN weights. The floor is now backend-appropriate.
+- Install hints in the GPU package said `pip install pytcl[...]`; the package
+  is `nrl-tracker`.
+
+### Changed
+
+- `batch_ukf_predict`/`batch_ukf_update` emit a `RuntimeWarning` on float32
+  backends when `alpha < 1e-2`. Merwe weights scale as 1/alpha^2, so the
+  default `alpha=1e-3` gives weights of order 1e6 and, in float32, a result
+  with no significant digits (measured relative error ~1e2 versus 1.9e-10 for
+  the same code in float64). The user's `alpha` is never silently changed.
+- GPU documentation now states measured speedups and the float32 precision
+  limits rather than unqualified "5-15x" claims.
+
 ## [1.17.0] - 2026-07-27
 
 ### Fixed

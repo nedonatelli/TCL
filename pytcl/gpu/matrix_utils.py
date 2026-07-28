@@ -8,6 +8,18 @@ tracking algorithms, including:
 - Matrix inversion and solving
 - Memory pool management
 
+The operations run on either GPU backend -- CuPy (NVIDIA CUDA, double
+precision) or MLX (Apple Silicon, single precision) -- through the dispatch
+layer in :mod:`pytcl.gpu._backend`. The backend is selected automatically.
+
+Notes
+-----
+On the MLX backend all computation is float32 (MLX does not support float64
+on the GPU), so results agree with the CPU implementations to roughly float32
+precision rather than to machine epsilon. MLX also routes linear algebra to
+the CPU stream, which on Apple Silicon is a scheduling change rather than a
+data transfer.
+
 Examples
 --------
 >>> from pytcl.gpu.matrix_utils import gpu_cholesky, gpu_solve
@@ -21,6 +33,10 @@ Examples
 >>> # Solve linear system
 >>> b = np.random.randn(4)
 >>> x = gpu_solve(A, b)
+
+See Also
+--------
+pytcl.gpu._backend : Compute-backend dispatch layer.
 """
 
 import logging
@@ -30,14 +46,111 @@ from typing import Any, Generator, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.optional_deps import import_optional, is_available, requires
-from pytcl.gpu.utils import ensure_gpu_array
+from pytcl.core.optional_deps import is_available
+from pytcl.gpu._backend import Backend, get_compute_backend
 
 # Module logger
 _logger = logging.getLogger("pytcl.gpu.matrix_utils")
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
+def _cholesky_succeeded(b: Backend, L: Any) -> bool:
+    """
+    Check whether a Cholesky factor is genuine.
+
+    Neither backend reliably signals a non-positive-definite input, so
+    exception handling is not a portable failure detector:
+
+    - CuPy's ``cholesky`` can return an array containing NaN instead of
+      raising ``LinAlgError``.
+    - MLX's ``cholesky`` returns the *partial* factorization computed before
+      the failing pivot, with no NaN and no exception.
+
+    Both failure modes are caught by validating the factor directly: every
+    entry must be finite and every diagonal entry strictly positive. The
+    diagonal test is exact, because a factorization stops at the first pivot
+    whose value is non-positive, leaving that value on the diagonal. A zero
+    pivot means the input is positive *semi*-definite (singular), which is
+    also not a successful Cholesky decomposition -- LAPACK, and therefore
+    NumPy, treats it as a failure too.
+
+    Parameters
+    ----------
+    b : Backend
+        Active compute backend.
+    L : array
+        Candidate lower-triangular factor, shape (n, n) or batch (k, n, n).
+
+    Returns
+    -------
+    bool
+        True if ``L`` is a valid Cholesky factor.
+    """
+    L_host = b.to_numpy(L)
+    if not np.isfinite(L_host).all():
+        return False
+    diagonal = np.diagonal(L_host, axis1=-2, axis2=-1)
+    return bool((diagonal > 0.0).all())
+
+
+def _try_cholesky(b: Backend, A_gpu: Any) -> Optional[Any]:
+    """
+    Attempt a Cholesky factorization, returning None on failure.
+
+    Parameters
+    ----------
+    b : Backend
+        Active compute backend.
+    A_gpu : array
+        Symmetric matrix on the device, shape (n, n) or batch (k, n, n).
+
+    Returns
+    -------
+    array or None
+        Lower-triangular factor, or None if ``A_gpu`` is not positive
+        definite.
+    """
+    try:
+        L = b.cholesky(A_gpu)
+        b.evaluate(L)
+    except np.linalg.LinAlgError:
+        # CuPy raises this for some non-positive-definite inputs.
+        return None
+    return L if _cholesky_succeeded(b, L) else None
+
+
+def _nearest_psd(b: Backend, A_gpu: Any, floor: float) -> Any:
+    """
+    Project a symmetric matrix onto the positive definite cone.
+
+    Eigenvalues below ``floor`` (and below the level at which the working
+    precision can resolve them relative to the largest eigenvalue) are raised
+    to it, then the matrix is reassembled. Unlike diagonal regularization this
+    repairs indefinite matrices, not just near-singular ones.
+
+    Parameters
+    ----------
+    b : Backend
+        Active compute backend.
+    A_gpu : array
+        Symmetric matrix on the device, shape (n, n) or batch (k, n, n).
+    floor : float
+        Minimum eigenvalue to allow.
+
+    Returns
+    -------
+    array
+        Positive definite matrix with the same shape as ``A_gpu``.
+    """
+    eigvals, eigvecs = b.eigh(A_gpu)
+    eps = float(np.finfo(np.float64 if b.supports_float64 else np.float32).eps)
+    # eigh returns ascending eigenvalues, so [..., -1:] is the largest per
+    # matrix. Flooring relative to it keeps the result resolvably definite at
+    # the working precision even when `floor` alone is below eps.
+    resolvable = b.maximum(10.0 * eps * eigvals[..., -1:], floor)
+    eigvals = b.maximum(eigvals, resolvable)
+    return b.einsum("...ij,...j,...kj->...ik", eigvecs, eigvals, eigvecs)
+
+
 def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated Cholesky decomposition.
@@ -61,6 +174,12 @@ def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray[np.floating[Any]]:
     numpy.linalg.LinAlgError
         If matrix is not positive definite.
 
+    Notes
+    -----
+    The factor is validated on the host before it is returned, because neither
+    GPU backend raises reliably for non-positive-definite input. This forces a
+    device synchronization.
+
     Examples
     --------
     >>> import numpy as np
@@ -70,22 +189,20 @@ def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray[np.floating[Any]]:
     >>> np.allclose(L @ L.T, A)
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
+    A_gpu = b.asarray(A)
 
-    L = cp.linalg.cholesky(A_gpu)
+    L = _try_cholesky(b, A_gpu)
+    if L is None:
+        raise np.linalg.LinAlgError("Matrix is not positive definite")
 
     if not lower:
-        if A_gpu.ndim == 2:
-            L = L.T
-        else:
-            L = cp.swapaxes(L, -2, -1)
+        L = b.swapaxes(L, -2, -1)
 
     return L
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_cholesky_safe(
     A: ArrayLike,
     lower: bool = True,
@@ -112,6 +229,16 @@ def gpu_cholesky_safe(
     success : bool
         True if succeeded without regularization.
 
+    Notes
+    -----
+    Diagonal regularization only repairs a matrix that is positive
+    semi-definite but singular; it cannot repair an indefinite one. When the
+    regularized retry also fails, the factor is instead computed for the
+    nearest positive definite matrix, obtained by flooring the eigenvalues of
+    ``A`` at ``regularization``. This function therefore always returns a
+    factor and never raises for a non-positive-definite input; ``success``
+    reports whether any repair was needed.
+
     Examples
     --------
     >>> import numpy as np
@@ -121,37 +248,33 @@ def gpu_cholesky_safe(
     >>> success
     False
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
+    A_gpu = b.asarray(A)
 
-    try:
-        L = cp.linalg.cholesky(A_gpu)
-        success = True
-    except cp.linalg.LinAlgError:
+    L = _try_cholesky(b, A_gpu)
+    success = L is not None
+
+    if L is None:
         # Add regularization
-        if A_gpu.ndim == 2:
-            A_reg = A_gpu + regularization * cp.eye(A_gpu.shape[0], dtype=cp.float64)
-        else:
-            # Batch case
-            n = A_gpu.shape[-1]
-            eye = cp.eye(n, dtype=cp.float64)
-            A_reg = A_gpu + regularization * eye
+        eye = b.eye(A_gpu.shape[-1])
+        L = _try_cholesky(b, A_gpu + regularization * eye)
 
-        L = cp.linalg.cholesky(A_reg)
-        success = False
-        _logger.warning("Cholesky decomposition required regularization")
+        if L is None:
+            _logger.warning(
+                "Cholesky decomposition failed after regularization; "
+                "using the nearest positive definite matrix"
+            )
+            L = b.cholesky(_nearest_psd(b, A_gpu, regularization))
+        else:
+            _logger.warning("Cholesky decomposition required regularization")
 
     if not lower:
-        if A_gpu.ndim == 2:
-            L = L.T
-        else:
-            L = cp.swapaxes(L, -2, -1)
+        L = b.swapaxes(L, -2, -1)
 
     return L, success
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_qr(
     A: ArrayLike, mode: str = "reduced"
 ) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
@@ -183,15 +306,14 @@ def gpu_qr(
     >>> np.allclose(Q @ R, A)
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
-    Q, R = cp.linalg.qr(A_gpu, mode=mode)
+    A_gpu = b.asarray(A)
+    Q, R = b.qr(A_gpu, mode=mode)
 
     return Q, R
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated linear system solve.
@@ -220,17 +342,16 @@ def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray[np.floating[Any]]:
     >>> np.allclose(A @ x, b)
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    backend = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
-    b_gpu = ensure_gpu_array(b, dtype=cp.float64)
+    A_gpu = backend.asarray(A)
+    b_gpu = backend.asarray(b)
 
-    x = cp.linalg.solve(A_gpu, b_gpu)
+    x = backend.solve(A_gpu, b_gpu)
 
     return x
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_inv(A: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated matrix inversion.
@@ -254,15 +375,14 @@ def gpu_inv(A: ArrayLike) -> NDArray[np.floating[Any]]:
     >>> np.allclose(A @ A_inv, np.eye(2))
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
-    A_inv = cp.linalg.inv(A_gpu)
+    A_gpu = b.asarray(A)
+    A_inv = b.inv(A_gpu)
 
     return A_inv
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_eigh(
     A: ArrayLike,
 ) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
@@ -292,15 +412,14 @@ def gpu_eigh(
     >>> eigvals
     array([1., 3.])
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
-    eigvals, eigvecs = cp.linalg.eigh(A_gpu)
+    A_gpu = b.asarray(A)
+    eigvals, eigvecs = b.eigh(A_gpu)
 
     return eigvals, eigvecs
 
 
-@requires("cupy", extra="gpu", feature="GPU matrix utilities")
 def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     """
     GPU-accelerated matrix square root for positive definite matrices.
@@ -326,25 +445,22 @@ def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     >>> np.allclose(S @ S, A)
     True
     """
-    cp = import_optional("cupy", extra="gpu", feature="GPU matrix utilities")
+    b = get_compute_backend()
 
-    A_gpu = ensure_gpu_array(A, dtype=cp.float64)
+    A_gpu = b.asarray(A)
 
     # Eigendecomposition
-    eigvals, eigvecs = cp.linalg.eigh(A_gpu)
+    eigvals, eigvecs = b.eigh(A_gpu)
 
     # Ensure non-negative eigenvalues
-    eigvals = cp.maximum(eigvals, 0)
+    eigvals = b.maximum(eigvals, 0.0)
 
     # Compute sqrt
-    sqrt_eigvals = cp.sqrt(eigvals)
+    sqrt_eigvals = b.sqrt(eigvals)
 
-    # Reconstruct: S = V @ diag(sqrt(lambda)) @ V'
-    if A_gpu.ndim == 2:
-        S = eigvecs @ cp.diag(sqrt_eigvals) @ eigvecs.T
-    else:
-        # Batch case
-        S = cp.einsum("...ij,...j,...kj->...ik", eigvecs, sqrt_eigvals, eigvecs)
+    # Reconstruct: S = V @ diag(sqrt(lambda)) @ V'. The ellipsis covers both
+    # the single-matrix and the batched case.
+    S = b.einsum("...ij,...j,...kj->...ik", eigvecs, sqrt_eigvals, eigvecs)
 
     return S
 
@@ -353,21 +469,17 @@ class MemoryPool:
     """
     GPU memory pool manager for efficient memory allocation.
 
-    This class provides convenient access to CuPy's memory pool
-    with additional monitoring and management utilities.
+    Wraps CuPy's memory pool on NVIDIA GPUs and MLX's allocator on Apple
+    Silicon, adding monitoring and limit management. With no GPU backend
+    installed every method is a no-op.
 
     Examples
     --------
     >>> from pytcl.gpu.matrix_utils import MemoryPool
     >>> pool = MemoryPool()
-    >>> print(pool.get_stats())
-    {'used': 0, 'total': 0, 'free': ...}
-    >>>
-    >>> # Allocate some arrays
-    >>> import cupy as cp
-    >>> x = cp.zeros((1000, 1000))
-    >>> print(pool.get_stats())
-    {'used': 8000000, ...}
+    >>> stats = pool.get_stats()
+    >>> sorted(stats)
+    ['device_total', 'free', 'total', 'used']
     >>>
     >>> # Free cached memory
     >>> pool.free_all()
@@ -375,15 +487,27 @@ class MemoryPool:
 
     def __init__(self) -> None:
         """Initialize memory pool manager."""
-        if not is_available("cupy"):
-            _logger.warning("CuPy not available, MemoryPool is a no-op")
-            self._pool = None
-            self._pinned_pool = None
-        else:
+        self._pool: Any = None
+        self._pinned_pool: Any = None
+        self._mx: Any = None
+        self._default_memory_limit = 0
+
+        if is_available("cupy"):
             import cupy as cp
 
             self._pool = cp.get_default_memory_pool()
             self._pinned_pool = cp.get_default_pinned_memory_pool()
+        elif is_available("mlx"):
+            import mlx.core as mx
+
+            self._mx = mx
+            # MLX has no getter for the limit, only a setter that returns the
+            # previous value; probe and restore to capture the default.
+            default_limit = mx.set_memory_limit(1 << 62)
+            mx.set_memory_limit(default_limit)
+            self._default_memory_limit = default_limit
+        else:
+            _logger.warning("No GPU backend available, MemoryPool is a no-op")
 
     def get_stats(self) -> dict[str, int]:
         """
@@ -392,31 +516,44 @@ class MemoryPool:
         Returns
         -------
         stats : dict
-            Dictionary with 'used', 'total', and 'free' bytes.
+            Dictionary with 'used', 'total', 'free', and 'device_total' bytes.
 
         Examples
         --------
         >>> from pytcl.gpu.matrix_utils import get_memory_pool
         >>> pool = get_memory_pool()
         >>> stats = pool.get_stats()
-        >>> stats.keys()
-        dict_keys(['used', 'total', 'free', 'device_total'])
+        >>> sorted(stats)
+        ['device_total', 'free', 'total', 'used']
         >>> stats['used'] >= 0
         True
         """
-        if self._pool is None:
-            return {"used": 0, "total": 0, "free": 0}
+        if self._pool is not None:
+            import cupy as cp
 
-        import cupy as cp
+            free, total = cp.cuda.Device().mem_info
 
-        free, total = cp.cuda.Device().mem_info
+            return {
+                "used": self._pool.used_bytes(),
+                "total": self._pool.total_bytes(),
+                "free": free,
+                "device_total": total,
+            }
 
-        return {
-            "used": self._pool.used_bytes(),
-            "total": self._pool.total_bytes(),
-            "free": free,
-            "device_total": total,
-        }
+        if self._mx is not None:
+            mx = self._mx
+            active = mx.get_active_memory()
+            cached = mx.get_cache_memory()
+            device_total = int(mx.device_info()["memory_size"])
+
+            return {
+                "used": active,
+                "total": active + cached,
+                "free": device_total - active,
+                "device_total": device_total,
+            }
+
+        return {"used": 0, "total": 0, "free": 0, "device_total": 0}
 
     def free_all(self) -> None:
         """
@@ -436,6 +573,8 @@ class MemoryPool:
             self._pool.free_all_blocks()
         if self._pinned_pool is not None:
             self._pinned_pool.free_all_blocks()
+        if self._mx is not None:
+            self._mx.clear_cache()
 
     def set_limit(self, limit: Optional[int] = None) -> None:
         """
@@ -444,7 +583,8 @@ class MemoryPool:
         Parameters
         ----------
         limit : int or None
-            Maximum bytes to allocate. None for no limit.
+            Maximum bytes to allocate. None restores the backend default
+            (unlimited on CuPy).
 
         Examples
         --------
@@ -452,14 +592,19 @@ class MemoryPool:
         >>> pool = get_memory_pool()
         >>> # Limit to 2 GB
         >>> pool.set_limit(2 * 1024**3)
-        >>> # Reset to unlimited
+        >>> # Reset to the backend default
         >>> pool.set_limit(None)
         """
         if self._pool is not None:
             if limit is None:
                 self._pool.set_limit(size=0)  # 0 means no limit
             else:
-                self._pool.set_limit(size=limit)
+                self._pool.set_limit(size=int(limit))
+        if self._mx is not None:
+            if limit is None:
+                self._mx.set_memory_limit(self._default_memory_limit)
+            else:
+                self._mx.set_memory_limit(int(limit))
 
     @contextmanager
     def limit_memory(self, max_bytes: int) -> Generator[None, None, None]:
@@ -474,20 +619,28 @@ class MemoryPool:
         Examples
         --------
         >>> pool = MemoryPool()
-        >>> with pool.limit_memory(1e9):  # 1GB limit
+        >>> with pool.limit_memory(10**9):  # 1GB limit
         ...     # Operations here have limited memory
         ...     pass
         """
-        if self._pool is None:
-            yield
+        if self._pool is not None:
+            old_limit = self._pool.get_limit()
+            self._pool.set_limit(size=int(max_bytes))
+            try:
+                yield
+            finally:
+                self._pool.set_limit(size=old_limit)
             return
 
-        old_limit = self._pool.get_limit()
-        self._pool.set_limit(size=max_bytes)
-        try:
-            yield
-        finally:
-            self._pool.set_limit(size=old_limit)
+        if self._mx is not None:
+            old_limit = self._mx.set_memory_limit(int(max_bytes))
+            try:
+                yield
+            finally:
+                self._mx.set_memory_limit(old_limit)
+            return
+
+        yield
 
 
 # Global memory pool instance
