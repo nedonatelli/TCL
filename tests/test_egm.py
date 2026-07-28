@@ -243,20 +243,23 @@ class TestAssociatedLegendreScaled:
         assert isinstance(P, np.ndarray)
         assert isinstance(exponents, np.ndarray)
         assert P.shape == (11, 11)
-        # exponents is 1D, one per degree
+        # exponents is 1D, one per ORDER (the u**m factor is order-wise)
         assert exponents.shape == (11,)
 
     def test_matches_unscaled_low_degree(self):
-        """Scaled results match unscaled for low degrees."""
+        """Scaled results reconstruct to the unscaled values.
+
+        ``exp`` is indexed by ORDER: Pbar_nm == P_scaled[n, m] * 10**exp[m]
+        (gh-16 replaced the old per-degree scheme, which violated the
+        addition theorem at high degree).
+        """
         x = 0.6
         P_scaled, exp = associated_legendre_scaled(10, 10, x)
         P_unscaled = associated_legendre(10, 10, x, normalized=True)
 
-        # For low degrees (n < 150), exponents should be 0 and P_scaled should match
         for n in range(11):
             for m in range(n + 1):
-                # exp is indexed by degree only (1D array)
-                P_reconstructed = P_scaled[n, m] * (10.0 ** exp[n])
+                P_reconstructed = P_scaled[n, m] * (10.0 ** exp[m])
                 assert_allclose(
                     P_reconstructed, P_unscaled[n, m], rtol=1e-8, atol=1e-12
                 )

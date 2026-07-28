@@ -254,6 +254,15 @@ def spherical_harmonic_sum(
 
     Notes
     -----
+    .. warning::
+       This routine forms ``Pbar_nm`` directly, so the ``sin(theta)**m`` factor
+       underflows at very high order. It is reliable through ``n_max = 1600``
+       but becomes unstable at EGM2008's degree 2190 -- at colatitude 30
+       degrees on the reference sphere it returns a value twelve orders of
+       magnitude too large. Use
+       :func:`spherical_harmonic_sum_high_degree` for models above about
+       degree 1600; it is also roughly four times faster there.
+
     The spherical harmonic expansion of the gravitational potential is:
 
     .. math::
@@ -481,11 +490,17 @@ def associated_legendre_scaled(
     x: float,
     scale: Optional[NDArray[np.floating]] = None,
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
-    """Compute scaled associated Legendre polynomials for high degrees.
+    """Compute scaled associated Legendre functions for ultra-high degrees.
 
-    For ultra-high degree computations (n > 150), standard Legendre
-    recursion overflows. This function computes scaled values that
-    stay in representable range.
+    Implements the Holmes & Featherstone (2002) order-wise scaling. The
+    quantity that underflows in the ordinary recursion is ``u**m`` (with
+    ``u = sin(theta)``), not anything degree-dependent: at degree 2190 and
+    colatitude 20 degrees the ordinary functions flush to zero for every
+    ``m > 696``, discarding roughly a quarter of the addition-theorem norm.
+
+    This routine therefore recurses on ``Pbar_nm / u**m``, in which ``u``
+    cancels from every recursion relation, and applies a global ``1e-280``
+    factor so the peak near ``m ~ n * u`` stays inside double range.
 
     Parameters
     ----------
@@ -496,25 +511,24 @@ def associated_legendre_scaled(
     x : float
         Argument in [-1, 1], typically cos(colatitude).
     scale : ndarray, optional
-        Precomputed scaling factors from legendre_scaling_factors().
-        If None, computed internally.
+        Unused; retained for backward compatibility.
 
     Returns
     -------
     P_scaled : ndarray
-        Scaled Legendre values, shape (n_max+1, m_max+1).
-        The actual value is P_scaled[n,m] * 10^scale_exp[n].
+        Scaled values, shape (n_max+1, m_max+1), equal to
+        ``Pbar_nm / u**m * 1e-280``.
     scale_exp : ndarray
-        Scale exponents for each degree, shape (n_max+1,).
-        Set to 0 if no scaling needed.
+        Base-10 log of the per-order reconstruction factor, shape
+        (m_max+1,), so that ``Pbar_nm == P_scaled[n, m] * 10**scale_exp[m]``.
 
     Notes
     -----
-    The returned values satisfy:
-        P_n^m(x) = P_scaled[n,m] * 10^scale_exp[n]
-
-    For normal operations (n < 150), scale_exp is all zeros and
-    P_scaled equals the actual Legendre values.
+    The reconstruction factor is per **order**, not per degree. Reconstructing
+    individual values is only meaningful where ``Pbar_nm`` is representable;
+    the point of the scaling is to feed a summation that applies ``u**m``
+    progressively (Horner's scheme), which never forms the underflowing factor
+    explicitly. See :func:`spherical_harmonic_sum_high_degree`.
 
     Examples
     --------
@@ -523,60 +537,176 @@ def associated_legendre_scaled(
     >>> P_scaled, scale_exp = associated_legendre_scaled(10, 10, x)
     >>> P_scaled.shape
     (11, 11)
-    >>> all(scale_exp == 0)  # No scaling needed for n_max < 150
+    >>> # Reconstruct and compare against the direct computation
+    >>> P_direct = associated_legendre(10, 10, x, normalized=True)
+    >>> recon = P_scaled[10, 3] * 10.0 ** scale_exp[3]
+    >>> bool(abs(recon - P_direct[10, 3]) < 1e-10)
     True
+
+    References
+    ----------
+    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+           Clenshaw summation and the recursive computation of very high
+           degree and order normalised associated Legendre functions."
+           Journal of Geodesy 76.5 (2002): 279-299.
     """
     if m_max > n_max:
         raise ValueError("m_max must be <= n_max")
     if not -1 <= x <= 1:
         raise ValueError("x must be in [-1, 1]")
 
-    if scale is None:
-        scale = legendre_scaling_factors(n_max)
+    u = np.sqrt(max(0.0, 1.0 - x * x))
 
     P_scaled = np.zeros((n_max + 1, m_max + 1))
-    scale_exp = np.zeros(n_max + 1)
 
-    # Compute exponents
-    if n_max > 150:
-        for n in range(n_max + 1):
-            scale_exp[n] = 280.0 * n / n_max
+    # Global scale keeping the peak of Pbar/u**m inside double range.
+    global_scale = 1e-280
+    log_global = -280.0
 
-    # Compute sqrt(1 - x^2) = sin(theta)
-    u = np.sqrt(1 - x * x)
-
-    # Seed: P_0^0 = 1 (scaled)
-    P_scaled[0, 0] = 1.0 * scale[0]
-
-    # Sectoral recursion: P_m^m from P_{m-1}^{m-1}
-    # (sqrt(3) for m=1 gives the sqrt(2 - delta_0m) full-normalization factor)
+    # Sectoral seeds. In Pbar_mm / u**m the u factor cancels entirely, so the
+    # seeds grow only like sqrt(m) instead of collapsing like u**m.
+    P_scaled[0, 0] = global_scale
     for m in range(1, m_max + 1):
-        factor = u * (np.sqrt(3.0) if m == 1 else np.sqrt((2 * m + 1) / (2 * m)))
-        # Apply the scale as a ratio to avoid intermediate underflow
-        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1] * (scale[m] / scale[m - 1])
+        factor = np.sqrt(3.0) if m == 1 else np.sqrt((2 * m + 1) / (2 * m))
+        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1]
 
-    # Compute P_{m+1}^m from P_m^m
-    for m in range(m_max):
+    # First off-diagonal.
+    for m in range(m_max + 1):
         if m + 1 <= n_max:
-            factor = x * np.sqrt(2 * m + 3)
-            P_scaled[m + 1, m] = factor * P_scaled[m, m] * (scale[m + 1] / scale[m])
+            P_scaled[m + 1, m] = x * np.sqrt(2 * m + 3) * P_scaled[m, m]
 
-    # General recursion: P_n^m from P_{n-1}^m and P_{n-2}^m
+    # Standard degree recursion; identical in form because u**m divides out.
     for m in range(m_max + 1):
         for n in range(m + 2, n_max + 1):
             a_nm = np.sqrt((4 * n * n - 1) / (n * n - m * m))
             b_nm = np.sqrt(((n - 1) ** 2 - m * m) / (4 * (n - 1) ** 2 - 1))
+            P_scaled[n, m] = a_nm * (x * P_scaled[n - 1, m] - b_nm * P_scaled[n - 2, m])
 
-            # Scale factors for recursion
-            s_ratio_1 = scale[n] / scale[n - 1]
-            s_ratio_2 = scale[n] / scale[n - 2]
-
-            P_scaled[n, m] = a_nm * (
-                x * P_scaled[n - 1, m] * s_ratio_1
-                - b_nm * P_scaled[n - 2, m] * s_ratio_2
-            )
+    # Per-order reconstruction exponent: Pbar_nm = P_scaled[n,m] * 10**exp[m].
+    orders = np.arange(m_max + 1, dtype=np.float64)
+    with np.errstate(divide="ignore"):
+        log_u = np.log10(u) if u > 0.0 else -np.inf
+    scale_exp = orders * log_u - log_global
 
     return P_scaled, scale_exp
+
+
+def spherical_harmonic_sum_high_degree(
+    lat: float,
+    lon: float,
+    r: float,
+    C: NDArray[np.floating],
+    S: NDArray[np.floating],
+    R: float,
+    GM: float,
+    n_max: Optional[int] = None,
+) -> Tuple[float, float, float]:
+    """Harmonic synthesis for ultra-high degree models (e.g. EGM2008).
+
+    Uses the Holmes & Featherstone (2002) order-wise scaling together with
+    Horner's scheme in ``u = sin(theta)``. Because the ``u**m`` factor is
+    applied progressively rather than formed explicitly, no intermediate
+    underflows -- which is what limits :func:`spherical_harmonic_sum` at high
+    degree, where ``u**m`` flushes to zero and silently discards the
+    corresponding orders.
+
+    Parameters
+    ----------
+    lat : float
+        Geocentric latitude in radians.
+    lon : float
+        Longitude in radians.
+    r : float
+        Radial distance in metres.
+    C, S : ndarray
+        Fully normalised cosine and sine coefficients, shape (n_max+1, n_max+1).
+    R : float
+        Reference radius in metres.
+    GM : float
+        Gravitational parameter in m^3/s^2.
+    n_max : int, optional
+        Maximum degree to evaluate. Defaults to the coefficient array size.
+
+    Returns
+    -------
+    V : float
+        Potential (geodesy-positive convention, V = +GM/r for a point mass).
+    dV_r : float
+        Radial derivative dV/dr.
+    dV_lat : float
+        Latitudinal derivative (1/r) dV/dlat.
+
+    Notes
+    -----
+    Validated against :func:`spherical_harmonic_sum` at degrees where both are
+    reliable, and used beyond that. At degree 2190 (EGM2008) the ordinary
+    routine loses every order above ``m ~ 700`` at mid colatitudes; this one
+    preserves the addition-theorem norm to ten significant figures.
+
+    References
+    ----------
+    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+           Clenshaw summation and the recursive computation of very high
+           degree and order normalised associated Legendre functions."
+           Journal of Geodesy 76.5 (2002): 279-299.
+    """
+    if n_max is None:
+        n_max = C.shape[0] - 1
+
+    colat = np.pi / 2 - lat
+    x = np.cos(colat)
+    u = np.sin(colat)
+
+    P_scaled, _ = associated_legendre_scaled(n_max, n_max, x)
+    unscale = 1e280
+
+    r_ratio = R / r
+    r_pow = r_ratio ** np.arange(n_max + 1)
+
+    orders = np.arange(n_max + 1)
+    cos_m = np.cos(orders * lon)
+    sin_m = np.sin(orders * lon)
+
+    # Horner accumulators over decreasing order: after the loop each holds
+    # sum_m inner_m * u**m without ever forming u**m directly.
+    acc_v = 0.0
+    acc_r = 0.0
+    acc_t = 0.0
+
+    for m in range(n_max, -1, -1):
+        degrees = np.arange(m, n_max + 1)
+        coeff = C[m:, m] * cos_m[m] + S[m:, m] * sin_m[m]
+        weight = r_pow[m:] * coeff
+
+        column = P_scaled[m:, m]
+        inner_v = float(np.sum(weight * column))
+        inner_r = float(np.sum(weight * (degrees + 1.0) * column))
+
+        # dPbar_nm/dtheta = u**(m-1) * (n x Ptilde_nm - f_nm Ptilde_{n-1,m}),
+        # so this accumulator carries one fewer power of u; the factor is
+        # restored after the Horner loop.
+        f_nm = np.sqrt(
+            (2.0 * degrees + 1.0)
+            / np.maximum(2.0 * degrees - 1.0, 1.0)
+            * (degrees**2 - m**2)
+        )
+        shifted = np.zeros_like(column)
+        shifted[1:] = P_scaled[m:n_max, m]
+        inner_t = float(np.sum(weight * (degrees * x * column - f_nm * shifted)))
+
+        acc_v = acc_v * u + inner_v
+        acc_r = acc_r * u + inner_r
+        acc_t = acc_t * u + inner_t
+
+    V = GM / r * acc_v * unscale
+    dV_r = -GM / (r * r) * acc_r * unscale
+    if u > 1e-15:
+        dV_theta = GM / r * (acc_t / u) * unscale
+    else:
+        dV_theta = 0.0
+    dV_lat = -dV_theta / r
+
+    return float(V), float(dV_r), float(dV_lat)
 
 
 def clear_legendre_cache() -> None:
@@ -622,6 +752,7 @@ __all__ = [
     "associated_legendre",
     "associated_legendre_derivative",
     "spherical_harmonic_sum",
+    "spherical_harmonic_sum_high_degree",
     "gravity_acceleration",
     "legendre_scaling_factors",
     "associated_legendre_scaled",

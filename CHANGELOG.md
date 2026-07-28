@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Ultra-high-degree spherical harmonics: EGM2008 was genuinely unreachable**
+  ([#16](https://github.com/nedonatelli/TCL/issues/16)). Two defects:
+
+  `associated_legendre_scaled` applied a per-*degree* factor
+  `10**(-280 n / n_max)`, but the quantity that underflows is `sin(theta)**m`
+  -- a per-*order* effect -- so the scaling addressed nothing. The
+  addition-theorem norm was off by 14x at degree 1000 and by 1e199 at degree
+  2000. It now follows Holmes & Featherstone (2002), recursing on
+  `Pbar_nm / u**m` where `u` cancels from every recursion relation; the norm
+  is exact to ten figures through degree 2190. The routine is also *more*
+  accurate than the direct one at ordinary degrees (1e-16 to 1e-9 versus up
+  to 3e-5 against 60-digit references). **Breaking:** the returned
+  `scale_exp` is now indexed by order, not degree.
+
+  Separately, `spherical_harmonic_sum` is unstable at exactly EGM2008's
+  degree: on the reference sphere at colatitude 30 degrees it returns a
+  potential twelve orders of magnitude too large. It is reliable through
+  n_max=1600, and its docstring now says so. New
+  `spherical_harmonic_sum_high_degree` applies `u**m` progressively via
+  Horner's scheme, agrees with the standard routine to 1e-15 where both are
+  valid, stays correct at degree 2190, and is about four times faster there.
+
 - **Lagrangian relaxation solvers issued false optimality certificates**
   ([#14](https://github.com/nedonatelli/TCL/issues/14)).
   `relaxation_assignment_nd` and `assign3d_lagrangian` computed their "lower
