@@ -24,6 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **k-best assignment silently truncated the ranked list when non-assignment
+  was allowed** ([#15](https://github.com/nedonatelli/TCL/issues/15)).
+  `murty` and `kbest_assign2d` partitioned over the raw cost matrix, which can
+  only represent complete matchings, so with a finite
+  `cost_of_non_assignment` every solution leaving something unassigned was
+  unreachable: asking for k=7 on a 2x2 problem returned 2 solutions and
+  omitted the other five. Both now enumerate over an augmented rectangular
+  problem in which each row may take a private zero-cost dummy column. That
+  encoding is bijective (one representation per real solution), unlike the
+  square form used by `assign2d`, whose dummy-to-dummy block would make a
+  solution with r pairs appear r! times. Verified against exhaustive
+  enumeration over 150 randomized rectangular instances in both directions.
+
 - **`tests/test_gpu.py` skipped its entire suite unless CuPy was installed**, so
   19 tests never ran on Apple Silicon. They are now backend-aware (CuPy keeps
   its float64 tolerances) and all 19 pass on MLX. Two latent test bugs surfaced:
