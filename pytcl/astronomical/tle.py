@@ -487,7 +487,10 @@ def is_deep_space(tle: TLE) -> bool:
     """Determine if TLE requires deep-space (SDP4) propagation.
 
     Satellites with orbital period >= 225 minutes use SDP4 instead
-    of SGP4 due to lunar-solar perturbations.
+    of SGP4 due to lunar-solar perturbations. The period is formed from
+    the *recovered* (un-Kozai'd) mean motion, as in the reference
+    algorithm -- using the raw TLE mean motion picks the wrong model for
+    element sets within ~0.1 min of the 225-minute boundary.
 
     Parameters
     ----------
@@ -499,8 +502,10 @@ def is_deep_space(tle: TLE) -> bool:
     bool
         True if deep-space propagation (SDP4) is required.
     """
-    # Mean motion in rad/min, period = 2*pi / n
-    period_minutes = 2 * np.pi / tle.mean_motion
+    from pytcl.astronomical.sgp4 import unkozai_mean_motion
+
+    n = unkozai_mean_motion(tle.mean_motion, tle.inclination, tle.eccentricity)
+    period_minutes = 2 * np.pi / n
     return period_minutes >= 225.0
 
 

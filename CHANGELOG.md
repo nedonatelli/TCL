@@ -30,6 +30,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `spherical_harmonic_sum_high_degree` applies `u**m` progressively via
   Horner's scheme, agrees with the standard routine to 1e-15 where both are
   valid, stays correct at degree 2190, and is about four times faster there.
+- **SDP4 deep-space physics implemented** ([#13](https://github.com/nedonatelli/TCL/issues/13)).
+  The module documented lunar-solar perturbations and 12/24-hour resonance
+  handling, but `_init_deep_space` only set flags and `_propagate_sdp4` called
+  the near-Earth core: deep-space satellites were propagated with no
+  deep-space physics at all. Errors versus the reference implementation ran
+  8-11 km at epoch and up to 49 km over three days.
+
+  The four standard routines (`dscom`, `dsinit`, `dspace`, `dpper`) are now
+  implemented from the published algorithm the module already cites
+  (Spacetrack Report No. 3; Vallado et al., AIAA 2006-6753), including the
+  Euler-Maclaurin resonance integrator and the Lyddane branch for
+  near-equatorial orbits. Position agreement with the reference is now better
+  than **1 micrometre** over +/-3 days for geostationary, Molniya, and GPS
+  orbits, and the near-Earth path is unregressed at 4e-7 m. Validated against
+  the official SGP4-VER.TLE verification set with zero branch-selection and
+  zero error-code mismatches.
+
+  Four further defects surfaced while closing the gap: `is_deep_space` tested
+  the raw TLE mean motion rather than the recovered one (15.8 km error for
+  element sets near the 225-minute boundary); the semi-major axis used the
+  Spacetrack-3 form instead of Vallado's; a `1e-12` floor on `pl` made error
+  code 4 unreachable; and Python's `%` was used where the algorithm requires C
+  `fmod` sign semantics.
 
 - **Lagrangian relaxation solvers issued false optimality certificates**
   ([#14](https://github.com/nedonatelli/TCL/issues/14)).
