@@ -837,16 +837,23 @@ class TestSGP4:
         times = [0.0, 90.0, 720.0, 1440.0, 2880.0]
         self._compare(DRAG_L1, DRAG_L2, times, tol_r_km=1e-3, tol_v_kms=1e-6)
 
-    def test_geo_within_documented_limits(self):
-        """SDP4 deep-space physics (lunar-solar, resonance) is not
-        implemented; agreement is tens of km, not meters. This bounds the
-        documented limitation so regressions are caught."""
-        times = [0.0, 360.0, 1440.0]
-        self._compare(GEO_L1, GEO_L2, times, tol_r_km=50.0, tol_v_kms=0.01)
+    def test_geo_matches_reference(self):
+        """24-hour resonant deep-space case (see test_sdp4_deep_space.py).
 
-    def test_molniya_within_documented_limits(self):
+        Regression: SDP4 deep-space physics was unimplemented, leaving
+        8-14 km of error against the reference.
+        """
         times = [0.0, 360.0, 1440.0]
-        self._compare(MOL_L1, MOL_L2, times, tol_r_km=100.0, tol_v_kms=0.05)
+        self._compare(GEO_L1, GEO_L2, times, tol_r_km=1e-3, tol_v_kms=1e-6)
+
+    def test_molniya_matches_reference(self):
+        """12-hour resonant deep-space case.
+
+        Regression: SDP4 deep-space physics was unimplemented, leaving
+        9-49 km of error against the reference.
+        """
+        times = [0.0, 360.0, 1440.0]
+        self._compare(MOL_L1, MOL_L2, times, tol_r_km=1e-3, tol_v_kms=1e-6)
 
     def test_propagate_jd_and_batch(self):
         tle = parse_tle(ISS_L1, ISS_L2)
