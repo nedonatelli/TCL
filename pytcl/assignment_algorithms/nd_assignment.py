@@ -289,7 +289,7 @@ def relaxation_assignment_nd(
 
     Notes
     -----
-    The relaxation follows Poore's formulation [1]_:
+    The relaxation follows Poore's formulation (see the module references):
 
     1. Relax the constraints on dimensions 3..N with multipliers ``lambda``.
     2. The inner problem separates: minimising over the relaxed dimensions for
