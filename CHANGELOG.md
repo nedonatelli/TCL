@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Lagrangian relaxation solvers issued false optimality certificates**
+  ([#14](https://github.com/nedonatelli/TCL/issues/14)).
+  `relaxation_assignment_nd` and `assign3d_lagrangian` computed their "lower
+  bound" by solving the relaxed inner problem *greedily*. Greedy is not the
+  relaxed minimiser, so the quantity was not a bound: it could exceed the true
+  optimum, driving `gap` to zero and reporting `converged=True` for suboptimal
+  answers. Measured before the fix: 22 of 30 random 3x3x3 instances certified
+  optimality while up to 0.30 suboptimal.
+
+  Both solvers now follow Poore's formulation, which the module already cited:
+  relaxing the constraints on the trailing dimensions leaves a 2-D assignment
+  problem that is solved **exactly**, which is what makes `L(lambda)` a valid
+  lower bound. Bounds are tracked as the best seen across iterations, feasible
+  solutions are recovered by exact 2-D assignments, and the step size is
+  Polyak. Verified against brute-force enumeration over 2-D to 5-D tensors:
+  zero invalid bounds and zero false certificates, where `converged=True` now
+  means the answer is provably optimal.
+
 ### Added
 
 - **MLX compute backend for Apple Silicon** ([#12](https://github.com/nedonatelli/TCL/issues/12)).

@@ -287,9 +287,10 @@ def assign3d_lagrangian(
     """
     Solve 3D assignment using Lagrangian relaxation.
 
-    This algorithm relaxes the 3D constraints and solves a sequence of
-    2D assignment problems. The Lagrange multipliers are updated using
-    subgradient optimization to improve the bound.
+    Relaxes the constraint on the third dimension and solves the resulting
+    two-dimensional problem exactly, yielding a valid lower bound on the
+    optimal cost. Subgradient ascent tightens the bound while feasible
+    solutions supply the upper bound.
 
     Parameters
     ----------
@@ -300,32 +301,41 @@ def assign3d_lagrangian(
     tol : float, optional
         Convergence tolerance for gap (default: 1e-6).
     step_size : float, optional
-        Initial step size for subgradient update (default: 1.0).
+        Initial step size for the subgradient update (default: 1.0). Used as a
+        fallback when the Polyak step is not usable.
     maximize : bool, optional
         If True, solve maximization problem (default: False).
 
     Returns
     -------
     result : Assignment3DResult
-        Assignment result with optimality gap information.
+        Assignment result with optimality gap information. ``gap`` is
+        ``best_upper_bound - best_lower_bound``; when ``converged`` is True the
+        returned assignment is provably within ``tol`` of optimal.
 
     Examples
     --------
     >>> import numpy as np
-    >>> np.random.seed(42)
-    >>> cost = np.random.rand(5, 5, 5)
+    >>> rng = np.random.default_rng(42)
+    >>> cost = rng.random((5, 5, 5))
     >>> result = assign3d_lagrangian(cost, max_iter=50)
-    >>> result.converged
+    >>> result.tuples.shape[1]
+    3
+    >>> bool(result.gap >= -1e-9)  # gap is a genuine bound
     True
 
     Notes
     -----
-    The Lagrangian relaxation dualizes the constraint that each index
-    in the third dimension appears at most once. The resulting problem
-    decomposes into n3 independent 2D assignment problems.
+    The Lagrangian dualizes the third-dimension constraint. For multipliers
+    ``mu``, the inner problem separates: minimising ``cost[i, j, k] - mu[k]``
+    over ``k`` for each ``(i, j)`` leaves a 2-D assignment problem, which is
+    solved **exactly**. Solving that inner problem exactly is what makes
+    ``L(mu)`` a valid lower bound -- an approximate inner solve does not bound
+    the optimum and can certify optimality for suboptimal answers.
 
-    The gap provides a measure of solution quality: gap = 0 indicates
-    an optimal solution.
+    The reported ``gap`` uses the best bounds seen across all iterations, so it
+    is a genuine optimality certificate: ``gap == 0`` means the returned
+    assignment is optimal.
 
     References
     ----------
@@ -336,110 +346,72 @@ def assign3d_lagrangian(
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
 
-    if maximize:
-        cost = -cost
+    work = -cost if maximize else cost
 
-    # Initialize Lagrange multipliers for third dimension
-    # mu[k] penalizes using index k more than once
     mu = np.zeros(n3, dtype=np.float64)
 
-    best_cost = np.inf
+    best_upper = np.inf
+    best_lower = -np.inf
     best_tuples: Optional[NDArray[np.intp]] = None
-    lower_bound = -np.inf
-
-    alpha = step_size
+    iteration = 0
 
     for iteration in range(max_iter):
-        # Solve relaxed problem: for each k, solve 2D assignment
-        # with modified costs: cost[i,j,k] - mu[k]
-        all_assignments: List[Tuple[int, int, int]] = []
-        relaxed_cost = 0.0
+        # Inner problem: for each (i, j) take the best k under the relaxed cost.
+        relaxed = work - mu[np.newaxis, np.newaxis, :]
+        reduced = relaxed.min(axis=2)
+        best_k = relaxed.argmin(axis=2)
 
-        for k in range(n3):
-            # Modified cost matrix for slice k
-            slice_cost = cost[:, :, k] - mu[k]
+        # Exact 2-D solve => valid lower bound.
+        row_ind, col_ind = scipy_lsa(reduced, maximize=False)
+        lower = float(reduced[row_ind, col_ind].sum()) + float(mu.sum())
+        best_lower = max(best_lower, lower)
 
-            # Solve 2D assignment
-            row_ind, col_ind = scipy_lsa(slice_cost, maximize=False)
-
-            # Add assignments
-            for i, j in zip(row_ind, col_ind):
-                if not np.isinf(slice_cost[i, j]):
-                    all_assignments.append((i, j, k))
-                    relaxed_cost += slice_cost[i, j]
-
-        # Add back the multiplier term
-        relaxed_cost += np.sum(mu)
-
-        # Update lower bound
-        lower_bound = max(lower_bound, relaxed_cost)
-
-        # Check for constraint violations (multiple uses of same i, j, or k)
-        k_counts = np.zeros(n3, dtype=np.int64)
-        i_counts = np.zeros(n1, dtype=np.int64)
-        j_counts = np.zeros(n2, dtype=np.int64)
-
-        for i, j, k in all_assignments:
-            k_counts[k] += 1
-            i_counts[i] += 1
-            j_counts[j] += 1
-
-        # Build feasible solution by resolving conflicts
-        feasible_assignments: List[Tuple[int, int, int]] = []
-        used_i = set()
-        used_j = set()
-        used_k = set()
-
-        # Sort assignments by original cost
-        sorted_assignments = sorted(
-            all_assignments,
-            key=lambda x: cost[x[0], x[1], x[2]],
+        # Feasible recovery: assign k's to the chosen (i, j) pairs exactly.
+        pair_cost = work[row_ind, col_ind, :]
+        r_idx, k_idx = scipy_lsa(pair_cost, maximize=False)
+        tuples = np.array(
+            [(row_ind[r], col_ind[r], k) for r, k in zip(r_idx, k_idx)],
+            dtype=np.intp,
+        ).reshape(-1, 3)
+        upper = (
+            float(np.sum(work[tuples[:, 0], tuples[:, 1], tuples[:, 2]]))
+            if len(tuples)
+            else 0.0
         )
+        if upper < best_upper:
+            best_upper = upper
+            best_tuples = tuples
 
-        for i, j, k in sorted_assignments:
-            if i not in used_i and j not in used_j and k not in used_k:
-                feasible_assignments.append((i, j, k))
-                used_i.add(i)
-                used_j.add(j)
-                used_k.add(k)
-
-        # Compute feasible cost
-        feasible_cost = sum(cost[i, j, k] for i, j, k in feasible_assignments)
-
-        # Update best solution
-        if feasible_cost < best_cost:
-            best_cost = feasible_cost
-            best_tuples = np.array(feasible_assignments, dtype=np.intp).reshape(-1, 3)
-
-        # Check convergence
-        gap = best_cost - lower_bound
+        gap = best_upper - best_lower
         if gap < tol:
             break
 
-        # Update multipliers using subgradient
-        # Subgradient: g[k] = 1 - k_counts[k] (1 if not used, 0 if used once, -1 if used twice)
-        subgradient = 1 - k_counts
+        # Subgradient on the relaxed (third) dimension.
+        counts = np.bincount(best_k[row_ind, col_ind], minlength=n3).astype(float)
+        subgradient = 1.0 - counts
+        norm_sq = float(np.sum(subgradient**2))
+        if norm_sq <= 0.0:
+            # No violation: the relaxed solution is feasible, hence optimal.
+            break
 
-        # Diminishing step size
-        alpha_k = alpha / (1 + iteration)
-
-        # Update
-        mu = mu + alpha_k * subgradient
+        step = (best_upper - lower) / norm_sq
+        if step <= 0.0:
+            step = step_size / (1 + iteration)
+        mu = mu + step * subgradient
 
     if best_tuples is None:
         best_tuples = np.array([], dtype=np.intp).reshape(0, 3)
-        best_cost = 0.0
+        best_upper = 0.0
 
-    if maximize:
-        best_cost = -best_cost
-        lower_bound = -lower_bound
+    gap = best_upper - best_lower
+    reported_cost = -best_upper if maximize else best_upper
 
     return Assignment3DResult(
         tuples=best_tuples,
-        cost=best_cost,
-        converged=(gap < tol),
+        cost=reported_cost,
+        converged=bool(gap < tol),
         n_iterations=iteration + 1,
-        gap=abs(gap),
+        gap=gap,
     )
 
 
