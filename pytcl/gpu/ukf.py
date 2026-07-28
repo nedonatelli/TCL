@@ -25,7 +25,7 @@ Notes
 points at a distance proportional to ``alpha`` from the mean and then undo that
 scaling with weights of magnitude ``O(1/alpha**2)``. The default
 ``alpha=1e-3`` therefore produces weights near ``1e6``: the mean and covariance
-are recovered by cancelling large terms, and every bit lost to rounding is
+are recovered by canceling large terms, and every bit lost to rounding is
 amplified by that factor.
 
 On the MLX backend all compute is float32 (MLX raises on float64 for GPU

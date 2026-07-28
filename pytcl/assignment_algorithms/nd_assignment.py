@@ -220,11 +220,11 @@ def _recover_feasible_nd(
 
     for d in range(2, n_dims):
         # Cost of extending each partial tuple with each index of dimension d,
-        # minimised over the not-yet-assigned dimensions.
+        # minimized over the not-yet-assigned dimensions.
         block = np.empty((n_assign, dims[d]))
         for t in range(n_assign):
             sub = cost_tensor[tuple(partial[t])]
-            # sub has axes (dims[d], dims[d+1], ...); minimise the trailing ones
+            # sub has axes (dims[d], dims[d+1], ...); minimize the trailing ones
             block[t] = sub.reshape(dims[d], -1).min(axis=1)
         r_idx, c_idx = linear_sum_assignment(block)
         chosen = {int(r): int(c) for r, c in zip(r_idx, c_idx)}
@@ -292,7 +292,7 @@ def relaxation_assignment_nd(
     The relaxation follows Poore's formulation (see the module references):
 
     1. Relax the constraints on dimensions 3..N with multipliers ``lambda``.
-    2. The inner problem separates: minimising over the relaxed dimensions for
+    2. The inner problem separates: minimizing over the relaxed dimensions for
        each (i, j) pair leaves a 2-D assignment problem, solved **exactly**.
        Solving it exactly is what makes ``L(lambda)`` a valid lower bound --
        a greedy inner solve does not bound the optimum and can certify
@@ -337,7 +337,7 @@ def relaxation_assignment_nd(
             shape[d] = dims[d]
             relaxed = relaxed - lambdas[k].reshape(shape)
 
-        # Minimise over the relaxed dimensions, leaving a 2-D problem.
+        # Minimize over the relaxed dimensions, leaving a 2-D problem.
         collapsed = relaxed.reshape(dims[0], dims[1], -1)
         reduced = collapsed.min(axis=2)
         best_free = collapsed.argmin(axis=2)
