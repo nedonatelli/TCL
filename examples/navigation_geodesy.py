@@ -20,6 +20,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 
@@ -32,6 +34,8 @@ from pytcl.navigation import (
     haversine_distance,
     inverse_geodetic,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def geodetic_basics_demo() -> None:
@@ -345,7 +349,8 @@ def plot_coverage_map() -> None:
         lats = []
         lons = []
         for az in azimuths:
-            lat, lon = direct_geodetic(sensor_lat, sensor_lon, az, ground_range)
+            # direct_geodetic also returns the back azimuth at the destination.
+            lat, lon, _ = direct_geodetic(sensor_lat, sensor_lon, az, ground_range)
             lats.append(np.degrees(lat))
             lons.append(np.degrees(lon))
 
@@ -379,7 +384,8 @@ def plot_coverage_map() -> None:
 
     fig.write_html(str(OUTPUT_DIR / "navigation_coverage_map.html"))
     print("\nInteractive coverage map saved to navigation_coverage_map.html")
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
 
 
 def main() -> None:
@@ -394,10 +400,7 @@ def main() -> None:
     waypoint_navigation_demo()
     sensor_coverage_demo()
 
-    try:
-        plot_coverage_map()
-    except Exception as e:
-        print(f"\nCould not generate coverage map: {e}")
+    plot_coverage_map()
 
     print("\n" + "=" * 60)
     print("Done!")

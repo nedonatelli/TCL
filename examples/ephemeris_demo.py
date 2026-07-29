@@ -13,6 +13,7 @@ The example covers:
 6. Computing distances and velocities
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -29,7 +30,7 @@ from pytcl.astronomical import (
 )
 from pytcl.astronomical.relativity import AU
 
-SHOW_PLOTS = True
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 OUTPUT_DIR = Path("docs/_static/images/examples")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -37,85 +38,128 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 def plot_sun_earth_moon_positions(
     jd: float, title: str = "Sun-Earth-Moon System Configuration"
 ) -> None:
-    """Plot Sun, Earth, and Moon positions in 3D."""
-    earth_pos = np.array([1.0, 0.0, 0.0]) * AU  # Earth at ~1 AU
+    """Plot the Sun-Earth-Moon geometry at a given epoch.
+
+    The two distances involved differ by a factor of about 390, so a single
+    3D scene cannot show both: at a scale where the Earth-Sun line is
+    visible, the Moon sits on top of the Earth. Hence two panels, one per
+    scale.
+    """
+    # sun_position and moon_position return barycentric (SSB) ICRF positions
+    # in AU. Asking moon_position for the 'earth_centered' frame gives the
+    # Moon relative to the Earth, so the Earth's own barycentric position is
+    # exactly the difference of the two.
     r_sun, _ = sun_position(jd)
-    r_moon, _ = moon_position(jd)
+    r_moon_bary, _ = moon_position(jd)
+    r_moon_geo, _ = moon_position(jd, "earth_centered")
+    r_earth = r_moon_bary - r_moon_geo
 
-    fig = go.Figure()
+    km_per_au = AU / 1e3
+    earth_sun_au = float(np.linalg.norm(r_earth - r_sun))
+    earth_moon_km = float(np.linalg.norm(r_moon_geo) * km_per_au)
 
-    # Sun (scaled down for visibility)
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        specs=[[{"type": "scatter3d"}, {"type": "scatter3d"}]],
+        subplot_titles=(
+            f"Barycentric view — Earth-Sun {earth_sun_au:.4f} AU",
+            f"Geocentric view — Earth-Moon {earth_moon_km:,.0f} km",
+        ),
+    )
+
+    # Panel 1: solar-system scale, positions relative to the barycentre.
     fig.add_trace(
         go.Scatter3d(
-            x=[r_sun[0] / AU],
-            y=[r_sun[1] / AU],
-            z=[r_sun[2] / AU],
+            x=[r_sun[0]],
+            y=[r_sun[1]],
+            z=[r_sun[2]],
             mode="markers+text",
-            marker=dict(size=12, color="yellow", symbol="circle"),
+            marker=dict(size=12, color="gold"),
             text=["Sun"],
             textposition="top center",
             name="Sun",
-            hovertemplate="<b>Sun</b><br>Distance from origin: "
-            f"{np.linalg.norm(r_sun) / AU:.3f} AU<extra></extra>",
-        )
+            hovertemplate=f"<b>Sun</b><br>{np.linalg.norm(r_sun):.5f} AU "
+            "from barycentre<extra></extra>",
+        ),
+        row=1,
+        col=1,
     )
-
-    # Earth
     fig.add_trace(
         go.Scatter3d(
-            x=[earth_pos[0] / AU],
-            y=[earth_pos[1] / AU],
-            z=[earth_pos[2] / AU],
+            x=[r_earth[0]],
+            y=[r_earth[1]],
+            z=[r_earth[2]],
             mode="markers+text",
-            marker=dict(size=8, color="blue", symbol="circle"),
+            marker=dict(size=8, color="royalblue"),
             text=["Earth"],
             textposition="top center",
             name="Earth",
-            hovertemplate="<b>Earth</b><br>Distance from Sun: "
-            f"{np.linalg.norm(earth_pos - r_sun) / AU:.3f} AU<extra></extra>",
-        )
+            hovertemplate=f"<b>Earth</b><br>{earth_sun_au:.5f} AU "
+            "from the Sun<extra></extra>",
+        ),
+        row=1,
+        col=1,
     )
-
-    # Moon (displaced from Earth for visibility)
-    moon_distance = np.linalg.norm(r_moon) / 1e6
     fig.add_trace(
         go.Scatter3d(
-            x=[r_moon[0] / AU],
-            y=[r_moon[1] / AU],
-            z=[r_moon[2] / AU],
+            x=[r_sun[0], r_earth[0]],
+            y=[r_sun[1], r_earth[1]],
+            z=[r_sun[2], r_earth[2]],
+            mode="lines",
+            line=dict(color="orange", width=3),
+            hoverinfo="skip",
+            showlegend=False,
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Panel 2: Earth-Moon scale, Earth at the origin, axes in thousands of km.
+    moon_kkm = r_moon_geo * km_per_au / 1e3
+    fig.add_trace(
+        go.Scatter3d(
+            x=[0.0],
+            y=[0.0],
+            z=[0.0],
             mode="markers+text",
-            marker=dict(size=5, color="gray", symbol="circle"),
+            marker=dict(size=10, color="royalblue"),
+            text=["Earth"],
+            textposition="top center",
+            name="Earth (origin)",
+            hovertemplate="<b>Earth</b><extra></extra>",
+        ),
+        row=1,
+        col=2,
+    )
+    fig.add_trace(
+        go.Scatter3d(
+            x=[moon_kkm[0]],
+            y=[moon_kkm[1]],
+            z=[moon_kkm[2]],
+            mode="markers+text",
+            marker=dict(size=6, color="lightgray"),
             text=["Moon"],
             textposition="top center",
             name="Moon",
-            hovertemplate="<b>Moon</b><br>Distance from Earth: "
-            f"{moon_distance:.1f} km<extra></extra>",
-        )
+            hovertemplate=f"<b>Moon</b><br>{earth_moon_km:,.0f} km "
+            "from the Earth<extra></extra>",
+        ),
+        row=1,
+        col=2,
     )
-
-    # Orbital connections
     fig.add_trace(
         go.Scatter3d(
-            x=[r_sun[0] / AU, earth_pos[0] / AU],
-            y=[r_sun[1] / AU, earth_pos[1] / AU],
-            z=[r_sun[2] / AU, earth_pos[2] / AU],
+            x=[0.0, moon_kkm[0]],
+            y=[0.0, moon_kkm[1]],
+            z=[0.0, moon_kkm[2]],
             mode="lines",
-            line=dict(color="orange", width=2),
+            line=dict(color="lightblue", width=2, dash="dash"),
             hoverinfo="skip",
             showlegend=False,
-        )
-    )
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=[earth_pos[0] / AU, r_moon[0] / AU],
-            y=[earth_pos[1] / AU, r_moon[1] / AU],
-            z=[earth_pos[2] / AU, r_moon[2] / AU],
-            mode="lines",
-            line=dict(color="lightblue", width=1, dash="dash"),
-            hoverinfo="skip",
-            showlegend=False,
-        )
+        ),
+        row=1,
+        col=2,
     )
 
     fig.update_layout(
@@ -124,6 +168,12 @@ def plot_sun_earth_moon_positions(
             xaxis_title="X (AU)",
             yaxis_title="Y (AU)",
             zaxis_title="Z (AU)",
+            aspectmode="data",
+        ),
+        scene2=dict(
+            xaxis_title="X (1000 km)",
+            yaxis_title="Y (1000 km)",
+            zaxis_title="Z (1000 km)",
             aspectmode="data",
         ),
         hovermode="closest",
@@ -332,20 +382,29 @@ def example_planet_positions():
     print(f"{'Planet':<10} {'Distance (AU)':<16} {'Longitude':<12} {'Latitude':<12}")
     print("-" * 70)
 
+    # Ask for the ecliptic frame, since the table reports ecliptic longitude
+    # and latitude. Reading those angles off the ICRF (equatorial) vectors
+    # instead put Mercury at -25 degrees latitude, which no planet can reach:
+    # the ecliptic latitudes of the planets stay within about 7 degrees.
+    r_sun_ecl, _ = sun_position(jd_j2000, "ecliptic")
+
     for planet_name in planets:
-        try:
-            r, _ = planet_position(planet_name, jd_j2000)
-            dist_au = np.linalg.norm(r) / AU
+        r_bary, _ = planet_position(planet_name, jd_j2000, "ecliptic")
 
-            # Compute ecliptic coordinates
-            lon = np.arctan2(r[1], r[0])
-            lat = np.arcsin(r[2] / np.linalg.norm(r))
+        # planet_position returns barycentric positions, already in AU. The
+        # heliocentric vector is the difference from the Sun; the distance
+        # must not be divided by AU again, which is what left every entry in
+        # this column reading 0.000000.
+        r = r_bary - r_sun_ecl
+        dist_au = np.linalg.norm(r)
 
-            print(
-                f"{planet_name:<10} {dist_au:<16.6f} {np.degrees(lon):>10.2f}° {np.degrees(lat):>10.2f}°"
-            )
-        except Exception as e:
-            print(f"{planet_name:<10} [Error: {str(e)}]")
+        lon = np.arctan2(r[1], r[0])
+        lat = np.arcsin(r[2] / dist_au)
+
+        print(
+            f"{planet_name:<10} {dist_au:<16.6f} "
+            f"{np.degrees(lon):>10.2f}° {np.degrees(lat):>10.2f}°"
+        )
 
 
 def example_barycenter():

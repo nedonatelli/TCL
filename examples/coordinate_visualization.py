@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -33,6 +35,8 @@ from pytcl.coordinate_systems import (  # noqa: E402
     sphere2cart,
 )
 from pytcl.navigation import geodetic_to_ecef  # noqa: E402
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def plot_rotation_axes() -> go.Figure:
@@ -642,11 +646,16 @@ def main():
 
     # Show all figures
     print("\nOpening visualizations in browser...")
-    fig1.show()
-    fig2.show()
-    fig3.show()
-    fig4.show()
-    fig5.show()
+    if SHOW_PLOTS:
+        fig1.show()
+    if SHOW_PLOTS:
+        fig2.show()
+    if SHOW_PLOTS:
+        fig3.show()
+    if SHOW_PLOTS:
+        fig4.show()
+    if SHOW_PLOTS:
+        fig5.show()
 
     print("\nDone!")
 

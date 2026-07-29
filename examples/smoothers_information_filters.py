@@ -20,6 +20,9 @@ measurements, while information filters are numerically stable and ideal
 for multi-sensor fusion applications.
 """
 
+import os
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -39,6 +42,9 @@ from pytcl.dynamic_estimation import (  # Smoothers; Information filters
     state_to_information,
     two_filter_smoother,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def generate_cv_trajectory(
@@ -572,7 +578,11 @@ def visualize_smoother_comparison():
         hovermode="x unified",
     )
 
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "smoothers_information_filters.html"))
 
 
 if __name__ == "__main__":

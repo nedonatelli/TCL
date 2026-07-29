@@ -11,6 +11,9 @@ These containers provide efficient data management for multi-target tracking
 applications with immutable design patterns and lazy spatial indexing.
 """
 
+import os
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -23,6 +26,9 @@ from pytcl.containers import (
 from pytcl.containers.cluster_set import cluster_tracks_dbscan, cluster_tracks_kmeans
 from pytcl.containers.measurement_set import Measurement
 from pytcl.containers.track_list import Track, TrackStatus
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def create_sample_tracks(n_tracks: int = 10, seed: int = 42) -> TrackList:
@@ -507,7 +513,11 @@ def visualize_track_distribution():
             showlegend=False,
         )
 
-        fig.show()
+        if SHOW_PLOTS:
+            fig.show()
+        else:
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            fig.write_html(str(OUTPUT_DIR / "tracking_containers.html"))
 
 
 if __name__ == "__main__":

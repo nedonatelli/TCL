@@ -9,6 +9,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ConstrainedEKF` threw the estimate across the feasible set instead of
+  projecting onto it.** The Lagrange multiplier was computed as
+  `-(G P Gᵀ)⁻¹ (G x + g(x))`. The `G x` term does not belong in the
+  covariance-weighted projection (Simon 2010): the correct multiplier is
+  `-(G P Gᵀ)⁻¹ g(x)`. Since `G x` has nothing to do with how far the
+  constraint is violated, it dominated whenever the state was far from the
+  origin — projecting `(12, 12)` onto a circle of radius 7.5 about `(5, 5)`
+  returned `(-1.5, -1.5)`, on the far side. Separately, the covariance
+  projection was applied inside the Newton iteration, collapsing `P` along the
+  constraint normal so every step after the first was multiplied by an
+  almost-zero gain and the state stalled short of the surface; it is now
+  applied once, after the state converges. Projections now land on the exact
+  nearest feasible point (verified in closed form against a circle).
+
+  Every existing test asserted only that the result was *feasible*. Landing
+  deep in the interior satisfies an inequality constraint, so the suite passed
+  while the filter diverged — `tests/test_constrained_ekf.py` now checks
+  minimality, and six of the new assertions fail against the old code.
+
+- **`examples/terrain_demo.py` had never computed a horizon.** It called
+  `compute_horizon(dem=..., observer_lat_idx=..., observer_lon_idx=...)`, but
+  the function takes `(dem, obs_lat, obs_lon, obs_height)` with angles in
+  radians, and returns a list of `HorizonPoint` rather than an object with
+  `.azimuth_angles`. The resulting `TypeError` was caught by a bare
+  `except Exception` that printed "This is expected if compute_horizon
+  requires specific parameters" and exited 0. The same file passed degrees to
+  four DEM constructors documented as taking radians — `lat_min=-5` is -286°,
+  past the poles — which built a 10315×10315 grid (851 MB) for a local horizon
+  demo, and computed slope from `np.gradient` without dividing by the ground
+  size of a cell, reporting a mean slope of 88.9° for rolling terrain. Runtime
+  drops from 34.7 s to 0.8 s; slope is now 0.01°–5.13°.
+
+- **`examples/ephemeris_demo.py` divided AU-valued positions by AU again.**
+  `sun_position` and `moon_position` return AU, but the plot divided by `AU`
+  in metres, giving coordinates of ~1e-14 while Earth was hardcoded at exactly
+  `(1, 0, 0)`. The resulting 1e14 axis-extent ratio collapsed the 3D scene, so
+  the figure rendered as an empty box. Earth's position is now derived from
+  the ephemeris rather than assumed, and the Sun-Earth and Earth-Moon
+  distances are drawn in separate panels because they differ by a factor of
+  390. The Moon distance label was also reported in units of 1000 km while
+  labelled "km", and computed from the barycentric rather than the geocentric
+  vector.
+
+  The planetary table in the same file printed `0.000000` for every distance
+  from the same double division, and derived "ecliptic" longitude and latitude
+  from ICRF equatorial vectors — putting Mercury at -25° latitude, which no
+  planet can reach. Distances now match published J2000 values (Mercury
+  0.4665 AU, Venus 0.7202, Jupiter 4.9654, Neptune 30.121).
+
+- **`examples/navigation_geodesy.py` unpacked two values from
+  `direct_geodetic`,** which returns three (the back azimuth as well). The
+  coverage map had never been generated; the `ValueError` was swallowed.
+
+- **`examples/advanced_filters_comparison.py` compared three filters, two of
+  which were identical.** The CEKF's constraint was a circle of radius 10
+  about `(5, 5)`, but the true track never exceeds 7.07 from that centre, so
+  the constraint was inactive at every step and the "constrained" EKF returned
+  exactly what a plain EKF would — its curve sat invisibly under the GSF's
+  (max separation 0.006). The radius is now 7.10, just above the trajectory's
+  maximum, so the truth stays feasible while stray estimates are pulled back;
+  the example reports how many steps the constraint actually binds. Bearing
+  noise was also 0.1 rad (5.7°), which at the target's ~14-unit range is 1.4
+  units of cross-range error on a trajectory 2.5 units long, so the plotted
+  tracks looked like noise; it is now 0.57°.
+
 - **The notebook CI gate was vacuous.** The `notebooks` job ended its nbval
   command with `|| echo "Notebook validation completed with warnings"`, which
   discarded the exit code. The job had been reporting success while 13 cells
@@ -27,6 +92,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.[dev,visualization]`.
 
 ### Added
+
+- **The 30 example scripts now run in CI** (`examples` job) via
+  `tests/test_examples.py`. Nothing had ever executed them, which is how the
+  defects above survived. Each script runs in a subprocess and must exit 0
+  without printing a traceback; `tests/example_guard/sitecustomize.py` turns
+  any `fig.show()` into a hard failure, because plotly's fallback in a
+  headless container returns quietly and would otherwise let an unguarded call
+  pass. Plot display is now controlled by `PYTCL_SHOW_PLOTS` (default on, so
+  interactive use is unchanged; CI sets it to 0 and writes HTML instead).
+  All six `except Exception` blocks in `examples/` are gone.
 
 - `tests/test_notebook_hygiene.py` — structural notebook checks that run in
   the ordinary (fast) suite rather than only in the minute-long nbval job:

@@ -740,5 +740,82 @@ class TestConstrainedEKFIntegration:
         assert np.all(np.abs(trajectory[:, 0]) <= 10 + 1e-6)
 
 
+class TestProjectionIsMinimal:
+    """The projection must return the *nearest* feasible state, not just any.
+
+    Regression tests for a defect that survived because every existing test
+    asserted only feasibility. The Lagrange multiplier was computed as
+    ``-(G P Gᵀ)⁻¹ (G x + g(x))``; the ``G x`` term does not belong there and
+    dominates once the state is far from the origin, so the projection threw
+    the estimate clean across the feasible set. Landing deep in the interior
+    still satisfies an inequality constraint, so the feasibility assertions
+    passed while the filter was diverging.
+    """
+
+    @staticmethod
+    def _circle(radius, center=(0.0, 0.0)):
+        cx, cy = center
+        return ConstraintFunction(
+            lambda x: np.array([(x[0] - cx) ** 2 + (x[1] - cy) ** 2 - radius**2]),
+            G=lambda x: np.array([[2 * (x[0] - cx), 2 * (x[1] - cy)]]),
+        )
+
+    @pytest.mark.parametrize(
+        "start", [(6.0, 6.0), (12.0, 0.0), (-9.0, 3.0), (0.0, -20.0)]
+    )
+    def test_projects_to_nearest_point_on_circle(self, start):
+        """For a circle at the origin the answer is known in closed form."""
+        radius = 5.0
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(self._circle(radius))
+
+        x = np.array(start)
+        x_proj, _ = cekf._project_onto_constraints(x, np.eye(2))
+
+        # With P = I the metric is Euclidean, so the nearest feasible point is
+        # simply the radial projection onto the circle.
+        expected = x / np.linalg.norm(x) * radius
+        np.testing.assert_allclose(x_proj, expected, atol=1e-6)
+
+    def test_does_not_cross_to_the_far_side(self):
+        """The direct signature of the old defect."""
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(self._circle(7.5, center=(5.0, 5.0)))
+
+        x = np.array([12.0, 12.0])
+        x_proj, _ = cekf._project_onto_constraints(x, np.eye(2))
+
+        # Correcting toward the circle must not flip the sign of the offset
+        # from the centre; the buggy version landed at about (-1.5, -1.5).
+        offset_before = x - np.array([5.0, 5.0])
+        offset_after = x_proj - np.array([5.0, 5.0])
+        assert np.all(np.sign(offset_after) == np.sign(offset_before))
+        assert np.linalg.norm(offset_after) == pytest.approx(7.5, abs=1e-6)
+
+    def test_feasible_state_is_untouched(self):
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(self._circle(5.0))
+
+        x = np.array([1.0, 2.0])
+        x_proj, P_proj = cekf._project_onto_constraints(x, np.eye(2))
+
+        np.testing.assert_allclose(x_proj, x)
+        np.testing.assert_allclose(P_proj, np.eye(2))
+
+    def test_converges_rather_than_stalling(self):
+        """The state iteration must not be throttled by its own covariance.
+
+        The covariance projection collapses P along the constraint normal.
+        Applying it inside the iteration made every step after the first
+        almost zero, leaving the state short of the surface.
+        """
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(self._circle(5.0))
+
+        x_proj, _ = cekf._project_onto_constraints(np.array([40.0, 40.0]), np.eye(2))
+        residual = np.linalg.norm(x_proj) - 5.0
+        assert abs(residual) < 1e-6, f"stalled {residual:.3e} from the surface"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
