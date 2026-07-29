@@ -47,10 +47,14 @@ jobs:
       - name: Install package with all extras
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[all]" pytest
+          pip install -e ".[all]" pytest pytest-timeout
 
       - name: Run docstring examples
-        run: pytest --doctest-modules pytcl -q
+        # Doctests must not reach the network. A DEEphemeris example without a
+        # "# doctest: +SKIP" tries to fetch the 114 MB DE440 kernel from
+        # naif.jpl.nasa.gov and hung this job for ten minutes before timing
+        # out; the per-test timeout turns any repeat into a fast, clear failure.
+        run: pytest --doctest-modules pytcl -q --timeout=60
 
   test:
     runs-on: ${{ matrix.os }}

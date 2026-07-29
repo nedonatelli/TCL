@@ -104,8 +104,8 @@ class DEEphemeris:
 
     Examples
     --------
-    >>> eph = DEEphemeris(version='DE440')
-    >>> r_sun, v_sun = eph.sun_position(2451545.0)
+    >>> eph = DEEphemeris(version='DE440')  # doctest: +SKIP
+    >>> r_sun, v_sun = eph.sun_position(2451545.0)  # doctest: +SKIP
 
     """
 
@@ -287,8 +287,8 @@ class DEEphemeris:
 
         Examples
         --------
-        >>> eph = DEEphemeris()
-        >>> r, v = eph.moon_position(2451545.0, frame='earth_centered')
+        >>> eph = DEEphemeris()  # doctest: +SKIP
+        >>> r, v = eph.moon_position(2451545.0, frame='earth_centered')  # doctest: +SKIP
 
         """
         if frame == "earth_centered":
@@ -357,8 +357,8 @@ class DEEphemeris:
 
         Examples
         --------
-        >>> eph = DEEphemeris()
-        >>> r, v = eph.planet_position('mars', 2451545.0)
+        >>> eph = DEEphemeris()  # doctest: +SKIP
+        >>> r, v = eph.planet_position('mars', 2451545.0)  # doctest: +SKIP
 
         """
         planet_lower = planet.lower()

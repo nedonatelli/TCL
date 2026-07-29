@@ -79,7 +79,9 @@ def demo_flat_dem() -> None:
         if SHOW_PLOTS:
             fig.show()
         else:
-            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
+            fig.write_html(
+                str(OUTPUT_DIR / "terrain_demo.html"), include_plotlyjs="cdn"
+            )
 
 
 def demo_synthetic_terrain() -> None:
@@ -143,7 +145,9 @@ def demo_synthetic_terrain() -> None:
         if SHOW_PLOTS:
             fig.show()
         else:
-            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
+            fig.write_html(
+                str(OUTPUT_DIR / "terrain_demo.html"), include_plotlyjs="cdn"
+            )
 
 
 def demo_terrain_analysis() -> None:
@@ -243,7 +247,9 @@ def demo_terrain_analysis() -> None:
         if SHOW_PLOTS:
             fig.show()
         else:
-            fig.write_html(str(OUTPUT_DIR / "terrain_demo.html"))
+            fig.write_html(
+                str(OUTPUT_DIR / "terrain_demo.html"), include_plotlyjs="cdn"
+            )
 
         # Visualization: Slope map with downsampling
         max_size = 500

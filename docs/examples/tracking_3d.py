@@ -330,7 +330,9 @@ def demo_3d_kalman_filter():
         fig.update_xaxes(title_text="X (m)", row=1, col=3)
         fig.update_yaxes(title_text="Y (m)", row=1, col=3)
 
-        fig.write_html(str(OUTPUT_DIR / "tracking_3d_kalman.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "tracking_3d_kalman.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to tracking_3d_kalman.html]")
 
     return estimates, true_states, measurements
@@ -502,7 +504,9 @@ def demo_3d_rts_smoother():
         fig.update_xaxes(title_text="Time step", row=1, col=3)
         fig.update_yaxes(title_text="Covariance Trace", row=1, col=3)
 
-        fig.write_html(str(OUTPUT_DIR / "tracking_3d_smoother.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "tracking_3d_smoother.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to tracking_3d_smoother.html]")
 
 
@@ -750,7 +754,9 @@ def demo_spherical_measurements():
         fig.update_xaxes(title_text="Azimuth (deg)", row=1, col=3)
         fig.update_yaxes(title_text="Elevation (deg)", row=1, col=3)
 
-        fig.write_html(str(OUTPUT_DIR / "tracking_3d_radar.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "tracking_3d_radar.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to tracking_3d_radar.html]")
 
 
@@ -999,7 +1005,9 @@ def demo_multi_sensor_3d():
         fig.update_xaxes(title_text="X (m)", row=1, col=3)
         fig.update_yaxes(title_text="Z (m)", row=1, col=3)
 
-        fig.write_html(str(OUTPUT_DIR / "tracking_3d_multisensor.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "tracking_3d_multisensor.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to tracking_3d_multisensor.html]")
 
 
@@ -1305,7 +1313,9 @@ def demo_3d_maneuvering_target():
         fig.update_xaxes(title_text="Time step", row=1, col=3)
         fig.update_yaxes(title_text="Altitude Z (m)", row=1, col=3)
 
-        fig.write_html(str(OUTPUT_DIR / "tracking_3d_maneuver.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "tracking_3d_maneuver.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to tracking_3d_maneuver.html]")
 
 

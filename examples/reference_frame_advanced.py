@@ -380,7 +380,7 @@ def example_leo_satellite_tracking():
     output_dir = os.path.join(os.path.dirname(__file__), "output")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, "leo_satellite_pass.html")
-    fig.write_html(output_path)
+    fig.write_html(output_path, include_plotlyjs="cdn")
     print(f"\nPlot saved to '{output_path}'")
 
     return fig

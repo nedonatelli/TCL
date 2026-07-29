@@ -405,26 +405,26 @@ if __name__ == "__main__":
     # Generate all plots
     fig1 = plot_density_vs_altitude()
     output_path1 = os.path.join(output_dir, "nrlmsise00_density.html")
-    fig1.write_html(output_path1)
+    fig1.write_html(output_path1, include_plotlyjs="cdn")
     print(f"OK Saved: {output_path1}")
 
     fig2 = plot_composition_profile()
     output_path2 = os.path.join(output_dir, "nrlmsise00_composition.html")
-    fig2.write_html(output_path2)
+    fig2.write_html(output_path2, include_plotlyjs="cdn")
     print(f"OK Saved: {output_path2}")
 
     fig3 = plot_temperature_profile()
     output_path3 = os.path.join(output_dir, "nrlmsise00_temperature.html")
-    fig3.write_html(output_path3)
+    fig3.write_html(output_path3, include_plotlyjs="cdn")
     print(f"OK Saved: {output_path3}")
 
     fig4 = plot_solar_activity_effect()
     output_path4 = os.path.join(output_dir, "nrlmsise00_solar_activity.html")
-    fig4.write_html(output_path4)
+    fig4.write_html(output_path4, include_plotlyjs="cdn")
     print(f"OK Saved: {output_path4}")
 
     fig5 = plot_composition_transitions()
-    fig5.write_html("nrlmsise00_composition_transition.html")
+    fig5.write_html("nrlmsise00_composition_transition.html", include_plotlyjs="cdn")
     print("OK Saved: nrlmsise00_composition_transition.html")
 
     print("\nAll visualizations complete!")

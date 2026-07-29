@@ -104,7 +104,7 @@ def plot_precession_effects() -> None:
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"), include_plotlyjs="cdn")
 
 
 def plot_time_dilation_with_altitude() -> None:
@@ -184,7 +184,7 @@ def plot_time_dilation_with_altitude() -> None:
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"))
+        fig.write_html(str(OUTPUT_DIR / "relativity_demo.html"), include_plotlyjs="cdn")
 
 
 def example_gps_time_dilation():

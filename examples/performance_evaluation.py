@@ -499,13 +499,17 @@ def plot_results(
     fig.update_xaxes(title_text="Time Step", row=2, col=2)
     fig.update_yaxes(title_text="Component Value", row=2, col=2)
 
-    fig.write_html(str(OUTPUT_DIR / "performance_evaluation.html"))
+    fig.write_html(
+        str(OUTPUT_DIR / "performance_evaluation.html"), include_plotlyjs="cdn"
+    )
     print("\nInteractive plot saved to performance_evaluation.html")
     if SHOW_PLOTS:
         fig.show()
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        fig.write_html(str(OUTPUT_DIR / "performance_evaluation.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "performance_evaluation.html"), include_plotlyjs="cdn"
+        )
 
 
 def main() -> None:
