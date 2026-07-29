@@ -122,6 +122,6 @@ Running the Example
 See Also
 --------
 
-- :doc:`ins_gnss_navigation` - Navigation applications
-- :doc:`coordinate_systems` - Coordinate transformations
-- :doc:`reference_frame_advanced` - Reference frames
+- :doc:`../coordinates/ins_gnss_navigation` - Navigation applications
+- :doc:`../coordinates/coordinate_systems` - Coordinate transformations
+- :doc:`../orbital/reference_frame_advanced` - Reference frames

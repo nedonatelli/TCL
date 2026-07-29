@@ -15,9 +15,9 @@ Functions
 
 References
 ----------
-.. [1] Mallat, S. (2008). A Wavelet Tour of Signal Processing: The Sparse
-       Way (3rd ed.). Academic Press.
-.. [2] Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
+- Mallat, S. (2008). A Wavelet Tour of Signal Processing: The Sparse
+  Way (3rd ed.). Academic Press.
+- Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
 """
 
 from typing import Any, Callable, List, NamedTuple, Optional, Union
@@ -846,8 +846,10 @@ def threshold_coefficients(
 
     Notes
     -----
-    When value is None, the universal threshold is computed as:
+    When value is None, the universal threshold is computed as::
+
         sigma * sqrt(2 * log(n))
+
     where sigma is estimated from the finest detail coefficients
     and n is the total number of coefficients.
     """

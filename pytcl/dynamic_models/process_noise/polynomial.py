@@ -276,7 +276,7 @@ def q_continuous_white_noise(
     Notes
     -----
     For a continuous-time model with process noise spectral density q,
-    the discrete-time process noise covariance is:
+    the discrete-time process noise covariance is::
 
         Q = integral_0^T exp(A*t) * G * q * G' * exp(A'*t) dt
 

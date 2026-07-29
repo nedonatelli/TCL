@@ -16,11 +16,11 @@ These functions are essential for:
 
 References
 ----------
-.. [1] Wang, J., Robinson, G.J., and White, K. "A fast solution to local
-       viewshed computation using grid-based digital elevation models."
-       Photogrammetric Engineering & Remote Sensing 62.10 (1996): 1157-1164.
-.. [2] De Floriani, L. and Magillo, P. "Algorithms for visibility computation
-       on terrains: a survey." Environment and Planning B 30.5 (2003): 709-728.
+- Wang, J., Robinson, G.J., and White, K. "A fast solution to local
+  viewshed computation using grid-based digital elevation models."
+  Photogrammetric Engineering & Remote Sensing 62.10 (1996): 1157-1164.
+- De Floriani, L. and Magillo, P. "Algorithms for visibility computation
+  on terrains: a survey." Environment and Planning B 30.5 (2003): 709-728.
 """
 
 from typing import List, NamedTuple

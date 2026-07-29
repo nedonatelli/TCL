@@ -7,10 +7,10 @@ while maintaining positive definite covariance.
 
 References
 ----------
-.. [1] Simon, D. (2006). Optimal State Estimation: Kalman, H∞, and Nonlinear
-       Approaches. Wiley-Interscience.
-.. [2] Simon, D. & Simon, D. L. (2010). Constrained Kalman filtering via
-       density function truncation. Journal of Guidance, Control, and Dynamics.
+- Simon, D. (2006). Optimal State Estimation: Kalman, H∞, and Nonlinear
+  Approaches. Wiley-Interscience.
+- Simon, D. & Simon, D. L. (2010). Constrained Kalman filtering via
+  density function truncation. Journal of Guidance, Control, and Dynamics.
 """
 
 from typing import Any, Callable, Optional

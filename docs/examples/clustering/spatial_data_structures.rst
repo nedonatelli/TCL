@@ -79,4 +79,4 @@ See Also
 --------
 
 - :doc:`gaussian_mixtures` - Clustering with spatial trees
-- :doc:`multi_target_tracking` - Gating with spatial queries
+- :doc:`../tracking/multi_target_tracking` - Gating with spatial queries

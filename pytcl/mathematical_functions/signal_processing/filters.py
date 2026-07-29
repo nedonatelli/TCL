@@ -18,10 +18,10 @@ Functions
 
 References
 ----------
-.. [1] Oppenheim, A. V., & Schafer, R. W. (2010). Discrete-Time Signal
-       Processing (3rd ed.). Prentice Hall.
-.. [2] Parks, T. W., & Burrus, C. S. (1987). Digital Filter Design.
-       Wiley-Interscience.
+- Oppenheim, A. V., & Schafer, R. W. (2010). Discrete-Time Signal
+  Processing (3rd ed.). Prentice Hall.
+- Parks, T. W., & Burrus, C. S. (1987). Digital Filter Design.
+  Wiley-Interscience.
 """
 
 from typing import Any, NamedTuple, Optional, Union

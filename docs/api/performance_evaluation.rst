@@ -4,9 +4,8 @@ Performance Evaluation
 Track and estimation performance metrics.
 
 .. automodule:: pytcl.performance_evaluation
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Track Metrics
 -------------

@@ -7,12 +7,12 @@ calculations, trajectory design, and orbit determination.
 
 References
 ----------
-.. [1] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013.
-.. [2] Izzo, D., "Revisiting Lambert's problem," Celestial Mechanics and
-       Dynamical Astronomy, 2015.
-.. [3] Gooding, R. H., "A procedure for the solution of Lambert's
-       orbital boundary-value problem," Celestial Mechanics, 1990.
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013.
+- Izzo, D., "Revisiting Lambert's problem," Celestial Mechanics and
+  Dynamical Astronomy, 2015.
+- Gooding, R. H., "A procedure for the solution of Lambert's
+  orbital boundary-value problem," Celestial Mechanics, 1990.
 """
 
 from typing import NamedTuple, Tuple

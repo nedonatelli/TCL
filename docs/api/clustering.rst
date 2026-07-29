@@ -4,9 +4,8 @@ Clustering
 Clustering algorithms for data grouping and mixture modeling.
 
 .. automodule:: pytcl.clustering
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 K-Means
 -------

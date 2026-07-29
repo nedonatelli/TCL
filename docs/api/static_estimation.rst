@@ -4,9 +4,8 @@ Static Estimation
 Static parameter estimation algorithms.
 
 .. automodule:: pytcl.static_estimation
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Least Squares
 -------------

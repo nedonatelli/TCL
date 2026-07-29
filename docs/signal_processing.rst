@@ -310,7 +310,6 @@ Digital Filtering
    
    Use FIR for:      Low latency, linear phase, when order not critical
    Use IIR for:      Low computation cost, tight resource constraints
-```
 
 FFT and Spectral Analysis
 --------------------------

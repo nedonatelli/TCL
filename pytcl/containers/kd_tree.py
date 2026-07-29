@@ -7,10 +7,10 @@ nearest neighbor searches in tracking applications.
 
 References
 ----------
-.. [1] J. L. Bentley, "Multidimensional binary search trees used for
-       associative searching," Communications of the ACM, 1975.
-.. [2] J. H. Friedman, J. L. Bentley, R. A. Finkel, "An Algorithm for
-       Finding Best Matches in Logarithmic Expected Time," ACM TOMS, 1977.
+- J. L. Bentley, "Multidimensional binary search trees used for
+  associative searching," Communications of the ACM, 1975.
+- J. H. Friedman, J. L. Bentley, R. A. Finkel, "An Algorithm for
+  Finding Best Matches in Logarithmic Expected Time," ACM TOMS, 1977.
 """
 
 import logging

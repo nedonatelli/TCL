@@ -11,11 +11,11 @@ including:
 
 References
 ----------
-.. [1] D. Titterton and J. Weston, "Strapdown Inertial Navigation Technology",
-       2nd ed., IEE, 2004.
-.. [2] P. Groves, "Principles of GNSS, Inertial, and Multisensor Integrated
-       Navigation Systems", 2nd ed., Artech House, 2013.
-.. [3] J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
+- D. Titterton and J. Weston, "Strapdown Inertial Navigation Technology",
+  2nd ed., IEE, 2004.
+- P. Groves, "Principles of GNSS, Inertial, and Multisensor Integrated
+  Navigation Systems", 2nd ed., Artech House, 2013.
+- J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
 """
 
 from typing import NamedTuple, Optional, Tuple
@@ -405,8 +405,8 @@ def coning_correction(
 
     References
     ----------
-    .. [1] Savage, P.G., "Strapdown Inertial Navigation Integration Algorithm
-           Design Part 1: Attitude Algorithms", AIAA Journal of Guidance, 1998.
+    - Savage, P.G., "Strapdown Inertial Navigation Integration Algorithm
+      Design Part 1: Attitude Algorithms", AIAA Journal of Guidance, 1998.
     """
     gyro_prev = np.asarray(gyro_prev, dtype=np.float64)
     gyro_curr = np.asarray(gyro_curr, dtype=np.float64)
@@ -447,8 +447,8 @@ def sculling_correction(
 
     References
     ----------
-    .. [1] Savage, P.G., "Strapdown Inertial Navigation Integration Algorithm
-           Design Part 2: Velocity and Position Algorithms", AIAA, 1998.
+    - Savage, P.G., "Strapdown Inertial Navigation Integration Algorithm
+      Design Part 2: Velocity and Position Algorithms", AIAA, 1998.
     """
     accel_prev = np.asarray(accel_prev, dtype=np.float64)
     accel_curr = np.asarray(accel_curr, dtype=np.float64)

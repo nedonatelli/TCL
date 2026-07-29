@@ -4,9 +4,8 @@ Gravity Models
 Earth gravity field models and computations.
 
 .. automodule:: pytcl.gravity
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Spherical Harmonics
 -------------------

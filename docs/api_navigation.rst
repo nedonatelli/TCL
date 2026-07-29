@@ -501,7 +501,7 @@ Getting Help
 
 **In Python REPL**:
 
-.. code-block:: python
+.. code-block:: text
 
    from pytcl.dynamic_estimation.kalman import kf_predict
    
@@ -514,7 +514,7 @@ Getting Help
 
 **In IPython/Jupyter**:
 
-.. code-block:: python
+.. code-block:: text
 
    from pytcl.dynamic_estimation.kalman import kf_predict
    

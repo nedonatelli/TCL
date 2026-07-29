@@ -655,7 +655,6 @@ Performance Considerations
    J2 Perturbation     ~10 km       Fast       Sun-sync, early predictions
    SGP4                ~100 m       Medium     TLE-based (public data)
    N-body with Drag    Best         Slow       Precise long-term (GPS, research)
-```
 
 Common Orbital Scenarios
 ------------------------

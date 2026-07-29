@@ -14,11 +14,11 @@ Frames:
 
 References
 ----------
-.. [1] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013.
-.. [2] IERS Conventions (2010), IERS Technical Note No. 36.
-.. [3] Capitaine et al., "Expressions for IAU 2000 precession quantities,"
-       A&A, 2003.
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013.
+- IERS Conventions (2010), IERS Technical Note No. 36.
+- Capitaine et al., "Expressions for IAU 2000 precession quantities,"
+  A&A, 2003.
 """
 
 import logging
@@ -1362,7 +1362,7 @@ def gcrf_to_pef(
 
     References
     ----------
-    .. [1] Vallado et al., "Fundamentals of Astrodynamics and Applications", 4th ed.
+    - Vallado et al., "Fundamentals of Astrodynamics and Applications", 4th ed.
     """
     # Precession: GCRF -> MOD
     P = precession_matrix_iau76(jd_tt)

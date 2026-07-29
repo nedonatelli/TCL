@@ -7,8 +7,8 @@ associated Legendre polynomials and spherical harmonic expansions.
 
 References
 ----------
-.. [1] W. A. Heiskanen and H. Moritz, "Physical Geodesy," W. H. Freeman, 1967.
-.. [2] O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
+- W. A. Heiskanen and H. Moritz, "Physical Geodesy," W. H. Freeman, 1967.
+- O. Montenbruck and E. Gill, "Satellite Orbits," Springer, 2000.
 """
 
 import logging
@@ -464,10 +464,10 @@ def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
 
     References
     ----------
-    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
-           Clenshaw summation and the recursive computation of very high
-           degree and order normalised associated Legendre functions."
-           Journal of Geodesy 76.5 (2002): 279-299.
+    - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+      Clenshaw summation and the recursive computation of very high
+      degree and order normalised associated Legendre functions."
+      Journal of Geodesy 76.5 (2002): 279-299.
 
     Examples
     --------
@@ -545,10 +545,10 @@ def associated_legendre_scaled(
 
     References
     ----------
-    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
-           Clenshaw summation and the recursive computation of very high
-           degree and order normalised associated Legendre functions."
-           Journal of Geodesy 76.5 (2002): 279-299.
+    - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+      Clenshaw summation and the recursive computation of very high
+      degree and order normalised associated Legendre functions."
+      Journal of Geodesy 76.5 (2002): 279-299.
     """
     if m_max > n_max:
         raise ValueError("m_max must be <= n_max")
@@ -645,10 +645,10 @@ def spherical_harmonic_sum_high_degree(
 
     References
     ----------
-    .. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
-           Clenshaw summation and the recursive computation of very high
-           degree and order normalised associated Legendre functions."
-           Journal of Geodesy 76.5 (2002): 279-299.
+    - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+      Clenshaw summation and the recursive computation of very high
+      degree and order normalised associated Legendre functions."
+      Journal of Geodesy 76.5 (2002): 279-299.
     """
     if n_max is None:
         n_max = C.shape[0] - 1

@@ -414,9 +414,9 @@ def _jpda_approximate(
 
     References
     ----------
-    .. [1] Fitzgerald, R.J., "Development of Practical PDA Logic for
-           Multitarget Tracking by Microprocessor", American Control
-           Conference, 1986.
+    - Fitzgerald, R.J., "Development of Practical PDA Logic for
+      Multitarget Tracking by Microprocessor", American Control
+      Conference, 1986.
     """
     return _jpda_approximate_core(
         likelihood_matrix.astype(np.float64),
@@ -488,8 +488,8 @@ def jpda_update(
 
     References
     ----------
-    .. [1] Bar-Shalom, Y. and Fortmann, T.E., "Tracking and Data Association",
-           Academic Press, 1988.
+    - Bar-Shalom, Y. and Fortmann, T.E., "Tracking and Data Association",
+      Academic Press, 1988.
     """
     # Convert inputs
     track_states = [np.asarray(x, dtype=np.float64).flatten() for x in track_states]

@@ -257,8 +257,8 @@ def information_filter(
 
     References
     ----------
-    .. [1] Mutambara, A.G.O., "Decentralized Estimation and Control for
-           Multisensor Systems", CRC Press, 1998.
+    - Mutambara, A.G.O., "Decentralized Estimation and Control for
+      Multisensor Systems", CRC Press, 1998.
     """
     y0 = np.asarray(y0, dtype=np.float64).flatten()
     Y0 = np.asarray(Y0, dtype=np.float64)
@@ -599,11 +599,11 @@ def srif_filter(
 
     References
     ----------
-    .. [1] Bierman, G.J., "Factorization Methods for Discrete Sequential
-           Estimation", Academic Press, 1977.
-    .. [2] Kaminski, P.G., Bryson, A.E., and Schmidt, S.F., "Discrete
-           Square Root Filtering: A Survey of Current Techniques",
-           IEEE Trans. Automatic Control, 1971.
+    - Bierman, G.J., "Factorization Methods for Discrete Sequential
+      Estimation", Academic Press, 1977.
+    - Kaminski, P.G., Bryson, A.E., and Schmidt, S.F., "Discrete
+      Square Root Filtering: A Survey of Current Techniques",
+      IEEE Trans. Automatic Control, 1971.
     """
     r0 = np.asarray(r0, dtype=np.float64).flatten()
     R0 = np.asarray(R0, dtype=np.float64)

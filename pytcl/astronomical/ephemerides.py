@@ -42,11 +42,11 @@ Notes
 
 References
 ----------
-.. [1] Standish, E. M. (1995). "Report of the IAU WGAS Sub-group on
-       Numerical Standards". In Highlights of Astronomy (Vol. 10).
-.. [2] Folkner, W. M., Williams, J. G., Boggs, D. H., Park, R. S., &
-       Kuchynka, P. (2014). "The Planetary and Lunar Ephemeris DE430 and DE431".
-       Interplanetary Network Progress Report, 42(196), 1-81.
+- Standish, E. M. (1995). "Report of the IAU WGAS Sub-group on
+  Numerical Standards". In Highlights of Astronomy (Vol. 10).
+- Folkner, W. M., Williams, J. G., Boggs, D. H., Park, R. S., &
+  Kuchynka, P. (2014). "The Planetary and Lunar Ephemeris DE430 and DE431".
+  Interplanetary Network Progress Report, 42(196), 1-81.
 
 """
 

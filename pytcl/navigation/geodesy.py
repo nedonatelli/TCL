@@ -355,8 +355,8 @@ def ecef_to_geodetic(
 
     References
     ----------
-    .. [1] Bowring, B.R., "Transformation from spatial to geographical
-           coordinates", Survey Review, 1976.
+    - Bowring, B.R., "Transformation from spatial to geographical
+      coordinates", Survey Review, 1976.
     """
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
@@ -673,8 +673,8 @@ def direct_geodetic(
 
     References
     ----------
-    .. [1] Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
-           Ellipsoid with Application of Nested Equations", Survey Review, 1975.
+    - Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
+      Ellipsoid with Application of Nested Equations", Survey Review, 1975.
     """
     return _direct_geodetic_cached(
         _quantize_geodetic(lat1),
@@ -739,8 +739,8 @@ def inverse_geodetic(
 
     References
     ----------
-    .. [1] Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
-           Ellipsoid with Application of Nested Equations", Survey Review, 1975.
+    - Vincenty, T., "Direct and Inverse Solutions of Geodesics on the
+      Ellipsoid with Application of Nested Equations", Survey Review, 1975.
     """
     return _inverse_geodetic_cached(
         _quantize_geodetic(lat1),

@@ -122,7 +122,7 @@ def hyp0f1(
 
     References
     ----------
-    .. [1] NIST Digital Library of Mathematical Functions, Chapter 16.
+    - NIST Digital Library of Mathematical Functions, Chapter 16.
     """
     b = np.asarray(b, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
@@ -176,7 +176,7 @@ def hyp1f1(
 
     References
     ----------
-    .. [1] Abramowitz & Stegun, "Handbook of Mathematical Functions", Ch. 13.
+    - Abramowitz & Stegun, "Handbook of Mathematical Functions", Ch. 13.
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -234,7 +234,7 @@ def hyp2f1(
 
     References
     ----------
-    .. [1] NIST DLMF, Chapter 15.
+    - NIST DLMF, Chapter 15.
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)

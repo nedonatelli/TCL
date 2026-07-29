@@ -6,10 +6,10 @@ hypothesis trees in track-oriented MHT implementations.
 
 References
 ----------
-.. [1] S. Blackman and R. Popoli, "Design and Analysis of Modern
-       Tracking Systems," Artech House, 1999.
-.. [2] D. Reid, "An Algorithm for Tracking Multiple Targets,"
-       IEEE Trans. Automatic Control, 1979.
+- S. Blackman and R. Popoli, "Design and Analysis of Modern
+  Tracking Systems," Artech House, 1999.
+- D. Reid, "An Algorithm for Tracking Multiple Targets,"
+  IEEE Trans. Automatic Control, 1979.
 """
 
 from enum import Enum

@@ -14,12 +14,12 @@ Functions
 
 References
 ----------
-.. [1] Allen, J. (1977). Short term spectral analysis, synthesis, and
-       modification by discrete Fourier transform. IEEE Transactions on
-       Acoustics, Speech, and Signal Processing, 25(3), 235-238.
-.. [2] Griffin, D., & Lim, J. (1984). Signal estimation from modified
-       short-time Fourier transform. IEEE Transactions on Acoustics,
-       Speech, and Signal Processing, 32(2), 236-243.
+- Allen, J. (1977). Short term spectral analysis, synthesis, and
+  modification by discrete Fourier transform. IEEE Transactions on
+  Acoustics, Speech, and Signal Processing, 25(3), 235-238.
+- Griffin, D., & Lim, J. (1984). Signal estimation from modified
+  short-time Fourier transform. IEEE Transactions on Acoustics,
+  Speech, and Signal Processing, 32(2), 236-243.
 """
 
 from typing import Any, NamedTuple, Optional, Union
@@ -63,7 +63,7 @@ class Spectrogram(NamedTuple):
     times : ndarray
         Time values in seconds.
     power : ndarray
-        Power spectrogram (|STFT|^2).
+        Power spectrogram (``|STFT|^2``).
     """
 
     frequencies: NDArray[np.floating]

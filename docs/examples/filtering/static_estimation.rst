@@ -155,5 +155,5 @@ See Also
 --------
 
 - :doc:`kalman_filter_comparison` - Dynamic estimation
-- :doc:`performance_evaluation` - Tracking metrics
-- :doc:`gaussian_mixtures` - Clustering and mixture models
+- :doc:`../tracking/performance_evaluation` - Tracking metrics
+- :doc:`../clustering/gaussian_mixtures` - Clustering and mixture models

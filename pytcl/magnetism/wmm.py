@@ -7,9 +7,9 @@ Organization for navigation, attitude, and heading referencing.
 
 References
 ----------
-.. [1] Chulliat et al., "The US/UK World Magnetic Model for 2020-2025,"
-       NOAA Technical Report, 2020.
-.. [2] https://www.ngdc.noaa.gov/geomag/WMM/
+- Chulliat et al., "The US/UK World Magnetic Model for 2020-2025,"
+  NOAA Technical Report, 2020.
+- https://www.ngdc.noaa.gov/geomag/WMM/
 """
 
 from functools import lru_cache

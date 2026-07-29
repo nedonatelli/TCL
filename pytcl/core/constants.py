@@ -7,9 +7,9 @@ and as a PhysicalConstants class for documentation and grouping.
 
 References
 ----------
-.. [1] NIST CODATA 2018 - https://physics.nist.gov/cuu/Constants/
-.. [2] IERS Conventions (2010) - IERS Technical Note 36
-.. [3] WGS84 - https://earth-info.nga.mil/GandG/update/index.php?dir=wgs84&action=wgs84
+- NIST CODATA 2018 - https://physics.nist.gov/cuu/Constants/
+- IERS Conventions (2010) - IERS Technical Note 36
+- WGS84 - https://earth-info.nga.mil/GandG/update/index.php?dir=wgs84&action=wgs84
 """
 
 import math

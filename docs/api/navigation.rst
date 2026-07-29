@@ -4,9 +4,8 @@ Navigation
 Inertial navigation, geodesy, and INS/GNSS integration functions.
 
 .. automodule:: pytcl.navigation
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 INS Mechanization
 -----------------

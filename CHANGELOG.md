@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The documentation build is now warning-free: 1225 Sphinx warnings to 0**,
+  and CI fails on any warning rather than only on docutils errors. The bulk of
+  them shared two root causes.
+
+  Every API page documented a package *and* its submodules. Because
+  `pytcl.<pkg>.__init__` re-exports its submodules' symbols and `conf.py`
+  enables `members` globally, each symbol was rendered twice — 962 duplicate
+  object descriptions and 63 ambiguous cross-references. Package-level
+  directives are now `:no-members:`, so each object is documented once at the
+  submodule that defines it. Completing that required adding sections for 21
+  submodules that no page had ever documented, which is why the documented
+  object count *rose* even as duplicates disappeared.
+
+  Separately, 164 NumPy-style `.. [1]` entries in `References` sections were
+  citation directives that **nothing cited** — zero `[N]_` references exist in
+  the package. As citations they collided across every module rendered onto a
+  shared page; they are now plain list items.
+
+- `napoleon_use_ivar = True`, so a NumPy `Attributes` section renders as
+  `:ivar:` fields instead of separate `py:attribute` directives that collided
+  with the attributes autodoc already documented (448 warnings).
+
+### Fixed
+
+- Repaired **30 broken `:doc:` cross-references**. They were written as bare
+  document names while the target lived in a sibling directory, so links such
+  as "See Also: advanced_filters_comparison" from a clustering page silently
+  went nowhere.
+
+- Two `automodule` targets named modules that do not exist
+  (`pytcl.assignment_algorithms.assignment2d`, `pytcl.containers.ball_tree`),
+  rendering empty sections; `docs/architecture.rst` embedded an image that was
+  never added to `_static`; notebook `09_track_management` was in no toctree.
+
+- Latent reStructuredText defects in docstrings, surfaced by documenting
+  `pytcl.astronomical.sgp4` and `pytcl.core.exceptions` for the first time:
+  bullet lists with no blank line after their lead-in (a docutils **error**),
+  an exception-hierarchy diagram parsed as markup rather than a literal block,
+  and indented formulae where `*` became emphasis and `|S_xy|` a substitution
+  reference.
+
+- Stray markdown code fences left in `docs/astronomical.rst` and
+  `docs/signal_processing.rst` by an earlier conversion, nine short title
+  underlines, and five notebook headings whose emoji star ratings made the
+  generated underline too short.
+
+- **`benchmark-full` no longer fails when two merges land close together.** The
+  job commits benchmark history back to `main`, so two runs started seconds
+  apart raced and the loser was rejected non-fast-forward. It now rebases and
+  retries, and a concurrency group serialises runs.
+
 ### Removed
 
 - **`docs/examples/` no longer keeps its own copy of the example scripts.**

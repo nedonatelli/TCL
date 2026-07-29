@@ -4,9 +4,8 @@ Plotting
 Visualization utilities for tracking results.
 
 .. automodule:: pytcl.plotting
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Track Plotting
 --------------

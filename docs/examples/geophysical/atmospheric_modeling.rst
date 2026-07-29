@@ -86,6 +86,6 @@ Running the Example
 See Also
 --------
 
-- :doc:`orbital_mechanics` - Orbital propagation
-- :doc:`relativity_demo` - Relativistic corrections
-- :doc:`ephemeris_demo` - Planetary positions
+- :doc:`../orbital/orbital_mechanics` - Orbital propagation
+- :doc:`../orbital/relativity_demo` - Relativistic corrections
+- :doc:`../orbital/ephemeris_demo` - Planetary positions

@@ -13,12 +13,12 @@ Models
 
 References
 ----------
-.. [1] Klobuchar, J.A. (1987). "Ionospheric Time-Delay Algorithm for
-       Single-Frequency GPS Users". IEEE Transactions on Aerospace and
-       Electronic Systems, AES-23(3), 325-331.
-.. [2] Nava, B., Coisson, P., & Radicella, S.M. (2008). "A new version
-       of the NeQuick ionosphere electron density model". Journal of
-       Atmospheric and Solar-Terrestrial Physics, 70(15), 1856-1862.
+- Klobuchar, J.A. (1987). "Ionospheric Time-Delay Algorithm for
+  Single-Frequency GPS Users". IEEE Transactions on Aerospace and
+  Electronic Systems, AES-23(3), 325-331.
+- Nava, B., Coisson, P., & Radicella, S.M. (2008). "A new version
+  of the NeQuick ionosphere electron density model". Journal of
+  Atmospheric and Solar-Terrestrial Physics, 70(15), 1856-1862.
 """
 
 from typing import NamedTuple
@@ -137,7 +137,7 @@ def klobuchar_delay(
 
     References
     ----------
-    .. [1] IS-GPS-200, Interface Specification.
+    - IS-GPS-200, Interface Specification.
     """
     latitude = np.asarray(latitude, dtype=np.float64)
     longitude = np.asarray(longitude, dtype=np.float64)

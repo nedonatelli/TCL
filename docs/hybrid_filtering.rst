@@ -346,4 +346,4 @@ See Also
 - :doc:`getting_started` - Basic particle filtering
 - :doc:`particle_filters` - Standard particle filter reference
 - :doc:`adaptive_filtering` - Adaptive noise tuning
-- :ref:`api/dynamic_estimation:Rao-Blackwellized Particle Filter` - API Reference
+- :ref:`Rao-Blackwellized Particle Filter <rbpf>` - API Reference

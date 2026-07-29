@@ -70,4 +70,4 @@ See Also
 --------
 
 - :doc:`multi_target_tracking` - Using containers in MTT
-- :doc:`spatial_data_structures` - Spatial indexing
+- :doc:`../clustering/spatial_data_structures` - Spatial indexing

@@ -95,4 +95,4 @@ See Also
 
 - :doc:`orbital_mechanics` - Orbital propagation
 - :doc:`ephemeris_demo` - Planetary positions
-- :doc:`ins_gnss_navigation` - GNSS applications
+- :doc:`../coordinates/ins_gnss_navigation` - GNSS applications

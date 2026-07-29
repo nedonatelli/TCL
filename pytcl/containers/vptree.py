@@ -7,8 +7,8 @@ search in metric spaces, particularly with high-dimensional data.
 
 References
 ----------
-.. [1] P. N. Yianilos, "Data structures and algorithms for nearest
-       neighbor search in general metric spaces," SODA 1993.
+- P. N. Yianilos, "Data structures and algorithms for nearest
+  neighbor search in general metric spaces," SODA 1993.
 """
 
 import logging

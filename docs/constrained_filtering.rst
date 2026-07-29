@@ -271,4 +271,4 @@ See Also
 
 - :doc:`getting_started` - Basic filter usage
 - :doc:`adaptive_filtering` - Adaptive constraint handling
-- :ref:`api/dynamic_estimation:Constrained Extended Kalman Filter` - API Reference
+- :ref:`Constrained Extended Kalman Filter <constrained-ekf>` - API Reference

@@ -7,8 +7,8 @@ understanding cluster relationships.
 
 References
 ----------
-.. [1] S. C. Johnson, "Hierarchical clustering schemes,"
-       Psychometrika, 1967.
+- S. C. Johnson, "Hierarchical clustering schemes,"
+  Psychometrika, 1967.
 """
 
 from enum import Enum

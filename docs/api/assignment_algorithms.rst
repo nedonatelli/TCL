@@ -4,9 +4,8 @@ Assignment Algorithms
 Algorithms for data association and assignment problems in multi-target tracking.
 
 .. automodule:: pytcl.assignment_algorithms
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 2D Assignment
 -------------
@@ -16,10 +15,6 @@ Optimal assignment algorithms for bipartite matching problems.
 Hungarian Algorithm
 ^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: pytcl.assignment_algorithms.assignment2d
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Gating
 ------
@@ -52,6 +47,46 @@ track-measurement pairings and updates each track with a weighted combination
 of innovations.
 
 .. automodule:: pytcl.assignment_algorithms.jpda
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Nd Assignment
+-------------
+
+.. automodule:: pytcl.assignment_algorithms.nd_assignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Network Flow
+------------
+
+.. automodule:: pytcl.assignment_algorithms.network_flow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Assignment
+----------
+
+.. automodule:: pytcl.assignment_algorithms.three_dimensional.assignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Assignment
+----------
+
+.. automodule:: pytcl.assignment_algorithms.two_dimensional.assignment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Kbest
+-----
+
+.. automodule:: pytcl.assignment_algorithms.two_dimensional.kbest
    :members:
    :undoc-members:
    :show-inheritance:

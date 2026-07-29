@@ -6,10 +6,10 @@ equation solvers, and orbital element conversions.
 
 References
 ----------
-.. [1] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013.
-.. [2] Curtis, H. D., "Orbital Mechanics for Engineering Students,"
-       3rd ed., Butterworth-Heinemann, 2014.
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013.
+- Curtis, H. D., "Orbital Mechanics for Engineering Students,"
+  3rd ed., Butterworth-Heinemann, 2014.
 """
 
 from typing import NamedTuple

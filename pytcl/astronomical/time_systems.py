@@ -666,7 +666,7 @@ def gmst(jd_ut1: float) -> float:
 
     References
     ----------
-    .. [1] Explanatory Supplement to the Astronomical Almanac, 3rd ed.
+    - Explanatory Supplement to the Astronomical Almanac, 3rd ed.
     """
     # Julian centuries from J2000.0 at the preceding 0h UT1
     jd_0h = np.floor(jd_ut1 - 0.5) + 0.5

@@ -7,9 +7,9 @@ regions as outliers.
 
 References
 ----------
-.. [1] M. Ester, H.-P. Kriegel, J. Sander, and X. Xu, "A Density-Based
-       Algorithm for Discovering Clusters in Large Spatial Databases
-       with Noise," KDD 1996.
+- M. Ester, H.-P. Kriegel, J. Sander, and X. Xu, "A Density-Based
+  Algorithm for Discovering Clusters in Large Spatial Databases
+  with Noise," KDD 1996.
 """
 
 from typing import Any, List, NamedTuple, Set

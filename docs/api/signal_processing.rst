@@ -4,9 +4,8 @@ Signal Processing
 Digital signal processing functions for radar and sensor applications.
 
 .. automodule:: pytcl.mathematical_functions.signal_processing
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Filter Design
 -------------

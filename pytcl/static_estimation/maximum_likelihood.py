@@ -6,10 +6,10 @@ information computation, and Cramer-Rao bound analysis.
 
 References
 ----------
-.. [1] S. M. Kay, "Fundamentals of Statistical Signal Processing:
-       Estimation Theory," Prentice Hall, 1993.
-.. [2] H. L. Van Trees, "Detection, Estimation, and Modulation Theory,"
-       Wiley, 2001.
+- S. M. Kay, "Fundamentals of Statistical Signal Processing:
+  Estimation Theory," Prentice Hall, 1993.
+- H. L. Van Trees, "Detection, Estimation, and Modulation Theory,"
+  Wiley, 2001.
 """
 
 from typing import Any, Callable, NamedTuple, Optional

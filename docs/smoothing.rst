@@ -1,5 +1,5 @@
 Smoothing Algorithms & Offline Estimation
-========================================
+=========================================
 
 *Comprehensive guide to batch and fixed-lag smoothing for improved state estimation using forward and backward passes.*
 
@@ -19,7 +19,7 @@ Smoothing differs from filtering: while filters use only past measurements, smoo
 - Best Practices
 
 Smoothing Fundamentals
----------------------
+----------------------
 
 **Filtering vs Smoothing:**
 
@@ -469,7 +469,7 @@ Process complete measurement epochs, then refine.
 
 
 Performance Comparison
----------------------
+----------------------
 
 **Accuracy Metrics:**
 
@@ -554,7 +554,7 @@ Practical Implementation
 
 
 Applications
------------
+------------
 
 **1. Post-Mission Analysis**
 

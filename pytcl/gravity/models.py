@@ -6,9 +6,9 @@ WGS84 normal gravity and spherical harmonic gravity models.
 
 References
 ----------
-.. [1] NIMA, "Department of Defense World Geodetic System 1984," TR8350.2, 2000.
-.. [2] Pavlis et al., "The development and evaluation of the Earth
-       Gravitational Model 2008 (EGM2008)," JGR, 2012.
+- NIMA, "Department of Defense World Geodetic System 1984," TR8350.2, 2000.
+- Pavlis et al., "The development and evaluation of the Earth
+  Gravitational Model 2008 (EGM2008)," JGR, 2012.
 """
 
 from typing import NamedTuple

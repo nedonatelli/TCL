@@ -69,9 +69,9 @@ def f_singer(
 
     References
     ----------
-    .. [1] Singer, R.A., "Estimating Optimal Tracking Filter Performance
-           for Manned Maneuvering Targets", IEEE Trans. on Aerospace and
-           Electronic Systems, Vol. AES-6, No. 4, July 1970.
+    - Singer, R.A., "Estimating Optimal Tracking Filter Performance
+      for Manned Maneuvering Targets", IEEE Trans. on Aerospace and
+      Electronic Systems, Vol. AES-6, No. 4, July 1970.
     """
     alpha = np.exp(-T / tau)
     beta = T / tau

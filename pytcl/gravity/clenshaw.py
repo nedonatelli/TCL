@@ -15,13 +15,13 @@ Recursion coefficients (_a_nm, _b_nm) are cached using lru_cache for
 
 References
 ----------
-.. [1] Holmes, S.A. and Featherstone, W.E. "A unified approach to the
-       Clenshaw summation and the recursive computation of very high
-       degree and order normalised associated Legendre functions."
-       Journal of Geodesy 76.5 (2002): 279-299.
-.. [2] Wittwer, T., et al. "Ultra-high degree spherical harmonic analysis
-       and synthesis using extended-range arithmetic."
-       Journal of Geodesy 82.4-5 (2008): 223-229.
+- Holmes, S.A. and Featherstone, W.E. "A unified approach to the
+  Clenshaw summation and the recursive computation of very high
+  degree and order normalised associated Legendre functions."
+  Journal of Geodesy 76.5 (2002): 279-299.
+- Wittwer, T., et al. "Ultra-high degree spherical harmonic analysis
+  and synthesis using extended-range arithmetic."
+  Journal of Geodesy 82.4-5 (2008): 223-229.
 """
 
 from functools import lru_cache

@@ -17,11 +17,11 @@ Functions
 
 References
 ----------
-.. [1] Richards, M. A. (2014). Fundamentals of Radar Signal Processing
-       (2nd ed.). McGraw-Hill.
-.. [2] Rohling, H. (1983). Radar CFAR thresholding in clutter and multiple
-       target situations. IEEE Transactions on Aerospace and Electronic
-       Systems, 19(4), 608-621.
+- Richards, M. A. (2014). Fundamentals of Radar Signal Processing
+  (2nd ed.). McGraw-Hill.
+- Rohling, H. (1983). Radar CFAR thresholding in clutter and multiple
+  target situations. IEEE Transactions on Aerospace and Electronic
+  Systems, 19(4), 608-621.
 """
 
 from math import comb

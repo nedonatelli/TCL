@@ -242,8 +242,8 @@ def gnn_association(
 
     References
     ----------
-    .. [1] Blackman, S.S. and Popoli, R., "Design and Analysis of Modern
-           Tracking Systems", Artech House, 1999.
+    - Blackman, S.S. and Popoli, R., "Design and Analysis of Modern
+      Tracking Systems", Artech House, 1999.
     """
     C = np.asarray(cost_matrix, dtype=np.float64).copy()
     n_tracks, n_meas = C.shape

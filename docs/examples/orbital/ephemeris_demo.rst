@@ -90,4 +90,4 @@ See Also
 
 - :doc:`orbital_mechanics` - Orbital propagation
 - :doc:`relativity_demo` - Relativistic corrections
-- :doc:`coordinate_systems` - Coordinate transformations
+- :doc:`../coordinates/coordinate_systems` - Coordinate transformations

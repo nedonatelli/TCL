@@ -4,9 +4,8 @@ Astronomical
 Orbital mechanics and astronomical computations.
 
 .. automodule:: pytcl.astronomical
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Orbital Mechanics
 -----------------
@@ -64,6 +63,30 @@ Relativistic Corrections
 Relativistic effects in orbital mechanics and space-time geometry.
 
 .. automodule:: pytcl.astronomical.relativity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Sgp4
+----
+
+.. automodule:: pytcl.astronomical.sgp4
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Special Orbits
+--------------
+
+.. automodule:: pytcl.astronomical.special_orbits
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Tle
+---
+
+.. automodule:: pytcl.astronomical.tle
    :members:
    :undoc-members:
    :show-inheritance:

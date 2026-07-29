@@ -13,12 +13,12 @@ The models support:
 
 References
 ----------
-.. [1] Lemoine, F.G., et al. "The Development of the Joint NASA GSFC and
-       NIMA Geopotential Model EGM96." NASA Technical Paper, 1998.
-.. [2] Pavlis, N.K., et al. "The development and evaluation of the Earth
-       Gravitational Model 2008 (EGM2008)." JGR 117.B4 (2012).
-.. [3] National Geospatial-Intelligence Agency. "EGM2008 Model Coefficients."
-       https://earth-info.nga.mil/
+- Lemoine, F.G., et al. "The Development of the Joint NASA GSFC and
+  NIMA Geopotential Model EGM96." NASA Technical Paper, 1998.
+- Pavlis, N.K., et al. "The development and evaluation of the Earth
+  Gravitational Model 2008 (EGM2008)." JGR 117.B4 (2012).
+- National Geospatial-Intelligence Agency. "EGM2008 Model Coefficients."
+  https://earth-info.nga.mil/
 """
 
 import logging

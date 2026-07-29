@@ -6,12 +6,14 @@ and its deep-space extension (SDP4) for propagating satellite orbits
 from Two-Line Element (TLE) sets.
 
 SGP4 models the effects of:
+
 - Atmospheric drag (via the B* term)
 - J2, J3, J4 gravitational harmonics
 - Secular and periodic variations
 
 SDP4 additionally models (for orbital periods >= 225 min, computed from
 the recovered mean motion):
+
 - Lunar gravitational perturbations (secular and periodic)
 - Solar gravitational perturbations (secular and periodic)
 - Geopotential resonance for 12-hour and 24-hour orbits, integrated with
@@ -33,12 +35,12 @@ Limitations
 
 References
 ----------
-.. [1] Hoots, F. R. and Roehrich, R. L., "Spacetrack Report No. 3:
-       Models for Propagation of NORAD Element Sets," 1980.
-.. [2] Vallado, D. A., Crawford, P., Hujsak, R., and Kelso, T.S.,
-       "Revisiting Spacetrack Report #3," AIAA 2006-6753.
-.. [3] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013.
+- Hoots, F. R. and Roehrich, R. L., "Spacetrack Report No. 3:
+  Models for Propagation of NORAD Element Sets," 1980.
+- Vallado, D. A., Crawford, P., Hujsak, R., and Kelso, T.S.,
+  "Revisiting Spacetrack Report #3," AIAA 2006-6753.
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013.
 """
 
 from typing import NamedTuple, Tuple

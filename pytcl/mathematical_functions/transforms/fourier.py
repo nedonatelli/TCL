@@ -16,11 +16,11 @@ Functions
 
 References
 ----------
-.. [1] Oppenheim, A. V., & Schafer, R. W. (2010). Discrete-Time Signal
-       Processing (3rd ed.). Prentice Hall.
-.. [2] Welch, P. D. (1967). The use of fast Fourier transform for the
-       estimation of power spectra. IEEE Transactions on Audio and
-       Electroacoustics, 15(2), 70-73.
+- Oppenheim, A. V., & Schafer, R. W. (2010). Discrete-Time Signal
+  Processing (3rd ed.). Prentice Hall.
+- Welch, P. D. (1967). The use of fast Fourier transform for the
+  estimation of power spectra. IEEE Transactions on Audio and
+  Electroacoustics, 15(2), 70-73.
 """
 
 from typing import NamedTuple, Optional, Union
@@ -627,7 +627,8 @@ def coherence(
 
     Notes
     -----
-    Coherence is defined as:
+    Coherence is defined as::
+
         C_xy = |S_xy|^2 / (S_xx * S_yy)
 
     where S_xy is the cross-spectral density and S_xx, S_yy are the power

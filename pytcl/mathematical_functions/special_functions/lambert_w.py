@@ -58,8 +58,8 @@ def lambert_w(
 
     References
     ----------
-    .. [1] Corless, R.M., et al. (1996). "On the Lambert W Function".
-           Advances in Computational Mathematics, 5, 329-359.
+    - Corless, R.M., et al. (1996). "On the Lambert W Function".
+      Advances in Computational Mathematics, 5, 329-359.
     """
     z = np.asarray(z)
     w = np.asarray(sp.lambertw(z, k=k, tol=tol), dtype=np.complex128)
@@ -186,8 +186,8 @@ def wright_omega(z: ArrayLike) -> NDArray[np.complexfloating]:
 
     References
     ----------
-    .. [1] Wright, E.M. (1959). "Solution of the equation z*exp(z) = a".
-           Bull. Amer. Math. Soc., 65, 89-93.
+    - Wright, E.M. (1959). "Solution of the equation z*exp(z) = a".
+      Bull. Amer. Math. Soc., 65, 89-93.
     """
     z = np.asarray(z, dtype=np.complex128)
 

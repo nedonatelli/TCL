@@ -147,9 +147,9 @@ def cholesky_update(
 
     References
     ----------
-    .. [1] P. E. Gill, G. H. Golub, W. Murray, and M. A. Saunders,
-           "Methods for modifying matrix factorizations,"
-           Mathematics of Computation, vol. 28, pp. 505-535, 1974.
+    - P. E. Gill, G. H. Golub, W. Murray, and M. A. Saunders,
+      "Methods for modifying matrix factorizations,"
+      Mathematics of Computation, vol. 28, pp. 505-535, 1974.
 
     Examples
     --------

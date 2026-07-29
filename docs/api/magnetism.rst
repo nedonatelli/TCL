@@ -4,9 +4,8 @@ Magnetism Models
 Earth magnetic field models and computations.
 
 .. automodule:: pytcl.magnetism
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 World Magnetic Model (WMM)
 --------------------------
@@ -38,3 +37,12 @@ High-resolution magnetic field models: EMM2017 (degree 790) and WMMHR2025
    :members:
    :undoc-members:
    :show-inheritance:
+
+Package-level Aliases
+---------------------
+
+``pytcl.magnetism`` re-exports two EMM helpers under names that make their
+scope explicit at the package level.
+
+.. autofunction:: pytcl.magnetism.create_emm_test_coefficients
+.. autofunction:: pytcl.magnetism.get_emm_data_dir

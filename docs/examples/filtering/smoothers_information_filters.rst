@@ -59,4 +59,4 @@ See Also
 --------
 
 - :doc:`kalman_filter_comparison` - Standard Kalman filters
-- :doc:`multi_target_tracking` - Multi-target tracking with smoothing
+- :doc:`../tracking/multi_target_tracking` - Multi-target tracking with smoothing

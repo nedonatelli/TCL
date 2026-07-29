@@ -157,7 +157,11 @@ napoleon_include_special_with_doc = True
 napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_notes = True
 napoleon_use_admonition_for_references = True
-napoleon_use_ivar = False
+# True renders a NumPy "Attributes" section as :ivar: fields inside the class
+# description. With False, Napoleon emits a separate py:attribute directive for
+# each entry, which then collides with the attribute autodoc already documented
+# from the class itself.
+napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_type_aliases = None

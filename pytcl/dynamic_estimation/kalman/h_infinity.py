@@ -14,12 +14,12 @@ The H-infinity filter is particularly useful when:
 
 References
 ----------
-.. [1] Simon, D., "Optimal State Estimation: Kalman, H∞, and Nonlinear
-       Approaches," Wiley, 2006.
-.. [2] Shen, X. and Deng, L., "Game Theory Approach to Discrete H∞ Filter
-       Design," IEEE Trans. Signal Processing, 1997.
-.. [3] Shaked, U. and Theodor, Y., "H∞-Optimal Estimation: A Tutorial,"
-       Proc. IEEE CDC, 1992.
+- Simon, D., "Optimal State Estimation: Kalman, H∞, and Nonlinear
+  Approaches," Wiley, 2006.
+- Shen, X. and Deng, L., "Game Theory Approach to Discrete H∞ Filter
+  Design," IEEE Trans. Signal Processing, 1997.
+- Shaked, U. and Theodor, Y., "H∞-Optimal Estimation: A Tutorial,"
+  Proc. IEEE CDC, 1992.
 """
 
 from typing import Any, Callable, NamedTuple, Optional
@@ -237,7 +237,7 @@ def hinf_update(
 
     References
     ----------
-    .. [1] Simon, D., "Optimal State Estimation," Chapter 6, Wiley, 2006.
+    - Simon, D., "Optimal State Estimation," Chapter 6, Wiley, 2006.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)

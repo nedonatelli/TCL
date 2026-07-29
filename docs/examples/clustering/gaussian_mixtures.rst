@@ -78,4 +78,4 @@ See Also
 --------
 
 - :doc:`spatial_data_structures` - KD-trees for clustering
-- :doc:`advanced_filters_comparison` - Gaussian sum filters
+- :doc:`../filtering/advanced_filters_comparison` - Gaussian sum filters

@@ -7,10 +7,10 @@ multi-target tracking for hypothesis pruning.
 
 References
 ----------
-.. [1] A. R. Runnalls, "Kullback-Leibler Approach to Gaussian Mixture Reduction,"
-       IEEE Trans. Aerospace and Electronic Systems, vol. 43, no. 3, 2007.
-.. [2] M. West, "Approximating posterior distributions by mixture,"
-       Journal of the Royal Statistical Society, Series B, vol. 55, no. 2, 1993.
+- A. R. Runnalls, "Kullback-Leibler Approach to Gaussian Mixture Reduction,"
+  IEEE Trans. Aerospace and Electronic Systems, vol. 43, no. 3, 2007.
+- M. West, "Approximating posterior distributions by mixture,"
+  Journal of the Royal Statistical Society, Series B, vol. 55, no. 2, 1993.
 """
 
 from typing import List, NamedTuple, Optional, Tuple
@@ -341,8 +341,8 @@ def reduce_mixture_runnalls(
 
     References
     ----------
-    .. [1] A. R. Runnalls, "Kullback-Leibler Approach to Gaussian Mixture
-           Reduction," IEEE Trans. Aerospace and Electronic Systems, 2007.
+    - A. R. Runnalls, "Kullback-Leibler Approach to Gaussian Mixture
+      Reduction," IEEE Trans. Aerospace and Electronic Systems, 2007.
 
     Examples
     --------
@@ -493,8 +493,8 @@ def reduce_mixture_west(
 
     References
     ----------
-    .. [1] M. West, "Approximating posterior distributions by mixture,"
-           Journal of the Royal Statistical Society, Series B, 1993.
+    - M. West, "Approximating posterior distributions by mixture,"
+      Journal of the Royal Statistical Society, Series B, 1993.
 
     Examples
     --------

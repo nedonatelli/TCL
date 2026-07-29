@@ -100,8 +100,8 @@ def us_standard_atmosphere_1976(
 
     References
     ----------
-    .. [1] U.S. Standard Atmosphere, 1976, U.S. Government Printing Office,
-           Washington, D.C., 1976.
+    - U.S. Standard Atmosphere, 1976, U.S. Government Printing Office,
+      Washington, D.C., 1976.
     """
     altitude = np.asarray(altitude, dtype=np.float64)
     scalar_input = altitude.ndim == 0

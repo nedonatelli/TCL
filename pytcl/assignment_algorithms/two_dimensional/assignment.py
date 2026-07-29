@@ -116,8 +116,8 @@ def hungarian(
 
     References
     ----------
-    .. [1] Kuhn, H.W., "The Hungarian Method for the assignment problem",
-           Naval Research Logistics Quarterly, 1955.
+    - Kuhn, H.W., "The Hungarian Method for the assignment problem",
+      Naval Research Logistics Quarterly, 1955.
     """
     cost = np.asarray(cost_matrix, dtype=np.float64)
     row_ind, col_ind = scipy_lsa(cost, maximize=maximize)
@@ -170,8 +170,8 @@ def auction(
 
     References
     ----------
-    .. [1] Bertsekas, D.P., "The auction algorithm: A distributed relaxation
-           method for the assignment problem", Annals of Operations Research, 1988.
+    - Bertsekas, D.P., "The auction algorithm: A distributed relaxation
+      method for the assignment problem", Annals of Operations Research, 1988.
     """
     cost = np.asarray(cost_matrix, dtype=np.float64)
 
