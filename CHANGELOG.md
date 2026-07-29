@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Example figures load plotly from a CDN instead of embedding it**
+  (`include_plotlyjs="cdn"` on all 126 `write_html` calls). Every figure
+  written by an example script carried its own ~4.8 MB copy of plotly.js, so
+  `docs/_static/images/examples/` had grown to **163 MB** for 59 plots. It is
+  now **3.4 MB**. `scripts/generate_example_html.py` had been passing `cdn`
+  all along; the example scripts had not, which is where the bloat came from.
+  Note this makes the figures require network access to render — they are
+  embedded in the published docs as iframes, so this only affects viewing a
+  local docs build offline.
+
 ### Fixed
 
 - **Eight example scripts crashed on Windows when stdout was redirected.**

@@ -256,7 +256,7 @@ def plot_results(
 
     # Save as HTML (interactive) and PNG (static)
     output_path = OUTPUT_DIR / "multi_target_tracking_result.html"
-    fig.write_html(str(output_path))
+    fig.write_html(str(output_path), include_plotlyjs="cdn")
     print(f"Interactive plot saved to {output_path}")
     fig.show()
 

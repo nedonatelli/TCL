@@ -171,7 +171,10 @@ def demo_normal_gravity():
         fig.update_yaxes(title_text="Δg from Equator (mGal)", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=False)
-        fig.write_html(str(OUTPUT_DIR / "geophysical_gravity_latitude.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "geophysical_gravity_latitude.html"),
+            include_plotlyjs="cdn",
+        )
         print("\n  [Plot saved to geophysical_gravity_latitude.html]")
 
 
@@ -272,7 +275,10 @@ def demo_gravity_models():
         fig.update_yaxes(title_text="Gravity Reduction (%)", row=1, col=2)
 
         fig.update_layout(height=500, width=1200, showlegend=False)
-        fig.write_html(str(OUTPUT_DIR / "geophysical_gravity_altitude.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "geophysical_gravity_altitude.html"),
+            include_plotlyjs="cdn",
+        )
         print("\n  [Plot saved to geophysical_gravity_altitude.html]")
 
 
@@ -472,7 +478,9 @@ def demo_tidal_effects():
         fig.update_yaxes(title_text="Gravity Change (µGal)", row=2, col=1)
 
         fig.update_layout(height=600, width=1000)
-        fig.write_html(str(OUTPUT_DIR / "geophysical_tides.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "geophysical_tides.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to geophysical_tides.html]")
 
 
@@ -604,7 +612,9 @@ def demo_magnetic_field():
         fig.update_yaxes(title_text="Latitude (°)", range=[-80, 80], row=1, col=2)
 
         fig.update_layout(height=500, width=1400)
-        fig.write_html(str(OUTPUT_DIR / "geophysical_magnetic_field.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "geophysical_magnetic_field.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to geophysical_magnetic_field.html]")
 
 

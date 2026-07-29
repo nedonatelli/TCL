@@ -526,7 +526,7 @@ def plot_results(
     fig.update_yaxes(title_text="RMSE (m)", row=2, col=2)
 
     output_path = OUTPUT_DIR / "kalman_filter_comparison.html"
-    fig.write_html(str(output_path))
+    fig.write_html(str(output_path), include_plotlyjs="cdn")
     print(f"\nInteractive plot saved to {output_path}")
     fig.show()
 

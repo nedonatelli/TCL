@@ -614,7 +614,9 @@ def visualize_assignment_problem():
         fig.show()
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        fig.write_html(str(OUTPUT_DIR / "assignment_algorithms.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "assignment_algorithms.html"), include_plotlyjs="cdn"
+        )
 
 
 if __name__ == "__main__":

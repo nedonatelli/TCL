@@ -642,7 +642,9 @@ def plot_filter_comparison(
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "advanced_filters_comparison.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "advanced_filters_comparison.html"), include_plotlyjs="cdn"
+        )
 
 
 def main():

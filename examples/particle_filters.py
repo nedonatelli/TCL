@@ -213,7 +213,10 @@ def demo_resampling_methods():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
 
-        fig.write_html(str(OUTPUT_DIR / "particle_resampling_comparison.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "particle_resampling_comparison.html"),
+            include_plotlyjs="cdn",
+        )
         print("\n  [Plot saved to particle_resampling_comparison.html]")
 
 
@@ -429,7 +432,9 @@ def demo_linear_tracking():
         fig.update_yaxes(title_text="Position error", row=1, col=2)
 
         fig.update_layout(height=500, width=1200)
-        fig.write_html(str(OUTPUT_DIR / "particle_linear_tracking.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "particle_linear_tracking.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to particle_linear_tracking.html]")
 
 
@@ -707,7 +712,9 @@ def demo_nonlinear_tracking():
         fig.update_yaxes(title_text="Range (m)", row=2, col=2)
 
         fig.update_layout(height=800, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "particle_nonlinear_tracking.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "particle_nonlinear_tracking.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to particle_nonlinear_tracking.html]")
 
 
@@ -846,7 +853,9 @@ def demo_multimodal():
             width=1200,
             title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)",
         )
-        fig.write_html(str(OUTPUT_DIR / "particle_multimodal.html"))
+        fig.write_html(
+            str(OUTPUT_DIR / "particle_multimodal.html"), include_plotlyjs="cdn"
+        )
         print("\n  [Plot saved to particle_multimodal.html]")
 
 

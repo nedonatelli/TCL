@@ -1162,7 +1162,7 @@ def plot_radar_tracking(
         height=600,
     )
     path = OUTPUT_DIR / "track_management_radar.html"
-    fig.write_html(str(path))
+    fig.write_html(str(path), include_plotlyjs="cdn")
     print(f"  Plot saved: {path}")
 
 

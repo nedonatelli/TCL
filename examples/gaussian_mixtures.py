@@ -360,7 +360,7 @@ def demo_kmeans():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "gaussian_kmeans.html"))
+        fig.write_html(str(OUTPUT_DIR / "gaussian_kmeans.html"), include_plotlyjs="cdn")
         print("\n  [Plot saved to gaussian_kmeans.html]")
 
 
@@ -474,7 +474,7 @@ def demo_elbow_method():
             width=700,
             showlegend=True,
         )
-        fig.write_html(str(OUTPUT_DIR / "gaussian_elbow.html"))
+        fig.write_html(str(OUTPUT_DIR / "gaussian_elbow.html"), include_plotlyjs="cdn")
         print("\n  [Plot saved to gaussian_elbow.html]")
 
 
@@ -617,7 +617,7 @@ def demo_dbscan():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "gaussian_dbscan.html"))
+        fig.write_html(str(OUTPUT_DIR / "gaussian_dbscan.html"), include_plotlyjs="cdn")
         print("\n  [Plot saved to gaussian_dbscan.html]")
 
 

@@ -91,7 +91,7 @@ def demo_wmm2020_coefficients() -> None:
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"))
+        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"), include_plotlyjs="cdn")
 
 
 def demo_dipole_moment() -> None:
@@ -156,7 +156,7 @@ def demo_dipole_moment() -> None:
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"))
+        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"), include_plotlyjs="cdn")
 
 
 def demo_dipole_axis() -> None:
@@ -227,7 +227,7 @@ def demo_dipole_axis() -> None:
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"))
+        fig.write_html(str(OUTPUT_DIR / "magnetism_demo.html"), include_plotlyjs="cdn")
 
 
 def main() -> None:
