@@ -531,11 +531,11 @@ def example_ephemeris_versions():
 if __name__ == "__main__":
     """Run all examples."""
     print("\n")
-    print("╔" + "=" * 68 + "╗")
-    print("║" + " " * 68 + "║")
-    print("║" + "  High-Precision Ephemeris Demonstrations".center(68) + "║")
-    print("║" + " " * 68 + "║")
-    print("╚" + "=" * 68 + "╝")
+    print("+" + "=" * 68 + "+")
+    print("|" + " " * 68 + "|")
+    print("|" + "  High-Precision Ephemeris Demonstrations".center(68) + "|")
+    print("|" + " " * 68 + "|")
+    print("+" + "=" * 68 + "+")
 
     # Run examples
     example_sun_position()

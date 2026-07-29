@@ -454,9 +454,9 @@ def example_earth_observation():
 def main():
     """Run all examples."""
     print("\n")
-    print("█" * 80)
-    print("█ Advanced Reference Frame Transformations - pytcl Examples")
-    print("█" * 80)
+    print("#" * 80)
+    print("# Advanced Reference Frame Transformations - pytcl Examples")
+    print("#" * 80)
 
     example_pef_intermediate_frame()
     example_sez_radar_observations()

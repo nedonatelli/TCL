@@ -669,8 +669,8 @@ def demo_mle_and_fisher():
     crb_var = 1 / fisher_var
 
     print(f"\nCramer-Rao lower bounds (variance of unbiased estimator):")
-    print(f"  Var(mean_hat) ≥ {crb_mean:.6f}")
-    print(f"  Var(var_hat) ≥ {crb_var:.6f}")
+    print(f"  Var(mean_hat) >= {crb_mean:.6f}")
+    print(f"  Var(var_hat) >= {crb_var:.6f}")
 
     # Check actual MLE variance (through simulation)
     n_trials = 1000

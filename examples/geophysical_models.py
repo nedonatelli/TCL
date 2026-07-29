@@ -212,7 +212,7 @@ def demo_gravity_models():
         print(f"  {alt:>7} m: {g.magnitude:.6f} m/s²")
 
     print("\nNote: Gravity decreases with altitude approximately as")
-    print("g(h) ≈ g₀(1 - 2h/R), about 3.1 mGal per meter at low altitudes.")
+    print("g(h) ~= g0(1 - 2h/R), about 3.1 mGal per meter at low altitudes.")
 
     # Plot gravity vs altitude
     if SHOW_PLOTS:
@@ -669,21 +669,21 @@ def demo_navigation_application():
     # Magnetic declination for compass correction
     dec = magnetic_declination(lat, lon, alt, decimal_year)
     print(f"\n  Magnetic declination: {np.degrees(dec):.2f}°")
-    print(f"  → Add {np.degrees(dec):.2f}° to magnetic heading for true heading")
+    print(f"  -> Add {np.degrees(dec):.2f}° to magnetic heading for true heading")
 
     # Gravity for inertial navigation
     g_result = gravity_wgs84(lat, lon, alt)
     print(f"\n  Local gravity: {g_result.magnitude:.6f} m/s²")
-    print(f"  → Used for vertical channel in INS")
+    print(f"  -> Used for vertical channel in INS")
 
     # Deflection of vertical (simplified)
     print(f"\n  Gravity deflection (N): {g_result.g_north * 1e6:.2f} µrad")
-    print(f"  → Correction for inertial alignment")
+    print(f"  -> Correction for inertial alignment")
 
     # Geoid for altitude reference (J2 approximation - latitude only)
     N = geoid_height_j2(lat)
     print(f"\n  Geoid undulation (J2 approx): {N:.1f} m")
-    print(f"  → Ellipsoid alt = GPS alt, Orthometric alt = GPS alt - N")
+    print(f"  -> Ellipsoid alt = GPS alt, Orthometric alt = GPS alt - N")
 
 
 def main():

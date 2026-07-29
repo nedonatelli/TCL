@@ -81,7 +81,7 @@ def plot_density_vs_altitude():
             name="Quiet (F107=70, Ap=0)",
             mode="lines",
             line=dict(color="blue", width=2),
-            hovertemplate="<b>Density (Quiet)</b><br>Alt: %{x:.1f} km<br>ρ: %{y:.2e} kg/m³",
+            hovertemplate="<b>Density (Quiet)</b><br>Alt: %{x:.1f} km<br>rho: %{y:.2e} kg/m³",
         ),
         secondary_y=False,
     )
@@ -93,7 +93,7 @@ def plot_density_vs_altitude():
             name="Active (F107=200, Ap=50)",
             mode="lines",
             line=dict(color="red", width=2, dash="dash"),
-            hovertemplate="<b>Density (Active)</b><br>Alt: %{x:.1f} km<br>ρ: %{y:.2e} kg/m³",
+            hovertemplate="<b>Density (Active)</b><br>Alt: %{x:.1f} km<br>rho: %{y:.2e} kg/m³",
         ),
         secondary_y=False,
     )
@@ -106,7 +106,7 @@ def plot_density_vs_altitude():
             name="US Standard 1976",
             mode="lines",
             line=dict(color="green", width=2, dash="dot"),
-            hovertemplate="<b>Density (US76)</b><br>Alt: %{x:.1f} km<br>ρ: %{y:.2e} kg/m³",
+            hovertemplate="<b>Density (US76)</b><br>Alt: %{x:.1f} km<br>rho: %{y:.2e} kg/m³",
         ),
         secondary_y=False,
     )
@@ -171,7 +171,7 @@ def plot_composition_profile():
             )
         )
 
-    fig.update_yaxes(type="log", title_text="Number Density (m⁻³)")
+    fig.update_yaxes(type="log", title_text="Number Density (m^-³)")
 
     fig.update_xaxes(title_text="Altitude (km)")
 
@@ -288,7 +288,7 @@ def plot_solar_activity_effect():
             mode="lines+markers",
             line=dict(color="blue", width=2),
             marker=dict(size=4),
-            hovertemplate="F107: %{x:.0f} SFU<br>ρ: %{y:.2e} kg/m³",
+            hovertemplate="F107: %{x:.0f} SFU<br>rho: %{y:.2e} kg/m³",
         ),
         row=1,
         col=1,
@@ -386,7 +386,7 @@ def plot_composition_transitions():
     fig.update_xaxes(title_text="Altitude (km)")
 
     fig.update_layout(
-        title="Atmospheric Composition Transition<br><sub>Molecular → Atomic Atmosphere (70-300 km)</sub>",
+        title="Atmospheric Composition Transition<br><sub>Molecular -> Atomic Atmosphere (70-300 km)</sub>",
         height=600,
         hovermode="x unified",
         template="plotly_white",
@@ -406,26 +406,26 @@ if __name__ == "__main__":
     fig1 = plot_density_vs_altitude()
     output_path1 = os.path.join(output_dir, "nrlmsise00_density.html")
     fig1.write_html(output_path1)
-    print(f"✓ Saved: {output_path1}")
+    print(f"OK Saved: {output_path1}")
 
     fig2 = plot_composition_profile()
     output_path2 = os.path.join(output_dir, "nrlmsise00_composition.html")
     fig2.write_html(output_path2)
-    print(f"✓ Saved: {output_path2}")
+    print(f"OK Saved: {output_path2}")
 
     fig3 = plot_temperature_profile()
     output_path3 = os.path.join(output_dir, "nrlmsise00_temperature.html")
     fig3.write_html(output_path3)
-    print(f"✓ Saved: {output_path3}")
+    print(f"OK Saved: {output_path3}")
 
     fig4 = plot_solar_activity_effect()
     output_path4 = os.path.join(output_dir, "nrlmsise00_solar_activity.html")
     fig4.write_html(output_path4)
-    print(f"✓ Saved: {output_path4}")
+    print(f"OK Saved: {output_path4}")
 
     fig5 = plot_composition_transitions()
     fig5.write_html("nrlmsise00_composition_transition.html")
-    print("✓ Saved: nrlmsise00_composition_transition.html")
+    print("OK Saved: nrlmsise00_composition_transition.html")
 
     print("\nAll visualizations complete!")
     print("View the HTML files in a browser to interact with the plots.")

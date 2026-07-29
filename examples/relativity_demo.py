@@ -307,7 +307,7 @@ def example_mercury_precession():
     print(f"    (includes Newtonian planetary perturbations)")
     print(f"  Newtonian precession: ~5557 arcsec/century")
     print(f"  GR contribution: ~43 arcsec/century")
-    print(f"  Calculated: {precession_per_century:.1f} arcsec/century ✓")
+    print(f"  Calculated: {precession_per_century:.1f} arcsec/century OK")
     print(f"\nThis was Einstein's first experimental confirmation of GR!")
 
 
@@ -445,7 +445,7 @@ def example_geodetic_precession():
     ]
 
     print(f"\nGeodetic Precession (causes orbital plane to rotate):")
-    print(f"  Formula: Δω_geodetic = 3π GM / (c² a (1-e²)) per orbit")
+    print(f"  Formula: deltaomega_geodetic = 3pi GM / (c² a (1-e²)) per orbit")
     print(f"  (Positive = prograde; magnitude independent of inclination)")
     print("-" * 70)
     print(f"{'Orbit':<12} {'Altitude':<12} {'Inclination':<16} {'Precession':<20}")
@@ -540,7 +540,7 @@ def example_relativistic_range_correction():
     print(f"  - Compute distance: d = ct/2")
     print(f"\nSpacetime curvature (Shapiro delay) makes the measured range")
     print(f"slightly longer than the geometric distance between the endpoints:")
-    print(f"  Δρ = (2GM/c²) ln((r1 + r2 + ρ) / (r1 + r2 - ρ))")
+    print(f"  deltarho = (2GM/c²) ln((r1 + r2 + rho) / (r1 + r2 - rho))")
 
     # Lunar laser ranging: ground station to a lunar retroreflector,
     # through Earth's gravitational field
@@ -590,7 +590,7 @@ def example_relativistic_range_correction():
     corr_sun = relativistic_range_correction(AU, r_sun_surface, rho_sun, GM_SUN)
     print("-" * 70)
     print(f"\nRanging from Earth down to the solar surface (through the Sun's")
-    print(f"own field) picks up ≈ {corr_sun / 1e3:.1f} km of Shapiro correction —")
+    print(f"own field) picks up ~= {corr_sun / 1e3:.1f} km of Shapiro correction —")
     print(f"this is why the delay dominates interplanetary ranging near")
     print(f"superior conjunction.")
 
@@ -598,11 +598,11 @@ def example_relativistic_range_correction():
 if __name__ == "__main__":
     """Run all relativity examples."""
     print("\n")
-    print("╔" + "=" * 68 + "╗")
-    print("║" + " " * 68 + "║")
-    print("║" + "  Relativistic Effects in Space Systems".center(68) + "║")
-    print("║" + " " * 68 + "║")
-    print("╚" + "=" * 68 + "╝")
+    print("+" + "=" * 68 + "+")
+    print("|" + " " * 68 + "|")
+    print("|" + "  Relativistic Effects in Space Systems".center(68) + "|")
+    print("|" + " " * 68 + "|")
+    print("+" + "=" * 68 + "+")
 
     # Run examples
     example_gps_time_dilation()

@@ -110,7 +110,7 @@ def demo_continuous_to_discrete_conversion() -> None:
     print("\nContinuous F matrix (1D constant velocity):")
     print(F)
 
-    print("\nDiscrete Phi matrices (Phi ≈ I + F*dt):")
+    print("\nDiscrete Phi matrices (Phi ~= I + F*dt):")
     print("Time Step | Phi[0,1] Value")
     print("-" * 30)
 

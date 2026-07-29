@@ -34,6 +34,38 @@ We follow these conventions:
 - **Linting & import sorting:** [Ruff](https://docs.astral.sh/ruff/) (`ruff check`)
 - **Type hints:** Required for all public functions
 - **Docstrings:** NumPy style
+- **Printed output must be ASCII** — see below
+
+### Text encoding
+
+**Anything printed to the console must be ASCII.** No emoji, box-drawing
+characters, arrows, or Greek letters in `print()` strings, banners, or table
+borders.
+
+On Windows, Python encodes stdout using the locale codepage (cp1252) whenever
+stdout is a pipe or a file rather than a console. A character outside that
+codepage raises `UnicodeEncodeError` and kills the script, so a demo that looks
+fine in a terminal dies the moment someone redirects it to a log. Eight of the
+example scripts used to fail this way, most on their opening banner.
+
+Use `=` and `-` for rules, `->` for arrows, and spell out `pi`, `sigma`,
+`sqrt`, `inf`. `°` and `±` are inside cp1252 and are safe to print.
+
+Non-ASCII is fine in comments, docstring prose, and plot titles or axis
+labels — those are read from UTF-8 source or written into a figure, and never
+pass through the console encoder.
+
+Reading files has the mirror-image problem: `Path.read_text()` and `open()`
+default to the same locale encoding, so **always pass `encoding="utf-8"`**
+explicitly. This caused a Windows CI failure reading the notebooks.
+
+CI runs the examples on Ubuntu only, so it will not catch an encoding
+regression. `tests/test_console_encoding.py` guards it, and you can reproduce
+the Windows behaviour anywhere with:
+
+```bash
+PYTHONIOENCODING=cp1252 python examples/some_demo.py > /dev/null
+```
 
 ### Example Function
 

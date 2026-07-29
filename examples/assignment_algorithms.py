@@ -597,7 +597,7 @@ def visualize_assignment_problem():
         fig.add_annotation(
             x=m_idx,
             y=t_idx,
-            text="✓",
+            text="OK",
             showarrow=False,
             font=dict(color="red", size=16),
         )
