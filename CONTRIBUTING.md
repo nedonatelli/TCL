@@ -266,9 +266,9 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.17.0
+**Version:** v1.18.0
 **MATLAB Parity:** 100% ✅ (all tier 1-2 missing components verified)
-**Test Suite:** 4,622 tests passing (docstring examples also run in CI)
+**Test Suite:** 4,973 tests passing (docstring examples also run in CI)
 **Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
 **Quality:** 100% compliance (ruff check, ruff format, mypy --strict)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
@@ -340,10 +340,10 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.17.0):
+Current metrics (v1.18.0):
 - **Functions:** 1,048+
 - **Modules:** 133
-- **Tests:** 4,622 (all passing)
+- **Tests:** 4,973 (all passing)
 - **Coverage:** 80%
 - **MATLAB Parity:** 100% (NRLMSISE-00, CEKF, RBPF verified)
 - **GPU Backends:** 2 (CuPy + MLX)

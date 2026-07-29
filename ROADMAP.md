@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.17.0 (Released July 27, 2026)
-**Test Suite:** 4,622 tests passing, 80% line coverage, 100% mypy --strict compliance
+**Current Version:** v1.18.0 (Released July 28, 2026)
+**Test Suite:** 4,973 tests passing, 80% line coverage, 100% mypy --strict compliance
 **Status:** Feature-complete MATLAB TCL parity achieved. All v2.0.0 development phases (1-8)
 are complete; remaining work is release preparation (Phase 9).
 
@@ -70,7 +70,7 @@ polish:
 - **Migration:** Tools and guides for v1.x → v2.0.0 transition, `pytcl.compat` layer
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
-- **Testing:** 4,622+ tests, 80%+ coverage, multi-sensor validation scenarios
+- **Testing:** 4,973+ tests, 80%+ coverage, multi-sensor validation scenarios
 
 ### v2.0.0 Release Risks
 
@@ -195,20 +195,28 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 
 ## Known Issues & Planned Fixes
 
-The v1.15.1-v1.17.0 correctness campaign closed the previously listed critical
-issues (magnetism synthesis, relativity formulas, SEZ convention) and 72 further
-reference-verified bugs. Per-package validation status is tracked in
-[AUDIT.md](AUDIT.md).
+The v1.15.1-v1.18.0 correctness campaign closed every previously listed
+critical issue -- magnetism synthesis, relativity formulas, SEZ convention, and
+all five v2.0.0 blockers from [#9](https://github.com/nedonatelli/TCL/issues/9)
+(MLX backend, SDP4 deep-space physics, Lagrangian bounds, Murty k-best,
+high-degree Legendre) -- plus 72 further reference-verified bugs. Per-package
+validation status is tracked in [AUDIT.md](AUDIT.md).
 
-### Critical (tracked in [#9](https://github.com/nedonatelli/TCL/issues/9))
+### Critical (must be resolved before v2.0.0)
 
-| Issue | Module | Impact | Status |
-|-------|--------|--------|--------|
-| No MLX compute backend: all batch filters are `@requires('cupy')` despite advertised Apple Silicon acceleration | `gpu/` | Documented feature unusable on Apple Silicon | Implement or retract claim before v2.0.0 |
-| SDP4 has no deep-space physics (no lunar-solar terms, no resonance) | `astronomical/sgp4.py` | GEO/Molniya 15-75 km/day vs reference | Port ~700 lines or document scope |
-| Invalid Lagrangian bounds produce false convergence certificates | `assignment_algorithms/` (N-D relaxation, 3D Lagrangian) | `converged=True` while suboptimal | Fix bound or remove the certificate |
-| Murty k-best with finite `cost_of_non_assignment` returns an incomplete sequence | `assignment_algorithms/two_dimensional/kbest.py` | Missing k-best solutions | Partition over the augmented problem |
-| Scaled Legendre scheme breaks for n_max >= 1000 | `gravity/spherical_harmonics.py` | EGM2008 (n=2190) unreachable; validated to n=500 | Holmes-Featherstone order-wise scaling |
+Unit-level correctness is now well covered. The remaining risk is **integration**:
+the campaign's most serious findings were things that were individually correct
+but not connected -- an advertised GPU backend that was never wired in, a
+high-degree Legendre routine with zero callers, and three CI gates that could
+not fail.
+
+| Issue | Impact | Status |
+|-------|--------|--------|
+| No end-to-end pipeline test (measurements to tracks to persistence) | Only one test file spans 4+ subsystems; cross-module seams unverified | Open |
+| The 30 example scripts are never executed in CI | One shipped fabricated filter output undetected until v1.15.1 | Open |
+| Notebook CI gate cannot fail (`\|\| echo` swallows the exit code) | 13 cells across 2 notebooks are broken now; `networkx` is used but undeclared | Open |
+| Sphinx prose examples are not executed | 370 code blocks unverified; documented APIs that never existed were found in the v1.17.0 docs pass | Open |
+| Orphaned public API | Exported symbols with no callers hid a 1e199 error | Open |
 
 ### High Priority
 
