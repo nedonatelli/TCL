@@ -44,7 +44,9 @@ IMPORT_NAME_OVERRIDES = {
 
 def _declared_import_names():
     """Import names for every distribution pyproject declares, plus stdlib."""
-    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
+    pyproject = tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )
     project = pyproject["project"]
 
     requirements = list(project.get("dependencies", []))
@@ -62,7 +64,9 @@ def _declared_import_names():
 
 
 def _code_cells(notebook_path):
-    data = json.loads(notebook_path.read_text())
+    # Explicit encoding: notebooks are UTF-8 by spec, but read_text() defaults
+    # to the locale encoding, which is cp1252 on the Windows CI runners.
+    data = json.loads(notebook_path.read_text(encoding="utf-8"))
     return [c for c in data["cells"] if c["cell_type"] == "code"]
 
 
