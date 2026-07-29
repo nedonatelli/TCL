@@ -149,6 +149,7 @@ jobs:
 
       - name: Run notebook validation (nbval-lax)
         run: |
-          # Use nbval-lax to validate notebook structure without strict output matching
-          # This ensures notebooks can execute without errors
-          pytest --nbval-lax docs/notebooks/ -v --timeout=300 || echo "Notebook validation completed with warnings"
+          # nbval-lax executes every cell and fails on any error. The trailing
+          # "|| echo" that used to be here swallowed the exit code, so this job
+          # reported success while 13 cells were broken -- do not reintroduce it.
+          pytest --nbval-lax docs/notebooks/ -v --timeout=300
