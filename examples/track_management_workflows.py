@@ -534,7 +534,7 @@ def workflow_realtime_to_archive(
         return
 
     print("\n" + "=" * 60)
-    print("Workflow 3: Real-Time to Archive (SQL → HDF5)")
+    print("Workflow 3: Real-Time to Archive (SQL -> HDF5)")
     print("=" * 60)
 
     params = setup_cv_tracker_params()
@@ -961,7 +961,7 @@ def workflow_scenario_replay(
         if best_rmse < float("inf"):
             completeness = len(r_times) / n_steps * 100
             print(
-                f"    {r_tid} → {best_truth}: "
+                f"    {r_tid} -> {best_truth}: "
                 f"RMSE={best_rmse:.2f} m, coverage={completeness:.0f}%"
             )
 
@@ -1102,8 +1102,8 @@ def workflow_clutter_handling(
     print(f"    Tracks initiated: {len(all_tracks_info)}, confirmed: {len(confirmed)}")
     print(f"    Avg initiation queue depth: {avg_queue:.1f}")
     print(f"\n  Pruning results:")
-    print(f"    Pruned (5s threshold): {pruned_5s} → {remaining} remaining")
-    print(f"    Pruned (1s threshold): {pruned_1s} → {final_remaining} remaining")
+    print(f"    Pruned (5s threshold): {pruned_5s} -> {remaining} remaining")
+    print(f"    Pruned (1s threshold): {pruned_1s} -> {final_remaining} remaining")
 
 
 # =============================================================================

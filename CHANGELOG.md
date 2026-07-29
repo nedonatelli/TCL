@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Eight example scripts crashed on Windows when stdout was redirected.**
+  Python encodes stdout with the locale codepage on Windows — cp1252 by
+  default — whenever stdout is a pipe or a file rather than a console, so a
+  character outside that codepage raises `UnicodeEncodeError` and kills the
+  script. `atmospheric_modeling`, `dynamic_models_demo`, `ephemeris_demo`,
+  `geophysical_models`, `reference_frame_advanced`, `relativity_demo`,
+  `static_estimation` and `track_management_workflows` all died, most on their
+  opening banner, from box-drawing characters. Printed strings are now ASCII;
+  non-ASCII is retained in comments, docstrings, and plot labels, which never
+  reach the console encoder. The examples CI job runs on Ubuntu only and could
+  not catch this, so `tests/test_console_encoding.py` checks every string
+  reachable from a `print()` call against the cp1252 repertoire. Reproduce the
+  Windows behaviour anywhere with `PYTHONIOENCODING=cp1252`.
+
 - **`ConstrainedEKF` threw the estimate across the feasible set instead of
   projecting onto it.** The Lagrange multiplier was computed as
   `-(G P Gᵀ)⁻¹ (G x + g(x))`. The `G x` term does not belong in the
