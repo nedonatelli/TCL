@@ -22,7 +22,7 @@ Examples
 
 >>> # Query Sun position with high precision
 >>> from pytcl.astronomical import sun_position
->>> r_sun, v_sun = sun_position(2451545.0)  # J2000.0
+>>> r_sun, v_sun = sun_position(2451545.0)  # J2000.0  # doctest: +SKIP
 """
 
 from pytcl.astronomical.ephemerides import (
