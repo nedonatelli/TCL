@@ -25,7 +25,7 @@ from pytcl.dynamic_estimation.kalman.constrained import (
 )
 from pytcl.dynamic_estimation.rbpf import RBPFFilter
 
-SHOW_PLOTS = True
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 OUTPUT_DIR = Path("docs/_static/images/examples")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -67,8 +67,13 @@ class TargetTrackingScenario:
         # Measurement observer position
         self.observer = np.array([0.0, 0.0])
 
-        # Measurement noise
-        self.R = np.diag([0.1, 0.01])  # range error, bearing error (radians)
+        # Measurement noise, as variances: range in units^2, bearing in rad^2.
+        # The bearing term used to be 0.01 rad^2, i.e. a 5.7 degree standard
+        # deviation. At this target's ~14 unit range that is 1.4 units of
+        # cross-range error on a trajectory only 2.5 units long, so the plotted
+        # tracks looked like noise even though the filters were behaving. 1e-4
+        # is a 0.57 degree sensor, which is still modest but legible.
+        self.R = np.diag([0.01, 1e-4])
 
         # Initial state
         self.x0 = np.array([10.0, 10.0, -1.0, -0.5])
@@ -214,20 +219,32 @@ def run_cekf_filter(
     """
     cekf = ConstrainedEKF()
 
-    # Add constraint: target must stay within region
-    # Constraint: (x-5)^2 + (y-5)^2 <= 100 (circle centered at (5,5) with radius 10)
+    # Operating-area constraint: the target is known to stay inside a circle
+    # centred at (5, 5).
+    #
+    # The radius has to be chosen against the actual trajectory. It was 10.0,
+    # but the true track never gets further than 7.07 from the centre, so the
+    # constraint was inactive at every step and the "constrained" EKF returned
+    # exactly what a plain EKF would -- which is why its curve sat invisibly
+    # underneath the GSF's.
+    #
+    # 7.10 sits just above that 7.07 maximum: the true track stays feasible,
+    # so the constraint is honest, while estimates that wander outward get
+    # pulled back. Tightening it further (6.5, say) would exclude the real
+    # target and make the estimate worse, which is the correct behaviour for
+    # a constraint that is simply wrong.
+    CENTER = np.array([5.0, 5.0])
+    RADIUS = 7.1
+
     def g_circle(x):
-        # Negative means inside region
-        center = np.array([5.0, 5.0])
-        radius = 10.0
-        return (x[0] - center[0]) ** 2 + (x[1] - center[1]) ** 2 - radius**2
+        # Negative means inside the region.
+        return (x[0] - CENTER[0]) ** 2 + (x[1] - CENTER[1]) ** 2 - RADIUS**2
 
     # Jacobian
     def G_circle(x):
-        center = np.array([5.0, 5.0])
         jac = np.zeros((1, 4))
-        jac[0, 0] = 2 * (x[0] - center[0])
-        jac[0, 1] = 2 * (x[1] - center[1])
+        jac[0, 0] = 2 * (x[0] - CENTER[0])
+        jac[0, 1] = 2 * (x[1] - CENTER[1])
         return jac
 
     cekf.add_constraint(ConstraintFunction(g_circle, G=G_circle))
@@ -258,6 +275,13 @@ def run_cekf_filter(
 
         x_est[k] = x
         P_est[k] = P
+
+    # Report how often the constraint actually did something. A "constrained"
+    # filter whose constraint never activates is just an EKF, and saying so is
+    # more useful than quietly plotting a third identical curve.
+    dist = np.linalg.norm(x_est[:, :2] - CENTER, axis=1)
+    n_active = int(np.sum(dist >= RADIUS - 1e-9))
+    print(f"  Constraint |x-(5,5)| <= {RADIUS} active on {n_active}/{len(x_est)} steps")
 
     return x_est, P_est
 

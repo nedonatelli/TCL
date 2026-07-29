@@ -120,6 +120,7 @@ markers = [
     "light: marks benchmark as part of light (PR) suite",
     "full: marks benchmark as part of full (main) suite",
     "notebook: marks notebook validation tests",
+    "examples: runs a script from examples/ end to end",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

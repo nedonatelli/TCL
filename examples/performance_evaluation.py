@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -37,6 +38,8 @@ from pytcl.dynamic_models import (  # noqa: E402
 from pytcl.performance_evaluation import (
     ospa,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def ospa_demo() -> None:
@@ -498,7 +501,11 @@ def plot_results(
 
     fig.write_html(str(OUTPUT_DIR / "performance_evaluation.html"))
     print("\nInteractive plot saved to performance_evaluation.html")
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "performance_evaluation.html"))
 
 
 def main() -> None:
@@ -512,11 +519,7 @@ def main() -> None:
     mc_rmse, mc_nees, mc_nis = monte_carlo_demo()
     ospa_hist, loc_hist, card_hist = ospa_over_time_demo()
 
-    # Generate plots
-    try:
-        plot_results(mc_rmse, mc_nees, mc_nis, ospa_hist, loc_hist, card_hist)
-    except Exception as e:
-        print(f"\nCould not generate plots: {e}")
+    plot_results(mc_rmse, mc_nees, mc_nis, ospa_hist, loc_hist, card_hist)
 
     print("\n" + "=" * 60)
     print("Done!")

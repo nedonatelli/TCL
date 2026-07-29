@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -37,6 +38,8 @@ from pytcl.dynamic_models import (  # noqa: E402
     f_constant_velocity,
     q_constant_velocity,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def generate_trajectory(
@@ -528,7 +531,11 @@ def plot_results(
     output_path = OUTPUT_DIR / "kalman_filter_comparison.html"
     fig.write_html(str(output_path))
     print(f"\nInteractive plot saved to {output_path}")
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "kalman_filter_comparison.html"))
 
 
 def main() -> None:
@@ -593,19 +600,16 @@ def main() -> None:
     print("-" * 60)
 
     # Plot results
-    try:
-        plot_results(
-            true_states,
-            linear_meas,
-            kf_est,
-            ekf_est,
-            ukf_est,
-            kf_metrics,
-            ekf_metrics,
-            ukf_metrics,
-        )
-    except Exception as e:
-        print(f"\nCould not generate plot: {e}")
+    plot_results(
+        true_states,
+        linear_meas,
+        kf_est,
+        ekf_est,
+        ukf_est,
+        kf_metrics,
+        ekf_metrics,
+        ukf_metrics,
+    )
 
     print("\nDone!")
 

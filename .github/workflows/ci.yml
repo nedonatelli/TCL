@@ -74,7 +74,9 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -v
+        # The examples marker is excluded here and runs in its own job: the
+        # scripts are slow and only need to be exercised on one platform.
+        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -v
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -108,6 +110,29 @@ jobs:
             grep "ERROR" /tmp/sphinx.log
             exit 1
           fi
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install what a user installing the package would get, so the
+          # examples exercise the real dependency set.
+          pip install -e ".[all]"
+
+      - name: Run every example script
+        # PYTCL_SHOW_PLOTS=0 is set by the test itself, which also blocks
+        # fig.show() outright so an unguarded call fails rather than silently
+        # doing nothing in a headless container.
+        run: pytest tests/test_examples.py -m examples -v --timeout=600
 
   notebooks:
     runs-on: ubuntu-latest

@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
 from typing import List, Tuple  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -28,6 +29,8 @@ from pytcl.trackers import (  # noqa: E402
     MultiTargetTracker,
     TrackStatus,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def simulate_targets(
@@ -258,7 +261,11 @@ def plot_results(
     output_path = OUTPUT_DIR / "multi_target_tracking_result.html"
     fig.write_html(str(output_path))
     print(f"Interactive plot saved to {output_path}")
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "multi_target_tracking.html"))
 
 
 def main():
@@ -302,11 +309,7 @@ def main():
             f"vel=({vel[0]:.1f}, {vel[1]:.1f}), status={track.status.value}"
         )
 
-    # Plot if plotly is available
-    try:
-        plot_results(true_states, measurements, track_history)
-    except Exception as e:
-        print(f"\nCould not generate plot: {e}")
+    plot_results(true_states, measurements, track_history)
 
     print("\nDone!")
 

@@ -15,6 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import os
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -35,6 +37,9 @@ from pytcl.mathematical_functions.signal_processing import (  # noqa: E402
     pulse_compression,
     threshold_factor,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def filter_design_demo() -> None:
@@ -372,7 +377,11 @@ def visualize_filter_response() -> None:
         hovermode="x unified",
     )
 
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "signal_processing.html"))
 
 
 if __name__ == "__main__":

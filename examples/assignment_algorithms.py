@@ -28,6 +28,9 @@ These algorithms are fundamental for multi-target tracking, where
 measurements must be assigned to tracks optimally.
 """
 
+import os
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -53,6 +56,9 @@ from pytcl.assignment_algorithms import (  # 2D Assignment
     ranked_assignments,
     rectangular_gate,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def demo_2d_assignment():
@@ -604,7 +610,11 @@ def visualize_assignment_problem():
         width=600,
     )
 
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "assignment_algorithms.html"))
 
 
 if __name__ == "__main__":

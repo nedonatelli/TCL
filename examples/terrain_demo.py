@@ -10,6 +10,7 @@ Functions demonstrated:
 - compute_horizon(): Calculate visible horizon from observer position
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,7 @@ from plotly.subplots import make_subplots
 from pytcl.terrain import compute_horizon, create_flat_dem, create_synthetic_terrain
 
 # Controls for visualization
-SHOW_PLOTS = False
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 SKIP_VISUALIZATIONS = True  # Skip visualizations for fast execution
 
 
@@ -31,20 +32,26 @@ def demo_flat_dem() -> None:
 
     # Create a flat DEM
     dem = create_flat_dem(
-        lat_min=-1,
-        lat_max=1,
-        lon_min=-1,
-        lon_max=1,
+        lat_min=np.radians(-1),
+        lat_max=np.radians(1),
+        lon_min=np.radians(-1),
+        lon_max=np.radians(1),
         elevation=1000.0,
         resolution_arcsec=60,
     )
 
     print(f"\nFlat DEM created:")
-    print(f"  Latitude range: [{dem.lat_min}, {dem.lat_max}]")
-    print(f"  Longitude range: [{dem.lon_min}, {dem.lon_max}]")
+    print(
+        f"  Latitude range: [{np.degrees(dem.lat_min):.2f}°, {np.degrees(dem.lat_max):.2f}°]"
+    )
+    print(
+        f"  Longitude range: [{np.degrees(dem.lon_min):.2f}°, {np.degrees(dem.lon_max):.2f}°]"
+    )
     print(f"  Shape: {dem.data.shape}")
     print(f"  Elevation: {dem.data.min():.1f} to {dem.data.max():.1f} m")
-    print(f"  Grid spacing: {dem.d_lat:.6f}° lat, {dem.d_lon:.6f}° lon")
+    print(
+        f"  Grid spacing: {np.degrees(dem.d_lat):.6f}° lat, {np.degrees(dem.d_lon):.6f}° lon"
+    )
 
     # Visualization (fast heatmap with downsampling for large grids)
     if not SKIP_VISUALIZATIONS:
@@ -83,10 +90,10 @@ def demo_synthetic_terrain() -> None:
 
     # Create synthetic terrain with hills
     dem = create_synthetic_terrain(
-        lat_min=-5,
-        lat_max=5,
-        lon_min=-5,
-        lon_max=5,
+        lat_min=np.radians(-5),
+        lat_max=np.radians(5),
+        lon_min=np.radians(-5),
+        lon_max=np.radians(5),
         base_elevation=500,
         amplitude=800,
         wavelength_km=50,
@@ -95,14 +102,20 @@ def demo_synthetic_terrain() -> None:
     )
 
     print(f"\nSynthetic DEM created:")
-    print(f"  Latitude range: [{dem.lat_min}, {dem.lat_max}]")
-    print(f"  Longitude range: [{dem.lon_min}, {dem.lon_max}]")
+    print(
+        f"  Latitude range: [{np.degrees(dem.lat_min):.2f}°, {np.degrees(dem.lat_max):.2f}°]"
+    )
+    print(
+        f"  Longitude range: [{np.degrees(dem.lon_min):.2f}°, {np.degrees(dem.lon_max):.2f}°]"
+    )
     print(f"  Shape: {dem.data.shape}")
     print(f"  Min elevation: {dem.data.min():.1f} m")
     print(f"  Max elevation: {dem.data.max():.1f} m")
     print(f"  Mean elevation: {dem.data.mean():.1f} m")
     print(f"  Std deviation: {dem.data.std():.1f} m")
-    print(f"  Grid spacing: {dem.d_lat:.6f}° lat, {dem.d_lon:.6f}° lon")
+    print(
+        f"  Grid spacing: {np.degrees(dem.d_lat):.6f}° lat, {np.degrees(dem.d_lon):.6f}° lon"
+    )
 
     # Visualization: 2D heatmap with downsampling (fast rendering)
     if not SKIP_VISUALIZATIONS:
@@ -141,19 +154,19 @@ def demo_terrain_analysis() -> None:
 
     # Create two DEMs for comparison
     flat_dem = create_flat_dem(
-        lat_min=-2,
-        lat_max=2,
-        lon_min=-2,
-        lon_max=2,
+        lat_min=np.radians(-2),
+        lat_max=np.radians(2),
+        lon_min=np.radians(-2),
+        lon_max=np.radians(2),
         elevation=500.0,
         resolution_arcsec=60,
     )
 
     synthetic_dem = create_synthetic_terrain(
-        lat_min=-2,
-        lat_max=2,
-        lon_min=-2,
-        lon_max=2,
+        lat_min=np.radians(-2),
+        lat_max=np.radians(2),
+        lon_min=np.radians(-2),
+        lon_max=np.radians(2),
         base_elevation=500,
         amplitude=400,
         wavelength_km=30,
@@ -174,9 +187,18 @@ def demo_terrain_analysis() -> None:
     print(f"  Mean: {synthetic_dem.data.mean():.1f} m")
     print(f"  Std Dev: {synthetic_dem.data.std():.1f} m")
 
-    # Calculate terrain gradients (simple method)
+    # Terrain slope. np.gradient returns metres of rise per *grid cell*, so it
+    # has to be divided by the ground spacing of a cell before it means
+    # anything -- without that the slope comes out near-vertical everywhere.
+    earth_radius = 6371000.0
+    mean_lat = 0.5 * (synthetic_dem.lat_min + synthetic_dem.lat_max)
+    dy_m = synthetic_dem.d_lat * earth_radius
+    dx_m = synthetic_dem.d_lon * earth_radius * np.cos(mean_lat)
+
     grad_y, grad_x = np.gradient(synthetic_dem.data)
-    slope = np.degrees(np.arctan(np.sqrt(grad_x**2 + grad_y**2)))
+    slope = np.degrees(np.arctan(np.hypot(grad_x / dx_m, grad_y / dy_m)))
+
+    print(f"\nGrid cell ground size: {dx_m:.0f} m east-west, {dy_m:.0f} m north-south")
 
     print(f"\nTerrain slope analysis:")
     print(f"  Min slope: {slope.min():.2f}°")
@@ -254,16 +276,20 @@ def demo_horizon_computation() -> None:
     print("Horizon Computation")
     print("=" * 60)
 
-    # Create synthetic terrain
+    # A one-degree box of synthetic terrain. All angles are radians, per the
+    # library-wide convention -- passing degrees here would ask for a DEM
+    # spanning most of the globe.
+    lat_min, lat_max = np.radians(35.0), np.radians(36.0)
+    lon_min, lon_max = np.radians(-120.0), np.radians(-119.0)
     dem = create_synthetic_terrain(
-        lat_min=-3,
-        lat_max=3,
-        lon_min=-3,
-        lon_max=3,
+        lat_min=lat_min,
+        lat_max=lat_max,
+        lon_min=lon_min,
+        lon_max=lon_max,
         base_elevation=500,
         amplitude=500,
         wavelength_km=40,
-        resolution_arcsec=120,
+        resolution_arcsec=30,
         seed=456,
     )
 
@@ -271,37 +297,47 @@ def demo_horizon_computation() -> None:
     print(f"  Shape: {dem.data.shape}")
     print(f"  Elevation range: {dem.data.min():.1f} to {dem.data.max():.1f} m")
 
-    # Compute horizon from center position
-    center_idx_lat = dem.data.shape[0] // 2
-    center_idx_lon = dem.data.shape[1] // 2
-
-    # Observer height above ground
-    observer_height = 100.0
+    # Observe from the middle of the box, 100 m above local ground level.
+    obs_lat = 0.5 * (lat_min + lat_max)
+    obs_lon = 0.5 * (lon_min + lon_max)
+    obs_height = 100.0
 
     print(f"\nObserver position:")
-    print(f"  Grid indices: ({center_idx_lat}, {center_idx_lon})")
-    print(f"  Elevation: {dem.data[center_idx_lat, center_idx_lon]:.1f} m")
-    print(f"  Observer height: {observer_height} m")
+    print(f"  Latitude:  {np.degrees(obs_lat):.4f}°")
+    print(f"  Longitude: {np.degrees(obs_lon):.4f}°")
+    print(f"  Ground elevation: {dem.get_elevation(obs_lat, obs_lon).elevation:.1f} m")
+    print(f"  Observer height above ground: {obs_height} m")
 
-    # Compute horizon
-    try:
-        horizon = compute_horizon(
-            dem=dem,
-            observer_lat_idx=center_idx_lat,
-            observer_lon_idx=center_idx_lon,
-            observer_height=observer_height,
-        )
+    horizon = compute_horizon(
+        dem,
+        obs_lat,
+        obs_lon,
+        obs_height,
+        n_azimuths=72,
+        max_range=40000.0,
+    )
 
-        print(f"\nHorizon computation successful!")
-        print(f"  Horizon azimuth angles: {horizon.azimuth_angles.shape}")
-        if hasattr(horizon, "elevation_angles"):
-            print(f"  Horizon elevation angles: {horizon.elevation_angles.shape}")
-            print(f"  Min elevation: {horizon.elevation_angles.min():.2f}°")
-            print(f"  Max elevation: {horizon.elevation_angles.max():.2f}°")
+    # compute_horizon returns one HorizonPoint per azimuth.
+    elevations = np.array([p.elevation_angle for p in horizon])
+    distances = np.array([p.distance for p in horizon])
+    azimuths = np.array([p.azimuth for p in horizon])
 
-    except Exception as e:
-        print(f"\nHorizon computation note: {type(e).__name__}")
-        print(f"  This is expected if compute_horizon requires specific parameters")
+    print(f"\nHorizon profile over {len(horizon)} azimuths:")
+    print(
+        f"  Elevation angle: {np.degrees(elevations.min()):+.2f}° to "
+        f"{np.degrees(elevations.max()):+.2f}°"
+    )
+    print(
+        f"  Horizon distance: {distances.min() / 1e3:.1f} to "
+        f"{distances.max() / 1e3:.1f} km"
+    )
+
+    highest = int(np.argmax(elevations))
+    print(
+        f"  Highest horizon at azimuth {np.degrees(azimuths[highest]):.1f}° "
+        f"({np.degrees(elevations[highest]):+.2f}°, "
+        f"{distances[highest] / 1e3:.1f} km away)"
+    )
 
 
 def main() -> None:

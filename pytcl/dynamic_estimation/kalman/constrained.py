@@ -239,6 +239,15 @@ class ConstrainedEKF:
         if not violated:
             return x_proj, P_proj
 
+        # The state iteration below uses the *incoming* covariance as a fixed
+        # metric. Shrinking P_proj inside the loop -- as this used to do --
+        # collapses it along G after the first step, so every later Newton
+        # iteration is multiplied by an almost-zero gain and the state stalls
+        # short of the constraint surface. The covariance is projected once,
+        # after the state has converged.
+        P_metric = P_proj.copy()
+        active: list[ConstraintFunction] = []
+
         # Iterative projection
         for iteration in range(max_iter):
             converged = True
@@ -258,11 +267,24 @@ class ConstrainedEKF:
 
                 converged = False
 
-                # Lagrange multiplier for this constraint
-                # λ = -(G P Gᵀ + μ)⁻¹ G (x - x_ref)
-                # where x_ref is desired state (we use x)
+                # Covariance-weighted projection onto the linearised
+                # constraint surface (Simon 2010, "Kalman filtering with state
+                # constraints"). Linearising g about x gives
+                #     g(x) + G (x_new - x) = 0,
+                # and minimising (x_new - x)ᵀ P⁻¹ (x_new - x) subject to that
+                # yields
+                #     x_new = x - P Gᵀ (G P Gᵀ)⁻¹ g(x),
+                # i.e. λ = -(G P Gᵀ)⁻¹ g(x).
+                #
+                # This previously used -(G P Gᵀ)⁻¹ (G x + g), carrying a
+                # spurious G x term. Since G x has nothing to do with how far
+                # the constraint is violated, it dominated whenever the state
+                # was far from the origin and threw the estimate across the
+                # feasible region instead of onto its boundary.
+                if constraint not in active:
+                    active.append(constraint)
 
-                GP = G @ P_proj
+                GP = G @ P_metric
                 GPGt = GP @ G.T
 
                 # Add small regularization for numerical stability
@@ -270,33 +292,38 @@ class ConstrainedEKF:
 
                 try:
                     GPGt_inv = np.linalg.inv(GPGt + mu)
-                    lam = -GPGt_inv @ (G @ x_proj + g_val)
-
-                    # State correction
-                    x_corr = P_proj @ G.T @ lam
-                    x_proj = x_proj + x_corr
-
-                    # Covariance projection
-                    # P_proj = P - P G^T (G P G^T)^{-1} G P
-                    P_proj = P_proj - GP.T @ GPGt_inv @ GP
-
-                    # Ensure symmetry
-                    P_proj = (P_proj + P_proj.T) / 2
-
-                    # Enforce positive definiteness
-                    eigvals, eigvecs = np.linalg.eigh(P_proj)
-                    if np.any(eigvals < 0):
-                        eigvals[eigvals < 1e-10] = 1e-10
-                        P_proj = eigvecs @ np.diag(eigvals) @ eigvecs.T
-
+                    lam = -GPGt_inv @ g_val
                 except np.linalg.LinAlgError:
                     # If inversion fails, use pseudoinverse
-                    GPGt_pinv = np.linalg.pinv(GPGt)
-                    lam = -GPGt_pinv @ (G @ x_proj + g_val)
-                    x_proj = x_proj + P_proj @ G.T @ lam
+                    lam = -np.linalg.pinv(GPGt) @ g_val
+
+                x_proj = x_proj + P_metric @ G.T @ lam
 
             if converged:
                 break
+
+        # Covariance projection, once per constraint that was active:
+        #     P <- P - P Gᵀ (G P Gᵀ)⁻¹ G P
+        # evaluated at the converged state.
+        for constraint in active:
+            G = constraint.jacobian(x_proj)
+            GP = G @ P_proj
+            GPGt = GP @ G.T
+            mu = np.eye(GPGt.shape[0]) * 1e-6
+            try:
+                GPGt_inv = np.linalg.inv(GPGt + mu)
+            except np.linalg.LinAlgError:
+                GPGt_inv = np.linalg.pinv(GPGt)
+            P_proj = P_proj - GP.T @ GPGt_inv @ GP
+
+            # Ensure symmetry
+            P_proj = (P_proj + P_proj.T) / 2
+
+            # Enforce positive definiteness
+            eigvals, eigvecs = np.linalg.eigh(P_proj)
+            if np.any(eigvals < 1e-10):
+                eigvals[eigvals < 1e-10] = 1e-10
+                P_proj = eigvecs @ np.diag(eigvals) @ eigvecs.T
 
         return x_proj, P_proj
 

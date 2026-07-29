@@ -7,6 +7,7 @@ This example shows:
 - Performance characteristics
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,7 @@ from pytcl.mathematical_functions.special_functions import (
     bessely,
 )
 
-SHOW_PLOTS = True
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 OUTPUT_DIR = Path("docs/_static/images/examples")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

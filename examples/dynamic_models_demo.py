@@ -8,6 +8,7 @@ This example shows:
 - Kalman filter compatibility
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +19,7 @@ from pytcl.dynamic_models.continuous_time import (
 )
 from pytcl.dynamic_models.discrete_time import f_constant_velocity
 
-SHOW_PLOTS = True
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def demo_state_transition_matrix() -> None:

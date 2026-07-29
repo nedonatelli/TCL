@@ -14,6 +14,7 @@ These effects are essential for high-precision positioning, timing,
 and fundamental physics tests.
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,8 @@ from pytcl.astronomical.relativity import (
     shapiro_delay,
 )
 
-SHOW_PLOTS = True
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def plot_precession_effects() -> None:

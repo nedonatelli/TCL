@@ -10,6 +10,7 @@ Functions demonstrated:
 - dipole_axis(): Calculate dipole axis orientation
 """
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +24,7 @@ from pytcl.magnetism import (
 )
 
 # Controls for visualization
-SHOW_PLOTS = False
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def demo_wmm2020_coefficients() -> None:

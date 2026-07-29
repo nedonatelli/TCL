@@ -16,6 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import os
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -38,6 +40,9 @@ from pytcl.coordinate_systems import (  # noqa: E402
     sphere2cart,
     spherical_jacobian_inv,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 
 
 def spherical_conversions_demo() -> None:
@@ -336,7 +341,11 @@ def visualize_coordinate_transforms() -> None:
         width=800,
     )
 
-    fig.show()
+    if SHOW_PLOTS:
+        fig.show()
+    else:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        fig.write_html(str(OUTPUT_DIR / "coordinate_systems.html"))
 
 
 if __name__ == "__main__":

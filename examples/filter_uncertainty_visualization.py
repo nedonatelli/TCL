@@ -19,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 OUTPUT_DIR = Path(__file__).parent.parent / "docs" / "_static" / "images" / "examples"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+import os
+
 import numpy as np  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
@@ -31,6 +33,8 @@ from pytcl.dynamic_models import (  # noqa: E402
     f_constant_velocity,
     q_constant_velocity,
 )
+
+SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
 
 
 def covariance_ellipse(
@@ -618,10 +622,14 @@ def main():
 
     # Show all figures
     print("\nOpening visualizations in browser...")
-    fig1.show()
-    fig2.show()
-    fig3.show()
-    fig4.show()
+    if SHOW_PLOTS:
+        fig1.show()
+    if SHOW_PLOTS:
+        fig2.show()
+    if SHOW_PLOTS:
+        fig3.show()
+    if SHOW_PLOTS:
+        fig4.show()
 
     print("\nDone!")
 
