@@ -3,25 +3,62 @@ Structural checks on the tutorial notebooks.
 
 These run in the ordinary (fast) test suite. Full execution happens in the
 ``notebooks`` CI job via ``pytest --nbval-lax``, which takes about a minute;
-the checks here catch the two failure modes that job has actually hit, in
-under a second, so they surface on any test run rather than only in CI.
+the checks here catch the failure modes that job has actually hit, in under a
+second, so they surface on any test run rather than only in CI.
 
 Background: the notebook CI step used to end with
 ``|| echo "Notebook validation completed with warnings"``, which swallowed the
-exit code. The job reported success while 13 cells across two notebooks were
-broken -- one importing ``networkx``, which is not a dependency of this
-project, and one carrying stale outputs on never-run cells.
+exit code. Removing it exposed three problems the job had been reporting as
+success -- an import of ``networkx``, which this project does not depend on
+and the notebook never used; stale outputs on never-run cells, which nbval
+rejects; and a job that installed only the ``[dev]`` extra while every
+notebook plots with plotly from ``[visualization]``.
 """
 
 import ast
-import importlib.util
 import json
 import pathlib
+import re
+import sys
 
 import pytest
 
-NOTEBOOK_DIR = pathlib.Path(__file__).resolve().parent.parent / "docs" / "notebooks"
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 predates tomllib
+    tomllib = None
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+NOTEBOOK_DIR = REPO_ROOT / "docs" / "notebooks"
 NOTEBOOKS = sorted(NOTEBOOK_DIR.glob("*.ipynb"))
+
+# Distributions whose import name differs from their name on PyPI.
+IMPORT_NAME_OVERRIDES = {
+    "pywavelets": "pywt",
+    "scikit-learn": "sklearn",
+    "pillow": "PIL",
+    "pyyaml": "yaml",
+    "nrl-tracker": "pytcl",
+}
+
+
+def _declared_import_names():
+    """Import names for every distribution pyproject declares, plus stdlib."""
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
+    project = pyproject["project"]
+
+    requirements = list(project.get("dependencies", []))
+    for extra in project.get("optional-dependencies", {}).values():
+        requirements.extend(extra)
+
+    names = set(sys.stdlib_module_names) | {"pytcl"}
+    for requirement in requirements:
+        # Strip extras, version specifiers, markers: "numpy[foo]>=1.2 ; py>'3'"
+        dist = re.split(r"[\[<>=!~;\s]", requirement, maxsplit=1)[0].strip().lower()
+        if not dist:
+            continue
+        names.add(IMPORT_NAME_OVERRIDES.get(dist, dist.replace("-", "_")))
+    return names
 
 
 def _code_cells(notebook_path):
@@ -56,13 +93,18 @@ def test_no_stale_outputs_on_unrun_cells(notebook):
     )
 
 
+@pytest.mark.skipif(tomllib is None, reason="tomllib requires Python 3.11+")
 @pytest.mark.parametrize("notebook", NOTEBOOKS, ids=lambda p: p.name)
-def test_imports_are_available(notebook):
-    """Every module a notebook imports must actually be installable here.
+def test_imports_are_declared_dependencies(notebook):
+    """Every module a notebook imports must be a declared dependency.
 
-    Catches undeclared dependencies (the `networkx` case) without executing
-    the notebook.
+    Checked against pyproject rather than against whatever happens to be
+    installed, because the jobs that run this test do not all install the
+    same extras -- the ``test`` job has no plotly, but the notebooks
+    legitimately use it. Asserting on the ambient environment would fail
+    there for the wrong reason.
     """
+    declared = _declared_import_names()
     missing = set()
     for cell in _code_cells(notebook):
         source = _source(cell)
@@ -94,12 +136,13 @@ def test_imports_are_available(notebook):
             else:
                 continue
             for name in names:
-                if name and importlib.util.find_spec(name) is None:
+                if name and name not in declared:
                     missing.add(name)
 
     assert not missing, (
-        f"{notebook.name} imports modules that are not available: "
-        f"{sorted(missing)}. Either declare them as dependencies or remove the import."
+        f"{notebook.name} imports {sorted(missing)}, which "
+        "pyproject.toml does not declare as dependencies. Either add them to "
+        "the appropriate extra or remove the import."
     )
 
 

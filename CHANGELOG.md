@@ -20,13 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stored outputs on two cells whose `execution_count` was `null`, which nbval
   rejects as "Unrun reference cell has outputs". All 126 cells now execute.
 
+- **The notebooks CI job never installed plotly.** It installed only the
+  `[dev]` extra, but every notebook plots with plotly, which lives in
+  `[visualization]`. With the exit code swallowed, the resulting
+  `ModuleNotFoundError` in each notebook was invisible; the job now installs
+  `.[dev,visualization]`.
+
 ### Added
 
 - `tests/test_notebook_hygiene.py` — structural notebook checks that run in
   the ordinary (fast) suite rather than only in the minute-long nbval job:
-  no stale outputs on unrun cells, every unguarded import resolves (imports
-  inside `try`/`except` are treated as deliberate optional dependencies), and
-  every code cell parses as Python.
+  no stale outputs on unrun cells, every unguarded import is a dependency
+  declared in `pyproject.toml` (imports inside `try`/`except` are treated as
+  deliberate optional dependencies), and every code cell parses as Python.
 
 ## [1.18.0] - 2026-07-28
 
