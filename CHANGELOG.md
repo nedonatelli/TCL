@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`docs/examples/` no longer keeps its own copy of the example scripts.**
+  All 34 `.py` files there were duplicates of `examples/` and nothing
+  referenced them: every `literalinclude` and `:download:` in the docs already
+  resolved to `../../../examples/`. Being unreferenced, they had drifted —
+  `docs/examples/terrain_demo.py` differed from its counterpart by 238 diff
+  lines, and none of the bug fixes applied to the canonical scripts had ever
+  reached them. Sphinx produces byte-identical output before and after removal
+  (0 errors, same 1225 warnings). The `.rst` pages are untouched.
+  `docs/tutorials/` is kept: it is a separate deliverable documented in the
+  README, not a copy.
+
+- `tests/test_docs_references.py` guards both halves of this: no second copy
+  of an example script under `docs/`, and every file the docs include or offer
+  for download actually exists — Sphinx only warns for a dead `literalinclude`,
+  and the docs gate fails on errors alone.
+
 ### Changed
 
 - **Example figures load plotly from a CDN instead of embedding it**
