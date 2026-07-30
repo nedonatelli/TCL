@@ -897,7 +897,7 @@ Step-by-step example from research paper to production.
 
     def benchmark_against_standard_kf():
         """Compare performance against baseline."""
-        from pytcl.dynamic_estimation.kalman import KalmanFilter
+        from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
         
         # Scenario: tracking with variable noise
         errors_adaptive = []

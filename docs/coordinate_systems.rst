@@ -236,7 +236,7 @@ Use Case 2: Multi-Sensor Fusion (GPS + IMU)
 
    import numpy as np
    from pytcl.coordinate_systems.conversions import geodetic2ecef, ecef2enu
-   from pytcl.coordinate_systems.rotations import euler2dcm
+   from pytcl.coordinate_systems.rotations import euler2rotmat
    
    # GPS solution
    gps_geodetic = np.array([40.7128, -74.0060, 100.0])
@@ -252,7 +252,7 @@ Use Case 2: Multi-Sensor Fusion (GPS + IMU)
    # IMU acceleration (in vehicle body frame)
    # Vehicle attitude (heading, pitch, roll)
    euler = np.array([0.2, 0.1, 0.05])  # radians
-   DCM = euler2dcm(euler)  # Direction Cosine Matrix
+   DCM = euler2rotmat(euler)  # Direction Cosine Matrix
    
    # Acceleration in body frame [ax, ay, az]
    accel_body = np.array([10.0, 0.5, 0.0])
@@ -272,7 +272,7 @@ Use Case 3: Orbital Mechanics (ECI ↔ ECEF)
 .. code-block:: python
 
    import numpy as np
-   from pytcl.astronomical.reference_frames import ecef2eci, eci2ecef
+   from pytcl.astronomical.reference_frames import ecef_to_eci, eci_to_ecef
    from pytcl.coordinate_systems.conversions import ecef2geodetic
    
    # Satellite position in ECI (inertial frame)
@@ -283,7 +283,7 @@ Use Case 3: Orbital Mechanics (ECI ↔ ECEF)
    t = datetime.datetime(2026, 2, 26, 12, 0, 0)  # UTC
    
    # Transform to ECEF (fixed to Earth)
-   sat_ecef = eci2ecef(sat_eci, t)
+   sat_ecef = eci_to_ecef(sat_eci, t)
    
    # Get geodetic position (lat/lon/alt)
    sat_geodetic = ecef2geodetic(sat_ecef)
@@ -305,7 +305,7 @@ Rotations: Euler Angles, Quaternions, DCM
 .. code-block:: python
 
    from pytcl.coordinate_systems.rotations import (
-       euler2dcm, euler2quat, dcm2euler, quat2euler
+       euler2rotmat, euler2quat, rotmat2euler, quat2euler
    )
    
    # Euler angles [roll, pitch, yaw] in radians
@@ -317,7 +317,7 @@ Rotations: Euler Angles, Quaternions, DCM
    ])
    
    # Convert to DCM
-   DCM = euler2dcm(euler)
+   DCM = euler2rotmat(euler)
    
    # Rotate a vector: v_rotated = DCM @ v
    v = np.array([1, 0, 0])
@@ -350,11 +350,11 @@ Rotations: Euler Angles, Quaternions, DCM
 
 .. code-block:: python
 
-   from pytcl.coordinate_systems.rotations import euler2dcm, dcm2euler
+   from pytcl.coordinate_systems.rotations import euler2rotmat, rotmat2euler
    
    # DCM: 3×3 orthogonal matrix (RT = I, det=1)
    euler = np.array([0.1, 0.05, 0.2])
-   DCM = euler2dcm(euler)
+   DCM = euler2rotmat(euler)
    
    # Verify orthogonality
    assert np.allclose(DCM @ DCM.T, np.eye(3))  # R^T R = I
@@ -379,7 +379,7 @@ In Extended Kalman Filters, you need partial derivatives (Jacobians) for lineari
 .. code-block:: python
 
    from pytcl.coordinate_systems.jacobians import (
-       jacobian_cart2sphere,
+       spherical_jacobian,
        jacobian_sphere2cart,
        jacobian_cart2pol,
        jacobian_geodetic2ecef,
@@ -392,7 +392,7 @@ In Extended Kalman Filters, you need partial derivatives (Jacobians) for lineari
    H_sphere = jacobian_sphere2cart(sphere)  # 3×3 matrix
    
    # Use in EKF measurement update
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
    
    def h_measure(state_cart):
        """Measure in spherical, state in Cartesian"""
@@ -570,14 +570,14 @@ Performance Considerations
 
 .. code-block:: python
 
-   from pytcl.coordinate_systems.jacobians import jacobian_cart2sphere
+   from pytcl.coordinate_systems.jacobians import spherical_jacobian
    from functools import lru_cache
    
    @lru_cache(maxsize=256)
    def cached_jacobian(x_tuple):
        """Cache Jacobian with quantization"""
        x = np.array(x_tuple)
-       return jacobian_cart2sphere(x)
+       return spherical_jacobian(x)
    
    # Quantize to reduce cache misses
    x_quantized = np.round(x / 10) * 10  # 10m resolution
@@ -631,7 +631,7 @@ Common Pitfalls and Solutions
 .. code-block:: python
 
    import datetime
-   from pytcl.astronomical.reference_frames import eci2ecef, ecef2eci
+   from pytcl.astronomical.reference_frames import eci_to_ecef, ecef_to_eci
    
    # ECI: Fixed to distant stars (inertial)
    sat_eci = np.array([6600000, 0, 0])
@@ -639,7 +639,7 @@ Common Pitfalls and Solutions
    # ECEF: Rotates with Earth
    # MUST specify time of observation
    t = datetime.datetime(2026, 2, 26, 12, 0, 0)
-   sat_ecef = eci2ecef(sat_eci, t)
+   sat_ecef = eci_to_ecef(sat_eci, t)
    
    # ❌ Wrong: Use ECI coordinates directly without transformation
    # ✅ Correct: Transform between frames with time
@@ -745,12 +745,12 @@ Advanced Topics
        
        As satellite orbits, ECEF relationship changes with time
        """
-       from pytcl.astronomical.reference_frames import eci2ecef
+       from pytcl.astronomical.reference_frames import eci_to_ecef
        from pytcl.coordinate_systems.conversions import ecef2geodetic
        
        ground_track = []
        for t in times:
-           sat_ecef = eci2ecef(sat_eci, t)
+           sat_ecef = eci_to_ecef(sat_eci, t)
            ground_point = ecef2geodetic(sat_ecef)
            ground_track.append(ground_point)
        
@@ -783,7 +783,7 @@ Conversion Decision Tree
    ├─ ECEF?
    │  ├─ Want Geodetic? → ecef2geodetic
    │  ├─ Want ENU/NED? → ecef2enu or ecef2ned
-   │  ├─ Want ECI? → Need time → ecef2eci(x, time)
+   │  ├─ Want ECI? → Need time → ecef_to_eci(x, time)
    │  └─ Want Local? → Depends on observer
    │
    ├─ ENU/NED (local)?
@@ -791,7 +791,7 @@ Conversion Decision Tree
    │  └─ Want local Cartesian? → Already Cartesian (ENU/NED ARE Cartesian)
    │
    └─ ECI (inertial)?
-       └─ Want ECEF? → Need time → eci2ecef(x, time)
+       └─ Want ECEF? → Need time → eci_to_ecef(x, time)
 
 See Also
 ~~~~~~~~

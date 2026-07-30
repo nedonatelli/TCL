@@ -255,10 +255,10 @@ For real-time applications:
 .. code-block:: python
 
    # Use Square-Root CEKF for numerical stability
-   from pytcl.dynamic_estimation.kalman import constrained_srckf_predict
+   from pytcl.dynamic_estimation.kalman import constrained_ekf_predict
    
    # Operates on Cholesky factor S where P = S @ S.T
-   x_pred, S_pred = constrained_srckf_predict(
+   x_pred, S_pred = constrained_ekf_predict(
        x, S,
        f=dynamics,
        F_jac=dynamics_jacobian,

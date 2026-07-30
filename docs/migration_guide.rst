@@ -367,7 +367,7 @@ Module Mapping Reference
    * - ``Atmospheric Models/``
      - ``pytcl.atmosphere``
    * - ``Signal Processing/``
-     - ``pytcl.signal_processing``
+     - ``pytcl.mathematical_functions.signal_processing``
 
 Common Gotchas
 --------------
@@ -445,7 +445,7 @@ pyTCL includes type hints for better IDE support:
 
 .. code-block:: python
 
-   from pytcl.dynamic_estimation import kf_predict, KFPredictResult
+   from pytcl.dynamic_estimation import kf_predict, KalmanPrediction
    from numpy.typing import NDArray
    import numpy as np
 
@@ -454,7 +454,7 @@ pyTCL includes type hints for better IDE support:
        P: NDArray[np.floating],
        F: NDArray[np.floating],
        Q: NDArray[np.floating],
-   ) -> KFPredictResult:
+   ) -> KalmanPrediction:
        return kf_predict(x, P, F, Q)
 
 Performance Tips

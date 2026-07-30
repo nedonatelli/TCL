@@ -75,7 +75,7 @@ Import and Usage Issues
 .. code-block:: python
 
    # ❌ Wrong: Function not in this location
-   from pytcl.kalman import kf_predict
+   from pytcl.dynamic_estimation.kalman import kf_predict
    
    # ✅ Correct: Check the right module
    from pytcl.dynamic_estimation.kalman import kf_predict
@@ -335,8 +335,8 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
    # Mark out-of-range
    cost[cost > gate] = np.inf
    
-   from pytcl.assignment.optimization import assignment_nd
-   assignments = assignment_nd(cost)
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+   assignments = relaxation_assignment_nd(cost)
    # Result: mostly unassigned measurements
 
 **Fix**:
@@ -357,7 +357,7 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
 .. code-block:: python
 
-   from pytcl.assignment.optimization import assignment_nd
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
    
    # Compute cost matrix more carefully
    # Option 1: Mahalanobis distance (includes covariance)
@@ -370,7 +370,7 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
    from scipy.spatial.distance import cdist
    cost = cdist(positions, measurements, metric='mahalanobis')
    
-   assignments = assignment_nd(cost)
+   assignments = relaxation_assignment_nd(cost)
 
 Coordinate Conversion Issues
 -----------------------------

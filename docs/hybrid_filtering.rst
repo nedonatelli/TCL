@@ -333,7 +333,7 @@ Use RBPF in multi-target tracking:
 
 .. code-block:: python
 
-   from pytcl.tracking import TrackContainer
+   from pytcl.trackers import MultiTargetTracker
 
    # Each track runs independent RBPF
    for track in tracks:

@@ -53,7 +53,7 @@ where $\mathbf{y}_k$ is the innovation and $\mathbf{S}_k$ is the innovation cova
 
     import numpy as np
     from scipy.stats import chi2
-    from pytcl.dynamic_estimation.kalman import ExtendedKalmanFilter
+    from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
     
     class DivergenceDetector:
         """Detects filter divergence using statistical tests."""
@@ -341,25 +341,37 @@ where $\beta_k$ controls filter responsiveness based on residual statistics.
         3. Divergence indicators
         """
         
-        def __init__(self, kf, initial_beta: float = 1.0):
+        def __init__(self, x, P, H, Q, R, initial_beta: float = 1.0):
             """
             Parameters
             ----------
-            kf : KalmanFilter or ExtendedKalmanFilter
-                Base filter (we'll wrap it)
+            x, P : ndarray
+                Initial state and covariance. The library exposes predict and
+                update as functions rather than a filter object, so the
+                wrapper owns this state itself.
+            H : ndarray
+                Measurement matrix.
+            Q, R : ndarray
+                Process and measurement noise covariances.
             initial_beta : float
                 Initial gain scaling factor (typically 1.0)
             """
-            self.kf = kf
+            self.x = np.asarray(x, dtype=float)
+            self.P = np.asarray(P, dtype=float)
+            self.H = np.asarray(H, dtype=float)
+            self.Q = np.asarray(Q, dtype=float)
+            self.R = np.asarray(R, dtype=float)
             self.beta = initial_beta
-            self.R_est = kf.R.copy()
+            self.R_est = self.R.copy()
             self.innovation_history = []
             self.beta_history = [initial_beta]
             self.divergence_state = 'normal'
         
-        def predict(self, dt: float) -> np.ndarray:
+        def predict(self, F) -> np.ndarray:
             """Prediction step (standard KF)."""
-            return self.kf.predict(dt)
+            pred = kf_predict(self.x, self.P, F, self.Q)
+            self.x, self.P = pred.x, pred.P
+            return self.x
         
         def update(self, z: np.ndarray, dt: float) -> tuple:
             """
@@ -370,12 +382,12 @@ where $\beta_k$ controls filter responsiveness based on residual statistics.
             (state, covariance, diagnostics)
             """
             # Compute innovation with predicted state
-            H = self.kf.H
-            x_pred = self.kf.x
+            H = self.H
+            x_pred = self.x
             y = z - H @ x_pred  # Innovation
             
             # Innovation covariance
-            S = H @ self.kf.P @ H.T + self.kf.R
+            S = H @ self.P @ H.T + self.R
             
             # Normalize innovation
             try:
@@ -390,16 +402,16 @@ where $\beta_k$ controls filter responsiveness based on residual statistics.
             beta = self._compute_adaptive_gain(gamma, expected_gamma)
             
             # Scale Kalman gain
-            K = self.kf.P @ H.T @ np.linalg.inv(S)
+            K = self.P @ H.T @ np.linalg.inv(S)
             K_adapted = beta * K
             
             # Update with adapted gain
             x_new = x_pred + K_adapted @ y
-            P_new = (np.eye(len(x_pred)) - K_adapted @ H) @ self.kf.P
+            P_new = (np.eye(len(x_pred)) - K_adapted @ H) @ self.P
             
             # Update filter state
-            self.kf.x = x_new
-            self.kf.P = P_new
+            self.x = x_new
+            self.P = P_new
             
             # Record history
             self.innovation_history.append(gamma)
@@ -447,18 +459,20 @@ where $\beta_k$ controls filter responsiveness based on residual statistics.
 .. code-block:: python
 
     # Simulate adaptive filtering for GPS/INS fusion
-    from pytcl.dynamic_estimation.kalman import ExtendedKalmanFilter
-    
-    # Create base EKF
-    ekf = ExtendedKalmanFilter(
-        x=np.array([0, 0, 0]),  # pos_x, pos_y, vel_x
-        P=np.eye(3),
-        Q=np.diag([0.01, 0.01, 0.001]),
-        R=np.diag([1.0, 1.0])  # GPS measurement noise
-    )
-    
+    from pytcl.dynamic_estimation.kalman import kf_predict
+
+    # The library exposes predict/update functions rather than a filter class,
+    # so the state the wrapper adapts is just these arrays.
+    x = np.array([0.0, 0.0, 0.0])          # pos_x, pos_y, vel_x
+    P = np.eye(3)
+    Q = np.diag([0.01, 0.01, 0.001])
+    R = np.diag([1.0, 1.0])                # GPS measurement noise
+
+    H = np.array([[1.0, 0.0, 0.0],
+                  [0.0, 1.0, 0.0]])   # GPS observes position only
+
     # Wrap with adaptive filtering
-    adaptive_ekf = AdaptiveKalmanFilter(ekf, initial_beta=1.0)
+    adaptive_ekf = AdaptiveKalmanFilter(x, P, H, Q, R, initial_beta=1.0)
     
     # Simulate GPS signal degradation
     for k in range(100):
