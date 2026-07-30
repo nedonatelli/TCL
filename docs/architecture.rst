@@ -100,6 +100,30 @@ be replaced without touching the others.
        DM["dynamic_models<br/>F and Q"] -.-> F
        E -.->|tune| DM
 
+Per-detection Measurement Covariance
+------------------------------------
+
+``SingleTargetTracker.update`` and ``MultiTargetTracker.process`` accept a
+covariance per detection, not just the fixed ``R`` given to the constructor:
+
+.. code-block:: python
+
+   # each detection carries the covariance that actually applies to it
+   tracks = tracker.process(detections, dt, measurement_covariances=covariances)
+
+This matters whenever the measurement error is not the same for every
+detection, and a converted polar detection is the common case. Its Cartesian
+covariance is ``J R_polar J.T``, which is anisotropic and grows with range:
+down-range spread stays at ``sigma_range`` while cross-range spread is
+``r * sigma_bearing``.
+
+No single ``R`` describes that. Size it to the down-range term and the gate is
+too tight at long range -- true detections fall outside it and the tracker
+starts duplicate tracks. Size it to the cross-range term and cardinality is
+right, but the covariance is inflated and the filter under-reports its own
+accuracy. Supplying each detection's covariance avoids the choice; both the
+gate and the Kalman gain then use the covariance that applies.
+
 Estimator Families
 ------------------
 
