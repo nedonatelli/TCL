@@ -6,7 +6,7 @@ and Kalman filtering with track management (initiation, maintenance, deletion).
 """
 
 from enum import Enum
-from typing import Callable, List, NamedTuple, Optional
+from typing import Callable, List, NamedTuple, Optional, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -158,6 +158,7 @@ class MultiTargetTracker:
         self,
         measurements: List[ArrayLike],
         dt: float,
+        measurement_covariances: Optional[Sequence[ArrayLike]] = None,
     ) -> List[Track]:
         """
         Process measurements at new time step.
@@ -168,11 +169,29 @@ class MultiTargetTracker:
             List of measurement vectors.
         dt : float
             Time step since last update.
+        measurement_covariances : sequence of array_like, optional
+            Per-detection measurement covariance, one ``(meas_dim, meas_dim)``
+            matrix per entry in ``measurements``. When omitted the tracker's
+            fixed ``R`` is used for every detection.
+
+            Supply this when the measurement error is not the same for every
+            detection. The usual case is a converted polar detection: its
+            Cartesian covariance is ``J R_polar J^T``, which is anisotropic and
+            grows with range, so no single ``R`` describes it. Forcing one makes
+            the gate either too tight at long range -- true detections fall
+            outside it and the tracker spawns duplicate tracks -- or too loose
+            at short range, which admits clutter and inflates the covariance.
 
         Returns
         -------
         list of Track
             Active tracks after update.
+
+        Raises
+        ------
+        ValueError
+            If ``measurement_covariances`` is given and its length does not
+            match ``measurements``, or a matrix is not ``(meas_dim, meas_dim)``.
         """
         self._time += dt
 
@@ -185,16 +204,20 @@ class MultiTargetTracker:
         else:
             Z = np.array([np.asarray(m) for m in measurements])
 
+        R_list = self._validate_covariances(measurement_covariances, len(measurements))
+
         # Data association
         if len(self._tracks) > 0 and len(measurements) > 0:
-            associations = self._associate(Z)
+            associations = self._associate(Z, R_list)
         else:
             associations = {}
 
         # Update associated tracks
         associated_meas = set()
         for track_idx, meas_idx in associations.items():
-            self._update_track(track_idx, Z[meas_idx])
+            self._update_track(
+                track_idx, Z[meas_idx], None if R_list is None else R_list[meas_idx]
+            )
             associated_meas.add(meas_idx)
 
         # Handle missed tracks
@@ -214,6 +237,30 @@ class MultiTargetTracker:
 
         return self.tracks
 
+    def _validate_covariances(
+        self,
+        measurement_covariances: Optional[Sequence[ArrayLike]],
+        n_measurements: int,
+    ) -> Optional[List[NDArray[np.float64]]]:
+        """Check and normalise per-detection covariances, or return None."""
+        if measurement_covariances is None:
+            return None
+
+        covariances = [np.asarray(R, dtype=np.float64) for R in measurement_covariances]
+        if len(covariances) != n_measurements:
+            raise ValueError(
+                f"measurement_covariances has {len(covariances)} entries for "
+                f"{n_measurements} measurements"
+            )
+        expected = (self.meas_dim, self.meas_dim)
+        for i, R in enumerate(covariances):
+            if R.shape != expected:
+                raise ValueError(
+                    f"measurement_covariances[{i}] has shape {R.shape}, "
+                    f"expected {expected}"
+                )
+        return covariances
+
     def _predict_all(self, dt: float) -> None:
         """Predict all tracks."""
         F = self._F(dt)
@@ -225,7 +272,11 @@ class MultiTargetTracker:
                 track.covariance = F @ track.covariance @ F.T + Q
                 track.time = self._time
 
-    def _associate(self, Z: NDArray[np.float64]) -> dict[int, int]:
+    def _associate(
+        self,
+        Z: NDArray[np.float64],
+        R_list: Optional[List[NDArray[np.float64]]] = None,
+    ) -> dict[int, int]:
         """
         Associate measurements to tracks using GNN.
 
@@ -242,13 +293,22 @@ class MultiTargetTracker:
                 continue
 
             z_pred = self.H @ track.state
-            S = self.H @ track.covariance @ self.H.T + self.R
-            S_inv = np.linalg.inv(S)
+            HPHt = self.H @ track.covariance @ self.H.T
 
-            for j in range(n_meas):
-                innovation = Z[j] - z_pred
-                d2 = float(innovation @ S_inv @ innovation)
-                cost_matrix[i, j] = d2
+            if R_list is None:
+                # One innovation covariance for the whole row.
+                S_inv = np.linalg.inv(HPHt + self.R)
+                for j in range(n_meas):
+                    innovation = Z[j] - z_pred
+                    cost_matrix[i, j] = float(innovation @ S_inv @ innovation)
+            else:
+                # The gate has to be evaluated in each detection's own metric.
+                for j in range(n_meas):
+                    innovation = Z[j] - z_pred
+                    S = HPHt + R_list[j]
+                    cost_matrix[i, j] = float(
+                        innovation @ np.linalg.solve(S, innovation)
+                    )
 
         # Run GNN
         result = gnn_association(
@@ -266,14 +326,19 @@ class MultiTargetTracker:
 
         return associations
 
-    def _update_track(self, track_idx: int, measurement: NDArray[np.float64]) -> None:
+    def _update_track(
+        self,
+        track_idx: int,
+        measurement: NDArray[np.float64],
+        R: Optional[NDArray[np.float64]] = None,
+    ) -> None:
         """Update a single track with measurement."""
         track = self._tracks[track_idx]
 
         # Innovation
         z_pred = self.H @ track.state
         innovation = measurement - z_pred
-        S = self.H @ track.covariance @ self.H.T + self.R
+        S = self.H @ track.covariance @ self.H.T + (self.R if R is None else R)
 
         # Kalman gain
         K = track.covariance @ self.H.T @ np.linalg.inv(S)

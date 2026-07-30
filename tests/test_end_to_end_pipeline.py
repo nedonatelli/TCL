@@ -99,15 +99,11 @@ def _run_pipeline(seed, p_detect=P_DETECT, clutter_rate=CLUTTER_RATE):
     F, truth = _truth_track()
     H = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]])
     Q = q_constant_velocity(DT, sigma_a=0.5, num_dims=2)
-    # MultiTargetTracker takes one R, but the converted covariance is
-    # anisotropic and range dependent: down-range spread is sigma_range (5 m)
-    # while cross-range is r * sigma_bearing (14-19 m over this scenario). R is
-    # therefore sized to the cross-range term, which dominates. Sizing it to
-    # the down-range term instead makes the 99% gate too tight, true detections
-    # fall outside it, and the tracker spawns duplicate tracks -- verified at
-    # sigma=10, which produces 4-5 confirmed tracks from 3 targets even with no
-    # clutter. The cost is a conservative covariance; see
-    # test_covariance_is_not_overconfident.
+    # A converted polar detection has an anisotropic, range-dependent
+    # covariance: sigma_range (5 m) down-range against r * sigma_bearing
+    # (14-19 m here) cross-range. The tracker is given each detection's own
+    # covariance, so this fixed R is only the fallback used for clutter, whose
+    # true covariance is unknown by definition.
     R = np.diag([16.0**2, 16.0**2])
 
     tracker = MultiTargetTracker(
@@ -125,18 +121,21 @@ def _run_pipeline(seed, p_detect=P_DETECT, clutter_rate=CLUTTER_RATE):
 
     out = PipelineResult()
     for k in range(N_SCANS):
-        detections = []
+        detections, covariances = [], []
         for t in range(len(TARGETS)):
             if rng.random() >= p_detect:
                 continue
             r, theta = cart2pol(np.array([truth[k, t, IX], truth[k, t, IY]]))
             r_n = float(r) + rng.normal(0.0, SIGMA_RANGE)
             th_n = float(theta) + rng.normal(0.0, SIGMA_BEARING)
-            detections.append(_convert(r_n, th_n)[0])
+            xy, R_converted = _convert(r_n, th_n)
+            detections.append(xy)
+            covariances.append(R_converted)
         for _ in range(rng.poisson(clutter_rate)):
             detections.append(rng.uniform(-3000.0, 3000.0, size=2))
+            covariances.append(R)  # clutter has no meaningful covariance
 
-        tracks = tracker.process(detections, DT)
+        tracks = tracker.process(detections, DT, measurement_covariances=covariances)
         confirmed = [t for t in tracks if t.status is TrackStatus.CONFIRMED]
         out.confirmed_per_scan.append(len(confirmed))
         if confirmed and out.first_confirmed_scan is None:
@@ -268,19 +267,37 @@ def test_filter_beats_the_raw_measurements(pipeline):
 def test_covariance_is_not_overconfident(pipeline):
     """The pipeline must not claim more accuracy than it has.
 
-    The band is deliberately asymmetric. A single isotropic R cannot represent
-    a converted covariance whose cross-range spread is three times its
-    down-range spread, so the filter here is conservative by construction and
-    NEES sits below 2. That is safe. NEES far *above* 2 is the dangerous
-    failure -- a filter reporting tight covariance around a wrong state -- and
-    that is what this catches. The sharp calibration check is
-    test_wellspecified_filter_is_statistically_consistent, where the filter is
-    given exactly the model that generated the data.
+    Clutter and missed detections keep this from being a clean chi-square
+    sample, so the band is wide. What it rules out is the dangerous direction:
+    NEES well above 2 means the filter reports a tight covariance around a
+    wrong state. The sharp calibration checks are
+    test_clean_pipeline_covariance_is_calibrated and
+    test_wellspecified_filter_is_statistically_consistent.
     """
     mean_nees = float(np.mean(pipeline.position_nees))
     assert 0.2 <= mean_nees <= 4.0, (
         f"position NEES {mean_nees:.2f} outside the plausible band for df=2; "
         f"above 4 means the covariance is too small for the actual error"
+    )
+
+
+def test_clean_pipeline_covariance_is_calibrated(clean_pipeline):
+    """With per-detection covariances the pipeline itself is consistent.
+
+    This is what passing each detection's own covariance buys. Handing the
+    tracker a single fixed R forces a choice: size it to the down-range term
+    and the 99% gate is too tight -- true detections fall outside it and 3
+    targets produce 4-5 confirmed tracks even with no clutter -- or size it to
+    the cross-range term and cardinality is right but the covariance is
+    inflated, NEES falling to about 1.0 and failing this test. Measured across
+    sigma in {10, 15, 20, 25, 30, 40}, no fixed value satisfies both. With the
+    converted covariance supplied per detection, both hold at once.
+    """
+    values = np.asarray(clean_pipeline.position_nees)
+    result = consistency_test(values, df=2, confidence=0.95)
+    assert result.is_consistent, (
+        f"position NEES {result.statistic:.2f} outside "
+        f"[{result.lower_bound:.2f}, {result.upper_bound:.2f}] for df=2"
     )
 
 

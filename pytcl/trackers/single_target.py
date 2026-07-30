@@ -173,6 +173,7 @@ class SingleTargetTracker:
     def update(
         self,
         measurement: ArrayLike,
+        measurement_covariance: Optional[ArrayLike] = None,
     ) -> tuple[TrackState, float]:
         """
         Update state with measurement.
@@ -181,6 +182,15 @@ class SingleTargetTracker:
         ----------
         measurement : array_like
             Measurement vector.
+        measurement_covariance : array_like, optional
+            Covariance for this detection, shape ``(meas_dim, meas_dim)``. When
+            omitted the tracker's fixed ``R`` is used.
+
+            Supply this when the measurement error varies between detections --
+            a converted polar detection, for instance, has a Cartesian
+            covariance that is anisotropic and grows with range, so no single
+            ``R`` describes it. Both the gate and the Kalman gain then use the
+            covariance that actually applies.
 
         Returns
         -------
@@ -193,16 +203,28 @@ class SingleTargetTracker:
         ------
         RuntimeError
             If tracker is not initialized.
+        ValueError
+            If ``measurement_covariance`` is not ``(meas_dim, meas_dim)``.
         """
         if not self._initialized:
             raise RuntimeError("Tracker not initialized")
 
         z = np.asarray(measurement, dtype=np.float64)
 
+        if measurement_covariance is None:
+            R = self.R
+        else:
+            R = np.asarray(measurement_covariance, dtype=np.float64)
+            expected = (self.meas_dim, self.meas_dim)
+            if R.shape != expected:
+                raise ValueError(
+                    f"measurement_covariance has shape {R.shape}, expected {expected}"
+                )
+
         # Innovation
         z_pred = self.H @ self._state
         innovation = z - z_pred
-        S = self.H @ self._covariance @ self.H.T + self.R
+        S = self.H @ self._covariance @ self.H.T + R
 
         # Mahalanobis distance
         S_inv = np.linalg.inv(S)
@@ -222,9 +244,18 @@ class SingleTargetTracker:
 
         return self.state, d2
 
-    def predict_measurement(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    def predict_measurement(
+        self,
+        measurement_covariance: Optional[ArrayLike] = None,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """
         Predict measurement and innovation covariance.
+
+        Parameters
+        ----------
+        measurement_covariance : array_like, optional
+            Covariance of the detection being considered. Omit to use the
+            tracker's fixed ``R``.
 
         Returns
         -------
@@ -236,8 +267,13 @@ class SingleTargetTracker:
         if not self._initialized:
             raise RuntimeError("Tracker not initialized")
 
+        R = (
+            self.R
+            if measurement_covariance is None
+            else np.asarray(measurement_covariance, dtype=np.float64)
+        )
         z_pred = self.H @ self._state
-        S = self.H @ self._covariance @ self.H.T + self.R
+        S = self.H @ self._covariance @ self.H.T + R
         return z_pred, S
 
 

@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Per-detection measurement covariance in both trackers.**
+  `MultiTargetTracker.process` takes `measurement_covariances=` (one matrix per
+  detection) and `SingleTargetTracker.update` /`predict_measurement` take
+  `measurement_covariance=`. Both the gate and the Kalman gain then use the
+  covariance that actually applies to each detection. Omitting the argument
+  keeps the previous behaviour exactly, and the uniform case is verified to
+  match the fixed-`R` path bit-for-bit.
+
+  This was forced by the end-to-end pipeline test. A converted polar detection
+  has a Cartesian covariance `J R_polar Jᵀ` that is anisotropic and grows with
+  range — `sigma_range` down-range against `r * sigma_bearing` cross-range —
+  and a single `R` cannot describe it. Measured across
+  `sigma in {10, 15, 20, 25, 30, 40}`, no fixed value satisfied both
+  requirements at once: sizing `R` to the down-range term made the 99% gate too
+  tight, so true detections fell outside it and 3 targets produced **4–5
+  confirmed tracks with no clutter at all**; sizing it to the cross-range term
+  fixed cardinality but inflated the covariance, dropping NEES to ~1.0 against
+  an ideal 2.0. With per-detection covariances the clean scenario now holds
+  exact cardinality *and* passes a chi-square consistency test at NEES 1.95.
+
+### Added
+
 - **End-to-end pipeline tests** (`tests/test_end_to_end_pipeline.py`). Every
   other test checks one function against a reference; nothing checked that the
   subsystems *compose*. This runs the whole chain — truth → polar measurement →

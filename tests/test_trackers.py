@@ -1,6 +1,7 @@
 """Tests for tracker implementations."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.trackers import (
@@ -356,3 +357,144 @@ class TestIntegration:
         assert len(tracker.confirmed_tracks) == 0, (
             "Target should be deleted after misses"
         )
+
+
+class TestPerDetectionMeasurementCovariance:
+    """Per-detection measurement covariance in gating and update.
+
+    Both trackers took a single fixed R. That is wrong for any sensor whose
+    error varies between detections, and converted polar measurements are the
+    common case: the Cartesian covariance is ``J R_polar J^T``, anisotropic and
+    growing with range, so no scalar R describes it. Forcing one makes the gate
+    too tight at long range -- true detections fall outside it and the tracker
+    starts duplicate tracks -- or too loose at short range.
+    """
+
+    @staticmethod
+    def _model():
+        F = np.array(
+            [
+                [1.0, 1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 1.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ]
+        )
+        H = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0]])
+        Q = np.eye(4) * 0.01
+        R = np.eye(2) * 4.0
+        return F, H, Q, R
+
+    def test_uniform_per_detection_matches_the_fixed_path(self):
+        """Passing the tracker's own R for every detection changes nothing.
+
+        The two code paths must agree exactly, or the fast path and the
+        per-detection path have diverged.
+        """
+        F, H, Q, R = self._model()
+        detections = [
+            [np.array([1.0, 2.0]), np.array([40.0, 41.0])],
+            [np.array([2.0, 3.0]), np.array([41.0, 42.0])],
+            [np.array([3.0, 4.0]), np.array([42.0, 43.0])],
+            [np.array([4.0, 5.0]), np.array([43.0, 44.0])],
+        ]
+
+        fixed = MultiTargetTracker(4, 2, F, H, Q, R)
+        supplied = MultiTargetTracker(4, 2, F, H, Q, R)
+        for scan in detections:
+            fixed.process(scan, dt=1.0)
+            supplied.process(scan, dt=1.0, measurement_covariances=[R] * len(scan))
+
+        assert len(fixed.tracks) == len(supplied.tracks)
+        for a, b in zip(fixed.tracks, supplied.tracks):
+            assert a.id == b.id
+            assert a.status is b.status
+            assert_allclose(a.state, b.state, rtol=1e-12, atol=1e-12)
+            assert_allclose(a.covariance, b.covariance, rtol=1e-12, atol=1e-12)
+
+    def test_a_wide_covariance_widens_the_gate(self):
+        """A detection declared uncertain must be reachable when a tight one is not.
+
+        Same geometry, same track, same offset -- only the declared covariance
+        differs. With a tight covariance the detection is outside the 99% gate
+        and starts its own track; with a wide one it is associated instead.
+        """
+        F, H, Q, R = self._model()
+        # Taken from the measured gate boundary rather than guessed: with the
+        # track covariance settled at P_xx ~ 3.7, a 30-unit offset lies outside
+        # the 99% gate for R = 4 and inside it for R = 400.
+        offset = np.array([30.0, 0.0])
+
+        def run(covariance):
+            tracker = MultiTargetTracker(4, 2, F, H, Q, R, confirm_hits=2, max_misses=5)
+            for _ in range(3):
+                tracker.process([np.array([0.0, 0.0])], dt=1.0)
+            n_before = len(tracker.tracks)
+            tracker.process(
+                [offset],
+                dt=1.0,
+                measurement_covariances=None if covariance is None else [covariance],
+            )
+            return n_before, len(tracker.tracks)
+
+        before_tight, after_tight = run(None)
+        before_wide, after_wide = run(np.eye(2) * 400.0)
+
+        assert before_tight == before_wide == 1
+        assert after_tight == 2, "a tight covariance should reject the offset detection"
+        assert after_wide == 1, "a wide covariance should admit it into the track"
+
+    def test_length_mismatch_is_rejected(self):
+        F, H, Q, R = self._model()
+        tracker = MultiTargetTracker(4, 2, F, H, Q, R)
+        with pytest.raises(ValueError, match="2 entries for 1 measurements"):
+            tracker.process(
+                [np.array([0.0, 0.0])], dt=1.0, measurement_covariances=[R, R]
+            )
+
+    def test_wrong_shape_is_rejected(self):
+        F, H, Q, R = self._model()
+        tracker = MultiTargetTracker(4, 2, F, H, Q, R)
+        with pytest.raises(ValueError, match=r"shape \(3, 3\), expected \(2, 2\)"):
+            tracker.process(
+                [np.array([0.0, 0.0])], dt=1.0, measurement_covariances=[np.eye(3)]
+            )
+
+    def test_single_target_update_uses_the_supplied_covariance(self):
+        """A wider declared covariance must move the state less."""
+        F, H, Q, R = self._model()
+        z = np.array([10.0, 0.0])
+
+        def run(covariance):
+            tracker = SingleTargetTracker(4, 2, F, H, Q, R)
+            tracker.initialize(np.zeros(4), np.eye(4) * 10.0)
+            tracker.predict(dt=1.0)
+            state, _ = tracker.update(z, measurement_covariance=covariance)
+            return state.state[0]
+
+        tight = run(np.eye(2) * 1.0)
+        default = run(None)
+        wide = run(np.eye(2) * 1000.0)
+
+        assert tight > default > wide, (
+            f"gain should shrink as the declared covariance grows: "
+            f"{tight:.3f}, {default:.3f}, {wide:.3f}"
+        )
+
+    def test_single_target_rejects_a_wrong_shape(self):
+        F, H, Q, R = self._model()
+        tracker = SingleTargetTracker(4, 2, F, H, Q, R)
+        tracker.initialize(np.zeros(4), np.eye(4))
+        with pytest.raises(ValueError, match=r"shape \(3, 3\), expected \(2, 2\)"):
+            tracker.update(np.array([1.0, 1.0]), measurement_covariance=np.eye(3))
+
+    def test_predict_measurement_accounts_for_the_covariance(self):
+        F, H, Q, R = self._model()
+        tracker = SingleTargetTracker(4, 2, F, H, Q, R)
+        tracker.initialize(np.zeros(4), np.eye(4) * 5.0)
+
+        _, S_default = tracker.predict_measurement()
+        _, S_wide = tracker.predict_measurement(np.eye(2) * 100.0)
+
+        assert np.trace(S_wide) > np.trace(S_default)
+        assert_allclose(S_wide - S_default, np.eye(2) * 96.0, rtol=1e-12)
