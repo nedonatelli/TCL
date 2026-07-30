@@ -6,7 +6,7 @@ systems, dynamic models, estimation algorithms, and mathematical functions.
 
 This is a Python port of the U.S. Naval Research Laboratory's Tracker Component
 Library originally written in MATLAB.
-**Current Version:** 1.18.0 (July 28, 2026)
+**Current Version:** 1.19.0 (July 30, 2026)
 **Status:** Production-ready, 4,973 tests passing, 80% line coverage
 Examples
 --------
@@ -21,7 +21,7 @@ References
   no. 5, pp. 18-27, May 2017.
 """
 
-__version__ = "1.18.0"
+__version__ = "1.19.0"
 __author__ = "Python Port Contributors"
 __original_author__ = "David F. Crouse, Naval Research Laboratory"
 

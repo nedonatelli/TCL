@@ -7,36 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+## [1.19.0] - 2026-07-30
 
-- **`docs/data_structures.rst` documented a class that does not exist.** The
-  page was built around a `TrackSet` imported from `tcl.tracking_containers`,
-  with attributes `track.uid`, `track.position`, `track.velocity`, `track.age`,
-  `track.gate_size` and `track.track_type`. None of it existed — not the
-  package name (`tcl` rather than `pytcl`), not the module, not the class, not
-  one attribute. Rewritten around the real containers: `Track`, `TrackList`
-  (which is what fills the `TrackSet` role, including `TrackList.from_tracker`),
-  `MeasurementSet`, `ClusterSet`, the four spatial indices and HDF5
-  persistence. `tests/test_docs_data_structures.py` executes every example.
-
-- The docs import guard **only inspected imports beginning with `pytcl`**, so a
-  page importing from `tcl.` was skipped entirely — which is how the above
-  survived #41's sweep. It now rejects any import rooted at a package this
-  project does not publish, and two further `tcl.` imports in
-  `docs/navigation_ins.rst` (`dcm_from_euler`/`euler_from_dcm`, which are
-  `euler2rotmat`/`rotmat2euler`) are corrected.
-
-- **12 `mypy --strict` errors in `pytcl/io/`**: unannotated `__enter__` /
-  `__exit__` / `__init__`, bare `NDArray`, and bare `tuple`. One was a genuine
-  nullability finding — `_ensure_groups` called `create_group` on an
-  `Optional` file handle; both callers already reject a closed file, so the
-  precondition is now stated for the type checker rather than re-validated.
-
-### Changed
-
-- **CI type checks with `mypy --strict`.** The looser
-  `--ignore-missing-imports` command had been passing while those 12 errors
-  accumulated.
+This release is about **verification rather than features**: the library gained a way to express per-detection measurement uncertainty, and everything else exists to make the package prove its own claims. Examples, notebooks, documentation imports and the tracking pipeline are all now executed in CI, and each gate that was added found defects the previous layer could not see.
 
 ### Added
 
@@ -59,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixed cardinality but inflated the covariance, dropping NEES to ~1.0 against
   an ideal 2.0. With per-detection covariances the clean scenario now holds
   exact cardinality *and* passes a chi-square consistency test at NEES 1.95.
-
-### Added
 
 - **End-to-end pipeline tests** (`tests/test_end_to_end_pipeline.py`). Every
   other test checks one function against a reference; nothing checked that the
@@ -87,20 +58,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assertions, halving the covariance or skipping the update step both fail the
   consistency check.
 
-### Fixed
+- `sphinxcontrib-mermaid` (in the `dev` extra) so diagrams live in version
+  control as text rather than as a binary nobody can edit. All four diagrams
+  were validated against mermaid 11's own parser.
 
-- **`docs/architecture.rst` had the state layout backwards.**
-  `f_constant_velocity` builds a block-diagonal F — one (position, velocity)
-  pair per spatial dimension — so the state is `[x, vx, y, vy]`, not
-  `[x, y, vx, vy]`. The example's `H` therefore measured `(x, vx)` instead of
-  position. It imported and ran cleanly, so the import guard added in the
-  previous release could not see it; only executing the pipeline exposed it.
+- `tests/test_docs_architecture.py`, which fails if the architecture page
+  drifts from reality again: every module and public-name count is measured
+  from the package, every implemented package must appear in the table, every
+  empty package must be named, and every `pytcl` import on the page must
+  resolve. The import check runs across the whole of `docs/`.
 
-- `ospa.distance` in the multi-target tracking tutorial (2 occurrences).
-  `OSPAResult`'s field is `ospa`. Attribute access on a result object is
-  invisible to an import check.
+- `tests/test_docs_references.py` guards both halves of this: no second copy
+  of an example script under `docs/`, and every file the docs include or offer
+  for download actually exists — Sphinx only warns for a dead `literalinclude`,
+  and the docs gate fails on errors alone.
+
+- **The 30 example scripts now run in CI** (`examples` job) via
+  `tests/test_examples.py`. Nothing had ever executed them, which is how the
+  defects above survived. Each script runs in a subprocess and must exit 0
+  without printing a traceback; `tests/example_guard/sitecustomize.py` turns
+  any `fig.show()` into a hard failure, because plotly's fallback in a
+  headless container returns quietly and would otherwise let an unguarded call
+  pass. Plot display is now controlled by `PYTCL_SHOW_PLOTS` (default on, so
+  interactive use is unchanged; CI sets it to 0 and writes HTML instead).
+  All six `except Exception` blocks in `examples/` are gone.
+
+- `tests/test_notebook_hygiene.py` — structural notebook checks that run in
+  the ordinary (fast) suite rather than only in the minute-long nbval job:
+  no stale outputs on unrun cells, every unguarded import is a dependency
+  declared in `pyproject.toml` (imports inside `try`/`except` are treated as
+  deliberate optional dependencies), and every code cell parses as Python.
 
 ### Changed
+
+- **CI type checks with `mypy --strict`.** The looser
+  `--ignore-missing-imports` command had been passing while those 12 errors
+  accumulated.
 
 - **`docs/architecture.rst` rewritten from the library that exists, with
   Mermaid diagrams.** The page had claimed **153 modules** in 8 subsystems
@@ -119,19 +112,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This also supplies the figure the page had been missing: it embedded
   `_static/architecture.png`, which was never added to the repository.
 
-### Added
+- **The documentation build is now warning-free: 1225 Sphinx warnings to 0**,
+  and CI fails on any warning rather than only on docutils errors. The bulk of
+  them shared two root causes.
 
-- `sphinxcontrib-mermaid` (in the `dev` extra) so diagrams live in version
-  control as text rather than as a binary nobody can edit. All four diagrams
-  were validated against mermaid 11's own parser.
+  Every API page documented a package *and* its submodules. Because
+  `pytcl.<pkg>.__init__` re-exports its submodules' symbols and `conf.py`
+  enables `members` globally, each symbol was rendered twice — 962 duplicate
+  object descriptions and 63 ambiguous cross-references. Package-level
+  directives are now `:no-members:`, so each object is documented once at the
+  submodule that defines it. Completing that required adding sections for 21
+  submodules that no page had ever documented, which is why the documented
+  object count *rose* even as duplicates disappeared.
 
-- `tests/test_docs_architecture.py`, which fails if the architecture page
-  drifts from reality again: every module and public-name count is measured
-  from the package, every implemented package must appear in the table, every
-  empty package must be named, and every `pytcl` import on the page must
-  resolve. The import check runs across the whole of `docs/`.
+  Separately, 164 NumPy-style `.. [1]` entries in `References` sections were
+  citation directives that **nothing cited** — zero `[N]_` references exist in
+  the package. As citations they collided across every module rendered onto a
+  shared page; they are now plain list items.
+
+- `napoleon_use_ivar = True`, so a NumPy `Attributes` section renders as
+  `:ivar:` fields instead of separate `py:attribute` directives that collided
+  with the attributes autodoc already documented (448 warnings).
+
+- **Example figures load plotly from a CDN instead of embedding it**
+  (`include_plotlyjs="cdn"` on all 126 `write_html` calls). Every figure
+  written by an example script carried its own ~4.8 MB copy of plotly.js, so
+  `docs/_static/images/examples/` had grown to **163 MB** for 59 plots. It is
+  now **3.4 MB**. `scripts/generate_example_html.py` had been passing `cdn`
+  all along; the example scripts had not, which is where the bloat came from.
+  Note this makes the figures require network access to render — they are
+  embedded in the published docs as iframes, so this only affects viewing a
+  local docs build offline.
 
 ### Fixed
+
+- **`docs/data_structures.rst` documented a class that does not exist.** The
+  page was built around a `TrackSet` imported from `tcl.tracking_containers`,
+  with attributes `track.uid`, `track.position`, `track.velocity`, `track.age`,
+  `track.gate_size` and `track.track_type`. None of it existed — not the
+  package name (`tcl` rather than `pytcl`), not the module, not the class, not
+  one attribute. Rewritten around the real containers: `Track`, `TrackList`
+  (which is what fills the `TrackSet` role, including `TrackList.from_tracker`),
+  `MeasurementSet`, `ClusterSet`, the four spatial indices and HDF5
+  persistence. `tests/test_docs_data_structures.py` executes every example.
+
+- The docs import guard **only inspected imports beginning with `pytcl`**, so a
+  page importing from `tcl.` was skipped entirely — which is how the above
+  survived #41's sweep. It now rejects any import rooted at a package this
+  project does not publish, and two further `tcl.` imports in
+  `docs/navigation_ins.rst` (`dcm_from_euler`/`euler_from_dcm`, which are
+  `euler2rotmat`/`rotmat2euler`) are corrected.
+
+- **12 `mypy --strict` errors in `pytcl/io/`**: unannotated `__enter__` /
+  `__exit__` / `__init__`, bare `NDArray`, and bare `tuple`. One was a genuine
+  nullability finding — `_ensure_groups` called `create_group` on an
+  `Optional` file handle; both callers already reject a closed file, so the
+  precondition is now stated for the type checker rather than re-validated.
+
+- **`docs/architecture.rst` had the state layout backwards.**
+  `f_constant_velocity` builds a block-diagonal F — one (position, velocity)
+  pair per spatial dimension — so the state is `[x, vx, y, vy]`, not
+  `[x, y, vx, vy]`. The example's `H` therefore measured `(x, vx)` instead of
+  position. It imported and ran cleanly, so the import guard added in the
+  previous release could not see it; only executing the pipeline exposed it.
+
+- `ospa.distance` in the multi-target tracking tutorial (2 occurrences).
+  `OSPAResult`'s field is `ospa`. Attribute access on a result object is
+  invisible to an import check.
 
 - **All 92 broken `pytcl` imports in the documentation, across 16 pages.**
   Every one of the 244 imports in `docs/` now resolves. The causes were:
@@ -170,32 +217,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differing between Linux and macOS. It is now keyed by path relative to
   `docs/`.
 
-### Changed
-
-- **The documentation build is now warning-free: 1225 Sphinx warnings to 0**,
-  and CI fails on any warning rather than only on docutils errors. The bulk of
-  them shared two root causes.
-
-  Every API page documented a package *and* its submodules. Because
-  `pytcl.<pkg>.__init__` re-exports its submodules' symbols and `conf.py`
-  enables `members` globally, each symbol was rendered twice — 962 duplicate
-  object descriptions and 63 ambiguous cross-references. Package-level
-  directives are now `:no-members:`, so each object is documented once at the
-  submodule that defines it. Completing that required adding sections for 21
-  submodules that no page had ever documented, which is why the documented
-  object count *rose* even as duplicates disappeared.
-
-  Separately, 164 NumPy-style `.. [1]` entries in `References` sections were
-  citation directives that **nothing cited** — zero `[N]_` references exist in
-  the package. As citations they collided across every module rendered onto a
-  shared page; they are now plain list items.
-
-- `napoleon_use_ivar = True`, so a NumPy `Attributes` section renders as
-  `:ivar:` fields instead of separate `py:attribute` directives that collided
-  with the attributes autodoc already documented (448 warnings).
-
-### Fixed
-
 - Repaired **30 broken `:doc:` cross-references**. They were written as bare
   document names while the target lived in a sibling directory, so links such
   as "See Also: advanced_filters_comparison" from a clustering page silently
@@ -222,38 +243,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   job commits benchmark history back to `main`, so two runs started seconds
   apart raced and the loser was rejected non-fast-forward. It now rebases and
   retries, and a concurrency group serialises runs.
-
-### Removed
-
-- **`docs/examples/` no longer keeps its own copy of the example scripts.**
-  All 34 `.py` files there were duplicates of `examples/` and nothing
-  referenced them: every `literalinclude` and `:download:` in the docs already
-  resolved to `../../../examples/`. Being unreferenced, they had drifted —
-  `docs/examples/terrain_demo.py` differed from its counterpart by 238 diff
-  lines, and none of the bug fixes applied to the canonical scripts had ever
-  reached them. Sphinx produces byte-identical output before and after removal
-  (0 errors, same 1225 warnings). The `.rst` pages are untouched.
-  `docs/tutorials/` is kept: it is a separate deliverable documented in the
-  README, not a copy.
-
-- `tests/test_docs_references.py` guards both halves of this: no second copy
-  of an example script under `docs/`, and every file the docs include or offer
-  for download actually exists — Sphinx only warns for a dead `literalinclude`,
-  and the docs gate fails on errors alone.
-
-### Changed
-
-- **Example figures load plotly from a CDN instead of embedding it**
-  (`include_plotlyjs="cdn"` on all 126 `write_html` calls). Every figure
-  written by an example script carried its own ~4.8 MB copy of plotly.js, so
-  `docs/_static/images/examples/` had grown to **163 MB** for 59 plots. It is
-  now **3.4 MB**. `scripts/generate_example_html.py` had been passing `cdn`
-  all along; the example scripts had not, which is where the bloat came from.
-  Note this makes the figures require network access to render — they are
-  embedded in the published docs as iframes, so this only affects viewing a
-  local docs build offline.
-
-### Fixed
 
 - **Eight example scripts crashed on Windows when stdout was redirected.**
   Python encodes stdout with the locale codepage on Windows — cp1252 by
@@ -351,23 +340,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ModuleNotFoundError` in each notebook was invisible; the job now installs
   `.[dev,visualization]`.
 
-### Added
+### Removed
 
-- **The 30 example scripts now run in CI** (`examples` job) via
-  `tests/test_examples.py`. Nothing had ever executed them, which is how the
-  defects above survived. Each script runs in a subprocess and must exit 0
-  without printing a traceback; `tests/example_guard/sitecustomize.py` turns
-  any `fig.show()` into a hard failure, because plotly's fallback in a
-  headless container returns quietly and would otherwise let an unguarded call
-  pass. Plot display is now controlled by `PYTCL_SHOW_PLOTS` (default on, so
-  interactive use is unchanged; CI sets it to 0 and writes HTML instead).
-  All six `except Exception` blocks in `examples/` are gone.
-
-- `tests/test_notebook_hygiene.py` — structural notebook checks that run in
-  the ordinary (fast) suite rather than only in the minute-long nbval job:
-  no stale outputs on unrun cells, every unguarded import is a dependency
-  declared in `pyproject.toml` (imports inside `try`/`except` are treated as
-  deliberate optional dependencies), and every code cell parses as Python.
+- **`docs/examples/` no longer keeps its own copy of the example scripts.**
+  All 34 `.py` files there were duplicates of `examples/` and nothing
+  referenced them: every `literalinclude` and `:download:` in the docs already
+  resolved to `../../../examples/`. Being unreferenced, they had drifted —
+  `docs/examples/terrain_demo.py` differed from its counterpart by 238 diff
+  lines, and none of the bug fixes applied to the canonical scripts had ever
+  reached them. Sphinx produces byte-identical output before and after removal
+  (0 errors, same 1225 warnings). The `.rst` pages are untouched.
+  `docs/tutorials/` is kept: it is a separate deliverable documented in the
+  README, not a copy.
 
 ## [1.18.0] - 2026-07-28
 
