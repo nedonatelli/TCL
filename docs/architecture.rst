@@ -140,7 +140,7 @@ why the examples below thread state through explicitly.
        KF --> SR["Square-root and UD<br/>numerically robust"]
        KF --> CE["Constrained<br/>ConstrainedEKF"]
        KF --> INF["Information and SRIF"]
-       KF --> IMM["IMM<br/>manoeuvre switching"]
+       KF --> IMM["IMM<br/>maneuver switching"]
        PF["Particle filters"] --> RBPF["Rao-Blackwellised"]
        GSF["Gaussian sum"]
        KF --> SM["Smoothers<br/>RTS, fixed-lag, two-filter"]
@@ -215,7 +215,7 @@ Counts are measured from the packages themselves rather than asserted;
    * - ``plotting``
      - 4
      - 30
-     - Track, uncertainty and coverage visualisation
+     - Track, uncertainty and coverage visualization
    * - ``trackers``
      - 4
      - 17
@@ -331,7 +331,7 @@ Angles and Units
 ----------------
 
 Every angle at an API boundary is in **radians** and every distance in
-**metres**, unless a function documents otherwise. Passing degrees where radians
+**meters**, unless a function documents otherwise. Passing degrees where radians
 are expected is the most common way to get results that look plausible and are
 wrong: as a latitude in radians, ``-5`` is -286 degrees, which is past the poles.
 

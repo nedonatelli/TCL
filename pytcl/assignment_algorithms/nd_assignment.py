@@ -383,7 +383,7 @@ def relaxation_assignment_nd(
             # therefore optimal.
             break
 
-        # Polyak step towards the current best upper bound.
+        # Polyak step toward the current best upper bound.
         step = (best_upper - lower) / norm_sq
         if step <= 0.0:
             step = 1.0 / (iteration + 1)

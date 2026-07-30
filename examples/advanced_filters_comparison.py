@@ -220,10 +220,10 @@ def run_cekf_filter(
     cekf = ConstrainedEKF()
 
     # Operating-area constraint: the target is known to stay inside a circle
-    # centred at (5, 5).
+    # centered at (5, 5).
     #
     # The radius has to be chosen against the actual trajectory. It was 10.0,
-    # but the true track never gets further than 7.07 from the centre, so the
+    # but the true track never gets further than 7.07 from the center, so the
     # constraint was inactive at every step and the "constrained" EKF returned
     # exactly what a plain EKF would -- which is why its curve sat invisibly
     # underneath the GSF's.
@@ -231,7 +231,7 @@ def run_cekf_filter(
     # 7.10 sits just above that 7.07 maximum: the true track stays feasible,
     # so the constraint is honest, while estimates that wander outward get
     # pulled back. Tightening it further (6.5, say) would exclude the real
-    # target and make the estimate worse, which is the correct behaviour for
+    # target and make the estimate worse, which is the correct behavior for
     # a constraint that is simply wrong.
     CENTER = np.array([5.0, 5.0])
     RADIUS = 7.1

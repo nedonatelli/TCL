@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.18.0 (Released July 28, 2026)
+**Current Version:** v1.19.0 (Released July 30, 2026)
 **Test Suite:** 4,973 tests passing, 80% line coverage, 100% mypy --strict compliance
 **Status:** Feature-complete MATLAB TCL parity achieved. All v2.0.0 development phases (1-8)
 are complete; remaining work is release preparation (Phase 9).
@@ -204,19 +204,23 @@ validation status is tracked in [AUDIT.md](AUDIT.md).
 
 ### Critical (must be resolved before v2.0.0)
 
-Unit-level correctness is now well covered. The remaining risk is **integration**:
-the campaign's most serious findings were things that were individually correct
-but not connected -- an advertised GPU backend that was never wired in, a
-high-degree Legendre routine with zero callers, and three CI gates that could
-not fail.
+Unit-level correctness is well covered. The remaining risk was **integration**:
+the campaign's most serious findings were things individually correct but not
+connected -- an advertised GPU backend never wired in, a high-degree Legendre
+routine with zero callers, and three CI gates that could not fail.
+
+v1.19.0 closed most of this. Each gate added found defects the previous layer
+could not see: running the examples found four broken scripts, checking imports
+found 92 dead references across 16 pages, and executing the pipeline found a
+state-layout error on a page whose imports all resolved.
 
 | Issue | Impact | Status |
 |-------|--------|--------|
-| No end-to-end pipeline test (measurements to tracks to persistence) | Only one test file spans 4+ subsystems; cross-module seams unverified | Open |
-| The 30 example scripts are never executed in CI | One shipped fabricated filter output undetected until v1.15.1 | Open |
-| Notebook CI gate cannot fail (`\|\| echo` swallows the exit code) | 13 cells across 2 notebooks are broken now; `networkx` is used but undeclared | Open |
-| Sphinx prose examples are not executed | 370 code blocks unverified; documented APIs that never existed were found in the v1.17.0 docs pass | Open |
-| Orphaned public API | Exported symbols with no callers hid a 1e199 error | Open |
+| No end-to-end pipeline test (measurements to tracks to persistence) | Cross-module seams unverified | **Resolved in v1.19.0** -- `tests/test_end_to_end_pipeline.py` spans conversion, gating, association, filtering, track management, persistence and scoring |
+| The 30 example scripts are never executed in CI | One shipped fabricated filter output undetected until v1.15.1 | **Resolved in v1.19.0** -- dedicated `examples` job; exposed a `ConstrainedEKF` projection bug and four broken scripts |
+| Notebook CI gate cannot fail (`\|\| echo` swallows the exit code) | 13 broken cells; `networkx` used but undeclared | **Resolved in v1.19.0** -- exit code no longer swallowed; the job also never installed plotly |
+| Sphinx prose examples are not executed | 370 code blocks unverified | **Partial** -- every `pytcl` import in `docs/` is now checked (244/244 resolve) and the architecture and data-structures pages are executed by tests, but the remaining prose blocks are still not run |
+| Orphaned public API | Exported symbols with no callers hid a 1e199 error | **Open** -- the autodoc restructure surfaced 21 submodules no page documented, but no systematic caller audit has been done |
 
 ### High Priority
 

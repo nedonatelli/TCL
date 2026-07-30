@@ -271,7 +271,7 @@ class ConstrainedEKF:
                 # constraint surface (Simon 2010, "Kalman filtering with state
                 # constraints"). Linearising g about x gives
                 #     g(x) + G (x_new - x) = 0,
-                # and minimising (x_new - x)ᵀ P⁻¹ (x_new - x) subject to that
+                # and minimizing (x_new - x)ᵀ P⁻¹ (x_new - x) subject to that
                 # yields
                 #     x_new = x - P Gᵀ (G P Gᵀ)⁻¹ g(x),
                 # i.e. λ = -(G P Gᵀ)⁻¹ g(x).

@@ -2,7 +2,7 @@
 World Magnetic Model (WMM) implementation.
 
 The WMM is the standard model used by the U.S. Department of Defense,
-the U.K. Ministry of Defence, NATO, and the International Hydrographic
+the U.K. Ministry of Defense, NATO, and the International Hydrographic
 Organization for navigation, attitude, and heading referencing.
 
 References

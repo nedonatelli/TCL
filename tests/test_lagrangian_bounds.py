@@ -3,7 +3,7 @@ Validity of the Lagrangian bounds in the N-D and 3-D assignment solvers.
 
 Regression tests for gh-14. The relaxation solvers previously computed their
 "lower bound" by solving the relaxed inner problem *greedily*. Greedy is not
-the relaxed minimiser, so the quantity was not a bound at all: it could exceed
+the relaxed minimizer, so the quantity was not a bound at all: it could exceed
 the true optimum, making ``gap`` negative and certifying suboptimal answers as
 optimal. Measured before the fix: 22 of 30 random 3x3x3 instances reported
 ``converged=True`` with ``gap=0.0`` while being up to 0.30 suboptimal.

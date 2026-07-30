@@ -305,7 +305,7 @@ def test_wellspecified_filter_is_statistically_consistent():
     """Give the filter the exact generating model; NEES must equal state_dim.
 
     This is the sharp check on the predict/update covariance arithmetic. It is
-    separate from the pipeline because it removes every modelling compromise:
+    separate from the pipeline because it removes every modeling compromise:
     linear dynamics, isotropic measurement noise, and an R that is exactly
     right. If the covariance recursion were wrong, no amount of tuning would
     put NEES at 4.

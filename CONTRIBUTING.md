@@ -61,7 +61,7 @@ explicitly. This caused a Windows CI failure reading the notebooks.
 
 CI runs the examples on Ubuntu only, so it will not catch an encoding
 regression. `tests/test_console_encoding.py` guards it, and you can reproduce
-the Windows behaviour anywhere with:
+the Windows behavior anywhere with:
 
 ```bash
 PYTHONIOENCODING=cp1252 python examples/some_demo.py > /dev/null
@@ -298,7 +298,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.18.0
+**Version:** v1.19.0
 **MATLAB Parity:** 100% ✅ (all tier 1-2 missing components verified)
 **Test Suite:** 4,973 tests passing (docstring examples also run in CI)
 **Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
@@ -372,7 +372,7 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.18.0):
+Current metrics (v1.19.0):
 - **Functions:** 1,048+
 - **Modules:** 133
 - **Tests:** 4,973 (all passing)

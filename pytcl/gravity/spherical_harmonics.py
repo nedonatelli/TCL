@@ -466,7 +466,7 @@ def legendre_scaling_factors(n_max: int) -> NDArray[np.floating]:
     ----------
     - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
       Clenshaw summation and the recursive computation of very high
-      degree and order normalised associated Legendre functions."
+      degree and order normalized associated Legendre functions."
       Journal of Geodesy 76.5 (2002): 279-299.
 
     Examples
@@ -547,7 +547,7 @@ def associated_legendre_scaled(
     ----------
     - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
       Clenshaw summation and the recursive computation of very high
-      degree and order normalised associated Legendre functions."
+      degree and order normalized associated Legendre functions."
       Journal of Geodesy 76.5 (2002): 279-299.
     """
     if m_max > n_max:
@@ -617,11 +617,11 @@ def spherical_harmonic_sum_high_degree(
     lon : float
         Longitude in radians.
     r : float
-        Radial distance in metres.
+        Radial distance in meters.
     C, S : ndarray
         Fully normalized cosine and sine coefficients, shape (n_max+1, n_max+1).
     R : float
-        Reference radius in metres.
+        Reference radius in meters.
     GM : float
         Gravitational parameter in m^3/s^2.
     n_max : int, optional
@@ -647,7 +647,7 @@ def spherical_harmonic_sum_high_degree(
     ----------
     - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
       Clenshaw summation and the recursive computation of very high
-      degree and order normalised associated Legendre functions."
+      degree and order normalized associated Legendre functions."
       Journal of Geodesy 76.5 (2002): 279-299.
     """
     if n_max is None:

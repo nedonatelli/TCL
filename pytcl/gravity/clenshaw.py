@@ -17,7 +17,7 @@ References
 ----------
 - Holmes, S.A. and Featherstone, W.E. "A unified approach to the
   Clenshaw summation and the recursive computation of very high
-  degree and order normalised associated Legendre functions."
+  degree and order normalized associated Legendre functions."
   Journal of Geodesy 76.5 (2002): 279-299.
 - Wittwer, T., et al. "Ultra-high degree spherical harmonic analysis
   and synthesis using extended-range arithmetic."

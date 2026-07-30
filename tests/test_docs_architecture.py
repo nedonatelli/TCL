@@ -1,6 +1,6 @@
 """The architecture page must describe the library that exists.
 
-Before this existed, ``docs/architecture.rst`` claimed 153 modules organised
+Before this existed, ``docs/architecture.rst`` claimed 153 modules organized
 into 8 subsystems, named a ``pytcl.geophysical`` package and six other
 directories that were never created, and carried code examples with 17 imports
 that could not resolve. None of it was checked, so none of it stayed true.
@@ -215,7 +215,7 @@ def test_mermaid_diagrams_are_structurally_sound():
     This is not a mermaid parser -- the diagrams were validated against
     mermaid 11 when written -- but it catches the breakage that silently
     produces a blank figure in the browser: an empty directive body, an
-    unrecognised diagram type, or unbalanced brackets and quotes in a label.
+    unrecognized diagram type, or unbalanced brackets and quotes in a label.
     """
     blocks = _mermaid_blocks(ARCHITECTURE.read_text(encoding="utf-8"))
     assert len(blocks) >= 4, f"expected at least 4 diagrams, found {len(blocks)}"

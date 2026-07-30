@@ -1,6 +1,6 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.18.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.19.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)

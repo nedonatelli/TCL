@@ -242,7 +242,7 @@ class MultiTargetTracker:
         measurement_covariances: Optional[Sequence[ArrayLike]],
         n_measurements: int,
     ) -> Optional[List[NDArray[np.float64]]]:
-        """Check and normalise per-detection covariances, or return None."""
+        """Check and normalize per-detection covariances, or return None."""
         if measurement_covariances is None:
             return None
 
