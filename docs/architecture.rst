@@ -6,9 +6,6 @@ Overview
 
 The Tracker Component Library contains **153 modules** organized into 8 major subsystems:
 
-.. image:: /_static/architecture.png
-   :alt: Architecture diagram showing subsystem organization
-   :align: center
 
 1. **Dynamic Estimation** (15 modules) - Filtering and state estimation
 2. **Data Association** (8 modules) - Assignment and correlation algorithms

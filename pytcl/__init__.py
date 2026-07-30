@@ -16,9 +16,9 @@ Examples
 
 References
 ----------
-.. [1] D. F. Crouse, "The Tracker Component Library: Free Routines for Rapid
-       Prototyping," IEEE Aerospace and Electronic Systems Magazine, vol. 32,
-       no. 5, pp. 18-27, May 2017.
+- D. F. Crouse, "The Tracker Component Library: Free Routines for Rapid
+  Prototyping," IEEE Aerospace and Electronic Systems Magazine, vol. 32,
+  no. 5, pp. 18-27, May 2017.
 """
 
 __version__ = "1.18.0"

@@ -220,7 +220,7 @@ where $\mathbf{P}_{k|k} = \mathbf{Y}_{k|k}^{-1}$.
 ---
 
 Square Root Information Filter (SRIF)
-====================================
+=====================================
 
 Standard information filters require matrix inversion at each predict step, which can be numerically unstable. SRIF avoids this by working with the **square root** of the information matrix.
 

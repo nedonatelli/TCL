@@ -2,17 +2,15 @@ Dynamic Models
 ==============
 
 .. automodule:: pytcl.dynamic_models
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Discrete-Time Models
 --------------------
 
 .. automodule:: pytcl.dynamic_models.discrete_time
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Polynomial Models
 ^^^^^^^^^^^^^^^^^
@@ -42,9 +40,8 @@ Process Noise
 -------------
 
 .. automodule:: pytcl.dynamic_models.process_noise
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Polynomial Process Noise
 ^^^^^^^^^^^^^^^^^^^^^^^^

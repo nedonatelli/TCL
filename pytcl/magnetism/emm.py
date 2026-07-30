@@ -10,15 +10,15 @@ by including crustal magnetic field contributions.
 
 References
 ----------
-.. [1] Maus, S., et al. "EMAG2: A 2-arc min resolution Earth Magnetic
-       Anomaly Grid compiled from satellite, airborne, and marine
-       magnetic measurements." Geochemistry, Geophysics, Geosystems 10.8 (2009).
-.. [2] NOAA National Centers for Environmental Information,
-       "Enhanced Magnetic Model (EMM)."
-       https://www.ncei.noaa.gov/products/enhanced-magnetic-model
-.. [3] NOAA National Centers for Environmental Information,
-       "World Magnetic Model High Resolution (WMMHR)."
-       https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
+- Maus, S., et al. "EMAG2: A 2-arc min resolution Earth Magnetic
+  Anomaly Grid compiled from satellite, airborne, and marine
+  magnetic measurements." Geochemistry, Geophysics, Geosystems 10.8 (2009).
+- NOAA National Centers for Environmental Information,
+  "Enhanced Magnetic Model (EMM)."
+  https://www.ncei.noaa.gov/products/enhanced-magnetic-model
+- NOAA National Centers for Environmental Information,
+  "World Magnetic Model High Resolution (WMMHR)."
+  https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
 """
 
 from functools import lru_cache

@@ -45,11 +45,11 @@ Line 2 format:
 
 References
 ----------
-.. [1] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013, Appendix C.
-.. [2] Hoots, F. R. and Roehrich, R. L., "Spacetrack Report No. 3:
-       Models for Propagation of NORAD Element Sets," 1980.
-.. [3] CelesTrak, https://celestrak.org/NORAD/documentation/tle-fmt.php
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013, Appendix C.
+- Hoots, F. R. and Roehrich, R. L., "Spacetrack Report No. 3:
+  Models for Propagation of NORAD Element Sets," 1980.
+- CelesTrak, https://celestrak.org/NORAD/documentation/tle-fmt.php
 """
 
 from datetime import datetime, timezone

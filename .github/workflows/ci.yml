@@ -105,13 +105,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Build docs (fail on docutils errors)
+      - name: Build docs (fail on any Sphinx error or warning)
         run: |
           pip install sphinx-rtd-theme nbsphinx
           sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
           if grep -q "ERROR" /tmp/sphinx.log; then
             echo "::error::Sphinx build produced docutils ERRORs"
             grep "ERROR" /tmp/sphinx.log
+            exit 1
+          fi
+          # The build is warning-free as of the docs cleanup. Gating on that
+          # keeps it so: a broken cross-reference, a dead :doc: target or a
+          # duplicated autodoc entry is a real defect, and 1225 of them had
+          # accumulated behind a gate that only looked at ERRORs.
+          count=$(grep -c "WARNING:" /tmp/sphinx.log || true)
+          if [ "$count" -ne 0 ]; then
+            echo "::error::Sphinx build produced $count warning(s); the docs build must stay warning-free"
+            grep "WARNING:" /tmp/sphinx.log
             exit 1
           fi
 

@@ -93,5 +93,5 @@ See Also
 --------
 
 - :doc:`geophysical_models` - Gravity and magnetic field models
-- :doc:`ins_gnss_navigation` - Navigation applications
-- :doc:`coordinate_systems` - Coordinate transformations
+- :doc:`../coordinates/ins_gnss_navigation` - Navigation applications
+- :doc:`../coordinates/coordinate_systems` - Coordinate transformations

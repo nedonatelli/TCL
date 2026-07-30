@@ -55,5 +55,5 @@ See Also
 --------
 
 - :doc:`multi_target_tracking` - Multiple target tracking
-- :doc:`coordinate_systems` - Coordinate transformations
-- :doc:`kalman_filter_comparison` - Filter variants
+- :doc:`../coordinates/coordinate_systems` - Coordinate transformations
+- :doc:`../filtering/kalman_filter_comparison` - Filter variants

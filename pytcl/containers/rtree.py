@@ -7,10 +7,10 @@ coordinates, rectangles, or polygons.
 
 References
 ----------
-.. [1] A. Guttman, "R-trees: A Dynamic Index Structure for Spatial
-       Searching," ACM SIGMOD, 1984.
-.. [2] N. Beckmann et al., "The R*-tree: An Efficient and Robust Access
-       Method for Points and Rectangles," ACM SIGMOD, 1990.
+- A. Guttman, "R-trees: A Dynamic Index Structure for Spatial
+  Searching," ACM SIGMOD, 1984.
+- N. Beckmann et al., "The R*-tree: An Efficient and Robust Access
+  Method for Points and Rectangles," ACM SIGMOD, 1990.
 """
 
 import logging

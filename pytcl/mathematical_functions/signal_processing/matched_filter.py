@@ -15,10 +15,10 @@ Functions
 
 References
 ----------
-.. [1] Richards, M. A. (2014). Fundamentals of Radar Signal Processing
-       (2nd ed.). McGraw-Hill.
-.. [2] Turin, G. L. (1960). An introduction to matched filters.
-       IRE Transactions on Information Theory, 6(3), 311-329.
+- Richards, M. A. (2014). Fundamentals of Radar Signal Processing
+  (2nd ed.). McGraw-Hill.
+- Turin, G. L. (1960). An introduction to matched filters.
+  IRE Transactions on Information Theory, 6(3), 311-329.
 """
 
 from typing import Any, NamedTuple, Optional

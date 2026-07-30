@@ -350,6 +350,7 @@ For stateful IMM filtering:
    for z in measurements:
        result = imm.predict_update(z)
        print(f"State: {result.x}, Mode probs: {imm.mode_probs}")
+
 See Also
 --------
 

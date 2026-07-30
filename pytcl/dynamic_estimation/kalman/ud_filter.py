@@ -7,10 +7,10 @@ numerical stability with minimal storage requirements.
 
 References
 ----------
-.. [1] G. J. Bierman, "Factorization Methods for Discrete Sequential
-       Estimation," Academic Press, 1977.
-.. [2] C. L. Thornton and G. J. Bierman, "Gram-Schmidt Algorithms for
-       Covariance Propagation," Int. J. Control, 1978.
+- G. J. Bierman, "Factorization Methods for Discrete Sequential
+  Estimation," Academic Press, 1977.
+- C. L. Thornton and G. J. Bierman, "Gram-Schmidt Algorithms for
+  Covariance Propagation," Int. J. Control, 1978.
 """
 
 from typing import NamedTuple

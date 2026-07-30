@@ -10,6 +10,13 @@ on:
 permissions:
   contents: write
 
+# Serialise runs: this job commits benchmark history back to main, and two
+# concurrent runs will race on the push. Queue rather than cancel, so a run
+# triggered by a second merge still records its results.
+concurrency:
+  group: benchmark-full-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   benchmark-full:
     runs-on: ubuntu-latest
@@ -99,7 +106,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .benchmarks/history.jsonl
           git diff --staged --quiet || git commit -m "chore: Update benchmark history [skip ci]"
-          git push
+          # Two pushes to main in quick succession start two of these runs, and
+          # whichever commits second is rejected non-fast-forward. The history
+          # file is append-only, so rebasing onto whatever landed first is
+          # always the right resolution.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            echo "push attempt $attempt was beaten to it; retrying"
+            sleep 5
+          done
+          echo "::error::could not push benchmark history after 3 attempts"
+          exit 1
 
       - name: Upload benchmark artifacts
         uses: actions/upload-artifact@v4

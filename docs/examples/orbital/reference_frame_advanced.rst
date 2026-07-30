@@ -137,6 +137,6 @@ Running the Example
 See Also
 --------
 
-- :doc:`coordinate_systems` - Basic coordinate transformations
-- :doc:`coordinate_visualization` - 3D frame visualizations
+- :doc:`../coordinates/coordinate_systems` - Basic coordinate transformations
+- :doc:`../coordinates/coordinate_visualization` - 3D frame visualizations
 - :doc:`ephemeris_demo` - Planetary positions

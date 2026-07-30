@@ -194,7 +194,7 @@ Bootstrap Particle Filter
 
 
 Resampling Strategies
---------------------
+---------------------
 
 **Problem: Particle Degeneracy**
 

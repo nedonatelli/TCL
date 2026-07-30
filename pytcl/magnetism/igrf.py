@@ -7,9 +7,9 @@ its ionosphere and magnetosphere, and in various applications.
 
 References
 ----------
-.. [1] Alken et al., "International Geomagnetic Reference Field: the
-       thirteenth generation," Earth, Planets and Space, 2021.
-.. [2] https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html
+- Alken et al., "International Geomagnetic Reference Field: the
+  thirteenth generation," Earth, Planets and Space, 2021.
+- https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html
 """
 
 from typing import NamedTuple, Optional

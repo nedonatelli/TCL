@@ -42,10 +42,10 @@ pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
 
 References
 ----------
-.. [1] Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
-       Applications to Tracking and Navigation", Wiley, 2001.
-.. [2] Blackman, S. and Popoli, R., "Design and Analysis of Modern
-       Tracking Systems", Artech House, 1999.
+- Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
+  Applications to Tracking and Navigation", Wiley, 2001.
+- Blackman, S. and Popoli, R., "Design and Analysis of Modern
+  Tracking Systems", Artech House, 1999.
 """
 
 import numpy as np

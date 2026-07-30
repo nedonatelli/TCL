@@ -10,12 +10,12 @@ Users should download files from the official sources and place them in ~/.pytcl
 
 References
 ----------
-.. [1] GEBCO Compilation Group (2025) GEBCO 2025 Grid.
-       https://www.gebco.net/data-products/gridded-bathymetry-data/
-.. [2] Hirt, C. and Rexer, M. (2015) Earth2014: 1 arc-min shape, topography,
-       bedrock and ice-sheet models - available as gridded data and degree-10,800
-       spherical harmonics. Int. J. Appl. Earth Observ. Geoinform. 39, 103-112.
-       https://ddfe.curtin.edu.au/models/Earth2014/
+- GEBCO Compilation Group (2025) GEBCO 2025 Grid.
+  https://www.gebco.net/data-products/gridded-bathymetry-data/
+- Hirt, C. and Rexer, M. (2015) Earth2014: 1 arc-min shape, topography,
+  bedrock and ice-sheet models - available as gridded data and degree-10,800
+  spherical harmonics. Int. J. Appl. Earth Observ. Geoinform. 39, 103-112.
+  https://ddfe.curtin.edu.au/models/Earth2014/
 """
 
 from functools import lru_cache

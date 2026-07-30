@@ -80,4 +80,4 @@ See Also
 
 - :doc:`coordinate_visualization` - 3D visualizations
 - :doc:`navigation_geodesy` - Geodetic calculations
-- :doc:`tracking_3d` - Using coordinates in tracking
+- :doc:`../tracking/tracking_3d` - Using coordinates in tracking

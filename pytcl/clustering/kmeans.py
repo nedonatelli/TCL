@@ -6,8 +6,8 @@ commonly used in track clustering and data association scenarios.
 
 References
 ----------
-.. [1] D. Arthur and S. Vassilvitskii, "k-means++: The Advantages of
-       Careful Seeding," SODA 2007.
+- D. Arthur and S. Vassilvitskii, "k-means++: The Advantages of
+  Careful Seeding," SODA 2007.
 """
 
 from typing import Any, Literal, NamedTuple, Optional, Union

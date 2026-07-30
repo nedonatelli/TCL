@@ -80,8 +80,8 @@ def sigma_points_merwe(
 
     References
     ----------
-    .. [1] Van der Merwe, R., "Sigma-Point Kalman Filters for Probabilistic
-           Inference in Dynamic State-Space Models", PhD Thesis, 2004.
+    - Van der Merwe, R., "Sigma-Point Kalman Filters for Probabilistic
+      Inference in Dynamic State-Space Models", PhD Thesis, 2004.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)
@@ -514,8 +514,8 @@ def ckf_predict(
 
     References
     ----------
-    .. [1] Arasaratnam, I. and Haykin, S., "Cubature Kalman Filters",
-           IEEE Trans. Automatic Control, 2009.
+    - Arasaratnam, I. and Haykin, S., "Cubature Kalman Filters",
+      IEEE Trans. Automatic Control, 2009.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)

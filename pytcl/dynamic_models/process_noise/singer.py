@@ -50,11 +50,11 @@ pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
 
 References
 ----------
-.. [1] Singer, R.A., "Estimating Optimal Tracking Filter Performance for
-       Manned Maneuvering Targets", IEEE Trans. Aerospace and Electronic
-       Systems, Vol. AES-6, No. 4, July 1970, pp. 473-483.
-.. [2] Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
-       Applications to Tracking and Navigation", Wiley, 2001, Chapter 6.
+- Singer, R.A., "Estimating Optimal Tracking Filter Performance for
+  Manned Maneuvering Targets", IEEE Trans. Aerospace and Electronic
+  Systems, Vol. AES-6, No. 4, July 1970, pp. 473-483.
+- Bar-Shalom, Y., Li, X.R., and Kirubarajan, T., "Estimation with
+  Applications to Tracking and Navigation", Wiley, 2001, Chapter 6.
 """
 
 import numpy as np
@@ -109,8 +109,8 @@ def q_singer(
 
     References
     ----------
-    .. [1] Singer, R.A., "Estimating Optimal Tracking Filter Performance
-           for Manned Maneuvering Targets", IEEE Trans. AES, 1970.
+    - Singer, R.A., "Estimating Optimal Tracking Filter Performance
+      for Manned Maneuvering Targets", IEEE Trans. AES, 1970.
     """
     # Standard formulas from Bar-Shalom, Li, Kirubarajan,
     # "Estimation with Applications to Tracking", Ch. 8 (with alpha = 1/tau),

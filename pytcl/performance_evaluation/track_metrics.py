@@ -6,12 +6,12 @@ including OSPA (Optimal Sub-Pattern Assignment), track purity, and fragmentation
 
 References
 ----------
-.. [1] D. Schuhmacher, B.-T. Vo, and B.-N. Vo, "A Consistent Metric for
-       Performance Evaluation of Multi-Object Filters," IEEE Trans. Signal
-       Processing, vol. 56, no. 8, pp. 3447-3457, Aug. 2008.
-.. [2] K. Bernardin and R. Stiefelhagen, "Evaluating Multiple Object Tracking
-       Performance: The CLEAR MOT Metrics," EURASIP J. Image Video Process.,
-       2008.
+- D. Schuhmacher, B.-T. Vo, and B.-N. Vo, "A Consistent Metric for
+  Performance Evaluation of Multi-Object Filters," IEEE Trans. Signal
+  Processing, vol. 56, no. 8, pp. 3447-3457, Aug. 2008.
+- K. Bernardin and R. Stiefelhagen, "Evaluating Multiple Object Tracking
+  Performance: The CLEAR MOT Metrics," EURASIP J. Image Video Process.,
+  2008.
 """
 
 from typing import List, NamedTuple, Optional

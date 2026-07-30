@@ -57,10 +57,10 @@ def marcum_q(
 
     References
     ----------
-    .. [1] Marcum, J.I. (1950). "Table of Q Functions".
-    .. [2] Shnidman, D.A. (1989). "The Calculation of the Probability of
-           Detection and the Generalized Marcum Q-Function". IEEE Trans.
-           on Information Theory, 35(2), 389-400.
+    - Marcum, J.I. (1950). "Table of Q Functions".
+    - Shnidman, D.A. (1989). "The Calculation of the Probability of
+      Detection and the Generalized Marcum Q-Function". IEEE Trans.
+      on Information Theory, 35(2), 389-400.
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -341,8 +341,8 @@ def swerling_detection_probability(
 
     References
     ----------
-    .. [1] Swerling, P. (1960). "Probability of Detection for Fluctuating
-           Targets". IRE Trans. on Information Theory, IT-6, 269-308.
+    - Swerling, P. (1960). "Probability of Detection for Fluctuating
+      Targets". IRE Trans. on Information Theory, IT-6, 269-308.
     """
     snr = np.asarray(snr, dtype=np.float64)
     n = n_pulses

@@ -375,8 +375,8 @@ See Also
   - Daily F10.7 and Kp index values
 - **SPDF/NSSDC**: NRLMSISE-00 Original Publication
 - :doc:`getting_started` - Basic atmospheric modeling
-- :doc:`dynamic_models` - Orbit propagation with drag
-- :ref:`api/atmosphere:NRLMSISE-00 Model` - API Reference
+- :doc:`api/dynamic_models` - Orbit propagation with drag
+- :ref:`NRLMSISE-00 Model <nrlmsise00-model>` - API Reference
 
 References
 ----------

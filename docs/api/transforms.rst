@@ -4,9 +4,8 @@ Transforms
 Signal transforms including Fourier, short-time Fourier, and wavelet transforms.
 
 .. automodule:: pytcl.mathematical_functions.transforms
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Fourier Transforms
 ------------------

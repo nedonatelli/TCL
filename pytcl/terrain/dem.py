@@ -17,12 +17,12 @@ The interface is designed to work with common DEM formats including:
 
 References
 ----------
-.. [1] Farr, T. G., et al. "The Shuttle Radar Topography Mission."
-       Reviews of Geophysics 45.2 (2007).
-.. [2] GEBCO Compilation Group (2023) GEBCO 2023 Grid
-.. [3] Hirt, C. and Rexer, M. "Earth2014: 1 arc-min shape, topography,
-       bedrock and ice-sheet models." Geophysical Journal International
-       198.3 (2014): 1544-1555.
+- Farr, T. G., et al. "The Shuttle Radar Topography Mission."
+  Reviews of Geophysics 45.2 (2007).
+- GEBCO Compilation Group (2023) GEBCO 2023 Grid
+- Hirt, C. and Rexer, M. "Earth2014: 1 arc-min shape, topography,
+  bedrock and ice-sheet models." Geophysical Journal International
+  198.3 (2014): 1544-1555.
 """
 
 from typing import List, NamedTuple, Optional, Tuple

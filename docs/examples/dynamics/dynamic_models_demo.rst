@@ -91,6 +91,6 @@ Running the Example
 See Also
 --------
 
-- :doc:`kalman_filter_comparison` - Kalman filter implementations
-- :doc:`multi_target_tracking` - Multi-target tracking
-- :doc:`tracking_3d` - 3D tracking example
+- :doc:`../filtering/kalman_filter_comparison` - Kalman filter implementations
+- :doc:`../tracking/multi_target_tracking` - Multi-target tracking
+- :doc:`../tracking/tracking_3d` - 3D tracking example

@@ -6,10 +6,10 @@ including M-estimators (Huber, Tukey bisquare) and RANSAC.
 
 References
 ----------
-.. [1] P. J. Huber, "Robust Statistics," Wiley, 1981.
-.. [2] M. A. Fischler and R. C. Bolles, "Random Sample Consensus: A Paradigm
-       for Model Fitting with Applications to Image Analysis and Automated
-       Cartography," Communications of the ACM, 1981.
+- P. J. Huber, "Robust Statistics," Wiley, 1981.
+- M. A. Fischler and R. C. Bolles, "Random Sample Consensus: A Paradigm
+  for Model Fitting with Applications to Image Analysis and Automated
+  Cartography," Communications of the ACM, 1981.
 """
 
 from typing import Any, Callable, NamedTuple, Optional
@@ -647,8 +647,8 @@ def ransac(
 
     References
     ----------
-    .. [1] M. A. Fischler and R. C. Bolles, "Random Sample Consensus,"
-           Communications of the ACM, 1981.
+    - M. A. Fischler and R. C. Bolles, "Random Sample Consensus,"
+      Communications of the ACM, 1981.
     """
     A = np.asarray(A, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)

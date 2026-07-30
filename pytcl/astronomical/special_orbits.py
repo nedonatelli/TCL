@@ -8,12 +8,12 @@ This module extends orbital_mechanics.py with handling for edge cases:
 
 References
 ----------
-.. [1] Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
-       4th ed., Microcosm Press, 2013.
-.. [2] Curtis, H. D., "Orbital Mechanics for Engineering Students,"
-       3rd ed., Butterworth-Heinemann, 2014.
-.. [3] Battin, R. H., "An Introduction to the Mathematics and Methods
-       of Astrodynamics," 2nd ed., AIAA, 1999.
+- Vallado, D. A., "Fundamentals of Astrodynamics and Applications,"
+  4th ed., Microcosm Press, 2013.
+- Curtis, H. D., "Orbital Mechanics for Engineering Students,"
+  3rd ed., Butterworth-Heinemann, 2014.
+- Battin, R. H., "An Introduction to the Mathematics and Methods
+  of Astrodynamics," 2nd ed., AIAA, 1999.
 """
 
 from enum import Enum

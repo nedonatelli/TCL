@@ -6,10 +6,10 @@ commonly used in tracking for state estimation and model fitting.
 
 References
 ----------
-.. [1] S. Van Huffel and J. Vandewalle, "The Total Least Squares Problem:
-       Computational Aspects and Analysis," SIAM, 1991.
-.. [2] G. H. Golub and C. F. Van Loan, "Matrix Computations," 4th ed.,
-       Johns Hopkins University Press, 2013.
+- S. Van Huffel and J. Vandewalle, "The Total Least Squares Problem:
+  Computational Aspects and Analysis," SIAM, 1991.
+- G. H. Golub and C. F. Van Loan, "Matrix Computations," 4th ed.,
+  Johns Hopkins University Press, 2013.
 """
 
 from typing import NamedTuple, Optional
@@ -280,8 +280,8 @@ def total_least_squares(
 
     References
     ----------
-    .. [1] S. Van Huffel and J. Vandewalle, "The Total Least Squares Problem:
-           Computational Aspects and Analysis," SIAM, 1991.
+    - S. Van Huffel and J. Vandewalle, "The Total Least Squares Problem:
+      Computational Aspects and Analysis," SIAM, 1991.
     """
     A = np.asarray(A, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)

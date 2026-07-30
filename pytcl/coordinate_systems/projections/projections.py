@@ -17,12 +17,12 @@ All angles are in radians unless otherwise noted.
 
 References
 ----------
-.. [1] Snyder, J. P. "Map Projections: A Working Manual." U.S. Geological
-       Survey Professional Paper 1395, 1987.
-.. [2] NIMA Technical Report 8350.2, "Department of Defense World Geodetic
-       System 1984," Third Edition, 2000.
-.. [3] Karney, C. F. F. "Transverse Mercator with an accuracy of a few
-       nanometers." Journal of Geodesy 85.8 (2011): 475-485.
+- Snyder, J. P. "Map Projections: A Working Manual." U.S. Geological
+  Survey Professional Paper 1395, 1987.
+- NIMA Technical Report 8350.2, "Department of Defense World Geodetic
+  System 1984," Third Edition, 2000.
+- Karney, C. F. F. "Transverse Mercator with an accuracy of a few
+  nanometers." Journal of Geodesy 85.8 (2011): 475-485.
 """
 
 from typing import Any, NamedTuple, Optional, Tuple

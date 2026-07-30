@@ -72,4 +72,4 @@ See Also
 
 - :doc:`advanced_filters_comparison` - Rao-Blackwellized particle filter
 - :doc:`kalman_filter_comparison` - Kalman filter alternatives
-- :doc:`multi_target_tracking` - Particle filters for MTT
+- :doc:`../tracking/multi_target_tracking` - Particle filters for MTT

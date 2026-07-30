@@ -7,8 +7,8 @@ c is the expansion constant of the data.
 
 References
 ----------
-.. [1] A. Beygelzimer, S. Kakade, J. Langford, "Cover trees for nearest
-       neighbor," ICML 2006.
+- A. Beygelzimer, S. Kakade, J. Langford, "Cover trees for nearest
+  neighbor," ICML 2006.
 """
 
 import logging

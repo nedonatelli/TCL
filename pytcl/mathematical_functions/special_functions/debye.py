@@ -171,8 +171,8 @@ def debye(
 
     References
     ----------
-    .. [1] Debye, P. (1912). "Zur Theorie der spezifischen Wärmen".
-           Annalen der Physik, 344(14), 789-839.
+    - Debye, P. (1912). "Zur Theorie der spezifischen Wärmen".
+      Annalen der Physik, 344(14), 789-839.
     """
     if n < 1:
         raise ValueError(f"Order n must be >= 1, got {n}")

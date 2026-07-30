@@ -2,9 +2,8 @@ Core Module
 ===========
 
 .. automodule:: pytcl.core
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Constants
 ---------
@@ -26,6 +25,38 @@ Validation
 ----------
 
 .. automodule:: pytcl.core.validation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Exceptions
+----------
+
+.. automodule:: pytcl.core.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Maturity
+--------
+
+.. automodule:: pytcl.core.maturity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Optional Deps
+-------------
+
+.. automodule:: pytcl.core.optional_deps
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Paths
+-----
+
+.. automodule:: pytcl.core.paths
    :members:
    :undoc-members:
    :show-inheritance:

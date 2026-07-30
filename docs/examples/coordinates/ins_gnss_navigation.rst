@@ -75,4 +75,4 @@ See Also
 
 - :doc:`navigation_geodesy` - Geodetic calculations
 - :doc:`coordinate_systems` - Coordinate transformations
-- :doc:`kalman_filter_comparison` - Filter for integration
+- :doc:`../filtering/kalman_filter_comparison` - Filter for integration

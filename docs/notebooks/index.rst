@@ -70,6 +70,7 @@ Advanced Topics
    05_gpu_acceleration
    06_network_flow
    08_performance_optimization
+   09_track_management
 
 GPU acceleration with CuPy, network flow algorithms for assignment problems,
 and performance optimization techniques.

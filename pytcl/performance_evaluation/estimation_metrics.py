@@ -6,8 +6,8 @@ including RMSE, NEES, NIS, and consistency tests.
 
 References
 ----------
-.. [1] Y. Bar-Shalom, X. R. Li, and T. Kirubarajan, "Estimation with
-       Applications to Tracking and Navigation," Wiley, 2001.
+- Y. Bar-Shalom, X. R. Li, and T. Kirubarajan, "Estimation with
+  Applications to Tracking and Navigation," Wiley, 2001.
 """
 
 from typing import List, NamedTuple, Optional

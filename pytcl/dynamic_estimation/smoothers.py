@@ -156,8 +156,8 @@ def rts_smoother(
 
     References
     ----------
-    .. [1] Rauch, H.E., Tung, F., and Striebel, C.T., "Maximum likelihood
-           estimates of linear dynamic systems", AIAA Journal, 1965.
+    - Rauch, H.E., Tung, F., and Striebel, C.T., "Maximum likelihood
+      estimates of linear dynamic systems", AIAA Journal, 1965.
     """
     x0 = np.asarray(x0, dtype=np.float64).flatten()
     P0 = np.asarray(P0, dtype=np.float64)
@@ -534,9 +534,9 @@ def two_filter_smoother(
 
     References
     ----------
-    .. [1] Fraser, D.C. and Potter, J.E., "The optimum linear smoother
-           as a combination of two optimum linear filters", IEEE Trans.
-           Automatic Control, 1969.
+    - Fraser, D.C. and Potter, J.E., "The optimum linear smoother
+      as a combination of two optimum linear filters", IEEE Trans.
+      Automatic Control, 1969.
     """
     x0_fwd = np.asarray(x0_fwd, dtype=np.float64).flatten()
     P0_fwd = np.asarray(P0_fwd, dtype=np.float64)

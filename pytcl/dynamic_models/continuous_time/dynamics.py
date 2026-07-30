@@ -397,7 +397,7 @@ def continuous_to_discrete(
     Notes
     -----
     Uses the Van Loan method which computes F and Q_d by exponentiating
-    the augmented matrix:
+    the augmented matrix::
 
         M = [[-A, G*Q_c*G'],
              [ 0,       A']] * T
@@ -407,8 +407,8 @@ def continuous_to_discrete(
 
     References
     ----------
-    .. [1] Van Loan, C.F., "Computing Integrals Involving the Matrix
-           Exponential", IEEE Trans. Automatic Control, 1978.
+    - Van Loan, C.F., "Computing Integrals Involving the Matrix
+      Exponential", IEEE Trans. Automatic Control, 1978.
 
     Examples
     --------

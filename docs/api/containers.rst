@@ -4,9 +4,8 @@ Containers
 Spatial data structures for efficient nearest neighbor queries.
 
 .. automodule:: pytcl.containers
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 K-D Tree
 --------
@@ -17,16 +16,8 @@ K-dimensional tree for spatial queries.
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: NeighborResult
 
-Ball Tree
----------
-
-Ball tree for metric space queries.
-
-.. automodule:: pytcl.containers.ball_tree
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 R-Tree
 ------
@@ -37,6 +28,7 @@ R-tree for spatial indexing.
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: NeighborResult
 
 VP-Tree
 -------
@@ -47,6 +39,7 @@ Vantage-point tree for metric spaces.
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: NeighborResult
 
 Cover Tree
 ----------
@@ -54,6 +47,39 @@ Cover Tree
 Cover tree for approximate nearest neighbors.
 
 .. automodule:: pytcl.containers.covertree
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: NeighborResult
+
+Base
+----
+
+.. automodule:: pytcl.containers.base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Cluster Set
+-----------
+
+.. automodule:: pytcl.containers.cluster_set
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Measurement Set
+---------------
+
+.. automodule:: pytcl.containers.measurement_set
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Track List
+----------
+
+.. automodule:: pytcl.containers.track_list
    :members:
    :undoc-members:
    :show-inheritance:

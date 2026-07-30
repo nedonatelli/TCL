@@ -311,11 +311,11 @@ def murty(
 
     References
     ----------
-    .. [1] Murty, K.G., "An algorithm for ranking all the assignments in
-           order of increasing cost", Operations Research, 1968.
-    .. [2] Miller, M.L., Stone, H.S., and Cox, I.J., "Optimizing Murty's
-           ranked assignment method", IEEE Trans. Aerospace and Electronic
-           Systems, 1997.
+    - Murty, K.G., "An algorithm for ranking all the assignments in
+      order of increasing cost", Operations Research, 1968.
+    - Miller, M.L., Stone, H.S., and Cox, I.J., "Optimizing Murty's
+      ranked assignment method", IEEE Trans. Aerospace and Electronic
+      Systems, 1997.
     """
     cost = np.asarray(cost_matrix, dtype=np.float64)
     n, m = cost.shape

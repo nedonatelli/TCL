@@ -4,9 +4,8 @@ Terrain
 Digital elevation models and terrain analysis.
 
 .. automodule:: pytcl.terrain
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 DEM Interface
 -------------

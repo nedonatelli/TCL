@@ -339,9 +339,9 @@ def assign3d_lagrangian(
 
     References
     ----------
-    .. [1] Poore, A.B., "Multidimensional assignment formulation of data
-           association problems arising from multitarget and multisensor
-           tracking", Computational Optimization and Applications, 1994.
+    - Poore, A.B., "Multidimensional assignment formulation of data
+      association problems arising from multitarget and multisensor
+      tracking", Computational Optimization and Applications, 1994.
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
@@ -462,8 +462,8 @@ def assign3d_auction(
 
     References
     ----------
-    .. [1] Bertsekas, D.P., "The auction algorithm for assignment and other
-           network flow problems", Interfaces, 1990.
+    - Bertsekas, D.P., "The auction algorithm for assignment and other
+      network flow problems", Interfaces, 1990.
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)

@@ -16,11 +16,11 @@ to reduce memory usage by up to 50% and improve performance on large problems.
 
 References
 ----------
-.. [1] Poore, A. B., "Multidimensional Assignment Problem and Data
-       Association," IEEE Transactions on Aerospace and Electronic Systems,
-       2013.
-.. [2] Cramer, R. D., et al., "The Emerging Role of Chemical Similarity in
-       Drug Discovery," Perspectives in Drug Discovery and Design, 2003.
+- Poore, A. B., "Multidimensional Assignment Problem and Data
+  Association," IEEE Transactions on Aerospace and Electronic Systems,
+  2013.
+- Cramer, R. D., et al., "The Emerging Role of Chemical Similarity in
+  Drug Discovery," Perspectives in Drug Discovery and Design, 2003.
 """
 
 from typing import List, NamedTuple, Optional, Tuple, Union

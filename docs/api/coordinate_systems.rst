@@ -2,17 +2,15 @@ Coordinate Systems
 ==================
 
 .. automodule:: pytcl.coordinate_systems
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Conversions
 -----------
 
 .. automodule:: pytcl.coordinate_systems.conversions
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Spherical Coordinates
 ^^^^^^^^^^^^^^^^^^^^^
@@ -42,6 +40,14 @@ Jacobians
 ---------
 
 .. automodule:: pytcl.coordinate_systems.jacobians
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Projections
+-----------
+
+.. automodule:: pytcl.coordinate_systems.projections.projections
    :members:
    :undoc-members:
    :show-inheritance:

@@ -10,11 +10,11 @@ Navigation System (INS) and Global Navigation Satellite System (GNSS):
 
 References
 ----------
-.. [1] P. Groves, "Principles of GNSS, Inertial, and Multisensor Integrated
-       Navigation Systems", 2nd ed., Artech House, 2013.
-.. [2] J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
-.. [3] R. Brown and P. Hwang, "Introduction to Random Signals and Applied
-       Kalman Filtering", 4th ed., Wiley, 2012.
+- P. Groves, "Principles of GNSS, Inertial, and Multisensor Integrated
+  Navigation Systems", 2nd ed., Artech House, 2013.
+- J. Farrell, "Aided Navigation: GPS with High Rate Sensors", McGraw-Hill, 2008.
+- R. Brown and P. Hwang, "Introduction to Random Signals and Applied
+  Kalman Filtering", 4th ed., Wiley, 2012.
 """
 
 from typing import List, NamedTuple, Optional, Tuple

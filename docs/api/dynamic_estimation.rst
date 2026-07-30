@@ -2,17 +2,15 @@ Dynamic Estimation
 ==================
 
 .. automodule:: pytcl.dynamic_estimation
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Kalman Filters
 --------------
 
 .. automodule:: pytcl.dynamic_estimation.kalman
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Linear Kalman Filter
 ^^^^^^^^^^^^^^^^^^^^
@@ -29,6 +27,8 @@ Extended Kalman Filter
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. _constrained-ekf:
 
 Constrained Extended Kalman Filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,6 +59,7 @@ Cholesky factor of the covariance matrix.
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: SRKalmanState, SRKalmanPrediction, SRKalmanUpdate
 
 Interacting Multiple Model (IMM) Estimator
 ------------------------------------------
@@ -74,9 +75,8 @@ Particle Filters
 ----------------
 
 .. automodule:: pytcl.dynamic_estimation.particle_filters
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Bootstrap Particle Filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -86,6 +86,8 @@ Bootstrap Particle Filter
    :undoc-members:
    :show-inheritance:
 
+.. _rbpf:
+
 Rao-Blackwellized Particle Filter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -94,6 +96,70 @@ particle maintains an independent Kalman filter for the linear components,
 reducing estimator variance.
 
 .. automodule:: pytcl.dynamic_estimation.rbpf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Gaussian Sum Filter
+-------------------
+
+.. automodule:: pytcl.dynamic_estimation.gaussian_sum_filter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Information Filter
+------------------
+
+.. automodule:: pytcl.dynamic_estimation.information_filter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+H Infinity
+----------
+
+.. automodule:: pytcl.dynamic_estimation.kalman.h_infinity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Matrix Utils
+------------
+
+.. automodule:: pytcl.dynamic_estimation.kalman.matrix_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Sr Ukf
+------
+
+.. automodule:: pytcl.dynamic_estimation.kalman.sr_ukf
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Types
+-----
+
+.. automodule:: pytcl.dynamic_estimation.kalman.types
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Ud Filter
+---------
+
+.. automodule:: pytcl.dynamic_estimation.kalman.ud_filter
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Smoothers
+---------
+
+.. automodule:: pytcl.dynamic_estimation.smoothers
    :members:
    :undoc-members:
    :show-inheritance:

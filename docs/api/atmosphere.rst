@@ -4,9 +4,8 @@ Atmosphere
 Atmospheric models for propagation and refraction.
 
 .. automodule:: pytcl.atmosphere
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Atmospheric Models
 ------------------
@@ -18,6 +17,8 @@ Standard atmosphere and refraction models.
    :undoc-members:
    :show-inheritance:
 
+.. _nrlmsise00-model:
+
 NRLMSISE-00 Model
 -----------------
 
@@ -26,6 +27,14 @@ solar activity and geomagnetic storm effects. Covers altitudes 0-1000 km with
 full atmospheric composition.
 
 .. automodule:: pytcl.atmosphere.nrlmsise00
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Ionosphere
+----------
+
+.. automodule:: pytcl.atmosphere.ionosphere
    :members:
    :undoc-members:
    :show-inheritance:

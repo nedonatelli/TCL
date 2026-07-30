@@ -11,15 +11,15 @@ density variations with altitude, latitude, local time, and solar/magnetic activ
 
 References
 ----------
-.. [1] Picone, J. M., A. E. Hedin, D. P. Drob, and A. C. Aikin (2002),
-       "NRLMSISE-00 empirical model of the atmosphere: Statistical
-       comparisons and scientific issues," J. Geophys. Res., 107(A12), 1468,
-       doi:10.1029/2002JA009430
-.. [2] NASA GSFC NRLMSISE-00 Model:
-       https://ccmc.gsfc.nasa.gov/models/nrlmsise00
-.. [3] Drob, D. P., et al. (2008), "An update to the COSPAR International
-       Reference Atmosphere model for the middle atmosphere," Adv. Space Res.,
-       43(12), 1747–1764
+- Picone, J. M., A. E. Hedin, D. P. Drob, and A. C. Aikin (2002),
+  "NRLMSISE-00 empirical model of the atmosphere: Statistical
+  comparisons and scientific issues," J. Geophys. Res., 107(A12), 1468,
+  doi:10.1029/2002JA009430
+- NASA GSFC NRLMSISE-00 Model:
+  https://ccmc.gsfc.nasa.gov/models/nrlmsise00
+- Drob, D. P., et al. (2008), "An update to the COSPAR International
+  Reference Atmosphere model for the middle atmosphere," Adv. Space Res.,
+  43(12), 1747–1764
 """
 
 from typing import NamedTuple

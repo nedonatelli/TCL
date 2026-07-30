@@ -105,6 +105,6 @@ Running the Example
 See Also
 --------
 
-- :doc:`ins_gnss_navigation` - INS/GNSS integration
-- :doc:`navigation_geodesy` - Geodetic calculations
+- :doc:`../coordinates/ins_gnss_navigation` - INS/GNSS integration
+- :doc:`../coordinates/navigation_geodesy` - Geodetic calculations
 - :doc:`magnetism_demo` - Magnetic field details

@@ -55,4 +55,4 @@ See Also
 
 - :doc:`kalman_filter_comparison` - Basic Kalman filter variants
 - :doc:`particle_filters` - Standard particle filters
-- :doc:`gaussian_mixtures` - Gaussian mixture operations
+- :doc:`../clustering/gaussian_mixtures` - Gaussian mixture operations

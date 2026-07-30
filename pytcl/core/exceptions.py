@@ -7,24 +7,27 @@ catching, better error messages, and improved debugging.
 
 Exception Hierarchy
 -------------------
-TCLError (base)
-├── ValidationError (input validation failures)
-│   ├── DimensionError (array shape/dimension mismatches)
-│   ├── ParameterError (invalid parameter values)
-│   └── RangeError (out-of-range values)
-├── ComputationError (numerical computation failures)
-│   ├── ConvergenceError (iterative algorithm non-convergence)
-│   ├── NumericalError (numerical stability issues)
-│   └── SingularMatrixError (singular/non-invertible matrix)
-├── StateError (object state violations)
-│   ├── UninitializedError (object not initialized)
-│   └── EmptyContainerError (container has no elements)
-├── ConfigurationError (configuration/setup issues)
-│   ├── MethodError (invalid method/algorithm selection)
-│   └── DependencyError (missing optional dependency)
-└── DataError (data format/structure issues)
-    ├── FormatError (invalid data format)
-    └── ParseError (data parsing failures)
+
+::
+
+    TCLError (base)
+    ├── ValidationError (input validation failures)
+    │   ├── DimensionError (array shape/dimension mismatches)
+    │   ├── ParameterError (invalid parameter values)
+    │   └── RangeError (out-of-range values)
+    ├── ComputationError (numerical computation failures)
+    │   ├── ConvergenceError (iterative algorithm non-convergence)
+    │   ├── NumericalError (numerical stability issues)
+    │   └── SingularMatrixError (singular/non-invertible matrix)
+    ├── StateError (object state violations)
+    │   ├── UninitializedError (object not initialized)
+    │   └── EmptyContainerError (container has no elements)
+    ├── ConfigurationError (configuration/setup issues)
+    │   ├── MethodError (invalid method/algorithm selection)
+    │   └── DependencyError (missing optional dependency)
+    └── DataError (data format/structure issues)
+        ├── FormatError (invalid data format)
+        └── ParseError (data parsing failures)
 
 Examples
 --------

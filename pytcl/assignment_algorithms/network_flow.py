@@ -13,10 +13,10 @@ A min-cost flow approach:
 
 References
 ----------
-.. [1] Ahuja, R. K., Magnanti, T. L., & Orlin, J. B. (1993). Network Flows:
-       Theory, Algorithms, and Applications. Prentice-Hall.
-.. [2] Costain, G., & Liang, H. (2012). An Auction Algorithm for the
-       Minimum Cost Flow Problem. CoRR, abs/1208.4859.
+- Ahuja, R. K., Magnanti, T. L., & Orlin, J. B. (1993). Network Flows:
+  Theory, Algorithms, and Applications. Prentice-Hall.
+- Costain, G., & Liang, H. (2012). An Auction Algorithm for the
+  Minimum Cost Flow Problem. CoRR, abs/1208.4859.
 """
 
 from enum import Enum
@@ -435,11 +435,11 @@ def min_cost_flow_simplex(
 
     References
     ----------
-    .. [1] Ahuja, R. K., Magnanti, T. L., & Orlin, J. B. (1993).
-           Network Flows: Theory, Algorithms, and Applications.
-           (Chapter on successive shortest paths with potentials)
-    .. [2] Johnson, D. B. (1977).
-           Efficient All-Pairs Shortest Paths in Weighted Graphs.
+    - Ahuja, R. K., Magnanti, T. L., & Orlin, J. B. (1993).
+      Network Flows: Theory, Algorithms, and Applications.
+      (Chapter on successive shortest paths with potentials)
+    - Johnson, D. B. (1977).
+      Efficient All-Pairs Shortest Paths in Weighted Graphs.
     """
     from pytcl.assignment_algorithms.dijkstra_min_cost import (
         min_cost_flow_dijkstra_potentials,

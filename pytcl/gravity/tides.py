@@ -12,12 +12,12 @@ variations in the gravity field.
 
 References
 ----------
-.. [1] Petit, G. and Luzum, B. (eds.), "IERS Conventions (2010),"
-       IERS Technical Note No. 36, Frankfurt am Main, 2010.
-.. [2] McCarthy, D.D. and Petit, G. (eds.), "IERS Conventions (2003),"
-       IERS Technical Note No. 32, Frankfurt am Main, 2004.
-.. [3] Mathews, P.M., Dehant, V., and Gipson, J.M., "Tidal station
-       displacements," JGR, 102, B9, 20469-20477, 1997.
+- Petit, G. and Luzum, B. (eds.), "IERS Conventions (2010),"
+  IERS Technical Note No. 36, Frankfurt am Main, 2010.
+- McCarthy, D.D. and Petit, G. (eds.), "IERS Conventions (2003),"
+  IERS Technical Note No. 32, Frankfurt am Main, 2004.
+- Mathews, P.M., Dehant, V., and Gipson, J.M., "Tidal station
+  displacements," JGR, 102, B9, 20469-20477, 1997.
 """
 
 from typing import NamedTuple, Tuple

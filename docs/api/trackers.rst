@@ -4,9 +4,8 @@ Trackers
 End-to-end tracking algorithms.
 
 .. automodule:: pytcl.trackers
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-members:
+   :no-undoc-members:
 
 Single Target Tracking
 ----------------------

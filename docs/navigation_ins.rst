@@ -451,7 +451,7 @@ State Vector Estimation & Diagnostics
 
 
 Common Issues & Solutions
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Problem: INS diverges without GNSS updates**
 

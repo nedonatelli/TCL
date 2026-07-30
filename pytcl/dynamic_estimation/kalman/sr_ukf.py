@@ -8,10 +8,10 @@ state spaces.
 
 References
 ----------
-.. [1] R. van der Merwe and E. A. Wan, "The Square-Root Unscented Kalman
-       Filter for State and Parameter-Estimation," ICASSP 2001.
-.. [2] S. J. Julier and J. K. Uhlmann, "Unscented Filtering and Nonlinear
-       Estimation," Proceedings of the IEEE, 2004.
+- R. van der Merwe and E. A. Wan, "The Square-Root Unscented Kalman
+  Filter for State and Parameter-Estimation," ICASSP 2001.
+- S. J. Julier and J. K. Uhlmann, "Unscented Filtering and Nonlinear
+  Estimation," Proceedings of the IEEE, 2004.
 """
 
 from typing import Any, Callable
