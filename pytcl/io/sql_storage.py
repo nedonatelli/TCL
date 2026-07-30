@@ -7,6 +7,7 @@ Good for metadata, tracks, measurements, and searchable structured data.
 import json
 import sqlite3
 from pathlib import Path
+from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -82,10 +83,15 @@ class SQLStorage(StorageBackend):
             self._connection = None
             self._cursor = None
 
-    def __enter__(self):
+    def __enter__(self) -> "SQLStorage":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def store_array(
@@ -137,7 +143,7 @@ class SQLStorage(StorageBackend):
 
         self._connection.commit()
 
-    def retrieve_array(self, name: str) -> NDArray:
+    def retrieve_array(self, name: str) -> NDArray[Any]:
         """Retrieve a stored array.
 
         Parameters

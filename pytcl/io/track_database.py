@@ -1001,7 +1001,7 @@ class TrackDatabaseManager:
             np.frombuffer(data, dtype=np.float64)[: dim * dim].reshape(dim, dim).copy()
         )
 
-    def _row_to_detection(self, row: tuple) -> Dict[str, Any]:
+    def _row_to_detection(self, row: tuple[Any, ...]) -> Dict[str, Any]:
         """Convert a detections table row to a dict."""
         meas = np.frombuffer(row[3], dtype=np.dtype(row[5]))[: row[4]].copy()
         cov = None
@@ -1025,7 +1025,7 @@ class TrackDatabaseManager:
         }
 
     @staticmethod
-    def _row_to_track(row: tuple) -> Dict[str, Any]:
+    def _row_to_track(row: tuple[Any, ...]) -> Dict[str, Any]:
         """Convert a tracks table row to a dict."""
         return {
             "track_id": row[0],

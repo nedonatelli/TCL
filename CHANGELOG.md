@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`docs/data_structures.rst` documented a class that does not exist.** The
+  page was built around a `TrackSet` imported from `tcl.tracking_containers`,
+  with attributes `track.uid`, `track.position`, `track.velocity`, `track.age`,
+  `track.gate_size` and `track.track_type`. None of it existed — not the
+  package name (`tcl` rather than `pytcl`), not the module, not the class, not
+  one attribute. Rewritten around the real containers: `Track`, `TrackList`
+  (which is what fills the `TrackSet` role, including `TrackList.from_tracker`),
+  `MeasurementSet`, `ClusterSet`, the four spatial indices and HDF5
+  persistence. `tests/test_docs_data_structures.py` executes every example.
+
+- The docs import guard **only inspected imports beginning with `pytcl`**, so a
+  page importing from `tcl.` was skipped entirely — which is how the above
+  survived #41's sweep. It now rejects any import rooted at a package this
+  project does not publish, and two further `tcl.` imports in
+  `docs/navigation_ins.rst` (`dcm_from_euler`/`euler_from_dcm`, which are
+  `euler2rotmat`/`rotmat2euler`) are corrected.
+
+- **12 `mypy --strict` errors in `pytcl/io/`**: unannotated `__enter__` /
+  `__exit__` / `__init__`, bare `NDArray`, and bare `tuple`. One was a genuine
+  nullability finding — `_ensure_groups` called `create_group` on an
+  `Optional` file handle; both callers already reject a closed file, so the
+  precondition is now stated for the type checker rather than re-validated.
+
+### Changed
+
+- **CI type checks with `mypy --strict`.** The looser
+  `--ignore-missing-imports` command had been passing while those 12 errors
+  accumulated.
+
 ### Added
 
 - **Per-detection measurement covariance in both trackers.**
