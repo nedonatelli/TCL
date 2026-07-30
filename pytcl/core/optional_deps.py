@@ -36,7 +36,7 @@ import importlib
 import logging
 from functools import wraps
 from types import ModuleType
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Final, Optional, TypeVar
 
 from pytcl.core.exceptions import DependencyError
 
@@ -152,15 +152,22 @@ def is_available(package: str) -> bool:
 # =============================================================================
 
 
+#: Name of this project on PyPI. The import package is ``pytcl`` but the
+#: distribution is ``nrl-tracker``, so install hints must use this and not the
+#: import name -- a user who follows ``pip install pytcl[terrain]`` installs an
+#: unrelated project. Checked against pyproject.toml by the test suite.
+DISTRIBUTION_NAME: Final[str] = "nrl-tracker"
+
+
 def _get_install_command(package: str, extra: Optional[str] = None) -> str:
     """Generate the pip install command for a package."""
     if extra:
-        return f"pip install pytcl[{extra}]"
+        return f"pip install {DISTRIBUTION_NAME}[{extra}]"
 
     # Check if we know the extra for this package
     if package in PACKAGE_EXTRAS:
         extra_name, _ = PACKAGE_EXTRAS[package]
-        return f"pip install pytcl[{extra_name}]"
+        return f"pip install {DISTRIBUTION_NAME}[{extra_name}]"
 
     # Default to direct package install
     pip_package = package

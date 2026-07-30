@@ -90,7 +90,9 @@ class TestImportOptional:
                 extra="visualization",
             )
 
-        assert "pip install pytcl[visualization]" in exc_info.value.install_command
+        assert (
+            "pip install nrl-tracker[visualization]" in exc_info.value.install_command
+        )
 
     def test_import_with_feature(self):
         """Test that feature is included in error message."""
@@ -167,7 +169,9 @@ class TestRequiresDecorator:
         with pytest.raises(DependencyError) as exc_info:
             my_function()
 
-        assert "pip install pytcl[visualization]" in exc_info.value.install_command
+        assert (
+            "pip install nrl-tracker[visualization]" in exc_info.value.install_command
+        )
 
     def test_decorator_preserves_function_metadata(self):
         """Test that decorator preserves function name and docstring."""
@@ -233,7 +237,7 @@ class TestCheckDependencies:
         with pytest.raises(DependencyError) as exc_info:
             check_dependencies("nonexistent_package_xyz", extra="astronomy")
 
-        assert "pip install pytcl[astronomy]" in exc_info.value.install_command
+        assert "pip install nrl-tracker[astronomy]" in exc_info.value.install_command
 
 
 class TestLazyModule:
@@ -330,3 +334,42 @@ class TestIntegrationWithCore:
         assert callable(requires)
         assert callable(check_dependencies)
         assert LazyModule is not None
+
+
+class TestDistributionNameMatchesPackaging:
+    """The install hints must name the distribution, not the import package.
+
+    The import package is ``pytcl``; the project on PyPI is ``nrl-tracker``.
+    Every ``DependencyError`` used to say ``pip install pytcl[terrain]``, so a
+    user following the error message installed an unrelated project. The name
+    now lives in one constant, and this ties that constant to pyproject.toml so
+    the two cannot drift.
+    """
+
+    def test_constant_matches_pyproject(self):
+        import pathlib
+        import re
+
+        from pytcl.core.optional_deps import DISTRIBUTION_NAME
+
+        pyproject = (
+            pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+        ).read_text(encoding="utf-8")
+        declared = re.search(r'^name\s*=\s*"([^"]+)"', pyproject, re.M)
+        assert declared, "could not find [project] name in pyproject.toml"
+        assert DISTRIBUTION_NAME == declared.group(1)
+
+    def test_no_install_hint_names_the_import_package(self):
+        """A hint saying "pip install pytcl" sends users to the wrong project."""
+        import pathlib
+
+        root = pathlib.Path(__file__).resolve().parent.parent / "pytcl"
+        offenders = []
+        for path in root.rglob("*.py"):
+            for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "pip install pytcl" in line and not line.lstrip().startswith("#"):
+                    offenders.append(f"{path.relative_to(root.parent)}:{i}")
+        assert not offenders, (
+            "these install hints name the import package rather than the "
+            f"distribution: {offenders}"
+        )

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`MOON_GM` disagreed with the library's own constants and with DE430**
+  ([#23](https://github.com/nedonatelli/TCL/issues/23)). `core.constants` held
+  `4.9028695e12`, which is 1.4e-5 relative away from both the published
+  DE430/GRAIL value (4902.800118 km³/s²) and from
+  `EARTH_GM / EARTH_MOON_MASS_RATIO`. `gravity.tides` was independently
+  defining its own `MOON_GM = 4.902801e12`, so two of the three disagreed.
+  Corrected to the DE430 value, and `tides` now imports `MOON_GM` and `SUN_GM`
+  from `core.constants` rather than redefining them — two copies of a physical
+  constant drift, and these had.
+
+- **Install hints named a package that does not exist**
+  ([#23](https://github.com/nedonatelli/TCL/issues/23)). Every
+  `DependencyError` said `pip install pytcl[...]`, but the import package is
+  `pytcl` while the distribution on PyPI is `nrl-tracker` — a user following the
+  error message installed an unrelated project. The name now lives in one
+  constant, `optional_deps.DISTRIBUTION_NAME`, checked against `pyproject.toml`
+  by the test suite, with a second test asserting no hint anywhere in the
+  package names the import package.
+
+- **`is_positive_definite` accepted singular matrices**
+  ([#23](https://github.com/nedonatelli/TCL/issues/23)). The check was
+  `eigenvalues > -tol * max|λ|`, which admits zero and small negatives, so
+  `diag(1, 0)` returned `True` — that matrix is positive *semi*-definite. The
+  function now requires strictly positive eigenvalues, matching its name.
+
+### Added
+
+- `is_positive_semidefinite` in `pytcl.core.array_utils`, for the tolerant
+  check that `is_positive_definite` was previously performing. This is the
+  right test for a covariance, which may legitimately be singular when a state
+  component is perfectly known.
+
 ## [1.19.0] - 2026-07-30
 
 This release is about **verification rather than features**: the library gained a way to express per-detection measurement uncertainty, and everything else exists to make the package prove its own claims. Examples, notebooks, documentation imports and the tracking pipeline are all now executed in CI, and each gate that was added found defects the previous layer could not see.

@@ -20,6 +20,7 @@ from pytcl.core.array_utils import (
     block_diag,
     column_vector,
     is_positive_definite,
+    is_positive_semidefinite,
     meshgrid_ij,
     nearest_positive_definite,
     normalize_vector,
@@ -137,6 +138,35 @@ class TestConstantsAuthoritative:
         assert C.STANDARD_ATMOSPHERE == 101_325.0
         assert C.ABSOLUTE_ZERO_CELSIUS == -273.15
         assert C.STANDARD_GRAVITY == 9.80665  # CGPM definition
+
+    def test_moon_gm_matches_de430_and_the_librarys_own_mass_ratio(self):
+        """MOON_GM must agree with DE430 and with EARTH_GM / EARTH_MOON_MASS_RATIO.
+
+        It did not. core.constants carried 4.9028695e12, which is 1.4e-5
+        relative away from both the published DE430/GRAIL value
+        (4902.800118 km^3/s^2) and from the quotient the library's own two
+        constants imply -- and away from the value pytcl.gravity.tides was
+        independently using. Two of the three disagreed with each other.
+        """
+        assert C.MOON_GM == pytest.approx(4.902800118e12, rel=1e-9)
+
+        # Consistency with the library's own Earth-Moon mass ratio. The
+        # tolerance is set by the rounding in EARTH_MOON_MASS_RATIO itself,
+        # not by any slack in MOON_GM.
+        derived = C.EARTH_GM / C.EARTH_MOON_MASS_RATIO
+        assert C.MOON_GM == pytest.approx(derived, rel=2e-7)
+
+    def test_moon_and_sun_gm_are_defined_once(self):
+        """gravity.tides must not carry its own copy of these constants.
+
+        It used to define MOON_GM = 4.902801e12 and SUN_GM locally. Two copies
+        of a physical constant drift, and these had: the tides value was right
+        and core's was not.
+        """
+        from pytcl.gravity import tides
+
+        assert tides.MOON_GM is C.MOON_GM
+        assert tides.SUN_GM is C.SUN_GM
 
     def test_derived_constants_from_exact_values(self):
         # R = N_A * k_B (exact in SI 2019)
@@ -332,6 +362,41 @@ class TestArrayUtilsGroundTruth:
         assert not is_positive_definite([[1, 2], [2, 1]])  # eig -1
         assert not is_positive_definite([[1, 2, 3], [4, 5, 6]])  # not square
         assert not is_positive_definite([[1, 5], [0, 1]])  # not symmetric
+
+    def test_is_positive_definite_rejects_singular_matrices(self):
+        """A singular matrix is semidefinite, not definite.
+
+        The test was ``eigenvalues > -tol * max|lambda|``, which admits zero,
+        so diag(1, 0) reported True and the name overstated the guarantee.
+        """
+        assert not is_positive_definite(np.diag([1.0, 0.0]))
+        assert not is_positive_definite(np.zeros((2, 2)))
+        # a genuinely negative eigenvalue, however small, is not definite
+        assert not is_positive_definite(np.diag([1.0, -1e-12]))
+
+    def test_is_positive_semidefinite_accepts_what_definite_rejects(self):
+        """The tolerant check has its own name now.
+
+        A covariance may legitimately be singular -- a perfectly known state
+        component gives a zero eigenvalue -- so the semidefinite check is the
+        right one there.
+        """
+        assert is_positive_semidefinite(np.diag([1.0, 0.0]))
+        assert is_positive_semidefinite(np.zeros((2, 2)))
+        assert is_positive_semidefinite(np.diag([1.0, -1e-12]))
+
+        # but it still rejects a real negative eigenvalue
+        assert not is_positive_semidefinite(np.diag([1.0, -1.0]))
+        assert not is_positive_semidefinite([[1, 5], [0, 1]])  # not symmetric
+
+    def test_definite_implies_semidefinite(self):
+        """Anything definite must also pass the weaker check."""
+        rng = np.random.default_rng(11)
+        for _ in range(30):
+            M = rng.normal(size=(4, 4))
+            A = M @ M.T + np.eye(4) * 1e-3  # symmetric, well conditioned
+            assert is_positive_definite(A)
+            assert is_positive_semidefinite(A)
 
     def test_nearest_positive_definite_matches_higham_reference(self):
         """Higham (1988): nearest symmetric PSD in Frobenius norm equals

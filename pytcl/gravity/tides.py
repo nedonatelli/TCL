@@ -25,6 +25,8 @@ from typing import NamedTuple, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.constants import MOON_GM as _MOON_GM
+from pytcl.core.constants import SUN_GM as _SUN_GM
 from pytcl.gravity.models import WGS84
 
 
@@ -100,8 +102,12 @@ GRAVIMETRIC_FACTOR = 1.0 + LOVE_H2 - 1.5 * LOVE_K2
 # Earth parameters
 EARTH_RADIUS = WGS84.a  # Equatorial radius (m)
 EARTH_GM = WGS84.GM  # Gravitational parameter (m^3/s^2)
-MOON_GM = 4.902801e12  # Moon GM (m^3/s^2)
-SUN_GM = 1.32712440018e20  # Sun GM (m^3/s^2)
+
+# Imported rather than redefined: this module used to carry its own MOON_GM and
+# SUN_GM, and its Moon value disagreed with pytcl.core.constants by 1.4e-5.
+# Two copies of a physical constant will drift.
+MOON_GM = _MOON_GM  # Moon GM (m^3/s^2)
+SUN_GM = _SUN_GM  # Sun GM (m^3/s^2)
 
 # Mean distances
 MOON_DISTANCE = 384400e3  # Moon mean distance (m)

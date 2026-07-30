@@ -26,6 +26,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.core.exceptions import DependencyError
+from pytcl.core.optional_deps import DISTRIBUTION_NAME
 from pytcl.core.paths import get_data_dir
 
 from .dem import DEMGrid
@@ -295,7 +296,7 @@ def parse_gebco_netcdf(
             "netCDF4 is required for loading GEBCO files.",
             package="netCDF4",
             feature="NetCDF file reading",
-            install_command="pip install pytcl[terrain]",
+            install_command=f"pip install {DISTRIBUTION_NAME}[terrain]",
         ) from e
 
     # Set defaults for global extent
