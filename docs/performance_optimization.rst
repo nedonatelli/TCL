@@ -31,7 +31,8 @@ Never optimize without profiling. Most time is spent in a few functions:
    def profile_tracking_algorithm():
        # Your tracking code here
        for z in measurements:
-           x, P = extended_kalman_filter(x, P, z, ...)
+           upd = ekf_update(x, P, z, h, H, R)
+           x, P = upd.x, upd.P
    
    # Profile
    profiler = cProfile.Profile()
@@ -60,11 +61,18 @@ Vectorization & Batching
 
    # ❌ SLOW: Python loop - slow interpreter overhead
    for z in measurements:  # measurements shape: (10000, 2)
-       x, P = extended_kalman_filter(x, P, z, ...)
-   
-   # ✅ FAST: Batch processing (if your filter supports it)
-   # Process all measurements at once
-   x, P = extended_kalman_filter_batch(x, P, measurements, ...)
+       upd = ekf_update(x, P, z, h, H, R)
+       x, P = upd.x, upd.P
+
+   # ✅ FASTER: keep the per-step work minimal -- hoist anything constant out
+   # of the loop. There is no batched EKF entry point; the cost is dominated by
+   # the Jacobian evaluation and the covariance update, so precompute H when the
+   # measurement model is linear.
+   H = np.array([[1.0, 0.0, 0.0, 0.0],
+                 [0.0, 1.0, 0.0, 0.0]])
+   for z in measurements:
+       upd = ekf_update(x, P, z, lambda s: H @ s, H, R)
+       x, P = upd.x, upd.P
 
 **Problem: Repeated Coordinate Conversions**
 
@@ -110,17 +118,17 @@ Auction + heuristic  O(n²)   ~Yes     Large: n > 1000
 
 .. code-block:: python
 
-   from pytcl.assignment.optimization import assignment_nd
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
    
    # For < 100 targets: Hungarian is fine
-   # assignments = assignment_nd(cost_matrix, method='hungarian')
+   # assignments = relaxation_assignment_nd(cost_matrix, method='hungarian')
    
    # For > 1000 targets: Use greedy + auctions
-   # assignments = assignment_nd(cost_matrix, method='auction')
+   # assignments = relaxation_assignment_nd(cost_matrix, method='auction')
    
    # For sparse matrices (mostly infinite costs):
-   from pytcl.assignment.optimization import assignment_nd_sparse
-   assignments = assignment_nd_sparse(cost_matrix)
+   from pytcl.assignment_algorithms import greedy_assignment_nd
+   assignments = greedy_assignment_nd(cost_matrix)
 
 Caching with ``lru_cache``
 ---------------------------
@@ -222,7 +230,7 @@ For large assignment problems with few valid assignments (sparse cost matrix):
 
 .. code-block:: python
 
-   from pytcl.assignment.optimization import assignment_nd_sparse
+   from pytcl.assignment_algorithms import greedy_assignment_nd
    import numpy as np
    
    # Traditional: Full matrix (memory waste on infinite costs)
@@ -232,14 +240,14 @@ For large assignment problems with few valid assignments (sparse cost matrix):
    # Memory: 10000 × 10000 × 8 bytes = 800 MB
    
    # Sparse: Only store valid entries
-   assignments = assignment_nd_sparse(cost_dense)  # Efficient indexing
+   assignments = greedy_assignment_nd(cost_dense)  # Efficient indexing
    # Memory: ~100 entries × 8 bytes = 1 KB
 
 **Benefits:**
 
 - Memory savings: 50-90% reduction
 - Speed: O(n_valid log n_valid) vs O(n² log n²)
-- Automatic selection in ``assignment_nd()``
+- Automatic selection in ``relaxation_assignment_nd()``
 
 Real-World Example: Multi-Sensor Tracking
 ------------------------------------------
@@ -249,8 +257,8 @@ Optimize a realistic tracking scenario:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
-   from pytcl.assignment.optimization import assignment_nd
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
    from scipy.spatial.distance import cdist
    import time
    
@@ -285,7 +293,7 @@ Optimize a realistic tracking scenario:
        def update(self, measurements):
            """Update with measurements"""
            cost = self.compute_association_cost(measurements)
-           assignments = assignment_nd(cost)
+           assignments = relaxation_assignment_nd(cost)
            
            for target_idx, meas_idx in assignments:
                if meas_idx >= 0:  # Valid assignment

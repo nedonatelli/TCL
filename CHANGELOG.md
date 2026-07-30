@@ -36,11 +36,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drifts from reality again: every module and public-name count is measured
   from the package, every implemented package must appear in the table, every
   empty package must be named, and every `pytcl` import on the page must
-  resolve. It also runs the import check across the rest of `docs/` against a
-  named list of pages not yet cleaned — **92 of the 264 `pytcl` imports in the
-  docs are broken, across 16 pages** — so that debt is countable and cannot
-  grow. A page that is listed but no longer broken also fails, so the list
-  cannot drift either.
+  resolve. The import check runs across the whole of `docs/`.
+
+### Fixed
+
+- **All 92 broken `pytcl` imports in the documentation, across 16 pages.**
+  Every one of the 244 imports in `docs/` now resolves. The causes were:
+
+  - packages documented under names they never had — `pytcl.signal_processing`
+    (it is `pytcl.mathematical_functions.signal_processing`), `pytcl.assignment`
+    and `pytcl.assignment.optimization` (`pytcl.assignment_algorithms`),
+    `pytcl.kalman` (`pytcl.dynamic_estimation.kalman`), `pytcl.tracking`
+    (`pytcl.trackers`), `pytcl.trackers.multi_tracker_gnn`,
+    `pytcl.dynamic_estimation.batch_estimation`
+  - functions renamed or never present under the documented spelling:
+    `ecef2eci`/`eci2ecef` → `ecef_to_eci`/`eci_to_ecef`, `propagate_kepler` →
+    `kepler_propagate`, `kep2state` → `orbital_elements_to_state`,
+    `solve_lambert`/`lambert_battin` → `lambert_universal`/`lambert_izzo`,
+    `get_sun_position` → `sun_position`, `sgp4_propagator` → `sgp4_propagate`,
+    `euler2dcm`/`dcm2euler` → `euler2rotmat`/`rotmat2euler`,
+    `jacobian_cart2sphere` → `spherical_jacobian`, `cfar_1d` → `cfar_ca`,
+    `design_fir_filter` → `fir_design`, `fft_1d`/`fft_2d` → `fft`/`fft2`,
+    `assignment_nd` → `relaxation_assignment_nd`, and others
+  - **a class-based filter API that does not exist.** Examples across seven
+    pages used `KalmanFilter`, `ExtendedKalmanFilter` and
+    `extended_kalman_filter(...)` one-shot calls; the library exposes
+    `ekf_predict`/`ekf_update` pairs. Those examples are rewritten, including
+    the `AdaptiveKalmanFilter` wrapper in `adaptive_filtering.rst`, which held
+    a `self.kf` object throughout.
+  - **a metric that was never implemented.** The GOSPA section of the
+    multi-target tracking tutorial documented `gospa_distance`. Replaced with
+    the CLEAR MOT and track-quality metrics the library does provide
+    (`mot_metrics`, `track_purity`, `track_fragmentation`,
+    `identity_switches`).
+
+- **The docs import guard was keyed by filename and so was platform-dependent.**
+  Ten basenames are ambiguous under `docs/` — `coordinate_systems.rst` appears
+  four times — so an allowlist entry skipped every page sharing that name, and
+  which file the check resolved to depended on the order `rglob` returned,
+  differing between Linux and macOS. It is now keyed by path relative to
+  `docs/`.
 
 ### Changed
 

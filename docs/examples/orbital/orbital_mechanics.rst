@@ -53,7 +53,7 @@ The example demonstrates:
 - State vector to orbital elements conversion
 - Kepler equation solving with ``solve_kepler()``
 - Two-body propagation with ``propagate_twobody()``
-- Lambert solver with ``solve_lambert()``
+- Lambert solver with ``lambert_universal()``
 - TLE parsing and SGP4 propagation
 
 Source Code

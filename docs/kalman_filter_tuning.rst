@@ -368,7 +368,7 @@ Example: Tuning for GPS Tracking
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
    
    # 2D position tracking with GPS
    # State: [x, y, vx, vy]
@@ -411,13 +411,9 @@ Example: Tuning for GPS Tracking
    x = x0
    P = P0
    for z in measurements:
-       x, P = extended_kalman_filter(
-           x, P, z,
-           state_transition_fn=lambda s: F @ s,
-           measurement_fn=lambda s: H @ s,
-           process_cov=Q,
-           measurement_cov=R,
-       )
+       pred = ekf_predict(x, P, lambda s: F @ s, F, Q)
+       upd = ekf_update(pred.x, pred.P, z, lambda s: H @ s, H, R)
+       x, P = upd.x, upd.P
        print(f"Position: ({x[0]:.2f}, {x[1]:.2f}), Velocity: ({x[2]:.2f}, {x[3]:.2f})")
 
 References

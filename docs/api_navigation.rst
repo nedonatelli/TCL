@@ -59,7 +59,7 @@ Method 2: Interactive Discovery
 
    import pytcl.coordinate_systems.rotations as rot
    rot.euler  # Press Tab
-   # Suggestions: euler2dcm, euler2quat, euler_rate2body_rate, etc.
+   # Suggestions: euler2rotmat, euler2quat, euler_rate2body_rate, etc.
 
 Method 3: Search Functions by Category
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -112,10 +112,10 @@ Workflow 1: "I need to do Kalman filtering"
    from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
    
    # Nonlinear, need Jacobian → use EKF
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
    
    # Nonlinear, don't want Jacobian code → use UKF
-   from pytcl.dynamic_estimation.kalman import unscented_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ukf_predict, ukf_update
 
 **Step 4**: See tuning guide at :doc:`kalman_filter_tuning`
 
@@ -164,27 +164,27 @@ Workflow 3: "I need data association"
 
 .. code-block:: python
 
-   from pytcl.assignment import optimization
+   from pytcl.assignment_algorithms import assign2d, assign3d, murty
    
    # Available methods
    print(dir(optimization))
-   # assignment_nd, assignment_nd_sparse, murty_algorithm, etc.
+   # relaxation_assignment_nd, greedy_assignment_nd, murty, etc.
 
 **Step 2**: Understand when to use each:
 
 .. code-block:: python
 
    # Small problems (< 500 assignments): any method works
-   from pytcl.assignment.optimization import assignment_nd
-   assignments = assignment_nd(cost_matrix)
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+   assignments = relaxation_assignment_nd(cost_matrix)
    
    # Large problems (> 1000): consider auction or sparse
-   from pytcl.assignment.optimization import assignment_nd
-   assignments = assignment_nd(cost_matrix, method='auction')
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+   assignments = relaxation_assignment_nd(cost_matrix, method='auction')
    
    # Top-K solutions (need multiple options)
-   from pytcl.assignment.optimization import murty_algorithm
-   top_k_solutions = murty_algorithm(cost_matrix, k=5)
+   from pytcl.assignment_algorithms import murty
+   top_k_solutions = murty(cost_matrix, k=5)
 
 **Step 3**: See performance guide at :doc:`performance_optimization`
 
@@ -207,19 +207,19 @@ Workflow 4: "I need navigation functions"
 .. code-block:: python
 
    # Distance/bearing between lat/lon points
-   from pytcl.navigation.geodesy import great_circle_distance
+   from pytcl.navigation import great_circle_distance
    
    # INS propagation with gravity
-   from pytcl.navigation.ins_gnss import ins_update
+   from pytcl.navigation import mechanize_ins_ned
    
    # Sun, Moon, planet positions
-   from pytcl.astronomical.ephemerides import get_sun_position
+   from pytcl.astronomical.ephemerides import sun_position
 
 **Step 3**: Use it with coordinate conversions:
 
 .. code-block:: python
 
-   from pytcl.navigation.geodesy import great_circle_distance
+   from pytcl.navigation import great_circle_distance
    
    # New York to London
    nyc = np.array([40.7128, -74.0060])  # lat, lon
@@ -238,7 +238,7 @@ Function Naming Conventions
    sphere2cart      # Spherical → Cartesian
    ecef2geodetic    # ECEF → Geodetic
    ecef2enu         # ECEF → East-North-Up
-   euler2dcm        # Euler angles → Direction Cosine Matrix
+   euler2rotmat        # Euler angles → Direction Cosine Matrix
 
 **Prediction/Update**: ``verb_noun``
 
@@ -252,7 +252,7 @@ Function Naming Conventions
 
 .. code-block:: python
 
-   get_sun_position()              # Astronomy
+   sun_position()              # Astronomy
    compute_distance()              # Math
    get_magnetic_cache_info()       # Geophysics
 
@@ -274,22 +274,22 @@ Multi-Target Tracking
 .. code-block:: python
 
    # Tracking system
-   from pytcl.trackers.multi_tracker_gnn import GNNTracker
+   from pytcl.trackers import MultiTargetTracker
    
    # Data structures
-   from pytcl.containers import TrackSet, Track
+   from pytcl.trackers import Track
    
    # Coordinate conversions
    from pytcl.coordinate_systems.conversions import sphere2cart
    
    # Filter (inside tracker)
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
    
    # Dynamic model
    from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
    
    # Data association (inside tracker, but useful for custom)
-   from pytcl.assignment.optimization import assignment_nd
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
    
    # Performance evaluation
    from pytcl.performance_evaluation.metrics import (
@@ -311,11 +311,11 @@ Navigation and Geomatics
    )
    
    # INS mechanization
-   from pytcl.navigation.ins_gnss import ins_update_discrete
+   from pytcl.navigation import mechanize_ins_ned
    
    # Coordinate frames
    from pytcl.coordinate_systems.rotations import (
-       euler2dcm, dcm2euler, quat2dcm
+       euler2rotmat, rotmat2euler, quat2dcm
    )
    
    # Projections (map coordinates)
@@ -338,20 +338,20 @@ Satellite Operations
 .. code-block:: python
 
    # Orbit propagation
-   from pytcl.astronomical.orbital_mechanics import propagate_kepler
+   from pytcl.astronomical.orbital_mechanics import kepler_propagate
    
    # Reference frame transforms
    from pytcl.astronomical.reference_frames import (
-       ecef2eci, eci2ecef, apply_precession_nutation
+       ecef_to_eci, eci_to_ecef, apply_precession_nutation
    )
    
    # Ephemeris (planets, sun, moon)
    from pytcl.astronomical.ephemerides import (
-       get_sun_position, get_moon_position
+       sun_position, get_moon_position
    )
    
    # SGP4 (TLE propagation)
-   from pytcl.astronomical.sgp4 import sgp4_propagator
+   from pytcl.astronomical.sgp4 import sgp4_propagate
    
    # Relativistic corrections
    from pytcl.astronomical.relativity import proper_time_rate, shapiro_delay
@@ -366,15 +366,15 @@ Advanced Signal Processing
 .. code-block:: python
 
    # CFAR detection
-   from pytcl.signal_processing.detection import cfar_1d, cfar_2d
+   from pytcl.mathematical_functions.signal_processing.detection import cfar_ca, cfar_2d
    
    # Filtering
-   from pytcl.signal_processing.filtering import (
+   from pytcl.mathematical_functions.signal_processing.filters import (
        design_butterworth, apply_filter
    )
    
    # Optimal detection
-   from pytcl.signal_processing.optimal import (
+   from pytcl.mathematical_functions.signal_processing.matched_filter import (
        matched_filter, likelihood_ratio_test
    )
    
@@ -460,7 +460,7 @@ Solution: Check the correct import path
 .. code-block:: python
 
    # ❌ Wrong
-   from pytcl.kalman import kf_predict  # Module doesn't exist here
+   from pytcl.dynamic_estimation.kalman import kf_predict  # Module doesn't exist here
    
    # ✅ Correct
    from pytcl.dynamic_estimation.kalman import kf_predict
@@ -557,7 +557,7 @@ Most functions return named tuples or dataclasses for clarity:
 
 .. code-block:: python
 
-   from pytcl.dynamic_estimation.kalman import KalmanResult
+   from pytcl.dynamic_estimation.kalman import KalmanUpdate
    
    result = kf_predict(x, P, F, Q)
    # result.x = predicted state
@@ -570,20 +570,20 @@ Many functions have optional parameters with sensible defaults:
 
 .. code-block:: python
 
-   from pytcl.assignment.optimization import assignment_nd
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
    
    # Simple usage with default method
-   assignments = assignment_nd(cost_matrix)
+   assignments = relaxation_assignment_nd(cost_matrix)
    
    # Advanced: specify method
-   assignments = assignment_nd(cost_matrix, method='hungarian')
+   assignments = relaxation_assignment_nd(cost_matrix, method='hungarian')
 
 Best Practices
 --------------
 
 1. **Start with the highest-level API**
    
-   ✅ Use: ``from pytcl.trackers import GNNTracker``
+   ✅ Use: ``from pytcl.trackers import MultiTargetTracker``
    
    ❌ Avoid: Implementing by combining 10 lower-level functions
 

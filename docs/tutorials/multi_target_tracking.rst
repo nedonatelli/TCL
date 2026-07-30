@@ -97,7 +97,7 @@ Filter unlikely measurement-track associations:
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import mahalanobis_gate, ellipsoidal_gate
+   from pytcl.assignment_algorithms import ellipsoidal_gate, ellipsoidal_gate
 
    # Predicted measurement and covariance
    z_pred = H @ x_pred
@@ -105,7 +105,7 @@ Filter unlikely measurement-track associations:
 
    # Check if measurement is in gate
    z = np.array([5.2, 3.1])
-   is_valid = mahalanobis_gate(z, z_pred, S, threshold=9.21)
+   is_valid = ellipsoidal_gate(z, z_pred, S, threshold=9.21)
 
    # Or compute gated measurements for multiple candidates
    measurements = np.array([[5.2, 3.1], [10.5, 2.0], [100.0, 50.0]])
@@ -248,7 +248,7 @@ OSPA Metric
 
 .. code-block:: python
 
-   from pytcl.performance_evaluation import ospa_distance
+   from pytcl.performance_evaluation import ospa
 
    # True target positions
    truth = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
@@ -257,20 +257,36 @@ OSPA Metric
    estimates = np.array([[10.5, 19.8], [30.2, 40.5]])  # Missing one target
 
    # OSPA distance (order 2, cutoff 100)
-   ospa = ospa_distance(truth, estimates, p=2, c=100.0)
+   ospa = ospa(truth, estimates, p=2, c=100.0)
    print(f"OSPA: {ospa.distance:.2f}")
    print(f"  Localization: {ospa.localization:.2f}")
    print(f"  Cardinality: {ospa.cardinality:.2f}")
 
-GOSPA Metric
-^^^^^^^^^^^^
+Track Quality Metrics
+^^^^^^^^^^^^^^^^^^^^^
+
+GOSPA is not implemented. Alongside OSPA the library provides the CLEAR MOT
+metrics and per-track quality measures, which answer the questions GOSPA is
+usually reached for -- how much of each true track was held, and how often
+identity was lost.
 
 .. code-block:: python
 
-   from pytcl.performance_evaluation import gospa_distance
+   from pytcl.performance_evaluation import (
+       mot_metrics,
+       track_purity,
+       track_fragmentation,
+       identity_switches,
+   )
 
-   gospa = gospa_distance(truth, estimates, p=2, c=100.0, alpha=2.0)
-   print(f"GOSPA: {gospa.distance:.2f}")
+   # ground_truth and estimates are lists of per-scan position arrays
+   metrics = mot_metrics(ground_truth, estimates, threshold=10.0)
+   print(f"MOTA: {metrics.mota:.3f}  MOTP: {metrics.motp:.3f}")
+
+   # label-based measures, given true and estimated track labels per detection
+   print(f"purity:        {track_purity(true_labels, est_labels):.3f}")
+   print(f"fragments:     {track_fragmentation(true_labels, est_labels)}")
+   print(f"ID switches:   {identity_switches(true_labels, est_labels)}")
 
 Complete Example
 ----------------
@@ -279,7 +295,7 @@ Complete Example
 
    import numpy as np
    from pytcl.trackers import MultiTargetTracker
-   from pytcl.performance_evaluation import ospa_distance
+   from pytcl.performance_evaluation import ospa
 
    # Setup
    np.random.seed(42)
@@ -342,7 +358,7 @@ Complete Example
        else:
            estimates = np.empty((0, 2))
 
-       ospa = ospa_distance(
+       ospa = ospa(
            np.array(truth_positions), estimates, p=2, c=50.0
        )
        ospa_values.append(ospa.distance)

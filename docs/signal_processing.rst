@@ -37,7 +37,7 @@ Raw radar returns contain both signal and noise. CFAR adaptively sets detection 
 
 .. code-block:: python
 
-   from pytcl.signal_processing.detection import cfar_1d
+   from pytcl.mathematical_functions.signal_processing.detection import cfar_ca
    import numpy as np
    
    # Simulated radar return
@@ -47,7 +47,7 @@ Raw radar returns contain both signal and noise. CFAR adaptively sets detection 
    radar_return = signal + noise
    
    # CFAR detection
-   detections, threshold = cfar_1d(
+   detections, threshold = cfar_ca(
        radar_return,
        window_size=32,      # Training window size
        guard_size=4,        # Guard band around test cell
@@ -76,22 +76,22 @@ Different algorithms for different clutter types:
 .. code-block:: python
 
    # CA-CFAR (Cell Averaging): Simple, works well in uniform clutter
-   detections, th = cfar_1d(radar_data, method='cell_averaging')
+   detections, th = cfar_ca(radar_data, method='cell_averaging')
    
    # OS-CFAR (Order Statistics): Robust to multiple targets
-   detections, th = cfar_1d(radar_data, method='order_statistics', rank=4)
+   detections, th = cfar_ca(radar_data, method='order_statistics', rank=4)
    
    # SO-CFAR (Smallest Of): Conservative (few false alarms)
-   detections, th = cfar_1d(radar_data, method='smallest_of')
+   detections, th = cfar_ca(radar_data, method='smallest_of')
    
    # GO-CFAR (Greatest Of): Aggressive (more detections)
-   detections, th = cfar_1d(radar_data, method='greatest_of')
+   detections, th = cfar_ca(radar_data, method='greatest_of')
 
 **2D CFAR** (range × Doppler)
 
 .. code-block:: python
 
-   from pytcl.signal_processing.detection import cfar_2d
+   from pytcl.mathematical_functions.signal_processing.detection import cfar_2d
    
    # Simulated range-Doppler map
    # Dimensions: [n_range, n_doppler]
@@ -125,7 +125,7 @@ Different algorithms for different clutter types:
 
 .. code-block:: python
 
-   from pytcl.signal_processing.detection import cfar_1d
+   from pytcl.mathematical_functions.signal_processing.detection import cfar_ca
    
    def compute_roc_curve(signal_snr_db, noise_std, pfa_values):
        """Receiver Operating Characteristic curve"""
@@ -138,7 +138,7 @@ Different algorithms for different clutter types:
        
        for pfa in pfa_values:
            radar_return = signal + np.random.randn(1000) * noise_std
-           detections, _ = cfar_1d(radar_return, pfa=pfa)
+           detections, _ = cfar_ca(radar_return, pfa=pfa)
            pd = np.sum(detections[500:510] == 1) / 10  # Prob of detection
            detections_per_pfa.append(pd)
        
@@ -165,7 +165,7 @@ Maximize signal-to-noise ratio (SNR) for known signal shape. Optimal for white G
 
 .. code-block:: python
 
-   from pytcl.signal_processing.optimal import matched_filter
+   from pytcl.mathematical_functions.signal_processing.matched_filter import matched_filter
    import numpy as np
    
    # Known transmit signal (e.g., chirp pulse)
@@ -204,7 +204,7 @@ Maximize signal-to-noise ratio (SNR) for known signal shape. Optimal for white G
        """Demonstrate range resolution improvement via pulse compression"""
        
        # LFM chirp: linear frequency modulation (common in modern radars)
-       from pytcl.signal_processing.optimal import matched_filter
+       from pytcl.mathematical_functions.signal_processing.matched_filter import matched_filter
        
        # Parameters
        pulse_duration = 10e-6  # 10 μs
@@ -230,7 +230,7 @@ Digital Filtering
 
 .. code-block:: python
 
-   from pytcl.signal_processing.filtering import design_fir_filter
+   from pytcl.mathematical_functions.signal_processing.filters import fir_design
    
    # Design a low-pass FIR filter
    fsample = 1000  # Sampling frequency (Hz)
@@ -239,7 +239,7 @@ Digital Filtering
    gpass = 1       # Passband ripple (dB)
    gstop = 60      # Stopband attenuation (dB)
    
-   b = design_fir_filter(
+   b = fir_design(
        order=100,          # Filter order (number of taps)
        frequencies=[fpass, fstop],
        gains=[1, 0],
@@ -249,7 +249,7 @@ Digital Filtering
    print(f"FIR coefficient length: {len(b)}")
    
    # Apply filter to data
-   from pytcl.signal_processing.filtering import apply_filter
+   from pytcl.mathematical_functions.signal_processing.filters import apply_filter
    
    # Generate test signal: 50 Hz + 200 Hz components
    t = np.linspace(0, 1, fsample)
@@ -271,7 +271,7 @@ Digital Filtering
 
 .. code-block:: python
 
-   from pytcl.signal_processing.filtering import (
+   from pytcl.mathematical_functions.signal_processing.filters import (
        design_butterworth, apply_filter_iir
    )
    
@@ -318,13 +318,13 @@ FFT and Spectral Analysis
 
 .. code-block:: python
 
-   from pytcl.signal_processing.transforms import fft_1d, fft_2d
+   from pytcl.mathematical_functions.transforms import fft, fft2
    import numpy as np
    
    # 1D FFT: Time to frequency domain
    signal = np.sin(2*np.pi*10*t) + 0.5*np.sin(2*np.pi*25*t) + noise
    
-   X = fft_1d(signal)
+   X = fft(signal)
    magnitude = np.abs(X)
    
    # Plot magnitude spectrum
@@ -351,7 +351,7 @@ FFT and Spectral Analysis
            range_doppler: (n_range, n_doppler) magnitude spectrum
        """
        # FFT along time dimension (pulses)
-       range_doppler = fft_1d(range_time_matrix, axis=1)
+       range_doppler = fft(range_time_matrix, axis=1)
        
        # Get magnitude
        magnitude = np.abs(range_doppler)
@@ -370,7 +370,7 @@ FFT and Spectral Analysis
 
 .. code-block:: python
 
-   from pytcl.signal_processing.transforms import spectrogram
+   from pytcl.mathematical_functions.transforms import spectrogram
    
    # Signal with changing frequency (like moving target)
    t = np.linspace(0, 1, 1000)
@@ -400,7 +400,7 @@ Wavelets (Time-Frequency Analysis)
 
 .. code-block:: python
 
-   from pytcl.signal_processing.transforms import continuous_wavelet_transform
+   from pytcl.mathematical_functions.transforms import cwt
    
    # Signal: sum of two transients
    t = np.linspace(0, 1, 1000)
@@ -410,7 +410,7 @@ Wavelets (Time-Frequency Analysis)
    
    # Continuous wavelet transform
    scales = np.arange(1, 128)
-   coefficients, frequencies = continuous_wavelet_transform(
+   coefficients, frequencies = cwt(
        signal,
        scales,
        mother_wavelet='morlet',
@@ -451,7 +451,7 @@ Signal Detection Workflow
            Returns:
                detections: List of detected targets
            """
-           from pytcl.signal_processing.detection import cfar_2d
+           from pytcl.mathematical_functions.signal_processing.detection import cfar_2d
            
            # Step 1: Pulse compression (matched filtering)
            # (compute reference signal from transmit waveform)

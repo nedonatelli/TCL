@@ -35,10 +35,10 @@ Orbital Elements and Representations
    kep = np.array([a, e, np.radians(i), np.radians(Omega), 
                    np.radians(omega), np.radians(nu)])
    
-   from pytcl.astronomical.orbital_mechanics import kep2state
+   from pytcl.astronomical.orbital_mechanics import orbital_elements_to_state
    
    # Convert to Cartesian state [x, y, z, vx, vy, vz]
-   state_eci = kep2state(kep)
+   state_eci = orbital_elements_to_state(kep)
    print(f"Position: {state_eci[:3]}")
    print(f"Velocity: {state_eci[3:]}")
 
@@ -79,7 +79,7 @@ In orbital mechanics, there are three ways to measure position along the orbit:
 .. code-block:: python
 
    from pytcl.astronomical.orbital_mechanics import (
-       state2kep, kep2state, state2rate
+       state2kep, orbital_elements_to_state, state2rate
    )
    
    # Cartesian state to Keplerian
@@ -91,7 +91,7 @@ In orbital mechanics, there are three ways to measure position along the orbit:
    kep = state2kep(state)  # [a, e, i, Ω, ω, ν]
    
    # Keplerian back to Cartesian
-   state_recovered = kep2state(kep)
+   state_recovered = orbital_elements_to_state(kep)
    
    # Mean motion and derivatives
    dkep_dt = state2rate(state)  # Perturbation rates
@@ -103,7 +103,7 @@ Keplerian Propagation
 
 .. code-block:: python
 
-   from pytcl.astronomical.orbital_mechanics import propagate_kepler
+   from pytcl.astronomical.orbital_mechanics import kepler_propagate
    
    # Initial orbital elements
    a = 6700e3       # LEO at 300 km altitude
@@ -114,14 +114,14 @@ Keplerian Propagation
    nu = 0.0
    
    kep0 = np.array([a, e, i, Omega, omega, nu])
-   state0 = kep2state(kep0)
+   state0 = orbital_elements_to_state(kep0)
    
    # Propagate for one orbital period
    period = 2 * np.pi * np.sqrt(a**3 / 3.986004418e14)  # seconds
    print(f"Orbital period: {period/60:.1f} minutes")
    
    # Propagate 100 seconds
-   state_prop = propagate_kepler(state0, t=100)
+   state_prop = kepler_propagate(state0, t=100)
    kep_prop = state2kep(state_prop)
    
    # Check: semi-major axis should be unchanged
@@ -185,7 +185,7 @@ Perturbations
    print(f"Arg of perigee precession: {domega_dt * 86400:.2f}°/day")
    
    # Propagate with perturbations
-   state = kep2state(kep)
+   state = orbital_elements_to_state(kep)
    t_steps = np.linspace(0, 86400, 100)  # 1 day
    
    trajectory = []
@@ -200,8 +200,8 @@ Perturbations
 
 .. code-block:: python
 
-   from pytcl.atmosphere.nrlmsise00 import atmospheric_density
-   from pytcl.astronomical.reference_frames import ecef2eci
+   from pytcl.atmosphere.nrlmsise00 import nrlmsise00
+   from pytcl.astronomical.reference_frames import ecef_to_eci
    
    def drag_perturbation(state_eci, time, area, mass, cd=2.2):
        """
@@ -214,11 +214,11 @@ Perturbations
            mass: satellite mass (kg)
            cd: drag coefficient
        """
-       from pytcl.astronomical.reference_frames import eci2ecef
+       from pytcl.astronomical.reference_frames import eci_to_ecef
        from pytcl.coordinate_systems.conversions import ecef2geodetic
        
        # Convert to ECEF for atmosphere model
-       state_ecef = eci2ecef(state_eci, time)
+       state_ecef = eci_to_ecef(state_eci, time)
        pos_ecef = state_ecef[:3]
        vel_eci = state_eci[3:]
        
@@ -227,7 +227,7 @@ Perturbations
        lat, lon, alt = geodetic
        
        # Atmospheric density at satellite altitude
-       rho = atmospheric_density(np.degrees(lat), np.degrees(lon), alt)
+       rho = nrlmsise00(np.degrees(lat), np.degrees(lon), alt)
        
        # Drag acceleration
        # a_drag = -0.5 * (cd * area / mass) * rho * v²
@@ -251,7 +251,7 @@ Reference Frames: ECEF ↔ ECI
 
    import numpy as np
    import datetime
-   from pytcl.astronomical.reference_frames import ecef2eci, eci2ecef
+   from pytcl.astronomical.reference_frames import ecef_to_eci, eci_to_ecef
    
    # Satellite in ECI (inertial frame)
    sat_eci = np.array([6600e3, 0, 0, 0, 7500, 0])  # 6600 km, 7.5 km/s
@@ -260,13 +260,13 @@ Reference Frames: ECEF ↔ ECI
    time = datetime.datetime(2026, 2, 26, 12, 0, 0, tzinfo=datetime.timezone.utc)
    
    # Transform to ECEF (what ground stations see)
-   sat_ecef = eci2ecef(sat_eci, time)
+   sat_ecef = eci_to_ecef(sat_eci, time)
    
    print(f"ECI position: {sat_eci[:3]}")
    print(f"ECEF position: {sat_ecef[:3]}")
    
    # Transform back
-   sat_eci_recovered = ecef2eci(sat_ecef, time)
+   sat_eci_recovered = ecef_to_eci(sat_ecef, time)
    print(f"Recovered ECI: {sat_eci_recovered[:3]}")
 
 **Components of the Transformation**
@@ -323,13 +323,13 @@ Ephemeris Functions
 .. code-block:: python
 
    from pytcl.astronomical.ephemerides import (
-       get_sun_position, get_moon_position, get_sun_earth_distance
+       sun_position, get_moon_position, get_sun_earth_distance
    )
    
    time = datetime.datetime(2026, 2, 26, 12, 0, 0)
    
    # Sun position in ECI (ecliptic coordinates)
-   sun_eci = get_sun_position(time)
+   sun_eci = sun_position(time)
    print(f"Sun position: {sun_eci}")
    
    # Moon position in ECI
@@ -344,13 +344,13 @@ Ephemeris Functions
 
 .. code-block:: python
 
-   from pytcl.astronomical.ephemerides import get_planet_position
+   from pytcl.astronomical.ephemerides import planet_position
    
    time = datetime.datetime(2026, 2, 26, 12, 0, 0)
    
    # Available planets: mercury, venus, mars, jupiter, saturn, uranus, neptune
    for planet in ['mars', 'jupiter']:
-       pos = get_planet_position(planet, time)
+       pos = planet_position(planet, time)
        print(f"{planet.capitalize()}: {pos}")
 
 **Illumination Angle** (for spacecraft thermal modeling)
@@ -364,11 +364,11 @@ Ephemeris Functions
        Returns:
            angle: 0° = directly facing sun, 90° = tangent, 180° = in shadow
        """
-       from pytcl.astronomical.ephemerides import get_sun_position
-       from pytcl.astronomical.reference_frames import eci2ecef
+       from pytcl.astronomical.ephemerides import sun_position
+       from pytcl.astronomical.reference_frames import eci_to_ecef
        
-       sun_eci = get_sun_position(time)
-       sun_ecef = eci2ecef(sun_eci, time)
+       sun_eci = sun_position(time)
+       sun_ecef = eci_to_ecef(sun_eci, time)
        
        # Vector from Earth to satellite
        r_sat = sat_ecef[:3]
@@ -389,7 +389,7 @@ SGP4 Propagator (TLE-Based)
 
 .. code-block:: python
 
-   from pytcl.astronomical.sgp4 import sgp4_propagator, parse_tle
+   from pytcl.astronomical import sgp4_propagate, parse_tle
    
    # Example TLE (International Space Station)
    tle_line1 = "1 25544U 98067A   26057.50000000  .00008823  00000-0  15247-3 0  9990"
@@ -403,7 +403,7 @@ SGP4 Propagator (TLE-Based)
    print(f"Mean motion: {mean_motion:.4f} revolutions/day")
    
    # Create propagator
-   propagator = sgp4_propagator(tle_line1, tle_line2)
+   propagator = sgp4_propagate(tle_line1, tle_line2)
    
    # Propagate from epoch
    minutes_after_epoch = 10
@@ -428,12 +428,12 @@ SGP4 Propagator (TLE-Based)
        Returns:
            positions: (N_sats, N_times, 3) array
        """
-       from pytcl.astronomical.reference_frames import eci2ecef
+       from pytcl.astronomical.reference_frames import eci_to_ecef
        
        positions = []
        
        for tle_line1, tle_line2 in tle_list:
-           propagator = sgp4_propagator(tle_line1, tle_line2)
+           propagator = sgp4_propagate(tle_line1, tle_line2)
            
            # Get reference epoch
            epoch_datetime = propagator.epoch
@@ -448,7 +448,7 @@ SGP4 Propagator (TLE-Based)
                if output_frame == 'ecef':
                    # Convert to ECEF
                    state_eci = np.concatenate([pos_eci * 1000, vel_eci * 1000])
-                   state_ecef = eci2ecef(state_eci, t)
+                   state_ecef = eci_to_ecef(state_eci, t)
                    pos = state_ecef[:3]
                else:
                    pos = pos_eci * 1000  # Convert km to m
@@ -466,7 +466,7 @@ Lambert's Problem
 
 .. code-block:: python
 
-   from pytcl.astronomical.lambert import solve_lambert
+   from pytcl.astronomical.lambert import lambert_universal
    
    # Initial orbit: LEO
    r1 = 6700e3  # 300 km altitude
@@ -487,7 +487,7 @@ Lambert's Problem
    r_final = np.array([0, r2, 0])    # Final position (90° transfer)
    
    # Get transfer velocity
-   v_initial, v_final = solve_lambert(r_initial, r_final, tof_hohmann, mu=mu)
+   v_initial, v_final = lambert_universal(r_initial, r_final, tof_hohmann, mu=mu)
    
    print(f"Initial velocity: {v_initial}")
    print(f"Final velocity: {v_final}")
@@ -552,8 +552,8 @@ Complete Satellite Tracking Example
 
    import numpy as np
    import datetime
-   from pytcl.astronomical.sgp4 import sgp4_propagator
-   from pytcl.astronomical.reference_frames import eci2ecef
+   from pytcl.astronomical.sgp4 import sgp4_propagate
+   from pytcl.astronomical.reference_frames import eci_to_ecef
    from pytcl.coordinate_systems.conversions import ecef2enu, ecef2geodetic
    
    class GroundTracker:
@@ -565,7 +565,7 @@ Complete Satellite Tracking Example
                tle_line1, tle_line2: TLE lines
                station_position: [lat, lon, alt] of ground station
            """
-           self.propagator = sgp4_propagator(tle_line1, tle_line2)
+           self.propagator = sgp4_propagate(tle_line1, tle_line2)
            self.station_pos = station_position  # Geodetic
            
            # Convert to ECEF
@@ -579,7 +579,7 @@ Complete Satellite Tracking Example
            
            # Convert to ECEF and m
            state_eci = np.concatenate([pos_eci_km * 1000, vel_eci_km * 1000])
-           state_ecef = eci2ecef(state_eci, time)
+           state_ecef = eci_to_ecef(state_eci, time)
            
            return state_ecef
        
@@ -630,15 +630,15 @@ Performance Considerations
    import time
    
    # Keplerian propagation: Very fast
-   state = kep2state(kep)
+   state = orbital_elements_to_state(kep)
    t_start = time.time()
    for _ in range(10000):
-       state_prop = propagate_kepler(state, 100)
+       state_prop = kepler_propagate(state, 100)
    t_kepler = time.time() - t_start
    print(f"Keplerian: {t_kepler:.3f}s for 10k propagations")
    
    # SGP4: Slower but includes perturbations
-   propagator = sgp4_propagator(tle1, tle2)
+   propagator = sgp4_propagate(tle1, tle2)
    t_start = time.time()
    for _ in range(10000):
        pos, vel = propagator.propagate_minutes(1)

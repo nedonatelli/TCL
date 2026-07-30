@@ -12,12 +12,17 @@ Two things are verified here:
 2. Every ``pytcl`` import appearing in a code block on the page resolves, and
    every name imported from a module exists on it.
 
-The import check also runs over the rest of ``docs/``, against a shrinking list
-of pages not yet cleaned up: 92 of the 264 pytcl imports in the docs were
-broken when this was written, spread over 16 pages. ``STALE_PAGES`` names those
-pages, so the debt is countable and cannot quietly grow while it is worked
-through. Remove entries as pages are fixed -- a page that is clean but still
-listed also fails, so the list cannot drift either.
+The import check runs over the whole of ``docs/``. It started life with an
+allowlist: 92 of the 244 pytcl imports in the docs did not resolve, across 16
+pages. Those are all fixed, so ``STALE_PAGES`` is empty and every page is
+checked. A page listed there that is *not* broken also fails the suite, so the
+list cannot quietly drift back into use.
+
+Entries are keyed by path relative to ``docs/``, not by filename: ten basenames
+are ambiguous under ``docs/`` (``coordinate_systems.rst`` alone appears four
+times), and matching on the basename both skipped pages that should have been
+checked and made the result depend on the order ``rglob`` happens to return,
+which differs between Linux and macOS.
 """
 
 import importlib
@@ -36,26 +41,10 @@ IMPORT = re.compile(
     re.M,
 )
 
-# Pages whose code examples still reference an API that does not exist. Remove
-# entries as they are fixed; never add one.
-STALE_PAGES = {
-    "adaptive_filtering.rst",
-    "api_navigation.rst",
-    "astronomical.rst",
-    "astronomy.rst",
-    "constrained_filtering.rst",
-    "coordinate_systems.rst",
-    "custom_filter_implementation.rst",
-    "gpu_acceleration.rst",
-    "hybrid_filtering.rst",
-    "kalman_filter_tuning.rst",
-    "migration_guide.rst",
-    "multi_target_tracking.rst",
-    "performance_optimization.rst",
-    "recipes.rst",
-    "signal_processing.rst",
-    "troubleshooting.rst",
-}
+# Pages whose code examples reference an API that does not exist. This is
+# empty: every pytcl import in docs/ resolves. Adding an entry here is a
+# regression, not a workaround -- fix the page instead.
+STALE_PAGES: set[str] = set()
 
 
 def _module_count(package):
@@ -95,7 +84,9 @@ def _broken_imports(text):
         except Exception as exc:
             broken.append(f"{target} ({type(exc).__name__})")
             continue
-        for name in (n.strip() for n in (names or "").split(",")):
+        for raw in (names or "").split(","):
+            # "from x import y as z" -- the imported name is y
+            name = raw.strip().split(" as ")[0].strip()
             if name and not hasattr(module, name):
                 broken.append(f"{target}.{name}")
     return broken
@@ -162,7 +153,7 @@ def test_architecture_page_imports_resolve():
         p
         for p in DOCS.rglob("*.rst")
         if not any(x.startswith("_") for x in p.relative_to(DOCS).parts)
-        and p.name not in STALE_PAGES
+        and p.relative_to(DOCS).as_posix() not in STALE_PAGES
     ),
     ids=lambda p: str(p.relative_to(DOCS)),
 )
@@ -231,14 +222,20 @@ def test_mermaid_diagrams_are_structurally_sound():
 def test_stale_page_list_is_accurate():
     """A page on the stale list that is now clean should be taken off it."""
     still_broken = set()
-    for name in STALE_PAGES:
-        matches = list(DOCS.rglob(name))
-        if not matches:
+    for rel in STALE_PAGES:
+        page = DOCS / rel
+        if not page.exists():
             continue
-        if _broken_imports(matches[0].read_text(encoding="utf-8")):
-            still_broken.add(name)
+        if _broken_imports(page.read_text(encoding="utf-8")):
+            still_broken.add(rel)
     fixed = STALE_PAGES - still_broken
     assert not fixed, (
         f"these pages no longer have broken imports; remove them from "
         f"STALE_PAGES: {sorted(fixed)}"
     )
+
+
+def test_stale_entries_exist():
+    """Guard against a typo silently disabling a check."""
+    missing = [rel for rel in STALE_PAGES if not (DOCS / rel).exists()]
+    assert not missing, f"STALE_PAGES names files that do not exist: {missing}"

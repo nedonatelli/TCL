@@ -355,7 +355,7 @@ Gating reduces computational load by excluding unlikely associations before assi
         """Validation gate for measurement-track association."""
         
         @staticmethod
-        def mahalanobis_gate(residual, innovation_cov, threshold=9.0):
+        def ellipsoidal_gate(residual, innovation_cov, threshold=9.0):
             """
             Check if residual is within Mahalanobis distance gate.
             
@@ -382,7 +382,7 @@ Gating reduces computational load by excluding unlikely associations before assi
         def elliptical_gate(measurement, predicted_pos, covariance, threshold=9.0):
             """Shorthand for Mahalanobis gating."""
             residual = measurement - predicted_pos
-            return Gate.mahalanobis_gate(residual, covariance, threshold)
+            return Gate.ellipsoidal_gate(residual, covariance, threshold)
         
         @staticmethod
         def euclidean_gate(measurement, predicted_pos, max_distance=50.0):

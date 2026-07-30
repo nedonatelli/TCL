@@ -325,7 +325,7 @@ Solve for orbits connecting two positions:
 
 .. code-block:: python
 
-   from pytcl.astronomical.lambert import lambert_universal, lambert_battin
+   from pytcl.astronomical.lambert import lambert_universal, lambert_izzo
 
    # Initial and final positions
    r1 = np.array([6.378e6, 0, 0])

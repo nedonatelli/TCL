@@ -47,7 +47,7 @@ Extended Kalman Filter on GPU:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
    
    # Your state transition and measurement functions
    def state_transition(x, dt):
@@ -70,8 +70,16 @@ Extended Kalman Filter on GPU:
        P0_gpu = P0
    
    # Run filter - automatically uses GPU if inputs are GPU arrays
-   z = np.array([[1.0, 2.0]])  # Measurement: [x_meas, y_meas]
-   x_new, P_new = extended_kalman_filter(x0_gpu, P0_gpu, z, state_transition, measurement_fn)
+   z = np.array([1.0, 2.0])  # Measurement: [x_meas, y_meas]
+   F = np.eye(4)               # Jacobian of state_transition
+   H = np.array([[1.0, 0.0, 0.0, 0.0],
+                 [0.0, 1.0, 0.0, 0.0]])  # Jacobian of measurement_fn
+   Q = np.eye(4) * 0.01
+   R = np.eye(2) * 0.1
+
+   pred = ekf_predict(x0_gpu, P0_gpu, lambda s: state_transition(s, 1.0), F, Q)
+   upd = ekf_update(pred.x, pred.P, z, measurement_fn, H, R)
+   x_new, P_new = upd.x, upd.P
 
 Performance Considerations
 --------------------------
@@ -100,13 +108,15 @@ Performance Considerations
       # ✅ Good: Batch 100 measurements
       measurements = cp.asarray(measurements_array)  # [100, 2] measurements
       for z in measurements:
-          x, P = extended_kalman_filter(x, P, z, ...)
+          upd = ekf_update(x, P, z, h, H, R)
+          x, P = upd.x, upd.P
           # Results stay on GPU
       
       # ❌ Avoid: Constant GPU<->CPU transfers
       for z in measurements:
           x_cpu = cp.asnumpy(x)  # Avoid repeated transfers
-          x = cp.asarray(extended_kalman_filter(x_cpu, ...))
+          upd = ekf_update(x_cpu, cp.asnumpy(P), z, h, H, R)
+          x = cp.asarray(upd.x)
 
 2. **Memory Management**: Monitor GPU memory usage
 
@@ -139,8 +149,8 @@ Module-Specific GPU Support
 
 **Kalman Filters** (Full Support)
 
-- ``extended_kalman_filter()`` - EKF
-- ``unscented_kalman_filter()`` - UKF
+- ``ekf_predict()`` / ``ekf_update()`` - EKF
+- ``ukf_predict()`` / ``ukf_update()`` - UKF
 - ``cubature_kalman_filter()`` - CKF
 
 All matrix operations (Cholesky, QR, etc.) automatically use GPU.
@@ -154,7 +164,7 @@ GPU accelerates particle propagation and weight computation.
 
 **Data Association** (Partial Support)
 
-- ``assignment_nd()`` - Greedy and Hungarian algorithms
+- ``relaxation_assignment_nd()`` - Greedy and Hungarian algorithms
 - Sparse assignment with large cost matrices benefits most
 
 **Coordinate Conversions** (Limited Benefit)

@@ -82,13 +82,13 @@ Multi-Target Tracking with Assignment
 .. code-block:: python
 
    import numpy as np
-   from pytcl.trackers.multi_tracker_gnn import GNNTracker
-   from pytcl.containers import TrackSet, Track
+   from pytcl.trackers import MultiTargetTracker
+   from pytcl.trackers import Track
    from pytcl.coordinate_systems.conversions import sphere2cart
    
    class MultiTargetSystem:
        def __init__(self, gate_threshold=5.0):
-           self.tracker = GNNTracker(
+           self.tracker = MultiTargetTracker(
                gate_threshold=gate_threshold,
                min_observations=2,  # Need 2 observations to confirm track
                max_age=10           # Delete track if not observed for 10 steps
@@ -148,8 +148,8 @@ Extended Kalman Filter with Nonlinear Dynamics
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import extended_kalman_filter
-   from pytcl.coordinate_systems.jacobians import jacobian_cart2sphere
+   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
+   from pytcl.coordinate_systems.jacobians import spherical_jacobian
    
    def coordinated_turn_motion(x, T, omega):
        """
@@ -242,7 +242,7 @@ Unscented Kalman Filter
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import unscented_kalman_filter
+   from pytcl.dynamic_estimation.kalman import ukf_predict, ukf_update
    
    class UKFTracker:
        def __init__(self, T=0.1, alpha=1e-3, beta=2.0, kappa=1.0):
@@ -279,16 +279,18 @@ Unscented Kalman Filter
            def f(x):
                return self.motion_model(x, self.T)
            
-           # UKF predict
-           result = unscented_kalman_filter(
-               self.x, self.P, measurement,
-               self.Q, self.R, f,
-               measurement_model=self.measurement_model,
-               alpha=self.alpha, beta=self.beta, kappa=self.kappa
+           # UKF predict, then update
+           pred = ukf_predict(
+               self.x, self.P, f, self.Q,
+               alpha=self.alpha, beta=self.beta, kappa=self.kappa,
            )
-           
-           self.x = result.x
-           self.P = result.P
+           upd = ukf_update(
+               pred.x, pred.P, measurement, self.measurement_model, self.R,
+               alpha=self.alpha, beta=self.beta, kappa=self.kappa,
+           )
+
+           self.x = upd.x
+           self.P = upd.P
            
            return self.x[:2]
    
@@ -308,7 +310,7 @@ INS/GNSS Navigation
 .. code-block:: python
 
    import numpy as np
-   from pytcl.navigation.ins_gnss import ins_update_discrete, gnss_update_discrete
+   from pytcl.navigation import mechanize_ins_ned, initialize_ins_gnss
    from pytcl.coordinate_systems.conversions import geodetic2ecef
    
    class INSGNSSFusion:
@@ -385,7 +387,7 @@ Particle Filter for Nonlinear Non-Gaussian Systems
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.particle_filters import particle_filter
+   from pytcl.dynamic_estimation.particle_filters import bootstrap_pf_step
    
    class ParticleFilterTracker:
        def __init__(self, n_particles=1000):
@@ -527,7 +529,7 @@ Batch Processing / Smoothing
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.batch_estimation import least_squares_batch
+   from pytcl.static_estimation import ordinary_least_squares
    from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
    
    class BatchProcessor:
@@ -632,8 +634,8 @@ Data Association with Gating
    )
    
    # Now solve assignment on gated cost matrix
-   from pytcl.assignment.optimization import assignment_nd
-   assignments = assignment_nd(cost_matrix)
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+   assignments = relaxation_assignment_nd(cost_matrix)
 
 See Also
 ~~~~~~~~
