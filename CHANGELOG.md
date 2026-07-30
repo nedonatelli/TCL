@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`docs/architecture.rst` rewritten from the library that exists, with
+  Mermaid diagrams.** The page had claimed **153 modules** in 8 subsystems
+  against a real **134 in 20 packages**; described a `pytcl.geophysical`
+  package and six other directories that were never created
+  (`navigation/geodesy`, `navigation/ins_gnss`, `navigation/ephemerides`,
+  `navigation/tdoa`, `assignment_algorithms/optimization`,
+  `trackers/multi_tracker_gnn`); and carried code examples with **17 imports
+  that could not resolve**, including a `KalmanFilter` class the library does
+  not have. It replaces the stale ASCII tree with four diagrams — subsystem
+  map, tracking pipeline, estimator families, optional-dependency graph —
+  a measured package table, three examples verified to run, and an explicit
+  note that `misc`, `physical_values`, `scheduling` and `transponders` are
+  empty placeholders rather than an omission.
+
+  This also supplies the figure the page had been missing: it embedded
+  `_static/architecture.png`, which was never added to the repository.
+
+### Added
+
+- `sphinxcontrib-mermaid` (in the `dev` extra) so diagrams live in version
+  control as text rather than as a binary nobody can edit. All four diagrams
+  were validated against mermaid 11's own parser.
+
+- `tests/test_docs_architecture.py`, which fails if the architecture page
+  drifts from reality again: every module and public-name count is measured
+  from the package, every implemented package must appear in the table, every
+  empty package must be named, and every `pytcl` import on the page must
+  resolve. It also runs the import check across the rest of `docs/` against a
+  named list of pages not yet cleaned — **92 of the 264 `pytcl` imports in the
+  docs are broken, across 16 pages** — so that debt is countable and cannot
+  grow. A page that is listed but no longer broken also fails, so the list
+  cannot drift either.
+
+### Changed
+
 - **The documentation build is now warning-free: 1225 Sphinx warnings to 0**,
   and CI fails on any warning rather than only on docutils errors. The bulk of
   them shared two root causes.

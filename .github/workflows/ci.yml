@@ -107,7 +107,7 @@ jobs:
 
       - name: Build docs (fail on any Sphinx error or warning)
         run: |
-          pip install sphinx-rtd-theme nbsphinx
+          pip install sphinx-rtd-theme nbsphinx sphinxcontrib-mermaid
           sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
           if grep -q "ERROR" /tmp/sphinx.log; then
             echo "::error::Sphinx build produced docutils ERRORs"
