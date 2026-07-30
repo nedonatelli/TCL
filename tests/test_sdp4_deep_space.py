@@ -3,7 +3,7 @@
 The deep-space extension (DSCOM/DSINIT/DSPACE/DPPER) implements the same
 published algorithm as Vallado's reference code, so agreement should be at
 the level of floating-point round-off, not of an approximation. These tests
-pin that: metre-level bounds would already indicate a transcription error.
+pin that: meter-level bounds would already indicate a transcription error.
 
 The ``sgp4`` package (Brandon Rhodes' port of Vallado's C++) is used purely
 as a verification oracle; the tests are skipped when it is not installed.
@@ -127,7 +127,7 @@ TSINCE_GRID = [
     4320.0,
 ]
 
-# Agreement bound (metres). The two implementations evaluate the same
+# Agreement bound (meters). The two implementations evaluate the same
 # expressions in the same order, so the true residual is round-off.
 POSITION_TOL_M = 1.0
 VELOCITY_TOL_MM_S = 1.0

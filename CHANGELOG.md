@@ -18,7 +18,7 @@ This release is about **verification rather than features**: the library gained 
   detection) and `SingleTargetTracker.update` /`predict_measurement` take
   `measurement_covariance=`. Both the gate and the Kalman gain then use the
   covariance that actually applies to each detection. Omitting the argument
-  keeps the previous behaviour exactly, and the uniform case is verified to
+  keeps the previous behavior exactly, and the uniform case is verified to
   match the fixed-`R` path bit-for-bit.
 
   This was forced by the end-to-end pipeline test. A converted polar detection
@@ -242,7 +242,7 @@ This release is about **verification rather than features**: the library gained 
 - **`benchmark-full` no longer fails when two merges land close together.** The
   job commits benchmark history back to `main`, so two runs started seconds
   apart raced and the loser was rejected non-fast-forward. It now rebases and
-  retries, and a concurrency group serialises runs.
+  retries, and a concurrency group serializes runs.
 
 - **Eight example scripts crashed on Windows when stdout was redirected.**
   Python encodes stdout with the locale codepage on Windows — cp1252 by
@@ -256,7 +256,7 @@ This release is about **verification rather than features**: the library gained 
   reach the console encoder. The examples CI job runs on Ubuntu only and could
   not catch this, so `tests/test_console_encoding.py` checks every string
   reachable from a `print()` call against the cp1252 repertoire. Reproduce the
-  Windows behaviour anywhere with `PYTHONIOENCODING=cp1252`.
+  Windows behavior anywhere with `PYTHONIOENCODING=cp1252`.
 
 - **`ConstrainedEKF` threw the estimate across the feasible set instead of
   projecting onto it.** The Lagrange multiplier was computed as
@@ -292,7 +292,7 @@ This release is about **verification rather than features**: the library gained 
 
 - **`examples/ephemeris_demo.py` divided AU-valued positions by AU again.**
   `sun_position` and `moon_position` return AU, but the plot divided by `AU`
-  in metres, giving coordinates of ~1e-14 while Earth was hardcoded at exactly
+  in meters, giving coordinates of ~1e-14 while Earth was hardcoded at exactly
   `(1, 0, 0)`. The resulting 1e14 axis-extent ratio collapsed the 3D scene, so
   the figure rendered as an empty box. Earth's position is now derived from
   the ephemeris rather than assumed, and the Sun-Earth and Earth-Moon
@@ -313,7 +313,7 @@ This release is about **verification rather than features**: the library gained 
 
 - **`examples/advanced_filters_comparison.py` compared three filters, two of
   which were identical.** The CEKF's constraint was a circle of radius 10
-  about `(5, 5)`, but the true track never exceeds 7.07 from that centre, so
+  about `(5, 5)`, but the true track never exceeds 7.07 from that center, so
   the constraint was inactive at every step and the "constrained" EKF returned
   exactly what a plain EKF would — its curve sat invisibly under the GSF's
   (max separation 0.006). The radius is now 7.10, just above the trajectory's
@@ -390,7 +390,7 @@ This release is about **verification rather than features**: the library gained 
   (Spacetrack Report No. 3; Vallado et al., AIAA 2006-6753), including the
   Euler-Maclaurin resonance integrator and the Lyddane branch for
   near-equatorial orbits. Position agreement with the reference is now better
-  than **1 micrometre** over +/-3 days for geostationary, Molniya, and GPS
+  than **1 micrometer** over +/-3 days for geostationary, Molniya, and GPS
   orbits, and the near-Earth path is unregressed at 4e-7 m. Validated against
   the official SGP4-VER.TLE verification set with zero branch-selection and
   zero error-code mismatches.
@@ -406,7 +406,7 @@ This release is about **verification rather than features**: the library gained 
   ([#14](https://github.com/nedonatelli/TCL/issues/14)).
   `relaxation_assignment_nd` and `assign3d_lagrangian` computed their "lower
   bound" by solving the relaxed inner problem *greedily*. Greedy is not the
-  relaxed minimiser, so the quantity was not a bound: it could exceed the true
+  relaxed minimizer, so the quantity was not a bound: it could exceed the true
   optimum, driving `gap` to zero and reporting `converged=True` for suboptimal
   answers. Measured before the fix: 22 of 30 random 3x3x3 instances certified
   optimality while up to 0.30 suboptimal.

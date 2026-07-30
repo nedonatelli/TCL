@@ -191,7 +191,7 @@ def demo_terrain_analysis() -> None:
     print(f"  Mean: {synthetic_dem.data.mean():.1f} m")
     print(f"  Std Dev: {synthetic_dem.data.std():.1f} m")
 
-    # Terrain slope. np.gradient returns metres of rise per *grid cell*, so it
+    # Terrain slope. np.gradient returns meters of rise per *grid cell*, so it
     # has to be divided by the ground spacing of a cell before it means
     # anything -- without that the slope comes out near-vertical everywhere.
     earth_radius = 6371000.0

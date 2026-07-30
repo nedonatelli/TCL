@@ -786,7 +786,7 @@ class TestProjectionIsMinimal:
         x_proj, _ = cekf._project_onto_constraints(x, np.eye(2))
 
         # Correcting toward the circle must not flip the sign of the offset
-        # from the centre; the buggy version landed at about (-1.5, -1.5).
+        # from the center; the buggy version landed at about (-1.5, -1.5).
         offset_before = x - np.array([5.0, 5.0])
         offset_after = x_proj - np.array([5.0, 5.0])
         assert np.all(np.sign(offset_after) == np.sign(offset_before))

@@ -68,7 +68,7 @@ def plot_sun_earth_moon_positions(
         ),
     )
 
-    # Panel 1: solar-system scale, positions relative to the barycentre.
+    # Panel 1: solar-system scale, positions relative to the barycenter.
     fig.add_trace(
         go.Scatter3d(
             x=[r_sun[0]],
@@ -80,7 +80,7 @@ def plot_sun_earth_moon_positions(
             textposition="top center",
             name="Sun",
             hovertemplate=f"<b>Sun</b><br>{np.linalg.norm(r_sun):.5f} AU "
-            "from barycentre<extra></extra>",
+            "from barycenter<extra></extra>",
         ),
         row=1,
         col=1,

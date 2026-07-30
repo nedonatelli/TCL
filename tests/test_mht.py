@@ -475,7 +475,7 @@ class TestMHTIntegration:
 
         tracker = MHTTracker(4, 2, F, H, Q, R, config)
 
-        # Initialize two tracks moving towards each other
+        # Initialize two tracks moving toward each other
         # Track 1: starts at (0, 0), moves right
         # Track 2: starts at (10, 0), moves left
 

@@ -61,7 +61,7 @@ explicitly. This caused a Windows CI failure reading the notebooks.
 
 CI runs the examples on Ubuntu only, so it will not catch an encoding
 regression. `tests/test_console_encoding.py` guards it, and you can reproduce
-the Windows behaviour anywhere with:
+the Windows behavior anywhere with:
 
 ```bash
 PYTHONIOENCODING=cp1252 python examples/some_demo.py > /dev/null
