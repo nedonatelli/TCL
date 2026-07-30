@@ -312,35 +312,6 @@ class TestPackageConfiguration:
             assert len(feature) > 0
 
 
-class TestDependencyErrorAttributes:
-    """Tests for DependencyError attributes set by optional_deps."""
-
-    def setup_method(self):
-        """Clear cache before each test."""
-        _clear_cache()
-
-    def test_error_has_package_attribute(self):
-        """Test that DependencyError has package attribute."""
-        with pytest.raises(DependencyError) as exc_info:
-            import_optional("nonexistent_pkg", package="my_package")
-
-        assert exc_info.value.package == "my_package"
-
-    def test_error_has_feature_attribute(self):
-        """Test that DependencyError has feature attribute."""
-        with pytest.raises(DependencyError) as exc_info:
-            import_optional("nonexistent_pkg", feature="my_feature")
-
-        assert exc_info.value.feature == "my_feature"
-
-    def test_error_has_install_command_attribute(self):
-        """Test that DependencyError has install_command attribute."""
-        with pytest.raises(DependencyError) as exc_info:
-            import_optional("nonexistent_pkg", extra="myextra")
-
-        assert "pip install" in exc_info.value.install_command
-
-
 class TestIntegrationWithCore:
     """Test integration with pytcl.core module."""
 

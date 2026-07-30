@@ -21,7 +21,7 @@ import re
 
 import pytest
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 DOCS = REPO_ROOT / "docs"
 EXAMPLES = REPO_ROOT / "examples"
 

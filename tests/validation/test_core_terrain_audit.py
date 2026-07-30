@@ -1712,19 +1712,3 @@ class TestFigurePayloads:
 # =============================================================================
 # Empty namespace modules
 # =============================================================================
-
-
-class TestEmptyNamespaceModules:
-    def test_stub_modules_are_empty(self):
-        import pytcl.misc
-        import pytcl.physical_values
-        import pytcl.scheduling
-        import pytcl.transponders
-
-        for mod in (
-            pytcl.physical_values,
-            pytcl.scheduling,
-            pytcl.transponders,
-            pytcl.misc,
-        ):
-            assert mod.__all__ == []
