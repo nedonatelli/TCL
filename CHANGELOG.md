@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **End-to-end pipeline tests** (`tests/test_end_to_end_pipeline.py`). Every
+  other test checks one function against a reference; nothing checked that the
+  subsystems *compose*. This runs the whole chain — truth → polar measurement →
+  Cartesian conversion with covariance → gating → association → filtering →
+  track confirmation → HDF5 persistence → round trip → OSPA/NEES scoring — and
+  asserts properties that only hold if all of it is correct:
+
+  - the converted covariance's principal axes match what the geometry demands
+    (`r * sigma_bearing` cross-range, `sigma_range` down-range), which fails on
+    a wrong Jacobian
+  - the filter's matched position error is *below* the raw measurement error
+    (6.6 m against 16.8 m), which fails if association or the update is broken
+  - NEES sits inside a chi-square interval on a correctly specified model
+    (3.91 against an ideal 4.0), which fails if the covariance recursion is
+    wrong in either direction
+  - one false alarm per scan does not multiply tracks (5 created for 3 targets
+    over 40 scans; an unbounded tracker would create ~40)
+  - with no clutter and full detection, cardinality is exactly right on every
+    settled scan
+  - a persisted track reloads bit-for-bit, metadata included
+
+  Verified by negative control: a forward instead of inverse Jacobian fails 15
+  assertions, halving the covariance or skipping the update step both fail the
+  consistency check.
+
+### Fixed
+
+- **`docs/architecture.rst` had the state layout backwards.**
+  `f_constant_velocity` builds a block-diagonal F — one (position, velocity)
+  pair per spatial dimension — so the state is `[x, vx, y, vy]`, not
+  `[x, y, vx, vy]`. The example's `H` therefore measured `(x, vx)` instead of
+  position. It imported and ran cleanly, so the import guard added in the
+  previous release could not see it; only executing the pipeline exposed it.
+
+- `ospa.distance` in the multi-target tracking tutorial (2 occurrences).
+  `OSPAResult`'s field is `ospa`. Attribute access on a result object is
+  invisible to an import check.
+
 ### Changed
 
 - **`docs/architecture.rst` rewritten from the library that exists, with
