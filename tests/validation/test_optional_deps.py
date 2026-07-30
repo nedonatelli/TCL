@@ -346,6 +346,9 @@ class TestDistributionNameMatchesPackaging:
     the two cannot drift.
     """
 
+    # parents[2] is the repository root: tests/validation/<file>. Written as
+    # an index rather than chained .parent so a move shows up as a failure
+    # rather than a path that silently resolves somewhere plausible.
     def test_constant_matches_pyproject(self):
         import pathlib
         import re
@@ -353,7 +356,7 @@ class TestDistributionNameMatchesPackaging:
         from pytcl.core.optional_deps import DISTRIBUTION_NAME
 
         pyproject = (
-            pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+            pathlib.Path(__file__).resolve().parents[2] / "pyproject.toml"
         ).read_text(encoding="utf-8")
         declared = re.search(r'^name\s*=\s*"([^"]+)"', pyproject, re.M)
         assert declared, "could not find [project] name in pyproject.toml"
@@ -363,7 +366,7 @@ class TestDistributionNameMatchesPackaging:
         """A hint saying "pip install pytcl" sends users to the wrong project."""
         import pathlib
 
-        root = pathlib.Path(__file__).resolve().parent.parent / "pytcl"
+        root = pathlib.Path(__file__).resolve().parents[2] / "pytcl"
         offenders = []
         for path in root.rglob("*.py"):
             for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
