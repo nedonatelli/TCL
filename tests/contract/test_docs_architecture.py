@@ -35,7 +35,7 @@ import re
 
 import pytest
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 DOCS = REPO_ROOT / "docs"
 ARCHITECTURE = DOCS / "architecture.rst"
 PYTCL = REPO_ROOT / "pytcl"

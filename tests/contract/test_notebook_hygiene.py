@@ -28,7 +28,7 @@ try:
 except ModuleNotFoundError:  # Python 3.10 predates tomllib
     tomllib = None
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 NOTEBOOK_DIR = REPO_ROOT / "docs" / "notebooks"
 NOTEBOOKS = sorted(NOTEBOOK_DIR.glob("*.ipynb"))
 

@@ -19,9 +19,9 @@ import sys
 
 import pytest
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 EXAMPLES_DIR = REPO_ROOT / "examples"
-GUARD_DIR = pathlib.Path(__file__).resolve().parent / "example_guard"
+GUARD_DIR = pathlib.Path(__file__).resolve().parent.parent / "example_guard"
 
 # examples/data/generate_datasets.py is a fixture generator, not a demo, and is
 # run once as a fixture below rather than as a test case of its own.

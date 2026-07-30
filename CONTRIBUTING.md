@@ -162,6 +162,27 @@ Rules of thumb:
 
 ## Testing
 
+### Test layout
+
+Tests are grouped by what they establish, not by which module they cover. Each
+directory has a README stating what belongs in it.
+
+| Directory | Holds | Files |
+|-----------|-------|-------|
+| `tests/unit/` | One function or class, expected values derived independently | 80 |
+| `tests/validation/` | Checked against an outside implementation or published data | 27 |
+| `tests/integration/` | More than one subsystem, composed as a caller would | 3 |
+| `tests/contract/` | Assertions about the repository: examples run, notebooks execute, documented imports resolve | 6 |
+| `tests/api/` | Public surface: exports, signatures, error contracts | 2 |
+| `tests/property/` | Invariants over generated inputs (empty; `hypothesis` is a dev dependency but unused) | 0 |
+| `tests/characterization/` | Pins existing behavior where correctness is not established (empty by design) | 0 |
+
+A new test goes in `unit/` unless one of the narrower directories clearly fits.
+The distinction that matters most is `unit/` versus `validation/`: if the
+expected value came from running something other than this codebase, it is
+validation. That distinction exists because structural tests passed while WMM
+magnetism was roughly 180 degrees wrong.
+
 ### Running Tests
 
 ```bash
@@ -173,6 +194,10 @@ pytest --cov=pytcl --cov-report=html
 
 # Run specific test file
 pytest tests/unit/test_core.py
+
+# Run one category
+pytest tests/validation/
+pytest tests/contract/
 
 # Run tests matching a pattern
 pytest -k "test_wrap"

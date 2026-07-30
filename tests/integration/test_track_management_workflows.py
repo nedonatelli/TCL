@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 # Ensure examples directory is importable
-sys.path.insert(0, str(Path(__file__).parent.parent / "examples"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "examples"))
 
 try:
     import h5py  # noqa: F401

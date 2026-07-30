@@ -20,7 +20,7 @@ import pathlib
 
 import pytest
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 EXAMPLES = sorted((REPO_ROOT / "examples").glob("*.py"))
 
 # The characters a default Windows install can actually encode.
