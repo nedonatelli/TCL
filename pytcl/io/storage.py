@@ -5,6 +5,7 @@ in different formats (HDF5, SQL, etc.).
 """
 
 from abc import ABC, abstractmethod
+from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
 
 from numpy.typing import ArrayLike, NDArray
@@ -36,12 +37,17 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    def __enter__(self):
+    def __enter__(self) -> "StorageBackend":
         """Context manager entry."""
         return self
 
     @abstractmethod
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Context manager exit."""
         pass
 
@@ -66,7 +72,7 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    def retrieve_array(self, name: str) -> NDArray:
+    def retrieve_array(self, name: str) -> NDArray[Any]:
         """Retrieve a stored numpy array.
 
         Parameters

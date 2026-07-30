@@ -59,8 +59,8 @@ Basic INS Propagation
 .. code-block:: python
 
     import numpy as np
-    from tcl.coordinate_systems import ecef2enu, enu2ecef
-    from tcl.rotations import dcm_from_euler, euler_from_dcm
+    from pytcl.coordinate_systems import ecef2enu, enu2ecef
+    from pytcl.coordinate_systems import euler2rotmat, rotmat2euler
     
     class BasicINS:
         """Simple strapdown INS propagator (NED frame)."""
@@ -74,7 +74,7 @@ Basic INS Propagation
             
             # Attitude (Euler angles: roll, pitch, yaw)
             self.euler = np.array(euler0, dtype=float)
-            self.C_b2n = dcm_from_euler(*euler0)  # body to NED DCM
+            self.C_b2n = euler2rotmat(*euler0)  # body to NED DCM
             
             # Earth parameters
             self.we = 7.2921e-5  # Earth rotation rate (rad/s)

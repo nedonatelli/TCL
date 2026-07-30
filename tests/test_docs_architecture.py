@@ -11,6 +11,10 @@ Two things are verified here:
    what the package actually contains.
 2. Every ``pytcl`` import appearing in a code block on the page resolves, and
    every name imported from a module exists on it.
+3. No page imports from a package root this project does not publish. ``tcl``
+   is the one that mattered: ``docs/data_structures.rst`` documented a
+   ``TrackSet`` class imported from ``tcl.tracking_containers``, and because
+   the check only inspected ``pytcl`` imports it never looked.
 
 The import check runs over the whole of ``docs/``. It started life with an
 allowlist: 92 of the 244 pytcl imports in the docs did not resolve, across 16
@@ -72,11 +76,22 @@ def _table_rows():
     return rows
 
 
+# The distribution is `pytcl`. A bare `tcl` is not this project and never was,
+# but pages carried `from tcl.tracking_containers import Track, TrackSet` for
+# long enough to accumulate a whole guide around a class that does not exist --
+# precisely because a guard that only looked at `pytcl` imports skipped it.
+WRONG_PACKAGE_ROOTS = ("tcl",)
+
+
 def _broken_imports(text):
     broken = []
     for m in IMPORT.finditer(text):
         mod, names, plain = m.groups()
         target = (mod or plain or "").strip()
+        root = target.split(".")[0]
+        if root in WRONG_PACKAGE_ROOTS:
+            broken.append(f"{target} (no such package; the distribution is pytcl)")
+            continue
         if not target.startswith("pytcl"):
             continue
         try:

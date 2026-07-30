@@ -32,7 +32,10 @@ jobs:
         run: ruff format --check .
 
       - name: Type check with mypy
-        run: mypy pytcl --ignore-missing-imports
+        # --strict, not just --ignore-missing-imports. The looser command had
+        # been passing while 12 strict errors accumulated in pytcl/io: missing
+        # annotations on __enter__/__exit__, bare NDArray and bare tuple.
+        run: mypy pytcl --strict --ignore-missing-imports
 
   doctests:
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@ Requires h5py package.
 
 import json
 from pathlib import Path
+from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -37,7 +38,7 @@ class HDF5Storage(StorageBackend):
     ...     result = store.retrieve_array("gravity/egm96")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         if not HAS_H5PY:
             raise ImportError(
                 "h5py is required for HDF5Storage. Install with: pip install h5py"
@@ -66,10 +67,15 @@ class HDF5Storage(StorageBackend):
             self._file.close()
             self._file = None
 
-    def __enter__(self):
+    def __enter__(self) -> "HDF5Storage":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.close()
 
     def store_array(
@@ -108,7 +114,7 @@ class HDF5Storage(StorageBackend):
                     # For non-serializable objects, store as JSON string
                     dataset.attrs[key] = json.dumps(str(value))
 
-    def retrieve_array(self, name: str) -> NDArray:
+    def retrieve_array(self, name: str) -> NDArray[Any]:
         """Retrieve a stored array.
 
         Parameters
@@ -307,6 +313,10 @@ class HDF5Storage(StorageBackend):
             parent = path
         else:
             parent = path.rsplit("/", 1)[0]
+
+        # Both callers reject a closed file before reaching here; this states
+        # the precondition for the type checker rather than re-validating it.
+        assert self._file is not None
 
         if parent and parent != "/" and parent not in self._file:
             self._file.create_group(parent)
