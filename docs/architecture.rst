@@ -236,13 +236,16 @@ Filtering a constant-velocity target
    F = f_constant_velocity(T, num_dims=2)
    Q = q_constant_velocity(T, sigma_a=0.1, num_dims=2)
 
-   x = np.array([0.0, 0.0, 1.0, 0.5])   # x, y, vx, vy
+   # f_constant_velocity is block diagonal -- one (position, velocity) pair
+   # per spatial dimension -- so the state is [x, vx, y, vy], not
+   # [x, y, vx, vy]. Getting this backwards silently measures velocity.
+   x = np.array([0.0, 1.0, 0.0, 0.5])   # x, vx, y, vy
    P = np.eye(4) * 0.1
 
    pred = kf_predict(x, P, F, Q)
 
-   H = np.array([[1.0, 0.0, 0.0, 0.0],
-                 [0.0, 1.0, 0.0, 0.0]])
+   H = np.array([[1.0, 0.0, 0.0, 0.0],    # observe x
+                 [0.0, 0.0, 1.0, 0.0]])   # observe y
    R = np.eye(2) * 0.05
    upd = kf_update(pred.x, pred.P, np.array([0.1, 0.05]), H, R)
 

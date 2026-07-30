@@ -258,7 +258,7 @@ OSPA Metric
 
    # OSPA distance (order 2, cutoff 100)
    ospa = ospa(truth, estimates, p=2, c=100.0)
-   print(f"OSPA: {ospa.distance:.2f}")
+   print(f"OSPA: {ospa.ospa:.2f}")
    print(f"  Localization: {ospa.localization:.2f}")
    print(f"  Cardinality: {ospa.cardinality:.2f}")
 
@@ -361,7 +361,7 @@ Complete Example
        ospa = ospa(
            np.array(truth_positions), estimates, p=2, c=50.0
        )
-       ospa_values.append(ospa.distance)
+       ospa_values.append(ospa.ospa)
 
    print(f"Mean OSPA: {np.mean(ospa_values):.2f}")
    print(f"Final tracks: {len(tracks)}")
