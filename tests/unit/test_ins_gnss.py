@@ -30,6 +30,7 @@ from pytcl.navigation.ins_gnss import (
     loose_coupled_update_position,
     loose_coupled_update_velocity,
     position_measurement_matrix,
+    position_std_to_error_state_units,
     position_velocity_measurement_matrix,
     pseudorange_measurement_matrix,
     satellite_elevation_azimuth,
@@ -295,8 +296,14 @@ class TestINSGNSSInitialization:
             velocity_std=0.5,
         )
 
-        # Check diagonal elements match expected variances
-        assert state.error_cov[0, 0] == pytest.approx(25.0)  # position variance
+        # The position error states are [rad, rad, m], so a 5 m uncertainty
+        # appears as radians on the first two and meters on the third. It used
+        # to be stored as 25.0 on all three -- meters-squared on a radian
+        # diagonal (gh-19).
+        expected = position_std_to_error_state_units(5.0, lat=0.0, height=0.0)
+        assert state.error_cov[0, 0] == pytest.approx(expected[0] ** 2)
+        assert state.error_cov[1, 1] == pytest.approx(expected[1] ** 2)
+        assert state.error_cov[2, 2] == pytest.approx(25.0)  # height, still meters
         assert state.error_cov[3, 3] == pytest.approx(0.25)  # velocity variance
 
         # Off-diagonal should be zero

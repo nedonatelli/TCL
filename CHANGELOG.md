@@ -228,6 +228,38 @@ This release is about **verification rather than features**: the library gained 
 
 ### Changed
 
+- **INS/GNSS loose coupling mixed meters and radians**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)). The first three error
+  states are `[dlat, dlon, dheight]` in `[rad, rad, m]`, but
+  `initialize_ins_gnss` placed a meters-valued `position_std` directly on all
+  three diagonal entries, and the default measurement covariance was in m^2
+  against innovations in radians.
+
+  With the shipped defaults the two errors cancelled — covariance and
+  measurement noise were *both* wrongly in meters, so the ratio came out right.
+  The damage appears when a caller supplies a **correctly scaled**
+  `position_cov`: the filter's own covariance was then larger by roughly 1e13,
+  and it absorbed essentially 100% of every measurement regardless of quality.
+  The INS contributed nothing while the filter still looked like it was fusing.
+  A new `position_std_to_error_state_units` converts via the meridional and
+  prime-vertical radii, and both sites use it.
+
+  **Behavior change:** a filter tuned against the old units will weight
+  differently. Anyone passing `position_cov` should now express it in
+  `[rad, rad, m]`, matching the states.
+
+- **HDOP and VDOP were reported in the wrong frame**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)).
+  `tight_coupled_update` passed an ECEF geometry matrix to `compute_dop`, whose
+  x and y axes point at the equator no matter where the user is — so the
+  horizontal/vertical split was meaningful only at the poles. At 45 degrees the
+  reported values were close to *each other's* truth: HDOP 1.93 against a true
+  1.41, VDOP 1.41 against a true 1.92. `compute_dop` now takes an optional
+  `user_lla` and rotates into ENU, and the tight-coupled path supplies it.
+  GDOP and PDOP are traces, hence rotation-invariant, and were correct
+  throughout.
+
+
 - **CI type checks with `mypy --strict`.** The looser
   `--ignore-missing-imports` command had been passing while those 12 errors
   accumulated.
