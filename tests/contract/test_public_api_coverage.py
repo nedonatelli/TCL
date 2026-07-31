@@ -78,26 +78,19 @@ TESTS_DIR = REPO_ROOT / "tests"
 # ten exported function names bind to two distinct implementations; a bare name
 # would exempt both.
 #
-# This list must shrink. Three rules keep it honest: an entry that is now
-# covered fails, an entry naming a symbol that no longer exists fails, and an
-# entry that is not a function fails.
+# **This is empty, and it should stay empty.** It began at 27 entries when the
+# gate landed in gh-47 and reached zero in gh-24. Getting there took four
+# changes: a suite for the cache-control surface, reference tests for the
+# geomagnetic coefficient factories and six singletons, a linear-programming
+# oracle for the min-cost-flow solver, and finally deleting two dead modules
+# rather than writing tests to legitimize them.
+#
+# Three rules keep it honest: an entry that is now covered fails, an entry
+# naming a symbol that no longer exists fails, and an entry that is not a
+# function fails.
 #
 # Do not add an entry to silence a new export. Write the test.
-UNCOVERED: dict[str, str] = {
-    # --- pytcl.logging_config: dead module, removal tracked by gh-24 --------
-    "pytcl.logging_config:TimingContext": "dead module, removal tracked by gh-24",
-    "pytcl.logging_config:configure_logging": "dead module, removal tracked by gh-24",
-    "pytcl.logging_config:get_logger": "dead module, removal tracked by gh-24",
-    "pytcl.logging_config:timed": "dead module, removal tracked by gh-24",
-    # --- pytcl.assignment_algorithms.network_simplex ------------------------
-    # Dead module, removal tracked by gh-24, and gh-18 records the function
-    # itself as incorrect. Testing it would pin behavior that is known wrong
-    # and is going to be deleted. Its live sibling in dijkstra_min_cost is
-    # covered against a linear-programming oracle.
-    "pytcl.assignment_algorithms.network_simplex:min_cost_flow_cost_scaling": (
-        "dead module, removal tracked by gh-24; known incorrect, see gh-18"
-    ),
-}
+UNCOVERED: dict[str, str] = {}
 
 # A traversal that silently found nothing would make every assertion here pass.
 # Raised from 1000 when gh-53 widened the walk to modules without ``__all__``;
