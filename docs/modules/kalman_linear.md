@@ -177,15 +177,6 @@ The module is instrumented via the benchmarking framework. Key timing points:
 | `kf_predict` | Full prediction step | 3-6 μs (4-state) |
 | `kf_update` | Full update step | 22-30 μs (4-state, 2-meas) |
 
-### Log Integration
-
-```python
-from pytcl.logging_config import get_logger
-
-logger = get_logger(__name__)
-# No logging statements in hot path for performance
-```
-
 ## Performance Characteristics
 
 ### Computational Complexity

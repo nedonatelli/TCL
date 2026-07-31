@@ -31,7 +31,7 @@ preparation (Phase 9):
 * Track-management quality gates (throughput, latency, compression)
 * Alpha → beta → release-candidate cycle with community feedback
 * Migration guide and deprecation path for v1.x users
-* Removal of dead modules (``network_simplex``, ``logging_config``)
+* Removal of dead modules (``network_simplex``, ``logging_config``) -- **done**
 
 v2.1 (2027)
 -----------

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**
+  ([#24](https://github.com/nedonatelli/TCL/issues/24)). Both were additions
+  made by this port during the v1.1.0 performance work, not ports of anything
+  in the NRL Tracker Component Library, and nothing in the library, tests,
+  examples, benchmarks or scripts imported either.
+
+  `network_simplex` was created as a skeleton for a cost-scaling min-cost-flow
+  solver and superseded by the Dijkstra-with-potentials implementation in
+  v1.8.0. Its one function, `min_cost_flow_cost_scaling`, is separately recorded
+  as incorrect ([#18](https://github.com/nedonatelli/TCL/issues/18)), so
+  deleting the module resolves that issue too. **No capability is lost:**
+  min-cost flow remains available through
+  `min_cost_flow_successive_shortest_paths`, `min_cost_flow_simplex` and
+  `min_cost_assignment_via_flow`, and the surviving solver is now validated
+  against a linear-programming oracle.
+
+  `logging_config` offered hierarchical loggers, a `@timed` decorator and a
+  `TimingContext`. Nothing ever used them — the thirteen modules that log call
+  `logging.getLogger` from the standard library directly. Callers who adopted
+  it should use `logging.getLogger("pytcl.<subpackage>")`; the logger hierarchy
+  it configured is the one the standard library gives you for free.
+
+  With these gone the public-API coverage allowlist reaches **zero**: 949 of 949
+  exported functions are reached by a test, with no standing exemptions. It
+  began at 27 entries when the gate landed in
+  [#47](https://github.com/nedonatelli/TCL/issues/47).
+
 ### Fixed
 
 - **`magnetic_field_spherical` and `wmm` documented the wrong default model.**
@@ -97,8 +126,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Validation coverage for nine published functions that no test reached**
   ([#49](https://github.com/nedonatelli/TCL/issues/49)). The public-API coverage
   allowlist falls from 13 entries to 4, and reached functions from 920/933 to
-  929/933. The four remaining are all in `logging_config` and leave when
-  [#24](https://github.com/nedonatelli/TCL/issues/24) deletes that module.
+  929/933. The four remaining were all in `logging_config`, and left with it
+  when [#24](https://github.com/nedonatelli/TCL/issues/24) deleted the module —
+  the allowlist is now empty.
 
   The three geomagnetic coefficient factories — IGRF-13, WMM-2020 and WMM-2025 —
   are now checked against their official tables, every coefficient and secular
