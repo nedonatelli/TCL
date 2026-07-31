@@ -228,6 +228,43 @@ This release is about **verification rather than features**: the library gained 
 
 ### Changed
 
+- **Eight signal and statistics APIs that described themselves wrongly**
+  ([#20](https://github.com/nedonatelli/TCL/issues/20)). Grouped because they
+  share a failure mode rather than a subsystem: the implementation did
+  something defensible and the signature, annotation or docstring claimed
+  something else.
+
+  - `detection_probability(swerling_case=...)` **removed**. All five branches
+    evaluated the same expression, so the argument selected nothing — a caller
+    asking for a non-fluctuating target silently got the Swerling 1 answer,
+    which at SNR 10 and Pfa 1e-6 is 0.62 against a true 0.90. Use
+    `swerling_detection_probability` for a real choice of model.
+  - `nuttall_q` **renamed to `rician_cdf`**, with a deprecated alias. It
+    computes `1 - Q_1(a, b)`, the Rician CDF, and always did so correctly; the
+    Nuttall Q function is a different integral. Only the name was wrong.
+  - `optimal_filter` **now correlates linearly**. Multiplying two length-N
+    spectra gives *circular* correlation, so a target at the start of a record
+    produced a phantom at the end reaching 94% of the true peak, across samples
+    whose correct value is exactly zero. The transform is padded by the PSD
+    length, since the whitening filter rings well beyond the template.
+  - `matched_filter.snr_gain` **now accounts for template shape**, as
+    `sum(t^2) / max(t^2)` rather than `len(template)`. The two agree for a
+    constant-modulus template and diverge otherwise: a 64-point Hann window has
+    24 effective samples, so the reported gain was 4.3 dB optimistic.
+  - `snr_loss` **replaced with the derived CA-CFAR loss**, which now takes
+    `pfa` and `pd`. The old `1 + c/n_ref` heuristics took neither, and
+    understated the loss roughly fourfold. GO, SO and OS raise
+    `NotImplementedError` rather than return an underived number.
+  - `mle_gaussian` **multivariate Fisher information and covariance
+    implemented**. They were `np.eye(n) * n` and `np.eye(n) / n`, independent
+    of the data. Both expressions were verified against Monte Carlo.
+  - `ambiguity_function` and `cross_ambiguity` **annotated real**, which is
+    what they have always returned.
+  - The 2-D `auction` docstring **no longer claims optimality**. It is
+    epsilon-optimal, with a gap of at most `n * epsilon`; exact for integer
+    costs with `epsilon < 1/n`.
+
+
 - **CI type checks with `mypy --strict`.** The looser
   `--ignore-missing-imports` command had been passing while those 12 errors
   accumulated.
