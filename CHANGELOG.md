@@ -38,6 +38,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`reassigned_spectrogram` computed its reassignment corrections and threw
+  them away** ([#17](https://github.com/nedonatelli/TCL/issues/17)). It returned
+  the plain `|STFT|^2`, with `# noqa: F841` suppressing the unused-variable
+  warning, so callers asking for a reassigned spectrogram got an ordinary one
+  with no indication anything was missing. Time-frequency reassignment is the
+  entire purpose of the function.
+
+  The reassignment is now implemented: each cell's energy is scattered into the
+  time-frequency bin its corrected coordinates land in. On a 50-250 Hz chirp
+  this cuts the energy-weighted frequency spread from 6.06 Hz to 0.59 Hz; on an
+  impulse it cuts the time spread from 18.3 ms to under a microsecond.
+
+  Two things had to be fixed for it to work at all, which is likely why it was
+  left unfinished. The corrections were routed through `stft`, which normalizes
+  by the window sum — and the derivative window sums to zero, inflating its
+  transform by roughly a million. All three transforms now share one scaling.
+  And both correction signs were wrong: against a chirp with known
+  instantaneous frequency, `t + Re(Zt/Z)/fs` and `f - Im(Zd/Z)/(2*pi)` give a
+  median error of 0.0035 Hz, while the three other sign combinations give 5 to
+  14 Hz.
+
+  Output power keeps the same scaling as `spectrogram`, so the two remain
+  directly comparable, and total energy is preserved to within a fraction of a
+  percent — energy reassigned past the edge of the grid is dropped rather than
+  piled onto the boundary, which would invent a peak that is not there. A
+  signal shorter than one segment now raises `ValueError` instead of a shape
+  error from deep inside numpy.
+
 - **`magnetic_field_spherical` and `wmm` documented the wrong default model.**
   Both take `coeffs=WMM2025` but their docstrings said "Default WMM2020" — a
   caller relying on the documentation to know which model they were getting was
