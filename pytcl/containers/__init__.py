@@ -26,6 +26,7 @@ from pytcl.containers.base import (
     NeighborResult,
     SpatialQueryResult,
     VPTreeResult,
+    validate_neighbor_count,
     validate_query_input,
 )
 from pytcl.containers.base import (
@@ -63,6 +64,7 @@ __all__ = [
     "BaseSpatialIndex",
     "MetricSpatialIndex",
     "NeighborResult",
+    "validate_neighbor_count",
     "validate_query_input",
     # Backward compatibility aliases for result types
     "SpatialQueryResult",
