@@ -16,9 +16,12 @@ loosely, neither of which shows up in occupancy counters.
 
 The five caches report through three different shapes -- a bare ``CacheInfo``
 namedtuple, a dict of named ``CacheInfo`` values, and a flat dict of ints -- so
-each is normalised before comparison rather than asserted against a single
+each is normalized before comparison rather than asserted against a single
 assumed layout.
 """
+
+from collections.abc import Callable
+from typing import NamedTuple
 
 import numpy as np
 import pytest
@@ -36,6 +39,7 @@ from pytcl.gravity.spherical_harmonics import (
     get_legendre_cache_info,
 )
 from pytcl.magnetism.wmm import (
+    _DEFAULT_CACHE_SIZE,
     clear_magnetic_cache,
     configure_magnetic_cache,
     get_magnetic_cache_info,
@@ -57,164 +61,186 @@ DC = (np.radians(38.9072), np.radians(-77.0369))
 NYC = (np.radians(40.7128), np.radians(-74.0060))
 
 
-def _counters(info):
-    """Normalise the three reporting shapes to a list of (hits, misses, currsize).
+class Counters(NamedTuple):
+    """One cache's reported state, independent of how the module reports it."""
+
+    hits: int
+    misses: int
+    currsize: int
+    maxsize: int | None
+
+
+def _read(info) -> list[Counters]:
+    """Normalize the three reporting shapes the five caches use.
 
     ``get_legendre_cache_info`` returns a bare ``CacheInfo``;
-    ``get_geodesy_cache_info`` a dict of dicts; ``get_cache_info`` in
-    reference_frames a dict of ``CacheInfo``; ``get_magnetic_cache_info`` a flat
-    dict. Normalising here keeps the assertions about behaviour rather than
-    about which shape a particular module happens to use.
+    ``get_magnetic_cache_info`` a flat dict of ints; the other three a dict
+    keyed by routine, holding either ``CacheInfo`` or a nested dict. Reading
+    them in one place keeps every assertion about behavior rather than about
+    which shape a particular module happens to use -- and stops the branching
+    being re-implemented per test.
     """
-    if hasattr(info, "hits"):  # a bare CacheInfo
-        return [(info.hits, info.misses, info.currsize)]
-    if "hits" in info:  # a flat dict
-        return [(info["hits"], info["misses"], info["currsize"])]
-    out = []
-    for entry in info.values():  # dict of CacheInfo or of dict
-        if hasattr(entry, "hits"):
-            out.append((entry.hits, entry.misses, entry.currsize))
-        else:
-            out.append((entry["hits"], entry["misses"], entry["currsize"]))
-    return out
+
+    def one(entry) -> Counters:
+        if hasattr(entry, "hits"):  # CacheInfo namedtuple
+            return Counters(entry.hits, entry.misses, entry.currsize, entry.maxsize)
+        return Counters(
+            entry["hits"], entry["misses"], entry["currsize"], entry.get("maxsize")
+        )
+
+    if hasattr(info, "hits") or "hits" in info:
+        return [one(info)]
+    return [one(entry) for entry in info.values()]
 
 
-def _totals(info):
-    counters = _counters(info)
-    return (
-        sum(c[0] for c in counters),
-        sum(c[1] for c in counters),
-        sum(c[2] for c in counters),
+def _totals(info) -> Counters:
+    parts = _read(info)
+    return Counters(
+        sum(p.hits for p in parts),
+        sum(p.misses for p in parts),
+        sum(p.currsize for p in parts),
+        None,
     )
 
 
-# (label, clear, info, a callable that exercises the cache and returns a value)
+def _assert_same(first, second, what: str) -> None:
+    """Equality that copes with an array, a tuple of floats, or a scalar."""
+    if isinstance(first, np.ndarray):
+        np.testing.assert_array_equal(first, second, err_msg=what)
+    elif isinstance(first, tuple):
+        assert len(first) == len(second), what
+        for a, b in zip(first, second):
+            np.testing.assert_allclose(a, b, rtol=0, atol=0, err_msg=what)
+    else:
+        assert first == second, what
+
+
+class Cache(NamedTuple):
+    """A cache and the three published entry points that control it."""
+
+    label: str
+    clear: Callable[[], None]
+    info: Callable[[], object]
+    exercise: Callable[[], object]
+
+
 CACHES = [
-    (
+    # magnetic is handled separately: it is the only one with a configure
+    # entry point, and its assertions live in its own class below.
+    Cache(
         "geodesy",
         clear_geodesy_cache,
         get_geodesy_cache_info,
         lambda: inverse_geodetic(DC[0], DC[1], NYC[0], NYC[1]),
     ),
-    (
+    Cache(
         "great_circle",
         clear_great_circle_cache,
         get_great_circle_cache_info,
         lambda: great_circle_distance(DC[0], DC[1], NYC[0], NYC[1]),
     ),
-    (
+    Cache(
         "legendre",
         clear_legendre_cache,
         get_legendre_cache_info,
         lambda: associated_legendre(8, 8, 0.3, normalized=True),
     ),
-    (
+    Cache(
         "transformation",
         clear_transformation_cache,
         get_transformation_cache_info,
-        lambda: precession_matrix_iau76(0.24),
+        # J2000.0 plus a decade; the parameter is a Julian date, and 0.24 is not
+        # one -- any future input validation would reject it.
+        lambda: precession_matrix_iau76(2455197.5),
     ),
 ]
-IDS = [c[0] for c in CACHES]
+IDS = [c.label for c in CACHES]
 
 
 @pytest.fixture(autouse=True)
 def _clean_caches():
     """Every test starts and ends cold, so ordering cannot affect a result."""
-    for _, clear, _, _ in CACHES:
-        clear()
+    for cache in CACHES:
+        cache.clear()
     clear_magnetic_cache()
     yield
-    for _, clear, _, _ in CACHES:
-        clear()
+    for cache in CACHES:
+        cache.clear()
     clear_magnetic_cache()
 
 
-@pytest.mark.parametrize("label,clear,info,exercise", CACHES, ids=IDS)
-def test_a_cleared_cache_reports_empty(label, clear, info, exercise):
-    exercise()
-    assert _totals(info())[2] > 0, f"{label}: nothing was cached to begin with"
+@pytest.mark.parametrize("cache", CACHES, ids=IDS)
+def test_a_cleared_cache_reports_empty(cache):
+    cache.exercise()
+    assert _totals(cache.info()).currsize > 0, (
+        f"{cache.label}: nothing was cached to begin with"
+    )
 
-    clear()
-    hits, misses, currsize = _totals(info())
-    assert (hits, misses, currsize) == (0, 0, 0), (
-        f"{label}: after clearing, the cache still reports "
-        f"hits={hits} misses={misses} currsize={currsize}"
+    cache.clear()
+    state = _totals(cache.info())
+    assert (state.hits, state.misses, state.currsize) == (0, 0, 0), (
+        f"{cache.label}: after clearing, the cache still reports "
+        f"hits={state.hits} misses={state.misses} currsize={state.currsize}"
     )
 
 
-@pytest.mark.parametrize("label,clear,info,exercise", CACHES, ids=IDS)
-def test_first_call_misses_and_repeat_call_hits(label, clear, info, exercise):
+@pytest.mark.parametrize("cache", CACHES, ids=IDS)
+def test_first_call_misses_and_repeat_call_hits(cache):
     """Occupancy counters must track what actually happened."""
-    exercise()
-    hits, misses, currsize = _totals(info())
-    assert (hits, misses) == (0, 1), f"{label}: first call should be a miss"
-    assert currsize == 1
+    cache.exercise()
+    state = _totals(cache.info())
+    assert (state.hits, state.misses) == (0, 1), (
+        f"{cache.label}: first call should be a miss"
+    )
+    assert state.currsize == 1
 
-    exercise()
-    hits, misses, currsize = _totals(info())
-    assert (hits, misses) == (1, 1), f"{label}: repeat call should be a hit"
-    assert currsize == 1, f"{label}: a repeat must not add a second entry"
+    cache.exercise()
+    state = _totals(cache.info())
+    assert (state.hits, state.misses) == (1, 1), (
+        f"{cache.label}: repeat call should be a hit"
+    )
+    assert state.currsize == 1, f"{cache.label}: a repeat must not add a second entry"
 
 
-@pytest.mark.parametrize("label,clear,info,exercise", CACHES, ids=IDS)
-def test_cold_and_warm_results_are_identical(label, clear, info, exercise):
+@pytest.mark.parametrize("cache", CACHES, ids=IDS)
+def test_cold_and_warm_results_are_identical(cache):
     """The property that matters: a cache must not change the answer.
 
     Catches a cache returning a stale value, and one keyed too loosely so that
     a different input collides with a stored one. Neither shows up in the
-    occupancy counters that the other tests here assert on.
+    occupancy counters the other tests here read.
     """
-    clear()
-    cold = exercise()
-    warm = exercise()
+    cache.clear()
+    cold = cache.exercise()
+    warm = cache.exercise()
+    _assert_same(
+        cold, warm, f"{cache.label}: the warm result differs from the cold one"
+    )
 
-    if isinstance(cold, np.ndarray):
-        np.testing.assert_array_equal(cold, warm)
-    elif isinstance(cold, tuple):
-        assert len(cold) == len(warm)
-        for a, b in zip(cold, warm):
-            np.testing.assert_allclose(a, b, rtol=0, atol=0)
-    else:
-        assert cold == warm
-
-    # and again after a clear: recomputing from cold must reproduce it
-    clear()
-    recomputed = exercise()
-    if isinstance(cold, np.ndarray):
-        np.testing.assert_array_equal(cold, recomputed)
-    elif isinstance(cold, tuple):
-        for a, b in zip(cold, recomputed):
-            np.testing.assert_allclose(a, b, rtol=0, atol=0)
-    else:
-        assert cold == recomputed
+    cache.clear()
+    recomputed = cache.exercise()
+    _assert_same(
+        cold, recomputed, f"{cache.label}: recomputing after a clear changed the result"
+    )
 
 
-@pytest.mark.parametrize("label,clear,info,exercise", CACHES, ids=IDS)
-def test_clearing_twice_is_harmless(label, clear, info, exercise):
+@pytest.mark.parametrize("cache", CACHES, ids=IDS)
+def test_clearing_twice_is_harmless(cache):
     """Clearing an already-empty cache must not raise or corrupt state."""
-    clear()
-    clear()
-    assert _totals(info()) == (0, 0, 0)
-    exercise()  # still usable afterwards
-    assert _totals(info())[2] == 1
+    cache.clear()
+    cache.clear()
+    state = _totals(cache.info())
+    assert (state.hits, state.misses, state.currsize) == (0, 0, 0)
+    cache.exercise()  # still usable afterwards
+    assert _totals(cache.info()).currsize == 1
 
 
-@pytest.mark.parametrize("label,clear,info,exercise", CACHES, ids=IDS)
-def test_reported_capacity_is_positive(label, clear, info, exercise):
+@pytest.mark.parametrize("cache", CACHES, ids=IDS)
+def test_reported_capacity_is_positive(cache):
     """A maxsize of 0 would mean nothing is ever retained."""
-    raw = info()
-    if hasattr(raw, "maxsize"):
-        sizes = [raw.maxsize]
-    elif "maxsize" in raw:
-        sizes = [raw["maxsize"]]
-    else:
-        sizes = [
-            entry.maxsize if hasattr(entry, "maxsize") else entry["maxsize"]
-            for entry in raw.values()
-        ]
+    sizes = [part.maxsize for part in _read(cache.info())]
     assert sizes and all(s is None or s > 0 for s in sizes), (
-        f"{label}: reported maxsize {sizes} would retain nothing"
+        f"{cache.label}: reported maxsize {sizes} would retain nothing"
     )
 
 
@@ -226,17 +252,17 @@ class TestMagneticCacheConfiguration:
         try:
             assert get_magnetic_cache_info()["maxsize"] == 32
         finally:
-            configure_magnetic_cache(maxsize=1024)
-        assert get_magnetic_cache_info()["maxsize"] == 1024
+            configure_magnetic_cache(maxsize=_DEFAULT_CACHE_SIZE)
+        assert get_magnetic_cache_info()["maxsize"] == _DEFAULT_CACHE_SIZE
 
     def test_reconfiguring_starts_from_empty(self):
         """Resizing must not leave entries counted against the new capacity."""
         configure_magnetic_cache(maxsize=16)
         try:
-            hits, misses, currsize = _totals(get_magnetic_cache_info())
-            assert (hits, misses, currsize) == (0, 0, 0)
+            state = _totals(get_magnetic_cache_info())
+            assert (state.hits, state.misses, state.currsize) == (0, 0, 0)
         finally:
-            configure_magnetic_cache(maxsize=1024)
+            configure_magnetic_cache(maxsize=_DEFAULT_CACHE_SIZE)
 
     def test_hit_rate_is_reported_and_bounded(self):
         info = get_magnetic_cache_info()
@@ -261,18 +287,18 @@ def test_the_caches_are_independent():
     one package's clear silently discard another's work. This is the
     cross-cache half of what gh-26 asks about.
     """
-    for _, _, _, exercise in CACHES:
-        exercise()
+    for entry in CACHES:
+        entry.exercise()
 
-    populated = [label for label, _, info, _ in CACHES if _totals(info())[2] > 0]
+    populated = [c.label for c in CACHES if _totals(c.info()).currsize > 0]
     assert len(populated) == len(CACHES), f"only {populated} were populated"
 
     # clear one, and only one, and confirm the others are untouched
     clear_geodesy_cache()
-    assert _totals(get_geodesy_cache_info())[2] == 0
-    for label, _, info, _ in CACHES:
-        if label == "geodesy":
+    assert _totals(get_geodesy_cache_info()).currsize == 0
+    for entry in CACHES:
+        if entry.label == "geodesy":
             continue
-        assert _totals(info())[2] > 0, (
-            f"clearing the geodesy cache also emptied {label}"
+        assert _totals(entry.info()).currsize > 0, (
+            f"clearing the geodesy cache also emptied {entry.label}"
         )
