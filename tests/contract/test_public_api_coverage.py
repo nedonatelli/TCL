@@ -6,9 +6,19 @@ satisfy was off by a factor of 1e199 at degree 2000, and it blocked EGM2008 the
 whole time it shipped. The suite was green throughout. It was found by hand
 during the v2 audit, not by any gate.
 
-This is that gate. It walks ``__all__`` across the package, classifies each
-export, and requires every exported *function* to be reached by at least one
+This is that gate. It walks the package, classifies everything each module
+publishes, and requires every published *function* to be reached by at least one
 test.
+
+**What counts as published.** ``__all__`` when a module declares one; otherwise
+every non-underscore name the module defines itself. The second half was added
+in gh-53, after the gate reported 98.6% coverage while twenty-two modules --
+including `core.array_utils`, `transforms.fourier` and `astronomical.special_orbits`
+-- declared no ``__all__`` and so contributed nothing to the denominator. A
+percentage measured over the modules that opted in is not a percentage of the
+public API. Widening the walk added 21 functions to the count after
+identity-deduplication, of which all but one were already covered; the one that
+was not is a min-cost-flow solver in a module slated for deletion.
 
 Three decisions, from the spec in gh-47:
 
@@ -79,10 +89,21 @@ UNCOVERED: dict[str, str] = {
     "pytcl.logging_config:configure_logging": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:get_logger": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:timed": "dead module, removal tracked by gh-24",
+    # --- pytcl.assignment_algorithms.network_simplex ------------------------
+    # Dead module, removal tracked by gh-24, and gh-18 records the function
+    # itself as incorrect. Testing it would pin behavior that is known wrong
+    # and is going to be deleted. Its live sibling in dijkstra_min_cost is
+    # covered against a linear-programming oracle.
+    "pytcl.assignment_algorithms.network_simplex:min_cost_flow_cost_scaling": (
+        "dead module, removal tracked by gh-24; known incorrect, see gh-18"
+    ),
 }
 
 # A traversal that silently found nothing would make every assertion here pass.
-MINIMUM_EXPECTED_EXPORTS = 1000
+# Raised from 1000 when gh-53 widened the walk to modules without ``__all__``;
+# the figure is a floor against a broken traversal, so it wants to sit just
+# under the real count rather than far below it.
+MINIMUM_EXPECTED_EXPORTS = 1300
 # Modules that fail to import contribute no exports. A handful is expected when
 # optional extras are absent; a large number means the walk itself is broken.
 MAXIMUM_UNIMPORTABLE_MODULES = 12
@@ -122,8 +143,36 @@ class Export:
         return f"{self.defining_module}:{self.name}"
 
 
+def _published_names(module: object, module_name: str) -> list[str]:
+    """What a module publishes.
+
+    ``__all__`` when the module declares one. When it does not, every
+    non-underscore name it *defines itself* -- because that is what
+    ``from module import *`` gives a caller, and what Sphinx documents.
+
+    Twenty-two modules declare no ``__all__``, and reading them as publishing
+    nothing was how the gate came to miss 116 public functions (gh-53). A
+    module that omits ``__all__`` has not opted out of being public; it has
+    only declined to be explicit, and the conservative reading of that is to
+    treat everything visible as public.
+
+    ``__module__`` filters out names the module imported rather than defined,
+    so a helper re-exported from elsewhere is attributed to the module that
+    owns it and is not counted twice.
+    """
+    declared = getattr(module, "__all__", None)
+    if declared is not None:
+        return list(declared)
+    return [
+        name
+        for name in dir(module)
+        if not name.startswith("_")
+        and getattr(getattr(module, name, None), "__module__", None) == module_name
+    ]
+
+
 def _collect_exports() -> tuple[dict[int, Export], int]:
-    """Every ``__all__`` entry, keyed by object identity.
+    """Everything the package publishes, keyed by object identity.
 
     Identity rather than name: ten exported function names bind to two
     different implementations, and a name-keyed map silently merges them.
@@ -142,7 +191,7 @@ def _collect_exports() -> tuple[dict[int, Export], int]:
             del exc
             unimportable += 1
             continue
-        for name in getattr(module, "__all__", None) or []:
+        for name in _published_names(module, info.name):
             obj = getattr(module, name, None)
             if obj is None:
                 continue
