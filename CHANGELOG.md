@@ -34,12 +34,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `diag(1, 0)` returned `True` — that matrix is positive *semi*-definite. The
   function now requires strictly positive eigenvalues, matching its name.
 
+- **Cached loaders handed out shared mutable data, so one caller could corrupt
+  another** ([#51](https://github.com/nedonatelli/TCL/issues/51)). `load_gebco`
+  and `load_earth2014` returned the `lru_cache`-held `DEMGrid` directly, with no
+  copy, and its `data` array was writable. Two callers loading the same region
+  received the *same* object, so a write by one silently changed what the other
+  saw — verified against the real GEBCO file, where an elevation of 1287 m
+  became −99999 m for an unrelated consumer with no exception raised. Because
+  the corruption depended on which caller ran first, the same pipeline could
+  give different answers between runs. The EGM and EMM coefficient loaders had
+  the same shape: `NamedTuple` containers whose arrays were writable.
+
+  Arrays shared from behind a cache are now marked read-only, so a write raises
+  `ValueError` at the assignment rather than producing a wrong answer later.
+
+  **Behavior change:** code that modifies a grid or coefficient set returned by
+  these loaders will now raise. That code was already corrupting other holders.
+  Callers needing to modify the data should copy it first — `grid.data.copy()`
+  — which costs nothing for the majority who only read, and is what the loaders
+  would otherwise have to do on every call.
+
 ### Added
 
 - `is_positive_semidefinite` in `pytcl.core.array_utils`, for the tolerant
   check that `is_positive_definite` was previously performing. This is the
   right test for a covariance, which may legitimately be singular when a state
   component is perfectly known.
+
+- `make_readonly` in `pytcl.core.array_utils`, which marks arrays read-only so
+  they can be shared safely. Used by the three cached loaders above.
 
 ## [1.19.0] - 2026-07-30
 

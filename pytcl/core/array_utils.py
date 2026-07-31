@@ -558,6 +558,49 @@ def _symmetric_eigenvalues(
         return None
 
 
+def make_readonly(*arrays: NDArray[Any]) -> None:
+    """Mark arrays read-only so they can be shared between callers safely.
+
+    Use this on anything handed out from behind a cache. A cached loader gives
+    every caller the same object, so a writable array means one caller can
+    silently change what every other holder sees. Marking it read-only turns
+    that into an immediate ``ValueError`` at the assignment instead of a wrong
+    answer discovered much later, or not at all.
+
+    Two cached DEM loaders had exactly this defect: two callers loading the
+    same region received the same grid, and one write changed an elevation from
+    1287 m to -99999 m for the other, with no exception raised (gh-51).
+
+    A caller that needs to modify the data copies it first, which costs nothing
+    for the majority who only read. Copying inside the loader instead would be
+    correct but would duplicate a potentially large array on every call, which
+    is most of what a cache exists to avoid.
+
+    Parameters
+    ----------
+    *arrays : ndarray
+        Arrays to mark. Modified in place; nothing is returned, to make it
+        obvious at the call site that this is not a copy.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> shared = np.array([1.0, 2.0, 3.0])
+    >>> make_readonly(shared)
+    >>> shared.flags.writeable
+    False
+
+    A caller that needs to modify it works on a copy:
+
+    >>> working = shared.copy()
+    >>> working[0] = 99.0
+    >>> float(shared[0])
+    1.0
+    """
+    for array in arrays:
+        array.flags.writeable = False
+
+
 def is_positive_definite(
     A: ArrayLike,
     tol: float = 1e-10,

@@ -29,6 +29,7 @@ from typing import Dict, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.array_utils import make_readonly
 from pytcl.core.paths import get_data_dir
 
 from .clenshaw import clenshaw_gravity, clenshaw_potential
@@ -370,6 +371,8 @@ def _load_coefficients_cached(
         C.nbytes / 1024 / 1024 * 2,  # Both C and S arrays
     )
 
+    # shared from behind an lru_cache; see gh-51
+    make_readonly(C, S)
     return EGMCoefficients(
         C=C,
         S=S,

@@ -27,6 +27,18 @@ a ``CRBResult`` without ever writing the name -- so gating on them would produce
 noise that gets suppressed rather than fixed. The classification is in place so
 that a narrower class rule can be added later.
 
+**Reached, not executed.** This is the gate's honest limit. Coverage here means
+a test *references* the export, read from the AST -- not that the reference ran
+and asserted something. The two diverge for data-gated tests: a test of a loader
+whose multi-gigabyte input CI does not have marks that loader covered while
+skipping in every CI run. `load_egm_coefficients` and `load_emm_coefficients`
+left this allowlist that way in gh-51, and their invariant is enforced on a
+developer machine with the data files, not in CI. Where that matters, the fix is
+a companion test of the mechanism that runs everywhere -- as `TestMakeReadonly`
+does for gh-51 -- rather than a change to this gate. Reading a falling allowlist
+count as "that much more is verified" overstates it by however many entries are
+data-gated.
+
 Coverage is resolved by **object identity**, not by name. Ten exported function
 names bind to two different implementations (``factorial`` exists in both
 ``combinatorics`` and ``special_functions``; ``get_cache_info`` in both
@@ -72,8 +84,6 @@ UNCOVERED: dict[str, str] = {
     "pytcl.magnetism.wmm:create_wmm2020_coefficients": "factory, needs a reference set",
     "pytcl.magnetism.wmm:create_wmm2025_coefficients": "factory, needs a reference set",
     "pytcl.magnetism.wmm:magnetic_field_spherical": "needs a published reference value",
-    "pytcl.gravity.egm:load_egm_coefficients": "requires the EGM2008 data file (~1.3 GB)",
-    "pytcl.magnetism.emm:load_emm_coefficients": "requires the EMM data file",
     # --- astronomical ------------------------------------------------------
     "pytcl.astronomical.tle:format_tle": "a round trip against parse_tle would cover this",
     "pytcl.astronomical.time_systems:gps_to_utc": "needs a published leap-second reference",
