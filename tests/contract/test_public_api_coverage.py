@@ -79,18 +79,6 @@ UNCOVERED: dict[str, str] = {
     "pytcl.logging_config:configure_logging": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:get_logger": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:timed": "dead module, removal tracked by gh-24",
-    # --- coefficient factories and loaders ---------------------------------
-    "pytcl.magnetism.igrf:create_igrf13_coefficients": "factory, needs a reference set",
-    "pytcl.magnetism.wmm:create_wmm2020_coefficients": "factory, needs a reference set",
-    "pytcl.magnetism.wmm:create_wmm2025_coefficients": "factory, needs a reference set",
-    "pytcl.magnetism.wmm:magnetic_field_spherical": "needs a published reference value",
-    # --- astronomical ------------------------------------------------------
-    "pytcl.astronomical.tle:format_tle": "a round trip against parse_tle would cover this",
-    "pytcl.astronomical.time_systems:gps_to_utc": "needs a published leap-second reference",
-    "pytcl.astronomical.reference_frames:precession_angles_iau76": "needs published IAU angles",
-    # --- other -------------------------------------------------------------
-    "pytcl.atmosphere.models:true_airspeed_from_mach": "needs a reference value",
-    "pytcl.containers.base:validate_query_input": "internal helper, exported unnecessarily",
 }
 
 # A traversal that silently found nothing would make every assertion here pass.

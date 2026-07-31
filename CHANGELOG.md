@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`magnetic_field_spherical` and `wmm` documented the wrong default model.**
+  Both take `coeffs=WMM2025` but their docstrings said "Default WMM2020" — a
+  caller relying on the documentation to know which model they were getting was
+  told the wrong one. Found while writing the first tests to reach these
+  functions ([#49](https://github.com/nedonatelli/TCL/issues/49)).
+
 - **`MOON_GM` disagreed with the library's own constants and with DE430**
   ([#23](https://github.com/nedonatelli/TCL/issues/23)). `core.constants` held
   `4.9028695e12`, which is 1.4e-5 relative away from both the published
@@ -63,6 +69,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `make_readonly` in `pytcl.core.array_utils`, which marks arrays read-only so
   they can be shared safely. Used by the three cached loaders above.
+
+- **Validation coverage for nine published functions that no test reached**
+  ([#49](https://github.com/nedonatelli/TCL/issues/49)). The public-API coverage
+  allowlist falls from 13 entries to 4, and reached functions from 920/933 to
+  929/933. The four remaining are all in `logging_config` and leave when
+  [#24](https://github.com/nedonatelli/TCL/issues/24) deletes that module.
+
+  The three geomagnetic coefficient factories — IGRF-13, WMM-2020 and WMM-2025 —
+  are now checked against their official tables, every coefficient and secular
+  variation term, exactly: 1,140 published values in total. The reference files
+  are vendored under `tests/fixtures/magnetism/` with provenance and checksums,
+  so the comparison runs in CI without a network call or an optional dependency.
+  All three matched on the first run.
+
+  Also covered: `magnetic_field_spherical` against the closed-form dipole field,
+  `precession_angles_iau76` against ERFA's `prec76`, `gps_to_utc` against
+  astropy's IERS leap-second table, `true_airspeed_from_mach` against US
+  Standard Atmosphere 1976, `format_tle` by round trip and by readback through
+  the official `sgp4` package, and `validate_query_input`, the shared entry
+  check behind every spatial container.
 
 ## [1.19.0] - 2026-07-30
 
