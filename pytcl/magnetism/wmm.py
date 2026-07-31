@@ -661,7 +661,7 @@ def magnetic_field_spherical(
     year : float
         Decimal year (e.g., 2023.5 for mid-2023).
     coeffs : MagneticCoefficients, optional
-        Model coefficients. Default WMM2020.
+        Model coefficients. Default WMM2025.
     use_cache : bool, optional
         Whether to use LRU caching for repeated queries. Default True.
         Set to False for single-use queries or when memory is constrained.
@@ -731,7 +731,7 @@ def wmm(
     year : float, optional
         Decimal year. Default 2023.0.
     coeffs : MagneticCoefficients, optional
-        Model coefficients. Default WMM2020.
+        Model coefficients. Default WMM2025.
 
     Returns
     -------
