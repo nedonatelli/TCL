@@ -7,7 +7,7 @@ making it easier to port algorithms while maintaining Pythonic interfaces.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -543,6 +543,21 @@ def meshgrid_ij(
     return np.meshgrid(*xi, indexing=indexing)
 
 
+def _symmetric_eigenvalues(
+    A: ArrayLike, tol: float
+) -> Optional[NDArray[np.floating[Any]]]:
+    """Eigenvalues of a square symmetric matrix, or None if it is neither."""
+    A = np.asarray(A)
+    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+        return None
+    if not np.allclose(A, A.T, rtol=tol, atol=tol):
+        return None
+    try:
+        return np.asarray(np.linalg.eigvalsh(A))
+    except np.linalg.LinAlgError:
+        return None
+
+
 def is_positive_definite(
     A: ArrayLike,
     tol: float = 1e-10,
@@ -550,37 +565,87 @@ def is_positive_definite(
     """
     Check if a matrix is positive definite.
 
+    Every eigenvalue must be strictly positive. A singular matrix is positive
+    *semi*-definite, not positive definite -- use :func:`is_positive_semidefinite`
+    for that.
+
     Parameters
     ----------
     A : array_like
         Square matrix to check.
     tol : float, optional
-        Tolerance for eigenvalue check. Default is 1e-10.
+        Relative tolerance on the eigenvalues, scaled by the largest magnitude
+        eigenvalue. Default is 1e-10.
 
     Returns
     -------
     bool
-        True if matrix is positive definite.
+        True if the matrix is symmetric and every eigenvalue is positive.
 
     Examples
     --------
     >>> A = np.array([[4, 2], [2, 5]])
     >>> is_positive_definite(A)
     True
+
+    A singular matrix is not positive definite:
+
+    >>> is_positive_definite(np.diag([1.0, 0.0]))
+    False
+
+    Notes
+    -----
+    This previously tested ``eigenvalues > -tol * max|lambda|``, which admits
+    zero and small negative eigenvalues, so ``diag(1, 0)`` returned True. The
+    name promises a stronger guarantee than that test provided.
     """
-    A = np.asarray(A)
-    if A.ndim != 2 or A.shape[0] != A.shape[1]:
+    eigenvalues = _symmetric_eigenvalues(A, tol)
+    if eigenvalues is None:
         return False
+    scale = float(np.max(np.abs(eigenvalues)))
+    if scale == 0.0:
+        return False  # the zero matrix is semidefinite, not definite
+    return bool(np.all(eigenvalues > tol * scale))
 
-    # Check symmetry
-    if not np.allclose(A, A.T, rtol=tol, atol=tol):
-        return False
 
-    try:
-        eigenvalues = np.linalg.eigvalsh(A)
-        return bool(np.all(eigenvalues > -tol * np.max(np.abs(eigenvalues))))
-    except np.linalg.LinAlgError:
+def is_positive_semidefinite(
+    A: ArrayLike,
+    tol: float = 1e-10,
+) -> bool:
+    """
+    Check if a matrix is positive semidefinite.
+
+    Every eigenvalue must be non-negative to within a relative tolerance. This
+    is the right check for a covariance, which may legitimately be singular --
+    a perfectly known state component gives a zero eigenvalue.
+
+    Parameters
+    ----------
+    A : array_like
+        Square matrix to check.
+    tol : float, optional
+        Relative tolerance on the eigenvalues, scaled by the largest magnitude
+        eigenvalue. Default is 1e-10.
+
+    Returns
+    -------
+    bool
+        True if the matrix is symmetric and has no negative eigenvalue.
+
+    Examples
+    --------
+    >>> is_positive_semidefinite(np.diag([1.0, 0.0]))
+    True
+    >>> is_positive_semidefinite(np.diag([1.0, -1.0]))
+    False
+    """
+    eigenvalues = _symmetric_eigenvalues(A, tol)
+    if eigenvalues is None:
         return False
+    scale = float(np.max(np.abs(eigenvalues)))
+    if scale == 0.0:
+        return True  # the zero matrix is positive semidefinite
+    return bool(np.all(eigenvalues > -tol * scale))
 
 
 def nearest_positive_definite(A: ArrayLike) -> NDArray[np.floating[Any]]:

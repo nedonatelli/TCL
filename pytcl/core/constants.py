@@ -301,8 +301,12 @@ ASTRONOMICAL_UNIT: Final[float] = 149_597_870_700.0
 #: Sun gravitational parameter [m^3/s^2]
 SUN_GM: Final[float] = 1.32712440018e20
 
-#: Moon gravitational parameter [m^3/s^2]
-MOON_GM: Final[float] = 4.9028695e12
+#: Moon gravitational parameter [m^3/s^2] (DE430/GRAIL, 4902.800118 km^3/s^2)
+#:
+#: Must stay consistent with ``EARTH_GM / EARTH_MOON_MASS_RATIO``. The previous
+#: value, 4.9028695e12, disagreed with that quotient and with DE430 by 1.4e-5
+#: relative, and with the value ``pytcl.gravity.tides`` was independently using.
+MOON_GM: Final[float] = 4.902800118e12
 
 #: Earth-Moon mass ratio
 EARTH_MOON_MASS_RATIO: Final[float] = 81.30056

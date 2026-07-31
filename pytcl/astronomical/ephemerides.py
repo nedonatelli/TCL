@@ -56,6 +56,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.core.exceptions import DependencyError
+from pytcl.core.optional_deps import DISTRIBUTION_NAME
 
 # Constants for unit conversion
 AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
@@ -152,7 +153,7 @@ class DEEphemeris:
                 "jplephem is required for ephemeris access.",
                 package="jplephem",
                 feature="JPL ephemeris access",
-                install_command="pip install pytcl[astronomy]",
+                install_command=f"pip install {DISTRIBUTION_NAME}[astronomy]",
             ) from e
 
         self.version = version
