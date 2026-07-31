@@ -144,6 +144,11 @@ cython_debug/
 *.swo
 *~
 
+# SideCar working directory. Nothing here is curated for this repo -- it is a
+# 43 MB embeddings cache and a pid file -- and a `git add -A` will happily
+# commit the lot.
+.sidecar/
+
 # OS
 .DS_Store
 Thumbs.db
