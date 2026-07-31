@@ -50,6 +50,8 @@ dependencies = [
 astronomy = [
     "astropy>=5.0",
     "jplephem>=2.18",
+    # reference oracle for the SGP4 tests; without it they skip silently
+    "sgp4>=2.20",
 ]
 geodesy = [
     "pyproj>=3.4.0",

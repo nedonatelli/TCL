@@ -10,6 +10,10 @@ Two fields have closed forms and are used as the reference here: a point mass,
 and a point mass plus J2. Both are exact, so the comparisons are to machine
 precision rather than to a tolerance chosen to make them pass.
 
+This sits in unit/ rather than validation/ because the expected values are
+derived from the mathematics in this file, not obtained from an outside
+implementation -- PROPERTY class in the CONTRIBUTING taxonomy, not REFERENCE.
+
 Coefficients are 4pi (geodesy) normalized, which is what the function expects:
 supplying an unnormalized ``C[2, 0] = -J2`` disagrees with the closed form by
 2e-3 relative, while ``-J2 / sqrt(5)`` matches to 3e-15.

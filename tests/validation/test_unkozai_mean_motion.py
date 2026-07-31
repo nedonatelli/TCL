@@ -21,9 +21,14 @@ from pytcl.astronomical.sgp4 import unkozai_mean_motion
 sgp4_io = pytest.importorskip("sgp4.io")
 sgp4_gravity = pytest.importorskip("sgp4.earth_gravity")
 
-# Real TLEs spanning the regimes the conversion has to handle. Inclination
-# enters through (3 cos^2 i - 1), which changes sign near 54.7 degrees, so the
-# set deliberately straddles it.
+# Real TLEs spanning the regimes the conversion has to handle, reused from
+# tests/unit/test_sdp4_deep_space.py where they were introduced for the
+# deep-space work (gh-13); epoch 2024-001. Inclination enters through
+# (3 cos^2 i - 1), which changes sign near 54.7 degrees, so the set
+# deliberately straddles it: ISS and GEO below, GPS and Molniya above.
+#
+# The expected values are not hard-coded -- each is computed by the sgp4
+# package at test time, so the reference cannot drift out of date.
 TLES = {
     "ISS (LEO, 51.6 deg, near-circular)": (
         "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9997",
