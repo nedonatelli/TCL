@@ -741,8 +741,15 @@ class TestSTFT:
         assert window_bandwidth("hann", 4096) == pytest.approx(1.5, rel=1e-3)
 
     def test_reassigned_spectrogram_structural(self):
-        # NOTE: current implementation computes but does not apply the
-        # reassignment corrections; output equals the plain spectrogram.
+        """Shape and sign only.
+
+        These three assertions hold for a plain spectrogram too, which is how
+        gh-17 survived: the reassignment corrections were computed and thrown
+        away, and this test passed throughout. It is kept for the structural
+        contract and no longer stands alone -- what the function is supposed to
+        *do* is checked in tests/validation/test_reassigned_spectrogram.py,
+        where the assertions fail on an unreassigned result.
+        """
         t = np.arange(0, 0.5, 1 / self.FS)
         x = np.sin(2 * np.pi * 100 * t)
         f, times, power = reassigned_spectrogram(x, fs=self.FS, nperseg=64)
