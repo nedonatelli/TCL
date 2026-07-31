@@ -70,6 +70,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make_readonly` in `pytcl.core.array_utils`, which marks arrays read-only so
   they can be shared safely. Used by the three cached loaders above.
 
+- **The public-API coverage gate could not see 22 modules**
+  ([#53](https://github.com/nedonatelli/TCL/issues/53)). It walked `__all__`
+  only, so a module that declared none contributed nothing to the denominator —
+  `core.array_utils`, `transforms.fourier`, `astronomical.special_orbits` and
+  nineteen others. A public function added to any of them was ungated, which is
+  the exact situation the gate exists to prevent. The walk now falls back to
+  every non-underscore name a module defines itself. Verified by adding an
+  untested public function to `core.array_utils`: the old gate reported 99.6%
+  and passed, the new one fails.
+
+  Nearly all of the newly-visible surface was already tested. The count rose
+  from 933 functions to 954 after identity-deduplication and coverage from
+  929/933 to 949/954, with one new allowlist entry: `min_cost_flow_cost_scaling`,
+  in a module already slated for deletion by
+  [#24](https://github.com/nedonatelli/TCL/issues/24) and already recorded as
+  incorrect by [#18](https://github.com/nedonatelli/TCL/issues/18).
+
+- Validation for `min_cost_flow_dijkstra_potentials` against a
+  `scipy.optimize.linprog` oracle, including twelve randomized networks. The
+  solver is live code — `min_cost_flow_simplex` delegates to it for every call —
+  but no test named it, and its sibling implementation is known incorrect
+  ([#18](https://github.com/nedonatelli/TCL/issues/18)). It agrees with the
+  linear-programming optimum on every case.
+
 - **Validation coverage for nine published functions that no test reached**
   ([#49](https://github.com/nedonatelli/TCL/issues/49)). The public-API coverage
   allowlist falls from 13 entries to 4, and reached functions from 920/933 to
