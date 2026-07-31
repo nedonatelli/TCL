@@ -25,6 +25,7 @@ from typing import Any, NamedTuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.array_utils import make_readonly
 from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import DISTRIBUTION_NAME
 from pytcl.core.paths import get_data_dir
@@ -470,7 +471,7 @@ def _load_gebco_cached(
         filepath, lat_min, lat_max, lon_min, lon_max
     )
 
-    return DEMGrid(
+    grid = DEMGrid(
         data,
         lat_min_a,
         lat_max_a,
@@ -479,6 +480,9 @@ def _load_gebco_cached(
         nodata_value=-9999.0,
         name=version,
     )
+    # Every caller of this cache receives this same grid (gh-51).
+    make_readonly(grid.data)
+    return grid
 
 
 @lru_cache(maxsize=8)
@@ -495,7 +499,7 @@ def _load_earth2014_cached(
         filepath, layer, lat_min, lat_max, lon_min, lon_max
     )
 
-    return DEMGrid(
+    grid = DEMGrid(
         data,
         lat_min_a,
         lat_max_a,
@@ -504,6 +508,9 @@ def _load_earth2014_cached(
         nodata_value=-9999.0,
         name=f"Earth2014-{layer}",
     )
+    # Every caller of this cache receives this same grid (gh-51).
+    make_readonly(grid.data)
+    return grid
 
 
 def load_gebco(

@@ -28,6 +28,7 @@ from typing import Any, NamedTuple, Optional, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.array_utils import make_readonly
 from pytcl.core.paths import get_data_dir
 
 from .wmm import MagneticResult
@@ -385,6 +386,8 @@ def _load_coefficients_cached(
     n_max_sv = params.get("n_max_sv", loaded_n_max)
     n_max_sv = min(n_max_sv, g_dot.shape[0] - 1)
 
+    # shared from behind an lru_cache; see gh-51
+    make_readonly(g, h, g_dot, h_dot)
     return HighResCoefficients(
         g=g,
         h=h,
