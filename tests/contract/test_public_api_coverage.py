@@ -67,22 +67,6 @@ UNCOVERED: dict[str, str] = {
     "pytcl.logging_config:configure_logging": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:get_logger": "dead module, removal tracked by gh-24",
     "pytcl.logging_config:timed": "dead module, removal tracked by gh-24",
-    # --- cache control: an entire published surface, unexercised ------------
-    # Eleven functions across five caches. Note two distinct get_cache_info
-    # implementations: a bare-name allowlist exempted both with one entry.
-    # How these behave under repeated and concurrent use is what gh-26 raises,
-    # so they want writing together rather than one at a time.
-    "pytcl.astronomical.reference_frames:clear_transformation_cache": "cache surface untested, gh-26",
-    "pytcl.astronomical.reference_frames:get_cache_info": "cache surface untested, gh-26",
-    "pytcl.gravity.spherical_harmonics:clear_legendre_cache": "cache surface untested, gh-26",
-    "pytcl.gravity.spherical_harmonics:get_legendre_cache_info": "cache surface untested, gh-26",
-    "pytcl.magnetism.wmm:clear_magnetic_cache": "cache surface untested, gh-26",
-    "pytcl.magnetism.wmm:configure_magnetic_cache": "cache surface untested, gh-26",
-    "pytcl.magnetism.wmm:get_magnetic_cache_info": "cache surface untested, gh-26",
-    "pytcl.navigation.geodesy:clear_geodesy_cache": "cache surface untested, gh-26",
-    "pytcl.navigation.geodesy:get_geodesy_cache_info": "cache surface untested, gh-26",
-    "pytcl.navigation.great_circle:clear_great_circle_cache": "cache surface untested, gh-26",
-    "pytcl.navigation.great_circle:get_cache_info": "cache surface untested, gh-26",
     # --- coefficient factories and loaders ---------------------------------
     "pytcl.magnetism.igrf:create_igrf13_coefficients": "factory, needs a reference set",
     "pytcl.magnetism.wmm:create_wmm2020_coefficients": "factory, needs a reference set",
