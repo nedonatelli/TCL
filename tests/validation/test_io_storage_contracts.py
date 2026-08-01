@@ -148,29 +148,17 @@ class TestOverwriteSemanticsAgree:
     def test_replacing_replaces_metadata_rather_than_merging(self, store):
         """The base class specifies wholesale replacement of the metadata too.
 
-        Reached through each backend's own storage rather than a public
-        accessor, because there isn't one -- neither backend exposes
-        ``retrieve_metadata``. Testing it anyway is the point: the claim is in
-        the base class docstring, and an unobservable claim is exactly the kind
-        that drifts. If an accessor is added later this should be rewritten to
-        use it.
+        Read back through ``get_metadata``, the accessor both backends
+        implement, so this checks what a caller can actually see rather than
+        what the storage happens to hold.
         """
         store.store_array("data", np.ones(3), metadata={"units": "m", "old": 1})
         store.store_array("data", np.ones(3), metadata={"units": "km"})
 
-        if isinstance(store, HDF5Storage):
-            attributes = dict(store._file["data"].attrs)
-        else:
-            store._cursor.execute(
-                f"SELECT metadata FROM {store._arrays_table} WHERE name = ?",
-                ("data",),
-            )
-            import json
+        metadata = store.get_metadata("data")
 
-            attributes = json.loads(store._cursor.fetchone()[0] or "{}")
-
-        assert attributes.get("units") == "km"
-        assert "old" not in attributes, "metadata from the earlier store survived"
+        assert metadata.get("units") == "km"
+        assert "old" not in metadata, "metadata from the earlier store survived"
 
 
 class TestResidualsStayAlignedWithTimestamps:
