@@ -325,6 +325,19 @@ def viewshed(
     ...     max_range=10000, n_radials=36, samples_per_radial=10)
     >>> result.visible.any()  # Some cells visible
     True
+
+    Notes
+    -----
+    Visibility is determined by casting ``n_radials`` rays and sampling each at
+    ``samples_per_radial`` points, so **only cells a ray lands on are marked**.
+    Cells between rays keep their initial ``False`` regardless of whether they
+    are genuinely visible, and the gaps widen with range: adjacent rays are
+    ``2*pi*range/n_radials`` apart, which at the default 360 radials exceeds one
+    cell beyond roughly 57 cell-widths from the observer.
+
+    Read the result as "these cells were seen to be visible" rather than "these
+    and only these are visible". Raise ``n_radials`` for coverage at long range
+    and ``samples_per_radial`` for resolution along each ray.
     """
     # Convert max range to angular distance
     max_angular_range = max_range / earth_radius
@@ -397,8 +410,14 @@ def viewshed(
             is_visible = slope_angle >= max_slope
 
             if is_visible:
-                # Find nearest grid cell and mark visible
-                i, j, _, _ = dem._get_indices(tgt_lat, tgt_lon)
+                # Nearest cell, not the containing one. `_get_indices` returns
+                # floor indices with fractional parts, meant for bilinear
+                # interpolation; using the floor alone marks the cell to the
+                # south-west of the sample and biases the whole viewshed by
+                # half a cell in both axes (gh-26).
+                i, j, frac_i, frac_j = dem._get_indices(tgt_lat, tgt_lon)
+                i += int(frac_i >= 0.5)
+                j += int(frac_j >= 0.5)
                 if 0 <= i < dem.n_lat and 0 <= j < dem.n_lon:
                     visible[i, j] = True
 

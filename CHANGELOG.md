@@ -9,6 +9,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Robustness hygiene** ([#26](https://github.com/nedonatelli/TCL/issues/26)).
+  Four defects that do not make a routine call return an obviously wrong
+  answer, which is why a suite of routine calls never saw them.
+
+  - `minimum_bounding_circle` shuffled with the **global** `np.random` state,
+    so results were not reproducible and the call consumed entropy other code
+    depended on; and it recursed once per point, so a few thousand points
+    raised `RecursionError`. It now takes an `rng` (seed or `Generator`) and
+    uses the iterative three-loop Welzl formulation. Verified against
+    exhaustive search to 3.6e-15 and on 20,000 points with the recursion limit
+    lowered to 200.
+  - `q_discrete_white_noise` **switched noise models above dimension 4**,
+    falling through to `q_poly_kal` — a *continuous* white-noise
+    discretization, off by roughly a factor of four in the leading term at
+    dim 5. All dimensions now use the discrete gain-vector model `var·GGᵀ`,
+    which reproduces the hard-coded blocks for dims 2–4 exactly.
+  - `tria_sqrt` returned a non-square factor when the product was rank
+    deficient, contradicting the documented `(n, n)`. The missing columns of a
+    rank-deficient factor are zero, so padding restores the shape without
+    changing `S @ S.T`.
+  - `viewshed` marked the cell **south-west** of each sample rather than the
+    nearest one, because it used the floor indices `_get_indices` returns for
+    bilinear interpolation. Its radial sampling means unsampled cells stay
+    `False` regardless of visibility; that is inherent to ray casting and is
+    now documented rather than left implicit.
+
+  Four further bullets on that issue — the two `batch_ekf` conversions,
+  `gpu_cholesky_safe`, `get_gpu_memory_info` on MLX, and the CuPy Cholesky NaN
+  case — were verified to be **already fixed** and are described in the pull
+  request.
+
+- **`consistency_test` documents its independence assumption.** The
+  chi-squared bounds require independent samples, which a NEES sequence from a
+  single filter run is not — consecutive values share the same state and
+  covariance history, so the bounds are narrower than they should be and the
+  test over-rejects. Behavior unchanged; the caveat was undocumented.
+
+
 - **`reassigned_spectrogram` computed its reassignment corrections and threw
   them away** ([#17](https://github.com/nedonatelli/TCL/issues/17)). It returned
   the plain `|STFT|^2`, with `# noqa: F841` suppressing the unused-variable
