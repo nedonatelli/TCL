@@ -178,7 +178,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Orbital mechanics, SGP4/SDP4, TLEs, ephemerides, reference frames
    * - ``containers``
      - 8
-     - 34
+     - 35
      - Spatial indices (k-d tree, R-tree, VP-tree, cover tree) and track sets
    * - ``core``
      - 7

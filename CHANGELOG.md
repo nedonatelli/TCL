@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`query(k > n_samples)` now raises instead of padding with a valid index**
+  ([#22](https://github.com/nedonatelli/TCL/issues/22)). All five spatial
+  indexes — KD-tree, ball tree, R-tree, VP-tree, cover tree — padded the
+  shortfall with index `0` alongside an infinite distance. Zero is a *valid*
+  index, so a caller who read `result.indices` without also checking
+  `result.distances` silently used point 0 as a neighbor, once per overshoot.
+  Raising matches `sklearn.neighbors`, which is where most callers'
+  expectations come from. `k == n_samples` remains valid; a caller who wants a
+  partial result should ask for `min(k, index.n_samples)`, which the error
+  message says.
+
+- **`BoundingBox.volume` returns 0 for a degenerate box.** It previously
+  multiplied only the nonzero extents, so a flat box `[0,0]-[2,0]` reported
+  `2.0` where it encloses nothing. That behavior exists for the R-tree
+  insertion heuristic, which needs to tell degenerate boxes apart — every box
+  built from a single point has zero volume, so a true-volume heuristic would
+  tie every candidate and fall back to insertion order. The heuristic keeps it
+  under a private name; the public property is now the geometric one.
+
+- **INS/GNSS loose coupling mixed meters and radians**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)). The first three error
+  states are `[dlat, dlon, dheight]` in `[rad, rad, m]`, but
+  `initialize_ins_gnss` placed a meters-valued `position_std` directly on all
+  three diagonal entries, and the default measurement covariance was in m^2
+  against innovations in radians.
+
+  With the shipped defaults the two errors cancelled — covariance and
+  measurement noise were *both* wrongly in meters, so the ratio came out right.
+  The damage appears when a caller supplies a **correctly scaled**
+  `position_cov`: the filter's own covariance was then larger by roughly 1e13,
+  and it absorbed essentially 100% of every measurement regardless of quality.
+  The INS contributed nothing while the filter still looked like it was fusing.
+  A new `position_std_to_error_state_units` converts via the meridional and
+  prime-vertical radii, and both sites use it.
+
+  **Behavior change:** a filter tuned against the old units will weight
+  differently. Anyone passing `position_cov` should now express it in
+  `[rad, rad, m]`, matching the states.
+
+- **HDOP and VDOP were reported in the wrong frame**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)).
+  `tight_coupled_update` passed an ECEF geometry matrix to `compute_dop`, whose
+  x and y axes point at the equator no matter where the user is — so the
+  horizontal/vertical split was meaningful only at the poles. At 45 degrees the
+  reported values were close to *each other's* truth: HDOP 1.93 against a true
+  1.41, VDOP 1.41 against a true 1.92. `compute_dop` now takes an optional
+  `user_lla` and rotates into ENU, and the tight-coupled path supplies it.
+  GDOP and PDOP are traces, hence rotation-invariant, and were correct
+  throughout.
+- **Eight signal and statistics APIs that described themselves wrongly**
+  ([#20](https://github.com/nedonatelli/TCL/issues/20)). Grouped because they
+  share a failure mode rather than a subsystem: the implementation did
+  something defensible and the signature, annotation or docstring claimed
+  something else.
+
+  - `detection_probability(swerling_case=...)` **removed**. All five branches
+    evaluated the same expression, so the argument selected nothing — a caller
+    asking for a non-fluctuating target silently got the Swerling 1 answer,
+    which at SNR 10 and Pfa 1e-6 is 0.62 against a true 0.90. Use
+    `swerling_detection_probability` for a real choice of model.
+  - `nuttall_q` **renamed to `rician_cdf`**, with a deprecated alias. It
+    computes `1 - Q_1(a, b)`, the Rician CDF, and always did so correctly; the
+    Nuttall Q function is a different integral. Only the name was wrong.
+  - `optimal_filter` **now correlates linearly**. Multiplying two length-N
+    spectra gives *circular* correlation, so a target at the start of a record
+    produced a phantom at the end reaching 94% of the true peak, across samples
+    whose correct value is exactly zero. The transform is padded by the PSD
+    length, since the whitening filter rings well beyond the template.
+  - `matched_filter.snr_gain` **now accounts for template shape**, as
+    `sum(t^2) / max(t^2)` rather than `len(template)`. The two agree for a
+    constant-modulus template and diverge otherwise: a 64-point Hann window has
+    24 effective samples, so the reported gain was 4.3 dB optimistic.
+  - `snr_loss` **replaced with the derived CA-CFAR loss**, which now takes
+    `pfa` and `pd`. The old `1 + c/n_ref` heuristics took neither, and
+    understated the loss roughly fourfold. GO, SO and OS raise
+    `NotImplementedError` rather than return an underived number.
+  - `mle_gaussian` **multivariate Fisher information and covariance
+    implemented**. They were `np.eye(n) * n` and `np.eye(n) / n`, independent
+    of the data. Both expressions were verified against Monte Carlo.
+  - `ambiguity_function` and `cross_ambiguity` **annotated real**, which is
+    what they have always returned.
+  - The 2-D `auction` docstring **no longer claims optimality**. It is
+    epsilon-optimal, with a gap of at most `n * epsilon`; exact for integer
+    costs with `epsilon < 1/n`.
+
+
 ### Removed
 
 - **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**
@@ -37,6 +125,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [#47](https://github.com/nedonatelli/TCL/issues/47).
 
 ### Fixed
+
+- **`reassigned_spectrogram` computed its reassignment corrections and threw
+  them away** ([#17](https://github.com/nedonatelli/TCL/issues/17)). It returned
+  the plain `|STFT|^2`, with `# noqa: F841` suppressing the unused-variable
+  warning, so callers asking for a reassigned spectrogram got an ordinary one
+  with no indication anything was missing. Time-frequency reassignment is the
+  entire purpose of the function.
+
+  The reassignment is now implemented: each cell's energy is scattered into the
+  time-frequency bin its corrected coordinates land in. On a 50-250 Hz chirp
+  this cuts the energy-weighted frequency spread from 6.06 Hz to 0.59 Hz; on an
+  impulse it cuts the time spread from 18.3 ms to under a microsecond.
+
+  Two things had to be fixed for it to work at all, which is likely why it was
+  left unfinished. The corrections were routed through `stft`, which normalizes
+  by the window sum — and the derivative window sums to zero, inflating its
+  transform by roughly a million. All three transforms now share one scaling.
+  And both correction signs were wrong: against a chirp with known
+  instantaneous frequency, `t + Re(Zt/Z)/fs` and `f - Im(Zd/Z)/(2*pi)` give a
+  median error of 0.0035 Hz, while the three other sign combinations give 5 to
+  14 Hz.
+
+  Output power keeps the same scaling as `spectrogram`, so the two remain
+  directly comparable, and total energy is preserved to within a fraction of a
+  percent — energy reassigned past the edge of the grid is dropped rather than
+  piled onto the boundary, which would invent a peak that is not there. A
+  signal shorter than one segment now raises `ValueError` instead of a shape
+  error from deep inside numpy.
 
 - **`magnetic_field_spherical` and `wmm` documented the wrong default model.**
   Both take `coeffs=WMM2025` but their docstrings said "Default WMM2020" — a
@@ -227,43 +343,6 @@ This release is about **verification rather than features**: the library gained 
   deliberate optional dependencies), and every code cell parses as Python.
 
 ### Changed
-
-- **Eight signal and statistics APIs that described themselves wrongly**
-  ([#20](https://github.com/nedonatelli/TCL/issues/20)). Grouped because they
-  share a failure mode rather than a subsystem: the implementation did
-  something defensible and the signature, annotation or docstring claimed
-  something else.
-
-  - `detection_probability(swerling_case=...)` **removed**. All five branches
-    evaluated the same expression, so the argument selected nothing — a caller
-    asking for a non-fluctuating target silently got the Swerling 1 answer,
-    which at SNR 10 and Pfa 1e-6 is 0.62 against a true 0.90. Use
-    `swerling_detection_probability` for a real choice of model.
-  - `nuttall_q` **renamed to `rician_cdf`**, with a deprecated alias. It
-    computes `1 - Q_1(a, b)`, the Rician CDF, and always did so correctly; the
-    Nuttall Q function is a different integral. Only the name was wrong.
-  - `optimal_filter` **now correlates linearly**. Multiplying two length-N
-    spectra gives *circular* correlation, so a target at the start of a record
-    produced a phantom at the end reaching 94% of the true peak, across samples
-    whose correct value is exactly zero. The transform is padded by the PSD
-    length, since the whitening filter rings well beyond the template.
-  - `matched_filter.snr_gain` **now accounts for template shape**, as
-    `sum(t^2) / max(t^2)` rather than `len(template)`. The two agree for a
-    constant-modulus template and diverge otherwise: a 64-point Hann window has
-    24 effective samples, so the reported gain was 4.3 dB optimistic.
-  - `snr_loss` **replaced with the derived CA-CFAR loss**, which now takes
-    `pfa` and `pd`. The old `1 + c/n_ref` heuristics took neither, and
-    understated the loss roughly fourfold. GO, SO and OS raise
-    `NotImplementedError` rather than return an underived number.
-  - `mle_gaussian` **multivariate Fisher information and covariance
-    implemented**. They were `np.eye(n) * n` and `np.eye(n) / n`, independent
-    of the data. Both expressions were verified against Monte Carlo.
-  - `ambiguity_function` and `cross_ambiguity` **annotated real**, which is
-    what they have always returned.
-  - The 2-D `auction` docstring **no longer claims optimality**. It is
-    epsilon-optimal, with a gap of at most `n * epsilon`; exact for integer
-    costs with `epsilon < 1/n`.
-
 
 - **CI type checks with `mypy --strict`.** The looser
   `--ignore-missing-imports` command had been passing while those 12 errors

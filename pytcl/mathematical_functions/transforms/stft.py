@@ -25,6 +25,7 @@ References
 from typing import Any, NamedTuple, Optional, Union
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from numpy.typing import ArrayLike, NDArray
 from scipy import signal as scipy_signal
 
@@ -492,41 +493,75 @@ def reassigned_spectrogram(
     else:
         win = np.asarray(window, dtype=np.float64)
 
-    # Compute STFT with original window
-    result1 = stft(x, fs=fs, window=win, nperseg=nperseg, noverlap=noverlap, nfft=nfft)
+    if x.size < nperseg:
+        raise ValueError(f"signal has {x.size} samples, fewer than nperseg={nperseg}")
 
-    # Time derivative window (t * w(t))
-    n = np.arange(nperseg) - (nperseg - 1) / 2
-    win_t = n * win
+    step = nperseg - noverlap
+    frames = sliding_window_view(x, nperseg)[::step]
 
-    # Frequency derivative window (d/dt w(t))
-    win_d = np.gradient(win)
+    # All three transforms share one scaling. Routing the modified windows
+    # through `stft` would not work: it normalizes by the window sum, and the
+    # derivative window sums to zero, so its transform would be divided by
+    # roughly 1e-7. The ratios below are what the reassignment needs, and they
+    # are only meaningful if the numerator and denominator are scaled alike.
+    ramp = np.arange(nperseg) - (nperseg - 1) / 2  # samples from frame center
+    stft_w = np.fft.rfft(frames * win, n=nfft, axis=-1).T
+    stft_tw = np.fft.rfft(frames * (ramp * win), n=nfft, axis=-1).T
+    stft_dw = np.fft.rfft(frames * (np.gradient(win) * fs), n=nfft, axis=-1).T
 
-    # STFT with modified windows
-    result_t = stft(
-        x, fs=fs, window=win_t, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+    frequencies = np.fft.rfftfreq(nfft, 1 / fs)
+    times = (np.arange(frames.shape[0]) * step + (nperseg - 1) / 2) / fs
+
+    # Power spectral density, on the same scaling `spectrogram` uses, so the
+    # two are directly comparable: a caller should be able to swap one for the
+    # other and see sharper structure rather than different units. One-sided
+    # bins carry the energy of their negative-frequency twin, except DC and
+    # Nyquist, which have none.
+    power = np.abs(stft_w) ** 2 / (fs * np.sum(win**2))
+    power[1:] *= 2.0
+    if nfft % 2 == 0:
+        power[-1] /= 2.0
+
+    # Bins with no energy have no meaningful center of gravity: the ratios
+    # below are 0/0 there. They carry nothing to reassign, so they are simply
+    # left where they are.
+    occupied = power > np.finfo(np.float64).tiny
+    ratio_t = np.zeros_like(stft_w)
+    ratio_d = np.zeros_like(stft_w)
+    np.divide(stft_tw, stft_w, out=ratio_t, where=occupied)
+    np.divide(stft_dw, stft_w, out=ratio_d, where=occupied)
+
+    # Reassigned coordinates: the local group delay and instantaneous
+    # frequency, which is where the energy in each bin actually sits.
+    time_grid, freq_grid = np.meshgrid(times, frequencies)
+    reassigned_time = time_grid + np.real(ratio_t) / fs
+    reassigned_freq = freq_grid - np.imag(ratio_d) / (2 * np.pi)
+
+    # Scatter each bin's energy into the cell its corrected coordinates land
+    # in. Energy that reassigns off the edge of the grid is dropped rather
+    # than clamped, because piling it onto the boundary would invent a
+    # spectral peak that is not there.
+    df = frequencies[1] - frequencies[0] if frequencies.size > 1 else 1.0
+    dt = times[1] - times[0] if times.size > 1 else 1.0
+    freq_index = np.rint(reassigned_freq / df).astype(np.intp)
+    time_index = np.rint((reassigned_time - times[0]) / dt).astype(np.intp)
+
+    inside = (
+        occupied
+        & (freq_index >= 0)
+        & (freq_index < frequencies.size)
+        & (time_index >= 0)
+        & (time_index < times.size)
     )
-    result_d = stft(
-        x, fs=fs, window=win_d, nperseg=nperseg, noverlap=noverlap, nfft=nfft
+
+    reassigned = np.zeros_like(power)
+    np.add.at(
+        reassigned,
+        (freq_index[inside], time_index[inside]),
+        power[inside],
     )
 
-    # Compute reassigned coordinates
-    Zxx = result1.Zxx
-    Zxx_t = result_t.Zxx
-    Zxx_d = result_d.Zxx
-
-    eps = 1e-10
-    with np.errstate(divide="ignore", invalid="ignore"):
-        # Time correction (computed for future reassignment implementation)
-        _t_corr = -np.real(Zxx_t / (Zxx + eps)) / fs  # noqa: F841
-
-        # Frequency correction (computed for future reassignment implementation)
-        _f_corr = np.imag(Zxx_d / (Zxx + eps)) * fs / (2 * np.pi)  # noqa: F841
-
-    # Create output spectrogram
-    power = np.abs(Zxx) ** 2
-
-    return result1.frequencies, result1.times, power
+    return frequencies, times, reassigned
 
 
 def mel_spectrogram(

@@ -277,12 +277,48 @@ def validate_query_input(
     return X
 
 
+def validate_neighbor_count(k: int, n_samples: int) -> None:
+    """Reject a request for more neighbors than the index holds.
+
+    Every index here used to pad the shortfall with index ``0`` and an infinite
+    distance. Zero is a *valid* index, so a caller who read the indices without
+    also checking the distances got point 0 returned as a neighbor -- silently,
+    and as many times as the request overshot (gh-22).
+
+    Raising instead matches ``sklearn.neighbors``, which is where most callers'
+    expectations come from, and turns a wrong answer into a message at the call
+    site. A caller who genuinely wants "up to k" can ask for
+    ``min(k, index.n_samples)``.
+
+    Parameters
+    ----------
+    k : int
+        Requested number of neighbors.
+    n_samples : int
+        Number of points in the index.
+
+    Raises
+    ------
+    ValueError
+        If ``k`` is not a positive integer, or exceeds ``n_samples``.
+    """
+    if k < 1:
+        raise ValueError(f"k must be at least 1, got {k}")
+    if k > n_samples:
+        raise ValueError(
+            f"k={k} exceeds the {n_samples} point(s) in the index. Padding the "
+            f"shortfall would return index 0 as a neighbor; ask for "
+            f"min(k, n_samples) if a partial result is acceptable."
+        )
+
+
 __all__ = [
     # Primary types
     "NeighborResult",
     "BaseSpatialIndex",
     "MetricSpatialIndex",
     "validate_query_input",
+    "validate_neighbor_count",
     # Backward compatibility aliases
     "SpatialQueryResult",
     "NearestNeighborResult",
