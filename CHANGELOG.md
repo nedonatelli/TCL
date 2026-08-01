@@ -28,6 +28,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tie every candidate and fall back to insertion order. The heuristic keeps it
   under a private name; the public property is now the geometric one.
 
+- **INS/GNSS loose coupling mixed meters and radians**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)). The first three error
+  states are `[dlat, dlon, dheight]` in `[rad, rad, m]`, but
+  `initialize_ins_gnss` placed a meters-valued `position_std` directly on all
+  three diagonal entries, and the default measurement covariance was in m^2
+  against innovations in radians.
+
+  With the shipped defaults the two errors cancelled — covariance and
+  measurement noise were *both* wrongly in meters, so the ratio came out right.
+  The damage appears when a caller supplies a **correctly scaled**
+  `position_cov`: the filter's own covariance was then larger by roughly 1e13,
+  and it absorbed essentially 100% of every measurement regardless of quality.
+  The INS contributed nothing while the filter still looked like it was fusing.
+  A new `position_std_to_error_state_units` converts via the meridional and
+  prime-vertical radii, and both sites use it.
+
+  **Behavior change:** a filter tuned against the old units will weight
+  differently. Anyone passing `position_cov` should now express it in
+  `[rad, rad, m]`, matching the states.
+
+- **HDOP and VDOP were reported in the wrong frame**
+  ([#19](https://github.com/nedonatelli/TCL/issues/19)).
+  `tight_coupled_update` passed an ECEF geometry matrix to `compute_dop`, whose
+  x and y axes point at the equator no matter where the user is — so the
+  horizontal/vertical split was meaningful only at the poles. At 45 degrees the
+  reported values were close to *each other's* truth: HDOP 1.93 against a true
+  1.41, VDOP 1.41 against a true 1.92. `compute_dop` now takes an optional
+  `user_lla` and rotates into ENU, and the tight-coupled path supplies it.
+  GDOP and PDOP are traces, hence rotation-invariant, and were correct
+  throughout.
+- **Eight signal and statistics APIs that described themselves wrongly**
+  ([#20](https://github.com/nedonatelli/TCL/issues/20)). Grouped because they
+  share a failure mode rather than a subsystem: the implementation did
+  something defensible and the signature, annotation or docstring claimed
+  something else.
+
+  - `detection_probability(swerling_case=...)` **removed**. All five branches
+    evaluated the same expression, so the argument selected nothing — a caller
+    asking for a non-fluctuating target silently got the Swerling 1 answer,
+    which at SNR 10 and Pfa 1e-6 is 0.62 against a true 0.90. Use
+    `swerling_detection_probability` for a real choice of model.
+  - `nuttall_q` **renamed to `rician_cdf`**, with a deprecated alias. It
+    computes `1 - Q_1(a, b)`, the Rician CDF, and always did so correctly; the
+    Nuttall Q function is a different integral. Only the name was wrong.
+  - `optimal_filter` **now correlates linearly**. Multiplying two length-N
+    spectra gives *circular* correlation, so a target at the start of a record
+    produced a phantom at the end reaching 94% of the true peak, across samples
+    whose correct value is exactly zero. The transform is padded by the PSD
+    length, since the whitening filter rings well beyond the template.
+  - `matched_filter.snr_gain` **now accounts for template shape**, as
+    `sum(t^2) / max(t^2)` rather than `len(template)`. The two agree for a
+    constant-modulus template and diverge otherwise: a 64-point Hann window has
+    24 effective samples, so the reported gain was 4.3 dB optimistic.
+  - `snr_loss` **replaced with the derived CA-CFAR loss**, which now takes
+    `pfa` and `pd`. The old `1 + c/n_ref` heuristics took neither, and
+    understated the loss roughly fourfold. GO, SO and OS raise
+    `NotImplementedError` rather than return an underived number.
+  - `mle_gaussian` **multivariate Fisher information and covariance
+    implemented**. They were `np.eye(n) * n` and `np.eye(n) / n`, independent
+    of the data. Both expressions were verified against Monte Carlo.
+  - `ambiguity_function` and `cross_ambiguity` **annotated real**, which is
+    what they have always returned.
+  - The 2-D `auction` docstring **no longer claims optimality**. It is
+    epsilon-optimal, with a gap of at most `n * epsilon`; exact for integer
+    costs with `epsilon < 1/n`.
+
+
 ### Removed
 
 - **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**
@@ -276,38 +343,6 @@ This release is about **verification rather than features**: the library gained 
   deliberate optional dependencies), and every code cell parses as Python.
 
 ### Changed
-
-- **INS/GNSS loose coupling mixed meters and radians**
-  ([#19](https://github.com/nedonatelli/TCL/issues/19)). The first three error
-  states are `[dlat, dlon, dheight]` in `[rad, rad, m]`, but
-  `initialize_ins_gnss` placed a meters-valued `position_std` directly on all
-  three diagonal entries, and the default measurement covariance was in m^2
-  against innovations in radians.
-
-  With the shipped defaults the two errors cancelled — covariance and
-  measurement noise were *both* wrongly in meters, so the ratio came out right.
-  The damage appears when a caller supplies a **correctly scaled**
-  `position_cov`: the filter's own covariance was then larger by roughly 1e13,
-  and it absorbed essentially 100% of every measurement regardless of quality.
-  The INS contributed nothing while the filter still looked like it was fusing.
-  A new `position_std_to_error_state_units` converts via the meridional and
-  prime-vertical radii, and both sites use it.
-
-  **Behavior change:** a filter tuned against the old units will weight
-  differently. Anyone passing `position_cov` should now express it in
-  `[rad, rad, m]`, matching the states.
-
-- **HDOP and VDOP were reported in the wrong frame**
-  ([#19](https://github.com/nedonatelli/TCL/issues/19)).
-  `tight_coupled_update` passed an ECEF geometry matrix to `compute_dop`, whose
-  x and y axes point at the equator no matter where the user is — so the
-  horizontal/vertical split was meaningful only at the poles. At 45 degrees the
-  reported values were close to *each other's* truth: HDOP 1.93 against a true
-  1.41, VDOP 1.41 against a true 1.92. `compute_dop` now takes an optional
-  `user_lla` and rotates into ENU, and the tight-coupled path supplies it.
-  GDOP and PDOP are traces, hence rotation-invariant, and were correct
-  throughout.
-
 
 - **CI type checks with `mypy --strict`.** The looser
   `--ignore-missing-imports` command had been passing while those 12 errors
