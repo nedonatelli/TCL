@@ -122,7 +122,9 @@ def test_knn_matches_brute_force(tree_name, dim, n, kind):
     tree = TREE_FACTORIES[tree_name](data)
     queries = np.vstack([rng.uniform(-6, 6, (4, dim)), data[rng.integers(0, n, 2)]])
 
-    for k in (1, 3, min(n, 8), n):
+    # Clamped and deduplicated: asking for more neighbors than the index holds
+    # now raises (gh-22), and the smallest dataset here has only two points.
+    for k in sorted({1, min(3, n), min(n, 8), n}):
         result = tree.query(queries, k=k)
         for qi, q in enumerate(queries):
             ref = _brute_knn_distances(data, q, k)
@@ -212,8 +214,30 @@ def test_metric_trees_custom_metric():
             assert got == expected, cls.__name__
 
 
-def test_query_k_greater_than_n():
-    """k > n_samples: valid entries carry finite distances, padding is inf."""
+def test_query_k_greater_than_n_raises():
+    """Asking for more neighbors than exist is a caller error (gh-22).
+
+    This test previously asserted the opposite: that the shortfall was padded,
+    with ``inf`` distances marking the padding. The indices were padded too --
+    with ``0``, a *valid* index -- so a caller who read ``result.indices``
+    without also checking ``result.distances`` silently used point 0 as a
+    neighbor, once per overshoot. Raising matches ``sklearn.neighbors`` and
+    makes that impossible.
+    """
+    data = np.array([[0.0, 0.0], [1.0, 1.0]])
+    for tree in (
+        KDTree(data),
+        BallTree(data),
+        VPTree(data),
+        CoverTree(data),
+        RTree.from_points(data),
+    ):
+        with pytest.raises(ValueError, match="exceeds the 2 point"):
+            tree.query([[0.1, 0.1]], k=5)
+
+
+def test_query_k_equal_to_n_is_still_allowed():
+    """The boundary. Every point being a neighbor is a legitimate request."""
     data = np.array([[0.0, 0.0], [1.0, 1.0]])
     ref = np.sort(np.sqrt(((data - [0.1, 0.1]) ** 2).sum(axis=1)))
     for tree in (
@@ -223,10 +247,10 @@ def test_query_k_greater_than_n():
         CoverTree(data),
         RTree.from_points(data),
     ):
-        result = tree.query([[0.1, 0.1]], k=5)
-        finite = np.isfinite(result.distances[0])
-        assert finite.sum() == 2
-        assert_allclose(np.sort(result.distances[0][finite]), ref)
+        result = tree.query([[0.1, 0.1]], k=2)
+        assert np.all(np.isfinite(result.distances[0]))
+        assert_allclose(np.sort(result.distances[0]), ref)
+        assert sorted(result.indices[0].tolist()) == [0, 1]
 
 
 # =============================================================================

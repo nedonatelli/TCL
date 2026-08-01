@@ -220,8 +220,14 @@ def dbscan_predict(
     """
     Predict cluster labels for new points based on trained DBSCAN.
 
-    Assigns new points to the cluster of the nearest core point
-    within eps distance, or -1 if no core point is within range.
+    Assigns each new point to the cluster of the nearest **non-noise** training
+    point within ``eps``, or -1 if none is in range.
+
+    Border points count, not only core points. That is the more useful rule --
+    a new point sitting beside a cluster's edge is assigned to that cluster
+    rather than rejected -- but it is not what this docstring used to say, and
+    the two differ for any point whose only near neighbor is itself a border
+    point (gh-22).
 
     Parameters
     ----------

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`query(k > n_samples)` now raises instead of padding with a valid index**
+  ([#22](https://github.com/nedonatelli/TCL/issues/22)). All five spatial
+  indexes — KD-tree, ball tree, R-tree, VP-tree, cover tree — padded the
+  shortfall with index `0` alongside an infinite distance. Zero is a *valid*
+  index, so a caller who read `result.indices` without also checking
+  `result.distances` silently used point 0 as a neighbor, once per overshoot.
+  Raising matches `sklearn.neighbors`, which is where most callers'
+  expectations come from. `k == n_samples` remains valid; a caller who wants a
+  partial result should ask for `min(k, index.n_samples)`, which the error
+  message says.
+
+- **`BoundingBox.volume` returns 0 for a degenerate box.** It previously
+  multiplied only the nonzero extents, so a flat box `[0,0]-[2,0]` reported
+  `2.0` where it encloses nothing. That behavior exists for the R-tree
+  insertion heuristic, which needs to tell degenerate boxes apart — every box
+  built from a single point has zero volume, so a true-volume heuristic would
+  tie every candidate and fall back to insertion order. The heuristic keeps it
+  under a private name; the public property is now the geometric one.
+
 ### Removed
 
 - **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**

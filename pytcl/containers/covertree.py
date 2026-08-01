@@ -21,6 +21,7 @@ from pytcl.containers.base import (
     CoverTreeResult,  # Backward compatibility alias
     MetricSpatialIndex,
     NeighborResult,
+    validate_neighbor_count,
     validate_query_input,
 )
 
@@ -262,6 +263,7 @@ class CoverTree(MetricSpatialIndex):
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
+        validate_neighbor_count(k, self.n_samples)
         n_queries = X.shape[0]
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
