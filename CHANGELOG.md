@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Six storage contract gaps in `pytcl.io`**
+  ([#21](https://github.com/nedonatelli/TCL/issues/21)). All of them share a
+  cause: the base class did not say what should happen, so each backend did
+  whatever its underlying library did.
+
+  - **`SQLStorage(db_type=...)` removed.** Any value but `'sqlite'` made
+    `open()` do nothing at all, after which every method raised
+    `RuntimeError("Storage not open")`. It advertised backends that did not
+    exist.
+  - **`open(mode='r')` on a missing file now raises `FileNotFoundError`.** It
+    used to create an empty database — `sqlite3.connect` creates the file
+    whatever the caller intended — so reads then failed with
+    `sqlite3.OperationalError` about a missing table instead of the documented
+    `KeyError`, and a stray file was left on disk.
+  - **`store_array` replaces on both backends.** `SQLStorage` replaced;
+    `HDF5Storage` let h5py raise `ValueError` on an existing name, so code
+    written against one broke on the other. The rule is now stated in
+    `StorageBackend`, which is the only place it could live.
+  - **`get_track_history` keeps residuals aligned with timestamps.** They were
+    keyed off the first row, so a window beginning with a prediction reported
+    `residuals=None` even when later rows had them, and a mixed window returned
+    a *shorter* array silently misaligned with every timestamp. That is the
+    shape a predict-then-update filter produces on every step. Rows without a
+    residual now hold `NaN`, preserving the documented `(N, meas_dim)`.
+  - **`update_track_state` rejects an unknown `track_id`.** It used to insert
+    the state row and update zero tracks, leaving history belonging to no
+    track — retrievable by id, so a typo produced something that looked like a
+    track in every respect but the one that counts.
+  - **`merge_tracks` combines track-level fields.** It moved history,
+    associations and detections but left the kept track's `last_update_time`
+    behind, so a merge bringing in newer states made the track look stale and
+    staleness-based pruning would delete the track that had just been
+    reinforced. `birth_time` now takes the earlier, `last_update_time` the
+    later, and the merged track's metadata keys are folded in without
+    overwriting the survivor's.
+
+
 - **`query(k > n_samples)` now raises instead of padding with a valid index**
   ([#22](https://github.com/nedonatelli/TCL/issues/22)). All five spatial
   indexes — KD-tree, ball tree, R-tree, VP-tree, cover tree — padded the
