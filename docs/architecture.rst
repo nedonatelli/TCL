@@ -29,7 +29,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Association_and_Tracking
-           AA["assignment_algorithms<br/>9 modules"]
+           AA["assignment_algorithms<br/>10 modules"]
            TR["trackers<br/>4 modules"]
            CL["clustering<br/>4 modules"]
            CO["containers<br/>8 modules"]
@@ -169,7 +169,7 @@ Counts are measured from the packages themselves rather than asserted;
      - 85
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
-     - 9
+     - 10
      - 43
      - 2-D, 3-D and N-D assignment, gating, JPDA, k-best, network flow
    * - ``astronomical``

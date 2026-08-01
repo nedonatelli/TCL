@@ -228,6 +228,7 @@ state-layout error on a page whose imports all resolved.
 |-------|--------|--------|--------|
 | Terrain loader signature mismatch | `terrain/loaders.py` | 13 tests skipped | Planned for v2.1 |
 | CuPy tests skip without NVIDIA GPU | `gpu/` | Hardware-gated (algorithm-validated via shim) | By design |
+| Dead modules: `assignment_algorithms/network_simplex.py`, `logging_config.py` | — | 0% coverage, referenced nowhere | Remove in v2.0.0 |
 | API/contract cleanups from the audit (see [#9](https://github.com/nedonatelli/TCL/issues/9)) | multiple | Misleading names, dead parameters, install hints naming the wrong package | Triage before v2.0.0 |
 
 ### Medium Priority
