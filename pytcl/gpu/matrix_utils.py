@@ -407,10 +407,11 @@ def gpu_eigh(
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_eigh
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.array([[2, 1], [1, 2]])
     >>> eigvals, eigvecs = gpu_eigh(A)
-    >>> eigvals
-    array([1., 3.])
+    >>> bool(np.allclose(np.asarray(to_cpu(eigvals)), [1.0, 3.0]))
+    True
     """
     b = get_compute_backend()
 
@@ -660,12 +661,10 @@ def get_memory_pool() -> MemoryPool:
     --------
     >>> from pytcl.gpu.matrix_utils import get_memory_pool
     >>> pool = get_memory_pool()
-    >>> # Get current memory stats
     >>> stats = pool.get_stats()
-    >>> print(f"Used: {stats['used']} bytes")
-    >>> # Set memory limit
+    >>> "used" in stats
+    True
     >>> pool.set_limit(1024**3)  # 1 GB limit
-    >>> # Free cached blocks
     >>> pool.free_all()
     """
     global _memory_pool

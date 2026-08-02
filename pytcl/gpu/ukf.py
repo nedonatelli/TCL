@@ -62,7 +62,12 @@ Examples
 >>> def f_dynamics(x):
 ...     return np.array([x[0] + x[1], x[1] * 0.99])
 >>>
+>>> x = np.zeros((3, 2))
+>>> P = np.stack([np.eye(2)] * 3)
+>>> Q = np.stack([np.eye(2) * 0.01] * 3)
 >>> x_pred, P_pred = batch_ukf_predict(x, P, f_dynamics, Q)
+>>> x_pred.shape
+(3, 2)
 """
 
 import warnings
