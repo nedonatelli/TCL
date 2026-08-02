@@ -2,7 +2,7 @@ name: Benchmark (Light)
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, v2.0.0]
     paths:
       - 'pytcl/**'
       - 'benchmarks/**'

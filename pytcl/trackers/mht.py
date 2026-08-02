@@ -433,15 +433,29 @@ class MHTTracker:
         x_upd = track.state + K @ innovation
         P_upd = (np.eye(self.state_dim) - K @ self.H) @ track.covariance
 
-        # Update score (log-likelihood ratio)
+        # Log-likelihood ratio increment for a detection, in the standard form
+        #
+        #     ln Pd - ln lambda - 0.5 * (d^2 + m ln(2 pi) + ln det S)
+        #
+        # where d^2 is the Mahalanobis distance and m the measurement
+        # dimension. This used to carry an overall factor of 0.5 and omit the
+        # (2 pi)^m normalization, which made it a scaled quantity rather than a
+        # log-likelihood ratio (gh-25).
+        #
+        # The factor mattered beyond naming: _miss_track adds a full
+        # ln(1 - Pd), so hits were accumulating at half the scale of misses and
+        # the running total was not a consistent quantity in either unit.
+        # Nothing reads `score` -- it is reported, never used for confirm or
+        # delete, which go by M-of-N -- so this changes what is displayed, not
+        # what the tracker does.
         det_S = np.linalg.det(S)
         if det_S > 0:
             mahal_sq = innovation @ np.linalg.solve(S, innovation)
-            score_update = 0.5 * (
+            meas_dim = len(innovation)
+            score_update = (
                 np.log(self.config.detection_prob)
                 - np.log(self.config.clutter_density)
-                - 0.5 * mahal_sq
-                - 0.5 * np.log(det_S)
+                - 0.5 * (mahal_sq + meas_dim * np.log(2 * np.pi) + np.log(det_S))
             )
         else:
             score_update = 0.0
