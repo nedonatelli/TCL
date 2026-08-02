@@ -17,6 +17,10 @@ from typing import Any, Callable, NamedTuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.mathematical_functions.basic_matrix.special_matrices import (
+    commutation_matrix,
+)
+
 
 class MLResult(NamedTuple):
     """Result of maximum likelihood estimation.
@@ -30,7 +34,13 @@ class MLResult(NamedTuple):
     fisher_info : ndarray
         Fisher information matrix at the estimate.
     covariance : ndarray
-        Estimated covariance (inverse Fisher information).
+        Estimated covariance of the parameters. This is the inverse Fisher
+        information wherever the parameterization is unconstrained. It is not
+        for the multivariate Gaussian, whose ``vec(Sigma)`` block carries
+        ``d^2`` entries for a symmetric matrix with only ``d(d+1)/2`` free
+        ones -- there the sampling covariance is rank-deficient by
+        construction and the inverse Fisher matrix would describe a different,
+        unconstrained estimator (gh-20).
     n_iter : int
         Number of iterations (for iterative methods).
     converged : bool
@@ -735,10 +745,36 @@ def mle_gaussian(
             - 0.5 * np.sum(centered @ cov_inv * centered)
         )
 
-        # Fisher info (simplified diagonal approximation)
-        n_params = len(theta)
-        fisher = np.eye(n_params) * n
-        cov = np.eye(n_params) / n
+        # Fisher information for (mu, vec(Sigma)). Both blocks are exact and
+        # the cross terms vanish -- the mean and covariance MLEs of a Gaussian
+        # are independent.
+        #
+        #     I_mu    = n * Sigma^-1
+        #     I_Sigma = (n/2) * (Sigma^-1 kron Sigma^-1)
+        #
+        # These used to be `np.eye(n_params) * n` and `np.eye(n_params) / n`,
+        # which did not depend on the data at all (gh-20).
+        identity = np.eye(d * d)
+        fisher = np.zeros((len(theta), len(theta)))
+        fisher[:d, :d] = n * cov_inv
+        fisher[d:, d:] = 0.5 * n * np.kron(cov_inv, cov_inv)
+
+        # The parameter covariance is *not* the inverse of that Fisher matrix.
+        # vec(Sigma) carries d^2 entries for a symmetric matrix with only
+        # d(d+1)/2 free ones, so the sampling covariance of the estimator is
+        # rank-deficient by construction:
+        #
+        #     Cov(vec(Sigma_hat)) = (I + K)(Sigma kron Sigma) / n
+        #
+        # with K the commutation matrix. Inverting the Fisher block instead
+        # would give (2/n)(Sigma kron Sigma), which is full rank and wrong --
+        # it describes an unconstrained matrix estimator that does not exist
+        # here. Both expressions were checked against Monte Carlo.
+        cov = np.zeros((len(theta), len(theta)))
+        cov[:d, :d] = cov_mle / n
+        cov[d:, d:] = (
+            (identity + commutation_matrix(d, d)) @ np.kron(cov_mle, cov_mle) / n
+        )
 
     return MLResult(
         theta=theta,
