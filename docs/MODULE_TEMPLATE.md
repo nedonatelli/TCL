@@ -113,6 +113,16 @@ Brief description.
 | INFO | Major computation | `"Computing {algorithm} for n={} points"` |
 | WARNING | Numerical issue | `"Near singularity detected, using fallback"` |
 
+### Performance Markers
+
+```python
+from pytcl.logging_config import timed
+
+@timed
+def expensive_function(...):
+    ...
+```
+
 | Marker | Description | Typical Duration |
 |--------|-------------|------------------|
 | `module.function` | Full function timing | 0.5-2.0 ms |

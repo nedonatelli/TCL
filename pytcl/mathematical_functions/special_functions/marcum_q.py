@@ -5,8 +5,6 @@ The Marcum Q function is crucial in radar and communications for
 analyzing detection probabilities and signal statistics.
 """
 
-import warnings
-
 import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
@@ -251,39 +249,34 @@ def marcum_q_inv(
     return b
 
 
-def rician_cdf(
+def nuttall_q(
     a: ArrayLike,
     b: ArrayLike,
 ) -> NDArray[np.floating]:
     """
-    Rician cumulative distribution function, ``1 - Q_1(a, b)``.
+    Nuttall Q function (complementary Marcum Q).
+
+    Computes 1 - Q_1(a, b), which is the CDF of the Rician distribution.
 
     Parameters
     ----------
     a : array_like
-        Non-centrality parameter, a >= 0.
+        First argument (non-centrality parameter), a >= 0.
     b : array_like
-        Threshold, b >= 0.
+        Second argument (threshold), b >= 0.
 
     Returns
     -------
     P : ndarray
-        Values of ``1 - Q_1(a, b)``.
+        Values of 1 - Q_1(a, b).
 
     Notes
     -----
-    This is the probability ``P(X <= b^2)`` for ``X ~ chi^2(2, a^2)``.
-
-    Formerly exported as ``nuttall_q``, which was a misnomer: the Nuttall Q
-    function ``Q_{m,n}(a, b)`` is a different integral, a generalization of the
-    Marcum Q with an extra power of the integration variable. This routine
-    computes neither -- it is the complementary Marcum Q, which is exactly the
-    Rician CDF, and it always did so correctly (gh-20). Only the name was
-    wrong. ``nuttall_q`` remains as a deprecated alias.
+    This is the probability P(X <= b^2) for X ~ chi^2(2, a^2).
 
     Examples
     --------
-    >>> round(float(rician_cdf(2, 2)), 6)  # 1 - Q_1(2, 2)
+    >>> round(float(nuttall_q(2, 2)), 6)  # 1 - Q_1(2, 2)
     0.396499
 
     See Also
@@ -291,37 +284,6 @@ def rician_cdf(
     marcum_q : Marcum Q function.
     """
     return 1.0 - marcum_q(a, b, m=1)
-
-
-def nuttall_q(
-    a: ArrayLike,
-    b: ArrayLike,
-) -> NDArray[np.floating]:
-    """
-    Deprecated alias for :func:`rician_cdf`.
-
-    The name was wrong: this computes ``1 - Q_1(a, b)``, the Rician CDF, not
-    the Nuttall Q function ``Q_{m,n}(a, b)``, which is a different integral
-    (gh-20). The computation was always correct.
-
-    .. deprecated::
-        Use :func:`rician_cdf`. This alias will be removed in a future release.
-
-    Examples
-    --------
-    >>> import warnings
-    >>> with warnings.catch_warnings():
-    ...     warnings.simplefilter("ignore", DeprecationWarning)
-    ...     round(float(nuttall_q(2, 2)), 6)
-    0.396499
-    """
-    warnings.warn(
-        "nuttall_q computes the Rician CDF, not the Nuttall Q function; "
-        "the name was a misnomer. Use rician_cdf instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return rician_cdf(a, b)
 
 
 def swerling_detection_probability(
@@ -451,6 +413,5 @@ __all__ = [
     "log_marcum_q",
     "marcum_q_inv",
     "nuttall_q",
-    "rician_cdf",
     "swerling_detection_probability",
 ]

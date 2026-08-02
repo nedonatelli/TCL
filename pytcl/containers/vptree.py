@@ -21,7 +21,6 @@ from pytcl.containers.base import (
     MetricSpatialIndex,
     NeighborResult,
     VPTreeResult,  # Backward compatibility alias
-    validate_neighbor_count,
     validate_query_input,
 )
 
@@ -162,7 +161,6 @@ class VPTree(MetricSpatialIndex):
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
-        validate_neighbor_count(k, self.n_samples)
         n_queries = X.shape[0]
 
         all_indices = np.zeros((n_queries, k), dtype=np.intp)

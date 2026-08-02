@@ -94,25 +94,12 @@ class HDF5Storage(StorageBackend):
             Array to store
         metadata : dict, optional
             Metadata stored as HDF5 attributes
-
-        Notes
-        -----
-        Storing over an existing name replaces it, which is the contract
-        ``StorageBackend`` defines and what ``SQLStorage`` already did. This
-        used to let h5py raise ``ValueError`` instead, so the same code worked
-        against one backend and failed against the other (gh-21).
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
 
         # Ensure parent groups exist
         self._ensure_groups(name)
-
-        # Replace rather than let h5py refuse an existing name. Deleting the
-        # dataset drops its attributes too, so the metadata below is a
-        # replacement rather than a merge -- as the base class specifies.
-        if name in self._file:
-            del self._file[name]
 
         # Store array
         arr = np.asarray(data)

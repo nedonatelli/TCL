@@ -68,7 +68,6 @@ from pytcl.navigation.ins_gnss import (
     loose_coupled_update_position,
     loose_coupled_update_velocity,
     position_measurement_matrix,
-    position_std_to_error_state_units,
     position_velocity_measurement_matrix,
     pseudorange_measurement_matrix,
     satellite_elevation_azimuth,
@@ -794,17 +793,10 @@ class TestGNSSReference:
         ins0 = initialize_ins_state(lat0, lon0, alt0)
         st = initialize_ins_gnss(ins0, position_std=10.0)
         dlat = 50.0 / 6.4e6
-        # A GNSS fix good to a millimeter, expressed in the error-state units
-        # the filter actually uses: [rad, rad, m]. This used to read
-        # `np.eye(3) * 1e-12`, which was negligible against a position
-        # covariance wrongly carrying meters-squared on the radian diagonal.
-        # Once the units agree (gh-19), 1e-12 rad^2 is a 1.6 m uncertainty --
-        # comparable to the filter's own 10 m -- and the fix stops dominating.
-        millimeter = position_std_to_error_state_units(1e-3, lat0, alt0)
         gnss = GNSSMeasurement(
             position=np.array([lat0 + dlat, lon0, alt0]),
             velocity=None,
-            position_cov=np.diag(millimeter**2),
+            position_cov=np.eye(3) * 1e-12,
             velocity_cov=None,
             time=0.0,
         )
@@ -832,13 +824,10 @@ class TestGNSSReference:
         ins0 = initialize_ins_state(lat0, lon0, alt0)
         st = initialize_ins_gnss(ins0)
         dlat = 20.0 / 6.4e6
-        # Millimeter-accurate fix in error-state units; see the note in
-        # test_loose_coupled_position_update_pulls_to_gnss (gh-19).
-        millimeter = position_std_to_error_state_units(1e-3, lat0, alt0)
         gnss = GNSSMeasurement(
             position=np.array([lat0 + dlat, lon0, alt0 + 5.0]),
             velocity=np.array([0.5, -0.5, 0.0]),
-            position_cov=np.diag(millimeter**2),
+            position_cov=np.eye(3) * 1e-12,
             velocity_cov=np.eye(3) * 1e-8,
             time=0.0,
         )

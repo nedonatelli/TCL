@@ -22,7 +22,6 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.containers.base import (
     NeighborResult,
     SpatialQueryResult,  # Backward compatibility alias
-    validate_neighbor_count,
     validate_query_input,
 )
 
@@ -56,34 +55,11 @@ class BoundingBox(NamedTuple):
 
     @property
     def volume(self) -> float:
-        """Volume (area in 2D) of the bounding box.
-
-        Zero if the box is degenerate in any dimension. A flat box such as
-        ``[0,0]-[2,0]`` encloses no volume, and this used to report ``2.0`` for
-        it by multiplying only the nonzero extents (gh-22). That behavior
-        belongs to the insertion heuristic below, which needs to distinguish
-        degenerate boxes from one another; as a geometric property it was
-        simply wrong.
-        """
-        return float(np.prod(self.dimensions))
-
-    @property
-    def _insertion_measure(self) -> float:
-        """Size measure for choosing an R-tree subtree, not a volume.
-
-        The insertion heuristic picks the child whose box grows least. True
-        volume cannot rank degenerate boxes -- every box built from a single
-        point has volume zero, so every candidate would tie at zero enlargement
-        and the choice would fall to insertion order. Multiplying only the
-        nonzero extents keeps them comparable.
-
-        Private because it is a tie-breaking device rather than a property of
-        the box, and reporting it as ``volume`` misled anyone who asked a
-        degenerate box how big it was.
-        """
+        """Volume (area in 2D) of the bounding box."""
         dims = self.dimensions
-        positive = dims[dims > 0]
-        return float(np.prod(positive)) if positive.size else 0.0
+        if np.all(dims == 0):
+            return 0.0
+        return float(np.prod(dims[dims > 0]))
 
     def contains_point(self, point: ArrayLike) -> bool:
         """Check if box contains a point."""
@@ -373,11 +349,9 @@ class RTree:
             if child.bbox is None:
                 return self._choose_leaf(child, bbox)
 
-            # Enlargement, measured so that degenerate boxes stay comparable.
-            # True volume is zero for every point-derived box, which would tie
-            # every candidate at zero and reduce the choice to insertion order.
+            # Compute enlargement needed
             merged = merge_boxes([child.bbox, bbox])
-            enlargement = merged._insertion_measure - child.bbox._insertion_measure
+            enlargement = merged.volume - child.bbox.volume
 
             if enlargement < best_enlargement:
                 best_enlargement = enlargement
@@ -479,8 +453,6 @@ class RTree:
             raise ValueError("Cannot query empty RTree")
 
         X = validate_query_input(X, self.n_features)
-        # RTree is not a BaseSpatialIndex and counts entries, not samples.
-        validate_neighbor_count(k, self.n_entries)
         n_queries = X.shape[0]
         _logger.debug("RTree.query: %d queries, k=%d", n_queries, k)
 

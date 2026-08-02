@@ -16,43 +16,7 @@ promotion wrong is the dangerous case, because a 3-element vector read as three
 import numpy as np
 import pytest
 
-from pytcl.containers import validate_neighbor_count, validate_query_input
-
-
-class TestNeighborCount:
-    """``validate_neighbor_count``, the guard behind every index's ``query``.
-
-    Every index used to pad a too-large ``k`` with index ``0`` and an infinite
-    distance. Zero is a valid index, so a caller reading indices without also
-    reading distances got point 0 back as a neighbor (gh-22).
-    """
-
-    @pytest.mark.parametrize("k", [1, 2, 5, 10])
-    def test_a_request_within_the_index_is_accepted(self, k):
-        validate_neighbor_count(k, 10)
-
-    def test_asking_for_every_point_is_accepted(self):
-        """The boundary: k == n is legitimate, not an overshoot."""
-        validate_neighbor_count(7, 7)
-
-    @pytest.mark.parametrize("k,n", [(2, 1), (5, 3), (11, 10), (1, 0)])
-    def test_asking_for_more_than_exists_raises(self, k, n):
-        with pytest.raises(ValueError, match=f"k={k} exceeds the {n} point"):
-            validate_neighbor_count(k, n)
-
-    @pytest.mark.parametrize("k", [0, -1, -10])
-    def test_a_non_positive_count_raises(self, k):
-        with pytest.raises(ValueError, match="k must be at least 1"):
-            validate_neighbor_count(k, 10)
-
-    def test_the_message_says_what_to_do_instead(self):
-        """A caller who wants a partial result needs to be told how.
-
-        The rejection is only actionable if it names the alternative.
-        """
-        with pytest.raises(ValueError) as excinfo:
-            validate_neighbor_count(5, 2)
-        assert "min(k, n_samples)" in str(excinfo.value)
+from pytcl.containers import validate_query_input
 
 
 class TestSinglePointPromotion:

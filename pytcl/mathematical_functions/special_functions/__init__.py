@@ -105,7 +105,6 @@ from pytcl.mathematical_functions.special_functions.marcum_q import (
     marcum_q1,
     marcum_q_inv,
     nuttall_q,
-    rician_cdf,
     swerling_detection_probability,
 )
 
@@ -171,7 +170,6 @@ __all__ = [
     "log_marcum_q",
     "marcum_q_inv",
     "nuttall_q",
-    "rician_cdf",
     "swerling_detection_probability",
     # Lambert W function
     "lambert_w",
