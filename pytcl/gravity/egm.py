@@ -452,6 +452,14 @@ def geoid_height(
     --------
     >>> # Geoid height at equator, prime meridian
     >>> N = geoid_height(0, 0)  # Should be approximately 17 m  # doctest: +SKIP
+
+    Notes
+    -----
+    Evaluated at ``r = R`` rather than iterated to the geoid surface, and the
+    zero-degree term is omitted (gh-25). The omission is a roughly -0.5 m
+    constant offset, so differences between two points are far more accurate
+    than either absolute value.
+
     """
     if coefficients is None:
         coefficients = load_egm_coefficients(model, n_max)
@@ -669,6 +677,18 @@ def gravity_anomaly(
     >>> anomaly = gravity_anomaly(0, 0, h=0, coefficients=coef)
     >>> isinstance(anomaly, float)
     True
+
+    Notes
+    -----
+    This returns the radial component of the **gravity disturbance**, not a
+    free-air gravity anomaly (gh-25). The two differ by the free-air term::
+
+        anomaly = disturbance + (d gamma / d h) * N
+
+    with ``N`` the geoid height, which is about 0.3086 mGal per meter. At a
+    geoid height of 30 m that is roughly 9 mGal -- larger than many of the
+    signals this is used to look for.
+
     """
     disturbance = gravity_disturbance(lat, lon, h, model, n_max, coefficients)
 
