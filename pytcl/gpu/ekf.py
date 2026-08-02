@@ -40,8 +40,13 @@ Examples
 >>> def F_jacobian(x):
 ...     return np.array([[1, 1], [0, 0.99]])
 >>>
->>> # Batch prediction
+>>> # Batch prediction over three tracks with a 2-D state
+>>> x = np.zeros((3, 2))
+>>> P = np.stack([np.eye(2)] * 3)
+>>> Q = np.stack([np.eye(2) * 0.01] * 3)
 >>> x_pred, P_pred = batch_ekf_predict(x, P, f_dynamics, F_jacobian, Q)
+>>> x_pred.shape
+(3, 2)
 
 See Also
 --------

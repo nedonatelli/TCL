@@ -83,6 +83,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single filter run is not — consecutive values share the same state and
   covariance history, so the bounds are narrower than they should be and the
   test over-rejects. Behavior unchanged; the caveat was undocumented.
+- **The gpu package's doctests were skipped on every machine that could run
+  them** ([#66](https://github.com/nedonatelli/TCL/issues/66)). `conftest.py`
+  gated collection on CuPy alone, but everything in `pytcl/gpu` dispatches
+  through `get_compute_backend()`, which accepts **CuPy or MLX**. So on Apple
+  Silicon — where MLX is a working backend and the examples do run — the whole
+  package was skipped, and the developers best placed to exercise this code got
+  no feedback from it. The gate now tests for any backend.
+
+  With the gate corrected, 19 of 47 examples failed. All are now fixed and
+  **47 of 47 pass**: undefined names (`sync_gpu` referenced an undefined
+  `start`), examples printing output with none expected, backend-specific
+  reprs compared literally, `np.all()` called on a device array, and an
+  assertion that a log-likelihood must be negative when
+  `logsumexp([-1, -0.5, -2])` is `+0.104`.
+
+  CI has neither backend and still skips, which is a real limit rather than an
+  oversight — GPU code cannot be doctested on a runner without a GPU. The
+  CPU-side contracts remain covered by `tests/validation/test_gpu_audit.py`.
 
 
 - **`reassigned_spectrogram` computed its reassignment corrections and threw

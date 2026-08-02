@@ -61,27 +61,33 @@ Examples
 Basic usage with automatic backend selection:
 
 >>> from pytcl.gpu import is_gpu_available, get_backend
->>> if is_gpu_available():
-...     print(f"GPU available, using {get_backend()} backend")
+>>> isinstance(is_gpu_available(), bool)
+True
+>>> get_backend() in ("mlx", "cupy", "numpy")
+True
 
 Check platform:
 
 >>> from pytcl.gpu import is_apple_silicon, is_mlx_available
->>> if is_apple_silicon():
-...     print("Running on Apple Silicon")
->>> if is_mlx_available():
-...     print("MLX acceleration available")
+>>> isinstance(is_apple_silicon(), bool)
+True
+>>> isinstance(is_mlx_available(), bool)
+True
 
 Batch processing example:
 
+>>> import numpy as np
 >>> from pytcl.gpu import batch_kf_predict, to_gpu, to_cpu
->>> # Move data to GPU (automatically uses best backend)
->>> x_gpu = to_gpu(x_batch)  # (n_tracks, state_dim)
->>> P_gpu = to_gpu(P_batch)  # (n_tracks, state_dim, state_dim)
->>> # Batch prediction
+>>> x_batch = np.zeros((4, 2))                  # (n_tracks, state_dim)
+>>> P_batch = np.stack([np.eye(2)] * 4)         # (n_tracks, state_dim, state_dim)
+>>> F = np.array([[1.0, 1.0], [0.0, 1.0]])
+>>> Q = np.eye(2) * 0.01
+>>> # Move data to the GPU (automatically uses the best backend)
+>>> x_gpu, P_gpu = to_gpu(x_batch), to_gpu(P_batch)
 >>> x_pred, P_pred = batch_kf_predict(x_gpu, P_gpu, F, Q)
->>> # Move results back to CPU
->>> x_pred_cpu = to_cpu(x_pred)
+>>> # Move results back to the CPU
+>>> to_cpu(x_pred).shape
+(4, 2)
 
 See Also
 --------
