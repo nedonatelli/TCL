@@ -6,6 +6,7 @@ and higher-order polynomial models.
 """
 
 import math
+from math import factorial
 
 import numpy as np
 from numpy.typing import NDArray
@@ -126,39 +127,22 @@ def q_discrete_white_noise(
     array([[0.25, 0.5 ],
            [0.5 , 1.  ]])
     """
-    if dim == 2:
-        # Constant velocity model (noise in acceleration)
-        Q_1d = var * np.array(
-            [
-                [T**4 / 4, T**3 / 2],
-                [T**3 / 2, T**2],
-            ],
-            dtype=np.float64,
-        )
-    elif dim == 3:
-        # Constant acceleration model (noise in jerk)
-        Q_1d = var * np.array(
-            [
-                [T**6 / 36, T**5 / 12, T**4 / 6],
-                [T**5 / 12, T**4 / 4, T**3 / 2],
-                [T**4 / 6, T**3 / 2, T**2],
-            ],
-            dtype=np.float64,
-        )
-    elif dim == 4:
-        # Constant jerk model (noise in snap)
-        Q_1d = var * np.array(
-            [
-                [T**8 / 576, T**7 / 144, T**6 / 48, T**5 / 24],
-                [T**7 / 144, T**6 / 36, T**5 / 12, T**4 / 6],
-                [T**6 / 48, T**5 / 12, T**4 / 4, T**3 / 2],
-                [T**5 / 24, T**4 / 6, T**3 / 2, T**2],
-            ],
-            dtype=np.float64,
-        )
-    else:
-        # General case using q_poly_kal
-        Q_1d = q_poly_kal(order=dim - 1, T=T, q=var, num_dims=1)
+    # Discrete gain-vector model: a single random acceleration increment of
+    # variance `var` enters at the highest derivative and integrates down, so
+    # G[i] = T^(dim-i)/(dim-i)! and Q = var * G G^T.
+    #
+    # Dimensions 2 through 4 used to be written out as literal matrices and
+    # anything above fell through to q_poly_kal -- which discretizes
+    # *continuous* white noise and is a different model, off by about a factor
+    # of four in the leading term at dim=5 (gh-26). This expression reproduces
+    # the three literal blocks exactly and extends the same model upward.
+    if dim < 2:
+        raise ValueError(f"dim must be at least 2, got {dim}")
+
+    gain = np.array(
+        [T ** (dim - i) / factorial(dim - i) for i in range(dim)], dtype=np.float64
+    )
+    Q_1d = var * np.outer(gain, gain)
 
     if block_size == 1:
         return Q_1d

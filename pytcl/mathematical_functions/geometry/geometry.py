@@ -5,7 +5,7 @@ This module provides geometric functions for points, lines, planes,
 polygons, and related operations used in tracking applications.
 """
 
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -538,6 +538,7 @@ def bounding_box(
 
 def minimum_bounding_circle(
     points: ArrayLike,
+    rng: Optional[Union[int, np.random.Generator]] = None,
 ) -> Tuple[NDArray[np.floating], float]:
     """
     Compute minimum enclosing circle (2D).
@@ -546,6 +547,12 @@ def minimum_bounding_circle(
     ----------
     points : array_like
         Point coordinates of shape (n, 2).
+    rng : int or numpy.random.Generator, optional
+        Seed or generator for the shuffle Welzl's algorithm depends on for its
+        expected linear running time. Default draws from fresh entropy, so
+        repeated calls on the same points may return centers differing at the
+        level of floating-point tie-breaking. Pass a seed for a reproducible
+        pipeline.
 
     Returns
     -------
@@ -556,9 +563,30 @@ def minimum_bounding_circle(
 
     Notes
     -----
-    Uses Welzl's algorithm with expected O(n) time complexity.
+    Welzl's algorithm, expected O(n).
+
+    Two robustness problems are fixed here relative to earlier versions
+    (gh-26). The shuffle used the *global* ``np.random`` state, so results
+    depended on unrelated code having drawn from it and could not be
+    reproduced; and the implementation recursed once per point, so a few
+    thousand points raised ``RecursionError``. The formulation below is the
+    standard three-loop incremental one, which recurses not at all.
+
+    The circle itself is unique, so seeding changes only which of several
+    equally-valid representations is returned when points are co-circular --
+    never the radius beyond floating-point noise.
+
+    Examples
+    --------
+    >>> points = np.array([[0.0, 0.0], [2.0, 0.0], [1.0, 1.0]])
+    >>> center, radius = minimum_bounding_circle(points, rng=0)
+    >>> bool(np.isclose(radius, 1.0))
+    True
     """
     points = np.asarray(points, dtype=np.float64)
+    generator = (
+        rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+    )
 
     def circle_from_two_points(p1: Any, p2: Any) -> tuple[Any, Any]:
         center = (p1 + p2) / 2
@@ -598,36 +626,43 @@ def minimum_bounding_circle(
         radius = np.linalg.norm(p1 - center)
         return center, radius
 
-    def is_inside(c: Any, r: Any, p: Any) -> Any:
-        return np.linalg.norm(p - c) <= r + 1e-10
+    def is_inside(center: Any, radius: Any, point: Any) -> Any:
+        return np.linalg.norm(point - center) <= radius + 1e-10
 
-    def welzl(P: Any, R: Any) -> tuple[Any, Any]:
-        if len(P) == 0 or len(R) == 3:
-            if len(R) == 0:
-                return np.array([0.0, 0.0]), 0.0
-            elif len(R) == 1:
-                return R[0].copy(), 0.0
-            elif len(R) == 2:
-                return circle_from_two_points(R[0], R[1])
-            else:
-                return circle_from_three_points(R[0], R[1], R[2])
+    def circle_with_two_fixed(pts: Any, q1: Any, q2: Any) -> tuple[Any, Any]:
+        """Smallest circle through q1 and q2 that also encloses pts."""
+        center, radius = circle_from_two_points(q1, q2)
+        for point in pts:
+            if not is_inside(center, radius, point):
+                center, radius = circle_from_three_points(q1, q2, point)
+        return center, radius
 
-        idx = np.random.randint(len(P))
-        p = P[idx]
-        P_new = np.delete(P, idx, axis=0)
+    def circle_with_one_fixed(pts: Any, q: Any) -> tuple[Any, Any]:
+        """Smallest circle through q that also encloses pts."""
+        center, radius = circle_from_two_points(pts[0], q)
+        for index, point in enumerate(pts):
+            if not is_inside(center, radius, point):
+                center, radius = circle_with_two_fixed(pts[: index + 1], q, point)
+        return center, radius
 
-        c, r = welzl(P_new, R)
+    if len(points) == 0:
+        return np.array([0.0, 0.0]), 0.0
+    if len(points) == 1:
+        return points[0].copy(), 0.0
 
-        if is_inside(c, r, p):
-            return c, r
+    shuffled = points.copy()
+    generator.shuffle(shuffled)
 
-        return welzl(P_new, R + [p])
+    # Incremental construction: grow the circle one point at a time, and
+    # rebuild only when the new point falls outside. Each rebuild is itself a
+    # loop rather than a recursive call, which is what removes the O(n) stack
+    # depth the recursive formulation needed.
+    center, radius = circle_from_two_points(shuffled[0], shuffled[1])
+    for index, point in enumerate(shuffled[2:], start=2):
+        if not is_inside(center, radius, point):
+            center, radius = circle_with_one_fixed(shuffled[:index], point)
 
-    # Shuffle for randomized algorithm
-    points_shuffled = points.copy()
-    np.random.shuffle(points_shuffled)
-
-    return welzl(points_shuffled, [])
+    return center, float(radius)
 
 
 def oriented_bounding_box(

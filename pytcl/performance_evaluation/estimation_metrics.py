@@ -389,6 +389,24 @@ def consistency_test(
     >>> result = consistency_test(nees_vals, df=4)
     >>> result.is_consistent
     True
+
+    Notes
+    -----
+    The bounds come from ``N * mean`` being chi-squared with ``N * df``
+    degrees of freedom, which holds **only if the values are independent**
+    (gh-26).
+
+    They are not independent when the input is a NEES sequence from a single
+    filter run. Consecutive NEES values share the same state and covariance
+    history, so the effective sample size is smaller than ``N`` and these
+    bounds are narrower than they should be -- the test rejects a consistent
+    filter more often than the stated confidence level implies.
+
+    Pass one value per **independent Monte Carlo run** for the bounds to mean
+    what they say. Applied to a time series from one run, read the result as a
+    diagnostic rather than a hypothesis test: a mean far outside the interval
+    still indicates a badly tuned filter, but a marginal excursion does not
+    carry the significance the confidence level suggests.
     """
     N = len(nees_or_nis_values)
     mean_val = np.mean(nees_or_nis_values)
