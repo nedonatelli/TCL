@@ -951,8 +951,15 @@ class TestRealCuPyDevice:
             return np.array([[1.0, 1.0], [0.0, 0.99]])
 
         predicted = batch_ekf_predict(to_gpu(x), to_gpu(P), dynamics, jacobian, Q)
-        device_x = to_cpu(predicted.x if hasattr(predicted, "x") else predicted[0])
+        device_x = to_cpu(predicted.x)
+        device_P = to_cpu(predicted.P)
 
         for i in range(n_tracks):
-            reference = ekf_predict(x[i], P[i], dynamics, jacobian, Q[i])
+            # The batch entry point takes the Jacobian as a callable and
+            # evaluates it per track at the prior state; the CPU one takes the
+            # already-evaluated matrix. Passing the callable to both would raise
+            # here rather than on the device, which is a confusing place to
+            # discover it.
+            reference = ekf_predict(x[i], P[i], dynamics, jacobian(x[i]), Q[i])
             np.testing.assert_allclose(device_x[i], reference.x, atol=1e-9)
+            np.testing.assert_allclose(device_P[i], reference.P, atol=1e-9)
