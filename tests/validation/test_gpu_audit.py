@@ -531,21 +531,45 @@ class TestBatchUKFMath:
             assert_allclose(upd.S[i], ref.S, atol=tol)
             assert_allclose(upd.likelihood[i], ref.likelihood, atol=1e-6)
 
-    def test_discrepancy_shrinks_with_weight_conditioning(self):
-        """Error must be precision-limited (falls as alpha grows), not bias."""
+    def test_discrepancy_is_precision_limited_not_bias(self):
+        """Error must track weight conditioning rather than persist as a bias.
+
+        Merwe weights scale as 1/alpha^2, so float64 rounding is amplified by
+        that factor; a genuine bias in the batch implementation would not shrink
+        when the weights are conditioned.
+
+        This used to assert ``errs[1] < errs[0]`` strictly. The batch path and
+        the CPU loop can execute an identical sequence of operations and agree
+        bit-for-bit, and on an OpenBLAS runner the ill-conditioned case came out
+        at exactly 0.0 -- so the test demanded an improvement on an exact match
+        and failed. The comparisons below are therefore ``<=`` against an ulp
+        floor, with the substance carried by the absolute bounds: monotonicity
+        alone would also be satisfied by three equally large errors.
+        """
         x, P, Q, _, _ = _ekf_problem(seed=17)
-        errs = []
+        errs = {}
         for alpha in (1e-3, 1e-1, 1.0):
             pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=alpha)
-            err = max(
+            errs[alpha] = max(
                 np.abs(
                     pred.x[i] - ukf_predict(x[i], P[i], _f_ct, Q, alpha=alpha).x
                 ).max()
                 for i in range(len(x))
             )
-            errs.append(err)
-        assert errs[1] < errs[0]
-        assert errs[2] <= errs[1]
+
+        for alpha, err in errs.items():
+            assert err <= 1e-12 / alpha**2, (
+                f"alpha={alpha}: error {err:.3e} exceeds the rounding level the "
+                "weight magnitude implies, which is the signature of a bias"
+            )
+
+        floor = 1e-14
+        assert errs[1e-1] <= errs[1e-3] + floor
+        assert errs[1.0] <= errs[1e-1] + floor
+
+        assert errs[1.0] < 1e-12, (
+            "well-conditioned weights must agree to machine precision"
+        )
 
     def test_sigma_point_eigh_fallback_batch(self):
         """Regression: the non-PD fallback used cp.diag on batched eigvals
