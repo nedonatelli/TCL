@@ -19,7 +19,7 @@ Spatial containers
 ------------------
 
 ``query(k)`` rejects ``k`` larger than the index
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 All five indexes — KD-tree, ball tree, R-tree, VP-tree, cover tree — used to
 pad a too-large ``k`` with index ``0`` and an infinite distance. Zero is a
@@ -39,7 +39,7 @@ overshoot.
 the error message says so.
 
 ``BoundingBox.volume`` is zero for a degenerate box
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A flat box ``[0,0]-[2,0]`` used to report ``2.0``, because the property
 multiplied only the nonzero extents. It now reports ``0.0``, which is the
@@ -53,7 +53,7 @@ Navigation
 ----------
 
 INS/GNSS position covariance is in ``[rad, rad, m]``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The error state has always been ``[dlat, dlon, dheight]`` in ``[rad, rad, m]``,
 but ``initialize_ins_gnss`` placed a metres-valued ``position_std`` directly on
@@ -78,7 +78,7 @@ change is needed, but the filter is now weighted differently — retune if you
 had compensated for the old behaviour.
 
 ``compute_dop`` needs the user position for HDOP and VDOP
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 HDOP and VDOP are only horizontal and vertical relative to a local frame. Given
 an ECEF geometry matrix they were computed against ECEF x/y/z, which are
@@ -98,7 +98,7 @@ Signal processing and statistics
 --------------------------------
 
 ``detection_probability`` no longer takes ``swerling_case``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 All five branches evaluated the same expression, so the argument selected
 nothing — a caller asking for a non-fluctuating target got the Swerling 1
@@ -120,7 +120,7 @@ accounts for threshold estimation from ``n_ref`` reference cells,
 ``swerling_detection_probability`` for integration over ``n_pulses``.
 
 ``snr_loss`` requires ``pfa`` and covers CA only
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 CFAR loss depends on the operating point, so the old ``1 + c/n_ref``
 heuristics — which took no ``pfa`` at all — could not express it. They
@@ -147,7 +147,7 @@ remains as a deprecated alias that warns; it will be removed in a later
 release.
 
 Values that changed without a signature change
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 These take the same arguments and return different numbers. If you have
 baselines recorded against v1.x, they will move:
@@ -190,7 +190,7 @@ Storage and I/O
 ---------------
 
 ``SQLStorage`` no longer takes ``db_type``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Any value other than ``'sqlite'`` made ``open()`` do nothing at all, after
 which every method raised ``RuntimeError``. It advertised backends that did not
@@ -201,7 +201,7 @@ exist.
    store = SQLStorage()          # v2.0.0: no arguments
 
 ``open(mode="r")`` does not create a database
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Opening a nonexistent path for reading used to create an empty file, after
 which reads failed with ``sqlite3.OperationalError`` about a missing table
@@ -216,7 +216,7 @@ and leaves no file behind. Use ``mode='w'`` or ``'a'`` to create.
 states. Metadata is replaced wholesale along with the array.
 
 ``get_track_history`` residuals are row-aligned
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Residuals were read from the first row only, so a window beginning with a
 prediction reported ``residuals=None`` even when later rows had them — and a
