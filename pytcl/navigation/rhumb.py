@@ -373,6 +373,20 @@ def rhumb_distance_ellipsoidal(
     >>> dist = rhumb_distance_ellipsoidal(lat1, lon1, lat2, lon2)
     >>> dist > 5000000  # Over 5000 km
     True
+
+    Notes
+    -----
+    The meridional radius is evaluated once at the midpoint latitude rather
+    than integrated along the leg, which is exact only for a leg short enough
+    that the radius is effectively constant (gh-25).
+
+    Quantified: about 0.05% on legs spanning roughly 45 degrees of latitude --
+    4.5 km over 9,800 km -- and up to about 400 m on a 3,000 km due-north leg.
+    Sub-meter on typical legs. Round trips through ``direct_rhumb_ellipsoidal``
+    are self-consistent to under a millimeter because the same approximation
+    appears in both directions and cancels; that consistency is therefore not
+    evidence of accuracy.
+
     """
     a = ellipsoid.a
     e2 = ellipsoid.e2

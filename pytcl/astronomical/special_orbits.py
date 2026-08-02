@@ -126,8 +126,15 @@ def mean_to_parabolic_anomaly(
 
     Notes
     -----
-    For parabolic orbits, mean anomaly relates to time as:
-    M = sqrt(mu/rp^3) * t where rp is periapsis distance and mu is GM.
+    For parabolic orbits, mean anomaly relates to time as::
+
+        M = sqrt(mu / (2 * rp^3)) * t
+
+    with ``rp`` the periapsis distance and ``mu`` the gravitational parameter.
+    This used to be written ``sqrt(mu/rp^3)``, missing the factor of 2 under
+    the root -- a sqrt(2) error in the time-to-anomaly conversion (gh-25). The
+    solver below is unaffected: it takes ``M`` as given and is self-consistent
+    either way, so only a caller converting from time was misled.
 
     The solution D satisfies: D + (1/3)*D^3 = M
     """

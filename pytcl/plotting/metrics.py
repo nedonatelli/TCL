@@ -48,6 +48,19 @@ def plot_rmse_over_time(
     -------
     fig : go.Figure
         Plotly figure.
+
+    Notes
+    -----
+    This plots a **running cumulative RMSE** of a single sequence: at step k
+    the value is the root-mean-square error over steps 1..k, so the curve is
+    smoothed by construction and converges toward a constant.
+
+    That is not what "RMSE over time" usually means. The conventional
+    per-step ensemble RMSE averages across independent Monte Carlo runs at each
+    step and shows transient behavior -- filter convergence, a maneuver, a
+    dropout -- which this curve deliberately averages away (gh-25). The
+    computation is correct for what it is; the name suggests the other one.
+
     """
     if not HAS_PLOTLY:
         raise ImportError("plotly is required for plotting functions")

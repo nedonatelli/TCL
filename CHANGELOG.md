@@ -9,6 +9,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Approximation limits documented, and four defects found among them**
+  ([#25](https://github.com/nedonatelli/TCL/issues/25)). The issue framed all
+  twelve items as bounded approximations needing documentation. Four were not.
+
+  - `mot_metrics.num_fragmentations` was initialized and never incremented, so
+    it always reported 0. Now counts resumptions of interrupted coverage.
+  - `mercator` used the global `WGS84_E2` in its scale factor whatever `e` the
+    caller passed, and `transverse_mercator` derived its semi-minor axis from
+    the global `WGS84_B` whatever `a` and `e2` were given. Each silently
+    described an ellipsoid that was neither the caller's nor WGS84. Defaults
+    are bit-identical.
+  - The MHT track score carried an overall factor of 0.5 that its own
+    missed-detection branch did not, so hits and misses accumulated on
+    different scales and the running total was not a consistent quantity in
+    either unit. Now the standard LLR increment, including the `(2π)^m`
+    normalization. Nothing reads the field, so no tracking behavior changes.
+  - The SRIF docstrings recommended `R0 = inv(cholesky(P0)).T`, which satisfies
+    `R0.T @ R0 = inv(P0)` **only for diagonal `P0`**. Corrected to
+    `cholesky(inv(P0)).T`. Every doctest used a diagonal `P0`, so both forms
+    passed.
+  - `mean_to_parabolic_anomaly` documented `M = sqrt(mu/rp^3)*t`, off by
+    sqrt(2); the solver itself was self-consistent.
+
+  The genuine approximations are now quantified where a caller will see them:
+  the rhumb midpoint-radius error (~0.05% on long legs, and round trips
+  self-consistent to under a millimetre *because* the error cancels);
+  oblique `stereographic` differing from PROJ's `+proj=sterea` by 2.5 km at
+  400 km; `srif_predict` routing through covariance space rather than the
+  QR form its name implies; `gast` returning GMST under its default arguments;
+  `plot_rmse_over_time` plotting a running cumulative RMSE rather than a
+  per-step ensemble one; `gravity_anomaly` returning the disturbance rather
+  than the free-air anomaly; `geoid_height` omitting the zero-degree term;
+  the solid-Earth tide model's degree-2 scope; and the leap-second boundary
+  behaviour of `tai_to_utc`.
+
+  `f_coord_turn_polar` is documented as **not** the Jacobian it was taken for,
+  with the disagreement tabulated against numerical differentiation — it takes
+  no heading, and its values match the true Jacobian only at 90 degrees.
+
+
 - **`reassigned_spectrogram` computed its reassignment corrections and threw
   them away** ([#17](https://github.com/nedonatelli/TCL/issues/17)). It returned
   the plain `|STFT|^2`, with `# noqa: F841` suppressing the unused-variable
