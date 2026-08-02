@@ -431,6 +431,7 @@ def mot_metrics(
     total_matches = 0
 
     prev_assignment: dict[int, int] = {}  # gt_idx -> est_idx from previous frame
+    ever_tracked: set[int] = set()  # gt indices covered at least once
 
     for k, (gt_frame, est_frame) in enumerate(zip(ground_truth, estimates)):
         n_gt = len(gt_frame)
@@ -472,6 +473,17 @@ def mot_metrics(
                 # Check for identity switch
                 if i in prev_assignment and prev_assignment[i] != j:
                     total_switches += 1
+
+                # A fragmentation is a resumption: this ground-truth track has
+                # been covered before but was not covered in the immediately
+                # preceding frame, so its coverage was interrupted. The first
+                # time a track is picked up is not a fragmentation, which is
+                # why `ever_tracked` is consulted rather than just the previous
+                # frame. `total_frags` was initialized and never incremented,
+                # so this field always reported 0 (gh-25).
+                if i in ever_tracked and i not in prev_assignment:
+                    total_frags += 1
+                ever_tracked.add(i)
 
         total_matches += frame_matches
         total_distance += frame_distance

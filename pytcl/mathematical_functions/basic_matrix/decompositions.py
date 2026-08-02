@@ -169,10 +169,18 @@ def tria_sqrt(
     # QR of combined.T gives us the triangular factor
     _, R = la.qr(combined.T, mode="economic")
 
-    # R.T @ R = combined @ combined.T, so R.T is our lower triangular factor
-    # But R might have negative diagonal, so we need to ensure proper form
+    # R.T @ R = combined @ combined.T, so R.T is our lower triangular factor.
+    # The economic QR returns R with min(rows, cols) rows, so when the combined
+    # matrix has fewer columns than A has rows -- a rank-deficient product --
+    # R.T comes out narrower than (n, n) and the promised square shape was
+    # quietly not delivered (gh-26). The reconstruction was right either way;
+    # the missing columns of a rank-deficient factor are simply zero, so
+    # padding them restores the documented shape without changing S @ S.T.
     n = A.shape[0]
-    S = R[:n, :n].T
+    factor = R[:n, :n].T
+
+    S = np.zeros((n, n), dtype=np.float64)
+    S[:, : factor.shape[1]] = factor
 
     # Ensure positive diagonal (standard Cholesky convention)
     signs = np.sign(np.diag(S))

@@ -407,6 +407,16 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
     -----
     This is an approximate conversion that may have small errors
     near leap second boundaries.
+
+    Notes
+    -----
+    The leap-second lookup is by table, so the conversion is exact except
+    within one second of an insertion. Instants inside a leap second itself --
+    23:59:60 on an insertion date -- have no distinct representation here and
+    are attributed to the following second (gh-25). Sub-second work spanning a
+    leap-second boundary needs a library that models UTC as a discontinuous
+    scale, such as astropy.
+
     """
     # First approximation
     jd_utc_approx = jd_tai
@@ -711,6 +721,17 @@ def gast(jd_ut1: float, dpsi: float = 0.0, eps: float = 0.0) -> float:
 
     For high precision applications, nutation parameters should be computed
     from the IAU 2006/2000A precession-nutation model.
+
+    Notes
+    -----
+    **With the default ``dpsi=0`` this returns GMST, not GAST.** The equation
+    of the equinoxes is ``dpsi * cos(eps)``, so leaving both at zero removes it
+    entirely and the two are identical to the last bit (gh-25). Supply the
+    nutation in longitude and the obliquity -- from ``nutation_angles`` -- to
+    get apparent sidereal time. The difference is up to about 1.1 arcseconds,
+    which is 0.02 arcseconds of longitude error at the equator per
+    milliarcsecond of neglected nutation.
+
     """
     gmst_val = gmst(jd_ut1)
 

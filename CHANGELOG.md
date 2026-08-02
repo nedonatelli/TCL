@@ -163,6 +163,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Approximation limits documented, and four defects found among them**
+  ([#25](https://github.com/nedonatelli/TCL/issues/25)). The issue framed all
+  twelve items as bounded approximations needing documentation. Four were not.
+
+  - `mot_metrics.num_fragmentations` was initialized and never incremented, so
+    it always reported 0. Now counts resumptions of interrupted coverage.
+  - `mercator` used the global `WGS84_E2` in its scale factor whatever `e` the
+    caller passed, and `transverse_mercator` derived its semi-minor axis from
+    the global `WGS84_B` whatever `a` and `e2` were given. Each silently
+    described an ellipsoid that was neither the caller's nor WGS84. Defaults
+    are bit-identical.
+  - The MHT track score carried an overall factor of 0.5 that its own
+    missed-detection branch did not, so hits and misses accumulated on
+    different scales and the running total was not a consistent quantity in
+    either unit. Now the standard LLR increment, including the `(2π)^m`
+    normalization. Nothing reads the field, so no tracking behavior changes.
+  - The SRIF docstrings recommended `R0 = inv(cholesky(P0)).T`, which satisfies
+    `R0.T @ R0 = inv(P0)` **only for diagonal `P0`**. Corrected to
+    `cholesky(inv(P0)).T`. Every doctest used a diagonal `P0`, so both forms
+    passed.
+  - `mean_to_parabolic_anomaly` documented `M = sqrt(mu/rp^3)*t`, off by
+    sqrt(2); the solver itself was self-consistent.
+
+  The genuine approximations are now quantified where a caller will see them:
+  the rhumb midpoint-radius error (~0.05% on long legs, and round trips
+  self-consistent to under a millimetre *because* the error cancels);
+  oblique `stereographic` differing from PROJ's `+proj=sterea` by 2.5 km at
+  400 km; `srif_predict` routing through covariance space rather than the
+  QR form its name implies; `gast` returning GMST under its default arguments;
+  `plot_rmse_over_time` plotting a running cumulative RMSE rather than a
+  per-step ensemble one; `gravity_anomaly` returning the disturbance rather
+  than the free-air anomaly; `geoid_height` omitting the zero-degree term;
+  the solid-Earth tide model's degree-2 scope; and the leap-second boundary
+  behaviour of `tai_to_utc`.
+
+  `f_coord_turn_polar` is documented as **not** the Jacobian it was taken for,
+  with the disagreement tabulated against numerical differentiation — it takes
+  no heading, and its values match the true Jacobian only at 90 degrees.
+- **Robustness hygiene** ([#26](https://github.com/nedonatelli/TCL/issues/26)).
+  Four defects that do not make a routine call return an obviously wrong
+  answer, which is why a suite of routine calls never saw them.
+
+  - `minimum_bounding_circle` shuffled with the **global** `np.random` state,
+    so results were not reproducible and the call consumed entropy other code
+    depended on; and it recursed once per point, so a few thousand points
+    raised `RecursionError`. It now takes an `rng` (seed or `Generator`) and
+    uses the iterative three-loop Welzl formulation. Verified against
+    exhaustive search to 3.6e-15 and on 20,000 points with the recursion limit
+    lowered to 200.
+  - `q_discrete_white_noise` **switched noise models above dimension 4**,
+    falling through to `q_poly_kal` — a *continuous* white-noise
+    discretization, off by roughly a factor of four in the leading term at
+    dim 5. All dimensions now use the discrete gain-vector model `var·GGᵀ`,
+    which reproduces the hard-coded blocks for dims 2–4 exactly.
+  - `tria_sqrt` returned a non-square factor when the product was rank
+    deficient, contradicting the documented `(n, n)`. The missing columns of a
+    rank-deficient factor are zero, so padding restores the shape without
+    changing `S @ S.T`.
+  - `viewshed` marked the cell **south-west** of each sample rather than the
+    nearest one, because it used the floor indices `_get_indices` returns for
+    bilinear interpolation. Its radial sampling means unsampled cells stay
+    `False` regardless of visibility; that is inherent to ray casting and is
+    now documented rather than left implicit.
+
+  Four further bullets on that issue — the two `batch_ekf` conversions,
+  `gpu_cholesky_safe`, `get_gpu_memory_info` on MLX, and the CuPy Cholesky NaN
+  case — were verified to be **already fixed** and are described in the pull
+  request.
+
+- **`consistency_test` documents its independence assumption.** The
+  chi-squared bounds require independent samples, which a NEES sequence from a
+  single filter run is not — consecutive values share the same state and
+  covariance history, so the bounds are narrower than they should be and the
+  test over-rejects. Behavior unchanged; the caveat was undocumented.
+- **The gpu package's doctests were skipped on every machine that could run
+  them** ([#66](https://github.com/nedonatelli/TCL/issues/66)). `conftest.py`
+  gated collection on CuPy alone, but everything in `pytcl/gpu` dispatches
+  through `get_compute_backend()`, which accepts **CuPy or MLX**. So on Apple
+  Silicon — where MLX is a working backend and the examples do run — the whole
+  package was skipped, and the developers best placed to exercise this code got
+  no feedback from it. The gate now tests for any backend.
+
+  With the gate corrected, 19 of 47 examples failed. All are now fixed and
+  **47 of 47 pass**: undefined names (`sync_gpu` referenced an undefined
+  `start`), examples printing output with none expected, backend-specific
+  reprs compared literally, `np.all()` called on a device array, and an
+  assertion that a log-likelihood must be negative when
+  `logsumexp([-1, -0.5, -2])` is `+0.104`.
+
+  CI has neither backend and still skips, which is a real limit rather than an
+  oversight — GPU code cannot be doctested on a runner without a GPU. The
+  CPU-side contracts remain covered by `tests/validation/test_gpu_audit.py`.
+
+
 - **`reassigned_spectrogram` computed its reassignment corrections and threw
   them away** ([#17](https://github.com/nedonatelli/TCL/issues/17)). It returned
   the plain `|STFT|^2`, with `# noqa: F841` suppressing the unused-variable

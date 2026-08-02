@@ -145,9 +145,11 @@ def mercator(
         np.tan(np.pi / 4 + lat / 2) * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
     )
 
-    # Scale factor
+    # Scale factor. Uses the caller's eccentricity: this read the global
+    # WGS84_E2 regardless of the `e` argument, so a custom ellipsoid was
+    # honored in the projected coordinates and ignored in the scale (gh-25).
     cos_lat = np.cos(lat)
-    w = np.sqrt(1 - WGS84_E2 * sin_lat**2)
+    w = np.sqrt(1 - e**2 * sin_lat**2)
     scale = w / cos_lat if cos_lat > 1e-10 else np.inf
 
     # Convergence is zero for Mercator
@@ -269,7 +271,11 @@ def transverse_mercator(
     """
     # Derived constants
     ep2 = e2 / (1 - e2)  # Second eccentricity squared
-    n = (a - WGS84_B) / (a + WGS84_B)  # Third flattening
+    # Third flattening, from the caller's own ellipsoid. The semi-minor axis
+    # was taken from the global WGS84_B even when a custom `a` and `e2` were
+    # supplied, which silently mixed two ellipsoids (gh-25).
+    b = a * np.sqrt(1 - e2)
+    n = (a - b) / (a + b)
 
     # Compute meridian arc length from equator (Helmert series in
     # geodetic latitude: M = A*(lat - a1*sin2lat + a2*sin4lat - a3*sin6lat))
@@ -692,6 +698,19 @@ def stereographic(
     >>> # Polar stereographic centered at North Pole
     >>> result = stereographic(np.radians(85), np.radians(45),
     ...                        np.radians(90), 0)
+
+    Notes
+    -----
+    The oblique case maps onto a conformal sphere of *Gaussian* radius,
+    ``sqrt(M0 * N0)`` at the origin latitude. PROJ's ``+proj=sterea`` uses a
+    sphere of radius ``N0`` instead, so the two disagree away from the center:
+    about 2.5 km at 400 km, and 8.7 km at 1,738 km (gh-25).
+
+    Both are conformal and each is self-consistent with its own inverse. But
+    coordinates from this function are not interchangeable with ``+proj=sterea``
+    output, and it is not survey-grade far from the projection center. For work
+    that must match PROJ, use ``pyproj``.
+
     """
     e = np.sqrt(e2)
 

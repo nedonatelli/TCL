@@ -15,11 +15,12 @@ The module automatically selects the appropriate backend:
 
 Examples
 --------
->>> from pytcl.gpu.utils import is_gpu_available, to_gpu, to_cpu
->>> if is_gpu_available():
-...     x_gpu = to_gpu(x_numpy)
-...     # ... perform GPU operations ...
-...     x_cpu = to_cpu(x_gpu)
+>>> import numpy as np
+>>> from pytcl.gpu.utils import to_gpu, to_cpu
+>>> x_numpy = np.array([1.0, 2.0, 3.0])
+>>> x_cpu = to_cpu(to_gpu(x_numpy))
+>>> np.allclose(x_cpu, x_numpy)
+True
 """
 
 import logging
@@ -55,8 +56,8 @@ def is_apple_silicon() -> bool:
     Examples
     --------
     >>> from pytcl.gpu.utils import is_apple_silicon
-    >>> if is_apple_silicon():
-    ...     print("Running on Apple Silicon")
+    >>> isinstance(is_apple_silicon(), bool)
+    True
     """
     return platform.system() == "Darwin" and platform.machine() == "arm64"
 
@@ -78,8 +79,8 @@ def is_mlx_available() -> bool:
     Examples
     --------
     >>> from pytcl.gpu.utils import is_mlx_available
-    >>> if is_mlx_available():
-    ...     print("MLX acceleration enabled")
+    >>> isinstance(is_mlx_available(), bool)
+    True
     """
     if not is_apple_silicon():
         _logger.debug("Not on Apple Silicon, MLX not applicable")
@@ -157,8 +158,8 @@ def get_backend() -> BackendType:
     Examples
     --------
     >>> from pytcl.gpu.utils import get_backend
-    >>> backend = get_backend()
-    >>> print(f"Using {backend} backend")
+    >>> get_backend() in ("mlx", "cupy", "numpy")
+    True
     """
     if is_apple_silicon() and is_mlx_available():
         return "mlx"
@@ -185,10 +186,8 @@ def is_gpu_available() -> bool:
     Examples
     --------
     >>> from pytcl.gpu.utils import is_gpu_available
-    >>> if is_gpu_available():
-    ...     print("GPU acceleration enabled")
-    ... else:
-    ...     print("Falling back to CPU")
+    >>> isinstance(is_gpu_available(), bool)
+    True
 
     Notes
     -----
@@ -224,11 +223,10 @@ def get_array_module(arr: ArrayLike) -> Any:
     >>> xp is np
     True
 
-    >>> # With CuPy array
-    >>> import cupy as cp
-    >>> x_gpu = cp.array([1, 2, 3])
-    >>> xp = get_array_module(x_gpu)
-    >>> xp is cp
+    >>> # With a CuPy array, on a machine that has CuPy
+    >>> import cupy as cp  # doctest: +SKIP
+    >>> x_gpu = cp.array([1, 2, 3])  # doctest: +SKIP
+    >>> get_array_module(x_gpu) is cp  # doctest: +SKIP
     True
 
     >>> # With MLX array
@@ -288,10 +286,9 @@ def to_gpu(arr: ArrayLike, dtype: Any = None, backend: BackendType = None) -> GP
     >>> import numpy as np
     >>> from pytcl.gpu.utils import to_gpu, is_gpu_available
     >>> x = np.array([1.0, 2.0, 3.0])
-    >>> if is_gpu_available():
-    ...     x_gpu = to_gpu(x)
-    ...     print(type(x_gpu).__name__)
-    'ndarray'  # cupy.ndarray or 'array' for mlx
+    >>> x_gpu = to_gpu(x)
+    >>> np.allclose(to_cpu(x_gpu), x)
+    True
 
     Notes
     -----
@@ -442,9 +439,9 @@ def ensure_gpu_array(
     >>> import numpy as np
     >>> from pytcl.gpu.utils import ensure_gpu_array, is_gpu_available
     >>> x = np.array([1, 2, 3])
-    >>> if is_gpu_available():
-    ...     x_gpu = ensure_gpu_array(x, dtype=np.float32)
-    ...     print(x_gpu.dtype)
+    >>> x_gpu = ensure_gpu_array(x, dtype=np.float32)
+    >>> np.asarray(to_cpu(x_gpu)).dtype == np.float32
+    True
     """
     gpu_arr = to_gpu(arr, backend=backend)
 
@@ -472,12 +469,8 @@ def sync_gpu() -> None:
 
     Examples
     --------
-    >>> import time
-    >>> from pytcl.gpu.utils import sync_gpu, is_gpu_available
-    >>> if is_gpu_available():
-    ...     # ... perform GPU operations ...
-    ...     sync_gpu()  # Wait for completion
-    ...     elapsed = time.time() - start
+    >>> from pytcl.gpu.utils import sync_gpu
+    >>> sync_gpu()  # returns once queued work has completed
     """
     backend = get_backend()
 
@@ -508,10 +501,10 @@ def get_gpu_memory_info() -> dict[str, Union[str, int]]:
 
     Examples
     --------
-    >>> from pytcl.gpu.utils import get_gpu_memory_info, is_gpu_available
-    >>> if is_gpu_available():
-    ...     info = get_gpu_memory_info()
-    ...     print(f"Backend: {info['backend']}")
+    >>> from pytcl.gpu.utils import get_gpu_memory_info
+    >>> info = get_gpu_memory_info()
+    >>> info["backend"] in ("mlx", "cupy", "numpy")
+    True
     """
     backend = get_backend()
 

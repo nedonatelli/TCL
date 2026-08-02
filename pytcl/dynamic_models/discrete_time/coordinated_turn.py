@@ -225,13 +225,30 @@ def f_coord_turn_polar(
 
     Notes
     -----
-    This is a linearized model around the current state. For accurate
-    propagation, use the nonlinear equations directly.
-
     The state is [x, y, psi, v, omega] where:
     - psi is heading angle
     - v is speed magnitude
     - omega is turn rate
+
+    **This is not the Jacobian of the polar coordinated-turn propagation.**
+    The true Jacobian depends on heading, and this function is not given one --
+    ``psi`` is absent from the signature, so no such matrix can be produced
+    (gh-25). The turn-rate column is where it shows. At T=1 s, v=100 m/s,
+    omega=0.1 rad/s, against numerical differentiation of the exact
+    propagation::
+
+        heading    d(x')/d(omega)        d(y')/d(omega)
+                   true     returned     true     returned
+          0 deg    -3.33     -49.96      49.88     -1.67
+         30 deg   -27.82     -49.96      41.53     -1.67
+         90 deg   -49.88     -49.96      -3.33     -1.67
+
+    The returned values are close to the truth at 90 degrees and wrong
+    elsewhere, which is the signature of a Jacobian frozen at one heading
+    rather than evaluated at the current one.
+
+    Use it as a coarse transition matrix, not as an EKF linearization. For a
+    filter, differentiate the nonlinear propagation at the current state.
 
     Examples
     --------

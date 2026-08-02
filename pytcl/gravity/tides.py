@@ -463,6 +463,20 @@ def solid_earth_tide_displacement(
     >>> disp = solid_earth_tide_displacement(np.radians(45), 0, 58000)
     >>> abs(disp.radial) < 0.4  # Radial displacement typically < 40cm
     True
+
+    Notes
+    -----
+    Scope of the model, so the residual is not mistaken for signal (gh-25):
+
+    - degree 2 only, with no degree-3 terms;
+    - mean obliquity, without the nutation series;
+    - a spherical station position rather than the ellipsoidal one.
+
+    Together these give centimeter-level differences against the IERS
+    Conventions routine ``dehanttideinel``, which is the reference for
+    geodetic work. Adequate for tracking and orbit-determination corrections;
+    not for millimeter geodesy.
+
     """
     # Station geocentric position (approximate)
     sin_lat = np.sin(lat)

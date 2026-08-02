@@ -41,9 +41,12 @@ Examples
 ...     diff = particles[:, 0] - measurement
 ...     return np.exp(-0.5 * diff**2)
 >>>
->>> pf = CuPyParticleFilter(n_particles=10000, state_dim=2)
->>> pf.predict(dynamics)
->>> pf.update(measurement, likelihood)
+>>> pf = CuPyParticleFilter(n_particles=1000, state_dim=2)
+>>> pf.initialize(np.zeros(2), np.eye(2))
+>>> pf.predict(lambda particles: dynamics(particles, 0.0))
+>>> _ = pf.update(0.5, likelihood)  # returns the log-likelihood
+>>> pf.get_estimate().shape
+(2,)
 """
 
 from typing import Any, Callable, NamedTuple, Optional, Tuple
@@ -201,11 +204,12 @@ def gpu_resample_multinomial(
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.particle_filter import gpu_resample_multinomial
+    >>> from pytcl.gpu.utils import to_cpu
     >>> weights = np.array([0.1, 0.4, 0.5])
-    >>> indices = gpu_resample_multinomial(weights)
+    >>> indices = np.asarray(to_cpu(gpu_resample_multinomial(weights)))
     >>> indices.shape
     (3,)
-    >>> np.all(indices < 3)
+    >>> bool(np.all(indices < 3))
     True
 
     Notes
@@ -296,10 +300,12 @@ def gpu_normalize_weights(
     >>> import numpy as np
     >>> from pytcl.gpu.particle_filter import gpu_normalize_weights
     >>> log_w = np.array([-1.0, -0.5, -2.0])
+    >>> from pytcl.gpu.utils import to_cpu
     >>> weights, log_likelihood = gpu_normalize_weights(log_w)
-    >>> np.allclose(weights.sum(), 1.0)
+    >>> bool(np.allclose(np.asarray(to_cpu(weights)).sum(), 1.0))
     True
-    >>> log_likelihood < 0
+    >>> bool(np.isclose(float(np.asarray(to_cpu(log_likelihood))),
+    ...                 np.log(np.exp(log_w).sum())))
     True
     """
     b = get_compute_backend()
@@ -346,15 +352,15 @@ class CuPyParticleFilter:
     >>> import numpy as np
     >>> from pytcl.gpu.particle_filter import CuPyParticleFilter
     >>>
-    >>> # Initialize filter
-    >>> pf = CuPyParticleFilter(n_particles=10000, state_dim=4)
-    >>> pf.initialize(initial_state, initial_cov)
-    >>>
-    >>> # Run filter
-    >>> for measurement in measurements:
+    >>> pf = CuPyParticleFilter(n_particles=1000, state_dim=4)
+    >>> pf.initialize(np.zeros(4), np.eye(4))
+    >>> dynamics_fn = lambda particles: particles * 0.99
+    >>> likelihood_fn = lambda particles, z: np.exp(-0.5 * (particles[:, 0] - z) ** 2)
+    >>> for measurement in (0.1, 0.2, 0.3):
     ...     pf.predict(dynamics_fn)
-    ...     pf.update(measurement, likelihood_fn)
-    ...     state_estimate = pf.get_estimate()
+    ...     _ = pf.update(measurement, likelihood_fn)
+    >>> pf.get_estimate().shape
+    (4,)
     """
 
     def __init__(
