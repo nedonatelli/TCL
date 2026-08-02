@@ -375,7 +375,7 @@ def srif_predict(
     >>> n = 2
     >>> # Initialize with known state
     >>> P0 = np.eye(n)
-    >>> R0 = np.linalg.inv(np.linalg.cholesky(P0)).T
+    >>> R0 = np.linalg.cholesky(np.linalg.inv(P0)).T
     >>> x0 = np.array([1.0, 0.5])
     >>> r0 = R0 @ x0
     >>> # Prediction step
@@ -389,10 +389,24 @@ def srif_predict(
 
     Notes
     -----
-    The SRIF prediction uses:
-    - Convert to state space
-    - Apply prediction
-    - Use Cholesky/QR to get square root form back
+    The prediction step converts to covariance space, propagates there, and
+    factorizes back::
+
+        P      = inv(Y)
+        P_pred = F P F' + Q
+        R_pred = chol(inv(P_pred))
+
+    **This is not the square-root algorithm the name implies.** A true SRIF
+    prediction propagates the information square root directly, by QR or
+    Householder triangularization of a stacked array, and never forms ``P`` or
+    inverts anything -- which is the entire numerical point of the square-root
+    formulation. Routing through two explicit inversions gives an
+    algebraically correct answer with the conditioning the square-root form
+    exists to avoid (gh-25).
+
+    So the result is right; the numerical robustness advertised by "square
+    root information filter" is not delivered by this step. For an
+    ill-conditioned ``Y`` the ordinary information filter would do no worse.
     """
     r = np.asarray(r, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
@@ -552,6 +566,12 @@ def srif_filter(
     R0 : array_like
         Initial square root information matrix (upper triangular,
         such that R0.T @ R0 = Y0 = P0^{-1}).
+
+        Build it as ``cholesky(inv(P0)).T``. The natural-looking
+        ``inv(cholesky(P0)).T`` is *not* equivalent: it satisfies the identity
+        only when ``P0`` is diagonal, and silently gives a different factor for
+        any correlated prior (gh-25). Both forms passed the doctests here
+        because every example used a diagonal ``P0``.
     measurements : list of array_like
         List of measurements. Use None for missing measurements.
     F : array_like
@@ -575,7 +595,7 @@ def srif_filter(
     >>> n = 2
     >>> # Initialize with some prior knowledge
     >>> P0 = np.eye(n) * 10.0
-    >>> R0 = np.linalg.inv(np.linalg.cholesky(P0)).T
+    >>> R0 = np.linalg.cholesky(np.linalg.inv(P0)).T
     >>> x0 = np.array([0.0, 0.0])
     >>> r0 = R0 @ x0
     >>> F = np.array([[1, 1], [0, 1]])
