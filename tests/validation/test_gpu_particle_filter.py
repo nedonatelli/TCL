@@ -39,6 +39,7 @@ from pytcl.dynamic_estimation.particle_filters import (  # noqa: E402
 )
 from pytcl.gpu import particle_filter as gpu_pf  # noqa: E402
 from pytcl.gpu._backend import get_compute_backend  # noqa: E402
+from pytcl.gpu.utils import to_cpu  # noqa: E402
 
 try:
     BACKEND = get_compute_backend()
@@ -56,6 +57,18 @@ ATOL = 1e-7 if FLOAT32 else 1e-14
 COUNT_SLACK = 1e-4 if FLOAT32 else 1e-9
 
 
+def _np(a, dtype=None):
+    """Backend array -> numpy.
+
+    Not ``np.asarray``: CuPy refuses implicit conversion of a device array and
+    raises TypeError, while MLX permits it. Every one of these call sites was
+    written on MLX and so could never have passed against CuPy -- the file was
+    gated on ``importorskip("mlx.core")``, which is exactly why nobody found
+    out. ``to_cpu`` dispatches per backend and passes numpy through unchanged.
+    """
+    return np.asarray(to_cpu(a), dtype=dtype)
+
+
 def _normalized_weights(rng, n):
     w = rng.random(n) + 1e-3
     return w / w.sum()
@@ -65,9 +78,7 @@ def _gaussian_likelihood_fn(R):
     """Batched Gaussian likelihood, evaluated on the host in float64."""
 
     def fn(particles, measurement):
-        d = np.asarray(particles, dtype=np.float64) - np.asarray(
-            measurement, dtype=np.float64
-        )
+        d = _np(particles, dtype=np.float64) - _np(measurement, dtype=np.float64)
         quad = np.einsum("ni,ij,nj->n", d, np.linalg.inv(R), d)
         norm = 1.0 / np.sqrt((2 * np.pi) ** R.shape[0] * np.linalg.det(R))
         return norm * np.exp(-0.5 * quad)
@@ -83,7 +94,7 @@ def _gaussian_likelihood_fn(R):
 def test_particle_filter_runs_without_cupy():
     """Regression for issue #12: no CuPy on this machine, PF still runs."""
     assert BACKEND.name in ("mlx", "cupy")
-    idx = np.asarray(gpu_pf.gpu_resample_systematic(np.full(4, 0.25), seed=0))
+    idx = _np(gpu_pf.gpu_resample_systematic(np.full(4, 0.25), seed=0))
     assert idx.shape == (4,)
     assert idx.min() >= 0 and idx.max() < 4
 
@@ -100,7 +111,7 @@ def test_weights_match_scipy_multivariate_normal():
     pf = gpu_pf.CuPyParticleFilter(n_particles=n, state_dim=dim)
     np.random.seed(5)
     pf.initialize(np.zeros(dim), np.eye(dim))
-    particles = np.asarray(pf.particles, dtype=np.float64)
+    particles = _np(pf.particles, dtype=np.float64)
 
     z = np.array([0.3, -0.2])
     R = np.diag([0.5, 0.8])
@@ -111,16 +122,16 @@ def test_weights_match_scipy_multivariate_normal():
     ref = scipy_stats.multivariate_normal(mean=z, cov=R).pdf(particles)
     ref_norm = ref / ref.sum()
 
-    weights = np.asarray(pf.weights, dtype=np.float64)
+    weights = _np(pf.weights, dtype=np.float64)
     assert_allclose(weights, ref_norm, rtol=RTOL, atol=ATOL)
     assert_allclose(weights.sum(), 1.0, rtol=RTOL)
     assert_allclose(log_lik, np.log(ref.mean()), rtol=RTOL, atol=1e-5)
 
-    est = np.asarray(pf.get_estimate(), dtype=np.float64)
+    est = _np(pf.get_estimate(), dtype=np.float64)
     assert_allclose(est, ref_norm @ particles, rtol=1e-4, atol=1e-5)
 
     diff = particles - ref_norm @ particles
-    cov = np.asarray(pf.get_covariance(), dtype=np.float64)
+    cov = _np(pf.get_covariance(), dtype=np.float64)
     assert_allclose(cov, np.einsum("n,ni,nj->ij", ref_norm, diff, diff), atol=1e-4)
 
 
@@ -143,9 +154,7 @@ def test_weights_match_cpu_bootstrap_update():
         z,
         lambda zz, x: gaussian_likelihood(zz, x, R),
     )
-    assert_allclose(
-        np.asarray(pf.weights, dtype=np.float64), w_ref, rtol=RTOL, atol=ATOL
-    )
+    assert_allclose(_np(pf.weights, dtype=np.float64), w_ref, rtol=RTOL, atol=ATOL)
 
 
 def test_normalize_weights_vs_log_sum_exp():
@@ -154,7 +163,7 @@ def test_normalize_weights_vs_log_sum_exp():
     log_w = rng.normal(size=500) * 10  # wide dynamic range
 
     weights, log_lik = gpu_pf.gpu_normalize_weights(log_w)
-    weights = np.asarray(weights, dtype=np.float64)
+    weights = _np(weights, dtype=np.float64)
 
     shifted = log_w - log_w.max()
     ref = np.exp(shifted) / np.exp(shifted).sum()
@@ -171,7 +180,7 @@ def test_normalize_weights_handles_zero_likelihoods():
     pf = gpu_pf.CuPyParticleFilter(n_particles=4, state_dim=1)
     pf.resample_threshold = 0.0
     pf.update(np.zeros(1), lambda p, z: lik)
-    w = np.asarray(pf.weights, dtype=np.float64)
+    w = _np(pf.weights, dtype=np.float64)
     assert np.isfinite(w).all()
     assert_allclose(w, np.array([0.0, 1 / 3, 2 / 3, 0.0]), rtol=RTOL, atol=1e-6)
 
@@ -195,7 +204,7 @@ def test_systematic_resampling_count_bound():
     n = 50
     w = _normalized_weights(rng, n)
     for seed in range(40):
-        idx = np.asarray(gpu_pf.gpu_resample_systematic(w, seed=seed))
+        idx = _np(gpu_pf.gpu_resample_systematic(w, seed=seed))
         assert idx.shape == (n,)
         assert idx.min() >= 0 and idx.max() < n
         counts = np.bincount(idx, minlength=n)
@@ -209,7 +218,7 @@ def test_stratified_resampling_count_bound():
     n = 40
     w = _normalized_weights(rng, n)
     for seed in range(40):
-        idx = np.asarray(gpu_pf.gpu_resample_stratified(w, seed=seed))
+        idx = _np(gpu_pf.gpu_resample_stratified(w, seed=seed))
         counts = np.bincount(idx, minlength=n)
         assert np.abs(counts - n * w).max() < 2.0 + COUNT_SLACK
 
@@ -223,7 +232,7 @@ def test_multinomial_resampling_chi_squared():
 
     counts = np.zeros(n)
     for seed in range(trials):
-        idx = np.asarray(gpu_pf.gpu_resample_multinomial(w, seed=seed))
+        idx = _np(gpu_pf.gpu_resample_multinomial(w, seed=seed))
         assert idx.shape == (n,)
         counts += np.bincount(idx, minlength=n)
 
@@ -244,7 +253,7 @@ def test_resampling_preserves_weighted_mean(resample):
     w = _normalized_weights(rng, n)
     target = float(np.dot(w, values))
 
-    means = [values[np.asarray(fn(w, seed=seed))].mean() for seed in range(trials)]
+    means = [values[_np(fn(w, seed=seed))].mean() for seed in range(trials)]
     est = float(np.mean(means))
 
     # Multinomial std of a single-trial mean; it also bounds systematic, whose
@@ -263,14 +272,14 @@ def test_post_resample_weights_are_uniform(method):
 
     # A sharp likelihood collapses the ESS and forces a resample.
     def sharp(p, z):
-        return np.exp(-50.0 * (np.asarray(p, dtype=np.float64)[:, 0] - 5.0) ** 2)
+        return np.exp(-50.0 * (_np(p, dtype=np.float64)[:, 0] - 5.0) ** 2)
 
     pf.update(np.array([5.0]), sharp)
 
-    w = np.asarray(pf.weights, dtype=np.float64)
+    w = _np(pf.weights, dtype=np.float64)
     assert w.shape == (n,)
     assert_allclose(w, np.full(n, 1.0 / n), rtol=RTOL, atol=ATOL)
-    assert np.asarray(pf.particles).shape == (n, 1)
+    assert _np(pf.particles).shape == (n, 1)
     assert_allclose(pf.get_ess(), float(n), rtol=RTOL)
 
 
@@ -284,8 +293,8 @@ def test_resample_selects_only_existing_particles():
     pf.weights = BACKEND.asarray(_normalized_weights(rng, n))
     pf._resample()
 
-    after = np.asarray(pf.particles, dtype=np.float64)
-    before = np.asarray(BACKEND.asarray(particles), dtype=np.float64)
+    after = _np(pf.particles, dtype=np.float64)
+    before = _np(BACKEND.asarray(particles), dtype=np.float64)
     for row in after:
         assert np.isclose(before, row).all(axis=1).any()
 
@@ -308,15 +317,15 @@ def test_batch_particle_filter_update():
     measurements = rng.normal(size=(n_filters, dim))
 
     def likelihood(p, z):
-        d = np.asarray(p, dtype=np.float64) - np.asarray(z, dtype=np.float64)
+        d = _np(p, dtype=np.float64) - _np(z, dtype=np.float64)
         return np.exp(-0.5 * np.sum(d**2, axis=1))
 
     w_upd, log_liks, ess = gpu_pf.batch_particle_filter_update(
         particles, weights, measurements, likelihood
     )
-    w_upd = np.asarray(w_upd, dtype=np.float64)
-    log_liks = np.asarray(log_liks, dtype=np.float64)
-    ess = np.asarray(ess, dtype=np.float64)
+    w_upd = _np(w_upd, dtype=np.float64)
+    log_liks = _np(log_liks, dtype=np.float64)
+    ess = _np(ess, dtype=np.float64)
 
     assert w_upd.shape == (n_filters, n_particles)
     assert log_liks.shape == (n_filters,)
@@ -335,12 +344,10 @@ def test_initialize_uniform_bounds():
     low = np.array([-1.0, 0.0, 2.0])
     high = np.array([1.0, 4.0, 3.0])
     pf.initialize_uniform(low, high)
-    p = np.asarray(pf.particles, dtype=np.float64)
+    p = _np(pf.particles, dtype=np.float64)
     assert p.shape == (500, 3)
     assert (p >= low).all() and (p <= high).all()
-    assert_allclose(
-        np.asarray(pf.weights, dtype=np.float64), np.full(500, 1 / 500), rtol=RTOL
-    )
+    assert_allclose(_np(pf.weights, dtype=np.float64), np.full(500, 1 / 500), rtol=RTOL)
 
 
 def test_get_state_and_cpu_transfer():
@@ -348,8 +355,8 @@ def test_get_state_and_cpu_transfer():
     np.random.seed(1)
     pf.initialize(np.zeros(2), np.eye(2))
     state = pf.get_state()
-    assert np.asarray(state.particles).shape == (32, 2)
-    assert np.asarray(state.weights).shape == (32,)
+    assert _np(state.particles).shape == (32, 2)
+    assert _np(state.weights).shape == (32,)
     assert_allclose(state.ess, 32.0, rtol=RTOL)
     assert pf.get_particles_cpu().shape == (32, 2)
     assert pf.get_weights_cpu().shape == (32,)
