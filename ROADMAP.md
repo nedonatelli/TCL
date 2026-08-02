@@ -1,9 +1,9 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v1.19.0 (Released July 30, 2026)
-**Test Suite:** 4,973 tests passing, 80% line coverage, 100% mypy --strict compliance
-**Status:** Feature-complete MATLAB TCL parity achieved. All v2.0.0 development phases (1-8)
-are complete; remaining work is release preparation (Phase 9).
+**Current Version:** v2.0.0 (Released August 2, 2026)
+**Test Suite:** 5,925 tests passing, 100% mypy --strict compliance, 951/951 exported functions reached by a test with no standing exemptions
+**Status:** Feature-complete MATLAB TCL parity achieved. v2.0.0 shipped 2 August 2026,
+closing the v2 correctness audit.
 
 This document covers **planned and future work only**. For what has already shipped, see
 [CHANGELOG.md](CHANGELOG.md), the [GitHub releases](https://github.com/nedonatelli/TCL/releases),
@@ -37,6 +37,23 @@ management stack (`TrackDatabaseManager`, `TrackHDF5Storage`, compat layer, migr
 workflow examples, benchmarks, and multi-sensor validation scenarios).
 
 ### Phase 9: Release Preparation & Packaging
+
+**Superseded.** v2.0.0 shipped directly as GA on 2 August 2026 rather than through
+the alpha/beta/RC cycle planned below. Recorded rather than deleted, because the
+difference matters to anyone upgrading:
+
+- **No deprecation cycle.** 9.2 planned "warnings in place for all APIs removed in
+  v2.0.0". That was not done, and it conflicts with the project's standing rule
+  against backwards-compatibility shims — a warning for a removed name requires
+  keeping the name. The removals are hard breaks. `nuttall_q` is the one exception,
+  kept as a warning alias because it is a rename rather than a removal.
+- **Migration guide written, community testing skipped.** 9.3's v1.x-to-v2.0.0
+  guide exists as `docs/migration_v1_to_v2.rst`. The beta feedback cycle in 9.2 did
+  not happen.
+- **Phase 8 quality gates unverified for this release.** 9.1 planned to re-check the
+  storage throughput and latency targets. They were not re-measured.
+
+The original plan follows.
 
 #### 9.1 v2.0.0-alpha (August 2026)
 
