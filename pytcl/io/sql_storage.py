@@ -38,70 +38,42 @@ class SQLStorage(StorageBackend):
     ...     results = store.retrieve_array("tracks")
     """
 
-    def __init__(self) -> None:
-        """Initialize SQLite storage.
+    def __init__(self, db_type: str = "sqlite"):
+        """Initialize SQL storage.
 
-        Notes
-        -----
-        This used to take a ``db_type`` argument documented as accepting
-        "'sqlite' (default) or connection string for other databases". Any
-        value other than ``'sqlite'`` made ``open()`` do nothing at all -- no
-        connection was established -- after which every method raised
-        ``RuntimeError("Storage not open")``. The argument advertised a
-        capability that did not exist, so it has been removed (gh-21). Adding
-        real support for another backend is a feature, not a parameter.
+        Parameters
+        ----------
+        db_type : str, optional
+            Database type: 'sqlite' (default) or connection string for other databases
         """
+        self._db_type = db_type
         self._connection: Optional[sqlite3.Connection] = None
         self._cursor: Optional[sqlite3.Cursor] = None
-        self._path: Optional[Path] = None
-        self._mode: Optional[str] = None
+        self._path = None
+        self._mode = None
         self._metadata_table = "_pytcl_metadata"
         self._arrays_table = "_pytcl_arrays"
 
     def open(self, path: str, mode: str = "r") -> None:
-        """Open a SQLite database connection.
+        """Open a SQL database connection.
 
         Parameters
         ----------
         path : str
-            Path to the SQLite database file.
+            Path to SQLite database file or connection string
         mode : str, optional
             'r' (read), 'w' (write), 'a' (append). Default is 'r'.
-
-        Raises
-        ------
-        FileNotFoundError
-            If ``mode='r'`` and the file does not exist.
-        ValueError
-            If ``mode`` is not one of 'r', 'w', 'a'.
-
-        Notes
-        -----
-        Opening a nonexistent path for reading used to create an empty
-        database, because ``sqlite3.connect`` creates the file whatever the
-        caller intended. Reads against it then failed with
-        ``sqlite3.OperationalError`` about a missing table rather than the
-        documented ``KeyError``, and the caller was left holding a stray file
-        they never asked for (gh-21).
         """
-        if mode not in ("r", "w", "a"):
-            raise ValueError(f"mode must be 'r', 'w' or 'a', got {mode!r}")
-
-        self._path = Path(path)
+        self._path = Path(path) if self._db_type == "sqlite" else path
         self._mode = mode
 
-        if mode == "r" and not self._path.exists():
-            raise FileNotFoundError(
-                f"No such database: {path}. Opening for reading does not "
-                f"create one; use mode='w' or mode='a' to create it."
-            )
+        if self._db_type == "sqlite":
+            # SQLite doesn't have write-only mode, treat 'w' as 'a'
+            self._connection = sqlite3.connect(str(self._path))
+            self._cursor = self._connection.cursor()
 
-        # SQLite has no write-only mode, so 'w' behaves as 'a'.
-        self._connection = sqlite3.connect(str(self._path))
-        self._cursor = self._connection.cursor()
-
-        if mode in ("w", "a"):
-            self._initialize_tables()
+            if mode in ("w", "a"):
+                self._initialize_tables()
 
     def close(self) -> None:
         """Close the database connection."""

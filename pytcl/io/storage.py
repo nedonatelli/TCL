@@ -58,7 +58,7 @@ class StorageBackend(ABC):
         data: ArrayLike,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Store a numpy array, replacing any array already under that name.
+        """Store a numpy array.
 
         Parameters
         ----------
@@ -67,17 +67,7 @@ class StorageBackend(ABC):
         data : ArrayLike
             Numpy array to store
         metadata : dict, optional
-            Associated metadata (e.g., units, description). Replaced wholesale
-            along with the array; metadata from a previous store under the same
-            name does not survive.
-
-        Notes
-        -----
-        The replace-on-collision rule is stated here because the backends used
-        to disagree and neither said so: ``SQLStorage`` replaced, while
-        ``HDF5Storage`` let h5py raise ``ValueError`` on an existing name
-        (gh-21). Code written against one backend broke on the other, and the
-        base class -- the only place the contract could live -- was silent.
+            Associated metadata (e.g., units, description)
         """
         pass
 

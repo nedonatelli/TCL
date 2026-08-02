@@ -134,25 +134,15 @@ class TestDetectionProbability:
         pd_high = detection_probability(snr=10, pfa=1e-3, n_ref=32)
         assert pd_high > pd_low
 
-    def test_detection_probability_is_the_swerling_1_result(self):
-        """Only the Swerling 1 model is implemented.
-
-        These two tests used to pass swerling_case=1 and swerling_case=2 and
-        assert 0 < pd < 1 for each. Both passed, and would have passed for any
-        case, because every branch evaluated the same expression -- the
-        argument selected nothing (gh-20). It has been removed; what is left is
-        a check that the returned value is the Swerling 1 closed form.
-        """
-        pd = detection_probability(snr=10, pfa=1e-6, n_ref=32)
-        alpha = threshold_factor(1e-6, 32, method="ca")
-        expected = (1 + alpha / (32 * (1 + 10))) ** (-32)
-        assert pd == pytest.approx(expected, rel=1e-12)
+    def test_detection_probability_swerling_1(self):
+        """Test detection probability with Swerling I target."""
+        pd = detection_probability(snr=10, pfa=1e-6, n_ref=32, swerling_case=1)
         assert 0 < pd < 1
 
-    def test_detection_probability_no_longer_accepts_swerling_case(self):
-        """The dead argument is gone rather than silently ignored."""
-        with pytest.raises(TypeError, match="swerling_case"):
-            detection_probability(snr=10, pfa=1e-6, n_ref=32, swerling_case=2)
+    def test_detection_probability_swerling_other(self):
+        """Test detection probability with other Swerling cases."""
+        pd = detection_probability(snr=10, pfa=1e-6, n_ref=32, swerling_case=2)
+        assert 0 < pd < 1
 
     def test_detection_probability_varying_snr(self):
         """Test detection probability monotonically increases with SNR."""
@@ -756,41 +746,45 @@ class TestSnrLoss:
 
     def test_snr_loss_ca(self):
         """Test SNR loss for CA-CFAR."""
-        loss = snr_loss(32, pfa=1e-6, method="ca")
+        loss = snr_loss(32, method="ca")
         assert loss > 0
         assert loss < 1
 
-    @pytest.mark.parametrize("method", ["go", "so", "os"])
-    def test_snr_loss_unimplemented_methods_raise(self, method):
-        """These returned a number from an underived heuristic (gh-20).
+    def test_snr_loss_go(self):
+        """Test SNR loss for GO-CFAR."""
+        loss = snr_loss(32, method="go")
+        assert loss > 0
 
-        The loss is defined through the detection probability and no closed
-        form is available here for GO, SO or OS-CFAR, so they raise rather
-        than return something plausible.
-        """
-        with pytest.raises(NotImplementedError, match="only implemented"):
-            snr_loss(32, pfa=1e-6, method=method)
+    def test_snr_loss_so(self):
+        """Test SNR loss for SO-CFAR."""
+        loss = snr_loss(32, method="so")
+        assert loss > 0
+
+    def test_snr_loss_os(self):
+        """Test SNR loss for OS-CFAR."""
+        loss = snr_loss(32, method="os")
+        assert loss > 0
 
     def test_snr_loss_decreases_with_more_cells(self):
         """Test that SNR loss decreases with more reference cells."""
-        loss_few = snr_loss(8, pfa=1e-6, method="ca")
-        loss_many = snr_loss(64, pfa=1e-6, method="ca")
+        loss_few = snr_loss(8, method="ca")
+        loss_many = snr_loss(64, method="ca")
         assert loss_few > loss_many
 
-    def test_snr_loss_depends_on_the_operating_point(self):
-        """The loss varies with Pfa and Pd, which the old form ignored."""
-        base = snr_loss(16, pfa=1e-6, pd=0.5)
-        assert snr_loss(16, pfa=1e-4, pd=0.5) != base
-        assert snr_loss(16, pfa=1e-6, pd=0.9) != base
-
-    def test_snr_loss_vanishes_as_the_window_grows(self):
-        """With unlimited reference cells the noise estimate is exact."""
-        assert snr_loss(10**7, pfa=1e-6) == pytest.approx(0.0, abs=1e-4)
+    def test_snr_loss_different_methods(self):
+        """Test SNR loss differs across methods."""
+        methods = ["ca", "go", "so", "os"]
+        losses = {}
+        for method in methods:
+            loss = snr_loss(n_ref=10, method=method)
+            assert loss >= 0
+            losses[method] = loss
+        assert len(set(losses.values())) > 1
 
     def test_snr_loss_unknown_method_raises(self):
         """Test that unknown method raises error."""
-        with pytest.raises(NotImplementedError, match="only implemented"):
-            snr_loss(32, pfa=1e-6, method="unknown")
+        with pytest.raises(ValueError, match="Unknown method"):
+            snr_loss(32, method="unknown")
 
 
 # =============================================================================

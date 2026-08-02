@@ -420,30 +420,10 @@ class TrackDatabaseManager:
         update_type : str
             Type of update: 'prediction', 'update', or 'smoothed'.
             Default is 'update'.
-
-        Raises
-        ------
-        KeyError
-            If ``track_id`` is not a track in this database.
-
-        Notes
-        -----
-        An unknown ``track_id`` used to insert the state row anyway and then
-        update zero rows in the ``tracks`` table, leaving history that belongs
-        to no track (gh-21). Nothing surfaced: no error, and the state was
-        retrievable by id, so a typo produced a track that existed in every
-        respect except the one that counts.
         """
         self._check_open()
         s = np.asarray(state, dtype=np.float64)
         c = np.asarray(covariance, dtype=np.float64)
-
-        self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
-        if self._cursor.fetchone() is None:
-            raise KeyError(
-                f"No track {track_id!r} in this database. Create it with "
-                f"initiate_track() before recording state updates."
-            )
 
         self._store_state_row(track_id, s, c, timestamp, residual, update_type)
 
@@ -577,29 +557,6 @@ class TrackDatabaseManager:
         dict
             Keys: states (N, state_dim), covariances (N, state_dim, state_dim),
             timestamps (N,), residuals (N, meas_dim) or None.
-
-            ``residuals`` is row-aligned with ``timestamps``. Rows that carry
-            no residual -- predictions and initiations -- hold ``NaN``, so
-            ``np.isnan(residuals).any(axis=1)`` identifies them. It is ``None``
-            only when no row in the range has a residual at all.
-
-        Raises
-        ------
-        KeyError
-            If the track has no history in the given range.
-
-        Notes
-        -----
-        Residuals used to be keyed off the first row. A window beginning with a
-        prediction reported ``residuals=None`` even when later rows had them,
-        and a window mixing the two returned an array *shorter* than
-        ``timestamps`` with no indication of which rows it belonged to --
-        breaking the documented ``(N, meas_dim)`` shape and silently
-        misaligning every residual with the wrong timestamp (gh-21).
-
-        That is the shape a predict-then-update filter produces on every step,
-        which is what ``KalmanTrackAdapter`` does, so it was the normal case
-        rather than an edge one.
         """
         self._check_open()
         conditions = ["track_id = ?"]
@@ -631,23 +588,15 @@ class TrackDatabaseManager:
         )
         timestamps = np.array([r[3] for r in rows])
 
-        # Scan every row, not just the first: a window can begin with a
-        # prediction and still contain residuals further in.
-        stored = [
-            np.frombuffer(r[4], dtype=np.float64) if r[4] is not None else None
-            for r in rows
-        ]
-        present = [res for res in stored if res is not None]
-
         residuals = None
-        if present:
-            # One row per state, NaN where there is no residual, so the result
-            # stays aligned with `timestamps` and keeps the documented shape.
-            meas_dim = len(present[0])
-            residuals = np.full((len(rows), meas_dim), np.nan)
-            for index, res in enumerate(stored):
-                if res is not None:
-                    residuals[index] = res
+        if rows[0][4] is not None:
+            residual_list = []
+            for r in rows:
+                if r[4] is not None:
+                    res = np.frombuffer(r[4], dtype=np.float64)
+                    residual_list.append(res)
+            if residual_list:
+                residuals = np.array(residual_list)
 
         return {
             "states": states,
@@ -823,31 +772,8 @@ class TrackDatabaseManager:
             Track to keep.
         track_id_merge : str
             Track to merge in and mark dead.
-
-        Raises
-        ------
-        KeyError
-            If either track is absent from the database.
-
-        Notes
-        -----
-        Track-level fields are combined as well as the history: ``birth_time``
-        becomes the earlier of the two, ``last_update_time`` the later, and the
-        merged track's metadata keys are folded in without overwriting keys the
-        kept track already has.
-
-        None of that used to happen (gh-21). History, associations and
-        detections were re-assigned and the hit counters summed, but the kept
-        track's ``last_update_time`` was left behind -- so a merge that brought
-        in newer states made the track look stale, and any staleness-based
-        pruning would then delete the track that had just been reinforced.
         """
         self._check_open()
-
-        for track_id in (track_id_keep, track_id_merge):
-            self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
-            if self._cursor.fetchone() is None:
-                raise KeyError(f"No track {track_id!r} in this database")
 
         # Re-assign state history
         self._cursor.execute(
@@ -870,43 +796,20 @@ class TrackDatabaseManager:
             (track_id_keep, track_id_merge),
         )
 
-        # Fold the merged track's counters, lifetime and metadata into the
-        # kept one. The lifetime is the union of the two, so birth_time takes
-        # the earlier and last_update_time the later.
+        # Update kept track's hit/miss counters
         self._cursor.execute(
-            "SELECT hits, total_misses, birth_time, last_update_time, metadata "
-            "FROM tracks WHERE track_id = ?",
+            "SELECT hits, total_misses FROM tracks WHERE track_id = ?",
             (track_id_merge,),
         )
-        merged_hits, merged_misses, merged_birth, merged_last, merged_meta = (
-            self._cursor.fetchone()
-        )
-
-        self._cursor.execute(
-            "SELECT metadata FROM tracks WHERE track_id = ?", (track_id_keep,)
-        )
-        kept_meta = self._cursor.fetchone()[0]
-
-        # The kept track's own keys win: merging is additive, not a takeover.
-        combined = {**json.loads(merged_meta or "{}"), **json.loads(kept_meta or "{}")}
-
-        self._cursor.execute(
-            """UPDATE tracks SET
-               hits = hits + ?,
-               total_misses = total_misses + ?,
-               birth_time = MIN(birth_time, ?),
-               last_update_time = MAX(last_update_time, ?),
-               metadata = ?
-               WHERE track_id = ?""",
-            (
-                merged_hits,
-                merged_misses,
-                merged_birth,
-                merged_last,
-                json.dumps(combined),
-                track_id_keep,
-            ),
-        )
+        merge_row = self._cursor.fetchone()
+        if merge_row:
+            self._cursor.execute(
+                """UPDATE tracks SET
+                   hits = hits + ?,
+                   total_misses = total_misses + ?
+                   WHERE track_id = ?""",
+                (merge_row[0], merge_row[1], track_id_keep),
+            )
 
         # Mark merged track dead
         self._set_track_status(track_id_merge, TrackDatabaseStatus.DEAD)

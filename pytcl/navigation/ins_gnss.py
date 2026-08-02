@@ -30,7 +30,6 @@ from pytcl.navigation.ins import (
     ins_error_state_matrix,
     ins_process_noise_matrix,
     mechanize_ins_ned,
-    radii_of_curvature,
 )
 
 # =============================================================================
@@ -45,13 +44,6 @@ GPS_L1_FREQ = 1575.42e6
 
 # GPS L1 wavelength (m)
 GPS_L1_WAVELENGTH = SPEED_OF_LIGHT / GPS_L1_FREQ
-
-# Floor on cos(latitude) when converting an easting uncertainty to longitude.
-# At the pole a meter of easting spans an unbounded change in longitude, so the
-# conversion genuinely diverges; this keeps it finite. 1e-6 corresponds to
-# roughly 6 cm of easting per microradian of longitude, well inside any
-# realistic GNSS accuracy.
-_MIN_COS_LAT = 1e-6
 
 
 # =============================================================================
@@ -311,64 +303,27 @@ def pseudorange_measurement_matrix(
     return H
 
 
-def compute_dop(
-    H: ArrayLike,
-    user_lla: Optional[ArrayLike] = None,
-) -> Tuple[float, float, float, float]:
+def compute_dop(H: ArrayLike) -> Tuple[float, float, float, float]:
     """
-    Compute Dilution of Precision from a geometry matrix.
-
-    HDOP and VDOP are only horizontal and vertical with respect to some local
-    frame. They are read off the first two and the third diagonal entries of
-    ``inv(H^T H)``, so they mean "horizontal" only if the first two position
-    columns of ``H`` span the local horizontal plane. An ECEF geometry matrix
-    does not: its x and y axes point at the equator regardless of where the
-    user is, so HDOP computed from one is horizontal only at the poles
-    (gh-19).
-
-    Pass ``user_lla`` and the position columns are rotated into the local ENU
-    frame first, which is what makes the split meaningful. Without it the
-    matrix is used as given, which is correct when ``H`` is already local.
-
-    GDOP and PDOP are invariant under rotation -- they are traces -- so they
-    were correct either way and are unaffected by this argument.
+    Compute Dilution of Precision from geometry matrix.
 
     Parameters
     ----------
     H : array_like
         Geometry matrix (n_sats x 4) with columns [dx, dy, dz, clock].
-    user_lla : array_like, optional
-        User position ``[lat, lon, alt]`` in (rad, rad, m). When given, the
-        three position columns of ``H`` are rotated from ECEF into ENU before
-        the DOP terms are read off. Omit when ``H`` is already expressed in a
-        local frame.
 
     Returns
     -------
     GDOP : float
-        Geometric DOP. Rotation-invariant.
+        Geometric DOP.
     PDOP : float
-        Position DOP. Rotation-invariant.
+        Position DOP.
     HDOP : float
-        Horizontal DOP, in the local frame if ``user_lla`` was supplied.
+        Horizontal DOP.
     VDOP : float
-        Vertical DOP, in the local frame if ``user_lla`` was supplied.
+        Vertical DOP.
     """
     H = np.asarray(H, dtype=np.float64)
-
-    if user_lla is not None:
-        lat, lon = np.asarray(user_lla, dtype=np.float64)[:2]
-        sin_lat, cos_lat = np.sin(lat), np.cos(lat)
-        sin_lon, cos_lon = np.sin(lon), np.cos(lon)
-        ecef_to_enu = np.array(
-            [
-                [-sin_lon, cos_lon, 0.0],
-                [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat],
-                [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat],
-            ]
-        )
-        H = H.copy()
-        H[:, :3] = H[:, :3] @ ecef_to_enu.T
 
     try:
         Q = np.linalg.inv(H.T @ H)
@@ -453,72 +408,6 @@ def satellite_elevation_azimuth(
 # =============================================================================
 
 
-def position_std_to_error_state_units(
-    position_std: float,
-    lat: float,
-    height: float = 0.0,
-    ellipsoid: Ellipsoid = WGS84,
-) -> NDArray[np.floating]:
-    """Convert a position uncertainty in meters to error-state units.
-
-    The first three error states are ``[dlat, dlon, dheight]`` in
-    ``[rad, rad, m]``, because that is what ``INSState.position`` holds. A
-    standard deviation quoted in meters -- which is how GNSS accuracy is always
-    quoted -- has to be divided by the local radius of curvature before it can
-    sit on the latitude and longitude diagonal.
-
-    Putting meters there directly, as this module used to, does not make the
-    filter diverge; it makes it badly weighted. A 10 m uncertainty became a
-    variance of 100 rad^2, against innovations of order 1e-6 rad, so the filter
-    treated its own position as far more uncertain than the measurement and
-    absorbed only about half of each position innovation where it should have
-    absorbed nearly all of it (gh-19).
-
-    Parameters
-    ----------
-    position_std : float
-        Position uncertainty in meters, applied to all three axes.
-    lat : float
-        Geodetic latitude in radians, where the conversion is evaluated.
-    height : float, optional
-        Height above the ellipsoid in meters. Default 0.
-    ellipsoid : Ellipsoid, optional
-        Reference ellipsoid. Default WGS84.
-
-    Returns
-    -------
-    std : ndarray
-        ``[lat_std (rad), lon_std (rad), height_std (m)]``.
-
-    Notes
-    -----
-    Near the poles ``cos(lat)`` goes to zero and the longitude conversion
-    diverges, which is a real property of the coordinate system rather than a
-    numerical artifact: a meter of easting spans an unbounded change in
-    longitude at the pole. The cosine is floored so the result stays finite,
-    at the cost of understating longitude uncertainty in the last few meters
-    of latitude.
-
-    Examples
-    --------
-    >>> std = position_std_to_error_state_units(10.0, np.radians(45.0))
-    >>> float(np.degrees(std[0]) * 3600)  # arcseconds  # doctest: +ELLIPSIS
-    0.32...
-    >>> float(std[2])
-    10.0
-    """
-    meridian_radius, transverse_radius = radii_of_curvature(lat, ellipsoid)
-    cos_lat = max(abs(np.cos(lat)), _MIN_COS_LAT)
-    return np.array(
-        [
-            position_std / (meridian_radius + height),
-            position_std / ((transverse_radius + height) * cos_lat),
-            position_std,
-        ],
-        dtype=np.float64,
-    )
-
-
 def initialize_ins_gnss(
     ins_state: INSState,
     position_std: float = 10.0,
@@ -553,17 +442,12 @@ def initialize_ins_gnss(
     # 15-state error vector (zeros initially)
     error_state = np.zeros(15, dtype=np.float64)
 
-    # The position error states are [rad, rad, m], so a std quoted in meters
-    # has to be converted before it can go on the diagonal (gh-19).
-    lat, _, height = ins_state.position
-    position_std_states = position_std_to_error_state_units(position_std, lat, height)
-
     # Initial covariance
     P = np.diag(
         [
-            position_std_states[0] ** 2,
-            position_std_states[1] ** 2,
-            position_std_states[2] ** 2,
+            position_std**2,
+            position_std**2,
+            position_std**2,
             velocity_std**2,
             velocity_std**2,
             velocity_std**2,
@@ -688,17 +572,13 @@ def loose_coupled_update_position(
     # Measurement matrix (position only)
     H = position_measurement_matrix()
 
-    # Measurement noise covariance. The innovation below is
-    # [dlat, dlon, dheight] in [rad, rad, m], so the default -- quoted in
-    # meters, as GNSS accuracy always is -- is converted to match. Leaving it
-    # in meters, as this used to, made the filter absorb roughly half of each
-    # position innovation instead of nearly all of it (gh-19).
-    lat, _, height = state.ins_state.position
+    # Measurement noise covariance
     if gnss.position_cov is not None:
         R = gnss.position_cov
     else:
-        horizontal = position_std_to_error_state_units(10.0, lat, height)
-        R = np.diag([horizontal[0] ** 2, horizontal[1] ** 2, 15.0**2])
+        R = np.diag(
+            [10.0**2, 10.0**2, 15.0**2]
+        )  # Default: 10m horizontal, 15m vertical
 
     # Innovation: measured position - INS predicted position
     z = gnss.position - state.ins_state.position
@@ -1067,11 +947,7 @@ def tight_coupled_update(
     user_x, user_y, user_z = geodetic_to_ecef(lat, lon, alt, ellipsoid)
     user_ecef = np.array([user_x, user_y, user_z])
     H_geom = pseudorange_measurement_matrix(user_ecef, satellites, include_clock=True)
-    # The geometry matrix is ECEF, so the user position is passed along to
-    # rotate it into the local frame. Without that, HDOP and VDOP would be the
-    # ECEF x/y and z spreads, which are horizontal and vertical only at the
-    # poles (gh-19).
-    dop = compute_dop(H_geom, user_lla=ins.position)
+    dop = compute_dop(H_geom)
 
     return TightCoupledResult(
         state=new_state,

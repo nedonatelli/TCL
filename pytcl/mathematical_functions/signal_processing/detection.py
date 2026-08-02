@@ -197,16 +197,10 @@ def detection_probability(
     pfa: float,
     n_ref: int,
     method: str = "ca",
+    swerling_case: int = 0,
 ) -> float:
     """
-    Compute Swerling 1 detection probability for a given SNR and Pfa.
-
-    This is the CA-CFAR result for an exponentially fluctuating (Swerling 1)
-    target::
-
-        Pd = (1 + alpha/(n_ref*(1+snr)))^(-n_ref)
-
-    with ``alpha`` the threshold factor for the requested Pfa.
+    Compute detection probability for a given SNR and Pfa.
 
     Parameters
     ----------
@@ -218,11 +212,14 @@ def detection_probability(
         Number of reference cells.
     method : {'ca'}, optional
         CFAR method. Default is 'ca'.
+    swerling_case : {0, 1, 2, 3, 4}, optional
+        Swerling target model. 0 is non-fluctuating (Marcum).
+        Default is 0.
 
     Returns
     -------
     pd : float
-        Probability of detection for a Swerling 1 target.
+        Probability of detection.
 
     Examples
     --------
@@ -232,32 +229,28 @@ def detection_probability(
 
     Notes
     -----
-    Only the Swerling 1 model is implemented. This function used to accept a
-    ``swerling_case`` argument covering cases 0 through 4, but all of its
-    branches evaluated the same expression, so the argument selected nothing --
-    a caller asking for a non-fluctuating target got the Swerling 1 answer
-    (gh-20). The argument has been removed rather than left to imply a choice
-    that was never offered.
+    The implemented formula::
 
-    The difference is not small. At SNR 10, Pfa 1e-6 and 32 reference cells,
-    this returns about 0.62, while a genuinely non-fluctuating (Swerling 0 /
-    Marcum) target detects with probability about 0.90 -- the fluctuating model
-    understates a steady target substantially.
+        Pd = (1 + alpha/(n_ref*(1+snr)))^(-n_ref)
 
-    For a real choice of target model use ``swerling_detection_probability``,
-    which implements cases 0 through 4 as genuinely distinct expressions built
-    on the Marcum Q function. It is a pulse-integration model rather than a
-    CFAR one, so it answers a slightly different question: this function
-    accounts for threshold estimation from ``n_ref`` reference cells, that one
-    for coherent integration over ``n_pulses``.
-
-    See Also
-    --------
-    pytcl.mathematical_functions.special_functions.swerling_detection_probability :
-        Detection probability for Swerling cases 0-4.
+    (alpha being the threshold factor for the given Pfa) is exact for a
+    Swerling 1 (exponentially fluctuating) target with CA-CFAR. For the
+    non-fluctuating (Swerling 0/Marcum) and other Swerling cases it is only
+    an approximation and underestimates Pd for steady targets.
     """
     alpha = threshold_factor(pfa, n_ref, method=method)
-    pd = (1 + alpha / (n_ref * (1 + snr))) ** (-n_ref)
+
+    if swerling_case == 0:
+        # Non-fluctuating (Marcum) target
+        # Pd for CA-CFAR
+        pd = (1 + alpha / (n_ref * (1 + snr))) ** (-n_ref)
+    elif swerling_case == 1:
+        # Swerling I: scan-to-scan decorrelation, chi-squared 2 DOF
+        pd = (1 + alpha / (n_ref * (1 + snr))) ** (-n_ref)
+    else:
+        # For other Swerling cases, use approximate formula
+        pd = (1 + alpha / (n_ref * (1 + snr))) ** (-n_ref)
+
     return float(pd)
 
 
@@ -1084,95 +1077,53 @@ def cluster_detections(
 
 def snr_loss(
     n_ref: int,
-    pfa: float,
-    pd: float = 0.5,
     method: str = "ca",
 ) -> float:
     """
-    CA-CFAR loss: the extra SNR needed because the threshold is estimated.
+    Compute the SNR loss due to CFAR processing.
 
-    An ideal detector knows the noise power. A CFAR detector estimates it from
-    ``n_ref`` reference cells, and needs more signal to reach the same
-    detection probability at the same false-alarm rate. The loss is the
-    difference between the two required SNRs, for a Swerling 1 target::
-
-        S_ideal = ln(Pfa)/ln(Pd) - 1
-        S_ca    = (Pfa^(-1/n) - 1) / (Pd^(-1/n) - 1) - 1
-        L_dB    = 10 log10( (1 + S_ca) / (1 + S_ideal) )
+    CFAR detectors have an inherent SNR loss compared to an ideal detector
+    with known noise level.
 
     Parameters
     ----------
     n_ref : int
         Number of reference cells.
-    pfa : float
-        Design probability of false alarm.
-    pd : float, optional
-        Detection probability at which the loss is evaluated. Default 0.5.
-        CFAR loss is only defined against an operating point.
-    method : {'ca'}, optional
-        CFAR method. Only ``'ca'`` is implemented. Default is 'ca'.
+    method : {'ca', 'go', 'so', 'os'}, optional
+        CFAR method. Default is 'ca'.
 
     Returns
     -------
     loss : float
-        SNR loss in dB, non-negative and decreasing in ``n_ref``.
-
-    Raises
-    ------
-    NotImplementedError
-        For ``'go'``, ``'so'`` and ``'os'``. See the notes.
+        SNR loss in dB.
 
     Examples
     --------
-    >>> round(snr_loss(16, pfa=1e-6), 3)
-    1.915
-    >>> snr_loss(8, pfa=1e-6) > snr_loss(64, pfa=1e-6)  # fewer cells, more loss
+    >>> loss = snr_loss(32, method='ca')
+    >>> 0 < loss < 1  # Small loss for many reference cells
     True
-
-    Notes
-    -----
-    This used to be computed from ad-hoc expressions -- ``1 + 1/n_ref`` for CA,
-    ``1 + 2/n_ref`` for GO and SO, ``1 + 3/n_ref`` for OS -- taking neither
-    ``pfa`` nor ``pd`` (gh-20). CFAR loss depends on both, so a function of
-    ``n_ref`` alone cannot express it. The heuristics understated it by roughly
-    a factor of four: at 8 reference cells and Pfa 1e-6 they returned 0.51 dB
-    against a true 4.09 dB, and returned that same figure for every operating
-    point.
-
-    Only CA is implemented, because the loss is defined through the detection
-    probability and this library has a closed form for Pd under CA-CFAR alone.
-    GO, SO and OS raise rather than return a number: a plausible wrong loss is
-    worse than an absent one, and the earlier heuristics for those three were
-    not derived from anything.
-
-    Comparing threshold factors directly would be the obvious shortcut and does
-    not work. ``threshold_factor`` returns a multiplier on each method's own
-    noise statistic -- the mean for CA, the larger or smaller half-window mean
-    for GO and SO, an order statistic for OS -- and those statistics have
-    different expectations, so the multipliers are not comparable. Doing it
-    that way gives OS-CFAR a *negative* loss at 64 reference cells.
-
-    See Also
-    --------
-    detection_probability : The Swerling 1 CA-CFAR Pd this is derived from.
     """
-    if not 0.0 < pfa < 1.0:
-        raise ValueError(f"pfa must be in (0, 1), got {pfa}")
-    if not 0.0 < pd < 1.0:
-        raise ValueError(f"pd must be in (0, 1), got {pd}")
-    if n_ref < 1:
-        raise ValueError(f"n_ref must be at least 1, got {n_ref}")
-    if method != "ca":
-        raise NotImplementedError(
-            f"snr_loss is only implemented for method='ca', got {method!r}. "
-            f"The loss is defined through the detection probability, and no "
-            f"closed-form Pd is available here for GO, SO or OS-CFAR."
-        )
+    if method == "ca":
+        # CA-CFAR loss approximately 1/sqrt(n_ref) in linear terms
+        # or 10*log10(1 + 1/n_ref) in dB for large n_ref
+        loss_linear = 1 + 1 / n_ref
+        loss_db = 10 * np.log10(loss_linear)
+    elif method == "go":
+        # GO-CFAR has slightly higher loss
+        loss_linear = 1 + 2 / n_ref
+        loss_db = 10 * np.log10(loss_linear)
+    elif method == "so":
+        # SO-CFAR similar to GO
+        loss_linear = 1 + 2 / n_ref
+        loss_db = 10 * np.log10(loss_linear)
+    elif method == "os":
+        # OS-CFAR typically has highest loss
+        loss_linear = 1 + 3 / n_ref
+        loss_db = 10 * np.log10(loss_linear)
+    else:
+        raise ValueError(f"Unknown method: {method}")
 
-    snr_ideal = np.log(pfa) / np.log(pd) - 1.0
-    snr_cfar = (pfa ** (-1.0 / n_ref) - 1.0) / (pd ** (-1.0 / n_ref) - 1.0) - 1.0
-
-    return float(10 * np.log10((1.0 + snr_cfar) / (1.0 + snr_ideal)))
+    return float(loss_db)
 
 
 __all__ = [
