@@ -1,4 +1,4 @@
-"""Validation of the backend-dispatched GPU particle filter on MLX.
+"""Validation of the backend-dispatched GPU particle filter.
 
 ``pytcl.gpu.particle_filter`` used to be hardwired to CuPy and raised
 ``DependencyError`` on Apple Silicon. It is now written against the
@@ -23,8 +23,16 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
-mx = pytest.importorskip("mlx.core", reason="MLX required for the GPU PF tests")
+# Gated on "a GPU compute backend exists", not on MLX. Nothing below touches
+# mlx.core: the file is written against the pytcl.gpu._backend surface and
+# already branches on BACKEND.supports_float64, with the float64 tolerances
+# spelled out for the CuPy case. Importorskip("mlx.core") therefore skipped all
+# of it on precisely the hardware the double-precision path was written for.
+pytest.importorskip(
+    "pytcl.gpu._backend", reason="GPU compute backend required for the PF tests"
+)
 
+from pytcl.core.exceptions import DependencyError  # noqa: E402
 from pytcl.dynamic_estimation.particle_filters import (  # noqa: E402
     bootstrap_pf_update,
     gaussian_likelihood,
@@ -32,7 +40,12 @@ from pytcl.dynamic_estimation.particle_filters import (  # noqa: E402
 from pytcl.gpu import particle_filter as gpu_pf  # noqa: E402
 from pytcl.gpu._backend import get_compute_backend  # noqa: E402
 
-BACKEND = get_compute_backend()
+try:
+    BACKEND = get_compute_backend()
+except DependencyError:  # pragma: no cover - no GPU backend installed
+    pytest.skip(
+        "no GPU compute backend (CuPy or MLX) installed", allow_module_level=True
+    )
 FLOAT32 = not BACKEND.supports_float64
 
 # Tolerances against the float64 CPU references.
