@@ -47,6 +47,21 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Changed
 
+- **Breaking:** the GPU filter callbacks now take the whole batch. ``f``,
+  ``h`` and the Jacobian callables passed to ``batch_ekf_predict``,
+  ``batch_ekf_update``, ``batch_ukf_predict`` and ``batch_ukf_update`` receive
+  ``(N, dim)`` on the active backend and return ``(N, out_dim)``; Jacobians
+  return ``(N, out_dim, dim)``. Previously the EKF called them once per track
+  and the UKF once per sigma point of per track, while
+  ``CuPyParticleFilter`` -- unchanged -- passed the whole device array. See
+  the migration guide. The callback is now invoked once instead of once per
+  item (measured 1000 -> 1 for a 200-track UKF prediction).
+- The numerical Jacobian's finite-difference step now follows the backend's
+  precision, defaulting to 1e-3 on float32 rather than a fixed 1e-7 that
+  float32 cannot resolve.
+
+### Changed
+
 - **Six storage contract gaps in `pytcl.io`**
   ([#21](https://github.com/nedonatelli/TCL/issues/21)). All of them share a
   cause: the base class did not say what should happen, so each backend did
