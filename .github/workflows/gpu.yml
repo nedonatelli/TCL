@@ -1,0 +1,143 @@
+name: GPU
+
+# The CuPy code paths in pytcl/gpu cannot be verified by the ordinary CI jobs.
+# conftest drops pytcl/gpu from collection when no compute backend is installed
+# and every hosted ubuntu/windows/macos runner has no NVIDIA GPU, so the whole
+# package is checked by nothing there. That gap hid three separate bugs until
+# the suite was first run on an RTX 5080: five documented examples that raise
+# or return the wrong type on a real device, a doctest that passed only on
+# machines without CUDA, and twelve tests calling np.asarray on device arrays,
+# which CuPy refuses.
+#
+# Run before tagging a release. Manual by default so a paid GPU runner is not
+# billed on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: >-
+          Runner label for the GPU machine. GitHub-hosted larger runners are
+          defined at the organization/enterprise level, so this is a label you
+          configure rather than a fixed name.
+        required: true
+        default: gpu-t4-4-core
+      cuda_wheel:
+        description: "CuPy wheel matching the driver's CUDA major version"
+        required: true
+        default: cupy-cuda13x
+
+# Deliberately not triggered on tags yet. A job whose runner label does not
+# exist queues until it times out, so adding `push: tags: [v*]` before the GPU
+# runner is provisioned would leave every release tag showing a stuck check.
+# Add that trigger once a run started from the Actions tab has gone green.
+
+permissions:
+  contents: read
+
+jobs:
+  gpu:
+    runs-on: ${{ github.event.inputs.runner || 'gpu-t4-4-core' }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Report the device
+        run: |
+          nvidia-smi --query-gpu=name,memory.total,driver_version \
+            --format=csv,noheader
+          nvcc --version 2>/dev/null | tail -1 || echo "(no nvcc; driver runtime only)"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "${{ github.event.inputs.cuda_wheel || 'cupy-cuda13x' }}"
+          pip install -e ".[dev]"
+
+      # This job exists to exercise the CuPy path. If CuPy is missing or the
+      # wheel does not match the driver, pytcl falls back and the whole suite
+      # would pass while testing nothing -- the exact failure this workflow was
+      # created to close. Fail here instead, before any test runs.
+      - name: Refuse to continue without a real CuPy device
+        run: |
+          python - <<'PY'
+          import sys
+          import cupy
+          from pytcl.gpu.utils import get_backend, is_cupy_available, get_gpu_memory_info
+
+          if not is_cupy_available():
+              sys.exit("CuPy did not import: wrong wheel for this driver")
+          if get_backend() != "cupy":
+              sys.exit(f"backend resolved to {get_backend()!r}, expected 'cupy'")
+
+          dev = cupy.cuda.Device(0)
+          print("cupy   :", cupy.__version__)
+          print("device :", cupy.cuda.runtime.getDeviceProperties(0)["name"].decode())
+          print("cc     :", dev.compute_capability)
+
+          # A kernel must actually execute; importing CuPy proves nothing about
+          # whether the wheel supports this compute capability.
+          a = cupy.random.random((512, 512), dtype=cupy.float64)
+          spd = a @ a.T + cupy.eye(512)
+          L = cupy.linalg.cholesky(spd)
+          err = float(cupy.abs(L @ L.T - spd).max())
+          print("float64 cholesky max err:", err)
+          if not err < 1e-8:
+              sys.exit(f"device arithmetic is wrong: max err {err}")
+
+          info = get_gpu_memory_info()
+          if not info["total"] > 0:
+              sys.exit(f"no device memory reported: {info}")
+          print("memory :", info)
+          PY
+
+      - name: Device-only tests
+        run: |
+          python -m pytest tests/validation/test_gpu_audit.py::TestRealCuPyDevice \
+            -v --tb=short --junitxml=device.xml
+
+      - name: Full GPU suite
+        run: |
+          python -m pytest tests/validation/test_gpu_audit.py \
+                           tests/validation/test_gpu_particle_filter.py \
+                           -q --tb=short -rs
+
+      # Excluded from the doctests job whenever no backend is present, which is
+      # every ordinary runner. This is the only place they execute.
+      - name: pytcl.gpu doctests
+        run: python -m pytest --doctest-modules pytcl/gpu -q --tb=short
+
+      # Nothing above would notice if the device tests had quietly gone back to
+      # skipping: pytest exits 0 on an all-skipped run, so every step would
+      # stay green while verifying nothing. Read the outcomes rather than the
+      # exit code -- and count passes specifically, because collection counts
+      # skipped tests too.
+      - name: Assert the device tests actually ran
+        if: always()
+        run: |
+          python - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          suite = ET.parse("device.xml").getroot().find("testsuite")
+          total = int(suite.get("tests"))
+          skipped = int(suite.get("skipped"))
+          failures = int(suite.get("failures")) + int(suite.get("errors"))
+          passed = total - skipped - failures
+          print(f"tests={total} passed={passed} skipped={skipped} failed={failures}")
+
+          if total < 8:
+              sys.exit(f"expected at least 8 device tests, ran {total}")
+          if skipped:
+              sys.exit(
+                  f"{skipped} device test(s) skipped: this job exists to run "
+                  "them, so a skip here is a failure, not a pass"
+              )
+          if failures:
+              sys.exit(f"{failures} device test(s) failed")
+          PY

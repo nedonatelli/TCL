@@ -59,8 +59,10 @@ Examples
 >>> from pytcl.gpu.ukf import batch_ukf_predict
 >>> import numpy as np
 >>>
+>>> from pytcl.gpu.utils import get_array_module
 >>> def f_dynamics(x):
-...     return np.array([x[0] + x[1], x[1] * 0.99])
+...     xp = get_array_module(x)
+...     return xp.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=1)
 >>>
 >>> x = np.zeros((3, 2))
 >>> P = np.stack([np.eye(2)] * 3)
@@ -285,7 +287,9 @@ def batch_ukf_predict(
     P : array_like
         Current covariances, shape (n_tracks, state_dim, state_dim).
     f : callable
-        Nonlinear dynamics function f(x) -> x_next.
+        Batched dynamics. Takes ``(N, state_dim)`` and returns
+        ``(N, state_dim)``, where ``N`` is ``n_tracks * (2 * state_dim + 1)``
+        sigma points. Called once.
     Q : array_like
         Process noise covariance.
     alpha, beta, kappa : float
@@ -317,8 +321,10 @@ def batch_ukf_predict(
     >>> import numpy as np
     >>> from pytcl.gpu.ukf import batch_ukf_predict
     >>> # Nonlinear dynamics example
+    >>> from pytcl.gpu.utils import get_array_module
     >>> def f_dynamics(x):
-    ...     return np.array([x[0] + 0.1*x[1], x[1] * 0.99])
+    ...     xp = get_array_module(x)
+    ...     return xp.stack([x[:, 0] + 0.1 * x[:, 1], x[:, 1] * 0.99], axis=1)
     >>> n_tracks = 50
     >>> x = np.random.randn(n_tracks, 2)
     >>> P = np.tile(np.eye(2) * 0.01, (n_tracks, 1, 1))
@@ -346,15 +352,12 @@ def batch_ukf_predict(
     Wm_gpu = b.asarray(Wm)
     Wc_gpu = b.asarray(Wc)
 
-    # Propagate sigma points through dynamics (on CPU)
-    sigma_np = b.to_numpy(sigma_points)
-    sigma_pred_np = np.zeros_like(sigma_np)
-
-    for i in range(n_tracks):
-        for j in range(n_sigma):
-            sigma_pred_np[i, j] = f(sigma_np[i, j])
-
-    sigma_pred = b.asarray(sigma_pred_np)
+    # Propagate every sigma point of every track in one call. Flattening to
+    # (n_tracks * n_sigma, n) is what lets the same callable serve the EKF and
+    # the UKF: it always sees a 2-D batch, whatever the batch happens to be.
+    # This replaced a nested Python loop of n_tracks * (2n+1) invocations.
+    flat = b.reshape(sigma_points, (n_tracks * n_sigma, n))
+    sigma_pred = b.reshape(b.asarray(f(flat)), (n_tracks, n_sigma, n))
 
     # Predicted mean: sum of weighted sigma points
     x_pred = b.einsum("j,njk->nk", Wm_gpu, sigma_pred)
@@ -395,7 +398,9 @@ def batch_ukf_update(
     z : array_like
         Measurements, shape (n_tracks, meas_dim).
     h : callable
-        Nonlinear measurement function h(x) -> z.
+        Batched measurement function. Takes ``(N, state_dim)`` and returns
+        ``(N, meas_dim)``, where ``N`` is ``n_tracks * (2 * state_dim + 1)``
+        sigma points. Called once.
     R : array_like
         Measurement noise covariance.
     alpha, beta, kappa : float
@@ -427,8 +432,10 @@ def batch_ukf_update(
     >>> import numpy as np
     >>> from pytcl.gpu.ukf import batch_ukf_update
     >>> # Nonlinear measurement example
-    >>> def h_measurement(x):
-    ...     return np.sqrt(x[0]**2 + x[1]**2)  # Range-only
+    >>> from pytcl.gpu.utils import get_array_module
+    >>> def h_measurement(x):  # Range-only
+    ...     xp = get_array_module(x)
+    ...     return xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)[:, None]
     >>> n_tracks = 40
     >>> x = np.random.randn(n_tracks, 2)
     >>> P = np.tile(np.eye(2), (n_tracks, 1, 1))
@@ -459,15 +466,9 @@ def batch_ukf_update(
     Wm_gpu = b.asarray(Wm)
     Wc_gpu = b.asarray(Wc)
 
-    # Transform sigma points through measurement function (on CPU)
-    sigma_np = b.to_numpy(sigma_points)
-    gamma_np = np.zeros((n_tracks, n_sigma, m))
-
-    for i in range(n_tracks):
-        for j in range(n_sigma):
-            gamma_np[i, j] = h(sigma_np[i, j])
-
-    gamma = b.asarray(gamma_np)
+    # One call for every sigma point of every track; see batch_ukf_predict.
+    flat = b.reshape(sigma_points, (n_tracks * n_sigma, n))
+    gamma = b.reshape(b.asarray(h(flat)), (n_tracks, n_sigma, m))
 
     # Predicted measurement: weighted sum
     z_pred = b.einsum("j,njk->nk", Wm_gpu, gamma)
@@ -549,11 +550,14 @@ class CuPyUnscentedKalmanFilter:
     >>> import numpy as np
     >>> from pytcl.gpu.ukf import CuPyUnscentedKalmanFilter
     >>>
+    >>> from pytcl.gpu.utils import get_array_module
     >>> def f(x):
-    ...     return np.array([x[0] + x[1], x[1]])
+    ...     xp = get_array_module(x)
+    ...     return xp.stack([x[:, 0] + x[:, 1], x[:, 1]], axis=1)
     >>>
     >>> def h(x):
-    ...     return np.array([np.sqrt(x[0]**2 + x[1]**2)])
+    ...     xp = get_array_module(x)
+    ...     return xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)[:, None]
     >>>
     >>> ukf = CuPyUnscentedKalmanFilter(
     ...     state_dim=2, meas_dim=1,

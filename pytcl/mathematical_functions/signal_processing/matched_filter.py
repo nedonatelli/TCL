@@ -83,6 +83,27 @@ class PulseCompressionResult(NamedTuple):
 # =============================================================================
 
 
+def _coherent_gain(template: NDArray[np.float64]) -> float:
+    """Matched-filter processing gain, in linear power ratio.
+
+    In white noise of variance ``s2`` the matched filter output peaks at the
+    template energy ``E = sum(t^2)`` with noise variance ``s2 * E``, so the
+    output SNR is ``E / s2``. The input SNR at the strongest sample is
+    ``max(t^2) / s2``, and the gain is the ratio::
+
+        G = sum(t^2) / max(t^2)
+
+    This used to be reported as ``len(template)``, which is the same thing only
+    when every sample has the same magnitude (gh-20). For a tapered template it
+    overstates the gain -- a 64-point Hann window has 24 effective samples, not
+    64, so the reported figure was 4.3 dB optimistic.
+    """
+    peak = float(np.max(template**2))
+    if peak <= 0.0:
+        return 1.0
+    return float(np.sum(template**2) / peak)
+
+
 def matched_filter(
     signal: ArrayLike,
     template: ArrayLike,
@@ -146,9 +167,7 @@ def matched_filter(
     peak_index = int(np.argmax(np.abs(output)))
     peak_value = float(np.abs(output[peak_index]))
 
-    # Theoretical SNR gain = N (number of samples in template)
-    snr_gain_linear = len(template)
-    snr_gain = 10 * np.log10(snr_gain_linear)
+    snr_gain = 10 * np.log10(_coherent_gain(template))
 
     return MatchedFilterResult(
         output=output,
@@ -230,8 +249,7 @@ def matched_filter_frequency(
     peak_index = int(np.argmax(np.abs(output)))
     peak_value = float(np.abs(output[peak_index]))
 
-    snr_gain_linear = len(template)
-    snr_gain = 10 * np.log10(snr_gain_linear)
+    snr_gain = 10 * np.log10(_coherent_gain(template))
 
     return MatchedFilterResult(
         output=output,
@@ -304,26 +322,63 @@ def optimal_filter(
     noise_psd = np.asarray(noise_psd, dtype=np.float64)
 
     n_signal = len(signal)
-    n_fft = len(noise_psd)
+    n_template = len(template)
 
-    # Ensure dimensions match
-    if n_fft < n_signal:
-        n_fft = n_signal
+    # Linear, not circular. Multiplying two length-N spectra and inverting
+    # gives *circular* correlation: the template wraps around the boundary, so
+    # a target near the start of the record produces a response near the end
+    # and vice versa. With a 16-sample template on a 256-sample record that
+    # phantom reached 94% of the true peak, across samples whose correct value
+    # is exactly zero -- a detector thresholding the output would call it
+    # (gh-20).
+    #
+    # The padding is set by the whitening filter, not the template. Dividing by
+    # the PSD gives an impulse response as long as the PSD's frequency
+    # resolution implies, which for colored noise is much longer than the
+    # template. Measured on the case above: no padding leaves 93% of the peak
+    # in the tail, padding by the template alone leaves 4.9%, padding by the
+    # PSD length leaves 0.8%, and the figure converges to about 0.4% however
+    # far it is padded. That floor is the whitening response itself and is
+    # physical -- a whitened matched filter genuinely rings beyond its
+    # template.
+    n_fft = n_signal + max(n_template, len(noise_psd)) - 1
 
-    # FFT of signal and template
     signal_fft = scipy_fft.fft(signal, n=n_fft)
     template_fft = scipy_fft.fft(template, n=n_fft)
 
-    # Optimal filter: conj(template) / noise_psd
-    # Add small regularization to avoid division by zero
-    eps = 1e-10 * np.max(noise_psd)
-    filter_fft = np.conj(template_fft) / (noise_psd + eps)
+    # The PSD was sampled on its own frequency grid, so it has to be resampled
+    # onto the padded one rather than indexed positionally. Interpolation is
+    # done against sorted frequencies because FFT bin order wraps at Nyquist,
+    # and interpolating across that discontinuity would smear the highest and
+    # lowest frequencies into each other.
+    psd_on_grid = _resample_psd(noise_psd, n_fft)
 
-    # Apply filter
-    output_fft = signal_fft * filter_fft
-    output = scipy_fft.ifft(output_fft).real
+    # Optimal filter: conj(template) / noise_psd, regularized against a PSD
+    # that touches zero.
+    eps = 1e-10 * np.max(psd_on_grid)
+    filter_fft = np.conj(template_fft) / (psd_on_grid + eps)
+
+    output = scipy_fft.ifft(signal_fft * filter_fft).real
 
     return output[:n_signal]
+
+
+def _resample_psd(noise_psd: NDArray[np.float64], n_fft: int) -> NDArray[np.float64]:
+    """Interpolate a PSD onto an ``n_fft``-bin FFT grid.
+
+    A PSD given on ``len(noise_psd)`` bins describes noise power against
+    normalized frequency. Padding the transform changes the bin spacing, so the
+    values have to be re-evaluated at the new frequencies; using them
+    positionally would silently reassign each value to a different frequency.
+    """
+    n_psd = len(noise_psd)
+    if n_psd == n_fft:
+        return noise_psd
+
+    source = scipy_fft.fftfreq(n_psd)
+    target = scipy_fft.fftfreq(n_fft)
+    order = np.argsort(source)
+    return np.interp(target, source[order], noise_psd[order])
 
 
 # =============================================================================
@@ -665,7 +720,7 @@ def ambiguity_function(
     max_doppler: Optional[float] = None,
     n_delay: int = 256,
     n_doppler: int = 256,
-) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.complexfloating]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute the ambiguity function of a signal.
 
@@ -694,7 +749,9 @@ def ambiguity_function(
     dopplers : ndarray
         Doppler frequency values in Hz.
     af : ndarray
-        Ambiguity function (2D, complex).
+        Ambiguity function magnitude (2D, real), normalized so its peak is 1.
+        The complex surface is reduced to ``abs()`` before returning; the
+        return annotation used to say complex, which it never was (gh-20).
 
     Examples
     --------
@@ -734,7 +791,7 @@ def cross_ambiguity(
     max_doppler: Optional[float] = None,
     n_delay: int = 256,
     n_doppler: int = 256,
-) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.complexfloating]]:
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     Compute the cross-ambiguity function between two signals.
 
@@ -762,7 +819,9 @@ def cross_ambiguity(
     dopplers : ndarray
         Doppler frequency values in Hz.
     caf : ndarray
-        Cross-ambiguity function (2D, complex).
+        Cross-ambiguity function magnitude (2D, real). As with
+        ``ambiguity_function``, the complex surface is reduced to ``abs()``
+        before returning (gh-20).
 
     Examples
     --------

@@ -3,7 +3,7 @@
 ## Project Overview
 
 Python port of the U.S. Naval Research Laboratory's Tracker Component Library (TCL).
-**Version:** 1.19.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
+**Version:** 2.0.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
 
 ## Quick Reference
 

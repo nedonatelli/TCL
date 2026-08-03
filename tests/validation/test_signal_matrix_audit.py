@@ -327,10 +327,8 @@ class TestCFARUtilities:
         assert len(cluster_detections(np.zeros(10, dtype=bool))) == 0
 
     def test_snr_loss_positive_and_decreasing(self):
-        for method in ("ca", "go", "so", "os"):
-            loss16 = snr_loss(16, method=method)
-            loss64 = snr_loss(64, method=method)
-            assert loss16 > loss64 > 0
+        # Only CA has a derived expression; the other three raise (gh-20).
+        assert snr_loss(16, pfa=1e-6) > snr_loss(64, pfa=1e-6) > 0
 
 
 # =============================================================================

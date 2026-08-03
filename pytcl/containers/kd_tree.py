@@ -23,6 +23,7 @@ from pytcl.containers.base import (
     BaseSpatialIndex,
     NearestNeighborResult,  # Backward compatibility alias
     NeighborResult,
+    validate_neighbor_count,
     validate_query_input,
 )
 
@@ -171,6 +172,7 @@ class KDTree(BaseSpatialIndex):
         array([[0, 1]])
         """
         X = validate_query_input(X, self.n_features)
+        validate_neighbor_count(k, self.n_samples)
         n_queries = X.shape[0]
         _logger.debug("KDTree.query: %d queries, k=%d", n_queries, k)
 
@@ -431,6 +433,7 @@ class BallTree(BaseSpatialIndex):
             Indices and distances of k nearest neighbors.
         """
         X = validate_query_input(X, self.n_features)
+        validate_neighbor_count(k, self.n_samples)
         n_queries = X.shape[0]
         all_indices = np.zeros((n_queries, k), dtype=np.intp)
         all_distances = np.full((n_queries, k), np.inf)

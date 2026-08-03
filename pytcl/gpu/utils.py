@@ -120,8 +120,8 @@ def is_cupy_available() -> bool:
     Examples
     --------
     >>> from pytcl.gpu.utils import is_cupy_available
-    >>> if is_cupy_available():
-    ...     print("CUDA GPU available")
+    >>> isinstance(is_cupy_available(), bool)
+    True
     """
     if not is_available("cupy"):
         _logger.debug("CuPy not installed")
@@ -229,11 +229,11 @@ def get_array_module(arr: ArrayLike) -> Any:
     >>> get_array_module(x_gpu) is cp  # doctest: +SKIP
     True
 
-    >>> # With MLX array
-    >>> import mlx.core as mx
-    >>> x_mlx = mx.array([1, 2, 3])
-    >>> xp = get_array_module(x_mlx)
-    >>> xp.__name__
+    >>> # With an MLX array, on a machine that has MLX
+    >>> import mlx.core as mx  # doctest: +SKIP
+    >>> x_mlx = mx.array([1, 2, 3])  # doctest: +SKIP
+    >>> xp = get_array_module(x_mlx)  # doctest: +SKIP
+    >>> xp.__name__  # doctest: +SKIP
     'mlx.core'
     """
     # Check for MLX array first

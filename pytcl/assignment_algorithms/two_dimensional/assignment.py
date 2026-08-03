@@ -151,9 +151,9 @@ def auction(
     Returns
     -------
     row_ind : ndarray
-        Row indices of optimal assignment.
+        Row indices of the assignment.
     col_ind : ndarray
-        Column indices of optimal assignment.
+        Column indices of the assignment.
     total_cost : float
         Total cost of the assignment.
 
@@ -167,6 +167,21 @@ def auction(
     The auction algorithm treats rows as "bidders" and columns as "objects".
     Each iteration, unassigned bidders bid for their most desirable objects,
     and objects are assigned to the highest bidder.
+
+    **The result is epsilon-optimal, not optimal.** This docstring used to call
+    it an optimal assignment (gh-20). The auction algorithm terminates when no
+    bidder can improve by more than ``epsilon``, so the returned cost may
+    exceed the true minimum by up to ``n * epsilon`` for an ``n``-row problem.
+
+    The bound is achieved exactly: for integer costs with
+    ``epsilon < 1/n`` the gap is smaller than one unit, so the assignment is
+    genuinely optimal. Both the bound and that integer-cost guarantee were
+    verified during the v2 audit. For real-valued costs, scale epsilon down or
+    use ``hungarian`` when exactness matters more than speed.
+
+    See Also
+    --------
+    hungarian : Exact O(n^3) assignment.
 
     References
     ----------
