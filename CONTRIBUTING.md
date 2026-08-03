@@ -124,10 +124,29 @@ wrong — passing tests are necessary, not sufficient.
 1. **Branch** — never commit to `main`. One feature branch per unit of work.
 2. **Validate** — new or changed numerical code needs a *validation-class*
    test (see below), not just a smoke test.
-3. **PR with green CI** — lint (ruff, pinned), types (mypy, pinned), tests
+3. **Run the full suite locally if you touch `pytcl/gpu`** — on Apple
+   Silicon:
+
+   ```bash
+   PYTCL_REQUIRE_MLX=1 .venv/bin/python -m pytest
+   ```
+
+   149 tests do not execute without MLX, and **no CI runner has it**, so they
+   skip on every runner and the build is green whatever their state. That is
+   how 36 broken tests once reached `main`: a refactor missed three files
+   under `tests/unit/`, every runner skipped them, and CI reported 14/14.
+   `PYTCL_REQUIRE_MLX=1` turns "MLX is absent" from a silent skip into an
+   error, so the command cannot be satisfied by accident. Every run also
+   prints which backends were missing.
+
+   The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
+   an NVIDIA machine; the `GPU` workflow covers it on demand.
+4. **PR with green CI** — lint (ruff, pinned), types (mypy, pinned), tests
    (3 OS × 3 Python), docstring examples (`--doctest-modules`), docs build
-   (zero docutils errors), benchmarks (SLO enforcement on main).
-4. **Merge, then release deliberately** — releases follow the checklist in
+   (zero docutils errors), benchmarks (SLO enforcement on main). Green CI
+   means the checks that ran passed; it does not mean the GPU layers were
+   exercised.
+5. **Merge, then release deliberately** — releases follow the checklist in
    the Release Process section; every user-facing fix gets a CHANGELOG entry
    when it lands, not at release time.
 
