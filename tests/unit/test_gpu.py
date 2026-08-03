@@ -395,16 +395,20 @@ class TestGPUEKF:
     def test_batch_ekf_predict(self):
         """Test batch EKF prediction."""
         from pytcl.gpu.ekf import batch_ekf_predict
-        from pytcl.gpu.utils import is_gpu_available, to_cpu
+        from pytcl.gpu.utils import get_array_module, is_gpu_available, to_cpu
 
         if not is_gpu_available():
             pytest.skip("No GPU available")
 
         def f(x):
-            return np.array([x[0] + x[1], x[1] * 0.99])
+            xp = get_array_module(x)
+            return xp.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=1)
 
         def F_jac(x):
-            return np.array([[1, 1], [0, 0.99]])
+            xp = get_array_module(x)
+            return xp.broadcast_to(
+                xp.array([[1.0, 1.0], [0.0, 0.99]]), (x.shape[0], 2, 2)
+            )
 
         n_tracks = 5
         state_dim = 2
@@ -425,13 +429,14 @@ class TestGPUUKF:
     def test_batch_ukf_predict(self):
         """Test batch UKF prediction."""
         from pytcl.gpu.ukf import batch_ukf_predict
-        from pytcl.gpu.utils import is_gpu_available, to_cpu
+        from pytcl.gpu.utils import get_array_module, is_gpu_available, to_cpu
 
         if not is_gpu_available():
             pytest.skip("No GPU available")
 
         def f(x):
-            return np.array([x[0] + x[1], x[1] * 0.99])
+            xp = get_array_module(x)
+            return xp.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=1)
 
         n_tracks = 5
         state_dim = 2

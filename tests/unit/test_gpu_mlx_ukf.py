@@ -27,6 +27,7 @@ from pytcl.dynamic_estimation.kalman.unscented import (
 )
 from pytcl.gpu import ukf as gpu_ukf
 from pytcl.gpu._backend import get_compute_backend
+from pytcl.gpu.utils import get_array_module
 
 pytest.importorskip("mlx.core", reason="MLX required for the GPU backend")
 
@@ -69,6 +70,44 @@ def _h_polar(x):
     return np.array([np.hypot(x[0], x[1]), np.arctan2(x[1], x[0])])
 
 
+# Batched forms for the GPU entry points, which hand the callback the whole
+# (N, dim) array on the active backend. The per-item versions above stay for
+# the CPU references. Nothing here may mix a host numpy array into a device
+# expression: MLX and CuPy both reject that.
+
+
+def _f_linear_batched(x):
+    xp = get_array_module(x)
+    return x @ xp.array(F_CV.T)
+
+
+def _h_linear_batched(x):
+    xp = get_array_module(x)
+    return x @ xp.array(H_POS.T)
+
+
+def _f_ct_batched(x):
+    xp = get_array_module(x)
+    speed = xp.sqrt(x[:, 2] ** 2 + x[:, 3] ** 2)
+    damp = 1.0 - 1e-3 * speed
+    return xp.stack(
+        [
+            x[:, 0] + DT * x[:, 2],
+            x[:, 1] + DT * x[:, 3],
+            damp * x[:, 2],
+            damp * x[:, 3],
+        ],
+        axis=1,
+    )
+
+
+def _h_polar_batched(x):
+    xp = get_array_module(x)
+    return xp.stack(
+        [xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2), xp.arctan2(x[:, 1], x[:, 0])], axis=1
+    )
+
+
 def _problem(seed=5, n_tracks=8):
     rng = np.random.default_rng(seed)
     x = rng.normal(size=(n_tracks, 4)) * np.array([100.0, 100.0, 10.0, 10.0])
@@ -107,7 +146,7 @@ class TestBatchVsCPULoop:
 
     def test_predict_matches_cpu_loop(self):
         x, P, Q, _, _ = _problem(seed=11)
-        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=ALPHA)
+        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct_batched, Q, alpha=ALPHA)
         px, pP = np.asarray(pred.x), np.asarray(pred.P)
         assert px.shape == x.shape
         assert pP.shape == P.shape
@@ -118,7 +157,7 @@ class TestBatchVsCPULoop:
 
     def test_update_matches_cpu_loop(self):
         x, P, Q, R, z = _problem(seed=13)
-        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_polar, R, alpha=ALPHA)
+        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_polar_batched, R, alpha=ALPHA)
         for i in range(len(x)):
             ref = ukf_update(x[i], P[i], z[i], _h_polar, R, alpha=ALPHA)
             assert _max_rel(np.asarray(upd.x)[i], ref.x) < RTOL32
@@ -133,11 +172,19 @@ class TestBatchVsCPULoop:
     def test_filter_class_matches_functions(self):
         x, P, Q, R, z = _problem(seed=19, n_tracks=5)
         ukf = gpu_ukf.CuPyUnscentedKalmanFilter(
-            state_dim=4, meas_dim=2, f=_f_ct, h=_h_polar, Q=Q, R=R, alpha=ALPHA
+            state_dim=4,
+            meas_dim=2,
+            f=_f_ct_batched,
+            h=_h_polar_batched,
+            Q=Q,
+            R=R,
+            alpha=ALPHA,
         )
         result = ukf.predict_update(x, P, z)
-        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=ALPHA)
-        upd = gpu_ukf.batch_ukf_update(pred.x, pred.P, z, _h_polar, R, alpha=ALPHA)
+        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct_batched, Q, alpha=ALPHA)
+        upd = gpu_ukf.batch_ukf_update(
+            pred.x, pred.P, z, _h_polar_batched, R, alpha=ALPHA
+        )
         assert _max_rel(np.asarray(result.x), np.asarray(upd.x)) < 1e-6
         assert _max_rel(np.asarray(result.P), np.asarray(upd.P)) < 1e-6
 
@@ -147,7 +194,7 @@ class TestReducesToLinearKF:
 
     def test_predict_equals_kf_predict(self):
         x, P, Q, _, _ = _problem(seed=23)
-        pred = gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=ALPHA)
+        pred = gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=ALPHA)
         for i in range(len(x)):
             ref = kf_predict(x[i], P[i], F_CV, Q)
             assert _max_rel(np.asarray(pred.x)[i], ref.x) < RTOL32
@@ -155,7 +202,7 @@ class TestReducesToLinearKF:
 
     def test_update_equals_kf_update(self):
         x, P, _, R, z = _problem(seed=29)
-        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_linear, R, alpha=ALPHA)
+        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_linear_batched, R, alpha=ALPHA)
         for i in range(len(x)):
             ref = kf_update(x[i], P[i], z[i], H_POS, R)
             assert _max_rel(np.asarray(upd.x)[i], ref.x) < RTOL32
@@ -260,26 +307,26 @@ class TestFloat32AlphaWarning:
     def test_warns_below_threshold(self):
         x, P, Q, _, _ = _problem(seed=43, n_tracks=2)
         with pytest.warns(RuntimeWarning, match="alpha"):
-            gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=1e-3)
+            gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=1e-3)
 
     def test_update_warns_below_threshold(self):
         x, P, _, R, z = _problem(seed=43, n_tracks=2)
         with pytest.warns(RuntimeWarning, match="float32"):
-            gpu_ukf.batch_ukf_update(x, P, z, _h_linear, R, alpha=1e-3)
+            gpu_ukf.batch_ukf_update(x, P, z, _h_linear_batched, R, alpha=1e-3)
 
     def test_no_warning_at_recommended_alpha(self):
         x, P, Q, _, _ = _problem(seed=43, n_tracks=2)
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=ALPHA)
+            gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=ALPHA)
 
     def test_alpha_is_not_modified(self):
         """The warning must not change the caller's alpha behind their back."""
         x, P, Q, _, _ = _problem(seed=43, n_tracks=3)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            small = gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=1e-3)
-        large = gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=ALPHA)
+            small = gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=1e-3)
+        large = gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=ALPHA)
         # If alpha had been silently raised these would agree bit for bit.
         assert not np.allclose(np.asarray(small.P), np.asarray(large.P))
 
@@ -298,7 +345,7 @@ class TestNoBackendErrorContract:
         monkeypatch.setattr(_backend.MLXBackend, "__init__", _no_backend)
         x, P, Q, _, _ = _problem(seed=47, n_tracks=2)
         with pytest.raises(DependencyError) as exc:
-            gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=ALPHA)
+            gpu_ukf.batch_ukf_predict(x, P, _f_linear_batched, Q, alpha=ALPHA)
         message = str(exc.value)
         assert "cupy" in message
         assert "mlx" in message
@@ -313,7 +360,9 @@ class TestAlphaPrecisionScaling:
         for alpha in (1e-3, 1e-2, 1e-1, 1.0):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
-                pred = gpu_ukf.batch_ukf_predict(x, P, _f_linear, Q, alpha=alpha)
+                pred = gpu_ukf.batch_ukf_predict(
+                    x, P, _f_linear_batched, Q, alpha=alpha
+                )
             errs.append(
                 max(
                     _max_rel(np.asarray(pred.x)[i], kf_predict(x[i], P[i], F_CV, Q).x)
