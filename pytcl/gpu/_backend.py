@@ -103,6 +103,9 @@ class Backend:
     def stack(self, arrays: Any, axis: int = 0) -> Any:
         raise NotImplementedError
 
+    def reshape(self, a: Any, shape: Any) -> Any:
+        raise NotImplementedError
+
     def take_along_axis(self, a: Any, indices: Any, axis: int) -> Any:
         raise NotImplementedError
 
@@ -216,6 +219,9 @@ class CuPyBackend(Backend):
 
     def stack(self, arrays: Any, axis: int = 0) -> Any:
         return self._cp.stack(arrays, axis=axis)
+
+    def reshape(self, a: Any, shape: Any) -> Any:
+        return self._cp.reshape(a, shape)
 
     def take_along_axis(self, a: Any, indices: Any, axis: int) -> Any:
         return self._cp.take_along_axis(a, indices, axis)
@@ -337,6 +343,9 @@ class MLXBackend(Backend):
 
     def stack(self, arrays: Any, axis: int = 0) -> Any:
         return self._mx.stack(list(arrays), axis=axis)
+
+    def reshape(self, a: Any, shape: Any) -> Any:
+        return self._mx.reshape(a, shape)
 
     def take_along_axis(self, a: Any, indices: Any, axis: int) -> Any:
         return self._mx.take_along_axis(a, indices, axis=axis)

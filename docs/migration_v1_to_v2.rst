@@ -186,6 +186,69 @@ MHT ``track.score``
    M-of-N — so tracking behaviour is unchanged.
 
 
+GPU filters
+-----------
+
+Filter callbacks take the whole batch
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The three GPU filters took three different callback contracts.
+``batch_ekf_predict`` converted the states to NumPy and called ``f`` once per
+track; ``batch_ukf_predict`` looped per sigma point of per track;
+``CuPyParticleFilter.predict`` passed the whole population through as a device
+array. A callback written for one could not be handed to another, and nothing
+documented the difference.
+
+They now share one rule: **a callback receives** ``(N, dim)`` **on the active
+backend and returns** ``(N, out_dim)``. Jacobian callbacks return
+``(N, out_dim, dim)``. ``N`` is whatever batch the filter holds -- tracks for
+the EKF, ``n_tracks * (2 * state_dim + 1)`` sigma points for the UKF, particles
+for the particle filter -- so one callable serves all three.
+
+.. code-block:: python
+
+   # v1.x: called once per track with a 1-D NumPy state
+   def f(x):
+       return np.array([x[0] + x[1], x[1] * 0.99])
+
+   def F_jacobian(x):
+       return np.array([[1.0, 1.0], [0.0, 0.99]])
+
+   # v2.0.0: called once with the whole batch, on the active backend
+   from pytcl.gpu.utils import get_array_module
+
+   def f(x):
+       xp = get_array_module(x)
+       return xp.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=1)
+
+   def F_jacobian(x):
+       xp = get_array_module(x)
+       J = xp.array([[1.0, 1.0], [0.0, 0.99]])
+       return xp.broadcast_to(J, (x.shape[0], 2, 2))
+
+Write callbacks against :func:`pytcl.gpu.utils.get_array_module` rather than
+NumPy directly. Mixing a host NumPy array into the expression raises
+``TypeError`` on CuPy, which refuses implicit conversion of a device array;
+MLX permits it, so a callback tested only on Apple Silicon can still fail on
+CUDA.
+
+``CuPyParticleFilter`` already followed this contract and is unchanged.
+
+Two consequences beyond consistency. The callback is invoked once rather than
+once per item: a 200-track UKF prediction went from 1000 invocations to 1, and
+a numerical Jacobian over the same batch from 1000 to 5. And the state no
+longer round-trips to the host in the middle of the filter.
+
+The numerical-Jacobian step now follows the backend's precision
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When ``F_jacobian`` or ``H_jacobian`` is ``None``, the central-difference step
+defaults to ``1e-7`` on a float64 backend and ``1e-3`` on float32. The old code
+used ``1e-7`` unconditionally, which is below what float32 can resolve -- on
+MLX it returned rounding noise rather than a derivative. Pass ``eps``
+explicitly if you need the old value.
+
+
 Storage and I/O
 ---------------
 
