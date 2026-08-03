@@ -42,6 +42,9 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
+from pytcl.gpu._backend import get_compute_backend
+from pytcl.gpu.utils import get_array_module
+
 pytest.importorskip("mlx.core", reason="MLX required (Apple Silicon GPU backend)")
 
 from pytcl.dynamic_estimation.kalman.extended import (  # noqa: E402
@@ -57,8 +60,20 @@ from pytcl.gpu.ekf import (  # noqa: E402
 from pytcl.gpu.utils import to_cpu  # noqa: E402
 
 # ~100x float32 eps (1.19e-07). See module docstring for measured errors.
-RTOL = 1e-5
+# Tolerances follow the backend's precision. Before the callback contract
+# changed, the dynamics ran on the host in numpy float64 and only the results
+# moved to the device; now they run wherever the data lives, so on MLX they
+# run in float32. CuPy is float64 and loses nothing.
+FLOAT32 = not get_compute_backend().supports_float64
+
+RTOL = 2e-5 if FLOAT32 else 1e-5
 ATOL = 1e-6
+
+# The innovation z - h(x) subtracts near-equal quantities, so its relative
+# error is set by cancellation rather than by the filter: measured 8.2e-5 at
+# float32 where |y| falls to 8e-4, while x, P, S, K and the likelihood all
+# stay under 6e-6. Giving it its own tolerance keeps the other five tight.
+Y_RTOL = 2e-4 if FLOAT32 else 1e-5
 
 OMEGA = 0.05
 T = 1.0
@@ -104,6 +119,51 @@ def _H_polar(x):
     return np.array([[x[0] / r, x[1] / r, 0, 0], [-x[1] / r2, x[0] / r2, 0, 0]])
 
 
+# The batch entry points take the whole (N, dim) array on the active backend
+# and call the callback once; the CPU references below still take one state at
+# a time. Both forms are kept so the comparison stays between implementations.
+
+
+def _f_ct_batched(x):
+    xp = get_array_module(x)
+    s, c = float(np.sin(OMEGA * T)), float(np.cos(OMEGA * T))
+    return xp.stack(
+        [
+            x[:, 0] + s / OMEGA * x[:, 2] - (1 - c) / OMEGA * x[:, 3],
+            x[:, 1] + (1 - c) / OMEGA * x[:, 2] + s / OMEGA * x[:, 3],
+            c * x[:, 2] - s * x[:, 3],
+            s * x[:, 2] + c * x[:, 3],
+        ],
+        axis=1,
+    )
+
+
+def _F_ct_batched(x):
+    xp = get_array_module(x)
+    return xp.broadcast_to(xp.array(_F_ct(None)), (x.shape[0], 4, 4))
+
+
+def _h_polar_batched(x):
+    xp = get_array_module(x)
+    return xp.stack(
+        [xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2), xp.arctan2(x[:, 1], x[:, 0])], axis=1
+    )
+
+
+def _H_polar_batched(x):
+    xp = get_array_module(x)
+    r2 = x[:, 0] ** 2 + x[:, 1] ** 2
+    r = xp.sqrt(r2)
+    zero = x[:, 0] * 0.0
+    return xp.stack(
+        [
+            xp.stack([x[:, 0] / r, x[:, 1] / r, zero, zero], axis=1),
+            xp.stack([-x[:, 1] / r2, x[:, 0] / r2, zero, zero], axis=1),
+        ],
+        axis=1,
+    )
+
+
 def _random_spd(rng, n, scale=0.3, jitter=0.5):
     a = rng.normal(size=(n, n)) * scale
     return a @ a.T + jitter * np.eye(n)
@@ -134,7 +194,7 @@ class TestBatchEKFvsCPU:
     @pytest.mark.parametrize("seed", SEEDS)
     def test_predict_matches_cpu_loop(self, seed):
         x, P, Q, _, _ = _problem(seed)
-        pred = batch_ekf_predict(x, P, _f_ct, _F_ct, Q)
+        pred = batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q)
         gx, gP = to_cpu(pred.x), to_cpu(pred.P)
         assert gx.shape == x.shape
         assert gP.shape == P.shape
@@ -146,7 +206,7 @@ class TestBatchEKFvsCPU:
     @pytest.mark.parametrize("seed", SEEDS)
     def test_update_matches_cpu_loop(self, seed):
         x, P, Q, R, z = _problem(seed)
-        upd = batch_ekf_update(x, P, z, _h_polar, _H_polar, R)
+        upd = batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R)
         gx, gP = to_cpu(upd.x), to_cpu(upd.P)
         gy, gS, gK = to_cpu(upd.y), to_cpu(upd.S), to_cpu(upd.K)
         glik = to_cpu(upd.likelihood)
@@ -154,23 +214,30 @@ class TestBatchEKFvsCPU:
             ref = ekf_update(x[i], P[i], z[i], _h_polar, _H_polar(x[i]), R)
             assert_allclose(gx[i], ref.x, rtol=RTOL, atol=ATOL)
             assert_allclose(gP[i], ref.P, rtol=RTOL, atol=ATOL)
-            assert_allclose(gy[i], ref.y, rtol=RTOL, atol=ATOL)
+            assert_allclose(gy[i], ref.y, rtol=Y_RTOL, atol=ATOL)
             assert_allclose(gS[i], ref.S, rtol=RTOL, atol=ATOL)
             assert_allclose(gK[i], ref.K, rtol=1e-4, atol=ATOL)
             assert_allclose(glik[i], ref.likelihood, rtol=RTOL, atol=ATOL)
 
     def test_predicted_covariance_symmetric_and_pd(self):
         x, P, Q, _, _ = _problem(3)
-        gP = to_cpu(batch_ekf_predict(x, P, _f_ct, _F_ct, Q).P)
+        gP = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q).P)
         assert_allclose(gP, np.swapaxes(gP, -2, -1), rtol=0, atol=0)
         assert np.all(np.linalg.eigvalsh(gP) > 0)
 
     def test_numerical_jacobian_matches_analytic(self):
         """F_jacobian=None must fall back to central differences."""
         x, P, Q, _, _ = _problem(4)
-        analytic = to_cpu(batch_ekf_predict(x, P, _f_ct, _F_ct, Q).P)
-        numeric = to_cpu(batch_ekf_predict(x, P, _f_ct, None, Q).P)
-        assert_allclose(numeric, analytic, rtol=1e-4, atol=1e-5)
+        analytic = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q).P)
+        numeric = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, None, Q).P)
+        # The finite-difference step follows the backend's precision: 1e-7 on
+        # float64, 1e-3 on float32 because a smaller step is below what float32
+        # resolves. That step carries a roundoff floor of eps32/step ~ 1.2e-4
+        # in the Jacobian, and P = F P F' + Q propagates it quadratically --
+        # measured 2.2e-3 absolute against a |P| of about 3. An absolute
+        # tolerance is the right instrument: the relative error reaches 3.5e-2
+        # on the near-zero entries, where it says nothing.
+        assert_allclose(numeric, analytic, rtol=0, atol=5e-3 if FLOAT32 else 1e-5)
 
     def test_per_track_Q_and_R(self):
         """3-D Q/R (per-track noise) must not be broadcast over."""
@@ -179,8 +246,8 @@ class TestBatchEKFvsCPU:
         rng = np.random.default_rng(99)
         Q = np.stack([_random_spd(rng, 4, 0.05, 0.01) for _ in range(n)])
         R = np.stack([_random_spd(rng, 2, 0.05, 0.05) for _ in range(n)])
-        pred = batch_ekf_predict(x, P, _f_ct, _F_ct, Q)
-        upd = batch_ekf_update(x, P, z, _h_polar, _H_polar, R)
+        pred = batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q)
+        upd = batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R)
         gpP, guP, gux = to_cpu(pred.P), to_cpu(upd.P), to_cpu(upd.x)
         for i in range(n):
             rp = ekf_predict(x[i], P[i], _f_ct, _F_ct(x[i]), Q[i])
@@ -194,10 +261,10 @@ class TestBatchEKFvsCPU:
         ekf = CuPyExtendedKalmanFilter(
             state_dim=4,
             meas_dim=2,
-            f=_f_ct,
-            h=_h_polar,
-            F_jacobian=_F_ct,
-            H_jacobian=_H_polar,
+            f=_f_ct_batched,
+            h=_h_polar_batched,
+            F_jacobian=_F_ct_batched,
+            H_jacobian=_H_polar_batched,
             Q=Q,
             R=R,
         )
@@ -211,7 +278,9 @@ class TestBatchEKFvsCPU:
 
     def test_class_defaults_construct_on_device(self):
         """Q=None/R=None defaults must be built with backend ops, not CuPy."""
-        ekf = CuPyExtendedKalmanFilter(state_dim=4, meas_dim=2, f=_f_ct, h=_h_polar)
+        ekf = CuPyExtendedKalmanFilter(
+            state_dim=4, meas_dim=2, f=_f_ct_batched, h=_h_polar_batched
+        )
         assert_allclose(to_cpu(ekf.Q), np.eye(4) * 0.01, rtol=0, atol=1e-9)
         assert_allclose(to_cpu(ekf.R), np.eye(2), rtol=0, atol=1e-9)
 
@@ -241,8 +310,10 @@ class TestErrorIsPrecisionLimited:
         errors = {}
         for n in (4, 32, 256, 1024):
             x, P, Q, R, z = _problem(seed=11, n_tracks=n)
-            gx = to_cpu(batch_ekf_predict(x, P, _f_ct, _F_ct, Q).x)
-            gu = to_cpu(batch_ekf_update(x, P, z, _h_polar, _H_polar, R).x)
+            gx = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q).x)
+            gu = to_cpu(
+                batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R).x
+            )
             ref_p = np.stack(
                 [ekf_predict(x[i], P[i], _f_ct, _F_ct(x[i]), Q).x for i in range(n)]
             )
@@ -264,13 +335,19 @@ class TestErrorIsPrecisionLimited:
         """The sharpest form of the same claim: a track's answer must not
         depend on who else is in the batch."""
         x, P, Q, R, z = _problem(seed=11, n_tracks=1024)
-        big_p = to_cpu(batch_ekf_predict(x, P, _f_ct, _F_ct, Q).x)
-        big_u = to_cpu(batch_ekf_update(x, P, z, _h_polar, _H_polar, R).x)
+        big_p = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q).x)
+        big_u = to_cpu(
+            batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R).x
+        )
         for i in (0, 7, 511, 1023):
             sl = slice(i, i + 1)
-            solo_p = to_cpu(batch_ekf_predict(x[sl], P[sl], _f_ct, _F_ct, Q).x)
+            solo_p = to_cpu(
+                batch_ekf_predict(x[sl], P[sl], _f_ct_batched, _F_ct_batched, Q).x
+            )
             solo_u = to_cpu(
-                batch_ekf_update(x[sl], P[sl], z[sl], _h_polar, _H_polar, R).x
+                batch_ekf_update(
+                    x[sl], P[sl], z[sl], _h_polar_batched, _H_polar_batched, R
+                ).x
             )
             assert_allclose(big_p[i], solo_p[0], rtol=0, atol=0)
             assert_allclose(big_u[i], solo_u[0], rtol=1e-6, atol=1e-6)
@@ -279,14 +356,14 @@ class TestErrorIsPrecisionLimited:
         """Absolute proof of scale: error is a few float32 ulps of the data."""
         eps32 = float(np.finfo(np.float32).eps)
         x, P, Q, R, z = _problem(seed=12, n_tracks=64)
-        gu = to_cpu(batch_ekf_update(x, P, z, _h_polar, _H_polar, R).x)
+        gu = to_cpu(batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R).x)
         ref_u = np.stack(
             [
                 ekf_update(x[i], P[i], z[i], _h_polar, _H_polar(x[i]), R).x
                 for i in range(len(x))
             ]
         )
-        gp = to_cpu(batch_ekf_predict(x, P, _f_ct, _F_ct, Q).P)
+        gp = to_cpu(batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q).P)
         ref_p = np.stack(
             [ekf_predict(x[i], P[i], _f_ct, _F_ct(x[i]), Q).P for i in range(len(x))]
         )
@@ -318,7 +395,15 @@ class TestLinearReduction:
 
     def test_predict_reduces_to_linear_kf(self):
         x, P, F, _, Q, _, _ = _linear_problem()
-        pred = batch_ekf_predict(x, P, lambda xi: F @ xi, lambda xi: F, Q)
+        pred = batch_ekf_predict(
+            x,
+            P,
+            lambda xs: xs @ get_array_module(xs).array(F.T),
+            lambda xs: get_array_module(xs).broadcast_to(
+                get_array_module(xs).array(F), (xs.shape[0], *F.shape)
+            ),
+            Q,
+        )
         gx, gP = to_cpu(pred.x), to_cpu(pred.P)
         for i in range(len(x)):
             ref = kf_predict(x[i], P[i], F, Q)
@@ -327,7 +412,16 @@ class TestLinearReduction:
 
     def test_update_reduces_to_linear_kf(self):
         x, P, _, H, _, R, z = _linear_problem()
-        upd = batch_ekf_update(x, P, z, lambda xi: H @ xi, lambda xi: H, R)
+        upd = batch_ekf_update(
+            x,
+            P,
+            z,
+            lambda xs: xs @ get_array_module(xs).array(H.T),
+            lambda xs: get_array_module(xs).broadcast_to(
+                get_array_module(xs).array(H), (xs.shape[0], *H.shape)
+            ),
+            R,
+        )
         gx, gP, gK, gS = (
             to_cpu(upd.x),
             to_cpu(upd.P),
@@ -359,7 +453,15 @@ class TestLinearReduction:
             ref = batch_kf_predict(x, P, F, Q)
         except DependencyError:
             pytest.skip("batch_kf_predict is still CuPy-only on this machine")
-        ekf = batch_ekf_predict(x, P, lambda xi: F @ xi, lambda xi: F, Q)
+        ekf = batch_ekf_predict(
+            x,
+            P,
+            lambda xs: xs @ get_array_module(xs).array(F.T),
+            lambda xs: get_array_module(xs).broadcast_to(
+                get_array_module(xs).array(F), (xs.shape[0], *F.shape)
+            ),
+            Q,
+        )
         assert_allclose(to_cpu(ekf.x), to_cpu(ref.x), rtol=RTOL, atol=ATOL)
         assert_allclose(to_cpu(ekf.P), to_cpu(ref.P), rtol=RTOL, atol=ATOL)
 
@@ -379,12 +481,17 @@ class TestInputHandling:
         pred = batch_ekf_predict(
             mx.array(x.astype(np.float32)),
             mx.array(P.astype(np.float32)),
-            _f_ct,
-            _F_ct,
+            _f_ct_batched,
+            _F_ct_batched,
             Q,
         )
         upd = batch_ekf_update(
-            pred.x, pred.P, mx.array(z.astype(np.float32)), _h_polar, _H_polar, R
+            pred.x,
+            pred.P,
+            mx.array(z.astype(np.float32)),
+            _h_polar_batched,
+            _H_polar_batched,
+            R,
         )
         gx = to_cpu(upd.x)
         assert np.all(np.isfinite(gx))
@@ -399,7 +506,7 @@ class TestInputHandling:
         x_int = np.array([[10, 10, 1, 1], [12, 8, 2, 1]])
         P = np.tile(np.eye(4) * 0.5, (2, 1, 1))
         Q = np.eye(4) * 0.01
-        gx = to_cpu(batch_ekf_predict(x_int, P, _f_ct, _F_ct, Q).x)
+        gx = to_cpu(batch_ekf_predict(x_int, P, _f_ct_batched, _F_ct_batched, Q).x)
         for i in range(2):
             ref = ekf_predict(x_int[i], P[i], _f_ct, _F_ct(x_int[i]), Q)
             assert_allclose(gx[i], ref.x, rtol=RTOL, atol=ATOL)
