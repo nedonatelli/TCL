@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-02
+
+The first major release, and a breaking one. It closes the v2 correctness audit:
+every design-level finding is now resolved, documented as a bounded limitation,
+or removed.
+
+Six API changes require action from callers, all listed under **Changed** and
+**Removed** below. The short version:
+
+- `query(k > n_samples)` on any spatial index now raises instead of padding the
+  result with index `0`;
+- the INS/GNSS position covariance is in `[rad, rad, m]`, not meters;
+- `detection_probability` no longer takes `swerling_case`, `snr_loss` requires
+  `pfa`, and `nuttall_q` is deprecated in favour of `rician_cdf`;
+- `SQLStorage` drops `db_type`, and `open(mode="r")` no longer creates a
+  database;
+- `pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex` are
+  deleted.
+
+A per-change upgrade guide with before/after snippets is in
+`docs/migration_v1_to_v2.rst`. There is no deprecation cycle: the removed names
+are gone and the changed signatures raise rather than warn.
+
+What the audit kept finding is worth stating once, because it shaped the
+release. Almost none of the defects were broken computation. They were things
+never connected and never checked: three CI gates that verified nothing, a
+constraint filter whose tests asserted only feasibility, a parametrized suite
+that silently collapsed from 31 cases to 2, an exported function carrying a
+1e199 error with no caller, a `swerling_case` argument whose five branches were
+identical, a `num_fragmentations` field initialized and never incremented, and
+an io suite of 134 tests that worked around a defect rather than asserting
+against it.
+
+The gates added in response are the durable part. Every exported function is
+now reached by a test -- 951 of 951, with no standing exemptions -- and the
+allowlist that made the debt visible has been emptied rather than grown.
+
+
 ### Changed
 
 - **Six storage contract gaps in `pytcl.io`**

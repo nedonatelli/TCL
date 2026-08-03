@@ -66,6 +66,7 @@ state estimation.
    :caption: Reference & Learning
 
    troubleshooting
+   migration_v1_to_v2
    migration_guide
    gap_analysis
    roadmap
