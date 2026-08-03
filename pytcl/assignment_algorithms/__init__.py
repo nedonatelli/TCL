@@ -34,6 +34,8 @@ from pytcl.assignment_algorithms.jpda import (
 )
 from pytcl.assignment_algorithms.nd_assignment import (
     AssignmentNDResult,
+    SparseCostTensor,
+    assignment_nd,
     auction_assignment_nd,
     detect_dimension_conflicts,
     greedy_assignment_nd,
@@ -41,10 +43,13 @@ from pytcl.assignment_algorithms.nd_assignment import (
     validate_cost_tensor,
 )
 from pytcl.assignment_algorithms.network_flow import (
+    FlowEdge,
     FlowStatus,
     MinCostFlowResult,
+    assignment_from_flow_solution,
     assignment_to_flow_network,
     min_cost_assignment_via_flow,
+    min_cost_flow_simplex,
     min_cost_flow_successive_shortest_paths,
 )
 from pytcl.assignment_algorithms.three_dimensional import (
@@ -68,6 +73,16 @@ from pytcl.assignment_algorithms.two_dimensional import (
 )
 
 __all__ = [
+    # Min-cost flow. The split here had no rationale: min_cost_flow_simplex was
+    # private while its result type was public and its input type FlowEdge was
+    # not, so the function could not be called even if imported. The migration
+    # guide names it as a replacement for the removed network_simplex module.
+    "FlowEdge",
+    "min_cost_flow_simplex",
+    "assignment_from_flow_solution",
+    # N-dimensional assignment
+    "SparseCostTensor",
+    "assignment_nd",
     # 2D Assignment
     "hungarian",
     "auction",

@@ -58,6 +58,8 @@ from pytcl.gravity.spherical_harmonics import (
     associated_legendre,
     associated_legendre_derivative,
     associated_legendre_scaled,
+    clear_legendre_cache,
+    get_legendre_cache_info,
     gravity_acceleration,
     legendre_scaling_factors,
     spherical_harmonic_sum,
@@ -88,6 +90,9 @@ from pytcl.gravity.tides import (
 )
 
 __all__ = [
+    # Cache management, consistent with pytcl.magnetism.
+    "clear_legendre_cache",
+    "get_legendre_cache_info",
     # Spherical harmonics
     "associated_legendre",
     "associated_legendre_derivative",

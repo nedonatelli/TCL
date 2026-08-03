@@ -170,11 +170,11 @@ Counts are measured from the packages themselves rather than asserted;
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
      - 9
-     - 43
+     - 48
      - 2-D, 3-D and N-D assignment, gating, JPDA, k-best, network flow
    * - ``astronomical``
      - 9
-     - 145
+     - 147
      - Orbital mechanics, SGP4/SDP4, TLEs, ephemerides, reference frames
    * - ``containers``
      - 8
@@ -202,11 +202,11 @@ Counts are measured from the packages themselves rather than asserted;
      - Frame conversions, rotations, Jacobians, map projections
    * - ``gravity``
      - 5
-     - 55
+     - 57
      - Spherical-harmonic gravity, EGM, solid Earth tides
    * - ``navigation``
      - 5
-     - 94
+     - 98
      - Geodesy, great circle and rhumb line, INS and INS/GNSS
    * - ``clustering``
      - 4

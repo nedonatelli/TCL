@@ -75,6 +75,7 @@ from pytcl.astronomical.orbital_mechanics import (
     vis_viva,
 )
 from pytcl.astronomical.reference_frames import (
+    clear_transformation_cache,
     earth_rotation_angle,  # Time utilities; Precession; Nutation
     ecef_to_eci,  # Time utilities
     eci_to_ecef,
@@ -110,6 +111,9 @@ from pytcl.astronomical.reference_frames import (
     tod_to_itrf,
     tod_to_mod,
     true_obliquity,
+)
+from pytcl.astronomical.reference_frames import (
+    get_cache_info as get_transformation_cache_info,
 )
 from pytcl.astronomical.relativity import (
     C_LIGHT,  # Physical constants; Schwarzschild metric; Time dilation
@@ -190,6 +194,9 @@ from pytcl.astronomical.tle import (
 )
 
 __all__ = [
+    # Cache management, consistent with pytcl.magnetism.
+    "clear_transformation_cache",
+    "get_transformation_cache_info",
     # Time systems - Julian dates
     "cal_to_jd",
     "jd_to_cal",

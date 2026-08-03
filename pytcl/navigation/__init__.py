@@ -16,12 +16,14 @@ from pytcl.navigation.geodesy import (
     SPHERE,
     WGS84,
     Ellipsoid,
+    clear_geodesy_cache,
     direct_geodetic,
     ecef_to_enu,
     ecef_to_geodetic,
     ecef_to_ned,
     enu_to_ecef,
     geodetic_to_ecef,
+    get_geodesy_cache_info,
     haversine_distance,
     inverse_geodetic,
     ned_to_ecef,
@@ -33,6 +35,7 @@ from pytcl.navigation.great_circle import (
     IntersectionResult,
     WaypointResult,
     angular_distance,
+    clear_great_circle_cache,
     cross_track_distance,
     destination_point,
     great_circle_azimuth,
@@ -44,6 +47,9 @@ from pytcl.navigation.great_circle import (
     great_circle_tdoa_loc,
     great_circle_waypoint,
     great_circle_waypoints,
+)
+from pytcl.navigation.great_circle import (
+    get_cache_info as get_great_circle_cache_info,
 )
 from pytcl.navigation.ins import (
     A_EARTH,  # Constants; State representation; Gravity and Earth rate
@@ -117,6 +123,14 @@ from pytcl.navigation.rhumb import (
 )
 
 __all__ = [
+    # Cache management. magnetism has exported its equivalent all along;
+    # these were private for no stated reason. The great-circle accessor is
+    # aliased because "get_cache_info" says nothing about which of the two
+    # caches in this package it reports.
+    "clear_geodesy_cache",
+    "get_geodesy_cache_info",
+    "clear_great_circle_cache",
+    "get_great_circle_cache_info",
     # Ellipsoids
     "Ellipsoid",
     "WGS84",
