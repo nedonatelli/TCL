@@ -42,6 +42,7 @@ from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 from pytcl.dynamic_estimation.kalman.unscented import ukf_predict, ukf_update
 from pytcl.gpu import utils as gpu_utils
+from pytcl.gpu.utils import get_array_module
 
 # Gating is per-layer, not per-file. The module used to open with
 # `pytest.importorskip("mlx.core")`, which meant the numpy-shim algorithm tests
@@ -438,6 +439,50 @@ def _H_polar(x):
     return np.array([[x[0] / r, x[1] / r, 0, 0], [-x[1] / r2, x[0] / r2, 0, 0]])
 
 
+# The GPU entry points take the whole batch; the CPU references take one
+# item. Both forms are kept so the comparison is between implementations
+# rather than between two spellings of the same loop.
+
+
+def _f_ct_batched(x):
+    xp = get_array_module(x)
+    c, s = float(np.cos(0.05)), float(np.sin(0.05))
+    return xp.stack(
+        [x[:, 0] + c * x[:, 2], x[:, 1] + s * x[:, 3], 0.99 * x[:, 2], 0.99 * x[:, 3]],
+        axis=1,
+    )
+
+
+def _F_ct_batched(x):
+    xp = get_array_module(x)
+    c, s = float(np.cos(0.05)), float(np.sin(0.05))
+    J = xp.array(
+        [
+            [1.0, 0.0, c, 0.0],
+            [0.0, 1.0, 0.0, s],
+            [0.0, 0.0, 0.99, 0.0],
+            [0.0, 0.0, 0.0, 0.99],
+        ]
+    )
+    return xp.broadcast_to(J, (x.shape[0], 4, 4))
+
+
+def _h_polar_batched(x):
+    xp = get_array_module(x)
+    r = xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)
+    return xp.stack([r, xp.arctan2(x[:, 1], x[:, 0])], axis=1)
+
+
+def _H_polar_batched(x):
+    xp = get_array_module(x)
+    r2 = x[:, 0] ** 2 + x[:, 1] ** 2
+    r = xp.sqrt(r2)
+    zero = x[:, 0] * 0.0
+    row0 = xp.stack([x[:, 0] / r, x[:, 1] / r, zero, zero], axis=1)
+    row1 = xp.stack([-x[:, 1] / r2, x[:, 0] / r2, zero, zero], axis=1)
+    return xp.stack([row0, row1], axis=1)
+
+
 def _ekf_problem(seed=7, n_tracks=15):
     rng = np.random.default_rng(seed)
     x = rng.normal(size=(n_tracks, 4)) + np.array([10.0, 10.0, 1.0, 1.0])
@@ -456,7 +501,7 @@ class TestBatchEKFMath:
 
     def test_predict_matches_cpu_loop(self):
         x, P, Q, _, _ = _ekf_problem()
-        pred = gpu_ekf.batch_ekf_predict(x, P, _f_ct, _F_ct, Q)
+        pred = gpu_ekf.batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q)
         for i in range(len(x)):
             ref = ekf_predict(x[i], P[i], _f_ct, _F_ct(x[i]), Q)
             assert_allclose(pred.x[i], ref.x, atol=ATOL)
@@ -464,13 +509,13 @@ class TestBatchEKFMath:
 
     def test_numerical_jacobian_close_to_analytic(self):
         x, P, Q, _, _ = _ekf_problem()
-        analytic = gpu_ekf.batch_ekf_predict(x, P, _f_ct, _F_ct, Q)
-        numeric = gpu_ekf.batch_ekf_predict(x, P, _f_ct, None, Q)
+        analytic = gpu_ekf.batch_ekf_predict(x, P, _f_ct_batched, _F_ct_batched, Q)
+        numeric = gpu_ekf.batch_ekf_predict(x, P, _f_ct_batched, None, Q)
         assert_allclose(numeric.P, analytic.P, atol=1e-6)
 
     def test_update_matches_cpu_loop(self):
         x, P, Q, R, z = _ekf_problem()
-        upd = gpu_ekf.batch_ekf_update(x, P, z, _h_polar, _H_polar, R)
+        upd = gpu_ekf.batch_ekf_update(x, P, z, _h_polar_batched, _H_polar_batched, R)
         for i in range(len(x)):
             ref = ekf_update(x[i], P[i], z[i], _h_polar, _H_polar(x[i]), R)
             assert_allclose(upd.x[i], ref.x, atol=ATOL)
@@ -482,10 +527,10 @@ class TestBatchEKFMath:
         ekf = gpu_ekf.CuPyExtendedKalmanFilter(
             state_dim=4,
             meas_dim=2,
-            f=_f_ct,
-            h=_h_polar,
-            F_jacobian=_F_ct,
-            H_jacobian=_H_polar,
+            f=_f_ct_batched,
+            h=_h_polar_batched,
+            F_jacobian=_F_ct_batched,
+            H_jacobian=_H_polar_batched,
             Q=Q,
             R=R,
         )
@@ -513,7 +558,7 @@ class TestBatchUKFMath:
     @pytest.mark.parametrize("alpha,tol", [(1e-3, 1e-6), (0.5, 1e-10)])
     def test_predict_matches_cpu_loop(self, alpha, tol):
         x, P, Q, _, _ = _ekf_problem(seed=11)
-        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=alpha)
+        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct_batched, Q, alpha=alpha)
         for i in range(len(x)):
             ref = ukf_predict(x[i], P[i], _f_ct, Q, alpha=alpha)
             assert_allclose(pred.x[i], ref.x, atol=tol)
@@ -522,7 +567,7 @@ class TestBatchUKFMath:
     @pytest.mark.parametrize("alpha,tol", [(1e-3, 1e-6), (0.5, 1e-10)])
     def test_update_matches_cpu_loop(self, alpha, tol):
         x, P, Q, R, z = _ekf_problem(seed=13)
-        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_polar, R, alpha=alpha)
+        upd = gpu_ukf.batch_ukf_update(x, P, z, _h_polar_batched, R, alpha=alpha)
         for i in range(len(x)):
             ref = ukf_update(x[i], P[i], z[i], _h_polar, R, alpha=alpha)
             assert_allclose(upd.x[i], ref.x, atol=tol)
@@ -549,7 +594,7 @@ class TestBatchUKFMath:
         x, P, Q, _, _ = _ekf_problem(seed=17)
         errs = {}
         for alpha in (1e-3, 1e-1, 1.0):
-            pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=alpha)
+            pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct_batched, Q, alpha=alpha)
             errs[alpha] = max(
                 np.abs(
                     pred.x[i] - ukf_predict(x[i], P[i], _f_ct, Q, alpha=alpha).x
@@ -590,11 +635,19 @@ class TestBatchUKFMath:
     def test_ukf_class_matches_functions(self):
         x, P, Q, R, z = _ekf_problem(seed=19, n_tracks=5)
         ukf = gpu_ukf.CuPyUnscentedKalmanFilter(
-            state_dim=4, meas_dim=2, f=_f_ct, h=_h_polar, Q=Q, R=R, alpha=0.5
+            state_dim=4,
+            meas_dim=2,
+            f=_f_ct_batched,
+            h=_h_polar_batched,
+            Q=Q,
+            R=R,
+            alpha=0.5,
         )
         result = ukf.predict_update(x, P, z)
-        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=0.5)
-        upd = gpu_ukf.batch_ukf_update(pred.x, pred.P, z, _h_polar, R, alpha=0.5)
+        pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct_batched, Q, alpha=0.5)
+        upd = gpu_ukf.batch_ukf_update(
+            pred.x, pred.P, z, _h_polar_batched, R, alpha=0.5
+        )
         assert_allclose(result.x, upd.x, atol=ATOL)
         assert_allclose(result.P, upd.P, atol=ATOL)
 

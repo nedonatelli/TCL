@@ -24,21 +24,36 @@ in float32 (float64 is unsupported on the MLX GPU stream), so results on
 Apple Silicon are precision-limited to roughly 1e-5 relative error against
 the CPU reference in :mod:`pytcl.dynamic_estimation.kalman.extended`.
 
-The user-supplied ``f``, ``h``, and Jacobian callables are always evaluated on
-the CPU in NumPy float64: they are arbitrary Python functions and cannot be
-assumed to accept device arrays.
+The user-supplied ``f``, ``h``, and Jacobian callables receive the whole batch
+as a single device array of the active backend and are called once, not once
+per track. This is the contract shared by every filter in :mod:`pytcl.gpu`:
+
+- ``f(x)`` and ``h(x)`` take ``(N, state_dim)`` and return ``(N, out_dim)``;
+- ``F_jacobian(x)`` and ``H_jacobian(x)`` take ``(N, state_dim)`` and return
+  ``(N, out_dim, state_dim)``.
+
+Write them against :func:`pytcl.gpu.utils.get_array_module` rather than NumPy
+directly, so the same callable runs on either backend. A callable that mixes a
+host NumPy array into the expression raises ``TypeError`` on CuPy.
 
 Examples
 --------
 >>> from pytcl.gpu.ekf import batch_ekf_predict, batch_ekf_update
 >>> import numpy as np
 >>>
->>> # Define nonlinear dynamics (on CPU, applied per-track)
->>> def f_dynamics(x):
-...     return np.array([x[0] + x[1], x[1] * 0.99])
+>>> from pytcl.gpu.utils import get_array_module
 >>>
+>>> # Batched: x is (N, 2), and the result is (N, 2)
+>>> def f_dynamics(x):
+...     xp = get_array_module(x)
+...     return xp.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=1)
+>>>
+>>> # Batched Jacobian: (N, 2, 2), constant here so broadcast it
 >>> def F_jacobian(x):
-...     return np.array([[1, 1], [0, 0.99]])
+...     xp = get_array_module(x)
+...     return xp.broadcast_to(
+...         xp.array([[1.0, 1.0], [0.0, 0.99]]), (x.shape[0], 2, 2)
+...     )
 >>>
 >>> # Batch prediction over three tracks with a 2-D state
 >>> x = np.zeros((3, 2))
@@ -60,7 +75,6 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.gpu._backend import get_compute_backend
-from pytcl.gpu.utils import to_cpu
 
 
 class BatchEKFPrediction(NamedTuple):
@@ -106,43 +120,51 @@ class BatchEKFUpdate(NamedTuple):
 
 
 def _compute_numerical_jacobian(
-    f: Callable[[NDArray[np.floating[Any]]], NDArray[np.floating[Any]]],
-    x: NDArray[np.floating[Any]],
-    eps: float = 1e-7,
-) -> NDArray[np.floating[Any]]:
+    f: Callable[[Any], Any],
+    x: Any,
+    eps: Optional[float] = None,
+) -> Any:
     """
-    Compute numerical Jacobian using central differences.
+    Central-difference Jacobian of a batched callback.
 
     Parameters
     ----------
     f : callable
-        Function to differentiate.
-    x : ndarray
-        Point at which to evaluate Jacobian.
-    eps : float
-        Finite difference step size.
+        Maps ``(N, n)`` to ``(N, m)`` on the active backend.
+    x : array
+        Evaluation points, shape ``(N, n)``, on the active backend.
+    eps : float, optional
+        Finite-difference step. Defaults to a value matched to the backend's
+        precision: a float32 backend cannot resolve the 1e-7 step that is
+        right for float64, and using it there returns noise rather than a
+        derivative.
 
     Returns
     -------
-    J : ndarray
-        Jacobian matrix, shape (output_dim, input_dim).
+    J : array
+        Jacobians, shape ``(N, m, n)``, on the active backend.
+
+    Notes
+    -----
+    One pair of evaluations per input dimension for the whole batch, rather
+    than per item: ``2 * n`` calls instead of ``2 * N * n``.
     """
-    x = np.asarray(x, dtype=np.float64).flatten()
-    n = len(x)
-    f0 = np.asarray(f(x), dtype=np.float64).flatten()
-    m = len(f0)
+    b = get_compute_backend()
+    if eps is None:
+        eps = 1e-7 if b.supports_float64 else 1e-3
 
-    J = np.zeros((m, n))
+    x = b.asarray(x)
+    n = x.shape[1]
+    basis = b.eye(n)
+
+    columns = []
     for i in range(n):
-        x_plus = x.copy()
-        x_minus = x.copy()
-        x_plus[i] += eps
-        x_minus[i] -= eps
-        f_plus = np.asarray(f(x_plus), dtype=np.float64).flatten()
-        f_minus = np.asarray(f(x_minus), dtype=np.float64).flatten()
-        J[:, i] = (f_plus - f_minus) / (2 * eps)
+        step = basis[i] * eps
+        f_plus = b.asarray(f(x + step))
+        f_minus = b.asarray(f(x - step))
+        columns.append((f_plus - f_minus) / (2 * eps))
 
-    return J
+    return b.stack(columns, axis=-1)
 
 
 def batch_ekf_predict(
@@ -164,10 +186,12 @@ def batch_ekf_predict(
     P : array_like
         Current covariances, shape (n_tracks, state_dim, state_dim).
     f : callable
-        Nonlinear dynamics function f(x) -> x_next.
-        Applied to each track's state vector.
+        Batched dynamics. Takes the whole ``(n_tracks, state_dim)`` device
+        array and returns ``(n_tracks, state_dim)``. Called once.
     F_jacobian : callable or None
-        Jacobian of dynamics df/dx. If None, computed numerically.
+        Batched Jacobian df/dx. Takes ``(n_tracks, state_dim)`` and returns
+        ``(n_tracks, state_dim, state_dim)``. If None, computed numerically
+        with ``2 * state_dim`` evaluations of ``f`` over the whole batch.
     Q : array_like
         Process noise covariance, shape (state_dim, state_dim)
         or (n_tracks, state_dim, state_dim).
@@ -187,18 +211,22 @@ def batch_ekf_predict(
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.ekf import batch_ekf_predict
-    >>> # Nonlinear dynamics: coordinated turn
+    >>> from pytcl.gpu.utils import get_array_module
+    >>> # Coordinated turn, evaluated for the whole batch at once
     >>> def f_turn(x):
-    ...     w = 0.01  # Turn rate
-    ...     return np.array([x[0] + np.cos(w)*x[2],
-    ...                      x[1] + np.sin(w)*x[3],
-    ...                      x[2], x[3]])
-    >>> def F_jacobian(x):
+    ...     xp = get_array_module(x)
     ...     w = 0.01
-    ...     return np.array([[1, 0, np.cos(w), 0],
-    ...                      [0, 1, np.sin(w), 0],
-    ...                      [0, 0, 1, 0],
-    ...                      [0, 0, 0, 1]])
+    ...     return xp.stack([x[:, 0] + xp.cos(w) * x[:, 2],
+    ...                      x[:, 1] + xp.sin(w) * x[:, 3],
+    ...                      x[:, 2], x[:, 3]], axis=1)
+    >>> def F_jacobian(x):
+    ...     xp = get_array_module(x)
+    ...     w = 0.01
+    ...     J = xp.array([[1.0, 0.0, xp.cos(w).item(), 0.0],
+    ...                   [0.0, 1.0, xp.sin(w).item(), 0.0],
+    ...                   [0.0, 0.0, 1.0, 0.0],
+    ...                   [0.0, 0.0, 0.0, 1.0]])
+    ...     return xp.broadcast_to(J, (x.shape[0], 4, 4))
     >>> n_tracks = 30
     >>> x = np.random.randn(n_tracks, 4) * 0.1
     >>> P = np.tile(np.eye(4) * 0.01, (n_tracks, 1, 1))
@@ -209,38 +237,26 @@ def batch_ekf_predict(
 
     Notes
     -----
-    The nonlinear dynamics are applied on CPU (Python function), then
-    covariance propagation is performed on GPU. This is efficient when
-    the number of tracks is large relative to the cost of the dynamics.
+    Both the dynamics and the covariance propagation stay on the device. The
+    callback is invoked once for the batch rather than once per track.
     """
     b = get_compute_backend()
 
-    # Convert to numpy for dynamics evaluation. ``to_cpu`` is required because
-    # device arrays refuse implicit conversion via ``np.asarray``.
-    x_np = np.asarray(to_cpu(x), dtype=np.float64)
+    x_gpu = b.asarray(x)
     P_gpu = b.asarray(P)
     Q_gpu = b.asarray(Q)
 
-    n_tracks = x_np.shape[0]
-    state_dim = x_np.shape[1]
+    n_tracks = x_gpu.shape[0]
+    state_dim = x_gpu.shape[1]
 
-    # Apply nonlinear dynamics to each track (on CPU)
-    x_pred_np = np.zeros((n_tracks, state_dim), dtype=np.float64)
-    F_matrices = np.zeros((n_tracks, state_dim, state_dim))
-
-    for i in range(n_tracks):
-        x_i = x_np[i]
-        x_pred_np[i] = f(x_i)
-
-        # Compute Jacobian
-        if F_jacobian is not None:
-            F_matrices[i] = F_jacobian(x_i)
-        else:
-            F_matrices[i] = _compute_numerical_jacobian(f, x_i)
-
-    # Move to GPU
-    x_pred_gpu = b.asarray(x_pred_np)
-    F_gpu = b.asarray(F_matrices)
+    # One call for the whole batch. This used to convert to numpy and loop,
+    # invoking the callback once per track and once more per dimension for the
+    # numerical Jacobian.
+    x_pred_gpu = b.asarray(f(x_gpu))
+    if F_jacobian is not None:
+        F_gpu = b.asarray(F_jacobian(x_gpu))
+    else:
+        F_gpu = _compute_numerical_jacobian(f, x_gpu)
 
     # Handle Q dimensions
     if Q_gpu.ndim == 2:
@@ -280,9 +296,11 @@ def batch_ekf_update(
     z : array_like
         Measurements, shape (n_tracks, meas_dim).
     h : callable
-        Nonlinear measurement function h(x) -> z_predicted.
+        Batched measurement function. Takes ``(n_tracks, state_dim)`` and
+        returns ``(n_tracks, meas_dim)``. Called once.
     H_jacobian : callable or None
-        Jacobian of measurement function dh/dx. If None, computed numerically.
+        Batched Jacobian dh/dx. Takes ``(n_tracks, state_dim)`` and returns
+        ``(n_tracks, meas_dim, state_dim)``. If None, computed numerically.
     R : array_like
         Measurement noise covariance.
 
@@ -301,15 +319,19 @@ def batch_ekf_update(
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.ekf import batch_ekf_update
-    >>> # Polar measurement from Cartesian state
+    >>> from pytcl.gpu.utils import get_array_module
+    >>> # Polar measurement from a Cartesian state, batched
     >>> def h_polar(x):
-    ...     r = np.sqrt(x[0]**2 + x[1]**2)
-    ...     theta = np.arctan2(x[1], x[0])
-    ...     return np.array([r, theta])
+    ...     xp = get_array_module(x)
+    ...     r = xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)
+    ...     theta = xp.arctan2(x[:, 1], x[:, 0])
+    ...     return xp.stack([r, theta], axis=1)
     >>> def H_jacobian(x):
-    ...     r = np.sqrt(x[0]**2 + x[1]**2)
-    ...     return np.array([[x[0]/r, x[1]/r],
-    ...                      [-x[1]/r**2, x[0]/r**2]])
+    ...     xp = get_array_module(x)
+    ...     r = xp.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)
+    ...     row0 = xp.stack([x[:, 0] / r, x[:, 1] / r], axis=1)
+    ...     row1 = xp.stack([-x[:, 1] / r**2, x[:, 0] / r**2], axis=1)
+    ...     return xp.stack([row0, row1], axis=1)
     >>> n_tracks = 20
     >>> x = np.random.randn(n_tracks, 2)
     >>> P = np.tile(np.eye(2), (n_tracks, 1, 1))
@@ -321,35 +343,20 @@ def batch_ekf_update(
     """
     b = get_compute_backend()
 
-    # Convert to numpy for measurement evaluation. ``to_cpu`` is required
-    # because device arrays refuse implicit conversion via ``np.asarray``.
-    x_np = np.asarray(to_cpu(x), dtype=np.float64)
-    z_np = np.asarray(to_cpu(z), dtype=np.float64)
+    x_gpu = b.asarray(x)
     P_gpu = b.asarray(P)
-    z_gpu = b.asarray(z_np)
+    z_gpu = b.asarray(z)
     R_gpu = b.asarray(R)
 
-    n_tracks = x_np.shape[0]
-    state_dim = x_np.shape[1]
-    meas_dim = z_np.shape[1]
+    n_tracks = x_gpu.shape[0]
+    state_dim = x_gpu.shape[1]
+    meas_dim = z_gpu.shape[1]
 
-    # Evaluate measurement function and Jacobian for each track
-    z_pred_np = np.zeros((n_tracks, meas_dim))
-    H_matrices = np.zeros((n_tracks, meas_dim, state_dim))
-
-    for i in range(n_tracks):
-        x_i = x_np[i]
-        z_pred_np[i] = h(x_i)
-
-        if H_jacobian is not None:
-            H_matrices[i] = H_jacobian(x_i)
-        else:
-            H_matrices[i] = _compute_numerical_jacobian(h, x_i)
-
-    # Move to GPU
-    x_gpu = b.asarray(x_np)
-    z_pred_gpu = b.asarray(z_pred_np)
-    H_gpu = b.asarray(H_matrices)
+    z_pred_gpu = b.asarray(h(x_gpu))
+    if H_jacobian is not None:
+        H_gpu = b.asarray(H_jacobian(x_gpu))
+    else:
+        H_gpu = _compute_numerical_jacobian(h, x_gpu)
 
     # Handle R dimensions
     if R_gpu.ndim == 2:
