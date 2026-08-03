@@ -184,8 +184,9 @@ def gpu_cholesky(A: ArrayLike, lower: bool = True) -> NDArray[np.floating[Any]]:
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_cholesky
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.array([[4, 2], [2, 3]])
-    >>> L = gpu_cholesky(A)
+    >>> L = to_cpu(gpu_cholesky(A))
     >>> np.allclose(L @ L.T, A)
     True
     """
@@ -301,9 +302,10 @@ def gpu_qr(
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_qr
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.random.randn(4, 3)
     >>> Q, R = gpu_qr(A)
-    >>> np.allclose(Q @ R, A)
+    >>> np.allclose(to_cpu(Q) @ to_cpu(R), A)
     True
     """
     b = get_compute_backend()
@@ -336,9 +338,10 @@ def gpu_solve(A: ArrayLike, b: ArrayLike) -> NDArray[np.floating[Any]]:
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_solve
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.array([[3, 1], [1, 2]])
     >>> b = np.array([9, 8])
-    >>> x = gpu_solve(A, b)
+    >>> x = to_cpu(gpu_solve(A, b))
     >>> np.allclose(A @ x, b)
     True
     """
@@ -370,8 +373,9 @@ def gpu_inv(A: ArrayLike) -> NDArray[np.floating[Any]]:
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_inv
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.array([[1, 2], [3, 4]])
-    >>> A_inv = gpu_inv(A)
+    >>> A_inv = to_cpu(gpu_inv(A))
     >>> np.allclose(A @ A_inv, np.eye(2))
     True
     """
@@ -441,8 +445,9 @@ def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     --------
     >>> import numpy as np
     >>> from pytcl.gpu.matrix_utils import gpu_matrix_sqrt
+    >>> from pytcl.gpu.utils import to_cpu
     >>> A = np.array([[4, 0], [0, 9]])
-    >>> S = gpu_matrix_sqrt(A)
+    >>> S = to_cpu(gpu_matrix_sqrt(A))
     >>> np.allclose(S @ S, A)
     True
     """

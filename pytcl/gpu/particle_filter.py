@@ -33,8 +33,10 @@ Examples
 >>> import numpy as np
 >>>
 >>> def dynamics(particles, t):
-...     # Propagate particles through nonlinear dynamics
-...     return particles + np.random.randn(*particles.shape) * 0.1
+...     # ``particles`` lives on whichever backend is active. Keep the whole
+...     # expression on that backend: CuPy rejects a host-side numpy operand
+...     # in a binary op, so mixing in np.random.randn here raises TypeError.
+...     return particles * 0.99 + t
 >>>
 >>> def likelihood(particles, measurement):
 ...     # Compute likelihood for each particle

@@ -43,9 +43,23 @@ from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 from pytcl.dynamic_estimation.kalman.unscented import ukf_predict, ukf_update
 from pytcl.gpu import utils as gpu_utils
 
-mx = pytest.importorskip("mlx.core", reason="MLX required for GPU audit")
-
+# Gating is per-layer, not per-file. The module used to open with
+# `pytest.importorskip("mlx.core")`, which meant the numpy-shim algorithm tests
+# below -- which use neither MLX nor CuPy -- were skipped on any machine
+# without MLX, i.e. on every CI runner and on every NVIDIA box. That left the
+# CuPy code paths verified by nothing at all on the hardware they exist for.
+_HAS_MLX = is_available("mlx.core")
 _HAS_REAL_CUPY = is_available("cupy")
+
+if _HAS_MLX:
+    import mlx.core as mx
+else:  # pragma: no cover - exercised on non-Apple platforms
+    mx = None
+
+requires_mlx = pytest.mark.skipif(not _HAS_MLX, reason="MLX backend not installed")
+requires_real_cupy = pytest.mark.skipif(
+    not _HAS_REAL_CUPY, reason="requires a real CuPy install and an NVIDIA GPU"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -122,11 +136,23 @@ def _random_spd(rng, n, scale=1.0, jitter=1.0):
 
 class TestBackendDetectionTruthful:
     def test_real_machine_detection(self, detection_caches):
-        """On this arm64 Mac with MLX installed, detection must be truthful."""
-        assert gpu_utils.is_apple_silicon() is True
-        assert gpu_utils.is_mlx_available() is True
-        assert gpu_utils.is_gpu_available() is True
-        assert gpu_utils.get_backend() == "mlx"
+        """Detection must report what is actually installed, whatever that is.
+
+        This used to assert the Apple Silicon + MLX case unconditionally, which
+        was true of the machine it was written on and false of every other. The
+        assertion worth making is that the reported backend matches the
+        libraries present, on any platform.
+        """
+        assert gpu_utils.is_mlx_available() is _HAS_MLX
+        assert gpu_utils.is_cupy_available() is _HAS_REAL_CUPY
+        assert gpu_utils.is_gpu_available() is (_HAS_MLX or _HAS_REAL_CUPY)
+
+        expected = (
+            "mlx"
+            if (gpu_utils.is_apple_silicon() and _HAS_MLX)
+            else ("cupy" if _HAS_REAL_CUPY else "numpy")
+        )
+        assert gpu_utils.get_backend() == expected
 
     def test_cupy_detection_matches_reality(self, detection_caches):
         assert gpu_utils.is_cupy_available() is _HAS_REAL_CUPY
@@ -164,6 +190,7 @@ class TestBackendDetectionTruthful:
 # ---------------------------------------------------------------------------
 
 
+@requires_mlx
 class TestMLXTransfer:
     def test_float32_roundtrip_exact(self):
         x = np.random.default_rng(0).normal(size=(7, 5)).astype(np.float32)
@@ -256,6 +283,7 @@ class TestMLXTransfer:
 
 
 @pytest.mark.skipif(_HAS_REAL_CUPY, reason="only meaningful without CuPy")
+@requires_mlx
 class TestBatchOpsRunOnMLX:
     """The gap this class used to document is closed: the batch filters, the
     particle filter, and the matrix utilities are backend-dispatched and run on
@@ -503,21 +531,45 @@ class TestBatchUKFMath:
             assert_allclose(upd.S[i], ref.S, atol=tol)
             assert_allclose(upd.likelihood[i], ref.likelihood, atol=1e-6)
 
-    def test_discrepancy_shrinks_with_weight_conditioning(self):
-        """Error must be precision-limited (falls as alpha grows), not bias."""
+    def test_discrepancy_is_precision_limited_not_bias(self):
+        """Error must track weight conditioning rather than persist as a bias.
+
+        Merwe weights scale as 1/alpha^2, so float64 rounding is amplified by
+        that factor; a genuine bias in the batch implementation would not shrink
+        when the weights are conditioned.
+
+        This used to assert ``errs[1] < errs[0]`` strictly. The batch path and
+        the CPU loop can execute an identical sequence of operations and agree
+        bit-for-bit, and on an OpenBLAS runner the ill-conditioned case came out
+        at exactly 0.0 -- so the test demanded an improvement on an exact match
+        and failed. The comparisons below are therefore ``<=`` against an ulp
+        floor, with the substance carried by the absolute bounds: monotonicity
+        alone would also be satisfied by three equally large errors.
+        """
         x, P, Q, _, _ = _ekf_problem(seed=17)
-        errs = []
+        errs = {}
         for alpha in (1e-3, 1e-1, 1.0):
             pred = gpu_ukf.batch_ukf_predict(x, P, _f_ct, Q, alpha=alpha)
-            err = max(
+            errs[alpha] = max(
                 np.abs(
                     pred.x[i] - ukf_predict(x[i], P[i], _f_ct, Q, alpha=alpha).x
                 ).max()
                 for i in range(len(x))
             )
-            errs.append(err)
-        assert errs[1] < errs[0]
-        assert errs[2] <= errs[1]
+
+        for alpha, err in errs.items():
+            assert err <= 1e-12 / alpha**2, (
+                f"alpha={alpha}: error {err:.3e} exceeds the rounding level the "
+                "weight magnitude implies, which is the signature of a bias"
+            )
+
+        floor = 1e-14
+        assert errs[1e-1] <= errs[1e-3] + floor
+        assert errs[1.0] <= errs[1e-1] + floor
+
+        assert errs[1.0] < 1e-12, (
+            "well-conditioned weights must agree to machine precision"
+        )
 
     def test_sigma_point_eigh_fallback_batch(self):
         """Regression: the non-PD fallback used cp.diag on batched eigvals
@@ -758,3 +810,156 @@ class TestMatrixUtilsMath:
         batch = np.stack([_random_spd(rng, 3) for _ in range(4)])
         Sb = gpu_matrix_utils.gpu_matrix_sqrt(batch)
         assert_allclose(np.einsum("nij,njk->nik", Sb, Sb), batch, atol=1e-9)
+
+
+@requires_real_cupy
+class TestRealCuPyDevice:
+    """Assertions that only real NVIDIA hardware can settle.
+
+    Everything above validates the batch algorithms by substituting numpy for
+    cupy -- correct for the arithmetic, silent about the device path. These
+    four claims are made in comments and docstrings in ``pytcl.gpu`` and have
+    never been executed against CuPy:
+
+    - ``_cholesky_succeeded`` guards against CuPy returning NaN rather than
+      raising for a non-positive-definite input;
+    - ``batch_ekf_predict`` and ``batch_ekf_update`` call ``to_cpu`` because
+      CuPy forbids implicit conversion through ``np.asarray``;
+    - ``get_gpu_memory_info``'s CuPy branch reads a real memory pool;
+    - the batch filters agree with the CPU reference when the arrays actually
+      live on the device.
+
+    Skipped everywhere CuPy is absent, which is every machine in CI and this
+    project's development Macs. Run them on a rented GPU instance.
+    """
+
+    def test_backend_resolves_to_cupy(self):
+        from pytcl.gpu.utils import get_backend, is_cupy_available
+
+        assert is_cupy_available()
+        assert get_backend() == "cupy"
+
+    def test_transfer_round_trip_preserves_values_and_dtype(self):
+        """Unlike MLX, CuPy keeps float64 -- so this must be exact."""
+        import cupy as cp
+
+        from pytcl.gpu.utils import to_cpu, to_gpu
+
+        original = np.linspace(-3.0, 3.0, 64).reshape(8, 8)
+        device = to_gpu(original)
+
+        assert isinstance(device, cp.ndarray)
+        assert device.dtype == np.float64, "CuPy should not downcast to float32"
+        np.testing.assert_array_equal(to_cpu(device), original)
+
+    def test_np_asarray_on_a_device_array_is_refused(self):
+        """The reason ``to_cpu`` is called explicitly in the batch filters.
+
+        If CuPy ever permits implicit conversion this fails, and the comments
+        in ekf.py claiming otherwise should be revisited rather than trusted.
+        """
+        from pytcl.gpu.utils import to_gpu
+
+        device = to_gpu(np.ones(4))
+        with pytest.raises(TypeError):
+            np.asarray(device, dtype=np.float64)
+
+    def test_cholesky_of_an_indefinite_matrix_is_detected(self):
+        """The specific failure mode ``_cholesky_succeeded`` exists for.
+
+        CuPy may return an array containing NaN instead of raising
+        ``LinAlgError``. Either way ``gpu_cholesky_safe`` must report
+        ``success=False`` and still hand back a usable factor.
+        """
+        from pytcl.gpu.matrix_utils import gpu_cholesky_safe
+
+        indefinite = np.array([[1.0, 2.0], [2.0, 1.0]])
+        factor, success = gpu_cholesky_safe(indefinite)
+
+        assert success is False
+        from pytcl.gpu.utils import to_cpu
+
+        assert np.all(np.isfinite(to_cpu(factor))), (
+            "regularized factor contains non-finite entries, so the NaN guard "
+            "did not catch CuPy's failure mode"
+        )
+
+    def test_cholesky_of_a_positive_definite_matrix_succeeds(self):
+        """Guard the guard: if every input reported failure the test above
+        would pass for a broken implementation."""
+        from pytcl.gpu.matrix_utils import gpu_cholesky_safe
+        from pytcl.gpu.utils import to_cpu
+
+        spd = np.array([[4.0, 1.0], [1.0, 3.0]])
+        factor, success = gpu_cholesky_safe(spd)
+
+        assert success is True
+        lower = to_cpu(factor)
+        np.testing.assert_allclose(lower @ lower.T, spd, atol=1e-10)
+
+    def test_memory_info_reports_a_real_device(self):
+        from pytcl.gpu.utils import get_gpu_memory_info
+
+        info = get_gpu_memory_info()
+
+        assert info["backend"] == "cupy"
+        assert info["total"] > 0, "no device total reported"
+        assert 0 <= info["used"] <= info["total"]
+
+    def test_batch_kalman_on_device_matches_the_cpu_reference(self):
+        """The whole point of the package, run where it is meant to run."""
+        from pytcl.gpu.kalman import batch_kf_predict, batch_kf_update
+        from pytcl.gpu.utils import to_cpu, to_gpu
+
+        rng = np.random.default_rng(11)
+        n_tracks, n, m = 32, 4, 2
+        x = rng.normal(size=(n_tracks, n))
+        P = np.stack([_random_spd(rng, n) for _ in range(n_tracks)])
+        F = np.eye(n) + np.eye(n, k=1)
+        Q = np.eye(n) * 0.1
+        H = np.zeros((m, n))
+        H[0, 0] = H[1, 2] = 1.0
+        R = np.eye(m) * 0.5
+        z = rng.normal(size=(n_tracks, m))
+
+        predicted = batch_kf_predict(to_gpu(x), to_gpu(P), F, Q)
+        updated = batch_kf_update(predicted.x, predicted.P, to_gpu(z), H, R)
+
+        device_x = to_cpu(updated.x)
+        device_P = to_cpu(updated.P)
+        for i in range(n_tracks):
+            reference_pred = kf_predict(x[i], P[i], F, Q)
+            reference = kf_update(reference_pred.x, reference_pred.P, z[i], H, R)
+            np.testing.assert_allclose(device_x[i], reference.x, atol=1e-9)
+            np.testing.assert_allclose(device_P[i], reference.P, atol=1e-9)
+
+    def test_batch_ekf_on_device_matches_the_cpu_reference(self):
+        """Exercises the ``to_cpu`` conversion the dynamics callback needs."""
+        from pytcl.gpu.ekf import batch_ekf_predict
+        from pytcl.gpu.utils import to_cpu, to_gpu
+
+        rng = np.random.default_rng(12)
+        n_tracks, n = 16, 2
+        x = rng.normal(size=(n_tracks, n))
+        P = np.stack([_random_spd(rng, n) for _ in range(n_tracks)])
+        Q = np.stack([np.eye(n) * 0.01] * n_tracks)
+
+        def dynamics(state):
+            return np.array([state[0] + state[1], state[1] * 0.99])
+
+        def jacobian(state):
+            return np.array([[1.0, 1.0], [0.0, 0.99]])
+
+        predicted = batch_ekf_predict(to_gpu(x), to_gpu(P), dynamics, jacobian, Q)
+        device_x = to_cpu(predicted.x)
+        device_P = to_cpu(predicted.P)
+
+        for i in range(n_tracks):
+            # The batch entry point takes the Jacobian as a callable and
+            # evaluates it per track at the prior state; the CPU one takes the
+            # already-evaluated matrix. Passing the callable to both would raise
+            # here rather than on the device, which is a confusing place to
+            # discover it.
+            reference = ekf_predict(x[i], P[i], dynamics, jacobian(x[i]), Q[i])
+            np.testing.assert_allclose(device_x[i], reference.x, atol=1e-9)
+            np.testing.assert_allclose(device_P[i], reference.P, atol=1e-9)
