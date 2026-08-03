@@ -997,22 +997,28 @@ class TestRealCuPyDevice:
         P = np.stack([_random_spd(rng, n) for _ in range(n_tracks)])
         Q = np.stack([np.eye(n) * 0.01] * n_tracks)
 
-        def dynamics(state):
-            return np.array([state[0] + state[1], state[1] * 0.99])
+        def dynamics(states):
+            """Batched, per the pytcl.gpu contract: (N, 2) -> (N, 2)."""
+            xp = get_array_module(states)
+            return xp.stack([states[:, 0] + states[:, 1], states[:, 1] * 0.99], axis=1)
 
-        def jacobian(state):
-            return np.array([[1.0, 1.0], [0.0, 0.99]])
+        def jacobian(states):
+            xp = get_array_module(states)
+            J = xp.array([[1.0, 1.0], [0.0, 0.99]])
+            return xp.broadcast_to(J, (states.shape[0], 2, 2))
+
+        def dynamics_single(state):
+            return np.array([state[0] + state[1], state[1] * 0.99])
 
         predicted = batch_ekf_predict(to_gpu(x), to_gpu(P), dynamics, jacobian, Q)
         device_x = to_cpu(predicted.x)
         device_P = to_cpu(predicted.P)
 
+        # The CPU reference still takes one state and an already-evaluated
+        # Jacobian matrix, so the comparison is between implementations rather
+        # than between two spellings of the same call.
+        J_single = np.array([[1.0, 1.0], [0.0, 0.99]])
         for i in range(n_tracks):
-            # The batch entry point takes the Jacobian as a callable and
-            # evaluates it per track at the prior state; the CPU one takes the
-            # already-evaluated matrix. Passing the callable to both would raise
-            # here rather than on the device, which is a confusing place to
-            # discover it.
-            reference = ekf_predict(x[i], P[i], dynamics, jacobian(x[i]), Q[i])
+            reference = ekf_predict(x[i], P[i], dynamics_single, J_single, Q[i])
             np.testing.assert_allclose(device_x[i], reference.x, atol=1e-9)
             np.testing.assert_allclose(device_P[i], reference.P, atol=1e-9)
