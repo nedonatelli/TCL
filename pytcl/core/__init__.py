@@ -11,10 +11,26 @@ This module provides foundational functionality used throughout the library:
 """
 
 from pytcl.core.array_utils import (
+    block_diag,
     column_vector,
+    is_positive_definite,
+    is_positive_semidefinite,
+    make_readonly,
+    meshgrid_ij,
+    nearest_positive_definite,
+    normalize_vector,
+    outer_product,
+    repmat,
     row_vector,
+    safe_cholesky,
+    skew_symmetric,
+    unskew,
+    unvec,
+    vec,
     wrap_to_2pi,
+    wrap_to_360,
     wrap_to_pi,
+    wrap_to_pm180,
     wrap_to_range,
 )
 from pytcl.core.constants import (
@@ -126,12 +142,32 @@ __all__ = [
     "ensure_square_matrix",
     "ensure_symmetric",
     "ensure_positive_definite",
-    # Array utilities
-    "wrap_to_pi",
-    "wrap_to_2pi",
-    "wrap_to_range",
+    # Array utilities. array_utils is a public module of general-purpose
+    # helpers and every public name in it is re-exported here. The previous
+    # selection had no rationale: wrap_to_pi/wrap_to_2pi/wrap_to_range were
+    # exported while wrap_to_360/wrap_to_pm180 were not, and column_vector and
+    # row_vector while vec and unvec were not.
+    "block_diag",
     "column_vector",
+    "is_positive_definite",
+    "is_positive_semidefinite",
+    "make_readonly",
+    "meshgrid_ij",
+    "nearest_positive_definite",
+    "normalize_vector",
+    "outer_product",
+    "repmat",
     "row_vector",
+    "safe_cholesky",
+    "skew_symmetric",
+    "unskew",
+    "unvec",
+    "vec",
+    "wrap_to_2pi",
+    "wrap_to_360",
+    "wrap_to_pi",
+    "wrap_to_pm180",
+    "wrap_to_range",
     # Optional dependencies
     "is_available",
     "import_optional",
