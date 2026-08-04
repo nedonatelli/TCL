@@ -47,6 +47,19 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Changed
 
+- **Breaking:** `NRLMSISE00` is renamed `SimplifiedThermosphere`, `nrlmsise00`
+  to `simplified_thermosphere`, `NRLMSISE00Output` to `ThermosphereState`, and
+  the module moves from `pytcl.atmosphere.nrlmsise00` to
+  `pytcl.atmosphere.thermosphere`. It never implemented NRLMSISE-00, which
+  needs NOAA coefficient tables this library does not ship; it computes
+  per-species exponential profiles with floors. Arguments and return fields are
+  unchanged. Above ~200 km it agrees with published NRLMSISE-00 within a factor
+  of two; below ~86 km it is up to 50x wrong and
+  `us_standard_atmosphere_1976` should be used. The limits are now documented
+  and pinned by validation tests (gh-79).
+
+### Changed
+
 - **Breaking:** the GPU filter callbacks now take the whole batch. ``f``,
   ``h`` and the Jacobian callables passed to ``batch_ekf_predict``,
   ``batch_ekf_update``, ``batch_ukf_predict`` and ``batch_ukf_update`` receive

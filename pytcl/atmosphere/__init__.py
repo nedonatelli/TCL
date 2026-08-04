@@ -37,11 +37,11 @@ from pytcl.atmosphere.models import (
     true_airspeed_from_mach,
     us_standard_atmosphere_1976,
 )
-from pytcl.atmosphere.nrlmsise00 import (
-    NRLMSISE00,
+from pytcl.atmosphere.thermosphere import (
     F107Index,
-    NRLMSISE00Output,
-    nrlmsise00,
+    SimplifiedThermosphere,
+    ThermosphereState,
+    simplified_thermosphere,
 )
 
 __all__ = [
@@ -53,10 +53,10 @@ __all__ = [
     "mach_number",
     "true_airspeed_from_mach",
     # NRLMSISE-00 High-Fidelity Model
-    "NRLMSISE00",
-    "NRLMSISE00Output",
+    "SimplifiedThermosphere",
+    "ThermosphereState",
     "F107Index",
-    "nrlmsise00",
+    "simplified_thermosphere",
     # Atmosphere constants
     "T0",
     "P0",

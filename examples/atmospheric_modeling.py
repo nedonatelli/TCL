@@ -18,7 +18,7 @@ import plotly.graph_objects as go
 import plotly.subplots as sp
 
 from pytcl.atmosphere import (
-    NRLMSISE00,
+    SimplifiedThermosphere,
     us_standard_atmosphere_1976,
 )
 
@@ -39,7 +39,7 @@ def plot_density_vs_altitude():
     altitudes_m = altitudes_km * 1000
 
     # Quiet solar activity (F107=70, Ap=0)
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
     output_quiet = model(
         latitude=np.radians(45) * np.ones_like(altitudes_m),
         longitude=np.radians(-75) * np.ones_like(altitudes_m),
@@ -133,7 +133,7 @@ def plot_composition_profile():
     altitudes_km = np.linspace(80, 500, 200)
     altitudes_m = altitudes_km * 1000
 
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
     output = model(
         latitude=np.zeros_like(altitudes_m),
         longitude=np.zeros_like(altitudes_m),
@@ -194,7 +194,7 @@ def plot_temperature_profile():
     )
     altitudes_m = altitudes_km * 1000
 
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
 
     # Different solar activity levels
     conditions = [
@@ -256,7 +256,7 @@ def plot_solar_activity_effect():
     # Vary F107 from quiet to stormy
     f107_range = np.linspace(50, 300, 50)
 
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
     densities = []
     temperatures = []
 
@@ -331,7 +331,7 @@ def plot_composition_transitions():
     altitudes_km = np.linspace(70, 300, 300)
     altitudes_m = altitudes_km * 1000
 
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
     output = model(
         latitude=np.zeros_like(altitudes_m),
         longitude=np.zeros_like(altitudes_m),

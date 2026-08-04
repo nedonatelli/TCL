@@ -8,7 +8,7 @@ This document provides a detailed comparison between the Python port (pytcl) and
 
 **Overall Completeness: 100%** ✅
 
-The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,400+ functions** across **180+ modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and NRLMSISE-00 atmosphere modeling.
+The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,400+ functions** across **180+ modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and thermosphere density modeling.
 
 **Documentation Status: Phase 3 Complete** ✅
 
@@ -210,7 +210,9 @@ Atmospheric Models
 
 ✅ **Complete:**
 
-- NRLMSISE-00 (high-fidelity thermosphere density model)
+- Barometric thermosphere model with F10.7/Ap coupling (``SimplifiedThermosphere``).
+  Not NRLMSISE-00: see gh-79. Usable above ~200 km; below ~86 km use the
+  U.S. Standard Atmosphere instead.
 - U.S. Standard Atmosphere 1976 / ISA
 - Simple exponential model
 - Polytropic atmosphere model
@@ -453,13 +455,20 @@ Summary Table
 Full Parity Achieved
 --------------------
 
-As of v1.13.2 (March 2, 2026), **all gaps have been closed**:
+As of v1.13.2 (March 2, 2026), the gaps below were addressed. One of them
+was closed by a model that did not do what its name said; see gh-79 and the
+entry marked with a warning:
 
-✅ **NRLMSISE-00 Atmosphere Model (v1.13.2+)**
+⚠️ **Barometric thermosphere model (v1.13.2+, corrected in 2.0.0)**
 
-High-fidelity thermosphere model with solar/geomagnetic activity corrections.
+Shipped as ``NRLMSISE00`` and described here as high-fidelity. It is not
+NRLMSISE-00, which needs NOAA harmonic coefficient tables this library does
+not distribute; it computes per-species exponential profiles with floors.
+Renamed to ``SimplifiedThermosphere`` in 2.0.0 (gh-79). Agrees with published
+NRLMSISE-00 to within a factor of ~2 above 200 km, and is up to 50x wrong
+below 86 km.
 
-- **Location**: ``pytcl.atmosphere.nrlmsise00``
+- **Location**: ``pytcl.atmosphere.thermosphere``
 - **Functions**: ``get_density()``, ``get_composition()``, ``get_temperature()``
 - Exospheric temperature with F10.7 and Kp index dependencies
 - Atmospheric density for altitudes 0-1000 km (extends to 1000 km)

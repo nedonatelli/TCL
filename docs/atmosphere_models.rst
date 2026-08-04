@@ -27,7 +27,7 @@ Key Parameters
 
 - **Ap Index**: Magnetic planetary three-hour index
   - Linear-scale counterpart of Kp (Kp 3 corresponds to Ap 15)
-  - This is the geomagnetic input of ``pytcl``'s ``nrlmsise00`` (``ap`` parameter)
+  - This is the geomagnetic input of ``pytcl``'s ``simplified_thermosphere`` (``ap`` parameter)
 
 Applications
 ~~~~~~~~~~~~
@@ -54,10 +54,10 @@ Basic Usage
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
    # Get atmospheric density at ISS altitude
-   output = nrlmsise00(
+   output = simplified_thermosphere(
        latitude=np.deg2rad(51.6),   # ISS inclination (radians)
        longitude=0.0,
        altitude=400e3,              # meters
@@ -80,7 +80,7 @@ Density Calculation
    # Density varies with altitude (the model accepts array inputs)
    altitudes_km = np.linspace(200, 500, 50)
 
-   output = nrlmsise00(
+   output = simplified_thermosphere(
        latitude=0.0,
        longitude=0.0,
        altitude=altitudes_km * 1e3,  # meters
@@ -109,9 +109,9 @@ Get individual species densities (number/m³):
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
-   output = nrlmsise00(
+   output = simplified_thermosphere(
        latitude=0.0,
        longitude=0.0,
        altitude=400e3,
@@ -123,7 +123,7 @@ Get individual species densities (number/m³):
        ap=15.0,
    )
 
-   # NRLMSISE00Output fields (number densities in m^-3):
+   # ThermosphereState fields (number densities in m^-3):
    #   n2_density   N2 (dominant at low altitude)
    #   o2_density   O2
    #   o_density    Atomic O (dominant at ~400 km)
@@ -153,7 +153,7 @@ Calculate drag force on a satellite:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
    # Satellite parameters
    altitude_km = 400.0
@@ -172,7 +172,7 @@ Calculate drag force on a satellite:
    ap = 7.0         # Planetary magnetic index (Kp ~ 2)
 
    # Calculate atmospheric density
-   rho = nrlmsise00(
+   rho = simplified_thermosphere(
        latitude=np.deg2rad(latitude_deg),
        longitude=np.deg2rad(longitude_deg),
        altitude=altitude_km * 1e3,
@@ -209,7 +209,7 @@ Comparison with in-situ measurements:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
    # ISS accelerometer-derived density measurements (example)
    measured_data = [
@@ -232,7 +232,7 @@ Comparison with in-situ measurements:
 
    errors = []
    for data in measured_data:
-       model_density = nrlmsise00(
+       model_density = simplified_thermosphere(
            altitude=data["alt"] * 1e3,
            **model_params
        ).density
@@ -253,7 +253,7 @@ Observe density changes with different solar activity levels:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
    import matplotlib.pyplot as plt
 
    # Fixed parameters
@@ -266,7 +266,7 @@ Observe density changes with different solar activity levels:
    densities_solar = []
 
    for f107 in f107_values:
-       rho = nrlmsise00(
+       rho = simplified_thermosphere(
            latitude=lat,
            longitude=lon,
            altitude=alt,
@@ -284,7 +284,7 @@ Observe density changes with different solar activity levels:
    densities_geomag = []
 
    for ap in ap_values:
-       rho = nrlmsise00(
+       rho = simplified_thermosphere(
            latitude=lat,
            longitude=lon,
            altitude=alt,
@@ -344,7 +344,7 @@ Use NRLMSISE-00 in SGP4 propagator:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
    # Inside a propagation loop, evaluate density at the current
    # geodetic position and epoch of the satellite state:
@@ -353,7 +353,7 @@ Use NRLMSISE-00 in SGP4 propagator:
        # geodetic latitude/longitude/altitude and the epoch to
        # (year, day_of_year, seconds_in_day) ...
 
-       rho = nrlmsise00(
+       rho = simplified_thermosphere(
            latitude=lat,              # radians
            longitude=lon,             # radians
            altitude=alt,              # meters

@@ -8,7 +8,7 @@ and composition profiles across altitude range -5 to 1000 km.
 import numpy as np
 import pytest
 
-from pytcl.atmosphere import NRLMSISE00Output, nrlmsise00
+from pytcl.atmosphere import ThermosphereState, simplified_thermosphere
 
 
 class TestNRLMSISE00Basic:
@@ -16,7 +16,7 @@ class TestNRLMSISE00Basic:
 
     def test_scalar_inputs(self):
         """Test model with scalar inputs."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.radians(45),
             longitude=np.radians(-75),
             altitude=400_000,  # 400 km
@@ -28,7 +28,7 @@ class TestNRLMSISE00Basic:
             ap=5,
         )
 
-        assert isinstance(output, NRLMSISE00Output)
+        assert isinstance(output, ThermosphereState)
         assert isinstance(output.density, float)
         assert isinstance(output.temperature, float)
         assert output.density > 0
@@ -38,7 +38,7 @@ class TestNRLMSISE00Basic:
         """Test model with array inputs."""
         alts = np.array([100_000, 200_000, 400_000, 800_000])  # km
 
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.radians(45) * np.ones_like(alts),
             longitude=np.radians(-75) * np.ones_like(alts),
             altitude=alts,
@@ -56,7 +56,7 @@ class TestNRLMSISE00Basic:
 
     def test_output_structure(self):
         """Test output NamedTuple structure."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=200_000,
@@ -87,7 +87,7 @@ class TestAltitudeRange:
     def test_low_altitude(self):
         """Test at troposphere (-5 km to 11 km)."""
         # Sea level
-        output_sea = nrlmsise00(
+        output_sea = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=0,
@@ -97,7 +97,7 @@ class TestAltitudeRange:
         )
 
         # 10 km
-        output_10km = nrlmsise00(
+        output_10km = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=10_000,
@@ -115,7 +115,7 @@ class TestAltitudeRange:
 
     def test_mesosphere(self):
         """Test at mesosphere (50-85 km)."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=75_000,
@@ -133,7 +133,7 @@ class TestAltitudeRange:
 
     def test_thermosphere_low(self):
         """Test at lower thermosphere (100-200 km)."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=150_000,
@@ -149,7 +149,7 @@ class TestAltitudeRange:
 
     def test_thermosphere_high(self):
         """Test at upper thermosphere (300-800 km)."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=500_000,
@@ -167,7 +167,7 @@ class TestAltitudeRange:
 
     def test_exosphere(self):
         """Test at exosphere (>600 km)."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=800_000,
@@ -186,7 +186,7 @@ class TestSolarActivity:
 
     def test_quiet_activity(self):
         """Test with quiet solar activity (F107=70)."""
-        output_quiet = nrlmsise00(
+        output_quiet = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -198,7 +198,7 @@ class TestSolarActivity:
             ap=0,
         )
 
-        output_avg = nrlmsise00(
+        output_avg = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -216,7 +216,7 @@ class TestSolarActivity:
 
     def test_active_activity(self):
         """Test with active solar activity (F107=200)."""
-        output_active = nrlmsise00(
+        output_active = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -228,7 +228,7 @@ class TestSolarActivity:
             ap=100,
         )
 
-        output_avg = nrlmsise00(
+        output_avg = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -250,7 +250,7 @@ class TestMagneticActivity:
 
     def test_quiet_geomag(self):
         """Test with quiet geomagnetic activity (Ap=0)."""
-        output_quiet = nrlmsise00(
+        output_quiet = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -262,7 +262,7 @@ class TestMagneticActivity:
             ap=0,
         )
 
-        output_active = nrlmsise00(
+        output_active = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -280,7 +280,7 @@ class TestMagneticActivity:
 
     def test_magnetic_storm(self):
         """Test during magnetic storm (Ap>200)."""
-        output_storm = nrlmsise00(
+        output_storm = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -292,7 +292,7 @@ class TestMagneticActivity:
             ap=300,
         )
 
-        output_quiet = nrlmsise00(
+        output_quiet = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -314,7 +314,7 @@ class TestLatitudeVariation:
 
     def test_equator_vs_pole(self):
         """Test density variation between equator and pole."""
-        output_equator = nrlmsise00(
+        output_equator = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -323,7 +323,7 @@ class TestLatitudeVariation:
             seconds_in_day=0,
         )
 
-        output_pole = nrlmsise00(
+        output_pole = simplified_thermosphere(
             latitude=np.pi / 2,
             longitude=0,
             altitude=300_000,
@@ -343,7 +343,7 @@ class TestTemperatureProfile:
 
     def test_troposphere_lapse_rate(self):
         """Test troposphere lapse rate (~-6.5 K/km)."""
-        output_sea = nrlmsise00(
+        output_sea = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=0,
@@ -352,7 +352,7 @@ class TestTemperatureProfile:
             seconds_in_day=0,
         )
 
-        output_5km = nrlmsise00(
+        output_5km = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=5_000,
@@ -370,7 +370,7 @@ class TestTemperatureProfile:
 
     def test_stratosphere_warming(self):
         """Test stratosphere temperature inversion (warming)."""
-        output_11km = nrlmsise00(
+        output_11km = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=11_000,
@@ -379,7 +379,7 @@ class TestTemperatureProfile:
             seconds_in_day=0,
         )
 
-        output_20km = nrlmsise00(
+        output_20km = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=20_000,
@@ -393,7 +393,7 @@ class TestTemperatureProfile:
 
     def test_thermosphere_temperature(self):
         """Test thermosphere temperature exceeds exosphere."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -415,7 +415,7 @@ class TestCompositionMixes:
 
     def test_total_density_from_species(self):
         """Test total density matches sum of species."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=150_000,
@@ -455,7 +455,7 @@ class TestCompositionMixes:
 
     def test_n2_dominant_low_alt(self):
         """Test N2 dominance at low altitudes."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=20_000,
@@ -471,7 +471,7 @@ class TestCompositionMixes:
 
     def test_atomic_oxygen_high_alt(self):
         """Test atomic oxygen becomes dominant above ~130 km."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=200_000,
@@ -487,7 +487,7 @@ class TestCompositionMixes:
 
     def test_helium_exosphere(self):
         """Test helium significant in exosphere."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=400_000,
@@ -506,7 +506,7 @@ class TestEdgeCases:
 
     def test_very_low_altitude(self):
         """Test at sea level and below."""
-        output_sea = nrlmsise00(
+        output_sea = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=0,
@@ -523,7 +523,7 @@ class TestEdgeCases:
 
     def test_very_high_altitude(self):
         """Test at exosphere (800+ km)."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=800_000,
@@ -538,7 +538,7 @@ class TestEdgeCases:
     def test_extreme_solar_activity(self):
         """Test at extreme solar activity bounds."""
         # Minimum F107
-        output_min = nrlmsise00(
+        output_min = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -551,7 +551,7 @@ class TestEdgeCases:
         )
 
         # Maximum F107
-        output_max = nrlmsise00(
+        output_max = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=300_000,
@@ -573,7 +573,7 @@ class TestNumericalProperties:
 
     def test_positive_densities(self):
         """Test all densities are positive."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.radians(45),
             longitude=np.radians(-75),
             altitude=300_000,
@@ -595,7 +595,7 @@ class TestNumericalProperties:
         """Test temperature is always positive."""
         alts = np.linspace(0, 800_000, 20)
 
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.zeros_like(alts),
             longitude=np.zeros_like(alts),
             altitude=alts,
@@ -609,7 +609,7 @@ class TestNumericalProperties:
     def test_consistency_scalar_vs_array(self):
         """Test scalar and array inputs give same results."""
         # Scalar
-        output_scalar = nrlmsise00(
+        output_scalar = simplified_thermosphere(
             latitude=0.5,
             longitude=1.0,
             altitude=200_000,
@@ -622,7 +622,7 @@ class TestNumericalProperties:
         )
 
         # Array with single element
-        output_array = nrlmsise00(
+        output_array = simplified_thermosphere(
             latitude=np.array([0.5]),
             longitude=np.array([1.0]),
             altitude=np.array([200_000]),
@@ -645,7 +645,7 @@ class TestPhysicalMonotonicity:
         """Test density decreases with altitude (roughly)."""
         alts = np.array([50_000, 100_000, 200_000, 400_000])
 
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.zeros_like(alts),
             longitude=np.zeros_like(alts),
             altitude=alts,
@@ -660,7 +660,7 @@ class TestPhysicalMonotonicity:
 
     def test_n2_dominance_in_lower_atm(self):
         """Test N2 is dominant species at low altitudes."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=10_000,
@@ -675,7 +675,7 @@ class TestPhysicalMonotonicity:
 
     def test_exosphere_upper_bound(self):
         """Test temperature bounded by exosphere temperature."""
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=0,
             longitude=0,
             altitude=400_000,
@@ -698,7 +698,7 @@ class TestVectorization:
         """Test calculation at multiple altitudes."""
         alts = np.array([100_000, 200_000, 300_000, 400_000, 500_000])
 
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=np.full_like(alts, np.radians(45), dtype=float),
             longitude=np.full_like(alts, np.radians(-75), dtype=float),
             altitude=alts,
@@ -716,7 +716,7 @@ class TestVectorization:
         lon = np.array([0, np.pi / 4, np.pi / 2])
         alt = np.array([200_000, 200_000, 200_000])
 
-        output = nrlmsise00(
+        output = simplified_thermosphere(
             latitude=lat,
             longitude=lon,
             altitude=alt,

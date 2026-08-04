@@ -1,13 +1,21 @@
 """
-NRLMSISE-00 Atmospheric Model
+Barometric thermosphere model.
 
-High-fidelity thermosphere/atmosphere model from the U.S. Naval Research
-Laboratory. Provides density, temperature, and composition profiles for
-altitudes from -5 km to 1000 km.
+**This is not NRLMSISE-00.** The module was named ``nrlmsise00`` and described
+itself as a high-fidelity NRL model until gh-79. NRLMSISE-00 requires harmonic
+coefficient tables from NOAA which this library does not distribute; what is
+implemented here is a set of per-species exponential profiles with
+temperature-dependent scale heights, driven by F10.7 and Ap, each clamped to a
+floor.
 
-This implementation uses an empirical approach based on atmospheric chemistry,
-radiative transfer, and geomagnetic coupling for modeling temperature and
-density variations with altitude, latitude, local time, and solar/magnetic activity.
+It is usable above roughly 200 km, where it agrees with published NRLMSISE-00
+densities to within a factor of about two. Below that it is wrong by up to
+50x, and :func:`pytcl.atmosphere.us_standard_atmosphere_1976` should be used
+instead. :class:`SimplifiedThermosphere` carries the measured comparison.
+
+The references below describe the model this one approximates, not the one
+implemented here. They are retained because the temperature parameterisation
+and species set follow their structure.
 
 References
 ----------
@@ -19,7 +27,7 @@ References
   https://ccmc.gsfc.nasa.gov/models/nrlmsise00
 - Drob, D. P., et al. (2008), "An update to the COSPAR International
   Reference Atmosphere model for the middle atmosphere," Adv. Space Res.,
-  43(12), 1747–1764
+  43(12), 1747-1764
 """
 
 from typing import NamedTuple
@@ -42,7 +50,7 @@ _MW = {
 _R_GAS = 8.31447
 
 
-class NRLMSISE00Output(NamedTuple):
+class ThermosphereState(NamedTuple):
     """
     Output from NRLMSISE-00 atmospheric model.
 
@@ -105,23 +113,53 @@ class F107Index(NamedTuple):
     ap_array: NDArray[np.float64] | None = None
 
 
-# NRLMSISE-00 Coefficients (simplified structure)
-# Note: Full model requires extensive coefficient tables from NOAA
-# These are placeholder structures that would be populated from data files
+# This module does NOT implement NRLMSISE-00. That model needs extensive
+# harmonic coefficient tables from NOAA which are not distributed here. What
+# follows is a barometric model: per-species exponential profiles with
+# temperature-dependent scale heights, each clamped to a floor. It was named
+# nrlmsise00 and documented as "a comprehensive thermosphere model", which is
+# how it came to return a sea-level density 44% below the true value with
+# nothing to warn a caller (gh-79).
 
 
-class NRLMSISE00:
+class SimplifiedThermosphere:
     """
-    NRLMSISE-00 High-Fidelity Atmosphere Model.
+    Barometric thermosphere model with solar and geomagnetic coupling.
 
-    This is a comprehensive thermosphere model covering altitudes from
-    approximately -5 km to 1000 km, with detailed chemical composition
-    and temperature profiles.
+    **This is not NRLMSISE-00.** It was named ``NRLMSISE00`` and described as
+    "a comprehensive thermosphere model" until gh-79; the real model requires
+    harmonic coefficient tables from NOAA that this library does not ship.
+    What this computes is a set of per-species exponential profiles with
+    temperature-dependent scale heights, driven by F10.7 and Ap, with each
+    species density clamped to a floor.
+
+    Use it above roughly 200 km. Below that it is wrong, in places by more
+    than an order of magnitude:
+
+    ========  ==============  ================  ==========
+    Altitude  This model      US Standard 1976  Ratio
+    ========  ==============  ================  ==========
+    0 km      0.682 kg/m^3    1.225 kg/m^3      0.56
+    10 km     0.253           0.414             0.61
+    30 km     0.0261          0.0184            1.42
+    50 km     1.044e-3        1.027e-3          1.02
+    80 km     3.69e-7         1.85e-5           **0.02**
+    ========  ==============  ================  ==========
+
+    For altitudes below about 86 km use
+    :func:`pytcl.atmosphere.us_standard_atmosphere_1976`, which is validated
+    against the standard. In the thermosphere this model is reasonable: at
+    400 km with F10.7 = 150 it gives 2.9e-12 kg/m^3, against a published
+    NRLMSISE-00 range of roughly 2-4e-12.
+
+    The species floors are visible in the output. ``h_density`` returns its
+    floor of 1e8 m^-3 from 0 to 400 km, and ``he_density`` its floor of
+    1e10 m^-3 at 0 and 100 km, because the computed profile falls below the
+    clamp. Those are not measurements of anything.
 
     The model implements:
     - Temperature profile with solar activity and magnetic coupling
-    - Molecular composition for troposphere/stratosphere/mesosphere
-    - Atomic species for thermosphere
+    - Per-species barometric profiles with floors
     - Solar flux (F10.7) and magnetic activity (Ap) variations
 
     Parameters
@@ -132,7 +170,7 @@ class NRLMSISE00:
 
     Examples
     --------
-    >>> model = NRLMSISE00()
+    >>> model = SimplifiedThermosphere()
     >>> output = model(
     ...     latitude=np.radians(45),
     ...     longitude=np.radians(-75),
@@ -170,7 +208,7 @@ class NRLMSISE00:
         f107: float = 150.0,
         f107a: float = 150.0,
         ap: float | ArrayLike = 4.0,
-    ) -> NRLMSISE00Output:
+    ) -> ThermosphereState:
         """
         Compute atmospheric density and composition.
 
@@ -198,7 +236,7 @@ class NRLMSISE00:
 
         Returns
         -------
-        output : NRLMSISE00Output
+        output : ThermosphereState
             Atmospheric properties (density, temperature, composition).
 
         Notes
@@ -288,7 +326,7 @@ class NRLMSISE00:
             ar_dens = float(ar_dens.flat[0])
             n_dens = float(n_dens.flat[0])
 
-        return NRLMSISE00Output(
+        return ThermosphereState(
             density=total_density,
             temperature=temperature,
             exosphere_temperature=texo,
@@ -668,7 +706,9 @@ class NRLMSISE00:
         ar_ratio = 0.0093
 
         # Calculate N2 density
-        n2_dens = NRLMSISE00._n2_density(alt_km, lat, temperature, f107a, ap)
+        n2_dens = SimplifiedThermosphere._n2_density(
+            alt_km, lat, temperature, f107a, ap
+        )
 
         # Ar proportional to N2 up to ~90 km
         ar_dens = ar_ratio * n2_dens
@@ -726,7 +766,7 @@ class NRLMSISE00:
         return np.maximum(n_dens, 1e10)
 
 
-def nrlmsise00(
+def simplified_thermosphere(
     latitude: ArrayLike,
     longitude: ArrayLike,
     altitude: ArrayLike,
@@ -736,11 +776,11 @@ def nrlmsise00(
     f107: float = 150.0,
     f107a: float = 150.0,
     ap: float | ArrayLike = 4.0,
-) -> NRLMSISE00Output:
+) -> ThermosphereState:
     """
     Compute NRLMSISE-00 atmospheric properties.
 
-    This is a module-level convenience function wrapping the NRLMSISE00 class.
+    This is a module-level convenience function wrapping the SimplifiedThermosphere class.
 
     Parameters
     ----------
@@ -765,17 +805,17 @@ def nrlmsise00(
 
     Returns
     -------
-    output : NRLMSISE00Output
+    output : ThermosphereState
         Atmospheric properties.
 
     Notes
     -----
-    See NRLMSISE00 class for more details.
+    See SimplifiedThermosphere class for more details.
 
     Examples
     --------
     >>> # ISS altitude (~400 km), magnetic latitude = 40°, quiet geomagnetic activity
-    >>> output = nrlmsise00(
+    >>> output = simplified_thermosphere(
     ...     latitude=np.radians(40),
     ...     longitude=np.radians(-75),
     ...     altitude=400_000,  # 400 km
@@ -789,7 +829,7 @@ def nrlmsise00(
     >>> print(f"Density at ISS: {output.density:.2e} kg/m³")
     Density at ISS: 2.89e-12 kg/m³
     """
-    model = NRLMSISE00()
+    model = SimplifiedThermosphere()
     return model(
         latitude=latitude,
         longitude=longitude,
@@ -804,8 +844,8 @@ def nrlmsise00(
 
 
 __all__ = [
-    "NRLMSISE00",
-    "NRLMSISE00Output",
+    "SimplifiedThermosphere",
+    "ThermosphereState",
     "F107Index",
-    "nrlmsise00",
+    "simplified_thermosphere",
 ]

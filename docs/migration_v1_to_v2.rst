@@ -304,6 +304,50 @@ something that looked like a track in every respect but the one that counts.
 It and ``merge_tracks`` now raise ``KeyError``.
 
 
+Atmosphere
+----------
+
+``NRLMSISE00`` is ``SimplifiedThermosphere``, and was never NRLMSISE-00
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The class was named ``NRLMSISE00`` and documented as "a comprehensive
+thermosphere model covering altitudes from approximately -5 km to 1000 km".
+NRLMSISE-00 requires harmonic coefficient tables from NOAA which this library
+does not distribute. What the code computes is a set of per-species exponential
+profiles with temperature-dependent scale heights, each clamped to a floor --
+the source said so in a comment, and nothing said so to a caller.
+
+``NRLMSISE00`` becomes ``SimplifiedThermosphere``, ``nrlmsise00`` becomes
+``simplified_thermosphere``, and ``NRLMSISE00Output`` becomes
+``ThermosphereState``:
+
+.. code-block:: python
+
+   from pytcl.atmosphere import (
+       SimplifiedThermosphere,
+       simplified_thermosphere,
+       ThermosphereState,
+   )
+
+The module moved from ``pytcl.atmosphere.nrlmsise00`` to
+``pytcl.atmosphere.thermosphere``. Arguments and return fields are unchanged;
+only the names move.
+
+**The numbers did not change, but what you should trust did.** Above roughly
+200 km the model agrees with published NRLMSISE-00 to within a factor of two:
+at 400 km with F10.7 = 150 it gives 2.9e-12 kg/m^3 against a published 2-4e-12.
+Below that it is wrong, by 44% at sea level and by a factor of 50 at 80 km.
+Use :func:`pytcl.atmosphere.us_standard_atmosphere_1976` below about 86 km.
+
+Several species densities are floors rather than measurements: ``h_density``
+returns 1e8 m^-3 from 0 to 400 km and ``he_density`` 1e10 m^-3 at 0 and 100 km,
+because the computed profile falls below the clamp.
+
+These limits are now stated in the class docstring and pinned by tests in
+``tests/validation/test_thermosphere_limits.py``, so they cannot drift away
+from the documentation unnoticed.
+
+
 Removed modules
 ---------------
 

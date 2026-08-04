@@ -63,7 +63,7 @@ Code Highlights
 
 The example demonstrates:
 
-- Density profiles across altitude with ``NRLMSISE00()``
+- Density profiles across altitude with ``SimplifiedThermosphere()``
 - Species composition (N2, O2, O, He, H, Ar, N) vs altitude
 - Temperature profiles under various solar activity levels
 - Solar flux (F10.7) effects on ISS-altitude conditions
