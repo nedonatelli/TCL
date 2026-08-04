@@ -170,11 +170,11 @@ Counts are measured from the packages themselves rather than asserted;
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
      - 9
-     - 43
+     - 52
      - 2-D, 3-D and N-D assignment, gating, JPDA, k-best, network flow
    * - ``astronomical``
      - 9
-     - 145
+     - 149
      - Orbital mechanics, SGP4/SDP4, TLEs, ephemerides, reference frames
    * - ``containers``
      - 8
@@ -182,7 +182,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Spatial indices (k-d tree, R-tree, VP-tree, cover tree) and track sets
    * - ``core``
      - 7
-     - 55
+     - 71
      - Constants, exceptions, validation, array helpers, data paths
    * - ``dynamic_models``
      - 7
@@ -190,7 +190,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Motion models and process-noise matrices, continuous and discrete
    * - ``gpu``
      - 7
-     - 8
+     - 38
      - CuPy and MLX backends for array-heavy routines
    * - ``io``
      - 7
@@ -202,11 +202,11 @@ Counts are measured from the packages themselves rather than asserted;
      - Frame conversions, rotations, Jacobians, map projections
    * - ``gravity``
      - 5
-     - 55
+     - 58
      - Spherical-harmonic gravity, EGM, solid Earth tides
    * - ``navigation``
      - 5
-     - 94
+     - 99
      - Geodesy, great circle and rhumb line, INS and INS/GNSS
    * - ``clustering``
      - 4
@@ -226,7 +226,7 @@ Counts are measured from the packages themselves rather than asserted;
      - NRLMSISE-00, ionosphere, refraction
    * - ``magnetism``
      - 3
-     - 33
+     - 34
      - WMM, WMMHR, IGRF, EMM
    * - ``static_estimation``
      - 3
@@ -234,7 +234,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Least squares, robust estimation, model selection
    * - ``terrain``
      - 3
-     - 28
+     - 30
      - DEM handling, line of sight, horizon and viewshed
    * - ``performance_evaluation``
      - 2

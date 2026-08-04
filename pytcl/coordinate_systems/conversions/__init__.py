@@ -12,15 +12,19 @@ from pytcl.coordinate_systems.conversions.geodetic import (
     ecef2enu,
     ecef2geodetic,
     ecef2ned,
+    ecef2sez,
     enu2ecef,
     enu2ned,
     geocentric_radius,
     geodetic2ecef,
     geodetic2enu,
+    geodetic2sez,
     meridional_radius,
     ned2ecef,
     ned2enu,
     prime_vertical_radius,
+    sez2ecef,
+    sez2geodetic,
 )
 from pytcl.coordinate_systems.conversions.spherical import (
     cart2cyl,
@@ -53,6 +57,13 @@ __all__ = [
     "ned2ecef",
     "enu2ned",
     "ned2enu",
+    # SEZ (south-east-zenith) is a standard topocentric frame and its four
+    # conversions were the only ones in this module left unexported, while
+    # every ENU and NED sibling beside them was public.
+    "geodetic2sez",
+    "sez2geodetic",
+    "ecef2sez",
+    "sez2ecef",
     "geocentric_radius",
     "prime_vertical_radius",
     "meridional_radius",

@@ -80,6 +80,8 @@ from pytcl.terrain.loaders import (
     get_gebco_metadata,
     load_earth2014,
     load_gebco,
+    parse_earth2014_binary,
+    parse_gebco_netcdf,
 )
 
 # Visibility functions
@@ -95,6 +97,9 @@ from pytcl.terrain.visibility import (
 )
 
 __all__ = [
+    # Data-file parsing, for callers supplying their own terrain files.
+    "parse_earth2014_binary",
+    "parse_gebco_netcdf",
     # DEM data structures
     "DEMPoint",
     "TerrainGradient",
