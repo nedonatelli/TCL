@@ -64,8 +64,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12"]
+        # Windows on one interpreter, not three. It runs 4-10x slower than the
+        # others and sets the critical path, and nothing in the suite branches
+        # on sys.platform. The one genuinely Windows-specific risk -- printing
+        # a character outside cp1252, which kills a script when stdout is
+        # redirected -- is caught by tests/contract/test_console_encoding.py,
+        # which parses source with ast and so runs on any platform. This arm
+        # exists to catch a pure-Python portability break, and one interpreter
+        # is enough for that.
+        include:
+          - os: windows-latest
+            python-version: "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -88,19 +99,9 @@ jobs:
       #
       # The examples marker is excluded and runs in its own job: the scripts
       # are slow and only need exercising on one platform.
-      # xdist everywhere except Windows. Measured on this suite: ubuntu-3.10
-      # 430s -> 235s and macos-3.10 412s -> 193s, but windows-3.10 1252s ->
-      # 1691s. Windows has no fork, so each worker spawns a fresh interpreter
-      # and re-imports numpy, scipy and numba; with 2-4 runner cores that
-      # startup cost exceeds the parallelism and swamps what dropping coverage
-      # saved. Windows still gets the coverage saving, serially.
       - name: Run tests
-        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') && matrix.os != 'windows-latest' }}
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
         run: pytest tests/ -n auto --benchmark-skip -m "not examples" -q
-
-      - name: Run tests (Windows, serial)
-        if: matrix.os == 'windows-latest'
-        run: pytest tests/ --benchmark-skip -m "not examples" -q
 
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
