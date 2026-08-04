@@ -14,6 +14,11 @@ source .venv/bin/activate
 # Run all tests
 .venv/bin/python -m pytest
 
+# Before merging anything that touches pytcl/gpu (Apple Silicon only).
+# 149 tests are MLX-gated and no CI runner has MLX, so they skip everywhere
+# and the build stays green regardless. This makes their absence an error.
+PYTCL_REQUIRE_MLX=1 .venv/bin/python -m pytest
+
 # Run specific test file
 .venv/bin/python -m pytest tests/test_terrain_loaders.py -x -q
 
