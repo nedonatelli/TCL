@@ -64,8 +64,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: ["3.10", "3.11", "3.12"]
+        # Windows on one interpreter, not three. It runs 4-10x slower than the
+        # others and sets the critical path, and nothing in the suite branches
+        # on sys.platform. The one genuinely Windows-specific risk -- printing
+        # a character outside cp1252, which kills a script when stdout is
+        # redirected -- is caught by tests/contract/test_console_encoding.py,
+        # which parses source with ast and so runs on any platform. This arm
+        # exists to catch a pure-Python portability break, and one interpreter
+        # is enough for that.
+        include:
+          - os: windows-latest
+            python-version: "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -80,10 +91,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      # Coverage runs on exactly one job -- the one that uploads it. Measured
+      # on this suite, tracing costs 1.77x (81s -> 144s), and the other eight
+      # jobs were paying it to produce a report that is thrown away. Those
+      # eight run in parallel instead; -n auto is safe here because the suite
+      # has no ordering dependence (verified: 5920 passed under xdist).
+      #
+      # The examples marker is excluded and runs in its own job: the scripts
+      # are slow and only need exercising on one platform.
       - name: Run tests
-        # The examples marker is excluded here and runs in its own job: the
-        # scripts are slow and only need to be exercised on one platform.
-        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -v
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
+        run: pytest tests/ -n auto --benchmark-skip -m "not examples" -q
+
+      # Serial, because coverage under xdist has to merge per-worker data and
+      # the gate is not worth the flakiness for one job.
+      - name: Run tests with coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -q
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
