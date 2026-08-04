@@ -88,9 +88,19 @@ jobs:
       #
       # The examples marker is excluded and runs in its own job: the scripts
       # are slow and only need exercising on one platform.
+      # xdist everywhere except Windows. Measured on this suite: ubuntu-3.10
+      # 430s -> 235s and macos-3.10 412s -> 193s, but windows-3.10 1252s ->
+      # 1691s. Windows has no fork, so each worker spawns a fresh interpreter
+      # and re-imports numpy, scipy and numba; with 2-4 runner cores that
+      # startup cost exceeds the parallelism and swamps what dropping coverage
+      # saved. Windows still gets the coverage saving, serially.
       - name: Run tests
-        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') && matrix.os != 'windows-latest' }}
         run: pytest tests/ -n auto --benchmark-skip -m "not examples" -q
+
+      - name: Run tests (Windows, serial)
+        if: matrix.os == 'windows-latest'
+        run: pytest tests/ --benchmark-skip -m "not examples" -q
 
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
