@@ -16,11 +16,15 @@ from pytcl.assignment_algorithms.data_association import (
     gnn_association,
     nearest_neighbor,
 )
+from pytcl.assignment_algorithms.dijkstra_min_cost import (
+    min_cost_flow_dijkstra_potentials,
+)
 from pytcl.assignment_algorithms.gating import (
     chi2_gate_threshold,
     compute_gate_volume,
     ellipsoidal_gate,
     gate_measurements,
+    mahalanobis_batch,
     mahalanobis_distance,
     rectangular_gate,
 )
@@ -28,6 +32,7 @@ from pytcl.assignment_algorithms.jpda import (
     JPDAResult,
     JPDAUpdate,
     compute_likelihood_matrix,
+    compute_measurement_likelihood,
     jpda,
     jpda_probabilities,
     jpda_update,
@@ -39,6 +44,7 @@ from pytcl.assignment_algorithms.nd_assignment import (
     auction_assignment_nd,
     detect_dimension_conflicts,
     greedy_assignment_nd,
+    greedy_assignment_nd_sparse,
     relaxation_assignment_nd,
     validate_cost_tensor,
 )
@@ -73,6 +79,13 @@ from pytcl.assignment_algorithms.two_dimensional import (
 )
 
 __all__ = [
+    # Each of these has an exported sibling -- mahalanobis_distance,
+    # compute_likelihood_matrix, greedy_assignment_nd,
+    # min_cost_flow_successive_shortest_paths -- so the split was arbitrary.
+    "mahalanobis_batch",
+    "compute_measurement_likelihood",
+    "greedy_assignment_nd_sparse",
+    "min_cost_flow_dijkstra_potentials",
     # Min-cost flow. The split here had no rationale: min_cost_flow_simplex was
     # private while its result type was public and its input type FlowEdge was
     # not, so the function could not be called even if imported. The migration

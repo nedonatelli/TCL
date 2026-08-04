@@ -85,6 +85,7 @@ from pytcl.astronomical.reference_frames import (
     gast_iau82,
     gcrf_to_itrf,
     gcrf_to_mod,
+    gcrf_to_pef,
     gcrf_to_teme,
     gcrf_to_tod,
     gmst_iau82,
@@ -98,6 +99,7 @@ from pytcl.astronomical.reference_frames import (
     mod_to_tod,
     nutation_angles_iau80,
     nutation_matrix,
+    pef_to_gcrf,
     pef_to_teme,
     polar_motion_matrix,
     precession_angles_iau76,
@@ -194,6 +196,9 @@ from pytcl.astronomical.tle import (
 )
 
 __all__ = [
+    # Siblings gcrf_to_mod and mod_to_gcrf are exported; these were not.
+    "gcrf_to_pef",
+    "pef_to_gcrf",
     # Cache management, consistent with pytcl.magnetism.
     "clear_transformation_cache",
     "get_transformation_cache_info",

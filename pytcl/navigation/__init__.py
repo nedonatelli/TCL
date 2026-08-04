@@ -97,6 +97,7 @@ from pytcl.navigation.ins_gnss import (
     loose_coupled_update_position,
     loose_coupled_update_velocity,
     position_measurement_matrix,
+    position_std_to_error_state_units,
     position_velocity_measurement_matrix,
     pseudorange_measurement_matrix,
     satellite_elevation_azimuth,
@@ -123,6 +124,8 @@ from pytcl.navigation.rhumb import (
 )
 
 __all__ = [
+    # The migration guide's worked example for the v2 error-state units.
+    "position_std_to_error_state_units",
     # Cache management. magnetism has exported its equivalent all along;
     # these were private for no stated reason. The great-circle accessor is
     # aliased because "get_cache_info" says nothing about which of the two

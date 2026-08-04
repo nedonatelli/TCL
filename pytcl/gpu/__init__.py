@@ -96,16 +96,25 @@ pytcl.dynamic_estimation.particle_filters : CPU particle filter implementations
 """
 
 from pytcl.gpu.utils import (
+    clear_gpu_memory,
+    ensure_gpu_array,
     get_array_module,
     get_backend,
+    get_gpu_memory_info,
     is_apple_silicon,
     is_cupy_available,
     is_gpu_available,
     is_mlx_available,
+    sync_gpu,
     to_cpu,
     to_gpu,
 )
 
+# __all__ now lists everything importable from this package, including the
+# names resolved lazily below. It previously listed only the ten eager ones,
+# so `batch_ekf_predict` imported fine while being absent from __all__ and
+# from dir() -- which is exactly what made an earlier survey of this package
+# report reachable names as missing.
 __all__ = [
     # Platform detection
     "is_apple_silicon",
@@ -114,18 +123,62 @@ __all__ = [
     "get_backend",
     # Availability check
     "is_gpu_available",
-    # Utility functions
+    # Array transfer and inspection
     "get_array_module",
     "to_gpu",
     "to_cpu",
+    "ensure_gpu_array",
+    # Device memory
+    "clear_gpu_memory",
+    "get_gpu_memory_info",
+    "get_memory_pool",
+    "sync_gpu",
+    "MemoryPool",
+    # Batch filters
+    "CuPyKalmanFilter",
+    "batch_kf_predict",
+    "batch_kf_update",
+    "batch_kf_predict_update",
+    "CuPyExtendedKalmanFilter",
+    "batch_ekf_predict",
+    "batch_ekf_update",
+    "CuPyUnscentedKalmanFilter",
+    "batch_ukf_predict",
+    "batch_ukf_update",
+    # Particle filter
+    "CuPyParticleFilter",
+    "batch_particle_filter_update",
+    "gpu_effective_sample_size",
+    "gpu_normalize_weights",
+    "gpu_resample_multinomial",
+    "gpu_resample_stratified",
+    "gpu_resample_systematic",
+    # Linear algebra on the device
+    "gpu_cholesky",
+    "gpu_cholesky_safe",
+    "gpu_eigh",
+    "gpu_inv",
+    "gpu_matrix_sqrt",
+    "gpu_qr",
+    "gpu_solve",
 ]
 
 
 # Lazy imports for GPU implementations (only loaded if CuPy is available)
 def __getattr__(name: str) -> object:
     """Lazy import GPU implementations."""
-    if name in ("CuPyKalmanFilter", "batch_kf_predict", "batch_kf_update"):
-        from pytcl.gpu.kalman import CuPyKalmanFilter, batch_kf_predict, batch_kf_update
+    if name in (
+        "CuPyKalmanFilter",
+        "batch_kf_predict",
+        "batch_kf_update",
+        "batch_kf_predict_update",
+    ):
+        from pytcl.gpu.kalman import (
+            CuPyKalmanFilter,
+            batch_kf_predict,
+            batch_kf_predict_update,
+            batch_kf_update,
+        )
 
         globals()[name] = locals()[name]
         return locals()[name]
@@ -152,22 +205,45 @@ def __getattr__(name: str) -> object:
 
     if name in (
         "CuPyParticleFilter",
-        "gpu_resample_systematic",
+        "batch_particle_filter_update",
+        "gpu_effective_sample_size",
+        "gpu_normalize_weights",
         "gpu_resample_multinomial",
+        "gpu_resample_stratified",
+        "gpu_resample_systematic",
     ):
         from pytcl.gpu.particle_filter import (
             CuPyParticleFilter,
+            batch_particle_filter_update,
+            gpu_effective_sample_size,
+            gpu_normalize_weights,
             gpu_resample_multinomial,
+            gpu_resample_stratified,
             gpu_resample_systematic,
         )
 
         globals()[name] = locals()[name]
         return locals()[name]
 
-    if name in ("gpu_cholesky", "gpu_qr", "gpu_solve", "MemoryPool"):
+    if name in (
+        "MemoryPool",
+        "get_memory_pool",
+        "gpu_cholesky",
+        "gpu_cholesky_safe",
+        "gpu_eigh",
+        "gpu_inv",
+        "gpu_matrix_sqrt",
+        "gpu_qr",
+        "gpu_solve",
+    ):
         from pytcl.gpu.matrix_utils import (
             MemoryPool,
+            get_memory_pool,
             gpu_cholesky,
+            gpu_cholesky_safe,
+            gpu_eigh,
+            gpu_inv,
+            gpu_matrix_sqrt,
             gpu_qr,
             gpu_solve,
         )

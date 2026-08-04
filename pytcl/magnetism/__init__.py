@@ -36,6 +36,7 @@ from pytcl.magnetism.emm import (
     emm_inclination,
     emm_intensity,
     load_emm_coefficients,
+    parse_emm_file,
     wmmhr,
 )
 from pytcl.magnetism.emm import create_test_coefficients as create_emm_test_coefficients
@@ -69,6 +70,8 @@ from pytcl.magnetism.wmm import (
 )
 
 __all__ = [
+    # Data-file parsing, for callers supplying their own coefficient set.
+    "parse_emm_file",
     # Types and constants
     "MagneticResult",
     "MagneticCoefficients",

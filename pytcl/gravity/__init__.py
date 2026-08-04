@@ -39,6 +39,7 @@ from pytcl.gravity.egm import (
     gravity_anomaly,
     gravity_disturbance,
     load_egm_coefficients,
+    parse_egm_file,
 )
 from pytcl.gravity.models import (
     GRS80,
@@ -90,6 +91,8 @@ from pytcl.gravity.tides import (
 )
 
 __all__ = [
+    # Data-file parsing, for callers supplying their own coefficient set.
+    "parse_egm_file",
     # Cache management, consistent with pytcl.magnetism.
     "clear_legendre_cache",
     "get_legendre_cache_info",
