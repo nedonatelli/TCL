@@ -514,10 +514,17 @@ class TestHDF5Compression:
 
     @pytest.mark.light
     def test_compression_ratio(self, tmp_path):
-        """Verify compression ratio meets target (>2x for realistic tracking data).
+        """Verify compression ratio meets the 2x floor.
 
-        Uses smooth constant-velocity trajectories and identity covariances,
-        which are representative of real tracking data and compress well.
+        This is a *best case*, not a typical one. The covariances below are
+        identity matrices, which are mostly zeros and which gzip removes
+        almost entirely; that is where the ratio comes from. A filter produces
+        full, varying, positive-definite covariances, and on those the same
+        measurement gives 1.32x.
+
+        The docstring used to call this data "representative of real tracking
+        data" and the ROADMAP quoted 5-10x while this assertion required only
+        2x, so the gap went unnoticed. Measured figures are in ROADMAP.md.
         """
         rng = np.random.default_rng(42)
         n_t = 20

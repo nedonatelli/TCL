@@ -50,8 +50,28 @@ difference matters to anyone upgrading:
 - **Migration guide written, community testing skipped.** 9.3's v1.x-to-v2.0.0
   guide exists as `docs/migration_v1_to_v2.rst`. The beta feedback cycle in 9.2 did
   not happen.
-- **Phase 8 quality gates unverified for this release.** 9.1 planned to re-check the
-  storage throughput and latency targets. They were not re-measured.
+- **Phase 8 quality gates measured.** Three of the four hold with margin; the
+  compression figure does not and the target has been corrected to what the
+  code achieves.
+
+  | Target | Measured | |
+  |---|---|---|
+  | >1000 detections/sec SQL storage | 3575/sec single, 2134/sec batched | pass |
+  | <10 ms track state update | 0.52 ms | pass |
+  | <100 ms query latency | 5.06 ms, worst of ten query benchmarks | pass |
+  | ~~5-10x~~ HDF5 compression | **4.3x** best case, **1.3x** realistic | corrected |
+
+  The compression target was never met and nothing caught it, because
+  `test_compression_ratio` asserts `>2.0` while this document claimed 5-10x —
+  a test written to a weaker bar than the figure it was meant to defend. Its
+  data is twenty smooth constant-velocity trajectories with **identity**
+  covariance matrices, described in the docstring as "representative of real
+  tracking data". They are not: identity matrices are mostly zeros and gzip
+  removes them, which is where the 4.3x comes from. Substituting the full,
+  varying, positive-definite covariances a filter actually produces gives
+  **1.32x**.
+
+  Measured on `d5b0add`, macOS arm64, gzip level 4.
 
 The original plan follows.
 
@@ -59,7 +79,8 @@ The original plan follows.
 
 - Final integration testing across all subsystems
 - Verify Phase 8 quality gates: >1000 detections/sec SQL storage, <10ms track state updates,
-  <100ms query latency, 5-10x HDF5 compression ratio
+  <100ms query latency, 5-10x HDF5 compression ratio *(the first three hold; the
+  compression figure was wrong and is corrected above)*
 - Validate migration tools against real v1.x legacy code
 - Alpha release notes and documentation
 
