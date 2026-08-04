@@ -226,10 +226,10 @@ Get atmospheric density for satellite drag calculations:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import nrlmsise00
+   from pytcl.atmosphere import simplified_thermosphere
 
    # NRLMSISE-00 model with solar/geomagnetic activity
-   output = nrlmsise00(
+   output = simplified_thermosphere(
        latitude=np.deg2rad(45.0),
        longitude=np.deg2rad(-75.0),
        altitude=400e3,          # meters

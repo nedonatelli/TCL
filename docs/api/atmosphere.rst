@@ -26,7 +26,7 @@ High-fidelity empirical thermosphere density and temperature model including
 solar activity and geomagnetic storm effects. Covers altitudes 0-1000 km with
 full atmospheric composition.
 
-.. automodule:: pytcl.atmosphere.nrlmsise00
+.. automodule:: pytcl.atmosphere.thermosphere
    :members:
    :undoc-members:
    :show-inheritance:

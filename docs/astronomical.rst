@@ -200,7 +200,7 @@ Perturbations
 
 .. code-block:: python
 
-   from pytcl.atmosphere.nrlmsise00 import nrlmsise00
+   from pytcl.atmosphere.thermosphere import simplified_thermosphere
    from pytcl.astronomical.reference_frames import ecef_to_eci
    
    def drag_perturbation(state_eci, time, area, mass, cd=2.2):
@@ -227,7 +227,7 @@ Perturbations
        lat, lon, alt = geodetic
        
        # Atmospheric density at satellite altitude
-       rho = nrlmsise00(np.degrees(lat), np.degrees(lon), alt)
+       rho = simplified_thermosphere(np.degrees(lat), np.degrees(lon), alt)
        
        # Drag acceleration
        # a_drag = -0.5 * (cd * area / mass) * rho * v²
