@@ -258,3 +258,71 @@ class TestSrifInitializationRecipe:
         new = np.linalg.cholesky(np.linalg.inv(P0)).T
 
         np.testing.assert_allclose(old.T @ old, new.T @ new, atol=1e-12)
+
+
+class TestProjectionClaimsMatchMeasurement:
+    """Two quantified claims that were wrong until a claims sweep measured them.
+
+    Neither overstated accuracy, which is the failure mode that hurts callers.
+    Both were misleading in subtler ways: the transverse Mercator note
+    understated its own accuracy by three orders of magnitude, and the
+    stereographic note quoted one origin latitude's disagreement as though it
+    were a property of the projection.
+
+    These pin the tables now in the docstrings, so the documentation cannot
+    drift away from behavior unnoticed.
+    """
+
+    @staticmethod
+    def _pyproj():
+        return pytest.importorskip("pyproj")
+
+    def test_transverse_mercator_is_millimetre_accurate_within_4_degrees(self):
+        """Docstring claims 0.7 mm worst case at 4 degrees, over lat 0-75."""
+        pyproj = self._pyproj()
+        from pytcl.coordinate_systems.projections.projections import (
+            transverse_mercator,
+        )
+
+        tr = pyproj.Transformer.from_crs(
+            "EPSG:4326",
+            "+proj=tmerc +lat_0=0 +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84",
+            always_xy=True,
+        )
+        worst = 0.0
+        for lat in (0.0, 15.0, 30.0, 45.0, 60.0, 75.0):
+            xr, yr = tr.transform(4.0, lat)
+            res = transverse_mercator(
+                np.radians(lat), np.radians(4.0), lon0=0.0, k0=1.0
+            )
+            worst = max(worst, float(np.hypot(res.x - xr, res.y - yr)))
+        assert worst < 0.002, f"{worst * 1000:.3f} mm exceeds the documented 0.7 mm"
+        assert worst > 1e-6, "suspiciously exact -- is this comparing against itself?"
+
+    @pytest.mark.parametrize(
+        "lat0,at_400_km,tolerance",
+        [(0.0, 1.34, 0.35), (30.0, 0.03, 0.35), (60.0, 2.73, 0.6), (75.0, 3.71, 0.8)],
+    )
+    def test_stereographic_disagreement_varies_with_origin_latitude(
+        self, lat0, at_400_km, tolerance
+    ):
+        """The point of the corrected docstring: one number cannot describe this.
+
+        The disagreement with PROJ spans eightyfold across these origins, so a
+        single quoted figure -- as the docstring used to give -- is wrong
+        almost everywhere.
+        """
+        pyproj = self._pyproj()
+        from pytcl.coordinate_systems.projections.projections import stereographic
+
+        tr = pyproj.Transformer.from_crs(
+            "EPSG:4326",
+            f"+proj=sterea +lat_0={lat0} +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84",
+            always_xy=True,
+        )
+        geod = pyproj.Geod(ellps="WGS84")
+        lon2, lat2, _ = geod.fwd(0.0, lat0, 0.0, 400_000.0)
+        xr, yr = tr.transform(lon2, lat2)
+        res = stereographic(np.radians(lat2), np.radians(lon2), np.radians(lat0), 0.0)
+        km = float(np.hypot(res.x - xr, res.y - yr)) / 1000.0
+        assert km == pytest.approx(at_400_km, abs=tolerance)
