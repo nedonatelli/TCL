@@ -260,8 +260,22 @@ def transverse_mercator(
 
     Notes
     -----
-    This implementation uses the Redfearn series expansion, accurate to
-    about 1 meter within 4 degrees of the central meridian.
+    This implementation uses the Redfearn series expansion. Measured against
+    PROJ's ``+proj=tmerc`` on WGS84, worst case over latitudes 0-75 degrees:
+
+    ==================  ==========
+    From the meridian   Difference
+    ==================  ==========
+    2 degrees           < 0.1 mm
+    3 degrees           0.1 mm
+    4 degrees           0.7 mm
+    5 degrees           3.3 mm
+    6 degrees           11.5 mm
+    ==================  ==========
+
+    The docstring previously said "about 1 meter within 4 degrees", which
+    understated it by three orders of magnitude and could have led a caller to
+    reject the function as too coarse (gh-25 follow-up).
 
     Examples
     --------
@@ -703,8 +717,24 @@ def stereographic(
     -----
     The oblique case maps onto a conformal sphere of *Gaussian* radius,
     ``sqrt(M0 * N0)`` at the origin latitude. PROJ's ``+proj=sterea`` uses a
-    sphere of radius ``N0`` instead, so the two disagree away from the center:
-    about 2.5 km at 400 km, and 8.7 km at 1,738 km (gh-25).
+    sphere of radius ``N0`` instead, so the two disagree away from the center
+    (gh-25). **How much depends strongly on the origin latitude**, because the
+    two radii coincide where the meridional and prime-vertical curvatures do.
+    Measured against ``+proj=sterea`` on WGS84:
+
+    ==========  =============  ==============
+    ``lat0``    At 400 km      At 1,738 km
+    ==========  =============  ==============
+    0 deg       1.34 km        5.9 km
+    30 deg      0.03 km        0.73 km
+    45 deg      1.38 km        6.7 km
+    60 deg      2.73 km        12.5 km
+    75 deg      3.71 km        16.5 km
+    ==========  =============  ==============
+
+    An earlier version of this note quoted a single pair of figures, 2.5 km and
+    8.7 km, as though they were properties of the projection. They are one
+    origin latitude: the disagreement varies eightyfold across the table above.
 
     Both are conformal and each is self-consistent with its own inverse. But
     coordinates from this function are not interchangeable with ``+proj=sterea``
