@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
 **Current Version:** v2.0.0 (Released August 2, 2026)
-**Test Suite:** 5,925 tests passing, 100% mypy --strict compliance, 951/951 exported functions reached by a test with no standing exemptions
+**Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance, 951/951 exported functions reached by a test with no standing exemptions
 **Status:** Feature-complete MATLAB TCL parity achieved. v2.0.0 shipped 2 August 2026,
 closing the v2 correctness audit.
 
@@ -108,7 +108,7 @@ polish:
 - **Migration:** Tools and guides for v1.x → v2.0.0 transition, `pytcl.compat` layer
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
-- **Testing:** 4,973+ tests, 80%+ coverage, multi-sensor validation scenarios
+- **Testing:** 6,000+ tests, 90% coverage, multi-sensor validation scenarios
 
 ### v2.0.0 Release Risks
 
