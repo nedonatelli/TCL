@@ -155,7 +155,11 @@ def demo_kdtree_basics():
             showlegend=True,
             xaxis=dict(scaleanchor="y", scaleratio=1),
         )
-        fig.write_html(str(OUTPUT_DIR / "spatial_kdtree.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "spatial_kdtree.html"),
+            include_plotlyjs="cdn",
+            div_id="spatial_kdtree",
+        )
         print("\n  [Plot saved to spatial_kdtree.html]")
 
 
@@ -357,7 +361,11 @@ def demo_rtree():
             xaxis=dict(range=[-60, 60], scaleanchor="y", scaleratio=1),
             yaxis=dict(range=[-60, 60]),
         )
-        fig.write_html(str(OUTPUT_DIR / "spatial_rtree.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "spatial_rtree.html"),
+            include_plotlyjs="cdn",
+            div_id="spatial_rtree",
+        )
         print("\n  [Plot saved to spatial_rtree.html]")
 
 

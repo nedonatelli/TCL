@@ -346,7 +346,9 @@ def visualize_coordinate_transforms() -> None:
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         fig.write_html(
-            str(OUTPUT_DIR / "coordinate_systems.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "coordinate_systems.html"),
+            include_plotlyjs="cdn",
+            div_id="coordinate_systems",
         )
 
 

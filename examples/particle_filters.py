@@ -51,6 +51,17 @@ from pytcl.dynamic_estimation.particle_filters import (  # noqa: E402
 )
 
 
+def _rng(seed: int = 42) -> np.random.Generator:
+    """A seeded Generator for the library's resampling calls.
+
+    ``np.random.seed`` seeds the legacy global RNG. The particle-filter
+    functions default to ``np.random.default_rng()``, which is a separate
+    stream and ignores it -- so without passing this explicitly the figures
+    under docs/_static change on every rebuild.
+    """
+    return np.random.default_rng(seed)
+
+
 def demo_particle_basics():
     """Demonstrate basic particle filter operations."""
     print("=" * 70)
@@ -68,7 +79,7 @@ def demo_particle_basics():
     cov = np.eye(2) * 2.0
 
     # initialize_particles returns a ParticleState object
-    state = initialize_particles(mean, cov, n_particles)
+    state = initialize_particles(mean, cov, n_particles, rng=_rng())
     particles = state.particles
     weights = state.weights
 
@@ -113,7 +124,7 @@ def demo_resampling_methods():
     print(f"  ESS: {effective_sample_size(weights):.1f}")
 
     # Multinomial resampling - returns resampled particles directly
-    particles_multi = resample_multinomial(particles, weights)
+    particles_multi = resample_multinomial(particles, weights, rng=_rng())
     weights_multi = np.ones(n_particles) / n_particles
 
     print("\n--- Multinomial Resampling ---")
@@ -121,7 +132,7 @@ def demo_resampling_methods():
     print(f"  ESS: {effective_sample_size(weights_multi):.1f}")
 
     # Systematic resampling (lower variance)
-    particles_sys = resample_systematic(particles, weights)
+    particles_sys = resample_systematic(particles, weights, rng=_rng())
     weights_sys = np.ones(n_particles) / n_particles
 
     print("\n--- Systematic Resampling ---")
@@ -129,7 +140,7 @@ def demo_resampling_methods():
     print(f"  ESS: {effective_sample_size(weights_sys):.1f}")
 
     # Residual resampling
-    particles_res = resample_residual(particles, weights)
+    particles_res = resample_residual(particles, weights, rng=_rng())
     weights_res = np.ones(n_particles) / n_particles
 
     print("\n--- Residual Resampling ---")
@@ -216,12 +227,14 @@ def demo_resampling_methods():
         fig.write_html(
             str(OUTPUT_DIR / "particle_resampling_comparison.html"),
             include_plotlyjs="cdn",
+            div_id="particle_resampling_comparison",
         )
         print("\n  [Plot saved to particle_resampling_comparison.html]")
 
 
 def demo_linear_tracking():
     """Compare particle filter to Kalman filter for linear system."""
+    rng = _rng()
     print("\n" + "=" * 70)
     print("Linear System Tracking Demo")
     print("=" * 70)
@@ -291,7 +304,7 @@ def demo_linear_tracking():
 
     # Particle filter
     n_particles = 500
-    state = initialize_particles(np.zeros(4), np.eye(4) * 10.0, n_particles)
+    state = initialize_particles(np.zeros(4), np.eye(4) * 10.0, n_particles, rng=rng)
     particles = state.particles
     weights = state.weights.copy()
     pf_estimates = []
@@ -318,7 +331,7 @@ def demo_linear_tracking():
         # Resample if needed
         ess = effective_sample_size(weights)
         if ess < n_particles / 2:
-            particles = resample_systematic(particles, weights)
+            particles = resample_systematic(particles, weights, rng=rng)
             weights = np.ones(n_particles) / n_particles
 
     # Compare RMSE
@@ -433,13 +446,16 @@ def demo_linear_tracking():
 
         fig.update_layout(height=500, width=1200)
         fig.write_html(
-            str(OUTPUT_DIR / "particle_linear_tracking.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "particle_linear_tracking.html"),
+            include_plotlyjs="cdn",
+            div_id="particle_linear_tracking",
         )
         print("\n  [Plot saved to particle_linear_tracking.html]")
 
 
 def demo_nonlinear_tracking():
     """Demonstrate particle filter for nonlinear system."""
+    rng = _rng()
     print("\n" + "=" * 70)
     print("Nonlinear System Tracking Demo")
     print("=" * 70)
@@ -500,6 +516,7 @@ def demo_nonlinear_tracking():
         np.array([radius, 0.0, 0.0, radius * omega]),  # Near true initial
         np.diag([1.0, 1.0, 0.5, 0.5]),
         n_particles,
+        rng=rng,
     )
     particles = state.particles
     weights = state.weights.copy()
@@ -555,7 +572,7 @@ def demo_nonlinear_tracking():
 
         # Resample
         if ess_history[-1] < n_particles / 2:
-            particles = resample_systematic(particles, weights)
+            particles = resample_systematic(particles, weights, rng=rng)
             weights = np.ones(n_particles) / n_particles
 
     pf_estimates = np.array(pf_estimates)
@@ -713,7 +730,9 @@ def demo_nonlinear_tracking():
 
         fig.update_layout(height=800, width=1000, showlegend=True)
         fig.write_html(
-            str(OUTPUT_DIR / "particle_nonlinear_tracking.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "particle_nonlinear_tracking.html"),
+            include_plotlyjs="cdn",
+            div_id="particle_nonlinear_tracking",
         )
         print("\n  [Plot saved to particle_nonlinear_tracking.html]")
 
@@ -737,8 +756,8 @@ def demo_multimodal():
     cov = np.eye(2) * 0.5
 
     # Initialize with bimodal distribution
-    state1 = initialize_particles(mode1, cov, n_particles // 2)
-    state2 = initialize_particles(mode2, cov, n_particles // 2)
+    state1 = initialize_particles(mode1, cov, n_particles // 2, rng=_rng())
+    state2 = initialize_particles(mode2, cov, n_particles // 2, rng=_rng(43))
     particles = np.vstack([state1.particles, state2.particles])
     weights = np.ones(n_particles) / n_particles
 
@@ -854,13 +873,20 @@ def demo_multimodal():
             title_text="Particle Filter for Multimodal Distribution (Point size proportional to weight)",
         )
         fig.write_html(
-            str(OUTPUT_DIR / "particle_multimodal.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "particle_multimodal.html"),
+            include_plotlyjs="cdn",
+            div_id="particle_multimodal",
         )
         print("\n  [Plot saved to particle_multimodal.html]")
 
 
 def main():
     """Run all demonstrations."""
+    # Seed once for the whole run. Individual demos below reseed, but
+    # not all of them do, and the figures are committed under
+    # docs/_static -- an unseeded draw makes every rebuild produce a
+    # different file and a spurious diff.
+    np.random.seed(42)
     print("\n" + "#" * 70)
     print("# PyTCL Particle Filters Example")
     print("#" * 70)

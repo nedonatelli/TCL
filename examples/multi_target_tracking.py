@@ -259,14 +259,18 @@ def plot_results(
 
     # Save as HTML (interactive) and PNG (static)
     output_path = OUTPUT_DIR / "multi_target_tracking_result.html"
-    fig.write_html(str(output_path), include_plotlyjs="cdn")
+    fig.write_html(
+        str(output_path), include_plotlyjs="cdn", div_id=Path(output_path).stem
+    )
     print(f"Interactive plot saved to {output_path}")
     if SHOW_PLOTS:
         fig.show()
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         fig.write_html(
-            str(OUTPUT_DIR / "multi_target_tracking.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "multi_target_tracking.html"),
+            include_plotlyjs="cdn",
+            div_id="multi_target_tracking",
         )
 
 

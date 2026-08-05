@@ -600,7 +600,9 @@ def main():
     print("\n1. Generating tracking with covariance ellipses...")
     fig1 = plot_tracking_with_ellipses(data)
     fig1.write_html(
-        str(OUTPUT_DIR / "filter_viz_tracking_ellipses.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "filter_viz_tracking_ellipses.html"),
+        include_plotlyjs="cdn",
+        div_id="filter_viz_tracking_ellipses",
     )
     print("   Saved to filter_viz_tracking_ellipses.html")
 
@@ -610,6 +612,7 @@ def main():
     fig2.write_html(
         str(OUTPUT_DIR / "filter_viz_uncertainty_evolution.html"),
         include_plotlyjs="cdn",
+        div_id="filter_viz_uncertainty_evolution",
     )
     print("   Saved to filter_viz_uncertainty_evolution.html")
 
@@ -617,7 +620,9 @@ def main():
     print("\n3. Generating estimation error plot...")
     fig3 = plot_estimation_errors(data)
     fig3.write_html(
-        str(OUTPUT_DIR / "filter_viz_estimation_errors.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "filter_viz_estimation_errors.html"),
+        include_plotlyjs="cdn",
+        div_id="filter_viz_estimation_errors",
     )
     print("   Saved to filter_viz_estimation_errors.html")
 
@@ -625,7 +630,9 @@ def main():
     print("\n4. Generating animated tracking visualization...")
     fig4 = plot_animated_tracking(data)
     fig4.write_html(
-        str(OUTPUT_DIR / "filter_viz_animated.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "filter_viz_animated.html"),
+        include_plotlyjs="cdn",
+        div_id="filter_viz_animated",
     )
     print("   Saved to filter_viz_animated.html")
 

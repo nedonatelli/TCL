@@ -382,7 +382,9 @@ def visualize_filter_response() -> None:
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         fig.write_html(
-            str(OUTPUT_DIR / "signal_processing.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "signal_processing.html"),
+            include_plotlyjs="cdn",
+            div_id="signal_processing",
         )
 
 

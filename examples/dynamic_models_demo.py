@@ -147,7 +147,9 @@ def demo_continuous_to_discrete_conversion() -> None:
             fig.show()
         else:
             fig.write_html(
-                str(OUTPUT_DIR / "dynamic_models_demo.html"), include_plotlyjs="cdn"
+                str(OUTPUT_DIR / "dynamic_models_demo.html"),
+                include_plotlyjs="cdn",
+                div_id="dynamic_models_demo",
             )
 
 

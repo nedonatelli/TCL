@@ -315,7 +315,9 @@ def demo_orbit_propagation():
         )
         # Use external CDN for Plotly to reduce file size from 4.5MB to ~50KB
         fig.write_html(
-            str(OUTPUT_DIR / "orbital_propagation.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "orbital_propagation.html"),
+            include_plotlyjs="cdn",
+            div_id="orbital_propagation",
         )
         print("\n  [Plot saved to orbital_propagation.html]")
 

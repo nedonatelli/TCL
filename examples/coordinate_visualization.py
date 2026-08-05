@@ -618,7 +618,9 @@ def main():
     print("\n1. Generating rotation axes visualization...")
     fig1 = plot_rotation_axes()
     fig1.write_html(
-        str(OUTPUT_DIR / "coord_viz_rotation_axes.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "coord_viz_rotation_axes.html"),
+        include_plotlyjs="cdn",
+        div_id="coord_viz_rotation_axes",
     )
     print(f"   Saved to {OUTPUT_DIR / 'coord_viz_rotation_axes.html'}")
 
@@ -626,28 +628,40 @@ def main():
     print("\n2. Generating Euler rotation sequence...")
     fig2 = plot_euler_rotation_sequence()
     fig2.write_html(
-        str(OUTPUT_DIR / "coord_viz_euler_sequence.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "coord_viz_euler_sequence.html"),
+        include_plotlyjs="cdn",
+        div_id="coord_viz_euler_sequence",
     )
     print(f"   Saved to {OUTPUT_DIR / 'coord_viz_euler_sequence.html'}")
 
     # 3. Quaternion SLERP
     print("\n3. Generating quaternion SLERP visualization...")
     fig3 = plot_quaternion_slerp()
-    fig3.write_html(str(OUTPUT_DIR / "coord_viz_slerp.html"), include_plotlyjs="cdn")
+    fig3.write_html(
+        str(OUTPUT_DIR / "coord_viz_slerp.html"),
+        include_plotlyjs="cdn",
+        div_id="coord_viz_slerp",
+    )
     print(f"   Saved to {OUTPUT_DIR / 'coord_viz_slerp.html'}")
 
     # 4. Spherical coordinates
     print("\n4. Generating spherical coordinates visualization...")
     fig4 = plot_spherical_coordinates()
     fig4.write_html(
-        str(OUTPUT_DIR / "coord_viz_spherical.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "coord_viz_spherical.html"),
+        include_plotlyjs="cdn",
+        div_id="coord_viz_spherical",
     )
     print(f"   Saved to {OUTPUT_DIR / 'coord_viz_spherical.html'}")
 
     # 5. Earth coordinates
     print("\n5. Generating Earth coordinates visualization...")
     fig5 = plot_earth_coordinates()
-    fig5.write_html(str(OUTPUT_DIR / "coord_viz_earth.html"), include_plotlyjs="cdn")
+    fig5.write_html(
+        str(OUTPUT_DIR / "coord_viz_earth.html"),
+        include_plotlyjs="cdn",
+        div_id="coord_viz_earth",
+    )
     print(f"   Saved to {OUTPUT_DIR / 'coord_viz_earth.html'}")
 
     # Show all figures

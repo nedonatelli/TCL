@@ -586,7 +586,9 @@ def visualize_navigation_trajectory() -> None:
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         fig.write_html(
-            str(OUTPUT_DIR / "ins_gnss_navigation.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "ins_gnss_navigation.html"),
+            include_plotlyjs="cdn",
+            div_id="ins_gnss_navigation",
         )
 
 
