@@ -12,7 +12,7 @@ The Python port covers the core tracking workflow of the original MATLAB TCL lib
 
 **Documentation Status: Phase 3 Complete** ✅
 
-As of v1.16.0, the library includes:
+As of v2.0.0, the library includes:
 
 - **1,400+ functions** with comprehensive docstring examples
 - **180+ modules** classified by maturity level
@@ -21,7 +21,7 @@ As of v1.16.0, the library includes:
 Code Statistics
 ---------------
 
-.. list-table:: Python pytcl v1.16.0 Implementation
+.. list-table:: Python pytcl v2.0.0 Implementation
    :header-rows: 1
    :widths: 30 15 15 15
 
@@ -769,7 +769,7 @@ All three tier 1-2 "missing" components are fully implemented and tested:
      - **81 ✅**
      - **Complete with tutorials**
 
-The Python implementation also surpasses the MATLAB original with GPU acceleration (10-15x speedup), 8 interactive Jupyter notebooks, comprehensive documentation with 1600+ lines of new guides, and 3,322 passing tests at 80% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance.
+The Python implementation also surpasses the MATLAB original with dual-backend GPU acceleration (CuPy and MLX, both exercised on real hardware for 2.0.0), 8 interactive Jupyter notebooks, comprehensive documentation, and 6,000+ passing tests at 90% code coverage. All implementations meet production quality standards with 100% mypy --strict compliance. The "10-15x speedup" previously quoted here was never measured on this codebase and is retired rather than repeated.
 
 
 See Also

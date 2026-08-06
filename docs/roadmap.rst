@@ -7,11 +7,10 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v1.16.0)
------------------------
+Current State (v2.0.0)
+----------------------
 
-* **100% MATLAB TCL parity** across all tier 1 and tier 2 components
-* **3,322 tests** passing, 80% line coverage, docstring examples run in CI
+* **6,000+ tests** passing, 90% line coverage, docstring examples run in CI
 * **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-13, and
   WMMHR2025 magnetic models verified against independent references to
   sub-nT accuracy; UTM projections verified against EPSG to sub-millimeter

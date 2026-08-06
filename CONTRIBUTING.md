@@ -342,12 +342,12 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v1.19.0
-**MATLAB Parity:** 100% ✅ (all tier 1-2 missing components verified)
-**Test Suite:** 4,973 tests passing (docstring examples also run in CI)
-**Code Coverage:** 80% (target 80%+ in v2.0.0) ✅
+**Version:** v2.0.0
+**Test Suite:** 6,000+ tests passing (docstring examples also run in CI)
+**Code Coverage:** 90%
 **Quality:** 100% compliance (ruff check, ruff format, mypy --strict)
-**GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon)
+**GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon), both verified on
+real hardware for 2.0.0
 **Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
 
 ## v2.0.0 Roadmap Progress
@@ -416,12 +416,17 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v1.19.0):
-- **Functions:** 1,048+
+Current metrics (v2.0.0):
+- **Functions:** 1,400+
 - **Modules:** 133
-- **Tests:** 4,973 (all passing)
-- **Coverage:** 80%
-- **MATLAB Parity:** 100% (NRLMSISE-00, CEKF, RBPF verified)
+- **Tests:** 6,000+ (all passing)
+- **Coverage:** 90%
+
+An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
+RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
+approximation shipped under that name, found and corrected in gh-79 -- so the
+parity line is retired here rather than repeated. docs/gap_analysis.rst
+carries the honest per-component account.
 - **GPU Backends:** 2 (CuPy + MLX)
 - **Performance:** Numba JIT + lru_cache optimizations
 
