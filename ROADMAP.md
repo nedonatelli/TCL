@@ -1,9 +1,13 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.0.0 (Released August 2, 2026)
+**Current Version:** v2.0.0 on `main`, **not yet released** — the latest tag and PyPI version is v1.19.0
 **Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance, 951/951 exported functions reached by a test with no standing exemptions
-**Status:** Feature-complete MATLAB TCL parity achieved. v2.0.0 shipped 2 August 2026,
-closing the v2 correctness audit.
+**Status:** v2.0.0 is complete and verified on `main`, closing the v2 correctness
+audit; the tag and PyPI release are pending a deliberate go decision. On parity:
+the core tracking workflow is fully ported and oracle-validated, and the full
+MATLAB surface is covered at roughly a third by function count — see
+`docs/matlab_parity_inventory.rst`, which supersedes any "feature-complete
+parity" phrasing.
 
 This document covers **planned and future work only**. For what has already shipped, see
 [CHANGELOG.md](CHANGELOG.md), the [GitHub releases](https://github.com/nedonatelli/TCL/releases),
@@ -38,7 +42,7 @@ workflow examples, benchmarks, and multi-sensor validation scenarios).
 
 ### Phase 9: Release Preparation & Packaging
 
-**Superseded.** v2.0.0 shipped directly as GA on 2 August 2026 rather than through
+**Superseded.** v2.0.0 was finalized on `main` (release notes cut 2 August 2026, tag pending) rather than shipped through
 the alpha/beta/RC cycle planned below. Recorded rather than deleted, because the
 difference matters to anyone upgrading:
 
