@@ -1,9 +1,8 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.0.0 on `main`, **not yet released** — the latest tag and PyPI version is v1.19.0
+**Current Version:** v2.0.0, released 6 August 2026
 **Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
-**Status:** v2.0.0 is complete and verified on `main`, closing the v2 correctness
-audit; the tag and PyPI release are pending a deliberate go decision. On parity:
+**Status:** v2.0.0 is released, closing the v2 correctness audit. On parity:
 the core tracking workflow is fully ported and oracle-validated, and the full
 MATLAB surface is covered at roughly a third by function count — see
 `docs/matlab_parity_inventory.rst`, which supersedes any "feature-complete
@@ -17,30 +16,15 @@ and git history.
 
 ## Table of Contents
 
-1. [v2.0.0 Release Plan](#v200-release-plan)
-2. [v2.1 Roadmap](#v21-roadmap-post-v200)
-3. [Performance Targets](#performance-targets)
-4. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
-5. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
-6. [Long-Term Vision](#long-term-vision)
-7. [Community Contribution Priorities](#community-contribution-priorities)
-8. [Contributing](#contributing)
+1. [v2.1 Roadmap](#v21-roadmap-post-v200)
+2. [Performance Targets](#performance-targets)
+3. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
+4. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
+5. [Long-Term Vision](#long-term-vision)
+6. [Community Contribution Priorities](#community-contribution-priorities)
+7. [Contributing](#contributing)
 
 ---
-
-## v2.0.0 Release Plan
-
-v2.0.0 is complete and verified on `main`. What remains, in order:
-
-1. Delete the held `v2.0.0` remote branch — a tag of the same name would make
-   git ref lookups ambiguous
-2. Set the CHANGELOG date (currently `[2.0.0] - Unreleased`) and rebuild the
-   docs so `docs/_build/index.html` reflects the release
-3. Publish the drafted GitHub release — publishing creates the `v2.0.0` tag,
-   which fires the PyPI publish workflow
-
-Breaking changes are listed below; per-change before/after snippets are in
-`docs/migration_v1_to_v2.rst`.
 
 ## v2.1 Roadmap (Post-v2.0.0)
 
@@ -371,6 +355,6 @@ for reference implementations.
 
 ---
 
-**Current Phase:** v2.0.0 complete on `main`; tag and PyPI release pending
-**Next Milestone:** the `v2.0.0` tag (released directly — no alpha/beta/RC cycle)
+**Current Phase:** v2.0.0 released
+**Next Milestone:** v2.1 (see the measured backlog)
 No dates are attached to anything in this document: none have been decided.
