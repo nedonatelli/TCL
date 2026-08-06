@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
 **Current Version:** v2.0.0 on `main`, **not yet released** — the latest tag and PyPI version is v1.19.0
-**Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance, 951/951 exported functions reached by a test with no standing exemptions
+**Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** v2.0.0 is complete and verified on `main`, closing the v2 correctness
 audit; the tag and PyPI release are pending a deliberate go decision. On parity:
 the core tracking workflow is fully ported and oracle-validated, and the full
@@ -30,9 +30,10 @@ and git history.
 
 ## v2.0.0 Release Plan
 
-**Target:** October 2026
-**Status:** Development complete (Phases 1-8 shipped incrementally in v1.8.0-v1.15.0).
-Remaining work is packaging, validation, and the release pipeline.
+**Status:** Complete. Development shipped incrementally in v1.8.0-v1.15.0; the
+release-readiness work (validation, packaging checks, documentation) finished
+in August 2026. The only remaining step is the tag, which triggers the PyPI
+publish. The October 2026 target this section once carried is obsolete.
 
 All v2.0.0 feature work has landed on main: network flow optimization, API standardization,
 exception hierarchy, optional dependency system, 9 Jupyter notebooks, dual-backend GPU
@@ -118,7 +119,7 @@ polish:
 
 | Risk | Impact | Likelihood | Mitigation |
 |------|--------|-----------|-----------|
-| Breaking API changes → user friction | High | Low | Deprecation path, migration guide, compat layer |
+| Breaking API changes → user friction | High | Low | `docs/migration_v1_to_v2.rst` (hard breaks by policy; no deprecation path or compat layer exists) |
 | GPU memory constraints on large batches | Medium | Medium | Auto-offload strategy, documentation |
 | Jupyter notebook maintenance burden | Medium | Medium | CI validation with pytest-nbval |
 
@@ -259,7 +260,7 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 ### v2.0.0 Release Targets
 
 - All CPU algorithms: sub-100ms for standard scenarios
-- GPU: 10-15x speedup with batch processing (NVIDIA), 4-5x native (Apple Silicon)
+- GPU: correctness on both backends is verified on real hardware; **no speedup ratio has ever been measured on this codebase**, and the 10-15x once quoted here is retired until someone benchmarks it
 - Memory usage: 50%+ reduction via sparse matrices
 - Scalability: linear time for 1000+ targets with O(n log n) assignment
 
@@ -274,7 +275,7 @@ all five v2.0.0 blockers from [#9](https://github.com/nedonatelli/TCL/issues/9)
 high-degree Legendre) -- plus 72 further reference-verified bugs. Per-package
 validation status is tracked in [AUDIT.md](AUDIT.md).
 
-### Critical (must be resolved before v2.0.0)
+### Critical (resolved before v2.0.0 — retained as the record)
 
 Unit-level correctness is well covered. The remaining risk was **integration**:
 the campaign's most serious findings were things individually correct but not
@@ -292,7 +293,7 @@ state-layout error on a page whose imports all resolved.
 | The 30 example scripts are never executed in CI | One shipped fabricated filter output undetected until v1.15.1 | **Resolved in v1.19.0** -- dedicated `examples` job; exposed a `ConstrainedEKF` projection bug and four broken scripts |
 | Notebook CI gate cannot fail (`\|\| echo` swallows the exit code) | 13 broken cells; `networkx` used but undeclared | **Resolved in v1.19.0** -- exit code no longer swallowed; the job also never installed plotly |
 | Sphinx prose examples are not executed | 370 code blocks unverified | **Partial** -- every `pytcl` import in `docs/` is now checked (244/244 resolve) and the architecture and data-structures pages are executed by tests, but the remaining prose blocks are still not run |
-| Orphaned public API | Exported symbols with no callers hid a 1e199 error | **Open** -- the autodoc restructure surfaced 21 submodules no page documented, but no systematic caller audit has been done |
+| Orphaned public API | Exported symbols with no callers hid a 1e199 error | **Resolved in v2.0.0** -- gh-47's coverage gate holds every exported name to a test with an empty allowlist (gh-49), and `tests/contract/test_export_surface.py` closes the reverse gap of tested-but-unexported names |
 
 ### High Priority
 
@@ -328,42 +329,36 @@ state-layout error on a page whose imports all resolved.
 
 ### API Changes Summary
 
-**Function signature changes** (deprecated in v1.13.2, removed in v2.0.0):
-```python
-# OLD (deprecated)
-kf_predict(x, P, F, Q)  # Returns (x_pred, P_pred)
+An earlier version of this section described a different 2.0.0 than the one
+that was built: a ``kf_predict(x, P, model)`` signature returning
+``FilterState`` (the real signature is unchanged:
+``kf_predict(x, P, F, Q, B=None, u=None)`` returning ``KalmanPrediction``), a
+module move to ``pytcl.data_association`` (no such package exists;
+``pytcl.assignment_algorithms`` never moved), and a GPU import break
+(``from pytcl.gpu import batch_kf_predict`` works). None of that happened.
+The real breaking changes, each documented with before/after in
+``docs/migration_v1_to_v2.rst``:
 
-# NEW (v2.0.0)
-kf_predict(x, P, model)  # Returns FilterState(x, P, info)
-```
+- ``query(k)`` rejects ``k > n_samples`` instead of padding with index 0
+- INS/GNSS ``position_cov`` is in ``[rad, rad, m]``;
+  ``position_std_to_error_state_units`` converts
+- ``compute_dop`` takes ``user_lla`` for meaningful HDOP/VDOP
+- ``detection_probability`` drops the inert ``swerling_case`` argument
+- ``snr_loss`` requires ``pfa`` and covers CA-CFAR only
+- ``SQLStorage()`` takes no ``db_type``; read-mode ``open`` no longer creates
+  files; ``store_array`` replaces on both backends
+- GPU filter callbacks take the whole ``(N, dim)`` batch on the active backend
+- ``NRLMSISE00`` family renamed ``SimplifiedThermosphere`` (gh-79)
+- ``nuttall_q`` renamed ``rician_cdf`` (warning alias retained)
+- ``pytcl.logging_config`` and
+  ``pytcl.assignment_algorithms.network_simplex`` removed outright
+- Several functions return different (correct) numbers with unchanged
+  signatures — see the migration guide's dedicated section before comparing
+  against recorded v1.x baselines
 
-**Module reorganization:**
-- `pytcl.assignment_algorithms` → `pytcl.data_association.assignment`
-- `pytcl.matrix_utilities` → internal only (use `pytcl.dynamic_estimation.kalman.matrix_utils`)
-- `pytcl.special_functions` → `pytcl.mathematical_functions.special_functions`
-
-**Exception handling:** all exceptions inherit from `pytcl.TCLError`. Replace generic
-`ValueError` catches with specific exception types:
-```python
-# OLD
-except ValueError as e:
-    ...
-
-# NEW
-except pytcl.DimensionError as e:  # More specific
-    ...
-except pytcl.TCLError as e:  # Fallback
-    ...
-```
-
-**GPU imports:**
-```python
-# OLD
-from pytcl.gpu import batch_kf_predict
-
-# NEW
-from pytcl.gpu.kalman import batch_kf_predict
-```
+**Exception handling** (unchanged in 2.0.0, listed for migrating v1.x users):
+all library exceptions inherit from ``pytcl.TCLError``, with specific types
+like ``pytcl.DimensionError`` available for narrow catches.
 
 ### Backward Compatibility Layer
 
@@ -496,9 +491,8 @@ for reference implementations.
 
 ---
 
-**Last Updated:** July 24, 2026
-**Current Phase:** Phase 9 - Release Preparation
-**Next Milestone:** v2.0.0-alpha (August 2026)
-**v2.0.0 Target Release:** October 2026
+**Last Updated:** August 5, 2026
+**Current Phase:** v2.0.0 complete on `main`; tag and PyPI release pending
+**Next Milestone:** the `v2.0.0` tag (no alpha/beta/RC — see the Phase 9 note)
 **v2.1.0 Target Release:** Q1-Q3 2027 (RAPIDS, distributed tracking, advanced diagnostics)
 **Long-term Horizon:** v3.0.0 planned for 2030+ (async/await, WASM, federated learning, quantum backends)
