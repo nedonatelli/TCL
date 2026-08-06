@@ -362,13 +362,9 @@ like ``pytcl.DimensionError`` available for narrow catches.
 
 ### Backward Compatibility Layer
 
-There is none, deliberately. An earlier version of this section promised a
-`pytcl.compat` module with old signatures and deprecation warnings, alongside
-a code sample. That module was never built, the sample raised
-`ModuleNotFoundError`, and the promise contradicted the project's standing
-rule against compatibility shims for removed code. The 2.0.0 breaks are hard
-breaks: `nuttall_q` (a rename, kept as a warning alias) is the sole
-exception, and `docs/migration_v1_to_v2.rst` is the migration path.
+There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
+(a rename, kept as a warning alias) is the sole exception — and
+`docs/migration_v1_to_v2.rst` is the migration path.
 
 ---
 
