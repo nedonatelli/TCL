@@ -136,8 +136,9 @@ backends).
      - 21
      - Good
      - Direct/indirect geodesic, great-circle and rhumb problems ported,
-       validated against GeographicLib. **Missing:** geodesic/great-circle/
-       rhumb intersections, great-circle TDOA localization, surface angles.
+       validated against GeographicLib. **Missing:** geodesic and great-circle
+       intersections, great-circle TDOA localization, surface angles
+       (rhumb intersection *is* ported, as ``rhumb_intersect``).
    * - Static_Estimation
      - 11
      - Divergent
