@@ -3,7 +3,7 @@ Assignment & Data Association
 
 *Comprehensive guide to solving the data association problem: matching measurements to tracks in multi-target tracking scenarios.*
 
-Data association determines which measurements belong to which tracks—a critical problem in multi-target tracking. Poor association decisions cascade through the entire system.
+Data association determines which measurements belong to which tracks—a critical problem in multi-target tracking. Poor association decisions cascade through the entire system. This guide shows how to solve it with the functions in :mod:`pytcl.assignment_algorithms`.
 
 **Table of Contents:**
 
@@ -22,19 +22,21 @@ Problem Overview
 **The Data Association Problem:**
 
 Given:
-- $N_t$ existing tracks with predicted positions
-- $N_m$ new measurements from sensors
+
+- :math:`N_t` existing tracks with predicted positions
+- :math:`N_m` new measurements from sensors
 
 Find:
+
 - Associations: which measurements go to which tracks
 - Track initiations: which measurements are new tracks
 - Track deletions: which tracks should be terminated
 
 **Challenge: Combinatorial Explosion**
 
-Naive approach checks all possible associations: $(N_t + 1)^{N_m}$ possibilities.
+Naive approach checks all possible associations: :math:`(N_t + 1)^{N_m}` possibilities.
 
-Example: 100 tracks, 50 measurements → $101^{50}$ ≈ $10^{100}$ combinations!
+Example: 100 tracks, 50 measurements → :math:`101^{50} \approx 10^{100}` combinations!
 
 **Why Association Matters:**
 
@@ -47,16 +49,23 @@ Example: 100 tracks, 50 measurements → $101^{50}$ ≈ $10^{100}$ combinations!
 Association Algorithms
 ----------------------
 
+All algorithms below operate on a cost matrix of shape ``(n_tracks, n_measurements)``
+whose entries are squared Mahalanobis distances (see *Cost Matrix Construction*).
+Each returns an ``AssociationResult`` with ``track_to_measurement`` (per track, the
+assigned measurement index or -1), ``measurement_to_track`` (the reverse mapping),
+``costs``, and ``total_cost``.
+
 **1. Nearest Neighbor (NN)**
 
-Simplest approach: match each measurement to closest track.
+Simplest approach: greedily match each track to its closest measurement.
 
 Advantages:
-- O(N_m × N_t) complexity
-- Fast for real-time systems
-- Works well with dense tracks
+
+- Fast, low complexity
+- Works well when tracks are widely separated
 
 Disadvantages:
+
 - Greedy (not globally optimal)
 - Fails with close tracks
 - No conflict resolution
@@ -64,127 +73,73 @@ Disadvantages:
 .. code-block:: python
 
     import numpy as np
-    from scipy.spatial.distance import cdist
-    
-    class NearestNeighbor:
-        """Simple NN data association."""
-        
-        def associate(self, track_positions, measurements, gate_threshold=50.0):
-            """
-            Args:
-                track_positions: N_t × 3 array
-                measurements: N_m × 3 array
-                gate_threshold: max distance for valid association (m)
-            
-            Returns:
-                associations: list of (measurement_idx, track_idx) tuples
-                unassociated_meas: list of measurement indices
-                unassociated_tracks: list of track indices
-            """
-            N_t, N_m = len(track_positions), len(measurements)
-            
-            # Compute distance matrix: N_m × N_t
-            distances = cdist(measurements, track_positions, metric='euclidean')
-            
-            associations = []
-            used_tracks = set()
-            
-            # For each measurement, find nearest track
-            for m_idx in range(N_m):
-                valid_tracks = [t_idx for t_idx in range(N_t) 
-                               if distances[m_idx, t_idx] < gate_threshold 
-                               and t_idx not in used_tracks]
-                
-                if valid_tracks:
-                    # Choose closest
-                    closest_t = min(valid_tracks, 
-                                   key=lambda t: distances[m_idx, t])
-                    associations.append((m_idx, closest_t))
-                    used_tracks.add(closest_t)
-            
-            unassociated_meas = [m for m in range(N_m) 
-                                if m not in [a[0] for a in associations]]
-            unassociated_tracks = [t for t in range(N_t) 
-                                  if t not in used_tracks]
-            
-            return associations, unassociated_meas, unassociated_tracks
+    from pytcl.assignment_algorithms import (
+        compute_association_cost,
+        nearest_neighbor,
+    )
+
+    # Two tracks with state [x, vx]; three position-only measurements
+    track_predictions = np.array([[0.0, 1.0],
+                                  [5.0, -1.0]])
+    track_covariances = np.array([np.eye(2), np.eye(2)])
+    measurements = np.array([[0.1], [4.9], [10.0]])
+    H = np.array([[1.0, 0.0]])  # measure position only
+
+    # Squared Mahalanobis distance for every track/measurement pair
+    cost = compute_association_cost(track_predictions, track_covariances,
+                                    measurements, H)
+    print(np.round(cost, 3))
+    # [[1.000e-02 2.401e+01 1.000e+02]
+    #  [2.401e+01 1.000e-02 2.500e+01]]
+
+    result = nearest_neighbor(cost, gate_threshold=9.21)
+    print(result.track_to_measurement)  # [0 1]
+    print(result.measurement_to_track)  # [ 0  1 -1]  (meas 2 unassigned)
 
 
 **2. Global Nearest Neighbor (GNN)**
 
-Optimal assignment using cost matrix and Hungarian algorithm.
+Globally optimal assignment via the Hungarian algorithm
+(:func:`~pytcl.assignment_algorithms.hungarian` under the hood).
 
 Advantages:
+
 - Globally optimal solution
-- O(N³) with Hungarian algorithm
+- O(N^3) with Hungarian algorithm
 - Handles ambiguous cases
 
 Disadvantages:
+
 - Slower than NN (still real-time for ~100 objects)
 - Requires complete cost matrix
 - Doesn't use historical ambiguity information
 
+Greedy NN can lock in a bad early choice that GNN avoids:
+
 .. code-block:: python
 
-    from scipy.optimize import linear_sum_assignment
-    
-    class GlobalNearestNeighbor:
-        """Optimal assignment via Hungarian algorithm."""
-        
-        def associate(self, track_positions, measurements, 
-                     covariances, gate_threshold=50.0):
-            """
-            Args:
-                track_positions: N_t × 3 array
-                measurements: N_m × 3 array
-                covariances: N_t × 3 × 3 array (position uncertainty)
-                gate_threshold: max Mahalanobis distance
-            
-            Returns:
-                associations, unassociated_meas, unassociated_tracks
-            """
-            N_t, N_m = len(track_positions), len(measurements)
-            
-            # Build cost matrix: N_m × (N_t + 1)
-            # Column N_t is cost of new track (fixed penalty)
-            cost_matrix = np.full((N_m, N_t + 1), 1e10)
-            
-            # Fill association costs
-            for m_idx, meas in enumerate(measurements):
-                for t_idx, track_pos in enumerate(track_positions):
-                    # Mahalanobis distance
-                    diff = meas - track_pos
-                    try:
-                        cov_inv = np.linalg.inv(covariances[t_idx])
-                        mahal_dist = np.sqrt(diff @ cov_inv @ diff)
-                    except np.linalg.LinAlgError:
-                        mahal_dist = float('inf')
-                    
-                    # Gate check
-                    if mahal_dist < gate_threshold:
-                        cost_matrix[m_idx, t_idx] = mahal_dist
-                
-                # Cost of new track (no association)
-                cost_matrix[m_idx, N_t] = 5.0  # new track penalty
-            
-            # Solve assignment problem
-            meas_indices, assignment = linear_sum_assignment(cost_matrix)
-            
-            # Extract associations
-            associations = []
-            unassociated_meas = []
-            
-            for m_idx in meas_indices:
-                t_idx = assignment[m_idx]
-                if t_idx < N_t and cost_matrix[m_idx, t_idx] < 1e9:
-                    associations.append((m_idx, t_idx))
-                else:
-                    unassociated_meas.append(m_idx)
-            
-            unassociated_tracks = [t for t in range(N_t)
-                                  if t not in assignment[:N_t]]
-            
-            return associations, unassociated_meas, unassociated_tracks
+    from pytcl.assignment_algorithms import gnn_association
+
+    ambiguous_cost = np.array([[1.0, 3.0],
+                               [2.0, 100.0]])
+
+    nn = nearest_neighbor(ambiguous_cost)
+    print(nn.track_to_measurement, nn.total_cost)   # [0 1] 101.0
+
+    gnn = gnn_association(ambiguous_cost)
+    print(gnn.track_to_measurement, gnn.total_cost)  # [1 0] 5.0
+
+``gated_gnn_association`` combines cost computation, chi-squared gating, and
+GNN assignment in one call:
+
+.. code-block:: python
+
+    from pytcl.assignment_algorithms import gated_gnn_association
+
+    result = gated_gnn_association(track_predictions, track_covariances,
+                                   measurements, H, gate_probability=0.99)
+    print(result.track_to_measurement)  # [0 1]
+    print(result.measurement_to_track)  # [ 0  1 -1]
 
 
 **3. Joint Probabilistic Data Association (JPDA)**
@@ -192,102 +147,86 @@ Disadvantages:
 Treats ambiguous associations probabilistically using Bayesian updates.
 
 Advantages:
+
 - Handles ambiguous associations gracefully
 - Produces weighted updates (less filter divergence)
 - Better than deterministic assignment for clutter
 
 Disadvantages:
+
 - More complex implementation
 - Slower than GNN
 - Can lose track of targets in dense scenarios
 
+:func:`~pytcl.assignment_algorithms.jpda` computes the association probability
+matrix; :func:`~pytcl.assignment_algorithms.jpda_update` also performs the
+probability-weighted state update. Each row of ``association_probs`` covers one
+track and sums to 1 across all measurements plus a final missed-detection column.
+
 .. code-block:: python
 
-    class JPDA:
-        """Joint Probabilistic Data Association."""
-        
-        def compute_association_probabilities(self, 
-                                             likelihoods,  # N_m × N_t matrix
-                                             P_d=0.9,      # detection probability
-                                             P_f=1e-4):    # false alarm density
-            """
-            Compute probability each measurement came from each track.
-            
-            Args:
-                likelihoods: N_m × N_t matrix of likelihood values
-                P_d: detection probability (typically 0.8-0.95)
-                P_f: false alarm density (returns/volume)
-            """
-            N_m, N_t = likelihoods.shape
-            
-            # Initialize association probabilities
-            betas = np.zeros((N_m, N_t + 1))  # Column N_t is false alarm
-            
-            # Normalization constant
-            c = P_f
-            
-            # For each gate hypothesis (simplified - does not enumerate all)
-            for m_idx in range(N_m):
-                for t_idx in range(N_t):
-                    # Probability measurement m came from track t
-                    beta_mt = P_d * likelihoods[m_idx, t_idx]
-                    betas[m_idx, t_idx] = beta_mt
-                    c += beta_mt
-                
-                # Probability measurement is false alarm
-                betas[m_idx, N_t] = P_f
-            
-            # Normalize probabilities
-            betas = betas / c
-            
-            # Association probability for each track
-            # P(track t has measurement) = sum_m P(m associated with t)
-            track_probs = np.sum(betas[:, :N_t], axis=0)
-            
-            return betas, track_probs
+    from pytcl.assignment_algorithms import jpda, jpda_update
+
+    states = [np.array([0.0, 1.0]), np.array([5.0, -1.0])]
+    covariances = [0.5 * np.eye(2), 0.5 * np.eye(2)]
+    meas = np.array([[-0.6], [0.8], [4.9]])  # two candidates near track 0
+    R = np.array([[0.25]])
+
+    result = jpda(states, covariances, meas, H, R,
+                  detection_prob=0.9, clutter_density=1e-3)
+    print(np.round(result.association_probs, 3))
+    # [[0.546 0.453 0.    0.   ]   <- track 0 split between meas 0 and 1
+    #  [0.    0.    1.    0.   ]]  <- track 1 firmly matched to meas 2
+    print(result.association_probs.sum(axis=1))  # [1. 1.]
+
+    update = jpda_update(states, covariances, meas, H, R,
+                         detection_prob=0.9, clutter_density=1e-3)
+    print([np.round(x, 3) for x in update.states])
+    # [array([0.023, 1.   ]), array([ 4.933, -1.   ])]
 
 
 **4. Multiple Hypothesis Tracking (MHT)**
 
-Maintains multiple competing track hypotheses, pruning low-probability ones.
+MHT maintains multiple competing association hypotheses over time and prunes
+low-probability ones. A full MHT implementation involves hypothesis trees,
+track scoring, and N-scan pruning, which is beyond the scope of this guide.
+Its core computational engine, however, is enumerating the k best assignments
+of the current cost matrix—exactly what
+:func:`~pytcl.assignment_algorithms.murty` and
+:func:`~pytcl.assignment_algorithms.kbest_assign2d` provide
+(:func:`~pytcl.assignment_algorithms.ranked_assignments` enumerates until a
+cost threshold instead of a fixed k):
+
+.. code-block:: python
+
+    from pytcl.assignment_algorithms import murty
+
+    cost_mht = np.array([[10.0, 5.0, 13.0],
+                         [3.0, 15.0, 8.0],
+                         [12.0, 7.0, 9.0]])
+
+    kbest = murty(cost_mht, k=3)
+    print(kbest.costs)  # [17. 23. 25.]
+    for a in kbest.assignments:
+        print(a.row_indices, "->", a.col_indices, a.cost)
+    # [0 1 2] -> [1 0 2] 17.0
+    # [0 1 2] -> [2 0 1] 23.0
+    # [0 1 2] -> [1 2 0] 25.0
+
+Each hypothesis branch spawns from one of these ranked assignments; hypothesis
+probabilities follow from the assignment costs.
 
 Advantages:
+
 - Handles very ambiguous scenarios
 - Can recover from wrong associations
 - Best performance in complex clutter
 
 Disadvantages:
+
 - Exponential complexity (must prune aggressively)
 - High implementation complexity
 - Computationally expensive
-
-Example concept (full MHT is much more complex):
-
-.. code-block:: python
-
-    class SimpleMultipleHypothesis:
-        """Simplified MHT structure."""
-        
-        def __init__(self, max_hypotheses=10):
-            self.hypotheses = []  # List of hypothesis trees
-            self.max_hypotheses = max_hypotheses
-        
-        def create_hypothesis(self, track_ids, associations, probability):
-            """Create new hypothesis for current association."""
-            hypothesis = {
-                'track_ids': track_ids,
-                'associations': associations,
-                'probability': probability,
-                'likelihood': 1.0
-            }
-            return hypothesis
-        
-        def prune_hypotheses(self):
-            """Remove low-probability hypotheses."""
-            # Keep only top N by probability
-            self.hypotheses = sorted(self.hypotheses,
-                                    key=lambda h: h['probability'],
-                                    reverse=True)[:self.max_hypotheses]
 
 
 Cost Matrix Construction
@@ -295,51 +234,35 @@ Cost Matrix Construction
 
 **Mahalanobis Distance-Based Costs:**
 
+The standard association cost is the squared Mahalanobis distance of the
+innovation :math:`d^2 = (z - \hat{z})^T S^{-1} (z - \hat{z})`:
+
 .. code-block:: python
 
-    def build_cost_matrix(tracks, measurements, max_gate=10.0, new_target_cost=15.0):
-        """
-        Build cost matrix for assignment problem.
-        
-        Args:
-            tracks: List of Track objects with position and covariance
-            measurements: List of measurement vectors
-            max_gate: maximum Mahalanobis distance for gating
-            new_target_cost: cost of initiating new track
-        
-        Returns:
-            cost_matrix: N_m × (N_t + 1) cost matrix
-        """
-        N_m = len(measurements)
-        N_t = len(tracks)
-        
-        cost_matrix = np.full((N_m, N_t + 1), 1e10)
-        
-        for m_idx, meas in enumerate(measurements):
-            for t_idx, track in enumerate(tracks):
-                # Compute Mahalanobis distance
-                predicted_pos = track.position
-                residual = meas - predicted_pos
-                
-                # Get covariance (innovation covariance in practice)
-                if hasattr(track, 'innovation_cov'):
-                    cov = track.innovation_cov
-                else:
-                    cov = np.eye(3)  # fallback
-                
-                try:
-                    mahal_dist = np.sqrt(residual @ np.linalg.inv(cov) @ residual)
-                except np.linalg.LinAlgError:
-                    mahal_dist = float('inf')
-                
-                # Gate check
-                if mahal_dist <= max_gate:
-                    cost_matrix[m_idx, t_idx] = mahal_dist
-            
-            # New target column
-            cost_matrix[m_idx, N_t] = new_target_cost
-        
-        return cost_matrix
+    from pytcl.assignment_algorithms import mahalanobis_distance
+
+    innovation = np.array([1.0, 0.5])
+    S = np.array([[2.0, 0.0], [0.0, 1.0]])
+    print(mahalanobis_distance(innovation, S))  # 0.75 (squared distance)
+
+:func:`~pytcl.assignment_algorithms.compute_association_cost` builds the full
+``(n_tracks, n_measurements)`` matrix from predicted states, covariances, and an
+optional measurement matrix (see the NN example above). For probabilistic
+methods, :func:`~pytcl.assignment_algorithms.compute_likelihood_matrix` returns
+Gaussian likelihoods plus a boolean gating mask:
+
+.. code-block:: python
+
+    from pytcl.assignment_algorithms import compute_likelihood_matrix
+
+    L, gated = compute_likelihood_matrix(states, covariances, meas, H, R,
+                                         gate_threshold=9.21)
+    print(np.round(L, 4))
+    # [[0.3624 0.3007 0.    ]
+    #  [0.     0.     0.4576]]
+    print(gated)
+    # [[ True  True False]
+    #  [False False  True]]
 
 
 Gating & Validation
@@ -347,74 +270,62 @@ Gating & Validation
 
 **Gating Regions:**
 
-Gating reduces computational load by excluding unlikely associations before assignment.
+Gating excludes unlikely pairs before assignment, reducing computational load
+and false associations. For Gaussian innovations the squared Mahalanobis
+distance is chi-squared distributed with the measurement dimension as degrees
+of freedom, so the gate threshold should be a chi-squared quantile—**it depends
+on the measurement dimension**, not on a universal "3-sigma" rule. Use
+:func:`~pytcl.assignment_algorithms.chi2_gate_threshold`:
 
 .. code-block:: python
 
-    class Gate:
-        """Validation gate for measurement-track association."""
-        
-        @staticmethod
-        def ellipsoidal_gate(residual, innovation_cov, threshold=9.0):
-            """
-            Check if residual is within Mahalanobis distance gate.
-            
-            Args:
-                residual: measurement - prediction
-                innovation_cov: covariance of (measurement - prediction)
-                threshold: gate size (typically 9.0 for 3-sigma ~ 99.7%)
-            
-            Returns:
-                is_valid: boolean
-                mahal_dist: Mahalanobis distance
-            """
-            try:
-                mahal_dist_sq = residual @ np.linalg.inv(innovation_cov) @ residual
-                is_valid = mahal_dist_sq <= threshold
-                mahal_dist = np.sqrt(mahal_dist_sq)
-            except np.linalg.LinAlgError:
-                is_valid = False
-                mahal_dist = float('inf')
-            
-            return is_valid, mahal_dist
-        
-        @staticmethod
-        def elliptical_gate(measurement, predicted_pos, covariance, threshold=9.0):
-            """Shorthand for Mahalanobis gating."""
-            residual = measurement - predicted_pos
-            return Gate.ellipsoidal_gate(residual, covariance, threshold)
-        
-        @staticmethod
-        def euclidean_gate(measurement, predicted_pos, max_distance=50.0):
-            """Simple Euclidean distance gate."""
-            distance = np.linalg.norm(measurement - predicted_pos)
-            return distance <= max_distance, distance
+    from scipy.stats import chi2
+    from pytcl.assignment_algorithms import chi2_gate_threshold
 
+    for dof in (1, 2, 3):
+        print(dof, round(chi2_gate_threshold(0.99, dof), 2))
+    # 1 6.63
+    # 2 9.21
+    # 3 11.34
 
-**Gating Statistics:**
+    # A fixed threshold of 9.0 is NOT "3-sigma ~ 99.7%": acceptance
+    # probability depends on the measurement dimension.
+    print(round(chi2.cdf(9.0, df=2), 4))  # 0.9889
+    print(round(chi2.cdf(9.0, df=3), 4))  # 0.9707
+
+**Gate tests:**
 
 .. code-block:: python
 
-    def gate_analysis(residuals, innovation_covs, gate_threshold=9.0):
-        """Analyze gating performance."""
-        mahal_dists = []
-        
-        for res, cov in zip(residuals, innovation_covs):
-            try:
-                md = np.sqrt(res @ np.linalg.inv(cov) @ res)
-                mahal_dists.append(md)
-            except:
-                continue
-        
-        mahal_dists = np.array(mahal_dists)
-        
-        # Percentage of residuals within gate (should be ~99.7%)
-        within_gate = np.sum(mahal_dists <= gate_threshold) / len(mahal_dists)
-        
-        print(f"Gate stats (threshold={gate_threshold}):")
-        print(f"  Within gate: {within_gate*100:.1f}%")
-        print(f"  Mean Mahal dist: {np.mean(mahal_dists):.2f}")
-        print(f"  Std: {np.std(mahal_dists):.2f}")
+    from pytcl.assignment_algorithms import (
+        compute_gate_volume,
+        ellipsoidal_gate,
+        rectangular_gate,
+    )
+
+    gate = chi2_gate_threshold(0.99, 2)
+    innovation = np.array([1.0, 0.5])
+    S = np.array([[2.0, 0.0], [0.0, 1.0]])
+
+    print(ellipsoidal_gate(innovation, S, gate))        # True
+    print(rectangular_gate(innovation, S, num_sigmas=3.0))  # True
+
+    # Gate volume (needed for clutter density in JPDA)
+    print(round(compute_gate_volume(S, gate), 2))  # 40.92
+
+**Gating many measurements against one track:**
+
+.. code-block:: python
+
+    from pytcl.assignment_algorithms import gate_measurements
+
+    z_pred = np.array([0.0, 0.0])
+    S = np.eye(2)
+    candidates = np.array([[0.5, 0.5], [5.0, 5.0], [1.0, -1.0]])
+
+    valid_idx, distances = gate_measurements(z_pred, S, candidates, gate)
+    print(valid_idx)   # [0 2]
+    print(distances)   # [0.5 2. ]
 
 
 Performance Metrics
@@ -422,62 +333,26 @@ Performance Metrics
 
 **Association Quality Metrics:**
 
+:mod:`pytcl.performance_evaluation` provides track-level association metrics.
+Both take per-observation label arrays: the ground-truth target label and the
+estimated track label of each observation.
+
 .. code-block:: python
 
-    class AssociationMetrics:
-        """Evaluate data association quality."""
-        
-        @staticmethod
-        def compute_assignment_cost(associations, cost_matrix):
-            """Total cost of assignments."""
-            total_cost = 0
-            for m_idx, t_idx in associations:
-                total_cost += cost_matrix[m_idx, t_idx]
-            return total_cost
-        
-        @staticmethod
-        def track_purity(associations, ground_truth, measurement_to_track_gt):
-            """
-            Fraction of associations matching ground truth.
-            
-            Args:
-                associations: list of (m_idx, t_idx) pairs
-                ground_truth: ground truth mapping
-            
-            Returns:
-                purity: fraction of correct associations
-            """
-            correct = 0
-            for m_idx, t_idx in associations:
-                if (m_idx, t_idx) == ground_truth.get(m_idx, (None, None)):
-                    correct += 1
-            
-            return correct / len(associations) if associations else 0
-        
-        @staticmethod
-        def false_association_rate(associations, cost_matrix, gate_threshold=50.0):
-            """Fraction of associations exceeding gate."""
-            out_of_gate = 0
-            for m_idx, t_idx in associations:
-                if cost_matrix[m_idx, t_idx] > gate_threshold:
-                    out_of_gate += 1
-            
-            return out_of_gate / len(associations) if associations else 0
-        
-        @staticmethod
-        def track_fragmentation(tracks, ground_truth_labels):
-            """
-            How fragmented are true tracks (count hypothesis changes).
-            """
-            track_changes = {}
-            for i, track in enumerate(tracks):
-                label = ground_truth_labels[i]
-                track_changes[label] = track_changes.get(label, 0) + 1
-            
-            # Fragmentation = (num_track_ids - num_true_targets) / num_true_targets
-            num_true = len(set(ground_truth_labels))
-            fragmentation = (len(track_changes) - num_true) / num_true
-            return max(0, fragmentation)
+    from pytcl.performance_evaluation import track_fragmentation, track_purity
+
+    # 8 observations from 2 true targets, assigned to 3 estimated tracks
+    true_labels = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    est_labels = np.array([0, 0, 0, 1, 1, 1, 2, 2])
+
+    # Purity: fraction of observations consistent with one target per track
+    print(track_purity(true_labels, est_labels))  # 0.875
+
+    # Fragmentation: how often a true target switches estimated track
+    print(track_fragmentation(true_labels, est_labels))  # 2
+
+Total assignment cost is available directly from any ``AssociationResult`` via
+``result.total_cost``, and per-pair costs via ``result.costs``.
 
 
 Practical Implementation
@@ -485,86 +360,51 @@ Practical Implementation
 
 **Complete Association Pipeline:**
 
+One predict-associate-update cycle for a two-track scenario with clutter,
+using the Kalman filter functions from :mod:`pytcl.dynamic_estimation.kalman`:
+
 .. code-block:: python
 
-    class DataAssociationPipeline:
-        """End-to-end data association."""
-        
-        def __init__(self, algorithm='gnn', gate_threshold=9.0):
-            self.algorithm = algorithm
-            self.gate_threshold = gate_threshold
-            self.gate = Gate()
-        
-        def associate_measurements(self, tracks, measurements):
-            """
-            Main entry point for data association.
-            
-            Returns:
-                associations: list of (meas_idx, track_idx)
-                unassociated_meas: measurements without tracks
-                unassociated_tracks: tracks without measurements
-            """
-            if len(measurements) == 0:
-                return [], [], list(range(len(tracks)))
-            
-            if len(tracks) == 0:
-                return [], list(range(len(measurements))), []
-            
-            # Gate first: exclude measurements far from any track
-            gated_measurements = []
-            gated_meas_indices = []
-            
-            for m_idx, meas in enumerate(measurements):
-                has_gate_pass = False
-                for track in tracks:
-                    is_valid, _ = self.gate.elliptical_gate(
-                        meas, track.position, 
-                        track.innovation_cov if hasattr(track, 'innovation_cov') else np.eye(3),
-                        self.gate_threshold
-                    )
-                    if is_valid:
-                        has_gate_pass = True
-                        break
-                
-                if has_gate_pass:
-                    gated_measurements.append(meas)
-                    gated_meas_indices.append(m_idx)
-            
-            # No gated measurements - all are false alarms
-            if len(gated_measurements) == 0:
-                return [], list(range(len(measurements))), list(range(len(tracks)))
-            
-            # Build cost matrix
-            cost_matrix = build_cost_matrix(tracks, gated_measurements, 
-                                          max_gate=self.gate_threshold)
-            
-            # Associate using selected algorithm
-            if self.algorithm == 'gnn':
-                tracker = GlobalNearestNeighbor()
-                associations, unmeas, untracks = tracker.associate(
-                    np.array([t.position for t in tracks]),
-                    np.array(gated_measurements),
-                    np.array([getattr(t, 'covariance', np.eye(3)) for t in tracks]),
-                    self.gate_threshold
-                )
-            else:  # default: 'nn'
-                tracker = NearestNeighbor()
-                associations, unmeas, untracks = tracker.associate(
-                    np.array([t.position for t in tracks]),
-                    np.array(gated_measurements),
-                    self.gate_threshold
-                )
-            
-            # Map back to original measurement indices
-            associations = [(gated_meas_indices[m_idx], t_idx) 
-                           for m_idx, t_idx in associations]
-            unmeas = [gated_meas_indices[m_idx] for m_idx in unmeas]
-            
-            # Include non-gated measurements as unassociated
-            non_gated = set(range(len(measurements))) - set(gated_meas_indices)
-            unmeas = list(set(unmeas) | non_gated)
-            
-            return associations, sorted(unmeas), untracks
+    from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
+    from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
+
+    dt = 1.0
+    F = f_constant_velocity(dt, num_dims=1)          # state [x, vx]
+    Q = q_constant_velocity(dt, sigma_a=0.2, num_dims=1)
+    H = np.array([[1.0, 0.0]])
+    R = np.array([[0.25]])
+
+    tracks_x = [np.array([0.0, 1.0]), np.array([10.0, -1.0])]
+    tracks_P = [np.eye(2), np.eye(2)]
+    measurements = np.array([[1.2], [8.7], [30.0]])  # last one is clutter
+
+    # 1. Predict every track
+    preds = [kf_predict(x, P, F, Q) for x, P in zip(tracks_x, tracks_P)]
+
+    # 2. Gate + associate
+    result = gated_gnn_association(
+        np.array([p.x for p in preds]),
+        np.array([p.P for p in preds]),
+        measurements, H, gate_probability=0.99,
+    )
+    print(result.track_to_measurement)  # [0 1]
+    print(result.measurement_to_track)  # [ 0  1 -1]
+
+    # 3. Update assigned tracks; coast the rest
+    for i, m_idx in enumerate(result.track_to_measurement):
+        if m_idx >= 0:
+            upd = kf_update(preds[i].x, preds[i].P,
+                            measurements[m_idx], H, R)
+            tracks_x[i], tracks_P[i] = upd.x, upd.P
+        else:
+            tracks_x[i], tracks_P[i] = preds[i].x, preds[i].P
+
+    # 4. Unassociated measurements seed new (tentative) tracks
+    new_track_seeds = [j for j, t in enumerate(result.measurement_to_track)
+                       if t < 0]
+    print([np.round(x, 3) for x in tracks_x])
+    # [array([1.178, 1.09 ]), array([ 8.733, -1.135])]
+    print(new_track_seeds)  # [2]
 
 
 Common Issues & Solutions
@@ -572,119 +412,90 @@ Common Issues & Solutions
 
 **Problem: Closely-spaced tracks cause mis-associations**
 
-Solution: Use tighter gating and higher cost for ambiguous assignments:
+Solution: tighten the gate probability and penalize non-assignment less, so
+ambiguous measurements are dropped rather than forced onto the wrong track:
 
 .. code-block:: python
 
-    def adaptive_gating(track_spacing_min, gate_multiplier=1.0):
-        """Adjust gate based on track density."""
-        if track_spacing_min < 100:  # meters
-            gate_threshold = 20.0  # tighter
-            new_target_cost = 25.0  # higher
+    def association_params(track_spacing_min):
+        """Pick gating parameters based on track density."""
+        if track_spacing_min < 100.0:  # meters: crowded scene
+            gate_probability = 0.95   # tighter gate
+            cost_of_non_assignment = chi2_gate_threshold(0.95, 2)
         else:
-            gate_threshold = 9.0
-            new_target_cost = 15.0
-        
-        return gate_threshold, new_target_cost
+            gate_probability = 0.99
+            cost_of_non_assignment = chi2_gate_threshold(0.99, 2)
+        return gate_probability, cost_of_non_assignment
 
+    print(tuple(round(v, 2) for v in association_params(50.0)))   # (0.95, 5.99)
+    print(tuple(round(v, 2) for v in association_params(500.0)))  # (0.99, 9.21)
+
+For genuinely ambiguous regions, switch from GNN to
+:func:`~pytcl.assignment_algorithms.jpda_update`, which spreads the update
+across all gated measurements instead of committing to one.
 
 **Problem: Poor filter performance after wrong association**
 
-Solution: Implement feedback tracking association confidence:
-
-.. code-block:: python
-
-    class ConfidenceTracker:
-        """Track association confidence for each track."""
-        
-        def __init__(self, window_size=10):
-            self.window_size = window_size
-            self.track_innovations = {}  # Track innovations for CI computation
-        
-        def update_confidence(self, track_uid, innovation, threshold=50.0):
-            """Update association confidence based on innovation."""
-            if track_uid not in self.track_innovations:
-                self.track_innovations[track_uid] = []
-            
-            self.track_innovations[track_uid].append(innovation)
-            
-            # Keep only recent innovations
-            if len(self.track_innovations[track_uid]) > self.window_size:
-                self.track_innovations[track_uid].pop(0)
-            
-            # Confidence degrades with large innovations
-            recent_innovations = self.track_innovations[track_uid]
-            large_innovation_ratio = sum(i > threshold for i in recent_innovations) / len(recent_innovations)
-            
-            confidence = max(0, 1 - large_innovation_ratio)
-            return confidence
-
+Solution: monitor the innovation sequence of each track. A healthy track has
+NIS values that follow a chi-squared distribution with the measurement
+dimension as degrees of freedom; a run of large values indicates a wrong
+association or model mismatch. See ``nis_sequence`` and ``consistency_test``
+in :mod:`pytcl.performance_evaluation`, covered in :doc:`kalman_filter_tuning`.
 
 **Problem: Ghost tracks from false alarms**
 
-Solution: Increase new track threshold and require confirmation:
-
-.. code-block:: python
-
-    class ConfirmedTrackManager:
-        """Manage track confirmation logic."""
-        
-        TENTATIVE_THRESHOLD = 3  # updates before confirmed
-        MAX_COASTING = 5  # updates without measurement
-        
-        def update_track_status(self, track):
-            """Update track state based on measurement history."""
-            if track.track_type == 'tentative':
-                if track.age >= self.TENTATIVE_THRESHOLD:
-                    track.track_type = 'confirmed'
-            
-            elif track.track_type == 'confirmed':
-                # Check coasting count
-                if hasattr(track, 'coasting_count'):
-                    if track.coasting_count > self.MAX_COASTING:
-                        track.track_type = 'deleted'
-            
-            elif track.track_type == 'coasted':
-                if track.age > 20:  # Old coasted track
-                    track.track_type = 'deleted'
+Solution: require M-of-N confirmation before treating a tentative track as
+real (e.g. 3 associated measurements in 5 scans), and delete confirmed tracks
+after several consecutive coasts. Raising ``cost_of_non_assignment`` also
+makes it harder for isolated clutter to steal measurements from real tracks.
 
 
 Best Practices
 --------------
 
 1. **Use GNN over NN for accuracy**
-   - GNN is globally optimal and only ~10× slower
+
+   - GNN is globally optimal and only modestly slower
    - Worth it for any system with moderate object count
 
 2. **Tune gate threshold carefully**
-   - Start with 9.0 (3-sigma for Gaussian)
-   - Tighten if too many false associations
-   - Loosen if missing valid measurements
 
-3. **Include new-target penalty**
-   - Prevents false initiations from isolated clutter
-   - Typical range: 10-20× median Mahalanobis distance
+   - Derive it from a chi-squared quantile with
+     ``chi2_gate_threshold(probability, num_dimensions)`` — e.g. 9.21 for
+     99% at 2 measurement dimensions, 11.34 at 3
+   - Tighten (lower probability) if too many false associations
+   - Loosen (higher probability) if valid measurements are rejected
+
+3. **Include a cost of non-assignment**
+
+   - Prevents forced associations and false initiations from isolated clutter
+   - A chi-squared quantile near the gate threshold is a good starting point
 
 4. **Monitor association quality**
+
    - Check for measurement-to-track oscillation
    - Track innovation sequences (should be white noise)
-   - Count gate violations (should be < 1%)
+   - Count gate violations (should match ``1 - gate_probability``)
 
 5. **Adaptive gating**
-   - Vary gate based on track density
+
+   - Vary gate probability based on track density
    - Reduce gate in crowded regions
    - Expand gate in sparse regions
 
 6. **JPDA for ambiguous regions**
+
    - Use when standard assignment fails
    - Probabilistic updates reduce divergence
    - Good for sports tracking, air traffic
 
 7. **MHT for very complex scenarios**
+
    - Multiple simultaneous ambiguities
    - High clutter density
    - Safety-critical applications
-   - Budget for 100-1000× more computation
+   - Budget for 100-1000x more computation; build on ``murty`` /
+     ``kbest_assign2d`` for hypothesis generation
 
 
 Troubleshooting
@@ -692,27 +503,19 @@ Troubleshooting
 
 **Problem: Association stays unstable**
 
-Diagnosis: Check innovation sequences:
+Diagnosis: check whether innovations are white noise. Autocorrelation at
+nonzero lags points at wrong associations (try tighter gating), a filter time
+constant that is too long, or systematic measurement bias:
 
 .. code-block:: python
 
-    def diagnose_instability(filter_innovations):
-        """Check if innovations are white noise."""
-        # Autocorrelation should be near-zero at lag > 1
-        from scipy import signal
-        
-        autocorr = signal.correlate(filter_innovations, filter_innovations, mode='same')
-        autocorr = autocorr / np.max(autocorr)
-        
-        # Check lag-1 correlation
-        lag1_corr = autocorr[len(autocorr)//2 + 1]
-        
-        if abs(lag1_corr) > 0.3:
-            print("WARNING: Innovations show autocorrelation")
-            print("Possible causes:")
-            print("  - Filter timeconstant too long")
-            print("  - Wrong association (try tighter gating)")
-            print("  - Systematic bias in measurements")
+    rng = np.random.default_rng(0)
+    innovations = rng.normal(0.0, 1.0, size=200)  # replace with real data
+
+    centered = innovations - np.mean(innovations)
+    lag1 = (np.dot(centered[:-1], centered[1:])
+            / np.dot(centered, centered))
+    print(round(lag1, 3))  # 0.039  (|lag1| > 0.3 indicates trouble)
 
 
 See Also
@@ -721,4 +524,5 @@ See Also
 - :doc:`recipes` - Multi-target tracking with data association
 - :doc:`data_structures` - TrackSet management for associations
 - :doc:`troubleshooting` - Association debugging
-- API: `tcl.assignment` module for Hungarian algorithm
+- API: :mod:`pytcl.assignment_algorithms` (assignment, gating, JPDA, k-best)
+  and :mod:`pytcl.performance_evaluation` (association metrics)

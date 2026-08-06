@@ -15,12 +15,13 @@ source .venv/bin/activate
 .venv/bin/python -m pytest
 
 # Before merging anything that touches pytcl/gpu (Apple Silicon only).
-# 149 tests are MLX-gated and no CI runner has MLX, so they skip everywhere
-# and the build stays green regardless. This makes their absence an error.
+# The MLX-gated tests skip on machines without MLX and no CI runner has it,
+# so the build stays green regardless. This makes their absence an error.
+# (PYTCL_REQUIRE_CUPY=1 is the CuPy-side equivalent, for NVIDIA boxes.)
 PYTCL_REQUIRE_MLX=1 .venv/bin/python -m pytest
 
 # Run specific test file
-.venv/bin/python -m pytest tests/test_terrain_loaders.py -x -q
+.venv/bin/python -m pytest tests/unit/test_terrain_loaders.py -x -q
 
 # Lint and format
 .venv/bin/ruff check . --fix
@@ -47,7 +48,7 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 **Core deps:** numpy, scipy, numba, h5py
 
-**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `optimization` (cvxpy), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `dev` (test/lint/docs tooling), `all` (everything except gpu)
+**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `dev` (test/lint/docs tooling), `all` (everything except gpu)
 
 ## Code Conventions
 

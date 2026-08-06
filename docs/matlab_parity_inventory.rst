@@ -81,8 +81,13 @@ backends).
      - 331
      - Partial
      - Cartesian/spherical/polar/geodetic/ENU/NED/SEZ conversions, rotations,
-       quaternions, UTM and standard projections ported and validated to
-       sub-mm against pyproj/EPSG. **Missing:** most of the 65-function time
+       quaternions, r-u-v (range plus direction cosines, ``cart2ruv``/
+       ``ruv2cart``), UTM and standard projections ported and validated to
+       sub-mm against pyproj/EPSG. **Missing:** the angle-only direction-
+       cosine UV measurement system (``spher2Uv``/``uv2Spher``-style
+       conversions, u-v-w unit vectors, and their Jacobians -- the natural
+       measurement space of a planar phased array; distinct from the ported
+       r-u-v triple), most of the 65-function time
        suite (pytcl covers UTC/TAI/TT/GPS and Julian dates; TDB/TCB/TCG,
        Besselian epochs, sidereal local time variants absent), the 30
        measurement Jacobians and 14 Hessians as standalone functions, exotic

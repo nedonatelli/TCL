@@ -226,7 +226,7 @@ Counts are measured from the packages themselves rather than asserted;
    * - ``atmosphere``
      - 3
      - 27
-     - NRLMSISE-00, ionosphere, refraction
+     - Simplified thermosphere, standard atmospheres, ionosphere
    * - ``magnetism``
      - 3
      - 34
@@ -320,14 +320,12 @@ usually means a missing extra rather than a bug.
        CORE --> GEO["geodesy<br/>pyproj, geographiclib"]
        CORE --> TER["terrain<br/>netCDF4"]
        CORE --> VIS["visualization<br/>plotly"]
-       CORE --> OPT["optimization<br/>cvxpy"]
        CORE --> SIG["signal<br/>pywavelets"]
        CORE --> GPU["gpu, gpu-apple<br/>cupy, mlx"]
        AST --> ALL["all<br/>everything except gpu"]
        GEO --> ALL
        TER --> ALL
        VIS --> ALL
-       OPT --> ALL
        SIG --> ALL
 
 Angles and Units

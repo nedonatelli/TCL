@@ -5,14 +5,16 @@ A Python port of the U.S. Naval Research Laboratory's Tracker Component Library,
 providing a comprehensive collection of algorithms for target tracking and
 state estimation.
 
-|version_badge| — |n_functions| functions | |n_modules| modules | |n_tests| tests | 100% MATLAB parity | 100% mypy --strict | 80% coverage | 8 Interactive Notebooks | GPU acceleration
+|version_badge| — |n_functions| functions | |n_modules| modules | |n_tests| tests | 100% mypy --strict | 90% coverage | 9 interactive notebooks | GPU acceleration (CuPy + MLX)
 
 .. note::
 
-   **100% MATLAB Parity Achieved**: Starting with v1.13.2, all tier 1 and tier 2
-   missing components are now implemented: NRLMSISE-00 atmosphere model, constrained
-   EKF, and Rao-Blackwellized particle filters. GPU acceleration (CuPy + MLX) provides
-   10-15x speedup for batch processing. Ready for v2.0.0 release.
+   **On MATLAB parity**: the core tracking workflow — filter, associate,
+   track, evaluate, in Earth-referenced coordinates — is fully ported and
+   validated against independent references. The full MATLAB public surface
+   is covered at roughly a third by function count; see
+   :doc:`matlab_parity_inventory` for the function-level accounting and
+   :doc:`matlab_migration_map` for verified name mappings.
 
 .. toctree::
    :maxdepth: 2
@@ -68,7 +70,6 @@ state estimation.
    troubleshooting
    migration_v1_to_v2
    migration_guide
-   gap_analysis
    matlab_parity_inventory
    matlab_migration_map
    roadmap
@@ -93,14 +94,15 @@ The Tracker Component Library provides:
 * **Navigation**: INS mechanization, INS/GNSS integration, great circle/rhumb line
   navigation, TDOA localization
 * **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM2025 default, WMM2020, IGRF-13, EMM),
-  atmosphere (**NRLMSISE-00**), tidal effects, terrain/DEM utilities
+  atmosphere (simplified thermosphere), tidal effects, terrain/DEM utilities
 * **Astronomical**: Orbital mechanics, Kepler propagation, Lambert problem,
   reference frame transformations, JPL ephemerides (DE405/430/432s/440),
   relativistic corrections (Schwarzschild, geodetic precession, Shapiro delay)
 * **Mathematical Functions**: Special functions (Marcum Q, Lambert W, Debye,
   hypergeometric, Bessel), statistics, numerical integration
-* **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends with
-  10-15x speedup for batch Kalman filtering, particle filters, and matrix operations
+* **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for
+  batch Kalman filtering, particle filters, and matrix operations (measured on
+  MLX: 1.6x at 100 tracks to 40x at 20,000 tracks for batch Kalman)
 * **Data Persistence**: HDF5 and SQL backends for tracking data storage and retrieval
 
 Installation

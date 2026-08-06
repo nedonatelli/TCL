@@ -71,8 +71,8 @@ The example demonstrates:
 
 - Constructing cost matrices from track-measurement distances
 - Using ``hungarian()`` for optimal assignment
-- ``auction_algorithm()`` for iterative bidding
-- ``murty_kbest()`` for ranked assignments
+- ``auction()`` for iterative bidding
+- ``murty()`` for ranked assignments
 - ``jpda()`` for association probabilities
 
 Source Code

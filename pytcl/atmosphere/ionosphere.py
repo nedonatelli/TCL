@@ -8,17 +8,14 @@ These are essential for GPS/GNSS corrections and radio wave propagation.
 Models
 ------
 - Klobuchar: GPS broadcast ionospheric model (single-frequency correction)
-- NeQuick: Galileo ionospheric model placeholder
-- IRI: International Reference Ionosphere simplified model
+- IRI: International Reference Ionosphere simplified model (``simple_iri``)
+- Dual-frequency TEC estimation and TEC-based delay
 
 References
 ----------
 - Klobuchar, J.A. (1987). "Ionospheric Time-Delay Algorithm for
   Single-Frequency GPS Users". IEEE Transactions on Aerospace and
   Electronic Systems, AES-23(3), 325-331.
-- Nava, B., Coisson, P., & Radicella, S.M. (2008). "A new version
-  of the NeQuick ionosphere electron density model". Journal of
-  Atmospheric and Solar-Terrestrial Physics, 70(15), 1856-1862.
 """
 
 from typing import NamedTuple

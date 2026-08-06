@@ -10,8 +10,10 @@ Requirements
 ^^^^^^^^^^^^
 
 * Python 3.10 or later
-* NumPy >= 1.20
-* SciPy >= 1.7
+* NumPy >= 1.24
+* SciPy >= 1.10
+* Numba >= 0.57
+* h5py >= 3.8
 
 Install from PyPI
 ^^^^^^^^^^^^^^^^^
@@ -47,9 +49,6 @@ Install optional features as needed:
 
    # For visualization (Plotly)
    pip install nrl-tracker[visualization]
-
-   # For optimization (CVXPY)
-   pip install nrl-tracker[optimization]
 
    # For signal processing (wavelets)
    pip install nrl-tracker[signal]
@@ -109,9 +108,18 @@ The library provides several filtering algorithms:
 
 .. code-block:: python
 
+   import numpy as np
+
    from pytcl.dynamic_estimation import kf_predict, kf_update
 
-   pred = kf_predict(x, P, F, Q)
+   x = np.array([0.0, 1.0, 0.0, 1.0])  # [x, vx, y, vy]
+   P = np.eye(4)
+   H = np.array([[1.0, 0.0, 0.0, 0.0],
+                 [0.0, 0.0, 1.0, 0.0]])  # measure position only
+   R = 0.5 * np.eye(2)
+   z = np.array([1.1, 0.9])
+
+   pred = kf_predict(x, P, F_cv, Q_cv)
    upd = kf_update(pred.x, pred.P, z, H, R)
 
 **Extended Kalman Filter** - For nonlinear dynamics/measurements:
@@ -120,11 +128,27 @@ The library provides several filtering algorithms:
 
    from pytcl.dynamic_estimation import ekf_predict, ekf_update
 
+   def f_func(x):
+       return F_cv @ x
+
+   def h_func(x):
+       # Range and bearing from the origin
+       return np.array([np.hypot(x[0], x[2]), np.arctan2(x[2], x[0])])
+
+   def H_jacobian(x):
+       r = np.hypot(x[0], x[2])
+       return np.array([
+           [x[0] / r, 0.0, x[2] / r, 0.0],
+           [-x[2] / r**2, 0.0, x[0] / r**2, 0.0],
+       ])
+
+   R_polar = np.diag([0.1, 0.01])
+   z_polar = np.array([1.5, 0.8])
+
    # F and H are the Jacobian matrices evaluated at the current state
-   F = F_jacobian(x)  # Jacobian of f at x
-   H = H_jacobian(x)  # Jacobian of h at x
-   pred = ekf_predict(x, P, f_func, F, Q)
-   upd = ekf_update(pred.x, pred.P, z, h_func, H, R)
+   F = F_cv  # Jacobian of f (linear dynamics, so constant)
+   pred = ekf_predict(upd.x, upd.P, f_func, F, Q_cv)
+   upd = ekf_update(pred.x, pred.P, z_polar, h_func, H_jacobian(pred.x), R_polar)
 
 **Unscented Kalman Filter** - For highly nonlinear systems:
 
@@ -132,8 +156,8 @@ The library provides several filtering algorithms:
 
    from pytcl.dynamic_estimation import ukf_predict, ukf_update
 
-   pred = ukf_predict(x, P, f_func, Q)
-   upd = ukf_update(pred.x, pred.P, z, h_func, R)
+   pred = ukf_predict(upd.x, upd.P, f_func, Q_cv)
+   upd = ukf_update(pred.x, pred.P, z_polar, h_func, R_polar)
 
 **Particle Filter** - For non-Gaussian distributions:
 
@@ -148,10 +172,12 @@ The library provides several filtering algorithms:
    def Q_sample(n_particles, rng=None):
        if rng is None:
            rng = np.random.default_rng()
-       return rng.multivariate_normal(np.zeros(n), Q_cov, size=n_particles)
+       return rng.multivariate_normal(np.zeros(4), Q_cv, size=n_particles)
 
-   state = initialize_particles(x0, P0, N=1000)
-   state = bootstrap_pf_step(state.particles, state.weights, z, f, h, Q_sample, R)
+   state = initialize_particles(x, P, N=1000)
+   state = bootstrap_pf_step(
+       state.particles, state.weights, z_polar, f_func, h_func, Q_sample, R_polar
+   )
 
 **Constrained Extended Kalman Filter** - For state constraints (e.g., bounded positions):
 
@@ -163,40 +189,59 @@ The library provides several filtering algorithms:
        ConstraintFunction,
    )
 
-   # Define constraint: 0 <= x[0] <= 100 (position within bounds)
+   # Define constraints: 0 <= x[0] <= 100 (position within bounds)
    def constraint_lower(x):
-       return -x[0]  # g(x) <= 0 means x[0] >= 0
-   
+       return np.array([-x[0]])  # g(x) <= 0 means x[0] >= 0
+
    def constraint_upper(x):
-       return x[0] - 100.0  # g(x) <= 0 means x[0] <= 100
+       return np.array([x[0] - 100.0])  # g(x) <= 0 means x[0] <= 100
 
-   constraint_lower_obj = ConstraintFunction(constraint_lower)
-   constraint_upper_obj = ConstraintFunction(constraint_upper)
+   constraints = [
+       ConstraintFunction(constraint_lower),
+       ConstraintFunction(constraint_upper),
+   ]
 
-   pred = constrained_ekf_predict(x, P, f_func, F_jacobian, Q, constraints=[...])
-   upd = constrained_ekf_update(pred.x, pred.P, z, h_func, H_jacobian, R, constraints=[...])
+   # The predict step is unconstrained; constraints apply at the update
+   pred = constrained_ekf_predict(upd.x, upd.P, f_func, F_cv, Q_cv)
+   upd = constrained_ekf_update(
+       pred.x,
+       pred.P,
+       z_polar,
+       h_func,
+       H_jacobian(pred.x),
+       R_polar,
+       constraints=constraints,
+   )
 
 **Rao-Blackwellized Particle Filter** - Hybrid linear/nonlinear filtering:
 
 .. code-block:: python
 
-   from pytcl.dynamic_estimation import (
-       rbpf_predict,
-       rbpf_update,
-       RBPFFilter,
+   from pytcl.dynamic_estimation import RBPFFilter
+
+   # Partition the state: nonlinear part 'y' is handled by particles,
+   # linear part 'x' is handled by a Kalman filter per particle
+   rbpf = RBPFFilter(max_particles=500)
+   rbpf.initialize(
+       y0=np.array([0.0]),  # Nonlinear state
+       x0=np.array([1.0]),  # Linear state
+       P0=np.eye(1),
+       num_particles=500,
    )
 
-   # For systems with nonlinear dynamics in 'y' and linear dynamics in 'x'
-   # Each particle maintains its own Kalman filter for the linear part
-   filter = RBPFFilter(
-       y0=np.array([...]),  # Nonlinear state (particle positions)
-       x0_fn=lambda y: np.array([...]),  # Linear state given y
-       P0=P_linear,
-       N_particles=500,
-   )
+   def g_nl(y):  # Nonlinear transition: y[k+1] = g(y[k])
+       return y + 0.1 * np.sin(y)
 
-   filter = rbpf_predict(filter, f_nonlinear, F_linear, Q_linear, Q_nonlinear)
-   filter = rbpf_update(filter, z, h_func, R)
+   def f_lin(x, y):  # Linear transition: x[k+1] = f(x[k], y[k])
+       return x
+
+   def h_meas(x, y):  # Measurement combines both parts
+       return y + x
+
+   rbpf.predict(g=g_nl, G=np.eye(1), Qy=0.01 * np.eye(1),
+                f=f_lin, F=np.eye(1), Qx=0.01 * np.eye(1))
+   rbpf.update(z=np.array([1.2]), h=h_meas, H=np.eye(1), R=0.1 * np.eye(1))
+   y_est, x_est, P_est = rbpf.estimate()
 
 Coordinate Systems
 ^^^^^^^^^^^^^^^^^^
@@ -212,11 +257,11 @@ Convert between coordinate systems:
        ecef2geodetic,
    )
 
-   # Cartesian to spherical
-   r, az, el = cart2sphere(np.array([[100, 200, 50]]))
+   # Cartesian to spherical (tracking convention: range, azimuth, elevation)
+   r, az, el = cart2sphere(np.array([100.0, 200.0, 50.0]), system_type="az-el")
 
-   # Geodetic to ECEF (angles in radians)
-   x, y, z = geodetic2ecef(lat=np.deg2rad(40.0), lon=np.deg2rad(-75.0), alt=100.0)
+   # Geodetic to ECEF (angles in radians); returns an ECEF [x, y, z] vector
+   ecef = geodetic2ecef(lat=np.deg2rad(40.0), lon=np.deg2rad(-75.0), alt=100.0)
 
 Atmospheric Models
 ^^^^^^^^^^^^^^^^^^
@@ -228,7 +273,7 @@ Get atmospheric density for satellite drag calculations:
    import numpy as np
    from pytcl.atmosphere import simplified_thermosphere
 
-   # NRLMSISE-00 model with solar/geomagnetic activity
+   # Simplified thermosphere model with solar/geomagnetic activity
    output = simplified_thermosphere(
        latitude=np.deg2rad(45.0),
        longitude=np.deg2rad(-75.0),
@@ -240,7 +285,7 @@ Get atmospheric density for satellite drag calculations:
        f107a=130.0,  # 81-day average
        ap=15.0,      # Planetary magnetic index
    )
-   print(f"Density: {output.density:.3e} kg/m³")
+   print(f"Density: {output.density:.3e} kg/m^3")
 
    # Composition is available on the same result
    print(f"Atomic oxygen: {output.o_density:.3e} m^-3")

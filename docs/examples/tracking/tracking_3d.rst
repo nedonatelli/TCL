@@ -16,26 +16,28 @@ Overview
 
 - **Spherical measurements**: Range, azimuth, and elevation from radar
 - **Coordinate transformations**: Converting between measurement and state spaces
-- **3D motion models**: Constant velocity, coordinated turn in 3D
-- **Visualization**: Displaying tracks and uncertainty in 3D
+- **3D motion**: Constant-velocity filtering of maneuvering targets
+- **Visualization**: Displaying tracks in 3D
 
 Key Concepts
 ------------
 
-- **Spherical-to-Cartesian conversion**: ``sphere2cart()`` and ``cart2sphere()``
-- **Measurement Jacobians**: Linearization for EKF updates
-- **3D covariance ellipsoids**: Visualizing uncertainty in 3D
-- **Helical trajectories**: Constant turn rate with vertical motion
+- **Converted-measurement filtering**: Spherical radar measurements are
+  transformed to Cartesian before a linear Kalman filter update
+- **RTS smoothing**: Batch smoothing of the full 3D trajectory
+- **Multi-sensor fusion**: Combining detections from several 3D sensors
+- **Maneuvering targets**: Climbing and descending turns tracked with a
+  constant-velocity model
 
 Code Highlights
 ---------------
 
 The example demonstrates:
 
-- 9-state model: [x, vx, ax, y, vy, ay, z, vz, az]
-- Range-azimuth-elevation measurement model
-- EKF with spherical measurement Jacobian
-- Plotly 3D visualization with trajectory and uncertainty
+- 6-state model: [x, vx, y, vy, z, vz]
+- Range-azimuth-elevation measurements converted to Cartesian
+- ``kf_predict()``/``kf_update()`` and ``rts_smoother()`` in 3D
+- Plotly 3D visualization of trajectories and estimates
 
 Source Code
 -----------

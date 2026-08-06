@@ -26,6 +26,7 @@ python examples/orbital_mechanics.py
 - **[tracking_3d.py](tracking_3d.py)** - 3D tracking scenarios with multiple sensors
 - **[assignment_algorithms.py](assignment_algorithms.py)** - Hungarian algorithm, k-best, and 3D assignment
 - **[performance_evaluation.py](performance_evaluation.py)** - OSPA, track metrics, and evaluation measures
+- **[track_management_workflows.py](track_management_workflows.py)** - Track lifecycle workflows over SQL and HDF5 storage
 
 ### Coordinate Systems & Transforms (4 examples)
 
@@ -45,16 +46,16 @@ python examples/orbital_mechanics.py
 - **[navigation_geodesy.py](navigation_geodesy.py)** - WGS84, geodetic calculations, map projections
 - **[ins_gnss_navigation.py](ins_gnss_navigation.py)** - INS mechanization and GNSS integration
 - **[geophysical_models.py](geophysical_models.py)** - Gravity, magnetism, atmosphere models
-- **[relativistic_demo.py](relativity_demo.py)** - Relativistic corrections for high-speed objects
+- **[relativity_demo.py](relativity_demo.py)** - Relativistic corrections for high-speed objects
 
 ### Astronomy & Ephemerides (3 examples)
 
 - **[ephemeris_demo.py](ephemeris_demo.py)** - Sun, moon, planet positions at any epoch
-- **[magnetic_field_demo.py](magnetism_demo.py)** - WMM and IGRF magnetic field models
+- **[magnetism_demo.py](magnetism_demo.py)** - WMM and IGRF magnetic field models
 
 ### Geophysical Models (1 example)
 
-- **[atmospheric_modeling.py](atmospheric_modeling.py)** - NRLMSISE-00 high-fidelity atmosphere model with solar/geomagnetic activity effects
+- **[atmospheric_modeling.py](atmospheric_modeling.py)** - Simplified thermosphere model with solar/geomagnetic activity effects
 
 ### Filtering & Signal Processing (2 examples)
 

@@ -427,8 +427,8 @@ Current metrics (v2.0.0):
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
 approximation shipped under that name, found and corrected in gh-79 -- so the
-parity line is retired here rather than repeated. docs/gap_analysis.rst
-carries the honest per-component account.
+parity line is retired here rather than repeated.
+docs/matlab_parity_inventory.rst carries the honest per-component account.
 - **GPU Backends:** 2 (CuPy + MLX)
 - **Performance:** Numba JIT + lru_cache optimizations
 

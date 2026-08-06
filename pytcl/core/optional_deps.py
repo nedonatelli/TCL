@@ -62,8 +62,6 @@ PACKAGE_EXTRAS: dict[str, tuple[str, str]] = {
     # Geodesy
     "pyproj": ("geodesy", "pyproj"),
     "geographiclib": ("geodesy", "geographiclib"),
-    # Optimization
-    "cvxpy": ("optimization", "cvxpy"),
     # Signal processing
     "pywt": ("signal", "pywavelets"),
     "pywavelets": ("signal", "pywavelets"),
@@ -82,7 +80,6 @@ PACKAGE_FEATURES: dict[str, str] = {
     "jplephem": "JPL ephemeris access",
     "pyproj": "coordinate transformations",
     "geographiclib": "geodetic calculations",
-    "cvxpy": "convex optimization",
     "pywt": "wavelet transforms",
     "pywavelets": "wavelet transforms",
     "netCDF4": "NetCDF file reading",
@@ -378,11 +375,6 @@ class _AvailabilityFlags:
         return is_available("pyproj")
 
     @property
-    def HAS_CVXPY(self) -> bool:
-        """True if cvxpy is available."""
-        return is_available("cvxpy")
-
-    @property
     def HAS_NETCDF4(self) -> bool:
         """True if netCDF4 is available."""
         return is_available("netCDF4")
@@ -411,7 +403,6 @@ _FLAG_PACKAGES: dict[str, str] = {
     "HAS_JPLEPHEM": "jplephem",
     "HAS_ASTROPY": "astropy",
     "HAS_PYPROJ": "pyproj",
-    "HAS_CVXPY": "cvxpy",
     "HAS_NETCDF4": "netCDF4",
     "HAS_CUPY": "cupy",
     "HAS_MLX": "mlx",

@@ -200,6 +200,21 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Removed
 
+- **The four empty placeholder packages: `pytcl.transponders`,
+  `pytcl.scheduling`, `pytcl.physical_values`, `pytcl.misc`.** Each contained
+  only a docstring and `__all__ = []`, mirroring the MATLAB directory layout,
+  and shipped in the wheel. An importable `pytcl.transponders` makes a
+  feature probe succeed while implying AIS support that does not exist;
+  `ImportError` is the honest answer. The directories are gone entirely
+  (deleting only `__init__.py` would leave them importable as namespace
+  packages), and the test that pinned them empty is retired with them.
+
+- **The `optimization` extra (cvxpy).** Nothing consumed it -- not the
+  package, not the tests, not the examples; the only references were its
+  own registry entries in `pytcl.core.optional_deps`. It advertised convex
+  optimization capability that does not exist. `HAS_CVXPY` is removed from
+  the optional-dependency registry with it.
+
 - **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**
   ([#24](https://github.com/nedonatelli/TCL/issues/24)). Both were additions
   made by this port during the v1.1.0 performance work, not ports of anything
@@ -228,6 +243,18 @@ allowlist that made the debt visible has been emptied rather than grown.
   [#47](https://github.com/nedonatelli/TCL/issues/47).
 
 ### Fixed
+
+- **The combined INS/GNSS update ignored the position fix under default
+  covariances.** gh-19's unit conversion -- the position innovation is
+  [rad, rad, m], so a meters-quoted default noise must be converted --
+  was applied to `loose_coupled_update_position` but not to the combined
+  position+velocity path in `loose_coupled_update`, which kept a raw
+  diag(10 m)^2 on the radian diagonal. R_pos was therefore ~1e13 too
+  large and the filter absorbed essentially none of the position
+  innovation (fraction ~1e-13; correct textbook gain for matching 10 m
+  defaults is 1/2). Found while executing the INS/GNSS tutorial against
+  the real API. The fix mirrors the position-only path, and the
+  regression test is verified to fail against the unfixed code.
 
 - **The 5-10x HDF5 compression claim measured at 1.3x, and corrected.** The
   roadmap's Phase 8 quality gates were finally measured (commit `d5b0add`,

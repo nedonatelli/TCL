@@ -14,10 +14,10 @@ Overview
 
 Evaluating tracker performance requires multiple metrics:
 
-- **OSPA/GOSPA**: Optimal Sub-Pattern Assignment distance
+- **OSPA**: Optimal Sub-Pattern Assignment distance
 - **RMSE**: Root Mean Square Error for localization
-- **Track statistics**: Purity, fragmentation, switches
-- **Detection metrics**: Probability of detection, false alarm rate
+- **Consistency**: NEES and NIS statistics for filter tuning
+- **Monte Carlo**: Averaging performance over repeated runs
 
 OSPA Metric
 -----------
@@ -32,21 +32,25 @@ OSPA combines localization error and cardinality error:
 Key Concepts
 ------------
 
-- **Track-to-truth assignment**: Matching estimated tracks to ground truth
-- **Track purity**: Fraction of time track follows same target
-- **Track fragmentation**: Number of track breaks per target
-- **ID switches**: Number of times track switches targets
+- **Localization vs cardinality**: OSPA separates position error from
+  missed/false target penalties
+- **Filter consistency**: NEES compares state error against the filter's
+  own covariance
+- **Innovation consistency**: NIS checks measurement residuals
+- **Tuning diagnosis**: Optimistic and conservative filters show up as
+  NEES above or below the chi-squared bounds
 
 Code Highlights
 ---------------
 
 The example demonstrates:
 
-- Computing OSPA at each time step with ``ospa()``
-- OSPA over time with ``ospa_over_time()``
-- NEES/NIS consistency metrics
-- Track-to-truth assignment and purity calculation
-- ROC curves for detection performance
+- Computing OSPA with ``ospa()``, including its localization and
+  cardinality components
+- OSPA history over a scenario, computed scan by scan
+- NEES consistency for correctly, optimistically, and conservatively
+  tuned filters
+- Monte Carlo evaluation of RMSE, NEES, and NIS
 
 Source Code
 -----------

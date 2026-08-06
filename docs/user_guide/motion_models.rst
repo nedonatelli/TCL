@@ -65,13 +65,13 @@ For targets executing turns at constant turn rate:
 
 **2D Coordinated Turn**
 
-State: ``[x, vx, y, vy, omega]`` where omega is turn rate
+State: ``[x, vx, y, vy]``; the turn rate omega is a model parameter
 
 .. code-block:: python
 
    from pytcl.dynamic_models import f_coord_turn_2d
 
-   F = f_coord_turn_2d(T=1.0, omega=0.1)  # omega in rad/s
+   F = f_coord_turn_2d(T=1.0, omega=0.1)  # omega in rad/s, F is 4x4
 
 **3D Coordinated Turn**
 
@@ -135,6 +135,8 @@ For simulation or continuous-time modeling:
 
 .. code-block:: python
 
+   import numpy as np
+
    from pytcl.dynamic_models import (
        drift_constant_velocity,
        drift_constant_acceleration,
@@ -144,9 +146,13 @@ For simulation or continuous-time modeling:
    )
 
    # Continuous-time drift function
-   x_dot = drift_constant_velocity(x, t, num_dims=2)
+   x = np.array([0.0, 1.0, 0.0, 0.5])  # [x, vx, y, vy]
+   x_dot = drift_constant_velocity(x, t=0.0, num_dims=2)
 
-   # Convert continuous dynamics to discrete
+   # Convert continuous dynamics to discrete (1D constant velocity)
+   A = np.array([[0.0, 1.0], [0.0, 0.0]])  # State matrix
+   G = np.array([[0.0], [1.0]])            # Noise input matrix
+   Q_c = np.array([[1.0]])                 # Continuous noise intensity
    F, Q = continuous_to_discrete(A, G, Q_c, T=0.1)
 
 Choosing a Motion Model

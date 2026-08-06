@@ -117,8 +117,8 @@ For range-Doppler or image-based detection:
    # 2D CA-CFAR
    result = cfar_2d(
        rdm,
-       guard=(2, 2),     # Guard cells (range, Doppler)
-       ref=(5, 5),       # Reference cells
+       guard_cells=(2, 2),  # Guard cells (range, Doppler)
+       ref_cells=(5, 5),    # Reference cells
        pfa=1e-5,
        method='ca'
    )
@@ -221,7 +221,9 @@ Complete Example: Radar Processing Chain
    # Step 3: CFAR detection on range-Doppler map
    from pytcl.mathematical_functions.signal_processing import cfar_2d
 
-   detections = cfar_2d(rdm, guard=(2, 2), ref=(5, 3), pfa=1e-6, method='ca')
+   detections = cfar_2d(
+       rdm, guard_cells=(2, 2), ref_cells=(5, 3), pfa=1e-6, method='ca'
+   )
 
    det_range, det_doppler = np.where(detections.detections)
    print(f"Detected {len(det_range)} targets:")

@@ -24,7 +24,7 @@ keywords = [
     "signal-processing",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: Public Domain",
@@ -55,13 +55,11 @@ astronomy = [
 ]
 geodesy = [
     "pyproj>=3.4.0",
+    # reference oracle for the navigation validation tests
     "geographiclib>=2.0",
 ]
 visualization = [
     "plotly>=5.15.0",
-]
-optimization = [
-    "cvxpy>=1.3.0",
 ]
 terrain = [
     "netCDF4>=1.6.0",
@@ -98,7 +96,7 @@ benchmark = [
     "pytest-benchmark>=4.0.0",
 ]
 all = [
-    "nrl-tracker[astronomy,geodesy,terrain,visualization,optimization,signal,dev]",
+    "nrl-tracker[astronomy,geodesy,terrain,visualization,signal,dev]",
 ]
 
 [project.urls]

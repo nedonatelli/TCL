@@ -815,11 +815,17 @@ def loose_coupled_update(
         # Full position + velocity update
         H = position_velocity_measurement_matrix()
 
-        R_pos = (
-            gnss.position_cov
-            if gnss.position_cov is not None
-            else np.diag([10.0**2] * 3)
-        )
+        # The position innovation below is [dlat, dlon, dheight] in
+        # [rad, rad, m], so the meters-quoted default must be converted, the
+        # same way loose_coupled_update_position does (gh-19). Left in
+        # meters, R_pos is ~1e13 too large and the filter ignores the
+        # position fix entirely.
+        if gnss.position_cov is not None:
+            R_pos = gnss.position_cov
+        else:
+            lat, _, height = state.ins_state.position
+            horizontal = position_std_to_error_state_units(10.0, lat, height)
+            R_pos = np.diag([horizontal[0] ** 2, horizontal[1] ** 2, 15.0**2])
         R_vel = (
             gnss.velocity_cov
             if gnss.velocity_cov is not None

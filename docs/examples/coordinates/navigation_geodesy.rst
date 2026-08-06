@@ -1,7 +1,8 @@
 Navigation and Geodesy
 ======================
 
-This example demonstrates geodetic calculations, datum conversions, and map projections.
+This example demonstrates geodetic calculations, coordinate conversions, and
+great-circle navigation.
 
 .. raw:: html
 
@@ -16,7 +17,7 @@ Geodesy provides the mathematical foundation for navigation:
 
 - **Geodetic datums**: Earth ellipsoid models (WGS84)
 - **Distance calculations**: Vincenty, Haversine methods
-- **Map projections**: UTM, Mercator, Lambert Conformal
+- **Local frames**: ECEF and ENU conversions
 - **Great circles**: Shortest paths on Earth
 
 Geodetic Calculations
@@ -32,11 +33,6 @@ Geodetic Calculations
    - Good for short distances
    - Assumes spherical Earth
 
-**Rhumb Lines**
-   - Constant bearing paths
-   - Longer than great circles
-   - Easier navigation
-
 .. raw:: html
 
    <div class="plotly-container aspect-square">
@@ -45,30 +41,17 @@ Geodetic Calculations
 
 **Earth Ellipsoid**: The WGS84 reference ellipsoid with coordinate frames at various locations.
 
-Map Projections
----------------
-
-**UTM (Universal Transverse Mercator)**
-   - Low distortion in zones
-   - Standard military/civilian use
-
-**Mercator**
-   - Conformal (preserves angles)
-   - Used for marine navigation
-
-**Lambert Conformal Conic**
-   - Low distortion for mid-latitudes
-   - Used for aeronautical charts
-
 Code Highlights
 ---------------
 
 The example demonstrates:
 
-- ``geodetic_distance_vincenty()`` for accurate distances
-- ``geodetic_direct()`` for point from bearing/distance
-- ``utm_to_geodetic()`` and ``geodetic_to_utm()``
-- Map projection functions
+- ``inverse_geodetic()`` (Vincenty) for accurate distances and azimuths
+- ``direct_geodetic()`` for the point reached from a bearing and distance
+- ``haversine_distance()`` for quick spherical-Earth distances
+- ``geodetic_to_ecef()``/``ecef_to_geodetic()`` and ``ecef_to_enu()``/
+  ``enu_to_ecef()`` frame conversions
+- Multi-waypoint route planning and sensor coverage analysis
 
 Source Code
 -----------

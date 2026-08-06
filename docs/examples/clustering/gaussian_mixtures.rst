@@ -57,7 +57,7 @@ The example demonstrates:
 
 - K-means clustering with ``kmeans()``
 - DBSCAN with ``dbscan()``
-- Hierarchical clustering with ``hierarchical_cluster()``
+- Hierarchical clustering with ``agglomerative_clustering()``
 - Gaussian mixture reduction with ``reduce_mixture_runnalls()``
 
 Source Code

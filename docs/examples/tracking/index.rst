@@ -79,4 +79,4 @@ Examples demonstrating multi-target tracking, data association, and performance 
    :header-rows: 0
 
    * - :download:`performance_evaluation.py <../../../examples/performance_evaluation.py>`
-     - OSPA, GOSPA, track-to-truth assignment metrics
+     - OSPA metric, NEES/NIS consistency, Monte Carlo evaluation

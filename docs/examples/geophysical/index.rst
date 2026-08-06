@@ -17,11 +17,11 @@ Examples demonstrating geophysical models, magnetism, atmosphere, and terrain.
        <iframe class="plotly-iframe" src="../../_static/images/examples/geophysical_models.html"></iframe>
    </div>
 
-**Earth Gravity and Magnetic Field Models**: EGM96/EGM2008 gravity anomaly and WMM/IGRF magnetic field.
+**Earth Gravity and Magnetic Field Models**: WGS84/J2 gravity and geoid approximations with WMM/IGRF magnetic field.
 
 .. list-table::
    :widths: 30 70
    :header-rows: 0
 
    * - :download:`geophysical_models.py <../../../examples/geophysical_models.py>`
-     - Gravity (EGM96/EGM2008), magnetic field (WMM/IGRF), tidal effects
+     - Gravity (WGS84, J2 geoid), magnetic field (WMM/IGRF), tidal effects

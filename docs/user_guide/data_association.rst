@@ -17,26 +17,37 @@ approaches:
 Global Nearest Neighbor (GNN)
 -----------------------------
 
-GNN assigns each track to at most one measurement based on minimum cost:
+GNN assigns each track to at most one measurement based on minimum cost.
+It operates on a precomputed cost matrix (e.g., Mahalanobis distances
+between track predictions and measurements):
 
 .. code-block:: python
 
+   import numpy as np
+
    from pytcl.assignment_algorithms import gnn_association
 
-   # Track states and covariances
-   tracks = [np.array([0.0, 1.0]), np.array([10.0, -1.0])]
-   covs = [np.eye(2) * 0.5, np.eye(2) * 0.5]
+   # Cost matrix: rows are tracks, columns are measurements
+   cost = np.array([
+       [0.5, 9.0, 50.0],
+       [8.0, 0.3, 45.0],
+   ])
 
-   # Measurements
-   measurements = [np.array([0.1]), np.array([10.2]), np.array([50.0])]
-   H = np.array([[1.0, 0.0]])
-   R = np.array([[0.1]])
+   result = gnn_association(cost, gate_threshold=10.0)
 
-   # Associate
-   result = gnn_association(tracks, covs, measurements, H, R)
-
-   # result.assignments[i] gives the measurement index for track i
+   # result.track_to_measurement[i] gives the measurement index for track i
    # (-1 means no assignment)
+   print(result.track_to_measurement)  # [0 1]
+   print(result.total_cost)            # 0.8
+
+For the raw optimal assignment without gating, use ``hungarian``, which
+returns a 3-tuple of row indices, column indices, and total cost:
+
+.. code-block:: python
+
+   from pytcl.assignment_algorithms import hungarian
+
+   row_ind, col_ind, total_cost = hungarian(cost)
 
 Joint Probabilistic Data Association (JPDA)
 -------------------------------------------
@@ -86,10 +97,10 @@ the probability of "no measurement" association:
 .. code-block:: python
 
    # High detection probability: measurements are reliable
-   result = jpda_update(tracks, covs, meas, H, R, detection_prob=0.99)
+   result = jpda_update(tracks, covs, measurements, H, R, detection_prob=0.99)
 
    # Low detection probability: expect missed detections
-   result = jpda_update(tracks, covs, meas, H, R, detection_prob=0.5)
+   result = jpda_update(tracks, covs, measurements, H, R, detection_prob=0.5)
 
 **Clutter Density**
 
@@ -99,10 +110,10 @@ Higher values reduce confidence in measurement associations:
 .. code-block:: python
 
    # Low clutter: measurements are mostly from targets
-   result = jpda_update(tracks, covs, meas, H, R, clutter_density=1e-6)
+   result = jpda_update(tracks, covs, measurements, H, R, clutter_density=1e-6)
 
    # High clutter: many false alarms expected
-   result = jpda_update(tracks, covs, meas, H, R, clutter_density=1e-2)
+   result = jpda_update(tracks, covs, measurements, H, R, clutter_density=1e-2)
 
 **Gate Probability**
 
@@ -112,10 +123,10 @@ not considered for association:
 .. code-block:: python
 
    # Tight gate: fewer candidate measurements
-   result = jpda_update(tracks, covs, meas, H, R, gate_probability=0.95)
+   result = jpda_update(tracks, covs, measurements, H, R, gate_probability=0.95)
 
    # Loose gate: more candidate measurements
-   result = jpda_update(tracks, covs, meas, H, R, gate_probability=0.9999)
+   result = jpda_update(tracks, covs, measurements, H, R, gate_probability=0.9999)
 
 JPDA Output Structure
 ^^^^^^^^^^^^^^^^^^^^^
@@ -155,7 +166,7 @@ For custom association logic, you can compute the likelihood matrix directly:
    likelihood_matrix, gated = compute_likelihood_matrix(
        tracks, covs, measurements, H, R,
        detection_prob=0.9,
-       gate_threshold=9.21  # Chi-squared threshold for 2D at 99%
+       gate_threshold=6.63  # Chi-squared threshold for a 1D measurement at 99%
    )
 
    # likelihood_matrix[i, j] = likelihood of track i generating measurement j
@@ -175,8 +186,8 @@ considered for each track:
        ellipsoidal_gate
    )
 
-   # Compute gate threshold for 99% probability, 2D measurement
-   threshold = chi2_gate_threshold(0.99, df=2)  # Returns ~9.21
+   # Compute gate threshold for 99% probability, 1D measurement
+   threshold = chi2_gate_threshold(0.99, num_dimensions=1)  # Returns ~6.63
 
    # Check if measurement is within gate
    x = np.array([0.0, 1.0])
@@ -188,11 +199,12 @@ considered for each track:
    # Innovation covariance
    S = H @ P @ H.T + R
 
-   # Mahalanobis distance
+   # Mahalanobis distance (squared)
    y = z - H @ x
    d_sq = mahalanobis_distance(y, S)
 
-   is_gated = d_sq <= threshold
+   # Or test directly against the gate
+   is_gated = ellipsoidal_gate(y, S, threshold)
 
 Best Practices
 --------------

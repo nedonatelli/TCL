@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 from scipy.signal import butter, lfilter, spectrogram
 
 # Output directory for plots
-OUTPUT_DIR = Path("../_static/images/tutorials")
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = False
 
@@ -265,7 +265,7 @@ def signal_processing_tutorial():
     else:
         fig.write_html(str(OUTPUT_DIR / "signal_processing.html"))
 
-    print("✓ Signal processing visualization complete")
+    print("Signal processing visualization complete")
     print("=" * 70)
 
 

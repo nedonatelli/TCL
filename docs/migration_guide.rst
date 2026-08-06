@@ -23,7 +23,7 @@ For optional features:
 Naming Conventions
 ------------------
 
-Function names follow Python conventions (snake_case) instead of MATLAB's PascalCase:
+Function names follow Python conventions (snake_case) instead of MATLAB's mixed camelCase:
 
 .. list-table:: Function Name Mapping
    :header-rows: 1
@@ -35,16 +35,16 @@ Function names follow Python conventions (snake_case) instead of MATLAB's Pascal
    * - ``Cart2Sphere``
      - ``cart2sphere``
      - ``coordinate_systems``
-   * - ``Sphere2Cart``
+   * - ``spher2Cart``
      - ``sphere2cart``
      - ``coordinate_systems``
    * - ``Cart2Ellipse``
-     - ``cart2ellipse``
+     - ``ecef2geodetic``
      - ``coordinate_systems``
    * - ``KalmanUpdate``
      - ``kf_update``
      - ``dynamic_estimation``
-   * - ``KalmanPredict``
+   * - ``discKalPred``
      - ``kf_predict``
      - ``dynamic_estimation``
    * - ``EKFUpdate``
@@ -53,7 +53,7 @@ Function names follow Python conventions (snake_case) instead of MATLAB's Pascal
    * - ``UKFUpdate``
      - ``ukf_update``
      - ``dynamic_estimation``
-   * - ``CKFUpdate``
+   * - ``cubKalUpdate``
      - ``ckf_update``
      - ``dynamic_estimation``
    * - ``FPolyKal``
@@ -65,8 +65,8 @@ Function names follow Python conventions (snake_case) instead of MATLAB's Pascal
    * - ``assign2D``
      - ``assign2d``
      - ``assignment_algorithms``
-   * - ``GNNAssociation``
-     - ``gnn_association``
+   * - ``assign2DHungarian``
+     - ``hungarian``
      - ``assignment_algorithms``
 
 Import Structure
@@ -77,18 +77,22 @@ MATLAB (flat namespace):
 .. code-block:: matlab
 
    % MATLAB - all functions in path
-   F = FPolyKal(T, 2);
-   [xPred, PPred] = KalmanPredict(x, P, F, Q);
+   F = FPolyKal(T, 4, 1);
+   [xPred, PPred] = discKalPred(x, P, F, Q);
 
 Python (hierarchical modules):
 
 .. code-block:: python
 
    # Python - import from modules
-   from pytcl.dynamic_models import f_constant_velocity
+   import numpy as np
+   from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
    from pytcl.dynamic_estimation import kf_predict
 
+   x = np.zeros(4)  # [x, vx, y, vy]
+   P = np.eye(4) * 100
    F = f_constant_velocity(T=1.0, num_dims=2)
+   Q = q_constant_velocity(T=1.0, sigma_a=0.1, num_dims=2)
    pred = kf_predict(x, P, F, Q)
 
    # Or import the whole module
@@ -98,13 +102,15 @@ Python (hierarchical modules):
 Return Values
 -------------
 
-MATLAB uses multiple output arguments; Python uses named tuples:
+MATLAB uses multiple output arguments; Python uses named tuples. Note the
+argument order: MATLAB ``KalmanUpdate`` takes ``R`` before ``H``, while
+``kf_update`` takes ``H`` before ``R`` (and requires both):
 
 MATLAB:
 
 .. code-block:: matlab
 
-   [xUpdate, PUpdate, innov, S] = KalmanUpdate(xPred, PPred, z, H, R);
+   [xUpdate, PUpdate, innov, Pzz, W] = KalmanUpdate(xPred, PPred, z, R, H);
 
 Python:
 
@@ -112,15 +118,19 @@ Python:
 
    from pytcl.dynamic_estimation import kf_update
 
-   result = kf_update(x_pred, P_pred, z, H, R)
-   # Access fields by name
+   H = np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]])
+   R = np.eye(2) * 10
+   z = np.array([1.0, 2.0])
+
+   result = kf_update(pred.x, pred.P, z, H, R)
+   # kf_update returns a 6-field NamedTuple; MATLAB names are renamed:
+   # innov -> y, Pzz -> S, W (gain) -> K
    x_update = result.x
    P_update = result.P
-   innovation = result.innovation
+   innovation = result.y
    S = result.S
-
-   # Or unpack directly
-   x, P, innov, S = result.x, result.P, result.innovation, result.S
+   gain = result.K
+   likelihood = result.likelihood
 
 Array Indexing
 --------------
@@ -200,22 +210,25 @@ MATLAB:
 
    % Motion model
    T = 1.0;  % time step
-   F = FPolyKal(T, 2);  % 2D constant velocity
+   F = FPolyKal(T, 4, 1);  % 2D constant velocity (xDim=4, order=1)
    q = 0.1;  % process noise
-   Q = QPolyKal(T, [q; q], 2);
+   Q = QPolyKal(T, 4, 1, q);
 
    % Measurement model
    H = [1, 0, 0, 0; 0, 0, 1, 0];  % position only
    R = eye(2) * 10;
 
-   % Filter loop
-   for k = 1:length(measurements)
-       % Predict
-       [xPred, PPred] = KalmanPredict(x, P, F, Q);
+   % Measurements: one column per scan
+   measurements = [1.0, 2.1, 3.2; 2.0, 4.2, 6.1];
 
-       % Update
+   % Filter loop
+   for k = 1:size(measurements, 2)
+       % Predict
+       [xPred, PPred] = discKalPred(x, P, F, Q);
+
+       % Update (note: R before H in MATLAB)
        z = measurements(:, k);
-       [x, P] = KalmanUpdate(xPred, PPred, z, H, R);
+       [x, P] = KalmanUpdate(xPred, PPred, z, R, H);
    end
 
 Python:
@@ -239,6 +252,9 @@ Python:
    H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])  # position only
    R = np.eye(2) * 10
 
+   # Measurements: one row per scan
+   measurements = np.array([[1.0, 2.0], [2.1, 4.2], [3.2, 6.1]])
+
    # Filter loop
    for z in measurements:
        # Predict
@@ -255,18 +271,18 @@ MATLAB:
 
 .. code-block:: matlab
 
-   % Cartesian to spherical
+   % Cartesian to spherical (returns a stacked [r; az; el] point)
    cartPoint = [1000; 2000; 3000];
-   [r, az, el] = Cart2Sphere(cartPoint);
+   sphPoint = Cart2Sphere(cartPoint);
 
    % Back to Cartesian
-   cartBack = Sphere2Cart([r; az; el]);
+   cartBack = spher2Cart(sphPoint);
 
    % Geodetic to ECEF
    lat = 40.7128 * pi/180;  % NYC latitude
    lon = -74.0060 * pi/180;
    alt = 10;  % meters
-   ecef = Ellipse2Cart([lat; lon; alt]);
+   ecef = ellips2Cart([lat; lon; alt]);
 
 Python:
 
@@ -278,7 +294,9 @@ Python:
        geodetic2ecef, ecef2geodetic
    )
 
-   # Cartesian to spherical
+   # Cartesian to spherical: returns a (r, az, el) tuple of arrays
+   # instead of a stacked point; a system_type keyword selects the
+   # angle convention ('standard', 'az-el', or 'range-az-el')
    cart_point = np.array([1000, 2000, 3000])
    r, az, el = cart2sphere(cart_point)
 
@@ -301,15 +319,9 @@ MATLAB:
    % Cost matrix (tracks x measurements)
    C = [10, 5, 13; 3, 15, 8; 12, 7, 9];
 
-   % Hungarian algorithm
-   [assignment, cost] = assign2D(C);
-
-   % GNN with gating
-   trackStates = {[10; 20], [30; 40]};
-   trackCovs = {eye(2)*4, eye(2)*4};
-   measurements = [10.5, 30.2, 100; 19.8, 40.5, 100];
-
-   result = GNNAssociation(trackStates, trackCovs, measurements, H, R);
+   % 2D assignment (Jonker-Volgenant)
+   [col4row, row4col, gain] = assign2D(C);
+   % col4row is 1-based; 0 marks an unassigned row
 
 Python:
 
@@ -317,23 +329,31 @@ Python:
 
    import numpy as np
    from pytcl.assignment_algorithms import (
-       hungarian, gnn_association, gated_gnn_association
+       assign2d, hungarian, gated_gnn_association
    )
 
    # Cost matrix (tracks x measurements)
    C = np.array([[10, 5, 13], [3, 15, 8], [12, 7, 9]], dtype=float)
 
-   # Hungarian algorithm
-   result = hungarian(C)
-   assignment = result.assignment
+   # 2D assignment: 0-based index pairs plus explicit absence
+   result = assign2d(C)
+   rows = result.row_indices
+   cols = result.col_indices
    cost = result.cost
+   # result.unassigned_rows / result.unassigned_cols instead of 0 sentinels
 
-   # GNN with gating
+   # hungarian returns a plain 3-tuple
+   row_ind, col_ind, cost = hungarian(C)
+
+   # Gated GNN in one call (gating + assignment; no single
+   # MATLAB TCL equivalent)
    track_preds = np.array([[10.0, 20.0], [30.0, 40.0]])
    track_covs = np.array([np.eye(2) * 4 for _ in range(2)])
    measurements = np.array([[10.5, 19.8], [30.2, 40.5], [100.0, 100.0]])
 
-   result = gated_gnn_association(track_preds, track_covs, measurements)
+   assoc = gated_gnn_association(track_preds, track_covs, measurements)
+   # assoc.track_to_measurement[i] is the measurement index for
+   # track i, or -1 if unassigned
 
 Module Mapping Reference
 ------------------------
@@ -344,19 +364,19 @@ Module Mapping Reference
 
    * - MATLAB Folder
      - Python Module
-   * - ``Coordinate Systems/``
+   * - ``Coordinate_Systems/``
      - ``pytcl.coordinate_systems``
-   * - ``Dynamic Estimation/``
+   * - ``Dynamic_Estimation/``
      - ``pytcl.dynamic_estimation``
-   * - ``Dynamic Models/``
+   * - ``Dynamic_Models/``
      - ``pytcl.dynamic_models``
-   * - ``Assignment Algorithms/``
+   * - ``Assignment_Algorithms/``
      - ``pytcl.assignment_algorithms``
-   * - ``Mathematical Functions/``
+   * - ``Mathematical_Functions/``
      - ``pytcl.mathematical_functions``
    * - ``Navigation/``
      - ``pytcl.navigation``
-   * - ``Astronomical Code/``
+   * - ``Astronomical_Code/``
      - ``pytcl.astronomical``
    * - ``Gravity/``
      - ``pytcl.gravity``
@@ -364,9 +384,9 @@ Module Mapping Reference
      - ``pytcl.magnetism``
    * - ``Terrain/``
      - ``pytcl.terrain``
-   * - ``Atmospheric Models/``
-     - ``pytcl.atmosphere``
-   * - ``Signal Processing/``
+   * - ``Atmosphere_and_Refraction/``
+     - ``pytcl.atmosphere`` (atmosphere models only; refraction is unported)
+   * - ``Mathematical_Functions/Signal_Processing/``
      - ``pytcl.mathematical_functions.signal_processing``
 
 Common Gotchas
@@ -394,6 +414,7 @@ Common Gotchas
       y[0] = 999  # x is now [999, 2, 3]
 
       # Use .copy() to avoid this
+      x = np.array([1, 2, 3])
       y = x.copy()
       y[0] = 999  # x is still [1, 2, 3]
 
@@ -466,6 +487,9 @@ Performance Tips
 4. **Consider scipy.linalg** for specialized linear algebra
 
 .. code-block:: python
+
+   data = np.arange(1000.0)
+   some_function = np.sqrt
 
    # Slow: Python loop
    result = []

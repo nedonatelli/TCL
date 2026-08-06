@@ -22,8 +22,11 @@ from project_metadata import (
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Tracker Component Library"
-copyright = "2024-2026, U.S. Naval Research Laboratory (Python port)"
-author = "U.S. Naval Research Laboratory"
+copyright = (
+    "2024-2026, nrl-tracker contributors; original MATLAB library by the "
+    "U.S. Naval Research Laboratory (public domain)"
+)
+author = "nrl-tracker contributors"
 release = read_pyproject_metadata().get("version", "0.0.0")
 
 # Dynamic project stats for RST substitutions
@@ -134,7 +137,7 @@ def copy_landing_page(app, exception):
             "@FUNCTIONS@": metadata["functions"],
             "@TESTS@": metadata["tests"],
             "@MODULES@": metadata["modules"],
-            "@MATLAB_PARITY@": metadata["matlab_parity"],
+            "@COVERAGE@": metadata["coverage"],
             "@PACKAGE_NAME@": metadata["package_name"],
             "@GITHUB_URL@": metadata["github_url"],
         }

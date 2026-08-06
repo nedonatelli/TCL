@@ -3,7 +3,7 @@ Particle Filters & Non-Gaussian Estimation
 
 *Comprehensive guide to sequential Monte Carlo (SMC) methods for tracking non-Gaussian, nonlinear systems.*
 
-Particle filters represent probability distributions as weighted samples (particles), enabling estimation in highly nonlinear and non-Gaussian scenarios where Kalman filters fail.
+Particle filters represent probability distributions as weighted samples (particles), enabling estimation in highly nonlinear and non-Gaussian scenarios where Kalman filters fail. pytcl ships a complete functional particle filter toolkit in ``pytcl.dynamic_estimation.particle_filters``.
 
 **Table of Contents:**
 
@@ -35,28 +35,38 @@ Particle filters work with:
 
 **Particle Filter Concept:**
 
-Represent state uncertainty as a set of $N_p$ weighted samples:
+Represent state uncertainty as a set of :math:`N_p` weighted samples:
 
-$$
-p(x_k | z_{1:k}) \approx \sum_{i=1}^{N_p} w_k^{(i)} \delta(x_k - x_k^{(i)})
-$$
+.. math::
+
+   p(x_k \mid z_{1:k}) \approx \sum_{i=1}^{N_p} w_k^{(i)} \, \delta(x_k - x_k^{(i)})
 
 Where:
-- $x_k^{(i)}$: i-th particle (state sample)
-- $w_k^{(i)}$: weight of i-th particle
-- $\delta()$: Dirac delta function
-- Weights normalize to 1: $\sum_i w_k^{(i)} = 1$
+
+- :math:`x_k^{(i)}`: i-th particle (state sample)
+- :math:`w_k^{(i)}`: weight of i-th particle
+- :math:`\delta(\cdot)`: Dirac delta function
+- Weights normalize to 1: :math:`\sum_i w_k^{(i)} = 1`
 
 **Key Equations:**
 
 1. **Prediction**: Sample from motion model
-   $$x_k^{(i)} \sim p(x_k | x_{k-1}^{(i)})$$
+
+   .. math::
+
+      x_k^{(i)} \sim p(x_k \mid x_{k-1}^{(i)})
 
 2. **Update**: Compute importance weights
-   $$w_k^{(i)} \propto p(z_k | x_k^{(i)}) \cdot w_{k-1}^{(i)}$$
 
-3. **Normalize**: 
-   $$\hat{w}_k^{(i)} = \frac{w_k^{(i)}}{\sum_j w_k^{(j)}}$$
+   .. math::
+
+      w_k^{(i)} \propto p(z_k \mid x_k^{(i)}) \cdot w_{k-1}^{(i)}
+
+3. **Normalize**:
+
+   .. math::
+
+      \hat{w}_k^{(i)} = \frac{w_k^{(i)}}{\sum_j w_k^{(j)}}
 
 4. **Resample** (if needed): Generate new particles from weighted distribution
 
@@ -66,131 +76,91 @@ Bootstrap Particle Filter
 
 **Algorithm: Sequential Importance Resampling (SIR)**
 
+pytcl provides the complete SIR cycle as ``bootstrap_pf_step``, which performs
+predict, update, and adaptive resampling in one call. Particles and weights
+travel together in a ``ParticleState`` named tuple.
+
 .. code-block:: python
 
     import numpy as np
-    from scipy.stats import norm
-    
-    class BootstrapParticleFilter:
-        """Sequential Importance Resampling particle filter."""
-        
-        def __init__(self, num_particles=1000, process_noise=1.0, 
-                     measurement_noise=1.0):
-            """
-            Args:
-                num_particles: number of particles
-                process_noise: standard deviation of motion model noise
-                measurement_noise: standard deviation of measurement noise
-            """
-            self.N = num_particles
-            self.q = process_noise  # motion model noise std
-            self.r = measurement_noise  # measurement noise std
-            
-            # Initialize particles uniformly
-            self.particles = np.random.normal(0, 10, (self.N, 3))
-            self.weights = np.ones(self.N) / self.N
-        
-        def predict(self, dt):
-            """Predict step: propagate particles using motion model."""
-            # Simple constant velocity model: x = x + v*dt
-            # Velocity is state[1]
-            self.particles[:, 0] += self.particles[:, 1] * dt
-            
-            # Add process noise (motion uncertainty)
-            self.particles += np.random.normal(0, self.q, self.particles.shape)
-        
-        def update(self, measurement):
-            """Update step: weight particles by measurement likelihood."""
-            # Measurement likelihood: how well each particle explains measurement
-            # Measurement is position only (state[0])
-            predicted_meas = self.particles[:, 0]
-            
-            # Gaussian likelihood
-            likelihood = norm.pdf(measurement, loc=predicted_meas, 
-                                 scale=self.r)
-            
-            # Update weights
-            self.weights *= likelihood
-            self.weights /= np.sum(self.weights)  # normalize
-            
-            # Resample if needed (effective sample size check)
-            self._resample_if_needed()
-        
-        def _resample_if_needed(self):
-            """Check effective sample size and resample if degenerate."""
-            # Effective sample size: N_eff = 1 / sum(w^2)
-            n_eff = 1.0 / np.sum(self.weights**2)
-            
-            # Threshold: resample if N_eff < 0.5 * N
-            if n_eff < 0.5 * self.N:
-                self._resample()
-        
-        def _resample(self):
-            """Resample particles (systematic resampling)."""
-            # Copy particles with probability proportional to weight
-            indices = self._systematic_resample()
-            
-            self.particles = self.particles[indices]
-            self.weights = np.ones(self.N) / self.N
-        
-        def _systematic_resample(self):
-            """Systematic resampling: reduced variance."""
-            N = self.N
-            indices = np.zeros(N, dtype=int)
-            
-            cumsum = np.cumsum(self.weights)
-            i, j = 0, 0
-            u = np.random.uniform(0, 1/N)
-            
-            while i < N:
-                if u < cumsum[j]:
-                    indices[i] = j
-                    i += 1
-                    u += 1/N
-                else:
-                    j += 1
-            
-            return indices
-        
-        def estimate_state(self):
-            """Compute weighted mean estimate."""
-            return np.average(self.particles, weights=self.weights, axis=0)
-        
-        def estimate_covariance(self):
-            """Compute weighted covariance."""
-            mean = self.estimate_state()
-            centered = self.particles - mean
-            cov = np.average(centered**2, weights=self.weights, axis=0)
-            return np.diag(cov)
+    from pytcl.dynamic_estimation.particle_filters import (
+        bootstrap_pf_step,
+        initialize_particles,
+        particle_covariance,
+        particle_mean,
+    )
 
+    rng = np.random.default_rng(42)
 
-**Tracking Example:**
+    # 1D constant-velocity state: [position, velocity]
+    dt = 0.1
+
+    def f(x):
+        """Motion model: x_{k+1} = f(x_k)."""
+        return np.array([x[0] + x[1] * dt, x[1]])
+
+    def h(x):
+        """Measurement model: observe position only."""
+        return np.array([x[0]])
+
+    def Q_sample(n, rng):
+        """Draw n process-noise samples, shape (n, 2)."""
+        return rng.normal(0.0, [0.02, 0.10], size=(n, 2))
+
+    R = np.array([[0.25]])  # measurement noise covariance
+
+    # Initialize 500 particles from a Gaussian prior
+    state = initialize_particles(
+        x0=np.array([0.0, 1.0]), P0=np.diag([1.0, 0.25]), N=500, rng=rng
+    )
+
+    # Simulate and filter
+    true_x = np.array([0.0, 1.0])
+    for k in range(50):
+        true_x = f(true_x)
+        z = h(true_x) + rng.normal(0.0, 0.5, size=1)
+        state = bootstrap_pf_step(
+            state.particles, state.weights, z, f, h, Q_sample, R, rng=rng
+        )
+
+    x_hat = particle_mean(state.particles, state.weights)
+    P_hat = particle_covariance(state.particles, state.weights)
+    print(f"true:     pos={true_x[0]:.3f} vel={true_x[1]:.3f}")
+    print(f"estimate: pos={x_hat[0]:.3f} vel={x_hat[1]:.3f}")
+    print(f"pos std:  {np.sqrt(P_hat[0, 0]):.3f}")
+    # true:     pos=5.000 vel=1.000
+    # estimate: pos=5.081 vel=1.137
+    # pos std:  0.213
+
+**Predict and Update as Separate Steps**
+
+When you need finer control (e.g. multiple measurements per scan, custom
+likelihoods), use the individual building blocks. ``bootstrap_pf_update``
+takes any likelihood function ``likelihood_func(z, x) -> float``;
+``gaussian_likelihood`` covers the common Gaussian-measurement case.
 
 .. code-block:: python
 
-    def track_with_particle_filter():
-        """Example: track object with nonlinear motion."""
-        pf = BootstrapParticleFilter(num_particles=500)
-        
-        # Simulated measurements (nonlinear target with outliers)
-        true_state = np.array([0, 5, 0.1])  # [position, velocity, accel]
-        measurements = []
-        for t in np.arange(0, 10, 0.1):
-            true_state[0] += true_state[1] * 0.1
-            true_state[1] += true_state[2] * 0.1
-            
-            # Nonlinear measurement: range = sqrt(x^2 + y^2) - only see distance
-            meas = np.sqrt(true_state[0]**2 + 1) + np.random.normal(0, 0.1)
-            measurements.append(meas)
-        
-        # Filter
-        estimates = []
-        for z in measurements:
-            pf.predict(0.1)
-            pf.update(z)
-            estimates.append(pf.estimate_state())
-        
-        return np.array(estimates)
+    from pytcl.dynamic_estimation.particle_filters import (
+        bootstrap_pf_predict,
+        bootstrap_pf_update,
+        gaussian_likelihood,
+    )
+
+    # Predict: propagate particles through f and add process noise
+    particles = bootstrap_pf_predict(state.particles, f, Q_sample, rng=rng)
+
+    # Update: reweight particles by measurement likelihood
+    z = np.array([5.2])
+
+    def likelihood(z, x):
+        return gaussian_likelihood(z, h(x), R)
+
+    weights, log_lik = bootstrap_pf_update(particles, state.weights, z, likelihood)
+    print(f"weights sum to {weights.sum():.6f}")
+    print(f"log marginal likelihood: {log_lik:.3f}")
+    # weights sum to 1.000000
+    # log marginal likelihood: -0.325
 
 
 Resampling Strategies
@@ -198,121 +168,93 @@ Resampling Strategies
 
 **Problem: Particle Degeneracy**
 
-As filter runs, most particles get zero weight (weight collapse). Solution: resample.
+As the filter runs, most particles get zero weight (weight collapse).
+Solution: resample. pytcl ships three resamplers; each takes ``(particles,
+weights)`` and returns a new equally-weighted particle set.
+
+Set up a degenerate particle set to compare them:
+
+.. code-block:: python
+
+    from pytcl.dynamic_estimation.particle_filters import (
+        effective_sample_size,
+        resample_multinomial,
+        resample_residual,
+        resample_systematic,
+    )
+
+    # Highly non-uniform weights: most mass on a few particles
+    N = 500
+    demo_particles = rng.normal(0.0, 1.0, size=(N, 2))
+    raw = np.exp(-0.5 * (demo_particles[:, 0] - 2.0) ** 2 / 0.1)
+    demo_weights = raw / raw.sum()
+    print(f"ESS before resampling: {effective_sample_size(demo_weights):.1f}")
+    # ESS before resampling: 43.0
 
 **1. Multinomial Resampling (Simple)**
 
+Sample with replacement proportionally to weight. Highest variance.
+
 .. code-block:: python
 
-    def multinomial_resample(particles, weights):
-        """Basic resampling: sample with replacement per weight."""
-        N = len(particles)
-        indices = np.random.choice(N, size=N, p=weights)
-        return particles[indices]
-    
-    # Variance: high (sample variance ~O(1))
-
+    resampled = resample_multinomial(demo_particles, demo_weights, rng=rng)
+    print(f"unique ancestors kept: {len(np.unique(resampled[:, 0]))}")
+    # unique ancestors kept: 71
 
 **2. Systematic Resampling (Best for Most Cases)**
 
+Deterministic positions with a single random offset. Low variance, O(N).
+
 .. code-block:: python
 
-    def systematic_resample(particles, weights):
-        """
-        Reduced variance resampling.
-        
-        Deterministic positions with random offset reduce variance.
-        """
-        N = len(particles)
-        indices = np.zeros(N, dtype=int)
-        
-        cumsum = np.cumsum(weights)
-        i, j = 0, 0
-        u = np.random.uniform(0, 1/N)
-        
-        while i < N:
-            if u < cumsum[j]:
-                indices[i] = j
-                i += 1
-                u += 1/N
-            else:
-                j += 1
-        
-        return particles[indices]
-    
-    # Variance: low (sample variance ~O(1/N²))
-
+    resampled = resample_systematic(demo_particles, demo_weights, rng=rng)
+    print(f"unique ancestors kept: {len(np.unique(resampled[:, 0]))}")
+    # unique ancestors kept: 70
 
 **3. Stratified Resampling**
 
+.. note::
+
+   pytcl does not ship a stratified resampler. The implementation below is a
+   self-contained reference; in practice ``resample_systematic`` is the
+   recommended low-variance choice.
+
 .. code-block:: python
 
-    def stratified_resample(particles, weights):
-        """
-        Similar to systematic but with stratified sampling.
-        Divides probability into strata.
-        """
-        N = len(particles)
-        indices = np.zeros(N, dtype=int)
-        
-        cumsum = np.cumsum(weights)
-        i, j = 0, 0
-        
-        for i in range(N):
-            u = (i + np.random.uniform(0, 1)) / N
-            while u > cumsum[j]:
-                j += 1
-            indices[i] = j
-        
+    def resample_stratified(particles, weights, rng):
+        """Stratified resampling: one uniform draw per stratum."""
+        N = len(weights)
+        u = (np.arange(N) + rng.uniform(size=N)) / N
+        indices = np.searchsorted(np.cumsum(weights), u)
         return particles[indices]
-    
-    # Variance: intermediate
-    
 
-**4. Residual Resampling (Deterministic)**
+    resampled = resample_stratified(demo_particles, demo_weights, rng)
+    print(f"unique ancestors kept: {len(np.unique(resampled[:, 0]))}")
+    # unique ancestors kept: 70
+
+**4. Residual Resampling (Semi-Deterministic)**
+
+Keep ``floor(N * w_i)`` copies of each particle deterministically, then fill
+the remaining slots stochastically from the fractional remainders.
 
 .. code-block:: python
 
-    def residual_resample(particles, weights):
-        """
-        Deterministic: keep floor(N*w_i) copies of each particle,
-        then randomly fill remaining slots.
-        """
-        N = len(particles)
-        indices = []
-        
-        # Deterministic: keep low-variance copies
-        for i, w in enumerate(weights):
-            num_copies = int(np.floor(N * w))
-            indices.extend([i] * num_copies)
-        
-        # Stochastic: fill remaining slots
-        residual_weights = (N * weights) % 1  # fractional parts
-        residual_weights /= np.sum(residual_weights)
-        
-        remaining = N - len(indices)
-        remaining_indices = np.random.choice(
-            N, size=remaining, p=residual_weights
-        )
-        indices.extend(remaining_indices)
-        
-        return particles[np.array(indices)]
-    
-    # Variance: very low (completely deterministic except for remainder)
-
+    resampled = resample_residual(demo_particles, demo_weights, rng=rng)
+    print(f"unique ancestors kept: {len(np.unique(resampled[:, 0]))}")
+    # unique ancestors kept: 72
 
 **Resampling Comparison:**
 
-=========== ================ ============== ================
-Method      Complexity       Variance       Stability
-=========== ================ ============== ================
-Multinomial O(N log N)       O(1)           Unstable
-Systematic  O(N)             O(1/N²)        Robust
-Stratified  O(N)             O(1/N)         Very Good
-Residual    O(N log N)       ~0             Excellent
-=========== ================ ============== ================
+============================ ================ ============== ================
+Function                     Complexity       Variance       Stability
+============================ ================ ============== ================
+``resample_multinomial``     O(N log N)       High           Unstable
+``resample_systematic``      O(N)             Lowest         Robust
+stratified (hand-rolled)     O(N)             Low            Very Good
+``resample_residual``        O(N log N)       Very low       Excellent
+============================ ================ ============== ================
 
-**Recommended:** Systematic or stratified for most applications.
+**Recommended:** ``resample_systematic`` for most applications.
 
 
 Degeneracy Detection & Solutions
@@ -320,56 +262,53 @@ Degeneracy Detection & Solutions
 
 **Effective Sample Size (ESS):**
 
+.. math::
+
+   N_{\text{eff}} = \frac{1}{\sum_i \left(w^{(i)}\right)^2}
+
+ESS ranges from 1 (all weight on one particle) to :math:`N` (uniform
+weights). Resample when :math:`N_{\text{eff}} < \tau N` (typically
+:math:`\tau = 0.5`). pytcl computes it with ``effective_sample_size``:
+
 .. code-block:: python
 
-    def compute_ess(weights):
-        """
-        Effective sample size: N_eff = 1 / sum(w_i^2)
-        
-        Ranges from 1 (all weight on one particle) to N (uniform).
-        Resample when N_eff < threshold * N (typically 0.5).
-        """
-        return 1.0 / np.sum(weights**2)
-    
-    def should_resample(weights, threshold=0.5):
-        """Check if resampling is needed."""
+    def resample_if_needed(particles, weights, threshold=0.5, rng=None):
+        """Adaptive resampling: resample only when degenerate."""
         N = len(weights)
-        n_eff = compute_ess(weights)
-        return n_eff < threshold * N
+        if effective_sample_size(weights) < threshold * N:
+            particles = resample_systematic(particles, weights, rng=rng)
+            weights = np.full(N, 1.0 / N)
+        return particles, weights
 
+    particles, weights = resample_if_needed(
+        demo_particles, demo_weights, rng=rng
+    )
+    print(f"ESS after adaptive resampling: {effective_sample_size(weights):.1f}")
+    # ESS after adaptive resampling: 500.0
 
 **Solutions to Degeneracy:**
 
-1. **Adaptive Resampling**: Resample only when needed (above)
+1. **Adaptive Resampling**: Resample only when needed (above). This is what
+   ``bootstrap_pf_step`` does internally via its ``resample_threshold``
+   argument.
 
 2. **Regularization**: Add jitter to particles after resampling
 
 .. code-block:: python
 
-    def resample_with_regularization(particles, weights, bandwidth=1.0):
+    def resample_with_regularization(particles, weights, rng, bandwidth=1.0):
         """Resample and add regularization noise."""
-        # Standard resampling
-        indices = systematic_resample(particles, weights)
-        particles_resampled = particles[indices]
-        
-        # Add regularization: kernel density estimation
-        h = bandwidth * particles.std(axis=0)  # adaptive bandwidth
-        noise = np.random.normal(0, h, particles_resampled.shape)
-        
-        particles_resampled += noise
-        return particles_resampled
+        resampled = resample_systematic(particles, weights, rng=rng)
 
+        # Adaptive bandwidth from particle spread
+        h_bw = bandwidth * particles.std(axis=0)
+        return resampled + rng.normal(0.0, h_bw, size=resampled.shape)
 
-3. **Look-Ahead Resampling**: Predict degeneracy and resample early
-
-.. code-block:: python
-
-    def predictive_ess(weights, measurement_likelihood_variance):
-        """Estimate ESS after next measurement."""
-        # Rough heuristic: shrinkage based on variance
-        predicted_weights = weights * (1 - measurement_likelihood_variance)
-        predicted_weights /= np.sum(predicted_weights)
-        return compute_ess(predicted_weights)
+    regularized = resample_with_regularization(
+        demo_particles, demo_weights, rng
+    )
+    print(f"distinct particles: {len(np.unique(regularized[:, 0]))}")
+    # distinct particles: 500
 
 
 Sequential Importance Sampling (SIS)
@@ -377,49 +316,38 @@ Sequential Importance Sampling (SIS)
 
 **More General Particle Filter Framework:**
 
+The bootstrap filter is SIS with the prior :math:`p(x_k \mid x_{k-1})` as
+proposal plus adaptive resampling. Composing the pytcl building blocks by
+hand exposes each SIS stage, which is useful when you need a custom proposal
+or likelihood:
+
 .. code-block:: python
 
-    class SequentialImportanceSampling:
-        """SIS: generalization of bootstrap PF."""
-        
-        def __init__(self, proposal, likelihood, num_particles=1000):
-            """
-            Args:
-                proposal: function(state) -> new_state (motion model)
-                likelihood: function(measurement, state) -> scalar
-                num_particles: number of particles
-            """
-            self.proposal = proposal
-            self.likelihood = likelihood
-            self.N = num_particles
-            
-            self.particles = np.random.randn(self.N, 3)
-            self.weights = np.ones(self.N) / self.N
-        
-        def step(self, measurement):
-            """One SIS update step."""
-            # Predict from proposal distribution
-            self.particles = np.array([
-                self.proposal(p) for p in self.particles
-            ])
-            
-            # Update weights by likelihood
-            likelihoods = np.array([
-                self.likelihood(measurement, p) for p in self.particles
-            ])
-            
-            self.weights *= likelihoods
-            self.weights /= np.sum(self.weights)
-            
-            # Optional: resample if degenerate
-            if compute_ess(self.weights) < 0.5 * self.N:
-                self._resample()
-        
-        def _resample(self):
-            """Internal resampling."""
-            indices = systematic_resample(self.particles, self.weights)
-            self.particles = self.particles[indices]
-            self.weights = np.ones(self.N) / self.N
+    def sis_step(particles, weights, z, likelihood, rng):
+        """One SIS cycle: propose, reweight, adaptively resample."""
+        # 1. Propose from the motion model (bootstrap proposal)
+        particles = bootstrap_pf_predict(particles, f, Q_sample, rng=rng)
+
+        # 2. Reweight by measurement likelihood
+        weights, _ = bootstrap_pf_update(particles, weights, z, likelihood)
+
+        # 3. Resample if degenerate
+        return resample_if_needed(particles, weights, rng=rng)
+
+    state = initialize_particles(
+        x0=np.array([0.0, 1.0]), P0=np.diag([1.0, 0.25]), N=500, rng=rng
+    )
+    particles, weights = state.particles, state.weights
+
+    true_x = np.array([0.0, 1.0])
+    for k in range(30):
+        true_x = f(true_x)
+        z = h(true_x) + rng.normal(0.0, 0.5, size=1)
+        particles, weights = sis_step(particles, weights, z, likelihood, rng)
+
+    x_hat = particle_mean(particles, weights)
+    print(f"true pos={true_x[0]:.3f}  estimate pos={x_hat[0]:.3f}")
+    # true pos=3.000  estimate pos=2.954
 
 
 Practical Implementation
@@ -427,87 +355,89 @@ Practical Implementation
 
 **Complete Tracking System:**
 
+Range-only tracking is a classic nonlinear problem where the measurement
+function makes EKF linearization fragile:
+
 .. code-block:: python
 
-    class NonlinearTracker:
-        """Full particle filter tracker for nonlinear, non-Gaussian systems."""
-        
-        def __init__(self, num_particles=500, process_noise=0.1, 
-                     measurement_noise=1.0):
-            self.pf = BootstrapParticleFilter(num_particles, 
-                                             process_noise, 
-                                             measurement_noise)
-            self.history = {
-                'states': [],
-                'measurements': [],
-                'uncertainties': []
-            }
-        
-        def filter_step(self, measurement, dt=0.1):
-            """One complete filter cycle."""
-            # Predict
-            self.pf.predict(dt)
-            
-            # Update
-            self.pf.update(measurement)
-            
-            # Estimate
-            state = self.pf.estimate_state()
-            cov = self.pf.estimate_covariance()
-            
-            # Log
-            self.history['states'].append(state)
-            self.history['measurements'].append(measurement)
-            self.history['uncertainties'].append(cov)
-            
-            return state, cov
-        
-        def get_particle_cloud(self):
-            """Return current particles for visualization."""
-            return self.pf.particles
-        
-        def get_particle_weights(self):
-            """Return particle importance weights."""
-            return self.pf.weights
+    # 2D constant-velocity state: [x, y, vx, vy]
+    def f_cv(x):
+        dt = 0.5
+        return np.array([x[0] + x[2] * dt, x[1] + x[3] * dt, x[2], x[3]])
 
+    def h_range(x):
+        """Range from origin: strongly nonlinear in state."""
+        return np.array([np.hypot(x[0], x[1])])
+
+    def Q_sample_cv(n, rng):
+        return rng.normal(0.0, [0.05, 0.05, 0.20, 0.20], size=(n, 4))
+
+    R_range = np.array([[4.0]])
+
+    rng = np.random.default_rng(7)
+    state = initialize_particles(
+        x0=np.array([100.0, 50.0, -2.0, 1.0]),
+        P0=np.diag([100.0, 100.0, 1.0, 1.0]),
+        N=2000,
+        rng=rng,
+    )
+
+    truth = np.array([105.0, 45.0, -2.5, 1.2])
+    pos_errors, range_errors = [], []
+    for k in range(60):
+        truth = f_cv(truth)
+        z = h_range(truth) + rng.normal(0.0, 2.0, size=1)
+        state = bootstrap_pf_step(
+            state.particles, state.weights, z, f_cv, h_range,
+            Q_sample_cv, R_range, rng=rng,
+        )
+        x_hat = particle_mean(state.particles, state.weights)
+        pos_errors.append(np.hypot(*(x_hat[:2] - truth[:2])))
+        range_errors.append(abs(np.hypot(*x_hat[:2]) - np.hypot(*truth[:2])))
+
+    print(f"mean position error: {np.mean(pos_errors):.2f}")
+    print(f"mean range error:    {np.mean(range_errors):.2f}")
+    # mean position error: 7.39
+    # mean range error:    2.72
+
+Range-only measurements observe bearing only weakly (through motion over
+time), so the position error stays several times larger than the range
+error, which converges to the measurement noise floor. The particle cloud
+spreads along the range arc: exactly the non-Gaussian behavior a Kalman
+filter cannot represent.
 
 **Multi-Target Extension:**
 
+Run one ``ParticleState`` per target and update each with its associated
+measurement:
+
 .. code-block:: python
 
-    class MultiTargetParticleFilter:
-        """Manage filters for multiple targets."""
-        
-        def __init__(self, num_targets, particles_per_target=500):
-            self.filters = [
-                BootstrapParticleFilter(num_particles=particles_per_target)
-                for _ in range(num_targets)
-            ]
-        
-        def predict_all(self, dt):
-            """Predict all targets."""
-            for pf in self.filters:
-                pf.predict(dt)
-        
-        def update_with_associations(self, measurements, associations):
-            """
-            Update targets with measurements.
-            
-            Args:
-                measurements: list of measurement vectors
-                associations: list of (measurement_idx, target_idx) tuples
-            """
-            # Mark which targets got measurements
-            updated = set()
-            
-            for meas_idx, target_idx in associations:
-                self.filters[target_idx].update(measurements[meas_idx])
-                updated.add(target_idx)
-            
-            # Targets without measurements: just predict next step
-            for target_idx in range(len(self.filters)):
-                if target_idx not in updated:
-                    self.filters[target_idx].predict(0.1)
+    targets = {
+        tid: initialize_particles(x0, np.diag([25.0, 25.0, 1.0, 1.0]),
+                                  N=1000, rng=rng)
+        for tid, x0 in {
+            0: np.array([100.0, 50.0, -2.0, 1.0]),
+            1: np.array([-40.0, 80.0, 1.5, -0.5]),
+        }.items()
+    }
+
+    # associations: list of (measurement, target_id) pairs from a data
+    # association stage (e.g. GNN); see :doc:`assignment_association`
+    associations = [(np.array([111.0]), 0), (np.array([90.0]), 1)]
+
+    for z, tid in associations:
+        s = targets[tid]
+        targets[tid] = bootstrap_pf_step(
+            s.particles, s.weights, z, f_cv, h_range,
+            Q_sample_cv, R_range, rng=rng,
+        )
+
+    for tid, s in targets.items():
+        x_hat = particle_mean(s.particles, s.weights)
+        print(f"target {tid}: range estimate {np.hypot(*x_hat[:2]):.1f}")
+    # target 0: range estimate 111.0
+    # target 1: range estimate 89.7
 
 
 Performance & Efficiency
@@ -515,7 +445,7 @@ Performance & Efficiency
 
 **Computational Complexity:**
 
-- **Prediction**: O(N_p × d) where d = state dimension
+- **Prediction**: O(N_p x d) where d = state dimension
 - **Update**: O(N_p) for likelihood evaluation
 - **Resampling**: O(N_p) to O(N_p log N_p) depending on method
 - **Overall**: O(N_p) per cycle (most efficient SMC method)
@@ -528,41 +458,56 @@ Performance & Efficiency
         """Estimate memory for storing particle histories."""
         bytes_per_particle = state_dim * 8  # double precision
         bytes_per_weight = 8
-        
-        # Per timestep
-        bytes_per_step = (bytes_per_particle + bytes_per_weight) * num_particles
-        
-        # Total
-        total_bytes = bytes_per_step * num_timesteps
-        total_mb = total_bytes / (1024**2)
-        
-        return total_mb
-    
-    # Example: 1000 particles, 10 states, 1000 timesteps
-    # ~ 80 MB (manageable)
 
+        bytes_per_step = (bytes_per_particle + bytes_per_weight) * num_particles
+        return bytes_per_step * num_timesteps / (1024**2)
+
+    mb = estimate_memory_usage(1000, 10, 1000)
+    print(f"1000 particles, 10 states, 1000 steps: {mb:.0f} MB")
+    # 1000 particles, 10 states, 1000 steps: 84 MB
 
 **Scaling with Particle Count:**
 
+Monte Carlo error shrinks like :math:`1/\sqrt{N_p}`. Measure it directly on
+the 1D tracking problem from the first section:
+
 .. code-block:: python
 
-    def performance_analysis():
-        """Analyze filter accuracy vs particle count."""
-        num_trials = 100
-        particle_counts = [100, 500, 1000, 5000]
-        errors = {n: [] for n in particle_counts}
-        
-        for n_particles in particle_counts:
-            for trial in range(num_trials):
-                pf = BootstrapParticleFilter(num_particles=n_particles)
-                # Run filter, compute error
-                error = run_filter(pf, ground_truth)
-                errors[n_particles].append(error)
-        
-        # Plot error vs particles (should be ~1/sqrt(N))
-        for n, errs in errors.items():
-            print(f"N={n}: mean_error={np.mean(errs):.4f} " +
-                  f"std={np.std(errs):.4f}")
+    # One fixed measurement sequence shared by every trial, so that
+    # trial-to-trial spread isolates the Monte Carlo error
+    data_rng = np.random.default_rng(123)
+    true_x = np.array([0.0, 1.0])
+    truths, zs = [], []
+    for _ in range(30):
+        true_x = f(true_x)
+        truths.append(true_x.copy())
+        zs.append(h(true_x) + data_rng.normal(0.0, 0.5, size=1))
+
+    def run_trial(n_particles, rng):
+        """Run the 1D tracker once, return mean position error."""
+        state = initialize_particles(
+            np.array([0.0, 1.0]), np.diag([1.0, 0.25]), n_particles, rng=rng
+        )
+        errs = []
+        for tx, z in zip(truths, zs):
+            state = bootstrap_pf_step(
+                state.particles, state.weights, z, f, h, Q_sample, R, rng=rng
+            )
+            x_hat = particle_mean(state.particles, state.weights)
+            errs.append(abs(x_hat[0] - tx[0]))
+        return np.mean(errs)
+
+    for n in [50, 200, 1000]:
+        errors = [run_trial(n, np.random.default_rng(seed))
+                  for seed in range(20)]
+        print(f"N={n:5d}: mean_error={np.mean(errors):.4f} "
+              f"std={np.std(errors):.4f}")
+    # N=   50: mean_error=0.1592 std=0.0171
+    # N=  200: mean_error=0.1480 std=0.0121
+    # N= 1000: mean_error=0.1473 std=0.0050
+
+The mean error approaches the noise-limited floor while the trial-to-trial
+standard deviation drops roughly as :math:`1/\sqrt{N_p}`.
 
 
 Common Issues & Solutions
@@ -573,6 +518,7 @@ Common Issues & Solutions
 Symptom: ESS drops to < 10% of N
 
 Solutions:
+
 1. Increase resampling threshold (e.g., resample at 0.5*N instead of 0.2*N)
 2. Use regularization/jitter
 3. Increase number of particles
@@ -583,100 +529,125 @@ Solutions:
     def diagnose_collapse(weights):
         """Analyze weight distribution."""
         sorted_w = np.sort(weights)[::-1]
-        top_10_percent = np.sum(sorted_w[:len(weights)//10])
-        
-        print(f"Top 10% have {top_10_percent*100:.1f}% of weight")
+        top_10_percent = np.sum(sorted_w[: len(weights) // 10])
+
+        print(f"Top 10% have {top_10_percent * 100:.1f}% of weight")
         if top_10_percent > 0.8:
             print("WARNING: Significant weight collapse")
             print("  - Consider more particles")
             print("  - Add regularization noise")
             print("  - Increase resampling threshold")
 
+    diagnose_collapse(demo_weights)
+    # Top 10% have 93.9% of weight
+    # WARNING: Significant weight collapse
+    #   - Consider more particles
+    #   - Add regularization noise
+    #   - Increase resampling threshold
 
 **Problem: Particle Impoverishment (After Heavy Resampling)**
 
 Symptom: Many identical particles, filter stuck
 
 Solutions:
+
 1. Use regularization with adaptive bandwidth
 2. Mix in samples from proposal distribution
 3. Lower resampling threshold (resample less often)
 
 .. code-block:: python
 
-    def regularized_resample(particles, weights, num_particles, scale=1.0):
-        """Resample with adaptive regularization."""
-        # Standard resampling
-        indices = systematic_resample(particles, weights)
-        new_particles = particles[indices].copy()
-        
-        # Adaptive bandwidth (Silverman's rule)
-        h = scale * np.power(num_particles, -1/5) * new_particles.std(axis=0)
-        
-        # Add regularization noise
-        new_particles += np.random.normal(0, h, new_particles.shape)
-        
-        return new_particles
+    def regularized_resample(particles, weights, rng, scale=1.0):
+        """Resample with adaptive regularization (Silverman's rule)."""
+        new_particles = resample_systematic(particles, weights, rng=rng)
 
+        n = len(particles)
+        h_bw = scale * n ** (-1 / 5) * new_particles.std(axis=0)
+        return new_particles + rng.normal(0.0, h_bw, size=new_particles.shape)
+
+    jittered = regularized_resample(demo_particles, demo_weights, rng)
+    print(f"distinct particles: {len(np.unique(jittered[:, 0]))}")
+    # distinct particles: 500
 
 **Problem: Filter Diverges (State Estimates Far from Reality)**
 
 Solutions:
+
 1. Check likelihood calculation for bugs
 2. Verify process noise is appropriate
 3. Increase particles
-4. Use likelihood annealing (gradually increase impact)
+4. Use likelihood annealing (temper a sharp likelihood in stages)
 
 .. code-block:: python
 
-    def annealed_update(particles, weights, measurements, 
-                       likelihood_fn, num_iterations=5):
-        """Anneal measurement incorporation over iterations."""
-        for iteration in range(num_iterations):
-            # Fractional power of likelihood (annealing)
-            beta = (iteration + 1) / num_iterations
-            
-            # Apply fractional likelihood
-            partial_likelihood = np.array([
-                likelihood_fn(measurements[p])**beta 
-                for p in particles
-            ])
-            
-            weights *= partial_likelihood
-            weights /= np.sum(weights)
-        
-        return weights
+    def annealed_update(particles, weights, z, likelihood_fn, rng,
+                        num_stages=5):
+        """Incorporate a sharp likelihood gradually (tempering).
+
+        At each stage, apply the likelihood raised to an increment of
+        beta so that the full likelihood is absorbed after all stages,
+        resampling between stages to keep the particle set healthy.
+        """
+        beta_prev = 0.0
+        for stage in range(1, num_stages + 1):
+            beta = stage / num_stages
+            lik = np.array([likelihood_fn(z, p) for p in particles])
+            weights = weights * lik ** (beta - beta_prev)
+            weights = weights / weights.sum()
+
+            particles, weights = resample_if_needed(
+                particles, weights, rng=rng
+            )
+            beta_prev = beta
+        return particles, weights
+
+    def sharp_likelihood(z, x):
+        return gaussian_likelihood(z, x[:1], np.array([[0.01]]))
+
+    z_sharp = np.array([2.0])
+    annealed, w = annealed_update(
+        demo_particles, np.full(len(demo_particles), 1 / len(demo_particles)),
+        z_sharp, sharp_likelihood, rng,
+    )
+    print(f"ESS after annealed update: {effective_sample_size(w):.1f}")
+    # ESS after annealed update: 284.4
 
 
 Best Practices
 --------------
 
 1. **Choose Particle Count Wisely**
+
    - Start with N=500 for 3D problems
    - Rule of thumb: N ~ 10^(d/2) for quick estimates
    - Monitor ESS; if < 100 typically, increase N
 
 2. **Adaptive Parameters**
-   - Resampling threshold: 0.3-0.7 of N
+
+   - Resampling threshold (``resample_threshold`` in ``bootstrap_pf_step``): 0.3-0.7 of N
    - Regularization bandwidth: use Silverman's rule
    - Process noise: match actual motion uncertainty
 
 3. **Monitor Filter Health**
-   - Track ESS over time (should be oscillating, not monotone)
+
+   - Track ``effective_sample_size`` over time (should oscillate, not decay monotonically)
    - Check innovation sequences (should be white noise)
    - Visualize particle cloud (should spread over state space)
 
 4. **Use Systematic Resampling**
+
    - Better variance than multinomial
    - Negligible overhead vs bootstrap
-   - More stable than stratified for most cases
+   - The default ``resample_method`` in ``bootstrap_pf_step``
 
 5. **Combine with Other Methods**
+
    - Use Kalman filter as proposal distribution (proposal-guided PF)
    - Use particle filter for initialization of EKF
    - Hybrid systems for mixed Gaussian/non-Gaussian
 
 6. **For Real-Time Systems**
+
    - Use smallest N that maintains accuracy (test offline first)
    - Compute ESS during update, resample only when needed
    - Profile particle filter speed vs system requirements
@@ -689,34 +660,30 @@ Troubleshooting
 
 .. code-block:: python
 
-    def diagnose_particle_filter(pf, measurements, ground_truth):
-        """Comprehensive filter diagnostics."""
-        
+    def diagnose_particle_filter(particles, weights, spread_floor=0.01):
+        """Basic particle filter health checks."""
         issues = []
-        
-        # Check 1: ESS trajectory
-        ess_history = []
-        for z in measurements:
-            pf.update(z)
-            ess_history.append(compute_ess(pf.weights))
-        
-        if np.mean(ess_history) < 0.2 * pf.N:
+
+        # Check 1: effective sample size
+        ess = effective_sample_size(weights)
+        if ess < 0.2 * len(weights):
             issues.append("Severe weight collapse - increase particles")
-        
-        # Check 2: Particle spread
-        spread = np.std(pf.particles, axis=0)
-        if np.any(spread < 0.01):
+
+        # Check 2: particle spread
+        spread = particles.std(axis=0)
+        if np.any(spread < spread_floor):
             issues.append("Particles too concentrated - increase noise")
-        
-        # Check 3: Estimate error
-        estimates = [pf.estimate_state() for _ in measurements]
-        errors = np.array([np.linalg.norm(e[:3] - gt[:3]) 
-                          for e, gt in zip(estimates, ground_truth)])
-        
-        if np.mean(errors) > np.std(ground_truth) * 10:
-            issues.append("Large estimation errors - check likelihood")
-        
+
         return issues
+
+    print(diagnose_particle_filter(demo_particles, demo_weights))
+    # ['Severe weight collapse - increase particles']
+
+    print(diagnose_particle_filter(state.particles, state.weights))
+    # []
+
+Beyond these structural checks, validate estimates against ground truth in
+simulation and check innovation whiteness; see :doc:`troubleshooting`.
 
 
 See Also
@@ -725,4 +692,4 @@ See Also
 - :doc:`recipes` - Ready-to-use particle filter examples
 - :doc:`troubleshooting` - Common particle filter issues
 - :doc:`kalman_filter_tuning` - Parameter selection strategies
-- API: `tcl.particle_filters` module for implementations
+- API: ``pytcl.dynamic_estimation.particle_filters`` module for implementations

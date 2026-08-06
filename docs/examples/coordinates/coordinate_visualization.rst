@@ -15,9 +15,9 @@ Overview
 Visualizing coordinate transformations helps understand:
 
 - **Rotation effects**: How rotations change frame orientation
-- **Projection distortions**: Map projection artifacts
 - **Frame relationships**: ECEF, ENU, NED orientations
 - **Interpolation paths**: Quaternion vs Euler interpolation
+- **Spherical coordinates**: Range, azimuth, elevation geometry
 
 Key Concepts
 ------------
@@ -64,10 +64,10 @@ Code Highlights
 
 The example demonstrates:
 
-- 3D plotting of coordinate frames
-- Animated rotation sequences
-- Interactive frame selection
-- Projection comparison views
+- 3D plotting of coordinate frames on the Earth ellipsoid
+- Euler angle sequence visualization
+- Quaternion SLERP animation
+- Spherical coordinate geometry views
 
 Source Code
 -----------

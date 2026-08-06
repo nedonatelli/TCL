@@ -12,15 +12,16 @@ from typing import Any, Dict
 
 # Manually maintained statistics that cannot be auto-calculated
 RELEASE_STATS = {
-    "matlab_parity": "100",
-    "coverage": "80",
+    "coverage": "90",
 }
 
-# Project URLs and identifiers
+# Project URLs and identifiers. The organization is this port's project --
+# the U.S. Naval Research Laboratory wrote the original MATLAB library and
+# is not affiliated with the port.
 PROJECT_INFO = {
     "github_url": "https://github.com/nedonatelli/TCL",
     "package_name": "nrl-tracker",
-    "organization": "U.S. Naval Research Laboratory",
+    "organization": "nrl-tracker (independent Python port)",
 }
 
 
@@ -163,7 +164,6 @@ def get_project_metadata() -> Dict[str, str]:
         "modules": f"{count_python_modules():,}",
         "tests": f"{count_test_functions():,}",
         # Manually maintained statistics
-        "matlab_parity": RELEASE_STATS["matlab_parity"],
         "coverage": RELEASE_STATS["coverage"],
     }
 
