@@ -433,12 +433,11 @@ if __name__ == "__main__":
     print(f"OK Saved: {output_path4}")
 
     fig5 = plot_composition_transitions()
+    output_path5 = os.path.join(output_dir, "nrlmsise00_composition_transition.html")
     fig5.write_html(
-        "nrlmsise00_composition_transition.html",
-        include_plotlyjs="cdn",
-        div_id="nrlmsise00_composition_transition",
+        output_path5, include_plotlyjs="cdn", div_id=Path(output_path5).stem
     )
-    print("OK Saved: nrlmsise00_composition_transition.html")
+    print(f"OK Saved: {output_path5}")
 
     print("\nAll visualizations complete!")
     print("View the HTML files in a browser to interact with the plots.")
