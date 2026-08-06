@@ -200,6 +200,21 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Removed
 
+- **The four empty placeholder packages: `pytcl.transponders`,
+  `pytcl.scheduling`, `pytcl.physical_values`, `pytcl.misc`.** Each contained
+  only a docstring and `__all__ = []`, mirroring the MATLAB directory layout,
+  and shipped in the wheel. An importable `pytcl.transponders` makes a
+  feature probe succeed while implying AIS support that does not exist;
+  `ImportError` is the honest answer. The directories are gone entirely
+  (deleting only `__init__.py` would leave them importable as namespace
+  packages), and the test that pinned them empty is retired with them.
+
+- **The `optimization` extra (cvxpy).** Nothing consumed it -- not the
+  package, not the tests, not the examples; the only references were its
+  own registry entries in `pytcl.core.optional_deps`. It advertised convex
+  optimization capability that does not exist. `HAS_CVXPY` is removed from
+  the optional-dependency registry with it.
+
 - **`pytcl.logging_config` and `pytcl.assignment_algorithms.network_simplex`**
   ([#24](https://github.com/nedonatelli/TCL/issues/24)). Both were additions
   made by this port during the v1.1.0 performance work, not ports of anything
