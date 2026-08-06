@@ -3,6 +3,15 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
+  # Fallback for when GitHub's event delivery drops the release-published
+  # webhook (it happened for v2.0.0, during a platform outage): dispatch
+  # builds and publishes the named tag directly.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish (e.g. v2.0.0)"
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -13,6 +22,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
