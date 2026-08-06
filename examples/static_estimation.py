@@ -172,7 +172,11 @@ def demo_ordinary_least_squares():
         fig.update_yaxes(title_text="Residual", row=1, col=2)
 
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "static_ols.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "static_ols.html"),
+            include_plotlyjs="cdn",
+            div_id="static_ols",
+        )
         print("\n  [Plot saved to static_ols.html]")
 
 
@@ -503,7 +507,9 @@ def demo_robust_estimation():
 
         fig.update_layout(height=500, width=1200, showlegend=True)
         fig.write_html(
-            str(OUTPUT_DIR / "static_robust_estimation.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "static_robust_estimation.html"),
+            include_plotlyjs="cdn",
+            div_id="static_robust_estimation",
         )
         print("\n  [Plot saved to static_robust_estimation.html]")
 
@@ -626,7 +632,11 @@ def demo_ransac():
             width=800,
             showlegend=True,
         )
-        fig.write_html(str(OUTPUT_DIR / "static_ransac.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "static_ransac.html"),
+            include_plotlyjs="cdn",
+            div_id="static_ransac",
+        )
         print("\n  [Plot saved to static_ransac.html]")
 
 
@@ -827,7 +837,9 @@ def demo_model_selection():
 
         fig.update_layout(height=500, width=1200, showlegend=True)
         fig.write_html(
-            str(OUTPUT_DIR / "static_model_selection.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "static_model_selection.html"),
+            include_plotlyjs="cdn",
+            div_id="static_model_selection",
         )
         print("\n  [Plot saved to static_model_selection.html]")
 

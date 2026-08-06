@@ -127,7 +127,9 @@ def demo_bessel_functions() -> None:
         fig.show()
     else:
         fig.write_html(
-            str(OUTPUT_DIR / "special_functions_demo.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "special_functions_demo.html"),
+            include_plotlyjs="cdn",
+            div_id="special_functions_demo",
         )
 
 
@@ -180,6 +182,7 @@ def demo_higher_order_bessel() -> None:
         fig.write_html(
             str(OUTPUT_DIR / "special_functions_demo_higher_order.html"),
             include_plotlyjs="cdn",
+            div_id="special_functions_demo_higher_order",
         )
 
 

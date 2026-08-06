@@ -91,6 +91,16 @@ from pytcl.clustering import (  # Gaussian mixture operations; K-means; DBSCAN; 
 )
 
 
+def _rng(seed: int = 42) -> np.random.Generator:
+    """A seeded Generator for library calls that take one.
+
+    ``np.random.seed`` seeds the legacy global RNG; ``kmeans`` and friends
+    default to ``np.random.default_rng()``, a separate stream that ignores it.
+    Without passing this the figures under docs/_static change every rebuild.
+    """
+    return np.random.default_rng(seed)
+
+
 def demo_gaussian_components():
     """Demonstrate Gaussian component operations."""
     print("=" * 70)
@@ -281,7 +291,7 @@ def demo_kmeans():
     print(f"True centers:\n{centers_true}")
 
     # K-means clustering
-    result = kmeans(data, n_clusters=3, max_iter=100)
+    result = kmeans(data, n_clusters=3, max_iter=100, rng=_rng())
 
     print(f"\nK-means result:")
     print(f"  Iterations: {result.n_iter}")
@@ -360,7 +370,11 @@ def demo_kmeans():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "gaussian_kmeans.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "gaussian_kmeans.html"),
+            include_plotlyjs="cdn",
+            div_id="gaussian_kmeans",
+        )
         print("\n  [Plot saved to gaussian_kmeans.html]")
 
 
@@ -397,11 +411,13 @@ def demo_kmeans_plusplus():
     results_random = []
     for _ in range(10):
         idx = np.random.choice(len(data), n_clusters, replace=False)
-        result = kmeans(data, n_clusters=n_clusters, init=data[idx], n_init=1)
+        result = kmeans(
+            data, n_clusters=n_clusters, init=data[idx], n_init=1, rng=_rng()
+        )
         results_random.append(result.inertia)
 
     result_plusplus = kmeans(
-        data, n_clusters=n_clusters, init=plusplus_centers, n_init=1
+        data, n_clusters=n_clusters, init=plusplus_centers, n_init=1, rng=_rng()
     )
 
     print(f"\n  Random initialization (10 runs):")
@@ -436,7 +452,7 @@ def demo_elbow_method():
     print("\nInertia for different K values:")
     print("-" * 40)
 
-    elbow_result = kmeans_elbow(data, k_range=range(1, 8))
+    elbow_result = kmeans_elbow(data, k_range=range(1, 8), rng=_rng())
     k_values = elbow_result["k_values"]
     inertias = elbow_result["inertias"]
 
@@ -474,7 +490,11 @@ def demo_elbow_method():
             width=700,
             showlegend=True,
         )
-        fig.write_html(str(OUTPUT_DIR / "gaussian_elbow.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "gaussian_elbow.html"),
+            include_plotlyjs="cdn",
+            div_id="gaussian_elbow",
+        )
         print("\n  [Plot saved to gaussian_elbow.html]")
 
 
@@ -617,7 +637,11 @@ def demo_dbscan():
         fig.update_xaxes(title_text="x")
         fig.update_yaxes(title_text="y")
         fig.update_layout(height=500, width=1000, showlegend=True)
-        fig.write_html(str(OUTPUT_DIR / "gaussian_dbscan.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "gaussian_dbscan.html"),
+            include_plotlyjs="cdn",
+            div_id="gaussian_dbscan",
+        )
         print("\n  [Plot saved to gaussian_dbscan.html]")
 
 
@@ -732,6 +756,11 @@ def demo_tracking_application():
 
 def main():
     """Run all demonstrations."""
+    # Seed once for the whole run. Individual demos below reseed, but
+    # not all of them do, and the figures are committed under
+    # docs/_static -- an unseeded draw makes every rebuild produce a
+    # different file and a spurious diff.
+    np.random.seed(42)
     print("\n" + "#" * 70)
     print("# PyTCL Gaussian Mixtures and Clustering Example")
     print("#" * 70)

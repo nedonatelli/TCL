@@ -500,7 +500,9 @@ def plot_results(
     fig.update_yaxes(title_text="Component Value", row=2, col=2)
 
     fig.write_html(
-        str(OUTPUT_DIR / "performance_evaluation.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "performance_evaluation.html"),
+        include_plotlyjs="cdn",
+        div_id="performance_evaluation",
     )
     print("\nInteractive plot saved to performance_evaluation.html")
     if SHOW_PLOTS:
@@ -508,7 +510,9 @@ def plot_results(
     else:
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         fig.write_html(
-            str(OUTPUT_DIR / "performance_evaluation.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "performance_evaluation.html"),
+            include_plotlyjs="cdn",
+            div_id="performance_evaluation",
         )
 
 

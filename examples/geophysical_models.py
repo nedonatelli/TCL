@@ -174,6 +174,7 @@ def demo_normal_gravity():
         fig.write_html(
             str(OUTPUT_DIR / "geophysical_gravity_latitude.html"),
             include_plotlyjs="cdn",
+            div_id="geophysical_gravity_latitude",
         )
         print("\n  [Plot saved to geophysical_gravity_latitude.html]")
 
@@ -278,6 +279,7 @@ def demo_gravity_models():
         fig.write_html(
             str(OUTPUT_DIR / "geophysical_gravity_altitude.html"),
             include_plotlyjs="cdn",
+            div_id="geophysical_gravity_altitude",
         )
         print("\n  [Plot saved to geophysical_gravity_altitude.html]")
 
@@ -479,7 +481,9 @@ def demo_tidal_effects():
 
         fig.update_layout(height=600, width=1000)
         fig.write_html(
-            str(OUTPUT_DIR / "geophysical_tides.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "geophysical_tides.html"),
+            include_plotlyjs="cdn",
+            div_id="geophysical_tides",
         )
         print("\n  [Plot saved to geophysical_tides.html]")
 
@@ -613,7 +617,9 @@ def demo_magnetic_field():
 
         fig.update_layout(height=500, width=1400)
         fig.write_html(
-            str(OUTPUT_DIR / "geophysical_magnetic_field.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "geophysical_magnetic_field.html"),
+            include_plotlyjs="cdn",
+            div_id="geophysical_magnetic_field",
         )
         print("\n  [Plot saved to geophysical_magnetic_field.html]")
 

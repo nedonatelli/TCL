@@ -518,7 +518,9 @@ def visualize_track_distribution():
         else:
             OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             fig.write_html(
-                str(OUTPUT_DIR / "tracking_containers.html"), include_plotlyjs="cdn"
+                str(OUTPUT_DIR / "tracking_containers.html"),
+                include_plotlyjs="cdn",
+                div_id="tracking_containers",
             )
 
 

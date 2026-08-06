@@ -585,6 +585,7 @@ def visualize_smoother_comparison():
         fig.write_html(
             str(OUTPUT_DIR / "smoothers_information_filters.html"),
             include_plotlyjs="cdn",
+            div_id="smoothers_information_filters",
         )
 
 

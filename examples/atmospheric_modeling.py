@@ -12,6 +12,7 @@ Key scenarios:
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
@@ -405,26 +406,38 @@ if __name__ == "__main__":
     # Generate all plots
     fig1 = plot_density_vs_altitude()
     output_path1 = os.path.join(output_dir, "nrlmsise00_density.html")
-    fig1.write_html(output_path1, include_plotlyjs="cdn")
+    fig1.write_html(
+        output_path1, include_plotlyjs="cdn", div_id=Path(output_path1).stem
+    )
     print(f"OK Saved: {output_path1}")
 
     fig2 = plot_composition_profile()
     output_path2 = os.path.join(output_dir, "nrlmsise00_composition.html")
-    fig2.write_html(output_path2, include_plotlyjs="cdn")
+    fig2.write_html(
+        output_path2, include_plotlyjs="cdn", div_id=Path(output_path2).stem
+    )
     print(f"OK Saved: {output_path2}")
 
     fig3 = plot_temperature_profile()
     output_path3 = os.path.join(output_dir, "nrlmsise00_temperature.html")
-    fig3.write_html(output_path3, include_plotlyjs="cdn")
+    fig3.write_html(
+        output_path3, include_plotlyjs="cdn", div_id=Path(output_path3).stem
+    )
     print(f"OK Saved: {output_path3}")
 
     fig4 = plot_solar_activity_effect()
     output_path4 = os.path.join(output_dir, "nrlmsise00_solar_activity.html")
-    fig4.write_html(output_path4, include_plotlyjs="cdn")
+    fig4.write_html(
+        output_path4, include_plotlyjs="cdn", div_id=Path(output_path4).stem
+    )
     print(f"OK Saved: {output_path4}")
 
     fig5 = plot_composition_transitions()
-    fig5.write_html("nrlmsise00_composition_transition.html", include_plotlyjs="cdn")
+    fig5.write_html(
+        "nrlmsise00_composition_transition.html",
+        include_plotlyjs="cdn",
+        div_id="nrlmsise00_composition_transition",
+    )
     print("OK Saved: nrlmsise00_composition_transition.html")
 
     print("\nAll visualizations complete!")

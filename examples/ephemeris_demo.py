@@ -184,7 +184,11 @@ def plot_sun_earth_moon_positions(
     if SHOW_PLOTS:
         fig.show()
     else:
-        fig.write_html(str(OUTPUT_DIR / "ephemeris_demo.html"), include_plotlyjs="cdn")
+        fig.write_html(
+            str(OUTPUT_DIR / "ephemeris_demo.html"),
+            include_plotlyjs="cdn",
+            div_id="ephemeris_demo",
+        )
 
 
 def plot_orbital_distances(
@@ -250,7 +254,9 @@ def plot_orbital_distances(
         fig.show()
     else:
         fig.write_html(
-            str(OUTPUT_DIR / "ephemeris_demo_distance.html"), include_plotlyjs="cdn"
+            str(OUTPUT_DIR / "ephemeris_demo_distance.html"),
+            include_plotlyjs="cdn",
+            div_id="ephemeris_demo_distance",
         )
 
 

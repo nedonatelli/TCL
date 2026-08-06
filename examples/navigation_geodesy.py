@@ -383,7 +383,9 @@ def plot_coverage_map() -> None:
     )
 
     fig.write_html(
-        str(OUTPUT_DIR / "navigation_coverage_map.html"), include_plotlyjs="cdn"
+        str(OUTPUT_DIR / "navigation_coverage_map.html"),
+        include_plotlyjs="cdn",
+        div_id="navigation_coverage_map",
     )
     print("\nInteractive coverage map saved to navigation_coverage_map.html")
     if SHOW_PLOTS:
