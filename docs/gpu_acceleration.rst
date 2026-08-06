@@ -207,6 +207,8 @@ larger:
 
 .. code-block:: python
 
+   from pytcl.gpu import batch_ukf_predict, batch_ukf_update
+
    pred = batch_ukf_predict(x, P, f, Q, alpha=0.5)
    upd = batch_ukf_update(pred.x, pred.P, z, h, R, alpha=0.5)
 
