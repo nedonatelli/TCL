@@ -22,7 +22,7 @@ and git history.
 3. [Performance Targets](#performance-targets)
 4. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
 5. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
-6. [Long-Term Vision (2027-2029)](#long-term-vision-2027-2029)
+6. [Long-Term Vision](#long-term-vision)
 7. [Community Contribution Priorities](#community-contribution-priorities)
 8. [Contributing](#contributing)
 
@@ -30,100 +30,17 @@ and git history.
 
 ## v2.0.0 Release Plan
 
-**Status:** Complete. Development shipped incrementally in v1.8.0-v1.15.0; the
-release-readiness work (validation, packaging checks, documentation) finished
-in August 2026. The only remaining step is the tag, which triggers the PyPI
-publish. The October 2026 target this section once carried is obsolete.
+v2.0.0 is complete and verified on `main`. What remains, in order:
 
-All v2.0.0 feature work has landed on main: network flow optimization, API standardization,
-exception hierarchy, optional dependency system, 9 Jupyter notebooks, dual-backend GPU
-acceleration (CuPy + MLX), Numba JIT and caching, sparse assignment, and the full track
-management stack (`TrackDatabaseManager`, `TrackHDF5Storage`, compat layer, migration tools,
-workflow examples, benchmarks, and multi-sensor validation scenarios).
+1. Delete the held `v2.0.0` remote branch — a tag of the same name would make
+   git ref lookups ambiguous
+2. Set the CHANGELOG date (currently `[2.0.0] - Unreleased`) and rebuild the
+   docs so `docs/_build/index.html` reflects the release
+3. Publish the drafted GitHub release — publishing creates the `v2.0.0` tag,
+   which fires the PyPI publish workflow
 
-### Phase 9: Release Preparation & Packaging
-
-**Superseded.** v2.0.0 was finalized on `main` (release notes cut 2 August 2026, tag pending) rather than shipped through
-the alpha/beta/RC cycle planned below. Recorded rather than deleted, because the
-difference matters to anyone upgrading:
-
-- **No deprecation cycle.** 9.2 planned "warnings in place for all APIs removed in
-  v2.0.0". That was not done, and it conflicts with the project's standing rule
-  against backwards-compatibility shims — a warning for a removed name requires
-  keeping the name. The removals are hard breaks. `nuttall_q` is the one exception,
-  kept as a warning alias because it is a rename rather than a removal.
-- **Migration guide written, community testing skipped.** 9.3's v1.x-to-v2.0.0
-  guide exists as `docs/migration_v1_to_v2.rst`. The beta feedback cycle in 9.2 did
-  not happen.
-- **Phase 8 quality gates measured.** Three of the four hold with margin; the
-  compression figure does not and the target has been corrected to what the
-  code achieves.
-
-  | Target | Measured | |
-  |---|---|---|
-  | >1000 detections/sec SQL storage | 3575/sec single, 2134/sec batched | pass |
-  | <10 ms track state update | 0.52 ms | pass |
-  | <100 ms query latency | 5.06 ms, worst of ten query benchmarks | pass |
-  | ~~5-10x~~ HDF5 compression | **4.3x** best case, **1.3x** realistic | corrected |
-
-  The compression target was never met and nothing caught it, because
-  `test_compression_ratio` asserts `>2.0` while this document claimed 5-10x —
-  a test written to a weaker bar than the figure it was meant to defend. Its
-  data is twenty smooth constant-velocity trajectories with **identity**
-  covariance matrices, described in the docstring as "representative of real
-  tracking data". They are not: identity matrices are mostly zeros and gzip
-  removes them, which is where the 4.3x comes from. Substituting the full,
-  varying, positive-definite covariances a filter actually produces gives
-  **1.32x**.
-
-  Measured on `d5b0add`, macOS arm64, gzip level 4.
-
-The original plan follows.
-
-#### 9.1 v2.0.0-alpha (August 2026)
-
-- Final integration testing across all subsystems
-- Verify Phase 8 quality gates: >1000 detections/sec SQL storage, <10ms track state updates,
-  <100ms query latency, 5-10x HDF5 compression ratio *(the first three hold; the
-  compression figure was wrong and is corrected above)*
-- Validate migration tools against real v1.x legacy code
-- Alpha release notes and documentation
-
-#### 9.2 v2.0.0-beta (September 2026)
-
-- Beta release for community testing
-- Publish performance benchmarks
-- Finalize deprecation path (warnings in place for all APIs removed in v2.0.0)
-- Extended GPU performance validation (CuPy on NVIDIA, MLX on Apple Silicon)
-- Integrate community feedback
-
-#### 9.3 v2.0.0-RC1 (September 2026)
-
-- Release candidate cycle(s)
-- Complete v1.x → v2.0.0 migration guide
-- Finalize installation and upgrade instructions
-- Freeze benchmarks and API
-
-#### 9.4 v2.0.0 GA (October 2026)
-
-Production release integrating everything shipped in the v1.8-v1.15 series plus release-cycle
-polish:
-
-- **Track Management:** SQL `TrackDatabaseManager` + HDF5 storage with full lifecycle support
-- **Migration:** `docs/migration_v1_to_v2.rst` — hard breaks, no compat layer
-- **GPU Acceleration:** Full CuPy + MLX support for batch operations
-- **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
-- **Testing:** 6,000+ tests, 90% coverage, multi-sensor validation scenarios
-
-### v2.0.0 Release Risks
-
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|-----------|-----------|
-| Breaking API changes → user friction | High | Low | `docs/migration_v1_to_v2.rst` (hard breaks by policy; no deprecation path or compat layer exists) |
-| GPU memory constraints on large batches | Medium | Medium | Auto-offload strategy, documentation |
-| Jupyter notebook maintenance burden | Medium | Medium | CI validation with pytest-nbval |
-
----
+Breaking changes are listed below; per-change before/after snippets are in
+`docs/migration_v1_to_v2.rst`.
 
 ## v2.1 Roadmap (Post-v2.0.0)
 
@@ -138,8 +55,10 @@ No dates are attached because none have been decided:
   original; pytcl has Gauss-Hermite and spherical cubature only
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
-- **Localization-style static estimators** — TDOA, Doppler-only init,
-  direction-only; MATLAB's Static_Estimation content is almost all absent
+- **Localization-style static estimators** — Cartesian TDOA, Doppler-only
+  init, direction-only; MATLAB's Static_Estimation content is almost all
+  absent (great-circle TDOA is the exception, ported as
+  `great_circle_tdoa_loc`)
 - **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
   batch least squares, PCRLB/Riccati analysis tools
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
@@ -157,11 +76,10 @@ Session-identified, held deliberately out of 2.0.0:
   covariance transform; the honest measured figure today is 1.3-4.3x)
 
 
-**Timeline:** Q1-Q3 2027 (6-9 months after v2.0.0 release)
 
 ### Enhanced GPU Support
 
-#### RAPIDS Integration for Distributed Computing (Q1 2027)
+#### RAPIDS Integration for Distributed Computing
 
 - **cuML integration**: GPU-accelerated clustering (k-means, DBSCAN) and statistical functions
 - **cuDF support**: DataFrames for high-dimensional tracking data
@@ -170,13 +88,13 @@ Session-identified, held deliberately out of 2.0.0:
 - Modules affected: `pytcl.clustering`, `pytcl.containers` (GPU k-d trees via cuML),
   `pytcl.dynamic_estimation` (multi-GPU particle filters)
 
-#### Intel oneAPI Backend (Q2 2027)
+#### Intel oneAPI Backend
 
 - oneAPI support for Intel Arc and Data Center GPU Max
 - Automatic backend selection (CuPy, MLX, oneAPI, NumPy)
 - Unified performance profiling across all backends
 
-#### Quantization & Model Compression (Q2 2027)
+#### Quantization & Model Compression
 
 - Mixed-precision Kalman filtering (float32/float16)
 - Covariance matrix compression for edge devices
@@ -184,30 +102,31 @@ Session-identified, held deliberately out of 2.0.0:
 
 ### Advanced Tracking Capabilities
 
-#### Multi-Hypothesis Tracking Enhancements (Q1 2027)
+#### Multi-Hypothesis Tracking Enhancements
 
 - Bernoulli filter for track initiation/termination
 - PHD/CPHD filters for clutter-heavy scenarios
 - Generalized labeled multi-Bernoulli (GLMB) tracker
 - Intensity function visualization
 
-#### Nonlinear Manifold Estimation (Q2 2027)
+#### Nonlinear Manifold Estimation
 
-- Constrained Kalman filtering for manifold-constrained state spaces
-- Geodesic distance computation for rotation matrices
+- Geodesic distance computation for rotation matrices (quaternion slerp is
+  ported; a distance metric is not)
 - Lie group integration for orientation tracking
 - Applications: aircraft attitude, satellite orientation, marine headings
+- Note: projection-based constrained filtering already exists
+  (`ConstrainedEKF` in `pytcl.dynamic_estimation.kalman.constrained`)
 
 ### Data Management & Interoperability
 
-#### Format Support Expansion (Q1 2027)
+#### Format Support Expansion
 
-- NetCDF4 backend for large geospatial datasets
 - Parquet format for cloud-native tracking data
 - Apache Arrow integration for inter-process communication
 - ASDF (Advanced Scientific Data Format) for heterogeneous data
 
-#### ROS 2 Integration, Optional Plugin (Q2 2027)
+#### ROS 2 Integration, Optional Plugin
 
 - ROS 2 node wrappers for core tracking functions
 - Real-time message handling for /tf transforms
@@ -215,21 +134,23 @@ Session-identified, held deliberately out of 2.0.0:
 
 ### Performance & Analytics
 
-#### Comprehensive Benchmarking Suite (Q1 2027)
+#### Comprehensive Benchmarking Suite
 
-- Automated regression testing across hardware (CPU/GPU/Apple Silicon)
+- Extend the daily CPU benchmark CI to GPU and Apple Silicon runners
 - Timeline profiling dashboard, memory allocation tracking
 - Comparison with competing libraries (FilterPy, Stone Soup, etc.)
 
-#### Advanced Diagnostic Tools (Q2 2027)
+#### Advanced Diagnostic Tools
 
-- Interactive filter health monitoring (covariance ellipses, innovation sequences)
+- Interactive dashboards on top of the existing static plotting
+  (`pytcl.plotting` already provides covariance ellipses and NEES/NIS
+  sequence plots; `pytcl.performance_evaluation` already computes purity,
+  fragmentation and identity switches)
 - Automatic anomaly detection in tracking results
-- Track quality metrics (completeness, purity, fragmentation)
 
 ### Documentation & Community
 
-#### Case Study Library (Q2 2027)
+#### Case Study Library
 
 - Air traffic control with 500+ simultaneous aircraft
 - Autonomous vehicle fleet tracking and cooperative perception
@@ -239,7 +160,7 @@ Session-identified, held deliberately out of 2.0.0:
 
 Each case study: 200-400 lines of code, realistic datasets, benchmarked.
 
-#### Extended API Documentation (Q1 2027)
+#### Extended API Documentation
 
 - Video tutorials for major modules
 - Interactive filter playground (web-based parameter tuning)
@@ -257,50 +178,20 @@ Remaining optimization targets not yet met (tracked by the daily benchmark CI):
 | JPDA (100 targets, 50 meas) | Mixed | 89 ms | <75 ms |
 | Hungarian Assignment (500x500) | Dense | 45 ms | <30 ms |
 
-### v2.0.0 Release Targets
-
-- All CPU algorithms: sub-100ms for standard scenarios
-- GPU: correctness on both backends is verified on real hardware; **no speedup ratio has ever been measured on this codebase**, and the 10-15x once quoted here is retired until someone benchmarks it
-- Memory usage: 50%+ reduction via sparse matrices
-- Scalability: linear time for 1000+ targets with O(n log n) assignment
 
 ---
 
 ## Known Issues & Planned Fixes
 
-The v1.15.1-v1.18.0 correctness campaign closed every previously listed
-critical issue -- magnetism synthesis, relativity formulas, SEZ convention, and
-all five v2.0.0 blockers from [#9](https://github.com/nedonatelli/TCL/issues/9)
-(MLX backend, SDP4 deep-space physics, Lagrangian bounds, Murty k-best,
-high-degree Legendre) -- plus 72 further reference-verified bugs. Per-package
-validation status was tracked in AUDIT.md, a working ledger removed once the audit closed -- its durable outputs are the CHANGELOG entries, the ~1,100 audit tests, and the contract gates; the ledger itself lives in git history.
+Resolved issues live in [CHANGELOG.md](CHANGELOG.md); this section lists only
+what is still open.
 
-### Critical (resolved before v2.0.0 — retained as the record)
+### Open
 
-Unit-level correctness is well covered. The remaining risk was **integration**:
-the campaign's most serious findings were things individually correct but not
-connected -- an advertised GPU backend never wired in, a high-degree Legendre
-routine with zero callers, and three CI gates that could not fail.
-
-v1.19.0 closed most of this. Each gate added found defects the previous layer
-could not see: running the examples found four broken scripts, checking imports
-found 92 dead references across 16 pages, and executing the pipeline found a
-state-layout error on a page whose imports all resolved.
-
-| Issue | Impact | Status |
-|-------|--------|--------|
-| No end-to-end pipeline test (measurements to tracks to persistence) | Cross-module seams unverified | **Resolved in v1.19.0** -- `tests/test_end_to_end_pipeline.py` spans conversion, gating, association, filtering, track management, persistence and scoring |
-| The 30 example scripts are never executed in CI | One shipped fabricated filter output undetected until v1.15.1 | **Resolved in v1.19.0** -- dedicated `examples` job; exposed a `ConstrainedEKF` projection bug and four broken scripts |
-| Notebook CI gate cannot fail (`\|\| echo` swallows the exit code) | 13 broken cells; `networkx` used but undeclared | **Resolved in v1.19.0** -- exit code no longer swallowed; the job also never installed plotly |
-| Sphinx prose examples are not executed | 370 code blocks unverified | **Partial** -- every `pytcl` import in `docs/` is now checked (244/244 resolve) and the architecture and data-structures pages are executed by tests, but the remaining prose blocks are still not run |
-| Orphaned public API | Exported symbols with no callers hid a 1e199 error | **Resolved in v2.0.0** -- gh-47's coverage gate holds every exported name to a test with an empty allowlist (gh-49), and `tests/contract/test_export_surface.py` closes the reverse gap of tested-but-unexported names |
-
-### High Priority
-
-| Issue | Module | Impact | Status |
-|-------|--------|--------|--------|
-| CuPy tests skip without NVIDIA GPU | `gpu/` | Validated on real hardware for 2.0.0 (RTX 5080); the manual `GPU` workflow re-runs it on demand | By design |
-| API/contract cleanups from the audit ([#9](https://github.com/nedonatelli/TCL/issues/9)) | multiple | Complete — all audit issues closed by the 2.0.0 merge | Done |
+| Issue | Status |
+|-------|--------|
+| Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
+| CuPy tests skip on machines without an NVIDIA GPU | By design -- validated on real hardware for 2.0.0 (RTX 5080); the manual `GPU` workflow re-runs them on demand |
 
 ### Medium Priority
 
@@ -329,14 +220,7 @@ state-layout error on a page whose imports all resolved.
 
 ### API Changes Summary
 
-An earlier version of this section described a different 2.0.0 than the one
-that was built: a ``kf_predict(x, P, model)`` signature returning
-``FilterState`` (the real signature is unchanged:
-``kf_predict(x, P, F, Q, B=None, u=None)`` returning ``KalmanPrediction``), a
-module move to ``pytcl.data_association`` (no such package exists;
-``pytcl.assignment_algorithms`` never moved), and a GPU import break
-(``from pytcl.gpu import batch_kf_predict`` works). None of that happened.
-The real breaking changes, each documented with before/after in
+The breaking changes, each documented with before/after in
 ``docs/migration_v1_to_v2.rst``:
 
 - ``query(k)`` rejects ``k > n_samples`` instead of padding with index 0
@@ -368,7 +252,7 @@ There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
 
 ---
 
-## Long-Term Vision (2027-2029)
+## Long-Term Vision
 
 ### v2.x Series Direction
 
@@ -386,25 +270,22 @@ There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
 
 #### Infrastructure Maturation
 
-- **v2.0**: Consolidate GPU, data persistence, documentation
 - **v2.1**: RAPIDS, distributed tracking, advanced diagnostics
 - **v2.2**: Extended ecosystem (ROS 2, autonomous systems)
 - **v2.3**: Emerging tech (quantum, federated learning)
 
 #### Community & Ecosystem
 
-- **2027**: 500+ GitHub stars, 50+ external contributions
-- **2028**: Integration with major frameworks (CARLA, AirSim for autonomous systems)
-- **2029**: Industrial adoption (defense contractors, automotive OEMs)
+- 500+ GitHub stars, 50+ external contributions
+- Integration with major frameworks (CARLA, AirSim for autonomous systems)
+- Industrial adoption (defense contractors, automotive OEMs)
 
-### v3.0.0 Vision (2030+)
+### v3.0.0 Vision
 
 - Full async/await support for real-time systems
 - Native WebAssembly compilation for browser-based tracking
 - Federated learning for multi-agent scenarios
 - Quantum computing backend exploration
-
-Estimated effort: 18-24 months post-v2.x stabilization.
 
 ---
 
@@ -487,8 +368,6 @@ for reference implementations.
 
 ---
 
-**Last Updated:** August 5, 2026
 **Current Phase:** v2.0.0 complete on `main`; tag and PyPI release pending
-**Next Milestone:** the `v2.0.0` tag (no alpha/beta/RC — see the Phase 9 note)
-**v2.1.0 Target Release:** Q1-Q3 2027 (RAPIDS, distributed tracking, advanced diagnostics)
-**Long-term Horizon:** v3.0.0 planned for 2030+ (async/await, WASM, federated learning, quantum backends)
+**Next Milestone:** the `v2.0.0` tag (released directly — no alpha/beta/RC cycle)
+No dates are attached to anything in this document: none have been decided.

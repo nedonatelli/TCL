@@ -20,20 +20,17 @@ Current State (v2.0.0)
   and v1.x migration tools
 * **Tooling**: ruff (lint + format), mypy --strict, pinned CI toolchain
 
-v2.0.0 (Target: Q4 2026)
-------------------------
+v2.0.0 Release
+--------------
 
-All development phases are complete; remaining work is release
-preparation (Phase 9):
+Complete and verified on ``main``; the remaining step is the tag, which
+publishes to PyPI. The release is direct -- no alpha/beta/RC cycle -- and
+the breaks are hard breaks with no deprecation path:
+:doc:`migration guide <migration_v1_to_v2>` covers every change with
+before/after snippets.
 
-* Final integration testing across all subsystems
-* Track-management quality gates (throughput, latency, compression)
-* Alpha → beta → release-candidate cycle with community feedback
-* Migration guide and deprecation path for v1.x users
-* Removal of dead modules (``network_simplex``, ``logging_config``) -- **done**
-
-v2.1 (2027)
------------
+v2.1
+----
 
 * RAPIDS integration for distributed, multi-GPU tracking
 * Intel oneAPI backend
