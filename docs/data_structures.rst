@@ -11,7 +11,7 @@ This guide covers the containers the library actually provides: ``Track``,
    ``track.position`` and ``track.gate_size``. No such class, module or
    attributes exist. The container that fills that role is ``TrackList`` in
    ``pytcl.containers``, described below. Every example on this page is
-   executed by ``tests/test_docs_data_structures.py``.
+   executed by ``tests/contract/test_docs_data_structures.py``.
 
 Track
 -----
@@ -58,12 +58,10 @@ indices as an argument.
 .. code-block:: python
 
    import numpy as np
+   from pytcl.dynamic_models import f_constant_velocity
    from pytcl.trackers import MultiTargetTracker, TrackStatus
 
-   F = np.array([[1.0, 1.0, 0.0, 0.0],
-                 [0.0, 1.0, 0.0, 0.0],
-                 [0.0, 0.0, 1.0, 1.0],
-                 [0.0, 0.0, 0.0, 1.0]])
+   F = f_constant_velocity(1.0, num_dims=2)  # [x, vx, y, vy] layout
    H = np.array([[1.0, 0.0, 0.0, 0.0],
                  [0.0, 0.0, 1.0, 0.0]])
 
@@ -178,8 +176,8 @@ close to resolve individually.
 Spatial Indices
 ---------------
 
-Four index structures, all with the same query surface, for finding
-neighbours without a linear scan:
+Five index structures, all with the same query surface, for finding
+neighbors without a linear scan:
 
 .. list-table::
    :header-rows: 1

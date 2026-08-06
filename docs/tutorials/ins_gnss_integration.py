@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Output directory for plots
-OUTPUT_DIR = Path("../_static/images/tutorials")
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = False
 
@@ -353,7 +353,7 @@ def ins_gnss_tutorial():
     else:
         fig.write_html(str(OUTPUT_DIR / "ins_gnss_integration.html"))
 
-    print("✓ INS-GNSS integration visualization complete")
+    print("INS-GNSS integration visualization complete")
     print("=" * 70)
 
 

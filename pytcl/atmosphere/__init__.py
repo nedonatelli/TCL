@@ -52,7 +52,7 @@ __all__ = [
     "altitude_from_pressure",
     "mach_number",
     "true_airspeed_from_mach",
-    # NRLMSISE-00 High-Fidelity Model
+    # Simplified thermosphere model (see gh-79 for its accuracy envelope)
     "SimplifiedThermosphere",
     "ThermosphereState",
     "F107Index",

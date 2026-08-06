@@ -24,7 +24,7 @@ Examples demonstrating coordinate systems, navigation, and geodesy.
    :header-rows: 0
 
    * - :download:`coordinate_systems.py <../../../examples/coordinate_systems.py>`
-     - Coordinate conversions, rotations, and projections
+     - Coordinate conversions, rotations, and quaternions
    * - :download:`coordinate_visualization.py <../../../examples/coordinate_visualization.py>`
      - Interactive 3D visualizations of coordinate transforms
 
@@ -43,4 +43,4 @@ Examples demonstrating coordinate systems, navigation, and geodesy.
    * - :download:`ins_gnss_navigation.py <../../../examples/ins_gnss_navigation.py>`
      - INS/GNSS integration for navigation
    * - :download:`navigation_geodesy.py <../../../examples/navigation_geodesy.py>`
-     - Geodetic calculations, datum conversions, map projections
+     - Geodetic calculations, frame conversions, waypoint navigation

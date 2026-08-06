@@ -56,8 +56,8 @@ Code Highlights
 
 The example demonstrates:
 
-- Butterworth filter design with ``butter()``
-- FIR filter design with ``firwin()``
+- Butterworth filter design with ``butter_design()``
+- FIR filter design with ``fir_design()``
 - Matched filtering with ``matched_filter()``
 - CA-CFAR with ``cfar_ca()``
 - Power spectrum estimation

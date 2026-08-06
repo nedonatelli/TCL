@@ -194,7 +194,7 @@ class SimplifiedThermosphere:
     """
 
     def __init__(self, use_meter_altitude: bool = True):
-        """Initialize NRLMSISE-00 model."""
+        """Initialize the simplified thermosphere model."""
         self.use_meter_altitude = use_meter_altitude
 
     def __call__(

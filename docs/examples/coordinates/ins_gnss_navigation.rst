@@ -51,7 +51,7 @@ Code Highlights
 The example demonstrates:
 
 - INS state initialization with ``INSState``
-- Strapdown mechanization with ``ins_mechanization()``
+- Strapdown mechanization with ``mechanize_ins_ned()``
 - GNSS update with Kalman filter
 - Error state estimation and correction
 - Trajectory visualization

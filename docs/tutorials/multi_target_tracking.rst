@@ -27,17 +27,7 @@ The ``MultiTargetTracker`` uses Global Nearest Neighbor (GNN) association.
 .. code-block:: python
 
    import numpy as np
-   from pytcl.trackers import MultiTargetTracker, Track, TrackStatus
-
-   # Create tracker
-   tracker = MultiTargetTracker(
-       state_dim=4,           # [x, vx, y, vy]
-       meas_dim=2,            # [x, y]
-       gate_threshold=9.21,   # Chi-squared threshold (99%)
-       min_hits=3,            # Hits to confirm track
-       max_misses=5,          # Misses to delete track
-       filter_type='kf'       # Use Kalman filter
-   )
+   from pytcl.trackers import MultiTargetTracker
 
    # System model
    dt = 0.1
@@ -47,8 +37,15 @@ The ``MultiTargetTracker`` uses Global Nearest Neighbor (GNN) association.
    H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]])
    R = np.eye(2) * 0.5
 
-   tracker.set_dynamics(F, Q)
-   tracker.set_measurement_model(H, R)
+   # Create tracker (each track runs a linear Kalman filter)
+   tracker = MultiTargetTracker(
+       state_dim=4,           # [x, vx, y, vy]
+       meas_dim=2,            # [x, y]
+       F=F, H=H, Q=Q, R=R,
+       gate_probability=0.99, # Chi-squared gate probability
+       confirm_hits=3,        # Hits to confirm track
+       max_misses=5,          # Misses to delete track
+   )
 
 Running the Tracker
 ^^^^^^^^^^^^^^^^^^^
@@ -79,13 +76,14 @@ Running the Tracker
        if np.random.rand() < 0.1:
            measurements.append(np.random.rand(2) * 100)
 
-       # Update tracker
-       confirmed_tracks = tracker.update(np.array(measurements))
+       # Update tracker (measurements is a list of vectors)
+       tracker.process(measurements, dt)
 
-       # Print confirmed tracks
-       for track in confirmed_tracks:
-           print(f"t={t}: Track {track.id} at ({track.state[0]:.1f}, "
-                 f"{track.state[2]:.1f})")
+       # Print confirmed tracks every 2 seconds
+       if t % 20 == 0:
+           for track in tracker.confirmed_tracks:
+               print(f"t={t}: Track {track.id} at ({track.state[0]:.1f}, "
+                     f"{track.state[2]:.1f})")
 
 Data Association Algorithms
 ---------------------------
@@ -97,28 +95,33 @@ Filter unlikely measurement-track associations:
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import ellipsoidal_gate, ellipsoidal_gate
+   from pytcl.assignment_algorithms import (
+       chi2_gate_threshold, ellipsoidal_gate, gate_measurements
+   )
 
-   # Predicted measurement and covariance
+   # Predicted measurement and innovation covariance for one track
+   x_pred = np.array([5.0, 1.0, 3.0, 0.5])
+   P_pred = np.eye(4)
    z_pred = H @ x_pred
    S = H @ P_pred @ H.T + R
 
-   # Check if measurement is in gate
-   z = np.array([5.2, 3.1])
-   is_valid = ellipsoidal_gate(z, z_pred, S, threshold=9.21)
+   # Chi-squared threshold for a 2D measurement at 99% probability
+   threshold = chi2_gate_threshold(0.99, num_dimensions=2)
 
-   # Or compute gated measurements for multiple candidates
-   measurements = np.array([[5.2, 3.1], [10.5, 2.0], [100.0, 50.0]])
-   valid_mask = ellipsoidal_gate(measurements, z_pred, S, threshold=9.21)
+   # Check if a measurement is in the gate (pass the innovation)
+   z = np.array([5.2, 3.1])
+   is_valid = ellipsoidal_gate(z - z_pred, S, threshold)
+
+   # Or gate multiple candidates at once
+   candidates = np.array([[5.2, 3.1], [10.5, 2.0], [100.0, 50.0]])
+   valid_idx, distances = gate_measurements(z_pred, S, candidates, threshold)
 
 Global Nearest Neighbor (GNN)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import (
-       auction_algorithm, hungarian_algorithm
-   )
+   from pytcl.assignment_algorithms import auction, hungarian
 
    # Cost matrix: tracks x measurements
    # Lower cost = better association
@@ -129,43 +132,43 @@ Global Nearest Neighbor (GNN)
    ])
 
    # Hungarian algorithm (optimal)
-   track_to_meas, meas_to_track, cost = hungarian_algorithm(cost_matrix)
+   track_to_meas, meas_to_track, cost = hungarian(cost_matrix)
    # track_to_meas[i] = measurement index for track i (-1 if unassigned)
 
    # Auction algorithm (faster for large problems)
-   track_to_meas, meas_to_track, cost = auction_algorithm(
+   track_to_meas, meas_to_track, cost = auction(
        cost_matrix, epsilon=0.01
    )
 
 Joint Probabilistic Data Association (JPDA)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-JPDA computes association probabilities and combines innovations:
+JPDA computes association probabilities and updates each track with a
+probability-weighted combination of the gated measurements:
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import (
-       jpda_association_probabilities,
-       jpda_combined_innovation
-   )
+   from pytcl.assignment_algorithms import jpda_update
 
-   # Likelihood matrix: tracks x measurements
-   likelihoods = np.exp(-0.5 * cost_matrix)
+   # Two tracks and three measurements
+   track_states = [
+       np.array([5.0, 1.0, 3.0, 0.5]),
+       np.array([10.0, -0.5, 2.0, 0.2]),
+   ]
+   track_covariances = [np.eye(4), np.eye(4)]
+   measurements = np.array([[5.2, 3.1], [10.5, 2.0], [7.0, 2.5]])
 
-   # Add clutter likelihood
-   clutter_density = 1e-4
-
-   # Compute association probabilities
-   probs = jpda_association_probabilities(
-       likelihoods,
+   upd = jpda_update(
+       track_states, track_covariances, measurements, H, R,
        detection_prob=0.9,
-       clutter_density=clutter_density
+       clutter_density=1e-4,
    )
-   # probs[i, j] = P(measurement j from track i)
 
-   # Combined innovation for track 0
-   innovations = measurements - z_pred[0]  # Innovations to all measurements
-   combined = jpda_combined_innovation(innovations, probs[0, :])
+   # upd.states: updated state per track
+   # upd.covariances: updated covariance per track
+   # upd.association_probs[i, j] = P(measurement j from track i)
+   #   (last column: missed detection)
+   # upd.innovations: combined innovation per track
 
 Multiple Hypothesis Tracking (MHT)
 ----------------------------------
@@ -180,30 +183,36 @@ Configuration
    from pytcl.trackers import MHTTracker, MHTConfig
 
    config = MHTConfig(
+       n_scan=3,                # N-scan pruning depth
        max_hypotheses=100,      # Maximum hypotheses to maintain
-       n_scan_prune=3,          # N-scan pruning depth
-       probability_threshold=0.01,  # Minimum hypothesis probability
-       detection_probability=0.9,
+       detection_prob=0.9,
        clutter_density=1e-4,
-       gate_threshold=16.0
+       gate_probability=0.99,
+       min_hypothesis_prob=0.01,  # Minimum hypothesis probability
    )
 
    mht = MHTTracker(
        state_dim=4,
        meas_dim=2,
-       config=config
+       F=F, H=H, Q=Q, R=R,
+       config=config,
    )
-
-   mht.set_dynamics(F, Q)
-   mht.set_measurement_model(H, R)
 
 Running MHT
 ^^^^^^^^^^^
 
 .. code-block:: python
 
+   # Two well-separated targets over a few scans
+   all_measurements = [
+       [np.array([0.0, 50.0]), np.array([100.0, 50.0])],
+       [np.array([0.1, 50.0]), np.array([99.9, 50.1])],
+       [np.array([0.2, 50.1]), np.array([99.8, 50.0])],
+       [np.array([0.3, 49.9]), np.array([99.7, 50.2])],
+   ]
+
    for t, measurements in enumerate(all_measurements):
-       result = mht.update(measurements)
+       result = mht.process(measurements, dt)
 
        # Best hypothesis tracks
        for track in result.confirmed_tracks:
@@ -211,32 +220,31 @@ Running MHT
 
        # Hypothesis tree info
        print(f"Active hypotheses: {result.n_hypotheses}")
-       print(f"Best hypothesis probability: {result.best_probability:.4f}")
+       print(f"Best hypothesis probability: {result.best_hypothesis_prob:.4f}")
 
 Hypothesis Management
 ^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-   from pytcl.trackers import (
-       HypothesisTree, generate_joint_associations,
-       n_scan_prune, prune_hypotheses_by_probability
-   )
+   from pytcl.trackers import generate_joint_associations
 
-   # Generate all possible associations
-   hypotheses = generate_joint_associations(
-       n_tracks=3,
-       n_measurements=4,
-       gating_matrix=valid_associations  # Boolean matrix
-   )
+   # Boolean gating matrix: gated[i, j] = True when measurement j
+   # falls inside track i's gate
+   gated = np.array([
+       [True, False, True],
+       [False, True, False],
+   ])
 
-   # Prune low-probability hypotheses
-   pruned = prune_hypotheses_by_probability(
-       hypotheses, probabilities, threshold=0.01
-   )
+   # Enumerate every feasible joint association; each entry maps
+   # track index -> measurement index
+   associations = generate_joint_associations(gated, n_tracks=2, n_meas=3)
+   print(f"{len(associations)} feasible joint associations")
 
-   # N-scan pruning (keep only hypotheses with common history)
-   final = n_scan_prune(hypothesis_tree, n_scan=3)
+Low-probability hypotheses are pruned each scan with
+``prune_hypotheses_by_probability``, and ``n_scan_prune`` discards branches
+that disagree with the best hypothesis more than ``n_scan`` scans back.
+``MHTTracker`` applies both automatically using the ``MHTConfig`` limits.
 
 Track Metrics
 -------------
@@ -251,16 +259,17 @@ OSPA Metric
    from pytcl.performance_evaluation import ospa
 
    # True target positions
-   truth = np.array([[10.0, 20.0], [30.0, 40.0], [50.0, 60.0]])
+   truth = [np.array([10.0, 20.0]), np.array([30.0, 40.0]),
+            np.array([50.0, 60.0])]
 
-   # Estimated track positions
-   estimates = np.array([[10.5, 19.8], [30.2, 40.5]])  # Missing one target
+   # Estimated track positions (missing one target)
+   estimates = [np.array([10.5, 19.8]), np.array([30.2, 40.5])]
 
    # OSPA distance (order 2, cutoff 100)
-   ospa = ospa(truth, estimates, p=2, c=100.0)
-   print(f"OSPA: {ospa.ospa:.2f}")
-   print(f"  Localization: {ospa.localization:.2f}")
-   print(f"  Cardinality: {ospa.cardinality:.2f}")
+   ospa_result = ospa(truth, estimates, c=100.0, p=2)
+   print(f"OSPA: {ospa_result.ospa:.2f}")
+   print(f"  Localization: {ospa_result.localization:.2f}")
+   print(f"  Cardinality: {ospa_result.cardinality:.2f}")
 
 Track Quality Metrics
 ^^^^^^^^^^^^^^^^^^^^^
@@ -279,11 +288,21 @@ identity was lost.
        identity_switches,
    )
 
-   # ground_truth and estimates are lists of per-scan position arrays
-   metrics = mot_metrics(ground_truth, estimates, threshold=10.0)
+   # Lists of per-scan position lists (2 scans, 2 targets)
+   ground_truth = [
+       [np.array([10.0, 20.0]), np.array([30.0, 40.0])],
+       [np.array([11.0, 20.5]), np.array([29.5, 40.5])],
+   ]
+   estimated = [
+       [np.array([10.2, 19.9]), np.array([30.1, 40.2])],
+       [np.array([11.1, 20.4])],
+   ]
+   metrics = mot_metrics(ground_truth, estimated, threshold=10.0)
    print(f"MOTA: {metrics.mota:.3f}  MOTP: {metrics.motp:.3f}")
 
    # label-based measures, given true and estimated track labels per detection
+   true_labels = np.array([0, 0, 0, 1, 1, 1])
+   est_labels = np.array([0, 0, 1, 1, 1, 1])
    print(f"purity:        {track_purity(true_labels, est_labels):.3f}")
    print(f"fragments:     {track_fragmentation(true_labels, est_labels)}")
    print(f"ID switches:   {identity_switches(true_labels, est_labels)}")
@@ -309,11 +328,10 @@ Complete Example
 
    tracker = MultiTargetTracker(
        state_dim=4, meas_dim=2,
-       gate_threshold=9.21,
-       min_hits=3, max_misses=5
+       F=F, H=H, Q=Q, R=R,
+       gate_probability=0.99,
+       confirm_hits=3, max_misses=5
    )
-   tracker.set_dynamics(F, Q)
-   tracker.set_measurement_model(H, R)
 
    # Simulate 3 crossing targets
    n_steps = 100
@@ -347,21 +365,15 @@ Complete Example
            measurements.append(np.random.rand(2) * 100)
 
        # Update tracker
-       if measurements:
-           tracks = tracker.update(np.array(measurements))
-       else:
-           tracks = tracker.update(np.empty((0, 2)))
+       tracker.process(measurements, dt)
+       tracks = tracker.confirmed_tracks
 
-       # Compute OSPA
-       if tracks:
-           estimates = np.array([[tr.state[0], tr.state[2]] for tr in tracks])
-       else:
-           estimates = np.empty((0, 2))
+       # Compute OSPA on confirmed track positions
+       estimates = [np.array([tr.state[0], tr.state[2]]) for tr in tracks]
+       truth = [np.asarray(p) for p in truth_positions]
 
-       ospa = ospa(
-           np.array(truth_positions), estimates, p=2, c=50.0
-       )
-       ospa_values.append(ospa.ospa)
+       ospa_result = ospa(truth, estimates, c=50.0, p=2)
+       ospa_values.append(ospa_result.ospa)
 
    print(f"Mean OSPA: {np.mean(ospa_values):.2f}")
    print(f"Final tracks: {len(tracks)}")

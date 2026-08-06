@@ -1,6 +1,6 @@
 # Tutorial Modules Index
 
-Comprehensive collection of 10 interactive tutorial modules demonstrating the Tracker Component Library's capabilities.
+Collection of 10 interactive tutorial scripts in `docs/tutorials/` covering the core tracking and estimation algorithms the Tracker Component Library implements. Each script is self-contained (NumPy, SciPy, and Plotly only) and generates an interactive HTML visualization. Six of the tutorials (Kalman filtering, nonlinear filtering, signal processing, radar detection, INS-GNSS integration, and multi-target tracking) have companion `.rst` pages in the same directory showing the equivalent `pytcl` API calls.
 
 ## Available Tutorials
 
@@ -30,7 +30,7 @@ Comprehensive collection of 10 interactive tutorial modules demonstrating the Tr
   - Particle weight updating via likelihood
   - Systematic resampling (ESS criterion)
   - Nonlinear, non-Gaussian state estimation
-- **Example Output**: Particle filter tracking with particle cloud visualization
+- **Example Output**: Bootstrap particle filter vs EKF trajectory and error comparison
 - **Files**: `particle_filters.html`
 
 #### 4. **Smoothing Algorithms** (`smoothing_algorithms.py`)
@@ -98,7 +98,7 @@ Comprehensive collection of 10 interactive tutorial modules demonstrating the Tr
 - **Key Concepts**:
   - Cost matrix formulation
   - Global Nearest Neighbor (greedy)
-  - Jonkeers-Volgenant/Hungarian optimal algorithm
+  - Optimal assignment via the Hungarian algorithm (`scipy.optimize.linear_sum_assignment`)
   - Track management with age/confidence logic
 - **Example Output**: Comparison of GNN vs Hungarian algorithms
 - **Files**: `data_association.html`
@@ -111,30 +111,34 @@ Comprehensive collection of 10 interactive tutorial modules demonstrating the Tr
 | Processing | 2 | Signal analysis, robust estimation |
 | Radar/Navigation | 2 | Radar detection, sensor fusion |
 | Tracking | 2 | Multi-target, data association |
-| **Total** | **10** | Comprehensive TCL coverage |
+| **Total** | **10** | Core tracking and estimation algorithms |
 
 ## Generated Visualizations
 
 All tutorials generate interactive Plotly HTML visualizations saved to:
 ```
-docs/_static/images/tutorials/
+docs/tutorials/output/
 ```
 
-Files generated:
-- `kalman_filtering.html` (4.5 MB)
-- `nonlinear_filtering.html` (4.5 MB)
-- `particle_filters.html` (4.5 MB)
-- `smoothing_algorithms.html` (4.5 MB)
-- `signal_processing.html` (5.1 MB)
-- `robust_estimation.html` (4.5 MB)
-- `radar_detection.html` (5.2 MB)
-- `ins_gnss_integration.html` (4.6 MB)
-- `multi_target_tracking.html` (4.5 MB)
-- `data_association.html` (4.4 MB)
+Files generated (one per tutorial, ~4.9-5.7 MB each):
+- `kalman_filtering.html`
+- `nonlinear_filtering.html`
+- `particle_filters.html`
+- `smoothing_algorithms.html`
+- `signal_processing.html`
+- `robust_estimation.html`
+- `radar_detection.html`
+- `ins_gnss_integration.html`
+- `multi_target_tracking.html`
+- `data_association.html`
 
-**Total size**: ~46 MB of interactive visualizations
+**Total size**: ~50 MB of interactive visualizations
+
+Four of these (`kalman_filtering`, `nonlinear_filtering`, `signal_processing`, `multi_target_tracking`) are also copied to `docs/_static/images/tutorials/` so the Sphinx tutorial pages can embed them.
 
 ## Running Tutorials
+
+The scripts require Plotly (`pip install nrl-tracker[visualization]`).
 
 Run individual tutorial:
 ```bash
@@ -151,49 +155,47 @@ for script in *.py; do python "$script"; done
 ## Features
 
 All tutorials include:
-- ✅ Step-by-step algorithm explanations
-- ✅ Performance metrics (RMSE, timing, etc.)
-- ✅ Interactive Plotly visualizations
-- ✅ Synthetic data generation
-- ✅ Algorithm comparison where applicable
-- ✅ Real-world scenario simulation
-- ✅ Complete source code with comments
-- ✅ Configurable parameters
+- Step-by-step algorithm explanations
+- Performance metrics (RMSE, detection counts, etc.)
+- Interactive Plotly visualizations
+- Synthetic data generation
+- Algorithm comparison where applicable
+- Complete source code with comments
 
 ## Learning Path
 
 Recommended progression for learning TCL:
 
-1. **Start**: Kalman Filtering → understand basic concepts
-2. **Extend**: Nonlinear Filtering → handle real-world nonlinearity
-3. **Advanced**: Particle Filters → non-Gaussian systems
-4. **Refinement**: Smoothing Algorithms → improve estimates with future data
-5. **Robustness**: Robust Estimation → handle outliers
+1. **Start**: Kalman Filtering -> understand basic concepts
+2. **Extend**: Nonlinear Filtering -> handle real-world nonlinearity
+3. **Advanced**: Particle Filters -> non-Gaussian systems
+4. **Refinement**: Smoothing Algorithms -> improve estimates with future data
+5. **Robustness**: Robust Estimation -> handle outliers
 6. **Applications**:
-   - Signal Processing → pre/post-processing
-   - Radar Detection → specific application
-   - INS-GNSS Integration → multi-sensor fusion
-   - Multi-Target Tracking → complex scenarios
-   - Data Association → measurement-to-track matching
+   - Signal Processing -> pre/post-processing
+   - Radar Detection -> specific application
+   - INS-GNSS Integration -> multi-sensor fusion
+   - Multi-Target Tracking -> complex scenarios
+   - Data Association -> measurement-to-track matching
 
 ## Integration with Documentation
 
-These tutorials are designed to be embedded in Sphinx documentation via:
+The `.rst` tutorial pages embed the visualizations (copied to `docs/_static/images/tutorials/`) via:
 ```rst
 .. raw:: html
 
-   <iframe src="../_static/images/tutorials/kalman_filtering.html"
-           width="100%" height="800" frameborder="0"></iframe>
+   <div class="plotly-container aspect-wide">
+       <iframe class="plotly-iframe" src="../_static/images/tutorials/kalman_filtering.html"></iframe>
+   </div>
 ```
 
 ## Resources
 
 - **Tutorial Scripts**: `docs/tutorials/`
-- **HTML Visualizations**: `docs/_static/images/tutorials/`
+- **HTML Visualizations**: `docs/tutorials/output/`
 - **Main Documentation**: `docs/index.rst`
 - **API Reference**: TCL library documentation
 - **Examples**: `examples/` directory
 
 ---
-Generated: January 4, 2026 (last reviewed for v1.16.0)
-TCL Version: 1.16.0
+Last reviewed: August 6, 2026 (v2.0.0)

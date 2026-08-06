@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Output directory for plots
-OUTPUT_DIR = Path("../_static/images/tutorials")
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = False
 
@@ -101,7 +101,7 @@ def particle_filters_tutorial():
         # Update weights based on measurement likelihood
         for i in range(n_particles):
             z_pred = measurement_model(particles[i])
-            residual = z_all[k] - z_pred
+            residual = z_all[k, 0] - z_pred[0]
             weights[i] *= np.exp(-0.5 * residual**2 / r_std**2)
 
         # Normalize weights
@@ -113,9 +113,8 @@ def particle_filters_tutorial():
 
         # Resampling (systematic)
         if 1.0 / np.sum(weights**2) < n_particles / 2:  # ESS criterion
-            indices = np.argsort(np.random.rand(n_particles) - np.cumsum(weights))[
-                :n_particles
-            ]
+            positions = (np.arange(n_particles) + np.random.rand()) / n_particles
+            indices = np.searchsorted(np.cumsum(weights), positions)
             particles = particles[indices]
             weights = np.ones(n_particles) / n_particles
 
@@ -332,7 +331,7 @@ def particle_filters_tutorial():
     else:
         fig.write_html(str(OUTPUT_DIR / "particle_filters.html"))
 
-    print("✓ Particle filters visualization complete")
+    print("Particle filters visualization complete")
     print("\n" + "=" * 70)
 
 

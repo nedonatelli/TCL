@@ -40,6 +40,7 @@ from pytcl.navigation.ins_gnss import (
     SatelliteInfo,
     compute_dop,
     initialize_ins_gnss,
+    loose_coupled_update,
     loose_coupled_update_position,
     position_measurement_matrix,
     position_std_to_error_state_units,
@@ -183,6 +184,33 @@ class TestFilterWeighting:
         np.testing.assert_allclose(
             np.sqrt(np.diag(state.error_cov)[:3]), expected, rtol=1e-12
         )
+
+    def test_the_combined_update_converts_its_default_position_noise(self):
+        """The position+velocity path shares the position path's units.
+
+        gh-19's conversion was first applied only to
+        loose_coupled_update_position; the combined path kept a raw
+        diag(10 m)^2 against the [rad, rad, m] innovation, which made the
+        default-covariance filter ignore the position fix entirely
+        (absorbed fraction ~1e-13). With matching 10 m defaults on a 10 m
+        filter the textbook gain is P/(P+R) = 1/2.
+        """
+        ins = initialize_ins_state(lat=LAT, lon=LON, alt=ALT)
+        state = initialize_ins_gnss(ins, position_std=10.0)
+
+        meridian_radius, _ = radii_of_curvature(LAT)
+        offset = 10.0 / (meridian_radius + ALT)
+        gnss = GNSSMeasurement(
+            position=np.array([LAT + offset, LON, ALT]),
+            velocity=np.zeros(3),
+            position_cov=None,
+            velocity_cov=None,
+            time=0.0,
+        )
+        result = loose_coupled_update(state, gnss)
+        absorbed = (result.state.ins_state.position[0] - LAT) / offset
+
+        assert absorbed == pytest.approx(0.5, abs=1e-3)
 
     def test_the_gain_matches_a_hand_computed_kalman_update(self):
         """Independent of the INS/GNSS plumbing entirely.

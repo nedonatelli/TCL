@@ -21,9 +21,16 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
 
 .. code-block:: python
 
+   import numpy as np
+
    from pytcl.dynamic_estimation import kf_predict
 
-   # x: state vector, P: covariance, F: transition matrix, Q: process noise
+   # Constant-velocity state [position, velocity]
+   x = np.array([0.0, 1.0])
+   P = np.eye(2) * 0.5
+   F = np.array([[1.0, 0.1], [0.0, 1.0]])
+   Q = np.eye(2) * 0.01
+
    prediction = kf_predict(x, P, F, Q)
    x_pred = prediction.x
    P_pred = prediction.P
@@ -35,9 +42,18 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
    from pytcl.dynamic_estimation import kf_update
 
    # z: measurement, H: measurement matrix, R: measurement noise
+   z = np.array([0.12])
+   H = np.array([[1.0, 0.0]])
+   R = np.array([[0.1]])
+
    update = kf_update(x_pred, P_pred, z, H, R)
    x_upd = update.x
    P_upd = update.P
+
+``kf_update`` returns a NamedTuple with six fields: ``x`` (updated state),
+``P`` (updated covariance), ``y`` (innovation), ``S`` (innovation
+covariance), ``K`` (Kalman gain), and ``likelihood`` (measurement
+likelihood).
 
 **Combined predict-update:**
 
@@ -50,7 +66,9 @@ The standard Kalman filter is optimal for linear-Gaussian systems:
 Extended Kalman Filter (EKF)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For nonlinear systems, the EKF linearizes around the current estimate:
+For nonlinear systems, the EKF linearizes around the current estimate.
+``ekf_predict`` and ``ekf_update`` take the Jacobian evaluated at the
+linearization point (a matrix, not a callable):
 
 .. code-block:: python
 
@@ -64,8 +82,8 @@ For nonlinear systems, the EKF linearizes around the current estimate:
    def F_jacobian(x):
        return np.array([[1, 1], [0, 0.99]])
 
-   # Predict
-   pred = ekf_predict(x, P, f, F_jacobian, Q)
+   # Predict (Jacobian evaluated at the current estimate)
+   pred = ekf_predict(x, P, f, F_jacobian(x), Q)
 
    # Define nonlinear measurement and Jacobian
    def h(x):
@@ -76,8 +94,8 @@ For nonlinear systems, the EKF linearizes around the current estimate:
        r = np.sqrt(x[0]**2 + x[1]**2)
        return np.array([[x[0]/r, x[1]/r]])
 
-   # Update
-   upd = ekf_update(pred.x, pred.P, z, h, H_jacobian, R)
+   # Update (Jacobian evaluated at the predicted state)
+   upd = ekf_update(pred.x, pred.P, z, h, H_jacobian(pred.x), R)
 
 **Automatic Jacobian computation:**
 
@@ -132,6 +150,8 @@ a flexible Monte Carlo approach:
    )
 
    # Initialize particles from prior
+   x0 = np.array([0.0, 1.0])
+   P0 = np.eye(2) * 0.5
    state = initialize_particles(x0, P0, N=1000)
 
    # Define process noise sampler
@@ -153,18 +173,40 @@ Smoothing
 ---------
 
 The library provides RTS (Rauch-Tung-Striebel) smoothing for obtaining
-optimal estimates using future measurements:
+optimal estimates using future measurements. ``kf_smooth`` performs one
+backward step at a time, so run it in a loop over the stored forward
+filter results:
 
 .. code-block:: python
 
    from pytcl.dynamic_estimation import kf_smooth
 
-   # After forward filtering, run backward smoothing
-   x_smooth, P_smooth = kf_smooth(
-       x_filtered, P_filtered,
-       x_predicted, P_predicted,
-       F
-   )
+   # Forward pass: store filtered and predicted results
+   zs = [np.array([0.1]), np.array([0.25]), np.array([0.4])]
+   x_filt, P_filt = [], []
+   x_pred_list, P_pred_list = [], []
+   xk, Pk = x0, P0
+   for z_k in zs:
+       pred = kf_predict(xk, Pk, F, Q)
+       x_pred_list.append(pred.x)
+       P_pred_list.append(pred.P)
+       upd = kf_update(pred.x, pred.P, z_k, H, R)
+       xk, Pk = upd.x, upd.P
+       x_filt.append(xk)
+       P_filt.append(Pk)
+
+   # Backward pass: one RTS step per time index
+   n = len(zs)
+   x_smooth = [None] * n
+   P_smooth = [None] * n
+   x_smooth[-1], P_smooth[-1] = x_filt[-1], P_filt[-1]
+   for k in range(n - 2, -1, -1):
+       x_smooth[k], P_smooth[k] = kf_smooth(
+           x_filt[k], P_filt[k],
+           x_pred_list[k + 1], P_pred_list[k + 1],
+           x_smooth[k + 1], P_smooth[k + 1],
+           F,
+       )
 
 Information Filter
 ------------------
@@ -180,6 +222,9 @@ the information matrix (inverse covariance):
    )
 
    # Work with information form: y = P^{-1} x, Y = P^{-1}
+   Y = np.linalg.inv(P)
+   y = Y @ x
+
    y_pred, Y_pred = information_filter_predict(y, Y, F, Q)
    y_upd, Y_upd = information_filter_update(y_pred, Y_pred, z, H, R)
 
@@ -271,6 +316,13 @@ with numerical stability of square-root formulations.
    def h(x):
        return np.array([np.sqrt(x[0]**2 + x[1]**2)])
 
+   # Two-state setup with Cholesky factors
+   x = np.array([0.0, 1.0])
+   S = np.linalg.cholesky(np.eye(2) * 0.5)
+   S_Q = np.linalg.cholesky(np.eye(2) * 0.01)
+   S_R = np.linalg.cholesky(np.array([[0.1]]))
+   z = np.array([0.9])
+
    # Predict and update
    pred = sr_ukf_predict(x, S, f, S_Q)
    upd = sr_ukf_update(pred.x, pred.S, z, h, S_R)
@@ -288,6 +340,7 @@ Basic IMM Usage
 .. code-block:: python
 
    from pytcl.dynamic_estimation import imm_predict, imm_update
+   from pytcl.dynamic_models import f_coord_turn_2d
 
    # Two modes: constant velocity (CV) and coordinated turn (CT)
    x = np.array([0.0, 10.0, 0.0, 5.0])  # [x, vx, y, vy]
@@ -302,7 +355,7 @@ Basic IMM Usage
    dt = 0.1
    F_cv = np.array([[1, dt, 0, 0], [0, 1, 0, 0],
                     [0, 0, 1, dt], [0, 0, 0, 1]])
-   F_ct = ... # Coordinated turn model
+   F_ct = f_coord_turn_2d(T=dt, omega=0.2)  # Coordinated turn model
 
    Q_cv = np.eye(4) * 0.01
    Q_ct = np.eye(4) * 0.1  # Higher uncertainty for maneuvering
@@ -341,12 +394,13 @@ For stateful IMM filtering:
    Pi = np.array([[0.95, 0.05], [0.10, 0.90]])
    imm = IMMEstimator(n_modes=2, state_dim=4, transition_matrix=Pi)
 
-   imm.initialize(x0, P0)
+   imm.initialize(x, P)
    imm.set_mode_model(0, F_cv, Q_cv)
    imm.set_mode_model(1, F_ct, Q_ct)
    imm.set_measurement_model(H, R)
 
    # Filter loop
+   measurements = [np.array([1.0, 0.5]), np.array([2.1, 1.1])]
    for z in measurements:
        result = imm.predict_update(z)
        print(f"State: {result.x}, Mode probs: {imm.mode_probs}")
@@ -356,13 +410,13 @@ See Also
 
 **Advanced Filtering Topics:**
 
-- :doc:`../constrained_filtering` — Apply state constraints during filtering (geofenced tracking, bounded velocities)
-- :doc:`../hybrid_filtering` — Hybrid particle/Kalman filtering for mixed linear/nonlinear systems
-- :doc:`../adaptive_filtering` — Adaptive noise tuning and filter parameters
-- :doc:`../information_filters` — Information representation and filter variants
-- :doc:`../particle_filters` — Bootstrap and advanced particle filtering techniques
+- :doc:`../constrained_filtering` -- Apply state constraints during filtering (geofenced tracking, bounded velocities)
+- :doc:`../hybrid_filtering` -- Hybrid particle/Kalman filtering for mixed linear/nonlinear systems
+- :doc:`../adaptive_filtering` -- Adaptive noise tuning and filter parameters
+- :doc:`../information_filters` -- Information representation and filter variants
+- :doc:`../particle_filters` -- Bootstrap and advanced particle filtering techniques
 
 **Related Guides:**
 
-- :doc:`../kalman_filter_tuning` — Tuning filter parameters and covariance
-- :doc:`../smoothing` — Batch estimation and smoothing algorithms
+- :doc:`../kalman_filter_tuning` -- Tuning filter parameters and covariance
+- :doc:`../smoothing` -- Batch estimation and smoothing algorithms

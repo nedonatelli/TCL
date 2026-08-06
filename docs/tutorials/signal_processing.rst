@@ -37,7 +37,7 @@ Butterworth Lowpass Filter
    signal = np.sin(2 * np.pi * 20 * t) + 0.5 * np.sin(2 * np.pi * 100 * t)
 
    # Apply filter
-   filtered = apply_filter(coeffs.b, coeffs.a, signal)
+   filtered = apply_filter(coeffs, signal)
 
    # The 100 Hz component is attenuated
 
@@ -51,7 +51,7 @@ For offline processing, use zero-phase filtering to avoid phase distortion:
    from pytcl.mathematical_functions.signal_processing import filtfilt
 
    # Forward-backward filtering (zero phase)
-   filtered_zp = filtfilt(coeffs.b, coeffs.a, signal)
+   filtered_zp = filtfilt(coeffs, signal)
 
 Frequency Response Analysis
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ Visualize filter characteristics:
 .. code-block:: python
 
    # Get frequency response
-   resp = frequency_response(coeffs.b, coeffs.a, fs, n_points=512)
+   resp = frequency_response(coeffs, fs, n_points=512)
 
    # resp.frequencies: frequency axis (Hz)
    # resp.magnitude: magnitude response
@@ -94,9 +94,12 @@ Power Spectrum Estimation
    # psd.frequencies: frequency axis (Hz)
    # psd.psd: power spectral density
 
-   # Find peaks
-   peak_indices = np.argsort(psd.psd)[-2:]
-   peak_freqs = psd.frequencies[peak_indices]
+   # Find the two strongest spectral peaks
+   from scipy.signal import find_peaks
+
+   peaks, _ = find_peaks(psd.psd)
+   strongest = peaks[np.argsort(psd.psd[peaks])[-2:]]
+   peak_freqs = np.sort(psd.frequencies[strongest])
    print(f"Detected frequencies: {peak_freqs}")
 
 Short-Time Fourier Transform
@@ -165,7 +168,7 @@ For multi-resolution analysis:
    # result.cD: list of detail coefficients per level
 
    # Reconstruct
-   reconstructed = idwt(result, wavelet='db4')
+   reconstructed = idwt(result)
 
 Matched Filtering
 -----------------
@@ -200,7 +203,8 @@ Complete Example: Radar Signal Processing
 
    import numpy as np
    from pytcl.mathematical_functions.signal_processing import (
-       butter_design, apply_filter, matched_filter, cfar_ca
+       butter_design, apply_filter, matched_filter, cfar_ca,
+       cluster_detections
    )
 
    # Simulate radar return with targets
@@ -208,32 +212,39 @@ Complete Example: Radar Signal Processing
    n_samples = 2000
    np.random.seed(42)
 
+   # Transmit pulse: 1 kHz tone burst with decaying envelope (5 ms)
+   t_pulse = np.arange(50) / fs
+   pulse = np.sin(2 * np.pi * 1000 * t_pulse) * np.exp(-t_pulse / 0.002)
+
    # Noise floor
    signal = np.random.randn(n_samples) * 0.3
 
-   # Add targets at different ranges
+   # Add target echoes at different ranges
    target_ranges = [300, 800, 1200]
    for r in target_ranges:
-       signal[r:r+20] += 2.0 * np.exp(-np.linspace(0, 3, 20))
+       signal[r:r+50] += 2.0 * pulse
 
    # 1. Bandpass filter to reduce out-of-band noise
-   coeffs = butter_design(order=4, cutoff=[100, 2000], fs=fs, btype='band')
-   filtered = apply_filter(coeffs.b, coeffs.a, signal)
+   coeffs = butter_design(order=4, cutoff=(100, 2000), fs=fs, btype='band')
+   filtered = apply_filter(coeffs, signal)
 
    # 2. Matched filter for pulse compression
-   pulse = np.exp(-np.linspace(0, 3, 20))
-   mf_result = matched_filter(np.abs(filtered), pulse)
+   mf_result = matched_filter(filtered, pulse)
 
-   # 3. CFAR detection
+   # 3. CFAR detection on the compressed power
+   power = np.abs(mf_result.output) ** 2
    cfar = cfar_ca(
-       mf_result.output,
-       guard_cells=5,
-       ref_cells=20,
-       pfa=1e-4
+       power,
+       guard_cells=25,
+       ref_cells=100,
+       pfa=1e-6
    )
 
-   print(f"Detected {len(cfar.detection_indices)} targets")
-   print(f"Target ranges: {cfar.detection_indices}")
+   # 4. Cluster adjacent detection cells into targets
+   targets = cluster_detections(cfar.detections, min_separation=50)
+
+   print(f"Detected {len(targets)} targets")
+   print(f"Detection peaks at: {targets}")
 
 Next Steps
 ----------

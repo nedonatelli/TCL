@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Output directory for plots
-OUTPUT_DIR = Path("../_static/images/tutorials")
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = False
 
@@ -299,7 +299,7 @@ def smoothing_tutorial():
     else:
         fig.write_html(str(OUTPUT_DIR / "smoothing_algorithms.html"))
 
-    print("✓ Smoothing algorithms visualization complete")
+    print("Smoothing algorithms visualization complete")
     print("\n" + "=" * 70)
 
 

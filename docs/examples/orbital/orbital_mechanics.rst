@@ -16,7 +16,7 @@ Orbital mechanics for satellite tracking and space applications:
 
 - **Two-body problem**: Keplerian orbits
 - **Orbit propagation**: State evolution over time
-- **SGP4/SDP4**: TLE-based propagation
+- **Reference frames**: GCRF/ITRF conversions
 - **Orbital maneuvers**: Hohmann, Lambert transfers
 
 Key Concepts
@@ -25,7 +25,7 @@ Key Concepts
 - **Orbital elements**: Semi-major axis, eccentricity, inclination
 - **Kepler's equation**: Mean anomaly to eccentric anomaly
 - **State vectors**: Position and velocity in inertial frame
-- **Perturbations**: J2, drag, solar radiation pressure
+- **Time systems**: UTC/TAI/GPS conversions and Julian dates
 
 Algorithms
 ----------
@@ -40,21 +40,22 @@ Algorithms
    - Given transfer time
    - Used for rendezvous planning
 
-**SGP4/SDP4**
-   - NORAD propagator for TLEs
-   - Includes perturbations
-   - Standard for satellite tracking
+**Transfer Orbits**
+   - Hohmann two-impulse transfer
+   - Minimum-energy transfer
+   - Delta-v budgeting
 
 Code Highlights
 ---------------
 
 The example demonstrates:
 
-- State vector to orbital elements conversion
-- Kepler equation solving with ``solve_kepler()``
-- Two-body propagation with ``propagate_twobody()``
-- Lambert solver with ``lambert_universal()``
-- TLE parsing and SGP4 propagation
+- State vector to orbital elements conversion with
+  ``state_to_orbital_elements()``
+- Kepler equation solving with ``mean_to_eccentric_anomaly()``
+- Two-body propagation with ``kepler_propagate()``
+- Lambert solvers ``lambert_universal()`` and ``lambert_izzo()``
+- GCRF/ITRF frame conversions and Hohmann transfer design
 
 Source Code
 -----------

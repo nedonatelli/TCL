@@ -4,7 +4,9 @@ API Navigation Guide
 Overview
 --------
 
-The Tracker Component Library provides **1,400+ functions** across **180+ modules**. This guide shows how to discover and use them effectively.
+The Tracker Component Library provides **900+ public functions** across
+**nearly 180 modules**. This guide shows how to discover and use them
+effectively.
 
 Key Resources:
 
@@ -24,42 +26,43 @@ Method 1: Python ``help()`` and ``dir()``
 .. code-block:: python
 
    import pytcl
-   
+
    # List all modules
    print(dir(pytcl))
-   
+
    # List functions in a submodule
    from pytcl import coordinate_systems
    print([x for x in dir(coordinate_systems) if not x.startswith('_')])
-   
+
    # Get help on a function
    from pytcl.coordinate_systems import sphere2cart
    help(sphere2cart)  # Shows docstring, signature, examples
 
 **Output shows**:
-  - Function signature with type hints
-  - Docstring describing what it does
-  - Parameters and return values
-  - Usage examples (often included)
+
+- Function signature with type hints
+- Docstring describing what it does
+- Parameters and return values
+- Usage examples (often included)
 
 Method 2: Interactive Discovery
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Use IDE autocomplete**:
 
-.. code-block:: python
+.. code-block:: text
 
    from pytcl.dynamic_estimation import kalman
-   kalman.  # Press Tab - shows all available functions
-   # kf_predict, kf_update, extended_kalman_filter, etc.
+   kalman.<Tab>  # shows all available functions
+   # kf_predict, kf_update, ekf_predict, ekf_update, ukf_predict, ...
 
 **Use Jupyter notebook autocomplete**:
 
-.. code-block:: python
+.. code-block:: text
 
    import pytcl.coordinate_systems.rotations as rot
-   rot.euler  # Press Tab
-   # Suggestions: euler2rotmat, euler2quat, euler_rate2body_rate, etc.
+   rot.euler<Tab>
+   # Suggestions: euler2rotmat, euler2quat
 
 Method 3: Search Functions by Category
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -68,25 +71,28 @@ Method 3: Search Functions by Category
 
 .. code-block:: python
 
-   # All Kalman filter variants
+   # All Kalman filter predict/update pairs
    from pytcl.dynamic_estimation import kalman
-   print([x for x in dir(kalman) if 'kalman' in x.lower()])
-   # extended_kalman_filter, unscented_kalman_filter, cubature_kalman_filter
-   
+   print([x for x in dir(kalman) if 'kf_' in x.lower()][:10])
+   # ['ckf_predict', 'ckf_spherical_cubature_points', 'ckf_update',
+   #  'constrained_ekf_predict', 'constrained_ekf_update', 'ekf_predict',
+   #  'ekf_predict_auto', 'ekf_update', 'ekf_update_auto',
+   #  'iterated_ekf_update']
+
    # All coordinate conversions
    from pytcl.coordinate_systems import conversions
-   print([x for x in dir(conversions) if '2' in x])
-   # cart2sphere, sphere2cart, cart2pol, pol2cart, etc.
+   print(sorted(x for x in dir(conversions) if '2' in x)[:12])
+   # ['cart2cyl', 'cart2pol', 'cart2ruv', 'cart2sphere', 'cyl2cart',
+   #  'ecef2enu', 'ecef2geodetic', 'ecef2ned', 'ecef2sez', 'enu2ecef',
+   #  'enu2ned', 'geodetic2ecef']
 
-Method 4: Search Documentation Online
+Method 4: Browse the Sphinx API Docs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Browse Sphinx API docs**:
+**Browse the rendered documentation**:
 
-Visit the documentation at https://readthedocs.org/ and search:
-
-- Click "API" in the navigation
-- Click a module name (e.g., ``kalman``)
+- Open :doc:`api/index`
+- Click a module name (e.g., ``dynamic_estimation``)
 - Browse all functions with full documentation
 
 Common Discovery Workflows
@@ -97,24 +103,25 @@ Workflow 1: "I need to do Kalman filtering"
 
 **Step 1**: Visit :doc:`api/index` and search for "kalman"
 
-**Step 2**: See available filters:
-  - ``kf_predict``, ``kf_update`` - Linear Kalman filter
-  - ``extended_kalman_filter`` - Nonlinear (using Jacobians)
-  - ``unscented_kalman_filter`` - Nonlinear (using sigma points)
-  - ``cubature_kalman_filter`` - Deterministic points
-  - ``imm_filter`` - Multiple model
+**Step 2**: See available filters (all functional predict/update pairs):
+
+- ``kf_predict``, ``kf_update`` - Linear Kalman filter
+- ``ekf_predict``, ``ekf_update`` - Extended KF (using Jacobians)
+- ``ukf_predict``, ``ukf_update`` - Unscented KF (sigma points)
+- ``ckf_predict``, ``ckf_update`` - Cubature KF (deterministic points)
+- ``imm_predict``, ``imm_update`` - Interacting Multiple Model (in ``pytcl.dynamic_estimation``)
 
 **Step 3**: Pick the right one:
 
 .. code-block:: python
 
-   # Linear system → use standard KF
+   # Linear system -> use standard KF
    from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
-   
-   # Nonlinear, need Jacobian → use EKF
+
+   # Nonlinear, have a Jacobian -> use EKF
    from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
-   
-   # Nonlinear, don't want Jacobian code → use UKF
+
+   # Nonlinear, don't want Jacobian code -> use UKF
    from pytcl.dynamic_estimation.kalman import ukf_predict, ukf_update
 
 **Step 4**: See tuning guide at :doc:`kalman_filter_tuning`
@@ -127,13 +134,14 @@ Workflow 2: "I need coordinate conversion"
 .. code-block:: python
 
    from pytcl.coordinate_systems import conversions
-   
+
    # List all conversion functions
-   funcs = [x for x in dir(conversions) if not x.startswith('_')]
-   print(funcs)
-   # Output: ['cart2cyl', 'cart2pol', 'cart2ruv', 'cart2sphere', 
-   #          'cyl2cart', 'pol2cart', 'ruv2cart', 'sphere2cart',
-   #          'ecef2enu', 'enu2ecef', 'ecef2geodetic', ...]
+   funcs = [x for x in dir(conversions)
+            if not x.startswith('_') and x.islower()]
+   print(sorted(funcs)[:12])
+   # ['cart2cyl', 'cart2pol', 'cart2ruv', 'cart2sphere', 'cyl2cart',
+   #  'ecef2enu', 'ecef2geodetic', 'ecef2ned', 'ecef2sez', 'enu2ecef',
+   #  'enu2ned', 'geocentric_radius']
 
 **Step 2**: Match your need:
 
@@ -141,11 +149,11 @@ Workflow 2: "I need coordinate conversion"
 
    # Cartesian to spherical coordinates
    from pytcl.coordinate_systems.conversions import cart2sphere
-   
+
    # ECEF (Earth-Centered Earth-Fixed) to geodetic
    from pytcl.coordinate_systems.conversions import ecef2geodetic
-   
-   # East-North-Up to Cartesian
+
+   # East-North-Up to ECEF
    from pytcl.coordinate_systems.conversions import enu2ecef
 
 **Step 3**: Use it:
@@ -154,8 +162,8 @@ Workflow 2: "I need coordinate conversion"
 
    import numpy as np
    cart_coords = np.array([1.0, 0.0, 0.0])
-   spherical = cart2sphere(cart_coords)
-   print(spherical)  # [1., 0., 0.] (range, azimuth, elevation)
+   r, az, el = cart2sphere(cart_coords, system_type='az-el')
+   print(r, az, el)  # 1.0 0.0 0.0 (range, azimuth, elevation)
 
 Workflow 3: "I need data association"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -164,27 +172,36 @@ Workflow 3: "I need data association"
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import assign2d, assign3d, murty
-   
+   from pytcl import assignment_algorithms
+
    # Available methods
-   print(dir(optimization))
-   # relaxation_assignment_nd, greedy_assignment_nd, murty, etc.
+   print([x for x in dir(assignment_algorithms) if 'assign' in x][:8])
+   # ['assign2d', 'assign3d', 'assign3d_auction', 'assign3d_lagrangian',
+   #  'assignment_from_flow_solution', 'assignment_nd',
+   #  'assignment_to_flow_network', 'auction_assignment_nd']
 
 **Step 2**: Understand when to use each:
 
 .. code-block:: python
 
-   # Small problems (< 500 assignments): any method works
+   import numpy as np
+
+   cost_matrix = np.array([[4.0, 1.0, 3.0],
+                           [2.0, 0.0, 5.0],
+                           [3.0, 2.0, 2.0]])
+
+   # 2D problems: Jonker-Volgenant via assign2d
+   from pytcl.assignment_algorithms import assign2d
+   result = assign2d(cost_matrix)
+   # result.row_indices, result.col_indices, result.cost
+
+   # Multi-frame (S-D) problems: Lagrangian relaxation on a cost tensor
    from pytcl.assignment_algorithms import relaxation_assignment_nd
-   assignments = relaxation_assignment_nd(cost_matrix)
-   
-   # Large problems (> 1000): consider auction or sparse
-   from pytcl.assignment_algorithms import relaxation_assignment_nd
-   assignments = relaxation_assignment_nd(cost_matrix, method='auction')
-   
-   # Top-K solutions (need multiple options)
+
+   # Top-K solutions (need multiple hypotheses)
    from pytcl.assignment_algorithms import murty
-   top_k_solutions = murty(cost_matrix, k=5)
+   top_k = murty(cost_matrix, k=3)
+   # top_k.assignments, top_k.costs, top_k.n_found
 
 **Step 3**: See performance guide at :doc:`performance_optimization`
 
@@ -196,72 +213,76 @@ Workflow 4: "I need navigation functions"
 .. code-block:: python
 
    from pytcl.navigation import (
-       geodesy,           # Great circle, rhumb line
-       ins_gnss,          # INS/GNSS fusion
-       ephemerides,       # Celestial bodies
-       tdoa                # Time difference localization
+       geodesy,           # Direct/inverse geodesic problems on the ellipsoid
+       great_circle,      # Great-circle distance, waypoints, TDOA location
+       rhumb,             # Rhumb-line navigation
+       ins,               # Strapdown INS mechanization
+       ins_gnss,          # INS/GNSS integration
    )
 
-**Step 2**: Pick the right module:
+**Step 2**: Pick the right function (all are re-exported from
+``pytcl.navigation``):
 
 .. code-block:: python
 
-   # Distance/bearing between lat/lon points
+   # Distance between lat/lon points (spherical Earth)
    from pytcl.navigation import great_circle_distance
-   
-   # INS propagation with gravity
+
+   # Ellipsoidal direct/inverse problems
+   from pytcl.navigation import direct_geodetic, inverse_geodetic
+
+   # INS mechanization
    from pytcl.navigation import mechanize_ins_ned
-   
-   # Sun, Moon, planet positions
-   from pytcl.astronomical.ephemerides import sun_position
 
-**Step 3**: Use it with coordinate conversions:
+**Step 3**: Use it (angles in radians):
 
 .. code-block:: python
 
+   import numpy as np
    from pytcl.navigation import great_circle_distance
-   
+
    # New York to London
-   nyc = np.array([40.7128, -74.0060])  # lat, lon
-   london = np.array([51.5074, -0.1278])
-   distance = great_circle_distance(nyc, london)
-   print(f"{distance / 1000:.1f} km")  # ~5570 km
+   nyc_lat, nyc_lon = np.radians(40.7128), np.radians(-74.0060)
+   london_lat, london_lon = np.radians(51.5074), np.radians(-0.1278)
+
+   distance = great_circle_distance(nyc_lat, nyc_lon, london_lat, london_lon)
+   print(f"{distance / 1000:.1f} km")  # 5570.2 km
 
 Function Naming Conventions
 ----------------------------
 
 **Conversion Functions**: ``source2destination``
 
-.. code-block:: python
+.. code-block:: text
 
-   cart2sphere      # Cartesian → Spherical
-   sphere2cart      # Spherical → Cartesian
-   ecef2geodetic    # ECEF → Geodetic
-   ecef2enu         # ECEF → East-North-Up
-   euler2rotmat        # Euler angles → Direction Cosine Matrix
+   cart2sphere      # Cartesian -> Spherical
+   sphere2cart      # Spherical -> Cartesian
+   ecef2geodetic    # ECEF -> Geodetic
+   ecef2enu         # ECEF -> East-North-Up
+   euler2rotmat     # Euler angles -> Direction Cosine Matrix
 
-**Prediction/Update**: ``verb_noun``
+**Prediction/Update**: ``prefix_verb``
 
-.. code-block:: python
+.. code-block:: text
 
    kf_predict, kf_update           # Kalman filter
    ekf_predict, ekf_update         # Extended Kalman filter
-   particle_filter_predict         # Particle filter
+   ukf_predict, ukf_update         # Unscented Kalman filter
 
-**Property/Getter Functions**: ``get_noun`` or ``compute_noun``
+**Property/Getter Functions**: ``noun_property`` or ``get_noun``
 
-.. code-block:: python
+.. code-block:: text
 
-   sun_position()              # Astronomy
-   compute_distance()              # Math
-   get_magnetic_cache_info()       # Geophysics
+   sun_position                 # Astronomy
+   compute_dop                  # Navigation (dilution of precision)
+   get_magnetic_cache_info      # Geophysics
 
-**Check/Validate Functions**: ``is_noun`` or ``check_noun``
+**Check/Validate Functions**: ``is_noun``
 
-.. code-block:: python
+.. code-block:: text
 
-   is_positive_definite()          # Utility
-   is_proper_rotation()            # Rotations
+   is_rotation_matrix           # Rotations
+   is_deep_space                # SGP4 (deep-space vs near-Earth TLE)
 
 API Reference by Use Case
 ---------------------------
@@ -275,26 +296,24 @@ Multi-Target Tracking
 
    # Tracking system
    from pytcl.trackers import MultiTargetTracker
-   
+
    # Data structures
    from pytcl.trackers import Track
-   
+
    # Coordinate conversions
    from pytcl.coordinate_systems.conversions import sphere2cart
-   
+
    # Filter (inside tracker)
    from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
-   
+
    # Dynamic model
    from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
-   
+
    # Data association (inside tracker, but useful for custom)
-   from pytcl.assignment_algorithms import relaxation_assignment_nd
-   
+   from pytcl.assignment_algorithms import gnn_association, assign2d
+
    # Performance evaluation
-   from pytcl.performance_evaluation.metrics import (
-       nees, nis, cramer_rao_bound
-   )
+   from pytcl.performance_evaluation import nees, nis, ospa
 
 **See**: :doc:`architecture` section "Pattern 2: Multi-Target Tracking"
 
@@ -306,18 +325,18 @@ Navigation and Geomatics
 .. code-block:: python
 
    # Geodetic calculations
-   from pytcl.navigation.geodesy import (
-       geodetic2ecef, ecef2geodetic, great_circle_distance
+   from pytcl.navigation import (
+       geodetic_to_ecef, ecef_to_geodetic, great_circle_distance
    )
-   
+
    # INS mechanization
    from pytcl.navigation import mechanize_ins_ned
-   
+
    # Coordinate frames
    from pytcl.coordinate_systems.rotations import (
-       euler2rotmat, rotmat2euler, quat2dcm
+       euler2rotmat, rotmat2euler, quat2rotmat
    )
-   
+
    # Projections (map coordinates)
    from pytcl.coordinate_systems.projections import (
        geodetic2utm, utm2geodetic
@@ -339,20 +358,20 @@ Satellite Operations
 
    # Orbit propagation
    from pytcl.astronomical.orbital_mechanics import kepler_propagate
-   
+
    # Reference frame transforms
    from pytcl.astronomical.reference_frames import (
-       ecef_to_eci, eci_to_ecef, apply_precession_nutation
+       ecef_to_eci, eci_to_ecef, precession_matrix_iau76, nutation_matrix
    )
-   
+
    # Ephemeris (planets, sun, moon)
    from pytcl.astronomical.ephemerides import (
-       sun_position, get_moon_position
+       sun_position, moon_position
    )
-   
+
    # SGP4 (TLE propagation)
    from pytcl.astronomical.sgp4 import sgp4_propagate
-   
+
    # Relativistic corrections
    from pytcl.astronomical.relativity import proper_time_rate, shapiro_delay
 
@@ -366,18 +385,20 @@ Advanced Signal Processing
 .. code-block:: python
 
    # CFAR detection
-   from pytcl.mathematical_functions.signal_processing.detection import cfar_ca, cfar_2d
-   
+   from pytcl.mathematical_functions.signal_processing.detection import (
+       cfar_ca, cfar_2d
+   )
+
    # Filtering
    from pytcl.mathematical_functions.signal_processing.filters import (
-       design_butterworth, apply_filter
+       butter_design, apply_filter
    )
-   
+
    # Optimal detection
    from pytcl.mathematical_functions.signal_processing.matched_filter import (
-       matched_filter, likelihood_ratio_test
+       matched_filter, pulse_compression
    )
-   
+
    # Special functions (for detection threshold calculation)
    from pytcl.mathematical_functions.special_functions import marcum_q
 
@@ -389,19 +410,19 @@ Searching for Functions: Advanced Tips
 .. code-block:: bash
 
    # Find all "distance" functions in the codebase
-   grep -r "def.*distance" pytcl/
-   
-   # Find functions with "kalman" in name
-   grep -r "def kalman" pytcl/
+   grep -r "def .*distance" pytcl/
+
+   # Find functions with "kalman" in the name
+   grep -ri "def .*kalman" pytcl/
 
 **Search in Jupyter**:
 
 .. code-block:: python
 
-   # Find all functions containing "filter"
+   # Find all functions containing a keyword, e.g. "slerp"
    import pytcl
    import inspect
-   
+
    def find_functions(keyword):
        for name in dir(pytcl):
            module = getattr(pytcl, name)
@@ -411,8 +432,9 @@ Searching for Functions: Advanced Tips
                        func = getattr(module, func_name)
                        if callable(func):
                            print(f"{name}.{func_name}")
-   
-   find_functions("filter")
+
+   find_functions("slerp")
+   # coordinate_systems.slerp
 
 **View function source code**:
 
@@ -420,10 +442,10 @@ Searching for Functions: Advanced Tips
 
    from pytcl.coordinate_systems import sphere2cart
    import inspect
-   
+
    # View source
    print(inspect.getsource(sphere2cart))
-   
+
    # Find where function is defined
    print(inspect.getfile(sphere2cart))
 
@@ -436,19 +458,23 @@ Type Hints and Signatures
 
    from pytcl.coordinate_systems.conversions import cart2sphere
    import inspect
-   
+
    sig = inspect.signature(cart2sphere)
    print(sig)
-   # (cart_coords: NDArray[np.floating[Any]], ...) -> NDArray[np.floating[Any]]
-   
+   # (abridged output)
+   # (cart_points: ArrayLike,
+   #  system_type: Literal['standard', 'az-el', 'range-az-el'] = 'standard')
+   #  -> Tuple[ndarray, ndarray, ndarray]
+
    # Understand the parameters
    for param_name, param in sig.parameters.items():
        print(f"{param_name}: {param.annotation}")
 
 **Benefits**:
-  - IDE autocomplete shows expected types
-  - Type checking (mypy, pyright) catches errors
-  - Self-documenting code
+
+- IDE autocomplete shows expected types
+- Type checking (mypy, pyright) catches errors
+- Self-documenting code
 
 Common Errors and Solutions
 ----------------------------
@@ -459,27 +485,29 @@ Solution: Check the correct import path
 
 .. code-block:: python
 
-   # ❌ Wrong
-   from pytcl.dynamic_estimation.kalman import kf_predict  # Module doesn't exist here
-   
-   # ✅ Correct
+   # Wrong: kalman is not a top-level module
+   # from pytcl.kalman import kf_predict
+
+   # Correct
    from pytcl.dynamic_estimation.kalman import kf_predict
 
-**TypeError: Unexpected argument type**
+**TypeError: missing required positional arguments**
 
-Solution: Check function signature
+Solution: Check the function signature -- many conversions take separate
+scalar/array arguments rather than one packed vector
 
 .. code-block:: python
 
-   from pytcl.coordinate_systems.conversions import cart2sphere
-   help(cart2sphere)  # Shows expected types
-   
-   # ❌ Wrong: function expects ndarray
-   cart2sphere([1.0, 0.0, 0.0])  # List instead of ndarray
-   
-   # ✅ Correct
-   import numpy as np
-   cart2sphere(np.array([1.0, 0.0, 0.0]))
+   from pytcl.coordinate_systems.conversions import sphere2cart
+   help(sphere2cart)  # Shows the (r, az, el) parameters
+
+   # Wrong: one packed array
+   # sphere2cart(np.array([1000.0, 0.5, 0.1]))
+   # TypeError: sphere2cart() missing 2 required positional
+   # arguments: 'az' and 'el'
+
+   # Correct: separate arguments
+   cart = sphere2cart(1000.0, 0.5, 0.1, system_type='az-el')
 
 **"Function not found" but you know it exists**
 
@@ -489,7 +517,7 @@ Solution: Check alternative names
 
    # Maybe it's in a different module
    import pytcl
-   
+
    # Search all modules
    for module_name in dir(pytcl):
        module = getattr(pytcl, module_name)
@@ -504,10 +532,10 @@ Getting Help
 .. code-block:: text
 
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # View docstring
    help(kf_predict)
-   
+
    # View signature
    import inspect
    print(inspect.signature(kf_predict))
@@ -517,10 +545,10 @@ Getting Help
 .. code-block:: text
 
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # View docstring in sidebar
    kf_predict?
-   
+
    # View source code
    kf_predict??
 
@@ -543,26 +571,33 @@ Most functions accept/return N-dimensional NumPy arrays:
 .. code-block:: python
 
    import numpy as np
-   
-   # Single value
-   result = func(np.array([1.0, 2.0, 3.0]))  # shape (3,)
-   
-   # Multiple values
-   results = func(np.array([[1.0, 2.0, 3.0],
-                            [4.0, 5.0, 6.0]]))  # shape (2, 3)
+   from pytcl.coordinate_systems.conversions import cart2sphere
+
+   # Single point, shape (3,)
+   r, az, el = cart2sphere(np.array([1.0, 2.0, 3.0]))
+
+   # Multiple points at once: shape (3, n) or (n, 3)
+   r, az, el = cart2sphere(np.array([[1.0, 2.0, 3.0],
+                                     [4.0, 5.0, 6.0]]))
 
 **Return Values**:
 
-Most functions return named tuples or dataclasses for clarity:
+Most functions return named tuples for clarity:
 
 .. code-block:: python
 
-   from pytcl.dynamic_estimation.kalman import KalmanUpdate
-   
-   result = kf_predict(x, P, F, Q)
-   # result.x = predicted state
-   # result.P = predicted covariance
-   # result.S = innovation covariance (if applicable)
+   from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
+
+   x, P = np.zeros(4), np.eye(4)          # state and covariance
+   F, Q = np.eye(4), np.eye(4) * 0.01     # transition and process noise
+
+   pred = kf_predict(x, P, F, Q)
+   # pred.x = predicted state, pred.P = predicted covariance
+
+   z, H, R = np.array([1.0, 2.0]), np.eye(2, 4), np.eye(2)
+   upd = kf_update(pred.x, pred.P, z, H, R)
+   # upd.x, upd.P, plus upd.y (innovation), upd.S (innovation
+   # covariance), upd.K (gain), upd.likelihood
 
 **Optional Parameters**:
 
@@ -570,54 +605,48 @@ Many functions have optional parameters with sensible defaults:
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import relaxation_assignment_nd
-   
-   # Simple usage with default method
-   assignments = relaxation_assignment_nd(cost_matrix)
-   
-   # Advanced: specify method
-   assignments = relaxation_assignment_nd(cost_matrix, method='hungarian')
+   from pytcl.assignment_algorithms import assign2d
+
+   # Simple usage with defaults
+   result = assign2d(cost_matrix)
+
+   # Advanced: allow non-assignment at a fixed cost, or maximize profit
+   result = assign2d(cost_matrix, cost_of_non_assignment=10.0)
+   result = assign2d(cost_matrix, maximize=True)
 
 Best Practices
 --------------
 
 1. **Start with the highest-level API**
-   
-   ✅ Use: ``from pytcl.trackers import MultiTargetTracker``
-   
-   ❌ Avoid: Implementing by combining 10 lower-level functions
+
+   Use: ``from pytcl.trackers import MultiTargetTracker``
+
+   Avoid: Implementing by combining 10 lower-level functions
 
 2. **Check examples for your use case**
-   
+
    ``examples/`` folder has code for:
+
    - Multi-target tracking
    - INS/GNSS navigation
    - Satellite operations
    - Signal processing
 
 3. **Use the type hints**
-   
-   ✅ Enable mypy checking in your IDE
-   
-   ✅ Trust IDE autocomplete
-   
-   ❌ Don't ignore type errors
+
+   Enable mypy checking in your IDE, and trust IDE autocomplete.
 
 4. **Understand the math**
-   
-   ✅ Reference :doc:`kalman_filter_tuning` for filter parameters
-   
-   ✅ Use :doc:`performance_optimization` for profiling
-   
-   ❌ Don't guess at parameters
+
+   Reference :doc:`kalman_filter_tuning` for filter parameters and
+   :doc:`performance_optimization` for profiling. Don't guess at
+   parameters.
 
 5. **Profile before optimizing**
-   
-   ✅ Use cProfile to find bottlenecks
-   
-   ✅ See :doc:`performance_optimization` for GPU acceleration
-   
-   ❌ Don't prematurely optimize
+
+   Use cProfile to find bottlenecks, and see
+   :doc:`performance_optimization` for GPU acceleration. Don't
+   prematurely optimize.
 
 See Also
 ~~~~~~~~

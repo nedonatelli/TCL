@@ -18,7 +18,7 @@ IMU measurements (accelerometers and gyroscopes).
 
    import numpy as np
    from pytcl.navigation import (
-       INSState, IMUData,
+       IMUData,
        initialize_ins_state, mechanize_ins_ned
    )
 
@@ -28,19 +28,21 @@ IMU measurements (accelerometers and gyroscopes).
    lon = np.radians(-122.0)
    alt = 100.0
 
-   # Initial velocity NED (m/s)
-   vel_ned = np.array([10.0, 5.0, 0.0])
+   # Velocity is given as NED components, attitude as Euler angles
+   state = initialize_ins_state(
+       lat, lon, alt,
+       vN=10.0, vE=5.0, vD=0.0,
+       roll=0.0, pitch=0.0, yaw=np.radians(45.0),
+   )
 
-   # Initial attitude: roll, pitch, yaw (rad)
-   attitude = np.array([0.0, 0.0, np.radians(45.0)])
+   # state.position: [lat, lon, alt], state.velocity: [vN, vE, vD],
+   # state.quaternion: body-to-NED attitude quaternion
 
-   state = initialize_ins_state(lat, lon, alt, vel_ned, attitude)
-
-   # IMU data (gyros in rad/s, accels in m/s^2)
+   # IMU data (accels in m/s^2, gyros in rad/s)
    imu = IMUData(
-       dt=0.01,
+       accel=np.array([0.0, 0.0, -9.81]),   # Gravity only
        gyro=np.array([0.001, 0.0, 0.005]),  # Small rotation
-       accel=np.array([0.0, 0.0, -9.81])    # Gravity only
+       dt=0.01,
    )
 
    # Propagate one step
@@ -57,21 +59,25 @@ Before navigation, the INS must be aligned to determine initial attitude.
 
    from pytcl.navigation import coarse_alignment
 
-   # Collect static IMU data
-   static_gyro = np.array([0.0, 0.0, 0.0])  # Earth rate negligible
-   static_accel = np.array([0.0, 0.0, -9.81])  # Gravity vector
+   # Static accelerometer data senses the gravity vector
+   static_accel = np.array([0.0, 0.0, -9.81])
 
-   # Compute initial attitude
-   roll, pitch, yaw = coarse_alignment(static_accel, lat)
+   # Leveling: recovers roll and pitch from gravity
+   roll, pitch = coarse_alignment(static_accel, lat)
 
-**Gyrocompass Alignment (finer heading):**
+**Gyrocompass Alignment (heading):**
 
 .. code-block:: python
 
    from pytcl.navigation import gyrocompass_alignment
 
-   # Using Earth rate sensed by gyroscopes
-   yaw = gyrocompass_alignment(static_gyro, lat)
+   # Stationary gyroscopes sense the Earth rotation rate
+   omega_ie = 7.292115e-5  # rad/s
+   static_gyro = np.array([
+       omega_ie * np.cos(lat), 0.0, -omega_ie * np.sin(lat)
+   ])
+
+   yaw = gyrocompass_alignment(static_gyro, roll, pitch, lat)
 
 Loosely-Coupled Integration
 ---------------------------
@@ -84,32 +90,22 @@ Initialization
 
 .. code-block:: python
 
-   from pytcl.navigation import (
-       initialize_ins_gnss, INSGNSSState,
-       ins_error_state_matrix, ins_process_noise_matrix
-   )
+   from pytcl.navigation import initialize_ins_gnss
 
-   # Initial position from GNSS
-   gnss_pos = np.array([lat, lon, alt])
-   gnss_vel = np.array([10.0, 5.0, 0.0])
-
-   # Initialize integrated state
+   # Wrap the INS state with a 15-state error filter:
+   # [position, velocity, attitude, accel bias, gyro bias] errors
    ins_gnss = initialize_ins_gnss(
-       lat=lat, lon=lon, alt=alt,
-       vel_ned=gnss_vel,
-       attitude=attitude
+       state,
+       position_std=10.0,             # m
+       velocity_std=0.1,              # m/s
+       attitude_std=np.radians(1.0),  # rad
+       accel_bias_std=1e-2,           # m/s^2
+       gyro_bias_std=1e-4,            # rad/s
    )
 
-   # Error state covariance
-   P = np.diag([
-       10.0, 10.0, 10.0,        # Position errors (m)
-       0.1, 0.1, 0.1,           # Velocity errors (m/s)
-       np.radians(1)**2,        # Roll error
-       np.radians(1)**2,        # Pitch error
-       np.radians(5)**2,        # Heading error
-       1e-4, 1e-4, 1e-4,        # Accel biases
-       1e-5, 1e-5, 1e-5,        # Gyro biases
-   ])
+   # ins_gnss.ins_state: the INS navigation solution
+   # ins_gnss.error_state: 15-element error state (zeros after each reset)
+   # ins_gnss.error_cov: 15x15 error covariance
 
 Prediction Step
 ^^^^^^^^^^^^^^^
@@ -117,26 +113,21 @@ Prediction Step
 .. code-block:: python
 
    from pytcl.navigation import loose_coupled_predict
-   from pytcl.dynamic_estimation import kf_predict
 
-   # INS mechanization (predict INS state)
-   ins_state = mechanize_ins_ned(ins_gnss.ins_state, imu)
-
-   # Error state dynamics
-   dt = imu.dt
-   F = ins_error_state_matrix(ins_state, dt)
-   Q = ins_process_noise_matrix(
-       dt,
-       accel_noise=0.01,    # m/s^2/sqrt(Hz)
-       gyro_noise=0.001,    # rad/s/sqrt(Hz)
-       accel_bias=1e-6,     # m/s^3
-       gyro_bias=1e-7       # rad/s^2
+   # One prediction step: mechanizes the INS and propagates the
+   # error covariance in a single call
+   ins_gnss = loose_coupled_predict(
+       ins_gnss, imu,
+       accel_noise_std=0.01,   # m/s^2
+       gyro_noise_std=0.001,   # rad/s
+       accel_bias_std=1e-5,
+       gyro_bias_std=1e-7,
    )
 
-   # Kalman prediction
-   dx = np.zeros(15)  # Error state
-   pred = kf_predict(dx, P, F, Q)
-   dx, P = pred.x, pred.P
+Internally this calls ``mechanize_ins_ned`` for the navigation solution and
+builds the error-state dynamics with ``ins_error_state_matrix`` and
+``ins_process_noise_matrix``, then propagates the covariance with
+``kf_predict``.
 
 GNSS Update
 ^^^^^^^^^^^
@@ -144,36 +135,32 @@ GNSS Update
 .. code-block:: python
 
    from pytcl.navigation import (
-       loose_coupled_update,
-       position_velocity_measurement_matrix
+       GNSSMeasurement, loose_coupled_update,
+       position_std_to_error_state_units
    )
-   from pytcl.dynamic_estimation import kf_update
 
-   # GNSS measurement
-   gnss_pos_meas = np.array([lat + 1e-6, lon + 1e-6, alt + 2.0])
-   gnss_vel_meas = np.array([10.1, 5.05, 0.1])
+   lat_ins, lon_ins, alt_ins = ins_gnss.ins_state.position
 
-   # Measurement matrix
-   H = position_velocity_measurement_matrix()
+   # Position covariance in error-state units [rad, rad, m]:
+   # convert a 2.5 m horizontal / 5 m vertical accuracy
+   pos_std = position_std_to_error_state_units(2.5, lat_ins, alt_ins)
+   position_cov = np.diag([pos_std[0]**2, pos_std[1]**2, 5.0**2])
 
-   # Innovation (GNSS - INS)
-   z_pos = gnss_pos_meas - np.array([
-       ins_state.latitude, ins_state.longitude, ins_state.altitude
-   ])
-   z_vel = gnss_vel_meas - ins_state.velocity
-   z = np.concatenate([z_pos, z_vel])
+   # GNSS measurement (position in [lat, lon, alt], velocity in NED)
+   gnss = GNSSMeasurement(
+       position=np.array([lat_ins + 1e-6, lon_ins + 1e-6, alt_ins + 2.0]),
+       velocity=np.array([10.1, 5.05, 0.1]),
+       position_cov=position_cov,
+       velocity_cov=np.diag([0.1**2, 0.1**2, 0.2**2]),
+       time=0.0,
+   )
 
-   # Measurement noise
-   R = np.diag([2.5, 2.5, 5.0,   # Position (m)
-                0.1, 0.1, 0.2])   # Velocity (m/s)
+   # Kalman update: corrects the INS state and resets the error state
+   result = loose_coupled_update(ins_gnss, gnss)
+   ins_gnss = result.state
 
-   # Kalman update
-   upd = kf_update(dx, P, z, H, R)
-   dx, P = upd.x, upd.P
-
-   # Apply correction to INS state
-   result = loose_coupled_update(ins_state, dx)
-   ins_state = result.corrected_state
+   # result.innovation: measurement innovation (GNSS - INS)
+   # result.innovation_cov: innovation covariance
 
 Tightly-Coupled Integration
 ---------------------------
@@ -190,41 +177,47 @@ Pseudorange Measurement Model
    from pytcl.navigation import (
        compute_line_of_sight, pseudorange_measurement_matrix,
        tight_coupled_pseudorange_innovation, tight_coupled_update,
-       SatelliteInfo, GNSSMeasurement
+       SatelliteInfo, geodetic_to_ecef
    )
 
-   # Satellite information (from GNSS receiver)
+   lat_ins, lon_ins, alt_ins = ins_gnss.ins_state.position
+   user_ecef = np.array(geodetic_to_ecef(lat_ins, lon_ins, alt_ins))
+
+   # Satellite observations (positions/velocities in ECEF, from the
+   # GNSS receiver; pseudoranges include the receiver clock bias)
+   sat_positions = [
+       np.array([-8616e3, -13789e3, 21001e3]),
+       np.array([3807e3, -22824e3, 13039e3]),
+       np.array([-17719e3, -19498e3, 3361e3]),
+       np.array([-18391e3, -1866e3, 19071e3]),
+   ]
    satellites = [
        SatelliteInfo(
-           prn=1,
-           x=15600e3, y=7540e3, z=20140e3,  # ECEF position
-           vx=-50.0, vy=100.0, vz=20.0,     # ECEF velocity
-           clock_bias=1e-6,
-           clock_drift=1e-9
-       ),
-       # ... more satellites
+           prn=i + 1,
+           position=pos,
+           velocity=np.array([-50.0, 100.0, 20.0]),
+           pseudorange=float(np.linalg.norm(pos - user_ecef)) + 5.0,
+       )
+       for i, pos in enumerate(sat_positions)
    ]
 
-   # Pseudorange measurements
-   measurements = [
-       GNSSMeasurement(prn=1, pseudorange=22345678.9, doppler=-1234.5),
-       # ... more measurements
-   ]
+   # Line-of-sight unit vector and geometric range to one satellite
+   los, rng = compute_line_of_sight(user_ecef, satellites[0].position)
 
-   # Compute line-of-sight vectors
-   user_ecef = geodetic_to_ecef(lat, lon, alt)
-   los_vectors = [compute_line_of_sight(user_ecef, sat) for sat in satellites]
+   # Measurement matrix (one row per satellite, plus clock column)
+   H = pseudorange_measurement_matrix(user_ecef, satellites)
 
-   # Measurement matrix
-   H = pseudorange_measurement_matrix(los_vectors, len(satellites))
-
-   # Innovations
-   innovations = tight_coupled_pseudorange_innovation(
-       ins_state, satellites, measurements
+   # Innovations (measured - predicted pseudoranges)
+   innovations, predicted = tight_coupled_pseudorange_innovation(
+       ins_gnss, satellites
    )
 
-   # Measurement noise (pseudorange accuracy)
-   R = np.eye(len(satellites)) * 5.0**2  # 5m pseudorange noise
+   # Full tightly-coupled update (5 m pseudorange noise)
+   tight_result = tight_coupled_update(ins_gnss, satellites, pseudorange_std=5.0)
+
+   # tight_result.state: corrected INS/GNSS state
+   # tight_result.innovations: pseudorange innovations
+   # tight_result.dop: dilution of precision values
 
 DOP Computation
 ^^^^^^^^^^^^^^^
@@ -233,17 +226,20 @@ DOP Computation
 
    from pytcl.navigation import compute_dop, satellite_elevation_azimuth
 
-   # Dilution of precision
-   dop = compute_dop(los_vectors)
-   print(f"GDOP: {dop.gdop:.2f}")
-   print(f"PDOP: {dop.pdop:.2f}")
-   print(f"HDOP: {dop.hdop:.2f}")
-   print(f"VDOP: {dop.vdop:.2f}")
+   # Dilution of precision from the geometry matrix; passing the user
+   # position rotates the split into the local horizontal/vertical frame
+   user_lla = ins_gnss.ins_state.position
+   gdop, pdop, hdop, vdop = compute_dop(H, user_lla=user_lla)
+   print(f"GDOP: {gdop:.2f}")
+   print(f"PDOP: {pdop:.2f}")
+   print(f"HDOP: {hdop:.2f}")
+   print(f"VDOP: {vdop:.2f}")
 
    # Satellite geometry
    for sat in satellites:
-       el, az = satellite_elevation_azimuth(user_ecef, sat)
-       print(f"PRN {sat.prn}: El={np.degrees(el):.1f}°, Az={np.degrees(az):.1f}°")
+       el, az = satellite_elevation_azimuth(user_lla, sat.position)
+       print(f"PRN {sat.prn}: El={np.degrees(el):.1f} deg, "
+             f"Az={np.degrees(az):.1f} deg")
 
 GNSS Outage Detection
 ^^^^^^^^^^^^^^^^^^^^^
@@ -252,12 +248,11 @@ GNSS Outage Detection
 
    from pytcl.navigation import gnss_outage_detection
 
-   # Monitor innovation consistency
-   innovation_norm = np.linalg.norm(innovations)
-   expected_norm = np.sqrt(np.trace(H @ P @ H.T + R))
-
+   # Chi-squared consistency test on the loose-coupled innovations
    is_outage = gnss_outage_detection(
-       innovations, H, P, R, threshold=5.0
+       result.innovation,
+       result.innovation_cov,
+       threshold=12.592,  # chi-squared 95% for 6 DOF (pos + vel)
    )
 
    if is_outage:
@@ -270,90 +265,82 @@ Complete Integration Example
 
    import numpy as np
    from pytcl.navigation import (
-       initialize_ins_state, mechanize_ins_ned, IMUData,
-       ins_error_state_matrix, ins_process_noise_matrix,
-       position_velocity_measurement_matrix, loose_coupled_update
+       GNSSMeasurement, IMUData,
+       initialize_ins_gnss, initialize_ins_state,
+       loose_coupled_predict, loose_coupled_update,
+       position_std_to_error_state_units
    )
-   from pytcl.dynamic_estimation import kf_predict, kf_update
 
    # Simulation parameters
-   dt = 0.01       # IMU rate: 100 Hz
-   gnss_rate = 1.0 # GNSS rate: 1 Hz
-   duration = 60.0 # seconds
+   dt = 0.01          # IMU rate: 100 Hz
+   gnss_period = 1.0  # GNSS rate: 1 Hz
+   duration = 60.0    # seconds
 
    np.random.seed(42)
 
    # Initialize
    lat, lon, alt = np.radians(37.0), np.radians(-122.0), 100.0
-   vel = np.array([10.0, 5.0, 0.0])
-   att = np.array([0.0, 0.0, np.radians(45.0)])
+   state = initialize_ins_state(
+       lat, lon, alt, vN=10.0, vE=5.0, vD=0.0, yaw=np.radians(45.0)
+   )
+   ins_gnss = initialize_ins_gnss(
+       state, position_std=10.0, velocity_std=0.1,
+       attitude_std=np.radians(1.0)
+   )
 
-   ins_state = initialize_ins_state(lat, lon, alt, vel, att)
-   dx = np.zeros(15)
-   P = np.diag([
-       10, 10, 10,          # Position
-       0.1, 0.1, 0.1,       # Velocity
-       0.001, 0.001, 0.01,  # Attitude
-       1e-4, 1e-4, 1e-4,    # Accel bias
-       1e-5, 1e-5, 1e-5     # Gyro bias
-   ])
-
-   # GNSS measurement noise
-   R = np.diag([2.5, 2.5, 5.0, 0.1, 0.1, 0.2])
-   H = position_velocity_measurement_matrix()
-
-   # Process noise parameters
+   # Sensor noise parameters
    accel_noise = 0.01
    gyro_noise = 0.001
 
    # Simulation loop
    time = 0.0
-   gnss_time = 0.0
+   next_gnss = gnss_period
    trajectory = []
 
    while time < duration:
-       # Simulate IMU (with some noise)
+       # Simulate IMU: stationary rotation rates, gravity plus noise
        imu = IMUData(
+           accel=np.array([0.0, 0.0, -9.81]) + np.random.randn(3) * accel_noise,
+           gyro=np.random.randn(3) * gyro_noise,
            dt=dt,
-           gyro=np.array([0.001, 0.0, 0.005]) + np.random.randn(3) * gyro_noise,
-           accel=np.array([0.1, 0.05, -9.81]) + np.random.randn(3) * accel_noise
        )
 
-       # INS mechanization
-       ins_state = mechanize_ins_ned(ins_state, imu)
-
-       # Error state prediction
-       F = ins_error_state_matrix(ins_state, dt)
-       Q = ins_process_noise_matrix(dt, accel_noise, gyro_noise, 1e-6, 1e-7)
-       pred = kf_predict(dx, P, F, Q)
-       dx, P = pred.x, pred.P
+       # INS mechanization + error covariance propagation
+       ins_gnss = loose_coupled_predict(
+           ins_gnss, imu,
+           accel_noise_std=accel_noise, gyro_noise_std=gyro_noise,
+       )
 
        # GNSS update (at lower rate)
-       if time >= gnss_time:
-           # Simulated GNSS measurement
-           z = np.concatenate([
-               np.random.randn(3) * np.array([2.5, 2.5, 5.0]),
-               np.random.randn(3) * np.array([0.1, 0.1, 0.2])
-           ])
+       if time >= next_gnss:
+           lat_i, lon_i, alt_i = ins_gnss.ins_state.position
 
-           upd = kf_update(dx, P, z, H, R)
-           dx, P = upd.x, upd.P
+           # Simulated GNSS fix near the INS position
+           # (2.5 m horizontal / 5 m vertical, 0.1 m/s velocity)
+           pos_std = position_std_to_error_state_units(2.5, lat_i, alt_i)
+           gnss = GNSSMeasurement(
+               position=np.array([
+                   lat_i + np.random.randn() * pos_std[0],
+                   lon_i + np.random.randn() * pos_std[1],
+                   alt_i + np.random.randn() * 5.0,
+               ]),
+               velocity=ins_gnss.ins_state.velocity + np.random.randn(3) * 0.1,
+               position_cov=np.diag([pos_std[0]**2, pos_std[1]**2, 5.0**2]),
+               velocity_cov=np.eye(3) * 0.1**2,
+               time=time,
+           )
 
-           # Apply correction
-           result = loose_coupled_update(ins_state, dx)
-           ins_state = result.corrected_state
-           dx = np.zeros(15)  # Reset error state
+           result = loose_coupled_update(ins_gnss, gnss)
+           ins_gnss = result.state
 
-           gnss_time += gnss_rate
+           next_gnss += gnss_period
 
-       trajectory.append([
-           ins_state.latitude, ins_state.longitude, ins_state.altitude
-       ])
+       trajectory.append(ins_gnss.ins_state.position.copy())
        time += dt
 
    trajectory = np.array(trajectory)
-   print(f"Final position: {np.degrees(trajectory[-1, 0]):.6f}°, "
-         f"{np.degrees(trajectory[-1, 1]):.6f}°, {trajectory[-1, 2]:.1f}m")
+   print(f"Final position: {np.degrees(trajectory[-1, 0]):.6f} deg, "
+         f"{np.degrees(trajectory[-1, 1]):.6f} deg, {trajectory[-1, 2]:.1f} m")
 
 Next Steps
 ----------

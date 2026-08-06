@@ -15,4 +15,4 @@ Examples demonstrating dynamic motion models.
    :header-rows: 0
 
    * - :download:`dynamic_models_demo.py <../../../examples/dynamic_models_demo.py>`
-     - Constant velocity, coordinated turn, Singer acceleration models
+     - Constant-velocity models: state transition, process noise, drift

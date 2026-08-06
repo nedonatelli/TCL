@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Output directory for plots
-OUTPUT_DIR = Path("../_static/images/tutorials")
+OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 SHOW_PLOTS = False
 
@@ -66,7 +66,7 @@ def radar_detection_tutorial():
     power_data = np.abs(radar_data) ** 2
     power_db = 10 * np.log10(power_data + 1e-10)
 
-    print(f"Radar data created: {n_doppler} Doppler × {n_range} Range")
+    print(f"Radar data created: {n_doppler} Doppler x {n_range} Range")
     print(f"Inserted {len(targets)} targets with varying SNR")
 
     # Step 2: Implement OS-CFAR (Order Statistic CFAR)
@@ -267,7 +267,7 @@ def radar_detection_tutorial():
     else:
         fig.write_html(str(OUTPUT_DIR / "radar_detection.html"))
 
-    print("✓ Radar detection visualization complete")
+    print("Radar detection visualization complete")
     print("=" * 70)
 
 

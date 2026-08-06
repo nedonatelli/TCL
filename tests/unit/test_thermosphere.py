@@ -1,7 +1,7 @@
 """
 Tests for NRLMSISE-00 atmospheric model.
 
-Validates high-fidelity atmosphere model for density, temperature,
+Validates the simplified thermosphere model for density, temperature,
 and composition profiles across altitude range -5 to 1000 km.
 """
 
@@ -12,7 +12,7 @@ from pytcl.atmosphere import ThermosphereState, simplified_thermosphere
 
 
 class TestNRLMSISE00Basic:
-    """Basic functionality tests for NRLMSISE-00 model."""
+    """Basic functionality tests for the simplified thermosphere model."""
 
     def test_scalar_inputs(self):
         """Test model with scalar inputs."""

@@ -56,9 +56,10 @@ Code Highlights
 The example demonstrates:
 
 - ``cart2sphere()`` and ``sphere2cart()``
-- ``geodetic_to_ecef()`` and ``ecef_to_geodetic()``
+- ``geodetic2ecef()`` and ``ecef2geodetic()``
 - ``ecef2enu()`` and ``enu2ecef()``
-- ``euler2quat()`` and ``quat2euler()``
+- ``euler2rotmat()`` and ``rotmat2euler()``, with ``rotmat2quat()`` and
+  ``quat2rotmat()`` for quaternion conversions
 - ``slerp()`` for quaternion interpolation
 
 Source Code

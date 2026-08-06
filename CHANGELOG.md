@@ -244,6 +244,18 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Fixed
 
+- **The combined INS/GNSS update ignored the position fix under default
+  covariances.** gh-19's unit conversion -- the position innovation is
+  [rad, rad, m], so a meters-quoted default noise must be converted --
+  was applied to `loose_coupled_update_position` but not to the combined
+  position+velocity path in `loose_coupled_update`, which kept a raw
+  diag(10 m)^2 on the radian diagonal. R_pos was therefore ~1e13 too
+  large and the filter absorbed essentially none of the position
+  innovation (fraction ~1e-13; correct textbook gain for matching 10 m
+  defaults is 1/2). Found while executing the INS/GNSS tutorial against
+  the real API. The fix mirrors the position-only path, and the
+  regression test is verified to fail against the unfixed code.
+
 - **The 5-10x HDF5 compression claim measured at 1.3x, and corrected.** The
   roadmap's Phase 8 quality gates were finally measured (commit `d5b0add`,
   macOS arm64, gzip level 4). Three hold with margin: 3,575 detections/sec

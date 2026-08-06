@@ -11,8 +11,10 @@ state space into:
 - **Nonlinear subspace (y)**: Handled via particle filtering
 - **Linear subspace (x)**: Handled analytically via Kalman filtering per particle
 
-This approach reduces estimator variance by 10-50% compared to standard particle
-filters while maintaining comparable computational cost.
+Because part of the state is marginalized analytically, the RBPF never has
+higher estimator variance than a standard particle filter with the same
+number of particles; the advantage grows with the dimension of the linear
+subspace.
 
 System Model
 ------------
@@ -22,18 +24,19 @@ The RBPF assumes a state space that can be partitioned:
 .. math::
 
    \begin{align}
-   \mathbf{y}_{k+1} &= \mathbf{f}_n(\mathbf{y}_k, \mathbf{u}_k) + \mathbf{w}_k^y \\
-   \mathbf{x}_{k+1} &= \mathbf{A}_k(\mathbf{y}_k) \mathbf{x}_k + \mathbf{b}_k(\mathbf{y}_k) + \mathbf{w}_k^x \\
-   \mathbf{z}_k &= \mathbf{h}(\mathbf{y}_k, \mathbf{x}_k) + \mathbf{v}_k
+   \mathbf{y}_{k+1} &= \mathbf{g}(\mathbf{y}_k) + \mathbf{w}_k^y \\
+   \mathbf{x}_{k+1} &= \mathbf{f}(\mathbf{x}_k, \mathbf{y}_k) + \mathbf{w}_k^x \\
+   \mathbf{z}_k &= \mathbf{h}(\mathbf{x}_k, \mathbf{y}_k) + \mathbf{v}_k
    \end{align}
 
 Where:
+
 - :math:`\mathbf{y}_k` is the nonlinear state (particle-filtered)
 - :math:`\mathbf{x}_k` is the linear state (Kalman-filtered per particle)
 - :math:`\mathbf{w}_k^y, \mathbf{w}_k^x` are process noise (Gaussian)
 - :math:`\mathbf{v}_k` is measurement noise (Gaussian)
 
-The key insight: Each particle tracks both **y** and maintains its own
+The key insight: each particle tracks its own **y** and maintains its own
 Kalman filter for **x**.
 
 Applications
@@ -42,231 +45,212 @@ Applications
 Ideal for systems like:
 
 1. **Nonlinear target dynamics + linear sensor**
-   - Maneuvering target with constant acceleration in inertial frame
+
+   - Maneuvering target with correlated accelerations
    - Sensor measures range and bearing nonlinearly
 
 2. **Bilinear systems**
+
    - Gain-scheduled systems with nonlinear mode dynamics
-   - Each particle represents different maneuver mode
+   - Each particle represents a different maneuver mode
 
 3. **Mixed observability**
-   - Some states directly measured (linear obs.)
+
+   - Some states directly measured (linear observation)
    - Others inferred from nonlinear functions
 
 Basic Usage
 -----------
 
+The filter is driven through ``RBPFFilter`` with four steps: ``initialize``,
+``predict``, ``update``, and ``estimate``.
+
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation import (
-       RBPFFilter,
-       rbpf_predict,
-       rbpf_update,
+   from pytcl.dynamic_estimation import RBPFFilter
+
+   np.random.seed(42)
+
+   # State-space partition:
+   # y = bearing (nonlinear, particle-filtered)
+   # x = [range, range-rate] (linear, Kalman-filtered per particle)
+
+   n_particles = 200
+   rbpf = RBPFFilter(max_particles=n_particles)
+   rbpf.initialize(
+       y0=np.array([0.05]),          # initial bearing
+       x0=np.array([100.0, 0.0]),    # initial [r, rdot]
+       P0=np.diag([1.0, 0.1]),       # covariance of the linear subspace
+       num_particles=n_particles,
    )
 
-   # State space partition:
-   # y = theta (angle, nonlinear dynamics)
-   # x = [r, v] (range and range-rate, linear dynamics)
+   dt = 0.1
 
-   # 1. Initialize filter
-   N_particles = 500
-   y0 = np.zeros((N_particles, 1))    # Initial angles
-   x0_fn = lambda y: np.array([100.0, 0.0])  # Initial [r, v] per particle
-   P0 = np.diag([1.0, 0.1])  # Covariance for linear subspace
+   # Nonlinear dynamics for y: bearing random walk
+   def g(y):
+       return y
 
-   filter = RBPFFilter(
-       y0=y0,
-       x0_fn=x0_fn,
-       P0=P0,
-       N_particles=N_particles,
-   )
+   G = np.eye(1)             # Jacobian of g
+   Qy = np.array([[1e-4]])   # process noise for y
 
-   # 2. Define nonlinear dynamics for y
-   def nonlinear_dynamics(y, u=None):
-       """Angle update with random walk"""
-       return y + 0.01 * np.random.randn(*y.shape)
+   # Linear dynamics for x; may depend on the particle's y via the
+   # second argument
+   def f(x, y):
+       return np.array([x[0] + dt * x[1], x[1]])
 
-   # 3. Define linear dynamics matrix for x (given y)
-   def linear_A_matrix(y):
-       """State transition for [r, v]"""
-       dt = 0.1
-       return np.array([[1.0, dt], [0.0, 1.0]])
+   F = np.array([[1.0, dt], [0.0, 1.0]])   # Jacobian of f with respect to x
+   Qx = np.diag([1e-3, 1e-2])
 
-   # Process noise covariance (linear subspace)
-   Q = np.diag([0.001, 0.01])
+   rbpf.predict(g=g, G=G, Qy=Qy, f=f, F=F, Qx=Qx)
 
-   # Process noise covariance (nonlinear subspace)
-   q_nonlinear = 0.001
-
-   # 4. Prediction
-   filter = rbpf_predict(
-       filter,
-       f_nonlinear=nonlinear_dynamics,
-       F_linear=linear_A_matrix,
-       Q=Q,
-       q_nonlinear=q_nonlinear,
-   )
-
-   # 5. Define measurement function
-   def measurement(y, x):
-       """Measure range (x[0]) and bearing (y)"""
+   # Measurement: range from x, bearing from y
+   def h(x, y):
        return np.array([x[0], y[0]])
 
-   # Measurement Jacobian
-   def measure_jacobian_y(y, x):
-       return np.array([[0.0], [1.0]])  # dh/dy
-
-   def measure_jacobian_x(y, x):
-       return np.array([[1.0, 0.0], [0.0, 0.0]])  # dh/dx
-
-   # Measurement
+   H = np.array([[1.0, 0.0], [0.0, 0.0]])  # Jacobian of h with respect to x
+   R = np.diag([0.1, 1e-3])
    z = np.array([100.5, 0.05])
-   R = np.diag([0.1, 0.01])
 
-   # 6. Update
-   filter = rbpf_update(
-       filter,
-       z=z,
-       h=measurement,
-       H_y=measure_jacobian_y,
-       H_x=measure_jacobian_x,
-       R=R,
-   )
+   rbpf.update(z=z, h=h, H=H, R=R)
 
-   # 7. Get estimate
-   y_mean = filter.y.mean(axis=0)  # Mean estimate of nonlinear state
-   x_mean = (filter.x * filter.weights[:, np.newaxis]).sum(axis=0)
+   y_est, x_est, P_est = rbpf.estimate()
+   print(f"bearing={y_est[0]:.4f}  range={x_est[0]:.2f}  range-rate={x_est[1]:.3f}")
+
+Output::
+
+   bearing=0.0507  range=100.45  range-rate=0.005
+
+Note the conventions:
+
+- ``f`` and ``h`` take the linear state first: ``f(x, y)`` and ``h(x, y)``
+- ``G``, ``F``, and ``H`` are Jacobian *matrices*, not callables; ``H`` is
+  the Jacobian of ``h`` with respect to ``x`` only
+- ``estimate`` returns the weighted means of both subspaces plus the total
+  covariance of the linear subspace (mean of per-particle covariances plus
+  spread of per-particle means)
+
+A functional API operating on explicit particle lists is also available:
+
+.. code-block:: python
+
+   from pytcl.dynamic_estimation import rbpf_predict, rbpf_update
+
+   particles = rbpf.get_particles()   # list of RBPFParticle(y, x, P, w)
+   particles = rbpf_predict(particles, g, G, Qy, f, F, Qx)
+   particles = rbpf_update(particles, z, h, H, R)
 
 Advanced Example: Maneuvering Target Tracking
 ----------------------------------------------
 
-Estimate 3D position of maneuvering aircraft with ground radar:
+Track a maneuvering target whose accelerations follow a first-order Markov
+process (nonlinear subspace) while position and velocity stay conditionally
+linear:
 
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation import RBPFFilter, rbpf_predict, rbpf_update
+   from pytcl.dynamic_estimation import RBPFFilter
+
+   np.random.seed(7)
 
    # State partition:
-   # y = [ax, ay, az] (accelerations, nonlinear)
-   # x = [px, py, pz, vx, vy, vz] (position & velocity, linear)
+   # y = [ax, ay] (accelerations, nonlinear)
+   # x = [px, py, vx, vy] (position and velocity, linear given y)
 
-   N_particles = 1000
-   dt = 0.1
+   n_particles = 200
+   dt = 0.5
 
-   # Initialize particles for accelerations
-   y0 = np.zeros((N_particles, 3))  # Zero acceleration
+   rbpf = RBPFFilter(max_particles=n_particles)
+   rbpf.initialize(
+       y0=np.zeros(2),
+       x0=np.array([5000.0, 3000.0, 100.0, 50.0]),
+       P0=np.diag([100.0, 100.0, 25.0, 25.0]),
+       num_particles=n_particles,
+   )
 
-   # Initialize position/velocity
-   x0_fn = lambda y: np.array([0.0, 0.0, 10000.0, 100.0, 50.0, 0.0])
+   # Nonlinear acceleration dynamics (first-order Gauss-Markov)
+   tau = 10.0                  # correlation time constant
+   decay = np.exp(-dt / tau)
 
-   # Covariance for linear state
-   P0 = np.diag([100.0, 100.0, 100.0, 1.0, 1.0, 1.0])
+   def g(y):
+       return decay * y
 
-   filter = RBPFFilter(y0=y0, x0_fn=x0_fn, P0=P0, N_particles=N_particles)
+   G = decay * np.eye(2)
+   Qy = 0.25 * np.eye(2)       # acceleration process noise
 
-   # Nonlinear acceleration dynamics (Markov process)
-   def accel_dynamics(y, u=None):
-       tau = 10.0  # Correlation time constant
-       # First-order Markov: a_next = (1 - dt/tau) * a + noise
-       decay = np.exp(-dt / tau)
-       noise = 2.0 * np.random.randn(*y.shape)  # Max accel ~2 m/s²
-       return decay * y + noise
+   # Linear dynamics, driven by the particle's acceleration
+   def f(x, y):
+       px, py, vx, vy = x
+       ax, ay = y
+       return np.array([
+           px + vx * dt + 0.5 * ax * dt**2,
+           py + vy * dt + 0.5 * ay * dt**2,
+           vx + ax * dt,
+           vy + ay * dt,
+       ])
 
-   # Linear state dynamics: x_next = A @ x + noise
-   def linear_A(y):
-       # Constant velocity model (accelerations in nonlinear part)
-       F = np.eye(6)
-       F[0, 3] = dt  # px += vx * dt
-       F[1, 4] = dt  # py += vy * dt
-       F[2, 5] = dt  # pz += vz * dt
-       # Add maneuver accelerations
-       F[3, :] = [0, 0, 0, 1, 0, 0]  # vx += ax * dt
-       F[4, :] = [0, 0, 0, 0, 1, 0]  # vy += ay * dt
-       F[5, :] = [0, 0, 0, 0, 0, 1]  # vz += az * dt
-       return F
+   F = np.array([
+       [1.0, 0.0, dt, 0.0],
+       [0.0, 1.0, 0.0, dt],
+       [0.0, 0.0, 1.0, 0.0],
+       [0.0, 0.0, 0.0, 1.0],
+   ])
+   Qx = np.diag([1.0, 1.0, 0.1, 0.1])
 
-   Q_linear = np.diag([0.01, 0.01, 0.01, 0.001, 0.001, 0.001])
-   q_accel = 0.1
+   # Radar measurement: [range, azimuth] of the position
+   def h(x, y):
+       r = np.hypot(x[0], x[1])
+       az = np.arctan2(x[1], x[0])
+       return np.array([r, az])
 
-   # Radar measurement: [range, azimuth, elevation]
-   def radar_h(y, x):
-       """Measurement function"""
-       px, py, pz = x[0], x[1], x[2]
-       r = np.sqrt(px**2 + py**2 + pz**2)
-       az = np.arctan2(py, px)
-       el = np.arcsin(pz / r)
-       return np.array([r, az, el])
+   R = np.diag([25.0, 1e-4])
 
-   # Measurement Jacobians
-   def radar_Hy(y, x):
-       return np.zeros((3, 3))  # Measurement doesn't depend on y
+   # Simulate the truth and run the filter
+   true_x = np.array([5000.0, 3000.0, 100.0, 50.0])
+   true_a = np.array([1.0, -0.5])
 
-   def radar_Hx(y, x):
-       px, py, pz = x[0], x[1], x[2]
-       r = np.sqrt(px**2 + py**2 + pz**2)
-       r_xy = np.sqrt(px**2 + py**2)
+   for k in range(20):
+       rbpf.predict(g=g, G=G, Qy=Qy, f=f, F=F, Qx=Qx)
 
-       H = np.zeros((3, 6))
-       # Range derivatives
-       H[0, 0] = px / r
-       H[0, 1] = py / r
-       H[0, 2] = pz / r
+       true_x = f(true_x, true_a)
+       z = h(true_x, true_a) + np.array([5.0, 0.01]) * np.random.randn(2)
 
-       # Azimuth derivatives
-       H[1, 0] = -py / (r_xy**2)
-       H[1, 1] = px / (r_xy**2)
+       # Linearize h about the current estimated position
+       _, x_mean, _ = rbpf.estimate()
+       px, py = x_mean[:2]
+       r = np.hypot(px, py)
+       H = np.array([
+           [px / r, py / r, 0.0, 0.0],
+           [-py / r**2, px / r**2, 0.0, 0.0],
+       ])
 
-       # Elevation derivatives
-       H[2, 0] = -px * pz / (r**2 * r_xy)
-       H[2, 1] = -py * pz / (r**2 * r_xy)
-       H[2, 2] = r_xy / r**2
+       rbpf.update(z=z, h=h, H=H, R=R)
 
-       return H
+       if (k + 1) % 5 == 0:
+           y_est, x_est, _ = rbpf.estimate()
+           print(
+               f"Step {k+1}: pos=({x_est[0]:.0f}, {x_est[1]:.0f}), "
+               f"vel=({x_est[2]:.1f}, {x_est[3]:.1f}), "
+               f"accel=({y_est[0]:.2f}, {y_est[1]:.2f})"
+           )
 
-   # Run filter
-   for k in range(100):
-       # Prediction
-       filter = rbpf_predict(
-           filter,
-           f_nonlinear=accel_dynamics,
-           F_linear=linear_A,
-           Q=Q_linear,
-           q_nonlinear=q_accel,
-       )
+Output::
 
-       # Generate synthetic measurement
-       true_y = np.array([0.1, 0.05, 0.0])
-       true_x = np.array([5000.0 + k*100, 3000.0 + k*50, 10000.0, 100.0, 50.0, 0.0])
-       z_true = radar_h(true_y, true_x)
-       z_noisy = z_true + 0.01 * np.random.randn(3)
-
-       # Update
-       filter = rbpf_update(
-           filter,
-           z=z_noisy,
-           h=radar_h,
-           H_y=radar_Hy,
-           H_x=radar_Hx,
-           R=np.diag([1.0, 0.001, 0.001]),
-       )
-
-       # Estimate
-       y_est = (filter.y * filter.weights[:, np.newaxis]).sum(axis=0)
-       x_est = (filter.x * filter.weights[:, np.newaxis]).sum(axis=0)
-
-       if (k + 1) % 10 == 0:
-           print(f"Step {k+1}: pos=({x_est[0]:.1f}, {x_est[1]:.1f}, {x_est[2]:.1f}), "
-                 f"vel=({x_est[3]:.1f}, {x_est[4]:.1f}), "
-                 f"accel=({y_est[0]:.3f}, {y_est[1]:.3f})")
+   Step 5: pos=(5252, 3134), vel=(102.1, 53.0), accel=(0.08, 0.01)
+   Step 10: pos=(5510, 3249), vel=(101.1, 48.7), accel=(-0.52, -0.48)
+   Step 15: pos=(5781, 3367), vel=(106.7, 48.8), accel=(0.75, -0.08)
+   Step 20: pos=(6046, 3477), vel=(107.4, 45.8), accel=(0.55, -0.26)
 
 Performance and Tuning
 -----------------------
 
 **Particle Count**
 
-Trade-off between accuracy and speed:
+``num_particles`` sets how many particles are created; ``max_particles``
+caps the population (particle merging kicks in above the cap, which is
+quadratic in the particle count, so keep ``num_particles <= max_particles``
+unless you want merging). Guidelines:
 
 .. code-block:: python
 
@@ -274,71 +258,53 @@ Trade-off between accuracy and speed:
    N = 100    # Fast, moderate accuracy (nonlinear state small)
    N = 500    # Balanced (recommended for most applications)
    N = 1000   # High accuracy, slower (nonlinear state dimension > 5)
-   N = 5000   # Very high dimensions or challenging scenarios
 
-**Resampling Strategy**
+**Resampling**
 
-Prevent particle degeneracy:
+Resampling is built in: after each ``update``, the filter computes the
+effective sample size and performs systematic resampling when it drops
+below ``resample_threshold * N`` (default threshold 0.5). To monitor
+degeneracy yourself:
 
 .. code-block:: python
 
-   # Check effective sample size
-   N_eff = 1.0 / (filter.weights ** 2).sum()
-
-   if N_eff < 0.5 * N_particles:
-       # Resample
-       indices = np.random.choice(
-           N_particles,
-           p=filter.weights,
-           size=N_particles,
-           replace=True
-       )
-       filter.y = filter.y[indices]
-       filter.x = filter.x[indices]
-       filter.P = filter.P[indices]
-       filter.weights = np.ones(N_particles) / N_particles
+   weights = np.array([p.w for p in rbpf.particles])
+   n_eff = 1.0 / np.sum(weights**2)
+   print(f"Effective sample size: {n_eff:.1f} of {len(weights)}")
 
 **Process Noise Selection**
 
-Tune Q and q_nonlinear to match system characteristics:
+Tune ``Qx`` and ``Qy`` to match system characteristics:
 
 .. code-block:: python
 
    # If estimates diverge: increase noise
-   Q *= 2.0
-   q_nonlinear *= 2.0
+   Qx = Qx * 2.0
+   Qy = Qy * 2.0
 
    # If variance grows despite measurements: decrease noise
-   Q *= 0.5
-   q_nonlinear *= 0.5
+   Qx = Qx * 0.5
+   Qy = Qy * 0.5
 
 Variance Reduction Analysis
 ---------------------------
 
-Compared to Standard Particle Filter:
-
-.. code-block:: python
-
-   # RBPF with 500 particles ≈ Standard PF with 2000 particles
-   # 4x improvement in variance reduction
-
-   # Variance reduction ratio:
-   # V_PF / V_RBPF = f(dimension_linear)
-   # Better scaling for higher-dimensional linear subspaces
+Marginalizing the linear substate means each particle carries an exact
+conditional Gaussian instead of a sampled point, so Monte Carlo error is
+only incurred in the (smaller) nonlinear subspace. By the law of total
+variance this cannot increase estimator variance, and in practice an RBPF
+matches the accuracy of a plain particle filter that uses several times as
+many particles. The gain is largest when the linear subspace is
+high-dimensional relative to the nonlinear one.
 
 Integration with Tracking
 --------------------------
 
-Use RBPF in multi-target tracking:
-
-.. code-block:: python
-
-   from pytcl.trackers import MultiTargetTracker
-
-   # Each track runs independent RBPF
-   for track in tracks:
-       track.state = rbpf_predict(track.state, ...)
-       track.state = rbpf_update(track.state, ...)
+For multi-target problems, maintain one ``RBPFFilter`` per track and drive
+each filter's ``predict``/``update`` cycle from your data association
+logic. The multi-target trackers in ``pytcl.trackers`` manage linear
+Kalman filters internally; they do not accept RBPF state, so RBPF-based
+tracks must be managed by the application.
 
 See Also
 ~~~~~~~~
