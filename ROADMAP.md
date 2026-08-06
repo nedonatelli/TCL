@@ -105,7 +105,7 @@ Production release integrating everything shipped in the v1.8-v1.15 series plus 
 polish:
 
 - **Track Management:** SQL `TrackDatabaseManager` + HDF5 storage with full lifecycle support
-- **Migration:** Tools and guides for v1.x → v2.0.0 transition, `pytcl.compat` layer
+- **Migration:** `docs/migration_v1_to_v2.rst` — hard breaks, no compat layer
 - **GPU Acceleration:** Full CuPy + MLX support for batch operations
 - **Documentation:** 9 Jupyter notebooks, 20+ examples, comprehensive guides
 - **Testing:** 4,973+ tests, 80%+ coverage, multi-sensor validation scenarios
@@ -121,6 +121,36 @@ polish:
 ---
 
 ## v2.1 Roadmap (Post-v2.0.0)
+
+### Measured backlog (from the MATLAB parity inventory)
+
+`docs/matlab_parity_inventory.rst` was produced by walking every directory of
+the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
+evidence-based candidate list, as distinct from the aspirational items below.
+No dates are attached because none have been decided:
+
+- **Cubature point library** — ~148 MATLAB files, a signature strength of the
+  original; pytcl has Gauss-Hermite and spherical cubature only
+- **Refraction suite** — entirely unported (astronomical refraction,
+  standard-refraction ray tracing, refractivity models, humidity conversions)
+- **Localization-style static estimators** — TDOA, Doppler-only init,
+  direction-only; MATLAB's Static_Estimation content is almost all absent
+- **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
+  batch least squares, PCRLB/Riccati analysis tools
+- **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
+- **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
+- **MOSPA/MMOSPA metrics**, AIS decoding, interval scheduling, polynomials
+- **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
+  barometric approximation's caveats (gh-79), plus HWM winds
+
+Session-identified, held deliberately out of 2.0.0:
+
+- ADS-B tracking validation against live traffic (local branch
+  `test/adsb-real-data-validation`; CC0 fixture and 10 tests ready)
+- Satellite tracking validation (TLE/SGP4 prediction experiments, scratchpad)
+- HDF5 compression to the once-claimed 5-10x (states-only chunking or a
+  covariance transform; the honest measured figure today is 1.3-4.3x)
+
 
 **Timeline:** Q1-Q3 2027 (6-9 months after v2.0.0 release)
 
@@ -264,9 +294,8 @@ state-layout error on a page whose imports all resolved.
 
 | Issue | Module | Impact | Status |
 |-------|--------|--------|--------|
-| Terrain loader signature mismatch | `terrain/loaders.py` | 13 tests skipped | Planned for v2.1 |
-| CuPy tests skip without NVIDIA GPU | `gpu/` | Hardware-gated (algorithm-validated via shim) | By design |
-| API/contract cleanups from the audit (see [#9](https://github.com/nedonatelli/TCL/issues/9)) | multiple | Misleading names, dead parameters, install hints naming the wrong package | Triage before v2.0.0 |
+| CuPy tests skip without NVIDIA GPU | `gpu/` | Validated on real hardware for 2.0.0 (RTX 5080); the manual `GPU` workflow re-runs it on demand | By design |
+| API/contract cleanups from the audit ([#9](https://github.com/nedonatelli/TCL/issues/9)) | multiple | Complete — all audit issues closed by the 2.0.0 merge | Done |
 
 ### Medium Priority
 
@@ -334,16 +363,13 @@ from pytcl.gpu.kalman import batch_kf_predict
 
 ### Backward Compatibility Layer
 
-Available in `pytcl.compat` for one major version (v2.0.0-v2.1.0):
-- Old function signatures with intermediate transformation
-- Deprecation warnings pointing to the new API
-- Will be removed in v3.0.0
-
-```python
-from pytcl.compat import kf_predict as kf_predict_old
-
-x_pred, P_pred = kf_predict_old(x, P, F, Q)
-```
+There is none, deliberately. An earlier version of this section promised a
+`pytcl.compat` module with old signatures and deprecation warnings, alongside
+a code sample. That module was never built, the sample raised
+`ModuleNotFoundError`, and the promise contradicted the project's standing
+rule against compatibility shims for removed code. The 2.0.0 breaks are hard
+breaks: `nuttall_q` (a rename, kept as a warning alias) is the sole
+exception, and `docs/migration_v1_to_v2.rst` is the migration path.
 
 ---
 
