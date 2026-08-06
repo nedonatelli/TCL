@@ -9,9 +9,12 @@ Overview
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.
 
-Four packages exist as placeholders with no modules yet — ``misc``,
-``physical_values``, ``scheduling`` and ``transponders``. They are listed here so
-their emptiness is not mistaken for a gap in this page.
+Four placeholder packages — ``misc``, ``physical_values``, ``scheduling`` and
+``transponders`` — used to exist with no modules, mirroring the MATLAB
+directory layout. They were removed before 2.0.0: an importable-but-empty
+``pytcl.transponders`` implied AIS support that does not exist, which is worse
+than the honest ``ImportError``. If those capabilities are ported (see
+:doc:`matlab_parity_inventory`), the packages return with content.
 
 Subsystem Map
 -------------

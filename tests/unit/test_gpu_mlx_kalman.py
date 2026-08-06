@@ -2,7 +2,7 @@
 Validation of the batch linear Kalman filter on a real GPU backend.
 
 Ground truth is the CPU implementation in :mod:`pytcl.dynamic_estimation`,
-which is reference-validated (see AUDIT.md). These tests run on whichever GPU
+which is reference-validated (tests/validation/). These tests run on whichever GPU
 backend is installed; on MLX (Apple Silicon) computation is float32, so the
 measured agreement is ~1e-7 relative rather than machine epsilon.
 

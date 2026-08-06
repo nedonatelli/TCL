@@ -204,10 +204,7 @@ pytcl/
 ├── trackers/                # Multi-target trackers (GNN, JPDA, MHT)
 ├── io/                      # SQL/HDF5 track storage and migration
 ├── gpu/                     # GPU acceleration (CuPy/MLX)
-├── physical_values/         # Physical constants
-├── plotting/                # Plot helpers
-├── scheduling/, transponders/, misc/   # Small utility packages
-└── ...
+└── plotting/                # Covariance ellipses, tracks, metrics plots
 ```
 
 ## Examples & Tutorials
