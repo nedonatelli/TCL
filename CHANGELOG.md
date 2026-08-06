@@ -229,6 +229,20 @@ allowlist that made the debt visible has been emptied rather than grown.
 
 ### Fixed
 
+- **The 5-10x HDF5 compression claim measured at 1.3x, and corrected.** The
+  roadmap's Phase 8 quality gates were finally measured (commit `d5b0add`,
+  macOS arm64, gzip level 4). Three hold with margin: 3,575 detections/sec
+  SQL storage single-row (2,134/sec batched) against a >1,000 target, 0.52 ms
+  track state update against <10 ms, and 5.06 ms worst-of-ten query latency
+  against <100 ms. The compression figure does not: `test_compression_ratio`
+  asserted `>2.0` while the documentation claimed 5-10x -- a test written to
+  a weaker bar than the figure it defended -- and its fixture's identity
+  covariance matrices (described as "representative of real tracking data")
+  are mostly zeros that gzip removes, which is where its 4.3x came from.
+  With the full, varying, positive-definite covariances a filter actually
+  produces, the ratio is **1.32x**. The documented claim is corrected to the
+  measured range; raising the real ratio is tracked as v2.1 backlog.
+
 - **Approximation limits documented, and four defects found among them**
   ([#25](https://github.com/nedonatelli/TCL/issues/25)). The issue framed all
   twelve items as bounded approximations needing documentation. Four were not.
