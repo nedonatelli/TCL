@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-08-02
+## [2.0.0] - Unreleased
 
 The first major release, and a breaking one. It closes the v2 correctness audit:
 every design-level finding is now resolved, documented as a bounded limitation,
