@@ -73,6 +73,18 @@ gpu = [
 gpu-apple = [
     "mlx>=0.16.0",
 ]
+all = [
+    "nrl-tracker[astronomy,geodesy,terrain,visualization,signal]",
+]
+
+[project.urls]
+"Homepage" = "https://pytcl.readthedocs.io/en"
+"Documentation" = "https://pytcl.readthedocs.io/en/latest/docs.html"
+"Repository" = "https://github.com/nedonatelli/TCL"
+"Bug Tracker" = "https://github.com/nedonatelli/TCL/issues"
+"Original MATLAB Library" = "https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary"
+
+[dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -83,6 +95,7 @@ dev = [
     "hypothesis>=6.0.0",
     "ruff>=0.16.0",
     "mypy>=1.0.0",
+    "ty>=0.0.69",
     "pre-commit>=3.0.0",
     "sphinx>=6.0.0",
     "sphinx-rtd-theme>=1.2.0",
@@ -92,19 +105,6 @@ dev = [
     "jupyter>=1.0.0",
     "ipykernel>=6.0.0",
 ]
-benchmark = [
-    "pytest-benchmark>=4.0.0",
-]
-all = [
-    "nrl-tracker[astronomy,geodesy,terrain,visualization,signal,dev]",
-]
-
-[project.urls]
-"Homepage" = "https://pytcl.readthedocs.io/en"
-"Documentation" = "https://pytcl.readthedocs.io/en/latest/docs.html"
-"Repository" = "https://github.com/nedonatelli/TCL"
-"Bug Tracker" = "https://github.com/nedonatelli/TCL/issues"
-"Original MATLAB Library" = "https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary"
 
 [tool.setuptools.packages.find]
 where = ["."]
