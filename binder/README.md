@@ -11,8 +11,7 @@ Click the badge below to launch the notebooks:
 
 ## Files
 
-- `environment.yml` - Conda environment specification
-- `postBuild` - Post-installation script for generating sample data
+- `environment.yml` - Conda environment specification (installs this checkout)
 
 ## Direct Notebook Links
 
@@ -28,6 +27,7 @@ Launch specific notebooks directly:
 | Network Flow Solver | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nedonatelli/TCL/main?labpath=docs%2Fnotebooks%2F06_network_flow.ipynb) |
 | INS/GNSS Integration | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nedonatelli/TCL/main?labpath=docs%2Fnotebooks%2F07_ins_gnss_integration.ipynb) |
 | Performance Optimization | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nedonatelli/TCL/main?labpath=docs%2Fnotebooks%2F08_performance_optimization.ipynb) |
+| Track Management | [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/nedonatelli/TCL/main?labpath=docs%2Fnotebooks%2F09_track_management.ipynb) |
 
 ## Local Development
 
@@ -43,6 +43,7 @@ repo2docker .
 
 ## Notes
 
+- This configuration has not been exercised against mybinder.org; treat the
+  first launch as a test
 - First launch may take a few minutes to build the environment
 - GPU notebooks will run in CPU-fallback mode on Binder (no GPU available)
-- Sample datasets are generated automatically on first launch

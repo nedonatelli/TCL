@@ -18,4 +18,6 @@ dependencies:
   - plotly>=5.15
   - pip
   - pip:
-    - nrl-tracker[astronomy,geodesy,visualization]
+    # Install the repo checkout, not PyPI -- Binder builds from this
+    # repository, and the notebooks must run against the code they ship with.
+    - .[astronomy,geodesy,visualization]
