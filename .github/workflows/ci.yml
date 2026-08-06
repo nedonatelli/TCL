@@ -173,7 +173,7 @@ jobs:
         # PYTCL_SHOW_PLOTS=0 is set by the test itself, which also blocks
         # fig.show() outright so an unguarded call fails rather than silently
         # doing nothing in a headless container.
-        run: pytest tests/contract/test_examples.py -m examples -v --timeout=600
+        run: pytest tests/contract/test_examples.py tests/contract/test_tutorials.py tests/contract/test_docs_code_blocks.py -m examples -v --timeout=600
 
   notebooks:
     runs-on: ubuntu-latest
