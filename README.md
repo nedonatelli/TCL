@@ -118,7 +118,7 @@ measurement = np.array([1.2, -0.7])
 
 pred = kf_predict(x, P, F, Q)
 upd = kf_update(pred.x, pred.P, measurement, H, R)
-print(upd.x)          # updated state; upd.P, upd.y, upd.S, upd.K, upd.likelihood
+print(upd.x)  # updated state; upd.P, upd.y, upd.S, upd.K, upd.likelihood
 ```
 
 ### Assignment Problem
