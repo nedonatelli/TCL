@@ -59,7 +59,7 @@ Installation Issues
    pip install cupy-cuda11x  # Replace 11x with your CUDA version
    
    # Check if GPU backend works
-   python -c "from pytcl.gpu.cupy_backend import to_gpu; print('CuPy OK')"
+   python -c "from pytcl.gpu import to_gpu; print('GPU backend OK')"
 
 See :doc:`gpu_acceleration` for detailed GPU setup.
 
@@ -74,19 +74,19 @@ Import and Usage Issues
 
 .. code-block:: python
 
-   # ❌ Wrong: Function not in this location
+   # Wrong: there is no top-level pytcl.kalman module
+   # from pytcl.kalman import kf_predict     # ModuleNotFoundError
+
+   # Correct: kalman lives under dynamic_estimation
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
-   # ✅ Correct: Check the right module
-   from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # Or use interactive discovery
    from pytcl.dynamic_estimation import kalman
    print([x for x in dir(kalman) if not x.startswith('_')])
 
-**TypeError: Expected array-like input**
+**ValueError: cannot reshape array of size 2 into shape (3,1)**
 
-**Cause**: Function expects NumPy array, got Python list
+**Cause**: ``cart2sphere`` operates on 3-D points; a 2-element point cannot be interpreted as (x, y, z). Python lists are fine -- inputs go through ``np.asarray`` -- it is the number of components that matters.
 
 **Solution**:
 
@@ -94,12 +94,15 @@ Import and Usage Issues
 
    import numpy as np
    from pytcl.coordinate_systems.conversions import cart2sphere
-   
-   # ❌ Wrong: Python list
-   result = cart2sphere([1.0, 0.0, 0.0])
-   
-   # ✅ Correct: NumPy array
-   result = cart2sphere(np.array([1.0, 0.0, 0.0]))
+
+   # Wrong: 2-D point
+   # r, az, el = cart2sphere([1.0, 0.0])
+   # ValueError: cannot reshape array of size 2 into shape (3,1)
+
+   # Correct: 3-D point (use z = 0 for planar problems).
+   # Lists and arrays are both accepted.
+   r, az, el = cart2sphere([1.0, 0.0, 0.0])
+   r, az, el = cart2sphere(np.array([1.0, 0.0, 0.0]))
 
 **AttributeError: module 'pytcl' has no attribute 'xyz'**
 
@@ -109,11 +112,11 @@ Import and Usage Issues
 
 .. code-block:: python
 
-   # ✅ Use full import path
+   # Use full import path
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # Instead of trying
-   from pytcl import kf_predict  # Won't work
+   # from pytcl import kf_predict    # ImportError: not re-exported
 
 **Check available functions**:
 
@@ -221,19 +224,28 @@ Filter and Estimation Issues
 
    .. code-block:: python
 
+      from pytcl.dynamic_models import f_constant_velocity
+
       # Verify motion model matches system
       T = 0.1  # time step
       F = f_constant_velocity(T, num_dims=2)
       # If system does accelerate, use:
+      # from pytcl.dynamic_models import f_constant_acceleration
       # F = f_constant_acceleration(T, num_dims=2)
 
 4. **Measurement outliers** (sensor gives bad data)
 
    .. code-block:: python
 
-      # Add outlier rejection
+      # Add outlier rejection (H, x_pred from your filter; z the measurement)
+      H = np.array([[1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0]])
+      x_pred = np.array([0.4, 0.5, 1.0, 0.0])
+      z = np.array([0.5, 0.4])
+      gate_threshold = 3.0
+
       innovation = z - H @ x_pred
-      
+
       if np.linalg.norm(innovation) > gate_threshold:
           # Skip this measurement or downweight it
           pass
@@ -278,10 +290,15 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
    .. code-block:: python
 
+      from pytcl.dynamic_models import (
+          f_constant_acceleration,
+          f_constant_velocity,
+      )
+
       # If system has acceleration, need better model
       # Constant velocity model:
       F = f_constant_velocity(T, num_dims=2)
-      
+
       # Better: constant acceleration
       F = f_constant_acceleration(T, num_dims=2)
 
@@ -291,7 +308,12 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
    .. code-block:: python
 
-      # Check if measurements lag
+      # Check if measurements lag (times/measurements from your data feed)
+      times = [0.0, 0.1, 0.2]
+      measurements = [np.zeros(2)] * 3
+      current_time = 0.35
+      expected_delay = 0.1
+
       for i, (t, z) in enumerate(zip(times, measurements)):
           delay = current_time - t
           if delay > expected_delay:
@@ -315,38 +337,49 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
 **Data Association Issues**
 
-**"No assignment found for measurement"**
+**ValueError: cost matrix is infeasible**
 
-**Cause**: All measurements beyond gating distance
-
-**Solution**:
+**Cause**: Gating replaced every candidate pairing in some row or column with ``np.inf``, so no complete assignment exists. ``relaxation_assignment_nd`` raises rather than returning a partial assignment:
 
 .. code-block:: python
 
    from scipy.spatial.distance import cdist
-   
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+
    # Check gating distance
    positions = np.array([[0, 0], [1, 1]])
    measurements = np.array([[10, 10], [20, 20]])  # Far away!
-   
+
    cost = cdist(positions, measurements)
    gate = 5.0  # Maximum distance
-   
+
    # Mark out-of-range
    cost[cost > gate] = np.inf
-   
-   from pytcl.assignment_algorithms import relaxation_assignment_nd
-   assignments = relaxation_assignment_nd(cost)
-   # Result: mostly unassigned measurements
+
+   try:
+       result = relaxation_assignment_nd(cost)
+   except ValueError as e:
+       print(e)
+   # cost matrix is infeasible
 
 **Fix**:
 
 .. code-block:: python
 
-   # 1. Increase gate threshold
-   gate = 10.0  # More permissive
-   
-   # 2. Or check if measurements are in right coordinate frame
+   # 1. Gate with a large finite penalty instead of np.inf, so the solver
+   #    can still return an assignment; reject penalty-cost pairs afterwards
+   cost = cdist(positions, measurements)
+   cost[cost > gate] = 1e6
+   result = relaxation_assignment_nd(cost)
+   print(result.assignments)
+   # [[0 0]
+   #  [1 1]]
+   # Both pairings carry the 1e6 penalty cost: treat them as unassigned.
+
+   # 2. Or increase the gate threshold so real pairings survive
+   gate = 30.0  # More permissive
+
+   # 3. Or check if measurements are in right coordinate frame
    # Ensure measurements converted to same frame as state
 
 **Multiple incorrect assignments**
@@ -357,63 +390,69 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
 .. code-block:: python
 
-   from pytcl.assignment_algorithms import relaxation_assignment_nd
-   
-   # Compute cost matrix more carefully
-   # Option 1: Mahalanobis distance (includes covariance)
    from scipy.spatial.distance import cdist
-   
+   from pytcl.assignment_algorithms import relaxation_assignment_nd
+
    # Standard Euclidean
    cost = cdist(positions, measurements)
-   
-   # Better: Mahalanobis (weighted by covariance)
-   from scipy.spatial.distance import cdist
-   cost = cdist(positions, measurements, metric='mahalanobis')
-   
-   assignments = relaxation_assignment_nd(cost)
+
+   # Better: Mahalanobis (weighted by covariance). cdist estimates the
+   # covariance from the data unless VI is supplied; with only a handful
+   # of points that estimate is singular, so pass VI explicitly.
+   S = np.eye(2) * 0.5  # innovation covariance from your filter
+   VI = np.linalg.inv(S)
+   cost = cdist(positions, measurements, metric='mahalanobis', VI=VI)
+
+   result = relaxation_assignment_nd(cost)
 
 Coordinate Conversion Issues
 -----------------------------
 
 **"Result is NaN or Inf"**
 
-**Cause**: Invalid input to conversion function (e.g., negative range, ±π issues)
+**Cause**: NaN or Inf in the *inputs* -- typically an upstream computation failed. The conversions themselves are total functions: ``cart2sphere`` maps the origin to ``(0, 0, pi/2)`` by convention, and negative coordinates are perfectly valid points.
 
-**Solution**:
+**Solution**: Trace the NaN back to its source and validate inputs before converting.
 
 .. code-block:: python
 
    from pytcl.coordinate_systems.conversions import cart2sphere
    import numpy as np
-   
-   # ❌ Invalid: origin
-   result = cart2sphere(np.array([0, 0, 0]))  # Undefined azimuth!
-   
-   # ✅ Valid: non-zero
-   result = cart2sphere(np.array([1, 0, 0.1]))
-   
-   # ❌ Invalid: negative range
-   result = cart2sphere(np.array([-1, 0, 0]))  # Range must be positive!
 
-**Check input validity**:
+   # These are all valid -- no NaN produced:
+   print(cart2sphere(np.array([0.0, 0.0, 0.0])))
+   # (0.0, 0.0, 1.5707963267948966)
+   print(cart2sphere(np.array([-1.0, 0.0, 0.0])))
+   # (1.0, 3.141592653589793, 1.5707963267948966)
+
+   # NaN out means NaN in:
+   r, az, el = cart2sphere(np.array([np.nan, 0.0, 0.0]))
+   print(r)
+   # nan
+
+   # Guard at the boundary where data enters your pipeline
+   point = np.array([1.0, 2.0, 3.0])
+   assert np.isfinite(point).all(), "invalid point from upstream"
+
+**Check input validity** (ranges shown for the ``'az-el'`` convention):
 
 .. code-block:: python
 
    def is_valid_spherical(spherical_coords):
        r, az, el = spherical_coords
-       
+
        if r < 0:
            print("Range must be positive")
            return False
-       
+
        if not (-np.pi <= az <= np.pi):
-           print("Azimuth must be in [-π, π]")
+           print("Azimuth must be in [-pi, pi]")
            return False
-       
+
        if not (-np.pi/2 <= el <= np.pi/2):
-           print("Elevation must be in [-π/2, π/2]")
+           print("Elevation must be in [-pi/2, pi/2]")
            return False
-       
+
        return True
 
 **Angle Wrapping Issues**
@@ -433,7 +472,8 @@ Coordinate Conversion Issues
    # Test
    large_angle = 3 * np.pi
    wrapped = wrap_angle(large_angle)
-   print(f"{large_angle} → {wrapped}")  # 9.42 → -2.57
+   print(f"{large_angle:.2f} -> {wrapped:.2f}")
+   # 9.42 -> 3.14
 
 Performance Issues
 ------------------
@@ -446,17 +486,32 @@ Performance Issues
 
    import cProfile
    import pstats
-   
-   def my_tracking_loop():
+
+   import numpy as np
+   from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
+
+   def my_tracking_loop(x, P, F, Q, H, R, measurements):
        for z in measurements:
            x, P = kf_predict(x, P, F, Q)
-           x, P = kf_update(x, P, z, H, R)
-   
+           # kf_update returns KalmanUpdate(x, P, y, S, K, likelihood),
+           # so unpack by attribute rather than tuple-unpacking
+           upd = kf_update(x, P, z, H, R)
+           x, P = upd.x, upd.P
+       return x, P
+
+   x = np.zeros(4)
+   P = np.eye(4)
+   F = np.eye(4)
+   Q = np.eye(4) * 0.01
+   H = np.eye(2, 4)
+   R = np.eye(2) * 0.1
+   measurements = np.random.randn(1000, 2)
+
    profiler = cProfile.Profile()
    profiler.enable()
-   my_tracking_loop()
+   my_tracking_loop(x, P, F, Q, H, R, measurements)
    profiler.disable()
-   
+
    stats = pstats.Stats(profiler)
    stats.sort_stats('cumulative')
    stats.print_stats(10)  # Top 10 functions
@@ -471,40 +526,48 @@ See :doc:`performance_optimization` for detailed optimization techniques.
 
    .. code-block:: python
 
-      # ❌ Slow: allocate in loop
+      n_targets, n_measurements = 4, 6
+
+      def compute_distances(z):
+          return np.zeros((n_targets, n_measurements))  # your cost function
+
+      # Slow: allocate in loop
       for z in measurements:
           cost = np.zeros((n_targets, n_measurements))  # Allocate each time
-          # ...
-      
-      # ✅ Fast: allocate once
+
+      # Fast: allocate once
       cost = np.zeros((n_targets, n_measurements))
       for z in measurements:
-          cost[:] = compute_distances(...)  # Reuse
+          cost[:] = compute_distances(z)  # Reuse
 
 2. **Not vectorizing operations**
 
    .. code-block:: python
 
-      # ❌ Slow: Python loop
-      for measurement in measurements:
-          predict_filter(measurement)
-      
-      # ✅ Fast: Batch
-      predict_filter_batch(measurements)
+      # Slow: Python loop over rows
+      norms = np.array([np.linalg.norm(z) for z in measurements])
+
+      # Fast: one vectorized call over the whole batch
+      norms = np.linalg.norm(measurements, axis=1)
 
 3. **Using GPU backend without GPU**
 
    .. code-block:: python
 
       # If no GPU, CPU version is faster (no transfer overhead)
-      import pytcl.gpu.cupy_backend as gpu
-      
-      # Check if GPU actually available
-      try:
-          gpu.check_gpu_available()
-      except RuntimeError:
+      from pytcl.gpu import is_cupy_available, is_gpu_available
+
+      # Check what is actually available before moving arrays
+      if is_gpu_available():
+          from pytcl.gpu import to_gpu
+          data_gpu = to_gpu(measurements)
+      else:
           print("GPU not available, using CPU")
           # Use CPU version instead
+
+      # is_cupy_available() distinguishes CUDA (CuPy) from the
+      # Apple Silicon MLX backend
+      print(f"CUDA available: {is_cupy_available()}")
 
 See :doc:`performance_optimization` and :doc:`gpu_acceleration`.
 
@@ -517,13 +580,14 @@ See :doc:`performance_optimization` and :doc:`gpu_acceleration`.
 .. code-block:: python
 
    import tracemalloc
-   
+
    tracemalloc.start()
-   
-   # Run your code
+
+   # Run your code (here: a loop that accumulates arrays)
+   history = []
    for i in range(1000):
-       do_tracking_step()
-   
+       history.append(np.zeros(100))
+
    current, peak = tracemalloc.get_traced_memory()
    print(f"Current: {current / 1024 / 1024:.1f} MB")
    print(f"Peak: {peak / 1024 / 1024:.1f} MB")
@@ -536,8 +600,9 @@ See :doc:`performance_optimization` and :doc:`gpu_acceleration`.
    # Don't accumulate history indefinitely
    class Tracker:
        def __init__(self, max_history=100):
+           self.max_history = max_history
            self.history = []
-       
+
        def update(self, measurement):
            self.history.append(measurement)
            
@@ -608,9 +673,11 @@ Numerical Issues
    
    # Use higher precision
    x = np.array([1e-300, 2e-300], dtype=np.float64)  # Not np.float32
-   
+
    # Or use log-space for very small numbers
-   log_prob = np.log(probability)  # -1000 is OK, but 1e-300 underflows
+   probability = 1e-300
+   log_prob = np.log(probability)  # log_prob = -690.7 is representable,
+                                   # but probability**2 would underflow to 0
 
 Debugging Tools
 ---------------
@@ -632,12 +699,14 @@ Debugging Tools
        
        innovation = z - H @ x_p
        print(f"Innovation: {innovation}")
-       
-       x_u, P_u = kf_update(x_p, P_p, z, H, R)
-       print(f"State after update: {x_u}")
-       print(f"Cov trace after update: {np.trace(P_u):.4f}")
-       
-       return x_u, P_u
+
+       # kf_update returns the 6-field NamedTuple
+       # KalmanUpdate(x, P, y, S, K, likelihood)
+       upd = kf_update(x_p, P_p, z, H, R)
+       print(f"State after update: {upd.x}")
+       print(f"Cov trace after update: {np.trace(upd.P):.4f}")
+
+       return upd.x, upd.P
 
 **Use Assertions**:
 
@@ -664,24 +733,24 @@ Debugging Tools
    logging.basicConfig(level=logging.DEBUG)
    logger = logging.getLogger(__name__)
    
-   def update_filter(x, P, z):
+   def update_filter(x, P, z, F, Q, H, R):
        logger.debug(f"State: {x}")
        logger.debug(f"Measurement: {z}")
-       
+
        x_pred, P_pred = kf_predict(x, P, F, Q)
        logger.debug(f"After predict: {x_pred}")
-       
-       x_upd, P_upd = kf_update(x_pred, P_pred, z, H, R)
-       logger.debug(f"After update: {x_upd}")
-       
-       return x_upd, P_upd
+
+       upd = kf_update(x_pred, P_pred, z, H, R)
+       logger.debug(f"After update: {upd.x}")
+
+       return upd.x, upd.P
 
 Getting Help
 ------------
 
 **If you still can't find the answer:**
 
-1. Check the documentation at https://readthedocs.org/
+1. Check the documentation at https://pytcl.readthedocs.io/
 2. Review examples in ``examples/`` folder
 3. Check similar issues on GitHub: https://github.com/nedonatelli/TCL/issues
 4. Create an issue describing:

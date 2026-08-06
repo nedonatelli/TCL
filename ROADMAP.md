@@ -61,6 +61,9 @@ No dates are attached because none have been decided:
   `great_circle_tdoa_loc`)
 - **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
   batch least squares, PCRLB/Riccati analysis tools
+- **Direction-cosine UV measurement coordinates** — the angle-only u-v
+  (and u-v-w) system of planar phased arrays, with conversions and
+  Jacobians; distinct from the ported range+direction-cosine `cart2ruv`
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, AIS decoding, interval scheduling, polynomials

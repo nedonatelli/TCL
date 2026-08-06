@@ -48,9 +48,6 @@ Install optional features as needed:
    # For visualization (Plotly)
    pip install nrl-tracker[visualization]
 
-   # For optimization (CVXPY)
-   pip install nrl-tracker[optimization]
-
    # For signal processing (wavelets)
    pip install nrl-tracker[signal]
 
@@ -228,7 +225,7 @@ Get atmospheric density for satellite drag calculations:
    import numpy as np
    from pytcl.atmosphere import simplified_thermosphere
 
-   # NRLMSISE-00 model with solar/geomagnetic activity
+   # Simplified thermosphere model with solar/geomagnetic activity
    output = simplified_thermosphere(
        latitude=np.deg2rad(45.0),
        longitude=np.deg2rad(-75.0),

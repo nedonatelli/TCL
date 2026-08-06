@@ -109,6 +109,9 @@ Notebook Summary
    * - 8
      - :doc:`08_performance_optimization`
      - Profiling, Numba JIT, vectorization, caching, memory optimization
+   * - 9
+     - :doc:`09_track_management`
+     - Track lifecycles, SQL and HDF5 persistence, querying, migration
 
 Prerequisites
 -------------

@@ -4,16 +4,27 @@ GPU Acceleration Guide
 Overview
 --------
 
-The Tracker Component Library provides GPU acceleration for compute-intensive operations through two backends:
+:mod:`pytcl.gpu` accelerates tracking workloads by processing **many tracks at
+once**. Instead of running one filter per call, the batch functions take
+arrays with a leading track dimension -- states of shape ``(n_tracks,
+state_dim)``, covariances of shape ``(n_tracks, state_dim, state_dim)`` -- and
+advance every track in a single device operation.
 
-- **CuPy** - NVIDIA GPU support (CUDA)
-- **MLX** - Apple Silicon GPU support (Metal Performance Shaders)
+Two backends are supported behind one API:
 
-This guide explains how to use GPU acceleration to speed up Kalman filters and particle filters.
+- **CuPy** -- NVIDIA GPUs (CUDA), computes in float64
+- **MLX** -- Apple Silicon (unified memory), computes in float32
+
+The backend is selected automatically. If neither is installed, everything
+falls back to NumPy on the CPU, so code written against :mod:`pytcl.gpu` runs
+anywhere.
 
 .. note::
 
-   GPU acceleration is optional. The library falls back to CPU automatically if GPU libraries aren't installed.
+   The batch functions accept plain NumPy arrays and move them to the device
+   themselves. Use :func:`~pytcl.gpu.to_gpu` / :func:`~pytcl.gpu.to_cpu` when
+   you want to control transfers explicitly, e.g. to keep intermediate results
+   on the device across many steps.
 
 Installation
 ------------
@@ -22,267 +33,384 @@ Installation
 
 .. code-block:: bash
 
-   pip install cupy-cuda11x  # Replace 11x with your CUDA version (11.2, 12.0, etc.)
-   # Or for a specific CUDA version:
-   pip install cupy-cuda12 
+   pip install nrl-tracker[gpu]
+   # or directly, matching your CUDA version:
+   pip install cupy-cuda12x
 
 **Apple Silicon (MLX):**
 
 .. code-block:: bash
 
+   pip install nrl-tracker[gpu-apple]
+   # or directly:
    pip install mlx
 
-**Verify Installation:**
+**Check what you have:**
 
 .. code-block:: python
 
-   from pytcl.gpu import is_gpu_available
-   print(is_gpu_available())  # Returns GPU backend name or None
+   from pytcl.gpu import get_backend, is_cupy_available, is_gpu_available, is_mlx_available
 
-Quick Start
------------
+   print("GPU available:", is_gpu_available())
+   print("Backend:      ", get_backend())
+   print("MLX:          ", is_mlx_available())
+   print("CuPy:         ", is_cupy_available())
 
-Extended Kalman Filter on GPU:
+Output on an Apple Silicon machine with MLX installed:
+
+.. code-block:: text
+
+   GPU available: True
+   Backend:       mlx
+   MLX:           True
+   CuPy:          False
+
+Quick Start: Batch Linear Kalman Filter
+---------------------------------------
+
+Advance 1,000 constant-velocity tracks through one predict-update cycle.
+``F``, ``Q``, ``H``, and ``R`` may be shared across the batch (2-D, as here)
+or given per track as ``(n_tracks, dim, dim)`` stacks:
 
 .. code-block:: python
 
    import numpy as np
-   from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
-   
-   # Your state transition and measurement functions
-   def state_transition(x, dt):
-       return x  # Example: constant velocity model
-   
-   def measurement_fn(x):
-       return x[:2]  # Measure position only
-   
-   # Initialize on CPU (standard NumPy)
-   x0 = np.array([0.0, 0.0, 1.0, 0.0])  # [x, y, vx, vy]
-   P0 = np.eye(4)
-   
-   # If GPU available, convert to GPU arrays
-   try:
-       import cupy as cp
-       x0_gpu = cp.asarray(x0)
-       P0_gpu = cp.asarray(P0)
-   except ImportError:
-       x0_gpu = x0
-       P0_gpu = P0
-   
-   # Run filter - automatically uses GPU if inputs are GPU arrays
-   z = np.array([1.0, 2.0])  # Measurement: [x_meas, y_meas]
-   F = np.eye(4)               # Jacobian of state_transition
-   H = np.array([[1.0, 0.0, 0.0, 0.0],
-                 [0.0, 1.0, 0.0, 0.0]])  # Jacobian of measurement_fn
+
+   from pytcl.gpu import batch_kf_predict, batch_kf_update, to_cpu, to_gpu
+
+   rng = np.random.default_rng(0)
+   n_tracks = 1000
+
+   # Constant-velocity model in 2D: state [x, vx, y, vy]
+   dt = 1.0
+   F = np.array(
+       [[1, dt, 0, 0], [0, 1, 0, 0], [0, 0, 1, dt], [0, 0, 0, 1]], dtype=float
+   )
    Q = np.eye(4) * 0.01
+   H = np.array([[1, 0, 0, 0], [0, 0, 1, 0]], dtype=float)  # measure position
    R = np.eye(2) * 0.1
 
-   pred = ekf_predict(x0_gpu, P0_gpu, lambda s: state_transition(s, 1.0), F, Q)
-   upd = ekf_update(pred.x, pred.P, z, measurement_fn, H, R)
-   x_new, P_new = upd.x, upd.P
+   x = rng.normal(size=(n_tracks, 4))
+   P = np.tile(np.eye(4), (n_tracks, 1, 1))
+   z = rng.normal(size=(n_tracks, 2))
 
-Performance Considerations
---------------------------
+   # One transfer in ...
+   x_gpu, P_gpu = to_gpu(x), to_gpu(P)
 
-**When GPU Acceleration Helps:**
+   # ... all tracks advance in parallel on the device ...
+   pred = batch_kf_predict(x_gpu, P_gpu, F, Q)
+   upd = batch_kf_update(pred.x, pred.P, z, H, R)
 
-- Particle filters with 1,000+ particles
-- Batch processing of many trajectories
-- Large-scale data association problems
-- Real-time systems processing multiple targets
+   # ... one transfer out.
+   x_new = to_cpu(upd.x)
+   P_new = to_cpu(upd.P)
 
-**When GPU May Not Help:**
+   print("Updated states:     ", x_new.shape)
+   print("Updated covariances:", P_new.shape)
+   print("Innovations:        ", to_cpu(upd.y).shape)
+   print("Likelihoods:        ", to_cpu(upd.likelihood).shape)
 
-- Small filters (< 100 state dimensions)
-- One-shot filtering operations (transfer overhead dominates)
-- CPU-bound operations (coordinate conversions, etc.)
+.. code-block:: text
 
-**Performance Best Practices:**
+   Updated states:      (1000, 4)
+   Updated covariances: (1000, 4, 4)
+   Innovations:         (1000, 2)
+   Likelihoods:         (1000,)
 
-1. **Batch Operations**: Process multiple time steps before CPU transfer
+The update result is a named tuple with ``x``, ``P``, ``y`` (innovations),
+``S`` (innovation covariances), ``K`` (gains), and ``likelihood`` -- one entry
+per track, ready for gating and association. There is also
+:func:`~pytcl.gpu.batch_kf_predict_update` for a fused step, and a stateful
+:class:`~pytcl.gpu.CuPyKalmanFilter` class wrapping the same operations.
 
-   .. code-block:: python
+Nonlinear Filters: Batched Callbacks
+------------------------------------
 
-      import cupy as cp
-      
-      # ✅ Good: Batch 100 measurements
-      measurements = cp.asarray(measurements_array)  # [100, 2] measurements
-      for z in measurements:
-          upd = ekf_update(x, P, z, h, H, R)
-          x, P = upd.x, upd.P
-          # Results stay on GPU
-      
-      # ❌ Avoid: Constant GPU<->CPU transfers
-      for z in measurements:
-          x_cpu = cp.asnumpy(x)  # Avoid repeated transfers
-          upd = ekf_update(x_cpu, cp.asnumpy(P), z, h, H, R)
-          x = cp.asarray(upd.x)
+The batch EKF and UKF take user callables, and those callables receive the
+**whole batch** as a single device array -- they are called once per step, not
+once per track:
 
-2. **Memory Management**: Monitor GPU memory usage
+- ``f(x)`` and ``h(x)`` take ``(n_tracks, state_dim)`` and return
+  ``(n_tracks, out_dim)``;
+- ``F_jacobian(x)`` and ``H_jacobian(x)`` take ``(n_tracks, state_dim)`` and
+  return ``(n_tracks, out_dim, state_dim)``.
 
-   .. code-block:: python
+Write callables against :func:`~pytcl.gpu.get_array_module` instead of NumPy
+directly, so the same code runs on MLX, CuPy, or the NumPy fallback. (Mixing
+a host NumPy array into a CuPy expression raises ``TypeError``.)
 
-      import cupy as cp
-      
-      # Check available GPU memory
-      mempool = cp.get_default_memory_pool()
-      print(f"Used: {mempool.used_bytes() / 1e9:.2f} GB")
-      print(f"Total: {mempool.total_bytes() / 1e9:.2f} GB")
-      
-      # Clear cache if needed
-      mempool.free_all_blocks()
+.. code-block:: python
 
-3. **Data Type Selection**: Use float32 for better GPU performance
+   import numpy as np
 
-   .. code-block:: python
+   from pytcl.gpu import batch_ekf_predict, batch_ekf_update, get_array_module, to_cpu
 
-      import cupy as cp
-      
-      # float32 is faster on most GPUs
-      x = cp.asarray([0.0, 0.0, 1.0, 0.0], dtype=cp.float32)
-      P = cp.eye(4, dtype=cp.float32)
-      
-      # float64 only if numerical precision is critical
 
-Module-Specific GPU Support
-----------------------------
+   def f(x):
+       # Nearly constant velocity with mild drag on the velocity component.
+       xp = get_array_module(x)
+       return xp.stack([x[:, 0] + x[:, 1], 0.99 * x[:, 1]], axis=1)
 
-**Kalman Filters** (Full Support)
 
-- ``ekf_predict()`` / ``ekf_update()`` - EKF
-- ``ukf_predict()`` / ``ukf_update()`` - UKF
-- ``cubature_kalman_filter()`` - CKF
+   def F_jac(x):
+       # Constant Jacobian, broadcast over the batch: (n_tracks, 2, 2).
+       xp = get_array_module(x)
+       F = xp.array([[1.0, 1.0], [0.0, 0.99]])
+       return xp.broadcast_to(F, (x.shape[0], 2, 2))
 
-All matrix operations (Cholesky, QR, etc.) automatically use GPU.
 
-**Particle Filters** (Full Support)
+   def h(x):
+       # Range measurement: (n_tracks, 2) -> (n_tracks, 1).
+       xp = get_array_module(x)
+       return xp.sqrt(x[:, 0:1] ** 2 + 1.0)
 
-- ``particle_filter()`` - Standard resampling
-- ``sequential_importance_resampling()`` - SIR
 
-GPU accelerates particle propagation and weight computation.
+   def H_jac(x):
+       # (n_tracks, 1, 2)
+       xp = get_array_module(x)
+       r = xp.sqrt(x[:, 0:1] ** 2 + 1.0)
+       zeros = xp.zeros_like(r)
+       return xp.stack([x[:, 0:1] / r, zeros], axis=2)
 
-**Data Association** (Partial Support)
 
-- ``relaxation_assignment_nd()`` - Greedy and Hungarian algorithms
-- Sparse assignment with large cost matrices benefits most
+   rng = np.random.default_rng(1)
+   n_tracks = 500
+   x = rng.normal(size=(n_tracks, 2))
+   P = np.tile(np.eye(2), (n_tracks, 1, 1))
+   Q = np.eye(2) * 0.01
+   R = np.array([[0.1]])
+   z = rng.normal(loc=1.5, size=(n_tracks, 1))
 
-**Coordinate Conversions** (Limited Benefit)
+   pred = batch_ekf_predict(x, P, f, F_jac, Q)
+   upd = batch_ekf_update(pred.x, pred.P, z, h, H_jac, R)
 
-- GPU acceleration not recommended for single conversions
-- Batch conversions of 10,000+ points show ~2-5x speedup
+   print("Predicted states:", to_cpu(pred.x).shape)
+   print("Updated states:  ", to_cpu(upd.x).shape)
+   print("Kalman gains:    ", to_cpu(upd.K).shape)
+
+.. code-block:: text
+
+   Predicted states: (500, 2)
+   Updated states:   (500, 2)
+   Kalman gains:     (500, 2, 1)
+
+Pass ``None`` for a Jacobian argument to have it computed by finite
+differences on the device.
+
+**Unscented filter:** :func:`~pytcl.gpu.batch_ukf_predict` and
+:func:`~pytcl.gpu.batch_ukf_update` use the same batched ``f``/``h`` contract
+(no Jacobians needed). One MLX-specific caveat: the Merwe sigma-point weights
+scale as ``1 / alpha**2``, and the conventional default ``alpha=1e-3`` gives
+weights of order 1e6 -- unresolvable in float32. The library emits a
+``RuntimeWarning`` below ``alpha=1e-2``; on MLX pass ``alpha`` of 0.1 or
+larger:
+
+.. code-block:: python
+
+   pred = batch_ukf_predict(x, P, f, Q, alpha=0.5)
+   upd = batch_ukf_update(pred.x, pred.P, z, h, R, alpha=0.5)
+
+Particle Filters
+----------------
+
+:class:`~pytcl.gpu.CuPyParticleFilter` (the name is historical; it runs on
+either backend) keeps its particle set on the device across predict, update,
+and resample. The dynamics callable receives all particles as one
+``(n_particles, state_dim)`` backend array; the likelihood callable receives
+the particles and one measurement and returns per-particle likelihoods.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from pytcl.gpu import (
+       CuPyParticleFilter,
+       get_array_module,
+       gpu_effective_sample_size,
+       gpu_normalize_weights,
+       gpu_resample_systematic,
+   )
+
+
+   def dynamics(particles):
+       # Receives the whole particle set (n_particles, state_dim) as a
+       # backend array; returns the propagated set with the same shape.
+       return particles * 0.99
+
+
+   def likelihood(particles, measurement):
+       # Backend-agnostic: get_array_module returns mlx.core, cupy, or numpy.
+       xp = get_array_module(particles)
+       diff = particles[:, 0] - measurement
+       return xp.exp(-0.5 * diff**2)
+
+
+   np.random.seed(7)  # initialize() samples the prior with NumPy
+   pf = CuPyParticleFilter(n_particles=10000, state_dim=2)
+   pf.initialize(np.zeros(2), np.eye(2))
+   pf.predict(dynamics)
+   log_lik = pf.update(0.5, likelihood)
+
+   print("Estimate shape:", pf.get_estimate().shape)
+   print("ESS:           ", round(pf.get_ess(), 1))
+
+   # The helpers also work standalone on plain NumPy or device arrays:
+   weights = np.full(10000, 1.0 / 10000)
+   print("Standalone ESS:", round(gpu_effective_sample_size(weights), 1))
+   idx = gpu_resample_systematic(weights, seed=0)
+   print("Resample index:", idx.shape, idx.dtype)
+   w_norm, log_sum = gpu_normalize_weights(np.log(weights))
+   print("Normalized sum:", round(float(w_norm.sum()), 6))
+
+Output on MLX:
+
+.. code-block:: text
+
+   Estimate shape: (2,)
+   ESS:            8402.5
+   Standalone ESS: 10000.0
+   Resample index: (10000,) mlx.core.int32
+   Normalized sum: 1.0
+
+Resampling is automatic when the effective sample size drops below
+``resample_threshold * n_particles``; choose the scheme with
+``resample_method`` (``"systematic"``, ``"stratified"``, or
+``"multinomial"``). :func:`~pytcl.gpu.gpu_resample_stratified` and
+:func:`~pytcl.gpu.gpu_resample_multinomial` mirror the systematic helper.
+:func:`~pytcl.gpu.batch_particle_filter_update` updates many independent
+particle filters (shape ``(n_filters, n_particles, state_dim)``) in one call.
+
+Device Utilities
+----------------
+
+Transfers and introspection:
+
+- :func:`~pytcl.gpu.to_gpu` / :func:`~pytcl.gpu.to_cpu` -- move arrays to and
+  from the active backend; both accept arrays that are already where they
+  belong
+- :func:`~pytcl.gpu.ensure_gpu_array` -- like ``to_gpu`` but with a dtype
+  guarantee
+- :func:`~pytcl.gpu.get_array_module` -- returns ``mlx.core``, ``cupy``, or
+  ``numpy`` for a given array, for backend-agnostic callables
+- :func:`~pytcl.gpu.sync_gpu` -- block until queued device work completes;
+  required for honest timing, since both backends are lazy or asynchronous
+
+Memory:
+
+.. code-block:: python
+
+   from pytcl.gpu import clear_gpu_memory, get_gpu_memory_info, sync_gpu
+
+   info = get_gpu_memory_info()
+   print("Backend:", info["backend"])
+   print("Used bytes:", info["used"])
+
+   sync_gpu()  # block until queued device work completes (for timing)
+   clear_gpu_memory()  # release cached device memory
+
+.. code-block:: text
+
+   Backend: mlx
+   Used bytes: 0
+
+On MLX the dictionary reports allocator state (``used``, ``peak``,
+``cache``); ``free`` and ``total`` are ``-1`` because unified memory has no
+separate device pool. On CuPy it reports the device's ``free`` and ``total``
+plus the CuPy memory pool's usage. :func:`~pytcl.gpu.get_memory_pool` returns
+a :class:`~pytcl.gpu.MemoryPool` manager wrapping the backend allocator, with
+``get_stats()``, ``set_limit()``, and ``free_all()``.
+
+Linear algebra helpers that run on the device and fall back transparently:
+:func:`~pytcl.gpu.gpu_cholesky`, :func:`~pytcl.gpu.gpu_cholesky_safe`
+(regularizing, returns a success flag), :func:`~pytcl.gpu.gpu_inv`,
+:func:`~pytcl.gpu.gpu_solve`, :func:`~pytcl.gpu.gpu_qr`,
+:func:`~pytcl.gpu.gpu_eigh`, and :func:`~pytcl.gpu.gpu_matrix_sqrt`.
+
+Measured Performance
+--------------------
+
+The only benchmark we publish is one we have actually run. Conditions: Apple
+Silicon, MLX backend, batch linear Kalman predict+update versus a per-track
+CPU loop over the reference implementation, timed end-to-end **including**
+host-device transfers and result materialization, after warm-up (August
+2026):
+
+==============  =============================
+Batch size      Speedup vs per-track CPU loop
+==============  =============================
+100 tracks      1.6x
+1,000 tracks    13x
+20,000 tracks   40x
+==============  =============================
+
+The shape of that curve is the real lesson: the device does not make one
+filter step faster, it makes *many* filter steps simultaneous. At 100 tracks
+the fixed cost of dispatch and transfer eats most of the win; by 20,000
+tracks it is negligible.
+
+**CuPy:** correctness of the CuPy backend is validated against the CPU
+reference on real NVIDIA hardware (RTX 5080), but we have not measured CuPy
+speedups, so this guide quotes none. Expect the same qualitative behavior --
+batch size pays for transfer overhead -- and profile your own workload.
+
+**When the GPU helps:**
+
+- Hundreds to tens of thousands of tracks stepped together
+- Particle filters with large particle counts
+- Pipelines that keep data on the device across many steps
+
+**When it does not:**
+
+- A single track, or a handful -- the CPU filters in
+  :mod:`pytcl.dynamic_estimation` will be faster
+- Per-step round-trips: converting to NumPy after every update discards the
+  batching advantage
+- Anything outside this module: :mod:`pytcl.gpu` accelerates batch Kalman,
+  EKF, UKF, and particle filtering only. Assignment algorithms and coordinate
+  conversions are CPU code paths and gain nothing from installing a GPU
+  backend.
+
+Precision on MLX
+----------------
+
+MLX computes in float32 and **raises on float64 GPU operations**, so the MLX
+backend converts inputs to float32 throughout. Consequences:
+
+- Batch results match the CPU reference implementations to roughly float32
+  precision -- measured about 1e-7 relative error for the linear and extended
+  Kalman filters -- rather than to machine epsilon.
+- The UKF is the sensitive case: keep ``alpha`` at 0.1 or larger on MLX (see
+  above). CuPy computes in float64 and has no such restriction.
+- MLX linear-algebra kernels (``inv``, ``cholesky``, ``solve``, ``eigh``) run
+  on the CPU stream; the dispatch layer handles this transparently, and
+  unified memory makes it a scheduling change rather than a copy.
 
 Troubleshooting
 ---------------
 
-**Issue: "ModuleNotFoundError: No module named 'cupy'"**
+**"No GPU available" from to_gpu**
 
-CuPy not installed. Install with your CUDA version:
+No backend is installed (or you are on hardware without one). The batch
+functions themselves still work -- they fall back to NumPy -- but explicit
+``to_gpu`` calls require a backend.
 
-.. code-block:: bash
+**Slower than the CPU**
 
-   pip install cupy-cuda12
+Almost always one of: the batch is too small to amortize transfer overhead,
+or the loop transfers to NumPy every step. Keep results as backend arrays
+between steps and convert once at the end. When timing, call
+:func:`~pytcl.gpu.sync_gpu` before reading the clock -- both backends queue
+work asynchronously, so un-synchronized timings measure dispatch, not
+compute.
 
-**Issue: CUDA Error "Device insufficient for this operation"**
+**Out of device memory**
 
-GPU doesn't support required operations. Fall back to CPU:
-
-.. code-block:: python
-
-   import numpy as np
-   x = np.asarray(x)  # Convert GPU arrays back to CPU
-   # Continue processing on CPU
-
-**Issue: Out of Memory Error**
-
-Reduce batch size or switch to CPU:
-
-.. code-block:: python
-
-   # Process smaller batches
-   batch_size = 100
-   for i in range(0, len(measurements), batch_size):
-       batch = measurements[i:i+batch_size]
-       # Process batch...
-
-**Issue: Slower than CPU**
-
-GPU overhead > speedup. Common causes:
-
-1. Small problem size (< 100 state dimension)
-2. Frequent GPU<->CPU transfers
-3. I/O bound (disk reading slower than computation)
-
-Solution: Profile with `time` module to identify bottleneck:
-
-.. code-block:: python
-
-   import time
-   
-   # Time GPU operation
-   x_gpu = cp.asarray(x)
-   start = time.perf_counter()
-   x_result = extended_kalman_filter(x_gpu, P_gpu, z_gpu, ...)
-   cp.cuda.Stream.null.synchronize()  # Wait for GPU
-   elapsed = time.perf_counter() - start
-   print(f"GPU time: {elapsed:.4f}s")
-
-Performance Benchmarks
-----------------------
-
-Typical speedups (relative to CPU NumPy):
-
-=================================  ==============  ==============
-Operation                          NVIDIA (CuPy)   Apple (MLX)
-=================================  ==============  ==============
-EKF with 20-dim state              5-8x            3-5x
-Particle filter (1000 particles)   8-12x           4-7x
-Sparse assignment (10k x 10k)      10-15x          5-10x
-Coordinate conversion (1M points)  2-3x            1-2x
-=================================  ==============  ==============
-
-.. note::
-
-   Benchmark results depend on GPU model, data size, and problem type.
-   Always profile your specific use case.
-
-Advanced Topics
----------------
-
-**Custom GPU Kernels**
-
-For extreme performance, write custom CUDA kernels with CuPy:
-
-.. code-block:: python
-
-   import cupy as cp
-   
-   # Define custom CUDA kernel
-   kernel_code = '''
-   __global__ void my_kernel(float *x, int n) {
-       int idx = blockIdx.x * blockDim.x + threadIdx.x;
-       if (idx < n) x[idx] *= 2.0f;
-   }
-   '''
-   
-   kernel = cp.RawKernel(kernel_code, 'my_kernel')
-
-**Multi-GPU Processing**
-
-For systems with multiple GPUs:
-
-.. code-block:: python
-
-   import cupy as cp
-   
-   # Distribute work across GPUs
-   for gpu_id in range(cp.cuda.runtime.getDeviceCount()):
-       with cp.cuda.Device(gpu_id):
-           # Process on this GPU
-           pass
+Process the track set in chunks along the batch dimension, and call
+:func:`~pytcl.gpu.clear_gpu_memory` between chunks if the allocator cache
+grows.
 
 See Also
-~~~~~~~~
+--------
 
 - :doc:`performance_optimization` - CPU optimization techniques
 - :doc:`kalman_filter_tuning` - Filter tuning and diagnostics

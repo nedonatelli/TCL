@@ -1,7 +1,7 @@
 """
 Atmospheric Modeling and Orbital Decay Analysis
 
-Demonstrates NRLMSISE-00 high-fidelity atmosphere model and drag calculations
+Demonstrates the simplified thermosphere model and drag calculations
 for analyzing satellite orbital decay and atmospheric interactions.
 
 Key scenarios:
@@ -26,7 +26,7 @@ from pytcl.atmosphere import (
 
 def plot_density_vs_altitude():
     """
-    Plot atmospheric density from NRLMSISE-00 across altitude range.
+    Plot atmospheric density from the simplified thermosphere across altitude range.
 
     Compares quiet and active solar activity conditions.
     """
@@ -117,7 +117,7 @@ def plot_density_vs_altitude():
     fig.update_xaxes(title_text="Altitude (km)", range=[0, 1000])
 
     fig.update_layout(
-        title="Atmospheric Density vs. Altitude<br><sub>NRLMSISE-00 Model (Quiet vs. Active Solar Activity)</sub>",
+        title="Atmospheric Density vs. Altitude<br><sub>Simplified Thermosphere (Quiet vs. Active Solar Activity)</sub>",
         hovermode="x unified",
         height=600,
         template="plotly_white",
@@ -177,7 +177,7 @@ def plot_composition_profile():
     fig.update_xaxes(title_text="Altitude (km)")
 
     fig.update_layout(
-        title="Atmospheric Composition vs. Altitude<br><sub>NRLMSISE-00 at F107=150, Ap=5</sub>",
+        title="Atmospheric Composition vs. Altitude<br><sub>Simplified Thermosphere at F107=150, Ap=5</sub>",
         height=600,
         hovermode="x unified",
         template="plotly_white",
@@ -238,7 +238,7 @@ def plot_temperature_profile():
     fig.update_xaxes(title_text="Temperature (K)", range=[150, 1100])
 
     fig.update_layout(
-        title="Temperature Profile vs. Altitude<br><sub>NRLMSISE-00 Under Various Solar Activity Levels</sub>",
+        title="Temperature Profile vs. Altitude<br><sub>Simplified Thermosphere Under Various Solar Activity Levels</sub>",
         height=600,
         hovermode="x unified",
         template="plotly_white",
@@ -397,7 +397,7 @@ def plot_composition_transitions():
 
 
 if __name__ == "__main__":
-    print("Generating NRLMSISE-00 atmospheric modeling visualizations...")
+    print("Generating thermosphere modeling visualizations...")
 
     # Create output directory
     output_dir = os.path.join(os.path.dirname(__file__), "output")
@@ -405,35 +405,35 @@ if __name__ == "__main__":
 
     # Generate all plots
     fig1 = plot_density_vs_altitude()
-    output_path1 = os.path.join(output_dir, "nrlmsise00_density.html")
+    output_path1 = os.path.join(output_dir, "thermosphere_density.html")
     fig1.write_html(
         output_path1, include_plotlyjs="cdn", div_id=Path(output_path1).stem
     )
     print(f"OK Saved: {output_path1}")
 
     fig2 = plot_composition_profile()
-    output_path2 = os.path.join(output_dir, "nrlmsise00_composition.html")
+    output_path2 = os.path.join(output_dir, "thermosphere_composition.html")
     fig2.write_html(
         output_path2, include_plotlyjs="cdn", div_id=Path(output_path2).stem
     )
     print(f"OK Saved: {output_path2}")
 
     fig3 = plot_temperature_profile()
-    output_path3 = os.path.join(output_dir, "nrlmsise00_temperature.html")
+    output_path3 = os.path.join(output_dir, "thermosphere_temperature.html")
     fig3.write_html(
         output_path3, include_plotlyjs="cdn", div_id=Path(output_path3).stem
     )
     print(f"OK Saved: {output_path3}")
 
     fig4 = plot_solar_activity_effect()
-    output_path4 = os.path.join(output_dir, "nrlmsise00_solar_activity.html")
+    output_path4 = os.path.join(output_dir, "thermosphere_solar_activity.html")
     fig4.write_html(
         output_path4, include_plotlyjs="cdn", div_id=Path(output_path4).stem
     )
     print(f"OK Saved: {output_path4}")
 
     fig5 = plot_composition_transitions()
-    output_path5 = os.path.join(output_dir, "nrlmsise00_composition_transition.html")
+    output_path5 = os.path.join(output_dir, "thermosphere_composition_transition.html")
     fig5.write_html(
         output_path5, include_plotlyjs="cdn", div_id=Path(output_path5).stem
     )

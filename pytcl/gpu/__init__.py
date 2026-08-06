@@ -6,8 +6,10 @@ using CuPy (NVIDIA GPUs) or MLX (Apple Silicon). The batch implementations are
 written once against a backend-dispatch layer (:mod:`pytcl.gpu._backend`) and
 run unmodified on either backend.
 
-Measured on Apple Silicon (MLX 0.32), batch linear Kalman predict+update
-against a per-track CPU loop: 3.4x at 100 tracks, 18x at 1,000, 38x at 20,000.
+Measured on Apple Silicon (MLX), batch linear Kalman predict+update against
+a per-track CPU loop, end-to-end including host-device transfers and result
+materialization, after warm-up: 1.6x at 100 tracks, 13x at 1,000, 40x at
+20,000 (August 2026).
 
 The module automatically selects the best available backend:
 - On systems with NVIDIA GPUs: Uses CuPy if installed (float64)

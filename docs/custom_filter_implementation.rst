@@ -7,8 +7,6 @@ Extend the Tracker Component Library with custom filtering algorithms. This guid
    :local:
    :depth: 3
 
----
-
 Why Implement Custom Filters
 =============================
 
@@ -27,17 +25,17 @@ Why Implement Custom Filters
 - ✅ Automatic documentation generation
 - ✅ Community review and potential contribution back to library
 
----
+Design Patterns: Class-Based Wrappers
+=====================================
 
-Design Patterns: Base Class Architecture
-========================================
+pytcl itself does not define a filter class hierarchy: the shipped filter API is functional. ``kf_predict`` and ``kf_update`` are plain functions that take arrays and return NamedTuples (``KalmanPrediction(x, P)`` and ``KalmanUpdate(x, P, y, S, K, likelihood)``), and the same style holds for the EKF/UKF variants. There is no abstract base class to inherit from.
 
-TCL uses abstract base classes to define filter interfaces. Understanding these patterns helps create compatible custom filters.
+A class-based wrapper around those functions is nonetheless a reasonable design choice for *your own* code: it keeps ``x`` and ``P`` together, gives every filter the same ``predict``/``update``/``get_state`` surface, and makes filters interchangeable in a tracking loop. The rest of this guide builds such wrappers -- treat the base class below as a pattern you may adopt, not something pytcl requires or provides.
 
 Filter Base Class Structure
 ----------------------------
 
-Most filters in TCL follow this pattern:
+A workable pattern:
 
 .. code-block:: python
 
@@ -118,8 +116,6 @@ Most filters in TCL follow this pattern:
         def meas_dim(self) -> int:
             """Measurement dimension."""
             return self.m
-
----
 
 Example 1: Custom Adaptive Constant Velocity Filter
 ===================================================
@@ -301,11 +297,10 @@ Create a specialized filter for tracking objects moving at constant velocity wit
         if k % 20 == 0:
             pos, vel = cvf.get_position(), cvf.get_velocity()
             diag = cvf.get_diagnostics()
-            print(f"Step {k}: pos={pos}, vel={vel:.3f}, "
+            print(f"Step {k}: pos=[{pos[0]:.3f}, {pos[1]:.3f}], "
+                  f"vel=[{vel[0]:.3f}, {vel[1]:.3f}], "
                   f"R_est={diag['R_estimate']:.2f}, "
                   f"maneuver_prob={diag['maneuver_probability']:.2f}")
-
----
 
 Example 2: Wrapping External C++ Filter
 ========================================
@@ -473,8 +468,6 @@ Integrate a pre-existing C++ filter implementation via ctypes or Cython.
                 except:
                     pass
 
----
-
 Integration with TCL Components
 ================================
 
@@ -513,13 +506,17 @@ Using Dynamic Models
             self.x = F @ self.x
             self.P = F @ self.P @ F.T + Q
         
-        def update(self, z: NDArray[np.floating[Any]], 
+        def update(self, z: NDArray[np.floating[Any]],
                   R: float) -> None:
             """Update with position measurement."""
-            # Measurement matrix (position only)
+            # Measurement matrix (position only).
+            # f_constant_velocity builds one [position, velocity] block per
+            # dimension, so the state is ordered [x, vx, y, vy] -- NOT
+            # [x, y, vx, vy]. The position components sit at even indices.
             H = np.zeros((self.num_dims, self.n))
-            H[:self.num_dims, :self.num_dims] = np.eye(self.num_dims)
-            
+            for i in range(self.num_dims):
+                H[i, 2 * i] = 1.0
+
             # Standard Kalman update
             S = H @ self.P @ H.T + R * np.eye(self.num_dims)
             K = self.P @ H.T @ np.linalg.inv(S)
@@ -527,17 +524,29 @@ Using Dynamic Models
             self.x = self.x + K @ (z - H @ self.x)
             self.P = (np.eye(self.n) - K @ H) @ self.P
         
-        def get_state(self) -> Tuple[NDArray[np.floating[Any]], 
+        def get_state(self) -> Tuple[NDArray[np.floating[Any]],
                                     NDArray[np.floating[Any]]]:
             return self.x.copy(), self.P.copy()
+
+.. note::
+
+   State layout: ``f_constant_velocity(T, num_dims=d)`` is block-diagonal with
+   one ``[[1, T], [0, 1]]`` block per spatial dimension, so the state vector is
+   interleaved as ``[x, vx, y, vy, ...]``. A measurement matrix written for the
+   ``[x, y, vx, vy]`` ordering would silently "measure" a velocity component.
 
 Using Coordinate Transformations
 ---------------------------------
 
 .. code-block:: python
 
+    import numpy as np
     from pytcl.coordinate_systems import cart2sphere, sphere2cart
-    
+
+    # For 3-D sensors, use the shipped conversions. cart2sphere takes 3-D
+    # points and returns a (range, azimuth, elevation) triple:
+    r, az, el = cart2sphere(np.array([3.0, 4.0, 12.0]), system_type='az-el')
+
     class PolarCoordinateFilter:
         """
         Filter that works in polar coordinates natively.
@@ -571,12 +580,17 @@ Using Coordinate Transformations
         
         def update_from_cartesian(self, z_cart: NDArray[np.floating[Any]]) -> None:
             """
-            Update with Cartesian measurement.
+            Update with 2-D Cartesian measurement.
             Convert to polar, then update.
+
+            Note: cart2sphere handles 3-D points (returning range, azimuth,
+            elevation). This filter is planar, so the range/bearing
+            conversion is just two lines of numpy.
             """
             # Convert measurement to polar
-            r_meas, theta_meas = cart2sphere(z_cart)
-            
+            r_meas = np.hypot(z_cart[0], z_cart[1])
+            theta_meas = np.arctan2(z_cart[1], z_cart[0])
+
             # Use simplified update (nonlinear)
             H = np.array([[1, 0, 0, 0],  # Measure range
                          [0, 1, 0, 0]])  # Measure bearing
@@ -607,12 +621,12 @@ Using Coordinate Transformations
                               r * np.sin(theta)])
             return x_cart, self.P[:2, :2]
 
----
-
 Testing Custom Filters
 ======================
 
 Implement comprehensive tests for your filter.
+
+For statistical consistency checks -- is the covariance honest about the actual estimation errors? -- do not hand-roll the metrics: :mod:`pytcl.performance_evaluation` ships ``nees`` / ``nees_sequence`` (state-space, needs truth data), ``nis`` / ``nis_sequence`` (measurement-space, works on innovations), and ``consistency_test`` (chi-square bounds on either sequence). The bounded-error and shrinking-trace checks below are coarse smoke tests; ``consistency_test`` is the principled version.
 
 .. code-block:: python
 
@@ -710,8 +724,6 @@ Implement comprehensive tests for your filter.
     # Run specific test
     python -m pytest test_custom_filter.py::TestCustomFilter::test_constant_velocity_tracking -v
 
----
-
 Performance Optimization
 ========================
 
@@ -794,8 +806,6 @@ For compute-intensive filters, use Numba JIT:
         S = H @ P @ H.T + R
         K = P @ H.T / S  # Scalar R
         return K
-
----
 
 Practical Workflow: Algorithm to Integration
 =============================================
@@ -939,8 +949,6 @@ Step-by-step example from research paper to production.
     References:
         Smith et al. (2024). Adaptive Fading Memory for Tracking.
     """
-
----
 
 Documentation and Type Hints
 =============================
@@ -1123,8 +1131,6 @@ Ensure proper type hints and documentation.
             """
             return self.x.copy(), self.P.copy()
 
----
-
 Common Pitfalls and Solutions
 =============================
 
@@ -1158,22 +1164,22 @@ Common Pitfalls and Solutions
 
 .. code-block:: python
 
-    # ❌ Bad: unstable covariance update
-    self.P = (np.eye(self.n) - K @ H) @ self.P
-    
-    # ✅ Good: Joseph form (more stable)
-    I_KH = np.eye(self.n) - K @ H
-    self.P = I_KH @ self.P @ I_KH.T + K @ R @ K.T
+    # Bad: unstable covariance update
+    def update_covariance_bad(self, K, H):
+        self.P = (np.eye(self.n) - K @ H) @ self.P
 
----
+    # Good: Joseph form (more stable)
+    def update_covariance_good(self, K, H, R):
+        I_KH = np.eye(self.n) - K @ H
+        self.P = I_KH @ self.P @ I_KH.T + K @ R @ K.T
 
 See Also
 ========
 
-- [Kalman Filter Tuning](kalman_filter_tuning.rst) — Tuning custom filters
-- [Advanced KF Variants](advanced_kf_variants.rst) — Other filter types to extend
-- [Performance Optimization](performance_optimization.rst) — Profiling and optimization
-- [Troubleshooting](troubleshooting.rst) — Debugging filter issues
+- :doc:`kalman_filter_tuning` -- Tuning custom filters
+- :doc:`advanced_kf_variants` -- Other filter types to extend
+- :doc:`performance_optimization` -- Profiling and optimization
+- :doc:`troubleshooting` -- Debugging filter issues
 
 **Resources:**
 

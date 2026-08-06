@@ -1,13 +1,19 @@
-Atmospheric Modeling with NRLMSISE-00
-======================================
+Thermosphere Density Modeling
+=============================
 
 Overview
 --------
 
-The NRLMSISE-00 (Naval Research Laboratory Mass Spectrometer Incoherent Scatter
-Radar Exosphere) model is the standard empirical model of Earth's upper atmosphere.
-It provides atmospheric density, temperature, and composition from ground level to
-1000 km altitude, with dependencies on solar activity and geomagnetic conditions.
+``pytcl`` ships :func:`~pytcl.atmosphere.simplified_thermosphere`, a
+barometric per-species model of upper-atmosphere density, temperature, and
+composition with solar-activity and geomagnetic inputs. It is **not**
+NRLMSISE-00 (the standard empirical model, which requires NOAA harmonic
+coefficient tables this library does not ship); above roughly 200 km it
+agrees with published NRLMSISE-00 values to within a factor of about two,
+and below about 86 km it is wrong by up to 50x --
+:func:`~pytcl.atmosphere.us_standard_atmosphere_1976` is the model to use
+there. The limits are measured and pinned by
+``tests/validation/test_thermosphere_limits.py`` (gh-79).
 
 Key Parameters
 ~~~~~~~~~~~~~~
@@ -34,7 +40,6 @@ Applications
 
 1. **Satellite Drag Modeling**
    - Atmospheric density affects satellite orbital decay
-   - NRLMSISE-00 is standard for orbit propagation
 
 2. **Radar Cross-Section (RCS) Prediction**
    - Ionospheric scattering depends on electron density
@@ -98,7 +103,7 @@ Density Calculation
    plt.semilogy(densities, altitudes_km)
    plt.xlabel('Density (kg/m³)')
    plt.ylabel('Altitude (km)')
-   plt.title('NRLMSISE-00 Density Profile')
+   plt.title('Thermosphere Density Profile')
    plt.show()
 
 Atmospheric Composition
@@ -201,49 +206,15 @@ Calculate drag force on a satellite:
    print(f"ΔV per orbit: {dv_per_orbit:.6f} m/s")
    print(f"Orbital decay (~0.5 years): {0.5 * 365 * dv_per_orbit / orbital_period:.1f} km")
 
-Validation Against Data
-------------------------
+Validation
+----------
 
-Comparison with in-situ measurements:
-
-.. code-block:: python
-
-   import numpy as np
-   from pytcl.atmosphere import simplified_thermosphere
-
-   # ISS accelerometer-derived density measurements (example)
-   measured_data = [
-       {"alt": 400, "density": 3.165e-12, "year": 2024, "doy": 100},
-       {"alt": 405, "density": 2.850e-12, "year": 2024, "doy": 100},
-       {"alt": 410, "density": 2.560e-12, "year": 2024, "doy": 100},
-   ]
-
-   # NRLMSISE-00 predictions
-   model_params = {
-       "latitude": np.deg2rad(51.6),
-       "longitude": 0.0,
-       "year": 2024,
-       "day_of_year": 100,
-       "seconds_in_day": 12 * 3600.0,
-       "f107": 150.0,
-       "f107a": 130.0,
-       "ap": 15.0,
-   }
-
-   errors = []
-   for data in measured_data:
-       model_density = simplified_thermosphere(
-           altitude=data["alt"] * 1e3,
-           **model_params
-       ).density
-       relative_error = abs(model_density - data["density"]) / data["density"]
-       errors.append(relative_error)
-       print(f"Alt {data['alt']} km: Measured {data['density']:.3e}, "
-             f"Model {model_density:.3e} (+{relative_error*100:.1f}%)")
-
-   mean_error = np.mean(errors)
-   print(f"\nMean relative error: {mean_error*100:.1f}%")
-   # Typical accuracy: 10-30% depending on space weather conditions
+The model's error against published NRLMSISE-00 reference values is
+measured and pinned by ``tests/validation/test_thermosphere_limits.py``:
+the observed ratios (0.556 at sea level, up to 50x in the mesosphere,
+within a factor of ~2 above 200 km) are asserted so any drift fails the
+suite. See the module docstring of ``pytcl.atmosphere.thermosphere`` for
+the per-altitude table.
 
 Effects of Solar Activity
 --------------------------
@@ -319,27 +290,20 @@ Model Limitations
 -----------------
 
 **Applicable Range**
-  - Altitude: 0-1000 km (poor accuracy below 85 km)
-  - Latitude: -90 to 90 degrees
-  - Longitude: 0 to 360 degrees
-  - Year: 1961-2100 (by Jacchia-based extrapolation)
-
-**Known Uncertainties**
-
-1. **Low Solar Activity**: Density can be underestimated by 20-30%
-2. **Disturbed Times**: Kp-dependent heating not exact (+30% during storms)
-3. **Seasonal Anomalies**: Hemispheric differences not fully captured
-4. **Microvariations**: Hour-to-hour variations up to ±10%
+  - Altitude: usable above ~200 km (within ~2x of published NRLMSISE-00);
+    below ~86 km use :func:`~pytcl.atmosphere.us_standard_atmosphere_1976`
+  - The ``year`` argument is accepted for signature compatibility but has
+    no effect on the output; there is no secular or epoch dependence
 
 **When NOT to Use**
-  - Stratospheric studies (use MSISE-90 or COSPAR)
-  - High-precision drag modeling (use in-situ data + correction)
-  - Real-time forecasting (use HASDM or JB2008 instead)
+  - Below ~86 km (up to 50x error; use US Standard Atmosphere 1976)
+  - High-precision drag modeling (use real NRLMSISE-00, HASDM, or JB2008
+    with in-situ corrections)
 
 Integration with Orbit Propagation
 -----------------------------------
 
-Use NRLMSISE-00 in SGP4 propagator:
+Evaluate the density model inside a propagation loop:
 
 .. code-block:: python
 
@@ -376,11 +340,12 @@ See Also
 - **SPDF/NSSDC**: NRLMSISE-00 Original Publication
 - :doc:`getting_started` - Basic atmospheric modeling
 - :doc:`api/dynamic_models` - Orbit propagation with drag
-- :ref:`NRLMSISE-00 Model <nrlmsise00-model>` - API Reference
+- :ref:`Thermosphere Model <thermosphere-model>` - API Reference
 
 References
 ----------
 
-1. Picone, J.M., et al. (2002), "NRLMSISE-00 Empirical Model of the Atmosphere"
-2. NASA Technical Reports Server (NTRS)
-3. COSPAR International Reference Atmosphere (CIRA)
+1. Picone, J.M., et al. (2002), "NRLMSISE-00 Empirical Model of the
+   Atmosphere" -- the reference model this simplified implementation is
+   measured against
+2. COSPAR International Reference Atmosphere (CIRA)

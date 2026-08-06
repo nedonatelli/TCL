@@ -52,9 +52,6 @@ pip install nrl-tracker[terrain]
 # For visualization
 pip install nrl-tracker[visualization]
 
-# For optimization (CVXPY)
-pip install nrl-tracker[optimization]
-
 # For signal processing (wavelets)
 pip install nrl-tracker[signal]
 

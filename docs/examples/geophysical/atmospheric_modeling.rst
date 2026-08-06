@@ -1,7 +1,7 @@
 Atmospheric Modeling
 ====================
 
-This example demonstrates NRLMSISE-00 high-fidelity atmosphere model and drag calculations for analyzing satellite orbital decay and atmospheric interactions.
+This example demonstrates the simplified thermosphere model and drag calculations for analyzing satellite orbital decay and atmospheric interactions.
 
 .. raw:: html
 
@@ -49,10 +49,11 @@ Key Scenarios
 Models Covered
 --------------
 
-**NRLMSISE-00**
-   - Naval Research Laboratory Mass Spectrometer and Incoherent Scatter Radar
-   - High-fidelity empirical model from sea level to 1000+ km
-   - Accounts for solar activity (F10.7) and geomagnetic storms (Ap)
+**Simplified Thermosphere**
+   - Barometric per-species model with solar-activity (F10.7) and
+     geomagnetic (Ap) inputs
+   - Usable above ~200 km (within ~2x of published NRLMSISE-00 values);
+     below ~86 km use the US Standard Atmosphere instead (gh-79)
 
 **US Standard Atmosphere 1976**
    - Reference atmosphere up to 85 km

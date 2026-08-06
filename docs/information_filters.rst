@@ -1,34 +1,32 @@
 Information Filters and SRIF
 =============================
 
-Information filters represent uncertainty by the **inverse of covariance** rather than covariance itself. This approach offers superior numerical stability, natural handling of weak measurements, and efficient batch processing. This guide covers the information filter, Square Root Information Filter (SRIF), and practical implementations.
+Information filters represent uncertainty by the **inverse of covariance** rather than covariance itself. This approach offers superior numerical stability, natural handling of weak measurements, and efficient batch processing. This guide covers the information filter and the Square Root Information Filter (SRIF) as implemented in ``pytcl.dynamic_estimation``.
 
 .. contents:: Contents
    :local:
-   :depth: 3
-
----
+   :depth: 2
 
 When to Use Information Filters
-================================
+-------------------------------
 
 **Advantages over Kalman Filters:**
 
 1. **Numerical Stability**: Works well with poorly-conditioned systems
-   
-   - No matrix inversion of covariance (direct accumulation of information)
+
+   - No matrix inversion of covariance during the update (direct accumulation of information)
    - Square Root Information Filter is more robust than standard Kalman
 
 2. **Weak Measurement Handling**: Graceful degradation when measurements have high uncertainty
-   
-   - Kalman gain can become ill-conditioned with high $R$
-   - Information filter naturally handles rank-deficient $R$
+
+   - Kalman gain can become ill-conditioned with high :math:`\mathbf{R}`
+   - Information filter naturally handles weak or missing measurements
 
 3. **Batch Processing**: Natural for off-line data processing and smoothing
 
 4. **Decentralized Systems**: Multiple information sources combine trivially (additive information)
 
-5. **Initial Uncertainty**: Easy to handle unknown initial state (low information)
+5. **Initial Uncertainty**: Easy to handle unknown initial state (zero information)
 
 **When NOT to use:**
 
@@ -36,546 +34,280 @@ When to Use Information Filters
 - Your system is well-conditioned and measurements are always present (standard Kalman is fine)
 - You need fast forward-only filtering of large data streams (Kalman is more standard)
 
----
-
 Information Filter Fundamentals
-================================
+-------------------------------
 
-**Standard Kalman Filter** represents uncertainty as covariance $\mathbf{P}$:
+**Standard Kalman Filter** represents uncertainty as covariance :math:`\mathbf{P}`:
 
-$$\mathbf{P}_k = E[(\mathbf{x}_k - \hat{\mathbf{x}}_k)(\mathbf{x}_k - \hat{\mathbf{x}}_k)^T]$$
+.. math::
+
+   \mathbf{P}_k = E[(\mathbf{x}_k - \hat{\mathbf{x}}_k)(\mathbf{x}_k - \hat{\mathbf{x}}_k)^T]
 
 **Information Filter** represents uncertainty by the information matrix:
 
-$$\mathbf{Y}_k = \mathbf{P}_k^{-1}$$
+.. math::
+
+   \mathbf{Y}_k = \mathbf{P}_k^{-1}
 
 and the information vector:
 
-$$\mathbf{y}_k = \mathbf{P}_k^{-1} \hat{\mathbf{x}}_k = \mathbf{Y}_k \hat{\mathbf{x}}_k$$
+.. math::
+
+   \mathbf{y}_k = \mathbf{P}_k^{-1} \hat{\mathbf{x}}_k = \mathbf{Y}_k \hat{\mathbf{x}}_k
 
 Recover the state estimate via:
 
-$$\hat{\mathbf{x}}_k = \mathbf{Y}_k^{-1} \mathbf{y}_k$$
+.. math::
+
+   \hat{\mathbf{x}}_k = \mathbf{Y}_k^{-1} \mathbf{y}_k
 
 **Information Gain:**
 
-When a measurement $z_k$ arrives with covariance $R_k$, the information gain is:
+When a measurement :math:`z_k` arrives with covariance :math:`\mathbf{R}_k`, the information gain is:
 
-$$\Delta \mathbf{Y}_k = \mathbf{H}_k^T \mathbf{R}_k^{-1} \mathbf{H}_k$$
+.. math::
 
-$$\Delta \mathbf{y}_k = \mathbf{H}_k^T \mathbf{R}_k^{-1} z_k$$
+   \Delta \mathbf{Y}_k = \mathbf{H}_k^T \mathbf{R}_k^{-1} \mathbf{H}_k
+
+.. math::
+
+   \Delta \mathbf{y}_k = \mathbf{H}_k^T \mathbf{R}_k^{-1} z_k
 
 The information is updated additively:
 
-$$\mathbf{Y}_{k|k} = \mathbf{Y}_{k|k-1} + \Delta \mathbf{Y}_k$$
+.. math::
 
-$$\mathbf{y}_{k|k} = \mathbf{y}_{k|k-1} + \Delta \mathbf{y}_k$$
+   \mathbf{Y}_{k|k} = \mathbf{Y}_{k|k-1} + \Delta \mathbf{Y}_k, \qquad
+   \mathbf{y}_{k|k} = \mathbf{y}_{k|k-1} + \Delta \mathbf{y}_k
 
 **Key Insight:** Information matrices add directly (unlike covariances which combine via matrix algebra). This makes decentralized fusion trivial.
 
----
+Working in Information Form
+---------------------------
 
-Standard Information Filter Algorithm
-=====================================
-
-Prediction Step
----------------
-
-The prediction is more complex than Kalman because we must invert covariances. Assume discrete linear system:
-
-$$\mathbf{x}_{k+1} = \mathbf{F}_k \mathbf{x}_k + \mathbf{w}_k, \quad \mathbf{w}_k \sim \mathcal{N}(0, \mathbf{Q}_k)$$
-
-Predicted information and state:
-
-$$\mathbf{Y}_{k+1|k} = [\mathbf{F}_k \mathbf{P}_{k|k} \mathbf{F}_k^T + \mathbf{Q}_k]^{-1}$$
-
-$$\mathbf{y}_{k+1|k} = \mathbf{Y}_{k+1|k} \mathbf{F}_k \mathbf{P}_{k|k} \mathbf{y}_{k|k}$$
-
-where $\mathbf{P}_{k|k} = \mathbf{Y}_{k|k}^{-1}$.
-
-**Implementation** (requires inversion—more costly than Kalman):
+``pytcl`` provides ``state_to_information`` and ``information_to_state`` to convert between the two representations:
 
 .. code-block:: python
 
     import numpy as np
-    from scipy.linalg import inv, solve
-    
-    class InformationFilter:
-        """
-        Standard Information Filter.
-        
-        State represented by (information matrix, information vector):
-            Y = P^{-1}    (information matrix)
-            y = P^{-1} * x_hat  (information vector)
-        
-        Recover state: x_hat = Y^{-1} * y
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            """
-            Initialize information filter.
-            
-            Parameters
-            ----------
-            x0 : (n,) array
-                Initial state estimate
-            P0 : (n, n) array
-                Initial covariance
-            """
-            self.n = len(x0)
-            
-            # Store covariance for predict step (information filter needs it)
-            self.P = P0.copy()
-            
-            # Information representation
-            self.Y = inv(P0)  # Information matrix
-            self.y = self.Y @ x0  # Information vector
-            
-            self.x = x0.copy()
-        
-        def predict(self, F: np.ndarray, Q: np.ndarray) -> None:
-            """
-            Prediction step.
-            
-            Parameters
-            ----------
-            F : (n, n) array
-                State transition matrix
-            Q : (n, n) array
-                Process noise covariance
-            """
-            # Covariance prediction (need P for next step)
-            # P_pred = F @ P @ F.T + Q
-            self.P = F @ self.P @ F.T + Q
-            
-            # Information prediction
-            # Y_pred = (F @ P @ F.T + Q)^{-1}
-            self.Y = inv(self.P)
-            
-            # Recover state and convert to information vector
-            self.x = self.Y @ self.y  # Recover x from information rep
-        
-        def update(self, z: np.ndarray, H: np.ndarray, 
-                  R: np.ndarray) -> None:
-            """
-            Measurement update.
-            
-            Parameters
-            ----------
-            z : (m,) array
-                Measurement
-            H : (m, n) array
-                Measurement matrix
-            R : (m, m) array
-                Measurement noise covariance
-            """
-            # Information gain from measurement
-            R_inv = inv(R)
-            
-            # Update information matrix and vector (additive!)
-            self.Y = self.Y + H.T @ R_inv @ H
-            self.y = self.y + H.T @ R_inv @ z
-            
-            # Recover covariance and state
-            self.P = inv(self.Y)
-            self.x = self.P @ self.y
-        
-        def get_state(self) -> tuple:
-            """Return current state and covariance."""
-            return self.x.copy(), self.P.copy()
 
-**Example: Simple 1D Tracking**
+    from pytcl.dynamic_estimation import (
+        information_to_state,
+        state_to_information,
+    )
+
+    x = np.array([1.0, 0.5])
+    P = np.eye(2) * 0.1
+
+    y, Y = state_to_information(x, P)
+    print(y)
+    # [10.  5.]
+    print(Y)
+    # [[10.  0.]
+    #  [ 0. 10.]]
+
+    x_back, P_back = information_to_state(y, Y)
+    print(x_back)
+    # [1.  0.5]
+
+Prediction and Update Steps
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The prediction step is more complex than in the Kalman filter because it requires inverting the information matrix. For the discrete linear system
+
+.. math::
+
+   \mathbf{x}_{k+1} = \mathbf{F}_k \mathbf{x}_k + \mathbf{w}_k, \quad
+   \mathbf{w}_k \sim \mathcal{N}(0, \mathbf{Q}_k)
+
+the predicted information is
+
+.. math::
+
+   \mathbf{Y}_{k+1|k} = [\mathbf{F}_k \mathbf{Y}_{k|k}^{-1} \mathbf{F}_k^T + \mathbf{Q}_k]^{-1}
+
+while the measurement update is purely additive. ``information_filter_predict`` and ``information_filter_update`` implement both steps:
 
 .. code-block:: python
 
-    # 1D position tracking with constant velocity
+    from pytcl.dynamic_estimation import (
+        information_filter_predict,
+        information_filter_update,
+    )
+
+    # Constant-velocity model, position-only measurement
+    dt = 0.1
+    F = np.array([[1.0, dt], [0.0, 1.0]])
+    Q = np.eye(2) * 0.01
+    H = np.array([[1.0, 0.0]])
+    R = np.array([[0.5]])
+
+    y_pred, Y_pred = information_filter_predict(y, Y, F, Q)
+
+    z = np.array([1.07])
+    y_upd, Y_upd = information_filter_update(y_pred, Y_pred, z, H, R)
+
+    x_upd, P_upd = information_to_state(y_upd, Y_upd)
+    print(x_upd)
+    # [1.05363339 0.50032733]
+    print(np.sqrt(np.diag(P_upd)))
+    # [0.30138795 0.33141565]
+
+Filtering a Measurement Sequence
+--------------------------------
+
+``information_filter`` runs the full predict/update recursion over a list of measurements and returns an ``InformationFilterResult`` with both information-form (``y_filt``, ``Y_filt``) and state-form (``x_filt``, ``P_filt``) estimates. Use ``None`` in the measurement list for missing measurements -- a skipped update is simply "no information added".
+
+.. code-block:: python
+
+    from pytcl.dynamic_estimation import information_filter
+
+    # 1D position tracking with constant velocity (truth: pos = 0.1 * k)
+    rng = np.random.default_rng(42)
     x0 = np.array([0.0, 1.0])  # pos, vel
     P0 = np.eye(2) * 0.1
-    
-    ifilt = InformationFilter(x0, P0)
-    
-    # Process model
-    dt = 0.1
-    F = np.array([[1, dt], [0, 1]])
-    Q = np.eye(2) * 0.01
-    
-    # Measurement model (position only)
-    H = np.array([[1, 0]])
-    R = np.array([[0.5]])
-    
-    for k in range(20):
-        # Predict
-        ifilt.predict(F, Q)
-        
-        # Measurement
-        z = np.array([0.1 * k + 0.5 * np.random.randn()])
-        
-        # Update
-        ifilt.update(z, H, R)
-        
-        x, P = ifilt.get_state()
-        if k % 5 == 0:
-            print(f"Step {k}: x = {x}, σ = {np.sqrt(np.diag(P))}")
 
----
+    y0, Y0 = state_to_information(x0, P0)
+
+    measurements = [
+        np.array([0.1 * (k + 1) + rng.normal(0.0, 0.5)]) for k in range(20)
+    ]
+
+    result = information_filter(y0, Y0, measurements, F, Q, H, R)
+
+    for k in (0, 5, 10, 15, 19):
+        x_k = result.x_filt[k]
+        sig = np.sqrt(np.diag(result.P_filt[k]))
+        print(
+            f"k={k:2d}  x = [{x_k[0]:6.3f}, {x_k[1]:6.3f}]"
+            f"  sigma = [{sig[0]:.3f}, {sig[1]:.3f}]"
+        )
+    # k= 0  x = [ 0.128,  1.002]  sigma = [0.301, 0.331]
+    # k= 5  x = [ 0.411,  0.910]  sigma = [0.291, 0.385]
+    # k=10  x = [ 1.018,  0.996]  sigma = [0.306, 0.403]
+    # k=15  x = [ 1.654,  1.060]  sigma = [0.313, 0.403]
+    # k=19  x = [ 2.056,  1.049]  sigma = [0.315, 0.400]
+
+Unknown Initial State
+---------------------
+
+Information filters excel when the initial state is completely unknown: set :math:`\mathbf{Y}_0 = 0` (zero information) and let measurements build up information. The information matrix is rank-deficient until enough independent measurements have constrained every state component:
+
+.. code-block:: python
+
+    y0_unknown = np.zeros(2)
+    Y0_unknown = np.zeros((2, 2))  # No prior information at all
+
+    result_u = information_filter(
+        y0_unknown, Y0_unknown, measurements, F, Q, H, R
+    )
+
+    print(result_u.x_filt[0], np.linalg.matrix_rank(result_u.Y_filt[0]))
+    # [0.25235854 0.        ] 1
+    print(result_u.x_filt[2], np.linalg.matrix_rank(result_u.Y_filt[2]))
+    # [0.41570303 2.11459482] 2
+
+After one position-only measurement the information matrix has rank 1 -- position is constrained but velocity is not. By the third measurement the rank is full and a (still noisy) velocity estimate exists. A covariance-form Kalman filter cannot represent "no prior" exactly; it must approximate it with a large :math:`\mathbf{P}_0`.
 
 Square Root Information Filter (SRIF)
-=====================================
+-------------------------------------
 
-Standard information filters require matrix inversion at each predict step, which can be numerically unstable. SRIF avoids this by working with the **square root** of the information matrix.
+Standard information filters invert matrices at each predict step, which can be numerically delicate. The SRIF instead carries the **square root** of the information matrix, :math:`\mathbf{R}` with :math:`\mathbf{R}^T \mathbf{R} = \mathbf{Y}`, and the transformed information vector :math:`\mathbf{r} = \mathbf{R} \hat{\mathbf{x}}`.
 
-Let $\mathbf{S} = \mathbf{Y}^{1/2}$ (Cholesky factor of information matrix).
+The measurement update stacks the prior square root with the whitened measurement and triangularizes by QR decomposition:
 
-**Advantages:**
+.. math::
 
-- No explicit matrix inversion (use QR decomposition)
-- Better numerical conditioning (square root of matrix is better-conditioned)
-- Works reliably with rank-deficient problems
-- Decorrelated measurements are natural
+   \begin{bmatrix} \mathbf{R}_{k|k-1} & \mathbf{r}_{k|k-1} \\
+   \mathbf{R}_{z}^{-T} \mathbf{H}_k & \mathbf{R}_{z}^{-T} z_k \end{bmatrix}
+   \xrightarrow{\text{QR}}
+   \begin{bmatrix} \mathbf{R}_{k|k} & \mathbf{r}_{k|k} \\ 0 & e_k \end{bmatrix}
 
-Algorithm: Measurement Update
-------------------------------
+where :math:`\mathbf{R}_z` is a Cholesky factor of the measurement noise covariance. No information matrix is ever formed explicitly during the update, and the effective condition number is the square root of the full-matrix version.
 
-Given current square root: $\mathbf{S}_k \mathbf{S}_k^T = \mathbf{Y}_k$
-
-New measurement with $\mathbf{H}_{k+1}$, $z_{k+1}$, $R_{k+1}$:
-
-Stack and QR decompose:
-
-$$\begin{bmatrix} \mathbf{S}_k \\ \sqrt{\mathbf{R}_{k+1}^{-1}} \mathbf{H}_{k+1} \end{bmatrix} \leftarrow \text{QR Decomposition}$$
-
-Result: Upper triangular $\mathbf{S}_{k+1}$ (new square root information matrix).
-
-**Implementation:**
+``pytcl`` ships ``srif_predict``, ``srif_update``, and the batch driver ``srif_filter`` (returning an ``SRIFResult`` with ``r_filt``, ``R_filt``, ``x_filt``, ``P_filt``). Note that the current ``srif_predict`` implementation propagates through covariance space rather than triangularizing the stacked square-root arrays directly -- see its docstring for details.
 
 .. code-block:: python
 
-    from scipy.linalg import qr, cholesky, solve_triangular, inv
-    
-    class SquareRootInformationFilter:
-        """
-        Square Root Information Filter (SRIF).
-        
-        Maintains square root of information matrix: S where Y = S @ S.T
-        More numerically stable than standard information filter.
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            """
-            Initialize SRIF.
-            
-            Parameters
-            ----------
-            x0 : (n,) array
-                Initial state estimate
-            P0 : (n, n) array
-                Initial covariance (should be positive definite)
-            """
-            self.n = len(x0)
-            self.x = x0.copy()
-            
-            # Square root of information matrix
-            # S @ S.T = Y = P^{-1}
-            Y = inv(P0)
-            self.S = cholesky(Y, lower=False)  # Upper triangular
-            
-            # Current covariance
-            self.P = P0.copy()
-        
-        def update_measurement(self, z: np.ndarray, H: np.ndarray,
-                              R: np.ndarray) -> None:
-            """
-            Measurement update via QR decomposition.
-            
-            Parameters
-            ----------
-            z : (m,) array
-                Measurement
-            H : (m, n) array
-                Measurement matrix
-            R : (m, m) array
-                Measurement noise covariance
-            """
-            m = len(z)
-            
-            # Compute square root of R^{-1}
-            # For stability, use Cholesky if possible
-            try:
-                R_inv_sq = cholesky(inv(R), lower=False)
-            except:
-                # Fallback: eigenvalue decomposition
-                eigvals, eigvecs = np.linalg.eigh(inv(R))
-                eigvals = np.maximum(eigvals, 1e-10)  # Regularize
-                R_inv_sq = eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
-            
-            # Stacked matrix: [S_k^T; sqrt(R^{-1}) @ H]
-            matrix_stacked = np.vstack([
-                self.S.T,
-                R_inv_sq @ H
-            ])
-            
-            # QR decomposition
-            Q, R_upper = qr(matrix_stacked.T)  # QR of transpose
-            
-            # New square root (transpose back to upper triangular form)
-            self.S = R_upper[:self.n, :self.n].T
-            if not np.allclose(self.S, np.triu(self.S)):
-                # Ensure upper triangular
-                self.S = np.triu(self.S)
-            
-            # Updated information vector
-            # y_new = y_old + H.T @ R^{-1} @ z
-            Y = self.S.T @ self.S
-            y = Y @ self.x + H.T @ inv(R) @ z
-            
-            # Update state estimate
-            self.P = inv(Y)
-            self.x = self.P @ y
-        
-        def predict(self, F: np.ndarray, Q: np.ndarray) -> None:
-            """
-            Prediction step (requires covariance update).
-            
-            Parameters
-            ----------
-            F : (n, n) array
-                State transition matrix
-            Q : (n, n) array
-                Process noise covariance
-            """
-            # Standard covariance prediction
-            self.P = F @ self.P @ F.T + Q
-            
-            # Update square root of information matrix
-            Y_new = inv(self.P)
-            self.S = cholesky(Y_new, lower=False)
-        
-        def get_state(self) -> tuple:
-            """Return state estimate and covariance."""
-            return self.x.copy(), self.P.copy()
+    from pytcl.dynamic_estimation import srif_filter
 
-**Example: SRIF vs Standard IF**
+    # SRIF initial condition: R0.T @ R0 = inv(P0), r0 = R0 @ x0
+    R0 = np.linalg.cholesky(np.linalg.inv(P0)).T
+    r0 = R0 @ x0
+
+    result_srif = srif_filter(r0, R0, measurements, F, Q, H, R)
+
+    diff = max(
+        np.max(np.abs(a - b))
+        for a, b in zip(result_srif.x_filt, result.x_filt)
+    )
+    print(f"max |x_srif - x_if| = {diff:.2e}")
+    # max |x_srif - x_if| = 1.33e-15
+
+    print(result_srif.x_filt[-1])
+    # [2.05631183 1.04852902]
+
+On this well-conditioned toy problem both filters agree to machine precision; the SRIF's advantage appears on poorly-conditioned problems (large dynamic range in state uncertainties, nearly-singular measurement geometry).
+
+**Related square-root variants.** ``pytcl.dynamic_estimation`` also provides square-root and factorized forms of the *covariance* filter: ``srkf_predict`` / ``srkf_update`` / ``srkf_predict_update`` (square-root Kalman filter propagating a Cholesky factor of :math:`\mathbf{P}`) and ``ud_factorize`` / ``ud_predict`` / ``ud_update`` / ``ud_reconstruct`` (Bierman-Thornton U-D factorization). These serve the same numerical-robustness goal from the covariance side.
+
+Multi-Sensor Fusion
+-------------------
+
+Because information is additive, independent sensors can be processed one at a time with ``information_filter_update`` -- each scalar sensor contributes :math:`\mathbf{h}^T z / r` to the information vector and :math:`\mathbf{h}^T \mathbf{h} / r` to the information matrix:
 
 .. code-block:: python
 
-    import numpy as np
-    from scipy.linalg import inv
-    
-    # Poorly conditioned problem
-    x0 = np.array([1.0, 1.0, 1.0])
-    P0 = np.array([
-        [1e6, 1e5, 1e4],
-        [1e5, 1e6, 1e5],
-        [1e4, 1e5, 1e6]
-    ])
-    
-    # Standard IF
-    if_filt = InformationFilter(x0, P0)
-    
-    # SRIF
-    srif_filt = SquareRootInformationFilter(x0, P0)
-    
-    # Measurement matrix
-    H = np.eye(3)
-    R = np.eye(3) * 0.1
-    z = np.array([1.1, 0.9, 1.05])
-    
-    # Update both
-    if_filt.update(z, H, R)
-    srif_filt.update_measurement(z, H, R)
-    
-    x_if, P_if = if_filt.get_state()
-    x_srif, P_srif = srif_filt.get_state()
-    
-    print(f"IF error:   {np.linalg.norm(x_if - x_srif):.2e}")
-    print(f"IF cond:    {np.linalg.cond(P_if):.2e}")
-    print(f"SRIF cond:  {np.linalg.cond(P_srif):.2e}")
+    # 2D localization with 3 independent scalar sensors
+    x0_fusion = np.array([0.0, 0.0])  # [x, y]
+    P0_fusion = np.eye(2) * 10.0
 
----
+    y_cur, Y_cur = state_to_information(x0_fusion, P0_fusion)
 
-Extended Information Filter (EKIF)
-==================================
+    sensors = [
+        # (measurement, measurement row, variance)
+        (1.1, np.array([[1.0, 0.0]]), 0.5),  # x position
+        (0.9, np.array([[0.0, 1.0]]), 0.5),  # y position
+        (1.4, np.array([[1.0, 1.0]]) / np.sqrt(2.0), 0.8),  # diagonal range
+    ]
 
-For nonlinear systems, extend information filtering with linearization (similar to EKF from Kalman filters).
+    for z_s, H_s, r_s in sensors:
+        y_cur, Y_cur = information_filter_update(
+            y_cur, Y_cur, np.array([z_s]), H_s, np.array([[r_s]])
+        )
+
+    x_est, P_est = information_to_state(y_cur, Y_cur)
+    print(x_est)
+    # [1.06163716 0.87116097]
+    print(np.sqrt(np.diag(P_est)))
+    # [0.62237366 0.62237366]
+
+For decentralized architectures where each node ships its information contribution to a fusion center, ``fuse_information`` adds a list of ``InformationState`` tuples in one call:
 
 .. code-block:: python
 
-    class ExtendedInformationFilter:
-        """
-        Extended Information Filter for nonlinear systems.
-        
-        Linearizes around current state estimate:
-            x_{k+1} = f(x_k) + w_k
-            z_k = h(x_k) + v_k
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            self.n = len(x0)
-            self.x = x0.copy()
-            self.P = P0.copy()
-            
-            # Information representation
-            self.Y = inv(P0)
-            self.y = self.Y @ x0
-        
-        def predict(self, f_func, F_jacobian, Q: np.ndarray) -> None:
-            """
-            Nonlinear prediction.
-            
-            Parameters
-            ----------
-            f_func : callable
-                Nonlinear state function f(x)
-            F_jacobian : callable
-                Jacobian of f at current x
-            Q : (n, n) array
-                Process noise covariance
-            """
-            # Nonlinear prediction
-            self.x = f_func(self.x)
-            
-            # Linearize
-            F = F_jacobian(self.x)
-            
-            # Covariance prediction
-            self.P = F @ self.P @ F.T + Q
-            
-            # Information update
-            self.Y = inv(self.P)
-            self.y = self.Y @ self.x
-        
-        def update(self, z: np.ndarray, h_func, H_jacobian, 
-                  R: np.ndarray) -> None:
-            """
-            Nonlinear measurement update.
-            
-            Parameters
-            ----------
-            z : (m,) array
-                Measurement
-            h_func : callable
-                Measurement function h(x)
-            H_jacobian : callable
-                Jacobian of h at current x
-            R : (m, m) array
-                Measurement noise covariance
-            """
-            # Linearize measurement
-            H = H_jacobian(self.x)
-            
-            # Information update (additive)
-            R_inv = inv(R)
-            
-            self.Y = self.Y + H.T @ R_inv @ H
-            self.y = self.y + H.T @ R_inv @ z
-            
-            # Recover state
-            self.P = inv(self.Y)
-            self.x = self.P @ self.y
+    from pytcl.dynamic_estimation import InformationState, fuse_information
 
----
+    y_prior, Y_prior = state_to_information(x0_fusion, P0_fusion)
 
-Decorrelated Measurement Processing
-===================================
+    contributions = [InformationState(y=y_prior, Y=Y_prior)]
+    for z_s, H_s, r_s in sensors:
+        contributions.append(
+            InformationState(
+                y=H_s.T @ np.array([z_s]) / r_s,
+                Y=H_s.T @ H_s / r_s,
+            )
+        )
 
-Information filters naturally handle measurements processed one at a time without correlation issues.
+    fused = fuse_information(contributions)
+    x_fused, P_fused = information_to_state(fused.y, fused.Y)
+    print(x_fused)
+    # [1.06163716 0.87116097]
 
-**Benefit:** Process high-rate measurements sequentially without loss of numerical precision.
-
-.. code-block:: python
-
-    class DecorrelatedInformationFilter:
-        """
-        Process measurements one-at-a-time (scalar).
-        
-        Avoids manipulation of measurement covariance matrix.
-        More numerically stable for high-dimensional systems.
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            self.n = len(x0)
-            self.x = x0.copy()
-            self.P = P0.copy()
-            self.Y = inv(P0)
-            self.y = self.Y @ x0
-        
-        def update_scalar(self, z_scalar: float, h_row: np.ndarray,
-                         r_scalar: float) -> None:
-            """
-            Update with scalar (1D) measurement.
-            
-            Parameters
-            ----------
-            z_scalar : float
-                Scalar measurement value
-            h_row : (n,) array
-                Single row of measurement matrix (Jacobian for one sensor)
-            r_scalar : float
-                Scalar measurement variance
-            """
-            # Information update (simple additive form)
-            self.Y = self.Y + (1/r_scalar) * np.outer(h_row, h_row)
-            self.y = self.y + (1/r_scalar) * h_row * z_scalar
-            
-            # Recover state
-            self.P = inv(self.Y)
-            self.x = self.P @ self.y
-        
-        def update_batch_scalar(self, measurements: np.ndarray,
-                               H_matrix: np.ndarray,
-                               R_diag: np.ndarray) -> None:
-            """
-            Update with multiple scalar measurements (processed one-by-one).
-            
-            Parameters
-            ----------
-            measurements : (m,) array
-                Measurement values
-            H_matrix : (m, n) array
-                Measurement matrix
-            R_diag : (m,) array
-                Diagonal measurement variances
-            """
-            for i in range(len(measurements)):
-                self.update_scalar(measurements[i], H_matrix[i, :], 
-                                  R_diag[i])
-
-**Example: Multi-Sensor Fusion**
-
-.. code-block:: python
-
-    # 2D localization with 3 independent distance sensors
-    x0 = np.array([0.0, 0.0])  # [x, y]
-    P0 = np.eye(2) * 10.0
-    
-    dif = DecorrelatedInformationFilter(x0, P0)
-    
-    # Sensor 1: distance to origin
-    h1 = np.array([0, 0])  # Simplified: just x position
-    r1 = 0.5
-    z1 = 1.1
-    dif.update_scalar(z1, h1, r1)
-    
-    # Sensor 2: y measurement
-    h2 = np.array([0, 1])
-    r2 = 0.5
-    z2 = 0.9
-    dif.update_scalar(z2, h2, r2)
-    
-    # Sensor 3: noisy z measurement
-    h3 = np.array([0.5, 0.5]) / np.sqrt(0.5)
-    r3 = 0.8
-    z3 = 1.4
-    dif.update_scalar(z3, h3, r3)
-    
-    x_est, P_est = dif.x, dif.P
-    print(f"Estimated position: {x_est}")
-    print(f"Uncertainty: {np.sqrt(np.diag(P_est))}")
-
----
+The one-shot fused result is identical to the sequential updates -- addition is order-independent.
 
 Comparison: Information Filter vs Kalman Filter
-================================================
+-----------------------------------------------
 
 **Numerical Behavior:**
 
@@ -588,9 +320,9 @@ Comparison: Information Filter vs Kalman Filter
 +----------------------------------+-----------------------+---------------------+
 | Prediction step                  | Direct (P_pred)       | Requires inversion  |
 +----------------------------------+-----------------------+---------------------+
-| Weak measurement (R → ∞)         | Kalman gain → 0       | Information → 0     |
+| Weak measurement (R -> inf)      | Kalman gain -> 0      | Information -> 0    |
 +----------------------------------+-----------------------+---------------------+
-| Rank-deficient R                 | Ill-conditioned       | Natural             |
+| Unknown initial state            | Approximate (large P) | Exact (Y = 0)       |
 +----------------------------------+-----------------------+---------------------+
 | Numerical stability              | Good                  | Better (SRIF)       |
 +----------------------------------+-----------------------+---------------------+
@@ -601,362 +333,78 @@ Comparison: Information Filter vs Kalman Filter
 
 **When Information Filter Excels:**
 
-1. **Unknown initial state**: Set $\mathbf{Y}_0 = \epsilon \mathbf{I}$ (weak information)
-2. **Intermittent measurements**: Missing measurements = no information update (skip it)
+1. **Unknown initial state**: Set :math:`\mathbf{Y}_0 = 0` (zero information)
+2. **Intermittent measurements**: Missing measurements = no information update (pass ``None``)
 3. **Batch smoothing**: Natural representation for all-at-once processing
-4. **Multi-source fusion**: Information from all sensors add directly
+4. **Multi-source fusion**: Information from all sensors adds directly
+
+Diagnostics
+-----------
+
+The information matrix itself is the primary health indicator. Monitor its rank (are all states observable yet?) and condition number (is state recovery numerically safe?):
 
 .. code-block:: python
 
-    class HybridFilter:
-        """
-        Use Kalman for forward pass, Information for batch smoothing.
-        
-        Best of both worlds:
-        - Kalman: efficient forward prediction
-        - Information: stable batch refinement
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            self.x_list = [x0.copy()]
-            self.P_list = [P0.copy()]
-            
-            self.x = x0.copy()
-            self.P = P0.copy()
-        
-        def run_forward_kalman(self, F_list, Q_list, 
-                              z_list, H_list, R_list) -> None:
-            """Run Kalman filter forward and store trajectory."""
-            for k, (F, Q) in enumerate(zip(F_list, Q_list)):
-                # Predict
-                self.P = F @ self.P @ F.T + Q
-                self.x = F @ self.x
-                
-                # Measurement available?
-                if z_list[k] is not None:
-                    H, R, z = H_list[k], R_list[k], z_list[k]
-                    
-                    # Standard Kalman update
-                    S = H @ self.P @ H.T + R
-                    K = self.P @ H.T @ inv(S)
-                    
-                    self.x = self.x + K @ (z - H @ self.x)
-                    self.P = (np.eye(len(self.x)) - K @ H) @ self.P
-                
-                self.x_list.append(self.x.copy())
-                self.P_list.append(self.P.copy())
-        
-        def batch_information_smooth(self) -> None:
-            """
-            Refine entire trajectory using information filter smoother.
-            Similar to RTS but using information representation.
-            """
-            # Convert to information representation
-            Y_list = [inv(P) for P in self.P_list]
-            y_list = [Y @ x for Y, x in zip(Y_list, self.x_list)]
-            
-            # Information smoothing (simplified)
-            # In practice, use dedicated batch smoother
-            # Here just demonstrating the concept
-            print(f"Smoothing {len(self.x_list)} states in batch mode")
-            
-            return self.x_list, self.P_list
+    Y_final = result.Y_filt[-1]
+    rank = np.linalg.matrix_rank(Y_final)
+    cond = np.linalg.cond(Y_final)
+    print(f"rank {rank} of {Y_final.shape[0]}, condition number {cond:.2f}")
+    # rank 2 of 2, condition number 3.49
 
----
-
-Weak Initial Conditions (High Uncertainty)
-===========================================
-
-Information filters excel when initial state is highly uncertain.
-
-.. code-block:: python
-
-    class WeakInitialStateIF:
-        """
-        Handle unknown initial state via weak information.
-        
-        If x_0 is completely unknown:
-        Y_0 = ε * I  (very small information)
-        y_0 = 0      (no information about x)
-        
-        As measurements arrive, information accumulates.
-        """
-        
-        def __init__(self, state_dim: int, epsilon: float = 1e-6):
-            """
-            Parameters
-            ----------
-            state_dim : int
-                State dimension
-            epsilon : float
-                Weak information intensity (smaller = more uncertain)
-            """
-            self.n = state_dim
-            
-            # Weak initial information
-            self.Y = epsilon * np.eye(state_dim)
-            self.y = np.zeros(state_dim)
-        
-        def update_with_measurements(self, z_list, H_list, R_list):
-            """Process batch of measurements to initialize state."""
-            for z, H, R in zip(z_list, H_list, R_list):
-                # Accumulate information
-                self.Y = self.Y + H.T @ inv(R) @ H
-                self.y = self.y + H.T @ inv(R) @ z
-            
-            # Recover state estimate
-            try:
-                P = inv(self.Y)
-                x = P @ self.y
-                return x, P
-            except np.linalg.LinAlgError:
-                print("Warning: Information matrix still singular")
-                print(f"  Information rank: {np.linalg.matrix_rank(self.Y)}")
-                return None, None
-
-**Example: Initialize from measurements**
-
-.. code-block:: python
-
-    # Unknown initial state, but have 5 measurements
-    weak_if = WeakInitialStateIF(state_dim=2)
-    
-    # Process measurements
-    z_batch = [np.array([1.0]), np.array([1.1]), 
-               np.array([0.9]), np.array([1.05]), np.array([1.02])]
-    H_batch = [np.array([[1, 0]]) for _ in z_batch]
-    R_batch = [np.array([[0.1]]) for _ in z_batch]
-    
-    x_init, P_init = weak_if.update_with_measurements(z_batch, 
-                                                       H_batch, R_batch)
-    print(f"Initialized state: {x_init}")
-    print(f"Initialization uncertainty: {np.sqrt(np.diag(P_init))}")
-
----
-
-Practical Diagnostic Tools
-==========================
-
-Monitor information filter health.
-
-.. code-block:: python
-
-    class InformationFilterDiagnostics:
-        """Diagnostics for information filters."""
-        
-        def __init__(self, if_object):
-            self.filter = if_object
-            self.history = {
-                'information_rank': [],
-                'condition_numbers': [],
-                'information_norms': [],
-                'state_norms': []
-            }
-        
-        def log_step(self) -> None:
-            """Record diagnostic data."""
-            Y, y = self.filter.Y, self.filter.y
-            
-            # Information matrix diagnostics
-            self.history['information_rank'].append(np.linalg.matrix_rank(Y))
-            self.history['condition_numbers'].append(np.linalg.cond(Y))
-            self.history['information_norms'].append(np.linalg.norm(Y))
-            self.history['state_norms'].append(np.linalg.norm(self.filter.x))
-        
-        def check_degeneracy(self) -> dict:
-            """Check if information is sufficient."""
-            Y = self.filter.Y
-            rank = np.linalg.matrix_rank(Y)
-            expected_rank = Y.shape[0]
-            
-            return {
-                'is_degenerate': rank < expected_rank,
-                'rank': rank,
-                'expected_rank': expected_rank,
-                'rank_deficit': expected_rank - rank,
-                'condition_number': np.linalg.cond(Y)
-            }
-        
-        def check_information_bounds(self) -> dict:
-            """Verify information matrix is reasonable."""
-            Y = self.filter.Y
-            eigvals = np.linalg.eigvals(Y)
-            
-            return {
-                'min_eigenvalue': np.min(np.abs(eigvals)),
-                'max_eigenvalue': np.max(np.abs(eigvals)),
-                'all_positive': np.all(eigvals > 0),
-                'is_spd': np.all(eigvals > 1e-10)  # Check positive definite
-            }
-        
-        def plot_diagnostics(self):
-            """Generate diagnostic plots."""
-            import matplotlib.pyplot as plt
-            
-            fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-            
-            # Information rank
-            axes[0, 0].plot(self.history['information_rank'], alpha=0.7)
-            axes[0, 0].set_title('Information Matrix Rank')
-            axes[0, 0].set_ylabel('rank(Y)')
-            axes[0, 0].grid(True, alpha=0.3)
-            
-            # Condition number
-            axes[0, 1].semilogy(self.history['condition_numbers'], alpha=0.7)
-            axes[0, 1].set_title('Information Matrix Conditioning')
-            axes[0, 1].set_ylabel('cond(Y)')
-            axes[0, 1].grid(True, alpha=0.3)
-            
-            # Information norm (total information content)
-            axes[1, 0].plot(self.history['information_norms'], alpha=0.7)
-            axes[1, 0].set_title('Information Accumulation')
-            axes[1, 0].set_ylabel('||Y||_F')
-            axes[1, 0].grid(True, alpha=0.3)
-            
-            # State norm
-            axes[1, 1].plot(self.history['state_norms'], alpha=0.7)
-            axes[1, 1].set_title('State Magnitude')
-            axes[1, 1].set_ylabel('||x||')
-            axes[1, 1].grid(True, alpha=0.3)
-            
-            plt.tight_layout()
-            return fig
-
----
-
-Batch Information Filter (BIF)
-==============================
-
-Process entire measurement batch at once for optimal smoothing.
-
-.. code-block:: python
-
-    class BatchInformationFilter:
-        """
-        Batch information filter for offline processing.
-        
-        Process all measurements simultaneously for global optimality.
-        """
-        
-        def __init__(self, x0: np.ndarray, P0: np.ndarray):
-            self.x_init = x0.copy()
-            self.P_init = P0.copy()
-        
-        def process_batch(self, measurements, H_list, R_list, 
-                         dynamics=None, Q_list=None):
-            """
-            Process entire batch of measurements.
-            
-            Parameters
-            ----------
-            measurements : list of arrays
-                Measurement sequence
-            H_list : list of arrays
-                Measurement matrices
-            R_list : list of arrays
-                Measurement noise covariances
-            dynamics : callable, optional
-                State transition function f(x)
-            Q_list : list of arrays, optional
-                Process noise covariances
-                
-            Returns
-            -------
-            x_batch : (N, n) array
-                Batch state estimates
-            P_batch : list of (n, n) arrays
-                Batch covariances
-            """
-            N = len(measurements)  # Number of timesteps
-            n = len(self.x_init)   # State dimension
-            
-            # Initialize information representation
-            Y_accum = inv(self.P_init)
-            y_accum = Y_accum @ self.x_init
-            
-            # Accumulate all measurements
-            for z, H, R in zip(measurements, H_list, R_list):
-                R_inv = inv(R)
-                Y_accum = Y_accum + H.T @ R_inv @ H
-                y_accum = y_accum + H.T @ R_inv @ z
-            
-            # Recover global estimate
-            P_batch = inv(Y_accum)
-            x_batch = P_batch @ y_accum
-            
-            # If dynamics provided, do batch trajectory
-            if dynamics is not None:
-                x_trajectory = self._batch_trajectory_estimate(
-                    x_batch, P_batch, dynamics, Q_list
-                )
-            else:
-                x_trajectory = x_batch
-            
-            return x_trajectory, P_batch
-        
-        def _batch_trajectory_estimate(self, x_batch, P_batch, 
-                                      dynamics, Q_list):
-            """
-            Refine trajectory using dynamics constraints.
-            (Simplified version)
-            """
-            return x_batch
-
----
+A rank-deficient :math:`\mathbf{Y}` means some state directions are unconstrained and ``information_to_state`` cannot recover a unique estimate. A large condition number warns that the recovered covariance is unreliable -- switch to the SRIF.
 
 Tuning Guidelines
-=================
+-----------------
 
 **Choose Information Filter When:**
 
-1. ✅ System is poorly conditioned (high aspect ratios in state/measurement spaces)
-2. ✅ Multiple sensors with different measurement rates/uncertainties
-3. ✅ Batch processing or offline smoothing
-4. ✅ Unknown or weak initial state
-5. ✅ Need numerical robustness
+1. System is poorly conditioned (high aspect ratios in state/measurement spaces)
+2. Multiple sensors with different measurement rates/uncertainties
+3. Batch processing or offline smoothing
+4. Unknown or weak initial state
+5. Need numerical robustness
 
 **Parameter Selection:**
 
-- **Weak initial information**: $\epsilon = 10^{-6}$ to $10^{-8} \times \text{trace}(\mathbf{Y}_{\text{nominal}})$
-- **SRIF vs Standard IF**: Use SRIF always if numerics are critical
-- **Regularization**: Add $\delta \mathbf{I}$ to prevent singularity:
-  
-  $$\mathbf{Y}_k \leftarrow \mathbf{Y}_k + \delta \mathbf{I}, \quad \delta = 10^{-10}$$
+- **Weak initial information**: instead of exactly zero, :math:`\mathbf{Y}_0 = \epsilon \mathbf{I}` with :math:`\epsilon = 10^{-6}` to :math:`10^{-8}` keeps early state recovery well-posed
+- **SRIF vs Standard IF**: use ``srif_filter`` whenever numerics are critical
+- **Regularization**: add :math:`\delta \mathbf{I}` to prevent singularity:
 
----
+  .. math::
+
+     \mathbf{Y}_k \leftarrow \mathbf{Y}_k + \delta \mathbf{I}, \quad \delta = 10^{-10}
 
 Common Pitfalls
-===============
+---------------
 
 1. **Singular Information Matrix**: Measurements don't constrain all states
-   
+
    - *Fix*: Monitor rank, add weak priors, ensure observable states
 
-2. **Numerical Inversion**: Computing $\mathbf{Y}^{-1}$ becomes ill-conditioned
-   
-   - *Fix*: Use SRIF or regularize (add regularization term)
+2. **Numerical Inversion**: Computing :math:`\mathbf{Y}^{-1}` becomes ill-conditioned
 
-3. **Weak Measurements Cause Overflow**: Information accumulates without bound
-   
-   - *Fix*: Use information bounds, monitor condition numbers
+   - *Fix*: Use the SRIF or regularize (add a small :math:`\delta \mathbf{I}`)
 
-4. **Loss of Process Dynamics**: SRIF predict step is complex
-   
-   - *Fix*: Hybrid approach (Kalman forward, Information backward)
+3. **Unbounded Information Accumulation**: With negligible process noise, information grows without bound
 
----
+   - *Fix*: Model realistic process noise; monitor condition numbers
+
+4. **Costly Prediction Step**: The predict step requires inversion, unlike the Kalman form
+
+   - *Fix*: Hybrid approach (Kalman forward, information form for fusion/batch steps)
 
 See Also
-========
+--------
 
-- [Kalman Filter Tuning](kalman_filter_tuning.rst) — Standard filtering approach
-- [Smoothing Algorithms](smoothing.rst) — RTS smoother for trajectory refinement
-- [Adaptive Filtering](adaptive_filtering.rst) — Tuning parameters online
-- [Troubleshooting Guide](troubleshooting.rst) — Numerical issues diagnosis
+- :doc:`kalman_filter_tuning` -- Standard filtering approach
+- :doc:`smoothing` -- RTS smoother for trajectory refinement
+- :doc:`adaptive_filtering` -- Tuning parameters online
+- :doc:`troubleshooting` -- Numerical issues diagnosis
 
 **References:**
 
-- Bierman (1977) — *Factorization Methods for Discrete Sequential Estimation* — Foundational SRIF work
-- Bar-Shalom, Li, Kirubarajan (2001) — *Estimation with Applications to Tracking and Navigation*
-- Kailath, Sayed, Hassibi (2000) — *Linear Estimation* — Comprehensive treatment with information filters
-- Dyer & McReynolds (1969) — *Extension of Square Root Filtering to Include Process Noise* — Original SRIF
+- Bierman (1977) -- *Factorization Methods for Discrete Sequential Estimation* -- Foundational SRIF work
+- Bar-Shalom, Li, Kirubarajan (2001) -- *Estimation with Applications to Tracking and Navigation*
+- Kailath, Sayed, Hassibi (2000) -- *Linear Estimation* -- Comprehensive treatment with information filters
+- Dyer & McReynolds (1969) -- *Extension of Square Root Filtering to Include Process Noise* -- Original SRIF
+- Mutambara (1998) -- *Decentralized Estimation and Control for Multisensor Systems*
