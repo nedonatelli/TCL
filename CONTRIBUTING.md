@@ -152,8 +152,10 @@ wrong — passing tests are necessary, not sufficient.
 
 ### Test validation classes
 
-Every public function belongs to one of these classes, tracked in
-[AUDIT.md](AUDIT.md). New code must land at REFERENCE or PROPERTY class;
+Every public function belongs to one of these classes, enforced by
+`tests/contract/test_public_api_coverage.py` (the per-package ledger that
+tracked the pre-2.0.0 audit, AUDIT.md, was removed when the audit closed;
+it survives in git history). New code must land at REFERENCE or PROPERTY class;
 STRUCTURAL-only tests are not accepted for numerical code.
 
 | Class | Meaning | Example |

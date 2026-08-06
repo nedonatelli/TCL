@@ -1,12 +1,11 @@
 # Tracker Component Library (Python)
 
-[![PyPI version](https://img.shields.io/badge/pypi-v2.0.0-blue.svg)](https://pypi.org/project/nrl-tracker/)
+[![PyPI version](https://img.shields.io/pypi/v/nrl-tracker.svg)](https://pypi.org/project/nrl-tracker/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-6000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![MATLAB Parity](https://img.shields.io/badge/MATLAB%20Parity-100%25-brightgreen.svg)](docs/gap_analysis.rst)
-[![Coverage](https://img.shields.io/badge/coverage-80%25-brightgreen.svg)](htmlcov/index.html)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/mypy--strict-passing-brightgreen.svg)](mypy.ini)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
@@ -26,7 +25,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
-- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (NRLMSISE-00), tides, terrain (GEBCO 2025, Earth2014)
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, simplified thermosphere, ionosphere), tides, terrain (GEBCO 2025, Earth2014)
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 
@@ -90,55 +89,54 @@ from pytcl.coordinate_systems import cart2sphere, sphere2cart
 
 # Convert Cartesian to spherical coordinates
 cart_point = np.array([1.0, 1.0, 1.0])
-r, az, el = cart2sphere(cart_point)
+r, az, el = cart2sphere(cart_point, system_type="az-el")  # tracking convention
 print(
     f"Range: {r:.3f}, Azimuth: {np.degrees(az):.1f}°, Elevation: {np.degrees(el):.1f}°"
 )
 
 # Convert back
-cart_recovered = sphere2cart(r, az, el)
+cart_recovered = sphere2cart(r, az, el, system_type="az-el")
 ```
 
 ### Kalman Filter
 
 ```python
-from pytcl.dynamic_estimation.kalman import KalmanFilter
-from pytcl.dynamic_models import constant_velocity_model
+import numpy as np
+from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
+from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
 
-# Create a constant velocity model
+# Constant-velocity model, 2D state [x, vx, y, vy]
 dt = 0.1
-F, Q = constant_velocity_model(dt, dimension=2, process_noise_intensity=1.0)
+F = f_constant_velocity(dt, num_dims=2)
+Q = q_constant_velocity(dt, sigma_a=1.0, num_dims=2)
+H = np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]])  # measure position only
+R = np.eye(2) * 10.0
 
-# Initialize filter
-kf = KalmanFilter(
-    F=F,  # State transition matrix
-    H=np.array([[1, 0, 0, 0], [0, 0, 1, 0]]),  # Measurement matrix
-    Q=Q,  # Process noise
-    R=np.eye(2) * 10,  # Measurement noise
-)
+x = np.zeros(4)
+P = np.eye(4) * 100.0
+measurement = np.array([1.2, -0.7])
 
-# Run filter
-x_est, P_est = kf.predict()
-x_est, P_est = kf.update(measurement)
+pred = kf_predict(x, P, F, Q)
+upd = kf_update(pred.x, pred.P, measurement, H, R)
+print(upd.x)  # updated state; upd.P, upd.y, upd.S, upd.K, upd.likelihood
 ```
 
 ### Assignment Problem
 
 ```python
+import numpy as np
 from pytcl.assignment_algorithms import hungarian
 
-# Cost matrix (tracks x measurements)
 cost_matrix = np.array(
     [
-        [10, 5, 13],
-        [3, 15, 8],
-        [7, 9, 12],
+        [10.0, 5.0, 13.0],
+        [3.0, 15.0, 8.0],
+        [7.0, 9.0, 12.0],
     ]
 )
 
-# Solve assignment
-assignment, total_cost = hungarian(cost_matrix)
-print(f"Optimal assignment: {assignment}, Total cost: {total_cost}")
+row_ind, col_ind, total_cost = hungarian(cost_matrix)
+print(f"rows {row_ind} -> columns {col_ind}, total cost {total_cost}")  # cost 20.0
 ```
 
 ### GPU Acceleration
@@ -173,7 +171,9 @@ The backend is automatically selected based on your platform. Batch Kalman,
 EKF, UKF, particle-filter, and matrix operations all run on either backend.
 
 Measured on Apple Silicon (MLX), batch linear Kalman predict+update versus a
-per-track CPU loop: **3.4x at 100 tracks, 18x at 1,000, 38x at 20,000**.
+per-track CPU loop, end-to-end including host-device transfers and result
+materialization, after warm-up: **1.6x at 100 tracks, 13x at 1,000, 40x at
+20,000** (August 2026).
 
 > **Precision note:** MLX computes in float32 (it raises on float64 GPU
 > operations), so results match the CPU implementations to ~1e-7 relative
@@ -200,15 +200,18 @@ pytcl/
 ├── gravity/                 # Gravity models
 ├── magnetism/               # Magnetic field models
 ├── terrain/                 # Terrain elevation models
+├── containers/              # Spatial indexes, track/measurement containers
+├── trackers/                # Multi-target trackers (GNN, JPDA, MHT)
+├── io/                      # SQL/HDF5 track storage and migration
 ├── gpu/                     # GPU acceleration (CuPy/MLX)
-└── misc/                    # Utilities, visualization
+└── plotting/                # Covariance ellipses, tracks, metrics plots
 ```
 
 ## Examples & Tutorials
 
-The library includes 39 runnable code examples demonstrating all major features:
+The library includes 40 runnable code examples demonstrating all major features:
 
-### Examples (29 files in `/examples/`)
+### Examples (30 files in `/examples/`)
 
 Comprehensive demonstrations of library functionality:
 - **Tracking & Estimation**: Kalman filters, particle filters, smoothers
@@ -221,7 +224,7 @@ Comprehensive demonstrations of library functionality:
 - **Signal Processing**: Detection, filtering, transforms
 - **Terrain & Atmosphere**: Elevation models, atmospheric properties
 
-**Status**: ✅ All 29 examples validated and passing (100% execution success)
+**Status**: ✅ All 30 examples run in CI on every push
 
 ### Tutorials (10 modules in `/docs/tutorials/`)
 
@@ -239,24 +242,29 @@ Interactive learning modules with visualizations:
 
 - [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
 - [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
-- [Examples](examples/) - 29 validated example scripts
+- [Examples](examples/) - 30 validated example scripts
 - [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
 ## Comparison with Original MATLAB Library
 
-This library aims to provide equivalent functionality to the original MATLAB library with Pythonic APIs:
+The core tracking workflow is fully ported and validated against independent
+references; the complete function-level accounting is in
+[docs/matlab_parity_inventory.rst](docs/matlab_parity_inventory.rst), and the
+explicit name mappings plus calling-convention differences are in
+[docs/matlab_migration_map.rst](docs/matlab_migration_map.rst). A taste:
 
 | MATLAB | Python |
 |--------|--------|
 | `Cart2Sphere(cartPoints)` | `cart2sphere(cart_points)` |
-| `FPolyKal(T, xDim, order)` | `poly_kalman_F(dt, dim, order)` |
-| `KalmanUpdate(...)` | `KalmanFilter.update(...)` |
+| `discKalPred(x, P, F, Q)` | `kf_predict(x, P, F, Q)` |
+| `KalmanUpdate(x, P, z, R, H)` | `kf_update(x, P, z, H, R)` — note `H`/`R` order |
+| `FPolyKal(T, xDim, 1)` | `f_constant_velocity(dt, dim)` |
 
 Key differences:
-- Function names use `snake_case` instead of `PascalCase`
-- Arrays are NumPy arrays (row-major) vs MATLAB matrices (column-major)
-- 0-based indexing vs 1-based indexing
-- Object-oriented APIs where appropriate
+- Function names use `snake_case`; multiple return values become NamedTuples
+- States are 1-D arrays and batches are `(N, dim)` row-major (coordinate
+  conversions also accept MATLAB-style column layouts)
+- 0-based indexing, explicit `unassigned_rows` instead of 0-sentinels
 
 ## Testing
 

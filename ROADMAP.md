@@ -273,7 +273,7 @@ critical issue -- magnetism synthesis, relativity formulas, SEZ convention, and
 all five v2.0.0 blockers from [#9](https://github.com/nedonatelli/TCL/issues/9)
 (MLX backend, SDP4 deep-space physics, Lagrangian bounds, Murty k-best,
 high-degree Legendre) -- plus 72 further reference-verified bugs. Per-package
-validation status is tracked in [AUDIT.md](AUDIT.md).
+validation status was tracked in AUDIT.md, a working ledger removed once the audit closed -- its durable outputs are the CHANGELOG entries, the ~1,100 audit tests, and the contract gates; the ledger itself lives in git history.
 
 ### Critical (resolved before v2.0.0 — retained as the record)
 
