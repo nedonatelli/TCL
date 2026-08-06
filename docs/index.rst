@@ -69,6 +69,8 @@ state estimation.
    migration_v1_to_v2
    migration_guide
    gap_analysis
+   matlab_parity_inventory
+   matlab_migration_map
    roadmap
    user_guide/index
    tutorials/index

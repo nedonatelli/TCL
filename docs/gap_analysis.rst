@@ -6,9 +6,9 @@ Overview
 
 This document provides a detailed comparison between the Python port (pytcl) and the original MATLAB Tracker Component Library, identifying areas of full coverage, minor gaps, and workarounds.
 
-**Overall Completeness: 100%** ✅
+**Overall Completeness: core workflow complete; ~one third of the full MATLAB public surface by function count** (see :doc:`matlab_parity_inventory`)
 
-The Python port achieves **full feature parity** with the original MATLAB TCL library. With **1,400+ functions** across **180+ modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and thermosphere density modeling.
+The Python port covers the core tracking workflow of the original MATLAB TCL library completely, and its full public surface partially -- see :doc:`matlab_parity_inventory` for the function-level accounting, which supersedes the completeness percentages on this page. With **1,400+ functions** across **180+ modules**, the implementation covers all tracking, estimation, and navigation algorithms including SGP4/SDP4 satellite propagation, H-infinity robust filtering, legacy TOD/MOD reference frames, constrained EKF, Rao-Blackwellized particle filters, and thermosphere density modeling.
 
 **Documentation Status: Phase 3 Complete** ✅
 
