@@ -301,16 +301,34 @@ Mathematical Functions
      - pytcl
    * - ``BellNumber``
      - ``pytcl.mathematical_functions.combinatorics.combinatorics.bell_number``
+   * - ``BetaD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Beta``
    * - ``CatalanNumber``
      - ``pytcl.mathematical_functions.combinatorics.combinatorics.catalan_number``
    * - ``ChiSquareD``
      - ``pytcl.mathematical_functions.statistics.distributions.ChiSquared``
    * - ``Debye``
      - ``pytcl.mathematical_functions.special_functions.debye.debye``
+   * - ``ExponentialD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Exponential``
+   * - ``GammaD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Gamma``
    * - ``GaussianD``
      - ``pytcl.mathematical_functions.statistics.distributions.Gaussian``
+   * - ``GaussianMixtureD``
+     - ``pytcl.clustering.gaussian_mixture.GaussianMixture``
    * - ``MarcumQ``
      - ``pytcl.mathematical_functions.special_functions.marcum_q.marcum_q``
+   * - ``PoissonD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Poisson``
+   * - ``StudentTD``
+     - ``pytcl.mathematical_functions.statistics.distributions.StudentT``
+   * - ``UniformD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Uniform``
+   * - ``VonMisesD``
+     - ``pytcl.mathematical_functions.statistics.distributions.VonMises``
+   * - ``WishartD``
+     - ``pytcl.mathematical_functions.statistics.distributions.Wishart``
    * - ``cholSemiDef``
      - ``pytcl.mathematical_functions.basic_matrix.decompositions.chol_semi_def``
    * - ``commutationMatrix``
@@ -323,6 +341,8 @@ Mathematical Functions
      - ``pytcl.mathematical_functions.special_functions.error_functions.erfi``
    * - ``fallingFactorial``
      - ``pytcl.mathematical_functions.special_functions.hypergeometric.falling_factorial``
+   * - ``getNextPermutation``
+     - ``pytcl.mathematical_functions.combinatorics.next_permutation``
    * - ``nullspace``
      - ``pytcl.mathematical_functions.basic_matrix.decompositions.null_space``
    * - ``perm``

@@ -165,9 +165,11 @@ backends).
    * - Performance_Evaluation
      - 12
      - Split
-     - NEES (with confidence bounds), RMSE ported; pytcl adds OSPA and full
-       MOT metrics which MATLAB lacks. **Missing:** AEE/GAE, MMOSPA, jitter,
-       MERF, non-credibility index.
+     - NEES (with confidence bounds), RMSE ported; pytcl adds the standard
+       OSPA metric and CLEAR-MOT metrics. **Missing:** MATLAB's MOSPA/MMOSPA
+       family (``calcMOSPAError``, ``MMOSPA2Tar2D`` — a related but distinct
+       OSPA-family capability), AEE/GAE, jitter, MERF, non-credibility
+       index.
    * - Terrain
      - 3
      - Good
@@ -196,7 +198,7 @@ backends).
 What pytcl has that the MATLAB library does not
 -----------------------------------------------
 
-The comparison runs both ways. pytcl adds: OSPA and CLEAR-MOT evaluation,
+The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MOT evaluation,
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a validation suite of
