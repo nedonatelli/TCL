@@ -15,49 +15,67 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.11"
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff==0.16.0 mypy==2.3.0 numpy
+        run: uv sync --locked
 
       - name: Lint with ruff
-        run: ruff check .
+        run: uv run ruff check .
 
       - name: Check formatting with ruff
-        run: ruff format --check .
+        run: uv run ruff format --check .
 
-      - name: Type check with mypy
-        # --strict, not just --ignore-missing-imports. The looser command had
-        # been passing while 12 strict errors accumulated in pytcl/io: missing
-        # annotations on __enter__/__exit__, bare NDArray and bare tuple.
-        run: mypy pytcl --strict --ignore-missing-imports
+      - name: Type check with ty
+        run: uv run ty check pytcl
+
+  # Non-blocking while ty is the gate: reveals anything ty misses relative
+  # to mypy --strict. This job and mypy.ini are deleted in the v2.1.0
+  # release PR (see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md).
+  # --strict, not just --ignore-missing-imports: the looser command had
+  # been passing while 12 strict errors accumulated in pytcl/io.
+  mypy-probation:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Type check with mypy (non-blocking)
+        run: uv run mypy pytcl --strict --ignore-missing-imports
 
   doctests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.12"
+          enable-cache: true
 
-      - name: Install package with all extras
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[all]" pytest pytest-timeout
+      - name: Install dependencies
+        run: uv sync --locked --extra all
 
       - name: Run docstring examples
         # Doctests must not reach the network. A DEEphemeris example without a
         # "# doctest: +SKIP" tries to fetch the 114 MB DE440 kernel from
         # naif.jpl.nasa.gov and hung this job for ten minutes before timing
         # out; the per-test timeout turns any repeat into a fast, clear failure.
-        run: pytest --doctest-modules pytcl -q --timeout=60
+        run: uv run pytest --doctest-modules pytcl -q --timeout=60
 
   test:
     runs-on: ${{ matrix.os }}
@@ -81,15 +99,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --locked
 
       # Coverage runs on exactly one job -- the one that uploads it. Measured
       # on this suite, tracing costs 1.77x (81s -> 144s), and the other eight
@@ -101,13 +118,13 @@ jobs:
       # are slow and only need exercising on one platform.
       - name: Run tests
         if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
-        run: pytest tests/ -n auto --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ -n auto --benchmark-skip -m "not examples" -q
 
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        run: pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -q
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -122,20 +139,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.11"
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: uv sync --locked
 
       - name: Build docs (fail on any Sphinx error or warning)
         run: |
-          pip install sphinx-rtd-theme nbsphinx sphinxcontrib-mermaid
-          sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
+          uv run sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
           if grep -q "ERROR" /tmp/sphinx.log; then
             echo "::error::Sphinx build produced docutils ERRORs"
             grep "ERROR" /tmp/sphinx.log
@@ -157,56 +172,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.12"
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          # Install what a user installing the package would get, so the
-          # examples exercise the real dependency set.
-          pip install -e ".[all]"
+        # Install what a user installing the package would get, so the
+        # examples exercise the real dependency set.
+        run: uv sync --locked --extra all
 
       - name: Run every example script
         # PYTCL_SHOW_PLOTS=0 is set by the test itself, which also blocks
         # fig.show() outright so an unguarded call fails rather than silently
         # doing nothing in a headless container.
-        run: pytest tests/contract/test_examples.py tests/contract/test_tutorials.py tests/contract/test_docs_code_blocks.py -m examples -v --timeout=600
+        run: uv run pytest tests/contract/test_examples.py tests/contract/test_tutorials.py tests/contract/test_docs_code_blocks.py -m examples -v --timeout=600
 
   notebooks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.11"
+          enable-cache: true
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          # The notebooks plot with plotly, which lives in the [visualization]
-          # extra. Installing only [dev] left it missing, and the swallowed
-          # exit code below hid the resulting ModuleNotFoundError in every
-          # notebook -- install what the notebooks actually import.
-          pip install -e ".[dev,visualization]"
-          pip install matplotlib
+          uv sync --locked --extra visualization
+          uv pip install matplotlib
 
       - name: Install Jupyter kernel
         run: |
-          python -m ipykernel install --user --name pytcl --display-name "Python (pytcl)"
+          uv run python -m ipykernel install --user --name pytcl --display-name "Python (pytcl)"
 
       - name: Generate sample datasets
         run: |
-          python examples/data/generate_datasets.py
+          uv run python examples/data/generate_datasets.py
 
       - name: Validate notebooks (syntax check)
         run: |
           # Check that notebooks are valid JSON and can be parsed
-          python -c "
+          uv run python -c "
           import json
           from pathlib import Path
           notebooks = list(Path('docs/notebooks').glob('*.ipynb'))
@@ -222,4 +232,4 @@ jobs:
           # nbval-lax executes every cell and fails on any error. The trailing
           # "|| echo" that used to be here swallowed the exit code, so this job
           # reported success while 13 cells were broken -- do not reintroduce it.
-          pytest --nbval-lax docs/notebooks/ -v --timeout=300
+          uv run pytest --nbval-lax docs/notebooks/ -v --timeout=300
