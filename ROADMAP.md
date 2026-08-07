@@ -35,8 +35,15 @@ the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
 evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
-- **Cubature point library** — ~148 MATLAB files, a signature strength of the
-  original; pytcl has Gauss-Hermite and spherical cubature only
+- **Cubature point library** — ~134 MATLAB files, a signature strength of the
+  original. The estimation-grade Gaussian-weight slice is now ported
+  (degree-5 and degree-7 rules, arbitrary-odd-degree spherical-radial
+  points, `transform_cubature_points`, and CKF consumption of arbitrary
+  point sets), all gated by monomial-exactness tests. Remaining: Genz-Keister
+  nested rules and Gaussian LCD samples (the highest-value candidates),
+  the dimension-specific seventh-order variant, 14th/2nd-order rules,
+  Student-t third-order points, Smolyak sparse grids, and the ~120
+  region-specific rules (cube, simplex, sphere, torus, etc.)
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
