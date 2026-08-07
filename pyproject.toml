@@ -93,6 +93,11 @@ dev = [
     "pytest-timeout>=2.0.0",
     "nbval>=0.10.0",
     "hypothesis>=6.0.0",
+    # The docs code-block gate (tests/contract/test_docs_code_blocks.py) runs
+    # every docs page under a forced Agg backend; several pages plot with
+    # matplotlib, and without it 36 pages skip and the gate's own self-tests
+    # fail. The notebooks also import it.
+    "matplotlib>=3.7",
     "ruff>=0.16.0",
     "mypy>=1.0.0",
     "ty>=0.0.69",

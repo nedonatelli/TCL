@@ -201,9 +201,8 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: |
-          uv sync --locked --extra visualization
-          uv pip install matplotlib
+        # matplotlib comes with the dev group, which uv sync installs by default
+        run: uv sync --locked --extra visualization
 
       - name: Install Jupyter kernel
         run: |

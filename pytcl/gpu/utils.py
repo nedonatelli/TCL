@@ -31,6 +31,7 @@ from typing import Any, Literal, Optional, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import is_available
 
 # Module logger
@@ -300,8 +301,10 @@ def to_gpu(
     from pytcl.core.optional_deps import import_optional
 
     if not is_gpu_available():
-        raise RuntimeError(
-            "No GPU available. Check CUDA installation or MLX availability."
+        raise DependencyError(
+            "No GPU available. Check CUDA installation or MLX availability.",
+            feature="GPU array transfer",
+            install_command="pip install nrl-tracker[gpu] or nrl-tracker[gpu-apple]",
         )
 
     # Determine backend

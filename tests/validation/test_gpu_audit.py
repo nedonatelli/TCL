@@ -165,7 +165,7 @@ class TestBackendDetectionTruthful:
         assert gpu_utils.is_mlx_available() is False
         assert gpu_utils.get_backend() == "numpy"
         assert gpu_utils.is_gpu_available() is False
-        with pytest.raises(RuntimeError, match="No GPU available"):
+        with pytest.raises(DependencyError, match="No GPU available"):
             gpu_utils.to_gpu(np.zeros(3))
 
     def test_detection_on_non_apple_platform(self, detection_caches, monkeypatch):
