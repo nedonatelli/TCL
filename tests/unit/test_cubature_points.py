@@ -222,3 +222,109 @@ class TestSphericalRadial:
             spherical_radial_points(2, 1)  # < 3
         with pytest.raises(ValueError):
             spherical_radial_points(0, 3)  # bad dim
+
+
+class TestCKFWithCustomPoints:
+    def _setup(self):
+        x = np.array([1.0, -0.5, 0.2])
+        P = np.diag([0.20, 0.30, 0.15])
+        Q = np.eye(3) * 0.01
+
+        def f(v):  # mildly nonlinear dynamics
+            return np.array([v[0] + 0.1 * v[1], v[1] + 0.05 * v[0] ** 2, v[2]])
+
+        return x, P, Q, f
+
+    def test_default_path_unchanged(self):
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
+
+        x, P, Q, f = self._setup()
+        base = ckf_predict(x, P, f, Q)
+        again = ckf_predict(x, P, f, Q, points=None, weights=None)
+        assert_allclose(again.x, base.x, atol=0)
+        assert_allclose(again.P, base.P, atol=0)
+
+    def test_fifth_order_matches_tensor_gauss_hermite_moments(self):
+        # REFERENCE: dense tensor GH (scaled to N(0,I) convention) is the
+        # oracle for the propagated mean/covariance.
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
+        from pytcl.mathematical_functions.numerical_integration import (
+            cubature_gauss_hermite,
+        )
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            fifth_order_cubature_points,
+        )
+
+        x, P, Q, f = self._setup()
+        pts5, w5 = fifth_order_cubature_points(3)
+        pred5 = ckf_predict(x, P, f, Q, points=pts5, weights=w5)
+
+        gh_pts, gh_w = cubature_gauss_hermite(3, 8)
+        unit = np.sqrt(2.0) * gh_pts
+        wts = gh_w / np.pi**1.5
+        S = np.linalg.cholesky(P)
+        prop = np.array([f(x + S @ p) for p in unit])
+        mean_ref = np.sum(wts[:, None] * prop, axis=0)
+        resid = prop - mean_ref
+        cov_ref = resid.T @ (wts[:, None] * resid) + Q
+
+        # f is quadratic, so a degree-5 rule propagates mean and covariance
+        # of a quadratic map exactly up to the rule's degree; tight tol.
+        assert_allclose(pred5.x, mean_ref, atol=1e-10)
+        assert_allclose(pred5.P, cov_ref, atol=1e-8)
+
+    def test_negative_weights_covariance_is_sign_safe(self):
+        # n = 5 makes the fifth-order axis weight negative; the covariance
+        # assembly must not sqrt() weights.
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            fifth_order_cubature_points,
+        )
+
+        n = 5
+        x = np.zeros(n)
+        P = np.eye(n)
+        Q = np.zeros((n, n))
+        F = np.diag([1.0, 2.0, 0.5, 1.5, 1.0])
+        pts, w = fifth_order_cubature_points(n)
+        assert w.min() < 0
+        pred = ckf_predict(x, P, lambda v: F @ v, Q, points=pts, weights=w)
+        # Linear map: exact answers are F x and F P F.T
+        assert_allclose(pred.x, F @ x, atol=1e-10)
+        assert_allclose(pred.P, F @ P @ F.T, atol=1e-9)
+        assert not np.any(np.isnan(pred.P))
+
+    def test_update_with_custom_points(self):
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_update
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            fifth_order_cubature_points,
+        )
+
+        x = np.array([3.0, 1.0])
+        P = np.eye(2) * 0.5
+        z = np.array([3.1])
+        R = np.array([[0.1]])
+        pts, w = fifth_order_cubature_points(2)
+        upd = ckf_update(x, P, z, lambda v: np.array([v[0]]), R, points=pts, weights=w)
+        assert upd.x.shape == (2,)
+        # Linear measurement: must agree with the default CKF closely.
+        from pytcl.dynamic_estimation.kalman.unscented import (
+            ckf_update as default_update,
+        )
+
+        base = default_update(x, P, z, lambda v: np.array([v[0]]), R)
+        assert_allclose(upd.x, base.x, atol=1e-9)
+        assert_allclose(upd.P, base.P, atol=1e-9)
+
+    def test_shape_mismatch_raises(self):
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
+
+        x, P, Q, f = self._setup()
+        pts, w = fifth_order_cubature_points(2)  # wrong dimension (2 != 3)
+        with pytest.raises(ValueError):
+            ckf_predict(x, P, f, Q, points=pts, weights=w)
+        pts3, w3 = fifth_order_cubature_points(3)
+        with pytest.raises(ValueError):
+            ckf_predict(x, P, f, Q, points=pts3, weights=w3[:-1])
+        with pytest.raises(ValueError):
+            ckf_predict(x, P, f, Q, points=pts3)  # points without weights
