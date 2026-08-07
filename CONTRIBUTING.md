@@ -353,7 +353,8 @@ When porting a function from the original MATLAB library:
 **Version:** v2.0.0
 **Test Suite:** 6,000+ tests passing (docstring examples also run in CI)
 **Code Coverage:** 90%
-**Quality:** 100% compliance (ruff check, ruff format, mypy --strict)
+**Quality:** 100% compliance (ruff check, ruff format); ty clean; mypy --strict
+non-blocking during probation (ends v2.1.0)
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon), both verified on
 real hardware for 2.0.0
 **Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
@@ -450,19 +451,22 @@ cp examples/*.py docs/examples/
 
 ```bash
 # Format code (also sorts imports via ruff check --fix)
-ruff format .
+uv run ruff format .
 
 # Lint (includes import sorting)
-ruff check .
+uv run ruff check .
 
-# Type check (strict mode)
-mypy --strict pytcl
+# Type check (gate)
+uv run ty check pytcl
+
+# Type check (non-blocking during probation, ends v2.1.0)
+uv run mypy --strict pytcl
 
 # Run full test suite with coverage
-pytest tests/ --cov=pytcl --cov-report=term-missing
+uv run pytest tests/ --cov=pytcl --cov-report=term-missing
 
 # Run benchmark tests
-pytest benchmarks/ -v
+uv run pytest benchmarks/ -v
 
 # Verify all pass
 echo "All checks complete!"
