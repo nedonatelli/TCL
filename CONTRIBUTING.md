@@ -24,9 +24,11 @@ Thank you for your interest in contributing! This document provides guidelines f
    tests (see `PYTCL_REQUIRE_MLX=1` in the pipeline section below) actually
    execute instead of silently skipping.
 
-4. **Install pre-commit hooks:**
+4. **Install git hooks** (prek reads `.pre-commit-config.yaml` directly —
+   it is a drop-in Rust replacement for the pre-commit framework, installed
+   by `uv sync` as part of the dev group):
    ```bash
-   pre-commit install
+   uv run prek install
    ```
 
 ## Code Style

@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `to_gpu` raises `DependencyError` (an `ImportError` subclass) instead of
   `RuntimeError` when no GPU backend is installed, matching how every other
   optional dependency is reported.
+- Git hooks run through prek (a drop-in Rust replacement for the pre-commit
+  framework; same `.pre-commit-config.yaml`). Whitespace hooks now exclude
+  generated plot exports and test fixtures.
 
 ### Fixed
 - The docs code-block gate now actually executes in CI: matplotlib was
