@@ -50,16 +50,16 @@ class Distribution(ABC):
         pass
 
     @abstractmethod
-    def mean(self) -> float:
+    def mean(self) -> Union[float, NDArray[np.floating]]:
         """Distribution mean."""
         pass
 
     @abstractmethod
-    def var(self) -> float:
+    def var(self) -> Union[float, NDArray[np.floating]]:
         """Distribution variance."""
         pass
 
-    def std(self) -> float:
+    def std(self) -> Union[float, NDArray[np.floating]]:
         """Distribution standard deviation."""
         return np.sqrt(self.var())
 

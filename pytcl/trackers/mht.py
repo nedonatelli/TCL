@@ -218,8 +218,8 @@ class MHTTracker:
         }
 
         # Predict all tracks
-        F = self._F(dt)
-        Q = self._Q(dt)
+        F = self._F(dt)  # ty: ignore[call-top-callable]
+        Q = self._Q(dt)  # ty: ignore[call-top-callable]
         predicted_tracks = self._predict_tracks(current_tracks, F, Q)
 
         # Compute gating and likelihoods

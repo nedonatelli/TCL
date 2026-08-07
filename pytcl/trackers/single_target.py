@@ -160,8 +160,8 @@ class SingleTargetTracker:
         if not self._initialized:
             raise RuntimeError("Tracker not initialized")
 
-        F = self._F(dt)
-        Q = self._Q(dt)
+        F = self._F(dt)  # ty: ignore[call-top-callable]
+        Q = self._Q(dt)  # ty: ignore[call-top-callable]
 
         # Kalman prediction
         self._state = F @ self._state

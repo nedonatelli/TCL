@@ -632,7 +632,7 @@ def _ambiguity_function_kernel(
     n_delay = len(delays)
     t = np.arange(n_signal) / fs
 
-    for i in prange(n_doppler):
+    for i in prange(n_doppler):  # ty: ignore[not-iterable]
         doppler = dopplers[i]
         # Compute Doppler-shifted signal
         shifted = np.empty(n_signal, dtype=np.complex128)
@@ -680,7 +680,7 @@ def _cross_ambiguity_kernel(
     n_delay = len(delays)
     t = np.arange(n_signal) / fs
 
-    for i in prange(n_doppler):
+    for i in prange(n_doppler):  # ty: ignore[not-iterable]
         doppler = dopplers[i]
         # Compute Doppler-shifted signal2
         shifted = np.empty(n_signal, dtype=np.complex128)

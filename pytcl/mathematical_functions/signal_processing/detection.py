@@ -446,7 +446,7 @@ def _cfar_2d_ca_kernel(
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols
 
-    for i in prange(n_rows):
+    for i in prange(n_rows):  # ty: ignore[not-iterable]
         for j in range(n_cols):
             row_min = max(0, i - half_row)
             row_max = min(n_rows, i + half_row + 1)
@@ -494,7 +494,7 @@ def _cfar_2d_go_kernel(
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols
 
-    for i in prange(n_rows):
+    for i in prange(n_rows):  # ty: ignore[not-iterable]
         for j in range(n_cols):
             row_min = max(0, i - half_row)
             row_max = min(n_rows, i + half_row + 1)
@@ -546,7 +546,7 @@ def _cfar_2d_so_kernel(
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols
 
-    for i in prange(n_rows):
+    for i in prange(n_rows):  # ty: ignore[not-iterable]
         for j in range(n_cols):
             row_min = max(0, i - half_row)
             row_max = min(n_rows, i + half_row + 1)

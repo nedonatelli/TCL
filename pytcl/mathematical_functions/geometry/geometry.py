@@ -722,6 +722,11 @@ def oriented_bounding_box(
             center = R_inv @ center_rotated
             best_box = (center, extents, angle)
 
+    if best_box is None:
+        raise ValueError(
+            "oriented_bounding_box: degenerate input, no valid bounding box found"
+        )
+
     return best_box
 
 

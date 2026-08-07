@@ -26,7 +26,7 @@ True
 import logging
 import platform
 from functools import lru_cache
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -253,7 +253,9 @@ def get_array_module(arr: ArrayLike) -> Any:
     return np
 
 
-def to_gpu(arr: ArrayLike, dtype: Any = None, backend: BackendType = None) -> GPUArray:
+def to_gpu(
+    arr: ArrayLike, dtype: Any = None, backend: Optional[BackendType] = None
+) -> GPUArray:
     """
     Transfer an array to GPU memory.
 
@@ -415,7 +417,7 @@ def to_cpu(arr: Union[ArrayLike, GPUArray]) -> NDArray[np.floating]:
 def ensure_gpu_array(
     arr: ArrayLike,
     dtype: Any = np.float64,
-    backend: BackendType = None,
+    backend: Optional[BackendType] = None,
 ) -> GPUArray:
     """
     Ensure an array is on the GPU with the specified dtype.

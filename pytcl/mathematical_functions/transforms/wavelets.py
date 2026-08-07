@@ -20,7 +20,7 @@ References
 - Daubechies, I. (1992). Ten Lectures on Wavelets. SIAM.
 """
 
-from typing import Any, Callable, List, NamedTuple, Optional, Union
+from typing import Any, Callable, List, Literal, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -330,7 +330,7 @@ def cwt(
     if callable(wavelet):
 
         def wavelet_func(M: int, scale: float) -> NDArray[np.floating]:
-            return wavelet(M)
+            return wavelet(M)  # ty: ignore[call-top-callable]
 
         wavelet_name = "custom"
     elif wavelet == "morlet":
@@ -806,7 +806,7 @@ def wavelet_info(wavelet: str) -> dict[str, Any]:
 
 def threshold_coefficients(
     coeffs: DWTResult,
-    threshold: Union[float, str] = "soft",
+    threshold: Union[float, Literal["soft", "hard"]] = "soft",
     value: Optional[float] = None,
 ) -> DWTResult:
     """
