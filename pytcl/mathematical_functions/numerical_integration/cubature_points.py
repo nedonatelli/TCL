@@ -25,6 +25,7 @@ from typing import Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy.special import gamma, roots_genlaguerre, roots_jacobi
 
 
 def transform_cubature_points(
@@ -149,3 +150,95 @@ def fifth_order_cubature_points(
         weights.append(np.full(len(pair_pts), w_pair))
 
     return np.vstack(points), np.concatenate(weights)
+
+
+def _sphere_surface_points(
+    n: int, degree: int
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Degree-``degree`` rule for the uniform measure on S^(n-1).
+
+    Dimension-recursive spherical-coordinate product construction:
+    x = (t, sqrt(1 - t^2) * y) with t from Gauss-Jacobi quadrature with
+    weight (1 - t^2)^((n-3)/2) and y a degree-``degree`` rule on S^(n-2).
+    Weights are normalized to sum to 1.
+    """
+    if n == 1:
+        return np.array([[1.0], [-1.0]]), np.array([0.5, 0.5])
+    if n == 2:
+        m = 2 * ((degree + 1) // 2 + 1)  # uniform points, exact for trig deg < m
+        theta = 2.0 * np.pi * np.arange(m) / m
+        return np.column_stack([np.cos(theta), np.sin(theta)]), np.full(m, 1.0 / m)
+
+    m = (degree + 1) // 2  # Gauss-Jacobi exact through poly degree 2m-1
+    t, wt = roots_jacobi(m, (n - 3.0) / 2.0, (n - 3.0) / 2.0)
+    sub_pts, sub_w = _sphere_surface_points(n - 1, degree)
+
+    pts = []
+    wts = []
+    for tk, wk in zip(t, wt):
+        s = np.sqrt(1.0 - tk * tk)
+        block = np.column_stack([np.full(len(sub_pts), tk), s * sub_pts])
+        pts.append(block)
+        wts.append(wk * sub_w)
+    points = np.vstack(pts)
+    weights = np.concatenate(wts)
+    return points, weights / weights.sum()
+
+
+def spherical_radial_points(
+    n: int, degree: int
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Arbitrary-odd-degree spherical-radial cubature points for N(0, I).
+
+    Product of a generalized Gauss-Laguerre radial rule (exact for all
+    required even powers of r) with a dimension-recursive surface rule on
+    the unit sphere. Generalizes the 3rd-degree spherical-radial rule of
+    the CKF to any odd degree.
+
+    The point count grows roughly as ``(degree/2)^(n-1)`` from the surface
+    rule; for the common degrees 5 and 7 prefer
+    :func:`fifth_order_cubature_points` and
+    :func:`seventh_order_cubature_points`, which grow polynomially in n.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+    degree : int
+        Odd polynomial degree >= 3 the rule integrates exactly.
+
+    Returns
+    -------
+    points : ndarray, shape (num_points, n)
+    weights : ndarray, shape (num_points,), summing to 1.
+
+    Examples
+    --------
+    >>> pts, w = spherical_radial_points(2, 5)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 4)), 10)  # E[x^4] = 3
+    3.0
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if degree < 3 or degree % 2 == 0:
+        raise ValueError(f"degree must be an odd integer >= 3, got {degree}")
+
+    # Radial part: substitute t = r^2/2 in the integral of g(r) r^(n-1)
+    # exp(-r^2/2); Gauss-Laguerre with alpha = n/2 - 1 handles t^j exactly.
+    # Even powers r^(2j) with 2j <= degree - 1 must be exact => j <=
+    # (degree-1)/2 => m_r points with 2*m_r - 1 >= (degree-1)/2.
+    # Checked: degree 3 -> 1 node (r = sqrt(n), the CKF radius); 5,7 -> 2;
+    # 9 -> 3.
+    m_r = (degree + 3) // 4
+    t, wt = roots_genlaguerre(m_r, n / 2.0 - 1.0)
+    radii = np.sqrt(2.0 * t)
+    w_rad = wt / gamma(n / 2.0)
+
+    surf_pts, surf_w = _sphere_surface_points(n, degree)
+
+    points = np.vstack([r * surf_pts for r in radii])
+    weights = np.concatenate([wr * surf_w for wr in w_rad])
+    return points, weights / weights.sum()

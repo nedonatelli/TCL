@@ -13,6 +13,7 @@ from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     fifth_order_cubature_points,
+    spherical_radial_points,
     transform_cubature_points,
 )
 
@@ -165,3 +166,32 @@ class TestFifthOrder:
 
         assert_allclose(gh_val, exact, atol=1e-9)  # oracle sanity
         assert_allclose(rule_val, exact, atol=5e-3)  # degree-5 approximation
+
+
+class TestSphericalRadial:
+    @pytest.mark.parametrize("n", [1, 2, 3, 4])
+    @pytest.mark.parametrize("degree", [3, 5, 7, 9])
+    def test_exact_through_degree(self, n, degree):
+        pts, w = spherical_radial_points(n, degree)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        assert_rule_exact(pts, w, n, degree)
+
+    @pytest.mark.parametrize("n,degree", [(2, 3), (3, 5), (2, 7)])
+    def test_sharpness(self, n, degree):
+        pts, w = spherical_radial_points(n, degree)
+        alpha = (degree + 1,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - gaussian_moment(alpha)) > 1e-4
+
+    def test_degree_3_matches_known_radius(self):
+        # Single radial node at r = sqrt(n) -- same radius the CKF uses.
+        pts, _ = spherical_radial_points(3, 3)
+        radii = np.linalg.norm(pts, axis=1)
+        assert_allclose(radii, np.sqrt(3.0), atol=1e-12)
+
+    def test_invalid_degree_raises(self):
+        with pytest.raises(ValueError):
+            spherical_radial_points(2, 4)  # even
+        with pytest.raises(ValueError):
+            spherical_radial_points(2, 1)  # < 3
+        with pytest.raises(ValueError):
+            spherical_radial_points(0, 3)  # bad dim
