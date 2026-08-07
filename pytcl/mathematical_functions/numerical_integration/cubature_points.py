@@ -226,8 +226,8 @@ def seventh_order_cubature_points(
     points : ndarray
         Shape (2*(2**n + 2*n*n), n).
     weights : ndarray
-        Shape (2*(2**n + 2*n*n),), summing to 1. The all-nonzero shell's
-        surface weight (8 - n)/(n(n+2)(n+4)) is negative for n > 8; this is
+        Shape (2*(2**n + 2*n*n),), summing to 1. The axis shell's surface
+        weight (8 - n)/(n(n+2)(n+4)) is negative for n > 8; this is
         inherent to the rule, not an error. Covariances assembled from
         these points must not use a sqrt-of-weights factorization.
 
