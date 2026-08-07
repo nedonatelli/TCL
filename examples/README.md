@@ -22,6 +22,7 @@ python examples/orbital_mechanics.py
 - **[particle_filters.py](particle_filters.py)** - Particle filter implementations for nonlinear estimation
 - **[smoothers_information_filters.py](smoothers_information_filters.py)** - RTS smoother and information filter techniques
 - **[multi_target_tracking.py](multi_target_tracking.py)** - Global Nearest Neighbor and JPDA data association
+- **[multi_target_tracking_rerun.py](multi_target_tracking_rerun.py)** - The same scenario logged to a scrubbable [Rerun](https://rerun.io) timeline (track initiation/confirmation/deletion, uncertainty ellipses)
 - **[tracking_containers.py](tracking_containers.py)** - Track and detection container data structures
 - **[tracking_3d.py](tracking_3d.py)** - 3D tracking scenarios with multiple sensors
 - **[assignment_algorithms.py](assignment_algorithms.py)** - Hungarian algorithm, k-best, and 3D assignment
