@@ -315,7 +315,7 @@ def cwt(
 
     # Determine wavelet function. Named wavelets are dilated by the scale
     # parameter so that each row of the CWT responds to a different frequency.
-    def _morlet_default(M: int, scale: float) -> NDArray[np.floating]:
+    def _morlet_default(M: int, scale: float) -> NDArray[np.complexfloating]:
         return morlet_wavelet(M, w=5.0, s=scale)
 
     def _ricker_default(M: int, scale: float) -> NDArray[np.floating]:
@@ -330,7 +330,7 @@ def cwt(
     if callable(wavelet):
 
         def wavelet_func(M: int, scale: float) -> NDArray[np.floating]:
-            return wavelet(M)  # ty: ignore[call-top-callable]
+            return wavelet(M)  # ty: ignore[call-top-callable, invalid-return-type]
 
         wavelet_name = "custom"
     elif wavelet == "morlet":

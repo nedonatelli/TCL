@@ -116,7 +116,7 @@ def convex_hull(points: ArrayLike) -> Tuple[NDArray[np.floating], NDArray[np.int
     """
     points = np.asarray(points, dtype=np.float64)
     hull = ConvexHull(points)
-    return points[hull.vertices], hull.vertices
+    return points[hull.vertices], hull.vertices  # ty: ignore[invalid-return-type]
 
 
 def convex_hull_area(points: ArrayLike) -> float:
@@ -356,7 +356,7 @@ def point_to_line_distance(
 
     line_len = np.linalg.norm(line_vec)
     if line_len < 1e-12:
-        return np.linalg.norm(point_vec)
+        return float(np.linalg.norm(point_vec))
 
     cross = np.abs(np.cross(line_vec, point_vec))
     return cross / line_len
@@ -392,12 +392,12 @@ def point_to_line_segment_distance(
     seg_len_sq = np.dot(seg_vec, seg_vec)
 
     if seg_len_sq < 1e-12:
-        return np.linalg.norm(point_vec)
+        return float(np.linalg.norm(point_vec))
 
     t = max(0, min(1, np.dot(point_vec, seg_vec) / seg_len_sq))
     projection = seg_p1 + t * seg_vec
 
-    return np.linalg.norm(point - projection)
+    return float(np.linalg.norm(point - projection))
 
 
 def triangle_area(

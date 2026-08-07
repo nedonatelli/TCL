@@ -664,7 +664,7 @@ def _mel_frequencies(n_mels: int, fmin: float, fmax: float) -> NDArray[np.floati
     min_mel = _hz_to_mel(fmin)
     max_mel = _hz_to_mel(fmax)
     mels = np.linspace(min_mel, max_mel, n_mels)
-    return _mel_to_hz(mels)
+    return np.asarray(_mel_to_hz(mels))
 
 
 def _mel_filterbank(

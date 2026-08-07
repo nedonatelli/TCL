@@ -390,33 +390,27 @@ class RTree:
 
     def _split_node(self, node: RTreeNode) -> None:
         """Split an overflowing node."""
-        if node.is_leaf:
-            entries = node.entries
-        else:
-            entries = [(child.bbox, child) for child in node.children]
-
-        # Simple split: sort by center x-coordinate and split in half
-        if node.is_leaf:
-            sorted_entries = sorted(
-                entries, key=lambda e: e[0].center[0] if e[0] else 0
-            )
-        else:
-            sorted_entries = sorted(
-                entries,
-                key=lambda e: e[0].center[0] if e[0] else 0,
-            )
-
-        mid = len(sorted_entries) // 2
-
         # Create new sibling node
         sibling = RTreeNode(is_leaf=node.is_leaf)
 
+        # Simple split: sort by center x-coordinate and split in half.
+        # The leaf and internal-node cases are kept fully separate (rather
+        # than funneled through a shared `entries` variable) so each side
+        # keeps a single, non-union element type instead of
+        # `tuple[BoundingBox, int] | tuple[BoundingBox | None, RTreeNode]`.
         if node.is_leaf:
-            node.entries = sorted_entries[:mid]
-            sibling.entries = sorted_entries[mid:]
+            sorted_leaf_entries = sorted(node.entries, key=lambda e: e[0].center[0])
+            mid = len(sorted_leaf_entries) // 2
+            node.entries = sorted_leaf_entries[:mid]
+            sibling.entries = sorted_leaf_entries[mid:]
         else:
-            node.children = [e[1] for e in sorted_entries[:mid]]
-            sibling.children = [e[1] for e in sorted_entries[mid:]]
+            sorted_child_entries = sorted(
+                [(child.bbox, child) for child in node.children],
+                key=lambda e: e[0].center[0] if e[0] else 0,
+            )
+            mid = len(sorted_child_entries) // 2
+            node.children = [e[1] for e in sorted_child_entries[:mid]]
+            sibling.children = [e[1] for e in sorted_child_entries[mid:]]
             for child in sibling.children:
                 child.parent = sibling
 

@@ -76,7 +76,7 @@ class ConstraintFunction:
         """Check if constraint is satisfied."""
         g_val = self.evaluate(x)
         if self.constraint_type == "inequality":
-            return np.all(g_val <= tol)
+            return bool(np.all(g_val <= tol))
         else:  # equality
             return np.allclose(g_val, 0, atol=tol)
 
