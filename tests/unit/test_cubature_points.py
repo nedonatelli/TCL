@@ -13,6 +13,7 @@ from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     fifth_order_cubature_points,
+    seventh_order_cubature_points,
     spherical_radial_points,
     transform_cubature_points,
 )
@@ -166,6 +167,32 @@ class TestFifthOrder:
 
         assert_allclose(gh_val, exact, atol=1e-9)  # oracle sanity
         assert_allclose(rule_val, exact, atol=5e-3)  # degree-5 approximation
+
+
+class TestSeventhOrder:
+    @pytest.mark.parametrize("n", [3, 4, 5, 6])
+    def test_exact_through_degree_7(self, n):
+        pts, w = seventh_order_cubature_points(n)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        assert_rule_exact(pts, w, n, degree=7)
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_sharpness_degree_8_fails(self, n):
+        pts, w = seventh_order_cubature_points(n)
+        alpha = (8,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - 105.0) > 1e-3
+
+    @pytest.mark.parametrize("n", [3, 4, 5, 6])
+    def test_point_count_polynomial(self, n):
+        # The O(n^3) fully-symmetric family, not an exponential product rule.
+        pts, _ = seventh_order_cubature_points(n)
+        assert len(pts) < 8 * n**3 + 1
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(0)
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(2)
 
 
 class TestSphericalRadial:

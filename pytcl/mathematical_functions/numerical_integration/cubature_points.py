@@ -21,6 +21,7 @@ References
    2017.
 """
 
+import itertools
 from typing import Tuple
 
 import numpy as np
@@ -150,6 +151,118 @@ def fifth_order_cubature_points(
         weights.append(np.full(len(pair_pts), w_pair))
 
     return np.vstack(points), np.concatenate(weights)
+
+
+def _seventh_order_unit_sphere_points(
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Degree-7 rule for the uniform measure on the unit sphere S^(n-1).
+
+    Stroud's surface Formula I (E_n^{r^2} 7-1's spherical building block),
+    the counterpart of the MATLAB TCL's ``seventhOrderSpherSurfCubPoints``
+    (algorithm 0), n >= 3. 2^n + 2n^2 points: axis points e_i (weight A1),
+    pairwise points (e_i + e_j)/sqrt(2) (weight A2), and the all-nonzero
+    point (1,...,1)/sqrt(n) (weight A3), each fully signed. Weights are
+    normalized to sum to 1.
+    """
+    axis = np.eye(n)
+    points = [axis, -axis]
+
+    s = 1.0 / np.sqrt(2.0)
+    pair_pts = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            for si in (1.0, -1.0):
+                for sj in (1.0, -1.0):
+                    p = np.zeros(n)
+                    p[i] = si * s
+                    p[j] = sj * s
+                    pair_pts.append(p)
+    points.append(np.array(pair_pts))
+
+    t = 1.0 / np.sqrt(n)
+    signs = np.array(list(itertools.product((1.0, -1.0), repeat=n)))
+    points.append(t * signs)
+
+    i1 = 2.0 * np.pi ** (n / 2.0) / gamma(n / 2.0)  # surface area of S^(n-1)
+    denom = n * (n + 2.0) * (n + 4.0)
+    a1 = (8.0 - n) / denom * i1
+    a2 = 4.0 / denom * i1
+    a3 = 2.0 ** (-n) * n**3 / denom * i1
+
+    weights = np.concatenate(
+        [
+            np.full(2 * n, a1),
+            np.full(len(pair_pts), a2),
+            np.full(2**n, a3),
+        ]
+    )
+    return np.vstack(points), weights / i1
+
+
+def seventh_order_cubature_points(
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Degree-7 cubature points for the standard normal N(0, I).
+
+    The 2*(2^n + 2n^2) point fully-symmetric rule E_n^{r^2} 7-1 of Stroud
+    [1]_ (McNamee-Stenger [2]_ construction), the counterpart of the
+    MATLAB TCL's ``seventhOrderCubPoints`` (algorithm 0, the default for
+    n > 2). Two concentric copies of the degree-7 spherical-surface rule
+    ``seventhOrderSpherSurfCubPoints`` (algorithm 0, formula I of Stroud's
+    1968 paper cited there) are scaled to radii r1 and r2 -- the roots of
+    the radial polynomial in Stroud's construction -- and blended with
+    weights that sum to 1. Exactly integrates every polynomial of total
+    degree <= 7 against N(0, I).
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 3.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (2*(2**n + 2*n*n), n).
+    weights : ndarray
+        Shape (2*(2**n + 2*n*n),), summing to 1. The all-nonzero shell's
+        surface weight (8 - n)/(n(n+2)(n+4)) is negative for n > 8; this is
+        inherent to the rule, not an error. Covariances assembled from
+        these points must not use a sqrt-of-weights factorization.
+
+    Examples
+    --------
+    >>> pts, w = seventh_order_cubature_points(3)
+    >>> pts.shape
+    (52, 3)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 6)), 6)  # E[x^6] = 15
+    15.0
+
+    References
+    ----------
+    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+       Prentice-Hall, 1971, Formula E_n^{r^2} 7-1, p. 318.
+    .. [2] J. McNamee and F. Stenger, "Construction of fully symmetric
+       numerical integration formulas," Numerische Mathematik 10, 1967.
+    """
+    if n < 3:
+        raise ValueError(f"dimension must be >= 3, got {n}")
+
+    u, wu = _seventh_order_unit_sphere_points(n)
+
+    root = np.sqrt(2.0 * (n + 2.0))
+    r1 = np.sqrt((n + 2.0 - root) / 2.0)
+    r2 = np.sqrt((n + 2.0 + root) / 2.0)
+    a1 = (n + 2.0 + root) / (2.0 * (n + 2.0))
+    a2 = (n + 2.0 - root) / (2.0 * (n + 2.0))
+
+    points = np.sqrt(2.0) * np.vstack([r1 * u, r2 * u])
+    weights = np.concatenate([wu * a1, wu * a2])
+
+    return points, weights
 
 
 def _sphere_surface_points(
