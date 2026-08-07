@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `to_gpu` raises `DependencyError` (an `ImportError` subclass) instead of
   `RuntimeError` when no GPU backend is installed, matching how every other
   optional dependency is reported.
+- Git hooks run through prek (a drop-in Rust replacement for the pre-commit
+  framework; same `.pre-commit-config.yaml`). Whitespace hooks now exclude
+  generated plot exports and test fixtures.
+
+### Added
+- Cross-validation of SGP4/SDP4 and the TEME->ITRF/GCRF chains against
+  satkit, an independent Rust implementation (opt-in `validation`
+  dependency group: `uv sync --group validation`; tests skip without it).
+- `examples/multi_target_tracking_rerun.py`: the multi-target tracking
+  scenario logged to a Rerun timeline (scrub through track initiation,
+  confirmation, deletion, and covariance ellipses). Self-contained via
+  PEP 723 inline metadata: `uv run examples/multi_target_tracking_rerun.py`.
 
 ### Fixed
 - The docs code-block gate now actually executes in CI: matplotlib was

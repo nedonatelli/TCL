@@ -1,3 +1,7 @@
+# Generated plot exports get regenerated wholesale and fixtures are
+# reference data kept verbatim -- whitespace hooks must not churn either.
+exclude: ^(docs/_static/images/|tests/fixtures/)
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0

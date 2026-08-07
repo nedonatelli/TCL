@@ -19,10 +19,10 @@ Installation Issues
 
    # Check if installed
    python -c "import pytcl; print(pytcl.__version__)"
-   
+
    # If not installed, install from PyPI
    pip install nrl-tracker
-   
+
    # Or install from source
    git clone https://github.com/nedonatelli/TCL.git
    cd TCL
@@ -38,7 +38,7 @@ Installation Issues
 
    # Check your Python version
    python --version
-   
+
    # If too old, create a virtual environment with Python 3.10+
    python3.11 -m venv venv
    source venv/bin/activate
@@ -57,7 +57,7 @@ Installation Issues
    # CuPy is optional - you can use CPU version
    # Or install CuPy for GPU acceleration
    pip install cupy-cuda11x  # Replace 11x with your CUDA version
-   
+
    # Check if GPU backend works
    python -c "from pytcl.gpu import to_gpu; print('GPU backend OK')"
 
@@ -138,13 +138,13 @@ Array Shape and Dimension Issues
 
    import numpy as np
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # State vector must match F rows
    F = np.eye(4)      # 4×4 motion model
    Q = np.eye(4) * 0.1
    x = np.array([0, 1, 0, 1])  # Must be length 4
    P = np.eye(4)      # Must be 4×4
-   
+
    # ✅ Correct dimensions
    x_pred, P_pred = kf_predict(x, P, F, Q)
 
@@ -159,7 +159,7 @@ Array Shape and Dimension Issues
        print(f"Q shape: {Q.shape}")
        print(f"H shape: {H.shape}")
        print(f"R shape: {R.shape}")
-   
+
    # Rules:
    # x.shape = (n,)
    # P.shape = (n, n)
@@ -177,11 +177,11 @@ Array Shape and Dimension Issues
 .. code-block:: python
 
    import numpy as np
-   
+
    # ❌ Wrong: 1D array
    x = np.array([1, 2, 3])
    x_2d = x.reshape(-1, 1)  # Convert to column vector
-   
+
    # ✅ Correct: Use as-is if function expects 1D
    # Check function documentation
    from pytcl.mathematical_functions.special_functions import marcum_q
@@ -204,7 +204,7 @@ Filter and Estimation Issues
 
       # ❌ Q too small
       Q = np.eye(4) * 0.001  # Too small!
-      
+
       # ✅ Reasonable Q
       Q = np.eye(4) * 0.1  # Depends on system
 
@@ -216,7 +216,7 @@ Filter and Estimation Issues
 
       # ❌ R too large
       R = np.eye(2) * 1000  # Measurements are ignored
-      
+
       # ✅ Match sensor accuracy
       R = np.eye(2) * 0.1
 
@@ -255,15 +255,15 @@ Filter and Estimation Issues
 .. code-block:: python
 
    import numpy as np
-   
+
    def diagnose_divergence(x_sequence, P_sequence):
        """Check if filter is diverging"""
        trace_P = [np.trace(P) for P in P_sequence]
        det_P = [np.linalg.det(P) for P in P_sequence]
-       
+
        print("Trace of P (should decrease): ", trace_P)
        print("Det of P (should decrease): ", det_P)
-       
+
        # Check if increasing
        if trace_P[-1] > trace_P[0]:
            print("⚠ Filter diverging: P trace increased")
@@ -282,7 +282,7 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
       # ❌ Q too large
       Q = np.eye(4) * 10  # Filter doubts the model
-      
+
       # ✅ Reduce Q
       Q = np.eye(4) * 0.1
 
@@ -331,7 +331,7 @@ See :doc:`kalman_filter_tuning` for detailed diagnostics.
 
    # ❌ Q too small: filter tries to match every measurement
    Q = np.eye(4) * 0.001
-   
+
    # ✅ Increase Q to smooth
    Q = np.eye(4) * 0.5
 
@@ -464,11 +464,11 @@ Coordinate Conversion Issues
 .. code-block:: python
 
    import numpy as np
-   
+
    # Wrap angle to [-π, π]
    def wrap_angle(angle):
        return np.arctan2(np.sin(angle), np.cos(angle))
-   
+
    # Test
    large_angle = 3 * np.pi
    wrapped = wrap_angle(large_angle)
@@ -605,7 +605,7 @@ See :doc:`performance_optimization` and :doc:`gpu_acceleration`.
 
        def update(self, measurement):
            self.history.append(measurement)
-           
+
            # Keep only recent history
            if len(self.history) > self.max_history:
                self.history = self.history[-self.max_history:]
@@ -622,21 +622,21 @@ Numerical Issues
 .. code-block:: python
 
    import numpy as np
-   
+
    def check_positive_definite(P):
        eigs = np.linalg.eigvalsh(P)
        min_eig = np.min(eigs)
-       
+
        if min_eig < 0:
            print(f"⚠ P not positive definite: min eigenvalue = {min_eig}")
            return False
-       
+
        if min_eig < 1e-10:
            print(f"⚠ P nearly singular: min eigenvalue = {min_eig}")
            return False
-       
+
        return True
-   
+
    # Check P after initialization
    check_positive_definite(P)
 
@@ -646,7 +646,7 @@ Numerical Issues
 
    import numpy as np
    from scipy.linalg import cholesky
-   
+
    # Fix: Enforce positive-definiteness
    def fix_covariance(P):
        try:
@@ -658,7 +658,7 @@ Numerical Issues
            epsilon = 1e-8
            P_fixed = P + epsilon * np.eye(len(P))
            return P_fixed
-   
+
    P = fix_covariance(P)
 
 **"Numerical underflow/overflow"**
@@ -670,7 +670,7 @@ Numerical Issues
 .. code-block:: python
 
    import numpy as np
-   
+
    # Use higher precision
    x = np.array([1e-300, 2e-300], dtype=np.float64)  # Not np.float32
 
@@ -688,15 +688,15 @@ Debugging Tools
 
    import numpy as np
    from pytcl.dynamic_estimation.kalman import kf_predict, kf_update
-   
+
    def debug_filter(x, P, z, F, Q, H, R):
        print(f"State before: {x}")
        print(f"Cov trace before: {np.trace(P):.4f}")
-       
+
        x_p, P_p = kf_predict(x, P, F, Q)
        print(f"State after predict: {x_p}")
        print(f"Cov trace after predict: {np.trace(P_p):.4f}")
-       
+
        innovation = z - H @ x_p
        print(f"Innovation: {innovation}")
 
@@ -713,7 +713,7 @@ Debugging Tools
 .. code-block:: python
 
    import numpy as np
-   
+
    def track_measurement(x, P, z):
        # Assertions catch bugs early
        assert isinstance(x, np.ndarray), "x must be array"
@@ -721,7 +721,7 @@ Debugging Tools
        assert len(x) == 4, "x must be 4D state"
        assert np.isfinite(x).all(), "x contains NaN or Inf"
        assert np.isfinite(P).all(), "P contains NaN or Inf"
-       
+
        # ... rest of function
 
 **Use Logging**:
@@ -729,10 +729,10 @@ Debugging Tools
 .. code-block:: python
 
    import logging
-   
+
    logging.basicConfig(level=logging.DEBUG)
    logger = logging.getLogger(__name__)
-   
+
    def update_filter(x, P, z, F, Q, H, R):
        logger.debug(f"State: {x}")
        logger.debug(f"Measurement: {z}")
@@ -766,13 +766,13 @@ Getting Help
    # Minimal code that shows the problem
    import numpy as np
    from pytcl.dynamic_estimation.kalman import kf_predict
-   
+
    # Minimum setup to reproduce
    x = np.array([0.0, 1.0, 0.0, 1.0])
    P = np.eye(4) * 0.1
    F = np.eye(4)
    Q = np.eye(4) * 0.01
-   
+
    # This fails with: [error message]
    x_pred, P_pred = kf_predict(x, P, F, Q)
 

@@ -287,7 +287,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 git clone https://github.com/nedonatelli/TCL.git
 cd TCL
 uv sync
-pre-commit install
+uv run prek install
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup (installing uv,
@@ -309,7 +309,7 @@ uv run ty check pytcl
 uv run mypy pytcl
 
 # Run all checks
-uv run pre-commit run --all-files
+uv run prek run --all-files
 ```
 
 ## Citation
