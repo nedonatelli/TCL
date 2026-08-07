@@ -132,7 +132,7 @@ class KalmanTrackAdapter:
             raise RuntimeError("Track not initialized. Call initialize() first.")
 
         pred = kf_predict(self._x, self._P, self._F, self._Q)
-        self._x, self._P = pred.x, pred.P
+        self._x, self._P = pred.x, pred.P  # ty: ignore[invalid-assignment]
         self._db.update_track_state(
             self._track_id,
             self._x,
@@ -169,7 +169,7 @@ class KalmanTrackAdapter:
         z = np.asarray(measurement, dtype=np.float64)
         upd = kf_update(self._x, self._P, z, self._H, self._R)
         residual = upd.y if hasattr(upd, "y") else None
-        self._x, self._P = upd.x, upd.P
+        self._x, self._P = upd.x, upd.P  # ty: ignore[invalid-assignment]
 
         self._db.update_track_state(
             self._track_id,
@@ -294,7 +294,7 @@ class EKFTrackAdapter:
 
         F = self._F_func(self._x)
         pred = ekf_predict(self._x, self._P, self._f, F, self._Q)
-        self._x, self._P = pred.x, pred.P
+        self._x, self._P = pred.x, pred.P  # ty: ignore[invalid-assignment]
         self._db.update_track_state(
             self._track_id,
             self._x,
@@ -313,7 +313,7 @@ class EKFTrackAdapter:
         z = np.asarray(measurement, dtype=np.float64)
         H = self._H_func(self._x)
         upd = ekf_update(self._x, self._P, z, self._h, H, self._R)
-        self._x, self._P = upd.x, upd.P
+        self._x, self._P = upd.x, upd.P  # ty: ignore[invalid-assignment]
         self._db.update_track_state(
             self._track_id,
             self._x,
@@ -409,7 +409,7 @@ class UKFTrackAdapter:
             self._beta,
             self._kappa,
         )
-        self._x, self._P = pred.x, pred.P
+        self._x, self._P = pred.x, pred.P  # ty: ignore[invalid-assignment]
         self._db.update_track_state(
             self._track_id,
             self._x,
@@ -436,7 +436,7 @@ class UKFTrackAdapter:
             self._beta,
             self._kappa,
         )
-        self._x, self._P = upd.x, upd.P
+        self._x, self._P = upd.x, upd.P  # ty: ignore[invalid-assignment]
         self._db.update_track_state(
             self._track_id,
             self._x,
@@ -709,8 +709,8 @@ class ParticleFilterTrackAdapter:
         x = np.asarray(x0, dtype=np.float64)
         P = np.asarray(P0, dtype=np.float64)
         ps = initialize_particles(x, P, self._n_particles)
-        self._particles = ps.particles
-        self._weights = ps.weights
+        self._particles = ps.particles  # ty: ignore[invalid-assignment]
+        self._weights = ps.weights  # ty: ignore[invalid-assignment]
         self._db.initiate_track(self._track_id, x, P, timestamp)
 
     def predict_update(self, measurement: ArrayLike, timestamp: float) -> None:
@@ -747,14 +747,14 @@ class ParticleFilterTrackAdapter:
             return float(gaussian_likelihood(z_obs, z_pred, R_mat))
 
         # Predict
-        self._particles = bootstrap_pf_predict(
+        self._particles = bootstrap_pf_predict(  # ty: ignore[invalid-assignment]
             self._particles,
             self._f,
             q_sample,
         )
 
         # Update weights
-        self._weights, _ = bootstrap_pf_update(
+        self._weights, _ = bootstrap_pf_update(  # ty: ignore[invalid-assignment]
             self._particles,
             self._weights,
             z,
@@ -762,7 +762,7 @@ class ParticleFilterTrackAdapter:
         )
 
         # Resample
-        self._particles = resample_systematic(self._particles, self._weights)
+        self._particles = resample_systematic(self._particles, self._weights)  # ty: ignore[invalid-assignment]
         self._weights = np.ones(self._n_particles) / self._n_particles
 
         # Extract state and covariance for storage

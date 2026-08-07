@@ -61,10 +61,8 @@ pip install nrl-tracker[gpu]
 # For GPU acceleration (Apple Silicon M1/M2/M3)
 pip install nrl-tracker[gpu-apple]
 
-# For development
-pip install nrl-tracker[dev]
-
-# Install everything
+# Install every user-facing extra except gpu (dev tooling is no longer a
+# published extra — contributors use `uv sync`)
 pip install nrl-tracker[all]
 ```
 
@@ -73,7 +71,7 @@ pip install nrl-tracker[all]
 ```bash
 git clone https://github.com/nedonatelli/TCL.git
 cd TCL
-pip install -e ".[dev]"
+pip install -e .
 ```
 
 ## Quick Start
@@ -288,24 +286,30 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ```bash
 git clone https://github.com/nedonatelli/TCL.git
 cd TCL
-pip install -e ".[dev]"
+uv sync
 pre-commit install
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup (installing uv,
+`uv run` vs. activating `.venv`, the `gpu-apple` extra for Apple Silicon).
 
 ### Running Quality Checks
 
 ```bash
 # Format code
-ruff format .
+uv run ruff format .
 
 # Lint (includes import sorting)
-ruff check .
+uv run ruff check .
 
-# Type check
-mypy pytcl
+# Type check (gate)
+uv run ty check pytcl
+
+# Type check (non-blocking during probation, ends v2.1.0)
+uv run mypy pytcl
 
 # Run all checks
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ## Citation

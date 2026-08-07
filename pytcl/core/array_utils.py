@@ -7,7 +7,7 @@ making it easier to port algorithms while maintaining Pythonic interfaces.
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -311,7 +311,7 @@ def block_diag(*arrays: ArrayLike) -> NDArray[Any]:
     """
     from scipy.linalg import block_diag as scipy_block_diag
 
-    arrays = [np.atleast_2d(np.asarray(a)) for a in arrays]
+    arrays = [np.atleast_2d(np.asarray(a)) for a in arrays]  # ty: ignore[invalid-assignment]
     return scipy_block_diag(*arrays)
 
 
@@ -396,7 +396,10 @@ def normalize_vector(
     return_norm: bool = False,
 ) -> (
     NDArray[np.floating[Any]]
-    | tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]
+    | tuple[
+        NDArray[np.floating[Any]],
+        Union[float, NDArray[np.floating[Any]]],
+    ]
 ):
     """
     Normalize vector(s) to unit length.
@@ -414,8 +417,9 @@ def normalize_vector(
     -------
     v_normalized : NDArray
         Unit vector(s).
-    norm : NDArray, optional
-        Original norm(s), only returned if return_norm=True.
+    norm : float or NDArray, optional
+        Original norm(s), only returned if return_norm=True. A scalar float
+        when ``v`` is 1-D and ``axis`` is None, otherwise an array.
 
     Examples
     --------
@@ -429,7 +433,7 @@ def normalize_vector(
     v = np.asarray(v, dtype=np.float64)
 
     if axis is None and v.ndim == 1:
-        norm = np.linalg.norm(v)
+        norm: Union[float, NDArray[np.floating[Any]]] = float(np.linalg.norm(v))
     else:
         norm = np.linalg.norm(v, axis=axis, keepdims=True)
 

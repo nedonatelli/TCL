@@ -27,10 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: "3.11"
+          enable-cache: true
 
       - name: Install Pandoc
         run: |
@@ -38,15 +39,12 @@ jobs:
           sudo apt-get install -y pandoc
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install sphinx-rtd-theme nbsphinx
+        run: uv sync --locked
 
       - name: Build documentation
         run: |
           cd docs
-          sphinx-build -b html . _build/html
+          uv run sphinx-build -b html . _build/html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

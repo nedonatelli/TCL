@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dev tooling moved from the published `dev`/`benchmark` extras to PEP 735
+  dependency groups; `pip install nrl-tracker[dev]` no longer exists and
+  `[all]` now contains only user-facing extras. Contributors: `uv sync`.
+- Type checking is gated on ty; mypy runs non-blocking during a probation
+  period ending at v2.1.0.
+- `to_gpu` raises `DependencyError` (an `ImportError` subclass) instead of
+  `RuntimeError` when no GPU backend is installed, matching how every other
+  optional dependency is reported.
+
+### Fixed
+- The docs code-block gate now actually executes in CI: matplotlib was
+  missing from the CI environment, which failed the gate's self-tests and
+  silently skipped 36 documentation pages (matplotlib now ships in the dev
+  dependency group). The GPU documentation pages skip cleanly on machines
+  without a GPU backend instead of erroring.
+
 ## [2.0.0] - 2026-08-06
 
 The first major release, and a breaking one. It closes the v2 correctness audit:
@@ -1182,7 +1199,7 @@ Patch release addressing coordinate conversion bugs and improving documentation 
 
 ### Changed
 
-- **Documentation Infrastructure**: 
+- **Documentation Infrastructure**:
   - Made landing page fully dynamic with centralized metadata management
   - Created `docs/project_metadata.py` for single source of truth
   - Landing page now auto-updates with version, stats, and URLs

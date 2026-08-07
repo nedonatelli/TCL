@@ -113,7 +113,7 @@ def _debye_batch(
     for k in range(1, n + 1):
         n_fact *= k
 
-    for i in prange(len(x_arr)):
+    for i in prange(len(x_arr)):  # ty: ignore[not-iterable]
         xi = x_arr[i]
         if xi == 0.0:
             result[i] = 1.0

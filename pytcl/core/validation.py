@@ -467,7 +467,7 @@ def validated_array_input(
 
             return func(*bound.args, **bound.kwargs)
 
-        return wrapper
+        return wrapper  # ty: ignore[invalid-return-type]
 
     return decorator
 
@@ -750,7 +750,7 @@ def validate_inputs(
 
             return func(*bound.args, **bound.kwargs)
 
-        return wrapper
+        return wrapper  # ty: ignore[invalid-return-type]
 
     return decorator
 

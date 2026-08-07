@@ -655,8 +655,14 @@ class IMMEstimator:
             If True, H and R are lists with different models per mode.
         """
         if mode_specific:
-            self.H_list = [np.asarray(h, dtype=np.float64) for h in H]
-            self.R_list = [np.asarray(r, dtype=np.float64) for r in R]
+            self.H_list = [
+                np.asarray(h, dtype=np.float64)
+                for h in H  # ty: ignore[not-iterable]
+            ]
+            self.R_list = [
+                np.asarray(r, dtype=np.float64)
+                for r in R  # ty: ignore[not-iterable]
+            ]
         else:
             H = np.asarray(H, dtype=np.float64)
             R = np.asarray(R, dtype=np.float64)

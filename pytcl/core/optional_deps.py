@@ -330,7 +330,7 @@ def requires(
 
             return func(*args, **kwargs)
 
-        return wrapper
+        return wrapper  # ty: ignore[invalid-return-type]
 
     return decorator
 

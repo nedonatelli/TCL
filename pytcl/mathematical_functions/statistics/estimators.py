@@ -5,7 +5,7 @@ This module provides functions for computing sample statistics,
 robust estimators, and related quantities used in tracking applications.
 """
 
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -15,7 +15,7 @@ def weighted_mean(
     x: ArrayLike,
     weights: ArrayLike,
     axis: Optional[int] = None,
-) -> NDArray[np.floating]:
+) -> Union[float, NDArray[np.floating]]:
     """
     Compute weighted mean.
 
@@ -30,8 +30,8 @@ def weighted_mean(
 
     Returns
     -------
-    mean : ndarray
-        Weighted mean.
+    mean : float or ndarray
+        Weighted mean. A scalar when ``axis`` is None, otherwise an array.
 
     Examples
     --------
@@ -202,7 +202,7 @@ def sample_cov(
     x: ArrayLike,
     y: Optional[ArrayLike] = None,
     ddof: int = 1,
-) -> NDArray[np.floating]:
+) -> Union[float, NDArray[np.floating]]:
     """
     Compute sample covariance matrix.
 
@@ -217,8 +217,9 @@ def sample_cov(
 
     Returns
     -------
-    cov : ndarray
-        Covariance matrix.
+    cov : float or ndarray
+        Covariance matrix, or a scalar variance when ``x`` is 1D and ``y``
+        is None.
 
     Examples
     --------
@@ -234,7 +235,7 @@ def sample_cov(
         return np.cov(x, y, ddof=ddof)
 
     if x.ndim == 1:
-        return np.var(x, ddof=ddof)
+        return float(np.var(x, ddof=ddof))
 
     return np.cov(x.T, ddof=ddof)
 

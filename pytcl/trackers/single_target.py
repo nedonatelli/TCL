@@ -138,6 +138,18 @@ class SingleTargetTracker:
             time=self._time,
         )
 
+    def _current_state(self) -> TrackState:
+        """Return the current state.
+
+        Callers within this class use this instead of the ``state``
+        property after already checking ``self._initialized`` (typically
+        via the ``RuntimeError`` guard at the top of ``predict``/``update``),
+        so the ``None`` branch of the property is provably unreachable here.
+        """
+        result = self.state
+        assert result is not None, "Tracker not initialized"
+        return result
+
     def predict(self, dt: float) -> TrackState:
         """
         Predict state to new time.
@@ -160,15 +172,15 @@ class SingleTargetTracker:
         if not self._initialized:
             raise RuntimeError("Tracker not initialized")
 
-        F = self._F(dt)
-        Q = self._Q(dt)
+        F = self._F(dt)  # ty: ignore[call-top-callable]
+        Q = self._Q(dt)  # ty: ignore[call-top-callable]
 
         # Kalman prediction
         self._state = F @ self._state
         self._covariance = F @ self._covariance @ F.T + Q
         self._time += dt
 
-        return self.state
+        return self._current_state()
 
     def update(
         self,
@@ -233,7 +245,7 @@ class SingleTargetTracker:
         # Gating check
         if self.gate_threshold is not None and d2 > self.gate_threshold:
             # Measurement rejected
-            return self.state, d2
+            return self._current_state(), d2
 
         # Kalman gain
         K = self._covariance @ self.H.T @ S_inv
@@ -242,7 +254,7 @@ class SingleTargetTracker:
         self._state = self._state + K @ innovation
         self._covariance = (np.eye(self.state_dim) - K @ self.H) @ self._covariance
 
-        return self.state, d2
+        return self._current_state(), d2
 
     def predict_measurement(
         self,

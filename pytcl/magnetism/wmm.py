@@ -437,7 +437,7 @@ def _magnetic_field_spherical_cached(
 
 
 # Registry to hold coefficient sets by id
-_coefficient_registry: dict[str, Any] = {}
+_coefficient_registry: dict[int, Any] = {}
 
 
 def _register_coefficients(coeffs: "MagneticCoefficients") -> int:

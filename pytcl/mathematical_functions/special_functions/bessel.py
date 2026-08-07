@@ -398,8 +398,13 @@ def airy(
     --------
     scipy.special.airy : Airy functions.
     """
-    result = sp.airy(x)
-    return tuple(np.asarray(r, dtype=np.float64) for r in result)
+    ai, aip, bi, bip = sp.airy(x)
+    return (
+        np.asarray(ai, dtype=np.float64),
+        np.asarray(aip, dtype=np.float64),
+        np.asarray(bi, dtype=np.float64),
+        np.asarray(bip, dtype=np.float64),
+    )
 
 
 def bessel_ratio(

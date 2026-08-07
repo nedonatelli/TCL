@@ -62,7 +62,23 @@ Session-identified, held deliberately out of 2.0.0:
 - HDF5 compression to the once-claimed 5-10x (states-only chunking or a
   covariance transform; the honest measured figure today is 1.3-4.3x)
 
+### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
 
+- **Tooling (no release):** uv-managed workflow (uv.lock, dependency
+  groups, CI on uv) and ty as the type-check gate with a mypy probation
+  ending at v2.1.0.
+- **v2.1.0 — Diagnostics:** `pytcl.diagnostics` — loguru logging (silent by
+  default, `enable_debug_logging()` opt-in), rich progress bars and track
+  tables, instrumentation at gating/association/filter-health decision
+  points.
+- **v2.2.0 — Results I/O:** polars ingest (CSV/Parquet) and `to_polars()`
+  results accessors (new `[dataframe]` extra); msgspec export of track
+  histories/states to JSON and MessagePack. Delivers the Parquet/Arrow
+  bullets below.
+- **v2.3.0 — Typed configs + save/restore:** filter/tracker configs as
+  `msgspec.Struct`s; full tracker state snapshot/resume.
+- **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
+  plotting, once xy has a stable release.
 
 ### Enhanced GPU Support
 
@@ -192,7 +208,7 @@ what is still open.
 
 | Feature | Gap | Plan |
 |---------|-----|------|
-| Distributed tracking | Not implemented | v2.1 with RAPIDS |
+| Distributed tracking | Not implemented | Planned (RAPIDS; unscheduled) |
 | Real-time C++ bindings | Not implemented | pybind11 if demand materializes |
 
 ### Performance Limitations
@@ -245,21 +261,23 @@ There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
 
 #### Core Tracking Evolution
 
-1. **Real-time Particle Swarm Optimization tracking** (v2.2+)
+1. **Real-time Particle Swarm Optimization tracking**
    - Swarm intelligence for clutter-heavy tracking
    - Cooperative multi-target estimation
-2. **Quantum-inspired algorithms** (v2.3+)
+2. **Quantum-inspired algorithms**
    - Quantum annealing backend for assignment (via D-Wave)
    - Quantum simulation of filter dynamics
-3. **Adaptive learning tracking** (v2.4+)
+3. **Adaptive learning tracking**
    - Neural network-augmented Kalman filters
    - Transfer learning for new sensor types
 
 #### Infrastructure Maturation
 
-- **v2.1**: RAPIDS, distributed tracking, advanced diagnostics
-- **v2.2**: Extended ecosystem (ROS 2, autonomous systems)
-- **v2.3**: Emerging tech (quantum, federated learning)
+Unscheduled, in rough order:
+
+- RAPIDS, distributed tracking, advanced diagnostics
+- Extended ecosystem (ROS 2, autonomous systems)
+- Emerging tech (quantum, federated learning)
 
 #### Community & Ecosystem
 
@@ -332,9 +350,8 @@ There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
 ```bash
 git clone https://github.com/nedonatelli/TCL.git
 cd TCL
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
+uv sync
+uv run pytest
 ```
 
 ---
@@ -356,5 +373,5 @@ for reference implementations.
 ---
 
 **Current Phase:** v2.0.0 released
-**Next Milestone:** v2.1 (see the measured backlog)
+**Next Milestone:** v2.1.0 (diagnostics; see the modernization campaign)
 No dates are attached to anything in this document: none have been decided.

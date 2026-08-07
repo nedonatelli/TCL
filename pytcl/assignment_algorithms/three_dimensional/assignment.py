@@ -537,8 +537,9 @@ def assign3d_auction(
     # cheapest feasible tuples for any rows left unassigned.
     raw_assignments = []
     for i in range(n1):
-        if assign_i[i] is not None:
-            j, k = assign_i[i]
+        pair = assign_i[i]
+        if pair is not None:
+            j, k = pair
             raw_assignments.append((i, j, k))
     raw_assignments.sort(key=lambda t: cost[t[0], t[1], t[2]])
 
