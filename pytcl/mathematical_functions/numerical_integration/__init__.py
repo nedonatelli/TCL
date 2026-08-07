@@ -7,6 +7,12 @@ This module provides:
 - Multi-dimensional cubature rules for filtering (CKF, UKF)
 """
 
+from pytcl.mathematical_functions.numerical_integration.cubature_points import (  # noqa: E501
+    fifth_order_cubature_points,
+    seventh_order_cubature_points,
+    spherical_radial_points,
+    transform_cubature_points,
+)
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
     cubature_gauss_hermite,
     dblquad,
@@ -42,4 +48,8 @@ __all__ = [
     "cubature_gauss_hermite",
     "spherical_cubature",
     "unscented_transform_points",
+    "fifth_order_cubature_points",
+    "seventh_order_cubature_points",
+    "spherical_radial_points",
+    "transform_cubature_points",
 ]

@@ -300,11 +300,14 @@ class TestFifthOrder:
         # w_center = 2/(n+2) = 1/2, w_axis = (4-n)/(2(n+2)^2) = 1/16,
         # w_pair = 1/(n+2)^2 = 1/16.
         pts, w = fifth_order_cubature_points(2)
-        assert_allclose(sorted(np.abs(pts).max(axis=1)), sorted(
-            [0.0] + [2.0] * 4 + [np.sqrt(2.0)] * 4), atol=1e-12)
-        assert_allclose(w[0], 0.5, atol=1e-15)          # center
+        assert_allclose(
+            sorted(np.abs(pts).max(axis=1)),
+            sorted([0.0] + [2.0] * 4 + [np.sqrt(2.0)] * 4),
+            atol=1e-12,
+        )
+        assert_allclose(w[0], 0.5, atol=1e-15)  # center
         assert_allclose(w[1:5], 1.0 / 16.0, atol=1e-15)  # axis
-        assert_allclose(w[5:], 1.0 / 16.0, atol=1e-15)   # pairs
+        assert_allclose(w[5:], 1.0 / 16.0, atol=1e-15)  # pairs
 
     def test_reference_expectation_vs_tensor_gauss_hermite(self):
         # REFERENCE: E[cos(a.T x)] = exp(-|a|^2 / 2) has a closed form and is
@@ -327,7 +330,7 @@ class TestFifthOrder:
             np.sum(gh_w * np.cos((np.sqrt(2.0) * gh_pts) @ a)) / np.pi ** (n / 2)
         )
 
-        assert_allclose(gh_val, exact, atol=1e-9)   # oracle sanity
+        assert_allclose(gh_val, exact, atol=1e-9)  # oracle sanity
         assert_allclose(rule_val, exact, atol=5e-3)  # degree-5 approximation
 ```
 
@@ -739,7 +742,7 @@ class TestCKFWithCustomPoints:
 
         gh_pts, gh_w = cubature_gauss_hermite(3, 8)
         unit = np.sqrt(2.0) * gh_pts
-        wts = gh_w / np.pi ** 1.5
+        wts = gh_w / np.pi**1.5
         S = np.linalg.cholesky(P)
         prop = np.array([f(x + S @ p) for p in unit])
         mean_ref = np.sum(wts[:, None] * prop, axis=0)
@@ -824,23 +827,22 @@ In both functions:
 2. Replace the hardwired point generation with:
 
 ```python
-    if (points is None) != (weights is None):
-        raise ValueError("points and weights must be provided together")
-    if points is None:
-        unit_pts, weights_arr = ckf_spherical_cubature_points(n)
-    else:
-        unit_pts = np.asarray(points, dtype=np.float64)
-        weights_arr = np.asarray(weights, dtype=np.float64)
-        if unit_pts.ndim != 2 or unit_pts.shape[1] != n:
-            raise ValueError(
-                f"points shape {unit_pts.shape} incompatible with state "
-                f"dimension {n}"
-            )
-        if weights_arr.shape != (unit_pts.shape[0],):
-            raise ValueError(
-                f"weights shape {weights_arr.shape} does not match "
-                f"{unit_pts.shape[0]} points"
-            )
+if (points is None) != (weights is None):
+    raise ValueError("points and weights must be provided together")
+if points is None:
+    unit_pts, weights_arr = ckf_spherical_cubature_points(n)
+else:
+    unit_pts = np.asarray(points, dtype=np.float64)
+    weights_arr = np.asarray(weights, dtype=np.float64)
+    if unit_pts.ndim != 2 or unit_pts.shape[1] != n:
+        raise ValueError(
+            f"points shape {unit_pts.shape} incompatible with state dimension {n}"
+        )
+    if weights_arr.shape != (unit_pts.shape[0],):
+        raise ValueError(
+            f"weights shape {weights_arr.shape} does not match "
+            f"{unit_pts.shape[0]} points"
+        )
 ```
 
 3. Replace every `np.sqrt(weights)`-based covariance assembly with the

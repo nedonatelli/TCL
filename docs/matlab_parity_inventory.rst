@@ -102,7 +102,9 @@ backends).
        distribution classes vs MATLAB's ~40), interpolation, basic matrix
        operations, special functions. Thin or absent: the cubature-point
        library (~148 files — a signature strength of the MATLAB TCL; pytcl
-       has Gauss-Hermite and spherical cubature only), combinatorics (113 vs
+       now has the degree-5/7 Gaussian rules, arbitrary-degree
+       spherical-radial points, and tensor Gauss-Hermite; the uniform-region
+       rules remain unported), combinatorics (113 vs
        18), polynomials (55; no pytcl counterpart), geometry beyond basics
        (81), continuous optimization (37), specific integrals/derivatives,
        graph algorithms, accurate-arithmetic helpers.
