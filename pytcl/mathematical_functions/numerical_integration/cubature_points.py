@@ -158,11 +158,12 @@ def _seventh_order_unit_sphere_points(
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Degree-7 rule for the uniform measure on the unit sphere S^(n-1).
 
-    Stroud's surface Formula I (E_n^{r^2} 7-1's spherical building block),
-    the counterpart of the MATLAB TCL's ``seventhOrderSpherSurfCubPoints``
-    (algorithm 0), n >= 3. 2^n + 2n^2 points: axis points e_i (weight A1),
-    pairwise points (e_i + e_j)/sqrt(2) (weight A2), and the all-nonzero
-    point (1,...,1)/sqrt(n) (weight A3), each fully signed. Weights are
+    Stroud's surface Formula I, the degree-7 spherical-surface building
+    block of rule E_n^{r^2} 7-3, the counterpart of the MATLAB TCL's
+    ``seventhOrderSpherSurfCubPoints`` (algorithm 0), n >= 3. 2^n + 2n^2
+    points: axis points e_i (weight A1), pairwise points
+    (e_i + e_j)/sqrt(2) (weight A2), and the all-nonzero point
+    (1,...,1)/sqrt(n) (weight A3), each fully signed. Weights are
     normalized to sum to 1.
     """
     axis = np.eye(n)
@@ -206,7 +207,7 @@ def seventh_order_cubature_points(
     """
     Degree-7 cubature points for the standard normal N(0, I).
 
-    The 2*(2^n + 2n^2) point fully-symmetric rule E_n^{r^2} 7-1 of Stroud
+    The 2*(2^n + 2n^2) point fully-symmetric rule E_n^{r^2} 7-3 of Stroud
     [1]_ (McNamee-Stenger [2]_ construction), the counterpart of the
     MATLAB TCL's ``seventhOrderCubPoints`` (algorithm 0, the default for
     n > 2). Two concentric copies of the degree-7 spherical-surface rule
@@ -244,9 +245,18 @@ def seventh_order_cubature_points(
     References
     ----------
     .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-       Prentice-Hall, 1971, Formula E_n^{r^2} 7-1, p. 318.
-    .. [2] J. McNamee and F. Stenger, "Construction of fully symmetric
-       numerical integration formulas," Numerische Mathematik 10, 1967.
+       Prentice-Hall, 1971, Formula E_n^{r^2} 7-3, p. 319. The formula as
+       printed there contains a typo; the corrected form used here
+       follows Stroud's original papers [2]_, [3]_, summarized in [4]_.
+    .. [2] A. H. Stroud, "Some seventh degree integration formulas for
+       symmetric regions," SIAM Journal on Numerical Analysis, vol. 4,
+       no. 1, pp. 37-44, Mar. 1967.
+    .. [3] A. H. Stroud, "Some seventh degree integration formulas for
+       the surface of an n-sphere," Numerische Mathematik, vol. 11,
+       no. 3, pp. 273-276, Mar. 1968.
+    .. [4] D. F. Crouse, "Basic tracking using nonlinear 3D monostatic
+       and bistatic measurements," IEEE Aerospace and Electronic Systems
+       Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
     """
     if n < 3:
         raise ValueError(f"dimension must be >= 3, got {n}")

@@ -176,7 +176,7 @@ class TestSeventhOrder:
         assert_allclose(w.sum(), 1.0, atol=1e-12)
         assert_rule_exact(pts, w, n, degree=7)
 
-    @pytest.mark.parametrize("n", [3, 4, 5])
+    @pytest.mark.parametrize("n", [3, 4, 5, 6])
     def test_sharpness_degree_8_fails(self, n):
         pts, w = seventh_order_cubature_points(n)
         alpha = (8,) + (0,) * (n - 1)
@@ -187,6 +187,13 @@ class TestSeventhOrder:
         # The O(n^3) fully-symmetric family, not an exponential product rule.
         pts, _ = seventh_order_cubature_points(n)
         assert len(pts) < 8 * n**3 + 1
+
+    def test_antipodal_symmetry(self):
+        pts, _ = seventh_order_cubature_points(4)
+        nonzero = pts[np.any(pts != 0.0, axis=1)]
+        # every non-origin point's negation is also a point
+        for p in nonzero:
+            assert np.any(np.all(np.isclose(nonzero, -p), axis=1))
 
     def test_invalid_n_raises(self):
         with pytest.raises(ValueError):
@@ -215,6 +222,13 @@ class TestSphericalRadial:
         radii = np.linalg.norm(pts, axis=1)
         assert_allclose(radii, np.sqrt(3.0), atol=1e-12)
 
+    def test_antipodal_symmetry(self):
+        pts, _ = spherical_radial_points(3, 5)
+        nonzero = pts[np.any(pts != 0.0, axis=1)]
+        # every non-origin point's negation is also a point
+        for p in nonzero:
+            assert np.any(np.all(np.isclose(nonzero, -p, atol=1e-10), axis=1))
+
     def test_invalid_degree_raises(self):
         with pytest.raises(ValueError):
             spherical_radial_points(2, 4)  # even
@@ -235,7 +249,13 @@ class TestCKFWithCustomPoints:
 
         return x, P, Q, f
 
-    def test_default_path_unchanged(self):
+    def test_explicit_none_matches_default(self):
+        # Confirms explicitly passing points=None, weights=None is
+        # equivalent to omitting them entirely -- both hit the same
+        # default-rule branch in ckf_predict. This does NOT guard against
+        # drift from the pre-branch CKF behavior (both calls run on the
+        # same new code); that regression guard is the pre-existing CKF
+        # unit/validation tests, which are unchanged by this branch.
         from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
 
         x, P, Q, f = self._setup()

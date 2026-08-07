@@ -475,6 +475,7 @@ def ckf_predict(
     P: ArrayLike,
     f: Callable[[NDArray[Any]], NDArray[Any]],
     Q: ArrayLike,
+    *,
     points: Optional[ArrayLike] = None,
     weights: Optional[ArrayLike] = None,
 ) -> KalmanPrediction:
@@ -590,6 +591,7 @@ def ckf_update(
     z: ArrayLike,
     h: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
+    *,
     points: Optional[ArrayLike] = None,
     weights: Optional[ArrayLike] = None,
 ) -> KalmanUpdate:

@@ -46,7 +46,10 @@ Stenger (1967), and the MATLAB TCL sources.
 
 `ckf_predict` / `ckf_update` in `pytcl/dynamic_estimation/kalman/unscented.py`
 gain optional `points` / `weights` keyword arguments (unit points, N(0, I)
-convention). Default `None` reproduces today's 3rd-degree behavior bit-for-bit.
+convention). Default `None` reproduces today's 3rd-degree behavior
+numerically: the covariance assembly was refactored to a sign-safe form
+that is algebraically identical but reorders floating-point operations,
+so results match to floating-point tolerance rather than bit-for-bit.
 Validation: points/weights shape consistency with the state dimension —
 `ValueError` on mismatch, nothing more.
 
