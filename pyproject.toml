@@ -116,6 +116,14 @@ dev = [
     "ipykernel>=6.0.0",
 ]
 
+# Extra oracles for tests/validation that are too heavy or too network-bound
+# to sit in dev: satkit downloads EOP/space-weather data at runtime. Not
+# installed by default -- `uv sync --group validation`; the tests skip
+# without it.
+validation = [
+    "satkit>=0.6",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pytcl*"]
