@@ -82,3 +82,70 @@ def transform_cubature_points(
         )
 
     return mean + points @ sqrt_cov.T, weights.copy()
+
+
+def fifth_order_cubature_points(
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Degree-5 cubature points for the standard normal N(0, I).
+
+    The 2n^2 + 1 point fully-symmetric rule E_n^{r^2} 5-3 of Stroud [1]_,
+    the counterpart of the MATLAB TCL's ``fifthOrderCubPoints``. Exactly
+    integrates every polynomial of total degree <= 5 against N(0, I).
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (2*n*n + 1, n).
+    weights : ndarray
+        Shape (2*n*n + 1,), summing to 1. For n > 4 the axis-point weight
+        (4 - n)/(2 (n+2)^2) is negative; this is inherent to the rule, not
+        an error. Covariances assembled from these points must not use a
+        sqrt-of-weights factorization.
+
+    Examples
+    --------
+    >>> pts, w = fifth_order_cubature_points(3)
+    >>> pts.shape
+    (19, 3)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 4)), 12)  # E[x^4] = 3
+    3.0
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+
+    lam = np.sqrt(n + 2.0)
+    mu = np.sqrt((n + 2.0) / 2.0)
+    w_center = 2.0 / (n + 2.0)
+    w_axis = (4.0 - n) / (2.0 * (n + 2.0) ** 2)
+    w_pair = 1.0 / (n + 2.0) ** 2
+
+    points = [np.zeros((1, n))]
+    weights = [np.array([w_center])]
+
+    axis = lam * np.eye(n)
+    points.append(np.vstack([axis, -axis]))
+    weights.append(np.full(2 * n, w_axis))
+
+    pair_pts = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            for si in (1.0, -1.0):
+                for sj in (1.0, -1.0):
+                    p = np.zeros(n)
+                    p[i] = si * mu
+                    p[j] = sj * mu
+                    pair_pts.append(p)
+    if pair_pts:
+        points.append(np.array(pair_pts))
+        weights.append(np.full(len(pair_pts), w_pair))
+
+    return np.vstack(points), np.concatenate(weights)
