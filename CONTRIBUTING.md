@@ -328,16 +328,19 @@ When porting a function from the original MATLAB library:
 3. **Run quality checks:**
    ```bash
    # Format code
-   ruff format .
+   uv run ruff format .
 
    # Lint (includes import sorting)
-   ruff check .
+   uv run ruff check .
 
-   # Type check
-   mypy pytcl
+   # Type check (gate)
+   uv run ty check pytcl
+
+   # Type check (non-blocking during probation, ends v2.1.0)
+   uv run mypy pytcl
 
    # Run tests
-   pytest
+   uv run pytest
    ```
 
 4. **Submit the PR:**

@@ -297,16 +297,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full setup (installing uv,
 
 ```bash
 # Format code
-ruff format .
+uv run ruff format .
 
 # Lint (includes import sorting)
-ruff check .
+uv run ruff check .
 
-# Type check
-mypy pytcl
+# Type check (gate)
+uv run ty check pytcl
+
+# Type check (non-blocking during probation, ends v2.1.0)
+uv run mypy pytcl
 
 # Run all checks
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ## Citation
