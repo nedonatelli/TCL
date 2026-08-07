@@ -98,6 +98,11 @@ dev = [
     # matplotlib, and without it 36 pages skip and the gate's own self-tests
     # fail. The notebooks also import it.
     "matplotlib>=3.7",
+    # examples/multi_target_tracking_rerun.py logs to a Rerun recording; the
+    # examples contract test runs every script with the project interpreter,
+    # so the SDK must be importable here (end users get it via the script's
+    # PEP 723 inline metadata instead).
+    "rerun-sdk>=0.24",
     "ruff>=0.16.0",
     "mypy>=1.0.0",
     "ty>=0.0.69",

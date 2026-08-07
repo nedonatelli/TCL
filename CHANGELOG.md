@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   framework; same `.pre-commit-config.yaml`). Whitespace hooks now exclude
   generated plot exports and test fixtures.
 
+### Added
+- `examples/multi_target_tracking_rerun.py`: the multi-target tracking
+  scenario logged to a Rerun timeline (scrub through track initiation,
+  confirmation, deletion, and covariance ellipses). Self-contained via
+  PEP 723 inline metadata: `uv run examples/multi_target_tracking_rerun.py`.
+
 ### Fixed
 - The docs code-block gate now actually executes in CI: matplotlib was
   missing from the CI environment, which failed the gate's self-tests and
