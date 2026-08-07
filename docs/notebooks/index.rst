@@ -13,8 +13,8 @@ Each notebook is self-contained with explanations, code examples, and visualizat
 
       git clone https://github.com/nedonatelli/TCL.git
       cd TCL
-      pip install -e ".[dev]"
-      jupyter notebook docs/notebooks/
+      uv sync
+      uv run jupyter notebook docs/notebooks/
 
 Filtering & Estimation
 ----------------------

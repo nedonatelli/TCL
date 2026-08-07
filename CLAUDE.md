@@ -8,24 +8,35 @@ Python port of the U.S. Naval Research Laboratory's Tracker Component Library (T
 ## Quick Reference
 
 ```bash
-# Activate venv (required — system python lacks test deps)
+# Install deps (uv; creates/updates .venv) — once per checkout or after pyproject changes
+uv sync
+
+# Activate venv (optional — `uv run` works without activating)
 source .venv/bin/activate
 
 # Run all tests
-.venv/bin/python -m pytest
+uv run pytest
+# or, with .venv activated: .venv/bin/python -m pytest
 
+# Apple Silicon: MLX lives in the `gpu-apple` extra, which `uv sync` alone
+# does NOT install. Run `uv sync --extra gpu-apple` first so the MLX-gated
+# tests below actually execute instead of skipping.
+#
 # Before merging anything that touches pytcl/gpu (Apple Silicon only).
 # The MLX-gated tests skip on machines without MLX and no CI runner has it,
 # so the build stays green regardless. This makes their absence an error.
 # (PYTCL_REQUIRE_CUPY=1 is the CuPy-side equivalent, for NVIDIA boxes.)
-PYTCL_REQUIRE_MLX=1 .venv/bin/python -m pytest
+PYTCL_REQUIRE_MLX=1 uv run pytest
+# or: PYTCL_REQUIRE_MLX=1 .venv/bin/python -m pytest
 
 # Run specific test file
-.venv/bin/python -m pytest tests/unit/test_terrain_loaders.py -x -q
+uv run pytest tests/unit/test_terrain_loaders.py -x -q
+# or: .venv/bin/python -m pytest tests/unit/test_terrain_loaders.py -x -q
 
 # Lint and format
-.venv/bin/ruff check . --fix
-.venv/bin/ruff format .
+uv run ruff check . --fix
+uv run ruff format .
+# or: .venv/bin/ruff check . --fix / .venv/bin/ruff format .
 ```
 
 ## Architecture
@@ -48,7 +59,12 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 **Core deps:** numpy, scipy, numba, h5py
 
-**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `dev` (test/lint/docs tooling), `all` (everything except gpu)
+**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `all` (astronomy+geodesy+terrain+visualization+signal; no gpu)
+
+Dev tooling (pytest, ruff, ty, mypy, sphinx, jupyter, etc.) is a PEP 735
+`[dependency-groups]` entry, not a published extra — `uv sync` installs it
+by default; `all` does not include it and `pip install nrl-tracker[dev]`
+no longer exists.
 
 ## Code Conventions
 

@@ -29,7 +29,7 @@ Install from Source
 
    git clone https://github.com/nedonatelli/TCL.git
    cd TCL
-   pip install -e ".[dev]"
+   pip install -e .
 
 Optional Dependencies
 ^^^^^^^^^^^^^^^^^^^^^

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Dev tooling moved from the published `dev`/`benchmark` extras to PEP 735
+  dependency groups; `pip install nrl-tracker[dev]` no longer exists and
+  `[all]` now contains only user-facing extras. Contributors: `uv sync`.
+- Type checking is gated on ty; mypy runs non-blocking during a probation
+  period ending at v2.1.0.
+
 ## [2.0.0] - 2026-08-06
 
 The first major release, and a breaking one. It closes the v2 correctness audit:

@@ -10,16 +10,19 @@ Thank you for your interest in contributing! This document provides guidelines f
    cd TCL
    ```
 
-2. **Create a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. **Install uv** (once): https://docs.astral.sh/uv/getting-started/installation/
 
 3. **Install development dependencies:**
    ```bash
-   pip install -e ".[dev]"
+   uv sync
    ```
+   This creates `.venv` with the locked dev toolchain. Prefix commands with
+   `uv run` (e.g. `uv run pytest`) or activate `.venv` as before.
+
+   **Apple Silicon:** `uv sync` alone does not install MLX — it lives in the
+   `gpu-apple` extra. Run `uv sync --extra gpu-apple` so the MLX-gated GPU
+   tests (see `PYTCL_REQUIRE_MLX=1` in the pipeline section below) actually
+   execute instead of silently skipping.
 
 4. **Install pre-commit hooks:**
    ```bash
@@ -141,7 +144,7 @@ wrong — passing tests are necessary, not sufficient.
 
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
    an NVIDIA machine; the `GPU` workflow covers it on demand.
-4. **PR with green CI** — lint (ruff, pinned), types (mypy, pinned), tests
+4. **PR with green CI** — lint (ruff, pinned), types (ty, locked; mypy non-blocking during probation), tests
    (3 OS × 3 Python), docstring examples (`--doctest-modules`), docs build
    (zero docutils errors), benchmarks (SLO enforcement on main). Green CI
    means the checks that ran passed; it does not mean the GPU layers were

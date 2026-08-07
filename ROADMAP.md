@@ -332,9 +332,8 @@ There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
 ```bash
 git clone https://github.com/nedonatelli/TCL.git
 cd TCL
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest
+uv sync
+uv run pytest
 ```
 
 ---
