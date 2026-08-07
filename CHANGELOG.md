@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generated plot exports and test fixtures.
 
 ### Added
+- Cross-validation of SGP4/SDP4 and the TEME->ITRF/GCRF chains against
+  satkit, an independent Rust implementation (opt-in `validation`
+  dependency group: `uv sync --group validation`; tests skip without it).
 - `examples/multi_target_tracking_rerun.py`: the multi-target tracking
   scenario logged to a Rerun timeline (scrub through track initiation,
   confirmation, deletion, and covariance ellipses). Self-contained via
