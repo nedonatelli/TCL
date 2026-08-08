@@ -475,6 +475,9 @@ def ckf_predict(
     P: ArrayLike,
     f: Callable[[NDArray[Any]], NDArray[Any]],
     Q: ArrayLike,
+    *,
+    points: Optional[ArrayLike] = None,
+    weights: Optional[ArrayLike] = None,
 ) -> KalmanPrediction:
     """
     Cubature Kalman filter prediction step.
@@ -492,6 +495,16 @@ def ckf_predict(
         Nonlinear state transition function.
     Q : array_like
         Process noise covariance.
+    points : array_like, optional
+        Custom unit cubature points, shape ``(m, n)``, in the N(0, I)
+        convention (i.e. the points that would be used to integrate
+        against a standard normal, before scaling by the Cholesky
+        factor of ``P``). Must be provided together with ``weights``.
+        If omitted, the default third-degree spherical-radial rule
+        (``ckf_spherical_cubature_points``) is used.
+    weights : array_like, optional
+        Weights matching ``points``, shape ``(m,)``, summing to 1.
+        May contain negative values (e.g. higher-degree rules).
 
     Returns
     -------
@@ -511,6 +524,13 @@ def ckf_predict(
     >>> pred = ckf_predict(x, P, f, Q)
     >>> pred.x  # Should be approximately [1, 1]
     array([1., 1.])
+
+    See Also
+    --------
+    pytcl.mathematical_functions.numerical_integration.cubature_points :
+        Higher-degree Gaussian cubature rules (e.g.
+        ``fifth_order_cubature_points``) that can be passed via
+        ``points``/``weights``.
 
     References
     ----------
@@ -532,20 +552,33 @@ def ckf_predict(
         sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
 
     # Generate cubature points
-    unit_pts, weights = ckf_spherical_cubature_points(n)
+    if (points is None) != (weights is None):
+        raise ValueError("points and weights must be provided together")
+    if points is None:
+        unit_pts, weights_arr = ckf_spherical_cubature_points(n)
+    else:
+        unit_pts = np.asarray(points, dtype=np.float64)
+        weights_arr = np.asarray(weights, dtype=np.float64)
+        if unit_pts.ndim != 2 or unit_pts.shape[1] != n:
+            raise ValueError(
+                f"points shape {unit_pts.shape} incompatible with state dimension {n}"
+            )
+        if weights_arr.shape != (unit_pts.shape[0],):
+            raise ValueError(
+                f"weights shape {weights_arr.shape} does not match "
+                f"{unit_pts.shape[0]} points"
+            )
     cubature_pts = x + (sqrt_P @ unit_pts.T).T
 
     # Transform through dynamics
     transformed = np.array([f(pt) for pt in cubature_pts], dtype=np.float64)
 
     # Predicted mean
-    x_pred = np.sum(weights[:, np.newaxis] * transformed, axis=0)
+    x_pred = np.sum(weights_arr[:, np.newaxis] * transformed, axis=0)
 
-    # Predicted covariance (vectorized)
+    # Predicted covariance (vectorized; sign-safe for negative weights)
     residuals = transformed - x_pred
-    # All CKF weights are equal and positive, so vectorization is straightforward
-    weighted_residuals = np.sqrt(weights)[:, np.newaxis] * residuals
-    P_pred = weighted_residuals.T @ weighted_residuals + Q
+    P_pred = residuals.T @ (weights_arr[:, np.newaxis] * residuals) + Q
 
     P_pred = (P_pred + P_pred.T) / 2
 
@@ -558,6 +591,9 @@ def ckf_update(
     z: ArrayLike,
     h: Callable[[NDArray[Any]], NDArray[Any]],
     R: ArrayLike,
+    *,
+    points: Optional[ArrayLike] = None,
+    weights: Optional[ArrayLike] = None,
 ) -> KalmanUpdate:
     """
     Cubature Kalman filter update step.
@@ -574,6 +610,16 @@ def ckf_update(
         Nonlinear measurement function.
     R : array_like
         Measurement noise covariance.
+    points : array_like, optional
+        Custom unit cubature points, shape ``(m, n)``, in the N(0, I)
+        convention (i.e. the points that would be used to integrate
+        against a standard normal, before scaling by the Cholesky
+        factor of ``P``). Must be provided together with ``weights``.
+        If omitted, the default third-degree spherical-radial rule
+        (``ckf_spherical_cubature_points``) is used.
+    weights : array_like, optional
+        Weights matching ``points``, shape ``(m,)``, summing to 1.
+        May contain negative values (e.g. higher-degree rules).
 
     Returns
     -------
@@ -593,6 +639,13 @@ def ckf_update(
     >>> upd = ckf_update(x, P, z, h, R)
     >>> upd.x.shape
     (2,)
+
+    See Also
+    --------
+    pytcl.mathematical_functions.numerical_integration.cubature_points :
+        Higher-degree Gaussian cubature rules (e.g.
+        ``fifth_order_cubature_points``) that can be passed via
+        ``points``/``weights``.
     """
     x = np.asarray(x, dtype=np.float64).flatten()
     P = np.asarray(P, dtype=np.float64)
@@ -611,23 +664,37 @@ def ckf_update(
         sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
 
     # Generate cubature points
-    unit_pts, weights = ckf_spherical_cubature_points(n)
+    if (points is None) != (weights is None):
+        raise ValueError("points and weights must be provided together")
+    if points is None:
+        unit_pts, weights_arr = ckf_spherical_cubature_points(n)
+    else:
+        unit_pts = np.asarray(points, dtype=np.float64)
+        weights_arr = np.asarray(weights, dtype=np.float64)
+        if unit_pts.ndim != 2 or unit_pts.shape[1] != n:
+            raise ValueError(
+                f"points shape {unit_pts.shape} incompatible with state dimension {n}"
+            )
+        if weights_arr.shape != (unit_pts.shape[0],):
+            raise ValueError(
+                f"weights shape {weights_arr.shape} does not match "
+                f"{unit_pts.shape[0]} points"
+            )
     cubature_pts = x + (sqrt_P @ unit_pts.T).T
 
     # Transform through measurement function
     transformed = np.array([h(pt) for pt in cubature_pts], dtype=np.float64)
 
     # Predicted measurement
-    z_pred = np.sum(weights[:, np.newaxis] * transformed, axis=0)
+    z_pred = np.sum(weights_arr[:, np.newaxis] * transformed, axis=0)
 
-    # Innovation covariance (vectorized)
+    # Innovation covariance (vectorized; sign-safe for negative weights)
     z_residuals = transformed - z_pred
-    weighted_z_residuals = np.sqrt(weights)[:, np.newaxis] * z_residuals
-    S = weighted_z_residuals.T @ weighted_z_residuals + R
+    S = z_residuals.T @ (weights_arr[:, np.newaxis] * z_residuals) + R
 
     # Cross-covariance (vectorized)
     x_residuals = cubature_pts - x
-    Pxz = (weights[:, np.newaxis] * x_residuals).T @ z_residuals
+    Pxz = (weights_arr[:, np.newaxis] * x_residuals).T @ z_residuals
 
     # Kalman gain
     K = np.linalg.solve(S.T, Pxz.T).T

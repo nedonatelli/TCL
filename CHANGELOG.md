@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scenario logged to a Rerun timeline (scrub through track initiation,
   confirmation, deletion, and covariance ellipses). Self-contained via
   PEP 723 inline metadata: `uv run examples/multi_target_tracking_rerun.py`.
+- Gaussian cubature point library: degree-5 (`fifth_order_cubature_points`),
+  degree-7 (`seventh_order_cubature_points`), arbitrary-odd-degree
+  spherical-radial (`spherical_radial_points`) rules and
+  `transform_cubature_points`, all validated by monomial exactness.
+  `ckf_predict`/`ckf_update` accept optional cubature points, making
+  higher-degree CKFs a one-liner.
 
 ### Fixed
 - The docs code-block gate now actually executes in CI: matplotlib was
