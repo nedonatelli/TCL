@@ -116,10 +116,53 @@ the independently-fitted TLE `N+1` (or against the raw element drift across
 the 30-day span) tests the propagator against ground truth the code under
 test had no part in producing.
 
+## Near-duplicate epochs
+
+Space-Track's `gp_history` contains, for some objects, revised fits whose
+epoch differs from the immediately preceding element set by a few tens of
+nanoseconds to a few hundred microseconds of a day (e.g. `2.98e-8` days,
+about 2.6 ms) -- a re-fit at essentially the same instant rather than a new
+observation window. `scripts/fetch_tle_history.py` dedups by exact `EPOCH`
+string, which does not catch these because the strings differ.
+
+Feeding such a pair into `_pair_errors` divides a normal, sub-km propagation
+delta by a near-zero horizon and produces a per-day rate of orbital-velocity
+magnitude -- an artifact of the degenerate horizon, not a propagation
+error. Across this fixture, 38 of the 329 raw TLE pairs (11.6%) have
+`horizon_days < 0.01` (~14 minutes):
+
+| NORAD ID | Regime | Total pairs | Degenerate pairs (<0.01 day) |
+|----------|--------|-------------:|------------------------------:|
+| 25544 | leo-high-drag | 78 | 5 |
+| 45098 | leo | 53 | 8 |
+| 28474 | meo-deep-space | 33 | 4 |
+| 41866 | geo-deep-space | 89 | 3 |
+| 25485 | heo-high-eccentricity | 12 | 1 |
+| 69702 | decaying | 64 | 17 |
+
+Worst offenders (implied per-day rate, position delta, horizon), all from
+`69702` (decaying) except one `25544` pair:
+
+| Implied km/day | NORAD ID | Position delta (km) | Horizon (days) |
+|----------------:|----------|---------------------:|------------------:|
+| 12,613,343 | 69702 | 0.376 | 2.98e-8 |
+| 1,263,977 | 69702 | 0.025 | 2.00e-8 |
+| 1,115,433 | 69702 | 0.112 | 1.00e-7 |
+| 1,000,851 | 69702 | 0.300 | 3.00e-7 |
+| 879,721 | 69702 | 0.202 | 2.30e-7 |
+| 693,971 | 25544 | 0.305 | 4.40e-7 |
+
+`tests/validation/test_tle_self_prediction.py`'s `_pair_errors` now skips
+any pair with `horizon_days < MIN_HORIZON_DAYS` (0.01 day, ~14 minutes)
+before computing statistics, both for calibration and at test time. The
+`decaying` regime, which had the most degenerate pairs (17 of 64), shows
+the largest calibration shift as a result -- see below.
+
 ## Calibration
 
-**Run date (UTC):** `2026-08-08T02:09:25Z`, against this fixture, via the
-brief's Step 2 probe:
+**Run date (UTC):** `2026-08-08T03:25:10Z`, against this fixture, via the
+brief's Step 2 probe, re-run after adding the `MIN_HORIZON_DAYS` filter
+described above:
 
 ```
 uv run python -c "
@@ -139,43 +182,65 @@ for norad, sat in _load().items():
 Verbatim output:
 
 ```
-25544 leo-high-drag pairs 78 med_km_per_day 0.444 p95_km 0.501
-45098 leo pairs 53 med_km_per_day 2.05 p95_km 6.23
-28474 meo-deep-space pairs 33 med_km_per_day 0.256 p95_km 0.558
-41866 geo-deep-space pairs 89 med_km_per_day 0.59 p95_km 0.541
-25485 heo-high-eccentricity pairs 12 med_km_per_day 0.362 p95_km 2.798
-69702 decaying pairs 64 med_km_per_day 21.779 p95_km 36.0
+25544 leo-high-drag pairs 73 med_km_per_day 0.393 p95_km 0.521
+45098 leo pairs 45 med_km_per_day 1.609 p95_km 6.813
+28474 meo-deep-space pairs 29 med_km_per_day 0.241 p95_km 0.578
+41866 geo-deep-space pairs 86 med_km_per_day 0.562 p95_km 0.543
+25485 heo-high-eccentricity pairs 11 med_km_per_day 0.344 p95_km 2.977
+69702 decaying pairs 47 med_km_per_day 11.898 p95_km 41.019
 ```
 
 A companion probe (same harness, adding the 95th percentile of per-pair
 velocity error) gave the single worst velocity p95 across all six
-satellites: `69702 decaying vel_p95_km_s 0.04106` (all others well below
+satellites: `69702 decaying vel_p95_km_s 0.04608` (all others well below
 this).
 
-All statistics are within the expected physical ballpark from the task
+All post-filter pair counts are still comfortably above the
+`assert len(rows) >= 9` floor in `test_every_satellite_within_envelope`
+(minimum is 11, for `25485`/MOLNIYA, which started at 12 raw pairs and lost
+1 to the filter); the floor was left unchanged.
+
+All statistics remain within the expected physical ballpark from the task
 brief: LEO medians in the 0.4-2 km/day range, deep-space regimes below
 1 km/day, and the decaying object (69702, ELECTRON R/B, perigee ~175 km
-and dropping) is the clear worst case at ~22 km/day median / 36 km p95 --
-consistent with drag mismodeling near decay, not a units or epoch bug
-(tsince is minutes; both states are TEME at the same instant per
-`_pair_errors`). No maneuver-shaped step-change was observed in any
-regime's error sequence.
+and dropping) is still the clear worst case, now ~12 km/day median / 41 km
+p95 (down from ~22 km/day median pre-filter, as expected since the filtered
+pairs were inflating exactly this regime's per-day statistic; the p95 rose
+slightly because removing many small-position degenerate pairs shifts the
+percentile rank of the remaining, genuinely larger errors) -- consistent
+with drag mismodeling near decay, not a units or epoch bug (tsince is
+minutes; both states are TEME at the same instant per `_pair_errors`). No
+step-change affecting the calibrated statistics was observed in any
+regime's error sequence; a single 26.022 km outlier pair exists in the
+Starlink (`45098`, leo) history (horizon 1.186 days, versus 6.813 km at the
+95th percentile for that regime), but it is an isolated pair, not a
+step-shaped shift in the sequence, and does not dominate the regime's
+median.
 
 **Envelope derivation** (fixed rule: 1.5x the measured statistic, rounded
 up to one significant figure):
 
 | Regime | Measured med (km/day) | x1.5 | Envelope | Measured p95 (km) | x1.5 | Envelope |
 |--------|------------------------|------|----------|--------------------|------|----------|
-| `leo-high-drag` (25544) | 0.444 | 0.666 | 0.7 | 0.501 | 0.752 | 0.8 |
-| `leo` (45098) | 2.05 | 3.075 | 4.0 | 6.23 | 9.345 | 10.0 |
-| `meo-deep-space` (28474) | 0.256 | 0.384 | 0.4 | 0.558 | 0.837 | 0.9 |
-| `geo-deep-space` (41866) | 0.59 | 0.885 | 0.9 | 0.541 | 0.812 | 0.9 |
-| `heo-high-eccentricity` (25485) | 0.362 | 0.543 | 0.6 | 2.798 | 4.197 | 5.0 |
-| `decaying` (69702) | 21.779 | 32.669 | 40.0 | 36.0 | 54.0 | 60.0 |
+| `leo-high-drag` (25544) | 0.393 | 0.590 | 0.6 | 0.521 | 0.782 | 0.8 |
+| `leo` (45098) | 1.609 | 2.414 | 3.0 | 6.813 | 10.220 | 20.0 |
+| `meo-deep-space` (28474) | 0.241 | 0.362 | 0.4 | 0.578 | 0.867 | 0.9 |
+| `geo-deep-space` (41866) | 0.562 | 0.843 | 0.9 | 0.543 | 0.815 | 0.9 |
+| `heo-high-eccentricity` (25485) | 0.344 | 0.516 | 0.6 | 2.977 | 4.466 | 5.0 |
+| `decaying` (69702) | 11.898 | 17.847 | 20.0 | 41.019 | 61.529 | 70.0 |
+
+The `leo` p95 envelope loosens (10.0 -> 20.0) rather than tightens: the
+filtered measured p95 (6.813 km) x1.5 = 10.22, which crosses the 10 km
+decade boundary, so the ceiling-to-one-significant-figure rule carries it
+up to 20.0. This is the fixed, mechanical rule applied verbatim, not
+hand-tuning -- most regimes tighten (as expected, since the pollution was
+upward), but this one measured statistic happened to move just past a
+rounding boundary.
 
 Velocity envelope (single rail, worst regime across all six): measured
-worst p95 `0.04106` km/s (69702, decaying) x1.5 = `0.06159` -> rounded up
-to one significant figure -> `0.07` km/s.
+worst p95 `0.04608` km/s (69702, decaying) x1.5 = `0.06912` -> rounded up
+to one significant figure -> `0.07` km/s (unchanged from the pre-filter
+calibration).
 
 These envelopes and the measured basis are also recorded as a comment in
 `tests/validation/test_tle_self_prediction.py`.
