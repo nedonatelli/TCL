@@ -179,3 +179,7 @@ benchmark_results.json
 
 # Claude Code / SideCar tool state
 .sidecar/
+
+# Superpowers ephemeral workspaces (SDD ledgers, briefs, review diffs).
+# The durable design record lives tracked in docs/superpowers/.
+.superpowers/
