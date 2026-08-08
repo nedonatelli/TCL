@@ -118,6 +118,64 @@ test had no part in producing.
 
 ## Calibration
 
-<!-- TODO(Task 3): fill in once tests/validation/test_tle_self_prediction.py
-     runs against the captured fixture. -->
-Filled by test calibration (see `tests/validation/test_tle_self_prediction.py`).
+**Run date (UTC):** `2026-08-08T02:09:25Z`, against this fixture, via the
+brief's Step 2 probe:
+
+```
+uv run python -c "
+import sys; sys.path.insert(0, 'tests/validation')
+from test_tle_self_prediction import _load, _pair_errors
+import numpy as np
+for norad, sat in _load().items():
+    rows = _pair_errors(sat)
+    pos = np.array([r[0] for r in rows]); h = np.array([r[2] for r in rows])
+    per_day = pos / np.maximum(h, 1e-6)
+    print(norad, sat['regime'], 'pairs', len(rows),
+          'med_km_per_day', round(float(np.median(per_day)), 3),
+          'p95_km', round(float(np.percentile(pos, 95)), 3))
+"
+```
+
+Verbatim output:
+
+```
+25544 leo-high-drag pairs 78 med_km_per_day 0.444 p95_km 0.501
+45098 leo pairs 53 med_km_per_day 2.05 p95_km 6.23
+28474 meo-deep-space pairs 33 med_km_per_day 0.256 p95_km 0.558
+41866 geo-deep-space pairs 89 med_km_per_day 0.59 p95_km 0.541
+25485 heo-high-eccentricity pairs 12 med_km_per_day 0.362 p95_km 2.798
+69702 decaying pairs 64 med_km_per_day 21.779 p95_km 36.0
+```
+
+A companion probe (same harness, adding the 95th percentile of per-pair
+velocity error) gave the single worst velocity p95 across all six
+satellites: `69702 decaying vel_p95_km_s 0.04106` (all others well below
+this).
+
+All statistics are within the expected physical ballpark from the task
+brief: LEO medians in the 0.4-2 km/day range, deep-space regimes below
+1 km/day, and the decaying object (69702, ELECTRON R/B, perigee ~175 km
+and dropping) is the clear worst case at ~22 km/day median / 36 km p95 --
+consistent with drag mismodeling near decay, not a units or epoch bug
+(tsince is minutes; both states are TEME at the same instant per
+`_pair_errors`). No maneuver-shaped step-change was observed in any
+regime's error sequence.
+
+**Envelope derivation** (fixed rule: 1.5x the measured statistic, rounded
+up to one significant figure):
+
+| Regime | Measured med (km/day) | x1.5 | Envelope | Measured p95 (km) | x1.5 | Envelope |
+|--------|------------------------|------|----------|--------------------|------|----------|
+| `leo-high-drag` (25544) | 0.444 | 0.666 | 0.7 | 0.501 | 0.752 | 0.8 |
+| `leo` (45098) | 2.05 | 3.075 | 4.0 | 6.23 | 9.345 | 10.0 |
+| `meo-deep-space` (28474) | 0.256 | 0.384 | 0.4 | 0.558 | 0.837 | 0.9 |
+| `geo-deep-space` (41866) | 0.59 | 0.885 | 0.9 | 0.541 | 0.812 | 0.9 |
+| `heo-high-eccentricity` (25485) | 0.362 | 0.543 | 0.6 | 2.798 | 4.197 | 5.0 |
+| `decaying` (69702) | 21.779 | 32.669 | 40.0 | 36.0 | 54.0 | 60.0 |
+
+Velocity envelope (single rail, worst regime across all six): measured
+worst p95 `0.04106` km/s (69702, decaying) x1.5 = `0.06159` -> rounded up
+to one significant figure -> `0.07` km/s.
+
+These envelopes and the measured basis are also recorded as a comment in
+`tests/validation/test_tle_self_prediction.py`.
