@@ -308,10 +308,7 @@ from pytcl.astronomical.sgp4 import sgp4_propagate
 from pytcl.astronomical.tle import is_deep_space, parse_tle, tle_epoch_to_jd
 
 FIXTURE = (
-    pathlib.Path(__file__).parent.parent
-    / "fixtures"
-    / "tle"
-    / "tle_history.json.gz"
+    pathlib.Path(__file__).parent.parent / "fixtures" / "tle" / "tle_history.json.gz"
 )
 
 MINUTES_PER_DAY = 1440.0
