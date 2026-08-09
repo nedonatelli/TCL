@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generated plot exports and test fixtures.
 
 ### Added
+- REFERENCE-class validation of the tracking chain (`geodetic2enu` ->
+  Kalman filter -> NIS) against 3,600 recorded ADS-B position reports from
+  120 real aircraft, scored against each aircraft's self-broadcast ground
+  speed -- a quantity the filter is never given.
 - Cross-validation of SGP4/SDP4 and the TEME->ITRF/GCRF chains against
   satkit, an independent Rust implementation (opt-in `validation`
   dependency group: `uv sync --group validation`; tests skip without it).
