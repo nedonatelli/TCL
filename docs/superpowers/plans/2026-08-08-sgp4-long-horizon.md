@@ -74,9 +74,7 @@ def _all_pair_errors(sat):
             if j not in truth_cache:
                 truth_cache[j] = sgp4_propagate(tles[j], 0.0).r
             predicted = sgp4_propagate(tles[i], horizon * MINUTES_PER_DAY)
-            rows.append(
-                (float(np.linalg.norm(predicted.r - truth_cache[j])), horizon)
-            )
+            rows.append((float(np.linalg.norm(predicted.r - truth_cache[j])), horizon))
     return rows
 
 
@@ -169,9 +167,7 @@ class TestLongHorizon:
     def test_binned_medians_within_envelope(self, history):
         for norad, sat in history.items():
             envelopes = LONG_HORIZON_ENVELOPES[sat["regime"]]
-            for label, (median, n) in _binned_medians(
-                _all_pair_errors(sat)
-            ).items():
+            for label, (median, n) in _binned_medians(_all_pair_errors(sat)).items():
                 if n < MIN_PAIRS_PER_BIN:
                     continue
                 assert median < envelopes[label], (

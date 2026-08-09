@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   data: 30 days of vendored Space-Track TLE history for six satellites
   spanning every SGP4 regime, each TLE scored against its NORAD-fitted
   successor at that successor's epoch.
+- Long-horizon SGP4 accuracy envelopes: all ordered TLE pairs from the
+  vendored history, binned at 1/3/7/14/28-day horizons, with calibrated
+  per-regime median-error envelopes and a rank-correlation error-growth
+  assertion (documented in `tests/fixtures/tle/SOURCES.md`).
 - Cross-validation of SGP4/SDP4 and the TEME->ITRF/GCRF chains against
   satkit, an independent Rust implementation (opt-in `validation`
   dependency group: `uv sync --group validation`; tests skip without it).
