@@ -244,3 +244,159 @@ calibration).
 
 These envelopes and the measured basis are also recorded as a comment in
 `tests/validation/test_tle_self_prediction.py`.
+
+## Long-horizon calibration
+
+**Run date (UTC):** `2026-08-09T01:47:39Z`, against this fixture, via the
+Task 1 brief's Step 2 probe (`tests/validation/test_tle_self_prediction.py`'s
+`_all_pair_errors`/`_binned_medians`, all-pairs harness at horizons >= 0.5
+day, binned into `1d [0.5,1.5)`, `3d [1.5,4.5)`, `7d [4.5,9.5)`,
+`14d [9.5,18.5)`, `28d [18.5,31.0)`):
+
+```
+uv run python -c "
+import sys; sys.path.insert(0, 'tests/validation')
+from test_tle_self_prediction import _load, _all_pair_errors, _binned_medians
+for norad, sat in _load().items():
+    rows = _all_pair_errors(sat)
+    med = _binned_medians(rows)
+    cells = ' '.join(
+        f'{label}:med={m[0]:.3f},n={m[1]}' if m[0] is not None else f'{label}:EMPTY'
+        for label, m in med.items())
+    print(norad, sat['regime'], 'pairs', len(rows), cells)
+"
+```
+
+Verbatim output:
+
+```
+25544 leo-high-drag pairs 3010 1d:med=0.410,n=214 3d:med=2.946,n=572 7d:med=25.735,n=805 14d:med=171.537,n=985 28d:med=276.188,n=434
+45098 leo pairs 1394 1d:med=1.462,n=99 3d:med=7.708,n=296 7d:med=61.285,n=395 14d:med=410.870,n=439 28d:med=723.109,n=165
+28474 meo-deep-space pairs 546 1d:med=0.250,n=38 3d:med=0.675,n=112 7d:med=2.234,n=112 14d:med=9.353,n=175 28d:med=24.575,n=109
+41866 geo-deep-space pairs 3893 1d:med=0.283,n=282 3d:med=0.934,n=770 7d:med=4.782,n=1034 14d:med=16.713,n=1288 28d:med=33.597,n=519
+25485 heo-high-eccentricity pairs 76 1d:EMPTY 3d:med=0.874,n=13 7d:med=2.934,n=23 14d:med=11.646,n=26 28d:med=36.299,n=14
+69702 decaying pairs 2015 1d:med=16.499,n=151 3d:med=188.210,n=370 7d:med=1161.768,n=434 14d:med=6441.801,n=617 28d:med=8467.683,n=443
+```
+
+A companion probe (same harness, Spearman rank correlation between horizon
+and per-pair position error, `scipy.stats.spearmanr`) gave, per satellite:
+
+```
+25544 leo-high-drag n 3010 rho 0.8532
+45098 leo n 1394 rho 0.8764
+28474 meo-deep-space n 546 rho 0.9723
+41866 geo-deep-space n 3893 rho 0.9001
+25485 heo-high-eccentricity n 76 rho 0.9393
+69702 decaying n 2015 rho 0.7768
+```
+
+None of the six satellites' rho is anywhere near the brief's GEO gate
+(`rho <= 0.5`); GOES-16 (41866, geo-deep-space) measured `0.9001`, so
+station-keeping does not flatten its horizon/error relationship in this
+fixture. That gate is not the blocker below.
+
+**Envelope derivation** (fixed rule: 1.5x the measured median, rounded up
+to one significant figure; cells with `n < MIN_PAIRS_PER_BIN` (5) are
+listed as sparse, not asserted):
+
+| Regime (NORAD) | Bin | Measured median (km) | n | x1.5 | Envelope (km) |
+|---|---|---:|---:|---:|---:|
+| `leo-high-drag` (25544) | 1d | 0.410 | 214 | 0.615 | 0.7 |
+| `leo-high-drag` (25544) | 3d | 2.946 | 572 | 4.419 | 5 |
+| `leo-high-drag` (25544) | 7d | 25.735 | 805 | 38.603 | 40 |
+| `leo-high-drag` (25544) | 14d | 171.537 | 985 | 257.306 | 300 |
+| `leo-high-drag` (25544) | 28d | 276.188 | 434 | 414.282 | 500 |
+| `leo` (45098) | 1d | 1.462 | 99 | 2.193 | 3 |
+| `leo` (45098) | 3d | 7.708 | 296 | 11.562 | 20 |
+| `leo` (45098) | 7d | 61.285 | 395 | 91.928 | 100 |
+| `leo` (45098) | 14d | 410.870 | 439 | 616.305 | 700 |
+| `leo` (45098) | 28d | 723.109 | 165 | 1084.664 | 2000 |
+| `meo-deep-space` (28474) | 1d | 0.250 | 38 | 0.375 | 0.4 |
+| `meo-deep-space` (28474) | 3d | 0.675 | 112 | 1.013 | 2 |
+| `meo-deep-space` (28474) | 7d | 2.234 | 112 | 3.351 | 4 |
+| `meo-deep-space` (28474) | 14d | 9.353 | 175 | 14.030 | 20 |
+| `meo-deep-space` (28474) | 28d | 24.575 | 109 | 36.863 | 40 |
+| `geo-deep-space` (41866) | 1d | 0.283 | 282 | 0.425 | 0.5 |
+| `geo-deep-space` (41866) | 3d | 0.934 | 770 | 1.401 | 2 |
+| `geo-deep-space` (41866) | 7d | 4.782 | 1034 | 7.173 | 8 |
+| `geo-deep-space` (41866) | 14d | 16.713 | 1288 | 25.070 | 30 |
+| `geo-deep-space` (41866) | 28d | 33.597 | 519 | 50.396 | 60 |
+| `heo-high-eccentricity` (25485) | 1d | -- | 0 | -- | SPARSE |
+| `heo-high-eccentricity` (25485) | 3d | 0.874 | 13 | 1.311 | 2 |
+| `heo-high-eccentricity` (25485) | 7d | 2.934 | 23 | 4.401 | 5 |
+| `heo-high-eccentricity` (25485) | 14d | 11.646 | 26 | 17.469 | 20 |
+| `heo-high-eccentricity` (25485) | 28d | 36.299 | 14 | 54.449 | 60 |
+| `decaying` (69702) | 1d | 16.499 | 151 | 24.749 | 30 |
+| `decaying` (69702) | 3d | 188.210 | 370 | 282.315 | 300 |
+| `decaying` (69702) | 7d | 1161.768 | 434 | 1742.652 | 2000 |
+| `decaying` (69702) | 14d | 6441.801 | 617 | 9662.702 | measured, **unasserted** (>= 5,000 km ceiling) |
+| `decaying` (69702) | 28d | 8467.683 | 443 | 12701.525 | measured, **unasserted** (>= 5,000 km ceiling) |
+
+Sparse bins (n < 5, recorded not asserted): `("25485", "1d")` (0 pairs --
+Molniya's ~13-TLE, sparsely-updated history has no pair with a horizon in
+`[0.5, 1.5)` days).
+
+**Honesty paragraph.** These are TLE-predictability envelopes, not pure
+propagator fidelity: for operated satellites the long-horizon curve folds
+in real maneuvers over the window (station-keeping burns for GOES-16
+(`41866`, geo-deep-space) and the Molniya (`25485`,
+heo-high-eccentricity); orbit-maintenance reboosts for the ISS (`25544`,
+leo-high-drag); constellation-keeping adjustments for the Starlink
+(`45098`, leo)), and the decaying object's curve (`69702`, ELECTRON R/B) is
+drag-event dominated -- SGP4's static B* term cannot track a perigee that
+is itself falling over the 28-day window, so the propagator's own error
+compounds with the real, accelerating decay of the object.
+
+**Sanity gate result at initial measurement: BLOCKED, then resolved by
+controller ruling.** The Step 2 brief's original hard gate flagged any cell
+at "thousands of km anywhere" as a probable harness bug rather than a value
+to calibrate around. Three `decaying` (69702) cells crossed that line: 7d
+median 1161.768 km (n=434), 14d median 6441.801 km (n=617), and 28d median
+8467.683 km (n=443) -- the last exceeds LEO's own orbital radius
+(~6900 km). Per satellite, all five bins grow monotonically with horizon
+(no bin's median is smaller than an earlier bin's, so the other half of
+the hard gate did not fire), and the harness was checked against the
+brief's code verbatim: `truth_cache` is keyed and populated once per `j`
+before the inner loop over `i` (`sgp4_propagate(tles[j], 0.0).r`, the
+successor's own epoch), and the tsince argument passed to the predictor is
+`horizon * MINUTES_PER_DAY` with `MINUTES_PER_DAY = 1440.0` -- no
+truth-cache aliasing or unit-conversion bug found. The measured Spearman
+rho for every satellite, including `69702` (`0.7768`), comfortably clears
+the brief's separate GEO gate (`rho > 0.5`), so growth-with-horizon was not
+in question -- only the absolute magnitude of the `decaying` regime's 7d,
+14d, and 28d medians. This was reported BLOCKED with the measured numbers
+(`.superpowers/sdd/2026-08-08-sgp4-long-horizon/task-1-report.md`) rather
+than calibrated around, per the calibration discipline.
+
+**Controller ruling (2026-08-08,
+`docs/superpowers/specs/2026-08-08-sgp4-long-horizon-design.md`,
+"Vacuousness ceiling" paragraph):** the measurements are accepted as
+genuine physics, not a harness bug -- the "thousands of km means a bug"
+heuristic was wrong for a regime whose whole point is measuring
+near-decay predictability collapse. The ruling replaces that heuristic
+with a **vacuousness ceiling**: a cell is asserted only if its derived
+envelope is below 5,000 km, comfortably under the ~13,100 km geometric
+maximum position error above which an assertion provably cannot fail
+(a bound that wide would always pass, regardless of what SGP4 actually
+does). Under this rule:
+
+- `decaying` (69702) 1d/3d/7d are asserted with the unchanged derivation
+  rule (30.0 / 300.0 / 2000.0 km, all below the ceiling).
+- `decaying` (69702) 14d/28d are recorded here as **measured, not
+  asserted** -- their derived envelopes (9,662.702 -> 10,000 km and
+  12,701.525 -> 20,000 km respectively) both exceed the 5,000 km ceiling.
+  The saturation is physical: ELECTRON R/B's perigee (~175 km per the
+  Satellites section above) is itself falling within the 14-28 day
+  propagation window, so predicted and true along-track position phase
+  apart by a sizeable fraction of one orbit -- the error is approaching
+  orbit-scale geometry, not diverging from a units or harness bug.
+  `tests/validation/test_tle_self_prediction.py` tracks this exemption as
+  `UNASSERTED_CELLS = {("69702", "14d"), ("69702", "28d")}` plus a
+  `VACUOUSNESS_CEILING_KM = 5000.0` constant, and
+  `test_binned_medians_within_envelope` re-derives each unasserted cell's
+  envelope at test time and asserts it is still >= the ceiling, so the
+  exemption self-documents and cannot silently grow to cover a
+  regression.
+- All other regimes' cells are unaffected: every other derived envelope
+  in the table above is well under the ceiling (worst case is `leo`
+  (45098) 28d at 2,000 km).
