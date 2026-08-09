@@ -345,7 +345,13 @@ leo-high-drag); constellation-keeping adjustments for the Starlink
 (`45098`, leo)), and the decaying object's curve (`69702`, ELECTRON R/B) is
 drag-event dominated -- SGP4's static B* term cannot track a perigee that
 is itself falling over the 28-day window, so the propagator's own error
-compounds with the real, accelerating decay of the object.
+compounds with the real, accelerating decay of the object. Separately, the
+per-bin `n` counts are pair counts, not independent samples: the all-pairs
+harness means every pair shares its base or target TLE with many other
+pairs in the same bin (and, since near-duplicate epochs are not filtered
+out of this harness, some pairs share both), so `n` overstates the
+effective independent sample size relative to a naive reading of the
+table.
 
 **Sanity gate result at initial measurement: BLOCKED, then resolved by
 controller ruling.** The Step 2 brief's original hard gate flagged any cell

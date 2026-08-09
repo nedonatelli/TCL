@@ -294,8 +294,21 @@ class TestLongHorizon:
                 if n < MIN_PAIRS_PER_BIN:
                     sparse.add((norad, label))
         assert sparse == EXPECTED_SPARSE_BINS
+        # An exempt cell that goes sparse would skip its saturation
+        # self-check in test_binned_medians_within_envelope silently.
+        assert UNASSERTED_CELLS.isdisjoint(sparse)
 
     def test_binned_medians_within_envelope(self, history):
+        # A future recalibration must not be able to park a vacuous
+        # envelope (>= the ceiling) in a cell that's actually asserted.
+        for regime_envelopes in LONG_HORIZON_ENVELOPES.values():
+            for bin_label, envelope in regime_envelopes.items():
+                assert envelope < VACUOUSNESS_CEILING_KM, (
+                    f"{bin_label}: envelope {envelope} km meets or exceeds "
+                    f"the vacuousness ceiling ({VACUOUSNESS_CEILING_KM:.0f} "
+                    f"km) -- move it to UNASSERTED_CELLS instead of "
+                    f"asserting it"
+                )
         for norad, sat in history.items():
             envelopes = LONG_HORIZON_ENVELOPES[sat["regime"]]
             rows = _cached_all_pair_errors(norad, sat)

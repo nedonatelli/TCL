@@ -23,9 +23,13 @@ dependencies, no network.
 
 For each satellite: all ordered TLE pairs (i, j), i < j, propagating TLE_i
 to TLE_j's epoch and scoring against TLE_j at tsince = 0 (same TEME-of-date
-comparability as the existing test). The existing near-duplicate filter
-(`horizon < 0.01 d`) applies to the base and target selection. Roughly
-8,000 pairs across the fixture; runtime must stay in single-digit seconds.
+comparability as the existing test). Near-duplicate TLEs (the existing
+short-horizon test's `horizon < 0.01 d` filter) remain in the pool here as
+bases and targets: the 0.5-day floor below subsumes the degenerate-horizon
+concern this filter exists for, since no per-day division occurs in this
+harness (unlike the short-horizon test's km/day rate). Measured: 10,934
+pairs across the fixture, of which 2,042 involve at least one near-duplicate
+TLE; runtime must stay in single-digit seconds.
 
 ### Binning
 
