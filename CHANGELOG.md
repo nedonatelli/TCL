@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Kalman filter -> NIS) against 3,600 recorded ADS-B position reports from
   120 real aircraft, scored against each aircraft's self-broadcast ground
   speed -- a quantity the filter is never given.
+- REFERENCE-class validation of SGP4/SDP4 propagation against real orbital
+  data: 30 days of vendored Space-Track TLE history for six satellites
+  spanning every SGP4 regime, each TLE scored against its NORAD-fitted
+  successor at that successor's epoch.
 - Cross-validation of SGP4/SDP4 and the TEME->ITRF/GCRF chains against
   satkit, an independent Rust implementation (opt-in `validation`
   dependency group: `uv sync --group validation`; tests skip without it).

@@ -14,3 +14,8 @@ filter never sees).
 This is where the audit suites live. They exist because structural tests passed
 while WMM magnetism was roughly 180 degrees wrong -- line coverage is not the
 bar, independent agreement is. See the validation classes in CONTRIBUTING.md.
+
+Real-world recordings also serve as references: a vendored ADS-B air-traffic
+capture (aircraft broadcast their own ground speed, which the filter never
+sees), and a vendored Space-Track TLE history (each TLE is scored against
+its NORAD-fitted successor, which was fitted to real tracking observations).
