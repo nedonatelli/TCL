@@ -42,6 +42,16 @@ existing short-horizon test's territory and are excluded here.
    noise), and the test asserts the *expected* sparse bins stay sparse
    rather than silently skipping (a wrong bin edge would otherwise
    silently empty a bin).
+
+   **Vacuousness ceiling (ruling, 2026-08-08):** a cell is asserted only
+   if its derived envelope is below 5,000 km — comfortably under the
+   ~13,100 km geometric maximum position error, above which an assertion
+   provably cannot fail. Measured during implementation: the decaying
+   object's 14d/28d medians (6,442/8,468 km) saturate toward orbit-scale
+   geometry, so those cells are recorded in SOURCES.md as
+   measured-but-unasserted with the saturation explanation; its 1d/3d/7d
+   cells remain asserted, and the Spearman growth test covers all
+   horizons for every satellite.
 2. **Rank correlation (Spearman) between horizon and position error > 0.5
    per satellite** over all its pairs — the spec-original growth assertion,
    now statistically meaningful with 0.5-29-day spread. scipy.stats is
