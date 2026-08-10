@@ -107,6 +107,7 @@ def log_filter_health(
         Normalized innovation squared for the current update.
     nis_window : sequence of float
         Recent NIS history used as the local baseline for outlier detection.
+        Includes the current sample, per call-site convention.
     cov_condition : float
         Condition number of the track's state covariance.
 
@@ -118,11 +119,21 @@ def log_filter_health(
       ``nis_window`` (filter diverging / mismatched noise model), or
     - ``cov_condition`` exceeds ``CONDITION_WARN`` (covariance going
       numerically singular).
+
+    The caller owns ``nis_window``'s lifecycle; this function only reads it.
+    Callers that keep a rolling window across an enable/disable toggle (as
+    ``MultiTargetTracker`` does) will blend pre-disable history into the
+    first post-re-enable call -- that's a call-site persistence choice, not
+    something this function corrects.
     """
     if not diagnostics_enabled():
         return
 
     window = list(nis_window)
+    # mean_nis == 0 only when every sample in the window is exactly 0 (or
+    # the window is empty); guarding against it means an all-zero window
+    # can never trip the NIS-outlier branch, however large nis_value gets --
+    # such a track is still caught by the cov_condition branch below.
     mean_nis = sum(window) / len(window) if window else 0.0
     symptomatic = (
         nis_value > NIS_OUTLIER_FACTOR * mean_nis and mean_nis > 0

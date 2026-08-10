@@ -304,6 +304,29 @@ class TestFilterHealth:
         levels = [lvl for lvl, _ in records]
         assert "DEBUG" in levels and "WARNING" in levels
 
+    def test_warning_from_nis_outlier_alone(self):
+        # Isolate the NIS-outlier branch: cov_condition stays benign, so a
+        # WARNING here can only come from nis_value >> mean(nis_window).
+        from loguru import logger as _l
+
+        from pytcl.diagnostics import log_filter_health
+
+        records = []
+        enable_debug_logging()
+        handle = _l.add(
+            lambda m: records.append((m.record["level"].name, m.record["message"])),
+            level="DEBUG",
+        )
+        try:
+            log_filter_health(
+                3, nis_value=100.0, nis_window=[1.0] * 5, cov_condition=10.0
+            )
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        levels = [lvl for lvl, _ in records]
+        assert levels == ["WARNING"]
+
     def test_behavioral_neutrality(self):
         # Identical numerical results with diagnostics enabled vs disabled.
         import numpy as np

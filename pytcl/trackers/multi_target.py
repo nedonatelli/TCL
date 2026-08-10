@@ -395,6 +395,9 @@ class MultiTargetTracker:
         if diagnostics_enabled():
             # Reuses S_inv already computed above for the Kalman gain -- no
             # extra inversion, and none of this touches state/covariance.
+            # _nis_history is not cleared on disable, so a later re-enable
+            # resumes the same deque -- the health window can blend NIS
+            # values from before the disable/enable toggle.
             nis = float(innovation @ S_inv @ innovation)
             history = getattr(track, "_nis_history", None)
             if history is None:
