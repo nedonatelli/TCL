@@ -192,15 +192,15 @@ def _find_gebco_file(version: str = "GEBCO2025") -> Path:
     ]
 
     for pattern in patterns:
-        logger.bind(site="data-files").debug(
+        logger.bind(site="data_files").debug(
             "GEBCO candidate pattern {} in {}", pattern, data_dir
         )
         matches = list(data_dir.glob(pattern))
         if matches:
-            logger.bind(site="data-files").debug("GEBCO file found: {}", matches[0])
+            logger.bind(site="data_files").debug("GEBCO file found: {}", matches[0])
             return matches[0]
 
-    logger.bind(site="data-files").debug(
+    logger.bind(site="data_files").debug(
         "GEBCO file missing for {} in {} (tried {})", version, data_dir, patterns
     )
     url = GEBCO_PARAMETERS.get(version, {}).get("url", "https://www.gebco.net/")
@@ -240,11 +240,11 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
     file_pattern = EARTH2014_PARAMETERS[layer]["file_pattern"]
     filepath = data_dir / file_pattern
 
-    logger.bind(site="data-files").debug(
+    logger.bind(site="data_files").debug(
         "Earth2014 candidate {} in {}", filepath, data_dir
     )
     if filepath.exists():
-        logger.bind(site="data-files").debug("Earth2014 file found: {}", filepath)
+        logger.bind(site="data_files").debug("Earth2014 file found: {}", filepath)
         return filepath
 
     # Try alternative patterns
@@ -256,14 +256,14 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
 
     for pattern in alt_patterns:
         alt_path = data_dir / pattern
-        logger.bind(site="data-files").debug(
+        logger.bind(site="data_files").debug(
             "Earth2014 candidate {} in {}", alt_path, data_dir
         )
         if alt_path.exists():
-            logger.bind(site="data-files").debug("Earth2014 file found: {}", alt_path)
+            logger.bind(site="data_files").debug("Earth2014 file found: {}", alt_path)
             return alt_path
 
-    logger.bind(site="data-files").debug(
+    logger.bind(site="data_files").debug(
         "Earth2014 file missing for layer {} in {} (tried {}, {})",
         layer,
         data_dir,
@@ -364,12 +364,12 @@ def parse_gebco_netcdf(
         # GEBCO stores elevation in 'elevation' variable
         # Single-shot read (no chunk loop): log start/finish instead of a bar.
         if progress:
-            logger.bind(name="pytcl").debug(
+            logger.bind(site="data_files").debug(
                 "GEBCO read starting: {} x {} region", i_end - i_start, j_end - j_start
             )
         elevation = dataset.variables["elevation"][i_start:i_end, j_start:j_end]
         if progress:
-            logger.bind(name="pytcl").debug("GEBCO read finished")
+            logger.bind(site="data_files").debug("GEBCO read finished")
 
         # Get actual bounds
         lat_min_actual = np.radians(float(lats[i_start]))

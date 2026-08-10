@@ -352,8 +352,8 @@ class MultiTargetTracker:
                 (self._tracks[i].id, int(meas_idx))
                 for i, meas_idx in associations.items()
             ]
-            logger.bind(site="association").debug(
-                "GNN assignment: {} pair(s) {}, total_cost={:.4f}",
+            logger.bind(site="association", algo="gnn").debug(
+                "gnn: assigned {} pair(s) {}, total_cost={:.4f}",
                 len(pairs),
                 pairs,
                 float(result.total_cost),

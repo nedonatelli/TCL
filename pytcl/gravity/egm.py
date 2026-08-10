@@ -351,12 +351,12 @@ def _load_coefficients_cached(
     filepath = data_dir / f"{model}.cof"
 
     _logger.debug("Loading %s coefficients from %s", model, filepath)
-    _diag_logger.bind(site="data-files").debug(
+    _diag_logger.bind(site="data_files").debug(
         "{} candidate {} in {}", model, filepath, data_dir
     )
 
     if not filepath.exists():
-        _diag_logger.bind(site="data-files").debug(
+        _diag_logger.bind(site="data_files").debug(
             "{} coefficient file missing: {}", model, filepath
         )
         raise FileNotFoundError(
@@ -366,7 +366,7 @@ def _load_coefficients_cached(
             f"and save to: {filepath}\n"
             f"Or use create_test_coefficients() for testing."
         )
-    _diag_logger.bind(site="data-files").debug(
+    _diag_logger.bind(site="data_files").debug(
         "{} coefficient file found: {}", model, filepath
     )
 

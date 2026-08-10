@@ -12,6 +12,8 @@ from numba import njit
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
+from pytcl.diagnostics import diagnostics_enabled, logger
+
 
 @njit(cache=True, fastmath=True)
 def _mahalanobis_distance_2d(
@@ -287,6 +289,16 @@ def gate_measurements(
                 distances.append(d2)
         else:
             raise ValueError(f"Unknown gate type: {gate_type}")
+
+    if diagnostics_enabled():
+        n_rejected = n_meas - len(valid_indices)
+        if n_rejected:
+            logger.bind(site="gating").debug(
+                "gate_measurements: rejected {} of {} measurement(s), threshold={:.2f}",
+                n_rejected,
+                n_meas,
+                gate_threshold,
+            )
 
     return (
         np.array(valid_indices, dtype=np.intp),

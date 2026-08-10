@@ -605,8 +605,8 @@ class MHTTracker:
                 if self.hypothesis_tree.hypotheses
                 else 0.0
             )
-            logger.bind(site="mht").debug(
-                "scan {}: {} hypotheses, pruned {}, best_score={:.6g}",
+            logger.bind(site="association", algo="mht").debug(
+                "mht scan {}: {} hypotheses, pruned {}, best_score={:.6g}",
                 self._scan,
                 post_prune_count,
                 pre_prune_count - post_prune_count,

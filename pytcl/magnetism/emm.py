@@ -366,16 +366,16 @@ def _load_coefficients_cached(
     extensions = [".cof", ".COF", ".txt", ".dat"]
     for ext in extensions:
         filepath = data_dir / f"{model}{ext}"
-        logger.bind(site="data-files").debug(
+        logger.bind(site="data_files").debug(
             "{} candidate {} in {}", model, filepath, data_dir
         )
         if filepath.exists():
-            logger.bind(site="data-files").debug(
+            logger.bind(site="data_files").debug(
                 "{} coefficient file found: {}", model, filepath
             )
             break
     else:
-        logger.bind(site="data-files").debug(
+        logger.bind(site="data_files").debug(
             "{} coefficient file missing in {} (tried extensions {})",
             model,
             data_dir,

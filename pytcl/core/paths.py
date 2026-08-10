@@ -28,7 +28,7 @@ def get_data_dir() -> Path:
     else:
         path = Path.home() / ".pytcl" / "data"
         override = "not set"
-    logger.bind(site="data-files").debug(
+    logger.bind(site="data_files").debug(
         "data dir resolved to {} (PYTCL_DATA_DIR {})", path, override
     )
     return path

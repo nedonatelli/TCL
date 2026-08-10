@@ -7,6 +7,7 @@ import pytest
 from loguru import logger as _loguru_logger
 
 import pytcl
+from pytcl.core.exceptions import DependencyError
 from pytcl.diagnostics import (
     diagnostics_enabled,
     disable_debug_logging,
@@ -45,15 +46,32 @@ class TestSilenceByDefault:
 
 
 class TestEnableDisable:
-    def test_round_trip(self, capsys):
+    def test_round_trip(self):
+        from pytcl.diagnostics import log_filter_health
+
         records = []
         enable_debug_logging()
         assert diagnostics_enabled() is True
         handle = _loguru_logger.add(records.append, format="{message}")
-        _loguru_logger.bind(name="pytcl").debug("probe")
-        _loguru_logger.remove(handle)
+        try:
+            # log_filter_health lives in pytcl.diagnostics, so this is a
+            # real emission through the pytcl namespace -- not a `.bind()`
+            # on an unrelated `name` key, which never touches the
+            # `record["name"]` the enable/disable filter actually checks.
+            log_filter_health(1, nis_value=0.1, nis_window=[0.1], cov_condition=1.0)
+            assert len(records) == 1  # enabled: the emission reached the sink
+        finally:
+            _loguru_logger.remove(handle)
         disable_debug_logging()
         assert diagnostics_enabled() is False
+
+        records2 = []
+        handle2 = _loguru_logger.add(records2.append, format="{message}")
+        try:
+            log_filter_health(1, nis_value=0.1, nis_window=[0.1], cov_condition=1.0)
+        finally:
+            _loguru_logger.remove(handle2)
+        assert records2 == []  # disabled: the emission never reached the sink
 
     def test_enable_twice_does_not_stack_handlers(self):
         enable_debug_logging()
@@ -66,6 +84,62 @@ class TestEnableDisable:
     def test_reexported_from_top_level(self):
         assert pytcl.enable_debug_logging is enable_debug_logging
         assert pytcl.disable_debug_logging is disable_debug_logging
+
+
+class TestStderrRealityAndLifecycle:
+    """OS-level (capfd) checks of the actual bytes on stderr, plus the
+    lifecycle regressions the reviewer probed for: a leaked default
+    handler double-printing every record, a bad level leaving the
+    namespace half-enabled, and a host application ripping our handler
+    out from under us."""
+
+    def test_single_emission_is_exactly_one_stderr_line_then_silent(self, capfd):
+        from pytcl.diagnostics import log_filter_health
+
+        enable_debug_logging()
+        log_filter_health(7, nis_value=0.25, nis_window=[0.25], cov_condition=1.0)
+        out, err = capfd.readouterr()
+        assert out == ""
+        # Exactly one line for the record -- a leaked default handler (id 0)
+        # alongside pytcl's own would print this substring twice.
+        assert err.count("track 7") == 1
+        assert "pytcl.diagnostics" in err  # {name} renders the full module path
+
+        disable_debug_logging()
+        log_filter_health(7, nis_value=0.25, nis_window=[0.25], cov_condition=1.0)
+        out2, err2 = capfd.readouterr()
+        assert out2 == ""
+        assert err2 == ""
+
+    def test_bad_level_raises_and_leaves_state_fully_off(self):
+        with pytest.raises(ValueError):
+            enable_debug_logging(level="NOT_A_REAL_LEVEL")
+        assert diagnostics_enabled() is False
+
+        records = []
+        handle = _loguru_logger.add(records.append, format="{message}")
+        try:
+            from pytcl.diagnostics import log_filter_health
+
+            log_filter_health(9, nis_value=0.1, nis_window=[0.1], cov_condition=1.0)
+        finally:
+            _loguru_logger.remove(handle)
+        assert records == []  # namespace still disabled -> no sink reached
+
+    def test_host_removing_our_handler_then_disable_reenable_does_not_raise(self):
+        import pytcl.diagnostics as diag_module
+
+        enable_debug_logging()
+        # Simulate a host application that reaches into loguru directly and
+        # removes pytcl's handler out from under it.
+        _loguru_logger.remove(diag_module._handler_id)
+
+        disable_debug_logging()  # must not raise despite the handler being gone
+        assert diagnostics_enabled() is False
+
+        enable_debug_logging()  # must not raise either
+        assert diagnostics_enabled() is True
+        disable_debug_logging()
 
 
 class TestRendering:
@@ -126,7 +200,7 @@ class TestDataFileInstrumentation:
         enable_debug_logging()
         handle = _l.add(records.append, format="{message}", level="DEBUG")
         try:
-            with pytest.raises((FileNotFoundError, Exception)):
+            with pytest.raises((FileNotFoundError, DependencyError)):
                 load_gebco(0.0, 0.1, 0.0, 0.1)
         finally:
             _l.remove(handle)
@@ -145,7 +219,7 @@ class TestDataFileInstrumentation:
         records = []
         handle = _l.add(records.append, format="{message}", level="DEBUG")
         try:
-            with pytest.raises((FileNotFoundError, Exception)):
+            with pytest.raises((FileNotFoundError, DependencyError)):
                 load_gebco(0.0, 0.1, 0.0, 0.1)
         finally:
             _l.remove(handle)

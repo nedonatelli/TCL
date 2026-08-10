@@ -83,19 +83,37 @@ Sample output (timestamps trimmed):
 
 .. code-block:: text
 
-   DEBUG    | pytcl - track 0: gated out 1 of 2 measurements: m1 d=482.13>thr=9.21
-   DEBUG    | pytcl - GNN assignment: 1 pair(s) [(0, 0)], total_cost=0.0142
-   DEBUG    | pytcl - track 0: nis=0.3821 (window_mean=0.3821, n=1) cov_condition=1.2400e+01
+   DEBUG    | pytcl.trackers.multi_target - track 0: gated out 1 of 2 measurements: m1 d=482.13>thr=9.21
+   DEBUG    | pytcl.trackers.multi_target - gnn: assigned 1 pair(s) [(0, 0)], total_cost=0.0142
+   DEBUG    | pytcl.trackers.multi_target - track 0: nis=0.3821 (window_mean=0.3821, n=1) cov_condition=1.2400e+01
+
+Each line appears exactly once: the handler installed by
+``enable_debug_logging()`` removes loguru's default stderr handler first,
+so records are never double-printed. ``{name}`` in the format string
+renders the emitting module's full dotted path (``pytcl.trackers.multi_target``
+above), not the bare string ``"pytcl"``.
+
+Every record also carries a ``site`` field (bound via ``logger.bind(site=...)``)
+that a handler can filter or route on -- this is the filtering contract
+between the log format and the four families below, and it is a single
+field with underscores throughout: ``"data_files"``, ``"gating"``,
+``"association"``, ``"filter_health"``. The association family adds a
+second bound field, ``algo``, naming which algorithm produced the record.
 
 **Gating** (``site="gating"``) -- ``MultiTargetTracker`` logs which
 measurements were rejected by the gate for each track before association
 runs, with the Mahalanobis distance and threshold that rejected them.
+The module-level :func:`~pytcl.assignment_algorithms.gate_measurements`
+helper logs the same way when called directly. ``ellipsoidal_gate`` itself
+stays uninstrumented -- it is a low-level per-measurement kernel called in
+a tight loop by both of the above.
 
 **Association** (``site="association"``) -- the resulting GNN
-track-to-measurement pairing and its total cost; ``JPDATracker`` logs the
-top marginal probability per track (``site="jpda"``), and ``MHTTracker``
-logs per-scan hypothesis counts, how many were pruned, and the best
-surviving hypothesis score (``site="mht"``).
+track-to-measurement pairing and its total cost, bound with
+``algo="gnn"``; :func:`~pytcl.assignment_algorithms.jpda.jpda_probabilities`
+logs the top marginal probability per track (``algo="jpda"``), and
+``MHTTracker`` logs per-scan hypothesis counts, how many were pruned, and
+the best surviving hypothesis score (``algo="mht"``).
 
 **Filter health** (``site="filter_health"``) -- :func:`~pytcl.diagnostics.log_filter_health`
 logs a per-update NIS (normalized innovation squared) and covariance
@@ -104,10 +122,9 @@ WARNING when either symptom of a diverging filter appears: the current
 NIS exceeds three times the mean of its recent window, or the covariance
 condition number exceeds ``1e12``. ``MultiTargetTracker`` calls it
 automatically after every track update, reusing the innovation covariance
-inverse already computed for the Kalman gain -- no extra work is done to
-produce the health snapshot.
+inverse already computed for the Kalman gain -- no extra matrix inversion.
 
-**Data-file resolution** (``site="data-files"``) -- :func:`~pytcl.core.paths.get_data_dir`
+**Data-file resolution** (``site="data_files"``) -- :func:`~pytcl.core.paths.get_data_dir`
 and the terrain/magnetism/gravity coefficient loaders log every candidate
 path they try, whether ``PYTCL_DATA_DIR`` is overriding the default, and
 which candidate (if any) was found, at DEBUG. This is the fastest way to

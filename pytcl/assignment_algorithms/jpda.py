@@ -250,7 +250,7 @@ def jpda_probabilities(
             (i, int(np.argmax(beta[i])), float(np.max(beta[i])))
             for i in range(n_tracks)
         ]
-        logger.bind(site="jpda").debug(
+        logger.bind(site="association", algo="jpda").debug(
             "jpda: {} track(s), top marginal per track: {}",
             n_tracks,
             "; ".join(

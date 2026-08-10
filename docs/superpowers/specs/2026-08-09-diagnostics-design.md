@@ -32,8 +32,13 @@ deliberate, redesigned successor (no compatibility provided or implied).
 | `enable_debug_logging(level="DEBUG")` | Enables the `pytcl` loguru logger and installs a rich-backed stderr handler. Idempotent; calling twice replaces, not stacks. Returns None. |
 | `disable_debug_logging()` | Returns the library to complete silence. Idempotent. |
 | `diagnostics_enabled() -> bool` | Cheap flag; hot paths consult it before constructing any log payload. |
-| `track_table(tracks) -> None` | Renders a rich table (id, status, position, velocity, NIS if available) to the console. |
+| `track_table(tracks) -> None` | Renders a rich table (id, status, position, speed) to the console. |
 | `progress_bar(iterable, description)` | Wraps an iterable in a rich progress bar; the helper behind `progress=True` parameters and usable directly by users around scan loops. |
+
+As shipped, `track_table` has no NIS column: `Track` (`pytcl/trackers/multi_target.py`)
+carries no NIS field, so this table's original "NIS if available" was
+unimplementable without inventing a field on `Track` that no other part of
+the design calls for. The shipped columns are id, status, position, speed.
 
 Import-time contract: `import pytcl` executes `logger.disable("pytcl")`
 and installs **no** handlers — the library is completely silent by
@@ -60,9 +65,13 @@ changes, no log calls inside them.
    magnetism / gravity loaders: every candidate path tried, found, or
    missing, at DEBUG, including the `PYTCL_DATA_DIR` override when active.
 2. **Gating** — `MultiTargetTracker`'s gating step and the module-level
-   helpers in `assignment_algorithms/gating.py` that the trackers call:
-   excluded measurement indices with distance vs. threshold. Lazily
-   formatted; nothing is built when disabled.
+   `gate_measurements` helper in `assignment_algorithms/gating.py` that
+   the trackers call: excluded measurement indices with distance vs.
+   threshold. Lazily formatted; nothing is built when disabled.
+   `ellipsoidal_gate` itself stays uninstrumented — it is a low-level,
+   single-measurement kernel called in a tight loop by both of the above,
+   and instrumenting it would put a log call (or a guard check) inside
+   that loop rather than around it.
 3. **Association** — GNN: chosen assignment and total cost per scan;
    JPDA: per-track marginal association probability summary; MHT:
    hypothesis count, pruned count, and best-hypothesis score per scan.

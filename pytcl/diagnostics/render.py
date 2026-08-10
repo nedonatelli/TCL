@@ -30,7 +30,9 @@ def track_table(tracks: Sequence[Any], console: Optional[Console] = None) -> Non
     table.add_column("speed", justify="right")
     for t in tracks:
         state = np.asarray(t.state, dtype=float).ravel()
-        # Convention: interleaved [x, vx, y, vy, ...]; fall back to halves.
+        # Convention: interleaved [x, vx, y, vy, ...]; an odd-length state
+        # does not fit that pairing, so it is rendered whole as "position"
+        # with velocity reported as zero.
         pos = state[0::2] if len(state) % 2 == 0 else state
         vel = state[1::2] if len(state) % 2 == 0 else np.zeros(1)
         table.add_row(

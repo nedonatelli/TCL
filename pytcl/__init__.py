@@ -45,6 +45,7 @@ from pytcl import (
     trackers,
 )
 from pytcl.diagnostics import (
+    diagnostics_enabled,
     disable_debug_logging,
     enable_debug_logging,
     progress_bar,
@@ -85,6 +86,7 @@ __all__ = [
     "performance_evaluation",
     "plotting",
     "diagnostics",
+    "diagnostics_enabled",
     "enable_debug_logging",
     "disable_debug_logging",
     "track_table",
