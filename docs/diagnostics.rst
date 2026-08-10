@@ -128,16 +128,28 @@ it is a UI element, not a log record:
    for item in progress_bar(range(1000), description="processing"):
        ...
 
-The terrain loaders take a ``progress`` flag that wires this in directly:
+The real loaders need the GEBCO/Earth2014 data files in
+:func:`~pytcl.core.paths.get_data_dir` (up to ~7.5 GB for GEBCO, ~455 MB
+per Earth2014 layer), which this guide cannot assume are present, so it
+demonstrates the ``progress`` flag against
+:func:`~pytcl.terrain.create_test_gebco_dem` and
+:func:`~pytcl.terrain.create_test_earth2014_dem` instead -- synthetic
+DEMs with the same shape as the real data, no download required:
 
 .. code-block:: python
 
-   import math
+   from pytcl.terrain import create_test_earth2014_dem, create_test_gebco_dem
+
+   grid = create_test_earth2014_dem()
+   dem = create_test_gebco_dem()
+
+The synthetic generators are pure NumPy with no I/O, so they have no
+``progress`` parameter to accept. Against real data, the loaders take a
+``progress`` flag that wires ``progress_bar`` in directly:
+
+.. code-block:: text
 
    from pytcl.terrain.loaders import load_earth2014, load_gebco
-
-   lat_min, lat_max = math.radians(34.0), math.radians(35.0)
-   lon_min, lon_max = math.radians(-119.0), math.radians(-118.0)
 
    grid = load_earth2014(lat_min, lat_max, lon_min, lon_max, progress=True)
    dem = load_gebco(lat_min, lat_max, lon_min, lon_max, progress=True)
@@ -148,9 +160,8 @@ so ``progress=True`` instead logs DEBUG start/finish markers around the
 read (visible only with diagnostics enabled). Either way, passing
 ``progress=True`` routes around the ``lru_cache``-backed default load
 path -- it neither reads from the cache nor populates it, so toggling the
-flag never forces a redundant re-parse of the underlying file (up to
-~7.5 GB for GEBCO, ~455 MB per Earth2014 layer) on the default,
-non-progress path.
+flag never forces a redundant re-parse of the underlying file on the
+default, non-progress path.
 
 :func:`~pytcl.diagnostics.track_table` renders a summary table of a
 tracker's current tracks (id, status, position, speed) to the console:
