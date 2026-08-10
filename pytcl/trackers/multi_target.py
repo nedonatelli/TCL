@@ -5,6 +5,7 @@ This module provides a multi-target tracker using GNN data association
 and Kalman filtering with track management (initiation, maintenance, deletion).
 """
 
+from collections import deque
 from enum import Enum
 from typing import Callable, List, NamedTuple, Optional, Sequence
 
@@ -12,7 +13,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.assignment_algorithms import chi2_gate_threshold, gnn_association
-from pytcl.diagnostics import diagnostics_enabled, logger
+from pytcl.diagnostics import NIS_WINDOW, diagnostics_enabled, log_filter_health, logger
 
 
 class TrackStatus(Enum):
@@ -373,9 +374,10 @@ class MultiTargetTracker:
         z_pred = self.H @ track.state
         innovation = measurement - z_pred
         S = self.H @ track.covariance @ self.H.T + (self.R if R is None else R)
+        S_inv = np.linalg.inv(S)
 
         # Kalman gain
-        K = track.covariance @ self.H.T @ np.linalg.inv(S)
+        K = track.covariance @ self.H.T @ S_inv
 
         # Update
         track.state = track.state + K @ innovation
@@ -389,6 +391,18 @@ class MultiTargetTracker:
         if track.status == TrackStatus.TENTATIVE:
             if track.hits >= self.confirm_hits:
                 track.status = TrackStatus.CONFIRMED
+
+        if diagnostics_enabled():
+            # Reuses S_inv already computed above for the Kalman gain -- no
+            # extra inversion, and none of this touches state/covariance.
+            nis = float(innovation @ S_inv @ innovation)
+            history = getattr(track, "_nis_history", None)
+            if history is None:
+                history = deque(maxlen=NIS_WINDOW)
+                track._nis_history = history
+            history.append(nis)
+            cov_condition = float(np.linalg.cond(track.covariance))
+            log_filter_health(track.id, nis, list(history), cov_condition)
 
     def _initiate_track(self, measurement: NDArray[np.float64]) -> None:
         """Initiate new track from measurement."""

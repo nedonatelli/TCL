@@ -277,3 +277,65 @@ class TestGatingAssociationInstrumentation:
         finally:
             _l.remove(handle)
         assert records == []
+
+
+class TestFilterHealth:
+    def test_health_logged_and_warning_on_symptoms(self):
+        from loguru import logger as _l
+
+        from pytcl.diagnostics import log_filter_health
+
+        records = []
+        enable_debug_logging()
+        handle = _l.add(
+            lambda m: records.append((m.record["level"].name, m.record["message"])),
+            level="DEBUG",
+        )
+        try:
+            log_filter_health(
+                1, nis_value=1.0, nis_window=[1.0] * 5, cov_condition=10.0
+            )
+            log_filter_health(
+                2, nis_value=99.0, nis_window=[50.0] * 5, cov_condition=1e15
+            )
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        levels = [lvl for lvl, _ in records]
+        assert "DEBUG" in levels and "WARNING" in levels
+
+    def test_behavioral_neutrality(self):
+        # Identical numerical results with diagnostics enabled vs disabled.
+        import numpy as np
+
+        from pytcl.trackers import MultiTargetTracker
+
+        def run():
+            rng = np.random.default_rng(11)
+            tracker = MultiTargetTracker(
+                state_dim=4,
+                meas_dim=2,
+                F=np.array(
+                    [[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]],
+                    dtype=float,
+                ),
+                H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
+                Q=np.eye(4) * 0.01,
+                R=np.eye(2) * 1.0,
+            )
+            out = []
+            for k in range(20):
+                z = [np.array([k + rng.normal(0, 0.5), k + rng.normal(0, 0.5)])]
+                out.append(tracker.process(z, dt=1.0))
+            return out
+
+        baseline = run()
+        enable_debug_logging()
+        try:
+            with_diag = run()
+        finally:
+            disable_debug_logging()
+        for a, b in zip(baseline, with_diag):
+            for ta, tb in zip(a, b):
+                np.testing.assert_array_equal(ta.state, tb.state)
+                np.testing.assert_array_equal(ta.covariance, tb.covariance)

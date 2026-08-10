@@ -17,9 +17,14 @@ False
 """
 
 import sys
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from loguru import logger as _logger
+
+# Filter-health thresholds.
+NIS_WINDOW = 20
+NIS_OUTLIER_FACTOR = 3.0
+CONDITION_WARN = 1e12
 
 # The library never speaks unless spoken to.
 _logger.disable("pytcl")
@@ -80,6 +85,59 @@ def disable_debug_logging() -> None:
     _enabled = False
 
 
+def log_filter_health(
+    track_id: Any,
+    nis_value: float,
+    nis_window: Sequence[float],
+    cov_condition: float,
+) -> None:
+    """Log a per-track filter-health snapshot (NIS + covariance condition).
+
+    Guarded internally by :func:`diagnostics_enabled` -- callers on a hot
+    path may call this bare without checking first, since a disabled
+    namespace makes the call a single boolean-check no-op. Plain
+    floats/sequences only; this module takes no dependency on ``pytcl``'s
+    tracker types.
+
+    Parameters
+    ----------
+    track_id : Any
+        Identifier of the track this health snapshot belongs to.
+    nis_value : float
+        Normalized innovation squared for the current update.
+    nis_window : sequence of float
+        Recent NIS history used as the local baseline for outlier detection.
+    cov_condition : float
+        Condition number of the track's state covariance.
+
+    Notes
+    -----
+    Symptomatic (logged at WARNING instead of DEBUG) when either:
+
+    - ``nis_value`` exceeds ``NIS_OUTLIER_FACTOR`` times the mean of
+      ``nis_window`` (filter diverging / mismatched noise model), or
+    - ``cov_condition`` exceeds ``CONDITION_WARN`` (covariance going
+      numerically singular).
+    """
+    if not diagnostics_enabled():
+        return
+
+    window = list(nis_window)
+    mean_nis = sum(window) / len(window) if window else 0.0
+    symptomatic = (
+        nis_value > NIS_OUTLIER_FACTOR * mean_nis and mean_nis > 0
+    ) or cov_condition > CONDITION_WARN
+
+    bound = logger.bind(site="filter_health")
+    message = "track {}: nis={:.4f} (window_mean={:.4f}, n={}) cov_condition={:.4e}"
+    if symptomatic:
+        bound.warning(
+            message, track_id, nis_value, mean_nis, len(window), cov_condition
+        )
+    else:
+        bound.debug(message, track_id, nis_value, mean_nis, len(window), cov_condition)
+
+
 from pytcl.diagnostics.render import progress_bar, track_table  # noqa: E402
 
 __all__ = [
@@ -89,4 +147,8 @@ __all__ = [
     "disable_debug_logging",
     "track_table",
     "progress_bar",
+    "log_filter_health",
+    "NIS_WINDOW",
+    "NIS_OUTLIER_FACTOR",
+    "CONDITION_WARN",
 ]
