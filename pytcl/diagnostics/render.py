@@ -64,10 +64,13 @@ def progress_bar(
             total = len(iterable)  # type: ignore[arg-type]
         except TypeError:
             total = None
+    has_total = total is not None
     progress = Progress(
         TextColumn("{task.description}"),
-        TextColumn("{task.completed}/{task.total}" if total else "{task.completed}"),
-        TextColumn("{task.percentage:>3.0f}%" if total else ""),
+        TextColumn(
+            "{task.completed}/{task.total}" if has_total else "{task.completed}"
+        ),
+        TextColumn("{task.percentage:>3.0f}%" if has_total else ""),
         console=Console(stderr=True),
     )
     with progress:

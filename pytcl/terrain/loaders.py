@@ -480,8 +480,7 @@ def parse_earth2014_binary(
     return data, lat_min_actual, lat_max_actual, lon_min_actual, lon_max_actual
 
 
-@lru_cache(maxsize=8)
-def _load_gebco_cached(
+def _build_gebco_grid(
     version: str,
     lat_min: float,
     lat_max: float,
@@ -489,7 +488,8 @@ def _load_gebco_cached(
     lon_max: float,
     progress: bool = False,
 ) -> DEMGrid:
-    """Cached GEBCO loading (internal function)."""
+    """Parse and assemble a GEBCO DEMGrid. Shared by the cached and
+    progress-reporting (uncached) load paths."""
     filepath = _find_gebco_file(version)
     data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_gebco_netcdf(
         filepath, lat_min, lat_max, lon_min, lon_max, progress=progress
@@ -504,13 +504,28 @@ def _load_gebco_cached(
         nodata_value=-9999.0,
         name=version,
     )
-    # Every caller of this cache receives this same grid (gh-51).
     make_readonly(grid.data)
     return grid
 
 
 @lru_cache(maxsize=8)
-def _load_earth2014_cached(
+def _load_gebco_cached(
+    version: str,
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+) -> DEMGrid:
+    """Cached GEBCO loading (internal function).
+
+    Every caller of this cache receives this same grid (gh-51). Only the
+    default, non-progress path goes through this cache -- see
+    ``load_gebco``'s ``progress`` parameter.
+    """
+    return _build_gebco_grid(version, lat_min, lat_max, lon_min, lon_max)
+
+
+def _build_earth2014_grid(
     layer: str,
     lat_min: float,
     lat_max: float,
@@ -518,7 +533,8 @@ def _load_earth2014_cached(
     lon_max: float,
     progress: bool = False,
 ) -> DEMGrid:
-    """Cached Earth2014 loading (internal function)."""
+    """Parse and assemble an Earth2014 DEMGrid. Shared by the cached and
+    progress-reporting (uncached) load paths."""
     filepath = _find_earth2014_file(layer)
     data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_earth2014_binary(
         filepath, layer, lat_min, lat_max, lon_min, lon_max, progress=progress
@@ -533,9 +549,25 @@ def _load_earth2014_cached(
         nodata_value=-9999.0,
         name=f"Earth2014-{layer}",
     )
-    # Every caller of this cache receives this same grid (gh-51).
     make_readonly(grid.data)
     return grid
+
+
+@lru_cache(maxsize=8)
+def _load_earth2014_cached(
+    layer: str,
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+) -> DEMGrid:
+    """Cached Earth2014 loading (internal function).
+
+    Every caller of this cache receives this same grid (gh-51). Only the
+    default, non-progress path goes through this cache -- see
+    ``load_earth2014``'s ``progress`` parameter.
+    """
+    return _build_earth2014_grid(layer, lat_min, lat_max, lon_min, lon_max)
 
 
 def load_gebco(
@@ -569,6 +601,10 @@ def load_gebco(
         with ``enable_debug_logging()``). The read is a single-shot
         slice with no natural chunk loop, so there is no progress bar
         to show -- only start/finish markers. Default is False.
+        Progress-reporting calls bypass the load cache: they neither
+        read from it nor populate it, so toggling ``progress`` never
+        forces a redundant re-parse of the (up to ~7.5 GB) file for the
+        default, non-progress path.
 
     Returns
     -------
@@ -609,9 +645,12 @@ def load_gebco(
             f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
         )
 
-    return _load_gebco_cached(
-        version, lat_min, lat_max, lon_min, lon_max, progress=progress
-    )
+    if progress:
+        # Progress-reporting calls bypass the load cache.
+        return _build_gebco_grid(
+            version, lat_min, lat_max, lon_min, lon_max, progress=True
+        )
+    return _load_gebco_cached(version, lat_min, lat_max, lon_min, lon_max)
 
 
 def load_earth2014(
@@ -647,7 +686,10 @@ def load_earth2014(
         Default is "SUR".
     progress : bool, optional
         Show an ASCII progress bar on stderr while reading rows from
-        the binary file. Default is False.
+        the binary file. Default is False. Progress-reporting calls
+        bypass the load cache: they neither read from it nor populate
+        it, so toggling ``progress`` never forces a redundant re-parse
+        of the (up to ~455 MB) file for the default, non-progress path.
 
     Returns
     -------
@@ -693,9 +735,12 @@ def load_earth2014(
             f"Valid layers: {list(EARTH2014_PARAMETERS.keys())}"
         )
 
-    return _load_earth2014_cached(
-        layer, lat_min, lat_max, lon_min, lon_max, progress=progress
-    )
+    if progress:
+        # Progress-reporting calls bypass the load cache.
+        return _build_earth2014_grid(
+            layer, lat_min, lat_max, lon_min, lon_max, progress=True
+        )
+    return _load_earth2014_cached(layer, lat_min, lat_max, lon_min, lon_max)
 
 
 def create_test_gebco_dem(
