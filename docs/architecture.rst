@@ -4,8 +4,8 @@ Library Architecture
 Overview
 --------
 
-``pytcl`` is **134 modules** across **20 implemented packages**, exporting about
-930 public names. There is no framework object to inherit from: the library is a
+``pytcl`` is **135 modules** across **21 implemented packages**, exporting about
+1010 public names. There is no framework object to inherit from: the library is a
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.
 
@@ -243,6 +243,10 @@ Counts are measured from the packages themselves rather than asserted;
      - 2
      - 21
      - NEES, NIS, OSPA, Cramer-Rao bounds
+   * - ``diagnostics``
+     - 1
+     - 10
+     - Opt-in loguru logging, ASCII-safe rich progress bars and track tables
 
 Composition Examples
 --------------------

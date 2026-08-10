@@ -421,8 +421,8 @@ class TestDataFileInstrumentation:
             _l.remove(handle)
             disable_debug_logging()
         text = " ".join(str(r) for r in records)
-        assert str(tmp_path) in text          # the resolved directory
-        assert "PYTCL_DATA_DIR" in text       # the override was named
+        assert str(tmp_path) in text  # the resolved directory
+        assert "PYTCL_DATA_DIR" in text  # the override was named
         assert "missing" in text or "not found" in text
 
     def test_silent_when_disabled(self, tmp_path, monkeypatch):
@@ -495,7 +495,9 @@ class TestGatingAssociationInstrumentation:
         tracker = MultiTargetTracker(
             state_dim=4,
             meas_dim=2,
-            F=np.array([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float),
+            F=np.array(
+                [[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float
+            ),
             H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
             Q=np.eye(4) * 0.01,
             R=np.eye(2) * 1.0,
@@ -575,9 +577,7 @@ from pytcl.diagnostics import diagnostics_enabled, logger
 
 # inside MultiTargetTracker.process, after gating computes distances:
 if diagnostics_enabled():
-    rejected = [
-        (j, float(d)) for j, d in enumerate(distances) if d > threshold
-    ]
+    rejected = [(j, float(d)) for j, d in enumerate(distances) if d > threshold]
     if rejected:
         logger.bind(site="gating").debug(
             "track {}: gated out {} of {} measurements: {}",
@@ -628,8 +628,12 @@ class TestFilterHealth:
             level="DEBUG",
         )
         try:
-            log_filter_health(1, nis_value=1.0, nis_window=[1.0] * 5, cov_condition=10.0)
-            log_filter_health(2, nis_value=99.0, nis_window=[50.0] * 5, cov_condition=1e15)
+            log_filter_health(
+                1, nis_value=1.0, nis_window=[1.0] * 5, cov_condition=10.0
+            )
+            log_filter_health(
+                2, nis_value=99.0, nis_window=[50.0] * 5, cov_condition=1e15
+            )
         finally:
             _l.remove(handle)
             disable_debug_logging()

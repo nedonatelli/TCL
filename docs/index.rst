@@ -62,6 +62,7 @@ state estimation.
 
    gpu_acceleration
    performance_optimization
+   diagnostics
 
 .. toctree::
    :maxdepth: 2
