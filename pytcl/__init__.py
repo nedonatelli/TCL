@@ -37,12 +37,14 @@ from pytcl import (
     astronomical,
     atmosphere,
     core,
+    diagnostics,
     io,
     navigation,
     performance_evaluation,
     plotting,
     trackers,
 )
+from pytcl.diagnostics import disable_debug_logging, enable_debug_logging
 
 
 # Version tuple for programmatic access
@@ -77,4 +79,7 @@ __all__ = [
     "trackers",
     "performance_evaluation",
     "plotting",
+    "diagnostics",
+    "enable_debug_logging",
+    "disable_debug_logging",
 ]
