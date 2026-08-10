@@ -22,6 +22,7 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
 from pytcl.assignment_algorithms.gating import mahalanobis_distance
+from pytcl.diagnostics import diagnostics_enabled, logger
 from pytcl.trackers.hypothesis import (
     Hypothesis,
     HypothesisTree,
@@ -593,7 +594,24 @@ class MHTTracker:
                 self.hypothesis_tree.hypotheses = [best]
 
         # Prune
+        log_pruning = diagnostics_enabled()
+        pre_prune_count = len(self.hypothesis_tree.hypotheses) if log_pruning else 0
         self.hypothesis_tree.prune()
+
+        if log_pruning:
+            post_prune_count = len(self.hypothesis_tree.hypotheses)
+            best_score = (
+                max(h.probability for h in self.hypothesis_tree.hypotheses)
+                if self.hypothesis_tree.hypotheses
+                else 0.0
+            )
+            logger.bind(site="mht").debug(
+                "scan {}: {} hypotheses, pruned {}, best_score={:.6g}",
+                self._scan,
+                post_prune_count,
+                pre_prune_count - post_prune_count,
+                best_score,
+            )
 
     def _build_result(self) -> MHTResult:
         """Build result from current state."""

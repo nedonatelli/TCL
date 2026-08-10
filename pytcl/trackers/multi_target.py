@@ -12,6 +12,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.assignment_algorithms import chi2_gate_threshold, gnn_association
+from pytcl.diagnostics import diagnostics_enabled, logger
 
 
 class TrackStatus(Enum):
@@ -310,6 +311,27 @@ class MultiTargetTracker:
                         innovation @ np.linalg.solve(S, innovation)
                     )
 
+        if diagnostics_enabled():
+            for i, track in enumerate(self._tracks):
+                if track.status == TrackStatus.DELETED:
+                    continue
+                rejected = [
+                    (j, float(cost_matrix[i, j]))
+                    for j in range(n_meas)
+                    if cost_matrix[i, j] > self.gate_threshold
+                ]
+                if rejected:
+                    logger.bind(site="gating").debug(
+                        "track {}: gated out {} of {} measurements: {}",
+                        track.id,
+                        len(rejected),
+                        n_meas,
+                        "; ".join(
+                            f"m{j} d={d:.2f}>thr={self.gate_threshold:.2f}"
+                            for j, d in rejected
+                        ),
+                    )
+
         # Run GNN
         result = gnn_association(
             cost_matrix,
@@ -323,6 +345,18 @@ class MultiTargetTracker:
             meas_idx = result.track_to_measurement[i]
             if meas_idx >= 0:
                 associations[i] = meas_idx
+
+        if diagnostics_enabled():
+            pairs = [
+                (self._tracks[i].id, int(meas_idx))
+                for i, meas_idx in associations.items()
+            ]
+            logger.bind(site="association").debug(
+                "GNN assignment: {} pair(s) {}, total_cost={:.4f}",
+                len(pairs),
+                pairs,
+                float(result.total_cost),
+            )
 
         return associations
 

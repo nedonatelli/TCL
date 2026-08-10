@@ -17,6 +17,7 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
 from pytcl.assignment_algorithms.gating import mahalanobis_distance
+from pytcl.diagnostics import diagnostics_enabled, logger
 
 
 class JPDAResult(NamedTuple):
@@ -233,18 +234,29 @@ def jpda_probabilities(
     if n_meas == 0:
         # No measurements - all tracks have no association
         beta[:, 0] = 1.0
-        return beta
-
-    if n_tracks == 0:
-        return beta
-
-    # For small problems, use exact enumeration
-    # For larger problems, use approximate method
-    if n_tracks <= 5 and n_meas <= 5:
+    elif n_tracks == 0:
+        pass
+    elif n_tracks <= 5 and n_meas <= 5:
+        # For small problems, use exact enumeration
         beta = _jpda_exact(likelihood_matrix, gated, detection_prob, clutter_density)
     else:
+        # For larger problems, use approximate method
         beta = _jpda_approximate(
             likelihood_matrix, gated, detection_prob, clutter_density
+        )
+
+    if diagnostics_enabled():
+        top_marginals = [
+            (i, int(np.argmax(beta[i])), float(np.max(beta[i])))
+            for i in range(n_tracks)
+        ]
+        logger.bind(site="jpda").debug(
+            "jpda: {} track(s), top marginal per track: {}",
+            n_tracks,
+            "; ".join(
+                f"track{i} -> {'miss' if j == n_meas else f'm{j}'} p={p:.3f}"
+                for i, j, p in top_marginals
+            ),
         )
 
     return beta

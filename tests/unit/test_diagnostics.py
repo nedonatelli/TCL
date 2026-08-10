@@ -150,3 +150,125 @@ class TestDataFileInstrumentation:
         finally:
             _l.remove(handle)
         assert records == []  # disabled namespace emits nothing
+
+
+class TestGatingAssociationInstrumentation:
+    def _run_scenario(self, capture):
+        import numpy as np
+
+        from pytcl.trackers import MultiTargetTracker
+
+        tracker = MultiTargetTracker(
+            state_dim=4,
+            meas_dim=2,
+            F=np.array(
+                [[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float
+            ),
+            H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
+            Q=np.eye(4) * 0.01,
+            R=np.eye(2) * 1.0,
+            confirm_hits=1,
+        )
+        # Scan 1 starts a track at origin; scan 2 has one near measurement
+        # and one far measurement that MUST be gated out.
+        tracker.process([np.array([0.0, 0.0])], dt=1.0)
+        tracker.process([np.array([0.1, 0.1]), np.array([500.0, 500.0])], dt=1.0)
+
+    def test_gating_rejection_logged_when_enabled(self):
+        from loguru import logger as _l
+
+        records = []
+        enable_debug_logging()
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            self._run_scenario(records)
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        text = " ".join(str(r) for r in records)
+        assert "gate" in text.lower()
+        assert "assign" in text.lower() or "association" in text.lower()
+
+    def test_zero_records_and_zero_payload_when_disabled(self, monkeypatch):
+        from loguru import logger as _l
+
+        from pytcl.diagnostics import diagnostics_enabled as real
+
+        calls = []
+        # Patch the CONSUMING module's imported name -- the tracker holds a
+        # direct reference, so patching pytcl.diagnostics itself would miss.
+        monkeypatch.setattr(
+            "pytcl.trackers.multi_target.diagnostics_enabled",
+            lambda: (calls.append(1), real())[1],
+        )
+        records = []
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            self._run_scenario(records)
+        finally:
+            _l.remove(handle)
+        assert records == []
+        assert len(calls) > 0  # the guard IS consulted on the hot path
+
+    def test_jpda_summary_logged(self):
+        import numpy as np
+        from loguru import logger as _l
+
+        from pytcl.assignment_algorithms.jpda import jpda_probabilities
+
+        records = []
+        enable_debug_logging()
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            likelihood = np.array([[0.8, 0.1], [0.2, 0.7]])
+            gated = np.array([[True, True], [True, True]])
+            jpda_probabilities(
+                likelihood, gated, detection_prob=0.9, clutter_density=1e-6
+            )
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        assert any("jpda" in str(r).lower() for r in records)
+
+    def _run_mht_scenario(self):
+        import numpy as np
+
+        from pytcl.trackers import MHTTracker
+
+        tracker = MHTTracker(
+            state_dim=4,
+            meas_dim=2,
+            F=np.array(
+                [[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float
+            ),
+            H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
+            Q=np.eye(4) * 0.01,
+            R=np.eye(2) * 1.0,
+        )
+        tracker.process([np.array([0.0, 0.0])], dt=1.0)
+        tracker.process([np.array([0.1, 0.1])], dt=1.0)
+
+    def test_mht_hypothesis_summary_logged_when_enabled(self):
+        from loguru import logger as _l
+
+        records = []
+        enable_debug_logging()
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            self._run_mht_scenario()
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        text = " ".join(str(r) for r in records)
+        assert "hypothes" in text.lower()
+
+    def test_mht_zero_records_when_disabled(self):
+        from loguru import logger as _l
+
+        records = []
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            self._run_mht_scenario()
+        finally:
+            _l.remove(handle)
+        assert records == []
