@@ -30,6 +30,7 @@ from numpy.typing import NDArray
 
 from pytcl.core.array_utils import make_readonly
 from pytcl.core.paths import get_data_dir
+from pytcl.diagnostics import logger
 
 from .wmm import MagneticResult
 
@@ -362,11 +363,24 @@ def _load_coefficients_cached(
     data_dir = get_data_dir()
 
     # Try different file extensions
-    for ext in [".cof", ".COF", ".txt", ".dat"]:
+    extensions = [".cof", ".COF", ".txt", ".dat"]
+    for ext in extensions:
         filepath = data_dir / f"{model}{ext}"
+        logger.bind(site="data-files").debug(
+            "{} candidate {} in {}", model, filepath, data_dir
+        )
         if filepath.exists():
+            logger.bind(site="data-files").debug(
+                "{} coefficient file found: {}", model, filepath
+            )
             break
     else:
+        logger.bind(site="data-files").debug(
+            "{} coefficient file missing in {} (tried extensions {})",
+            model,
+            data_dir,
+            extensions,
+        )
         ncei_base = "https://www.ncei.noaa.gov/products"
         emm_url = f"{ncei_base}/enhanced-magnetic-model"
         wmmhr_url = f"{ncei_base}/world-magnetic-model-high-resolution"

@@ -192,10 +192,17 @@ def _find_gebco_file(version: str = "GEBCO2025") -> Path:
     ]
 
     for pattern in patterns:
+        logger.bind(site="data-files").debug(
+            "GEBCO candidate pattern {} in {}", pattern, data_dir
+        )
         matches = list(data_dir.glob(pattern))
         if matches:
+            logger.bind(site="data-files").debug("GEBCO file found: {}", matches[0])
             return matches[0]
 
+    logger.bind(site="data-files").debug(
+        "GEBCO file missing for {} in {} (tried {})", version, data_dir, patterns
+    )
     url = GEBCO_PARAMETERS.get(version, {}).get("url", "https://www.gebco.net/")
     raise FileNotFoundError(
         f"GEBCO file not found for {version}\n"
@@ -233,7 +240,11 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
     file_pattern = EARTH2014_PARAMETERS[layer]["file_pattern"]
     filepath = data_dir / file_pattern
 
+    logger.bind(site="data-files").debug(
+        "Earth2014 candidate {} in {}", filepath, data_dir
+    )
     if filepath.exists():
+        logger.bind(site="data-files").debug("Earth2014 file found: {}", filepath)
         return filepath
 
     # Try alternative patterns
@@ -245,9 +256,20 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
 
     for pattern in alt_patterns:
         alt_path = data_dir / pattern
+        logger.bind(site="data-files").debug(
+            "Earth2014 candidate {} in {}", alt_path, data_dir
+        )
         if alt_path.exists():
+            logger.bind(site="data-files").debug("Earth2014 file found: {}", alt_path)
             return alt_path
 
+    logger.bind(site="data-files").debug(
+        "Earth2014 file missing for layer {} in {} (tried {}, {})",
+        layer,
+        data_dir,
+        filepath,
+        alt_patterns,
+    )
     raise FileNotFoundError(
         f"Earth2014 {layer} file not found.\n"
         f"Please download from: https://ddfe.curtin.edu.au/models/Earth2014/\n"

@@ -113,3 +113,40 @@ class TestRendering:
 
         assert "progress" in inspect.signature(load_gebco).parameters
         assert "progress" in inspect.signature(load_earth2014).parameters
+
+
+class TestDataFileInstrumentation:
+    def test_missing_file_resolution_is_logged(self, tmp_path, monkeypatch):
+        from loguru import logger as _l
+
+        from pytcl.terrain.loaders import load_gebco
+
+        monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+        records = []
+        enable_debug_logging()
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            with pytest.raises((FileNotFoundError, Exception)):
+                load_gebco(0.0, 0.1, 0.0, 0.1)
+        finally:
+            _l.remove(handle)
+            disable_debug_logging()
+        text = " ".join(str(r) for r in records)
+        assert str(tmp_path) in text  # the resolved directory
+        assert "PYTCL_DATA_DIR" in text  # the override was named
+        assert "missing" in text or "not found" in text
+
+    def test_silent_when_disabled(self, tmp_path, monkeypatch):
+        from loguru import logger as _l
+
+        from pytcl.terrain.loaders import load_gebco
+
+        monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+        records = []
+        handle = _l.add(records.append, format="{message}", level="DEBUG")
+        try:
+            with pytest.raises((FileNotFoundError, Exception)):
+                load_gebco(0.0, 0.1, 0.0, 0.1)
+        finally:
+            _l.remove(handle)
+        assert records == []  # disabled namespace emits nothing

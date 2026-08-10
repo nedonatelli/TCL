@@ -31,6 +31,7 @@ from numpy.typing import NDArray
 
 from pytcl.core.array_utils import make_readonly
 from pytcl.core.paths import get_data_dir
+from pytcl.diagnostics import logger as _diag_logger
 
 from .clenshaw import clenshaw_gravity, clenshaw_potential
 from .models import WGS84, normal_gravity_somigliana
@@ -350,8 +351,14 @@ def _load_coefficients_cached(
     filepath = data_dir / f"{model}.cof"
 
     _logger.debug("Loading %s coefficients from %s", model, filepath)
+    _diag_logger.bind(site="data-files").debug(
+        "{} candidate {} in {}", model, filepath, data_dir
+    )
 
     if not filepath.exists():
+        _diag_logger.bind(site="data-files").debug(
+            "{} coefficient file missing: {}", model, filepath
+        )
         raise FileNotFoundError(
             f"Coefficient file not found: {filepath}\n"
             f"Please download the {model} coefficients from:\n"
@@ -359,6 +366,9 @@ def _load_coefficients_cached(
             f"and save to: {filepath}\n"
             f"Or use create_test_coefficients() for testing."
         )
+    _diag_logger.bind(site="data-files").debug(
+        "{} coefficient file found: {}", model, filepath
+    )
 
     # Parse the file
     actual_n_max = n_max if n_max is not None else int(params["n_max_full"])

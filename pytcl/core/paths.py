@@ -7,6 +7,8 @@ use this common utility for locating the data directory.
 import os
 from pathlib import Path
 
+from pytcl.diagnostics import logger
+
 
 def get_data_dir() -> Path:
     """Get the pytcl data directory for external data files.
@@ -21,8 +23,15 @@ def get_data_dir() -> Path:
     """
     env_dir = os.environ.get("PYTCL_DATA_DIR")
     if env_dir:
-        return Path(env_dir)
-    return Path.home() / ".pytcl" / "data"
+        path = Path(env_dir)
+        override = "override active"
+    else:
+        path = Path.home() / ".pytcl" / "data"
+        override = "not set"
+    logger.bind(site="data-files").debug(
+        "data dir resolved to {} (PYTCL_DATA_DIR {})", path, override
+    )
+    return path
 
 
 def ensure_data_dir() -> Path:
