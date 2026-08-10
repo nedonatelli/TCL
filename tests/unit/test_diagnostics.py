@@ -66,3 +66,50 @@ class TestEnableDisable:
     def test_reexported_from_top_level(self):
         assert pytcl.enable_debug_logging is enable_debug_logging
         assert pytcl.disable_debug_logging is disable_debug_logging
+
+
+class TestRendering:
+    def _tracks(self):
+        import numpy as np
+
+        from pytcl.trackers import MultiTargetTracker
+
+        tracker = MultiTargetTracker(
+            state_dim=4,
+            meas_dim=2,
+            F=np.eye(4),
+            H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
+            Q=np.eye(4) * 0.01,
+            R=np.eye(2) * 2.0,
+        )
+        tracks = tracker.process([np.array([1.0, 2.0])], dt=1.0)
+        return tracks
+
+    def test_track_table_is_ascii_only(self):
+        import io
+
+        from rich.console import Console
+
+        from pytcl.diagnostics import track_table
+
+        buf = io.StringIO()
+        track_table(self._tracks(), console=Console(file=buf, width=100))
+        out = buf.getvalue()
+        assert len(out) > 0
+        out.encode("cp1252")  # raises UnicodeEncodeError on any unsafe char
+
+    def test_progress_bar_yields_all_items_and_is_ascii(self, capsys):
+        from pytcl.diagnostics import progress_bar
+
+        items = list(progress_bar(range(5), description="test"))
+        assert items == [0, 1, 2, 3, 4]
+        err = capsys.readouterr().err
+        err.encode("cp1252")
+
+    def test_terrain_progress_param_accepted(self):
+        import inspect
+
+        from pytcl.terrain.loaders import load_earth2014, load_gebco
+
+        assert "progress" in inspect.signature(load_gebco).parameters
+        assert "progress" in inspect.signature(load_earth2014).parameters

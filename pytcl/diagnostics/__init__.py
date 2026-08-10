@@ -78,3 +78,15 @@ def disable_debug_logging() -> None:
         _handler_id = None
     _logger.disable("pytcl")
     _enabled = False
+
+
+from pytcl.diagnostics.render import progress_bar, track_table  # noqa: E402
+
+__all__ = [
+    "logger",
+    "diagnostics_enabled",
+    "enable_debug_logging",
+    "disable_debug_logging",
+    "track_table",
+    "progress_bar",
+]

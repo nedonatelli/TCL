@@ -44,7 +44,12 @@ from pytcl import (
     plotting,
     trackers,
 )
-from pytcl.diagnostics import disable_debug_logging, enable_debug_logging
+from pytcl.diagnostics import (
+    disable_debug_logging,
+    enable_debug_logging,
+    progress_bar,
+    track_table,
+)
 
 
 # Version tuple for programmatic access
@@ -82,4 +87,6 @@ __all__ = [
     "diagnostics",
     "enable_debug_logging",
     "disable_debug_logging",
+    "track_table",
+    "progress_bar",
 ]
