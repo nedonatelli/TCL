@@ -249,6 +249,8 @@ class TestGatingAssociationInstrumentation:
         tracker.process([np.array([0.1, 0.1])], dt=1.0)
 
     def test_mht_hypothesis_summary_logged_when_enabled(self):
+        import re
+
         from loguru import logger as _l
 
         records = []
@@ -260,7 +262,10 @@ class TestGatingAssociationInstrumentation:
             _l.remove(handle)
             disable_debug_logging()
         text = " ".join(str(r) for r in records)
-        assert "hypothes" in text.lower()
+        # Match the real payload (counts + best_score), not just the static
+        # "hypotheses" literal in the format string -- a garbled or empty
+        # payload must fail this.
+        assert re.search(r"\d+ hypotheses, pruned \d+, best_score=[-\d.eE+]+", text)
 
     def test_mht_zero_records_when_disabled(self):
         from loguru import logger as _l
