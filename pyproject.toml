@@ -69,6 +69,21 @@ signal = [
 ]
 gpu = [
     "cupy-cuda12x>=12.0.0",
+    # CUDA 12 runtime libraries as pip wheels (CuPy >= 13 discovers them in
+    # site-packages). Without these, cupy-cuda12x fails with ImportError
+    # (libcublas.so.12) on hosts whose system CUDA is 13.x, and NVRTC < 12.8
+    # cannot JIT kernels for Blackwell (sm_120) GPUs. Verified 2026-08-09 on
+    # a CUDA 13.0 / RTX 5090 host: all 85 CuPy-gated tests pass with these,
+    # fail without. Linux-only wheels; Windows CUDA users rely on a system
+    # CUDA 12.8+ toolkit as before.
+    "nvidia-cublas-cu12>=12.8; platform_system == 'Linux'",
+    "nvidia-cusolver-cu12>=11.7; platform_system == 'Linux'",
+    "nvidia-cufft-cu12>=11.3; platform_system == 'Linux'",
+    "nvidia-curand-cu12>=10.3.9; platform_system == 'Linux'",
+    "nvidia-cusparse-cu12>=12.5.8; platform_system == 'Linux'",
+    "nvidia-nvjitlink-cu12>=12.8; platform_system == 'Linux'",
+    "nvidia-cuda-nvrtc-cu12>=12.8; platform_system == 'Linux'",
+    "nvidia-cuda-runtime-cu12>=12.8; platform_system == 'Linux'",
 ]
 gpu-apple = [
     "mlx>=0.16.0",
