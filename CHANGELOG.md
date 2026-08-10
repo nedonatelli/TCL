@@ -48,6 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   higher-degree CKFs a one-liner.
 
 ### Fixed
+- `pip install nrl-tracker[gpu]` now works on hosts whose system CUDA is
+  13.x and on Blackwell GPUs: the extra ships the CUDA 12 runtime libraries
+  as pip wheels (cuBLAS, cuSOLVER, cuFFT, cuRAND, cuSPARSE, nvJitLink,
+  NVRTC >= 12.8). Previously `to_gpu`/linear-algebra calls failed with
+  `ImportError: libcublas.so.12` on CUDA-13-only systems. Verified on a
+  CUDA 13.0 / RTX 5090 host: all 85 CuPy-gated tests pass.
 - The docs code-block gate now actually executes in CI: matplotlib was
   missing from the CI environment, which failed the gate's self-tests and
   silently skipped 36 documentation pages (matplotlib now ships in the dev

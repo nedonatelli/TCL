@@ -396,6 +396,16 @@ No backend is installed (or you are on hardware without one). The batch
 functions themselves still work -- they fall back to NumPy -- but explicit
 ``to_gpu`` calls require a backend.
 
+**ImportError: libcublas.so.12 (or another lib...so.12)**
+
+Your system CUDA is 13.x (or missing entirely) and only ``cupy-cuda12x``
+itself is installed. The ``[gpu]`` extra ships the CUDA 12 runtime
+libraries as pip wheels on Linux, so reinstalling with
+``pip install nrl-tracker[gpu]`` resolves this; on Windows, install a
+system CUDA 12.8+ toolkit. NVRTC older than 12.8 also cannot compile
+kernels for Blackwell (RTX 50-series) GPUs -- the pinned wheels cover
+that case too.
+
 **Slower than the CPU**
 
 Almost always one of: the batch is too small to amortize transfer overhead,
