@@ -7,16 +7,19 @@ whose export side is :mod:`pytcl.io.dataframes` -- a table written by
 ``metrics_to_polars`` (or any tool) with a time column and one column per
 measurement component reads back through these functions unchanged.
 
-`read_measurements_csv` uses only the standard library and has no optional
-dependency. `read_measurements_parquet` requires polars (the ``dataframe``
-extra); it is imported lazily, mirroring the guard in
+polars is the parsing engine for both readers (the ``dataframe`` extra):
+`read_measurements_csv` uses ``pl.read_csv``, `read_measurements_parquet`
+uses ``pl.read_parquet``, and both feed the same downstream grouping so a
+CSV and a Parquet file holding identical data produce identical
+`MeasurementSet` values -- including dtype-inferred columns like a numeric
+`id_column`. polars is imported lazily by both, mirroring the guard in
 :mod:`pytcl.io.dataframes` (`_import_polars`/`_dependency_error`), so
-importing this module never requires polars to be installed.
+importing this module never requires polars to be installed; calling
+either reader without it raises `DependencyError`.
 """
 
 from __future__ import annotations
 
-import csv
 from os import PathLike
 from typing import Any, Mapping, NamedTuple, Sequence
 
@@ -61,7 +64,7 @@ def _dependency_error() -> DependencyError:
     the reader feature specifically.
     """
     return DependencyError(
-        "polars is required to read Parquet measurement files.",
+        "polars is required to read CSV or Parquet measurement files.",
         package="polars",
         feature="dataframe import of measurement results",
         install_command=f"pip install {DISTRIBUTION_NAME}[dataframe]",
@@ -164,6 +167,10 @@ def read_measurements_csv(
 ) -> MeasurementSet:
     """Read measurement reports from a CSV file into a `MeasurementSet`.
 
+    Parsed with polars (``pl.read_csv``); column dtypes are polars' inferred
+    schema, so e.g. an all-integer `id_column` reads back as a numpy integer
+    array rather than strings -- the same as `read_measurements_parquet`.
+
     Parameters
     ----------
     path : str or path-like
@@ -190,6 +197,8 @@ def read_measurements_csv(
     ValueError
         If `time_column`, any of `measurement_columns`, or `id_column` is
         not a column in the file; the message lists the available columns.
+    DependencyError
+        If polars is not installed.
 
     Examples
     --------
@@ -210,15 +219,14 @@ def read_measurements_csv(
     True
     >>> tmpdir.cleanup()
     """
+    pl = _import_polars()
     measurement_columns = list(measurement_columns)
-    with open(path, newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        available = reader.fieldnames or []
-        rows = list(reader)
+    df = pl.read_csv(path)
+    rows = df.rows(named=True)
 
     return _rows_to_measurement_set(
         rows,
-        available,
+        df.columns,
         time_column=time_column,
         measurement_columns=measurement_columns,
         id_column=id_column,
@@ -235,8 +243,7 @@ def read_measurements_parquet(
     """Read measurement reports from a Parquet file into a `MeasurementSet`.
 
     Same grouping and column-mapping contract as `read_measurements_csv`;
-    see that function's docstring. Column dtypes are read natively via
-    polars rather than parsed from text.
+    see that function's docstring.
 
     Parameters
     ----------

@@ -21,12 +21,15 @@ def _write_csv(path, rows, header):
 
 
 # Shared fixture data: three rows, two of them sharing timestamp 0.0, out of
-# ascending order on disk so ordering is actually exercised.
-_HEADER = ["t", "x", "y", "aircraft"]
+# ascending order on disk so ordering is actually exercised. `id_num` is an
+# all-integer column so polars infers a numeric dtype for it from both CSV
+# text and a typed Parquet column -- the case that would have diverged under
+# the old stdlib-csv reader (everything comes back as strings there).
+_HEADER = ["t", "x", "y", "aircraft", "id_num"]
 _ROWS = [
-    (1.0, 5.0, 6.0, "B2"),
-    (0.0, 1.0, 2.0, "A1"),
-    (0.0, 3.0, 4.0, "A2"),
+    (1.0, 5.0, 6.0, "B2", 20),
+    (0.0, 1.0, 2.0, "A1", 10),
+    (0.0, 3.0, 4.0, "A2", 11),
 ]
 
 
@@ -107,6 +110,19 @@ class TestReadMeasurementsCsv:
                 id_column="callsign",
             )
 
+    def test_dependency_error_without_polars(self, monkeypatch, tmp_path):
+        import pytcl.io.readers as mod
+
+        monkeypatch.setattr(mod, "_import_polars", mod._raise_missing)
+        from pytcl.core.exceptions import DependencyError
+
+        with pytest.raises(DependencyError, match="dataframe"):
+            read_measurements_csv(
+                tmp_path / "does_not_matter.csv",
+                time_column="t",
+                measurement_columns=["x"],
+            )
+
 
 class TestReadMeasurementsParquet:
     def _write_parquet(self, path):
@@ -116,6 +132,7 @@ class TestReadMeasurementsParquet:
                 "x": [row[1] for row in _ROWS],
                 "y": [row[2] for row in _ROWS],
                 "aircraft": [row[3] for row in _ROWS],
+                "id_num": [row[4] for row in _ROWS],
             }
         )
         df.write_parquet(path)
@@ -158,19 +175,39 @@ class TestReadMeasurementsParquet:
             )
 
     def test_csv_and_parquet_agree_bitwise(self, tmp_path):
+        """Both readers are polars behind the same `_rows_to_measurement_set`
+        grouping, so identical data must produce an identical `MeasurementSet`:
+        times and scans bitwise, and a numeric `id_column` equal in both value
+        and dtype -- not just value, since a reader that silently stringified
+        ids (the old stdlib-csv behavior) would still pass a value-only check.
+        """
         csv_path = tmp_path / "meas.csv"
         _write_csv(csv_path, _ROWS, _HEADER)
         parquet_path = self._write_parquet(tmp_path / "meas.parquet")
 
         ms_csv = read_measurements_csv(
-            csv_path, time_column="t", measurement_columns=["x", "y"]
+            csv_path,
+            time_column="t",
+            measurement_columns=["x", "y"],
+            id_column="id_num",
         )
         ms_parquet = read_measurements_parquet(
-            parquet_path, time_column="t", measurement_columns=["x", "y"]
+            parquet_path,
+            time_column="t",
+            measurement_columns=["x", "y"],
+            id_column="id_num",
         )
+
         assert ms_csv.times.tobytes() == ms_parquet.times.tobytes()
         for a, b in zip(ms_csv.scans, ms_parquet.scans):
             assert a.tobytes() == b.tobytes()
+
+        assert ms_csv.ids is not None and ms_parquet.ids is not None
+        assert len(ms_csv.ids) == len(ms_parquet.ids)
+        for a, b in zip(ms_csv.ids, ms_parquet.ids):
+            assert a.dtype == b.dtype
+            assert a.dtype.kind in "iu", f"expected a numeric id dtype, got {a.dtype}"
+            assert a.tolist() == b.tolist()
 
     def test_dependency_error_without_polars(self, monkeypatch, tmp_path):
         import pytcl.io.readers as mod
