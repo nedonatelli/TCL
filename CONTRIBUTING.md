@@ -423,9 +423,9 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.0.0):
+Current metrics (v2.1.0):
 - **Functions:** 1,400+
-- **Modules:** 133
+- **Modules:** 135
 - **Tests:** 6,200+ (all passing)
 - **Coverage:** 90%
 
@@ -436,6 +436,17 @@ parity line is retired here rather than repeated.
 docs/matlab_parity_inventory.rst carries the honest per-component account.
 - **GPU Backends:** 2 (CuPy + MLX)
 - **Performance:** Numba JIT + lru_cache optimizations
+
+### 2b. Re-read the claim-bearing docs pages
+
+Rebuilding the docs does not re-read them. Before tagging, open and read
+the pages that make claims about the project's current state --
+`docs/index.rst` (the front-page badge line), `docs/roadmap.rst` (a
+hand-maintained mirror of ROADMAP.md; mirrors drift), this file's metrics
+block above, and any page naming the toolchain. The v2.1.0 release
+shipped with the front page still claiming a type checker that release
+itself had retired; this step exists because the checklist's "rebuild
+docs" line did not catch that.
 
 ### 3. Sync Examples
 
