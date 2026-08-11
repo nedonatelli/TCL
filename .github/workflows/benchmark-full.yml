@@ -106,9 +106,12 @@ jobs:
           git diff --staged --quiet || git commit -m "chore: Update benchmark history [skip ci]"
           # Two pushes to main in quick succession start two of these runs, and
           # whichever commits second is rejected non-fast-forward. The history
-          # file is append-only, so rebasing onto whatever landed first is
-          # always the right resolution.
+          # file is append-only; .gitattributes marks it merge=union so the
+          # rebase self-resolves the append-append conflict. The abort guard
+          # clears any half-finished rebase so a failed attempt cannot poison
+          # the next one (that exact failure ate all three retries once).
           for attempt in 1 2 3; do
+            git rebase --abort >/dev/null 2>&1 || true
             git pull --rebase --autostash origin main && git push && exit 0
             echo "push attempt $attempt was beaten to it; retrying"
             sleep 5
