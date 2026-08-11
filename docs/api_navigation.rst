@@ -473,7 +473,7 @@ Type Hints and Signatures
 **Benefits**:
 
 - IDE autocomplete shows expected types
-- Type checking (mypy, pyright) catches errors
+- Type checking (ty, mypy, pyright) catches errors
 - Self-documenting code
 
 Common Errors and Solutions
@@ -634,7 +634,7 @@ Best Practices
 
 3. **Use the type hints**
 
-   Enable mypy checking in your IDE, and trust IDE autocomplete.
+   Enable a type checker (ty, mypy, or pyright) in your IDE, and trust IDE autocomplete.
 
 4. **Understand the math**
 
