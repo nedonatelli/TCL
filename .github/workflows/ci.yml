@@ -160,6 +160,16 @@ jobs:
         # examples exercise the real dependency set.
         run: uv sync --locked --extra all
 
+      - name: Cache JPL ephemeris kernel
+        # ephemeris_demo.py downloads DE440 (~114 MB) from naif.jpl.nasa.gov
+        # on first use; a NASA-side timeout turns into a red examples job
+        # (it did on 2026-08-11). Cache the kernel so the download happens
+        # once per cache lifetime, not once per run.
+        uses: actions/cache@v4
+        with:
+          path: ~/.jplephem
+          key: jplephem-de440
+
       - name: Run every example script
         # PYTCL_SHOW_PLOTS=0 is set by the test itself, which also blocks
         # fig.show() outright so an unguarded call fails rather than silently
