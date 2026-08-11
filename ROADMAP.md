@@ -1,12 +1,14 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.0.0, released 6 August 2026
-**Test Suite:** 6,000+ tests passing, 100% mypy --strict compliance; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
-**Status:** v2.0.0 is released, closing the v2 correctness audit. On parity:
-the core tracking workflow is fully ported and oracle-validated, and the full
-MATLAB surface is covered at roughly a third by function count — see
-`docs/matlab_parity_inventory.rst`, which supersedes any "feature-complete
-parity" phrasing.
+**Current Version:** v2.1.0, released 10 August 2026
+**Test Suite:** 6,200+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Status:** v2.1.0 (the Diagnostics release) is out: opt-in observability,
+the estimation-grade cubature library, and real-data validation (recorded
+air traffic, real TLE history, first real-hardware CuPy verification). On
+parity: the core tracking workflow is fully ported and oracle-validated,
+and the full MATLAB surface is covered at roughly a third by function
+count — see `docs/matlab_parity_inventory.rst`, which supersedes any
+"feature-complete parity" phrasing.
 
 This document covers **planned and future work only**. For what has already shipped, see
 [CHANGELOG.md](CHANGELOG.md), the [GitHub releases](https://github.com/nedonatelli/TCL/releases),
@@ -16,7 +18,7 @@ and git history.
 
 ## Table of Contents
 
-1. [v2.1 Roadmap](#v21-roadmap-post-v200)
+1. [v2.2 Roadmap](#v22-roadmap-post-v210)
 2. [Performance Targets](#performance-targets)
 3. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
 4. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
@@ -26,7 +28,7 @@ and git history.
 
 ---
 
-## v2.1 Roadmap (Post-v2.0.0)
+## v2.2 Roadmap (Post-v2.1.0)
 
 ### Measured backlog (from the MATLAB parity inventory)
 
@@ -61,13 +63,12 @@ No dates are attached because none have been decided:
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
 
-Session-identified, held deliberately out of 2.0.0:
+Session-identified, held deliberately out of earlier releases:
 
-- ADS-B tracking validation against live traffic (local branch
-  `test/adsb-real-data-validation`; CC0 fixture and 10 tests ready)
-- Satellite tracking validation (TLE/SGP4 prediction experiments, scratchpad)
 - HDF5 compression to the once-claimed 5-10x (states-only chunking or a
   covariance transform; the honest measured figure today is 1.3-4.3x)
+- Synthetic `.nc` fixture so the GEBCO loader's diagnostics path is
+  exercised end-to-end in CI (currently code-review-only confidence)
 
 ### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
 
@@ -202,7 +203,7 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design -- validated on real hardware for 2.0.0 (RTX 5080); the manual `GPU` workflow re-runs them on demand |
+| CuPy tests skip on machines without an NVIDIA GPU | By design -- first verified on real hardware for 2.1.0 (RTX 5090, CUDA 13; the run also caught and fixed the `[gpu]` extra's missing CUDA 12 wheels); the manual `GPU` workflow re-runs them on demand |
 
 ### Medium Priority
 
@@ -381,5 +382,5 @@ for reference implementations.
 ---
 
 **Current Phase:** v2.1.0 released
-**Next Milestone:** v2.1.0 (diagnostics; see the modernization campaign)
+**Next Milestone:** v2.2.0 (Results I/O; see the modernization campaign)
 No dates are attached to anything in this document: none have been decided.
