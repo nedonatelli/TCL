@@ -36,6 +36,16 @@ from pytcl.io.compat import (
 from pytcl.io.hdf5_storage import HDF5Storage
 from pytcl.io.hdf5_track_storage import TrackHDF5Storage
 from pytcl.io.migration import MigrationHelper
+from pytcl.io.serialize import (
+    SimpleTrack,
+    StateRecord,
+    TrackRecord,
+    TrackSet,
+    decode_states,
+    decode_tracks,
+    encode_states,
+    encode_tracks,
+)
 from pytcl.io.sql_storage import SQLStorage
 from pytcl.io.storage import StorageBackend
 from pytcl.io.track_database import TrackDatabaseManager, TrackDatabaseStatus
@@ -55,4 +65,12 @@ __all__ = [
     "TrackerDatabaseAdapter",
     "store_filter_result",
     "MigrationHelper",
+    "TrackRecord",
+    "TrackSet",
+    "StateRecord",
+    "SimpleTrack",
+    "encode_tracks",
+    "decode_tracks",
+    "encode_states",
+    "decode_states",
 ]
