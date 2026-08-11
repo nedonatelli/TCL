@@ -41,6 +41,11 @@ from pytcl.io.dataframes import (
 from pytcl.io.hdf5_storage import HDF5Storage
 from pytcl.io.hdf5_track_storage import TrackHDF5Storage
 from pytcl.io.migration import MigrationHelper
+from pytcl.io.readers import (
+    MeasurementSet,
+    read_measurements_csv,
+    read_measurements_parquet,
+)
 from pytcl.io.serialize import (
     SimpleTrack,
     StateRecord,
@@ -81,4 +86,7 @@ __all__ = [
     "tracks_to_polars",
     "explode_state_columns",
     "metrics_to_polars",
+    "MeasurementSet",
+    "read_measurements_csv",
+    "read_measurements_parquet",
 ]
