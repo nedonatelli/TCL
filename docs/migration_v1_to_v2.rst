@@ -359,6 +359,10 @@ Removed modules
    ``logging.getLogger("pytcl.<subpackage>")`` — the hierarchy it configured is
    what the standard library gives you anyway.
 
+   As of v2.1.0, :doc:`pytcl.diagnostics <diagnostics>` is the redesigned
+   successor for opt-in diagnostic logging (silent by default,
+   ``enable_debug_logging()``); it shares no API with the removed module.
+
 ``pytcl.assignment_algorithms.network_simplex``
    Superseded by the Dijkstra-with-potentials implementation in v1.8.0, and its
    one function was separately incorrect. Min-cost flow remains available
