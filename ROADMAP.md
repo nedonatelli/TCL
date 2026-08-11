@@ -203,7 +203,7 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design -- first verified on real hardware for 2.1.0 (RTX 5090, CUDA 13; the run also caught and fixed the `[gpu]` extra's missing CUDA 12 wheels); the manual `GPU` workflow re-runs them on demand |
+| CuPy tests skip on machines without an NVIDIA GPU | By design. Exercised on real hardware twice: pre-2.0.0 on an RTX 5080 (found the doctest interop bugs now pinned by `test_gpu_doctest_hygiene.py`; no run artifact was kept) and for 2.1.0 on an RTX 5090/CUDA 13 (recorded; caught and fixed the `[gpu]` extra's missing CUDA 12 wheels). The manual `GPU` workflow exists for on-demand re-runs but has never been dispatched -- hardware runs to date were manual |
 
 ### Medium Priority
 
