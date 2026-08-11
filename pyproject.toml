@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nrl-tracker"
-version = "2.0.0"
+version = "2.1.0"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
 authors = [
@@ -121,7 +121,6 @@ dev = [
     # PEP 723 inline metadata instead).
     "rerun-sdk>=0.24",
     "ruff>=0.16.0",
-    "mypy>=1.0.0",
     "ty>=0.0.69",
     "prek>=0.4",
     "sphinx>=6.0.0",
@@ -193,9 +192,6 @@ ignore = ["E501"]
 [tool.ruff.lint.isort]
 known-first-party = ["pytcl"]
 
-# mypy config lives in mypy.ini; both are retired when the ty probation
-# ends in the v2.1.0 release PR (see the 2026-08-06 modernization spec).
-
 [tool.ty.environment]
 python-version = "3.10"
 
@@ -205,13 +201,12 @@ include = ["pytcl"]
 [tool.ty.rules]
 # Optional extras (cupy, mlx, plotly, netCDF4, pywavelets, jplephem) aren't
 # installed in the dev-group venv; every import site is try/except- or
-# is_available()-guarded at runtime. Same as mypy.ini's ignore_missing_imports.
+# is_available()-guarded at runtime.
 unresolved-import = "ignore"
 # numpy's ArrayLike/dtype widening (dtype[floating[Any]] vs dtype[float64],
 # List invariance over ArrayLike's union, scalar-or-array duck typing) plus
 # attributes on lifecycle-gated Optional handles (DB cursors, HDF5 files,
-# tracker state set post-initialize()). Same class of noise mypy.ini
-# suppressed via arg-type/index/union-attr/operator/call-overload.
+# tracker state set post-initialize()).
 # invalid-assignment and invalid-return-type are deliberately NOT ignored
 # here: both caught genuine bugs (wmm.py, wavelets.py, geometry.py) during
 # triage, so their remaining hits get per-site ignores instead, keeping the
@@ -221,8 +216,7 @@ not-subscriptable = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
 no-matching-overload = "ignore"
-# A few pre-existing bare `# type: ignore` comments suppress mypy-only
-# error codes (e.g. list-item) that aren't in ty's model; ty sees them as
-# unused. Both tools read the same comment during the mypy/ty probation,
-# so ty must not flag it as dead.
+# A few pre-existing bare `# type: ignore` comments suppress error codes
+# from the retired mypy gate (e.g. list-item) that aren't in ty's model;
+# ty would see them as unused. Kept until those sites are re-triaged.
 unused-type-ignore-comment = "ignore"

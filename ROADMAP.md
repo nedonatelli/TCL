@@ -72,12 +72,13 @@ Session-identified, held deliberately out of 2.0.0:
 ### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
 
 - **Tooling (no release):** uv-managed workflow (uv.lock, dependency
-  groups, CI on uv) and ty as the type-check gate with a mypy probation
-  ending at v2.1.0.
-- **v2.1.0 — Diagnostics:** `pytcl.diagnostics` — loguru logging (silent by
-  default, `enable_debug_logging()` opt-in), rich progress bars and track
-  tables, instrumentation at gating/association/filter-health decision
-  points.
+  groups, CI on uv) and ty as the type-check gate (mypy probation ended
+  on schedule at v2.1.0).
+- **v2.1.0 — Diagnostics (released 2026-08-10):** `pytcl.diagnostics` —
+  loguru logging (silent by default, `enable_debug_logging()` opt-in),
+  ASCII-safe rich progress bars and track tables, instrumentation at
+  gating/association/filter-health decision points and data-file
+  resolution, with tested silence and behavioral-neutrality guarantees.
 - **v2.2.0 — Results I/O:** polars ingest (CSV/Parquet) and `to_polars()`
   results accessors (new `[dataframe]` extra); msgspec export of track
   histories/states to JSON and MessagePack. Delivers the Parquet/Arrow
@@ -379,6 +380,6 @@ for reference implementations.
 
 ---
 
-**Current Phase:** v2.0.0 released
+**Current Phase:** v2.1.0 released
 **Next Milestone:** v2.1.0 (diagnostics; see the modernization campaign)
 No dates are attached to anything in this document: none have been decided.
