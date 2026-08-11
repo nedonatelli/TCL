@@ -1,0 +1,301 @@
+"""AIS NMEA decoding via pyais, with position-report extraction.
+
+pyais is an optional dependency (the ``ais`` extra). It is imported lazily
+inside `_import_pyais`, so importing this module never requires pyais to be
+installed; calling `decode_ais` or `ais_position_reports` without it raises
+:class:`~pytcl.core.exceptions.DependencyError`. This mirrors the guard
+pattern in :mod:`pytcl.io.dataframes` / :mod:`pytcl.io.readers`.
+
+This is the Python port's counterpart to the MATLAB TCL's
+``Transponders/decodeAISString``, which wraps libais; here pyais plays that
+role.
+
+Sentinel handling (ITU-R M.1371) is applied in `ais_position_reports` rather
+than left to pyais: empirically, pyais 3.2.1 does not normalize "not
+available" sentinels itself -- it returns them unchanged (lat 91 deg, lon
+181 deg, speed-over-ground 102.3 kn (1023 decideci-knots), course-over-ground
+360.0 deg (3600 decidegrees), heading 511) -- so this module detects the raw
+sentinel values coming back from pyais and converts each to NaN.
+"""
+
+from __future__ import annotations
+
+from typing import Any, NamedTuple, Sequence, Union
+
+import numpy as np
+from numpy.typing import NDArray
+
+from pytcl.core.exceptions import DependencyError
+from pytcl.core.optional_deps import DISTRIBUTION_NAME
+from pytcl.diagnostics import diagnostics_enabled, logger
+
+__all__ = [
+    "AISMessage",
+    "PositionReports",
+    "decode_ais",
+    "ais_position_reports",
+]
+
+#: msg_type values that carry a Class A or Class B position report
+#: (ITU-R M.1371 types 1, 2, 3, 18, 19).
+_POSITION_REPORT_TYPES = frozenset({1, 2, 3, 18, 19})
+
+# ITU-R M.1371 "not available" sentinels, as returned unmodified by pyais
+# 3.2.1 (see module docstring for how this was verified).
+_LAT_SENTINEL = 91.0
+_LON_SENTINEL = 181.0
+_SOG_SENTINEL = 102.3  # 1023 / 10 knots
+_COG_SENTINEL = 360.0  # 3600 / 10 degrees
+_HEADING_SENTINEL = 511
+
+_KNOTS_TO_MPS = 0.514444
+
+
+def _dependency_error() -> DependencyError:
+    """Build the DependencyError raised when pyais is unavailable."""
+    return DependencyError(
+        "pyais is required to decode AIS NMEA sentences.",
+        package="pyais",
+        feature="AIS decoding",
+        install_command=f"pip install {DISTRIBUTION_NAME}[ais]",
+    )
+
+
+def _import_pyais() -> Any:
+    """Import and return the ``pyais`` module, or raise `DependencyError`.
+
+    Returns
+    -------
+    module
+        The imported ``pyais`` module.
+
+    Raises
+    ------
+    DependencyError
+        If pyais is not installed.
+    """
+    try:
+        import pyais
+    except ImportError as e:
+        raise _dependency_error() from e
+    return pyais
+
+
+class AISMessage(NamedTuple):
+    """One decoded AIS message.
+
+    Attributes
+    ----------
+    msg_type : int
+        ITU-R M.1371 message type (1-27).
+    mmsi : int
+        Maritime Mobile Service Identity of the transmitting station.
+    fields : dict
+        The pyais payload, normalized via its own ``asdict()`` -- every
+        field the message type carries, including type-specific ones
+        (e.g. ``shipname`` for type 5) not surfaced by `PositionReports`.
+    """
+
+    msg_type: int
+    mmsi: int
+    fields: dict[str, Any]
+
+
+class PositionReports(NamedTuple):
+    """Position reports (msg types 1, 2, 3, 18, 19) as parallel arrays.
+
+    Attributes
+    ----------
+    mmsi : ndarray of int64, shape (n,)
+    t : ndarray of float64, shape (n,)
+        Receiver timestamp per report, from `times` when given to
+        `ais_position_reports`; NaN otherwise.
+    lat : ndarray of float64, shape (n,)
+        Latitude, radians. NaN where pyais reports the ITU-R M.1371
+        "not available" sentinel (91 deg).
+    lon : ndarray of float64, shape (n,)
+        Longitude, radians. NaN where pyais reports the sentinel (181 deg).
+    sog : ndarray of float64, shape (n,)
+        Speed over ground, m/s (pyais reports knots; converted here).
+        NaN where pyais reports the sentinel (102.3 kn).
+    cog : ndarray of float64, shape (n,)
+        Course over ground, radians. NaN where pyais reports the sentinel
+        (360.0 deg).
+    heading : ndarray of float64, shape (n,)
+        True heading, radians. NaN where pyais reports the sentinel (511).
+    """
+
+    mmsi: NDArray[np.int64]
+    t: NDArray[np.float64]
+    lat: NDArray[np.float64]
+    lon: NDArray[np.float64]
+    sog: NDArray[np.float64]
+    cog: NDArray[np.float64]
+    heading: NDArray[np.float64]
+
+
+def decode_ais(nmea_text: str) -> list[AISMessage]:
+    """Decode AIS NMEA sentences (one or more, newline-separated) to messages.
+
+    Multipart messages (e.g. type 5, split across two ``!AIVDM`` sentences
+    with the same sequence id) are reassembled automatically -- pyais's own
+    `~pyais.stream.IterMessages` groups fragments by sequence id, channel,
+    talker and fragment count before assembling and decoding them, so a
+    fragment is only turned into an `AISMessage` once every part of it has
+    arrived.
+
+    Lines that are not valid AIS sentences, or whose payload pyais cannot
+    decode (e.g. an unsupported message type), are skipped rather than
+    raising -- this is a batch decode over potentially noisy logs, not a
+    single-message parse. The number skipped is logged at DEBUG (site
+    ``"transponders"``) when diagnostics are enabled.
+
+    Parameters
+    ----------
+    nmea_text : str
+        One or more ``!AIVDM``/``!AIVDO`` sentences, one per line.
+
+    Returns
+    -------
+    list of AISMessage
+        One entry per successfully decoded (and, where applicable,
+        reassembled) message, in the order completed.
+
+    Raises
+    ------
+    DependencyError
+        If pyais is not installed.
+
+    Examples
+    --------
+    >>> from pytcl.transponders.ais import decode_ais
+    >>> vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+    >>> msgs = decode_ais(vdm)
+    >>> msgs[0].msg_type
+    1
+    >>> msgs[0].mmsi
+    366053209
+    """
+    _import_pyais()
+    from pyais.exceptions import AISBaseException
+    from pyais.stream import IterMessages
+
+    lines = [line for line in nmea_text.splitlines() if line.strip()]
+
+    messages: list[AISMessage] = []
+    consumed_lines = 0
+    for sentence in IterMessages.from_strings(lines):
+        try:
+            decoded = sentence.decode()
+        except AISBaseException:
+            continue
+        consumed_lines += sentence.fragment_count
+        messages.append(
+            AISMessage(
+                msg_type=int(decoded.msg_type),
+                mmsi=int(decoded.mmsi),
+                fields=decoded.asdict(),
+            )
+        )
+
+    n_skipped = len(lines) - consumed_lines
+    if diagnostics_enabled() and n_skipped > 0:
+        logger.bind(site="transponders").debug(
+            "decode_ais: skipped {} of {} line(s) that did not decode",
+            n_skipped,
+            len(lines),
+        )
+
+    return messages
+
+
+def _normalize(value: float, sentinel: float) -> float:
+    """Map pyais's raw sentinel value to NaN; pass everything else through."""
+    return float("nan") if value == sentinel else value
+
+
+def ais_position_reports(
+    nmea_text_or_messages: Union[str, Sequence[AISMessage]],
+    times: Sequence[float] | None = None,
+) -> PositionReports:
+    """Extract position reports (types 1, 2, 3, 18, 19) as parallel arrays.
+
+    Parameters
+    ----------
+    nmea_text_or_messages : str or sequence of AISMessage
+        Either raw NMEA text (decoded internally via `decode_ais`) or an
+        already-decoded message list, e.g. from a prior `decode_ais` call.
+    times : sequence of float, optional
+        One receiver timestamp per entry of `nmea_text_or_messages` (after
+        decoding, if text was given) -- ``times[i]`` is the timestamp for
+        the *i*-th decoded message, not the *i*-th position report. When
+        given, its length must equal the number of decoded messages.
+        Entries whose message is not a position report are dropped along
+        with that message. When omitted, `PositionReports.t` is all NaN.
+
+    Returns
+    -------
+    PositionReports
+        One row per position-report message, in decode order. Units:
+        lat/lon/cog/heading radians, sog m/s.
+
+    Raises
+    ------
+    ValueError
+        If `times` is given and its length does not match the number of
+        decoded messages.
+    DependencyError
+        If pyais is not installed.
+
+    Examples
+    --------
+    >>> from pytcl.transponders.ais import ais_position_reports
+    >>> vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+    >>> rep = ais_position_reports(vdm)
+    >>> rep.mmsi[0]
+    366053209
+    >>> bool(rep.lat[0] > 0)  # northern hemisphere
+    True
+    """
+    _import_pyais()
+
+    if isinstance(nmea_text_or_messages, str):
+        messages: Sequence[AISMessage] = decode_ais(nmea_text_or_messages)
+    else:
+        messages = nmea_text_or_messages
+
+    if times is not None and len(times) != len(messages):
+        raise ValueError(
+            f"times has length {len(times)}, expected {len(messages)} "
+            "(one per decoded message)"
+        )
+
+    mmsi: list[int] = []
+    t: list[float] = []
+    lat: list[float] = []
+    lon: list[float] = []
+    sog: list[float] = []
+    cog: list[float] = []
+    heading: list[float] = []
+
+    for i, msg in enumerate(messages):
+        if msg.msg_type not in _POSITION_REPORT_TYPES:
+            continue
+        f = msg.fields
+        mmsi.append(msg.mmsi)
+        t.append(float(times[i]) if times is not None else float("nan"))
+        lat.append(np.radians(_normalize(f["lat"], _LAT_SENTINEL)))
+        lon.append(np.radians(_normalize(f["lon"], _LON_SENTINEL)))
+        sog.append(_normalize(f["speed"], _SOG_SENTINEL) * _KNOTS_TO_MPS)
+        cog.append(np.radians(_normalize(f["course"], _COG_SENTINEL)))
+        heading.append(np.radians(_normalize(f["heading"], _HEADING_SENTINEL)))
+
+    return PositionReports(
+        mmsi=np.array(mmsi, dtype=np.int64),
+        t=np.array(t, dtype=np.float64),
+        lat=np.array(lat, dtype=np.float64),
+        lon=np.array(lon, dtype=np.float64),
+        sog=np.array(sog, dtype=np.float64),
+        cog=np.array(cog, dtype=np.float64),
+        heading=np.array(heading, dtype=np.float64),
+    )

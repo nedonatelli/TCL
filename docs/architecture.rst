@@ -4,17 +4,18 @@ Library Architecture
 Overview
 --------
 
-``pytcl`` is **135 modules** across **21 implemented packages**, exporting about
-1010 public names. There is no framework object to inherit from: the library is a
+``pytcl`` is **139 modules** across **22 implemented packages**, exporting about
+1030 public names. There is no framework object to inherit from: the library is a
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.
 
-Four placeholder packages — ``misc``, ``physical_values``, ``scheduling`` and
-``transponders`` — used to exist with no modules, mirroring the MATLAB
-directory layout. They were removed before 2.0.0: an importable-but-empty
-``pytcl.transponders`` implied AIS support that does not exist, which is worse
-than the honest ``ImportError``. If those capabilities are ported (see
-:doc:`matlab_parity_inventory`), the packages return with content.
+Three placeholder packages — ``misc``, ``physical_values`` and ``scheduling``
+— used to exist with no modules, mirroring the MATLAB directory layout. They
+were removed before 2.0.0: an importable-but-empty package implied support
+that does not exist, which is worse than the honest ``ImportError``.
+``pytcl.transponders`` was one of them until v2.2.0, when AIS decoding (see
+:mod:`pytcl.transponders.ais`) gave it real content; if the remaining three
+are ported (see :doc:`matlab_parity_inventory`), they return the same way.
 
 Subsystem Map
 -------------
@@ -247,6 +248,10 @@ Counts are measured from the packages themselves rather than asserted;
      - 1
      - 10
      - Opt-in loguru logging, ASCII-safe rich progress bars and track tables
+   * - ``transponders``
+     - 1
+     - 4
+     - AIS NMEA decoding and position-report extraction (pyais)
 
 Composition Examples
 --------------------
