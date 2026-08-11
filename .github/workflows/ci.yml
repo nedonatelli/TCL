@@ -33,29 +33,6 @@ jobs:
       - name: Type check with ty
         run: uv run ty check pytcl
 
-  # Non-blocking while ty is the gate: reveals anything ty misses relative
-  # to mypy --strict. This job and mypy.ini are deleted in the v2.1.0
-  # release PR (see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md).
-  # --strict, not just --ignore-missing-imports: the looser command had
-  # been passing while 12 strict errors accumulated in pytcl/io.
-  mypy-probation:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
-        with:
-          python-version: "3.11"
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --locked
-
-      - name: Type check with mypy (non-blocking)
-        run: uv run mypy pytcl --strict --ignore-missing-imports
-
   doctests:
     runs-on: ubuntu-latest
     steps:

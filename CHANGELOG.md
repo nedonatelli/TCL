@@ -5,9 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.1.0] - 2026-08-10
+
+The Diagnostics release: pytcl gains an opt-in observability layer, the
+validation suite gains real-world references (recorded air traffic, real
+TLE history, first real-hardware verification of the CuPy layer), and the
+estimation stack gains the Gaussian cubature-point library. Tooling
+completes the uv/ty migration; the mypy probation ends as scheduled.
 
 ### Changed
+- The mypy probation ended on schedule: the non-blocking CI job, mypy.ini,
+  and the mypy dev dependency are removed; ty is the sole type gate.
 - Dev tooling moved from the published `dev`/`benchmark` extras to PEP 735
   dependency groups; `pip install nrl-tracker[dev]` no longer exists and
   `[all]` now contains only user-facing extras. Contributors: `uv sync`.

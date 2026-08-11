@@ -3,7 +3,7 @@
 ## Project Overview
 
 Python port of the U.S. Naval Research Laboratory's Tracker Component Library (TCL).
-**Version:** 2.0.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
+**Version:** 2.1.0 | **Package name:** `nrl-tracker` | **Source:** `pytcl/`
 
 ## Quick Reference
 
@@ -61,7 +61,7 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 **Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `all` (astronomy+geodesy+terrain+visualization+signal; no gpu)
 
-Dev tooling (pytest, ruff, ty, mypy, sphinx, jupyter, etc.) is a PEP 735
+Dev tooling (pytest, ruff, ty, sphinx, jupyter, etc.) is a PEP 735
 `[dependency-groups]` entry, not a published extra — `uv sync` installs it
 by default; `all` does not include it and `pip install nrl-tracker[dev]`
 no longer exists.

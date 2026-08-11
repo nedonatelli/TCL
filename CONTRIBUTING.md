@@ -146,7 +146,7 @@ wrong — passing tests are necessary, not sufficient.
 
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
    an NVIDIA machine; the `GPU` workflow covers it on demand.
-4. **PR with green CI** — lint (ruff, pinned), types (ty, locked; mypy non-blocking during probation), tests
+4. **PR with green CI** — lint (ruff, pinned), types (ty, locked), tests
    (3 OS × 3 Python), docstring examples (`--doctest-modules`), docs build
    (zero docutils errors), benchmarks (SLO enforcement on main). Green CI
    means the checks that ran passed; it does not mean the GPU layers were
@@ -182,7 +182,7 @@ Rules of thumb:
 
 ### Tooling discipline
 
-- CI tool versions are **pinned** (ruff, mypy); bump deliberately in a PR
+- CI tool versions are **pinned** (ruff, ty); bump deliberately in a PR
   that also fixes whatever the new version flags.
 - Generated artifacts (benchmark history, plots) never mix into feature PRs.
 
@@ -338,9 +338,6 @@ When porting a function from the original MATLAB library:
    # Type check (gate)
    uv run ty check pytcl
 
-   # Type check (non-blocking during probation, ends v2.1.0)
-   uv run mypy pytcl
-
    # Run tests
    uv run pytest
    ```
@@ -353,10 +350,9 @@ When porting a function from the original MATLAB library:
 ## Current Development Status
 
 **Version:** v2.0.0
-**Test Suite:** 6,000+ tests passing (docstring examples also run in CI)
+**Test Suite:** 6,200+ tests passing (docstring examples also run in CI)
 **Code Coverage:** 90%
-**Quality:** 100% compliance (ruff check, ruff format); ty clean; mypy --strict
-non-blocking during probation (ends v2.1.0)
+**Quality:** 100% compliance (ruff check, ruff format); ty clean
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon), both verified on
 real hardware for 2.0.0
 **Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
@@ -430,7 +426,7 @@ pytest --cov=pytcl --cov-report=term
 Current metrics (v2.0.0):
 - **Functions:** 1,400+
 - **Modules:** 133
-- **Tests:** 6,000+ (all passing)
+- **Tests:** 6,200+ (all passing)
 - **Coverage:** 90%
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
@@ -460,9 +456,6 @@ uv run ruff check .
 
 # Type check (gate)
 uv run ty check pytcl
-
-# Type check (non-blocking during probation, ends v2.1.0)
-uv run mypy --strict pytcl
 
 # Run full test suite with coverage
 uv run pytest tests/ --cov=pytcl --cov-report=term-missing
