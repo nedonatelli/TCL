@@ -33,6 +33,11 @@ from pytcl.io.compat import (
     UKFTrackAdapter,
     store_filter_result,
 )
+from pytcl.io.dataframes import (
+    explode_state_columns,
+    metrics_to_polars,
+    tracks_to_polars,
+)
 from pytcl.io.hdf5_storage import HDF5Storage
 from pytcl.io.hdf5_track_storage import TrackHDF5Storage
 from pytcl.io.migration import MigrationHelper
@@ -73,4 +78,7 @@ __all__ = [
     "decode_tracks",
     "encode_states",
     "decode_states",
+    "tracks_to_polars",
+    "explode_state_columns",
+    "metrics_to_polars",
 ]

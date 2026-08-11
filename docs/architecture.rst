@@ -196,8 +196,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 38
      - CuPy and MLX backends for array-heavy routines
    * - ``io``
-     - 7
-     - 14
+     - 9
+     - 25
      - Track and measurement persistence, including HDF5
    * - ``coordinate_systems``
      - 5
