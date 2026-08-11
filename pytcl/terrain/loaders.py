@@ -29,6 +29,7 @@ from pytcl.core.array_utils import make_readonly
 from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import DISTRIBUTION_NAME
 from pytcl.core.paths import get_data_dir
+from pytcl.diagnostics import logger, progress_bar
 
 from .dem import DEMGrid
 
@@ -191,10 +192,17 @@ def _find_gebco_file(version: str = "GEBCO2025") -> Path:
     ]
 
     for pattern in patterns:
+        logger.bind(site="data_files").debug(
+            "GEBCO candidate pattern {} in {}", pattern, data_dir
+        )
         matches = list(data_dir.glob(pattern))
         if matches:
+            logger.bind(site="data_files").debug("GEBCO file found: {}", matches[0])
             return matches[0]
 
+    logger.bind(site="data_files").debug(
+        "GEBCO file missing for {} in {} (tried {})", version, data_dir, patterns
+    )
     url = GEBCO_PARAMETERS.get(version, {}).get("url", "https://www.gebco.net/")
     raise FileNotFoundError(
         f"GEBCO file not found for {version}\n"
@@ -232,7 +240,11 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
     file_pattern = EARTH2014_PARAMETERS[layer]["file_pattern"]
     filepath = data_dir / file_pattern
 
+    logger.bind(site="data_files").debug(
+        "Earth2014 candidate {} in {}", filepath, data_dir
+    )
     if filepath.exists():
+        logger.bind(site="data_files").debug("Earth2014 file found: {}", filepath)
         return filepath
 
     # Try alternative patterns
@@ -244,9 +256,20 @@ def _find_earth2014_file(layer: str = "SUR") -> Path:
 
     for pattern in alt_patterns:
         alt_path = data_dir / pattern
+        logger.bind(site="data_files").debug(
+            "Earth2014 candidate {} in {}", alt_path, data_dir
+        )
         if alt_path.exists():
+            logger.bind(site="data_files").debug("Earth2014 file found: {}", alt_path)
             return alt_path
 
+    logger.bind(site="data_files").debug(
+        "Earth2014 file missing for layer {} in {} (tried {}, {})",
+        layer,
+        data_dir,
+        filepath,
+        alt_patterns,
+    )
     raise FileNotFoundError(
         f"Earth2014 {layer} file not found.\n"
         f"Please download from: https://ddfe.curtin.edu.au/models/Earth2014/\n"
@@ -261,6 +284,7 @@ def parse_gebco_netcdf(
     lat_max: Optional[float] = None,
     lon_min: Optional[float] = None,
     lon_max: Optional[float] = None,
+    progress: bool = False,
 ) -> tuple[NDArray[np.floating], float, float, float, float]:
     """Parse GEBCO NetCDF file and extract region.
 
@@ -276,6 +300,11 @@ def parse_gebco_netcdf(
         Minimum longitude in radians (default: -180°).
     lon_max : float, optional
         Maximum longitude in radians (default: +180°).
+    progress : bool, optional
+        Log start/finish DEBUG markers around the read. The NetCDF
+        elevation slice is read in a single shot (no natural chunk
+        loop to attach a bar to), so this is a log pair rather than a
+        progress bar; requires ``enable_debug_logging()`` to be visible.
 
     Returns
     -------
@@ -333,7 +362,14 @@ def parse_gebco_netcdf(
 
         # Extract elevation data
         # GEBCO stores elevation in 'elevation' variable
+        # Single-shot read (no chunk loop): log start/finish instead of a bar.
+        if progress:
+            logger.bind(site="data_files").debug(
+                "GEBCO read starting: {} x {} region", i_end - i_start, j_end - j_start
+            )
         elevation = dataset.variables["elevation"][i_start:i_end, j_start:j_end]
+        if progress:
+            logger.bind(site="data_files").debug("GEBCO read finished")
 
         # Get actual bounds
         lat_min_actual = np.radians(float(lats[i_start]))
@@ -357,6 +393,7 @@ def parse_earth2014_binary(
     lat_max: Optional[float] = None,
     lon_min: Optional[float] = None,
     lon_max: Optional[float] = None,
+    progress: bool = False,
 ) -> tuple[NDArray[np.floating], float, float, float, float]:
     """Parse Earth2014 binary file and extract region.
 
@@ -377,6 +414,8 @@ def parse_earth2014_binary(
         Minimum longitude in radians (default: -180°).
     lon_max : float, optional
         Maximum longitude in radians (default: +180°).
+    progress : bool, optional
+        Show an ASCII progress bar on stderr while reading rows.
 
     Returns
     -------
@@ -435,8 +474,14 @@ def parse_earth2014_binary(
 
     data = np.zeros((n_rows, n_cols), dtype=np.float64)
 
+    row_indices = range(i_start, i_end)
+    if progress:
+        row_indices = progress_bar(
+            row_indices, description="Earth2014 rows", total=n_rows
+        )
+
     with open(filepath, "rb") as f:
-        for i, row_idx in enumerate(range(i_start, i_end)):
+        for i, row_idx in enumerate(row_indices):
             # Seek to start of row
             row_offset = row_idx * EARTH2014_N_LON * 2  # 2 bytes per int16
             col_offset = j_start * 2
@@ -457,18 +502,19 @@ def parse_earth2014_binary(
     return data, lat_min_actual, lat_max_actual, lon_min_actual, lon_max_actual
 
 
-@lru_cache(maxsize=8)
-def _load_gebco_cached(
+def _build_gebco_grid(
     version: str,
     lat_min: float,
     lat_max: float,
     lon_min: float,
     lon_max: float,
+    progress: bool = False,
 ) -> DEMGrid:
-    """Cached GEBCO loading (internal function)."""
+    """Parse and assemble a GEBCO DEMGrid. Shared by the cached and
+    progress-reporting (uncached) load paths."""
     filepath = _find_gebco_file(version)
     data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_gebco_netcdf(
-        filepath, lat_min, lat_max, lon_min, lon_max
+        filepath, lat_min, lat_max, lon_min, lon_max, progress=progress
     )
 
     grid = DEMGrid(
@@ -480,7 +526,51 @@ def _load_gebco_cached(
         nodata_value=-9999.0,
         name=version,
     )
-    # Every caller of this cache receives this same grid (gh-51).
+    make_readonly(grid.data)
+    return grid
+
+
+@lru_cache(maxsize=8)
+def _load_gebco_cached(
+    version: str,
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+) -> DEMGrid:
+    """Cached GEBCO loading (internal function).
+
+    Every caller of this cache receives this same grid (gh-51). Only the
+    default, non-progress path goes through this cache -- see
+    ``load_gebco``'s ``progress`` parameter.
+    """
+    return _build_gebco_grid(version, lat_min, lat_max, lon_min, lon_max)
+
+
+def _build_earth2014_grid(
+    layer: str,
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+    progress: bool = False,
+) -> DEMGrid:
+    """Parse and assemble an Earth2014 DEMGrid. Shared by the cached and
+    progress-reporting (uncached) load paths."""
+    filepath = _find_earth2014_file(layer)
+    data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_earth2014_binary(
+        filepath, layer, lat_min, lat_max, lon_min, lon_max, progress=progress
+    )
+
+    grid = DEMGrid(
+        data,
+        lat_min_a,
+        lat_max_a,
+        lon_min_a,
+        lon_max_a,
+        nodata_value=-9999.0,
+        name=f"Earth2014-{layer}",
+    )
     make_readonly(grid.data)
     return grid
 
@@ -493,24 +583,13 @@ def _load_earth2014_cached(
     lon_min: float,
     lon_max: float,
 ) -> DEMGrid:
-    """Cached Earth2014 loading (internal function)."""
-    filepath = _find_earth2014_file(layer)
-    data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_earth2014_binary(
-        filepath, layer, lat_min, lat_max, lon_min, lon_max
-    )
+    """Cached Earth2014 loading (internal function).
 
-    grid = DEMGrid(
-        data,
-        lat_min_a,
-        lat_max_a,
-        lon_min_a,
-        lon_max_a,
-        nodata_value=-9999.0,
-        name=f"Earth2014-{layer}",
-    )
-    # Every caller of this cache receives this same grid (gh-51).
-    make_readonly(grid.data)
-    return grid
+    Every caller of this cache receives this same grid (gh-51). Only the
+    default, non-progress path goes through this cache -- see
+    ``load_earth2014``'s ``progress`` parameter.
+    """
+    return _build_earth2014_grid(layer, lat_min, lat_max, lon_min, lon_max)
 
 
 def load_gebco(
@@ -519,6 +598,7 @@ def load_gebco(
     lon_min: float,
     lon_max: float,
     version: str = "GEBCO2025",
+    progress: bool = False,
 ) -> DEMGrid:
     """Load GEBCO bathymetry/topography data for a region.
 
@@ -538,6 +618,15 @@ def load_gebco(
     version : str, optional
         GEBCO version ("GEBCO2025", "GEBCO2024", "GEBCO2023", "GEBCO2022").
         Default is "GEBCO2025".
+    progress : bool, optional
+        Log DEBUG start/finish markers around the NetCDF read (visible
+        with ``enable_debug_logging()``). The read is a single-shot
+        slice with no natural chunk loop, so there is no progress bar
+        to show -- only start/finish markers. Default is False.
+        Progress-reporting calls bypass the load cache: they neither
+        read from it nor populate it, so toggling ``progress`` never
+        forces a redundant re-parse of the (up to ~7.5 GB) file for the
+        default, non-progress path.
 
     Returns
     -------
@@ -578,6 +667,11 @@ def load_gebco(
             f"Valid versions: {list(GEBCO_PARAMETERS.keys())}"
         )
 
+    if progress:
+        # Progress-reporting calls bypass the load cache.
+        return _build_gebco_grid(
+            version, lat_min, lat_max, lon_min, lon_max, progress=True
+        )
     return _load_gebco_cached(version, lat_min, lat_max, lon_min, lon_max)
 
 
@@ -587,6 +681,7 @@ def load_earth2014(
     lon_min: float,
     lon_max: float,
     layer: str = "SUR",
+    progress: bool = False,
 ) -> DEMGrid:
     """Load Earth2014 terrain data for a region.
 
@@ -611,6 +706,12 @@ def load_earth2014(
         - "RET": Rock-equivalent topography
         - "ICE": Ice sheet thickness
         Default is "SUR".
+    progress : bool, optional
+        Show an ASCII progress bar on stderr while reading rows from
+        the binary file. Default is False. Progress-reporting calls
+        bypass the load cache: they neither read from it nor populate
+        it, so toggling ``progress`` never forces a redundant re-parse
+        of the (up to ~455 MB) file for the default, non-progress path.
 
     Returns
     -------
@@ -656,6 +757,11 @@ def load_earth2014(
             f"Valid layers: {list(EARTH2014_PARAMETERS.keys())}"
         )
 
+    if progress:
+        # Progress-reporting calls bypass the load cache.
+        return _build_earth2014_grid(
+            layer, lat_min, lat_max, lon_min, lon_max, progress=True
+        )
     return _load_earth2014_cached(layer, lat_min, lat_max, lon_min, lon_max)
 
 

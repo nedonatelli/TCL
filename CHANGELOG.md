@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transform_cubature_points`, all validated by monomial exactness.
   `ckf_predict`/`ckf_update` accept optional cubature points, making
   higher-degree CKFs a one-liner.
+- `pytcl.diagnostics`: opt-in diagnostic logging (silent by default;
+  `enable_debug_logging()`/`disable_debug_logging()`), instrumentation of
+  gating rejections, association decisions, filter-health symptoms, and
+  data-file resolution; ASCII-safe rich progress bars (`progress_bar`,
+  `progress=True` on terrain loaders) and track tables (`track_table`).
+  loguru and rich join the core dependencies. Successor to the
+  `pytcl.logging_config` module removed in v2.0.0 (no compatibility).
 
 ### Fixed
 - `pip install nrl-tracker[gpu]` now works on hosts whose system CUDA is

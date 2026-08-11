@@ -37,11 +37,19 @@ from pytcl import (
     astronomical,
     atmosphere,
     core,
+    diagnostics,
     io,
     navigation,
     performance_evaluation,
     plotting,
     trackers,
+)
+from pytcl.diagnostics import (
+    diagnostics_enabled,
+    disable_debug_logging,
+    enable_debug_logging,
+    progress_bar,
+    track_table,
 )
 
 
@@ -77,4 +85,10 @@ __all__ = [
     "trackers",
     "performance_evaluation",
     "plotting",
+    "diagnostics",
+    "diagnostics_enabled",
+    "enable_debug_logging",
+    "disable_debug_logging",
+    "track_table",
+    "progress_bar",
 ]
