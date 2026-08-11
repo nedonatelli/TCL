@@ -160,7 +160,10 @@ def explode_state_columns(df: Any, layout: Sequence[str]) -> Any:
     Raises
     ------
     ValueError
-        If `layout`'s length does not match the state dimension.
+        If `layout`'s length does not match the state dimension. Not
+        raised for a zero-row `df`: the dimension can't be read from
+        empty data, so the check is skipped and `layout`-named columns
+        are added empty instead.
     DependencyError
         If polars is not installed.
 
