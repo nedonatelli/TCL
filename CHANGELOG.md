@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 The Diagnostics release: pytcl gains an opt-in observability layer, the
 validation suite gains real-world references (recorded air traffic, real
-TLE history, first real-hardware verification of the CuPy layer), and the
+TLE history, the first recorded hardware verification of the CuPy layer), and the
 estimation stack gains the Gaussian cubature-point library. Tooling
 completes the uv/ty migration; the mypy probation ends as scheduled.
 
@@ -68,7 +68,10 @@ completes the uv/ty migration; the mypy probation ends as scheduled.
   as pip wheels (cuBLAS, cuSOLVER, cuFFT, cuRAND, cuSPARSE, nvJitLink,
   NVRTC >= 12.8). Previously `to_gpu`/linear-algebra calls failed with
   `ImportError: libcublas.so.12` on CUDA-13-only systems. Verified on a
-  CUDA 13.0 / RTX 5090 host: all 85 CuPy-gated tests pass.
+  CUDA 13.0 / RTX 5090 host: all 85 CuPy-gated tests pass. (An earlier
+  pre-2.0.0 manual run on an RTX 5080/CUDA 12 host exercised the layer and
+  found the doctest bugs pinned by `test_gpu_doctest_hygiene.py`, but left
+  no artifact; this is the first recorded run and the first on CUDA 13.)
 - The docs code-block gate now actually executes in CI: matplotlib was
   missing from the CI environment, which failed the gate's self-tests and
   silently skipped 36 documentation pages (matplotlib now ships in the dev
