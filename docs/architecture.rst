@@ -58,7 +58,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Support
-           IO["io<br/>10 modules"]
+           IO["io<br/>11 modules"]
            GP["gpu<br/>7 modules"]
            PL["plotting<br/>4 modules"]
            PE["performance_evaluation<br/>2 modules"]

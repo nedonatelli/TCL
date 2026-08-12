@@ -85,7 +85,9 @@ def _history():
     tracker = MultiTargetTracker(
         state_dim=4,
         meas_dim=2,
-        F=np.array([[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float),
+        F=np.array(
+            [[1, 1, 0, 0], [0, 1, 0, 0], [0, 0, 1, 1], [0, 0, 0, 1]], dtype=float
+        ),
         H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
         Q=np.eye(4) * 0.01,
         R=np.eye(2) * 1.0,
@@ -138,7 +140,11 @@ class TestTrackRoundTrip:
     def test_malformed_decode_fails_loudly(self):
         with pytest.raises(Exception) as excinfo:
             decode_tracks(b'{"nonsense": true}', fmt="json")
-        assert "nonsense" in str(excinfo.value) or "Object" in str(excinfo.value) or "missing" in str(excinfo.value)
+        assert (
+            "nonsense" in str(excinfo.value)
+            or "Object" in str(excinfo.value)
+            or "missing" in str(excinfo.value)
+        )
 
     def test_unknown_fmt_raises(self):
         with pytest.raises(ValueError, match="fmt"):
@@ -171,7 +177,11 @@ import pytest
 
 pl = pytest.importorskip("polars")
 
-from pytcl.io.dataframes import explode_state_columns, metrics_to_polars, tracks_to_polars
+from pytcl.io.dataframes import (
+    explode_state_columns,
+    metrics_to_polars,
+    tracks_to_polars,
+)
 
 
 class TestTracksToPolars:
@@ -190,12 +200,19 @@ class TestTracksToPolars:
         history, times = _history()
         df = tracks_to_polars(history, times)
         tr = history[-1][0]
-        row = df.filter((pl.col("t") == times[-1]) & (pl.col("track_id") == tr.id)).row(0, named=True)
-        assert np.asarray(row["state"]).tobytes() == np.asarray(tr.state, dtype=np.float64).tobytes()
+        row = df.filter((pl.col("t") == times[-1]) & (pl.col("track_id") == tr.id)).row(
+            0, named=True
+        )
+        assert (
+            np.asarray(row["state"]).tobytes()
+            == np.asarray(tr.state, dtype=np.float64).tobytes()
+        )
 
     def test_explode_layout(self):
         history, times = _history()
-        df = explode_state_columns(tracks_to_polars(history, times), ["x", "vx", "y", "vy"])
+        df = explode_state_columns(
+            tracks_to_polars(history, times), ["x", "vx", "y", "vy"]
+        )
         assert {"x", "vx", "y", "vy"}.issubset(df.columns)
         row = df.row(0, named=True)
         assert row["x"] == row["state"][0] and row["vy"] == row["state"][3]
@@ -333,7 +350,7 @@ class TestPositionReports:
     def test_arrays_and_units(self):
         rep = ais_position_reports(VDM_TYPE1)
         assert rep.lat.dtype == np.float64
-        assert abs(rep.lat[0]) < np.pi / 2 + 1e-9      # radians, not degrees
+        assert abs(rep.lat[0]) < np.pi / 2 + 1e-9  # radians, not degrees
         assert abs(rep.lon[0]) < np.pi + 1e-9
         # cross-check against pyais directly: same sentence, degrees->radians
         import pyais

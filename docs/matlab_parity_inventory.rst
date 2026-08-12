@@ -190,8 +190,19 @@ backends).
        access and ``pointIsOnLand``.
    * - Transponders
      - 3
-     - Absent
-     - AIS/NMEA decoding not ported.
+     - Partial
+     - AIS/NMEA decoding ported (v2.2.0) as :mod:`pytcl.transponders.ais`:
+       ``decode_ais``/``ais_position_reports`` reassemble multipart
+       ``!AIVDM``/``!AIVDO`` sentences and extract position reports (message
+       types 1/2/3/18/19), normalizing ITU-R M.1371 "not available"
+       sentinels to NaN. MATLAB's ``decodeAISString`` wraps libais (a C
+       library) directly; pytcl's port uses `pyais
+       <https://pypi.org/project/pyais/>`_, a pure-Python AIS decoder, so
+       the two are functionally equivalent but not the same binding.
+       Validated against 6,808 real position reports from 299 ships off
+       Norway (see :doc:`results_io`). **Missing:** an accessor for
+       static/voyage fields beyond the raw decoded dict, and NMEA sentence
+       *encoding* (the ``appendChecksumtoNMEA`` direction).
    * - Scheduling
      - 4
      - Absent

@@ -1,8 +1,8 @@
 # Examples
 
-This directory contains 29 comprehensive example scripts demonstrating the Tracker Component Library's major features and capabilities.
+This directory contains 32 comprehensive example scripts demonstrating the Tracker Component Library's major features and capabilities.
 
-**Status**: ✅ **All 29 examples validated** - 100% execution success rate
+**Status**: ✅ **All 32 examples validated** - 100% execution success rate
 
 ## Quick Start
 
@@ -28,6 +28,7 @@ python examples/orbital_mechanics.py
 - **[assignment_algorithms.py](assignment_algorithms.py)** - Hungarian algorithm, k-best, and 3D assignment
 - **[performance_evaluation.py](performance_evaluation.py)** - OSPA, track metrics, and evaluation measures
 - **[track_management_workflows.py](track_management_workflows.py)** - Track lifecycle workflows over SQL and HDF5 storage
+- **[measurement_ingest.py](measurement_ingest.py)** - Results I/O: CSV measurement readers, GNN tracking, polars DataFrame export, Parquet output
 
 ### Coordinate Systems & Transforms (4 examples)
 

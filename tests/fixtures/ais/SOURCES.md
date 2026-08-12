@@ -171,7 +171,9 @@ via `tests/validation/test_ais_tracking.py`'s own `_load()`/`_track()`
 functions (`POSITION_SIGMA_M=15.0`, `MIN_REPORTS=15`):
 
 ```python
-import sys; sys.path.insert(0, "tests/validation")
+import sys
+
+sys.path.insert(0, "tests/validation")
 import numpy as np, math
 import test_ais_tracking as t
 
@@ -194,7 +196,8 @@ for mmsi, rows in by_ship.items():
         speed_errors.append(estimated - float(np.mean(broadcast)))
 
 scores, speed_errors = np.array(scores), np.array(speed_errors)
-print("n tracked ships", ...); print("median abs error", float(np.median(np.abs(speed_errors))))
+print("n tracked ships", ...)
+print("median abs error", float(np.median(np.abs(speed_errors))))
 # ... (mean/median NIS, exceedance, etc.)
 ```
 

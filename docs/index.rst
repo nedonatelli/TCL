@@ -45,6 +45,7 @@ state estimation.
    particle_filters
    smoothing
    data_structures
+   results_io
 
 .. toctree::
    :maxdepth: 2

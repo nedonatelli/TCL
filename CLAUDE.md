@@ -59,7 +59,7 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 **Core deps:** numpy, scipy, numba, h5py
 
-**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `gpu` (cupy), `gpu-apple` (mlx), `all` (astronomy+geodesy+terrain+visualization+signal; no gpu)
+**Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `dataframe` (polars), `ais` (pyais), `asdf` (asdf), `gpu` (cupy), `gpu-apple` (mlx), `all` (astronomy+geodesy+terrain+visualization+signal+dataframe+ais+asdf; no gpu)
 
 Dev tooling (pytest, ruff, ty, sphinx, jupyter, etc.) is a PEP 735
 `[dependency-groups]` entry, not a published extra — `uv sync` installs it
