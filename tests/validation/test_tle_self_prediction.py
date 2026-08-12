@@ -230,9 +230,9 @@ def _binned_medians(rows):
 # EXPECTED_SPARSE_BINS instead. Derivation rule and measured basis:
 # tests/fixtures/tle/SOURCES.md, "Long-horizon calibration".
 #
-# Vacuousness ceiling (controller ruling, 2026-08-08 --
-# docs/superpowers/specs/2026-08-08-sgp4-long-horizon-design.md,
-# "Vacuousness ceiling"): a cell is asserted here only if its derived
+# Vacuousness ceiling (controller ruling, 2026-08-08; the measured basis
+# is in tests/fixtures/tle/SOURCES.md): a cell is asserted here only if its
+# derived
 # envelope is below VACUOUSNESS_CEILING_KM -- above that, an assertion
 # provably cannot fail against the ~13,100 km geometric maximum position
 # error, so it would be a vacuous pass-always bound rather than a real

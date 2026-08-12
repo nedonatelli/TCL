@@ -81,7 +81,7 @@ The prior 1.3-4.3x figure (identity-covariance best case 4.3x, realistic
 1.32x) is superseded by the measurement above, which uses converged
 CV-filter covariances throughout, not an identity best case.
 
-### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
+### Modernization campaign (versioned)
 
 - **Tooling (no release):** uv-managed workflow (uv.lock, dependency
   groups, CI on uv) and ty as the type-check gate (mypy probation ended
