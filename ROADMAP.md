@@ -1,10 +1,13 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.1.0, released 10 August 2026
-**Test Suite:** 6,200+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
-**Status:** v2.1.0 (the Diagnostics release) is out: opt-in observability,
-the estimation-grade cubature library, and real-data validation (recorded
-air traffic, real TLE history, first real-hardware CuPy verification). On
+**Current Version:** v2.2.0, released 12 August 2026
+**Test Suite:** 6,300+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Status:** v2.2.0 (the Results I/O release) is out: polars ingest and
+DataFrame accessors, msgspec and ASDF serialization, AIS decoding, and
+HDF5 compression measured rather than claimed. It follows v2.1.0
+(Diagnostics: opt-in observability, the estimation-grade cubature library,
+and real-data validation from recorded air traffic, real TLE history, and
+the first real-hardware CuPy verification). On
 parity: the core tracking workflow is fully ported and oracle-validated,
 and the full MATLAB surface is covered at roughly a third by function
 count — see `docs/matlab_parity_inventory.rst`, which supersedes any
@@ -395,6 +398,7 @@ for reference implementations.
 
 ---
 
-**Current Phase:** v2.1.0 released
-**Next Milestone:** v2.2.0 (Results I/O; see the modernization campaign)
+**Current Phase:** v2.2.0 released
+**Next Milestone:** v2.3.0 (typed configs + save/restore; see the
+modernization campaign)
 No dates are attached to anything in this document: none have been decided.

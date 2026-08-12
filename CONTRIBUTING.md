@@ -358,7 +358,7 @@ When porting a function from the original MATLAB library:
 ## Current Development Status
 
 **Version:** v2.0.0
-**Test Suite:** 6,200+ tests passing (docstring examples also run in CI)
+**Test Suite:** 6,300+ tests passing (docstring examples also run in CI)
 **Code Coverage:** 90%
 **Quality:** 100% compliance (ruff check, ruff format); ty clean
 **GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon), both verified on
@@ -431,10 +431,10 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.1.0):
-- **Functions:** 1,400+
-- **Modules:** 135
-- **Tests:** 6,200+ (all passing)
+Current metrics (v2.2.0):
+- **Functions:** 1,500+
+- **Modules:** 187
+- **Tests:** 6,300+ (all passing)
 - **Coverage:** 90%
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
