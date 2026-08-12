@@ -92,3 +92,12 @@ class TestTracksToPolars:
 
         with pytest.raises(DependencyError, match="dataframe"):
             tracks_to_polars([], [])
+
+    def test_mismatched_lengths_raises(self):
+        with pytest.raises(ValueError, match="length"):
+            tracks_to_polars([[]], [0.0, 1.0])
+
+    def test_empty_history_round_trips(self):
+        df = tracks_to_polars([], [])
+        assert df.height == 0
+        assert df.columns == ["track_id", "t", "status", "state", "covariance"]

@@ -81,6 +81,16 @@ def _import_pyais() -> Any:
     return pyais
 
 
+def _raise_missing() -> Any:
+    """Unconditionally raise `DependencyError`.
+
+    Same signature as `_import_pyais`; tests monkeypatch `_import_pyais` to
+    this function to simulate pyais being absent without actually
+    uninstalling it.
+    """
+    raise _dependency_error()
+
+
 class AISMessage(NamedTuple):
     """One decoded AIS message.
 

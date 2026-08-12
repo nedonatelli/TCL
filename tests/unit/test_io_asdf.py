@@ -97,6 +97,17 @@ class TestTracksRoundTrip:
         with pytest.raises(DependencyError, match="asdf"):
             save_tracks_asdf(tmp_path / "does_not_matter.asdf", [], [])
 
+    def test_mismatched_lengths_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="length"):
+            save_tracks_asdf(tmp_path / "bad.asdf", [[]], [0.0, 1.0])
+
+    def test_empty_history_round_trips(self, tmp_path):
+        path = tmp_path / "empty.asdf"
+        save_tracks_asdf(path, [], [])
+        times2, history2 = load_tracks_asdf(path)
+        assert times2 == []
+        assert history2 == []
+
 
 class TestStatesRoundTrip:
     def test_bitwise_round_trip(self, tmp_path):

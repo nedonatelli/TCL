@@ -102,7 +102,10 @@ per ``(scan, track)`` pair.
 
 ``explode_state_columns`` widens the ``state`` list column into one named
 Float64 column per component, for a layout you know ahead of time; it raises
-``ValueError`` if ``layout``'s length does not match the state dimension.
+``ValueError`` if ``layout``'s length does not match the state dimension --
+except for a zero-row ``df``, where the dimension can't be read from empty
+data, so the check is skipped and the ``layout``-named columns are added
+empty instead.
 
 .. code-block:: python
 

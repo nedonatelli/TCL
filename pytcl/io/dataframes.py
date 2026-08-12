@@ -18,6 +18,7 @@ import numpy as np
 
 from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import DISTRIBUTION_NAME
+from pytcl.io.serialize import _check_aligned
 
 __all__ = [
     "tracks_to_polars",
@@ -104,6 +105,7 @@ def tracks_to_polars(history: Sequence[Sequence[Any]], times: Sequence[float]) -
     >>> df.height
     1
     """
+    _check_aligned(history, times)
     pl = _import_polars()
 
     track_ids: list[int] = []

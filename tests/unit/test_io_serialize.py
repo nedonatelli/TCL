@@ -83,3 +83,14 @@ class TestTrackRoundTrip:
     def test_unknown_fmt_raises(self):
         with pytest.raises(ValueError, match="fmt"):
             encode_states(np.zeros(2), np.eye(2), fmt="pickle")
+
+    def test_mismatched_lengths_raises(self):
+        with pytest.raises(ValueError, match="length"):
+            encode_tracks([[]], [0.0, 1.0])
+
+    @pytest.mark.parametrize("fmt", ["msgpack", "json"])
+    def test_empty_history_round_trips(self, fmt):
+        blob = encode_tracks([], [], fmt=fmt)
+        times2, history2 = decode_tracks(blob, fmt=fmt)
+        assert times2 == []
+        assert history2 == []

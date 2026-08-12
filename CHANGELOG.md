@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     NIS 1.99 (textbook-consistent).
   - `examples/measurement_ingest.py`: CSV synthesis -> `read_measurements_csv`
     -> GNN tracking -> `tracks_to_polars` -> Parquet, as a runnable example.
+- `tests/fixtures/terrain/synthetic_gebco.nc`: a tiny (7362-byte), tracked
+  synthetic GEBCO-format fixture with a permanent CI test exercising the
+  GEBCO loader's diagnostics path end to end, closing the test-debt item
+  the roadmap previously tracked as "currently code-review-only
+  confidence" (see `tests/fixtures/terrain/SOURCES.md`).
 
 ### Changed
 - **HDF5 track storage compression: measured, not claimed.**

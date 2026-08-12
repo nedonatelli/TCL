@@ -29,7 +29,7 @@ from numpy.typing import NDArray
 
 from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import DISTRIBUTION_NAME
-from pytcl.io.serialize import SimpleTrack
+from pytcl.io.serialize import SimpleTrack, _check_aligned
 
 __all__ = [
     "save_tracks_asdf",
@@ -122,6 +122,7 @@ def save_tracks_asdf(
     [0.0]
     >>> tmpdir.cleanup()
     """
+    _check_aligned(history, times)
     asdf = _import_asdf()
 
     track_ids: list[int] = []
@@ -130,7 +131,7 @@ def save_tracks_asdf(
     states: list[NDArray[np.float64]] = []
     covariances: list[NDArray[np.float64]] = []
     dim: int | None = None
-    for scan_index, (scan, t) in enumerate(zip(history, times)):
+    for scan_index, scan in enumerate(history):
         for tr in scan:
             state = np.asarray(tr.state, dtype=np.float64)
             cov = np.asarray(tr.covariance, dtype=np.float64)

@@ -235,3 +235,14 @@ class TestClassBPositionReports:
             assert np.isnan(rep.sog[0])
             assert np.isnan(rep.cog[0])
             assert np.isnan(rep.heading[0])
+
+
+class TestDependencyError:
+    def test_dependency_error_without_pyais(self, monkeypatch):
+        import pytcl.transponders.ais as mod
+
+        monkeypatch.setattr(mod, "_import_pyais", mod._raise_missing)
+        from pytcl.core.exceptions import DependencyError
+
+        with pytest.raises(DependencyError, match="ais"):
+            decode_ais(VDM_TYPE1)

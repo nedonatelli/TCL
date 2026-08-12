@@ -59,14 +59,9 @@ No dates are attached because none have been decided:
   Jacobians; distinct from the ported range+direction-cosine `cart2ruv`
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
-- **MOSPA/MMOSPA metrics**, AIS decoding, interval scheduling, polynomials
+- **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
-
-Session-identified, held deliberately out of earlier releases:
-
-- Synthetic `.nc` fixture so the GEBCO loader's diagnostics path is
-  exercised end-to-end in CI (currently code-review-only confidence)
 
 **HDF5 compression, measured and closed (v2.2.0 Results I/O, Task 7):**
 byte-shuffle (`shuffle=True`, now the `TrackHDF5Storage` default) measured
@@ -98,8 +93,12 @@ CV-filter covariances throughout, not an identity best case.
   resolution, with tested silence and behavioral-neutrality guarantees.
 - **v2.2.0 — Results I/O:** polars ingest (CSV/Parquet) and `to_polars()`
   results accessors (new `[dataframe]` extra); msgspec export of track
-  histories/states to JSON and MessagePack. Delivers the Parquet/Arrow
-  bullets below.
+  histories/states to JSON and MessagePack (msgspec now a core
+  dependency); ASDF export/import of track histories and states (new
+  `[asdf]` extra, delivers the ASDF bullet under Format Support Expansion
+  below); AIS NMEA decoding and position-report extraction (new `[ais]`
+  extra, pyais); measured HDF5 byte-shuffle compression (4.73x, on by
+  default). Delivers the Parquet/Arrow bullets below.
 - **v2.3.0 — Typed configs + save/restore:** filter/tracker configs as
   `msgspec.Struct`s; full tracker state snapshot/resume.
 - **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
@@ -152,7 +151,6 @@ CV-filter covariances throughout, not an identity best case.
 
 - Parquet format for cloud-native tracking data
 - Apache Arrow integration for inter-process communication
-- ASDF (Advanced Scientific Data Format) for heterogeneous data
 
 #### ROS 2 Integration, Optional Plugin
 

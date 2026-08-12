@@ -79,7 +79,7 @@ pool.
 Following `tests/fixtures/adsb/SOURCES.md`'s precedent ("trimmed to the 120
 aircraft with the most reports, to keep the file small"): `ais_norway.nmea.gz`
 keeps only the 300 MMSIs with the most position reports across the full
-capture, and only their position-report lines (types 1, 3, 18, 19; static/
+capture, and only their position-report lines (types 1, 3, 18; static/
 voyage and other non-position message types are dropped -- the validation
 test never reads them, and dropping them also sidesteps needing to preserve
 multipart-message line pairing under the trim). Kept-ship report counts

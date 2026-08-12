@@ -40,8 +40,12 @@ Released
 Next
 ----
 
-* **v2.2.0 — Results I/O**: polars ingest (CSV/Parquet), ``to_polars()``
-  accessors, msgspec export of track histories to JSON/MessagePack.
+* **v2.2.0 — Results I/O**: polars ingest (CSV/Parquet) and ``to_polars()``
+  accessors (the ``dataframe`` extra), msgspec export of track histories
+  and states to JSON/MessagePack (msgspec now a core dependency), ASDF
+  export/import of track histories and states (the ``asdf`` extra), AIS
+  NMEA decoding and position-report extraction (the ``ais`` extra, pyais),
+  and measured HDF5 byte-shuffle compression (4.73x, on by default).
 * **v2.3.0 — Typed configs + save/restore**: filter/tracker configs as
   ``msgspec.Struct``, full tracker state snapshot/resume.
 * **Measured backlog**: the remaining MATLAB parity gaps

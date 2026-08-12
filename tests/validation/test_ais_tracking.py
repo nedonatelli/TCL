@@ -77,12 +77,16 @@ _MEDIAN_ENVELOPE_MPS = 0.03
 def _load():
     """Decode the fixture into per-ship (t, lat, lon, sog) rows.
 
-    Position reports (types 1, 2, 3, 18, 19) are always single-fragment
-    sentences per ITU-R M.1371 -- unlike type 5 (static/voyage) or type 24
-    (Class B static), which span two -- so each line is decoded on its own
-    and paired with that line's own receiver timestamp. This sidesteps
-    needing to match `decode_ais`'s reassembled multi-line messages back to
-    individual lines, which position reports never require.
+    Position reports of types 1, 2, 3, and 18 are always single-fragment
+    (168-bit) sentences per ITU-R M.1371 -- unlike type 5 (static/voyage) or
+    type 24 (Class B static), which span two. Type 19 (Extended Class B) is
+    the exception among position reports: at 312 bits it spans two
+    fragments like the static messages, so a per-line decode would silently
+    drop it. This fixture contains no type-19 reports (see
+    ``tests/fixtures/ais/SOURCES.md``), so decoding each line on its own and
+    pairing it with that line's own receiver timestamp is safe here; it
+    would need to change to match `decode_ais`'s reassembled multi-line
+    messages back to individual lines if type-19 reports were ever added.
     """
     if not FIXTURE.exists():
         pytest.skip(f"AIS fixture not present: {FIXTURE.name}")

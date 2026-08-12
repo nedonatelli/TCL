@@ -37,6 +37,8 @@ class TrackHDF5Storage:
         Compression algorithm. Default is 'gzip'.
     compression_level : int
         Compression level (1-9). Default is 4.
+    dtype : str
+        Default dtype for stored arrays. Default is 'float64'.
     shuffle : bool
         Enable HDF5's byte-shuffle filter before compression. Reorders each
         chunk's bytes so that same-significance bytes of adjacent float64
@@ -45,8 +47,6 @@ class TrackHDF5Storage:
         in ``tests/unit/test_hdf5_compression.py`` -- see that file's
         module docstring for the reproduction command and full figures).
         Default is True.
-    dtype : str
-        Default dtype for stored arrays. Default is 'float64'.
 
     Examples
     --------
@@ -63,8 +63,8 @@ class TrackHDF5Storage:
         chunk_size: int = 1000,
         compression: str = "gzip",
         compression_level: int = 4,
-        shuffle: bool = True,
         dtype: str = "float64",
+        shuffle: bool = True,
     ) -> None:
         if not HAS_H5PY:
             raise ImportError(

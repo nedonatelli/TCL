@@ -64,7 +64,8 @@ def synthesize_detections_csv(path: Path) -> None:
 def run_tracker(history_csv: Path):
     """Read the CSV back and run a GNN multi-target tracker over it.
 
-    Returns (history, times) in the shape `tracks_to_polars` expects.
+    Returns (ms, history, times): the parsed `MeasurementSet`, plus
+    (history, times) in the shape `tracks_to_polars` expects.
     """
     ms = read_measurements_csv(
         history_csv,

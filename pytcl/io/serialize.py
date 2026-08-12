@@ -133,6 +133,23 @@ def _check_finite(arr: NDArray[np.float64], fmt: str, name: str) -> None:
         )
 
 
+def _check_aligned(history: Sequence[Sequence[Any]], times: Sequence[float]) -> None:
+    """Raise ValueError if `history` and `times` do not have equal length.
+
+    `history` and `times` are typically accumulated by separate
+    ``.append()`` calls in a per-scan loop (see
+    ``examples/measurement_ingest.py``); a dropped append on either side
+    silently produces a self-inconsistent artifact downstream (e.g. a
+    `TrackSet` whose ``scans`` and ``times`` disagree in length) rather
+    than an error at the point of the mistake.
+    """
+    if len(history) != len(times):
+        raise ValueError(
+            f"history has length {len(history)}, times has length "
+            f"{len(times)}; they must be equal (one timestamp per scan)"
+        )
+
+
 def encode_tracks(
     history: Sequence[Sequence[Any]], times: Sequence[float], fmt: str = "msgpack"
 ) -> bytes:
@@ -171,6 +188,7 @@ def encode_tracks(
     >>> [round(v, 3) for v in t2.state.tolist()]
     [1.0, 2.0]
     """
+    _check_aligned(history, times)
     encode, _ = _codec(fmt)
     scans = []
     for scan, t in zip(history, times):

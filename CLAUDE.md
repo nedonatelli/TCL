@@ -57,7 +57,7 @@ These are too large for the repo. Tests skip gracefully when files are absent (v
 
 ## Optional Dependency Extras
 
-**Core deps:** numpy, scipy, numba, h5py
+**Core deps:** numpy, scipy, numba, h5py, msgspec, loguru, rich
 
 **Extras:** `astronomy` (astropy, jplephem), `geodesy` (pyproj, geographiclib), `terrain` (netCDF4), `visualization` (plotly), `signal` (pywavelets), `dataframe` (polars), `ais` (pyais), `asdf` (asdf), `gpu` (cupy), `gpu-apple` (mlx), `all` (astronomy+geodesy+terrain+visualization+signal+dataframe+ais+asdf; no gpu)
 
