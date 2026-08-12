@@ -59,16 +59,27 @@ No dates are attached because none have been decided:
   Jacobians; distinct from the ported range+direction-cosine `cart2ruv`
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
-- **MOSPA/MMOSPA metrics**, AIS decoding, interval scheduling, polynomials
+- **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
 
-Session-identified, held deliberately out of earlier releases:
-
-- HDF5 compression to the once-claimed 5-10x (states-only chunking or a
-  covariance transform; the honest measured figure today is 1.3-4.3x)
-- Synthetic `.nc` fixture so the GEBCO loader's diagnostics path is
-  exercised end-to-end in CI (currently code-review-only confidence)
+**HDF5 compression, measured and closed (v2.2.0 Results I/O, Task 7):**
+byte-shuffle (`shuffle=True`, now the `TrackHDF5Storage` default) measured
+**4.73x** on the 100-track x 500-scan, 6-D, CV-filter-converged-covariance
+benchmark, up from a 4.42x baseline (+7.1%) -- reproduce with
+`uv run pytest tests/unit/test_hdf5_compression.py -q`. Time-aligned chunk
+shapes were evaluated and found to already be the existing behavior (0.0%
+measured effect: tracks already fit in one chunk below the default
+`chunk_size`, and deflate's 32 KB window is the binding constraint either
+way). An optional `states_only` covariance-transform mode was evaluated
+and deferred: dropping covariance entirely implies a ~6.3x ceiling
+(inside the once-claimed 5-10x band), but reaching it losslessly requires
+reconstructing per-scan covariance from a steady-state Cholesky factor
+across every read path and breaks the existing bit-exact round-trip
+contract -- tracked as future backlog if ever needed, not shipped here.
+The prior 1.3-4.3x figure (identity-covariance best case 4.3x, realistic
+1.32x) is superseded by the measurement above, which uses converged
+CV-filter covariances throughout, not an identity best case.
 
 ### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
 
@@ -82,8 +93,12 @@ Session-identified, held deliberately out of earlier releases:
   resolution, with tested silence and behavioral-neutrality guarantees.
 - **v2.2.0 — Results I/O:** polars ingest (CSV/Parquet) and `to_polars()`
   results accessors (new `[dataframe]` extra); msgspec export of track
-  histories/states to JSON and MessagePack. Delivers the Parquet/Arrow
-  bullets below.
+  histories/states to JSON and MessagePack (msgspec now a core
+  dependency); ASDF export/import of track histories and states (new
+  `[asdf]` extra, delivers the ASDF bullet under Format Support Expansion
+  below); AIS NMEA decoding and position-report extraction (new `[ais]`
+  extra, pyais); measured HDF5 byte-shuffle compression (4.73x, on by
+  default). Delivers the Parquet/Arrow bullets below.
 - **v2.3.0 — Typed configs + save/restore:** filter/tracker configs as
   `msgspec.Struct`s; full tracker state snapshot/resume.
 - **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
@@ -136,7 +151,6 @@ Session-identified, held deliberately out of earlier releases:
 
 - Parquet format for cloud-native tracking data
 - Apache Arrow integration for inter-process communication
-- ASDF (Advanced Scientific Data Format) for heterogeneous data
 
 #### ROS 2 Integration, Optional Plugin
 

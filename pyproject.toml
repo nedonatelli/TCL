@@ -45,6 +45,7 @@ dependencies = [
     "numba>=0.57.0",
     "h5py>=3.8.0",
     "loguru>=0.7",
+    "msgspec>=0.18",
     "rich>=13",
 ]
 
@@ -69,6 +70,18 @@ terrain = [
 signal = [
     "pywavelets>=1.4.0",
 ]
+ais = [
+    # decodes AIS NMEA sentences for maritime track ingestion
+    "pyais>=2.5",
+]
+asdf = [
+    # ASDF file format for archiving tracks alongside WCS/metadata
+    "asdf>=3.0",
+]
+dataframe = [
+    # polars DataFrame export/import for tabular track results
+    "polars>=1.0",
+]
 gpu = [
     "cupy-cuda12x>=12.0.0",
     # CUDA 12 runtime libraries as pip wheels (CuPy >= 13 discovers them in
@@ -91,7 +104,7 @@ gpu-apple = [
     "mlx>=0.16.0",
 ]
 all = [
-    "nrl-tracker[astronomy,geodesy,terrain,visualization,signal]",
+    "nrl-tracker[astronomy,geodesy,terrain,visualization,signal,dataframe,ais,asdf]",
 ]
 
 [project.urls]

@@ -28,6 +28,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, simplified thermosphere, ionosphere), tides, terrain (GEBCO 2025, Earth2014)
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
+- **Results I/O**: CSV/Parquet measurement readers, polars DataFrame accessors for track histories, msgspec (MessagePack/JSON) serialization, ASDF archival export, HDF5 compression (measured 4.73x), and AIS/NMEA transponder decoding
 
 ## Installation
 
@@ -54,6 +55,15 @@ pip install nrl-tracker[visualization]
 
 # For signal processing (wavelets)
 pip install nrl-tracker[signal]
+
+# For polars DataFrame accessors on track histories and metrics
+pip install nrl-tracker[dataframe]
+
+# For AIS/NMEA transponder decoding
+pip install nrl-tracker[ais]
+
+# For ASDF archival export/import of tracks and states
+pip install nrl-tracker[asdf]
 
 # For GPU acceleration (NVIDIA CUDA)
 pip install nrl-tracker[gpu]
@@ -197,16 +207,17 @@ pytcl/
 ├── terrain/                 # Terrain elevation models
 ├── containers/              # Spatial indexes, track/measurement containers
 ├── trackers/                # Multi-target trackers (GNN, JPDA, MHT)
-├── io/                      # SQL/HDF5 track storage and migration
+├── io/                      # SQL/HDF5 storage, CSV/Parquet/DataFrame/ASDF/msgspec I/O
+├── transponders/            # AIS/NMEA decoding (maritime)
 ├── gpu/                     # GPU acceleration (CuPy/MLX)
 └── plotting/                # Covariance ellipses, tracks, metrics plots
 ```
 
 ## Examples & Tutorials
 
-The library includes 40 runnable code examples demonstrating all major features:
+The library includes 42 runnable code examples demonstrating all major features:
 
-### Examples (30 files in `/examples/`)
+### Examples (32 files in `/examples/`)
 
 Comprehensive demonstrations of library functionality:
 - **Tracking & Estimation**: Kalman filters, particle filters, smoothers
@@ -219,7 +230,7 @@ Comprehensive demonstrations of library functionality:
 - **Signal Processing**: Detection, filtering, transforms
 - **Terrain & Atmosphere**: Elevation models, atmospheric properties
 
-**Status**: ✅ All 30 examples run in CI on every push
+**Status**: ✅ All 32 examples run in CI on every push
 
 ### Tutorials (10 modules in `/docs/tutorials/`)
 
@@ -237,7 +248,7 @@ Interactive learning modules with visualizations:
 
 - [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
 - [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
-- [Examples](examples/) - 30 validated example scripts
+- [Examples](examples/) - 32 validated example scripts
 - [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
 ## Comparison with Original MATLAB Library

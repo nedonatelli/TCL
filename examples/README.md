@@ -1,8 +1,8 @@
 # Examples
 
-This directory contains 29 comprehensive example scripts demonstrating the Tracker Component Library's major features and capabilities.
+This directory contains 32 comprehensive example scripts demonstrating the Tracker Component Library's major features and capabilities.
 
-**Status**: ✅ **All 29 examples validated** - 100% execution success rate
+**Status**: ✅ **All 32 examples validated** - 100% execution success rate
 
 ## Quick Start
 
@@ -16,7 +16,7 @@ python examples/orbital_mechanics.py
 
 ## Examples by Category
 
-### Tracking & Estimation (8 examples)
+### Tracking & Estimation (11 examples)
 
 - **[kalman_filter_comparison.py](kalman_filter_comparison.py)** - Compare EKF, UKF, CKF, and H-infinity filters
 - **[particle_filters.py](particle_filters.py)** - Particle filter implementations for nonlinear estimation
@@ -28,6 +28,7 @@ python examples/orbital_mechanics.py
 - **[assignment_algorithms.py](assignment_algorithms.py)** - Hungarian algorithm, k-best, and 3D assignment
 - **[performance_evaluation.py](performance_evaluation.py)** - OSPA, track metrics, and evaluation measures
 - **[track_management_workflows.py](track_management_workflows.py)** - Track lifecycle workflows over SQL and HDF5 storage
+- **[measurement_ingest.py](measurement_ingest.py)** - Results I/O: CSV measurement readers, GNN tracking, polars DataFrame export, Parquet output
 
 ### Coordinate Systems & Transforms (4 examples)
 
@@ -49,7 +50,7 @@ python examples/orbital_mechanics.py
 - **[geophysical_models.py](geophysical_models.py)** - Gravity, magnetism, atmosphere models
 - **[relativity_demo.py](relativity_demo.py)** - Relativistic corrections for high-speed objects
 
-### Astronomy & Ephemerides (3 examples)
+### Astronomy & Ephemerides (2 examples)
 
 - **[ephemeris_demo.py](ephemeris_demo.py)** - Sun, moon, planet positions at any epoch
 - **[magnetism_demo.py](magnetism_demo.py)** - WMM and IGRF magnetic field models
@@ -159,7 +160,7 @@ if __name__ == "__main__":
 - **kalman_filter_comparison.py**: ~7 seconds
 - Most others: <5 seconds
 
-Total batch execution time: ~2-3 minutes for all 29 examples
+Total batch execution time: ~2-3 minutes for all 32 examples
 
 ## Visualization
 
@@ -178,6 +179,9 @@ All examples require:
 
 Optional dependencies:
 - Skyfield (for astronomy examples)
+- polars, the `[dataframe]` extra (for `measurement_ingest.py`; a plain
+  `uv sync` does not install it, and the script hard-fails without it
+  rather than skipping -- see `tests/contract/test_examples.py`)
 - Other specialized modules as needed
 
 ## Testing & Validation
@@ -185,12 +189,12 @@ Optional dependencies:
 All examples are validated to run without errors. Test results:
 
 ```
-✅ PASS:    29/29
-❌ FAIL:    0/29
-⏱️  TIMEOUT: 0/29
+✅ PASS:    32/32
+❌ FAIL:    0/32
+⏱️  TIMEOUT: 0/32
 ```
 
-**Last validated**: January 4, 2026
+**Last validated**: August 12, 2026 (`uv run pytest tests/contract/test_examples.py -m examples`)
 
 ## Contributing
 

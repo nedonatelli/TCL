@@ -29,13 +29,24 @@ class TrackHDF5Storage:
     path : str
         Path to HDF5 file.
     chunk_size : int
-        Chunk size for time-series datasets. Default is 1000.
+        Chunk size for time-series datasets, in rows along the time axis.
+        Datasets shorter than this are stored as a single chunk spanning
+        their full history (time-aligned, not split across tracks), which
+        is the common case for archival writes. Default is 1000.
     compression : str
         Compression algorithm. Default is 'gzip'.
     compression_level : int
         Compression level (1-9). Default is 4.
     dtype : str
         Default dtype for stored arrays. Default is 'float64'.
+    shuffle : bool
+        Enable HDF5's byte-shuffle filter before compression. Reorders each
+        chunk's bytes so that same-significance bytes of adjacent float64
+        values are contiguous, which measurably improves gzip's ratio on
+        slowly-varying track data (measured +7% on the benchmark scenario
+        in ``tests/unit/test_hdf5_compression.py`` -- see that file's
+        module docstring for the reproduction command and full figures).
+        Default is True.
 
     Examples
     --------
@@ -53,6 +64,7 @@ class TrackHDF5Storage:
         compression: str = "gzip",
         compression_level: int = 4,
         dtype: str = "float64",
+        shuffle: bool = True,
     ) -> None:
         if not HAS_H5PY:
             raise ImportError(
@@ -62,6 +74,7 @@ class TrackHDF5Storage:
         self._chunk_size = chunk_size
         self._compression = compression
         self._compression_level = compression_level
+        self._shuffle = shuffle
         self._dtype = np.dtype(dtype)
         self._file: Optional[Any] = None
         self._mode: Optional[str] = None
@@ -903,7 +916,14 @@ class TrackHDF5Storage:
         name: str,
         data: NDArray[np.float64],
     ) -> Any:
-        """Create a chunked, compressed, resizable dataset."""
+        """Create a chunked, compressed, resizable dataset.
+
+        The chunk's first axis is time (each track's own history), capped
+        at ``chunk_size`` -- so a track shorter than ``chunk_size`` (the
+        common case) lands in a single chunk spanning its whole series,
+        letting gzip see the full smooth trajectory rather than an
+        arbitrary slice of it.
+        """
         # Calculate chunk shape
         shape = data.shape
         chunks = list(shape)
@@ -922,4 +942,5 @@ class TrackHDF5Storage:
             maxshape=maxshape_tuple,
             compression=self._compression,
             compression_opts=self._compression_level,
+            shuffle=self._shuffle,
         )

@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Results I/O**: a full pipeline for getting measurements in and tracks
+  out, documented end to end in `docs/results_io.rst`.
+  - `pytcl.io.serialize`: msgspec-based `encode_tracks`/`decode_tracks` and
+    `encode_states`/`decode_states`, with a ``fmt="msgpack"`` (default) or
+    ``fmt="json"`` wire format. MessagePack round-trips `float64` bit
+    patterns exactly, including NaN/inf; JSON raises `ValueError` before
+    encoding any non-finite value rather than producing invalid JSON.
+    msgspec joins the core dependencies.
+  - `pytcl.io.dataframes` (the `dataframe` extra, polars):
+    `tracks_to_polars` flattens a per-scan track history into a long-format
+    table (one row per scan/track pair); `explode_state_columns` widens a
+    named state layout into its own columns; `metrics_to_polars` builds a
+    flat per-scan metrics table.
+  - `pytcl.io.readers` (the `dataframe` extra): `read_measurements_csv` /
+    `read_measurements_parquet` read a flat table into a `MeasurementSet`
+    grouped into scans by exact timestamp, with explicit
+    time/measurement/id column mapping. Validated as a transparent pipe
+    against the existing ADS-B REFERENCE test: round-tripping through
+    Parquet reproduces the original test's median tracking error to 1e-9.
+  - `pytcl.io.asdf_io` (the `asdf` extra): `save_tracks_asdf` /
+    `load_tracks_asdf` and `save_states_asdf` / `load_states_asdf` write
+    the same track-history and state shapes to a schema-versioned ASDF
+    ndarray tree.
+  - `pytcl.transponders.ais` (the `ais` extra, pyais): `decode_ais` /
+    `ais_position_reports` decode `!AIVDM`/`!AIVDO` NMEA sentences
+    (reassembling multipart messages) and extract position reports (types
+    1/2/3/18/19) as parallel arrays in radians/m-s, normalizing ITU-R
+    M.1371 "not available" sentinels to NaN. This is the Python port's
+    counterpart to the MATLAB TCL's `Transponders/decodeAISString`
+    (which wraps libais); pyais plays that role here. `pytcl.transponders`
+    returns with real content, ending its run as an empty placeholder
+    package (see `docs/matlab_parity_inventory.rst`).
+  - REFERENCE-class maritime validation (`tests/validation/test_ais_tracking.py`):
+    299 real ships / 6,808 position reports captured from Kystverket's open
+    AIS feed off the Norwegian coast, tracked with a per-ship
+    constant-velocity Kalman filter on position only, scored against each
+    ship's self-broadcast SOG (a quantity the filter is never given) --
+    median error 0.013 m/s against a calibrated 0.03 m/s envelope, mean
+    NIS 1.99 (textbook-consistent).
+  - `examples/measurement_ingest.py`: CSV synthesis -> `read_measurements_csv`
+    -> GNN tracking -> `tracks_to_polars` -> Parquet, as a runnable example.
+- `tests/fixtures/terrain/synthetic_gebco.nc`: a tiny (7362-byte), tracked
+  synthetic GEBCO-format fixture with a permanent CI test exercising the
+  GEBCO loader's diagnostics path end to end, closing the test-debt item
+  the roadmap previously tracked as "currently code-review-only
+  confidence" (see `tests/fixtures/terrain/SOURCES.md`).
+
+### Changed
+- **HDF5 track storage compression: measured, not claimed.**
+  `TrackHDF5Storage` now enables h5py's byte-shuffle filter by default
+  (`shuffle=True`), measured at **4.73x** compression on a 100-track x
+  500-scan, 6-D benchmark with covariances from a converged CV Kalman
+  filter (not random noise) -- up from a 4.42x baseline with the filter
+  off (+7.1%). Time-aligned chunk shapes (the other half of the ordered
+  improvement list) were evaluated and found to already be the existing
+  behavior: `chunks[0] = min(shape[0], chunk_size)` already puts a whole
+  track's history in one time-major chunk whenever it is shorter than
+  `chunk_size` (the common case), and forcing full-track chunking anyway
+  measured a 0.0% change at 500 scans and 0.016% at 2000 -- deflate's
+  32 KB back-reference window, not the chunk boundary, is the binding
+  constraint on this data. An optional `states_only` covariance-transform
+  mode was evaluated and deferred, not shipped: dropping covariance
+  entirely implies a ~6.3x ceiling (inside the once-claimed 5-10x band),
+  but reaching it losslessly requires reconstructing per-scan covariance
+  from a steady-state Cholesky factor across every read path
+  (`retrieve_track`, `get_track_trajectory`, `get_state_at_time`,
+  `export_to_sql`) and breaks the existing bit-exact covariance
+  round-trip contract. This supersedes the 1.3-4.3x figure below, which
+  measured an identity-covariance best case (4.3x) against a realistic
+  case (1.32x); the new benchmark uses converged, correlated covariances
+  throughout instead of an identity best case. Reproduce with
+  `uv run pytest tests/unit/test_hdf5_compression.py -q`.
+
 ## [2.1.0] - 2026-08-10
 
 The Diagnostics release: pytcl gains an opt-in observability layer, the

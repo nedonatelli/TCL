@@ -225,6 +225,72 @@ class TestDataFileInstrumentation:
             _l.remove(handle)
         assert records == []  # disabled namespace emits nothing
 
+    def test_gebco_fixture_exercises_found_and_parse_records(
+        self, tmp_path, monkeypatch
+    ):
+        """Real GEBCO files are ~7.5 GB, so no CI runner has one and the
+        "found" + parse start/finish DEBUG records (and the
+        ``progress=True`` log-pair fallback) never execute end-to-end in
+        CI -- only ever against a developer's local download. A tiny
+        synthetic NetCDF satisfying ``parse_gebco_netcdf``'s schema
+        (tests/fixtures/terrain/synthetic_gebco.nc, see that directory's
+        SOURCES.md) lets the real loader run this path in CI permanently.
+        """
+        pytest.importorskip("netCDF4")
+        import shutil
+        from pathlib import Path
+
+        import numpy as np
+        from loguru import logger as _l
+
+        from pytcl.terrain.loaders import _load_gebco_cached, load_gebco
+
+        fixture = (
+            Path(__file__).resolve().parent.parent
+            / "fixtures"
+            / "terrain"
+            / "synthetic_gebco.nc"
+        )
+        # _find_gebco_file's first pattern for the default version is
+        # "{version}.nc" -- name the copy so the loader finds it unaided.
+        shutil.copy(fixture, tmp_path / "GEBCO2025.nc")
+        monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+        _load_gebco_cached.cache_clear()
+        try:
+            lat_min, lat_max = np.radians(10.0), np.radians(12.0)
+            lon_min, lon_max = np.radians(20.0), np.radians(22.0)
+
+            # Plain (non-diagnostics, cached) load succeeds against the real
+            # loader and parser -- no special-casing for the synthetic file.
+            dem = load_gebco(lat_min, lat_max, lon_min, lon_max)
+            assert dem.data.shape == (21, 21)
+
+            # progress=True bypasses the load cache, so this is a fresh parse
+            # even though the call above already populated the cache.
+            records = []
+            enable_debug_logging()
+            handle = _l.add(records.append, format="{message}", level="DEBUG")
+            try:
+                dem2 = load_gebco(lat_min, lat_max, lon_min, lon_max, progress=True)
+            finally:
+                _l.remove(handle)
+                disable_debug_logging()
+            assert dem2.data.shape == (21, 21)
+        finally:
+            # Same intent as test_terrain_loaders.py's TestLoadGEBCOErrors
+            # (clear the cache post-test too, not just before) -- that file
+            # does it unconditionally after a `pytest.raises` block rather
+            # than in a `finally`; this test wraps in `finally` because its
+            # body can raise well before reaching that point. Either way,
+            # this test's synthetic-fixture DEM shouldn't leak into a later
+            # test's cache lookup.
+            _load_gebco_cached.cache_clear()
+
+        text = " ".join(str(r) for r in records)
+        assert "GEBCO file found" in text
+        assert "GEBCO read starting" in text
+        assert "GEBCO read finished" in text
+
 
 class TestGatingAssociationInstrumentation:
     def _run_scenario(self, capture):

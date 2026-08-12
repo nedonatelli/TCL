@@ -43,6 +43,7 @@ from pytcl import (
     performance_evaluation,
     plotting,
     trackers,
+    transponders,
 )
 from pytcl.diagnostics import (
     diagnostics_enabled,
@@ -85,6 +86,7 @@ __all__ = [
     "trackers",
     "performance_evaluation",
     "plotting",
+    "transponders",
     "diagnostics",
     "diagnostics_enabled",
     "enable_debug_logging",

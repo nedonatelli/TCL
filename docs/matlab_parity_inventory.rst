@@ -190,8 +190,26 @@ backends).
        access and ``pointIsOnLand``.
    * - Transponders
      - 3
-     - Absent
-     - AIS/NMEA decoding not ported.
+     - Partial
+     - MATLAB's ``Transponders`` directory holds exactly three functions:
+       ``decodeAISString`` (parse an NMEA sentence to a struct, wrapping
+       libais, a C library), ``decodeAISPosReports2Mat`` (extract position
+       reports into a matrix), and ``NMEAChecksum`` (compute/validate an
+       NMEA sentence's trailing ``*hh`` checksum, usable whether decoding
+       or constructing one). pytcl (v2.2.0) ports the first two as
+       :mod:`pytcl.transponders.ais`'s ``decode_ais`` and
+       ``ais_position_reports``, which reassemble multipart
+       ``!AIVDM``/``!AIVDO`` sentences and extract position reports (message
+       types 1/2/3/18/19), normalizing ITU-R M.1371 "not available"
+       sentinels to NaN -- via `pyais <https://pypi.org/project/pyais/>`_,
+       a pure-Python decoder, rather than a libais binding, so the two are
+       functionally equivalent but not the same implementation. Validated
+       against 6,808 real position reports from 299 ships off Norway (see
+       :doc:`results_io`). **Missing:** a standalone
+       ``NMEAChecksum``-equivalent (pytcl validates checksums internally
+       inside pyais's decode path, not as its own callable function), and
+       NMEA sentence *construction* in either direction (encoding a
+       message back to ``!AIVDM`` text) -- neither is ported.
    * - Scheduling
      - 4
      - Absent
