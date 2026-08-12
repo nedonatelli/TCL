@@ -10,7 +10,13 @@ Targets:
 - SQL detection storage: >1000 detections/sec
 - Track state updates: <10ms per track
 - Query latency: <100ms for typical scenarios
-- HDF5 compression: 5-10x ratio
+- HDF5 compression: >2x floor asserted here (best-case fixture below);
+  the honest, realistic-covariance figure is measured in
+  tests/unit/test_hdf5_compression.py (4.73x on a converged CV-filter
+  benchmark, shuffle=True) -- see ROADMAP.md and CHANGELOG.md for the
+  full writeup. The once-claimed 5-10x target is not reached by the
+  shipped configuration; a deferred `states_only` mode was evaluated as
+  the only path there.
 - Export throughput: >100 tracks/sec
 """
 
@@ -518,13 +524,18 @@ class TestHDF5Compression:
 
         This is a *best case*, not a typical one. The covariances below are
         identity matrices, which are mostly zeros and which gzip removes
-        almost entirely; that is where the ratio comes from. A filter produces
-        full, varying, positive-definite covariances, and on those the same
-        measurement gives 1.32x.
+        almost entirely; that is where the ratio comes from.
 
         The docstring used to call this data "representative of real tracking
         data" and the ROADMAP quoted 5-10x while this assertion required only
-        2x, so the gap went unnoticed. Measured figures are in ROADMAP.md.
+        2x, so the gap went unnoticed. Task 7 (v2.2.0 Results I/O) replaced
+        that narrative with a measured one: a benchmark using converged CV
+        Kalman filter covariances (realistic, not identity, not random) --
+        see tests/unit/test_hdf5_compression.py -- measures 4.73x with the
+        shipped defaults (shuffle=True). This test's identity-covariance
+        fixture and 2x floor are kept as-is as an unrelated regression check
+        on the compression pipeline itself; ROADMAP.md and CHANGELOG.md carry
+        the honest figures.
         """
         rng = np.random.default_rng(42)
         n_t = 20

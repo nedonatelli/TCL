@@ -65,10 +65,26 @@ No dates are attached because none have been decided:
 
 Session-identified, held deliberately out of earlier releases:
 
-- HDF5 compression to the once-claimed 5-10x (states-only chunking or a
-  covariance transform; the honest measured figure today is 1.3-4.3x)
 - Synthetic `.nc` fixture so the GEBCO loader's diagnostics path is
   exercised end-to-end in CI (currently code-review-only confidence)
+
+**HDF5 compression, measured and closed (v2.2.0 Results I/O, Task 7):**
+byte-shuffle (`shuffle=True`, now the `TrackHDF5Storage` default) measured
+**4.73x** on the 100-track x 500-scan, 6-D, CV-filter-converged-covariance
+benchmark, up from a 4.42x baseline (+7.1%) -- reproduce with
+`uv run pytest tests/unit/test_hdf5_compression.py -q`. Time-aligned chunk
+shapes were evaluated and found to already be the existing behavior (0.0%
+measured effect: tracks already fit in one chunk below the default
+`chunk_size`, and deflate's 32 KB window is the binding constraint either
+way). An optional `states_only` covariance-transform mode was evaluated
+and deferred: dropping covariance entirely implies a ~6.3x ceiling
+(inside the once-claimed 5-10x band), but reaching it losslessly requires
+reconstructing per-scan covariance from a steady-state Cholesky factor
+across every read path and breaks the existing bit-exact round-trip
+contract -- tracked as future backlog if ever needed, not shipped here.
+The prior 1.3-4.3x figure (identity-covariance best case 4.3x, realistic
+1.32x) is superseded by the measurement above, which uses converged
+CV-filter covariances throughout, not an identity best case.
 
 ### Modernization campaign (versioned; see docs/superpowers/specs/2026-08-06-modernization-campaign-design.md)
 

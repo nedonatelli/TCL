@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **HDF5 track storage compression: measured, not claimed.**
+  `TrackHDF5Storage` now enables h5py's byte-shuffle filter by default
+  (`shuffle=True`), measured at **4.73x** compression on a 100-track x
+  500-scan, 6-D benchmark with covariances from a converged CV Kalman
+  filter (not random noise) -- up from a 4.42x baseline with the filter
+  off (+7.1%). Time-aligned chunk shapes (the other half of the ordered
+  improvement list) were evaluated and found to already be the existing
+  behavior: `chunks[0] = min(shape[0], chunk_size)` already puts a whole
+  track's history in one time-major chunk whenever it is shorter than
+  `chunk_size` (the common case), and forcing full-track chunking anyway
+  measured a 0.0% change at 500 scans and 0.016% at 2000 -- deflate's
+  32 KB back-reference window, not the chunk boundary, is the binding
+  constraint on this data. An optional `states_only` covariance-transform
+  mode was evaluated and deferred, not shipped: dropping covariance
+  entirely implies a ~6.3x ceiling (inside the once-claimed 5-10x band),
+  but reaching it losslessly requires reconstructing per-scan covariance
+  from a steady-state Cholesky factor across every read path
+  (`retrieve_track`, `get_track_trajectory`, `get_state_at_time`,
+  `export_to_sql`) and breaks the existing bit-exact covariance
+  round-trip contract. This supersedes the 1.3-4.3x figure below, which
+  measured an identity-covariance best case (4.3x) against a realistic
+  case (1.32x); the new benchmark uses converged, correlated covariances
+  throughout instead of an identity best case. Reproduce with
+  `uv run pytest tests/unit/test_hdf5_compression.py -q`.
+
 ## [2.1.0] - 2026-08-10
 
 The Diagnostics release: pytcl gains an opt-in observability layer, the
