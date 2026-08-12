@@ -231,6 +231,21 @@ position-report filter) threads a ``t`` column through `PositionReports`,
 ready for `tracks_to_polars`-style downstream handling or a per-ship
 constant-velocity filter keyed on ``mmsi``.
 
+**Validated against real traffic**: ``tests/validation/test_ais_tracking.py``
+runs a per-ship constant-velocity Kalman filter, positions only, over 6,808
+position reports from 299 real ships -- captured from Kystverket's open AIS
+feed off the Norwegian coast -- and scores the recovered speed against each
+ship's self-broadcast SOG, a quantity the filter is never given: median
+error 0.0134 m/s against a calibrated 0.03 m/s envelope. Reproduce:
+
+.. code-block:: bash
+
+   uv run pytest tests/validation/test_ais_tracking.py -q
+
+The capture provenance, message-type histogram, independence argument and
+full calibration record (including the ``PROCESS_VAR`` sweep the 0.03 m/s
+envelope was derived from) are in ``tests/fixtures/ais/SOURCES.md``.
+
 ASDF
 -----
 

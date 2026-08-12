@@ -277,9 +277,13 @@ class TestDataFileInstrumentation:
                 disable_debug_logging()
             assert dem2.data.shape == (21, 21)
         finally:
-            # Matches test_terrain_loaders.py's convention (TestLoadGEBCOErrors):
-            # clear the cache post-test too, so this test's synthetic-fixture
-            # DEM doesn't leak into a later test's cache lookup.
+            # Same intent as test_terrain_loaders.py's TestLoadGEBCOErrors
+            # (clear the cache post-test too, not just before) -- that file
+            # does it unconditionally after a `pytest.raises` block rather
+            # than in a `finally`; this test wraps in `finally` because its
+            # body can raise well before reaching that point. Either way,
+            # this test's synthetic-fixture DEM shouldn't leak into a later
+            # test's cache lookup.
             _load_gebco_cached.cache_clear()
 
         text = " ".join(str(r) for r in records)

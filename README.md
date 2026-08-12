@@ -215,9 +215,9 @@ pytcl/
 
 ## Examples & Tutorials
 
-The library includes 40 runnable code examples demonstrating all major features:
+The library includes 42 runnable code examples demonstrating all major features:
 
-### Examples (30 files in `/examples/`)
+### Examples (32 files in `/examples/`)
 
 Comprehensive demonstrations of library functionality:
 - **Tracking & Estimation**: Kalman filters, particle filters, smoothers
@@ -230,7 +230,7 @@ Comprehensive demonstrations of library functionality:
 - **Signal Processing**: Detection, filtering, transforms
 - **Terrain & Atmosphere**: Elevation models, atmospheric properties
 
-**Status**: ✅ All 30 examples run in CI on every push
+**Status**: ✅ All 32 examples run in CI on every push
 
 ### Tutorials (10 modules in `/docs/tutorials/`)
 
@@ -248,7 +248,7 @@ Interactive learning modules with visualizations:
 
 - [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
 - [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
-- [Examples](examples/) - 30 validated example scripts
+- [Examples](examples/) - 32 validated example scripts
 - [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
 ## Comparison with Original MATLAB Library
