@@ -29,6 +29,8 @@ import pathlib
 import numpy as np
 import pytest
 
+pytest.importorskip("pyais")
+
 from pytcl.coordinate_systems.conversions import geodetic2enu
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 from pytcl.dynamic_models import q_discrete_white_noise
