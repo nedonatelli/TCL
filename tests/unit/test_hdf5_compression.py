@@ -12,9 +12,11 @@ Reproduce the measured figures below::
 
     uv run pytest tests/unit/test_hdf5_compression.py -q
 
-Measured on macOS arm64, h5py 3.16, gzip level 4 (full methodology and
-the abandoned/deferred alternatives are in
-``.superpowers/sdd/2026-08-11-results-io/task-7-report.md``):
+Measured on macOS arm64, h5py 3.16, gzip level 4. Chunk-shape alignment
+was measured as a null result (deflate's 32 KB window binds, not the chunk
+boundary) and a states-only mode was evaluated and deferred because
+reconstructing per-scan covariance would break the bit-exact round trip;
+both are recorded in ROADMAP.md's compression entry.
 
 ============================================  ============
 config                                        ratio

@@ -371,12 +371,10 @@ rho for every satellite, including `69702` (`0.7768`), comfortably clears
 the brief's separate GEO gate (`rho > 0.5`), so growth-with-horizon was not
 in question -- only the absolute magnitude of the `decaying` regime's 7d,
 14d, and 28d medians. This was reported BLOCKED with the measured numbers
-(`.superpowers/sdd/2026-08-08-sgp4-long-horizon/task-1-report.md`) rather
-than calibrated around, per the calibration discipline.
+with the measured numbers rather than calibrated around, per the
+calibration discipline.
 
-**Controller ruling (2026-08-08,
-`docs/superpowers/specs/2026-08-08-sgp4-long-horizon-design.md`,
-"Vacuousness ceiling" paragraph):** the measurements are accepted as
+**Controller ruling (2026-08-08, "vacuousness ceiling"):** the measurements are accepted as
 genuine physics, not a harness bug -- the "thousands of km means a bug"
 heuristic was wrong for a regime whose whole point is measuring
 near-decay predictability collapse. The ruling replaces that heuristic
