@@ -245,6 +245,46 @@ class TestHDF5CompressionBenchmark:
             "float64 track data"
         )
 
+    def test_shuffle_round_trip_is_bit_exact(self, benchmark_tracks, tmp_path):
+        """shuffle=True is lossless: strict equality, not almost-equal.
+
+        The shuffle filter only reorders bytes on disk; h5py/HDF5 undoes
+        that reordering transparently on read, so retrieval must recover
+        the exact float64 bit patterns written -- not merely "close" ones.
+        This backs the round-trip-fidelity argument used in
+        ROADMAP.md/CHANGELOG.md/this file's module docstring to defer
+        `states_only` (which would trade bit-exact covariance for a
+        tolerance-bounded reconstruction): the claim is enforced here with
+        `np.testing.assert_array_equal`/`np.array_equal`, not
+        `assert_array_almost_equal`, so a regression that quietly
+        introduced lossy behavior would fail this test.
+        """
+        from pytcl.io.hdf5_track_storage import TrackHDF5Storage
+
+        tid = next(iter(benchmark_tracks))
+        original = benchmark_tracks[tid]
+        path = str(tmp_path / "round_trip_shuffle.h5")
+
+        with TrackHDF5Storage(path, shuffle=True) as store:
+            store.open(mode="w")
+            store.store_track(
+                tid,
+                original["states"],
+                original["covariances"],
+                original["timestamps"],
+            )
+
+        with TrackHDF5Storage(path) as store:
+            store.open(mode="r")
+            retrieved = store.retrieve_track(tid)
+
+        assert np.array_equal(retrieved["states"], original["states"])
+        assert np.array_equal(retrieved["covariances"], original["covariances"])
+        assert np.array_equal(retrieved["timestamps"], original["timestamps"])
+        np.testing.assert_array_equal(retrieved["states"], original["states"])
+        np.testing.assert_array_equal(retrieved["covariances"], original["covariances"])
+        np.testing.assert_array_equal(retrieved["timestamps"], original["timestamps"])
+
     def test_final_ratio_regression_rail(self, benchmark_tracks, raw_size, tmp_path):
         """Final shipped configuration (defaults) stays above the measured floor.
 
