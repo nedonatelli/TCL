@@ -7,10 +7,10 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.1.0)
+Current State (v2.2.0)
 ----------------------
 
-* **6,200+ tests** passing, 90% coverage, docstring examples run in CI
+* **6,300+ tests** passing, 90% coverage, docstring examples run in CI
 * **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-13, and
   WMMHR2025 magnetic models verified against independent references to
   sub-nT accuracy; UTM projections verified against EPSG to sub-millimeter
@@ -22,6 +22,12 @@ Current State (v2.1.0)
   hardware
 * **Diagnostics**: opt-in observability (:doc:`diagnostics`) — silent by
   default, with gating/association/filter-health/data-file instrumentation
+* **Results I/O** (:doc:`results_io`): CSV/Parquet measurement ingest,
+  ``to_polars()`` accessors, msgspec JSON/MessagePack and ASDF
+  serialization, and AIS NMEA decoding
+* **Real ship traffic**: a recorded AIS capture (299 vessels) scores the
+  tracking chain against self-broadcast speed, alongside the ADS-B and TLE
+  fixtures
 * **Track management**: SQL and HDF5 persistence with lifecycle management
   and v1.x migration tools
 * **Tooling**: uv-managed workflow, ruff (lint + format), ty as the type
@@ -36,16 +42,15 @@ Released
 * **v2.1.0** (2026-08-10) — the Diagnostics release: ``pytcl.diagnostics``,
   the Gaussian cubature-point library with CKF hookup, real-data
   validations, and the completed uv/ty toolchain migration.
+* **v2.2.0** (2026-08-12) — the Results I/O release: polars ingest
+  (CSV/Parquet) and ``to_polars()`` accessors, msgspec JSON/MessagePack
+  serialization, ASDF export, AIS NMEA decoding validated against a
+  recorded capture of 299 real ships, and HDF5 track-storage compression
+  measured at 4.73x.
 
 Next
 ----
 
-* **v2.2.0 — Results I/O**: polars ingest (CSV/Parquet) and ``to_polars()``
-  accessors (the ``dataframe`` extra), msgspec export of track histories
-  and states to JSON/MessagePack (msgspec now a core dependency), ASDF
-  export/import of track histories and states (the ``asdf`` extra), AIS
-  NMEA decoding and position-report extraction (the ``ais`` extra, pyais),
-  and measured HDF5 byte-shuffle compression (4.73x, on by default).
 * **v2.3.0 — Typed configs + save/restore**: filter/tracker configs as
   ``msgspec.Struct``, full tracker state snapshot/resume.
 * **Measured backlog**: the remaining MATLAB parity gaps
