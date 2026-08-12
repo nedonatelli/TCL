@@ -185,6 +185,14 @@ Rules of thumb:
 - CI tool versions are **pinned** (ruff, ty); bump deliberately in a PR
   that also fixes whatever the new version flags.
 - Generated artifacts (benchmark history, plots) never mix into feature PRs.
+- **Planning artifacts are not tracked.** Design specs, implementation
+  plans, and agent-workflow scratch (`docs/superpowers/`, `.superpowers/`)
+  are gitignored: they are scaffolding for one campaign, and nothing in the
+  code, CI, or published docs reads them. Anything from a plan that must
+  outlive it belongs somewhere a reader actually reaches -- a docstring, a
+  `SOURCES.md`, the CHANGELOG, or a ROADMAP entry. Do not add cross-
+  references to these paths from tracked files; they dangle for anyone who
+  clones the repo.
 
 ## Testing
 

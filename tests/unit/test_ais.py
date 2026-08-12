@@ -12,9 +12,9 @@ installed pyais 3.2.1 wheel ships no ``tests/`` directory (verified via
 are present), so per the task brief's fallback this pair was constructed with
 pyais's own encoder (``pyais.encode.encode_dict``) for a type-5 static/voyage
 message and round-tripped through ``pyais.decode`` to confirm it reassembles
-and decodes correctly before being pasted here -- see
-``.superpowers/sdd/2026-08-11-results-io/task-4-report.md`` for the exact
-construction script and its output.
+and decodes correctly before being pasted here. Regenerate an equivalent pair
+with ``pyais.encode.encode_dict({"msg_type": 5, ...})`` if these ever need
+replacing.
 """
 
 import numpy as np

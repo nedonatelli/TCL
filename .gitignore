@@ -180,6 +180,10 @@ benchmark_results.json
 # Claude Code / SideCar tool state
 .sidecar/
 
-# Superpowers ephemeral workspaces (SDD ledgers, briefs, review diffs).
-# The durable design record lives tracked in docs/superpowers/.
+# Superpowers artifacts: ephemeral SDD workspaces (ledgers, briefs, review
+# diffs) and the specs/plans that drive them. These are process scaffolding
+# for a single campaign -- the durable record is the code, the tests, the
+# CHANGELOG, and git history. Keeping them tracked also fought the
+# ruff-format gate, which formats Python fences inside Markdown.
 .superpowers/
+docs/superpowers/
