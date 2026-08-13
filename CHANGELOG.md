@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Property-based tests** (`tests/property/`, empty since before v2.0.0
+  while `hypothesis` sat declared and unused as a dev dependency): four
+  target areas, each generating inputs instead of asserting fixed values.
+  - Serialization round trips (`pytcl.io.serialize`, `pytcl.io.asdf_io`):
+    msgpack/JSON/ASDF encode-decode is bitwise-exact across generated track
+    histories and state/covariance arrays; JSON rejects non-finite values
+    before encoding.
+  - Coordinate round trips (`pytcl.coordinate_systems.conversions.spherical`,
+    `.geodetic`): `cart2sphere`/`sphere2cart` across all three `system_type`
+    conventions, and `geodetic2ecef`/`ecef2geodetic`, generated over
+    magnitudes from 1e-6 to 1e7, the poles, and the antimeridian.
+  - Assignment optimality (`pytcl.assignment_algorithms.two_dimensional.
+    assignment.hungarian`): matched against a brute-force
+    `itertools.permutations` oracle for both `minimize` and `maximize`,
+    including rectangular and tie-heavy cost matrices.
+  - Kalman covariance invariants (`pytcl.dynamic_estimation.kalman.linear.
+    {kf_predict,kf_update}`): posterior covariance stays symmetric and PSD,
+    and a measurement update never increases `trace(P)`.
+  - **Determinism policy:** two Hypothesis profiles, `ci` (100 examples,
+    `derandomize=True`, activated automatically since GitHub Actions sets
+    `CI=true` on every runner) and `dev` (500 examples, exploring) —
+    a red CI build reproduces from the commit alone. `.hypothesis/` is
+    gitignored. The narrowing rule (never shrink a generator's domain to
+    dodge a counterexample; fix the defect or pin it) is documented in
+    `CONTRIBUTING.md` and `tests/property/README.md`.
+  - **Two counterexamples found**, both float64 conditioning artifacts in
+    the coordinate stack, not library bugs — pinned as permanent
+    example-based regression tests under `tests/property/
+    test_coordinate_properties.py`, generators left unnarrowed:
+    - Exact north pole (`el = 0.0` in the "standard" system): `0.0 *
+      cos(az)` propagates IEEE signed zero through to `atan2`, so recovered
+      azimuth collapses to exactly `0.0` or `+/-pi` depending on which half
+      of the circle `az` fell in, rather than being recoverable in general.
+    - Subnormal elevation (~5e-324): x and y both quantize to the same
+      float64 step regardless of azimuth, so recovered azimuth is not
+      meaningful at that magnitude.
+  - **Documented blind spot:** the Kalman PSD property cannot distinguish a
+    correct Joseph-form covariance update from a naive-form one — verified
+    null across 400k mutated calls in review. A chained filter-loop property
+    would be needed to catch that class of regression; out of scope here.
+
 ## [2.2.0] - 2026-08-12
 
 The Results I/O release: measurements come in from CSV and Parquet, results
