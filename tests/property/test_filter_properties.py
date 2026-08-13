@@ -40,6 +40,30 @@ eigenvalue negative here is floating-point roundoff in forming the
 products, and a violation large enough to look like a real defect would be
 exactly that classic degradation bug, not a test artifact -- triaged per
 the campaign's narrowing rule, never papered over with a generator change.
+
+Known limitation (found by review, not by this suite -- recorded here so
+the gap is documented rather than silently assumed away): these are
+*single-call* invariants, checked against one ``kf_predict``/``kf_update``
+in isolation. The PSD property catches gross violations -- confirmed by
+mutation testing: flipping a sign in the update fails on the first
+generated example -- but it does **not** distinguish the Joseph-form
+update actually implemented from the textbook-fragile naive form
+``P_upd = (I - KH) @ P``, the version Joseph form specifically exists to
+outperform. Reviewer verification: swapping in the naive form still passed
+this property at 20,000 examples, across 50,000 adversarial single-shot
+trials engineered to maximize cond(S) within this generator's own bounds,
+and across 400,000 chained sequential updates run *outside* this suite.
+The reason is not that ``MAX_ABS_ENTRY``/``_PSD_FLOOR`` are too forgiving
+(pushing conditioning to the ceiling of this generator family still didn't
+trigger it) -- it's that Joseph-vs-naive divergence essentially never
+shows up in float64 from a single update call at all; it needs either very
+long chains of predict/update cycles (roundoff accumulating call over
+call) or reduced precision to become visible. A property that chained many
+``kf_predict``/``kf_update`` cycles with fixed ``H``/``R`` over a long
+sequence would be needed to guard the naive-vs-Joseph regression. That is
+deliberately out of scope for this task (single-call properties per the
+brief) and is a candidate for a future filter-loop property suite, not
+something this module should be read as already covering.
 """
 
 from __future__ import annotations
