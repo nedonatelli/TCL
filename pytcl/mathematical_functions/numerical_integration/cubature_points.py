@@ -308,16 +308,125 @@ def _sphere_surface_points(
     return points, weights / weights.sum()
 
 
-def spherical_radial_points(
-    n: int, degree: int
+def sphere_surface_to_gauss_points(
+    surface_points: ArrayLike,
+    surface_weights: ArrayLike,
+    degree: int,
+    beta: float = 0.0,
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
-    Arbitrary-odd-degree spherical-radial cubature points for N(0, I).
+    Lift a spherical-surface cubature rule to a Gaussian(-times-\\|x\\|^beta) rule.
+
+    Counterpart of the MATLAB TCL's ``spherSurfPoints2GaussPoints``: given
+    cubature points/weights for the uniform measure on the unit sphere
+    S^(n-1) (weights summing to 1, e.g. from
+    :func:`_sphere_surface_points`), produces points/weights for the
+    weighting function ``w(x) = N(x; 0, I) * |x|^beta`` (``beta = 0`` is the
+    plain N(0, I) density).
+
+    The MATLAB source builds the radial rule from a 1-D quadrature for
+    ``|x|^c1 * exp(-x^2)`` (``quadraturePoints1D``, algorithm 9, a
+    three-term-recursion construction restricted to integer ``c1``), then
+    rescales by ``x -> sqrt(2) x``. This port instead reuses the
+    generalized Gauss-Laguerre substitution ``t = r^2/2`` already used by
+    :func:`spherical_radial_points`: with ``alpha = (n + beta)/2 - 1``, the
+    quadrature nodes/weights from ``scipy.special.roots_genlaguerre`` match
+    the same target radial moments
+    ``integral_0^inf r^(n-1+beta) exp(-r^2/2) r^(2k) dr`` for every ``k``
+    needed up to ``degree``, so it reproduces the identical family of rules
+    while additionally allowing non-integer ``beta`` (MATLAB's
+    three-term-recursion route cannot). Both routes implement the same
+    "spherical shell plus a 1-D |x|^beta * exp(-x^2)-type formula"
+    construction described in Chapter 2.8 of [1]_, cited by the MATLAB
+    source. Randomization (MATLAB's ``randomize`` flag, a random
+    orthonormal rotation applied post hoc to reduce repeated-orientation
+    artifacts in tracking -- see [2]_, [3]_) is not exposed; callers who
+    want it can rotate the returned points themselves.
+
+    Parameters
+    ----------
+    surface_points : array_like
+        Points on the unit sphere S^(n-1), shape (num_surface_points, n).
+    surface_weights : array_like
+        Weights for the uniform measure on S^(n-1), shape
+        (num_surface_points,), summing to 1.
+    degree : int
+        The polynomial degree the surface rule (and thus this rule) is
+        exact through, degree >= 1.
+    beta : float, optional
+        Exponent of \\|x\\| in the weighting function, beta > -n. Default 0.0
+        (plain N(0, I)).
+
+    Returns
+    -------
+    points : ndarray, shape (num_radii * num_surface_points, n)
+    weights : ndarray, shape (num_radii * num_surface_points,). Sums to
+        ``2**(beta / 2) * gamma((n + beta) / 2) / gamma(n / 2)``, the
+        beta-th absolute moment of the chi_n distribution -- 1.0 when
+        beta=0, not 1 in general.
+
+    Examples
+    --------
+    >>> surf_pts, surf_w = _sphere_surface_points(3, 5)
+    >>> pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, 5)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 4)), 9)  # E[x^4] = 3
+    3.0
+
+    References
+    ----------
+    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+       Prentice-Hall, 1971, Ch. 2.8.
+    .. [2] O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
+       Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
+       Fusion, Singapore, 2012, pp. 503-510.
+    .. [3] J. Dunik, O. Straka, and M. Simandl, "The development of a
+       randomised unscented Kalman filter," in Proc. 18th World Congress,
+       IFAC, Milan, Italy, 2011, pp. 8-13.
+    """
+    surface_points = np.asarray(surface_points, dtype=np.float64)
+    surface_weights = np.asarray(surface_weights, dtype=np.float64)
+    if surface_points.ndim != 2:
+        raise ValueError(
+            f"surface_points must be 2-D, got shape {surface_points.shape}"
+        )
+    n = surface_points.shape[1]
+    if degree < 1:
+        raise ValueError(f"degree must be >= 1, got {degree}")
+    if not beta > -n:
+        raise ValueError(f"beta must be > -n ({-n}), got {beta}")
+
+    # Same substitution as spherical_radial_points, generalized to alpha =
+    # (n + beta)/2 - 1: exact for radial powers r^(2j), j = 0..2*m_r-1.
+    # Needed j range is 0..degree//2, so m_r = ceil((degree//2 + 1)/2).
+    m_r = (degree // 2 + 2) // 2
+    alpha = (n + beta) / 2.0 - 1.0
+    t, u = roots_genlaguerre(m_r, alpha)
+    radii = np.sqrt(2.0 * t)
+    w_rad = (u / gamma(n / 2.0)) * 2.0 ** (beta / 2.0)
+
+    points = np.vstack([r * surface_points for r in radii])
+    weights = np.concatenate([wr * surface_weights for wr in w_rad])
+    return points, weights
+
+
+def spherical_radial_points(
+    n: int, degree: int, beta: float = 0.0
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Arbitrary-odd-degree spherical-radial cubature points for N(0, I) times
+    \\|x\\|^beta.
 
     Product of a generalized Gauss-Laguerre radial rule (exact for all
     required even powers of r) with a dimension-recursive surface rule on
     the unit sphere. Generalizes the 3rd-degree spherical-radial rule of
-    the CKF to any odd degree.
+    the CKF to any odd degree. ``beta`` selects the
+    :func:`sphere_surface_to_gauss_points` weight family (``|x|^beta``
+    times the Gaussian); the default ``beta=0.0`` is the plain N(0, I)
+    case and its code path is byte-for-byte the original
+    (pre-``beta``-parameter) implementation, so existing callers are
+    unaffected.
 
     The point count grows roughly as ``(degree/2)^(n-1)`` from the surface
     rule; for the common degrees 5 and 7 prefer
@@ -330,11 +439,16 @@ def spherical_radial_points(
         Dimension, n >= 1.
     degree : int
         Odd polynomial degree >= 3 the rule integrates exactly.
+    beta : float, optional
+        Exponent of \\|x\\| in the weighting function, beta > -n. Default
+        0.0 (plain N(0, I); weights then sum to 1).
 
     Returns
     -------
     points : ndarray, shape (num_points, n)
-    weights : ndarray, shape (num_points,), summing to 1.
+    weights : ndarray, shape (num_points,). Summing to 1 when beta=0;
+        otherwise to ``2**(beta / 2) * gamma((n + beta) / 2) / gamma(n / 2)``
+        (see :func:`sphere_surface_to_gauss_points`).
 
     Examples
     --------
@@ -348,20 +462,30 @@ def spherical_radial_points(
         raise ValueError(f"dimension must be >= 1, got {n}")
     if degree < 3 or degree % 2 == 0:
         raise ValueError(f"degree must be an odd integer >= 3, got {degree}")
-
-    # Radial part: substitute t = r^2/2 in the integral of g(r) r^(n-1)
-    # exp(-r^2/2); Gauss-Laguerre with alpha = n/2 - 1 handles t^j exactly.
-    # Even powers r^(2j) with 2j <= degree - 1 must be exact => j <=
-    # (degree-1)/2 => m_r points with 2*m_r - 1 >= (degree-1)/2.
-    # Checked: degree 3 -> 1 node (r = sqrt(n), the CKF radius); 5,7 -> 2;
-    # 9 -> 3.
-    m_r = (degree + 3) // 4
-    t, wt = roots_genlaguerre(m_r, n / 2.0 - 1.0)
-    radii = np.sqrt(2.0 * t)
-    w_rad = wt / gamma(n / 2.0)
+    if not beta > -n:
+        raise ValueError(f"beta must be > -n ({-n}), got {beta}")
 
     surf_pts, surf_w = _sphere_surface_points(n, degree)
 
-    points = np.vstack([r * surf_pts for r in radii])
-    weights = np.concatenate([wr * surf_w for wr in w_rad])
-    return points, weights / weights.sum()
+    if beta == 0.0:
+        # Unchanged from before the beta parameter was added (see
+        # TestSphericalRadialBetaGeneralization in
+        # tests/unit/test_cubature_points.py for a bit-identity regression
+        # guard against this branch).
+        #
+        # Radial part: substitute t = r^2/2 in the integral of g(r) r^(n-1)
+        # exp(-r^2/2); Gauss-Laguerre with alpha = n/2 - 1 handles t^j
+        # exactly. Even powers r^(2j) with 2j <= degree - 1 must be exact
+        # => j <= (degree-1)/2 => m_r points with 2*m_r - 1 >= (degree-1)/2.
+        # Checked: degree 3 -> 1 node (r = sqrt(n), the CKF radius); 5,7 ->
+        # 2; 9 -> 3.
+        m_r = (degree + 3) // 4
+        t, wt = roots_genlaguerre(m_r, n / 2.0 - 1.0)
+        radii = np.sqrt(2.0 * t)
+        w_rad = wt / gamma(n / 2.0)
+
+        points = np.vstack([r * surf_pts for r in radii])
+        weights = np.concatenate([wr * surf_w for wr in w_rad])
+        return points, weights / weights.sum()
+
+    return sphere_surface_to_gauss_points(surf_pts, surf_w, degree, beta)

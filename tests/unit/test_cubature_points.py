@@ -5,15 +5,19 @@ degree <= d against N(0, I) exactly, and must FAIL on some degree d+1
 monomial (sharpness -- guards against a vacuous exactness loop).
 """
 
+import hashlib
 import itertools
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.special import gamma
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+    _sphere_surface_points,
     fifth_order_cubature_points,
     seventh_order_cubature_points,
+    sphere_surface_to_gauss_points,
     spherical_radial_points,
     transform_cubature_points,
 )
@@ -28,6 +32,30 @@ def gaussian_moment(alpha):
         for k in range(a - 1, 0, -2):  # (a-1)!! = (a-1)(a-3)...1
             m *= k
     return m
+
+
+def weighted_gaussian_moment(alpha, beta):
+    """E[prod x_i^alpha_i * |x|^beta] for x ~ N(0, I_n), n = len(alpha).
+
+    Closed form via polar coordinates: the surface integral of u^alpha over
+    S^(n-1) is zero unless every alpha_i is even, and otherwise separates
+    from the radial integral of the chi_n density times |x|^beta. beta=0
+    reduces to gaussian_moment(alpha).
+    """
+    n = len(alpha)
+    d = sum(alpha)
+    if any(a % 2 == 1 for a in alpha):
+        return 0.0
+    surface_part = 1.0
+    for a in alpha:
+        surface_part *= gamma((a + 1) / 2.0)
+    return (
+        np.pi ** (-n / 2.0)
+        * 2.0 ** ((d + beta) / 2.0)
+        * gamma((d + beta + n) / 2.0)
+        / gamma((n + d) / 2.0)
+        * surface_part
+    )
 
 
 def rule_moment(points, weights, alpha):
@@ -53,6 +81,16 @@ def assert_rule_exact(points, weights, n, degree):
         )
 
 
+def assert_rule_exact_weighted(points, weights, n, degree, beta):
+    for alpha in monomials_up_to(n, degree):
+        assert_allclose(
+            rule_moment(points, weights, alpha),
+            weighted_gaussian_moment(alpha, beta),
+            atol=1e-8,
+            err_msg=f"monomial {alpha} (beta={beta}) not integrated exactly",
+        )
+
+
 class TestHelpers:
     def test_gaussian_moment_known_values(self):
         # E[x^2]=1, E[x^4]=3, E[x^6]=15, E[x^2 y^2]=1, odd -> 0
@@ -62,6 +100,20 @@ class TestHelpers:
         assert gaussian_moment((8,)) == 105.0
         assert gaussian_moment((2, 2)) == 1.0
         assert gaussian_moment((1, 2)) == 0.0
+
+    def test_weighted_gaussian_moment_beta_0_matches_gaussian_moment(self):
+        for alpha in monomials_up_to(3, 6):
+            assert_allclose(
+                weighted_gaussian_moment(alpha, 0.0), gaussian_moment(alpha)
+            )
+
+    def test_weighted_gaussian_moment_known_chi_moments(self):
+        # E[|x|^beta] for x ~ N(0, I_n) is the beta-th absolute moment of
+        # the chi_n distribution: 2^(beta/2) Gamma((n+beta)/2)/Gamma(n/2).
+        # n=1: E[|x|^2] = Var(x) = 1.
+        assert_allclose(weighted_gaussian_moment((0,), 2.0), 1.0)
+        # n=3: E[|x|^2] = trace(I_3) = 3.
+        assert_allclose(weighted_gaussian_moment((0, 0, 0), 2.0), 3.0)
 
 
 class TestTransformCubaturePoints:
@@ -236,6 +288,119 @@ class TestSphericalRadial:
             spherical_radial_points(2, 1)  # < 3
         with pytest.raises(ValueError):
             spherical_radial_points(0, 3)  # bad dim
+
+
+class TestSphereSurfaceToGaussPoints:
+    """Adapter: spherical-surface rule -> Gaussian(-times-|x|^beta) rule."""
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    @pytest.mark.parametrize("degree", [3, 5, 7])
+    def test_beta_0_exact_through_degree(self, n, degree):
+        surf_pts, surf_w = _sphere_surface_points(n, degree)
+        pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, degree)
+        assert_allclose(w.sum(), 1.0, atol=1e-10)
+        assert_rule_exact(pts, w, n, degree)
+
+    @pytest.mark.parametrize("n,degree", [(2, 3), (3, 5), (5, 7)])
+    def test_beta_0_sharpness(self, n, degree):
+        surf_pts, surf_w = _sphere_surface_points(n, degree)
+        pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, degree)
+        alpha = (degree + 1,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - gaussian_moment(alpha)) > 1e-4
+
+    def test_beta_0_default_matches_explicit(self):
+        surf_pts, surf_w = _sphere_surface_points(3, 5)
+        pts1, w1 = sphere_surface_to_gauss_points(surf_pts, surf_w, 5)
+        pts2, w2 = sphere_surface_to_gauss_points(surf_pts, surf_w, 5, beta=0.0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    @pytest.mark.parametrize("degree", [3, 5, 7])
+    @pytest.mark.parametrize("beta", [1.0, 2.0, -0.5, 3.0])
+    def test_nonzero_beta_exact_through_degree(self, n, degree, beta):
+        surf_pts, surf_w = _sphere_surface_points(n, degree)
+        pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, degree, beta=beta)
+        # Total weight is E[|x|^beta] under N(0, I), not 1 in general.
+        assert_allclose(
+            w.sum(),
+            2.0 ** (beta / 2.0) * gamma((n + beta) / 2.0) / gamma(n / 2.0),
+            atol=1e-9,
+        )
+        assert_rule_exact_weighted(pts, w, n, degree, beta)
+
+    @pytest.mark.parametrize("n,degree,beta", [(2, 3, 1.0), (3, 5, 2.0), (4, 7, -0.5)])
+    def test_nonzero_beta_sharpness(self, n, degree, beta):
+        surf_pts, surf_w = _sphere_surface_points(n, degree)
+        pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, degree, beta=beta)
+        alpha = (degree + 1,) + (0,) * (n - 1)
+        assert (
+            abs(rule_moment(pts, w, alpha) - weighted_gaussian_moment(alpha, beta))
+            > 1e-4
+        )
+
+    def test_invalid_beta_raises(self):
+        surf_pts, surf_w = _sphere_surface_points(3, 3)
+        with pytest.raises(ValueError):
+            sphere_surface_to_gauss_points(surf_pts, surf_w, 3, beta=-3.0)  # <= -n
+        with pytest.raises(ValueError):
+            sphere_surface_to_gauss_points(surf_pts, surf_w, 3, beta=-5.0)
+
+
+class TestSphericalRadialBetaGeneralization:
+    """spherical_radial_points(n, degree, beta=0.0) -- pre-existing callers
+    (beta omitted or 0.0) must reproduce bit-for-bit the pre-generalization
+    output. These SHA-256 digests were captured from spherical_radial_points
+    BEFORE the beta parameter was added.
+    """
+
+    _BASELINE_SHA256 = {
+        (1, 3): "800d279e3e66a5a9cc5ebba21408f63ac39151ff609d827c475b775832a8891c",
+        (1, 5): "756565d3af37c593033924a35309ef0105a122e11a6e1be616972548c9c8b5c9",
+        (1, 7): "756565d3af37c593033924a35309ef0105a122e11a6e1be616972548c9c8b5c9",
+        (1, 9): "db212c0d7f896eca7a2ea54ec854ef7af183ec2ff99cda003c56759557b9b2b3",
+        (2, 3): "7c144cc11bc583514574968f5ff0cdc92cd0d5be3d25bb457862b3fc70a0af4e",
+        (2, 5): "0e59d08cca88aa4565a0533eb4ee71a0efcd48635f6d24fe95d017dae58911eb",
+        (2, 7): "12d8037c982cc68c937ca0a59ddf553de0c4409fedc6c5a9f58c88bf9172aa57",
+        (2, 9): "131b674dfc120b6160ac5e37746fb8472c7c8ddd460c2dda2b65b26075697e73",
+        (3, 3): "e83e8b72c9c59da14d90f324722ea8dcbe7bd574f7636df0c84b82729ebd1486",
+        (3, 5): "6c2d703888317a15eb1dff2c23306d4687e315b109d520c79ddf9e1154a71e59",
+        (3, 7): "64f632263e1a7521370f3edc44fe5ad9dd39d9371d6a0f0f85a59a8ab941f7b4",
+        (3, 9): "9b074a352e8dab99ad9afb54e598648071ba2a67687ddc8c3746ab8538702e1a",
+        (4, 3): "b5b98b69c1fe51bf7d84c0fa167f8b3905ca1c87f446af96e68556002ad8b00f",
+        (4, 5): "013b9269ee841980113bf7509c487bb1f9ea2e472b7f215c1e2b51050e1d6ac1",
+        (4, 7): "b162270d7810b4fa74012029621a9ddda0394307b02ac5c455a28c703bf3ff8d",
+        (4, 9): "816bd69e26060699e996052a64954f0a97b24c7a8e7001bc6cde119f19e7068e",
+    }
+
+    @pytest.mark.parametrize("n,degree", list(_BASELINE_SHA256.keys()))
+    def test_default_beta_bit_identical_to_pre_generalization(self, n, degree):
+        pts, w = spherical_radial_points(n, degree)
+        digest = hashlib.sha256(pts.tobytes() + w.tobytes()).hexdigest()
+        assert digest == self._BASELINE_SHA256[(n, degree)]
+
+    @pytest.mark.parametrize("n,degree", list(_BASELINE_SHA256.keys())[:4])
+    def test_explicit_beta_0_bit_identical_to_omitted(self, n, degree):
+        pts1, w1 = spherical_radial_points(n, degree)
+        pts2, w2 = spherical_radial_points(n, degree, beta=0.0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    @pytest.mark.parametrize("degree", [3, 5, 7])
+    @pytest.mark.parametrize("beta", [1.0, 2.0, -0.5])
+    def test_nonzero_beta_exact_through_degree(self, n, degree, beta):
+        pts, w = spherical_radial_points(n, degree, beta=beta)
+        assert_allclose(
+            w.sum(),
+            2.0 ** (beta / 2.0) * gamma((n + beta) / 2.0) / gamma(n / 2.0),
+            atol=1e-9,
+        )
+        assert_rule_exact_weighted(pts, w, n, degree, beta)
+
+    def test_invalid_beta_raises(self):
+        with pytest.raises(ValueError):
+            spherical_radial_points(3, 3, beta=-5.0)
 
 
 class TestCKFWithCustomPoints:
