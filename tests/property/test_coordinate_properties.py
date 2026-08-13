@@ -365,20 +365,26 @@ class TestSphereCartRoundTrip:
         cart = sphere2cart(r, az, el, system_type)
         _r2, az2, _el2 = cart2sphere(cart, system_type)
         note(f"system={system_type} r={r} az={az} el={el} -> az2={az2}")
-        if r * abs(np.cos(el)) < 1e-300:
-            # Same deep-subnormal collapse as
-            # test_standard_azimuth_roundtrips_except_at_exact_north_pole's
-            # r*sin(el) guard, mirrored here on r*cos(el) since az-el's pole
-            # is at el == +/-pi/2 rather than el == 0. No az assertion
-            # applies in this regime; see that test's comment for the full
-            # derivation.
-            return
-        # Away from that regime, neither az-el pole (el == +/-pi/2) is an
-        # exact floating-point zero: np.pi/2 is not exactly representable,
-        # so np.cos(np.pi/2) ~= 6.12e-17 leaves a tiny but az-proportional
-        # residual in x/y. az is therefore numerically recoverable
-        # everywhere else in this system, including exactly at the sampled
-        # pole edge value -- see module docstring.
+        # No r*abs(cos(el)) < 1e-300 deep-subnormal guard here, unlike the
+        # standard system's r*sin(el) guard above -- and deliberately not
+        # kept "for symmetry," because it would be unreachable dead code
+        # that implies a risk this system can't have: the standard system's
+        # collapse is possible because el == 0.0 is *exactly* representable,
+        # so el (and sin(el)) can be driven all the way down to the smallest
+        # positive subnormal (5e-324). az-el's pole is at +/-pi/2, which is
+        # NOT exactly representable -- the closest a float64 el can ever get
+        # to the true real pi/2 is bounded below by float64's own spacing
+        # there (~1.11e-16 relative), so cos(el) can never go below
+        # np.cos(np.pi/2) ~= 6.12e-17 for any el this generator (or any
+        # float64 value) can produce. There is no reachable "el nonzero but
+        # deep in subnormal range" regime to guard against here.
+        #
+        # Away from that (nonexistent) regime, neither az-el pole
+        # (el == +/-pi/2) is an exact floating-point zero: that same
+        # ~6.12e-17 floor leaves a tiny but az-proportional residual in
+        # x/y, so az is numerically recoverable everywhere in this system,
+        # including exactly at the sampled pole edge value -- see module
+        # docstring.
         diff = abs(np.remainder(az2 - az, 2 * np.pi))
         assert min(diff, 2 * np.pi - diff) < 1e-6
 
@@ -407,6 +413,20 @@ class TestGeodeticRoundTrip:
     atol=1e-2 m, matching the tol_m used for that method in the same file's
     pyproj cross-check -- 5 iterations of Bowring's method converges to
     sub-cm but isn't a closed form, so it doesn't hit the same floor.
+
+    lon at the exact pole uses the *same* 1e-9 atol as everywhere else, not
+    a looser one -- measured, not assumed. A first draft of this test gave
+    the pole case a 1e-4 atol on the theory that x/y there (~1e-17 x
+    (N+alt)) were "near the edge of what N/alt additions preserve," but
+    directly sweeping both ecef2geodetic methods over the full lon/alt
+    generator range at lat = +/-pi/2 (and at the float64 values nearest
+    pi/2 short of it, i.e. what this generator can actually produce) found
+    a worst-case lon error of 2.22e-16 -- 2 ULP, indistinguishable from the
+    away-from-pole case, not the 11-order-of-magnitude-looser regression a
+    1e-4 atol would have silently let through. The theorized "edge of what
+    N/alt can preserve" mechanism doesn't actually bind: cos(lat) at the
+    pole is a fixed ~6.12e-17 (not itself degrading further with N/alt), so
+    it just scales x/y down uniformly rather than eating precision.
     """
 
     @given(
@@ -426,19 +446,11 @@ class TestGeodeticRoundTrip:
         assert abs(lat2 - lat) < 1e-9
         assert abs(alt2 - alt) < alt_atol
 
-        cos_lat = np.cos(lat)
-        if abs(cos_lat) < 1e-9:
-            # At the exact pole even the numerically-preserved lon residual
-            # is only meaningful to the extent x/y aren't swamped by roundoff
-            # elsewhere in the chain; still assert it round-trips (see class
-            # docstring) but with a coarser tolerance reflecting that x/y
-            # there are ~1e-17 x (N+alt), right at the edge of what N and alt
-            # additions/subtractions can preserve.
-            diff = abs(np.remainder(lon2 - lon, 2 * np.pi))
-            assert min(diff, 2 * np.pi - diff) < 1e-4
-        else:
-            diff = abs(np.remainder(lon2 - lon, 2 * np.pi))
-            assert min(diff, 2 * np.pi - diff) < 1e-9
+        # lon round-trips to the same 1e-9 atol everywhere, pole included --
+        # see the class docstring for the measurement that replaced an
+        # earlier, unjustifiably loose pole-only tolerance here.
+        diff = abs(np.remainder(lon2 - lon, 2 * np.pi))
+        assert min(diff, 2 * np.pi - diff) < 1e-9
 
     @given(
         lat=_lat_strategy(),
