@@ -288,6 +288,12 @@ pytest -m "not slow"
 pytest -m matlab_validated
 ```
 
+A bare local `pytest` run picks up `tests/property/`'s Hypothesis-generated
+property tests too, at the 500-example `dev` profile (CI runs a
+derandomized 100-example profile instead); see
+[`tests/property/README.md`](tests/property/README.md) for what's covered
+and the profile policy.
+
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

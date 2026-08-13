@@ -278,7 +278,9 @@ class TestSphereCartRoundTrip:
     @given(spherical_triples("standard"))
     def test_standard_azimuth_roundtrips_except_at_exact_north_pole(self, triple):
         r, az, el = triple
-        assume(r > 0)
+        assume(
+            r > 0
+        )  # at r == 0 every (az, el) maps to the origin; az is not recoverable
         cart = sphere2cart(r, az, el, "standard")
         _r2, az2, _el2 = cart2sphere(cart, "standard")
         if el == 0.0:
@@ -361,7 +363,9 @@ class TestSphereCartRoundTrip:
     @given(st.sampled_from(["az-el", "range-az-el"]), spherical_triples("az-el"))
     def test_azel_azimuth_roundtrips_everywhere(self, system_type, triple):
         r, az, el = triple
-        assume(r > 0)
+        assume(
+            r > 0
+        )  # at r == 0 every (az, el) maps to the origin; az is not recoverable
         cart = sphere2cart(r, az, el, system_type)
         _r2, az2, _el2 = cart2sphere(cart, system_type)
         note(f"system={system_type} r={r} az={az} el={el} -> az2={az2}")

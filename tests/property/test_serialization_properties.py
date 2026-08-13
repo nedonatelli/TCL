@@ -63,13 +63,21 @@ class TestJsonContract:
 
 
 class TestStatesRoundTrip:
-    @given(
-        float64_arrays(min_size=1, max_size=8, finite_only=False),
-        st.sampled_from(["msgpack"]),
-    )
-    def test_states_bitwise_msgpack(self, x, fmt):
+    @given(float64_arrays(min_size=1, max_size=8, finite_only=False))
+    def test_states_bitwise_msgpack(self, x):
         P = np.eye(len(x))
-        x2, P2 = decode_states(encode_states(x, P, fmt=fmt), fmt=fmt)
+        x2, P2 = decode_states(encode_states(x, P, fmt="msgpack"), fmt="msgpack")
+        assert x2.tobytes() == x.tobytes()
+        assert_array_equal(P2, P)
+
+    @given(float64_arrays(min_size=1, max_size=8, finite_only=True))
+    def test_states_bitwise_json(self, x):
+        # finite_only=True: JSON rejects non-finite values (see
+        # TestJsonContract.test_non_finite_always_raises), so this covers
+        # the same bitwise-round-trip claim msgpack does above, restricted
+        # to the input domain JSON actually accepts.
+        P = np.eye(len(x))
+        x2, P2 = decode_states(encode_states(x, P, fmt="json"), fmt="json")
         assert x2.tobytes() == x.tobytes()
         assert_array_equal(P2, P)
 

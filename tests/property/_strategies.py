@@ -1,9 +1,13 @@
-"""Shared Hypothesis strategies for pytcl's property tests.
+"""Hypothesis strategies for pytcl's serialization property tests.
 
-Centralized here (rather than duplicated per test module) so later
-property suites -- coordinate round trips, filter covariance properties,
-assignment optimality, etc. -- draw from the same float/array/track
-generators instead of each reinventing subtly different bounds.
+These generators back ``test_serialization_properties.py`` only: bitwise
+round trips have no numerical-stability concerns, so one set of
+finite/arbitrary float, array, and track-history generators covers the
+whole suite. The other property modules (coordinates, assignment, filter)
+each define their own bounded generators next to the invariant that
+justifies the bound -- e.g. assignment's ``_cost_element`` caps magnitude
+so a sum of cost entries can't overflow -- rather than importing from here.
+Add a generator here only when a bound is genuinely shared across modules.
 
 Import from this module directly: ``from tests.property._strategies import
 float64_arrays, track_histories``.

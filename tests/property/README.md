@@ -14,9 +14,16 @@ and shrinks any failure to a minimal reproducing example.
 | `test_assignment_properties.py` | `pytcl.assignment_algorithms.two_dimensional.assignment.hungarian` | matches a brute-force oracle for optimal cost (minimize and maximize), returns a valid injective pairing, and `total_cost` matches the selected entries |
 | `test_filter_properties.py` | `pytcl.dynamic_estimation.kalman.linear.{kf_predict,kf_update}` | posterior covariance stays symmetric and PSD; a measurement update never increases `trace(P)` |
 
-`_strategies.py` holds the shared generators (`finite_floats`, `float64_arrays`,
-`track_histories`, etc.) so each module draws from the same bounds instead of
-reinventing subtly different ones.
+`_strategies.py` holds the generators for the serialization suite
+(`finite_floats`, `float64_arrays`, `track_histories`) — its only importer is
+`test_serialization_properties.py`. The other three modules define their own
+bounded generators (`_log_uniform_component` in coordinates,
+`_cost_element` in assignment, `_matrix_entries` in filter) because each
+target justifies its own bounds — e.g. assignment's `_cost_element` caps
+magnitude so a sum of up to `MAX_DIM` terms can't overflow to
+`+/-inf` (see its docstring). Convention: put a generator in `_strategies.py`
+only when a bound is genuinely shared across modules; otherwise keep it next
+to the module whose invariants justify it.
 
 ## Profiles
 
@@ -43,20 +50,33 @@ machine's history.
 
 ## The narrowing rule
 
-**When a generator finds a genuine counterexample, the response is: fix the
-defect, or pin it with `@pytest.mark.xfail(strict=True)` plus a tracking
-issue and a ROADMAP Known-Issues row.**
-
 Shrinking the input domain — excluding the failing region from the strategy,
 tightening a `st.floats()` bound, adding an `assume()` that quietly rules out
-the case that broke — is forbidden. A generator narrowed until the failure
-disappears is a test that passes by construction and verifies nothing; it is
-strictly worse than no test, because it *looks* like coverage. This directory
-found exactly this shape of near-miss twice (see the `test_coordinate_
+the case that broke — is forbidden, always, regardless of which outcome
+below applies. A generator narrowed until the failure disappears is a test
+that passes by construction and verifies nothing; it is strictly worse than
+no test, because it *looks* like coverage.
+
+When a generator finds a genuine counterexample, there are two possible
+outcomes, chosen by asking whether a *different, correct* implementation
+could pass the original assertion for this input:
+
+- **Yes — it's a library defect.** Fix it, or pin it with
+  `@pytest.mark.xfail(strict=True)` plus a tracking issue and a ROADMAP
+  Known-Issues row.
+- **No — it's a float64 conditioning limit inherent to the arithmetic, not
+  a defect.** No implementation could satisfy the original assertion here;
+  the number format ran out of precision, not the algorithm. Split the
+  *assertion* by regime, pin the counterexample as a permanent **passing**
+  regression test, and document the mechanism so the tolerance isn't magic.
+
+This directory found exactly this shape of near-miss twice, both of the
+conditioning-limit kind (see the `test_coordinate_
 properties.py` module docstring for both): the exact-north-pole and
 subnormal-elevation cases stayed in the generators, and the assertions split
 by regime instead — pinned as permanent example-based regressions under
-`derandomize`, not generated away.
+`derandomize`, not generated away. Neither needed an issue or a ROADMAP row
+— there was no defect to track.
 
 Every counterexample a property test finds gets promoted to a permanent
 example-based regression test beside the property that found it, so the

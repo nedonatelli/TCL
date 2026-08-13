@@ -160,14 +160,30 @@ class TestHungarianValidity:
 
 
 class TestHungarianCostConsistency:
-    """total_cost always equals cost_matrix[row_ind, col_ind].sum() exactly.
+    """total_cost matches an independently-summed cost.sum() over the
+    returned (row_ind, col_ind) pairing, within the same accumulation-order
+    tolerance used above.
 
-    No tolerance here (unlike the brute-force comparisons above): hungarian
-    computes total_cost with this exact expression internally, so it must
-    match bit for bit, not just up to summation-order slop.
+    ``hungarian`` computes ``total_cost`` internally as
+    ``cost[row_ind, col_ind].sum()`` -- asserting that exact expression
+    against itself here would compare an operation against itself and could
+    never fail for any input. Instead this recomputes the sum independently
+    in Python (a generator expression over ``zip(row_ind, col_ind)``, not
+    numpy fancy indexing), so a future refactor that permutes or transposes
+    the returned indices relative to the reported cost -- e.g. swapping
+    ``row_ind``/``col_ind``, or returning a cost computed against a
+    different pairing -- shows up as a mismatch here even though it would
+    not change ``hungarian``'s own internal expression.
     """
 
     @given(cost_matrices(), st.booleans())
     def test_total_cost_matches_selected_entries(self, cost, maximize):
         row_ind, col_ind, total_cost = hungarian(cost, maximize=maximize)
-        assert total_cost == cost[row_ind, col_ind].sum()
+        independent_sum = sum(
+            cost[i, j] for i, j in zip(row_ind.tolist(), col_ind.tolist())
+        )
+        note(
+            f"shape={cost.shape} total_cost={total_cost} "
+            f"independent_sum={independent_sum}"
+        )
+        assert abs(total_cost - independent_sum) <= _SUM_ATOL
