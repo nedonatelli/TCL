@@ -10,6 +10,7 @@ This module provides:
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (  # noqa: E501
     fifth_order_cubature_points,
     fourteenth_order_cubature_points,
+    second_order_cubature_points,
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
@@ -50,6 +51,7 @@ __all__ = [
     "cubature_gauss_hermite",
     "spherical_cubature",
     "unscented_transform_points",
+    "second_order_cubature_points",
     "fifth_order_cubature_points",
     "fourteenth_order_cubature_points",
     "seventh_order_cubature_points",

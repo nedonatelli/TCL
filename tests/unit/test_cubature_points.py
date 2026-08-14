@@ -17,6 +17,7 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     _sphere_surface_points,
     fifth_order_cubature_points,
     fourteenth_order_cubature_points,
+    second_order_cubature_points,
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
@@ -148,6 +149,115 @@ class TestTransformCubaturePoints:
             transform_cubature_points(
                 np.zeros((4, 2)), np.full(4, 0.25), np.zeros(3), np.eye(3)
             )
+
+
+class TestSecondOrder:
+    """MATLAB's ``secondOrderCubPoints`` -- the scaled unscented
+    transformation's minimal (n+2)-point spherical simplex rule. See the
+    reconciliation note in ``second_order_cubature_points``'s docstring:
+    this is a genuinely different construction from both
+    ``unscented_transform_points`` (2n+1 points) and
+    ``ckf_spherical_cubature_points`` (2n points), not an alternate
+    parameterization of either -- exact through degree 2 only, not 3.
+    """
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = second_order_cubature_points(n)
+        assert pts.shape == (n + 2, n)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_exact_through_degree_2(self, n):
+        pts, w = second_order_cubature_points(n)
+        assert_rule_exact(pts, w, n, degree=2)
+
+    @pytest.mark.parametrize("w0,alpha", [(1 / 3, 1.0), (0.7, 1.0), (0.2, 1.3)])
+    def test_exact_through_degree_2_nondefault_params(self, w0, alpha):
+        # Mean/covariance exactness must hold regardless of w0/alpha,
+        # including when alpha drives the center weight negative (see
+        # test_negative_center_weight_is_not_suppressed).
+        n = 4
+        pts, w = second_order_cubature_points(n, w0=w0, alpha=alpha)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        assert_rule_exact(pts, w, n, degree=2)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_sharpness_degree_3_fails(self, n):
+        # Unlike the symmetric 2n+1- and 2n-point rules, this (n+2)-point
+        # simplex set is NOT antipodally symmetric in every dimension, so
+        # third moments are not zeroed out in general. n=3 exhibits it on
+        # x2: E[x2^3] = sqrt(2) against a true value of 0 -- verified
+        # directly here rather than merely asserted. n=1 is excluded: its
+        # single dimension IS the one axis with a mirrored pair, so
+        # E[x^3] = 0 there even though the rule is still only degree-2
+        # exact in general (n >= 2).
+        pts, w = second_order_cubature_points(n)
+        alpha = (0,) * (n - 1) + (3,)
+        rule_val = rule_moment(pts, w, alpha)
+        assert abs(rule_val - gaussian_moment(alpha)) > 1e-6
+
+    def test_sharpness_degree_3_known_value_n3(self):
+        pts, w = second_order_cubature_points(3)
+        assert_allclose(rule_moment(pts, w, (0, 0, 3)), np.sqrt(2.0), atol=1e-12)
+
+    def test_negative_center_weight_is_not_suppressed(self):
+        # alpha**2 < 1 - w0 drives the center weight negative; this is an
+        # inherent property of the scaled construction, documented in the
+        # docstring, not clamped or suppressed here.
+        pts, w = second_order_cubature_points(3, w0=1 / 3, alpha=0.5)
+        assert w[0] < 0.0
+        assert_allclose(w[0], -5.0 / 3.0, atol=1e-12)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        # Degree-2 exactness must still hold with the negative weight.
+        assert_rule_exact(pts, w, 3, degree=2)
+
+    def test_default_alpha_positive_weights(self):
+        # alpha=1 (unscaled spherical simplex points) keeps every weight
+        # positive for any valid w0, unlike the scaled case above.
+        for w0 in (0.1, 1 / 3, 0.5, 0.9):
+            _, w = second_order_cubature_points(5, w0=w0, alpha=1.0)
+            assert np.all(w > 0.0)
+
+    def test_published_values_n1(self):
+        # Hand-derivable at n=1: points at 0, -1/sqrt(2 w0), 1/sqrt(2 w0),
+        # rescaled by 1/sqrt((1/w0 - 1)/2); default w0=1/3, alpha=1 gives
+        # points at 0, -sqrt(3/2), sqrt(3/2) and weights [1/3, 1/3, 1/3].
+        pts, w = second_order_cubature_points(1)
+        assert_allclose(
+            sorted(pts.ravel()), sorted([0.0, -np.sqrt(1.5), np.sqrt(1.5)]), atol=1e-12
+        )
+        assert_allclose(w, np.full(3, 1.0 / 3.0), atol=1e-12)
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            second_order_cubature_points(0)
+
+    @pytest.mark.parametrize("w0", [0.0, 1.0, -0.1, 1.1])
+    def test_invalid_w0_raises(self, w0):
+        with pytest.raises(ValueError):
+            second_order_cubature_points(3, w0=w0)
+
+    @pytest.mark.parametrize("alpha", [0.0, -1.0])
+    def test_invalid_alpha_raises(self, alpha):
+        with pytest.raises(ValueError):
+            second_order_cubature_points(3, alpha=alpha)
+
+    def test_point_count_differs_from_symmetric_ut(self):
+        # Documents the reconciliation finding: this is not the same
+        # construction as unscented_transform_points under a different
+        # parameterization -- the point counts themselves differ (n+2 vs
+        # 2n+1), so no choice of w0/alpha can make them coincide.
+        from pytcl.mathematical_functions.numerical_integration.quadrature import (
+            unscented_transform_points,
+        )
+
+        n = 4
+        pts, _ = second_order_cubature_points(n)
+        ut_pts, _, _ = unscented_transform_points(n)
+        assert pts.shape[0] == n + 2
+        assert ut_pts.shape[0] == 2 * n + 1
+        assert pts.shape[0] != ut_pts.shape[0]
 
 
 class TestFifthOrder:

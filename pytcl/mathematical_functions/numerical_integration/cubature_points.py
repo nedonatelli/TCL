@@ -86,6 +86,159 @@ def transform_cubature_points(
     return mean + points @ sqrt_cov.T, weights.copy()
 
 
+def second_order_cubature_points(
+    n: int,
+    w0: float = 1.0 / 3.0,
+    alpha: float = 1.0,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Degree-2 cubature points for the standard normal N(0, I): the scaled
+    unscented transformation's minimal (n+2)-point spherical-simplex rule.
+
+    Counterpart of the MATLAB TCL's ``secondOrderCubPoints``: the scaled
+    unscented transformation of Julier [1]_, itself a scaled generalization
+    of the *spherical simplex sigma points* of Appendix III of Julier and
+    Uhlmann [2]_ (``alpha=1`` reproduces those unscaled). A center point at
+    the origin plus n+1 simplex vertices, built recursively one dimension at
+    a time and then rescaled so the point set has unit sample covariance.
+
+    This is a **genuinely different construction** from both cubature rules
+    already in pytcl, not an alternate parameterization of either -- see
+    Notes.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+    w0 : float, optional
+        Weight of the center point before ``alpha``-scaling, 0 < w0 < 1.
+        Default 1/3 (MATLAB's default).
+    alpha : float, optional
+        Positive spread factor for the non-center points. Default 1.0
+        (unscaled spherical simplex points). Values of ``alpha`` and ``w0``
+        with ``alpha**2 < 1 - w0`` drive the *center* weight negative --
+        see Notes.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (n + 2, n).
+    weights : ndarray
+        Shape (n + 2,), summing to 1. The center weight
+        ``w0 / alpha**2 + (1 - 1 / alpha**2)`` can be negative (see Notes);
+        this is inherent to the scaled construction, not an error.
+        Covariances assembled from these points must not use a
+        sqrt-of-weights factorization.
+
+    Notes
+    -----
+    **Relation to pytcl's other sigma/cubature-point generators.** All three
+    trace to the same Julier & Uhlmann unscented-transform lineage but are
+    structurally distinct rules, not reparameterizations of one another:
+
+    - :func:`~pytcl.mathematical_functions.numerical_integration.quadrature.unscented_transform_points`
+      is the classic *symmetric* sigma-point set: 2n+1 points (center plus
+      an antipodal pair per axis), exact through degree 3 for N(0, I)
+      because the antipodal pairs cancel every odd-order term.
+    - :func:`~pytcl.dynamic_estimation.kalman.unscented.ckf_spherical_cubature_points`
+      is the CKF's 2n-point spherical-radial rule (no center point, all
+      weights equal), also exact through degree 3.
+    - This function is the (n+2)-point *spherical simplex* set: no
+      antipodal symmetry (only the first coordinate axis has a mirrored
+      pair; every later dimension's simplex vertices are one-sided), so it
+      is exact through degree 2 only -- matching the mean and covariance
+      exactly but *not* third moments in general. E.g. at n=3, w0=1/3,
+      alpha=1, the rule gives ``E[x2^3] = sqrt(2)`` against a true value of
+      0, even though ``E[x0^3] = 0`` by the one axis that does have a
+      mirrored pair.
+
+    A user choosing between these should pick
+    ``unscented_transform_points`` or ``ckf_spherical_cubature_points``
+    (degree-3 exact, standard choices for the UKF/CKF) unless the point
+    budget must be as small as possible: this rule's n+2 points is the
+    fewest of the three, at the cost of the third-moment accuracy the other
+    two get for free from symmetry.
+
+    **Negative center weight.** Unlike the unscaled (``alpha=1``) spherical
+    simplex points, for which ``0 < w0 < 1`` keeps every weight positive,
+    the scaled center weight ``w0 / alpha**2 + (1 - 1 / alpha**2)`` goes
+    negative whenever ``alpha**2 < 1 - w0`` (e.g. ``w0=1/3``, ``alpha=0.5``
+    gives a center weight of -5/3). This is a real, disclosed property of
+    Julier's scaled construction -- corrected here per Equation 15 of [1]_
+    (MATLAB's own header notes that Equation 24 of the same paper has a
+    typo the code does not follow), not suppressed or clamped.
+
+    ``randomize`` (MATLAB's optional post hoc random-orthonormal-rotation
+    parameter, used in [3]_ and [4]_ to avoid repeated-orientation artifacts
+    in tracking) is not exposed; callers who want it can rotate the
+    returned points themselves.
+
+    Examples
+    --------
+    >>> pts, w = second_order_cubature_points(3)
+    >>> pts.shape
+    (5, 3)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> np.allclose(np.sum(w[:, None] * pts, axis=0), 0.0, atol=1e-12)  # E[x] = 0
+    True
+    >>> resid = pts - np.sum(w[:, None] * pts, axis=0)
+    >>> np.allclose(resid.T @ (w[:, None] * resid), np.eye(3), atol=1e-12)  # Cov = I
+    True
+
+    References
+    ----------
+    .. [1] S. J. Julier, "The scaled unscented transformation," in Proc.
+       American Control Conference, Anchorage, AK, 8-10 May 2002,
+       pp. 4555-4559.
+    .. [2] S. J. Julier and J. K. Uhlmann, "Unscented filtering and
+       nonlinear estimation," Proceedings of the IEEE, vol. 92, no. 3,
+       pp. 401-422, Mar. 2004.
+    .. [3] O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
+       Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
+       Fusion, Singapore, 2012, pp. 503-510.
+    .. [4] J. Dunik, O. Straka, and M. Simandl, "The development of a
+       randomised unscented Kalman filter," in Proc. 18th World Congress,
+       IFAC, Milan, Italy, 2011, pp. 8-13.
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if not 0.0 < w0 < 1.0:
+        raise ValueError(f"w0 must satisfy 0 < w0 < 1, got {w0}")
+    if alpha <= 0.0:
+        raise ValueError(f"alpha must be positive, got {alpha}")
+
+    num_points = n + 2
+    w = np.zeros(num_points)
+    xi = np.zeros((n, num_points))  # dim x point, MATLAB's layout; transposed on return
+
+    w[0] = w0
+    w[1:] = (1.0 - w0) / (n + 1)
+
+    # Dimension 1 (row 0): the one axis with a mirrored pair, at columns 1, 2.
+    xi[0, 1] = -1.0 / np.sqrt(2.0 * w0)
+    xi[0, 2] = 1.0 / np.sqrt(2.0 * w0)
+
+    # Dimensions 2..n: each adds one new simplex vertex (column j+1) while
+    # extending the negative value into the columns already in use.
+    for j in range(2, n + 1):
+        row = j - 1
+        xi[row, 1 : j + 1] = -1.0 / np.sqrt(j * (j + 1) * w0)
+        xi[row, j + 1] = j / np.sqrt(j * (j + 1) * w0)
+
+    # Rescale so the unscaled (alpha=1) point set has unit sample covariance.
+    xi = xi / np.sqrt((1.0 / w0 - 1.0) / (n + 1))
+
+    # Scaled unscented transformation: spread the non-center points by
+    # alpha, then correct the weights per Equation 15 of [1] (not the
+    # typo'd Equation 24).
+    xi = alpha * xi
+    w[0] = w[0] / alpha**2 + (1.0 - 1.0 / alpha**2)
+    w[1:] = w[1:] / alpha**2
+
+    return xi.T, w
+
+
 def fifth_order_cubature_points(
     n: int,
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
