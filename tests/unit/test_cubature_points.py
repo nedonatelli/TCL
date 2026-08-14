@@ -16,6 +16,7 @@ from scipy.special import gamma
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     _sphere_surface_points,
     fifth_order_cubature_points,
+    fourteenth_order_cubature_points,
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
@@ -288,6 +289,95 @@ class TestSphericalRadial:
             spherical_radial_points(2, 1)  # < 3
         with pytest.raises(ValueError):
             spherical_radial_points(0, 3)  # bad dim
+
+
+class TestFourteenthOrder:
+    """MATLAB's ``fourteenthOrderCubPoints`` hardcodes
+    ``if(numDim~=3) error('Only 3D points are supported'); end`` -- there is no
+    n-dimensional generalization in the source; the 72-point spherical-surface
+    rule it builds on (Stroud's U3 14-1) is specific to S^2. So n=3 is not a
+    lower bound here, it is the only supported dimension.
+    """
+
+    def test_shape_and_weight_sum(self):
+        pts, w = fourteenth_order_cubature_points(3)
+        assert pts.shape == (288, 3)  # 72 surface points * 4 radial nodes
+        assert_allclose(w.sum(), 1.0, atol=1e-10)
+
+    def test_exact_through_degree_14(self):
+        # Exhaustive: C(14+3,3) = 680 monomials against 288 points -- cheap
+        # (well under a second), so the plan's random-sampling fallback for
+        # large-n degree-14 grids is not needed: MATLAB only supports n=3.
+        pts, w = fourteenth_order_cubature_points(3)
+        for alpha in monomials_up_to(3, 14):
+            assert_allclose(
+                rule_moment(pts, w, alpha),
+                gaussian_moment(alpha),
+                rtol=1e-6,
+                atol=1e-8,
+                err_msg=f"monomial {alpha} not integrated exactly",
+            )
+
+    def test_sharpness_degree_15_fails(self):
+        # Every degree-15 monomial has at least one odd exponent (a tuple of
+        # all-even exponents can't sum to the odd number 15), so its true
+        # Gaussian moment is 0 for ANY rule order -- a single-axis probe like
+        # (15,0,0) is NOT a useful sharpness test here, because this rule's
+        # 60-point icosahedral-symmetry block (see
+        # _fourteenth_order_unit_sphere_points_3d) is built from a *chiral*
+        # rotation orbit, not individually antipodal pairs (confirmed: 240 of
+        # the 288 points have no exact negation among the others), and that
+        # weaker symmetry still exactly zeroes single-axis odd moments by
+        # coincidence. A mixed-exponent monomial is not so lucky and exposes
+        # the rule's actual degree-14 limit: (1, 1, 13) rule-integrates to
+        # ~-127.3 against a true value of 0.
+        pts, w = fourteenth_order_cubature_points(3)
+        alpha = (1, 1, 13)
+        assert abs(rule_moment(pts, w, alpha) - gaussian_moment(alpha)) > 1e-3
+
+    def test_sharpness_degree_16_fails(self):
+        pts, w = fourteenth_order_cubature_points(3)
+        alpha = (16, 0, 0)
+        assert abs(rule_moment(pts, w, alpha) - gaussian_moment(alpha)) > 1e-3
+
+    @pytest.mark.parametrize("n", [1, 2, 4, 5])
+    def test_invalid_dimension_raises(self, n):
+        with pytest.raises(ValueError):
+            fourteenth_order_cubature_points(n)
+
+    def test_invalid_beta_raises(self):
+        with pytest.raises(ValueError):
+            fourteenth_order_cubature_points(3, beta=-3.0)  # <= -n
+
+    def test_axis_block_antipodal_symmetry(self):
+        # sphere_surface_to_gauss_points tiles the 72 surface points (12
+        # axis-plane points followed by 60 icosahedral-symmetry points, see
+        # _fourteenth_order_unit_sphere_points_3d) once per radial node, so
+        # the axis points occupy the first 12 slots of each 72-point block.
+        # Only those are individually antipodal-paired -- see
+        # test_sharpness_degree_15_fails for why the other 60 per block are
+        # not.
+        pts, _ = fourteenth_order_cubature_points(3)
+        axis_pts = pts.reshape(4, 72, 3)[:, :12, :].reshape(-1, 3)
+        for p in axis_pts:
+            assert np.any(np.all(np.isclose(pts, -p, atol=1e-10), axis=1))
+
+    @pytest.mark.parametrize("beta", [1.0, 2.0, -0.5])
+    def test_nonzero_beta_exact_through_degree_14(self, beta):
+        pts, w = fourteenth_order_cubature_points(3, beta=beta)
+        assert_allclose(
+            w.sum(),
+            2.0 ** (beta / 2.0) * gamma((3 + beta) / 2.0) / gamma(3 / 2.0),
+            atol=1e-8,
+        )
+        for alpha in monomials_up_to(3, 14):
+            assert_allclose(
+                rule_moment(pts, w, alpha),
+                weighted_gaussian_moment(alpha, beta),
+                rtol=1e-6,
+                atol=1e-7,
+                err_msg=f"monomial {alpha} (beta={beta}) not integrated exactly",
+            )
 
 
 class TestSphereSurfaceToGaussPoints:

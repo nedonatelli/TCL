@@ -489,3 +489,151 @@ def spherical_radial_points(
         return points, weights / weights.sum()
 
     return sphere_surface_to_gauss_points(surf_pts, surf_w, degree, beta)
+
+
+def _fourteenth_order_unit_sphere_points_3d() -> Tuple[
+    NDArray[np.floating], NDArray[np.floating]
+]:
+    """Degree-14 rule for the uniform measure on the unit sphere S^2 (n=3 only).
+
+    Stroud's surface formula U3 14-1 [1]_, p. 302, the counterpart of the
+    MATLAB TCL's ``fourteenthOrderSpherSurfCubPoints``, which itself hardcodes
+    ``numDim=3`` -- this specific 72-point construction has no documented
+    n-dimensional generalization. 12 points from all sign flips of
+    permutations of ``(r, s, 0)``, plus 60 points with icosahedral symmetry
+    built from the positive roots of a degree-6 polynomial (Stroud's
+    tabulated coefficients). Weights are normalized to sum to 1.
+
+    The polynomial's 6 roots are consumed as one "hub" value paired with each
+    of the other 5 (arranged in a 5-cycle) to build the 60-point block.
+    MATLAB assigns hub=z(1) and cycle=z(2..6) to whatever order its ``roots``
+    call happens to return. This port instead explicitly sorts the roots
+    descending and assigns the hub to the largest -- verified (via exact
+    reduction to the N(0, I) moments below) to reproduce the same points to
+    float64 precision, and robust to the solver's internal ordering rather
+    than depending on it.
+    """
+    r = np.sqrt((5.0 - np.sqrt(5.0)) / 10.0)
+    s = np.sqrt((5.0 + np.sqrt(5.0)) / 10.0)
+
+    # Stroud's tabulated coefficients (highest degree first) for the degree-6
+    # polynomial whose positive roots give the squared "radii" z_i**2 used
+    # below; all 6 roots are real and positive for this polynomial.
+    poly_coeffs = [
+        2556125.0,
+        -5112250.0,
+        3578575.0,
+        -1043900.0,
+        115115.0,
+        -3562.0,
+        9.0,
+    ]
+    y = np.sort(np.roots(poly_coeffs).real)[::-1]  # descending: y[0] >= ... >= y[5]
+    z1, z2, z3, z4, z5, z6 = np.sqrt(y)
+
+    u = np.array([-z3 + z4, -z5 + z2, -z2 + z6, -z6 + z3, -z4 + z5]) / (2.0 * s)
+    v = np.array([z5 + z6, z6 + z4, z3 + z5, z4 + z2, z2 + z3]) / (2.0 * s)
+    w = np.array([z1 + z2, z1 + z3, z1 + z4, z1 + z5, z1 + z6]) / (2.0 * s)
+
+    def pm_combos(x: ArrayLike) -> NDArray[np.floating]:
+        """All sign flips of the nonzero entries of x (MATLAB's PMCombos)."""
+        x = np.asarray(x, dtype=np.float64)
+        nz = np.flatnonzero(x)
+        out = []
+        for signs in itertools.product((1.0, -1.0), repeat=len(nz)):
+            p = x.copy()
+            p[nz] = x[nz] * np.array(signs)
+            out.append(p)
+        return np.array(out)
+
+    axis_points = np.vstack(
+        [pm_combos([r, s, 0.0]), pm_combos([0.0, r, s]), pm_combos([s, 0.0, r])]
+    )
+
+    cyclic_points = []
+    for ui, vi, wi in zip(u, v, w):
+        cyclic_points.extend(
+            [
+                [ui, vi, wi],
+                [ui, -vi, -wi],
+                [-ui, -vi, wi],
+                [-ui, vi, -wi],
+                [vi, wi, ui],
+                [vi, -wi, -ui],
+                [-vi, -wi, ui],
+                [-vi, wi, -ui],
+                [wi, ui, vi],
+                [wi, -ui, -vi],
+                [-wi, -ui, vi],
+                [-wi, ui, -vi],
+            ]
+        )
+
+    points = np.vstack([axis_points, np.array(cyclic_points)])
+    weights = np.concatenate(
+        [np.full(12, 125.0 / 10080.0), np.full(60, 143.0 / 10080.0)]
+    )
+    return points, weights
+
+
+def fourteenth_order_cubature_points(
+    n: int, beta: float = 0.0
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Degree-14 cubature points for the standard normal N(0, I), n = 3 only.
+
+    The counterpart of the MATLAB TCL's ``fourteenthOrderCubPoints``: lifts
+    the 72-point degree-14 spherical-surface rule
+    (:func:`_fourteenth_order_unit_sphere_points_3d`, Stroud's U3 14-1 [1]_)
+    to N(0, I) times \\|x\\|^beta via :func:`sphere_surface_to_gauss_points`
+    (the same adapter :func:`spherical_radial_points` uses), rather than
+    duplicating the radial weight machinery. Exactly integrates every
+    polynomial of total degree <= 14 against N(0, I).
+
+    Unlike :func:`fifth_order_cubature_points`,
+    :func:`seventh_order_cubature_points`, and :func:`spherical_radial_points`,
+    this rule has no documented n-dimensional generalization in the source --
+    MATLAB's ``fourteenthOrderCubPoints`` and ``fourteenthOrderSpherSurfCubPoints``
+    both hardcode ``if(numDim~=3) error('Only 3D points are supported'); end``.
+    So ``n = 3`` here is not a lower bound, it is the only supported value.
+
+    Parameters
+    ----------
+    n : int
+        Dimension; only n = 3 is supported (matches the MATLAB source's
+        restriction).
+    beta : float, optional
+        Exponent of \\|x\\| in the weighting function, beta > -n. Default 0.0
+        (plain N(0, I)).
+
+    Returns
+    -------
+    points : ndarray
+        Shape (288, 3) -- 72 surface points times 4 radial nodes.
+    weights : ndarray
+        Shape (288,). Sums to 1 when beta=0; otherwise to
+        ``2**(beta / 2) * gamma((n + beta) / 2) / gamma(n / 2)`` (see
+        :func:`sphere_surface_to_gauss_points`).
+
+    Examples
+    --------
+    >>> pts, w = fourteenth_order_cubature_points(3)
+    >>> pts.shape
+    (288, 3)
+    >>> round(float(w.sum()), 9)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 14)), 3)  # E[x^14] = 135135
+    135135.0
+
+    References
+    ----------
+    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+       Prentice-Hall, 1971, Formula U3 14-1, p. 302.
+    """
+    if n != 3:
+        raise ValueError(f"only 3-D points are supported (numDim must be 3), got {n}")
+    if not beta > -n:
+        raise ValueError(f"beta must be > -n ({-n}), got {beta}")
+
+    surf_pts, surf_w = _fourteenth_order_unit_sphere_points_3d()
+    return sphere_surface_to_gauss_points(surf_pts, surf_w, 14, beta)
