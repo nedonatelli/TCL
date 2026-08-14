@@ -23,7 +23,7 @@ References
 
 import itertools
 from collections import Counter
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -97,6 +97,129 @@ def transform_cubature_points(
         )
 
     return mean + points @ sqrt_cov.T, weights.copy()
+
+
+def cubature_point_moments(
+    points: ArrayLike,
+    weights: ArrayLike,
+    func: Callable[[NDArray[np.floating]], NDArray[np.floating]],
+    mean: Optional[ArrayLike] = None,
+    cov: Optional[ArrayLike] = None,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Propagate a distribution's first two moments through ``func`` by
+    cubature integration.
+
+    Counterpart of the MATLAB TCL's ``calcCubPointMoments``: given a set of
+    cubature points/weights, transform them through ``func`` and return the
+    resulting mean and covariance. This is the public, filter-independent
+    form of the transform-then-propagate pattern ``ckf_predict``/
+    ``ckf_update`` (:mod:`pytcl.dynamic_estimation.kalman.unscented`) apply
+    internally to a specific dynamics or measurement function.
+
+    MATLAB's ``z``/``S`` (mean and lower-triangular covariance square root)
+    are mandatory positional arguments there -- ``calcCubPointMoments``
+    always affinely maps its ``xi`` unit points by them before applying
+    ``h``. This port makes that step optional via ``mean``/``cov``: when
+    both are given, ``points`` are treated as unit points for N(0, I) (or
+    the corresponding unit rule for whatever distribution ``points``/
+    ``weights`` target) and are mapped through
+    :func:`transform_cubature_points` first, exactly as MATLAB's
+    ``transformCubPoints`` does; when both are omitted, ``points`` are
+    passed to ``func`` unchanged, e.g. because they are already points of
+    the target distribution (as when reusing a filter's own cubature
+    points, already scaled by its state covariance).
+
+    MATLAB's optional ``innovTrans`` (custom difference function, e.g. for
+    circular quantities) and ``meanFun`` (custom weighted-average function,
+    e.g. for angular means) are not exposed: ``func``'s output is always
+    averaged and differenced with plain arithmetic here. Callers needing a
+    non-Euclidean mean/innovation should wrap ``func`` accordingly or
+    average/difference the returned points by hand.
+
+    Parameters
+    ----------
+    points : array_like
+        Cubature points, shape (num_points, n). Unit points for N(0, I) if
+        ``mean``/``cov`` are given; already-in-distribution points
+        otherwise.
+    weights : array_like
+        Weights matching ``points``, shape (num_points,), normally summing
+        to 1. May contain negative values (e.g. higher-degree rules); never
+        suppressed.
+    func : callable
+        Maps a single point, shape (n,), to a transformed point, shape
+        (m,).
+    mean : array_like, optional
+        Target mean, shape (n,). Must be given together with ``cov``.
+    cov : array_like, optional
+        Target covariance, shape (n, n). Must be given together with
+        ``mean``.
+
+    Returns
+    -------
+    mean_out : ndarray
+        Weighted mean of ``func`` applied to the (possibly transformed)
+        points, shape (m,).
+    cov_out : ndarray
+        Weighted covariance of ``func`` applied to the (possibly
+        transformed) points, shape (m, m).
+
+    Examples
+    --------
+    >>> pts, w = second_order_cubature_points(2)
+    >>> mean = np.array([1.0, -2.0])
+    >>> cov = np.diag([0.5, 2.0])
+    >>> A = np.array([[2.0, 0.0], [1.0, 1.0]])
+    >>> b = np.array([0.5, 0.5])
+    >>> mu, P = cubature_point_moments(pts, w, lambda x: A @ x + b, mean, cov)
+    >>> np.allclose(mu, A @ mean + b, atol=1e-10)
+    True
+    >>> np.allclose(P, A @ cov @ A.T, atol=1e-10)
+    True
+
+    See Also
+    --------
+    transform_cubature_points : The affine unit-point mapping applied when
+        ``mean``/``cov`` are given.
+    """
+    points = np.asarray(points, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64)
+    if points.ndim != 2:
+        raise ValueError(f"points must be 2-D, got shape {points.shape}")
+    num_points, n = points.shape
+    if weights.shape != (num_points,):
+        raise ValueError(
+            f"weights shape {weights.shape} does not match {num_points} points"
+        )
+    if (mean is None) != (cov is None):
+        raise ValueError("mean and cov must be provided together")
+
+    if mean is not None:
+        mean_arr = np.asarray(mean, dtype=np.float64).ravel()
+        cov_arr = np.asarray(cov, dtype=np.float64)
+        if mean_arr.shape != (n,) or cov_arr.shape != (n, n):
+            raise ValueError(
+                f"mean/cov dimensions {mean_arr.shape}/{cov_arr.shape} do not "
+                f"match points dimension {n}"
+            )
+        sqrt_cov = np.linalg.cholesky(cov_arr)
+        eval_points, _ = transform_cubature_points(points, weights, mean_arr, sqrt_cov)
+    else:
+        eval_points = points
+
+    transformed = np.array([func(p) for p in eval_points], dtype=np.float64)
+    if transformed.ndim != 2 or transformed.shape[0] != num_points:
+        raise ValueError(
+            f"func must map each point to a fixed-size vector; got output "
+            f"shape {transformed.shape} for {num_points} points"
+        )
+
+    mean_out = np.sum(weights[:, np.newaxis] * transformed, axis=0)
+    resid = transformed - mean_out
+    cov_out = resid.T @ (weights[:, np.newaxis] * resid)
+
+    return mean_out, cov_out
 
 
 def second_order_cubature_points(
@@ -1251,3 +1374,102 @@ def genz_keister_points(
     weights = np.concatenate(weight_blocks)
     keep = np.abs(weights) > eps_val
     return points[keep], weights[keep]
+
+
+def student_t_cubature_points(
+    n: int, dof: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Third-order cubature points for the standard multivariate Student-t.
+
+    Counterpart of the MATLAB TCL's ``thirdOrderStudentTCubPoints``: unit
+    points for the multivariate Student-t distribution with zero mean,
+    identity scale matrix, and ``dof`` degrees of freedom -- the Student-t
+    analogue of :func:`~pytcl.dynamic_estimation.kalman.unscented.ckf_spherical_cubature_points`'s
+    2n-point Gaussian rule. To use Student-t process or measurement noise
+    in a cubature filter, swap these points/weights in wherever the
+    Gaussian cubature points would otherwise go (e.g. via ``ckf_predict``'s
+    ``points``/``weights`` arguments), then affinely map by the target mean
+    and scale-matrix square root exactly as the Gaussian points are (see
+    :func:`transform_cubature_points`).
+
+    MATLAB's ``mu`` (mean) and ``SR`` (lower-triangular scale-matrix square
+    root) arguments are folded into that same affine-map step used
+    everywhere else in this module rather than taken here directly: with
+    ``SR = I`` MATLAB's ``xi(:,curPoint) = nuConst * SR(:,curDim)`` reduces
+    to ``nuConst`` times the standard basis vectors, which is exactly what
+    this function returns before the caller (or ``transform_cubature_points``)
+    maps them to a specific mean/scale.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+    dof : float
+        Degrees of freedom, dof > 2. The constraint comes directly from
+        ``nuConst = sqrt(dof * n / (dof - 2))`` in the source: below
+        ``dof = 2`` the multivariate Student-t's covariance
+        ``dof / (dof - 2) * Sigma`` itself does not exist (the term the
+        rule is built to reproduce, see Notes), so there is no covariance
+        left for a third-order rule to match.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (2n, n): pairs (+nuConst * e_i, -nuConst * e_i) for each axis
+        i, interleaved in that order (MATLAB's ``curPoint`` loop -- not
+        grouped into all-positive-then-all-negative blocks the way
+        :func:`~pytcl.dynamic_estimation.kalman.unscented.ckf_spherical_cubature_points`
+        is).
+    weights : ndarray
+        Shape (2n,), each ``1 / (2n)``, summing to 1.
+
+    Notes
+    -----
+    **Why third order, not higher.** The rule matches the distribution's
+    mean (0, by antipodal symmetry -- every odd-total-degree monomial
+    vanishes for the same reason it does in
+    :func:`~pytcl.dynamic_estimation.kalman.unscented.ckf_spherical_cubature_points`)
+    and its per-axis second moment, ``E[x_i^2] = dof / (dof - 2)``, via
+    ``nuConst**2 = dof * n / (dof - 2)`` (see the worked example below). It
+    is not exact at degree 4: e.g. the rule's ``E[x_i^4]`` reduces to
+    ``nuConst**4 / n``, which generally disagrees with the Student-t
+    distribution's true fourth moment ``3 * dof**2 / ((dof-2)*(dof-4))``
+    (itself only defined for ``dof > 4``) -- see
+    ``tests/unit/test_cubature_points.py::TestStudentT`` for the verified
+    numeric gap. As ``dof -> inf`` the Student-t distribution converges to
+    N(0, I) and ``nuConst -> sqrt(n)``, recovering
+    ``ckf_spherical_cubature_points`` exactly.
+
+    Examples
+    --------
+    >>> pts, w = student_t_cubature_points(3, 6.0)
+    >>> pts.shape
+    (6, 3)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> nu_const_sq = 6.0 * 3 / (6.0 - 2)
+    >>> round(float(np.sum(w * pts[:, 0] ** 2)), 10) == round(nu_const_sq / 3, 10)
+    True
+
+    References
+    ----------
+    .. [1] Y. Huang, Y. Zhang, N. Li, S. M. Naqvi, and J. Chambers, "A
+       robust Student's t based cubature filter," in Proc. 19th Int. Conf.
+       on Information Fusion, Heidelberg, Germany, 5-8 Jul. 2016.
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if not dof > 2:
+        raise ValueError(f"dof must be > 2, got {dof}")
+
+    nu_const = np.sqrt(dof * n / (dof - 2.0))
+
+    points = np.zeros((2 * n, n), dtype=np.float64)
+    for i in range(n):
+        points[2 * i, i] = nu_const
+        points[2 * i + 1, i] = -nu_const
+
+    weights = np.full(2 * n, 1.0 / (2 * n), dtype=np.float64)
+
+    return points, weights

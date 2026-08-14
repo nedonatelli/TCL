@@ -8,6 +8,7 @@ This module provides:
 """
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (  # noqa: E501
+    cubature_point_moments,
     fifth_order_cubature_points,
     fourteenth_order_cubature_points,
     genz_keister_points,
@@ -15,6 +16,7 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
+    student_t_cubature_points,
     transform_cubature_points,
 )
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
@@ -59,5 +61,7 @@ __all__ = [
     "seventh_order_cubature_points",
     "sphere_surface_to_gauss_points",
     "spherical_radial_points",
+    "student_t_cubature_points",
     "transform_cubature_points",
+    "cubature_point_moments",
 ]

@@ -11,10 +11,11 @@ import itertools
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from scipy.special import gamma
+from scipy.special import gamma, gammaln
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     _sphere_surface_points,
+    cubature_point_moments,
     fifth_order_cubature_points,
     fourteenth_order_cubature_points,
     genz_keister_points,
@@ -22,6 +23,7 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
+    student_t_cubature_points,
     transform_cubature_points,
 )
 
@@ -59,6 +61,49 @@ def weighted_gaussian_moment(alpha, beta):
         / gamma((n + d) / 2.0)
         * surface_part
     )
+
+
+def student_t_moment(alpha, dof):
+    """E[prod x_i^alpha_i] for x ~ multivariate Student-t(0, I, dof).
+
+    Derivation: represent X = Z * sqrt(dof / W) with Z ~ N(0, I) and
+    W ~ chi2(dof) independent (the standard normal-variance-mixture
+    construction of the multivariate t). The scalar factor sqrt(dof / W)
+    multiplies every coordinate of Z, so for alpha with total degree
+    d = sum(alpha):
+
+        prod x_i^alpha_i = (dof / W)^(d/2) * prod z_i^alpha_i
+
+    and by independence of Z and W:
+
+        E[prod x^alpha] = gaussian_moment(alpha) * dof^(d/2) * E[W^(-d/2)]
+
+    A chi2(dof) variable has E[W^-s] = 2^-s * Gamma(dof/2 - s) / Gamma(dof/2)
+    for dof > 2s. Substituting s = d/2:
+
+        E[prod x^alpha] = gaussian_moment(alpha)
+                           * (dof/2)^(d/2) * Gamma((dof-d)/2) / Gamma(dof/2)
+
+    which requires dof > d. Sanity checks: d=2 reduces to
+    dof/(dof-2) = E[x_i^2]; d=4 reduces to
+    3 * dof^2 / ((dof-2)(dof-4)) = E[x_i^4], the standard univariate
+    Student-t fourth moment.
+    """
+    d = sum(alpha)
+    if d == 0:
+        return 1.0
+    g = gaussian_moment(alpha)
+    if g == 0.0:
+        # Any alpha with an odd exponent is 0 by the distribution's
+        # reflection symmetry regardless of the dof existence threshold
+        # below (which only bites the nonzero, all-even-exponent case).
+        return 0.0
+    if not dof > d:
+        raise ValueError(f"moment of degree {d} does not exist for dof={dof}")
+    # log-space gamma ratio: gamma(dof/2) overflows float64 for dof > ~342,
+    # which the dof -> inf convergence check below needs to stay finite for.
+    log_ratio = gammaln((dof - d) / 2.0) - gammaln(dof / 2.0)
+    return g * (dof / 2.0) ** (d / 2.0) * np.exp(log_ratio)
 
 
 def rule_moment(points, weights, alpha):
@@ -117,6 +162,34 @@ class TestHelpers:
         assert_allclose(weighted_gaussian_moment((0,), 2.0), 1.0)
         # n=3: E[|x|^2] = trace(I_3) = 3.
         assert_allclose(weighted_gaussian_moment((0, 0, 0), 2.0), 3.0)
+
+    def test_student_t_moment_known_second_moments(self):
+        # E[x_i^2] = dof/(dof-2); cross terms and odd moments vanish.
+        assert_allclose(student_t_moment((2,), 6.0), 6.0 / 4.0)
+        assert_allclose(student_t_moment((2, 0), 10.0), 10.0 / 8.0)
+        assert student_t_moment((1, 1), 10.0) == 0.0
+        assert student_t_moment((3, 0), 10.0) == 0.0
+        assert student_t_moment((0, 0), 10.0) == 1.0
+
+    def test_student_t_moment_known_fourth_moment(self):
+        # Standard univariate Student-t fourth moment: 3 dof^2 / ((dof-2)(dof-4)).
+        for dof in (6.0, 10.0, 20.0):
+            expected = 3.0 * dof**2 / ((dof - 2.0) * (dof - 4.0))
+            assert_allclose(student_t_moment((4,), dof), expected)
+
+    def test_student_t_moment_converges_to_gaussian_as_dof_grows(self):
+        # dof -> inf recovers the N(0, I) moments.
+        for alpha in [(2,), (4,), (2, 2), (6,)]:
+            assert_allclose(
+                student_t_moment(alpha, 1e8), gaussian_moment(alpha), rtol=1e-5
+            )
+
+    def test_student_t_moment_nonexistent_degree_raises(self):
+        # The 4th moment does not exist for dof <= 4.
+        with pytest.raises(ValueError):
+            student_t_moment((4,), 4.0)
+        with pytest.raises(ValueError):
+            student_t_moment((4,), 3.0)
 
 
 class TestTransformCubaturePoints:
@@ -1042,3 +1115,193 @@ class TestGenzKeister:
             assert c_opt[0].shape == c_brute[0].shape
             assert_allclose(c_opt[0], c_brute[0], atol=1e-10)
             assert_allclose(c_opt[1], c_brute[1], atol=1e-10)
+
+
+def assert_rule_exact_student_t(points, weights, n, degree, dof):
+    for alpha in monomials_up_to(n, degree):
+        assert_allclose(
+            rule_moment(points, weights, alpha),
+            student_t_moment(alpha, dof),
+            atol=1e-9,
+            err_msg=f"monomial {alpha} not integrated exactly (dof={dof})",
+        )
+
+
+class TestStudentT:
+    """MATLAB's ``thirdOrderStudentTCubPoints`` -- the Student-t analogue of
+    ``ckf_spherical_cubature_points``. The Gaussian moment harness does NOT
+    apply here; ``student_t_moment`` (module-level, above) is the oracle.
+    """
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = student_t_cubature_points(n, 6.0)
+        assert pts.shape == (2 * n, n)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        assert_allclose(w, np.full(2 * n, 1.0 / (2 * n)), atol=1e-12)
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4])
+    @pytest.mark.parametrize("dof", [2.5, 6.0, 30.0])
+    def test_exact_through_degree_3(self, n, dof):
+        pts, w = student_t_cubature_points(n, dof)
+        assert_rule_exact_student_t(pts, w, n, degree=3, dof=dof)
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_sharpness_degree_4_fails(self, n):
+        # dof=10 keeps the true 4th moment defined (needs dof>4) so the gap
+        # is a genuine rule limitation, not a missing oracle value.
+        dof = 10.0
+        pts, w = student_t_cubature_points(n, dof)
+        alpha = (4,) + (0,) * (n - 1)
+        rule_val = rule_moment(pts, w, alpha)
+        true_val = student_t_moment(alpha, dof)
+        assert abs(rule_val - true_val) > 1e-3
+
+    def test_antipodal_symmetry(self):
+        pts, w = student_t_cubature_points(4, 6.0)
+        for p, wt in zip(pts, w):
+            match = np.all(np.isclose(pts, -p), axis=1)
+            assert np.any(match)
+            assert_allclose(w[match], wt)
+
+    def test_nu_const_matches_known_value(self):
+        # nuConst = sqrt(dof * n / (dof - 2)); rule points sit at +-nuConst
+        # along each axis (MATLAB's SR=I reduction).
+        n, dof = 3, 6.0
+        nu_const = np.sqrt(dof * n / (dof - 2.0))
+        pts, _ = student_t_cubature_points(n, dof)
+        assert_allclose(np.sort(np.abs(pts[pts != 0])), np.full(2 * n, nu_const))
+
+    def test_converges_to_ckf_points_as_dof_grows(self):
+        # As dof -> inf the Student-t distribution -> N(0, I), so the rule
+        # should converge to ckf_spherical_cubature_points's +-sqrt(n) e_i.
+        from pytcl.dynamic_estimation.kalman.unscented import (
+            ckf_spherical_cubature_points,
+        )
+
+        n = 3
+        pts_t, w_t = student_t_cubature_points(n, 1e8)
+        pts_g, w_g = ckf_spherical_cubature_points(n)
+        assert_allclose(w_t, w_g, atol=1e-12)
+        assert_allclose(np.sort(np.abs(pts_t).ravel()), np.sort(np.abs(pts_g).ravel()))
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            student_t_cubature_points(0, 6.0)
+
+    @pytest.mark.parametrize("dof", [2.0, 1.0, -1.0, 0.0])
+    def test_dof_at_or_below_boundary_raises(self, dof):
+        with pytest.raises(ValueError):
+            student_t_cubature_points(3, dof)
+
+    def test_dof_just_above_boundary_is_valid(self):
+        pts, w = student_t_cubature_points(2, 2.0001)
+        assert_allclose(w.sum(), 1.0, atol=1e-12)
+        assert np.all(np.isfinite(pts))
+
+
+class TestCubaturePointMoments:
+    """MATLAB's ``calcCubPointMoments`` -- the public, filter-independent
+    form of the transform-then-propagate pattern ``ckf_predict``/
+    ``ckf_update`` apply internally.
+    """
+
+    def test_linear_transform_matches_closed_form(self):
+        # E[Ax+b] = A mu + b, Cov = A P A^T -- exact for any rule that
+        # integrates degree <= 2 exactly (fifth_order_cubature_points
+        # comfortably does).
+        n = 3
+        rng = np.random.default_rng(11)
+        mean = rng.normal(size=n)
+        Araw = rng.normal(size=(n, n))
+        cov = Araw @ Araw.T + np.eye(n)
+        A = rng.normal(size=(n, n))
+        b = rng.normal(size=n)
+
+        pts, w = fifth_order_cubature_points(n)
+        mu, P = cubature_point_moments(pts, w, lambda x: A @ x + b, mean, cov)
+
+        assert_allclose(mu, A @ mean + b, atol=1e-10)
+        assert_allclose(P, A @ cov @ A.T, atol=1e-9)
+
+    def test_no_mean_cov_uses_points_directly(self):
+        # mean/cov omitted: points are passed to func unchanged, no affine
+        # map applied first.
+        pts = np.array([[0.0], [1.0], [-1.0]])
+        w = np.full(3, 1.0 / 3.0)
+        mu, P = cubature_point_moments(pts, w, lambda x: x)
+        assert_allclose(mu, np.array([0.0]), atol=1e-12)
+        assert_allclose(P, np.array([[2.0 / 3.0]]), atol=1e-12)
+
+    def test_agrees_with_ckf_internal_propagation(self):
+        # Shared point set, shared nonlinear function: the utility and the
+        # filter's own internal moment propagation must not drift apart.
+        from pytcl.dynamic_estimation.kalman.unscented import (
+            ckf_predict,
+            ckf_spherical_cubature_points,
+        )
+
+        x = np.array([1.0, -0.5, 0.2])
+        P = np.diag([0.2, 0.3, 0.15])
+        Q = np.zeros((3, 3))  # no added process noise -> pure moment propagation
+
+        def f(v):
+            return np.array([v[0] + 0.1 * v[1], v[1] + 0.05 * v[0] ** 2, v[2]])
+
+        pts, w = ckf_spherical_cubature_points(3)
+        mu, cov = cubature_point_moments(pts, w, f, x, P)
+        pred = ckf_predict(x, P, f, Q, points=pts, weights=w)
+
+        assert_allclose(mu, pred.x, atol=1e-12)
+        assert_allclose(cov, pred.P, atol=1e-12)
+
+    def test_agrees_with_ckf_using_fifth_order_points(self):
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict
+
+        x = np.array([3.0, 1.0])
+        P = np.eye(2) * 0.5
+        Q = np.zeros((2, 2))
+
+        def f(v):
+            return np.array([v[0] ** 2, v[0] + v[1]])
+
+        pts, w = fifth_order_cubature_points(2)
+        mu, cov = cubature_point_moments(pts, w, f, x, P)
+        pred = ckf_predict(x, P, f, Q, points=pts, weights=w)
+
+        assert_allclose(mu, pred.x, atol=1e-12)
+        assert_allclose(cov, pred.P, atol=1e-12)
+
+    def test_negative_weights_not_suppressed(self):
+        # n=5 makes fifth_order_cubature_points' axis weight negative; the
+        # covariance assembly must not sqrt() weights (mirrors ckf_predict's
+        # own sign-safe assembly).
+        n = 5
+        mean = np.zeros(n)
+        cov = np.eye(n)
+        pts, w = fifth_order_cubature_points(n)
+        assert w.min() < 0
+        F = np.diag([1.0, 2.0, 0.5, 1.5, 1.0])
+        mu, P = cubature_point_moments(pts, w, lambda x: F @ x, mean, cov)
+        assert_allclose(mu, F @ mean, atol=1e-10)
+        assert_allclose(P, F @ cov @ F.T, atol=1e-9)
+        assert not np.any(np.isnan(P))
+
+    def test_shape_mismatch_raises(self):
+        pts, w = fifth_order_cubature_points(3)
+        with pytest.raises(ValueError):
+            cubature_point_moments(pts, w[:-1], lambda x: x)
+        with pytest.raises(ValueError):
+            cubature_point_moments(pts.ravel(), w, lambda x: x)
+
+    def test_mean_without_cov_raises(self):
+        pts, w = fifth_order_cubature_points(3)
+        with pytest.raises(ValueError):
+            cubature_point_moments(pts, w, lambda x: x, mean=np.zeros(3))
+        with pytest.raises(ValueError):
+            cubature_point_moments(pts, w, lambda x: x, cov=np.eye(3))
+
+    def test_mean_cov_dimension_mismatch_raises(self):
+        pts, w = fifth_order_cubature_points(3)
+        with pytest.raises(ValueError):
+            cubature_point_moments(pts, w, lambda x: x, mean=np.zeros(2), cov=np.eye(2))
