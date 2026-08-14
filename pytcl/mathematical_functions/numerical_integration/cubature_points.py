@@ -29,6 +29,8 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.special import gamma, roots_genlaguerre, roots_jacobi
 
+from pytcl.mathematical_functions.basic_matrix.decompositions import chol_semi_def
+
 
 def _pm_combos(x: ArrayLike) -> NDArray[np.floating]:
     """All sign flips of the nonzero entries of x (MATLAB's PMCombos)."""
@@ -154,7 +156,13 @@ def cubature_point_moments(
         Target mean, shape (n,). Must be given together with ``cov``.
     cov : array_like, optional
         Target covariance, shape (n, n). Must be given together with
-        ``mean``.
+        ``mean``. Need only be positive *semi*-definite -- factored with
+        :func:`~pytcl.mathematical_functions.basic_matrix.decompositions.chol_semi_def`,
+        matching MATLAB's own docstring recommendation
+        (``cholSemiDef(R,'lower')``) and the same fallback
+        ``ckf_predict``/``ckf_update`` already use for a filter's own
+        (possibly rank-deficient) state covariance -- rather than a raw
+        Cholesky that would raise on a singular or near-singular ``cov``.
 
     Returns
     -------
@@ -203,7 +211,7 @@ def cubature_point_moments(
                 f"mean/cov dimensions {mean_arr.shape}/{cov_arr.shape} do not "
                 f"match points dimension {n}"
             )
-        sqrt_cov = np.linalg.cholesky(cov_arr)
+        sqrt_cov = chol_semi_def(cov_arr)
         eval_points, _ = transform_cubature_points(points, weights, mean_arr, sqrt_cov)
     else:
         eval_points = points

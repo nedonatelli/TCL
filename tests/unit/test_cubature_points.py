@@ -97,6 +97,12 @@ def student_t_moment(alpha, dof):
         # Any alpha with an odd exponent is 0 by the distribution's
         # reflection symmetry regardless of the dof existence threshold
         # below (which only bites the nonzero, all-even-exponent case).
+        # Note this is a symmetry CONVENTION, not always a literal fact:
+        # for 2 < dof <= d with odd d, E[|x|^d] itself is infinite (not
+        # absolutely convergent), so the signed integral isn't a Lebesgue
+        # expectation at all -- "0" here is its principal value, the same
+        # value the antipodally-symmetric cubature rule produces, which is
+        # what this oracle exists to validate against.
         return 0.0
     if not dof > d:
         raise ValueError(f"moment of degree {d} does not exist for dof={dof}")
@@ -176,6 +182,23 @@ class TestHelpers:
         for dof in (6.0, 10.0, 20.0):
             expected = 3.0 * dof**2 / ((dof - 2.0) * (dof - 4.0))
             assert_allclose(student_t_moment((4,), dof), expected)
+
+    def test_student_t_moment_known_mixed_second_moment(self):
+        # E[x_i^2 * x_j^2] for i != j: x_i and x_j are uncorrelated but NOT
+        # independent (they share the mixing variable W), so the correct
+        # value is NOT the naive product of the two marginal E[x_i^2]
+        # terms. Closed form via the same chi2-mixture derivation as the
+        # docstring above: E[x_i^2 x_j^2] = gaussian_moment((2,2)) * dof^2
+        # * E[W^-2] = dof^2 / ((dof-2)*(dof-4)) (gaussian_moment((2,2))=1).
+        for dof in (10.0, 20.0):
+            expected = dof**2 / ((dof - 2.0) * (dof - 4.0))
+            assert_allclose(student_t_moment((2, 2), dof), expected)
+            # Discriminating power: a regression that reintroduced
+            # independence-factoring for mixed even-degree moments would
+            # give this naive product instead -- confirm it does NOT
+            # satisfy the assertion above (i.e. this test isn't vacuous).
+            naive_independence_factored = (dof / (dof - 2.0)) ** 2
+            assert abs(naive_independence_factored - expected) > 0.1
 
     def test_student_t_moment_converges_to_gaussian_as_dof_grows(self):
         # dof -> inf recovers the N(0, I) moments.
@@ -1157,6 +1180,21 @@ class TestStudentT:
         true_val = student_t_moment(alpha, dof)
         assert abs(rule_val - true_val) > 1e-3
 
+    def test_sharpness_degree_4_mixed_exponent_fails(self):
+        # Beyond the pure (4,0,...) case above: every point has only one
+        # nonzero coordinate, so ANY monomial touching >=2 distinct axes
+        # (e.g. (2,2,0)) integrates to exactly 0 under the rule, while the
+        # true mixed moment is nonzero (see
+        # TestHelpers.test_student_t_moment_known_mixed_second_moment) --
+        # a stronger, free sharpness check beyond the single-axis probe.
+        dof = 10.0
+        pts, w = student_t_cubature_points(3, dof)
+        alpha = (2, 2, 0)
+        rule_val = rule_moment(pts, w, alpha)
+        true_val = student_t_moment(alpha, dof)
+        assert rule_val == 0.0
+        assert abs(rule_val - true_val) > 1e-3
+
     def test_antipodal_symmetry(self):
         pts, w = student_t_cubature_points(4, 6.0)
         for p, wt in zip(pts, w):
@@ -1286,6 +1324,30 @@ class TestCubaturePointMoments:
         assert_allclose(mu, F @ mean, atol=1e-10)
         assert_allclose(P, F @ cov @ F.T, atol=1e-9)
         assert not np.any(np.isnan(P))
+
+    def test_rank_deficient_covariance_does_not_raise(self):
+        # A raw np.linalg.cholesky would raise LinAlgError on a singular
+        # (positive semi-definite but not definite) covariance -- exactly
+        # the situation MATLAB's own docstring anticipates by recommending
+        # cholSemiDef(R,'lower'), and the same situation ckf_predict
+        # already falls back to eigh for with a filter's own (possibly
+        # rank-deficient) state covariance. Build a genuinely singular 3x3
+        # covariance (rank 2: outer product of two vectors) and confirm
+        # the linear closed form still holds exactly.
+        n = 3
+        rng = np.random.default_rng(23)
+        B = rng.normal(size=(n, 2))  # rank <= 2 in 3 dimensions
+        cov = B @ B.T
+        assert np.linalg.matrix_rank(cov) < n
+        mean = rng.normal(size=n)
+        A = rng.normal(size=(n, n))
+        b = rng.normal(size=n)
+
+        pts, w = fifth_order_cubature_points(n)
+        mu, P = cubature_point_moments(pts, w, lambda x: A @ x + b, mean, cov)
+
+        assert_allclose(mu, A @ mean + b, atol=1e-9)
+        assert_allclose(P, A @ cov @ A.T, atol=1e-8)
 
     def test_shape_mismatch_raises(self):
         pts, w = fifth_order_cubature_points(3)
