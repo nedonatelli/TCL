@@ -17,6 +17,7 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     _sphere_surface_points,
     fifth_order_cubature_points,
     fourteenth_order_cubature_points,
+    genz_keister_points,
     second_order_cubature_points,
     seventh_order_cubature_points,
     sphere_surface_to_gauss_points,
@@ -713,3 +714,331 @@ class TestCKFWithCustomPoints:
             ckf_predict(x, P, f, Q, points=pts3, weights=w3[:-1])
         with pytest.raises(ValueError):
             ckf_predict(x, P, f, Q, points=pts3)  # points without weights
+
+
+class TestGenzKeister:
+    """MATLAB's ``GenzKeisterPoints`` -- a fully-symmetric interpolatory
+    rule (Genz [2]_ extended by Genz and Keister [1]_) built from a single
+    NESTED 1-D generator sequence, so the n-D point sets nest across
+    increasing ``m`` too. This nesting is the entire reason this rule is
+    worth having (it is the prerequisite for Smolyak sparse grids, deferred
+    to a follow-on effort) -- see `TestNesting` below and the "Notes"
+    section of ``genz_keister_points``'s docstring, which this test class
+    mirrors section for section:
+
+    - the *generic* exactness bound, degree ``2m + 1``, holding for any
+      n and any m (`TestGenericDegreeBound`);
+    - the n=1-only *bonus* at specific "milestone" m values, where
+      single-axis moments (equivalently, the n=1 rule) are exact well
+      beyond ``2m + 1`` (`TestMilestoneBonus`);
+    - the documented precision/nesting breakdown at the very top of each
+      algorithm's valid ``m`` range (`TestNesting`,
+      `test_top_of_range_precision_documented`).
+    """
+
+    # ---- input validation ----
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            genz_keister_points(0, 1)
+
+    @pytest.mark.parametrize(
+        "algorithm,bad_m", [(0, 0), (0, 18), (0, -1), (1, 0), (1, 16), (1, -3)]
+    )
+    def test_invalid_m_raises(self, algorithm, bad_m):
+        with pytest.raises(ValueError):
+            genz_keister_points(1, bad_m, algorithm=algorithm)
+
+    def test_noninteger_m_raises(self):
+        with pytest.raises(ValueError):
+            genz_keister_points(1, 1.5)
+
+    @pytest.mark.parametrize("algorithm", [2, -1, 3, "nu"])
+    def test_invalid_algorithm_raises(self, algorithm):
+        # Covers MATLAB's third path (a custom nu-increment vector), which
+        # this port deliberately does not implement -- see the docstring's
+        # `algorithm` parameter description for why.
+        with pytest.raises(ValueError):
+            genz_keister_points(1, 1, algorithm=algorithm)
+
+    # ---- structural invariants across the full valid m range ----
+
+    @pytest.mark.parametrize("algorithm,max_m", [(0, 17), (1, 15)])
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_weight_sum_full_range(self, algorithm, max_m, n):
+        for m in range(1, max_m + 1):
+            _, w = genz_keister_points(n, m, algorithm=algorithm)
+            assert_allclose(
+                w.sum(), 1.0, atol=1e-8, err_msg=f"n={n} m={m} algorithm={algorithm}"
+            )
+
+    @pytest.mark.parametrize("algorithm,max_m", [(0, 17), (1, 15)])
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_antipodal_symmetry_full_range(self, algorithm, max_m, n):
+        # Every point's full negation (all coordinates flipped at once) is
+        # also a point, with the SAME weight -- guaranteed by construction
+        # (PMCombos enumerates every sign combination of a partition's
+        # nonzero magnitudes, which includes the all-negative one), not
+        # merely a numerical coincidence.
+        for m in range(1, max_m + 1):
+            pts, w = genz_keister_points(n, m, algorithm=algorithm)
+            for p, wt in zip(pts, w):
+                match = np.all(np.isclose(pts, -p, atol=1e-8), axis=1)
+                assert np.any(match), f"n={n} m={m} point {p} has no antipodal partner"
+                assert_allclose(w[match], wt, atol=1e-8)
+
+    def test_negative_weights_present_and_not_suppressed(self):
+        # Genz-Keister rules commonly have negative weights; documented in
+        # the docstring's Returns section, never clamped or dropped (only
+        # numerically-zero weights are dropped, via eps_val).
+        _, w = genz_keister_points(1, 9)
+        assert w.min() < 0.0
+
+    def test_points_are_rows_default_algorithm(self):
+        pts, w = genz_keister_points(3, 2)
+        assert pts.ndim == 2 and pts.shape[1] == 3
+        assert w.shape == (pts.shape[0],)
+
+    def test_eps_val_controls_pruning(self):
+        # A very large eps_val prunes aggressively (fewer points survive);
+        # eps_val=0 prunes only exact zeros (MATLAB's a=0 lambda=0 term at
+        # the origin's own partition never even gets a chance to appear
+        # negative/positive-near-zero the way extremal points do, but every
+        # OTHER near-zero weight should survive when the threshold is 0).
+        _, w_default = genz_keister_points(1, 9)
+        pts_loose, w_loose = genz_keister_points(1, 9, eps_val=1e-3)
+        assert len(w_loose) < len(w_default)
+        assert np.all(np.abs(w_loose) > 1e-3)
+
+    # ---- NESTING: the property this port exists for ----
+
+    @pytest.mark.parametrize("algorithm,max_m", [(0, 17), (1, 15)])
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_nesting_holds_for_every_consecutive_pair_except_the_last(
+        self, algorithm, max_m, n
+    ):
+        # Explicit, consecutive-level assertion: the point set at level m
+        # contains EVERY point of level m-1, to floating tolerance -- for
+        # every m from 2 up to (but not including) the documented top-of-
+        # range exception (see test_nesting_breaks_at_the_documented_top).
+        prev_pts, _ = genz_keister_points(n, 1, algorithm=algorithm)
+        for m in range(2, max_m):
+            pts, _ = genz_keister_points(n, m, algorithm=algorithm)
+            for p in prev_pts:
+                assert np.any(np.all(np.isclose(pts, p, atol=1e-9), axis=1)), (
+                    f"n={n} algorithm={algorithm}: point {p} from level "
+                    f"m={m - 1} is missing from level m={m}"
+                )
+            prev_pts = pts
+
+    @pytest.mark.parametrize("algorithm,max_m", [(0, 17), (1, 15)])
+    def test_nesting_breaks_at_the_documented_top_of_range(self, algorithm, max_m):
+        # A genuine, verified property of the published double-precision
+        # generator tables (see the docstring's "Precision at the top of
+        # the range" note), not a porting bug: at the very last m for each
+        # algorithm, recomputing the shared weight table with the larger m
+        # shifts an existing extremal point's weight across the eps_val
+        # pruning threshold, so it does NOT simply extend the previous
+        # point set. Asserted explicitly (rather than merely omitted from
+        # the loop above) so the limitation stays visible and tested.
+        pts_prev, _ = genz_keister_points(1, max_m - 1, algorithm=algorithm)
+        pts_top, _ = genz_keister_points(1, max_m, algorithm=algorithm)
+        missing = [
+            p
+            for p in pts_prev
+            if not np.any(np.all(np.isclose(pts_top, p, atol=1e-9), axis=1))
+        ]
+        assert missing, (
+            "expected the documented top-of-range nesting break to "
+            "reproduce; if this now passes, the docstring's Notes section "
+            "should be revisited"
+        )
+
+    # ---- generic exactness bound: degree 2m+1, any n, any m ----
+
+    @staticmethod
+    def _assert_some_monomial_of_degree_fails(
+        points, weights, n, degree, threshold=1e-4
+    ):
+        """At least one monomial of EXACTLY `degree` fails.
+
+        Deliberately does not hand-pick a single probe monomial: WHICH
+        monomial fails first varies by (n, m) -- single-axis moments can be
+        elevated well beyond the generic bound at "milestone" m values
+        (TestMilestoneBonus below), while mixed-exponent ones never are
+        (TestGenericDegreeBound.test_milestone_bonus_does_not_extend_to_mixed_exponents).
+        An exhaustive per-degree scan is robust to that without needing a
+        separate exclusion list per (n, m).
+        """
+        worst = 0.0
+        for alpha in monomials_up_to(n, degree):
+            if sum(alpha) != degree:
+                continue
+            worst = max(
+                worst, abs(rule_moment(points, weights, alpha) - gaussian_moment(alpha))
+            )
+        assert worst > threshold, (
+            f"expected some degree-{degree} monomial (n={n}) to fail by "
+            f"more than {threshold}, but the worst was {worst:.3e}"
+        )
+
+    # (n, m) pairs where the generic 2m+1 bound is exactly the TRUE degree,
+    # not merely a safe lower bound -- so sharpness at 2m+2 is a genuine,
+    # non-vacuous claim. For n=1, m in {1, 4, 5, 6, 9, 10, ..., 13} sit
+    # strictly BELOW their milestone's actual (elevated) degree -- see
+    # `TestGenzKeister` docstring / the module docstring's Notes -- so
+    # sharpness at their generic 2m+2 would be false (that degree is still
+    # exact there); m=2 lands on the same elevated 3-point rule as m=1 but
+    # 2*2+1 happens to equal that rule's actual degree (5) by arithmetic
+    # coincidence, so it IS safe to include. n=2 and n=3 have no such
+    # elevation at any m (TestMilestoneBonus's mixed-exponent finding: the
+    # bonus is single-axis-only), so every m is safe there.
+    _GENERIC_CASES = (
+        [(1, m) for m in (2, 3, 7, 8)]
+        + [(2, m) for m in (1, 2, 3, 4, 5, 6)]
+        + [(3, m) for m in (1, 2, 3, 4, 5, 6)]
+    )
+
+    @pytest.mark.parametrize("n,m", _GENERIC_CASES)
+    def test_exact_through_generic_degree(self, n, m):
+        pts, w = genz_keister_points(n, m)
+        assert_rule_exact(pts, w, n, degree=2 * m + 1)
+
+    @pytest.mark.parametrize("n,m", _GENERIC_CASES)
+    def test_sharp_at_generic_degree_plus_one(self, n, m):
+        pts, w = genz_keister_points(n, m)
+        self._assert_some_monomial_of_degree_fails(pts, w, n, degree=2 * m + 2)
+
+    def test_milestone_bonus_does_not_extend_to_mixed_exponents(self):
+        # REFERENCE (hand-verified value, see also TestMilestoneBonus):
+        # n=1's marginal at m=4 (algorithm 0) is exact through degree 15.
+        # In 2D, the axis-only moment at that degree is STILL exact (the
+        # bonus is a property of the shared 1-D generator, inherited by
+        # single-axis moments regardless of n) -- but a MIXED-exponent
+        # monomial of the SAME total degree is not, which is what actually
+        # caps the multi-dimensional rule's degree at the generic 2m+1=9.
+        pts, w = genz_keister_points(2, 4)
+        axis_alpha = (14, 0)  # degree 14 <= 15: still exact (axis-only)
+        assert_allclose(
+            rule_moment(pts, w, axis_alpha), gaussian_moment(axis_alpha), atol=1e-6
+        )
+        mixed_alpha = (8, 2)  # degree 10 > 9 (generic bound): must fail
+        rule_val = rule_moment(pts, w, mixed_alpha)
+        true_val = gaussian_moment(mixed_alpha)
+        assert_allclose(rule_val, 153.37847512583247, atol=1e-6)
+        assert abs(rule_val - true_val) > 1.0
+
+    # ---- milestone bonus: n=1 marginal exceeds the generic bound ----
+
+    _MILESTONE_CASES = [
+        (0, 1, 5),  # base rule: 0, +-sqrt(3) IS the 3-point Gauss-Hermite rule
+        (0, 4, 15),  # nu=[3,...] stage complete
+        (0, 9, 29),  # nu=[3,5,...] stage complete
+        (1, 1, 5),  # base rule, shared with algorithm 0
+        (1, 5, 19),  # nu=[4,...] stage complete
+    ]
+
+    @staticmethod
+    def _moment_scale(degree):
+        """A magnitude reference for degree `degree`, even or odd.
+
+        The raw N(0,1) moments here reach ~1e15 by degree 30 (E[x^30] =
+        29!! = 6.19e15); `assert_rule_exact`'s fixed ``atol=1e-9`` is far
+        too tight for genuine float64 summation noise at that scale (this
+        module's docstring's "Precision at the top of the range" note
+        documents the same effect at the extreme top of the m range --
+        this is the same phenomenon at more moderate degrees, verified
+        directly: the *relative* error stays ~1e-15 across every degree up
+        to each milestone's claimed bound, but the raw values it's relative
+        TO grow by 15 orders of magnitude, so a fixed absolute tolerance
+        cannot track it). Odd degrees have a true value of 0, so relative
+        error is undefined there too; this returns the true (even) moment
+        at `degree` or `degree - 1`, whichever is even, as the scale to
+        measure noise against instead.
+        """
+        even_degree = degree - (degree % 2)
+        return max(1.0, gaussian_moment((even_degree,)))
+
+    @pytest.mark.parametrize("algorithm,m,degree", _MILESTONE_CASES)
+    def test_milestone_exact_through_bonus_degree(self, algorithm, m, degree):
+        pts, w = genz_keister_points(1, m, algorithm=algorithm)
+        for d in range(degree + 1):
+            alpha = (d,)
+            rule_val = rule_moment(pts, w, alpha)
+            true_val = gaussian_moment(alpha)
+            scale = self._moment_scale(d)
+            assert abs(rule_val - true_val) < 1e-6 * scale, (
+                f"algorithm={algorithm} m={m} degree={d}: rule={rule_val} "
+                f"true={true_val}"
+            )
+
+    @pytest.mark.parametrize("algorithm,m,degree", _MILESTONE_CASES)
+    def test_milestone_sharp_at_bonus_degree_plus_one(self, algorithm, m, degree):
+        pts, w = genz_keister_points(1, m, algorithm=algorithm)
+        alpha = (degree + 1,)
+        rule_val = rule_moment(pts, w, alpha)
+        true_val = gaussian_moment(alpha)
+        scale = self._moment_scale(degree + 1)
+        assert abs(rule_val - true_val) > 1e-5 * scale, (
+            f"algorithm={algorithm} m={m} degree={degree + 1}: rule={rule_val} "
+            f"true={true_val} (expected a real failure, not noise)"
+        )
+
+    def test_milestone_point_counts(self):
+        # REFERENCE point counts (independently re-derived, not copied from
+        # Table 3.4 -- see the docstring's Notes): the classic nested
+        # Genz-Keister growth 1, 3, 9, 19, ... for algorithm 0's milestones.
+        for m, expected_npts in [(1, 3), (4, 9), (9, 19)]:
+            pts, _ = genz_keister_points(1, m, algorithm=0)
+            assert len(pts) == expected_npts
+        for m, expected_npts in [(1, 3), (5, 11)]:
+            pts, _ = genz_keister_points(1, m, algorithm=1)
+            assert len(pts) == expected_npts
+
+    # ---- cross-check against an unoptimized brute-force reconstruction ----
+
+    def test_matches_brute_force_reconstruction(self):
+        # Independent re-derivation used to gain confidence in the port
+        # (see the docstring's Notes): instead of computing one weight per
+        # partition *class* and reusing it for every point in that
+        # partition's symmetry orbit (what the shipped implementation
+        # does, mirroring MATLAB's own optimization), evaluate every raw
+        # n-tuple in {0,...,m}^n directly and independently. Both must
+        # produce the identical point/weight set.
+        def brute_force(n, m, algorithm=0):
+            from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+                _GK_TABLES,
+                _gk_inner_terms,
+                _gk_partition_weight,
+                _pm_combos,
+            )
+
+            lam, a = _GK_TABLES[algorithm]
+            lam2 = lam[: m + 1] ** 2
+            inner = _gk_inner_terms(a, lam2, m)
+            pts, ws = [], []
+            for p in itertools.product(range(m + 1), repeat=n):
+                if sum(p) > m:
+                    continue
+                w_p = _gk_partition_weight(m, p, inner)
+                combos = _pm_combos(lam[list(p)])
+                pts.append(combos)
+                ws.append(np.full(len(combos), w_p))
+            pts = np.vstack(pts)
+            ws = np.concatenate(ws)
+            eps_val = np.finfo(np.float64).eps
+            sel = np.abs(ws) > eps_val
+            return pts[sel], ws[sel]
+
+        def canonicalize(pts, w):
+            idx = np.lexsort(pts.T[::-1])
+            return pts[idx], w[idx]
+
+        for n, m in [(1, 6), (2, 5), (3, 4)]:
+            pts_opt, w_opt = genz_keister_points(n, m)
+            pts_brute, w_brute = brute_force(n, m)
+            c_opt = canonicalize(pts_opt, w_opt)
+            c_brute = canonicalize(pts_brute, w_brute)
+            assert c_opt[0].shape == c_brute[0].shape
+            assert_allclose(c_opt[0], c_brute[0], atol=1e-10)
+            assert_allclose(c_opt[1], c_brute[1], atol=1e-10)
