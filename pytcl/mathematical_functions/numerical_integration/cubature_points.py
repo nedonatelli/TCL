@@ -507,11 +507,21 @@ def _fourteenth_order_unit_sphere_points_3d() -> Tuple[
     The polynomial's 6 roots are consumed as one "hub" value paired with each
     of the other 5 (arranged in a 5-cycle) to build the 60-point block.
     MATLAB assigns hub=z(1) and cycle=z(2..6) to whatever order its ``roots``
-    call happens to return. This port instead explicitly sorts the roots
-    descending and assigns the hub to the largest -- verified (via exact
-    reduction to the N(0, I) moments below) to reproduce the same points to
-    float64 precision, and robust to the solver's internal ordering rather
-    than depending on it.
+    call happens to return -- an implementation-defined solver ordering this
+    port does not try to reproduce bit-for-bit. Instead, the roots are sorted
+    descending and the hub is assigned to the largest, which is forced (the
+    unit-norm constraint below picks it out uniquely). The remaining 5-cycle
+    assignment is NOT unique, though: an exhaustive search over all 720
+    labelings found 10 that tie at the same ~1e-14 unit-norm residual,
+    collapsing into exactly two 60-point clouds related by a single
+    coordinate's sign flip -- a genuine mirror ambiguity that neither the
+    unit-norm check nor degree-14 exactness (both verified below) can
+    resolve, since a chiral construction and its mirror image integrate every
+    polynomial identically. This port fixes one of the two mirrors
+    deterministically (whichever the descending sort produces) and verifies
+    it end-to-end against the closed-form N(0, I) moments; it does not claim
+    to match MATLAB's specific mirror bit-for-bit, and a caller that needs
+    that (e.g. to reproduce a published result exactly) should not assume it.
     """
     r = np.sqrt((5.0 - np.sqrt(5.0)) / 10.0)
     s = np.sqrt((5.0 + np.sqrt(5.0)) / 10.0)
