@@ -47,10 +47,11 @@ No dates are attached because none have been decided:
   plus — as of the cubature-completion campaign — Genz-Keister nested
   rules, the 14th-order and 2nd-order fixed rules, and Student-t
   third-order points. Most of this is gated by monomial-exactness tests;
-  Student-t is gated by a Student-t moment oracle instead (its target
-  distribution has no polynomial-exactness structure to test against), and
-  the `beta != 0` radial-weighting rules are gated by a weighted-moment
-  oracle. A prior version of this roadmap implied MATLAB's
+  Student-t is gated by a Student-t moment oracle instead (still polynomial
+  exactness, but against the Student-t's own moments — the Gaussian ones do
+  not apply, and its components are uncorrelated without being independent,
+  so mixed moments do not factor), and the `beta != 0` radial-weighting
+  rules are gated by a weighted-moment oracle. A prior version of this roadmap implied MATLAB's
   `arbOrderGaussCubPoints` (integration against a Gaussian times `|x|^beta`)
   was already covered by the arbitrary-degree spherical-radial work — it was
   not: until this branch, `spherical_radial_points` implemented only the
