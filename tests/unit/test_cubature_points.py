@@ -271,9 +271,12 @@ class TestSecondOrder:
 
     @pytest.mark.parametrize("w0,alpha", [(1 / 3, 1.0), (0.7, 1.0), (0.2, 1.3)])
     def test_exact_through_degree_2_nondefault_params(self, w0, alpha):
-        # Mean/covariance exactness must hold regardless of w0/alpha,
-        # including when alpha drives the center weight negative (see
-        # test_negative_center_weight_is_not_suppressed).
+        # Mean/covariance exactness must hold regardless of w0/alpha.
+        # All three (w0, alpha) pairs here give a positive center weight
+        # (+0.333, +0.700, +0.527); the negative-center-weight case is
+        # covered separately by
+        # test_negative_center_weight_is_not_suppressed, which also checks
+        # degree-2 exactness there.
         n = 4
         pts, w = second_order_cubature_points(n, w0=w0, alpha=alpha)
         assert_allclose(w.sum(), 1.0, atol=1e-12)
@@ -496,6 +499,8 @@ class TestSphericalRadial:
             spherical_radial_points(2, 1)  # < 3
         with pytest.raises(ValueError):
             spherical_radial_points(0, 3)  # bad dim
+        with pytest.raises(ValueError):
+            spherical_radial_points(2, 3.7)  # non-integer
 
 
 class TestFourteenthOrder:
@@ -515,15 +520,10 @@ class TestFourteenthOrder:
         # Exhaustive: C(14+3,3) = 680 monomials against 288 points -- cheap
         # (well under a second), so the plan's random-sampling fallback for
         # large-n degree-14 grids is not needed: MATLAB only supports n=3.
+        # Uses the shared assert_rule_exact (atol=1e-9); measured worst
+        # err/tol ratio here is 5.3e-2, comfortably inside it.
         pts, w = fourteenth_order_cubature_points(3)
-        for alpha in monomials_up_to(3, 14):
-            assert_allclose(
-                rule_moment(pts, w, alpha),
-                gaussian_moment(alpha),
-                rtol=1e-6,
-                atol=1e-8,
-                err_msg=f"monomial {alpha} not integrated exactly",
-            )
+        assert_rule_exact(pts, w, 3, degree=14)
 
     def test_sharpness_degree_15_fails(self):
         # Every degree-15 monomial has at least one odd exponent (a tuple of
@@ -586,6 +586,19 @@ class TestFourteenthOrder:
                 err_msg=f"monomial {alpha} (beta={beta}) not integrated exactly",
             )
 
+    @pytest.mark.parametrize("beta", [1.0, 2.0, -0.5])
+    def test_nonzero_beta_sharpness(self, beta):
+        # Mirrors test_sharpness_degree_15_fails's beta=0 mixed-exponent
+        # probe: (1, 1, 13) is degree 14, still within bounds, but exposes
+        # the rule's true degree-14 limit even under the beta weighting
+        # (measured |rule - true| is ~5.3e2/2.3e3/6.3e1 for beta=1/2/-0.5).
+        pts, w = fourteenth_order_cubature_points(3, beta=beta)
+        alpha = (1, 1, 13)
+        assert (
+            abs(rule_moment(pts, w, alpha) - weighted_gaussian_moment(alpha, beta))
+            > 1.0
+        )
+
 
 class TestSphereSurfaceToGaussPoints:
     """Adapter: spherical-surface rule -> Gaussian(-times-|x|^beta) rule."""
@@ -643,6 +656,39 @@ class TestSphereSurfaceToGaussPoints:
         with pytest.raises(ValueError):
             sphere_surface_to_gauss_points(surf_pts, surf_w, 3, beta=-5.0)
 
+    def test_mismatched_weights_shape_raises(self):
+        # This is the only public function in the module that used to
+        # accept a mismatched points/weights pair silently -- e.g. a
+        # (2, 12)-shaped weights array against 12 surface points used to
+        # return (12, 3) points paired with (2, 12) weights and no
+        # exception. Now validated the same way transform_cubature_points
+        # and cubature_point_moments already are.
+        surf_pts, surf_w = _sphere_surface_points(3, 3)
+        with pytest.raises(ValueError):
+            sphere_surface_to_gauss_points(surf_pts, np.tile(surf_w, (2, 1)), 3)
+
+    def test_wrong_length_weights_raises(self):
+        surf_pts, surf_w = _sphere_surface_points(3, 3)
+        with pytest.raises(ValueError):
+            sphere_surface_to_gauss_points(surf_pts, surf_w[:-1], 3)
+
+    def test_noninteger_degree_raises(self):
+        # Unlike spherical_radial_points, EVEN degree is legitimately
+        # accepted here (fourteenth_order_cubature_points calls with
+        # degree=14) -- see the docstring's `degree` parameter -- but a
+        # non-integer degree is not a valid "polynomial degree" under
+        # either function and must be rejected the same way.
+        surf_pts, surf_w = _sphere_surface_points(3, 3)
+        with pytest.raises(ValueError):
+            sphere_surface_to_gauss_points(surf_pts, surf_w, 3.7)
+
+    def test_even_degree_accepted(self):
+        # The construction fourteenth_order_cubature_points relies on:
+        # degree need not be odd here.
+        surf_pts, surf_w = _sphere_surface_points(3, 4)
+        pts, w = sphere_surface_to_gauss_points(surf_pts, surf_w, 4)
+        assert_allclose(w.sum(), 1.0, atol=1e-8)
+
 
 class TestSphericalRadialBetaGeneralization:
     """spherical_radial_points(n, degree, beta=0.0) -- pre-existing callers
@@ -694,6 +740,20 @@ class TestSphericalRadialBetaGeneralization:
             atol=1e-9,
         )
         assert_rule_exact_weighted(pts, w, n, degree, beta)
+
+    @pytest.mark.parametrize("n,degree,beta", [(2, 3, 1.0), (3, 5, 2.0), (4, 7, -0.5)])
+    def test_nonzero_beta_sharpness(self, n, degree, beta):
+        # TestSphericalRadialBetaGeneralization above only had exactness
+        # coverage for beta != 0; mirrors
+        # TestSphereSurfaceToGaussPoints.test_nonzero_beta_sharpness's
+        # single-axis degree+1 probe (measured |rule - true| ~2.8/21.6/10.2
+        # for these three (n, degree, beta) combinations).
+        pts, w = spherical_radial_points(n, degree, beta=beta)
+        alpha = (degree + 1,) + (0,) * (n - 1)
+        assert (
+            abs(rule_moment(pts, w, alpha) - weighted_gaussian_moment(alpha, beta))
+            > 1.0
+        )
 
     def test_invalid_beta_raises(self):
         with pytest.raises(ValueError):
@@ -818,17 +878,22 @@ class TestGenzKeister:
     NESTED 1-D generator sequence, so the n-D point sets nest across
     increasing ``m`` too. This nesting is the entire reason this rule is
     worth having (it is the prerequisite for Smolyak sparse grids, deferred
-    to a follow-on effort) -- see `TestNesting` below and the "Notes"
-    section of ``genz_keister_points``'s docstring, which this test class
-    mirrors section for section:
+    to a follow-on effort) -- see
+    `test_nesting_holds_for_every_consecutive_pair_except_the_last` below
+    and the "Notes" section of ``genz_keister_points``'s docstring, which
+    the (flat, not class-mirrored) methods below cover point for point:
 
-    - the *generic* exactness bound, degree ``2m + 1``, holding for any
-      n and any m (`TestGenericDegreeBound`);
+    - the *generic* exactness bound, degree ``2m + 1``, holding for any n
+      and any m EXCEPT the maximum m of each algorithm
+      (`test_exact_through_generic_degree`,
+      `test_sharp_at_generic_degree_plus_one`);
     - the n=1-only *bonus* at specific "milestone" m values, where
       single-axis moments (equivalently, the n=1 rule) are exact well
-      beyond ``2m + 1`` (`TestMilestoneBonus`);
+      beyond ``2m + 1`` (`test_milestone_exact_through_bonus_degree`,
+      `test_milestone_sharp_at_bonus_degree_plus_one`);
     - the documented precision/nesting breakdown at the very top of each
-      algorithm's valid ``m`` range (`TestNesting`,
+      algorithm's valid ``m`` range
+      (`test_nesting_breaks_at_the_documented_top_of_range`,
       `test_top_of_range_precision_documented`).
     """
 
@@ -901,10 +966,23 @@ class TestGenzKeister:
         # the origin's own partition never even gets a chance to appear
         # negative/positive-near-zero the way extremal points do, but every
         # OTHER near-zero weight should survive when the threshold is 0).
-        _, w_default = genz_keister_points(1, 9)
+        pts_default, w_default = genz_keister_points(1, 9)
         pts_loose, w_loose = genz_keister_points(1, 9, eps_val=1e-3)
         assert len(w_loose) < len(w_default)
-        assert np.all(np.abs(w_loose) > 1e-3)
+        # The real claim eps_val is supposed to guarantee: every point the
+        # tighter threshold prunes away must actually have had |weight| at
+        # or below it in the unpruned rule (checking only the survivors, as
+        # the old assertion here did, restates the implementation's own
+        # filter and cannot fail even if pruning were broken).
+        kept = np.array(
+            [
+                np.any(np.all(np.isclose(pts_loose, p, atol=1e-12), axis=1))
+                for p in pts_default
+            ]
+        )
+        dropped_weights = w_default[~kept]
+        assert len(dropped_weights) > 0
+        assert np.all(np.abs(dropped_weights) <= 1e-3)
 
     # ---- NESTING: the property this port exists for ----
 
@@ -950,6 +1028,39 @@ class TestGenzKeister:
             "should be revisited"
         )
 
+    def test_top_of_range_precision_documented(self):
+        # Pins the OTHER documented consequence of the top-of-range
+        # precision breakdown (see the docstring's Notes item 1, now
+        # qualified to exclude the maximum m of each algorithm, and its
+        # "Precision at the top of the range" note): the generic
+        # exact-through-2m+1 guarantee itself is FALSE here, not merely
+        # unimproved -- both monomials probed sit strictly within their
+        # rule's generic bound and still fail by orders of magnitude more
+        # than roundoff. If this now passes, the docstring's qualified
+        # guarantee should be revisited.
+        #
+        # algorithm 0, n=2, m=17: E[x1^34], degree 34 <= 2*17+1 = 35.
+        pts0, w0 = genz_keister_points(2, 17, algorithm=0)
+        alpha0 = (34, 0)
+        relerr0 = abs(rule_moment(pts0, w0, alpha0) - gaussian_moment(alpha0)) / abs(
+            gaussian_moment(alpha0)
+        )
+        assert relerr0 > 1e-3, (
+            f"expected the documented generic-bound failure to reproduce "
+            f"at algorithm=0, n=2, m=17 (measured relerr {relerr0:.3e})"
+        )
+
+        # algorithm 1, n=1, m=15: E[x^30], degree 30 <= 2*15+1 = 31.
+        pts1, w1 = genz_keister_points(1, 15, algorithm=1)
+        alpha1 = (30,)
+        relerr1 = abs(rule_moment(pts1, w1, alpha1) - gaussian_moment(alpha1)) / abs(
+            gaussian_moment(alpha1)
+        )
+        assert relerr1 > 1e-6, (
+            f"expected the documented generic-bound failure to reproduce "
+            f"at algorithm=1, n=1, m=15 (measured relerr {relerr1:.3e})"
+        )
+
     # ---- generic exactness bound: degree 2m+1, any n, any m ----
 
     @staticmethod
@@ -961,8 +1072,9 @@ class TestGenzKeister:
         Deliberately does not hand-pick a single probe monomial: WHICH
         monomial fails first varies by (n, m) -- single-axis moments can be
         elevated well beyond the generic bound at "milestone" m values
-        (TestMilestoneBonus below), while mixed-exponent ones never are
-        (TestGenericDegreeBound.test_milestone_bonus_does_not_extend_to_mixed_exponents).
+        (test_milestone_exact_through_bonus_degree below), while
+        mixed-exponent ones never are
+        (test_milestone_bonus_does_not_extend_to_mixed_exponents).
         An exhaustive per-degree scan is robust to that without needing a
         separate exclusion list per (n, m).
         """
@@ -987,8 +1099,8 @@ class TestGenzKeister:
     # exact there); m=2 lands on the same elevated 3-point rule as m=1 but
     # 2*2+1 happens to equal that rule's actual degree (5) by arithmetic
     # coincidence, so it IS safe to include. n=2 and n=3 have no such
-    # elevation at any m (TestMilestoneBonus's mixed-exponent finding: the
-    # bonus is single-axis-only), so every m is safe there.
+    # elevation at any m (test_milestone_bonus_does_not_extend_to_mixed_exponents's
+    # finding: the bonus is single-axis-only), so every m is safe there.
     _GENERIC_CASES = (
         [(1, m) for m in (2, 3, 7, 8)]
         + [(2, m) for m in (1, 2, 3, 4, 5, 6)]
@@ -1006,7 +1118,8 @@ class TestGenzKeister:
         self._assert_some_monomial_of_degree_fails(pts, w, n, degree=2 * m + 2)
 
     def test_milestone_bonus_does_not_extend_to_mixed_exponents(self):
-        # REFERENCE (hand-verified value, see also TestMilestoneBonus):
+        # REFERENCE (hand-verified value, see also
+        # test_milestone_exact_through_bonus_degree below):
         # n=1's marginal at m=4 (algorithm 0) is exact through degree 15.
         # In 2D, the axis-only moment at that degree is STILL exact (the
         # bonus is a property of the shared 1-D generator, inherited by
@@ -1093,30 +1206,96 @@ class TestGenzKeister:
 
     # ---- cross-check against an unoptimized brute-force reconstruction ----
 
-    def test_matches_brute_force_reconstruction(self):
-        # Independent re-derivation used to gain confidence in the port
-        # (see the docstring's Notes): instead of computing one weight per
-        # partition *class* and reusing it for every point in that
-        # partition's symmetry orbit (what the shipped implementation
-        # does, mirroring MATLAB's own optimization), evaluate every raw
-        # n-tuple in {0,...,m}^n directly and independently. Both must
-        # produce the identical point/weight set.
+    @staticmethod
+    def _matlab_inner_terms_4_weights(a, lam2, m):
+        """Literal, line-for-line translation of MATLAB's
+        ``innerTerms4Weights`` loop (``GenzKeisterPoints.m`` lines 223-239),
+        re-indexed from MATLAB's 1-based ``pSubi``/``pkSum`` to 0-based
+        ``p``/``k`` (``p = pSubi - 1``, ``k = pkSum - 1``, so MATLAB's
+        ``pkSum > pSubi`` becomes ``k > p`` and its ``pkSum - 1`` index
+        becomes ``k - 1``). Deliberately NOT the closed-form/optimized
+        ``_gk_inner_terms`` the shipped implementation uses -- see
+        `test_matches_matlab_reconstruction` below for why this
+        independence matters.
+        """
+        b = np.zeros((m + 1, m + 1))
+        b[0, 0] = a[0]
+        for p in range(m + 1):
+            prod_val = 1.0
+            for k in range(1, m + 1):
+                if k > p:
+                    prod_val *= lam2[p] - lam2[k]
+                else:
+                    prod_val *= lam2[p] - lam2[k - 1]
+                if k >= p:
+                    b[p, k] = a[k] / prod_val
+        return b
+
+    @staticmethod
+    def _matlab_compute_w(m, p, inner_terms):
+        """Literal translation of MATLAB's ``computeW`` odometer
+        (``GenzKeisterPoints.m`` lines 298-346), preserving its mutable
+        ``prodSums``/``kpSum``/``cardinalityLeft`` state machine and its
+        "for loop with a break, then inspect the loop variable" control
+        flow (``i`` is 0-based here vs. MATLAB's 1-based, so ``i == n``
+        becomes ``i == n - 1`` and ``p(n)`` becomes ``p[-1]``) -- NOT the
+        polynomial-convolution closed form ``_gk_partition_weight`` uses.
+        """
+        n = len(p)
+        active = sum(1 for pi in p if pi != 0)
+        cardinality_left = m - sum(p)
+        kp_sum = list(p)
+        prod_sums = [0.0] * (n + 1)
+        while True:
+            broke = False
+            for i in range(n):
+                prod_sums[0] = 1.0
+                if cardinality_left >= 0:
+                    prod_sums[i + 1] += inner_terms[p[i], kp_sum[i]] * prod_sums[i]
+                    prod_sums[i] = 0.0
+                    kp_sum[i] += 1
+                    cardinality_left -= 1
+                    broke = True
+                    break
+                cardinality_left += kp_sum[i] - p[i]
+                kp_sum[i] = p[i]
+            if not broke:
+                i = n - 1
+            if i == n - 1 and kp_sum[n - 1] == p[n - 1]:
+                break
+        return 2.0 ** (-active) * prod_sums[n]
+
+    def test_matches_matlab_reconstruction(self):
+        # GENUINE independent oracle (unlike a since-fixed earlier version
+        # of this test, which imported `_gk_inner_terms`/`_gk_partition_weight`
+        # from the module under test and so re-derived only the point
+        # enumeration, taking every weight value from the code it was
+        # meant to validate): `_matlab_inner_terms_4_weights` and
+        # `_matlab_compute_w` above are literal translations of MATLAB's
+        # own routines, transcribed directly from
+        # GenzKeisterPoints.m, not derived from or cross-checked against
+        # this module's implementation. This also evaluates every raw
+        # n-tuple in {0,...,m}^n directly, rather than computing one weight
+        # per partition *class* and reusing it for every point in that
+        # partition's symmetry orbit (what the shipped implementation does,
+        # mirroring MATLAB's own optimization) -- so both the enumeration
+        # AND the weight formula are independently re-derived here. Covers
+        # every valid m for both algorithms at n=1..3 (agreement to
+        # roundoff throughout, ~1 second total).
         def brute_force(n, m, algorithm=0):
             from pytcl.mathematical_functions.numerical_integration.cubature_points import (
                 _GK_TABLES,
-                _gk_inner_terms,
-                _gk_partition_weight,
                 _pm_combos,
             )
 
             lam, a = _GK_TABLES[algorithm]
             lam2 = lam[: m + 1] ** 2
-            inner = _gk_inner_terms(a, lam2, m)
+            inner = self._matlab_inner_terms_4_weights(a, lam2, m)
             pts, ws = [], []
             for p in itertools.product(range(m + 1), repeat=n):
                 if sum(p) > m:
                     continue
-                w_p = _gk_partition_weight(m, p, inner)
+                w_p = self._matlab_compute_w(m, p, inner)
                 combos = _pm_combos(lam[list(p)])
                 pts.append(combos)
                 ws.append(np.full(len(combos), w_p))
@@ -1130,14 +1309,28 @@ class TestGenzKeister:
             idx = np.lexsort(pts.T[::-1])
             return pts[idx], w[idx]
 
-        for n, m in [(1, 6), (2, 5), (3, 4)]:
-            pts_opt, w_opt = genz_keister_points(n, m)
-            pts_brute, w_brute = brute_force(n, m)
-            c_opt = canonicalize(pts_opt, w_opt)
-            c_brute = canonicalize(pts_brute, w_brute)
-            assert c_opt[0].shape == c_brute[0].shape
-            assert_allclose(c_opt[0], c_brute[0], atol=1e-10)
-            assert_allclose(c_opt[1], c_brute[1], atol=1e-10)
+        for algorithm, max_m in [(0, 17), (1, 15)]:
+            for n in (1, 2, 3):
+                for m in range(1, max_m + 1):
+                    pts_opt, w_opt = genz_keister_points(n, m, algorithm=algorithm)
+                    pts_brute, w_brute = brute_force(n, m, algorithm=algorithm)
+                    c_opt = canonicalize(pts_opt, w_opt)
+                    c_brute = canonicalize(pts_brute, w_brute)
+                    assert c_opt[0].shape == c_brute[0].shape, (
+                        f"algorithm={algorithm} n={n} m={m}: point count mismatch"
+                    )
+                    assert_allclose(
+                        c_opt[0],
+                        c_brute[0],
+                        atol=1e-8,
+                        err_msg=f"algorithm={algorithm} n={n} m={m}",
+                    )
+                    assert_allclose(
+                        c_opt[1],
+                        c_brute[1],
+                        atol=1e-8,
+                        err_msg=f"algorithm={algorithm} n={n} m={m}",
+                    )
 
 
 def assert_rule_exact_student_t(points, weights, n, degree, dof):

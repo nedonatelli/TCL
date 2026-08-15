@@ -256,7 +256,15 @@ def second_order_cubature_points(
         Dimension, n >= 1.
     w0 : float, optional
         Weight of the center point before ``alpha``-scaling, 0 < w0 < 1.
-        Default 1/3 (MATLAB's default).
+        Default 1/3 (MATLAB's default). The rescaling below divides by
+        ``sqrt((1/w0 - 1) / (n + 1))``, which -> 0 as ``w0 -> 1``, so
+        values close to the open upper bound blow the non-center points up
+        without limit and degrade the sample covariance accordingly (e.g.
+        ``w0 = 1 - 1e-12`` at n=3 places points near 1.7e6 and leaves the
+        sample covariance off from the identity by ~1.1e-4) -- the same
+        kind of near-boundary blow-up :func:`student_t_cubature_points`
+        documents for ``dof`` near its own open lower bound. The ``0 < w0
+        < 1`` check does not, and is not meant to, guard against this.
     alpha : float, optional
         Positive spread factor for the non-center points. Default 1.0
         (unscaled spherical simplex points). Values of ``alpha`` and ``w0``
@@ -644,12 +652,25 @@ def sphere_surface_to_gauss_points(
     ----------
     surface_points : array_like
         Points on the unit sphere S^(n-1), shape (num_surface_points, n).
+        Precondition (not validated): every row has unit norm -- a rule
+        built from points off the sphere silently integrates a different
+        weighting than the one this function documents.
     surface_weights : array_like
         Weights for the uniform measure on S^(n-1), shape
-        (num_surface_points,), summing to 1.
+        (num_surface_points,), summing to 1 (checked: must be 1-D and its
+        length must match ``surface_points``'s row count, or ``ValueError``
+        is raised). Precondition (not validated): the weights actually sum
+        to 1.
     degree : int
         The polynomial degree the surface rule (and thus this rule) is
-        exact through, degree >= 1.
+        exact through, an integer >= 1. Unlike
+        :func:`spherical_radial_points`, EVEN values are accepted here --
+        this is the lower-level adapter :func:`fourteenth_order_cubature_points`
+        itself calls with ``degree=14`` -- so only integer-ness is checked,
+        not oddness. Precondition (not validated): this must match the
+        degree the supplied ``surface_points``/``surface_weights`` rule was
+        actually built for -- an inconsistent value is accepted silently
+        and just mislabels the resulting rule's true degree.
     beta : float, optional
         Exponent of \\|x\\| in the weighting function, beta > -n. Default 0.0
         (plain N(0, I)).
@@ -689,8 +710,15 @@ def sphere_surface_to_gauss_points(
             f"surface_points must be 2-D, got shape {surface_points.shape}"
         )
     n = surface_points.shape[1]
-    if degree < 1:
-        raise ValueError(f"degree must be >= 1, got {degree}")
+    num_surface_points = surface_points.shape[0]
+    if surface_weights.ndim != 1 or surface_weights.shape[0] != num_surface_points:
+        raise ValueError(
+            f"surface_weights shape {surface_weights.shape} does not match "
+            f"{num_surface_points} surface points"
+        )
+    if not float(degree).is_integer() or degree < 1:
+        raise ValueError(f"degree must be an integer >= 1, got {degree}")
+    degree = int(degree)
     if not beta > -n:
         raise ValueError(f"beta must be > -n ({-n}), got {beta}")
 
@@ -747,6 +775,21 @@ def spherical_radial_points(
         otherwise to ``2**(beta / 2) * gamma((n + beta) / 2) / gamma(n / 2)``
         (see :func:`sphere_surface_to_gauss_points`).
 
+    Notes
+    -----
+    **Deviation from MATLAB at n=1.** MATLAB's ``arbOrderGaussCubPoints``
+    (the ``beta != 0`` routine this function's ``beta`` path delegates to,
+    via :func:`sphere_surface_to_gauss_points`) hard-errors at
+    ``numDim==1`` (``error('numDim must be >1.')``); this port accepts
+    ``n=1`` for both the ``beta=0`` and ``beta != 0`` paths and returns a
+    correct rule instead -- S^0 = {-1, +1} is a valid, if degenerate,
+    sphere, and the construction handles it without special-casing. This
+    was already true of the pre-existing ``beta=0`` path; the ``beta``
+    path added alongside this note now exercises the same n=1 case (via
+    :func:`sphere_surface_to_gauss_points`, which never had MATLAB's
+    ``numDim>1`` restriction to begin with), so it inherits the same
+    disclosed divergence.
+
     Examples
     --------
     >>> pts, w = spherical_radial_points(2, 5)
@@ -757,7 +800,7 @@ def spherical_radial_points(
     """
     if n < 1:
         raise ValueError(f"dimension must be >= 1, got {n}")
-    if degree < 3 or degree % 2 == 0:
+    if not float(degree).is_integer() or degree < 3 or degree % 2 == 0:
         raise ValueError(f"degree must be an odd integer >= 3, got {degree}")
     if not beta > -n:
         raise ValueError(f"beta must be > -n ({-n}), got {beta}")
@@ -1221,13 +1264,22 @@ def genz_keister_points(
     evaluates every raw n-tuple in ``{0,...,m}^n`` instead of one
     representative per symmetry orbit):
 
-    1. **General guarantee, any n:** the rule is exact through total
-       polynomial degree :math:`2m + 1`, and this bound is sharp in
-       general (a *mixed*-exponent monomial of degree :math:`2m+2` fails)
-       -- e.g. at n=2, algorithm=0, m=4: ``E[x1^8 x2^2]`` rule-integrates to
-       ``153.38`` against a true value of ``105``, even though every
-       *single-axis* monomial through degree 16 is still exact there (next
-       point).
+    1. **General guarantee, any n, EXCEPT the maximum m of each algorithm:**
+       for every ``m`` other than ``m = 17`` (algorithm 0) and ``m = 15``
+       (algorithm 1) -- i.e. everywhere the nesting property below also
+       holds -- the rule is exact through total polynomial degree
+       :math:`2m + 1`, and this bound is sharp in general (a *mixed*-exponent
+       monomial of degree :math:`2m+2` fails) -- e.g. at n=2, algorithm=0,
+       m=4: ``E[x1^8 x2^2]`` rule-integrates to ``153.38`` against a true
+       value of ``105``, even though every *single-axis* monomial through
+       degree 16 is still exact there (next point). At the excluded maximum
+       ``m``, this guarantee is FALSE, not merely un-improved: e.g. at n=2,
+       algorithm=0, m=17, ``E[x1^34]`` (total degree 34, within the generic
+       bound :math:`2 \cdot 17 + 1 = 35`) rule-integrates to
+       ``6.5290e18`` against a true value of ``6.3327e18``, a 3.1e-2
+       relative error; at n=1, algorithm=1, m=15, ``E[x^30]`` (within
+       :math:`2 \cdot 15 + 1 = 31`) is off by a relative 1.3e-5. See
+       "Precision at the top of the range" below.
     2. **Bonus at specific "milestone" m values, single-axis moments only:**
        MATLAB's tabulated :math:`\lambda`/:math:`a` values were tuned by
        Genz and Keister so that at the m where each ``nu`` stage completes,
@@ -1249,14 +1301,14 @@ def genz_keister_points(
        0                  9     19           29      nu[1]=5 complete
        0                 15     31           31      (no bonus)
        0                 16     33           33      (no bonus)
-       0                 17     33         ~15 (!)    nu[2]=8 "complete" -- see below
+       0                 17     33         see below  nu[2]=8 "complete" -- precision breakdown
        1 (:math:`\hat{Q}_P`)  1  3            5      base
        1                  3      7            7      (no bonus)
        1                  4      9            9      (no bonus)
        1                  5     11           19      nu[0]=4 complete
        1                 10     21           21      (no bonus)
        1                 14     29           29      (no bonus)
-       1                 15     29         ~15 (!)    nu[1]=10 "complete" -- see below
+       1                 15     29         see below  nu[1]=10 "complete" -- precision breakdown
        ================  =====  ==========  ======  ========================
 
        (m values between milestones, and m=2/m=1 or m=14/m=... duplicates,
@@ -1265,23 +1317,33 @@ def genz_keister_points(
        this bonus at any m, milestone or not (point 1 above).
 
     **Precision at the top of the range (disclosed, not a porting bug).**
-    The row marked "(!)" above is real and reproducible, not an artifact of
-    this port: at ``m = 17`` (algorithm 0) and ``m = 15`` (algorithm 1) --
-    the *last* stage boundary, which is also the maximum ``m`` MATLAB's own
-    docstring allows -- the rule's degree collapses far short of both the
-    generic :math:`2m+1` bound and the milestone pattern above, *and* (see
-    next paragraph) it stops nesting against ``m - 1``. This traces to the
-    published double-precision :math:`\lambda`/:math:`a` constants
-    themselves: achieving that final stage's designed accuracy requires
-    near-exact cancellation among terms spanning roughly 15 to 16 orders of
-    magnitude (``a`` ranges up to ``2.92e15`` at algorithm 0's last entry),
-    which is at the edge of what float64 can represent faithfully even with
-    exact-precision *inputs*. Verified directly: at algorithm 0, the
-    relative error of the rule's low-order moments (e.g. degree 4) is
-    already ``~5e-15`` at ``m=17`` and grows steadily with degree, vs.
-    ``~1e-16`` staying flat until an abrupt cutoff at every other tested
-    ``m``. Do not rely on exactness beyond the generic :math:`2m+1` bound at
-    the maximum ``m`` for either algorithm.
+    The rows marked "see below" above are real and reproducible, not an
+    artifact of this port, but they are not a "degree" claim at all: at
+    ``m = 17`` (algorithm 0) and ``m = 15`` (algorithm 1) -- the *last*
+    stage boundary, which is also the maximum ``m`` MATLAB's own docstring
+    allows -- there is no accuracy cliff to report a single degree for.
+    Every other tested ``m`` has relative error staying flat (``~1e-16``)
+    up to some degree and then cutting off sharply; at the maximum ``m`` of
+    each algorithm the relative error instead grows *smoothly* with degree
+    from the start, so "the degree this rule is exact to" becomes purely a
+    function of whatever tolerance is used to define "exact". Measured
+    directly for algorithm 0 at m=17 (n=1 marginal, single-axis moments):
+    relative error is ``2.2e-16`` at degree 0 and grows to ``5.6e-7`` by
+    degree 24 with no step anywhere in between; the resulting degree at
+    a chosen relative tolerance is 35 @ ``1e-4``, 25 @ ``1e-6``, 19 @
+    ``1e-8``, 13 @ ``1e-10``, 9 @ ``1e-12``, 5 @ ``1e-14`` -- no tolerance
+    reproduces a "15" here; there is no such number, at any tolerance.
+    This traces to the published double-precision :math:`\lambda`/:math:`a`
+    constants themselves: achieving that final stage's designed accuracy
+    requires near-exact cancellation among terms spanning roughly 15 to 16
+    orders of magnitude (``a`` ranges up to ``2.92e15`` at algorithm 0's
+    last entry), which is at the edge of what float64 can represent
+    faithfully even with exact-precision *inputs*. Do not rely on
+    exactness AT ALL at the maximum ``m`` for either algorithm -- not even
+    up to the generic :math:`2m+1` bound that holds everywhere else (see
+    the counterexamples in item 1 above: a 3.1e-2 relative error at n=2,
+    algorithm=0, m=17, degree 34 <= 35; a 1.3e-5 relative error at n=1,
+    algorithm=1, m=15, degree 30 <= 31).
 
     **Nesting.** For every consecutive pair ``m-1, m`` **except the last
     one** (``m = 17`` for algorithm 0, ``m = 15`` for algorithm 1), the
