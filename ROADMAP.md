@@ -21,7 +21,7 @@ and git history.
 
 ## Table of Contents
 
-1. [v2.2 Roadmap](#v22-roadmap-post-v210)
+1. [Post-v2.0.0 Roadmap](#post-v200-roadmap)
 2. [Performance Targets](#performance-targets)
 3. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
 4. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
@@ -31,7 +31,7 @@ and git history.
 
 ---
 
-## v2.2 Roadmap (Post-v2.1.0)
+## Post-v2.0.0 Roadmap
 
 ### Measured backlog (from the MATLAB parity inventory)
 
