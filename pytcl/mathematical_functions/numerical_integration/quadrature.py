@@ -668,6 +668,15 @@ def unscented_transform_points(
     Julier & Uhlmann, "Unscented Filtering and Nonlinear Estimation",
     Proc. IEEE, 2004.
 
+    See Also
+    --------
+    pytcl.mathematical_functions.numerical_integration.cubature_points.second_order_cubature_points :
+        A structurally different (n+2)-point rule from the same paper's
+        Appendix III (spherical simplex sigma points), exact through degree
+        2 only (this function's 2n+1 points are exact through degree 3).
+        Not an alternate parameterization of this rule -- see its Notes
+        section for the reconciliation.
+
     Examples
     --------
     >>> sigma_points, wm, wc = unscented_transform_points(3)

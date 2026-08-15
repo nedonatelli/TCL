@@ -8,6 +8,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Cubature point library extensions**
+  (`pytcl.mathematical_functions.numerical_integration.cubature_points`):
+  six new public rules for the estimation-grade Gaussian-weight cubature
+  slice, all exported from the package `__init__.py`.
+  - `genz_keister_points`: fully-symmetric nested rules built from the
+    tabulated Genz & Keister generators (`algorithm=0`, nu=[3,5,8], m up
+    to 17; `algorithm=1`, nu=[4,10], m up to 15). Exact through degree
+    `2m+1` for every `m` except the top of each algorithm's range (m=17
+    for algorithm 0, m=15 for algorithm 1), where the published
+    double-precision constants cost accuracy -- measured 3.1e-2 relative
+    error at algorithm 0, n=2, m=17. Nesting (the point set at `m`
+    contains every point of `m-1`) holds for every consecutive pair
+    except that same top boundary. This is the prerequisite for Smolyak
+    sparse grids -- sparse grids themselves are not shipped. Weights are
+    commonly negative and never suppressed.
+  - `fourteenth_order_cubature_points`: Stroud's 288-point degree-14
+    rule, n=3 only (no n-dimensional generalization exists in the
+    source). Verified against closed-form N(0, I) moments -- its
+    docstring discloses an unresolvable mirror ambiguity in one of its
+    two 60-point icosahedral blocks, so it is not claimed to match
+    MATLAB's specific point ordering bit-for-bit.
+  - `second_order_cubature_points`: Julier's scaled unscented
+    transformation, an n+2-point spherical-simplex rule. Degree-2 exact
+    only (not degree-3) -- not a drop-in upgrade over
+    `ckf_spherical_cubature_points` or `unscented_transform_points`; it
+    trades third-moment accuracy for the smallest point budget of the
+    three. Its center weight can go negative under scaling.
+  - `student_t_cubature_points`: third-order points for the standard
+    multivariate Student-t (2n points, dof > 2), the Student-t analogue
+    of the CKF's spherical rule, for cubature filtering with
+    heavy-tailed process/measurement noise.
+  - `cubature_point_moments`: general mean/covariance propagation
+    through any nonlinear function given points/weights from any rule
+    in this module (or a filter's own), the filter-independent
+    counterpart of what `ckf_predict`/`ckf_update` do internally.
+  - `spherical_radial_points` gained a `beta` parameter generalizing the
+    weighting from plain N(0, I) to N(0, I) times `|x|^beta`, genuinely
+    covering MATLAB's `arbOrderGaussCubPoints` for the first time
+    (previously only the `beta=0` case was ported). `beta` omitted or
+    `0.0` is bit-identical to the previous release, pinned by a
+    regression test.
+  - Four rules in the module commonly produce negative weights (the
+    existing 5th-order rule at n>4, the existing 7th-order rule at n>8,
+    Genz-Keister generally, and the new 2nd-order rule under scaling);
+    none are suppressed, and covariances must be assembled from
+    residuals, never a sqrt-of-weights factorization.
 - **Property-based tests** (`tests/property/`, empty since before v2.0.0
   while `hypothesis` sat declared and unused as a dev dependency): four
   target areas, each generating inputs instead of asserting fixed values.

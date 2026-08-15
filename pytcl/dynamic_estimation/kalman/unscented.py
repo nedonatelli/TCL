@@ -457,6 +457,15 @@ def ckf_spherical_cubature_points(
     -----
     The CKF uses a third-degree spherical-radial cubature rule with
     2n points at ±sqrt(n) along each axis.
+
+    See Also
+    --------
+    pytcl.mathematical_functions.numerical_integration.cubature_points.second_order_cubature_points :
+        A structurally different (n+2)-point rule (the scaled unscented
+        transformation's minimal spherical simplex points), exact through
+        degree 2 only -- fewer points than this 2n-point rule, but without
+        this rule's degree-3 exactness. Not an alternate parameterization
+        of this rule.
     """
     points = np.zeros((2 * n, n), dtype=np.float64)
     sqrt_n = np.sqrt(n)

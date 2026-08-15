@@ -163,6 +163,158 @@ function ``h`` and returns a ``KalmanUpdate`` named tuple
     # step 66: theta_err=+0.0825  sigma_theta=0.0675
     # step 99: theta_err=-0.0976  sigma_theta=0.0685
 
+Higher-Order and Specialized Cubature Point Sets
+--------------------------------------------------
+
+``ckf_spherical_cubature_points`` above is the CKF's built-in 2n-point,
+degree-3 rule. ``pytcl.mathematical_functions.numerical_integration``
+ships a broader cubature point library for cases that rule doesn't cover:
+higher-degree exactness, heavy-tailed noise, or a non-Gaussian radial
+weighting. Every generator returns ``(points, weights)`` for the unit
+N(0, I) case (or a documented variant); pass them through
+``transform_cubature_points`` to map onto a specific mean/covariance, and
+``cubature_point_moments`` to propagate a distribution's first two moments
+through a nonlinear function -- the same pattern ``ckf_predict``/
+``ckf_update`` use internally, exposed as a standalone utility so it works
+with any rule below, not just the CKF's own points.
+
+.. warning::
+
+   Several rules in this library produce **negative weights** by
+   construction -- this is expected, not a bug, and those weights must
+   never be dropped or clamped. It also means covariances propagated from
+   these points must be assembled from residuals (as
+   ``cubature_point_moments`` does), never from a square-root-of-weights
+   factorization, which requires nonnegative weights to be well-defined.
+   Negative weights show up in the existing 5th-order rule for n > 4, the
+   existing 7th-order rule for n > 8, Genz-Keister rules generally, and
+   the 2nd-order rule below once ``alpha``/``w0`` are scaled away from
+   their defaults.
+
+**Genz-Keister nested rules** (``genz_keister_points(n, m, algorithm=0)``)
+build a fully-symmetric rule from a table of nested 1-D generator
+magnitudes, so the point set at ``m`` contains every point of ``m - 1``:
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import genz_keister_points
+
+    pts_m3, w_m3 = genz_keister_points(2, 3)
+    pts_m4, w_m4 = genz_keister_points(2, 4)
+    print(pts_m3.shape[0], pts_m4.shape[0])
+    # 17 37
+    print(all((abs(pts_m4 - p).sum(axis=1) < 1e-12).any() for p in pts_m3))
+    # True  (m=3's points are a subset of m=4's)
+    print((w_m4 < 0).any(), w_m4.min())
+    # True -0.242338 (rounded)
+
+That nesting is what makes Genz-Keister the **prerequisite for Smolyak
+sparse grids** (sparse-grid construction only reuses function evaluations
+across levels when the levels' point sets nest) -- pytcl does not ship
+sparse grids themselves. Two algorithms are tabulated, ``algorithm=0``
+(``m`` up to 17) and ``algorithm=1`` (``m`` up to 15), each exact through
+total polynomial degree :math:`2m+1` -- **except at the top of its own
+range** (``m=17`` for algorithm 0, ``m=15`` for algorithm 1), where the
+published double-precision generator constants are no longer accurate
+enough to hold that bound: at algorithm 0, ``n=2``, ``m=17``, a degree-34
+monomial (within the generic :math:`2 \times 17 + 1 = 35` bound) is off by
+a relative 3.1e-2. Nesting has the identical carve-out -- it holds for
+every consecutive ``m-1, m`` pair except that same top boundary. See the
+function's docstring for the full derivation and for why the milestone
+"bonus degree" table it documents was independently derived by direct
+numerical computation rather than transcribed from Genz and Keister's
+original paper (whose Table 3.4 was not available to this port).
+
+**Fixed higher-order rules.** ``fourteenth_order_cubature_points(n)``
+ports Stroud's 288-point degree-14 rule -- it supports **n = 3 only**,
+not "n >= 3": the MATLAB source hardcodes the 3-D construction and has no
+n-dimensional generalization to port.
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import fourteenth_order_cubature_points
+
+    pts14, w14 = fourteenth_order_cubature_points(3)
+    print(pts14.shape, round(float(w14.sum()), 9))
+    # (288, 3) 1.0
+
+Its docstring discloses an unresolvable mirror ambiguity in one of two
+symmetric 60-point blocks (both mirrors integrate every polynomial
+identically, so degree-14 exactness cannot distinguish them); this port
+picks one deterministically and is verified against closed-form N(0, I)
+moments, not claimed to match MATLAB's specific point ordering
+bit-for-bit.
+
+``second_order_cubature_points(n, w0=1/3, alpha=1.0)`` is Julier's scaled
+unscented transformation: an ``n + 2``-point spherical-simplex rule, the
+smallest point budget of pytcl's three unscented-transform-lineage rules.
+It is **degree-2 exact, not degree-3** -- not a drop-in upgrade over
+``ckf_spherical_cubature_points`` or ``unscented_transform_points``, both
+of which get degree-3 (third-moment) accuracy for free from antipodal
+symmetry that this rule's construction lacks on most axes:
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import second_order_cubature_points
+
+    pts2, w2 = second_order_cubature_points(3)
+    print([round(float((w2 * pts2[:, i] ** 3).sum()), 6) for i in range(3)])
+    # [0.0, 1.0, 1.414214]  (true E[x_i^3] = 0 on every axis)
+
+Its center weight can also go negative once ``alpha``/``w0`` are scaled
+(e.g. ``w0=1/3, alpha=0.5`` gives a center weight of exactly -5/3) -- see
+the warning above.
+
+**Student-t cubature points** (``student_t_cubature_points(n, dof)``) are
+the Student-t analogue of ``ckf_spherical_cubature_points``: 2n points,
+third-order accurate for the standard multivariate Student-t (``dof > 2``)
+rather than N(0, I). Swap these into ``ckf_predict``/``ckf_update``'s
+``points``/``weights`` arguments for cubature filtering with heavy-tailed
+process or measurement noise:
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import student_t_cubature_points
+
+    pts_t, w_t = student_t_cubature_points(3, dof=6.0)
+    print(pts_t.shape, round(float(w_t.sum()), 12))
+    # (6, 3) 1.0
+
+**Non-Gaussian radial weighting.** ``spherical_radial_points`` gained a
+``beta`` parameter generalizing its target weighting from plain N(0, I) to
+N(0, I) times ``|x|^beta`` -- MATLAB's ``arbOrderGaussCubPoints``. Omitting
+``beta`` (or passing ``0.0`` explicitly) is **bit-identical to the
+previous release**, pinned by a regression test, so existing callers are
+unaffected:
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import spherical_radial_points
+    import numpy as np
+
+    p0, w0 = spherical_radial_points(3, 5)
+    pb, wb = spherical_radial_points(3, 5, beta=0.0)
+    print(np.array_equal(p0, pb) and np.array_equal(w0, wb))
+    # True
+
+**Propagating moments through any rule.** ``cubature_point_moments``
+applies ``transform_cubature_points`` and a residual-based mean/covariance
+computation to any points/weights pair, e.g. a Genz-Keister rule used
+outside a filter's own predict/update step:
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import (
+        genz_keister_points, cubature_point_moments,
+    )
+    import numpy as np
+
+    pts, w = genz_keister_points(2, 3)
+    mean, cov = np.array([1.0, -1.0]), np.diag([0.5, 2.0])
+    mu, P = cubature_point_moments(pts, w, lambda x: np.array([x[0] ** 2, x[1]]), mean, cov)
+    print(mu, np.diag(P))
+    # [ 1.5 -1. ] [2.5 2. ]
+
 Sigma-Point Kalman Filters
 ===========================
 
@@ -729,6 +881,7 @@ See Also
 **References:**
 
 - Arasaratnam & Haykin (2009) -- *Cubature Kalman Filters* -- Foundational CKF paper
+- Genz & Keister (1996) -- *Fully symmetric interpolatory rules for multiple integrals over infinite regions with Gaussian weight* -- Nested cubature rules
 - Sarkka (2013) -- *Bayesian Filtering and Smoothing* -- Comprehensive sigma-point theory
 - Evensen (2003) -- *Ensemble Kalman Filter* -- Ensemble methods origins
 - Bar-Shalom, Li, Kirubarajan (2001) -- *Estimation with Applications* -- Comprehensive reference
