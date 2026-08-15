@@ -1264,22 +1264,57 @@ def genz_keister_points(
     evaluates every raw n-tuple in ``{0,...,m}^n`` instead of one
     representative per symmetry orbit):
 
-    1. **General guarantee, any n, EXCEPT the maximum m of each algorithm:**
-       for every ``m`` other than ``m = 17`` (algorithm 0) and ``m = 15``
-       (algorithm 1) -- i.e. everywhere the nesting property below also
-       holds -- the rule is exact through total polynomial degree
-       :math:`2m + 1`, and this bound is sharp in general (a *mixed*-exponent
-       monomial of degree :math:`2m+2` fails) -- e.g. at n=2, algorithm=0,
-       m=4: ``E[x1^8 x2^2]`` rule-integrates to ``153.38`` against a true
-       value of ``105``, even though every *single-axis* monomial through
-       degree 16 is still exact there (next point). At the excluded maximum
-       ``m``, this guarantee is FALSE, not merely un-improved: e.g. at n=2,
-       algorithm=0, m=17, ``E[x1^34]`` (total degree 34, within the generic
-       bound :math:`2 \cdot 17 + 1 = 35`) rule-integrates to
-       ``6.5290e18`` against a true value of ``6.3327e18``, a 3.1e-2
-       relative error; at n=1, algorithm=1, m=15, ``E[x^30]`` (within
-       :math:`2 \cdot 15 + 1 = 31`) is off by a relative 1.3e-5. See
-       "Precision at the top of the range" below.
+    1. **General guarantee, any n, up to an n-DEPENDENT ceiling well below
+       each algorithm's maximum m (verified empirically for n = 1..4; do
+       not assume it extrapolates past n=4 or past this floor without
+       checking):** the rule is exact through total polynomial degree
+       :math:`2m + 1` (equivalently, since odd-total-degree monomials are
+       already exact at every ``m`` via antipodal symmetry, through the
+       largest even degree :math:`2m`), and this bound is sharp there (a
+       *mixed*-exponent monomial of degree :math:`2m+2` fails) -- e.g. at
+       n=2, algorithm=0, m=4: ``E[x1^8 x2^2]`` rule-integrates to ``153.38``
+       against a true value of ``105``, even though every *single-axis*
+       monomial through degree 16 is still exact there (next point).
+
+       This does NOT hold all the way up to each algorithm's true maximum
+       ``m`` -- an earlier version of this note claimed the guarantee held
+       for every ``m`` except the algorithm's own maximum (17 for
+       algorithm 0, 15 for algorithm 1), which is false: the breakdown
+       starts *before* the maximum once ``n >= 2``, and gets worse, not
+       better, as ``n`` grows further. Measured largest ``m`` for which
+       every degree-:math:`2m` monomial (mixed-exponent included -- the
+       worst case is usually mixed, not single-axis; see the worked
+       examples below) is exact to a relative error at or below the
+       ``~1e-12`` roundoff-noise floor, by ``n``:
+
+       ========= ====== ========= ====== ======
+       algorithm  n=1    n=2       n=3    n=4
+       ========= ====== ========= ====== ======
+       0 (max 17) 16     15        15     15
+       1 (max 15) 14     15 [#]_   13     13
+       ========= ====== ========= ====== ======
+
+       .. [#] No violation was found anywhere in algorithm 1's valid range
+          at n=2 (worst measured relative error ``2.1e-13``, at ``m=15``,
+          its true maximum) -- unlike every other column, this one is not
+          *known* to break before the algorithm's own ``m`` ceiling, it was
+          simply never observed to in the swept range.
+
+       A single conservative number usable without checking ``n`` first:
+       the guarantee above is verified for **m <= 15 (algorithm 0),
+       m <= 13 (algorithm 1), for every n in 1..4**. Above that floor,
+       consult the table (or remeasure for your own ``n``) rather than
+       assume the generic bound holds -- e.g. at n=3, algorithm=0, m=16
+       (one step above n=3's floor), the worst degree-32 monomial --
+       ``E[x2^32]`` (0, 32, 0), mixed-exponent monomials are not always
+       worse here -- is off by a relative 3.2e-2; at n=3, algorithm=1,
+       m=14 (one step above n=3's floor there), the worst degree-28
+       monomial is off by a relative 4.5e-2 -- notably higher than the
+       3.1e-3 a single-axis-only probe (28, 0, 0) would suggest, because
+       the true worst case there, (0, 6, 22), is mixed-exponent. See
+       "Precision at the top of the range" below for why this degrades
+       smoothly rather than cutting off, and why it starts sooner as ``n``
+       grows.
     2. **Bonus at specific "milestone" m values, single-axis moments only:**
        MATLAB's tabulated :math:`\lambda`/:math:`a` values were tuned by
        Genz and Keister so that at the m where each ``nu`` stage completes,
@@ -1317,33 +1352,51 @@ def genz_keister_points(
        this bonus at any m, milestone or not (point 1 above).
 
     **Precision at the top of the range (disclosed, not a porting bug).**
-    The rows marked "see below" above are real and reproducible, not an
-    artifact of this port, but they are not a "degree" claim at all: at
-    ``m = 17`` (algorithm 0) and ``m = 15`` (algorithm 1) -- the *last*
-    stage boundary, which is also the maximum ``m`` MATLAB's own docstring
-    allows -- there is no accuracy cliff to report a single degree for.
-    Every other tested ``m`` has relative error staying flat (``~1e-16``)
-    up to some degree and then cutting off sharply; at the maximum ``m`` of
-    each algorithm the relative error instead grows *smoothly* with degree
-    from the start, so "the degree this rule is exact to" becomes purely a
-    function of whatever tolerance is used to define "exact". Measured
-    directly for algorithm 0 at m=17 (n=1 marginal, single-axis moments):
-    relative error is ``2.2e-16`` at degree 0 and grows to ``5.6e-7`` by
-    degree 24 with no step anywhere in between; the resulting degree at
-    a chosen relative tolerance is 35 @ ``1e-4``, 25 @ ``1e-6``, 19 @
-    ``1e-8``, 13 @ ``1e-10``, 9 @ ``1e-12``, 5 @ ``1e-14`` -- no tolerance
-    reproduces a "15" here; there is no such number, at any tolerance.
-    This traces to the published double-precision :math:`\lambda`/:math:`a`
-    constants themselves: achieving that final stage's designed accuracy
-    requires near-exact cancellation among terms spanning roughly 15 to 16
-    orders of magnitude (``a`` ranges up to ``2.92e15`` at algorithm 0's
-    last entry), which is at the edge of what float64 can represent
-    faithfully even with exact-precision *inputs*. Do not rely on
-    exactness AT ALL at the maximum ``m`` for either algorithm -- not even
-    up to the generic :math:`2m+1` bound that holds everywhere else (see
-    the counterexamples in item 1 above: a 3.1e-2 relative error at n=2,
-    algorithm=0, m=17, degree 34 <= 35; a 1.3e-5 relative error at n=1,
-    algorithm=1, m=15, degree 30 <= 31).
+    The rows marked "see below" in the milestone table above are real and
+    reproducible, not an artifact of this port, but they are not a
+    "degree" claim at all: at ``m = 17`` (algorithm 0) and ``m = 15``
+    (algorithm 1) -- the *last* stage boundary, which is also the maximum
+    ``m`` MATLAB's own docstring allows -- there is no accuracy cliff to
+    report a single degree for, for the n=1 marginal those milestone rows
+    describe. Every other tested ``m`` has relative error staying flat
+    (``~1e-16``) up to some degree and then cutting off sharply; at the
+    maximum ``m`` of each algorithm the relative error instead grows
+    *smoothly* with degree from the start, so "the degree this rule is
+    exact to" becomes purely a function of whatever tolerance is used to
+    define "exact". Measured directly for algorithm 0 at m=17 (n=1
+    marginal, single-axis moments): relative error is ``2.2e-16`` at
+    degree 0 and grows to ``5.6e-7`` by degree 24 with no step anywhere in
+    between; the resulting degree at a chosen relative tolerance is 35 @
+    ``1e-4``, 25 @ ``1e-6``, 19 @ ``1e-8``, 13 @ ``1e-10``, 9 @ ``1e-12``,
+    5 @ ``1e-14`` -- no tolerance reproduces a "15" here; there is no such
+    number, at any tolerance.
+
+    The SAME smooth-growth-not-cliff pattern, with the SAME underlying
+    cause, is what makes item 1's n-dependent floor above sit below each
+    algorithm's true maximum ``m`` once ``n >= 2``: e.g. at n=3,
+    algorithm=0, m=16 (n=3's floor there is 15, one below), the
+    single-axis marginal ``E[x2^d]`` measured at even ``d`` from 0 to 32
+    grows from ``4.9e-15`` to ``3.2e-2`` with no step in between either --
+    it is the identical phenomenon as the n=1/m=17 case above, just
+    triggered one ``m`` earlier. This traces to the published
+    double-precision :math:`\lambda`/:math:`a` constants themselves:
+    achieving the top stage's designed accuracy requires near-exact
+    cancellation among terms spanning roughly 15 to 16 orders of magnitude
+    (``a`` ranges up to ``2.92e15`` at algorithm 0's last entry), which is
+    at the edge of what float64 can represent faithfully even with
+    exact-precision *inputs*; at n=1 only that single generator sequence
+    is ever combined against itself, but at higher ``n`` the shared
+    per-partition weight table (``computeW``) combines it across
+    combinatorially more partitions, so the same precision loss surfaces
+    at a lower ``m`` (this explains the *direction* of the n-dependence
+    empirically measured in item 1, not a claim independently re-derived
+    from the constants). Do not rely on exactness AT ALL above the
+    n-dependent floor established in item 1 above -- not even up to the
+    generic :math:`2m+1` bound that holds at or below it (see the
+    counterexamples there: a 3.2e-2 relative error at n=3, algorithm=0,
+    m=16, degree 32 (one step above n=3's floor of 15); a 4.5e-2 relative
+    error at n=3, algorithm=1, m=14, degree 28 (one step above n=3's floor
+    of 13 there)).
 
     **Nesting.** For every consecutive pair ``m-1, m`` **except the last
     one** (``m = 17`` for algorithm 0, ``m = 15`` for algorithm 1), the

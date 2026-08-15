@@ -1117,6 +1117,114 @@ class TestGenzKeister:
         pts, w = genz_keister_points(n, m)
         self._assert_some_monomial_of_degree_fails(pts, w, n, degree=2 * m + 2)
 
+    # ---- n-dependent floor of the generic bound (round-2 finding) ----
+    #
+    # A first attempt at documenting the generic bound's top-of-range
+    # breakdown (round 1) claimed it held for every m except each
+    # algorithm's true maximum (17 / 15). That was independently found
+    # false: the breakdown starts BEFORE the true maximum once n >= 2, and
+    # `_GENERIC_CASES` above never exercised that region (it stops at m=8
+    # for n=1, m=6 for n>=2) -- exactly why the false claim survived
+    # review once already. The cases and helper below cover the region the
+    # docstring's Notes item 1 now actually makes a claim about: the
+    # largest m, per (algorithm, n) with n=1..4, at which every
+    # degree-2m monomial (mixed-exponent included) is still exact.
+
+    @staticmethod
+    def _assert_exact_at_degree_relative(points, weights, n, degree, rtol):
+        """Every monomial of EXACTLY `degree` is exact to a RELATIVE
+        tolerance. `assert_rule_exact`'s fixed atol=1e-9 cannot be reused
+        here (task constraint: keep it byte-identical) and would be far
+        too tight regardless once the raw N(0,1) moments reach into the
+        1e10+ range at these degrees.
+
+        Divides by each monomial's OWN true value, not a single per-degree
+        scale: a per-degree scale (e.g. the pure single-axis moment, as
+        `_moment_scale` returns) can be orders of magnitude larger than a
+        mixed-exponent monomial's own true value at the same total degree
+        -- e.g. at degree 28, gaussian_moment((28,)) is ~2.13e14 but
+        gaussian_moment((0,6,22)) is ~2.06e11, three orders smaller -- so
+        dividing every monomial by the single-axis scale would silently
+        mask exactly the mixed-exponent failures this test exists to
+        catch (caught by hand while writing this test; see
+        test_generic_bound_fails_one_m_past_floor's alpha=(0,6,22), 4.5e-2
+        relative to its own true value but only 4.3e-5 relative to
+        gaussian_moment((28,))). `_moment_scale` is used only as a
+        fallback for monomials whose true value is exactly 0 (some
+        individual exponent odd), where a relative comparison is
+        undefined.
+        """
+        scale = TestGenzKeister._moment_scale(degree)
+        worst = 0.0
+        worst_alpha = None
+        for alpha in monomials_up_to(n, degree):
+            if sum(alpha) != degree:
+                continue
+            true_val = gaussian_moment(alpha)
+            rule_val = rule_moment(points, weights, alpha)
+            denom = abs(true_val) if true_val != 0.0 else scale
+            err = abs(rule_val - true_val) / denom
+            if err > worst:
+                worst, worst_alpha = err, alpha
+        assert worst < rtol, (
+            f"n={n} degree={degree}: worst relative error {worst:.3e} at "
+            f"{worst_alpha} >= {rtol:.1e}"
+        )
+
+    # (algorithm, n, floor m) -- the largest m, measured for n=1..4, at
+    # which the degree-2m generic bound above still holds (see the
+    # docstring's Notes item 1 table this reproduces). Below each
+    # algorithm's true maximum (17 / 15) once n >= 2, contrary to the
+    # round-1 docstring text.
+    _FLOOR_CASES = [
+        (0, 1, 16),
+        (0, 2, 15),
+        (0, 3, 15),
+        (0, 4, 15),
+        (1, 1, 14),
+        (1, 2, 15),  # algorithm 1's true maximum -- no violation found at n=2
+        (1, 3, 13),
+        (1, 4, 13),
+    ]
+
+    @pytest.mark.parametrize("algorithm,n,floor_m", _FLOOR_CASES)
+    def test_exact_at_generic_bound_floor(self, algorithm, n, floor_m):
+        # Measured worst-case relative error at these (algorithm, n,
+        # floor_m) points is ~1e-12 or tighter (see the fix report); 1e-8
+        # leaves several orders of margin above that noise floor while
+        # sitting far below the ~1e-2+ degradation one m past the floor
+        # (test_generic_bound_fails_one_m_past_floor below).
+        pts, w = genz_keister_points(n, floor_m, algorithm=algorithm)
+        self._assert_exact_at_degree_relative(pts, w, n, degree=2 * floor_m, rtol=1e-8)
+
+    def test_generic_bound_fails_one_m_past_floor(self):
+        # Pins the degradation one m step past n=3's floor for BOTH
+        # algorithms -- the worked examples the docstring's Notes item 1
+        # and "Precision at the top of the range" now cite directly. Uses
+        # the WORST monomial at that degree (not a single-axis probe): for
+        # algorithm 1 here, the true worst case is the mixed-exponent
+        # (0, 6, 22), which fails far more severely (4.5e-2) than the
+        # single-axis (28, 0, 0) probe alone would suggest (3.1e-3) --
+        # exactly the mixed-vs-single-axis gap the docstring calls out.
+        pts0, w0 = genz_keister_points(3, 16, algorithm=0)  # floor is 15
+        relerr0 = abs(
+            rule_moment(pts0, w0, (0, 32, 0)) - gaussian_moment((0, 32, 0))
+        ) / gaussian_moment((0, 32, 0))
+        assert relerr0 > 1e-3, (
+            f"expected the documented n=3 algorithm=0 m=16 breakdown to "
+            f"reproduce (measured relerr {relerr0:.3e})"
+        )
+
+        pts1, w1 = genz_keister_points(3, 14, algorithm=1)  # floor is 13
+        alpha1 = (0, 6, 22)  # all-even exponents: true value is nonzero
+        relerr1 = abs(
+            rule_moment(pts1, w1, alpha1) - gaussian_moment(alpha1)
+        ) / gaussian_moment(alpha1)
+        assert relerr1 > 1e-3, (
+            f"expected the documented n=3 algorithm=1 m=14 breakdown to "
+            f"reproduce (measured relerr {relerr1:.3e})"
+        )
+
     def test_milestone_bonus_does_not_extend_to_mixed_exponents(self):
         # REFERENCE (hand-verified value, see also
         # test_milestone_exact_through_bonus_degree below):
