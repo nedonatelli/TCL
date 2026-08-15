@@ -13,12 +13,14 @@ Ported from the Tracker Component Library's Cubature_Points collection.
 
 References
 ----------
-.. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-   Prentice-Hall, 1971.
-.. [2] J. McNamee and F. Stenger, "Construction of fully symmetric
-   numerical integration formulas," Numerische Mathematik 10, 1967.
-.. [3] D. F. Crouse, "The Tracker Component Library," IEEE AESS Magazine,
-   2017.
+A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+Prentice-Hall, 1971.
+
+J. McNamee and F. Stenger, "Construction of fully symmetric
+numerical integration formulas," Numerische Mathematik 10, 1967.
+
+D. F. Crouse, "The Tracker Component Library," IEEE AESS Magazine,
+2017.
 """
 
 import itertools
@@ -240,9 +242,9 @@ def second_order_cubature_points(
     unscented transformation's minimal (n+2)-point spherical-simplex rule.
 
     Counterpart of the MATLAB TCL's ``secondOrderCubPoints``: the scaled
-    unscented transformation of Julier [1]_, itself a scaled generalization
+    unscented transformation of Julier (2002), itself a scaled generalization
     of the *spherical simplex sigma points* of Appendix III of Julier and
-    Uhlmann [2]_ (``alpha=1`` reproduces those unscaled). A center point at
+    Uhlmann (2004) (``alpha=1`` reproduces those unscaled). A center point at
     the origin plus n+1 simplex vertices, built recursively one dimension at
     a time and then rescaled so the point set has unit sample covariance.
 
@@ -316,14 +318,14 @@ def second_order_cubature_points(
     the scaled center weight ``w0 / alpha**2 + (1 - 1 / alpha**2)`` goes
     negative whenever ``alpha**2 < 1 - w0`` (e.g. ``w0=1/3``, ``alpha=0.5``
     gives a center weight of -5/3). This is a real, disclosed property of
-    Julier's scaled construction -- corrected here per Equation 15 of [1]_
-    (MATLAB's own header notes that Equation 24 of the same paper has a
-    typo the code does not follow), not suppressed or clamped.
+    Julier's scaled construction -- corrected here per Equation 15 of
+    Julier (2002) (MATLAB's own header notes that Equation 24 of the same
+    paper has a typo the code does not follow), not suppressed or clamped.
 
     ``randomize`` (MATLAB's optional post hoc random-orthonormal-rotation
-    parameter, used in [3]_ and [4]_ to avoid repeated-orientation artifacts
-    in tracking) is not exposed; callers who want it can rotate the
-    returned points themselves.
+    parameter, used in Straka et al. (2012) and Dunik et al. (2011) to avoid
+    repeated-orientation artifacts in tracking) is not exposed; callers who
+    want it can rotate the returned points themselves.
 
     Examples
     --------
@@ -340,18 +342,21 @@ def second_order_cubature_points(
 
     References
     ----------
-    .. [1] S. J. Julier, "The scaled unscented transformation," in Proc.
-       American Control Conference, Anchorage, AK, 8-10 May 2002,
-       pp. 4555-4559.
-    .. [2] S. J. Julier and J. K. Uhlmann, "Unscented filtering and
-       nonlinear estimation," Proceedings of the IEEE, vol. 92, no. 3,
-       pp. 401-422, Mar. 2004.
-    .. [3] O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
-       Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
-       Fusion, Singapore, 2012, pp. 503-510.
-    .. [4] J. Dunik, O. Straka, and M. Simandl, "The development of a
-       randomised unscented Kalman filter," in Proc. 18th World Congress,
-       IFAC, Milan, Italy, 2011, pp. 8-13.
+    S. J. Julier, "The scaled unscented transformation," in Proc.
+    American Control Conference, Anchorage, AK, 8-10 May 2002,
+    pp. 4555-4559.
+
+    S. J. Julier and J. K. Uhlmann, "Unscented filtering and
+    nonlinear estimation," Proceedings of the IEEE, vol. 92, no. 3,
+    pp. 401-422, Mar. 2004.
+
+    O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
+    Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
+    Fusion, Singapore, 2012, pp. 503-510.
+
+    J. Dunik, O. Straka, and M. Simandl, "The development of a
+    randomised unscented Kalman filter," in Proc. 18th World Congress,
+    IFAC, Milan, Italy, 2011, pp. 8-13.
     """
     if n < 1:
         raise ValueError(f"dimension must be >= 1, got {n}")
@@ -397,7 +402,7 @@ def fifth_order_cubature_points(
     """
     Degree-5 cubature points for the standard normal N(0, I).
 
-    The 2n^2 + 1 point fully-symmetric rule E_n^{r^2} 5-3 of Stroud [1]_,
+    The 2n^2 + 1 point fully-symmetric rule E_n^{r^2} 5-3 of Stroud (1971),
     the counterpart of the MATLAB TCL's ``fifthOrderCubPoints``. Exactly
     integrates every polynomial of total degree <= 5 against N(0, I).
 
@@ -513,7 +518,7 @@ def seventh_order_cubature_points(
     Degree-7 cubature points for the standard normal N(0, I).
 
     The 2*(2^n + 2n^2) point fully-symmetric rule E_n^{r^2} 7-3 of Stroud
-    [1]_ (McNamee-Stenger [2]_ construction), the counterpart of the
+    (1971) (McNamee-Stenger (1967) construction), the counterpart of the
     MATLAB TCL's ``seventhOrderCubPoints`` (algorithm 0, the default for
     n > 2). Two concentric copies of the degree-7 spherical-surface rule
     ``seventhOrderSpherSurfCubPoints`` (algorithm 0, formula I of Stroud's
@@ -549,19 +554,23 @@ def seventh_order_cubature_points(
 
     References
     ----------
-    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-       Prentice-Hall, 1971, Formula E_n^{r^2} 7-3, p. 319. The formula as
-       printed there contains a typo; the corrected form used here
-       follows Stroud's original papers [2]_, [3]_, summarized in [4]_.
-    .. [2] A. H. Stroud, "Some seventh degree integration formulas for
-       symmetric regions," SIAM Journal on Numerical Analysis, vol. 4,
-       no. 1, pp. 37-44, Mar. 1967.
-    .. [3] A. H. Stroud, "Some seventh degree integration formulas for
-       the surface of an n-sphere," Numerische Mathematik, vol. 11,
-       no. 3, pp. 273-276, Mar. 1968.
-    .. [4] D. F. Crouse, "Basic tracking using nonlinear 3D monostatic
-       and bistatic measurements," IEEE Aerospace and Electronic Systems
-       Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
+    A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+    Prentice-Hall, 1971, Formula E_n^{r^2} 7-3, p. 319. The formula as
+    printed there contains a typo; the corrected form used here
+    follows Stroud's original papers, Stroud (1967) and Stroud (1968),
+    summarized in Crouse (2014).
+
+    A. H. Stroud, "Some seventh degree integration formulas for
+    symmetric regions," SIAM Journal on Numerical Analysis, vol. 4,
+    no. 1, pp. 37-44, Mar. 1967.
+
+    A. H. Stroud, "Some seventh degree integration formulas for
+    the surface of an n-sphere," Numerische Mathematik, vol. 11,
+    no. 3, pp. 273-276, Mar. 1968.
+
+    D. F. Crouse, "Basic tracking using nonlinear 3D monostatic
+    and bistatic measurements," IEEE Aerospace and Electronic Systems
+    Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
     """
     if n < 3:
         raise ValueError(f"dimension must be >= 3, got {n}")
@@ -641,12 +650,13 @@ def sphere_surface_to_gauss_points(
     needed up to ``degree``, so it reproduces the identical family of rules
     while additionally allowing non-integer ``beta`` (MATLAB's
     three-term-recursion route cannot). Both routes implement the same
-    "spherical shell plus a 1-D |x|^beta * exp(-x^2)-type formula"
-    construction described in Chapter 2.8 of [1]_, cited by the MATLAB
-    source. Randomization (MATLAB's ``randomize`` flag, a random
+    "spherical shell plus a 1-D \\|x\\|^beta * exp(-x^2)-type formula"
+    construction described in Chapter 2.8 of Stroud (1971), cited by the
+    MATLAB source. Randomization (MATLAB's ``randomize`` flag, a random
     orthonormal rotation applied post hoc to reduce repeated-orientation
-    artifacts in tracking -- see [2]_, [3]_) is not exposed; callers who
-    want it can rotate the returned points themselves.
+    artifacts in tracking -- see Straka et al. (2012), Dunik et al. (2011))
+    is not exposed; callers who want it can rotate the returned points
+    themselves.
 
     Parameters
     ----------
@@ -694,14 +704,16 @@ def sphere_surface_to_gauss_points(
 
     References
     ----------
-    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-       Prentice-Hall, 1971, Ch. 2.8.
-    .. [2] O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
-       Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
-       Fusion, Singapore, 2012, pp. 503-510.
-    .. [3] J. Dunik, O. Straka, and M. Simandl, "The development of a
-       randomised unscented Kalman filter," in Proc. 18th World Congress,
-       IFAC, Milan, Italy, 2011, pp. 8-13.
+    A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+    Prentice-Hall, 1971, Ch. 2.8.
+
+    O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
+    Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
+    Fusion, Singapore, 2012, pp. 503-510.
+
+    J. Dunik, O. Straka, and M. Simandl, "The development of a
+    randomised unscented Kalman filter," in Proc. 18th World Congress,
+    IFAC, Milan, Italy, 2011, pp. 8-13.
     """
     surface_points = np.asarray(surface_points, dtype=np.float64)
     surface_weights = np.asarray(surface_weights, dtype=np.float64)
@@ -836,7 +848,7 @@ def _fourteenth_order_unit_sphere_points_3d() -> Tuple[
 ]:
     """Degree-14 rule for the uniform measure on the unit sphere S^2 (n=3 only).
 
-    Stroud's surface formula U3 14-1 [1]_, p. 302, the counterpart of the
+    Stroud's surface formula U3 14-1 (1971), p. 302, the counterpart of the
     MATLAB TCL's ``fourteenthOrderSpherSurfCubPoints``, which itself hardcodes
     ``numDim=3`` -- this specific 72-point construction has no documented
     n-dimensional generalization. 12 points from all sign flips of
@@ -923,7 +935,7 @@ def fourteenth_order_cubature_points(
 
     The counterpart of the MATLAB TCL's ``fourteenthOrderCubPoints``: lifts
     the 72-point degree-14 spherical-surface rule
-    (:func:`_fourteenth_order_unit_sphere_points_3d`, Stroud's U3 14-1 [1]_)
+    (:func:`_fourteenth_order_unit_sphere_points_3d`, Stroud's U3 14-1 (1971))
     to N(0, I) times \\|x\\|^beta via :func:`sphere_surface_to_gauss_points`
     (the same adapter :func:`spherical_radial_points` uses), rather than
     duplicating the radial weight machinery. Exactly integrates every
@@ -966,8 +978,8 @@ def fourteenth_order_cubature_points(
 
     References
     ----------
-    .. [1] A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-       Prentice-Hall, 1971, Formula U3 14-1, p. 302.
+    A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+    Prentice-Hall, 1971, Formula U3 14-1, p. 302.
     """
     if n != 3:
         raise ValueError(f"only 3-D points are supported (numDim must be 3), got {n}")
@@ -1108,7 +1120,8 @@ def _gk_partition_weight(
 ) -> float:
     """The shared weight for every point generated from partition p (MATLAB's computeW).
 
-    Equation (unnumbered, before Eq. 1 in [1]_, = Eq. 2.4 in [2]_):
+    Equation (unnumbered, before Eq. 1 in Genz and Keister (1996), = Eq. 2.4
+    in Genz (1986)):
     ``w(p) = 2^(-K) * sum_{k: k_i>=p_i, sum(k)<=m} prod_i b(p_i, k_i)``,
     K = number of nonzero entries of p. The sum over admissible k-vectors is
     computed here as a truncated polynomial convolution (one factor per
@@ -1191,7 +1204,7 @@ def genz_keister_points(
     Genz-Keister nested cubature points for the standard normal N(0, I).
 
     Counterpart of the MATLAB TCL's ``GenzKeisterPoints``: a fully-symmetric
-    interpolatory rule (Genz [2]_, extended by Genz and Keister [1]_) built
+    interpolatory rule (Genz (1986), extended by Genz and Keister (1996)) built
     from a single 1-D sequence of NESTED generator magnitudes
     ``lambda_0=0, lambda_1=sqrt(3), lambda_2, ..., lambda_M`` -- each
     ``algorithm``'s full table is a strict superset of the previous one's
@@ -1215,9 +1228,10 @@ def genz_keister_points(
         Which tabulated generator to use (MATLAB's ``algorithm`` selector):
 
         - 0 (default): :math:`Q_P`, built from the increment vector
-          ``nu = [3, 5, 8]`` -- the first column of Table 3.4 in [1]_.
+          ``nu = [3, 5, 8]`` -- the first column of Table 3.4 in Genz and
+          Keister (1996).
         - 1: :math:`\hat{Q}_P`, built from ``nu = [4, 10]`` -- the second
-          column of Table 3.4 in [1]_.
+          column of Table 3.4 in Genz and Keister (1996).
 
         MATLAB also accepts a vector of custom ``nu`` increments (via the
         internal ``getGenzKeisterGenerators``/``computeAValues`` routines)
@@ -1230,7 +1244,7 @@ def genz_keister_points(
         this rule wants. ``algorithm`` values other than 0 or 1 raise
         ``ValueError``.
     eps_val : float, optional
-        Points whose |weight| is at or below this threshold are dropped
+        Points whose \|weight\| is at or below this threshold are dropped
         (MATLAB's pruning of "numerically zero" weights, which is what
         keeps the point count far below the naive :math:`(2m+1)^n` bound --
         see Notes). Default ``None`` uses ``eps(1)`` in double precision
@@ -1296,30 +1310,32 @@ def genz_keister_points(
        at all; see the worked examples below) is exact to a relative error
        at or below the ``~1e-12`` roundoff-noise floor, by ``n``:
 
-       ========= ====== ========= ====== ====== ====== ====== ====== =========
-       algorithm  n=1    n=2       n=3    n=4    n=5    n=6    n=7    n=8
-       ========= ====== ========= ====== ====== ====== ====== ====== =========
-       0 (max 17) 16     15        15     15     14     14     14     14 [##]_
-       1 (max 15) 14     15 [#]_   13     13     13     13     13     13 [###]_
-       ========= ====== ========= ====== ====== ====== ====== ====== =========
+       ==========  ===  ======  ===  ===  ===  ===  ===  ======
+       algorithm   n=1  n=2     n=3  n=4  n=5  n=6  n=7  n=8
+       ==========  ===  ======  ===  ===  ===  ===  ===  ======
+       0 (max 17)  16   15      15   15   14   14   14   14 (b)
+       1 (max 15)  14   15 (a)  13   13   13   13   13   13 (c)
+       ==========  ===  ======  ===  ===  ===  ===  ===  ======
 
-       .. [#] No violation was found anywhere in algorithm 1's valid range
-          at n=2 (worst measured relative error ``2.1e-13``, at ``m=15``,
-          its true maximum) -- unlike every other column, this one is not
-          *known* to break before the algorithm's own ``m`` ceiling, it was
-          simply never observed to in the swept range.
-       .. [##] ``m=14`` is confirmed safe through n=8 (worst measured
-          ``6.5e-14``). ``m=15`` was confirmed broken at n=5, 6, 7
-          (``3.07e-2`` each, remarkably flat) but was NOT itself tested at
-          n=8 -- listed as 14 because that is the largest *confirmed-safe*
-          ``m``, not because ``m=15`` was separately confirmed to break at
-          n=8 too (though nothing measured suggests it would recover).
-       .. [###] Algorithm 1's error AT its own floor ``m=13`` is climbing
-          as ``n`` grows -- ``1.7e-13`` at n=5 to ``1.1e-12`` at n=8 --
-          i.e. it is approaching the same ``~1e-12`` threshold used to
-          call every other cell in this table "safe". This floor is not
-          comfortably safe indefinitely; re-verify before using it past
-          n=8.
+       (a) No violation was found anywhere in algorithm 1's valid range
+       at n=2 (worst measured relative error ``2.1e-13``, at ``m=15``,
+       its true maximum) -- unlike every other column, this one is not
+       *known* to break before the algorithm's own ``m`` ceiling, it was
+       simply never observed to in the swept range.
+
+       (b) ``m=14`` is confirmed safe through n=8 (worst measured
+       ``6.5e-14``). ``m=15`` was confirmed broken at n=5, 6, 7
+       (``3.07e-2`` each, remarkably flat) but was NOT itself tested at
+       n=8 -- listed as 14 because that is the largest *confirmed-safe*
+       ``m``, not because ``m=15`` was separately confirmed to break at
+       n=8 too (though nothing measured suggests it would recover).
+
+       (c) Algorithm 1's error AT its own floor ``m=13`` is climbing
+       as ``n`` grows -- ``1.7e-13`` at n=5 to ``1.1e-12`` at n=8 --
+       i.e. it is approaching the same ``~1e-12`` threshold used to
+       call every other cell in this table "safe". This floor is not
+       comfortably safe indefinitely; re-verify before using it past
+       n=8.
 
        **A single conservative number usable without checking n first: the
        guarantee above is verified for m <= 14 (algorithm 0), m <= 13
@@ -1350,31 +1366,32 @@ def genz_keister_points(
        Genz and Keister so that at the m where each ``nu`` stage completes,
        *single-axis* moments (equivalently, the n=1 rule itself) are exact
        to a degree well beyond :math:`2m+1` -- this is what "the first
-       column of Table 3.4" in [1]_ actually tabulates (this port does not
-       have that table's literal text, only the MATLAB source's transcribed
-       :math:`\lambda`/:math:`a` constants, so the milestone degrees below
-       were independently determined by direct computation against the
-       closed-form N(0,1) moments, not copied from the paper):
+       column of Table 3.4" in Genz and Keister (1996) actually tabulates
+       (this port does not have that table's literal text, only the MATLAB
+       source's transcribed :math:`\lambda`/:math:`a` constants, so the
+       milestone degrees below were independently determined by direct
+       computation against the closed-form N(0,1) moments, not copied from
+       the paper):
 
-       ================  =====  ==========  ======  ========================
-       algorithm          m     points (n=1) degree  nu stage
-       ================  =====  ==========  ======  ========================
-       0 (:math:`Q_P`)    1      3            5      base (0, +-sqrt(3))
-       0                  3      7            7      (no bonus -- not a stage boundary)
-       0                  4      9           15      nu[0]=3 complete
-       0                  8     17           17      (no bonus)
-       0                  9     19           29      nu[1]=5 complete
-       0                 15     31           31      (no bonus)
-       0                 16     33           33      (no bonus)
-       0                 17     33         see below  nu[2]=8 "complete" -- precision breakdown
-       1 (:math:`\hat{Q}_P`)  1  3            5      base
-       1                  3      7            7      (no bonus)
-       1                  4      9            9      (no bonus)
-       1                  5     11           19      nu[0]=4 complete
-       1                 10     21           21      (no bonus)
-       1                 14     29           29      (no bonus)
-       1                 15     29         see below  nu[1]=10 "complete" -- precision breakdown
-       ================  =====  ==========  ======  ========================
+       =====================  ==  ============  =========  ==========================================
+       algorithm              m   points (n=1)  degree     nu stage
+       =====================  ==  ============  =========  ==========================================
+       0 (:math:`Q_P`)        1   3             5          base (0, +-sqrt(3))
+       0                      3   7             7          (no bonus -- not a stage boundary)
+       0                      4   9             15         nu[0]=3 complete
+       0                      8   17            17         (no bonus)
+       0                      9   19            29         nu[1]=5 complete
+       0                      15  31            31         (no bonus)
+       0                      16  33            33         (no bonus)
+       0                      17  33            see below  nu[2]=8 "complete" -- precision breakdown
+       1 (:math:`\hat{Q}_P`)  1   3             5          base
+       1                      3   7             7          (no bonus)
+       1                      4   9             9          (no bonus)
+       1                      5   11            19         nu[0]=4 complete
+       1                      10  21            21         (no bonus)
+       1                      14  29            29         (no bonus)
+       1                      15  29            see below  nu[1]=10 "complete" -- precision breakdown
+       =====================  ==  ============  =========  ==========================================
 
        (m values between milestones, and m=2/m=1 or m=14/m=... duplicates,
        reuse the previous milestone's point set post-pruning -- see the
@@ -1448,14 +1465,14 @@ def genz_keister_points(
     here, and by MATLAB, at double precision).
 
     **Point count.** MATLAB's docstring describes the point-count formula
-    "given in the text after Equation 1" of [1]_; this port does not
-    preallocate (MATLAB does, to size ``xi``/``w`` before filling them) and
-    instead grows the point list directly, so that formula was not needed
-    here.
+    "given in the text after Equation 1" of Genz and Keister (1996); this
+    port does not preallocate (MATLAB does, to size ``xi``/``w`` before
+    filling them) and instead grows the point list directly, so that
+    formula was not needed here.
 
     ``randomize`` (MATLAB's optional post hoc random-orthonormal-rotation
-    parameter, see [3]_, [4]_) is not exposed; callers who want it can
-    rotate the returned points themselves.
+    parameter, see Straka et al. (2012), Dunik et al. (2011)) is not
+    exposed; callers who want it can rotate the returned points themselves.
 
     Examples
     --------
@@ -1484,19 +1501,22 @@ def genz_keister_points(
 
     References
     ----------
-    .. [1] A. Genz and B. D. Keister, "Fully symmetric interpolatory rules
-       for multiple integrals over infinite regions with Gaussian weight,"
-       Journal of Computational and Applied Mathematics, vol. 71, no. 2,
-       pp. 299-309, Jul. 1996.
-    .. [2] A. Genz, "Fully symmetric interpolatory rules for multiple
-       integrals," SIAM Journal on Numerical Analysis, vol. 23, no. 6, pp.
-       1273-1283, Dec. 1986.
-    .. [3] O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
-       Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
-       Fusion, Singapore, 2012, pp. 503-510.
-    .. [4] J. Dunik, O. Straka, and M. Simandl, "The development of a
-       randomised unscented Kalman filter," in Proc. 18th World Congress,
-       IFAC, Milan, Italy, 2011, pp. 8-13.
+    A. Genz and B. D. Keister, "Fully symmetric interpolatory rules
+    for multiple integrals over infinite regions with Gaussian weight,"
+    Journal of Computational and Applied Mathematics, vol. 71, no. 2,
+    pp. 299-309, Jul. 1996.
+
+    A. Genz, "Fully symmetric interpolatory rules for multiple
+    integrals," SIAM Journal on Numerical Analysis, vol. 23, no. 6, pp.
+    1273-1283, Dec. 1986.
+
+    O. Straka, D. Dunik, and M. Simandl, "Randomized unscented
+    Kalman filter in tracking," in Proc. 15th Int. Conf. on Information
+    Fusion, Singapore, 2012, pp. 503-510.
+
+    J. Dunik, O. Straka, and M. Simandl, "The development of a
+    randomised unscented Kalman filter," in Proc. 18th World Congress,
+    IFAC, Milan, Italy, 2011, pp. 8-13.
     """
     if n < 1:
         raise ValueError(f"dimension must be >= 1, got {n}")
@@ -1611,9 +1631,9 @@ def student_t_cubature_points(
 
     References
     ----------
-    .. [1] Y. Huang, Y. Zhang, N. Li, S. M. Naqvi, and J. Chambers, "A
-       robust Student's t based cubature filter," in Proc. 19th Int. Conf.
-       on Information Fusion, Heidelberg, Germany, 5-8 Jul. 2016.
+    Y. Huang, Y. Zhang, N. Li, S. M. Naqvi, and J. Chambers, "A
+    robust Student's t based cubature filter," in Proc. 19th Int. Conf.
+    on Information Fusion, Heidelberg, Germany, 5-8 Jul. 2016.
     """
     if n < 1:
         raise ValueError(f"dimension must be >= 1, got {n}")
