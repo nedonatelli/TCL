@@ -5,7 +5,6 @@ degree <= d against N(0, I) exactly, and must FAIL on some degree d+1
 monomial (sharpness -- guards against a vacuous exactness loop).
 """
 
-import hashlib
 import itertools
 
 import numpy as np
@@ -692,37 +691,23 @@ class TestSphereSurfaceToGaussPoints:
 
 class TestSphericalRadialBetaGeneralization:
     """spherical_radial_points(n, degree, beta=0.0) -- pre-existing callers
-    (beta omitted or 0.0) must reproduce bit-for-bit the pre-generalization
-    output. These SHA-256 digests were captured from spherical_radial_points
-    BEFORE the beta parameter was added.
+    (beta omitted or 0.0) must be unaffected by the beta generalization.
+
+    The durable, platform-independent invariant is the runtime one below:
+    ``beta=0.0`` is bit-identical to omitting ``beta``, computed fresh on
+    whatever platform runs the test. Bit-identity against the
+    PRE-generalization code was verified once, at migration time, on the
+    machine that performed the port (arm64, scipy 1.17.1) via stored
+    SHA-256 digests; those digests were then removed because they encode
+    that one environment's floating-point bits -- scipy version bumps
+    alone (1.17.1 -> 1.18.0 changes roots_genlaguerre/roots_jacobi
+    output) and architecture/libm differences flip them, so as a CI
+    assertion they claimed far more than was ever measured.
     """
 
-    _BASELINE_SHA256 = {
-        (1, 3): "800d279e3e66a5a9cc5ebba21408f63ac39151ff609d827c475b775832a8891c",
-        (1, 5): "756565d3af37c593033924a35309ef0105a122e11a6e1be616972548c9c8b5c9",
-        (1, 7): "756565d3af37c593033924a35309ef0105a122e11a6e1be616972548c9c8b5c9",
-        (1, 9): "db212c0d7f896eca7a2ea54ec854ef7af183ec2ff99cda003c56759557b9b2b3",
-        (2, 3): "7c144cc11bc583514574968f5ff0cdc92cd0d5be3d25bb457862b3fc70a0af4e",
-        (2, 5): "0e59d08cca88aa4565a0533eb4ee71a0efcd48635f6d24fe95d017dae58911eb",
-        (2, 7): "12d8037c982cc68c937ca0a59ddf553de0c4409fedc6c5a9f58c88bf9172aa57",
-        (2, 9): "131b674dfc120b6160ac5e37746fb8472c7c8ddd460c2dda2b65b26075697e73",
-        (3, 3): "e83e8b72c9c59da14d90f324722ea8dcbe7bd574f7636df0c84b82729ebd1486",
-        (3, 5): "6c2d703888317a15eb1dff2c23306d4687e315b109d520c79ddf9e1154a71e59",
-        (3, 7): "64f632263e1a7521370f3edc44fe5ad9dd39d9371d6a0f0f85a59a8ab941f7b4",
-        (3, 9): "9b074a352e8dab99ad9afb54e598648071ba2a67687ddc8c3746ab8538702e1a",
-        (4, 3): "b5b98b69c1fe51bf7d84c0fa167f8b3905ca1c87f446af96e68556002ad8b00f",
-        (4, 5): "013b9269ee841980113bf7509c487bb1f9ea2e472b7f215c1e2b51050e1d6ac1",
-        (4, 7): "b162270d7810b4fa74012029621a9ddda0394307b02ac5c455a28c703bf3ff8d",
-        (4, 9): "816bd69e26060699e996052a64954f0a97b24c7a8e7001bc6cde119f19e7068e",
-    }
+    _DEFAULT_CASES = [(n, degree) for n in (1, 2, 3, 4) for degree in (3, 5, 7, 9)]
 
-    @pytest.mark.parametrize("n,degree", list(_BASELINE_SHA256.keys()))
-    def test_default_beta_bit_identical_to_pre_generalization(self, n, degree):
-        pts, w = spherical_radial_points(n, degree)
-        digest = hashlib.sha256(pts.tobytes() + w.tobytes()).hexdigest()
-        assert digest == self._BASELINE_SHA256[(n, degree)]
-
-    @pytest.mark.parametrize("n,degree", list(_BASELINE_SHA256.keys())[:4])
+    @pytest.mark.parametrize("n,degree", _DEFAULT_CASES)
     def test_explicit_beta_0_bit_identical_to_omitted(self, n, degree):
         pts1, w1 = spherical_radial_points(n, degree)
         pts2, w2 = spherical_radial_points(n, degree, beta=0.0)
