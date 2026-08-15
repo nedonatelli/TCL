@@ -49,6 +49,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     null across 400k mutated calls in review. A chained filter-loop property
     would be needed to catch that class of regression; out of scope here.
 
+### Changed
+- **Documentation moved to GitHub Pages** (<https://nedonatelli.github.io/TCL/>);
+  the ReadTheDocs build is retired and `.readthedocs.yaml` removed. The
+  `Homepage`/`Documentation` project URLs, the README documentation links,
+  `examples/README.md`, `docs/troubleshooting.rst`, and
+  `docs/migration_guide.rst` all now point at the Pages site.
+
+  The ReadTheDocs build had been failing silently since the uv migration:
+  its config installed the project with `extra_requirements: [dev]`, but
+  `dev` was converted from a published extra to a PEP 735
+  `[dependency-groups]` entry, so `nbsphinx` and `sphinxcontrib-mermaid` —
+  both required by `docs/conf.py` — were never installed and Sphinx failed
+  on the missing extensions. ReadTheDocs kept serving its last good build,
+  leaving the public landing page pinned to v2.0.0 through two releases
+  while the GitHub Pages site (built with `uv sync --locked`, which reads
+  dependency groups correctly) stayed current. Consolidating on the one
+  pipeline that CI actually exercises removes the second, unwatched build.
+
+  Note for anyone arriving from an older PyPI release page: versions 2.0.0
+  through 2.2.0 published the ReadTheDocs URL in their metadata, so those
+  links point at documentation frozen at v2.0.0.
+
 ## [2.2.0] - 2026-08-12
 
 The Results I/O release: measurements come in from CSV and Parquet, results

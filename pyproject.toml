@@ -108,8 +108,8 @@ all = [
 ]
 
 [project.urls]
-"Homepage" = "https://pytcl.readthedocs.io/en"
-"Documentation" = "https://pytcl.readthedocs.io/en/latest/docs.html"
+"Homepage" = "https://nedonatelli.github.io/TCL/"
+"Documentation" = "https://nedonatelli.github.io/TCL/"
 "Repository" = "https://github.com/nedonatelli/TCL"
 "Bug Tracker" = "https://github.com/nedonatelli/TCL/issues"
 "Original MATLAB Library" = "https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary"

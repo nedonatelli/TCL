@@ -246,8 +246,8 @@ Interactive learning modules with visualizations:
 
 ## Documentation
 
-- [API Reference](https://pytcl.readthedocs.io/en/latest/api/)
-- [User Guides](https://pytcl.readthedocs.io/en/latest/user_guide/)
+- [API Reference](https://nedonatelli.github.io/TCL/api/)
+- [User Guides](https://nedonatelli.github.io/TCL/user_guide/)
 - [Examples](examples/) - 32 validated example scripts
 - [Tutorials](docs/tutorials/) - 10 interactive tutorial modules
 
