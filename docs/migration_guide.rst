@@ -455,7 +455,7 @@ Common Gotchas
 Getting Help
 ------------
 
-- **API Documentation**: https://pytcl.readthedocs.io
+- **API Documentation**: https://nedonatelli.github.io/TCL/api/
 - **GitHub Issues**: https://github.com/nedonatelli/TCL/issues
 - **Original MATLAB Library**: https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary
 

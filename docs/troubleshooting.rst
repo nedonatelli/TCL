@@ -750,7 +750,7 @@ Getting Help
 
 **If you still can't find the answer:**
 
-1. Check the documentation at https://pytcl.readthedocs.io/
+1. Check the documentation at https://nedonatelli.github.io/TCL/
 2. Review examples in ``examples/`` folder
 3. Check similar issues on GitHub: https://github.com/nedonatelli/TCL/issues
 4. Create an issue describing:
