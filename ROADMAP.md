@@ -41,14 +41,29 @@ evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
 - **Cubature point library** — ~134 MATLAB files, a signature strength of the
-  original. The estimation-grade Gaussian-weight slice is now ported
-  (degree-5 and degree-7 rules, arbitrary-odd-degree spherical-radial
-  points, `transform_cubature_points`, and CKF consumption of arbitrary
-  point sets), all gated by monomial-exactness tests. Remaining: Genz-Keister
-  nested rules and Gaussian LCD samples (the highest-value candidates),
-  the dimension-specific seventh-order variant, 14th/2nd-order rules,
-  Student-t third-order points, Smolyak sparse grids, and the ~120
-  region-specific rules (cube, simplex, sphere, torus, etc.)
+  original. The estimation-grade Gaussian-weight slice is now ported: the
+  degree-5 and degree-7 rules, arbitrary-odd-degree spherical-radial points,
+  `transform_cubature_points`, and CKF consumption of arbitrary point sets,
+  plus — as of the cubature-completion campaign — Genz-Keister nested
+  rules, the 14th-order and 2nd-order fixed rules, and Student-t
+  third-order points. Most of this is gated by monomial-exactness tests;
+  Student-t is gated by a Student-t moment oracle instead (its target
+  distribution has no polynomial-exactness structure to test against), and
+  the `beta != 0` radial-weighting rules are gated by a weighted-moment
+  oracle. A prior version of this roadmap implied MATLAB's
+  `arbOrderGaussCubPoints` (integration against a Gaussian times `|x|^beta`)
+  was already covered by the arbitrary-degree spherical-radial work — it was
+  not: until this branch, `spherical_radial_points` implemented only the
+  `beta=0` case. It is now genuinely covered via a new `beta` parameter.
+  Remaining: Gaussian LCD samples (deferred deliberately — the MATLAB source
+  is a 505-line L-BFGS optimization over a modified Cramer-von Mises
+  distance with four hand-derived analytic gradient routines, a
+  research-grade optimizer to reimplement and validate, not a
+  transcription), the dimension-specific seventh-order variant, Smolyak
+  sparse grids (now *enabled* by Genz-Keister's nesting property, but still
+  original design work rather than a port — there is nothing in the MATLAB
+  source to transcribe), and the ~120 region-specific rules (cube, simplex,
+  sphere, torus, etc.)
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
