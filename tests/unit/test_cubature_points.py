@@ -1117,7 +1117,7 @@ class TestGenzKeister:
         pts, w = genz_keister_points(n, m)
         self._assert_some_monomial_of_degree_fails(pts, w, n, degree=2 * m + 2)
 
-    # ---- n-dependent floor of the generic bound (round-2 finding) ----
+    # ---- n-dependent floor of the generic bound (round-2/round-3 finding) ----
     #
     # A first attempt at documenting the generic bound's top-of-range
     # breakdown (round 1) claimed it held for every m except each
@@ -1125,9 +1125,12 @@ class TestGenzKeister:
     # false: the breakdown starts BEFORE the true maximum once n >= 2, and
     # `_GENERIC_CASES` above never exercised that region (it stops at m=8
     # for n=1, m=6 for n>=2) -- exactly why the false claim survived
-    # review once already. The cases and helper below cover the region the
+    # review once already. A round-2 fix narrowed this to a floor verified
+    # for n<=4 -- ALSO false, one dimension past where it was checked: at
+    # n=5, algorithm=0, m=15 breaks on (6,6,6,6,6), a monomial no n<=4 case
+    # can express. The cases and helper below cover the region the
     # docstring's Notes item 1 now actually makes a claim about: the
-    # largest m, per (algorithm, n) with n=1..4, at which every
+    # largest m, per (algorithm, n) with n=1..8, at which every
     # degree-2m monomial (mixed-exponent included) is still exact.
 
     @staticmethod
@@ -1153,15 +1156,34 @@ class TestGenzKeister:
         fallback for monomials whose true value is exactly 0 (some
         individual exponent odd), where a relative comparison is
         undefined.
+
+        Precomputes each axis's power column (``points[:, j] ** k`` for
+        every ``k`` up to `degree`) once and looks those up per monomial,
+        instead of recomputing ``points ** alpha`` from scratch for each
+        of the (up to tens of thousands of) monomials `monomials_up_to`
+        enumerates -- at n=5, degree=28 (round 3's `(0, 5, 14)` floor
+        case) this is the difference between ~104s and ~4s; needed once
+        `n` climbed past 4, not merely a nicety.
         """
         scale = TestGenzKeister._moment_scale(degree)
+        num_points = points.shape[0]
+        pow_table = np.empty((n, degree + 1, num_points))
+        for j in range(n):
+            col = points[:, j]
+            pow_table[j, 0] = 1.0
+            for k in range(1, degree + 1):
+                pow_table[j, k] = pow_table[j, k - 1] * col
+
         worst = 0.0
         worst_alpha = None
         for alpha in monomials_up_to(n, degree):
             if sum(alpha) != degree:
                 continue
             true_val = gaussian_moment(alpha)
-            rule_val = rule_moment(points, weights, alpha)
+            prod = pow_table[0, alpha[0]]
+            for j in range(1, n):
+                prod = prod * pow_table[j, alpha[j]]
+            rule_val = float(np.dot(weights, prod))
             denom = abs(true_val) if true_val != 0.0 else scale
             err = abs(rule_val - true_val) / denom
             if err > worst:
@@ -1171,16 +1193,22 @@ class TestGenzKeister:
             f"{worst_alpha} >= {rtol:.1e}"
         )
 
-    # (algorithm, n, floor m) -- the largest m, measured for n=1..4, at
+    # (algorithm, n, floor m) -- the largest m, measured for n=1..8, at
     # which the degree-2m generic bound above still holds (see the
     # docstring's Notes item 1 table this reproduces). Below each
     # algorithm's true maximum (17 / 15) once n >= 2, contrary to the
-    # round-1 docstring text.
+    # round-1 docstring text -- and, for algorithm 0, below the n<=4-only
+    # floor of 15 a round-2 fix claimed once n >= 5, contrary to THAT
+    # docstring text: (0, 5, 14) below is what catches it, because the
+    # monomial that breaks m=15 there, (6, 6, 6, 6, 6), needs five
+    # simultaneously nonzero exponents that no n<=4 case here could ever
+    # construct -- the exact blind spot that let the n<=4-only floor ship.
     _FLOOR_CASES = [
         (0, 1, 16),
         (0, 2, 15),
         (0, 3, 15),
         (0, 4, 15),
+        (0, 5, 14),
         (1, 1, 14),
         (1, 2, 15),  # algorithm 1's true maximum -- no violation found at n=2
         (1, 3, 13),
@@ -1223,6 +1251,37 @@ class TestGenzKeister:
         assert relerr1 > 1e-3, (
             f"expected the documented n=3 algorithm=1 m=14 breakdown to "
             f"reproduce (measured relerr {relerr1:.3e})"
+        )
+
+    def test_generic_bound_fails_at_n5_needs_five_nonzero_exponents(self):
+        # Round-3 finding: a round-2 fix claimed the generic bound's floor
+        # was m=15 (algorithm 0) verified for n<=4 -- false one dimension
+        # past where it was checked. At n=5, algorithm=0, m=15 (the OLD
+        # claimed floor; the corrected floor is 14, see _FLOOR_CASES), the
+        # worst monomial is (6, 6, 6, 6, 6) -- it needs FIVE simultaneously
+        # nonzero exponents, which no n<=4 monomial can ever have, which is
+        # exactly why `_GENERIC_CASES`/`_FLOOR_CASES`-style sweeps stopping
+        # at n=4 could not catch this. The single-axis probe at the
+        # identical rule is clean (~3.8e-12), demonstrating the failure is
+        # invisible to any single-axis-only or n<=4 check.
+        pts, w = genz_keister_points(5, 15, algorithm=0)  # corrected floor is 14
+        alpha = (6, 6, 6, 6, 6)
+        relerr = abs(
+            rule_moment(pts, w, alpha) - gaussian_moment(alpha)
+        ) / gaussian_moment(alpha)
+        assert relerr > 1e-3, (
+            f"expected the documented n=5 algorithm=0 m=15 breakdown to "
+            f"reproduce (measured relerr {relerr:.3e})"
+        )
+
+        axis_alpha = (30, 0, 0, 0, 0)
+        axis_relerr = abs(
+            rule_moment(pts, w, axis_alpha) - gaussian_moment(axis_alpha)
+        ) / gaussian_moment(axis_alpha)
+        assert axis_relerr < 1e-8, (
+            f"expected the single-axis probe to stay clean at this same "
+            f"rule (measured relerr {axis_relerr:.3e}) -- this is the "
+            f"point: the failure is invisible to a single-axis-only check"
         )
 
     def test_milestone_bonus_does_not_extend_to_mixed_exponents(self):
