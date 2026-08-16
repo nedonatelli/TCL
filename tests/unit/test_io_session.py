@@ -6,7 +6,7 @@ import pytest
 from pytcl.core.exceptions import ConfigurationError, FormatError
 from pytcl.dynamic_estimation import IMMEstimator
 from pytcl.io import load_session, load_session_file, save_session, save_session_file
-from pytcl.trackers import SingleTargetTracker
+from pytcl.trackers import MultiTargetTracker, SingleTargetTracker
 
 F4 = np.eye(4)
 H24 = np.eye(2, 4)
@@ -134,3 +134,78 @@ class TestIMMSession:
         data = save_session(e)
         with pytest.raises(ConfigurationError):
             load_session(data, F=np.eye(2))
+
+
+def _mt_tracker():
+    t = MultiTargetTracker(
+        4, 2, F4, H24, Q4, R2, confirm_hits=2, confirm_window=3, max_misses=2
+    )
+    rng = np.random.Generator(np.random.PCG64(5))
+    for _ in range(4):
+        z = [rng.normal(size=2), rng.normal(size=2) + 10.0]
+        t.process(z, dt=1.0)
+    return t
+
+
+class TestMultiTargetSession:
+    def test_roundtrip_track_table(self):
+        t = _mt_tracker()
+        back = load_session(save_session(t))
+        assert len(back.tracks) == len(t.tracks)
+        for ta, tb in zip(t.tracks, back.tracks):
+            assert ta.id == tb.id and ta.status is tb.status
+            assert (ta.hits, ta.misses) == (tb.hits, tb.misses)
+            np.testing.assert_array_equal(ta.state, tb.state)
+            np.testing.assert_array_equal(ta.covariance, tb.covariance)
+
+    def test_resume_equals_uninterrupted(self):
+        a = _mt_tracker()
+        b = load_session(save_session(_mt_tracker()))
+        z = [np.array([0.1, 0.2]), np.array([10.1, 10.2])]
+        ra = a.process(z, dt=1.0)
+        rb = b.process(z, dt=1.0)
+        assert [t.id for t in ra] == [t.id for t in rb]
+        for ta, tb in zip(ra, rb):
+            np.testing.assert_array_equal(ta.state, tb.state)
+
+    def test_next_id_preserved(self):
+        # a fresh detection after restore must not reuse an existing track id
+        t = _mt_tracker()
+        existing = {tr.id for tr in t.tracks}
+        back = load_session(save_session(t))
+        back.process([np.array([50.0, 50.0])], dt=1.0)
+        new_ids = {tr.id for tr in back.tracks} - existing
+        assert new_ids and not (new_ids & existing)
+
+    def test_nis_history_carried_when_present(self):
+        from pytcl.diagnostics import disable_debug_logging, enable_debug_logging
+
+        enable_debug_logging()
+        try:
+            t = _mt_tracker()
+            has = [tr for tr in t._tracks if getattr(tr, "_nis_history", None)]
+            assert has, "expected NIS windows under enabled diagnostics"
+            back = load_session(save_session(t))
+            back_map = {tr.id: tr for tr in back._tracks}
+            for tr in has:
+                assert list(getattr(back_map[tr.id], "_nis_history")) == list(
+                    tr._nis_history
+                )
+        finally:
+            disable_debug_logging()
+
+    def test_callable_dynamics_require_rehydration(self):
+        t = MultiTargetTracker(4, 2, lambda dt: F4, H24, Q4, R2)
+        t.process([np.array([0.0, 0.0])], dt=1.0)
+        data = save_session(t)
+        with pytest.raises(ConfigurationError):
+            load_session(data)  # no F given
+        back = load_session(data, F=lambda dt: F4)
+        assert len(back.tracks) == len(t.tracks)
+
+    def test_matrix_config_rejects_rehydration_kwargs(self):
+        data = save_session(_mt_tracker())
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=2 * F4)
+        with pytest.raises(ConfigurationError):
+            load_session(data, Q=2 * Q4)

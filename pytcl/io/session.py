@@ -20,6 +20,7 @@ loading such a session without the matching keyword argument raises
 :class:`~pytcl.core.exceptions.ConfigurationError`.
 """
 
+from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
@@ -28,12 +29,13 @@ import numpy as np
 
 import pytcl
 from pytcl.core.exceptions import ConfigurationError, FormatError
-from pytcl.diagnostics import diagnostics_enabled, logger
+from pytcl.diagnostics import NIS_WINDOW, diagnostics_enabled, logger
 from pytcl.dynamic_estimation import IMMEstimator
 from pytcl.dynamic_estimation.configs import IMMConfig
 from pytcl.io.serialize import _check_finite, _codec
-from pytcl.trackers import SingleTargetTracker
-from pytcl.trackers.configs import SingleTargetConfig
+from pytcl.trackers import MultiTargetTracker, SingleTargetTracker, TrackStatus
+from pytcl.trackers.configs import MultiTargetConfig, SingleTargetConfig
+from pytcl.trackers.multi_target import _InternalTrack
 
 __all__ = [
     "SESSION_SCHEMA_VERSION",
@@ -111,7 +113,64 @@ class IMMSnapshot(msgspec.Struct, tag=True):
     P: list[list[float]]
 
 
-_Snapshot = Union[SingleTargetSnapshot, IMMSnapshot]
+class TrackSnapshot(msgspec.Struct):
+    """Snapshot of one internal track owned by a
+    :class:`~pytcl.trackers.MultiTargetTracker`.
+
+    Attributes
+    ----------
+    id : int
+        Unique track identifier.
+    state : list of float
+        Flattened state estimate.
+    covariance : list of list of float
+        State covariance.
+    status : str
+        :class:`~pytcl.trackers.TrackStatus` member name (restore via
+        ``TrackStatus[status]``).
+    hits, misses : int
+        Update/miss counters used by confirmation and deletion logic.
+    time : float
+        Time of the track's last update.
+    nis_history : list of float, optional
+        Recent normalized innovation squared values, present only when
+        the track accumulated a health window under enabled diagnostics.
+    """
+
+    id: int
+    state: list[float]
+    covariance: list[list[float]]
+    status: str
+    hits: int
+    misses: int
+    time: float
+    nis_history: Optional[list[float]] = None
+
+
+class MultiTargetSnapshot(msgspec.Struct, tag=True):
+    """Snapshot of a :class:`~pytcl.trackers.MultiTargetTracker`.
+
+    Attributes
+    ----------
+    config : MultiTargetConfig
+        Tracker configuration. ``config.F``/``config.Q`` are ``None`` when
+        the tracker was built with callable dynamics.
+    tracks : list of TrackSnapshot
+        One entry per internal track, including deleted ones.
+    next_id : int
+        Next track id to be assigned; preserved so a resumed tracker never
+        reissues an id already in `tracks`.
+    time : float
+        Tracker's internal clock at snapshot time.
+    """
+
+    config: MultiTargetConfig
+    tracks: list[TrackSnapshot]
+    next_id: int
+    time: float
+
+
+_Snapshot = Union[SingleTargetSnapshot, IMMSnapshot, MultiTargetSnapshot]
 
 
 class SessionEnvelope(msgspec.Struct):
@@ -161,8 +220,8 @@ def _resolve_matrix(name: str, cfg_value: Any, kwarg_value: Any) -> Any:
         return np.asarray(cfg_value, dtype=np.float64)
     if kwarg_value is None:
         raise ConfigurationError(
-            f"snapshot was taken from a SingleTargetTracker with callable "
-            f"{name} dynamics; pass {name}= to load_session to rehydrate it"
+            f"snapshot was taken from a tracker with callable {name} "
+            f"dynamics; pass {name}= to load_session to rehydrate it"
         )
     return kwarg_value
 
@@ -187,6 +246,86 @@ def _restore_single_target(
         t._covariance = np.asarray(s.P, dtype=np.float64)
         t._time = s.time
         t._initialized = True
+    return t
+
+
+def _snap_multi_target(t: MultiTargetTracker) -> MultiTargetSnapshot:
+    cfg = MultiTargetConfig(
+        state_dim=t.state_dim,
+        meas_dim=t.meas_dim,
+        H=t.H.tolist(),
+        R=t.R.tolist(),
+        F=None if t._F_matrix is None else t._F_matrix.tolist(),
+        Q=None if t._Q_matrix is None else t._Q_matrix.tolist(),
+        gate_probability=t.gate_probability,
+        confirm_hits=t.confirm_hits,
+        confirm_window=t.confirm_window,
+        max_misses=t.max_misses,
+        init_covariance=t.init_covariance.tolist(),
+    )
+    tracks = []
+    for track in t._tracks:
+        history = getattr(track, "_nis_history", None)
+        tracks.append(
+            TrackSnapshot(
+                id=track.id,
+                state=track.state.tolist(),
+                covariance=track.covariance.tolist(),
+                status=track.status.name,
+                hits=track.hits,
+                misses=track.misses,
+                time=track.time,
+                nis_history=None if history is None else list(history),
+            )
+        )
+    return MultiTargetSnapshot(
+        config=cfg,
+        tracks=tracks,
+        next_id=t._next_id,
+        time=t._time,
+    )
+
+
+def _restore_multi_target(
+    s: MultiTargetSnapshot, F: Any = None, Q: Any = None
+) -> MultiTargetTracker:
+    cfg = s.config
+    F_in = _resolve_matrix("F", cfg.F, F)
+    Q_in = _resolve_matrix("Q", cfg.Q, Q)
+    t = MultiTargetTracker(
+        cfg.state_dim,
+        cfg.meas_dim,
+        F_in,
+        np.asarray(cfg.H, dtype=np.float64),
+        Q_in,
+        np.asarray(cfg.R, dtype=np.float64),
+        gate_probability=cfg.gate_probability,
+        confirm_hits=cfg.confirm_hits,
+        confirm_window=cfg.confirm_window,
+        max_misses=cfg.max_misses,
+        init_covariance=(
+            None
+            if cfg.init_covariance is None
+            else np.asarray(cfg.init_covariance, dtype=np.float64)
+        ),
+    )
+    tracks = []
+    for ts in s.tracks:
+        track = _InternalTrack(
+            id=ts.id,
+            state=np.asarray(ts.state, dtype=np.float64),
+            covariance=np.asarray(ts.covariance, dtype=np.float64),
+            status=TrackStatus[ts.status],
+            hits=ts.hits,
+            misses=ts.misses,
+            time=ts.time,
+        )
+        if ts.nis_history is not None:
+            track._nis_history = deque(ts.nis_history, maxlen=NIS_WINDOW)
+        tracks.append(track)
+    t._tracks = tracks
+    t._next_id = s.next_id
+    t._time = s.time
     return t
 
 
@@ -232,10 +371,12 @@ def _restore_imm(s: IMMSnapshot, **rehydration: Any) -> IMMEstimator:
 _SNAPSHOTTERS: dict[type, Callable[[Any], Any]] = {
     SingleTargetTracker: _snap_single_target,
     IMMEstimator: _snap_imm,
+    MultiTargetTracker: _snap_multi_target,
 }
 _RESTORERS: dict[str, Callable[..., Any]] = {
     "SingleTargetSnapshot": _restore_single_target,
     "IMMSnapshot": _restore_imm,
+    "MultiTargetSnapshot": _restore_multi_target,
 }
 
 
@@ -267,7 +408,7 @@ def save_session(obj: Any, *, fmt: str = "msgpack") -> bytes:
 
     Parameters
     ----------
-    obj : SingleTargetTracker or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, or IMMEstimator
         The object to snapshot.
     fmt : {"msgpack", "json"}, optional
         Wire format. With ``"json"``, non-finite values anywhere in the
@@ -309,7 +450,7 @@ def save_session_file(obj: Any, path: Any, *, fmt: str = "msgpack") -> None:
 
     Parameters
     ----------
-    obj : SingleTargetTracker or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, or IMMEstimator
         The object to snapshot.
     path : str or Path
         Destination file path.
@@ -331,7 +472,8 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
     **models : Any
         Rehydration arguments for snapshots that could not capture
         callable dynamics (``F=``/``Q=`` for a
-        :class:`~pytcl.trackers.SingleTargetTracker` built with callable
+        :class:`~pytcl.trackers.SingleTargetTracker` or
+        :class:`~pytcl.trackers.MultiTargetTracker` built with callable
         ``F``/``Q``). Consumed only where the snapshot actually needs
         them, one matrix at a time: if the snapshot's config already has
         a matrix for ``F`` (or ``Q``), passing that kwarg raises rather
