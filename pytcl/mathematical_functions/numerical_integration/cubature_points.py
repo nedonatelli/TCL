@@ -774,7 +774,7 @@ def seventh_order_cubature_points(
 
     algorithm  rule (Stroud 1971)          valid n      points
     ---------  ---------------------------  -----------  ----------------
-    0          E_n^{r^2} 7-3, p. 319        n >= 3       2*(2^n + 2n^2)
+    0          E_n^{r^2} 7-3, p. 319        n = 3..6 *   2*(2^n + 2n^2)
     1          E_n^{r^2} 7-1, p. 318        3, 4, 6, 7   2^n + 2n^2 + 1
     2          E_2^{r^2} 7-1, p. 324        2            12
     3          E_2^{r^2} 7-2, p. 324        2            17 (see note)
@@ -782,6 +782,15 @@ def seventh_order_cubature_points(
     6 / 7      E_3^{r^2} 7-2, p. 328        3            33
     8          E_4^{r^2} 7-1, p. 329        4            49
     9          quadraturePoints1D(4)        1            4
+
+    * Algorithm 0 predates this table (it is the pre-existing default for
+    n > 2) and its code, unlike every other algorithm here, does not
+    restrict n beyond n >= 3 -- it will run for any such n. But the test
+    suite exercises it only at n = 3..6, so per this docstring's own rule
+    ("verified... exactly for the (algorithm, n) pairs in the table below
+    -- no wider claim is made") the exactness CLAIM is bounded to n =
+    3..6, matching every other row; n > 6 is accepted by the code but is
+    an unverified extrapolation, not a documented guarantee.
 
     **Deviations from MATLAB (algorithms 3 and 8).** MATLAB's comments
     document scale corrections for these two algorithms (a missing 4/3
@@ -824,9 +833,11 @@ def seventh_order_cubature_points(
     weights : ndarray
         Shape (num_points,), summing to 1. For algorithm 0, the axis
         shell's surface weight (8 - n)/(n(n+2)(n+4)) is negative for
-        n > 8; this is inherent to the rule, not an error. Covariances
-        assembled from these points must not use a sqrt-of-weights
-        factorization.
+        n > 8; this is inherent to the rule, not an error. Algorithm 3's
+        corrected 17-point rule (see the deviation note above) likewise
+        has a negative weight, D = -2/3, on its origin point -- also
+        inherent, not an error. In both cases, covariances assembled
+        from these points must not use a sqrt-of-weights factorization.
 
     Examples
     --------

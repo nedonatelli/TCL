@@ -1752,6 +1752,17 @@ class TestSeventhOrderAlgorithms:
         assert abs(w.sum() - 1.0) < 1e-12
         assert_rule_exact(pts, w, n, 7)
 
+    @pytest.mark.parametrize("algorithm,n,_", CASES)
+    def test_sharpness_degree_8_fails(self, algorithm, n, _):
+        # Mirrors TestSeventhOrder's degree-8 sharpness check for algorithm
+        # 0: every algorithm here is a degree-7 rule, not degree-8, so a
+        # single-axis degree-8 monomial must miss E[x1^8] = 105 by more
+        # than roundoff. Measured misses range from ~4.0 (algorithm 1,
+        # n=6) to ~96 (algorithm 6); all comfortably clear 1.0.
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        alpha = (8,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - 105.0) > 1.0
+
     def test_default_algorithm_dispatch(self):
         # MATLAB default logic: n==1 -> 9, n==2 -> 2, else 0
         p1, _ = seventh_order_cubature_points(1)
