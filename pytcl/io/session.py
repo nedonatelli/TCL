@@ -141,17 +141,38 @@ def _snap_single_target(t: SingleTargetTracker) -> SingleTargetSnapshot:
     )
 
 
+def _resolve_matrix(name: str, cfg_value: Any, kwarg_value: Any) -> Any:
+    """Resolve one dynamics matrix (F or Q) between a snapshot's config and
+    a `load_session` rehydration kwarg.
+
+    The snapshot's own config wins whenever it has the matrix -- it is
+    self-describing and does not need help, so a caller-supplied kwarg in
+    that case is a mistake (silently overriding the saved dynamics would
+    be worse) and raises rather than being applied. A kwarg is required
+    (and consumed) only when the config lacks the matrix, i.e. the tracker
+    had callable dynamics at save time.
+    """
+    if cfg_value is not None:
+        if kwarg_value is not None:
+            raise ConfigurationError(
+                f"snapshot already carries matrix {name} dynamics; "
+                f"do not pass {name}= to load_session"
+            )
+        return np.asarray(cfg_value, dtype=np.float64)
+    if kwarg_value is None:
+        raise ConfigurationError(
+            f"snapshot was taken from a SingleTargetTracker with callable "
+            f"{name} dynamics; pass {name}= to load_session to rehydrate it"
+        )
+    return kwarg_value
+
+
 def _restore_single_target(
     s: SingleTargetSnapshot, F: Any = None, Q: Any = None
 ) -> SingleTargetTracker:
     cfg = s.config
-    F_in = F if F is not None else (None if cfg.F is None else np.asarray(cfg.F))
-    Q_in = Q if Q is not None else (None if cfg.Q is None else np.asarray(cfg.Q))
-    if F_in is None or Q_in is None:
-        raise ConfigurationError(
-            "snapshot was taken from a SingleTargetTracker with callable "
-            "dynamics; pass F= and/or Q= to load_session to rehydrate them"
-        )
+    F_in = _resolve_matrix("F", cfg.F, F)
+    Q_in = _resolve_matrix("Q", cfg.Q, Q)
     t = SingleTargetTracker(
         cfg.state_dim,
         cfg.meas_dim,
@@ -189,7 +210,12 @@ def _snap_imm(e: IMMEstimator) -> IMMSnapshot:
     )
 
 
-def _restore_imm(s: IMMSnapshot) -> IMMEstimator:
+def _restore_imm(s: IMMSnapshot, **rehydration: Any) -> IMMEstimator:
+    if rehydration:
+        raise ConfigurationError(
+            "IMM snapshots are self-contained and take no rehydration "
+            f"kwargs; got: {sorted(rehydration)}"
+        )
     e = IMMEstimator(config=s.config)
     e.F_list = [np.asarray(f, dtype=np.float64) for f in s.F_list]
     e.Q_list = [np.asarray(q, dtype=np.float64) for q in s.Q_list]
@@ -304,9 +330,16 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
         Wire format `data` was encoded with.
     **models : Any
         Rehydration arguments for snapshots that could not capture
-        callable dynamics (e.g. ``F=``/``Q=`` for a
+        callable dynamics (``F=``/``Q=`` for a
         :class:`~pytcl.trackers.SingleTargetTracker` built with callable
-        ``F``/``Q``). Ignored by snapshot types that do not need them.
+        ``F``/``Q``). Consumed only where the snapshot actually needs
+        them, one matrix at a time: if the snapshot's config already has
+        a matrix for ``F`` (or ``Q``), passing that kwarg raises rather
+        than silently overriding the saved dynamics; if the config lacks
+        it, omitting the kwarg raises rather than restoring a tracker
+        that cannot predict. Snapshot types with no callable-dynamics
+        escape hatch at all (:class:`~pytcl.dynamic_estimation.IMMEstimator`)
+        are fully self-contained and reject every keyword argument.
 
     Returns
     -------
@@ -320,8 +353,10 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
         If `data` is malformed, or was produced by a newer schema version
         than this pytcl supports.
     ConfigurationError
-        If the snapshot needs rehydration arguments that were not
-        supplied.
+        If the snapshot needs a rehydration keyword argument that was not
+        supplied, or was given one it does not need (either because the
+        snapshot's config already carries that matrix, or because the
+        snapshot type is fully self-contained and takes none at all).
     """
     _, decode = _codec(fmt)
     try:

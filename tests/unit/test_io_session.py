@@ -81,6 +81,13 @@ class TestSingleTargetSession:
         with pytest.raises(ValueError, match="non-finite"):
             save_session(t, fmt="json")
 
+    def test_matrix_config_rejects_rehydration_kwargs(self):
+        data = save_session(_tracker())
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=2 * F4)
+        with pytest.raises(ConfigurationError):
+            load_session(data, Q=2 * Q4)
+
 
 class TestIMMSession:
     def test_roundtrip_and_resume(self):
@@ -117,3 +124,13 @@ class TestIMMSession:
         np.testing.assert_array_equal(back.mode_probs, e.mode_probs)
         for f1, f2 in zip(back.F_list, e.F_list):
             np.testing.assert_array_equal(f1, f2)
+
+    def test_rejects_rehydration_kwargs(self):
+        e = IMMEstimator(2, 2, [[0.9, 0.1], [0.1, 0.9]])
+        for i in range(2):
+            e.set_mode_model(i, np.eye(2), 0.01 * np.eye(2))
+        e.set_measurement_model(np.eye(2), 0.1 * np.eye(2))
+        e.initialize(np.zeros(2), np.eye(2))
+        data = save_session(e)
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=np.eye(2))
