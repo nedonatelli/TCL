@@ -20,11 +20,13 @@ Bar-Shalom, Y., Li, X. R., & Kirubarajan, T. (2001). Estimation with
 Applications to Tracking and Navigation. Wiley-Interscience.
 """
 
-from typing import Callable, List, NamedTuple
+from typing import Callable, List, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import ConfigurationError
+from pytcl.dynamic_estimation.configs import GaussianSumConfig
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 
 
@@ -57,9 +59,11 @@ class GaussianSumFilter:
 
     def __init__(
         self,
-        max_components: int = 5,
-        merge_threshold: float = 0.01,
-        prune_threshold: float = 1e-3,
+        max_components: Optional[int] = None,
+        merge_threshold: Optional[float] = None,
+        prune_threshold: Optional[float] = None,
+        *,
+        config: Optional[GaussianSumConfig] = None,
     ):
         """Initialize Gaussian Sum Filter.
 
@@ -73,7 +77,30 @@ class GaussianSumFilter:
         prune_threshold : float
             Weight threshold for pruning. Components with weight below
             this are removed.
+        config : GaussianSumConfig, optional
+            Typed configuration. Mutually exclusive with the individual
+            keyword arguments above.
         """
+        if config is not None:
+            if any(
+                v is not None
+                for v in (max_components, merge_threshold, prune_threshold)
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            max_components = config.max_components
+            merge_threshold = config.merge_threshold
+            prune_threshold = config.prune_threshold
+        else:
+            default = GaussianSumConfig()
+            if max_components is None:
+                max_components = default.max_components
+            if merge_threshold is None:
+                merge_threshold = default.merge_threshold
+            if prune_threshold is None:
+                prune_threshold = default.prune_threshold
+
         self.components: List[GaussianComponent] = []
         self.max_components = max_components
         self.merge_threshold = merge_threshold

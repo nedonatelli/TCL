@@ -25,11 +25,13 @@ References::
       Identification" (IEEE SPM, 2004)
 """
 
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.exceptions import ConfigurationError
+from pytcl.dynamic_estimation.configs import RBPFConfig
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 
 
@@ -77,9 +79,11 @@ class RBPFFilter:
 
     def __init__(
         self,
-        max_particles: int = 100,
-        resample_threshold: float = 0.5,
-        merge_threshold: float = 0.5,
+        max_particles: Optional[int] = None,
+        resample_threshold: Optional[float] = None,
+        merge_threshold: Optional[float] = None,
+        *,
+        config: Optional[RBPFConfig] = None,
     ):
         """Initialize RBPF.
 
@@ -91,7 +95,30 @@ class RBPFFilter:
             Resample threshold as fraction of max particles
         merge_threshold : float
             KL divergence threshold for merging particles
+        config : RBPFConfig, optional
+            Typed configuration. Mutually exclusive with the individual
+            keyword arguments above.
         """
+        if config is not None:
+            if any(
+                v is not None
+                for v in (max_particles, resample_threshold, merge_threshold)
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            max_particles = config.max_particles
+            resample_threshold = config.resample_threshold
+            merge_threshold = config.merge_threshold
+        else:
+            default = RBPFConfig()
+            if max_particles is None:
+                max_particles = default.max_particles
+            if resample_threshold is None:
+                resample_threshold = default.resample_threshold
+            if merge_threshold is None:
+                merge_threshold = default.merge_threshold
+
         self.particles: list[RBPFParticle] = []
         self.max_particles = max_particles
         self.resample_threshold = resample_threshold

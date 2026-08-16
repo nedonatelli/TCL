@@ -14,6 +14,13 @@ This module provides filtering and smoothing algorithms for state estimation:
 # Import submodules for easy access
 from pytcl.dynamic_estimation import kalman, particle_filters
 
+# Typed configuration Structs
+from pytcl.dynamic_estimation.configs import (
+    GaussianSumConfig,
+    IMMConfig,
+    RBPFConfig,
+)
+
 # Gaussian Sum Filter
 from pytcl.dynamic_estimation.gaussian_sum_filter import (
     GaussianComponent,
@@ -136,6 +143,10 @@ __all__ = [
     # Submodules
     "kalman",
     "particle_filters",
+    # Typed configs
+    "IMMConfig",
+    "GaussianSumConfig",
+    "RBPFConfig",
     # Smoothers
     "SmoothedState",
     "RTSResult",
