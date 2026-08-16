@@ -522,10 +522,12 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.2.0):
-- **Functions:** 1,500+
-- **Modules:** 187
-- **Tests:** 6,300+ (all passing)
+Current metrics (v2.3.0):
+- **Functions:** 1,150+ (top-level `def`; measured 1,156 via
+  `grep -r "^def " pytcl/ | wc -l`)
+- **Modules:** 190
+- **Tests:** 6,700+ (all passing; measured 6,729 via
+  `pytest --collect-only -q`)
 - **Coverage:** 90%
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,

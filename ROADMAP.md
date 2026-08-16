@@ -1,13 +1,16 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.2.0, released 12 August 2026
+**Current Version:** v2.3.0, released 16 August 2026
 **Test Suite:** 6,300+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
-**Status:** v2.2.0 (the Results I/O release) is out: polars ingest and
-DataFrame accessors, msgspec and ASDF serialization, AIS decoding, and
-HDF5 compression measured rather than claimed. It follows v2.1.0
-(Diagnostics: opt-in observability, the estimation-grade cubature library,
-and real-data validation from recorded air traffic, real TLE history, and
-the first real-hardware CuPy verification). On
+**Status:** v2.3.0 (typed configs + sessions) is out: typed `msgspec.Struct`
+configs for the filter/tracker constructors and full state snapshot/resume
+for six tracker and filter classes. It follows v2.2.0 (the Results I/O
+release: polars ingest and DataFrame accessors, msgspec and ASDF
+serialization, AIS decoding, and HDF5 compression measured rather than
+claimed), which followed v2.1.0 (Diagnostics: opt-in observability, the
+estimation-grade cubature library, and real-data validation from recorded
+air traffic, real TLE history, and the first real-hardware CuPy
+verification). On
 parity: the core tracking workflow is fully ported and oracle-validated,
 and the full MATLAB surface is covered at roughly a third by function
 count — see `docs/matlab_parity_inventory.rst`, which supersedes any
@@ -118,7 +121,7 @@ CV-filter covariances throughout, not an identity best case.
   below); AIS NMEA decoding and position-report extraction (new `[ais]`
   extra, pyais); measured HDF5 byte-shuffle compression (4.73x, on by
   default). Delivers the Parquet/Arrow bullets below.
-- **v2.3.0 — Typed configs + save/restore:** typed `msgspec.Struct`
+- **v2.3.0 — Typed configs + save/restore (released 2026-08-16):** typed `msgspec.Struct`
   configs (`IMMConfig`, `GaussianSumConfig`, `RBPFConfig`,
   `SingleTargetConfig`, `MultiTargetConfig`) accepted via a keyword-only
   `config=` on the matching constructor, mutually exclusive with the
@@ -428,7 +431,8 @@ for reference implementations.
 
 ---
 
-**Current Phase:** v2.2.0 released
-**Next Milestone:** v2.3.0 (typed configs + save/restore; see the
-modernization campaign)
+**Current Phase:** v2.3.0 released
+**Next Milestone:** unversioned, gated -- the `[visualization-xy]` extra for
+large-dataset plotting, once xy has a stable release (see the modernization
+campaign)
 No dates are attached to anything in this document: none have been decided.
