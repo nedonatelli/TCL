@@ -99,11 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keyword-only `config=` on the corresponding constructors (mutually
   exclusive with individual arguments).
 - Session save/restore (`pytcl.io.save_session` / `load_session` and file
-  variants): full state snapshot and bit-exact resume for
-  `SingleTargetTracker`, `MultiTargetTracker`, `MHTTracker`,
-  `IMMEstimator`, `GaussianSumFilter`, and `RBPFFilter`. Callable dynamics
-  rehydrate via `load_session(..., F=..., Q=...)`; snapshots are versioned
-  (`schema_version`) msgpack or JSON.
+  variants): full state snapshot and resume for `SingleTargetTracker`,
+  `MultiTargetTracker`, `MHTTracker`, `IMMEstimator`, `GaussianSumFilter`,
+  and `RBPFFilter`. Resume is bit-exact for the first four (deterministic)
+  classes, and for `GaussianSumFilter`/`RBPFFilter` only when constructed
+  with an instance `rng=`; built on the legacy global RNG instead, those
+  two still resume, but their random draws diverge from an uninterrupted
+  run's. Callable dynamics rehydrate via `load_session(..., F=..., Q=...)`;
+  snapshots are versioned (`schema_version`) msgpack or JSON.
 - `RBPFFilter` and `GaussianSumFilter` accept an optional
   `rng: np.random.Generator`; instance-owned RNG state is captured in
   sessions, making resumed runs bit-reproducible.

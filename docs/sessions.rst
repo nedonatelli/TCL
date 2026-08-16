@@ -138,7 +138,12 @@ Saving and Restoring a Tracker
 the same pair against a path instead of ``bytes``. A resumed object is not
 just state-equal to the original -- calling ``predict``/``update`` (or
 ``process``) on it after resume produces results bit-identical to calling
-the same sequence on the original, uninterrupted object.
+the same sequence on the original, uninterrupted object, for
+`SingleTargetTracker`, `MultiTargetTracker`, `MHTTracker` and
+`IMMEstimator`. `GaussianSumFilter` and `RBPFFilter` carry the same
+guarantee only when constructed with an instance ``rng=``; built with the
+default global RNG, they still resume, but their random draws diverge from
+an uninterrupted run's -- see `RNG Reproducibility`_ below.
 
 .. code-block:: python
 
@@ -265,9 +270,13 @@ bit-generator state is captured in the session snapshot, so a resumed
 filter continues drawing from *exactly* the same random stream as an
 uninterrupted one -- every particle/component draw after resume matches
 bit-for-bit. Session support for instance RNGs is PCG64-only, matching
-``numpy.random.Generator``'s default; assigning a different bit-generator's
-state fails loudly via numpy's own validation rather than silently
-producing the wrong stream.
+``numpy.random.Generator``'s default: constructing a filter with a
+different bit-generator (MT19937, Philox, SFC64, ...) and then calling
+`save_session` raises :class:`~pytcl.core.exceptions.ConfigurationError`
+at save time, naming the offending bit-generator class, rather than
+producing a session that cannot be restored. Restoring a *saved* PCG64
+state onto a mismatched generator is a separate, restore-time failure
+that surfaces via numpy's own state-assignment validation.
 
 When ``rng`` is omitted (the default), the filter falls back to the legacy
 global ``numpy.random`` state. That state is **not** captured by a
