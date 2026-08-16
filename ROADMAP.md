@@ -2,19 +2,11 @@
 
 **Current Version:** v2.3.0, released 16 August 2026
 **Test Suite:** 6,700+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
-**Status:** v2.3.0 (typed configs + sessions) is out: typed `msgspec.Struct`
-configs for the filter/tracker constructors and full state snapshot/resume
-for six tracker and filter classes. It follows v2.2.0 (the Results I/O
-release: polars ingest and DataFrame accessors, msgspec and ASDF
-serialization, AIS decoding, and HDF5 compression measured rather than
-claimed), which followed v2.1.0 (Diagnostics: opt-in observability, the
-estimation-grade cubature library, and real-data validation from recorded
-air traffic, real TLE history, and the first real-hardware CuPy
-verification). On
-parity: the core tracking workflow is fully ported and oracle-validated,
-and the full MATLAB surface is covered at roughly a third by function
-count — see `docs/matlab_parity_inventory.rst`, which supersedes any
-"feature-complete parity" phrasing.
+**Status:** On parity: the core tracking workflow is fully ported and
+oracle-validated, and the full MATLAB surface is covered at roughly a
+third by function count — see `docs/matlab_parity_inventory.rst`, which
+supersedes any "feature-complete parity" phrasing. Per-release feature
+summaries live in the CHANGELOG, not here.
 
 This document covers **planned and future work only**. For what has already shipped, see
 [CHANGELOG.md](CHANGELOG.md), the [GitHub releases](https://github.com/nedonatelli/TCL/releases),
@@ -43,31 +35,17 @@ the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
 evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
-- **Cubature point library** — ~134 MATLAB files, a signature strength of the
-  original. The estimation-grade Gaussian-weight slice is now ported: the
-  degree-5 and degree-7 rules, arbitrary-odd-degree spherical-radial points,
-  `transform_cubature_points`, and CKF consumption of arbitrary point sets,
-  plus — as of the cubature-completion campaign — Genz-Keister nested
-  rules, the 14th-order and 2nd-order fixed rules, and Student-t
-  third-order points. Most of this is gated by monomial-exactness tests;
-  Student-t is gated by a Student-t moment oracle instead (still polynomial
-  exactness, but against the Student-t's own moments — the Gaussian ones do
-  not apply, and its components are uncorrelated without being independent,
-  so mixed moments do not factor), and the `beta != 0` radial-weighting
-  rules are gated by a weighted-moment oracle. A prior version of this roadmap implied MATLAB's
-  `arbOrderGaussCubPoints` (integration against a Gaussian times `|x|^beta`)
-  was already covered by the arbitrary-degree spherical-radial work — it was
-  not: until this branch, `spherical_radial_points` implemented only the
-  `beta=0` case. It is now genuinely covered via a new `beta` parameter.
-  Remaining: Gaussian LCD samples (deferred deliberately — the MATLAB source
-  is a 505-line L-BFGS optimization over a modified Cramer-von Mises
-  distance with four hand-derived analytic gradient routines, a
-  research-grade optimizer to reimplement and validate, not a
-  transcription), the dimension-specific seventh-order variant, Smolyak
-  sparse grids (now *enabled* by Genz-Keister's nesting property, but still
-  original design work rather than a port — there is nothing in the MATLAB
-  source to transcribe), and the ~120 region-specific rules (cube, simplex,
-  sphere, torus, etc.)
+- **Cubature point library remainder** — the estimation-grade
+  Gaussian-weight slice is ported (see CHANGELOG through v2.3.0); what
+  remains of the ~134 MATLAB files: Gaussian LCD samples (deferred
+  deliberately — the MATLAB source is a 505-line L-BFGS optimization over
+  a modified Cramer-von Mises distance with four hand-derived analytic
+  gradient routines, a research-grade optimizer to reimplement and
+  validate, not a transcription), the dimension-specific seventh-order
+  variant, Smolyak sparse grids (enabled by Genz-Keister's nesting
+  property, but original design work rather than a port — there is
+  nothing in the MATLAB source to transcribe), and the ~120
+  region-specific rules (cube, simplex, sphere, torus, etc.)
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
@@ -85,54 +63,19 @@ No dates are attached because none have been decided:
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
 
-**HDF5 compression, measured and closed (v2.2.0 Results I/O, Task 7):**
-byte-shuffle (`shuffle=True`, now the `TrackHDF5Storage` default) measured
-**4.73x** on the 100-track x 500-scan, 6-D, CV-filter-converged-covariance
-benchmark, up from a 4.42x baseline (+7.1%) -- reproduce with
-`uv run pytest tests/unit/test_hdf5_compression.py -q`. Time-aligned chunk
-shapes were evaluated and found to already be the existing behavior (0.0%
-measured effect: tracks already fit in one chunk below the default
-`chunk_size`, and deflate's 32 KB window is the binding constraint either
-way). An optional `states_only` covariance-transform mode was evaluated
-and deferred: dropping covariance entirely implies a ~6.3x ceiling
-(inside the once-claimed 5-10x band), but reaching it losslessly requires
-reconstructing per-scan covariance from a steady-state Cholesky factor
-across every read path and breaks the existing bit-exact round-trip
-contract -- tracked as future backlog if ever needed, not shipped here.
-The prior 1.3-4.3x figure (identity-covariance best case 4.3x, realistic
-1.32x) is superseded by the measurement above, which uses converged
-CV-filter covariances throughout, not an identity best case.
+- **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
+  ceiling is reachable by reconstructing per-scan covariance from a
+  steady-state Cholesky factor, but it touches every read path and breaks
+  the bit-exact round-trip contract; deferred unless a real need appears
+  (v2.2.0 measured and shipped byte-shuffle at 4.73x instead — see the
+  CHANGELOG for the closed measurement).
 
-### Modernization campaign (versioned)
+### Modernization campaign — remaining
 
-- **Tooling (no release):** uv-managed workflow (uv.lock, dependency
-  groups, CI on uv) and ty as the type-check gate (mypy probation ended
-  on schedule at v2.1.0).
-- **v2.1.0 — Diagnostics (released 2026-08-10):** `pytcl.diagnostics` —
-  loguru logging (silent by default, `enable_debug_logging()` opt-in),
-  ASCII-safe rich progress bars and track tables, instrumentation at
-  gating/association/filter-health decision points and data-file
-  resolution, with tested silence and behavioral-neutrality guarantees.
-- **v2.2.0 — Results I/O:** polars ingest (CSV/Parquet) and `to_polars()`
-  results accessors (new `[dataframe]` extra); msgspec export of track
-  histories/states to JSON and MessagePack (msgspec now a core
-  dependency); ASDF export/import of track histories and states (new
-  `[asdf]` extra, delivers the ASDF bullet under Format Support Expansion
-  below); AIS NMEA decoding and position-report extraction (new `[ais]`
-  extra, pyais); measured HDF5 byte-shuffle compression (4.73x, on by
-  default). Delivers the Parquet/Arrow bullets below.
-- **v2.3.0 — Typed configs + save/restore (released 2026-08-16):** typed `msgspec.Struct`
-  configs (`IMMConfig`, `GaussianSumConfig`, `RBPFConfig`,
-  `SingleTargetConfig`, `MultiTargetConfig`) accepted via a keyword-only
-  `config=` on the matching constructor, mutually exclusive with the
-  individual arguments; `MHTConfig` converted from a `NamedTuple` to a
-  frozen `msgspec.Struct` to match. Full tracker/filter state
-  snapshot and resume (`pytcl.io.save_session`/`load_session` and file
-  variants) for `SingleTargetTracker`, `MultiTargetTracker`,
-  `MHTTracker`, `IMMEstimator`, `GaussianSumFilter`, and `RBPFFilter`,
-  with a rehydrate pattern for callable dynamics (`F=`/`Q=` passed back
-  into `load_session`) and an optional instance `rng` on `RBPFFilter`/
-  `GaussianSumFilter` whose PCG64 state is captured in the snapshot.
+- **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
+  plotting, once xy has a stable release. Everything else in the campaign
+  (uv/ty tooling, v2.1.0 Diagnostics, v2.2.0 Results I/O, v2.3.0 typed
+  configs + sessions) has shipped — see the CHANGELOG.
   Resume is bit-exact for the four deterministic classes and, for
   `RBPFFilter`/`GaussianSumFilter`, only when built with an instance
   `rng`; resumed on the legacy global RNG instead, they draw from a
@@ -431,8 +374,6 @@ for reference implementations.
 
 ---
 
-**Current Phase:** v2.3.0 released
-**Next Milestone:** unversioned, gated -- the `[visualization-xy]` extra for
-large-dataset plotting, once xy has a stable release (see the modernization
-campaign)
+**Next:** the measured backlog above; the `[visualization-xy]` extra stays
+gated on an upstream xy stable release.
 No dates are attached to anything in this document: none have been decided.
