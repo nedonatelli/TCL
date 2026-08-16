@@ -13,7 +13,9 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.assignment_algorithms import chi2_gate_threshold, gnn_association
+from pytcl.core.exceptions import ConfigurationError
 from pytcl.diagnostics import NIS_WINDOW, diagnostics_enabled, log_filter_health, logger
+from pytcl.trackers.configs import MultiTargetConfig
 
 
 class TrackStatus(Enum):
@@ -89,6 +91,11 @@ class MultiTargetTracker:
         Consecutive misses before deletion (default: 5).
     init_covariance : ndarray, optional
         Initial covariance for new tracks. If None, uses 100*R projected to state.
+    config : MultiTargetConfig, optional
+        Typed configuration. Mutually exclusive with the individual
+        keyword arguments above. ``config.F``/``config.Q`` must be set
+        (matrix dynamics) -- a config snapshotting callable dynamics
+        cannot rebuild the tracker.
 
     Examples
     --------
@@ -110,18 +117,85 @@ class MultiTargetTracker:
 
     def __init__(
         self,
-        state_dim: int,
-        meas_dim: int,
-        F: Callable[[float], NDArray[np.float64]] | NDArray[np.float64],
-        H: NDArray[np.float64],
-        Q: Callable[[float], NDArray[np.float64]] | NDArray[np.float64],
-        R: NDArray[np.float64],
-        gate_probability: float = 0.99,
-        confirm_hits: int = 3,
-        confirm_window: int = 5,
-        max_misses: int = 5,
+        state_dim: Optional[int] = None,
+        meas_dim: Optional[int] = None,
+        F: Optional[
+            Callable[[float], NDArray[np.float64]] | NDArray[np.float64]
+        ] = None,
+        H: Optional[NDArray[np.float64]] = None,
+        Q: Optional[
+            Callable[[float], NDArray[np.float64]] | NDArray[np.float64]
+        ] = None,
+        R: Optional[NDArray[np.float64]] = None,
+        gate_probability: Optional[float] = None,
+        confirm_hits: Optional[int] = None,
+        confirm_window: Optional[int] = None,
+        max_misses: Optional[int] = None,
         init_covariance: Optional[NDArray[np.float64]] = None,
+        *,
+        config: Optional[MultiTargetConfig] = None,
     ) -> None:
+        if config is not None:
+            if any(
+                v is not None
+                for v in (
+                    state_dim,
+                    meas_dim,
+                    F,
+                    H,
+                    Q,
+                    R,
+                    gate_probability,
+                    confirm_hits,
+                    confirm_window,
+                    max_misses,
+                    init_covariance,
+                )
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            if config.F is None or config.Q is None:
+                raise ConfigurationError(
+                    "config lacks matrix dynamics; construct with callables "
+                    "and use load_session's model arguments instead"
+                )
+            state_dim = config.state_dim
+            meas_dim = config.meas_dim
+            H = np.asarray(config.H, dtype=np.float64)
+            R = np.asarray(config.R, dtype=np.float64)
+            F = np.asarray(config.F, dtype=np.float64)
+            Q = np.asarray(config.Q, dtype=np.float64)
+            gate_probability = config.gate_probability
+            confirm_hits = config.confirm_hits
+            confirm_window = config.confirm_window
+            max_misses = config.max_misses
+            init_covariance = (
+                None
+                if config.init_covariance is None
+                else np.asarray(config.init_covariance, dtype=np.float64)
+            )
+        else:
+            # Mirrors MultiTargetConfig's field defaults.
+            if gate_probability is None:
+                gate_probability = 0.99
+            if confirm_hits is None:
+                confirm_hits = 3
+            if confirm_window is None:
+                confirm_window = 5
+            if max_misses is None:
+                max_misses = 5
+
+        if (
+            state_dim is None
+            or meas_dim is None
+            or F is None
+            or H is None
+            or Q is None
+            or R is None
+        ):
+            raise ConfigurationError("state_dim, meas_dim, F, H, Q and R are required")
+
         self.state_dim = state_dim
         self.meas_dim = meas_dim
 
@@ -131,6 +205,7 @@ class MultiTargetTracker:
         self.R = np.asarray(R, dtype=np.float64)
 
         self.gate_threshold = chi2_gate_threshold(gate_probability, meas_dim)
+        self.gate_probability = gate_probability
         self.confirm_hits = confirm_hits
         self.confirm_window = confirm_window
         self.max_misses = max_misses

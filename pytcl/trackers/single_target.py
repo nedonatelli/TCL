@@ -9,6 +9,9 @@ from typing import Callable, NamedTuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import ConfigurationError
+from pytcl.trackers.configs import SingleTargetConfig
+
 
 class TrackState(NamedTuple):
     """
@@ -52,6 +55,11 @@ class SingleTargetTracker:
         Measurement noise covariance.
     gate_threshold : float, optional
         Chi-squared gate threshold (default: None, no gating).
+    config : SingleTargetConfig, optional
+        Typed configuration. Mutually exclusive with the individual
+        keyword arguments above. ``config.F``/``config.Q`` must be set
+        (matrix dynamics) -- a config snapshotting callable dynamics
+        cannot rebuild the tracker.
 
     Examples
     --------
@@ -75,14 +83,50 @@ class SingleTargetTracker:
 
     def __init__(
         self,
-        state_dim: int,
-        meas_dim: int,
-        F: Callable[[float], NDArray[np.float64]] | NDArray[np.float64],
-        H: NDArray[np.float64],
-        Q: Callable[[float], NDArray[np.float64]] | NDArray[np.float64],
-        R: NDArray[np.float64],
+        state_dim: Optional[int] = None,
+        meas_dim: Optional[int] = None,
+        F: Optional[
+            Callable[[float], NDArray[np.float64]] | NDArray[np.float64]
+        ] = None,
+        H: Optional[NDArray[np.float64]] = None,
+        Q: Optional[
+            Callable[[float], NDArray[np.float64]] | NDArray[np.float64]
+        ] = None,
+        R: Optional[NDArray[np.float64]] = None,
         gate_threshold: Optional[float] = None,
+        *,
+        config: Optional[SingleTargetConfig] = None,
     ) -> None:
+        if config is not None:
+            if any(
+                v is not None for v in (state_dim, meas_dim, F, H, Q, R, gate_threshold)
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            if config.F is None or config.Q is None:
+                raise ConfigurationError(
+                    "config lacks matrix dynamics; construct with callables "
+                    "and use load_session's model arguments instead"
+                )
+            state_dim = config.state_dim
+            meas_dim = config.meas_dim
+            H = np.asarray(config.H, dtype=np.float64)
+            R = np.asarray(config.R, dtype=np.float64)
+            F = np.asarray(config.F, dtype=np.float64)
+            Q = np.asarray(config.Q, dtype=np.float64)
+            gate_threshold = config.gate_threshold
+
+        if (
+            state_dim is None
+            or meas_dim is None
+            or F is None
+            or H is None
+            or Q is None
+            or R is None
+        ):
+            raise ConfigurationError("state_dim, meas_dim, F, H, Q and R are required")
+
         self.state_dim = state_dim
         self.meas_dim = meas_dim
 
