@@ -36,16 +36,16 @@ evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
 - **Cubature point library remainder** — the estimation-grade
-  Gaussian-weight slice is ported (see CHANGELOG through v2.3.0); what
-  remains of the ~134 MATLAB files: Gaussian LCD samples (deferred
+  Gaussian-weight slice is ported, including the full
+  `seventh_order_cubature_points` algorithm surface (see CHANGELOG);
+  what remains of the ~134 MATLAB files: Gaussian LCD samples (deferred
   deliberately — the MATLAB source is a 505-line L-BFGS optimization over
   a modified Cramer-von Mises distance with four hand-derived analytic
   gradient routines, a research-grade optimizer to reimplement and
-  validate, not a transcription), the dimension-specific seventh-order
-  variant, Smolyak sparse grids (enabled by Genz-Keister's nesting
-  property, but original design work rather than a port — there is
-  nothing in the MATLAB source to transcribe), and the ~120
-  region-specific rules (cube, simplex, sphere, torus, etc.)
+  validate, not a transcription), Smolyak sparse grids (enabled by
+  Genz-Keister's nesting property, but original design work rather than
+  a port — there is nothing in the MATLAB source to transcribe), and the
+  ~120 region-specific rules (cube, simplex, sphere, torus, etc.)
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only

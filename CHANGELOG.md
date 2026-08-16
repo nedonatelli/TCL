@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`seventh_order_cubature_points` full algorithm surface**
+  (`pytcl.mathematical_functions.numerical_integration.cubature_points`):
+  added the `algorithm` parameter (0-9), covering every rule MATLAB
+  TCL's `seventhOrderCubPoints` exposes -- `algorithm=None` reproduces
+  MATLAB's default dispatch (n==1 -> 9, n==2 -> 2, otherwise -> 0);
+  existing callers passing only `n` (n>=3) get algorithm 0, bit-for-bit
+  unchanged. Algorithms 1 (E_n^{r^2} 7-1, n in {3,4,6,7}), 2/3
+  (E_2^{r^2} 7-1/7-2, n=2), 4-7 (E_3^{r^2} 7-1/7-2 upper/lower sign
+  variants, n=3), 8 (E_4^{r^2} 7-1, n=4), and 9 (the 1-D Gauss-Hermite
+  path, n=1) are new.
+  - Algorithms 3 and 8 do **not** reproduce MATLAB's numeric output:
+    MATLAB's documented corrections for those two (a 4/3 scale factor
+    for algorithm 3's r, s; a sqrt(4/5) factor for algorithm 8's r, s,
+    t) do not actually achieve the function's own degree-7-exactness
+    contract, verified with exact symbolic arithmetic. Algorithm 8's
+    real defect is a missing square root in Stroud's printed
+    `t = 3 + sqrt(3)` (should be `t = sqrt(3 + sqrt(3))`); with that fix
+    and no sqrt(4/5) rescaling, Stroud's original coefficients are
+    exact. Algorithm 3's 16-point, no-origin layout is provably
+    incapable of degree-7 exactness for any parameter choice (one
+    degree of freedom short of the 6 independent moment constraints);
+    a corrected 17-point rule (adding an origin point) is used instead.
+    See `_e2_7_2` and `_e4_7_1`'s docstrings in `cubature_points.py` for
+    the full derivations.
+  - `scripts/matlab_capture/capture_seventh_order.m` (owner-run, MATLAB
+    required) captures reference fixtures for the algorithms that do
+    match MATLAB's output; `tests/fixtures/matlab/` documents the
+    procedure. The fixture-comparison tests skip gracefully until those
+    fixtures are captured (`PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns the
+    skip into a hard failure).
+
 ## [2.3.0] - 2026-08-16
 
 ### Added

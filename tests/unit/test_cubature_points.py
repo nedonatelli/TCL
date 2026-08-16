@@ -6,6 +6,8 @@ monomial (sharpness -- guards against a vacuous exactness loop).
 """
 
 import itertools
+import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -460,8 +462,11 @@ class TestSeventhOrder:
     def test_invalid_n_raises(self):
         with pytest.raises(ValueError):
             seventh_order_cubature_points(0)
+        # n=2 no longer raises under the default dispatch (it now selects
+        # algorithm 2, MATLAB parity -- see TestSeventhOrderAlgorithms);
+        # algorithm 0 explicitly still requires n>=3.
         with pytest.raises(ValueError):
-            seventh_order_cubature_points(2)
+            seventh_order_cubature_points(2, algorithm=0)
 
 
 class TestSphericalRadial:
@@ -1712,3 +1717,102 @@ class TestCubaturePointMoments:
         pts, w = fifth_order_cubature_points(3)
         with pytest.raises(ValueError):
             cubature_point_moments(pts, w, lambda x: x, mean=np.zeros(2), cov=np.eye(2))
+
+
+class TestSeventhOrderAlgorithms:
+    """seventh_order_cubature_points algorithm surface (MATLAB parity).
+
+    Exactness verified per (algorithm, n) cell listed here; the docstring
+    must claim no more than this table.
+    """
+
+    CASES = [  # (algorithm, n, expected_num_points)
+        (1, 3, 2**3 + 2 * 9 + 1),
+        (1, 4, 2**4 + 2 * 16 + 1),
+        (1, 6, 2**6 + 2 * 36 + 1),
+        (1, 7, 2**7 + 2 * 49 + 1),
+        (2, 2, 12),
+        # 17, not MATLAB's 16: MATLAB's 16-point, no-origin layout for
+        # algorithm 3 is provably incapable of degree-7 exactness for any
+        # choice of its parameters (see _e2_7_2's docstring); a 17th point
+        # at the origin supplies the missing degree of freedom.
+        (3, 2, 17),
+        (4, 3, 27),
+        (5, 3, 27),
+        (6, 3, 33),
+        (7, 3, 33),
+        (8, 4, 49),
+        (9, 1, 4),
+    ]
+
+    @pytest.mark.parametrize("algorithm,n,num_points", CASES)
+    def test_exact_through_degree_7(self, algorithm, n, num_points):
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        assert pts.shape == (num_points, n)
+        assert abs(w.sum() - 1.0) < 1e-12
+        assert_rule_exact(pts, w, n, 7)
+
+    def test_default_algorithm_dispatch(self):
+        # MATLAB default logic: n==1 -> 9, n==2 -> 2, else 0
+        p1, _ = seventh_order_cubature_points(1)
+        assert p1.shape[0] == 4
+        p2, _ = seventh_order_cubature_points(2)
+        assert p2.shape[0] == 12
+        p3, w3 = seventh_order_cubature_points(3)
+        e3, we3 = seventh_order_cubature_points(3, algorithm=0)
+        np.testing.assert_array_equal(p3, e3)
+        np.testing.assert_array_equal(w3, we3)
+
+    @pytest.mark.parametrize(
+        "algorithm,bad_n",
+        [(1, 2), (1, 5), (1, 8), (2, 3), (3, 1), (4, 2), (8, 3), (9, 2)],
+    )
+    def test_invalid_dimension_raises(self, algorithm, bad_n):
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(bad_n, algorithm=algorithm)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(3, algorithm=10)
+
+
+_MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
+
+
+def _load_matlab_fixture(name):
+    path = _MATLAB_FIXTURES / name
+    if not path.exists():
+        if os.environ.get("PYTCL_REQUIRE_MATLAB_FIXTURES") == "1":
+            pytest.fail(
+                f"fixture {name} required but absent -- run "
+                "scripts/matlab_capture/capture_seventh_order.m in MATLAB "
+                "with the TCL library on path to generate it"
+            )
+        pytest.skip(
+            f"MATLAB fixture {name} not captured yet -- run "
+            "scripts/matlab_capture/capture_seventh_order.m in MATLAB "
+            "with the TCL library on path to generate it"
+        )
+    data = np.loadtxt(path, delimiter=",")
+    return data[:, :-1], data[:, -1]
+
+
+class TestSeventhOrderMatlabFixtures:
+    # Algorithms 3 and 8 are excluded: this port's _e2_7_2 and _e4_7_1
+    # deliberately do NOT reproduce MATLAB's seventhOrderCubPoints output
+    # for those two algorithms, because that output does not satisfy the
+    # function's own degree-7-exactness contract (see _e2_7_2/_e4_7_1
+    # docstrings and TestSeventhOrderAlgorithms.CASES's inline note) --
+    # a "matches MATLAB" comparison for them would necessarily fail by
+    # design and would not indicate a defect in this port.
+    _PARITY_CASES = [c for c in TestSeventhOrderAlgorithms.CASES if c[0] not in (3, 8)]
+
+    @pytest.mark.parametrize("algorithm,n,_", _PARITY_CASES)
+    def test_matches_matlab(self, algorithm, n, _):
+        ref_pts, ref_w = _load_matlab_fixture(f"seventh_order_alg{algorithm}_n{n}.csv")
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        # order-independent comparison: sort both point sets lexicographically
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        np.testing.assert_allclose(pts[oa], ref_pts[ob], atol=1e-12)
+        np.testing.assert_allclose(w[oa], ref_w[ob], atol=1e-12)
