@@ -33,8 +33,15 @@ from pytcl.diagnostics import NIS_WINDOW, diagnostics_enabled, logger
 from pytcl.dynamic_estimation import IMMEstimator
 from pytcl.dynamic_estimation.configs import IMMConfig
 from pytcl.io.serialize import _check_finite, _codec
-from pytcl.trackers import MultiTargetTracker, SingleTargetTracker, TrackStatus
+from pytcl.trackers import (
+    MHTConfig,
+    MHTTracker,
+    MultiTargetTracker,
+    SingleTargetTracker,
+    TrackStatus,
+)
 from pytcl.trackers.configs import MultiTargetConfig, SingleTargetConfig
+from pytcl.trackers.hypothesis import Hypothesis, MHTTrack, MHTTrackStatus
 from pytcl.trackers.multi_target import _InternalTrack
 
 __all__ = [
@@ -170,7 +177,126 @@ class MultiTargetSnapshot(msgspec.Struct, tag=True):
     time: float
 
 
-_Snapshot = Union[SingleTargetSnapshot, IMMSnapshot, MultiTargetSnapshot]
+class MHTTrackSnapshot(msgspec.Struct):
+    """Snapshot of one :class:`~pytcl.trackers.hypothesis.MHTTrack` branch.
+
+    Attributes
+    ----------
+    id : int
+        Unique track identifier.
+    state : list of float
+        Flattened state estimate.
+    covariance : list of list of float
+        State covariance.
+    score : float
+        Log-likelihood ratio score.
+    status : str
+        :class:`~pytcl.trackers.hypothesis.MHTTrackStatus` member name
+        (restore via ``MHTTrackStatus[status]``).
+    history : list of int
+        Measurement indices associated with this track branch (-1 for a
+        missed detection).
+    parent_id : int
+        ID of the parent track (-1 for root tracks).
+    scan_created : int
+        Scan number when this track branch was created.
+    n_hits, n_misses : int
+        Update/miss counters used by confirmation and deletion logic.
+    """
+
+    id: int
+    state: list[float]
+    covariance: list[list[float]]
+    score: float
+    status: str
+    history: list[int]
+    parent_id: int
+    scan_created: int
+    n_hits: int
+    n_misses: int
+
+
+class HypothesisSnapshot(msgspec.Struct):
+    """Snapshot of one :class:`~pytcl.trackers.hypothesis.Hypothesis`.
+
+    Attributes
+    ----------
+    id : int
+        Unique hypothesis identifier.
+    probability : float
+        Posterior probability of this hypothesis.
+    track_ids : list of int
+        IDs of tracks included in this hypothesis.
+    scan_created : int
+        Scan number when this hypothesis was created.
+    parent_id : int
+        ID of the parent hypothesis (-1 for the initial hypothesis).
+    """
+
+    id: int
+    probability: float
+    track_ids: list[int]
+    scan_created: int
+    parent_id: int
+
+
+class MHTSnapshot(msgspec.Struct, tag=True):
+    """Snapshot of a :class:`~pytcl.trackers.MHTTracker`.
+
+    ``MHTConfig`` carries only algorithm parameters (no F/H/Q/R), so unlike
+    `SingleTargetSnapshot`/`MultiTargetSnapshot` this snapshot carries the
+    construction recipe -- `state_dim`, `meas_dim`, `H`, `R`, and optional
+    `F`/`Q` -- alongside the embedded config.
+
+    Attributes
+    ----------
+    config : MHTConfig
+        Algorithm configuration (n_scan, max_hypotheses, thresholds, ...).
+    state_dim, meas_dim : int
+        State and measurement vector dimensions.
+    H : list of list of float
+        Measurement matrix.
+    R : list of list of float
+        Measurement noise covariance.
+    F, Q : list of list of float, optional
+        State transition matrix / process noise covariance; ``None`` when
+        the tracker was built with callable dynamics.
+    init_covariance : list of list of float
+        Initial covariance assigned to newly initiated tracks.
+    time : float
+        Tracker's internal clock at snapshot time.
+    scan : int
+        Tracker's internal scan counter at snapshot time.
+    hypotheses : list of HypothesisSnapshot
+        Hypothesis tree's current hypotheses.
+    tracks : list of MHTTrackSnapshot
+        Hypothesis tree's track branches, keyed by their own `id` on
+        restore.
+    current_scan : int
+        Hypothesis tree's scan counter at snapshot time.
+    next_hypothesis_id, next_track_id : int
+        Next ids to be assigned by the hypothesis tree; preserved so a
+        resumed tracker never reissues an id already in use.
+    """
+
+    config: MHTConfig
+    state_dim: int
+    meas_dim: int
+    H: list[list[float]]
+    R: list[list[float]]
+    init_covariance: list[list[float]]
+    time: float
+    scan: int
+    hypotheses: list[HypothesisSnapshot]
+    tracks: list[MHTTrackSnapshot]
+    current_scan: int
+    next_hypothesis_id: int
+    next_track_id: int
+    F: Optional[list[list[float]]] = None
+    Q: Optional[list[list[float]]] = None
+
+
+_Snapshot = Union[SingleTargetSnapshot, IMMSnapshot, MultiTargetSnapshot, MHTSnapshot]
 
 
 class SessionEnvelope(msgspec.Struct):
@@ -329,6 +455,99 @@ def _restore_multi_target(
     return t
 
 
+def _snap_mht(t: MHTTracker) -> MHTSnapshot:
+    tree = t.hypothesis_tree
+    tracks = [
+        MHTTrackSnapshot(
+            id=tr.id,
+            state=tr.state.tolist(),
+            covariance=tr.covariance.tolist(),
+            score=float(tr.score),
+            status=tr.status.name,
+            history=list(tr.history),
+            parent_id=tr.parent_id,
+            scan_created=tr.scan_created,
+            n_hits=tr.n_hits,
+            n_misses=tr.n_misses,
+        )
+        for tr in tree.tracks.values()
+    ]
+    hypotheses = [
+        HypothesisSnapshot(
+            id=h.id,
+            probability=float(h.probability),
+            track_ids=list(h.track_ids),
+            scan_created=h.scan_created,
+            parent_id=h.parent_id,
+        )
+        for h in tree.hypotheses
+    ]
+    return MHTSnapshot(
+        config=t.config,
+        state_dim=t.state_dim,
+        meas_dim=t.meas_dim,
+        H=t.H.tolist(),
+        R=t.R.tolist(),
+        init_covariance=t.init_covariance.tolist(),
+        time=t._time,
+        scan=t._scan,
+        hypotheses=hypotheses,
+        tracks=tracks,
+        current_scan=tree.current_scan,
+        next_hypothesis_id=tree._next_hypothesis_id,
+        next_track_id=tree._next_track_id,
+        F=None if t._F_matrix is None else t._F_matrix.tolist(),
+        Q=None if t._Q_matrix is None else t._Q_matrix.tolist(),
+    )
+
+
+def _restore_mht(s: MHTSnapshot, F: Any = None, Q: Any = None) -> MHTTracker:
+    F_in = _resolve_matrix("F", s.F, F)
+    Q_in = _resolve_matrix("Q", s.Q, Q)
+    t = MHTTracker(
+        s.state_dim,
+        s.meas_dim,
+        F_in,
+        np.asarray(s.H, dtype=np.float64),
+        Q_in,
+        np.asarray(s.R, dtype=np.float64),
+        config=s.config,
+        init_covariance=np.asarray(s.init_covariance, dtype=np.float64),
+    )
+    t._time = s.time
+    t._scan = s.scan
+    tree = t.hypothesis_tree
+    tree.tracks = {
+        ts.id: MHTTrack(
+            id=ts.id,
+            state=np.asarray(ts.state, dtype=np.float64),
+            covariance=np.asarray(ts.covariance, dtype=np.float64),
+            score=ts.score,
+            status=MHTTrackStatus[ts.status],
+            history=list(ts.history),
+            parent_id=ts.parent_id,
+            scan_created=ts.scan_created,
+            n_hits=ts.n_hits,
+            n_misses=ts.n_misses,
+        )
+        for ts in s.tracks
+    }
+    tree.hypotheses = [
+        Hypothesis(
+            id=hs.id,
+            probability=hs.probability,
+            track_ids=list(hs.track_ids),
+            scan_created=hs.scan_created,
+            parent_id=hs.parent_id,
+        )
+        for hs in s.hypotheses
+    ]
+    tree.current_scan = s.current_scan
+    tree._next_hypothesis_id = s.next_hypothesis_id
+    tree._next_track_id = s.next_track_id
+    return t
+
+
 def _snap_imm(e: IMMEstimator) -> IMMSnapshot:
     cfg = IMMConfig(
         n_modes=e.n_modes,
@@ -372,11 +591,13 @@ _SNAPSHOTTERS: dict[type, Callable[[Any], Any]] = {
     SingleTargetTracker: _snap_single_target,
     IMMEstimator: _snap_imm,
     MultiTargetTracker: _snap_multi_target,
+    MHTTracker: _snap_mht,
 }
 _RESTORERS: dict[str, Callable[..., Any]] = {
     "SingleTargetSnapshot": _restore_single_target,
     "IMMSnapshot": _restore_imm,
     "MultiTargetSnapshot": _restore_multi_target,
+    "MHTSnapshot": _restore_mht,
 }
 
 
@@ -384,9 +605,10 @@ def _check_snapshot_finite(snapshot: Any, fmt: str) -> None:
     """Walk every numeric field of `snapshot` and reject non-finite values
     under ``fmt="json"`` (mirrors ``serialize._check_finite``).
 
-    Recurses into nested Structs (e.g. a snapshot's ``config``) so new
-    snapshot types registered by later tasks are covered automatically,
-    without editing this function.
+    Recurses into nested Structs (e.g. a snapshot's ``config``) and into
+    lists of Structs (e.g. a snapshot's per-track entries) so new snapshot
+    types registered by later tasks are covered automatically, without
+    editing this function.
     """
     if fmt != "json":
         return
@@ -396,6 +618,10 @@ def _check_snapshot_finite(snapshot: Any, fmt: str) -> None:
             continue
         if isinstance(value, msgspec.Struct):
             _check_snapshot_finite(value, fmt)
+            continue
+        if isinstance(value, list) and value and isinstance(value[0], msgspec.Struct):
+            for item in value:
+                _check_snapshot_finite(item, fmt)
             continue
         if isinstance(value, (int, float, list)):
             arr = np.asarray(value, dtype=np.float64)
@@ -408,7 +634,7 @@ def save_session(obj: Any, *, fmt: str = "msgpack") -> bytes:
 
     Parameters
     ----------
-    obj : SingleTargetTracker, MultiTargetTracker, or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, or IMMEstimator
         The object to snapshot.
     fmt : {"msgpack", "json"}, optional
         Wire format. With ``"json"``, non-finite values anywhere in the
@@ -450,7 +676,7 @@ def save_session_file(obj: Any, path: Any, *, fmt: str = "msgpack") -> None:
 
     Parameters
     ----------
-    obj : SingleTargetTracker, MultiTargetTracker, or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, or IMMEstimator
         The object to snapshot.
     path : str or Path
         Destination file path.
@@ -472,8 +698,9 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
     **models : Any
         Rehydration arguments for snapshots that could not capture
         callable dynamics (``F=``/``Q=`` for a
-        :class:`~pytcl.trackers.SingleTargetTracker` or
-        :class:`~pytcl.trackers.MultiTargetTracker` built with callable
+        :class:`~pytcl.trackers.SingleTargetTracker`,
+        :class:`~pytcl.trackers.MultiTargetTracker`, or
+        :class:`~pytcl.trackers.MHTTracker` built with callable
         ``F``/``Q``). Consumed only where the snapshot actually needs
         them, one matrix at a time: if the snapshot's config already has
         a matrix for ``F`` (or ``Q``), passing that kwarg raises rather

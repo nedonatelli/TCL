@@ -6,7 +6,12 @@ import pytest
 from pytcl.core.exceptions import ConfigurationError, FormatError
 from pytcl.dynamic_estimation import IMMEstimator
 from pytcl.io import load_session, load_session_file, save_session, save_session_file
-from pytcl.trackers import MultiTargetTracker, SingleTargetTracker
+from pytcl.trackers import (
+    MHTConfig,
+    MHTTracker,
+    MultiTargetTracker,
+    SingleTargetTracker,
+)
 
 F4 = np.eye(4)
 H24 = np.eye(2, 4)
@@ -205,6 +210,70 @@ class TestMultiTargetSession:
 
     def test_matrix_config_rejects_rehydration_kwargs(self):
         data = save_session(_mt_tracker())
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=2 * F4)
+        with pytest.raises(ConfigurationError):
+            load_session(data, Q=2 * Q4)
+
+
+def _mht_tracker():
+    t = MHTTracker(4, 2, F4, H24, Q4, R2, config=MHTConfig(n_scan=2, max_hypotheses=20))
+    rng = np.random.Generator(np.random.PCG64(11))
+    for _ in range(3):
+        t.process([rng.normal(size=2), rng.normal(size=2) + 8.0], dt=1.0)
+    return t
+
+
+class TestMHTSession:
+    def test_roundtrip_tree(self):
+        t = _mht_tracker()
+        back = load_session(save_session(t))
+        assert back.hypothesis_tree.current_scan == t.hypothesis_tree.current_scan
+        assert set(back.hypothesis_tree.tracks) == set(t.hypothesis_tree.tracks)
+        for tid, tr in t.hypothesis_tree.tracks.items():
+            btr = back.hypothesis_tree.tracks[tid]
+            assert (
+                btr.score,
+                btr.status,
+                btr.history,
+                btr.parent_id,
+                btr.scan_created,
+            ) == (tr.score, tr.status, tr.history, tr.parent_id, tr.scan_created)
+            np.testing.assert_array_equal(btr.state, tr.state)
+        assert [h.id for h in back.hypothesis_tree.hypotheses] == [
+            h.id for h in t.hypothesis_tree.hypotheses
+        ]
+
+    def test_json_roundtrip_tree(self):
+        # nested list-of-Struct fields (tracks, hypotheses) must not trip
+        # the json non-finite walker
+        t = _mht_tracker()
+        back = load_session(save_session(t, fmt="json"), fmt="json")
+        assert set(back.hypothesis_tree.tracks) == set(t.hypothesis_tree.tracks)
+        assert [h.id for h in back.hypothesis_tree.hypotheses] == [
+            h.id for h in t.hypothesis_tree.hypotheses
+        ]
+
+    def test_resume_equals_uninterrupted(self):
+        a = _mht_tracker()
+        b = load_session(save_session(_mht_tracker()))
+        z = [np.array([0.5, -0.5])]
+        ra, rb = a.process(z, dt=1.0), b.process(z, dt=1.0)
+        assert [t.id for t in ra.all_tracks] == [t.id for t in rb.all_tracks]
+        for ta, tb in zip(ra.all_tracks, rb.all_tracks):
+            np.testing.assert_array_equal(ta.state, tb.state)
+
+    def test_callable_dynamics_require_rehydration(self):
+        t = MHTTracker(4, 2, lambda dt: F4, H24, Q4, R2)
+        t.process([np.array([0.0, 0.0])], dt=1.0)
+        data = save_session(t)
+        with pytest.raises(ConfigurationError):
+            load_session(data)  # no F given
+        back = load_session(data, F=lambda dt: F4)
+        assert set(back.hypothesis_tree.tracks) == set(t.hypothesis_tree.tracks)
+
+    def test_matrix_config_rejects_rehydration_kwargs(self):
+        data = save_session(_mht_tracker())
         with pytest.raises(ConfigurationError):
             load_session(data, F=2 * F4)
         with pytest.raises(ConfigurationError):

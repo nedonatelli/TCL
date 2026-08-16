@@ -151,6 +151,11 @@ class MHTTracker:
         self.state_dim = state_dim
         self.meas_dim = meas_dim
 
+        # Store dynamics, retaining the pre-normalization matrix form (None
+        # for callables) so session snapshots can recover it -- see
+        # pytcl.io.session.
+        self._F_matrix = None if callable(F) else np.asarray(F, dtype=np.float64)
+        self._Q_matrix = None if callable(Q) else np.asarray(Q, dtype=np.float64)
         self._F = F if callable(F) else lambda dt: np.asarray(F, dtype=np.float64)
         self.H = np.asarray(H, dtype=np.float64)
         self._Q = Q if callable(Q) else lambda dt: np.asarray(Q, dtype=np.float64)
