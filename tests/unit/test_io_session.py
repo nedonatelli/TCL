@@ -1,10 +1,12 @@
 """Tests for session save/restore: SingleTargetTracker and IMMEstimator."""
 
+import json
+
 import numpy as np
 import pytest
 
 from pytcl.core.exceptions import ConfigurationError, FormatError
-from pytcl.dynamic_estimation import IMMEstimator
+from pytcl.dynamic_estimation import GaussianSumFilter, IMMEstimator, RBPFFilter
 from pytcl.io import load_session, load_session_file, save_session, save_session_file
 from pytcl.trackers import (
     MHTConfig,
@@ -278,3 +280,112 @@ class TestMHTSession:
             load_session(data, F=2 * F4)
         with pytest.raises(ConfigurationError):
             load_session(data, Q=2 * Q4)
+
+
+class TestRBPFSession:
+    def test_resume_bit_reproducible_with_instance_rng(self):
+        def build():
+            f = RBPFFilter(
+                max_particles=16, rng=np.random.Generator(np.random.PCG64(42))
+            )
+            f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=16)
+            return f
+
+        a = build()
+        b = load_session(save_session(build()))
+        g_mat = np.eye(2)
+        f_mat = np.eye(2)
+        Qy = 0.01 * np.eye(2)
+        Qx = 0.01 * np.eye(2)
+        for filt in (a, b):
+            filt.predict(
+                lambda y: g_mat @ y, g_mat, Qy, lambda x, y: f_mat @ x, f_mat, Qx
+            )
+        for pa, pb in zip(a.get_particles(), b.get_particles()):
+            np.testing.assert_array_equal(pa.y, pb.y)
+            np.testing.assert_array_equal(pa.x, pb.x)
+            np.testing.assert_array_equal(pa.P, pb.P)
+            assert pa.w == pb.w
+
+    def test_global_rng_roundtrips_with_none_state(self):
+        f = RBPFFilter(max_particles=8)
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=8)
+        back = load_session(save_session(f))
+        assert back._rng is None
+        assert len(back.get_particles()) == 8
+
+    def test_instance_rng_state_roundtrips(self):
+        f = RBPFFilter(max_particles=8, rng=np.random.Generator(np.random.PCG64(3)))
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=8)
+        back = load_session(save_session(f))
+        assert back._rng.bit_generator.state == f._rng.bit_generator.state
+
+    @pytest.mark.parametrize("fmt", ["msgpack", "json"])
+    def test_particles_roundtrip_both_formats(self, fmt):
+        f = RBPFFilter(max_particles=5)
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=5)
+        back = load_session(save_session(f, fmt=fmt), fmt=fmt)
+        assert len(back.get_particles()) == len(f.get_particles())
+        for pa, pb in zip(f.get_particles(), back.get_particles()):
+            np.testing.assert_array_equal(pa.y, pb.y)
+            np.testing.assert_array_equal(pa.x, pb.x)
+            np.testing.assert_array_equal(pa.P, pb.P)
+            assert pa.w == pb.w
+
+    def test_rejects_rehydration_kwargs(self):
+        f = RBPFFilter(max_particles=4)
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=4)
+        data = save_session(f)
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=np.eye(2))
+
+    def test_rng_state_is_pcg64_json(self):
+        f = RBPFFilter(max_particles=4, rng=np.random.Generator(np.random.PCG64(9)))
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=4)
+        data = save_session(f, fmt="json")
+        env = json.loads(data)
+        rng_state = json.loads(env["snapshot"]["rng_state"])
+        assert rng_state["bit_generator"] == "PCG64"
+
+
+class TestGSFSession:
+    def test_components_roundtrip(self):
+        f = GaussianSumFilter(max_components=3)
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        back = load_session(save_session(f))
+        assert back.get_num_components() == f.get_num_components()
+        for ca, cb in zip(f.get_components(), back.get_components()):
+            np.testing.assert_array_equal(ca.x, cb.x)
+            np.testing.assert_array_equal(ca.P, cb.P)
+            assert ca.w == cb.w
+
+    @pytest.mark.parametrize("fmt", ["msgpack", "json"])
+    def test_components_roundtrip_both_formats(self, fmt):
+        f = GaussianSumFilter(max_components=3)
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        back = load_session(save_session(f, fmt=fmt), fmt=fmt)
+        for ca, cb in zip(f.get_components(), back.get_components()):
+            np.testing.assert_array_equal(ca.x, cb.x)
+            np.testing.assert_array_equal(ca.P, cb.P)
+            assert ca.w == cb.w
+
+    def test_instance_rng_state_roundtrips(self):
+        f = GaussianSumFilter(
+            max_components=3, rng=np.random.Generator(np.random.PCG64(7))
+        )
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        back = load_session(save_session(f))
+        assert back._rng.bit_generator.state == f._rng.bit_generator.state
+
+    def test_global_rng_roundtrips_with_none_state(self):
+        f = GaussianSumFilter(max_components=3)
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        back = load_session(save_session(f))
+        assert back._rng is None
+
+    def test_rejects_rehydration_kwargs(self):
+        f = GaussianSumFilter(max_components=3)
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        data = save_session(f)
+        with pytest.raises(ConfigurationError):
+            load_session(data, F=np.eye(2))

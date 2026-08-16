@@ -20,6 +20,7 @@ loading such a session without the matching keyword argument raises
 :class:`~pytcl.core.exceptions.ConfigurationError`.
 """
 
+import json
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
@@ -30,8 +31,10 @@ import numpy as np
 import pytcl
 from pytcl.core.exceptions import ConfigurationError, FormatError
 from pytcl.diagnostics import NIS_WINDOW, diagnostics_enabled, logger
-from pytcl.dynamic_estimation import IMMEstimator
-from pytcl.dynamic_estimation.configs import IMMConfig
+from pytcl.dynamic_estimation import GaussianSumFilter, IMMEstimator, RBPFFilter
+from pytcl.dynamic_estimation.configs import GaussianSumConfig, IMMConfig, RBPFConfig
+from pytcl.dynamic_estimation.gaussian_sum_filter import GaussianComponent
+from pytcl.dynamic_estimation.rbpf import RBPFParticle
 from pytcl.io.serialize import _check_finite, _codec
 from pytcl.trackers import (
     MHTConfig,
@@ -296,7 +299,90 @@ class MHTSnapshot(msgspec.Struct, tag=True):
     Q: Optional[list[list[float]]] = None
 
 
-_Snapshot = Union[SingleTargetSnapshot, IMMSnapshot, MultiTargetSnapshot, MHTSnapshot]
+class GaussianSumSnapshot(msgspec.Struct, tag=True):
+    """Snapshot of a
+    :class:`~pytcl.dynamic_estimation.gaussian_sum_filter.GaussianSumFilter`.
+
+    Models arrive per-call (``predict(f, F, Q)``), not as construction-time
+    matrices, so unlike `MultiTargetSnapshot`/`MHTSnapshot` there is no
+    callable-dynamics escape hatch here: `load_session` takes no
+    rehydration kwargs for this snapshot type.
+
+    Attributes
+    ----------
+    config : GaussianSumConfig
+        Component-count/merge/prune configuration.
+    components_x : list of list of float
+        Per-component state estimates.
+    components_P : list of list of list of float
+        Per-component state covariances.
+    components_w : list of float
+        Per-component weights.
+    rng_state : str, optional
+        JSON-encoded ``rng.bit_generator.state`` of the filter's instance
+        RNG (stdlib ``json``, not msgpack -- PCG64 state holds 128-bit
+        integers that exceed msgpack/msgspec's int range). ``None`` means
+        the filter used the legacy global ``numpy.random`` state; resuming
+        such a filter falls back to that same (non-reproducible) global
+        state. Restoring a non-``None`` state requires a PCG64-backed
+        generator (numpy's default) -- assigning a different
+        bit-generator's state fails loudly via numpy's own validation.
+    """
+
+    config: GaussianSumConfig
+    components_x: list[list[float]]
+    components_P: list[list[list[float]]]
+    components_w: list[float]
+    rng_state: Optional[str] = None
+
+
+class RBPFSnapshot(msgspec.Struct, tag=True):
+    """Snapshot of a :class:`~pytcl.dynamic_estimation.rbpf.RBPFFilter`.
+
+    Models arrive per-call (``predict(g, G, Qy, f, F, Qx)``), not as
+    construction-time matrices, so unlike `MultiTargetSnapshot`/
+    `MHTSnapshot` there is no callable-dynamics escape hatch here:
+    `load_session` takes no rehydration kwargs for this snapshot type.
+
+    Attributes
+    ----------
+    config : RBPFConfig
+        Particle-count/resample/merge configuration.
+    particles_y : list of list of float
+        Per-particle nonlinear state components.
+    particles_x : list of list of float
+        Per-particle linear state estimates.
+    particles_P : list of list of list of float
+        Per-particle linear state covariances.
+    particles_w : list of float
+        Per-particle weights.
+    rng_state : str, optional
+        JSON-encoded ``rng.bit_generator.state`` of the filter's instance
+        RNG (stdlib ``json``, not msgpack -- PCG64 state holds 128-bit
+        integers that exceed msgpack/msgspec's int range). ``None`` means
+        the filter used the legacy global ``numpy.random`` state; resuming
+        such a filter falls back to that same (non-reproducible) global
+        state. Restoring a non-``None`` state requires a PCG64-backed
+        generator (numpy's default) -- assigning a different
+        bit-generator's state fails loudly via numpy's own validation.
+    """
+
+    config: RBPFConfig
+    particles_y: list[list[float]]
+    particles_x: list[list[float]]
+    particles_P: list[list[list[float]]]
+    particles_w: list[float]
+    rng_state: Optional[str] = None
+
+
+_Snapshot = Union[
+    SingleTargetSnapshot,
+    IMMSnapshot,
+    MultiTargetSnapshot,
+    MHTSnapshot,
+    GaussianSumSnapshot,
+    RBPFSnapshot,
+]
 
 
 class SessionEnvelope(msgspec.Struct):
@@ -587,17 +673,123 @@ def _restore_imm(s: IMMSnapshot, **rehydration: Any) -> IMMEstimator:
     return e
 
 
+def _rng_state_to_json(rng: Optional[np.random.Generator]) -> Optional[str]:
+    """Encode an instance RNG's bit-generator state as a JSON string.
+
+    Uses stdlib ``json`` rather than msgpack/msgspec: PCG64's state holds
+    128-bit integers (``state`` and ``inc``), which exceed the 64-bit
+    range msgpack/msgspec can carry as ints. ``None`` in means the filter
+    used the legacy global ``numpy.random`` state, which round-trips as
+    ``None`` (no state to capture).
+    """
+    return None if rng is None else json.dumps(rng.bit_generator.state)
+
+
+def _rng_from_json(s: Optional[str]) -> Optional[np.random.Generator]:
+    """Decode a JSON-encoded PCG64 bit-generator state back into a
+    :class:`numpy.random.Generator`.
+
+    ``None`` in means the snapshot was taken from a filter using the
+    legacy global ``numpy.random`` state; the restored filter resumes on
+    that same (non-reproducible) global state via ``rng=None``. A non-PCG64
+    state fails loudly on assignment via numpy's own validation --
+    session support for instance RNGs is PCG64-only, matching numpy's
+    default generator.
+    """
+    if s is None:
+        return None
+    gen = np.random.Generator(np.random.PCG64())
+    gen.bit_generator.state = json.loads(s)
+    return gen
+
+
+def _snap_gaussian_sum(f: GaussianSumFilter) -> GaussianSumSnapshot:
+    cfg = GaussianSumConfig(
+        max_components=f.max_components,
+        merge_threshold=f.merge_threshold,
+        prune_threshold=f.prune_threshold,
+    )
+    return GaussianSumSnapshot(
+        config=cfg,
+        components_x=[c.x.tolist() for c in f.components],
+        components_P=[c.P.tolist() for c in f.components],
+        components_w=[float(c.w) for c in f.components],
+        rng_state=_rng_state_to_json(f._rng),
+    )
+
+
+def _restore_gaussian_sum(
+    s: GaussianSumSnapshot, **rehydration: Any
+) -> GaussianSumFilter:
+    if rehydration:
+        raise ConfigurationError(
+            "Gaussian-sum snapshots are self-contained and take no "
+            f"rehydration kwargs; got: {sorted(rehydration)}"
+        )
+    filt = GaussianSumFilter(config=s.config, rng=_rng_from_json(s.rng_state))
+    filt.components = [
+        GaussianComponent(
+            x=np.asarray(x, dtype=np.float64),
+            P=np.asarray(P, dtype=np.float64),
+            w=w,
+        )
+        for x, P, w in zip(s.components_x, s.components_P, s.components_w)
+    ]
+    return filt
+
+
+def _snap_rbpf(f: RBPFFilter) -> RBPFSnapshot:
+    cfg = RBPFConfig(
+        max_particles=f.max_particles,
+        resample_threshold=f.resample_threshold,
+        merge_threshold=f.merge_threshold,
+    )
+    return RBPFSnapshot(
+        config=cfg,
+        particles_y=[p.y.tolist() for p in f.particles],
+        particles_x=[p.x.tolist() for p in f.particles],
+        particles_P=[p.P.tolist() for p in f.particles],
+        particles_w=[float(p.w) for p in f.particles],
+        rng_state=_rng_state_to_json(f._rng),
+    )
+
+
+def _restore_rbpf(s: RBPFSnapshot, **rehydration: Any) -> RBPFFilter:
+    if rehydration:
+        raise ConfigurationError(
+            "RBPF snapshots are self-contained and take no rehydration "
+            f"kwargs; got: {sorted(rehydration)}"
+        )
+    filt = RBPFFilter(config=s.config, rng=_rng_from_json(s.rng_state))
+    filt.particles = [
+        RBPFParticle(
+            y=np.asarray(y, dtype=np.float64),
+            x=np.asarray(x, dtype=np.float64),
+            P=np.asarray(P, dtype=np.float64),
+            w=w,
+        )
+        for y, x, P, w in zip(
+            s.particles_y, s.particles_x, s.particles_P, s.particles_w
+        )
+    ]
+    return filt
+
+
 _SNAPSHOTTERS: dict[type, Callable[[Any], Any]] = {
     SingleTargetTracker: _snap_single_target,
     IMMEstimator: _snap_imm,
     MultiTargetTracker: _snap_multi_target,
     MHTTracker: _snap_mht,
+    GaussianSumFilter: _snap_gaussian_sum,
+    RBPFFilter: _snap_rbpf,
 }
 _RESTORERS: dict[str, Callable[..., Any]] = {
     "SingleTargetSnapshot": _restore_single_target,
     "IMMSnapshot": _restore_imm,
     "MultiTargetSnapshot": _restore_multi_target,
     "MHTSnapshot": _restore_mht,
+    "GaussianSumSnapshot": _restore_gaussian_sum,
+    "RBPFSnapshot": _restore_rbpf,
 }
 
 
@@ -634,7 +826,8 @@ def save_session(obj: Any, *, fmt: str = "msgpack") -> bytes:
 
     Parameters
     ----------
-    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, IMMEstimator, \
+GaussianSumFilter, or RBPFFilter
         The object to snapshot.
     fmt : {"msgpack", "json"}, optional
         Wire format. With ``"json"``, non-finite values anywhere in the
@@ -676,7 +869,8 @@ def save_session_file(obj: Any, path: Any, *, fmt: str = "msgpack") -> None:
 
     Parameters
     ----------
-    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, or IMMEstimator
+    obj : SingleTargetTracker, MultiTargetTracker, MHTTracker, IMMEstimator, \
+GaussianSumFilter, or RBPFFilter
         The object to snapshot.
     path : str or Path
         Destination file path.
@@ -707,8 +901,11 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
         than silently overriding the saved dynamics; if the config lacks
         it, omitting the kwarg raises rather than restoring a tracker
         that cannot predict. Snapshot types with no callable-dynamics
-        escape hatch at all (:class:`~pytcl.dynamic_estimation.IMMEstimator`)
-        are fully self-contained and reject every keyword argument.
+        escape hatch at all (:class:`~pytcl.dynamic_estimation.IMMEstimator`,
+        :class:`~pytcl.dynamic_estimation.GaussianSumFilter`,
+        :class:`~pytcl.dynamic_estimation.RBPFFilter` -- these take models
+        per predict/update call, not at construction) are fully
+        self-contained and reject every keyword argument.
 
     Returns
     -------
