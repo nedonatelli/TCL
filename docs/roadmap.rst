@@ -39,31 +39,13 @@ Current State (v2.3.0)
 * **Tooling**: uv-managed workflow, ruff (lint + format), ty as the type
   gate, prek hooks, pinned CI toolchain
 
-Released
---------
-
-* **v2.0.0** (2026-08-06) — the correctness release: the pre-2.0 audit
-  closed, hard API breaks documented in the
-  :doc:`migration guide <migration_v1_to_v2>`.
-* **v2.1.0** (2026-08-10) — the Diagnostics release: ``pytcl.diagnostics``,
-  the Gaussian cubature-point library with CKF hookup, real-data
-  validations, and the completed uv/ty toolchain migration.
-* **v2.2.0** (2026-08-12) — the Results I/O release: polars ingest
-  (CSV/Parquet) and ``to_polars()`` accessors, msgspec JSON/MessagePack
-  serialization, ASDF export, AIS NMEA decoding validated against a
-  recorded capture of 299 real ships, and HDF5 track-storage compression
-  measured at 4.73x.
-* **v2.3.0** (2026-08-16) — the typed configs + save/restore release:
-  filter/tracker configs as ``msgspec.Struct`` accepted via a
-  keyword-only ``config=``, and full tracker/filter state snapshot and
-  resume, bit-exact for the four deterministic classes.
-
 Next
 ----
 
 * **Measured backlog**: the remaining MATLAB parity gaps
-  (:doc:`matlab_parity_inventory`) — Genz-Keister and LCD cubature points,
-  the refraction suite, localization estimators, and filter variants.
+  (:doc:`matlab_parity_inventory`) — the cubature remainder (LCD samples,
+  Smolyak sparse grids, region-specific rules), the refraction suite,
+  localization estimators, and filter variants.
 
 Long term (unscheduled)
 -----------------------
