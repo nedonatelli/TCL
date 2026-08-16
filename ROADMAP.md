@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
 **Current Version:** v2.3.0, released 16 August 2026
-**Test Suite:** 6,300+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Test Suite:** 6,700+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** v2.3.0 (typed configs + sessions) is out: typed `msgspec.Struct`
 configs for the filter/tracker constructors and full state snapshot/resume
 for six tracker and filter classes. It follows v2.2.0 (the Results I/O
