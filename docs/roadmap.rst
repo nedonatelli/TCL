@@ -10,7 +10,7 @@ history lives in `CHANGELOG.md
 Current State (v2.3.0)
 ----------------------
 
-* **6,300+ tests** passing, 90% coverage, docstring examples run in CI
+* **6,700+ tests** passing, 90% coverage, docstring examples run in CI
 * **Typed configs and sessions** (:doc:`sessions`): ``msgspec.Struct``
   configs (``IMMConfig``, ``GaussianSumConfig``, ``RBPFConfig``,
   ``SingleTargetConfig``, ``MultiTargetConfig``) accepted via a

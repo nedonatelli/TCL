@@ -18,7 +18,7 @@ For optional features:
    pip install nrl-tracker[astronomy]    # Orbital mechanics with astropy
    pip install nrl-tracker[geodesy]      # Advanced geodetic functions
    pip install nrl-tracker[signal]       # Wavelet transforms
-   pip install nrl-tracker[all]          # Everything
+   pip install nrl-tracker[all]          # Every user-facing extra except gpu/gpu-apple
 
 Naming Conventions
 ------------------

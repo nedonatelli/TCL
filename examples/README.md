@@ -178,7 +178,7 @@ All examples require:
 - pytcl (installed package)
 
 Optional dependencies:
-- Skyfield (for astronomy examples)
+- astropy, jplephem, sgp4, the `[astronomy]` extra (for astronomy examples)
 - polars, the `[dataframe]` extra (for `measurement_ingest.py`; a plain
   `uv sync` does not install it, and the script hard-fails without it
   rather than skipping -- see `tests/contract/test_examples.py`)

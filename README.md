@@ -277,16 +277,16 @@ Key differences:
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=pytcl
+uv run pytest --cov=pytcl
 
 # Run only fast tests
-pytest -m "not slow"
+uv run pytest -m "not slow"
 
 # Run tests validated against MATLAB
-pytest -m matlab_validated
+uv run pytest -m matlab_validated
 ```
 
 A bare local `pytest` run picks up `tests/property/`'s Hypothesis-generated

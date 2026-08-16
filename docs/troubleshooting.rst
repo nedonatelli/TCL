@@ -56,7 +56,7 @@ Installation Issues
 
    # CuPy is optional - you can use CPU version
    # Or install CuPy for GPU acceleration
-   pip install cupy-cuda11x  # Replace 11x with your CUDA version
+   pip install cupy-cuda12x  # Replace 12x with your CUDA version
 
    # Check if GPU backend works
    python -c "from pytcl.gpu import to_gpu; print('GPU backend OK')"
