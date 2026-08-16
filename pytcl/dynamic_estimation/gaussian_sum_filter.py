@@ -64,6 +64,7 @@ class GaussianSumFilter:
         prune_threshold: Optional[float] = None,
         *,
         config: Optional[GaussianSumConfig] = None,
+        rng: Optional[np.random.Generator] = None,
     ):
         """Initialize Gaussian Sum Filter.
 
@@ -80,6 +81,10 @@ class GaussianSumFilter:
         config : GaussianSumConfig, optional
             Typed configuration. Mutually exclusive with the individual
             keyword arguments above.
+        rng : numpy.random.Generator, optional
+            Instance random number generator for component initialization.
+            When ``None`` (default), falls back to the legacy global
+            ``numpy.random`` state.
         """
         if config is not None:
             if any(
@@ -105,6 +110,7 @@ class GaussianSumFilter:
         self.max_components = max_components
         self.merge_threshold = merge_threshold
         self.prune_threshold = prune_threshold
+        self._rng = rng
 
     def initialize(
         self,
@@ -135,7 +141,12 @@ class GaussianSumFilter:
                 x = x0.copy()
             else:
                 # Slight perturbation for diversity
-                x = x0 + np.random.randn(x0.shape[0]) * np.sqrt(np.diag(P0)) * 0.1
+                x = (
+                    x0
+                    + (self._rng or np.random).standard_normal(x0.shape[0])
+                    * np.sqrt(np.diag(P0))
+                    * 0.1
+                )
 
             self.components.append(GaussianComponent(x=x, P=P0.copy(), w=weight))
 

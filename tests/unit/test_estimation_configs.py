@@ -99,3 +99,28 @@ class TestScalarConfigs:
         assert RBPFConfig() == RBPFConfig(
             max_particles=100, resample_threshold=0.5, merge_threshold=0.5
         )
+
+
+class TestInstanceRNG:
+    def test_rbpf_rng_reproducible(self):
+        def make():
+            f = RBPFFilter(
+                max_particles=32, rng=np.random.Generator(np.random.PCG64(1234))
+            )
+            f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=32)
+            return f
+
+        a, b = make(), make()
+        for pa, pb in zip(a.get_particles(), b.get_particles()):
+            np.testing.assert_array_equal(pa.y, pb.y)
+
+    def test_rbpf_default_untouched(self):
+        # rng=None keeps the legacy global-np.random path
+        f = RBPFFilter(max_particles=8)
+        assert f._rng is None
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=8)
+        assert len(f.get_particles()) == 8
+
+    def test_gsf_rng_accepted(self):
+        f = GaussianSumFilter(rng=np.random.Generator(np.random.PCG64(7)))
+        assert f._rng is not None

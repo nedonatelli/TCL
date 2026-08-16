@@ -84,6 +84,7 @@ class RBPFFilter:
         merge_threshold: Optional[float] = None,
         *,
         config: Optional[RBPFConfig] = None,
+        rng: Optional[np.random.Generator] = None,
     ):
         """Initialize RBPF.
 
@@ -98,6 +99,10 @@ class RBPFFilter:
         config : RBPFConfig, optional
             Typed configuration. Mutually exclusive with the individual
             keyword arguments above.
+        rng : numpy.random.Generator, optional
+            Instance random number generator for particle sampling and
+            resampling. When ``None`` (default), falls back to the legacy
+            global ``numpy.random`` state.
         """
         if config is not None:
             if any(
@@ -123,6 +128,7 @@ class RBPFFilter:
         self.max_particles = max_particles
         self.resample_threshold = resample_threshold
         self.merge_threshold = merge_threshold
+        self._rng = rng
 
     def initialize(
         self,
@@ -152,7 +158,7 @@ class RBPFFilter:
 
         for i in range(num_particles):
             # Nonlinear component: small perturbation around y0
-            y = y0 + np.random.randn(ny) * 1e-6
+            y = y0 + (self._rng or np.random).standard_normal(ny) * 1e-6
             # Linear component: same for all particles (improved by update)
             x = x0.copy()
             P = P0.copy()
@@ -192,7 +198,7 @@ class RBPFFilter:
             # Predict nonlinear component
             y_pred = g(particle.y)
             # Add process noise
-            y_pred = y_pred + np.random.multivariate_normal(
+            y_pred = y_pred + (self._rng or np.random).multivariate_normal(
                 np.zeros(y_pred.shape[0]), Qy
             )
 
@@ -356,7 +362,7 @@ class RBPFFilter:
 
         # Resample indices
         indices = []
-        u = np.random.uniform(0, 1.0 / n)
+        u = (self._rng or np.random).uniform(0, 1.0 / n)
 
         j = 0
         for i in range(n):
