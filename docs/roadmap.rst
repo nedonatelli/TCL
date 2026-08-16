@@ -7,10 +7,16 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.2.0)
+Current State (v2.3.0)
 ----------------------
 
-* **6,300+ tests** passing, 90% coverage, docstring examples run in CI
+* **6,700+ tests** passing, 90% coverage, docstring examples run in CI
+* **Typed configs and sessions** (:doc:`sessions`): ``msgspec.Struct``
+  configs (``IMMConfig``, ``GaussianSumConfig``, ``RBPFConfig``,
+  ``SingleTargetConfig``, ``MultiTargetConfig``) accepted via a
+  keyword-only ``config=``, and full state snapshot/resume
+  (``pytcl.io.save_session``/``load_session``) for six tracker and filter
+  classes, bit-exact resume for the four deterministic ones
 * **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-13, and
   WMMHR2025 magnetic models verified against independent references to
   sub-nT accuracy; UTM projections verified against EPSG to sub-millimeter
@@ -47,12 +53,14 @@ Released
   serialization, ASDF export, AIS NMEA decoding validated against a
   recorded capture of 299 real ships, and HDF5 track-storage compression
   measured at 4.73x.
+* **v2.3.0** (2026-08-16) — the typed configs + save/restore release:
+  filter/tracker configs as ``msgspec.Struct`` accepted via a
+  keyword-only ``config=``, and full tracker/filter state snapshot and
+  resume, bit-exact for the four deterministic classes.
 
 Next
 ----
 
-* **v2.3.0 — Typed configs + save/restore**: filter/tracker configs as
-  ``msgspec.Struct``, full tracker state snapshot/resume.
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — Genz-Keister and LCD cubature points,
   the refraction suite, localization estimators, and filter variants.

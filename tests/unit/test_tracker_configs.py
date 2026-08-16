@@ -83,6 +83,16 @@ class TestMultiTargetConfig:
                 type=MultiTargetConfig,
             )
 
+    def test_config_without_dynamics_rejected_by_tracker(self):
+        # F/Q are Optional in the Struct (a snapshot of a callable-dynamics
+        # tracker has none) but the CONSTRUCTOR needs dynamics.
+        with pytest.raises(ConfigurationError):
+            MultiTargetTracker(config=MultiTargetConfig(4, 2, H, R))
+
+    def test_conflict(self):
+        with pytest.raises(ConfigurationError):
+            MultiTargetTracker(4, config=MultiTargetConfig(4, 2, H, R, F=F, Q=Q))
+
 
 class TestMHTConfigStruct:
     def test_is_struct_and_roundtrips(self):

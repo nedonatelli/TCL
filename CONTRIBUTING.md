@@ -312,23 +312,23 @@ magnetism was roughly 180 degrees wrong.
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=pytcl --cov-report=html
+uv run pytest --cov=pytcl --cov-report=html
 
 # Run specific test file
-pytest tests/unit/test_core.py
+uv run pytest tests/unit/test_core.py
 
 # Run one category
-pytest tests/validation/
-pytest tests/contract/
+uv run pytest tests/validation/
+uv run pytest tests/contract/
 
 # Run tests matching a pattern
-pytest -k "test_wrap"
+uv run pytest -k "test_wrap"
 
 # Run only fast tests
-pytest -m "not slow"
+uv run pytest -m "not slow"
 ```
 
 ### Writing Tests
@@ -448,36 +448,25 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.0.0
-**Test Suite:** 6,300+ tests passing (docstring examples also run in CI)
-**Code Coverage:** 90%
-**Quality:** 100% compliance (ruff check, ruff format); ty clean
-**GPU Acceleration:** CuPy (NVIDIA) + MLX (Apple Silicon), both verified on
-real hardware for 2.0.0
-**Performance Optimization:** Numba JIT, lru_cache, sparse matrix support
+**Version:** v2.3.0 (released). See "Current metrics (v2.3.0)" under
+[Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
+function/module/test/coverage numbers -- this section used to duplicate
+those and drift out of sync, so it now just points there.
 
-## v2.0.0 Roadmap Progress
-
-### Completed Phases
-- **Phase 1** ✅: Network flow performance (50-100x faster)
-- **Phase 2** ✅: API standardization (exceptions, spatial indexes, optional deps)
-- **Phase 5** ✅: GPU acceleration (CuPy + MLX, 5-15x speedup)
-- **Phase 6** ✅: Test expansion
-- **Phase 7** ✅: Performance optimization (Numba JIT, lru_cache, sparse matrices)
-
-- **Phase 3** ✅: Documentation expansion
-- **Phase 4** ✅: Jupyter notebooks (9 verified in CI)
-- **Phase 8** ✅: Track management (SQL + HDF5, migration tools)
-
-### In Progress
-- **Phase 9**: Release preparation (alpha → beta → RC → v2.0.0)
+The modernization campaign (uv-managed workflow, ty as the type-check gate,
+diagnostics, results I/O, typed configs + session save/restore) is complete
+as of v2.3.0, except for one unversioned, gated item: the
+`[visualization-xy]` extra for large-dataset plotting, waiting on an
+upstream `xy` stable release. See ROADMAP.md for details and for the
+measured backlog of what remains.
 
 ## Priority Areas for Contributors
 
 If you're looking for ways to contribute:
 
 ### High Priority
-- v2.0.0 release preparation and validation (see ROADMAP.md Phase 9)
+- Items in the measured backlog (see ROADMAP.md's "Measured backlog"
+  section, derived from `docs/matlab_parity_inventory.rst`)
 - Performance profiling and benchmarking
 - Algorithm optimization and refactoring
 
@@ -522,10 +511,12 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.2.0):
-- **Functions:** 1,500+
-- **Modules:** 187
-- **Tests:** 6,300+ (all passing)
+Current metrics (v2.3.0):
+- **Functions:** 1,150+ (top-level `def`; measured 1,156 via
+  `grep -r "^def " pytcl/ | wc -l`)
+- **Modules:** 190
+- **Tests:** 6,700+ (all passing; measured 6,729 via
+  `pytest --collect-only -q`)
 - **Coverage:** 90%
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,

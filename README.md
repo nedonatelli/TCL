@@ -4,13 +4,13 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Tests](https://img.shields.io/badge/tests-6300%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Tests](https://img.shields.io/badge/tests-6700%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 [![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,500+ functions** | **187 modules** | **6,300+ tests** | **90% coverage**
+**1,150+ functions** | **190 modules** | **6,700+ tests** | **90% coverage**
 
 ## Overview
 
@@ -29,6 +29,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 - **Results I/O**: CSV/Parquet measurement readers, polars DataFrame accessors for track histories, msgspec (MessagePack/JSON) serialization, ASDF archival export, HDF5 compression (measured 4.73x), and AIS/NMEA transponder decoding
+- **Typed Configs & Sessions**: `msgspec.Struct` configs (`IMMConfig`, `GaussianSumConfig`, `RBPFConfig`, `SingleTargetConfig`, `MultiTargetConfig`) accepted via a keyword-only `config=` on the matching constructor, plus full state snapshot/resume (`pytcl.io.save_session`/`load_session`) for six tracker and filter classes, bit-exact resume for the four deterministic ones
 
 ## Installation
 
@@ -276,16 +277,16 @@ Key differences:
 
 ```bash
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage
-pytest --cov=pytcl
+uv run pytest --cov=pytcl
 
 # Run only fast tests
-pytest -m "not slow"
+uv run pytest -m "not slow"
 
 # Run tests validated against MATLAB
-pytest -m matlab_validated
+uv run pytest -m matlab_validated
 ```
 
 A bare local `pytest` run picks up `tests/property/`'s Hypothesis-generated

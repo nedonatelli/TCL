@@ -4,8 +4,8 @@ Library Architecture
 Overview
 --------
 
-``pytcl`` is **139 modules** across **22 implemented packages**, exporting about
-1030 public names. There is no framework object to inherit from: the library is a
+``pytcl`` is **143 modules** across **22 implemented packages**, exporting about
+1044 public names. There is no framework object to inherit from: the library is a
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.
 
@@ -27,14 +27,14 @@ it depends on; only the structurally significant edges are drawn.
 
    graph TD
        subgraph Estimation
-           DE["dynamic_estimation<br/>16 modules"]
+           DE["dynamic_estimation<br/>17 modules"]
            DM["dynamic_models<br/>7 modules"]
            SE["static_estimation<br/>3 modules"]
        end
 
        subgraph Association_and_Tracking
            AA["assignment_algorithms<br/>9 modules"]
-           TR["trackers<br/>4 modules"]
+           TR["trackers<br/>5 modules"]
            CL["clustering<br/>4 modules"]
            CO["containers<br/>8 modules"]
        end
@@ -58,7 +58,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Support
-           IO["io<br/>11 modules"]
+           IO["io<br/>12 modules"]
            GP["gpu<br/>7 modules"]
            PL["plotting<br/>4 modules"]
            PE["performance_evaluation<br/>2 modules"]

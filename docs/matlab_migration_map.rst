@@ -4,7 +4,7 @@ MATLAB-to-pytcl migration map
 The explicit function mappings and calling-convention differences between the
 MATLAB `Tracker Component Library
 <https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary>`_ and
-pytcl 2.0.0. Companion to :doc:`matlab_parity_inventory`, which says *what* is
+pytcl. Companion to :doc:`matlab_parity_inventory`, which says *what* is
 ported; this says *how to call it*.
 
 Every pytcl target in the tables below was resolved by import when the tables

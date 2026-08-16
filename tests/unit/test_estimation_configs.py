@@ -124,3 +124,13 @@ class TestInstanceRNG:
     def test_gsf_rng_accepted(self):
         f = GaussianSumFilter(rng=np.random.Generator(np.random.PCG64(7)))
         assert f._rng is not None
+
+    def test_gsf_rng_reproducible(self):
+        def make():
+            f = GaussianSumFilter(rng=np.random.Generator(np.random.PCG64(1234)))
+            f.initialize(np.zeros(2), np.eye(2), num_components=4)
+            return f
+
+        a, b = make(), make()
+        for ca, cb in zip(a.components, b.components):
+            np.testing.assert_array_equal(ca.x, cb.x)

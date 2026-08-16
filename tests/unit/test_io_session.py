@@ -225,6 +225,16 @@ class TestMultiTargetSession:
         with pytest.raises(ConfigurationError):
             load_session(data, Q=2 * Q4)
 
+    def test_json_roundtrip_track_table(self):
+        t = _mt_tracker()
+        back = load_session(save_session(t, fmt="json"), fmt="json")
+        assert len(back.tracks) == len(t.tracks)
+        for ta, tb in zip(t.tracks, back.tracks):
+            assert ta.id == tb.id and ta.status is tb.status
+            assert (ta.hits, ta.misses) == (tb.hits, tb.misses)
+            np.testing.assert_array_equal(ta.state, tb.state)
+            np.testing.assert_array_equal(ta.covariance, tb.covariance)
+
 
 def _mht_tracker():
     t = MHTTracker(4, 2, F4, H24, Q4, R2, config=MHTConfig(n_scan=2, max_hypotheses=20))
@@ -411,6 +421,16 @@ class TestGSFSession:
         data = save_session(f)
         with pytest.raises(ConfigurationError):
             load_session(data, F=np.eye(2))
+
+    def test_rng_state_is_pcg64_json(self):
+        f = GaussianSumFilter(
+            max_components=3, rng=np.random.Generator(np.random.PCG64(9))
+        )
+        f.initialize(np.zeros(2), np.eye(2), num_components=2)
+        data = save_session(f, fmt="json")
+        env = json.loads(data)
+        rng_state = json.loads(env["snapshot"]["rng_state"])
+        assert rng_state["bit_generator"] == "PCG64"
 
     def test_resume_equals_uninterrupted(self):
         F = np.eye(2)

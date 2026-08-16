@@ -17,6 +17,23 @@ class SingleTargetConfig(msgspec.Struct, frozen=True):
     ``F``/``Q`` are ``None`` when dynamics are supplied as callables at
     construction; such configs identify the tracker in a session snapshot
     but cannot rebuild it without the callables (rehydrate pattern).
+
+    Attributes
+    ----------
+    state_dim : int
+        Dimension of the state vector.
+    meas_dim : int
+        Dimension of the measurement vector.
+    H : list of list of float
+        Measurement matrix.
+    R : list of list of float
+        Measurement noise covariance.
+    F : list of list of float or None, optional
+        State transition matrix; ``None`` when dynamics are callables.
+    Q : list of list of float or None, optional
+        Process noise covariance; ``None`` when dynamics are callables.
+    gate_threshold : float or None, optional
+        Chi-squared gate threshold; ``None`` disables gating.
     """
 
     state_dim: int
@@ -53,6 +70,32 @@ class MultiTargetConfig(msgspec.Struct, frozen=True):
     """Configuration for :class:`~pytcl.trackers.multi_target.MultiTargetTracker`.
 
     Same ``F``/``Q`` convention as :class:`SingleTargetConfig`.
+
+    Attributes
+    ----------
+    state_dim : int
+        Dimension of the state vector.
+    meas_dim : int
+        Dimension of the measurement vector.
+    H : list of list of float
+        Measurement matrix.
+    R : list of list of float
+        Measurement noise covariance.
+    F : list of list of float or None, optional
+        State transition matrix; ``None`` when dynamics are callables.
+    Q : list of list of float or None, optional
+        Process noise covariance; ``None`` when dynamics are callables.
+    gate_probability : float, default 0.99
+        Gate probability used for data association.
+    confirm_hits : int, default 3
+        Hits needed within `confirm_window` to confirm a track.
+    confirm_window : int, default 5
+        Window size for M-of-N track confirmation.
+    max_misses : int, default 5
+        Consecutive misses before a track is deleted.
+    init_covariance : list of list of float or None, optional
+        Initial covariance for new tracks; ``None`` uses ``100 * R``
+        projected to the state space.
     """
 
     state_dim: int
