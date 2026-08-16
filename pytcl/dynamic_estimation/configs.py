@@ -16,8 +16,8 @@ class IMMConfig(msgspec.Struct, frozen=True):
 
     n_modes: int
     state_dim: int
-    transition_matrix: list  # (n_modes, n_modes) nested lists
-    initial_mode_probs: Optional[list] = None
+    transition_matrix: list[list[float]]  # (n_modes, n_modes) nested lists
+    initial_mode_probs: Optional[list[float]] = None
 
     @classmethod
     def from_arrays(

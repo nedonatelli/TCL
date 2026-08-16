@@ -50,6 +50,13 @@ class TestIMMConfig:
         with pytest.raises(msgspec.ValidationError):
             msgspec.json.decode(b'{"n_modes": "two"}', type=IMMConfig)
 
+    def test_decode_rejects_flat_transition_matrix(self):
+        with pytest.raises(msgspec.ValidationError):
+            msgspec.json.decode(
+                b'{"n_modes":2,"state_dim":4,"transition_matrix":[1.0,2.0]}',
+                type=IMMConfig,
+            )
+
 
 class TestScalarConfigs:
     def test_gsf_config(self):
@@ -60,9 +67,33 @@ class TestScalarConfigs:
         with pytest.raises(ConfigurationError):
             GaussianSumFilter(max_components=3, config=GaussianSumConfig())
 
+    def test_gsf_config_equivalent_to_kwargs(self):
+        a = GaussianSumFilter(
+            config=GaussianSumConfig(
+                max_components=7, merge_threshold=0.02, prune_threshold=2e-3
+            )
+        )
+        b = GaussianSumFilter(
+            max_components=7, merge_threshold=0.02, prune_threshold=2e-3
+        )
+        assert a.max_components == b.max_components
+        assert a.merge_threshold == b.merge_threshold
+        assert a.prune_threshold == b.prune_threshold
+
     def test_rbpf_config(self):
         f = RBPFFilter(config=RBPFConfig(max_particles=64))
         assert f.max_particles == 64
+
+    def test_rbpf_config_equivalent_to_kwargs(self):
+        a = RBPFFilter(
+            config=RBPFConfig(
+                max_particles=64, resample_threshold=0.4, merge_threshold=0.3
+            )
+        )
+        b = RBPFFilter(max_particles=64, resample_threshold=0.4, merge_threshold=0.3)
+        assert a.max_particles == b.max_particles
+        assert a.resample_threshold == b.resample_threshold
+        assert a.merge_threshold == b.merge_threshold
 
     def test_rbpf_defaults_match_kwargs_defaults(self):
         assert RBPFConfig() == RBPFConfig(
