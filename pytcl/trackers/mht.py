@@ -17,6 +17,7 @@ References
 
 from typing import Callable, Dict, List, NamedTuple, Optional
 
+import msgspec
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
@@ -32,7 +33,7 @@ from pytcl.trackers.hypothesis import (
 )
 
 
-class MHTConfig(NamedTuple):
+class MHTConfig(msgspec.Struct, frozen=True):
     """Configuration for MHT tracker.
 
     Attributes

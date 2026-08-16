@@ -82,3 +82,28 @@ class TestMultiTargetConfig:
                 b'{"state_dim":4,"meas_dim":2,"H":[1.0,2.0],"R":[[0.1,0.0],[0.0,0.1]]}',
                 type=MultiTargetConfig,
             )
+
+
+class TestMHTConfigStruct:
+    def test_is_struct_and_roundtrips(self):
+        from pytcl.trackers import MHTConfig
+
+        cfg = MHTConfig(n_scan=4)
+        assert isinstance(cfg, msgspec.Struct)
+        assert msgspec.json.decode(msgspec.json.encode(cfg), type=MHTConfig) == cfg
+
+    def test_defaults_unchanged(self):
+        from pytcl.trackers import MHTConfig
+
+        cfg = MHTConfig()
+        assert (
+            cfg.n_scan,
+            cfg.max_hypotheses,
+            cfg.detection_prob,
+            cfg.clutter_density,
+            cfg.gate_probability,
+            cfg.confirm_threshold,
+            cfg.delete_threshold,
+            cfg.min_hypothesis_prob,
+            cfg.new_track_weight,
+        ) == (3, 100, 0.9, 1e-6, 0.99, 3, 5, 1e-6, 0.1)
