@@ -2,12 +2,14 @@
 
 import json
 
+import msgspec
 import numpy as np
 import pytest
 
 from pytcl.core.exceptions import ConfigurationError, FormatError
 from pytcl.dynamic_estimation import GaussianSumFilter, IMMEstimator, RBPFFilter
 from pytcl.io import load_session, load_session_file, save_session, save_session_file
+from pytcl.io.session import SessionEnvelope
 from pytcl.trackers import (
     MHTConfig,
     MHTTracker,
@@ -36,6 +38,12 @@ class TestSingleTargetSession:
         assert isinstance(back, SingleTargetTracker)
         np.testing.assert_array_equal(back.state.state, t.state.state)
         np.testing.assert_array_equal(back.state.covariance, t.state.covariance)
+        # tobytes(), not just assert_array_equal: IEEE -0.0 == 0.0 under
+        # array_equal, so it would miss a sign-of-zero regression that a
+        # true bit-exact round-trip (the documented guarantee) must not
+        # have, on either wire format.
+        assert back.state.state.tobytes() == t.state.state.tobytes()
+        assert back.state.covariance.tobytes() == t.state.covariance.tobytes()
         assert back.is_initialized
 
     def test_resume_equals_uninterrupted(self):
@@ -347,6 +355,20 @@ class TestRBPFSession:
         rng_state = json.loads(env["snapshot"]["rng_state"])
         assert rng_state["bit_generator"] == "PCG64"
 
+    def test_non_pcg64_rng_raises_configuration_error(self):
+        # MT19937's bit-generator state holds an ndarray, which stdlib
+        # json cannot serialize -- save_session must turn that into a
+        # named ConfigurationError, not a raw TypeError from json.dumps.
+        # Both GaussianSumFilter and RBPFFilter route through the same
+        # _rng_state_to_json helper, so exercising it via RBPFFilter here
+        # covers GaussianSumFilter too.
+        f = RBPFFilter(max_particles=4, rng=np.random.Generator(np.random.MT19937(1)))
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=4)
+        with pytest.raises(ConfigurationError, match="MT19937"):
+            save_session(f)
+        # PCG64 unaffected: covered by test_instance_rng_state_roundtrips
+        # above, which already round-trips a PCG64-backed instance rng.
+
 
 class TestGSFSession:
     def test_components_roundtrip(self):
@@ -389,3 +411,83 @@ class TestGSFSession:
         data = save_session(f)
         with pytest.raises(ConfigurationError):
             load_session(data, F=np.eye(2))
+
+    def test_resume_equals_uninterrupted(self):
+        F = np.eye(2)
+        Q = 0.01 * np.eye(2)
+        H = np.eye(2)
+        R = 0.1 * np.eye(2)
+        f_fn = lambda x: F @ x  # noqa: E731
+        h_fn = lambda x: H @ x  # noqa: E731
+
+        def build():
+            # An instance rng makes the two independent `build()` calls
+            # below (one for `a`, one inside `b`'s save/load) produce
+            # identical initial components -- with the default global RNG,
+            # the second call's perturbed means would draw from wherever
+            # the first call left the global stream, so the two GSFs would
+            # start from different states before resume even enters the
+            # picture.
+            filt = GaussianSumFilter(
+                max_components=3, rng=np.random.Generator(np.random.PCG64(42))
+            )
+            filt.initialize(np.zeros(2), np.eye(2), num_components=3)
+            filt.predict(f_fn, F, Q)
+            filt.update(np.array([0.1, 0.2]), h_fn, H, R)
+            return filt
+
+        a = build()
+        b = load_session(save_session(build()))
+
+        z = np.array([0.3, -0.1])
+        for filt in (a, b):
+            filt.predict(f_fn, F, Q)
+            filt.update(z, h_fn, H, R)
+
+        xa, Pa = a.estimate()
+        xb, Pb = b.estimate()
+        assert xa.tobytes() == xb.tobytes()
+        assert Pa.tobytes() == Pb.tobytes()
+        assert a.get_num_components() == b.get_num_components()
+        for ca, cb in zip(a.get_components(), b.get_components()):
+            assert ca.x.tobytes() == cb.x.tobytes()
+            assert ca.P.tobytes() == cb.P.tobytes()
+            assert ca.w == cb.w
+
+
+def _tamper(data: bytes, mutate) -> bytes:
+    """Round-trip `data` through msgspec's msgpack codec, letting `mutate`
+    edit the decoded envelope in place, then re-encode -- builds tampered
+    session bytes at runtime instead of hardcoding golden bytes.
+    """
+    env = msgspec.msgpack.decode(data, type=SessionEnvelope)
+    mutate(env)
+    return msgspec.msgpack.encode(env)
+
+
+class TestDecodeErrors:
+    def test_bogus_multi_target_status_raises_format_error(self):
+        data = save_session(_mt_tracker())
+        tampered = _tamper(
+            data, lambda env: setattr(env.snapshot.tracks[0], "status", "not_a_status")
+        )
+        with pytest.raises(FormatError):
+            load_session(tampered)
+
+    def test_bogus_mht_status_raises_format_error(self):
+        data = save_session(_mht_tracker())
+        tampered = _tamper(
+            data, lambda env: setattr(env.snapshot.tracks[0], "status", "not_a_status")
+        )
+        with pytest.raises(FormatError):
+            load_session(tampered)
+
+    def test_bogus_rng_state_raises_format_error(self):
+        f = RBPFFilter(max_particles=4, rng=np.random.Generator(np.random.PCG64(1)))
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=4)
+        data = save_session(f)
+        tampered = _tamper(
+            data, lambda env: setattr(env.snapshot, "rng_state", "{not valid json")
+        )
+        with pytest.raises(FormatError):
+            load_session(tampered)

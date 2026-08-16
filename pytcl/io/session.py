@@ -166,7 +166,9 @@ class MultiTargetSnapshot(msgspec.Struct, tag=True):
         Tracker configuration. ``config.F``/``config.Q`` are ``None`` when
         the tracker was built with callable dynamics.
     tracks : list of TrackSnapshot
-        One entry per internal track, including deleted ones.
+        One entry per internal track. `MultiTargetTracker.process` prunes
+        ``DELETED`` tracks from its internal track list before returning,
+        so a snapshot never contains one.
     next_id : int
         Next track id to be assigned; preserved so a resumed tracker never
         reissues an id already in `tracks`.
@@ -324,9 +326,13 @@ class GaussianSumSnapshot(msgspec.Struct, tag=True):
         integers that exceed msgpack/msgspec's int range). ``None`` means
         the filter used the legacy global ``numpy.random`` state; resuming
         such a filter falls back to that same (non-reproducible) global
-        state. Restoring a non-``None`` state requires a PCG64-backed
-        generator (numpy's default) -- assigning a different
-        bit-generator's state fails loudly via numpy's own validation.
+        state. Session support for instance RNGs is PCG64-family only:
+        `save_session` raises :class:`~pytcl.core.exceptions.ConfigurationError`
+        at save time if the filter's ``rng`` uses a different bit-generator
+        (e.g. MT19937, Philox, SFC64). Restoring a saved PCG64 state onto a
+        differently-configured generator is a separate, restore-time
+        failure that fails loudly via numpy's own state-assignment
+        validation.
     """
 
     config: GaussianSumConfig
@@ -362,9 +368,13 @@ class RBPFSnapshot(msgspec.Struct, tag=True):
         integers that exceed msgpack/msgspec's int range). ``None`` means
         the filter used the legacy global ``numpy.random`` state; resuming
         such a filter falls back to that same (non-reproducible) global
-        state. Restoring a non-``None`` state requires a PCG64-backed
-        generator (numpy's default) -- assigning a different
-        bit-generator's state fails loudly via numpy's own validation.
+        state. Session support for instance RNGs is PCG64-family only:
+        `save_session` raises :class:`~pytcl.core.exceptions.ConfigurationError`
+        at save time if the filter's ``rng`` uses a different bit-generator
+        (e.g. MT19937, Philox, SFC64). Restoring a saved PCG64 state onto a
+        differently-configured generator is a separate, restore-time
+        failure that fails loudly via numpy's own state-assignment
+        validation.
     """
 
     config: RBPFConfig
@@ -461,6 +471,19 @@ def _restore_single_target(
     return t
 
 
+def _restore_status(enum_cls: type, name: str) -> Any:
+    """Look up `name` in `enum_cls`, raising `FormatError` on an unknown
+    member rather than letting a raw `KeyError` from a tampered or foreign
+    session escape past the FormatError contract.
+    """
+    try:
+        return enum_cls[name]
+    except KeyError as exc:
+        raise FormatError(
+            f"unknown {enum_cls.__name__} value {name!r} in session"
+        ) from exc
+
+
 def _snap_multi_target(t: MultiTargetTracker) -> MultiTargetSnapshot:
     cfg = MultiTargetConfig(
         state_dim=t.state_dim,
@@ -527,7 +550,7 @@ def _restore_multi_target(
             id=ts.id,
             state=np.asarray(ts.state, dtype=np.float64),
             covariance=np.asarray(ts.covariance, dtype=np.float64),
-            status=TrackStatus[ts.status],
+            status=_restore_status(TrackStatus, ts.status),
             hits=ts.hits,
             misses=ts.misses,
             time=ts.time,
@@ -609,7 +632,7 @@ def _restore_mht(s: MHTSnapshot, F: Any = None, Q: Any = None) -> MHTTracker:
             state=np.asarray(ts.state, dtype=np.float64),
             covariance=np.asarray(ts.covariance, dtype=np.float64),
             score=ts.score,
-            status=MHTTrackStatus[ts.status],
+            status=_restore_status(MHTTrackStatus, ts.status),
             history=list(ts.history),
             parent_id=ts.parent_id,
             scan_created=ts.scan_created,
@@ -681,8 +704,24 @@ def _rng_state_to_json(rng: Optional[np.random.Generator]) -> Optional[str]:
     range msgpack/msgspec can carry as ints. ``None`` in means the filter
     used the legacy global ``numpy.random`` state, which round-trips as
     ``None`` (no state to capture).
+
+    Session support for instance RNGs is PCG64-family only. Other
+    bit-generators (MT19937, Philox, SFC64, ...) hold ndarrays in their
+    state dict, which stdlib ``json`` cannot serialize -- that raises
+    ``TypeError`` deep inside :func:`json.dumps`, so it is caught here and
+    re-raised as :class:`~pytcl.core.exceptions.ConfigurationError` naming
+    the offending bit-generator, rather than left to surface as a raw
+    ``TypeError`` from an unrelated stdlib call.
     """
-    return None if rng is None else json.dumps(rng.bit_generator.state)
+    if rng is None:
+        return None
+    try:
+        return json.dumps(rng.bit_generator.state)
+    except TypeError as exc:
+        raise ConfigurationError(
+            "save_session supports PCG64-family instance rng only; got "
+            f"bit_generator {type(rng.bit_generator).__name__}"
+        ) from exc
 
 
 def _rng_from_json(s: Optional[str]) -> Optional[np.random.Generator]:
@@ -691,15 +730,22 @@ def _rng_from_json(s: Optional[str]) -> Optional[np.random.Generator]:
 
     ``None`` in means the snapshot was taken from a filter using the
     legacy global ``numpy.random`` state; the restored filter resumes on
-    that same (non-reproducible) global state via ``rng=None``. A non-PCG64
-    state fails loudly on assignment via numpy's own validation --
-    session support for instance RNGs is PCG64-only, matching numpy's
-    default generator.
+    that same (non-reproducible) global state via ``rng=None``. Malformed
+    JSON (e.g. from a tampered/foreign session) raises
+    :class:`~pytcl.core.exceptions.FormatError` rather than a raw
+    ``json.JSONDecodeError``. A well-formed but non-PCG64-shaped state
+    fails loudly on assignment via numpy's own validation -- session
+    support for instance RNGs is PCG64-only, matching numpy's default
+    generator.
     """
     if s is None:
         return None
+    try:
+        state = json.loads(s)
+    except json.JSONDecodeError as exc:
+        raise FormatError(f"malformed rng_state in session: {exc}") from exc
     gen = np.random.Generator(np.random.PCG64())
-    gen.bit_generator.state = json.loads(s)
+    gen.bit_generator.state = state
     return gen
 
 
