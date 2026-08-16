@@ -12,6 +12,11 @@ Every function below that touches an optional dependency (``polars``,
 naming the extra to install if it is missing -- ``h5py`` and ``msgspec`` are
 core dependencies and need nothing extra.
 
+This page covers persisting track *histories* -- results already produced by
+a tracking run. To snapshot a *running* tracker or filter's full internal
+state and resume it later, including a bit-exact resumed random stream, see
+:doc:`sessions` instead.
+
 Reading Measurements (CSV/Parquet)
 ------------------------------------
 

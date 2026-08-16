@@ -94,6 +94,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     correct Joseph-form covariance update from a naive-form one — verified
     null across 400k mutated calls in review. A chained filter-loop property
     would be needed to catch that class of regression; out of scope here.
+- Typed `msgspec.Struct` configurations: `IMMConfig`, `GaussianSumConfig`,
+  `RBPFConfig`, `SingleTargetConfig`, `MultiTargetConfig` — accepted via a
+  keyword-only `config=` on the corresponding constructors (mutually
+  exclusive with individual arguments).
+- Session save/restore (`pytcl.io.save_session` / `load_session` and file
+  variants): full state snapshot and resume for `SingleTargetTracker`,
+  `MultiTargetTracker`, `MHTTracker`, `IMMEstimator`, `GaussianSumFilter`,
+  and `RBPFFilter`. Resume is bit-exact for the first four (deterministic)
+  classes, and for `GaussianSumFilter`/`RBPFFilter` only when constructed
+  with an instance `rng=`; built on the legacy global RNG instead, those
+  two still resume, but their random draws diverge from an uninterrupted
+  run's. Callable dynamics rehydrate via `load_session(..., F=..., Q=...)`;
+  snapshots are versioned (`schema_version`) msgpack or JSON.
+- `RBPFFilter` and `GaussianSumFilter` accept an optional
+  `rng: np.random.Generator`; instance-owned RNG state is captured in
+  sessions, making resumed runs bit-reproducible.
 
 ### Changed
 - **Documentation moved to GitHub Pages** (<https://nedonatelli.github.io/TCL/>);
@@ -116,6 +132,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Note for anyone arriving from an older PyPI release page: versions 2.0.0
   through 2.2.0 published the ReadTheDocs URL in their metadata, so those
   links point at documentation frozen at v2.0.0.
+- **`MHTConfig` is now a frozen `msgspec.Struct`** (was a NamedTuple).
+  Attribute access and keyword construction are unchanged; tuple behaviors
+  (indexing, unpacking, `_replace`) no longer work.
+- `MultiTargetTracker` retains `gate_probability` as an attribute (it was
+  previously discarded after computing `gate_threshold`).
+- Missing required constructor arguments now raise `ConfigurationError`
+  instead of `TypeError`: `IMMEstimator` (`n_modes`/`state_dim`/
+  `transition_matrix`) and `SingleTargetTracker`/`MultiTargetTracker`
+  (`state_dim`/`meas_dim`/`F`/`H`/`Q`/`R`) all switched to
+  `None`-defaulted parameters so they can validate what is missing
+  themselves — needed to support the new keyword-only `config=` argument,
+  which must be checked against "did the caller also pass individual
+  arguments" before construction proceeds.
 
 ## [2.2.0] - 2026-08-12
 

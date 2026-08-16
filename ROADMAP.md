@@ -118,8 +118,22 @@ CV-filter covariances throughout, not an identity best case.
   below); AIS NMEA decoding and position-report extraction (new `[ais]`
   extra, pyais); measured HDF5 byte-shuffle compression (4.73x, on by
   default). Delivers the Parquet/Arrow bullets below.
-- **v2.3.0 — Typed configs + save/restore:** filter/tracker configs as
-  `msgspec.Struct`s; full tracker state snapshot/resume.
+- **v2.3.0 — Typed configs + save/restore:** typed `msgspec.Struct`
+  configs (`IMMConfig`, `GaussianSumConfig`, `RBPFConfig`,
+  `SingleTargetConfig`, `MultiTargetConfig`) accepted via a keyword-only
+  `config=` on the matching constructor, mutually exclusive with the
+  individual arguments; `MHTConfig` converted from a `NamedTuple` to a
+  frozen `msgspec.Struct` to match. Full tracker/filter state
+  snapshot and resume (`pytcl.io.save_session`/`load_session` and file
+  variants) for `SingleTargetTracker`, `MultiTargetTracker`,
+  `MHTTracker`, `IMMEstimator`, `GaussianSumFilter`, and `RBPFFilter`,
+  with a rehydrate pattern for callable dynamics (`F=`/`Q=` passed back
+  into `load_session`) and an optional instance `rng` on `RBPFFilter`/
+  `GaussianSumFilter` whose PCG64 state is captured in the snapshot.
+  Resume is bit-exact for the four deterministic classes and, for
+  `RBPFFilter`/`GaussianSumFilter`, only when built with an instance
+  `rng`; resumed on the legacy global RNG instead, they draw from a
+  diverged stream.
 - **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
   plotting, once xy has a stable release.
 

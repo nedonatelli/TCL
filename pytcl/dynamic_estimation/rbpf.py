@@ -25,11 +25,13 @@ References::
       Identification" (IEEE SPM, 2004)
 """
 
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.exceptions import ConfigurationError
+from pytcl.dynamic_estimation.configs import RBPFConfig
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 
 
@@ -77,9 +79,12 @@ class RBPFFilter:
 
     def __init__(
         self,
-        max_particles: int = 100,
-        resample_threshold: float = 0.5,
-        merge_threshold: float = 0.5,
+        max_particles: Optional[int] = None,
+        resample_threshold: Optional[float] = None,
+        merge_threshold: Optional[float] = None,
+        *,
+        config: Optional[RBPFConfig] = None,
+        rng: Optional[np.random.Generator] = None,
     ):
         """Initialize RBPF.
 
@@ -91,11 +96,39 @@ class RBPFFilter:
             Resample threshold as fraction of max particles
         merge_threshold : float
             KL divergence threshold for merging particles
+        config : RBPFConfig, optional
+            Typed configuration. Mutually exclusive with the individual
+            keyword arguments above.
+        rng : numpy.random.Generator, optional
+            Instance random number generator for particle sampling and
+            resampling. When ``None`` (default), falls back to the legacy
+            global ``numpy.random`` state.
         """
+        if config is not None:
+            if any(
+                v is not None
+                for v in (max_particles, resample_threshold, merge_threshold)
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            max_particles = config.max_particles
+            resample_threshold = config.resample_threshold
+            merge_threshold = config.merge_threshold
+        else:
+            default = RBPFConfig()
+            if max_particles is None:
+                max_particles = default.max_particles
+            if resample_threshold is None:
+                resample_threshold = default.resample_threshold
+            if merge_threshold is None:
+                merge_threshold = default.merge_threshold
+
         self.particles: list[RBPFParticle] = []
         self.max_particles = max_particles
         self.resample_threshold = resample_threshold
         self.merge_threshold = merge_threshold
+        self._rng = rng
 
     def initialize(
         self,
@@ -125,7 +158,7 @@ class RBPFFilter:
 
         for i in range(num_particles):
             # Nonlinear component: small perturbation around y0
-            y = y0 + np.random.randn(ny) * 1e-6
+            y = y0 + (self._rng or np.random).standard_normal(ny) * 1e-6
             # Linear component: same for all particles (improved by update)
             x = x0.copy()
             P = P0.copy()
@@ -165,7 +198,7 @@ class RBPFFilter:
             # Predict nonlinear component
             y_pred = g(particle.y)
             # Add process noise
-            y_pred = y_pred + np.random.multivariate_normal(
+            y_pred = y_pred + (self._rng or np.random).multivariate_normal(
                 np.zeros(y_pred.shape[0]), Qy
             )
 
@@ -329,7 +362,7 @@ class RBPFFilter:
 
         # Resample indices
         indices = []
-        u = np.random.uniform(0, 1.0 / n)
+        u = (self._rng or np.random).uniform(0, 1.0 / n)
 
         j = 0
         for i in range(n):

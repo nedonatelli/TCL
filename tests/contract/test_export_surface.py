@@ -58,6 +58,11 @@ INTERNAL = {
     "pytcl.core.validated_array_input": "decorator used inside pytcl.core",
     "pytcl.core.format_maturity_badge": "docs tooling",
     "pytcl.io.AnalysisResult": "internal to the migration helper",
+    "pytcl.io.SessionEnvelope": (
+        "wire envelope Struct for save_session/load_session; the public API "
+        "hides it behind those two functions, tests import it directly only "
+        "to build tampered session bytes, pytcl/io/session.py"
+    ),
     "pytcl.astronomical.unkozai_mean_motion": "SGP4 internal",
     "pytcl.gravity.spherical_harmonic_sum_high_degree": "computational kernel",
     "pytcl.gravity.clenshaw_geoid": "computational kernel, not a parser",

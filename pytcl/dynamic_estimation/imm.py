@@ -17,6 +17,8 @@ from typing import Any, List, NamedTuple, Optional
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import ConfigurationError
+from pytcl.dynamic_estimation.configs import IMMConfig
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 
 
@@ -556,11 +558,29 @@ class IMMEstimator:
 
     def __init__(
         self,
-        n_modes: int,
-        state_dim: int,
-        transition_matrix: ArrayLike,
+        n_modes: Optional[int] = None,
+        state_dim: Optional[int] = None,
+        transition_matrix: Optional[ArrayLike] = None,
         initial_mode_probs: Optional[ArrayLike] = None,
+        *,
+        config: Optional[IMMConfig] = None,
     ):
+        if config is not None:
+            if any(
+                v is not None
+                for v in (n_modes, state_dim, transition_matrix, initial_mode_probs)
+            ):
+                raise ConfigurationError(
+                    "pass either config= or individual arguments, not both"
+                )
+            n_modes = config.n_modes
+            state_dim = config.state_dim
+            transition_matrix = config.transition_matrix
+            initial_mode_probs = config.initial_mode_probs
+        if n_modes is None or state_dim is None or transition_matrix is None:
+            raise ConfigurationError(
+                "n_modes, state_dim and transition_matrix are required"
+            )
         self.n_modes = n_modes
         self.state_dim = state_dim
         self.transition_matrix = np.asarray(transition_matrix, dtype=np.float64)

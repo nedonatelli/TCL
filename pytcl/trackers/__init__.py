@@ -5,6 +5,7 @@ This module provides complete tracker implementations that combine
 filtering, data association, and track management.
 """
 
+from pytcl.trackers.configs import MultiTargetConfig, SingleTargetConfig
 from pytcl.trackers.hypothesis import (
     Hypothesis,
     HypothesisAssignment,
@@ -23,9 +24,11 @@ from pytcl.trackers.single_target import SingleTargetTracker, TrackState
 __all__ = [
     # Single target
     "SingleTargetTracker",
+    "SingleTargetConfig",
     "TrackState",
     # Multi-target (GNN-based)
     "MultiTargetTracker",
+    "MultiTargetConfig",
     "Track",
     "TrackStatus",
     # MHT hypothesis management
