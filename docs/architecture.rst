@@ -169,8 +169,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 70
      - Special functions, statistics, transforms, signal processing, geometry
    * - ``dynamic_estimation``
-     - 16
-     - 85
+     - 17
+     - 88
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
      - 9
@@ -221,8 +221,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 30
      - Track, uncertainty and coverage visualization
    * - ``trackers``
-     - 4
-     - 17
+     - 5
+     - 19
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
      - 3

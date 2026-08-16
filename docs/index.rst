@@ -46,6 +46,7 @@ state estimation.
    smoothing
    data_structures
    results_io
+   sessions
 
 .. toctree::
    :maxdepth: 2
