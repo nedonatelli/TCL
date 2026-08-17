@@ -102,6 +102,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **`pytcl.coordinate_systems.projections.transverse_mercator_inverse`**
+  used the module-global WGS84 semi-minor axis (`WGS84_B`) to derive the
+  third-flattening ratio `n`, instead of computing it from the caller's own
+  `a`/`e2` as the forward function `transverse_mercator` already did (fixed
+  there under gh-25). Any caller passing a non-WGS84 ellipsoid to the
+  inverse function got silently wrong output -- no exception, no warning.
+  Measured on a synthetic ellipsoid (`a=6378137.0`, `f=1/150`): forward/
+  inverse round-trip errors up to ~25 km latitude and several hundred
+  meters longitude, growing with distance from the origin latitude
+  (matches the auditor's live probe of ~24 km lat / ~590 m lon).
+  WGS84-default callers (the common case) were unaffected; round-trip
+  closure for WGS84 was and remains < 1e-6 deg.
 - **`pytcl.mathematical_functions.transforms.wavelets`** (`dwt`, `idwt`,
   `dwt_single_level`, `idwt_single_level`, `wpt`, `threshold_coefficients`)
   now raise `DependencyError` when pywavelets is not installed, instead of
