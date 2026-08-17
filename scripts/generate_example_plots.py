@@ -2,7 +2,8 @@
 Generate interactive HTML and static PNG images from example scripts for documentation.
 
 This script runs each example and saves both HTML (interactive) and PNG (static) outputs
-to docs/_static/images/examples/. HTML files are tracked with Git LFS to prevent repo bloating.
+to docs/_static/images/examples/. HTML files are tracked as regular Git files (not LFS)
+so they render directly on GitHub -- see .gitattributes.
 """
 
 import sys

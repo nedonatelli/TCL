@@ -16,6 +16,13 @@ than approximations, and those are covered here:
 - the SRIF initialization recipe in the docstrings held only for diagonal
   ``P0``.
 
+A fifth defect in the same bug class as the ``mercator``/``transverse_mercator``
+one above was found and fixed later, outside the original gh-25 sweep:
+``transverse_mercator_inverse`` mixed the caller's ellipsoid with the global
+``WGS84_B`` constant the same way its forward sibling once did, because only
+the forward function had been part of that sweep. See the CHANGELOG's
+"transverse_mercator_inverse" entry for the fix and measured impact.
+
 The remaining bullets are genuine bounded approximations whose numbers were
 verified before being written into the docstrings -- the coordinated-turn
 Jacobian against numerical differentiation, ``gast`` against ``gmst`` -- and

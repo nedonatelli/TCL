@@ -209,6 +209,17 @@ def compute_association_likelihood(
     likelihood : float
         Joint likelihood of the association.
 
+    Notes
+    -----
+    Unassigned measurements contribute a plain clutter term,
+    ``clutter_density ** n_clutter``. This is a different formula from
+    :meth:`pytcl.trackers.mht.MHTTracker._compute_association_likelihood`,
+    whose unassigned-measurement term folds in ``new_track_weight`` as well
+    (``(clutter_density + new_track_weight) ** n_unassigned``), since MHT
+    must also account for the possibility that an unassigned measurement
+    starts a new track rather than being clutter. :class:`MHTTracker` uses
+    its own internal method, not this one.
+
     Examples
     --------
     >>> import numpy as np

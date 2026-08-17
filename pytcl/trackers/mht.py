@@ -397,7 +397,15 @@ class MHTTracker:
         Z: NDArray[np.floating],
         likelihood_matrix: dict[tuple[int, int], float],
     ) -> float:
-        """Compute likelihood of a joint association."""
+        """Compute likelihood of a joint association.
+
+        Different formula from the public
+        :func:`pytcl.trackers.hypothesis.compute_association_likelihood`:
+        this method's unassigned-measurement term is
+        ``(clutter_density + new_track_weight) ** n_unassigned``, folding in
+        the possibility that an unassigned measurement starts a new track,
+        rather than the plain ``clutter_density ** n_clutter`` used there.
+        """
         likelihood = 1.0
 
         used_meas = set()

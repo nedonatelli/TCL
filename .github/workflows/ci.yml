@@ -89,7 +89,7 @@ jobs:
       # on this suite, tracing costs 1.77x (81s -> 144s), and the other eight
       # jobs were paying it to produce a report that is thrown away. Those
       # eight run in parallel instead; -n auto is safe here because the suite
-      # has no ordering dependence (verified: 5920 passed under xdist).
+      # has no ordering dependence (verified under xdist).
       #
       # The examples marker is excluded and runs in its own job: the scripts
       # are slow and only need exercising on one platform.
