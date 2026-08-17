@@ -409,6 +409,22 @@ class TestDebyeBoundaryAccuracy:
         # (n=9/10 at x=2.0, the branch boundary itself); bound with headroom.
         assert float(rel_err) < 5e-11
 
+    @pytest.mark.parametrize("n", (6, 9, 10))
+    @pytest.mark.parametrize("x", (1.9, 1.99))
+    def test_just_below_boundary_within_measured_bound(self, n, x):
+        """D_n(x) just below the x0=2.0 switch is the actual worst region.
+
+        The small-x series is still selected here (x < 2.0) but is nearing
+        the edge of its useful precision; this is worse than the boundary
+        point x=2.0 itself, which falls to the large-x branch instead.
+        Measured worst case: 1.86e-11 (n=10, x=1.999, not parametrized here
+        to keep the grid small); bound with headroom.
+        """
+        got = float(debye(n, x)[0])
+        ref = _debye_mpmath_oracle(n, x)
+        rel_err = abs((mp.mpf(got) - ref) / ref)
+        assert float(rel_err) < 3e-11
+
     @pytest.mark.parametrize("n", _ORDERS)
     def test_old_boundary_now_near_machine_precision(self, n):
         """x=1.0 and x=1.01 (the old x0=1.0 boundary) are now near machine eps.
