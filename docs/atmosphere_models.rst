@@ -209,12 +209,17 @@ Calculate drag force on a satellite:
 Validation
 ----------
 
-The model's error against published NRLMSISE-00 reference values is
-measured and pinned by ``tests/validation/test_thermosphere_limits.py``:
-the observed ratios (0.556 at sea level, up to 50x in the mesosphere,
-within a factor of ~2 above 200 km) are asserted so any drift fails the
-suite. See the module docstring of ``pytcl.atmosphere.thermosphere`` for
-the per-altitude table.
+The model's error is measured and pinned by
+``tests/validation/test_thermosphere_limits.py`` against two different
+baselines, which the docs and the module docstring keep separate: below
+~200 km, where NRLMSISE-00 comparison data is not distributed with this
+library, the error is measured against
+``pytcl.atmosphere.us_standard_atmosphere_1976`` (0.556 at sea level, up
+to 50x in the mesosphere). Above ~200 km, where this model is intended to
+be usable, the error is measured against published NRLMSISE-00 reference
+values (within a factor of ~2). Both baselines are asserted so any drift
+fails the suite. See the module docstring of
+``pytcl.atmosphere.thermosphere`` for the per-altitude table.
 
 Effects of Solar Activity
 --------------------------

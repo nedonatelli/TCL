@@ -14,6 +14,9 @@ Requirements
 * SciPy >= 1.10
 * Numba >= 0.57
 * h5py >= 3.8
+* loguru >= 0.7
+* msgspec >= 0.18
+* rich >= 13
 
 Install from PyPI
 ^^^^^^^^^^^^^^^^^

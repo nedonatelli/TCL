@@ -317,14 +317,15 @@ Geodetic conversion and range
 Optional Dependencies
 ---------------------
 
-A core install pulls only ``numpy``, ``scipy``, ``numba`` and ``h5py``.
+A core install pulls only ``numpy``, ``scipy``, ``numba``, ``h5py``,
+``loguru``, ``msgspec`` and ``rich``.
 Everything else is opt-in, so an import failing inside one of these packages
 usually means a missing extra rather than a bug.
 
 .. mermaid::
 
    graph LR
-       CORE["core install<br/>numpy, scipy, numba, h5py"]
+       CORE["core install<br/>numpy, scipy, numba, h5py,<br/>loguru, msgspec, rich"]
        CORE --> AST["astronomy<br/>astropy, jplephem"]
        CORE --> GEO["geodesy<br/>pyproj, geographiclib"]
        CORE --> TER["terrain<br/>netCDF4"]
