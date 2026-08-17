@@ -55,10 +55,7 @@ No dates are attached because none have been decided:
   (local spec) for the full inventory, module design
   (`region_cubature.py`), and closed-form validation oracles. The
   remaining seven region-cubature directories (torus, cone, wedge,
-  etc.) are out of this subset entirely and have not been inventoried;
-  Smolyak sparse grids over the
-  Genz-Keister sequences landed as `smolyak_points` (original design,
-  see CHANGELOG)
+  etc.) are out of this subset entirely and have not been inventoried.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
@@ -89,12 +86,6 @@ No dates are attached because none have been decided:
   plotting, once xy has a stable release. Everything else in the campaign
   (uv/ty tooling, v2.1.0 Diagnostics, v2.2.0 Results I/O, v2.3.0 typed
   configs + sessions) has shipped — see the CHANGELOG.
-  Resume is bit-exact for the four deterministic classes and, for
-  `RBPFFilter`/`GaussianSumFilter`, only when built with an instance
-  `rng`; resumed on the legacy global RNG instead, they draw from a
-  diverged stream.
-- **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
-  plotting, once xy has a stable release.
 
 ### Enhanced GPU Support
 

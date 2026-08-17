@@ -45,12 +45,49 @@ fail by construction and would not indicate a defect in the port, so
 `capture_seventh_order.m` does not produce one and
 `TestSeventhOrderMatlabFixtures` excludes them from its parametrization.
 
+## lcd_n\<N\>_pts\<P\>\*.csv
+
+Produced by `scripts/matlab_capture/capture_lcd.m`, run in MATLAB against
+the Tracker Component Library at commit
+[`593ce51`](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary/tree/593ce51).
+Three files per (numDim, numSamples) case: `lcd_n<N>_pts<P>.csv` (coordinates
+and weights), `lcd_n<N>_pts<P>_sinit.csv` (seed matrix for optimizer), and
+`lcd_n<N>_pts<P>_meta.csv` (metadata including convergence details).
+
+**Format:** `lcd_n<N>_pts<P>.csv` has one row per point; N coordinate columns
+followed by a weight column, %.17g (17 significant digits, float64 precision).
+`lcd_n<N>_pts<P>_sinit.csv` is the N x floor(P/2) seed matrix in native
+(untransposed) layout, %.17g. `lcd_n<N>_pts<P>_meta.csv` contains a header row
+and one data row: numDim, numSamples, CvMDistMin, exitCode, and
+determinism_max_abs_diff (measuring bit-exact repeatability).
+
+**Status:** Not yet captured -- `TestGaussianLCDSamplesMatlabFixtures` skips
+gracefully until a maintainer with MATLAB access (and a compiled
+`quasiNewtonLBFGS` MEX binary) runs the capture script and commits the CSVs.
+
+## region_\*\_alg\*\_n\*\*.csv (and region_\*\_order\*.csv)
+
+Produced by `scripts/matlab_capture/capture_region_rules.m`, run in MATLAB
+against the Tracker Component Library at commit
+[`593ce51`](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary/tree/593ce51).
+Covers four region families (Cube_Space, Simplex, Sphere, Spherical_Surface)
+with systematic dimension and algorithm sweeps. File naming pattern varies by
+function but follows `region_<region>_<functionName>_n<N>[_alg<A>|_order<O>|...].csv`.
+
+**Format:** One row per cubature point; N coordinate columns followed by a
+weight column, %.17g (17 significant digits). Weights are NOT normalized to
+sum to 1 -- they encode the true integral over each region's measure (volume
+or surface area), per the design spec.
+
+**Status:** Not yet captured -- `TestRegionCubatureMatlabFixtures` skips
+gracefully until a maintainer with MATLAB access runs the capture script and
+commits the CSVs.
+
 ## Regenerating
 
-As of this writing no `seventh_order_alg*_n*.csv` files have been captured
-yet -- `TestSeventhOrderMatlabFixtures` skips gracefully until a maintainer
-with MATLAB access runs the capture script and commits the resulting CSVs.
-To (re)generate:
+As of this writing no `seventh_order_alg*_n*.csv`, `lcd_n*_pts*.csv`, or
+`region_*.csv` files have been captured yet. To (re)generate the seventh-order
+fixtures:
 
 1. Clone the Tracker Component Library and check out the pinned commit:
    ```bash
