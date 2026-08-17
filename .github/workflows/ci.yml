@@ -99,9 +99,17 @@ jobs:
 
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
+      #
+      # Floor ratcheted 79 -> 82 on 2026-08-16: measured 85% under the
+      # conditions THIS job actually runs in (ubuntu, no MLX -- the Apple
+      # GPU layer is untraceable here, as are numba-jitted kernel bodies),
+      # minus 3 points platform headroom. Calibrate any future ratchet
+      # against a no-MLX measurement, not a local run with gpu-apple
+      # installed: the MLX layer's coverage inflates local numbers by ~5
+      # points relative to what this gate can ever see.
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        run: uv run pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=79 --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=82 --benchmark-skip -m "not examples" -q
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
