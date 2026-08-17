@@ -729,7 +729,7 @@ def wmm(
     h : float, optional
         Height above WGS84 ellipsoid in km. Default 0.
     year : float, optional
-        Decimal year. Default 2023.0.
+        Decimal year. Default 2025.0.
     coeffs : MagneticCoefficients, optional
         Model coefficients. Default WMM2025.
 
@@ -816,7 +816,7 @@ def magnetic_declination(
     h : float, optional
         Height above ellipsoid in km. Default 0.
     year : float, optional
-        Decimal year. Default 2023.0.
+        Decimal year. Default 2025.0.
     coeffs : MagneticCoefficients, optional
         Model coefficients.
 
@@ -858,7 +858,7 @@ def magnetic_inclination(
     h : float, optional
         Height above ellipsoid in km. Default 0.
     year : float, optional
-        Decimal year. Default 2023.0.
+        Decimal year. Default 2025.0.
     coeffs : MagneticCoefficients, optional
         Model coefficients.
 
@@ -907,7 +907,7 @@ def magnetic_field_intensity(
     h : float, optional
         Height above ellipsoid in km. Default 0.
     year : float, optional
-        Decimal year. Default 2023.0.
+        Decimal year. Default 2025.0.
     coeffs : MagneticCoefficients, optional
         Model coefficients.
 

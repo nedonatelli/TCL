@@ -9,6 +9,7 @@ Tests cover:
 - Array, scalar, and list input handling
 """
 
+import mpmath as mp
 import numpy as np
 import pytest
 from scipy.special import zeta
@@ -22,6 +23,18 @@ from pytcl.mathematical_functions.special_functions.debye import (
     debye_entropy,
     debye_heat_capacity,
 )
+
+
+def _debye_mpmath_oracle(n: int, x: float) -> mp.mpf:
+    """Reference D_n(x) via direct numerical integration at 30-digit precision."""
+    if x == 0:
+        return mp.mpf(1)
+    with mp.workdps(30):
+        nx = int(n)
+        xx = mp.mpf(x)
+        integral = mp.quad(lambda t: t**nx / (mp.e**t - 1), [0, xx])
+        return (mp.mpf(nx) / xx**nx) * integral
+
 
 # =============================================================================
 # Tests for general Debye function
@@ -363,6 +376,52 @@ class TestDebyeEntropy:
             S = debye_entropy(T, theta_d)
             assert S.shape == T.shape
             assert np.all(np.isfinite(S))
+
+
+# =============================================================================
+# Accuracy at the small-x/large-x branch boundary (mpmath oracle)
+# =============================================================================
+
+
+class TestDebyeBoundaryAccuracy:
+    """Pin the measured accuracy of the small-x/large-x branch switch.
+
+    Regression test for a claims-audit finding: the module previously
+    switched branches at x0=1.0, which put x in [1.0, ~2.0) on the
+    large-x branch, where an alternating sum cancels catastrophically
+    for higher n (measured up to 8.6e-9 relative error at n=10, x=1.0).
+    The switch is now at x0=2.0. These tests pin the after-fix accuracy
+    against a 30-digit mpmath oracle so the boundary cannot silently
+    regress.
+    """
+
+    _ORDERS = (1, 4, 6, 8, 9, 10)
+    _XS = (0.5, 0.99, 1.0, 1.01, 2.0, 10.0)
+
+    @pytest.mark.parametrize("n", _ORDERS)
+    @pytest.mark.parametrize("x", _XS)
+    def test_boundary_grid_within_measured_bound(self, n, x):
+        """D_n(x) stays within the measured worst-case bound on the audit grid."""
+        got = float(debye(n, x)[0])
+        ref = _debye_mpmath_oracle(n, x)
+        rel_err = abs((mp.mpf(got) - ref) / ref)
+        # Measured worst case on this grid post-fix is ~3.8e-12
+        # (n=9/10 at x=2.0, the branch boundary itself); bound with headroom.
+        assert float(rel_err) < 5e-11
+
+    @pytest.mark.parametrize("n", _ORDERS)
+    def test_old_boundary_now_near_machine_precision(self, n):
+        """x=1.0 and x=1.01 (the old x0=1.0 boundary) are now near machine eps.
+
+        Before the x0=1.0 -> 2.0 fix these points fell on the large-x
+        branch and lost up to 8.6e-9 relative to cancellation; they now
+        fall on the small-x series, which is well-conditioned there.
+        """
+        for x in (1.0, 1.01):
+            got = float(debye(n, x)[0])
+            ref = _debye_mpmath_oracle(n, x)
+            rel_err = abs((mp.mpf(got) - ref) / ref)
+            assert float(rel_err) < 1e-12
 
 
 # =============================================================================

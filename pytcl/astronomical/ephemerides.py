@@ -38,7 +38,8 @@ Notes
 - Time input is Julian Day (JD) in Terrestrial Time (TT) scale
 - Positions returned in AU, velocities in AU/day in ICRF frame,
   relative to the Solar System Barycenter (SSB) unless stated otherwise
-- For highest precision, use DE440 (latest release) or DE432s (2013)
+- For highest precision, use DE440 (latest release) or DE430 (2013);
+  DE432s trades span for size (1950-2050 only, not higher precision)
 
 References
 ----------
@@ -83,7 +84,10 @@ class DEEphemeris:
     version : {'DE405', 'DE430', 'DE432s', 'DE440'}, optional
         Ephemeris version to load. Default is 'DE440' (latest).
         - DE440: Latest JPL release (2020), covers 1550-2650
-        - DE432s: High-precision version (2013), covers 1350-3000
+        - DE432s: Short-span version (2013) -- the "s" denotes the reduced
+          time range, not extra precision; covers 1950-2050 per NAIF's
+          generic_kernels/spk/planets/aareadme.txt (full-span DE432 covers
+          1550-2650)
         - DE430: Earlier release (2013), covers 1550-2650
         - DE405: Older version (1998), compact, covers 1600-2200
 

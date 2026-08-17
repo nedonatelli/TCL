@@ -102,6 +102,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **`debye()`'s "~1e-14 relative" accuracy claim was false for n >= 6 near
+  the x=1 branch boundary** (`pytcl/mathematical_functions/special_functions/debye.py`).
+  The small-x/large-x series switch was at x0=1.0; the large-x branch is an
+  alternating sum that cancels catastrophically right at that boundary,
+  measured (30-40-digit mpmath oracle, n in {1,4,6,8,9,10}, x in
+  {0.5,0.99,1.0,1.01,2,10}) up to 8.6e-9 relative error at n=10 -- 5 to 7
+  orders of magnitude worse than claimed, growing with n. Moved the switch
+  to x0=2.0 (still within the small-x series' documented |x| < 2*pi
+  convergence radius): the same grid now measures ~1e-16 typical and a
+  ~3.8e-12 worst case (n=9/10 exactly at the new x=2.0 boundary, where the
+  large-x branch still loses a few digits). Docstring's accuracy claim
+  replaced with the measured range; new `TestDebyeBoundaryAccuracy` in
+  `tests/validation/test_debye.py` pins both bounds against the mpmath
+  oracle so the boundary cannot silently regress.
+- **Four `wmm()`-family docstrings said "Default 2023.0" for `year` while
+  the actual default is 2025.0** (`pytcl/magnetism/wmm.py:732,819,861,910`
+  -- `wmm`, `magnetic_declination`, `magnetic_inclination`,
+  `magnetic_field_intensity`). The signatures already defaulted to the
+  WMM2025 model epoch (2025.0); only the docstrings were stale, a 2-year
+  secular-variation discrepancy for doc-trusting callers. Docstrings now
+  match the signatures.
+- **`ThermosphereState`, `F107Index`, and `simplified_thermosphere()`
+  still self-described as "NRLMSISE-00" in their docstrings**
+  (`pytcl/atmosphere/thermosphere.py:55,95,781`), reintroducing the exact
+  misnomer gh-79 renamed the API to stop making (the module preamble
+  already carries the correct "NOT NRLMSISE-00" disclaimer, but IDE
+  hover/apidoc surface each docstring independently, so the disclaimer
+  never reached these three). Each now states in its own first line that
+  this is a simplified thermosphere model with an NRLMSISE-00-style
+  interface, not NRLMSISE-00 itself. `tests/unit/test_thermosphere.py`
+  had the same problem in its module docstring and a class name
+  (`TestNRLMSISE00Basic`); renamed to match the `SimplifiedThermosphere`
+  naming already used by its sibling files
+  (`tests/validation/test_thermosphere_limits.py`,
+  `tests/contract/test_no_hidden_placeholders.py`).
 - **`bessel_ratio` returned NaN for large orders despite its claimed stability
   recurrence** (`pytcl/mathematical_functions/special_functions/bessel.py`).
   The docstring claimed a stability recurrence but the implementation was a

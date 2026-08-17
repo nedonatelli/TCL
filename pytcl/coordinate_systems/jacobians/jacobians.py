@@ -7,8 +7,10 @@ filters (e.g., converting measurement covariances between coordinate systems).
 
 Performance Notes
 -----------------
-ENU and NED Jacobians use lru_cache with quantized inputs for 25-40%
-speedup when repeatedly called with similar lat/lon values.
+ENU and NED Jacobians use lru_cache with quantized inputs. Measured
+speedup (timeit, 200000 calls, repeated identical lat/lon -- the best
+case for the cache) is ~12-14%, not the previously claimed 25-40%;
+single-machine, single-run measurement, not a general guarantee.
 """
 
 from functools import lru_cache

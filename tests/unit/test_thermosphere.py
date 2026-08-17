@@ -1,5 +1,6 @@
 """
-Tests for NRLMSISE-00 atmospheric model.
+Tests for the simplified thermosphere model (NRLMSISE-00-style interface;
+NOT NRLMSISE-00 -- see pytcl.atmosphere.thermosphere module docstring).
 
 Validates the simplified thermosphere model for density, temperature,
 and composition profiles across altitude range -5 to 1000 km.
@@ -11,7 +12,7 @@ import pytest
 from pytcl.atmosphere import ThermosphereState, simplified_thermosphere
 
 
-class TestNRLMSISE00Basic:
+class TestSimplifiedThermosphereBasic:
     """Basic functionality tests for the simplified thermosphere model."""
 
     def test_scalar_inputs(self):
@@ -82,7 +83,7 @@ class TestNRLMSISE00Basic:
 
 
 class TestAltitudeRange:
-    """Test NRLMSISE-00 across full altitude range."""
+    """Test the simplified thermosphere model across full altitude range."""
 
     def test_low_altitude(self):
         """Test at troposphere (-5 km to 11 km)."""

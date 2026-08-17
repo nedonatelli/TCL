@@ -45,7 +45,8 @@ class LeapSecondTable:
     This table must be updated when new leap seconds are announced.
     Last update: 2017-01-01 (37 seconds).
 
-    As of 2024, no new leap seconds have been added since 2017.
+    No leap second has been added since 2017; the table is current as of
+    the last library release.
     """
 
     def __init__(self) -> None:

@@ -72,6 +72,11 @@ No dates are attached because none have been decided:
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
+- **IGRF-14 coefficients** (IGRF-13's validity window ended 2025.0) — the
+  embedded `IGRF13` table is now out of its official range; `igrf()` and
+  `create_igrf13_coefficients()` document this and extrapolate the
+  2020-2025 secular variation past 2025.0, but a real IGRF-14 table
+  (expected from IAGA) should replace it
 
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
   ceiling is reachable by reconstructing per-scan covariance from a

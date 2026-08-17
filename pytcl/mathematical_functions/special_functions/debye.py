@@ -7,9 +7,19 @@ thermodynamic properties of solids (heat capacity, entropy).
 Performance
 -----------
 This module uses Numba JIT compilation with rapidly convergent series
-expansions (Abramowitz & Stegun 27.1.1-27.1.3), providing high accuracy
-(~1e-14 relative) and ~10-50x speedup for batch computations compared to
-scipy.integrate.quad.
+expansions (Abramowitz & Stegun 27.1.1-27.1.3), providing ~10-50x speedup
+for batch computations compared to scipy.integrate.quad.
+
+Accuracy
+--------
+Typical relative error is ~1e-16 (machine precision), measured against a
+30-40-digit mpmath oracle for n in {1, 4, 6, 8, 9, 10}, x in
+{0.5, 0.99, 1.0, 1.01, 2.0, 10.0}. The worst point on that grid is
+~4e-12 (n=9 and n=10 at x=2.0, where the large-x branch's alternating
+sum loses a few digits to cancellation). The small-x/large-x branch
+switch is at x0=2.0: before this was tightened from x0=1.0, the same
+grid measured up to 8.6e-9 at x=1.0-1.01 for n>=8 (catastrophic
+cancellation in the large-x branch right at the old boundary).
 """
 
 from typing import Any
@@ -117,7 +127,7 @@ def _debye_batch(
         xi = x_arr[i]
         if xi == 0.0:
             result[i] = 1.0
-        elif xi < 1.0:
+        elif xi < 2.0:
             result[i] = _debye_small_x(xi, n, coef)
         else:
             result[i] = _debye_large_x(xi, n, n_fact, zeta_n_plus_1)
