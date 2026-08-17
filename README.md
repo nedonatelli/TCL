@@ -21,7 +21,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Estimation Algorithms**: Kalman filters (KF, EKF, UKF, CKF, *CEKF*, H-infinity), particle filters (bootstrap, *RBPF*), smoothers, and batch estimation
 - **Assignment Algorithms**: Hungarian algorithm, auction algorithms, 3D/ND assignment, k-best assignments
 - **Data Association**: Global Nearest Neighbor, JPDA, MHT for multi-target tracking
-- **Mathematical Functions**: Special functions, statistics, numerical integration, and more
+- **Mathematical Functions**: Special functions, statistics, numerical integration (Gaussian quadrature, cubature rules, Genz-Keister and Smolyak sparse grids), and more
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration

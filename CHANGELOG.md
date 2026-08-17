@@ -5,6 +5,110 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Oracle-based test coverage for `detection.py`'s CFAR kernels**
+  (`tests/unit/test_detection_cfar.py`). The module's line coverage was 45%,
+  the suite's outlier -- the existing tests exercised the private GO/SO/OS
+  and 2D kernels only through smoke assertions (shapes, dtypes, "detects a
+  target"). The new file adds: a closed-form check of CA-CFAR's threshold
+  factor; Monte Carlo Pfa inversions for GO/SO/OS (seeded
+  `Generator(PCG64(...))`, 10^6 trials, tolerance from the binomial std dev
+  of the false-alarm count); a shared synthetic scene (noise floor + clutter
+  edge + two injected targets) whose CA/GO/SO/OS detections are checked
+  against each method's documented discriminating behavior -- GO suppresses
+  the edge false alarm CA raises, SO recovers a target masked near the edge,
+  OS survives an interferer that masks CA -- cross-checked against an
+  independently reimplemented window-arithmetic oracle, not just the
+  resulting booleans; and 2D window-clipping arithmetic at image corners and
+  edges for CA and SO (`cfar_2d` does not implement an OS method, unlike its
+  1D counterpart -- now asserted directly rather than assumed). Line
+  coverage of `detection.py` from the new file alone, measured with
+  `NUMBA_DISABLE_JIT=1` (coverage.py cannot trace into `@njit`-compiled
+  kernels otherwise, capping measurable coverage near 45% regardless of test
+  quality): 41% -> 83%.
+
+- **`smolyak_points`** -- Smolyak sparse-grid cubature over the nested
+  Genz-Keister sequences
+  (`pytcl.mathematical_functions.numerical_integration.cubature_points`).
+  ORIGINAL DESIGN: no MATLAB TCL counterpart exists (MATLAB provides the
+  nested 1-D sequences but never the Smolyak combination); the standard
+  combination formula with 1-D levels mapped to the Genz-Keister
+  "milestone" m values (algorithm 0: m = 0, 1, 4, 9 for levels 0-3;
+  algorithm 1: m = 0, 1, 5 for levels 0-2), where each rule attains its
+  bonus exactness degree and the point sets nest exactly. Each ladder
+  deliberately stops below its GK table's top, precision-degraded
+  milestone. Total-degree exactness is measured per (algorithm, n, level)
+  cell and claimed only there (n <= 8 for algorithm 0, n <= 6 for
+  algorithm 1): at least 2\*level+1 in every measured cell, with low-n
+  cells exceeding it (up to degree 29 at n=1, level 3). 177 points at
+  n=8, level 2 (degree 5) versus 6561 for the tensor Gauss-Hermite grid.
+  Weights are commonly negative (inherent to the combination, disclosed,
+  not clamped).
+- **`seventh_order_cubature_points` full algorithm surface**
+  (`pytcl.mathematical_functions.numerical_integration.cubature_points`):
+  added the `algorithm` parameter (0-9), covering every rule MATLAB
+  TCL's `seventhOrderCubPoints` exposes -- `algorithm=None` reproduces
+  MATLAB's default dispatch (n==1 -> 9, n==2 -> 2, otherwise -> 0);
+  existing callers passing only `n` (n>=3) get algorithm 0, bit-for-bit
+  unchanged. Algorithm 0's code still accepts any n >= 3, but its
+  degree-7-exactness claim is bounded to the n = 3..6 range the test
+  suite verifies; n > 6 runs without error but is an unverified
+  extrapolation, not a documented guarantee. Algorithms 1 (E_n^{r^2} 7-1,
+  n in {3,4,6,7}), 2/3
+  (E_2^{r^2} 7-1/7-2, n=2), 4-7 (E_3^{r^2} 7-1/7-2 upper/lower sign
+  variants, n=3), 8 (E_4^{r^2} 7-1, n=4), and 9 (the 1-D Gauss-Hermite
+  path, n=1) are new.
+  - Algorithms 3 and 8 do **not** reproduce MATLAB's numeric output:
+    MATLAB's documented corrections for those two (a 4/3 scale factor
+    for algorithm 3's r, s; a sqrt(4/5) factor for algorithm 8's r, s,
+    t) do not actually achieve the function's own degree-7-exactness
+    contract, verified with exact symbolic arithmetic. Algorithm 8's
+    real defect is a missing square root in Stroud's printed
+    `t = 3 + sqrt(3)` (should be `t = sqrt(3 + sqrt(3))`); with that fix
+    and no sqrt(4/5) rescaling, Stroud's original coefficients are
+    exact. Algorithm 3's 16-point, no-origin layout is provably
+    incapable of degree-7 exactness for any parameter choice (one
+    degree of freedom short of the 6 independent moment constraints);
+    a corrected 17-point rule (adding an origin point) is used instead,
+    with a negative weight (D = -2/3) on that origin point -- inherent
+    to the rule, not clamped; do not assemble covariances from these
+    points with a sqrt-of-weights factorization. See `_e2_7_2` and
+    `_e4_7_1`'s docstrings in `cubature_points.py` for the full
+    derivations.
+  - `scripts/matlab_capture/capture_seventh_order.m` (owner-run, MATLAB
+    required) captures reference fixtures for the algorithms that do
+    match MATLAB's output; `tests/fixtures/matlab/` documents the
+    procedure. The fixture-comparison tests skip gracefully until those
+    fixtures are captured (`PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns the
+    skip into a hard failure).
+- **Session round-trip property tests** (`tests/property/
+  test_session_properties.py`), closing a deviation parked in v2.3.0's
+  example-only session save/restore coverage. Generates `SingleTargetTracker`
+  and `IMMEstimator` configurations (state/measurement dimensions, mode
+  counts, a seeded `Generator(PCG64(...))` for well-conditioned model
+  matrices) and asserts `pytcl.io.save_session`/`load_session` round-trips
+  the state (`x`/`P` for the tracker, `x`/`P`/`mode_probs` for IMM) bit-exact
+  after a mid-track predict/update cycle, msgpack only -- JSON's non-finite
+  rejection is already covered by example tests in
+  `tests/unit/test_io_session.py`.
+
+### Changed
+- **CI coverage floor ratcheted 79 -> 82**, calibrated against 85% measured
+  under the coverage job's own conditions (ubuntu, no MLX, numba JIT on;
+  the MLX GPU layer and numba-jitted kernel bodies are untraceable there)
+  with 3 points of platform headroom, superseding a prior 87 target that
+  had been calibrated against a local measurement that included MLX.
+
+### Fixed
+- **`pytcl.mathematical_functions.transforms.wavelets`** (`dwt`, `idwt`,
+  `dwt_single_level`, `idwt_single_level`, `wpt`, `threshold_coefficients`)
+  now raise `DependencyError` when pywavelets is not installed, instead of
+  a bare `ImportError`, matching the repo-wide optional-dependency
+  convention (`DependencyError` subclasses both `ConfigurationError` and
+  `ImportError`, so existing `except ImportError` callers are unaffected).
+
 ## [2.3.0] - 2026-08-16
 
 ### Added

@@ -34,6 +34,7 @@ jobs:
           uv run pytest benchmarks/test_kalman_bench.py \
                            benchmarks/test_gating_bench.py \
                            benchmarks/test_rotations_bench.py \
+                           benchmarks/test_cubature_bench.py \
             --benchmark-only \
             --benchmark-json=/tmp/benchmark_results.json \
             --benchmark-warmup=on \

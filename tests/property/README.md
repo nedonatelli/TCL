@@ -13,13 +13,15 @@ and shrinks any failure to a minimal reproducing example.
 | `test_coordinate_properties.py` | `pytcl.coordinate_systems.conversions.{spherical,geodetic}` | `cart2sphere`/`sphere2cart` and `geodetic2ecef`/`ecef2geodetic` round-trip across all three spherical `system_type` conventions, including poles, the antimeridian, and subnormal magnitudes |
 | `test_assignment_properties.py` | `pytcl.assignment_algorithms.two_dimensional.assignment.hungarian` | matches a brute-force oracle for optimal cost (minimize and maximize), returns a valid injective pairing, and `total_cost` matches the selected entries |
 | `test_filter_properties.py` | `pytcl.dynamic_estimation.kalman.linear.{kf_predict,kf_update}` | posterior covariance stays symmetric and PSD; a measurement update never increases `trace(P)` |
+| `test_session_properties.py` | `pytcl.io.session.{save_session,load_session}` | `SingleTargetTracker`/`IMMEstimator` state (`x`/`P`/`mode_probs`) survives a msgpack round trip bit-exact after a mid-track predict/update cycle |
 
 `_strategies.py` holds the generators for the serialization suite
 (`finite_floats`, `float64_arrays`, `track_histories`) — its only importer is
-`test_serialization_properties.py`. The other three modules define their own
+`test_serialization_properties.py`. The other four modules define their own
 bounded generators (`_log_uniform_component` in coordinates,
-`_cost_element` in assignment, `_matrix_entries` in filter) because each
-target justifies its own bounds — e.g. assignment's `_cost_element` caps
+`_cost_element` in assignment, `_matrix_entries` in filter,
+`_single_target_states`/`_imm_states` in session) because each target
+justifies its own bounds — e.g. assignment's `_cost_element` caps
 magnitude so a sum of up to `MAX_DIM` terms can't overflow to
 `+/-inf` (see its docstring). Convention: put a generator in `_strategies.py`
 only when a bound is genuinely shared across modules; otherwise keep it next

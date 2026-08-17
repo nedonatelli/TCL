@@ -24,6 +24,7 @@ D. F. Crouse, "The Tracker Component Library," IEEE AESS Magazine,
 """
 
 import itertools
+import math
 from collections import Counter
 from typing import Callable, Optional, Tuple
 
@@ -32,6 +33,9 @@ from numpy.typing import ArrayLike, NDArray
 from scipy.special import gamma, roots_genlaguerre, roots_jacobi
 
 from pytcl.mathematical_functions.basic_matrix.decompositions import chol_semi_def
+from pytcl.mathematical_functions.numerical_integration.quadrature import (
+    gauss_hermite,
+)
 
 
 def _pm_combos(x: ArrayLike) -> NDArray[np.floating]:
@@ -44,6 +48,19 @@ def _pm_combos(x: ArrayLike) -> NDArray[np.floating]:
         p[nz] = x[nz] * np.array(signs)
         out.append(p)
     return np.array(out)
+
+
+def _full_sym_perms(x: ArrayLike) -> NDArray[np.floating]:
+    """All fully symmetric (multiset) permutations of x (MATLAB's fullSymPerms).
+
+    Every distinct permutation of the multiset of entries of x, each
+    signed with every sign combination of its nonzero entries.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    if np.all(x == 0):
+        return x.reshape(1, -1)
+    perms = set(itertools.permutations(x.tolist()))
+    return np.vstack([_pm_combos(np.array(p)) for p in perms])
 
 
 def transform_cubature_points(
@@ -511,36 +528,318 @@ def _seventh_order_unit_sphere_points(
     return np.vstack(points), weights / i1
 
 
+def _en_7_1(n: int) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 1: E_n^{r^2} 7-1 of Stroud (1971), p. 318, n in {3, 4, 6, 7}."""
+    root = np.sqrt(3.0 * (8.0 - n))
+    r = np.sqrt((3.0 * (8.0 - n) - (n - 2.0) * root) / (2.0 * (5.0 - n)))
+    s = np.sqrt((3.0 * n - 2.0 * root) / (2.0 * (3.0 * n - 8.0)))
+    t = np.sqrt((6.0 + root) / 2.0)
+
+    b = (8.0 - n) / (8.0 * r**6)
+    c = 1.0 / (2.0 ** (n + 3) * s**6)
+    d = 1.0 / (16.0 * t**6)
+    a = 1.0 - 2 * n * b - 2**n * c - 2 * n * (n - 1) * d
+
+    axis = np.zeros(n)
+    axis[0] = r
+    t_pair = np.zeros(n)
+    t_pair[0] = t
+    t_pair[1] = t
+
+    points = np.vstack(
+        [
+            np.zeros((1, n)),
+            _full_sym_perms(axis),
+            _pm_combos(s * np.ones(n)),
+            _full_sym_perms(t_pair),
+        ]
+    )
+    weights = np.concatenate(
+        [
+            [a],
+            np.full(2 * n, b),
+            np.full(2**n, c),
+            np.full(2 * n * (n - 1), d),
+        ]
+    )
+    return np.sqrt(2.0) * points, weights
+
+
+def _e2_7_1() -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 2: E_2^{r^2} 7-1 of Stroud (1971), p. 324, n = 2, 12 points."""
+    r = np.sqrt(3.0)
+    s = np.sqrt((9.0 - 3.0 * np.sqrt(5.0)) / 8.0)
+    t = np.sqrt((9.0 + 3.0 * np.sqrt(5.0)) / 8.0)
+    a = 1.0 / 36.0
+    b = (5.0 + 2.0 * np.sqrt(5.0)) / 45.0
+    c = (5.0 - 2.0 * np.sqrt(5.0)) / 45.0
+
+    points = np.vstack(
+        [
+            _full_sym_perms([r, 0.0]),
+            _pm_combos([s, s]),
+            _pm_combos([t, t]),
+        ]
+    )
+    weights = np.concatenate([np.full(4, a), np.full(4, b), np.full(4, c)])
+    return np.sqrt(2.0) * points, weights
+
+
+def _e2_7_2() -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 3: E_2^{r^2} 7-2 of Stroud (1971), p. 324, n = 2, 17 points.
+
+    **Deviation from MATLAB.** MATLAB's ``case 3`` uses r^2 and s^2 each
+    scaled by a documented "missing 4/3" correction, combined with a
+    16-point layout (axis-r [4 pts, weight A], axis-s [4 pts, weight B],
+    mixed (r,s) [8 pts, weight C], no origin point). That combination was
+    checked here against every monomial of total degree <= 7 (the
+    function's own contract) using exact symbolic arithmetic and does
+    NOT integrate them correctly -- e.g. E[x^6] comes out to ~33.8
+    instead of the true value 15, regardless of which specific r, s
+    values are plugged into that 16-point layout. This is provable in
+    general: with 3 uniformly-weighted point families and no origin
+    term, the construction has only 5 free parameters (A, B, C, and the
+    two radii), but degree-7 exactness for the bivariate N(0, I) imposes
+    6 independent moment constraints on that layout, one more than the
+    available degrees of freedom -- no choice of the 5 parameters can
+    satisfy all 6 (confirmed by direct solve and by least-squares
+    residual minimization, both landing on a nonzero residual floor).
+
+    Adding a 17th point at the origin (weight D) supplies the missing
+    degree of freedom. Solving the moment equations with an origin term
+    present recovers r^2 = (3 + sqrt(6))/2 and s^2 = (3 - sqrt(6))/2 --
+    Stroud's book values, unscaled, with no 4/3 factor -- alongside new
+    weights A, B, C, D that exactly integrate every monomial through
+    degree 7 (verified symbolically) and fail at degree 8 (confirmed
+    sharp, not accidentally higher-order). This is the formula used
+    here; it does not reproduce MATLAB's ``seventhOrderCubPoints``
+    algorithm 3 output, which does not itself satisfy the degree-7
+    contract its own name promises.
+    """
+    r2 = (3.0 + np.sqrt(6.0)) / 2.0
+    s2 = (3.0 - np.sqrt(6.0)) / 2.0
+    r = np.sqrt(r2)
+    s = np.sqrt(s2)
+
+    a = (2.0 - np.sqrt(6.0)) / 12.0
+    b = (2.0 + np.sqrt(6.0)) / 12.0
+    c = 1.0 / 24.0
+    d = -2.0 / 3.0
+
+    points = np.vstack(
+        [
+            np.zeros((1, 2)),
+            _full_sym_perms([r, 0.0]),
+            _full_sym_perms([s, 0.0]),
+            _full_sym_perms([r, s]),
+        ]
+    )
+    weights = np.concatenate([[d], np.full(4, a), np.full(4, b), np.full(8, c)])
+    return np.sqrt(2.0) * points, weights
+
+
+def _e3_7_1(sign: float) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 4/5: E_3^{r^2} 7-1 of Stroud (1971), p. 327, n = 3, 27 points.
+
+    ``sign = 1.0`` is algorithm 4 (upper signs), ``sign = -1.0`` is
+    algorithm 5 (lower signs) -- the two variants differ only in the sign
+    of every ``sqrt(15)`` term.
+    """
+    r15 = sign * np.sqrt(15.0)
+    r = np.sqrt((15.0 + r15) / 4.0)
+    s = np.sqrt((6.0 - r15) / 2.0)
+    t = np.sqrt((9.0 + 2.0 * r15) / 2.0)
+    a = (720.0 + 8.0 * r15) / 2205.0
+    b = (270.0 - 46.0 * r15) / 15435.0
+    c = (162.0 + 41.0 * r15) / 6174.0
+    d = (783.0 - 202.0 * r15) / 24696.0
+
+    points = np.vstack(
+        [
+            np.zeros((1, 3)),
+            _full_sym_perms([r, 0.0, 0.0]),
+            _full_sym_perms([s, s, 0.0]),
+            _pm_combos([t, t, t]),
+        ]
+    )
+    weights = np.concatenate([[a], np.full(6, b), np.full(12, c), np.full(8, d)])
+    return np.sqrt(2.0) * points, weights
+
+
+def _e3_7_2(sign: float) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 6/7: E_3^{r^2} 7-2 of Stroud (1971), p. 328, n = 3, 33 points.
+
+    ``sign = 1.0`` is algorithm 6 (upper signs), ``sign = -1.0`` is
+    algorithm 7 (lower signs) -- the two variants flip the sign of every
+    ``sqrt(2)`` and ``sqrt(10)`` term together (``sqrt(5)`` terms are
+    unaffected).
+    """
+    s2 = sign * np.sqrt(2.0)
+    s5 = np.sqrt(5.0)
+    s10 = sign * np.sqrt(10.0)
+
+    r = np.sqrt((25.0 + 15.0 * s2 + 5.0 * s5 + 3.0 * s10) / 4.0)
+    s = np.sqrt((25.0 + 15.0 * s2 - 5.0 * s5 - 3.0 * s10) / 4.0)
+    t = np.sqrt((3.0 - s2) / 2.0)
+    u = np.sqrt((9.0 - 3.0 * s2 - 3.0 * s5 + s10) / 4.0)
+    v = np.sqrt((9.0 - 3.0 * s2 + 3.0 * s5 - s10) / 4.0)
+
+    a = (80.0 + 8.0 * s2) / 245.0
+    b = (395.0 - 279.0 * s2) / 13720.0
+    c = (45.0 + 29.0 * s2) / 2744.0
+
+    points = np.vstack(
+        [
+            np.zeros((1, 3)),
+            _pm_combos([r, s, 0.0]),
+            _pm_combos([0.0, r, s]),
+            _pm_combos([s, 0.0, r]),
+            _pm_combos([u, v, 0.0]),
+            _pm_combos([0.0, u, v]),
+            _pm_combos([v, 0.0, u]),
+            _pm_combos([t, t, t]),
+        ]
+    )
+    weights = np.concatenate([[a], np.full(12, b), np.full(20, c)])
+    return np.sqrt(2.0) * points, weights
+
+
+def _e4_7_1() -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 8: E_4^{r^2} 7-1 of Stroud (1971), p. 329, n = 4, 49 points.
+
+    **Deviation from MATLAB.** MATLAB's ``case 8`` takes Stroud's printed
+    ``t = 3 + sqrt(3)`` literally (no square root around it) and then
+    rescales r, s, and t by a documented ``sqrt(4/5)`` correction factor.
+    That combination was checked here against every monomial of total
+    degree <= 7 using exact symbolic arithmetic and does NOT integrate
+    them correctly (e.g. E[x1^4] comes out wrong). Re-deriving t from the
+    moment equations directly (holding the rest of the construction
+    fixed) gives t = sqrt(3 + sqrt(3)) -- i.e. the book's printed
+    ``t = 3 + sqrt(3)`` is missing its own square root, a plain
+    transcription typo distinct from the one MATLAB's comment describes.
+    With that single fix and NO sqrt(4/5) rescaling of r, s, or t (the
+    documented "correction" turns out to be unnecessary once t is
+    correct), Stroud's original r, s, A, B, C values integrate every
+    monomial through degree 7 exactly (verified symbolically) and fail
+    at degree 8 (confirmed sharp). This is the formula used here; it
+    does not reproduce MATLAB's ``seventhOrderCubPoints`` algorithm 8
+    output, which does not itself satisfy the degree-7 contract its own
+    name promises.
+    """
+    s = np.sqrt((3.0 - np.sqrt(3.0)) / 2.0)
+    t = np.sqrt(3.0 + np.sqrt(3.0))
+    r = 2.0 * s
+
+    a = 1.0 / 4.0
+    b = (9.0 + 5.0 * np.sqrt(3.0)) / 576.0
+    c = (9.0 - 5.0 * np.sqrt(3.0)) / 576.0
+
+    points = np.vstack(
+        [
+            np.zeros((1, 4)),
+            _full_sym_perms([r, 0.0, 0.0, 0.0]),
+            _pm_combos([s, s, s, s]),
+            _full_sym_perms([t, t, 0.0, 0.0]),
+        ]
+    )
+    weights = np.concatenate([[a], np.full(24, b), np.full(24, c)])
+    return np.sqrt(2.0) * points, weights
+
+
+def _quadrature_1d_degree_4() -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Algorithm 9: MATLAB's ``quadraturePoints1D(4)``, n = 1, 4 points.
+
+    pytcl's equivalent is :func:`gauss_hermite` mapped from the
+    physicists' weight ``exp(-x**2)`` to the probabilists' N(0, 1) weight
+    (``x -> sqrt(2) x``, ``w / sqrt(pi)``), per this module's docstring.
+    """
+    x, w = gauss_hermite(4)
+    points = (np.sqrt(2.0) * x).reshape(-1, 1)
+    weights = w / np.sqrt(np.pi)
+    return points, weights
+
+
 def seventh_order_cubature_points(
-    n: int,
+    n: int, algorithm: Optional[int] = None
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     Degree-7 cubature points for the standard normal N(0, I).
 
-    The 2*(2^n + 2n^2) point fully-symmetric rule E_n^{r^2} 7-3 of Stroud
-    (1971) (McNamee-Stenger (1967) construction), the counterpart of the
-    MATLAB TCL's ``seventhOrderCubPoints`` (algorithm 0, the default for
-    n > 2). Two concentric copies of the degree-7 spherical-surface rule
-    ``seventhOrderSpherSurfCubPoints`` (algorithm 0, formula I of Stroud's
-    1968 paper cited there) are scaled to radii r1 and r2 -- the roots of
-    the radial polynomial in Stroud's construction -- and blended with
-    weights that sum to 1. Exactly integrates every polynomial of total
-    degree <= 7 against N(0, I).
+    The counterpart of the MATLAB TCL's ``seventhOrderCubPoints``, full
+    algorithm surface. ``algorithm=None`` reproduces MATLAB's default
+    selection logic: n == 1 -> algorithm 9, n == 2 -> algorithm 2,
+    otherwise -> algorithm 0. Each algorithm exactly integrates every
+    polynomial of total degree <= 7 against N(0, I) for its own valid n;
+    that has been verified by the test suite exactly for the (algorithm,
+    n) pairs in the table below -- no wider claim is made.
+
+    algorithm  rule (Stroud 1971)          valid n         points
+    ---------  ---------------------------  --------------  ----------------
+    0          E_n^{r^2} 7-3, p. 319        n = 3..6 (note) 2*(2^n + 2n^2)
+    1          E_n^{r^2} 7-1, p. 318        3, 4, 6, 7      2^n + 2n^2 + 1
+    2          E_2^{r^2} 7-1, p. 324        2               12
+    3          E_2^{r^2} 7-2, p. 324        2               17 (see note)
+    4 / 5      E_3^{r^2} 7-1, p. 327        3               27
+    6 / 7      E_3^{r^2} 7-2, p. 328        3               33
+    8          E_4^{r^2} 7-1, p. 329        4               49 (see note)
+    9          quadraturePoints1D(4)        1               4
+
+    Note on algorithm 0: it predates this table (it is the pre-existing
+    default for n > 2) and its code, unlike every other algorithm here,
+    does not restrict n beyond n >= 3 -- it will run for any such n. But
+    the test suite exercises it only at n = 3..6, so per this docstring's
+    own rule ("verified... exactly for the (algorithm, n) pairs in the
+    table below -- no wider claim is made") the exactness CLAIM is
+    bounded to n = 3..6, matching every other row; n > 6 is accepted by
+    the code but is an unverified extrapolation, not a documented
+    guarantee.
+
+    **Deviations from MATLAB (algorithms 3 and 8).** MATLAB's comments
+    document scale corrections for these two algorithms (a missing 4/3
+    factor for algorithm 3's r and s; a sqrt(4/5) factor for algorithm
+    8's r, s, and t). Both were checked here with exact symbolic
+    arithmetic against every monomial of total degree <= 7 and neither
+    actually achieves degree-7 exactness -- MATLAB's own documented
+    fixes are themselves incorrect (or fix a different bug than the one
+    that matters), independent of what the underlying formula's own
+    literal coefficients are. Algorithm 8's real defect is a plain
+    transcription typo (the book's ``t = 3 + sqrt(3)`` is missing an
+    outer square root; with ``t = sqrt(3 + sqrt(3))`` and Stroud's other
+    coefficients unscaled, no sqrt(4/5) correction is needed and the
+    rule is exact). Algorithm 3's 16-point, no-origin layout is
+    *provably* incapable of degree-7 exactness for any choice of its
+    two radii and three weights (5 free parameters short by one against
+    6 independent moment constraints, confirmed by direct solve and by
+    least-squares residual minimization); adding a 17th point at the
+    origin supplies the missing degree of freedom and, with Stroud's
+    original (unscaled) r and s, yields an exact rule. See each private
+    constructor's docstring (:func:`_e2_7_2`, :func:`_e4_7_1`) for the
+    full derivation. Both corrected rules still integrate exactly
+    through degree 7 and fail at degree 8 (confirmed sharp); neither
+    reproduces MATLAB's ``seventhOrderCubPoints`` numeric output for
+    that algorithm.
 
     Parameters
     ----------
     n : int
-        Dimension, n >= 3.
+        Dimension. Valid values depend on ``algorithm`` -- see the table
+        above; an unsupported (algorithm, n) pair raises ``ValueError``.
+    algorithm : int, optional
+        Which of the 10 algorithms (0-9) above to use. Default None
+        reproduces MATLAB's default selection (see above).
 
     Returns
     -------
     points : ndarray
-        Shape (2*(2**n + 2*n*n), n).
+        Shape (num_points, n); num_points per the table above.
     weights : ndarray
-        Shape (2*(2**n + 2*n*n),), summing to 1. The axis shell's surface
-        weight (8 - n)/(n(n+2)(n+4)) is negative for n > 8; this is
-        inherent to the rule, not an error. Covariances assembled from
-        these points must not use a sqrt-of-weights factorization.
+        Shape (num_points,), summing to 1. For algorithm 0, the axis
+        shell's surface weight (8 - n)/(n(n+2)(n+4)) is negative for
+        n > 8; this is inherent to the rule, not an error. Algorithm 3's
+        corrected 17-point rule (see the deviation note above) likewise
+        has a negative weight, D = -2/3, on its origin point -- also
+        inherent, not an error. In both cases, covariances assembled
+        from these points must not use a sqrt-of-weights factorization.
 
     Examples
     --------
@@ -552,13 +851,20 @@ def seventh_order_cubature_points(
     >>> round(float(np.sum(w * pts[:, 0] ** 6)), 6)  # E[x^6] = 15
     15.0
 
+    >>> pts, w = seventh_order_cubature_points(2, algorithm=3)
+    >>> pts.shape
+    (17, 2)
+    >>> round(float(w.sum()), 12)
+    1.0
+
     References
     ----------
     A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
-    Prentice-Hall, 1971, Formula E_n^{r^2} 7-3, p. 319. The formula as
-    printed there contains a typo; the corrected form used here
-    follows Stroud's original papers, Stroud (1967) and Stroud (1968),
-    summarized in Crouse (2014).
+    Prentice-Hall, 1971, Formulas E_n^{r^2} 7-1 through 7-3 and
+    E_2^{r^2}/E_3^{r^2}/E_4^{r^2} 7-1/7-2, pp. 318-329. Algorithm 0's
+    formula as printed there contains a typo; the corrected form used
+    here follows Stroud's original papers, Stroud (1967) and Stroud
+    (1968), summarized in Crouse (2014).
 
     A. H. Stroud, "Some seventh degree integration formulas for
     symmetric regions," SIAM Journal on Numerical Analysis, vol. 4,
@@ -572,21 +878,66 @@ def seventh_order_cubature_points(
     and bistatic measurements," IEEE Aerospace and Electronic Systems
     Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
     """
-    if n < 3:
-        raise ValueError(f"dimension must be >= 3, got {n}")
+    if algorithm is None:
+        if n > 2:
+            algorithm = 0
+        elif n == 2:
+            algorithm = 2
+        else:
+            algorithm = 9
 
-    u, wu = _seventh_order_unit_sphere_points(n)
+    if algorithm == 0:
+        if n < 3:
+            raise ValueError(f"algorithm 0 requires n >= 3, got {n}")
 
-    root = np.sqrt(2.0 * (n + 2.0))
-    r1 = np.sqrt((n + 2.0 - root) / 2.0)
-    r2 = np.sqrt((n + 2.0 + root) / 2.0)
-    a1 = (n + 2.0 + root) / (2.0 * (n + 2.0))
-    a2 = (n + 2.0 - root) / (2.0 * (n + 2.0))
+        u, wu = _seventh_order_unit_sphere_points(n)
 
-    points = np.sqrt(2.0) * np.vstack([r1 * u, r2 * u])
-    weights = np.concatenate([wu * a1, wu * a2])
+        root = np.sqrt(2.0 * (n + 2.0))
+        r1 = np.sqrt((n + 2.0 - root) / 2.0)
+        r2 = np.sqrt((n + 2.0 + root) / 2.0)
+        a1 = (n + 2.0 + root) / (2.0 * (n + 2.0))
+        a2 = (n + 2.0 - root) / (2.0 * (n + 2.0))
 
-    return points, weights
+        points = np.sqrt(2.0) * np.vstack([r1 * u, r2 * u])
+        weights = np.concatenate([wu * a1, wu * a2])
+        return points, weights
+    if algorithm == 1:
+        if n not in (3, 4, 6, 7):
+            raise ValueError(f"algorithm 1 requires n in {{3, 4, 6, 7}}, got {n}")
+        return _en_7_1(n)
+    if algorithm == 2:
+        if n != 2:
+            raise ValueError(f"algorithm 2 requires n == 2, got {n}")
+        return _e2_7_1()
+    if algorithm == 3:
+        if n != 2:
+            raise ValueError(f"algorithm 3 requires n == 2, got {n}")
+        return _e2_7_2()
+    if algorithm == 4:
+        if n != 3:
+            raise ValueError(f"algorithm 4 requires n == 3, got {n}")
+        return _e3_7_1(1.0)
+    if algorithm == 5:
+        if n != 3:
+            raise ValueError(f"algorithm 5 requires n == 3, got {n}")
+        return _e3_7_1(-1.0)
+    if algorithm == 6:
+        if n != 3:
+            raise ValueError(f"algorithm 6 requires n == 3, got {n}")
+        return _e3_7_2(1.0)
+    if algorithm == 7:
+        if n != 3:
+            raise ValueError(f"algorithm 7 requires n == 3, got {n}")
+        return _e3_7_2(-1.0)
+    if algorithm == 8:
+        if n != 4:
+            raise ValueError(f"algorithm 8 requires n == 4, got {n}")
+        return _e4_7_1()
+    if algorithm == 9:
+        if n != 1:
+            raise ValueError(f"algorithm 9 requires n == 1, got {n}")
+        return _quadrature_1d_degree_4()
+    raise ValueError(f"unknown algorithm {algorithm}, expected one of 0-9")
 
 
 def _sphere_surface_points(
@@ -1551,6 +1902,263 @@ def genz_keister_points(
     weights = np.concatenate(weight_blocks)
     keep = np.abs(weights) > eps_val
     return points[keep], weights[keep]
+
+
+# Smolyak level -> Genz-Keister m, per algorithm: the m values at which each
+# algorithm's nu stages complete -- the "milestone" rows of
+# `genz_keister_points`' bonus-degree table (m = 0 prepended for the trivial
+# one-point rule at the origin). Milestones are the only sensible rungs for
+# a Smolyak ladder over these tables:
+#
+# 1. Each milestone's 1-D point set is an EXACT superset of the previous
+#    one's (same table constants, so exact float equality -- verified in
+#    TestSmolyakPoints.test_grids_nest_across_levels via the grids they
+#    tensor into), which is what lets the sparse grid reuse evaluations
+#    across levels.
+# 2. Milestones are where the GK 1-D rule attains its bonus exactness
+#    (degrees 1, 5, 15, 29 for algorithm 0; 1, 5, 19 for algorithm 1) --
+#    the maximum degree per point the table offers. Intermediate m values
+#    either duplicate the previous point set outright (m=2 reuses m=1's
+#    points post-pruning, so a ladder through it would have a vanishing
+#    difference rule) or buy less degree per added point.
+# 3. The TOP milestone of each algorithm (m=17 / m=15) is deliberately
+#    excluded: at those m the published double-precision constants no
+#    longer yield an exactness cliff at ANY tolerance (see "Precision at
+#    the top of the range" in `genz_keister_points`' docstring), so a
+#    level built on it could not keep the exactness promise this function
+#    exists to make. (Milestone-to-milestone nesting m=9 -> 17 / m=5 -> 15
+#    was checked and actually HOLDS -- the nesting break documented in
+#    `genz_keister_points` is the consecutive m-1 -> m pair only -- so
+#    exactness alone, not point reuse, is this exclusion's justification.)
+_SMOLYAK_GK_M = {0: (0, 1, 4, 9), 1: (0, 1, 5)}
+
+
+def _gk_1d(algorithm: int, m: int) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """The 1-D Genz-Keister rule at level m, as sorted (nodes, weights).
+
+    Built from the validated n-D generator :func:`genz_keister_points`
+    collapsed to n=1 (no new table math), plus the trivial m=0 rule --
+    the single point 0 with weight 1 -- which the n-D generator does not
+    accept (its m >= 1) but a Smolyak ladder needs as its bottom rung.
+    """
+    if m == 0:
+        return np.zeros(1), np.ones(1)
+    pts, w = genz_keister_points(1, m, algorithm=algorithm)
+    order = np.argsort(pts[:, 0])
+    return pts[order, 0], w[order]
+
+
+def _compositions(total: int, parts: int):
+    """All tuples of `parts` nonnegative integers summing to `total`."""
+    if parts == 1:
+        yield (total,)
+        return
+    for first in range(total + 1):
+        for rest in _compositions(total - first, parts - 1):
+            yield (first,) + rest
+
+
+def smolyak_points(
+    n: int, level: int, algorithm: int = 0
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    r"""
+    Smolyak sparse-grid cubature points over nested Genz-Keister sequences.
+
+    ORIGINAL DESIGN: unlike the rest of this module, this function has no
+    MATLAB TCL counterpart -- the MATLAB library provides the nested
+    Genz-Keister 1-D sequences (`genz_keister_points`) but never the
+    Smolyak combination over them. It is the standard sparse-grid
+    construction from the literature (Smolyak (1963); Genz and Keister
+    (1996) build their sequences expressly for it), implemented and
+    verified here from scratch; every exactness claim below is bounded to
+    the measured grid it was verified on.
+
+    The classic combination formula: for multi-indices
+    :math:`k = (k_1, ..., k_n)` with :math:`L - n + 1 \le |k| \le L`
+    (:math:`L` = ``level``, components >= 0), sum the tensor products of
+    the 1-D rules at levels :math:`k_i` with coefficient
+    :math:`(-1)^{L - |k|} \binom{n-1}{L - |k|}`. The 1-D rule at level q
+    is the Genz-Keister rule at the m where the algorithm's q-th nu stage
+    completes (the "milestone" m values of `genz_keister_points`' bonus
+    table; see `_SMOLYAK_GK_M` for the mapping and the full rationale):
+
+    =========  =====  ====  ==========  ==========
+    algorithm  level  GK m  1-D points  1-D degree
+    =========  =====  ====  ==========  ==========
+    0          0      0     1           1
+    0          1      1     3           5
+    0          2      4     9           15
+    0          3      9     19          29
+    1          0      0     1           1
+    1          1      1     3           5
+    1          2      5     11          19
+    =========  =====  ====  ==========  ==========
+
+    Each algorithm's ladder stops BELOW its table's top milestone (m=17 /
+    m=15): there the published double-precision constants produce no
+    exactness cliff at any tolerance (see "Precision at the top of the
+    range" in :func:`genz_keister_points`' docstring), so no Smolyak
+    level is built on them -- hence the level caps of 3 (algorithm 0) and
+    2 (algorithm 1).
+
+    Because the 1-D point sets nest exactly (each level's nodes are a
+    strict superset of the previous level's -- the same table constants,
+    so exact float equality), points repeated across the combination's
+    tensor grids are merged into single points with summed weights, which
+    is what keeps the point count far below the tensor product's.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+    level : int
+        Smolyak accuracy level, ``0 <= level <= 3`` for ``algorithm=0``,
+        ``0 <= level <= 2`` for ``algorithm=1`` (the milestone ladders
+        above). ``level=0`` is the single point at the origin.
+    algorithm : int, optional
+        Which tabulated Genz-Keister generator to build on -- 0 (default,
+        :math:`Q_P`, nu=[3,5,8]) or 1 (:math:`\hat{Q}_P`, nu=[4,10]);
+        see :func:`genz_keister_points`.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (num_points, n), rows sorted lexicographically. The grids
+        nest across levels: every point of ``level`` appears (exactly, as
+        floats) in ``level + 1``'s grid.
+    weights : ndarray
+        Shape (num_points,), summing to 1. Commonly contains negative
+        values -- already at n=4, level=1 the origin's weight is exactly
+        -3 + 4*(2/3) = -1/3. This is a real, disclosed property of the
+        Smolyak combination (its coefficients alternate in sign)
+        compounded by the Genz-Keister rules' own negative weights, not
+        suppressed or clamped.
+        Covariances assembled from these points must not use a
+        sqrt-of-weights factorization.
+
+    Notes
+    -----
+    **Measured exactness (the claim, and its exact boundary).** The
+    standard result for nested 1-D sequences whose level-q member is
+    exact through degree >= 2q+1 gives total-degree exactness
+    :math:`2 \cdot \mathrm{level} + 1`; the GK milestone degrees (1, 5,
+    15, 29) dominate 2q+1 at every rung, so that floor applies here.
+    Because those milestone degrees grow much faster than 2q+1, low
+    dimensions do better. Rather than assert the generic floor and hope,
+    the actual total-degree exactness was measured per (algorithm, n,
+    level) cell -- every all-even-exponent monomial scanned per total
+    degree at relative tolerance 1e-12 against the closed-form N(0, I)
+    moments, odd exponents exact by antipodal symmetry (re-verified at
+    looser tolerance in the test suite's through-degree sweep):
+
+    ===========  =======  =======  =======  =======
+    algorithm 0  level 0  level 1  level 2  level 3
+    ===========  =======  =======  =======  =======
+    n=1          1        5        15       29
+    n=2          1        3        7        11
+    n=3          1        3        5        9
+    n=4 .. 8     1        3        5        7
+    ===========  =======  =======  =======  =======
+
+    ===========  =======  =======  =======
+    algorithm 1  level 0  level 1  level 2
+    ===========  =======  =======  =======
+    n=1          1        5        19
+    n=2          1        3        7
+    n=3 .. 6     1        3        5
+    ===========  =======  =======  =======
+
+    Every cell meets or exceeds 2*level+1, and every cell is sharp: the
+    next even degree fails, with a measured relative error between 2.1e-4
+    (algorithm 0, n=1, level 3, on E[x^30]) and 1.0 (the (2,2,...) mixed
+    monomials), against worst in-range noise of 2.7e-14. These tables are
+    claims ONLY for the (algorithm, n, level) cells they list -- measured
+    for n <= 8 (algorithm 0) and n <= 6 (algorithm 1). For larger n the
+    generic 2*level+1 floor is the standard theoretical result but was
+    NOT measured here; re-verify before relying on it (see
+    `tests/unit/test_cubature_points.py::TestSmolyakPoints` for the
+    measurement reproduced as tests).
+
+    **Point count vs. the tensor grid.** At level 2 (degree >= 5) in
+    n = 8, this grid has 177 points; the tensor product of the 3-point
+    degree-5 Gauss-Hermite rule has 3^8 = 6561. At level 3 (degree >= 7),
+    1377 points against the 4-point rule's 4^8 = 65536. The sparse count
+    grows polynomially in n at fixed level, the tensor count
+    exponentially.
+
+    Examples
+    --------
+    >>> pts, w = smolyak_points(2, 1)
+    >>> pts.shape  # cross of the 3-point GK rule, origin merged: 5, not 9
+    (5, 2)
+    >>> pts.round(10).tolist()[:2]
+    [[-1.7320508076, 0.0], [0.0, -1.7320508076]]
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 2)), 12)  # E[x^2] = 1
+    1.0
+
+    >>> pts, w = smolyak_points(8, 2)  # degree 5 in n=8: 177 points, not 3^8
+    >>> pts.shape
+    (177, 8)
+    >>> bool((w < 0).any())  # negative weights are inherent, see above
+    True
+
+    References
+    ----------
+    S. A. Smolyak, "Quadrature and interpolation formulas for tensor
+    products of certain classes of functions," Doklady Akademii Nauk
+    SSSR, vol. 148, no. 5, pp. 1042-1045, 1963.
+
+    A. Genz and B. D. Keister, "Fully symmetric interpolatory rules
+    for multiple integrals over infinite regions with Gaussian weight,"
+    Journal of Computational and Applied Mathematics, vol. 71, no. 2,
+    pp. 299-309, Jul. 1996.
+
+    F. Heiss and V. Winschel, "Likelihood approximation by numerical
+    integration on sparse grids," Journal of Econometrics, vol. 144,
+    no. 1, pp. 62-80, May 2008.
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if algorithm not in _SMOLYAK_GK_M:
+        raise ValueError(f"algorithm must be 0 (Q_P) or 1 (Q-hat_P), got {algorithm!r}")
+    m_of = _SMOLYAK_GK_M[algorithm]
+    max_level = len(m_of) - 1
+    if not isinstance(level, (int, np.integer)) or level < 0 or level > max_level:
+        raise ValueError(
+            f"level must be an integer with 0 <= level <= {max_level} for "
+            f"algorithm {algorithm} (the milestone ladder stops below the "
+            f"GK table's top, precision-degraded m), got {level}"
+        )
+
+    rules = [_gk_1d(algorithm, m_of[q]) for q in range(level + 1)]
+
+    # Accumulate weights keyed by the rounded point tuple. The rounding is
+    # only the dict key; the stored point is the exact tensor-grid value
+    # (identical floats across levels, since every rule draws its nodes
+    # from the same lambda table), so no precision is lost to the merge.
+    accum: dict = {}
+    for total in range(max(0, level - n + 1), level + 1):
+        coeff = (-1.0) ** (level - total) * math.comb(n - 1, level - total)
+        for k in _compositions(total, n):
+            wts = rules[k[0]][1]
+            for ki in k[1:]:
+                wts = np.multiply.outer(wts, rules[ki][1])
+            mesh = np.meshgrid(*(rules[ki][0] for ki in k), indexing="ij")
+            pts = np.stack([axis.ravel() for axis in mesh], axis=-1)
+            for point, wval in zip(pts, wts.ravel()):
+                key = tuple(point.round(12))
+                entry = accum.get(key)
+                if entry is None:
+                    accum[key] = [point, coeff * wval]
+                else:
+                    entry[1] += coeff * wval
+
+    entries = sorted(accum.values(), key=lambda e: tuple(e[0]))
+    points = np.array([e[0] for e in entries])
+    weights = np.array([e[1] for e in entries])
+    return points, weights
 
 
 def student_t_cubature_points(

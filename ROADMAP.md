@@ -36,16 +36,26 @@ evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
 - **Cubature point library remainder** — the estimation-grade
-  Gaussian-weight slice is ported (see CHANGELOG through v2.3.0); what
-  remains of the ~134 MATLAB files: Gaussian LCD samples (deferred
-  deliberately — the MATLAB source is a 505-line L-BFGS optimization over
-  a modified Cramer-von Mises distance with four hand-derived analytic
-  gradient routines, a research-grade optimizer to reimplement and
-  validate, not a transcription), the dimension-specific seventh-order
-  variant, Smolyak sparse grids (enabled by Genz-Keister's nesting
-  property, but original design work rather than a port — there is
-  nothing in the MATLAB source to transcribe), and the ~120
-  region-specific rules (cube, simplex, sphere, torus, etc.)
+  Gaussian-weight slice is ported, including the full
+  `seventh_order_cubature_points` algorithm surface (see CHANGELOG);
+  what remains of the ~134 MATLAB files: Gaussian LCD samples (spec
+  concluded: port — objective/gradient math transcribed, optimizer
+  wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
+  vendored `liblbfgs`, validated against a rotation-invariant contract
+  instead of raw MATLAB coordinates; see local spec) and the
+  region-cubature rules: 79 files measured across the Cube_Space /
+  Simplex / Sphere / Spherical_Surface subset chosen for the v2.4.0
+  region-rules spec (supersedes the old ~120 rough estimate for that
+  subset) -- 31 general-dimension top-level files prioritized in two
+  effort tiers (cube and simplex first, ball and spherical-surface
+  second; ~7-9 engineer-days), 48 dimension-specialized subdirectory
+  files (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/,
+  Triangles/) deferred pending a consumer that needs their smaller
+  point counts; see docs/superpowers/specs/2026-08-16-region-cubature-design.md
+  (local spec) for the full inventory, module design
+  (`region_cubature.py`), and closed-form validation oracles. The
+  remaining seven region-cubature directories (torus, cone, wedge,
+  etc.) are out of this subset entirely and have not been inventoried.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
@@ -76,12 +86,6 @@ No dates are attached because none have been decided:
   plotting, once xy has a stable release. Everything else in the campaign
   (uv/ty tooling, v2.1.0 Diagnostics, v2.2.0 Results I/O, v2.3.0 typed
   configs + sessions) has shipped — see the CHANGELOG.
-  Resume is bit-exact for the four deterministic classes and, for
-  `RBPFFilter`/`GaussianSumFilter`, only when built with an instance
-  `rng`; resumed on the legacy global RNG instead, they draw from a
-  diverged stream.
-- **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
-  plotting, once xy has a stable release.
 
 ### Enhanced GPU Support
 

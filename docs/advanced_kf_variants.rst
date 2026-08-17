@@ -193,7 +193,11 @@ with any rule below, not just the CKF's own points.
 
 **Genz-Keister nested rules** (``genz_keister_points(n, m, algorithm=0)``)
 build a fully-symmetric rule from a table of nested 1-D generator
-magnitudes, so the point set at ``m`` contains every point of ``m - 1``:
+magnitudes, so the point set at ``m`` contains every point of ``m - 1`` --
+except at the top of each algorithm's range (the ``m = 16 -> 17`` pair for
+algorithm 0, ``m = 14 -> 15`` for algorithm 1), where the point sets are
+not nested; see the Nesting and precision notes in the
+``genz_keister_points`` docstring:
 
 .. code-block:: python
 

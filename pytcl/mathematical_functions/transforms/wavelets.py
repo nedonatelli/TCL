@@ -25,7 +25,8 @@ from typing import Any, Callable, List, Literal, NamedTuple, Optional, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.optional_deps import is_available
+from pytcl.core.exceptions import DependencyError
+from pytcl.core.optional_deps import DISTRIBUTION_NAME, is_available
 
 # Use the unified availability check
 PYWT_AVAILABLE = is_available("pywt")
@@ -33,6 +34,46 @@ PYWT_AVAILABLE = is_available("pywt")
 # Import pywavelets if available (for use in functions)
 if PYWT_AVAILABLE:
     import pywt
+
+
+def _dependency_error(feature: str = "wavelet transforms") -> DependencyError:
+    """Build the DependencyError raised when pywavelets is unavailable."""
+    return DependencyError(
+        f"pywavelets is required for {feature}.",
+        package="pywt",
+        feature=feature,
+        install_command=f"pip install {DISTRIBUTION_NAME}[signal]",
+    )
+
+
+def _import_pywt() -> Any:
+    """Import and return the ``pywt`` module, or raise `DependencyError`.
+
+    Returns
+    -------
+    module
+        The imported ``pywt`` module.
+
+    Raises
+    ------
+    DependencyError
+        If pywavelets is not installed.
+    """
+    try:
+        import pywt
+    except ImportError as e:
+        raise _dependency_error() from e
+    return pywt
+
+
+def _raise_missing() -> Any:
+    """Unconditionally raise `DependencyError`.
+
+    Same signature as `_import_pywt`; tests monkeypatch `_import_pywt` to
+    this function to simulate pywavelets being absent without actually
+    uninstalling it.
+    """
+    raise _dependency_error()
 
 
 # =============================================================================
@@ -535,10 +576,7 @@ def dwt(
     - 'coifN': Coiflets (N=1..17)
     - 'biorN.M': Biorthogonal wavelets
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for DWT. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -588,10 +626,7 @@ def idwt(
     >>> np.allclose(x, x_rec)
     True
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for IDWT. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     # Reconstruct coeffs list in pywt format
     # [cA_n, cD_n, cD_n-1, ..., cD_1]
@@ -626,10 +661,7 @@ def dwt_single_level(
     cD : ndarray
         Detail coefficients.
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for DWT. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     signal = np.asarray(signal, dtype=np.float64)
     cA, cD = pywt.dwt(signal, wavelet, mode=mode)
@@ -662,10 +694,7 @@ def idwt_single_level(
     signal : ndarray
         Reconstructed signal.
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for IDWT. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     cA = np.asarray(cA, dtype=np.float64)
     cD = np.asarray(cD, dtype=np.float64)
@@ -718,10 +747,7 @@ def wpt(
     >>> 'dd' in nodes  # Level 2 detail of detail
     True
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required for WPT. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     signal = np.asarray(signal, dtype=np.float64)
 
@@ -853,10 +879,7 @@ def threshold_coefficients(
     where sigma is estimated from the finest detail coefficients
     and n is the total number of coefficients.
     """
-    if not PYWT_AVAILABLE:
-        raise ImportError(
-            "pywavelets is required. Install with: pip install pywavelets"
-        )
+    _import_pywt()
 
     # Estimate noise from finest detail coefficients
     if value is None:

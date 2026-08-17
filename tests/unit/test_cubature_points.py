@@ -6,6 +6,8 @@ monomial (sharpness -- guards against a vacuous exactness loop).
 """
 
 import itertools
+import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -13,6 +15,7 @@ from numpy.testing import assert_allclose
 from scipy.special import gamma, gammaln
 
 from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+    _gk_1d,
     _sphere_surface_points,
     cubature_point_moments,
     fifth_order_cubature_points,
@@ -20,6 +23,7 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     genz_keister_points,
     second_order_cubature_points,
     seventh_order_cubature_points,
+    smolyak_points,
     sphere_surface_to_gauss_points,
     spherical_radial_points,
     student_t_cubature_points,
@@ -460,8 +464,11 @@ class TestSeventhOrder:
     def test_invalid_n_raises(self):
         with pytest.raises(ValueError):
             seventh_order_cubature_points(0)
+        # n=2 no longer raises under the default dispatch (it now selects
+        # algorithm 2, MATLAB parity -- see TestSeventhOrderAlgorithms);
+        # algorithm 0 explicitly still requires n>=3.
         with pytest.raises(ValueError):
-            seventh_order_cubature_points(2)
+            seventh_order_cubature_points(2, algorithm=0)
 
 
 class TestSphericalRadial:
@@ -1712,3 +1719,340 @@ class TestCubaturePointMoments:
         pts, w = fifth_order_cubature_points(3)
         with pytest.raises(ValueError):
             cubature_point_moments(pts, w, lambda x: x, mean=np.zeros(2), cov=np.eye(2))
+
+
+class TestSeventhOrderAlgorithms:
+    """seventh_order_cubature_points algorithm surface (MATLAB parity).
+
+    Exactness verified per (algorithm, n) cell listed here; the docstring
+    must claim no more than this table.
+    """
+
+    CASES = [  # (algorithm, n, expected_num_points)
+        (1, 3, 2**3 + 2 * 9 + 1),
+        (1, 4, 2**4 + 2 * 16 + 1),
+        (1, 6, 2**6 + 2 * 36 + 1),
+        (1, 7, 2**7 + 2 * 49 + 1),
+        (2, 2, 12),
+        # 17, not MATLAB's 16: MATLAB's 16-point, no-origin layout for
+        # algorithm 3 is provably incapable of degree-7 exactness for any
+        # choice of its parameters (see _e2_7_2's docstring); a 17th point
+        # at the origin supplies the missing degree of freedom.
+        (3, 2, 17),
+        (4, 3, 27),
+        (5, 3, 27),
+        (6, 3, 33),
+        (7, 3, 33),
+        (8, 4, 49),
+        (9, 1, 4),
+    ]
+
+    @pytest.mark.parametrize("algorithm,n,num_points", CASES)
+    def test_exact_through_degree_7(self, algorithm, n, num_points):
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        assert pts.shape == (num_points, n)
+        assert abs(w.sum() - 1.0) < 1e-12
+        assert_rule_exact(pts, w, n, 7)
+
+    @pytest.mark.parametrize("algorithm,n,_", CASES)
+    def test_sharpness_degree_8_fails(self, algorithm, n, _):
+        # Mirrors TestSeventhOrder's degree-8 sharpness check for algorithm
+        # 0: every algorithm here is a degree-7 rule, not degree-8, so a
+        # single-axis degree-8 monomial must miss E[x1^8] = 105 by more
+        # than roundoff. Measured misses range from ~4.0 (algorithm 1,
+        # n=6) to ~96 (algorithm 6); all comfortably clear 1.0.
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        alpha = (8,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - 105.0) > 1.0
+
+    def test_default_algorithm_dispatch(self):
+        # MATLAB default logic: n==1 -> 9, n==2 -> 2, else 0
+        p1, _ = seventh_order_cubature_points(1)
+        assert p1.shape[0] == 4
+        p2, _ = seventh_order_cubature_points(2)
+        assert p2.shape[0] == 12
+        p3, w3 = seventh_order_cubature_points(3)
+        e3, we3 = seventh_order_cubature_points(3, algorithm=0)
+        np.testing.assert_array_equal(p3, e3)
+        np.testing.assert_array_equal(w3, we3)
+
+    @pytest.mark.parametrize(
+        "algorithm,bad_n",
+        [(1, 2), (1, 5), (1, 8), (2, 3), (3, 1), (4, 2), (8, 3), (9, 2)],
+    )
+    def test_invalid_dimension_raises(self, algorithm, bad_n):
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(bad_n, algorithm=algorithm)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            seventh_order_cubature_points(3, algorithm=10)
+
+
+_MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
+
+
+def _load_matlab_fixture(name):
+    path = _MATLAB_FIXTURES / name
+    if not path.exists():
+        if os.environ.get("PYTCL_REQUIRE_MATLAB_FIXTURES") == "1":
+            pytest.fail(
+                f"fixture {name} required but absent -- run "
+                "scripts/matlab_capture/capture_seventh_order.m in MATLAB "
+                "with the TCL library on path to generate it"
+            )
+        pytest.skip(
+            f"MATLAB fixture {name} not captured yet -- run "
+            "scripts/matlab_capture/capture_seventh_order.m in MATLAB "
+            "with the TCL library on path to generate it"
+        )
+    data = np.loadtxt(path, delimiter=",")
+    return data[:, :-1], data[:, -1]
+
+
+class TestSeventhOrderMatlabFixtures:
+    # Algorithms 3 and 8 are excluded: this port's _e2_7_2 and _e4_7_1
+    # deliberately do NOT reproduce MATLAB's seventhOrderCubPoints output
+    # for those two algorithms, because that output does not satisfy the
+    # function's own degree-7-exactness contract (see _e2_7_2/_e4_7_1
+    # docstrings and TestSeventhOrderAlgorithms.CASES's inline note) --
+    # a "matches MATLAB" comparison for them would necessarily fail by
+    # design and would not indicate a defect in this port.
+    _PARITY_CASES = [c for c in TestSeventhOrderAlgorithms.CASES if c[0] not in (3, 8)]
+
+    @pytest.mark.parametrize("algorithm,n,_", _PARITY_CASES)
+    def test_matches_matlab(self, algorithm, n, _):
+        ref_pts, ref_w = _load_matlab_fixture(f"seventh_order_alg{algorithm}_n{n}.csv")
+        pts, w = seventh_order_cubature_points(n, algorithm=algorithm)
+        # order-independent comparison: sort both point sets lexicographically
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        np.testing.assert_allclose(pts[oa], ref_pts[ob], atol=1e-12)
+        np.testing.assert_allclose(w[oa], ref_w[ob], atol=1e-12)
+
+
+class TestSmolyakPoints:
+    """Smolyak combination over the nested Genz-Keister milestone sequences.
+
+    Original design (no MATLAB counterpart to transcribe); every exactness
+    claim below is bounded to the measured (algorithm, n, level) grid in
+    MEASURED -- see the claims-inherit-measurement-range note in
+    `smolyak_points`' docstring.
+    """
+
+    # The brief's verified grid: every (n, level) here (algorithm 0) is
+    # what the docstring may claim without consulting the MEASURED table.
+    SWEEP = [(n, lv) for n in (1, 2, 3, 4, 5) for lv in (0, 1, 2, 3)]
+
+    # Measured total-degree exactness per (algorithm, n, level), with a
+    # measured-FAILING monomial of degree+1 pinning sharpness (guards
+    # against a vacuous exactness loop). Produced by scanning every
+    # all-even-exponent monomial per total degree at relative tolerance
+    # 1e-12 (odd exponents are exact by the grid's antipodal symmetry;
+    # the through-degree test below re-checks them anyway); see
+    # `smolyak_points`' docstring for the same table and the measurement
+    # description. Note the standard degree-(2*level+1) mapping HOLDS in
+    # every measured cell; cells with n <= level additionally exceed it
+    # (the GK milestone bonus degrees surfacing through the combination),
+    # which is why this table, not 2*level+1, is the claim.
+    MEASURED = [
+        # algorithm 0: levels 0..3, n = 1..8
+        (0, 1, 0, 1, (2,)),
+        (0, 1, 1, 5, (6,)),
+        (0, 1, 2, 15, (16,)),
+        (0, 1, 3, 29, (30,)),
+        (0, 2, 0, 1, (0, 2)),
+        (0, 2, 1, 3, (2, 2)),
+        (0, 2, 2, 7, (2, 6)),
+        (0, 2, 3, 11, (6, 6)),
+        (0, 3, 0, 1, (0, 0, 2)),
+        (0, 3, 1, 3, (0, 2, 2)),
+        (0, 3, 2, 5, (2, 2, 2)),
+        (0, 3, 3, 9, (2, 6, 2)),
+        (0, 4, 0, 1, (0, 0, 0, 2)),
+        (0, 4, 1, 3, (0, 0, 2, 2)),
+        (0, 4, 2, 5, (0, 2, 2, 2)),
+        (0, 4, 3, 7, (2, 2, 2, 2)),
+        (0, 5, 0, 1, (0, 0, 0, 0, 2)),
+        (0, 5, 1, 3, (0, 0, 0, 2, 2)),
+        (0, 5, 2, 5, (0, 0, 2, 2, 2)),
+        (0, 5, 3, 7, (0, 2, 2, 2, 2)),
+        (0, 6, 2, 5, (0, 0, 0, 2, 2, 2)),
+        (0, 6, 3, 7, (0, 0, 2, 2, 2, 2)),
+        (0, 7, 2, 5, (0, 0, 0, 0, 2, 2, 2)),
+        (0, 7, 3, 7, (0, 0, 0, 2, 2, 2, 2)),
+        (0, 8, 2, 5, (0, 0, 0, 0, 0, 2, 2, 2)),
+        (0, 8, 3, 7, (0, 0, 0, 0, 2, 2, 2, 2)),
+        # algorithm 1: levels 0..2 (its level cap -- see _SMOLYAK_GK_M),
+        # n = 1..6
+        (1, 1, 0, 1, (2,)),
+        (1, 1, 1, 5, (6,)),
+        (1, 1, 2, 19, (20,)),
+        (1, 2, 0, 1, (0, 2)),
+        (1, 2, 1, 3, (2, 2)),
+        (1, 2, 2, 7, (2, 6)),
+        (1, 3, 2, 5, (2, 2, 2)),
+        (1, 4, 2, 5, (0, 2, 2, 2)),
+        (1, 5, 2, 5, (0, 0, 2, 2, 2)),
+        (1, 6, 2, 5, (0, 0, 0, 2, 2, 2)),
+    ]
+
+    @staticmethod
+    def _assert_exact_through_degree_relative(points, weights, n, degree, rtol):
+        """Every monomial of total degree <= `degree` is exact to a
+        RELATIVE tolerance (each monomial measured against its own true
+        value; zero-true monomials against the same-degree single-axis
+        moment scale). `assert_rule_exact`'s fixed atol=1e-9 cannot serve
+        here: the n=1 cells reach degree 29, where E[x^28] = 27!! ~ 2e14
+        makes a fixed absolute tolerance nonsensical -- the same reasoning
+        as TestGenzKeister._assert_exact_at_degree_relative, which this
+        mirrors (through-degree instead of at-degree)."""
+        num_points = points.shape[0]
+        pow_table = np.empty((n, degree + 1, num_points))
+        for j in range(n):
+            col = points[:, j]
+            pow_table[j, 0] = 1.0
+            for k in range(1, degree + 1):
+                pow_table[j, k] = pow_table[j, k - 1] * col
+        worst = 0.0
+        worst_alpha = None
+        for alpha in monomials_up_to(n, degree):
+            true_val = gaussian_moment(alpha)
+            prod = pow_table[0, alpha[0]]
+            for j in range(1, n):
+                prod = prod * pow_table[j, alpha[j]]
+            rule_val = float(np.dot(weights, prod))
+            denom = (
+                abs(true_val)
+                if true_val != 0.0
+                else TestGenzKeister._moment_scale(sum(alpha))
+            )
+            err = abs(rule_val - true_val) / denom
+            if err > worst:
+                worst, worst_alpha = err, alpha
+        assert worst < rtol, (
+            f"n={n} degree={degree}: worst relative error {worst:.3e} at "
+            f"{worst_alpha} >= {rtol:.1e}"
+        )
+
+    @pytest.mark.parametrize("n,level", SWEEP)
+    def test_weights_sum_to_one(self, n, level):
+        pts, w = smolyak_points(n, level)
+        assert pts.shape[1] == n
+        assert abs(w.sum() - 1.0) < 1e-10
+
+    @pytest.mark.parametrize("n,level", SWEEP)
+    def test_exactness_degree_2level_plus_1(self, n, level):
+        # standard Smolyak result for nested 1-D rules whose level-q rule
+        # is exact to degree >= 2q+1: total-degree exactness 2*level+1.
+        # Verified to actually hold in every MEASURED cell (the GK
+        # milestone degrees 1, 5, 15, 29 dominate 2q+1 at every q), so
+        # the brief's standard-mapping test survives unweakened; MEASURED
+        # additionally claims the per-cell surplus.
+        pts, w = smolyak_points(n, level)
+        assert_rule_exact(pts, w, n, 2 * level + 1)
+
+    @pytest.mark.parametrize("algorithm,n,level,degree,fail_alpha", MEASURED)
+    def test_measured_exactness(self, algorithm, n, level, degree, fail_alpha):
+        pts, w = smolyak_points(n, level, algorithm=algorithm)
+        assert abs(w.sum() - 1.0) < 1e-10
+        # Measured worst relative error inside the claimed range is
+        # 2.7e-14 (algorithm 0, n=8, level 3); 1e-8 leaves margin above
+        # that noise floor while sitting far below the smallest measured
+        # past-degree failure (2.1e-4, next test).
+        self._assert_exact_through_degree_relative(pts, w, n, degree, rtol=1e-8)
+
+    @pytest.mark.parametrize("algorithm,n,level,degree,fail_alpha", MEASURED)
+    def test_sharp_past_measured_degree(self, algorithm, n, level, degree, fail_alpha):
+        # fail_alpha is the measured first-failing monomial (degree+1);
+        # smallest measured failure is 2.1e-4 relative (algorithm 0, n=1,
+        # level 3, (30,)), so 1e-5 separates cleanly from the 1e-8 pass
+        # tolerance above.
+        assert sum(fail_alpha) == degree + 1
+        pts, w = smolyak_points(n, level, algorithm=algorithm)
+        true_val = gaussian_moment(fail_alpha)
+        rule_val = rule_moment(pts, w, fail_alpha)
+        assert abs(rule_val - true_val) > 1e-5 * abs(true_val), (
+            f"algorithm={algorithm} n={n} level={level}: expected "
+            f"{fail_alpha} to fail past the measured degree {degree} "
+            f"(rule={rule_val}, true={true_val})"
+        )
+
+    def test_level_0_is_single_point(self):
+        pts, w = smolyak_points(4, 0)
+        np.testing.assert_array_equal(pts, np.zeros((1, 4)))
+        np.testing.assert_allclose(w, [1.0])
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_duplicates_merged(self, n):
+        pts, _ = smolyak_points(n, 3)
+        assert len(np.unique(pts.round(12), axis=0)) == len(pts)
+
+    @pytest.mark.parametrize("n", [4, 6, 8])
+    def test_fewer_points_than_tensor(self, n):
+        # the value proposition: sparse vs tensor Gauss-Hermite at matched
+        # degree (level 2 -> degree 5 -> 3-point 1-D rule tensorized)
+        pts, _ = smolyak_points(n, 2)
+        assert len(pts) < 3**n
+
+    def test_point_count_n8_level2(self):
+        # pins the docstring's worked point-count example (structural
+        # property of the construction, not an external golden value)
+        pts, _ = smolyak_points(8, 2)
+        assert len(pts) == 177
+
+    @pytest.mark.parametrize("algorithm,max_level", [(0, 3), (1, 2)])
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_grids_nest_across_levels(self, algorithm, max_level, n):
+        # the point of building on GK: each level's grid contains the
+        # previous level's grid EXACTLY (same table constants, so exact
+        # float equality, no tolerance needed)
+        for level in range(max_level):
+            lo, _ = smolyak_points(n, level, algorithm=algorithm)
+            hi, _ = smolyak_points(n, level + 1, algorithm=algorithm)
+            hi_keys = {tuple(p) for p in hi}
+            assert all(tuple(p) in hi_keys for p in lo)
+            assert len(hi) > len(lo)
+
+    def test_negative_weights_present_and_disclosed(self):
+        # already at n=4, level=1 the combination coefficients drive the
+        # origin's weight to exactly -3 + 4*(2/3) = -1/3 -- the docstring's
+        # negative-weights caveat is about real behavior, not a
+        # hypothetical. (n=3, level=1 is deliberately NOT used here: its
+        # origin weight is analytically -2 + 3*(2/3) = 0, and asserting on
+        # the sign of its ~-2e-16 float residue would pin an
+        # accumulation-order artifact.)
+        pts, w = smolyak_points(4, 1)
+        origin = np.flatnonzero((pts == 0.0).all(axis=1))
+        assert len(origin) == 1
+        assert_allclose(w[origin[0]], -1.0 / 3.0, atol=1e-14)
+        assert bool((w < 0).any())
+
+    def test_gk1d_matches_nd_generator(self):
+        # _gk_1d must agree with genz_keister_points collapsed to 1-D
+        for m in (1, 2, 4, 8):
+            x1, w1 = _gk_1d(0, m)
+            xg, wg = genz_keister_points(1, m, algorithm=0)
+            order = np.argsort(xg[:, 0])
+            np.testing.assert_allclose(x1, xg[order, 0], atol=1e-14)
+            np.testing.assert_allclose(w1, wg[order], atol=1e-14)
+
+    def test_gk1d_m0_is_single_point(self):
+        for algorithm in (0, 1):
+            x, w = _gk_1d(algorithm, 0)
+            np.testing.assert_array_equal(x, [0.0])
+            np.testing.assert_allclose(w, [1.0])
+
+    def test_invalid_args_raise(self):
+        with pytest.raises(ValueError):
+            smolyak_points(0, 1)
+        with pytest.raises(ValueError):
+            smolyak_points(3, -1)
+        with pytest.raises(ValueError):
+            smolyak_points(3, 99)  # past algorithm 0's level cap (3)
+        with pytest.raises(ValueError):
+            smolyak_points(3, 3, algorithm=1)  # past algorithm 1's cap (2)
+        with pytest.raises(ValueError):
+            smolyak_points(3, 1.5)  # non-integer level
+        with pytest.raises(ValueError):
+            smolyak_points(3, 1, algorithm=2)  # no such GK table
