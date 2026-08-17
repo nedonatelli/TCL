@@ -18,6 +18,9 @@ losing the unit conversion) makes at least one of these fail.
 """
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -25,6 +28,9 @@ from scripts.detect_regressions import check_slo_violations
 from scripts.detect_regressions import main as detect_main
 from scripts.generate_slo_report import check_compliance, find_matching_slo
 from scripts.generate_slo_report import main as report_main
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SLOS_FILE = REPO_ROOT / ".benchmarks" / "slos.json"
 
 # Mirrors the real .benchmarks/slos.json shape: flat "benchmarks" dict keyed
 # by exact pytest-benchmark name, thresholds in microseconds.
@@ -218,3 +224,70 @@ class TestGenerateSLOReportMainExitCode:
             ],
         )
         assert report_main() == 0
+
+
+def _live_benchmark_names() -> set[str]:
+    """The real benchmark names pytest would collect from benchmarks/.
+
+    Collected live (rather than a hand-maintained static list) specifically
+    so that renaming a `@pytest.mark.parametrize` id in benchmarks/*.py --
+    the exact way `test_kf_predict` / `test_kf_update` went orphaned in
+    `.benchmarks/slos.json` once their bare names stopped existing -- makes
+    this test fail immediately instead of quietly producing a new orphan.
+
+    `-o addopts=""` strips the repo's default `--strict-markers` etc, which
+    otherwise collapse `--collect-only -q` down to a one-line-per-file
+    count instead of full node IDs. pytest-benchmark's JSON `name` field
+    (what `.benchmarks/slos.json` keys must match) is `item.name`: the
+    node ID's final `::`-separated segment, with no class/file prefix.
+    """
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "benchmarks/",
+            "--collect-only",
+            "--benchmark-only",
+            "-q",
+            "-o",
+            "addopts=",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    names = set()
+    for line in result.stdout.splitlines():
+        if "::" not in line:
+            continue
+        names.add(line.strip().rsplit("::", 1)[-1])
+    return names
+
+
+class TestSLOEntriesNotOrphaned:
+    """Every .benchmarks/slos.json key must match a real benchmark name.
+
+    This is the residual-vacuity case the exact-name-match fix doesn't
+    cover by construction: a key that matches nothing is not a schema
+    mismatch (check_slo_violations/find_matching_slo work fine), it is a
+    threshold that silently never fires. That's exactly how
+    `test_kf_predict` / `test_kf_update` went dead -- the schema was right,
+    the key just stopped matching any live benchmark.
+    """
+
+    def test_guard_the_guard_collection_finds_benchmarks(self):
+        names = _live_benchmark_names()
+        assert len(names) > 50, f"only collected {len(names)} benchmark names"
+
+    def test_no_slo_entry_is_orphaned(self):
+        slos = json.loads(SLOS_FILE.read_text())
+        slo_keys = set(slos.get("benchmarks", {}))
+        live_names = _live_benchmark_names()
+
+        orphaned = slo_keys - live_names
+        assert not orphaned, (
+            f"{sorted(orphaned)} in {SLOS_FILE} match no benchmark pytest "
+            f"would actually collect -- these SLOs can never fire"
+        )

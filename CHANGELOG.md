@@ -123,12 +123,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/unit/test_benchmark_slo_gate.py` (6 of 10 cases fail against the
   pre-fix code, all 10 pass against the fix). Running the real gate over a
   fresh full benchmark suite found the 3 SLO entries that still match a live
-  benchmark name (`test_cfar_ca_1000/5000/10000`) comfortably compliant; the
-  `test_kf_predict`/`test_kf_update` SLO entries remain unmatched because no
-  current benchmark carries those exact unparametrized names (`test_kf_predict[4]`,
-  `test_kf_predict_12state`, etc. -- pre-existing content drift in
-  `slos.json`, left as-is for controller triage rather than folded into this
-  schema fix).
+  benchmark name (`test_cfar_ca_1000/5000/10000`) comfortably compliant.
+  The two remaining orphaned entries, `test_kf_predict`/`test_kf_update`
+  (no current benchmark carries those exact unparametrized names --
+  `benchmarks/test_kalman_bench.py` parametrizes both over `state_dim`),
+  were also fixed: renamed to `test_kf_predict[4]` / `test_kf_update[4-2]`
+  (the default/first parametrization, per `.benchmarks/slos.json`'s own
+  `c0fd5d2` history and measured timing across the parametrizations), with
+  their threshold values left unchanged -- no loosening or tightening.
+  `test_kf_update[4-2]`'s 100us mean threshold is tight against its
+  observed history (41.8-93.9us, only ~6.5% headroom at the worst sample);
+  flagged for a future recalibration pass rather than adjusted here. Added
+  `TestSLOEntriesNotOrphaned` to the same test file, which collects real
+  benchmark names live via `pytest --collect-only` so a future
+  `@pytest.mark.parametrize` id rename can't quietly orphan an SLO entry
+  again. Re-running the real gate after the rename: coverage 5/157,
+  100% compliance, no violations, gate left strict. 152/157 benchmarks
+  (rotations, gating, clustering, JPDA, wavelets, special functions, and
+  the non-default Kalman parametrizations) still have no SLO entry at all
+  -- unchanged, out of scope for this fix.
 - **`pytcl.coordinate_systems.projections.transverse_mercator_inverse`**
   used the module-global WGS84 semi-minor axis (`WGS84_B`) to derive the
   third-flattening ratio `n`, instead of computing it from the caller's own
