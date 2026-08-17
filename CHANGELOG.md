@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Oracle-based test coverage for `detection.py`'s CFAR kernels**
+  (`tests/unit/test_detection_cfar.py`). The module's line coverage was 45%,
+  the suite's outlier -- the existing tests exercised the private GO/SO/OS
+  and 2D kernels only through smoke assertions (shapes, dtypes, "detects a
+  target"). The new file adds: a closed-form check of CA-CFAR's threshold
+  factor; Monte Carlo Pfa inversions for GO/SO/OS (seeded
+  `Generator(PCG64(...))`, 10^6 trials, tolerance from the binomial std dev
+  of the false-alarm count); a shared synthetic scene (noise floor + clutter
+  edge + two injected targets) whose CA/GO/SO/OS detections are checked
+  against each method's documented discriminating behavior -- GO suppresses
+  the edge false alarm CA raises, SO recovers a target masked near the edge,
+  OS survives an interferer that masks CA -- cross-checked against an
+  independently reimplemented window-arithmetic oracle, not just the
+  resulting booleans; and 2D window-clipping arithmetic at image corners and
+  edges for CA and SO (`cfar_2d` does not implement an OS method, unlike its
+  1D counterpart -- now asserted directly rather than assumed). Line
+  coverage of `detection.py` from the new file alone, measured with
+  `NUMBA_DISABLE_JIT=1` (coverage.py cannot trace into `@njit`-compiled
+  kernels otherwise, capping measurable coverage near 45% regardless of test
+  quality): 41% -> 83%.
+
 - **`smolyak_points`** -- Smolyak sparse-grid cubature over the nested
   Genz-Keister sequences
   (`pytcl.mathematical_functions.numerical_integration.cubature_points`).
