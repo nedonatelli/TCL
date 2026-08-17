@@ -38,11 +38,12 @@ No dates are attached because none have been decided:
 - **Cubature point library remainder** — the estimation-grade
   Gaussian-weight slice is ported, including the full
   `seventh_order_cubature_points` algorithm surface (see CHANGELOG);
-  what remains of the ~134 MATLAB files: Gaussian LCD samples (deferred
-  deliberately — the MATLAB source is a 505-line L-BFGS optimization over
-  a modified Cramer-von Mises distance with four hand-derived analytic
-  gradient routines, a research-grade optimizer to reimplement and
-  validate, not a transcription) and the ~120 region-specific rules
+  what remains of the ~134 MATLAB files: Gaussian LCD samples (spec
+  concluded: port — objective/gradient math transcribed, optimizer
+  wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
+  vendored `liblbfgs`, validated against a rotation-invariant contract
+  instead of raw MATLAB coordinates; see local spec) and the ~120
+  region-specific rules
   (cube, simplex, sphere, torus, etc.); Smolyak sparse grids over the
   Genz-Keister sequences landed as `smolyak_points` (original design,
   see CHANGELOG)
