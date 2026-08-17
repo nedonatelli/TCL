@@ -18,6 +18,7 @@ losing the unit conversion) makes at least one of these fail.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -240,7 +241,16 @@ def _live_benchmark_names() -> set[str]:
     count instead of full node IDs. pytest-benchmark's JSON `name` field
     (what `.benchmarks/slos.json` keys must match) is `item.name`: the
     node ID's final `::`-separated segment, with no class/file prefix.
+
+    Run under `pytest -n auto` (xdist), this subprocess inherits the
+    worker's `PYTEST_*` environment (`PYTEST_XDIST_WORKER`,
+    `PYTEST_CURRENT_TEST`, ...) and the child pytest picks up on being
+    "inside" a run already in progress, collecting nothing. Scrub every
+    `PYTEST_`-prefixed variable so the child collects standalone regardless
+    of what invoked this test; `-p no:cacheprovider` keeps it from touching
+    the parent run's `.pytest_cache` for good measure.
     """
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTEST_")}
     result = subprocess.run(
         [
             sys.executable,
@@ -252,11 +262,14 @@ def _live_benchmark_names() -> set[str]:
             "-q",
             "-o",
             "addopts=",
+            "-p",
+            "no:cacheprovider",
         ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         timeout=120,
+        env=env,
     )
     names = set()
     for line in result.stdout.splitlines():
