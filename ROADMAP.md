@@ -42,9 +42,21 @@ No dates are attached because none have been decided:
   concluded: port — objective/gradient math transcribed, optimizer
   wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
   vendored `liblbfgs`, validated against a rotation-invariant contract
-  instead of raw MATLAB coordinates; see local spec) and the ~120
-  region-specific rules
-  (cube, simplex, sphere, torus, etc.); Smolyak sparse grids over the
+  instead of raw MATLAB coordinates; see local spec) and the
+  region-cubature rules: 79 files measured across the Cube_Space /
+  Simplex / Sphere / Spherical_Surface subset chosen for the v2.4.0
+  region-rules spec (supersedes the old ~120 rough estimate for that
+  subset) -- 31 general-dimension top-level files prioritized in two
+  effort tiers (cube and simplex first, ball and spherical-surface
+  second; ~7-9 engineer-days), 48 dimension-specialized subdirectory
+  files (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/,
+  Triangles/) deferred pending a consumer that needs their smaller
+  point counts; see docs/superpowers/specs/2026-08-16-region-cubature-design.md
+  (local spec) for the full inventory, module design
+  (`region_cubature.py`), and closed-form validation oracles. The
+  remaining seven region-cubature directories (torus, cone, wedge,
+  etc.) are out of this subset entirely and have not been inventoried;
+  Smolyak sparse grids over the
   Genz-Keister sequences landed as `smolyak_points` (original design,
   see CHANGELOG)
 - **Refraction suite** — entirely unported (astronomical refraction,
