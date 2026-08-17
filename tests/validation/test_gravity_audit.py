@@ -47,7 +47,10 @@ from pytcl.gravity import (
 )
 from pytcl.gravity.clenshaw import clenshaw_geoid
 from pytcl.gravity.egm import EGMCoefficients, _subtract_reference_field, parse_egm_file
-from pytcl.gravity.spherical_harmonics import associated_legendre_derivative
+from pytcl.gravity.spherical_harmonics import (
+    associated_legendre_derivative,
+    spherical_harmonic_sum_high_degree,
+)
 from pytcl.gravity.tides import (
     GRAVIMETRIC_FACTOR,
     LOVE_H2,
@@ -799,3 +802,186 @@ def test_full_norm_helper_self_check():
         p = lpmv(m, n, x) * (-1.0) ** m
         ref = np.sign(p) * np.exp(np.log(abs(p)) + lognorm)
         assert_allclose(full_norm_legendre(n, m, x), ref, rtol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Clenshaw high-degree stabilization (Holmes & Featherstone 2002)
+# ---------------------------------------------------------------------------
+
+_R_EGM = 6378136.3
+_GM_EGM = 3.986004415e14
+
+
+def _random_coefficients(n_max: int, seed: int):
+    rng = np.random.default_rng(seed)
+    C = rng.standard_normal((n_max + 1, n_max + 1)) * 1e-6
+    S = rng.standard_normal((n_max + 1, n_max + 1)) * 1e-6
+    return C, S
+
+
+def _prefix_clenshaw_sum_order(m, cos_theta, sin_theta, C, S, n_max):
+    """Pre-fix clenshaw_sum_order (naive sectoral product), healthy-regime oracle."""
+    if m > n_max:
+        return 0.0, 0.0
+    s_c_np2 = s_c_np1 = 0.0
+    s_s_np2 = s_s_np1 = 0.0
+    for n in range(n_max, m - 1, -1):
+        np1, np2 = n + 1, n + 2
+        a = np.sqrt((2 * np1 + 1) * (2 * np1 - 1) / ((np1 - m) * (np1 + m)))
+        b = np.sqrt(
+            (2 * np2 + 1)
+            * (np2 + m - 1)
+            * (np2 - m - 1)
+            / ((np2 - m) * (np2 + m) * (2 * np2 - 3))
+        )
+        s_c_n = a * cos_theta * s_c_np1 - b * s_c_np2 + C[n, m]
+        s_s_n = a * cos_theta * s_s_np1 - b * s_s_np2 + S[n, m]
+        s_c_np2, s_c_np1 = s_c_np1, s_c_n
+        s_s_np2, s_s_np1 = s_s_np1, s_s_n
+    P_mm = 1.0
+    for k in range(1, m + 1):
+        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
+        P_mm = sin_theta * factor * P_mm
+    return P_mm * s_c_np1, P_mm * s_s_np1
+
+
+def _prefix_clenshaw_sum_order_derivative(m, cos_theta, sin_theta, C, S, n_max):
+    """Pre-fix clenshaw_sum_order_derivative, healthy-regime oracle."""
+    if m > n_max:
+        return 0.0, 0.0, 0.0, 0.0
+    s_c_np2 = s_c_np1 = 0.0
+    s_s_np2 = s_s_np1 = 0.0
+    ds_c_np2 = ds_c_np1 = 0.0
+    ds_s_np2 = ds_s_np1 = 0.0
+    for n in range(n_max, m - 1, -1):
+        np1, np2 = n + 1, n + 2
+        a = np.sqrt((2 * np1 + 1) * (2 * np1 - 1) / ((np1 - m) * (np1 + m)))
+        b = np.sqrt(
+            (2 * np2 + 1)
+            * (np2 + m - 1)
+            * (np2 - m - 1)
+            / ((np2 - m) * (np2 + m) * (2 * np2 - 3))
+        )
+        s_c_n = a * cos_theta * s_c_np1 - b * s_c_np2 + C[n, m]
+        s_s_n = a * cos_theta * s_s_np1 - b * s_s_np2 + S[n, m]
+        ds_c_n = a * (-sin_theta * s_c_np1 + cos_theta * ds_c_np1) - b * ds_c_np2
+        ds_s_n = a * (-sin_theta * s_s_np1 + cos_theta * ds_s_np1) - b * ds_s_np2
+        s_c_np2, s_c_np1 = s_c_np1, s_c_n
+        s_s_np2, s_s_np1 = s_s_np1, s_s_n
+        ds_c_np2, ds_c_np1 = ds_c_np1, ds_c_n
+        ds_s_np2, ds_s_np1 = ds_s_np1, ds_s_n
+    P_mm = 1.0
+    dP_mm = 0.0
+    for k in range(1, m + 1):
+        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
+        dP_mm = cos_theta * factor * P_mm + sin_theta * factor * dP_mm
+        P_mm = sin_theta * factor * P_mm
+    return (
+        P_mm * s_c_np1,
+        P_mm * s_s_np1,
+        dP_mm * s_c_np1 + P_mm * ds_c_np1,
+        dP_mm * s_s_np1 + P_mm * ds_s_np1,
+    )
+
+
+class TestClenshawHighDegree:
+    """Holmes-Featherstone stabilization: finite and correct up to n_max=2190.
+
+    The pre-fix implementation used the naive sectoral P_mm product and
+    overflowing backward-recursion sums: NaN from n_max ~2050 at colatitudes
+    <= 30 deg, reliably NaN at EGM2008's n=2190 (the audit's reproduction).
+    """
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("n_max", [2050, 2190])
+    @pytest.mark.parametrize("colat_deg", [15.0, 30.0])
+    @pytest.mark.parametrize("seed", [0, 1, 2, 3])
+    def test_nan_probe_finite_and_agrees(self, n_max, colat_deg, seed):
+        """The audit's NaN probe: finite and agrees with the scaled direct sum."""
+        C, S = _random_coefficients(n_max, seed)
+        lat = np.radians(90.0 - colat_deg)
+        lon = np.radians(25.0)
+        r = _R_EGM * 1.001
+        Vc = clenshaw_potential(lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max)
+        assert np.isfinite(Vc)
+        Vh, _, _ = spherical_harmonic_sum_high_degree(
+            lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max
+        )
+        assert_allclose(Vc, Vh, rtol=1e-10)
+
+    @pytest.mark.parametrize("n_max", [50, 500])
+    @pytest.mark.parametrize(
+        "lat_deg", [-89.9, -60.0, -30.0, 0.0, 30.0, 45.0, 60.0, 75.0, 85.0, 89.9]
+    )
+    def test_potential_agrees_moderate_degree(self, n_max, lat_deg):
+        C, S = _random_coefficients(n_max, 7)
+        lat = np.radians(lat_deg)
+        lon = np.radians(-40.0)
+        r = _R_EGM * 1.001
+        Vc = clenshaw_potential(lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max)
+        Vh, _, _ = spherical_harmonic_sum_high_degree(
+            lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max
+        )
+        assert_allclose(Vc, Vh, rtol=1e-10)
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("lat_deg", [0.0, 45.0, 75.0, 89.9])
+    def test_potential_agrees_egm2008_degree(self, lat_deg):
+        n_max = 2190
+        C, S = _random_coefficients(n_max, 7)
+        lat = np.radians(lat_deg)
+        lon = np.radians(-40.0)
+        r = _R_EGM * 1.001
+        Vc = clenshaw_potential(lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max)
+        assert np.isfinite(Vc)
+        Vh, _, _ = spherical_harmonic_sum_high_degree(
+            lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max
+        )
+        assert_allclose(Vc, Vh, rtol=1e-10)
+
+    @pytest.mark.parametrize("lat_deg", [-60.0, 0.0, 45.0, 75.0, 89.9])
+    def test_gravity_agrees_moderate_degree(self, lat_deg):
+        n_max = 500
+        C, S = _random_coefficients(n_max, 11)
+        lat = np.radians(lat_deg)
+        lon = np.radians(130.0)
+        r = _R_EGM * 1.001
+        g_r, g_lat, g_lon = clenshaw_gravity(lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max)
+        Vh, dVr, dVlat = spherical_harmonic_sum_high_degree(
+            lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max
+        )
+        assert np.isfinite(g_lon)
+        assert_allclose(g_r, dVr, rtol=1e-10)
+        assert_allclose(g_lat, dVlat, rtol=1e-10)
+
+    @pytest.mark.slow
+    def test_gravity_agrees_egm2008_degree(self):
+        n_max = 2190
+        C, S = _random_coefficients(n_max, 11)
+        lat = np.radians(60.0)
+        lon = np.radians(130.0)
+        r = _R_EGM * 1.001
+        g_r, g_lat, g_lon = clenshaw_gravity(lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max)
+        assert np.isfinite(g_r) and np.isfinite(g_lat) and np.isfinite(g_lon)
+        Vh, dVr, dVlat = spherical_harmonic_sum_high_degree(
+            lat, lon, r, C, S, _R_EGM, _GM_EGM, n_max
+        )
+        assert_allclose(g_r, dVr, rtol=1e-10)
+        assert_allclose(g_lat, dVlat, rtol=1e-10)
+
+    @pytest.mark.parametrize("theta_deg", [5.0, 37.0, 90.0, 150.0])
+    @pytest.mark.parametrize("m", [0, 1, 5, 50, 100])
+    def test_healthy_regime_non_regression(self, theta_deg, m):
+        """n_max<=100: results match the pre-fix implementation to ~machine."""
+        n_max = 100
+        C, S = _random_coefficients(n_max, 3)
+        theta = np.radians(theta_deg)
+        ct, st = np.cos(theta), np.sin(theta)
+        sc, ss = clenshaw_sum_order(m, ct, st, C, S, n_max)
+        sc_ref, ss_ref = _prefix_clenshaw_sum_order(m, ct, st, C, S, n_max)
+        assert_allclose(sc, sc_ref, rtol=1e-12, atol=1e-300)
+        assert_allclose(ss, ss_ref, rtol=1e-12, atol=1e-300)
+        vals = clenshaw_sum_order_derivative(m, ct, st, C, S, n_max)
+        refs = _prefix_clenshaw_sum_order_derivative(m, ct, st, C, S, n_max)
+        for got, want in zip(vals, refs):
+            assert_allclose(got, want, rtol=1e-12, atol=1e-300)

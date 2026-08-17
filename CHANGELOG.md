@@ -102,6 +102,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **`clenshaw_potential`/`clenshaw_gravity` produced NaN above `n_max` ~2050
+  despite the module's claimed Holmes & Featherstone (2002) stability**
+  (`pytcl/gravity/clenshaw.py`). The docstring claimed n > 2000 stability but
+  the implementation used the naive sectoral `Pbar_mm` product -- the exact
+  recursion `spherical_harmonics.py` documents as unstable: at small
+  `u = sin(colatitude)` the backward-recursion sums overflow like `1/u**m`
+  while `Pbar_mm ~ u**m` underflows, so their product evaluated as
+  `inf * 0 = NaN` (verified from `n_max` ~2050 at colatitudes <= 30 deg,
+  reliably NaN at EGM2008's n = 2190). Now actually implements the claimed
+  stabilization: dynamic 1e-140 rescaling of the recursion state with the
+  shed decades tracked in an integer exponent (H&F 2002 Sec. 6 / Wittwer
+  2008, single-exponent form), and the sectoral seed `Pbar_mm / u**m` shared
+  with `associated_legendre_scaled` (helper extracted), recombined in log10
+  space only when the direct powers would under- or overflow. Measured
+  stable and in agreement with `spherical_harmonic_sum_high_degree` to
+  1e-10 rtol (worst observed 1.3e-12) up to `n_max = 2190` on the audit's
+  NaN-reproduction grid (4 seeds) plus colatitude sweeps; `n_max <= 100`
+  results match the pre-fix implementation to 1e-12 rtol (the healthy
+  regime keeps the exact-power path). The stability claim in the docstring
+  is now bounded to the tested grid. Also ~6x faster at n = 2190
+  (vectorized recursion-coefficient precomputation replaced an lru_cache
+  that thrashed above its 4096-entry capacity).
+
 - **The benchmark SLO gate was vacuous end-to-end since 2026-02-25**
   (`scripts/detect_regressions.py`, `scripts/generate_slo_report.py`). Both
   scripts read `slos.get("slos", {})`, expecting
