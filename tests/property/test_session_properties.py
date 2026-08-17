@@ -6,11 +6,13 @@ Target: ``pytcl.io.save_session``/``load_session`` for
 msgpack-only -- the JSON wire format's non-finite-value contract is already
 covered by example tests in ``tests/unit/test_io_session.py``.
 
-Both objects are exercised through one predict/update cycle (a handful for
-the single-target tracker, one for IMM) before the round trip, so the
-invariant under test is "resume mid-track", not just "restore a freshly
-initialized object" -- the interesting bytes are the ones a Kalman update
-actually touched.
+The IMM property always runs one predict/update cycle before the round
+trip, so its invariant is "resume mid-track" -- the interesting bytes are
+the ones a Kalman update actually touched. The single-target property
+draws its step count from 0..4, so most cases cover the same "resume
+mid-track" invariant but the steps=0 case instead round-trips a tracker
+right after `initialize()`, with no predict/update applied -- covering
+"restore a freshly initialized object" too.
 """
 
 import numpy as np

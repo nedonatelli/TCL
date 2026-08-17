@@ -86,17 +86,23 @@ def _ref_noise_2d(image, i, j, guard_rows, guard_cols, ref_rows, ref_cols, metho
         ] = False
         return float(window[mask].mean())
 
-    if method == "so":
+    if method == "so" or method == "go":
         top, bottom = [], []
         for ri in range(row_min, row_max):
             for ci in range(col_min, col_max):
                 if g_row_min <= ri < g_row_max and g_col_min <= ci < g_col_max:
                     continue
                 (top if ri < i else bottom).append(image[ri, ci])
-        top_avg = float(np.mean(top)) if top else np.inf
-        bottom_avg = float(np.mean(bottom)) if bottom else np.inf
-        val = min(top_avg, bottom_avg)
-        return 0.0 if val == np.inf else val
+        if method == "so":
+            top_avg = float(np.mean(top)) if top else np.inf
+            bottom_avg = float(np.mean(bottom)) if bottom else np.inf
+            val = min(top_avg, bottom_avg)
+            return 0.0 if val == np.inf else val
+        # go: least-of becomes greatest-of; an empty half is neutral at 0.0
+        # rather than +inf, mirroring the kernel's own empty-half handling.
+        top_avg = float(np.mean(top)) if top else 0.0
+        bottom_avg = float(np.mean(bottom)) if bottom else 0.0
+        return max(top_avg, bottom_avg)
 
     raise ValueError(method)
 
@@ -282,7 +288,7 @@ class TestCFARVariantsOnSyntheticScenes:
 
 
 class TestCfar2D:
-    """CA and SO methods on a small range-Doppler image (OS is not
+    """CA, GO, and SO methods on a small range-Doppler image (OS is not
     implemented for cfar_2d -- see test_cfar_2d_os_method_not_implemented).
 
     The background is a row-dependent gradient (not homogeneous), so a
@@ -309,7 +315,7 @@ class TestCfar2D:
     @pytest.mark.parametrize(
         "position", ["corner", "edge", "interior"], ids=["corner", "edge", "interior"]
     )
-    @pytest.mark.parametrize("method", ["ca", "so"])
+    @pytest.mark.parametrize("method", ["ca", "go", "so"])
     def test_window_clipping_matches_reference_arithmetic(
         self, image, method, position
     ):

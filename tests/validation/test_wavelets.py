@@ -638,38 +638,91 @@ class TestWaveletUtilities:
 
 
 # =============================================================================
-# Tests for DWT import error handling
+# Tests for DependencyError when pywavelets is unavailable
 # =============================================================================
 
 
-class TestDWTImportErrors:
-    """Tests for DWT when pywavelets not available."""
+class TestPywtDependencyError:
+    """DependencyError guard for every function requiring pywavelets.
 
-    def test_dwt_requires_pywt(self):
-        """Test that DWT raises ImportError without pywavelets."""
-        if PYWT_AVAILABLE:
-            pytest.skip("pywavelets is available")
+    Monkeypatches ``_import_pywt`` to simulate pywavelets being absent
+    without actually uninstalling it, so these run regardless of whether
+    pywavelets happens to be installed on the test machine -- unlike a
+    ``skipif(not PYWT_AVAILABLE)`` gate, which would never exercise this
+    path in an environment where pywavelets is present. Mirrors the
+    ``_import_x``/``_raise_missing`` monkeypatch pattern in
+    ``tests/unit/test_io_asdf.py`` and ``tests/unit/test_io_readers.py``.
+    """
 
-        from pytcl.mathematical_functions.transforms.wavelets import dwt
+    def test_dwt_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
 
-        x = np.random.randn(256)
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
 
-        with pytest.raises(ImportError, match="pywavelets"):
-            dwt(x)
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.dwt(np.random.randn(64))
 
-    def test_idwt_requires_pywt(self):
-        """Test that IDWT raises ImportError without pywavelets."""
-        if PYWT_AVAILABLE:
-            pytest.skip("pywavelets is available")
+    def test_idwt_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
 
-        from pytcl.mathematical_functions.transforms.wavelets import idwt
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
 
         dummy_result = DWTResult(
             cA=np.zeros(10), cD=[np.zeros(10)], levels=1, wavelet="db4"
         )
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.idwt(dummy_result)
 
-        with pytest.raises(ImportError, match="pywavelets"):
-            idwt(dummy_result)
+    def test_dwt_single_level_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
+
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
+
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.dwt_single_level(np.random.randn(64))
+
+    def test_idwt_single_level_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
+
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
+
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.idwt_single_level(np.zeros(10), np.zeros(10))
+
+    def test_wpt_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
+
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
+
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.wpt(np.random.randn(64))
+
+    def test_threshold_coefficients_raises_dependency_error(self, monkeypatch):
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+        from pytcl.core.exceptions import DependencyError
+
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
+
+        dummy_result = DWTResult(
+            cA=np.zeros(10), cD=[np.zeros(10)], levels=1, wavelet="db4"
+        )
+        with pytest.raises(DependencyError, match="pywavelets"):
+            mod.threshold_coefficients(dummy_result)
+
+    def test_dependency_error_is_catchable_as_import_error(self, monkeypatch):
+        """DependencyError subclasses ImportError, so except-ImportError
+        callers of these functions keep working unchanged."""
+        import pytcl.mathematical_functions.transforms.wavelets as mod
+
+        monkeypatch.setattr(mod, "_import_pywt", mod._raise_missing)
+
+        with pytest.raises(ImportError):
+            mod.dwt(np.random.randn(64))
 
 
 # =============================================================================

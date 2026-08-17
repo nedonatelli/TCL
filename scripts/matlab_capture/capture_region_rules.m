@@ -20,8 +20,9 @@
 %   preflight compilation check here.
 %
 %   Run this in the SAME MATLAB session as capture_seventh_order.m and
-%   capture_lcd.m (all three were designed together so the owner needs
-%   only one capture session for the whole v2.4.0 cycle).
+%   capture_lcd.m (this script and capture_lcd.m were designed together
+%   per the spec; all three share conventions and run in one capture
+%   session for the whole v2.4.0 cycle).
 %
 %   It writes one CSV per case to tests/fixtures/matlab/ (relative to
 %   the pytcl repo root -- adjust OUTPUT_DIR below if running from

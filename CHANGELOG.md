@@ -101,6 +101,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with 3 points of platform headroom, superseding a prior 87 target that
   had been calibrated against a local measurement that included MLX.
 
+### Fixed
+- **`pytcl.mathematical_functions.transforms.wavelets`** (`dwt`, `idwt`,
+  `dwt_single_level`, `idwt_single_level`, `wpt`, `threshold_coefficients`)
+  now raise `DependencyError` when pywavelets is not installed, instead of
+  a bare `ImportError`, matching the repo-wide optional-dependency
+  convention (`DependencyError` subclasses both `ConfigurationError` and
+  `ImportError`, so existing `except ImportError` callers are unaffected).
+
 ## [2.3.0] - 2026-08-16
 
 ### Added

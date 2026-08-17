@@ -781,7 +781,7 @@ def seventh_order_cubature_points(
     3          E_2^{r^2} 7-2, p. 324        2               17 (see note)
     4 / 5      E_3^{r^2} 7-1, p. 327        3               27
     6 / 7      E_3^{r^2} 7-2, p. 328        3               33
-    8          E_4^{r^2} 7-1, p. 329        4               49
+    8          E_4^{r^2} 7-1, p. 329        4               49 (see note)
     9          quadraturePoints1D(4)        1               4
 
     Note on algorithm 0: it predates this table (it is the pre-existing
