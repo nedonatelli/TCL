@@ -76,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     procedure. The fixture-comparison tests skip gracefully until those
     fixtures are captured (`PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns the
     skip into a hard failure).
+- **Session round-trip property tests** (`tests/property/
+  test_session_properties.py`), closing a deviation parked in v2.3.0's
+  example-only session save/restore coverage. Generates `SingleTargetTracker`
+  and `IMMEstimator` configurations (state/measurement dimensions, mode
+  counts, a seeded `Generator(PCG64(...))` for well-conditioned model
+  matrices) and asserts `pytcl.io.save_session`/`load_session` round-trips
+  the state (`x`/`P` for the tracker, `x`/`P`/`mode_probs` for IMM) bit-exact
+  after a mid-track predict/update cycle, msgpack only -- JSON's non-finite
+  rejection is already covered by example tests in
+  `tests/unit/test_io_session.py`.
 
 ## [2.3.0] - 2026-08-16
 
