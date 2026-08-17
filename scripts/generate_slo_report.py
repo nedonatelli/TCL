@@ -176,41 +176,24 @@ def categorize_benchmark(test_name: str) -> str:
 def find_matching_slo(
     test_name: str, params: str, slos: dict
 ) -> tuple[float | None, float | None]:
-    """Find matching SLO for a benchmark."""
-    slo_defs = slos.get("slos", {})
+    """Find matching SLO for a benchmark.
 
-    best_match = (None, None)
-    best_score = 0
+    `.benchmarks/slos.json` keys SLOs by exact benchmark name under
+    ``"benchmarks"``, with thresholds in microseconds (``max_mean_us`` /
+    ``max_p99_us``) -- match on that field directly and convert to
+    milliseconds, the unit the rest of this report works in.
+    """
+    slo_defs = slos.get("benchmarks", {})
 
-    for func_path, func_slos in slo_defs.items():
-        if not isinstance(func_slos, dict):
-            continue
+    slo = slo_defs.get(test_name)
+    if not isinstance(slo, dict):
+        return (None, None)
 
-        for param_key, param_slo in func_slos.items():
-            if param_key == "description":
-                continue
-            if not isinstance(param_slo, dict) or "mean_ms" not in param_slo:
-                continue
-
-            # Calculate match score
-            score = 0
-            key_lower = param_key.lower()
-            test_lower = test_name.lower()
-
-            if key_lower in test_lower:
-                score = 100 + len(key_lower)
-            else:
-                key_parts = [p for p in key_lower.split("_") if len(p) > 1]
-                if key_parts:
-                    matches = sum(1 for p in key_parts if p in test_lower)
-                    if matches == len(key_parts):
-                        score = 50 + matches
-
-            if score > best_score:
-                best_score = score
-                best_match = (param_slo.get("mean_ms"), param_slo.get("p99_ms"))
-
-    return best_match
+    max_mean_us = slo.get("max_mean_us")
+    max_p99_us = slo.get("max_p99_us")
+    mean_ms = max_mean_us / 1000 if max_mean_us is not None else None
+    p99_ms = max_p99_us / 1000 if max_p99_us is not None else None
+    return (mean_ms, p99_ms)
 
 
 def check_compliance(

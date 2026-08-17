@@ -102,6 +102,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **The benchmark SLO gate was vacuous end-to-end since 2026-02-25**
+  (`scripts/detect_regressions.py`, `scripts/generate_slo_report.py`). Both
+  scripts read `slos.get("slos", {})`, expecting
+  `{"slos": {<func_path>: {<param_key>: {"mean_ms": ..., "p99_ms": ...}}}}`.
+  Commit `c0fd5d2` recreated `.benchmarks/slos.json` from scratch in an
+  unrelated notebook-enhancement commit, in a different, flatter shape --
+  `{"benchmarks": {<test_name>: {"max_mean_us": ..., "max_p99_us": ...}}}`
+  (exact benchmark name, microseconds) -- and never updated the readers.
+  `slos.get("slos", {})` then always returned `{}`, so the SLO check matched
+  nothing regardless of how slow a benchmark was. Verified live: a synthetic
+  1000ms `test_kf_predict` result against its 50us SLO reported "No
+  performance issues detected." This ran with `--strict` on every push to
+  `main` (`.github/workflows/benchmark-full.yml`) and without `--strict` on
+  every PR touching `pytcl/**` or `benchmarks/**`
+  (`.github/workflows/benchmark-light.yml`). Fixed both readers to match
+  `.benchmarks/slos.json`'s actual on-disk shape (exact-name lookup under
+  `"benchmarks"`, `max_mean_us`/`max_p99_us` converted from microseconds),
+  confirmed by a fabricated-violation/passing-case pair in the new
+  `tests/unit/test_benchmark_slo_gate.py` (6 of 10 cases fail against the
+  pre-fix code, all 10 pass against the fix). Running the real gate over a
+  fresh full benchmark suite found the 3 SLO entries that still match a live
+  benchmark name (`test_cfar_ca_1000/5000/10000`) comfortably compliant; the
+  `test_kf_predict`/`test_kf_update` SLO entries remain unmatched because no
+  current benchmark carries those exact unparametrized names (`test_kf_predict[4]`,
+  `test_kf_predict_12state`, etc. -- pre-existing content drift in
+  `slos.json`, left as-is for controller triage rather than folded into this
+  schema fix).
 - **`pytcl.coordinate_systems.projections.transverse_mercator_inverse`**
   used the module-global WGS84 semi-minor axis (`WGS84_B`) to derive the
   third-flattening ratio `n`, instead of computing it from the caller's own
