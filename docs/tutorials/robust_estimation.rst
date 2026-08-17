@@ -82,8 +82,8 @@ iteration:
        A = np.vstack([x_data, np.ones_like(x_data)]).T
        params = np.linalg.lstsq(A.T @ W @ A, A.T @ W @ y_data, rcond=None)[0]
 
-Unlike RANSAC, IRLS never fully discards a point — even a downweighted
-outlier still contributes a small residual pull — so its fit sits between
+Unlike RANSAC, IRLS never fully discards a point -- even a downweighted
+outlier still contributes a small residual pull -- so its fit sits between
 OLS and RANSAC in practice.
 
 Next Steps
