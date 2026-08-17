@@ -191,6 +191,29 @@ class TestBesselRatioStability:
             got = float(sf.bessel_ratio(0, x, "j"))
             assert np.isclose(got, ref, rtol=rtol), f"x={x}: got {got}, ref {ref}"
 
+    def test_large_x_kind_j(self):
+        # CF1 needs ~max(n, |x|) terms; beyond the iteration cap the
+        # implementation must fall back to the direct quotient (which is
+        # machine-accurate there -- no underflow at large |x|), never
+        # returning a silently unconverged fraction value. Measured worst
+        # relative error 7.9e-14 (n=5, x=9000, CF path near the cap);
+        # the fallback path itself measures ~2e-16 at x=15000, 30000.
+        for n in [0, 5]:
+            for x in [9000.0, 15000.0, 30000.0]:
+                ref = _mp_bessel_ratio(n, x, "j")
+                got = float(sf.bessel_ratio(n, x, "j"))
+                assert np.isclose(got, ref, rtol=1e-12), (
+                    f"n={n} x={x}: got {got}, ref {ref}"
+                )
+
+    def test_large_x_kind_i(self):
+        # The all-positive-terms 'i' fraction converges within the cap even
+        # at large x (measured 1.3e-15 at x=30000); the quotient fallback
+        # would be inf/inf there, so convergence itself is load-bearing.
+        ref = _mp_bessel_ratio(5, 30000.0, "i")
+        got = float(sf.bessel_ratio(5, 30000.0, "i"))
+        assert np.isclose(got, ref, rtol=1e-13)
+
     def test_x_zero_limit(self):
         # lim_{x->0} J_{n+1}(x)/J_n(x) = 0 for every order n >= 0.
         for n in [0, 1, 5, 170]:

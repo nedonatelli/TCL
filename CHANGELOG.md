@@ -111,13 +111,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the ratio directly by the modified Lentz method (Thompson & Barnett 1986;
   Numerical Recipes 3rd ed., Sec. 6.5) on the continued fraction from the
   three-term recurrence, for both kinds 'j' and 'i', never forming numerator
-  or denominator separately. Measured against a 50-digit mpmath oracle
-  (new test-only dev dependency): worst relative error 9.6e-15 ('j') /
-  1.5e-15 ('i') over the grid n in {0, 1, 5, 20, 80, 170, 400} x
-  x in {0.5, 1, 10, 50, 100}; near a zero of J_n the conditioning-limited
-  degradation is measured and documented (1e-8 at 1e-10 from the first zero
-  of J_0). x = 0 now returns the correct limit 0 for every order (previously
-  NaN for n >= 1) (`tests/validation/test_special_functions_audit.py`).
+  or denominator separately in the underflow-prone regime. Where the 'j'
+  fraction instead misses its iteration cap (|x| in the thousands, small n
+  -- CF1 needs ~max(n, |x|) terms) the direct quotient is used, which is
+  machine-accurate there since nothing underflows at large |x|; no
+  unconverged fraction value is ever returned. Measured against a 50-digit
+  mpmath oracle (new test-only dev dependency): worst relative error
+  9.6e-15 ('j') / 1.5e-15 ('i') over the grid n in {0, 1, 5, 20, 80, 170,
+  400} x x in {0.5, 1, 10, 50, 100}, and 7.9e-14 for 'j' at
+  x in {9000, 15000, 30000}, n in {0, 5}; near a zero of J_n the
+  roundoff-amplification-limited degradation is measured and documented
+  (1e-8 at 1e-10 from the first zero of J_0). x = 0 now returns the correct
+  limit 0 for every order (previously NaN for n >= 1)
+  (`tests/validation/test_special_functions_audit.py`).
 - **`clenshaw_potential`/`clenshaw_gravity` produced NaN above `n_max` ~2050
   despite the module's claimed Holmes & Featherstone (2002) stability**
   (`pytcl/gravity/clenshaw.py`). The docstring claimed n > 2000 stability but
