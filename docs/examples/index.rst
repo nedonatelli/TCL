@@ -35,9 +35,16 @@ Or from the examples directory::
 Requirements
 ------------
 
-Examples require pytcl to be installed::
+Running these scripts already requires a checkout of this repository (the
+``examples/`` directory lives in it, and the "Running Examples" commands
+above assume you are standing in it), so install pytcl from that checkout in
+editable mode::
 
    pip install -e .
+
+If you use `uv <https://docs.astral.sh/uv/>`_ for development on this repo,
+``uv sync`` (see CONTRIBUTING.md) does the same thing and additionally pins
+the exact dependency versions the repo is tested against.
 
 Some examples require additional dependencies for visualization::
 

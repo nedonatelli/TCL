@@ -248,6 +248,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (matches the auditor's live probe of ~24 km lat / ~590 m lon).
   WGS84-default callers (the common case) were unaffected; round-trip
   closure for WGS84 was and remains < 1e-6 deg.
+- **`pytcl/gpu/ekf.py`'s MLX accuracy claim understated its own backend by
+  ~2 orders of magnitude.** The docstring said "~1e-5 relative" for the MLX
+  (Apple Silicon, float32) backend; `gpu/__init__.py`'s own measured figure
+  and `tests/unit/test_gpu_mlx_ekf.py`'s per-output table both put it at
+  ~1e-7 (measured 4.7e-8 to 8.4e-7 across predict/update outputs against the
+  CPU reference), consistent with float32 epsilon. Docstring now states the
+  measured range and points to the test's per-output table instead of a
+  single unbacked figure.
+- **`pytcl/gpu/particle_filter.py`'s "8-15x speedup" claim was a flat number
+  with no accompanying benchmark, test, or date**, unlike the GPU Kalman
+  filter's dated, `gpu/__init__.py`-reconciled speedup claim next to it.
+  Measured on Apple Silicon (MLX) against the CPU reference
+  (`bootstrap_pf_step`), predict+update with systematic resampling on ESS
+  drop, 20 steps, state_dim=4, end-to-end including host-device transfers,
+  after warm-up (August 2026): 0.6x (slower than CPU -- per-call dispatch
+  overhead dominates) at 100 particles, 5x at 1,000, 34x at 10,000, 80x at
+  100,000. The speedup is strongly N-dependent, not a flat multiplier;
+  docstring now states the measured table and recommends the CPU
+  implementation below a few hundred particles.
 - **`pytcl.mathematical_functions.transforms.wavelets`** (`dwt`, `idwt`,
   `dwt_single_level`, `idwt_single_level`, `wpt`, `threshold_coefficients`)
   now raise `DependencyError` when pywavelets is not installed, instead of
