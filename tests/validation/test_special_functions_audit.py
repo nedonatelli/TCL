@@ -121,6 +121,90 @@ class TestBesselReference:
         assert np.isclose(sf.bessel_deriv(0, x, "k"), -sf.besselk(1, x), rtol=1e-13)
 
 
+def _mp_bessel_ratio(n, x, kind):
+    """Reference ratio B_{n+1}(x)/B_n(x) via mpmath at 50 significant digits."""
+    import mpmath
+
+    with mpmath.mp.workdps(50):
+        fn = mpmath.besselj if kind == "j" else mpmath.besseli
+        return float(fn(n + 1, mpmath.mpf(x)) / fn(n, mpmath.mpf(x)))
+
+
+class TestBesselRatioStability:
+    """bessel_ratio must not underflow to nan for large order (audit item B.2).
+
+    The plain sp.jv(n+1, x) / sp.jv(n, x) quotient underflows both terms to
+    0.0 at (n=170, x=1.0), returning nan. The continued-fraction evaluation
+    must return the correct finite ratio there and across the (n, x) grid.
+    """
+
+    GRID_N = [0, 1, 5, 20, 80, 170, 400]
+    GRID_X = [0.5, 1.0, 10.0, 50.0, 100.0]
+
+    def test_large_order_underflow_case(self):
+        got = float(sf.bessel_ratio(170, 1.0, "j"))
+        assert np.isfinite(got)
+        ref = _mp_bessel_ratio(170, 1.0, "j")
+        assert np.isclose(got, ref, rtol=1e-12)
+
+    @pytest.mark.parametrize("kind", ["j", "i"])
+    def test_grid_vs_mpmath(self, kind):
+        # Measured worst case over this grid: 9.6e-15 ('j', at n=80 x=100)
+        # and 1.5e-15 ('i', at n=5 x=100); rtol gives ~10x headroom.
+        for n in self.GRID_N:
+            for x in self.GRID_X:
+                ref = _mp_bessel_ratio(n, x, kind)
+                got = float(sf.bessel_ratio(n, x, kind))
+                assert np.isclose(got, ref, rtol=1e-13), (
+                    f"kind={kind} n={n} x={x}: got {got}, ref {ref}"
+                )
+
+    def test_healthy_region_matches_plain_quotient(self):
+        # Where the old plain sp.jv quotient is finite and well-conditioned,
+        # the CF result must agree with it to 1e-12.
+        for n in [0, 1, 5, 20]:
+            for x in [0.5, 2.3, 10.0, 50.0]:
+                for kind, fn in [("j", sp.jv), ("i", sp.iv)]:
+                    den = fn(n, x)
+                    num = fn(n + 1, x)
+                    if not (np.isfinite(num) and np.isfinite(den)):
+                        continue
+                    if abs(den) < 1e-8:
+                        continue  # near a zero of J_n: plain quotient ill-conditioned
+                    assert np.isclose(
+                        float(sf.bessel_ratio(n, x, kind)), num / den, rtol=1e-12
+                    )
+
+    def test_near_zero_of_denominator(self):
+        # x near the first zero of J_0 (2.404825557695773...): the ratio is
+        # huge but well-defined; the CF must track mpmath. Conditioning of
+        # the ratio w.r.t. x degrades as 1/|J_0(x)|, so the achievable
+        # relative tolerance loosens as x approaches the zero. Measured:
+        # 5.1e-15, 2.0e-12, 9.7e-9 respectively; rtol gives ~10x headroom.
+        cases = [
+            (2.404, 1e-13),
+            (2.40482, 1e-10),
+            (2.4048255576, 1e-7),
+        ]
+        for x, rtol in cases:
+            ref = _mp_bessel_ratio(0, x, "j")
+            got = float(sf.bessel_ratio(0, x, "j"))
+            assert np.isclose(got, ref, rtol=rtol), f"x={x}: got {got}, ref {ref}"
+
+    def test_x_zero_limit(self):
+        # lim_{x->0} J_{n+1}(x)/J_n(x) = 0 for every order n >= 0.
+        for n in [0, 1, 5, 170]:
+            for kind in ["j", "i"]:
+                assert float(sf.bessel_ratio(n, 0.0, kind)) == 0.0
+
+    def test_array_broadcasting(self):
+        x = np.array([0.5, 1.0, 10.0])
+        out = sf.bessel_ratio(5, x, "j")
+        assert out.shape == x.shape
+        for xi, oi in zip(x, out):
+            assert np.isclose(oi, _mp_bessel_ratio(5, float(xi), "j"), rtol=1e-13)
+
+
 class TestGammaFamily:
     def test_analytic_values(self):
         assert np.isclose(sf.gamma(0.5), np.sqrt(np.pi), rtol=1e-14)

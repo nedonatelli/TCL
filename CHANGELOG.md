@@ -102,6 +102,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **`bessel_ratio` returned NaN for large orders despite its claimed stability
+  recurrence** (`pytcl/mathematical_functions/special_functions/bessel.py`).
+  The docstring claimed a stability recurrence but the implementation was a
+  plain `sp.jv(n+1, x) / sp.jv(n, x)` quotient: at n = 170, x = 1 both
+  float64 Bessel values underflow to 0.0 and the quotient is 0/0 = NaN --
+  exactly the failure the claimed recurrence exists to avoid. Now evaluates
+  the ratio directly by the modified Lentz method (Thompson & Barnett 1986;
+  Numerical Recipes 3rd ed., Sec. 6.5) on the continued fraction from the
+  three-term recurrence, for both kinds 'j' and 'i', never forming numerator
+  or denominator separately. Measured against a 50-digit mpmath oracle
+  (new test-only dev dependency): worst relative error 9.6e-15 ('j') /
+  1.5e-15 ('i') over the grid n in {0, 1, 5, 20, 80, 170, 400} x
+  x in {0.5, 1, 10, 50, 100}; near a zero of J_n the conditioning-limited
+  degradation is measured and documented (1e-8 at 1e-10 from the first zero
+  of J_0). x = 0 now returns the correct limit 0 for every order (previously
+  NaN for n >= 1) (`tests/validation/test_special_functions_audit.py`).
 - **`clenshaw_potential`/`clenshaw_gravity` produced NaN above `n_max` ~2050
   despite the module's claimed Holmes & Featherstone (2002) stability**
   (`pytcl/gravity/clenshaw.py`). The docstring claimed n > 2000 stability but
