@@ -2015,10 +2015,17 @@ class TestSmolyakPoints:
             assert len(hi) > len(lo)
 
     def test_negative_weights_present_and_disclosed(self):
-        # already at n=3, level=1 the combination coefficients drive one
-        # weight negative -- the docstring's negative-weights caveat is
-        # about real behavior, not a hypothetical
-        _, w = smolyak_points(3, 1)
+        # already at n=4, level=1 the combination coefficients drive the
+        # origin's weight to exactly -3 + 4*(2/3) = -1/3 -- the docstring's
+        # negative-weights caveat is about real behavior, not a
+        # hypothetical. (n=3, level=1 is deliberately NOT used here: its
+        # origin weight is analytically -2 + 3*(2/3) = 0, and asserting on
+        # the sign of its ~-2e-16 float residue would pin an
+        # accumulation-order artifact.)
+        pts, w = smolyak_points(4, 1)
+        origin = np.flatnonzero((pts == 0.0).all(axis=1))
+        assert len(origin) == 1
+        assert_allclose(w[origin[0]], -1.0 / 3.0, atol=1e-14)
         assert bool((w < 0).any())
 
     def test_gk1d_matches_nd_generator(self):

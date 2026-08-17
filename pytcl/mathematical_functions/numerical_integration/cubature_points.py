@@ -1922,11 +1922,13 @@ def genz_keister_points(
 #    difference rule) or buy less degree per added point.
 # 3. The TOP milestone of each algorithm (m=17 / m=15) is deliberately
 #    excluded: at those m the published double-precision constants no
-#    longer yield an exactness cliff at ANY tolerance, and the m-1 -> m
-#    nesting property itself breaks there (see "Precision at the top of
-#    the range" and "Nesting" in `genz_keister_points`' docstring), so a
-#    level built on it could keep neither the exactness nor the reuse
-#    promise this function exists to make.
+#    longer yield an exactness cliff at ANY tolerance (see "Precision at
+#    the top of the range" in `genz_keister_points`' docstring), so a
+#    level built on it could not keep the exactness promise this function
+#    exists to make. (Milestone-to-milestone nesting m=9 -> 17 / m=5 -> 15
+#    was checked and actually HOLDS -- the nesting break documented in
+#    `genz_keister_points` is the consecutive m-1 -> m pair only -- so
+#    exactness alone, not point reuse, is this exclusion's justification.)
 _SMOLYAK_GK_M = {0: (0, 1, 4, 9), 1: (0, 1, 5)}
 
 
@@ -1993,10 +1995,10 @@ def smolyak_points(
 
     Each algorithm's ladder stops BELOW its table's top milestone (m=17 /
     m=15): there the published double-precision constants produce no
-    exactness cliff at any tolerance and the nesting property itself
-    breaks (see "Precision at the top of the range" and "Nesting" in
-    :func:`genz_keister_points`' docstring), so no Smolyak level is built
-    on them -- hence the level caps of 3 (algorithm 0) and 2 (algorithm 1).
+    exactness cliff at any tolerance (see "Precision at the top of the
+    range" in :func:`genz_keister_points`' docstring), so no Smolyak
+    level is built on them -- hence the level caps of 3 (algorithm 0) and
+    2 (algorithm 1).
 
     Because the 1-D point sets nest exactly (each level's nodes are a
     strict superset of the previous level's -- the same table constants,
@@ -2025,10 +2027,11 @@ def smolyak_points(
         floats) in ``level + 1``'s grid.
     weights : ndarray
         Shape (num_points,), summing to 1. Commonly contains negative
-        values -- already at n=3, level=1 one weight is negative. This is
-        a real, disclosed property of the Smolyak combination (its
-        coefficients alternate in sign) compounded by the Genz-Keister
-        rules' own negative weights, not suppressed or clamped.
+        values -- already at n=4, level=1 the origin's weight is exactly
+        -3 + 4*(2/3) = -1/3. This is a real, disclosed property of the
+        Smolyak combination (its coefficients alternate in sign)
+        compounded by the Genz-Keister rules' own negative weights, not
+        suppressed or clamped.
         Covariances assembled from these points must not use a
         sqrt-of-weights factorization.
 
