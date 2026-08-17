@@ -486,17 +486,17 @@ def bessel_ratio(
     for kind 'j' and 1.5e-15 for kind 'i'
     (tests/validation/test_special_functions_audit.py).
 
-    The 'j' fraction needs roughly max(n, |x|) terms to converge; where it
-    misses the iteration cap of 10000 (|x| in the thousands and beyond,
-    small n) the direct quotient jv(n+1, x)/jv(n, x) is used instead --
-    machine-accurate there since neither value underflows at large |x|.
+    The 'j' fraction needs roughly ``max(n, abs(x))`` terms to converge; where it
+    misses the iteration cap of 10000 (``abs(x)`` in the thousands and beyond,
+    small n) the direct quotient ``jv(n+1, x)/jv(n, x)`` is used instead --
+    machine-accurate there since neither value underflows at large ``abs(x)``.
     Measured worst relative error 7.9e-14 at x in {9000, 15000, 30000},
     n in {0, 5}; the all-positive 'i' fraction converges within the cap
     (1.3e-15 measured at x = 30000).
 
     Near a zero of J_n(x) the ratio is well-defined and the fraction
     converges to it, but roundoff in evaluating the fraction is amplified
-    like 1/|J_n(x)|: measured agreement with mpmath at n = 0 loosens from
+    like the reciprocal of ``abs(J_n(x))``: measured agreement with mpmath at n = 0 loosens from
     5e-15 at x = 2.404 to 1e-8 at x = 2.4048255576, i.e. 1e-10 from the
     first zero of J_0 at x ~= 2.40482555769577, and reaches O(1) relative
     error (measured 1.4) at the float64 neighbor of the zero. At x = 0 the

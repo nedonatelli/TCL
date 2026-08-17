@@ -83,6 +83,7 @@ class DEEphemeris:
     ----------
     version : {'DE405', 'DE430', 'DE432s', 'DE440'}, optional
         Ephemeris version to load. Default is 'DE440' (latest).
+
         - DE440: Latest JPL release (2020), covers 1550-2650
         - DE432s: Short-span version (2013) -- the "s" denotes the reduced
           time range, not extra precision; covers 1950-2050 per NAIF's

@@ -5,13 +5,17 @@ The information filter is an alternative formulation of the Kalman filter
 that uses the information matrix Y = P^{-1} and information vector y = Y @ x
 instead of the state covariance P and state x.
 
-Advantages:
+Advantages
+----------
+
 - Update step is additive (easy to incorporate multiple measurements)
 - Natural initialization for unknown initial state (Y = 0)
 - Multi-sensor fusion is simpler
 - Better for some numerical conditioning
 
-This module provides:
+This module provides
+--------------------
+
 - Information filter (standard form)
 - Square-Root Information Filter (SRIF) -- the name notwithstanding, only
   ``srif_update`` propagates the square root directly via QR/Householder
