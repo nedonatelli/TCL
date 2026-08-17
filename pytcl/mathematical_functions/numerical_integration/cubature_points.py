@@ -24,6 +24,7 @@ D. F. Crouse, "The Tracker Component Library," IEEE AESS Magazine,
 """
 
 import itertools
+import math
 from collections import Counter
 from typing import Callable, Optional, Tuple
 
@@ -1900,6 +1901,260 @@ def genz_keister_points(
     weights = np.concatenate(weight_blocks)
     keep = np.abs(weights) > eps_val
     return points[keep], weights[keep]
+
+
+# Smolyak level -> Genz-Keister m, per algorithm: the m values at which each
+# algorithm's nu stages complete -- the "milestone" rows of
+# `genz_keister_points`' bonus-degree table (m = 0 prepended for the trivial
+# one-point rule at the origin). Milestones are the only sensible rungs for
+# a Smolyak ladder over these tables:
+#
+# 1. Each milestone's 1-D point set is an EXACT superset of the previous
+#    one's (same table constants, so exact float equality -- verified in
+#    TestSmolyakPoints.test_grids_nest_across_levels via the grids they
+#    tensor into), which is what lets the sparse grid reuse evaluations
+#    across levels.
+# 2. Milestones are where the GK 1-D rule attains its bonus exactness
+#    (degrees 1, 5, 15, 29 for algorithm 0; 1, 5, 19 for algorithm 1) --
+#    the maximum degree per point the table offers. Intermediate m values
+#    either duplicate the previous point set outright (m=2 reuses m=1's
+#    points post-pruning, so a ladder through it would have a vanishing
+#    difference rule) or buy less degree per added point.
+# 3. The TOP milestone of each algorithm (m=17 / m=15) is deliberately
+#    excluded: at those m the published double-precision constants no
+#    longer yield an exactness cliff at ANY tolerance, and the m-1 -> m
+#    nesting property itself breaks there (see "Precision at the top of
+#    the range" and "Nesting" in `genz_keister_points`' docstring), so a
+#    level built on it could keep neither the exactness nor the reuse
+#    promise this function exists to make.
+_SMOLYAK_GK_M = {0: (0, 1, 4, 9), 1: (0, 1, 5)}
+
+
+def _gk_1d(algorithm: int, m: int) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """The 1-D Genz-Keister rule at level m, as sorted (nodes, weights).
+
+    Built from the validated n-D generator :func:`genz_keister_points`
+    collapsed to n=1 (no new table math), plus the trivial m=0 rule --
+    the single point 0 with weight 1 -- which the n-D generator does not
+    accept (its m >= 1) but a Smolyak ladder needs as its bottom rung.
+    """
+    if m == 0:
+        return np.zeros(1), np.ones(1)
+    pts, w = genz_keister_points(1, m, algorithm=algorithm)
+    order = np.argsort(pts[:, 0])
+    return pts[order, 0], w[order]
+
+
+def _compositions(total: int, parts: int):
+    """All tuples of `parts` nonnegative integers summing to `total`."""
+    if parts == 1:
+        yield (total,)
+        return
+    for first in range(total + 1):
+        for rest in _compositions(total - first, parts - 1):
+            yield (first,) + rest
+
+
+def smolyak_points(
+    n: int, level: int, algorithm: int = 0
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    r"""
+    Smolyak sparse-grid cubature points over nested Genz-Keister sequences.
+
+    ORIGINAL DESIGN: unlike the rest of this module, this function has no
+    MATLAB TCL counterpart -- the MATLAB library provides the nested
+    Genz-Keister 1-D sequences (`genz_keister_points`) but never the
+    Smolyak combination over them. It is the standard sparse-grid
+    construction from the literature (Smolyak (1963); Genz and Keister
+    (1996) build their sequences expressly for it), implemented and
+    verified here from scratch; every exactness claim below is bounded to
+    the measured grid it was verified on.
+
+    The classic combination formula: for multi-indices
+    :math:`k = (k_1, ..., k_n)` with :math:`L - n + 1 \le |k| \le L`
+    (:math:`L` = ``level``, components >= 0), sum the tensor products of
+    the 1-D rules at levels :math:`k_i` with coefficient
+    :math:`(-1)^{L - |k|} \binom{n-1}{L - |k|}`. The 1-D rule at level q
+    is the Genz-Keister rule at the m where the algorithm's q-th nu stage
+    completes (the "milestone" m values of `genz_keister_points`' bonus
+    table; see `_SMOLYAK_GK_M` for the mapping and the full rationale):
+
+    =========  =====  ====  ==========  ==========
+    algorithm  level  GK m  1-D points  1-D degree
+    =========  =====  ====  ==========  ==========
+    0          0      0     1           1
+    0          1      1     3           5
+    0          2      4     9           15
+    0          3      9     19          29
+    1          0      0     1           1
+    1          1      1     3           5
+    1          2      5     11          19
+    =========  =====  ====  ==========  ==========
+
+    Each algorithm's ladder stops BELOW its table's top milestone (m=17 /
+    m=15): there the published double-precision constants produce no
+    exactness cliff at any tolerance and the nesting property itself
+    breaks (see "Precision at the top of the range" and "Nesting" in
+    :func:`genz_keister_points`' docstring), so no Smolyak level is built
+    on them -- hence the level caps of 3 (algorithm 0) and 2 (algorithm 1).
+
+    Because the 1-D point sets nest exactly (each level's nodes are a
+    strict superset of the previous level's -- the same table constants,
+    so exact float equality), points repeated across the combination's
+    tensor grids are merged into single points with summed weights, which
+    is what keeps the point count far below the tensor product's.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1.
+    level : int
+        Smolyak accuracy level, ``0 <= level <= 3`` for ``algorithm=0``,
+        ``0 <= level <= 2`` for ``algorithm=1`` (the milestone ladders
+        above). ``level=0`` is the single point at the origin.
+    algorithm : int, optional
+        Which tabulated Genz-Keister generator to build on -- 0 (default,
+        :math:`Q_P`, nu=[3,5,8]) or 1 (:math:`\hat{Q}_P`, nu=[4,10]);
+        see :func:`genz_keister_points`.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (num_points, n), rows sorted lexicographically. The grids
+        nest across levels: every point of ``level`` appears (exactly, as
+        floats) in ``level + 1``'s grid.
+    weights : ndarray
+        Shape (num_points,), summing to 1. Commonly contains negative
+        values -- already at n=3, level=1 one weight is negative. This is
+        a real, disclosed property of the Smolyak combination (its
+        coefficients alternate in sign) compounded by the Genz-Keister
+        rules' own negative weights, not suppressed or clamped.
+        Covariances assembled from these points must not use a
+        sqrt-of-weights factorization.
+
+    Notes
+    -----
+    **Measured exactness (the claim, and its exact boundary).** The
+    standard result for nested 1-D sequences whose level-q member is
+    exact through degree >= 2q+1 gives total-degree exactness
+    :math:`2 \cdot \mathrm{level} + 1`; the GK milestone degrees (1, 5,
+    15, 29) dominate 2q+1 at every rung, so that floor applies here.
+    Because those milestone degrees grow much faster than 2q+1, low
+    dimensions do better. Rather than assert the generic floor and hope,
+    the actual total-degree exactness was measured per (algorithm, n,
+    level) cell -- every all-even-exponent monomial scanned per total
+    degree at relative tolerance 1e-12 against the closed-form N(0, I)
+    moments, odd exponents exact by antipodal symmetry (re-verified at
+    looser tolerance in the test suite's through-degree sweep):
+
+    ===========  =======  =======  =======  =======
+    algorithm 0  level 0  level 1  level 2  level 3
+    ===========  =======  =======  =======  =======
+    n=1          1        5        15       29
+    n=2          1        3        7        11
+    n=3          1        3        5        9
+    n=4 .. 8     1        3        5        7
+    ===========  =======  =======  =======  =======
+
+    ===========  =======  =======  =======
+    algorithm 1  level 0  level 1  level 2
+    ===========  =======  =======  =======
+    n=1          1        5        19
+    n=2          1        3        7
+    n=3 .. 6     1        3        5
+    ===========  =======  =======  =======
+
+    Every cell meets or exceeds 2*level+1, and every cell is sharp: the
+    next even degree fails, with a measured relative error between 2.1e-4
+    (algorithm 0, n=1, level 3, on E[x^30]) and 1.0 (the (2,2,...) mixed
+    monomials), against worst in-range noise of 2.7e-14. These tables are
+    claims ONLY for the (algorithm, n, level) cells they list -- measured
+    for n <= 8 (algorithm 0) and n <= 6 (algorithm 1). For larger n the
+    generic 2*level+1 floor is the standard theoretical result but was
+    NOT measured here; re-verify before relying on it (see
+    `tests/unit/test_cubature_points.py::TestSmolyakPoints` for the
+    measurement reproduced as tests).
+
+    **Point count vs. the tensor grid.** At level 2 (degree >= 5) in
+    n = 8, this grid has 177 points; the tensor product of the 3-point
+    degree-5 Gauss-Hermite rule has 3^8 = 6561. At level 3 (degree >= 7),
+    1377 points against the 4-point rule's 4^8 = 65536. The sparse count
+    grows polynomially in n at fixed level, the tensor count
+    exponentially.
+
+    Examples
+    --------
+    >>> pts, w = smolyak_points(2, 1)
+    >>> pts.shape  # cross of the 3-point GK rule, origin merged: 5, not 9
+    (5, 2)
+    >>> pts.round(10).tolist()[:2]
+    [[-1.7320508076, 0.0], [0.0, -1.7320508076]]
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> round(float(np.sum(w * pts[:, 0] ** 2)), 12)  # E[x^2] = 1
+    1.0
+
+    >>> pts, w = smolyak_points(8, 2)  # degree 5 in n=8: 177 points, not 3^8
+    >>> pts.shape
+    (177, 8)
+    >>> bool((w < 0).any())  # negative weights are inherent, see above
+    True
+
+    References
+    ----------
+    S. A. Smolyak, "Quadrature and interpolation formulas for tensor
+    products of certain classes of functions," Doklady Akademii Nauk
+    SSSR, vol. 148, no. 5, pp. 1042-1045, 1963.
+
+    A. Genz and B. D. Keister, "Fully symmetric interpolatory rules
+    for multiple integrals over infinite regions with Gaussian weight,"
+    Journal of Computational and Applied Mathematics, vol. 71, no. 2,
+    pp. 299-309, Jul. 1996.
+
+    F. Heiss and V. Winschel, "Likelihood approximation by numerical
+    integration on sparse grids," Journal of Econometrics, vol. 144,
+    no. 1, pp. 62-80, May 2008.
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if algorithm not in _SMOLYAK_GK_M:
+        raise ValueError(f"algorithm must be 0 (Q_P) or 1 (Q-hat_P), got {algorithm!r}")
+    m_of = _SMOLYAK_GK_M[algorithm]
+    max_level = len(m_of) - 1
+    if not isinstance(level, (int, np.integer)) or level < 0 or level > max_level:
+        raise ValueError(
+            f"level must be an integer with 0 <= level <= {max_level} for "
+            f"algorithm {algorithm} (the milestone ladder stops below the "
+            f"GK table's top, precision-degraded m), got {level}"
+        )
+
+    rules = [_gk_1d(algorithm, m_of[q]) for q in range(level + 1)]
+
+    # Accumulate weights keyed by the rounded point tuple. The rounding is
+    # only the dict key; the stored point is the exact tensor-grid value
+    # (identical floats across levels, since every rule draws its nodes
+    # from the same lambda table), so no precision is lost to the merge.
+    accum: dict = {}
+    for total in range(max(0, level - n + 1), level + 1):
+        coeff = (-1.0) ** (level - total) * math.comb(n - 1, level - total)
+        for k in _compositions(total, n):
+            wts = rules[k[0]][1]
+            for ki in k[1:]:
+                wts = np.multiply.outer(wts, rules[ki][1])
+            mesh = np.meshgrid(*(rules[ki][0] for ki in k), indexing="ij")
+            pts = np.stack([axis.ravel() for axis in mesh], axis=-1)
+            for point, wval in zip(pts, wts.ravel()):
+                key = tuple(point.round(12))
+                entry = accum.get(key)
+                if entry is None:
+                    accum[key] = [point, coeff * wval]
+                else:
+                    entry[1] += coeff * wval
+
+    entries = sorted(accum.values(), key=lambda e: tuple(e[0]))
+    points = np.array([e[0] for e in entries])
+    weights = np.array([e[1] for e in entries])
+    return points, weights
 
 
 def student_t_cubature_points(

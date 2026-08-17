@@ -42,10 +42,10 @@ No dates are attached because none have been decided:
   deliberately — the MATLAB source is a 505-line L-BFGS optimization over
   a modified Cramer-von Mises distance with four hand-derived analytic
   gradient routines, a research-grade optimizer to reimplement and
-  validate, not a transcription), Smolyak sparse grids (enabled by
-  Genz-Keister's nesting property, but original design work rather than
-  a port — there is nothing in the MATLAB source to transcribe), and the
-  ~120 region-specific rules (cube, simplex, sphere, torus, etc.)
+  validate, not a transcription) and the ~120 region-specific rules
+  (cube, simplex, sphere, torus, etc.); Smolyak sparse grids over the
+  Genz-Keister sequences landed as `smolyak_points` (original design,
+  see CHANGELOG)
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only

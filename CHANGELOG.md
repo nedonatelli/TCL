@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`smolyak_points`** -- Smolyak sparse-grid cubature over the nested
+  Genz-Keister sequences
+  (`pytcl.mathematical_functions.numerical_integration.cubature_points`).
+  ORIGINAL DESIGN: no MATLAB TCL counterpart exists (MATLAB provides the
+  nested 1-D sequences but never the Smolyak combination); the standard
+  combination formula with 1-D levels mapped to the Genz-Keister
+  "milestone" m values (algorithm 0: m = 0, 1, 4, 9 for levels 0-3;
+  algorithm 1: m = 0, 1, 5 for levels 0-2), where each rule attains its
+  bonus exactness degree and the point sets nest exactly. Each ladder
+  deliberately stops below its GK table's top, precision-degraded
+  milestone. Total-degree exactness is measured per (algorithm, n, level)
+  cell and claimed only there (n <= 8 for algorithm 0, n <= 6 for
+  algorithm 1): at least 2\*level+1 in every measured cell, with low-n
+  cells exceeding it (up to degree 29 at n=1, level 3). 177 points at
+  n=8, level 2 (degree 5) versus 6561 for the tensor Gauss-Hermite grid.
+  Weights are commonly negative (inherent to the combination, disclosed,
+  not clamped).
 - **`seventh_order_cubature_points` full algorithm surface**
   (`pytcl.mathematical_functions.numerical_integration.cubature_points`):
   added the `algorithm` parameter (0-9), covering every rule MATLAB
