@@ -1,7 +1,8 @@
 """HDF5 storage backend for pytcl data persistence.
 
 Provides efficient storage of large numerical arrays using HDF5.
-Requires h5py package.
+h5py is a core pytcl dependency (see pyproject.toml); no optional
+install step is needed.
 """
 
 import json
@@ -9,17 +10,11 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
 
+import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
-
-try:
-    import h5py
-
-    HAS_H5PY = True
-except ImportError:
-    HAS_H5PY = False
 
 
 class HDF5Storage(StorageBackend):
@@ -39,10 +34,6 @@ class HDF5Storage(StorageBackend):
     """
 
     def __init__(self) -> None:
-        if not HAS_H5PY:
-            raise ImportError(
-                "h5py is required for HDF5Storage. Install with: pip install h5py"
-            )
         self._file = None
         self._path = None
         self._mode = None

@@ -1,21 +1,16 @@
 """HDF5-backed storage for large-scale tracking datasets.
 
 Optimized for archival and post-analysis of tracking scenarios with
-efficient time-series access and compression. Requires h5py package.
+efficient time-series access and compression. h5py is a core pytcl
+dependency (see pyproject.toml); no optional install step is needed.
 """
 
 import json
 from typing import Any, Dict, List, Optional, Tuple
 
+import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-
-try:
-    import h5py
-
-    HAS_H5PY = True
-except ImportError:
-    HAS_H5PY = False
 
 
 class TrackHDF5Storage:
@@ -66,10 +61,6 @@ class TrackHDF5Storage:
         dtype: str = "float64",
         shuffle: bool = True,
     ) -> None:
-        if not HAS_H5PY:
-            raise ImportError(
-                "h5py is required for TrackHDF5Storage. Install with: pip install h5py"
-            )
         self._path = path
         self._chunk_size = chunk_size
         self._compression = compression

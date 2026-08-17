@@ -170,7 +170,11 @@ def update_centers(
     -------
     centers : ndarray
         Updated cluster centers, shape (n_clusters, n_features).
-        Empty clusters retain their previous position (zeros).
+        This function has no notion of a "previous" center: empty
+        clusters are zero-filled here. The retain-previous-center
+        behavior for empty clusters is applied one layer up, in the
+        ``_kmeans_single`` loop (see the "Handle empty clusters" step
+        in this module).
 
     Examples
     --------

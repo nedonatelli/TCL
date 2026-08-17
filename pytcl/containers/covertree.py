@@ -2,8 +2,16 @@
 Cover Tree implementation for nearest neighbor search.
 
 Cover trees are data structures for nearest neighbor search in metric
-spaces with a theoretical guarantee of O(c^12 log n) query time, where
-c is the expansion constant of the data.
+spaces. The reference algorithm carries a theoretical O(c^12 log n)
+query-time guarantee, where c is the expansion constant of the data --
+but that bound assumes the strict cover invariant (d(parent, child) <=
+base^level) is maintained during insertion. This implementation's
+insertion is simplified and does not maintain that invariant (see the
+comment at lines 172-175 in the ``_compute_covering_radii`` insertion comment in this module, where
+covering radii are computed from actual descendant distances precisely
+because the level bound cannot be trusted). Queries still return correct results, since
+pruning falls back to the exact computed radii, but the O(c^12 log n)
+bound does not apply to this implementation.
 
 References
 ----------

@@ -112,7 +112,7 @@ def tria(A: ArrayLike) -> NDArray[np.floating]:
     See Also
     --------
     chol_semi_def : More general function with tolerance control.
-    triaSqrt : Square root of concatenated matrices for filter updates.
+    tria_sqrt : Square root of concatenated matrices for filter updates.
     """
     return chol_semi_def(A, upper=False)
 

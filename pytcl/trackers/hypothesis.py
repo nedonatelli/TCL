@@ -309,11 +309,21 @@ def n_scan_prune(
 
     Notes
     -----
-    N-scan pruning works by::
+    This implementation applies a single-MAP-hypothesis rule, not
+    agreement across all high-probability hypotheses::
 
-        1. Finding tracks that agree across all high-probability hypotheses
-           at scan (current_scan - n_scan)
-        2. Removing hypotheses that disagree with the "committed" decision
+        1. Take the single highest-probability (MAP) hypothesis and
+           determine which tracks it committed to by scan
+           (current_scan - n_scan).
+        2. Keep a hypothesis only if its own set of tracks committed by
+           that scan is identical to the MAP hypothesis's set (or if the
+           MAP hypothesis has no tracks committed by that scan yet, in
+           which case nothing is pruned).
+
+    Hypotheses that agree with each other but disagree with the MAP
+    hypothesis are pruned along with genuinely divergent ones -- the
+    rule is "match the MAP hypothesis or be removed," not a vote across
+    all high-probability hypotheses.
     """
     if not hypotheses or n_scan <= 0:
         return hypotheses, set()

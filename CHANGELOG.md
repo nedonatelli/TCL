@@ -110,12 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   {0.5,0.99,1.0,1.01,2,10}) up to 8.6e-9 relative error at n=10 -- 5 to 7
   orders of magnitude worse than claimed, growing with n. Moved the switch
   to x0=2.0 (still within the small-x series' documented |x| < 2*pi
-  convergence radius): the same grid now measures ~1e-16 typical and a
-  ~3.8e-12 worst case (n=9/10 exactly at the new x=2.0 boundary, where the
-  large-x branch still loses a few digits). Docstring's accuracy claim
-  replaced with the measured range; new `TestDebyeBoundaryAccuracy` in
-  `tests/validation/test_debye.py` pins both bounds against the mpmath
-  oracle so the boundary cannot silently regress.
+  convergence radius): the same grid now measures ~1e-16 typical. The true
+  worst case is not at the boundary itself but just below it: ~1.9e-11 at
+  n=9/10, x in {1.9,1.99,1.999} (small-x series nearing the edge of its
+  useful precision), versus ~3.8e-12 exactly at x=2.0 (n=9/10, where the
+  large-x branch's own cancellation happens to be smallest). Docstring's
+  accuracy claim replaced with both measured numbers; `TestDebyeBoundaryAccuracy`
+  in `tests/validation/test_debye.py` pins the full grid plus a dedicated
+  just-below-boundary case (n in {6,9,10}, x in {1.9,1.99}) against the
+  mpmath oracle so neither region can silently regress.
 - **Four `wmm()`-family docstrings said "Default 2023.0" for `year` while
   the actual default is 2025.0** (`pytcl/magnetism/wmm.py:732,819,861,910`
   -- `wmm`, `magnetic_declination`, `magnetic_inclination`,
@@ -272,6 +275,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   titles/venues, replaced with the standard RBPF references (Doucet, de
   Freitas, Murphy & Russell 2000, UAI; Schon, Gustafsson & Nordlund 2005,
   IEEE TSP).
+- **`containers/trackers/clustering/io` claims-audit batch.**
+  `containers/kd_tree.py`'s `KDTree` claimed O(n log n) construction but
+  `_build_tree` fully `np.argsort`ed the split-dimension values at every
+  node, which is O(n log^2 n) over the tree. Swapped to
+  `np.argpartition`-based median selection (O(n) expected per level via
+  introselect, same asymptotic technique sklearn's KDTree uses), making
+  the O(n log n) claim true rather than correcting it downward. Verified:
+  existing spatial-container test files pass unchanged;
+  nearest-neighbor distances (not indices, since ties may legitimately
+  break differently) are identical to a brute-force oracle for k in
+  {1, 5} over 500 random queries at n in {50, 500, 5000}; a build-time
+  sanity check at n in {2000, 20000} shows no super-linear-log
+  regression.
+- **`containers/covertree.py`'s module docstring asserted an
+  unconditional O(c^12 log n) query-time guarantee** while the module's
+  own insertion comment (originally lines 172-175) already documented
+  that the strict cover invariant the bound depends on is not
+  maintained by this implementation's simplified insertion. Docstring
+  now says so explicitly: queries remain correct (pruning falls back to
+  exact computed covering radii), but the O(c^12 log n) bound does not
+  apply here.
+- **`core/maturity.py` listed a stale `"containers.ball_tree"` key**
+  (rated MATURE); no such module exists -- `BallTree` lives in
+  `containers.kd_tree` (rated STABLE separately). Removed; nothing
+  referenced the stale key.
+- **`clustering/kmeans.py`'s `update_centers` docstring claimed "Empty
+  clusters retain their previous position (zeros)"**, but the function
+  takes no previous-centers argument and hard zero-fills empty clusters
+  every call (verified by direct call). The retain-previous behavior is
+  applied one layer up, in the `_kmeans_single` loop's "Handle empty
+  clusters" step. Docstring now attributes the behavior to the correct
+  layer.
+- **`trackers/hypothesis.py`'s `n_scan_prune` Notes claimed agreement
+  "across all high-probability hypotheses"**; the implementation
+  compares every hypothesis's committed tracks only against the single
+  argmax (MAP) hypothesis and drops any that disagree -- including
+  hypotheses that agree with each other but not with the MAP one.
+  Notes rewritten to describe the actual single-MAP-hypothesis rule.
+- **`clustering/hierarchical.py`'s `fcluster` claimed "Compatible
+  interface with scipy.cluster.hierarchy.fcluster"**; the call
+  signature differs (extra required `n_samples`, different default
+  `criterion`). Reworded to results-compatibility: partitions match
+  scipy's for the same linkage/threshold (ARI > 0.9999, test-backed),
+  interface does not.
+- **`io/compat.py`'s module docstring and `ParticleFilterTrackAdapter`
+  docstring claimed adapters "seamlessly connect" filter outputs to
+  "TrackDatabaseManager and TrackHDF5Storage backends" / "SQL/HDF5
+  storage."** All six adapter classes persist exclusively through SQL
+  (`self._db`, a `TrackDatabaseManager`); none import or call
+  `TrackHDF5Storage`. HDF5 archival is a separate, explicit step run
+  after the fact with `TrackHDF5Storage.import_from_sql()`. Also
+  corrected the module docstring's listing of "JPDA" among adapted
+  filters: pytcl has no stateful JPDA tracker class (only assignment
+  functions in `assignment_algorithms.jpda`), and neither
+  `MultiTargetTracker` nor `TrackerDatabaseAdapter` reference JPDA at
+  all, so there is no path to these adapters, direct or indirect.
+- **`io/migration.py`'s generated migration checklist asserted an
+  invented, unmeasured latency figure** ("Query performance meets
+  targets (< 100ms for typical operations)"). Reworded to a qualitative
+  checklist item with no fabricated number.
+- **`basic_matrix/decompositions.py`'s See Also referenced a
+  nonexistent `triaSqrt`** (stale MATLAB camelCase); corrected to the
+  real name `tria_sqrt`.
 
 ### Removed
 - **`pytcl.dynamic_estimation.batch_estimation`, an empty 3-line stub
@@ -280,6 +346,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `__init__.py` never imported it either despite advertising "Batch
   estimation methods" in its module docstring. Removed along with that
   docstring line; no other code referenced the package.
+- **`pytcl.mathematical_functions.continuous_optimization` and
+  `pytcl.mathematical_functions.polynomials`, two empty stub packages**
+  (`__all__ = []`, no functions), removed along with the "Continuous
+  optimization" and "Polynomials" lines that advertised them in
+  `mathematical_functions/__init__.py`'s module docstring. Neither package
+  was imported anywhere -- not by `mathematical_functions/__init__.py`
+  itself, not by other pytcl code, tests, docs, examples, or benchmarks.
+  Both directories held only an `__init__.py`, so `docs/architecture.rst`'s
+  module/public-name counts (checked by
+  `tests/contract/test_docs_architecture.py`) are unaffected.
+- **The `HAS_H5PY` / `try: import h5py except ImportError` gate in
+  `pytcl/io/hdf5_storage.py` and `pytcl/io/hdf5_track_storage.py`**, plus
+  the plain `ImportError("h5py is required... pip install h5py")` raises
+  it guarded. h5py has been a core dependency (`h5py>=3.8.0` in
+  `pyproject.toml`, not an extra) all along, so the gate could never
+  actually trip on a correct install -- it only mis-framed a mandatory
+  dependency as optional. `import h5py` is now unconditional in both
+  files; the stale "Requires h5py package" module-docstring phrasing is
+  corrected to say it is a core dependency. No test monkeypatched
+  `HAS_H5PY` on either module (each test file that skips without h5py
+  defines its own local `HAS_H5PY` via its own `try/except`, unrelated to
+  the modules' now-removed attribute).
 
 ## [2.3.0] - 2026-08-16
 
