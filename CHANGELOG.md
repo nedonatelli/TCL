@@ -95,6 +95,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/unit/test_io_session.py`.
 
 ### Changed
+- **`benchmark-light.yml` now runs `test_special_functions_bench.py` and
+  `test_signal_processing_bench.py`**, the two of three files whose
+  `@pytest.mark.light` tests had never actually run in the PR gate the
+  marker claimed (the job hardcoded a 4-file list that didn't include
+  them). Measured per-file runtime (Apple M3 Max, 2026-08-17) against a
+  ~2-minute-per-file budget: both fit (~89s and ~57s) and are wired in;
+  `test_track_management_bench.py` (~130s) doesn't, so its tests are
+  demoted to `@pytest.mark.full` and it stays nightly/main-only via
+  `benchmark-full.yml`. Job `timeout-minutes` raised 5 -> 10 for the two
+  added files. Placement rule documented in `benchmarks/conftest.py` and
+  `.github/workflows/benchmark-light.yml`.
 - **CI coverage floor ratcheted 79 -> 82**, calibrated against 85% measured
   under the coverage job's own conditions (ubuntu, no MLX, numba JIT on;
   the MLX GPU layer and numba-jitted kernel bodies are untraceable there)

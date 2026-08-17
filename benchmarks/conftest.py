@@ -282,7 +282,21 @@ def jpda_test_data():
 
 
 def pytest_configure(config):
-    """Register custom markers."""
+    """Register custom markers.
+
+    Placement rule for `light` vs `full`: `.github/workflows/benchmark-light.yml`
+    hardcodes a file list and runs it with `-m light` on every PR, so a test
+    is only actually part of the PR gate if both (a) it carries `@pytest.mark.light`
+    and (b) its file is in that hardcoded list -- adding the marker alone does
+    nothing. Wire a file in only if its *entire* `-m light` run (measured with
+    `--benchmark-only --benchmark-warmup=on --benchmark-min-rounds=100`) fits a
+    ~2-minute-per-file budget; a file that doesn't fit should use `@pytest.mark.full`
+    instead (see benchmarks/test_cfar_bench.py, test_clustering_bench.py,
+    test_jpda_bench.py for the pattern) and note the measured runtime and the
+    reason in its module docstring, e.g. benchmarks/test_track_management_bench.py.
+    `full`-marked (and unmarked) tests still run nightly/on-main via
+    `benchmark-full.yml`, which executes `benchmarks/` unfiltered.
+    """
     config.addinivalue_line("markers", "benchmark: mark test as a benchmark")
     config.addinivalue_line(
         "markers", "light: mark benchmark as part of light (PR) suite"

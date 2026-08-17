@@ -21,8 +21,11 @@ Backends and Precision
 The linear-algebra work is written against the backend-neutral operation
 surface in :mod:`pytcl.gpu._backend`. CuPy computes in float64; MLX computes
 in float32 (float64 is unsupported on the MLX GPU stream), so results on
-Apple Silicon are precision-limited to roughly 1e-5 relative error against
-the CPU reference in :mod:`pytcl.dynamic_estimation.kalman.extended`.
+Apple Silicon are precision-limited to roughly 1e-7 relative error (float32
+epsilon; measured 4.7e-8 to 8.4e-7 across predict/update outputs -- see
+:mod:`tests.unit.test_gpu_mlx_ekf`'s module docstring for the per-output
+table) against the CPU reference in
+:mod:`pytcl.dynamic_estimation.kalman.extended`.
 
 The user-supplied ``f``, ``h``, and Jacobian callables receive the whole batch
 as a single device array of the active backend and are called once, not once

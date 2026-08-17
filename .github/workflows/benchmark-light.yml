@@ -15,7 +15,11 @@ permissions:
 jobs:
   benchmark-light:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Six files below at ~2 min/file worst case, plus checkout/install/sync
+    # overhead; measured combined run of all six is ~220s on an Apple M3 Max
+    # (2026-08-17) -- ubuntu-latest runners tend to be slower, so this leaves
+    # headroom rather than matching that figure exactly.
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -29,12 +33,27 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      # File list must be kept in sync with @pytest.mark.light usage: a file
+      # only runs here if it's listed AND its tests carry the light marker.
+      # Placement rule (see benchmarks/conftest.py's pytest_configure for the
+      # full rationale): a file is wired in here only if its whole `-m light`
+      # run fits a ~2-minute-per-file budget. Measured per-file (Apple M3 Max,
+      # 2026-08-17, `--benchmark-only --benchmark-warmup=on
+      # --benchmark-min-rounds=100`): test_kalman_bench.py+test_gating_bench.py
+      # +test_rotations_bench.py+test_cubature_bench.py combined ~72s;
+      # test_signal_processing_bench.py ~57s; test_special_functions_bench.py
+      # ~89s -- all fit and are wired below. test_track_management_bench.py
+      # measured ~130s, over budget, so its tests are marked
+      # @pytest.mark.full instead and it is deliberately NOT listed here (it
+      # still runs nightly/on-main via benchmark-full.yml).
       - name: Run light benchmarks
         run: |
           uv run pytest benchmarks/test_kalman_bench.py \
                            benchmarks/test_gating_bench.py \
                            benchmarks/test_rotations_bench.py \
                            benchmarks/test_cubature_bench.py \
+                           benchmarks/test_special_functions_bench.py \
+                           benchmarks/test_signal_processing_bench.py \
             --benchmark-only \
             --benchmark-json=/tmp/benchmark_results.json \
             --benchmark-warmup=on \

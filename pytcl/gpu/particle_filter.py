@@ -16,9 +16,17 @@ Key Features
 
 Performance
 -----------
-The GPU implementation achieves 8-15x speedup compared to CPU for:
-- Large particle counts (N > 1000)
-- Parallel processing of multiple targets
+Measured on Apple Silicon (MLX), ``CuPyParticleFilter`` predict+update
+(systematic resampling on ESS drop) against the CPU reference in
+:mod:`pytcl.dynamic_estimation.particle_filters.bootstrap`
+(``bootstrap_pf_step``), 20 steps, state_dim=4, end-to-end including
+host-device transfers, after warm-up (August 2026): 0.6x (i.e. *slower* than
+CPU -- per-call dispatch overhead dominates) at 100 particles, 5x at 1,000,
+34x at 10,000, 80x at 100,000. The speedup grows with particle count because
+the CPU reference's likelihood evaluation is a per-particle Python loop
+(``O(N)`` interpreter overhead) while the GPU path is fully batched; a
+vectorized CPU baseline would narrow the gap at the high end. Below a few
+hundred particles, prefer the CPU implementation outright.
 
 Notes
 -----

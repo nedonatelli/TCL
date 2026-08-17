@@ -155,12 +155,20 @@ if __name__ == "__main__":
 
 ## Performance Notes
 
-- **terrain_demo.py**: ~24 seconds (large grid computations with heatmap visualizations)
-- **multi_target_tracking.py**: ~5 seconds
-- **kalman_filter_comparison.py**: ~7 seconds
-- Most others: <5 seconds
+Measured with `PYTCL_SHOW_PLOTS=0 time uv run python examples/<name>.py`, each
+script timed individually, on an Apple M3 Max (macOS 26.5.2), 2026-08-17.
+Absolute numbers will vary by machine; relative ordering is the useful part.
 
-Total batch execution time: ~2-3 minutes for all 32 examples
+- **track_management_workflows.py**: ~57 seconds (by far the slowest -- SQL
+  and HDF5-backed track lifecycle workflows)
+- **spatial_data_structures.py**: ~3.5 seconds
+- **multi_target_tracking_rerun.py**: ~3 seconds
+- **measurement_ingest.py**: ~2.7 seconds
+- **particle_filters.py**: ~1.9 seconds
+- **performance_evaluation.py** / **geophysical_models.py**: ~1.3 seconds each
+- Most others: under 1 second
+
+Total batch execution time: ~93 seconds for all 32 examples, run sequentially.
 
 ## Visualization
 

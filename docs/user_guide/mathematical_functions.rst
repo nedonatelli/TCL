@@ -291,8 +291,8 @@ Smolyak Sparse Grids
 ^^^^^^^^^^^^^^^^^^^^
 
 ``smolyak_points(n, level, algorithm=0)`` builds Smolyak sparse-grid
-cubature over nested Genz-Keister 1-D sequences (see
-``genz_keister_points`` above). This is an original design with no MATLAB
+cubature over nested Genz-Keister 1-D sequences (see the Genz-Keister
+section of :doc:`/advanced_kf_variants`). This is an original design with no MATLAB
 TCL counterpart -- MATLAB provides the nested 1-D sequences but never the
 Smolyak combination over them. It follows the standard construction from
 Smolyak (1963), using the Genz-Keister sequences exactly as Genz and

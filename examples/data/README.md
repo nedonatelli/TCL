@@ -13,10 +13,11 @@ Synthetic multi-target tracking scenarios with:
 - `scenario_3`: 10 targets, dense clutter environment
 
 **Format:** NumPy compressed archive (.npz)
-**Fields per scenario:**
-- `true_states`: Ground truth states (N_targets x N_timesteps x state_dim)
-- `measurements`: Noisy measurements (N_timesteps x N_meas x meas_dim)
-- `timestamps`: Time values (N_timesteps,)
+**Fields:** flat, `scenario_N_<field>`-prefixed keys per scenario (N = 1, 2, 3)
+-- not per-scenario sub-namespaces:
+- `scenario_N_states`: Ground truth states (N_targets x N_timesteps x state_dim)
+- `scenario_N_measurements`: Noisy measurements (N_timesteps x N_meas x meas_dim)
+- `scenario_N_timestamps`: Time values (N_timesteps,)
 
 ### navigation_trajectory.npz
 
@@ -30,8 +31,13 @@ INS/GNSS integration test trajectory:
 - `imu_time`: IMU timestamps (N_imu,)
 - `accel`: Accelerometer readings (N_imu, 3)
 - `gyro`: Gyroscope readings (N_imu, 3)
-- `gnss_time`: GNSS fix timestamps (N_gnss,)
-- `gnss_pos`: GNSS positions LLA (N_gnss, 3)
+- `accel_bias`: Constant accelerometer bias used to generate `accel` (3,)
+- `gyro_bias`: Constant gyroscope bias used to generate `gyro` (3,)
+- `gnss_time`: GNSS fix timestamps, outage periods already removed (N_gnss_available,)
+- `gnss_pos`: GNSS positions LLA, outage periods already removed (N_gnss_available, 3)
+- `gnss_available`: Availability mask over the full 1 Hz GNSS timestamp grid
+  before outage filtering (N_gnss,); `gnss_available.sum() == len(gnss_time)`
+- `start_lla`: Trajectory start position, latitude/longitude/altitude (3,)
 - `true_pos`: Ground truth positions (N_imu, 3)
 - `true_vel`: Ground truth velocities (N_imu, 3)
 
