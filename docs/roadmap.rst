@@ -44,8 +44,8 @@ Next
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature remainder (LCD samples,
-  Smolyak sparse grids, region-specific rules), the refraction suite,
-  localization estimators, and filter variants.
+  region-specific rules), the refraction suite, localization estimators,
+  and filter variants.
 
 Long term (unscheduled)
 -----------------------
