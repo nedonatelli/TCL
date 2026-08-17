@@ -199,6 +199,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a bare `ImportError`, matching the repo-wide optional-dependency
   convention (`DependencyError` subclasses both `ConfigurationError` and
   `ImportError`, so existing `except ImportError` callers are unaffected).
+- **`pytcl.dynamic_estimation.kalman.matrix_utils` no longer gates Numba
+  behind a `try/except ImportError` fallback.** Numba is a required core
+  dependency (`pyproject.toml`), so the no-op decorator path could never
+  execute; it was dead code that also implied Numba is optional when it is
+  not. The docstring's unbacked "5-10x speedup" claim is replaced with a
+  measured number: the jitted `_cholesky_update_core` ran ~15.6x faster
+  than the equivalent pure-Python loop (n=6, 20000 calls, measured
+  2026-08-17; size- and machine-dependent, not a general guarantee).
+- Several `pytcl.dynamic_estimation` docstrings overclaimed relative to
+  their own implementations, caught by a claims-audit pass:
+  `information_filter.py`'s module docstring and `srif_filter`'s Notes
+  claimed the SRIF path delivers square-root numerical stability, while
+  `srif_predict`'s own Notes already documented that it routes through two
+  explicit matrix inversions instead (gh-25) -- the module and `srif_filter`
+  docstrings now say so consistently; `smoothers.py`'s module docstring
+  claimed a fixed-point smoother and nonlinear smoothers, neither of which
+  exist (the implemented set is fixed-interval, fixed-lag, and two-filter,
+  linear only); `dynamic_estimation/__init__.py` claimed
+  "Particle filters (bootstrap, auxiliary, regularized)" when only bootstrap
+  is implemented; `kalman/ud_filter.py` claimed "excellent numerical
+  stability" for the whole module when only `ud_update_scalar` (and
+  `ud_update`, which calls it) delivers that -- `ud_predict` reconstructs
+  the dense covariance and re-factorizes from scratch, numerically
+  equivalent to `kf_predict` to ~6.7e-16; `kalman/unscented.py`'s
+  `ckf_predict` claimed the CKF is unconditionally "more accurate than the
+  UKF for high-dimensional states," reworded to the literature-consistent
+  claim it is actually based on (Arasaratnam & Haykin 2009): the CKF's
+  2n-point rule avoids the negative center weight the UKF produces for
+  n > 3; and `rbpf.py`'s references cited two papers with garbled
+  titles/venues, replaced with the standard RBPF references (Doucet, de
+  Freitas, Murphy & Russell 2000, UAI; Schon, Gustafsson & Nordlund 2005,
+  IEEE TSP).
+
+### Removed
+- **`pytcl.dynamic_estimation.batch_estimation`, an empty 3-line stub
+  package** (`__all__ = []`, no functions). Nothing in the codebase, tests,
+  docs, examples, or benchmarks imported it, and `dynamic_estimation`'s own
+  `__init__.py` never imported it either despite advertising "Batch
+  estimation methods" in its module docstring. Removed along with that
+  docstring line; no other code referenced the package.
 
 ## [2.3.0] - 2026-08-16
 
