@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   library, not MATLAB source -- nothing to port fidelity against), maps
   liblbfgs's defaults onto scipy's L-BFGS-B options honestly (documented
   in-function: `numCorr=6` -> `maxcor=6` and `max_iterations=1000` ->
-  `maxiter` are faithful; `epsilon=1e-6` -> `pgtol=1e-6` and
+  `maxiter` are faithful; `epsilon=1e-6` -> `gtol=1e-6` and
   `delta=0`/`past=0` -> `ftol=0.0` are value-level matches, the latter
   exact by convention, the former a genuinely different stopping
   criterion (max-component vs scaled Euclidean norm); liblbfgs's
