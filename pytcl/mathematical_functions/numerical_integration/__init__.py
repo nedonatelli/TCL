@@ -38,6 +38,7 @@ from pytcl.mathematical_functions.numerical_integration.quadrature import (  # n
 )
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (  # noqa: E501
     cube_cubature_points,
+    simplex_cubature_points,
 )
 
 __all__ = [
@@ -72,4 +73,5 @@ __all__ = [
     # Region cubature (true-measure weights, NOT Gaussian/probability -- see
     # region_cubature.py's module docstring)
     "cube_cubature_points",
+    "simplex_cubature_points",
 ]

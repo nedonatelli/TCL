@@ -8,8 +8,9 @@ must fail) guards every exactness class against a vacuous loop.
 """
 
 import itertools
+import math
 import os
-from math import comb
+from math import comb, gamma
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,7 @@ from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (
     cube_cubature_points,
+    simplex_cubature_points,
 )
 
 
@@ -44,6 +46,24 @@ def cube_monomial_integral(alpha, half_width=1.0):
     for a in alpha:
         result *= (h ** (a + 1) - (-h) ** (a + 1)) / (a + 1)
     return result
+
+
+def simplex_monomial_integral(alpha):
+    """integral_{simplex} prod_i x_i^{a_i} dx over the standard n-simplex
+    {x>=0, sum(x)<=1}, closed Dirichlet form (design spec Section 5.1):
+
+    prod_i gamma(a_i+1) / gamma(n + 1 + sum(a_i))
+    = prod_i (a_i!) / (n + sum(a_i))!  for integer a_i.
+
+    Degenerates to the simplex volume 1/n! at alpha=(0,...,0) (n zeros),
+    the cheapest regression case before the harder monomial sweep -- same
+    role cube_monomial_integral's degree-0 check plays for the cube.
+    """
+    n = len(alpha)
+    numerator = 1.0
+    for a in alpha:
+        numerator *= gamma(a + 1)
+    return numerator / gamma(n + 1 + sum(alpha))
 
 
 def monomials_up_to(n, degree):
@@ -508,6 +528,345 @@ class TestCubeCubaturePointsGeneral:
             cube_cubature_points(0, 1)
 
 
+class TestSimplexMonomialIntegralOracle:
+    def test_hand_case_integral_of_x_over_2_simplex(self):
+        # The brief's own hand case: integral of x over the standard
+        # 2-simplex {x>=0,y>=0,x+y<=1} is 1/6.
+        assert_allclose(simplex_monomial_integral((1, 0)), 1.0 / 6.0)
+        assert_allclose(simplex_monomial_integral((0, 1)), 1.0 / 6.0)
+
+    def test_degree_0_monomial_is_simplex_volume(self):
+        # alpha=(0,...,0): integral of the constant 1 over the simplex is
+        # its volume 1/n! -- the cheapest regression case, per the design
+        # spec (Section 5.1) and mirroring cube_monomial_integral's
+        # equivalent degree-0 check.
+        for n in range(1, 6):
+            assert_allclose(
+                simplex_monomial_integral((0,) * n), 1.0 / math.factorial(n)
+            )
+
+    def test_known_values(self):
+        # integral_0^1 integral_0^{1-x} x^2 dy dx = 1/12.
+        assert_allclose(simplex_monomial_integral((2, 0)), 1.0 / 12.0)
+        # integral over the 2-simplex of x*y = 1/24.
+        assert_allclose(simplex_monomial_integral((1, 1)), 1.0 / 24.0)
+        # 3-simplex, integral of x = 1/24.
+        assert_allclose(simplex_monomial_integral((1, 0, 0)), 1.0 / 24.0)
+
+
+class TestSimplexDegree2:
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = simplex_cubature_points(n, 2)
+        assert pts.shape == ((n + 1) * (n + 2) // 2, n)
+        assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-12)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5, 6])
+    def test_exact_through_degree_2(self, n):
+        pts, w = simplex_cubature_points(n, 2)
+        assert_region_rule_exact(pts, w, simplex_monomial_integral, n, degree=2)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_sharpness_degree_3_fails(self, n):
+        pts, w = simplex_cubature_points(n, 2)
+        assert_some_monomial_of_degree_fails(
+            pts, w, simplex_monomial_integral, n, degree=3
+        )
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = simplex_cubature_points(3, 2)
+        pts2, w2 = simplex_cubature_points(3, 2, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 2, algorithm=1)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(1, 2)
+
+
+class TestSimplexDegree3:
+    """thirdOrderSimplexCubPoints has 12 MATLAB algorithms; 0-9 are
+    general-n (each with its own dimension restriction, some hardened
+    beyond MATLAB's own checks -- see region_cubature.py's module
+    docstring); 10 (T_2 3-1, n=2 only) and 11 (T_5 3-1, n=5 only) are
+    fixed-dimension literature variants, not ported."""
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_shape_and_weight_sum(self, n):
+        pts, w = simplex_cubature_points(n, 3)
+        assert pts.shape == (n + 2, n)
+        assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-10)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5, 6, 7])
+    def test_algorithm0_exact_through_degree_3(self, n):
+        pts, w = simplex_cubature_points(n, 3)
+        assert_region_rule_exact(pts, w, simplex_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm0_sharpness_degree_4_fails(self, n):
+        # n=4's worst degree-4 residual is real (measured ~6.2e-5) but
+        # smaller than the default threshold=1e-4 -- still 11 orders of
+        # magnitude above roundoff (~1e-16), so a lower threshold still
+        # discriminates a genuine failure from noise, it just needs to be
+        # smaller here than the default catches.
+        pts, w = simplex_cubature_points(n, 3)
+        assert_some_monomial_of_degree_fails(
+            pts, w, simplex_monomial_integral, n, degree=4, threshold=1e-6
+        )
+
+    def test_default_dispatch_is_algorithm0(self):
+        pts1, w1 = simplex_cubature_points(4, 3)
+        pts2, w2 = simplex_cubature_points(4, 3, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    @pytest.mark.parametrize(
+        "algorithm,expected_points",
+        [
+            (1, lambda n: 2 * n + 2),
+            (2, lambda n: 2 * n + 3),
+            (6, lambda n: (n**3 + 11 * n + 12) // 6),
+            (7, lambda n: (n + 1) * (n + 2) * (n + 3) // 6),
+        ],
+    )
+    def test_unrestricted_algorithms_exact_through_degree_3(
+        self, algorithm, expected_points
+    ):
+        for n in (2, 3, 4, 5, 6):
+            pts, w = simplex_cubature_points(n, 3, algorithm=algorithm)
+            assert pts.shape == (expected_points(n), n)
+            assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-9)
+            assert_region_rule_exact(pts, w, simplex_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize(
+        "algorithm,expected_points",
+        [
+            (4, lambda n: (n + 1) * (n + 4) // 2),
+            (5, lambda n: (n**3 + 5 * n + 12) // 6),
+        ],
+    )
+    def test_n_ge_3_algorithms_exact_through_degree_3(self, algorithm, expected_points):
+        for n in (3, 4, 5, 6):
+            pts, w = simplex_cubature_points(n, 3, algorithm=algorithm)
+            assert pts.shape == (expected_points(n), n)
+            assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-9)
+            assert_region_rule_exact(pts, w, simplex_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize(
+        "algorithm,expected_points",
+        [
+            (8, lambda n: (n**3 - n + 3) // 3),
+            (9, lambda n: (n**3 + 2 * n + 3) // 3),
+        ],
+    )
+    def test_n_ge_3_n_ne_5_algorithms_exact_through_degree_3(
+        self, algorithm, expected_points
+    ):
+        for n in (3, 4, 6, 7):
+            pts, w = simplex_cubature_points(n, 3, algorithm=algorithm)
+            assert pts.shape == (expected_points(n), n)
+            assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-8)
+            assert_region_rule_exact(
+                pts, w, simplex_monomial_integral, n, degree=3, atol=1e-8
+            )
+
+    def test_algorithm4_requires_n3(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 3, algorithm=4)
+
+    def test_algorithm5_requires_n3(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 3, algorithm=5)
+
+    def test_algorithm8_and_9_require_n3_and_reject_n5(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 3, algorithm=8)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(5, 3, algorithm=8)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 3, algorithm=9)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(5, 3, algorithm=9)
+
+    def test_algorithm10_and_11_not_ported(self):
+        # Fixed-dimension literature variants (T_2 3-1, T_5 3-1) -- see
+        # region_cubature.py's module docstring for why these specifically
+        # are deferred even though the rest of this file is general-n.
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 3, algorithm=10)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(5, 3, algorithm=11)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 3, algorithm=12)
+
+
+class TestSimplexDegree3Algorithm3Defect:
+    """Algorithm 3 (T_n 3-4) hits a MATLAB defect at n=2: both real roots
+    of the file's own parameter cubic make the weight formula an exact
+    0/0, verified symbolically (region_cubature.py module docstring,
+    "third corrected defect"). This class pins that hardened guard and
+    independently verifies the corrected rule's exactness and the n=5
+    double-root tie-break at every n this port supports (3<=n<7)."""
+
+    @pytest.mark.parametrize("n", [3, 4, 5, 6])
+    def test_exact_through_degree_3(self, n):
+        pts, w = simplex_cubature_points(n, 3, algorithm=3)
+        assert pts.shape == ((n + 1) * (n + 2) // 2, n)
+        assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-9)
+        assert_region_rule_exact(
+            pts, w, simplex_monomial_integral, n, degree=3, atol=1e-8
+        )
+
+    def test_n2_raises_instead_of_returning_nan(self):
+        # The confirmed 0/0 defect: MATLAB's own domain guard (numDim<7)
+        # does not exclude n=2, but running it there would poison every
+        # weight with NaN (0.0/0.0 in IEEE 754). The port hardens the
+        # guard rather than propagate NaN.
+        with pytest.raises(ValueError, match="3 <= n < 7"):
+            simplex_cubature_points(2, 3, algorithm=3)
+
+    def test_n_ge_7_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(7, 3, algorithm=3)
+
+
+class TestSimplexDegree4:
+    @pytest.mark.parametrize("n", [3, 5, 6, 7])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = simplex_cubature_points(n, 4)
+        assert pts.shape == (comb(n + 4, 4), n)
+        assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-9)
+
+    def test_n4_zero_weight_points_stripped(self):
+        # B4's exact (4-n) factor vanishes only at n=4: MATLAB itself
+        # strips these (module docstring: "not a defect"), reducing the
+        # point count below the general C(n+4,4) formula.
+        pts, w = simplex_cubature_points(4, 4)
+        assert pts.shape == (40, 4)
+        assert pts.shape[0] < comb(4 + 4, 4)
+        assert np.all(w != 0.0)
+        assert_allclose(w.sum(), 1.0 / math.factorial(4), atol=1e-9)
+
+    @pytest.mark.parametrize("n", [3, 4, 5, 6, 7])
+    def test_exact_through_degree_4(self, n):
+        pts, w = simplex_cubature_points(n, 4)
+        assert_region_rule_exact(pts, w, simplex_monomial_integral, n, degree=4)
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_sharpness_degree_5_fails(self, n):
+        # n=4,5's worst degree-5 residuals are real (measured ~5.8e-5 and
+        # ~1.3e-5) but smaller than the default threshold=1e-4 -- see the
+        # analogous note on TestSimplexDegree3's degree-4 sharpness test.
+        pts, w = simplex_cubature_points(n, 4)
+        assert_some_monomial_of_degree_fails(
+            pts, w, simplex_monomial_integral, n, degree=5, threshold=1e-6
+        )
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = simplex_cubature_points(5, 4)
+        pts2, w2 = simplex_cubature_points(5, 4, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(5, 4, algorithm=1)
+
+    def test_requires_n3(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(2, 4)
+
+
+class TestSimplexDegree5:
+    @pytest.mark.parametrize("n", [4, 5, 6, 7])
+    def test_algorithm0_shape_and_weight_sum(self, n):
+        pts, w = simplex_cubature_points(n, 5, algorithm=0)
+        assert pts.shape == (comb(n + 5, 5), n)
+        assert_allclose(w.sum(), 1.0 / math.factorial(n), atol=1e-8)
+
+    @pytest.mark.parametrize("n", [4, 5, 6, 7])
+    def test_algorithm0_exact_through_degree_5(self, n):
+        pts, w = simplex_cubature_points(n, 5, algorithm=0)
+        assert_region_rule_exact(
+            pts, w, simplex_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    def test_algorithm0_sharpness_degree_6_fails(self):
+        # Worst degree-6 residual at n=4 is real (measured ~1.5e-5) but
+        # smaller than the default threshold=1e-4 -- see the analogous
+        # note on TestSimplexDegree3's degree-4 sharpness test.
+        pts, w = simplex_cubature_points(4, 5, algorithm=0)
+        assert_some_monomial_of_degree_fails(
+            pts, w, simplex_monomial_integral, 4, degree=6, threshold=1e-6
+        )
+
+    def test_algorithm0_requires_n4(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 5, algorithm=0)
+
+    def test_algorithm1_n2_exact_through_degree_5(self):
+        pts, w = simplex_cubature_points(2, 5, algorithm=1)
+        assert pts.shape == (7, 2)
+        assert_allclose(w.sum(), 0.5, atol=1e-10)
+        assert_region_rule_exact(pts, w, simplex_monomial_integral, 2, degree=5)
+
+    def test_algorithm1_requires_n2(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 5, algorithm=1)
+
+    def test_algorithm2_n3_exact_through_degree_5(self):
+        pts, w = simplex_cubature_points(3, 5, algorithm=2)
+        assert pts.shape == (15, 3)
+        assert_allclose(w.sum(), 1.0 / 6.0, atol=1e-10)
+        assert_region_rule_exact(pts, w, simplex_monomial_integral, 3, degree=5)
+
+    def test_algorithm2_requires_n3(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(4, 5, algorithm=2)
+
+    def test_default_dispatch_matches_matlabs_own_per_n_selection(self):
+        # n=2 -> algorithm 1, n=3 -> algorithm 2, n>=4 -> algorithm 0,
+        # matching fifthOrderSimplexCubPoints.m's own nargin<2 branch.
+        pts_a, w_a = simplex_cubature_points(2, 5)
+        pts_b, w_b = simplex_cubature_points(2, 5, algorithm=1)
+        assert np.array_equal(pts_a, pts_b)
+        assert np.array_equal(w_a, w_b)
+
+        pts_a, w_a = simplex_cubature_points(3, 5)
+        pts_b, w_b = simplex_cubature_points(3, 5, algorithm=2)
+        assert np.array_equal(pts_a, pts_b)
+        assert np.array_equal(w_a, w_b)
+
+        pts_a, w_a = simplex_cubature_points(4, 5)
+        pts_b, w_b = simplex_cubature_points(4, 5, algorithm=0)
+        assert np.array_equal(pts_a, pts_b)
+        assert np.array_equal(w_a, w_b)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(4, 5, algorithm=3)
+
+
+class TestSimplexCubaturePointsGeneral:
+    def test_unsupported_degree_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 1)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(3, 6)
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            simplex_cubature_points(1, 2)
+        with pytest.raises(ValueError):
+            simplex_cubature_points(0, 2)
+
+
 _MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
 
 
@@ -631,3 +990,69 @@ class TestCubeMatlabFixtures:
         ob = np.lexsort(ref_pts.T)
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-6)
         assert_allclose(w[oa], ref_w[ob], atol=1e-5)
+
+
+class TestSimplexMatlabFixtures:
+    """Cross-check against real MATLAB output (capture_region_rules.m).
+
+    Every case captured for Simplex is a direct port (no "functionally
+    covered, different algorithm" cases exist for this region, unlike
+    Spherical_Surface), so every comparison here is value-for-value at
+    float64 tolerance after order-independent lexsort, matching
+    TestCubeMatlabFixtures's pattern exactly.
+    """
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_second_order_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_simplex_secondOrderSimplexCubPoints_n{n}.csv"
+        )
+        pts, w = simplex_cubature_points(n, 2)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-9)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_third_order_algorithm0_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_simplex_thirdOrderSimplexCubPoints_n{n}_alg0.csv"
+        )
+        pts, w = simplex_cubature_points(n, 3, algorithm=0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-9)
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_fourth_order_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_simplex_fourthOrderSimplexCubPoints_n{n}.csv"
+        )
+        pts, w = simplex_cubature_points(n, 4)
+        if n == 4:
+            # MATLAB's own zero-weight stripping (module docstring: not a
+            # defect) already removes the dead block before it's written,
+            # so no extra filtering is needed here, unlike the ninth-order
+            # cube fixture -- but the true (post-strip) count is pinned
+            # explicitly regardless, since this is the one n where the
+            # general C(n+4,4) formula would be wrong.
+            assert ref_pts.shape[0] == 40
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-9)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-8)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_fifth_order_default_algorithm_matches_matlab(self, n):
+        # MATLAB's fifthOrderSimplexCubPoints auto-selects its algorithm
+        # from n when omitted (algdefault in the fixture name) -- the same
+        # default dispatch simplex_cubature_points(n, 5) reproduces.
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_simplex_fifthOrderSimplexCubPoints_n{n}_algdefault.csv"
+        )
+        pts, w = simplex_cubature_points(n, 5)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)

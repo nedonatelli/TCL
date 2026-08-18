@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`simplex_cubature_points`** -- cubature points for the standard
+  n-simplex `{x >= 0, sum(x) <= 1}`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Simplex` top-level, general-dimension files
+  (`secondOrderSimplexCubPoints`, `thirdOrderSimplexCubPoints`,
+  `fourthOrderSimplexCubPoints`, `fifthOrderSimplexCubPoints`), degrees
+  2/3/4/5. Degree 3 ports 10 of the file's 12 algorithms (0-9, all
+  general-`n`; algorithms 10 and 11 are fixed-`n=2`/`n=5` literature
+  variants, deferred -- ten other general-`n` algorithms already cover
+  that degree). Same true-measure weight convention as
+  `cube_cubature_points`: weights sum to the simplex's volume `1/n!`, not
+  to 1. Found and corrected a third provable MATLAB source defect at
+  commit 593ce51 (this one a NaN-poisoning indeterminate form, verified by
+  exact symbolic substitution, not a shape mismatch like the two found in
+  `Cube_Space`): `thirdOrderSimplexCubPoints.m` algorithm 3 (T_n 3-4) --
+  both real roots of its own parameter-defining cubic make the weight
+  formula's numerator and denominator simultaneously and exactly zero at
+  `n == 2` -- an indeterminate `0/0` that IEEE 754 arithmetic resolves to
+  `NaN` -- and MATLAB's own domain guard (`n < 7`) does not exclude
+  `n == 2`. The port hardens this algorithm's domain to `3 <= n < 7`,
+  documented in the module docstring; `capture_region_rules.m` gained an
+  explanatory comment (no case there exercises this algorithm, so nothing
+  needed to be skipped). Also reproduces, faithfully rather than as a
+  defect, `fourthOrderSimplexCubPoints.m`'s own zero-weight-point
+  stripping (a real point-count reduction at `n == 4` only, matching
+  MATLAB's own `sel=~(w==0)` filter). Every exactness claim is
+  closed-form-oracle-verified (Dirichlet-integral simplex monomial oracle,
+  hand-checked against `integral of x over the 2-simplex = 1/6`) per
+  `(n, degree, algorithm)`, not extrapolated.
 - **`cube_cubature_points`** -- cubature points for the ``n``-dimensional
   cube ``[-1, 1]^n``
   (`pytcl.mathematical_functions.numerical_integration.region_cubature`,

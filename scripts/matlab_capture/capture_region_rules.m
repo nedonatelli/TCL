@@ -111,6 +111,21 @@ for numDim = 4:5
 end
 
 %== Simplex ================================================================
+%
+% thirdOrderSimplexCubPoints's algorithm 3 (T_n 3-4) is NOT captured here:
+% at numDim=2 its own weight formula is an exact 0/0 (both the numerator
+% (numDim-2) and the denominator (1-2*numDim*r^2-2*(1-numDim*r)^2)
+% vanish for BOTH real roots of the file's parameter cubic, confirmed by
+% symbolic substitution, not merely a measured near-zero) -- MATLAB's own
+% guard (numDim<7) does not exclude numDim=2, so a live run there would
+% return a weight vector poisoned with NaN. See region_cubature.py's
+% module docstring ("A third corrected MATLAB defect") for the full
+% derivation; region_cubature.py's simplex_cubature_points hardens this
+% algorithm's domain to 3<=n<7 accordingly. Algorithm 3 is otherwise
+% uncaptured here regardless (only algorithm 0 is in this case list, per
+% the design spec's Section 6 case selection), so this comment is a
+% forward note for anyone extending this script's case list later, not a
+% case this script itself needs to skip.
 for numDim = 2:5
     [xi, w] = secondOrderSimplexCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_simplex_secondOrderSimplexCubPoints_n%d', numDim), [xi.', w]);
