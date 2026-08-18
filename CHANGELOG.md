@@ -94,8 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   coordinates) is what is checked, per the design spec's own rationale for
   that capture case. Excludes `ninthOrderSpherSurfCubPoints.m` and
   `eleventhOrderSpherSurfCubPoints.m` (`n=3`-only, superseded by the same
-  general-odd-degree reuse path). Found two further MATLAB source issues at
-  commit 593ce51: a documentation-only index mismatch in
+  general-odd-degree reuse path). Found two further findings at commit
+  593ce51: a documentation-only index mismatch in
   `fifthOrderSpherSurfCubPoints.m` (the docstring claims a 10th,
   20-point algorithm exists at index 8 with a 30-point algorithm at index
   9; the switch statement only reaches index 8, and the code there computes

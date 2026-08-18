@@ -41,7 +41,12 @@ No dates are attached because none have been decided:
   (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/)
   deferred pending a consumer that needs their smaller point counts. The
   remaining seven region-cubature directories (torus, cone, wedge, etc.)
-  are out of this subset entirely and have not been inventoried.
+  are out of this subset entirely and have not been inventoried. Three
+  more `Cube_Space` files (`ClenshawCurtisPoints1D.m`, `FejerPoints1D.m`,
+  `conformMapQuadPts1D.m`) are 1-D quadrature building blocks, not
+  region-cubature rules themselves (no region-dimension argument) --
+  better scoped as a future `quadrature.py` extension than
+  `region_cubature.py`, deferred pending a consumer.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
