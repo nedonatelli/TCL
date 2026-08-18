@@ -9,6 +9,7 @@ must fail) guards every exactness class against a vacuous loop.
 
 import itertools
 import os
+from math import comb
 from pathlib import Path
 
 import numpy as np
@@ -18,6 +19,18 @@ from numpy.testing import assert_allclose
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (
     cube_cubature_points,
 )
+
+
+def ninth_order_true_point_count(n):
+    """True (non-redundant) degree-9 cube point count, from the actual
+    fullSymPerms block sizes -- see region_cubature.py's module docstring
+    ("A related, non-crashing point-count discrepancy"). MATLAB's own
+    preallocation formula (Stroud's published point count) overcounts by
+    padding with dead zero-weight origin duplicates; this is the true
+    count both the port and (after stripping padding) the MATLAB fixture
+    comparison must match.
+    """
+    return 1 + 4 * n + 16 * comb(n, 2) + 8 * comb(n, 3) + 32 * comb(n, 4)
 
 
 def cube_monomial_integral(alpha, half_width=1.0):
@@ -414,20 +427,10 @@ class TestCubeDegree7:
 
 
 class TestCubeDegree9:
-    @staticmethod
-    def _true_point_count(n):
-        # See module docstring: MATLAB's own preallocation formula (Stroud's
-        # published point count) is admittedly wrong and overcounts by
-        # padding with dead zero-weight origin duplicates; this is the true,
-        # non-redundant count from the actual fullSymPerms block sizes.
-        from math import comb
-
-        return 1 + 4 * n + 16 * comb(n, 2) + 8 * comb(n, 3) + 32 * comb(n, 4)
-
     @pytest.mark.parametrize("n", [4, 5, 6])
     def test_shape_and_weight_sum(self, n):
         pts, w = cube_cubature_points(n, 9)
-        assert pts.shape == (self._true_point_count(n), n)
+        assert pts.shape == (ninth_order_true_point_count(n), n)
         assert_allclose(w.sum(), 2.0**n, atol=1e-6)
 
     @pytest.mark.parametrize("n", [4, 5])
@@ -440,15 +443,41 @@ class TestCubeDegree9:
         alpha = (10, 0, 0, 0)
         assert abs(rule_moment(pts, w, alpha) - cube_monomial_integral(alpha)) > 1e-3
 
-    def test_algorithm1_matches_algorithm0(self):
-        # Verified-identical relabeled derivation (u/v swapped consistently
-        # throughout) -- see module docstring.
-        pts0, w0 = cube_cubature_points(4, 9, algorithm=0)
-        pts1, w1 = cube_cubature_points(4, 9, algorithm=1)
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_algorithm1_shape_and_weight_sum(self, n):
+        pts, w = cube_cubature_points(n, 9, algorithm=1)
+        assert pts.shape == (ninth_order_true_point_count(n), n)
+        assert_allclose(w.sum(), 2.0**n, atol=1e-6)
+
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_algorithm1_exact_through_degree_9(self, n):
+        # Algorithm 1 ("variant 2" per MATLAB's own comment) is a
+        # genuinely different rule from algorithm 0, not a relabeling --
+        # see module docstring -- and must independently satisfy the
+        # degree-9 oracle.
+        pts, w = cube_cubature_points(n, 9, algorithm=1)
+        assert_region_rule_exact(pts, w, cube_monomial_integral, n, degree=9, atol=1e-6)
+
+    def test_algorithm1_sharpness_degree_10_fails(self):
+        pts, w = cube_cubature_points(4, 9, algorithm=1)
+        alpha = (10, 0, 0, 0)
+        assert abs(rule_moment(pts, w, alpha) - cube_monomial_integral(alpha)) > 1e-3
+
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_algorithm0_and_algorithm1_differ(self, n):
+        # NOT a relabeling: algorithm 0 places the triple-repeated
+        # (v, v, v, 0, ...) block at the larger root of the shared
+        # quartic, algorithm 1 at the smaller -- the two point sets
+        # genuinely differ (measured, not merely asserted). A prior
+        # version of this test asserted the opposite (pts0 == pts1) by
+        # comparing the port to itself, which was vacuous; see the
+        # module docstring's "genuinely different rules" note.
+        pts0, w0 = cube_cubature_points(n, 9, algorithm=0)
+        pts1, w1 = cube_cubature_points(n, 9, algorithm=1)
         o0 = np.lexsort(pts0.T)
         o1 = np.lexsort(pts1.T)
-        assert_allclose(pts0[o0], pts1[o1], atol=1e-10)
-        assert_allclose(w0[o0], w1[o1], atol=1e-10)
+        assert not np.allclose(pts0[o0], pts1[o1], atol=1e-6)
+        assert not np.allclose(w0[o0], w1[o1], atol=1e-6)
 
     def test_antipodal_symmetry(self):
         pts, _ = cube_cubature_points(4, 9)
@@ -578,9 +607,25 @@ class TestCubeMatlabFixtures:
 
     @pytest.mark.parametrize("n", [4, 5])
     def test_ninth_order_matches_matlab(self, n):
+        # MATLAB preallocates xi/w with Stroud's own admittedly-incorrect
+        # published point-count formula and never overwrites the trailing
+        # slots beyond the true count -- they're captured verbatim as
+        # dead zero-weight, zero-coordinate rows (see region_cubature.py's
+        # module docstring). Strip them before comparing so this test
+        # checks the real rule, not MATLAB's padding; the stripped count
+        # must equal the same true-count formula the port itself uses.
         ref_pts, ref_w = _load_matlab_fixture(
             f"region_cube_ninthOrderNDimCubPoints_n{n}_alg0.csv"
         )
+        true_count = ninth_order_true_point_count(n)
+        nonzero = ~np.isclose(ref_w, 0.0, atol=1e-12)
+        assert nonzero.sum() == true_count, (
+            f"expected {true_count} true (nonzero-weight) MATLAB points at "
+            f"n={n}, found {nonzero.sum()} of {len(ref_w)}"
+        )
+        ref_pts = ref_pts[nonzero]
+        ref_w = ref_w[nonzero]
+
         pts, w = cube_cubature_points(n, 9)
         oa = np.lexsort(pts.T)
         ob = np.lexsort(ref_pts.T)

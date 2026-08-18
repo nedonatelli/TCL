@@ -84,6 +84,24 @@ defects 1-2 above. :func:`cube_cubature_points` builds only the true,
 non-redundant point set (the formula above), one degenerate-point-free
 rule with the same integral, not MATLAB's padded 180.
 
+**``ninthOrderNDimCubPoints.m``'s two algorithms are genuinely different
+rules, not a relabeling.** ``degree=9``'s shared quartic
+(``I2*I6 - I4^2`` etc.) has two roots; algorithm 0 ("variant 1" per
+MATLAB's own comment) binds the smaller root to ``u`` and the larger to
+``v``, algorithm 1 ("variant 2") binds them the other way. Because the
+downstream formulas (``B`` through ``J``) and the point patterns they
+weight (e.g. the ``(v, v, v, 0, ...)`` block always carries weight ``H``)
+are written in terms of the ``u``/``v`` *symbols*, not "the larger/smaller
+root," and are NOT symmetric under exchanging which root each symbol
+names (``D``'s formula is not ``E``'s formula with ``u`` and ``v``
+swapped), the two algorithms place that triple-repeated block at
+different radii -- algorithm 0's at the larger root (~0.90618 for
+``n=4``), algorithm 1's at the smaller (~0.53847) -- and are not equal as
+point sets. Both are independently verified degree-9 exact (measured
+worst-monomial error ~1e-13 for both, at ``n`` = 4, 5, 6); see
+:func:`cube_cubature_points`'s ``algorithm`` parameter and
+``tests/unit/test_region_cubature.py``'s ``TestCubeDegree9`` for both.
+
 References
 ----------
 A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
@@ -438,24 +456,12 @@ def _cube_degree7(
     )
 
 
-def _cube_degree9(
-    n: int, algorithm: Optional[int]
-) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
-    if algorithm is None:
-        algorithm = 0
-    if algorithm not in (0, 1):
-        raise ValueError(
-            f"algorithm {algorithm} not ported for degree 9; expected 0 or 1 "
-            "(both variants of Cn 9-1 produce the identical rule -- see "
-            "docstring)"
-        )
-    if n < 4:
-        raise ValueError(f"degree-9 cube rule requires n >= 4, got {n}")
+def _cube_degree9_roots(n: int) -> Tuple[float, float, float]:
+    """The two radii (+disc, -disc branches of the shared quartic) that
+    ``_cube_degree9_build`` binds to ``u``/``v`` differently per algorithm,
+    plus the cube volume ``V``."""
     V = 2.0**n
     I2, I4, I6, I8 = V / 3.0, V / 5.0, V / 7.0, V / 9.0
-    I22, I42, I44, I62 = V / 9.0, V / 15.0, V / 25.0, V / 21.0
-    I222, I422, I2222 = V / 27.0, V / 45.0, V / 81.0
-
     disc = np.sqrt(
         I2**2 * I8**2
         + 4.0 * I4**3 * I8
@@ -463,8 +469,20 @@ def _cube_degree9(
         - 6.0 * I2 * I4 * I6 * I8
         - 3.0 * I4**2 * I6**2
     )
-    v = np.sqrt((I2 * I8 - I4 * I6 + disc) / (2.0 * (I2 * I6 - I4**2)))
-    u = np.sqrt((I2 * I8 - I4 * I6 - disc) / (2.0 * (I2 * I6 - I4**2)))
+    root_plus = np.sqrt((I2 * I8 - I4 * I6 + disc) / (2.0 * (I2 * I6 - I4**2)))
+    root_minus = np.sqrt((I2 * I8 - I4 * I6 - disc) / (2.0 * (I2 * I6 - I4**2)))
+    return V, root_plus, root_minus
+
+
+def _cube_degree9_build(
+    n: int, u: float, v: float, V: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Shared point/weight construction for both Cn 9-1 variants, given
+    which root has already been bound to ``u`` vs ``v`` by the caller (see
+    ``_cube_degree9``)."""
+    I2, I4 = V / 3.0, V / 5.0
+    I22, I42, I44, I62 = V / 9.0, V / 15.0, V / 25.0, V / 21.0
+    I222, I422, I2222 = V / 27.0, V / 45.0, V / 81.0
 
     F = (I62 - I44) / (4.0 * u**2 * v**2 * (u**2 - v**2) ** 2)
     H = (I422 - (n - 3.0) * I2222) / (8.0 * v**8)
@@ -533,6 +551,34 @@ def _cube_degree9(
     return np.vstack(points_list), np.concatenate(weights_list)
 
 
+def _cube_degree9(
+    n: int, algorithm: Optional[int]
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    if algorithm not in (0, 1):
+        raise ValueError(
+            f"algorithm {algorithm} not ported for degree 9; expected 0 or 1"
+        )
+    if n < 4:
+        raise ValueError(f"degree-9 cube rule requires n >= 4, got {n}")
+    V, root_plus, root_minus = _cube_degree9_roots(n)
+    # Algorithm 0 ("variant 1" per MATLAB's own comment) binds v to the
+    # +disc root, u to the -disc root; algorithm 1 ("variant 2") binds
+    # them the other way. Every downstream formula and point-pattern
+    # (e.g. the vvv-block always gets weight H) is written in terms of
+    # u/v symbols, not in terms of "the larger/smaller root" -- and is
+    # NOT symmetric under swapping which root each symbol names (D's
+    # formula, e.g., is not E's formula with u and v exchanged). So this
+    # is not cosmetic relabeling: the two algorithms are genuinely
+    # different point sets, both degree-9 exact (see module docstring).
+    if algorithm == 0:
+        u, v = root_minus, root_plus
+    else:
+        u, v = root_plus, root_minus
+    return _cube_degree9_build(n, u, v, V)
+
+
 def cube_cubature_points(
     n: int, degree: int, algorithm: Optional[int] = None
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
@@ -580,9 +626,11 @@ def cube_cubature_points(
         - degree 7: algorithm 0 if n == 2, else algorithm 5 if n == 3 (no
           other n is supported -- no general-n degree-7 cube formula exists
           in MATLAB).
-        - degree 9: algorithm 0 (n >= 4 required; algorithm 1 produces the
-          identical rule under a relabeled derivation, see the degree-9
-          section below).
+        - degree 9: algorithm 0 (n >= 4 required). Algorithm 1 is a
+          genuinely DIFFERENT rule (MATLAB's own comment calls it "variant
+          2" of the same Cn 9-1 formula, not a relabeling of algorithm 0)
+          -- both are degree-9 exact; see this module's docstring for how
+          they differ.
 
     Returns
     -------
