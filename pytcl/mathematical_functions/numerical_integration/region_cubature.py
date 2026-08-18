@@ -4,18 +4,21 @@ Region-cubature point sets: bounded-domain integration, true-measure weights.
 Unlike :mod:`~pytcl.mathematical_functions.numerical_integration.cubature_points`
 (which targets the Gaussian weight N(0, I) and normalizes ``sum(w) == 1`` for
 direct use as ``E[f(X)] ~= sum_i w_i f(x_i)``), every generator in this module
-targets a bounded geometric region with the *Lebesgue* weight ``1`` and
-reports the region's TRUE measure: weights sum to the region's volume, not to
-1. This module currently covers the ``Cube_Space`` region (``[-1, 1]^n``,
-``sum(w) == 2**n``) and the ``Simplex`` region (the standard n-simplex
-``{x >= 0, sum(x) <= 1}``, ``sum(w) == 1/n!``). A caller wanting the
-probability-normalized version divides by the returned volume
-(``weights / weights.sum()``), which is always safe; going the other way
-(recovering the true measure from a pre-normalized rule) is not possible
-without already knowing the volume. See
+targets a bounded geometric region with the *Lebesgue* weight ``1`` (or, for
+the ``Sphere`` region, ``|x|**alpha``) and reports the region's TRUE measure:
+weights sum to the region's volume, not to 1. This module currently covers
+the ``Cube_Space`` region (``[-1, 1]^n``, ``sum(w) == 2**n``), the
+``Simplex`` region (the standard n-simplex ``{x >= 0, sum(x) <= 1}``,
+``sum(w) == 1/n!``), and the ``Sphere`` region (the unit ball
+``{|x| <= 1}``, weight ``|x|**alpha``, ``sum(w) == 2/(n+alpha) * pi**(n/2) /
+gamma(n/2)`` -- the unit ball volume ``pi**(n/2) / gamma(n/2+1)`` when
+``alpha == 0``). A caller wanting the probability-normalized version divides
+by the returned volume (``weights / weights.sum()``), which is always safe;
+going the other way (recovering the true measure from a pre-normalized
+rule) is not possible without already knowing the volume. See
 ``docs/superpowers/specs/2026-08-16-region-cubature-design.md`` Section 1 for
-the full rationale and the conventions pinned for the two region families
-(``Sphere``, ``Spherical_Surface``) not yet ported here.
+the full rationale and the conventions pinned for the ``Spherical_Surface``
+region family (not yet ported here).
 
 Ported from the Tracker Component Library's ``Cubature_Points/Cube_Space``
 and ``Cubature_Points/Simplex`` collections (top-level, general-dimension
@@ -33,6 +36,39 @@ covered). ``thirdOrderSimplexCubPoints.m``'s two fixed-dimension algorithms
 the file is otherwise general-``n`` -- ten other algorithms in that same file
 already cover general ``n`` at degree 3, so the fixed-dimension pair adds no
 degree/dimension coverage a general-``n`` algorithm doesn't already provide.
+
+Also ported (this module's third region): the Tracker Component Library's
+``Cubature_Points/Sphere`` collection (solid unit ball), Tier-1 top-level
+files only -- ``secondOrderSpherCubPoints.m``, ``thirdOrderSpherCubPoints.m``
+(all 5 algorithms), ``fifthOrderSpherCubPoints.m`` (all 10 algorithms), and
+``seventhOrderSpherCubPoints.m`` (all 6 algorithms). Three files in the same
+directory are explicitly EXCLUDED, with reasons:
+
+- ``ninthOrderSpherCubPoints.m`` and ``eleventhOrderSpherCubPoints.m`` are
+  hardcoded to ``n == 2`` (Tier 3 per the design spec's Section 8) -- no
+  general-``n`` value, same rationale as the deferred ``Cube``/``Square``/
+  ``Tetrahedra``/``Triangles`` subdirectories above.
+- ``arbOrderSpherCubPoints.m`` (general dimension, general ORDER via a
+  recursive Gegenbauer/Jacobi radial construction, degree ``2*order-1``) does
+  not fit this module's established ``degree``-selects-file,
+  ``algorithm``-selects-intra-file-variant contract (every other ``degree``
+  value here maps 1:1 onto a single MATLAB source file's fixed-degree
+  formula menu; ``arbOrderSpherCubPoints`` instead spans an open-ended set of
+  ODD degrees for any caller-chosen order, which would have to be shoehorned
+  in as an extra "algorithm" under degree 3/5/7 or exposed as a wholly
+  separate parameter). Deferred to a future task rather than architected in
+  under time pressure; its ``quadraturePoints1D`` algorithm-3
+  (Gegenbauer, weight ``(1-x**2)**(c1-1/2)``) and algorithm-8 (radial,
+  weight ``|x|**c1``) dependencies are both directly transcribable via their
+  own three-term-recurrence coefficients (Golub-Welsch, matching
+  ``orthoPolyZerosFromRecur.m``) rather than an unverified
+  ``scipy.special.roots_jacobi`` substitution -- confirmed tractable by
+  inspection of ``quadraturePoints1D.m``'s source, just not implemented here.
+- ``spherSurfPoints2SpherPoints.m`` converts an existing
+  ``Spherical_Surface`` rule into a ball rule of matching order; superseded
+  in practice once :func:`ball_cubature_points` exists via direct
+  construction (design spec Section 8), and its own dependency
+  (``Spherical_Surface`` rules) is not yet ported into this module at all.
 
 **Two corrected MATLAB defects (both verified by direct inspection of the
 pinned source, not merely accuracy checks).** These are provable
@@ -160,6 +196,52 @@ count from the general formula ``C(n+4,4)`` (70 at ``n=4``) down to 40.
 degree 4, matching MATLAB's own behavior rather than MATLAB's padding
 artifact from the ninth-order cube case (there was no port defect to fix
 here; both sides already agree by construction).
+
+**A confirmed MATLAB documentation defect, not a code defect (found in the
+``Sphere`` port): the ``alpha`` weighting-function sign.** Every
+alpha-dependent ``Sphere`` file's docstring (``thirdOrderSpherCubPoints.m``,
+``fifthOrderSpherCubPoints.m``, ``arbOrderSpherCubPoints.m``) describes the
+weighting function as ``sum(x.^2)^(-alpha/2)``, i.e. ``|x|**(-alpha)``. The
+CODE says otherwise: every one of those files' ``V``/coefficient formulas
+divides by ``(numDim + alpha)`` (e.g. ``V = 2/(numDim+alpha) *
+pi^(numDim/2) / gamma(numDim/2)``), and the same docstrings independently
+state the valid domain as ``alpha > -numDim``. Both of those are consistent
+ONLY with a weight of ``|x|**(+alpha)``: the standard closed-form radial
+ball integral ``integral_{unit ball} |x|**s dx = (2*pi**(n/2)/gamma(n/2)) /
+(s+n)``, valid for ``s+n > 0``, has denominator ``(s+n)`` and domain
+``s > -n`` -- matching the code's ``(numDim+alpha)``/``alpha > -numDim``
+only when ``s = alpha`` (i.e. weight ``|x|**alpha``), not ``s = -alpha``.
+This was checked three independent ways -- against
+``thirdOrderSpherCubPoints.m`` algorithm 0, ``fifthOrderSpherCubPoints.m``
+algorithms 0/2/5/7, and ``arbOrderSpherCubPoints.m``'s own radial quadrature
+domain (``c1 = numDim-1+alpha >= 0``, again only consistent with
+``+alpha``) -- and against the elementary calculus derivation above, not
+merely assumed. This module's ``alpha`` parameter and
+:func:`ball_cubature_points`'s docstring therefore state the weight as
+``|x|**alpha`` (matching what the CODE actually computes), diverging from
+both the MATLAB docstrings' literal text and the design spec's Section 5.1
+oracle formula (which inherited the same ``-alpha`` sign from the MATLAB
+docstrings without cross-checking it against the formulas) --
+``tests/unit/test_region_cubature.py``'s ``ball_monomial_integral`` oracle
+uses the corrected ``(n + alpha + sum(a))`` denominator accordingly.
+
+**A fourth corrected MATLAB defect (a wrong-formula bug, not a
+crash/shape-mismatch), found in ``seventhOrderSpherCubPoints.m`` algorithm 2
+(``S2 7-2``, 16 points, ``n == 2`` only).** The source's manual
+trigonometric construction sets BOTH coordinate rows from ``cos``:
+``xi(1,1:8)=r1*cos(...); xi(2,1:8)=r1*cos(...)`` (and likewise for the
+``r2`` block) -- every one of the 16 points therefore lies exactly on the
+line ``x == y``, collapsing what should be a 2-D point set onto a 1-D
+subspace. Verified NUMERICALLY (not merely by inspection) against this
+module's own ball-monomial oracle: the literal transcription fails at
+degree <= 7 monomials it should be exact for -- measured residuals ~0.39
+at ``(2,2)`` (oracle value ~0.131) and exactly wrong-sign/nonzero at
+``(1,1)`` (oracle value 0, literal-transcription value ~0.785) -- while
+using ``sin`` for the second row (the natural cos/sin pairing used by
+EVERY other angular construction in this codebase, e.g.
+``secondOrderSpherCubPoints.m``'s own ``cos``/``sin`` pair) matches the
+oracle to float64 tolerance through degree 7. :func:`ball_cubature_points`
+implements the corrected (``cos``, ``sin``) pairing for degree 7 algorithm 2.
 
 References
 ----------
@@ -1274,3 +1356,624 @@ def simplex_cubature_points(
     if degree == 5:
         return _simplex_degree5(n, algorithm)
     raise ValueError(f"unsupported degree {degree}; expected one of 2, 3, 4, 5")
+
+
+def _ball_volume(n: int, alpha: float) -> float:
+    """integral_{unit n-ball} |x|**alpha dx = 2/(n+alpha) * pi**(n/2) / gamma(n/2).
+
+    Degenerates to the plain unit-ball volume pi**(n/2)/gamma(n/2+1) at
+    alpha=0. See the module docstring's confirmed-documentation-defect note
+    for why this uses +alpha, not the -alpha MATLAB's own docstrings claim.
+    """
+    if n + alpha <= 0.0:
+        raise ValueError(f"require n + alpha > 0, got n={n}, alpha={alpha}")
+    return 2.0 / (n + alpha) * (math.pi ** (n / 2.0) / math.gamma(n / 2.0))
+
+
+def _ball_degree2(
+    n: int, algorithm: Optional[int], alpha: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm not in (None, 0):
+        raise ValueError(
+            f"algorithm {algorithm} not ported for degree 2 (general-n); "
+            "expected 0 (MATLAB's secondOrderSpherCubPoints.m has no "
+            "algorithm parameter at all)"
+        )
+    if alpha != 0.0:
+        raise ValueError(
+            "degree 2 (secondOrderSpherCubPoints.m) does not expose alpha "
+            "(weight fixed at 1); got alpha != 0"
+        )
+    V = _ball_volume(n, 0.0)
+    num_pts = n + 1
+    i = np.arange(num_pts)
+    xi = np.zeros((n, num_pts))
+    for k in range(1, n // 2 + 1):
+        xi[2 * k - 2, :] = np.sqrt(2.0 / (n + 2.0)) * np.cos(
+            2 * i * k * np.pi / (n + 1)
+        )
+        xi[2 * k - 1, :] = np.sqrt(2.0 / (n + 2.0)) * np.sin(
+            2 * i * k * np.pi / (n + 1)
+        )
+    if n % 2 != 0:
+        xi[n - 1, :] = (-1.0) ** i / np.sqrt(n + 2.0)
+    w = np.full(num_pts, V / num_pts)
+    return xi.T, w
+
+
+def _ball_degree3(
+    n: int, algorithm: Optional[int], alpha: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    if algorithm == 0:  # Sn 3-1, 2n points, alpha-capable.
+        V = _ball_volume(n, alpha)
+        r = math.sqrt((n + alpha) / (n + alpha + 2.0))
+        base = np.zeros(n)
+        base[0] = r
+        points = _full_sym_perms(base)
+        w = np.full(2 * n, V / (2.0 * n))
+        return points, w
+    if algorithm == 1:  # Sn 3-2, 2^n points, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 1 (Sn 3-2) requires alpha == 0")
+        r = math.sqrt(1.0 / (n + 2.0))
+        points = _pm_combos(r * np.ones(n))
+        V = _ball_volume(n, 0.0)
+        w = np.full(points.shape[0], V * 2.0 ** (-n))
+        return points, w
+    if algorithm == 2:  # S2 3-1, 4 points, n=2, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 2 (S2 3-1) requires alpha == 0")
+        if n != 2:
+            raise ValueError(f"algorithm 2 (S2 3-1) requires n == 2, got {n}")
+        V = _ball_volume(2, 0.0)
+        points = _full_sym_perms(np.array([1.0 / math.sqrt(2.0), 0.0]))
+        w = np.full(4, V / 4.0)
+        return points, w
+    if algorithm == 3:  # S2 3-2, 4 points, n=2, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 3 (S2 3-2) requires alpha == 0")
+        if n != 2:
+            raise ValueError(f"algorithm 3 (S2 3-2) requires n == 2, got {n}")
+        V = _ball_volume(2, 0.0)
+        points = _full_sym_perms(np.array([0.5, 0.5]))
+        w = np.full(4, V / 4.0)
+        return points, w
+    if algorithm == 4:  # S3 3-1, 6 points, n=3, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 4 (S3 3-1) requires alpha == 0")
+        if n != 3:
+            raise ValueError(f"algorithm 4 (S3 3-1) requires n == 3, got {n}")
+        V = _ball_volume(3, 0.0)
+        r = math.sqrt(3.0 / 5.0)
+        points = _full_sym_perms(np.array([r, 0.0, 0.0]))
+        w = np.full(6, V / 6.0)
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 3 (general-n); "
+        "expected one of 0-4"
+    )
+
+
+def _ball_degree5(
+    n: int, algorithm: Optional[int], alpha: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    if algorithm == 0:  # Sn 5-2, 2n^2+1 points, alpha-capable.
+        V = _ball_volume(n, alpha)
+        r = math.sqrt(3.0 * (n + alpha + 2.0) / ((n + 2.0) * (n + alpha + 4.0)))
+        B2 = (
+            V
+            * (n + 2.0)
+            * (n + alpha)
+            * (n + alpha + 4.0)
+            / (36.0 * n * (n + alpha + 2.0) ** 2)
+        )
+        B1 = (
+            V
+            * (4.0 - n)
+            * (n + 2.0)
+            * (n + alpha)
+            * (n + alpha + 4.0)
+            / (18.0 * n * (n + alpha + 2.0) ** 2)
+        )
+        B0 = V - 2.0 * n * B1 - 2.0 * n * (n - 1.0) * B2
+        v1 = np.zeros(n)
+        v1[0] = r
+        v2 = np.zeros(n)
+        v2[0] = r
+        v2[1] = r
+        points = np.vstack([np.zeros((1, n)), _full_sym_perms(v1), _full_sym_perms(v2)])
+        w = np.concatenate([[B0], np.full(2 * n, B1), np.full(2 * n * (n - 1), B2)])
+        return points, w
+    if algorithm == 1:  # Sn 5-3, 2^n+2n points, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 1 (Sn 5-3) requires alpha == 0")
+        r = math.sqrt((n + 4.0 - math.sqrt(2.0 * (n + 4.0))) / (n + 4.0))
+        s = math.sqrt(
+            (n * (n + 4.0) + 2.0 * math.sqrt(2.0 * (n + 4.0)))
+            / ((n**2 + 2.0 * n - 4.0) * (n + 4.0))
+        )
+        V = _ball_volume(n, 0.0)
+        B1 = V / ((n + 2.0) * (n + 4.0) * r**4)
+        B2 = V / (2.0**n * (n + 2.0) * (n + 4.0) * s**4)
+        v1 = np.zeros(n)
+        v1[0] = r
+        points = np.vstack([_full_sym_perms(v1), _pm_combos(s * np.ones(n))])
+        w = np.concatenate([np.full(2 * n, B1), np.full(2**n, B2)])
+        return points, w
+    if algorithm == 2:  # Sn 5-4, 2^(n+1)-1 points, alpha-capable.
+        s = math.sqrt((n + alpha + 2.0) / ((n + 2.0) * (n + alpha + 4.0)))
+        V = _ball_volume(n, alpha)
+        num_points = 2 ** (n + 1) - 1
+        xi = np.zeros((n, num_points))
+        w = np.zeros(num_points)
+        vec = np.full(n, s)
+        b_pow_sum = 0.0
+        cur_start = 0
+        for k in range(1, n + 1):
+            r = math.sqrt(
+                (k + 2.0) * (n + alpha + 2.0) / ((n + 2.0) * (n + alpha + 4.0))
+            )
+            B = (
+                V
+                * 2.0 ** (k - n)
+                * (n + 2.0)
+                * (n + alpha)
+                * (n + alpha + 4.0)
+                / (n * (k + 1.0) * (k + 2.0) * (n + alpha + 2.0) ** 2)
+            )
+            vec[k - 1] = r
+            combos = _pm_combos(vec[k - 1 :])
+            num_cur = combos.shape[0]
+            xi[k - 1 :, cur_start : cur_start + num_cur] = combos.T
+            w[cur_start : cur_start + num_cur] = B
+            cur_start += num_cur
+            b_pow_sum += 2.0 ** (n - k + 1) * B
+        if alpha == 0.0:
+            w[-1] = 4.0 * V / (n + 2.0) ** 2
+        else:
+            w[-1] = V - b_pow_sum
+        return xi.T, w
+    if algorithm == 3:  # Sn 5-5, n*2^n+1 points, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 3 (Sn 5-5) requires alpha == 0")
+        V = _ball_volume(n, 0.0)
+        r = math.sqrt(
+            (n + 2.0 + (n - 1.0) * math.sqrt(2.0 * (n + 2.0))) / (n * (n + 4.0))
+        )
+        s = math.sqrt((n + 2.0 - math.sqrt(2.0 * (n + 2.0))) / (n * (n + 4.0)))
+        B0 = 4.0 * V / (n + 2.0) ** 2
+        B1 = V * (n + 4.0) / (2.0**n * (n + 2.0) ** 2)
+        base = np.concatenate([[r], s * np.ones(n - 1)])
+        points = np.vstack([np.zeros((1, n)), _full_sym_perms(base)])
+        w = np.concatenate([[B0], np.full(n * 2**n, B1)])
+        return points, w
+    if algorithm == 4:  # Sn 5-6, 2^n*(n+1) points, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 4 (Sn 5-6) requires alpha == 0")
+        V = _ball_volume(n, 0.0)
+        r = math.sqrt(
+            (
+                n * (n + 4.0)
+                + 2.0 * math.sqrt(n + 4.0)
+                + (n - 1.0) * math.sqrt(2.0 * (n + 1.0) * (n + 2.0) * (n + 4.0))
+            )
+            / (n * (n + 2.0) * (n + 4.0))
+        )
+        s = math.sqrt(
+            (
+                n * (n + 4.0)
+                + 2.0 * math.sqrt(n + 4.0)
+                - math.sqrt(2.0 * (n + 1.0) * (n + 2.0) * (n + 4.0))
+            )
+            / (n * (n + 2.0) * (n + 4.0))
+        )
+        t = math.sqrt((n + 4.0 - 2.0 * math.sqrt(n + 4.0)) / ((n + 2.0) * (n + 4.0)))
+        B = V / (2.0**n * (n + 1.0))
+        base = np.concatenate([[r], s * np.ones(n - 1)])
+        points = np.vstack([_full_sym_perms(base), _pm_combos(t * np.ones(n))])
+        w = np.full(points.shape[0], B)
+        return points, w
+    if algorithm == 5:  # S2 5-1, 7 points, n=2, alpha-capable.
+        if n != 2:
+            raise ValueError(f"algorithm 5 (S2 5-1) requires n == 2, got {n}")
+        V = _ball_volume(2, alpha)
+        r = math.sqrt((alpha + 4.0) / (alpha + 6.0))
+        s = math.sqrt((alpha + 4.0) / (4.0 * (alpha + 6.0)))
+        t = math.sqrt(3.0 * (alpha + 4.0) / (4.0 * (alpha + 6.0)))
+        A = 4.0 * V / (alpha + 4.0) ** 2
+        B = V * (alpha + 2.0) * (alpha + 6.0) / (6.0 * (alpha + 4.0) ** 2)
+        points = np.vstack([np.zeros((1, 2)), _pm_combos([r, 0.0]), _pm_combos([s, t])])
+        w = np.concatenate([[A], np.full(6, B)])
+        return points, w
+    if algorithm == 6:  # S2 5-2, 9 points, n=2, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 6 (S2 5-2) requires alpha == 0")
+        if n != 2:
+            raise ValueError(f"algorithm 6 (S2 5-2) requires n == 2, got {n}")
+        V = _ball_volume(2, 0.0)
+        r = 1.0 / math.sqrt(2.0)
+        A = V / 6.0
+        B = V / 24.0
+        points = np.vstack(
+            [np.zeros((1, 2)), _full_sym_perms(np.array([r, 0.0])), _pm_combos([r, r])]
+        )
+        w = np.concatenate([np.full(5, A), np.full(4, B)])
+        return points, w
+    if algorithm == 7:  # S3 5-1, 13 points, n=3, alpha-capable.
+        if n != 3:
+            raise ValueError(f"algorithm 7 (S3 5-1) requires n == 3, got {n}")
+        V = _ball_volume(3, alpha)
+        r = math.sqrt((alpha + 5.0) * (5.0 + math.sqrt(5.0)) / (10.0 * (alpha + 7.0)))
+        s = math.sqrt((alpha + 5.0) * (5.0 - math.sqrt(5.0)) / (10.0 * (alpha + 7.0)))
+        B0 = V * 4.0 / (alpha + 5.0) ** 2
+        B1 = V * (alpha + 3.0) * (alpha + 7.0) / (12.0 * (alpha + 5.0) ** 2)
+        points = np.vstack(
+            [
+                np.zeros((1, 3)),
+                _pm_combos([r, s, 0.0]),
+                _pm_combos([0.0, r, s]),
+                _pm_combos([s, 0.0, r]),
+            ]
+        )
+        w = np.concatenate([[B0], np.full(12, B1)])
+        return points, w
+    if algorithm == 8:  # S3 5-2, 21 points, n=3, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 8 (S3 5-2) requires alpha == 0")
+        if n != 3:
+            raise ValueError(f"algorithm 8 (S3 5-2) requires n == 3, got {n}")
+        V = _ball_volume(3, 0.0)
+        r = math.sqrt((15.0 + 5.0 * math.sqrt(5.0)) / 42.0)
+        s = math.sqrt((15.0 - 5.0 * math.sqrt(5.0)) / 42.0)
+        t = math.sqrt(5.0 / 21.0)
+        B0 = 4.0 * V / 25.0
+        B1 = 21.0 * V / 500.0
+        points = np.vstack(
+            [
+                np.zeros((1, 3)),
+                _pm_combos([r, s, 0.0]),
+                _pm_combos([0.0, r, s]),
+                _pm_combos([s, 0.0, r]),
+                _pm_combos([t, t, t]),
+            ]
+        )
+        w = np.concatenate([[B0], np.full(20, B1)])
+        return points, w
+    if algorithm == 9:  # S4 5-1, 25 points, n=4, alpha=0.
+        if alpha != 0.0:
+            raise ValueError("algorithm 9 (S4 5-1) requires alpha == 0")
+        if n != 4:
+            raise ValueError(f"algorithm 9 (S4 5-1) requires n == 4, got {n}")
+        V = _ball_volume(4, 0.0)
+        r = math.sqrt(3.0 / 8.0)
+        B1 = V / 27.0
+        B0 = V / 9.0
+        points = np.vstack(
+            [np.zeros((1, 4)), _full_sym_perms(np.array([r, r, 0.0, 0.0]))]
+        )
+        w = np.concatenate([[B0], np.full(24, B1)])
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 5 (general-n); "
+        "expected one of 0-9"
+    )
+
+
+def _seventh_order_sphere_surface_alg0(
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Spherical_Surface/seventhOrderSpherSurfCubPoints.m algorithm 0
+    (Formula I of [1] below, n >= 3), ported ONLY as the dependency
+    :func:`ball_cubature_points`'s degree-7 algorithm 0 needs -- real MATLAB's
+    seventhOrderSpherCubPoints.m algorithm 0 calls this internally. NOT a
+    general Spherical_Surface port (that region family is not yet in this
+    module at all -- see the module docstring's Sphere exclusions); a future
+    task porting Spherical_Surface may promote or generalize this helper.
+
+    Weights sum to the unit sphere surface area 2*pi**(n/2)/gamma(n/2), the
+    same true-measure convention as the rest of this module (verified: the
+    two ball-degree-7-algorithm-0 rescale factors A(1)+A(2) below reduce
+    algebraically to exactly 1/n, so A(1)*sum(B)+A(2)*sum(B) collapses to
+    the ball volume _ball_volume(n, 0.0) -- an internal-consistency check on
+    the port, not merely assumed).
+
+    References
+    ----------
+    [1] A. H. Stroud, "Some seventh degree integration formulas for the
+        surface of an n-sphere," Numerische Mathematik, vol. 11, no. 3,
+        pp. 273-276, Mar. 1968.
+    """
+    I1 = 2.0 * math.pi ** (n / 2.0) / math.gamma(n / 2.0)
+    A1 = (8.0 - n) / (n * (n + 2.0) * (n + 4.0)) * I1
+    A2 = 4.0 / (n * (n + 2.0) * (n + 4.0)) * I1
+    A3 = 2.0 ** (-n) * n**3 / (n * (n + 2.0) * (n + 4.0)) * I1
+    v1 = np.zeros(n)
+    v1[0] = 1.0
+    v2 = np.zeros(n)
+    v2[0] = 1.0 / math.sqrt(2.0)
+    v2[1] = 1.0 / math.sqrt(2.0)
+    v3 = np.full(n, 1.0 / math.sqrt(n))
+    xi1 = _full_sym_perms(v1)
+    xi2 = _full_sym_perms(v2)
+    xi3 = _full_sym_perms(v3)
+    points = np.vstack([xi1, xi2, xi3])
+    w = np.concatenate(
+        [
+            np.full(xi1.shape[0], A1),
+            np.full(xi2.shape[0], A2),
+            np.full(xi3.shape[0], A3),
+        ]
+    )
+    return points, w
+
+
+def _ball_degree7(
+    n: int, algorithm: Optional[int], alpha: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    if alpha != 0.0:
+        raise ValueError(
+            "degree 7 (seventhOrderSpherCubPoints.m) does not expose alpha "
+            "(weight fixed at 1); got alpha != 0"
+        )
+    if algorithm == 0:  # Sn 7-2, 2^(n+1)+4n^2 points, n>=3.
+        if n < 3:
+            raise ValueError(f"algorithm 0 (Sn 7-2) requires n >= 3, got {n}")
+        u, B = _seventh_order_sphere_surface_alg0(n)
+        disc = math.sqrt(2.0 * (n + 2.0) * (n + 4.0))
+        r1 = math.sqrt(((n + 2.0) * (n + 4.0) - 2.0 * disc) / ((n + 4.0) * (n + 6.0)))
+        r2 = math.sqrt(((n + 2.0) * (n + 4.0) + 2.0 * disc) / ((n + 4.0) * (n + 6.0)))
+        A1 = (2.0 * (n + 2.0) ** 2 - (n - 2.0) * disc) / (4.0 * n * (n + 2.0) ** 2)
+        A2 = (2.0 * (n + 2.0) ** 2 + (n - 2.0) * disc) / (4.0 * n * (n + 2.0) ** 2)
+        points = np.vstack([r1 * u, r2 * u])
+        w = np.concatenate([A1 * B, A2 * B])
+        return points, w
+    if algorithm == 1:  # S2 7-1, 12 points, n=2, corrected B2 coefficient
+        # (4 -> 41) already applied by MATLAB itself, per its own docstring.
+        if n != 2:
+            raise ValueError(f"algorithm 1 (S2 7-1) requires n == 2, got {n}")
+        V = _ball_volume(2, 0.0)
+        r = math.sqrt(3.0 / 4.0)
+        s = math.sqrt((27.0 - 3.0 * math.sqrt(29.0)) / 104.0)
+        t = math.sqrt((27.0 + 3.0 * math.sqrt(29.0)) / 104.0)
+        B1 = V * 2.0 / 27.0
+        B2 = V * (551.0 + 41.0 * math.sqrt(29.0)) / 6264.0
+        B3 = V * (551.0 - 41.0 * math.sqrt(29.0)) / 6264.0
+        points = np.vstack(
+            [
+                _full_sym_perms(np.array([r, 0.0])),
+                _pm_combos([s, s]),
+                _pm_combos([t, t]),
+            ]
+        )
+        w = np.concatenate([np.full(4, B1), np.full(4, B2), np.full(4, B3)])
+        return points, w
+    if algorithm == 2:  # S2 7-2, 16 points, n=2. Corrected: see module
+        # docstring's fourth defect -- second coordinate row uses sin, not
+        # the cos MATLAB's source literally has (verified numerically
+        # against the ball-monomial oracle).
+        if n != 2:
+            raise ValueError(f"algorithm 2 (S2 7-2) requires n == 2, got {n}")
+        V = _ball_volume(2, 0.0)
+        r1 = math.sqrt((3.0 - math.sqrt(3.0)) / 6.0)
+        r2 = math.sqrt((3.0 + math.sqrt(3.0)) / 6.0)
+        w = np.full(16, V / 16.0)
+        k = np.arange(1, 9)
+        xi = np.zeros((2, 16))
+        xi[0, 0:8] = r1 * np.cos((2 * k - 1) * np.pi / 8.0)
+        xi[1, 0:8] = r1 * np.sin((2 * k - 1) * np.pi / 8.0)
+        xi[0, 8:16] = r2 * np.cos((2 * k - 1) * np.pi / 8.0)
+        xi[1, 8:16] = r2 * np.sin((2 * k - 1) * np.pi / 8.0)
+        return xi.T, w
+    if algorithm == 3:  # S3 7-2, 32 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 3 (S3 7-2) requires n == 3, got {n}")
+        V = _ball_volume(3, 0.0)
+        r = math.sqrt((1715.0 - 7.0 * math.sqrt(17770.0)) / 2817.0)
+        s = math.sqrt((1715.0 + 7.0 * math.sqrt(17770.0)) / 2817.0)
+        t = math.sqrt(7.0 / 18.0)
+        u = math.sqrt(7.0 / 27.0)
+        B1 = (
+            V
+            * (2965.0 * math.sqrt(17770.0) + 227816.0)
+            / (72030.0 * math.sqrt(17770.0))
+        )
+        B2 = (
+            V
+            * (2965.0 * math.sqrt(17770.0) - 227816.0)
+            / (72030.0 * math.sqrt(17770.0))
+        )
+        B3 = 324.0 * V / 12005.0
+        B4 = 2187.0 * V / 96040.0
+        points = np.vstack(
+            [
+                _full_sym_perms(np.array([r, 0.0, 0.0])),
+                _full_sym_perms(np.array([s, 0.0, 0.0])),
+                _full_sym_perms(np.array([t, t, 0.0])),
+                _pm_combos([u, u, u]),
+            ]
+        )
+        w = np.concatenate(
+            [np.full(6, B1), np.full(6, B2), np.full(12, B3), np.full(8, B4)]
+        )
+        return points, w
+    if algorithm == 4:  # S3 7-3, 33 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 4 (S3 7-3) requires n == 3, got {n}")
+        V = _ball_volume(3, 0.0)
+        r = math.sqrt((5.0 + math.sqrt(5.0)) / 18.0)
+        s = math.sqrt((5.0 - math.sqrt(5.0)) / 18.0)
+        u = math.sqrt((3.0 - math.sqrt(5.0)) / 6.0)
+        v = math.sqrt((3.0 + math.sqrt(5.0)) / 6.0)
+        t = 1.0 / math.sqrt(3.0)
+        B0 = 16.0 * V / 175.0
+        B1 = 81.0 * V / 1400.0
+        B2 = 3.0 * V / 280.0
+        points = np.vstack(
+            [
+                np.zeros((1, 3)),
+                _pm_combos([r, s, 0.0]),
+                _pm_combos([0.0, r, s]),
+                _pm_combos([s, 0.0, r]),
+                _pm_combos([u, v, 0.0]),
+                _pm_combos([0.0, u, v]),
+                _pm_combos([v, 0.0, u]),
+                _pm_combos([t, t, t]),
+            ]
+        )
+        w = np.concatenate([[B0], np.full(12, B1), np.full(20, B2)])
+        return points, w
+    if algorithm == 5:  # S4 7-2, 72 points, n=4.
+        if n != 4:
+            raise ValueError(f"algorithm 5 (S4 7-2) requires n == 4, got {n}")
+        V = _ball_volume(4, 0.0)
+        r = math.sqrt((39.0 - 3.0 * math.sqrt(41.0)) / 64.0)
+        s = math.sqrt((39.0 + 3.0 * math.sqrt(41.0)) / 64.0)
+        t = 1.0 / math.sqrt(2.0)
+        u = 0.5
+        B1 = V * (33.0 * math.sqrt(41.0) + 109.0) / (1440.0 * math.sqrt(41.0))
+        B2 = V * (33.0 * math.sqrt(41.0) - 109.0) / (1440.0 * math.sqrt(41.0))
+        B3 = V / 240.0
+        B4 = V / 60.0
+        points = np.vstack(
+            [
+                _full_sym_perms(np.array([r, 0.0, 0.0, 0.0])),
+                _full_sym_perms(np.array([s, 0.0, 0.0, 0.0])),
+                _full_sym_perms(np.array([t, t, 0.0, 0.0])),
+                _full_sym_perms(np.array([u, u, u, 0.0])),
+            ]
+        )
+        w = np.concatenate(
+            [np.full(8, B1), np.full(8, B2), np.full(24, B3), np.full(32, B4)]
+        )
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 7; expected one of 0-5"
+    )
+
+
+def ball_cubature_points(
+    n: int, degree: int, algorithm: Optional[int] = None, alpha: float = 0.0
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Cubature points for the unit n-ball ``{x : |x| <= 1}``, weight ``|x|**alpha``.
+
+    Counterpart of the MATLAB TCL's ``Sphere`` top-level, general-dimension
+    files (see this module's docstring for the exact per-degree algorithm
+    coverage, the three excluded ``Sphere`` files with reasons, and two
+    corrected/confirmed issues specific to this region -- a documentation-only
+    ``alpha``-sign defect and a wrong-formula defect in degree 7 algorithm 2).
+    Every ``degree`` here is exact through that total polynomial degree --
+    verified against the closed-form ball-monomial oracle in
+    ``tests/unit/test_region_cubature.py`` for the ``(n, degree, algorithm,
+    alpha)`` grid its test classes sweep; no wider claim is made (per the
+    claims-inherit-measurement-range convention).
+
+    **Weight convention (region measure, not probability).** ``weights`` sum
+    to the ``|x|**alpha``-weighted unit-ball measure ``2/(n+alpha) *
+    pi**(n/2) / gamma(n/2)`` (the plain unit-ball volume ``pi**(n/2) /
+    gamma(n/2+1)`` when ``alpha == 0``), NOT to 1 -- this module targets the
+    plain (alpha-weighted) Lebesgue measure on the unit ball, unlike
+    :mod:`~pytcl.mathematical_functions.numerical_integration.cubature_points`'s
+    Gaussian-weight rules. A caller wanting a probability-normalized rule
+    divides by the volume themselves: ``weights / weights.sum()``. NOTE the
+    sign of ``alpha`` here is CORRECTED relative to MATLAB's own docstrings
+    (which describe the weight as ``|x|**(-alpha)``) -- see the module
+    docstring's "confirmed MATLAB documentation defect" note; this module's
+    ``alpha`` matches what the MATLAB CODE actually computes, not what its
+    comments claim.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 2.
+    degree : int
+        Polynomial degree the rule is exact through. One of 2, 3, 5, 7 --
+        the top-level, general-dimension degrees MATLAB's ``Sphere``
+        directory provides (``ninthOrderSpherCubPoints.m`` and
+        ``eleventhOrderSpherCubPoints.m`` are ``n == 2``-only and excluded;
+        see module docstring).
+    algorithm : int, optional
+        Which MATLAB algorithm variant to use; see each degree's section in
+        the module docstring for the ported subset. Default None reproduces
+        MATLAB's own default selection for that degree:
+
+        - degree 2: algorithm 0 (the only variant; MATLAB's
+          ``secondOrderSpherCubPoints.m`` takes no algorithm argument, and
+          does not expose ``alpha`` at all -- weight fixed at 1).
+        - degree 3: algorithm 0 (Sn 3-1, 2n points, alpha-capable).
+          Algorithms 1 (2^n points, alpha=0), 2/3 (S2 3-1/3-2, n=2,
+          alpha=0), 4 (S3 3-1, n=3, alpha=0) are the other ported variants.
+        - degree 5: algorithm 0 (Sn 5-2, 2n^2+1 points, alpha-capable).
+          Algorithms 1 (Sn 5-3, alpha=0), 2 (Sn 5-4, alpha-capable), 3
+          (Sn 5-5, alpha=0), 4 (Sn 5-6, alpha=0) are general-n; 5 (S2 5-1,
+          n=2, alpha-capable), 6 (S2 5-2, n=2, alpha=0), 7 (S3 5-1, n=3,
+          alpha-capable), 8 (S3 5-2, n=3, alpha=0), 9 (S4 5-1, n=4, alpha=0)
+          are the fixed-dimension variants.
+        - degree 7: algorithm 0 (Sn 7-2, general n>=3) always, matching
+          MATLAB's own unconditional default (``seventhOrderSpherCubPoints.m``
+          does not auto-select per ``n`` the way ``fifthOrderSimplexCubPoints.m``
+          does elsewhere in this module -- calling this with ``n == 2`` and
+          no explicit ``algorithm`` raises ``ValueError`` from algorithm 0's
+          own ``n >= 3`` guard, matching real MATLAB's behavior exactly; pass
+          ``algorithm=2`` explicitly for the n=2 case). No algorithm here
+          exposes ``alpha`` at all. Algorithm 0 depends on a private port of
+          ``seventhOrderSpherSurfCubPoints.m`` algorithm 0 (see
+          :func:`_seventh_order_sphere_surface_alg0`); algorithms 1 (S2 7-1,
+          n=2), 2 (S2 7-2, n=2, corrected -- see module docstring), 3
+          (S3 7-2, n=3), 4 (S3 7-3, n=3), 5 (S4 7-2, n=4) are the
+          fixed-dimension variants.
+    alpha : float, optional
+        Exponent of the radial weighting function ``|x|**alpha``,
+        ``alpha > -n``. Default 0.0 (plain Lebesgue ball measure). Not every
+        algorithm supports ``alpha != 0`` -- see the per-degree notes above;
+        an unsupported nonzero ``alpha`` raises ``ValueError``.
+
+    Returns
+    -------
+    points : ndarray
+        Shape (num_points, n).
+    weights : ndarray
+        Shape (num_points,), summing to the ``|x|**alpha``-weighted ball
+        measure (see above), not 1.
+
+    Examples
+    --------
+    >>> pts, w = ball_cubature_points(3, 3)
+    >>> pts.shape
+    (6, 3)
+    >>> round(float(w.sum()), 9)  # unit 3-ball volume, 4*pi/3
+    4.188790205
+    >>> round(float(np.sum(w * pts[:, 0] ** 2)), 9)  # integral of x^2, 4*pi/15
+    0.837758041
+
+    References
+    ----------
+    A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+    Prentice-Hall, 1971, Formulas Sn 2-1, Sn 3-1/3-2, S2 3-1/3-2, S3 3-1,
+    Sn 5-2 through 5-6, S2 5-1/5-2, S3 5-1/5-2, S4 5-1, Sn 7-2, S2 7-1/7-2,
+    S3 7-2/7-3, S4 7-2, pp. 267-292.
+
+    A. H. Stroud, "Some seventh degree integration formulas for the surface
+    of an n-sphere," Numerische Mathematik, vol. 11, no. 3, pp. 273-276,
+    Mar. 1968.
+
+    R. Cools, "An encyclopedia of cubature formulas," Journal of
+    Complexity, vol. 19, no. 3, pp. 445-453, Jun. 2003.
+    """
+    if n < 2:
+        raise ValueError(f"dimension must be >= 2, got {n}")
+    if degree == 2:
+        return _ball_degree2(n, algorithm, alpha)
+    if degree == 3:
+        return _ball_degree3(n, algorithm, alpha)
+    if degree == 5:
+        return _ball_degree5(n, algorithm, alpha)
+    if degree == 7:
+        return _ball_degree7(n, algorithm, alpha)
+    raise ValueError(f"unsupported degree {degree}; expected one of 2, 3, 5, 7")

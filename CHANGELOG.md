@@ -8,6 +8,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`ball_cubature_points`** -- cubature points for the unit n-ball
+  `{x : |x| <= 1}`, weight `|x|**alpha`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Sphere` top-level, general-dimension files
+  (`secondOrderSpherCubPoints`, `thirdOrderSpherCubPoints` (5 algorithms),
+  `fifthOrderSpherCubPoints` (10 algorithms), `seventhOrderSpherCubPoints`
+  (6 algorithms, algorithm 0 via a private port of
+  `seventhOrderSpherSurfCubPoints` algorithm 0), degrees 2/3/5/7. Excludes
+  (with reasons in the module docstring) `ninthOrderSpherCubPoints.m` and
+  `eleventhOrderSpherCubPoints.m` (`n=2`-only), `arbOrderSpherCubPoints.m`
+  (general-order Gegenbauer/Jacobi construction, doesn't fit this module's
+  degree-selects-file contract, deferred to a future task), and
+  `spherSurfPoints2SpherPoints.m` (superseded by direct construction). Same
+  true-measure weight convention as `cube_cubature_points`/
+  `simplex_cubature_points`: weights sum to the ball's `|x|**alpha`-weighted
+  volume `2/(n+alpha) * pi**(n/2) / gamma(n/2)`, not to 1. Found and
+  corrected a fourth provable MATLAB defect at commit 593ce51 (a
+  wrong-formula bug, not a shape mismatch, verified numerically against
+  this module's ball-monomial oracle): `seventhOrderSpherCubPoints.m`
+  algorithm 2 (S2 7-2) sets BOTH coordinate rows from `cos`, collapsing all
+  16 points onto the line `x == y`; the port uses the natural `cos`/`sin`
+  pairing (matching every other angular construction in this codebase).
+  Also identified and corrected a confirmed MATLAB DOCUMENTATION defect
+  (not a code defect): every alpha-dependent `Sphere` file's docstring
+  describes the weight as `|x|**(-alpha)`, but every formula's own
+  `(numDim+alpha)` denominators and `alpha > -numDim` domain are consistent
+  only with `|x|**(+alpha)` -- confirmed three independent ways (see the
+  module docstring) against the standard closed-form radial ball integral.
+  `region_cubature.py`'s `alpha` parameter and this module's test oracle
+  use the corrected `+alpha` sign, diverging from both the MATLAB
+  docstrings' literal text and the design spec's Section 5.1 formula (which
+  inherited the same uncross-checked sign). Every exactness claim is
+  closed-form-oracle-verified (radial-times-surface ball monomial oracle,
+  hand-checked against the unit-ball-volume formula and
+  `integral of x^2 over the 3-ball = 4*pi/15`) per `(n, degree, algorithm,
+  alpha)`, not extrapolated.
 - **`simplex_cubature_points`** -- cubature points for the standard
   n-simplex `{x >= 0, sum(x) <= 1}`
   (`pytcl.mathematical_functions.numerical_integration.region_cubature`).

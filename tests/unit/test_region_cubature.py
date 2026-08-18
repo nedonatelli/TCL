@@ -1,10 +1,13 @@
-"""Tests for region-cubature point generators (Cube_Space subset).
+"""Tests for region-cubature point generators (Cube_Space, Simplex, Sphere).
 
-PROPERTY class: a degree-d cube rule must integrate every monomial of total
-degree <= d over [-1, 1]^n exactly, and weights must sum to the cube's
-measure 2**n (NOT 1 -- see region_cubature.py's module docstring for the
-pinned region-measure convention). Sharpness (some degree-(d+1) monomial
-must fail) guards every exactness class against a vacuous loop.
+PROPERTY class: a degree-d region rule must integrate every monomial of
+total degree <= d over its region exactly (cube [-1,1]^n, standard
+n-simplex, or the unit n-ball with weight |x|**alpha), and weights must sum
+to the region's true measure (cube volume 2**n, simplex volume 1/n!, or the
+alpha-weighted ball volume -- NOT 1 in any case; see region_cubature.py's
+module docstring for the pinned region-measure convention). Sharpness (some
+degree-(d+1) monomial must fail) guards every exactness class against a
+vacuous loop.
 """
 
 import itertools
@@ -18,6 +21,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (
+    ball_cubature_points,
     cube_cubature_points,
     simplex_cubature_points,
 )
@@ -64,6 +68,39 @@ def simplex_monomial_integral(alpha):
     for a in alpha:
         numerator *= gamma(a + 1)
     return numerator / gamma(n + 1 + sum(alpha))
+
+
+def ball_monomial_integral(alpha, radial_alpha=0.0):
+    """integral_{unit n-ball} |x|**radial_alpha * prod_i x_i^{a_i} dx.
+
+    Closed form (design spec Section 5.1, with a CORRECTED sign on the
+    radial exponent -- see region_cubature.py's module docstring's
+    "confirmed MATLAB documentation defect" note): the MATLAB Sphere-file
+    docstrings and the design spec both describe the weighting function as
+    |x|^(-alpha), but every alpha-dependent formula actually ported here
+    uses (n+alpha) denominators, matching a weight of |x|^(+alpha) under
+    the standard closed-form radial ball integral
+    integral_0^1 r^(s+n-1) dr = 1/(s+n) (s=alpha here) -- verified three
+    independent ways in region_cubature.py's module docstring, not merely
+    asserted. 0 if any a_i is odd; else
+    [2 * prod_i gamma((a_i+1)/2) / gamma((n+sum(a_i))/2)] / (n+radial_alpha+sum(a_i)).
+
+    Degenerates to the alpha-weighted ball volume at alpha=(0,...,0) (n
+    zeros) -- the cheapest regression case, mirroring
+    cube_monomial_integral's and simplex_monomial_integral's equivalent
+    degree-0 checks. Hand cases (brief): at radial_alpha=0, alpha=(0,)*n
+    gives pi^(n/2)/gamma(n/2+1) (the plain unit-n-ball volume); alpha=(2,0,0)
+    at n=3 gives 4*pi/15.
+    """
+    if any(a % 2 == 1 for a in alpha):
+        return 0.0
+    n = len(alpha)
+    m = sum(alpha)
+    numerator = 2.0
+    for a in alpha:
+        numerator *= gamma((a + 1) / 2.0)
+    denominator = gamma((n + m) / 2.0)
+    return (numerator / denominator) / (n + radial_alpha + m)
 
 
 def monomials_up_to(n, degree):
@@ -867,6 +904,383 @@ class TestSimplexCubaturePointsGeneral:
             simplex_cubature_points(0, 2)
 
 
+class TestBallMonomialIntegralOracle:
+    def test_hand_case_unit_ball_volume(self):
+        # The brief's own hand case: integral of 1 over the unit n-ball is
+        # pi^(n/2)/gamma(n/2+1) -- the standard n-ball volume formula.
+        for n in range(2, 7):
+            assert_allclose(
+                ball_monomial_integral((0,) * n),
+                math.pi ** (n / 2.0) / math.gamma(n / 2.0 + 1.0),
+            )
+
+    def test_hand_case_x_squared_over_3_ball(self):
+        # The brief's own hand case: integral of x^2 over the unit 3-ball
+        # is 4*pi/15.
+        assert_allclose(ball_monomial_integral((2, 0, 0)), 4.0 * math.pi / 15.0)
+
+    def test_odd_exponent_is_zero(self):
+        assert_allclose(ball_monomial_integral((1, 0, 0)), 0.0)
+        assert_allclose(ball_monomial_integral((0, 3, 0)), 0.0)
+        assert_allclose(ball_monomial_integral((1, 1)), 0.0)
+
+    def test_degree_0_monomial_matches_ball_volume_helper(self):
+        # alpha=(0,...,0) with a nonzero radial_alpha exercises the same
+        # sum(w)==V regression case region_cubature.py's own _ball_volume
+        # uses internally -- the cheapest check before the harder sweep,
+        # mirroring cube_monomial_integral's and simplex_monomial_integral's
+        # equivalent degree-0 checks.
+        for n in range(2, 6):
+            for radial_alpha in (0.0, 1.0, 2.5):
+                expected = (
+                    2.0
+                    / (n + radial_alpha)
+                    * (math.pi ** (n / 2.0) / math.gamma(n / 2.0))
+                )
+                assert_allclose(
+                    ball_monomial_integral((0,) * n, radial_alpha), expected
+                )
+
+
+class TestBallDegree2:
+    @pytest.mark.parametrize("n", [2, 3, 4, 5, 6])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = ball_cubature_points(n, 2)
+        assert pts.shape == (n + 1, n)
+        assert_allclose(w.sum(), ball_monomial_integral((0,) * n), atol=1e-10)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5, 6])
+    def test_exact_through_degree_2(self, n):
+        pts, w = ball_cubature_points(n, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=2)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_sharpness_degree_3_fails(self, n):
+        pts, w = ball_cubature_points(n, 2)
+        assert_some_monomial_of_degree_fails(
+            pts, w, ball_monomial_integral, n, degree=3
+        )
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = ball_cubature_points(3, 2)
+        pts2, w2 = ball_cubature_points(3, 2, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 2, algorithm=1)
+
+    def test_no_alpha_support_raises(self):
+        # secondOrderSpherCubPoints.m has no alpha parameter at all.
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 2, alpha=1.0)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(1, 2)
+
+
+class TestBallDegree3:
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_shape_and_weight_sum(self, n):
+        pts, w = ball_cubature_points(n, 3)
+        assert pts.shape == (2 * n, n)
+        assert_allclose(w.sum(), ball_monomial_integral((0,) * n), atol=1e-10)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5, 6])
+    def test_algorithm0_exact_through_degree_3(self, n):
+        pts, w = ball_cubature_points(n, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm0_sharpness_degree_4_fails(self, n):
+        # Single-axis probe (4,0,...,0) is NOT usable at n=2 -- this rule's
+        # rotational symmetry coincidentally zeros the residual there
+        # (measured ~1.1e-16, roundoff, not a real failure); the exhaustive
+        # scan is the discriminating check, matching the analogous note on
+        # TestCubeDegree2's degree-3 sharpness test.
+        pts, w = ball_cubature_points(n, 3)
+        assert_some_monomial_of_degree_fails(
+            pts, w, ball_monomial_integral, n, degree=4
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_nonzero_alpha_exact_through_degree_3(self, n):
+        # Also the sign-correction regression: if the +alpha/-alpha sign
+        # were wrong, this would fail immediately at the degree-0 check
+        # inside assert_region_rule_exact.
+        pts, w = ball_cubature_points(n, 3, alpha=1.5)
+        assert_region_rule_exact(
+            pts, w, lambda a: ball_monomial_integral(a, 1.5), n, degree=3
+        )
+
+    def test_algorithm0_alpha_domain_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 3, alpha=-3.5)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm1_shape_and_exact_through_degree_3(self, n):
+        pts, w = ball_cubature_points(n, 3, algorithm=1)
+        assert pts.shape == (2**n, n)
+        assert_allclose(w.sum(), ball_monomial_integral((0,) * n), atol=1e-9)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=3)
+
+    def test_algorithm1_rejects_nonzero_alpha(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 3, algorithm=1, alpha=1.0)
+
+    def test_algorithm2_n2_exact_through_degree_3(self):
+        pts, w = ball_cubature_points(2, 3, algorithm=2)
+        assert pts.shape == (4, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=3)
+
+    def test_algorithm2_requires_n2(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 3, algorithm=2)
+
+    def test_algorithm3_n2_exact_through_degree_3(self):
+        pts, w = ball_cubature_points(2, 3, algorithm=3)
+        assert pts.shape == (4, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=3)
+
+    def test_algorithm4_n3_exact_through_degree_3(self):
+        pts, w = ball_cubature_points(3, 3, algorithm=4)
+        assert pts.shape == (6, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 3, degree=3)
+
+    def test_algorithm4_requires_n3(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 3, algorithm=4)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(1, 3)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 3, algorithm=5)
+
+
+class TestBallDegree5:
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_shape_and_weight_sum(self, n):
+        pts, w = ball_cubature_points(n, 5)
+        assert pts.shape == (2 * n * n + 1, n)
+        assert_allclose(w.sum(), ball_monomial_integral((0,) * n), atol=1e-9)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=5, atol=1e-8)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm0_sharpness_degree_6_fails(self, n):
+        pts, w = ball_cubature_points(n, 5)
+        alpha = (6,) + (0,) * (n - 1)
+        assert abs(rule_moment(pts, w, alpha) - ball_monomial_integral(alpha)) > 1e-6
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_nonzero_alpha_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, alpha=2.0)
+        assert_region_rule_exact(
+            pts, w, lambda a: ball_monomial_integral(a, 2.0), n, degree=5, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("n", [4, 5, 6])
+    def test_algorithm1_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, algorithm=1)
+        assert pts.shape == (2**n + 2 * n, n)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=5, atol=1e-8)
+
+    def test_algorithm1_rejects_nonzero_alpha(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(4, 5, algorithm=1, alpha=1.0)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm2_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, algorithm=2)
+        assert pts.shape == (2 ** (n + 1) - 1, n)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=5, atol=1e-8)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm2_nonzero_alpha_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, algorithm=2, alpha=1.0)
+        assert_region_rule_exact(
+            pts, w, lambda a: ball_monomial_integral(a, 1.0), n, degree=5, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm3_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, algorithm=3)
+        assert pts.shape == (n * 2**n + 1, n)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=5, atol=1e-8)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm4_exact_through_degree_5(self, n):
+        pts, w = ball_cubature_points(n, 5, algorithm=4)
+        assert pts.shape == (2**n * (n + 1), n)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=5, atol=1e-8)
+
+    def test_algorithm5_n2_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(2, 5, algorithm=5)
+        assert pts.shape == (7, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=5, atol=1e-8)
+
+    def test_algorithm5_n2_nonzero_alpha_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(2, 5, algorithm=5, alpha=1.0)
+        assert_region_rule_exact(
+            pts, w, lambda a: ball_monomial_integral(a, 1.0), 2, degree=5, atol=1e-8
+        )
+
+    def test_algorithm5_requires_n2(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 5, algorithm=5)
+
+    def test_algorithm6_n2_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(2, 5, algorithm=6)
+        assert pts.shape == (9, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=5, atol=1e-8)
+
+    def test_algorithm7_n3_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(3, 5, algorithm=7)
+        assert pts.shape == (13, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 3, degree=5, atol=1e-8)
+
+    def test_algorithm7_n3_nonzero_alpha_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(3, 5, algorithm=7, alpha=1.0)
+        assert_region_rule_exact(
+            pts, w, lambda a: ball_monomial_integral(a, 1.0), 3, degree=5, atol=1e-8
+        )
+
+    def test_algorithm8_n3_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(3, 5, algorithm=8)
+        assert pts.shape == (21, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 3, degree=5, atol=1e-8)
+
+    def test_algorithm9_n4_exact_through_degree_5(self):
+        pts, w = ball_cubature_points(4, 5, algorithm=9)
+        assert pts.shape == (25, 4)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 4, degree=5, atol=1e-8)
+
+    def test_fixed_dimension_algorithms_reject_wrong_n(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 5, algorithm=6)
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 5, algorithm=7)
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 5, algorithm=8)
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 5, algorithm=9)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(1, 5)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 5, algorithm=10)
+
+
+class TestBallDegree7:
+    """No algorithm here exposes alpha (seventhOrderSpherCubPoints.m takes
+    no alpha argument at all); algorithm 0 (Sn 7-2, general n>=3) is the
+    only general-dimension formula, matching capture_region_rules.m's case
+    list. Algorithm 2 (S2 7-2) is ported with the corrected cos/sin pairing
+    -- see region_cubature.py's module docstring's fourth defect."""
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_algorithm0_shape_and_weight_sum(self, n):
+        pts, w = ball_cubature_points(n, 7)
+        assert pts.shape == (2 ** (n + 1) + 4 * n * n, n)
+        assert_allclose(w.sum(), ball_monomial_integral((0,) * n), atol=1e-8)
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_algorithm0_exact_through_degree_7(self, n):
+        pts, w = ball_cubature_points(n, 7)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, n, degree=7, atol=1e-6)
+
+    def test_algorithm0_sharpness_degree_8_fails(self):
+        pts, w = ball_cubature_points(3, 7)
+        alpha = (8, 0, 0)
+        assert abs(rule_moment(pts, w, alpha) - ball_monomial_integral(alpha)) > 1e-3
+
+    def test_algorithm0_requires_n3(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 7)
+
+    def test_no_alpha_support_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 7, alpha=1.0)
+
+    def test_algorithm1_n2_exact_through_degree_7(self):
+        pts, w = ball_cubature_points(2, 7, algorithm=1)
+        assert pts.shape == (12, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=7)
+
+    def test_algorithm1_requires_n2(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 7, algorithm=1)
+
+    def test_algorithm2_n2_exact_through_degree_7(self):
+        pts, w = ball_cubature_points(2, 7, algorithm=2)
+        assert pts.shape == (16, 2)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 2, degree=7)
+
+    def test_algorithm2_second_row_uses_sin_not_cos(self):
+        # Regression pin for the corrected fourth defect: without the fix,
+        # every point would satisfy x == y exactly (both rows would use
+        # cos), which this checks directly rather than only indirectly via
+        # the oracle sweep above.
+        pts, _ = ball_cubature_points(2, 7, algorithm=2)
+        assert not np.allclose(pts[:, 0], pts[:, 1])
+
+    def test_algorithm3_n3_exact_through_degree_7(self):
+        pts, w = ball_cubature_points(3, 7, algorithm=3)
+        assert pts.shape == (32, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 3, degree=7, atol=1e-8)
+
+    def test_algorithm4_n3_exact_through_degree_7(self):
+        pts, w = ball_cubature_points(3, 7, algorithm=4)
+        assert pts.shape == (33, 3)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 3, degree=7, atol=1e-8)
+
+    def test_algorithm5_n4_exact_through_degree_7(self):
+        pts, w = ball_cubature_points(4, 7, algorithm=5)
+        assert pts.shape == (72, 4)
+        assert_region_rule_exact(pts, w, ball_monomial_integral, 4, degree=7, atol=1e-6)
+
+    def test_fixed_dimension_algorithms_reject_wrong_n(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 7, algorithm=2)
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 7, algorithm=3)
+        with pytest.raises(ValueError):
+            ball_cubature_points(2, 7, algorithm=4)
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 7, algorithm=5)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 7, algorithm=6)
+
+
+class TestBallCubaturePointsGeneral:
+    def test_unsupported_degree_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 1)
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 4)
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 9)
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(1, 2)
+        with pytest.raises(ValueError):
+            ball_cubature_points(0, 2)
+
+
 _MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
 
 
@@ -1056,3 +1470,73 @@ class TestSimplexMatlabFixtures:
         ob = np.lexsort(ref_pts.T)
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
         assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+
+class TestBallMatlabFixtures:
+    """Cross-check against real MATLAB output (capture_region_rules.m).
+
+    Every case captured for Sphere is a direct port (no "functionally
+    covered, different algorithm" cases exist for this region), so every
+    comparison here is value-for-value at float64 tolerance after
+    order-independent lexsort, matching TestCubeMatlabFixtures's and
+    TestSimplexMatlabFixtures's pattern exactly. The nonzero-alpha case
+    (fifthOrderSpherCubPoints algorithm 0, n=3, alpha=1.0) is the direct
+    empirical check on this module's alpha-sign correction (module
+    docstring's "confirmed MATLAB documentation defect" note): if the sign
+    were wrong, this comparison would fail against real MATLAB output, not
+    merely against this module's own oracle.
+    """
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_second_order_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphere_secondOrderSpherCubPoints_n{n}.csv"
+        )
+        pts, w = ball_cubature_points(n, 2)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-9)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_third_order_algorithm0_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphere_thirdOrderSpherCubPoints_n{n}_alg0.csv"
+        )
+        pts, w = ball_cubature_points(n, 3, algorithm=0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-9)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_fifth_order_algorithm0_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphere_fifthOrderSpherCubPoints_n{n}_alg0.csv"
+        )
+        pts, w = ball_cubature_points(n, 5, algorithm=0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+    def test_fifth_order_algorithm0_nonzero_alpha_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphere_fifthOrderSpherCubPoints_n3_alg0_alpha1.csv"
+        )
+        pts, w = ball_cubature_points(3, 5, algorithm=0, alpha=1.0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+    @pytest.mark.parametrize("n", [3, 4])
+    def test_seventh_order_algorithm0_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphere_seventhOrderSpherCubPoints_n{n}_alg0.csv"
+        )
+        pts, w = ball_cubature_points(n, 7, algorithm=0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-6)

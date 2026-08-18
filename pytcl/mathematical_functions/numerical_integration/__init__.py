@@ -37,6 +37,7 @@ from pytcl.mathematical_functions.numerical_integration.quadrature import (  # n
     unscented_transform_points,
 )
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (  # noqa: E501
+    ball_cubature_points,
     cube_cubature_points,
     simplex_cubature_points,
 )
@@ -74,4 +75,5 @@ __all__ = [
     # region_cubature.py's module docstring)
     "cube_cubature_points",
     "simplex_cubature_points",
+    "ball_cubature_points",
 ]
