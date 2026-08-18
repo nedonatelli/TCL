@@ -211,6 +211,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   MATLAB-side fixture capture doesn't crash on these same two cases.
   Every exactness claim is closed-form-oracle-verified (cube monomial
   integral) per `(n, degree, algorithm)`, not extrapolated.
+- Two new CI performance SLOs (`.benchmarks/slos.json`):
+  `test_jpda_update_100_targets_50_meas` (111.18 ms mean, 222.37 ms p99) and
+  `test_hungarian_dense_500x500` (16.57 ms mean, 33.15 ms p99) -- the C1
+  campaign's two new benchmark cases (v2.5.0 region-lcd-perf task C1).
+  Thresholds are CI-calibrated per the gate-calibration doctrine, not bare
+  Apple M3 Max numbers: local median x measured CI/local hardware ratio
+  (2.209, the median of three unrelated calibration benchmarks --
+  `test_jpda_small`, `test_kf_predict[4]`, `test_cfar_ca_1000` -- each run
+  fresh locally and compared against the median of its last 10
+  `.benchmarks/history.jsonl` CI records) x 1.5 headroom. Full derivation
+  recorded inline in `slos.json` (`_derivation` field on each entry) and in
+  `.superpowers/sdd/2026-08-17-v2.5.0-region-lcd-perf/task-C2-report.md`.
+
+### Changed
+- **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now
+  dispatches to closed-form njit kernels instead of always taking the
+  generic `np.linalg.solve` LAPACK path (v2.5.0 region-lcd-perf task C2,
+  acting on task C1's finding that `gating.py` already defined `@njit`
+  2D/3D/general Mahalanobis fast-path kernels that nothing called). 2D and
+  3D innovations now use closed-form Cramer's-rule/adjugate matrix
+  inversion (`_invert_2x2`/`_invert_3x3`, new) feeding the existing
+  `_mahalanobis_distance_2d`/`_3d` kernels; dimensions 1 and 4-10 now use
+  `np.linalg.inv` + the existing `_mahalanobis_distance_general` kernel
+  (measured faster than direct `solve` in this range; the reverse is true
+  above ~dim 12, so dims >10 still take the original generic-solve path).
+  Measured on Apple M3 Max, 2026-08-18: the JPDA 100-target/50-measurement
+  full-pipeline benchmark (`test_jpda_update_100_targets_50_meas`) drops
+  from 43.89 ms to 33.55 ms median (-23.6%); the `mahalanobis_distance`
+  2D/3D microbenchmarks drop from ~2.79/3.02 us to ~0.65/0.64 us (~4.3x);
+  the 6D microbenchmark (general-kernel path) drops from ~3.34 us to
+  ~2.73 us (-18%). Behavior-equality verified against the old generic-solve
+  path across dims {1,2,3,6,9}, well-conditioned and near-singular
+  covariances, seeded random inputs
+  (`tests/unit/test_gating_mahalanobis_dispatch.py`, written before the
+  dispatch was implemented): max relative error 6.12e-16 well-conditioned,
+  2.79e-7 near-singular (condition number up to ~1.17e10); exactly-singular
+  covariances still raise `numpy.linalg.LinAlgError` as before.
+  `mahalanobis_batch` was checked for the same dead-kernel pattern and does
+  not have it -- it already avoids LAPACK internally by taking a
+  caller-precomputed inverse amortized across a batch of measurements.
 
 ## [2.4.0] - 2026-08-17
 

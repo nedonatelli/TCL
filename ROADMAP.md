@@ -171,12 +171,29 @@ Each case study: 200-400 lines of code, realistic datasets, benchmarked.
 
 ## Performance Targets
 
-Remaining optimization targets not yet met (tracked by the daily benchmark CI):
+Both previously tracked targets are met and now guarded by CI SLOs
+(`.benchmarks/slos.json`) rather than kept here as an open-work table --
+forward-only: a closed target gets a one-line pointer to what enforces it,
+not a stale number.
 
-| Algorithm | Dataset | Current | Target |
-|-----------|---------|---------|--------|
-| JPDA (100 targets, 50 meas) | Mixed | 89 ms | <75 ms |
-| Hungarian Assignment (500x500) | Dense | 45 ms | <30 ms |
+- **JPDA (100 targets, 50 meas):** 45.31 ms -> 33.55 ms (Apple M3 Max,
+  2026-08-18) after wiring the previously-dead Mahalanobis njit fast-path
+  kernels (`pytcl/assignment_algorithms/gating.py`) into
+  `mahalanobis_distance()`; both figures already beat the old
+  "89 ms -> <75 ms" row, which had no in-repo provenance (no commit,
+  fixture, or script reproduced either number). Guarded by
+  `test_jpda_update_100_targets_50_meas`'s SLO (111.18 ms mean).
+- **Hungarian Assignment (500x500 dense):** 5.00 ms median (Apple M3 Max,
+  2026-08-18) -- `hungarian()` is a thin wrapper around scipy's
+  `linear_sum_assignment`, so this is scipy's own number, not a pytcl
+  optimization target; the old "45 ms -> <30 ms" row also had no in-repo
+  provenance. Guarded by `test_hungarian_dense_500x500`'s SLO
+  (16.57 ms mean).
+
+Both SLO thresholds are CI-calibrated (local measurement x measured
+CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full
+derivation:
+`.superpowers/sdd/2026-08-17-v2.5.0-region-lcd-perf/task-C2-report.md`.
 
 
 ---
