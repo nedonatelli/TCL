@@ -65,18 +65,39 @@ writeRegionCase(OUTPUT_DIR, 'region_cube_GaussLegendrePoints1D_n8', ...
     GaussLegendrePoints1DAsRow(8));
 
 %== Cube_Space ============================================================
+%
+% Two of this section's originally-planned cases were found, during the
+% Task-A1 port (region_cubature.py), to be UNCAPTURABLE as literally
+% specified: MATLAB's own source at the pinned commit 593ce51 returns an
+% [xi, w] pair whose sizes do not agree with each other for these two
+% cases, so the `[xi.', w]` horzcat below would error, not merely produce
+% a wrong number. Both are documented in detail in region_cubature.py's
+% module docstring ("Two corrected MATLAB defects"); summarized here so
+% this script does not crash mid-session:
+%
+%   * firstOrderNDimCubPoints's DEFAULT algorithm (1, 2^numDim points):
+%     `w = 1/2^numDim*ones(numDim,1)*V` is a numDim-length vector against
+%     an numDim-by-2^numDim `xi`. Captured below at algorithm 0 (the
+%     1-point rule) instead, which is not affected.
+%   * thirdOrderNDimCubPoints's DEFAULT algorithm (0, 2*numDim points) at
+%     ODD numDim: `xi(numDim, i+1)` overruns the declared 2*numDim
+%     columns (every other assignment in the same branch uses `i`, not
+%     `i+1`). Captured below only at EVEN numDim (2, 4); numDim = 3, 5
+%     are skipped for this one function.
 for numDim = 2:5
-    [xi, w] = firstOrderNDimCubPoints(numDim);
-    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_firstOrderNDimCubPoints_n%d_alg1', numDim), [xi.', w]);
+    [xi, w] = firstOrderNDimCubPoints(numDim, 0);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_firstOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 
     [xi, w] = secondOrderNDimCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_cube_secondOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 
-    [xi, w] = thirdOrderNDimCubPoints(numDim);
-    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_thirdOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
-
     [xi, w] = fifthOrderNDimCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_cube_fifthOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
+end
+
+for numDim = 2:2:4
+    [xi, w] = thirdOrderNDimCubPoints(numDim);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_thirdOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 end
 
 [xi, w] = seventhOrderNDimCubPoints(2, 0);

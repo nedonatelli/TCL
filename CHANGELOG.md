@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`cube_cubature_points`** -- cubature points for the ``n``-dimensional
+  cube ``[-1, 1]^n``
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`,
+  new module). Ports the MATLAB TCL's `Cube_Space` top-level,
+  general-dimension files (`firstOrderNDimCubPoints`,
+  `secondOrderNDimCubPoints`, `thirdOrderNDimCubPoints`,
+  `fifthOrderNDimCubPoints`, `seventhOrderNDimCubPoints`,
+  `ninthOrderNDimCubPoints`), degrees 1/2/3/5/7/9, general `n` except
+  degree 7 (no general-`n` MATLAB formula exists for it; ported at `n=2`
+  and `n=3` only, matching MATLAB itself). **Weight convention differs
+  from `cubature_points.py`'s Gaussian-weight rules**: weights sum to the
+  cube's true volume `2**n`, not to 1 -- this is why the new module is
+  separate, not an addition to `cubature_points.py`. Found and corrected
+  two provable MATLAB source defects at commit 593ce51 (both are
+  dimension-mismatch bugs that crash real MATLAB, not accuracy disputes):
+  `firstOrderNDimCubPoints`'s default algorithm returns a weight vector
+  shaped for the wrong point count, and `thirdOrderNDimCubPoints`'s
+  default algorithm indexes one column past its declared array at odd
+  `n`; both are documented in the new module's docstring and
+  `scripts/matlab_capture/capture_region_rules.m` was adjusted so its
+  MATLAB-side fixture capture doesn't crash on these same two cases.
+  Every exactness claim is closed-form-oracle-verified (cube monomial
+  integral) per `(n, degree, algorithm)`, not extrapolated.
+
 ## [2.4.0] - 2026-08-17
 
 ### Added

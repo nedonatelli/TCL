@@ -36,6 +36,9 @@ from pytcl.mathematical_functions.numerical_integration.quadrature import (  # n
     trapezoid,
     unscented_transform_points,
 )
+from pytcl.mathematical_functions.numerical_integration.region_cubature import (  # noqa: E501
+    cube_cubature_points,
+)
 
 __all__ = [
     # 1D Quadrature rules
@@ -66,4 +69,7 @@ __all__ = [
     "student_t_cubature_points",
     "transform_cubature_points",
     "cubature_point_moments",
+    # Region cubature (true-measure weights, NOT Gaussian/probability -- see
+    # region_cubature.py's module docstring)
+    "cube_cubature_points",
 ]

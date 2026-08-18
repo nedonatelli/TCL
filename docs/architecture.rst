@@ -53,7 +53,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Foundation
-           MF["mathematical_functions<br/>23 modules"]
+           MF["mathematical_functions<br/>24 modules"]
            CR["core<br/>7 modules"]
        end
 
@@ -165,7 +165,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Public
      - Purpose
    * - ``mathematical_functions``
-     - 23
+     - 24
      - 70
      - Special functions, statistics, transforms, signal processing, geometry
    * - ``dynamic_estimation``
