@@ -259,8 +259,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   threshold, so no source change was made to `assign2d` -- scipy's
   1000x1000 solve is the floor. SLO threshold follows the same
   gate-calibration doctrine (local median x 2.209 x 1.5 headroom); full
-  derivation inline in `slos.json`'s `_derivation` field and in
-  `.superpowers/sdd/2026-08-18-perf-levers/task-2-report.md`.
+  derivation inline in `slos.json`'s `_derivation` field and in the
+  perf-levers campaign's task 2 report (local-only, untracked artifact).
 
 ### Changed
 - **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now

@@ -211,10 +211,11 @@ not a stale number.
   solve is the floor, same as the plain case. Guarded by
   `test_assign2d_augmented_500x500`'s SLO (29.946 ms mean).
 
-Both SLO thresholds are CI-calibrated (local measurement x measured
+All three SLO thresholds are CI-calibrated (local measurement x measured
 CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full
-derivation in task C2's performance report (local-only, untracked
-artifact of the v2.5.0 region-lcd-perf campaign).
+derivations in the v2.5.0 region-lcd-perf and perf-levers campaigns'
+performance reports (local-only, untracked artifacts) and inline in
+`.benchmarks/slos.json`'s `_derivation` fields.
 
 
 ---
