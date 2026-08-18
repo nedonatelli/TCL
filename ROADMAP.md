@@ -35,20 +35,18 @@ the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
 evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
-- **Cubature point library remainder** — Gaussian LCD samples (spec
-  concluded: port — objective/gradient math transcribed, optimizer
-  wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
-  vendored `liblbfgs`, validated against a rotation-invariant contract
-  instead of raw MATLAB coordinates) and the region-cubature rules: 79
-  files measured across the Cube_Space / Simplex / Sphere /
-  Spherical_Surface subset -- 31 general-dimension top-level files
-  prioritized in two effort tiers (cube and simplex first, ball and
-  spherical-surface second; ~7-9 engineer-days), 48
-  dimension-specialized subdirectory files (fixed 2D/3D formulas in
-  Cube/, Square/, Tetrahedra/, Triangles/) deferred pending a consumer
-  that needs their smaller point counts. The remaining seven
-  region-cubature directories (torus, cone, wedge, etc.) are out of
-  this subset entirely and have not been inventoried.
+- **Cubature point library remainder** — within the measured 79-file
+  region-cubature subset (Cube_Space / Simplex / Sphere /
+  Spherical_Surface), the 48 dimension-specialized subdirectory files
+  (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/)
+  deferred pending a consumer that needs their smaller point counts. The
+  remaining seven region-cubature directories (torus, cone, wedge, etc.)
+  are out of this subset entirely and have not been inventoried. Three
+  more `Cube_Space` files (`ClenshawCurtisPoints1D.m`, `FejerPoints1D.m`,
+  `conformMapQuadPts1D.m`) are 1-D quadrature building blocks, not
+  region-cubature rules themselves (no region-dimension argument) --
+  better scoped as a future `quadrature.py` extension than
+  `region_cubature.py`, deferred pending a consumer.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
@@ -178,12 +176,34 @@ Each case study: 200-400 lines of code, realistic datasets, benchmarked.
 
 ## Performance Targets
 
-Remaining optimization targets not yet met (tracked by the daily benchmark CI):
+Both previously tracked targets are met and now guarded by CI SLOs
+(`.benchmarks/slos.json`) rather than kept here as an open-work table --
+forward-only: a closed target gets a one-line pointer to what enforces it,
+not a stale number.
 
-| Algorithm | Dataset | Current | Target |
-|-----------|---------|---------|--------|
-| JPDA (100 targets, 50 meas) | Mixed | 89 ms | <75 ms |
-| Hungarian Assignment (500x500) | Dense | 45 ms | <30 ms |
+- **JPDA (100 targets, 50 meas):** 45.31 ms (task C1's `time.perf_counter`
+  profiling-run baseline, Apple M3 Max, 2026-08-18) -> 33.55 ms (Apple M3
+  Max, 2026-08-18) after wiring the previously-dead Mahalanobis njit
+  fast-path kernels (`pytcl/assignment_algorithms/gating.py`) into
+  `mahalanobis_distance()`. CHANGELOG.md's `[Unreleased]` entry for this
+  change instead cites 43.89 ms -- task C2's own `pytest-benchmark`
+  pre-optimization re-measurement, taken fresh at the start of that task on
+  the same machine and date; the two "before" numbers come from different
+  measurement runs/methodologies, not a discrepancy. Both figures already
+  beat the old "89 ms -> <75 ms" row, which had no in-repo provenance (no
+  commit, fixture, or script reproduced either number). Guarded by
+  `test_jpda_update_100_targets_50_meas`'s SLO (111.18 ms mean).
+- **Hungarian Assignment (500x500 dense):** 5.00 ms median (Apple M3 Max,
+  2026-08-18) -- `hungarian()` is a thin wrapper around scipy's
+  `linear_sum_assignment`, so this is scipy's own number, not a pytcl
+  optimization target; the old "45 ms -> <30 ms" row also had no in-repo
+  provenance. Guarded by `test_hungarian_dense_500x500`'s SLO
+  (16.57 ms mean).
+
+Both SLO thresholds are CI-calibrated (local measurement x measured
+CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full
+derivation in task C2's performance report (local-only, untracked
+artifact of the v2.5.0 region-lcd-perf campaign).
 
 
 ---

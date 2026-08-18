@@ -20,6 +20,9 @@ from pytcl.mathematical_functions.numerical_integration.cubature_points import (
     student_t_cubature_points,
     transform_cubature_points,
 )
+from pytcl.mathematical_functions.numerical_integration.lcd_samples import (
+    gaussian_lcd_samples,
+)
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
     cubature_gauss_hermite,
     dblquad,
@@ -35,6 +38,12 @@ from pytcl.mathematical_functions.numerical_integration.quadrature import (  # n
     tplquad,
     trapezoid,
     unscented_transform_points,
+)
+from pytcl.mathematical_functions.numerical_integration.region_cubature import (  # noqa: E501
+    ball_cubature_points,
+    cube_cubature_points,
+    simplex_cubature_points,
+    spherical_surface_cubature_points,
 )
 
 __all__ = [
@@ -66,4 +75,11 @@ __all__ = [
     "student_t_cubature_points",
     "transform_cubature_points",
     "cubature_point_moments",
+    "gaussian_lcd_samples",
+    # Region cubature (true-measure weights, NOT Gaussian/probability -- see
+    # region_cubature.py's module docstring)
+    "cube_cubature_points",
+    "simplex_cubature_points",
+    "ball_cubature_points",
+    "spherical_surface_cubature_points",
 ]

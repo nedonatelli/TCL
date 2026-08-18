@@ -453,6 +453,179 @@ theoretical result but was not measured here; re-verify before relying on
 it (see ``tests/unit/test_cubature_points.py::TestSmolyakPoints`` for the
 measurement reproduced as tests).
 
+Region Cubature (True-Measure Rules)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``pytcl.mathematical_functions.numerical_integration.region_cubature``
+provides a second family of cubature rules, for four bounded geometric
+regions instead of the Gaussian weight N(0, I) the rules above target:
+the cube ``[-1, 1]^n``, the standard n-simplex ``{x >= 0, sum(x) <= 1}``,
+the unit n-ball ``{|x| <= 1}`` (optionally weighted by ``|x|**alpha``),
+and the unit sphere surface ``S^(n-1) = {|x| == 1}``.
+
+**Measure convention -- read this before using these functions.** Every
+rule above (``seventh_order_cubature_points``, ``smolyak_points``, and the
+rest of this page) normalizes its weights to sum to 1, so
+``E[f(X)] ~= sum_i w_i f(x_i)`` directly for X ~ N(0, I). The four
+functions below do the OPPOSITE: their weights sum to the region's TRUE
+measure, not to 1:
+
+.. list-table:: Region cubature weight-sum convention
+   :header-rows: 1
+   :widths: 25 35 20
+
+   * - function
+     - region
+     - sum(weights)
+   * - ``cube_cubature_points(n, degree)``
+     - ``[-1, 1]^n``
+     - ``2**n``
+   * - ``simplex_cubature_points(n, degree)``
+     - ``{x >= 0, sum(x) <= 1}``
+     - ``1 / n!``
+   * - ``ball_cubature_points(n, degree, alpha=0.0)``
+     - ``{|x| <= 1}``, weight ``|x|**alpha``
+     - ``2/(n+alpha) * pi**(n/2) / gamma(n/2)``
+   * - ``spherical_surface_cubature_points(n, degree)``
+     - ``S^(n-1) = {|x| == 1}``
+     - ``2 * pi**(n/2) / gamma(n/2)``
+
+This is a deliberate divergence from the Gaussian-weight rules, not an
+inconsistency: these four rules answer "what is the integral over this
+region," a question with a real geometric answer that a forced
+sum-to-1 renormalization would silently discard. A caller who wants the
+probability-normalized version divides by the returned sum themselves
+(``weights / weights.sum()``), always safe; recovering the true measure
+from an already-normalized rule is not possible without separately
+knowing the volume.
+
+.. code-block:: python
+
+   from pytcl.mathematical_functions.numerical_integration import (
+       cube_cubature_points, simplex_cubature_points,
+       ball_cubature_points, spherical_surface_cubature_points,
+   )
+
+   # Cube [-1, 1]^3: weights sum to the cube volume 2^3 = 8.
+   pts, w = cube_cubature_points(3, degree=3)
+   assert pts.shape == (6, 3)
+   assert round(float(w.sum()), 12) == 8.0
+
+   # Standard 3-simplex: weights sum to 1/3! = 1/6.
+   pts, w = simplex_cubature_points(3, degree=3)
+   assert pts.shape == (5, 3)
+   assert round(float(w.sum()), 12) == round(1.0 / 6.0, 12)
+
+   # Unit 3-ball: weights sum to the ball volume 4*pi/3.
+   pts, w = ball_cubature_points(3, degree=3)
+   assert pts.shape == (6, 3)
+   assert round(float(w.sum()), 9) == round(4.0 * np.pi / 3.0, 9)
+
+   # Unit sphere surface S^2: weights sum to the surface area 4*pi.
+   pts, w = spherical_surface_cubature_points(3, degree=3)
+   assert pts.shape == (6, 3)
+   assert round(float(w.sum()), 9) == round(4.0 * np.pi, 9)
+   # integral of x^2 over S^2 is 4*pi/3.
+   assert round(float(np.sum(w * pts[:, 0] ** 2)), 9) == round(
+       4.0 * np.pi / 3.0, 9
+   )
+
+Every function's ``degree`` selects among the MATLAB TCL degree-named
+source files it was ported from (``cube_cubature_points`` supports
+1, 2, 3, 5, 7, 9; ``simplex_cubature_points`` supports 2, 3, 4, 5;
+``ball_cubature_points`` supports 2, 3, 5, 7, or any odd degree >= 9;
+``spherical_surface_cubature_points`` supports 1, 3, 5, 7, 14, or any odd
+degree >= 9), and ``algorithm`` selects among the degree-specific variants
+each MATLAB file offers, defaulting to whichever variant MATLAB itself
+defaults to. Each ``(n, degree, algorithm)`` combination the test suite
+covers is verified exact against a closed-form monomial oracle for that
+region -- see ``region_cubature.py``'s module docstring for the full
+per-degree algorithm coverage and every MATLAB source defect found and
+corrected during the port (a shape-mismatch crash in
+``firstOrderNDimCubPoints.m``'s default algorithm, an off-by-one column
+index in ``thirdOrderNDimCubPoints.m``, a NaN-poisoning indeterminate form
+in one ``Simplex`` algorithm at n=2, a documentation-only sign error in
+the ``Sphere`` region's ``alpha`` weighting exponent, a wrong-trigonometric-
+function transcription bug in one ``Sphere`` degree-7 algorithm, and a
+docstring/code index mismatch in one ``Spherical_Surface`` degree-5
+algorithm). Like the Gaussian-weight rules above, negative weights occur
+at several (region, degree, algorithm) combinations and are inherent to
+the underlying formulas -- do not assemble covariances from these points
+with a sqrt-of-weights factorization.
+
+``spherical_surface_cubature_points`` reuses two existing private
+constructions from ``cubature_points.py`` (the degree-14, n=3 Stroud
+U3 14-1 rule, and the general-n, general-odd-degree Gauss-Jacobi surface
+construction already used internally by ``spherical_radial_points``)
+rather than re-deriving them, rescaled from their native sum-to-1
+convention to this module's sum-to-surface-area convention.
+
+Gaussian LCD Samples
+^^^^^^^^^^^^^^^^^^^^
+
+``gaussian_lcd_samples(n, num_points, force_cov_match=True, rng=None,
+max_iter=1000)`` builds a Dirac-mixture (particle-set) approximation to
+N(0, I_n) by numerically minimizing a modified Cramer-von Mises (CvM)
+distance between the point set's localized CDF and the true Gaussian's,
+ported from MATLAB TCL's ``GaussianLCDSamples``. Unlike the cubature rules
+above, which are closed-form and return whatever fixed point count the
+rule's polynomial-exactness degree dictates, LCD samples are built for an
+arbitrary, caller-chosen ``num_points`` (any count ``>= 2*n``, even or
+odd) via ``scipy.optimize.minimize(method="L-BFGS-B")`` -- there is no
+"exactness degree" here, only a converged approximation quality.
+
+**When to prefer this over a cubature rule.** LCD optimization is
+comparatively expensive (the MATLAB source's own header comment calls the
+algorithm "generally too slow ... for real-time systems") and carries no
+polynomial-exactness guarantee, so it is not a drop-in replacement for the
+fixed-degree sigma-point sets above. Prefer it when the point count itself
+is the actual requirement -- e.g. a downstream particle filter or
+Monte-Carlo consumer needs exactly ``num_points`` weighted samples and no
+fixed-degree cubature rule happens to produce that count -- and the
+optimization cost is acceptable (an offline / precomputed step, not inside
+a real-time filter's per-step loop). Prefer a cubature rule instead
+whenever a specific polynomial-exactness degree is what actually matters,
+or points are needed on every filter step.
+
+**The manifold caveat -- read this before comparing output across runs or
+against MATLAB.** For ``n >= 2`` the CvM cost is provably invariant under
+any global orthogonal (rotation/reflection) transform applied to every
+point simultaneously, so a minimizer sits on a continuous flat manifold of
+equally-optimal solutions, not an isolated point. Two correctly converged
+runs -- including this port versus a MATLAB ``GaussianLCDSamples`` run
+started from the identical seed matrix -- generically land on *different*
+points of that manifold: same CvM cost, different raw coordinates. This is
+expected, not a bug, and is why this port's own MATLAB-fixture tests never
+compare raw coordinates for ``n >= 2`` (see
+``tests/unit/test_lcd_samples.py::TestGaussianLCDSamplesMatlabFixtures``,
+which instead compares the rotation-and-permutation-invariant Gram-matrix
+eigenvalue spectrum, the CvM objective value, and the sample mean and
+covariance). Only ``n == 1`` has a discrete symmetry group (``{+1, -1}``),
+where raw coordinates are a meaningful comparison.
+
+.. code-block:: python
+
+   from pytcl.mathematical_functions.numerical_integration import (
+       gaussian_lcd_samples,
+   )
+
+   # Small, fast case for this example: low max_iter keeps it quick and is
+   # not a claim about converged accuracy at that setting (see the
+   # function's own docstring for measured convergence behavior at the
+   # default max_iter=1000).
+   pts, w = gaussian_lcd_samples(
+       2, 10, rng=np.random.default_rng(0), max_iter=50
+   )
+   assert pts.shape == (10, 2)
+   assert w.shape == (10,)
+   assert round(float(w.sum()), 12) == 1.0
+
+   # force_cov_match=True (the default) whitens the result so the sample
+   # mean and covariance match N(0, I) to float64 precision -- exactly by
+   # construction, not a statistical approximation.
+   assert bool(np.allclose(pts.mean(axis=0), 0.0, atol=1e-10))
+   assert bool(np.allclose((pts * w[:, None]).T @ pts, np.eye(2), atol=1e-8))
+
 Geometry
 --------
 

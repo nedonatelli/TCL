@@ -22,7 +22,7 @@
 %   Run this in the SAME MATLAB session as capture_seventh_order.m and
 %   capture_lcd.m (this script and capture_lcd.m were designed together
 %   per the spec; all three share conventions and run in one capture
-%   session for the whole v2.4.0 cycle).
+%   session for the whole v2.5.0 cycle).
 %
 %   It writes one CSV per case to tests/fixtures/matlab/ (relative to
 %   the pytcl repo root -- adjust OUTPUT_DIR below if running from
@@ -65,18 +65,39 @@ writeRegionCase(OUTPUT_DIR, 'region_cube_GaussLegendrePoints1D_n8', ...
     GaussLegendrePoints1DAsRow(8));
 
 %== Cube_Space ============================================================
+%
+% Two of this section's originally-planned cases were found, during the
+% Task-A1 port (region_cubature.py), to be UNCAPTURABLE as literally
+% specified: MATLAB's own source at the pinned commit 593ce51 returns an
+% [xi, w] pair whose sizes do not agree with each other for these two
+% cases, so the `[xi.', w]` horzcat below would error, not merely produce
+% a wrong number. Both are documented in detail in region_cubature.py's
+% module docstring ("Two corrected MATLAB defects"); summarized here so
+% this script does not crash mid-session:
+%
+%   * firstOrderNDimCubPoints's DEFAULT algorithm (1, 2^numDim points):
+%     `w = 1/2^numDim*ones(numDim,1)*V` is a numDim-length vector against
+%     an numDim-by-2^numDim `xi`. Captured below at algorithm 0 (the
+%     1-point rule) instead, which is not affected.
+%   * thirdOrderNDimCubPoints's DEFAULT algorithm (0, 2*numDim points) at
+%     ODD numDim: `xi(numDim, i+1)` overruns the declared 2*numDim
+%     columns (every other assignment in the same branch uses `i`, not
+%     `i+1`). Captured below only at EVEN numDim (2, 4); numDim = 3, 5
+%     are skipped for this one function.
 for numDim = 2:5
-    [xi, w] = firstOrderNDimCubPoints(numDim);
-    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_firstOrderNDimCubPoints_n%d_alg1', numDim), [xi.', w]);
+    [xi, w] = firstOrderNDimCubPoints(numDim, 0);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_firstOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 
     [xi, w] = secondOrderNDimCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_cube_secondOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 
-    [xi, w] = thirdOrderNDimCubPoints(numDim);
-    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_thirdOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
-
     [xi, w] = fifthOrderNDimCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_cube_fifthOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
+end
+
+for numDim = 2:2:4
+    [xi, w] = thirdOrderNDimCubPoints(numDim);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_cube_thirdOrderNDimCubPoints_n%d_alg0', numDim), [xi.', w]);
 end
 
 [xi, w] = seventhOrderNDimCubPoints(2, 0);
@@ -90,6 +111,21 @@ for numDim = 4:5
 end
 
 %== Simplex ================================================================
+%
+% thirdOrderSimplexCubPoints's algorithm 3 (T_n 3-4) is NOT captured here:
+% at numDim=2 its own weight formula is an exact 0/0 (both the numerator
+% (numDim-2) and the denominator (1-2*numDim*r^2-2*(1-numDim*r)^2)
+% vanish for BOTH real roots of the file's parameter cubic, confirmed by
+% symbolic substitution, not merely a measured near-zero) -- MATLAB's own
+% guard (numDim<7) does not exclude numDim=2, so a live run there would
+% return a weight vector poisoned with NaN. See region_cubature.py's
+% module docstring ("A third corrected MATLAB defect") for the full
+% derivation; region_cubature.py's simplex_cubature_points hardens this
+% algorithm's domain to 3<=n<7 accordingly. Algorithm 3 is otherwise
+% uncaptured here regardless (only algorithm 0 is in this case list, per
+% the design spec's Section 6 case selection), so this comment is a
+% forward note for anyone extending this script's case list later, not a
+% case this script itself needs to skip.
 for numDim = 2:5
     [xi, w] = secondOrderSimplexCubPoints(numDim);
     writeRegionCase(OUTPUT_DIR, sprintf('region_simplex_secondOrderSimplexCubPoints_n%d', numDim), [xi.', w]);
@@ -126,20 +162,80 @@ for numDim = 3:4
     writeRegionCase(OUTPUT_DIR, sprintf('region_sphere_seventhOrderSpherCubPoints_n%d_alg0', numDim), [xi.', w]);
 end
 
-% Nonzero-alpha spot check: algorithm 0's V and r formulas both carry an
-% explicit "numDim+alpha" term in the .m source (verified by inspection),
-% unlike most other algorithms in this file which hard-error if
-% alpha~=0.
+% Nonzero-alpha spot checks: both algorithm 0 (Sn 5-2) and algorithm 2
+% (Sn 5-4) carry an explicit "numDim+alpha" term in their V/r formulas
+% (verified by inspection), unlike most other algorithms in this file
+% which hard-error if alpha~=0. The design spec's Section 6 case list
+% pins algorithm 2 as ITS nonzero-alpha spot check ("the other
+% alpha-supporting algorithm"); algorithm 0's case is kept too since it
+% is the region_cubature.py port's DEFAULT algorithm for this degree and
+% is the more load-bearing check on the alpha-sign correction described
+% in region_cubature.py's module docstring.
 [xi, w] = fifthOrderSpherCubPoints(3, 0, 1.0);
 writeRegionCase(OUTPUT_DIR, 'region_sphere_fifthOrderSpherCubPoints_n3_alg0_alpha1', [xi.', w]);
 
+[xi, w] = fifthOrderSpherCubPoints(3, 2, 1.0);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_fifthOrderSpherCubPoints_n3_alg2_alpha1', [xi.', w]);
+
+% arbOrderSpherCubPoints (general-dimension, general-order ball rule,
+% degree 2*order-1) -- folded into region_cubature.py's
+% ball_cubature_points as the dispatch target for every odd degree >= 9
+% (Task-A3 fix-round F2). MATLAB's own alpha here MUST be an integer
+% (algorithm-8's radial quadraturePoints1D dependency requires
+% numDim-1+alpha to be a nonnegative integer, per that function's own
+% docstring) -- the pytcl port's alpha-domain generalizes beyond this via
+% a from-scratch derivation (see region_cubature.py's module docstring),
+% so this integer-alpha case is a spot check on the shared code path, not
+% a full test of the generalized range.
+[xi, w] = arbOrderSpherCubPoints(3, 5);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_arbOrderSpherCubPoints_n3_order5', [xi.', w]);
+
+[xi, w] = arbOrderSpherCubPoints(2, 5, 1);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_arbOrderSpherCubPoints_n2_order5_alpha1', [xi.', w]);
+
 %== Spherical_Surface ======================================================
+% Task A4 (v2.5.0): ported firstOrderSpherSurfCubPoints (any n),
+% thirdOrderSpherSurfCubPoints (all 4 algorithms), fifthOrderSpherSurfCubPoints
+% (algorithms 0-8 -- MATLAB's own docstring claims up to 9 but only 0-8 are
+% reachable, see region_cubature.py's fifth confirmed finding), and
+% seventhOrderSpherSurfCubPoints (all 9 algorithms). Cases below extend the
+% original alg0-only sweep with the newly ported algorithm variants; the
+% alg0 cases are unchanged from the original spec-authoring pass.
 for numDim = 2:4
+    [xi, w] = firstOrderSpherSurfCubPoints(numDim);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_firstOrderSpherSurfCubPoints_n%d', numDim), [xi.', w]);
+
     [xi, w] = thirdOrderSpherSurfCubPoints(numDim, 0);
     writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_thirdOrderSpherSurfCubPoints_n%d_alg0', numDim), [xi.', w]);
 
+    [xi, w] = thirdOrderSpherSurfCubPoints(numDim, 1);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_thirdOrderSpherSurfCubPoints_n%d_alg1', numDim), [xi.', w]);
+
+    [xi, w] = thirdOrderSpherSurfCubPoints(numDim, 2);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_thirdOrderSpherSurfCubPoints_n%d_alg2', numDim), [xi.', w]);
+
     [xi, w] = fifthOrderSpherSurfCubPoints(numDim, 0);
     writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_fifthOrderSpherSurfCubPoints_n%d_alg0', numDim), [xi.', w]);
+end
+
+% U3 3-1 (algorithm 3), numDim=3 only.
+[xi, w] = thirdOrderSpherSurfCubPoints(3, 3);
+writeRegionCase(OUTPUT_DIR, 'region_sphsurf_thirdOrderSpherSurfCubPoints_n3_alg3', [xi.', w]);
+
+% fifthOrderSpherSurfCubPoints algorithms 1-4 (general-n): one spot check
+% each at numDim=3.
+for alg = 1:4
+    [xi, w] = fifthOrderSpherSurfCubPoints(3, alg);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_fifthOrderSpherSurfCubPoints_n3_alg%d', alg), [xi.', w]);
+end
+
+% fifthOrderSpherSurfCubPoints algorithms 5-8 (numDim=3 fixed-dimension
+% variants -- algorithm 8 is the CODE's actual 30-point U3 5-5 formula,
+% not the 20-point U3 5-4 the docstring mislabels it as; see
+% region_cubature.py's module docstring).
+for alg = 5:8
+    [xi, w] = fifthOrderSpherSurfCubPoints(3, alg);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_fifthOrderSpherSurfCubPoints_n3_alg%d', alg), [xi.', w]);
 end
 
 for numDim = 3:4
@@ -147,7 +243,32 @@ for numDim = 3:4
     % numDim<3) -- excluded numDim=2 for this function accordingly.
     [xi, w] = seventhOrderSpherSurfCubPoints(numDim, 0);
     writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_seventhOrderSpherSurfCubPoints_n%d_alg0', numDim), [xi.', w]);
+
+    [xi, w] = seventhOrderSpherSurfCubPoints(numDim, 3);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_seventhOrderSpherSurfCubPoints_n%d_alg3', numDim), [xi.', w]);
+
+    [xi, w] = seventhOrderSpherSurfCubPoints(numDim, 4);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_seventhOrderSpherSurfCubPoints_n%d_alg4', numDim), [xi.', w]);
+
+    [xi, w] = seventhOrderSpherSurfCubPoints(numDim, 5);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_seventhOrderSpherSurfCubPoints_n%d_alg5', numDim), [xi.', w]);
 end
+
+% Formula II/III (algorithms 1-2) require numDim>=4.
+for alg = 1:2
+    [xi, w] = seventhOrderSpherSurfCubPoints(4, alg);
+    writeRegionCase(OUTPUT_DIR, sprintf('region_sphsurf_seventhOrderSpherSurfCubPoints_n4_alg%d', alg), [xi.', w]);
+end
+
+% Fixed-dimension variants: U3 7-1/7-2 (numDim=3), U4 7-1 (numDim=4).
+[xi, w] = seventhOrderSpherSurfCubPoints(3, 6);
+writeRegionCase(OUTPUT_DIR, 'region_sphsurf_seventhOrderSpherSurfCubPoints_n3_alg6', [xi.', w]);
+
+[xi, w] = seventhOrderSpherSurfCubPoints(3, 7);
+writeRegionCase(OUTPUT_DIR, 'region_sphsurf_seventhOrderSpherSurfCubPoints_n3_alg7', [xi.', w]);
+
+[xi, w] = seventhOrderSpherSurfCubPoints(4, 8);
+writeRegionCase(OUTPUT_DIR, 'region_sphsurf_seventhOrderSpherSurfCubPoints_n4_alg8', [xi.', w]);
 
 % Already-ported spot checks (design spec Section 3): these three do NOT
 % seed new porting work -- they validate cubature_points.py's EXISTING

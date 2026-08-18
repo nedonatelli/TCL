@@ -5,6 +5,280 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **MATLAB parity fixtures captured** -- all 113 fixture CSVs the three
+  `scripts/matlab_capture/` scripts produce (10 seventh-order, 15 LCD,
+  88 region-cubature) are now committed to `tests/fixtures/matlab/`,
+  captured 2026-08-18 in one MATLAB R2026a session against a
+  TrackerComponentLibrary checkout at 593ce51 on an Apple M3
+  (`quasiNewtonLBFGS` MEX-compiled from that checkout's sources; every
+  LCD case converged with `exitCode=0` and a capture-twice determinism
+  diff of exactly 0). The full fixture-gated suite passes under
+  `PYTCL_REQUIRE_MATLAB_FIXTURES=1` on that machine/date. Two
+  `arbOrderSpherCubPoints` parity tests were rewritten from
+  lexsort-order comparison to minimal-distance assignment matching with
+  coincident-point weight-cluster sums: the tensor-product rule emits
+  duplicate positions (125 points collapse to 101 distinct at n=3,
+  order 5) whose weight split differs from MATLAB's while the
+  per-position sums agree to ~1e-15, and eps-scale zeros (exact 0.0 vs
+  O(1e-17)) flip lexsort order -- the rule itself matches MATLAB
+  exactly (all tested monomial integrals agree to ~1e-15).
+- **`gaussian_lcd_samples`** -- localized cumulative distribution (LCD)
+  cubature points for the standard normal `N(0, I)`
+  (`pytcl.mathematical_functions.numerical_integration.lcd_samples`).
+  Hybrid port of the MATLAB TCL's `GaussianLCDSamples.m` (commit 593ce51)
+  per the Gaussian-LCD port-feasibility design spec (local-only, untracked
+  -- see CONTRIBUTING.md's `docs/superpowers/` policy): the
+  modified Cramer-von Mises objective and its four analytic gradient
+  routines are a faithful transcription (landed separately, Task B1);
+  this task wraps `scipy.optimize.minimize(method="L-BFGS-B", jac=True)`
+  in place of MATLAB's MEX-only `liblbfgs` call (a vendored third-party C
+  library, not MATLAB source -- nothing to port fidelity against), maps
+  liblbfgs's defaults onto scipy's L-BFGS-B options honestly (documented
+  in-function: `numCorr=6` -> `maxcor=6` and `max_iterations=1000` ->
+  `maxiter` are faithful; `epsilon=1e-6` -> `gtol=1e-6` and
+  `delta=0`/`past=0` -> `ftol=0.0` are value-level matches, the latter
+  exact by convention, the former a genuinely different stopping
+  criterion (max-component vs scaled Euclidean norm); liblbfgs's
+  More-Thuente line-search parameters have no scipy equivalent), and adds
+  the `forceCovMatch` post-optimization Cholesky whitening step
+  (`xi <- chol(inv(R), 'lower')^T @ xi`, verified algebraically to
+  produce exactly `cov(xi) == I` and re-derived in the function's
+  docstring). Points/weights follow this module's own `sum(w) == 1`
+  Gaussian-weight convention (MATLAB's `w = 1/numSamples`), not the
+  separate region-measure convention `region_cubature.py` uses. Per the
+  design spec's rotation-invariance finding (Section 3: the CvM cost is
+  invariant under any global orthogonal transform for `n >= 2`, so a
+  minimizer sits on a flat manifold, not an isolated point), validation
+  does NOT compare raw coordinates against MATLAB fixtures -- that
+  comparison is provably invalid for `n >= 2`. This task's own tests
+  cover: convergence (success + objective
+  decrease from init) on the grid `{(1,5),(2,10),(2,20),(3,15),(4,20)}`;
+  exact moment identities (mean 0, covariance `I`) under
+  `force_cov_match`; bit-exact determinism given a seeded
+  `numpy.random.Generator`; and an orthogonal-family sanity check
+  (different seeds give different point sets at similar objective
+  values). Investigated merging `_lcd_objective`'s value and gradient
+  passes into one (B1's review flagged "L+1 quads per call"); measured
+  the D3/Do3 closed-form pieces are cheap enough to merge safely but
+  account for under 2% of one call's wall time on this grid (macOS/Apple
+  Silicon, 2026-08-18) -- the dominant cost is the D2/Do2 adaptive
+  quadrature, whose value and per-point gradient integrals are
+  different integrands and would need `scipy.integrate.quad_vec` (a
+  different tolerance regime, requiring re-validation against B1's
+  ~2e-16 accuracy bar) to merge; left unmerged and documented in the
+  module docstring rather than risked. A follow-up task (B3) added the
+  rotation/permutation-invariant MATLAB-fixture comparison this bullet
+  previously deferred: `TestGaussianLCDSamplesMatlabFixtures`
+  (`tests/unit/test_lcd_samples.py`), skip-gated on the `lcd_n<N>_pts<P>*`
+  fixtures `scripts/matlab_capture/capture_lcd.m` produces (captured
+  2026-08-18 with MATLAB R2026a against TCL 593ce51 on an Apple M3 and
+  committed to `tests/fixtures/matlab/`;
+  `PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns any missing-fixture skip into
+  a hard failure), compares: (1) the sorted Gram-matrix
+  eigenvalue spectrum of the full point set (rotation- and
+  permutation-invariant, unlike raw coordinates) against the fixture's,
+  both sides started from the fixture's own captured `sInit` so both
+  optimizers begin in the same basin; (2) the port's CvM objective value,
+  `D1`/`computeDo2ContTerm` added back exactly as `GaussianLCDSamples.m`
+  does, against the fixture's `CvMDistMin`, at the design spec's stated
+  1e-4 relative tolerance (validated 2026-08-18 against the real
+  captured fixtures: all five spec grid cases pass); (3) exact
+  mean/covariance identities
+  on the fixture's own points. A "Gaussian LCD Samples" section was added
+  to the user guide (`docs/user_guide/mathematical_functions.rst`): what
+  the samples are, when to prefer them over the fixed-degree cubature
+  rules above, the rotation-invariance/manifold caveat, and an executable
+  example.
+- **`spherical_surface_cubature_points`** -- cubature points for the unit
+  sphere surface `S^(n-1) = {x : |x| == 1}`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Spherical_Surface` top-level, general-dimension
+  files (`firstOrderSpherSurfCubPoints`, `thirdOrderSpherSurfCubPoints` (4
+  algorithms), `fifthOrderSpherSurfCubPoints` (algorithms 0-8),
+  `seventhOrderSpherSurfCubPoints` (all 9 algorithms, algorithm 0 promoting
+  the private `_seventh_order_sphere_surface_alg0` helper that
+  `ball_cubature_points` already ported as its own degree-7 dependency)),
+  degrees 1/3/5/7. Two
+  files are REUSED rather than transcribed (design spec inventory rows
+  179-180): `fourteenthOrderSpherSurfCubPoints` (`n=3` only) wraps
+  `cubature_points._fourteenth_order_unit_sphere_points_3d`, and every
+  general-`n`, general-odd-degree `>= 9` case (superseding
+  `arbOrderSpherSurfCubPoints` and, at `n=2`, `arbOrder2DSpherSurfCubPoints`)
+  wraps `cubature_points._sphere_surface_points` -- both rescaled from
+  their native `sum(w) == 1` convention to this module's
+  `sum(w) == 2*pi**(n/2)/gamma(n/2)` (surface area) convention. The reused
+  general-order construction is a genuinely different algorithm from
+  MATLAB's own Gegenbauer-based one; low-order-moment agreement (not raw
+  coordinates) is what is checked, per the design spec's own rationale for
+  that capture case. Excludes `ninthOrderSpherSurfCubPoints.m` and
+  `eleventhOrderSpherSurfCubPoints.m` (`n=3`-only, superseded by the same
+  general-odd-degree reuse path). Found two further findings at commit
+  593ce51: a documentation-only index mismatch in
+  `fifthOrderSpherSurfCubPoints.m` (the docstring claims a 10th,
+  20-point algorithm exists at index 8 with a 30-point algorithm at index
+  9; the switch statement only reaches index 8, and the code there computes
+  the 30-point formula -- this port transcribes what the CODE computes, not
+  the docstring's claim, and caps the supported range at 0-8); and a
+  non-defect finding that `seventhOrderSpherSurfCubPoints.m` algorithms 0,
+  3, and 4 (three different literature citations) compute the IDENTICAL
+  rule, verified both by matching coefficient formulas symbol-for-symbol
+  and by a direct lexsorted point/weight comparison in the test suite. Same
+  true-measure weight convention as `cube_cubature_points`/
+  `simplex_cubature_points`/`ball_cubature_points`: weights sum to the
+  sphere's surface area `2*pi**(n/2)/gamma(n/2)`, not to 1. Every exactness
+  claim is closed-form-oracle-verified (Folland's surface-monomial formula,
+  hand-checked against the surface area and `integral of x^2 over S^2 =
+  4*pi/3`) per `(n, degree, algorithm)`, not extrapolated.
+- **`ball_cubature_points`** -- cubature points for the unit n-ball
+  `{x : |x| <= 1}`, weight `|x|**alpha`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Sphere` top-level, general-dimension files
+  (`secondOrderSpherCubPoints`, `thirdOrderSpherCubPoints` (5 algorithms),
+  `fifthOrderSpherCubPoints` (10 algorithms), `seventhOrderSpherCubPoints`
+  (6 algorithms, algorithm 0 via a private port of
+  `seventhOrderSpherSurfCubPoints` algorithm 0), degrees 2/3/5/7, plus
+  `arbOrderSpherCubPoints` (general-dimension, general-order, general-real-
+  `alpha` ball rule) folded in as the dispatch target for every odd
+  `degree >= 9`. `arbOrderSpherCubPoints`'s two `quadraturePoints1D`
+  dependencies (Gegenbauer and radial 1-D quadratures, outside the ported
+  subset) are handled differently: the Gegenbauer piece maps directly onto
+  `scipy.special.roots_jacobi`; the radial piece (weight `|x|**c1`) is
+  DERIVED from scratch via the classical even-weight symmetrization
+  technique, since MATLAB's own recursion only supports integer `c1` and
+  cannot serve this module's general real `alpha` at all -- independently
+  verified two ways (matches MATLAB's own integer-`c1` construction to
+  machine precision; matches brute-force numerical integration at
+  non-integer `c1`) before use, then re-verified end-to-end against the
+  ball-monomial oracle at degrees 9/11/13, `n` 2-4, `alpha` in `{0, 1.5}`.
+  Excludes (with reasons in the module docstring) `ninthOrderSpherCubPoints.m`
+  and `eleventhOrderSpherCubPoints.m` (`n=2`-only, superseded by
+  `arbOrderSpherCubPoints` at the same degrees for general `n`), and
+  `spherSurfPoints2SpherPoints.m` (superseded by direct construction). Same
+  true-measure weight convention as `cube_cubature_points`/
+  `simplex_cubature_points`: weights sum to the ball's `|x|**alpha`-weighted
+  volume `2/(n+alpha) * pi**(n/2) / gamma(n/2)`, not to 1. Found and
+  corrected a fourth provable MATLAB defect at commit 593ce51 (a
+  wrong-formula bug, not a shape mismatch, verified numerically against
+  this module's ball-monomial oracle): `seventhOrderSpherCubPoints.m`
+  algorithm 2 (S2 7-2) sets BOTH coordinate rows from `cos`, collapsing all
+  16 points onto the line `x == y`; the port uses the natural `cos`/`sin`
+  pairing (matching every other angular construction in this codebase).
+  Also identified and corrected a confirmed MATLAB DOCUMENTATION defect
+  (not a code defect): every alpha-dependent `Sphere` file's docstring
+  describes the weight as `|x|**(-alpha)`, but every formula's own
+  `(numDim+alpha)` denominators and `alpha > -numDim` domain are consistent
+  only with `|x|**(+alpha)` -- confirmed three independent ways (see the
+  module docstring) against the standard closed-form radial ball integral.
+  `region_cubature.py`'s `alpha` parameter and this module's test oracle
+  use the corrected `+alpha` sign, diverging from both the MATLAB
+  docstrings' literal text and the design spec's Section 5.1 formula (which
+  inherited the same uncross-checked sign). Every exactness claim is
+  closed-form-oracle-verified (radial-times-surface ball monomial oracle,
+  hand-checked against the unit-ball-volume formula and
+  `integral of x^2 over the 3-ball = 4*pi/15`) per `(n, degree, algorithm,
+  alpha)`, not extrapolated.
+- **`simplex_cubature_points`** -- cubature points for the standard
+  n-simplex `{x >= 0, sum(x) <= 1}`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Simplex` top-level, general-dimension files
+  (`secondOrderSimplexCubPoints`, `thirdOrderSimplexCubPoints`,
+  `fourthOrderSimplexCubPoints`, `fifthOrderSimplexCubPoints`), degrees
+  2/3/4/5. Degree 3 ports 10 of the file's 12 algorithms (0-9, all
+  general-`n`; algorithms 10 and 11 are fixed-`n=2`/`n=5` literature
+  variants, deferred -- ten other general-`n` algorithms already cover
+  that degree). Same true-measure weight convention as
+  `cube_cubature_points`: weights sum to the simplex's volume `1/n!`, not
+  to 1. Found and corrected a third provable MATLAB source defect at
+  commit 593ce51 (this one a NaN-poisoning indeterminate form, verified by
+  exact symbolic substitution, not a shape mismatch like the two found in
+  `Cube_Space`): `thirdOrderSimplexCubPoints.m` algorithm 3 (T_n 3-4) --
+  both real roots of its own parameter-defining cubic make the weight
+  formula's numerator and denominator simultaneously and exactly zero at
+  `n == 2` -- an indeterminate `0/0` that IEEE 754 arithmetic resolves to
+  `NaN` -- and MATLAB's own domain guard (`n < 7`) does not exclude
+  `n == 2`. The port hardens this algorithm's domain to `3 <= n < 7`,
+  documented in the module docstring; `capture_region_rules.m` gained an
+  explanatory comment (no case there exercises this algorithm, so nothing
+  needed to be skipped). Also reproduces, faithfully rather than as a
+  defect, `fourthOrderSimplexCubPoints.m`'s own zero-weight-point
+  stripping (a real point-count reduction at `n == 4` only, matching
+  MATLAB's own `sel=~(w==0)` filter). Every exactness claim is
+  closed-form-oracle-verified (Dirichlet-integral simplex monomial oracle,
+  hand-checked against `integral of x over the 2-simplex = 1/6`) per
+  `(n, degree, algorithm)`, not extrapolated.
+- **`cube_cubature_points`** -- cubature points for the ``n``-dimensional
+  cube ``[-1, 1]^n``
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`,
+  new module). Ports the MATLAB TCL's `Cube_Space` top-level,
+  general-dimension files (`firstOrderNDimCubPoints`,
+  `secondOrderNDimCubPoints`, `thirdOrderNDimCubPoints`,
+  `fifthOrderNDimCubPoints`, `seventhOrderNDimCubPoints`,
+  `ninthOrderNDimCubPoints`), degrees 1/2/3/5/7/9, general `n` except
+  degree 7 (no general-`n` MATLAB formula exists for it; ported at `n=2`
+  and `n=3` only, matching MATLAB itself). **Weight convention differs
+  from `cubature_points.py`'s Gaussian-weight rules**: weights sum to the
+  cube's true volume `2**n`, not to 1 -- this is why the new module is
+  separate, not an addition to `cubature_points.py`. Found and corrected
+  two provable MATLAB source defects at commit 593ce51 (both are
+  dimension-mismatch bugs that crash real MATLAB, not accuracy disputes):
+  `firstOrderNDimCubPoints`'s default algorithm returns a weight vector
+  shaped for the wrong point count, and `thirdOrderNDimCubPoints`'s
+  default algorithm indexes one column past its declared array at odd
+  `n`; both are documented in the new module's docstring and
+  `scripts/matlab_capture/capture_region_rules.m` was adjusted so its
+  MATLAB-side fixture capture doesn't crash on these same two cases.
+  Every exactness claim is closed-form-oracle-verified (cube monomial
+  integral) per `(n, degree, algorithm)`, not extrapolated.
+- Two new CI performance SLOs (`.benchmarks/slos.json`):
+  `test_jpda_update_100_targets_50_meas` (111.18 ms mean, 222.37 ms p99) and
+  `test_hungarian_dense_500x500` (16.57 ms mean, 33.15 ms p99) -- the C1
+  campaign's two new benchmark cases (v2.5.0 region-lcd-perf task C1).
+  Thresholds are CI-calibrated per the gate-calibration doctrine, not bare
+  Apple M3 Max numbers: local median x measured CI/local hardware ratio
+  (2.209, the median of three unrelated calibration benchmarks --
+  `test_jpda_small`, `test_kf_predict[4]`, `test_cfar_ca_1000` -- each run
+  fresh locally and compared against the median of its last 10
+  `.benchmarks/history.jsonl` CI records) x 1.5 headroom. Full derivation
+  recorded inline in `slos.json` (`_derivation` field on each entry) and in
+  task C2's performance report (local-only, untracked artifact of the
+  v2.5.0 region-lcd-perf campaign).
+
+### Changed
+- **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now
+  dispatches to closed-form njit kernels instead of always taking the
+  generic `np.linalg.solve` LAPACK path (v2.5.0 region-lcd-perf task C2,
+  acting on task C1's finding that `gating.py` already defined `@njit`
+  2D/3D/general Mahalanobis fast-path kernels that nothing called). 2D and
+  3D innovations now use closed-form Cramer's-rule/adjugate matrix
+  inversion (`_invert_2x2`/`_invert_3x3`, new) feeding the existing
+  `_mahalanobis_distance_2d`/`_3d` kernels; dimensions 1 and 4-10 now use
+  `np.linalg.inv` + the existing `_mahalanobis_distance_general` kernel
+  (measured faster than direct `solve` in this range; the reverse is true
+  above ~dim 12, so dims >10 still take the original generic-solve path).
+  Measured on Apple M3 Max, 2026-08-18: the JPDA 100-target/50-measurement
+  full-pipeline benchmark (`test_jpda_update_100_targets_50_meas`) drops
+  from 43.89 ms (this task's own `pytest-benchmark` pre-optimization
+  re-measurement) to 33.55 ms median (-23.6%) -- ROADMAP.md's Performance
+  Targets section instead cites 45.31 ms for the same "before" state, task
+  C1's separate `time.perf_counter` profiling-run baseline taken on the
+  same machine and date; the two numbers come from different measurement
+  runs, not a discrepancy. The `mahalanobis_distance`
+  2D/3D microbenchmarks drop from ~2.79/3.02 us to ~0.65/0.64 us (~4.3x);
+  the 6D microbenchmark (general-kernel path) drops from ~3.34 us to
+  ~2.73 us (-18%). Behavior-equality verified against the old generic-solve
+  path across dims {1,2,3,6,9}, well-conditioned and near-singular
+  covariances, seeded random inputs
+  (`tests/unit/test_gating_mahalanobis_dispatch.py`, written before the
+  dispatch was implemented): max relative error 6.12e-16 well-conditioned,
+  2.79e-7 near-singular (condition number up to ~1.17e10); exactly-singular
+  covariances still raise `numpy.linalg.LinAlgError` as before.
+  `mahalanobis_batch` was checked for the same dead-kernel pattern and does
+  not have it -- it already avoids LAPACK internally by taking a
+  caller-precomputed inverse amortized across a batch of measurements.
+
 ## [2.4.0] - 2026-08-17
 
 ### Added

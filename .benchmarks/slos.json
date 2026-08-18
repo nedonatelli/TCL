@@ -20,6 +20,16 @@
     "test_kf_update[4-2]": {
       "max_mean_us": 100.0,
       "max_p99_us": 200.0
+    },
+    "test_jpda_update_100_targets_50_meas": {
+      "max_mean_us": 111183.0,
+      "max_p99_us": 222366.0,
+      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 33.5546ms (5 pytest-benchmark runs, --benchmark-min-rounds=20, post-Mahalanobis-kernel-wiring) x CI/local ratio 2.209 x 1.5 headroom = 111.18ms. Ratio is the median of CI-history-vs-fresh-local ratios for 3 unrelated calibration benchmarks (test_jpda_small 2.209x, test_kf_predict[4] 2.155x, test_cfar_ca_1000 2.685x; CI side = median of each benchmark's last 10 .benchmarks/history.jsonl records, local side = median of 5 fresh runs on the same machine/day as the JPDA measurement). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
+    },
+    "test_hungarian_dense_500x500": {
+      "max_mean_us": 16573.0,
+      "max_p99_us": 33146.0,
+      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 5.0016ms (5 pytest-benchmark runs, --benchmark-min-rounds=30, hungarian() == scipy.optimize.linear_sum_assignment on a 500x500 dense matrix) x the same CI/local ratio 2.209 x 1.5 headroom = 16.57ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no Hungarian/assignment benchmark exists in CI history yet to calibrate against directly). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
     }
   }
 }

@@ -53,6 +53,60 @@ def _mahalanobis_distance_general(
     return result
 
 
+@njit(cache=True, fastmath=True)
+def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
+    """Closed-form inverse of a 2x2 matrix; no LAPACK dispatch involved.
+
+    Returns (inverse, determinant). Caller must check determinant != 0
+    before using the inverse -- for an exactly singular S the returned
+    `inv` is uninitialized garbage (division by zero is skipped rather
+    than executed, since numba's fastmath float division by exact 0.0
+    raises ZeroDivisionError instead of producing inf); the caller must
+    fall back to `np.linalg.solve` in that case, not use this result.
+    """
+    det = S[0, 0] * S[1, 1] - S[0, 1] * S[1, 0]
+    inv = np.empty((2, 2))
+    if det != 0.0:
+        inv[0, 0] = S[1, 1] / det
+        inv[0, 1] = -S[0, 1] / det
+        inv[1, 0] = -S[1, 0] / det
+        inv[1, 1] = S[0, 0] / det
+    return inv, det
+
+
+@njit(cache=True, fastmath=True)
+def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
+    """Closed-form (adjugate/cofactor) inverse of a 3x3 matrix.
+
+    No LAPACK dispatch involved. Returns (inverse, determinant). Caller must
+    check determinant != 0 before using the inverse -- for an exactly
+    singular S the returned `inv` is uninitialized garbage (see
+    `_invert_2x2` for why: division by zero is skipped, not executed).
+    """
+    a, b, c = S[0, 0], S[0, 1], S[0, 2]
+    d, e, f = S[1, 0], S[1, 1], S[1, 2]
+    g, h, i = S[2, 0], S[2, 1], S[2, 2]
+
+    A = e * i - f * h
+    B = f * g - d * i
+    C = d * h - e * g
+    D = c * h - b * i
+    E = a * i - c * g
+    F = b * g - a * h
+    G = b * f - c * e
+    H = c * d - a * f
+    I = a * e - b * d  # noqa: E741
+
+    det = a * A + b * B + c * C
+
+    inv = np.empty((3, 3))
+    if det != 0.0:
+        inv[0, 0], inv[0, 1], inv[0, 2] = A / det, D / det, G / det
+        inv[1, 0], inv[1, 1], inv[1, 2] = B / det, E / det, H / det
+        inv[2, 0], inv[2, 1], inv[2, 2] = C / det, F / det, I / det
+    return inv, det
+
+
 def mahalanobis_distance(
     innovation: ArrayLike,
     innovation_covariance: ArrayLike,
@@ -89,9 +143,42 @@ def mahalanobis_distance(
         d^2 = (z - z_pred)^T @ S^{-1} @ (z - z_pred)
 
     where S is the innovation covariance matrix.
+
+    Dispatch (measured; see task-C2-report.md in the v2.5.0-region-lcd-perf
+    campaign for the full before/after numbers and the behavior-equality
+    bounds):
+
+    - n == 2 or n == 3: closed-form njit kernels (`_mahalanobis_distance_2d`/
+      `_3d`, fed by `_invert_2x2`/`_invert_3x3`) that avoid
+      `np.linalg.solve`'s generic LAPACK dispatch entirely (measured ~4x
+      faster than the generic path at these sizes).
+    - 1 <= n <= 10 otherwise: `np.linalg.inv` + the njit
+      `_mahalanobis_distance_general` quadratic-form kernel, measured ~10-25%
+      faster than `np.linalg.solve` in this range (a single `inv` call plus
+      a tight njit loop beats `solve`'s per-call LAPACK dispatch overhead
+      here; the constant-overhead advantage disappears and reverses for
+      n > 12, where `inv`'s O(n^3) cost with a larger constant than solving
+      one right-hand side starts to dominate -- hence the n <= 10 cutoff,
+      comfortably inside the measured-winning range).
+    - n > 10, or an exactly-singular 2D/3D covariance: the original generic
+      `np.linalg.solve` path. Every branch raises the same
+      `numpy.linalg.LinAlgError` on an exactly singular covariance.
     """
     nu = np.asarray(innovation, dtype=np.float64)
     S = np.asarray(innovation_covariance, dtype=np.float64)
+    n = nu.shape[0]
+
+    if n == 2:
+        S_inv, det = _invert_2x2(S)
+        if det != 0.0:
+            return float(_mahalanobis_distance_2d(nu, S_inv))
+    elif n == 3:
+        S_inv, det = _invert_3x3(S)
+        if det != 0.0:
+            return float(_mahalanobis_distance_3d(nu, S_inv))
+    elif n <= 10:
+        S_inv = np.linalg.inv(S)
+        return float(_mahalanobis_distance_general(nu, S_inv))
 
     # Use solve instead of inverse for numerical stability
     S_inv_nu = np.linalg.solve(S, nu)

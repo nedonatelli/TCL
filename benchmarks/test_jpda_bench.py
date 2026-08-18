@@ -6,7 +6,46 @@ These are full benchmarks that run on main branch merges and nightly builds.
 
 import pytest
 
-from pytcl.assignment_algorithms.jpda import jpda_probabilities
+from pytcl.assignment_algorithms.jpda import jpda_probabilities, jpda_update
+
+
+class TestJPDAFullPipelineBenchmarks:
+    """Benchmark the full JPDA update pipeline at ROADMAP target scale."""
+
+    @pytest.mark.full
+    def test_jpda_update_100_targets_50_meas(
+        self, benchmark, jpda_full_pipeline_100_50
+    ):
+        """Benchmark jpda_update: 100 targets, 50 measurements.
+
+        This reproduces the ROADMAP.md "JPDA (100 targets, 50 meas)"
+        performance target. It runs jpda_update end to end (likelihood
+        matrix + gating, association probabilities, per-track Kalman
+        update) rather than jpda_probabilities alone -- the raw numba
+        kernel is microseconds-scale at this size and does not account
+        for the target's measured cost.
+        """
+        data = jpda_full_pipeline_100_50
+
+        # Warm up Numba JIT
+        _ = jpda_update(
+            data["track_states"],
+            data["track_covariances"],
+            data["measurements"],
+            data["H"],
+            data["R"],
+        )
+
+        result = benchmark(
+            jpda_update,
+            data["track_states"],
+            data["track_covariances"],
+            data["measurements"],
+            data["H"],
+            data["R"],
+        )
+
+        assert len(result.states) == 100
 
 
 class TestJPDAProbabilityBenchmarks:
