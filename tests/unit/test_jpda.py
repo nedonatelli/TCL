@@ -323,7 +323,7 @@ def _make_likelihood_matrix_scenario(seed):
     flip between the two computation routes despite that margin: their
     disagreement is ULP-scale (~1e-16 relative, see
     test_gating_mahalanobis_dispatch.py's measured well-conditioned
-    bounds), eight orders of magnitude below the smallest observed margin
+    bounds), twelve orders of magnitude below the smallest observed margin
     in this sweep. Even seeds leave gate_threshold unset (ungated).
     """
     rng = np.random.default_rng(seed)
