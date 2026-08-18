@@ -39,16 +39,13 @@ No dates are attached because none have been decided:
   concluded: port — objective/gradient math transcribed, optimizer
   wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
   vendored `liblbfgs`, validated against a rotation-invariant contract
-  instead of raw MATLAB coordinates) and the region-cubature rules: 79
-  files measured across the Cube_Space / Simplex / Sphere /
-  Spherical_Surface subset -- 31 general-dimension top-level files
-  prioritized in two effort tiers (cube and simplex first, ball and
-  spherical-surface second; ~7-9 engineer-days), 48
-  dimension-specialized subdirectory files (fixed 2D/3D formulas in
-  Cube/, Square/, Tetrahedra/, Triangles/) deferred pending a consumer
-  that needs their smaller point counts. The remaining seven
-  region-cubature directories (torus, cone, wedge, etc.) are out of
-  this subset entirely and have not been inventoried.
+  instead of raw MATLAB coordinates; not yet ported) and, within the
+  measured 79-file region-cubature subset (Cube_Space / Simplex / Sphere
+  / Spherical_Surface), the 48 dimension-specialized subdirectory files
+  (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/)
+  deferred pending a consumer that needs their smaller point counts. The
+  remaining seven region-cubature directories (torus, cone, wedge, etc.)
+  are out of this subset entirely and have not been inventoried.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only

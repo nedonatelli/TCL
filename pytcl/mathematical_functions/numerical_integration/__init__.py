@@ -40,6 +40,7 @@ from pytcl.mathematical_functions.numerical_integration.region_cubature import (
     ball_cubature_points,
     cube_cubature_points,
     simplex_cubature_points,
+    spherical_surface_cubature_points,
 )
 
 __all__ = [
@@ -76,4 +77,5 @@ __all__ = [
     "cube_cubature_points",
     "simplex_cubature_points",
     "ball_cubature_points",
+    "spherical_surface_cubature_points",
 ]

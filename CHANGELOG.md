@@ -8,6 +8,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`spherical_surface_cubature_points`** -- cubature points for the unit
+  sphere surface `S^(n-1) = {x : |x| == 1}`
+  (`pytcl.mathematical_functions.numerical_integration.region_cubature`).
+  Ports the MATLAB TCL's `Spherical_Surface` top-level, general-dimension
+  files (`firstOrderSpherSurfCubPoints`, `thirdOrderSpherSurfCubPoints` (4
+  algorithms), `fifthOrderSpherSurfCubPoints` (algorithms 0-8),
+  `seventhOrderSpherSurfCubPoints` (all 9 algorithms, algorithm 0 promoting
+  the private `_seventh_order_sphere_surface_alg0` helper that
+  `ball_cubature_points` already ported as its own degree-7 dependency)),
+  degrees 1/3/5/7. Two
+  files are REUSED rather than transcribed (design spec inventory rows
+  179-180): `fourteenthOrderSpherSurfCubPoints` (`n=3` only) wraps
+  `cubature_points._fourteenth_order_unit_sphere_points_3d`, and every
+  general-`n`, general-odd-degree `>= 9` case (superseding
+  `arbOrderSpherSurfCubPoints` and, at `n=2`, `arbOrder2DSpherSurfCubPoints`)
+  wraps `cubature_points._sphere_surface_points` -- both rescaled from
+  their native `sum(w) == 1` convention to this module's
+  `sum(w) == 2*pi**(n/2)/gamma(n/2)` (surface area) convention. The reused
+  general-order construction is a genuinely different algorithm from
+  MATLAB's own Gegenbauer-based one; low-order-moment agreement (not raw
+  coordinates) is what is checked, per the design spec's own rationale for
+  that capture case. Excludes `ninthOrderSpherSurfCubPoints.m` and
+  `eleventhOrderSpherSurfCubPoints.m` (`n=3`-only, superseded by the same
+  general-odd-degree reuse path). Found two further MATLAB source issues at
+  commit 593ce51: a documentation-only index mismatch in
+  `fifthOrderSpherSurfCubPoints.m` (the docstring claims a 10th,
+  20-point algorithm exists at index 8 with a 30-point algorithm at index
+  9; the switch statement only reaches index 8, and the code there computes
+  the 30-point formula -- this port transcribes what the CODE computes, not
+  the docstring's claim, and caps the supported range at 0-8); and a
+  non-defect finding that `seventhOrderSpherSurfCubPoints.m` algorithms 0,
+  3, and 4 (three different literature citations) compute the IDENTICAL
+  rule, verified both by matching coefficient formulas symbol-for-symbol
+  and by a direct lexsorted point/weight comparison in the test suite. Same
+  true-measure weight convention as `cube_cubature_points`/
+  `simplex_cubature_points`/`ball_cubature_points`: weights sum to the
+  sphere's surface area `2*pi**(n/2)/gamma(n/2)`, not to 1. Every exactness
+  claim is closed-form-oracle-verified (Folland's surface-monomial formula,
+  hand-checked against the surface area and `integral of x^2 over S^2 =
+  4*pi/3`) per `(n, degree, algorithm)`, not extrapolated.
 - **`ball_cubature_points`** -- cubature points for the unit n-ball
   `{x : |x| <= 1}`, weight `|x|**alpha`
   (`pytcl.mathematical_functions.numerical_integration.region_cubature`).

@@ -1,13 +1,15 @@
-"""Tests for region-cubature point generators (Cube_Space, Simplex, Sphere).
+"""Tests for region-cubature point generators (Cube_Space, Simplex, Sphere,
+Spherical_Surface).
 
 PROPERTY class: a degree-d region rule must integrate every monomial of
 total degree <= d over its region exactly (cube [-1,1]^n, standard
-n-simplex, or the unit n-ball with weight |x|**alpha), and weights must sum
-to the region's true measure (cube volume 2**n, simplex volume 1/n!, or the
-alpha-weighted ball volume -- NOT 1 in any case; see region_cubature.py's
-module docstring for the pinned region-measure convention). Sharpness (some
-degree-(d+1) monomial must fail) guards every exactness class against a
-vacuous loop.
+n-simplex, the unit n-ball with weight |x|**alpha, or the unit sphere
+surface S^(n-1)), and weights must sum to the region's true measure (cube
+volume 2**n, simplex volume 1/n!, the alpha-weighted ball volume, or the
+sphere surface area 2*pi**(n/2)/gamma(n/2) -- NOT 1 in any case; see
+region_cubature.py's module docstring for the pinned region-measure
+convention). Sharpness (some degree-(d+1) monomial must fail) guards every
+exactness class against a vacuous loop.
 """
 
 import itertools
@@ -24,6 +26,7 @@ from pytcl.mathematical_functions.numerical_integration.region_cubature import (
     ball_cubature_points,
     cube_cubature_points,
     simplex_cubature_points,
+    spherical_surface_cubature_points,
 )
 
 
@@ -101,6 +104,28 @@ def ball_monomial_integral(alpha, radial_alpha=0.0):
         numerator *= gamma((a + 1) / 2.0)
     denominator = gamma((n + m) / 2.0)
     return (numerator / denominator) / (n + radial_alpha + m)
+
+
+def sphere_surface_monomial_integral(alpha):
+    """integral_{S^(n-1)} prod_i x_i^{a_i} dS(x), Folland's formula (design
+    spec Section 5.1, unaffected by the 2026-08-18 alpha-sign correction --
+    that correction is specific to the Sphere/ball region's radial weight,
+    which the Spherical_Surface region does not have): 0 if any a_i is
+    odd; else 2 * prod_i gamma((a_i+1)/2) / gamma((n+sum(a_i))/2).
+
+    Degenerates to the sphere surface area 2*pi**(n/2)/gamma(n/2) at
+    alpha=(0,...,0) (n zeros) -- the cheapest regression case, mirroring
+    cube_monomial_integral's, simplex_monomial_integral's, and
+    ball_monomial_integral's equivalent degree-0 checks.
+    """
+    if any(a % 2 == 1 for a in alpha):
+        return 0.0
+    n = len(alpha)
+    m = sum(alpha)
+    numerator = 2.0
+    for a in alpha:
+        numerator *= gamma((a + 1) / 2.0)
+    return numerator / gamma((n + m) / 2.0)
 
 
 def monomials_up_to(n, degree):
@@ -1341,6 +1366,411 @@ class TestBallCubaturePointsGeneral:
             ball_cubature_points(0, 2)
 
 
+class TestSpherSurfMonomialIntegralOracle:
+    def test_hand_case_sphere_surface_area(self):
+        for n in range(2, 7):
+            assert_allclose(
+                sphere_surface_monomial_integral((0,) * n),
+                2.0 * math.pi ** (n / 2.0) / math.gamma(n / 2.0),
+            )
+
+    def test_hand_case_x_squared_over_s2(self):
+        # integral of x^2 over S^2 is 4*pi/3 (brief's own hand case).
+        assert_allclose(
+            sphere_surface_monomial_integral((2, 0, 0)), 4.0 * math.pi / 3.0
+        )
+
+    def test_odd_exponent_is_zero(self):
+        assert_allclose(sphere_surface_monomial_integral((1, 0, 0)), 0.0)
+        assert_allclose(sphere_surface_monomial_integral((0, 3, 0)), 0.0)
+        assert_allclose(sphere_surface_monomial_integral((1, 1)), 0.0)
+
+
+class TestSpherSurfDegree1:
+    """firstOrderSpherSurfCubPoints.m: any n>=1, no algorithm parameter.
+    Header text reads "third-order" (audit-known docstring typo,
+    contradicted by the 2-point antipodal construction and the file's own
+    [1] citation) -- the BODY is what is transcribed (module docstring)."""
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_shape_and_weight_sum(self, n):
+        pts, w = spherical_surface_cubature_points(n, 1)
+        assert pts.shape == (2, n)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0,) * n), atol=1e-10)
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_exact_through_degree_1(self, n):
+        pts, w = spherical_surface_cubature_points(n, 1)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, n, degree=1)
+
+    def test_points_are_antipodal_on_first_axis(self):
+        pts, _ = spherical_surface_cubature_points(3, 1)
+        assert_allclose(pts, [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = spherical_surface_cubature_points(3, 1)
+        pts2, w2 = spherical_surface_cubature_points(3, 1, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 1, algorithm=1)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(0, 1)
+
+
+class TestSpherSurfDegree3:
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_algorithm0_shape_and_exact_through_degree_3(self, n):
+        pts, w = spherical_surface_cubature_points(n, 3)
+        assert pts.shape == (2 * n, n)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0,) * n), atol=1e-9)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_algorithm1_shape_and_exact_through_degree_3(self, n):
+        pts, w = spherical_surface_cubature_points(n, 3, algorithm=1)
+        assert pts.shape == (2**n, n)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, n, degree=3)
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm2_shape_and_exact_through_degree_3(self, n):
+        pts, w = spherical_surface_cubature_points(n, 3, algorithm=2)
+        assert pts.shape == (2 * (n + 1), n)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, n, degree=3)
+
+    def test_algorithm3_n3_exact_through_degree_3(self):
+        pts, w = spherical_surface_cubature_points(3, 3, algorithm=3)
+        assert pts.shape == (12, 3)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 3, degree=3)
+
+    def test_algorithm3_requires_n3(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 3, algorithm=3)
+
+    @pytest.mark.parametrize("n", [2, 3])
+    def test_sharpness_degree_4_fails(self, n):
+        # n=1 excluded: S^0 = {-1, 1} makes every even-degree monomial
+        # trivially exact (x^(2k) == 1 always at x == +-1), so no degree-4
+        # probe can fail there -- a genuine mathematical fact about the
+        # n=1 case, not a rule deficiency.
+        pts, w = spherical_surface_cubature_points(n, 3)
+        assert_some_monomial_of_degree_fails(
+            pts, w, sphere_surface_monomial_integral, n, degree=4
+        )
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(0, 3)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 3, algorithm=4)
+
+
+class TestSpherSurfDegree5:
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm0_shape_and_exact_through_degree_5(self, n):
+        pts, w = spherical_surface_cubature_points(n, 5)
+        assert pts.shape == (2 * n * n, n)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0,) * n), atol=1e-8)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    def test_algorithm0_n1_shape(self):
+        # n=1's second point-block is empty (module docstring: matches
+        # MATLAB's own empty pair-loop at numDim=1).
+        pts, w = spherical_surface_cubature_points(1, 5)
+        assert pts.shape == (2, 1)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 1, degree=5)
+
+    @pytest.mark.parametrize("n", [3, 4])
+    def test_algorithm0_sharpness_degree_6_fails(self, n):
+        # n=2 excluded: algorithm 0's 2*2^2=8 points at n=2 land exactly on
+        # the 8th roots of unity (measured: angles 0/45/90/.../315
+        # degrees, equal weights) -- a genuine BONUS exactness (equally
+        # spaced points on a circle are trig-exact through degree
+        # num_points-1=7, not just this rule's nominal degree 5), verified
+        # by an exhaustive degree-6 AND degree-7 scan both showing zero
+        # residual (~2e-16); the first real failure at n=2 is degree 8
+        # (measured ~0.049). Not a rule deficiency or probe artifact.
+        pts, w = spherical_surface_cubature_points(n, 5)
+        assert_some_monomial_of_degree_fails(
+            pts, w, sphere_surface_monomial_integral, n, degree=6
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm1_exact_through_degree_5(self, n):
+        pts, w = spherical_surface_cubature_points(n, 5, algorithm=1)
+        assert pts.shape == (2**n + 2 * n, n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4, 5])
+    def test_algorithm2_exact_through_degree_5(self, n):
+        pts, w = spherical_surface_cubature_points(n, 5, algorithm=2)
+        assert pts.shape == (2 ** (n + 1) - 2, n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm3_exact_through_degree_5(self, n):
+        pts, w = spherical_surface_cubature_points(n, 5, algorithm=3)
+        assert pts.shape == (n * 2**n, n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm4_exact_through_degree_5(self, n):
+        pts, w = spherical_surface_cubature_points(n, 5, algorithm=4)
+        assert pts.shape == ((n + 1) * (n + 2), n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=5, atol=1e-8
+        )
+
+    def test_algorithm5_n3_exact_through_degree_5(self):
+        pts, w = spherical_surface_cubature_points(3, 5, algorithm=5)
+        assert pts.shape == (12, 3)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 3, degree=5)
+
+    def test_algorithm6_n3_exact_through_degree_5(self):
+        pts, w = spherical_surface_cubature_points(3, 5, algorithm=6)
+        assert pts.shape == (14, 3)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 3, degree=5)
+
+    def test_algorithm7_n3_exact_through_degree_5(self):
+        pts, w = spherical_surface_cubature_points(3, 5, algorithm=7)
+        assert pts.shape == (18, 3)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 3, degree=5)
+
+    def test_algorithm8_n3_exact_through_degree_5(self):
+        # The CODE's actual algorithm-8 formula (30-point U3 5-5) --
+        # module docstring's fifth confirmed finding: MATLAB's own
+        # docstring mislabels this index.
+        pts, w = spherical_surface_cubature_points(3, 5, algorithm=8)
+        assert pts.shape == (30, 3)
+        assert_region_rule_exact(pts, w, sphere_surface_monomial_integral, 3, degree=5)
+
+    def test_fixed_dimension_algorithms_reject_wrong_n(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 5, algorithm=5)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(4, 5, algorithm=6)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 5, algorithm=7)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 5, algorithm=8)
+
+    def test_algorithm_9_does_not_exist(self):
+        # See module docstring's fifth confirmed finding: MATLAB's own
+        # docstring claims an index-9 algorithm exists, but the switch
+        # statement has no such case -- real MATLAB raises "Unknown
+        # algorithm specified" for algorithm=9.
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 5, algorithm=9)
+
+    def test_invalid_dimension_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(0, 5)
+
+
+class TestSpherSurfDegree7:
+    """No algorithm here supports n<2 (seventhOrderSpherSurfCubPoints.m's
+    own header states numDim>=2 for the file as a whole); algorithms 0, 3,
+    and 4 are verified to compute the IDENTICAL rule (module docstring)."""
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_algorithm0_shape_and_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7)
+        assert pts.shape == (2**n + 2 * n * n, n)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0,) * n), atol=1e-8)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    def test_algorithm0_requires_n3(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 7)
+
+    @pytest.mark.parametrize("n", [4, 5])
+    def test_algorithm1_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=1)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    def test_algorithm1_requires_n4(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 7, algorithm=1)
+
+    @pytest.mark.parametrize("n", [4, 5])
+    def test_algorithm2_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=2)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_algorithm3_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=3)
+        assert pts.shape == (2**n + 2 * n * n, n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm4_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=4)
+        assert pts.shape == (2**n + 2 * n * n, n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    @pytest.mark.parametrize("n", [3, 4, 5])
+    def test_algorithm_0_3_4_compute_identical_rule(self, n):
+        # The non-defect finding in the module docstring: three different
+        # literature citations (Stroud 1968 Formula I, Stroud 1967, Stroud
+        # 1971's Un 7-1) reduce to the exact same point set and weights.
+        # Verified here as an order-independent lexsort comparison, not
+        # merely "both pass the same oracle" (which two DIFFERENT
+        # degree-7-exact rules could also do).
+        p0, w0 = spherical_surface_cubature_points(n, 7, algorithm=0)
+        p3, w3 = spherical_surface_cubature_points(n, 7, algorithm=3)
+        p4, w4 = spherical_surface_cubature_points(n, 7, algorithm=4)
+        o0 = np.lexsort(p0.T)
+        o3 = np.lexsort(p3.T)
+        o4 = np.lexsort(p4.T)
+        assert_allclose(p0[o0], p3[o3], atol=1e-12)
+        assert_allclose(w0[o0], w3[o3], atol=1e-12)
+        assert_allclose(p0[o0], p4[o4], atol=1e-12)
+        assert_allclose(w0[o0], w4[o4], atol=1e-12)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_algorithm5_exact_through_degree_7(self, n):
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=5)
+        assert pts.shape == (2**n * (n + 1), n)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=7, atol=1e-6
+        )
+
+    def test_algorithm6_n3_exact_through_degree_7(self):
+        pts, w = spherical_surface_cubature_points(3, 7, algorithm=6)
+        assert pts.shape == (24, 3)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, 3, degree=7, atol=1e-6
+        )
+
+    def test_algorithm7_n3_exact_through_degree_7(self):
+        pts, w = spherical_surface_cubature_points(3, 7, algorithm=7)
+        assert pts.shape == (26, 3)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, 3, degree=7, atol=1e-6
+        )
+
+    def test_algorithm8_n4_exact_through_degree_7(self):
+        pts, w = spherical_surface_cubature_points(4, 7, algorithm=8)
+        assert pts.shape == (48, 4)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, 4, degree=7, atol=1e-6
+        )
+
+    def test_fixed_dimension_algorithms_reject_wrong_n(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(4, 7, algorithm=6)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(4, 7, algorithm=7)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 7, algorithm=8)
+
+    def test_n_below_2_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(1, 7)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 7, algorithm=9)
+
+
+class TestSpherSurfDegree14:
+    """Reuse row (design spec inventory row 179): wraps
+    cubature_points._fourteenth_order_unit_sphere_points_3d with a
+    *surface_area rescale rather than re-deriving the 72-point Stroud
+    U3 14-1 construction."""
+
+    def test_shape_and_exact_through_degree_14(self):
+        pts, w = spherical_surface_cubature_points(3, 14)
+        assert pts.shape == (72, 3)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0, 0, 0)), atol=1e-8)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, 3, degree=14, atol=1e-6
+        )
+
+    def test_requires_n3(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(2, 14)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 14, algorithm=1)
+
+
+class TestSpherSurfArbOrder:
+    """arbOrderSpherSurfCubPoints.m / arbOrder2DSpherSurfCubPoints.m
+    (design spec inventory rows 180): functionally covered by wrapping
+    cubature_points._sphere_surface_points, a DIFFERENT construction
+    (dimension-recursive Gauss-Jacobi vs Stroud's Theorem 2.7-3) than
+    MATLAB's own -- checked here against the closed-form oracle for
+    low-order-moment agreement, matching the design spec's stated purpose
+    for its own capture case (not a raw-point comparison, which would be
+    invalid for two different constructions of the same rule family)."""
+
+    @pytest.mark.parametrize("degree", [9, 11, 13])
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_exact_through_claimed_degree(self, degree, n):
+        pts, w = spherical_surface_cubature_points(n, degree)
+        assert_allclose(w.sum(), sphere_surface_monomial_integral((0,) * n), atol=1e-6)
+        assert_region_rule_exact(
+            pts, w, sphere_surface_monomial_integral, n, degree=degree, atol=1e-4
+        )
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = spherical_surface_cubature_points(3, 9)
+        pts2, w2 = spherical_surface_cubature_points(3, 9, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 9, algorithm=1)
+
+    def test_even_degree_at_or_above_9_raises(self):
+        # No MATLAB formula (named or arbOrder) exists at an even degree
+        # other than 14.
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 10)
+
+
+class TestSpherSurfCubaturePointsGeneral:
+    def test_unsupported_degree_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 2)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 4)
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(3, 6)
+
+    def test_invalid_n_raises(self):
+        with pytest.raises(ValueError):
+            spherical_surface_cubature_points(0, 1)
+
+
 _MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
 
 
@@ -1642,3 +2072,183 @@ class TestBallMatlabFixtures:
         ob = np.lexsort(ref_pts.T)
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
         assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+
+
+class TestSpherSurfMatlabFixtures:
+    """Cross-check against real MATLAB output (capture_region_rules.m).
+
+    firstOrderSpherSurfCubPoints, thirdOrderSpherSurfCubPoints (all 4
+    algorithms), fifthOrderSpherSurfCubPoints (algorithms 0-8), and
+    seventhOrderSpherSurfCubPoints (all 9 algorithms) are direct ports, so
+    those comparisons are value-for-value at float64 tolerance after
+    order-independent lexsort, matching TestBallMatlabFixtures's pattern.
+    fourteenthOrderSpherSurfCubPoints, arbOrderSpherSurfCubPoints, and
+    arbOrder2DSpherSurfCubPoints are the reuse rows (design spec inventory
+    rows 179-180): the first is a genuine direct-port comparison (this
+    module's spherical_surface_cubature_points(3, 14) rescales the SAME
+    72-point Stroud U3 14-1 construction cubature_points.py already ported,
+    so value-for-value comparison after lexsort is still valid); the other
+    two are DIFFERENT constructions of the same rule family (dimension-
+    recursive Gauss-Jacobi vs Stroud's Theorem 2.7-3), so those two cases
+    check only low-order-moment agreement against the MATLAB fixture's own
+    monomial moments, not raw coordinates -- exactly the design spec's
+    stated purpose for capturing them ("confirm the two constructions agree
+    on low-order moments even though the raw points differ").
+    """
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_first_order_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_firstOrderSpherSurfCubPoints_n{n}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(n, 1)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-9)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    @pytest.mark.parametrize("alg", [0, 1, 2])
+    def test_third_order_matches_matlab(self, n, alg):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_thirdOrderSpherSurfCubPoints_n{n}_alg{alg}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(n, 3, algorithm=alg)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-9)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-8)
+
+    def test_third_order_algorithm3_n3_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphsurf_thirdOrderSpherSurfCubPoints_n3_alg3.csv"
+        )
+        pts, w = spherical_surface_cubature_points(3, 3, algorithm=3)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-9)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-8)
+
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    def test_fifth_order_algorithm0_matches_matlab(self, n):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_fifthOrderSpherSurfCubPoints_n{n}_alg0.csv"
+        )
+        pts, w = spherical_surface_cubature_points(n, 5, algorithm=0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+    @pytest.mark.parametrize("alg", [1, 2, 3, 4, 5, 6, 7, 8])
+    def test_fifth_order_n3_matches_matlab(self, alg):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_fifthOrderSpherSurfCubPoints_n3_alg{alg}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(3, 5, algorithm=alg)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+    @pytest.mark.parametrize("n", [3, 4])
+    @pytest.mark.parametrize("alg", [0, 3, 4, 5])
+    def test_seventh_order_n3n4_matches_matlab(self, n, alg):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_seventhOrderSpherSurfCubPoints_n{n}_alg{alg}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(n, 7, algorithm=alg)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+
+    @pytest.mark.parametrize("alg", [1, 2])
+    def test_seventh_order_n4_formula_ii_iii_matches_matlab(self, alg):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_seventhOrderSpherSurfCubPoints_n4_alg{alg}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(4, 7, algorithm=alg)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+
+    @pytest.mark.parametrize("alg", [6, 7])
+    def test_seventh_order_n3_fixed_dim_matches_matlab(self, alg):
+        ref_pts, ref_w = _load_matlab_fixture(
+            f"region_sphsurf_seventhOrderSpherSurfCubPoints_n3_alg{alg}.csv"
+        )
+        pts, w = spherical_surface_cubature_points(3, 7, algorithm=alg)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-9)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-8)
+
+    def test_seventh_order_n4_algorithm8_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphsurf_seventhOrderSpherSurfCubPoints_n4_alg8.csv"
+        )
+        pts, w = spherical_surface_cubature_points(4, 7, algorithm=8)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-9)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-8)
+
+    def test_fourteenth_order_matches_matlab(self):
+        # Reuse row -- same 72-point Stroud U3 14-1 construction
+        # cubature_points.py already ported, so this is still a direct
+        # value-for-value comparison (not a low-order-moment-only check).
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphsurf_fourteenthOrderSpherSurfCubPoints_n3.csv"
+        )
+        pts, w = spherical_surface_cubature_points(3, 14)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
+    def test_arb_order_low_moments_agree_with_matlab(self):
+        # Reuse row, DIFFERENT construction (design spec's stated purpose
+        # for this capture case): compare low-order monomial moments
+        # computed from the MATLAB fixture's own points/weights against
+        # this module's oracle, not raw coordinates against this module's
+        # (differently-pointed) rule.
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphsurf_arbOrderSpherSurfCubPoints_n3_order5.csv"
+        )
+        for alpha in monomials_up_to(3, 4):
+            assert_allclose(
+                rule_moment(ref_pts, ref_w, alpha),
+                sphere_surface_monomial_integral(alpha),
+                atol=1e-6,
+                err_msg=f"MATLAB arbOrderSpherSurfCubPoints monomial {alpha}",
+            )
+        pts, w = spherical_surface_cubature_points(3, 9)
+        for alpha in monomials_up_to(3, 4):
+            assert_allclose(
+                rule_moment(pts, w, alpha),
+                sphere_surface_monomial_integral(alpha),
+                atol=1e-6,
+                err_msg=f"ported arbOrder-equivalent monomial {alpha}",
+            )
+
+    def test_arb_order_2d_low_moments_agree_with_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphsurf_arbOrder2DSpherSurfCubPoints_order5.csv"
+        )
+        for alpha in monomials_up_to(2, 4):
+            assert_allclose(
+                rule_moment(ref_pts, ref_w, alpha),
+                sphere_surface_monomial_integral(alpha),
+                atol=1e-8,
+                err_msg=f"MATLAB arbOrder2DSpherSurfCubPoints monomial {alpha}",
+            )
+        pts, w = spherical_surface_cubature_points(2, 9)
+        for alpha in monomials_up_to(2, 4):
+            assert_allclose(
+                rule_moment(pts, w, alpha),
+                sphere_surface_monomial_integral(alpha),
+                atol=1e-8,
+                err_msg=f"ported arbOrder-equivalent monomial {alpha}",
+            )

@@ -9,16 +9,17 @@ the ``Sphere`` region, ``|x|**alpha``) and reports the region's TRUE measure:
 weights sum to the region's volume, not to 1. This module currently covers
 the ``Cube_Space`` region (``[-1, 1]^n``, ``sum(w) == 2**n``), the
 ``Simplex`` region (the standard n-simplex ``{x >= 0, sum(x) <= 1}``,
-``sum(w) == 1/n!``), and the ``Sphere`` region (the unit ball
+``sum(w) == 1/n!``), the ``Sphere`` region (the unit ball
 ``{|x| <= 1}``, weight ``|x|**alpha``, ``sum(w) == 2/(n+alpha) * pi**(n/2) /
 gamma(n/2)`` -- the unit ball volume ``pi**(n/2) / gamma(n/2+1)`` when
-``alpha == 0``). A caller wanting the probability-normalized version divides
-by the returned volume (``weights / weights.sum()``), which is always safe;
-going the other way (recovering the true measure from a pre-normalized
-rule) is not possible without already knowing the volume. See
-``docs/superpowers/specs/2026-08-16-region-cubature-design.md`` Section 1 for
-the full rationale and the conventions pinned for the ``Spherical_Surface``
-region family (not yet ported here).
+``alpha == 0``), and the ``Spherical_Surface`` region (the unit sphere
+``S^(n-1) = {|x| == 1}``, weight 1, ``sum(w) == 2*pi**(n/2) / gamma(n/2)``
+-- the sphere's surface area). A caller wanting the probability-normalized
+version divides by the returned volume (``weights / weights.sum()``), which
+is always safe; going the other way (recovering the true measure from a
+pre-normalized rule) is not possible without already knowing the volume.
+See ``docs/superpowers/specs/2026-08-16-region-cubature-design.md`` Section
+1 for the full rationale.
 
 Ported from the Tracker Component Library's ``Cubature_Points/Cube_Space``
 and ``Cubature_Points/Simplex`` collections (top-level, general-dimension
@@ -56,8 +57,10 @@ files in the same directory are explicitly EXCLUDED, with reasons:
 - ``spherSurfPoints2SpherPoints.m`` converts an existing
   ``Spherical_Surface`` rule into a ball rule of matching order; superseded
   in practice now that :func:`ball_cubature_points` exists via direct
-  construction (design spec Section 8), and its own dependency
-  (``Spherical_Surface`` rules) is not yet ported into this module at all.
+  construction (design spec Section 8) -- even now that
+  :func:`spherical_surface_cubature_points` exists too (below), this
+  converter file itself remains unported since nothing in this module
+  needs it.
 
 **The ``arbOrderSpherCubPoints.m`` port (general dimension, general order,
 general real ``alpha``).** ``degree = 2*order - 1`` for any caller-chosen
@@ -299,6 +302,89 @@ EVERY other angular construction in this codebase, e.g.
 oracle to float64 tolerance through degree 7. :func:`ball_cubature_points`
 implements the corrected (``cos``, ``sin``) pairing for degree 7 algorithm 2.
 
+Also ported (this module's fourth region): the Tracker Component Library's
+``Cubature_Points/Spherical_Surface`` collection (unit sphere surface),
+Tier-1 top-level files only -- ``firstOrderSpherSurfCubPoints.m`` (despite
+its own header text reading "third-order," an audit-known docstring typo
+contradicted by the 2-point antipodal construction and its own citation --
+treated as a docstring error, not transcribed; the BODY, which computes a
+valid degree-1 rule, is what is ported), ``thirdOrderSpherSurfCubPoints.m``
+(all 4 algorithms), ``fifthOrderSpherSurfCubPoints.m`` (algorithms 0-8, see
+the fifth confirmed finding below), and ``seventhOrderSpherSurfCubPoints.m``
+(all 9 algorithms -- algorithm 0 reuses the private
+:func:`_seventh_order_sphere_surface_alg0` helper A3 already ported as a
+``ball_cubature_points`` degree-7 dependency, promoted here to also serve
+as :func:`spherical_surface_cubature_points`'s own degree-7 algorithm-0
+implementation, exactly as this module's earlier note anticipated ("a
+future task porting Spherical_Surface may promote or generalize this
+helper")). Two files are EXCLUDED, both ``n=3``-only (Tier 3 per the design
+spec's Section 8, same rationale as ``ninthOrderSpherCubPoints.m``/
+``eleventhOrderSpherCubPoints.m``'s exclusion from :func:`ball_cubature_points`):
+``ninthOrderSpherSurfCubPoints.m`` and ``eleventhOrderSpherSurfCubPoints.m``
+-- both degrees are reachable for ANY ``n`` via the general odd-degree
+``arbOrderSpherSurfCubPoints.m`` reuse path below, so nothing is lost.
+
+**Reuse, not reimplementation, for two further files** (design spec Section
+4, inventory rows 179-180): ``fourteenthOrderSpherSurfCubPoints.m`` (``n=3``
+only) wraps
+:func:`~pytcl.mathematical_functions.numerical_integration.cubature_points._fourteenth_order_unit_sphere_points_3d`,
+and ``arbOrderSpherSurfCubPoints.m``/``arbOrder2DSpherSurfCubPoints.m``
+(general ``n``, general odd degree >= 9) wrap
+:func:`~pytcl.mathematical_functions.numerical_integration.cubature_points._sphere_surface_points`
+-- both existing private helpers normalize to ``sum(w) == 1``, so
+:func:`spherical_surface_cubature_points` rescales their output by the
+closed-form surface area ``2*pi**(n/2)/gamma(n/2)`` rather than re-deriving
+either construction. The reused general-order construction is a genuinely
+DIFFERENT algorithm from MATLAB's own Gegenbauer-based
+``arbOrderSpherSurfCubPoints.m`` (dimension-recursive Gauss-Jacobi vs
+Stroud's Theorem 2.7-3) -- both produce a general-``n``, general-order rule
+for the uniform surface measure, and the design spec's own capture case for
+this file exists specifically to confirm LOW-ORDER-MOMENT agreement between
+the two constructions despite their different point sets, not to check
+raw-coordinate equality (which would be invalid for two different
+constructions of the same rule family, the same reasoning the LCD
+validation convention states explicitly for its own flat-optimum-manifold
+case).
+
+**A fifth confirmed MATLAB defect, a documentation-only mismatch (found in
+``fifthOrderSpherSurfCubPoints.m``), verified by direct inspection of the
+switch statement, not merely by reading the header comment.** The file's
+own docstring claims 10 algorithms exist, indices 0-9: index 8 described as
+"Algorithm U3 5-4 of [1], requiring 20 points," index 9 described as
+"Algorithm U3 5-5 of [1], requiring 30 points." The actual ``switch``
+statement, however, has cases only for indices 0 through 8 -- and the code
+at ``case 8`` computes the 30-point U3 5-5 formula the docstring attributes
+to index 9, not the 20-point U3 5-4 formula the docstring attributes to
+index 8. So real MATLAB, called with ``algorithm=8``, returns the 30-point
+formula; the 20-point U3 5-4 formula is simply never implemented anywhere
+in the file; and ``algorithm=9`` hits the ``otherwise`` branch and raises
+"Unknown algorithm specified." Per the port-fidelity-over-invention
+convention, this module transcribes what the CODE actually computes (index
+8 -> the 30-point formula) rather than what the docstring claims, and caps
+the supported range at 0-8 to match what is actually reachable in real
+MATLAB -- see :func:`_sphsurf_degree5`'s algorithm-8 branch and its
+``ValueError`` message for algorithms outside 0-8.
+
+**A related, non-defect finding: three degree-7 algorithms compute the
+IDENTICAL rule.** ``seventhOrderSpherSurfCubPoints.m`` algorithms 0
+("Formula I" of Stroud (1968)), 3 ("the formula from" Stroud (1967)), and 4
+("Un 7-1" of Stroud's 1971 book) each place the exact same three weight
+formulas onto the exact same three point blocks (an axis block at
+``k=1``, an axis block at ``k=2``, and an all-nonzero block at ``k=n``) --
+verified by matching each algorithm's coefficient formula symbol-for-symbol
+against the other two (not merely by both passing the same degree-7
+exactness oracle, which two DIFFERENT degree-7-exact rules could also both
+pass) and confirmed numerically in
+``tests/unit/test_region_cubature.py``'s
+``test_algorithm_0_3_4_compute_identical_rule``. Three different textbook
+citations for the same underlying Stroud construction, not three distinct
+rules -- each is still transcribed independently (not delegated to a
+shared implementation) to keep this module's per-algorithm dispatch a
+faithful mirror of MATLAB's own per-algorithm ``case`` structure, matching
+how ``ball_cubature_points`` keeps ``thirdOrderSpherCubPoints.m``'s five
+algorithms independently transcribed even where some literature formulas
+coincide.
+
 References
 ----------
 A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
@@ -317,6 +403,11 @@ from typing import Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 from scipy.special import roots_jacobi
+
+from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+    _fourteenth_order_unit_sphere_points_3d,
+    _sphere_surface_points,
+)
 
 
 def _pm_combos(x: NDArray[np.floating]) -> NDArray[np.floating]:
@@ -2153,4 +2244,600 @@ def ball_cubature_points(
         return _ball_arb_order(n, order, alpha)
     raise ValueError(
         f"unsupported degree {degree}; expected 2, 3, 5, 7, or any odd degree >= 9"
+    )
+
+
+def _sphsurf_area(n: int) -> float:
+    """integral_{S^(n-1)} dS(x) = 2*pi**(n/2) / gamma(n/2), the unit
+    sphere's surface area (module docstring's Spherical_Surface ``V``).
+    """
+    return 2.0 * math.pi ** (n / 2.0) / math.gamma(n / 2.0)
+
+
+def _regular_n_simplex_coords(n: int) -> NDArray[np.floating]:
+    """``regularNSimplexCoords.m`` (Geometry, outside this ported subset),
+    method 0 (cosine-based) -- the only method any Spherical_Surface caller
+    below needs. Returns shape ``(n, n+1)``: the n+1 vertices of a regular
+    n-simplex, each at unit distance from the origin, centroid 0 (columns
+    are vertices, MATLAB's own orientation -- callers below transpose as
+    needed for this module's ``(num_points, n)`` row convention).
+    """
+    points = np.zeros((n, n + 1))
+    r = np.arange(1, n // 2 + 1)
+    for k in range(n + 1):
+        points[2 * r - 2, k] = np.cos(2 * r * k * np.pi / (n + 1))
+        points[2 * r - 1, k] = np.sin(2 * r * k * np.pi / (n + 1))
+        if n % 2 != 0:
+            points[n - 1, k] = (-1.0) ** k / np.sqrt(2.0)
+    return points / np.sqrt(n / 2.0)
+
+
+def _regular_icosahedron_coords() -> NDArray[np.floating]:
+    """``regularIcosahedronCoords.m`` (Geometry, outside this ported
+    subset): the 12 vertices of a regular icosahedron, each at unit
+    distance from the origin -- used by
+    ``fifthOrderSpherSurfCubPoints.m`` algorithm 5 (U3 5-1, n=3 only).
+    Returns shape (12, 3) (rows are vertices, this module's convention).
+    """
+    r = math.sqrt((5.0 + math.sqrt(5.0)) / 10.0)
+    s = math.sqrt((5.0 - math.sqrt(5.0)) / 10.0)
+    return np.array(
+        [
+            [r, s, 0.0],
+            [r, -s, 0.0],
+            [-r, s, 0.0],
+            [-r, -s, 0.0],
+            [0.0, r, s],
+            [0.0, r, -s],
+            [0.0, -r, s],
+            [0.0, -r, -s],
+            [s, 0.0, r],
+            [s, 0.0, -r],
+            [-s, 0.0, r],
+            [-s, 0.0, -r],
+        ]
+    )
+
+
+def _sphsurf_axis_block(n: int, k: int, val: float) -> NDArray[np.floating]:
+    """``fullSymPerms`` of a vector with ``k`` entries equal to ``val`` and
+    the rest zero -- the shared point-block pattern used by every
+    Spherical_Surface "Un" formula below (Stroud's Un-family notation
+    places ``k`` nonzero coordinates, typically ``val = 1/sqrt(k)``, at
+    every position/sign combination)."""
+    vec = np.concatenate([np.full(k, val), np.zeros(n - k)])
+    return _full_sym_perms(vec)
+
+
+def _sphsurf_degree1(
+    n: int, algorithm: Optional[int]
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm not in (None, 0):
+        raise ValueError(
+            f"algorithm {algorithm} not ported for degree 1; expected 0 "
+            "(MATLAB's firstOrderSpherSurfCubPoints.m has no algorithm "
+            "parameter at all)"
+        )
+    V = _sphsurf_area(n)
+    points = np.zeros((2, n))
+    points[0, 0] = 1.0
+    points[1, 0] = -1.0
+    w = np.full(2, V / 2.0)
+    return points, w
+
+
+def _sphsurf_degree3(
+    n: int, algorithm: Optional[int]
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    V = _sphsurf_area(n)
+    if algorithm == 0:  # Un 3-1, 2n points.
+        points = np.vstack([np.eye(n), -np.eye(n)])
+        w = np.full(2 * n, V / (2.0 * n))
+        return points, w
+    if algorithm == 1:  # Un 3-2, 2^n points.
+        r = 1.0 / math.sqrt(n)
+        points = _pm_combos(r * np.ones(n))
+        w = np.full(points.shape[0], V * 2.0 ** (-n))
+        return points, w
+    if algorithm == 2:  # Mysovskikh, 2*(n+1) points.
+        v = _regular_n_simplex_coords(n)
+        points = np.vstack([v.T, -v.T])
+        w = np.full(2 * (n + 1), V / (2.0 * (n + 1)))
+        return points, w
+    if algorithm == 3:  # U3 3-1, 12 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 3 (U3 3-1) requires n == 3, got {n}")
+        r = 1.0 / math.sqrt(2.0)
+        points = _full_sym_perms(np.array([r, r, 0.0]))
+        w = np.full(12, V / 12.0)
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 3; expected one of 0-3"
+    )
+
+
+def _sphsurf_degree5(
+    n: int, algorithm: Optional[int]
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    V = _sphsurf_area(n)
+    if algorithm == 0:  # Un 5-1, 2n^2 points. Negative weights for n>4.
+        s = 1.0 / math.sqrt(2.0)
+        B1 = (4.0 - n) / (2.0 * n * (n + 2.0)) * V
+        B2 = 1.0 / (n * (n + 2.0)) * V
+        xi1 = _sphsurf_axis_block(n, 1, 1.0)
+        # MATLAB's own nested pair-loop (curIdx1=1:(numDim-1)) is simply
+        # empty at n=1 (MATLAB's `1:0` range), leaving this second block
+        # empty rather than erroring; matched here explicitly since
+        # _sphsurf_axis_block's vectorized construction would otherwise
+        # need a negative-length np.zeros(n - 2) at n=1.
+        if n >= 2:
+            xi2 = _full_sym_perms(np.concatenate([[s, s], np.zeros(n - 2)]))
+        else:
+            xi2 = np.zeros((0, n))
+        points = np.vstack([xi1, xi2])
+        w = np.concatenate([np.full(xi1.shape[0], B1), np.full(xi2.shape[0], B2)])
+        return points, w
+    if algorithm == 1:  # Un 5-2, 2^n+2n points.
+        s = 1.0 / math.sqrt(n)
+        B1 = 1.0 / (n * (n + 2.0)) * V
+        B2 = n / (2.0**n * (n + 2.0)) * V
+        xi1 = _sphsurf_axis_block(n, 1, 1.0)
+        xi2 = _pm_combos(s * np.ones(n))
+        points = np.vstack([xi1, xi2])
+        w = np.concatenate([np.full(xi1.shape[0], B1), np.full(xi2.shape[0], B2)])
+        return points, w
+    if algorithm == 2:  # Un 5-3, 2^(n+1)-2 points.
+        s = 1.0 / math.sqrt(n + 2.0)
+        vec = np.full(n, s)
+        points_list = []
+        weights_list = []
+        for k in range(1, n + 1):
+            r = math.sqrt((k + 2.0) / (n + 2.0))
+            B = V * 2.0 ** (k - n) * (n + 2.0) / (n * (k + 1.0) * (k + 2.0))
+            vec[k - 1] = r
+            combos = _pm_combos(vec[k - 1 :])
+            num_cur = combos.shape[0]
+            block = np.zeros((num_cur, n))
+            block[:, k - 1 :] = combos
+            points_list.append(block)
+            weights_list.append(np.full(num_cur, B))
+        return np.vstack(points_list), np.concatenate(weights_list)
+    if algorithm == 3:  # Un 5-4, n*2^n points.
+        u = math.sqrt(
+            (n + 2.0 + (n - 1.0) * math.sqrt(2.0 * (n + 2.0))) / (n * (n + 2.0))
+        )
+        v = math.sqrt((n + 2.0 - math.sqrt(2.0 * (n + 2.0))) / (n * (n + 2.0)))
+        num_points = n * 2**n
+        w = np.full(num_points, V / num_points)
+        blocks = []
+        for spot in range(n):
+            vec_cur = np.full(n, v)
+            vec_cur[spot] = u
+            blocks.append(_pm_combos(vec_cur))
+        return np.vstack(blocks), w
+    if algorithm == 4:  # Mysovskikh, (n+1)*(n+2) points. Negative weights
+        # for n>7.
+        v = _regular_n_simplex_coords(n)
+        w1 = V * (7.0 - n) * n / (2.0 * (n + 1.0) ** 2 * (n + 2.0))
+        w2 = V * 2.0 * (n - 1.0) ** 2 / (n * (n + 1.0) ** 2 * (n + 2.0))
+        block1 = np.vstack([-v.T, v.T])
+        edges = []
+        for i in range(n):
+            for j in range(i + 1, n + 1):
+                y = (v[:, i] + v[:, j]) / 2.0
+                y = y / np.linalg.norm(y)
+                edges.append(-y)
+                edges.append(y)
+        edges = np.array(edges)
+        points = np.vstack([block1, edges])
+        w = np.concatenate([np.full(block1.shape[0], w1), np.full(edges.shape[0], w2)])
+        return points, w
+    if algorithm == 5:  # U3 5-1, 12 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 5 (U3 5-1) requires n == 3, got {n}")
+        points = _regular_icosahedron_coords()
+        w = np.full(12, V / 12.0)
+        return points, w
+    if algorithm == 6:  # U3 5-2, 14 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 6 (U3 5-2) requires n == 3, got {n}")
+        s = 1.0 / math.sqrt(3.0)
+        B1 = (8.0 / 120.0) * V
+        B2 = (9.0 / 120.0) * V
+        points = np.vstack(
+            [_full_sym_perms(np.array([1.0, 0.0, 0.0])), _pm_combos([s, s, s])]
+        )
+        w = np.concatenate([np.full(6, B1), np.full(8, B2)])
+        return points, w
+    if algorithm == 7:  # U3 5-3, 18 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 7 (U3 5-3) requires n == 3, got {n}")
+        s = 1.0 / math.sqrt(2.0)
+        B1 = (1.0 / 30.0) * V
+        B2 = (2.0 / 30.0) * V
+        points = np.vstack(
+            [
+                _full_sym_perms(np.array([1.0, 0.0, 0.0])),
+                _full_sym_perms(np.array([s, s, 0.0])),
+            ]
+        )
+        w = np.concatenate([np.full(6, B1), np.full(12, B2)])
+        return points, w
+    if algorithm == 8:  # U3 5-5, 30 points, n=3. See module docstring's
+        # fifth confirmed finding: MATLAB's own docstring mislabels this
+        # (claims index 8 is a different, never-implemented 20-point
+        # formula and index 9 is this 30-point one) -- this is what the
+        # CODE at switch-case index 8 actually computes; index 9 does not
+        # exist in the switch at all (raises "Unknown algorithm specified"
+        # in real MATLAB).
+        if n != 3:
+            raise ValueError(f"algorithm 8 (U3 5-5) requires n == 3, got {n}")
+        r = 0.5
+        s = (math.sqrt(5.0) + 1.0) / 4.0
+        t = (math.sqrt(5.0) - 1.0) / 4.0
+        B = V / 30.0
+        points = np.vstack(
+            [
+                _full_sym_perms(np.array([1.0, 0.0, 0.0])),
+                _pm_combos([r, s, t]),
+                _pm_combos([t, r, s]),
+                _pm_combos([s, t, r]),
+            ]
+        )
+        w = np.full(30, B)
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 5; expected one of "
+        "0-8 (MATLAB's own docstring claims algorithms up to 9 exist, but "
+        "only 0-8 are actually reachable via the switch statement -- see "
+        "module docstring)"
+    )
+
+
+def _sphsurf_degree7(
+    n: int, algorithm: Optional[int]
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    if algorithm is None:
+        algorithm = 0
+    if n < 2:
+        # seventhOrderSpherSurfCubPoints.m's own header states "numDim>=2"
+        # for the FILE as a whole (unlike third/fifth order, which state no
+        # such bound); individual algorithms further restrict n above.
+        raise ValueError(
+            f"degree 7 (seventhOrderSpherSurfCubPoints.m) requires n >= 2, got {n}"
+        )
+    if algorithm == 0:  # Formula I from [1], 2^n+2n^2 points, n>=3.
+        if n < 3:
+            raise ValueError(f"algorithm 0 (Formula I) requires n >= 3, got {n}")
+        return _seventh_order_sphere_surface_alg0(n)
+    if algorithm == 1:  # Formula II from [1], n>=4.
+        if n < 4:
+            raise ValueError(f"algorithm 1 (Formula II) requires n >= 4, got {n}")
+        V = _sphsurf_area(n)
+        A1 = (14.0 - n) / (2.0 * n * (n + 2.0) * (n + 4.0)) * V
+        A2 = 27.0 / (4.0 * n * (n + 2.0) * (n + 4.0) * (n - 3.0)) * V
+        A3 = n**3 * (n - 5.0) / (2.0**n * n * (n + 2.0) * (n + 4.0) * (n - 3.0)) * V
+        xi1 = _sphsurf_axis_block(n, 1, 1.0)
+        xi2 = _sphsurf_axis_block(n, 3, 1.0 / math.sqrt(3.0))
+        xi3 = _sphsurf_axis_block(n, n, 1.0 / math.sqrt(n))
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.concatenate(
+            [
+                np.full(xi1.shape[0], A1),
+                np.full(xi2.shape[0], A2),
+                np.full(xi3.shape[0], A3),
+            ]
+        )
+        return points, w
+    if algorithm == 2:  # Formula III from [1], n>=4.
+        if n < 4:
+            raise ValueError(f"algorithm 2 (Formula III) requires n >= 4, got {n}")
+        V = _sphsurf_area(n)
+        A1 = 4.0 * (14.0 - n) / (n * (n + 2.0) * (n + 4.0) * (n - 2.0)) * V
+        A2 = (
+            27.0
+            * (n - 8.0)
+            / (2.0 * n * (n + 2.0) * (n + 4.0) * (n - 2.0) * (n - 3.0))
+            * V
+        )
+        A3 = (
+            n**3
+            * (n**2 - 9.0 * n + 38.0)
+            / (2.0**n * n * (n + 2.0) * (n + 4.0) * (n - 2.0) * (n - 3.0))
+            * V
+        )
+        xi1 = _sphsurf_axis_block(n, 2, 1.0 / math.sqrt(2.0))
+        xi2 = _sphsurf_axis_block(n, 3, 1.0 / math.sqrt(3.0))
+        xi3 = _sphsurf_axis_block(n, n, 1.0 / math.sqrt(n))
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.concatenate(
+            [
+                np.full(xi1.shape[0], A1),
+                np.full(xi2.shape[0], A2),
+                np.full(xi3.shape[0], A3),
+            ]
+        )
+        return points, w
+    if algorithm == 3:  # Formula from [2], 2^n+2n^2 points, n>=3. Verified
+        # (TestSpherSurfDegree7's test_algorithm_0_3_4_compute_identical_rule)
+        # to compute the IDENTICAL rule as algorithm 0 -- the same three
+        # weight formulas assigned to the same three point blocks, just
+        # built in a different order (module docstring).
+        if n < 3:
+            raise ValueError(f"algorithm 3 requires n >= 3, got {n}")
+        V = _sphsurf_area(n)
+        A1 = (8.0 - n) / (n * (n + 2.0) * (n + 4.0)) * V
+        A2 = 2.0 ** (-n) * n**3 / (n * (n + 2.0) * (n + 4.0)) * V
+        A3 = 4.0 / (n * (n + 2.0) * (n + 4.0)) * V
+        xi1 = _sphsurf_axis_block(n, 1, 1.0)
+        xi2 = _sphsurf_axis_block(n, n, 1.0 / math.sqrt(n))
+        xi3 = _sphsurf_axis_block(n, 2, 1.0 / math.sqrt(2.0))
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.concatenate(
+            [
+                np.full(xi1.shape[0], A1),
+                np.full(xi2.shape[0], A2),
+                np.full(xi3.shape[0], A3),
+            ]
+        )
+        return points, w
+    if algorithm == 4:  # Un 7-1 from [3], 2^n+2n^2 points, n>=2. Also
+        # verified identical to algorithms 0 and 3 (module docstring).
+        V = _sphsurf_area(n)
+        B = (8.0 - n) / (n * (n + 2.0) * (n + 4.0)) * V
+        C = (2.0 ** (-n) * n**3) / (n * (n + 2.0) * (n + 4.0)) * V
+        D = 4.0 / (n * (n + 2.0) * (n + 4.0)) * V
+        xi1 = _sphsurf_axis_block(n, 1, 1.0)
+        xi2 = _pm_combos((1.0 / math.sqrt(n)) * np.ones(n))
+        xi3 = _sphsurf_axis_block(n, 2, 1.0 / math.sqrt(2.0))
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.concatenate(
+            [
+                np.full(xi1.shape[0], B),
+                np.full(xi2.shape[0], C),
+                np.full(xi3.shape[0], D),
+            ]
+        )
+        return points, w
+    if algorithm == 5:  # Un 7-2 from [3], 2^n*(n+1) points. (n>=2 already
+        # enforced by the blanket check above.)
+        V = _sphsurf_area(n)
+        r = math.sqrt(1.0 / n)
+        s = math.sqrt(5.0 / (n + 4.0))
+        t = math.sqrt(1.0 / (n + 4.0))
+        A = -(n**2) / (2.0 ** (n + 3.0) * (n + 2.0)) * V
+        B = (n + 4.0) ** 2 / (2.0 ** (n + 3.0) * n * (n + 2.0)) * V
+        xi1 = _pm_combos(r * np.ones(n))
+        xi2 = _full_sym_perms(np.concatenate([[s], t * np.ones(n - 1)]))
+        points = np.vstack([xi1, xi2])
+        w = np.concatenate([np.full(xi1.shape[0], A), np.full(xi2.shape[0], B)])
+        return points, w
+    if algorithm == 6:  # U3 7-1, 24 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 6 (U3 7-1) requires n == 3, got {n}")
+        coeffs = [1.0, 0.0, -1.0, 0.0, 1.0 / 5.0, 0.0, -1.0 / 105.0]
+        roots = np.roots(coeffs)
+        real_pos = sorted(
+            (rt.real for rt in roots if abs(rt.imag) < 1e-9 and rt.real > 0),
+            reverse=True,
+        )
+        r, s, t = real_pos[0], real_pos[1], real_pos[2]
+        u_vals = np.array([r, -r, s, -s, t, -t])
+        v_vals = np.array([s, t, t, r, r, s])
+        z_vals = np.array([t, s, r, t, s, r])
+        points = np.zeros((24, 3))
+        for i in range(6):
+            points[i] = [u_vals[i], v_vals[i], z_vals[i]]
+            points[i + 6] = [u_vals[i], -v_vals[i], -z_vals[i]]
+            points[i + 12] = [u_vals[i], z_vals[i], -v_vals[i]]
+            points[i + 18] = [u_vals[i], -z_vals[i], v_vals[i]]
+        V = _sphsurf_area(3)
+        w = np.full(24, V / 24.0)
+        return points, w
+    if algorithm == 7:  # U3 7-2, 26 points, n=3.
+        if n != 3:
+            raise ValueError(f"algorithm 7 (U3 7-2) requires n == 3, got {n}")
+        s = 1.0 / math.sqrt(2.0)
+        t = 1.0 / math.sqrt(3.0)
+        V = _sphsurf_area(3)
+        xi1 = _full_sym_perms(np.array([1.0, 0.0, 0.0]))
+        xi2 = _full_sym_perms(np.array([s, s, 0.0]))
+        xi3 = _pm_combos([t, t, t])
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.concatenate(
+            [
+                np.full(6, (40.0 / 840.0) * V),
+                np.full(12, (32.0 / 840.0) * V),
+                np.full(8, (27.0 / 840.0) * V),
+            ]
+        )
+        return points, w
+    if algorithm == 8:  # U4 7-1, 48 points, n=4.
+        if n != 4:
+            raise ValueError(f"algorithm 8 (U4 7-1) requires n == 4, got {n}")
+        s = 0.5
+        t = 1.0 / math.sqrt(2.0)
+        V = _sphsurf_area(4)
+        xi1 = _full_sym_perms(np.array([1.0, 0.0, 0.0, 0.0]))
+        xi2 = _pm_combos([s, s, s, s])
+        xi3 = _full_sym_perms(np.array([t, t, 0.0, 0.0]))
+        points = np.vstack([xi1, xi2, xi3])
+        w = np.full(48, V / 48.0)
+        return points, w
+    raise ValueError(
+        f"algorithm {algorithm} not ported for degree 7; expected one of 0-8"
+    )
+
+
+def spherical_surface_cubature_points(
+    n: int, degree: int, algorithm: Optional[int] = None
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Cubature points for the unit sphere surface ``S^(n-1) = {x : |x| = 1}``.
+
+    Counterpart of the MATLAB TCL's ``Spherical_Surface`` top-level files
+    (see this module's docstring for the full per-degree algorithm
+    coverage). Degrees 1, 3, 5, and 7 are direct ports of the matching
+    named-formula MATLAB file; degree 14 (n=3 only) and every odd degree
+    >= 9 REUSE existing private helpers from
+    :mod:`~pytcl.mathematical_functions.numerical_integration.cubature_points`
+    rather than re-deriving those constructions (design spec Section 4,
+    rows 179-180 of its inventory): ``fourteenthOrderSpherSurfCubPoints.m``
+    wraps :func:`~pytcl.mathematical_functions.numerical_integration.cubature_points._fourteenth_order_unit_sphere_points_3d`,
+    and every general-``n``, general-odd-degree >= 9 case (superseding
+    ``arbOrderSpherSurfCubPoints.m`` and, at ``n=2``,
+    ``arbOrder2DSpherSurfCubPoints.m``) wraps
+    :func:`~pytcl.mathematical_functions.numerical_integration.cubature_points._sphere_surface_points`
+    -- both private helpers normalize to ``sum(w) == 1``, so this function
+    rescales by the closed-form surface area (below) rather than
+    transcribing a second, functionally-equivalent-but-differently-pointed
+    construction. This is the one place ``region_cubature.py`` depends on
+    ``cubature_points.py`` (one-directional; never the reverse -- module
+    docstring).
+
+    Every degree here is exact through that total polynomial degree --
+    verified against the closed-form surface-monomial oracle
+    (``sphere_surface_monomial_integral``) in
+    ``tests/unit/test_region_cubature.py`` for the ``(n, degree,
+    algorithm)`` grid its test classes sweep; no wider claim is made (per
+    the claims-inherit-measurement-range convention). This also includes
+    the two reused-construction cases: the wrapped
+    ``_sphere_surface_points`` general path is checked at low order
+    against the same oracle to confirm it agrees with the closed-form
+    moments despite using a different point set than MATLAB's own
+    ``arbOrderSpherSurfCubPoints`` construction would (design spec's
+    stated purpose for that capture case).
+
+    **Weight convention (region measure, not probability).** ``weights``
+    sum to the unit sphere's surface area ``2*pi**(n/2) / gamma(n/2)``, NOT
+    to 1 -- this module targets the plain (uniform) surface measure on
+    ``S^(n-1)``, unlike
+    :mod:`~pytcl.mathematical_functions.numerical_integration.cubature_points`'s
+    Gaussian-weight rules (whose surface-adjacent helpers, e.g.
+    :func:`~pytcl.mathematical_functions.numerical_integration.cubature_points.sphere_surface_to_gauss_points`,
+    normalize to 1 because their consumers are Kalman-family filters
+    computing ``E[f(X)]``). A caller wanting a probability-normalized rule
+    divides by the surface area themselves: ``weights / weights.sum()``.
+
+    Parameters
+    ----------
+    n : int
+        Dimension, n >= 1 (individual algorithms below may require more,
+        e.g. degree 14 requires n == 3).
+    degree : int
+        Polynomial degree the rule is exact through. One of 1, 3, 5, 7, 14,
+        or any ODD degree >= 9 (9, 11, 13, ...): 1/3/5/7 are the top-level,
+        named-formula degrees MATLAB's ``Spherical_Surface`` directory
+        provides for general ``n``; 14 is the fixed-``n=3`` Stroud U3 14-1
+        construction (reused, see above); odd degrees >= 9 dispatch to the
+        general-``n``, general-order reused construction -- this also
+        SUPERSEDES MATLAB's ``ninthOrderSpherSurfCubPoints.m`` and
+        ``eleventhOrderSpherSurfCubPoints.m`` (both ``n=3``-only, Tier 3 per
+        the design spec's Section 8 -- not individually ported here, same
+        rationale as :func:`ball_cubature_points`'s analogous exclusion of
+        ``ninthOrderSpherCubPoints.m``/``eleventhOrderSpherCubPoints.m``).
+        An EVEN degree other than 14 (e.g. 10) has no MATLAB formula in
+        this directory at all and raises ``ValueError``.
+    algorithm : int, optional
+        Which MATLAB algorithm variant to use; see each degree's section in
+        the module docstring for the ported subset. Default None reproduces
+        MATLAB's own default selection for that degree:
+
+        - degree 1: algorithm 0 (the only variant; MATLAB's
+          ``firstOrderSpherSurfCubPoints.m`` takes no algorithm argument).
+        - degree 3: algorithm 0 (Un 3-1, 2n points). Algorithms 1 (Un 3-2,
+          2^n points), 2 (Mysovskikh, 2*(n+1) points), 3 (U3 3-1, n=3, 12
+          points) are the other ported variants.
+        - degree 5: algorithm 0 (Un 5-1, 2n^2 points, negative weights for
+          n>4). Algorithms 1-4 are general-n (Un 5-2 through Un 5-4, plus
+          Mysovskikh); 5-8 are the n=3 fixed-dimension variants (U3 5-1
+          through a 30-point formula MATLAB's own docstring mislabels --
+          see module docstring's fifth confirmed finding). Algorithm index
+          9 does not exist (MATLAB raises "Unknown algorithm specified").
+        - degree 7: algorithm 0 (Formula I, general n>=3) always, matching
+          MATLAB's own unconditional default (mirroring
+          :func:`ball_cubature_points`'s degree-7 dispatch note -- calling
+          this with n < 3 and no explicit algorithm raises ``ValueError``
+          from algorithm 0's own guard). Algorithms 1-2 are general-n
+          (n>=4); 3-4 are general-n (n>=3, n>=2 respectively) and are
+          VERIFIED to compute the identical rule as algorithm 0 (see
+          module docstring); 5 is general-n (n>=2); 6-8 are the fixed-n=3/
+          n=3/n=4 variants.
+        - degree 14: algorithm 0 (the only variant; MATLAB's
+          ``fourteenthOrderSpherSurfCubPoints.m`` takes no algorithm
+          argument, and only n=3 is supported).
+        - degree >= 9 (odd): algorithm must be None or 0 (MATLAB's
+          ``arbOrderSpherSurfCubPoints.m`` takes no algorithm parameter).
+
+    Returns
+    -------
+    points : ndarray
+        Shape (num_points, n).
+    weights : ndarray
+        Shape (num_points,), summing to the sphere surface area (see
+        above), not 1.
+
+    Examples
+    --------
+    >>> pts, w = spherical_surface_cubature_points(3, 3)
+    >>> pts.shape
+    (6, 3)
+    >>> round(float(w.sum()), 9)  # surface area of S^2, 4*pi
+    12.566370614
+    >>> round(float(np.sum(w * pts[:, 0] ** 2)), 9)  # integral of x^2, 4*pi/3
+    4.188790205
+
+    References
+    ----------
+    A. H. Stroud, "Approximate Calculation of Multiple Integrals,"
+    Prentice-Hall, 1971, Formulas Un 3-1/3-2, U3 3-1, Un 5-1 through 5-4,
+    U3 5-1/5-2/5-3/5-5, Un 7-1/7-2, U3 7-1/7-2, U4 7-1, U3 14-1, pp. 292-302.
+
+    A. H. Stroud, "Some seventh degree integration formulas for the
+    surface of an n-sphere," Numerische Mathematik, vol. 11, no. 3,
+    pp. 273-276, Mar. 1968.
+
+    I. P. Mysovskikh, "The approximation of multiple integrals by using
+    interpolatory cubature formulae," in Quantitative Approximation,
+    R. A. DeVore and K. Scherer, eds., Academic Press, 1980, pp. 217-243.
+
+    R. Cools, "An encyclopedia of cubature formulas," Journal of
+    Complexity, vol. 19, no. 3, pp. 445-453, Jun. 2003.
+    """
+    if n < 1:
+        raise ValueError(f"dimension must be >= 1, got {n}")
+    if degree == 1:
+        return _sphsurf_degree1(n, algorithm)
+    if degree == 3:
+        return _sphsurf_degree3(n, algorithm)
+    if degree == 5:
+        return _sphsurf_degree5(n, algorithm)
+    if degree == 7:
+        return _sphsurf_degree7(n, algorithm)
+    if degree == 14:
+        if algorithm not in (None, 0):
+            raise ValueError(
+                f"algorithm {algorithm} not ported for degree 14; expected "
+                "0 (MATLAB's fourteenthOrderSpherSurfCubPoints.m has no "
+                "algorithm parameter at all)"
+            )
+        if n != 3:
+            raise ValueError(f"degree 14 requires n == 3, got {n}")
+        pts, w = _fourteenth_order_unit_sphere_points_3d()
+        return pts, w * _sphsurf_area(3)
+    if degree >= 9 and degree % 2 == 1:
+        if algorithm not in (None, 0):
+            raise ValueError(
+                f"algorithm {algorithm} not ported for degree {degree}; "
+                "expected 0 (MATLAB's arbOrderSpherSurfCubPoints.m has no "
+                "algorithm parameter at all)"
+            )
+        pts, w = _sphere_surface_points(n, degree)
+        return pts, w * _sphsurf_area(n)
+    raise ValueError(
+        f"unsupported degree {degree}; expected 1, 3, 5, 7, 14, or any odd degree >= 9"
     )
