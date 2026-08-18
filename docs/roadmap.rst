@@ -7,10 +7,10 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.4.0)
+Current State (v2.5.0)
 ----------------------
 
-* **7,000+ tests** passing, 90% coverage, docstring examples run in CI
+* **7,000+ tests** passing, 85% coverage, docstring examples run in CI
 * **Typed configs and sessions** (:doc:`sessions`): ``msgspec.Struct``
   configs (``IMMConfig``, ``GaussianSumConfig``, ``RBPFConfig``,
   ``SingleTargetConfig``, ``MultiTargetConfig``) accepted via a
@@ -43,9 +43,11 @@ Next
 ----
 
 * **Measured backlog**: the remaining MATLAB parity gaps
-  (:doc:`matlab_parity_inventory`) — the cubature remainder (LCD samples,
-  region-specific rules), the refraction suite, localization estimators,
-  and filter variants.
+  (:doc:`matlab_parity_inventory`) — the cubature-point library's
+  dimension-specialized subdirectory files and out-of-scope region types
+  (LCD samples and the general-dimension region-cubature rules have
+  shipped), the refraction suite, localization estimators, and filter
+  variants.
 
 Long term (unscheduled)
 -----------------------

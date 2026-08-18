@@ -4,7 +4,7 @@ Library Architecture
 Overview
 --------
 
-``pytcl`` is **143 modules** across **22 implemented packages**, exporting about
+``pytcl`` is **145 modules** across **22 implemented packages**, exporting about
 1044 public names. There is no framework object to inherit from: the library is a
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.

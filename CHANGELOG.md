@@ -5,14 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.5.0] - 2026-08-18
 
 ### Added
-- **MATLAB parity fixtures captured** -- all 113 fixture CSVs the three
+- **MATLAB parity fixtures captured** -- all 114 fixture CSVs the three
   `scripts/matlab_capture/` scripts produce (10 seventh-order, 15 LCD,
-  88 region-cubature) are now committed to `tests/fixtures/matlab/`,
+  89 region-cubature) are now committed to `tests/fixtures/matlab/`,
   captured 2026-08-18 in one MATLAB R2026a session against a
-  TrackerComponentLibrary checkout at 593ce51 on an Apple M3
+  TrackerComponentLibrary checkout at 593ce51 on an Apple M3 Max
   (`quasiNewtonLBFGS` MEX-compiled from that checkout's sources; every
   LCD case converged with `exitCode=0` and a capture-twice determinism
   diff of exactly 0). The full fixture-gated suite passes under
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   previously deferred: `TestGaussianLCDSamplesMatlabFixtures`
   (`tests/unit/test_lcd_samples.py`), skip-gated on the `lcd_n<N>_pts<P>*`
   fixtures `scripts/matlab_capture/capture_lcd.m` produces (captured
-  2026-08-18 with MATLAB R2026a against TCL 593ce51 on an Apple M3 and
+  2026-08-18 with MATLAB R2026a against TCL 593ce51 on an Apple M3 Max and
   committed to `tests/fixtures/matlab/`;
   `PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns any missing-fixture skip into
   a hard failure), compares: (1) the sorted Gram-matrix
@@ -314,7 +314,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version uses `np.linalg.inv` once per track instead. Measured on Apple M3
   Max, 2026-08-18 (`test_jpda_update_100_targets_50_meas`,
   `--benchmark-min-rounds=50 --benchmark-warmup=on`, median of 5 runs):
-  34.26 ms -> 11.76 ms median (-65.7%, ~2.9x). Behavior-equality verified
+  34.26 ms -> 11.76 ms median (-65.7%, ~2.9x) -- the mahalanobis-dispatch
+  bullet above measured this same pre-task-1 state at 33.55 ms; the two
+  numbers come from different measurement runs of the same benchmark
+  (~2% variance), not a discrepancy. Behavior-equality verified
   against a frozen copy of the pre-restructure loop across 20 seeded
   scenarios spanning n_tracks in {1,3,10,40}, n_meas in {0,1,7,25}, m in
   {2,3,4,6}, and covariance-eigenvalue scale log-uniform over [1e-6, 1e6]
