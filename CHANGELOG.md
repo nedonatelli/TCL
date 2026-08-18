@@ -35,9 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invariant under any global orthogonal transform for `n >= 2`, so a
   minimizer sits on a flat manifold, not an isolated point), validation
   does NOT compare raw coordinates against MATLAB fixtures -- that
-  comparison is provably invalid for `n >= 2` and is deferred to a
-  future task's rotation/permutation-invariant Gram-spectrum check. This
-  task's own tests instead cover: convergence (success + objective
+  comparison is provably invalid for `n >= 2`. This task's own tests
+  cover: convergence (success + objective
   decrease from init) on the grid `{(1,5),(2,10),(2,20),(3,15),(4,20)}`;
   exact moment identities (mean 0, covariance `I`) under
   `force_cov_match`; bit-exact determinism given a seeded
@@ -52,7 +51,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   different integrands and would need `scipy.integrate.quad_vec` (a
   different tolerance regime, requiring re-validation against B1's
   ~2e-16 accuracy bar) to merge; left unmerged and documented in the
-  module docstring rather than risked.
+  module docstring rather than risked. A follow-up task (B3) added the
+  rotation/permutation-invariant MATLAB-fixture comparison this bullet
+  previously deferred: `TestGaussianLCDSamplesMatlabFixtures`
+  (`tests/unit/test_lcd_samples.py`), skip-gated on the `lcd_n<N>_pts<P>*`
+  fixtures `scripts/matlab_capture/capture_lcd.m` produces (none captured
+  in this checkout as of writing; `PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns
+  the skip into a hard failure), compares: (1) the sorted Gram-matrix
+  eigenvalue spectrum of the full point set (rotation- and
+  permutation-invariant, unlike raw coordinates) against the fixture's,
+  both sides started from the fixture's own captured `sInit` so both
+  optimizers begin in the same basin; (2) the port's CvM objective value,
+  `D1`/`computeDo2ContTerm` added back exactly as `GaussianLCDSamples.m`
+  does, against the fixture's `CvMDistMin`, at the design spec's stated
+  placeholder 1e-4 relative tolerance (not yet calibrated against real
+  captured data -- flagged in-test); (3) exact mean/covariance identities
+  on the fixture's own points. A "Gaussian LCD Samples" section was added
+  to the user guide (`docs/user_guide/mathematical_functions.rst`): what
+  the samples are, when to prefer them over the fixed-degree cubature
+  rules above, the rotation-invariance/manifold caveat, and an executable
+  example.
 - **`spherical_surface_cubature_points`** -- cubature points for the unit
   sphere surface `S^(n-1) = {x : |x| == 1}`
   (`pytcl.mathematical_functions.numerical_integration.region_cubature`).

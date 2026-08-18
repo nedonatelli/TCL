@@ -560,6 +560,72 @@ construction already used internally by ``spherical_radial_points``)
 rather than re-deriving them, rescaled from their native sum-to-1
 convention to this module's sum-to-surface-area convention.
 
+Gaussian LCD Samples
+^^^^^^^^^^^^^^^^^^^^
+
+``gaussian_lcd_samples(n, num_points, force_cov_match=True, rng=None,
+max_iter=1000)`` builds a Dirac-mixture (particle-set) approximation to
+N(0, I_n) by numerically minimizing a modified Cramer-von Mises (CvM)
+distance between the point set's localized CDF and the true Gaussian's,
+ported from MATLAB TCL's ``GaussianLCDSamples``. Unlike the cubature rules
+above, which are closed-form and return whatever fixed point count the
+rule's polynomial-exactness degree dictates, LCD samples are built for an
+arbitrary, caller-chosen ``num_points`` (any count ``>= 2*n``, even or
+odd) via ``scipy.optimize.minimize(method="L-BFGS-B")`` -- there is no
+"exactness degree" here, only a converged approximation quality.
+
+**When to prefer this over a cubature rule.** LCD optimization is
+comparatively expensive (the MATLAB source's own header comment calls the
+algorithm "generally too slow ... for real-time systems") and carries no
+polynomial-exactness guarantee, so it is not a drop-in replacement for the
+fixed-degree sigma-point sets above. Prefer it when the point count itself
+is the actual requirement -- e.g. a downstream particle filter or
+Monte-Carlo consumer needs exactly ``num_points`` weighted samples and no
+fixed-degree cubature rule happens to produce that count -- and the
+optimization cost is acceptable (an offline / precomputed step, not inside
+a real-time filter's per-step loop). Prefer a cubature rule instead
+whenever a specific polynomial-exactness degree is what actually matters,
+or points are needed on every filter step.
+
+**The manifold caveat -- read this before comparing output across runs or
+against MATLAB.** For ``n >= 2`` the CvM cost is provably invariant under
+any global orthogonal (rotation/reflection) transform applied to every
+point simultaneously, so a minimizer sits on a continuous flat manifold of
+equally-optimal solutions, not an isolated point. Two correctly converged
+runs -- including this port versus a MATLAB ``GaussianLCDSamples`` run
+started from the identical seed matrix -- generically land on *different*
+points of that manifold: same CvM cost, different raw coordinates. This is
+expected, not a bug, and is why this port's own MATLAB-fixture tests never
+compare raw coordinates for ``n >= 2`` (see
+``tests/unit/test_lcd_samples.py::TestGaussianLCDSamplesMatlabFixtures``,
+which instead compares the rotation-and-permutation-invariant Gram-matrix
+eigenvalue spectrum, the CvM objective value, and the sample mean and
+covariance). Only ``n == 1`` has a discrete symmetry group (``{+1, -1}``),
+where raw coordinates are a meaningful comparison.
+
+.. code-block:: python
+
+   from pytcl.mathematical_functions.numerical_integration import (
+       gaussian_lcd_samples,
+   )
+
+   # Small, fast case for this example: low max_iter keeps it quick and is
+   # not a claim about converged accuracy at that setting (see the
+   # function's own docstring for measured convergence behavior at the
+   # default max_iter=1000).
+   pts, w = gaussian_lcd_samples(
+       2, 10, rng=np.random.default_rng(0), max_iter=50
+   )
+   assert pts.shape == (10, 2)
+   assert w.shape == (10,)
+   assert round(float(w.sum()), 12) == 1.0
+
+   # force_cov_match=True (the default) whitens the result so the sample
+   # mean and covariance match N(0, I) to float64 precision -- exactly by
+   # construction, not a statistical approximation.
+   assert bool(np.allclose(pts.mean(axis=0), 0.0, atol=1e-10))
+   assert bool(np.allclose((pts * w[:, None]).T @ pts, np.eye(2), atol=1e-8))
+
 Geometry
 --------
 

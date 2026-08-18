@@ -22,6 +22,9 @@ Assertions allow 1e-5 (margin >= 10x); anything worse than 1e-4 would
 indicate a transcription error per the campaign brief.
 """
 
+import os
+from pathlib import Path
+
 import numpy as np
 import pytest
 from scipy.special import exp1
@@ -423,3 +426,253 @@ class TestGaussianLCDSamplesPublicAPIExport:
         points, weights = exported(2, 10, rng=np.random.default_rng(1))
         assert points.shape == (10, 2)
         assert weights.shape == (10,)
+
+
+_MATLAB_FIXTURES = Path(__file__).parents[1] / "fixtures" / "matlab"
+
+
+def _load_lcd_fixture(n, num_points):
+    """Load one (n, num_points) LCD MATLAB fixture case.
+
+    Skip-gated per the repo's established convention
+    (tests/unit/test_cubature_points.py's ``_load_matlab_fixture`` /
+    tests/unit/test_region_cubature.py's twin): skips gracefully if any of
+    the case's three ``lcd_n<N>_pts<P>*.csv`` files is absent, or fails hard
+    under ``PYTCL_REQUIRE_MATLAB_FIXTURES=1``. No lcd_* fixtures exist in
+    this checkout as of writing -- every test in
+    TestGaussianLCDSamplesMatlabFixtures skips until a maintainer with
+    MATLAB access runs ``scripts/matlab_capture/capture_lcd.m`` (which
+    itself requires that MATLAB checkout's ``CompileCLibraries.m`` to have
+    already been run, so ``quasiNewtonLBFGS`` exists as a compiled MEX
+    function rather than the unmexed stub -- capture_lcd.m's own preflight
+    check fails immediately otherwise) and commits the resulting CSVs.
+
+    Returns
+    -------
+    xi_fixture : ndarray, shape (num_points, n)
+        MATLAB's captured, already-mirrored (and, per capture_lcd.m,
+        already force-cov-match-whitened) point set.
+    w_fixture : ndarray, shape (num_points,)
+        MATLAB's captured weights (uniform, ``1/num_points``).
+    s_init : ndarray, shape (n, num_points // 2)
+        The exact sInit matrix MATLAB's optimizer started from (native,
+        untransposed layout, per capture_lcd.m).
+    meta : dict
+        ``numDim``, ``numSamples``, ``CvMDistMin``, ``exitCode``,
+        ``determinism_max_abs_diff``, all as Python floats.
+    """
+    base = f"lcd_n{n}_pts{num_points}"
+    points_path = _MATLAB_FIXTURES / f"{base}.csv"
+    sinit_path = _MATLAB_FIXTURES / f"{base}_sinit.csv"
+    meta_path = _MATLAB_FIXTURES / f"{base}_meta.csv"
+
+    missing = [p.name for p in (points_path, sinit_path, meta_path) if not p.exists()]
+    if missing:
+        reason = (
+            f"MATLAB LCD fixture(s) {missing} for (n={n}, num_points="
+            f"{num_points}) not captured yet -- run "
+            "scripts/matlab_capture/capture_lcd.m in MATLAB, against a "
+            "TrackerComponentLibrary checkout that has already had its "
+            "CompileCLibraries.m run (capture_lcd.m requires "
+            "quasiNewtonLBFGS compiled as a MEX function -- its own "
+            "preflight check fails immediately otherwise), then commit "
+            "the resulting CSVs to tests/fixtures/matlab/."
+        )
+        if os.environ.get("PYTCL_REQUIRE_MATLAB_FIXTURES") == "1":
+            pytest.fail(reason)
+        pytest.skip(reason)
+
+    points_data = np.loadtxt(points_path, delimiter=",", ndmin=2)
+    xi_fixture = points_data[:, :-1]
+    w_fixture = points_data[:, -1]
+
+    s_init = np.loadtxt(sinit_path, delimiter=",", ndmin=2)
+
+    meta_raw = np.genfromtxt(meta_path, delimiter=",", names=True)
+    meta_fields = (
+        "numDim",
+        "numSamples",
+        "CvMDistMin",
+        "exitCode",
+        "determinism_max_abs_diff",
+    )
+    meta = {field: float(meta_raw[field]) for field in meta_fields}
+
+    return xi_fixture, w_fixture, s_init, meta
+
+
+class _FixedStandardNormal:
+    """Stand-in for ``numpy.random.Generator`` whose ``standard_normal()``
+    always returns a pre-loaded matrix, regardless of the requested shape
+    (asserted to match, as a sanity check).
+
+    ``gaussian_lcd_samples`` only accepts an ``rng``, not a raw starting
+    matrix -- by design, since ordinary callers should never need to inject
+    one. The MATLAB-fixture comparison is the one place that legitimately
+    does: per the design spec (Section 4), both sides must start from the
+    literal same sInit numbers for the cross-implementation comparison to
+    mean anything (spec Section 3's rotation-invariance argument is about
+    what happens *after* two optimizers start from the same point, not
+    about independently-seeded runs). This stand-in drives the port's
+    public API from that captured sInit without adding a parameter to the
+    production signature for a validation-only need.
+    """
+
+    def __init__(self, s_init: np.ndarray) -> None:
+        self._s_init = s_init
+
+    def standard_normal(self, size):
+        assert tuple(size) == self._s_init.shape, (
+            f"fixture sInit shape {self._s_init.shape} does not match "
+            f"the requested draw shape {tuple(size)}"
+        )
+        return self._s_init
+
+
+class TestGaussianLCDSamplesMatlabFixtures:
+    """Cross-check against real MATLAB ``GaussianLCDSamples`` output
+    (``scripts/matlab_capture/capture_lcd.m``), per the design spec's
+    validation contract (docs/superpowers/specs/2026-08-16-lcd-samples-design.md,
+    Section 5, checks 1/2/3/4 -- check 0, the finite-difference gradient
+    check, has no fixture dependency and lives in TestCheckGradPieces /
+    TestCheckGradObjective above).
+
+    NEVER compares raw coordinates. For n >= 2 the CvM cost is provably
+    invariant under any global orthogonal transform applied to every point
+    simultaneously (spec Section 3), so a converged point set is one
+    arbitrary representative of a continuous manifold of equally-optimal
+    solutions -- a correctly-ported optimizer started from the identical
+    sInit generically lands on a *different* representative of that same
+    manifold (same CvM cost, different raw coordinates), and this is
+    expected, not a bug. Only rotation-and-permutation-invariant statistics
+    (the Gram matrix's sorted eigenvalue spectrum) and scalar/exact
+    quantities (the CvM objective value, sample mean, sample covariance)
+    are compared.
+
+    Every test loads the fixture's own captured sInit and drives
+    gaussian_lcd_samples's public API with it via _FixedStandardNormal, so
+    the port's optimizer starts from the literal same numbers MATLAB's did
+    -- the spec's stated precondition (Section 4) for the comparison to be
+    meaningful at all: it puts both optimizers in the same basin, so
+    results should agree more tightly than two independently-seeded runs
+    would (contrast TestGaussianLCDSamplesOrthogonalFamily above, which
+    uses independent seeds and checks only cost-value agreement, never
+    spectrum agreement).
+
+    No lcd_* fixtures exist in this checkout as of writing (2026-08-18), so
+    every test below skips via _load_lcd_fixture. All numeric tolerances
+    here are therefore PLACEHOLDERS per this repo's
+    claims-inherit-measurement-range convention, not measurements -- they
+    must be recalibrated against real captured values once a maintainer
+    runs capture_lcd.m, exactly as the design spec itself flags (Section 9:
+    "Cost-value tolerance ... is a placeholder pending real data").
+    """
+
+    CASES = [(1, 5), (2, 10), (2, 20), (3, 15), (4, 20)]
+
+    B_MAX = 70.0
+    ABS_TOL = 1e-14
+    REL_TOL = 1e-14
+
+    # Spec Section 5 check 2's own stated placeholder ("a reasoned starting
+    # guess, not a measurement"; Section 9 repeats the caveat explicitly).
+    CVM_VALUE_RTOL = 1e-4
+
+    # The spec's check 3 says to calibrate the Gram-spectrum tolerance "the
+    # same way as (2)" -- i.e. the same reasoned-placeholder methodology,
+    # reusing the same 1e-4 relative starting point, not a separately
+    # invented number.
+    GRAM_SPECTRUM_RTOL = 1e-4
+    # Absolute floor for the Gram spectrum only: a numSamples x numSamples
+    # Gram matrix built from n-dimensional points has rank <= n, so
+    # numSamples - n of its eigenvalues are (near-)exactly zero on both
+    # sides in every grid case here (num_points > n throughout) -- a pure
+    # relative tolerance is undefined/unstable there.
+    GRAM_SPECTRUM_ATOL = 1e-6
+
+    # force_cov_match=True whitening is exact-by-construction (see
+    # TestGaussianLCDSamplesMoments above); applied here to the fixture's
+    # own captured points, which capture_lcd.m always requests
+    # (forceCovMatch=true, every grid case), so this is likewise an
+    # exactness check, not a statistical one. Looser than
+    # TestGaussianLCDSamplesMoments.MOMENT_TOL (1e-10) only to allow for
+    # the fixture CSV's %.17g round-trip, not for any statistical slack.
+    MOMENT_TOL = 1e-8
+
+    @pytest.mark.parametrize("n,num_points", CASES)
+    def test_cvm_value_matches_matlab(self, n, num_points):
+        """Spec Section 5 checks 1 (exitCode>=0) and 2 (CvM value parity).
+
+        The port's own CvMDistMin is assembled the same way
+        GaussianLCDSamples.m assembles it (module docstring): the raw
+        optimized cost from _lcd_objective, plus the constant D1 term,
+        minus 2x the odd-count D2 constant (computeDo2ContTerm) when
+        num_points is odd -- both never enter the optimized cost/gradient,
+        so they are added back here exactly as the MATLAB main function
+        does before reporting CvMDistMin.
+        """
+        _, _, s_init, meta = _load_lcd_fixture(n, num_points)
+        assert int(meta["exitCode"]) >= 0
+
+        # force_cov_match=False: whitening is a post-hoc transform applied
+        # after the optimizer already committed to s_min, so it must not
+        # enter a CvM-value comparison (the minimize() call itself is
+        # identical either way -- see gaussian_lcd_samples's source).
+        points, _ = gaussian_lcd_samples(
+            n,
+            num_points,
+            force_cov_match=False,
+            rng=_FixedStandardNormal(s_init),
+        )
+        s_min = _s_min_from_points(points, n, num_points)
+
+        num_half = num_points // 2
+        port_cost = _lcd_objective(s_min.flatten(order="F"), n, num_points)[0]
+        port_cost += _compute_d1(self.B_MAX, n, self.ABS_TOL, self.REL_TOL)
+        if num_points % 2 != 0:
+            port_cost -= 2.0 * _compute_do2_cont_term(
+                n, num_half, self.B_MAX, self.ABS_TOL, self.REL_TOL
+            )
+
+        assert port_cost == pytest.approx(meta["CvMDistMin"], rel=self.CVM_VALUE_RTOL)
+
+    @pytest.mark.parametrize("n,num_points", CASES)
+    def test_gram_spectrum_matches_matlab(self, n, num_points):
+        """Spec Section 5 check 3: the rotation-and-permutation-invariant
+        Gram-matrix eigenvalue spectrum of the FULL point set (fixture's
+        xi vs the port's, both under force_cov_match=True, matching how
+        capture_lcd.m captured the fixture) -- never raw coordinates."""
+        xi_fixture, _, s_init, _ = _load_lcd_fixture(n, num_points)
+
+        points, _ = gaussian_lcd_samples(
+            n,
+            num_points,
+            force_cov_match=True,
+            rng=_FixedStandardNormal(s_init),
+        )
+
+        eig_fixture = np.sort(np.linalg.eigvalsh(xi_fixture @ xi_fixture.T))
+        eig_port = np.sort(np.linalg.eigvalsh(points @ points.T))
+
+        np.testing.assert_allclose(
+            eig_port,
+            eig_fixture,
+            rtol=self.GRAM_SPECTRUM_RTOL,
+            atol=self.GRAM_SPECTRUM_ATOL,
+        )
+
+    @pytest.mark.parametrize("n,num_points", CASES)
+    def test_moment_identities_on_fixture_points(self, n, num_points):
+        """Spec Section 5 check 4, applied directly to the fixture's own
+        captured points (no port run involved): capture_lcd.m always
+        passes forceCovMatch=true, so the fixture's sample mean should be
+        (near-)exactly 0 and its sample covariance (near-)exactly the
+        identity -- a sanity check on this test module's own understanding
+        of the fixture format, independent of the port's optimizer."""
+        xi_fixture, w_fixture, _, _ = _load_lcd_fixture(n, num_points)
+
+        mean = np.average(xi_fixture, axis=0, weights=w_fixture)
+        cov = (xi_fixture * w_fixture[:, None]).T @ xi_fixture
+
+        assert np.max(np.abs(mean)) < self.MOMENT_TOL
+        assert np.max(np.abs(cov - np.eye(n))) < self.MOMENT_TOL

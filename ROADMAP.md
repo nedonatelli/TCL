@@ -35,13 +35,9 @@ the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
 evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
-- **Cubature point library remainder** — Gaussian LCD samples (spec
-  concluded: port — objective/gradient math transcribed, optimizer
-  wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
-  vendored `liblbfgs`, validated against a rotation-invariant contract
-  instead of raw MATLAB coordinates; not yet ported) and, within the
-  measured 79-file region-cubature subset (Cube_Space / Simplex / Sphere
-  / Spherical_Surface), the 48 dimension-specialized subdirectory files
+- **Cubature point library remainder** — within the measured 79-file
+  region-cubature subset (Cube_Space / Simplex / Sphere /
+  Spherical_Surface), the 48 dimension-specialized subdirectory files
   (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/)
   deferred pending a consumer that needs their smaller point counts. The
   remaining seven region-cubature directories (torus, cone, wedge, etc.)
