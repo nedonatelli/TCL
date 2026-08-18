@@ -7,10 +7,10 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.3.0)
+Current State (v2.4.0)
 ----------------------
 
-* **6,700+ tests** passing, 90% coverage, docstring examples run in CI
+* **7,000+ tests** passing, 90% coverage, docstring examples run in CI
 * **Typed configs and sessions** (:doc:`sessions`): ``msgspec.Struct``
   configs (``IMMConfig``, ``GaussianSumConfig``, ``RBPFConfig``,
   ``SingleTargetConfig``, ``MultiTargetConfig``) accepted via a

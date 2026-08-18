@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.3.0, released 16 August 2026
-**Test Suite:** 6,700+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Current Version:** v2.4.0, released 17 August 2026
+**Test Suite:** 7,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
 third by function count — see `docs/matlab_parity_inventory.rst`, which
@@ -35,27 +35,20 @@ the MATLAB TCL repository; its Absent/Weak/Divergent verdicts are the
 evidence-based candidate list, as distinct from the aspirational items below.
 No dates are attached because none have been decided:
 
-- **Cubature point library remainder** — the estimation-grade
-  Gaussian-weight slice is ported, including the full
-  `seventh_order_cubature_points` algorithm surface (see CHANGELOG);
-  what remains of the ~134 MATLAB files: Gaussian LCD samples (spec
+- **Cubature point library remainder** — Gaussian LCD samples (spec
   concluded: port — objective/gradient math transcribed, optimizer
   wrapped via scipy's L-BFGS-B instead of reimplementing MATLAB's
   vendored `liblbfgs`, validated against a rotation-invariant contract
-  instead of raw MATLAB coordinates; see local spec) and the
-  region-cubature rules: 79 files measured across the Cube_Space /
-  Simplex / Sphere / Spherical_Surface subset chosen for the v2.4.0
-  region-rules spec (supersedes the old ~120 rough estimate for that
-  subset) -- 31 general-dimension top-level files prioritized in two
-  effort tiers (cube and simplex first, ball and spherical-surface
-  second; ~7-9 engineer-days), 48 dimension-specialized subdirectory
-  files (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/,
-  Triangles/) deferred pending a consumer that needs their smaller
-  point counts; see docs/superpowers/specs/2026-08-16-region-cubature-design.md
-  (local spec) for the full inventory, module design
-  (`region_cubature.py`), and closed-form validation oracles. The
-  remaining seven region-cubature directories (torus, cone, wedge,
-  etc.) are out of this subset entirely and have not been inventoried.
+  instead of raw MATLAB coordinates) and the region-cubature rules: 79
+  files measured across the Cube_Space / Simplex / Sphere /
+  Spherical_Surface subset -- 31 general-dimension top-level files
+  prioritized in two effort tiers (cube and simplex first, ball and
+  spherical-surface second; ~7-9 engineer-days), 48
+  dimension-specialized subdirectory files (fixed 2D/3D formulas in
+  Cube/, Square/, Tetrahedra/, Triangles/) deferred pending a consumer
+  that needs their smaller point counts. The remaining seven
+  region-cubature directories (torus, cone, wedge, etc.) are out of
+  this subset entirely and have not been inventoried.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only

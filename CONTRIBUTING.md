@@ -452,7 +452,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.3.0 (released). See "Current metrics (v2.3.0)" under
+**Version:** v2.4.0 (released). See "Current metrics (v2.4.0)" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -515,11 +515,11 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.3.0):
-- **Functions:** 1,150+ (top-level `def`; measured 1,156 via
+Current metrics (v2.4.0):
+- **Functions:** 1,150+ (top-level `def`; measured 1,172 via
   `grep -r "^def " pytcl/ | wc -l`)
-- **Modules:** 190
-- **Tests:** 6,700+ (all passing; measured 6,729 via
+- **Modules:** 187
+- **Tests:** 7,000+ (all passing; measured 7,085 via
   `pytest --collect-only -q`)
 - **Coverage:** 90%
 
