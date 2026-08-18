@@ -245,6 +245,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorded inline in `slos.json` (`_derivation` field on each entry) and in
   task C2's performance report (local-only, untracked artifact of the
   v2.5.0 region-lcd-perf campaign).
+- **`test_assign2d_augmented_500x500`** (`benchmarks/test_assignment_bench.py`)
+  and a new CI performance SLO (`.benchmarks/slos.json`, 29.946 ms mean,
+  59.892 ms p99) closing the v2.5.0 campaign's parked question of whether
+  `assign2d`'s finite-`cost_of_non_assignment` path -- which builds an
+  (n+m)x(n+m) = 1000x1000 augmented matrix before delegating to scipy on
+  the same 500x500 case `test_hungarian_dense_500x500` covers -- deserved
+  its own perf target (perf-levers task 2, Apple M3 Max, 2026-08-18):
+  9.0375 ms local median (pytest-benchmark, auto-calibrated to 98 rounds).
+  cProfile of the same scenario (10 calls) attributes 96.7% of cumulative
+  time to `scipy.optimize.linear_sum_assignment` and 1.1% to the `np.full`
+  augmented-matrix construction, well under the plan's 10% trivial-fix
+  threshold, so no source change was made to `assign2d` -- scipy's
+  1000x1000 solve is the floor. SLO threshold follows the same
+  gate-calibration doctrine (local median x 2.209 x 1.5 headroom); full
+  derivation inline in `slos.json`'s `_derivation` field and in
+  `.superpowers/sdd/2026-08-18-perf-levers/task-2-report.md`.
 
 ### Changed
 - **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now

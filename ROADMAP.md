@@ -199,6 +199,17 @@ not a stale number.
   optimization target; the old "45 ms -> <30 ms" row also had no in-repo
   provenance. Guarded by `test_hungarian_dense_500x500`'s SLO
   (16.57 ms mean).
+- **assign2d augmented path (500x500, finite `cost_of_non_assignment`):**
+  the v2.5.0 campaign parked whether this path -- which builds an
+  (n+m)x(n+m) = 1000x1000 augmented matrix before delegating to scipy,
+  double the plain Hungarian case above -- deserved its own perf target.
+  Answered by measurement (perf-levers task 2, Apple M3 Max, 2026-08-18):
+  9.0375 ms median; cProfile of the same scenario attributes 96.7% of
+  cumulative time to `scipy.optimize.linear_sum_assignment` and 1.1% to
+  the `np.full` augmented-matrix construction, well under the 10%
+  trivial-fix threshold, so no code change was made -- scipy's 1000x1000
+  solve is the floor, same as the plain case. Guarded by
+  `test_assign2d_augmented_500x500`'s SLO (29.946 ms mean).
 
 Both SLO thresholds are CI-calibrated (local measurement x measured
 CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full

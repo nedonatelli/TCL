@@ -7,7 +7,7 @@ These are full benchmarks that run on main branch merges and nightly builds.
 import pytest
 from scipy.optimize import linear_sum_assignment as scipy_lsa
 
-from pytcl.assignment_algorithms.two_dimensional.assignment import hungarian
+from pytcl.assignment_algorithms.two_dimensional.assignment import assign2d, hungarian
 
 
 class TestHungarianBenchmarks:
@@ -45,3 +45,26 @@ class TestHungarianBenchmarks:
 
         assert len(row_ind) == 500
         assert len(col_ind) == 500
+
+
+class TestAssign2DBenchmarks:
+    """Benchmark assign2d's finite-cost_of_non_assignment augmented path."""
+
+    @pytest.mark.full
+    def test_assign2d_augmented_500x500(self, benchmark, dense_cost_matrix_500):
+        """Benchmark assign2d() with a finite cost_of_non_assignment.
+
+        A finite `cost_of_non_assignment` makes `assign2d`
+        (pytcl/assignment_algorithms/two_dimensional/assignment.py:277)
+        build an (n+m)x(n+m) augmented matrix before delegating to scipy,
+        so the same 500x500 dense cost matrix as
+        `test_hungarian_dense_500x500` becomes a 1000x1000 internal solve
+        here -- this is the doubled-dimension path the v2.5.0 campaign
+        parked without measurement.
+        """
+        cost = dense_cost_matrix_500
+
+        result = benchmark(assign2d, cost, cost_of_non_assignment=50.0)
+
+        assert len(result.row_indices) + len(result.unassigned_rows) == 500
+        assert len(result.col_indices) + len(result.unassigned_cols) == 500
