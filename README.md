@@ -4,13 +4,13 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Tests](https://img.shields.io/badge/tests-6700%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Tests](https://img.shields.io/badge/tests-7000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
 [![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,150+ functions** | **190 modules** | **6,700+ tests** | **90% coverage**
+**1,150+ functions** | **187 modules** | **7,000+ tests** | **90% coverage**
 
 ## Overview
 
@@ -21,7 +21,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Estimation Algorithms**: Kalman filters (KF, EKF, UKF, CKF, *CEKF*, H-infinity), particle filters (bootstrap, *RBPF*), smoothers, and batch estimation
 - **Assignment Algorithms**: Hungarian algorithm, auction algorithms, 3D/ND assignment, k-best assignments
 - **Data Association**: Global Nearest Neighbor, JPDA, MHT for multi-target tracking
-- **Mathematical Functions**: Special functions, statistics, numerical integration (Gaussian quadrature, cubature rules, Genz-Keister and Smolyak sparse grids), and more
+- **Mathematical Functions**: Special functions, statistics, numerical integration (Gaussian quadrature, cubature rules including the full 10-variant seventh-order algorithm surface, Genz-Keister and Smolyak sparse grids), and more
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
