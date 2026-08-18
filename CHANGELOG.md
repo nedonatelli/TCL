@@ -278,6 +278,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mahalanobis_batch` was checked for the same dead-kernel pattern and does
   not have it -- it already avoids LAPACK internally by taking a
   caller-precomputed inverse amortized across a batch of measurements.
+- **`compute_likelihood_matrix`** (`pytcl.assignment_algorithms.jpda`,
+  perf-levers task 1) no longer re-solves and re-inverts each track's
+  innovation covariance `S` once per measurement. `S` depends only on the
+  track: the loop now computes `np.linalg.inv(S)` and `np.linalg.det(S)`
+  once per track and reuses them across all of that track's measurements
+  via `mahalanobis_batch` (`gating.py`, exported since the C2 kernel work
+  above but never wired into JPDA), replacing the old per-(track,
+  measurement)-pair `mahalanobis_distance` solve, a second independent
+  `np.linalg.solve` inside `compute_measurement_likelihood`, and a per-pair
+  `np.linalg.det(S)` of a matrix that never changed within the track. On
+  `LinAlgError` (singular `S`) a track falls back to the original per-pair
+  loop unchanged. An initial attempt using `scipy.linalg.cho_factor`/
+  `cho_solve` was measured SLOWER than the original code (~2x, Apple M3
+  Max, 2026-08-18, this benchmark) -- `cho_solve`'s Python-level wrapper
+  overhead (finite-value checks, array-API dispatch) dominates at this
+  benchmark's m=2 measurement dimension, the same per-call LAPACK-dispatch
+  tax the C2 njit kernels above were built to avoid -- so the shipped
+  version uses `np.linalg.inv` once per track instead. Measured on Apple M3
+  Max, 2026-08-18 (`test_jpda_update_100_targets_50_meas`,
+  `--benchmark-min-rounds=50 --benchmark-warmup=on`, median of 5 runs):
+  34.26 ms -> 11.76 ms median (-65.7%, ~2.9x). Behavior-equality verified
+  against a frozen copy of the pre-restructure loop across 20 seeded
+  scenarios spanning n_tracks in {1,3,10,40}, n_meas in {0,1,7,25}, m in
+  {2,3,4,6}, and covariance-eigenvalue scale log-uniform over [1e-6, 1e6]
+  (`tests/unit/test_jpda.py::TestLikelihoodMatrixEquality`, written and
+  passing against the unmodified code before the restructure): max
+  relative error 4.37e-14 on likelihoods (rtol=1e-9 gate, ~2e4x margin),
+  `gated` exactly equal in every scenario. No `.benchmarks/slos.json`
+  change needed -- the existing SLO for this benchmark was calibrated
+  against the pre-restructure code (111.18 ms mean ceiling) and remains a
+  valid (now much more generous) ceiling.
 
 ## [2.4.0] - 2026-08-17
 
