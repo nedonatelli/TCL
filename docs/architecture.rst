@@ -165,7 +165,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Public
      - Purpose
    * - ``mathematical_functions``
-     - 24
+     - 25
      - 70
      - Special functions, statistics, transforms, signal processing, geometry
    * - ``dynamic_estimation``
