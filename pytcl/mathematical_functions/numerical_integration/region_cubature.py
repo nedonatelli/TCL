@@ -40,35 +40,91 @@ degree/dimension coverage a general-``n`` algorithm doesn't already provide.
 Also ported (this module's third region): the Tracker Component Library's
 ``Cubature_Points/Sphere`` collection (solid unit ball), Tier-1 top-level
 files only -- ``secondOrderSpherCubPoints.m``, ``thirdOrderSpherCubPoints.m``
-(all 5 algorithms), ``fifthOrderSpherCubPoints.m`` (all 10 algorithms), and
-``seventhOrderSpherCubPoints.m`` (all 6 algorithms). Three files in the same
-directory are explicitly EXCLUDED, with reasons:
+(all 5 algorithms), ``fifthOrderSpherCubPoints.m`` (all 10 algorithms),
+``seventhOrderSpherCubPoints.m`` (all 6 algorithms), and
+``arbOrderSpherCubPoints.m`` (general dimension, general ORDER, folded into
+:func:`ball_cubature_points` as the dispatch target for every odd
+``degree >= 9`` -- see "The ``arbOrderSpherCubPoints.m`` port" below). Two
+files in the same directory are explicitly EXCLUDED, with reasons:
 
 - ``ninthOrderSpherCubPoints.m`` and ``eleventhOrderSpherCubPoints.m`` are
   hardcoded to ``n == 2`` (Tier 3 per the design spec's Section 8) -- no
   general-``n`` value, same rationale as the deferred ``Cube``/``Square``/
-  ``Tetrahedra``/``Triangles`` subdirectories above.
-- ``arbOrderSpherCubPoints.m`` (general dimension, general ORDER via a
-  recursive Gegenbauer/Jacobi radial construction, degree ``2*order-1``) does
-  not fit this module's established ``degree``-selects-file,
-  ``algorithm``-selects-intra-file-variant contract (every other ``degree``
-  value here maps 1:1 onto a single MATLAB source file's fixed-degree
-  formula menu; ``arbOrderSpherCubPoints`` instead spans an open-ended set of
-  ODD degrees for any caller-chosen order, which would have to be shoehorned
-  in as an extra "algorithm" under degree 3/5/7 or exposed as a wholly
-  separate parameter). Deferred to a future task rather than architected in
-  under time pressure; its ``quadraturePoints1D`` algorithm-3
-  (Gegenbauer, weight ``(1-x**2)**(c1-1/2)``) and algorithm-8 (radial,
-  weight ``|x|**c1``) dependencies are both directly transcribable via their
-  own three-term-recurrence coefficients (Golub-Welsch, matching
-  ``orthoPolyZerosFromRecur.m``) rather than an unverified
-  ``scipy.special.roots_jacobi`` substitution -- confirmed tractable by
-  inspection of ``quadraturePoints1D.m``'s source, just not implemented here.
+  ``Tetrahedra``/``Triangles`` subdirectories above. (``arbOrderSpherCubPoints``
+  reaches degree 9/11 for general ``n`` anyway, at a different, larger
+  point count, so nothing here is a coverage gap.)
 - ``spherSurfPoints2SpherPoints.m`` converts an existing
   ``Spherical_Surface`` rule into a ball rule of matching order; superseded
-  in practice once :func:`ball_cubature_points` exists via direct
+  in practice now that :func:`ball_cubature_points` exists via direct
   construction (design spec Section 8), and its own dependency
   (``Spherical_Surface`` rules) is not yet ported into this module at all.
+
+**The ``arbOrderSpherCubPoints.m`` port (general dimension, general order,
+general real ``alpha``).** ``degree = 2*order - 1`` for any caller-chosen
+``order``; :func:`ball_cubature_points` dispatches every odd ``degree >= 9``
+here (degrees 2/3/5/7 keep using the dedicated named-formula files above,
+which are more efficient point counts at those specific degrees). MATLAB's
+own construction (Stroud's Theorem 2.6-2, a recursive "generalized polar
+coordinates" decomposition) needs two 1-D quadrature families from the
+separate ``quadraturePoints1D.m`` dispatcher (outside this ported subset):
+algorithm 3 (Gegenbauer, weight ``(1-x**2)**(c1-1/2)`` on ``(-1,1)``) for
+the ``n-1`` angular coordinates, and algorithm 8 (radial, weight ``|x|**c1``
+on ``(-1,1)``, ``c1 = numDim-1+alpha``) for the radial coordinate.
+
+- **Gegenbauer piece**: direct correspondence to
+  ``scipy.special.roots_jacobi(m, c1-0.5, c1-0.5)`` -- both target weight
+  ``(1-x**2)**(c1-0.5)`` and their total masses match algebraically
+  (``sqrt(pi)*Gamma(c1+0.5)/Gamma(c1+1)`` either way). MATLAB special-cases
+  ``c1 == 0`` to a separate closed-form arcsine rule because its OWN
+  hand-rolled three-term recurrence is exactly singular there (division by
+  a term that is identically zero at ``c1=0``, confirmed by inspection of
+  ``quadraturePoints1D.m``'s case-3 coefficients); ``scipy.special.roots_jacobi``
+  uses a different, numerically robust algorithm and needs no such special
+  case -- verified directly: ``roots_jacobi(n, -0.5, -0.5)`` matches the
+  arcsine closed form to machine precision at every ``n`` tested (1, 2, 3,
+  5, 7).
+- **Radial piece**: NOT a ``roots_jacobi`` substitution for MATLAB's own
+  algorithm-8 recursion (that recursion is restricted to nonnegative
+  INTEGER ``c1`` by construction, per its own docstring -- it cannot serve
+  a general real ``alpha`` at all, which :func:`ball_cubature_points`
+  needs). Instead, DERIVED from scratch via the classical even-weight
+  "symmetrization" technique (Gautschi): substituting ``t = x**2`` maps
+  weight ``|x|**c1`` on ``(-1,1)`` to a plain power weight
+  ``t**((c1-1)/2)`` on ``(0,1)`` for the even-degree test-polynomial part;
+  an ``m``-point ``x``-domain rule (exact through degree ``2m-1``) reduces
+  to a ``floor(m/2)``-point Gauss-Jacobi problem on ``(0,1)`` (mapped from
+  ``scipy.special.roots_jacobi`` on ``(-1,1)`` via the standard affine
+  ``t=(x+1)/2`` change of variable, with the matching ``(1/2)**(p+1)``
+  Jacobian rescale on the weights) at even ``m``, plus one additional fixed
+  node at the origin (weight determined by the zeroth-moment/total-mass
+  residual) at odd ``m``. This derivation was independently verified TWO
+  ways before use, not merely asserted: (1) it reproduces MATLAB's own
+  algorithm-8 three-term-recurrence construction (separately, exactly
+  transcribed for this one-time check) to machine precision at every
+  INTEGER ``c1`` tested (0 through 4, ``m`` = 3 through 6); (2) it matches
+  brute-force ``scipy.integrate.quad`` at every monomial degree ``<= 2m-1``
+  for NON-integer ``c1`` (0.5, 1.5, 2.5) that MATLAB's own algorithm cannot
+  evaluate at all -- exactly the general-``alpha`` case this port needs and
+  MATLAB's own code cannot provide.
+- **Full construction**: independently re-verified end-to-end (both pieces
+  plus the recursive point/weight assembly together) against this module's
+  own ball-monomial oracle at ``order`` in ``{5, 6, 7}`` (degrees 9, 11,
+  13), ``n`` in ``{2, 3, 4}``, ``alpha`` in ``{0.0, 1.5}`` -- every case
+  exact through its claimed degree (worst-monomial error ~1e-15) and sharp
+  (a real, non-roundoff residual at degree+1, ~1e-3 to ~1e-5) -- see
+  ``tests/unit/test_region_cubature.py``'s ``TestBallArbOrder``.
+- **A genuine MATLAB size-mismatch inefficiency, not a defect** (found by
+  inspection, distinct from the two corrected shape-mismatch defects
+  below): the source preallocates ``xi``/``w`` with
+  ``numPoints = numRVals * numGegenbauerPoints`` (``= order**2``), but the
+  nested loop that follows fills ``order**numDim`` columns total whenever
+  ``numDim > 2`` -- more than was preallocated. MATLAB auto-grows arrays on
+  out-of-bound assignment (no error, unlike the two Cube_Space defects
+  below, which crash outright), and every column the loop visits gets
+  fully populated in row-major order with no gaps, so the final result is
+  correct, just built via an inefficient reallocate-and-copy path in real
+  MATLAB. This module builds the correctly-sized ``(order**numDim, numDim)``
+  array directly.
 
 **Two corrected MATLAB defects (both verified by direct inspection of the
 pinned source, not merely accuracy checks).** These are provable
@@ -260,6 +316,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.special import roots_jacobi
 
 
 def _pm_combos(x: NDArray[np.floating]) -> NDArray[np.floating]:
@@ -1857,6 +1914,103 @@ def _ball_degree7(
     )
 
 
+def _quad1d_gegenbauer(
+    m: int, c1: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``quadraturePoints1D.m`` algorithm 3 equivalent: ``m``-point Gauss
+    quadrature for weight ``(1-x**2)**(c1-0.5)`` on ``(-1, 1)``, ``c1 >
+    -0.5``, exact through degree ``2*m-1``. Direct correspondence to
+    ``scipy.special.roots_jacobi(m, c1-0.5, c1-0.5)`` -- see module
+    docstring's "arbOrderSpherCubPoints.m port" note for the verification
+    (including why, unlike MATLAB's own hand-rolled recursion, no ``c1==0``
+    special case is needed here).
+    """
+    lam = c1 - 0.5
+    return roots_jacobi(m, lam, lam)
+
+
+def _quad1d_abs_x_pow(
+    m: int, c1: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """General real-``c1`` (``c1 > -1``) Gauss quadrature for weight
+    ``|x|**c1`` on ``(-1, 1)``, ``m`` points, exact through degree
+    ``2*m-1``. NOT a transcription of ``quadraturePoints1D.m`` algorithm 8
+    (that recursion only supports nonnegative INTEGER ``c1``); derived
+    instead via the classical even-weight symmetrization technique and
+    independently verified two ways -- see module docstring's
+    "arbOrderSpherCubPoints.m port" note.
+    """
+    k = m // 2
+    if m % 2 == 0:
+        p1 = (c1 - 1.0) / 2.0
+        x, w = roots_jacobi(k, 0.0, p1)
+        t = (x + 1.0) / 2.0
+        big_w = w * (0.5 ** (p1 + 1.0))
+        a = big_w / 2.0
+        nodes = np.concatenate([np.sqrt(t), -np.sqrt(t)])
+        weights = np.concatenate([a, a])
+    else:
+        p1 = (c1 - 1.0) / 2.0
+        p2 = (c1 + 1.0) / 2.0
+        x, w = roots_jacobi(k, 0.0, p2)
+        t = (x + 1.0) / 2.0
+        big_w = w * (0.5 ** (p2 + 1.0))
+        a = big_w / (2.0 * t)
+        m0 = 1.0 / (p1 + 1.0)
+        a0 = m0 - 2.0 * np.sum(a)
+        nodes = np.concatenate([[0.0], np.sqrt(t), -np.sqrt(t)])
+        weights = np.concatenate([[a0], a, a])
+    return nodes, weights
+
+
+def _ball_arb_order(
+    n: int, order: int, alpha: float
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``Sphere/arbOrderSpherCubPoints.m``: general-dimension, general-order
+    (degree ``2*order-1``) ball rule via Stroud Theorem 2.6-2's recursive
+    Gegenbauer/radial construction -- see module docstring for the
+    ``quadraturePoints1D`` dependency derivations. Direct transcription of
+    the MATLAB recursive point-assembly loop (1-based indices translated to
+    0-based; ``index2NDim``'s odometer enumeration replaced with
+    ``itertools.product``, order-independent so this is a faithful,
+    not merely equivalent, substitution).
+    """
+    c1_radial = n - 1.0 + alpha
+    if c1_radial <= -1.0:
+        raise ValueError(
+            f"alpha={alpha} requires n - 1 + alpha > -1 (i.e. alpha > -n), "
+            f"got n - 1 + alpha = {c1_radial}"
+        )
+    r, ar = _quad1d_abs_x_pow(order, c1_radial)
+
+    y = np.zeros((order, n - 1))
+    ak = np.zeros((order, n - 1))
+    for k in range(1, n):
+        y_cur, ak_cur = _quad1d_gegenbauer(order, (k - 1) / 2.0)
+        y[:, k - 1] = y_cur
+        ak[:, k - 1] = ak_cur
+
+    num_points = order**n
+    xi = np.zeros((n, num_points))
+    w = np.zeros(num_points)
+
+    cur = 0
+    for cur_r in range(order):
+        for idx in itertools.product(range(order), repeat=n - 1):
+            xi[n - 1, cur] = r[cur_r] * y[idx[n - 2], n - 2]
+            w_prod = ak[idx[n - 2], n - 2]
+            prod_recur = 1.0
+            for k in range(n - 1, 1, -1):
+                prod_recur *= math.sqrt(1.0 - y[idx[k - 1], k - 1] ** 2)
+                xi[k - 1, cur] = r[cur_r] * prod_recur * y[idx[k - 2], k - 2]
+                w_prod *= ak[idx[k - 2], k - 2]
+            prod_recur *= math.sqrt(1.0 - y[idx[0], 0] ** 2)
+            xi[0, cur] = r[cur_r] * prod_recur
+            w[cur] = w_prod * ar[cur_r]
+            cur += 1
+    return xi.T, w
+
+
 def ball_cubature_points(
     n: int, degree: int, algorithm: Optional[int] = None, alpha: float = 0.0
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
@@ -1865,11 +2019,14 @@ def ball_cubature_points(
 
     Counterpart of the MATLAB TCL's ``Sphere`` top-level, general-dimension
     files (see this module's docstring for the exact per-degree algorithm
-    coverage, the three excluded ``Sphere`` files with reasons, and two
-    corrected/confirmed issues specific to this region -- a documentation-only
-    ``alpha``-sign defect and a wrong-formula defect in degree 7 algorithm 2).
-    Every ``degree`` here is exact through that total polynomial degree --
-    verified against the closed-form ball-monomial oracle in
+    coverage, the two excluded ``Sphere`` files with reasons, and the
+    corrected/confirmed issues specific to this region -- a
+    documentation-only ``alpha``-sign defect and a wrong-formula defect in
+    degree 7 algorithm 2). Every odd ``degree >= 9`` dispatches to a
+    from-scratch general-order, general-``alpha`` construction (folding in
+    ``arbOrderSpherCubPoints.m``, see module docstring); every other
+    ``degree`` is exact through that total polynomial degree -- verified
+    against the closed-form ball-monomial oracle in
     ``tests/unit/test_region_cubature.py`` for the ``(n, degree, algorithm,
     alpha)`` grid its test classes sweep; no wider claim is made (per the
     claims-inherit-measurement-range convention).
@@ -1893,11 +2050,17 @@ def ball_cubature_points(
     n : int
         Dimension, n >= 2.
     degree : int
-        Polynomial degree the rule is exact through. One of 2, 3, 5, 7 --
-        the top-level, general-dimension degrees MATLAB's ``Sphere``
-        directory provides (``ninthOrderSpherCubPoints.m`` and
-        ``eleventhOrderSpherCubPoints.m`` are ``n == 2``-only and excluded;
-        see module docstring).
+        Polynomial degree the rule is exact through. One of 2, 3, 5, 7, or
+        any ODD degree >= 9 (``9, 11, 13, ...``): 2/3/5/7 are the top-level,
+        named-formula degrees MATLAB's ``Sphere`` directory provides;
+        degree 9 and above dispatch to the general-order
+        ``arbOrderSpherCubPoints.m`` port (module docstring) at
+        ``order = (degree + 1) // 2`` -- an EVEN degree >= 9 (e.g. 10) has
+        no MATLAB formula in this directory at all and raises ``ValueError``
+        (``ninthOrderSpherCubPoints.m``/``eleventhOrderSpherCubPoints.m``
+        are ``n == 2``-only named files, superseded here by the general-``n``
+        ``arbOrderSpherCubPoints`` path at the same degrees -- see module
+        docstring).
     algorithm : int, optional
         Which MATLAB algorithm variant to use; see each degree's section in
         the module docstring for the ported subset. Default None reproduces
@@ -1928,6 +2091,9 @@ def ball_cubature_points(
           n=2), 2 (S2 7-2, n=2, corrected -- see module docstring), 3
           (S3 7-2, n=3), 4 (S3 7-3, n=3), 5 (S4 7-2, n=4) are the
           fixed-dimension variants.
+        - degree >= 9 (odd): algorithm must be None or 0 (MATLAB's
+          ``arbOrderSpherCubPoints.m`` takes no algorithm argument);
+          alpha-capable for any real ``alpha > -n``.
     alpha : float, optional
         Exponent of the radial weighting function ``|x|**alpha``,
         ``alpha > -n``. Default 0.0 (plain Lebesgue ball measure). Not every
@@ -1976,4 +2142,15 @@ def ball_cubature_points(
         return _ball_degree5(n, algorithm, alpha)
     if degree == 7:
         return _ball_degree7(n, algorithm, alpha)
-    raise ValueError(f"unsupported degree {degree}; expected one of 2, 3, 5, 7")
+    if degree >= 9 and degree % 2 == 1:
+        if algorithm not in (None, 0):
+            raise ValueError(
+                f"algorithm {algorithm} not ported for degree {degree}; "
+                "expected 0 (MATLAB's arbOrderSpherCubPoints.m has no "
+                "algorithm parameter at all)"
+            )
+        order = (degree + 1) // 2
+        return _ball_arb_order(n, order, alpha)
+    raise ValueError(
+        f"unsupported degree {degree}; expected 2, 3, 5, 7, or any odd degree >= 9"
+    )

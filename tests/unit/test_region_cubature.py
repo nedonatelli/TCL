@@ -1265,6 +1265,66 @@ class TestBallDegree7:
             ball_cubature_points(3, 7, algorithm=6)
 
 
+class TestBallArbOrder:
+    """arbOrderSpherCubPoints.m, folded into ball_cubature_points as the
+    dispatch target for every odd degree >= 9 (module docstring's
+    "arbOrderSpherCubPoints.m port" note). Unlike degrees 2/3/5/7, this
+    path supports any real alpha > -n (not just the values individual
+    named formulas happen to support), since its radial 1-D quadrature
+    (_quad1d_abs_x_pow) was derived from scratch for general real c1,
+    not transcribed from MATLAB's integer-only algorithm-8 recursion.
+    """
+
+    @pytest.mark.parametrize("order,degree", [(5, 9), (6, 11), (7, 13)])
+    @pytest.mark.parametrize("n", [2, 3, 4])
+    @pytest.mark.parametrize("radial_alpha", [0.0, 1.5])
+    def test_exact_through_claimed_degree(self, order, degree, n, radial_alpha):
+        pts, w = ball_cubature_points(n, degree, alpha=radial_alpha)
+        assert pts.shape == (order**n, n)
+        assert_allclose(
+            w.sum(), ball_monomial_integral((0,) * n, radial_alpha), atol=1e-8
+        )
+        assert_region_rule_exact(
+            pts,
+            w,
+            lambda a: ball_monomial_integral(a, radial_alpha),
+            n,
+            degree=degree,
+            atol=1e-6,
+        )
+
+    @pytest.mark.parametrize("degree", [9, 11, 13])
+    def test_sharpness_degree_plus_one_fails(self, degree):
+        # degree=13's worst degree-14 residual at n=3 is real (measured
+        # ~9.3e-5) but smaller than the default threshold=1e-4 -- still 11
+        # orders of magnitude above roundoff (~1e-16), so a lower threshold
+        # still discriminates a genuine failure from noise, matching the
+        # analogous note on TestSimplexDegree3's degree-4 sharpness test.
+        pts, w = ball_cubature_points(3, degree)
+        assert_some_monomial_of_degree_fails(
+            pts, w, ball_monomial_integral, 3, degree=degree + 1, threshold=1e-5
+        )
+
+    def test_default_algorithm_is_only_algorithm(self):
+        pts1, w1 = ball_cubature_points(3, 9)
+        pts2, w2 = ball_cubature_points(3, 9, algorithm=0)
+        assert np.array_equal(pts1, pts2)
+        assert np.array_equal(w1, w2)
+
+    def test_unknown_algorithm_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 9, algorithm=1)
+
+    def test_even_degree_at_or_above_9_raises(self):
+        # No MATLAB formula (named or arbOrder) exists at an even degree.
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 10)
+
+    def test_alpha_domain_raises(self):
+        with pytest.raises(ValueError):
+            ball_cubature_points(3, 9, alpha=-3.5)
+
+
 class TestBallCubaturePointsGeneral:
     def test_unsupported_degree_raises(self):
         with pytest.raises(ValueError):
@@ -1272,7 +1332,7 @@ class TestBallCubaturePointsGeneral:
         with pytest.raises(ValueError):
             ball_cubature_points(3, 4)
         with pytest.raises(ValueError):
-            ball_cubature_points(3, 9)
+            ball_cubature_points(3, 10)
 
     def test_invalid_n_raises(self):
         with pytest.raises(ValueError):
@@ -1479,12 +1539,22 @@ class TestBallMatlabFixtures:
     covered, different algorithm" cases exist for this region), so every
     comparison here is value-for-value at float64 tolerance after
     order-independent lexsort, matching TestCubeMatlabFixtures's and
-    TestSimplexMatlabFixtures's pattern exactly. The nonzero-alpha case
-    (fifthOrderSpherCubPoints algorithm 0, n=3, alpha=1.0) is the direct
-    empirical check on this module's alpha-sign correction (module
-    docstring's "confirmed MATLAB documentation defect" note): if the sign
-    were wrong, this comparison would fail against real MATLAB output, not
-    merely against this module's own oracle.
+    TestSimplexMatlabFixtures's pattern exactly. The nonzero-alpha cases
+    (fifthOrderSpherCubPoints algorithms 0 and 2, n=3, alpha=1.0; the
+    design spec's Section 6 case list pins algorithm 2 as its own
+    nonzero-alpha spot check, "the other alpha-supporting algorithm") are
+    the direct empirical check on this module's alpha-sign correction
+    (module docstring's "confirmed MATLAB documentation defect" note): if
+    the sign were wrong, these comparisons would fail against real MATLAB
+    output, not merely against this module's own oracle. The
+    arbOrderSpherCubPoints cases are likewise direct-port comparisons
+    (this module's construction is a line-for-line transcription of
+    MATLAB's recursive point-assembly loop, not a different algorithm at
+    the same degree), including one nonzero-INTEGER-alpha case (MATLAB's
+    own arbOrderSpherCubPoints requires integer alpha; this module's
+    generalization to real alpha is covered by the oracle-based
+    TestBallArbOrder instead, since real MATLAB cannot produce a
+    non-integer-alpha fixture to compare against here).
     """
 
     @pytest.mark.parametrize("n", [2, 3, 4])
@@ -1530,6 +1600,18 @@ class TestBallMatlabFixtures:
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
         assert_allclose(w[oa], ref_w[ob], atol=1e-7)
 
+    def test_fifth_order_algorithm2_nonzero_alpha_matches_matlab(self):
+        # The design spec's own pinned nonzero-alpha spot check (Section 6:
+        # "the other alpha-supporting algorithm").
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphere_fifthOrderSpherCubPoints_n3_alg2_alpha1.csv"
+        )
+        pts, w = ball_cubature_points(3, 5, algorithm=2, alpha=1.0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-7)
+
     @pytest.mark.parametrize("n", [3, 4])
     def test_seventh_order_algorithm0_matches_matlab(self, n):
         ref_pts, ref_w = _load_matlab_fixture(
@@ -1539,4 +1621,24 @@ class TestBallMatlabFixtures:
         oa = np.lexsort(pts.T)
         ob = np.lexsort(ref_pts.T)
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+
+    def test_arb_order_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphere_arbOrderSpherCubPoints_n3_order5.csv"
+        )
+        pts, w = ball_cubature_points(3, 9)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+
+    def test_arb_order_nonzero_integer_alpha_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_sphere_arbOrderSpherCubPoints_n2_order5_alpha1.csv"
+        )
+        pts, w = ball_cubature_points(2, 9, alpha=1.0)
+        oa = np.lexsort(pts.T)
+        ob = np.lexsort(ref_pts.T)
+        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
         assert_allclose(w[oa], ref_w[ob], atol=1e-6)

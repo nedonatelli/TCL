@@ -15,11 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`secondOrderSpherCubPoints`, `thirdOrderSpherCubPoints` (5 algorithms),
   `fifthOrderSpherCubPoints` (10 algorithms), `seventhOrderSpherCubPoints`
   (6 algorithms, algorithm 0 via a private port of
-  `seventhOrderSpherSurfCubPoints` algorithm 0), degrees 2/3/5/7. Excludes
-  (with reasons in the module docstring) `ninthOrderSpherCubPoints.m` and
-  `eleventhOrderSpherCubPoints.m` (`n=2`-only), `arbOrderSpherCubPoints.m`
-  (general-order Gegenbauer/Jacobi construction, doesn't fit this module's
-  degree-selects-file contract, deferred to a future task), and
+  `seventhOrderSpherSurfCubPoints` algorithm 0), degrees 2/3/5/7, plus
+  `arbOrderSpherCubPoints` (general-dimension, general-order, general-real-
+  `alpha` ball rule) folded in as the dispatch target for every odd
+  `degree >= 9`. `arbOrderSpherCubPoints`'s two `quadraturePoints1D`
+  dependencies (Gegenbauer and radial 1-D quadratures, outside the ported
+  subset) are handled differently: the Gegenbauer piece maps directly onto
+  `scipy.special.roots_jacobi`; the radial piece (weight `|x|**c1`) is
+  DERIVED from scratch via the classical even-weight symmetrization
+  technique, since MATLAB's own recursion only supports integer `c1` and
+  cannot serve this module's general real `alpha` at all -- independently
+  verified two ways (matches MATLAB's own integer-`c1` construction to
+  machine precision; matches brute-force numerical integration at
+  non-integer `c1`) before use, then re-verified end-to-end against the
+  ball-monomial oracle at degrees 9/11/13, `n` 2-4, `alpha` in `{0, 1.5}`.
+  Excludes (with reasons in the module docstring) `ninthOrderSpherCubPoints.m`
+  and `eleventhOrderSpherCubPoints.m` (`n=2`-only, superseded by
+  `arbOrderSpherCubPoints` at the same degrees for general `n`), and
   `spherSurfPoints2SpherPoints.m` (superseded by direct construction). Same
   true-measure weight convention as `cube_cubature_points`/
   `simplex_cubature_points`: weights sum to the ball's `|x|**alpha`-weighted

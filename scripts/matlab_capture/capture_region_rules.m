@@ -162,12 +162,36 @@ for numDim = 3:4
     writeRegionCase(OUTPUT_DIR, sprintf('region_sphere_seventhOrderSpherCubPoints_n%d_alg0', numDim), [xi.', w]);
 end
 
-% Nonzero-alpha spot check: algorithm 0's V and r formulas both carry an
-% explicit "numDim+alpha" term in the .m source (verified by inspection),
-% unlike most other algorithms in this file which hard-error if
-% alpha~=0.
+% Nonzero-alpha spot checks: both algorithm 0 (Sn 5-2) and algorithm 2
+% (Sn 5-4) carry an explicit "numDim+alpha" term in their V/r formulas
+% (verified by inspection), unlike most other algorithms in this file
+% which hard-error if alpha~=0. The design spec's Section 6 case list
+% pins algorithm 2 as ITS nonzero-alpha spot check ("the other
+% alpha-supporting algorithm"); algorithm 0's case is kept too since it
+% is the region_cubature.py port's DEFAULT algorithm for this degree and
+% is the more load-bearing check on the alpha-sign correction described
+% in region_cubature.py's module docstring.
 [xi, w] = fifthOrderSpherCubPoints(3, 0, 1.0);
 writeRegionCase(OUTPUT_DIR, 'region_sphere_fifthOrderSpherCubPoints_n3_alg0_alpha1', [xi.', w]);
+
+[xi, w] = fifthOrderSpherCubPoints(3, 2, 1.0);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_fifthOrderSpherCubPoints_n3_alg2_alpha1', [xi.', w]);
+
+% arbOrderSpherCubPoints (general-dimension, general-order ball rule,
+% degree 2*order-1) -- folded into region_cubature.py's
+% ball_cubature_points as the dispatch target for every odd degree >= 9
+% (Task-A3 fix-round F2). MATLAB's own alpha here MUST be an integer
+% (algorithm-8's radial quadraturePoints1D dependency requires
+% numDim-1+alpha to be a nonnegative integer, per that function's own
+% docstring) -- the pytcl port's alpha-domain generalizes beyond this via
+% a from-scratch derivation (see region_cubature.py's module docstring),
+% so this integer-alpha case is a spot check on the shared code path, not
+% a full test of the generalized range.
+[xi, w] = arbOrderSpherCubPoints(3, 5);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_arbOrderSpherCubPoints_n3_order5', [xi.', w]);
+
+[xi, w] = arbOrderSpherCubPoints(2, 5, 1);
+writeRegionCase(OUTPUT_DIR, 'region_sphere_arbOrderSpherCubPoints_n2_order5_alpha1', [xi.', w]);
 
 %== Spherical_Surface ======================================================
 for numDim = 2:4
