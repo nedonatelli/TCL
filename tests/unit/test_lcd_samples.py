@@ -26,6 +26,7 @@ import numpy as np
 import pytest
 from scipy.special import exp1
 
+from pytcl.core.exceptions import ConvergenceError, SingularMatrixError
 from pytcl.mathematical_functions.numerical_integration.lcd_samples import (
     _compute_d1,
     _compute_de2,
@@ -39,6 +40,7 @@ from pytcl.mathematical_functions.numerical_integration.lcd_samples import (
     _compute_do3_grad,
     _ei,
     _lcd_objective,
+    gaussian_lcd_samples,
 )
 
 # The campaign grid: both parities of n (1, 3 odd; 2, 4 even) and of
@@ -247,3 +249,177 @@ class TestEi:
     def test_preserves_input_shape(self):
         x = -np.ones((3, 4))
         assert _ei(x).shape == (3, 4)
+
+
+def _s_min_from_points(points, n, num_points):
+    """Recover the raw (unmirrored) free-point matrix s from a
+    force_cov_match=False `gaussian_lcd_samples` result, for tests that
+    need to re-evaluate `_lcd_objective` at the converged point. Only
+    valid when whitening was not applied (whitening is not invertible
+    without keeping the transform matrix around, and isn't needed for
+    these objective-value checks -- whitening never touches the cost)."""
+    num_half = num_points // 2
+    is_even = num_points % 2 == 0
+    xi = points.T
+    return xi[:, :num_half] if is_even else xi[:, 1 : 1 + num_half]
+
+
+class TestGaussianLCDSamplesConvergence:
+    """Convergence on the campaign grid: the call succeeds (no exception --
+    this port's equivalent of MATLAB's exitCode>=0, per the design spec's
+    validation contract, Section 5 check 1) and the optimized CvM objective
+    is strictly below its value at the random initialization (spec's
+    "objective decreased from init" contract).
+
+    Measured on this grid (macOS/Apple Silicon, 2026-08-18): every case
+    converges and the objective decreases by ~0.04-0.11 in absolute terms
+    (the values themselves are O(-1500) to O(-2500) -- D1/D3 dominate and
+    are large; the optimized D2 correction is comparatively small).
+    DECREASE_MARGIN is far below the measured decrease and exists only to
+    absorb float/quadrature noise: quad tolerance 1e-14 at O(2500)
+    magnitude gives an absolute noise floor around 2.5e-11.
+    """
+
+    DECREASE_MARGIN = 1e-6
+
+    @pytest.mark.parametrize("n,num_points", GRID)
+    def test_converges_and_objective_decreases(self, n, num_points):
+        seed = (100, n, num_points)
+
+        probe_rng = np.random.default_rng(seed)
+        s_init = probe_rng.standard_normal(_half_shape(n, num_points))
+        init_cost = _lcd_objective(s_init.flatten(order="F"), n, num_points)[0]
+
+        run_rng = np.random.default_rng(seed)
+        points, weights = gaussian_lcd_samples(
+            n, num_points, force_cov_match=False, rng=run_rng
+        )
+
+        s_min = _s_min_from_points(points, n, num_points)
+        final_cost = _lcd_objective(s_min.flatten(order="F"), n, num_points)[0]
+
+        assert final_cost < init_cost - self.DECREASE_MARGIN
+        assert points.shape == (num_points, n)
+        assert weights.shape == (num_points,)
+
+
+class TestGaussianLCDSamplesMoments:
+    """Under force_cov_match=True (the default), the returned points' sample
+    mean is 0 and sample covariance is I, exactly by construction of the
+    Cholesky-whitening transform (spec Section 5 check 4 -- an exactness
+    check, not a statistical one, since every grid case here satisfies
+    num_points >= 2*n).
+
+    Measured worst case on this grid (macOS/Apple Silicon, 2026-08-18):
+    mean |max component| ~4.4e-17, covariance |max deviation from I|
+    ~4.4e-16. MOMENT_TOL leaves >=1000x margin on both.
+    """
+
+    MOMENT_TOL = 1e-10
+
+    @pytest.mark.parametrize("n,num_points", GRID)
+    def test_mean_and_covariance_match_identity(self, n, num_points):
+        rng = np.random.default_rng((200, n, num_points))
+        points, weights = gaussian_lcd_samples(n, num_points, rng=rng)
+
+        mean = points.mean(axis=0)
+        cov = (points * weights[:, None]).T @ points  # sum_i w_i x_i x_i^T
+
+        assert np.max(np.abs(mean)) < self.MOMENT_TOL
+        assert np.max(np.abs(cov - np.eye(n))) < self.MOMENT_TOL
+        np.testing.assert_allclose(weights, 1.0 / num_points)
+        assert weights.sum() == pytest.approx(1.0, rel=1e-12)
+
+
+class TestGaussianLCDSamplesDeterminism:
+    """Bit-exact output given a seeded numpy.random.Generator: two runs
+    seeded identically must produce identical points and weights (scipy's
+    L-BFGS-B, the objective, and the whitening step are all deterministic
+    given identical inputs)."""
+
+    @pytest.mark.parametrize("n,num_points", GRID)
+    def test_bit_exact_given_seeded_rng(self, n, num_points):
+        points1, weights1 = gaussian_lcd_samples(
+            n, num_points, rng=np.random.default_rng((300, n, num_points))
+        )
+        points2, weights2 = gaussian_lcd_samples(
+            n, num_points, rng=np.random.default_rng((300, n, num_points))
+        )
+        np.testing.assert_array_equal(points1, points2)
+        np.testing.assert_array_equal(weights1, weights2)
+
+
+class TestGaussianLCDSamplesOrthogonalFamily:
+    """Two different seeds land on different points of the flat optimum
+    manifold (spec Section 3): the objective is invariant under any global
+    orthogonal transform for n >= 2, so two independently-converged
+    solutions generically differ in raw coordinates but agree closely in
+    objective value. n == 1 is excluded (O(1) is discrete, not a
+    continuous symmetry group -- see TestOrthogonalInvariance above, which
+    covers the underlying cost-invariance property directly).
+
+    Measured on this grid (macOS/Apple Silicon, 2026-08-18): cost relative
+    difference between two seeds was <=1.2e-12 in every case, while the
+    max per-coordinate point difference was >=2.27 -- clearly different
+    point clouds, clearly the same cost. COST_REL_TOL leaves >=1e6x margin.
+    """
+
+    COST_REL_TOL = 1e-6
+    POINT_DIFF_FLOOR = 1e-3
+
+    @pytest.mark.parametrize("n,num_points", [(2, 10), (2, 20), (3, 15), (4, 20)])
+    def test_different_seeds_different_points_similar_cost(self, n, num_points):
+        def run(seed):
+            rng = np.random.default_rng(seed)
+            points, _ = gaussian_lcd_samples(
+                n, num_points, force_cov_match=False, rng=rng
+            )
+            s_min = _s_min_from_points(points, n, num_points)
+            cost = _lcd_objective(s_min.flatten(order="F"), n, num_points)[0]
+            return points, cost
+
+        points_a, cost_a = run((400, n, num_points))
+        points_b, cost_b = run((401, n, num_points))
+
+        assert np.max(np.abs(points_a - points_b)) > self.POINT_DIFF_FLOOR
+        assert cost_a == pytest.approx(cost_b, rel=self.COST_REL_TOL)
+
+
+class TestGaussianLCDSamplesErrors:
+    def test_rejects_dimension_below_one(self):
+        with pytest.raises(ValueError):
+            gaussian_lcd_samples(0, 10)
+
+    def test_rejects_num_points_below_two(self):
+        with pytest.raises(ValueError):
+            gaussian_lcd_samples(2, 1)
+
+    def test_singular_covariance_raises_when_undersampled(self):
+        """num_points < 2*n: a symmetric point set cannot span n
+        independent directions, so the sample covariance is generically
+        singular and force_cov_match=True (the default) must raise rather
+        than silently return an ill-posed whitened result."""
+        with pytest.raises(SingularMatrixError):
+            gaussian_lcd_samples(4, 4, rng=np.random.default_rng(0))
+
+    def test_convergence_error_on_zero_iterations(self):
+        """max_iter=0 gives L-BFGS-B no iterations to run; scipy reports
+        this as a non-success exit, which must surface as ConvergenceError
+        rather than silently returning the (unoptimized) starting point."""
+        with pytest.raises(ConvergenceError):
+            gaussian_lcd_samples(2, 10, rng=np.random.default_rng(0), max_iter=0)
+
+
+class TestGaussianLCDSamplesPublicAPIExport:
+    """Reaches the public-API coverage contract via the package-level
+    export path (numerical_integration/__init__.py), not just the direct
+    module import used by every other test class in this file."""
+
+    def test_importable_from_package_init(self):
+        from pytcl.mathematical_functions.numerical_integration import (
+            gaussian_lcd_samples as exported,
+        )
+
+        points, weights = exported(2, 10, rng=np.random.default_rng(1))
+        assert points.shape == (10, 2)
+        assert weights.shape == (10,)

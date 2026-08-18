@@ -8,6 +8,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`gaussian_lcd_samples`** -- localized cumulative distribution (LCD)
+  cubature points for the standard normal `N(0, I)`
+  (`pytcl.mathematical_functions.numerical_integration.lcd_samples`).
+  Hybrid port of the MATLAB TCL's `GaussianLCDSamples.m` (commit 593ce51)
+  per `docs/superpowers/specs/2026-08-16-lcd-samples-design.md`: the
+  modified Cramer-von Mises objective and its four analytic gradient
+  routines are a faithful transcription (landed separately, Task B1);
+  this task wraps `scipy.optimize.minimize(method="L-BFGS-B", jac=True)`
+  in place of MATLAB's MEX-only `liblbfgs` call (a vendored third-party C
+  library, not MATLAB source -- nothing to port fidelity against), maps
+  liblbfgs's defaults onto scipy's L-BFGS-B options honestly (documented
+  in-function: `numCorr=6` -> `maxcor=6` and `max_iterations=1000` ->
+  `maxiter` are faithful; `epsilon=1e-6` -> `pgtol=1e-6` and
+  `delta=0`/`past=0` -> `ftol=0.0` are value-level matches, the latter
+  exact by convention, the former a genuinely different stopping
+  criterion (max-component vs scaled Euclidean norm); liblbfgs's
+  More-Thuente line-search parameters have no scipy equivalent), and adds
+  the `forceCovMatch` post-optimization Cholesky whitening step
+  (`xi <- chol(inv(R), 'lower')^T @ xi`, verified algebraically to
+  produce exactly `cov(xi) == I` and re-derived in the function's
+  docstring). Points/weights follow this module's own `sum(w) == 1`
+  Gaussian-weight convention (MATLAB's `w = 1/numSamples`), not the
+  separate region-measure convention `region_cubature.py` uses. Per the
+  design spec's rotation-invariance finding (Section 3: the CvM cost is
+  invariant under any global orthogonal transform for `n >= 2`, so a
+  minimizer sits on a flat manifold, not an isolated point), validation
+  does NOT compare raw coordinates against MATLAB fixtures -- that
+  comparison is provably invalid for `n >= 2` and is deferred to a
+  future task's rotation/permutation-invariant Gram-spectrum check. This
+  task's own tests instead cover: convergence (success + objective
+  decrease from init) on the grid `{(1,5),(2,10),(2,20),(3,15),(4,20)}`;
+  exact moment identities (mean 0, covariance `I`) under
+  `force_cov_match`; bit-exact determinism given a seeded
+  `numpy.random.Generator`; and an orthogonal-family sanity check
+  (different seeds give different point sets at similar objective
+  values). Investigated merging `_lcd_objective`'s value and gradient
+  passes into one (B1's review flagged "L+1 quads per call"); measured
+  the D3/Do3 closed-form pieces are cheap enough to merge safely but
+  account for under 2% of one call's wall time on this grid (macOS/Apple
+  Silicon, 2026-08-18) -- the dominant cost is the D2/Do2 adaptive
+  quadrature, whose value and per-point gradient integrals are
+  different integrands and would need `scipy.integrate.quad_vec` (a
+  different tolerance regime, requiring re-validation against B1's
+  ~2e-16 accuracy bar) to merge; left unmerged and documented in the
+  module docstring rather than risked.
 - **`spherical_surface_cubature_points`** -- cubature points for the unit
   sphere surface `S^(n-1) = {x : |x| == 1}`
   (`pytcl.mathematical_functions.numerical_integration.region_cubature`).

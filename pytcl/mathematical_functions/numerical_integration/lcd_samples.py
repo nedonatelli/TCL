@@ -1,30 +1,34 @@
-"""Gaussian LCD sample objective and analytic gradients (private, no optimizer).
+"""Gaussian LCD samples: objective, analytic gradients, and optimizer wrapper.
 
 Faithful transcription of the modified Cramer-von Mises (CvM) objective and
 its four analytic gradient routines from the MATLAB Tracker Component
 Library's ``GaussianLCDSamples.m`` (commit 593ce51,
 Mathematical_Functions/Numerical_Integration/Cubature_Points/Gaussian_Weight/),
 per the hybrid design spec (docs/superpowers/specs/2026-08-16-lcd-samples-design.md):
-the math is ported here; the optimizer (MATLAB calls a MEX build of the
-third-party liblbfgs library, not MATLAB code) is deliberately NOT ported and
-lands separately as a ``scipy.optimize.minimize(method="L-BFGS-B")`` wrapper
-with the public API.
+the math is ported as ordinary Python/NumPy; the optimizer (MATLAB calls a
+MEX build of the third-party liblbfgs library, not MATLAB code) is
+deliberately NOT ported and is instead wrapped as
+``scipy.optimize.minimize(method="L-BFGS-B")`` in the public
+:func:`gaussian_lcd_samples` below.
 
-Everything in this module is private. The objective operates on the symmetric
-half-sample parameterization: ``s`` is the ``(num_dim, num_samples // 2)``
-matrix of free points; the full sample set is ``[s, -s]`` (plus a zero point
-when ``num_samples`` is odd). The "even"/"odd" split throughout refers to the
-parity of ``num_samples`` (MATLAB's ``isEven = mod(numSamples,2)==0``; the
-MATLAB subfunction comments say "dimensionality" but the dispatch is on
-sample count). The odd case differs because of the extra fixed point at the
-origin.
+Everything except :func:`gaussian_lcd_samples` is private. The objective
+operates on the symmetric half-sample parameterization: ``s`` is the
+``(num_dim, num_samples // 2)`` matrix of free points; the full sample set is
+``[s, -s]`` (plus a zero point when ``num_samples`` is odd). The "even"/"odd"
+split throughout refers to the parity of ``num_samples`` (MATLAB's
+``isEven = mod(numSamples,2)==0``; the MATLAB subfunction comments say
+"dimensionality" but the dispatch is on sample count). The odd case differs
+because of the extra fixed point at the origin.
 
 Flattening convention: stacked vectors use Fortran (column-major) order,
 matching MATLAB's ``s(:)`` / ``reshape`` semantics.
 
 The constant terms ``computeD1`` and ``computeDo2ContTerm`` never enter the
-optimized cost or its gradient; they are transcribed here because the public
-wrapper (next task) adds them back to report the full CvM distance.
+optimized cost or its gradient; they are transcribed here because
+:func:`gaussian_lcd_samples` adds them back internally to compute the exit
+condition, matching what ``GaussianLCDSamples.m`` reports as ``CvMDistMin``
+(the value itself is not part of this module's public return contract --
+see that function's docstring).
 
 MATLAB's ``integral(...,'AbsTol',1e-14,'RelTol',1e-14)`` calls are mirrored
 with ``scipy.integrate.quad(..., epsabs=1e-14, epsrel=1e-14)``. QUADPACK
@@ -33,6 +37,24 @@ cannot certify 1e-14 relative error near machine precision and raises an
 is ~4e-16 relative (values agree to <1e-12 absolute against looser-tolerance
 runs; n=4, L=10, b_max=70, macOS/Apple Silicon, 2026-08-18), so the warning
 is suppressed at the single call-site helper below.
+
+Single-pass value/gradient merge (investigated, not applied): measured on
+this campaign's grid (macOS/Apple Silicon, 2026-08-18, 20-rep mean per
+cell), the D3/Do3 closed-form pieces -- the ones cheap enough to merge
+safely, since they are pure vectorized NumPy with no adaptive quadrature --
+account for well under 2% of one ``_lcd_objective`` call's wall time at
+every grid cell (0.76%-1.57%, worst at (1,5)). The dominant cost (>=98%) is
+the D2/Do2 quadrature: one ``scipy.integrate.quad`` call for the value plus
+one *per free point* (``L``) for the gradient, i.e. the "L+1 quads per
+call" this module was flagged for. Merging *that* into a true single pass
+would require switching from ``scipy.integrate.quad`` to a vector-valued
+quadrature routine (``scipy.integrate.quad_vec``) with different tolerance
+semantics, and re-validating the merged result against the ~2e-16 accuracy
+bar the existing ``quad``-based D2/D2Grad functions were reviewed to -- not
+a straightforward refactor, and out of scope here. Left as-is and
+documented per the task brief's explicit "if invasive, leave and document"
+instruction; the D3/Do3 duplication was left alone too since merging it
+would not move the measured number.
 
 References
 ----------
@@ -47,12 +69,15 @@ D. F. Crouse, "The Tracker Component Library," IEEE AESS Magazine, 2017.
 """
 
 import warnings
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import IntegrationWarning, quad
+from scipy.optimize import minimize
 from scipy.special import expi
+
+from pytcl.core.exceptions import ConvergenceError, SingularMatrixError
 
 
 def _ei(x: NDArray[np.floating]) -> NDArray[np.floating]:
@@ -574,3 +599,244 @@ def _lcd_objective(
     value = _mod_cvm_dist(s_flat, b_max, is_even, abs_tol, rel_tol, s_dims)
     grad = _mod_cvm_dist_grad(s_flat, b_max, is_even, abs_tol, rel_tol, s_dims)
     return value, grad
+
+
+def gaussian_lcd_samples(
+    n: int,
+    num_points: int,
+    *,
+    force_cov_match: bool = True,
+    rng: Optional[np.random.Generator] = None,
+    max_iter: int = 1000,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Localized cumulative distribution (LCD) cubature points for N(0, I).
+
+    Port of the MATLAB Tracker Component Library's ``GaussianLCDSamples.m``
+    (commit 593ce51) entry point, per the hybrid design spec
+    (docs/superpowers/specs/2026-08-16-lcd-samples-design.md): the CvM
+    objective/gradient are a faithful transcription (this module's private
+    functions); the optimizer is ``scipy.optimize.minimize(method=
+    "L-BFGS-B", jac=True)`` in place of MATLAB's MEX-only ``liblbfgs`` call,
+    since ``liblbfgs`` is a vendored third-party C library with no MATLAB
+    source of its own to port fidelity against (spec Section 6).
+
+    Points are generated as ``2*(num_points // 2)`` symmetric pairs
+    ``+-s_i`` obtained by minimizing the modified Cramer-von Mises distance
+    between the points' localized CDF and a standard normal's, plus one
+    fixed point at the origin when `num_points` is odd (MATLAB lines
+    212-218). All weights are uniform, ``1 / num_points`` (MATLAB line 222:
+    ``w=1/numSamples``), summing to 1 -- the Gaussian-weight convention this
+    module's sibling ``cubature_points`` functions use (region-measure
+    weighting, where weights sum to a region's volume rather than 1, is a
+    separate contract used only by ``region_cubature.py``; see that
+    module's docstring).
+
+    **Rotation-invariance caveat (read before comparing outputs across
+    runs or against MATLAB).** For `n` >= 2 the CvM cost is provably
+    invariant under any global orthogonal transform applied to every point
+    simultaneously (design spec Section 3): ``O(n)`` is a continuous
+    symmetry group of the objective, so a minimizer sits on a flat manifold
+    of equally-optimal solutions, not an isolated point. Two calls that
+    converge correctly -- including one call of this function versus a
+    MATLAB ``GaussianLCDSamples`` run given the *same* starting matrix --
+    generically land on *different* points of that manifold: same CvM cost,
+    different raw coordinates, and this is expected, not a bug. Only `n`
+    == 1 has a discrete symmetry group (``O(1) = {+1, -1}``) where raw
+    coordinates (up to sign/permutation) are a meaningful comparison.
+
+    **Seeding is NOT cross-compatible with MATLAB.** `rng` (default: a
+    fresh ``numpy.random.default_rng()``, PCG64-backed per this repo's
+    convention) mirrors MATLAB's ``sInit=randn(sDims)`` initialization
+    scheme -- drawing a ``(n, num_points // 2)`` matrix of standard normal
+    variates via ``rng.standard_normal`` -- but NumPy's Generator and
+    MATLAB's ``randn`` use different underlying bit generators and
+    uniform-to-Gaussian transforms. No seed value reproduces the same
+    ``sInit`` matrix in both ecosystems; giving this function and a MATLAB
+    call "the same seed" only means "the same kind of random start," not
+    "the same numbers." A fixed `rng` does give bit-identical output across
+    repeated Python calls (checked in the test suite).
+
+    **L-BFGS-B option mapping (honest, not exact, parity with liblbfgs).**
+    MATLAB's ``quasiNewtonLBFGS`` defaults (all left at default by
+    ``GaussianLCDSamples.m``) come from a MEX wrapper around Naoaki
+    Okazaki's ``liblbfgs`` (a C port of Nocedal's L-BFGS with a
+    More-Thuente line search). ``scipy``'s L-BFGS-B uses a different
+    Fortran implementation (Zhu/Byrd/Lu/Nocedal) with its own line search,
+    so no option mapping can reproduce ``liblbfgs``'s exact step sequence;
+    the mapping below matches intent, not mechanics:
+
+    - ``numCorr=6`` (history size) -> ``maxcor=6`` (scipy's history-size
+      option shares the same meaning and default value).
+    - ``max_iterations=1000`` -> ``maxiter=max_iter`` (this function's
+      parameter, default 1000, matching MATLAB's default exactly) and
+      ``max_linesearch=20`` -> ``maxfun=max_iter*20``. liblbfgs's
+      ``max_iterations`` bounds only outer iterations; scipy's L-BFGS-B
+      additionally caps total function evaluations via ``maxfun``
+      (default 15000, independent of ``maxiter``), which would silently
+      cut optimization short before liblbfgs's own worst-case evaluation
+      budget (``max_iterations * max_linesearch`` = 20000 at the
+      defaults) is reached, so ``maxfun`` is raised to match that budget
+      rather than left at scipy's unrelated default.
+    - ``epsilon=1e-6`` (stop when the Euclidean gradient norm drops below
+      ``epsilon * max(1, ||x||)``) -> ``gtol=1e-6`` (the ``minimize``
+      option name; the underlying Fortran variable is called ``pgtol``,
+      which is also the keyword the legacy, non-``minimize``
+      ``scipy.optimize.fmin_l_bfgs_b`` entry point uses -- ``minimize``
+      renames it to ``gtol``). This is a genuinely different criterion,
+      not just a differently-named equivalent: scipy's ``gtol`` stops on
+      the max-absolute-component of the (here unconstrained, so
+      unprojected) gradient, with no scaling by the parameter norm. Both
+      use the same numeric threshold as a reasonable value-level match;
+      they are not the same stopping rule.
+    - ``delta=0`` / ``past=0`` (liblbfgs's relative-function-decrease test
+      explicitly disabled) -> ``ftol=0.0``. This one *is* a faithful
+      mapping: scipy computes ``factr = ftol / eps`` internally and the
+      underlying Fortran L-BFGS-B code treats ``factr=0`` as "suppress
+      this termination test" (its own documented convention), mirroring
+      liblbfgs's disabled delta-test exactly.
+    - ``wolfe=0.9`` (curvature/Wolfe condition in the More-Thuente line
+      search) and ``ftol=1e-6`` / ``xtol=1e-16`` / ``min_step`` /
+      ``max_step`` (liblbfgs's own internal line-search parameters) have
+      **no exposed equivalent** in scipy's L-BFGS-B ``minimize``
+      interface -- its internal line search (``dcsrch``) hardcodes its
+      own strong-Wolfe curvature parameter (conventionally 0.9,
+      coincidentally the same value liblbfgs defaults to, but not
+      user-settable through this wrapper) and is not configurable from
+      Python. Not mapped; noted here so a future reader does not assume
+      silent parity.
+
+    Parameters
+    ----------
+    n : int
+        Dimensionality of the cubature points, n >= 1.
+    num_points : int
+        Total number of points to generate, num_points >= 2. For a
+        non-singular sample covariance when `force_cov_match` is True,
+        MATLAB's own documented requirement is num_points >= 2*n (see
+        Raises below).
+    force_cov_match : bool, optional
+        When True (the default -- MATLAB's default is the same True only
+        when ``num_points >= 2*n``; this port always defaults True and
+        raises instead of silently falling back to False), whiten the
+        optimized points post-hoc by Cholesky factorization so their
+        sample covariance is exactly the identity (to float64 rounding),
+        correcting the base algorithm's tendency to underestimate the
+        diagonal of the covariance (MATLAB lines 224-240). When False, the
+        raw optimized (mirrored) points are returned with whatever sample
+        covariance the CvM optimum happens to produce.
+    rng : numpy.random.Generator, optional
+        Generator used to draw the MATLAB-``randn``-equivalent
+        initialization matrix (see the seeding caveat above). Default
+        None constructs a fresh ``numpy.random.default_rng()``.
+    max_iter : int, optional
+        Maximum L-BFGS-B outer iterations, default 1000 (MATLAB's
+        ``max_iterations`` default, see the option-mapping notes above).
+
+    Returns
+    -------
+    points : ndarray
+        Shape ``(num_points, n)``.
+    weights : ndarray
+        Shape ``(num_points,)``, every entry exactly ``1 / num_points``
+        (uniform weighting; MATLAB line 222), summing to 1.
+
+    Raises
+    ------
+    ValueError
+        If `n` < 1 or `num_points` < 2.
+    SingularMatrixError
+        If `force_cov_match` is True and the optimized points' sample
+        covariance is singular (MATLAB's ``exitCode=-2`` case, lines
+        230-235) -- generically occurs when ``num_points < 2*n``, since a
+        symmetric point set spanning fewer than `n` free directions cannot
+        have a full-rank covariance.
+    ConvergenceError
+        If L-BFGS-B does not report success within `max_iter` iterations.
+
+    Notes
+    -----
+    Measured on this campaign's validation grid
+    ``{(1,5),(2,10),(2,20),(3,15),(4,20)}`` (macOS/Apple Silicon,
+    2026-08-18): every case converges (``result.success`` True) with the
+    optimized objective strictly below its value at the random
+    initialization, and, under `force_cov_match` (default), the returned
+    points' sample mean matches 0 and sample covariance matches the
+    identity to float64 rounding (~1e-14 or tighter absolute, exact test
+    tolerances recorded in ``tests/unit/test_lcd_samples.py``). No claim is
+    made about convergence quality outside this grid.
+
+    Examples
+    --------
+    >>> pts, w = gaussian_lcd_samples(2, 10, rng=np.random.default_rng(0))
+    >>> pts.shape
+    (10, 2)
+    >>> round(float(w.sum()), 12)
+    1.0
+    >>> bool(np.allclose(pts.mean(axis=0), 0.0, atol=1e-10))
+    True
+    """
+    if n < 1:
+        raise ValueError(f"dimension n must be >= 1, got {n}")
+    if num_points < 2:
+        raise ValueError(f"num_points must be >= 2, got {num_points}")
+
+    num_half = num_points // 2
+    is_even = num_points % 2 == 0
+    s_dims = (n, num_half)
+
+    generator = rng if rng is not None else np.random.default_rng()
+    s_init = generator.standard_normal(s_dims)
+    s_init_flat = s_init.flatten(order="F")
+
+    result = minimize(
+        _lcd_objective,
+        s_init_flat,
+        args=(n, num_points),
+        jac=True,
+        method="L-BFGS-B",
+        options={
+            "maxcor": 6,
+            "maxiter": max_iter,
+            "maxfun": max_iter * 20,
+            "gtol": 1e-6,
+            "ftol": 0.0,
+        },
+    )
+
+    if not result.success:
+        raise ConvergenceError(
+            "L-BFGS-B did not converge for the Gaussian LCD sample "
+            f"optimization (n={n}, num_points={num_points}): {result.message}",
+            algorithm="L-BFGS-B",
+            iterations=int(result.nit),
+            max_iterations=max_iter,
+            residual=float(np.max(np.abs(result.jac))),
+            tolerance=1e-6,
+        )
+
+    s_min = result.x.reshape(s_dims, order="F")
+
+    if is_even:
+        xi = np.hstack([s_min, -s_min])
+    else:
+        xi = np.hstack([np.zeros((n, 1)), s_min, -s_min])
+
+    w_scalar = 1.0 / num_points
+
+    if force_cov_match:
+        cov = w_scalar * (xi @ xi.T)
+        if np.linalg.matrix_rank(cov) != n:
+            raise SingularMatrixError(
+                "sample covariance of the optimized LCD points is singular; "
+                "cannot force a covariance match with symmetric samples "
+                f"(n={n}, num_points={num_points}; MATLAB requires "
+                f"num_points >= 2*n = {2 * n} for this to be non-singular)",
+                matrix_name="R",
+            )
+        cov_inv = np.linalg.inv(cov)
+        s_r_inv = np.linalg.cholesky(cov_inv)
+        xi = s_r_inv.T @ xi
+
+    points = xi.T
+    weights = np.full(num_points, w_scalar)
+    return points, weights
