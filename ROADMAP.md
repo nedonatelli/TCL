@@ -181,12 +181,17 @@ Both previously tracked targets are met and now guarded by CI SLOs
 forward-only: a closed target gets a one-line pointer to what enforces it,
 not a stale number.
 
-- **JPDA (100 targets, 50 meas):** 45.31 ms -> 33.55 ms (Apple M3 Max,
-  2026-08-18) after wiring the previously-dead Mahalanobis njit fast-path
-  kernels (`pytcl/assignment_algorithms/gating.py`) into
-  `mahalanobis_distance()`; both figures already beat the old
-  "89 ms -> <75 ms" row, which had no in-repo provenance (no commit,
-  fixture, or script reproduced either number). Guarded by
+- **JPDA (100 targets, 50 meas):** 45.31 ms (task C1's `time.perf_counter`
+  profiling-run baseline, Apple M3 Max, 2026-08-18) -> 33.55 ms (Apple M3
+  Max, 2026-08-18) after wiring the previously-dead Mahalanobis njit
+  fast-path kernels (`pytcl/assignment_algorithms/gating.py`) into
+  `mahalanobis_distance()`. CHANGELOG.md's `[Unreleased]` entry for this
+  change instead cites 43.89 ms -- task C2's own `pytest-benchmark`
+  pre-optimization re-measurement, taken fresh at the start of that task on
+  the same machine and date; the two "before" numbers come from different
+  measurement runs/methodologies, not a discrepancy. Both figures already
+  beat the old "89 ms -> <75 ms" row, which had no in-repo provenance (no
+  commit, fixture, or script reproduced either number). Guarded by
   `test_jpda_update_100_targets_50_meas`'s SLO (111.18 ms mean).
 - **Hungarian Assignment (500x500 dense):** 5.00 ms median (Apple M3 Max,
   2026-08-18) -- `hungarian()` is a thin wrapper around scipy's
@@ -197,8 +202,8 @@ not a stale number.
 
 Both SLO thresholds are CI-calibrated (local measurement x measured
 CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full
-derivation:
-`.superpowers/sdd/2026-08-17-v2.5.0-region-lcd-perf/task-C2-report.md`.
+derivation in task C2's performance report (local-only, untracked
+artifact of the v2.5.0 region-lcd-perf campaign).
 
 
 ---

@@ -22,6 +22,9 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
+from pytcl.mathematical_functions.numerical_integration.quadrature import (
+    gauss_legendre,
+)
 from pytcl.mathematical_functions.numerical_integration.region_cubature import (
     ball_cubature_points,
     cube_cubature_points,
@@ -1894,6 +1897,29 @@ class TestCubeMatlabFixtures:
         ob = np.lexsort(ref_pts.T)
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-6)
         assert_allclose(w[oa], ref_w[ob], atol=1e-5)
+
+
+class TestGaussLegendre1DMatlabFixture:
+    """Spot check against real MATLAB ``GaussLegendrePoints1D`` output
+    (capture_region_rules.m), per the region-cubature design spec's overlap
+    table (Sections 3 and 6): this does not seed new porting work --
+    ``quadrature.gauss_legendre`` is already a direct, pre-existing port of
+    this exact MATLAB function (same [-1,1] domain, same sum(w)=2
+    convention, same n-points/2n-1-degree contract) -- it validates that
+    existing port against real MATLAB output rather than against
+    ``numpy.polynomial.legendre.leggauss`` alone.
+    """
+
+    def test_matches_matlab(self):
+        ref_pts, ref_w = _load_matlab_fixture(
+            "region_cube_GaussLegendrePoints1D_n8.csv"
+        )
+        x, w = gauss_legendre(8)
+        oa = np.argsort(x)
+        ob = np.argsort(ref_pts[:, 0])
+        assert_allclose(x[oa], ref_pts[ob, 0], atol=1e-10)
+        assert_allclose(w[oa], ref_w[ob], atol=1e-10)
+        assert w.sum() == pytest.approx(2.0, rel=1e-12)
 
 
 class TestSimplexMatlabFixtures:

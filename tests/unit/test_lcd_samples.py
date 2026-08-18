@@ -27,6 +27,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from scipy.optimize import linear_sum_assignment
 from scipy.special import exp1
 
 from pytcl.core.exceptions import ConvergenceError, SingularMatrixError
@@ -659,6 +660,47 @@ class TestGaussianLCDSamplesMatlabFixtures:
             eig_fixture,
             rtol=self.GRAM_SPECTRUM_RTOL,
             atol=self.GRAM_SPECTRUM_ATOL,
+        )
+
+    # Spec Section 3 / Section 9: n=1 is the one grid case where O(n) is
+    # discrete ({+1,-1}), not a continuous Lie group, so there is no flat
+    # optimum manifold and raw-coordinate comparison (up to the
+    # sign/permutation symmetry the port and MATLAB both already exploit
+    # via the mirrored [sMin, -sMin] construction) is meaningful -- unlike
+    # every n>=2 case above, which deliberately never compares coordinates.
+    # Placeholder tolerance pending real fixture data (same
+    # claims-inherit-measurement-range methodology as CVM_VALUE_RTOL
+    # above): the two optimizers (scipy L-BFGS-B vs MATLAB's liblbfgs)
+    # still generally stop at slightly different points within the same
+    # (here, discrete-symmetry-only) basin, so exact bit-parity is not
+    # expected even at n=1.
+    N1_COORD_ATOL = 1e-3
+
+    def test_n1_permutation_matched_coordinates_match_matlab(self):
+        """Spec Section 5 check 3's n=1 exception: a permutation-matched
+        (scipy.optimize.linear_sum_assignment) raw-coordinate comparison,
+        the only one of the five grid cases that can serve as a true
+        parity regression test (spec Section 9) -- every n>=2 case instead
+        uses the rotation/permutation-invariant Gram-spectrum check above,
+        because for n>=2 raw coordinates are provably not comparable
+        (Section 3)."""
+        n, num_points = 1, 5
+        xi_fixture, _, s_init, _ = _load_lcd_fixture(n, num_points)
+
+        points, _ = gaussian_lcd_samples(
+            n,
+            num_points,
+            force_cov_match=True,
+            rng=_FixedStandardNormal(s_init),
+        )
+
+        cost = np.abs(points[:, [0]] - xi_fixture[:, 0][None, :])
+        row_ind, col_ind = linear_sum_assignment(cost)
+        matched_diff = np.abs(points[row_ind, 0] - xi_fixture[col_ind, 0])
+
+        assert np.max(matched_diff) < self.N1_COORD_ATOL, (
+            f"n=1 permutation-matched coordinate mismatch: "
+            f"worst |diff|={np.max(matched_diff):.3e}"
         )
 
     @pytest.mark.parametrize("n,num_points", CASES)

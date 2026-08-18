@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cubature points for the standard normal `N(0, I)`
   (`pytcl.mathematical_functions.numerical_integration.lcd_samples`).
   Hybrid port of the MATLAB TCL's `GaussianLCDSamples.m` (commit 593ce51)
-  per `docs/superpowers/specs/2026-08-16-lcd-samples-design.md`: the
+  per the Gaussian-LCD port-feasibility design spec (local-only, untracked
+  -- see CONTRIBUTING.md's `docs/superpowers/` policy): the
   modified Cramer-von Mises objective and its four analytic gradient
   routines are a faithful transcription (landed separately, Task B1);
   this task wraps `scipy.optimize.minimize(method="L-BFGS-B", jac=True)`
@@ -222,7 +223,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fresh locally and compared against the median of its last 10
   `.benchmarks/history.jsonl` CI records) x 1.5 headroom. Full derivation
   recorded inline in `slos.json` (`_derivation` field on each entry) and in
-  `.superpowers/sdd/2026-08-17-v2.5.0-region-lcd-perf/task-C2-report.md`.
+  task C2's performance report (local-only, untracked artifact of the
+  v2.5.0 region-lcd-perf campaign).
 
 ### Changed
 - **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now
@@ -238,7 +240,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   above ~dim 12, so dims >10 still take the original generic-solve path).
   Measured on Apple M3 Max, 2026-08-18: the JPDA 100-target/50-measurement
   full-pipeline benchmark (`test_jpda_update_100_targets_50_meas`) drops
-  from 43.89 ms to 33.55 ms median (-23.6%); the `mahalanobis_distance`
+  from 43.89 ms (this task's own `pytest-benchmark` pre-optimization
+  re-measurement) to 33.55 ms median (-23.6%) -- ROADMAP.md's Performance
+  Targets section instead cites 45.31 ms for the same "before" state, task
+  C1's separate `time.perf_counter` profiling-run baseline taken on the
+  same machine and date; the two numbers come from different measurement
+  runs, not a discrepancy. The `mahalanobis_distance`
   2D/3D microbenchmarks drop from ~2.79/3.02 us to ~0.65/0.64 us (~4.3x);
   the 6D microbenchmark (general-kernel path) drops from ~3.34 us to
   ~2.73 us (-18%). Behavior-equality verified against the old generic-solve

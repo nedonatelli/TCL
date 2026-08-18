@@ -4,7 +4,8 @@ Faithful transcription of the modified Cramer-von Mises (CvM) objective and
 its four analytic gradient routines from the MATLAB Tracker Component
 Library's ``GaussianLCDSamples.m`` (commit 593ce51,
 Mathematical_Functions/Numerical_Integration/Cubature_Points/Gaussian_Weight/),
-per the hybrid design spec (docs/superpowers/specs/2026-08-16-lcd-samples-design.md):
+per the Gaussian-LCD port-feasibility design spec (local-only, untracked --
+see CONTRIBUTING.md's ``docs/superpowers/`` policy):
 the math is ported as ordinary Python/NumPy; the optimizer (MATLAB calls a
 MEX build of the third-party liblbfgs library, not MATLAB code) is
 deliberately NOT ported and is instead wrapped as
@@ -612,8 +613,8 @@ def gaussian_lcd_samples(
     """Localized cumulative distribution (LCD) cubature points for N(0, I).
 
     Port of the MATLAB Tracker Component Library's ``GaussianLCDSamples.m``
-    (commit 593ce51) entry point, per the hybrid design spec
-    (docs/superpowers/specs/2026-08-16-lcd-samples-design.md): the CvM
+    (commit 593ce51) entry point, per the Gaussian-LCD port-feasibility
+    design spec (local-only, untracked): the CvM
     objective/gradient are a faithful transcription (this module's private
     functions); the optimizer is ``scipy.optimize.minimize(method=
     "L-BFGS-B", jac=True)`` in place of MATLAB's MEX-only ``liblbfgs`` call,

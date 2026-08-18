@@ -53,7 +53,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Foundation
-           MF["mathematical_functions<br/>24 modules"]
+           MF["mathematical_functions<br/>25 modules"]
            CR["core<br/>7 modules"]
        end
 

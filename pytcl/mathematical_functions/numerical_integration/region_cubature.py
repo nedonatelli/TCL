@@ -18,8 +18,9 @@ gamma(n/2)`` -- the unit ball volume ``pi**(n/2) / gamma(n/2+1)`` when
 version divides by the returned volume (``weights / weights.sum()``), which
 is always safe; going the other way (recovering the true measure from a
 pre-normalized rule) is not possible without already knowing the volume.
-See ``docs/superpowers/specs/2026-08-16-region-cubature-design.md`` Section
-1 for the full rationale.
+See the region-cubature port-feasibility design spec (local-only, untracked
+-- see CONTRIBUTING.md's ``docs/superpowers/`` policy), Section 1, for the
+full rationale.
 
 Ported from the Tracker Component Library's ``Cubature_Points/Cube_Space``
 and ``Cubature_Points/Simplex`` collections (top-level, general-dimension
