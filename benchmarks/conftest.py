@@ -276,6 +276,57 @@ def jpda_test_data():
     return scenarios
 
 
+@pytest.fixture(scope="session")
+def jpda_full_pipeline_100_50():
+    """
+    Full-pipeline JPDA inputs at the ROADMAP.md performance-target scale
+    (100 targets, 50 measurements).
+
+    jpda_test_data above only pre-computes a likelihood matrix for the
+    numba-jitted jpda_probabilities kernel, which is microseconds-scale
+    even at 100x50 and does not reproduce the ROADMAP "JPDA (100 targets,
+    50 meas)" measured cost. This fixture instead provides track states,
+    covariances, and a measurement model so a benchmark can drive
+    jpda_update end to end, exercising compute_likelihood_matrix's
+    Python-level double loop -- the actual bottleneck at this scale.
+    """
+    np.random.seed(42)
+    n_tracks = 100
+    n_meas = 50
+    dim = 4  # [x, vx, y, vy]
+
+    track_states = [np.random.randn(dim) for _ in range(n_tracks)]
+    track_covariances = [np.eye(dim) * 0.5 for _ in range(n_tracks)]
+    measurements = np.random.randn(n_meas, 2)
+    H = np.zeros((2, dim))
+    H[0, 0] = 1.0
+    H[1, 2] = 1.0
+    R = np.eye(2) * 0.1
+
+    return {
+        "track_states": track_states,
+        "track_covariances": track_covariances,
+        "measurements": measurements,
+        "H": H,
+        "R": R,
+    }
+
+
+# =============================================================================
+# Assignment Fixtures
+# =============================================================================
+
+
+@pytest.fixture(scope="session")
+def dense_cost_matrix_500():
+    """
+    Dense 500x500 random cost matrix for the ROADMAP.md "Hungarian
+    Assignment (500x500)" performance target.
+    """
+    np.random.seed(42)
+    return np.random.rand(500, 500) * 100.0
+
+
 # =============================================================================
 # Benchmark Configuration
 # =============================================================================
