@@ -30,6 +30,11 @@
       "max_mean_us": 16573.0,
       "max_p99_us": 33146.0,
       "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 5.0016ms (5 pytest-benchmark runs, --benchmark-min-rounds=30, hungarian() == scipy.optimize.linear_sum_assignment on a 500x500 dense matrix) x the same CI/local ratio 2.209 x 1.5 headroom = 16.57ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no Hungarian/assignment benchmark exists in CI history yet to calibrate against directly). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
+    },
+    "test_assign2d_augmented_500x500": {
+      "max_mean_us": 29946.0,
+      "max_p99_us": 59892.0,
+      "_derivation": "gate-calibration doctrine (perf-levers task 2, 2026-08-18, Apple M3 Max): local median 9.0375ms (pytest-benchmark, --benchmark-min-rounds=5, auto-calibrated to 98 rounds; assign2d() with cost_of_non_assignment=50.0 on the same 500x500 uniform(0,100) seed-42 matrix as test_hungarian_dense_500x500, building the (n+m)x(n+m)=1000x1000 augmented matrix before delegating to scipy) x the same CI/local ratio 2.209 x 1.5 headroom = 29.9458ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no assign2d benchmark exists in CI history yet to calibrate against directly). cProfile of 10 calls to the same scenario attributes 96.7% of cumulative time to scipy.optimize.linear_sum_assignment and 1.1% to the np.full augmented-matrix construction -- below the plan's 10% trivial-fix threshold, so no code change was made; scipy's 1000x1000 solve is the floor. max_p99_us follows this file's existing 2x-mean convention. Full derivation in the perf-levers campaign's task 2 report (local-only, untracked artifact)."
     }
   }
 }

@@ -245,6 +245,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorded inline in `slos.json` (`_derivation` field on each entry) and in
   task C2's performance report (local-only, untracked artifact of the
   v2.5.0 region-lcd-perf campaign).
+- **`test_assign2d_augmented_500x500`** (`benchmarks/test_assignment_bench.py`)
+  and a new CI performance SLO (`.benchmarks/slos.json`, 29.946 ms mean,
+  59.892 ms p99) closing the v2.5.0 campaign's parked question of whether
+  `assign2d`'s finite-`cost_of_non_assignment` path -- which builds an
+  (n+m)x(n+m) = 1000x1000 augmented matrix before delegating to scipy on
+  the same 500x500 case `test_hungarian_dense_500x500` covers -- deserved
+  its own perf target (perf-levers task 2, Apple M3 Max, 2026-08-18):
+  9.0375 ms local median (pytest-benchmark, auto-calibrated to 98 rounds).
+  cProfile of the same scenario (10 calls) attributes 96.7% of cumulative
+  time to `scipy.optimize.linear_sum_assignment` and 1.1% to the `np.full`
+  augmented-matrix construction, well under the plan's 10% trivial-fix
+  threshold, so no source change was made to `assign2d` -- scipy's
+  1000x1000 solve is the floor. SLO threshold follows the same
+  gate-calibration doctrine (local median x 2.209 x 1.5 headroom); full
+  derivation inline in `slos.json`'s `_derivation` field and in the
+  perf-levers campaign's task 2 report (local-only, untracked artifact).
 
 ### Changed
 - **`mahalanobis_distance`** (`pytcl.assignment_algorithms.gating`) now
@@ -278,6 +294,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mahalanobis_batch` was checked for the same dead-kernel pattern and does
   not have it -- it already avoids LAPACK internally by taking a
   caller-precomputed inverse amortized across a batch of measurements.
+- **`compute_likelihood_matrix`** (`pytcl.assignment_algorithms.jpda`,
+  perf-levers task 1) no longer re-solves and re-inverts each track's
+  innovation covariance `S` once per measurement. `S` depends only on the
+  track: the loop now computes `np.linalg.inv(S)` and `np.linalg.det(S)`
+  once per track and reuses them across all of that track's measurements
+  via `mahalanobis_batch` (`gating.py`, exported since the C2 kernel work
+  above but never wired into JPDA), replacing the old per-(track,
+  measurement)-pair `mahalanobis_distance` solve, a second independent
+  `np.linalg.solve` inside `compute_measurement_likelihood`, and a per-pair
+  `np.linalg.det(S)` of a matrix that never changed within the track. On
+  `LinAlgError` (singular `S`) a track falls back to the original per-pair
+  loop unchanged. An initial attempt using `scipy.linalg.cho_factor`/
+  `cho_solve` was measured SLOWER than the original code (~2x, Apple M3
+  Max, 2026-08-18, this benchmark) -- `cho_solve`'s Python-level wrapper
+  overhead (finite-value checks, array-API dispatch) dominates at this
+  benchmark's m=2 measurement dimension, the same per-call LAPACK-dispatch
+  tax the C2 njit kernels above were built to avoid -- so the shipped
+  version uses `np.linalg.inv` once per track instead. Measured on Apple M3
+  Max, 2026-08-18 (`test_jpda_update_100_targets_50_meas`,
+  `--benchmark-min-rounds=50 --benchmark-warmup=on`, median of 5 runs):
+  34.26 ms -> 11.76 ms median (-65.7%, ~2.9x). Behavior-equality verified
+  against a frozen copy of the pre-restructure loop across 20 seeded
+  scenarios spanning n_tracks in {1,3,10,40}, n_meas in {0,1,7,25}, m in
+  {2,3,4,6}, and covariance-eigenvalue scale log-uniform over [1e-6, 1e6]
+  (`tests/unit/test_jpda.py::TestLikelihoodMatrixEquality`, written and
+  passing against the unmodified code before the restructure): max
+  relative error 4.37e-14 on likelihoods (rtol=1e-9, atol=0 above a
+  1e-280 underflow floor -- see `_assert_likelihoods_close`'s docstring
+  for why an earlier atol=1e-12 made 831 of the sweep's entries pass
+  regardless of relative agreement), `gated` exactly equal in every
+  scenario. That scalar-scaled covariance recipe cannot produce
+  ill-conditioned `S` (measured max cond(S)=6.31 across the sweep, a plan
+  defect: uniform scaling changes S's size, not its condition number);
+  `TestLikelihoodMatrixIllConditioned` adds 4 scenarios with genuinely
+  ill-conditioned `S` (cond(S) up to ~1e10, built via direct eigenvalue
+  construction following `test_gating_mahalanobis_dispatch.py`'s
+  near-singular precedent) at dim in {2, 3} specifically to exercise
+  `mahalanobis_distance`'s closed-form dispatch branch against this
+  restructure's `np.linalg.inv`: max relative error 1.50e-8 (own
+  rtol=1e-5 gate, following that precedent's own 2.79e-7-at-cond-1.17e10
+  bound). Also fixed: `compute_likelihood_matrix` raised on a bare `[]`
+  for `measurements` (the old per-pair loop's `n_meas == 0` short-circuit
+  never touched `measurements`, so a plain list worked by accident; the
+  restructure's unconditional `measurements - z_pred` does not) --
+  `measurements` is now coerced with `np.asarray` and the function
+  early-returns the old empty shapes when `n_meas == 0`
+  (`TestLikelihoodMatrixEmptyMeasurementsRegression`). No
+  `.benchmarks/slos.json` change needed -- the existing SLO for this
+  benchmark was calibrated against the pre-restructure code (111.18 ms
+  mean ceiling) and remains a valid (now much more generous) ceiling.
 
 ## [2.4.0] - 2026-08-17
 
