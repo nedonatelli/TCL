@@ -132,7 +132,6 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "assignment_algorithms.murty": MaturityLevel.MATURE,
     "assignment_algorithms.assignment_3d": MaturityLevel.MATURE,
     # Containers
-    "containers.ball_tree": MaturityLevel.MATURE,
     "containers.rtree": MaturityLevel.MATURE,
     "containers.vptree": MaturityLevel.MATURE,
     "containers.covertree": MaturityLevel.MATURE,

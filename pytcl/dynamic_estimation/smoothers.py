@@ -1,9 +1,9 @@
 """
 Smoothing algorithms for state estimation.
 
-This module provides optimal fixed-interval, fixed-lag, and fixed-point
-smoothers for linear and nonlinear systems. Smoothers use both past and
-future measurements to produce optimal state estimates.
+This module provides optimal fixed-interval, fixed-lag, and two-filter
+smoothers for linear systems. Smoothers use both past and future
+measurements to produce optimal state estimates.
 
 The main algorithms are:
 - RTS (Rauch-Tung-Striebel) smoother for linear systems

@@ -40,6 +40,17 @@ Multi-Target Tracking
    :maxdepth: 1
 
    multi_target_tracking
+   data_association
+
+Estimation Techniques
+----------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   particle_filters
+   robust_estimation
+   smoothing_algorithms
 
 Prerequisites
 -------------

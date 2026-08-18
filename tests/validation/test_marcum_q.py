@@ -8,6 +8,11 @@ Tests cover:
 - Inverse Marcum Q
 - Nuttall Q function
 - Swerling detection probability
+
+``nuttall_q`` was renamed ``rician_cdf`` in v2.0.0; the name imported and
+exercised below is the ``nuttall_q`` backward-compatibility alias, not a
+separate function. ``TestNuttallQ`` keeps its name because it tests that
+alias path specifically.
 """
 
 import numpy as np

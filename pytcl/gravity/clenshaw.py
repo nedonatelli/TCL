@@ -1,17 +1,44 @@
 """
 Clenshaw summation for efficient spherical harmonic evaluation.
 
-The Clenshaw algorithm evaluates spherical harmonic series efficiently
-via backward recursion, avoiding direct computation of associated
-Legendre functions which can overflow at high degrees.
+The Clenshaw algorithm evaluates spherical harmonic series via backward
+recursion over degree for each fixed order, avoiding explicit storage of
+the full associated Legendre matrix.
 
-This implementation follows Holmes & Featherstone (2002) for numerical
-stability at ultra-high degrees (n > 2000).
+At high degree and small ``u = sin(colatitude)`` two double-precision
+hazards appear in the plain algorithm: the backward-recursion partial
+sums grow like ``1/u**m`` (overflow to inf), while the sectoral seed
+``Pbar_mm ~ u**m`` underflows to zero -- their product (the finite,
+physical partial sum) then evaluates as ``inf * 0 = NaN``. Following the
+extended-range treatment of Holmes & Featherstone (2002, Sec. 6) and
+Wittwer et al. (2008), simplified to a single power-of-ten exponent, this
+implementation:
 
-Performance Notes
------------------
-Recursion coefficients (_a_nm, _b_nm) are cached using lru_cache for
-25-40% speedup on repeated evaluations with the same (n, m) pairs.
+1. dynamically rescales the backward-recursion state by ``1e-140``
+   whenever it exceeds ``1e140``, accumulating the shed decades in an
+   integer exponent (coefficients injected after a rescale are scaled
+   identically, which is faithful: their true weight in the final sum is
+   below double precision by construction);
+2. seeds the recursion result with the sectoral ratio ``Pbar_mm / u**m``
+   (shared with :func:`pytcl.gravity.spherical_harmonics.\
+associated_legendre_scaled`), recombining the ``u**m`` envelope and the
+   shed exponent in log10 space only when the direct power would
+   under- or overflow.
+
+Stability is a measured claim, not an asymptotic one. Verified finite and
+in agreement with ``spherical_harmonic_sum_high_degree`` to relative
+tolerance 1e-10 (worst observed deviation ~1.3e-12) on random
+fully-normalized coefficients
+(tests/validation/test_gravity_audit.py::TestClenshawHighDegree):
+
+- potential: ``n_max`` in {50, 500} over colatitudes 0.1-179.9 deg;
+  ``n_max`` in {2050, 2190} at colatitudes 15 and 30 deg (4 seeds); and
+  ``n_max = 2190`` over colatitudes 0.1-90 deg;
+- gradients: ``n_max = 500`` over colatitudes 0.1-150 deg and
+  ``n_max = 2190`` at colatitude 30 deg.
+
+``n_max = 2190`` is the EGM2008 maximum. Behavior beyond this grid
+(higher degrees, other coefficient statistics) is untested.
 
 References
 ----------
@@ -24,57 +51,63 @@ References
   Journal of Geodesy 82.4-5 (2008): 223-229.
 """
 
-from functools import lru_cache
-from typing import Optional, Tuple
+import math
+from typing import List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.gravity.spherical_harmonics import _sectoral_ratio
 
-@lru_cache(maxsize=4096)
-def _a_nm(n: int, m: int) -> float:
-    """Compute recursion coefficient a_nm for normalized Legendre functions.
+# Rescale the backward-recursion state by 1e-140 whenever it exceeds 1e140.
+# One recursion step multiplies by at most ~2*sqrt(2*n_max) ~ 1.4e2 at the
+# degrees supported here, so the state can never jump from below the
+# threshold past the double-precision overflow limit between checks.
+_RESCALE_THRESHOLD = 1e140
+_RESCALE_FACTOR = 1e-140
+_RESCALE_DECADES = 140
 
-    Parameters
-    ----------
-    n : int
-        Degree.
-    m : int
-        Order.
 
-    Returns
-    -------
-    float
-        Recursion coefficient sqrt((2n+1)(2n-1) / ((n-m)(n+m))).
+def _recursion_coefficients(m: int, n_max: int) -> Tuple[List[float], List[float]]:
+    """Coefficients a_{n+1,m}, b_{n+2,m} for n = m..n_max, as Python lists.
+
+    All integer products fit exactly in float64 for the supported degrees,
+    so the vectorized evaluation is bit-identical to per-term evaluation.
     """
-    if n <= m:
-        return 0.0
-    num = (2 * n + 1) * (2 * n - 1)
-    den = (n - m) * (n + m)
-    return np.sqrt(num / den)
+    n = np.arange(m, n_max + 1, dtype=np.float64)
+    np1 = n + 1.0
+    np2 = n + 2.0
+    a = np.sqrt((2.0 * np1 + 1.0) * (2.0 * np1 - 1.0) / ((np1 - m) * (np1 + m)))
+    b = np.sqrt(
+        (2.0 * np2 + 1.0)
+        * (np2 + m - 1.0)
+        * (np2 - m - 1.0)
+        / ((np2 - m) * (np2 + m) * (2.0 * np2 - 3.0))
+    )
+    return a.tolist(), b.tolist()
 
 
-@lru_cache(maxsize=4096)
-def _b_nm(n: int, m: int) -> float:
-    """Compute recursion coefficient b_nm for normalized Legendre functions.
+def _scaled_power(u: float, p: int, shed_decades: int) -> float:
+    """Compute ``u**p * 10**shed_decades`` without spurious under/overflow.
 
-    Parameters
-    ----------
-    n : int
-        Degree.
-    m : int
-        Order.
-
-    Returns
-    -------
-    float
-        Recursion coefficient.
+    When no rescaling occurred and the direct power is representable, the
+    exact ``u**p`` is used (this is the healthy low-degree path and matches
+    the plain algorithm to machine precision). Otherwise the exponents are
+    combined in log10 space; the result is the finite, physical magnitude
+    even though neither factor is representable on its own.
     """
-    if n <= m + 1:
+    if p == 0:
+        return 10.0**shed_decades if shed_decades else 1.0
+    au = abs(u)
+    if au == 0.0:
         return 0.0
-    num = (2 * n + 1) * (n + m - 1) * (n - m - 1)
-    den = (n - m) * (n + m) * (2 * n - 3)
-    return np.sqrt(num / den)
+    sign = -1.0 if (u < 0.0 and p % 2) else 1.0
+    log10_total = p * math.log10(au) + shed_decades
+    if shed_decades == 0 and log10_total > -300.0:
+        return sign * au**p
+    if log10_total < -320.0:
+        return 0.0
+    return sign * 10.0**log10_total
 
 
 def clenshaw_sum_order(
@@ -125,10 +158,27 @@ def clenshaw_sum_order(
     >>> sum_C, sum_S = clenshaw_sum_order(0, cos_theta, sin_theta, C, S, 4)
     >>> isinstance(sum_C, float)
     True
+
+    Notes
+    -----
+    Stabilized per Holmes & Featherstone (2002) / Wittwer et al. (2008):
+    the backward-recursion state is rescaled by 1e-140 whenever it exceeds
+    1e140 (shed decades tracked in an integer exponent), and the sectoral
+    envelope ``Pbar_mm = (Pbar_mm / u**m) * u**m`` is recombined with the
+    shed exponent in log10 space when the direct powers would under- or
+    overflow. Measured stable for ``n_max <= 2190`` -- see the module
+    docstring for the exact tested grid.
     """
     # Handle edge case
     if m > n_max:
         return 0.0, 0.0
+
+    x = float(cos_theta)
+    u = float(sin_theta)
+    a_list, b_list = _recursion_coefficients(m, n_max)
+    ax_list = [a * x for a in a_list]
+    c_col = C[m : n_max + 1, m].tolist()
+    s_col = S[m : n_max + 1, m].tolist()
 
     # Initialize backward recursion variables
     # s_{n_max+2} = 0, s_{n_max+1} = 0
@@ -137,14 +187,25 @@ def clenshaw_sum_order(
     s_s_np2 = 0.0  # s^S_{n+2}
     s_s_np1 = 0.0  # s^S_{n+1}
 
-    # Backward recursion from n = n_max down to n = m
-    for n in range(n_max, m - 1, -1):
-        # Recursion: s_n = a_{n+1,m} * cos_theta * s_{n+1} - b_{n+2,m} * s_{n+2} + c_n
-        a = _a_nm(n + 1, m)
-        b = _b_nm(n + 2, m)
+    coeff_scale = 1.0  # running 10**(-shed) applied to injected coefficients
+    shed = 0  # decades shed from the recursion state so far
 
-        s_c_n = a * cos_theta * s_c_np1 - b * s_c_np2 + C[n, m]
-        s_s_n = a * cos_theta * s_s_np1 - b * s_s_np2 + S[n, m]
+    # Backward recursion from n = n_max down to n = m (j = n - m)
+    for j in range(n_max - m, -1, -1):
+        # Recursion: s_n = a_{n+1,m} * cos_theta * s_{n+1} - b_{n+2,m} * s_{n+2} + c_n
+        ax = ax_list[j]
+        b = b_list[j]
+
+        s_c_n = ax * s_c_np1 - b * s_c_np2 + c_col[j] * coeff_scale
+        s_s_n = ax * s_s_np1 - b * s_s_np2 + s_col[j] * coeff_scale
+
+        if abs(s_c_n) > _RESCALE_THRESHOLD or abs(s_s_n) > _RESCALE_THRESHOLD:
+            s_c_n *= _RESCALE_FACTOR
+            s_s_n *= _RESCALE_FACTOR
+            s_c_np1 *= _RESCALE_FACTOR
+            s_s_np1 *= _RESCALE_FACTOR
+            coeff_scale *= _RESCALE_FACTOR
+            shed += _RESCALE_DECADES
 
         # Shift for next iteration
         s_c_np2 = s_c_np1
@@ -152,20 +213,11 @@ def clenshaw_sum_order(
         s_s_np2 = s_s_np1
         s_s_np1 = s_s_n
 
-    # After loop, s_c_np1 = s_m, s_s_np1 = s_m (the result)
-    # Need to multiply by P_m^m(cos_theta) to get the actual sum
+    # After the loop, s_c_np1 = s_m scaled by 10**(-shed). Multiply by the
+    # effective sectoral envelope Pbar_mm * 10**shed to get the actual sum.
+    P_eff = _sectoral_ratio(m) * _scaled_power(u, m, shed)
 
-    # Compute fully normalized P_m^m(cos_theta) using the sectoral recursion
-    # P_m^m = sqrt((2m+1)/(2m)) * sin(theta) * P_{m-1}^{m-1} for m > 1,
-    # with the m = 1 factor sqrt(3) supplying the sqrt(2 - delta_0m)
-    # full-normalization factor. Starting from P_0^0 = 1.
-
-    P_mm = 1.0  # P_0^0 = 1
-    for k in range(1, m + 1):
-        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
-        P_mm = sin_theta * factor * P_mm
-
-    return P_mm * s_c_np1, P_mm * s_s_np1
+    return P_eff * s_c_np1, P_eff * s_s_np1
 
 
 def clenshaw_sum_order_derivative(
@@ -218,9 +270,26 @@ def clenshaw_sum_order_derivative(
     ...     0, cos_theta, sin_theta, C, S, 4)
     >>> len([sum_C, sum_S, dsum_C, dsum_S])
     4
+
+    Notes
+    -----
+    Uses the same Holmes & Featherstone (2002) rescaling as
+    :func:`clenshaw_sum_order` (all eight recursion states share one shed
+    exponent), with the sectoral derivative in closed form:
+    ``dPbar_mm/dtheta = m * cos_theta * u**(m-1) * (Pbar_mm / u**m)``.
+    Measured stable for ``n_max <= 2190`` -- see the module docstring for
+    the exact tested grid.
     """
     if m > n_max:
         return 0.0, 0.0, 0.0, 0.0
+
+    x = float(cos_theta)
+    u = float(sin_theta)
+    a_list, b_list = _recursion_coefficients(m, n_max)
+    ax_list = [a * x for a in a_list]
+    au_list = [a * u for a in a_list]
+    c_col = C[m : n_max + 1, m].tolist()
+    s_col = S[m : n_max + 1, m].tolist()
 
     # Backward recursion for both value and derivative
     s_c_np2 = 0.0
@@ -234,19 +303,40 @@ def clenshaw_sum_order_derivative(
     ds_s_np2 = 0.0
     ds_s_np1 = 0.0
 
-    for n in range(n_max, m - 1, -1):
-        a = _a_nm(n + 1, m)
-        b = _b_nm(n + 2, m)
+    coeff_scale = 1.0
+    shed = 0
+
+    for j in range(n_max - m, -1, -1):
+        ax = ax_list[j]
+        au = au_list[j]
+        b = b_list[j]
 
         # Value recursion
-        s_c_n = a * cos_theta * s_c_np1 - b * s_c_np2 + C[n, m]
-        s_s_n = a * cos_theta * s_s_np1 - b * s_s_np2 + S[n, m]
+        s_c_n = ax * s_c_np1 - b * s_c_np2 + c_col[j] * coeff_scale
+        s_s_n = ax * s_s_np1 - b * s_s_np2 + s_col[j] * coeff_scale
 
         # Derivative recursion (d/d_theta)
         # d(s_n)/d_theta = a * (-sin_theta * s_{n+1} + cos_theta * ds_{n+1}/d_theta)
         #                  - b * ds_{n+2}/d_theta
-        ds_c_n = a * (-sin_theta * s_c_np1 + cos_theta * ds_c_np1) - b * ds_c_np2
-        ds_s_n = a * (-sin_theta * s_s_np1 + cos_theta * ds_s_np1) - b * ds_s_np2
+        ds_c_n = -au * s_c_np1 + ax * ds_c_np1 - b * ds_c_np2
+        ds_s_n = -au * s_s_np1 + ax * ds_s_np1 - b * ds_s_np2
+
+        if (
+            abs(s_c_n) > _RESCALE_THRESHOLD
+            or abs(s_s_n) > _RESCALE_THRESHOLD
+            or abs(ds_c_n) > _RESCALE_THRESHOLD
+            or abs(ds_s_n) > _RESCALE_THRESHOLD
+        ):
+            s_c_n *= _RESCALE_FACTOR
+            s_s_n *= _RESCALE_FACTOR
+            ds_c_n *= _RESCALE_FACTOR
+            ds_s_n *= _RESCALE_FACTOR
+            s_c_np1 *= _RESCALE_FACTOR
+            s_s_np1 *= _RESCALE_FACTOR
+            ds_c_np1 *= _RESCALE_FACTOR
+            ds_s_np1 *= _RESCALE_FACTOR
+            coeff_scale *= _RESCALE_FACTOR
+            shed += _RESCALE_DECADES
 
         # Shift
         s_c_np2, s_c_np1 = s_c_np1, s_c_n
@@ -254,24 +344,18 @@ def clenshaw_sum_order_derivative(
         ds_c_np2, ds_c_np1 = ds_c_np1, ds_c_n
         ds_s_np2, ds_s_np1 = ds_s_np1, ds_s_n
 
-    # Compute P_m^m and its derivative
-    P_mm = 1.0
-    dP_mm = 0.0  # d(P_m^m)/d_theta
-
-    for k in range(1, m + 1):
-        factor = np.sqrt(3.0) if k == 1 else np.sqrt((2 * k + 1) / (2 * k))
-        # P_k^k = sin(theta) * factor * P_{k-1}^{k-1}
-        # dP_k^k/d_theta = cos(theta) * factor * P_{k-1}^{k-1}
-        #                  + sin(theta) * factor * dP_{k-1}^{k-1}/d_theta
-        dP_mm = cos_theta * factor * P_mm + sin_theta * factor * dP_mm
-        P_mm = sin_theta * factor * P_mm
+    # Effective sectoral envelope and its theta-derivative, carrying the
+    # shed decades: Pbar_mm = ratio * u**m, dPbar_mm/dtheta = m*x*ratio*u**(m-1)
+    ratio = _sectoral_ratio(m)
+    P_eff = ratio * _scaled_power(u, m, shed)
+    dP_eff = m * x * ratio * _scaled_power(u, m - 1, shed) if m > 0 else 0.0
 
     # Final results using product rule
     # d(P_mm * s_m)/d_theta = dP_mm * s_m + P_mm * ds_m
-    sum_C = P_mm * s_c_np1
-    sum_S = P_mm * s_s_np1
-    dsum_C = dP_mm * s_c_np1 + P_mm * ds_c_np1
-    dsum_S = dP_mm * s_s_np1 + P_mm * ds_s_np1
+    sum_C = P_eff * s_c_np1
+    sum_S = P_eff * s_s_np1
+    dsum_C = dP_eff * s_c_np1 + P_eff * ds_c_np1
+    dsum_S = dP_eff * s_s_np1 + P_eff * ds_s_np1
 
     return sum_C, sum_S, dsum_C, dsum_S
 

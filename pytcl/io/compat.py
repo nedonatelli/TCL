@@ -1,8 +1,18 @@
 """Backward compatibility adapters for v1.x filter integration.
 
-Provides adapter classes that seamlessly connect pytcl's existing filter
-outputs (KF, EKF, UKF, IMM, particle filters, MHT, JPDA) to the
-TrackDatabaseManager and TrackHDF5Storage backends.
+Provides adapter classes that connect pytcl's existing filter outputs
+(KF, EKF, UKF, IMM, particle filters, MHT) to SQL persistence via
+TrackDatabaseManager. Every adapter in this module persists exclusively
+through ``self._db`` (SQL); none of them import or call
+TrackHDF5Storage. HDF5 archival is a separate, explicit step performed
+after the fact with ``TrackHDF5Storage.import_from_sql()`` -- it is not
+something these adapters do automatically.
+
+JPDA is not adapted here: pytcl has no stateful JPDA tracker class (only
+assignment functions in ``pytcl.assignment_algorithms.jpda``), and
+``MultiTargetTracker``/``TrackerDatabaseAdapter`` do not reference JPDA
+at all, so there is no path -- direct or indirect -- from JPDA to these
+adapters.
 
 Examples
 --------
@@ -654,7 +664,12 @@ class IMMTrackAdapter:
 
 
 class ParticleFilterTrackAdapter:
-    """Adapter connecting particle filter to SQL/HDF5 storage.
+    """Adapter connecting particle filter to SQL storage.
+
+    Like the other adapters in this module, persistence is SQL-only via
+    ``self._db``; it does not write to TrackHDF5Storage. HDF5 archival
+    of the resulting SQL records is a separate step: run
+    ``TrackHDF5Storage.import_from_sql()`` after the fact.
 
     Stores the weighted mean and covariance from the particle cloud
     as the track state after each step.

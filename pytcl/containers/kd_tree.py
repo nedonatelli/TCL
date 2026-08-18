@@ -126,12 +126,17 @@ class KDTree(BaseSpatialIndex):
         # Choose split dimension (cycle through dimensions)
         split_dim = depth % self.n_features
 
-        # Sort indices by split dimension and find median
-        sorted_indices = indices[np.argsort(self.data[indices, split_dim])]
-        median_idx = len(sorted_indices) // 2
+        # Partition indices by split dimension around the median (O(n)
+        # expected via introselect), instead of fully sorting (O(n log n)).
+        # np.argpartition guarantees all values before median_idx are <=
+        # the median value and all values after are >=, which is all the
+        # ordering a k-d tree split needs.
+        median_idx = len(indices) // 2
+        values = self.data[indices, split_dim]
+        partitioned_indices = indices[np.argpartition(values, median_idx)]
 
         # Create node
-        node_index = sorted_indices[median_idx]
+        node_index = partitioned_indices[median_idx]
         node = KDNode(
             point=self.data[node_index],
             index=node_index,
@@ -139,8 +144,8 @@ class KDTree(BaseSpatialIndex):
         )
 
         # Recursively build subtrees
-        node.left = self._build_tree(sorted_indices[:median_idx], depth + 1)
-        node.right = self._build_tree(sorted_indices[median_idx + 1 :], depth + 1)
+        node.left = self._build_tree(partitioned_indices[:median_idx], depth + 1)
+        node.right = self._build_tree(partitioned_indices[median_idx + 1 :], depth + 1)
 
         return node
 

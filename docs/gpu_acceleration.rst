@@ -351,9 +351,12 @@ the fixed cost of dispatch and transfer eats most of the win; by 20,000
 tracks it is negligible.
 
 **CuPy:** correctness of the CuPy backend is validated against the CPU
-reference on real NVIDIA hardware (RTX 5080), but we have not measured CuPy
-speedups, so this guide quotes none. Expect the same qualitative behavior --
-batch size pays for transfer overhead -- and profile your own workload.
+reference on real NVIDIA hardware -- the recorded run covered all 85
+CuPy-gated tests on a CUDA 13.0 / RTX 5090 host (see CHANGELOG.md's v2.1.0
+entry; an earlier pre-2.0.0 manual run on an RTX 5080/CUDA 12 host exercised
+the layer but left no artifact). We have not measured CuPy speedups, so this
+guide quotes none. Expect the same qualitative behavior -- batch size pays
+for transfer overhead -- and profile your own workload.
 
 **When the GPU helps:**
 

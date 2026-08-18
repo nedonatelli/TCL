@@ -5,15 +5,23 @@ The information filter is an alternative formulation of the Kalman filter
 that uses the information matrix Y = P^{-1} and information vector y = Y @ x
 instead of the state covariance P and state x.
 
-Advantages:
+Advantages
+----------
+
 - Update step is additive (easy to incorporate multiple measurements)
 - Natural initialization for unknown initial state (Y = 0)
 - Multi-sensor fusion is simpler
 - Better for some numerical conditioning
 
-This module provides:
+This module provides
+--------------------
+
 - Information filter (standard form)
-- Square-Root Information Filter (SRIF) for improved numerical stability
+- Square-Root Information Filter (SRIF) -- the name notwithstanding, only
+  ``srif_update`` propagates the square root directly via QR/Householder
+  transformations; ``srif_predict`` (and therefore ``srif_filter``) routes
+  through explicit matrix inversions and does not deliver the square-root
+  conditioning the SRIF name implies (see ``srif_predict`` Notes, gh-25)
 """
 
 from typing import List, NamedTuple, Optional, Tuple
@@ -609,13 +617,15 @@ def srif_filter(
 
     Notes
     -----
-    The SRIF is algebraically equivalent to the standard Kalman filter
-    but uses orthogonal transformations (QR decomposition) instead of
-    matrix inversions. This provides:
-
-    - Better numerical stability
-    - Guaranteed positive semi-definiteness
-    - More accurate results for ill-conditioned problems
+    The SRIF is algebraically equivalent to the standard Kalman filter.
+    ``srif_update`` combines prior and measurement information via QR
+    decomposition and delivers the square-root conditioning the SRIF name
+    implies. ``srif_predict``, however, converts to covariance space,
+    propagates there, and re-factorizes -- two explicit matrix inversions
+    per step -- so the filter as a whole (predict + update) does **not**
+    deliver square-root numerical stability; for an ill-conditioned
+    information matrix, the ordinary information filter would do no worse.
+    See ``srif_predict`` Notes for the details (gh-25).
 
     References
     ----------

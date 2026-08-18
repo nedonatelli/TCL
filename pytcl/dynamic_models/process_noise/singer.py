@@ -26,7 +26,7 @@ Available functions:
 - ``q_singer_3d``: 3D Singer model (9x9 state)
 
 These Q matrices are designed to work with the corresponding state transition
-matrices in :mod:`pytcl.dynamic_models.singer`.
+matrices in :mod:`pytcl.dynamic_models.discrete_time.singer`.
 
 Examples
 --------
@@ -45,8 +45,8 @@ For 3D tracking:
 
 See Also
 --------
-pytcl.dynamic_models.singer : State transition matrices
-pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
+pytcl.dynamic_models.discrete_time.singer : State transition matrices
+pytcl.dynamic_models.process_noise.polynomial : CV/CA process noise
 
 References
 ----------

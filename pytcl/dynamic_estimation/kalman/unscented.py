@@ -491,8 +491,11 @@ def ckf_predict(
     """
     Cubature Kalman filter prediction step.
 
-    The CKF uses spherical-radial cubature for numerical integration,
-    which is more accurate than the UKF for high-dimensional states.
+    The CKF uses spherical-radial cubature for numerical integration. Its
+    2n-point rule avoids the negative center weight the standard UKF
+    parameterization produces for n > 3, which is the basis of the CKF's
+    high-dimensional robustness argument (Arasaratnam & Haykin, 2009) --
+    not a general accuracy guarantee over the UKF.
 
     Parameters
     ----------

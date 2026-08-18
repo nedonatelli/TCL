@@ -19,10 +19,13 @@ The algorithm::
 
 References::
 
-    - Doucet et al., "On Sequential Monte Carlo Sampling with Adaptive Weights"
-      (Doucet & Tadic, 2003)
-    - Andrieu et al., "Particle Methods for Change Detection, System
-      Identification" (IEEE SPM, 2004)
+    - Doucet, A., de Freitas, N., Murphy, K., and Russell, S.,
+      "Rao-Blackwellised Particle Filtering for Dynamic Bayesian Networks,"
+      Proceedings of the 16th Conference on Uncertainty in Artificial
+      Intelligence (UAI), 2000.
+    - Schon, T., Gustafsson, F., and Nordlund, P.-J., "Marginalized
+      Particle Filters for Mixed Linear/Nonlinear State-Space Models,"
+      IEEE Transactions on Signal Processing, 2005.
 """
 
 from typing import Any, Callable, NamedTuple, Optional

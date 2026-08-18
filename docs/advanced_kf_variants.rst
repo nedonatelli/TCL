@@ -214,8 +214,7 @@ not nested; see the Nesting and precision notes in the
 
 That nesting is what makes Genz-Keister the **prerequisite for Smolyak
 sparse grids** (sparse-grid construction only reuses function evaluations
-across levels when the levels' point sets nest) -- pytcl does not ship
-sparse grids themselves. Two algorithms are tabulated, ``algorithm=0``
+across levels when the levels' point sets nest). Two algorithms are tabulated, ``algorithm=0``
 (``m`` up to 17) and ``algorithm=1`` (``m`` up to 15), each exact through
 total polynomial degree :math:`2m+1` -- **except at the top of its own
 range** (``m=17`` for algorithm 0, ``m=15`` for algorithm 1), where the
@@ -228,6 +227,31 @@ function's docstring for the full derivation and for why the milestone
 "bonus degree" table it documents was independently derived by direct
 numerical computation rather than transcribed from Genz and Keister's
 original paper (whose Table 3.4 was not available to this port).
+
+**Smolyak sparse-grid cubature** (``smolyak_points(n, level, algorithm=0)``)
+combines the nested Genz-Keister levels with the standard Smolyak
+combination formula, merging points that repeat across the combination's
+tensor grids so the total point count stays far below the full tensor
+product's. It has no MATLAB TCL counterpart -- see the function's
+docstring for the from-scratch derivation and the measured exactness
+bounds, which are sharp cells rather than an assumed floor: verified for
+``n <= 8`` at ``algorithm=0`` and ``n <= 6`` at ``algorithm=1`` only --
+the generic :math:`2 \cdot \text{level} + 1` floor is the standard result
+for larger ``n`` but was not measured here.
+
+.. code-block:: python
+
+    from pytcl.mathematical_functions.numerical_integration import (
+        smolyak_points, genz_keister_points,
+    )
+
+    pts, w = smolyak_points(4, level=2)
+    print(pts.shape[0], round(float(w.sum()), 9))
+    # 57 1.0
+
+    pts1d, _ = genz_keister_points(1, 4)  # the 1-D rule level 2 builds on
+    print(pts1d.shape[0] ** 4)  # full tensor product at the same 1-D rule
+    # 6561
 
 **Fixed higher-order rules.** ``fourteenth_order_cubature_points(n)``
 ports Stroud's 288-point degree-14 rule -- it supports **n = 3 only**,
@@ -710,9 +734,7 @@ Comparison: Advanced KF Variants
 |  Nonlinearity (strong)         | Good     | Good      | Fair      | Good      |
 |  Non-Gaussian errors           | Fair     | Fair      | Fair      | **Good**  |
 +--------------------------------+----------+-----------+-----------+-----------+
-| **Speed** (relative to EKF)    |          |           |           |           |
-|  Single step                   | 1.5x     | 1.3x      | 2.0x      | Nx        |
-|  Function evaluations          | 2n       | 2n+1      | 2n        | N members |
+| **Function Evaluations**       | 2n       | 2n+1      | 2n        | N members |
 +--------------------------------+----------+-----------+-----------+-----------+
 | **Jacobian Required**          | No       | No        | No        | No        |
 |                                |          |           | (numeric) |           |

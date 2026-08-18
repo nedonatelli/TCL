@@ -287,7 +287,9 @@ def transverse_mercator(
     ep2 = e2 / (1 - e2)  # Second eccentricity squared
     # Third flattening, from the caller's own ellipsoid. The semi-minor axis
     # was taken from the global WGS84_B even when a custom `a` and `e2` were
-    # supplied, which silently mixed two ellipsoids (gh-25).
+    # supplied, which silently mixed two ellipsoids (gh-25). The inverse
+    # sibling below (`transverse_mercator_inverse`) had the identical bug,
+    # missed by the original gh-25 fix; it is now fixed the same way.
     b = a * np.sqrt(1 - e2)
     n = (a - b) / (a + b)
 
@@ -413,7 +415,11 @@ def transverse_mercator_inverse(
     """
     # Derived constants
     ep2 = e2 / (1 - e2)
-    n = (a - WGS84_B) / (a + WGS84_B)
+    # Third flattening, from the caller's own ellipsoid (mirrors the forward
+    # function's gh-25 fix): b must come from the caller's a/e2, not the
+    # global WGS84_B, or a non-WGS84 caller silently mixes two ellipsoids.
+    b = a * np.sqrt(1 - e2)
+    n = (a - b) / (a + b)
 
     A = a / (1 + n) * (1 + n**2 / 4 + n**4 / 64)
     # Rectifying -> geodetic (footpoint) latitude series

@@ -4,9 +4,14 @@ API Navigation Guide
 Overview
 --------
 
-The Tracker Component Library provides **900+ public functions** across
-**nearly 180 modules**. This guide shows how to discover and use them
+The Tracker Component Library provides **1044 public names** across
+**143 modules**. This guide shows how to discover and use them
 effectively.
+
+.. Figures are contract-tested against the package by
+   tests/contract/test_docs_architecture.py::test_package_counts_match_reality
+   -- update both this line and docs/architecture.rst together, and rerun
+   that test, if either number changes.
 
 Key Resources:
 

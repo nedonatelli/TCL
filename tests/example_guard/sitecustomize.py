@@ -1,6 +1,6 @@
 """Turn a stray ``fig.show()`` into a hard failure.
 
-``tests/test_examples.py`` puts this directory on PYTHONPATH when it runs the
+``tests/contract/test_examples.py`` puts this directory on PYTHONPATH when it runs the
 example scripts; Python imports ``sitecustomize`` automatically at startup.
 
 Without it, an unguarded ``show()`` in a headless CI container does not raise

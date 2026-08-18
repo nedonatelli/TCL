@@ -473,7 +473,11 @@ def fcluster(
     """
     Form flat clusters from hierarchical clustering.
 
-    Compatible interface with scipy.cluster.hierarchy.fcluster.
+    Results-compatible with scipy.cluster.hierarchy.fcluster: partitions
+    match scipy's for the same linkage and threshold (ARI > 0.9999,
+    test-backed). The call signature is not identical -- this function
+    requires ``n_samples`` explicitly and defaults to a different
+    ``criterion``.
 
     Parameters
     ----------

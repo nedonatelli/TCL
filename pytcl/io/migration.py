@@ -602,7 +602,9 @@ print("Real-time tracking + archival complete.")
 - [ ] Detection-track associations are preserved
 - [ ] Timestamps are monotonically ordered
 - [ ] Track lifecycle states (TENTATIVE/CONFIRMED/DEAD) are correct
-- [ ] Query performance meets targets (< 100ms for typical operations)
+- [ ] Query performance is acceptable for typical operations (benchmark
+      against your own workload -- no fixed latency target is asserted
+      here)
 
 ## Post-Migration
 - [ ] Remove legacy pickle/numpy storage code

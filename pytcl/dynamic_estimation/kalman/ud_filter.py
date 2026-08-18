@@ -2,8 +2,13 @@
 U-D factorization Kalman filter (Bierman's method).
 
 The U-D filter represents the covariance matrix as P = U @ D @ U.T where
-U is unit upper triangular and D is diagonal. This provides excellent
-numerical stability with minimal storage requirements.
+U is unit upper triangular and D is diagonal. Bierman's scalar update
+(``ud_update_scalar``, and ``ud_update`` which calls it sequentially)
+delivers the numerically stable, factorization-preserving update this
+form is known for. ``ud_predict`` does not: it reconstructs the dense
+covariance, propagates it exactly as an ordinary Kalman filter would, and
+re-factorizes from scratch, so it carries no numerical advantage over
+``kf_predict`` (the two agree to ~6.7e-16) -- see its Notes.
 
 References
 ----------
@@ -153,6 +158,15 @@ def ud_predict(
         Predicted unit upper triangular factor.
     D_pred : ndarray
         Predicted diagonal elements.
+
+    Notes
+    -----
+    This reconstructs the dense covariance ``P = U @ D @ U.T``, propagates
+    it as ``F @ P @ F.T + Q``, and re-factorizes the result with
+    ``ud_factorize`` -- it does not propagate ``U`` and ``D`` directly.
+    Numerically this step is equivalent to ``kf_predict`` (the two agree
+    to ~6.7e-16) and gains none of the stability benefit that Bierman's
+    method delivers on the update side (``ud_update_scalar``).
 
     Examples
     --------

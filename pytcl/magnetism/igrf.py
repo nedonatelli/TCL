@@ -179,6 +179,12 @@ def create_igrf13_coefficients() -> MagneticCoefficients:
     IGRF-13 is valid from 1900.0 to 2025.0. This function returns the
     coefficients for the 2020.0 epoch; for earlier epochs the historical
     tables should be interpolated.
+
+    IGRF-13's validity window ends 2025.0 and no IGRF-14 release is
+    embedded in this library yet. Calls with ``year`` beyond 2025.0
+    extrapolate the 2020-2025 secular variation (``g_dot``/``h_dot``)
+    linearly past the model's official range -- treat results for
+    ``year > 2025.0`` as an unofficial extrapolation, not IGRF-13 output.
     """
     n_max = 13
     g = np.zeros((n_max + 1, n_max + 1))

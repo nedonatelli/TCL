@@ -113,6 +113,52 @@ class TestTransverseMercator:
 
         assert result_2.scale > result_0.scale
 
+    def test_tm_roundtrip_wgs84_default(self):
+        """Forward/inverse round trip must close for the WGS84 default ellipsoid.
+
+        This held before the gh-25-class fix to `transverse_mercator_inverse`
+        (which only affects callers passing a non-WGS84 `a`/`e2`) and must
+        continue to hold afterwards.
+        """
+        lon0 = np.radians(-75)
+        for lat_deg, lon_deg in [(10, -73), (45, -74), (60, -76)]:
+            lat = np.radians(lat_deg)
+            lon = np.radians(lon_deg)
+
+            result = transverse_mercator(lat, lon, lon0=lon0)
+            lat_inv, lon_inv = transverse_mercator_inverse(
+                result.x, result.y, lon0=lon0
+            )
+
+            assert_allclose(np.degrees(lat_inv), lat_deg, atol=1e-6)
+            assert_allclose(np.degrees(lon_inv), lon_deg, atol=1e-6)
+
+    def test_tm_roundtrip_custom_ellipsoid(self):
+        """Forward/inverse round trip must close for a non-WGS84 ellipsoid.
+
+        Regression test for the bug where `transverse_mercator_inverse` used
+        the global WGS84 semi-minor axis instead of deriving `b` from the
+        caller's `a`/`e2`, silently mixing two ellipsoids for any non-WGS84
+        caller (gh-25-class bug; the forward sibling was already fixed).
+        """
+        a = 6378137.0
+        f = 1.0 / 150.0
+        e2 = 2 * f - f**2
+        lon0 = np.radians(-75)
+
+        for lat_deg, lon_deg in [(10, -73), (45, -74), (60, -76)]:
+            lat = np.radians(lat_deg)
+            lon = np.radians(lon_deg)
+
+            result = transverse_mercator(lat, lon, lon0=lon0, a=a, e2=e2)
+            lat_inv, lon_inv = transverse_mercator_inverse(
+                result.x, result.y, lon0=lon0, a=a, e2=e2
+            )
+
+            # atol in degrees; 1e-6 deg is ~0.1 m at Earth's radius.
+            assert_allclose(np.degrees(lat_inv), lat_deg, atol=1e-6)
+            assert_allclose(np.degrees(lon_inv), lon_deg, atol=1e-6)
+
 
 class TestUTM:
     """Tests for UTM projection."""

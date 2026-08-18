@@ -5,10 +5,9 @@ This module provides filtering and smoothing algorithms for state estimation:
 - Kalman filter family (KF, EKF, UKF, CKF, etc.)
 - Square-root Kalman filters (numerically stable)
 - Interacting Multiple Model (IMM) estimator
-- Particle filters (bootstrap, auxiliary, regularized)
+- Particle filters (bootstrap)
 - Smoothers (RTS, fixed-lag, fixed-interval, two-filter)
 - Information filters (standard and square-root)
-- Batch estimation methods
 """
 
 # Import submodules for easy access

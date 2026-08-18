@@ -52,7 +52,8 @@ _R_GAS = 8.31447
 
 class ThermosphereState(NamedTuple):
     """
-    Output from NRLMSISE-00 atmospheric model.
+    Output from the simplified thermosphere model (NRLMSISE-00-style interface;
+    NOT NRLMSISE-00 -- see module docstring).
 
     Attributes
     ----------
@@ -92,7 +93,8 @@ class ThermosphereState(NamedTuple):
 
 class F107Index(NamedTuple):
     """
-    Solar activity indices for NRLMSISE-00.
+    Solar activity indices for the simplified thermosphere model
+    (NRLMSISE-00-style interface; NOT NRLMSISE-00).
 
     Attributes
     ----------
@@ -778,7 +780,8 @@ def simplified_thermosphere(
     ap: float | ArrayLike = 4.0,
 ) -> ThermosphereState:
     """
-    Compute NRLMSISE-00 atmospheric properties.
+    Compute simplified thermosphere atmospheric properties (NRLMSISE-00-style
+    interface; NOT NRLMSISE-00 -- see module docstring).
 
     This is a module-level convenience function wrapping the SimplifiedThermosphere class.
 

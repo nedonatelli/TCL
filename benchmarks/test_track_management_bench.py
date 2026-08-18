@@ -1,6 +1,12 @@
 """
 Benchmarks for track management SQL and HDF5 operations.
 
+These are full benchmarks that run on main branch merges and nightly builds:
+measured at ~130s for the full file under `-m light --benchmark-only
+--benchmark-warmup=on --benchmark-min-rounds=100` (Apple M3 Max, 2026-08-17),
+which exceeds the light (PR) job's ~2-minute per-file budget -- see the rule
+documented in benchmarks/conftest.py and .github/workflows/benchmark-light.yml.
+
 Validates performance targets under realistic tracking loads:
 - SQL: detection storage, track updates, query latency
 - HDF5: archival rate, retrieval, compression, spatial queries
@@ -166,7 +172,7 @@ def populated_h5_store(tmp_path, track_management_data):
 class TestSQLDetectionStorage:
     """Benchmark SQL detection write performance."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_store_detection_single(self, benchmark, sql_db, track_management_data):
         """Benchmark storing a single detection."""
         d = track_management_data
@@ -184,7 +190,7 @@ class TestSQLDetectionStorage:
 
         benchmark(store_one)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_store_detection_batch_100(self, benchmark, sql_db, track_management_data):
         """Benchmark storing 100 detections (simulating one scan)."""
         d = track_management_data
@@ -208,7 +214,7 @@ class TestSQLDetectionStorage:
 class TestSQLTrackUpdates:
     """Benchmark SQL track state update performance."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_initiate_track(self, benchmark, sql_db, track_management_data):
         """Benchmark track initiation."""
         d = track_management_data
@@ -226,7 +232,7 @@ class TestSQLTrackUpdates:
 
         benchmark(initiate)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_update_track_state(self, benchmark, sql_db, track_management_data):
         """Benchmark single track state update."""
         d = track_management_data
@@ -246,7 +252,7 @@ class TestSQLTrackUpdates:
 
         benchmark(update_state)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_store_track_history_batch(self, benchmark, sql_db, track_management_data):
         """Benchmark batch store of 50 state entries."""
         d = track_management_data
@@ -270,7 +276,7 @@ class TestSQLTrackUpdates:
 class TestSQLQueryLatency:
     """Benchmark SQL query performance on populated database."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_track_state(self, benchmark, populated_sql_db):
         """Benchmark latest state retrieval for a single track."""
         rng = np.random.default_rng(99)
@@ -281,7 +287,7 @@ class TestSQLQueryLatency:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_track_history(self, benchmark, populated_sql_db):
         """Benchmark full history retrieval for a single track."""
         rng = np.random.default_rng(99)
@@ -292,7 +298,7 @@ class TestSQLQueryLatency:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_track_history_time_slice(self, benchmark, populated_sql_db):
         """Benchmark time-sliced history retrieval."""
         rng = np.random.default_rng(99)
@@ -303,7 +309,7 @@ class TestSQLQueryLatency:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_retrieve_detections_time_range(self, benchmark, populated_sql_db):
         """Benchmark detection query by time range."""
 
@@ -312,7 +318,7 @@ class TestSQLQueryLatency:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_retrieve_detections_by_sensor(self, benchmark, populated_sql_db):
         """Benchmark detection query by sensor ID."""
 
@@ -321,12 +327,12 @@ class TestSQLQueryLatency:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_retrieve_all_tracks(self, benchmark, populated_sql_db):
         """Benchmark listing all tracks."""
         benchmark(populated_sql_db.retrieve_all_tracks)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_retrieve_tracks_by_status(self, benchmark, populated_sql_db):
         """Benchmark listing tracks filtered by status."""
 
@@ -339,7 +345,7 @@ class TestSQLQueryLatency:
 class TestSQLLifecycle:
     """Benchmark SQL lifecycle management operations."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_track_status_transition(self, benchmark, sql_db, track_management_data):
         """Benchmark status transition (confirm → coast → dead cycle)."""
         d = track_management_data
@@ -354,7 +360,7 @@ class TestSQLLifecycle:
 
         benchmark(cycle)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_associate_detection(self, benchmark, sql_db, track_management_data):
         """Benchmark detection-to-track association."""
         d = track_management_data
@@ -387,7 +393,7 @@ class TestSQLLifecycle:
 class TestHDF5WritePerformance:
     """Benchmark HDF5 write operations."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_store_single_track(self, benchmark, h5_store, track_management_data):
         """Benchmark storing a single track (100 timesteps)."""
         d = track_management_data
@@ -405,7 +411,7 @@ class TestHDF5WritePerformance:
 
         benchmark(store)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_store_scenario_10_tracks(self, benchmark, h5_store, track_management_data):
         """Benchmark storing a scenario with 10 tracks."""
         d = track_management_data
@@ -425,7 +431,7 @@ class TestHDF5WritePerformance:
 
         benchmark(store_scenario)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_append_track_state(self, benchmark, h5_store, track_management_data):
         """Benchmark appending a single state to an existing track."""
         d = track_management_data
@@ -455,7 +461,7 @@ class TestHDF5WritePerformance:
 class TestHDF5ReadPerformance:
     """Benchmark HDF5 read/query operations."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_retrieve_track(self, benchmark, populated_h5_store):
         """Benchmark full track retrieval."""
         rng = np.random.default_rng(99)
@@ -466,7 +472,7 @@ class TestHDF5ReadPerformance:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_track_trajectory_slice(self, benchmark, populated_h5_store):
         """Benchmark time-sliced trajectory extraction."""
         rng = np.random.default_rng(99)
@@ -477,7 +483,7 @@ class TestHDF5ReadPerformance:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_state_at_time_nearest(self, benchmark, populated_h5_store):
         """Benchmark nearest-neighbor state query."""
         rng = np.random.default_rng(99)
@@ -488,7 +494,7 @@ class TestHDF5ReadPerformance:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_get_state_at_time_interpolated(self, benchmark, populated_h5_store):
         """Benchmark interpolated state query."""
         rng = np.random.default_rng(99)
@@ -499,7 +505,7 @@ class TestHDF5ReadPerformance:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_spatial_query(self, benchmark, populated_h5_store):
         """Benchmark spatial bounding-box query across all tracks."""
 
@@ -508,7 +514,7 @@ class TestHDF5ReadPerformance:
 
         benchmark(query)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_list_tracks(self, benchmark, populated_h5_store):
         """Benchmark listing all track IDs."""
         benchmark(populated_h5_store.list_tracks)
@@ -518,7 +524,7 @@ class TestHDF5ReadPerformance:
 class TestHDF5Compression:
     """Benchmark HDF5 compression ratios."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_compression_ratio(self, tmp_path):
         """Verify compression ratio meets the 2x floor.
 
@@ -588,7 +594,7 @@ class TestHDF5Compression:
 class TestSQLToHDF5Export:
     """Benchmark SQL → HDF5 export pipeline."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_export_50_tracks(self, tmp_path, track_management_data):
         """Benchmark exporting 50 tracks from SQL to HDF5."""
         d = track_management_data
@@ -623,7 +629,7 @@ class TestSQLToHDF5Export:
         store.close()
         db.close()
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_roundtrip_sql_hdf5_sql(self, tmp_path, track_management_data):
         """Benchmark SQL → HDF5 → SQL round-trip preserves data."""
         d = track_management_data
@@ -674,7 +680,7 @@ class TestSQLToHDF5Export:
 class TestFilterWithTrackManagement:
     """Benchmark Kalman filter with track management overhead."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_kf_cycle_with_sql_storage(self, benchmark, sql_db, track_management_data):
         """Benchmark KF predict+update+store cycle (measures overhead)."""
         d = track_management_data
@@ -700,7 +706,7 @@ class TestFilterWithTrackManagement:
 
         benchmark(kf_cycle)
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_kf_cycle_without_storage(self, benchmark, track_management_data):
         """Benchmark KF predict+update without storage (baseline)."""
         d = track_management_data
@@ -723,7 +729,7 @@ class TestFilterWithTrackManagement:
 class TestDatabaseSizeGrowth:
     """Verify database size growth characteristics."""
 
-    @pytest.mark.light
+    @pytest.mark.full
     def test_sql_size_scales_linearly(self, tmp_path, track_management_data):
         """Verify SQL database size grows linearly with track count."""
         d = track_management_data

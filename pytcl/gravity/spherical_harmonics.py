@@ -12,6 +12,7 @@ References
 """
 
 import logging
+import math
 from functools import lru_cache
 from typing import Any, Optional, Tuple
 
@@ -424,6 +425,29 @@ def gravity_acceleration(
     return g_r, g_lat, g_lon
 
 
+# Cumulative sectoral seed ratios Pbar_mm / u**m (u = sin(colatitude)),
+# extended on demand. Entry m is sqrt(3) * prod_{k=2}^{m} sqrt((2k+1)/(2k))
+# for m >= 1, and 1.0 for m = 0. Grows only like ~m**(1/4), so it is
+# representable at any practical degree; the u**m envelope that underflows
+# is handled separately by the callers.
+_sectoral_ratio_cache = [1.0]
+
+
+def _sectoral_ratio(m: int) -> float:
+    """Sectoral seed with the ``u**m`` envelope divided out: ``Pbar_mm / u**m``.
+
+    Shared between :func:`associated_legendre_scaled` and the Clenshaw
+    summation in :mod:`pytcl.gravity.clenshaw`, so both use the identical
+    Holmes & Featherstone (2002) sectoral seeding.
+    """
+    cache = _sectoral_ratio_cache
+    while len(cache) <= m:
+        k = len(cache)
+        factor = math.sqrt(3.0) if k == 1 else math.sqrt((2 * k + 1) / (2 * k))
+        cache.append(factor * cache[-1])
+    return cache[m]
+
+
 @lru_cache(maxsize=64)
 def _legendre_scaling_factors_cached(n_max: int) -> Tuple[float, ...]:
     """Cached computation of Legendre scaling factors.
@@ -565,10 +589,8 @@ def associated_legendre_scaled(
 
     # Sectoral seeds. In Pbar_mm / u**m the u factor cancels entirely, so the
     # seeds grow only like sqrt(m) instead of collapsing like u**m.
-    P_scaled[0, 0] = global_scale
-    for m in range(1, m_max + 1):
-        factor = np.sqrt(3.0) if m == 1 else np.sqrt((2 * m + 1) / (2 * m))
-        P_scaled[m, m] = factor * P_scaled[m - 1, m - 1]
+    for m in range(m_max + 1):
+        P_scaled[m, m] = global_scale * _sectoral_ratio(m)
 
     # First off-diagonal.
     for m in range(m_max + 1):

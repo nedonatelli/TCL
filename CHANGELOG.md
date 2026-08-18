@@ -95,6 +95,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/unit/test_io_session.py`.
 
 ### Changed
+- **`benchmark-light.yml` now runs `test_special_functions_bench.py` and
+  `test_signal_processing_bench.py`**, the two of three files whose
+  `@pytest.mark.light` tests had never actually run in the PR gate the
+  marker claimed (the job hardcoded a 4-file list that didn't include
+  them). Measured per-file runtime (Apple M3 Max, 2026-08-17) against a
+  ~2-minute-per-file budget: both fit (~89s and ~57s) and are wired in;
+  `test_track_management_bench.py` (~130s) doesn't, so its tests are
+  demoted to `@pytest.mark.full` and it stays nightly/main-only via
+  `benchmark-full.yml`. Job `timeout-minutes` raised 5 -> 10 for the two
+  added files. Placement rule documented in `benchmarks/conftest.py` and
+  `.github/workflows/benchmark-light.yml`.
 - **CI coverage floor ratcheted 79 -> 82**, calibrated against 85% measured
   under the coverage job's own conditions (ubuntu, no MLX, numba JIT on;
   the MLX GPU layer and numba-jitted kernel bodies are untraceable there)
@@ -102,12 +113,291 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   had been calibrated against a local measurement that included MLX.
 
 ### Fixed
+- **`debye()`'s "~1e-14 relative" accuracy claim was false for n >= 6 near
+  the x=1 branch boundary** (`pytcl/mathematical_functions/special_functions/debye.py`).
+  The small-x/large-x series switch was at x0=1.0; the large-x branch is an
+  alternating sum that cancels catastrophically right at that boundary,
+  measured (30-40-digit mpmath oracle, n in {1,4,6,8,9,10}, x in
+  {0.5,0.99,1.0,1.01,2,10}) up to 8.6e-9 relative error at n=10 -- 5 to 7
+  orders of magnitude worse than claimed, growing with n. Moved the switch
+  to x0=2.0 (still within the small-x series' documented |x| < 2*pi
+  convergence radius): the same grid now measures ~1e-16 typical. The true
+  worst case is not at the boundary itself but just below it: ~1.9e-11 at
+  n=9/10, x in {1.9,1.99,1.999} (small-x series nearing the edge of its
+  useful precision), versus ~3.8e-12 exactly at x=2.0 (n=9/10, where the
+  large-x branch's own cancellation happens to be smallest). Docstring's
+  accuracy claim replaced with both measured numbers; `TestDebyeBoundaryAccuracy`
+  in `tests/validation/test_debye.py` pins the full grid plus a dedicated
+  just-below-boundary case (n in {6,9,10}, x in {1.9,1.99}) against the
+  mpmath oracle so neither region can silently regress.
+- **Four `wmm()`-family docstrings said "Default 2023.0" for `year` while
+  the actual default is 2025.0** (`pytcl/magnetism/wmm.py:732,819,861,910`
+  -- `wmm`, `magnetic_declination`, `magnetic_inclination`,
+  `magnetic_field_intensity`). The signatures already defaulted to the
+  WMM2025 model epoch (2025.0); only the docstrings were stale, a 2-year
+  secular-variation discrepancy for doc-trusting callers. Docstrings now
+  match the signatures.
+- **`ThermosphereState`, `F107Index`, and `simplified_thermosphere()`
+  still self-described as "NRLMSISE-00" in their docstrings**
+  (`pytcl/atmosphere/thermosphere.py:55,95,781`), reintroducing the exact
+  misnomer gh-79 renamed the API to stop making (the module preamble
+  already carries the correct "NOT NRLMSISE-00" disclaimer, but IDE
+  hover/apidoc surface each docstring independently, so the disclaimer
+  never reached these three). Each now states in its own first line that
+  this is a simplified thermosphere model with an NRLMSISE-00-style
+  interface, not NRLMSISE-00 itself. `tests/unit/test_thermosphere.py`
+  had the same problem in its module docstring and a class name
+  (`TestNRLMSISE00Basic`); renamed to match the `SimplifiedThermosphere`
+  naming already used by its sibling files
+  (`tests/validation/test_thermosphere_limits.py`,
+  `tests/contract/test_no_hidden_placeholders.py`).
+- **`bessel_ratio` returned NaN for large orders despite its claimed stability
+  recurrence** (`pytcl/mathematical_functions/special_functions/bessel.py`).
+  The docstring claimed a stability recurrence but the implementation was a
+  plain `sp.jv(n+1, x) / sp.jv(n, x)` quotient: at n = 170, x = 1 both
+  float64 Bessel values underflow to 0.0 and the quotient is 0/0 = NaN --
+  exactly the failure the claimed recurrence exists to avoid. Now evaluates
+  the ratio directly by the modified Lentz method (Thompson & Barnett 1986;
+  Numerical Recipes 3rd ed., Sec. 6.5) on the continued fraction from the
+  three-term recurrence, for both kinds 'j' and 'i', never forming numerator
+  or denominator separately in the underflow-prone regime. Where the 'j'
+  fraction instead misses its iteration cap (|x| in the thousands, small n
+  -- CF1 needs ~max(n, |x|) terms) the direct quotient is used, which is
+  machine-accurate there since nothing underflows at large |x|; no
+  unconverged fraction value is ever returned. Measured against a 50-digit
+  mpmath oracle (new test-only dev dependency): worst relative error
+  9.6e-15 ('j') / 1.5e-15 ('i') over the grid n in {0, 1, 5, 20, 80, 170,
+  400} x x in {0.5, 1, 10, 50, 100}, and 7.9e-14 for 'j' at
+  x in {9000, 15000, 30000}, n in {0, 5}; near a zero of J_n the
+  roundoff-amplification-limited degradation is measured and documented
+  (1e-8 at 1e-10 from the first zero of J_0). x = 0 now returns the correct
+  limit 0 for every order (previously NaN for n >= 1)
+  (`tests/validation/test_special_functions_audit.py`).
+- **`clenshaw_potential`/`clenshaw_gravity` produced NaN above `n_max` ~2050
+  despite the module's claimed Holmes & Featherstone (2002) stability**
+  (`pytcl/gravity/clenshaw.py`). The docstring claimed n > 2000 stability but
+  the implementation used the naive sectoral `Pbar_mm` product -- the exact
+  recursion `spherical_harmonics.py` documents as unstable: at small
+  `u = sin(colatitude)` the backward-recursion sums overflow like `1/u**m`
+  while `Pbar_mm ~ u**m` underflows, so their product evaluated as
+  `inf * 0 = NaN` (verified from `n_max` ~2050 at colatitudes <= 30 deg,
+  reliably NaN at EGM2008's n = 2190). Now actually implements the claimed
+  stabilization: dynamic 1e-140 rescaling of the recursion state with the
+  shed decades tracked in an integer exponent (H&F 2002 Sec. 6 / Wittwer
+  2008, single-exponent form), and the sectoral seed `Pbar_mm / u**m` shared
+  with `associated_legendre_scaled` (helper extracted), recombined in log10
+  space only when the direct powers would under- or overflow. Measured
+  stable and in agreement with `spherical_harmonic_sum_high_degree` to
+  1e-10 rtol (worst observed 1.3e-12) up to `n_max = 2190` on the audit's
+  NaN-reproduction grid (4 seeds) plus colatitude sweeps; `n_max <= 100`
+  results match the pre-fix implementation to 1e-12 rtol (the healthy
+  regime keeps the exact-power path). The stability claim in the docstring
+  is now bounded to the tested grid. Also ~6x faster at n = 2190
+  (vectorized recursion-coefficient precomputation replaced an lru_cache
+  that thrashed above its 4096-entry capacity).
+
+- **The benchmark SLO gate was vacuous end-to-end since 2026-02-25**
+  (`scripts/detect_regressions.py`, `scripts/generate_slo_report.py`). Both
+  scripts read `slos.get("slos", {})`, expecting
+  `{"slos": {<func_path>: {<param_key>: {"mean_ms": ..., "p99_ms": ...}}}}`.
+  Commit `c0fd5d2` recreated `.benchmarks/slos.json` from scratch in an
+  unrelated notebook-enhancement commit, in a different, flatter shape --
+  `{"benchmarks": {<test_name>: {"max_mean_us": ..., "max_p99_us": ...}}}`
+  (exact benchmark name, microseconds) -- and never updated the readers.
+  `slos.get("slos", {})` then always returned `{}`, so the SLO check matched
+  nothing regardless of how slow a benchmark was. Verified live: a synthetic
+  1000ms `test_kf_predict` result against its 50us SLO reported "No
+  performance issues detected." This ran with `--strict` on every push to
+  `main` (`.github/workflows/benchmark-full.yml`) and without `--strict` on
+  every PR touching `pytcl/**` or `benchmarks/**`
+  (`.github/workflows/benchmark-light.yml`). Fixed both readers to match
+  `.benchmarks/slos.json`'s actual on-disk shape (exact-name lookup under
+  `"benchmarks"`, `max_mean_us`/`max_p99_us` converted from microseconds),
+  confirmed by a fabricated-violation/passing-case pair in the new
+  `tests/unit/test_benchmark_slo_gate.py` (6 of 10 cases fail against the
+  pre-fix code, all 10 pass against the fix). Running the real gate over a
+  fresh full benchmark suite found the 3 SLO entries that still match a live
+  benchmark name (`test_cfar_ca_1000/5000/10000`) comfortably compliant.
+  The two remaining orphaned entries, `test_kf_predict`/`test_kf_update`
+  (no current benchmark carries those exact unparametrized names --
+  `benchmarks/test_kalman_bench.py` parametrizes both over `state_dim`),
+  were also fixed: renamed to `test_kf_predict[4]` / `test_kf_update[4-2]`
+  (the default/first parametrization, per `.benchmarks/slos.json`'s own
+  `c0fd5d2` history and measured timing across the parametrizations), with
+  their threshold values left unchanged -- no loosening or tightening.
+  `test_kf_update[4-2]`'s 100us mean threshold is tight against its
+  observed history (41.8-93.9us, only ~6.5% headroom at the worst sample);
+  flagged for a future recalibration pass rather than adjusted here. Added
+  `TestSLOEntriesNotOrphaned` to the same test file, which collects real
+  benchmark names live via `pytest --collect-only` so a future
+  `@pytest.mark.parametrize` id rename can't quietly orphan an SLO entry
+  again. Re-running the real gate after the rename: coverage 5/157,
+  100% compliance, no violations, gate left strict. 152/157 benchmarks
+  (rotations, gating, clustering, JPDA, wavelets, special functions, and
+  the non-default Kalman parametrizations) still have no SLO entry at all
+  -- unchanged, out of scope for this fix.
+- **`pytcl.coordinate_systems.projections.transverse_mercator_inverse`**
+  used the module-global WGS84 semi-minor axis (`WGS84_B`) to derive the
+  third-flattening ratio `n`, instead of computing it from the caller's own
+  `a`/`e2` as the forward function `transverse_mercator` already did (fixed
+  there under gh-25). Any caller passing a non-WGS84 ellipsoid to the
+  inverse function got silently wrong output -- no exception, no warning.
+  Measured on a synthetic ellipsoid (`a=6378137.0`, `f=1/150`): forward/
+  inverse round-trip errors up to ~25 km latitude and several hundred
+  meters longitude, growing with distance from the origin latitude
+  (matches the auditor's live probe of ~24 km lat / ~590 m lon).
+  WGS84-default callers (the common case) were unaffected; round-trip
+  closure for WGS84 was and remains < 1e-6 deg.
+- **`pytcl/gpu/ekf.py`'s MLX accuracy claim understated its own backend by
+  ~2 orders of magnitude.** The docstring said "~1e-5 relative" for the MLX
+  (Apple Silicon, float32) backend; `gpu/__init__.py`'s own measured figure
+  and `tests/unit/test_gpu_mlx_ekf.py`'s per-output table both put it at
+  ~1e-7 (measured 4.7e-8 to 8.4e-7 across predict/update outputs against the
+  CPU reference), consistent with float32 epsilon. Docstring now states the
+  measured range and points to the test's per-output table instead of a
+  single unbacked figure.
+- **`pytcl/gpu/particle_filter.py`'s "8-15x speedup" claim was a flat number
+  with no accompanying benchmark, test, or date**, unlike the GPU Kalman
+  filter's dated, `gpu/__init__.py`-reconciled speedup claim next to it.
+  Measured on Apple Silicon (MLX) against the CPU reference
+  (`bootstrap_pf_step`), predict+update with systematic resampling on ESS
+  drop, 20 steps, state_dim=4, end-to-end including host-device transfers,
+  after warm-up (August 2026): 0.6x (slower than CPU -- per-call dispatch
+  overhead dominates) at 100 particles, 5x at 1,000, 34x at 10,000, 80x at
+  100,000. The speedup is strongly N-dependent, not a flat multiplier;
+  docstring now states the measured table and recommends the CPU
+  implementation below a few hundred particles.
 - **`pytcl.mathematical_functions.transforms.wavelets`** (`dwt`, `idwt`,
   `dwt_single_level`, `idwt_single_level`, `wpt`, `threshold_coefficients`)
   now raise `DependencyError` when pywavelets is not installed, instead of
   a bare `ImportError`, matching the repo-wide optional-dependency
   convention (`DependencyError` subclasses both `ConfigurationError` and
   `ImportError`, so existing `except ImportError` callers are unaffected).
+- **`pytcl.dynamic_estimation.kalman.matrix_utils` no longer gates Numba
+  behind a `try/except ImportError` fallback.** Numba is a required core
+  dependency (`pyproject.toml`), so the no-op decorator path could never
+  execute; it was dead code that also implied Numba is optional when it is
+  not. The docstring's unbacked "5-10x speedup" claim is replaced with a
+  measured number: the jitted `_cholesky_update_core` ran ~15.6x faster
+  than the equivalent pure-Python loop (n=6, 20000 calls, measured
+  2026-08-17; size- and machine-dependent, not a general guarantee).
+- Several `pytcl.dynamic_estimation` docstrings overclaimed relative to
+  their own implementations, caught by a claims-audit pass:
+  `information_filter.py`'s module docstring and `srif_filter`'s Notes
+  claimed the SRIF path delivers square-root numerical stability, while
+  `srif_predict`'s own Notes already documented that it routes through two
+  explicit matrix inversions instead (gh-25) -- the module and `srif_filter`
+  docstrings now say so consistently; `smoothers.py`'s module docstring
+  claimed a fixed-point smoother and nonlinear smoothers, neither of which
+  exist (the implemented set is fixed-interval, fixed-lag, and two-filter,
+  linear only); `dynamic_estimation/__init__.py` claimed
+  "Particle filters (bootstrap, auxiliary, regularized)" when only bootstrap
+  is implemented; `kalman/ud_filter.py` claimed "excellent numerical
+  stability" for the whole module when only `ud_update_scalar` (and
+  `ud_update`, which calls it) delivers that -- `ud_predict` reconstructs
+  the dense covariance and re-factorizes from scratch, numerically
+  equivalent to `kf_predict` to ~6.7e-16; `kalman/unscented.py`'s
+  `ckf_predict` claimed the CKF is unconditionally "more accurate than the
+  UKF for high-dimensional states," reworded to the literature-consistent
+  claim it is actually based on (Arasaratnam & Haykin 2009): the CKF's
+  2n-point rule avoids the negative center weight the UKF produces for
+  n > 3; and `rbpf.py`'s references cited two papers with garbled
+  titles/venues, replaced with the standard RBPF references (Doucet, de
+  Freitas, Murphy & Russell 2000, UAI; Schon, Gustafsson & Nordlund 2005,
+  IEEE TSP).
+- **`containers/trackers/clustering/io` claims-audit batch.**
+  `containers/kd_tree.py`'s `KDTree` claimed O(n log n) construction but
+  `_build_tree` fully `np.argsort`ed the split-dimension values at every
+  node, which is O(n log^2 n) over the tree. Swapped to
+  `np.argpartition`-based median selection (O(n) expected per level via
+  introselect, same asymptotic technique sklearn's KDTree uses), making
+  the O(n log n) claim true rather than correcting it downward. Verified:
+  existing spatial-container test files pass unchanged;
+  nearest-neighbor distances (not indices, since ties may legitimately
+  break differently) are identical to a brute-force oracle for k in
+  {1, 5} over 500 random queries at n in {50, 500, 5000}; a build-time
+  sanity check at n in {2000, 20000} shows no super-linear-log
+  regression.
+- **`containers/covertree.py`'s module docstring asserted an
+  unconditional O(c^12 log n) query-time guarantee** while the module's
+  own insertion comment (originally lines 172-175) already documented
+  that the strict cover invariant the bound depends on is not
+  maintained by this implementation's simplified insertion. Docstring
+  now says so explicitly: queries remain correct (pruning falls back to
+  exact computed covering radii), but the O(c^12 log n) bound does not
+  apply here.
+- **`core/maturity.py` listed a stale `"containers.ball_tree"` key**
+  (rated MATURE); no such module exists -- `BallTree` lives in
+  `containers.kd_tree` (rated STABLE separately). Removed; nothing
+  referenced the stale key.
+- **`clustering/kmeans.py`'s `update_centers` docstring claimed "Empty
+  clusters retain their previous position (zeros)"**, but the function
+  takes no previous-centers argument and hard zero-fills empty clusters
+  every call (verified by direct call). The retain-previous behavior is
+  applied one layer up, in the `_kmeans_single` loop's "Handle empty
+  clusters" step. Docstring now attributes the behavior to the correct
+  layer.
+- **`trackers/hypothesis.py`'s `n_scan_prune` Notes claimed agreement
+  "across all high-probability hypotheses"**; the implementation
+  compares every hypothesis's committed tracks only against the single
+  argmax (MAP) hypothesis and drops any that disagree -- including
+  hypotheses that agree with each other but not with the MAP one.
+  Notes rewritten to describe the actual single-MAP-hypothesis rule.
+- **`clustering/hierarchical.py`'s `fcluster` claimed "Compatible
+  interface with scipy.cluster.hierarchy.fcluster"**; the call
+  signature differs (extra required `n_samples`, different default
+  `criterion`). Reworded to results-compatibility: partitions match
+  scipy's for the same linkage/threshold (ARI > 0.9999, test-backed),
+  interface does not.
+- **`io/compat.py`'s module docstring and `ParticleFilterTrackAdapter`
+  docstring claimed adapters "seamlessly connect" filter outputs to
+  "TrackDatabaseManager and TrackHDF5Storage backends" / "SQL/HDF5
+  storage."** All six adapter classes persist exclusively through SQL
+  (`self._db`, a `TrackDatabaseManager`); none import or call
+  `TrackHDF5Storage`. HDF5 archival is a separate, explicit step run
+  after the fact with `TrackHDF5Storage.import_from_sql()`. Also
+  corrected the module docstring's listing of "JPDA" among adapted
+  filters: pytcl has no stateful JPDA tracker class (only assignment
+  functions in `assignment_algorithms.jpda`), and neither
+  `MultiTargetTracker` nor `TrackerDatabaseAdapter` reference JPDA at
+  all, so there is no path to these adapters, direct or indirect.
+- **`io/migration.py`'s generated migration checklist asserted an
+  invented, unmeasured latency figure** ("Query performance meets
+  targets (< 100ms for typical operations)"). Reworded to a qualitative
+  checklist item with no fabricated number.
+- **`basic_matrix/decompositions.py`'s See Also referenced a
+  nonexistent `triaSqrt`** (stale MATLAB camelCase); corrected to the
+  real name `tria_sqrt`.
+
+### Removed
+- **`pytcl.dynamic_estimation.batch_estimation`, an empty 3-line stub
+  package** (`__all__ = []`, no functions). Nothing in the codebase, tests,
+  docs, examples, or benchmarks imported it, and `dynamic_estimation`'s own
+  `__init__.py` never imported it either despite advertising "Batch
+  estimation methods" in its module docstring. Removed along with that
+  docstring line; no other code referenced the package.
+- **`pytcl.mathematical_functions.continuous_optimization` and
+  `pytcl.mathematical_functions.polynomials`, two empty stub packages**
+  (`__all__ = []`, no functions), removed along with the "Continuous
+  optimization" and "Polynomials" lines that advertised them in
+  `mathematical_functions/__init__.py`'s module docstring. Neither package
+  was imported anywhere -- not by `mathematical_functions/__init__.py`
+  itself, not by other pytcl code, tests, docs, examples, or benchmarks.
+  Both directories held only an `__init__.py`, so `docs/architecture.rst`'s
+  module/public-name counts (checked by
+  `tests/contract/test_docs_architecture.py`) are unaffected.
+- **The `HAS_H5PY` / `try: import h5py except ImportError` gate in
+  `pytcl/io/hdf5_storage.py` and `pytcl/io/hdf5_track_storage.py`**, plus
+  the plain `ImportError("h5py is required... pip install h5py")` raises
+  it guarded. h5py has been a core dependency (`h5py>=3.8.0` in
+  `pyproject.toml`, not an extra) all along, so the gate could never
+  actually trip on a correct install -- it only mis-framed a mandatory
+  dependency as optional. `import h5py` is now unconditional in both
+  files; the stale "Requires h5py package" module-docstring phrasing is
+  corrected to say it is a core dependency. No test monkeypatched
+  `HAS_H5PY` on either module (each test file that skips without h5py
+  defines its own local `HAS_H5PY` via its own `try/except`, unrelated to
+  the modules' now-removed attribute).
 
 ## [2.3.0] - 2026-08-16
 

@@ -65,7 +65,7 @@ default to the same locale encoding, so **always pass `encoding="utf-8"`**
 explicitly. This caused a Windows CI failure reading the notebooks.
 
 CI runs the examples on Ubuntu only, so it will not catch an encoding
-regression. `tests/test_console_encoding.py` guards it, and you can reproduce
+regression. `tests/contract/test_console_encoding.py` guards it, and you can reproduce
 the Windows behavior anywhere with:
 
 ```bash
@@ -292,14 +292,18 @@ recurring on its own.
 Tests are grouped by what they establish, not by which module they cover. Each
 directory has a README stating what belongs in it.
 
+File counts below are as of 2026-08-17 (`find tests/<dir> -maxdepth 1 -name
+"test_*.py" | wc -l`); this table drifts as the suite grows, so treat the
+counts as a snapshot rather than a maintained total.
+
 | Directory | Holds | Files |
 |-----------|-------|-------|
-| `tests/unit/` | One function or class, expected values derived independently | 80 |
-| `tests/validation/` | Checked against an outside implementation or published data | 27 |
+| `tests/unit/` | One function or class, expected values derived independently | 98 |
+| `tests/validation/` | Checked against an outside implementation or published data | 45 |
 | `tests/integration/` | More than one subsystem, composed as a caller would | 3 |
-| `tests/contract/` | Assertions about the repository: examples run, notebooks execute, documented imports resolve | 6 |
-| `tests/api/` | Public surface: exports, signatures, error contracts | 2 |
-| `tests/property/` | Invariants over generated inputs (`hypothesis`, two profiles — see below) | 4 |
+| `tests/contract/` | Assertions about the repository: examples run, notebooks execute, documented imports resolve | 12 |
+| `tests/api/` | Public surface: exports, signatures, error contracts | 1 |
+| `tests/property/` | Invariants over generated inputs (`hypothesis`, two profiles — see below) | 5 |
 | `tests/characterization/` | Pins existing behavior where correctness is not established (empty by design) | 0 |
 
 A new test goes in `unit/` unless one of the narrower directories clearly fits.

@@ -1,11 +1,11 @@
 MATLAB TCL parity inventory
 ===========================
 
-A function-level comparison of pytcl 2.0.0 against the U.S. Naval Research
-Laboratory's `Tracker Component Library
-<https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary>`_
-(commit ``593ce51``), produced by walking every directory of the MATLAB
-repository rather than by asserting a percentage.
+A function-level comparison of pytcl against the MATLAB library at commit
+``593ce51`` of the U.S. Naval Research Laboratory's `Tracker Component
+Library <https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary>`_,
+produced by walking every directory of the MATLAB repository rather than by
+asserting a percentage.
 
 Why this document exists
 ------------------------
@@ -100,11 +100,17 @@ backends).
        numerics rather than tracking. Ported well: signal processing (CFAR
        family, matched filtering, STFT/CWT/DWT), core statistics (12
        distribution classes vs MATLAB's ~40), interpolation, basic matrix
-       operations, special functions. Thin or absent: the cubature-point
-       library (~148 files — a signature strength of the MATLAB TCL; pytcl
-       now has the degree-5/7 Gaussian rules, arbitrary-degree
-       spherical-radial points, and tensor Gauss-Hermite; the uniform-region
-       rules remain unported), combinatorics (113 vs
+       operations, special functions. The cubature-point library (~148
+       files -- a signature strength of the MATLAB TCL) is now well
+       covered: the degree-5/7 Gaussian rules including the full
+       ``seventh_order_cubature_points`` algorithm surface, spherical-radial
+       points (with the ``beta`` generalization), Genz-Keister nested
+       rules, the 14th-order and 2nd-order (Julier) rules, Student-t
+       cubature points, Smolyak sparse grids over the Genz-Keister
+       sequences, and tensor Gauss-Hermite. **Remaining:** Gaussian LCD
+       samples and the uniform region-cubature rules (Cube/Simplex/Sphere/
+       Spherical-Surface and beyond; see :doc:`roadmap`). Also thin or
+       absent: combinatorics (113 vs
        18), polynomials (55; no pytcl counterpart), geometry beyond basics
        (81), continuous optimization (37), specific integrals/derivatives,
        graph algorithms, accurate-arithmetic helpers.

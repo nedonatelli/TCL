@@ -16,7 +16,7 @@ Available functions:
 - ``q_coord_turn_polar``: Polar/heading-speed representation
 
 These Q matrices are designed to work with the corresponding state transition
-matrices in :mod:`pytcl.dynamic_models.coordinated_turn`.
+matrices in :mod:`pytcl.dynamic_models.discrete_time.coordinated_turn`.
 
 Examples
 --------
@@ -36,9 +36,8 @@ With turn rate state estimation:
 
 See Also
 --------
-pytcl.dynamic_models.coordinated_turn : State transition matrices
-pytcl.dynamic_models.process_noise.constant_velocity : CV process noise
-pytcl.dynamic_models.process_noise.constant_acceleration : CA process noise
+pytcl.dynamic_models.discrete_time.coordinated_turn : State transition matrices
+pytcl.dynamic_models.process_noise.polynomial : CV/CA process noise
 
 References
 ----------

@@ -87,30 +87,17 @@ def load_current_results(results_file: Path) -> list:
     return results
 
 
-def _match_score(test_name: str, param_key: str) -> int:
-    """Calculate match score between test name and SLO param key.
-
-    Higher score = better match. Returns 0 for no match.
-    """
-    test_lower = test_name.lower()
-    key_lower = param_key.lower()
-
-    # Exact match in test name (highest priority)
-    if key_lower in test_lower:
-        return 100 + len(key_lower)  # Longer matches score higher
-
-    # Check if all parts of the key appear in the test name
-    key_parts = [p for p in key_lower.split("_") if len(p) > 1]
-    if key_parts:
-        matches = sum(1 for p in key_parts if p in test_lower)
-        if matches == len(key_parts):
-            return 50 + matches
-
-    return 0
-
-
 def check_slo_violations(results: list, slos: dict) -> list:
-    """Check for SLO violations."""
+    """Check for SLO violations.
+
+    `.benchmarks/slos.json` keys SLOs by exact benchmark name under
+    ``"benchmarks"``, with thresholds in microseconds
+    (``max_mean_us`` / ``max_p99_us``) -- see the on-disk file and
+    `.github/workflows/benchmark-full.yml`, which feeds `bench["name"]`
+    straight into `.benchmarks/history.jsonl`'s `"test"` field using that
+    same naming. Match on that field directly rather than fuzzy-matching a
+    nested-by-function-path shape the file has never actually had.
+    """
     issues: list[dict] = []
 
     if not slos:
@@ -120,60 +107,50 @@ def check_slo_violations(results: list, slos: dict) -> list:
     warning_pct = thresholds.get("warning_percent", 15)
     failure_pct = thresholds.get("failure_percent", 30)
 
-    slo_defs = slos.get("slos", {})
+    slo_defs = slos.get("benchmarks", {})
 
     for result in results:
         test_name = result["test"]
         params = result["params"]
         mean_ms = result["mean_ms"]
 
-        # Try to find matching SLO with best score
-        matched_slo = None
-        best_score = 0
+        matched_slo = slo_defs.get(test_name)
+        if not isinstance(matched_slo, dict):
+            continue
 
-        for func_path, func_slos in slo_defs.items():
-            if isinstance(func_slos, dict):
-                # Check if any param key matches
-                for param_key, param_slo in func_slos.items():
-                    if param_key in ["description"]:
-                        continue
-                    if isinstance(param_slo, dict) and "mean_ms" in param_slo:
-                        score = _match_score(test_name, param_key)
-                        if score > best_score:
-                            best_score = score
-                            matched_slo = param_slo
+        max_mean_us = matched_slo.get("max_mean_us")
+        if not max_mean_us:
+            continue
+        target_mean = max_mean_us / 1000  # us -> ms
 
-        if matched_slo:
-            target_mean = matched_slo.get("mean_ms")
-            if target_mean:
-                deviation_pct = ((mean_ms - target_mean) / target_mean) * 100
+        deviation_pct = ((mean_ms - target_mean) / target_mean) * 100
 
-                if deviation_pct > failure_pct:
-                    issues.append(
-                        {
-                            "level": "FAILURE",
-                            "test": test_name,
-                            "params": params,
-                            "actual_ms": mean_ms,
-                            "slo_ms": target_mean,
-                            "deviation_pct": deviation_pct,
-                            "message": f"FAILURE: {test_name}[{params}] mean={mean_ms:.3f}ms "
-                            f"exceeds SLO={target_mean:.3f}ms by {deviation_pct:.1f}%",
-                        }
-                    )
-                elif deviation_pct > warning_pct:
-                    issues.append(
-                        {
-                            "level": "WARNING",
-                            "test": test_name,
-                            "params": params,
-                            "actual_ms": mean_ms,
-                            "slo_ms": target_mean,
-                            "deviation_pct": deviation_pct,
-                            "message": f"WARNING: {test_name}[{params}] mean={mean_ms:.3f}ms "
-                            f"exceeds SLO={target_mean:.3f}ms by {deviation_pct:.1f}%",
-                        }
-                    )
+        if deviation_pct > failure_pct:
+            issues.append(
+                {
+                    "level": "FAILURE",
+                    "test": test_name,
+                    "params": params,
+                    "actual_ms": mean_ms,
+                    "slo_ms": target_mean,
+                    "deviation_pct": deviation_pct,
+                    "message": f"FAILURE: {test_name}[{params}] mean={mean_ms:.3f}ms "
+                    f"exceeds SLO={target_mean:.3f}ms by {deviation_pct:.1f}%",
+                }
+            )
+        elif deviation_pct > warning_pct:
+            issues.append(
+                {
+                    "level": "WARNING",
+                    "test": test_name,
+                    "params": params,
+                    "actual_ms": mean_ms,
+                    "slo_ms": target_mean,
+                    "deviation_pct": deviation_pct,
+                    "message": f"WARNING: {test_name}[{params}] mean={mean_ms:.3f}ms "
+                    f"exceeds SLO={target_mean:.3f}ms by {deviation_pct:.1f}%",
+                }
+            )
 
     return issues
 

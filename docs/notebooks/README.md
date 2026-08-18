@@ -21,6 +21,7 @@ Run these notebooks directly in your browser without any local installation:
 | 06 | [Network Flow Solver](06_network_flow.ipynb) | Assignment problems, successive shortest paths |
 | 07 | [INS/GNSS Integration](07_ins_gnss_integration.ipynb) | Strapdown INS, loosely-coupled integration, DOP |
 | 08 | [Performance Optimization](08_performance_optimization.ipynb) | Profiling, Numba JIT, vectorization, caching |
+| 09 | [Track Management](09_track_management.ipynb) | Track lifecycles, SQL and HDF5 persistence, querying, migration |
 
 ## Local Installation
 
