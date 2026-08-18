@@ -147,7 +147,8 @@ wrong — passing tests are necessary, not sufficient.
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
    an NVIDIA machine; the `GPU` workflow covers it on demand.
 4. **PR with green CI** — lint (ruff, pinned), types (ty, locked), tests
-   (3 OS × 3 Python), docstring examples (`--doctest-modules`), docs build
+   (Ubuntu + macOS × 3 Python, plus Windows on 3.12 — 7 combinations, not a
+   full 3×3 matrix), docstring examples (`--doctest-modules`), docs build
    (zero docutils errors), benchmarks (SLO enforcement on main). Green CI
    means the checks that ran passed; it does not mean the GPU layers were
    exercised.
@@ -292,13 +293,13 @@ recurring on its own.
 Tests are grouped by what they establish, not by which module they cover. Each
 directory has a README stating what belongs in it.
 
-File counts below are as of 2026-08-17 (`find tests/<dir> -maxdepth 1 -name
+File counts below are as of 2026-08-18 (`find tests/<dir> -maxdepth 1 -name
 "test_*.py" | wc -l`); this table drifts as the suite grows, so treat the
 counts as a snapshot rather than a maintained total.
 
 | Directory | Holds | Files |
 |-----------|-------|-------|
-| `tests/unit/` | One function or class, expected values derived independently | 98 |
+| `tests/unit/` | One function or class, expected values derived independently | 101 |
 | `tests/validation/` | Checked against an outside implementation or published data | 45 |
 | `tests/integration/` | More than one subsystem, composed as a caller would | 3 |
 | `tests/contract/` | Assertions about the repository: examples run, notebooks execute, documented imports resolve | 12 |
@@ -452,7 +453,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.4.0 (released). See "Current metrics (v2.4.0)" under
+**Version:** v2.5.0 (released). See "Current metrics (v2.5.0)" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -515,13 +516,14 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.4.0):
-- **Functions:** 1,150+ (top-level `def`; measured 1,172 via
+Current metrics (v2.5.0):
+- **Functions:** 1,150+ (top-level `def`; measured 1,229 via
   `grep -r "^def " pytcl/ | wc -l`)
-- **Modules:** 187
-- **Tests:** 7,000+ (all passing; measured 7,085 via
+- **Modules:** 189
+- **Tests:** 7,000+ (all passing; measured 7,880 via
   `pytest --collect-only -q`)
-- **Coverage:** 90%
+- **Coverage:** 85% (measured under the coverage job's own conditions; CI
+  gate is `--cov-fail-under=82`)
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric

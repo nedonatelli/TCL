@@ -5,7 +5,7 @@ Overview
 --------
 
 The Tracker Component Library provides **1044 public names** across
-**143 modules**. This guide shows how to discover and use them
+**145 modules**. This guide shows how to discover and use them
 effectively.
 
 .. Figures are contract-tested against the package by

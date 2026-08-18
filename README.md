@@ -5,12 +5,12 @@
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-7000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,150+ functions** | **187 modules** | **7,000+ tests** | **90% coverage**
+**1,150+ functions** | **189 modules** | **7,000+ tests** | **85% coverage**
 
 ## Overview
 
@@ -209,6 +209,7 @@ pytcl/
 ├── containers/              # Spatial indexes, track/measurement containers
 ├── trackers/                # Multi-target trackers (GNN, JPDA, MHT)
 ├── io/                      # SQL/HDF5 storage, CSV/Parquet/DataFrame/ASDF/msgspec I/O
+├── diagnostics/             # Opt-in loguru logging, ASCII-safe rich progress/tables
 ├── transponders/            # AIS/NMEA decoding (maritime)
 ├── gpu/                     # GPU acceleration (CuPy/MLX)
 └── plotting/                # Covariance ellipses, tracks, metrics plots

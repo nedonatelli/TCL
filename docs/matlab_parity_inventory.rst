@@ -107,9 +107,15 @@ backends).
        points (with the ``beta`` generalization), Genz-Keister nested
        rules, the 14th-order and 2nd-order (Julier) rules, Student-t
        cubature points, Smolyak sparse grids over the Genz-Keister
-       sequences, and tensor Gauss-Hermite. **Remaining:** Gaussian LCD
-       samples and the uniform region-cubature rules (Cube/Simplex/Sphere/
-       Spherical-Surface and beyond; see :doc:`roadmap`). Also thin or
+       sequences, and tensor Gauss-Hermite. Gaussian LCD samples
+       (``gaussian_lcd_samples``) and the general-dimension uniform
+       region-cubature rules (Cube/Simplex/Sphere/Spherical-Surface) have
+       since shipped. **Remaining:** the 48 dimension-specialized
+       subdirectory files within that same region-cubature subset (fixed
+       2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/), three
+       1-D quadrature building blocks, and region types outside the
+       measured subset entirely (torus, cone, wedge, etc.; see
+       :doc:`roadmap`). Also thin or
        absent: combinatorics (113 vs
        18), polynomials (55; no pytcl counterpart), geometry beyond basics
        (81), continuous optimization (37), specific integrals/derivatives,
