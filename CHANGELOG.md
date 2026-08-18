@@ -304,11 +304,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   {2,3,4,6}, and covariance-eigenvalue scale log-uniform over [1e-6, 1e6]
   (`tests/unit/test_jpda.py::TestLikelihoodMatrixEquality`, written and
   passing against the unmodified code before the restructure): max
-  relative error 4.37e-14 on likelihoods (rtol=1e-9 gate, ~2e4x margin),
-  `gated` exactly equal in every scenario. No `.benchmarks/slos.json`
-  change needed -- the existing SLO for this benchmark was calibrated
-  against the pre-restructure code (111.18 ms mean ceiling) and remains a
-  valid (now much more generous) ceiling.
+  relative error 4.37e-14 on likelihoods (rtol=1e-9, atol=0 above a
+  1e-280 underflow floor -- see `_assert_likelihoods_close`'s docstring
+  for why an earlier atol=1e-12 made 831 of the sweep's entries pass
+  regardless of relative agreement), `gated` exactly equal in every
+  scenario. That scalar-scaled covariance recipe cannot produce
+  ill-conditioned `S` (measured max cond(S)=6.31 across the sweep, a plan
+  defect: uniform scaling changes S's size, not its condition number);
+  `TestLikelihoodMatrixIllConditioned` adds 4 scenarios with genuinely
+  ill-conditioned `S` (cond(S) up to ~1e10, built via direct eigenvalue
+  construction following `test_gating_mahalanobis_dispatch.py`'s
+  near-singular precedent) at dim in {2, 3} specifically to exercise
+  `mahalanobis_distance`'s closed-form dispatch branch against this
+  restructure's `np.linalg.inv`: max relative error 1.50e-8 (own
+  rtol=1e-5 gate, following that precedent's own 2.79e-7-at-cond-1.17e10
+  bound). Also fixed: `compute_likelihood_matrix` raised on a bare `[]`
+  for `measurements` (the old per-pair loop's `n_meas == 0` short-circuit
+  never touched `measurements`, so a plain list worked by accident; the
+  restructure's unconditional `measurements - z_pred` does not) --
+  `measurements` is now coerced with `np.asarray` and the function
+  early-returns the old empty shapes when `n_meas == 0`
+  (`TestLikelihoodMatrixEmptyMeasurementsRegression`). No
+  `.benchmarks/slos.json` change needed -- the existing SLO for this
+  benchmark was calibrated against the pre-restructure code (111.18 ms
+  mean ceiling) and remains a valid (now much more generous) ceiling.
 
 ## [2.4.0] - 2026-08-17
 

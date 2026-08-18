@@ -156,10 +156,21 @@ def compute_likelihood_matrix(
     True
     """
     n_tracks = len(track_states)
+    # Coerce eagerly: the per-track fast path below does
+    # `measurements - z_pred` unconditionally, which raises for a bare
+    # Python list (numpy's binary-op fallback converts `[]` to a shape-(0,)
+    # array, not (0, m), so it fails to broadcast against z_pred's shape
+    # (m,) for m != 1). The old per-pair loop only ever did `measurements[j]`
+    # inside `for j in range(n_meas)`, so n_meas == 0 skipped touching
+    # `measurements` at all and a bare `[]` worked by accident.
+    measurements = np.asarray(measurements, dtype=np.float64)
     n_meas = len(measurements)
 
     likelihood_matrix = np.zeros((n_tracks, n_meas))
     gated = np.zeros((n_tracks, n_meas), dtype=bool)
+
+    if n_meas == 0:
+        return likelihood_matrix, gated
 
     for i in range(n_tracks):
         # Predicted measurement and innovation covariance
