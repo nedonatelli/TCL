@@ -21,6 +21,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.optimize import linear_sum_assignment
 
 from pytcl.mathematical_functions.numerical_integration.quadrature import (
     gauss_legendre,
@@ -2079,25 +2080,48 @@ class TestBallMatlabFixtures:
         assert_allclose(pts[oa], ref_pts[ob], atol=1e-8)
         assert_allclose(w[oa], ref_w[ob], atol=1e-6)
 
+    @staticmethod
+    def _assert_matches_as_weighted_point_set(pts, w, ref_pts, ref_w):
+        """Assignment-matched comparison for tensor-product rules.
+
+        Lexsort-then-compare fails on these fixtures for two reasons
+        measured against the real MATLAB capture (2026-08-18, M3):
+        coordinates that are exact 0.0 on one side and O(1e-17) on the
+        other flip the sort order, and the tensor construction yields
+        coincident points (125 -> 101 distinct positions at n=3,
+        order 5) whose weight is split differently between duplicates
+        while the per-position SUM agrees to ~1e-15. So: match points
+        by minimal-distance assignment, then compare weights summed
+        over coincident-position clusters (12-decimal key).
+        """
+        dist = np.linalg.norm(pts[:, None, :] - ref_pts[None, :, :], axis=2)
+        row, col = linear_sum_assignment(dist)
+        assert dist[row, col].max() < 1e-12
+
+        def _cluster(p, wt):
+            sums: dict = {}
+            for key, wi in zip(map(tuple, np.round(p, 12)), wt):
+                sums[key] = sums.get(key, 0.0) + wi
+            return sums
+
+        ours, theirs = _cluster(pts, w), _cluster(ref_pts, ref_w)
+        assert ours.keys() == theirs.keys()
+        for key, wi in ours.items():
+            assert abs(wi - theirs[key]) < 1e-12
+
     def test_arb_order_matches_matlab(self):
         ref_pts, ref_w = _load_matlab_fixture(
             "region_sphere_arbOrderSpherCubPoints_n3_order5.csv"
         )
         pts, w = ball_cubature_points(3, 9)
-        oa = np.lexsort(pts.T)
-        ob = np.lexsort(ref_pts.T)
-        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
-        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+        self._assert_matches_as_weighted_point_set(pts, w, ref_pts, ref_w)
 
     def test_arb_order_nonzero_integer_alpha_matches_matlab(self):
         ref_pts, ref_w = _load_matlab_fixture(
             "region_sphere_arbOrderSpherCubPoints_n2_order5_alpha1.csv"
         )
         pts, w = ball_cubature_points(2, 9, alpha=1.0)
-        oa = np.lexsort(pts.T)
-        ob = np.lexsort(ref_pts.T)
-        assert_allclose(pts[oa], ref_pts[ob], atol=1e-7)
-        assert_allclose(w[oa], ref_w[ob], atol=1e-6)
+        self._assert_matches_as_weighted_point_set(pts, w, ref_pts, ref_w)
 
 
 class TestSpherSurfMatlabFixtures:

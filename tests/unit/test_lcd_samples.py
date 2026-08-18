@@ -439,14 +439,14 @@ def _load_lcd_fixture(n, num_points):
     (tests/unit/test_cubature_points.py's ``_load_matlab_fixture`` /
     tests/unit/test_region_cubature.py's twin): skips gracefully if any of
     the case's three ``lcd_n<N>_pts<P>*.csv`` files is absent, or fails hard
-    under ``PYTCL_REQUIRE_MATLAB_FIXTURES=1``. No lcd_* fixtures exist in
-    this checkout as of writing -- every test in
-    TestGaussianLCDSamplesMatlabFixtures skips until a maintainer with
-    MATLAB access runs ``scripts/matlab_capture/capture_lcd.m`` (which
-    itself requires that MATLAB checkout's ``CompileCLibraries.m`` to have
-    already been run, so ``quasiNewtonLBFGS`` exists as a compiled MEX
-    function rather than the unmexed stub -- capture_lcd.m's own preflight
-    check fails immediately otherwise) and commits the resulting CSVs.
+    under ``PYTCL_REQUIRE_MATLAB_FIXTURES=1``. The lcd_* fixtures were
+    captured 2026-08-18 (MATLAB R2026a, TCL checkout 593ce51, Apple M3)
+    via ``scripts/matlab_capture/capture_lcd.m`` and are committed to
+    tests/fixtures/matlab/. Recapturing requires ``quasiNewtonLBFGS``
+    compiled as a MEX function from that checkout's sources
+    (``CompileCLibraries.m``, or a targeted ``mex`` of
+    quasiNewtonLBFGS.c + liblbfgs -- capture_lcd.m's own preflight check
+    fails immediately otherwise).
 
     Returns
     -------

@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **MATLAB parity fixtures captured** -- all 113 fixture CSVs the three
+  `scripts/matlab_capture/` scripts produce (10 seventh-order, 15 LCD,
+  88 region-cubature) are now committed to `tests/fixtures/matlab/`,
+  captured 2026-08-18 in one MATLAB R2026a session against a
+  TrackerComponentLibrary checkout at 593ce51 on an Apple M3
+  (`quasiNewtonLBFGS` MEX-compiled from that checkout's sources; every
+  LCD case converged with `exitCode=0` and a capture-twice determinism
+  diff of exactly 0). The full fixture-gated suite passes under
+  `PYTCL_REQUIRE_MATLAB_FIXTURES=1` on that machine/date. Two
+  `arbOrderSpherCubPoints` parity tests were rewritten from
+  lexsort-order comparison to minimal-distance assignment matching with
+  coincident-point weight-cluster sums: the tensor-product rule emits
+  duplicate positions (125 points collapse to 101 distinct at n=3,
+  order 5) whose weight split differs from MATLAB's while the
+  per-position sums agree to ~1e-15, and eps-scale zeros (exact 0.0 vs
+  O(1e-17)) flip lexsort order -- the rule itself matches MATLAB
+  exactly (all tested monomial integrals agree to ~1e-15).
 - **`gaussian_lcd_samples`** -- localized cumulative distribution (LCD)
   cubature points for the standard normal `N(0, I)`
   (`pytcl.mathematical_functions.numerical_integration.lcd_samples`).
@@ -56,17 +73,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rotation/permutation-invariant MATLAB-fixture comparison this bullet
   previously deferred: `TestGaussianLCDSamplesMatlabFixtures`
   (`tests/unit/test_lcd_samples.py`), skip-gated on the `lcd_n<N>_pts<P>*`
-  fixtures `scripts/matlab_capture/capture_lcd.m` produces (none captured
-  in this checkout as of writing; `PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns
-  the skip into a hard failure), compares: (1) the sorted Gram-matrix
+  fixtures `scripts/matlab_capture/capture_lcd.m` produces (captured
+  2026-08-18 with MATLAB R2026a against TCL 593ce51 on an Apple M3 and
+  committed to `tests/fixtures/matlab/`;
+  `PYTCL_REQUIRE_MATLAB_FIXTURES=1` turns any missing-fixture skip into
+  a hard failure), compares: (1) the sorted Gram-matrix
   eigenvalue spectrum of the full point set (rotation- and
   permutation-invariant, unlike raw coordinates) against the fixture's,
   both sides started from the fixture's own captured `sInit` so both
   optimizers begin in the same basin; (2) the port's CvM objective value,
   `D1`/`computeDo2ContTerm` added back exactly as `GaussianLCDSamples.m`
   does, against the fixture's `CvMDistMin`, at the design spec's stated
-  placeholder 1e-4 relative tolerance (not yet calibrated against real
-  captured data -- flagged in-test); (3) exact mean/covariance identities
+  1e-4 relative tolerance (validated 2026-08-18 against the real
+  captured fixtures: all five spec grid cases pass); (3) exact
+  mean/covariance identities
   on the fixture's own points. A "Gaussian LCD Samples" section was added
   to the user guide (`docs/user_guide/mathematical_functions.rst`): what
   the samples are, when to prefer them over the fixed-degree cubature
