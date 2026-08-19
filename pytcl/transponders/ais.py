@@ -30,6 +30,7 @@ from pytcl.core.optional_deps import DISTRIBUTION_NAME
 from pytcl.diagnostics import diagnostics_enabled, logger
 
 __all__ = [
+    "nmea_checksum",
     "AISMessage",
     "PositionReports",
     "decode_ais",
@@ -144,7 +145,65 @@ class PositionReports(NamedTuple):
     heading: NDArray[np.float64]
 
 
-def decode_ais(nmea_text: str) -> list[AISMessage]:
+def nmea_checksum(sentence: str) -> str:
+    """Compute an NMEA sentence's ``*hh`` checksum.
+
+    The checksum is the XOR of every character strictly between the leading
+    ``!``/``$`` and the trailing ``*``, rendered as two uppercase hex digits.
+
+    Parameters
+    ----------
+    sentence : str
+        A full sentence, with or without its trailing ``*hh``.
+
+    Returns
+    -------
+    str
+        Two uppercase hex digits.
+
+    Examples
+    --------
+    >>> from pytcl.transponders.ais import nmea_checksum
+    >>> nmea_checksum("!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C")
+    '5C'
+    """
+    body = sentence.strip()
+    # A line may carry an NMEA 4.10 TAG block (``\s:...,c:...*hh\``) and/or a
+    # receiver timestamp before the sentence itself. The sentence checksum
+    # covers only the characters between its own leading marker and its
+    # trailing ``*``, so start at the LAST marker rather than position 0.
+    # ``!`` and ``$`` cannot occur inside a six-bit-armoured AIS payload, so
+    # the last one is always the sentence start.
+    marker = max(body.rfind("!"), body.rfind("$"))
+    if marker != -1:
+        body = body[marker + 1 :]
+    star = body.rfind("*")
+    if star != -1:
+        body = body[:star]
+    checksum = 0
+    for char in body:
+        checksum ^= ord(char)
+    return format(checksum, "02X")
+
+
+def _checksum_is_valid(sentence: str) -> bool:
+    """True if the sentence carries a ``*hh`` that matches its body.
+
+    A sentence with no ``*hh`` at all is treated as invalid: an AIS sentence
+    is required to carry one, and silently accepting a truncated line is the
+    failure mode this guard exists to prevent.
+    """
+    stripped = sentence.strip()
+    marker = max(stripped.rfind("!"), stripped.rfind("$"))
+    if marker == -1:
+        return False
+    star = stripped.rfind("*")
+    if star < marker or len(stripped) - star < 3:
+        return False
+    return stripped[star + 1 : star + 3].upper() == nmea_checksum(stripped)
+
+
+def decode_ais(nmea_text: str, validate_checksum: bool = True) -> list[AISMessage]:
     """Decode AIS NMEA sentences (one or more, newline-separated) to messages.
 
     Multipart messages (e.g. type 5, split across two ``!AIVDM`` sentences
@@ -164,6 +223,13 @@ def decode_ais(nmea_text: str) -> list[AISMessage]:
     ----------
     nmea_text : str
         One or more ``!AIVDM``/``!AIVDO`` sentences, one per line.
+    validate_checksum : bool, optional
+        Reject sentences whose trailing ``*hh`` does not match the XOR of
+        their body, and sentences carrying no ``*hh`` at all. Default True.
+        Rejected lines are skipped and counted like any other undecodable
+        line. Set False only to ingest a feed known to carry bad checksums,
+        accepting that a corrupted position report may decode to a plausible
+        but wrong latitude and longitude.
 
     Returns
     -------
@@ -179,7 +245,7 @@ def decode_ais(nmea_text: str) -> list[AISMessage]:
     Examples
     --------
     >>> from pytcl.transponders.ais import decode_ais
-    >>> vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+    >>> vdm = "!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
     >>> msgs = decode_ais(vdm)
     >>> msgs[0].msg_type
     1
@@ -191,6 +257,17 @@ def decode_ais(nmea_text: str) -> list[AISMessage]:
     from pyais.stream import IterMessages
 
     lines = [line for line in nmea_text.splitlines() if line.strip()]
+
+    if validate_checksum:
+        kept = [line for line in lines if _checksum_is_valid(line)]
+        n_bad = len(lines) - len(kept)
+        if n_bad and diagnostics_enabled():
+            logger.bind(site="transponders").debug(
+                "decode_ais: rejected {} of {} line(s) on checksum",
+                n_bad,
+                len(lines),
+            )
+        lines = kept
 
     messages: list[AISMessage] = []
     consumed_lines = 0
@@ -227,6 +304,7 @@ def _normalize(value: float, sentinel: float) -> float:
 def ais_position_reports(
     nmea_text_or_messages: Union[str, Sequence[AISMessage]],
     times: Sequence[float] | None = None,
+    validate_checksum: bool = True,
 ) -> PositionReports:
     """Extract position reports (types 1, 2, 3, 18, 19) as parallel arrays.
 
@@ -242,6 +320,9 @@ def ais_position_reports(
         given, its length must equal the number of decoded messages.
         Entries whose message is not a position report are dropped along
         with that message. When omitted, `PositionReports.t` is all NaN.
+    validate_checksum : bool, optional
+        Forwarded to `decode_ais` when raw text is given; ignored when an
+        already-decoded message list is passed. Default True.
 
     Returns
     -------
@@ -260,7 +341,7 @@ def ais_position_reports(
     Examples
     --------
     >>> from pytcl.transponders.ais import ais_position_reports
-    >>> vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+    >>> vdm = "!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
     >>> rep = ais_position_reports(vdm)
     >>> rep.mmsi[0]
     366053209
@@ -270,7 +351,9 @@ def ais_position_reports(
     _import_pyais()
 
     if isinstance(nmea_text_or_messages, str):
-        messages: Sequence[AISMessage] = decode_ais(nmea_text_or_messages)
+        messages: Sequence[AISMessage] = decode_ais(
+            nmea_text_or_messages, validate_checksum=validate_checksum
+        )
     else:
         messages = nmea_text_or_messages
 

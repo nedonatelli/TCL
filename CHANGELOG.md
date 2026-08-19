@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: `decode_ais` and `ais_position_reports` now validate NMEA
+  checksums by default.** A sentence whose trailing `*hh` does not match the
+  XOR of its body -- or which carries no `*hh` at all -- is skipped instead
+  of decoded. Previously nothing was validated: `pyais.stream.IterMessages`
+  does not enforce `NMEAMessage.is_valid`, so a corrupted sentence decoded to
+  a plausible but wrong latitude and longitude, silently. Pass
+  `validate_checksum=False` to restore the old behaviour when ingesting a
+  feed known to carry bad checksums. NMEA 4.10 TAG blocks
+  (`\s:...,c:...*hh\`) and receiver-timestamp prefixes are handled: the
+  checksum is computed from the sentence's own leading `!`/`$`, not from the
+  start of the line. Verified against `tests/fixtures/ais` (6,831 real
+  sentences off Norway, 6,774 of them TAG-blocked): zero rejections.
+- **`pytcl.transponders.nmea_checksum`** -- new public function computing a
+  sentence's `*hh`, the counterpart to MATLAB's `NMEAChecksum` and the last
+  of that directory's three functions to be ported.
+
+### Fixed
+- **pytcl's canonical AIS test sentence carried an invalid checksum.** The
+  published vector is channel B (`!AIVDM,1,1,,B,...*5C`); pytcl had changed
+  it to channel A while keeping `5C`, whose correct value on channel A is
+  `5F`. It appeared in `pytcl/transponders/ais.py`,
+  `pytcl/transponders/__init__.py`, `tests/unit/test_ais.py` and
+  `docs/results_io.rst`, and passed everywhere only because nothing
+  validated checksums. Restored to channel B.
+
 ### Added
 - **16 new CI-calibrated benchmark SLO entries** (`.benchmarks/slos.json`,
   8 -> 24 entries), covering hot-path families across

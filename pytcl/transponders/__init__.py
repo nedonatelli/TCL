@@ -11,7 +11,7 @@ them is actually called.
 Examples
 --------
 >>> import pytcl.transponders as transponders
->>> vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+>>> vdm = "!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
 >>> msgs = transponders.decode_ais(vdm)
 >>> msgs[0].msg_type
 1
@@ -22,11 +22,13 @@ from pytcl.transponders.ais import (
     PositionReports,
     ais_position_reports,
     decode_ais,
+    nmea_checksum,
 )
 
 __all__ = [
     "AISMessage",
     "PositionReports",
     "decode_ais",
+    "nmea_checksum",
     "ais_position_reports",
 ]

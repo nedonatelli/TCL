@@ -250,8 +250,9 @@ Counts are measured from the packages themselves rather than asserted;
      - Opt-in loguru logging, ASCII-safe rich progress bars and track tables
    * - ``transponders``
      - 1
-     - 4
-     - AIS NMEA decoding and position-report extraction (pyais)
+     - 5
+     - AIS NMEA decoding, checksum validation, and position-report
+       extraction (pyais)
 
 Composition Examples
 --------------------
