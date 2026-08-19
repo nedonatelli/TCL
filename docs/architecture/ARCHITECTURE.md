@@ -229,28 +229,36 @@ def compute_something(lat, lon, altitude):
 
 For optional features:
 
-```python
-try:
-    from pytcl.gravity import egm2008
-except ImportError:
-    # Fall back to lower-resolution model
-    from pytcl.gravity import egm96 as egm2008
+Optional third-party packages are imported through `pytcl.core.optional_deps`,
+which raises `DependencyError` naming the extra to install rather than a bare
+`ImportError`:
 
-    warnings.warn("EGM2008 coefficients not found, using EGM96")
+```python
+from pytcl.core.optional_deps import import_optional, is_available
+
+if is_available("netCDF4"):
+    netCDF4 = import_optional("netCDF4", extra="terrain")
 ```
+
+Optional *data* files degrade by model rather than by import: both EGM96 and
+EGM2008 live in the same module (`pytcl.gravity.egm`) and are selected by
+name, so a caller without the EGM2008 coefficient file passes `"EGM96"`
+instead of catching an import error.
 
 ## Testing Strategy
 
 ### Unit Tests
 - Located in `tests/`
-- Run with `pytest tests/ -v`
-- Coverage target: 90%+
+- Run with `uv run pytest`
+- CI enforces `--cov-fail-under=82`; see CONTRIBUTING.md's metrics block for
+  the measured figure, which is re-measured each release
 
 ### Benchmarks
 - Located in `benchmarks/`
-- Light suite for PRs (Kalman, gating, rotations)
-- Full suite for main branch
-- SLOs defined in `.benchmarks/slos.json`
+- Light suite for PRs (`-m light` over six benchmark files), full suite on
+  main and nightly
+- SLOs defined in `.benchmarks/slos.json`; see [PERFORMANCE.md](PERFORMANCE.md)
+  for the file format, how thresholds are derived, and the exact commands
 
 ### Integration Tests
 - End-to-end tracking scenarios
@@ -266,9 +274,6 @@ except ImportError:
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.3.0 | 2026-01-02 | Added magnetism caching, Phase 16 complete |
-| 1.2.0 | 2025-12-xx | Navigation caching, special functions |
-| 1.1.0 | 2025-11-xx | Benchmarking infrastructure, SLOs |
-| 1.0.0 | 2025-10-xx | Initial release |
+Release history lives in [CHANGELOG.md](../../CHANGELOG.md). This page
+carried its own four-row table that stopped at v1.3.0 and had placeholder
+dates; a second, worse copy of the changelog is not worth maintaining.

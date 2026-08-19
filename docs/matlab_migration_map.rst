@@ -252,15 +252,22 @@ Dynamic Models
    * - ``FCoordTurn2D``
      - ``pytcl.dynamic_models.discrete_time.coordinated_turn.f_coord_turn_2d``
    * - ``FGaussMarkov``
-     - ``pytcl.dynamic_models.discrete_time.singer.f_singer``
+     - ``pytcl.dynamic_models.discrete_time.singer.f_singer`` -- **order 2
+       only.** MATLAB's is arbitrary-order; orders 0 (Ornstein-Uhlenbeck)
+       and 1 (integrated OU) have no pytcl counterpart.
    * - ``FPolyKal``
-     - ``pytcl.dynamic_models.discrete_time.polynomial.f_constant_velocity``
+     - ``pytcl.dynamic_models.discrete_time.polynomial.f_poly_kal``
+       (arbitrary ``order``, matching MATLAB; ``f_constant_velocity`` is
+       the ``order=1`` case)
    * - ``QCoordTurn``
      - ``pytcl.dynamic_models.process_noise.q_coord_turn_2d``
    * - ``QGaussMarkov``
-     - ``pytcl.dynamic_models.process_noise.q_singer``
+     - ``pytcl.dynamic_models.process_noise.q_singer`` -- **order 2 only**,
+       same limitation as ``FGaussMarkov`` above.
    * - ``QPolyKal``
-     - ``pytcl.dynamic_models.process_noise.q_constant_velocity``
+     - ``pytcl.dynamic_models.process_noise.q_poly_kal`` (arbitrary
+       ``order``, matching MATLAB; ``q_constant_velocity`` is the
+       ``order=1`` case)
 
 Gravity
 ^^^^^^^

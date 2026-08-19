@@ -63,6 +63,16 @@ GPU Acceleration
 
    gpu
 
+I/O and Instrumentation
+-----------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   io
+   transponders
+   diagnostics
+
 Utilities
 ---------
 

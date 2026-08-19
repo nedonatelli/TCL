@@ -40,8 +40,9 @@ substantially broader.** By function count, coverage is roughly a third of
 the MATLAB public surface. By workflow — filter, associate, track, evaluate,
 in Earth-referenced coordinates — coverage is near-complete, and in several
 places pytcl exceeds the original (OSPA/MOT metrics, ionosphere models,
-R-trees and cover trees, min-cost flow, SQL/HDF5 track storage, GPU
-backends).
+R-trees and cover trees, STFT/wavelet transforms and matched filtering,
+SQL/HDF5 track storage, GPU backends). Min-cost flow is *not* among them:
+MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
 
 .. list-table::
    :header-rows: 1
@@ -55,20 +56,34 @@ backends).
      - 113
      - Core strong
      - KF/EKF/UKF/CKF, square-root and UD forms, SRIF, information filter,
-       H-infinity, IMM, particle filters, RBPF, RTS/two-filter/fixed-lag/
-       fixed-interval smoothers all ported. **Missing:** EnKF, ESRIF,
-       quasi-Monte-Carlo Kalman variants, BLUE polar/spherical measurement
-       updates, progressive Gaussian update, pure-propagation filter,
-       reduced-state filters, batch least-squares estimators, PCRLB/Riccati
-       analysis tools.
+       H-infinity, IMM, particle filters, RBPF, and RTS/two-filter/fixed-lag
+       smoothers all ported (``fixed_interval_smoother`` is a documented
+       alias for the RTS smoother, not a fourth algorithm). **Missing:**
+       EnKF, ESRIF, quasi-Monte-Carlo Kalman variants, BLUE polar/spherical
+       measurement updates, progressive Gaussian update, pure-propagation
+       filter, reduced-state filters, batch least-squares estimators,
+       PCRLB/Riccati analysis tools. Also absent, and larger than that list
+       suggests: the entire ``Measurement_Update/Update_Parts`` tree (30
+       files, 27% of the area -- separate gain, measurement-prediction and
+       update-with-prediction entry points, which pytcl does not decompose
+       its updates into), continuous-discrete propagation
+       (``State_Propagation/Continuous_Time``, 6 files), divided-difference
+       filters, one/two-point initialization, and batch/FIR smoothers. By
+       counterpart count roughly 20 of the 113 MATLAB functions have a
+       pytcl equivalent; "Core strong" describes the KF family's depth, not
+       breadth across the area.
    * - Dynamic_Models
      - 62
      - Partial
-     - CV/CA, coordinated turn (2D/3D/polar), Singer, Gauss-Markov F and Q
-       matrices ported. **Missing:** weave/spiral maneuver models,
-       flat-to-curved-Earth dynamics, geodesic Brownian motion, trajectory
-       generators with constrained endpoints, process-noise suggestion
-       tooling.
+     - CV/CA (arbitrary polynomial order, via ``f_poly_kal``/``q_poly_kal``),
+       coordinated turn (2D/3D/polar) and Singer F and Q matrices ported.
+       **Missing:** Gauss-Markov at orders other than 2 -- MATLAB's
+       ``FGaussMarkov``/``QGaussMarkov`` are arbitrary-order (order 0 is
+       Ornstein-Uhlenbeck, 1 is integrated OU, 2 is Singer) and pytcl ports
+       only the order-2 Singer case, with no ``order`` argument; also
+       weave/spiral maneuver models, flat-to-curved-Earth dynamics, geodesic
+       Brownian motion, trajectory generators with constrained endpoints,
+       process-noise suggestion tooling.
    * - Assignment_Algorithms
      - 45
      - Core strong
@@ -82,25 +97,39 @@ backends).
      - Partial
      - Cartesian/spherical/polar/geodetic/ENU/NED/SEZ conversions, rotations,
        quaternions, r-u-v (range plus direction cosines, ``cart2ruv``/
-       ``ruv2cart``), UTM and standard projections ported and validated to
-       sub-mm against pyproj/EPSG. **Missing:** the angle-only direction-
+       ``ruv2cart``) and the standard projections ported; UTM is validated to
+       sub-mm against pyproj/EPSG, but ``stereographic`` and
+       ``azimuthal_equidistant`` are spherical approximations that diverge
+       from PROJ by kilometres away from the projection centre (their own
+       docstrings tabulate this; gh-25). **Missing:** the angle-only direction-
        cosine UV measurement system (``spher2Uv``/``uv2Spher``-style
        conversions, u-v-w unit vectors, and their Jacobians -- the natural
        measurement space of a planar phased array; distinct from the ported
        r-u-v triple), most of the 65-function time
        suite (pytcl covers UTC/TAI/TT/GPS and Julian dates; TDB/TCB/TCG,
-       Besselian epochs, sidereal local time variants absent), the 30
-       measurement Jacobians and 14 Hessians as standalone functions, exotic
-       projections (bipolar, gnomonic, azimuthal-equidistant families),
-       ellipsoidal-harmonic coordinates, RF transform-parameter estimation.
+       Besselian epochs, sidereal local time variants absent), 26 of the 30
+       measurement Jacobians (spherical, polar, r-u-v, ENU/NED and geodetic
+       Jacobians *are* ported, in ``coordinate_systems/jacobians/``) and all
+       14 Hessians, the ellipsoidal azimuthal-equidistant family (pytcl's
+       ``azimuthal_equidistant`` is a spherical approximation), other exotic
+       projections (bipolar, gnomonic), ellipsoidal-harmonic coordinates, RF
+       transform-parameter estimation.
    * - Mathematical_Functions
-     - 1,506
+     - 1,440
      - Selective
      - The largest area and the largest gap, though much of it is generic
-       numerics rather than tracking. Ported well: signal processing (CFAR
-       family, matched filtering, STFT/CWT/DWT), core statistics (12
-       distribution classes vs MATLAB's ~40), interpolation, basic matrix
-       operations, special functions. The cubature-point library (~148
+       numerics rather than tracking. Ported well: the CFAR family
+       (pytcl adds GO/SO/2-D beyond MATLAB's CA and OS), core statistics
+       (12 distribution classes vs MATLAB's 54), interpolation, special
+       functions. Note that pytcl's STFT/CWT/DWT and matched filtering are
+       **not** ports -- the MATLAB library contains no STFT, wavelet or
+       matched-filter code at all, so they belong under "what pytcl adds"
+       below, not under parity. Signal processing overall is thin against
+       the original: roughly 6 of 51 MATLAB names, with the entire
+       17-file ``Array_Processing`` subtree (tapering, beam patterns,
+       subarray weights) unported. Basic matrix operations likewise: about
+       10 of 99, with the ``Joint_Matrix_Diagonalization`` and ``Tensors``
+       subtrees absent. The cubature-point library (~148
        files -- a signature strength of the MATLAB TCL) is now well
        covered: the degree-5/7 Gaussian rules including the full
        ``seventh_order_cubature_points`` algorithm surface, spherical-radial
@@ -113,13 +142,17 @@ backends).
        since shipped. **Remaining:** the 48 dimension-specialized
        subdirectory files within that same region-cubature subset (fixed
        2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/), three
-       1-D quadrature building blocks, and region types outside the
-       measured subset entirely (torus, cone, wedge, etc.; see
-       :doc:`roadmap`). Also thin or
+       1-D quadrature building blocks, and the region types outside that
+       subset (``Prism``, ``Pyramid``, ``Cross_Polytope``, ``Exp_Weight``,
+       ``Weighted_Ellipse``, ``Hexagon``, ``Spherical_Shell`` -- 33 files --
+       plus loose torus and n-dimensional-shell rules; see :doc:`roadmap`).
+       There is no cone or wedge rule anywhere in the MATLAB library. Also thin or
        absent: combinatorics (113 vs
        18), polynomials (55; no pytcl counterpart), geometry beyond basics
-       (81), continuous optimization (37), specific integrals/derivatives,
-       graph algorithms, accurate-arithmetic helpers.
+       (81), continuous optimization (37), most specific
+       integrals/derivatives (the Carlson symmetric and incomplete elliptic
+       integrals *are* ported, in ``special_functions/elliptic.py``), graph
+       algorithms other than min-cost flow, accurate-arithmetic helpers.
    * - Astronomical_Code
      - 28
      - Partial
@@ -157,19 +190,29 @@ backends).
      - Direct/indirect geodesic, great-circle and rhumb problems ported,
        validated against GeographicLib; rhumb intersection is ported as
        ``rhumb_intersect`` and great-circle TDOA as ``great_circle_tdoa_loc``.
-       **Missing:** geodesic and great-circle intersections, surface angles.
+       Great-circle intersection is ported too, as ``great_circle_intersect``
+       (plus a path-endpoint form, ``great_circle_path_intersect``).
+       **Missing:** the *geodesic* (ellipsoidal) intersection, surface
+       angles, the at-a-fixed-height ``*ProbGen`` generalizations of the
+       direct/indirect geodesic and rhumb problems, geodesic midpoint, and
+       standalone pseudorange localization (``pseudoRangeLoc``) -- pytcl has
+       only the filter-component pieces of the last.
    * - Static_Estimation
      - 11
      - Divergent
      - The name overlaps; the content mostly does not. MATLAB's area is
        target localization: TDOA, Doppler-only init, range-rate-only,
-       direction-only static estimators — **almost all absent** from pytcl.
+       direction-only static estimators — **all 11 absent** from pytcl
+       (``great_circle_tdoa_loc`` is not an exception here: MATLAB keeps
+       ``greatCircleTDOALoc.m`` in ``Navigation``, not this directory).
        pytcl's ``static_estimation`` instead ports the general estimators
-       (OLS/TLS/RANSAC/robust/RLS/MLE) that MATLAB keeps elsewhere.
+       (OLS/TLS/robust/MLE) that MATLAB keeps elsewhere; RANSAC and
+       recursive least squares are pytcl originals with no MATLAB
+       counterpart anywhere in the library.
    * - Clustering_and_Mixture_Reduction
      - 14
      - Good
-     - Runnalls and West mixture reduction, k-means(++), EM clustering
+     - Runnalls and West mixture reduction, k-means(++)
        ported; pytcl adds DBSCAN and hierarchical clustering. **Missing:**
        ISE-based reduction and its gradients, brute-force reduction,
        windowed grid centroiding.
@@ -191,9 +234,15 @@ backends).
        index.
    * - Terrain
      - 3
-     - Good
-     - Earth2014 loading ported (plus GEBCO, which MATLAB lacks); solid-tide
-       shift ported. EGM2008 terrain coefficients not ported.
+     - Partial
+     - The Earth2014 *dataset* is read (plus GEBCO, which MATLAB lacks), but
+       not MATLAB's function: ``getEarth2014TerrainCoeffs`` returns degree-2160
+       spherical-harmonic coefficients from ``.bshc`` files, while pytcl parses
+       the 1-arcmin geodetic grid products and has no ``.bshc`` parser.
+       Solid-tide shift ported. So of the three public functions, one
+       (``solidTideShift``) has a genuine equivalent and both
+       coefficient-returning functions -- Earth2014 and EGM2008 terrain --
+       are unported.
    * - Misc
      - 52
      - Mostly N/A
@@ -217,9 +266,11 @@ backends).
        a pure-Python decoder, rather than a libais binding, so the two are
        functionally equivalent but not the same implementation. Validated
        against 6,808 real position reports from 299 ships off Norway (see
-       :doc:`results_io`). **Missing:** a standalone
-       ``NMEAChecksum``-equivalent (pytcl validates checksums internally
-       inside pyais's decode path, not as its own callable function), and
+       :doc:`results_io`). **Missing:** any ``NMEAChecksum`` equivalent --
+       pytcl performs no checksum validation at all. ``decode_ais`` goes
+       through ``pyais.stream.IterMessages``, which does not enforce
+       ``NMEAMessage.is_valid``, so a sentence with a deliberately corrupted
+       ``*hh`` decodes cleanly (gh-TBD). Also missing:
        NMEA sentence *construction* in either direction (encoding a
        message back to ``!AIVDM`` text) -- neither is ported.
    * - Scheduling
@@ -229,8 +280,13 @@ backends).
    * - Physical_Values
      - 14
      - Partial
-     - Physical constants ported. Radar bands, water permittivity and
-       reflection-coefficient models absent.
+     - Physical constants partially ported: 43 module-level constants
+       against ``Constants.m``'s 92 ``properties (Constant)``, with the
+       WGS72, EGM96/EGM2008 and lunar (GL0900C/JPL) constant families and
+       the atomic/electromagnetic set (electron and proton mass, fine
+       structure, Rydberg, Faraday) all absent. Radar bands, water
+       permittivity, reflection-coefficient models, ``elementAMU`` and
+       ``gasProp`` absent.
 
 What pytcl has that the MATLAB library does not
 -----------------------------------------------
@@ -238,9 +294,9 @@ What pytcl has that the MATLAB library does not
 The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MOT evaluation,
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
-migration tooling, dual-backend GPU acceleration, and a validation suite of
-6,200+ tests with a 43-file validation suite checking against independent references — the
-MATLAB library distributes no test suite at all.
+migration tooling, dual-backend GPU acceleration, and a test suite of 7,000+
+cases that includes 45 validation files checking against independent
+references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line
 ------------------

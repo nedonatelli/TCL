@@ -1,6 +1,6 @@
 # Tutorial Modules Index
 
-Collection of 10 interactive tutorial scripts in `docs/tutorials/` covering the core tracking and estimation algorithms the Tracker Component Library implements. Each script is self-contained (NumPy, SciPy, and Plotly only) and generates an interactive HTML visualization. Six of the tutorials (Kalman filtering, nonlinear filtering, signal processing, radar detection, INS-GNSS integration, and multi-target tracking) have companion `.rst` pages in the same directory showing the equivalent `pytcl` API calls.
+Collection of 10 interactive tutorial scripts in `docs/tutorials/` covering the core tracking and estimation algorithms the Tracker Component Library implements. Each script is self-contained (NumPy, SciPy, and Plotly only) and generates an interactive HTML visualization. Each has a companion `.rst` page in the same directory showing the equivalent `pytcl` API calls.
 
 ## Available Tutorials
 
@@ -198,4 +198,4 @@ The `.rst` tutorial pages embed the visualizations (copied to `docs/_static/imag
 - **Examples**: `examples/` directory
 
 ---
-Last reviewed: August 6, 2026 (v2.0.0)
+Last reviewed: August 19, 2026 (v2.5.0)
