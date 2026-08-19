@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **`KDTree(leaf_size=...)` now does what it says.** `_build_tree` recursed
+  to one point per node and never read `self.leaf_size`, so the documented
+  "Maximum number of points in a leaf node" had no effect -- while `BallTree`
+  in the same module honoured the identical parameter. Nodes now stop
+  splitting at `leaf_size` and hold a bucket scanned exhaustively at query
+  time, which is the standard construction. Query results are unchanged:
+  verified identical to brute force over 1,120 checks spanning `leaf_size` in
+  {1, 2, 10, 1000}, both `query` and `query_radius`.
 - **BREAKING: `MultiTargetTracker` confirmation is now the documented M-of-N
   rule.** `confirm_window` was accepted, stored, and never read: confirmation
   compared a cumulative lifetime `hits` count against `confirm_hits`, so a

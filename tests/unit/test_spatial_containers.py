@@ -610,3 +610,54 @@ class TestSpatialTreePerformance:
         result = tree.query_radius([[50, 50]], r=5)
 
         assert isinstance(result[0], list)
+
+
+class TestKDTreeLeafSize:
+    """``leaf_size`` must affect the tree and never the answers.
+
+    ``KDTree._build_tree`` recursed to one point per node and never read
+    ``self.leaf_size``, so the documented "Maximum number of points in a leaf
+    node" did nothing -- while ``BallTree``, in the same module, honoured the
+    identical parameter. The pair of properties below is what distinguishes
+    an implemented parameter from an ignored one: the structure changes, the
+    results do not.
+    """
+
+    @staticmethod
+    def _depth(node):
+        if node is None:
+            return 0
+        return 1 + max(
+            TestKDTreeLeafSize._depth(node.left),
+            TestKDTreeLeafSize._depth(node.right),
+        )
+
+    def test_leaf_size_changes_the_tree_shape(self):
+        X = np.random.RandomState(0).randn(200, 3)
+        depths = [self._depth(KDTree(X, leaf_size=ls).root) for ls in (1, 10, 100)]
+        assert depths[0] > depths[1] > depths[2]
+
+    def test_a_large_leaf_size_collapses_the_tree_to_one_bucket(self):
+        X = np.random.RandomState(1).randn(50, 2)
+        tree = KDTree(X, leaf_size=1000)
+        assert tree.root.bucket is not None
+        assert len(tree.root.bucket) == 50
+
+    @pytest.mark.parametrize("leaf_size", [1, 2, 10, 1000])
+    def test_results_are_identical_to_brute_force(self, leaf_size):
+        rs = np.random.RandomState(2)
+        X = rs.randn(80, 3)
+        queries = rs.randn(10, 3)
+        exact = np.sqrt(((queries[:, None, :] - X[None, :, :]) ** 2).sum(-1))
+
+        tree = KDTree(X, leaf_size=leaf_size)
+
+        result = tree.query(queries, k=5)
+        assert_allclose(
+            np.sort(result.distances, axis=1), np.sort(exact, axis=1)[:, :5]
+        )
+
+        for i, q in enumerate(queries):
+            found = sorted(tree.query_radius(q.reshape(1, -1), 1.0)[0])
+            expected = sorted(np.where(exact[i] <= 1.0)[0].tolist())
+            assert found == expected
