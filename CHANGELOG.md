@@ -30,6 +30,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of that directory's three functions to be ported.
 
 ### Fixed
+- **`ensure_positive_definite` accepted singular matrices** -- the same
+  defect as gh-23, in the half of the pair that fix never reached. Its guard
+  was `min(eigenvalues) < -rtol * max|lambda|`, a *negative* threshold, so it
+  only fired on eigenvalues meaningfully below zero and `diag(1, 0)` passed a
+  function whose name, summary line and `Raises` clause all promise
+  definiteness. `ArraySpec(positive_definite=True)` inherited the gap.
+  `is_positive_definite` was corrected under gh-23 and its Notes still
+  describe the identical expression; nothing compared the predicate against
+  the validator, so they drifted. They are now pinned to agree by a test over
+  200 random matrices seeded with deliberately singular and indefinite cases.
+  The existing test could not have caught this: its negative case is
+  indefinite, and an indefinite matrix fails both the definite and the
+  semidefinite test -- only a singular matrix distinguishes them.
+- **Two documented quantities were not the quantities returned.**
+  `SingleTargetTracker.update`'s second return value was documented as
+  "Measurement likelihood (Mahalanobis distance)"; it is the *squared*
+  Mahalanobis distance, so it is neither, and a caller thresholding it as a
+  likelihood -- larger is better -- inverts the association decision. It is
+  now documented as `gate_distance`, with its chi-squared relationship to
+  `gate_threshold` stated and the untouched-state-on-rejection behaviour
+  spelled out. The gating itself was always correct, and `MHTTracker` already
+  keeps distance and likelihood distinct, so only the docstring dissented.
+  Separately, `Spectrogram.power` was documented as `|STFT|^2` but carries
+  whichever normalisation `scaling`/`mode` select -- at the defaults a power
+  spectral *density*, differing by `fs * sum(window**2) / 2`, which is 24,000
+  at fs=1000 with a 128-point Hann window and moves with both. Neither
+  behaviour changed; both are pinned by tests computing the quantity
+  independently.
 - **`stereographic` and `azimuthal_equidistant` returned a back-azimuth in
   `ProjectionResult.convergence`, not a grid convergence.** Both filled the
   field with the azimuth formula transposed -- `lat` and `lat0` swapped in
