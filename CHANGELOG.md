@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING: `MultiTargetTracker` confirmation is now the documented M-of-N
+  rule.** `confirm_window` was accepted, stored, and never read: confirmation
+  compared a cumulative lifetime `hits` count against `confirm_hits`, so a
+  track that scraped together enough detections over any span eventually
+  confirmed however sparse they were, and passing a different
+  `confirm_window` changed nothing. The class docstring, the parameter
+  docstring and `MultiTargetConfig` all described M-of-N. Confirmation now
+  reads a bounded window of the most recent association outcomes, and the
+  initiating detection counts toward it, so `confirm_hits=3` means three
+  detections rather than four. Tracks in sparse-detection scenarios that
+  previously confirmed may now stay tentative -- raise `confirm_window` to
+  recover the old behaviour. `Track.hits` is unchanged and remains a
+  cumulative lifetime count.
 - **BREAKING: `decode_ais` and `ais_position_reports` now validate NMEA
   checksums by default.** A sentence whose trailing `*hh` does not match the
   XOR of its body -- or which carries no `*hh` at all -- is skipped instead
@@ -30,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of that directory's three functions to be ported.
 
 ### Fixed
+- **`MultiTargetTracker`'s `init_covariance` default was documented as
+  `100 * R` projected to the state space; it is `100 * I`.** Corrected in
+  both the tracker and `MultiTargetConfig`. Also corrects an inline comment
+  in `mht.py` claiming MHT confirm/delete "go by M-of-N" -- they go by
+  cumulative `n_hits` and consecutive `n_misses`; `MultiTargetTracker` is the
+  one with a windowed rule.
 - **`ensure_positive_definite` accepted singular matrices** -- the same
   defect as gh-23, in the half of the pair that fix never reached. Its guard
   was `min(eigenvalues) < -rtol * max|lambda|`, a *negative* threshold, so it

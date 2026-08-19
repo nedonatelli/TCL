@@ -84,13 +84,16 @@ class MultiTargetTracker:
     gate_probability : float, optional
         Gate probability for association (default: 0.99).
     confirm_hits : int, optional
-        Hits needed to confirm track (default: 3).
+        Hits required within ``confirm_window`` to confirm a track
+        (the M of M-of-N; default: 3). The initiating detection counts.
     confirm_window : int, optional
-        Window for M-of-N confirmation (default: 5).
+        Number of most recent association outcomes examined when deciding
+        confirmation (the N of M-of-N; default: 5).
     max_misses : int, optional
         Consecutive misses before deletion (default: 5).
     init_covariance : ndarray, optional
-        Initial covariance for new tracks. If None, uses 100*R projected to state.
+        Initial covariance for new tracks, shape ``(state_dim, state_dim)``.
+        If None, uses ``100 * I``.
     config : MultiTargetConfig, optional
         Typed configuration. Mutually exclusive with the individual
         keyword arguments above. ``config.F``/``config.Q`` must be set
@@ -306,6 +309,7 @@ class MultiTargetTracker:
         for i, track in enumerate(self._tracks):
             if i not in associations and track.status != TrackStatus.DELETED:
                 track.misses += 1
+                self._record_outcome(track, hit=False)
                 if track.misses >= self.max_misses:
                     track.status = TrackStatus.DELETED
 
@@ -466,10 +470,12 @@ class MultiTargetTracker:
         # Update counts
         track.hits += 1
         track.misses = 0
+        self._record_outcome(track, hit=True)
 
-        # Check confirmation
+        # Confirmation is M-of-N over the recent window, not a cumulative
+        # lifetime hit count.
         if track.status == TrackStatus.TENTATIVE:
-            if track.hits >= self.confirm_hits:
+            if sum(track.recent) >= self.confirm_hits:
                 track.status = TrackStatus.CONFIRMED
 
         if diagnostics_enabled():
@@ -486,6 +492,16 @@ class MultiTargetTracker:
             history.append(nis)
             cov_condition = float(np.linalg.cond(track.covariance))
             log_filter_health(track.id, nis, list(history), cov_condition)
+
+    def _record_outcome(self, track: "_InternalTrack", hit: bool) -> None:
+        """Append one association outcome to a track's M-of-N window.
+
+        ``confirm_window`` bounds the window; ``confirm_hits`` of the
+        outcomes within it must be hits before a tentative track confirms.
+        """
+        track.recent.append(hit)
+        while len(track.recent) > self.confirm_window:
+            track.recent.popleft()
 
     def _initiate_track(self, measurement: NDArray[np.float64]) -> None:
         """Initiate new track from measurement."""
@@ -504,6 +520,10 @@ class MultiTargetTracker:
             misses=0,
             time=self._time,
         )
+        # The initiating detection counts toward confirmation: it is already
+        # counted in ``hits``, and leaving it out of the M-of-N window would
+        # silently require confirm_hits + 1 detections.
+        self._record_outcome(track, hit=True)
         self._tracks.append(track)
         self._next_id += 1
 
@@ -528,6 +548,11 @@ class _InternalTrack:
         self.hits = hits
         self.misses = misses
         self.time = time
+        #: Recent association outcomes, most recent last, bounded to
+        #: ``confirm_window`` by the tracker. ``hits`` remains a cumulative
+        #: lifetime count and is reported as such on `Track`; confirmation
+        #: reads this window instead.
+        self.recent: deque = deque()
 
     def to_track(self) -> Track:
         """Convert to immutable Track."""

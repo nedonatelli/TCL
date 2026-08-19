@@ -329,6 +329,76 @@ class TestMultiTargetTracker:
         assert len(tracker.confirmed_tracks) == 1
 
 
+class TestMofNConfirmation:
+    """``confirm_window`` must actually affect confirmation.
+
+    It was accepted, stored, and never read: confirmation compared a
+    cumulative lifetime ``hits`` count against ``confirm_hits``, so a track
+    that scraped together enough detections over any span eventually
+    confirmed, no matter how sparse. The class docstring, the parameter
+    docstring and ``MultiTargetConfig`` all said M-of-N. Passing a different
+    ``confirm_window`` changed nothing, which is the property these tests
+    pin.
+    """
+
+    F = np.array([[1.0, 1.0, 0, 0], [0, 1.0, 0, 0], [0, 0, 1.0, 1.0], [0, 0, 0, 1.0]])
+    H = np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]])
+    Q = np.eye(4) * 0.01
+    R = np.eye(2) * 0.1
+
+    def _run(self, window, n_scans, skip=()):
+        tracker = MultiTargetTracker(
+            4,
+            2,
+            self.F,
+            self.H,
+            self.Q,
+            self.R,
+            confirm_hits=3,
+            confirm_window=window,
+            max_misses=99,
+        )
+        for k in range(n_scans):
+            detections = [] if k in skip else [np.array([float(k), float(k)])]
+            tracker.process(detections, 1.0)
+        return tracker.tracks
+
+    def test_dense_hits_confirm(self):
+        tracks = self._run(window=5, n_scans=3)
+        assert [t.status for t in tracks] == [TrackStatus.CONFIRMED]
+
+    def test_the_initiating_detection_counts_toward_confirmation(self):
+        """confirm_hits=3 must mean three detections, not four.
+
+        The initiating detection is already counted in ``hits``; omitting it
+        from the window would silently require confirm_hits + 1.
+        """
+        tracks = self._run(window=5, n_scans=3)
+        assert tracks[0].hits == 3
+        assert tracks[0].status == TrackStatus.CONFIRMED
+
+    def test_sparse_hits_do_not_confirm_within_a_short_window(self):
+        """Three hits at scans 0, 3, 6 -- only two fall inside a 5-scan window."""
+        tracks = self._run(window=5, n_scans=7, skip={1, 2, 4, 5})
+        assert tracks[0].hits == 3
+        assert tracks[0].status == TrackStatus.TENTATIVE
+
+    def test_the_same_pattern_confirms_with_a_long_enough_window(self):
+        """The direct proof that confirm_window is read at all.
+
+        Identical detections, identical confirm_hits, different window,
+        different outcome. Under the old cumulative rule both confirmed.
+        """
+        tracks = self._run(window=99, n_scans=7, skip={1, 2, 4, 5})
+        assert tracks[0].hits == 3
+        assert tracks[0].status == TrackStatus.CONFIRMED
+
+    def test_hits_remains_a_cumulative_lifetime_count(self):
+        """``Track.hits`` is documented as the number of updates; unchanged."""
+        tracks = self._run(window=2, n_scans=6)
+        assert tracks[0].hits == 6
+
+
 class TestTrackState:
     """Tests for TrackState named tuple."""
 
