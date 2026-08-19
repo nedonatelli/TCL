@@ -25,6 +25,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of that directory's three functions to be ported.
 
 ### Fixed
+- **`stereographic` and `azimuthal_equidistant` returned a back-azimuth in
+  `ProjectionResult.convergence`, not a grid convergence.** Both filled the
+  field with the azimuth formula transposed -- `lat` and `lat0` swapped in
+  every position -- so a point sitting on the projection's own central
+  meridian, directly north of the centre, was reported as having 180 degrees
+  of grid convergence where the true value is zero. Off-meridian was wrong
+  too: 89.65 degrees against a true 0.70 at one degree of longitude from a
+  45-degree centre. The other four producers (`transverse_mercator`,
+  `polar_stereographic`, `lambert_conformal_conic`, `mercator`) were correct
+  throughout, which is what established both the convention and the
+  measurement method. Now derived properly: `stereographic` is conformal so
+  its convergence is `back_azimuth - azimuth - pi` on the conformal sphere,
+  while `azimuthal_equidistant` is not conformal and needs the tangential
+  `c / sin(c)` term. Both verified against finite differences of the
+  projection itself to ~1e-9 rad over 300 random configurations.
+  `TestGridConvergenceMatchesTheProjection` now checks every producer that
+  way, rather than any one of them in isolation.
+- **`azimuthal_equidistant`'s `scale` is documented rather than left
+  implicit.** It returns the radial scale, exactly 1 by construction. The
+  projection is not conformal, so the tangential scale differs -- `c/sin(c)`,
+  about 1.11 at 5,000 km -- and the Notes now say so instead of leaving
+  "scale factor at the point" to be read as both.
 - **pytcl's canonical AIS test sentence carried an invalid checksum.** The
   published vector is channel B (`!AIVDM,1,1,,B,...*5C`); pytcl had changed
   it to channel A while keeping `5C`, whose correct value on channel A is
