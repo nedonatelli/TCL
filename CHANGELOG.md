@@ -21,6 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **`great_circle_tdoa_loc` returned locations that failed its own validity
+  check**, because the second-solution search clobbered a receiver's
+  coordinates. Its iterate was named `lat2`/`lon2` -- the parameter names for
+  receiver 2, which the objective closure reads -- so the first descent step
+  rebound them and the objective thereafter measured the distance from the
+  trial point to *itself* rather than to receiver 2. Both the search and the
+  `> 1e-6` residual gate then ran against a corrupted function, and locations
+  with a true residual of 6.2 were returned as valid. Renaming the iterate
+  drops the worst returned residual over 30 random configurations from 6.17
+  to 2.7e-07. Also corrects the `tdoa12`/`tdoa13` sign convention, documented
+  as "positive means the signal arrived at receiver 1 first" when the solver
+  drives `d1 - d2` toward `tdoa12 * speed / radius`, so positive means it
+  reached receiver *2* first; the existing test had been passing the correct
+  `t1 - t2` all along, with nothing comparing it against the prose. The
+  refinement is normalized-gradient descent, not the "Newton-Raphson" a
+  comment claimed -- no second derivative is formed. A new warning records
+  the measured limitation that `loc2` is found in only 2 of 30 cases, so a
+  single returned location is one of two candidates rather than the emitter.
 - **`RTree(min_entries=...)` is now honoured or refused, not silently
   violated.** It was accepted, stored, and consulted nowhere:
   `RTree(max_entries=4, min_entries=3)` filled with 20 boxes produced leaves
