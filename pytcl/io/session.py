@@ -345,7 +345,7 @@ class GaussianSumSnapshot(msgspec.Struct, tag=True):
 class RBPFSnapshot(msgspec.Struct, tag=True):
     """Snapshot of a :class:`~pytcl.dynamic_estimation.rbpf.RBPFFilter`.
 
-    Models arrive per-call (``predict(g, G, Qy, f, F, Qx)``), not as
+    Models arrive per-call (``predict(g, Qy, f, F, Qx)``), not as
     construction-time matrices, so unlike `MultiTargetSnapshot`/
     `MHTSnapshot` there is no callable-dynamics escape hatch here:
     `load_session` takes no rehydration kwargs for this snapshot type.

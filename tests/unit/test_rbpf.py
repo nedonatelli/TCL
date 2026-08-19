@@ -106,7 +106,6 @@ class TestRBPFPrediction:
 
         # Nonlinear system
         self.g = lambda y: 0.9 * y + 0.1 * np.sin(y)
-        self.G = np.array([[0.9, 0.0], [0.0, 0.9]])
         self.Qy = np.eye(2) * 0.001
 
         # Linear system
@@ -121,7 +120,7 @@ class TestRBPFPrediction:
 
         old_y = [p.y.copy() for p in self.rbpf.particles]
 
-        self.rbpf.predict(self.g, self.G, self.Qy, f, self.F, self.Qx)
+        self.rbpf.predict(self.g, self.Qy, f, self.F, self.Qx)
 
         new_y = [p.y for p in self.rbpf.particles]
 
@@ -137,7 +136,7 @@ class TestRBPFPrediction:
 
         old_weights = [p.w for p in self.rbpf.particles]
 
-        self.rbpf.predict(self.g, self.G, self.Qy, f, self.F, self.Qx)
+        self.rbpf.predict(self.g, self.Qy, f, self.F, self.Qx)
 
         new_weights = [p.w for p in self.rbpf.particles]
 
@@ -151,7 +150,7 @@ class TestRBPFPrediction:
 
         old_traces = [np.trace(p.P) for p in self.rbpf.particles]
 
-        self.rbpf.predict(self.g, self.G, self.Qy, f, self.F, self.Qx)
+        self.rbpf.predict(self.g, self.Qy, f, self.F, self.Qx)
 
         new_traces = [np.trace(p.P) for p in self.rbpf.particles]
 
@@ -406,7 +405,6 @@ class TestRBPFConvenience:
         def g(y):
             return 0.9 * y
 
-        G = np.eye(2) * 0.9
         Qy = np.eye(2) * 0.001
 
         def f(x, y):
@@ -415,7 +413,7 @@ class TestRBPFConvenience:
         F = np.eye(2)
         Qx = np.eye(2) * 0.001
 
-        new_particles = rbpf_predict(particles, g, G, Qy, f, F, Qx)
+        new_particles = rbpf_predict(particles, g, Qy, f, F, Qx)
 
         assert len(new_particles) == len(particles)
         assert np.isclose(sum(p.w for p in new_particles), 1.0)
@@ -462,7 +460,6 @@ class TestRBPFIntegration:
         def g(y):
             return 0.95 * y
 
-        G = np.eye(2) * 0.95
         Qy = np.eye(2) * 0.001
 
         # Linear system
@@ -480,7 +477,7 @@ class TestRBPFIntegration:
             return H @ x
 
         # Predict
-        rbpf.predict(g, G, Qy, f, F, Qx)
+        rbpf.predict(g, Qy, f, F, Qx)
 
         # Update
         z = np.array([0.5])
@@ -506,7 +503,6 @@ class TestRBPFIntegration:
         def g(y):
             return 0.95 * y
 
-        G = np.eye(2) * 0.95
         Qy = np.eye(2) * 0.005
 
         def f(x, y):
@@ -522,7 +518,7 @@ class TestRBPFIntegration:
             return H @ (x + y)
 
         for k in range(10):
-            rbpf.predict(g, G, Qy, f, F, Qx)
+            rbpf.predict(g, Qy, f, F, Qx)
 
             z = np.array([np.random.randn() * 0.05])
 
@@ -552,7 +548,6 @@ class TestRBPFIntegration:
         def g(y):
             return y + 0.05 + np.random.randn(1) * 0.01
 
-        G = np.array([[1.0]])
         Qy = np.array([[0.001]])
 
         # Linear dynamics: range constant
@@ -570,7 +565,7 @@ class TestRBPFIntegration:
             return x
 
         for k in range(10):
-            rbpf.predict(g, G, Qy, f, F, Qx)
+            rbpf.predict(g, Qy, f, F, Qx)
 
             # Noisy measurement
             z = np.array([100.0 + np.random.randn() * 1.0])
@@ -595,7 +590,6 @@ class TestRBPFIntegration:
         def g(y):
             return y
 
-        G = np.array([[1.0]])
         Qy = np.array([[0.1]])
 
         def f(x, y):
@@ -614,7 +608,7 @@ class TestRBPFIntegration:
         measurements = [10.0, -10.0, 20.0, -20.0, 5.0]
 
         for z_val in measurements:
-            rbpf.predict(g, G, Qy, f, F, Qx)
+            rbpf.predict(g, Qy, f, F, Qx)
             z = np.array([z_val])
             rbpf.update(z, h, H, R)
 

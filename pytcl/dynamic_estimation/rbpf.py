@@ -172,7 +172,6 @@ class RBPFFilter:
     def predict(
         self,
         g: Callable[[NDArray[Any]], NDArray[Any]],
-        G: NDArray[Any],
         Qy: NDArray[Any],
         f: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
         F: NDArray[Any],
@@ -184,8 +183,6 @@ class RBPFFilter:
         ----------
         g : callable
             Nonlinear state transition: y[k+1] = g(y[k])
-        G : NDArray
-            Jacobian of g with respect to y (for covariance propagation)
         Qy : NDArray
             Process noise covariance for nonlinear state
         f : callable
@@ -194,6 +191,18 @@ class RBPFFilter:
             Jacobian matrix dF/dx (linearized around y)
         Qx : NDArray
             Process noise covariance for linear state
+
+        Notes
+        -----
+        There is deliberately no Jacobian argument for ``g``. In a
+        Rao-Blackwellised particle filter the nonlinear state is carried by
+        the particle cloud itself -- each particle holds a single point ``y``
+        and the uncertainty lives in the spread across particles -- so there
+        is no nonlinear covariance for a Jacobian to propagate. Only the
+        linear component, marginalised per particle, has a covariance, and
+        that is what ``F`` propagates. A ``G`` parameter documented as
+        "Jacobian of g with respect to y (for covariance propagation)" was
+        accepted here until it was removed as unimplementable.
         """
         new_particles = []
 
@@ -511,7 +520,6 @@ class RBPFFilter:
 def rbpf_predict(
     particles: list[RBPFParticle],
     g: Callable[[NDArray[Any]], NDArray[Any]],
-    G: NDArray[Any],
     Qy: NDArray[Any],
     f: Callable[[NDArray[Any], NDArray[Any]], NDArray[Any]],
     F: NDArray[Any],
@@ -525,8 +533,6 @@ def rbpf_predict(
         Current particles
     g : callable
         Nonlinear state transition
-    G : NDArray
-        Jacobian of nonlinear transition
     Qy : NDArray
         Process noise covariance for nonlinear state
     f : callable
@@ -557,13 +563,12 @@ def rbpf_predict(
     ... ]
     >>> # Nonlinear dynamics for bearing
     >>> g = lambda y: y  # bearing stays constant
-    >>> G = np.eye(1)
     >>> Qy = np.eye(1) * 0.01
     >>> # Linear dynamics for position
     >>> f = lambda x, y: np.array([x[0] + x[1] * 0.1, x[1]])
     >>> F = np.array([[1, 0.1], [0, 1]])
     >>> Qx = np.eye(2) * 0.01
-    >>> predicted = rbpf_predict(particles, g, G, Qy, f, F, Qx)
+    >>> predicted = rbpf_predict(particles, g, Qy, f, F, Qx)
     >>> len(predicted)
     3
     """

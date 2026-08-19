@@ -375,7 +375,6 @@ def run_rbpf_filter(
     def g(y):
         return y
 
-    G = np.eye(2)
     Qy = np.eye(2) * 0.02
 
     # Linear (Kalman) block: velocity with friction
@@ -396,7 +395,7 @@ def run_rbpf_filter(
     H_v = np.zeros((2, 2))
 
     for k, z in enumerate(measurements):
-        rbpf.predict(g, G, Qy, f_linear, F_v, Qx)
+        rbpf.predict(g, Qy, f_linear, F_v, Qx)
         rbpf.update(z, h_rbpf, H_v, scenario.R)
 
         # Estimate

@@ -1048,7 +1048,7 @@ class TestRBPF:
         Qy = np.zeros((1, 1))
         x_kf, P_kf = X0.copy(), np.eye(2) * 0.5
         for z in ZS[:6]:
-            rb.predict(lambda y: y, np.eye(1), Qy, lambda x, y: F @ x, F, Q)
+            rb.predict(lambda y: y, Qy, lambda x, y: F @ x, F, Q)
             rb.update(z, lambda x, y: H @ x, H, R)
             pred = kf_predict(x_kf, P_kf, F, Q)
             u = kf_update(pred.x, pred.P, z, H, R)
@@ -1068,7 +1068,6 @@ class TestRBPF:
         particles = rbpf_predict(
             particles,
             lambda y: y,
-            np.eye(1),
             np.zeros((1, 1)),
             lambda x, y: F @ x,
             F,

@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **BREAKING: removed `G` from `RBPFFilter.predict` and `rbpf_predict`.**
+  Documented as "Jacobian of g with respect to y (for covariance
+  propagation)" and read by neither -- it appeared only in the two
+  signatures, the two docstrings and a doctest. It is not implementable
+  rather than merely unimplemented: in a Rao-Blackwellised particle filter
+  the nonlinear state is carried by the particle cloud, each particle holding
+  a single point with the uncertainty living in the spread across particles,
+  so there is no nonlinear covariance for a Jacobian to propagate. Only the
+  linear component, marginalised per particle, has one, and `F` propagates
+  that. `G` was the second positional parameter, so existing calls fail with
+  a `TypeError` naming the arity rather than silently rebinding -- drop the
+  argument. The Notes on both functions now record why no such parameter
+  exists, so it is not re-added.
 - **`KDTree(leaf_size=...)` now does what it says.** `_build_tree` recursed
   to one point per node and never read `self.leaf_size`, so the documented
   "Maximum number of points in a leaf node" had no effect -- while `BallTree`

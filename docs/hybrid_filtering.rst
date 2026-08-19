@@ -91,7 +91,6 @@ The filter is driven through ``RBPFFilter`` with four steps: ``initialize``,
    def g(y):
        return y
 
-   G = np.eye(1)             # Jacobian of g
    Qy = np.array([[1e-4]])   # process noise for y
 
    # Linear dynamics for x; may depend on the particle's y via the
@@ -102,7 +101,7 @@ The filter is driven through ``RBPFFilter`` with four steps: ``initialize``,
    F = np.array([[1.0, dt], [0.0, 1.0]])   # Jacobian of f with respect to x
    Qx = np.diag([1e-3, 1e-2])
 
-   rbpf.predict(g=g, G=G, Qy=Qy, f=f, F=F, Qx=Qx)
+   rbpf.predict(g=g, Qy=Qy, f=f, F=F, Qx=Qx)
 
    # Measurement: range from x, bearing from y
    def h(x, y):
@@ -137,7 +136,7 @@ A functional API operating on explicit particle lists is also available:
    from pytcl.dynamic_estimation import rbpf_predict, rbpf_update
 
    particles = rbpf.get_particles()   # list of RBPFParticle(y, x, P, w)
-   particles = rbpf_predict(particles, g, G, Qy, f, F, Qx)
+   particles = rbpf_predict(particles, g, Qy, f, F, Qx)
    particles = rbpf_update(particles, z, h, H, R)
 
 Advanced Example: Maneuvering Target Tracking
@@ -176,7 +175,6 @@ linear:
    def g(y):
        return decay * y
 
-   G = decay * np.eye(2)
    Qy = 0.25 * np.eye(2)       # acceleration process noise
 
    # Linear dynamics, driven by the particle's acceleration
@@ -211,7 +209,7 @@ linear:
    true_a = np.array([1.0, -0.5])
 
    for k in range(20):
-       rbpf.predict(g=g, G=G, Qy=Qy, f=f, F=F, Qx=Qx)
+       rbpf.predict(g=g, Qy=Qy, f=f, F=F, Qx=Qx)
 
        true_x = f(true_x, true_a)
        z = h(true_x, true_a) + np.array([5.0, 0.01]) * np.random.randn(2)
