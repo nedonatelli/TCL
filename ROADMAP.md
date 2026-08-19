@@ -39,13 +39,22 @@ No dates are attached because none have been decided:
   Spherical_Surface), the 48 dimension-specialized subdirectory files
   (fixed 2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/)
   deferred pending a consumer that needs their smaller point counts. The
-  remaining seven region-cubature directories (torus, cone, wedge, etc.)
-  are out of this subset entirely and have not been inventoried. Three
-  more `Cube_Space` files (`ClenshawCurtisPoints1D.m`, `FejerPoints1D.m`,
-  `conformMapQuadPts1D.m`) are 1-D quadrature building blocks, not
-  region-cubature rules themselves (no region-dimension argument) --
-  better scoped as a future `quadrature.py` extension than
-  `region_cubature.py`, deferred pending a consumer.
+  seven region directories outside that subset are now inventoried against
+  the MATLAB tree: `Prism` (10 files), `Pyramid` (10), `Cross_Polytope`
+  (3), `Exp_Weight` (3), `Weighted_Ellipse` (3), `Hexagon` (2) and
+  `Spherical_Shell` (2) -- 33 files, none ported. (`Cubature_Points/` holds
+  twelve subdirectories, not eleven; the twelfth, `Gaussian_Weight`, is not
+  a gap -- all 10 of its files are already ported as `cubature_points.py`.)
+  A further 12 files sit loose at the `Cubature_Points/` top level, of
+  which two are ported (`calcCubPointMoments.m`, `thirdOrderStudentTCubPoints.m`);
+  the rest are 1-D quadrature helpers plus single-region rules with no
+  directory of their own, notably `thirdOrderTorusCubPoints.m` and
+  `thirdOrderNDimShellCubPoints.m`. Three more `Cube_Space` files
+  (`ClenshawCurtisPoints1D.m`, `FejerPoints1D.m`, `conformMapQuadPts1D.m`)
+  are 1-D quadrature building blocks, not region-cubature rules themselves
+  (no region-dimension argument) -- better scoped as a future
+  `quadrature.py` extension than `region_cubature.py`, deferred pending a
+  consumer.
 - **Refraction suite** — entirely unported (astronomical refraction,
   standard-refraction ray tracing, refractivity models, humidity conversions)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
