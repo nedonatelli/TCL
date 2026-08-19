@@ -309,6 +309,80 @@ class TestConingAndSculling:
         np.testing.assert_allclose(delta_v, accel * dt, atol=1e-6)
 
 
+class TestConingScullingTakeIncrementsNotRates:
+    """Pin the argument convention these two functions actually require.
+
+    Both take INCREMENTS (rad, m/s), not rates (rad/s, m/s^2). Nothing in
+    this file checked that before: every other test here uses zero or
+    parallel inputs, where the two conventions are indistinguishable. The
+    docstrings said "rate" while the only caller passed increments, and
+    docs/navigation_ins.rst followed the docstrings -- an error of 1/dt^2,
+    a factor of 10,000 at the 100 Hz rate that page uses.
+    """
+
+    def test_compensate_imu_data_feeds_increments_to_coning(self):
+        gyro_prev = np.array([0.010, 0.002, 0.001])
+        gyro_curr = np.array([0.011, 0.001, 0.002])
+        accel = np.array([0.1, 0.0, -9.8])
+        dt = 0.01
+
+        delta_theta, _ = compensate_imu_data(accel, accel, gyro_prev, gyro_curr, dt)
+        coning_part = delta_theta - 0.5 * (gyro_prev + gyro_curr) * dt
+
+        np.testing.assert_allclose(
+            coning_part, coning_correction(gyro_prev * dt, gyro_curr * dt), atol=1e-18
+        )
+        # And emphatically not the rate-domain call the docstring used to imply.
+        assert not np.allclose(
+            coning_part, coning_correction(gyro_prev, gyro_curr), atol=1e-18
+        )
+
+    def test_coning_scales_quadratically_with_the_interval(self):
+        """The dimensional signature of an increment argument.
+
+        theta = omega*dt, and the correction is bilinear in its two
+        arguments, so halving dt must quarter the result. A rate-domain
+        implementation would be invariant.
+        """
+        gyro_prev = np.array([0.010, 0.002, 0.001])
+        gyro_curr = np.array([0.011, 0.001, 0.002])
+
+        at_dt = coning_correction(gyro_prev * 0.02, gyro_curr * 0.02)
+        at_half = coning_correction(gyro_prev * 0.01, gyro_curr * 0.01)
+
+        np.testing.assert_allclose(at_half, at_dt / 4.0, rtol=1e-12)
+
+    def test_sculling_scales_quadratically_with_the_interval(self):
+        gyro = np.array([0.010, 0.002, 0.001])
+        accel = np.array([0.1, 0.05, -9.8])
+
+        at_dt = sculling_correction(
+            accel * 0.02, accel * 0.02 * 1.1, gyro * 0.02, gyro * 0.02 * 1.1
+        )
+        at_half = sculling_correction(
+            accel * 0.01, accel * 0.01 * 1.1, gyro * 0.01, gyro * 0.01 * 1.1
+        )
+
+        np.testing.assert_allclose(at_half, at_dt / 4.0, rtol=1e-12)
+
+    def test_sculling_is_symmetric_under_role_pair_swap(self):
+        """Documented in the docstring so nobody "fixes" it into an assertion.
+
+        (1/12)*(theta_prev x dv_curr + dv_prev x theta_curr) is unchanged if
+        the velocity and angular pairs trade places, which is why
+        examples/ins_gnss_navigation.py's transposed-looking call still
+        produces the correct number.
+        """
+        rs = np.random.RandomState(0)
+        dv_prev, dv_curr, th_prev, th_curr = (rs.rand(3) for _ in range(4))
+
+        np.testing.assert_allclose(
+            sculling_correction(dv_prev, dv_curr, th_prev, th_curr),
+            sculling_correction(th_prev, th_curr, dv_prev, dv_curr),
+            rtol=1e-15,
+        )
+
+
 class TestAttitudeUpdate:
     """Tests for attitude update functions."""
 

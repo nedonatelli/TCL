@@ -297,18 +297,25 @@ follow Savage's algorithm:
 
     from pytcl.navigation import coning_correction, sculling_correction
 
+    dt = 0.01
+
     gyro_prev = np.array([0.010, 0.002, 0.001])  # rad/s
     gyro_curr = np.array([0.011, 0.001, 0.002])
-
-    # Coning: cross product of successive angular-rate samples
-    delta_coning = coning_correction(gyro_prev, gyro_curr)
 
     accel_prev = np.array([0.1, 0.0, -9.8])  # m/s^2
     accel_curr = np.array([0.2, 0.1, -9.8])
 
+    # Both functions take INCREMENTS, not rates: integrate over the interval
+    # first. Passing raw rates is wrong by a factor of 1/dt^2.
+    dtheta_prev, dtheta_curr = gyro_prev * dt, gyro_curr * dt
+    dv_prev, dv_curr = accel_prev * dt, accel_curr * dt
+
+    # Coning: cross product of successive angular increments
+    delta_coning = coning_correction(dtheta_prev, dtheta_curr)
+
     # Sculling: the velocity-domain counterpart
-    delta_sculling = sculling_correction(accel_prev, accel_curr,
-                                         gyro_prev, gyro_curr)
+    delta_sculling = sculling_correction(dv_prev, dv_curr,
+                                         dtheta_prev, dtheta_curr)
 
 ``compensate_imu_data`` applies both at once, and ``mechanize_ins_ned`` /
 ``loose_coupled_predict`` do it internally when you pass ``accel_prev`` and
