@@ -64,7 +64,16 @@ class Spectrogram(NamedTuple):
     times : ndarray
         Time values in seconds.
     power : ndarray
-        Power spectrogram (``|STFT|^2``).
+        Whatever `spectrogram`'s ``scaling`` and ``mode`` arguments select,
+        which at their defaults (``scaling="density"``, ``mode="psd"``) is a
+        power spectral *density* in units of V**2/Hz -- not ``|STFT|**2``.
+        scipy's density scaling divides by ``fs * sum(window**2)`` and
+        doubles the one-sided bins, so the two differ by a factor that
+        scales with the sample rate and the window (24,000 at ``fs=1000``
+        with a 128-point Hann window). Pass ``scaling="spectrum"`` for a
+        power spectrum. With ``mode="complex"`` this field is complex, and
+        with ``mode="angle"``/``"phase"`` it is an angle in radians, despite
+        the name.
     """
 
     frequencies: NDArray[np.floating]
@@ -403,8 +412,15 @@ def spectrogram(
 
     Notes
     -----
-    The spectrogram is computed by taking the magnitude squared of the STFT.
-    It shows how the spectral content of the signal evolves over time.
+    Shows how the spectral content of the signal evolves over time.
+
+    The returned ``power`` is not simply the magnitude squared of the STFT:
+    it carries whichever normalisation ``scaling`` and ``mode`` select, and
+    the default ``scaling="density"`` is a power spectral density, dividing
+    by ``fs * sum(window**2)`` and doubling the one-sided bins. Compare
+    `reassigned_spectrogram`, which documents and implements the same
+    density scaling explicitly. Use ``scaling="spectrum"`` if you want a
+    power spectrum whose bins sum to the signal's mean square.
     """
     x = np.asarray(x, dtype=np.float64)
 

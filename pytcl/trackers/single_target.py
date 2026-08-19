@@ -255,9 +255,18 @@ class SingleTargetTracker:
         Returns
         -------
         state : TrackState
-            Updated state.
-        likelihood : float
-            Measurement likelihood (Mahalanobis distance).
+            Updated state, or -- if the measurement fails the gate -- the
+            state unchanged. See Notes for telling the two apart.
+        gate_distance : float
+            **Squared** Mahalanobis distance of the innovation,
+            ``innovation @ inv(S) @ innovation``. This is a distance, so
+            *smaller* means a better match, and it is directly comparable to
+            ``gate_threshold``, which is documented as a chi-squared value.
+            It is not a likelihood: thresholding it as though larger were
+            better inverts the decision. :class:`~pytcl.trackers.mht.MHTTracker`
+            keeps the two quantities separate and computes a real Gaussian
+            likelihood alongside its gate distance; this method returns only
+            the gate distance.
 
         Raises
         ------
@@ -265,6 +274,14 @@ class SingleTargetTracker:
             If tracker is not initialized.
         ValueError
             If ``measurement_covariance`` is not ``(meas_dim, meas_dim)``.
+
+        Notes
+        -----
+        When ``gate_threshold`` is set and the measurement fails the gate,
+        the filter state is left untouched and returned as-is. The returned
+        ``gate_distance`` is the only signal that this happened -- compare it
+        against ``gate_threshold`` if the caller needs to distinguish an
+        applied update from a rejected measurement.
         """
         if not self._initialized:
             raise RuntimeError("Tracker not initialized")

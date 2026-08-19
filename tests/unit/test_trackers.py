@@ -88,6 +88,57 @@ class TestSingleTargetTracker:
         state2, d2_2 = tracker.update(np.array([100.0, 100.0]))
         assert d2_2 > 9.21
 
+    def test_gate_distance_is_the_squared_mahalanobis_distance(self):
+        """Pin what ``update``'s second return value actually is.
+
+        Its docstring called it a "likelihood". It is the squared
+        Mahalanobis distance -- so smaller means a better match, and a
+        caller thresholding it as though larger were better inverts the
+        decision. ``MHTTracker`` keeps the two quantities distinct, so the
+        naming was against the house convention as well as against the code.
+        """
+        tracker = SingleTargetTracker(4, 2, self.F, self.H, self.Q, self.R)
+        tracker.initialize(np.array([0, 1, 0, 1]), np.eye(4) * 10)
+        predicted = tracker.predict(1.0)
+
+        z = np.array([1.4, 0.7])
+        S = self.H @ predicted.covariance @ self.H.T + self.R
+        innovation = z - self.H @ predicted.state
+        expected = float(innovation @ np.linalg.inv(S) @ innovation)
+
+        _, gate_distance = tracker.update(z)
+        assert_allclose(gate_distance, expected, rtol=1e-12)
+
+    def test_gate_distance_grows_as_the_measurement_moves_away(self):
+        """A distance, not a likelihood: a likelihood would fall here."""
+        distances = []
+        for offset in (0.0, 0.5, 2.0, 5.0):
+            tracker = SingleTargetTracker(4, 2, self.F, self.H, self.Q, self.R)
+            tracker.initialize(np.array([0, 1, 0, 1]), np.eye(4) * 10)
+            predicted = tracker.predict(1.0)
+            z = self.H @ predicted.state + np.array([offset, 0.0])
+            distances.append(tracker.update(z)[1])
+
+        assert distances == sorted(distances)
+        assert distances[0] == pytest.approx(0.0, abs=1e-12)
+        # A Gaussian likelihood is bounded above by its normalisation and
+        # decreases with distance; this does neither.
+        assert distances[-1] > 1.0
+
+    def test_a_rejected_measurement_leaves_the_state_untouched(self):
+        """Documented in Notes, because the return value is the only signal."""
+        tracker = SingleTargetTracker(
+            4, 2, self.F, self.H, self.Q, self.R, gate_threshold=9.21
+        )
+        tracker.initialize(np.array([0, 1, 0, 1]), np.eye(4) * 0.1)
+        before = tracker.predict(1.0)
+
+        after, gate_distance = tracker.update(np.array([100.0, 100.0]))
+
+        assert gate_distance > 9.21
+        assert_allclose(after.state, before.state, rtol=0, atol=0)
+        assert_allclose(after.covariance, before.covariance, rtol=0, atol=0)
+
     def test_callable_dynamics(self):
         """Test with callable F and Q."""
 
