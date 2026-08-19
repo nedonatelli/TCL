@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **`RTree(min_entries=...)` is now honoured or refused, not silently
+  violated.** It was accepted, stored, and consulted nowhere:
+  `RTree(max_entries=4, min_entries=3)` filled with 20 boxes produced leaves
+  of size 2. Because this tree is insert-only there is no deletion underflow
+  for the parameter to govern, so it can only constrain splits -- and a node
+  splits at `max_entries + 1` entries into halves, leaving the smaller side
+  with `(max_entries + 1) // 2`. Nothing larger is reachable by any split, so
+  an unsatisfiable `min_entries` now raises at construction with the largest
+  workable value named, rather than being accepted and quietly broken. The
+  existing median split already satisfies every satisfiable value, verified
+  across `max_entries` in {2, 3, 4, 5, 10, 16} at 5 to 200 points.
+  `max_entries < 2` is rejected too; it previously yielded `min_entries=0`.
 - **`KDTree(leaf_size=...)` now does what it says.** `_build_tree` recursed
   to one point per node and never read `self.leaf_size`, so the documented
   "Maximum number of points in a leaf node" had no effect -- while `BallTree`

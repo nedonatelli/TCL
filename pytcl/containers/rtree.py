@@ -202,7 +202,13 @@ class RTree:
     max_entries : int, optional
         Maximum entries per node. Default 10.
     min_entries : int, optional
-        Minimum entries per node (except root). Default max_entries // 2.
+        Minimum entries a split leaves in a node, root excepted. Default
+        ``max_entries // 2``. Must not exceed ``(max_entries + 1) // 2``:
+        a node splits at ``max_entries + 1`` entries and the halves are as
+        even as possible, so nothing larger is achievable, and an
+        unsatisfiable value raises rather than being silently violated.
+        This tree is insert-only, so there is no deletion underflow for
+        ``min_entries`` to govern.
 
     Attributes
     ----------
@@ -237,8 +243,27 @@ class RTree:
         max_entries: int = 10,
         min_entries: Optional[int] = None,
     ):
+        if max_entries < 2:
+            raise ValueError(f"max_entries must be at least 2, got {max_entries}")
+
         self.max_entries = max_entries
         self.min_entries = min_entries or max_entries // 2
+
+        # A node splits the moment it holds max_entries + 1 entries, and the
+        # split halves them, so the smaller side ends up with
+        # (max_entries + 1) // 2. Any larger minimum is unachievable by any
+        # split; it was previously accepted and then quietly violated.
+        largest_satisfiable = (max_entries + 1) // 2
+        if self.min_entries < 1:
+            raise ValueError(f"min_entries must be at least 1, got {self.min_entries}")
+        if self.min_entries > largest_satisfiable:
+            raise ValueError(
+                f"min_entries={self.min_entries} cannot be satisfied with "
+                f"max_entries={max_entries}: a node splits at "
+                f"{max_entries + 1} entries, so the smaller half holds at most "
+                f"{largest_satisfiable}. Use min_entries <= {largest_satisfiable} "
+                "or raise max_entries."
+            )
         self.root = RTreeNode(is_leaf=True)
         self.n_entries = 0
         self.n_features: Optional[int] = None
@@ -266,7 +291,8 @@ class RTree:
         max_entries : int, optional
             Maximum entries per node. Default 10.
         min_entries : int, optional
-            Minimum entries per node. Default max_entries // 2.
+            Minimum entries a split leaves in a node. Default
+            ``max_entries // 2``; must not exceed ``(max_entries + 1) // 2``.
 
         Returns
         -------

@@ -18,6 +18,7 @@ from pytcl.containers import (
     KDTree,
     MetricSpatialIndex,
     NearestNeighborResult,
+    RTree,
     VPTree,
 )
 
@@ -661,3 +662,51 @@ class TestKDTreeLeafSize:
             found = sorted(tree.query_radius(q.reshape(1, -1), 1.0)[0])
             expected = sorted(np.where(exact[i] <= 1.0)[0].tolist())
             assert found == expected
+
+
+class TestRTreeMinEntries:
+    """``min_entries`` must be honoured, or refused as unsatisfiable.
+
+    It was accepted, stored, and consulted nowhere: ``RTree(max_entries=4,
+    min_entries=3)`` filled with 20 boxes produced leaves of size 2, below
+    its own stated minimum. Because this tree is insert-only, the parameter
+    can only constrain splits -- and a node splits at ``max_entries + 1``
+    entries into halves, so the smaller side holds ``(max_entries + 1) // 2``
+    and nothing larger is reachable. The fix is therefore to refuse
+    unsatisfiable values rather than to invent a split that cannot exist.
+    """
+
+    @staticmethod
+    def _leaf_sizes(node, acc=None):
+        acc = [] if acc is None else acc
+        if node.is_leaf:
+            acc.append(len(node.entries))
+        else:
+            for child in node.children:
+                TestRTreeMinEntries._leaf_sizes(child, acc)
+        return acc
+
+    def test_an_unsatisfiable_minimum_is_refused(self):
+        with pytest.raises(ValueError, match="cannot be satisfied"):
+            RTree(max_entries=4, min_entries=3)
+
+    def test_the_largest_satisfiable_minimum_is_accepted(self):
+        assert RTree(max_entries=4, min_entries=2).min_entries == 2
+        assert RTree(max_entries=10, min_entries=5).min_entries == 5
+
+    def test_a_degenerate_max_entries_is_refused(self):
+        with pytest.raises(ValueError, match="max_entries must be at least 2"):
+            RTree(max_entries=1)
+
+    @pytest.mark.parametrize("max_entries", [2, 3, 4, 5, 10, 16])
+    @pytest.mark.parametrize("n_points", [5, 20, 60, 200])
+    def test_accepted_configurations_honour_the_minimum(self, max_entries, n_points):
+        """Every non-root leaf must hold at least min_entries."""
+        min_entries = (max_entries + 1) // 2
+        tree = RTree(max_entries=max_entries, min_entries=min_entries)
+        for point in np.random.RandomState(0).rand(n_points, 2):
+            tree.insert_point(point)
+
+        sizes = self._leaf_sizes(tree.root)
+        if len(sizes) > 1:  # a lone root leaf may legitimately underflow
+            assert min(sizes) >= min_entries
