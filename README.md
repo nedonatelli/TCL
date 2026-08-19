@@ -202,7 +202,7 @@ pytcl/
 ├── performance_evaluation/  # OSPA, track metrics
 ├── astronomical/            # Ephemerides, time systems
 ├── navigation/              # Geodetic, INS, GNSS
-├── atmosphere/              # Atmosphere models, refraction
+├── atmosphere/              # Standard atmosphere, thermosphere, ionosphere
 ├── gravity/                 # Gravity models
 ├── magnetism/               # Magnetic field models
 ├── terrain/                 # Terrain elevation models

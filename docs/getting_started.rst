@@ -56,11 +56,23 @@ Install optional features as needed:
    # For signal processing (wavelets)
    pip install nrl-tracker[signal]
 
+   # For polars DataFrame accessors on track histories and metrics
+   pip install nrl-tracker[dataframe]
+
+   # For AIS/NMEA transponder decoding
+   pip install nrl-tracker[ais]
+
+   # For ASDF archival export/import
+   pip install nrl-tracker[asdf]
+
    # For GPU acceleration (NVIDIA CUDA)
    pip install nrl-tracker[gpu]
 
    # For GPU acceleration (Apple Silicon M1/M2/M3)
    pip install nrl-tracker[gpu-apple]
+
+   # Every user-facing extra except the GPU ones
+   pip install nrl-tracker[all]
 
 Basic Concepts
 --------------

@@ -58,6 +58,18 @@ PAGES = sorted(
 # stderr since the blocks run out of process.
 SKIP_MARKERS = ("FileNotFoundError", "DependencyError", "ModuleNotFoundError")
 
+# ...with one exception. A page naming a pytcl module that does not exist
+# raises ModuleNotFoundError in its dotted forms (``import pytcl.a.b``,
+# ``from pytcl.a.b import c``), which the blanket skip above classified as an
+# absent optional dependency -- silently exempting "imports that do not
+# resolve", the first defect class this gate's own docstring names. (The
+# ``from pytcl.a import b`` form raises ImportError instead and always
+# failed.) No environment makes a pytcl submodule optional, so a missing
+# pytcl module is always a page defect, never an environment one.
+MISSING_PYTCL_MODULE = re.compile(
+    r"ModuleNotFoundError: No module named '(pytcl[\w.]*)'"
+)
+
 TIMEOUT_S = 300
 
 pytestmark = pytest.mark.examples
@@ -153,7 +165,9 @@ def test_page_blocks_execute(page):
     if result.returncode != 0:
         tail = result.stderr[-2500:]
         last_line = tail.strip().splitlines()[-1] if tail.strip() else ""
-        if any(marker in last_line for marker in SKIP_MARKERS):
+        if any(marker in last_line for marker in SKIP_MARKERS) and not (
+            MISSING_PYTCL_MODULE.search(last_line)
+        ):
             pytest.skip(f"optional dependency or data file absent: {last_line}")
         blocks_reached = re.findall(r"^BLOCK (\d+)", result.stdout, re.MULTILINE)
         at = blocks_reached[-1] if blocks_reached else "?"
@@ -228,6 +242,57 @@ class TestTheGateActuallyFires:
         result = run_page(page)
         assert result.returncode != 0
         assert "too many values to unpack" in result.stderr
+
+    def _last_stderr_line(self, result):
+        tail = result.stderr[-2500:].strip()
+        return tail.splitlines()[-1] if tail else ""
+
+    def test_a_nonexistent_pytcl_module_is_not_skipped(self, tmp_path):
+        """The hole this closes.
+
+        ``from pytcl.gravity import egm2008`` raises ``ImportError`` (the
+        package exists, the name does not) and always failed this gate. But
+        the dotted forms -- ``import pytcl.gravity.egm2008``,
+        ``from pytcl.gravity.egm2008 import ...``, or any reference to a
+        subpackage that does not exist -- raise ``ModuleNotFoundError``, which
+        the blanket skip classified as an absent optional dependency. No
+        environment makes a pytcl submodule optional, so that is a page defect.
+        """
+        page = self._page(
+            tmp_path,
+            """
+            Title
+            =====
+
+            .. code-block:: python
+
+               import pytcl.gravity.egm2008
+            """,
+        )
+        result = run_page(page)
+        assert result.returncode != 0
+        last_line = self._last_stderr_line(result)
+        assert any(marker in last_line for marker in SKIP_MARKERS)
+        assert MISSING_PYTCL_MODULE.search(last_line), last_line
+
+    def test_a_missing_third_party_module_still_skips(self, tmp_path):
+        """The behavior the exception must not break."""
+        page = self._page(
+            tmp_path,
+            """
+            Title
+            =====
+
+            .. code-block:: python
+
+               import a_module_no_environment_provides
+            """,
+        )
+        result = run_page(page)
+        assert result.returncode != 0
+        last_line = self._last_stderr_line(result)
+        assert any(marker in last_line for marker in SKIP_MARKERS)
+        assert MISSING_PYTCL_MODULE.search(last_line) is None, last_line
 
     def test_extraction_sees_nested_blocks(self, tmp_path):
         page = self._page(

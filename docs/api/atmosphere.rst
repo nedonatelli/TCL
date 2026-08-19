@@ -1,7 +1,10 @@
 Atmosphere
 ==========
 
-Atmospheric models for propagation and refraction.
+Standard-atmosphere, thermosphere and ionosphere models for propagation work.
+MATLAB's ``Atmosphere_and_Refraction`` refraction suite (astronomical
+refraction, standard-refraction ray tracing, refractivity models) is unported
+-- see :doc:`../matlab_parity_inventory`.
 
 .. automodule:: pytcl.atmosphere
    :no-members:
@@ -10,7 +13,8 @@ Atmospheric models for propagation and refraction.
 Atmospheric Models
 ------------------
 
-Standard atmosphere and refraction models.
+US Standard Atmosphere 1976 and ISA density/temperature/pressure models, plus
+the pressure-altitude, Mach and true-airspeed conversions built on them.
 
 .. automodule:: pytcl.atmosphere.models
    :members:

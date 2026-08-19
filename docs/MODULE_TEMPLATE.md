@@ -154,7 +154,7 @@ Known performance bottlenecks and potential improvements:
 
 ### Internal
 
-- `pytcl.core.math_utils`: Basic math utilities
+- `pytcl.core.array_utils`: Array shape/dtype helpers
 - `pytcl.coordinate_systems`: Coordinate transforms
 
 ### External

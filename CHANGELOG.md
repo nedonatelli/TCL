@@ -49,6 +49,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   measurements from both passes, rejected-candidate evidence, and
   gate-verification output in
   `.superpowers/sdd/2026-08-18-slo-expansion/report.md`.
+- **API reference pages for `pytcl.io`, `pytcl.transponders` and
+  `pytcl.diagnostics`** (`docs/api/io.rst`, `transponders.rst`,
+  `diagnostics.rst`, wired into `docs/api/index.rst` under a new "I/O and
+  Instrumentation" group). Those three subpackages shipped in v2.1.0-v2.2.0
+  with narrative guides but no generated API reference, while
+  `docs/api/index.rst` claimed to document "all modules"; every other
+  subpackage had a page. All 22 subpackages are now reachable from the API
+  reference.
+
+### Fixed
+- **The docs code-block gate could not catch the first defect class it
+  documents.** `tests/contract/test_docs_code_blocks.py` skipped any page
+  whose last stderr line contained `ModuleNotFoundError`, treating it as an
+  absent optional dependency. A page naming a pytcl module that does not
+  exist raises exactly that in its dotted import forms
+  (`import pytcl.a.b`, `from pytcl.a.b import c`), so "imports that do not
+  resolve" -- the defect class the gate's own docstring lists first -- was
+  silently exempt. A missing pytcl submodule is now always a page failure,
+  with both directions pinned by negative controls in
+  `TestTheGateActuallyFires`. (The `from pytcl.a import b` form raises
+  `ImportError` and always failed.)
+- **`docs/architecture/PERFORMANCE.md` documented an SLO system that does
+  not exist.** Its schema showed a `slos` object keyed by
+  `module.function` with nested per-scenario `mean_ms`/`p99_ms`/`iterations`
+  and a `regression_thresholds` block; `.benchmarks/slos.json` is a
+  `benchmarks` object keyed by pytest node id with `max_mean_us`/`max_p99_us`
+  and no thresholds block. Its dashboard listed targets for scenarios with
+  no SLO entry at all and, where entries did exist, missed by up to 30x
+  (CA-CFAR at 1,000 samples: documented 0.90 ms mean, enforced 0.05 ms). Its
+  regression thresholds (+25%/+50%) were not the ones that run (+15%/+30%,
+  `scripts/detect_regressions.py` defaults, since the JSON carries no
+  override). Its `detect_regressions.py --baseline HEAD~5` invocation names
+  a flag that does not exist, and its light-suite command listed three of
+  the six files CI runs. Rewritten against the real file, scripts and
+  workflow.
+- **Stale or incorrect claims across the docs:** `pytcl/__init__.py`'s
+  docstring still read "Current Version: 2.0.0 ... 4,973 tests passing, 80%
+  line coverage" fourteen lines above `__version__ = "2.5.0"` (replaced with
+  a pointer, so it cannot drift again); README.md's module tree and
+  `docs/api/atmosphere.rst` both advertised refraction models in
+  `pytcl.atmosphere`, which has never contained any (the suite is unported,
+  as ROADMAP.md and `docs/migration_guide.rst` say);
+  `docs/architecture/ARCHITECTURE.md` showed a graceful-degradation pattern
+  importing `pytcl.gravity.egm2008`/`egm96`, neither of which exists (the
+  module is `pytcl.gravity.egm`), claimed a 90%+ coverage target against an
+  82% gate, and kept a four-row version-history table that stopped at
+  v1.3.0; `docs/TUTORIALS.md` said six of the ten tutorials had companion
+  `.rst` pages when all ten do; `docs/matlab_parity_inventory.rst` cited
+  "6,200+ tests with a 43-file validation suite" (7,880 and 45);
+  `docs/getting_started.rst` omitted the `dataframe`, `ais`, `asdf` and
+  `all` extras; `docs/index.rst` labelled its dynamic test-function count
+  as "tests", ~2,500 below the collected-case count README.md quotes; and
+  two CHANGELOG links pointed at `AUDIT.md`, retired in #91.
 
 ## [2.5.0] - 2026-08-18
 
@@ -2057,7 +2110,7 @@ This release is about **verification rather than features**: the library gained 
 ### Fixed
 
 **72 reference-verified bugs from the full-codebase correctness audit** (see
-[AUDIT.md](AUDIT.md); every public function is now validated against
+`AUDIT.md`, since retired in #91; every public function is now validated against
 independent references — scipy, pyproj, geographiclib, astropy, the official
 sgp4 package, mpmath, sklearn, brute force, or hand derivation). Highlights:
 
@@ -2102,7 +2155,7 @@ sgp4 package, mpmath, sklearn, brute force, or hand derivation). Highlights:
 ### Added
 
 - ~1,100 audit tests pinning every fix to an independent reference
-- [AUDIT.md](AUDIT.md) validation ledger; development-process rules in
+- `AUDIT.md` validation ledger (retired in #91); development-process rules in
   CONTRIBUTING.md (REFERENCE/PROPERTY test classes required for numerical code)
 - CI: docs job now actually builds Sphinx (was a placeholder) and fails on
   errors; coverage floor enforced
