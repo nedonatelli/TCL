@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **16 new CI-calibrated benchmark SLO entries** (`.benchmarks/slos.json`,
+  8 -> 24 entries), covering hot-path families across
+  `benchmarks/test_gating_bench.py` (`test_gate_20_tracks_50_meas`,
+  `test_batch_1000_3d`), `test_clustering_bench.py`
+  (`test_kmeans_1000_points`, `test_dbscan_1000_points`),
+  `test_cubature_bench.py` (`test_smolyak_generation[8]`),
+  `test_rotations_bench.py` (`test_quat_rotate_batch_1000`,
+  `test_euler2rotmat_batch_1000`, `test_quat_multiply_batch_1000`),
+  `test_signal_processing_bench.py` (`test_fft_1d_large[65536]`,
+  `test_stft_large`, `test_pulse_compression`, `test_cwt_morlet`),
+  `test_special_functions_bench.py`
+  (`test_generalized_hypergeometric_3f2_large[1000]`), and
+  `test_track_management_bench.py` (`test_kf_cycle_with_sql_storage`,
+  `test_store_scenario_10_tracks`, `test_store_detection_batch_100`) --
+  same gate-calibration doctrine as the existing JPDA/Hungarian/assign2d
+  entries (local median x CI/local ratio 2.209 x headroom), Apple M3 Max,
+  idle machine, 2026-08-19. Sub-millisecond candidates use a x2.0
+  headroom instead of x1.5 (proportional CI noise grows as timings
+  shrink), and candidates measuring under ~50us locally are skipped
+  entirely rather than given an unreliably-thresholded SLO
+  (`test_swerling_detection`, `test_besselj[*]`, `test_jpda_large`).
+  Each entry's local median comes from two back-to-back pytest-benchmark
+  runs whose medians agreed within 15% (`--benchmark-min-rounds=30`
+  except `test_store_detection_batch_100`, which needed 60 rounds to
+  average out SQLite's own periodic WAL-checkpoint bursts). An initial
+  measurement pass on 2026-08-18 was run while an unrelated local process
+  was consuming 300-500% CPU throughout the session; four candidates
+  (`test_gate_20_tracks_50_meas`, `test_batch_1000_3d`,
+  `test_euler2rotmat_batch_1000`, `test_quat_multiply_batch_1000`) failed
+  the 15% stability bar under that contention and were initially skipped,
+  and the other twelve entries' thresholds were set from
+  contention-elevated local medians. Once that process quit, all sixteen
+  candidates were remeasured on the now-idle machine: the four previously
+  unstable candidates are stable and now have entries (closing the
+  `test_gating_bench.py` coverage gap), and the twelve contended-machine
+  thresholds have been replaced with the idle-machine measurements below
+  (roughly 60-69% tighter across the board, except `test_cwt_morlet`,
+  whose contended and idle medians happened to be close). Full per-entry
+  measurements from both passes, rejected-candidate evidence, and
+  gate-verification output in
+  `.superpowers/sdd/2026-08-18-slo-expansion/report.md`.
+
 ## [2.5.0] - 2026-08-18
 
 ### Added
