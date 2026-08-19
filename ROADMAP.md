@@ -16,17 +16,16 @@ and git history.
 
 ## Table of Contents
 
-1. [Post-v2.0.0 Roadmap](#post-v200-roadmap)
+1. [Backlog](#backlog)
 2. [Performance Targets](#performance-targets)
 3. [Known Issues & Planned Fixes](#known-issues--planned-fixes)
-4. [Breaking Changes for v2.0.0](#breaking-changes-for-v200)
-5. [Long-Term Vision](#long-term-vision)
-6. [Community Contribution Priorities](#community-contribution-priorities)
-7. [Contributing](#contributing)
+4. [Long-Term Vision](#long-term-vision)
+5. [Community Contribution Priorities](#community-contribution-priorities)
+6. [Contributing](#contributing)
 
 ---
 
-## Post-v2.0.0 Roadmap
+## Backlog
 
 ### Measured backlog (from the MATLAB parity inventory)
 
@@ -79,9 +78,8 @@ No dates are attached because none have been decided:
 ### Modernization campaign — remaining
 
 - **Unversioned, gated:** `[visualization-xy]` extra for large-dataset
-  plotting, once xy has a stable release. Everything else in the campaign
-  (uv/ty tooling, v2.1.0 Diagnostics, v2.2.0 Results I/O, v2.3.0 typed
-  configs + sessions) has shipped — see the CHANGELOG.
+  plotting, once xy has a stable release. It is the only item the campaign
+  has left.
 
 ### Enhanced GPU Support
 
@@ -176,47 +174,14 @@ Each case study: 200-400 lines of code, realistic datasets, benchmarked.
 
 ## Performance Targets
 
-Both previously tracked targets are met and now guarded by CI SLOs
-(`.benchmarks/slos.json`) rather than kept here as an open-work table --
-forward-only: a closed target gets a one-line pointer to what enforces it,
-not a stale number.
-
-- **JPDA (100 targets, 50 meas):** 45.31 ms (task C1's `time.perf_counter`
-  profiling-run baseline, Apple M3 Max, 2026-08-18) -> 33.55 ms (Apple M3
-  Max, 2026-08-18) after wiring the previously-dead Mahalanobis njit
-  fast-path kernels (`pytcl/assignment_algorithms/gating.py`) into
-  `mahalanobis_distance()`. CHANGELOG.md's `[Unreleased]` entry for this
-  change instead cites 43.89 ms -- task C2's own `pytest-benchmark`
-  pre-optimization re-measurement, taken fresh at the start of that task on
-  the same machine and date; the two "before" numbers come from different
-  measurement runs/methodologies, not a discrepancy. Both figures already
-  beat the old "89 ms -> <75 ms" row, which had no in-repo provenance (no
-  commit, fixture, or script reproduced either number). Guarded by
-  `test_jpda_update_100_targets_50_meas`'s SLO (111.18 ms mean).
-- **Hungarian Assignment (500x500 dense):** 5.00 ms median (Apple M3 Max,
-  2026-08-18) -- `hungarian()` is a thin wrapper around scipy's
-  `linear_sum_assignment`, so this is scipy's own number, not a pytcl
-  optimization target; the old "45 ms -> <30 ms" row also had no in-repo
-  provenance. Guarded by `test_hungarian_dense_500x500`'s SLO
-  (16.57 ms mean).
-- **assign2d augmented path (500x500, finite `cost_of_non_assignment`):**
-  the v2.5.0 campaign parked whether this path -- which builds an
-  (n+m)x(n+m) = 1000x1000 augmented matrix before delegating to scipy,
-  double the plain Hungarian case above -- deserved its own perf target.
-  Answered by measurement (perf-levers task 2, Apple M3 Max, 2026-08-18):
-  9.0375 ms median; cProfile of the same scenario attributes 96.7% of
-  cumulative time to `scipy.optimize.linear_sum_assignment` and 1.1% to
-  the `np.full` augmented-matrix construction, well under the 10%
-  trivial-fix threshold, so no code change was made -- scipy's 1000x1000
-  solve is the floor, same as the plain case. Guarded by
-  `test_assign2d_augmented_500x500`'s SLO (29.946 ms mean).
-
-All three SLO thresholds are CI-calibrated (local measurement x measured
-CI/local hardware ratio x 1.5 headroom), not bare M3 Max numbers; full
-derivations in the v2.5.0 region-lcd-perf and perf-levers campaigns'
-performance reports (local-only, untracked artifacts) and inline in
-`.benchmarks/slos.json`'s `_derivation` fields.
-
+No performance target is open. The two previously tracked targets (JPDA at
+100 targets / 50 measurements, Hungarian assignment at 500x500) are met, as
+is the `assign2d` augmented path the v2.5.0 campaign parked; all three are
+now guarded by CI-calibrated SLOs in `.benchmarks/slos.json`, whose
+`_derivation` fields carry each threshold and how it was computed. The
+measurements that closed them, and the reasoning behind each, are in
+[CHANGELOG.md](CHANGELOG.md) -- forward-only: a closed target gets a
+pointer to what enforces it, not a stale number kept here.
 
 ---
 
@@ -230,7 +195,7 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design. Exercised on real hardware twice: pre-2.0.0 on an RTX 5080 (found the doctest interop bugs now pinned by `test_gpu_doctest_hygiene.py`; no run artifact was kept) and for 2.1.0 on an RTX 5090/CUDA 13 (recorded; caught and fixed the `[gpu]` extra's missing CUDA 12 wheels). The manual `GPU` workflow exists for on-demand re-runs but has never been dispatched -- hardware runs to date were manual |
+| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow exists for on-demand re-runs but has never been dispatched, so every hardware run to date has been ad hoc |
 
 ### Medium Priority
 
@@ -252,42 +217,6 @@ what is still open.
 - **Very large arrays (>10GB)**: Out-of-core support not implemented (could use HDF5 chunking)
 - **Thread safety**: Most functions thread-safe, but some caches are global (mitigated by clearing)
 - **Real-time hard deadlines**: Python GC unpredictability (mitigated by profiling tools)
-
----
-
-## Breaking Changes for v2.0.0
-
-### API Changes Summary
-
-The breaking changes, each documented with before/after in
-``docs/migration_v1_to_v2.rst``:
-
-- ``query(k)`` rejects ``k > n_samples`` instead of padding with index 0
-- INS/GNSS ``position_cov`` is in ``[rad, rad, m]``;
-  ``position_std_to_error_state_units`` converts
-- ``compute_dop`` takes ``user_lla`` for meaningful HDOP/VDOP
-- ``detection_probability`` drops the inert ``swerling_case`` argument
-- ``snr_loss`` requires ``pfa`` and covers CA-CFAR only
-- ``SQLStorage()`` takes no ``db_type``; read-mode ``open`` no longer creates
-  files; ``store_array`` replaces on both backends
-- GPU filter callbacks take the whole ``(N, dim)`` batch on the active backend
-- ``NRLMSISE00`` family renamed ``SimplifiedThermosphere`` (gh-79)
-- ``nuttall_q`` renamed ``rician_cdf`` (warning alias retained)
-- ``pytcl.logging_config`` and
-  ``pytcl.assignment_algorithms.network_simplex`` removed outright
-- Several functions return different (correct) numbers with unchanged
-  signatures — see the migration guide's dedicated section before comparing
-  against recorded v1.x baselines
-
-**Exception handling** (unchanged in 2.0.0, listed for migrating v1.x users):
-all library exceptions inherit from ``pytcl.TCLError``, with specific types
-like ``pytcl.DimensionError`` available for narrow catches.
-
-### Backward Compatibility Layer
-
-There is none, deliberately. The 2.0.0 breaks are hard breaks — `nuttall_q`
-(a rename, kept as a warning alias) is the sole exception — and
-`docs/migration_v1_to_v2.rst` is the migration path.
 
 ---
 
