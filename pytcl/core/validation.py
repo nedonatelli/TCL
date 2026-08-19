@@ -341,6 +341,12 @@ def ensure_positive_definite(
     """
     Ensure input is a positive definite matrix.
 
+    Every eigenvalue must be strictly positive. A singular matrix is positive
+    *semi*-definite, not positive definite -- use
+    :func:`ensure_positive_semidefinite` for that, which is usually the right
+    check for a covariance, since a perfectly known state component gives a
+    zero eigenvalue.
+
     Parameters
     ----------
     arr : array_like
@@ -348,7 +354,8 @@ def ensure_positive_definite(
     name : str, optional
         Name of the parameter (for error messages).
     rtol : float, optional
-        Relative tolerance for eigenvalue check. Default is 1e-10.
+        Relative tolerance on the eigenvalues, scaled by the largest magnitude
+        eigenvalue. Default is 1e-10.
 
     Returns
     -------
@@ -358,7 +365,18 @@ def ensure_positive_definite(
     Raises
     ------
     ValidationError
-        If input is not positive definite.
+        If input is not symmetric, or has any eigenvalue that is not strictly
+        positive.
+
+    Notes
+    -----
+    This previously tested ``min(eigenvalues) >= -rtol * max|lambda|``. That
+    threshold is *negative*, so it admitted zero and small negative
+    eigenvalues and accepted ``diag(1, 0)`` -- the semidefinite test, under a
+    name and a docstring promising definiteness.
+    :func:`pytcl.core.is_positive_definite` carried the identical defect and
+    was corrected earlier; this is that fix applied to the validating
+    counterpart, which the earlier pass missed.
     """
     result = ensure_symmetric(arr, name)
 
@@ -367,12 +385,77 @@ def ensure_positive_definite(
     except np.linalg.LinAlgError as e:
         raise ValidationError(f"Could not compute eigenvalues of {name}: {e}") from e
 
-    min_eigenvalue = np.min(eigenvalues)
-    threshold = -rtol * np.max(np.abs(eigenvalues))
+    min_eigenvalue = float(np.min(eigenvalues))
+    scale = float(np.max(np.abs(eigenvalues)))
 
-    if min_eigenvalue < threshold:
+    if scale == 0.0:
+        raise ValidationError(
+            f"{name} must be positive definite, but is the zero matrix "
+            "(semidefinite, not definite)"
+        )
+
+    if min_eigenvalue <= rtol * scale:
         raise ValidationError(
             f"{name} must be positive definite, "
+            f"minimum eigenvalue is {min_eigenvalue:.2e}"
+        )
+
+    return result
+
+
+def ensure_positive_semidefinite(
+    arr: ArrayLike,
+    name: str = "matrix",
+    rtol: float = 1e-10,
+) -> NDArray[Any]:
+    """
+    Ensure input is a positive semidefinite matrix.
+
+    Every eigenvalue must be non-negative to within a relative tolerance. This
+    is the right check for a covariance, which may legitimately be singular --
+    a perfectly known state component gives a zero eigenvalue. For the
+    stricter check use :func:`ensure_positive_definite`.
+
+    Parameters
+    ----------
+    arr : array_like
+        Input array.
+    name : str, optional
+        Name of the parameter (for error messages).
+    rtol : float, optional
+        Relative tolerance on the eigenvalues, scaled by the largest magnitude
+        eigenvalue. Default is 1e-10.
+
+    Returns
+    -------
+    NDArray
+        Positive semidefinite matrix.
+
+    Raises
+    ------
+    ValidationError
+        If input is not symmetric, or has a negative eigenvalue beyond
+        tolerance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.validation import ensure_positive_semidefinite
+    >>> _ = ensure_positive_semidefinite(np.diag([1.0, 0.0]))
+    """
+    result = ensure_symmetric(arr, name)
+
+    try:
+        eigenvalues = np.linalg.eigvalsh(result)
+    except np.linalg.LinAlgError as e:
+        raise ValidationError(f"Could not compute eigenvalues of {name}: {e}") from e
+
+    min_eigenvalue = float(np.min(eigenvalues))
+    scale = float(np.max(np.abs(eigenvalues)))
+
+    if scale > 0.0 and min_eigenvalue <= -rtol * scale:
+        raise ValidationError(
+            f"{name} must be positive semidefinite, "
             f"minimum eigenvalue is {min_eigenvalue:.2e}"
         )
 

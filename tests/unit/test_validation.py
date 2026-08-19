@@ -19,6 +19,7 @@ from pytcl.core.validation import (
     ensure_2d,
     ensure_column_vector,
     ensure_positive_definite,
+    ensure_positive_semidefinite,
     ensure_row_vector,
     ensure_square_matrix,
     ensure_symmetric,
@@ -181,6 +182,85 @@ class TestEnsureFunctions:
         # Not positive definite
         with pytest.raises(ValidationError, match="positive definite"):
             ensure_positive_definite([[1, 2], [2, 1]])
+
+
+class TestPositiveDefiniteMeansStrictlyPositive:
+    """``ensure_positive_definite`` must reject singular matrices.
+
+    It used to accept them. The threshold was ``-rtol * max|lambda|``, a
+    *negative* number, so the guard only fired on eigenvalues meaningfully
+    below zero -- i.e. it was the semidefinite test wearing the definite
+    name. ``diag(1, 0)`` passed. The test above could not catch it: its
+    negative case is indefinite, and an indefinite matrix fails both tests.
+
+    ``is_positive_definite`` carried the identical defect and was fixed
+    earlier; the validating counterpart was missed, which is why these
+    assertions are phrased against the ``is_*`` predicates -- the two must
+    not drift apart again.
+    """
+
+    SINGULAR = np.diag([1.0, 0.0])
+    DEFINITE = np.array([[2.0, 1.0], [1.0, 2.0]])
+    INDEFINITE = np.array([[1.0, 2.0], [2.0, 1.0]])
+    ZERO = np.zeros((2, 2))
+
+    def test_singular_matrix_is_rejected(self):
+        with pytest.raises(ValidationError, match="positive definite"):
+            ensure_positive_definite(self.SINGULAR)
+
+    def test_zero_matrix_is_rejected(self):
+        with pytest.raises(ValidationError, match="positive definite"):
+            ensure_positive_definite(self.ZERO)
+
+    def test_definite_matrix_still_accepted(self):
+        assert ensure_positive_definite(self.DEFINITE).shape == (2, 2)
+
+    def test_semidefinite_variant_accepts_what_definite_rejects(self):
+        """The lenient behaviour did not disappear, it moved somewhere honest.
+
+        A covariance may legitimately be singular -- a perfectly known state
+        component gives a zero eigenvalue -- so callers that wanted the old
+        behaviour have ``ensure_positive_semidefinite``.
+        """
+        assert ensure_positive_semidefinite(self.SINGULAR).shape == (2, 2)
+        assert ensure_positive_semidefinite(self.ZERO).shape == (2, 2)
+        with pytest.raises(ValidationError, match="positive semidefinite"):
+            ensure_positive_semidefinite(self.INDEFINITE)
+
+    def test_ensure_and_is_predicates_agree(self):
+        """The drift that caused this bug, pinned shut.
+
+        ``is_positive_definite`` was correct and ``ensure_positive_definite``
+        was not; nothing compared them.
+        """
+        from pytcl.core import is_positive_definite, is_positive_semidefinite
+
+        rng = np.random.RandomState(0)
+        for _ in range(200):
+            n = rng.randint(2, 5)
+            A = rng.randn(n, n)
+            M = A @ A.T
+            if rng.rand() < 0.3:  # force a zero eigenvalue
+                w, V = np.linalg.eigh(M)
+                w[0] = 0.0
+                M = V @ np.diag(w) @ V.T
+                M = (M + M.T) / 2
+            elif rng.rand() < 0.25:  # force a negative one
+                w, V = np.linalg.eigh(M)
+                w[0] = -abs(w[-1])
+                M = V @ np.diag(w) @ V.T
+                M = (M + M.T) / 2
+
+            for ensure, predicate in (
+                (ensure_positive_definite, is_positive_definite),
+                (ensure_positive_semidefinite, is_positive_semidefinite),
+            ):
+                try:
+                    ensure(M)
+                    accepted = True
+                except ValidationError:
+                    accepted = False
+                assert accepted == predicate(M), (ensure.__name__, M)
 
 
 class TestShapeChecks:

@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   checksum is computed from the sentence's own leading `!`/`$`, not from the
   start of the line. Verified against `tests/fixtures/ais` (6,831 real
   sentences off Norway, 6,774 of them TAG-blocked): zero rejections.
+- **`pytcl.core.ensure_positive_semidefinite`** -- the validating
+  counterpart to `is_positive_semidefinite`, and where callers who relied on
+  `ensure_positive_definite`'s old leniency should go. A covariance may
+  legitimately be singular (a perfectly known state component gives a zero
+  eigenvalue), so that behaviour needed an honest home rather than deletion.
 - **`pytcl.transponders.nmea_checksum`** -- new public function computing a
   sentence's `*hh`, the counterpart to MATLAB's `NMEAChecksum` and the last
   of that directory's three functions to be ported.
