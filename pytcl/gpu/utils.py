@@ -11,7 +11,9 @@ This module provides utilities for:
 The module automatically selects the appropriate backend:
 - On Apple Silicon (M1/M2/M3): Uses MLX if available
 - On systems with NVIDIA GPUs: Uses CuPy if available
-- Falls back to CPU (numpy) if no GPU backend is available
+- Raises ``DependencyError`` if neither backend is installed: there is no
+  NumPy compute fallback. :func:`get_backend` below reports ``"numpy"`` as a
+  detection result only -- no batch algorithm runs on it.
 
 Examples
 --------

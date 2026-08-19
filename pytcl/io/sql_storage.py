@@ -1,7 +1,7 @@
 """SQL storage backend for pytcl data persistence.
 
-Provides structured data storage using SQLite or other SQL databases.
-Good for metadata, tracks, measurements, and searchable structured data.
+Provides structured data storage using SQLite. Good for metadata, tracks,
+measurements, and searchable structured data.
 """
 
 import json
@@ -20,7 +20,10 @@ class SQLStorage(StorageBackend):
     """SQL-based storage backend.
 
     Stores structured data, metadata, and searchable information using SQL.
-    Uses SQLite by default but supports other databases via connection strings.
+    SQLite only: ``open()`` passes its ``path`` straight to ``sqlite3.connect``,
+    so a driver connection string is not accepted. The ``db_type`` argument
+    that once selected a backend was removed in v2.0.0 (see the ``__init__``
+    Notes).
 
     Ideal for:
     - Track metadata and state

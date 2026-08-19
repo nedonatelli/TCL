@@ -34,9 +34,10 @@ class DendrogramNode(NamedTuple):
     Attributes
     ----------
     left : int
-        Index of left child (negative for original samples).
+        Index of left child: ``< n_samples`` for an original sample,
+        ``>= n_samples`` for a merged node. Never negative.
     right : int
-        Index of right child (negative for original samples).
+        Index of right child, same convention as ``left``.
     distance : float
         Distance/dissimilarity at which merge occurred.
     count : int
@@ -59,7 +60,11 @@ class HierarchicalResult(NamedTuple):
     n_clusters : int
         Number of clusters.
     linkage_matrix : ndarray
-        Linkage matrix of shape (n_samples-1, 4).
+        Linkage matrix of shape (n_samples - n_clusters, 4) -- one row per
+        merge actually performed, so it reaches (n_samples-1, 4) only when
+        clustering runs all the way to a single cluster. Fewer rows if
+        ``distance_threshold`` stops the merge early, and (0, 4) for
+        ``n_samples <= 1``.
         Each row [i, j, dist, count] represents a merge.
     dendrogram : list of DendrogramNode
         List of merge operations.

@@ -6,16 +6,19 @@ nearest neighbor queries, spatial indexing, and tracking containers.
 
 Spatial Index Hierarchy
 -----------------------
-All spatial index structures inherit from BaseSpatialIndex which defines
-a common interface for k-nearest neighbor and radius queries::
+Most spatial index structures inherit from BaseSpatialIndex, which defines
+a common interface for k-nearest neighbor and radius queries. RTree is the
+exception: it indexes bounding boxes rather than points and counts entries
+rather than samples, so it stands outside the hierarchy::
 
     BaseSpatialIndex (abstract)
     ├── KDTree - K-dimensional tree (Euclidean space)
     ├── BallTree - Ball tree variant of KD-tree
-    ├── RTree - Rectangle tree for bounding boxes
     └── MetricSpatialIndex (abstract)
         ├── VPTree - Vantage point tree (any metric)
         └── CoverTree - Cover tree (any metric)
+
+    RTree - Rectangle tree for bounding boxes (standalone)
 """
 
 from pytcl.containers.base import (

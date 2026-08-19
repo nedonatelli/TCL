@@ -72,7 +72,9 @@ class OceanTideLoading(NamedTuple):
     Attributes
     ----------
     amplitude : NDArray
-        Amplitude for each constituent (m) for radial, west, south.
+        Amplitude for each constituent (m), shape (3, n_constituents), rows
+        ordered radial, north, east -- matching what
+        :func:`ocean_tide_loading_displacement` consumes.
     phase : NDArray
         Phase for each constituent (radians).
     constituents : Tuple[str, ...]

@@ -14,7 +14,9 @@ materialization, after warm-up: 1.6x at 100 tracks, 13x at 1,000, 40x at
 The module automatically selects the best available backend:
 - On systems with NVIDIA GPUs: Uses CuPy if installed (float64)
 - On Apple Silicon (M1/M2/M3): Uses MLX if installed (float32)
-- Falls back to CPU (numpy) if no GPU backend is available
+- Raises ``DependencyError`` if neither backend is installed: there is no
+  NumPy compute fallback (``pytcl.gpu.utils.get_backend`` reports the string
+  ``"numpy"`` for detection purposes only -- nothing computes on it)
 
 Precision
 ---------
