@@ -177,7 +177,11 @@ def _exempt_by_decorator(node) -> bool:
 def _find_dead_parameters():
     findings = []
     for path in sorted(PACKAGE.rglob("*.py")):
-        rel = str(path.relative_to(PACKAGE))
+        # as_posix(): on Windows, relative_to() yields backslash paths, which
+        # silently match none of the forward-slash ALLOWED keys -- all 21
+        # exemptions then fire as findings and the staleness test inverts.
+        # Caught by CI's windows cell on this gate's first cross-platform run.
+        rel = path.relative_to(PACKAGE).as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
 
         # module-level functions and methods of module-level classes only:
