@@ -150,7 +150,15 @@ print(f"rows {row_ind} -> columns {col_ind}, total cost {total_cost}")  # cost 2
 The library supports GPU acceleration for batch processing of multiple tracks:
 
 ```python
+import numpy as np
+
 from pytcl.gpu import is_gpu_available, get_backend, to_gpu, to_cpu
+
+# 100 tracks with a 4-dimensional state each
+states = np.random.randn(100, 4)
+covariances = np.tile(np.eye(4), (100, 1, 1))
+F = np.eye(4)
+Q = np.eye(4) * 0.01
 
 # Check GPU availability (auto-detects CUDA or Apple Silicon)
 if is_gpu_available():

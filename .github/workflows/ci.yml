@@ -116,11 +116,18 @@ jobs:
       # doctrine a ratchet needs a measurement under the gate's own
       # conditions -- take the first CI run's number, subtract headroom,
       # and ratchet then.
+      #
+      # --cov-branch, same date: line coverage counts a partially-taken
+      # branch as covered, which is how the ZXZ gimbal-lock bug hid -- its
+      # else-branch had never executed while every line around it was
+      # green. Measured cost of the flag is 0.9 points locally (93.3 line
+      # -> 92.4 branch, JIT disabled, with MLX), so the 82 floor keeps
+      # ~5 points of margin even after the ~5-point MLX discount.
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         env:
           NUMBA_DISABLE_JIT: "1"
-        run: uv run pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=82 --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=82 --benchmark-skip -m "not examples" -q
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
@@ -193,7 +200,7 @@ jobs:
         # PYTCL_SHOW_PLOTS=0 is set by the test itself, which also blocks
         # fig.show() outright so an unguarded call fails rather than silently
         # doing nothing in a headless container.
-        run: uv run pytest tests/contract/test_examples.py tests/contract/test_tutorials.py tests/contract/test_docs_code_blocks.py -m examples -v --timeout=600
+        run: uv run pytest tests/contract/test_examples.py tests/contract/test_tutorials.py tests/contract/test_docs_code_blocks.py tests/contract/test_markdown_code_blocks.py -m examples -v --timeout=600
 
   notebooks:
     runs-on: ubuntu-latest

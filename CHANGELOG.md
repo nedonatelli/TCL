@@ -21,6 +21,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **Four defect classes from the audit now have permanent gates.**
+  (1) `tests/contract/test_no_dead_parameters.py` fails on any public
+  parameter that is accepted but never read -- the class behind
+  `leaf_size`, `confirm_window`, `min_entries` and RBPF's `G`. Its first
+  sweep found five more that had survived every prior review, all now
+  removed (BREAKING where positional): `marcum_q_inv`'s `tol`/`max_iter`
+  (beside a Notes section claiming Newton-Raphson iteration; the body is a
+  closed-form `ncx2.isf` call -- Notes corrected),
+  `matched_filter_frequency`/`optimal_filter`'s `fs` (documented "used for
+  output scaling", scaled nothing), `parse_earth2014_binary`'s `layer`,
+  `fisher_information_exponential_family`'s `h`, and
+  `associated_legendre_scaled`'s `scale`. Interface stubs, cache-keyed
+  parameters and nested callbacks are exempt structurally; documented
+  contracts (SDE `f(x, t)` signatures, inclination-independent precession)
+  sit on an allowlist whose stale entries fail the gate from the other
+  direction. (2) CI coverage adds `--cov-branch` -- line coverage counted
+  the never-taken ZXZ gimbal branch as covered; measured cost 0.9 points.
+  (3) `scripts/check_release_stability.py` lists changed modules against
+  their registry promises (the by-hand check that caught `core.validation`,
+  mechanized; wired into CONTRIBUTING's release checklist). (4)
+  `tests/contract/test_markdown_code_blocks.py` executes python fences in
+  tracked markdown -- the gap the phantom `egm2008` example lived in; its
+  first run caught README's GPU quick-start referencing an undefined
+  `states`, now fixed. Illustrative files are excluded by name with
+  reasons.
 - **CI's coverage job now measures with `NUMBA_DISABLE_JIT=1`.**
   coverage.py cannot trace inside jit-compiled functions, so with JIT on
   every `@njit` body counted as unexecuted however thoroughly tested --

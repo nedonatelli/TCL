@@ -555,6 +555,19 @@ Copy examples from the root `examples/` directory to `docs/examples/`:
 cp examples/*.py docs/examples/
 ```
 
+### 3b. Check the diff against the stability registry
+
+```bash
+uv run python scripts/check_release_stability.py <last-release-tag>
+```
+
+Lists every changed `pytcl` module with its registered maturity level, most
+binding first. STABLE modules promise API frozen until a major bump; for each
+one listed, decide -- and record in the CHANGELOG -- whether the change is
+non-breaking, needs a major bump, or justifies reclassification. Added after
+the v2.6 audit found a breaking change to a STABLE module queued for a minor
+release, with nothing positioned to notice.
+
 ### 4. Run Quality Checks
 
 ```bash
