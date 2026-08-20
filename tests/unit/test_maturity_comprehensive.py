@@ -310,3 +310,42 @@ class TestMaturityIntegration:
         # Should account for all modules
         assert total_in_summary > 0
         assert total_modules >= total_in_summary  # Verify consistent counts
+
+
+class TestEveryRegisteredModuleExists:
+    """A maturity registry that names modules which do not exist is worse
+    than no registry.
+
+    32 of 78 entries pointed at a pre-2.0 layout. That is not merely dead
+    weight: lookup is by exact path, so a module whose file moved silently
+    fell through to the EXPERIMENTAL default. ``gravity.egm`` and
+    ``navigation.ins`` are real and were classified, yet reported
+    EXPERIMENTAL because the registry still listed ``geophysical.gravity.egm``
+    and ``navigation.ins.strapdown``. Eleven STABLE and twelve MATURE
+    assessments were being lost that way.
+
+    Nothing checked this, which is why it drifted across a package
+    reorganisation.
+    """
+
+    def test_every_registered_path_imports(self):
+        import importlib
+
+        unimportable = []
+        for module_path in MODULE_MATURITY:
+            try:
+                importlib.import_module(f"pytcl.{module_path}")
+            except Exception as exc:  # noqa: BLE001 - reporting, not handling
+                unimportable.append(f"{module_path} ({type(exc).__name__})")
+
+        assert not unimportable, (
+            "MODULE_MATURITY names modules that do not exist, so they report "
+            "EXPERIMENTAL regardless of their recorded level: "
+            + ", ".join(sorted(unimportable))
+        )
+
+    def test_a_classified_module_does_not_report_the_default(self):
+        """The symptom the stale paths produced, pinned directly."""
+        for module_path, level in MODULE_MATURITY.items():
+            if level is not MaturityLevel.EXPERIMENTAL:
+                assert get_maturity(module_path) is level, module_path

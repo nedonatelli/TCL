@@ -21,6 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **The module maturity registry was 41% stale, silently downgrading real
+  modules.** 32 of `MODULE_MATURITY`'s 78 entries named paths from the
+  pre-2.0 layout. Because `get_maturity` looks up by exact path and returns
+  `EXPERIMENTAL` for anything unregistered, a module whose file moved lost
+  its classification without a trace: `navigation.ins` and `trackers.mht`
+  reported EXPERIMENTAL despite being recorded MATURE, under the old paths
+  `navigation.ins.strapdown` and `assignment_algorithms.mht`. Eleven STABLE
+  and twelve MATURE assessments were affected. Every stale entry has been
+  remapped to the module that now holds the code, preserving its recorded
+  level (11 pairs collapsed onto shared successors -- `hungarian` and
+  `auction` both live in `two_dimensional.assignment` now). A new contract
+  test imports every registered path, so the registry cannot drift through
+  another reorganisation unnoticed.
 - **`TrackDatabaseManager.open(mode='r')` created the database it was meant
   to read** and accepted any string as a mode. Opening a mistyped path for
   reading produced an empty file, and the first query then failed with

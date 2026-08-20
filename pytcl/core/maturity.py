@@ -85,26 +85,22 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.kalman.types": MaturityLevel.STABLE,
     "dynamic_estimation.kalman.matrix_utils": MaturityLevel.STABLE,
     # Motion Models
-    "dynamic_models.constant_velocity": MaturityLevel.STABLE,
-    "dynamic_models.constant_acceleration": MaturityLevel.STABLE,
-    "dynamic_models.coordinated_turn": MaturityLevel.STABLE,
-    "dynamic_models.singer": MaturityLevel.STABLE,
-    "dynamic_models.process_noise.constant_velocity": MaturityLevel.STABLE,
-    "dynamic_models.process_noise.constant_acceleration": MaturityLevel.STABLE,
+    "dynamic_models.discrete_time.polynomial": MaturityLevel.STABLE,
+    "dynamic_models.discrete_time.coordinated_turn": MaturityLevel.STABLE,
+    "dynamic_models.discrete_time.singer": MaturityLevel.STABLE,
+    "dynamic_models.process_noise.polynomial": MaturityLevel.STABLE,
     # Coordinate Systems
     "coordinate_systems.conversions.geodetic": MaturityLevel.STABLE,
     "coordinate_systems.conversions.spherical": MaturityLevel.STABLE,
     "coordinate_systems.rotations.rotations": MaturityLevel.STABLE,
-    "coordinate_systems.rotations.quaternions": MaturityLevel.STABLE,
     # Assignment Algorithms
-    "assignment_algorithms.hungarian": MaturityLevel.STABLE,
-    "assignment_algorithms.auction": MaturityLevel.STABLE,
+    "assignment_algorithms.two_dimensional.assignment": MaturityLevel.STABLE,
     "assignment_algorithms.gating": MaturityLevel.STABLE,
     # Containers
     "containers.kd_tree": MaturityLevel.STABLE,
     "containers.base": MaturityLevel.STABLE,
     # Mathematical Functions
-    "mathematical_functions.special": MaturityLevel.STABLE,
+    "mathematical_functions.special_functions": MaturityLevel.STABLE,
     # =========================================================================
     # MATURE (2) - Production-ready, minor changes possible
     # =========================================================================
@@ -112,25 +108,22 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.kalman.square_root": MaturityLevel.MATURE,
     "dynamic_estimation.kalman.ud_filter": MaturityLevel.MATURE,
     "dynamic_estimation.kalman.sr_ukf": MaturityLevel.MATURE,
-    "dynamic_estimation.kalman.cubature": MaturityLevel.MATURE,
     "dynamic_estimation.kalman.constrained": MaturityLevel.MATURE,
     "dynamic_estimation.information_filter": MaturityLevel.MATURE,
     "dynamic_estimation.imm": MaturityLevel.MATURE,
-    "dynamic_estimation.h_infinity": MaturityLevel.MATURE,
+    "dynamic_estimation.kalman.h_infinity": MaturityLevel.MATURE,
     # Particle Filters
     "dynamic_estimation.particle_filters.bootstrap": MaturityLevel.MATURE,
-    "dynamic_estimation.particle_filters.resampling": MaturityLevel.MATURE,
     # Smoothers
-    "dynamic_estimation.smoothers.rts": MaturityLevel.MATURE,
-    "dynamic_estimation.smoothers.fixed_lag": MaturityLevel.MATURE,
+    "dynamic_estimation.smoothers": MaturityLevel.MATURE,
     # Motion Models
     "dynamic_models.process_noise.coordinated_turn": MaturityLevel.MATURE,
     "dynamic_models.process_noise.singer": MaturityLevel.MATURE,
     # Assignment Algorithms
     "assignment_algorithms.jpda": MaturityLevel.MATURE,
-    "assignment_algorithms.mht": MaturityLevel.MATURE,
-    "assignment_algorithms.murty": MaturityLevel.MATURE,
-    "assignment_algorithms.assignment_3d": MaturityLevel.MATURE,
+    "trackers.mht": MaturityLevel.MATURE,
+    "assignment_algorithms.two_dimensional.kbest": MaturityLevel.MATURE,
+    "assignment_algorithms.three_dimensional.assignment": MaturityLevel.MATURE,
     # Containers
     "containers.rtree": MaturityLevel.MATURE,
     "containers.vptree": MaturityLevel.MATURE,
@@ -139,24 +132,21 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "containers.measurement_set": MaturityLevel.MATURE,
     "containers.cluster_set": MaturityLevel.MATURE,
     # Navigation
-    "navigation.ins.strapdown": MaturityLevel.MATURE,
-    "navigation.ins.error_model": MaturityLevel.MATURE,
-    "navigation.gnss.positioning": MaturityLevel.MATURE,
+    "navigation.ins": MaturityLevel.MATURE,
+    "navigation.ins_gnss": MaturityLevel.MATURE,
     "navigation.geodesy": MaturityLevel.MATURE,
     "navigation.great_circle": MaturityLevel.MATURE,
     # Coordinate Systems
     "coordinate_systems.jacobians.jacobians": MaturityLevel.MATURE,
-    "coordinate_systems.projections.utm": MaturityLevel.MATURE,
-    "coordinate_systems.projections.mercator": MaturityLevel.MATURE,
+    "coordinate_systems.projections.projections": MaturityLevel.MATURE,
     # Mathematical Functions
     "mathematical_functions.signal_processing.filters": MaturityLevel.MATURE,
     "mathematical_functions.signal_processing.detection": MaturityLevel.MATURE,
-    "mathematical_functions.transforms.fft": MaturityLevel.MATURE,
+    "mathematical_functions.transforms.fourier": MaturityLevel.MATURE,
     "mathematical_functions.transforms.wavelets": MaturityLevel.MATURE,
     # Static Estimation
     "static_estimation.least_squares": MaturityLevel.MATURE,
     "static_estimation.robust": MaturityLevel.MATURE,
-    "static_estimation.ransac": MaturityLevel.MATURE,
     # Astronomical
     "astronomical.orbital_mechanics": MaturityLevel.MATURE,
     "astronomical.ephemerides": MaturityLevel.MATURE,
@@ -165,19 +155,18 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # EXPERIMENTAL (1) - Functional but API may change
     # =========================================================================
     # Advanced Filters
-    "dynamic_estimation.kalman.gaussian_sum": MaturityLevel.EXPERIMENTAL,
-    "dynamic_estimation.kalman.rao_blackwellized": MaturityLevel.EXPERIMENTAL,
+    "dynamic_estimation.gaussian_sum_filter": MaturityLevel.EXPERIMENTAL,
+    "dynamic_estimation.rbpf": MaturityLevel.EXPERIMENTAL,
     # Geophysical Models
-    "geophysical.gravity.egm": MaturityLevel.EXPERIMENTAL,
-    "geophysical.magnetism.wmm": MaturityLevel.EXPERIMENTAL,
-    "geophysical.tides": MaturityLevel.EXPERIMENTAL,
+    "gravity.egm": MaturityLevel.EXPERIMENTAL,
+    "magnetism.wmm": MaturityLevel.EXPERIMENTAL,
+    "gravity.tides": MaturityLevel.EXPERIMENTAL,
     # Terrain
     "terrain.dem": MaturityLevel.EXPERIMENTAL,
     "terrain.loaders": MaturityLevel.EXPERIMENTAL,
-    "terrain.analysis": MaturityLevel.EXPERIMENTAL,
     # Relativity
     "astronomical.relativity": MaturityLevel.EXPERIMENTAL,
-    "astronomical.satellite.sgp4": MaturityLevel.EXPERIMENTAL,
+    "astronomical.sgp4": MaturityLevel.EXPERIMENTAL,
 }
 
 
