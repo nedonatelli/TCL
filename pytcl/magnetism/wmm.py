@@ -618,6 +618,16 @@ def configure_magnetic_cache(
             if key in precision:
                 _CACHE_PRECISION[key] = precision[key]
 
+        # Entries are keyed by the quantized inputs, so changing the
+        # quantization strands every existing entry under the old key
+        # scheme: a later lookup at the new precision either misses (leaking
+        # memory) or, where the new key coincides, returns a value computed
+        # for a different rounding than the caller asked for. Only the
+        # maxsize branch below used to clear, so a precision-only change
+        # silently kept the stale entries -- contradicting this function's
+        # own Notes.
+        clear_magnetic_cache()
+
     if maxsize is not None:
         # Recreate the cached function with new maxsize
         clear_magnetic_cache()

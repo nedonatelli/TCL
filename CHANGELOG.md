@@ -21,6 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **`plot_nis_sequence` produced a chart labelled NEES.** It forwards to
+  `plot_nees_sequence`, which hardcoded `"NEES"` as both the y-axis title and
+  the series name; only `title` passed through. NEES and NIS are different
+  statistics -- state error against state covariance versus innovation
+  against innovation covariance -- so a NIS plot claimed the wrong one. The
+  chi-squared bounds were always correct (the two functions already took
+  `n_dims` and `n_meas` respectively); only the label lied.
+  `plot_nees_sequence` gains a `metric_name` argument, defaulting to
+  `"NEES"`, so the shared implementation can label either.
+- **`configure_magnetic_cache(precision=...)` did not clear the cache**,
+  contradicting its own Notes ("Changing cache configuration clears the
+  existing cache"). Only the `maxsize` branch cleared. Entries are keyed by
+  the quantized inputs, so a precision-only change stranded every existing
+  entry under the old key scheme: a later lookup either misses and leaks, or
+  hits a value rounded differently from what the caller now asked for. The
+  existing `test_reconfiguring_starts_from_empty` could not catch it -- it
+  exercises the `maxsize` branch, which always cleared.
 - **`great_circle_tdoa_loc` returned locations that failed its own validity
   check**, because the second-solution search clobbered a receiver's
   coordinates. Its iterate was named `lat2`/`lon2` -- the parameter names for
