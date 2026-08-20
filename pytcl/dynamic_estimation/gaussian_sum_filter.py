@@ -50,7 +50,11 @@ class GaussianSumFilter:
     components : list[GaussianComponent]
         Current mixture components (state, covariance, weight).
     max_components : int
-        Maximum components to maintain (via pruning/merging).
+        Merge target, not a hard cap: merging runs while the count exceeds
+        this AND the two closest components are within ``merge_threshold``
+        KL divergence of each other. Six well-separated components against
+        ``max_components=3`` remain six -- exceeding the target rather than
+        force-merging dissimilar modes is deliberate.
     merge_threshold : float
         KL divergence threshold for merging components.
     prune_threshold : float
@@ -71,7 +75,9 @@ class GaussianSumFilter:
         Parameters
         ----------
         max_components : int
-            Maximum number of Gaussian components to maintain.
+            Merge target for the component count; exceeded when the
+            remaining components are too dissimilar to merge (see the class
+            docstring).
         merge_threshold : float
             KL divergence threshold for merging. Components with KL
             divergence below this are merged.

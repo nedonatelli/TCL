@@ -206,9 +206,11 @@ class TrackDatabaseManager:
         Returns
         -------
         list of dict
-            Detection records with keys: detection_id, measurement,
-            timestamp, sensor_id, association_status, associated_track_id,
-            metadata.
+            Detection records with keys: detection_id, timestamp,
+            sensor_id, measurement, covariance, association_status,
+            associated_track_id, association_confidence, metadata --
+            everything ``_row_to_detection`` builds, not the subset
+            previously listed here.
         """
         self._check_open()
         conditions: List[str] = []

@@ -21,7 +21,7 @@ from numpy.typing import NDArray
 _logger = logging.getLogger("pytcl.navigation.great_circle")
 
 # Cache configuration for great circle calculations
-_GC_CACHE_DECIMALS = 10  # ~0.01mm precision at Earth's surface
+_GC_CACHE_DECIMALS = 10  # 1e-10 rad ~ 0.64 mm at Earth's surface (not 0.01 mm)
 _GC_CACHE_MAXSIZE = 256  # Max cached coordinate pairs
 
 

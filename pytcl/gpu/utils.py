@@ -146,12 +146,14 @@ def is_cupy_available() -> bool:
 @lru_cache(maxsize=1)
 def get_backend() -> BackendType:
     """
-    Get the best available GPU backend for the current platform.
+    Report which GPU backend this platform would use (detection only).
 
-    Priority:
-    1. MLX on Apple Silicon
-    2. CuPy on systems with NVIDIA GPUs
-    3. numpy (CPU fallback)
+    Priority here is MLX on Apple Silicon, then CuPy, then the string
+    ``"numpy"`` for "neither". Note the COMPUTE selector,
+    ``pytcl.gpu._backend.get_compute_backend``, tries CuPy first -- on the
+    rare machine with both stacks installed, this function reports ``mlx``
+    while batch algorithms run on CuPy. Nothing computes on the ``numpy``
+    result; the compute path raises ``DependencyError`` instead.
 
     Returns
     -------

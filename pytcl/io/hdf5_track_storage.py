@@ -329,8 +329,8 @@ class TrackHDF5Storage:
         Returns
         -------
         dict
-            Keys: measurement, timestamp, sensor_id, covariance (or None),
-            metadata.
+            Keys: detection_id, measurement, timestamp, sensor_id,
+            covariance (or None), metadata.
         """
         self._check_open()
         group_path = self._resolve_detection_group(detection_id, scenario_id)
@@ -371,7 +371,9 @@ class TrackHDF5Storage:
     ) -> Dict[str, NDArray[np.float64]]:
         """Extract a track segment within a time range.
 
-        Uses binary search on timestamps for efficient slicing.
+        Selects by boolean mask over the full timestamp array -- a linear
+        scan, not the binary search previously claimed here.
+        (``get_state_at_time`` is the method that uses ``searchsorted``.)
 
         Parameters
         ----------

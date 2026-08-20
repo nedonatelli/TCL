@@ -178,7 +178,9 @@ def log_filter_health(
     Symptomatic (logged at WARNING instead of DEBUG) when either:
 
     - ``nis_value`` exceeds ``NIS_OUTLIER_FACTOR`` times the mean of
-      ``nis_window`` (filter diverging / mismatched noise model), or
+      ``nis_window`` AND that mean is positive -- with an empty or all-zero
+      window the NIS branch cannot fire regardless of ``nis_value``, since
+      any threshold scaled from a zero mean would flag everything -- or
     - ``cov_condition`` exceeds ``CONDITION_WARN`` (covariance going
       numerically singular).
 

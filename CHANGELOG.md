@@ -21,6 +21,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **Eighteen docstring corrections from the audit's verified tail.** The
+  serious one: `IMMPrediction.mode_probs` was documented "unchanged during
+  prediction" when the transition matrix has already been applied -- wrong
+  in the dangerous direction, since a caller re-applying `Pi` would
+  double-predict, and `imm_update` relies on receiving the predicted
+  values. Also corrected: `GaussianSumFilter.max_components` and
+  `RBPFConfig.max_particles` are merge targets, not caps (verified: six
+  separated components stay six against `max_components=3`);
+  `resample_threshold` scales the current particle count, not
+  `max_particles`; `ConstrainedEKF.predict` neither enforces nor checks
+  constraints; the Singer example's "3g maneuvers" comment (3 m/s^2 is
+  ~0.3 g); `INSGNSSState.error_state` "15 or 17" (nothing yields 17);
+  `GNSSMeasurement.position_cov` now states its `[rad^2, rad^2, m^2]`
+  units -- the v2.0.0 breaking-change field was the only one in the class
+  with no units, and metres^2 there inflates R by ~1e13; the
+  `tight_coupled_measurement_matrix` clock-drift column that is never
+  populated; `ins_process_noise_matrix`'s state argument (enters only as
+  `R @ R.T`, the identity); a dangling `nutation_angles` cross-reference;
+  `semi_major_axis_from_energy`'s near-zero (not exactly-zero) raise;
+  three cache-precision comments off by 10^2-10^4 (jacobians "~1 m" is
+  64 m; Vincenty/great-circle "~0.01 mm" is 0.64 mm; the INS-GNSS pole
+  floor "6 cm" is 6 um); `get_track_trajectory`'s "binary search" (a
+  linear mask); `IMMTrackAdapter` claiming to store mode probabilities
+  (nothing writes them); `TrackerDatabaseAdapter`'s phantom `process_scan`
+  support; two incomplete detection-record key lists; `CoverTree`'s class
+  docstring asserting guarantees its own module docstring disclaims;
+  `F107Index.ap_array` "derived from ap" (a plain None default);
+  `min_cost_flow`'s complexity claim omitting its Bellman-Ford
+  initialisation; `get_backend`'s priority note (detection is MLX-first,
+  compute is CuPy-first); and the diagnostics NIS guard's undocumented
+  positive-mean condition.
 - **Four defect classes from the audit now have permanent gates.**
   (1) `tests/contract/test_no_dead_parameters.py` fails on any public
   parameter that is accepted but never read -- the class behind

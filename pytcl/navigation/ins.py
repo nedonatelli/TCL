@@ -1072,7 +1072,9 @@ def ins_process_noise_matrix(
     gyro_bias_std : float
         Gyroscope bias random walk standard deviation (rad/s/sqrt(s)).
     state : INSState
-        Current INS state (for DCM).
+        Current INS state. Accepted for signature stability; the DCM enters
+        the computation only as ``R_b_n @ R_b_n.T``, which is the identity
+        for any rotation matrix, so the state cannot change ``Q``.
 
     Returns
     -------

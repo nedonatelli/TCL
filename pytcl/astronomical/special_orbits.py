@@ -491,7 +491,8 @@ def semi_major_axis_from_energy(mu: float, specific_energy: float) -> float:
     Raises
     ------
     ValueError
-        If specific energy is exactly zero (parabolic case).
+        If ``|specific_energy| < 1e-15`` (the near-parabolic case; not
+        only exactly zero).
     """
     if abs(specific_energy) < 1e-15:
         raise ValueError(

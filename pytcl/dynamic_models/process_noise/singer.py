@@ -33,7 +33,7 @@ Examples
 Create process noise for tracking a maneuvering aircraft:
 
 >>> from pytcl.dynamic_models.process_noise import q_singer
->>> Q = q_singer(T=1.0, tau=20.0, sigma_m=3.0)  # tau=20s, 3g maneuvers
+>>> Q = q_singer(T=1.0, tau=20.0, sigma_m=3.0)  # tau=20s, 3 m/s^2 (~0.3g) RMS
 >>> Q.shape
 (3, 3)
 

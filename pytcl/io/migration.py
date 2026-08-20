@@ -220,7 +220,8 @@ class MigrationHelper:
             elif ftype == "imm":
                 recs.append(
                     "Use IMMTrackAdapter from pytcl.io.compat to persist "
-                    "combined IMM state and mode probabilities."
+                    "the combined IMM state (mode probabilities stay on the "
+                    "live filter object; they are not persisted)."
                 )
             elif ftype == "particle":
                 recs.append(

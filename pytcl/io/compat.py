@@ -467,8 +467,11 @@ class TrackerDatabaseAdapter:
     db : TrackDatabaseManager
         Open database connection.
     tracker : object
-        A pytcl tracker with a ``process`` or ``process_scan`` method
-        that returns a list of Track-like objects.
+        A pytcl tracker with a ``process(measurements, dt)`` method that
+        returns a list of Track-like objects. (``process_scan`` was
+        previously documented as an alternative; the adapter only ever
+        calls ``process``, and a tracker exposing just ``process_scan``
+        raises ``AttributeError``.)
     confirm_hits : int
         Number of hits to confirm a track. Default is 3.
     max_misses : int
@@ -588,8 +591,11 @@ class TrackerDatabaseAdapter:
 class IMMTrackAdapter:
     """Adapter connecting IMM estimator to SQL storage.
 
-    Persists the combined IMM state after each predict/update and stores
-    mode probabilities in track metadata.
+    Persists the combined IMM state after each predict/update. Mode
+    probabilities are NOT stored -- they are exposed read-only via the
+    ``mode_probs`` property while the filter object lives, but nothing
+    writes them to track metadata, so they do not survive a round trip
+    through storage. (This previously claimed they were stored.)
 
     Parameters
     ----------

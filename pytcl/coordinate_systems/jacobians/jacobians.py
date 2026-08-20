@@ -20,7 +20,9 @@ from typing import Callable, Literal, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-# Cache precision: quantize lat/lon to ~1m resolution (~1e-5 radians)
+# Cache precision: quantize lat/lon to 1e-5 rad, about 64 m on Earth --
+# NOT ~1 m as previously claimed (that needs 7 decimals). Frame error is
+# bounded by 5e-6 rad (~1 arcsec); measured worst deviation 5.0e-6.
 _JACOBIAN_CACHE_DECIMALS = 5
 
 
