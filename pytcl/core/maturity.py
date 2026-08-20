@@ -36,10 +36,10 @@ List all stable modules:
 >>> from pytcl.core.maturity import get_modules_by_maturity, MaturityLevel
 >>> stable_modules = get_modules_by_maturity(MaturityLevel.STABLE)
 
-How modules are classified
---------------------------
-The levels are a promise about breakage, so they are assigned from evidence
-rather than impression:
+Notes
+-----
+**How modules are classified.** The levels are a promise about breakage, so
+they are assigned from evidence rather than impression:
 
 - **STABLE** is never assigned automatically. Freezing an API is a release
   commitment, not something a coverage number implies; promoting a module
