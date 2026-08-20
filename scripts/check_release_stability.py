@@ -2,7 +2,7 @@
 
 The registry (``pytcl.core.maturity``) is a per-module promise about
 breakage: STABLE modules change API only in major bumps, MATURE ones may
-adjust in minors. Nothing enforced that until v2.6's audit ran the check by
+adjust in minors. Nothing enforced that until the post-v2.5.0 audit ran the check by
 hand and immediately caught a STABLE module (``core.validation``) with a
 breaking change queued for a minor release.
 

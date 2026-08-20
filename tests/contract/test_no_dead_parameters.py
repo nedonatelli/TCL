@@ -2,7 +2,7 @@
 
 A parameter that is accepted, documented, and never read is worse than a
 missing feature: callers tune it, tests pass it, and nothing moves. The
-v2.5/v2.6 audit found four of these the hard way (``KDTree.leaf_size``,
+post-v2.5.0 audit (2026-08) found four of these the hard way (``KDTree.leaf_size``,
 ``MultiTargetTracker.confirm_window``, ``RTree.min_entries``, RBPF's ``G``),
 and this gate's first sweep found five more that had survived every previous
 review (``marcum_q_inv``'s ``tol``/``max_iter`` beside a Notes section

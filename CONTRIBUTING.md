@@ -565,7 +565,8 @@ Lists every changed `pytcl` module with its registered maturity level, most
 binding first. STABLE modules promise API frozen until a major bump; for each
 one listed, decide -- and record in the CHANGELOG -- whether the change is
 non-breaking, needs a major bump, or justifies reclassification. Added after
-the v2.6 audit found a breaking change to a STABLE module queued for a minor
+the post-v2.5.0 audit (2026-08) found a breaking change to a STABLE
+module queued for a minor
 release, with nothing positioned to notice.
 
 ### 4. Run Quality Checks
