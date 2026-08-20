@@ -100,16 +100,26 @@ jobs:
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
       #
-      # Floor ratcheted 79 -> 82 on 2026-08-16: measured 85% on a local
-      # darwin run under CI-equivalent conditions (no MLX -- the Apple GPU
-      # layer is untraceable in this job, as are numba-jitted kernel
-      # bodies; JIT on), minus 3 points headroom for darwin-vs-ubuntu
-      # drift. Calibrate any future ratchet
-      # against a no-MLX measurement, not a local run with gpu-apple
-      # installed: the MLX layer's coverage inflates local numbers by ~5
-      # points relative to what this gate can ever see.
+      # NUMBA_DISABLE_JIT=1, as of 2026-08-20: coverage.py cannot trace
+      # inside jit-compiled functions, so with JIT on every @njit body
+      # counts as unexecuted however thoroughly the tests exercise it --
+      # gating.py reported 56% while actually at 94%, and the artifact hid
+      # ~50 lines of genuinely dead kernels in rotations.py behind the same
+      # number. Compiled behaviour is still verified: every other matrix
+      # cell runs the suite with JIT on; only this measurement leg
+      # interprets the kernels as Python so their lines count.
+      #
+      # Floor history: 79 -> 82 on 2026-08-16 (measured 85% local darwin,
+      # no MLX, JIT on, minus 3 headroom). Left at 82 for the JIT-disabled
+      # switch: local measurement is 93.3% but that includes the MLX layer
+      # (~+5 points) this job can never see, and per the calibration
+      # doctrine a ratchet needs a measurement under the gate's own
+      # conditions -- take the first CI run's number, subtract headroom,
+      # and ratchet then.
       - name: Run tests with coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        env:
+          NUMBA_DISABLE_JIT: "1"
         run: uv run pytest tests/ --cov=pytcl --cov-report=xml --cov-fail-under=82 --benchmark-skip -m "not examples" -q
 
       - name: Upload coverage to Codecov

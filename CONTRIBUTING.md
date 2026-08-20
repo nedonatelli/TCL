@@ -522,8 +522,11 @@ Current metrics (v2.5.0):
 - **Modules:** 189
 - **Tests:** 7,000+ (all passing; measured 7,880 via
   `pytest --collect-only -q`)
-- **Coverage:** 85% (measured under the coverage job's own conditions; CI
-  gate is `--cov-fail-under=82`)
+- **Coverage:** 93% local with `NUMBA_DISABLE_JIT=1` (the coverage job's
+  measurement mode since 2026-08-20 -- coverage.py cannot trace inside
+  jit-compiled kernels, so JIT-on numbers undercount; the local figure
+  includes the MLX layer CI cannot see). CI gate is `--cov-fail-under=82`,
+  pending recalibration from the first CI run under the new mode.
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric

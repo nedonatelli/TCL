@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **CI's coverage job now measures with `NUMBA_DISABLE_JIT=1`.**
+  coverage.py cannot trace inside jit-compiled functions, so with JIT on
+  every `@njit` body counted as unexecuted however thoroughly tested --
+  which both understated real coverage (gating.py: reported 56%, actual
+  94%) and hid dead code behind the same number. Compiled behaviour is
+  still verified by every other matrix cell; only the measurement leg
+  interprets kernels as Python. The 82% floor is deliberately left in
+  place pending recalibration from the first CI run under the new mode,
+  per the calibration doctrine: the local JIT-disabled figure (93.3%)
+  includes the MLX layer CI can never see. The numerical-fallback branches
+  in `gating.py` and `kalman/matrix_utils.py` -- eigh fallback for non-PD
+  square roots, determinant underflow guards, Cholesky-failure solve paths,
+  the n > 10 solve dispatch -- are now tested to 100% lines, including the
+  underflow route where a genuinely PD covariance's Cholesky-diagonal
+  product underflows float64 and the likelihood contract is 0.0.
 - **ZXZ Euler extraction was wrong at the beta = pi gimbal pole.**
   `rotmat2euler(R, "ZXZ")` used the beta = 0 formula at both singular poles,
   but the algebra differs: at beta = 0, `R[0,1] = -sin(alpha + gamma)`; at

@@ -1160,3 +1160,90 @@ class TestIMMEstimator:
         # Check that mode probs are valid
         np.testing.assert_allclose(np.sum(imm.mode_probs), 1.0, rtol=1e-10)
         assert np.all(imm.mode_probs >= 0)
+
+
+class TestMatrixUtilsFallbackPaths:
+    """The numerical-fallback branches nothing executed (JIT-disabled measure).
+
+    Each is the path taken when the well-conditioned route fails: Cholesky
+    raising on a non-PD matrix, or the product-of-diagonal determinant
+    underflowing to zero on a legitimately PD but tiny covariance. Silent
+    wrong turns in these branches are invisible precisely because they only
+    run on degenerate inputs.
+    """
+
+    def test_matrix_sqrt_eigh_fallback_on_non_pd_input(self):
+        """Lines 307-310: cholesky raises, eigh fallback clamps and proceeds."""
+        from pytcl.dynamic_estimation.kalman.matrix_utils import compute_matrix_sqrt
+
+        P = np.array([[1.0, 0.0], [0.0, -0.5]])  # indefinite: cholesky raises
+        sqrt_P = compute_matrix_sqrt(P, use_eigh_fallback=True)
+        reconstructed = sqrt_P @ sqrt_P.T
+        # the negative eigenvalue is clamped to ~0, positive one preserved
+        assert reconstructed[0, 0] == pytest.approx(1.0, abs=1e-9)
+        assert abs(reconstructed[1, 1]) < 1e-6
+
+        with pytest.raises(np.linalg.LinAlgError):
+            compute_matrix_sqrt(P, use_eigh_fallback=False)
+
+    def test_likelihood_underflowed_determinant_returns_zero(self):
+        """Line 373: cholesky SUCCEEDS but prod(diag)**2 underflows to 0.0.
+
+        diag(1e-200, 1e-200) is genuinely PD; the determinant computed as a
+        product of Cholesky diagonals underflows float64, and the function's
+        contract for that is 0.0 rather than a division by zero.
+        """
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_innovation_likelihood,
+        )
+
+        S = np.diag([1e-200, 1e-200])
+        assert compute_innovation_likelihood(np.array([0.1, 0.1]), S) == 0.0
+
+        # same guard on the S_is_cholesky=True path (line 361): the caller
+        # supplies the factor, whose diagonal product underflows identically
+        S_chol = np.diag([1e-200, 1e-200])
+        assert (
+            compute_innovation_likelihood(
+                np.array([0.1, 0.1]), S_chol, S_is_cholesky=True
+            )
+            == 0.0
+        )
+
+    def test_likelihood_cholesky_failure_falls_back_to_det(self):
+        """Lines 378-381: LinAlgError -> det fallback -> 0.0 for det <= 0."""
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_innovation_likelihood,
+        )
+
+        S = np.array([[1.0, 2.0], [2.0, 1.0]])  # indefinite, det = -3
+        assert compute_innovation_likelihood(np.array([0.1, 0.2]), S) == 0.0
+
+    def test_likelihood_cholesky_failure_with_positive_det_uses_solve(self):
+        """Line 383: the solve fallback for a non-PD matrix with det > 0.
+
+        -I fails Cholesky yet has det = +1 in even dimension, so the code
+        reaches the direct-solve branch. The quadratic form is negative
+        there, making the 'likelihood' mathematically meaningless -- the
+        assertion is only that the branch executes and returns a finite
+        float, since that is all the fallback promises.
+        """
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_innovation_likelihood,
+        )
+
+        value = compute_innovation_likelihood(np.array([0.1, 0.2]), -np.eye(2))
+        assert isinstance(value, float) and np.isfinite(value)
+
+    def test_mahalanobis_cholesky_failure_falls_back_to_solve(self):
+        """Lines 440-441, with an innovation giving a positive quadratic form."""
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_mahalanobis_distance,
+        )
+
+        S = np.array([[1.0, 2.0], [2.0, 1.0]])  # eigenvalues 3 and -1
+        innovation = np.array([1.0, 1.0])  # along the +3 eigenvector
+        expected = np.sqrt(innovation @ np.linalg.solve(S, innovation))
+        assert compute_mahalanobis_distance(innovation, S) == pytest.approx(
+            float(expected)
+        )
