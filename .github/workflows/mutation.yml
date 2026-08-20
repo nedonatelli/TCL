@@ -1,0 +1,83 @@
+name: Mutation
+
+# Weekly mutation testing over the STABLE-classified modules.
+#
+# Line/branch coverage says a line RAN; mutation testing says a test would
+# NOTICE if its logic changed. The post-v2.5.0 audit's recurring test
+# failure mode was assertions both correct and incorrect code satisfy
+# (d2 >= 0, shape-only checks, allclose tolerances wider than the bug) --
+# this job measures exactly that, weekly, on the modules whose registry
+# level promises "thoroughly tested".
+#
+# Report-only by design: a surviving mutant needs human triage (equivalent
+# mutants exist), so the job never fails the build. The report lands in the
+# run's step summary. The very first smoke run already surfaced survivors
+# in ValidationError.__init__, so the signal is real.
+#
+# Scope lives HERE as mutant-name patterns, not in [tool.mutmut] --
+# source_paths must stay the whole package or the mutants/ copy is an
+# incomplete package and unrelated test imports break (learned the hard
+# way; see pyproject.toml's comment).
+
+on:
+  schedule:
+    - cron: "0 4 * * 0"  # Sundays 04:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  mutate-stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # The 20 STABLE modules from pytcl.core.maturity, as mutant patterns.
+      # Regenerate with:
+      #   uv run python -c "from pytcl.core.maturity import *;
+      #     print(' '.join(f'\"pytcl.{m}*\"' for m,l in MODULE_MATURITY.items()
+      #           if l is MaturityLevel.STABLE))"
+      - name: Run mutation testing over the STABLE set
+        run: |
+          uv run mutmut run \
+            "pytcl.core.constants*" "pytcl.core.exceptions*" \
+            "pytcl.core.array_utils*" "pytcl.core.optional_deps*" \
+            "pytcl.dynamic_estimation.kalman.linear*" \
+            "pytcl.dynamic_estimation.kalman.extended*" \
+            "pytcl.dynamic_estimation.kalman.unscented*" \
+            "pytcl.dynamic_estimation.kalman.types*" \
+            "pytcl.dynamic_estimation.kalman.matrix_utils*" \
+            "pytcl.dynamic_models.discrete_time.polynomial*" \
+            "pytcl.dynamic_models.discrete_time.coordinated_turn*" \
+            "pytcl.dynamic_models.discrete_time.singer*" \
+            "pytcl.dynamic_models.process_noise.polynomial*" \
+            "pytcl.coordinate_systems.conversions.geodetic*" \
+            "pytcl.coordinate_systems.conversions.spherical*" \
+            "pytcl.coordinate_systems.rotations.rotations*" \
+            "pytcl.assignment_algorithms.gating*" \
+            "pytcl.assignment_algorithms.two_dimensional.assignment*" \
+            "pytcl.containers.base*" "pytcl.containers.kd_tree*" \
+            || true
+
+      - name: Publish survivor report
+        if: always()
+        run: |
+          {
+            echo "## Mutation results (STABLE modules)"
+            echo '```'
+            uv run mutmut results 2>/dev/null | grep -v "not checked" | tail -200
+            echo '```'
+            echo "Surviving mutants are logic changes no unit/validation test noticed."
+            echo "Triage each: strengthen the test, or record it as an equivalent mutant."
+          } >> "$GITHUB_STEP_SUMMARY"
