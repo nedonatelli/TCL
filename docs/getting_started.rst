@@ -253,7 +253,7 @@ The library provides several filtering algorithms:
    def h_meas(x, y):  # Measurement combines both parts
        return y + x
 
-   rbpf.predict(g=g_nl, G=np.eye(1), Qy=0.01 * np.eye(1),
+   rbpf.predict(g=g_nl, Qy=0.01 * np.eye(1),
                 f=f_lin, F=np.eye(1), Qx=0.01 * np.eye(1))
    rbpf.update(z=np.array([1.2]), h=h_meas, H=np.eye(1), R=0.1 * np.eye(1))
    y_est, x_est, P_est = rbpf.estimate()

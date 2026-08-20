@@ -119,6 +119,7 @@ def plot_nees_sequence(
     n_dims: int = 2,
     confidence: float = 0.95,
     title: str = "NEES Over Time",
+    metric_name: str = "NEES",
 ) -> "go.Figure":
     """
     Plot Normalized Estimation Error Squared with confidence bounds.
@@ -135,6 +136,10 @@ def plot_nees_sequence(
         Confidence level for bounds. Default is 0.95.
     title : str, optional
         Figure title.
+    metric_name : str, optional
+        Name used for the series and the y-axis. Defaults to ``"NEES"``;
+        `plot_nis_sequence` passes ``"NIS"`` so its chart is not labelled
+        with the wrong statistic.
 
     Returns
     -------
@@ -192,14 +197,14 @@ def plot_nees_sequence(
             mode="lines+markers",
             line=dict(color="blue", width=2),
             marker=dict(size=4),
-            name="NEES",
+            name=metric_name,
         )
     )
 
     fig.update_layout(
         title=title,
         xaxis_title="Time",
-        yaxis_title="NEES",
+        yaxis_title=metric_name,
         yaxis=dict(range=[0, max(nees_values.max() * 1.1, upper_bound * 1.5)]),
     )
 
@@ -232,7 +237,10 @@ def plot_nis_sequence(
     Returns
     -------
     fig : go.Figure
-        Plotly figure.
+        Plotly figure, with the series and y-axis labelled ``NIS``. This
+        shares `plot_nees_sequence`'s implementation, which previously
+        hardcoded ``NEES`` in both places -- so a NIS chart came back
+        labelled with the other statistic.
     """
     return plot_nees_sequence(
         nis_values,
@@ -240,6 +248,7 @@ def plot_nis_sequence(
         n_dims=n_meas,
         confidence=confidence,
         title=title,
+        metric_name="NIS",
     )
 
 

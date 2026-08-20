@@ -9,8 +9,11 @@ without requiring Jacobian computation.
 
 All array work is dispatched through :mod:`pytcl.gpu._backend`, so the same
 code runs on CuPy (NVIDIA CUDA, float64) and on MLX (Apple Silicon, float32).
-The nonlinear functions ``f`` and ``h`` are evaluated on the host, so sigma
-points are transferred back and forth once per call on either backend.
+The nonlinear functions ``f`` and ``h`` receive the flattened sigma points as
+a single *device* array and must be written against
+:func:`pytcl.gpu.utils.get_array_module` rather than NumPy directly -- the same
+contract every other filter in :mod:`pytcl.gpu` uses. A callable that mixes a
+host NumPy array into the expression raises ``TypeError`` on CuPy.
 
 Key Features
 ------------

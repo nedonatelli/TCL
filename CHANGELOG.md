@@ -58,7 +58,349 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   subpackage had a page. All 22 subpackages are now reachable from the API
   reference.
 
+### Changed
+- **BREAKING: removed `G` from `RBPFFilter.predict` and `rbpf_predict`.**
+  Documented as "Jacobian of g with respect to y (for covariance
+  propagation)" and read by neither -- it appeared only in the two
+  signatures, the two docstrings and a doctest. It is not implementable
+  rather than merely unimplemented: in a Rao-Blackwellised particle filter
+  the nonlinear state is carried by the particle cloud, each particle holding
+  a single point with the uncertainty living in the spread across particles,
+  so there is no nonlinear covariance for a Jacobian to propagate. Only the
+  linear component, marginalised per particle, has one, and `F` propagates
+  that. `G` was the second positional parameter, so existing calls fail with
+  a `TypeError` naming the arity rather than silently rebinding -- drop the
+  argument. The Notes on both functions now record why no such parameter
+  exists, so it is not re-added.
+- **Eighteen docstring corrections from the audit's verified tail.** The
+  serious one: `IMMPrediction.mode_probs` was documented "unchanged during
+  prediction" when the transition matrix has already been applied -- wrong
+  in the dangerous direction, since a caller re-applying `Pi` would
+  double-predict, and `imm_update` relies on receiving the predicted
+  values. Also corrected: `GaussianSumFilter.max_components` and
+  `RBPFConfig.max_particles` are merge targets, not caps (verified: six
+  separated components stay six against `max_components=3`);
+  `resample_threshold` scales the current particle count, not
+  `max_particles`; `ConstrainedEKF.predict` neither enforces nor checks
+  constraints; the Singer example's "3g maneuvers" comment (3 m/s^2 is
+  ~0.3 g); `INSGNSSState.error_state` "15 or 17" (nothing yields 17);
+  `GNSSMeasurement.position_cov` now states its `[rad^2, rad^2, m^2]`
+  units -- the v2.0.0 breaking-change field was the only one in the class
+  with no units, and metres^2 there inflates R by ~1e13; the
+  `tight_coupled_measurement_matrix` clock-drift column that is never
+  populated; `ins_process_noise_matrix`'s state argument (enters only as
+  `R @ R.T`, the identity); a dangling `nutation_angles` cross-reference;
+  `semi_major_axis_from_energy`'s near-zero (not exactly-zero) raise;
+  three cache-precision comments off by 10^2-10^4 (jacobians "~1 m" is
+  64 m; Vincenty/great-circle "~0.01 mm" is 0.64 mm; the INS-GNSS pole
+  floor "6 cm" is 6 um); `get_track_trajectory`'s "binary search" (a
+  linear mask); `IMMTrackAdapter` claiming to store mode probabilities
+  (nothing writes them); `TrackerDatabaseAdapter`'s phantom `process_scan`
+  support; two incomplete detection-record key lists; `CoverTree`'s class
+  docstring asserting guarantees its own module docstring disclaims;
+  `F107Index.ap_array` "derived from ap" (a plain None default);
+  `min_cost_flow`'s complexity claim omitting its Bellman-Ford
+  initialisation; `get_backend`'s priority note (detection is MLX-first,
+  compute is CuPy-first); and the diagnostics NIS guard's undocumented
+  positive-mean condition.
+- **Four defect classes from the audit now have permanent gates.**
+  (1) `tests/contract/test_no_dead_parameters.py` fails on any public
+  parameter that is accepted but never read -- the class behind
+  `leaf_size`, `confirm_window`, `min_entries` and RBPF's `G`. Its first
+  sweep found five more that had survived every prior review, all now
+  removed (BREAKING where positional): `marcum_q_inv`'s `tol`/`max_iter`
+  (beside a Notes section claiming Newton-Raphson iteration; the body is a
+  closed-form `ncx2.isf` call -- Notes corrected),
+  `matched_filter_frequency`/`optimal_filter`'s `fs` (documented "used for
+  output scaling", scaled nothing), `parse_earth2014_binary`'s `layer`,
+  `fisher_information_exponential_family`'s `h`, and
+  `associated_legendre_scaled`'s `scale`. Interface stubs, cache-keyed
+  parameters and nested callbacks are exempt structurally; documented
+  contracts (SDE `f(x, t)` signatures, inclination-independent precession)
+  sit on an allowlist whose stale entries fail the gate from the other
+  direction. (2) CI coverage adds `--cov-branch` -- line coverage counted
+  the never-taken ZXZ gimbal branch as covered; measured cost 0.9 points.
+  (3) `scripts/check_release_stability.py` lists changed modules against
+  their registry promises (the by-hand check that caught `core.validation`,
+  mechanized; wired into CONTRIBUTING's release checklist). (4)
+  `tests/contract/test_markdown_code_blocks.py` executes python fences in
+  tracked markdown -- the gap the phantom `egm2008` example lived in; its
+  first run caught README's GPU quick-start referencing an undefined
+  `states`, now fixed. Illustrative files are excluded by name with
+  reasons.
+- **CI's coverage job now measures with `NUMBA_DISABLE_JIT=1`.**
+  coverage.py cannot trace inside jit-compiled functions, so with JIT on
+  every `@njit` body counted as unexecuted however thoroughly tested --
+  which both understated real coverage (gating.py: reported 56%, actual
+  94%) and hid dead code behind the same number. Compiled behaviour is
+  still verified by every other matrix cell; only the measurement leg
+  interprets kernels as Python. The 82% floor is deliberately left in
+  place pending recalibration from the first CI run under the new mode,
+  per the calibration doctrine: the local JIT-disabled figure (93.3%)
+  includes the MLX layer CI can never see. The numerical-fallback branches
+  in `gating.py` and `kalman/matrix_utils.py` -- eigh fallback for non-PD
+  square roots, determinant underflow guards, Cholesky-failure solve paths,
+  the n > 10 solve dispatch -- are now tested to 100% lines, including the
+  underflow route where a genuinely PD covariance's Cholesky-diagonal
+  product underflows float64 and the likelihood contract is 0.0.
+- **ZXZ Euler extraction was wrong at the beta = pi gimbal pole.**
+  `rotmat2euler(R, "ZXZ")` used the beta = 0 formula at both singular poles,
+  but the algebra differs: at beta = 0, `R[0,1] = -sin(alpha + gamma)`; at
+  beta = pi, `R[0,1] = +sin(alpha - gamma)`. The extracted alpha came back
+  sign-flipped and the recomposed matrix did not reproduce R. Found by
+  writing a test for the branch, which coverage showed had never executed
+  under any test. Now pinned by a 240-case recomposition property including
+  both poles (worst error 6.6e-15).
+- **Coverage on the low-coverage STABLE modules was mostly a measurement
+  artifact -- and partly real.** coverage.py cannot see inside
+  `@njit`-compiled functions, so `gating.py`'s reported 56% is actually 94%
+  when measured with `NUMBA_DISABLE_JIT=1` (library total 90.8% -> 93.3%).
+  The real gaps found and closed: `conversions/spherical.py` 80% -> 100%
+  (scalar returns, row-major layout dispatch, array round-trips) and
+  `conversions/geodetic.py` 80% -> 99% (transpose branches, SEZ batch and
+  default-reference paths, the `ned2ecef` ENU detour), plus a dead
+  duplicate `if/else` removed. In `rotations.py` the JIT-disabled run showed
+  its three `_rot[xyz]_inplace` kernels were not invisible-but-tested but
+  genuinely never called; ~50 lines of dead code removed.
+- **`ruv2cart`'s upper-hemisphere assumption is now documented.** `u` and
+  `v` fix only the x/y direction cosines and the third is recovered as
+  `sqrt(1 - u^2 - v^2)`, never negative -- so a target below the x-y plane
+  comes back with z mirrored and `ruv2cart(*cart2ruv(p))` round-trips only
+  for `z >= 0`. This was stated in an inline comment ("assuming positive
+  z") and nowhere a caller could see it; surfaced when the new round-trip
+  test failed for negative z. Both converters now carry the caveat and a
+  test pins the mirroring so it stays documented.
+- **`core.validation` reclassified STABLE -> MATURE.** This release changes
+  `ensure_positive_definite` to reject singular matrices, which STABLE's
+  contract ("API frozen; breaking changes only in major version bumps")
+  would have deferred to a major release. MATURE permits minor API
+  adjustments, which is what this is. The frozen-API claim was aspirational
+  rather than enforced -- nothing checked it, which is how the change reached
+  a minor bump unnoticed until the repaired registry surfaced it.
+- **The maturity registry now covers every module.** 79 leaf modules had no
+  classification, so `get_maturity` answered EXPERIMENTAL for them by default
+  rather than by assessment -- indistinguishable from a module deliberately
+  marked unstable. Eight packages had no entries at all (`io`, `gpu`,
+  `clustering`, `plotting`, `atmosphere`, `performance_evaluation`,
+  `diagnostics`, `transponders`), which maps almost exactly onto what shipped
+  after the registry was first written. Classified from evidence against a
+  rubric now stated in the module docstring: MATURE requires >=90% line
+  coverage, no behaviour change this release, and a path CI can execute;
+  everything else is EXPERIMENTAL. All seven `gpu` modules are EXPERIMENTAL
+  regardless of their coverage figure, because no CI runner reaches the CuPy
+  branch so the number reflects only the MLX half. No module was promoted to
+  STABLE: freezing an API is a release commitment, not something coverage
+  implies. Registry goes from 67 to 146 entries (22 STABLE, 86 MATURE, 38
+  EXPERIMENTAL), and a second contract test now fails if any module is left
+  unclassified.
+- **The module maturity registry was 41% stale, silently downgrading real
+  modules.** 32 of `MODULE_MATURITY`'s 78 entries named paths from the
+  pre-2.0 layout. Because `get_maturity` looks up by exact path and returns
+  `EXPERIMENTAL` for anything unregistered, a module whose file moved lost
+  its classification without a trace: `navigation.ins` and `trackers.mht`
+  reported EXPERIMENTAL despite being recorded MATURE, under the old paths
+  `navigation.ins.strapdown` and `assignment_algorithms.mht`. Eleven STABLE
+  and twelve MATURE assessments were affected. Every stale entry has been
+  remapped to the module that now holds the code, preserving its recorded
+  level (11 pairs collapsed onto shared successors -- `hungarian` and
+  `auction` both live in `two_dimensional.assignment` now). A new contract
+  test imports every registered path, so the registry cannot drift through
+  another reorganisation unnoticed.
+- **`TrackDatabaseManager.open(mode='r')` created the database it was meant
+  to read** and accepted any string as a mode. Opening a mistyped path for
+  reading produced an empty file, and the first query then failed with
+  `no such table: detections` -- reporting a missing table rather than the
+  missing database the caller actually had. This is the defect gh-21 fixed
+  for `SQLStorage`, which was not applied to this class at the time. Read
+  mode now raises `FileNotFoundError`, and an invalid mode raises
+  `ValueError`.
+- **Documentation corrected where it overstated an API's reach:**
+  `MigrationHelper.generate_v2_template` listed five filter types as though
+  each had a template when four exist, so `'imm'` and `'particle'` return
+  Kalman scaffolding and the `hdf5`/`both` backends ignore `filter_type`
+  entirely -- deliberate graceful fallback, now described rather than
+  implied away. `to_gpu`/`ensure_gpu_array` document `dtype` as honoured
+  when MLX has no float64, so every float array is float32 on Apple Silicon
+  and the declared `float64` default is unreachable there.
+  `GaussianMixture.prune` also renormalizes surviving weights and keeps the
+  highest-weight component when all fall below the threshold; neither was
+  stated. `CuPyExtendedKalmanFilter`'s class example indexed `x[0]` as a
+  single state, violating the batched-callback contract the module
+  documents -- its doctest passed only because it never called `predict`.
+- **`plot_nis_sequence` produced a chart labelled NEES.** It forwards to
+  `plot_nees_sequence`, which hardcoded `"NEES"` as both the y-axis title and
+  the series name; only `title` passed through. NEES and NIS are different
+  statistics -- state error against state covariance versus innovation
+  against innovation covariance -- so a NIS plot claimed the wrong one. The
+  chi-squared bounds were always correct (the two functions already took
+  `n_dims` and `n_meas` respectively); only the label lied.
+  `plot_nees_sequence` gains a `metric_name` argument, defaulting to
+  `"NEES"`, so the shared implementation can label either.
+- **`configure_magnetic_cache(precision=...)` did not clear the cache**,
+  contradicting its own Notes ("Changing cache configuration clears the
+  existing cache"). Only the `maxsize` branch cleared. Entries are keyed by
+  the quantized inputs, so a precision-only change stranded every existing
+  entry under the old key scheme: a later lookup either misses and leaks, or
+  hits a value rounded differently from what the caller now asked for. The
+  existing `test_reconfiguring_starts_from_empty` could not catch it -- it
+  exercises the `maxsize` branch, which always cleared.
+- **`great_circle_tdoa_loc` returned locations that failed its own validity
+  check**, because the second-solution search clobbered a receiver's
+  coordinates. Its iterate was named `lat2`/`lon2` -- the parameter names for
+  receiver 2, which the objective closure reads -- so the first descent step
+  rebound them and the objective thereafter measured the distance from the
+  trial point to *itself* rather than to receiver 2. Both the search and the
+  `> 1e-6` residual gate then ran against a corrupted function, and locations
+  with a true residual of 6.2 were returned as valid. Renaming the iterate
+  drops the worst returned residual over 30 random configurations from 6.17
+  to 2.7e-07. Also corrects the `tdoa12`/`tdoa13` sign convention, documented
+  as "positive means the signal arrived at receiver 1 first" when the solver
+  drives `d1 - d2` toward `tdoa12 * speed / radius`, so positive means it
+  reached receiver *2* first; the existing test had been passing the correct
+  `t1 - t2` all along, with nothing comparing it against the prose. The
+  refinement is normalized-gradient descent, not the "Newton-Raphson" a
+  comment claimed -- no second derivative is formed. A new warning records
+  the measured limitation that `loc2` is found in only 2 of 30 cases, so a
+  single returned location is one of two candidates rather than the emitter.
+- **`RTree(min_entries=...)` is now honoured or refused, not silently
+  violated.** It was accepted, stored, and consulted nowhere:
+  `RTree(max_entries=4, min_entries=3)` filled with 20 boxes produced leaves
+  of size 2. Because this tree is insert-only there is no deletion underflow
+  for the parameter to govern, so it can only constrain splits -- and a node
+  splits at `max_entries + 1` entries into halves, leaving the smaller side
+  with `(max_entries + 1) // 2`. Nothing larger is reachable by any split, so
+  an unsatisfiable `min_entries` now raises at construction with the largest
+  workable value named, rather than being accepted and quietly broken. The
+  existing median split already satisfies every satisfiable value, verified
+  across `max_entries` in {2, 3, 4, 5, 10, 16} at 5 to 200 points.
+  `max_entries < 2` is rejected too; it previously yielded `min_entries=0`.
+- **`KDTree(leaf_size=...)` now does what it says.** `_build_tree` recursed
+  to one point per node and never read `self.leaf_size`, so the documented
+  "Maximum number of points in a leaf node" had no effect -- while `BallTree`
+  in the same module honoured the identical parameter. Nodes now stop
+  splitting at `leaf_size` and hold a bucket scanned exhaustively at query
+  time, which is the standard construction. Query results are unchanged:
+  verified identical to brute force over 1,120 checks spanning `leaf_size` in
+  {1, 2, 10, 1000}, both `query` and `query_radius`.
+- **BREAKING: `MultiTargetTracker` confirmation is now the documented M-of-N
+  rule.** `confirm_window` was accepted, stored, and never read: confirmation
+  compared a cumulative lifetime `hits` count against `confirm_hits`, so a
+  track that scraped together enough detections over any span eventually
+  confirmed however sparse they were, and passing a different
+  `confirm_window` changed nothing. The class docstring, the parameter
+  docstring and `MultiTargetConfig` all described M-of-N. Confirmation now
+  reads a bounded window of the most recent association outcomes, and the
+  initiating detection counts toward it, so `confirm_hits=3` means three
+  detections rather than four. Tracks in sparse-detection scenarios that
+  previously confirmed may now stay tentative -- raise `confirm_window` to
+  recover the old behaviour. `Track.hits` is unchanged and remains a
+  cumulative lifetime count.
+- **BREAKING: `decode_ais` and `ais_position_reports` now validate NMEA
+  checksums by default.** A sentence whose trailing `*hh` does not match the
+  XOR of its body -- or which carries no `*hh` at all -- is skipped instead
+  of decoded. Previously nothing was validated: `pyais.stream.IterMessages`
+  does not enforce `NMEAMessage.is_valid`, so a corrupted sentence decoded to
+  a plausible but wrong latitude and longitude, silently. Pass
+  `validate_checksum=False` to restore the old behaviour when ingesting a
+  feed known to carry bad checksums. NMEA 4.10 TAG blocks
+  (`\s:...,c:...*hh\`) and receiver-timestamp prefixes are handled: the
+  checksum is computed from the sentence's own leading `!`/`$`, not from the
+  start of the line. Verified against `tests/fixtures/ais` (6,831 real
+  sentences off Norway, 6,774 of them TAG-blocked): zero rejections.
+- **`pytcl.core.ensure_positive_semidefinite`** -- the validating
+  counterpart to `is_positive_semidefinite`, and where callers who relied on
+  `ensure_positive_definite`'s old leniency should go. A covariance may
+  legitimately be singular (a perfectly known state component gives a zero
+  eigenvalue), so that behaviour needed an honest home rather than deletion.
+- **`pytcl.transponders.nmea_checksum`** -- new public function computing a
+  sentence's `*hh`, the counterpart to MATLAB's `NMEAChecksum` and the last
+  of that directory's three functions to be ported.
+
 ### Fixed
+- **`MultiTargetTracker`'s `init_covariance` default was documented as
+  `100 * R` projected to the state space; it is `100 * I`.** Corrected in
+  both the tracker and `MultiTargetConfig`. Also corrects an inline comment
+  in `mht.py` claiming MHT confirm/delete "go by M-of-N" -- they go by
+  cumulative `n_hits` and consecutive `n_misses`; `MultiTargetTracker` is the
+  one with a windowed rule.
+- **`HDF5Storage.store_scalar` now replaces on collision, matching
+  `SQLStorage` and the `store_array` contract.** The gh-21 fix that unified
+  the array path was never applied to the scalar path, so the identical
+  backend divergence sat one method down: SQL replaced while HDF5 let h5py
+  raise `ValueError` on an existing name. The base class now states the
+  scalar contract alongside the array one, and the backend-parametrized
+  contract test covers it (verified failing against the unfixed backend).
+- **Every STABLE-classified module now meets the maturity rubric's evidence
+  bar** (>=90% coverage under `NUMBA_DISABLE_JIT=1` with `--cov-branch`).
+  Closing the gaps found two more dead `@njit` kernels in `rotations.py`
+  (`_euler_zyx_to_rotmat`, `_matmul_3x3` -- same never-called optimization
+  pass as the three removed earlier; the file no longer imports numba at
+  all), and covered: `q_poly_kal`'s multi-dimension block-diagonal path,
+  `auction`'s rectangular-transpose and single-column paths, `assign2d`'s
+  maximize branch, both sigma-point sets' near-singular eigendecomposition
+  fallbacks, `ckf_update`'s custom-points validation, both UKF/CKF updates'
+  singular-innovation zero-likelihood guards, and `optional_deps`'
+  install-command and availability-flag branches. Library honest-branch
+  coverage: 92.4% -> 93.8%.
+- **BREAKING: `ensure_positive_definite` accepted singular matrices and no
+  longer does** -- the same
+  defect as gh-23, in the half of the pair that fix never reached. Its guard
+  was `min(eigenvalues) < -rtol * max|lambda|`, a *negative* threshold, so it
+  only fired on eigenvalues meaningfully below zero and `diag(1, 0)` passed a
+  function whose name, summary line and `Raises` clause all promise
+  definiteness. `ArraySpec(positive_definite=True)` inherited the gap.
+  `is_positive_definite` was corrected under gh-23 and its Notes still
+  describe the identical expression; nothing compared the predicate against
+  the validator, so they drifted. They are now pinned to agree by a test over
+  200 random matrices seeded with deliberately singular and indefinite cases.
+  The existing test could not have caught this: its negative case is
+  indefinite, and an indefinite matrix fails both the definite and the
+  semidefinite test -- only a singular matrix distinguishes them.
+- **Two documented quantities were not the quantities returned.**
+  `SingleTargetTracker.update`'s second return value was documented as
+  "Measurement likelihood (Mahalanobis distance)"; it is the *squared*
+  Mahalanobis distance, so it is neither, and a caller thresholding it as a
+  likelihood -- larger is better -- inverts the association decision. It is
+  now documented as `gate_distance`, with its chi-squared relationship to
+  `gate_threshold` stated and the untouched-state-on-rejection behaviour
+  spelled out. The gating itself was always correct, and `MHTTracker` already
+  keeps distance and likelihood distinct, so only the docstring dissented.
+  Separately, `Spectrogram.power` was documented as `|STFT|^2` but carries
+  whichever normalisation `scaling`/`mode` select -- at the defaults a power
+  spectral *density*, differing by `fs * sum(window**2) / 2`, which is 24,000
+  at fs=1000 with a 128-point Hann window and moves with both. Neither
+  behaviour changed; both are pinned by tests computing the quantity
+  independently.
+- **`stereographic` and `azimuthal_equidistant` returned a back-azimuth in
+  `ProjectionResult.convergence`, not a grid convergence.** Both filled the
+  field with the azimuth formula transposed -- `lat` and `lat0` swapped in
+  every position -- so a point sitting on the projection's own central
+  meridian, directly north of the centre, was reported as having 180 degrees
+  of grid convergence where the true value is zero. Off-meridian was wrong
+  too: 89.65 degrees against a true 0.70 at one degree of longitude from a
+  45-degree centre. The other four producers (`transverse_mercator`,
+  `polar_stereographic`, `lambert_conformal_conic`, `mercator`) were correct
+  throughout, which is what established both the convention and the
+  measurement method. Now derived properly: `stereographic` is conformal so
+  its convergence is `back_azimuth - azimuth - pi` on the conformal sphere,
+  while `azimuthal_equidistant` is not conformal and needs the tangential
+  `c / sin(c)` term. Both verified against finite differences of the
+  projection itself to ~1e-9 rad over 300 random configurations.
+  `TestGridConvergenceMatchesTheProjection` now checks every producer that
+  way, rather than any one of them in isolation.
+- **`azimuthal_equidistant`'s `scale` is documented rather than left
+  implicit.** It returns the radial scale, exactly 1 by construction. The
+  projection is not conformal, so the tangential scale differs -- `c/sin(c)`,
+  about 1.11 at 5,000 km -- and the Notes now say so instead of leaving
+  "scale factor at the point" to be read as both.
+- **pytcl's canonical AIS test sentence carried an invalid checksum.** The
+  published vector is channel B (`!AIVDM,1,1,,B,...*5C`); pytcl had changed
+  it to channel A while keeping `5C`, whose correct value on channel A is
+  `5F`. It appeared in `pytcl/transponders/ais.py`,
+  `pytcl/transponders/__init__.py`, `tests/unit/test_ais.py` and
+  `docs/results_io.rst`, and passed everywhere only because nothing
+  validated checksums. Restored to channel B.
+
 - **The docs code-block gate could not catch the first defect class it
   documents.** `tests/contract/test_docs_code_blocks.py` skipped any page
   whose last stderr line contained `ModuleNotFoundError`, treating it as an

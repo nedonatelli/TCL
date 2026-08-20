@@ -96,8 +96,12 @@ class CoverTree(MetricSpatialIndex):
 
     Notes
     -----
-    Cover trees provide theoretical guarantees based on the expansion
-    constant of the data. For well-distributed data, queries are
+    The classical cover tree's guarantees (O(c^12 log n) queries in the
+    expansion constant c) do NOT apply to this implementation -- the module
+    docstring details the simplifications: insertion does not maintain the
+    strict cover invariant, and query pruning uses a per-node max-descendant
+    bound instead of the level radius. Results are exact; the guarantees
+    that are lost are about running time. For well-distributed data, queries are
     efficient even in high dimensions.
 
     The implementation uses a simplified version of the original

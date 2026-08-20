@@ -5,7 +5,7 @@ Overview
 --------
 
 ``pytcl`` is **145 modules** across **22 implemented packages**, exporting about
-1044 public names. There is no framework object to inherit from: the library is a
+1046 public names. There is no framework object to inherit from: the library is a
 set of composable functions and small result types, so a tracker is something you
 assemble rather than something you subclass.
 
@@ -186,7 +186,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Spatial indices (k-d tree, R-tree, VP-tree, cover tree) and track sets
    * - ``core``
      - 7
-     - 71
+     - 72
      - Constants, exceptions, validation, array helpers, data paths
    * - ``dynamic_models``
      - 7
@@ -250,8 +250,9 @@ Counts are measured from the packages themselves rather than asserted;
      - Opt-in loguru logging, ASCII-safe rich progress bars and track tables
    * - ``transponders``
      - 1
-     - 4
-     - AIS NMEA decoding and position-report extraction (pyais)
+     - 5
+     - AIS NMEA decoding, checksum validation, and position-report
+       extraction (pyais)
 
 Composition Examples
 --------------------

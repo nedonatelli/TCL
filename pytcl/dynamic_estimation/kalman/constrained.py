@@ -120,8 +120,10 @@ class ConstrainedEKF:
         """
         Constrained EKF prediction step.
 
-        Performs standard EKF prediction (constraints not enforced here,
-        only checked). Constraint enforcement happens in update step.
+        Performs standard EKF prediction. Constraints are neither enforced
+        nor checked here -- the body is a plain ``ekf_predict`` call and
+        ``self.constraints`` is not consulted, so a predicted state may
+        violate them silently. Enforcement happens in the update step.
 
         Parameters
         ----------

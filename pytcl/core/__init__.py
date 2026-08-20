@@ -88,6 +88,7 @@ from pytcl.core.validation import (
     ensure_2d,
     ensure_column_vector,
     ensure_positive_definite,
+    ensure_positive_semidefinite,
     ensure_row_vector,
     ensure_square_matrix,
     ensure_symmetric,
@@ -142,6 +143,7 @@ __all__ = [
     "ensure_square_matrix",
     "ensure_symmetric",
     "ensure_positive_definite",
+    "ensure_positive_semidefinite",
     # Array utilities. array_utils is a public module of general-purpose
     # helpers and every public name in it is re-exported here. The previous
     # selection had no rationale: wrap_to_pi/wrap_to_2pi/wrap_to_range were

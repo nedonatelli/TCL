@@ -220,7 +220,8 @@ class MigrationHelper:
             elif ftype == "imm":
                 recs.append(
                     "Use IMMTrackAdapter from pytcl.io.compat to persist "
-                    "combined IMM state and mode probabilities."
+                    "the combined IMM state (mode probabilities stay on the "
+                    "live filter object; they are not persisted)."
                 )
             elif ftype == "particle":
                 recs.append(
@@ -363,8 +364,12 @@ class MigrationHelper:
         backend : str
             Target backend: 'sql', 'hdf5', or 'both'. Default is 'sql'.
         filter_type : str
-            Filter type: 'kf', 'ekf', 'ukf', 'imm', 'particle'.
-            Default is 'kf'.
+            Filter type. Default is 'kf'. Only three distinct templates
+            exist -- ('sql', 'kf'), ('sql', 'ekf') which 'ukf' also uses,
+            and one apiece for the 'hdf5' and 'both' backends. Anything else,
+            including 'imm' and 'particle', falls back to the nearest
+            template for that backend; the returned source names which one it
+            is in its own header.
         n_targets : int
             Number of targets in the template. Default is 3.
 
@@ -372,6 +377,14 @@ class MigrationHelper:
         -------
         str
             Python source code for the tracking pipeline template.
+
+        Notes
+        -----
+        The parameter list previously read "'kf', 'ekf', 'ukf', 'imm',
+        'particle'" as though each had its own template. Four templates
+        exist. ``'imm'`` and ``'particle'`` return Kalman scaffolding, and
+        the 'hdf5' and 'both' backends ignore ``filter_type`` entirely --
+        deliberate, but not what the list implied.
         """
         templates = {
             ("sql", "kf"): self._template_sql_kf,
@@ -383,7 +396,10 @@ class MigrationHelper:
 
         key = (backend, filter_type)
         if key not in templates:
-            # Fall back to closest match
+            # Deliberate graceful fallback (see test_fallback_template): an
+            # unrecognised combination returns the nearest template rather
+            # than failing. The template's own header names what it is, so
+            # the substitution is visible in the output.
             for fallback_filter in ["kf", "ekf"]:
                 if (backend, fallback_filter) in templates:
                     key = (backend, fallback_filter)

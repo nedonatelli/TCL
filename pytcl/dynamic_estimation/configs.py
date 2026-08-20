@@ -57,8 +57,9 @@ class GaussianSumConfig(msgspec.Struct, frozen=True):
     Attributes
     ----------
     max_components : int, default 5
-        Maximum number of Gaussian mixture components retained after
-        pruning and merging.
+        Merge target for the mixture size. Not a hard maximum: merging
+        stops when the closest pair exceeds ``merge_threshold``, so
+        well-separated components can leave the count above this.
     merge_threshold : float, default 0.01
         KL-divergence threshold below which two components are merged.
     prune_threshold : float, default 1e-3
@@ -76,10 +77,13 @@ class RBPFConfig(msgspec.Struct, frozen=True):
     Attributes
     ----------
     max_particles : int, default 100
-        Number of particles in the filter.
+        Merge target for the particle count (used by ``_merge_particles``).
+        The number of particles is set by ``initialize(num_particles=...)``,
+        not by this -- the two are independent, and ``max_particles=5`` with
+        ``num_particles=50`` runs 50 particles.
     resample_threshold : float, default 0.5
-        Effective-sample-size fraction (of `max_particles`) below which
-        particles are resampled.
+        Effective-sample-size fraction of the CURRENT particle count (not of
+        ``max_particles``) below which particles are resampled.
     merge_threshold : float, default 0.5
         KL-divergence threshold below which nearby particles are merged.
     """

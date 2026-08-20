@@ -522,8 +522,10 @@ Current metrics (v2.5.0):
 - **Modules:** 189
 - **Tests:** 7,000+ (all passing; measured 7,880 via
   `pytest --collect-only -q`)
-- **Coverage:** 85% (measured under the coverage job's own conditions; CI
-  gate is `--cov-fail-under=82`)
+- **Coverage:** 88.80% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+  `--cov-branch`, no MLX -- run 32393664562); 93.8% locally where the MLX
+  layer is traceable. CI gate is `--cov-fail-under=85` (measurement minus
+  the house 3-point headroom).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
@@ -551,6 +553,20 @@ Copy examples from the root `examples/` directory to `docs/examples/`:
 ```bash
 cp examples/*.py docs/examples/
 ```
+
+### 3b. Check the diff against the stability registry
+
+```bash
+uv run python scripts/check_release_stability.py <last-release-tag>
+```
+
+Lists every changed `pytcl` module with its registered maturity level, most
+binding first. STABLE modules promise API frozen until a major bump; for each
+one listed, decide -- and record in the CHANGELOG -- whether the change is
+non-breaking, needs a major bump, or justifies reclassification. Added after
+the post-v2.5.0 audit (2026-08) found a breaking change to a STABLE
+module queued for a minor
+release, with nothing positioned to notice.
 
 ### 4. Run Quality Checks
 

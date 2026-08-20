@@ -266,11 +266,10 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        a pure-Python decoder, rather than a libais binding, so the two are
        functionally equivalent but not the same implementation. Validated
        against 6,808 real position reports from 299 ships off Norway (see
-       :doc:`results_io`). **Missing:** any ``NMEAChecksum`` equivalent --
-       pytcl performs no checksum validation at all. ``decode_ais`` goes
-       through ``pyais.stream.IterMessages``, which does not enforce
-       ``NMEAMessage.is_valid``, so a sentence with a deliberately corrupted
-       ``*hh`` decodes cleanly (gh-TBD). Also missing:
+       :doc:`results_io`). ``NMEAChecksum`` is ported too, as
+       ``nmea_checksum``; ``decode_ais`` and ``ais_position_reports``
+       validate the trailing ``*hh`` by default (``validate_checksum=True``,
+       NMEA 4.10 TAG blocks handled). **Missing:**
        NMEA sentence *construction* in either direction (encoding a
        message back to ``!AIVDM`` text) -- neither is ported.
    * - Scheduling

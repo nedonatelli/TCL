@@ -512,7 +512,6 @@ def associated_legendre_scaled(
     n_max: int,
     m_max: int,
     x: float,
-    scale: Optional[NDArray[np.floating]] = None,
 ) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Compute scaled associated Legendre functions for ultra-high degrees.
 

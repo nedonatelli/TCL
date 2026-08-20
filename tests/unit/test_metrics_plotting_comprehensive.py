@@ -468,3 +468,26 @@ class TestMetricsPlottingIntegration:
         fig3 = plot_consistency_summary(nees, nis)
 
         assert all(f is not None for f in [fig1, fig2, fig3])
+
+
+@pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not available")
+class TestNISChartIsLabelledNIS:
+    """A NIS chart must not be labelled NEES.
+
+    ``plot_nis_sequence`` forwards to ``plot_nees_sequence``, which hardcoded
+    "NEES" as both the y-axis title and the series name; only ``title`` was
+    passed through. So plotting NIS produced a figure whose axis claimed a
+    different statistic. The existing coverage asserted only that a figure
+    came back, which cannot see a label.
+    """
+
+    def test_nis_axis_and_series_say_nis(self):
+        fig = plot_nis_sequence([1.0, 2.0, 3.0])
+        assert fig.layout.yaxis.title.text == "NIS"
+        assert "NIS" in [trace.name for trace in fig.data]
+        assert "NEES" not in [trace.name for trace in fig.data]
+
+    def test_nees_chart_is_unchanged(self):
+        fig = plot_nees_sequence([1.0, 2.0, 3.0])
+        assert fig.layout.yaxis.title.text == "NEES"
+        assert "NEES" in [trace.name for trace in fig.data]

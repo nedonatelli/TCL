@@ -444,3 +444,44 @@ class TestTrackDatabaseManager:
             db.store_detection("d1", np.array([1.0]), "s", 0.0)
             with pytest.raises(Exception):
                 db.store_detection("d1", np.array([2.0]), "s", 1.0)
+
+
+class TestReadModeDoesNotCreateTheDatabase:
+    """``mode='r'`` must not conjure the file it is meant to read.
+
+    ``open`` called ``sqlite3.connect`` unconditionally, so opening a
+    mistyped path for reading produced an empty database and the first query
+    then failed with ``no such table: detections`` -- reporting a missing
+    table rather than the missing file the caller actually had. gh-21 fixed
+    exactly this for ``SQLStorage``; ``TrackDatabaseManager`` was not given
+    the same treatment at the time.
+    """
+
+    def test_read_mode_raises_and_creates_nothing(self, tmp_path):
+        missing = tmp_path / "absent.db"
+
+        with pytest.raises(FileNotFoundError, match="No such database"):
+            TrackDatabaseManager(str(missing)).open(mode="r")
+
+        assert not missing.exists()
+
+    def test_write_mode_still_creates(self, tmp_path):
+        created = tmp_path / "made.db"
+        manager = TrackDatabaseManager(str(created))
+        manager.open(mode="w")
+        manager.close()
+        assert created.exists()
+
+    def test_read_mode_opens_an_existing_database(self, tmp_path):
+        existing = tmp_path / "there.db"
+        writer = TrackDatabaseManager(str(existing))
+        writer.open(mode="w")
+        writer.close()
+
+        reader = TrackDatabaseManager(str(existing))
+        reader.open(mode="r")
+        reader.close()
+
+    def test_an_invalid_mode_is_rejected(self, tmp_path):
+        with pytest.raises(ValueError, match="mode must be"):
+            TrackDatabaseManager(str(tmp_path / "x.db")).open(mode="rw")

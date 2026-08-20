@@ -90,12 +90,13 @@ class MultiTargetConfig(msgspec.Struct, frozen=True):
     confirm_hits : int, default 3
         Hits needed within `confirm_window` to confirm a track.
     confirm_window : int, default 5
-        Window size for M-of-N track confirmation.
+        Number of most recent association outcomes examined when deciding
+        confirmation (the N of M-of-N).
     max_misses : int, default 5
         Consecutive misses before a track is deleted.
     init_covariance : list of list of float or None, optional
-        Initial covariance for new tracks; ``None`` uses ``100 * R``
-        projected to the state space.
+        Initial covariance for new tracks, shape
+        ``(state_dim, state_dim)``; ``None`` uses ``100 * I``.
     """
 
     state_dim: int

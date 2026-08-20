@@ -180,7 +180,6 @@ def matched_filter(
 def matched_filter_frequency(
     signal: ArrayLike,
     template: ArrayLike,
-    fs: float = 1.0,
     normalize: bool = True,
 ) -> MatchedFilterResult:
     """
@@ -195,8 +194,6 @@ def matched_filter_frequency(
         Input signal.
     template : array_like
         Template signal to match.
-    fs : float, optional
-        Sampling frequency (used for output scaling). Default is 1.0.
     normalize : bool, optional
         If True, normalize by template energy. Default is True.
 
@@ -263,7 +260,6 @@ def optimal_filter(
     signal: ArrayLike,
     template: ArrayLike,
     noise_psd: ArrayLike,
-    fs: float = 1.0,
 ) -> NDArray[np.floating]:
     """
     Apply optimal filtering for colored noise.

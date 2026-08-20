@@ -22,10 +22,14 @@ import pytest
 
 pytest.importorskip("pyais")
 
-from pytcl.transponders.ais import ais_position_reports, decode_ais
+from pytcl.transponders.ais import (
+    ais_position_reports,
+    decode_ais,
+    nmea_checksum,
+)
 
 # Standard type-1 position report test sentence (widely published vector).
-VDM_TYPE1 = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+VDM_TYPE1 = "!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
 # Two-part type-5 static/voyage message, constructed with pyais.encode and
 # verified via pyais.decode (see module docstring above).
 VDM_TYPE5_1 = (
@@ -246,3 +250,63 @@ class TestDependencyError:
 
         with pytest.raises(DependencyError, match="ais"):
             decode_ais(VDM_TYPE1)
+
+
+class TestChecksumValidation:
+    """``decode_ais`` validates the trailing ``*hh`` by default.
+
+    Before this was added it validated nothing: ``IterMessages`` does not
+    enforce ``NMEAMessage.is_valid``, so a corrupted sentence decoded to a
+    plausible-looking position. The defect hid itself -- ``VDM_TYPE1`` was
+    published here on channel A while carrying channel B's ``5C``, and
+    passed only because nothing checked.
+    """
+
+    def test_the_canonical_vector_carries_a_valid_checksum(self):
+        star = VDM_TYPE1.rfind("*")
+        assert nmea_checksum(VDM_TYPE1) == VDM_TYPE1[star + 1 :]
+
+    def test_corrupted_checksum_is_rejected(self):
+        corrupted = VDM_TYPE1[:-2] + "00"
+        assert decode_ais(corrupted) == []
+        # ...and the payload really is otherwise decodable, so the rejection
+        # is the checksum's doing and not an unrelated parse failure.
+        assert len(decode_ais(corrupted, validate_checksum=False)) == 1
+
+    def test_missing_checksum_is_rejected(self):
+        assert decode_ais(VDM_TYPE1.split("*")[0]) == []
+
+    def test_valid_sentence_still_decodes(self):
+        msgs = decode_ais(VDM_TYPE1)
+        assert len(msgs) == 1
+        assert msgs[0].mmsi == 366053209
+
+    def test_one_bad_line_does_not_discard_the_good_ones(self):
+        text = "\n".join([VDM_TYPE1, VDM_TYPE1[:-2] + "00", VDM_TYPE1])
+        assert len(decode_ais(text)) == 2
+
+    def test_position_reports_forwards_the_flag(self):
+        corrupted = VDM_TYPE1[:-2] + "00"
+        assert len(ais_position_reports(corrupted).mmsi) == 0
+        assert len(ais_position_reports(corrupted, validate_checksum=False).mmsi) == 1
+
+    def test_nmea_checksum_ignores_the_leading_marker_and_trailing_hh(self):
+        """Both forms of the same sentence must hash identically."""
+        without = VDM_TYPE1[: VDM_TYPE1.rfind("*")]
+        assert nmea_checksum(VDM_TYPE1) == nmea_checksum(without)
+
+    def test_tag_block_prefix_does_not_break_validation(self):
+        """NMEA 4.10 TAG blocks precede the sentence and carry their own ``*hh``.
+
+        The first cut of this validator hashed from position 0, so a
+        TAG-blocked line hashed the tag as well and was rejected. That is
+        6,774 of the 6,831 sentences in tests/fixtures/ais -- i.e. the
+        validator would have discarded almost every real feed while passing
+        the hand-written vector in this file.
+        """
+        tagged = "\\s:2573235,c:1786476163*02\\" + VDM_TYPE1
+        assert nmea_checksum(tagged) == nmea_checksum(VDM_TYPE1)
+        assert len(decode_ais(tagged)) == 1
+
+        corrupted = tagged[:-2] + "00"
+        assert decode_ais(corrupted) == []

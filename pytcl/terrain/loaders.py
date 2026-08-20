@@ -388,7 +388,6 @@ def parse_gebco_netcdf(
 
 def parse_earth2014_binary(
     filepath: Path,
-    layer: str,
     lat_min: Optional[float] = None,
     lat_max: Optional[float] = None,
     lon_min: Optional[float] = None,
@@ -404,8 +403,6 @@ def parse_earth2014_binary(
     ----------
     filepath : Path
         Path to Earth2014 binary file.
-    layer : str
-        Layer type (SUR, BED, TBI, RET, ICE).
     lat_min : float, optional
         Minimum latitude in radians (default: -90°).
     lat_max : float, optional
@@ -559,7 +556,7 @@ def _build_earth2014_grid(
     progress-reporting (uncached) load paths."""
     filepath = _find_earth2014_file(layer)
     data, lat_min_a, lat_max_a, lon_min_a, lon_max_a = parse_earth2014_binary(
-        filepath, layer, lat_min, lat_max, lon_min, lon_max, progress=progress
+        filepath, lat_min, lat_max, lon_min, lon_max, progress=progress
     )
 
     grid = DEMGrid(

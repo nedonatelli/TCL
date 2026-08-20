@@ -7,6 +7,7 @@ and lifecycle operations using SQLite for real-time tracking scenarios.
 import json
 import sqlite3
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -67,7 +68,33 @@ class TrackDatabaseManager:
         ----------
         mode : str
             'r' (read), 'w' (write/create), 'a' (append). Default is 'a'.
+
+        Raises
+        ------
+        ValueError
+            If ``mode`` is not one of 'r', 'w', 'a'.
+        FileNotFoundError
+            If ``mode='r'`` and the database does not exist.
+
+        Notes
+        -----
+        Read mode does not create the database. It used to: ``sqlite3.connect``
+        was called unconditionally, so opening a mistyped path for reading
+        produced an empty file and the first query then failed with
+        ``no such table: detections`` -- reporting a missing table rather than
+        the missing database the caller actually had. This is the same defect
+        gh-21 fixed for :class:`~pytcl.io.sql_storage.SQLStorage`, which was
+        not applied here at the time.
         """
+        if mode not in ("r", "w", "a"):
+            raise ValueError(f"mode must be 'r', 'w' or 'a', got {mode!r}")
+
+        if mode == "r" and not Path(self._path).exists():
+            raise FileNotFoundError(
+                f"No such database: {self._path}. Opening for reading does "
+                f"not create one; use mode='w' or mode='a' to create it."
+            )
+
         self._mode = mode
         self._connection = sqlite3.connect(self._path)
         self._cursor = self._connection.cursor()
@@ -179,9 +206,11 @@ class TrackDatabaseManager:
         Returns
         -------
         list of dict
-            Detection records with keys: detection_id, measurement,
-            timestamp, sensor_id, association_status, associated_track_id,
-            metadata.
+            Detection records with keys: detection_id, timestamp,
+            sensor_id, measurement, covariance, association_status,
+            associated_track_id, association_confidence, metadata --
+            everything ``_row_to_detection`` builds, not the subset
+            previously listed here.
         """
         self._check_open()
         conditions: List[str] = []

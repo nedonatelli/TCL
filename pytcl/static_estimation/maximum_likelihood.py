@@ -207,7 +207,6 @@ def fisher_information_exponential_family(
     ],
     theta: ArrayLike,
     data: ArrayLike,
-    h: float = 1e-5,
 ) -> np.ndarray[Any, Any]:
     """
     Fisher information for exponential family distributions.
@@ -223,9 +222,6 @@ def fisher_information_exponential_family(
         Natural parameters.
     data : array_like
         Observed data of shape (n_samples, ...).
-    h : float, optional
-        Step size for numerical differentiation.
-
     Returns
     -------
     fisher : ndarray

@@ -11,7 +11,9 @@ This module provides utilities for:
 The module automatically selects the appropriate backend:
 - On Apple Silicon (M1/M2/M3): Uses MLX if available
 - On systems with NVIDIA GPUs: Uses CuPy if available
-- Falls back to CPU (numpy) if no GPU backend is available
+- Raises ``DependencyError`` if neither backend is installed: there is no
+  NumPy compute fallback. :func:`get_backend` below reports ``"numpy"`` as a
+  detection result only -- no batch algorithm runs on it.
 
 Examples
 --------
@@ -144,12 +146,14 @@ def is_cupy_available() -> bool:
 @lru_cache(maxsize=1)
 def get_backend() -> BackendType:
     """
-    Get the best available GPU backend for the current platform.
+    Report which GPU backend this platform would use (detection only).
 
-    Priority:
-    1. MLX on Apple Silicon
-    2. CuPy on systems with NVIDIA GPUs
-    3. numpy (CPU fallback)
+    Priority here is MLX on Apple Silicon, then CuPy, then the string
+    ``"numpy"`` for "neither". Note the COMPUTE selector,
+    ``pytcl.gpu._backend.get_compute_backend``, tries CuPy first -- on the
+    rare machine with both stacks installed, this function reports ``mlx``
+    while batch algorithms run on CuPy. Nothing computes on the ``numpy``
+    result; the compute path raises ``DependencyError`` instead.
 
     Returns
     -------
@@ -269,6 +273,12 @@ def to_gpu(
         Input array (typically numpy).
     dtype : dtype, optional
         Data type for the GPU array. If None, uses the input dtype.
+
+        Honoured on CuPy only. MLX does not support float64, so on Apple
+        Silicon every float array lands as float32 whatever is requested --
+        ``_numpy_dtype_to_mlx`` maps float64 to float32. Results computed
+        through the MLX backend therefore carry single precision regardless
+        of this argument.
     backend : str, optional
         Specific backend to use ("mlx", "cupy"). If None, auto-selects.
 
@@ -437,7 +447,9 @@ def ensure_gpu_array(
     Returns
     -------
     GPUArray
-        Array on GPU with specified dtype (cupy.ndarray or mlx.array).
+        Array on GPU (cupy.ndarray or mlx.array). ``dtype`` is honoured on
+        CuPy; on MLX the array is float32 regardless, so the declared
+        ``float64`` default is unreachable there.
 
     Examples
     --------

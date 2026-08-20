@@ -43,6 +43,7 @@ from pytcl.magnetism.wmm import (
     clear_magnetic_cache,
     configure_magnetic_cache,
     get_magnetic_cache_info,
+    wmm,
 )
 from pytcl.navigation.geodesy import (
     clear_geodesy_cache,
@@ -263,6 +264,26 @@ class TestMagneticCacheConfiguration:
             assert (state.hits, state.misses, state.currsize) == (0, 0, 0)
         finally:
             configure_magnetic_cache(maxsize=_DEFAULT_CACHE_SIZE)
+
+    def test_changing_precision_also_starts_from_empty(self):
+        """The Notes promise clearing on *any* configuration change.
+
+        Only the ``maxsize`` branch cleared. Entries are keyed by the
+        quantized inputs, so a precision-only change stranded every existing
+        entry under the old key scheme -- a later lookup either misses and
+        leaks, or hits a value rounded differently from what the caller now
+        asked for. ``test_reconfiguring_starts_from_empty`` above could not
+        catch it: it exercises the branch that always cleared.
+        """
+        clear_magnetic_cache()
+        wmm(np.radians(45.0), np.radians(-75.0), 0.0, 2025.0)
+        assert _totals(get_magnetic_cache_info()).currsize == 1
+
+        try:
+            configure_magnetic_cache(precision={"lat": 2})
+            assert _totals(get_magnetic_cache_info()).currsize == 0
+        finally:
+            configure_magnetic_cache(precision={"lat": 6})
 
     def test_hit_rate_is_reported_and_bounded(self):
         info = get_magnetic_cache_info()

@@ -389,9 +389,11 @@ def coning_correction(
     Parameters
     ----------
     gyro_prev : array_like
-        Previous angular rate [wx, wy, wz] (rad/s).
+        Previous angular INCREMENT [dtheta_x, dtheta_y, dtheta_z] (rad), not
+        an angular rate -- integrate the gyro over the interval first
+        (``gyro_rate * dt``).
     gyro_curr : array_like
-        Current angular rate [wx, wy, wz] (rad/s).
+        Current angular increment (rad), same convention as ``gyro_prev``.
 
     Returns
     -------
@@ -402,6 +404,12 @@ def coning_correction(
     -----
     Coning error occurs when the rotation axis itself rotates (coning motion).
     This first-order correction assumes trapezoidal integration of gyro data.
+
+    Both arguments are angular increments, not rates: the formula is
+    ``(1/12) * (theta_prev x theta_curr)``, so passing rates in ``rad/s``
+    returns ``rad^2/s^2`` and is wrong by a factor of ``1/dt^2``.
+    :func:`compensate_imu_data` takes rates and does the integration for you;
+    prefer it unless you already hold increments.
 
     References
     ----------
@@ -427,13 +435,15 @@ def sculling_correction(
     Parameters
     ----------
     accel_prev : array_like
-        Previous specific force [ax, ay, az] (m/s^2).
+        Previous velocity INCREMENT [dv_x, dv_y, dv_z] (m/s), not a specific
+        force -- integrate the accelerometer over the interval first
+        (``accel * dt``).
     accel_curr : array_like
-        Current specific force [ax, ay, az] (m/s^2).
+        Current velocity increment (m/s), same convention as ``accel_prev``.
     gyro_prev : array_like
-        Previous angular rate [wx, wy, wz] (rad/s).
+        Previous angular INCREMENT (rad), not an angular rate.
     gyro_curr : array_like
-        Current angular rate [wx, wy, wz] (rad/s).
+        Current angular increment (rad).
 
     Returns
     -------
@@ -444,6 +454,14 @@ def sculling_correction(
     -----
     Sculling error occurs when linear vibration and angular vibration
     are correlated (e.g., on a flexible structure).
+
+    All four arguments are increments, not rates: passing ``m/s^2`` and
+    ``rad/s`` yields ``m*rad/s^3`` and is wrong by ``1/dt^2``. The formula
+    ``(1/12) * (theta_prev x dv_curr + dv_prev x theta_curr)`` is symmetric
+    under swapping the two role pairs, so calling with the velocity and
+    angular arguments transposed happens to give the same answer -- do not
+    rely on that. :func:`compensate_imu_data` takes rates and integrates
+    for you.
 
     References
     ----------
@@ -1054,7 +1072,9 @@ def ins_process_noise_matrix(
     gyro_bias_std : float
         Gyroscope bias random walk standard deviation (rad/s/sqrt(s)).
     state : INSState
-        Current INS state (for DCM).
+        Current INS state. Accepted for signature stability; the DCM enters
+        the computation only as ``R_b_n @ R_b_n.T``, which is the identity
+        for any rotation matrix, so the state cannot change ``Q``.
 
     Returns
     -------

@@ -461,8 +461,10 @@ class MHTTracker:
         # ln(1 - Pd), so hits were accumulating at half the scale of misses and
         # the running total was not a consistent quantity in either unit.
         # Nothing reads `score` -- it is reported, never used for confirm or
-        # delete, which go by M-of-N -- so this changes what is displayed, not
-        # what the tracker does.
+        # delete, which go by cumulative n_hits and consecutive n_misses
+        # respectively (not M-of-N; MultiTargetTracker is the one with a
+        # windowed rule) -- so this changes what is displayed, not what the
+        # tracker does.
         det_S = np.linalg.det(S)
         if det_S > 0:
             mahal_sq = innovation @ np.linalg.solve(S, innovation)

@@ -314,9 +314,7 @@ def test_matched_filter_frequency(benchmark, chirp_test_data):
     signal = np.zeros(len(chirp) * 3)
     signal[len(chirp) : 2 * len(chirp)] = chirp
 
-    result = benchmark(
-        matched_filter_frequency, signal, chirp, fs=chirp_test_data["fs"]
-    )
+    result = benchmark(matched_filter_frequency, signal, chirp)
     assert result.peak_index > 0
 
 

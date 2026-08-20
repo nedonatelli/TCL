@@ -1,6 +1,7 @@
 """Tests for map projections."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.coordinate_systems.projections import (
@@ -510,3 +511,112 @@ class TestNorwayException:
 
         # 33-42°E should be zone 37
         assert utm_zone(np.radians(38), lat) == 37
+
+
+class TestGridConvergenceMatchesTheProjection:
+    """Every producer's ``convergence`` must be the real grid convergence.
+
+    ``ProjectionResult.convergence`` is documented as "angle from true north
+    to grid north". It is checkable directly: project a point, project it
+    again a hair further north, and the bearing of that step in grid axes is
+    the negated convergence. Nothing did that, and two of the six producers
+    were filling the field with a back-azimuth instead -- ``stereographic``
+    and ``azimuthal_equidistant`` both reported 180 degrees for a point
+    sitting on the projection's own central meridian, where the true answer
+    is zero.
+    """
+
+    @staticmethod
+    def _measure(fn, args, h=1e-7):
+        """Convergence from finite differences along the meridian."""
+        moved = list(args)
+        moved[0] += h
+        north = fn(*moved)
+        moved[0] -= 2 * h
+        south = fn(*moved)
+        return -np.arctan2(north.x - south.x, north.y - south.y)
+
+    CASES = [
+        ("transverse_mercator", transverse_mercator, (np.radians(45), np.radians(1))),
+        ("polar_stereographic", polar_stereographic, (np.radians(80), np.radians(45))),
+        (
+            "lambert_conformal_conic",
+            lambert_conformal_conic,
+            (
+                np.radians(40),
+                np.radians(-100),
+                np.radians(39),
+                np.radians(-96),
+                np.radians(33),
+                np.radians(45),
+            ),
+        ),
+        (
+            "stereographic_on_central_meridian",
+            stereographic,
+            (np.radians(1), 0.0, 0.0, 0.0),
+        ),
+        (
+            "stereographic_off_meridian",
+            stereographic,
+            (np.radians(45), np.radians(1), np.radians(45), 0.0),
+        ),
+        (
+            "azimuthal_equidistant_due_north",
+            azimuthal_equidistant,
+            (np.radians(1), 0.0, 0.0, 0.0),
+        ),
+        (
+            "azimuthal_equidistant_due_east",
+            azimuthal_equidistant,
+            (0.0, np.radians(1), 0.0, 0.0),
+        ),
+        (
+            "azimuthal_equidistant_far_field",
+            azimuthal_equidistant,
+            (np.radians(20), np.radians(30), np.radians(-5), np.radians(-10)),
+        ),
+    ]
+
+    @pytest.mark.parametrize("name,fn,args", CASES, ids=[c[0] for c in CASES])
+    def test_reported_convergence_equals_measured(self, name, fn, args):
+        reported = fn(*args).convergence
+        measured = self._measure(fn, args)
+        assert_allclose(reported, measured, atol=1e-6)
+
+    def test_a_point_on_the_central_meridian_has_zero_convergence(self):
+        """The case the old formulas got most visibly wrong.
+
+        Directly north of the centre, the meridian through the point *is*
+        the map's y-axis, so grid north and true north coincide. Both
+        projections used to report pi here.
+        """
+        for fn in (stereographic, azimuthal_equidistant):
+            result = fn(np.radians(1), 0.0, 0.0, 0.0)
+            assert abs(result.convergence) < 1e-9, fn.__name__
+
+    def test_azimuthal_equidistant_is_not_merely_the_conformal_form(self):
+        """AEQD is not conformal, so it needs the c/sin(c) tangential term.
+
+        Far from the centre the two forms diverge; this pins that the
+        non-conformal one is what ships.
+        """
+        args = (np.radians(35), np.radians(60), np.radians(-10), np.radians(-20))
+        reported = azimuthal_equidistant(*args).convergence
+        measured = self._measure(azimuthal_equidistant, args)
+        assert_allclose(reported, measured, atol=1e-6)
+
+        lat, lon, lat0, lon0 = args
+        dlon = lon - lon0
+        azimuth = np.arctan2(
+            np.cos(lat) * np.sin(dlon),
+            np.cos(lat0) * np.sin(lat) - np.sin(lat0) * np.cos(lat) * np.cos(dlon),
+        )
+        back = np.arctan2(
+            -np.cos(lat0) * np.sin(dlon),
+            np.cos(lat) * np.sin(lat0) - np.sin(lat) * np.cos(lat0) * np.cos(dlon),
+        )
+        conformal_form = np.arctan2(
+            np.sin(back - azimuth - np.pi), np.cos(back - azimuth - np.pi)
+        )
+        assert abs(reported - conformal_form) > 1e-3

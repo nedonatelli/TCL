@@ -316,9 +316,7 @@ class TestRBPFSession:
         Qy = 0.01 * np.eye(2)
         Qx = 0.01 * np.eye(2)
         for filt in (a, b):
-            filt.predict(
-                lambda y: g_mat @ y, g_mat, Qy, lambda x, y: f_mat @ x, f_mat, Qx
-            )
+            filt.predict(lambda y: g_mat @ y, Qy, lambda x, y: f_mat @ x, f_mat, Qx)
         for pa, pb in zip(a.get_particles(), b.get_particles()):
             np.testing.assert_array_equal(pa.y, pb.y)
             np.testing.assert_array_equal(pa.x, pb.x)

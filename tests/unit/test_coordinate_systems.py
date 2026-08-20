@@ -10,6 +10,8 @@ Tests cover:
 """
 
 import numpy as np
+import pytest
+from numpy.testing import assert_allclose
 
 from pytcl.coordinate_systems import (
     cart2cyl,
@@ -176,6 +178,7 @@ from pytcl.coordinate_systems.conversions.geodetic import (  # noqa: E402
     ecef2enu,
     ecef2geodetic,
     ecef2ned,
+    ecef2sez,
     enu2ecef,
     enu2ned,
     geocentric_radius,
@@ -185,6 +188,7 @@ from pytcl.coordinate_systems.conversions.geodetic import (  # noqa: E402
     ned2ecef,
     ned2enu,
     prime_vertical_radius,
+    sez2ecef,
 )
 
 
@@ -982,3 +986,234 @@ class TestSEZConversions:
         assert abs(sez[1]) < abs(sez[0]), (
             "East component should be smaller than meridional"
         )
+
+
+class TestScalarAndLayoutPaths:
+    """Cover the two dispatch paths these conversions advertise but never tested.
+
+    Each converter accepts a single point, a MATLAB-style ``(dim, N)`` block,
+    or a row-major ``(N, dim)`` block, transposing the last into the first.
+    Coverage showed the scalar return statements and every ``(N, dim)`` branch
+    unexecuted -- 13 lines across the module, on a package classified STABLE.
+    The existing tests all pass ``(dim, N)`` or a bare 1-D point, which are
+    the two paths that were already exercised.
+    """
+
+    def test_scalar_round_trips(self):
+        """The ``r.size == 1`` early return, per converter."""
+        r, az, el = cart2sphere(np.array([1.0, 2.0, 3.0]))
+        assert isinstance(r, float)
+        assert_allclose(sphere2cart(r, az, el), [1.0, 2.0, 3.0], atol=1e-12)
+
+        rho, theta = cart2pol(np.array([3.0, 4.0]))
+        assert isinstance(rho, float)
+        assert rho == pytest.approx(5.0)
+        assert_allclose(pol2cart(rho, theta), [3.0, 4.0], atol=1e-12)
+
+        rc, phi, z = cart2cyl(np.array([1.0, 1.0, 5.0]))
+        assert isinstance(rc, float)
+        assert_allclose(cyl2cart(rc, phi, z), [1.0, 1.0, 5.0], atol=1e-12)
+
+        rr, u, v = cart2ruv(np.array([10.0, 20.0, 30.0]))
+        assert isinstance(rr, float)
+        assert_allclose(ruv2cart(rr, u, v), [10.0, 20.0, 30.0], atol=1e-9)
+
+    def test_row_major_input_matches_column_major(self):
+        """``(N, dim)`` must transpose to ``(dim, N)``, not be read as-is.
+
+        The two layouts are distinguishable only when N != dim, so these use
+        five points -- a square block would pass either way and is exactly
+        how a transpose bug survives.
+        """
+        pts3 = np.array(
+            [
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+                [-1.0, 0.5, 2.0],
+                [0.0, -3.0, 1.0],
+                [7.0, 8.0, -9.0],
+            ]
+        )
+        col3 = pts3.T
+
+        for fn in (cart2sphere, cart2cyl, cart2ruv):
+            row_out = fn(pts3)
+            col_out = fn(col3)
+            for a, b in zip(row_out, col_out):
+                assert_allclose(a, b, atol=1e-12, err_msg=fn.__name__)
+
+        pts2 = np.array([[1.0, 2.0], [3.0, 4.0], [-5.0, 6.0], [7.0, -8.0], [0.0, 1.0]])
+        row_r, row_t = cart2pol(pts2)
+        col_r, col_t = cart2pol(pts2.T)
+        assert_allclose(row_r, col_r, atol=1e-12)
+        assert_allclose(row_t, col_t, atol=1e-12)
+
+    def test_row_major_values_are_correct_not_merely_consistent(self):
+        """Both layouts agreeing on a wrong answer would pass the test above."""
+        pts = np.array([[3.0, 4.0], [5.0, 12.0], [8.0, 15.0], [7.0, 24.0], [1.0, 0.0]])
+        r, _ = cart2pol(pts)
+        assert_allclose(r, [5.0, 13.0, 17.0, 25.0, 1.0], atol=1e-12)
+
+    def test_inverse_converters_round_trip_arrays(self):
+        """The multi-point return path of each ``*2cart``.
+
+        The scalar test above exercises their ``size == 1`` branch; these
+        four ``return np.array([x, y, z])`` lines are the other one, and were
+        the last uncovered statements in the module.
+        """
+        pts = np.array(
+            [
+                [1.0, 2.0, 3.0],
+                [-4.0, 5.0, -6.0],
+                [7.0, -8.0, 9.0],
+                [0.5, 0.25, -0.75],
+                [10.0, 0.0, 0.0],
+            ]
+        ).T
+
+        r, az, el = cart2sphere(pts)
+        assert_allclose(sphere2cart(r, az, el), pts, atol=1e-12)
+
+        rho, phi, z = cart2cyl(pts)
+        assert_allclose(cyl2cart(rho, phi, z), pts, atol=1e-12)
+
+        # r-u-v carries no hemisphere, so restrict the round trip to z >= 0.
+        upper = pts[:, pts[2] >= 0]
+        rr, u, v = cart2ruv(upper)
+        assert_allclose(ruv2cart(rr, u, v), upper, atol=1e-9)
+
+        pts2 = np.array([[3.0, 4.0], [-5.0, 12.0], [8.0, -15.0], [0.0, 1.0]]).T
+        rad, theta = cart2pol(pts2)
+        assert_allclose(pol2cart(rad, theta), pts2, atol=1e-12)
+
+    def test_ruv_does_not_survive_a_round_trip_below_the_horizon(self):
+        """The hemisphere ambiguity, pinned so it stays documented.
+
+        ``u`` and ``v`` are the x and y direction cosines; the third is
+        recovered as ``sqrt(1 - u**2 - v**2)``, which is never negative. A
+        target below the x-y plane comes back mirrored. This was stated only
+        in an inline comment ("assuming positive z") until writing the round
+        trip above surfaced it -- the public Notes said nothing, so a caller
+        tracking below the sensor horizon had no warning.
+        """
+        below = np.array([3.0, 4.0, -12.0])
+        r, u, v = cart2ruv(below)
+        recovered = ruv2cart(r, u, v)
+
+        assert_allclose(recovered[:2], below[:2], atol=1e-9)
+        assert recovered[2] == pytest.approx(-below[2])  # sign flipped
+
+        above = np.array([3.0, 4.0, 12.0])
+        assert_allclose(ruv2cart(*cart2ruv(above)), above, atol=1e-9)
+
+
+class TestGeodeticUncoveredPaths:
+    """The transpose, batch, and default-reference branches nothing hit.
+
+    30 lines in ``conversions/geodetic.py`` were unexecuted, all in the same
+    families the spherical module had: row-major ``(N, 3)`` inputs that must
+    transpose, batch paths through the SEZ pair, the ENU detour inside
+    ``ned2ecef``, and the ``ecef_ref=None`` default that derives the
+    reference from lat/lon. The module is registered STABLE.
+    """
+
+    LAT, LON = np.radians(42.0), np.radians(-71.0)
+
+    def test_enu_ned_row_major_blocks_transpose(self):
+        block = np.array(
+            [
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+                [7.0, 8.0, 9.0],
+                [-1.0, -2.0, -3.0],
+                [0.5, 1.5, 2.5],
+            ]
+        )
+        # (N, 3) and (3, N) must agree; N != 3 makes the layouts distinguishable
+        assert_allclose(enu2ned(block), enu2ned(block.T), atol=1e-12)
+        assert_allclose(ned2enu(block), ned2enu(block.T), atol=1e-12)
+        # and the axis swap is the documented one
+        assert_allclose(enu2ned(np.array([1.0, 2.0, 3.0])), [2.0, 1.0, -3.0])
+        assert_allclose(ned2enu(enu2ned(block.T)), block.T, atol=1e-12)
+
+    def test_ned2ecef_round_trips_through_the_enu_detour(self):
+        ned = np.array([100.0, 200.0, -50.0])
+        ecef = ned2ecef(ned, self.LAT, self.LON)
+        assert_allclose(ecef2ned(ecef, self.LAT, self.LON), ned, atol=1e-6)
+
+        batch = np.array(
+            [
+                [100.0, 200.0, -50.0],
+                [-300.0, 40.0, 10.0],
+                [5.0, -6.0, 7.0],
+                [1000.0, 0.0, 0.0],
+                [0.0, 0.0, -100.0],
+            ]
+        ).T
+        ecef_b = ned2ecef(batch, self.LAT, self.LON)
+        assert_allclose(ecef2ned(ecef_b, self.LAT, self.LON), batch, atol=1e-6)
+        # row-major agrees with column-major
+        assert_allclose(ned2ecef(batch.T, self.LAT, self.LON), ecef_b, atol=1e-9)
+
+    def test_sez_batch_and_default_reference(self):
+        """ecef2sez/sez2ecef with ecef_ref omitted, scalar and batch."""
+        ecef_ref = geodetic2ecef(self.LAT, self.LON, 0.0)
+        offsets = np.array(
+            [
+                [1000.0, 2000.0, 3000.0],
+                [-500.0, 250.0, 125.0],
+                [10.0, -20.0, 30.0],
+                [0.0, 0.0, 1.0],
+                [9.0, 8.0, 7.0],
+            ]
+        ).T
+        pts = ecef_ref.reshape(3, 1) + offsets
+
+        # default reference (derived from lat/lon at h=0) vs explicit: same answer
+        sez_default = ecef2sez(pts, self.LAT, self.LON)
+        sez_explicit = ecef2sez(pts, self.LAT, self.LON, ecef_ref=ecef_ref)
+        assert_allclose(sez_default, sez_explicit, atol=1e-9)
+
+        # batch round trip, both with and without the explicit reference
+        back = sez2ecef(sez_default, self.LAT, self.LON)
+        assert_allclose(back, pts, atol=1e-6)
+        back2 = sez2ecef(sez_explicit, self.LAT, self.LON, ecef_ref=ecef_ref)
+        assert_allclose(back2, pts, atol=1e-6)
+
+        # single point through the same paths
+        one = ecef_ref + np.array([1000.0, 2000.0, 3000.0])
+        assert_allclose(
+            sez2ecef(ecef2sez(one, self.LAT, self.LON), self.LAT, self.LON),
+            one,
+            atol=1e-6,
+        )
+
+        # row-major (N, 3) inputs transpose on both sides of the pair
+        sez_rows = ecef2sez(pts.T, self.LAT, self.LON)
+        assert_allclose(sez_rows, sez_default, atol=1e-9)
+        assert_allclose(
+            sez2ecef(np.asarray(sez_default).T, self.LAT, self.LON), pts, atol=1e-6
+        )
+
+    def test_row_major_ecef_inputs_transpose(self):
+        """The `ecef = ecef.T` branches in ecef2geodetic / ecef2enu / enu2ecef."""
+        lla = [
+            (np.radians(10.0), np.radians(20.0), 100.0),
+            (np.radians(-30.0), np.radians(40.0), 5000.0),
+            (np.radians(55.0), np.radians(-120.0), 0.0),
+            (np.radians(0.0), np.radians(0.0), 1.0),
+            (np.radians(-80.0), np.radians(170.0), 250.0),
+        ]
+        ecef_cols = np.stack([geodetic2ecef(*p) for p in lla], axis=1)
+
+        lat_c, lon_c, h_c = ecef2geodetic(ecef_cols)
+        lat_r, lon_r, h_r = ecef2geodetic(ecef_cols.T)
+        assert_allclose([lat_r, lon_r, h_r], [lat_c, lon_c, h_c], atol=1e-12)
+
+        enu_c = ecef2enu(ecef_cols, self.LAT, self.LON)
+        enu_r = ecef2enu(ecef_cols.T, self.LAT, self.LON)
+        assert_allclose(enu_r, enu_c, atol=1e-12)
+
+        back_c = enu2ecef(enu_c, self.LAT, self.LON)
+        back_r = enu2ecef(np.asarray(enu_c).T, self.LAT, self.LON)
+        assert_allclose(back_r, back_c, atol=1e-9)

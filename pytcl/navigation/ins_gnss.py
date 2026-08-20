@@ -49,8 +49,11 @@ GPS_L1_WAVELENGTH = SPEED_OF_LIGHT / GPS_L1_FREQ
 # Floor on cos(latitude) when converting an easting uncertainty to longitude.
 # At the pole a meter of easting spans an unbounded change in longitude, so the
 # conversion genuinely diverges; this keeps it finite. 1e-6 corresponds to
-# roughly 6 cm of easting per microradian of longitude, well inside any
-# realistic GNSS accuracy.
+# about 6 micrometers of easting per microradian of longitude
+# (R * cos_lat * 1e-6 = 6.4e6 * 1e-6 * 1e-6), i.e. essentially all easting
+# information is discarded that close to the pole -- which is the point:
+# longitude is meaningless there. (A previous version of this comment said
+# "6 cm", off by 10^4 -- computed at cos_lat = 1e-2.)
 _MIN_COS_LAT = 1e-6
 
 
@@ -70,7 +73,14 @@ class GNSSMeasurement(NamedTuple):
     velocity : ndarray, optional
         GNSS velocity in NED frame [vN, vE, vD] (m/s).
     position_cov : ndarray, optional
-        Position covariance (3x3) in geodetic frame.
+        Position covariance (3x3) in geodetic frame, units
+        ``[rad^2, rad^2, m^2]`` on the diagonal -- matching ``position``'s
+        ``(rad, rad, m)``. It is used directly as the measurement covariance
+        against a ``(rad, rad, m)`` innovation, so supplying metres^2 for
+        the latitude/longitude entries (how GNSS accuracy is usually quoted)
+        inflates R by ~1e13; convert with
+        :func:`position_std_to_error_state_units`. This is the v2.0.0
+        breaking change documented in the migration guide.
     velocity_cov : ndarray, optional
         Velocity covariance (3x3) in NED frame.
     time : float
@@ -130,7 +140,9 @@ class INSGNSSState(NamedTuple):
     ins_state : INSState
         Current INS navigation state.
     error_state : ndarray
-        Error state vector (15 or 17 elements).
+        Error state vector, 15 elements. (Previously documented "15 or 17";
+        no code path produces 17 -- ``tight_coupled_update`` builds a
+        16-element extended vector internally and writes back ``zeros(15)``.)
     error_cov : ndarray
         Error state covariance matrix.
     clock_bias : float
@@ -932,7 +944,11 @@ def tight_coupled_measurement_matrix(
     """
     Compute measurement matrix for tightly-coupled pseudorange update.
 
-    Maps 17-state error (15 INS + 2 clock) to pseudorange measurements.
+    Maps a 17-column error layout (15 INS + clock bias + clock drift) to
+    pseudorange measurements. Only the clock-BIAS column (index 15) is ever
+    populated; the drift column is identically zero, and
+    ``tight_coupled_update`` slices the matrix to its first 16 columns
+    before use.
 
     Parameters
     ----------

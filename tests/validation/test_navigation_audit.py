@@ -329,6 +329,88 @@ class TestGreatCircleReference:
         )
         assert best < 100.0  # within 100 m on Earth-sized sphere
 
+    def test_tdoa_sign_convention_is_t1_minus_t2(self):
+        """The argument is ``t1 - t2``, not "positive means receiver 1 first".
+
+        The docstring stated the latter, which is backwards: the solver
+        drives ``d1 - d2`` toward ``tdoa12 * speed / radius``, so a positive
+        value places the emitter *farther* from receiver 1. The test above
+        already passed ``(dists[0] - dists[1]) / c`` and so was correct all
+        along -- nothing compared it against the prose.
+
+        Pinned by residual rather than by recovered position, because which
+        of the two hyperbola intersections is returned is not controlled.
+        """
+        c = 299792458.0
+        em = (d(8), d(2))
+        rec = [(d(10), d(0)), (d(0), d(12)), (d(-8), d(-6))]
+        dists = [great_circle_distance(em[0], em[1], la, lo) for la, lo in rec]
+
+        # Emitter is nearest receiver 1, so it arrives there FIRST and
+        # t1 - t2 is NEGATIVE. Under the old prose a caller would have
+        # supplied a positive number here.
+        assert dists[0] < dists[1]
+        tdoa12 = (dists[0] - dists[1]) / c
+        assert tdoa12 < 0
+
+        def residual(lat, lon):
+            dd = [great_circle_distance(lat, lon, la, lo, radius=1.0) for la, lo in rec]
+            r12 = (dd[0] - dd[1]) - tdoa12 * c / 6371000.0
+            r13 = (dd[0] - dd[2]) - (dists[0] - dists[2]) / c * c / 6371000.0
+            return r12**2 + r13**2
+
+        # The true emitter zeroes the objective under this convention...
+        assert residual(*em) < 1e-20
+        # ...and the sign-flipped reading does not.
+        dd = [great_circle_distance(em[0], em[1], la, lo, radius=1.0) for la, lo in rec]
+        flipped = ((dd[0] - dd[1]) + tdoa12 * c / 6371000.0) ** 2
+        assert flipped > 1e-6
+
+    def test_returned_locations_satisfy_the_residual_gate(self):
+        """Every returned location must pass the check the function applies.
+
+        ``great_circle_tdoa_loc`` rejects a candidate whose TDOA residual
+        exceeds 1e-6 -- but the second-solution search used ``lat2``/``lon2``
+        as its iterate, which are the *parameter names for receiver 2* that
+        the objective closure reads. The first step rebound them, so the
+        objective then measured the distance from the trial point to itself
+        rather than to receiver 2, and both the search and the gate ran
+        against a corrupted function. Locations with a true residual of 6.2
+        were returned as valid.
+        """
+        c = 299792458.0
+        rng = np.random.RandomState(0)
+
+        worst = 0.0
+        for _ in range(30):
+            rec = [
+                (d(rng.uniform(-60, 60)), d(rng.uniform(-180, 180))) for _ in range(3)
+            ]
+            emitter = (d(rng.uniform(-60, 60)), d(rng.uniform(-180, 180)))
+            times = [
+                great_circle_distance(la, lo, emitter[0], emitter[1]) / c
+                for la, lo in rec
+            ]
+            dd12 = (times[0] - times[1]) * c / 6371000.0
+            dd13 = (times[0] - times[2]) * c / 6371000.0
+
+            def residual(lat, lon, rec=rec, dd12=dd12, dd13=dd13):
+                dist = [
+                    great_circle_distance(lat, lon, la, lo, radius=1.0)
+                    for la, lo in rec
+                ]
+                return ((dist[0] - dist[1]) - dd12) ** 2 + (
+                    (dist[0] - dist[2]) - dd13
+                ) ** 2
+
+            for loc in great_circle_tdoa_loc(
+                *rec[0], *rec[1], *rec[2], times[0] - times[1], times[0] - times[2]
+            ):
+                if loc is not None:
+                    worst = max(worst, residual(loc.lat, loc.lon))
+
+        assert worst <= 1e-6, f"a returned location had residual {worst:.3e}"
+
 
 class TestRhumbReference:
     """Rhumb line vs analytic loxodrome and ODE integration."""

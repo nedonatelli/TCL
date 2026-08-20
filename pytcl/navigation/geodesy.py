@@ -19,7 +19,7 @@ from numpy.typing import ArrayLike, NDArray
 _logger = logging.getLogger("pytcl.navigation.geodesy")
 
 # Cache configuration for Vincenty geodetic calculations
-_VINCENTY_CACHE_DECIMALS = 10  # ~0.01mm precision
+_VINCENTY_CACHE_DECIMALS = 10  # 1e-10 rad ~ 0.64 mm on Earth (not 0.01 mm)
 _VINCENTY_CACHE_MAXSIZE = 128  # Max cached coordinate pairs
 
 

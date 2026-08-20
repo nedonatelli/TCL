@@ -728,7 +728,7 @@ def gast(jd_ut1: float, dpsi: float = 0.0, eps: float = 0.0) -> float:
     **With the default ``dpsi=0`` this returns GMST, not GAST.** The equation
     of the equinoxes is ``dpsi * cos(eps)``, so leaving both at zero removes it
     entirely and the two are identical to the last bit (gh-25). Supply the
-    nutation in longitude and the obliquity -- from ``nutation_angles`` -- to
+    nutation in longitude and the obliquity -- from `~pytcl.astronomical.reference_frames.nutation_angles_iau80` -- to
     get apparent sidereal time. The difference is up to about 1.1 arcseconds,
     which is 0.02 arcseconds of longitude error at the equator per
     milliarcsecond of neglected nutation.

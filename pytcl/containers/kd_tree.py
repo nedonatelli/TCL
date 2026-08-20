@@ -46,21 +46,29 @@ class KDNode:
         Left child (points with smaller split dimension value).
     right : KDNode or None
         Right child (points with larger split dimension value).
+    bucket : ndarray or None
+        For a leaf node, the indices of every point it holds (``point`` and
+        ``index`` are the first of them). None for an internal node.
     """
 
-    __slots__ = ["point", "index", "split_dim", "left", "right"]
+    __slots__ = ["point", "index", "split_dim", "left", "right", "bucket"]
 
     def __init__(
         self,
         point: NDArray[np.floating],
         index: int,
         split_dim: int,
+        bucket: Optional[NDArray[np.intp]] = None,
     ):
         self.point = point
         self.index = index
         self.split_dim = split_dim
         self.left: Optional["KDNode"] = None
         self.right: Optional["KDNode"] = None
+        #: Indices of every point held by this node when it is a leaf, or
+        #: None for an internal node. A leaf is scanned exhaustively rather
+        #: than split further; see ``KDTree.leaf_size``.
+        self.bucket = bucket
 
 
 class KDTree(BaseSpatialIndex):
@@ -125,6 +133,18 @@ class KDTree(BaseSpatialIndex):
 
         # Choose split dimension (cycle through dimensions)
         split_dim = depth % self.n_features
+
+        # Stop splitting once the node is small enough: a leaf holds up to
+        # leaf_size points and is scanned exhaustively at query time. Fewer,
+        # larger nodes mean less pointer chasing and less per-node overhead
+        # for the same answers.
+        if len(indices) <= self.leaf_size:
+            return KDNode(
+                point=self.data[indices[0]],
+                index=indices[0],
+                split_dim=split_dim,
+                bucket=indices,
+            )
 
         # Partition indices by split dimension around the median (O(n)
         # expected via introselect), instead of fully sorting (O(n log n)).
@@ -207,16 +227,23 @@ class KDTree(BaseSpatialIndex):
             if node is None:
                 return
 
+            def _offer(index: int, dist: float) -> None:
+                if len(neighbors) < k:
+                    neighbors.append((index, dist))
+                    neighbors.sort(key=lambda x: x[1])
+                elif dist < neighbors[-1][1]:
+                    neighbors[-1] = (index, dist)
+                    neighbors.sort(key=lambda x: x[1])
+
+            if node.bucket is not None:
+                dists = np.sqrt(np.sum((self.data[node.bucket] - query) ** 2, axis=1))
+                for idx, d in zip(node.bucket, dists):
+                    _offer(int(idx), float(d))
+                return
+
             # Distance to current node
             dist = np.sqrt(np.sum((query - node.point) ** 2))
-
-            # Add to neighbors if room or better than worst
-            if len(neighbors) < k:
-                neighbors.append((node.index, dist))
-                neighbors.sort(key=lambda x: x[1])
-            elif dist < neighbors[-1][1]:
-                neighbors[-1] = (node.index, dist)
-                neighbors.sort(key=lambda x: x[1])
+            _offer(node.index, dist)
 
             # Decide which subtree to search first
             split_dim = node.split_dim
@@ -284,6 +311,11 @@ class KDTree(BaseSpatialIndex):
 
         def _search(node: Optional[KDNode]) -> None:
             if node is None:
+                return
+
+            if node.bucket is not None:
+                dists = np.sqrt(np.sum((self.data[node.bucket] - query) ** 2, axis=1))
+                indices.extend(int(i) for i in node.bucket[dists <= r])
                 return
 
             # Distance to current node

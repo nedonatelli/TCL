@@ -30,6 +30,8 @@ from typing import Any, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.array_utils import wrap_to_pi
+
 # WGS84 ellipsoid parameters
 WGS84_A = 6378137.0  # Semi-major axis (m)
 WGS84_F = 1.0 / 298.257223563  # Flattening
@@ -789,11 +791,22 @@ def stereographic(
     # Scale factor
     scale = k
 
-    # Convergence
-    convergence = np.arctan2(
-        cos_chi0 * sin_dlon,
-        sin_chi0 * cos_chi - cos_chi0 * sin_chi * cos_dlon,
+    # Grid convergence: the angle from true north to grid north. The
+    # stereographic projection is conformal, so this is exactly the
+    # difference between the grid and true bearings of any one direction;
+    # taking the direction from the point back to the projection centre,
+    # whose grid bearing is ``azimuth + pi`` because that ray is straight in
+    # the map, gives ``back_azimuth - azimuth - pi``. Both azimuths are on
+    # the conformal sphere, matching the projection above.
+    azimuth = np.arctan2(
+        cos_chi * sin_dlon,
+        cos_chi0 * sin_chi - sin_chi0 * cos_chi * cos_dlon,
     )
+    back_azimuth = np.arctan2(
+        -cos_chi0 * sin_dlon,
+        cos_chi * sin_chi0 - sin_chi * cos_chi0 * cos_dlon,
+    )
+    convergence = float(wrap_to_pi(back_azimuth - azimuth - np.pi))
 
     return ProjectionResult(x, y, scale, convergence)
 
@@ -1224,6 +1237,14 @@ def azimuthal_equidistant(
     For high accuracy over long distances, geodesic calculations should
     be used.
 
+    This projection is not conformal, so there is no single scale factor.
+    The radial scale is exactly 1 by construction and is what
+    ``ProjectionResult.scale`` reports; the tangential scale is
+    ``c / sin(c)`` for angular distance ``c`` from the centre, reaching
+    about 1.005 at 1,000 km and 1.11 at 5,000 km. ``convergence`` accounts
+    for this and is the true grid convergence, not the conformal
+    approximation.
+
     Examples
     --------
     >>> import numpy as np
@@ -1256,13 +1277,34 @@ def azimuthal_equidistant(
     x = k * cos_lat * sin_dlon
     y = k * (cos_lat0 * sin_lat - sin_lat0 * cos_lat * cos_dlon)
 
-    # Scale (radial = 1, tangential varies)
-    scale = 1.0  # Radial scale is exactly 1
+    # Radial scale is exactly 1 by construction; this projection is not
+    # conformal, so there is no single scale factor -- the tangential scale
+    # is c / sin(c), which grows without bound away from the centre (about
+    # 1.11 at 5,000 km). ``ProjectionResult.scale`` reports the radial one.
+    scale = 1.0
 
-    # Convergence
-    convergence = np.arctan2(
-        cos_lat0 * sin_dlon,
-        sin_lat0 * cos_lat - cos_lat0 * sin_lat * cos_dlon,
+    # Grid convergence: the angle from true north to grid north. Unlike the
+    # conformal projections above, the projected meridian here is not simply
+    # rotated -- decomposed in the map's polar frame at this point it has a
+    # radial component -cos(back_azimuth) and a tangential component
+    # (c / sin c) * sin(back_azimuth), and the convergence follows from their
+    # ratio. The two agree in the small-c limit, where c / sin c -> 1.
+    azimuth = np.arctan2(
+        cos_lat * sin_dlon,
+        cos_lat0 * sin_lat - sin_lat0 * cos_lat * cos_dlon,
+    )
+    back_azimuth = np.arctan2(
+        -cos_lat0 * sin_dlon,
+        cos_lat * sin_lat0 - sin_lat * cos_lat0 * cos_dlon,
+    )
+    convergence = float(
+        wrap_to_pi(
+            -azimuth
+            - np.arctan2(
+                (c / np.sin(c)) * np.sin(back_azimuth),
+                -np.cos(back_azimuth),
+            )
+        )
     )
 
     return ProjectionResult(x, y, scale, convergence)

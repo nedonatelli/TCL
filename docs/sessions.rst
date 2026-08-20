@@ -301,7 +301,7 @@ Pass an instance ``rng`` whenever bit-reproducible resume matters.
    g_mat, f_mat = np.eye(2), np.eye(2)
    Qy = Qx = 0.01 * np.eye(2)
    for filt in (uninterrupted, resumed_rbpf):
-       filt.predict(lambda y: g_mat @ y, g_mat, Qy, lambda x, y: f_mat @ x, f_mat, Qx)
+       filt.predict(lambda y: g_mat @ y, Qy, lambda x, y: f_mat @ x, f_mat, Qx)
 
    print(all(
        np.array_equal(pa.y, pb.y) and np.array_equal(pa.x, pb.x)

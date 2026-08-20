@@ -10,6 +10,8 @@ Tests cover:
 """
 
 import numpy as np
+import pytest
+from scipy.signal import get_window as scipy_get_window
 
 from pytcl.mathematical_functions.transforms.stft import (
     get_window,
@@ -483,3 +485,38 @@ class TestSpectrogramFormats:
         result = spectrogram(x)
         total_power = np.sum(result.power)
         assert total_power > 0
+
+
+class TestSpectrogramPowerScaling:
+    """``Spectrogram.power`` carries scipy's scaling, not ``|STFT|**2``.
+
+    The field was documented as ``|STFT|^2``. At the defaults it is a power
+    spectral density, which differs by ``fs * sum(window**2) / 2`` -- 24,000
+    at fs=1000 with a 128-point Hann window, i.e. four orders of magnitude,
+    and the factor moves with the sample rate and window rather than being a
+    constant a reader could absorb.
+    """
+
+    def test_default_scaling_is_a_density_not_a_bare_magnitude_squared(self):
+        fs, nperseg = 1000.0, 128
+        t = np.arange(4096) / fs
+        x = np.sin(2 * np.pi * 100 * t)
+
+        result = spectrogram(x, fs=fs, nperseg=nperseg)
+
+        window = scipy_get_window("hann", nperseg)
+        literal = np.abs(np.fft.rfft(x[:nperseg] * window)) ** 2
+
+        ratio = literal.max() / result.power.max()
+        assert ratio == pytest.approx(fs * np.sum(window**2) / 2, rel=1e-3)
+
+    def test_spectrum_scaling_differs_from_density(self):
+        """The knob the corrected docstring points at actually does something."""
+        fs = 1000.0
+        t = np.arange(2048) / fs
+        x = np.sin(2 * np.pi * 100 * t)
+
+        density = spectrogram(x, fs=fs, nperseg=128, scaling="density")
+        spectrum = spectrogram(x, fs=fs, nperseg=128, scaling="spectrum")
+
+        assert not np.allclose(density.power, spectrum.power)

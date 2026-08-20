@@ -104,7 +104,7 @@ class StorageBackend(ABC):
         value: Union[int, float, str, bool],
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Store a scalar value.
+        """Store a scalar value, replacing any scalar already under that name.
 
         Parameters
         ----------
@@ -113,7 +113,15 @@ class StorageBackend(ABC):
         value : int, float, str, bool
             Scalar value to store
         metadata : dict, optional
-            Associated metadata
+            Associated metadata. Replaced wholesale along with the value.
+
+        Notes
+        -----
+        Same replace-on-collision contract as `store_array`, and stated here
+        for the same reason: the gh-21 fix that unified the array path was
+        never applied to the scalar path, so ``SQLStorage`` replaced while
+        ``HDF5Storage`` let h5py raise ``ValueError`` on an existing name --
+        the identical divergence, one method down.
         """
         pass
 

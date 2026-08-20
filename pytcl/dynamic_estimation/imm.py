@@ -60,7 +60,11 @@ class IMMPrediction(NamedTuple):
     mode_covs : list of ndarray
         Predicted covariances for each mode.
     mode_probs : ndarray
-        Mode probabilities (unchanged during prediction).
+        PREDICTED mode probabilities, ``Pi.T @ mode_probs`` -- the transition
+        matrix has already been applied. (This read "unchanged during
+        prediction", which was wrong in the dangerous direction: a caller
+        re-applying ``Pi`` would double-predict, and ``imm_update`` relies on
+        these being the predicted values.)
     mixing_probs : ndarray
         Mixing probabilities used, shape (r, r).
     """

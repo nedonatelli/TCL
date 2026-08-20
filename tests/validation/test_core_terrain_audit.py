@@ -1372,7 +1372,7 @@ class TestParseEarth2014Binary:
         lon_min = np.radians(-180.0 + 1.2 / 60.0)
         lon_max = np.radians(-180.0 + 6.7 / 60.0)
         data, lat_a, lat_b, lon_a, lon_b = parse_earth2014_binary(
-            path, "SUR", lat_min, lat_max, lon_min, lon_max
+            path, lat_min, lat_max, lon_min, lon_max
         )
         d = np.radians(1.0 / 60.0)
         lat_start = np.radians(-90.0 + 1.0 / 120.0)

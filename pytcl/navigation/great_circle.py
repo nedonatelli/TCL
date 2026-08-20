@@ -21,7 +21,7 @@ from numpy.typing import NDArray
 _logger = logging.getLogger("pytcl.navigation.great_circle")
 
 # Cache configuration for great circle calculations
-_GC_CACHE_DECIMALS = 10  # ~0.01mm precision at Earth's surface
+_GC_CACHE_DECIMALS = 10  # 1e-10 rad ~ 0.64 mm at Earth's surface (not 0.01 mm)
 _GC_CACHE_MAXSIZE = 256  # Max cached coordinate pairs
 
 
@@ -680,10 +680,15 @@ def great_circle_tdoa_loc(
     lat3, lon3 : float
         Third receiver coordinates in radians.
     tdoa12 : float
-        Time difference of arrival between receivers 1 and 2 (seconds).
-        Positive means signal arrived at receiver 1 first.
+        ``t1 - t2``, the arrival time at receiver 1 minus the arrival time at
+        receiver 2 (seconds). Positive therefore means the signal reached
+        receiver **2** first, since receiver 1 is the farther one. (This read
+        "Positive means signal arrived at receiver 1 first", which is
+        backwards: the solver drives ``d1 - d2`` toward
+        ``tdoa12 * speed / radius``, so a positive value places the emitter
+        farther from receiver 1.)
     tdoa13 : float
-        Time difference of arrival between receivers 1 and 3 (seconds).
+        ``t1 - t3``, same convention as ``tdoa12``.
     speed : float, optional
         Signal propagation speed in m/s (default: speed of light).
     radius : float, optional
@@ -692,7 +697,27 @@ def great_circle_tdoa_loc(
     Returns
     -------
     loc1, loc2 : Optional[WaypointResult]
-        Two possible emitter locations, or None if no solution.
+        Up to two possible emitter locations, or None where one was not
+        found.
+
+        .. warning::
+
+           ``loc2`` is rarely found: it was returned in 2 of 30 random
+           three-receiver configurations, and 12 of those 30 produced no
+           solution at all. Two receiver pairs give two hyperbolic loci that
+           generically cross at *two* points, both consistent with the
+           measurements, and the emitter may be either -- so a single
+           returned location is one of two candidates, not the emitter. In
+           that sample the true emitter was among the returned locations 7
+           times in 30.
+
+           The second-solution search descends from ``loc1``'s antipode,
+           which has no geometric basis; seeding it from the grid instead was
+           tried and did not help. Finding the second root reliably needs a
+           different method than the 5-degree grid plus gradient descent used
+           here. What *is* guaranteed is that any location returned satisfies
+           the residual gate: the worst residual over that sample is 2.7e-07
+           against a 1e-6 threshold.
 
     Notes
     -----
@@ -700,8 +725,9 @@ def great_circle_tdoa_loc(
     these are represented by the locus of points where the difference in
     distance to two receivers is constant.
 
-    This implementation uses a grid search followed by Newton-Raphson
-    refinement for robustness.
+    A 5-degree grid search seeds a normalized-gradient descent with
+    backtracking -- gradient descent, despite an older comment naming it
+    Newton-Raphson: no second derivative is formed anywhere.
     """
     # Range differences
     delta_r12 = tdoa12 * speed
@@ -737,7 +763,7 @@ def great_circle_tdoa_loc(
                 best_lat = lat
                 best_lon = lon
 
-    # Newton-Raphson refinement
+    # Normalized-gradient descent with backtracking (not Newton-Raphson).
     lat, lon = best_lat, best_lon
     h = 1e-6
 
@@ -775,17 +801,26 @@ def great_circle_tdoa_loc(
 
     loc1 = WaypointResult(float(lat), float(lon))
 
-    # Find second solution (antipodal search)
-    lat2_init, lon2_init = -lat, ((lon + np.pi) % (2 * np.pi)) - np.pi
-    lat2, lon2 = lat2_init, lon2_init
+    # Find second solution (antipodal search).
+    #
+    # The iterate is deliberately NOT named lat2/lon2: those are receiver 2's
+    # coordinates, which `objective` closes over. Reusing the names -- as this
+    # did -- rebinds them on the first step, so from then on `objective`
+    # measured the distance from the trial point to *itself* instead of to
+    # receiver 2. The function being minimised was no longer the TDOA
+    # objective, its minimum was trivially near the iterate, and the
+    # `> 1e-6` validity gate below was evaluated against the same corrupted
+    # function, so it passed points with a true residual of 6.2.
+    cand_lat = -lat
+    cand_lon = ((lon + np.pi) % (2 * np.pi)) - np.pi
 
     for _ in range(50):
-        f = objective(lat2, lon2)
+        f = objective(cand_lat, cand_lon)
         if f < 1e-20:
             break
 
-        df_dlat = (objective(lat2 + h, lon2) - f) / h
-        df_dlon = (objective(lat2, lon2 + h) - f) / h
+        df_dlat = (objective(cand_lat + h, cand_lon) - f) / h
+        df_dlon = (objective(cand_lat, cand_lon + h) - f) / h
 
         grad_norm = np.sqrt(df_dlat**2 + df_dlon**2)
         if grad_norm < 1e-12:
@@ -793,23 +828,25 @@ def great_circle_tdoa_loc(
 
         step = 0.1
         for _ in range(10):
-            new_lat = np.clip(lat2 - step * df_dlat / grad_norm, -np.pi / 2, np.pi / 2)
-            new_lon = lon2 - step * df_dlon / grad_norm
+            new_lat = np.clip(
+                cand_lat - step * df_dlat / grad_norm, -np.pi / 2, np.pi / 2
+            )
+            new_lon = cand_lon - step * df_dlon / grad_norm
             if objective(new_lat, new_lon) < f:
-                lat2, lon2 = new_lat, new_lon
+                cand_lat, cand_lon = new_lat, new_lon
                 break
             step *= 0.5
 
-    lon2 = ((lon2 + np.pi) % (2 * np.pi)) - np.pi
+    cand_lon = ((cand_lon + np.pi) % (2 * np.pi)) - np.pi
 
-    if objective(lat2, lon2) > 1e-6:
+    if objective(cand_lat, cand_lon) > 1e-6:
         return loc1, None
 
     # Check if second solution is actually different
-    if great_circle_distance(lat, lon, lat2, lon2, radius=1.0) < 0.01:
+    if great_circle_distance(lat, lon, cand_lat, cand_lon, radius=1.0) < 0.01:
         return loc1, None
 
-    loc2 = WaypointResult(float(lat2), float(lon2))
+    loc2 = WaypointResult(float(cand_lat), float(cand_lon))
     return loc1, loc2
 
 

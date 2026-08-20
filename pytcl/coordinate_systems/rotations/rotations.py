@@ -6,95 +6,10 @@ representations including rotation matrices, quaternions, Euler angles,
 axis-angle, and Rodrigues parameters.
 """
 
-from typing import Any, Tuple
+from typing import Tuple
 
 import numpy as np
-from numba import njit
 from numpy.typing import ArrayLike, NDArray
-
-
-@njit(cache=True, fastmath=True)
-def _rotx_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
-    """JIT-compiled rotation about x-axis (fills existing matrix)."""
-    c = np.cos(angle)
-    s = np.sin(angle)
-    R[0, 0] = 1.0
-    R[0, 1] = 0.0
-    R[0, 2] = 0.0
-    R[1, 0] = 0.0
-    R[1, 1] = c
-    R[1, 2] = -s
-    R[2, 0] = 0.0
-    R[2, 1] = s
-    R[2, 2] = c
-
-
-@njit(cache=True, fastmath=True)
-def _roty_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
-    """JIT-compiled rotation about y-axis (fills existing matrix)."""
-    c = np.cos(angle)
-    s = np.sin(angle)
-    R[0, 0] = c
-    R[0, 1] = 0.0
-    R[0, 2] = s
-    R[1, 0] = 0.0
-    R[1, 1] = 1.0
-    R[1, 2] = 0.0
-    R[2, 0] = -s
-    R[2, 1] = 0.0
-    R[2, 2] = c
-
-
-@njit(cache=True, fastmath=True)
-def _rotz_inplace(angle: float, R: np.ndarray[Any, Any]) -> None:
-    """JIT-compiled rotation about z-axis (fills existing matrix)."""
-    c = np.cos(angle)
-    s = np.sin(angle)
-    R[0, 0] = c
-    R[0, 1] = -s
-    R[0, 2] = 0.0
-    R[1, 0] = s
-    R[1, 1] = c
-    R[1, 2] = 0.0
-    R[2, 0] = 0.0
-    R[2, 1] = 0.0
-    R[2, 2] = 1.0
-
-
-@njit(cache=True, fastmath=True)
-def _euler_zyx_to_rotmat(
-    yaw: float, pitch: float, roll: float, R: np.ndarray[Any, Any]
-) -> None:
-    """JIT-compiled ZYX Euler angles to rotation matrix."""
-    cy = np.cos(yaw)
-    sy = np.sin(yaw)
-    cp = np.cos(pitch)
-    sp = np.sin(pitch)
-    cr = np.cos(roll)
-    sr = np.sin(roll)
-
-    # R = Rz(yaw) @ Ry(pitch) @ Rx(roll)
-    R[0, 0] = cy * cp
-    R[0, 1] = cy * sp * sr - sy * cr
-    R[0, 2] = cy * sp * cr + sy * sr
-    R[1, 0] = sy * cp
-    R[1, 1] = sy * sp * sr + cy * cr
-    R[1, 2] = sy * sp * cr - cy * sr
-    R[2, 0] = -sp
-    R[2, 1] = cp * sr
-    R[2, 2] = cp * cr
-
-
-@njit(cache=True, fastmath=True)
-def _matmul_3x3(
-    A: np.ndarray[Any, Any], B: np.ndarray[Any, Any], C: np.ndarray[Any, Any]
-) -> None:
-    """JIT-compiled 3x3 matrix multiplication C = A @ B."""
-    for i in range(3):
-        for j in range(3):
-            C[i, j] = 0.0
-            for k in range(3):
-                C[i, j] += A[i, k] * B[k, j]
 
 
 def rotx(angle: float) -> NDArray[np.floating]:
@@ -290,8 +205,19 @@ def rotmat2euler(
             beta = np.arccos(R[2, 2])
             gamma = np.arctan2(R[2, 0], R[2, 1])
         else:
-            alpha = np.arctan2(-R[0, 1], R[0, 0])
-            beta = 0 if R[2, 2] > 0 else np.pi
+            # Gimbal lock: only alpha +/- gamma is determined, so put the
+            # whole rotation into alpha and set gamma = 0. The two poles need
+            # DIFFERENT formulas -- at beta = 0, R = Rz(alpha + gamma) with
+            # R[0, 1] = -sin(alpha + gamma), but at beta = pi,
+            # R[0, 1] = +sin(alpha - gamma). One formula served both until
+            # covering this branch showed the beta = pi recomposition did not
+            # reproduce R (the off-diagonal signs flipped).
+            if R[2, 2] > 0:
+                alpha = np.arctan2(-R[0, 1], R[0, 0])
+                beta = 0
+            else:
+                alpha = np.arctan2(R[0, 1], R[0, 0])
+                beta = np.pi
             gamma = 0
 
         return np.array([alpha, beta, gamma], dtype=np.float64)

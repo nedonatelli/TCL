@@ -224,7 +224,7 @@ so both conversions happen inside `ais_position_reports`.
    from pytcl.transponders.ais import ais_position_reports, decode_ais
 
    # A widely published type-1 (Class A position report) test sentence.
-   vdm = "!AIVDM,1,1,,A,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
+   vdm = "!AIVDM,1,1,,B,15M67FC000G?ufbE`FepT@3n00Sa,0*5C"
 
    messages = decode_ais(vdm)
    print(messages[0].msg_type, messages[0].mmsi)   # 1 366053209

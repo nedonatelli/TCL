@@ -409,15 +409,19 @@ def min_cost_flow_simplex(
     Solve min-cost flow using Dijkstra-based successive shortest paths.
 
     This optimized version uses:
-    - Dijkstra's algorithm (O(E log V)) instead of Bellman-Ford (O(VE))
+
+    - Dijkstra's algorithm (O(E log V)) per shortest-path iteration, after
+      one initial Bellman-Ford relaxation (O(VE)) to establish valid node
+      potentials
     - Node potentials to maintain non-negative edge costs
     - Johnson's technique for cost adjustment
 
     This is significantly faster than Bellman-Ford while maintaining
     guaranteed correctness and optimality.
 
-    Time complexity: O(K * E log V) where K = number of shortest paths
-    Space complexity: O(V + E)
+    Time complexity: O(V*E + K*E log V), where the first term is the
+    potential-initialising Bellman-Ford pass and K is the number of
+    shortest paths. Space complexity: O(V + E).
 
     Parameters
     ----------

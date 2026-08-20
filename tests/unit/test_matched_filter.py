@@ -152,7 +152,7 @@ class TestMatchedFilterFrequency:
         template = np.ones(10)
         signal = np.zeros(100)
         signal[50:60] = template
-        result = matched_filter_frequency(signal, template, fs=1000.0)
+        result = matched_filter_frequency(signal, template)
         assert np.isfinite(result.peak_value)
 
     def test_matched_filter_frequency_unnormalized(self):
@@ -197,12 +197,20 @@ class TestOptimalFilter:
         assert len(output) == len(signal)
         assert np.all(np.isfinite(output))
 
-    def test_optimal_filter_with_fs(self):
-        """Test optimal filter with sampling frequency."""
+    def test_fs_parameter_is_gone(self):
+        """``fs`` was accepted, documented as "used for output scaling", and
+        never read -- by this function or matched_filter_frequency. The test
+        that stood here asserted only ``len(output) == len(signal)`` while
+        passing ``fs=1000.0``: it pinned the dead parameter's acceptance
+        without verifying any effect, which is exactly how the parameter
+        survived. Its removal now fails loudly instead of scaling nothing.
+        """
         signal = np.random.randn(64)
         template = np.ones(8)
         noise_psd = np.ones(64)
-        output = optimal_filter(signal, template, noise_psd, fs=1000.0)
+        with pytest.raises(TypeError):
+            optimal_filter(signal, template, noise_psd, fs=1000.0)
+        output = optimal_filter(signal, template, noise_psd)
         assert len(output) == len(signal)
 
 

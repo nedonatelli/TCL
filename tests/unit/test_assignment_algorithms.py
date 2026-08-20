@@ -1,6 +1,7 @@
 """Tests for assignment algorithms and data association."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.assignment_algorithms import (  # 2D Assignment
@@ -719,3 +720,56 @@ class TestAssignment3DResult:
 
         # Should handle gracefully
         assert result.tuples.shape[0] == 0 or result.cost == 0.0
+
+
+class TestGatingUncoveredPaths:
+    """The three paths in gating.py no test executed (JIT-disabled measure).
+
+    The dimension dispatch in ``mahalanobis_distance`` sends n <= 10 through
+    inverse-based kernels and larger problems through ``np.linalg.solve``;
+    only the kernel side was tested. ``gate_measurements`` had never seen a
+    single 1-D measurement, nor run with diagnostics enabled while rejecting
+    something -- the logging branch.
+    """
+
+    def test_mahalanobis_solve_path_for_large_dimension(self):
+        """n = 11 crosses the n <= 10 boundary into the solve branch."""
+        from pytcl.assignment_algorithms.gating import mahalanobis_distance
+
+        nu = np.ones(11)
+        S = np.eye(11) * 2.0
+        assert mahalanobis_distance(nu, S) == pytest.approx(11 / 2.0)
+
+        # agreement with the kernel side at the boundary, same quadratic form
+        nu10 = np.arange(1.0, 11.0)
+        S10 = np.diag(np.arange(1.0, 11.0))
+        expected = float(nu10 @ np.linalg.solve(S10, nu10))
+        assert mahalanobis_distance(nu10, S10) == pytest.approx(expected)
+
+    def test_gate_measurements_accepts_a_single_1d_measurement(self):
+        from pytcl.assignment_algorithms.gating import gate_measurements
+
+        result = gate_measurements(
+            np.array([1.0, 2.0]),  # predicted measurement
+            np.eye(2) * 0.1,  # innovation covariance
+            np.array([1.05, 2.1]),  # ONE measurement, passed 1-D
+            gate_threshold=9.21,
+        )
+        assert list(result[0]) == [0]
+
+    def test_rejection_logging_branch_runs_under_diagnostics(self):
+        """Lines 381-383: the debug emission when measurements are rejected."""
+        from pytcl.assignment_algorithms.gating import gate_measurements
+        from pytcl.diagnostics import disable_debug_logging, enable_debug_logging
+
+        enable_debug_logging()
+        try:
+            result = gate_measurements(
+                np.array([1.0, 2.0]),
+                np.eye(2) * 0.1,
+                np.array([[100.0, 100.0], [1.0, 2.0]]),
+                gate_threshold=9.21,
+            )
+            assert list(result[0]) == [1]  # far measurement rejected
+        finally:
+            disable_debug_logging()

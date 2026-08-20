@@ -106,7 +106,9 @@ class F107Index(NamedTuple):
         Planetary magnetic index (Ap index).
     ap_array : ndarray, optional
         Ap values for each 3-hour interval of the day (8 values).
-        If not provided, derived from ap value.
+        Optional 7-element ap history. Nothing derives it from ``ap`` --
+        it is a plain default of None, retained for NRLMSISE-00-style input
+        compatibility and unused by :class:`SimplifiedThermosphere`.
     """
 
     f107: float

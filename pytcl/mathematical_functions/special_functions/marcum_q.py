@@ -193,8 +193,6 @@ def marcum_q_inv(
     a: ArrayLike,
     q: ArrayLike,
     m: int = 1,
-    tol: float = 1e-10,
-    max_iter: int = 100,
 ) -> NDArray[np.floating]:
     """
     Inverse Marcum Q function.
@@ -209,10 +207,6 @@ def marcum_q_inv(
         Target probability value, 0 < q < 1.
     m : int, optional
         Order of the Marcum Q function. Default is 1.
-    tol : float, optional
-        Tolerance for convergence. Default is 1e-10.
-    max_iter : int, optional
-        Maximum number of iterations. Default is 100.
 
     Returns
     -------
@@ -221,8 +215,11 @@ def marcum_q_inv(
 
     Notes
     -----
-    Uses Newton-Raphson iteration with the noncentral chi-squared
-    distribution.
+    Closed form via the noncentral chi-squared inverse survival function:
+    ``b = sqrt(ncx2.isf(q, 2m, a**2))``. No iteration is involved -- the
+    previous ``tol``/``max_iter`` parameters were accepted and never read,
+    alongside a Notes claim of Newton-Raphson iteration that no code
+    performed.
 
     Examples
     --------
