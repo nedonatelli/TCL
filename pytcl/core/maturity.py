@@ -97,7 +97,10 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # Core
     "core.constants": MaturityLevel.STABLE,
     "core.exceptions": MaturityLevel.STABLE,
-    "core.validation": MaturityLevel.STABLE,
+    # Reclassified from STABLE: ensure_positive_definite began rejecting
+    # singular matrices, which STABLE would have deferred to a major bump.
+    # The frozen-API claim was aspirational rather than enforced.
+    "core.validation": MaturityLevel.MATURE,
     "core.array_utils": MaturityLevel.STABLE,
     "core.optional_deps": MaturityLevel.STABLE,
     # Kalman Filters
@@ -122,7 +125,6 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "containers.kd_tree": MaturityLevel.STABLE,
     "containers.base": MaturityLevel.STABLE,
     # Mathematical Functions
-    "mathematical_functions.special_functions": MaturityLevel.STABLE,
     # =========================================================================
     # MATURE (2) - Production-ready, minor changes possible
     # =========================================================================

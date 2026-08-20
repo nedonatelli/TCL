@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **`core.validation` reclassified STABLE -> MATURE.** This release changes
+  `ensure_positive_definite` to reject singular matrices, which STABLE's
+  contract ("API frozen; breaking changes only in major version bumps")
+  would have deferred to a major release. MATURE permits minor API
+  adjustments, which is what this is. The frozen-API claim was aspirational
+  rather than enforced -- nothing checked it, which is how the change reached
+  a minor bump unnoticed until the repaired registry surfaced it.
 - **The maturity registry now covers every module.** 79 leaf modules had no
   classification, so `get_maturity` answered EXPERIMENTAL for them by default
   rather than by assessment -- indistinguishable from a module deliberately
