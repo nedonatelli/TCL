@@ -323,6 +323,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in `mht.py` claiming MHT confirm/delete "go by M-of-N" -- they go by
   cumulative `n_hits` and consecutive `n_misses`; `MultiTargetTracker` is the
   one with a windowed rule.
+- **`HDF5Storage.store_scalar` now replaces on collision, matching
+  `SQLStorage` and the `store_array` contract.** The gh-21 fix that unified
+  the array path was never applied to the scalar path, so the identical
+  backend divergence sat one method down: SQL replaced while HDF5 let h5py
+  raise `ValueError` on an existing name. The base class now states the
+  scalar contract alongside the array one, and the backend-parametrized
+  contract test covers it (verified failing against the unfixed backend).
+- **Every STABLE-classified module now meets the maturity rubric's evidence
+  bar** (>=90% coverage under `NUMBA_DISABLE_JIT=1` with `--cov-branch`).
+  Closing the gaps found two more dead `@njit` kernels in `rotations.py`
+  (`_euler_zyx_to_rotmat`, `_matmul_3x3` -- same never-called optimization
+  pass as the three removed earlier; the file no longer imports numba at
+  all), and covered: `q_poly_kal`'s multi-dimension block-diagonal path,
+  `auction`'s rectangular-transpose and single-column paths, `assign2d`'s
+  maximize branch, both sigma-point sets' near-singular eigendecomposition
+  fallbacks, `ckf_update`'s custom-points validation, both UKF/CKF updates'
+  singular-innovation zero-likelihood guards, and `optional_deps`'
+  install-command and availability-flag branches. Library honest-branch
+  coverage: 92.4% -> 93.8%.
 - **BREAKING: `ensure_positive_definite` accepted singular matrices and no
   longer does** -- the same
   defect as gh-23, in the half of the pair that fix never reached. Its guard

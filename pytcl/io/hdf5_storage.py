@@ -145,7 +145,7 @@ class HDF5Storage(StorageBackend):
         value: Union[int, float, str, bool],
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Store a scalar value.
+        """Store a scalar value, replacing any scalar already under that name.
 
         Parameters
         ----------
@@ -161,6 +161,11 @@ class HDF5Storage(StorageBackend):
 
         # Ensure parent groups exist
         self._ensure_groups(name)
+
+        # Replace on collision, matching store_array and SQLStorage (the
+        # gh-21 contract; this method was missed by that fix).
+        if name in self._file:
+            del self._file[name]
 
         # Store as dataset with shape ()
         dataset = self._file.create_dataset(name, data=value)

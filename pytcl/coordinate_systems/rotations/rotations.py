@@ -6,47 +6,10 @@ representations including rotation matrices, quaternions, Euler angles,
 axis-angle, and Rodrigues parameters.
 """
 
-from typing import Any, Tuple
+from typing import Tuple
 
 import numpy as np
-from numba import njit
 from numpy.typing import ArrayLike, NDArray
-
-
-@njit(cache=True, fastmath=True)
-def _euler_zyx_to_rotmat(
-    yaw: float, pitch: float, roll: float, R: np.ndarray[Any, Any]
-) -> None:
-    """JIT-compiled ZYX Euler angles to rotation matrix."""
-    cy = np.cos(yaw)
-    sy = np.sin(yaw)
-    cp = np.cos(pitch)
-    sp = np.sin(pitch)
-    cr = np.cos(roll)
-    sr = np.sin(roll)
-
-    # R = Rz(yaw) @ Ry(pitch) @ Rx(roll)
-    R[0, 0] = cy * cp
-    R[0, 1] = cy * sp * sr - sy * cr
-    R[0, 2] = cy * sp * cr + sy * sr
-    R[1, 0] = sy * cp
-    R[1, 1] = sy * sp * sr + cy * cr
-    R[1, 2] = sy * sp * cr - cy * sr
-    R[2, 0] = -sp
-    R[2, 1] = cp * sr
-    R[2, 2] = cp * cr
-
-
-@njit(cache=True, fastmath=True)
-def _matmul_3x3(
-    A: np.ndarray[Any, Any], B: np.ndarray[Any, Any], C: np.ndarray[Any, Any]
-) -> None:
-    """JIT-compiled 3x3 matrix multiplication C = A @ B."""
-    for i in range(3):
-        for j in range(3):
-            C[i, j] = 0.0
-            for k in range(3):
-                C[i, j] += A[i, k] * B[k, j]
 
 
 def rotx(angle: float) -> NDArray[np.floating]:

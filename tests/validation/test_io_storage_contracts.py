@@ -160,6 +160,18 @@ class TestOverwriteSemanticsAgree:
         assert metadata.get("units") == "km"
         assert "old" not in metadata, "metadata from the earlier store survived"
 
+    def test_storing_a_scalar_twice_replaces_on_both_backends(self, store):
+        """The gh-21 fix unified store_array and missed store_scalar.
+
+        The identical divergence sat one method down: SQLStorage replaced,
+        HDF5Storage let h5py raise ValueError on the existing name. The
+        class above could not catch it -- every test in it goes through
+        store_array.
+        """
+        store.store_scalar("count", 1.0)
+        store.store_scalar("count", 2.0)
+        assert store.retrieve_scalar("count") == 2.0
+
 
 class TestResidualsStayAlignedWithTimestamps:
     """``get_track_history`` keyed residuals off the first row."""
