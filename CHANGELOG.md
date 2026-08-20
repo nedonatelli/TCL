@@ -21,6 +21,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **ZXZ Euler extraction was wrong at the beta = pi gimbal pole.**
+  `rotmat2euler(R, "ZXZ")` used the beta = 0 formula at both singular poles,
+  but the algebra differs: at beta = 0, `R[0,1] = -sin(alpha + gamma)`; at
+  beta = pi, `R[0,1] = +sin(alpha - gamma)`. The extracted alpha came back
+  sign-flipped and the recomposed matrix did not reproduce R. Found by
+  writing a test for the branch, which coverage showed had never executed
+  under any test. Now pinned by a 240-case recomposition property including
+  both poles (worst error 6.6e-15).
+- **Coverage on the low-coverage STABLE modules was mostly a measurement
+  artifact -- and partly real.** coverage.py cannot see inside
+  `@njit`-compiled functions, so `gating.py`'s reported 56% is actually 94%
+  when measured with `NUMBA_DISABLE_JIT=1` (library total 90.8% -> 93.3%).
+  The real gaps found and closed: `conversions/spherical.py` 80% -> 100%
+  (scalar returns, row-major layout dispatch, array round-trips) and
+  `conversions/geodetic.py` 80% -> 99% (transpose branches, SEZ batch and
+  default-reference paths, the `ned2ecef` ENU detour), plus a dead
+  duplicate `if/else` removed. In `rotations.py` the JIT-disabled run showed
+  its three `_rot[xyz]_inplace` kernels were not invisible-but-tested but
+  genuinely never called; ~50 lines of dead code removed.
+- **`ruv2cart`'s upper-hemisphere assumption is now documented.** `u` and
+  `v` fix only the x/y direction cosines and the third is recovered as
+  `sqrt(1 - u^2 - v^2)`, never negative -- so a target below the x-y plane
+  comes back with z mirrored and `ruv2cart(*cart2ruv(p))` round-trips only
+  for `z >= 0`. This was stated in an inline comment ("assuming positive
+  z") and nowhere a caller could see it; surfaced when the new round-trip
+  test failed for negative z. Both converters now carry the caveat and a
+  test pins the mirroring so it stays documented.
 - **`core.validation` reclassified STABLE -> MATURE.** This release changes
   `ensure_positive_definite` to reject singular matrices, which STABLE's
   contract ("API frozen; breaking changes only in major version bumps")

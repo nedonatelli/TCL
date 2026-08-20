@@ -403,6 +403,14 @@ def ruv2cart(
     Notes
     -----
     This representation is common in radar tracking systems.
+
+    **The upper hemisphere is assumed.** ``u`` and ``v`` fix only the x and y
+    direction cosines; the third is recovered as
+    ``w = sqrt(1 - u**2 - v**2)``, which is never negative. A target at
+    ``z < 0`` therefore comes back with ``z`` mirrored, so
+    ``ruv2cart(*cart2ruv(p))`` round-trips only for ``p[2] >= 0``. The r-u-v
+    triple does not carry the hemisphere; keep it alongside if the geometry
+    spans both, or use :func:`cart2sphere`, whose elevation is signed.
     """
     r = np.asarray(r, dtype=np.float64)
     u = np.asarray(u, dtype=np.float64)
@@ -461,6 +469,13 @@ def cart2ruv(
     See Also
     --------
     ruv2cart : Inverse conversion.
+
+    Notes
+    -----
+    The returned ``(r, u, v)`` does not encode which hemisphere the point is
+    in: ``u`` and ``v`` are the x and y direction cosines only.
+    :func:`ruv2cart` assumes ``z >= 0`` when inverting, so a point below the
+    x-y plane does not survive the round trip.
     """
     cart_points = np.asarray(cart_points, dtype=np.float64)
 

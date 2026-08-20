@@ -13,6 +13,7 @@ Tests cover:
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
 from pytcl.coordinate_systems.rotations.rotations import (
     axisangle2rotmat,
@@ -917,3 +918,28 @@ class TestRotationCompositions:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestZXZGimbalLock:
+    """The singular branch of the ZXZ extraction, previously unexecuted.
+
+    When R[2,2] = +/-1 (beta = 0 or pi) the alpha/gamma split is degenerate;
+    the code resolves it by putting the whole rotation into alpha and setting
+    gamma = 0. That branch had never run under any test, JIT enabled or not.
+    """
+
+    def test_beta_zero_recovers_the_rotation(self):
+        angles = np.array([0.7, 0.0, 0.0])
+        R = euler2rotmat(angles, "ZXZ")
+        recovered = rotmat2euler(R, "ZXZ")
+        # alpha and gamma are only defined up to their sum when beta == 0
+        assert recovered[1] == pytest.approx(0.0, abs=1e-12)
+        assert (recovered[0] + recovered[2]) == pytest.approx(0.7, abs=1e-9)
+        assert_allclose(euler2rotmat(recovered, "ZXZ"), R, atol=1e-12)
+
+    def test_beta_pi_recovers_the_rotation(self):
+        angles = np.array([0.3, np.pi, 0.0])
+        R = euler2rotmat(angles, "ZXZ")
+        recovered = rotmat2euler(R, "ZXZ")
+        assert recovered[1] == pytest.approx(np.pi, abs=1e-9)
+        assert_allclose(euler2rotmat(recovered, "ZXZ"), R, atol=1e-9)

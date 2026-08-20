@@ -720,10 +720,10 @@ def ecef2sez(
     else:
         if ecef.shape[0] != 3:
             ecef = ecef.T
-        if ecef_ref.ndim == 1:
-            delta_ecef = ecef - ecef_ref[:, np.newaxis]
-        else:
-            delta_ecef = ecef - ecef_ref[:, np.newaxis]
+        # ecef_ref is always 1-D here -- either caller-supplied as a single
+        # point or derived from lat/lon above. A previous if/else on its
+        # ndim had byte-identical branches, one of them unreachable.
+        delta_ecef = ecef - ecef_ref[:, np.newaxis]
 
     # Rotation matrix from ECEF to SEZ
     sin_lat = np.sin(lat_ref)
