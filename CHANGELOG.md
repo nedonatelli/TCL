@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Second tier of defect-class gates**, following the post-v2.5.0 audit's
+  question of what would make its findings stop recurring:
+  - **Patch coverage** (`diff-cover`, CI): the lines a PR changes must be
+    >=90% covered. The global floor lets an individual module rot while the
+    aggregate holds; every wrong-logic bug in the audit was changed-or-new
+    code nothing executed.
+  - **Doctest ratchet** (`tests/contract/test_doctest_ratchet.py`): 797 of
+    1,563 public functions lack an executed example -- that number may not
+    grow, and dropping it lowers the recorded baseline so progress locks in.
+  - **NamedTuple docs/fields gate**
+    (`tests/contract/test_namedtuple_docs_match_fields.py`): documented
+    Attributes must match `_fields` in both directions. The introducing
+    sweep found zero violations -- the audit's fixes had cleaned the class
+    -- so the gate exists to keep it at zero.
+  - **Weekly mutation testing** (`mutation.yml`, report-only) over the 20
+    STABLE modules: coverage says a line ran; mutation testing says a test
+    would notice if its logic changed, which is the audit's recurring test
+    failure mode measured directly. The setup smoke-run already surfaced
+    surviving mutants in `ValidationError.__init__`.
+
 - **16 new CI-calibrated benchmark SLO entries** (`.benchmarks/slos.json`,
   8 -> 24 entries), covering hot-path families across
   `benchmarks/test_gating_bench.py` (`test_gate_20_tracks_50_meas`,

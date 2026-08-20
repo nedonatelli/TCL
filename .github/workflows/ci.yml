@@ -75,6 +75,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # diff-cover needs the merge-base with main to compute patch coverage
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v9.0.0
@@ -127,6 +130,19 @@ jobs:
         env:
           NUMBA_DISABLE_JIT: "1"
         run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples" -q
+
+      # Patch coverage: the lines THIS change touches must be tested. The
+      # global floor (85) lets an individual module rot as long as the
+      # aggregate holds; every wrong-logic bug in the post-v2.5.0 audit --
+      # the ZXZ gimbal branch, the ignored parameters, the M-of-N logic --
+      # was changed-or-new code that nothing executed. 90 on the diff, with
+      # untracked kernels and generated files excluded by coverage's own
+      # accounting.
+      - name: Patch coverage on changed lines
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' && github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          uv run diff-cover coverage.xml --compare-branch "origin/${{ github.base_ref }}" --fail-under=90
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'

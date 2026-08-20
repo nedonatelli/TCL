@@ -121,6 +121,10 @@ dev = [
     "pytest-xdist>=3.0.0",
     "pytest-benchmark>=4.0.0",
     "pytest-timeout>=2.0.0",
+    # Patch-coverage gate: changed lines in a PR must be tested (see ci.yml)
+    "diff-cover>=9.0",
+    # Weekly mutation testing over the STABLE modules (mutation.yml)
+    "mutmut>=3.2",
     "nbval>=0.10.0",
     "hypothesis>=6.0.0",
     # Arbitrary-precision oracle for special-function audit tests
@@ -236,3 +240,15 @@ no-matching-overload = "ignore"
 # from the retired mypy gate (e.g. list-item) that aren't in ty's model;
 # ty would see them as unused. Kept until those sites are re-triaged.
 unused-type-ignore-comment = "ignore"
+
+[tool.mutmut]
+# Weekly mutation run (mutation.yml). source_paths must be the whole package:
+# listing individual files makes the mutants/ copy an incomplete package and
+# unrelated test imports break. Scope lives in the workflow instead, which
+# passes the STABLE modules as mutant-name patterns to `mutmut run`.
+source_paths = ["pytcl/"]
+# unit + validation only: the contract tests read repo files (docs/, .github/)
+# that mutmut's mutants/ copy does not contain, and killing mutants is the
+# unit/validation suites' job anyway.
+pytest_add_cli_args_test_selection = ["tests/unit/", "tests/validation/"]
+also_copy = ["tests/fixtures/", "conftest.py", ".benchmarks/", "benchmarks/", "scripts/"]

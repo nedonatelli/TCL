@@ -187,3 +187,6 @@ benchmark_results.json
 # ruff-format gate, which formats Python fences inside Markdown.
 .superpowers/
 docs/superpowers/
+
+# mutmut working copy (mutation.yml)
+mutants/
