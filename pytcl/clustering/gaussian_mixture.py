@@ -759,7 +759,12 @@ class GaussianMixture:
 
     def prune(self, weight_threshold: float = 1e-5) -> "GaussianMixture":
         """
-        Remove low-weight components.
+        Remove low-weight components and renormalize.
+
+        Surviving weights are rescaled to sum to 1, and if every component
+        falls below the threshold the single highest-weight one is kept
+        rather than returning an empty mixture. Neither was stated here,
+        though the module-level `prune_mixture` documents both.
 
         Parameters
         ----------

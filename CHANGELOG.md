@@ -21,6 +21,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **`TrackDatabaseManager.open(mode='r')` created the database it was meant
+  to read** and accepted any string as a mode. Opening a mistyped path for
+  reading produced an empty file, and the first query then failed with
+  `no such table: detections` -- reporting a missing table rather than the
+  missing database the caller actually had. This is the defect gh-21 fixed
+  for `SQLStorage`, which was not applied to this class at the time. Read
+  mode now raises `FileNotFoundError`, and an invalid mode raises
+  `ValueError`.
+- **Documentation corrected where it overstated an API's reach:**
+  `MigrationHelper.generate_v2_template` listed five filter types as though
+  each had a template when four exist, so `'imm'` and `'particle'` return
+  Kalman scaffolding and the `hdf5`/`both` backends ignore `filter_type`
+  entirely -- deliberate graceful fallback, now described rather than
+  implied away. `to_gpu`/`ensure_gpu_array` document `dtype` as honoured
+  when MLX has no float64, so every float array is float32 on Apple Silicon
+  and the declared `float64` default is unreachable there.
+  `GaussianMixture.prune` also renormalizes surviving weights and keeps the
+  highest-weight component when all fall below the threshold; neither was
+  stated. `CuPyExtendedKalmanFilter`'s class example indexed `x[0]` as a
+  single state, violating the batched-callback contract the module
+  documents -- its doctest passed only because it never called `predict`.
 - **`plot_nis_sequence` produced a chart labelled NEES.** It forwards to
   `plot_nees_sequence`, which hardcoded `"NEES"` as both the y-axis title and
   the series name; only `title` passed through. NEES and NIS are different

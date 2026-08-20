@@ -445,12 +445,15 @@ class CuPyExtendedKalmanFilter:
     >>> import numpy as np
     >>> from pytcl.gpu.ekf import CuPyExtendedKalmanFilter
     >>>
-    >>> # Nonlinear dynamics
+    >>> # Nonlinear dynamics. Callbacks receive the WHOLE (n_tracks, dim)
+    >>> # batch as one device array, not a single state -- see the module
+    >>> # docstring's contract. Indexing x[0] here would take the first
+    >>> # track rather than the first state component, and raise on predict.
     >>> def f(x):
-    ...     return np.array([x[0] + x[1], x[1] * 0.99])
+    ...     return np.stack([x[:, 0] + x[:, 1], x[:, 1] * 0.99], axis=-1)
     >>>
     >>> def h(x):
-    ...     return np.array([np.sqrt(x[0]**2 + x[1]**2)])
+    ...     return np.sqrt(x[:, 0] ** 2 + x[:, 1] ** 2)[:, None]
     >>>
     >>> ekf = CuPyExtendedKalmanFilter(
     ...     state_dim=2, meas_dim=1,
