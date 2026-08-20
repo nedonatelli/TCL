@@ -349,3 +349,39 @@ class TestEveryRegisteredModuleExists:
         for module_path, level in MODULE_MATURITY.items():
             if level is not MaturityLevel.EXPERIMENTAL:
                 assert get_maturity(module_path) is level, module_path
+
+
+class TestEveryModuleIsRegistered:
+    """A registry that omits whole subsystems answers "EXPERIMENTAL" by
+    accident rather than by assessment.
+
+    ``get_maturity`` returns EXPERIMENTAL for anything unregistered, so an
+    unclassified module is indistinguishable from one deliberately marked
+    unstable. 79 leaf modules were unregistered -- ``io``, ``gpu``,
+    ``clustering``, ``plotting``, ``atmosphere``, ``performance_evaluation``,
+    ``diagnostics`` and ``transponders`` had no entries at all, which maps
+    almost exactly onto what shipped after the registry was first written.
+    """
+
+    def test_every_leaf_module_has_a_classification(self):
+        import pkgutil
+
+        import pytcl
+
+        unregistered = sorted(
+            name[len("pytcl.") :]
+            for name in (
+                m.name for m in pkgutil.walk_packages(pytcl.__path__, "pytcl.")
+            )
+            if name[len("pytcl.") :] not in MODULE_MATURITY
+            and not any(
+                m.ispkg
+                for m in pkgutil.walk_packages(pytcl.__path__, "pytcl.")
+                if m.name == name
+            )
+        )
+        assert not unregistered, (
+            "these modules have no maturity classification, so they report "
+            "EXPERIMENTAL by default rather than by assessment: "
+            + ", ".join(unregistered)
+        )

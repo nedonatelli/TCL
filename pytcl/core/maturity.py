@@ -36,6 +36,28 @@ List all stable modules:
 >>> from pytcl.core.maturity import get_modules_by_maturity, MaturityLevel
 >>> stable_modules = get_modules_by_maturity(MaturityLevel.STABLE)
 
+How modules are classified
+--------------------------
+The levels are a promise about breakage, so they are assigned from evidence
+rather than impression:
+
+- **STABLE** is never assigned automatically. Freezing an API is a release
+  commitment, not something a coverage number implies; promoting a module
+  here is a deliberate act.
+- **MATURE** requires at least 90% line coverage, no behaviour change in the
+  current release, and a code path CI can actually execute.
+- **EXPERIMENTAL** covers everything else: below that coverage bar, changed
+  behaviour this release, or -- for :mod:`pytcl.gpu` -- a CuPy branch that no
+  CI runner can reach, so the reported coverage reflects only the MLX half.
+
+Two invariants are enforced by ``tests/unit/test_maturity_comprehensive.py``:
+every registered path must import, and every module must be registered. The
+first exists because 32 of 78 entries once named modules from a pre-2.0
+layout, and since lookup is by exact path they silently reported
+EXPERIMENTAL instead of their recorded level. The second exists because whole
+subsystems shipped -- ``io``, ``diagnostics``, ``transponders``, ``gpu`` --
+without ever being classified.
+
 See Also
 --------
 pytcl.core.optional_deps : Optional dependency management.
@@ -167,6 +189,118 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # Relativity
     "astronomical.relativity": MaturityLevel.EXPERIMENTAL,
     "astronomical.sgp4": MaturityLevel.EXPERIMENTAL,
+    # =========================================================================
+    # Added Mature entries (see the audit note in the module docstring)
+    # =========================================================================
+    # assignment_algorithms
+    "assignment_algorithms.data_association": MaturityLevel.MATURE,
+    "assignment_algorithms.dijkstra_min_cost": MaturityLevel.MATURE,
+    "assignment_algorithms.nd_assignment": MaturityLevel.MATURE,
+    "assignment_algorithms.network_flow": MaturityLevel.MATURE,
+    # astronomical
+    "astronomical.lambert": MaturityLevel.MATURE,
+    "astronomical.special_orbits": MaturityLevel.MATURE,
+    "astronomical.time_systems": MaturityLevel.MATURE,
+    # atmosphere
+    "atmosphere.ionosphere": MaturityLevel.MATURE,
+    "atmosphere.models": MaturityLevel.MATURE,
+    "atmosphere.thermosphere": MaturityLevel.MATURE,
+    # clustering
+    "clustering.kmeans": MaturityLevel.MATURE,
+    # core
+    "core.paths": MaturityLevel.MATURE,
+    # diagnostics
+    "diagnostics.render": MaturityLevel.MATURE,
+    # dynamic_estimation
+    "dynamic_estimation.configs": MaturityLevel.MATURE,
+    # gravity
+    "gravity.clenshaw": MaturityLevel.MATURE,
+    "gravity.models": MaturityLevel.MATURE,
+    "gravity.spherical_harmonics": MaturityLevel.MATURE,
+    # io
+    "io.asdf_io": MaturityLevel.MATURE,
+    "io.compat": MaturityLevel.MATURE,
+    "io.hdf5_storage": MaturityLevel.MATURE,
+    "io.hdf5_track_storage": MaturityLevel.MATURE,
+    "io.migration": MaturityLevel.MATURE,
+    "io.readers": MaturityLevel.MATURE,
+    "io.serialize": MaturityLevel.MATURE,
+    "io.session": MaturityLevel.MATURE,
+    "io.sql_storage": MaturityLevel.MATURE,
+    # magnetism
+    "magnetism.emm": MaturityLevel.MATURE,
+    "magnetism.igrf": MaturityLevel.MATURE,
+    # mathematical_functions
+    "mathematical_functions.basic_matrix.special_matrices": MaturityLevel.MATURE,
+    "mathematical_functions.combinatorics.combinatorics": MaturityLevel.MATURE,
+    "mathematical_functions.geometry.geometry": MaturityLevel.MATURE,
+    "mathematical_functions.interpolation.interpolation": MaturityLevel.MATURE,
+    "mathematical_functions.numerical_integration.cubature_points": MaturityLevel.MATURE,
+    "mathematical_functions.numerical_integration.lcd_samples": MaturityLevel.MATURE,
+    "mathematical_functions.numerical_integration.quadrature": MaturityLevel.MATURE,
+    "mathematical_functions.numerical_integration.region_cubature": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.bessel": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.elliptic": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.error_functions": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.gamma_functions": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.lambert_w": MaturityLevel.MATURE,
+    "mathematical_functions.special_functions.marcum_q": MaturityLevel.MATURE,
+    "mathematical_functions.statistics.estimators": MaturityLevel.MATURE,
+    "mathematical_functions.transforms.stft": MaturityLevel.MATURE,
+    # performance_evaluation
+    "performance_evaluation.estimation_metrics": MaturityLevel.MATURE,
+    "performance_evaluation.track_metrics": MaturityLevel.MATURE,
+    # plotting
+    "plotting.coordinates": MaturityLevel.MATURE,
+    "plotting.ellipses": MaturityLevel.MATURE,
+    # trackers
+    "trackers.configs": MaturityLevel.MATURE,
+    "trackers.single_target": MaturityLevel.MATURE,
+    # =========================================================================
+    # Added Experimental entries (see the audit note in the module docstring)
+    # =========================================================================
+    # astronomical
+    "astronomical.tle": MaturityLevel.EXPERIMENTAL,  # 88% coverage
+    # clustering
+    "clustering.dbscan": MaturityLevel.EXPERIMENTAL,  # 80% coverage
+    "clustering.gaussian_mixture": MaturityLevel.EXPERIMENTAL,  # 86% coverage
+    "clustering.hierarchical": MaturityLevel.EXPERIMENTAL,  # 83% coverage
+    # core
+    "core.maturity": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    # dynamic_models
+    "dynamic_models.continuous_time.dynamics": MaturityLevel.EXPERIMENTAL,  # 88% coverage
+    # gpu
+    "gpu._backend": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.ekf": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.kalman": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.matrix_utils": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.particle_filter": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.ukf": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    "gpu.utils": MaturityLevel.EXPERIMENTAL,  # CuPy branch unverifiable in CI
+    # io
+    "io.dataframes": MaturityLevel.EXPERIMENTAL,  # 90% coverage
+    "io.storage": MaturityLevel.EXPERIMENTAL,  # 70% coverage
+    "io.track_database": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    # mathematical_functions
+    "mathematical_functions.basic_matrix.decompositions": MaturityLevel.EXPERIMENTAL,  # 86% coverage
+    "mathematical_functions.signal_processing.matched_filter": MaturityLevel.EXPERIMENTAL,  # 66% coverage
+    "mathematical_functions.special_functions.debye": MaturityLevel.EXPERIMENTAL,  # 55% coverage
+    "mathematical_functions.special_functions.hypergeometric": MaturityLevel.EXPERIMENTAL,  # 65% coverage
+    "mathematical_functions.statistics.distributions": MaturityLevel.EXPERIMENTAL,  # 83% coverage
+    # navigation
+    "navigation.rhumb": MaturityLevel.EXPERIMENTAL,  # 85% coverage
+    # plotting
+    "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage
+    # static_estimation
+    "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # 90% coverage
+    # terrain
+    "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage
+    # trackers
+    "trackers.hypothesis": MaturityLevel.EXPERIMENTAL,  # 81% coverage
+    "trackers.multi_target": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    # transponders
+    "transponders.ais": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
 }
 
 

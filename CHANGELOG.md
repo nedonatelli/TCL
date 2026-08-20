@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `TypeError` naming the arity rather than silently rebinding -- drop the
   argument. The Notes on both functions now record why no such parameter
   exists, so it is not re-added.
+- **The maturity registry now covers every module.** 79 leaf modules had no
+  classification, so `get_maturity` answered EXPERIMENTAL for them by default
+  rather than by assessment -- indistinguishable from a module deliberately
+  marked unstable. Eight packages had no entries at all (`io`, `gpu`,
+  `clustering`, `plotting`, `atmosphere`, `performance_evaluation`,
+  `diagnostics`, `transponders`), which maps almost exactly onto what shipped
+  after the registry was first written. Classified from evidence against a
+  rubric now stated in the module docstring: MATURE requires >=90% line
+  coverage, no behaviour change this release, and a path CI can execute;
+  everything else is EXPERIMENTAL. All seven `gpu` modules are EXPERIMENTAL
+  regardless of their coverage figure, because no CI runner reaches the CuPy
+  branch so the number reflects only the MLX half. No module was promoted to
+  STABLE: freezing an API is a release commitment, not something coverage
+  implies. Registry goes from 67 to 146 entries (22 STABLE, 86 MATURE, 38
+  EXPERIMENTAL), and a second contract test now fails if any module is left
+  unclassified.
 - **The module maturity registry was 41% stale, silently downgrading real
   modules.** 32 of `MODULE_MATURITY`'s 78 entries named paths from the
   pre-2.0 layout. Because `get_maturity` looks up by exact path and returns
