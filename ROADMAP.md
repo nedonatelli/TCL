@@ -61,9 +61,11 @@ No dates are attached because none have been decided:
   Remaining: astronomical refraction add/remove with the Sinclair
   atmosphere model, standard-exponential-model ray tracing
   (`Cart2RuvStdRefrac`, `ruv2CartStdRefrac`, bias approximation, cubature
-  variants), speed-of-sound and Jacchia 1971. Excluded as MEX-blocked:
-  NRLMSISE-00 proper and its dependents (no portable MATLAB source
-  exists); excluded as out of scope: `Design_of_Lenses/` (3 optics files)
+  variants), speed-of-sound and Jacchia 1971. Deferred as a standalone
+  project: NRLMSISE-00 proper and its dependents (the MATLAB `.m` files
+  are MEX stubs; the complete public-domain C implementation ships in the
+  MATLAB tree and compiles/runs headlessly as a validation oracle);
+  excluded as out of scope: `Design_of_Lenses/` (3 optics files)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
   init, direction-only; MATLAB's Static_Estimation content is almost all
   absent (great-circle TDOA is the exception, ported as
