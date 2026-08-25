@@ -16,6 +16,7 @@ from pytcl.navigation.geodesy import (
     SPHERE,
     WGS84,
     Ellipsoid,
+    OsculatingSphere,
     clear_geodesy_cache,
     direct_geodetic,
     ecef_to_enu,
@@ -27,6 +28,7 @@ from pytcl.navigation.geodesy import (
     haversine_distance,
     inverse_geodetic,
     ned_to_ecef,
+    osculating_sphere,
 )
 from pytcl.navigation.great_circle import (
     EARTH_RADIUS,  # Great circle navigation
@@ -150,6 +152,8 @@ __all__ = [
     "direct_geodetic",
     "inverse_geodetic",
     "haversine_distance",
+    "OsculatingSphere",
+    "osculating_sphere",
     # INS Constants
     "OMEGA_EARTH",
     "GM_EARTH",

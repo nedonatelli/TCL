@@ -210,7 +210,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Spherical-harmonic gravity, EGM, solid Earth tides
    * - ``navigation``
      - 5
-     - 99
+     - 101
      - Geodesy, great circle and rhumb line, INS and INS/GNSS
    * - ``clustering``
      - 4
@@ -226,7 +226,7 @@ Counts are measured from the packages themselves rather than asserted;
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
      - 5
-     - 48
+     - 57
      - Simplified thermosphere, standard atmospheres, ionosphere,
        humidity, refractivity
    * - ``magnetism``
