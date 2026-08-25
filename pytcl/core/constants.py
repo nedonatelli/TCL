@@ -47,6 +47,9 @@ UNIVERSAL_GAS_CONSTANT: Final[float] = 8.314462618
 #: Standard atmosphere pressure [Pa]
 STANDARD_ATMOSPHERE: Final[float] = 101_325.0
 
+#: Atomic mass unit (dalton) [kg] (CODATA 2018)
+ATOMIC_MASS_UNIT: Final[float] = 1.66053906660e-27
+
 #: Absolute zero [K] (definition)
 ABSOLUTE_ZERO_CELSIUS: Final[float] = -273.15
 

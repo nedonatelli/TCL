@@ -55,8 +55,15 @@ No dates are attached because none have been decided:
   (no region-dimension argument) -- better scoped as a future
   `quadrature.py` extension than `region_cubature.py`, deferred pending a
   consumer.
-- **Refraction suite** — entirely unported (astronomical refraction,
-  standard-refraction ray tracing, refractivity models, humidity conversions)
+- **Refraction suite** — first slice shipped (all 10 humidity conversions,
+  both dew-point functions, `approxRefractivity`,
+  `atmosExpDecayConst4Refrac` -- validated against MATLAB fixtures).
+  Remaining: astronomical refraction add/remove with the Sinclair
+  atmosphere model, standard-exponential-model ray tracing
+  (`Cart2RuvStdRefrac`, `ruv2CartStdRefrac`, bias approximation, cubature
+  variants), speed-of-sound and Jacchia 1971. Excluded as MEX-blocked:
+  NRLMSISE-00 proper and its dependents (no portable MATLAB source
+  exists); excluded as out of scope: `Design_of_Lenses/` (3 optics files)
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
   init, direction-only; MATLAB's Static_Estimation content is almost all
   absent (great-circle TDOA is the exception, ported as
@@ -341,7 +348,7 @@ Contributions are welcome! If you'd like to work on any of these features:
 1. Open an issue to discuss your planned implementation
 2. Fork the repository and create a feature branch
 3. Follow the existing code style (ruff formatting, NumPy docstrings)
-4. Add tests for new functionality (aim for 80%+ coverage)
+4. Add tests for new functionality (CI enforces >=90% patch coverage)
 5. Submit a pull request
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and the
