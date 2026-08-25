@@ -59,9 +59,10 @@ No dates are attached because none have been decided:
   refractivity helpers and the full astronomical-refraction group
   (Sinclair atmosphere, add/remove with all three algorithms, SOFA
   ``refco`` transcription) are shipped, all validated against MATLAB
-  fixtures. Remaining: standard-exponential-model ray tracing
-  (`Cart2RuvStdRefrac`, `ruv2CartStdRefrac`, bias approximation, cubature
-  variants), speed-of-sound and Jacchia 1971. Deferred as a standalone
+  fixtures, along with the full standard-exponential-model suite (ray
+  tracing, bias approximation, cubature variants,
+  `reduceStdRefrac2Spher`). Remaining: speed-of-sound (algorithms 1-2)
+  and Jacchia 1971. Deferred as a standalone
   project: NRLMSISE-00 proper and its dependents (the MATLAB `.m` files
   are MEX stubs; the complete public-domain C implementation ships in the
   MATLAB tree and compiles/runs headlessly as a validation oracle);

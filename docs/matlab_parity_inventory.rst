@@ -170,8 +170,10 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        astronomical-refraction group (``SinclairAtmos``,
        ``removeAstroRefrac``/``addAstroRefrac`` with all three algorithms,
        ``simpAstroRefParam`` transcribed from the in-tree SOFA source)
-       ported and validated against MATLAB fixtures. **Missing:**
-       standard-exponential-model ray tracing,
+       and the complete ``Standard_Exponential_Model`` suite (bistatic
+       r-u-v ray tracing, bias approximation, cubature conversions,
+       refractivity reduction) ported and validated against MATLAB
+       fixtures. **Missing:** speed of sound (gas-table algorithm),
        Jacchia model, NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
        stubs; the implementation is Brodowski's public-domain C port in
        ``3rd_Party_Libraries/nrlmsise-00-bc9a2fe/``, portable but a

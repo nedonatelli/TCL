@@ -55,14 +55,23 @@ from pytcl.atmosphere.models import (
 from pytcl.atmosphere.refraction import (
     AstroRefParams,
     AstroRefractionResult,
+    CubatureConversionResult,
     ExpDecayConstResult,
+    RuvStdRefracResult,
     SinclairAtmosResult,
+    StdRefracBiasResult,
     add_astro_refraction,
     approx_refractivity,
     atmos_exp_decay_const,
+    cart2ruv_std_refrac,
+    cart2ruv_std_refrac_cubature,
+    reduce_std_refrac_to_sphere,
     remove_astro_refraction,
+    ruv2cart_std_refrac,
+    ruv2cart_std_refrac_cubature,
     simple_astro_ref_params,
     sinclair_atmosphere,
+    std_refrac_bias_approx,
 )
 from pytcl.atmosphere.thermosphere import (
     F107Index,
@@ -126,4 +135,14 @@ __all__ = [
     "remove_astro_refraction",
     "simple_astro_ref_params",
     "sinclair_atmosphere",
+    # Standard exponential model (radar refraction)
+    "CubatureConversionResult",
+    "RuvStdRefracResult",
+    "StdRefracBiasResult",
+    "cart2ruv_std_refrac",
+    "cart2ruv_std_refrac_cubature",
+    "reduce_std_refrac_to_sphere",
+    "ruv2cart_std_refrac",
+    "ruv2cart_std_refrac_cubature",
+    "std_refrac_bias_approx",
 ]

@@ -2,9 +2,11 @@
 Atmospheric refractivity for radar and optical propagation.
 
 Ports from the MATLAB Tracker Component Library's
-``Atmosphere_and_Refraction`` directory. This module currently provides the
-refractivity helpers; the astronomical-refraction and exponential-model
-ray-tracing functions are planned follow-ons.
+``Atmosphere_and_Refraction`` directory: refractivity helpers,
+astronomical refraction (add/remove with the Sinclair atmosphere model),
+and the standard-exponential-model radar refraction suite (bistatic
+r-u-v ray tracing, bias approximation, cubature-based Gaussian
+conversions).
 
 Conventions
 -----------
@@ -15,33 +17,56 @@ refractivity at height ``h`` above sea level to be
 ``ce`` is the decay constant returned by :func:`atmos_exp_decay_const`.
 """
 
-from typing import NamedTuple, Union
+import warnings
+from typing import NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy.integrate import quad
+from scipy.integrate import IntegrationWarning, quad, solve_bvp, solve_ivp
+from scipy.optimize import minimize_scalar
+from scipy.special import erf
 
 from pytcl.atmosphere.humidity import H2O_MOLAR_MASS
 from pytcl.core.constants import (
     EARTH_ECCENTRICITY_SQ,
+    EARTH_SEMI_MAJOR_AXIS,
+    EARTH_SEMI_MINOR_AXIS,
     STANDARD_ATMOSPHERE,
     STANDARD_RELATIVE_HUMIDITY,
     STANDARD_TEMPERATURE,
     UNIVERSAL_GAS_CONSTANT,
 )
-from pytcl.navigation.geodesy import geodetic_to_ecef
+from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+    cubature_point_moments,
+    fifth_order_cubature_points,
+    transform_cubature_points,
+)
+from pytcl.navigation.geodesy import (
+    ecef_to_geodetic,
+    geodetic_to_ecef,
+    osculating_sphere,
+)
 
 __all__ = [
     "AstroRefParams",
     "AstroRefractionResult",
+    "CubatureConversionResult",
     "ExpDecayConstResult",
+    "RuvStdRefracResult",
     "SinclairAtmosResult",
+    "StdRefracBiasResult",
     "add_astro_refraction",
     "approx_refractivity",
     "atmos_exp_decay_const",
+    "cart2ruv_std_refrac",
+    "cart2ruv_std_refrac_cubature",
+    "reduce_std_refrac_to_sphere",
     "remove_astro_refraction",
+    "ruv2cart_std_refrac",
+    "ruv2cart_std_refrac_cubature",
     "simple_astro_ref_params",
     "sinclair_atmosphere",
+    "std_refrac_bias_approx",
 ]
 
 
@@ -710,3 +735,912 @@ def add_astro_refraction(
     if z_true_arr.ndim == 0:
         return AstroRefractionResult(float(z0), float(delta_z))
     return AstroRefractionResult(z0, delta_z)
+
+
+# ---------------------------------------------------------------------------
+# Standard exponential atmospheric model (radar refraction)
+# ---------------------------------------------------------------------------
+
+
+class RuvStdRefracResult(NamedTuple):
+    """
+    Refraction-corrupted bistatic r-u-v measurements and ray directions.
+
+    Attributes
+    ----------
+    z : ndarray
+        The measurements, shape (3, N) or (4, N) with ``include_w``:
+        bistatic range then the direction cosines of the apparent target
+        direction in the receiver's local frame.
+    u_tx : ndarray
+        Unit vectors (3, N) in ECEF pointing from the transmitter toward
+        the refraction-corrupted apparent target position.
+    u_tar_rx : ndarray
+        Unit vectors (3, N) of the apparent direction of the receiver as
+        seen by the target.
+    u_tar_tx : ndarray
+        Unit vectors (3, N) of the apparent direction of the transmitter
+        as seen by the target.
+    """
+
+    z: NDArray[np.float64]
+    u_tx: NDArray[np.float64]
+    u_tar_rx: NDArray[np.float64]
+    u_tar_tx: NDArray[np.float64]
+
+
+class StdRefracBiasResult(NamedTuple):
+    """
+    Approximate refraction biases of a monostatic radar measurement.
+
+    Attributes
+    ----------
+    delta_r_one_way : float
+        Bias in the one-way range in meters (add to the true range to get
+        the measured range).
+    delta_theta : float
+        Bias in the elevation angle in radians.
+    """
+
+    delta_r_one_way: float
+    delta_theta: float
+
+
+class CubatureConversionResult(NamedTuple):
+    """
+    First two moments of a measurement converted by cubature integration.
+
+    Attributes
+    ----------
+    mean : ndarray
+        Converted mean(s), shape (3, N).
+    covariance : ndarray
+        Converted covariance matrices, shape (3, 3, N).
+    """
+
+    mean: NDArray[np.float64]
+    covariance: NDArray[np.float64]
+
+
+def _std_decay_const(ns: float) -> float:
+    """The CRPL decay constant used by every exponential-model default."""
+    delta_n = -7.32 * np.exp(0.005577 * ns)
+    return float(np.log(ns / (ns + delta_n)) / 1000.0)
+
+
+def _refractivity_2d(x, y, ns, r_e, ce):
+    """Refractivity 1e6*(n-1) at 2D point(s) (x, y) from Earth's center."""
+    return 1e-6 * ns * np.exp(-ce * (np.sqrt(x**2 + y**2) - r_e))
+
+
+def _ray_rhs(x, y, ns, r_e, ce):
+    """RHS of the 2D ray ODE; vectorized over columns of y for solve_bvp."""
+    n_val = _refractivity_2d(x, y[0], ns, r_e, ce)
+    return np.vstack(
+        [
+            y[1],
+            ce
+            * (1 + y[1] ** 2)
+            * (x * y[1] - y[0])
+            * n_val
+            / ((n_val + 1) * np.sqrt(x**2 + y[0] ** 2)),
+        ]
+    )
+
+
+def _ray_rhs_jac(x, y, ns, r_e, ce):
+    """Jacobian of :func:`_ray_rhs`, shape (2, 2, m)."""
+    n_val = _refractivity_2d(x, y[0], ns, r_e, ce)
+    m = np.size(x)
+    jac = np.zeros((2, 2, m))
+    jac[0, 1, :] = 1.0
+    jac[1, 0, :] = (
+        ce
+        * (1 + y[1] ** 2)
+        * (-n_val)
+        * (
+            ce * y[0] * (x * y[1] - y[0]) * np.sqrt(x**2 + y[0] ** 2)
+            + x * (x + y[0] * y[1]) * (n_val + 1)
+        )
+        / ((x**2 + y[0] ** 2) ** (3 / 2) * (n_val + 1) ** 2)
+    )
+    jac[1, 1, :] = (
+        ce
+        * (x - 2 * y[0] * y[1] + 3 * x * y[1] ** 2)
+        * n_val
+        / ((n_val + 1) * np.sqrt(x**2 + y[0] ** 2))
+    )
+    return jac
+
+
+def _trace_ray(x0, y0, x1, y1, ns, r_e, ce):
+    """Solve the two-point ray BVP between (x0, y0) and (x1, y1)."""
+    num_steps = max(20, int(np.ceil(20 * np.hypot(x1 - x0, y1 - y0) / 400e3)))
+    x_mesh = np.linspace(x0, x1, num_steps)
+    slope = (y1 - y0) / (x1 - x0)
+    intercept = y1 - slope * x1
+    y_init = np.vstack([x_mesh * slope + intercept, np.full(num_steps, slope)])
+    sol = solve_bvp(
+        lambda x, y: _ray_rhs(x, y, ns, r_e, ce),
+        lambda ya, yb: np.array([ya[0] - y0, yb[0] - y1]),
+        x_mesh,
+        y_init,
+        fun_jac=lambda x, y: _ray_rhs_jac(x, y, ns, r_e, ce),
+        bc_jac=lambda ya, yb: (
+            np.array([[1.0, 0.0], [0.0, 0.0]]),
+            np.array([[0.0, 0.0], [1.0, 0.0]]),
+        ),
+        tol=1e-8,
+        max_nodes=100000,
+    )
+    return sol
+
+
+def _path_length(sol, x0, x1, ns, r_e, ce):
+    """Optical path length along a traced ray (the apparent range)."""
+
+    def _fun(x):
+        y = sol.sol(x)
+        return (1 + _refractivity_2d(x, y[0], ns, r_e, ce)) * np.sqrt(1 + y[1] ** 2)
+
+    return quad(_fun, x0, x1, epsabs=1e-13, epsrel=1e-13, limit=200)[0]
+
+
+def _vertical_range(y0, y_max, ns, r_e, ce):
+    """Closed-form apparent range for a purely radial (vertical) path."""
+    return (
+        ((np.exp(ce * (r_e - y0)) - np.exp(ce * (r_e - y_max))) * ns) / (1e6 * ce)
+        + y_max
+        - y0
+    )
+
+
+def _local_ray_frame(x_obs, vec_to_tar):
+    """
+    Rotation from ECEF into the 2D ray-tracing frame.
+
+    The frame's y axis is the observer's (spherical) vertical, the x axis
+    the horizontal projection of the observer-to-target vector; the ray
+    stays in the x-y plane. Returns the rotation matrix and the norm of
+    the horizontal projection (whose smallness flags near-vertical rays).
+    """
+    u_vert = x_obs / np.linalg.norm(x_obs)
+    vec = vec_to_tar - np.dot(vec_to_tar, u_vert) * u_vert
+    horiz_norm = np.linalg.norm(vec)
+    if horiz_norm < 1e-3:
+        return None, horiz_norm
+    u_horiz = vec / horiz_norm
+    rot = np.vstack([u_horiz, u_vert, np.cross(u_horiz, u_vert)])
+    return rot, horiz_norm
+
+
+def _atmos_refrac_meas(x_obs, x_obj, ns, ce, r_e):
+    """
+    Apparent one-way range and arrival/departure directions between two
+    points in the exponential atmosphere (sphere-centered ECEF frame).
+    """
+    vec_to_tar = x_obj - x_obs
+    rot, horiz_norm = _local_ray_frame(x_obs, vec_to_tar)
+
+    y0 = np.linalg.norm(x_obs)
+    if rot is None:
+        # Near-vertical path: refraction bending is negligible, so the
+        # apparent range is a closed-form radial integral.
+        x1 = 0.0
+        y1_rel = np.dot(vec_to_tar, x_obs / y0)
+        y_max = np.hypot(x1, y1_rel + y0)
+        rng = _vertical_range(y0, y_max, ns, r_e, ce)
+        u_arrive = vec_to_tar / np.linalg.norm(vec_to_tar)
+        return rng, u_arrive, -u_arrive
+
+    vec_local = rot @ vec_to_tar
+    x1 = vec_local[0]
+    y1 = vec_local[1] + y0
+
+    sol = _trace_ray(0.0, y0, x1, y1, ns, r_e, ce)
+    rng = _path_length(sol, 0.0, x1, ns, r_e, ce)
+
+    theta0 = np.arctan(sol.y[1, 0])
+    u_arrive = rot.T @ np.array([np.cos(theta0), np.sin(theta0), 0.0])
+    theta1 = np.arctan(sol.y[1, -1])
+    u_depart = -(rot.T @ np.array([np.cos(theta1), np.sin(theta1), 0.0]))
+    return rng, u_arrive, u_depart
+
+
+def _apparent_cart_from_ruv(z, use_half_range, z_tx, z_rx, m):
+    """
+    The refraction-free bistatic r-u-v to Cartesian conversion used to
+    seed the ray shooting (a single-measurement port of MATLAB's
+    ``ruv2Cart``).
+    """
+    r_b = 2 * z[0] if use_half_range else z[0]
+    if z.shape[0] > 3:
+        u_vec = z[1:4].copy()
+    else:
+        u, v = z[1], z[2]
+        uv_mag2 = u**2 + v**2
+        if uv_mag2 > 1:
+            uv_mag = np.sqrt(uv_mag2)
+            u, v = u / uv_mag, v / uv_mag
+        u_vec = np.array([u, v, np.sqrt(max(1 - u**2 - v**2, 0.0))])
+    z_tx_local = m @ (z_tx - z_rx)
+    if r_b == 0:
+        r1 = 0.0
+    else:
+        r1 = (r_b**2 - np.dot(z_tx_local, z_tx_local)) / (
+            2 * (r_b - np.dot(u_vec, z_tx_local))
+        )
+    return m.T @ (r1 * u_vec) + z_rx
+
+
+def cart2ruv_std_refrac(
+    z_c: ArrayLike,
+    use_half_range: bool = False,
+    z_tx: Optional[ArrayLike] = None,
+    z_rx: Optional[ArrayLike] = None,
+    m: Optional[ArrayLike] = None,
+    ns: float = 313.0,
+    include_w: bool = False,
+    ce: Optional[float] = None,
+    r_e: Optional[float] = None,
+    sphere_center: Optional[ArrayLike] = None,
+) -> RuvStdRefracResult:
+    """
+    Convert Cartesian points to refraction-corrupted bistatic r-u-v.
+
+    Traces rays through the standard exponential atmosphere
+    (``N = ns * exp(-ce * h)``) over a locally osculating spherical Earth
+    to determine the apparent bistatic range and direction cosines of
+    each target as seen by the receiver. Not suitable for
+    satellite-to-satellite paths grazing the atmosphere, and the ray
+    tracer can fail for paths going too far underground or for targets
+    collocated with the receiver or the transmitter.
+
+    Port of ``Cart2RuvStdRefrac.m``.
+
+    Parameters
+    ----------
+    z_c : array_like
+        Cartesian target positions in global ECEF coordinates, shape
+        (3, N) or (3,).
+    use_half_range : bool, optional
+        Whether the bistatic range is halved (one-way range in the
+        monostatic case). Default False.
+    z_tx : array_like, optional
+        Transmitter ECEF position, shape (3,). Default: the origin.
+    z_rx : array_like, optional
+        Receiver ECEF position, shape (3,). Default: the origin.
+    m : array_like, optional
+        3x3 rotation from global axes to the receiver's local axes (the
+        receiver boresight is its local z axis). Default: identity.
+    ns : float, optional
+        Refractivity reduced to the reference sphere. Default 313.
+    include_w : bool, optional
+        Include the third direction cosine, making ``z`` 4xN. Default
+        False.
+    ce : float, optional
+        Decay constant of the exponential model in inverse meters.
+        Default: derived from ``ns`` via the CRPL standard constants
+        (:func:`atmos_exp_decay_const`).
+    r_e : float, optional
+        Radius of the spherical-Earth approximation. Default: the
+        osculating sphere at the receiver
+        (:func:`pytcl.navigation.geodesy.osculating_sphere`).
+    sphere_center : array_like, optional
+        ECEF offset of the sphere's center. Defaults to the osculating
+        sphere's offset when ``r_e`` is defaulted, and to zeros when
+        ``r_e`` is given.
+
+    Returns
+    -------
+    result : RuvStdRefracResult
+        The measurements and the apparent ray directions at both ends.
+
+    Examples
+    --------
+    >>> z_rx = np.array([6378137.0, 0.0, 0.0])
+    >>> z_tar = np.array([6428137.0, 100e3, 0.0])
+    >>> res = cart2ruv_std_refrac(z_tar, True, z_rx, z_rx)
+    >>> print(f"{res.z[0, 0]:.3f}")
+    111808.239
+    """
+    z_c = np.atleast_2d(np.asarray(z_c, dtype=np.float64))
+    if z_c.shape[0] == 1:
+        z_c = z_c.T
+    num_meas = z_c.shape[1]
+    z_tx = np.zeros(3) if z_tx is None else np.asarray(z_tx, dtype=np.float64).ravel()
+    z_rx = np.zeros(3) if z_rx is None else np.asarray(z_rx, dtype=np.float64).ravel()
+    m = np.eye(3) if m is None else np.asarray(m, dtype=np.float64)
+    if ce is None:
+        ce = _std_decay_const(ns)
+    if r_e is None:
+        lat, lon, _ = ecef_to_geodetic(*z_rx)
+        r_e, sphere_center = osculating_sphere(float(lat), float(lon))
+    elif sphere_center is None:
+        sphere_center = np.zeros(3)
+    sphere_center = np.asarray(sphere_center, dtype=np.float64).ravel()
+
+    z_c = z_c - sphere_center[:, None]
+    z_tx = z_tx - sphere_center
+    z_rx = z_rx - sphere_center
+
+    z = np.zeros((4 if include_w else 3, num_meas))
+    u_tx = np.zeros((3, num_meas))
+    u_tar_tx = np.zeros((3, num_meas))
+    u_tar_rx = np.zeros((3, num_meas))
+
+    monostatic = np.array_equal(z_rx, z_tx)
+    for cur in range(num_meas):
+        if monostatic:
+            rng, u_arrive, u_tar_rx[:, cur] = _atmos_refrac_meas(
+                z_tx, z_c[:, cur], ns, ce, r_e
+            )
+            r = 2 * rng
+            u_tx[:, cur] = u_arrive
+            u_tar_tx[:, cur] = u_tar_rx[:, cur]
+        else:
+            r2, u_arrive, u_tar_rx[:, cur] = _atmos_refrac_meas(
+                z_rx, z_c[:, cur], ns, ce, r_e
+            )
+            r1, u_tx[:, cur], u_tar_tx[:, cur] = _atmos_refrac_meas(
+                z_tx, z_c[:, cur], ns, ce, r_e
+            )
+            r = r1 + r2
+        if use_half_range:
+            r = r / 2
+        u = m @ u_arrive
+        z[0, cur] = r
+        z[1:, cur] = u[: z.shape[0] - 1]
+    return RuvStdRefracResult(z, u_tx, u_tar_rx, u_tar_tx)
+
+
+def ruv2cart_std_refrac(
+    z_ruv: ArrayLike,
+    use_half_range: bool = False,
+    z_tx: Optional[ArrayLike] = None,
+    z_rx: Optional[ArrayLike] = None,
+    m: Optional[ArrayLike] = None,
+    ns: float = 313.0,
+    ce: Optional[float] = None,
+    r_e: Optional[float] = None,
+    sphere_center: Optional[ArrayLike] = None,
+    x_max: float = 1000e3,
+) -> NDArray[np.float64]:
+    """
+    Convert refraction-corrupted bistatic r-u-v points to Cartesian.
+
+    The inverse of :func:`cart2ruv_std_refrac`: shoots a ray from the
+    receiver in the apparent direction through the exponential
+    atmosphere (an initial value problem) and searches along the traced
+    path for the point whose accumulated bistatic range matches the
+    measurement. Fails if the target is collocated with the transmitter
+    or the receiver.
+
+    Port of ``ruv2CartStdRefrac.m``. Deviation from MATLAB: the MATLAB
+    function's near-vertical branch aborts the whole measurement loop
+    (an upstream bug); this port processes remaining measurements.
+
+    Parameters
+    ----------
+    z_ruv : array_like
+        Measurements, shape (3, N) or (4, N) ([r; u; v] or [r; u; v; w]),
+        or a single measurement of shape (3,) or (4,).
+    use_half_range : bool, optional
+        Whether the ranges in ``z_ruv`` are halved. Default False.
+    z_tx, z_rx, m, ns, ce, r_e, sphere_center
+        As in :func:`cart2ruv_std_refrac`.
+    x_max : float, optional
+        Maximum horizontal displacement searched along the ray, in
+        meters. Default 1000 km.
+
+    Returns
+    -------
+    z_cart : ndarray
+        Cartesian target positions in global ECEF coordinates, (3, N).
+
+    Examples
+    --------
+    >>> z_rx = np.array([6378137.0, 0.0, 0.0])
+    >>> z_tar = np.array([6428137.0, 100e3, 0.0])
+    >>> ruv = cart2ruv_std_refrac(z_tar, True, z_rx, z_rx).z
+    >>> back = ruv2cart_std_refrac(ruv, True, z_rx, z_rx)
+    >>> np.allclose(back[:, 0], z_tar, atol=0.5)
+    True
+    """
+    z_ruv = np.atleast_2d(np.asarray(z_ruv, dtype=np.float64))
+    if z_ruv.shape[0] == 1:
+        z_ruv = z_ruv.T
+    num_meas = z_ruv.shape[1]
+    z_tx = np.zeros(3) if z_tx is None else np.asarray(z_tx, dtype=np.float64).ravel()
+    z_rx = np.zeros(3) if z_rx is None else np.asarray(z_rx, dtype=np.float64).ravel()
+    m = np.eye(3) if m is None else np.asarray(m, dtype=np.float64)
+    if ce is None:
+        ce = _std_decay_const(ns)
+    if r_e is None:
+        lat, lon, _ = ecef_to_geodetic(*z_rx)
+        r_e, sphere_center = osculating_sphere(float(lat), float(lon))
+    elif sphere_center is None:
+        sphere_center = np.zeros(3)
+    sphere_center = np.asarray(sphere_center, dtype=np.float64).ravel()
+
+    z_rx = z_rx - sphere_center
+    z_tx = z_tx - sphere_center
+
+    z_ruv = z_ruv.copy()
+    if use_half_range:
+        z_ruv[0, :] = 2 * z_ruv[0, :]
+
+    monostatic = np.array_equal(z_rx, z_tx)
+    u_vert = z_rx / np.linalg.norm(z_rx)
+    y0 = np.linalg.norm(z_rx)
+    z_cart = np.zeros((3, num_meas))
+
+    def _tx_range(tar_loc):
+        # Apparent one-way range from the transmitter via the forward
+        # model (monostatic-from-Tx with half range).
+        res = cart2ruv_std_refrac(
+            tar_loc.reshape(3, 1),
+            True,
+            z_tx,
+            z_tx,
+            None,
+            ns,
+            False,
+            ce,
+            r_e,
+            np.zeros(3),
+        )
+        return res.z[0, 0]
+
+    for cur in range(num_meas):
+        apparent = _apparent_cart_from_ruv(z_ruv[:, cur], False, z_tx, z_rx, m)
+        vec_to_tar = apparent - z_rx
+        rot, horiz_norm = _local_ray_frame(z_rx, vec_to_tar)
+        biased_range = z_ruv[0, cur]
+
+        if rot is None:
+            # Near-vertical: search the radial distance directly against
+            # the closed-form range.
+            if z_ruv.shape[0] == 3:
+                w = np.sqrt(max(1 - z_ruv[1, cur] ** 2 - z_ruv[2, cur] ** 2, 0.0))
+                u_meas = np.array([z_ruv[1, cur], z_ruv[2, cur], w])
+            else:
+                u_meas = z_ruv[1:4, cur]
+
+            def _cost_vertical(y_max):
+                r_rx = _vertical_range(y0, y_max, ns, r_e, ce)
+                if monostatic:
+                    r_tx = r_rx
+                else:
+                    # Faithful to MATLAB's rangeCostVertical, which uses
+                    # u*range as an absolute position; that is only
+                    # geometrically right for a receiver at the origin.
+                    # Positions near the Earth's center overflow the
+                    # exponential model; MATLAB propagates Inf silently
+                    # and the bounded search carries on.
+                    with (
+                        np.errstate(over="ignore", invalid="ignore"),
+                        warnings.catch_warnings(),
+                    ):
+                        warnings.simplefilter("ignore", IntegrationWarning)
+                        r_tx = _tx_range(u_meas * r_rx)
+                return (biased_range - r_tx - r_rx) ** 2
+
+            res = minimize_scalar(
+                _cost_vertical,
+                bounds=(y0, y0 + x_max),
+                method="bounded",
+                options={"xatol": 1e-8},
+            )
+            y_true = res.x
+            # A purely vertical offset needs no horizontal frame.
+            z_cart[:, cur] = u_vert * (y_true - y0) + z_rx + sphere_center
+            continue
+
+        vec_local = rot @ vec_to_tar
+        x1 = vec_local[0]
+        y1 = vec_local[1] + y0
+        y0_dot = (y1 - y0) / x1
+
+        ivp = solve_ivp(
+            lambda x, y: _ray_rhs(x, y.reshape(2, 1), ns, r_e, ce).ravel(),
+            (0.0, x_max),
+            [y0, y0_dot],
+            method="RK45",
+            rtol=1e-12,
+            atol=1e-12,
+            dense_output=True,
+        )
+
+        def _path_range(x_end):
+            def _fun(x):
+                y = ivp.sol(x)
+                return (1 + _refractivity_2d(x, y[0], ns, r_e, ce)) * np.sqrt(
+                    1 + y[1] ** 2
+                )
+
+            return quad(_fun, 0.0, x_end, epsabs=1e-10, epsrel=1e-10, limit=200)[0]
+
+        def _cost(x_end):
+            r_rx = _path_range(x_end)
+            if monostatic:
+                r_tx = r_rx
+            else:
+                y_end = ivp.sol(x_end)
+                tar_local = np.array([x_end, y_end[0] - y0, 0.0])
+                r_tx = _tx_range(rot.T @ tar_local + z_rx)
+            return (biased_range - r_tx - r_rx) ** 2
+
+        res = minimize_scalar(
+            _cost,
+            bounds=(0.0, x_max),
+            method="bounded",
+            options={"xatol": 1e-8},
+        )
+        x_true = res.x
+        y_true = ivp.sol(x_true)[0]
+        local = np.array([x_true, y_true - y0, 0.0])
+        z_cart[:, cur] = rot.T @ local + z_rx + sphere_center
+    return z_cart
+
+
+def std_refrac_bias_approx(
+    path_length: float,
+    elevation: float,
+    radar_height: float,
+    ns: float = 313.0,
+    ce: Optional[float] = None,
+    r_e: Optional[float] = None,
+    algorithm: int = 1,
+) -> StdRefracBiasResult:
+    """
+    Approximate range and elevation biases due to standard refraction.
+
+    For a monostatic radar at a given height observing a target at a
+    given path length and elevation, approximate the offsets that
+    refraction through the standard exponential atmosphere adds to the
+    one-way range and to the elevation angle.
+
+    Port of ``stdRefracBiasApprox.m``.
+
+    Parameters
+    ----------
+    path_length : float
+        Length of the refraction-free path to the target in meters.
+    elevation : float
+        Elevation angle of the target above the radar's local horizontal
+        in radians.
+    radar_height : float
+        Height of the radar above the reference sphere in meters.
+    ns : float, optional
+        Refractivity reduced to the reference sphere. Default 313.
+    ce : float, optional
+        Decay constant in inverse meters. Default: CRPL standard.
+    r_e : float, optional
+        Radius of the reference sphere. Default: the WGS-84 mean radius
+        ``(2a + b) / 3``.
+    algorithm : int, optional
+        ``1`` (default) numerical ray tracing (the same BVP solve as
+        :func:`cart2ruv_std_refrac`); ``0`` the closed-form
+        Kerce-Blair-Brown approximation, valid for elevations up to 49
+        degrees.
+
+    Returns
+    -------
+    result : StdRefracBiasResult
+        The one-way range bias in meters and the elevation bias in
+        radians.
+
+    References
+    ----------
+    - J. C. Kerce, W. D. Blair, and G. C. Brown, "Modeling refraction
+      errors for simulation studies of multisensor target tracking,"
+      Proc. 36th Southeastern Symposium on System Theory, Mar. 2004.
+
+    Examples
+    --------
+    >>> res = std_refrac_bias_approx(100e3, 0.1, 100.0)
+    >>> print(f"{res.delta_r_one_way:.4f} {res.delta_theta:.6e}")
+    15.9561 1.420764e-03
+    >>> res0 = std_refrac_bias_approx(100e3, 0.1, 100.0, algorithm=0)
+    >>> print(f"{res0.delta_r_one_way:.4f}")
+    15.8175
+    """
+    if ce is None:
+        ce = _std_decay_const(ns)
+    if r_e is None:
+        r_e = (2 * EARTH_SEMI_MAJOR_AXIS + EARTH_SEMI_MINOR_AXIS) / 3
+    r_radar = r_e + radar_height
+
+    if algorithm == 0:
+        alpha = ns / 1e6
+        beta = ce
+        if elevation > np.deg2rad(49):
+            raise ValueError("This algorithm does not work for angles >49 degrees.")
+        # The F function of Kerce, Blair and Brown, with the asymptotic
+        # erf branch corrected from the paper.
+        l_upper = (
+            np.sqrt(beta / (2 * r_radar))
+            * np.cos(elevation)
+            * (path_length + r_radar * (1 / np.cos(elevation)) * np.tan(elevation))
+        )
+        l_lower = np.sqrt(beta * r_radar / 2) * np.tan(elevation)
+        if elevation <= np.deg2rad(10):
+            erf_diff = erf(l_upper) - erf(l_lower)
+        else:
+            erf_diff = 1 / (l_lower * np.sqrt(np.pi)) * np.exp(-(l_lower**2)) - 1 / (
+                l_upper * np.sqrt(np.pi)
+            ) * np.exp(-(l_upper**2))
+        f_val = (
+            np.sqrt(np.pi * r_radar / (2 * beta))
+            * np.cos(elevation)
+            * np.exp(-beta * (r_radar - r_e))
+            * np.exp(beta * r_radar * np.tan(elevation) ** 2 / 2)
+            * erf_diff
+        )
+        return StdRefracBiasResult(
+            float(alpha * f_val),
+            float(alpha * beta * np.cos(elevation) * f_val),
+        )
+    if algorithm != 1:
+        raise ValueError(f"algorithm must be 0 or 1, got {algorithm}")
+
+    x1 = path_length * np.cos(elevation)
+    y0 = r_radar
+    y1 = r_radar + np.sin(elevation) * path_length
+
+    if abs(np.pi / 2 - elevation) < 1e-3:
+        # Nearly vertical: closed-form radial integral, zero bending.
+        y_max = r_radar + path_length
+        delta_r = ((np.exp(ce * (r_e - y0)) - np.exp(ce * (r_e - y_max))) * ns) / (
+            1e6 * ce
+        )
+        return StdRefracBiasResult(float(delta_r), 0.0)
+
+    sol = _trace_ray(0.0, y0, x1, y1, ns, r_e, ce)
+    rng = _path_length(sol, 0.0, x1, ns, r_e, ce)
+    return StdRefracBiasResult(
+        float(rng - path_length),
+        float(np.arctan(sol.y[1, 0]) - elevation),
+    )
+
+
+def reduce_std_refrac_to_sphere(
+    n_meas: float,
+    height: float,
+    exp_const: float = 0.005577,
+    mult_const: float = 7.32,
+    xatol: float = 1e-4,
+) -> NDArray[np.float64]:
+    """
+    Reduce a measured refractivity to the reference sphere.
+
+    Given the atmospheric refractivity measured at a height above sea
+    level, determine the equivalent sea-level refractivity under the
+    standard exponential model. The model is scanned over sea-level
+    refractivities in [200, 450]; each sign change brackets a candidate
+    solution refined by bounded scalar minimization, so **one or two
+    solutions** can be returned.
+
+    Port of ``reduceStdRefrac2Spher.m``.
+
+    Parameters
+    ----------
+    n_meas : float
+        The measured refractivity ``(n - 1) * 1e6``.
+    height : float
+        Height of the measurement above mean sea level in meters.
+    exp_const, mult_const : float, optional
+        Parameters of the decay model ``deltaN = -mult_const *
+        exp(exp_const * N)`` per kilometer. Defaults are the CRPL
+        standard values 0.005577 and 7.32.
+    xatol : float, optional
+        Absolute tolerance of the bounded search (MATLAB ``fminbnd``
+        default 1e-4).
+
+    Returns
+    -------
+    ns_values : ndarray
+        The candidate sea-level refractivities, shape (num_solutions,).
+        May be empty if the measurement is inconsistent with the model.
+
+    Examples
+    --------
+    >>> vals = reduce_std_refrac_to_sphere(300.0, 1000.0)
+    >>> print(f"{vals[0]:.4f}")
+    352.1814
+    """
+    num_points = 100
+    ns_grid = np.linspace(200.0, 450.0, num_points)
+
+    def _model_minus_meas(ns):
+        return (
+            ns * (ns / (ns - mult_const * np.exp(exp_const * ns))) ** (-height / 1000)
+            - n_meas
+        )
+
+    vals = _model_minus_meas(ns_grid)
+    crossings = np.flatnonzero(np.diff(vals > 0))
+    solutions = np.zeros(crossings.size)
+    for i, idx in enumerate(crossings):
+        res = minimize_scalar(
+            lambda ns: _model_minus_meas(ns) ** 2,
+            bounds=(ns_grid[idx], ns_grid[idx + 1]),
+            method="bounded",
+            options={"xatol": xatol},
+        )
+        solutions[i] = res.x
+    return solutions
+
+
+def cart2ruv_std_refrac_cubature(
+    z_c: ArrayLike,
+    sqrt_cov: ArrayLike,
+    use_half_range: bool = False,
+    z_tx: Optional[ArrayLike] = None,
+    z_rx: Optional[ArrayLike] = None,
+    m: Optional[ArrayLike] = None,
+    ns: float = 313.0,
+    points: Optional[ArrayLike] = None,
+    weights: Optional[ArrayLike] = None,
+    ce: Optional[float] = None,
+    r_e: Optional[float] = None,
+    sphere_center: Optional[ArrayLike] = None,
+) -> CubatureConversionResult:
+    """
+    Cubature-based Gaussian conversion of Cartesian states to r-u-v.
+
+    Propagates Gaussian state estimates through
+    :func:`cart2ruv_std_refrac` by cubature integration, returning the
+    converted means and covariances.
+
+    Port of ``Cart2RuvStdRefracCubature.m``.
+
+    Parameters
+    ----------
+    z_c : array_like
+        Cartesian means, shape (3, N) or (3,).
+    sqrt_cov : array_like
+        Lower-triangular square roots of the covariances, shape (3, 3)
+        (shared) or (3, 3, N).
+    use_half_range, z_tx, z_rx, m, ns, ce, r_e, sphere_center
+        As in :func:`cart2ruv_std_refrac`.
+    points, weights : array_like, optional
+        Cubature points (num_points, 3) and weights for N(0, I).
+        Default: :func:`fifth_order_cubature_points`.
+
+    Returns
+    -------
+    result : CubatureConversionResult
+        Converted means (3, N) and covariances (3, 3, N).
+
+    Examples
+    --------
+    >>> z_rx = np.array([6378137.0, 0.0, 0.0])
+    >>> z_tar = np.array([6428137.0, 100e3, 0.0])
+    >>> sr = np.diag([100.0, 100.0, 100.0])
+    >>> res = cart2ruv_std_refrac_cubature(z_tar, sr, True, z_rx, z_rx)
+    >>> print(f"{res.mean[0, 0]:.1f}")
+    111808.3
+    """
+    z_c = np.atleast_2d(np.asarray(z_c, dtype=np.float64))
+    if z_c.shape[0] == 1:
+        z_c = z_c.T
+    num_meas = z_c.shape[1]
+    sqrt_cov = np.asarray(sqrt_cov, dtype=np.float64)
+    if sqrt_cov.ndim == 2:
+        sqrt_cov = np.repeat(sqrt_cov[:, :, None], num_meas, axis=2)
+    if points is None:
+        points, weights = fifth_order_cubature_points(3)
+    points = np.asarray(points, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64)
+
+    z_out = np.zeros((3, num_meas))
+    cov_out = np.zeros((3, 3, num_meas))
+    for cur in range(num_meas):
+        cub, _ = transform_cubature_points(
+            points, weights, z_c[:, cur], sqrt_cov[:, :, cur]
+        )
+        converted = cart2ruv_std_refrac(
+            cub.T,
+            use_half_range,
+            z_tx,
+            z_rx,
+            m,
+            ns,
+            False,
+            ce,
+            r_e,
+            sphere_center,
+        ).z
+        mean, cov = cubature_point_moments(converted.T, weights, lambda p: p)
+        z_out[:, cur] = mean
+        cov_out[:, :, cur] = cov
+    return CubatureConversionResult(z_out, cov_out)
+
+
+def ruv2cart_std_refrac_cubature(
+    z_ruv: ArrayLike,
+    sqrt_cov: ArrayLike,
+    use_half_range: bool = False,
+    z_tx: Optional[ArrayLike] = None,
+    z_rx: Optional[ArrayLike] = None,
+    m: Optional[ArrayLike] = None,
+    ns: float = 313.0,
+    points: Optional[ArrayLike] = None,
+    weights: Optional[ArrayLike] = None,
+    ce: Optional[float] = None,
+    r_e: Optional[float] = None,
+    sphere_center: Optional[ArrayLike] = None,
+    x_max: float = 1000e3,
+) -> CubatureConversionResult:
+    """
+    Cubature-based Gaussian conversion of r-u-v measurements to Cartesian.
+
+    Propagates Gaussian measurements through
+    :func:`ruv2cart_std_refrac` by cubature integration.
+
+    Port of ``ruv2CartStdRefracCubature.m``.
+
+    Parameters
+    ----------
+    z_ruv : array_like
+        Measurement means, shape (3, N) or (3,).
+    sqrt_cov : array_like
+        Lower-triangular square roots of the measurement covariances,
+        shape (3, 3) or (3, 3, N).
+    use_half_range, z_tx, z_rx, m, ns, ce, r_e, sphere_center, x_max
+        As in :func:`ruv2cart_std_refrac`.
+    points, weights : array_like, optional
+        Cubature points and weights for N(0, I). Default:
+        :func:`fifth_order_cubature_points`.
+
+    Returns
+    -------
+    result : CubatureConversionResult
+        Converted means (3, N) and covariances (3, 3, N).
+
+    Examples
+    --------
+    >>> z_rx = np.array([6378137.0, 0.0, 0.0])
+    >>> z_tar = z_rx + np.array([1e3, 5e3, 50e3])
+    >>> ruv = cart2ruv_std_refrac(z_tar, True, z_rx, z_rx).z[:, 0]
+    >>> sr = np.diag([10.0, 1e-4, 1e-4])
+    >>> res = ruv2cart_std_refrac_cubature(ruv, sr, True, z_rx, z_rx)
+    >>> np.allclose(res.mean[:, 0], z_tar, atol=5.0)
+    True
+    """
+    z_ruv = np.atleast_2d(np.asarray(z_ruv, dtype=np.float64))
+    if z_ruv.shape[0] == 1:
+        z_ruv = z_ruv.T
+    num_meas = z_ruv.shape[1]
+    sqrt_cov = np.asarray(sqrt_cov, dtype=np.float64)
+    if sqrt_cov.ndim == 2:
+        sqrt_cov = np.repeat(sqrt_cov[:, :, None], num_meas, axis=2)
+    if points is None:
+        points, weights = fifth_order_cubature_points(z_ruv.shape[0])
+    points = np.asarray(points, dtype=np.float64)
+    weights = np.asarray(weights, dtype=np.float64)
+
+    z_out = np.zeros((3, num_meas))
+    cov_out = np.zeros((3, 3, num_meas))
+    for cur in range(num_meas):
+        cub, _ = transform_cubature_points(
+            points, weights, z_ruv[:, cur], sqrt_cov[:, :, cur]
+        )
+        converted = ruv2cart_std_refrac(
+            cub.T,
+            use_half_range,
+            z_tx,
+            z_rx,
+            m,
+            ns,
+            ce,
+            r_e,
+            sphere_center,
+            x_max,
+        )
+        mean, cov = cubature_point_moments(converted.T, weights, lambda p: p)
+        z_out[:, cur] = mean
+        cov_out[:, :, cur] = cov
+    return CubatureConversionResult(z_out, cov_out)
