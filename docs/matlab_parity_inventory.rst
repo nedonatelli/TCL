@@ -170,9 +170,11 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        (``approxRefractivity``, ``atmosExpDecayConst4Refrac``) ported and
        validated against MATLAB fixtures. **Missing:** astronomical
        refraction add/remove, standard-exponential-model ray tracing,
-       Jacchia model, NRLMSISE-00 proper (MATLAB ships it only as a MEX
-       stub — no portable source exists). pytcl adds ionosphere models
-       (Klobuchar, TEC) that the MATLAB area lacks.
+       Jacchia model, NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
+       stubs; the implementation is Brodowski's public-domain C port in
+       ``3rd_Party_Libraries/nrlmsise-00-bc9a2fe/``, portable but a
+       standalone project). pytcl adds ionosphere models (Klobuchar, TEC)
+       that the MATLAB area lacks.
    * - Gravity
      - 14
      - Good
