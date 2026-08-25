@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-08-24
+
+### Migrating from 2.5.0
+
+Five breaking changes ship in this minor, each permitted by the changed
+module's registry level (none is STABLE; see
+`scripts/check_release_stability.py`):
+
+1. **AIS checksums are validated by default.** `decode_ais` /
+   `ais_position_reports` now skip sentences whose `*hh` is wrong or
+   missing. Pass `validate_checksum=False` to restore the old behaviour for
+   feeds known to carry bad checksums.
+2. **`MultiTargetTracker` confirmation is M-of-N.** Sparse-detection tracks
+   that previously confirmed via the cumulative count may stay tentative;
+   raise `confirm_window` to approximate the old rule.
+3. **`RBPFFilter.predict` / `rbpf_predict` no longer take `G`.** Drop the
+   second positional argument; existing calls fail with a `TypeError`
+   naming the arity rather than silently misbinding.
+4. **`ensure_positive_definite` rejects singular matrices.** Use the new
+   `ensure_positive_semidefinite` where a singular covariance is
+   legitimate.
+5. **Five inert parameters removed** (they were accepted and never read):
+   `marcum_q_inv(tol, max_iter)`, `matched_filter_frequency(fs)` /
+   `optimal_filter(fs)`, `parse_earth2014_binary(layer)`,
+   `fisher_information_exponential_family(h)`,
+   `associated_legendre_scaled(scale)`. Delete the argument at the call
+   site; behaviour is unchanged because the parameters never did anything.
+
+Numerical results also change where bugs were fixed -- notably
+`rotmat2euler(..., "ZXZ")` at the beta = pi gimbal pole, the
+`stereographic` / `azimuthal_equidistant` grid convergences, and
+`great_circle_tdoa_loc`'s second solution -- per the project's
+correctness-fix precedent, compare against the new values, not recorded
+2.5.0 outputs.
+
 ### Added
 - **Second tier of defect-class gates**, following the post-v2.5.0 audit's
   question of what would make its findings stop recurring:
