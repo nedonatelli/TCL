@@ -453,7 +453,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.5.0 (released). See "Current metrics (v2.5.0)" under
+**Version:** v2.6.0 (released). See "Current metrics (v2.5.0)" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -516,11 +516,11 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.5.0):
-- **Functions:** 1,150+ (top-level `def`; measured 1,229 via
+Current metrics (v2.6.0):
+- **Functions:** 1,200+ (top-level `def`; measured 1,227 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 189
-- **Tests:** 7,000+ (all passing; measured 7,880 via
+- **Tests:** 8,000+ (all passing; measured 8,035 via
   `pytest --collect-only -q`)
 - **Coverage:** 88.80% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, no MLX -- run 32393664562); 93.8% locally where the MLX
@@ -546,12 +546,16 @@ shipped with the front page still claiming a type checker that release
 itself had retired; this step exists because the checklist's "rebuild
 docs" line did not catch that.
 
-### 3. Sync Examples
+### 3. Verify Example References
 
-Copy examples from the root `examples/` directory to `docs/examples/`:
+Do NOT copy `examples/*.py` into `docs/examples/` -- an earlier version of
+this step said to, and the copies drifted 238 lines from the canonical
+scripts before being removed. `tests/contract/test_docs_references.py` now
+fails the build if a second copy appears; every docs reference resolves to
+the root `examples/` directory. This step is just:
 
 ```bash
-cp examples/*.py docs/examples/
+uv run pytest tests/contract/test_docs_references.py -q
 ```
 
 ### 3b. Check the diff against the stability registry

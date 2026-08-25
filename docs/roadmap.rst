@@ -7,10 +7,18 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.5.0)
+Current State (v2.6.0)
 ----------------------
 
-* **7,000+ tests** passing, 85% coverage, docstring examples run in CI
+* **8,000+ tests** passing; coverage measured honestly (88.8% as CI's
+  branch-coverage gate sees it, with numba kernels traced; 93.8% locally
+  where the MLX layer is visible), docstring examples run in CI
+* **Audited**: the post-v2.5.0 audit verified the MATLAB parity inventory
+  against the source tree, fixed eleven wrong-answer code defects and ~60
+  incorrect docstrings, and left permanent gates behind -- dead-parameter
+  detection, patch coverage on every PR, executed markdown/rst examples,
+  a complete module-maturity registry checked both ways, and weekly
+  mutation testing over the STABLE modules
 * **Typed configs and sessions** (:doc:`sessions`): ``msgspec.Struct``
   configs (``IMMConfig``, ``GaussianSumConfig``, ``RBPFConfig``,
   ``SingleTargetConfig``, ``MultiTargetConfig``) accepted via a
