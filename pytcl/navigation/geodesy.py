@@ -311,6 +311,80 @@ def geodetic_to_ecef(
     return x, y, z
 
 
+class OsculatingSphere(NamedTuple):
+    """
+    A local spherical approximation to the reference ellipsoid.
+
+    Attributes
+    ----------
+    radius : float
+        Radius of the osculating sphere in meters.
+    center : ndarray
+        Offset of the sphere's center from the ellipsoid's center in ECEF
+        coordinates, shape (3,). Subtract this from ECEF positions to work
+        in the sphere-centered frame.
+    """
+
+    radius: float
+    center: NDArray[np.float64]
+
+
+def osculating_sphere(
+    lat: float,
+    lon: float,
+    ellipsoid: Ellipsoid = WGS84,
+) -> OsculatingSphere:
+    """
+    Osculating sphere of the reference ellipsoid at a surface point.
+
+    The sphere has the Gaussian radius of curvature ``sqrt(M * N)`` (the
+    geometric mean of the meridian and prime-vertical radii of curvature)
+    and is positioned to touch the ellipsoid at the given latitude and
+    longitude. Used as the local spherical-Earth approximation in the
+    standard-exponential-model refraction routines.
+
+    Port of ``osculatingSpher4LatLon.m`` (the default 3D, no-geoid path).
+
+    Parameters
+    ----------
+    lat : float
+        Geodetic latitude in radians.
+    lon : float
+        Longitude in radians.
+    ellipsoid : Ellipsoid, optional
+        Reference ellipsoid (default: WGS84).
+
+    Returns
+    -------
+    sphere : OsculatingSphere
+        The radius and the ECEF offset of the sphere's center.
+
+    Examples
+    --------
+    >>> sph = osculating_sphere(0.7, 0.1)
+    >>> print(f"{sph.radius:.3f}")
+    6374462.341
+    """
+    a = ellipsoid.a
+    e2 = ellipsoid.e2
+    denom = np.sqrt(1 - e2 * np.sin(lat) ** 2)
+    # Radii of curvature in the meridian and the prime vertical.
+    m0 = a * (1 - e2) / denom**3
+    n0 = a / denom
+    radius = float(np.sqrt(m0 * n0))
+
+    x, y, z = geodetic_to_ecef(lat, lon, 0.0, ellipsoid)
+    on_ellipsoid = np.array([float(x), float(y), float(z)])
+    on_sphere = radius * np.array(
+        [
+            np.cos(lat) * np.cos(lon),
+            np.cos(lat) * np.sin(lon),
+            np.sin(lat),
+        ]
+    )
+    return OsculatingSphere(radius, on_ellipsoid - on_sphere)
+
+
 def ecef_to_geodetic(
     x: ArrayLike,
     y: ArrayLike,
@@ -845,6 +919,8 @@ __all__ = [
     "direct_geodetic",
     "inverse_geodetic",
     "haversine_distance",
+    "OsculatingSphere",
+    "osculating_sphere",
     # Cache management
     "clear_geodesy_cache",
     "get_geodesy_cache_info",

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Standard-exponential-model radar refraction**
+  (`pytcl.atmosphere.refraction`): `cart2ruv_std_refrac` /
+  `ruv2cart_std_refrac` bistatic ray-tracing conversions,
+  `std_refrac_bias_approx` (numerical and Kerce-Blair-Brown closed
+  form), `reduce_std_refrac_to_sphere` (returns all 1-2 solutions), and
+  the cubature-based Gaussian conversions
+  `cart2ruv_std_refrac_cubature` / `ruv2cart_std_refrac_cubature`.
+  Validated against MATLAB fixtures (sub-micrometer range agreement).
+- `osculating_sphere` in `pytcl.navigation.geodesy`: the Gaussian-radius
+  local spherical Earth approximation used by the refraction suite.
 - **Astronomical refraction** (`pytcl.atmosphere.refraction`):
   `remove_astro_refraction` / `add_astro_refraction` with all three MATLAB
   algorithms (Sinclair-atmosphere ray integration, Saastamoinen, IAU
