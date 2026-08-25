@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Astronomical refraction** (`pytcl.atmosphere.refraction`):
+  `remove_astro_refraction` / `add_astro_refraction` with all three MATLAB
+  algorithms (Sinclair-atmosphere ray integration, Saastamoinen, IAU
+  ``A*tan(z) + B*tan^3(z)``), the `sinclair_atmosphere` two-layer model,
+  and `simple_astro_ref_params` -- a transcription of the SOFA ``refco``
+  fit that MATLAB ships only as a MEX stub, verified to machine precision
+  against the compiled MEX. Validated against 271 MATLAB fixture rows.
+- `STANDARD_TEMPERATURE` and `STANDARD_RELATIVE_HUMIDITY` constants in
+  `pytcl.core.constants`.
 - **Humidity conversions** (`pytcl.atmosphere.humidity`): ports of all ten
   MATLAB TCL humidity functions -- absolute/relative/specific humidity and
   water number-density conversions plus `dew_point_pressure` /

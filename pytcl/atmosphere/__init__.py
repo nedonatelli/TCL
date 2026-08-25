@@ -53,9 +53,16 @@ from pytcl.atmosphere.models import (
     us_standard_atmosphere_1976,
 )
 from pytcl.atmosphere.refraction import (
+    AstroRefParams,
+    AstroRefractionResult,
     ExpDecayConstResult,
+    SinclairAtmosResult,
+    add_astro_refraction,
     approx_refractivity,
     atmos_exp_decay_const,
+    remove_astro_refraction,
+    simple_astro_ref_params,
+    sinclair_atmosphere,
 )
 from pytcl.atmosphere.thermosphere import (
     F107Index,
@@ -108,8 +115,15 @@ __all__ = [
     "rel_humid_to_spec_humid",
     "spec_humid_to_abs_humid",
     "spec_humid_to_rel_humid",
-    # Refractivity
+    # Refractivity and astronomical refraction
     "ExpDecayConstResult",
     "approx_refractivity",
     "atmos_exp_decay_const",
+    "AstroRefParams",
+    "AstroRefractionResult",
+    "SinclairAtmosResult",
+    "add_astro_refraction",
+    "remove_astro_refraction",
+    "simple_astro_ref_params",
+    "sinclair_atmosphere",
 ]

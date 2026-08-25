@@ -55,11 +55,11 @@ No dates are attached because none have been decided:
   (no region-dimension argument) -- better scoped as a future
   `quadrature.py` extension than `region_cubature.py`, deferred pending a
   consumer.
-- **Refraction suite** — first slice shipped (all 10 humidity conversions,
-  both dew-point functions, `approxRefractivity`,
-  `atmosExpDecayConst4Refrac` -- validated against MATLAB fixtures).
-  Remaining: astronomical refraction add/remove with the Sinclair
-  atmosphere model, standard-exponential-model ray tracing
+- **Refraction suite** — humidity conversions, dew-point functions,
+  refractivity helpers and the full astronomical-refraction group
+  (Sinclair atmosphere, add/remove with all three algorithms, SOFA
+  ``refco`` transcription) are shipped, all validated against MATLAB
+  fixtures. Remaining: standard-exponential-model ray tracing
   (`Cart2RuvStdRefrac`, `ruv2CartStdRefrac`, bias approximation, cubature
   variants), speed-of-sound and Jacchia 1971. Deferred as a standalone
   project: NRLMSISE-00 proper and its dependents (the MATLAB `.m` files

@@ -50,6 +50,12 @@ STANDARD_ATMOSPHERE: Final[float] = 101_325.0
 #: Atomic mass unit (dalton) [kg] (CODATA 2018)
 ATOMIC_MASS_UNIT: Final[float] = 1.66053906660e-27
 
+#: Standard temperature [K] (15 degrees Celsius)
+STANDARD_TEMPERATURE: Final[float] = 288.15
+
+#: Standard relative humidity, as a fraction in [0, 1]
+STANDARD_RELATIVE_HUMIDITY: Final[float] = 0.0
+
 #: Absolute zero [K] (definition)
 ABSOLUTE_ZERO_CELSIUS: Final[float] = -273.15
 
