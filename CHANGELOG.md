@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Humidity conversions** (`pytcl.atmosphere.humidity`): ports of all ten
+  MATLAB TCL humidity functions -- absolute/relative/specific humidity and
+  water number-density conversions plus `dew_point_pressure` /
+  `dew_point_temperature` (corrected Clausius-Clapeyron and both
+  Magnus-type algorithms). Validated against MATLAB fixtures captured from
+  the source tree (commit a9acd8f).
+- **Refractivity helpers** (`pytcl.atmosphere.refraction`):
+  `approx_refractivity` (ITU-R P.453-11) and `atmos_exp_decay_const`
+  (CRPL exponential reference atmosphere), the first slice of the
+  refraction suite. Also validated against MATLAB fixtures.
+- `ATOMIC_MASS_UNIT` constant (CODATA 2018) in `pytcl.core.constants`.
+
 ## [2.6.0] - 2026-08-24
 
 ### Migrating from 2.5.0

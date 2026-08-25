@@ -1,10 +1,11 @@
 Atmosphere
 ==========
 
-Standard-atmosphere, thermosphere and ionosphere models for propagation work.
+Standard-atmosphere, thermosphere and ionosphere models for propagation
+work, plus humidity conversions and refractivity helpers. The remainder of
 MATLAB's ``Atmosphere_and_Refraction`` refraction suite (astronomical
-refraction, standard-refraction ray tracing, refractivity models) is unported
--- see :doc:`../matlab_parity_inventory`.
+refraction, standard-refraction ray tracing) is unported -- see
+:doc:`../matlab_parity_inventory`.
 
 .. automodule:: pytcl.atmosphere
    :no-members:
@@ -33,6 +34,22 @@ below ~86 km where ``us_standard_atmosphere_1976`` should be used. Limits
 are documented in the module and pinned by validation tests (gh-79).
 
 .. automodule:: pytcl.atmosphere.thermosphere
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Humidity and Dew Point
+----------------------
+
+.. automodule:: pytcl.atmosphere.humidity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Refractivity
+------------
+
+.. automodule:: pytcl.atmosphere.refraction
    :members:
    :undoc-members:
    :show-inheritance:

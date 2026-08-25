@@ -48,7 +48,7 @@ it depends on; only the structurally significant edges are drawn.
        subgraph Environment_Models
            GR["gravity<br/>5 modules"]
            MA["magnetism<br/>3 modules"]
-           AT["atmosphere<br/>3 modules"]
+           AT["atmosphere<br/>5 modules"]
            TE["terrain<br/>3 modules"]
        end
 
@@ -225,9 +225,10 @@ Counts are measured from the packages themselves rather than asserted;
      - 19
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
-     - 3
-     - 27
-     - Simplified thermosphere, standard atmospheres, ionosphere
+     - 5
+     - 41
+     - Simplified thermosphere, standard atmospheres, ionosphere,
+       humidity, refractivity
    * - ``magnetism``
      - 3
      - 34

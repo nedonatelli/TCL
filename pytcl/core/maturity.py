@@ -204,8 +204,10 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "astronomical.special_orbits": MaturityLevel.MATURE,
     "astronomical.time_systems": MaturityLevel.MATURE,
     # atmosphere
+    "atmosphere.humidity": MaturityLevel.EXPERIMENTAL,
     "atmosphere.ionosphere": MaturityLevel.MATURE,
     "atmosphere.models": MaturityLevel.MATURE,
+    "atmosphere.refraction": MaturityLevel.EXPERIMENTAL,
     "atmosphere.thermosphere": MaturityLevel.MATURE,
     # clustering
     "clustering.kmeans": MaturityLevel.MATURE,

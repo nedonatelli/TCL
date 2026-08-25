@@ -163,13 +163,18 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        two-point velocity determination, equinoctial Kepler solver.
    * - Atmosphere_and_Refraction
      - 34
-     - Weak
+     - Partial
      - U.S. Standard Atmosphere 1976/ISA validated; barometric thermosphere
-       with documented limits (gh-79). **Missing:** the entire refraction
-       suite (astronomical refraction add/remove, standard refraction ray
-       tracing, refractivity models), all humidity conversions, Jacchia
-       model, NRLMSISE-00 proper. pytcl adds ionosphere models (Klobuchar,
-       TEC) that the MATLAB area lacks.
+       with documented limits (gh-79); all 10 humidity conversions, both
+       dew-point functions and the refractivity helpers
+       (``approxRefractivity``, ``atmosExpDecayConst4Refrac``) ported and
+       validated against MATLAB fixtures. **Missing:** astronomical
+       refraction add/remove, standard-exponential-model ray tracing,
+       Jacchia model, NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
+       stubs; the implementation is Brodowski's public-domain C port in
+       ``3rd_Party_Libraries/nrlmsise-00-bc9a2fe/``, portable but a
+       standalone project). pytcl adds ionosphere models (Klobuchar, TEC)
+       that the MATLAB area lacks.
    * - Gravity
      - 14
      - Good

@@ -8,8 +8,23 @@ Submodules
 ----------
 models : Standard atmosphere models (US76, ISA)
 ionosphere : Ionospheric models for GPS/GNSS corrections
+humidity : Humidity conversions and dew-point calculations
+refraction : Atmospheric refractivity helpers
 """
 
+from pytcl.atmosphere.humidity import (
+    H2O_MOLAR_MASS,
+    abs_humid_to_number_density,
+    abs_humid_to_rel_humid,
+    abs_humid_to_spec_humid,
+    dew_point_pressure,
+    dew_point_temperature,
+    number_density_to_abs_humid,
+    rel_humid_to_abs_humid,
+    rel_humid_to_spec_humid,
+    spec_humid_to_abs_humid,
+    spec_humid_to_rel_humid,
+)
 from pytcl.atmosphere.ionosphere import (
     DEFAULT_KLOBUCHAR,
     F_L1,
@@ -36,6 +51,11 @@ from pytcl.atmosphere.models import (
     mach_number,
     true_airspeed_from_mach,
     us_standard_atmosphere_1976,
+)
+from pytcl.atmosphere.refraction import (
+    ExpDecayConstResult,
+    approx_refractivity,
+    atmos_exp_decay_const,
 )
 from pytcl.atmosphere.thermosphere import (
     F107Index,
@@ -76,4 +96,20 @@ __all__ = [
     "scintillation_index",
     "F_L1",
     "F_L2",
+    # Humidity and dew point
+    "H2O_MOLAR_MASS",
+    "abs_humid_to_number_density",
+    "abs_humid_to_rel_humid",
+    "abs_humid_to_spec_humid",
+    "dew_point_pressure",
+    "dew_point_temperature",
+    "number_density_to_abs_humid",
+    "rel_humid_to_abs_humid",
+    "rel_humid_to_spec_humid",
+    "spec_humid_to_abs_humid",
+    "spec_humid_to_rel_humid",
+    # Refractivity
+    "ExpDecayConstResult",
+    "approx_refractivity",
+    "atmos_exp_decay_const",
 ]
