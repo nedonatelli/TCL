@@ -58,6 +58,8 @@ class TestCramerMatlab:
         assert c1 == pytest.approx(c2, abs=0.3)
 
     def test_warnings_and_errors(self):
+        with pytest.warns(UserWarning, match="0-30"):
+            speed_of_sound_cramer(250.0, 101325.0)
         with pytest.warns(UserWarning, match="pressure"):
             speed_of_sound_cramer(293.15, 60000.0)
         with pytest.warns(UserWarning, match="water-vapor"):

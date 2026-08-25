@@ -55,21 +55,15 @@ No dates are attached because none have been decided:
   (no region-dimension argument) -- better scoped as a future
   `quadrature.py` extension than `region_cubature.py`, deferred pending a
   consumer.
-- **Refraction suite** — humidity conversions, dew-point functions,
-  refractivity helpers and the full astronomical-refraction group
-  (Sinclair atmosphere, add/remove with all three algorithms, SOFA
-  ``refco`` transcription) are shipped, all validated against MATLAB
-  fixtures, along with the full standard-exponential-model suite (ray
-  tracing, bias approximation, cubature variants,
-  `reduceStdRefrac2Spher`) and speed-of-sound (ideal-gas and Cramer
-  algorithms). Remaining: the gas-table speed-of-sound algorithm (blocked
-  on NRLMSISE-00) and Jacchia 1971 (portable, but its validation oracle
-  is the astrodynamics MEX chain plus JPL ephemeris data -- deferred as
-  an astronomy-integration task). Deferred as a standalone
-  project: NRLMSISE-00 proper and its dependents (the MATLAB `.m` files
-  are MEX stubs; the complete public-domain C implementation ships in the
-  MATLAB tree and compiles/runs headlessly as a validation oracle);
-  excluded as out of scope: `Design_of_Lenses/` (3 optics files)
+- **Refraction suite remainder** — the suite itself shipped in v2.7.0
+  (see CHANGELOG). Still open: the gas-table speed-of-sound algorithm
+  (blocked on NRLMSISE-00); Jacchia 1971 (pure MATLAB and portable, but
+  its validation oracle is the astrodynamics MEX chain plus JPL ephemeris
+  data -- an astronomy-integration task); NRLMSISE-00 proper and its
+  dependents as a standalone project (the MATLAB `.m` files are MEX
+  stubs; the complete public-domain C implementation ships in the MATLAB
+  tree and compiles/runs headlessly as a validation oracle).
+  `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
 - **Localization-style static estimators** — Cartesian TDOA, Doppler-only
   init, direction-only; MATLAB's Static_Estimation content is almost all
   absent (great-circle TDOA is the exception, ported as

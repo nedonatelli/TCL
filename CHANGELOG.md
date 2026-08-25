@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-08-25
+
+The Atmosphere_and_Refraction port: humidity, dew point, refractivity,
+astronomical refraction, the standard-exponential-model radar refraction
+suite and speed of sound, every function validated against MATLAB fixtures
+captured from the source tree (commit a9acd8f). No breaking changes.
+
 ### Added
 
 - **Speed of sound** (`pytcl.atmosphere.models`):

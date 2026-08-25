@@ -453,7 +453,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.6.0 (released). See "Current metrics (v2.5.0)" under
+**Version:** v2.7.0 (released). See "Current metrics (v2.5.0)" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -516,12 +516,12 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.6.0):
-- **Functions:** 1,200+ (top-level `def`; measured 1,227 via
+Current metrics (v2.7.0):
+- **Functions:** 1,200+ (top-level `def`; measured 1,262 via
   `grep -r "^def " pytcl/ | wc -l`)
-- **Modules:** 189
-- **Tests:** 8,000+ (all passing; measured 8,035 via
-  `pytest --collect-only -q`)
+- **Modules:** 192
+- **Tests:** 8,000+ (all passing; measured 8,109 via
+  `pytest --collect-only`)
 - **Coverage:** 88.80% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, no MLX -- run 32393664562); 93.8% locally where the MLX
   layer is traceable. CI gate is `--cov-fail-under=85` (measurement minus
