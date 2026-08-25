@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Speed of sound** (`pytcl.atmosphere.models`):
+  `speed_of_sound_ideal_gas` (Wong & Embleton) and
+  `speed_of_sound_cramer` (Cramer polynomial), plus the
+  `STANDARD_SPEED_OF_SOUND` reference constant. Validated against
+  MATLAB fixtures.
 - **Standard-exponential-model radar refraction**
   (`pytcl.atmosphere.refraction`): `cart2ruv_std_refrac` /
   `ruv2cart_std_refrac` bistatic ray-tracing conversions,

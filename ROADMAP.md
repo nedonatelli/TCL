@@ -61,8 +61,11 @@ No dates are attached because none have been decided:
   ``refco`` transcription) are shipped, all validated against MATLAB
   fixtures, along with the full standard-exponential-model suite (ray
   tracing, bias approximation, cubature variants,
-  `reduceStdRefrac2Spher`). Remaining: speed-of-sound (algorithms 1-2)
-  and Jacchia 1971. Deferred as a standalone
+  `reduceStdRefrac2Spher`) and speed-of-sound (ideal-gas and Cramer
+  algorithms). Remaining: the gas-table speed-of-sound algorithm (blocked
+  on NRLMSISE-00) and Jacchia 1971 (portable, but its validation oracle
+  is the astrodynamics MEX chain plus JPL ephemeris data -- deferred as
+  an astronomy-integration task). Deferred as a standalone
   project: NRLMSISE-00 proper and its dependents (the MATLAB `.m` files
   are MEX stubs; the complete public-domain C implementation ships in the
   MATLAB tree and compiles/runs headlessly as a validation oracle);
