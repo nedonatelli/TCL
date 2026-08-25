@@ -24,7 +24,7 @@ References
   no. 5, pp. 18-27, May 2017.
 """
 
-__version__ = "2.6.0"
+__version__ = "2.7.0"
 __author__ = "Python Port Contributors"
 __original_author__ = "David F. Crouse, Naval Research Laboratory"
 

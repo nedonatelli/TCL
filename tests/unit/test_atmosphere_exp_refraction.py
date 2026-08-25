@@ -284,3 +284,76 @@ class TestSphereFrameAndDegenerateInputs:
         meas = np.array([0.0, 0.1, 0.1])
         back = ruv2cart_std_refrac(meas, True, z_rx, z_rx, r_e=self.R_E)
         np.testing.assert_allclose(back[:, 0], z_rx, atol=1e-6)
+
+
+class TestCubatureNonDefaultArguments:
+    """The cubature wrappers with explicitly supplied points/weights and
+    per-measurement covariance stacks, asserted against the default path."""
+
+    def test_explicit_points_match_default(self, z_rx):
+        from pytcl.mathematical_functions.numerical_integration import (
+            fifth_order_cubature_points,
+        )
+
+        z_tar = z_rx + np.array([30e3, 40e3, 10e3])
+        sr = np.diag([50.0, 50.0, 50.0])
+        xi, w = fifth_order_cubature_points(3)
+        default = cart2ruv_std_refrac_cubature(
+            z_tar, sr, True, z_rx, z_rx, np.eye(3), 313.0
+        )
+        explicit = cart2ruv_std_refrac_cubature(
+            z_tar,
+            sr,
+            True,
+            z_rx,
+            z_rx,
+            np.eye(3),
+            313.0,
+            points=xi,
+            weights=w,
+        )
+        np.testing.assert_allclose(explicit.mean, default.mean, rtol=1e-12)
+        np.testing.assert_allclose(explicit.covariance, default.covariance, rtol=1e-10)
+
+    def test_stacked_sqrt_cov_matches_per_measurement_calls(self, z_rx):
+        z_tar = np.column_stack(
+            [
+                z_rx + np.array([30e3, 40e3, 10e3]),
+                z_rx + np.array([60e3, 20e3, 15e3]),
+            ]
+        )
+        srs = np.stack(
+            [np.diag([50.0, 50.0, 50.0]), np.diag([120.0, 80.0, 40.0])],
+            axis=2,
+        )
+        stacked = cart2ruv_std_refrac_cubature(
+            z_tar, srs, True, z_rx, z_rx, np.eye(3), 313.0
+        )
+        for i in range(2):
+            single = cart2ruv_std_refrac_cubature(
+                z_tar[:, i], srs[:, :, i], True, z_rx, z_rx, np.eye(3), 313.0
+            )
+            np.testing.assert_allclose(
+                stacked.mean[:, i], single.mean[:, 0], rtol=1e-12
+            )
+            np.testing.assert_allclose(
+                stacked.covariance[:, :, i],
+                single.covariance[:, :, 0],
+                rtol=1e-10,
+            )
+
+    def test_ruv2cart_cubature_explicit_points(self, z_rx):
+        from pytcl.mathematical_functions.numerical_integration import (
+            fifth_order_cubature_points,
+        )
+
+        z_tar = z_rx + np.array([1e3, 5e3, 50e3])
+        ruv = cart2ruv_std_refrac(z_tar, True, z_rx, z_rx).z[:, 0]
+        sr = np.diag([10.0, 1e-4, 1e-4])
+        xi, w = fifth_order_cubature_points(3)
+        default = ruv2cart_std_refrac_cubature(ruv, sr, True, z_rx, z_rx)
+        explicit = ruv2cart_std_refrac_cubature(
+            ruv, sr, True, z_rx, z_rx, points=xi, weights=w
+        )
+        np.testing.assert_allclose(explicit.mean, default.mean, rtol=1e-12)
+        np.testing.assert_allclose(explicit.covariance, default.covariance, rtol=1e-10)

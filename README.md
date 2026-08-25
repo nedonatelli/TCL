@@ -4,13 +4,13 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Tests](https://img.shields.io/badge/tests-7000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![Coverage](https://img.shields.io/badge/coverage-85%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
+[![Tests](https://img.shields.io/badge/tests-8000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
+[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,150+ functions** | **189 modules** | **7,000+ tests** | **85% coverage**
+**1,250+ functions** | **191 modules** | **8,000+ tests** | **88% coverage**
 
 ## Overview
 
@@ -25,7 +25,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
-- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, simplified thermosphere, ionosphere), tides, terrain (GEBCO 2025, Earth2014)
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, simplified thermosphere, ionosphere, humidity/dew point, astronomical and radar refraction with ray tracing, speed of sound), tides, terrain (GEBCO 2025, Earth2014)
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 - **Results I/O**: CSV/Parquet measurement readers, polars DataFrame accessors for track histories, msgspec (MessagePack/JSON) serialization, ASDF archival export, HDF5 compression (measured 4.73x), and AIS/NMEA transponder decoding
@@ -210,7 +210,7 @@ pytcl/
 ├── performance_evaluation/  # OSPA, track metrics
 ├── astronomical/            # Ephemerides, time systems
 ├── navigation/              # Geodetic, INS, GNSS
-├── atmosphere/              # Standard atmosphere, thermosphere, ionosphere
+├── atmosphere/              # Standard atmosphere, thermosphere, ionosphere, humidity, refraction
 ├── gravity/                 # Gravity models
 ├── magnetism/               # Magnetic field models
 ├── terrain/                 # Terrain elevation models
