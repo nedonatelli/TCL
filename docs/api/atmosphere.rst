@@ -2,10 +2,12 @@ Atmosphere
 ==========
 
 Standard-atmosphere, thermosphere and ionosphere models for propagation
-work, plus humidity conversions and refractivity helpers. The remainder of
-MATLAB's ``Atmosphere_and_Refraction`` refraction suite (astronomical
-refraction, standard-refraction ray tracing) is unported -- see
-:doc:`../matlab_parity_inventory`.
+work, plus humidity conversions and the refraction suite: astronomical
+refraction (Sinclair atmosphere, add/remove), the standard-exponential-model
+radar refraction conversions (bistatic r-u-v ray tracing, bias
+approximation, cubature variants) and speed of sound. What remains unported
+from MATLAB's ``Atmosphere_and_Refraction`` (NRLMSISE-00, Jacchia 1971) is
+accounted for in :doc:`../matlab_parity_inventory`.
 
 .. automodule:: pytcl.atmosphere
    :no-members:

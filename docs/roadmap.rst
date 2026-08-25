@@ -7,12 +7,17 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.6.0)
+Current State (v2.7.0)
 ----------------------
 
 * **8,000+ tests** passing; coverage measured honestly (88.8% as CI's
   branch-coverage gate sees it, with numba kernels traced; 93.8% locally
   where the MLX layer is visible), docstring examples run in CI
+* **MATLAB refraction suite** (v2.7.0): humidity and dew point,
+  astronomical refraction, standard-exponential-model radar refraction
+  (bistatic r-u-v ray tracing, bias approximation, cubature conversions)
+  and speed of sound, every function validated against fixtures captured
+  from the MATLAB source tree
 * **Audited**: the post-v2.5.0 audit verified the MATLAB parity inventory
   against the source tree, fixed eleven wrong-answer code defects and ~60
   incorrect docstrings, and left permanent gates behind -- dead-parameter
