@@ -103,20 +103,32 @@ def _count_modules():
     )
 
 
-@pytest.fixture(scope="module")
-def collected_test_count():
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-p", "no:cacheprovider"],
-        capture_output=True,
-        text=True,
-        cwd=REPO,
+def _recorded_test_count():
+    """CONTRIBUTING's measured full-suite collection count.
+
+    The single source of truth for test-count claims: collection is
+    environment-dependent (CI cells without the optional extras collect
+    ~7% fewer tests), so cross-file checks compare against this recorded
+    number, and a separate full-environment-only test keeps it fresh.
+    """
+    m = re.search(
+        r"measured ([\d,]+) via\s+`pytest --collect-only`", _read("CONTRIBUTING.md")
     )
-    m = re.search(r"(\d+) tests collected", result.stdout)
-    assert m, f"could not parse collection output:\n{result.stdout[-2000:]}"
-    return int(m.group(1))
+    assert m, "CONTRIBUTING measured test count not found"
+    return int(m.group(1).replace(",", ""))
 
 
-def test_readme_hero_counts_current(collected_test_count):
+def _environment_is_full():
+    """The dev environment with every extra; thin CI cells are not."""
+    import importlib.util
+
+    return all(
+        importlib.util.find_spec(mod) is not None
+        for mod in ("mlx", "plotly", "pyais", "polars")
+    )
+
+
+def test_readme_hero_counts_current():
     """The README hero line may round down, but not overstate or lag far."""
     readme = _read("README.md")
     m = re.search(
@@ -141,8 +153,9 @@ def test_readme_hero_counts_current(collected_test_count):
     assert mod_claim == mod_actual, (
         f"README claims {mod_claim} modules, measured {mod_actual}"
     )
-    assert test_claim <= collected_test_count <= test_claim + 1500, (
-        f"README claims {test_claim}+ tests, collected {collected_test_count}"
+    recorded = _recorded_test_count()
+    assert test_claim <= recorded <= test_claim + 1500, (
+        f"README claims {test_claim}+ tests, CONTRIBUTING records {recorded}"
     )
 
     badge = re.search(r"badge/tests-(\d+)%2B%20passing", readme)
@@ -181,7 +194,7 @@ def test_coverage_claims_are_synchronized():
     )
 
 
-def test_parity_inventory_closing_counts(collected_test_count):
+def test_parity_inventory_closing_counts():
     text = _read("docs/matlab_parity_inventory.rst")
     m = re.search(
         r"test suite of ([\d,]+)\+\s*\ncases that includes (\d+) validation files",
@@ -190,10 +203,40 @@ def test_parity_inventory_closing_counts(collected_test_count):
     assert m, "parity inventory closing counts not found or format changed"
     test_claim = int(m.group(1).replace(",", ""))
     val_claim = int(m.group(2))
-    assert test_claim <= collected_test_count <= test_claim + 1500
+    recorded = _recorded_test_count()
+    assert test_claim <= recorded <= test_claim + 1500
     val_actual = len(list((REPO / "tests" / "validation").glob("*.py")))
     assert val_claim == val_actual, (
         f"inventory claims {val_claim} validation files, found {val_actual}"
+    )
+
+
+def test_recorded_test_count_is_fresh():
+    """Collection must match CONTRIBUTING's recorded number.
+
+    Runs only where the full extras are installed: collection counts are
+    environment-dependent, and a thin environment would falsify a true
+    claim. The recorded number may lag actual growth by up to 300 tests
+    before it must be re-measured, and may never overstate.
+    """
+    if not _environment_is_full():
+        pytest.skip(
+            "optional extras missing: full-suite collection is not "
+            "measurable in this environment"
+        )
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-p", "no:cacheprovider"],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    m = re.search(r"(\d+) tests collected", result.stdout)
+    assert m, f"could not parse collection output:\n{result.stdout[-2000:]}"
+    collected = int(m.group(1))
+    recorded = _recorded_test_count()
+    assert recorded <= collected <= recorded + 300, (
+        f"CONTRIBUTING records {recorded} tests, collection finds "
+        f"{collected}; re-measure and update the metrics block"
     )
 
 
