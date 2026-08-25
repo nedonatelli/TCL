@@ -173,8 +173,13 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        and the complete ``Standard_Exponential_Model`` suite (bistatic
        r-u-v ray tracing, bias approximation, cubature conversions,
        refractivity reduction) ported and validated against MATLAB
-       fixtures. **Missing:** speed of sound (gas-table algorithm),
-       Jacchia model, NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
+       fixtures; speed of sound (ideal-gas and Cramer algorithms).
+       **Missing:** the gas-table speed-of-sound algorithm (needs
+       NRLMSISE-00 output), the Jacchia 1971 model (pure MATLAB and
+       portable, but its validation oracle -- Sun position via
+       ``readJPLEphem``, ``GCRS2ITRS``, ``Cal2UTC`` -- is the SOFA MEX
+       chain plus JPL ephemeris data, so it is deferred as an
+       astronomy-integration task), NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
        stubs; the implementation is Brodowski's public-domain C port in
        ``3rd_Party_Libraries/nrlmsise-00-bc9a2fe/``, portable but a
        standalone project). pytcl adds ionosphere models (Klobuchar, TEC)

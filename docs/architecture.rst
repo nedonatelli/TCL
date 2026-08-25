@@ -226,7 +226,7 @@ Counts are measured from the packages themselves rather than asserted;
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
      - 5
-     - 57
+     - 60
      - Simplified thermosphere, standard atmospheres, ionosphere,
        humidity, refractivity
    * - ``magnetism``
