@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.13 and 3.14 support: both versions run the full CI test matrix
+  (Ubuntu + macOS) and are declared in the package classifiers. The full
+  suite with all extras passes on 3.13.15 and 3.14.7, including the
+  MLX-gated GPU tests on Apple Silicon under `PYTCL_REQUIRE_MLX=1`
+  (mlx 0.32.0 ships cp313/cp314 wheels). No code changes were required.
+
 ## [2.7.0] - 2026-08-25
 
 The Atmosphere_and_Refraction port: humidity, dew point, refractivity,
