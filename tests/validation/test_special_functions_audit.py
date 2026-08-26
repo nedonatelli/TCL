@@ -430,8 +430,8 @@ class TestMarcumQ:
             b = sf.marcum_q_inv(a, q)
             assert np.isclose(sf.marcum_q(a, float(b)), q, rtol=1e-8)
 
-    def test_nuttall_complement(self):
-        assert np.isclose(sf.nuttall_q(2, 2), 1 - sf.marcum_q(2, 2), rtol=1e-13)
+    def test_rician_cdf_complement(self):
+        assert np.isclose(sf.rician_cdf(2, 2), 1 - sf.marcum_q(2, 2), rtol=1e-13)
 
 
 class TestSwerling:

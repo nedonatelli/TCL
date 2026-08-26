@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- IGRF-14 geomagnetic model (`IGRF14`, `create_igrf14_coefficients`), a port
+  of `getIGRFCoeffs.m`: the full IAGA `igrf14coeffs.txt` distribution
+  (epochs 1900.0-2025.0 plus the 2025-30 secular variation) is embedded
+  verbatim and byte-compared against the vendored official file by the
+  validation suite. `igrf()` and the dipole/pole helpers now default to
+  IGRF-14 coefficients selected for the requested year — interpolating the
+  five-year epoch tables like the MATLAB original — instead of the
+  out-of-validity IGRF-13 2020 epoch, and the default evaluation year moved
+  from 2023.0 to 2025.0 (the IGRF-14 reference epoch). `IGRF13` and
+  `create_igrf13_coefficients` remain available for reproducibility.
+
+### Removed
+
+- The deprecated `nuttall_q` alias for `rician_cdf` (renamed in v2.0.0 for
+  computing the Rician CDF, not the Nuttall Q function; it warned through
+  v2.7.x).
+
+### Changed
+
+- `igrf()` results shift slightly for a given year: IGRF-14's definitive
+  DGRF-2020 column supersedes IGRF-13's provisional 2020.0 main field, and
+  in-range years now interpolate epochs rather than extrapolating from
+  2020.0. Requesting a year before 1900.0 or beyond 2030.0 now emits a
+  `UserWarning` (the MATLAB original warns only for the former; the silent
+  forward extrapolation is exactly how the embedded IGRF-13 went stale
+  unnoticed).
+
 ## [2.7.0] - 2026-08-25
 
 The Atmosphere_and_Refraction port: humidity, dew point, refractivity,

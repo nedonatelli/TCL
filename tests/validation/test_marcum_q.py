@@ -9,10 +9,9 @@ Tests cover:
 - Nuttall Q function
 - Swerling detection probability
 
-``nuttall_q`` was renamed ``rician_cdf`` in v2.0.0; the name imported and
-exercised below is the ``nuttall_q`` backward-compatibility alias, not a
-separate function. ``TestNuttallQ`` keeps its name because it tests that
-alias path specifically.
+``nuttall_q`` was renamed ``rician_cdf`` in v2.0.0 (the computation was
+always correct; only the name was wrong) and the deprecated alias was
+removed in v2.8.0.
 """
 
 import numpy as np
@@ -23,7 +22,7 @@ from pytcl.mathematical_functions.special_functions.marcum_q import (
     marcum_q,
     marcum_q1,
     marcum_q_inv,
-    nuttall_q,
+    rician_cdf,
     swerling_detection_probability,
 )
 
@@ -192,39 +191,39 @@ class TestMarcumQInv:
 
 
 # =============================================================================
-# Tests for Nuttall Q function
+# Tests for the Rician CDF (complementary Marcum Q)
 # =============================================================================
 
 
-class TestNuttallQ:
-    """Tests for Nuttall Q function (complementary Marcum Q)."""
+class TestRicianCdf:
+    """Tests for the Rician CDF (complementary Marcum Q)."""
 
-    def test_nuttall_q_relation(self):
+    def test_rician_cdf_relation(self):
         """Test P(a, b) = 1 - Q_1(a, b)."""
         a, b = 2, 3
-        result = nuttall_q(a, b)
+        result = rician_cdf(a, b)
         expected = 1 - marcum_q(a, b, m=1)
         assert result == pytest.approx(expected, rel=1e-10)
 
-    def test_nuttall_q_b_zero(self):
+    def test_rician_cdf_b_zero(self):
         """Test P(a, 0) = 0."""
-        result = nuttall_q(2, 0)
+        result = rician_cdf(2, 0)
         assert result == pytest.approx(0.0, rel=1e-10)
 
-    def test_nuttall_q_bounds(self):
-        """Test Nuttall Q is bounded by 0 and 1."""
+    def test_rician_cdf_bounds(self):
+        """Test the CDF is bounded by 0 and 1."""
         a = np.linspace(0, 5, 20)
         b = np.linspace(0, 5, 20)
         for ai in a:
             for bi in b:
-                result = nuttall_q(ai, bi)
+                result = rician_cdf(ai, bi)
                 assert 0.0 <= result <= 1.0
 
-    def test_nuttall_q_increasing_in_b(self):
+    def test_rician_cdf_increasing_in_b(self):
         """Test P(a, b) is increasing in b."""
         a = np.full(20, 2.0)
         b = np.linspace(0.1, 5, 20)
-        result = nuttall_q(a, b)
+        result = rician_cdf(a, b)
         assert np.all(np.diff(result) >= 0)
 
 
@@ -308,11 +307,11 @@ class TestSwerlingDetection:
 class TestMarcumQIntegration:
     """Integration tests for Marcum Q functions."""
 
-    def test_marcum_nuttall_sum_one(self):
+    def test_marcum_rician_sum_one(self):
         """Test Q + P = 1."""
         a, b = 2, 3
         q = marcum_q(a, b)
-        p = nuttall_q(a, b)
+        p = rician_cdf(a, b)
         assert q + p == pytest.approx(1.0, rel=1e-10)
 
     def test_marcum_q_inv_consistent(self):

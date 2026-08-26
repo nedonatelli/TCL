@@ -15,7 +15,8 @@ Covered here:
 
 - ``detection_probability`` no longer takes a ``swerling_case`` that selected
   nothing;
-- ``rician_cdf`` replaces the misnamed ``nuttall_q``, which kept working;
+- ``rician_cdf`` replaces the misnamed ``nuttall_q`` (deprecated alias
+  removed in v2.8.0);
 - ``snr_loss`` computes the derived CA-CFAR loss rather than a heuristic, and
   refuses the three methods it has no expression for;
 - ``optimal_filter`` correlates linearly instead of circularly;
@@ -23,8 +24,6 @@ Covered here:
   shape;
 - the ambiguity functions are annotated real, which is what they return.
 """
-
-import warnings
 
 import numpy as np
 import pytest
@@ -44,7 +43,6 @@ from pytcl.mathematical_functions.signal_processing.matched_filter import (
 )
 from pytcl.mathematical_functions.special_functions import (
     marcum_q,
-    nuttall_q,
     rician_cdf,
 )
 
@@ -109,16 +107,11 @@ class TestRicianCdfRename:
         assert values[0] == pytest.approx(0.0, abs=1e-12)
         assert values[-1] == pytest.approx(1.0, abs=1e-6)
 
-    def test_the_old_name_still_works_and_warns(self):
-        """Removing it outright would break callers silently at import time."""
-        with warnings.catch_warnings(record=True) as caught:
-            warnings.simplefilter("always")
-            value = nuttall_q(2.0, 2.0)
+    def test_the_old_name_is_gone(self):
+        """The deprecated alias warned through v2.7.x and was removed in v2.8.0."""
+        import pytcl.mathematical_functions.special_functions as sf
 
-        assert value == pytest.approx(float(rician_cdf(2.0, 2.0)), rel=1e-15)
-        assert len(caught) == 1
-        assert issubclass(caught[0].category, DeprecationWarning)
-        assert "rician_cdf" in str(caught[0].message)
+        assert not hasattr(sf, "nuttall_q")
 
 
 class TestSnrLoss:

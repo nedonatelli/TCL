@@ -11,6 +11,7 @@ These are the reference side of a REFERENCE-class test (see
 | File | Model | Source |
 |------|-------|--------|
 | `igrf13coeffs.txt` | IGRF-13, all epochs 1900.0-2020.0 plus 2020-25 secular variation | <https://www.ngdc.noaa.gov/IAGA/vmod/coeffs/igrf13coeffs.txt> |
+| `igrf14coeffs.txt` | IGRF-14, all epochs 1900.0-2025.0 plus 2025-30 secular variation. Retrieved 2026-08-26; the embedded `_IGRF14_COF` constant in `pytcl/magnetism/igrf.py` must equal this file byte for byte (enforced by the validation suite) | <https://www.ngdc.noaa.gov/IAGA/vmod/coeffs/igrf14coeffs.txt> |
 | `WMM_2020.COF` | WMM-2020, epoch 2020.0, released 2019-12-10 | NOAA NCEI World Magnetic Model 2020, as redistributed in `pygeomag` 1.1.0 |
 | `WMM_2025.COF` | WMM-2025, epoch 2025.0, released 2024-11-13 | NOAA NCEI World Magnetic Model 2025, as redistributed in `pygeomag` 1.1.0 |
 
@@ -18,6 +19,7 @@ These are the reference side of a REFERENCE-class test (see
 e65453b7d2ed34ae30f6f7361aaec403e103c2abf59ee46393bd4c4f880c4fa8  WMM_2020.COF
 dfa8597825af4e0b87ff4198a5b4fb661b3c49f4cd090cd0164e0259b075582f  WMM_2025.COF
 460b8d8beb9b4df84febe4f0b639f0dd54dccfe8ff0970616287b015fa721425  igrf13coeffs.txt
+8f8d88403028fc4ee92c4f38d97b46e0a87e2cfc496045b43c9e26c1d6b0903c  igrf14coeffs.txt
 ```
 
 ## Provenance of the WMM files
