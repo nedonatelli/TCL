@@ -364,11 +364,16 @@ class TestIGRF:
 
     def test_dip_pole_location(self):
         """Magnetic dip pole 2020 ~ (86.5N, 164E), in the Arctic."""
-        from pytcl.magnetism import magnetic_north_pole
+        from pytcl.magnetism import create_igrf14_coefficients, magnetic_north_pole
 
         lat, lon = magnetic_north_pole(2020.0)
         assert 85.0 < np.degrees(lat) < 88.0
         assert 150.0 < np.degrees(lon) < 175.0
+
+        # Passing the coefficients the default would resolve to must take the
+        # explicit-coeffs path yet reproduce the same search bit for bit.
+        explicit = magnetic_north_pole(2020.0, create_igrf14_coefficients(2020.0))
+        assert explicit == (lat, lon)
 
     def test_igrf_declination_function(self):
         """igrf_declination returns scalar."""
