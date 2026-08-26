@@ -143,8 +143,7 @@ for those three; the previous numbers were not derived from anything.
 
 The function computes ``1 - Q_1(a, b)``, the Rician CDF, and always did so
 correctly. The Nuttall Q function is a different integral. ``nuttall_q``
-remains as a deprecated alias that warns; it will be removed in a later
-release.
+warned as a deprecated alias through v2.7.x and was removed in v2.8.0.
 
 Values that changed without a signature change
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

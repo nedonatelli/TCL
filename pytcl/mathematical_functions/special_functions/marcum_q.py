@@ -5,8 +5,6 @@ The Marcum Q function is crucial in radar and communications for
 analyzing detection probabilities and signal statistics.
 """
 
-import warnings
-
 import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
@@ -276,7 +274,7 @@ def rician_cdf(
     Marcum Q with an extra power of the integration variable. This routine
     computes neither -- it is the complementary Marcum Q, which is exactly the
     Rician CDF, and it always did so correctly (gh-20). Only the name was
-    wrong. ``nuttall_q`` remains as a deprecated alias.
+    wrong. The deprecated ``nuttall_q`` alias was removed in v2.8.0.
 
     Examples
     --------
@@ -288,37 +286,6 @@ def rician_cdf(
     marcum_q : Marcum Q function.
     """
     return 1.0 - marcum_q(a, b, m=1)
-
-
-def nuttall_q(
-    a: ArrayLike,
-    b: ArrayLike,
-) -> NDArray[np.floating]:
-    """
-    Deprecated alias for :func:`rician_cdf`.
-
-    The name was wrong: this computes ``1 - Q_1(a, b)``, the Rician CDF, not
-    the Nuttall Q function ``Q_{m,n}(a, b)``, which is a different integral
-    (gh-20). The computation was always correct.
-
-    .. deprecated::
-        Use :func:`rician_cdf`. This alias will be removed in a future release.
-
-    Examples
-    --------
-    >>> import warnings
-    >>> with warnings.catch_warnings():
-    ...     warnings.simplefilter("ignore", DeprecationWarning)
-    ...     round(float(nuttall_q(2, 2)), 6)
-    0.396499
-    """
-    warnings.warn(
-        "nuttall_q computes the Rician CDF, not the Nuttall Q function; "
-        "the name was a misnomer. Use rician_cdf instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return rician_cdf(a, b)
 
 
 def swerling_detection_probability(
@@ -447,7 +414,6 @@ __all__ = [
     "marcum_q1",
     "log_marcum_q",
     "marcum_q_inv",
-    "nuttall_q",
     "rician_cdf",
     "swerling_detection_probability",
 ]

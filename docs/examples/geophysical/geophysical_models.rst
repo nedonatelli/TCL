@@ -60,9 +60,9 @@ Magnetic Field Models
    - Updated every 5 years
    - Valid 2020-2025
 
-**IGRF-13**
+**IGRF-14** (IGRF-13 retained for reproducibility)
    - International Geomagnetic Reference Field
-   - Historical and predictive coefficients
+   - Historical (1900.0-2025.0) and predictive (2025-30) coefficients
    - Used for scientific applications
 
 **Key Parameters**

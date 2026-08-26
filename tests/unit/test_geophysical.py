@@ -15,6 +15,7 @@ from pytcl.gravity import (
 )
 from pytcl.magnetism import (
     IGRF13,
+    IGRF14,
     WMM2020,
     dipole_axis,
     dipole_moment,
@@ -353,7 +354,7 @@ class TestIGRF:
         assert -np.pi <= lon <= np.pi
 
     def test_dipole_axis_north_geomagnetic_pole(self):
-        """North geomagnetic pole ~ (80.6N, 72.7W) for IGRF-13 2020.
+        """North geomagnetic pole ~ (80.8N, 72.8W) for IGRF-14 2025.
 
         Regression: the previous implementation returned the SOUTH pole.
         """
@@ -363,11 +364,16 @@ class TestIGRF:
 
     def test_dip_pole_location(self):
         """Magnetic dip pole 2020 ~ (86.5N, 164E), in the Arctic."""
-        from pytcl.magnetism import magnetic_north_pole
+        from pytcl.magnetism import create_igrf14_coefficients, magnetic_north_pole
 
         lat, lon = magnetic_north_pole(2020.0)
         assert 85.0 < np.degrees(lat) < 88.0
         assert 150.0 < np.degrees(lon) < 175.0
+
+        # Passing the coefficients the default would resolve to must take the
+        # explicit-coeffs path yet reproduce the same search bit for bit.
+        explicit = magnetic_north_pole(2020.0, create_igrf14_coefficients(2020.0))
+        assert explicit == (lat, lon)
 
     def test_igrf_declination_function(self):
         """igrf_declination returns scalar."""
@@ -422,6 +428,12 @@ class TestCoefficients:
         assert IGRF13.g[1, 0] != 0
         assert IGRF13.n_max >= 13
         assert IGRF13.epoch == 2020.0
+
+    def test_igrf14_has_coefficients(self):
+        """IGRF14 has non-zero coefficients at the 2025.0 reference epoch."""
+        assert IGRF14.g[1, 0] == -29350.0  # igrf14coeffs.txt, 2025.0 column
+        assert IGRF14.n_max == 13
+        assert IGRF14.epoch == 2025.0
 
     def test_g10_is_dominant(self):
         """g[1,0] is the dominant coefficient (dipole)."""

@@ -1,8 +1,9 @@
-"""The three geomagnetic coefficient factories, against their official tables.
+"""The geomagnetic coefficient factories, against their official tables.
 
-``create_wmm2020_coefficients``, ``create_wmm2025_coefficients`` and
-``create_igrf13_coefficients`` each embed a model's spherical-harmonic
-coefficients as a literal table in the source and parse it at import time. Until
+``create_wmm2020_coefficients``, ``create_wmm2025_coefficients``,
+``create_igrf13_coefficients`` and ``create_igrf14_coefficients`` each embed
+a model's spherical-harmonic coefficients as a literal table in the source
+and parse it at import time. Until
 now no test reached any of them (gh-49), so nothing checked that the transcribed
 tables match what NOAA and IAGA published, and nothing checked that the parser
 put each value in the right place.
@@ -22,11 +23,16 @@ exact: these are transcriptions, so any difference at all is a defect.
 """
 
 import pathlib
+import warnings
 
 import numpy as np
 import pytest
 
-from pytcl.magnetism.igrf import create_igrf13_coefficients
+from pytcl.magnetism.igrf import (
+    _IGRF14_COF,
+    create_igrf13_coefficients,
+    create_igrf14_coefficients,
+)
 from pytcl.magnetism.wmm import (
     create_wmm2020_coefficients,
     create_wmm2025_coefficients,
@@ -51,16 +57,16 @@ def _read_wmm_cof(path: pathlib.Path) -> dict[tuple[int, int], tuple[float, ...]
     return coefficients
 
 
-def _read_igrf13_2020(
-    path: pathlib.Path,
+def _read_igrf_columns(
+    path: pathlib.Path, main_label: str, secular_label: str
 ) -> dict[tuple[str, int, int], tuple[float, float]]:
-    """Parse the 2020.0 epoch and 2020-25 secular-variation columns from IAGA.
+    """Parse one epoch column and one secular-variation column from IAGA.
 
-    ``igrf13coeffs.txt`` is a wide table: one row per (g/h, n, m), one column per
-    epoch from 1900.0 to 2020.0, then a final secular-variation column. The two
-    columns are located by their header labels rather than by position, so a
-    future IGRF generation appending an epoch does not silently shift the
-    comparison onto the wrong column.
+    The ``igrfNNcoeffs.txt`` distributions are wide tables: one row per
+    (g/h, n, m), one column per epoch from 1900.0 onward, then a final
+    secular-variation column. The two columns are located by their header
+    labels rather than by position, so a future IGRF generation appending an
+    epoch does not silently shift the comparison onto the wrong column.
     """
     lines = [
         line
@@ -68,8 +74,8 @@ def _read_igrf13_2020(
         if not line.startswith("#")
     ]
     header = lines[1].split()
-    epoch_column = header.index("2020.0")
-    secular_column = header.index("2020-25")
+    epoch_column = header.index(main_label)
+    secular_column = header.index(secular_label)
 
     coefficients = {}
     for line in lines[2:]:
@@ -82,6 +88,13 @@ def _read_igrf13_2020(
             float(fields[secular_column]),
         )
     return coefficients
+
+
+def _read_igrf13_2020(
+    path: pathlib.Path,
+) -> dict[tuple[str, int, int], tuple[float, float]]:
+    """Parse the 2020.0 epoch and 2020-25 secular-variation columns from IAGA."""
+    return _read_igrf_columns(path, "2020.0", "2020-25")
 
 
 class TestWorldMagneticModel:
@@ -201,11 +214,11 @@ class TestInternationalGeomagneticReferenceField:
         )
 
     def test_the_module_singleton_is_the_same_model(self):
-        """``igrf`` defaults to a module-level ``IGRF13`` built at import.
+        """The module-level ``IGRF13`` built at import matches the factory.
 
-        A caller who passes no coefficients gets that object, so it has to hold
-        what the factory produces -- otherwise the tested path and the default
-        path are different models.
+        Since v2.8.0 ``igrf`` defaults to IGRF-14; ``IGRF13`` remains public
+        API for reproducing results computed against it, so it still has to
+        hold what the factory produces.
         """
         from pytcl.magnetism.igrf import IGRF13
 
@@ -215,6 +228,120 @@ class TestInternationalGeomagneticReferenceField:
         np.testing.assert_array_equal(IGRF13.g_dot, fresh.g_dot)
         np.testing.assert_array_equal(IGRF13.h_dot, fresh.h_dot)
         assert (IGRF13.epoch, IGRF13.n_max) == (fresh.epoch, fresh.n_max)
+
+
+class TestIGRF14:
+    """IGRF-14 against the IAGA distribution file, all epochs.
+
+    ``create_igrf14_coefficients`` interpolates a table embedded verbatim, so
+    the reference check splits in two: the embedded text must be the official
+    file (embed fidelity), and the factory must read the right columns out of
+    it (parser correctness). Byte equality alone would pass with a broken
+    parser; column comparison alone would pass with a stale embed.
+    """
+
+    def test_the_embedded_table_is_the_official_file(self):
+        """The embed is the IAGA file, byte for byte.
+
+        ``SOURCES.md`` pins the fixture's sha256 against the NOAA original, so
+        equality here chains the embedded constant all the way to the
+        published distribution.
+        """
+        official = (FIXTURES / "igrf14coeffs.txt").read_text(encoding="utf-8")
+        assert _IGRF14_COF == official
+
+    def test_the_reference_epoch_matches_the_official_columns(self):
+        """All 195 rows of the 2025.0 main field and 2025-30 SV. Exact."""
+        official = _read_igrf_columns(
+            FIXTURES / "igrf14coeffs.txt", "2025.0", "2025-30"
+        )
+        assert len(official) == 195, (
+            f"expected 195 rows for a degree-13 model, read {len(official)} -- "
+            f"the fixture or the parser is wrong"
+        )
+
+        coefficients = create_igrf14_coefficients()
+        mismatches = []
+        for (kind, n, m), (main, secular) in sorted(official.items()):
+            table = coefficients.g if kind == "g" else coefficients.h
+            rate = coefficients.g_dot if kind == "g" else coefficients.h_dot
+            if table[n, m] != main:
+                mismatches.append(
+                    f"{kind}[{n},{m}]: ours={table[n, m]} official={main}"
+                )
+            if rate[n, m] != secular:
+                mismatches.append(
+                    f"{kind}_dot[{n},{m}]: ours={rate[n, m]} official={secular}"
+                )
+
+        assert not mismatches, (
+            f"IGRF-14: {len(mismatches)} value(s) differ from igrf14coeffs.txt:\n  "
+            + "\n  ".join(mismatches[:20])
+        )
+
+    def test_an_historical_epoch_interpolates_the_official_columns(self):
+        """Mid-interval, the factory reproduces linear interpolation exactly.
+
+        2012.5 sits halfway between the 2010.0 and 2015.0 DGRF columns; the
+        returned epoch/main-field/rate triple must evaluate to their mean.
+        This is the path ``getIGRFCoeffs.m`` takes for any in-range year, and
+        it is where a shifted epoch index would surface.
+        """
+        d2010 = _read_igrf_columns(FIXTURES / "igrf14coeffs.txt", "2010.0", "2025-30")
+        d2015 = _read_igrf_columns(FIXTURES / "igrf14coeffs.txt", "2015.0", "2025-30")
+
+        coefficients = create_igrf14_coefficients(2012.5)
+        assert coefficients.epoch == 2010.0
+
+        mismatches = []
+        for (kind, n, m), (main2010, _) in sorted(d2010.items()):
+            main2015 = d2015[(kind, n, m)][0]
+            table = coefficients.g if kind == "g" else coefficients.h
+            rate = coefficients.g_dot if kind == "g" else coefficients.h_dot
+            value = table[n, m] + (2012.5 - coefficients.epoch) * rate[n, m]
+            expected = (main2010 + main2015) / 2.0
+            if not np.isclose(value, expected, rtol=0.0, atol=1e-9):
+                mismatches.append(f"{kind}[{n},{m}]: ours={value} expected={expected}")
+
+        assert not mismatches, (
+            f"IGRF-14 at 2012.5: {len(mismatches)} value(s) off the "
+            f"2010/2015 interpolant:\n  " + "\n  ".join(mismatches[:20])
+        )
+
+    def test_epoch_and_degree_are_declared_correctly(self):
+        coefficients = create_igrf14_coefficients()
+        assert coefficients.epoch == 2025.0
+        assert coefficients.n_max == 13, (
+            f"IGRF-14 is a degree-13 model, got n_max={coefficients.n_max}"
+        )
+
+    def test_the_module_singleton_is_the_same_model(self):
+        """``IGRF14`` is built at import and must hold what the factory makes."""
+        from pytcl.magnetism.igrf import IGRF14
+
+        fresh = create_igrf14_coefficients()
+        np.testing.assert_array_equal(IGRF14.g, fresh.g)
+        np.testing.assert_array_equal(IGRF14.h, fresh.h)
+        np.testing.assert_array_equal(IGRF14.g_dot, fresh.g_dot)
+        np.testing.assert_array_equal(IGRF14.h_dot, fresh.h_dot)
+        assert (IGRF14.epoch, IGRF14.n_max) == (fresh.epoch, fresh.n_max)
+
+    def test_years_outside_the_validity_window_warn(self):
+        """Before 1900.0 and beyond 2030.0 the factory must not stay silent.
+
+        Silent extrapolation is how the embedded IGRF-13 went stale unnoticed:
+        its window ended 2025.0 and every later call kept returning answers
+        with no signal. In-window years must stay warning-free.
+        """
+        with pytest.warns(UserWarning, match="before the first epoch"):
+            create_igrf14_coefficients(1890.0)
+        with pytest.warns(UserWarning, match="secular-variation validity"):
+            create_igrf14_coefficients(2031.0)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            create_igrf14_coefficients(2030.0)
+            create_igrf14_coefficients(1900.0)
 
 
 class TestSharedStructure:
@@ -229,6 +356,7 @@ class TestSharedStructure:
         ("WMM2020", create_wmm2020_coefficients),
         ("WMM2025", create_wmm2025_coefficients),
         ("IGRF13", create_igrf13_coefficients),
+        ("IGRF14", create_igrf14_coefficients),
     ]
     IDS = [name for name, _ in FACTORIES]
 
@@ -304,22 +432,31 @@ class TestSharedStructure:
             )
 
 
-def test_the_three_models_are_distinct():
+def test_the_four_models_are_distinct():
     """A copy-paste between factories would make two of them identical.
 
-    WMM-2020, WMM-2025 and IGRF-13 are different models at different epochs.
-    Every assertion above is per-model and would still pass if two factories
-    returned the same table.
+    WMM-2020, WMM-2025, IGRF-13 and IGRF-14 are different models at
+    different epochs. Every assertion above is per-model and would still
+    pass if two factories returned the same table.
     """
     wmm2020 = create_wmm2020_coefficients()
     wmm2025 = create_wmm2025_coefficients()
     igrf13 = create_igrf13_coefficients()
+    igrf14 = create_igrf14_coefficients()
 
     assert not np.array_equal(wmm2020.g, wmm2025.g), (
         "WMM-2020 and WMM-2025 returned identical main-field coefficients"
     )
-    # IGRF-13 is degree 13 and WMM degree 12, so compare the common block.
+    # IGRF is degree 13 and WMM degree 12, so compare the common block.
     common = slice(0, 13)
     assert not np.array_equal(igrf13.g[common, common], wmm2020.g[common, common]), (
         "IGRF-13 and WMM-2020 returned identical main-field coefficients"
+    )
+    # IGRF-14's 2020.0 column is the definitive DGRF revision of IGRF-13's
+    # provisional 2020.0 main field, and its reference epoch is 2025.0.
+    assert not np.array_equal(igrf14.g, igrf13.g), (
+        "IGRF-14 and IGRF-13 returned identical main-field coefficients"
+    )
+    assert not np.array_equal(igrf14.g[common, common], wmm2025.g[common, common]), (
+        "IGRF-14 and WMM-2025 returned identical main-field coefficients"
     )

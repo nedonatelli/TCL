@@ -20,7 +20,9 @@ World Magnetic Model implementation (WMM2020 epoch, valid 2020-2025).
 IGRF Model
 ----------
 
-International Geomagnetic Reference Field (IGRF-13) implementation.
+International Geomagnetic Reference Field implementation: IGRF-14 (the
+default, with the full 1900.0-2025.0 epoch tables and 2025-30 secular
+variation) plus the superseded IGRF-13 for reproducibility.
 
 .. automodule:: pytcl.magnetism.igrf
    :members:

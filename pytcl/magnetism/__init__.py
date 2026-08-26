@@ -43,8 +43,10 @@ from pytcl.magnetism.emm import create_test_coefficients as create_emm_test_coef
 from pytcl.magnetism.emm import get_data_dir as get_emm_data_dir
 from pytcl.magnetism.igrf import (
     IGRF13,
+    IGRF14,
     IGRFModel,
     create_igrf13_coefficients,
+    create_igrf14_coefficients,
     dipole_axis,
     dipole_moment,
     igrf,
@@ -92,7 +94,9 @@ __all__ = [
     "configure_magnetic_cache",
     # IGRF
     "IGRF13",
+    "IGRF14",
     "create_igrf13_coefficients",
+    "create_igrf14_coefficients",
     "igrf",
     "igrf_declination",
     "igrf_inclination",

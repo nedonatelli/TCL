@@ -231,7 +231,7 @@ Counts are measured from the packages themselves rather than asserted;
        humidity, refractivity
    * - ``magnetism``
      - 3
-     - 34
+     - 36
      - WMM, WMMHR, IGRF, EMM
    * - ``static_estimation``
      - 3

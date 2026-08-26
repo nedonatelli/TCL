@@ -78,16 +78,6 @@ No dates are attached because none have been decided:
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
   barometric approximation's caveats (gh-79), plus HWM winds
-- **IGRF-14 coefficients** (IGRF-13's validity window ended 2025.0) — the
-  embedded `IGRF13` table is out of its official range, and calls with
-  `year > 2025.0` extrapolate the 2020-2025 secular variation silently,
-  with no warning and no upper bound. This is no longer blocked on IAGA:
-  the MATLAB reference library already ships
-  `Magnetism/data/igrf14coeffs.txt` and loads it from `getIGRFCoeffs.m`,
-  so the table exists and can be vendored. Note also that only
-  `create_igrf13_coefficients()` documents the extrapolation caveat --
-  `igrf()`, the entry point callers actually reach, does not mention it.
-
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
   ceiling is reachable by reconstructing per-scan covariance from a
   steady-state Cholesky factor, but it touches every read path and breaks

@@ -293,7 +293,7 @@ Magnetism
    * - MATLAB
      - pytcl
    * - ``getIGRFCoeffs``
-     - ``pytcl.magnetism.igrf.igrf``
+     - ``pytcl.magnetism.igrf.create_igrf14_coefficients``
    * - ``getWMMCoeffs``
      - ``pytcl.magnetism.wmm.wmm``
 
