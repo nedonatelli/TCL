@@ -22,6 +22,7 @@ from pytcl.coordinate_systems.rotations.rotations import (
     quat_multiply,
     quat_rotate,
     rodrigues2rotmat,
+    rot_axis_to_vec,
     rotmat2axisangle,
     rotmat2euler,
     rotmat2quat,
@@ -33,6 +34,7 @@ from pytcl.coordinate_systems.rotations.rotations import (
 )
 
 __all__ = [
+    "rot_axis_to_vec",
     "rotx",
     "roty",
     "rotz",

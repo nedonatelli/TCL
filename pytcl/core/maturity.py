@@ -299,6 +299,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # mathematical_functions
     "mathematical_functions.polynomials.multivariate": MaturityLevel.EXPERIMENTAL,  # new this release
     # static_estimation
+    "static_estimation.localization": MaturityLevel.EXPERIMENTAL,  # new this release
     "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # 90% coverage
     # terrain
     "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage

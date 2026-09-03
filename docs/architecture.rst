@@ -29,7 +29,7 @@ it depends on; only the structurally significant edges are drawn.
        subgraph Estimation
            DE["dynamic_estimation<br/>17 modules"]
            DM["dynamic_models<br/>7 modules"]
-           SE["static_estimation<br/>3 modules"]
+           SE["static_estimation<br/>4 modules"]
        end
 
        subgraph Association_and_Tracking
@@ -203,7 +203,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Track and measurement persistence, including HDF5
    * - ``coordinate_systems``
      - 5
-     - 69
+     - 70
      - Frame conversions, rotations, Jacobians, map projections
    * - ``gravity``
      - 5
@@ -235,9 +235,9 @@ Counts are measured from the packages themselves rather than asserted;
      - 36
      - WMM, WMMHR, IGRF, EMM
    * - ``static_estimation``
-     - 3
-     - 38
-     - Least squares, robust estimation, model selection
+     - 4
+     - 43
+     - Least squares, robust estimation, model selection, localization
    * - ``terrain``
      - 3
      - 30
