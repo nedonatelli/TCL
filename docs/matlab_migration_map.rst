@@ -198,7 +198,21 @@ Coordinate Systems
    * - ``rotMat2Quat``
      - ``pytcl.coordinate_systems.rotations.rotations.rotmat2quat``
    * - ``ruv2Cart``
-     - ``pytcl.coordinate_systems.conversions.spherical.ruv2cart``
+     - ``pytcl.coordinate_systems.conversions.spherical.ruv2cart`` (aligned
+       monostatic) / ``pytcl.coordinate_systems.conversions.uv.ruv2cart_bistatic``
+       (full bistatic)
+   * - ``Cart2Ruv``
+     - ``pytcl.coordinate_systems.conversions.uv.cart2ruv_bistatic``
+   * - ``ruv2Ruv``
+     - ``pytcl.coordinate_systems.conversions.uv.ruv2ruv``
+   * - ``uv2SpherAng``
+     - ``pytcl.coordinate_systems.conversions.uv.uv2spher_ang``
+   * - ``spherAng2Uv``
+     - ``pytcl.coordinate_systems.conversions.uv.spher_ang2uv``
+   * - ``stateRuv2Cart``
+     - ``pytcl.coordinate_systems.conversions.uv.state_ruv2cart``
+   * - ``cameraCoords2UVCoords``
+     - ``pytcl.coordinate_systems.conversions.uv.camera_coords2uv``
 
 Dynamic Estimation
 ^^^^^^^^^^^^^^^^^^
