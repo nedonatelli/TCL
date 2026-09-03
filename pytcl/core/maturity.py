@@ -297,6 +297,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
     "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage
     # static_estimation
+    "static_estimation.localization": MaturityLevel.EXPERIMENTAL,  # new this release
     "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # 90% coverage
     # terrain
     "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage

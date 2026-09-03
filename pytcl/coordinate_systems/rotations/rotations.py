@@ -850,6 +850,128 @@ def is_rotation_matrix(R: ArrayLike, tol: float = 1e-6) -> bool:
     return True
 
 
+def _householder_vec(x: NDArray[np.floating]) -> Tuple[NDArray[np.floating], float]:
+    """Householder vector and beta for real ``x``, forcing the sign.
+
+    Port of the real branch of ``HouseholderVec.m`` (Golub & Van Loan
+    5.1.3) with ``forceSign=true``, which is the only way
+    ``rotAxis2Vec.m`` calls it.
+    """
+    m = len(x)
+    if m == 1:
+        return np.ones(1), 0.0
+
+    sigma = float(x[1:] @ x[1:])
+    v = np.concatenate(([1.0], x[1:]))
+    if sigma == 0.0:
+        # forceSign: beta 0 for non-negative x[0], 2 for negative.
+        return v, 0.0 if x[0] >= 0 else 2.0
+
+    mu = np.sqrt(x[0] * x[0] + sigma)
+    if x[0] < 0:
+        v0 = x[0] - mu
+    else:
+        v0 = -sigma / (x[0] + mu)
+    beta = 2.0 * v0 * v0 / (sigma + v0 * v0)
+    v[0] = v0
+    return v / v0, float(beta)
+
+
+def rot_axis_to_vec(
+    u: ArrayLike,
+    axis: "int | str | None" = None,
+) -> NDArray[np.floating]:
+    """
+    Rotation matrix taking a coordinate axis into the direction of ``u``.
+
+    Returns ``R`` such that ``u/||u|| = R @ e_axis`` where ``e_axis`` is
+    the selected coordinate axis unit vector. Works in any number of
+    dimensions >= 1.
+
+    Parameters
+    ----------
+    u : array_like
+        Direction vector of shape (n,), or (n, N) for a batch of N
+        vectors. Non-unit vectors are normalized.
+    axis : int or str, optional
+        The axis to rotate: an index from 0 to n-1, or 'x', 'y', 'z' for
+        0, 1, 2. Default: 'z' (index 2) in 3D, index 0 otherwise.
+
+    Returns
+    -------
+    R : ndarray
+        (n, n) rotation matrix, or (n, n, N) for batched input, with
+        ``det(R) = +1``.
+
+    Examples
+    --------
+    >>> u = np.array([1.0, 2.0, 3.0])
+    >>> R = rot_axis_to_vec(u, 'x')
+    >>> bool(np.allclose(R @ [1, 0, 0], u / np.linalg.norm(u)))
+    True
+    >>> bool(np.allclose(R.T @ u, [np.linalg.norm(u), 0, 0]))
+    True
+
+    Notes
+    -----
+    Port of ``rotAxis2Vec.m`` (method 0, the default): a Householder
+    reflection whose possible reflection component is removed by a mirror
+    plus a 180-degree Givens rotation, which is numerically stabler than
+    the shortest-rotation quaternion construction (method 1, not ported —
+    no caller here needs it). MATLAB's 1-based axis numbers and letters
+    map to 0-based indices here.
+
+    References
+    ----------
+    .. [1] D. F. Crouse, "On measurement-based light-time corrections for
+       bistatic orbital debris tracking," IEEE Transactions on Aerospace
+       and Electronic Systems, vol. 51, no. 3, pp. 2502-2518, Jul. 2015.
+    """
+    u_arr = np.atleast_1d(np.asarray(u, dtype=np.float64))
+    single = u_arr.ndim == 1
+    if single:
+        u_arr = u_arr[:, np.newaxis]
+    n_dim, n_vec = u_arr.shape
+
+    if axis is None:
+        axis = 2 if n_dim == 3 else 0
+    elif isinstance(axis, str):
+        try:
+            axis = {"x": 0, "y": 1, "z": 2}[axis]
+        except KeyError:
+            raise ValueError(f"Invalid axis {axis!r}") from None
+    if not 0 <= axis < n_dim:
+        raise ValueError(f"Invalid axis {axis} for dimension {n_dim}")
+
+    if n_dim == 1:
+        R = np.ones((1, 1, n_vec))
+        return R[:, :, 0] if single else R
+
+    u_arr = u_arr / np.linalg.norm(u_arr, axis=0)
+
+    perm = np.arange(n_dim)
+    perm[axis] = 0
+    perm[0] = axis
+
+    R = np.zeros((n_dim, n_dim, n_vec))
+    for k in range(n_vec):
+        u_perm = u_arr[perm, k]
+        u_perm = u_perm / np.linalg.norm(u_perm)
+        v, beta = _householder_vec(u_perm)
+        Rk = np.eye(n_dim) - beta * np.outer(v, v)
+
+        # A negative determinant means a reflection. The MATLAB original
+        # mirrors about the first axis and then applies a 180-degree
+        # Givens rotation of the first two axes; the two right-
+        # multiplications compose to diag(1, -1, 1, ...), i.e. negating
+        # the second column.
+        if np.linalg.det(Rk) < 0:
+            Rk[:, 1] = -Rk[:, 1]
+
+        R[:, :, k] = Rk[np.ix_(perm, perm)]
+    return R[:, :, 0] if single else R
+
+
 __all__ = [
     "rotx",
     "roty",

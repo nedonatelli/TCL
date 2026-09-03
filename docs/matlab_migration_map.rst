@@ -414,3 +414,23 @@ Performance Evaluation
      - ``pytcl.performance_evaluation.estimation_metrics.nees``
    * - ``calcRMSE``
      - ``pytcl.performance_evaluation.estimation_metrics.rmse``
+
+Static Estimation
+^^^^^^^^^^^^^^^^^
+
+.. list-table::
+   :header-rows: 1
+   :widths: 34 66
+
+   * - MATLAB
+     - pytcl
+   * - ``TDOAOnlyStaticLocEst``
+     - ``pytcl.static_estimation.localization.tdoa_only_static_loc_est``
+   * - ``rangeOnlyStaticLocEstNP``
+     - ``pytcl.static_estimation.localization.range_only_static_loc_est_np``
+   * - ``RROnlyStaticVelEst``
+     - ``pytcl.static_estimation.localization.rr_only_static_vel_est``
+   * - ``getAdHocCartCov``
+     - ``pytcl.static_estimation.localization.ad_hoc_cart_cov``
+   * - ``rotAxis2Vec``
+     - ``pytcl.coordinate_systems.rotations.rot_axis_to_vec``

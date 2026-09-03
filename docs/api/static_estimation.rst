@@ -36,3 +36,14 @@ M-estimators (Huber, Tukey) and RANSAC algorithms.
    :members:
    :undoc-members:
    :show-inheritance:
+
+Localization
+------------
+
+Closed-form static localization: TDOA least squares, bistatic
+range-only, range-rate-only velocity, and an ad-hoc radar covariance.
+
+.. automodule:: pytcl.static_estimation.localization
+   :members:
+   :undoc-members:
+   :show-inheritance:

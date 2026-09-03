@@ -213,13 +213,17 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        only the filter-component pieces of the last.
    * - Static_Estimation
      - 11
-     - Divergent
-     - The name overlaps; the content mostly does not. MATLAB's area is
-       target localization: TDOA, Doppler-only init, range-rate-only,
-       direction-only static estimators — **all 11 absent** from pytcl
-       (``great_circle_tdoa_loc`` is not an exception here: MATLAB keeps
-       ``greatCircleTDOALoc.m`` in ``Navigation``, not this directory).
-       pytcl's ``static_estimation`` instead ports the general estimators
+     - Split
+     - Four of the 11 localization estimators are ported in
+       ``static_estimation.localization`` (v2.8.0):
+       ``TDOAOnlyStaticLocEst``, ``rangeOnlyStaticLocEstNP``,
+       ``RROnlyStaticVelEst`` and ``getAdHocCartCov``, all validated
+       against MATLAB fixtures. **Missing:** the polynomial-based
+       estimators (``TDOA2Cart``, ``rangeRate2StaticPos``,
+       ``rangeRateRatio2StaticPos2D``) pending a ``polyRootsMultiDim``
+       port, ``directionOnlyStaticLocEst`` and ``computePolyMeasFIM``,
+       and the two ``Uses_External_Solver`` files (need the SCS solver).
+       pytcl's ``static_estimation`` also ports the general estimators
        (OLS/TLS/robust/MLE) that MATLAB keeps elsewhere; RANSAC and
        recursive least squares are pytcl originals with no MATLAB
        counterpart anywhere in the library.
@@ -308,7 +312,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 46 validation files checking against independent
+cases that includes 47 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line
