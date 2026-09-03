@@ -9,11 +9,10 @@ sensor offsets and pointing rotations (the simplified aligned-monostatic
 ``ruv2cart``/``cart2ruv`` live in
 :mod:`pytcl.coordinate_systems.conversions.spherical`).
 
-References
-----------
-.. [1] D. F. Crouse, "Basic tracking using nonlinear 3D monostatic and
-   bistatic measurements," IEEE Aerospace and Electronic Systems
-   Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
+All conventions follow D. F. Crouse, "Basic tracking using nonlinear
+3D monostatic and bistatic measurements," IEEE Aerospace and
+Electronic Systems Magazine, vol. 29, no. 8, Part II, pp. 4-53,
+Aug. 2014.
 """
 
 from typing import Optional
@@ -98,13 +97,13 @@ def uv2spher_ang(
     Examples
     --------
     >>> import numpy as np
-    >>> az_el = uv2spher_ang(np.array([0.0, 0.0]))
-    >>> np.allclose(az_el.ravel(), [0.0, 0.0])
-    True
+    >>> az_el = uv2spher_ang(np.array([0.0, 0.0]))  # the +z boresight
+    >>> np.round(az_el.ravel(), 6).tolist()
+    [0.0, 1.570796]
 
     Notes
     -----
-    Port of ``uv2SpherAng.m`` [1]_.
+    Port of ``uv2SpherAng.m`` (Crouse 2014, see the module docstring).
     """
     uv_arr = _as_columns(uv, 2).copy()
     if m_uv is None:
@@ -176,7 +175,7 @@ def spher_ang2uv(
 
     Notes
     -----
-    Port of ``spherAng2Uv.m`` [1]_.
+    Port of ``spherAng2Uv.m`` (Crouse 2014, see the module docstring).
     """
     az_el_arr = _as_columns(az_el, 2)
     if m_uv is None:
@@ -263,7 +262,7 @@ def ruv2cart_bistatic(
 
     Notes
     -----
-    Port of ``ruv2Cart.m`` [1]_.
+    Port of ``ruv2Cart.m`` (Crouse 2014, see the module docstring).
     """
     z_arr = _as_columns(z, 3)
     n = z_arr.shape[1]
@@ -338,7 +337,7 @@ def cart2ruv_bistatic(
 
     Notes
     -----
-    Port of ``Cart2Ruv.m`` [1]_.
+    Port of ``Cart2Ruv.m`` (Crouse 2014, see the module docstring).
     """
     z_c_arr = _as_columns(z_c, 3)
     n = z_c_arr.shape[1]
