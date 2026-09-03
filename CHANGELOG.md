@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from 2023.0 to 2025.0 (the IGRF-14 reference epoch). `IGRF13` and
   `create_igrf13_coefficients` remain available for reproducibility.
 
+- Static localization estimators (`pytcl.static_estimation.localization`),
+  the first slice of MATLAB's `Static_Estimation` directory:
+  `tdoa_only_static_loc_est` (closed-form TDOA least squares, single or
+  multiple reference receivers), `range_only_static_loc_est_np` (bistatic
+  range-only via spherical interpolation/intersection, with Taylor and
+  CRLB covariances), `rr_only_static_vel_est` (range-rate-only velocity,
+  2D/3D, target-as-emitter supported) and `ad_hoc_cart_cov` (radar-
+  parameter covariance). Plus `rot_axis_to_vec` in
+  `coordinate_systems.rotations` (Householder axis-to-vector rotation,
+  any dimension). All validated against MATLAB fixtures captured from
+  the source tree (commit a9acd8f).
+
 ### Removed
 
 - The deprecated `nuttall_q` alias for `rician_cdf` (renamed in v2.0.0 for

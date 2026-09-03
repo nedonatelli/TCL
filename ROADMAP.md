@@ -64,10 +64,15 @@ No dates are attached because none have been decided:
   stubs; the complete public-domain C implementation ships in the MATLAB
   tree and compiles/runs headlessly as a validation oracle).
   `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
-- **Localization-style static estimators** — Cartesian TDOA, Doppler-only
-  init, direction-only; MATLAB's Static_Estimation content is almost all
-  absent (great-circle TDOA is the exception, ported as
-  `great_circle_tdoa_loc`)
+- **Localization-style static estimators, remainder** — the closed-form
+  four (TDOA least squares, bistatic range-only, range-rate-only
+  velocity, ad-hoc radar covariance) shipped in v2.8.0 as
+  `static_estimation.localization`. Still open: `TDOA2Cart`,
+  `rangeRate2StaticPos` and `rangeRateRatio2StaticPos2D` (all gated on a
+  `polyRootsMultiDim` port, 573 lines of Macaulay-matrix machinery),
+  `directionOnlyStaticLocEst` (647 lines, several algorithms),
+  `computePolyMeasFIM`, and the two `Uses_External_Solver` files (need
+  the SCS solver or a scipy substitute)
 - **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
   batch least squares, PCRLB/Riccati analysis tools
 - **Direction-cosine UV measurement coordinates** — the angle-only u-v
