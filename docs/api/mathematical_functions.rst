@@ -122,6 +122,17 @@ Combinatorics
    :undoc-members:
    :show-inheritance:
 
+Polynomials
+-----------
+
+Simultaneous multivariate polynomial root finding via the Macaulay
+null-space method.
+
+.. automodule:: pytcl.mathematical_functions.polynomials.multivariate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Debye
 -----
 
