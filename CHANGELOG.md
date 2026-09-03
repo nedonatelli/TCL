@@ -51,6 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any dimension). All validated against MATLAB fixtures captured from
   the source tree (commit a9acd8f).
 
+### Changed
+
+- Dependency refresh: plotly 6.9 -> 7.0 (all notebooks and examples
+  verified against the new major), numba 0.66 -> 0.67 with
+  llvmlite 0.49, plus routine minor updates (scipy 1.18.1,
+  polars 1.44, mlx 0.32.2). No code changes were required; the full
+  suite passes with `PYTCL_REQUIRE_MLX=1`.
+
 ### Removed
 
 - The deprecated `nuttall_q` alias for `rician_cdf` (renamed in v2.0.0 for
