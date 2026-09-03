@@ -53,7 +53,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Foundation
-           MF["mathematical_functions<br/>25 modules"]
+           MF["mathematical_functions<br/>26 modules"]
            CR["core<br/>7 modules"]
        end
 
@@ -165,9 +165,10 @@ Counts are measured from the packages themselves rather than asserted;
      - Public
      - Purpose
    * - ``mathematical_functions``
-     - 25
-     - 70
-     - Special functions, statistics, transforms, signal processing, geometry
+     - 26
+     - 73
+     - Special functions, statistics, transforms, signal processing,
+       geometry, polynomials
    * - ``dynamic_estimation``
      - 17
      - 88
@@ -236,7 +237,7 @@ Counts are measured from the packages themselves rather than asserted;
      - WMM, WMMHR, IGRF, EMM
    * - ``static_estimation``
      - 4
-     - 43
+     - 47
      - Least squares, robust estimation, model selection, localization
    * - ``terrain``
      - 3

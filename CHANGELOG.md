@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Polynomial-based static localization estimators, completing seven of
+  MATLAB's 11 `Static_Estimation` files: `tdoa_to_cart` (minimal TDOA
+  sets, 2D/3D), `range_rate_to_static_pos` (stationary emitter from
+  minimal range rates from moving receivers, 2D/3D) and
+  `range_rate_ratio_to_static_pos_2d` (Doppler-ratio-only localization
+  of an emitter with unknown transmit frequency). All validated against
+  MATLAB fixtures; solution sets are compared order-independently.
+- Multivariate polynomial system solver
+  (`pytcl.mathematical_functions.polynomials.poly_roots_multi_dim`), a
+  port of `polyRootsMultiDim.m`: affine roots of n polynomials in n
+  variables via the Macaulay null-space method (Dreesen), with both the
+  SVD and Motzkin null-space paths. Root sets match MATLAB fixtures on
+  every system the original can solve; on the Dreesen three-variable
+  reference system the original FAILS on R2026a (exit code 2, recorded
+  in the fixture) because its null-space rank tolerance sits inside
+  LAPACK roundoff — the port deviates to the `matrixRank` algorithm-1
+  tolerance (MATLAB `rank()`'s own default) and recovers all 18 roots
+  at 6e-12 residual. This unblocks the `TDOA2Cart`,
+  `rangeRate2StaticPos` and `rangeRateRatio2StaticPos2D` estimator
+  ports.
+
 - Python 3.13 and 3.14 support: both versions run the full CI test matrix
   (Ubuntu + macOS) and are declared in the package classifiers. The full
   suite with all extras passes on 3.13.15 and 3.14.7, including the
@@ -45,6 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `coordinate_systems.rotations` (Householder axis-to-vector rotation,
   any dimension). All validated against MATLAB fixtures captured from
   the source tree (commit a9acd8f).
+
+### Changed
+
+- Dependency refresh: plotly 6.9 -> 7.0 (all notebooks and examples
+  verified against the new major), numba 0.66 -> 0.67 with
+  llvmlite 0.49, plus routine minor updates (scipy 1.18.1,
+  polars 1.44, mlx 0.32.2). No code changes were required; the full
+  suite passes with `PYTCL_REQUIRE_MLX=1`.
 
 ### Removed
 

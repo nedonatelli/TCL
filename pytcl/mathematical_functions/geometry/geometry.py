@@ -358,8 +358,14 @@ def point_to_line_distance(
     if line_len < 1e-12:
         return float(np.linalg.norm(point_vec))
 
-    cross = np.abs(np.cross(line_vec, point_vec))
-    return cross / line_len
+    # numpy 2.5 removed 2-D np.cross; the 2-D cross product is the
+    # scalar z-component. In 3-D the distance needs the cross product's
+    # norm (np.abs of the vector was never a distance).
+    if len(line_vec) == 2:
+        cross = np.abs(line_vec[0] * point_vec[1] - line_vec[1] * point_vec[0])
+    else:
+        cross = np.linalg.norm(np.cross(line_vec, point_vec))
+    return float(cross / line_len)
 
 
 def point_to_line_segment_distance(

@@ -368,6 +368,8 @@ Mathematical Functions
      - ``pytcl.mathematical_functions.basic_matrix.decompositions.null_space``
    * - ``perm``
      - ``pytcl.mathematical_functions.special_functions.gamma_functions.perm``
+   * - ``polyRootsMultiDim``
+     - ``pytcl.mathematical_functions.polynomials.poly_roots_multi_dim``
    * - ``polygamma``
      - ``pytcl.mathematical_functions.special_functions.gamma_functions.polygamma``
    * - ``spherHarmonicEval``
@@ -446,5 +448,11 @@ Static Estimation
      - ``pytcl.static_estimation.localization.rr_only_static_vel_est``
    * - ``getAdHocCartCov``
      - ``pytcl.static_estimation.localization.ad_hoc_cart_cov``
+   * - ``TDOA2Cart``
+     - ``pytcl.static_estimation.localization.tdoa_to_cart``
+   * - ``rangeRate2StaticPos``
+     - ``pytcl.static_estimation.localization.range_rate_to_static_pos``
+   * - ``rangeRateRatio2StaticPos2D``
+     - ``pytcl.static_estimation.localization.range_rate_ratio_to_static_pos_2d``
    * - ``rotAxis2Vec``
      - ``pytcl.coordinate_systems.rotations.rot_axis_to_vec``
