@@ -442,3 +442,7 @@ Static Estimation
      - ``pytcl.static_estimation.localization.range_rate_ratio_to_static_pos_2d``
    * - ``rotAxis2Vec``
      - ``pytcl.coordinate_systems.rotations.rot_axis_to_vec``
+   * - ``directionOnlyStaticLocEst``
+     - ``pytcl.static_estimation.localization.direction_only_static_loc_est``
+   * - ``computePolyMeasFIM``
+     - ``pytcl.static_estimation.localization.poly_meas_fim``
