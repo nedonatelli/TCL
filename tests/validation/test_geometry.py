@@ -287,6 +287,14 @@ class TestPointToLineDistance:
         dist = point_to_line_distance([0, 1], [0, 0], [1, 0])
         assert dist == pytest.approx(1.0)
 
+    def test_3d_distance(self):
+        """3D distance is norm(cross)/len, a scalar (numpy 2.5 path)."""
+        dist = point_to_line_distance([0, 0, 1], [0, 0, 0], [1, 0, 0])
+        assert dist == pytest.approx(1.0)
+        dist = point_to_line_distance([3, 4, 5], [0, 0, 0], [0, 0, 1])
+        assert dist == pytest.approx(5.0)
+        assert isinstance(dist, float)
+
     def test_point_at_angle(self):
         """Test point at angle from diagonal line."""
         # Distance from (0, 0) to line from (0, 1) to (1, 0)
