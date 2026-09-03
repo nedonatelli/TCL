@@ -20,6 +20,17 @@ Spherical Coordinates
    :undoc-members:
    :show-inheritance:
 
+u-v Direction Cosines
+^^^^^^^^^^^^^^^^^^^^^
+
+The angle-only u-v(-w) measurement system of planar phased arrays, and
+the full bistatic r-u-v conversions.
+
+.. automodule:: pytcl.coordinate_systems.conversions.uv
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Geodetic Coordinates
 ^^^^^^^^^^^^^^^^^^^^
 

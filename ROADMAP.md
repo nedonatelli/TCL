@@ -73,9 +73,13 @@ No dates are attached because none have been decided:
   the SCS solver or a scipy substitute)
 - **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
   batch least squares, PCRLB/Riccati analysis tools
-- **Direction-cosine UV measurement coordinates** — the angle-only u-v
-  (and u-v-w) system of planar phased arrays, with conversions and
-  Jacobians; distinct from the ported range+direction-cosine `cart2ruv`
+- **Direction-cosine UV measurement coordinates, remainder** — the core
+  conversions shipped in v2.8.0 as `coordinate_systems.conversions.uv`
+  (u-v <-> spherical, full bistatic r-u-v <-> Cartesian, ruv-to-ruv,
+  r-u-v state conversion, camera-to-uv). Still open: the u-v measurement
+  Jacobians/Hessians and the cubature/Taylor covariance conversions
+  (`uv2SpherAngCubature`, `ruv2RuvCubature`, `monostatRuv2CartTaylor`,
+  `cameraCoords2UVCoordsCubature`)
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials

@@ -101,11 +101,12 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        sub-mm against pyproj/EPSG, but ``stereographic`` and
        ``azimuthal_equidistant`` are spherical approximations that diverge
        from PROJ by kilometres away from the projection centre (their own
-       docstrings tabulate this; gh-25). **Missing:** the angle-only direction-
-       cosine UV measurement system (``spher2Uv``/``uv2Spher``-style
-       conversions, u-v-w unit vectors, and their Jacobians -- the natural
-       measurement space of a planar phased array; distinct from the ported
-       r-u-v triple), most of the 65-function time
+       docstrings tabulate this; gh-25). The angle-only direction-cosine UV
+       measurement system's core conversions are now ported
+       (``coordinate_systems.conversions.uv``, v2.8.0: u-v <->
+       spherical, full bistatic r-u-v, camera-to-uv); its Jacobians,
+       Hessians and cubature/Taylor covariance conversions are not.
+       **Missing:** most of the 65-function time
        suite (pytcl covers UTC/TAI/TT/GPS and Julian dates; TDB/TCB/TCG,
        Besselian epochs, sidereal local time variants absent), 26 of the 30
        measurement Jacobians (spherical, polar, r-u-v, ENU/NED and geodetic
@@ -312,7 +313,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 48 validation files checking against independent
+cases that includes 49 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

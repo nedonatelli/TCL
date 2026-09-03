@@ -36,6 +36,15 @@ from pytcl.coordinate_systems.conversions.spherical import (
     ruv2cart,
     sphere2cart,
 )
+from pytcl.coordinate_systems.conversions.uv import (
+    camera_coords2uv,
+    cart2ruv_bistatic,
+    ruv2cart_bistatic,
+    ruv2ruv,
+    spher_ang2uv,
+    state_ruv2cart,
+    uv2spher_ang,
+)
 
 __all__ = [
     # Spherical/polar
@@ -47,6 +56,14 @@ __all__ = [
     "cyl2cart",
     "ruv2cart",
     "cart2ruv",
+    # u-v direction cosines
+    "camera_coords2uv",
+    "cart2ruv_bistatic",
+    "ruv2cart_bistatic",
+    "ruv2ruv",
+    "spher_ang2uv",
+    "state_ruv2cart",
+    "uv2spher_ang",
     # Geodetic
     "geodetic2ecef",
     "ecef2geodetic",
