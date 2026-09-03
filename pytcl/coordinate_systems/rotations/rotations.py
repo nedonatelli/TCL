@@ -914,10 +914,11 @@ def rot_axis_to_vec(
 
     Notes
     -----
-    Port of ``rotAxis2Vec.m`` (method 0, the default): a Householder
-    reflection whose possible reflection component is removed by a mirror
-    plus a 180-degree Givens rotation, which is numerically stabler than
-    the shortest-rotation quaternion construction (method 1, not ported —
+    Port of ``rotAxis2Vec.m`` (method 0, the default), used in [1]_ for
+    bistatic orbital debris tracking: a Householder reflection whose
+    possible reflection component is removed by a mirror plus a
+    180-degree Givens rotation, which is numerically stabler than the
+    shortest-rotation quaternion construction (method 1, not ported —
     no caller here needs it). MATLAB's 1-based axis numbers and letters
     map to 0-based indices here.
 
