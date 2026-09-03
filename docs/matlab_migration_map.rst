@@ -434,5 +434,11 @@ Static Estimation
      - ``pytcl.static_estimation.localization.rr_only_static_vel_est``
    * - ``getAdHocCartCov``
      - ``pytcl.static_estimation.localization.ad_hoc_cart_cov``
+   * - ``TDOA2Cart``
+     - ``pytcl.static_estimation.localization.tdoa_to_cart``
+   * - ``rangeRate2StaticPos``
+     - ``pytcl.static_estimation.localization.range_rate_to_static_pos``
+   * - ``rangeRateRatio2StaticPos2D``
+     - ``pytcl.static_estimation.localization.range_rate_ratio_to_static_pos_2d``
    * - ``rotAxis2Vec``
      - ``pytcl.coordinate_systems.rotations.rot_axis_to_vec``
