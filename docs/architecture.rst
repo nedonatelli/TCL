@@ -236,7 +236,7 @@ Counts are measured from the packages themselves rather than asserted;
      - WMM, WMMHR, IGRF, EMM
    * - ``static_estimation``
      - 4
-     - 43
+     - 47
      - Least squares, robust estimation, model selection, localization
    * - ``terrain``
      - 3

@@ -18,8 +18,11 @@ from pytcl.coordinate_systems.rotations import rot_axis_to_vec
 from pytcl.static_estimation import (
     ad_hoc_cart_cov,
     range_only_static_loc_est_np,
+    range_rate_ratio_to_static_pos_2d,
+    range_rate_to_static_pos,
     rr_only_static_vel_est,
     tdoa_only_static_loc_est,
+    tdoa_to_cart,
 )
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures" / "matlab"
@@ -34,6 +37,23 @@ RTOL_MINIMAL = 1e-7
 
 def _load(name):
     return np.loadtxt(FIXTURE_DIR / name, delimiter=",", ndmin=2)
+
+
+def _assert_same_solution_set(actual, desired, rtol):
+    """Order-independent one-to-one matching of solution columns
+    (column order out of the polynomial solver is tie-unstable across
+    platforms)."""
+    assert actual.shape == desired.shape
+    scale = max(1.0, float(np.max(np.abs(desired))))
+    remaining = list(range(actual.shape[1]))
+    for j in range(desired.shape[1]):
+        dists = [np.max(np.abs(actual[:, i] - desired[:, j])) for i in remaining]
+        best = int(np.argmin(dists))
+        assert dists[best] <= rtol * scale, (
+            f"no solution within {rtol * scale} of fixture column "
+            f"{desired[:, j]}; nearest was {dists[best]} away"
+        )
+        remaining.pop(best)
 
 
 # The five-sensor scene of TDOAOnlyStaticLocEst.m's docstring example.
@@ -337,3 +357,107 @@ class TestRotAxisToVec:
             rot_axis_to_vec(self.U3, "w")
         with pytest.raises(ValueError):
             rot_axis_to_vec(self.U3, 3)
+
+
+class TestTdoaToCart:
+    """TDOA2Cart: minimal TDOA sets through the polynomial solver."""
+
+    def test_3d_matches_matlab_and_recovers_target(self):
+        c = 341.0
+
+        def d(a, b):
+            return np.linalg.norm(T_TRUE - a) - np.linalg.norm(T_TRUE - b)
+
+        tdoa = np.array([d(S2, S1), d(S3, S1), d(S3, S4)]) / c
+        res = tdoa_to_cart(
+            tdoa, np.column_stack([S1, S1, S4]), np.column_stack([S2, S3, S3]), c
+        )
+        assert res.exit_code == 0
+        _assert_same_solution_set(res.z_cart, _load("se_tdoa2cart_3d.csv"), 1e-9)
+        assert np.min(np.linalg.norm(res.z_cart - T_TRUE[:, None], axis=0)) < 1e-6
+
+    def test_2d_shared_reference_matches_matlab(self):
+        c = 341.0
+        t2 = np.array([350.0, -125.0])
+        r1 = np.array([0.0, 0.0])
+        r2 = np.array([800.0, 200.0])
+        r3 = np.array([-300.0, 700.0])
+
+        def d(a, b):
+            return np.linalg.norm(t2 - a) - np.linalg.norm(t2 - b)
+
+        tdoa = np.array([d(r2, r1), d(r3, r1)]) / c
+        # A single reference column must broadcast to all measurements.
+        res = tdoa_to_cart(tdoa, r1, np.column_stack([r2, r3]), c)
+        assert res.exit_code == 0
+        _assert_same_solution_set(res.z_cart, _load("se_tdoa2cart_2d.csv"), 1e-9)
+        assert np.min(np.linalg.norm(res.z_cart - t2[:, None], axis=0)) < 1e-6
+
+    def test_invalid_dimensionality_raises(self):
+        with pytest.raises(ValueError, match="dimensionality"):
+            tdoa_to_cart(np.zeros(4), np.zeros((4, 4)), np.zeros((4, 4)))
+
+
+class TestRangeRateToStaticPos:
+    """rangeRate2StaticPos: emitter from minimal range rates."""
+
+    U2 = np.array([1e3, 5e3])
+    S2D = np.array([[500.0, 1100.0], [2500.0, 2500.0]])
+    SD2D = np.array([[300.0, 300.0], [0.0, 0.0]])
+
+    def _rr(self, u, s, sd):
+        return np.array(
+            [
+                -sd[:, k] @ (u - s[:, k]) / np.linalg.norm(u - s[:, k])
+                for k in range(s.shape[1])
+            ]
+        )
+
+    def test_2d_matches_matlab_and_recovers_emitter(self):
+        rr = self._rr(self.U2, self.S2D, self.SD2D)
+        res = range_rate_to_static_pos(rr, np.vstack([self.S2D, self.SD2D]))
+        assert res.exit_code == 0
+        _assert_same_solution_set(res.z_cart, _load("se_rr2pos_2d.csv"), 1e-6)
+        assert np.min(np.linalg.norm(res.z_cart - self.U2[:, None], axis=0)) < 1e-3
+
+    def test_3d_matches_matlab_and_recovers_emitter(self):
+        u3 = np.array([1e3, 5e3, 2e3])
+        s3 = np.array(
+            [[500.0, 1100.0, 5000.0], [3000.0, 1000.0, -1000.0], [0.0, 2000.0, 1000.0]]
+        )
+        sd3 = np.array([[300.0, 100.0, 0.0], [0.0, 100.0, 300.0], [0.0, 0.0, 0.0]])
+        rr = self._rr(u3, s3, sd3)
+        res = range_rate_to_static_pos(rr, np.vstack([s3, sd3]))
+        assert res.exit_code == 0
+        # The 3D solutions pass through the eigendecomposition of a
+        # heavier lifted system; measured set agreement 2.2e-3 absolute
+        # on kilometre-scale coordinates (~1e-6 relative).
+        _assert_same_solution_set(res.z_cart, _load("se_rr2pos_3d.csv"), 1e-5)
+        assert np.min(np.linalg.norm(res.z_cart - u3[:, None], axis=0)) < 1e-3
+
+    def test_invalid_dimensionality_raises(self):
+        with pytest.raises(ValueError, match="dimensionality"):
+            range_rate_to_static_pos(np.zeros(4), np.zeros((8, 4)))
+
+
+class TestRangeRateRatioToStaticPos2D:
+    """rangeRateRatio2StaticPos2D: Doppler-ratio-only localization."""
+
+    def test_matches_matlab_and_recovers_emitter(self):
+        u = np.array([1e3, 5e3])
+        ref = np.array([1000.0, 3000.0, 150.0, -150.0])
+        s = np.array([[500.0, 1100.0], [2500.0, 2500.0]])
+        sd = np.array([[300.0, 300.0], [0.0, 0.0]])
+        c = 299792458.0
+
+        def rrate(p, v):
+            return -v @ (u - p) / np.linalg.norm(u - p)
+
+        rr_ref = rrate(ref[:2], ref[2:])
+        f_rat = np.array(
+            [(1 - rr_ref / c) / (1 - rrate(s[:, k], sd[:, k]) / c) for k in (0, 1)]
+        )
+        res = range_rate_ratio_to_static_pos_2d(f_rat, ref, np.vstack([s, sd]))
+        assert res.exit_code == 0
+        _assert_same_solution_set(res.z_cart, _load("se_rrratio_2d.csv"), 1e-6)
+        assert np.min(np.linalg.norm(res.z_cart - u[:, None], axis=0)) < 1e-3

@@ -214,15 +214,15 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
    * - Static_Estimation
      - 11
      - Split
-     - Four of the 11 localization estimators are ported in
+     - Seven of the 11 localization estimators are ported in
        ``static_estimation.localization`` (v2.8.0):
        ``TDOAOnlyStaticLocEst``, ``rangeOnlyStaticLocEstNP``,
-       ``RROnlyStaticVelEst`` and ``getAdHocCartCov``, all validated
-       against MATLAB fixtures. **Missing:** the polynomial-based
-       estimators (``TDOA2Cart``, ``rangeRate2StaticPos``,
-       ``rangeRateRatio2StaticPos2D``) pending a ``polyRootsMultiDim``
-       port, ``directionOnlyStaticLocEst`` and ``computePolyMeasFIM``,
-       and the two ``Uses_External_Solver`` files (need the SCS solver).
+       ``RROnlyStaticVelEst``, ``getAdHocCartCov``, and — via the
+       ``polyRootsMultiDim`` port — ``TDOA2Cart``,
+       ``rangeRate2StaticPos`` and ``rangeRateRatio2StaticPos2D``, all
+       validated against MATLAB fixtures. **Missing:**
+       ``directionOnlyStaticLocEst``, ``computePolyMeasFIM``, and the
+       two ``Uses_External_Solver`` files (need the SCS solver).
        pytcl's ``static_estimation`` also ports the general estimators
        (OLS/TLS/robust/MLE) that MATLAB keeps elsewhere; RANSAC and
        recursive least squares are pytcl originals with no MATLAB

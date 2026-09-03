@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Polynomial-based static localization estimators, completing seven of
+  MATLAB's 11 `Static_Estimation` files: `tdoa_to_cart` (minimal TDOA
+  sets, 2D/3D), `range_rate_to_static_pos` (stationary emitter from
+  minimal range rates from moving receivers, 2D/3D) and
+  `range_rate_ratio_to_static_pos_2d` (Doppler-ratio-only localization
+  of an emitter with unknown transmit frequency). All validated against
+  MATLAB fixtures; solution sets are compared order-independently.
 - Multivariate polynomial system solver
   (`pytcl.mathematical_functions.polynomials.poly_roots_multi_dim`), a
   port of `polyRootsMultiDim.m`: affine roots of n polynomials in n

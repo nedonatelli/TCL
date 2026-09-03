@@ -876,6 +876,23 @@ def range_rate_ratio_to_static_pos_2d(
         Real 2D solutions (the emitter plus geometric ambiguities) and
         the solver exit code.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> u_true = np.array([1e3, 5e3])
+    >>> ref = np.array([1000.0, 3000.0, 150.0, -150.0])
+    >>> s = np.array([[500.0, 1100.0], [2500.0, 2500.0]])
+    >>> s_dot = np.array([[300.0, 300.0], [0.0, 0.0]])
+    >>> c = 299792458.0
+    >>> rrate = lambda p, v: -v @ (u_true - p) / np.linalg.norm(u_true - p)
+    >>> rr_ref = rrate(ref[:2], ref[2:])
+    >>> f_rat = np.array(
+    ...     [(1 - rr_ref / c) / (1 - rrate(s[:, k], s_dot[:, k]) / c) for k in (0, 1)]
+    ... )
+    >>> res = range_rate_ratio_to_static_pos_2d(f_rat, ref, np.vstack([s, s_dot]))
+    >>> bool(np.min(np.linalg.norm(res.z_cart - u_true[:, None], axis=0)) < 1e-3)
+    True
+
     Notes
     -----
     Port of ``rangeRateRatio2StaticPos2D.m`` (same reference as
