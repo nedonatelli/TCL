@@ -262,9 +262,22 @@ def _new_rows_for_macaulay(
 
 def _check_for_dg(Z: NDArray[np.floating], num_before_deg: list, max_deg: int) -> tuple:
     """Detect the affine basis set via the rank gap (Corollary 6.12 of
-    [1]_)."""
+    [1]_).
+
+    Deviation from ``checkFordG``: the loop stops before
+    ``cur_deg == max_deg``. The degree-``max_deg`` block spans every
+    row of ``Z``, so its rank trivially equals the nullity, and
+    comparing it with the previous block can declare a spurious gap
+    whenever a borderline singular value pushes that block's rank up
+    to the nullity (this happened on the five-variable
+    frequency-ratio localization system, yielding 32 corrupted roots
+    where the true gap — found one degree later — has 28). The MATLAB
+    original includes the trivial block and is saved only by roundoff
+    landing on the other side of the rank tolerance. A genuine gap at
+    ``max_deg`` is simply found at the next degree increase.
+    """
     cur_rank = 1
-    for cur_deg in range(1, max_deg + 1):
+    for cur_deg in range(1, max_deg):
         sel = num_before_deg[cur_deg + 1]
         new_rank = int(np.linalg.matrix_rank(Z[:sel, :]))
         if new_rank == cur_rank:
