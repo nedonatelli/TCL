@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Multivariate polynomial system solver
+  (`pytcl.mathematical_functions.polynomials.poly_roots_multi_dim`), a
+  port of `polyRootsMultiDim.m`: affine roots of n polynomials in n
+  variables via the Macaulay null-space method (Dreesen), with both the
+  SVD and Motzkin null-space paths. Root sets match MATLAB fixtures on
+  every system the original can solve; on the Dreesen three-variable
+  reference system the original FAILS on R2026a (exit code 2, recorded
+  in the fixture) because its null-space rank tolerance sits inside
+  LAPACK roundoff — the port deviates to the `matrixRank` algorithm-1
+  tolerance (MATLAB `rank()`'s own default) and recovers all 18 roots
+  at 6e-12 residual. This unblocks the `TDOA2Cart`,
+  `rangeRate2StaticPos` and `rangeRateRatio2StaticPos2D` estimator
+  ports.
+
 - Python 3.13 and 3.14 support: both versions run the full CI test matrix
   (Ubuntu + macOS) and are declared in the package classifiers. The full
   suite with all extras passes on 3.13.15 and 3.14.7, including the
