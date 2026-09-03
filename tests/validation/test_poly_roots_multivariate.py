@@ -34,9 +34,25 @@ def _load_roots(name):
     return m[:n] + 1j * m[n:]
 
 
-def _sort_columns(r):
-    key = np.lexsort(np.vstack([r.imag[::-1], r.real[::-1]]))
-    return r[:, key]
+def _assert_same_root_set(actual, desired, tol):
+    """One-to-one nearest matching of root columns.
+
+    Sorting the columns is tie-unstable: two roots can agree in one
+    coordinate to within roundoff, and which side of the tie each
+    platform's LAPACK lands on flips the sort order (this bit on the
+    CI 3.10/3.14 runners). Match greedily by distance instead.
+    """
+    assert actual.shape == desired.shape
+    scale = max(1.0, float(np.max(np.abs(desired))))
+    remaining = list(range(actual.shape[1]))
+    for j in range(desired.shape[1]):
+        dists = [np.max(np.abs(actual[:, i] - desired[:, j])) for i in remaining]
+        best = int(np.argmin(dists))
+        assert dists[best] <= tol * scale, (
+            f"no computed root within {tol * scale} of fixture root "
+            f"{desired[:, j]}; nearest was {dists[best]} away"
+        )
+        remaining.pop(best)
 
 
 def _dreesen_2var():
@@ -65,9 +81,7 @@ class TestTwoVariableSystem:
         roots, exit_code = poly_roots_multi_dim(_dreesen_2var())
         assert exit_code == 0
         ref = _load_roots("poly_roots_2var.csv")
-        np.testing.assert_allclose(
-            _sort_columns(roots), _sort_columns(ref), atol=ATOL_UNIT
-        )
+        _assert_same_root_set(roots, ref, ATOL_UNIT)
 
     def test_finds_the_four_known_real_roots(self):
         roots, exit_code = poly_roots_multi_dim(_dreesen_2var())
@@ -81,9 +95,7 @@ class TestTwoVariableSystem:
         roots, exit_code = poly_roots_multi_dim(_dreesen_2var(), use_motzkin_null=True)
         assert exit_code == 0
         ref = _load_roots("poly_roots_2var_motzkin.csv")
-        np.testing.assert_allclose(
-            _sort_columns(roots), _sort_columns(ref), atol=ATOL_UNIT
-        )
+        _assert_same_root_set(roots, ref, ATOL_UNIT)
 
 
 class TestThreeVariableSystem:
@@ -153,9 +165,7 @@ class TestRangeRateLocalizationSystem:
         roots, exit_code = poly_roots_multi_dim(self._system())
         assert exit_code == 0
         ref = _load_roots("poly_roots_rrloc2d.csv")
-        np.testing.assert_allclose(
-            _sort_columns(roots), _sort_columns(ref), rtol=RTOL_KM, atol=1e-4
-        )
+        _assert_same_root_set(roots, ref, RTOL_KM)
 
     def test_true_emitter_is_among_the_real_solutions(self):
         roots, _ = poly_roots_multi_dim(self._system())
