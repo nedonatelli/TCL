@@ -95,7 +95,7 @@ def tdoa_only_static_loc_est(
     >>> c = 341.0
     >>> tdoa = (np.linalg.norm(t[:, None] - rx, axis=0)
     ...         - np.linalg.norm(t - ref)) / c
-    >>> np.round(tdoa_only_static_loc_est(tdoa, ref, rx, c), 9)
+    >>> np.round(tdoa_only_static_loc_est(tdoa, ref, rx, c), 9) + 0.0
     array([ 27.,   0., -42.])
 
     Notes
