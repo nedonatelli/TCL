@@ -19,6 +19,7 @@ from pytcl.mathematical_functions import (
     geometry,
     interpolation,
     numerical_integration,
+    polynomials,
     signal_processing,
     special_functions,
     statistics,
@@ -77,6 +78,12 @@ from pytcl.mathematical_functions.numerical_integration import (
     unscented_transform_points,
 )
 
+# Polynomials
+from pytcl.mathematical_functions.polynomials import (
+    PolyRootsResult,
+    poly_roots_multi_dim,
+)
+
 # Signal processing
 from pytcl.mathematical_functions.signal_processing import (
     butter_design,
@@ -131,8 +138,12 @@ __all__ = [
     "interpolation",
     "combinatorics",
     "geometry",
+    "polynomials",
     "signal_processing",
     "transforms",
+    # Polynomials
+    "PolyRootsResult",
+    "poly_roots_multi_dim",
     # Basic matrix
     "chol_semi_def",
     "tria",

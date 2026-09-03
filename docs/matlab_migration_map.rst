@@ -354,6 +354,8 @@ Mathematical Functions
      - ``pytcl.mathematical_functions.basic_matrix.decompositions.null_space``
    * - ``perm``
      - ``pytcl.mathematical_functions.special_functions.gamma_functions.perm``
+   * - ``polyRootsMultiDim``
+     - ``pytcl.mathematical_functions.polynomials.poly_roots_multi_dim``
    * - ``polygamma``
      - ``pytcl.mathematical_functions.special_functions.gamma_functions.polygamma``
    * - ``spherHarmonicEval``
