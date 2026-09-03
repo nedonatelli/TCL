@@ -89,6 +89,7 @@ from pytcl.coordinate_systems.rotations import (
     quat_multiply,
     quat_rotate,
     rodrigues2rotmat,
+    rot_axis_to_vec,
     rotmat2axisangle,
     rotmat2euler,
     rotmat2quat,
@@ -130,6 +131,7 @@ __all__ = [
     "prime_vertical_radius",
     "meridional_radius",
     # Rotations
+    "rot_axis_to_vec",
     "rotx",
     "roty",
     "rotz",

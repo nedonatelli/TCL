@@ -16,6 +16,13 @@ from pytcl.static_estimation.least_squares import (
     total_least_squares,
     weighted_least_squares,
 )
+from pytcl.static_estimation.localization import (
+    RangeOnlyLocEst,
+    ad_hoc_cart_cov,
+    range_only_static_loc_est_np,
+    rr_only_static_vel_est,
+    tdoa_only_static_loc_est,
+)
 from pytcl.static_estimation.maximum_likelihood import (
     CRBResult,
     MLResult,
@@ -100,4 +107,10 @@ __all__ = [
     "aic",
     "bic",
     "aicc",
+    # Localization
+    "RangeOnlyLocEst",
+    "ad_hoc_cart_cov",
+    "range_only_static_loc_est_np",
+    "rr_only_static_vel_est",
+    "tdoa_only_static_loc_est",
 ]
