@@ -184,11 +184,16 @@ autodoc_typehints_description_target = "documented"
 # Autosummary settings
 autosummary_generate = True
 
-# Intersphinx mapping
+# Intersphinx mapping. Each entry lists the live objects.inv first and a
+# vendored snapshot (docs/_intersphinx/) second: Sphinx falls back to the
+# snapshot when the fetch fails, so a docs.scipy.org outage cannot fail
+# the warning-free docs gate (it did, twice, on 2026-09-03). Refresh the
+# snapshots occasionally with:
+#   curl -o docs/_intersphinx/<name>.inv <url>objects.inv
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    "python": ("https://docs.python.org/3", (None, "_intersphinx/python3.inv")),
+    "numpy": ("https://numpy.org/doc/stable/", (None, "_intersphinx/numpy.inv")),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", (None, "_intersphinx/scipy.inv")),
 }
 
 # MathJax settings for rendering equations
