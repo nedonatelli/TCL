@@ -60,6 +60,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from 2023.0 to 2025.0 (the IGRF-14 reference epoch). `IGRF13` and
   `create_igrf13_coefficients` remain available for reproducibility.
 
+- Direction-cosine u-v measurement coordinates
+  (`pytcl.coordinate_systems.conversions.uv`), the angle-only
+  measurement space of planar phased arrays: `uv2spher_ang` /
+  `spher_ang2uv` (all four spherical axis conventions, with sensor
+  rotations), the full bistatic `ruv2cart_bistatic` /
+  `cart2ruv_bistatic` (sensor offsets, pointing rotations, one-way or
+  bistatic ranges, optional w), `ruv2ruv` between bistatic pairs,
+  `state_ruv2cart` (position/velocity/acceleration states) and
+  `camera_coords2uv`. All validated against MATLAB fixtures.
 - Static localization estimators (`pytcl.static_estimation.localization`),
   the first slice of MATLAB's `Static_Estimation` directory:
   `tdoa_only_static_loc_est` (closed-form TDOA least squares, single or

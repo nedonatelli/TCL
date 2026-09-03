@@ -296,6 +296,8 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # plotting
     "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
     "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage
+    # coordinate_systems
+    "coordinate_systems.conversions.uv": MaturityLevel.EXPERIMENTAL,  # new this release
     # mathematical_functions
     "mathematical_functions.polynomials.multivariate": MaturityLevel.EXPERIMENTAL,  # new this release
     # static_estimation
