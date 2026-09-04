@@ -318,7 +318,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 50 validation files checking against independent
+cases that includes 51 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

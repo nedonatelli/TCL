@@ -53,6 +53,16 @@ from pytcl.dynamic_estimation.kalman.linear import (
     kf_smooth,
     kf_update,
 )
+from pytcl.dynamic_estimation.kalman.qmc import (
+    QMCKFPrediction,
+    QMCKFUpdateResult,
+    QMCMeasPredInfo,
+    calc_qmc_kalman_gain,
+    qmc_kf_meas_pred,
+    qmc_kf_predict,
+    qmc_kf_update,
+    qmc_kf_update_with_pred,
+)
 from pytcl.dynamic_estimation.kalman.square_root import (
     SRKalmanPrediction,
     SRKalmanState,
@@ -100,6 +110,14 @@ __all__ = [
     "information_filter_predict",
     "information_filter_update",
     # EKF
+    "QMCKFPrediction",
+    "QMCKFUpdateResult",
+    "QMCMeasPredInfo",
+    "calc_qmc_kalman_gain",
+    "qmc_kf_meas_pred",
+    "qmc_kf_predict",
+    "qmc_kf_update",
+    "qmc_kf_update_with_pred",
     "EnKFPrediction",
     "EnKFUpdate",
     "enkf_predict",

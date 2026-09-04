@@ -233,6 +233,16 @@ Dynamic Estimation
      - ``pytcl.dynamic_estimation.information_filter.esrif_predict``
    * - ``ESRIFUpdate``
      - ``pytcl.dynamic_estimation.information_filter.esrif_update``
+   * - ``discQMCKalPred``
+     - ``pytcl.dynamic_estimation.kalman.qmc.qmc_kf_predict``
+   * - ``QMCKalUpdate``
+     - ``pytcl.dynamic_estimation.kalman.qmc.qmc_kf_update``
+   * - ``QMCKalMeasPred``
+     - ``pytcl.dynamic_estimation.kalman.qmc.qmc_kf_meas_pred``
+   * - ``QMCKalUpdateWithPred``
+     - ``pytcl.dynamic_estimation.kalman.qmc.qmc_kf_update_with_pred``
+   * - ``calcQMCKalmanGain``
+     - ``pytcl.dynamic_estimation.kalman.qmc.calc_qmc_kalman_gain``
    * - ``HInfinityUpdate``
      - ``pytcl.dynamic_estimation.kalman.h_infinity.hinf_update``
    * - ``KalmanBatchSmoother``
