@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Ensemble Kalman filter (`enkf_predict`/`enkf_update` in
+  `dynamic_estimation.kalman.ensemble`) and the extended square-root
+  information filter (`esrif_predict`/`esrif_update` beside the SRIF),
+  ports of `EnKFDiscPred`/`EnKFUpdate`/`ESRIFDiscPred`/`ESRIFUpdate`.
+  Explicit noise-sample arguments make the EnKF fixture-deterministic;
+  the drawn-noise path is validated statistically against the exact
+  Kalman posterior. Two upstream defects fixed and documented: the
+  EnKF prediction's multi-output form calls an undefined function, and
+  the ESRIF update's default-Jacobian fallback references an undefined
+  variable — both crash upstream.
+
 ### Changed
 
 - Python 3.10 support dropped (it reaches end of life 2026-10-31):
