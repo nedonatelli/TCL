@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Batch least-squares estimation (`dynamic_estimation.batch_estimation`):
+  the closed-form linear batch estimator, iterated Gauss-Newton
+  estimators for nonlinear measurements (linear or folded-in dynamics),
+  Levenberg-Marquardt variants (SciPy LM substitutes `LSEstLMarquardt`;
+  same whitened residuals and optima) including the process-noise
+  trajectory mode, and `two_point_diff_init`. Two upstream defects
+  fixed and documented: the two-output call of
+  `batchLSNonlinMeasLinDynLM` crashes (reads a variable only built for
+  three outputs), and `batchLSNonlinMeasNonlinDynLM`'s covariance
+  inverts the stacked Cholesky factors instead of R, disagreeing with
+  its own Gauss-Newton sibling. Time indices are zero-based.
 - BLUE polar and spherical measurement updates
   (`blue_polar_meas_update`, `blue_spher_meas_update` in
   `dynamic_estimation.kalman.blue`): closed-form best-linear-unbiased

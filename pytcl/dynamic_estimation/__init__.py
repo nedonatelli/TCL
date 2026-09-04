@@ -13,6 +13,18 @@ This module provides filtering and smoothing algorithms for state estimation:
 # Import submodules for easy access
 from pytcl.dynamic_estimation import kalman, particle_filters
 
+# Information filter
+from pytcl.dynamic_estimation.batch_estimation import (
+    BatchLSLMResult,
+    BatchLSResult,
+    batch_ls_lin_meas_lin_dyn,
+    batch_ls_nonlin_meas_lin_dyn,
+    batch_ls_nonlin_meas_lin_dyn_lm,
+    batch_ls_nonlin_meas_nonlin_dyn,
+    batch_ls_nonlin_meas_nonlin_dyn_lm,
+    two_point_diff_init,
+)
+
 # Typed configuration Structs
 from pytcl.dynamic_estimation.configs import (
     GaussianSumConfig,
@@ -38,8 +50,6 @@ from pytcl.dynamic_estimation.imm import (
     imm_predict_update,
     imm_update,
 )
-
-# Information filter
 from pytcl.dynamic_estimation.information_filter import (
     ESRIFPrediction,
     ESRIFUpdateResult,
@@ -162,6 +172,14 @@ __all__ = [
     # Information filter
     "InformationState",
     "InformationFilterResult",
+    "BatchLSLMResult",
+    "BatchLSResult",
+    "batch_ls_lin_meas_lin_dyn",
+    "batch_ls_nonlin_meas_lin_dyn",
+    "batch_ls_nonlin_meas_lin_dyn_lm",
+    "batch_ls_nonlin_meas_nonlin_dyn",
+    "batch_ls_nonlin_meas_nonlin_dyn_lm",
+    "two_point_diff_init",
     "ESRIFPrediction",
     "ESRIFUpdateResult",
     "SRIFState",

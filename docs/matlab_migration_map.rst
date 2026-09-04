@@ -247,6 +247,18 @@ Dynamic Estimation
      - ``pytcl.dynamic_estimation.kalman.blue.blue_polar_meas_update``
    * - ``BLUESpherMeasUpdateApprox``
      - ``pytcl.dynamic_estimation.kalman.blue.blue_spher_meas_update``
+   * - ``batchLSLinMeasLinDyn``
+     - ``pytcl.dynamic_estimation.batch_estimation.batch_ls_lin_meas_lin_dyn``
+   * - ``batchLSNonlinMeasLinDyn``
+     - ``pytcl.dynamic_estimation.batch_estimation.batch_ls_nonlin_meas_lin_dyn``
+   * - ``batchLSNonlinMeasLinDynLM``
+     - ``pytcl.dynamic_estimation.batch_estimation.batch_ls_nonlin_meas_lin_dyn_lm``
+   * - ``batchLSNonlinMeasNonlinDyn``
+     - ``pytcl.dynamic_estimation.batch_estimation.batch_ls_nonlin_meas_nonlin_dyn``
+   * - ``batchLSNonlinMeasNonlinDynLM``
+     - ``pytcl.dynamic_estimation.batch_estimation.batch_ls_nonlin_meas_nonlin_dyn_lm``
+   * - ``twoPointDiffInit``
+     - ``pytcl.dynamic_estimation.batch_estimation.two_point_diff_init``
    * - ``HInfinityUpdate``
      - ``pytcl.dynamic_estimation.kalman.h_infinity.hinf_update``
    * - ``KalmanBatchSmoother``

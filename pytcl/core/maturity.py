@@ -302,6 +302,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.kalman.ensemble": MaturityLevel.EXPERIMENTAL,  # new this release
     "dynamic_estimation.kalman.qmc": MaturityLevel.EXPERIMENTAL,  # new this release
     "dynamic_estimation.kalman.blue": MaturityLevel.EXPERIMENTAL,  # new this release
+    "dynamic_estimation.batch_estimation": MaturityLevel.EXPERIMENTAL,  # new this release
     # mathematical_functions
     "mathematical_functions.polynomials.multivariate": MaturityLevel.EXPERIMENTAL,  # new this release
     # static_estimation
