@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.7.0, released 25 August 2026
-**Test Suite:** 8,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Current Version:** v2.8.0, released 3 September 2026
+**Test Suite:** 8,200+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
 third by function count — see `docs/matlab_parity_inventory.rst`, which
@@ -209,7 +209,7 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow exists for on-demand re-runs but has never been dispatched, so every hardware run to date has been ad hoc |
+| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow was dispatched for the first time during v2.8.0 release prep and sat queued: its default `gpu-t4-4-core` runner label is not provisioned for this account, so the workflow cannot run until a GitHub GPU larger runner is added or it is dispatched with the `runner` input pointing at a self-hosted GPU machine. Every hardware run to date remains ad hoc |
 
 ### Medium Priority
 

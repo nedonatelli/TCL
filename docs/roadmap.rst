@@ -7,12 +7,20 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.7.0)
+Current State (v2.8.0)
 ----------------------
 
-* **8,000+ tests** passing; coverage measured honestly (88.8% as CI's
+* **8,200+ tests** passing; coverage measured honestly (88.8% as CI's
   branch-coverage gate sees it, with numba kernels traced; 93.8% locally
   where the MLX layer is visible), docstring examples run in CI
+* **Static estimation suite** (v2.8.0): nine of MATLAB's 11
+  Static_Estimation localization estimators (TDOA, bistatic range-only,
+  range-rate-only, Doppler-ratio, bearings-only, and the
+  polynomial-measurement Fisher information matrix), built on a Macaulay
+  null-space multivariate polynomial solver; plus the direction-cosine
+  u-v measurement coordinate system and IGRF-14 — all validated against
+  MATLAB fixtures, with four upstream MATLAB defects found, fixed and
+  documented
 * **MATLAB refraction suite** (v2.7.0): humidity and dew point,
   astronomical refraction, standard-exponential-model radar refraction
   (bistatic r-u-v ray tracing, bias approximation, cubature conversions)
@@ -30,7 +38,7 @@ Current State (v2.7.0)
   keyword-only ``config=``, and full state snapshot/resume
   (``pytcl.io.save_session``/``load_session``) for six tracker and filter
   classes, bit-exact resume for the four deterministic ones
-* **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-13, and
+* **Validated geophysics**: WMM2025 (default), WMM2020, IGRF-14 (with IGRF-13 retained), and
   WMMHR2025 magnetic models verified against independent references to
   sub-nT accuracy; UTM projections verified against EPSG to sub-millimeter
 * **Real-data validation**: recorded ADS-B air traffic scores the tracking
