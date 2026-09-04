@@ -147,8 +147,8 @@ wrong — passing tests are necessary, not sufficient.
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
    an NVIDIA machine; the `GPU` workflow covers it on demand.
 4. **PR with green CI** — lint (ruff, pinned), types (ty, locked), tests
-   (Ubuntu + macOS × 5 Python, plus Windows on 3.12 — 11 combinations, not a
-   full 5×3 matrix), docstring examples (`--doctest-modules`), docs build
+   (Ubuntu + macOS × 4 Python, plus Windows on 3.12 — 9 combinations, not a
+   full 4×3 matrix), docstring examples (`--doctest-modules`), docs build
    (zero docutils errors), benchmarks (SLO enforcement on main). Green CI
    means the checks that ran passed; it does not mean the GPU layers were
    exercised.

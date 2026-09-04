@@ -225,7 +225,10 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        plus — via the ``polyRootsMultiDim`` port — ``TDOA2Cart``,
        ``rangeRate2StaticPos`` and ``rangeRateRatio2StaticPos2D``, all
        validated against MATLAB fixtures. **Missing:** only the two
-       ``Uses_External_Solver`` files (need the SCS solver).
+       ``Uses_External_Solver`` files, which build 6-7-variable
+       polynomial systems and require an external
+       homotopy-continuation solver (Bertini/PHCpack/Macaulay2), not
+       SCS as earlier stated here.
        pytcl's ``static_estimation`` also ports the general estimators
        (OLS/TLS/robust/MLE) that MATLAB keeps elsewhere; RANSAC and
        recursive least squares are pytcl originals with no MATLAB

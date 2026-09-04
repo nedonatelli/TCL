@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Python 3.10 support dropped (it reaches end of life 2026-10-31):
+  `requires-python >= 3.11`, the CI matrix runs 3.11-3.14 (9 jobs), and
+  the ruff/ty targets moved to 3.11. The numpy resolution fork in
+  `uv.lock` collapses from three versions to two.
+- The three modules demoted to EXPERIMENTAL for the v2.8.0 behavior
+  changes (`magnetism.igrf`, `mathematical_functions.geometry.geometry`,
+  `mathematical_functions.special_functions.marcum_q`) return to MATURE,
+  unchanged this release.
+- ROADMAP and the parity inventory corrected: the two
+  `Static_Estimation/Uses_External_Solver` files need an external
+  homotopy-continuation polynomial solver (Bertini/PHCpack/Macaulay2),
+  not SCS as previously stated.
+
 ## [2.8.0] - 2026-09-03
 
 The Static_Estimation campaign: nine of MATLAB's 11 localization

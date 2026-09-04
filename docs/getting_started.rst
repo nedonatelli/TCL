@@ -9,7 +9,7 @@ Installation
 Requirements
 ^^^^^^^^^^^^
 
-* Python 3.10 or later
+* Python 3.11 or later
 * NumPy >= 1.24
 * SciPy >= 1.10
 * Numba >= 0.57
