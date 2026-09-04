@@ -209,7 +209,7 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow exists for on-demand re-runs but has never been dispatched, so every hardware run to date has been ad hoc |
+| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow was dispatched for the first time during v2.8.0 release prep and sat queued: its default `gpu-t4-4-core` runner label is not provisioned for this account, so the workflow cannot run until a GitHub GPU larger runner is added or it is dispatched with the `runner` input pointing at a self-hosted GPU machine. Every hardware run to date remains ad hoc |
 
 ### Medium Priority
 
