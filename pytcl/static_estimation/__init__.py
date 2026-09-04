@@ -17,9 +17,12 @@ from pytcl.static_estimation.least_squares import (
     weighted_least_squares,
 )
 from pytcl.static_estimation.localization import (
+    DirectionOnlyLocEst,
     PolyStaticEst,
     RangeOnlyLocEst,
     ad_hoc_cart_cov,
+    direction_only_static_loc_est,
+    poly_meas_fim,
     range_only_static_loc_est_np,
     range_rate_ratio_to_static_pos_2d,
     range_rate_to_static_pos,
@@ -112,9 +115,12 @@ __all__ = [
     "bic",
     "aicc",
     # Localization
+    "DirectionOnlyLocEst",
     "PolyStaticEst",
     "RangeOnlyLocEst",
     "ad_hoc_cart_cov",
+    "direction_only_static_loc_est",
+    "poly_meas_fim",
     "range_only_static_loc_est_np",
     "range_rate_ratio_to_static_pos_2d",
     "range_rate_to_static_pos",

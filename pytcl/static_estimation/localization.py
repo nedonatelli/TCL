@@ -606,8 +606,8 @@ def tdoa_to_cart(
     >>> l_rx1 = np.column_stack([S1, S1, S4])
     >>> l_rx2 = np.column_stack([S2, S3, S3])
     >>> res = tdoa_to_cart(tdoa, l_rx1, l_rx2, c)
-    >>> np.round(res.z_cart[:, 0], 6)
-    array([ 27.,  -0., -42.])
+    >>> np.round(res.z_cart[:, 0], 6) + 0.0  # +0.0 normalizes signed zeros
+    array([ 27.,   0., -42.])
 
     Notes
     -----
@@ -996,10 +996,467 @@ def range_rate_ratio_to_static_pos_2d(
     return PolyStaticEst(z_cart[:, keep], exit_code)
 
 
+def poly_meas_fim(
+    x: ArrayLike,
+    sigma2_list: ArrayLike,
+    f_tx: Optional[float],
+    meas_types: ArrayLike,
+    sensor_idx_lists: ArrayLike,
+    sensor_states: ArrayLike,
+    c: float = SPEED_OF_LIGHT,
+    xi: Optional[ArrayLike] = None,
+    w: Optional[ArrayLike] = None,
+) -> NDArray[np.floating]:
+    """
+    Fisher information matrix for polynomial-type localization systems.
+
+    Given simultaneous TDOA, bistatic range, emitter range-rate and/or
+    received-frequency measurements corrupted by independent Gaussian
+    noise, compute the Fisher information matrix (the inverse CRLB) for
+    the location of a stationary target, using cubature integration for
+    the expectation.
+
+    Parameters
+    ----------
+    x : array_like
+        (num_dim,) true target location.
+    sigma2_list : array_like
+        (num_meas,) positive variance of each measurement.
+    f_tx : float or None
+        True (un-shifted) emitter frequency, required when any
+        measurement has type 3; pass None otherwise.
+    meas_types : array_like
+        (num_meas,) type of each measurement: 0 TDOA, 1 bistatic
+        range, 2 emitter range rate, 3 received frequency.
+    sensor_idx_lists : array_like
+        (2, num_meas) zero-based indices into ``sensor_states``
+        selecting the sensors of each measurement. For TDOA, row 0 is
+        the reference sensor; for bistatic range the order does not
+        matter; types 2 and 3 use only row 0 (set the other entry to
+        -1 or 0).
+    sensor_states : array_like
+        (num_dim, num_sensors) sensor positions, or
+        (2*num_dim, num_sensors) stacked positions and velocities
+        (velocities are required by types 2 and 3).
+    c : float, optional
+        Signal propagation speed. Default: speed of light.
+    xi, w : array_like, optional
+        Cubature points (num_points, num_meas) and weights for a unit
+        Gaussian, in pytcl's row convention. Default: the fifth-order
+        points for num_meas dimensions.
+
+    Returns
+    -------
+    fim : ndarray
+        (num_dim, num_dim) Fisher information matrix, or
+        (num_dim+1, num_dim+1) when frequency measurements are present
+        (the last row/column concerns the estimate of ``f_tx``).
+
+    Examples
+    --------
+    Two TDOA pairs and one bistatic range around a 3D target: the FIM
+    is symmetric positive definite, so the position is observable.
+
+    >>> import numpy as np
+    >>> x = np.array([1e3, 2e3, 3e3])
+    >>> sensors = np.array([[0.0, 8e3, -6e3, 2e3],
+    ...                     [0.0, 1e3, 5e3, -7e3],
+    ...                     [0.0, -2e3, 1e3, 4e3]])
+    >>> idx = np.array([[0, 0, 2], [1, 2, 3]])
+    >>> fim = poly_meas_fim(x, [1e-14, 1e-14, 100.0], None,
+    ...                     [0, 0, 1], idx, sensors)
+    >>> bool(np.all(np.linalg.eigvalsh(fim) > 0))
+    True
+
+    Notes
+    -----
+    Port of ``computePolyMeasFIM.m``, implementing the FIM equations of
+    D. F. Crouse, "General multivariate polynomial target localization
+    and initial estimation," Journal of Advances in Information Fusion,
+    vol. 13, no. 1, pp. 68-91, Jun. 2018. Unlike the MATLAB original,
+    sensor indices are zero-based and the cubature points use pytcl's
+    (num_points, n) row convention.
+    """
+    from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+        fifth_order_cubature_points,
+        transform_cubature_points,
+    )
+
+    x = np.asarray(x, dtype=np.float64).ravel()
+    sigma2_list = np.asarray(sigma2_list, dtype=np.float64).ravel()
+    meas_types = np.asarray(meas_types, dtype=np.int64).ravel()
+    sensor_idx = np.asarray(sensor_idx_lists, dtype=np.int64)
+    sensor_states = np.asarray(sensor_states, dtype=np.float64)
+
+    num_dim = len(x)
+    num_meas = len(meas_types)
+    has_f_tx = bool(np.any(meas_types == 3))
+    if has_f_tx and f_tx is None:
+        raise ValueError("f_tx is required with frequency measurements.")
+
+    if xi is None:
+        xi_arr, w_arr = fifth_order_cubature_points(num_meas)
+    else:
+        xi_arr = np.asarray(xi, dtype=np.float64)
+        w_arr = np.asarray(w, dtype=np.float64).ravel()
+
+    # Noise-free measurement values.
+    meas_true = np.zeros(num_meas)
+    for k in range(num_meas):
+        l1 = sensor_states[:num_dim, sensor_idx[0, k]]
+        if meas_types[k] == 0:
+            l2 = sensor_states[:num_dim, sensor_idx[1, k]]
+            meas_true[k] = (np.linalg.norm(x - l1) - np.linalg.norm(x - l2)) / c
+        elif meas_types[k] == 1:
+            l2 = sensor_states[:num_dim, sensor_idx[1, k]]
+            meas_true[k] = np.linalg.norm(x - l1) + np.linalg.norm(x - l2)
+        elif meas_types[k] == 2:
+            l1_dot = sensor_states[num_dim : 2 * num_dim, sensor_idx[0, k]]
+            meas_true[k] = -(x - l1) @ l1_dot / np.linalg.norm(x - l1)
+        elif meas_types[k] == 3:
+            l1_dot = sensor_states[num_dim : 2 * num_dim, sensor_idx[0, k]]
+            rr = -(x - l1) @ l1_dot / np.linalg.norm(x - l1)
+            meas_true[k] = (1.0 - rr / c) * f_tx
+        else:
+            raise ValueError("Unknown measurement type specified")
+
+    xi_arr, _ = transform_cubature_points(
+        xi_arr, w_arr, meas_true, np.diag(np.sqrt(sigma2_list))
+    )
+
+    size = num_dim + (1 if has_f_tx else 0)
+    fim = np.zeros((size, size))
+    for cub in range(len(w_arr)):
+        grad = np.zeros(size)
+        for k in range(num_meas):
+            l1 = sensor_states[:num_dim, sensor_idx[0, k]]
+            s2 = sigma2_list[k]
+            z = xi_arr[cub, k]
+            if meas_types[k] == 0:
+                l2 = sensor_states[:num_dim, sensor_idx[1, k]]
+                n1 = np.linalg.norm(x - l1)
+                n2 = np.linalg.norm(x - l2)
+                grad[:num_dim] -= (
+                    (1.0 / (c * s2))
+                    * (z - (n1 - n2) / c)
+                    * ((l1 - x) / n1 - (l2 - x) / n2)
+                )
+            elif meas_types[k] == 1:
+                l2 = sensor_states[:num_dim, sensor_idx[1, k]]
+                n1 = np.linalg.norm(x - l1)
+                n2 = np.linalg.norm(x - l2)
+                grad[:num_dim] -= (
+                    (1.0 / s2) * (z - (n1 + n2)) * ((l1 - x) / n1 + (l2 - x) / n2)
+                )
+            elif meas_types[k] == 2:
+                l1_dot = sensor_states[num_dim : 2 * num_dim, sensor_idx[0, k]]
+                n1 = np.linalg.norm(x - l1)
+                grad[:num_dim] += (
+                    (1.0 / s2)
+                    * (z + (x - l1) @ l1_dot / n1)
+                    * (l1_dot / n1 + (x - l1) @ l1_dot / n1**3 * (l1 - x))
+                )
+            else:
+                l1_dot = sensor_states[num_dim : 2 * num_dim, sensor_idx[0, k]]
+                n1 = np.linalg.norm(x - l1)
+                f_diff = z - (1.0 + (x - l1) @ l1_dot / (c * n1)) * f_tx
+                grad[:num_dim] += (
+                    f_tx
+                    / (c * s2)
+                    * f_diff
+                    * (l1_dot / n1 + (x - l1) @ l1_dot / n1**3 * (l1 - x))
+                )
+                grad[-1] += (1.0 / s2) * f_diff * (1.0 + (x - l1) @ l1_dot / (c * n1))
+        fim += w_arr[cub] * np.outer(grad, grad)
+    return fim
+
+
+class DirectionOnlyLocEst(NamedTuple):
+    """Result of :func:`direction_only_static_loc_est`.
+
+    Attributes
+    ----------
+    t : ndarray
+        (num_dim,) estimated target location.
+    exit_code : int
+        0 on success; for algorithms 1 and 3, nonzero echoes a
+        non-convergence status from the quasi-Newton refinement.
+    """
+
+    t: NDArray[np.floating]
+    exit_code: int
+
+
+def _suboptimal_ls_triangulation(u, l_rx, w, use_const_alg):
+    """Suboptimal least-squares triangulation over t and all ranges.
+
+    Minimizes sum_i (t - l_i - r_i u_i)' W_i (t - l_i - r_i u_i) over t
+    and r; the constrained variant enforces r >= 0. Port of the
+    ``suboptimalLSTriangulation`` subfunction; the constrained branch
+    substitutes a bounds-constrained scipy minimization for the
+    original's ``convexQuadProg`` dual active-set solver (identical
+    convex objective and constraint set, so the same minimum).
+    """
+    n = u.shape[1]
+    num_dim = u.shape[0]
+
+    if w is None and not use_const_alg:
+        # The unweighted closed form.
+        A = np.zeros((n, n))
+        b = np.zeros(n)
+        for i in range(n):
+            A[i, i] = 1.0 - 1.0 / n
+            for j in range(i + 1, n):
+                A[i, j] = -(1.0 / n) * (u[:, i] @ u[:, j])
+                A[j, i] = A[i, j]
+            b[i] = (1.0 / n) * np.sum(l_rx * u[:, i : i + 1]) - l_rx[:, i] @ u[:, i]
+        r = np.linalg.solve(A, b)
+        return (1.0 / n) * np.sum(l_rx + r * u, axis=1), 0
+
+    if w is None:
+        w = np.tile(np.eye(num_dim)[:, :, np.newaxis], (1, 1, n))
+
+    if not use_const_alg:
+        # The weighted closed form.
+        A = np.zeros((n, n))
+        b = np.zeros(n)
+        w_sum_inv = np.linalg.inv(np.sum(w, axis=2))
+        wl_sum = sum(w[:, :, i] @ l_rx[:, i] for i in range(n))
+        for i in range(n):
+            wi_u = w[:, :, i] @ u[:, i]
+            A[i, i] = u[:, i] @ wi_u - wi_u @ w_sum_inv @ wi_u
+            for j in range(i + 1, n):
+                A[i, j] = -wi_u @ w_sum_inv @ (w[:, :, j] @ u[:, j])
+                A[j, i] = A[i, j]
+            b[i] = wi_u @ w_sum_inv @ wl_sum - u[:, i] @ (w[:, :, i] @ l_rx[:, i])
+        r = np.linalg.solve(A, b)
+        t = np.zeros(num_dim)
+        for i in range(n):
+            t = t + w[:, :, i] @ (l_rx[:, i] + r[i] * u[:, i])
+        return np.linalg.inv(np.sum(w, axis=2)) @ t, 0
+
+    from scipy.optimize import minimize
+
+    # The quadratic program over z = [t; r] with r >= 0.
+    size = num_dim + n
+    Q = np.zeros((size, size))
+    c_vec = np.zeros(size)
+    Q[:num_dim, :num_dim] = np.sum(w, axis=2)
+    wl_sum = sum(w[:, :, i] @ l_rx[:, i] for i in range(n))
+    c_vec[:num_dim] = -wl_sum
+    for i in range(n):
+        wi_u = w[:, :, i] @ u[:, i]
+        Q[:num_dim, num_dim + i] = -wi_u
+        Q[num_dim + i, :num_dim] = -wi_u
+        Q[num_dim + i, num_dim + i] = u[:, i] @ wi_u
+        c_vec[num_dim + i] = l_rx[:, i] @ wi_u
+
+    t0, _ = _suboptimal_ls_triangulation(u, l_rx, w, False)
+    r0 = np.maximum(np.linalg.norm(t0[:, np.newaxis] - l_rx, axis=0), 0.0)
+    z0 = np.concatenate([t0, r0])
+    res = minimize(
+        lambda z: 0.5 * z @ Q @ z + c_vec @ z,
+        z0,
+        jac=lambda z: Q @ z + c_vec,
+        bounds=[(None, None)] * num_dim + [(0.0, None)] * n,
+        method="L-BFGS-B",
+    )
+    return res.x[:num_dim], 0 if res.success else 1
+
+
+def _triangulate_known_r(r, u, l_rx, r_inv):
+    """Explicit solution given target-to-sensor distances.
+
+    Port of ``triangulateKnownR`` with its upstream bug fixed: the
+    original overwrites the caller's RInv with ``eye(3)`` inside its
+    accumulation loop (``RInv(:,:,i)=eye(3);``), silently discarding
+    the documented weighting and crashing every 2D call. Here the
+    provided weights are honored.
+    """
+    num_dim = u.shape[0]
+    num_meas = u.shape[1]
+    t = np.zeros(num_dim)
+    r_inv_sum = np.zeros((num_dim, num_dim))
+    for i in range(num_meas):
+        r_inv_sum += (1.0 / r[i] ** 2) * r_inv[:, :, i]
+        t = t + (1.0 / r[i]) * r_inv[:, :, i] @ ((1.0 / r[i]) * l_rx[:, i] + u[:, i])
+    return np.linalg.solve(r_inv_sum, t)
+
+
+def _direction_cost(t, u, l_rx, r_inv):
+    """ML cost and analytic gradient (the ``costFunc`` subfunction)."""
+    num_dim = u.shape[0]
+    num_meas = u.shape[1]
+    val = 0.0
+    grad = np.zeros(num_dim)
+    for i in range(num_meas):
+        tl = t - l_rx[:, i]
+        mag = np.linalg.norm(tl)
+        diff = tl / mag - u[:, i]
+        val += diff @ r_inv[:, :, i] @ diff
+        if num_dim == 2:
+            A = np.array([[tl[1] ** 2, -tl[0] * tl[1]], [-tl[0] * tl[1], tl[0] ** 2]])
+        else:
+            A = np.array(
+                [
+                    [tl[1] ** 2 + tl[2] ** 2, -tl[0] * tl[1], -tl[0] * tl[2]],
+                    [-tl[0] * tl[1], tl[0] ** 2 + tl[2] ** 2, -tl[1] * tl[2]],
+                    [-tl[0] * tl[2], -tl[1] * tl[2], tl[0] ** 2 + tl[1] ** 2],
+                ]
+            )
+        grad += (1.0 / mag**4) * A @ r_inv[:, :, i] @ tl - (1.0 / mag**3) * A @ r_inv[
+            :, :, i
+        ] @ u[:, i]
+    return val, 2.0 * grad
+
+
+def direction_only_static_loc_est(
+    u: ArrayLike,
+    l_rx: ArrayLike,
+    algorithm: int = 0,
+    w: Optional[ArrayLike] = None,
+    use_const_alg: bool = False,
+    r: Optional[ArrayLike] = None,
+    r_inv: Optional[ArrayLike] = None,
+    num_iter: int = 1,
+    t_init: Optional[ArrayLike] = None,
+) -> DirectionOnlyLocEst:
+    """
+    Target location from simultaneous direction (bearings) estimates.
+
+    Given unit direction vectors from at least two sensors toward a
+    target, estimate the target's Cartesian location in 2D or 3D.
+
+    Parameters
+    ----------
+    u : array_like
+        (num_dim, num_meas) unit direction vectors, in the global
+        frame, from each sensor to the target; num_meas >= 2.
+    l_rx : array_like
+        (num_dim, num_meas) sensor locations.
+    algorithm : int, optional
+        - 0 (default): suboptimal least-squares triangulation followed
+          by ``num_iter`` iterations of the explicit known-range
+          solution.
+        - 1: the triangulation followed by quasi-Newton maximization
+          of the likelihood.
+        - 2: the explicit solution for known ranges ``r``.
+        - 3: quasi-Newton maximization from ``t_init``.
+    w : array_like, optional
+        (num_dim, num_dim, num_meas) weights for the suboptimal
+        triangulation (algorithms 0, 1). Default: identity.
+    use_const_alg : bool, optional
+        Enforce nonnegative ranges in the triangulation via a
+        constrained solve (algorithms 0, 1). Default False.
+    r : array_like, optional
+        (num_meas,) known target-to-sensor ranges (algorithm 2).
+    r_inv : array_like, optional
+        (num_dim, num_dim, num_meas) inverse measurement covariances
+        for the refinement stages. Default: identity. (The MATLAB
+        original defaults these to all-ones matrices for algorithms 0
+        and 1 — an apparent slip; identity is used here uniformly.)
+    num_iter : int, optional
+        Refinement iterations for algorithms 0 and 2. Default 1.
+    t_init : array_like, optional
+        (num_dim,) initial estimate (algorithm 3).
+
+    Returns
+    -------
+    result : DirectionOnlyLocEst
+        The location estimate and an exit code.
+
+    Examples
+    --------
+    Three bearings-only sensors around a 2D target; the noise-free
+    directions recover it.
+
+    >>> import numpy as np
+    >>> t_true = np.array([500.0, 800.0])
+    >>> l_rx = np.array([[0.0, 1000.0, -200.0], [0.0, 100.0, 900.0]])
+    >>> u = t_true[:, None] - l_rx
+    >>> u = u / np.linalg.norm(u, axis=0)
+    >>> res = direction_only_static_loc_est(u, l_rx)
+    >>> np.round(res.t, 6)
+    array([500., 800.])
+
+    Notes
+    -----
+    Port of ``directionOnlyStaticLocEst.m``, implementing the
+    algorithms of D. F. Crouse, "Bearings-only localization using
+    direction cosines," Proc. 19th International Conference on
+    Information Fusion, Jul. 2016. Documented deviations from the
+    original, which contains several outright defects on these paths:
+
+    - ``triangulateKnownR`` honors ``r_inv`` (the original overwrites
+      it with ``eye(3)``, discarding the weighting and crashing in 2D).
+    - Algorithm 2's refinement recomputes the ranges from the current
+      estimate ``t`` (the original recomputes them from ``r`` itself, a
+      typo that makes its iterations meaningless).
+    - The quasi-Newton stages use SciPy's BFGS with the original's
+      analytic gradient instead of a port of ``quasiNetwonBFGS`` (same
+      optimum; different line-search internals).
+    - The MATLAB params structs are flattened into keyword arguments.
+    """
+    from scipy.optimize import minimize
+
+    u = np.asarray(u, dtype=np.float64)
+    l_rx = np.asarray(l_rx, dtype=np.float64)
+    num_dim, num_meas = u.shape
+
+    if r_inv is None:
+        r_inv_arr = np.tile(np.eye(num_dim)[:, :, np.newaxis], (1, 1, num_meas))
+    else:
+        r_inv_arr = np.asarray(r_inv, dtype=np.float64)
+
+    w_arr = None if w is None else np.asarray(w, dtype=np.float64)
+
+    if algorithm in (0, 1):
+        t, code = _suboptimal_ls_triangulation(u, l_rx, w_arr, use_const_alg)
+        if code != 0:
+            return DirectionOnlyLocEst(t, code)
+        if algorithm == 0:
+            for _ in range(num_iter):
+                ranges = np.linalg.norm(t[:, np.newaxis] - l_rx, axis=0)
+                t = _triangulate_known_r(ranges, u, l_rx, r_inv_arr)
+            return DirectionOnlyLocEst(t, 0)
+        res = minimize(
+            lambda tt: _direction_cost(tt, u, l_rx, r_inv_arr),
+            t,
+            jac=True,
+            method="BFGS",
+            options={"gtol": 1e-12},
+        )
+        return DirectionOnlyLocEst(res.x, 0)
+    if algorithm == 2:
+        if r is None:
+            raise ValueError("Algorithm 2 requires the ranges r.")
+        ranges = np.asarray(r, dtype=np.float64).ravel()
+        t = _triangulate_known_r(ranges, u, l_rx, r_inv_arr)
+        for _ in range(max(0, num_iter - 1)):
+            ranges = np.linalg.norm(t[:, np.newaxis] - l_rx, axis=0)
+            t = _triangulate_known_r(ranges, u, l_rx, r_inv_arr)
+        return DirectionOnlyLocEst(t, 0)
+    if algorithm == 3:
+        if t_init is None:
+            raise ValueError("Algorithm 3 requires t_init.")
+        res = minimize(
+            lambda tt: _direction_cost(tt, u, l_rx, r_inv_arr),
+            np.asarray(t_init, dtype=np.float64).ravel(),
+            jac=True,
+            method="BFGS",
+            options={"gtol": 1e-12},
+        )
+        return DirectionOnlyLocEst(res.x, 0)
+    raise ValueError("Unknown algorithm specified")
+
+
 __all__ = [
+    "DirectionOnlyLocEst",
     "PolyStaticEst",
     "RangeOnlyLocEst",
     "ad_hoc_cart_cov",
+    "direction_only_static_loc_est",
+    "poly_meas_fim",
     "range_only_static_loc_est_np",
     "range_rate_ratio_to_static_pos_2d",
     "range_rate_to_static_pos",

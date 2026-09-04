@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The final two portable `Static_Estimation` files, taking the area to
+  nine of 11: `direction_only_static_loc_est` (bearings-only
+  localization: suboptimal least-squares triangulation with optional
+  weights and a nonnegative-range constrained variant, explicit
+  known-range solution, quasi-Newton ML refinement) and `poly_meas_fim`
+  (Fisher information / inverse CRLB for mixed TDOA, bistatic-range,
+  range-rate and frequency measurement sets via cubature integration).
+  Two upstream MATLAB defects in `directionOnlyStaticLocEst` are fixed
+  and documented: `triangulateKnownR` overwrote the caller's `RInv`
+  with `eye(3)` (discarding the documented weighting and crashing every
+  2D call), and algorithm 2's refinement recomputed ranges from `r`
+  instead of `t`. The quasi-Newton stages use SciPy BFGS in place of
+  `quasiNetwonBFGS`; the constrained triangulation uses a
+  bounds-constrained SciPy solve in place of `convexQuadProg`.
 - Polynomial-based static localization estimators, completing seven of
   MATLAB's 11 `Static_Estimation` files: `tdoa_to_cart` (minimal TDOA
   sets, 2D/3D), `range_rate_to_static_pos` (stationary emitter from

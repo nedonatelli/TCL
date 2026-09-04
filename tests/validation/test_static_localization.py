@@ -17,6 +17,8 @@ import pytest
 from pytcl.coordinate_systems.rotations import rot_axis_to_vec
 from pytcl.static_estimation import (
     ad_hoc_cart_cov,
+    direction_only_static_loc_est,
+    poly_meas_fim,
     range_only_static_loc_est_np,
     range_rate_ratio_to_static_pos_2d,
     range_rate_to_static_pos,
@@ -461,3 +463,186 @@ class TestRangeRateRatioToStaticPos2D:
         assert res.exit_code == 0
         _assert_same_solution_set(res.z_cart, _load("se_rrratio_2d.csv"), 1e-6)
         assert np.min(np.linalg.norm(res.z_cart - u[:, None], axis=0)) < 1e-3
+
+
+class TestPolyMeasFim:
+    """computePolyMeasFIM: CRLB via cubature for mixed measurement sets."""
+
+    X = np.array([1e3, 2e3, 3e3])
+    SENSORS = np.array(
+        [
+            [0.0, 8e3, -6e3, 2e3],
+            [0.0, 1e3, 5e3, -7e3],
+            [0.0, -2e3, 1e3, 4e3],
+        ]
+    )
+    C = 299792458.0
+
+    def test_tdoa_and_range_matches_matlab(self):
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            fifth_order_cubature_points,
+        )
+
+        xi, w = fifth_order_cubature_points(3)
+        fim = poly_meas_fim(
+            self.X,
+            [1e-14, 1e-14, 100.0],
+            None,
+            [0, 0, 1],
+            np.array([[0, 0, 2], [1, 2, 3]]),
+            self.SENSORS,
+            self.C,
+            xi,
+            w,
+        )
+        ref = _load("se_fim_tdoa_range.csv")
+        np.testing.assert_allclose(fim, ref, rtol=1e-12)
+        assert np.all(np.linalg.eigvalsh(fim) > 0)
+
+    def test_range_rate_and_frequency_matches_matlab(self):
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            fifth_order_cubature_points,
+        )
+
+        vel = np.array(
+            [
+                [50.0, -80.0, 20.0, 90.0],
+                [30.0, 60.0, -70.0, -40.0],
+                [-20.0, 10.0, 50.0, 25.0],
+            ]
+        )
+        xi, w = fifth_order_cubature_points(4)
+        fim = poly_meas_fim(
+            self.X,
+            [0.25, 0.25, 400.0, 400.0],
+            1e9,
+            [2, 2, 3, 3],
+            np.array([[0, 1, 2, 3], [0, 0, 0, 0]]),
+            np.vstack([self.SENSORS, vel]),
+            self.C,
+            xi,
+            w,
+        )
+        ref = _load("se_fim_rr_freq.csv")
+        np.testing.assert_allclose(fim, ref, rtol=1e-12)
+        # Frequency measurements append an f_tx row/column.
+        assert fim.shape == (4, 4)
+
+    def test_frequency_without_f_tx_raises(self):
+        with pytest.raises(ValueError, match="f_tx"):
+            poly_meas_fim(
+                self.X,
+                [1.0],
+                None,
+                [3],
+                np.array([[0], [0]]),
+                np.vstack([self.SENSORS, np.zeros((3, 4))]),
+            )
+
+    def test_unknown_measurement_type_raises(self):
+        with pytest.raises(ValueError, match="measurement type"):
+            poly_meas_fim(self.X, [1.0], None, [7], np.array([[0], [1]]), self.SENSORS)
+
+
+class TestDirectionOnlyStaticLocEst:
+    """directionOnlyStaticLocEst. All MATLAB fixtures use identity RInv,
+    where the original's RInv-overwrite bug is a no-op and MATLAB
+    remains a valid oracle; the port's fixed weighting is checked by a
+    property test instead."""
+
+    T_TRUE = np.array([500.0, 800.0, 1200.0])
+    L_RX = np.array(
+        [
+            [0.0, 1000.0, -200.0, 400.0],
+            [0.0, 100.0, 900.0, -300.0],
+            [0.0, -200.0, 300.0, 700.0],
+        ]
+    )
+
+    @property
+    def u(self):
+        u = self.T_TRUE[:, None] - self.L_RX
+        return u / np.linalg.norm(u, axis=0)
+
+    def test_alg0_matches_matlab_and_recovers_target(self):
+        res = direction_only_static_loc_est(self.u, self.L_RX, 0)
+        assert res.exit_code == 0
+        np.testing.assert_allclose(
+            res.t, _load("se_dironly_alg0.csv").ravel(), atol=1e-9
+        )
+        np.testing.assert_allclose(res.t, self.T_TRUE, atol=1e-8)
+
+    def test_alg0_weighted_ls_matches_matlab(self):
+        w = np.stack([np.diag([1.0, 2.0, 4.0]) * (k + 1) for k in range(4)], axis=2)
+        res = direction_only_static_loc_est(self.u, self.L_RX, 0, w=w, num_iter=0)
+        np.testing.assert_allclose(
+            res.t, _load("se_dironly_alg0_weighted.csv").ravel(), atol=1e-9
+        )
+
+    def test_alg0_constrained_matches_matlab(self):
+        # The port substitutes a bounds-constrained SciPy solve for
+        # convexQuadProg; the convex objective has one minimum.
+        res = direction_only_static_loc_est(
+            self.u, self.L_RX, 0, use_const_alg=True, num_iter=0
+        )
+        np.testing.assert_allclose(
+            res.t, _load("se_dironly_alg0_const.csv").ravel(), atol=1e-6
+        )
+
+    def test_alg2_known_ranges_matches_matlab(self):
+        r = np.linalg.norm(self.T_TRUE[:, None] - self.L_RX, axis=0)
+        res = direction_only_static_loc_est(self.u, self.L_RX, 2, r=r)
+        np.testing.assert_allclose(
+            res.t, _load("se_dironly_alg2.csv").ravel(), atol=1e-9
+        )
+
+    def test_alg1_converges_at_least_as_deep_as_matlab(self):
+        # SciPy BFGS replaces quasiNetwonBFGS: same cost surface, so
+        # the port must land within the same shallow bowl (metres on a
+        # km scale) at a cost no worse than the MATLAB optimum.
+        from pytcl.static_estimation.localization import _direction_cost
+
+        u_noisy = _load("se_dironly_unoisy.csv")
+        res = direction_only_static_loc_est(u_noisy, self.L_RX, 1)
+        assert res.exit_code == 0
+        t_ml = _load("se_dironly_alg1.csv").ravel()
+        assert np.max(np.abs(res.t - t_ml)) < 10.0
+        r_inv = np.tile(np.eye(3)[:, :, None], (1, 1, 4))
+        cost_py, _ = _direction_cost(res.t, u_noisy, self.L_RX, r_inv)
+        cost_ml, _ = _direction_cost(t_ml, u_noisy, self.L_RX, r_inv)
+        assert cost_py <= cost_ml + 1e-12
+
+    def test_alg3_from_offset_start_recovers_target(self):
+        res = direction_only_static_loc_est(
+            self.u, self.L_RX, 3, t_init=self.T_TRUE + [50.0, -80.0, 30.0]
+        )
+        np.testing.assert_allclose(res.t, self.T_TRUE, atol=1e-5)
+
+    def test_known_r_honors_weights_unlike_the_original(self):
+        # The MATLAB triangulateKnownR overwrites RInv with eye(3);
+        # the port honors it, so unequal weights must move the estimate
+        # off the identity-weight solution when directions are noisy.
+        u_noisy = _load("se_dironly_unoisy.csv")
+        r = np.linalg.norm(self.T_TRUE[:, None] - self.L_RX, axis=0)
+        r_inv = np.stack([np.eye(3) * (10.0**k) for k in range(4)], axis=2)
+        res_w = direction_only_static_loc_est(u_noisy, self.L_RX, 2, r=r, r_inv=r_inv)
+        res_i = direction_only_static_loc_est(u_noisy, self.L_RX, 2, r=r)
+        assert np.max(np.abs(res_w.t - res_i.t)) > 1e-3
+
+    def test_2d_works(self):
+        # The original crashes every 2D call through triangulateKnownR
+        # (a 3x3 assigned into a 2x2 slot); the port must not.
+        t2 = np.array([300.0, 400.0])
+        l2 = np.array([[0.0, 500.0, -100.0], [0.0, 50.0, 600.0]])
+        u2 = t2[:, None] - l2
+        u2 = u2 / np.linalg.norm(u2, axis=0)
+        res = direction_only_static_loc_est(u2, l2, 0)
+        np.testing.assert_allclose(res.t, t2, atol=1e-8)
+
+    def test_missing_required_params_raise(self):
+        with pytest.raises(ValueError, match="ranges r"):
+            direction_only_static_loc_est(self.u, self.L_RX, 2)
+        with pytest.raises(ValueError, match="t_init"):
+            direction_only_static_loc_est(self.u, self.L_RX, 3)
+        with pytest.raises(ValueError, match="algorithm"):
+            direction_only_static_loc_est(self.u, self.L_RX, 9)
