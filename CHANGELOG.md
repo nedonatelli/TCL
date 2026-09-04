@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-09-03
+
+The Static_Estimation campaign: nine of MATLAB's 11 localization
+estimators ported and fixture-validated, on top of a new Macaulay
+null-space multivariate polynomial solver; the direction-cosine u-v
+measurement coordinate system; IGRF-14; Python 3.13/3.14 in the CI
+matrix; and a dependency refresh (plotly 7, numba 0.67, numpy 2.5
+compatibility, tornado security fixes). Four upstream MATLAB defects
+found, fixed and documented along the way. One STABLE module changed
+(`coordinate_systems.rotations.rotations`): purely additive
+(`rot_axis_to_vec`), non-breaking. Three MATURE modules with behavior
+changes this release (`magnetism.igrf`,
+`mathematical_functions.geometry.geometry`,
+`mathematical_functions.special_functions.marcum_q`) are reclassified
+EXPERIMENTAL for one release per the maturity rules.
+
 ### Added
 
 - The final two portable `Static_Estimation` files, taking the area to
