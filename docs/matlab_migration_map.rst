@@ -262,9 +262,27 @@ Dynamic Estimation
    * - ``HInfinityUpdate``
      - ``pytcl.dynamic_estimation.kalman.h_infinity.hinf_update``
    * - ``KalmanBatchSmoother``
-     - ``pytcl.dynamic_estimation.smoothers.rts_smoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.kalman_batch_smoother``
+   * - ``FPInfoBatchSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.fp_info_batch_smoother``
+   * - ``EKalmanBatchSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.ekalman_batch_smoother``
+   * - ``sqrtCubKalBatchSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.sqrt_cub_kal_batch_smoother``
+   * - ``sqrtInfoBatchSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.sqrt_info_batch_smoother``
    * - ``KalmanIntervalSmoother``
-     - ``pytcl.dynamic_estimation.smoothers.fixed_interval_smoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.kalman_interval_smoother``
+   * - ``FPInfoIntervalSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.fp_info_interval_smoother``
+   * - ``KalmanFIRSmoother``
+     - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother``
+   * - ``KalmanFIRSmootherCoeffs``
+     - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother_coeffs``
+   * - ``sqrtDiscCubKalPred``
+     - ``pytcl.dynamic_estimation.kalman.sqrt_cubature.sqrt_ckf_predict``
+   * - ``sqrtCubKalUpdate``
+     - ``pytcl.dynamic_estimation.kalman.sqrt_cubature.sqrt_ckf_update``
    * - ``KalmanUpdate``
      - ``pytcl.dynamic_estimation.kalman.linear.kf_update``
    * - ``cubKalUpdate``

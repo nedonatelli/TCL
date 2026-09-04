@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Batch and interval smoothers (`dynamic_estimation.batch_smoothers`):
+  the forward-backward Kalman batch smoother (RTS and Fraser-Potter
+  forms), the Fraser-Potter two-filter information smoother (batch and
+  sliding/growing interval), the extended (optionally iterated) Kalman
+  batch smoother, the square-root cubature Kalman batch smoother, the
+  square-root information smoother, the sliding/growing-interval
+  Kalman smoother, and the FIR Kalman smoother with its coefficient
+  generator. Time indices are zero-based. Three upstream defects fixed
+  and documented: `EKalmanBatchSmoother` cannot run as shipped (it
+  calls `DiscEKFPred` while the library ships `discEKFPred.m`);
+  `sqrtInfoBatchSmoother`'s backward pass reads the stored Rw/Rwx
+  factors one index below where its forward pass stores them (its
+  first smoothed step consumes never-written zeros); and the same
+  smoother injects the control input into its residual-domain
+  smoothing step, where the control cancels identically. With the
+  fixes, the SRIS matches the RTS optimum at machine precision.
+- Square-root cubature Kalman filter steps (`sqrt_ckf_predict`,
+  `sqrt_ckf_update` in `dynamic_estimation.kalman.sqrt_cubature`):
+  triangularization-based prediction and update over arbitrary
+  positive-weight cubature points, defaulting to third-order
+  spherical-radial (CKF) points.
 - Batch least-squares estimation (`dynamic_estimation.batch_estimation`):
   the closed-form linear batch estimator, iterated Gauss-Newton
   estimators for nonlinear measurements (linear or folded-in dynamics),

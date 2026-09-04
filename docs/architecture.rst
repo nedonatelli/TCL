@@ -27,7 +27,7 @@ it depends on; only the structurally significant edges are drawn.
 
    graph TD
        subgraph Estimation
-           DE["dynamic_estimation<br/>21 modules"]
+           DE["dynamic_estimation<br/>23 modules"]
            DM["dynamic_models<br/>7 modules"]
            SE["static_estimation<br/>4 modules"]
        end
@@ -147,7 +147,7 @@ why the examples below thread state through explicitly.
        KF --> IMM["IMM<br/>maneuver switching"]
        PF["Particle filters"] --> RBPF["Rao-Blackwellised"]
        GSF["Gaussian sum"]
-       KF --> SM["Smoothers<br/>RTS, fixed-lag, two-filter"]
+       KF --> SM["Smoothers<br/>RTS, batch, interval, FIR"]
        PF --> SM
 
 Package Reference
@@ -170,8 +170,8 @@ Counts are measured from the packages themselves rather than asserted;
      - Special functions, statistics, transforms, signal processing,
        geometry, polynomials
    * - ``dynamic_estimation``
-     - 21
-     - 100
+     - 23
+     - 117
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
      - 9
