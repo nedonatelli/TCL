@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The Monte-Carlo Kalman family (`qmc_kf_predict`, `qmc_kf_update`,
+  `qmc_kf_meas_pred`, `qmc_kf_update_with_pred`, `calc_qmc_kalman_gain`
+  in `dynamic_estimation.kalman.qmc`), ports of the MATLAB TCL "QMC"
+  filters (which, despite the name, draw plain pseudo-random samples —
+  the port is faithful to that). Includes the decomposed
+  measurement-prediction/gain/update parts with multi-component banks.
+  Deterministic parts fixture-validated against MATLAB; sampling steps
+  validated statistically against the exact Kalman posterior, with
+  numpy Generator seeding for reproducibility.
 - Ensemble Kalman filter (`enkf_predict`/`enkf_update` in
   `dynamic_estimation.kalman.ensemble`) and the extended square-root
   information filter (`esrif_predict`/`esrif_update` beside the SRIF),
