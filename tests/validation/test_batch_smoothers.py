@@ -408,3 +408,147 @@ class TestKalmanFIRSmoother:
         )
         np.testing.assert_allclose(x_est, res.x, atol=1e-13)
         np.testing.assert_allclose(coeffs.p_kn, res.P, atol=1e-13)
+
+
+class TestOptionalInputForms:
+    """Argument-shape promotions and defaults flagged by the patch
+    gate: per-step function lists, single-step k_d for the EKF
+    smoother, 2-D covariance promotion in the interval smoothers,
+    broadcast control inputs, the FIR stack guard, the private SRIF
+    predictor's no-control branch, and default cubature points."""
+
+    def test_ekalman_function_lists_and_single_step(self):
+        z_n = np.array([[1.05, 4.2, 8.85, 16.4]])
+        h = lambda x: np.array([x[0] ** 2])  # noqa: E731
+        hj = lambda x: np.array([[2.0 * x[0], 0.0]])  # noqa: E731
+        f = lambda x: F @ x  # noqa: E731
+        fj = lambda x: F  # noqa: E731
+        full = ekalman_batch_smoother(
+            [1.0, 1.0], P_INIT, z_n, h, hj, f, fj, np.array([[0.04]]), Q
+        )
+        listed = ekalman_batch_smoother(
+            [1.0, 1.0],
+            P_INIT,
+            z_n,
+            [h] * 4,
+            [hj] * 4,
+            [f] * 4,
+            [fj] * 4,
+            np.array([[0.04]]),
+            Q,
+            k_d=2,
+        )
+        np.testing.assert_allclose(listed.x, full.x[:, 2], atol=1e-12)
+        np.testing.assert_allclose(listed.P, full.P[:, :, 2], atol=1e-12)
+
+    def test_private_sqrt_info_pred_default_control_is_zero(self):
+        from pytcl.dynamic_estimation.batch_smoothers import (
+            _sqrt_info_filter_disc_pred,
+        )
+
+        y = np.array([0.4, -0.2])
+        p_inv_sqrt = np.linalg.inv(np.linalg.cholesky(P_INIT))
+        s_q = np.linalg.cholesky(Q)
+        with_zero = _sqrt_info_filter_disc_pred(
+            y, p_inv_sqrt, F, s_q, np.zeros(2), np.eye(2)
+        )
+        with_none = _sqrt_info_filter_disc_pred(y, p_inv_sqrt, F, s_q, None, np.eye(2))
+        for a, b in zip(with_none, with_zero):
+            np.testing.assert_allclose(a, b, atol=1e-13)
+
+    def test_interval_smoother_accepts_2d_covariances(self):
+        res3d = kalman_interval_smoother(
+            None,
+            None,
+            X_INIT[:, np.newaxis],
+            P_INIT[:, :, np.newaxis],
+            3,
+            Z[:, 1],
+            R,
+            H,
+            F,
+            Q,
+        )
+        res2d = kalman_interval_smoother(
+            None, None, X_INIT[:, np.newaxis], P_INIT, 3, Z[:, 1], R, H, F, Q
+        )
+        np.testing.assert_allclose(res2d.x, res3d.x, atol=1e-14)
+        # Second call with the single predicted slice squeezed to 2-D.
+        follow = kalman_interval_smoother(
+            res3d.x_fwd_pred,
+            res3d.p_fwd_pred[:, :, 0],
+            res3d.x_fwd_post,
+            res3d.p_fwd_post,
+            3,
+            Z[:, 2],
+            R,
+            H,
+            F,
+            Q,
+        )
+        assert follow.x.shape == (2, 3)
+
+    def test_fp_interval_accepts_2d_inverse_covariance_and_control(self):
+        y_prev, p_inv_prev = _info_filter_update(
+            np.zeros(2), np.zeros((2, 2)), Z[:, 0], R, H
+        )
+        res = fp_info_interval_smoother(
+            np.zeros((2, 1)),
+            np.zeros((2, 2)),
+            y_prev,
+            p_inv_prev,
+            3,
+            Z[:, :2],
+            R,
+            H,
+            F,
+            Q,
+            u=np.zeros(2),
+        )
+        ref = fp_info_interval_smoother(
+            np.zeros((2, 1)),
+            np.zeros((2, 2, 1)),
+            y_prev,
+            p_inv_prev,
+            3,
+            Z[:, :2],
+            R,
+            H,
+            F,
+            Q,
+        )
+        np.testing.assert_allclose(res.y, ref.y, atol=1e-13)
+
+    def test_fir_coeffs_reject_2d_measurement_matrix(self):
+        import pytest
+
+        with pytest.raises(ValueError):
+            kalman_fir_smoother_coeffs(H, F, R, Q, 1)
+
+    def test_sqrt_ckf_default_points_match_explicit_third_order(self):
+        from pytcl.mathematical_functions.numerical_integration.cubature_points import (
+            spherical_radial_points,
+        )
+
+        s_q = np.linalg.cholesky(Q)
+        xi, w = spherical_radial_points(2, 3)
+        explicit = sqrt_ckf_predict(X_INIT, np.eye(2), lambda x: F @ x, s_q, xi, w)
+        default = sqrt_ckf_predict(X_INIT, np.eye(2), lambda x: F @ x, s_q)
+        np.testing.assert_allclose(default.x, explicit.x, atol=1e-13)
+        up_e = sqrt_ckf_update(
+            explicit.x,
+            explicit.S,
+            Z[:, 1],
+            np.array([[0.1]]),
+            lambda x: np.array([x[0]]),
+            xi,
+            w,
+        )
+        up_d = sqrt_ckf_update(
+            explicit.x,
+            explicit.S,
+            Z[:, 1],
+            np.array([[0.1]]),
+            lambda x: np.array([x[0]]),
+        )
+        np.testing.assert_allclose(up_d.x, up_e.x, atol=1e-13)
