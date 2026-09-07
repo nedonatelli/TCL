@@ -205,3 +205,60 @@ class TestESRIFAgainstMatlab:
             np.linalg.solve(pred_exact.R, pred_exact.y_sqrt),
             rtol=1e-6,
         )
+
+
+class TestDefaultArgumentPaths:
+    """The optional-argument branches: default u/gamma/rng and the
+    noise-through-the-measurement-function filter type."""
+
+    def _r_info(self):
+        p0 = np.diag([0.5, 0.4, 0.3])
+        return np.linalg.inv(np.linalg.cholesky(p0)).T
+
+    def test_esrif_predict_defaults_equal_explicit_zeros_and_identity(self):
+        r_info = self._r_info()
+        explicit = esrif_predict(
+            r_info @ X0,
+            r_info,
+            lambda x: F @ x,
+            lambda x: F,
+            SQ,
+            np.zeros(3),
+            np.eye(3),
+        )
+        defaulted = esrif_predict(r_info @ X0, r_info, lambda x: F @ x, lambda x: F, SQ)
+        np.testing.assert_allclose(defaulted.y_sqrt, explicit.y_sqrt, atol=1e-13)
+        np.testing.assert_allclose(defaulted.R, explicit.R, atol=1e-13)
+
+    def test_esrif_update_numerical_jacobian_default(self):
+        r_info = self._r_info()
+        pred = esrif_predict(r_info @ X0, r_info, lambda x: F @ x, lambda x: F, SQ)
+        exact = esrif_update(pred.y_sqrt, pred.R, Z, SR, lambda x: H @ x, lambda x: H)
+        numeric = esrif_update(pred.y_sqrt, pred.R, Z, SR, lambda x: H @ x, None)
+        np.testing.assert_allclose(
+            np.linalg.solve(numeric.R, numeric.y_sqrt),
+            np.linalg.solve(exact.R, exact.y_sqrt),
+            rtol=1e-6,
+        )
+
+    def test_enkf_update_noise_through_h_equals_additive(self):
+        rng = np.random.default_rng(7)
+        x_ens = X0[:, np.newaxis] + 0.1 * rng.standard_normal((3, 40))
+        w_samp = SR @ rng.standard_normal((2, 40))
+        additive = enkf_update(x_ens.copy(), Z, SR, lambda x: H @ x, 0, w_samp=w_samp)
+        through_h = enkf_update(
+            x_ens.copy(), Z, SR, lambda x, w: H @ x + w, 1, w_samp=w_samp
+        )
+        np.testing.assert_allclose(through_h.x_update, additive.x_update, atol=1e-12)
+        np.testing.assert_allclose(through_h.p_update, additive.p_update, atol=1e-12)
+
+    def test_default_rng_draws_are_centered(self):
+        # Without explicit noise samples or an rng, the internal draws
+        # are still recentered to zero mean, so an identity dynamic
+        # preserves the ensemble mean exactly.
+        rng = np.random.default_rng(11)
+        x_ens = X0[:, np.newaxis] + 0.1 * rng.standard_normal((3, 30))
+        pred = enkf_predict(x_ens.copy(), lambda x: x, SQ)
+        np.testing.assert_allclose(
+            np.mean(pred.x_ensemble, axis=1), np.mean(x_ens, axis=1), atol=1e-12
+        )
