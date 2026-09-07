@@ -225,6 +225,14 @@ Dynamic Estimation
      - pytcl
    * - ``EKFUpdate``
      - ``pytcl.dynamic_estimation.kalman.extended.ekf_update``
+   * - ``EnKFDiscPred``
+     - ``pytcl.dynamic_estimation.kalman.ensemble.enkf_predict``
+   * - ``EnKFUpdate``
+     - ``pytcl.dynamic_estimation.kalman.ensemble.enkf_update``
+   * - ``ESRIFDiscPred``
+     - ``pytcl.dynamic_estimation.information_filter.esrif_predict``
+   * - ``ESRIFUpdate``
+     - ``pytcl.dynamic_estimation.information_filter.esrif_update``
    * - ``HInfinityUpdate``
      - ``pytcl.dynamic_estimation.kalman.h_infinity.hinf_update``
    * - ``KalmanBatchSmoother``

@@ -19,6 +19,12 @@ from pytcl.dynamic_estimation.kalman.constrained import (
     constrained_ekf_predict,
     constrained_ekf_update,
 )
+from pytcl.dynamic_estimation.kalman.ensemble import (
+    EnKFPrediction,
+    EnKFUpdate,
+    enkf_predict,
+    enkf_update,
+)
 from pytcl.dynamic_estimation.kalman.extended import (
     ekf_predict,
     ekf_predict_auto,
@@ -94,6 +100,10 @@ __all__ = [
     "information_filter_predict",
     "information_filter_update",
     # EKF
+    "EnKFPrediction",
+    "EnKFUpdate",
+    "enkf_predict",
+    "enkf_update",
     "ekf_predict",
     "ekf_update",
     "numerical_jacobian",

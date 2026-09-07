@@ -24,7 +24,7 @@ This module provides
   conditioning the SRIF name implies (see ``srif_predict`` Notes, gh-25)
 """
 
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Callable, List, NamedTuple, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -747,6 +747,226 @@ def fuse_information(
     return InformationState(y=y_fused, Y=Y_fused)
 
 
+class ESRIFPrediction(NamedTuple):
+    """Result of :func:`esrif_predict`.
+
+    Attributes
+    ----------
+    y_sqrt : ndarray
+        Predicted square-root information state (``R_pred @ x_pred``).
+    R : ndarray
+        Predicted square-root information matrix
+        (``P_pred^-1 = R.T @ R`` up to orthogonal factors).
+    rw : ndarray
+        Process-noise block of the QR factorization, for smoothing.
+    rwx : ndarray
+        Cross block of the QR factorization, for smoothing.
+    """
+
+    y_sqrt: NDArray[np.floating]
+    R: NDArray[np.floating]
+    rw: NDArray[np.floating]
+    rwx: NDArray[np.floating]
+
+
+class ESRIFUpdateResult(NamedTuple):
+    """Result of :func:`esrif_update`.
+
+    Attributes
+    ----------
+    y_sqrt : ndarray
+        Updated square-root information state.
+    R : ndarray
+        Updated square-root information matrix.
+    """
+
+    y_sqrt: NDArray[np.floating]
+    R: NDArray[np.floating]
+
+
+def esrif_predict(
+    y_sqrt_prev: ArrayLike,
+    R_prev: ArrayLike,
+    f: Callable,
+    f_jacob: Optional[Callable],
+    s_q: ArrayLike,
+    u: Optional[ArrayLike] = None,
+    gamma: Optional[ArrayLike] = None,
+) -> ESRIFPrediction:
+    """
+    Extended square-root information filter prediction step.
+
+    Parameters
+    ----------
+    y_sqrt_prev : array_like
+        (n,) previous square-root information state.
+    R_prev : array_like
+        (n, n) previous square-root information matrix.
+    f : callable
+        Nonlinear state transition ``f(x)``.
+    f_jacob : callable or None
+        Jacobian of ``f``; None uses a numerical Jacobian.
+    s_q : array_like
+        (n, n) lower-triangular square root of the process noise
+        covariance. Must be nonsingular.
+    u : array_like, optional
+        (n,) control input. Default zeros.
+    gamma : array_like, optional
+        (n, n) noise-gain matrix. Default identity.
+
+    Returns
+    -------
+    result : ESRIFPrediction
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> F = np.array([[1.0, 0.5], [0.0, 1.0]])
+    >>> R0 = np.eye(2)
+    >>> x0 = np.array([1.0, -0.4])
+    >>> pred = esrif_predict(R0 @ x0, R0, lambda x: F @ x, lambda x: F,
+    ...                      0.2 * np.eye(2))
+    >>> x_pred = np.linalg.solve(pred.R, pred.y_sqrt)
+    >>> np.allclose(x_pred, F @ x0)
+    True
+
+    Notes
+    -----
+    Port of ``ESRIFDiscPred.m`` (the extended square-root information
+    filter of Crouse's tracking-basics survey). The square-root
+    factors carry the usual QR sign ambiguity: compare
+    ``R.T @ R`` and the recovered state, not raw factors.
+    """
+    y_prev = np.asarray(y_sqrt_prev, dtype=np.float64).ravel()
+    R_p = np.asarray(R_prev, dtype=np.float64)
+    s_q = np.asarray(s_q, dtype=np.float64)
+    x_dim = len(y_prev)
+    if u is None:
+        u = np.zeros(x_dim)
+    else:
+        u = np.asarray(u, dtype=np.float64).ravel()
+    if gamma is None:
+        gamma = np.eye(x_dim)
+    else:
+        gamma = np.asarray(gamma, dtype=np.float64)
+
+    x_prev = np.linalg.solve(R_p, y_prev)
+
+    if f_jacob is None:
+        from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
+
+        F = numerical_jacobian(f, x_prev)
+    else:
+        F = np.asarray(f_jacob(x_prev), dtype=np.float64)
+
+    # PInvSqrtPrev / F in MATLAB.
+    r_tilde = np.linalg.solve(F.T, R_p.T).T
+
+    s_q_inv = np.linalg.inv(s_q)
+    A = np.block(
+        [
+            [s_q_inv, np.zeros((x_dim, x_dim)), np.linalg.solve(s_q, u)[:, np.newaxis]],
+            [-r_tilde @ gamma, r_tilde, y_prev[:, np.newaxis]],
+        ]
+    )
+    T = np.linalg.qr(A, mode="r")
+
+    R_pred = T[x_dim:, x_dim:-1]
+    y_pred = R_pred @ f(x_prev)
+    rw = T[:x_dim, :x_dim]
+    rwx = T[:x_dim, x_dim:-1]
+    return ESRIFPrediction(y_pred, R_pred, rw, rwx)
+
+
+def esrif_update(
+    y_sqrt_pred: ArrayLike,
+    R_pred: ArrayLike,
+    z: ArrayLike,
+    s_r: ArrayLike,
+    h: Callable,
+    h_jacob: Optional[Callable] = None,
+    innov_trans: Optional[Callable] = None,
+) -> ESRIFUpdateResult:
+    """
+    Extended square-root information filter measurement update.
+
+    Parameters
+    ----------
+    y_sqrt_pred : array_like
+        (n,) predicted square-root information state.
+    R_pred : array_like
+        (n, n) predicted square-root information matrix.
+    z : array_like
+        (m,) measurement.
+    s_r : array_like
+        (m, m) lower-triangular square root of the measurement noise
+        covariance. Must be nonsingular.
+    h : callable
+        Nonlinear measurement function ``h(x)``.
+    h_jacob : callable, optional
+        Jacobian of ``h``; None uses a numerical Jacobian. (The MATLAB
+        original's default references an undefined variable and
+        crashes; fixed here.)
+    innov_trans : callable, optional
+        Difference function for the innovation (wraps circular
+        components). Default plain subtraction.
+
+    Returns
+    -------
+    result : ESRIFUpdateResult
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> R0 = np.eye(2)
+    >>> x0 = np.array([1.0, -0.4])
+    >>> H = np.array([[1.0, 0.0]])
+    >>> upd = esrif_update(R0 @ x0, R0, np.array([1.3]), np.eye(1) * 0.5,
+    ...                    lambda x: H @ x, lambda x: H)
+    >>> x_up = np.linalg.solve(upd.R, upd.y_sqrt)
+    >>> bool(1.0 < x_up[0] < 1.3)
+    True
+
+    Notes
+    -----
+    Port of ``ESRIFUpdate.m``, with its default-Jacobian bug fixed and
+    documented (the original builds the fallback with ``zDim`` before
+    any such variable exists, so omitting ``HJacob`` crashes; here the
+    measurement length is used).
+    """
+    y_pred = np.asarray(y_sqrt_pred, dtype=np.float64).ravel()
+    R_p = np.asarray(R_pred, dtype=np.float64)
+    z = np.asarray(z, dtype=np.float64).ravel()
+    s_r = np.asarray(s_r, dtype=np.float64)
+    x_dim = len(y_pred)
+
+    if innov_trans is None:
+        innov_trans = lambda a, b: a - b  # noqa: E731
+
+    x_pred = np.linalg.solve(R_p, y_pred)
+
+    if h_jacob is None:
+        from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
+
+        H = numerical_jacobian(h, x_pred)
+    else:
+        H = np.asarray(h_jacob(x_pred), dtype=np.float64)
+    H = np.atleast_2d(H)
+
+    z_adj = H @ x_pred + innov_trans(z, np.atleast_1d(h(x_pred)))
+
+    A = np.block(
+        [
+            [R_p, y_pred[:, np.newaxis]],
+            [np.linalg.solve(s_r, H), np.linalg.solve(s_r, z_adj)[:, np.newaxis]],
+        ]
+    )
+    T = np.linalg.qr(A, mode="r")
+    R_up = T[:x_dim, :x_dim]
+    y_up = T[:x_dim, x_dim]
+    return ESRIFUpdateResult(y_up, R_up)
+
+
 __all__ = [
     "InformationState",
     "InformationFilterResult",
@@ -755,6 +975,10 @@ __all__ = [
     "information_to_state",
     "state_to_information",
     "information_filter",
+    "ESRIFPrediction",
+    "ESRIFUpdateResult",
+    "esrif_predict",
+    "esrif_update",
     "srif_predict",
     "srif_update",
     "srif_filter",

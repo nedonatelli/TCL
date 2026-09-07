@@ -41,10 +41,14 @@ from pytcl.dynamic_estimation.imm import (
 
 # Information filter
 from pytcl.dynamic_estimation.information_filter import (
+    ESRIFPrediction,
+    ESRIFUpdateResult,
     InformationFilterResult,
     InformationState,
     SRIFResult,
     SRIFState,
+    esrif_predict,
+    esrif_update,
     fuse_information,
     information_filter,
     information_to_state,
@@ -158,11 +162,15 @@ __all__ = [
     # Information filter
     "InformationState",
     "InformationFilterResult",
+    "ESRIFPrediction",
+    "ESRIFUpdateResult",
     "SRIFState",
     "SRIFResult",
     "information_to_state",
     "state_to_information",
     "information_filter",
+    "esrif_predict",
+    "esrif_update",
     "srif_predict",
     "srif_update",
     "srif_filter",
