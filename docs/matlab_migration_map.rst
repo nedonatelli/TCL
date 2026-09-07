@@ -279,6 +279,26 @@ Dynamic Estimation
      - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother``
    * - ``KalmanFIRSmootherCoeffs``
      - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother_coeffs``
+   * - ``RiccatiPredNoClutter``
+     - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
+   * - ``RiccatiPostNoClutter``
+     - ``pytcl.dynamic_estimation.performance_prediction.riccati_post_no_clutter``
+   * - ``FIMPredNoClutter``
+     - ``pytcl.dynamic_estimation.performance_prediction.fim_pred_no_clutter``
+   * - ``FIMPostNoClutter``
+     - ``pytcl.dynamic_estimation.performance_prediction.fim_post_no_clutter``
+   * - ``PCRLBPredAdd``
+     - ``pytcl.dynamic_estimation.performance_prediction.pcrlb_pred_add``
+   * - ``PCRLBUpdateAddNoClutter``
+     - ``pytcl.dynamic_estimation.performance_prediction.pcrlb_update_add_no_clutter``
+   * - ``correctAssocProbApprox``
+     - ``pytcl.dynamic_estimation.performance_prediction.correct_assoc_prob_approx``
+   * - ``trackPurityLinApprox``
+     - ``pytcl.dynamic_estimation.performance_prediction.track_purity_lin_approx``
+   * - ``linTargetIsUntrackable``
+     - ``pytcl.dynamic_estimation.performance_prediction.lin_target_is_untrackable``
+   * - ``DiscPriorPModel``
+     - ``pytcl.dynamic_estimation.performance_prediction.disc_prior_p_model``
    * - ``sqrtDiscCubKalPred``
      - ``pytcl.dynamic_estimation.kalman.sqrt_cubature.sqrt_ckf_predict``
    * - ``sqrtCubKalUpdate``
