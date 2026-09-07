@@ -30,7 +30,7 @@ Installation Issues
 
 **Using Wrong Python Version**
 
-**Cause**: Project requires Python 3.10+, but you're using an older version
+**Cause**: Project requires Python 3.11+, but you're using an older version
 
 **Solution**:
 
@@ -39,7 +39,7 @@ Installation Issues
    # Check your Python version
    python --version
 
-   # If too old, create a virtual environment with Python 3.10+
+   # If too old, create a virtual environment with Python 3.11+
    python3.11 -m venv venv
    source venv/bin/activate
    pip install nrl-tracker

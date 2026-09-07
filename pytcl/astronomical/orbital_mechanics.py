@@ -759,7 +759,7 @@ def specific_orbital_energy(
     """
     r_mag = np.linalg.norm(state.r)
     v_mag = np.linalg.norm(state.v)
-    return v_mag * v_mag / 2 - mu / r_mag
+    return float(v_mag * v_mag / 2 - mu / r_mag)
 
 
 def flight_path_angle(state: StateVector) -> float:

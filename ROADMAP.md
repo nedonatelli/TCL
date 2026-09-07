@@ -67,7 +67,15 @@ No dates are attached because none have been decided:
 - **Localization-style static estimators, remainder** — nine of the 11
   shipped in v2.8.0 as `static_estimation.localization`. Still open:
   only the two `Uses_External_Solver` files (`DopplerOnlyInit6D`,
-  `polyMeasConvert` — need the SCS solver or a scipy substitute)
+  `polyMeasConvert`). Investigated 2026-09-04: contrary to earlier
+  notes here, they do not use SCS — both build 6-7-variable
+  multivariate polynomial systems and shell out to an external
+  homotopy-continuation solver (Bertini/PHCpack/Macaulay2) through
+  `solvePolySysWithExtProg` (734 lines), beyond
+  `poly_roots_multi_dim`'s <=3-variable envelope. A port means the
+  system construction plus that bridge, with the solver executables as
+  optional external tools (tests skipping when absent, like the
+  terrain data files) — a full campaign tier of work
 - **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
   batch least squares, PCRLB/Riccati analysis tools
 - **Direction-cosine UV measurement coordinates, remainder** — the core

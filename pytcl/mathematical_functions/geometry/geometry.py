@@ -439,7 +439,7 @@ def triangle_area(
     if len(p1) == 2:
         return 0.5 * np.abs(v1[0] * v2[1] - v1[1] * v2[0])
     else:
-        return 0.5 * np.linalg.norm(np.cross(v1, v2))
+        return float(0.5 * np.linalg.norm(np.cross(v1, v2)))
 
 
 def barycentric_coordinates(

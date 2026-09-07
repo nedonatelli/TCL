@@ -233,15 +233,11 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "io.sql_storage": MaturityLevel.MATURE,
     # magnetism
     "magnetism.emm": MaturityLevel.MATURE,
-    # behaviour changed this release: igrf() defaults moved to IGRF-14 at
-    # the requested year, default year 2023.0 -> 2025.0
-    "magnetism.igrf": MaturityLevel.EXPERIMENTAL,
+    "magnetism.igrf": MaturityLevel.MATURE,
     # mathematical_functions
     "mathematical_functions.basic_matrix.special_matrices": MaturityLevel.MATURE,
     "mathematical_functions.combinatorics.combinatorics": MaturityLevel.MATURE,
-    # behaviour changed this release: point_to_line_distance 3D now returns
-    # norm(cross)/len (the old abs-vector return was never a distance)
-    "mathematical_functions.geometry.geometry": MaturityLevel.EXPERIMENTAL,
+    "mathematical_functions.geometry.geometry": MaturityLevel.MATURE,
     "mathematical_functions.interpolation.interpolation": MaturityLevel.MATURE,
     "mathematical_functions.numerical_integration.cubature_points": MaturityLevel.MATURE,
     "mathematical_functions.numerical_integration.lcd_samples": MaturityLevel.MATURE,
@@ -252,9 +248,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "mathematical_functions.special_functions.error_functions": MaturityLevel.MATURE,
     "mathematical_functions.special_functions.gamma_functions": MaturityLevel.MATURE,
     "mathematical_functions.special_functions.lambert_w": MaturityLevel.MATURE,
-    # behaviour changed this release: the deprecated nuttall_q alias was
-    # removed (warned since v2.0.0)
-    "mathematical_functions.special_functions.marcum_q": MaturityLevel.EXPERIMENTAL,
+    "mathematical_functions.special_functions.marcum_q": MaturityLevel.MATURE,
     "mathematical_functions.statistics.estimators": MaturityLevel.MATURE,
     "mathematical_functions.transforms.stft": MaturityLevel.MATURE,
     # performance_evaluation
