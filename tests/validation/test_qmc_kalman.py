@@ -166,3 +166,31 @@ class TestSamplingFunctionsConvergeToKalman:
         )
         np.testing.assert_array_equal(a.x, b.x)
         np.testing.assert_array_equal(a.P, b.P)
+
+
+class TestDefaultRngPaths:
+    """The rng=None defaults draw from a fresh generator; with a large
+    sample the Monte-Carlo estimates still track the exact Kalman
+    posterior, just at unseeded (looser) tolerance."""
+
+    F = np.array([[1.0, 0.5, 0.125], [0.0, 1.0, 0.5], [0.0, 0.0, 1.0]])
+    H = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    Q = 0.01 * np.eye(3)
+    R2 = 0.04 * np.eye(2)
+    X0 = np.array([1.0, -0.5, 0.25])
+    P0 = np.diag([0.4, 0.9, 0.2])
+    Z2 = np.array([1.6, -0.7])
+
+    def test_all_steps_run_and_track_kf_without_explicit_rng(self):
+        kf_p = kf_predict(self.X0, self.P0, self.F, self.Q)
+        mc_p = qmc_kf_predict(self.X0, self.P0, lambda x: self.F @ x, self.Q, 40000)
+        np.testing.assert_allclose(mc_p.x, kf_p.x, atol=0.1)
+
+        kf_u = kf_update(kf_p.x, kf_p.P, self.Z2, self.H, self.R2)
+        mc_u = qmc_kf_update(
+            kf_p.x, kf_p.P, self.Z2, self.R2, lambda x: self.H @ x, 40000
+        )
+        np.testing.assert_allclose(mc_u.x, kf_u.x, atol=0.1)
+
+        info = qmc_kf_meas_pred(self.X0, self.P0, 2, lambda x: self.H @ x, 40000)
+        np.testing.assert_allclose(np.ravel(info.z_pred), self.H @ self.X0, atol=0.1)
