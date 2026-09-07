@@ -62,10 +62,18 @@ jobs:
             -q
 
       - name: Check for regressions
+        # --strict since 2026-09-07: the advisory-only PR gate was an
+        # accident of history, not policy. The light suite is
+        # compute-bound only (the I/O-heavy track-management file is
+        # deliberately excluded above), the failure line sits 30% above
+        # SLOs that already carry 1.5-2x headroom, and the tail check
+        # gates the outlier-excluded hd15iqr, so runner noise has three
+        # layers of slack before a PR goes red.
         run: |
           uv run python scripts/detect_regressions.py /tmp/benchmark_results.json \
             --slos .benchmarks/slos.json \
-            --history .benchmarks/history.jsonl
+            --history .benchmarks/history.jsonl \
+            --strict
 
       - name: Generate SLO compliance report
         if: always() && github.event_name == 'pull_request'

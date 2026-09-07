@@ -119,6 +119,7 @@ def parse_benchmark_results(json_file: Path) -> list:
         stddev_s = stats.get("stddev", 0)
         min_s = stats.get("min", 0)
         max_s = stats.get("max", 0)
+        hd15iqr_s = stats.get("hd15iqr", 0)
         rounds = stats.get("rounds", 0)
 
         record = {
@@ -132,6 +133,9 @@ def parse_benchmark_results(json_file: Path) -> list:
             "stddev_ms": stddev_s * 1000,
             "min_ms": min_s * 1000,
             "max_ms": max_s * 1000,
+            # Outlier-excluded worst round; the statistic the tail SLO
+            # gates (recorded since 2026-09-07, absent in older rows).
+            "hd15iqr_ms": hd15iqr_s * 1000,
             "rounds": rounds,
             "runner": runner,
         }
