@@ -243,6 +243,10 @@ Dynamic Estimation
      - ``pytcl.dynamic_estimation.kalman.qmc.qmc_kf_update_with_pred``
    * - ``calcQMCKalmanGain``
      - ``pytcl.dynamic_estimation.kalman.qmc.calc_qmc_kalman_gain``
+   * - ``BLUEPolarMeasUpdateApprox``
+     - ``pytcl.dynamic_estimation.kalman.blue.blue_polar_meas_update``
+   * - ``BLUESpherMeasUpdateApprox``
+     - ``pytcl.dynamic_estimation.kalman.blue.blue_spher_meas_update``
    * - ``HInfinityUpdate``
      - ``pytcl.dynamic_estimation.kalman.h_infinity.hinf_update``
    * - ``KalmanBatchSmoother``

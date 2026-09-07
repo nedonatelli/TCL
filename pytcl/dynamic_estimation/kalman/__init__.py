@@ -13,6 +13,11 @@ This module provides:
 - H-infinity filter (robust filtering)
 """
 
+from pytcl.dynamic_estimation.kalman.blue import (
+    BLUEUpdateResult,
+    blue_polar_meas_update,
+    blue_spher_meas_update,
+)
 from pytcl.dynamic_estimation.kalman.constrained import (
     ConstrainedEKF,
     ConstraintFunction,
@@ -110,6 +115,9 @@ __all__ = [
     "information_filter_predict",
     "information_filter_update",
     # EKF
+    "BLUEUpdateResult",
+    "blue_polar_meas_update",
+    "blue_spher_meas_update",
     "QMCKFPrediction",
     "QMCKFUpdateResult",
     "QMCMeasPredInfo",

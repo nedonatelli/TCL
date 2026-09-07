@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- BLUE polar and spherical measurement updates
+  (`blue_polar_meas_update`, `blue_spher_meas_update` in
+  `dynamic_estimation.kalman.blue`): closed-form best-linear-unbiased
+  updates with debiased measurement conversion (Zhao/Li/Jilkov),
+  fixture-validated against MATLAB at float64 precision.
 - The Monte-Carlo Kalman family (`qmc_kf_predict`, `qmc_kf_update`,
   `qmc_kf_meas_pred`, `qmc_kf_update_with_pred`, `calc_qmc_kalman_gain`
   in `dynamic_estimation.kalman.qmc`), ports of the MATLAB TCL "QMC"

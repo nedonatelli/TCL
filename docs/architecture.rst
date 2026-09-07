@@ -27,7 +27,7 @@ it depends on; only the structurally significant edges are drawn.
 
    graph TD
        subgraph Estimation
-           DE["dynamic_estimation<br/>19 modules"]
+           DE["dynamic_estimation<br/>20 modules"]
            DM["dynamic_models<br/>7 modules"]
            SE["static_estimation<br/>4 modules"]
        end
@@ -170,7 +170,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Special functions, statistics, transforms, signal processing,
        geometry, polynomials
    * - ``dynamic_estimation``
-     - 19
+     - 20
      - 92
      - Kalman variants, particle filters, smoothers, information filters
    * - ``assignment_algorithms``
