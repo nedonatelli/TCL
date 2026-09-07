@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Tracker performance prediction
+  (`dynamic_estimation.performance_prediction`), completing the MATLAB
+  `Performance_Prediction` directory: the modified Riccati equations
+  for detection probability PD <= 1 (`riccati_pred_no_clutter`,
+  `riccati_post_no_clutter`), the asymptotic Fisher information
+  matrices (`fim_pred_no_clutter`, `fim_post_no_clutter`), the
+  recursive PCRLB steps with additive noise and cubature-averaged
+  Jacobians (`pcrlb_pred_add`, `pcrlb_update_add_no_clutter`),
+  correct-association and track-purity approximations, an
+  untrackability test, and the prior-distribution model
+  (`disc_prior_p_model`). SciPy's `solve_discrete_are` substitutes
+  `RiccatiSolveD` (same equation, same unique stabilizing solution).
+  Three upstream defects fixed and documented:
+  `RiccatiPostNoClutter` errors when called with exactly six
+  arguments (its defaulting tests a not-yet-existing parameter);
+  `trackPurityLinApprox`'s initial update parses as `(H'*R)\H` and
+  crashes whenever the measurement and state dimensions differ; and
+  `PCRLBPredAdd` silently discards user-supplied cubature points (an
+  off-by-one `nargin` test in a seven-argument function).
 - Batch and interval smoothers (`dynamic_estimation.batch_smoothers`):
   the forward-backward Kalman batch smoother (RTS and Fraser-Potter
   forms), the Fraser-Potter two-filter information smoother (batch and

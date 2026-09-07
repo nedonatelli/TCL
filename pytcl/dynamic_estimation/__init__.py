@@ -150,6 +150,23 @@ from pytcl.dynamic_estimation.particle_filters import (
     resample_systematic,
 )
 
+# Performance prediction
+from pytcl.dynamic_estimation.performance_prediction import (
+    PriorModel,
+    RiccatiResult,
+    TrackPurityResult,
+    correct_assoc_prob_approx,
+    disc_prior_p_model,
+    fim_post_no_clutter,
+    fim_pred_no_clutter,
+    lin_target_is_untrackable,
+    pcrlb_pred_add,
+    pcrlb_update_add_no_clutter,
+    riccati_post_no_clutter,
+    riccati_pred_no_clutter,
+    track_purity_lin_approx,
+)
+
 # Rao-Blackwellized Particle Filter
 from pytcl.dynamic_estimation.rbpf import (
     RBPFFilter,
@@ -208,6 +225,20 @@ __all__ = [
     "kalman_interval_smoother",
     "sqrt_cub_kal_batch_smoother",
     "sqrt_info_batch_smoother",
+    # Performance prediction
+    "PriorModel",
+    "RiccatiResult",
+    "TrackPurityResult",
+    "correct_assoc_prob_approx",
+    "disc_prior_p_model",
+    "fim_post_no_clutter",
+    "fim_pred_no_clutter",
+    "lin_target_is_untrackable",
+    "pcrlb_pred_add",
+    "pcrlb_update_add_no_clutter",
+    "riccati_post_no_clutter",
+    "riccati_pred_no_clutter",
+    "track_purity_lin_approx",
     # Information filter
     "InformationState",
     "InformationFilterResult",
