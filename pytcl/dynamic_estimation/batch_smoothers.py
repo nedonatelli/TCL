@@ -1409,7 +1409,10 @@ def fp_info_interval_smoother(
     if u is None:
         u_arr = np.zeros((x_dim, nf_end))
     else:
-        u_arr = np.atleast_2d(np.asarray(u, dtype=np.float64))
+        u_arr = np.asarray(u, dtype=np.float64)
+        if u_arr.ndim == 1:
+            # A single control vector is a column, not a row.
+            u_arr = u_arr[:, np.newaxis]
         if u_arr.shape[1] == 1:
             u_arr = np.repeat(u_arr, nf_end, axis=1)
     h = _rep3(h, n_cur)
