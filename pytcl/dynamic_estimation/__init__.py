@@ -25,6 +25,27 @@ from pytcl.dynamic_estimation.batch_estimation import (
     two_point_diff_init,
 )
 
+# Batch and interval smoothers
+from pytcl.dynamic_estimation.batch_smoothers import (
+    BatchSmootherResult,
+    EKalmanBatchSmootherResult,
+    FIRSmootherCoeffs,
+    FPInfoBatchSmootherResult,
+    FPInfoIntervalSmootherResult,
+    KalmanIntervalSmootherResult,
+    SqrtCubKalBatchSmootherResult,
+    SqrtInfoBatchSmootherResult,
+    ekalman_batch_smoother,
+    fp_info_batch_smoother,
+    fp_info_interval_smoother,
+    kalman_batch_smoother,
+    kalman_fir_smoother,
+    kalman_fir_smoother_coeffs,
+    kalman_interval_smoother,
+    sqrt_cub_kal_batch_smoother,
+    sqrt_info_batch_smoother,
+)
+
 # Typed configuration Structs
 from pytcl.dynamic_estimation.configs import (
     GaussianSumConfig,
@@ -169,6 +190,24 @@ __all__ = [
     "fixed_interval_smoother",
     "two_filter_smoother",
     "rts_smoother_single_step",
+    # Batch and interval smoothers
+    "BatchSmootherResult",
+    "EKalmanBatchSmootherResult",
+    "FIRSmootherCoeffs",
+    "FPInfoBatchSmootherResult",
+    "FPInfoIntervalSmootherResult",
+    "KalmanIntervalSmootherResult",
+    "SqrtCubKalBatchSmootherResult",
+    "SqrtInfoBatchSmootherResult",
+    "ekalman_batch_smoother",
+    "fp_info_batch_smoother",
+    "fp_info_interval_smoother",
+    "kalman_batch_smoother",
+    "kalman_fir_smoother",
+    "kalman_fir_smoother_coeffs",
+    "kalman_interval_smoother",
+    "sqrt_cub_kal_batch_smoother",
+    "sqrt_info_batch_smoother",
     # Information filter
     "InformationState",
     "InformationFilterResult",

@@ -68,6 +68,12 @@ from pytcl.dynamic_estimation.kalman.qmc import (
     qmc_kf_update,
     qmc_kf_update_with_pred,
 )
+from pytcl.dynamic_estimation.kalman.sqrt_cubature import (
+    SqrtCKFPrediction,
+    SqrtCKFUpdate,
+    sqrt_ckf_predict,
+    sqrt_ckf_update,
+)
 from pytcl.dynamic_estimation.kalman.square_root import (
     SRKalmanPrediction,
     SRKalmanState,
@@ -118,6 +124,11 @@ __all__ = [
     "BLUEUpdateResult",
     "blue_polar_meas_update",
     "blue_spher_meas_update",
+    # Square-root cubature KF
+    "SqrtCKFPrediction",
+    "SqrtCKFUpdate",
+    "sqrt_ckf_predict",
+    "sqrt_ckf_update",
     "QMCKFPrediction",
     "QMCKFUpdateResult",
     "QMCMeasPredInfo",
