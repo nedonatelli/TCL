@@ -189,18 +189,33 @@ def main() -> int:
         action="store_true",
         help="Don't append results to history file (dry run)",
     )
+    parser.add_argument(
+        "--results",
+        default=None,
+        help="Parse this existing pytest-benchmark JSON instead of "
+        "re-running the benchmarks (used by benchmark-full.yml so the "
+        "nightly suite runs once, and so history records are built by "
+        "this script's one record shape rather than a duplicate)",
+    )
     args = parser.parse_args()
 
     history_file = Path(args.history)
 
-    # Create temporary file for benchmark output
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        benchmark_output = Path(tmp.name)
+    if args.results is not None:
+        benchmark_output = Path(args.results)
+        if not benchmark_output.exists():
+            print(f"Results file {benchmark_output} not found!")
+            return 1
+    else:
+        # Create temporary file for benchmark output
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            benchmark_output = Path(tmp.name)
 
     try:
-        print("Running benchmarks...")
-        if not run_benchmarks(benchmark_output, args.light_only):
-            return 1
+        if args.results is None:
+            print("Running benchmarks...")
+            if not run_benchmarks(benchmark_output, args.light_only):
+                return 1
 
         print("Parsing results...")
         records = parse_benchmark_results(benchmark_output)
@@ -219,8 +234,9 @@ def main() -> int:
         return 0
 
     finally:
-        # Clean up temporary file
-        if benchmark_output.exists():
+        # Clean up the temporary file; a caller-supplied --results file
+        # is not ours to delete.
+        if args.results is None and benchmark_output.exists():
             benchmark_output.unlink()
 
 

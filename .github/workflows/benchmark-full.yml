@@ -54,48 +54,16 @@ jobs:
 
       - name: Track performance
         if: github.ref == 'refs/heads/main'
+        # --results parses the suite's own output (no second benchmark
+        # run) and builds history rows in track_performance.py's one
+        # record shape -- real params, hd15iqr_ms included. This step
+        # previously re-ran the whole suite for a summary and appended
+        # via an inline duplicate record dict that hardcoded
+        # params='default' and silently dropped new fields.
         run: |
           uv run python scripts/track_performance.py \
-            --history .benchmarks/history.jsonl \
-            --no-append
-
-          # Append results manually after validation
-          uv run python -c "
-          import json
-          import subprocess
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          # Get git info
-          commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], text=True).strip()
-          branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], text=True).strip()
-
-          # Parse results
-          with open('/tmp/benchmark_results.json') as f:
-              data = json.load(f)
-
-          timestamp = datetime.now(timezone.utc).isoformat()
-          runner = 'github-ubuntu-latest'
-
-          # Append to history
-          with open('.benchmarks/history.jsonl', 'a') as f:
-              for bench in data.get('benchmarks', []):
-                  stats = bench.get('stats', {})
-                  record = {
-                      'timestamp': timestamp,
-                      'commit': commit,
-                      'branch': branch,
-                      'test': bench.get('name', 'unknown'),
-                      'params': 'default',
-                      'mean_ms': stats.get('mean', 0) * 1000,
-                      'stddev_ms': stats.get('stddev', 0) * 1000,
-                      'min_ms': stats.get('min', 0) * 1000,
-                      'max_ms': stats.get('max', 0) * 1000,
-                      'rounds': stats.get('rounds', 0),
-                      'runner': runner
-                  }
-                  f.write(json.dumps(record) + '\n')
-          "
+            --results /tmp/benchmark_results.json \
+            --history .benchmarks/history.jsonl
 
       - name: Commit history update
         if: github.ref == 'refs/heads/main'
