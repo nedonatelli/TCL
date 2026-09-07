@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.8.0, released 3 September 2026
-**Test Suite:** 8,200+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Current Version:** v2.9.0, released 8 September 2026
+**Test Suite:** 8,300+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
 third by function count — see `docs/matlab_parity_inventory.rst`, which
@@ -76,15 +76,11 @@ No dates are attached because none have been decided:
   system construction plus that bridge, with the solver executables as
   optional external tools (tests skipping when absent, like the
   terrain data files) — a full campaign tier of work
-- **Filter variants** — EnKF, ESRIF, QMC-Kalman, BLUE measurement updates,
-  batch least squares, PCRLB/Riccati analysis tools
 - **Direction-cosine UV measurement coordinates, remainder** — the core
-  conversions shipped in v2.8.0 as `coordinate_systems.conversions.uv`
-  (u-v <-> spherical, full bistatic r-u-v <-> Cartesian, ruv-to-ruv,
-  r-u-v state conversion, camera-to-uv). Still open: the u-v measurement
-  Jacobians/Hessians and the cubature/Taylor covariance conversions
-  (`uv2SpherAngCubature`, `ruv2RuvCubature`, `monostatRuv2CartTaylor`,
-  `cameraCoords2UVCoordsCubature`)
+  conversions shipped in v2.8.0 (`coordinate_systems.conversions.uv`) and
+  the cubature/Taylor covariance conversions in v2.9.0
+  (`covariance_conversions`). Still open: the u-v measurement
+  Jacobians/Hessians
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials

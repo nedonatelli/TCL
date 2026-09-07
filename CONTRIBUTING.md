@@ -453,7 +453,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.8.0 (released). See "Current metrics" under
+**Version:** v2.9.0 (released). See "Current metrics" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -516,15 +516,16 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.8.0):
-- **Functions:** 1,300+ (top-level `def`; measured 1,304 via
+Current metrics (v2.9.0):
+- **Functions:** 1,350+ (top-level `def`; measured 1,381 via
   `grep -r "^def " pytcl/ | wc -l`)
-- **Modules:** 195
-- **Tests:** 8,200+ (all passing; measured 8,222 via
+- **Modules:** 203
+- **Tests:** 8,300+ (all passing; measured 8,344 via
   `pytest --collect-only`)
-- **Coverage:** 88.7% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
-  `--cov-branch`, no MLX -- codecov at commit 50c9cc7); higher locally
-  where the MLX layer is traceable. CI gate is `--cov-fail-under=85`
+- **Coverage:** 90.02% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+  `--cov-branch`, no MLX -- the ubuntu-3.11 cell at commit 50057c4);
+  higher locally where the MLX layer is traceable. CI gate is
+  `--cov-fail-under=85`
   (measurement minus the house 3-point headroom).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
