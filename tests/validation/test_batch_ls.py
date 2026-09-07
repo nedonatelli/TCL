@@ -164,3 +164,82 @@ class TestTwoPointDiffInit:
     def test_velocity_is_the_difference_quotient(self):
         res = two_point_diff_init(0.5, np.array([[1.0, 3.0]]), np.eye(1))
         np.testing.assert_allclose(res.x, [3.0, 4.0], atol=1e-12)
+
+
+class TestArgumentEdgePaths:
+    """The 1-D measurement promotion, the covariance-only guard, and
+    the backward-propagation branches for k_d > 0."""
+
+    def test_one_dimensional_z_equals_two_dimensional(self):
+        res_2d = batch_ls_lin_meas_lin_dyn(Z_LIN, H, F, R, 1, Q)
+        res_1d = batch_ls_lin_meas_lin_dyn(Z_LIN.ravel(), H, F, R, 1, Q)
+        np.testing.assert_allclose(res_1d.x, res_2d.x, atol=1e-14)
+
+        gn_2d = batch_ls_nonlin_meas_lin_dyn(X_INIT, Z_NONLIN, _h, F, R, 0, _hj, 10)
+        gn_1d = batch_ls_nonlin_meas_lin_dyn(
+            X_INIT, Z_NONLIN.ravel(), _h, F, R, 0, _hj, 10
+        )
+        np.testing.assert_allclose(gn_1d.x, gn_2d.x, atol=1e-14)
+
+        hs, hjs = _folded()
+        nn_2d = batch_ls_nonlin_meas_nonlin_dyn(X_INIT, Z_NONLIN, hs, R, hjs, 10)
+        nn_1d = batch_ls_nonlin_meas_nonlin_dyn(
+            X_INIT, Z_NONLIN.ravel(), hs, R, hjs, 10
+        )
+        np.testing.assert_allclose(nn_1d.x, nn_2d.x, atol=1e-14)
+
+        lm_2d = batch_ls_nonlin_meas_lin_dyn_lm(
+            X_INIT, Z_NONLIN, _h, F, R, 0, None, _hj
+        )
+        lm_1d = batch_ls_nonlin_meas_lin_dyn_lm(
+            X_INIT, Z_NONLIN.ravel(), _h, F, R, 0, None, _hj
+        )
+        np.testing.assert_allclose(lm_1d.x, lm_2d.x, atol=1e-10)
+
+        nnlm_2d = batch_ls_nonlin_meas_nonlin_dyn_lm(X_INIT, Z_NONLIN, hs, R, 0, hjs)
+        nnlm_1d = batch_ls_nonlin_meas_nonlin_dyn_lm(
+            X_INIT, Z_NONLIN.ravel(), hs, R, 0, hjs
+        )
+        np.testing.assert_allclose(nnlm_1d.x, nnlm_2d.x, atol=1e-10)
+
+    def test_covariance_only_mode_requires_num_meas(self):
+        import pytest
+
+        with pytest.raises(ValueError):
+            batch_ls_lin_meas_lin_dyn(None, H, F, R, 1, Q)
+
+    def test_gauss_newton_kd_shift_is_transition_consistent(self):
+        # With no process noise in the Gauss-Newton form, the estimate
+        # anchored at step 1 is exactly F times the estimate anchored
+        # at step 0 (this exercises the backward transition products).
+        at0 = batch_ls_nonlin_meas_lin_dyn(X_INIT, Z_NONLIN, _h, F, R, 0, _hj, 10)
+        at1 = batch_ls_nonlin_meas_lin_dyn(F @ X_INIT, Z_NONLIN, _h, F, R, 1, _hj, 10)
+        np.testing.assert_allclose(at1.x, F @ at0.x, atol=1e-9)
+
+    def test_lm_trajectory_mode_with_nonzero_kd(self):
+        # Trajectory mode anchored at step 1: the returned estimate is
+        # that trajectory column, and the smoothed trajectory agrees
+        # with the k_d=0 anchoring of the same least-squares problem.
+        at0 = batch_ls_nonlin_meas_lin_dyn_lm(X_INIT, Z_NONLIN, _h, F, R, 0, Q, _hj)
+        at1 = batch_ls_nonlin_meas_lin_dyn_lm(F @ X_INIT, Z_NONLIN, _h, F, R, 1, Q, _hj)
+        assert at1.success
+        np.testing.assert_allclose(at1.x, at1.x_batch[:, 1], atol=1e-12)
+        np.testing.assert_allclose(at1.x_batch, at0.x_batch, atol=1e-6)
+
+    def test_lm_deterministic_mode_with_nonzero_kd(self):
+        # Without process noise the LM estimate anchored at step 1 is
+        # exactly F times the step-0 anchoring (backward residual loop).
+        at0 = batch_ls_nonlin_meas_lin_dyn_lm(X_INIT, Z_NONLIN, _h, F, R, 0, None, _hj)
+        at1 = batch_ls_nonlin_meas_lin_dyn_lm(
+            F @ X_INIT, Z_NONLIN, _h, F, R, 1, None, _hj
+        )
+        assert at1.success
+        np.testing.assert_allclose(at1.x, F @ at0.x, atol=1e-6)
+
+    def test_lm_trajectory_warm_start_from_full_trajectory(self):
+        cold = batch_ls_nonlin_meas_lin_dyn_lm(X_INIT, Z_NONLIN, _h, F, R, 0, Q, _hj)
+        warm = batch_ls_nonlin_meas_lin_dyn_lm(
+            cold.x_batch, Z_NONLIN, _h, F, R, 0, Q, _hj
+        )
+        assert warm.success
+        np.testing.assert_allclose(warm.x_batch, cold.x_batch, atol=1e-6)

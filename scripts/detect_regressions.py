@@ -81,6 +81,9 @@ def load_current_results(results_file: Path) -> list:
                 "params": param_str,
                 "mean_ms": stats.get("mean", 0) * 1000,
                 "max_ms": stats.get("max", 0) * 1000,
+                # Outlier-excluded worst round (highest datapoint within
+                # 1.5 IQR): the robust tail statistic the p99 SLO gates.
+                "hd15iqr_ms": stats.get("hd15iqr", 0) * 1000,
             }
         )
 
@@ -117,6 +120,46 @@ def check_slo_violations(results: list, slos: dict) -> list:
         matched_slo = slo_defs.get(test_name)
         if not isinstance(matched_slo, dict):
             continue
+
+        # Tail-latency check. pytest-benchmark records no p99, so the
+        # SLO gates hd15iqr -- the worst round excluding >1.5-IQR
+        # outliers -- rather than the raw max, which on shared runners
+        # is dominated by one-off scheduler/disk stalls (history shows
+        # single rounds 10x+ the typical worst). The same
+        # warning/failure percentages apply as for the mean.
+        max_p99_us = matched_slo.get("max_p99_us")
+        tail_ms = result.get("hd15iqr_ms")
+        if max_p99_us and tail_ms:
+            target_p99 = max_p99_us / 1000  # us -> ms
+            p99_deviation_pct = ((tail_ms - target_p99) / target_p99) * 100
+            if p99_deviation_pct > failure_pct:
+                issues.append(
+                    {
+                        "level": "FAILURE",
+                        "test": test_name,
+                        "params": params,
+                        "actual_ms": tail_ms,
+                        "slo_ms": target_p99,
+                        "deviation_pct": p99_deviation_pct,
+                        "message": f"FAILURE: {test_name}[{params}] "
+                        f"tail(hd15iqr)={tail_ms:.3f}ms exceeds "
+                        f"p99 SLO={target_p99:.3f}ms by {p99_deviation_pct:.1f}%",
+                    }
+                )
+            elif p99_deviation_pct > warning_pct:
+                issues.append(
+                    {
+                        "level": "WARNING",
+                        "test": test_name,
+                        "params": params,
+                        "actual_ms": tail_ms,
+                        "slo_ms": target_p99,
+                        "deviation_pct": p99_deviation_pct,
+                        "message": f"WARNING: {test_name}[{params}] "
+                        f"tail(hd15iqr)={tail_ms:.3f}ms exceeds "
+                        f"p99 SLO={target_p99:.3f}ms by {p99_deviation_pct:.1f}%",
+                    }
+                )
 
         max_mean_us = matched_slo.get("max_mean_us")
         if not max_mean_us:

@@ -243,3 +243,63 @@ class TestDiscPriorPModel:
             res.x, _load("pp_prior_pos_x.csv").ravel(), atol=ATOL
         )
         np.testing.assert_allclose(res.P, _load("pp_prior_pos_P.csv"), atol=ATOL)
+
+
+class TestEdgeAndGuardPaths:
+    """Non-convergence returns, the singular-Q FIM prediction branch,
+    Jacobian-at-mean and explicit-point paths, and the input guards."""
+
+    def test_riccati_iteration_caps_report_nonconvergence(self):
+        pred = riccati_pred_no_clutter(H3, F6, R3, Q6, 0.5, max_iter=1)
+        assert not pred.converged
+        post = riccati_post_no_clutter(H3, F6, R3, Q6, 0.5, max_iter=1)
+        assert not post.converged
+
+    def test_fim_iterative_branch_warns_when_divergent(self):
+        import pytest
+
+        # No velocity process noise: velocity information grows without
+        # bound, so the singular-Q recursion cannot converge.
+        q_div = np.array([[0.5, 0.0], [0.0, 0.0]])
+        with pytest.warns(UserWarning, match="without convergence"):
+            fim_post_no_clutter(H2, F2, R2, q_div, 0.9)
+
+    def test_fim_pred_singular_q_branch(self):
+        q_sing = 0.5 * np.array([[1 / 4, 1 / 2], [1 / 2, 1.0]])
+        j = fim_pred_no_clutter(H2, F2, R2, q_sing, 1.0)
+        p = riccati_pred_no_clutter(H2, F2, R2, q_sing, 1.0).P
+        np.testing.assert_allclose(np.linalg.inv(j), p, rtol=1e-6)
+
+    def test_pcrlb_pred_jacobian_at_mean(self):
+        x_prior = np.array([1.0, 0.5])
+        fj = lambda x: np.array([[1.0, 1.0], [-0.1 * x[0], 1.0]])  # noqa: E731
+        via_callable = pcrlb_pred_add(0.5 * np.eye(2), x_prior, None, Q2, fj)
+        via_matrix = pcrlb_pred_add(0.5 * np.eye(2), None, None, Q2, fj(x_prior))
+        np.testing.assert_allclose(via_callable, via_matrix, atol=1e-13)
+
+    def test_pcrlb_update_explicit_points_are_honored(self):
+        x_cur = np.array([1.0, 0.5])
+        p_cur = np.array([[0.09, 0.02], [0.02, 0.06]])
+        hj = lambda x: np.array([[2.0 * x[0], 0.2]])  # noqa: E731
+        xi = np.zeros((1, 2))
+        w = np.array([1.0])
+        with_points = pcrlb_update_add_no_clutter(
+            0.5 * np.eye(2), x_cur, p_cur, R2, 0.8, hj, xi, w
+        )
+        at_mean = pcrlb_update_add_no_clutter(0.5 * np.eye(2), x_cur, None, R2, 0.8, hj)
+        np.testing.assert_allclose(with_points, at_mean, atol=1e-13)
+
+    def test_disc_prior_input_guards(self):
+        import pytest
+
+        with pytest.raises(ValueError):
+            disc_prior_p_model(2, [0.0, 1.0], f=F2)  # q missing
+        with pytest.raises(ValueError):
+            disc_prior_p_model(2, [0.0, 1.0])  # neither form
+        with pytest.raises(ValueError):
+            disc_prior_p_model(2, np.zeros(4), T=0.5, q0=1.0)  # bad length
+
+    def test_rcond_zero_matrix_guard(self):
+        from pytcl.dynamic_estimation.performance_prediction import _rcond
+
+        assert _rcond(np.zeros((2, 2))) == 0.0

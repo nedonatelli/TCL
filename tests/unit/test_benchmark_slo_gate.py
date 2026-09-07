@@ -304,3 +304,47 @@ class TestSLOEntriesNotOrphaned:
             f"{sorted(orphaned)} in {SLOS_FILE} match no benchmark pytest "
             f"would actually collect -- these SLOs can never fire"
         )
+
+
+class TestP99Enforcement:
+    """max_p99_us must actually gate: the outlier-excluded worst round
+    (hd15iqr; pytest-benchmark records no percentiles, and the raw max
+    is stall-dominated on shared runners) is checked against it with
+    the same warning/failure percentages as the mean."""
+
+    @staticmethod
+    def _result_with_max(mean_ms: float, tail_ms: float) -> dict:
+        return {
+            "function": "bench",
+            "test": "test_kf_predict",
+            "params": "default",
+            "mean_ms": mean_ms,
+            "max_ms": tail_ms * 1.4,
+            "hd15iqr_ms": tail_ms,
+        }
+
+    def test_tail_violation_is_flagged_when_mean_is_compliant(self):
+        # Mean well under 50us, but a 1ms worst round against the 100us
+        # p99 SLO: the tail alone must produce the FAILURE.
+        issues = check_slo_violations([self._result_with_max(0.03, 1.0)], _SLOS)
+        assert len(issues) == 1
+        assert issues[0]["level"] == "FAILURE"
+        assert "p99" in issues[0]["message"]
+
+    def test_tail_warning_band(self):
+        # 0.12ms max is 20% over the 0.1ms p99 SLO: warning, not failure.
+        issues = check_slo_violations([self._result_with_max(0.03, 0.12)], _SLOS)
+        assert [i["level"] for i in issues] == ["WARNING"]
+
+    def test_compliant_tail_is_not_flagged(self):
+        issues = check_slo_violations([self._result_with_max(0.03, 0.09)], _SLOS)
+        assert issues == []
+
+    def test_entry_without_p99_slo_checks_mean_only(self):
+        slos = {
+            "benchmarks": {"test_kf_predict": {"max_mean_us": 50.0}},
+            "regression_thresholds": _SLOS["regression_thresholds"],
+        }
+        issues = check_slo_violations([self._result_with_max(1000.0, 5000.0)], slos)
+        assert len(issues) == 1
+        assert "mean" in issues[0]["message"]
