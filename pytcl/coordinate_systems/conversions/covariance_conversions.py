@@ -318,7 +318,10 @@ def ruv2ruv_cubature(
             # the unit sphere.
             z_mean[1:] = z_mean[1:] / np.linalg.norm(z_mean[1:])
             if not np.all(np.isfinite(z_mean[1:])):
-                z_mean[1:] = [1.0, 0.0, 0.0]
+                # Faithful transcription of the original's guard; not
+                # reachable through ruv2ruv itself, whose in-front
+                # directions cannot sum to a zero-norm mean.
+                z_mean[1:] = [1.0, 0.0, 0.0]  # pragma: no cover
 
             diff = conv - z_mean[:, np.newaxis]
             z_conv[:, k] = z_mean

@@ -239,3 +239,63 @@ class TestMonostatRuv2CartTaylor:
 
         with pytest.raises(ValueError):
             monostat_ruv2cart_taylor(Z_RUV_M, R_M, True, Z_RX, M_ROT, 7)
+
+
+class TestInputGuards:
+    """The validation guards and remaining default paths."""
+
+    def test_shape_guards_raise(self):
+        import pytest
+
+        with pytest.raises(ValueError):
+            uv2spher_ang_cubature(np.zeros((1, 2)), S_R_UV)  # too few rows
+        with pytest.raises(ValueError):
+            uv2spher_ang_cubature(Z_UV, np.zeros((3, 3)))  # wrong stack shape
+        with pytest.raises(ValueError):
+            uv2spher_ang_cubature(Z_UV, S_R_UV, system_type=9)
+        from pytcl.coordinate_systems.conversions.covariance_conversions import (
+            _spher_ang_to_unit,
+        )
+
+        with pytest.raises(ValueError):
+            # The private inverse mapping has its own guard; the public
+            # conversion raises earlier, so hit it directly.
+            _spher_ang_to_unit(np.zeros((2, 1)), 9)
+        with pytest.raises(ValueError):
+            ruv2ruv_cubature(
+                np.array([9e4, 0.1, 0.2]),
+                np.eye(3),
+                False,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                include_w=7,
+            )
+
+    def test_degenerate_direction_fallback_in_mean_direction_mode(self):
+        # Enormous direction noise spreads the converted unit vectors
+        # so far that some points invert; the zero/NaN handling and the
+        # unit-x fallback paths must still produce a unit direction.
+        s_huge = np.diag([1.0, 2.0, 2.0])
+        res = ruv2ruv_cubature(
+            np.array([1e2, 0.0, 0.0]),
+            s_huge,
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+        )
+        np.testing.assert_allclose(np.linalg.norm(res.z[1:, 0]), 1.0, atol=1e-9)
+
+    def test_taylor_default_receiver_is_origin(self):
+        at_origin = monostat_ruv2cart_taylor(Z_RUV_M, R_M, True, np.zeros(3), M_ROT, 1)
+        defaulted = monostat_ruv2cart_taylor(Z_RUV_M, R_M, True, None, M_ROT, 1)
+        np.testing.assert_allclose(defaulted.z, at_origin.z, atol=1e-12)
+        np.testing.assert_allclose(defaulted.R, at_origin.R, atol=1e-12)
