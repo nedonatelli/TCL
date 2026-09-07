@@ -279,6 +279,14 @@ Dynamic Estimation
      - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother``
    * - ``KalmanFIRSmootherCoeffs``
      - ``pytcl.dynamic_estimation.batch_smoothers.kalman_fir_smoother_coeffs``
+   * - ``uv2SpherAngCubature``
+     - ``pytcl.coordinate_systems.conversions.covariance_conversions.uv2spher_ang_cubature``
+   * - ``ruv2RuvCubature``
+     - ``pytcl.coordinate_systems.conversions.covariance_conversions.ruv2ruv_cubature``
+   * - ``cameraCoords2UVCoordsCubature``
+     - ``pytcl.coordinate_systems.conversions.covariance_conversions.camera_coords2uv_cubature``
+   * - ``monostatRuv2CartTaylor``
+     - ``pytcl.coordinate_systems.conversions.covariance_conversions.monostat_ruv2cart_taylor``
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``

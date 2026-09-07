@@ -8,6 +8,13 @@ This module provides:
 - Direction cosine representations (r-u-v)
 """
 
+from pytcl.coordinate_systems.conversions.covariance_conversions import (
+    ConvertedMeasurements,
+    camera_coords2uv_cubature,
+    monostat_ruv2cart_taylor,
+    ruv2ruv_cubature,
+    uv2spher_ang_cubature,
+)
 from pytcl.coordinate_systems.conversions.geodetic import (
     ecef2enu,
     ecef2geodetic,
@@ -58,6 +65,11 @@ __all__ = [
     "cart2ruv",
     # u-v direction cosines
     "camera_coords2uv",
+    "ConvertedMeasurements",
+    "camera_coords2uv_cubature",
+    "monostat_ruv2cart_taylor",
+    "ruv2ruv_cubature",
+    "uv2spher_ang_cubature",
     "cart2ruv_bistatic",
     "ruv2cart_bistatic",
     "ruv2ruv",

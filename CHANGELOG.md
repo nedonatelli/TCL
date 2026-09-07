@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Measurement conversions with covariances
+  (`coordinate_systems.conversions.covariance_conversions`):
+  cubature-based conversion of u-v measurements to spherical angles
+  (`uv2spher_ang_cubature`, with proper mean directions and wrapped
+  azimuth differences), of bistatic r-u-v(-w) measurements between
+  channel geometries (`ruv2ruv_cubature`, all three w-handling
+  modes), and of camera image-plane measurements to direction cosines
+  (`camera_coords2uv_cubature`), plus the debiased CM1/CM2/CM3
+  Taylor-series conversion of monostatic r-u-v to Cartesian
+  (`monostat_ruv2cart_taylor`, including the original's undocumented
+  uncorrected-CM2 algorithm). MATLAB's `fifthOrderCubPoints` and
+  pytcl's fifth-order rule are different (equally valid) degree-5
+  constructions, so default-point results differ at the rules' own
+  truncation error; fixtures pin one shared point set on both sides.
+  One upstream defect fixed and documented: with several measurements
+  and `useHalfRange=false`, `monostatRuv2CartTaylor` halves only the
+  first measurement's range while scaling every covariance; the port
+  halves all ranges.
 - Tracker performance prediction
   (`dynamic_estimation.performance_prediction`), completing the MATLAB
   `Performance_Prediction` directory: the modified Riccati equations

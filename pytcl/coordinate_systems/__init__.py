@@ -20,7 +20,9 @@ from pytcl.coordinate_systems import conversions, jacobians, projections, rotati
 # Geodetic conversions
 # Spherical/polar conversions
 from pytcl.coordinate_systems.conversions import (
+    ConvertedMeasurements,
     camera_coords2uv,
+    camera_coords2uv_cubature,
     cart2cyl,
     cart2pol,
     cart2ruv,
@@ -36,6 +38,7 @@ from pytcl.coordinate_systems.conversions import (
     geodetic2ecef,
     geodetic2enu,
     meridional_radius,
+    monostat_ruv2cart_taylor,
     ned2ecef,
     ned2enu,
     pol2cart,
@@ -43,10 +46,12 @@ from pytcl.coordinate_systems.conversions import (
     ruv2cart,
     ruv2cart_bistatic,
     ruv2ruv,
+    ruv2ruv_cubature,
     spher_ang2uv,
     sphere2cart,
     state_ruv2cart,
     uv2spher_ang,
+    uv2spher_ang_cubature,
 )
 
 # Jacobians
@@ -124,6 +129,11 @@ __all__ = [
     "cyl2cart",
     "ruv2cart",
     "camera_coords2uv",
+    "ConvertedMeasurements",
+    "camera_coords2uv_cubature",
+    "monostat_ruv2cart_taylor",
+    "ruv2ruv_cubature",
+    "uv2spher_ang_cubature",
     "cart2ruv_bistatic",
     "ruv2cart_bistatic",
     "ruv2ruv",
