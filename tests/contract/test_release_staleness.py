@@ -253,14 +253,12 @@ CLAIMED_ABSENT = {
     "docs/api/atmosphere.rst": {
         "text": "What remains unported",
         "symbols": [
-            "pytcl.atmosphere.nrlmsise00",
             "pytcl.atmosphere.thermosphere.jacchia_atmos_param",
         ],
     },
     "ROADMAP.md": {
         "text": "Refraction suite remainder",
         "symbols": [
-            "pytcl.atmosphere.nrlmsise00",
             "pytcl.atmosphere.thermosphere.jacchia_atmos_param",
             "pytcl.atmosphere.models.speed_of_sound_gas_table",
         ],

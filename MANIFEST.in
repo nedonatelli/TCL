@@ -1,0 +1,3 @@
+# The vendored NRLMSISE-00 C sources compiled by setup.py, plus their
+# license/provenance files, must ship in the sdist.
+include csrc/nrlmsise00/*

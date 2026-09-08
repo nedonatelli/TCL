@@ -89,6 +89,17 @@ def pytest_configure(config: "pytest.Config") -> None:
             "device layer would be skipped and this run would pass without "
             "exercising it."
         )
+    if os.environ.get("PYTCL_REQUIRE_NRLMSISE00_C") == "1":
+        try:
+            import pytcl.atmosphere._nrlmsise00_c  # noqa: F401
+        except ImportError as exc:
+            raise pytest.UsageError(
+                "PYTCL_REQUIRE_NRLMSISE00_C=1 but the compiled NRLMSISE-00 "
+                "extension is not importable; the suite would silently fall "
+                "back to the pure-Python transcription. Every CI runner has "
+                "a C compiler, so in CI this means the extension build "
+                f"broke: {exc}"
+            ) from exc
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
