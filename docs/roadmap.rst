@@ -7,12 +7,21 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.8.0)
+Current State (v2.9.0)
 ----------------------
 
-* **8,200+ tests** passing; coverage measured honestly (88.8% as CI's
-  branch-coverage gate sees it, with numba kernels traced; 93.8% locally
+* **8,300+ tests** passing; coverage measured honestly (90.0% as CI's
+  branch-coverage gate sees it, with numba kernels traced; higher locally
   where the MLX layer is visible), docstring examples run in CI
+* **Estimation expansion** (v2.9.0): the ensemble Kalman filter and
+  extended SRIF, the Monte-Carlo (QMC) Kalman family, BLUE polar and
+  spherical measurement updates, batch least-squares estimation, the
+  nine MATLAB batch/interval smoothers with square-root cubature
+  predict/update, the complete Performance_Prediction directory
+  (modified Riccati, asymptotic FIM, PCRLB recursions, track purity
+  and untrackability), and the u-v/r-u-v/camera covariance measurement
+  conversions -- all fixture-validated, with thirteen further upstream
+  MATLAB defects found, fixed and documented
 * **Static estimation suite** (v2.8.0): nine of MATLAB's 11
   Static_Estimation localization estimators (TDOA, bistatic range-only,
   range-rate-only, Doppler-ratio, bearings-only, and the

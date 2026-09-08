@@ -5,12 +5,12 @@
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-8000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,250+ functions** | **203 modules** | **8,000+ tests** | **88% coverage**
+**1,350+ functions** | **203 modules** | **8,000+ tests** | **90% coverage**
 
 ## Overview
 

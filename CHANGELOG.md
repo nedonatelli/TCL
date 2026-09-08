@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.9.0] - 2026-09-08
+
+Stability registry note (release checklist 3b): no STABLE module changed
+since v2.8.0. Three MATURE modules changed, all non-breaking --
+`dynamic_estimation.information_filter` gained the additive
+`esrif_predict`/`esrif_update` pair, and `astronomical.orbital_mechanics`
+plus `mathematical_functions.geometry.geometry` picked up scalar
+`float()` return coercions from the type-gate work with no numerical
+change.
 
 ### Added
 
