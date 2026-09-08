@@ -21,8 +21,9 @@ References
    Research: Space Physics, vol. 107, no. A12, Dec. 2002.
 """
 
+import math
 import warnings
-from typing import NamedTuple, Optional, Sequence, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -1914,9 +1915,223 @@ def nrlmsise00_alt_for_pressure(
     return z, out
 
 
+# Constituent labels in the MATLAB wrappers' gas-table order, with the
+# index of each in the model's d vector (d[5], the total mass density,
+# carries no label there).
+_GAS_TABLE_SPECIES = (
+    ("He", 0),
+    ("O", 1),
+    ("N2", 2),
+    ("O2", 3),
+    ("Ar", 4),
+    ("H", 6),
+    ("N", 7),
+    ("O*", 8),
+)
+
+
+def _default_lst(sec: float, g_long_deg: float) -> float:
+    # The local-solar-time approximation the reference documents
+    # (Users Guide v1.50) and the MATLAB Alt4Pres wrapper uses.
+    return sec / 3600.0 + g_long_deg / 15.0
+
+
+def _gas_table(out: NRLMSISEOutput) -> List[Tuple[str, float]]:
+    return [(name, float(out.d[i])) for name, i in _GAS_TABLE_SPECIES]
+
+
+def nrlmsise00_gas_temp(
+    day_of_year: int,
+    second_of_day: float,
+    lat_lon_alt: Sequence[float],
+    ap: float = 4.0,
+    f107: float = 150.0,
+    f107a: float = 150.0,
+    ap_array: Optional[Sequence[float]] = None,
+    lst: Optional[float] = None,
+) -> Tuple[List[Tuple[str, float]], NDArray[np.float64], NDArray[np.float64]]:
+    """
+    Atmospheric constituents and temperature at a geodetic location.
+
+    The pytcl equivalent of the MATLAB TCL's ``NRLMSISE00GasTemp`` MEX
+    wrapper: geodetic coordinates in radians/meters in, a labeled gas
+    table out.
+
+    Parameters
+    ----------
+    day_of_year : int
+        Day of the year (UTC), counting from 1.
+    second_of_day : float
+        Second of the day, from 0. Values above 86400 are clipped to
+        86400, as in the MATLAB wrapper.
+    lat_lon_alt : sequence of 3 floats
+        Geodetic latitude and longitude in radians and ellipsoidal
+        height in meters (WGS-84).
+    ap : float, optional
+        Daily geomagnetic index. Default 4.
+    f107 : float, optional
+        Previous-day 10.7 cm solar radio flux. Default 150.
+    f107a : float, optional
+        81-day average 10.7 cm flux. Default 150.
+    ap_array : sequence of 7 floats, optional
+        Storm-mode Ap history (see :func:`nrlmsise00`); activates storm
+        mode.
+    lst : float, optional
+        Local apparent solar time in hours. Default: computed as
+        ``sec/3600 + lon_deg/15``, the approximation the NRLMSISE-00
+        Users Guide documents and the MATLAB ``NRLMSISE00Alt4Pres``
+        wrapper uses.
+
+    Returns
+    -------
+    gas_table : list of (str, float)
+        Constituent names ('He', 'O', 'N2', 'O2', 'Ar', 'H', 'N',
+        'O*') and their number densities in particles per cubic meter.
+    t : ndarray, shape (2,)
+        t[0] is the exospheric temperature, t[1] the temperature at
+        altitude, in Kelvin.
+    d : ndarray, shape (9,)
+        The raw model densities; d[5] is the total mass density in
+        kg/m^3 (excluding anomalous oxygen), the rest are the number
+        densities of the table.
+
+    Examples
+    --------
+    >>> import math
+    >>> table, t, d = nrlmsise00_gas_temp(
+    ...     172, 29000.0, [60 * math.pi / 180, -70 * math.pi / 180, 400e3])
+    >>> table[2][0]
+    'N2'
+    >>> bool(t[1] > 500.0)  # thermospheric temperature at 400 km
+    True
+
+    Notes
+    -----
+    Deliberate divergences from the MATLAB MEX wrapper, whose upstream
+    defects are documented rather than reproduced: (1) it hardcodes
+    ``lst = 16`` (the formula above sits commented out in its source),
+    ignoring time of day and longitude; here the formula is the
+    default and ``lst`` is overridable. (2) Its optional-argument
+    guards test ``nlhs`` (the output count, capped at 3) instead of
+    ``nrhs``, so its Ap/F107/F107A inputs are silently ignored and it
+    always runs at defaults; even were they read, the F107A branch
+    assigns into F107, and the storm-mode dimensionality check
+    (``mxGetM==7 && mxGetM==1``) can never pass. Here all parameters
+    are honored, including storm mode.
+    """
+    lat_rad, lon_rad, alt_m = (float(v) for v in lat_lon_alt)
+    sec = min(float(second_of_day), 86400.0)
+    lon_deg = math.degrees(lon_rad)
+    if lst is None:
+        lst = _default_lst(sec, lon_deg)
+    out = nrlmsise00(
+        day_of_year,
+        sec,
+        alt_m / 1000.0,
+        math.degrees(lat_rad),
+        lon_deg,
+        lst,
+        f107a,
+        f107,
+        ap,
+        ap_array,
+    )
+    return (
+        _gas_table(out),
+        np.asarray(out.t, dtype=np.float64),
+        np.asarray(out.d, dtype=np.float64),
+    )
+
+
+def nrlmsise00_pressure_altitude(
+    day_of_year: int,
+    second_of_day: float,
+    pressure_pa: float,
+    lat_lon: Sequence[float],
+    ap: float = 4.0,
+    f107: float = 150.0,
+    f107a: float = 150.0,
+    ap_array: Optional[Sequence[float]] = None,
+    lst: Optional[float] = None,
+) -> Tuple[float, List[Tuple[str, float]], NDArray[np.float64], NDArray[np.float64]]:
+    """
+    Altitude of a pressure level at a geodetic location.
+
+    The pytcl equivalent of the MATLAB TCL's ``NRLMSISE00Alt4Pres`` MEX
+    wrapper: latitude/longitude in radians and pressure in Pascals in,
+    the altitude in meters plus the labeled gas table there out.
+
+    Parameters
+    ----------
+    day_of_year : int
+        Day of the year (UTC), counting from 1.
+    second_of_day : float
+        Second of the day, from 0; clipped to 86400.
+    pressure_pa : float
+        Pressure in Pascals.
+    lat_lon : sequence of 2 floats
+        Geodetic latitude and longitude in radians (WGS-84).
+    ap, f107, f107a, ap_array, lst : optional
+        As in :func:`nrlmsise00_gas_temp`.
+
+    Returns
+    -------
+    altitude_m : float
+        The altitude in meters at which the model pressure matches.
+    gas_table : list of (str, float)
+        Constituent number densities there (see
+        :func:`nrlmsise00_gas_temp`).
+    t : ndarray, shape (2,)
+        Exospheric temperature and temperature at altitude, Kelvin.
+    d : ndarray, shape (9,)
+        The raw model densities at the altitude.
+
+    Examples
+    --------
+    >>> import math
+    >>> alt_m, table, t, d = nrlmsise00_pressure_altitude(
+    ...     172, 29000.0, 1000.0, [60 * math.pi / 180, -70 * math.pi / 180])
+    >>> bool(15e3 < alt_m < 35e3)  # ~1000 Pa is upper-stratospheric
+    True
+
+    Notes
+    -----
+    The MATLAB MEX wrapper computes lst by the documented formula (its
+    GasTemp sibling hardcodes 16), but shares the ``nlhs``-for-``nrhs``
+    guard defect, so its Ap/F107/F107A inputs only take effect at
+    particular requested output counts and F107A is never applied. All
+    parameters are honored here.
+    """
+    lat_rad, lon_rad = (float(v) for v in lat_lon)
+    sec = min(float(second_of_day), 86400.0)
+    lon_deg = math.degrees(lon_rad)
+    if lst is None:
+        lst = _default_lst(sec, lon_deg)
+    alt_km, out = nrlmsise00_alt_for_pressure(
+        day_of_year,
+        sec,
+        pressure_pa,
+        math.degrees(lat_rad),
+        lon_deg,
+        lst,
+        f107a,
+        f107,
+        ap,
+        ap_array,
+    )
+    return (
+        alt_km * 1000.0,
+        _gas_table(out),
+        np.asarray(out.t, dtype=np.float64),
+        np.asarray(out.d, dtype=np.float64),
+    )
+
+
 __all__ = [
     "NRLMSISEOutput",
     "nrlmsise00",
     "nrlmsise00_alt_for_pressure",
+    "nrlmsise00_gas_temp",
+    "nrlmsise00_pressure_altitude",
     "uses_compiled_backend",
 ]

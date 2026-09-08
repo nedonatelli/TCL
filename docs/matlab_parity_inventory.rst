@@ -174,16 +174,16 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        and the complete ``Standard_Exponential_Model`` suite (bistatic
        r-u-v ray tracing, bias approximation, cubature conversions,
        refractivity reduction) ported and validated against MATLAB
-       fixtures; speed of sound (ideal-gas and Cramer algorithms).
-       **Missing:** the gas-table speed-of-sound algorithm (needs
-       NRLMSISE-00 output), the Jacchia 1971 model (pure MATLAB and
+       fixtures; speed of sound (all three algorithms, including the
+       gas-table mixture computation with its ``Constants.gasProp``
+       thermophysical data); NRLMSISE-00 proper (the reference C
+       compiled into ``pytcl.atmosphere._nrlmsise00_c`` with a
+       validated pure-Python fallback) and its wrapper API.
+       **Missing:** the Jacchia 1971 model (pure MATLAB and
        portable, but its validation oracle -- Sun position via
        ``readJPLEphem``, ``GCRS2ITRS``, ``Cal2UTC`` -- is the SOFA MEX
        chain plus JPL ephemeris data, so it is deferred as an
-       astronomy-integration task), NRLMSISE-00 proper (the MATLAB ``.m`` files are MEX
-       stubs; the implementation is Brodowski's public-domain C port in
-       ``3rd_Party_Libraries/nrlmsise-00-bc9a2fe/``, portable but a
-       standalone project). pytcl adds ionosphere models (Klobuchar, TEC)
+       astronomy-integration task). pytcl adds ionosphere models (Klobuchar, TEC)
        that the MATLAB area lacks.
    * - Gravity
      - 14
@@ -318,7 +318,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 58 validation files checking against independent
+cases that includes 59 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

@@ -181,6 +181,10 @@ Coordinate Systems
      - ``pytcl.astronomical.time_scales.jul_epoch2jul_date``
    * - ``NED2ECEF``
      - ``pytcl.coordinate_systems.conversions.ned2ecef``
+   * - ``NRLMSISE00Alt4Pres``
+     - ``pytcl.atmosphere.nrlmsise00.nrlmsise00_pressure_altitude``
+   * - ``NRLMSISE00GasTemp``
+     - ``pytcl.atmosphere.nrlmsise00.nrlmsise00_gas_temp``
    * - ``TAI2TT``
      - ``pytcl.astronomical.time_systems.tai_to_tt``
    * - ``TCB2TDB``
@@ -311,6 +315,9 @@ Dynamic Estimation
      - ``pytcl.coordinate_systems.conversions.covariance_conversions.camera_coords2uv_cubature``
    * - ``monostatRuv2CartTaylor``
      - ``pytcl.coordinate_systems.conversions.covariance_conversions.monostat_ruv2cart_taylor``
+   * - ``speedOfSoundInAir``
+     - ``pytcl.atmosphere.models.speed_of_sound_gas_table`` (algorithm 0) /
+       ``speed_of_sound_ideal_gas`` (1) / ``speed_of_sound_cramer`` (2)
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``

@@ -51,6 +51,7 @@ from pytcl.atmosphere.models import (
     isa_atmosphere,
     mach_number,
     speed_of_sound_cramer,
+    speed_of_sound_gas_table,
     speed_of_sound_ideal_gas,
     true_airspeed_from_mach,
     us_standard_atmosphere_1976,
@@ -59,6 +60,8 @@ from pytcl.atmosphere.nrlmsise00 import (
     NRLMSISEOutput,
     nrlmsise00,
     nrlmsise00_alt_for_pressure,
+    nrlmsise00_gas_temp,
+    nrlmsise00_pressure_altitude,
     uses_compiled_backend,
 )
 from pytcl.atmosphere.refraction import (
@@ -93,6 +96,8 @@ __all__ = [
     "NRLMSISEOutput",
     "nrlmsise00",
     "nrlmsise00_alt_for_pressure",
+    "nrlmsise00_gas_temp",
+    "nrlmsise00_pressure_altitude",
     "uses_compiled_backend",
     # Atmosphere state and models
     "AtmosphereState",
@@ -103,6 +108,7 @@ __all__ = [
     "true_airspeed_from_mach",
     "STANDARD_SPEED_OF_SOUND",
     "speed_of_sound_cramer",
+    "speed_of_sound_gas_table",
     "speed_of_sound_ideal_gas",
     # Simplified thermosphere model (see gh-79 for its accuracy envelope)
     "SimplifiedThermosphere",

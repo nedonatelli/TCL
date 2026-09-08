@@ -6,12 +6,12 @@ temperature, pressure, and density at various altitudes.
 """
 
 import warnings
-from typing import NamedTuple, Tuple
+from typing import NamedTuple, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.core.constants import UNIVERSAL_GAS_CONSTANT
+from pytcl.core.constants import AVOGADRO_CONSTANT, UNIVERSAL_GAS_CONSTANT
 
 
 class AtmosphereState(NamedTuple):
@@ -400,9 +400,8 @@ def speed_of_sound_ideal_gas(
     pressure (101325 Pa). Derived for temperatures of 0-30 degrees
     Celsius; a warning is emitted outside that range.
 
-    Port of ``speedOfSoundInAir.m`` algorithm 1. (Algorithm 0, which
-    needs a gas-constituent table from NRLMSISE-00, is not ported; see
-    the parity inventory.)
+    Port of ``speedOfSoundInAir.m`` algorithm 1. (Algorithm 0 is
+    :func:`speed_of_sound_gas_table`.)
 
     Parameters
     ----------
@@ -559,3 +558,96 @@ def speed_of_sound_cramer(
         + a[14] * xc**2
         + a[15] * xw * p * xc
     )
+
+
+def speed_of_sound_gas_table(
+    temperature: float,
+    pressure: float,
+    gas_table: Sequence[Tuple[str, float]],
+) -> float:
+    """
+    Speed of sound in a gas mixture from constituent number densities.
+
+    The detailed approach of Cramer: for each constituent, the real-gas
+    specific heats are corrected with the second virial coefficient and
+    its temperature derivatives (Cramer Eqs. 5-6), and the squared
+    speeds (Eq. 8) are averaged weighted by each constituent's share of
+    the mixture's mass density. Only relative number densities matter.
+
+    Port of ``speedOfSoundInAir.m`` algorithm 0. Species without
+    tabulated properties (e.g. the atomic O, N, H and anomalous oxygen
+    of an NRLMSISE-00 gas table) are silently excluded from both the
+    mixture mass and the average, exactly as the MATLAB source; a table
+    with no known species yields 0.0. Uses pytcl's CODATA-2018 gas
+    constants (MATLAB pins CODATA 2014; the difference is ~1e-8
+    relative).
+
+    Parameters
+    ----------
+    temperature : float
+        Temperature in Kelvin.
+    pressure : float
+        Pressure in Pascals.
+    gas_table : sequence of (str, float)
+        Pairs of constituent name and number density in particles per
+        cubic meter, e.g. from :func:`nrlmsise00_gas_temp`. Recognized
+        names: 'N2', 'O2', 'Ar', 'CO2', 'Ne', 'Kr', 'CH4', 'He',
+        'N2O', 'NO', 'Xe', 'CO', 'H2', 'H2O'.
+
+    Returns
+    -------
+    c : float
+        Speed of sound in meters per second.
+
+    References
+    ----------
+    - O. Cramer, "The variation of the specific heat ratio and the speed
+      of sound in air with temperature, pressure, humidity, and CO2
+      concentration," Journal of the Acoustical Society of America,
+      vol. 93, no. 5, pp. 2510-2516, May 1993.
+
+    Examples
+    --------
+    >>> c = speed_of_sound_gas_table(
+    ...     288.15, 101325.0,
+    ...     [("N2", 1.9e25), ("O2", 5.2e24), ("Ar", 2.3e23)],
+    ... )
+    >>> 330.0 < c < 350.0
+    True
+    """
+    from pytcl.atmosphere._gas_properties import gas_properties, molar_mass
+
+    # Mass density of each constituent in kg/m^3 (unknown species
+    # contribute zero, exactly as the MATLAB source).
+    mass_densities = []
+    for name, number_density in gas_table:
+        amu = molar_mass(name)
+        if amu is None:
+            mass_densities.append(0.0)
+        else:
+            mass_densities.append((number_density / AVOGADRO_CONSTANT) * (amu / 1000.0))
+    total_mass_density = sum(mass_densities)
+
+    r = UNIVERSAL_GAS_CONSTANT
+    t = temperature
+    p = pressure
+    c2 = 0.0
+    for (name, _), mass_density in zip(gas_table, mass_densities):
+        props = gas_properties(name, t)
+        if props is None:
+            continue
+        m_amu = props.molar_mass
+        # Cramer Eq. 5-6 in kJ/(kg K), with C0p converted from J.
+        c0p = props.c0p / 1e3
+        c1p = c0p - (r / m_amu) * (p / (r * t)) * t**2 * props.d2b_dt2
+        c1v = c1p - (r / m_amu) * (1.0 + 2.0 * p / (r * t) * t * props.db_dt)
+        gamma = c1p / c1v
+        m = m_amu / 1000.0  # amu (g/mol) -> kg/mol
+        # Cramer Eq. 8, weighted by the constituent's mass share.
+        c2 += (
+            (mass_density / total_mass_density)
+            * gamma
+            * (r * t / m)
+            * (1.0 + 2.0 * p * props.b / (r * t))
+        )
+    return float(np.sqrt(c2))
