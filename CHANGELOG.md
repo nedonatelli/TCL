@@ -24,6 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   altitude-return modification) and `uses_compiled_backend`. CI sets
   `PYTCL_REQUIRE_NRLMSISE00_C=1` so a broken extension build fails
   loudly instead of hiding behind the fallback.
+- **NRLMSISE-00 wrapper API**: `nrlmsise00_gas_temp` and
+  `nrlmsise00_pressure_altitude`, the pytcl equivalents of the MATLAB
+  `NRLMSISE00GasTemp`/`NRLMSISE00Alt4Pres` MEX wrappers (geodetic
+  coordinates in radians/meters, labeled constituent gas tables out).
+  Upstream defects are fixed loudly rather than reproduced: the MEX
+  wrappers' `nlhs`-for-`nrhs` argument guards silently discard their
+  Ap/F107/F107A inputs (and make storm mode unreachable), and
+  `NRLMSISE00GasTemp` hardcodes local solar time to 16 with the
+  documented formula commented out. Here every parameter is honored
+  and lst defaults to the Users-Guide formula `sec/3600 + lon/15`,
+  overridable.
+- **Gas-table speed of sound** (`speed_of_sound_gas_table`), the last
+  of `speedOfSoundInAir`'s three algorithms: real-gas specific-heat
+  corrections from second virial coefficients, mass-density-weighted
+  over the mixture (Cramer 1993). Backed by a transcription of the
+  MATLAB `Constants.gasProp` thermophysical data (14 gases; Kaye &
+  Laby exponential virial models, the AIP helium spline table, the
+  Hyland water correlation) and validated against MATLAB fixtures.
+  Species without tabulated data (atomic O, N, H, anomalous oxygen)
+  are excluded from the mixture exactly as upstream.
 - **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
   conversions (with optional topocentric clock terms), Besselian and
   Julian epochs, and Greenwich/local mean and apparent sidereal time

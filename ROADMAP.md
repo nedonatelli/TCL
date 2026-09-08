@@ -55,13 +55,12 @@ No dates are attached because none have been decided:
   (no region-dimension argument) -- better scoped as a future
   `quadrature.py` extension than `region_cubature.py`, deferred pending a
   consumer.
-- **Refraction suite remainder** — the suite itself shipped in v2.7.0
-  and NRLMSISE-00 in v2.10.0 (compiled reference C with a validated
-  pure-Python fallback; see CHANGELOG). Still open: the gas-table
-  speed-of-sound algorithm (now unblocked; its MATLAB wrapper API is
-  the next step of the NRLMSISE-00 tier) and Jacchia 1971 (pure MATLAB
-  and portable, but its validation oracle is the astrodynamics MEX
-  chain plus JPL ephemeris data -- an astronomy-integration task).
+- **Refraction suite remainder** — the suite itself shipped in v2.7.0,
+  NRLMSISE-00 (compiled reference C with a validated pure-Python
+  fallback) and the gas-table speed of sound in v2.10.0 (see
+  CHANGELOG). Still open: Jacchia 1971 (pure MATLAB and portable, but
+  its validation oracle is the astrodynamics MEX chain plus JPL
+  ephemeris data -- an astronomy-integration task).
   `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
 - **Localization-style static estimators, remainder** — nine of the 11
   shipped in v2.8.0 as `static_estimation.localization`. Still open:
