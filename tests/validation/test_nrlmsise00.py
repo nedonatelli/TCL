@@ -233,3 +233,29 @@ class TestStormMode:
     def test_ap_array_must_have_seven_elements(self):
         with pytest.raises((ValueError, TypeError)):
             nrlmsise00(310, 50000.0, 400.0, 55.0, 10.0, 16.0, ap_array=[10.0, 20.0])
+
+
+class TestCompiledEntryPoints:
+    """The raw extension entry points, called directly."""
+
+    def test_gtd7_reproduces_the_oracle(self):
+        if not uses_compiled_backend():
+            pytest.skip("compiled backend unavailable")
+        from pytcl.atmosphere import _nrlmsise00_c
+
+        d, t = _nrlmsise00_c.gtd7(
+            172, 29000.0, 400.0, 60.0, -70.0, 16.0, 150.0, 150.0, 4.0, None, False
+        )
+        np.testing.assert_allclose(t[0], 1250.5399435607994, rtol=1e-12)
+        np.testing.assert_allclose(d[0], 6.66517690495151978e11, rtol=1e-12)
+
+    def test_ghp7_returns_altitude_and_output(self):
+        if not uses_compiled_backend():
+            pytest.skip("compiled backend unavailable")
+        from pytcl.atmosphere import _nrlmsise00_c
+
+        alt, (d, t) = _nrlmsise00_c.ghp7(
+            172, 29000.0, 10.0, 60.0, -70.0, 16.0, 150.0, 150.0, 4.0, None
+        )
+        assert 15.0 < alt < 45.0
+        assert len(d) == 9 and len(t) == 2

@@ -301,6 +301,8 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "coordinate_systems.conversions.covariance_conversions": MaturityLevel.EXPERIMENTAL,  # new in v2.9.0
     # atmosphere
     "atmosphere.nrlmsise00": MaturityLevel.EXPERIMENTAL,  # new this release
+    "atmosphere._nrlmsise00_data": MaturityLevel.EXPERIMENTAL,  # generated coefficients, new this release
+    "atmosphere._nrlmsise00_c": MaturityLevel.EXPERIMENTAL,  # compiled reference C, new this release
     # dynamic_estimation
     "dynamic_estimation.kalman.ensemble": MaturityLevel.EXPERIMENTAL,  # new this release
     "dynamic_estimation.kalman.qmc": MaturityLevel.EXPERIMENTAL,  # new this release

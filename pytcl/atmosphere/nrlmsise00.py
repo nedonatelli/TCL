@@ -716,7 +716,7 @@ class _Model:
 
     # -- top-level model ----------------------------------------------
 
-    def gts7(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
+    def _gts7(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
         """Thermospheric portion (alt > 72.5 km)."""
         zn1 = [120.0, 110.0, 100.0, 90.0, 72.5]
         dgtr = 1.74533e-2
@@ -1260,7 +1260,7 @@ class _Model:
             d[5] = d[5] / 1000.0
         return NRLMSISEOutput(np.array(d), np.array(t))
 
-    def gtd7(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
+    def _gtd7(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
         """The full model: thermosphere plus lower atmosphere."""
         zn3 = [32.5, 20.0, 15.0, 10.0, 0.0]
         zn2 = [72.5, 55.0, 45.0, 32.5]
@@ -1278,7 +1278,7 @@ class _Model:
         altt = inp.alt if inp.alt > zn2[0] else zn2[0]
         tmp = inp.alt
         inp.alt = altt
-        soutput = self.gts7(inp, flags)
+        soutput = self._gts7(inp, flags)
         inp.alt = tmp
         if flags.sw[0]:  # metric adjustment
             dm28m = self.dm28 * 1.0e6
@@ -1421,9 +1421,9 @@ class _Model:
         t[1] = tz
         return NRLMSISEOutput(np.array(d), np.array(t))
 
-    def gtd7d(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
+    def _gtd7d(self, inp: _Input, flags: _Flags) -> NRLMSISEOutput:
         """The full model with anomalous O in the effective density."""
-        out = self.gtd7(inp, flags)
+        out = self._gtd7(inp, flags)
         d = out.d.copy()
         d[5] = 1.66e-24 * (
             4.0 * d[0]
@@ -1439,7 +1439,7 @@ class _Model:
             d[5] = d[5] / 1000.0
         return NRLMSISEOutput(d, out.t)
 
-    def ghp7(
+    def _ghp7(
         self, inp: _Input, flags: _Flags, press: float
     ) -> Tuple[float, NRLMSISEOutput]:
         """Altitude at a given pressure (hPa), plus the model output
@@ -1483,7 +1483,7 @@ class _Model:
         out = NRLMSISEOutput(np.zeros(9), np.zeros(2))
         for line in range(1, ltest + 1):
             inp.alt = z
-            out = self.gtd7(inp, flags)
+            out = self._gtd7(inp, flags)
             z = inp.alt
             xn = (
                 out.d[0]
@@ -1708,6 +1708,11 @@ def uses_compiled_backend() -> bool:
     (csrc/nrlmsise00); when it cannot be imported this module falls
     back to the pure-Python transcription, which is validated against
     the same C code, so results agree to ~1e-14 either way.
+
+    Examples
+    --------
+    >>> isinstance(uses_compiled_backend(), bool)
+    True
     """
     return _c_ext is not None
 
@@ -1766,13 +1771,13 @@ def _run(
     inp = _Input(doy, sec, alt_km, g_lat_deg, g_long_deg, lst, f107a, f107, ap, ap_list)
     model = _Model()
     if kind == "gtd7":
-        return model.gtd7(inp, flags)
+        return model._gtd7(inp, flags)
     if kind == "gtd7d":
-        return model.gtd7d(inp, flags)
+        return model._gtd7d(inp, flags)
     if kind == "ghp7":
         # ghp7 needs gravity set before its first scale-height use;
         # gtd7 sets it on the first iteration, as in the original.
-        return model.ghp7(inp, flags, press)
+        return model._ghp7(inp, flags, press)
     raise ValueError(kind)
 
 

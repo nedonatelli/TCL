@@ -141,8 +141,14 @@ class TestTheNameNoLongerClaimsNRLMSISE00:
     def test_the_old_names_are_gone(self):
         import pytcl.atmosphere as atmosphere
 
-        for gone in ("NRLMSISE00", "nrlmsise00", "NRLMSISE00Output"):
+        for gone in ("NRLMSISE00", "NRLMSISE00Output"):
             assert not hasattr(atmosphere, gone), gone
+        # Since v2.10.0 the name nrlmsise00 is back -- legitimately: it
+        # is the real model (the compiled reference C with a validated
+        # fallback), not the barometric approximation gh-79 renamed.
+        from pytcl.atmosphere.nrlmsise00 import nrlmsise00 as real_model
+
+        assert atmosphere.nrlmsise00 is real_model
 
     def test_the_docstring_disclaims_nrlmsise00(self):
         doc = SimplifiedThermosphere.__doc__ or ""
