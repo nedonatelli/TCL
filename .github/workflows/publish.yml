@@ -9,9 +9,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to build and publish (e.g. v2.0.0)"
+        description: "Tag or ref to build (e.g. v2.0.0)"
         required: true
         type: string
+      dry_run:
+        description: "Build and verify all distributions but do not publish"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   # Since the NRLMSISE-00 extension (csrc/nrlmsise00, built by setup.py)
@@ -88,6 +93,7 @@ jobs:
 
   publish:
     needs: [build_wheels, build_sdist]
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     # environment: github
     permissions:
