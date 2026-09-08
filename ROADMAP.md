@@ -56,13 +56,12 @@ No dates are attached because none have been decided:
   `quadrature.py` extension than `region_cubature.py`, deferred pending a
   consumer.
 - **Refraction suite remainder** — the suite itself shipped in v2.7.0
-  (see CHANGELOG). Still open: the gas-table speed-of-sound algorithm
-  (blocked on NRLMSISE-00); Jacchia 1971 (pure MATLAB and portable, but
-  its validation oracle is the astrodynamics MEX chain plus JPL ephemeris
-  data -- an astronomy-integration task); NRLMSISE-00 proper and its
-  dependents as a standalone project (the MATLAB `.m` files are MEX
-  stubs; the complete public-domain C implementation ships in the MATLAB
-  tree and compiles/runs headlessly as a validation oracle).
+  and NRLMSISE-00 in v2.10.0 (compiled reference C with a validated
+  pure-Python fallback; see CHANGELOG). Still open: the gas-table
+  speed-of-sound algorithm (now unblocked; its MATLAB wrapper API is
+  the next step of the NRLMSISE-00 tier) and Jacchia 1971 (pure MATLAB
+  and portable, but its validation oracle is the astrodynamics MEX
+  chain plus JPL ephemeris data -- an astronomy-integration task).
   `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
 - **Localization-style static estimators, remainder** — nine of the 11
   shipped in v2.8.0 as `static_estimation.localization`. Still open:
@@ -84,8 +83,6 @@ No dates are attached because none have been decided:
 - **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
-- **NRLMSISE-00 proper** — load the NOAA coefficient tables and retire the
-  barometric approximation's caveats (gh-79), plus HWM winds
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
   ceiling is reachable by reconstructing per-scan covariance from a
   steady-state Cholesky factor, but it touches every read path and breaks

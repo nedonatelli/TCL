@@ -55,6 +55,12 @@ from pytcl.atmosphere.models import (
     true_airspeed_from_mach,
     us_standard_atmosphere_1976,
 )
+from pytcl.atmosphere.nrlmsise00 import (
+    NRLMSISEOutput,
+    nrlmsise00,
+    nrlmsise00_alt_for_pressure,
+    uses_compiled_backend,
+)
 from pytcl.atmosphere.refraction import (
     AstroRefParams,
     AstroRefractionResult,
@@ -84,6 +90,10 @@ from pytcl.atmosphere.thermosphere import (
 )
 
 __all__ = [
+    "NRLMSISEOutput",
+    "nrlmsise00",
+    "nrlmsise00_alt_for_pressure",
+    "uses_compiled_backend",
     # Atmosphere state and models
     "AtmosphereState",
     "us_standard_atmosphere_1976",

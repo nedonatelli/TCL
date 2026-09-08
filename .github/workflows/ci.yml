@@ -98,6 +98,11 @@ jobs:
       # are slow and only need exercising on one platform.
       - name: Run tests
         if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
+        env:
+          # Every runner has a C compiler, so a missing compiled
+          # NRLMSISE-00 extension in CI means the build broke; fail
+          # loudly instead of silently testing the pure-Python fallback.
+          PYTCL_REQUIRE_NRLMSISE00_C: "1"
         run: uv run pytest tests/ -n auto --benchmark-skip -m "not examples" -q
 
       # Serial, because coverage under xdist has to merge per-worker data and
@@ -129,6 +134,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         env:
           NUMBA_DISABLE_JIT: "1"
+          PYTCL_REQUIRE_NRLMSISE00_C: "1"
         run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples" -q
 
       # Patch coverage: the lines THIS change touches must be tested. The

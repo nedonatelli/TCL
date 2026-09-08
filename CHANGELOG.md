@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **NRLMSISE-00 proper** (`pytcl.atmosphere.nrlmsise00`), closing
+  gh-79's caveats: the vendored public-domain reference C
+  implementation (Brodowski's port with NRL's modifications,
+  provenance and license in `csrc/nrlmsise00/`) is now compiled into
+  the package as `pytcl.atmosphere._nrlmsise00_c` — pytcl's first
+  compiled extension, chosen for performance. A pure-Python
+  transcription of the same C (validated against it at 1.1e-14 worst
+  relative error over 993 oracle records spanning every internal
+  model boundary, storm mode and effective-density paths) serves as
+  the fallback wherever the extension cannot build, so degraded
+  installs lose speed, never correctness. Public API: `nrlmsise00`
+  (gtd7/gtd7d), `nrlmsise00_alt_for_pressure` (ghp7, preserving NRL's
+  altitude-return modification) and `uses_compiled_backend`. CI sets
+  `PYTCL_REQUIRE_NRLMSISE00_C=1` so a broken extension build fails
+  loudly instead of hiding behind the fallback.
+
+### Changed
+
+- The package is no longer pure-Python: `setup.py` builds the
+  NRLMSISE-00 extension. Platform wheels land in the publish workflow
+  before the next release; source installs need a C compiler (or fall
+  back to the pure-Python model path).
+
 ## [2.9.0] - 2026-09-08
 
 Stability registry note (release checklist 3b): no STABLE module changed
