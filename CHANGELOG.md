@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   altitude-return modification) and `uses_compiled_backend`. CI sets
   `PYTCL_REQUIRE_NRLMSISE00_C=1` so a broken extension build fails
   loudly instead of hiding behind the fallback.
+- **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
+  conversions (with optional topocentric clock terms), Besselian and
+  Julian epochs, and Greenwich/local mean and apparent sidereal time
+  (IAU 2006/2000A) on two-part Julian dates — 14 functions covering
+  the MATLAB library's SOFA-MEX time-scale wrappers (`TT2TDB`,
+  `TDB2TCB`, `TT2GMST`, `TT2LAST`, ...), backed by pyerfa (the
+  liberated SOFA, in the `astronomy` extra) and cross-validated
+  against astropy's independent plumbing of the same kernels.
 
 ### Changed
 

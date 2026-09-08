@@ -42,7 +42,7 @@ it depends on; only the structurally significant edges are drawn.
        subgraph Geometry_and_Navigation
            CS["coordinate_systems<br/>7 modules"]
            NA["navigation<br/>5 modules"]
-           AS["astronomical<br/>9 modules"]
+           AS["astronomical<br/>10 modules"]
        end
 
        subgraph Environment_Models
@@ -178,8 +178,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 52
      - 2-D, 3-D and N-D assignment, gating, JPDA, k-best, network flow
    * - ``astronomical``
-     - 9
-     - 149
+     - 10
+     - 163
      - Orbital mechanics, SGP4/SDP4, TLEs, ephemerides, reference frames
    * - ``containers``
      - 8

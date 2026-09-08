@@ -154,6 +154,22 @@ from pytcl.astronomical.special_orbits import (
     true_anomaly_to_parabolic_anomaly,
     velocity_parabolic,
 )
+from pytcl.astronomical.time_scales import (
+    besselian_epoch2tdb,
+    jul_date2jul_epoch,
+    jul_epoch2jul_date,
+    tcb2tdb,
+    tcg2tt,
+    tdb2besselian_epoch,
+    tdb2tcb,
+    tdb2tt,
+    tt2gast,
+    tt2gmst,
+    tt2last,
+    tt2lmst,
+    tt2tcg,
+    tt2tdb,
+)
 from pytcl.astronomical.time_systems import (
     JD_GPS_EPOCH,  # Julian dates; Time scales; Unix time; GPS week; Sidereal time; Leap seconds; Constants
     JD_J2000,
@@ -202,6 +218,21 @@ __all__ = [
     # Cache management, consistent with pytcl.magnetism.
     "clear_transformation_cache",
     "get_transformation_cache_info",
+    # Time scales (SOFA/ERFA-backed, two-part Julian dates)
+    "tt2tdb",
+    "tdb2tt",
+    "tt2tcg",
+    "tcg2tt",
+    "tdb2tcb",
+    "tcb2tdb",
+    "tdb2besselian_epoch",
+    "besselian_epoch2tdb",
+    "jul_date2jul_epoch",
+    "jul_epoch2jul_date",
+    "tt2gmst",
+    "tt2gast",
+    "tt2lmst",
+    "tt2last",
     # Time systems - Julian dates
     "cal_to_jd",
     "jd_to_cal",

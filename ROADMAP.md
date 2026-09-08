@@ -80,7 +80,6 @@ No dates are attached because none have been decided:
   the cubature/Taylor covariance conversions in v2.9.0
   (`covariance_conversions`). Still open: the u-v measurement
   Jacobians/Hessians
-- **Time scales** — TDB/TCB/TCG, Besselian epochs, sidereal local time
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
