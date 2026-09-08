@@ -13,6 +13,7 @@ additionally cross-checked against the fixtures at its measured
 fallback (CI also sets PYTCL_REQUIRE_NRLMSISE00_C=1).
 """
 
+import importlib
 import warnings
 from pathlib import Path
 
@@ -56,7 +57,10 @@ def _run_record(rec, py_fallback=False):
     ap_a = list(map(float, rec[10:17])) if mode == 1 else None
     kind = "gtd7d" if mode == 2 else "gtd7"
     if py_fallback:
-        from pytcl.atmosphere import nrlmsise00 as mod
+        # The package re-exports a function named like the submodule,
+        # shadowing it on every attribute-based import form; only the
+        # module registry hands back the module itself.
+        mod = importlib.import_module("pytcl.atmosphere.nrlmsise00")
 
         old = mod._c_ext
         mod._c_ext = None
@@ -82,12 +86,12 @@ class TestAgainstReferenceC:
         assert worst < RTOL, f"worst relative error {worst:.3e}"
 
     def test_python_transcription_matches_fixtures(self):
-        # The fallback is validated in its own right, on a spread of
-        # every 13th record (all regimes, ~77 cases) for runtime.
+        # The fallback is validated in its own right over the full
+        # grid (the pure-Python model runs the 993 records in ~2 s).
         worst = 0.0
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            for rec, exp in _records()[::13]:
+            for rec, exp in _records():
                 got = _run_record(rec, py_fallback=True)
                 for g, e in zip(got, exp):
                     denom = abs(e) if e != 0 else 1.0
@@ -118,6 +122,76 @@ class TestBackendContract:
         c_out = _run_record(rec)
         py_out = _run_record(rec, py_fallback=True)
         np.testing.assert_allclose(c_out, py_out, rtol=1e-12)
+
+
+class TestPythonFallbackPaths:
+    """The fallback must carry the full API, not just gtd7."""
+
+    def _without_c(self):
+        import contextlib
+
+        mod = importlib.import_module("pytcl.atmosphere.nrlmsise00")
+
+        @contextlib.contextmanager
+        def ctx():
+            old = mod._c_ext
+            mod._c_ext = None
+            try:
+                yield
+            finally:
+                mod._c_ext = old
+
+        return ctx()
+
+    def test_fallback_alt_for_pressure_matches_compiled(self):
+        c_alt, c_out = nrlmsise00_alt_for_pressure(
+            172, 29000.0, 1000.0, 60.0, -70.0, 16.0
+        )
+        with self._without_c():
+            py_alt, py_out = nrlmsise00_alt_for_pressure(
+                172, 29000.0, 1000.0, 60.0, -70.0, 16.0
+            )
+        np.testing.assert_allclose(py_alt, c_alt, rtol=1e-10)
+        np.testing.assert_allclose(py_out.d, c_out.d, rtol=1e-10)
+
+    def test_fallback_storm_mode_matches_compiled(self):
+        aph = [148.8, 160.0, 139.0, 127.0, 118.0, 122.5, 115.4]
+        c_out = nrlmsise00(
+            310,
+            50000.0,
+            400.0,
+            55.0,
+            10.0,
+            16.0,
+            140.0,
+            180.0,
+            48.8,
+            ap_array=aph,
+        )
+        with self._without_c():
+            py_out = nrlmsise00(
+                310,
+                50000.0,
+                400.0,
+                55.0,
+                10.0,
+                16.0,
+                140.0,
+                180.0,
+                48.8,
+                ap_array=aph,
+            )
+        np.testing.assert_allclose(py_out.d, c_out.d, rtol=1e-12)
+        np.testing.assert_allclose(py_out.t, c_out.t, rtol=1e-12)
+
+    def test_unknown_kind_rejected_on_both_backends(self):
+        from pytcl.atmosphere.nrlmsise00 import _run
+
+        with pytest.raises(ValueError):
+            _run(172, 0.0, 100.0, 0.0, 0.0, 16.0, 150.0, 150.0, 4.0, None, "nope")
+        with self._without_c():
+            with pytest.raises(ValueError):
+                _run(172, 0.0, 100.0, 0.0, 0.0, 16.0, 150.0, 150.0, 4.0, None, "nope")
 
 
 class TestAltForPressure:
