@@ -299,6 +299,8 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # coordinate_systems
     "coordinate_systems.conversions.uv": MaturityLevel.EXPERIMENTAL,  # new in v2.8.0
     "coordinate_systems.conversions.covariance_conversions": MaturityLevel.EXPERIMENTAL,  # new in v2.9.0
+    # astronomical
+    "astronomical.time_scales": MaturityLevel.EXPERIMENTAL,  # new this release
     # atmosphere
     "atmosphere.nrlmsise00": MaturityLevel.EXPERIMENTAL,  # new this release
     "atmosphere._nrlmsise00_data": MaturityLevel.EXPERIMENTAL,  # generated coefficients, new this release

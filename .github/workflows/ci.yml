@@ -86,7 +86,12 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --locked
+        # The coverage cell alone installs the extras, so tests gated on
+        # optional dependencies (astropy-backed time scales, pywavelets,
+        # polars, ...) execute and their modules count toward coverage
+        # instead of skipping into a false patch-coverage hole. The other
+        # cells keep the core dependency set to verify it stands alone.
+        run: uv sync --locked ${{ (matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') && '--extra all' || '' }}
 
       # Coverage runs on exactly one job -- the one that uploads it. Measured
       # on this suite, tracing costs 1.77x (81s -> 144s), and the other eight

@@ -47,6 +47,19 @@ Astronomical time systems and conversions.
    :undoc-members:
    :show-inheritance:
 
+Time Scales
+-----------
+
+Relativistic and dynamical time-scale conversions (TT/TDB/TCG/TCB,
+Besselian and Julian epochs, sidereal angles) on two-part Julian
+dates, backed by ERFA -- the same IAU SOFA routines the MATLAB
+library wraps as MEX files. Requires the ``astronomy`` extra.
+
+.. automodule:: pytcl.astronomical.time_scales
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 JPL Ephemerides
 ---------------
 

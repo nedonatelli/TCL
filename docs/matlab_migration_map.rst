@@ -157,6 +157,8 @@ Coordinate Systems
 
    * - MATLAB
      - pytcl
+   * - ``BesselEpoch2TDB``
+     - ``pytcl.astronomical.time_scales.besselian_epoch2tdb``
    * - ``Cal2UTC``
      - ``pytcl.astronomical.time_systems.cal_to_jd``
    * - ``Cart2Ellipse``
@@ -173,14 +175,36 @@ Coordinate Systems
      - ``pytcl.coordinate_systems.conversions.ecef2ned``
    * - ``ENU2ECEF``
      - ``pytcl.coordinate_systems.conversions.enu2ecef``
+   * - ``JulDate2JulEpoch``
+     - ``pytcl.astronomical.time_scales.jul_date2jul_epoch``
+   * - ``JulEpoch2JulDate``
+     - ``pytcl.astronomical.time_scales.jul_epoch2jul_date``
    * - ``NED2ECEF``
      - ``pytcl.coordinate_systems.conversions.ned2ecef``
    * - ``TAI2TT``
      - ``pytcl.astronomical.time_systems.tai_to_tt``
+   * - ``TCB2TDB``
+     - ``pytcl.astronomical.time_scales.tcb2tdb``
+   * - ``TCG2TT``
+     - ``pytcl.astronomical.time_scales.tcg2tt``
+   * - ``TDB2BesselEpoch``
+     - ``pytcl.astronomical.time_scales.tdb2besselian_epoch``
+   * - ``TDB2TCB``
+     - ``pytcl.astronomical.time_scales.tdb2tcb``
+   * - ``TDB2TT``
+     - ``pytcl.astronomical.time_scales.tdb2tt``
    * - ``TT2GAST``
-     - ``pytcl.astronomical.time_systems.gast``
+     - ``pytcl.astronomical.time_scales.tt2gast``
    * - ``TT2GMST``
-     - ``pytcl.astronomical.time_systems.gmst``
+     - ``pytcl.astronomical.time_scales.tt2gmst``
+   * - ``TT2LAST``
+     - ``pytcl.astronomical.time_scales.tt2last``
+   * - ``TT2LMST``
+     - ``pytcl.astronomical.time_scales.tt2lmst``
+   * - ``TT2TCG``
+     - ``pytcl.astronomical.time_scales.tt2tcg``
+   * - ``TT2TDB``
+     - ``pytcl.astronomical.time_scales.tt2tdb``
    * - ``UKFUpdate``
      - ``pytcl.dynamic_estimation.kalman.unscented.ukf_update``
    * - ``UTC2TAI``
