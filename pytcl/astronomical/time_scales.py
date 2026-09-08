@@ -10,7 +10,7 @@ The MATLAB TCL implements these as MEX stubs over the IAU SOFA
 library; this module uses **pyerfa** (ERFA is the liberated SOFA with
 identical algorithms, shipped with astropy in the ``astronomy``
 extra), so the numerical core is the same code the MATLAB functions
-call. Times follow the SOFA two-part Julian date convention
+call [1]_. Times follow the SOFA two-part Julian date convention
 ``(jd1, jd2)`` for full double precision, exactly as the MATLAB
 signatures do.
 
