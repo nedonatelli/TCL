@@ -14,12 +14,55 @@ on:
         type: string
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    # environment: github
-    permissions:
-      id-token: write  # For trusted publishing
+  # Since the NRLMSISE-00 extension (csrc/nrlmsise00, built by setup.py)
+  # the package ships platform wheels, built by cibuildwheel per OS.
+  # Linux covers manylinux + musllinux on x86_64 and (via QEMU) aarch64;
+  # macos-14 builds arm64 and x86_64; windows builds AMD64. Every wheel
+  # runs the canonical NRLMSISE-00 check against the compiled backend
+  # before it is accepted.
+  build_wheels:
+    name: Wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
+      - name: Set up QEMU for aarch64
+        if: runner.os == 'Linux'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.2
+        env:
+          CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-*"
+          # musllinux is skipped: scipy/numba wheel coverage there is
+          # not dependable, and the import test would source-build.
+          CIBW_SKIP: "*-musllinux*"
+          CIBW_ARCHS_LINUX: "x86_64 aarch64"
+          CIBW_ARCHS_MACOS: "arm64 x86_64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          # The extension must import and reproduce the reference
+          # values, or the wheel is rejected.
+          CIBW_TEST_COMMAND: >-
+            python -c "from pytcl.atmosphere.nrlmsise00 import nrlmsise00, uses_compiled_backend;
+            assert uses_compiled_backend();
+            out = nrlmsise00(172, 29000.0, 400.0, 60.0, -70.0, 16.0);
+            assert abs(out.t[0] - 1250.5399435607994) < 1e-9"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  build_sdist:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,13 +73,34 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install build dependencies
+      - name: Build sdist
         run: |
-          python -m pip install --upgrade pip
-          pip install build
+          python -m pip install --upgrade pip build
+          python -m build --sdist
 
-      - name: Build package
-        run: python -m build
+      - name: Verify the sdist carries the C sources
+        run: tar tzf dist/*.tar.gz | grep -q "csrc/nrlmsise00/nrlmsise-00.c"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish:
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    # environment: github
+    permissions:
+      id-token: write  # For trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List distributions
+        run: ls -l dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
