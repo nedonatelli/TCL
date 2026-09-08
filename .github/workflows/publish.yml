@@ -18,6 +18,11 @@ on:
         default: false
         type: boolean
 
+# The build jobs only read the repo; the publish job alone adds the
+# OIDC token for PyPI trusted publishing.
+permissions:
+  contents: read
+
 jobs:
   # Since the NRLMSISE-00 extension (csrc/nrlmsise00, built by setup.py)
   # the package ships platform wheels, built by cibuildwheel per OS.
