@@ -349,8 +349,8 @@ class MultiTargetTracker:
 
     def _predict_all(self, dt: float) -> None:
         """Predict all tracks."""
-        F = self._F(dt)  # ty: ignore[call-top-callable]
-        Q = self._Q(dt)  # ty: ignore[call-top-callable]
+        F = self._F(dt)
+        Q = self._Q(dt)
 
         for track in self._tracks:
             if track.status != TrackStatus.DELETED:
