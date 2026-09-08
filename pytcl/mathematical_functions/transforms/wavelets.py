@@ -371,7 +371,7 @@ def cwt(
     if callable(wavelet):
 
         def wavelet_func(M: int, scale: float) -> NDArray[np.floating]:
-            return wavelet(M)  # ty: ignore[call-top-callable, invalid-return-type]
+            return wavelet(M)  # ty: ignore[invalid-return-type]
 
         wavelet_name = "custom"
     elif wavelet == "morlet":
