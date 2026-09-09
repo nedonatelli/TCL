@@ -42,6 +42,11 @@ from pytcl.performance_evaluation.estimation_metrics import (
     rmse,
     velocity_rmse,
 )
+from pytcl.performance_evaluation.mospa import (
+    calc_mospa_error,
+    mmospa2tar_2d,
+    mmospa_approx,
+)
 
 # Track metrics
 from pytcl.performance_evaluation.track_metrics import (
@@ -56,6 +61,10 @@ from pytcl.performance_evaluation.track_metrics import (
 )
 
 __all__ = [
+    # MOSPA family
+    "calc_mospa_error",
+    "mmospa2tar_2d",
+    "mmospa_approx",
     # Track metrics
     "OSPAResult",
     "MOTMetrics",

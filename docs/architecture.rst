@@ -61,7 +61,8 @@ it depends on; only the structurally significant edges are drawn.
            IO["io<br/>12 modules"]
            GP["gpu<br/>7 modules"]
            PL["plotting<br/>4 modules"]
-           PE["performance_evaluation<br/>2 modules"]
+           PE["performance_evaluation<br/>3 modules"]
+           SC["scheduling<br/>1 module"]
        end
 
        TR --> DE
@@ -236,6 +237,10 @@ Counts are measured from the packages themselves rather than asserted;
      - 3
      - 36
      - WMM, WMMHR, IGRF, EMM
+   * - ``scheduling``
+     - 1
+     - 4
+     - Interval scheduling (greedy, partitioning, min-lateness, weighted DP)
    * - ``static_estimation``
      - 4
      - 50
@@ -245,9 +250,9 @@ Counts are measured from the packages themselves rather than asserted;
      - 30
      - DEM handling, line of sight, horizon and viewshed
    * - ``performance_evaluation``
-     - 2
-     - 21
-     - NEES, NIS, OSPA, Cramer-Rao bounds
+     - 3
+     - 24
+     - NEES, NIS, OSPA, MOSPA/MMOSPA, Cramer-Rao bounds
    * - ``diagnostics``
      - 1
      - 10

@@ -26,3 +26,15 @@ State estimation performance metrics (NEES, NIS).
    :members:
    :undoc-members:
    :show-inheritance:
+
+MOSPA Metrics
+-------------
+
+Mean OSPA error over weighted hypothesis sets and MMOSPA estimates
+(the exact two-target 2-D solution and the general sweep
+approximation).
+
+.. automodule:: pytcl.performance_evaluation.mospa
+   :members:
+   :undoc-members:
+   :show-inheritance:
