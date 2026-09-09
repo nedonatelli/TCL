@@ -1,14 +1,17 @@
 """
 Atmospheric Modeling and Orbital Decay Analysis
 
-Demonstrates the simplified thermosphere model and drag calculations
-for analyzing satellite orbital decay and atmospheric interactions.
+Demonstrates the NRLMSISE-00 empirical atmosphere (the reference C
+implementation, compiled into pytcl) alongside the simplified
+thermosphere model and drag calculations for analyzing satellite
+orbital decay and atmospheric interactions.
 
 Key scenarios:
-1. ISS altitude profile across different solar activity levels
-2. Satellite drag coefficient database
-3. Orbit decay simulation (LEO satellite)
-4. Temperature profile comparison across altitude range
+1. NRLMSISE-00 density and composition, quiet vs geomagnetic storm
+2. ISS altitude profile across different solar activity levels
+3. Satellite drag coefficient database
+4. Orbit decay simulation (LEO satellite)
+5. Temperature profile comparison across altitude range
 """
 
 import os
@@ -20,8 +23,81 @@ import plotly.subplots as sp
 
 from pytcl.atmosphere import (
     SimplifiedThermosphere,
+    nrlmsise00,
     us_standard_atmosphere_1976,
+    uses_compiled_backend,
 )
+
+
+def plot_nrlmsise00_profiles():
+    """
+    Plot NRLMSISE-00 mass density and constituents vs altitude.
+
+    Compares a quiet day against a geomagnetic storm (7-element Ap
+    history), using the same reference C code the MATLAB TCL wraps.
+    """
+    backend = "compiled C extension" if uses_compiled_backend() else "pure Python"
+    print(f"NRLMSISE-00 backend: {backend}")
+
+    altitudes_km = np.linspace(100, 1000, 90)
+    quiet_rho = []
+    storm_rho = []
+    quiet_t = []
+    storm_t = []
+    storm_ap = [148.8, 160.0, 139.0, 127.0, 118.0, 122.5, 115.4]
+    for alt in altitudes_km:
+        q = nrlmsise00(310, 50000.0, float(alt), 55.0, 10.0, 16.0, 140.0, 180.0, 4.0)
+        st = nrlmsise00(
+            310,
+            50000.0,
+            float(alt),
+            55.0,
+            10.0,
+            16.0,
+            140.0,
+            180.0,
+            48.8,
+            ap_array=storm_ap,
+        )
+        quiet_rho.append(q.d[5])
+        storm_rho.append(st.d[5])
+        quiet_t.append(q.t[1])
+        storm_t.append(st.t[1])
+
+    fig = sp.make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=("Total mass density", "Temperature"),
+    )
+    fig.add_trace(
+        go.Scatter(x=quiet_rho, y=altitudes_km, name="Quiet (Ap 4)"), row=1, col=1
+    )
+    fig.add_trace(
+        go.Scatter(x=storm_rho, y=altitudes_km, name="Storm (Ap 48.8)"), row=1, col=1
+    )
+    fig.add_trace(
+        go.Scatter(x=quiet_t, y=altitudes_km, name="Quiet T", showlegend=False),
+        row=1,
+        col=2,
+    )
+    fig.add_trace(
+        go.Scatter(x=storm_t, y=altitudes_km, name="Storm T", showlegend=False),
+        row=1,
+        col=2,
+    )
+    fig.update_xaxes(type="log", title_text="Density (kg/m^3)", row=1, col=1)
+    fig.update_xaxes(title_text="Temperature (K)", row=1, col=2)
+    fig.update_yaxes(title_text="Altitude (km)", row=1, col=1)
+    fig.update_layout(title="NRLMSISE-00: quiet vs geomagnetic storm")
+
+    ratio_400 = None
+    for alt, qd, sd in zip(altitudes_km, quiet_rho, storm_rho):
+        if abs(alt - 400.0) < 6:
+            ratio_400 = sd / qd
+            break
+    if ratio_400 is not None:
+        print(f"Storm/quiet density ratio near 400 km: {ratio_400:.2f}x")
+    return fig
 
 
 def plot_density_vs_altitude():
@@ -404,6 +480,13 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
 
     # Generate all plots
+    fig0 = plot_nrlmsise00_profiles()
+    output_path0 = os.path.join(output_dir, "nrlmsise00_profiles.html")
+    fig0.write_html(
+        output_path0, include_plotlyjs="cdn", div_id=Path(output_path0).stem
+    )
+    print(f"OK Saved: {output_path0}")
+
     fig1 = plot_density_vs_altitude()
     output_path1 = os.path.join(output_dir, "thermosphere_density.html")
     fig1.write_html(

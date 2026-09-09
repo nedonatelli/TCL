@@ -515,6 +515,33 @@ def example_time_series():
     )
 
 
+def example_time_scales():
+    """Relativistic time scales on two-part Julian dates (v2.10.0)."""
+    import numpy as np
+
+    from pytcl.astronomical import tt2gmst, tt2tcg, tt2tdb
+
+    print("\n" + "=" * 70)
+    print("Time scales: TT -> TDB / TCG, and sidereal time")
+    print("=" * 70)
+
+    jd1, jd2 = 2451545.0, 0.0  # J2000.0 (TT)
+    tdb1, tdb2 = tt2tdb(jd1, jd2)
+    tcg1, tcg2 = tt2tcg(jd1, jd2)
+    tdb_minus_tt_ms = ((tdb1 - jd1) + (tdb2 - jd2)) * 86400.0 * 1e3
+    tcg_minus_tt_ms = ((tcg1 - jd1) + (tcg2 - jd2)) * 86400.0 * 1e3
+    print(
+        f"\n  At J2000.0: TDB - TT = {tdb_minus_tt_ms:+.4f} ms "
+        "(quasi-periodic, ~1.7 ms amplitude)"
+    )
+    print(
+        f"              TCG - TT = {tcg_minus_tt_ms:+.4f} ms "
+        "(secular drift, ~22 ms/year)"
+    )
+    gmst = tt2gmst(jd1, jd2)
+    print(f"  Greenwich mean sidereal time at J2000.0: {np.degrees(gmst):.4f} deg")
+
+
 def example_ephemeris_versions():
     """Compare different ephemeris versions."""
     print("\n" + "=" * 70)
@@ -553,6 +580,7 @@ if __name__ == "__main__":
     example_frame_transformations()
     example_time_series()
     example_ephemeris_versions()
+    example_time_scales()
 
     OUTPUT_DIR = Path("docs/_static/images/examples")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
