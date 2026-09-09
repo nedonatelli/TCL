@@ -73,6 +73,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upstream; the intended helper is implemented here), and
   `HessianOfAffineTransFun` requires a square map upstream (in-place
   assignment) where the port accepts rectangular ones.
+- **MOSPA/MMOSPA metrics** (`performance_evaluation.mospa`):
+  `calc_mospa_error` (mean OSPA of an estimate over a weighted
+  hypothesis set), `mmospa2tar_2d` (the exact two-target 2-D MMOSPA
+  estimate from particles) and `mmospa_approx` (the sweep-based
+  general approximation over `assign2d`), validated against MATLAB
+  fixtures and exact-vs-approximate agreement.
+- **Interval scheduling** (`pytcl.scheduling`, new top-level
+  package): greedy maximum-cardinality selection, minimum
+  partitioning, minimum-lateness sequencing and the weighted-interval
+  dynamic program — validated against MATLAB fixtures and brute-force
+  enumeration over randomized instances. Job indices are 0-based
+  (MATLAB's are 1-based).
 - **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
   conversions (with optional topocentric clock terms), Besselian and
   Julian epochs, and Greenwich/local mean and apparent sidereal time

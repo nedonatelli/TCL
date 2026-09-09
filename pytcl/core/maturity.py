@@ -304,6 +304,10 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "coordinate_systems.hessians.component_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
     "coordinate_systems.hessians.measurement_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
     "coordinate_systems.hessians.cross_derivatives": MaturityLevel.EXPERIMENTAL,  # new this release
+    # performance_evaluation
+    "performance_evaluation.mospa": MaturityLevel.EXPERIMENTAL,  # new this release
+    # scheduling
+    "scheduling.intervals": MaturityLevel.EXPERIMENTAL,  # new this release
     # astronomical
     "astronomical.time_scales": MaturityLevel.EXPERIMENTAL,  # new this release
     # atmosphere

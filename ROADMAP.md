@@ -82,7 +82,7 @@ No dates are attached because none have been decided:
   (`jacobians.measurement_jacobians`) and the Hessians and cross
   gradients/Hessians (`coordinate_systems.hessians`)
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
-- **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
+- Multivariate **polynomials** remainder
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
   ceiling is reachable by reconstructing per-scan covariance from a
   steady-state Cholesky factor, but it touches every read path and breaks

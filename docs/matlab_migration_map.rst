@@ -183,6 +183,10 @@ Coordinate Systems
      - ``pytcl.astronomical.time_scales.jul_date2jul_epoch``
    * - ``JulEpoch2JulDate``
      - ``pytcl.astronomical.time_scales.jul_epoch2jul_date``
+   * - ``MMOSPA2Tar2D``
+     - ``pytcl.performance_evaluation.mospa.mmospa2tar_2d``
+   * - ``MMOSPAApprox``
+     - ``pytcl.performance_evaluation.mospa.mmospa_approx``
    * - ``NED2ECEF``
      - ``pytcl.coordinate_systems.conversions.ned2ecef``
    * - ``NRLMSISE00Alt4Pres``
@@ -398,6 +402,16 @@ Dynamic Estimation
      - ``pytcl.coordinate_systems.hessians.cross_derivatives.uv_spher_ang_cross_grad``
    * - ``uvSpherAngCrossHessian``
      - ``pytcl.coordinate_systems.hessians.cross_derivatives.uv_spher_ang_cross_hessian``
+   * - ``calcMOSPAError``
+     - ``pytcl.performance_evaluation.mospa.calc_mospa_error``
+   * - ``partitionIntervals``
+     - ``pytcl.scheduling.partition_intervals``
+   * - ``scheduleIntervals``
+     - ``pytcl.scheduling.schedule_intervals``
+   * - ``scheduleMinLatenessDense``
+     - ``pytcl.scheduling.schedule_min_lateness_dense``
+   * - ``scheduleWeightedIntervals``
+     - ``pytcl.scheduling.schedule_weighted_intervals``
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``

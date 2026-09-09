@@ -261,10 +261,10 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - 12
      - Split
      - NEES (with confidence bounds), RMSE ported; pytcl adds the standard
-       OSPA metric and CLEAR-MOT metrics. **Missing:** MATLAB's MOSPA/MMOSPA
-       family (``calcMOSPAError``, ``MMOSPA2Tar2D`` — a related but distinct
-       OSPA-family capability), AEE/GAE, jitter, MERF, non-credibility
-       index.
+       OSPA metric and CLEAR-MOT metrics. The MOSPA/MMOSPA family
+       (``calcMOSPAError``, ``MMOSPA2Tar2D``, ``MMOSPAApprox``) is
+       ported in ``performance_evaluation/mospa`` (v2.10.0).
+       **Missing:** AEE/GAE, jitter, MERF, non-credibility index.
    * - Terrain
      - 3
      - Partial
@@ -307,8 +307,12 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        message back to ``!AIVDM`` text) -- neither is ported.
    * - Scheduling
      - 4
-     - Absent
-     - Interval scheduling algorithms not ported.
+     - Ported
+     - All four interval scheduling algorithms ported in
+       ``pytcl/scheduling`` (v2.10.0): greedy maximum-cardinality
+       selection, minimum partitioning, minimum-lateness sequencing
+       and the weighted-interval dynamic program, validated against
+       MATLAB fixtures and brute-force enumeration.
    * - Physical_Values
      - 14
      - Partial
@@ -327,7 +331,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 61 validation files checking against independent
+cases that includes 62 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line
