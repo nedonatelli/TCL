@@ -102,19 +102,26 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        ``azimuthal_equidistant`` are spherical approximations that diverge
        from PROJ by kilometres away from the projection centre (their own
        docstrings tabulate this; gh-25). The angle-only direction-cosine UV
-       measurement system's core conversions are now ported
+       measurement system's core conversions are ported
        (``coordinate_systems.conversions.uv``, v2.8.0: u-v <->
-       spherical, full bistatic r-u-v, camera-to-uv); its Jacobians,
-       Hessians and cubature/Taylor covariance conversions are not.
-       **Missing:** most of the 65-function time
-       suite (pytcl covers UTC/TAI/TT/GPS and Julian dates; TDB/TCB/TCG,
-       Besselian epochs, sidereal local time variants absent), 26 of the 30
-       measurement Jacobians (spherical, polar, r-u-v, ENU/NED and geodetic
-       Jacobians *are* ported, in ``coordinate_systems/jacobians/``) and all
-       14 Hessians, the ellipsoidal azimuthal-equidistant family (pytcl's
-       ``azimuthal_equidistant`` is a spherical approximation), other exotic
-       projections (bipolar, gnomonic), ellipsoidal-harmonic coordinates, RF
-       transform-parameter estimation.
+       spherical, full bistatic r-u-v, camera-to-uv), its
+       cubature/Taylor covariance conversions in v2.9.0, and the
+       measurement Jacobians in v2.10.0: the component gradients
+       (range, range rate, spherical/polar angles, u-v(-w) direction
+       cosines, TDOA) and the full bistatic spherical/polar/r-u-v
+       measurement Jacobians with range-rate and converted variants
+       (``coordinate_systems/jacobians/``, validated against MATLAB
+       fixtures at 1e-12). The relativistic/dynamical time scales
+       (TDB/TCB/TCG, Besselian epochs, local sidereal time) are ported
+       in ``astronomical/time_scales`` (v2.10.0).
+       **Missing:** the 14 measurement Hessians and the cross
+       gradients/Hessians (u-v <-> spherical angle and 2-D u <->
+       polar), the calendar/timezone utilities of the time suite, the
+       ellipsoidal azimuthal-equidistant family (pytcl's
+       ``azimuthal_equidistant`` is a spherical approximation) and its
+       Jacobians, other exotic projections (bipolar, gnomonic),
+       ellipsoidal-harmonic coordinates, RF transform-parameter
+       estimation.
    * - Mathematical_Functions
      - 1,440
      - Selective
@@ -318,7 +325,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 59 validation files checking against independent
+cases that includes 60 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

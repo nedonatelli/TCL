@@ -44,6 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Hyland water correlation) and validated against MATLAB fixtures.
   Species without tabulated data (atomic O, N, H, anomalous oxygen)
   are excluded from the mixture exactly as upstream.
+- **Measurement Jacobians and component gradients**
+  (`coordinate_systems.jacobians.component_gradients` and
+  `.measurement_jacobians`): the MATLAB library's full bistatic
+  measurement-derivative suite — gradients of range, range rate
+  (moving transmitter/receiver states), spherical and polar angles
+  (all four/two angle conventions), u-v(-w) and 2-D/3-D direction
+  cosines and TDOA, plus the composed `calcSpher/Polar/Ruv/CartRR`
+  Jacobians with their inverse, range-rate and converted
+  (measurement-evaluated) variants and `normVecJacob` — 22 functions.
+  All support receiver-frame rotations, transmitter/receiver offsets
+  and both range conventions, with each function's `use_half_range`
+  default matching its MATLAB source. Validated against 61 MATLAB
+  fixture records at 1e-12 and independently against central finite
+  differences of the measurement functions; 100% branch coverage.
+  The existing simple monostatic `*_jacobian` functions are unchanged.
 - **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
   conversions (with optional topocentric clock terms), Besselian and
   Julian epochs, and Greenwich/local mean and apparent sidereal time
