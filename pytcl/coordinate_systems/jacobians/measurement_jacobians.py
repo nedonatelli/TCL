@@ -13,8 +13,9 @@ covariances).
 Conventions (``system_type``, ``m``, ``l_tx``/``l_rx``,
 ``use_half_range``) are those of :mod:`.component_gradients`. Each
 function's ``use_half_range`` default matches its MATLAB source: the
-spherical and polar families default to True in the monostatic call
-form, the r-u-v family to False.
+spherical family defaults to True only in the monostatic call form
+(False once a transmitter is given), the polar family to True in
+every call form, and the r-u-v family to False.
 
 References
 ----------

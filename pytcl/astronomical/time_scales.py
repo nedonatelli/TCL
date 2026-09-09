@@ -62,7 +62,12 @@ def tt2tdb(
         Clock site: east longitude in radians, distance from the
         Earth's rotation axis in kilometers, and distance north of the
         equatorial plane in kilometers. None (default) evaluates the
-        geocentric series only, as the MATLAB default does.
+        geocentric series only, as the MATLAB default does. The
+        topocentric terms derive the time of day from the
+        smaller-magnitude JD part, so use the canonical half-integer
+        day / fraction split when passing a clock location (a
+        nonstandard split perturbs only the +/-2 microsecond
+        topocentric terms).
 
     Returns
     -------

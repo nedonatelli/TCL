@@ -39,6 +39,11 @@ below ~86 km where ``us_standard_atmosphere_1976`` should be used. Limits
 are documented in the module and pinned by validation tests (gh-79). For
 the real model at any altitude, use :mod:`pytcl.atmosphere.nrlmsise00`.
 
+.. automodule:: pytcl.atmosphere.thermosphere
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 NRLMSISE-00
 -----------
 
@@ -47,11 +52,6 @@ implementation (compiled at build time) with a machine-precision
 pure-Python fallback.
 
 .. automodule:: pytcl.atmosphere.nrlmsise00
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: pytcl.atmosphere.thermosphere
    :members:
    :undoc-members:
    :show-inheritance:
