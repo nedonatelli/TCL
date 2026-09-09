@@ -81,7 +81,6 @@ No dates are attached because none have been decided:
   measurement Jacobians/component gradients
   (`jacobians.measurement_jacobians`) and the Hessians and cross
   gradients/Hessians (`coordinate_systems.hessians`)
-- **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - Multivariate **polynomials** remainder
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression
   ceiling is reachable by reconstructing per-scan covariance from a

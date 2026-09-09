@@ -48,3 +48,14 @@ scope explicit at the package level.
 
 .. autofunction:: pytcl.magnetism.create_emm_test_coefficients
 .. autofunction:: pytcl.magnetism.get_emm_data_dir
+
+Magnetic Coordinate Systems
+---------------------------
+
+Centered-dipole transforms, magnetic/geographic heading conversions,
+and apex/quasi-dipole coordinates by field-line tracing.
+
+.. automodule:: pytcl.magnetism.coordinates
+   :members:
+   :undoc-members:
+   :show-inheritance:

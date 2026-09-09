@@ -179,6 +179,14 @@ Coordinate Systems
      - ``pytcl.coordinate_systems.hessians.measurement_hessians.hessian_chain_rule``
    * - ``HessianOfAffineTransFun``
      - ``pytcl.coordinate_systems.hessians.measurement_hessians.hessian_of_affine_trans_fun``
+   * - ``CartCD2ITRS``
+     - ``pytcl.magnetism.coordinates.cart_cd2itrs``
+   * - ``ITRS2CartCD``
+     - ``pytcl.magnetism.coordinates.itrs2cart_cd``
+   * - ``ITRS2MagneticApex``
+     - ``pytcl.magnetism.coordinates.itrs2magnetic_apex``
+   * - ``ITRS2QD``
+     - ``pytcl.magnetism.coordinates.itrs2qd``
    * - ``JulDate2JulEpoch``
      - ``pytcl.astronomical.time_scales.jul_date2jul_epoch``
    * - ``JulEpoch2JulDate``
@@ -412,6 +420,16 @@ Dynamic Estimation
      - ``pytcl.scheduling.schedule_min_lateness_dense``
    * - ``scheduleWeightedIntervals``
      - ``pytcl.scheduling.schedule_weighted_intervals``
+   * - ``geogHeading2Mag``
+     - ``pytcl.magnetism.coordinates.geog_heading2mag``
+   * - ``magHeading2Geog``
+     - ``pytcl.magnetism.coordinates.mag_heading2geog``
+   * - ``spherCD2SpherITRS``
+     - ``pytcl.magnetism.coordinates.spher_cd2spher_itrs``
+   * - ``spherITRS2SpherCD``
+     - ``pytcl.magnetism.coordinates.spher_itrs2spher_cd``
+   * - ``trace2EarthMagApex``
+     - ``pytcl.magnetism.coordinates.trace2earth_mag_apex``
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``

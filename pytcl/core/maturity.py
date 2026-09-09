@@ -251,6 +251,8 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "mathematical_functions.special_functions.marcum_q": MaturityLevel.MATURE,
     "mathematical_functions.statistics.estimators": MaturityLevel.MATURE,
     "mathematical_functions.transforms.stft": MaturityLevel.MATURE,
+    # magnetism
+    "magnetism.coordinates": MaturityLevel.EXPERIMENTAL,  # new this release
     # performance_evaluation
     "performance_evaluation.estimation_metrics": MaturityLevel.MATURE,
     "performance_evaluation.track_metrics": MaturityLevel.MATURE,

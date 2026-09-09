@@ -85,6 +85,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dynamic program — validated against MATLAB fixtures and brute-force
   enumeration over randomized instances. Job indices are 0-based
   (MATLAB's are 1-based).
+- **Magnetic coordinate systems** (`magnetism.coordinates`):
+  centered-dipole transforms (Cartesian and spherical, either
+  explicit degree-1 Gauss coefficients or any pytcl field model),
+  magnetic/geographic heading conversions through the validated field
+  models, and magnetic apex / quasi-dipole coordinates by field-line
+  tracing (`trace2earth_mag_apex`, `itrs2magnetic_apex`, `itrs2qd`) —
+  SciPy RK45 with event root-finding in place of MATLAB's hand-rolled
+  adaptive step, agreeing with the MATLAB tracer at the integrators'
+  1e-6 tolerance and with the pure-dipole L-shell closed form
+  independently. Upstream findings documented: the MATLAB CD
+  functions' default-model call form errors in R2026a (ClusterSet
+  2-argument indexing) and the MATLAB tree ships a 2024-11-13
+  pre-release WMM2025 coefficient file.
 - **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
   conversions (with optional topocentric clock terms), Besselian and
   Julian epochs, and Greenwich/local mean and apparent sidereal time

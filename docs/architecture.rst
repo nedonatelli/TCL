@@ -47,7 +47,7 @@ it depends on; only the structurally significant edges are drawn.
 
        subgraph Environment_Models
            GR["gravity<br/>5 modules"]
-           MA["magnetism<br/>3 modules"]
+           MA["magnetism<br/>4 modules"]
            AT["atmosphere<br/>8 modules"]
            TE["terrain<br/>3 modules"]
        end
@@ -234,9 +234,9 @@ Counts are measured from the packages themselves rather than asserted;
        standard atmospheres, ionosphere,
        humidity, refractivity
    * - ``magnetism``
-     - 3
-     - 36
-     - WMM, WMMHR, IGRF, EMM
+     - 4
+     - 46
+     - WMM, WMMHR, IGRF, EMM, apex/QD/centered-dipole coordinates
    * - ``scheduling``
      - 1
      - 4
