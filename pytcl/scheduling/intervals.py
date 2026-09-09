@@ -10,8 +10,10 @@ the results are 0-based.
 
 References
 ----------
-- J. Kleinberg and E. Tardos, Algorithm Design. Pearson, 2006,
-  Chapters 4.1-4.2 (the source the MATLAB implementations follow).
+- J. Kleinberg and E. Tardos, Algorithm Design, 1st ed. Pearson,
+  2005: Chapter 4.1 (interval scheduling and partitioning), 4.2
+  (minimum lateness) and 6.1-6.2 (weighted interval scheduling) --
+  the chapters the MATLAB implementations cite.
 """
 
 import numpy as np

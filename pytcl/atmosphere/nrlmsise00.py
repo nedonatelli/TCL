@@ -1825,7 +1825,8 @@ def nrlmsise00(
         Daily magnetic index. Default 4.
     ap_array : sequence of 7 floats, optional
         Storm-mode Ap history (daily, 3-hourly now/-3h/-6h/-9h, and
-        the 12-33h and 36-59h averages). Activates storm mode.
+        the 12-33h and 36-57h averages, per the vendored C reference;
+        the MATLAB wrapper header says 36-59h). Activates storm mode.
     effective_density : bool, optional
         If True, use ``gtd7d``: include anomalous oxygen in the total
         mass density d[5] (relevant to drag above ~500 km). Default
@@ -2098,9 +2099,10 @@ def nrlmsise00_pressure_altitude(
     -----
     The MATLAB MEX wrapper computes lst by the documented formula (its
     GasTemp sibling hardcodes 16), but shares the ``nlhs``-for-``nrhs``
-    guard defect, so its Ap/F107/F107A inputs only take effect at
-    particular requested output counts and F107A is never applied. All
-    parameters are honored here.
+    guard defect: its Ap input takes effect only when exactly four
+    outputs are requested, and its F107/F107A guards (``nlhs>4``,
+    ``nlhs>5`` against a four-output cap) can never pass, so neither is
+    ever applied. All parameters are honored here.
     """
     lat_rad, lon_rad = (float(v) for v in lat_lon)
     sec = min(float(second_of_day), 86400.0)

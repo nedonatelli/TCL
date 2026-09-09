@@ -190,6 +190,12 @@ def hessian_of_affine_trans_fun(h: ArrayLike, m: ArrayLike) -> NDArray[np.float6
     H : ndarray
         (n, n, num_out_new) Hessian stack of M @ f.
 
+    Notes
+    -----
+    The MATLAB original assigns ``M*H`` back into ``H`` in place and
+    so accepts only square maps; rectangular output maps are a
+    deliberate widening here.
+
     Examples
     --------
     >>> import numpy as np

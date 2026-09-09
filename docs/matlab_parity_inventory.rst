@@ -269,7 +269,8 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        OSPA metric and CLEAR-MOT metrics. The MOSPA/MMOSPA family
        (``calcMOSPAError``, ``MMOSPA2Tar2D``, ``MMOSPAApprox``) is
        ported in ``performance_evaluation/mospa`` (v2.10.0).
-       **Missing:** AEE/GAE, jitter, MERF, non-credibility index.
+       **Missing:** AEE/GAE, jitter, MERF, non-credibility index,
+       ``calcMSE``, ``identVarGauss``.
    * - Terrain
      - 3
      - Partial

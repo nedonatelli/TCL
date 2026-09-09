@@ -553,8 +553,10 @@ def itrs2magnetic_apex(
     -------
     z_apex : ndarray
         (3,) [apex latitude (rad), apex longitude (rad), potential
-        (T m)]. The latitude is NaN when the point sits below
-        ``h_r``; the longitude is NaN for a polar-escaping line.
+        (T m)]. The latitude is NaN when the field line's apex sits
+        below ``h_r`` (the modified-apex definition leaves it
+        undefined there); the longitude is NaN for a polar-escaping
+        line.
     apex_point : ndarray
         (3,) the traced apex position in the ITRS (meters).
 

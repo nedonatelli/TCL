@@ -8,11 +8,12 @@ versus spherical angles (with independently rotated sensor frames
 ``ms``/``muv``), and the 2-D direction cosine versus polar angle
 pair.
 
-The 2-D functions' MATLAB sources call ``rotMat2D2Angle``, which is
-not defined anywhere in the MATLAB library -- passing rotation
+``uPolar2DCrossGrad`` -- the one function of this family taking
+rotation arguments -- calls ``rotMat2D2Angle`` in its MATLAB source,
+a helper defined nowhere in the MATLAB library, so passing rotation
 matrices there errors upstream. The obvious intended helper (the
-angle of a 2-D rotation matrix) is implemented here, so the rotation
-arguments work.
+angle of a 2-D rotation matrix) is implemented here, so
+:func:`u_polar_2d_cross_grad`'s rotation arguments work.
 """
 
 import numpy as np
