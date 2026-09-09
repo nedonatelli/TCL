@@ -77,8 +77,9 @@ No dates are attached because none have been decided:
 - **Direction-cosine UV measurement coordinates, remainder** — the core
   conversions shipped in v2.8.0 (`coordinate_systems.conversions.uv`) and
   the cubature/Taylor covariance conversions in v2.9.0
-  (`covariance_conversions`). Still open: the u-v measurement
-  Jacobians/Hessians
+  (`covariance_conversions`) and the measurement Jacobians/component
+  gradients in v2.10.0 (`jacobians.measurement_jacobians`). Still
+  open: the measurement Hessians and cross gradients/Hessians
 - **Magnetic coordinate systems** — apex, quasi-dipole, centered-dipole
 - **MOSPA/MMOSPA metrics**, interval scheduling, polynomials
 - **HDF5 `states_only` covariance-transform mode** — a ~6.3x compression

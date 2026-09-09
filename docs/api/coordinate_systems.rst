@@ -55,6 +55,30 @@ Jacobians
    :undoc-members:
    :show-inheritance:
 
+Component Gradients
+-------------------
+
+Gradients of individual bistatic measurement components (range, range
+rate, spherical/polar angles, direction cosines, TDOA) with respect
+to Cartesian position or state.
+
+.. automodule:: pytcl.coordinate_systems.jacobians.component_gradients
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Measurement Jacobians
+---------------------
+
+Full bistatic measurement Jacobians (spherical, polar, r-u-v, with
+range-rate and converted variants) composed from the component
+gradients.
+
+.. automodule:: pytcl.coordinate_systems.jacobians.measurement_jacobians
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Projections
 -----------
 

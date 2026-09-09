@@ -187,6 +187,8 @@ Coordinate Systems
      - ``pytcl.atmosphere.nrlmsise00.nrlmsise00_gas_temp``
    * - ``TAI2TT``
      - ``pytcl.astronomical.time_systems.tai_to_tt``
+   * - ``TDOAGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.tdoa_gradient``
    * - ``TCB2TDB``
      - ``pytcl.astronomical.time_scales.tcb2tdb``
    * - ``TCG2TT``
@@ -318,6 +320,48 @@ Dynamic Estimation
    * - ``speedOfSoundInAir``
      - ``pytcl.atmosphere.models.speed_of_sound_gas_table`` (algorithm 0) /
        ``speed_of_sound_ideal_gas`` (1) / ``speed_of_sound_cramer`` (2)
+   * - ``calcCartRRJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_cart_rr_jacob``
+   * - ``calcPolarConvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_polar_conv_jacob``
+   * - ``calcPolarJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_polar_jacob``
+   * - ``calcPolarRRConvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_polar_rr_conv_jacob``
+   * - ``calcPolarRRJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_polar_rr_jacob``
+   * - ``calcRuvConvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_ruv_conv_jacob``
+   * - ``calcRuvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_ruv_jacob``
+   * - ``calcRuvRRConvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_ruv_rr_conv_jacob``
+   * - ``calcRuvRRJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_ruv_rr_jacob``
+   * - ``calcSpherConvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_spher_conv_jacob``
+   * - ``calcSpherInvJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_spher_inv_jacob``
+   * - ``calcSpherJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_spher_jacob``
+   * - ``calcSpherRRJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.calc_spher_rr_jacob``
+   * - ``normVecJacob``
+     - ``pytcl.coordinate_systems.jacobians.measurement_jacobians.norm_vec_jacob``
+   * - ``polAngGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.pol_ang_gradient``
+   * - ``rangeGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.range_gradient``
+   * - ``rangeRateGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.range_rate_gradient``
+   * - ``spherAngGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.spher_ang_gradient``
+   * - ``uGradient2D``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.u_gradient_2d``
+   * - ``uGradient3D``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.u_gradient_3d``
+   * - ``uvGradient``
+     - ``pytcl.coordinate_systems.jacobians.component_gradients.uv_gradient``
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``
