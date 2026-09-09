@@ -79,6 +79,19 @@ gradients.
    :undoc-members:
    :show-inheritance:
 
+Hessians
+--------
+
+Second derivatives of measurement components (bistatic range,
+spherical angles, direction cosines), the composed spherical
+measurement Hessians, chain-rule helpers and the cross
+gradients/Hessians between angular parameterizations.
+
+.. automodule:: pytcl.coordinate_systems.hessians
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Projections
 -----------
 

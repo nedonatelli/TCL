@@ -301,6 +301,9 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "coordinate_systems.conversions.covariance_conversions": MaturityLevel.EXPERIMENTAL,  # new in v2.9.0
     "coordinate_systems.jacobians.component_gradients": MaturityLevel.EXPERIMENTAL,  # new this release
     "coordinate_systems.jacobians.measurement_jacobians": MaturityLevel.EXPERIMENTAL,  # new this release
+    "coordinate_systems.hessians.component_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
+    "coordinate_systems.hessians.measurement_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
+    "coordinate_systems.hessians.cross_derivatives": MaturityLevel.EXPERIMENTAL,  # new this release
     # astronomical
     "astronomical.time_scales": MaturityLevel.EXPERIMENTAL,  # new this release
     # atmosphere

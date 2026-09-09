@@ -114,9 +114,11 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        fixtures at 1e-12). The relativistic/dynamical time scales
        (TDB/TCB/TCG, Besselian epochs, local sidereal time) are ported
        in ``astronomical/time_scales`` (v2.10.0).
-       **Missing:** the 14 measurement Hessians and the cross
-       gradients/Hessians (u-v <-> spherical angle and 2-D u <->
-       polar), the calendar/timezone utilities of the time suite, the
+       The measurement Hessians and cross gradients/Hessians
+       (u-v <-> spherical angle, 2-D u <-> polar) are ported in
+       ``coordinate_systems/hessians/`` (v2.10.0, same fixture
+       validation).
+       **Missing:** the calendar/timezone utilities of the time suite, the
        ellipsoidal azimuthal-equidistant family (pytcl's
        ``azimuthal_equidistant`` is a spherical approximation) and its
        Jacobians, other exotic projections (bipolar, gnomonic),
@@ -325,7 +327,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 60 validation files checking against independent
+cases that includes 61 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

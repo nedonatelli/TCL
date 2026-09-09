@@ -59,6 +59,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixture records at 1e-12 and independently against central finite
   differences of the measurement functions; 100% branch coverage.
   The existing simple monostatic `*_jacobian` functions are unchanged.
+- **Measurement Hessians and cross derivatives**
+  (`coordinate_systems.hessians`): second derivatives of bistatic
+  range, spherical angles (all conventions) and u-v(-w)/2-D direction
+  cosines; the composed spherical measurement Hessian with inverse
+  and converted forms; `HessianChainRule`/`HessianOfAffineTransFun`;
+  and the cross gradients/Hessians between u-v and spherical-angle
+  frames (independently rotated) and the 2-D u/polar pair — 18
+  functions, validated against 77 MATLAB fixture records at 1e-12
+  plus finite differences, 100% branch coverage. Two upstream defects
+  fixed loudly: the 2-D cross gradients call `rotMat2D2Angle`, which
+  is defined nowhere in the MATLAB library (rotation arguments error
+  upstream; the intended helper is implemented here), and
+  `HessianOfAffineTransFun` requires a square map upstream (in-place
+  assignment) where the port accepts rectangular ones.
 - **Time scales** (`pytcl.astronomical.time_scales`): TT/TDB/TCG/TCB
   conversions (with optional topocentric clock terms), Besselian and
   Julian epochs, and Greenwich/local mean and apparent sidereal time
