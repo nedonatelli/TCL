@@ -28,6 +28,18 @@ Declination: 7.67°
 >>> coef = create_emm_test_coefficients(n_max=36)
 """
 
+from pytcl.magnetism.coordinates import (
+    cart_cd2itrs,
+    cd_rotation_matrix,
+    geog_heading2mag,
+    itrs2cart_cd,
+    itrs2magnetic_apex,
+    itrs2qd,
+    mag_heading2geog,
+    spher_cd2spher_itrs,
+    spher_itrs2spher_cd,
+    trace2earth_mag_apex,
+)
 from pytcl.magnetism.emm import (
     EMM_PARAMETERS,
     HighResCoefficients,
@@ -72,6 +84,17 @@ from pytcl.magnetism.wmm import (
 )
 
 __all__ = [
+    # Magnetic coordinate systems
+    "cd_rotation_matrix",
+    "itrs2cart_cd",
+    "cart_cd2itrs",
+    "spher_itrs2spher_cd",
+    "spher_cd2spher_itrs",
+    "geog_heading2mag",
+    "mag_heading2geog",
+    "trace2earth_mag_apex",
+    "itrs2magnetic_apex",
+    "itrs2qd",
     # Data-file parsing, for callers supplying their own coefficient set.
     "parse_emm_file",
     # Types and constants

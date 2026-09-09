@@ -205,9 +205,14 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - 12
      - Split
      - Coefficient loading and field evaluation for WMM/IGRF/EMM ported and
-       validated to sub-nT. **Missing:** the coordinate-system half — apex
-       and quasi-dipole coordinates, centered-dipole transforms,
-       magnetic-heading conversions, field-line tracing.
+       validated to sub-nT. The coordinate-system half is ported in
+       ``magnetism/coordinates`` (v2.10.0): centered-dipole transforms,
+       magnetic-heading conversions, and apex/quasi-dipole coordinates by
+       field-line tracing, validated against MATLAB fixtures and a
+       pure-dipole closed form. (The MATLAB CD functions' default-model
+       call form errors in R2026a -- ClusterSet 2-argument indexing --
+       and its data directory ships a 2024-11-13 pre-release WMM2025
+       coefficient file.)
    * - Navigation
      - 21
      - Good
@@ -331,7 +336,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 62 validation files checking against independent
+cases that includes 63 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line
