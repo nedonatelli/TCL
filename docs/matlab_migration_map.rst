@@ -175,6 +175,10 @@ Coordinate Systems
      - ``pytcl.coordinate_systems.conversions.ecef2ned``
    * - ``ENU2ECEF``
      - ``pytcl.coordinate_systems.conversions.enu2ecef``
+   * - ``HessianChainRule``
+     - ``pytcl.coordinate_systems.hessians.measurement_hessians.hessian_chain_rule``
+   * - ``HessianOfAffineTransFun``
+     - ``pytcl.coordinate_systems.hessians.measurement_hessians.hessian_of_affine_trans_fun``
    * - ``JulDate2JulEpoch``
      - ``pytcl.astronomical.time_scales.jul_date2jul_epoch``
    * - ``JulEpoch2JulDate``
@@ -362,6 +366,38 @@ Dynamic Estimation
      - ``pytcl.coordinate_systems.jacobians.component_gradients.u_gradient_3d``
    * - ``uvGradient``
      - ``pytcl.coordinate_systems.jacobians.component_gradients.uv_gradient``
+   * - ``calcSpherConvHessian``
+     - ``pytcl.coordinate_systems.hessians.measurement_hessians.calc_spher_conv_hessian``
+   * - ``calcSpherHessian``
+     - ``pytcl.coordinate_systems.hessians.measurement_hessians.calc_spher_hessian``
+   * - ``calcSpherInvHessian``
+     - ``pytcl.coordinate_systems.hessians.measurement_hessians.calc_spher_inv_hessian``
+   * - ``polarU2DCrossGrad``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.polar_u_2d_cross_grad``
+   * - ``polarU2DCrossHessian``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.polar_u_2d_cross_hessian``
+   * - ``rangeHessian``
+     - ``pytcl.coordinate_systems.hessians.component_hessians.range_hessian``
+   * - ``spherAngHessian``
+     - ``pytcl.coordinate_systems.hessians.component_hessians.spher_ang_hessian``
+   * - ``spherAngUvCrossGrad``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.spher_ang_uv_cross_grad``
+   * - ``spherAngUvCrossHessian``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.spher_ang_uv_cross_hessian``
+   * - ``uHessian2D``
+     - ``pytcl.coordinate_systems.hessians.component_hessians.u_hessian_2d``
+   * - ``uHessian3D``
+     - ``pytcl.coordinate_systems.hessians.component_hessians.u_hessian_3d``
+   * - ``uPolar2DCrossGrad``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.u_polar_2d_cross_grad``
+   * - ``uPolar2DCrossHessian``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.u_polar_2d_cross_hessian``
+   * - ``uvHessian``
+     - ``pytcl.coordinate_systems.hessians.component_hessians.uv_hessian``
+   * - ``uvSpherAngCrossGrad``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.uv_spher_ang_cross_grad``
+   * - ``uvSpherAngCrossHessian``
+     - ``pytcl.coordinate_systems.hessians.cross_derivatives.uv_spher_ang_cross_hessian``
    * - ``RiccatiPredNoClutter``
      - ``pytcl.dynamic_estimation.performance_prediction.riccati_pred_no_clutter``
    * - ``RiccatiPostNoClutter``

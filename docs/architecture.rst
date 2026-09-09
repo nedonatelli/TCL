@@ -40,7 +40,7 @@ it depends on; only the structurally significant edges are drawn.
        end
 
        subgraph Geometry_and_Navigation
-           CS["coordinate_systems<br/>9 modules"]
+           CS["coordinate_systems<br/>12 modules"]
            NA["navigation<br/>5 modules"]
            AS["astronomical<br/>10 modules"]
        end
@@ -202,8 +202,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 37
      - Track and measurement persistence, including HDF5
    * - ``coordinate_systems``
-     - 9
-     - 104
+     - 12
+     - 122
      - Frame conversions, u-v direction cosines, rotations, Jacobians,
        map projections
    * - ``gravity``
