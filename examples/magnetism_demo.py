@@ -242,6 +242,61 @@ def demo_dipole_axis() -> None:
         )
 
 
+def demo_magnetic_coordinates() -> None:
+    """Demonstrate the magnetic coordinate systems (v2.10.0)."""
+    import numpy as np
+
+    from pytcl.magnetism import (
+        geog_heading2mag,
+        itrs2cart_cd,
+        itrs2magnetic_apex,
+        itrs2qd,
+    )
+
+    print("\n" + "=" * 60)
+    print("Magnetic Coordinate Systems")
+    print("=" * 60)
+
+    print("\nCentered-dipole frame (IGRF14 dipole axis -> +z):")
+    x_equator = np.array([6378137.0, 0.0, 0.0])
+    cd = itrs2cart_cd(x_equator)
+    cd_lat = np.degrees(np.arcsin(cd[2] / np.linalg.norm(cd)))
+    print(f"  Geographic equator point (0N, 0E) sits at CD latitude {cd_lat:+.2f} deg")
+
+    print("\nQuasi-dipole and apex coordinates (field-line traced):")
+    sites = {
+        "Kwajalein  ( 8.7N, 167.7E)": (8.7, 167.7),
+        "Boulder    (40.0N, 254.7E)": (40.0, -105.3),
+    }
+    for name, (lat_d, lon_d) in sites.items():
+        lat, lon = np.radians(lat_d), np.radians(lon_d)
+        r = 6378137.0 + 350e3  # ~350 km altitude, spherical approx for demo
+        x = r * np.array(
+            [np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)]
+        )
+        z_qd, apex_pt = itrs2qd(x)
+        z_apex, _ = itrs2magnetic_apex(x)
+        apex_h_km = (np.linalg.norm(apex_pt) - 6371.2e3) / 1e3
+        print(f"  {name}:")
+        print(
+            f"    QD latitude   {np.degrees(z_qd[0]):+7.2f} deg, "
+            f"QD longitude {np.degrees(z_qd[1]):+8.2f} deg"
+        )
+        print(
+            f"    apex latitude {np.degrees(z_apex[0]):+7.2f} deg, "
+            f"apex height ~{apex_h_km:7.0f} km"
+        )
+
+    print("\nHeading conversion (WMM2025 declination):")
+    p_boulder = [np.radians(40.0), np.radians(-105.3), 1600.0]
+    geo_heading = np.radians(90.0)  # due geographic east
+    mag = geog_heading2mag(p_boulder, geo_heading)
+    print(
+        f"  Due geographic east at Boulder = "
+        f"{np.degrees(mag):.2f} deg east of magnetic north"
+    )
+
+
 def main() -> None:
     """Run all demonstrations."""
     print("\n" + "=" * 60)
@@ -251,6 +306,7 @@ def main() -> None:
     demo_wmm2020_coefficients()
     demo_dipole_moment()
     demo_dipole_axis()
+    demo_magnetic_coordinates()
 
     print("\n" + "=" * 60)
     print("Demonstration Complete")

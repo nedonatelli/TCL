@@ -26,13 +26,14 @@ python examples/orbital_mechanics.py
 - **[tracking_containers.py](tracking_containers.py)** - Track and detection container data structures
 - **[tracking_3d.py](tracking_3d.py)** - 3D tracking scenarios with multiple sensors
 - **[assignment_algorithms.py](assignment_algorithms.py)** - Hungarian algorithm, k-best, and 3D assignment
-- **[performance_evaluation.py](performance_evaluation.py)** - OSPA, track metrics, and evaluation measures
+- **[performance_evaluation.py](performance_evaluation.py)** - OSPA, MOSPA/MMOSPA, track metrics, and evaluation measures
 - **[track_management_workflows.py](track_management_workflows.py)** - Track lifecycle workflows over SQL and HDF5 storage
 - **[measurement_ingest.py](measurement_ingest.py)** - Results I/O: CSV measurement readers, GNN tracking, polars DataFrame export, Parquet output
 
-### Coordinate Systems & Transforms (4 examples)
+### Coordinate Systems & Transforms (5 examples)
 
 - **[coordinate_systems.py](coordinate_systems.py)** - Cartesian, spherical, geodetic conversions
+- **[measurement_jacobians.py](measurement_jacobians.py)** - Bistatic measurement Jacobians/Hessians for EKF linearization, plus dwell scheduling
 - **[coordinate_visualization.py](coordinate_visualization.py)** - Visual demonstrations of coordinate transforms
 - **[transforms.py](transforms.py)** - Frame transformations and rotation handling
 - **[reference_frame_advanced.py](reference_frame_advanced.py)** - GCRF, ITRF, and reference frame chains
@@ -53,11 +54,11 @@ python examples/orbital_mechanics.py
 ### Astronomy & Ephemerides (2 examples)
 
 - **[ephemeris_demo.py](ephemeris_demo.py)** - Sun, moon, planet positions at any epoch
-- **[magnetism_demo.py](magnetism_demo.py)** - WMM and IGRF magnetic field models
+- **[magnetism_demo.py](magnetism_demo.py)** - WMM/IGRF field models and magnetic coordinates (centered-dipole, quasi-dipole, apex)
 
 ### Geophysical Models (1 example)
 
-- **[atmospheric_modeling.py](atmospheric_modeling.py)** - Simplified thermosphere model with solar/geomagnetic activity effects
+- **[atmospheric_modeling.py](atmospheric_modeling.py)** - NRLMSISE-00 (compiled reference C) and simplified thermosphere with solar/geomagnetic activity effects
 
 ### Filtering & Signal Processing (2 examples)
 

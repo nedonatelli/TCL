@@ -95,10 +95,48 @@ def ospa_demo() -> None:
         print(f"  Cardinality:  {result.cardinality:.2f}")
 
 
+def mospa_demo() -> None:
+    """Demonstrate MOSPA/MMOSPA estimation over labeling-ambiguous hypotheses."""
+    import numpy as np
+
+    from pytcl.performance_evaluation import calc_mospa_error, mmospa_approx
+
+    print("\n" + "=" * 60)
+    print("2. MOSPA / MMOSPA: ESTIMATION UNDER LABELING AMBIGUITY")
+    print("=" * 60)
+    print("\nWhen a tracker's hypotheses disagree about which target is")
+    print("which, the naive weighted mean smears the targets together.")
+    print("The MMOSPA estimate re-orders each hypothesis first.")
+
+    rng = np.random.default_rng(7)
+    n_hyp = 60
+    x = np.zeros((2, 2, n_hyp))
+    x[:, 0, :] = rng.normal(0, 0.3, (2, n_hyp)) + np.array([[2.0], [0.0]])
+    x[:, 1, :] = rng.normal(0, 0.3, (2, n_hyp)) - np.array([[2.0], [0.0]])
+    swap = rng.random(n_hyp) < 0.5  # half the hypotheses use swapped labels
+    x[:, :, swap] = x[:, ::-1, swap]
+    w = np.full(n_hyp, 1.0 / n_hyp)
+
+    naive = (x * w).sum(axis=2)
+    mmospa, _ = mmospa_approx(x, w, num_scans=3)
+
+    print(
+        f"\n  Naive weighted mean:  target 1 at ({naive[0, 0]:+.2f}, "
+        f"{naive[1, 0]:+.2f}), target 2 at ({naive[0, 1]:+.2f}, {naive[1, 1]:+.2f})"
+    )
+    print(
+        f"  MMOSPA estimate:      target 1 at ({mmospa[0, 0]:+.2f}, "
+        f"{mmospa[1, 0]:+.2f}), target 2 at ({mmospa[0, 1]:+.2f}, {mmospa[1, 1]:+.2f})"
+    )
+    print(f"\n  MOSPA error, naive mean: {calc_mospa_error(naive, x, w):.3f}")
+    print(f"  MOSPA error, MMOSPA:     {calc_mospa_error(mmospa, x, w):.3f}")
+    print("  (the naive mean collapses both targets toward the origin)")
+
+
 def nees_consistency_demo() -> None:
     """Demonstrate NEES for filter consistency evaluation."""
     print("\n" + "=" * 60)
-    print("2. NEES FOR FILTER CONSISTENCY")
+    print("3. NEES FOR FILTER CONSISTENCY")
     print("=" * 60)
 
     print("\nNEES (Normalized Estimation Error Squared) tests if the filter's")
@@ -204,7 +242,7 @@ def run_filter_get_nees(
 def monte_carlo_demo() -> Tuple[List[float], List[float], List[float]]:
     """Demonstrate Monte Carlo evaluation of tracker performance."""
     print("\n" + "=" * 60)
-    print("3. MONTE CARLO TRACKER EVALUATION")
+    print("4. MONTE CARLO TRACKER EVALUATION")
     print("=" * 60)
 
     print("\nMonte Carlo simulation runs multiple trials to get")
@@ -326,7 +364,7 @@ def monte_carlo_demo() -> Tuple[List[float], List[float], List[float]]:
 def ospa_over_time_demo() -> Tuple[List[float], List[float], List[float]]:
     """Demonstrate OSPA metric evolution over time."""
     print("\n" + "=" * 60)
-    print("4. OSPA OVER TIME FOR TRACKER EVALUATION")
+    print("5. OSPA OVER TIME FOR TRACKER EVALUATION")
     print("=" * 60)
 
     np.random.seed(456)
@@ -523,6 +561,7 @@ def main() -> None:
     print("Demonstrating pytcl tracker and filter evaluation metrics")
 
     ospa_demo()
+    mospa_demo()
     nees_consistency_demo()
     mc_rmse, mc_nees, mc_nis = monte_carlo_demo()
     ospa_hist, loc_hist, card_hist = ospa_over_time_demo()
