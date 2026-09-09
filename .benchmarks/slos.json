@@ -1,9 +1,48 @@
 {
   "description": "Service Level Objectives for benchmarks",
   "benchmarks": {
+    "test_assign2d_augmented_500x500": {
+      "max_mean_us": 29946.0,
+      "max_p99_us": 59892.0,
+      "_derivation": "gate-calibration doctrine (perf-levers task 2, 2026-08-18, Apple M3 Max): local median 9.0375ms (pytest-benchmark, --benchmark-min-rounds=5, auto-calibrated to 98 rounds; assign2d() with cost_of_non_assignment=50.0 on the same 500x500 uniform(0,100) seed-42 matrix as test_hungarian_dense_500x500, building the (n+m)x(n+m)=1000x1000 augmented matrix before delegating to scipy) x the same CI/local ratio 2.209 x 1.5 headroom = 29.9458ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no assign2d benchmark exists in CI history yet to calibrate against directly). cProfile of 10 calls to the same scenario attributes 96.7% of cumulative time to scipy.optimize.linear_sum_assignment and 1.1% to the np.full augmented-matrix construction -- below the plan's 10% trivial-fix threshold, so no code change was made; scipy's 1000x1000 solve is the floor. max_p99_us follows this file's existing 2x-mean convention. Full derivation in the perf-levers campaign's task 2 report (local-only, untracked artifact)."
+    },
+    "test_batch_1000_3d": {
+      "max_mean_us": 4093.0,
+      "max_p99_us": 11780.3,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 926.5315us (1000 3D Mahalanobis distance computations, the file's raw-batch distance family, distinct from the threshold-gated scenario in test_gate_20_tracks_50_meas above; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 913.7921us/939.2709us, 2.8% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 4093.0us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Sub-millisecond headroom (x2.0) applied per the owner-approved deviation. Previously rejected for instability under concurrent CPU contention (see test_gate_20_tracks_50_meas above); remeasured clean here. max_p99_us follows this file's existing 2x-mean convention. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    },
+    "test_batch_ls_gauss_newton_20_meas": {
+      "max_mean_us": 3010.3,
+      "max_p99_us": 6020.6,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (2006.8us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (3325.6us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_batch_ls_lin_50_meas": {
+      "max_mean_us": 335591.8,
+      "max_p99_us": 671183.6,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (223727.9us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (267441.3us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_blue_polar_meas_update": {
+      "max_mean_us": 81.9,
+      "max_p99_us": 315.1,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (54.6us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (210.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_camera_coords2uv_cubature_100_meas": {
+      "max_mean_us": 6402.2,
+      "max_p99_us": 12804.4,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (4268.1us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (7189.2us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
     "test_cfar_ca_1000": {
       "max_mean_us": 50.0,
       "max_p99_us": 282.2,
+      "_p99_derivation": "max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    },
+    "test_cfar_ca_10000": {
+      "max_mean_us": 400.0,
+      "max_p99_us": 881.4,
       "_p99_derivation": "max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
     },
     "test_cfar_ca_5000": {
@@ -11,10 +50,74 @@
       "max_p99_us": 629.6,
       "_p99_derivation": "max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
     },
-    "test_cfar_ca_10000": {
-      "max_mean_us": 400.0,
-      "max_p99_us": 881.4,
-      "_p99_derivation": "max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    "test_cwt_morlet": {
+      "max_mean_us": 10632.0,
+      "max_p99_us": 21264.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 3.2087290ms (Continuous Wavelet Transform, Morlet wavelet, 1024-sample signal, scales 1-63 -- this file's wavelet-transform family, distinct from its FFT/STFT/matched-filter families; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 3190.5001us/3226.9580us, 1.1% apart) x CI/local ratio 2.209 x 1.5 headroom = 10.632ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (10879us/21758us) -- this candidate's absolute value barely moved (~2% tighter) between the contended and idle measurements, unlike this file's other three entries, because its per-round work is large enough relative to the doctrine's baseline round count to have been comparatively insensitive to the earlier contention. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_dbscan_1000_points": {
+      "max_mean_us": 18519.0,
+      "max_p99_us": 37038.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 5.58905ms (dbscan() on 1000 points, eps=1.0, min_samples=5, O(n^2) distance matrix; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 5.5887ms/5.5894ms, 0.01% apart) x CI/local ratio 2.209 x 1.5 headroom = 18.519ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (59.059ms/118.118ms, ~69% looser); clean-machine remeasurement per test_kmeans_1000_points above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_enkf_update_100_members": {
+      "max_mean_us": 1039.9,
+      "max_p99_us": 2079.8,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (693.3us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (1325.4us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_euler2rotmat_batch_1000": {
+      "max_mean_us": 17922.0,
+      "max_p99_us": 35844.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 5.4088ms (euler2rotmat applied to 1000 Euler-angle triples, one call per triple; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 5.4245ms/5.3931ms, 0.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 17.922ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. This candidate was rejected in the campaign's first measurement pass (108-132% run-to-run drift even at --benchmark-min-rounds=300) due to sustained concurrent CPU contention from an unrelated local process on that machine at the time; remeasured clean here after that process quit and the tight Python-loop-over-Numba-call pattern turned out to be well-behaved on an idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_fft_1d_large[65536]": {
+      "max_mean_us": 1323.0,
+      "max_p99_us": 2646.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom instead of x1.5 -- proportional CI noise grows as timings shrink): local median 299.4165us (1D FFT of a 65536-sample real signal, the largest of the file's two 'large' sizes; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 299.2919us/299.5410us, 0.08% apart) x CI/local ratio 2.209 x 2.0 headroom = 1322.82us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (3711us/7422us, ~64% looser) that had needed --benchmark-min-rounds=400 to stabilize under that contention; the doctrine's baseline 30 rounds is sufficient on this idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_fp_info_batch_smoother_50_steps": {
+      "max_mean_us": 7925.3,
+      "max_p99_us": 15850.6,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (5283.6us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (8245.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_gate_20_tracks_50_meas": {
+      "max_mean_us": 4065.0,
+      "max_p99_us": 12050.3,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 920.1875us (gating 50 measurements against 20 tracks, threshold-gated Mahalanobis distance -- the realistic full gating-scan scenario, the most representative candidate in this file; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 927.375us/913.000us, 1.6% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 4065.0us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Sub-millisecond headroom (x2.0) applied per the owner-approved deviation: proportional CI noise grows as timings shrink. This candidate and its sibling test_batch_1000_3d were both rejected in the campaign's first measurement pass (29-109% run-to-run drift) due to sustained concurrent CPU contention from an unrelated local process on that machine at the time; remeasured clean here after that process quit -- see .superpowers/sdd/2026-08-18-slo-expansion/report.md for both measurement passes. max_p99_us follows this file's existing 2x-mean convention. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    },
+    "test_generalized_hypergeometric_3f2_large[1000]": {
+      "max_mean_us": 259.0,
+      "max_p99_us": 518.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 58.667us (generalized_hypergeometric, 3F2, Numba-optimized path, 1000-element z array -- the largest parametrization of this file's headline Numba-optimized hypergeometric family per its own module docstring; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 58.667us/58.667us, 0% apart) x CI/local ratio 2.209 x 2.0 headroom = 259.19us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (723us/1446us, ~64% looser). Other special_functions candidates remain skipped regardless of machine load: test_swerling_detection (~2us) and test_besselj[*] (44-49us) are both under the doctrine's ~50us skip-entirely floor, which is a CI-noise floor unrelated to local contention. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_hungarian_dense_500x500": {
+      "max_mean_us": 16573.0,
+      "max_p99_us": 33146.0,
+      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 5.0016ms (5 pytest-benchmark runs, --benchmark-min-rounds=30, hungarian() == scipy.optimize.linear_sum_assignment on a 500x500 dense matrix) x the same CI/local ratio 2.209 x 1.5 headroom = 16.57ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no Hungarian/assignment benchmark exists in CI history yet to calibrate against directly). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
+    },
+    "test_jpda_update_100_targets_50_meas": {
+      "max_mean_us": 111183.0,
+      "max_p99_us": 222366.0,
+      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 33.5546ms (5 pytest-benchmark runs, --benchmark-min-rounds=20, post-Mahalanobis-kernel-wiring) x CI/local ratio 2.209 x 1.5 headroom = 111.18ms. Ratio is the median of CI-history-vs-fresh-local ratios for 3 unrelated calibration benchmarks (test_jpda_small 2.209x, test_kf_predict[4] 2.155x, test_cfar_ca_1000 2.685x; CI side = median of each benchmark's last 10 .benchmarks/history.jsonl records, local side = median of 5 fresh runs on the same machine/day as the JPDA measurement). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
+    },
+    "test_kalman_batch_smoother_rts_50_steps": {
+      "max_mean_us": 8899.4,
+      "max_p99_us": 17798.8,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (5933.0us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (7293.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_kalman_fir_smoother_20_steps": {
+      "max_mean_us": 2419.7,
+      "max_p99_us": 4839.4,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (1613.1us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (2343.8us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_kf_cycle_with_sql_storage": {
+      "max_mean_us": 1425.0,
+      "max_p99_us": 36576.2,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 322.5415us (one predict+update+SQL-store cycle -- literally what a tracker pipeline does every scan per track; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 320.5415us/324.5415us, 1.2% apart) x CI/local ratio 2.209 x 2.0 headroom = 1424.99us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (3452us/6904us, ~59% looser). max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
     },
     "test_kf_predict[4]": {
       "max_mean_us": 50.0,
@@ -26,100 +129,93 @@
       "max_p99_us": 353.6,
       "_p99_derivation": "max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
     },
-    "test_jpda_update_100_targets_50_meas": {
-      "max_mean_us": 111183.0,
-      "max_p99_us": 222366.0,
-      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 33.5546ms (5 pytest-benchmark runs, --benchmark-min-rounds=20, post-Mahalanobis-kernel-wiring) x CI/local ratio 2.209 x 1.5 headroom = 111.18ms. Ratio is the median of CI-history-vs-fresh-local ratios for 3 unrelated calibration benchmarks (test_jpda_small 2.209x, test_kf_predict[4] 2.155x, test_cfar_ca_1000 2.685x; CI side = median of each benchmark's last 10 .benchmarks/history.jsonl records, local side = median of 5 fresh runs on the same machine/day as the JPDA measurement). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
-    },
-    "test_hungarian_dense_500x500": {
-      "max_mean_us": 16573.0,
-      "max_p99_us": 33146.0,
-      "_derivation": "gate-calibration doctrine (v2.5.0 task C2, 2026-08-18, Apple M3 Max): local median 5.0016ms (5 pytest-benchmark runs, --benchmark-min-rounds=30, hungarian() == scipy.optimize.linear_sum_assignment on a 500x500 dense matrix) x the same CI/local ratio 2.209 x 1.5 headroom = 16.57ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no Hungarian/assignment benchmark exists in CI history yet to calibrate against directly). max_p99_us follows this file's existing 2x-mean convention. Full derivation in task C2's performance report (local-only, untracked artifact of the v2.5.0 region-lcd-perf campaign)."
-    },
-    "test_assign2d_augmented_500x500": {
-      "max_mean_us": 29946.0,
-      "max_p99_us": 59892.0,
-      "_derivation": "gate-calibration doctrine (perf-levers task 2, 2026-08-18, Apple M3 Max): local median 9.0375ms (pytest-benchmark, --benchmark-min-rounds=5, auto-calibrated to 98 rounds; assign2d() with cost_of_non_assignment=50.0 on the same 500x500 uniform(0,100) seed-42 matrix as test_hungarian_dense_500x500, building the (n+m)x(n+m)=1000x1000 augmented matrix before delegating to scipy) x the same CI/local ratio 2.209 x 1.5 headroom = 29.9458ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above (no assign2d benchmark exists in CI history yet to calibrate against directly). cProfile of 10 calls to the same scenario attributes 96.7% of cumulative time to scipy.optimize.linear_sum_assignment and 1.1% to the np.full augmented-matrix construction -- below the plan's 10% trivial-fix threshold, so no code change was made; scipy's 1000x1000 solve is the floor. max_p99_us follows this file's existing 2x-mean convention. Full derivation in the perf-levers campaign's task 2 report (local-only, untracked artifact)."
-    },
-    "test_gate_20_tracks_50_meas": {
-      "max_mean_us": 4065.0,
-      "max_p99_us": 12050.3,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 920.1875us (gating 50 measurements against 20 tracks, threshold-gated Mahalanobis distance -- the realistic full gating-scan scenario, the most representative candidate in this file; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 927.375us/913.000us, 1.6% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 4065.0us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Sub-millisecond headroom (x2.0) applied per the owner-approved deviation: proportional CI noise grows as timings shrink. This candidate and its sibling test_batch_1000_3d were both rejected in the campaign's first measurement pass (29-109% run-to-run drift) due to sustained concurrent CPU contention from an unrelated local process on that machine at the time; remeasured clean here after that process quit -- see .superpowers/sdd/2026-08-18-slo-expansion/report.md for both measurement passes. max_p99_us follows this file's existing 2x-mean convention. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
-    },
-    "test_batch_1000_3d": {
-      "max_mean_us": 4093.0,
-      "max_p99_us": 11780.3,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 926.5315us (1000 3D Mahalanobis distance computations, the file's raw-batch distance family, distinct from the threshold-gated scenario in test_gate_20_tracks_50_meas above; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 913.7921us/939.2709us, 2.8% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 4093.0us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Sub-millisecond headroom (x2.0) applied per the owner-approved deviation. Previously rejected for instability under concurrent CPU contention (see test_gate_20_tracks_50_meas above); remeasured clean here. max_p99_us follows this file's existing 2x-mean convention. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
-    },
     "test_kmeans_1000_points": {
       "max_mean_us": 17953.0,
       "max_p99_us": 35906.0,
       "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 5.41815ms (kmeans() on 1000 points, k=5; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 5.2548ms/5.5815ms, 6.2% apart) x CI/local ratio 2.209 x 1.5 headroom = 17.953ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier measurement pass on this same machine while a concurrent process was consuming 300-500% CPU (56.122ms/112.244ms) -- that process has since quit; this is the clean-machine remeasurement, ~68% tighter. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
     },
-    "test_dbscan_1000_points": {
-      "max_mean_us": 18519.0,
-      "max_p99_us": 37038.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 5.58905ms (dbscan() on 1000 points, eps=1.0, min_samples=5, O(n^2) distance matrix; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 5.5887ms/5.5894ms, 0.01% apart) x CI/local ratio 2.209 x 1.5 headroom = 18.519ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (59.059ms/118.118ms, ~69% looser); clean-machine remeasurement per test_kmeans_1000_points above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    "test_monostat_ruv2cart_taylor_cm3_100_meas": {
+      "max_mean_us": 2893.6,
+      "max_p99_us": 5787.2,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (1929.1us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (2496.6us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
     },
-    "test_smolyak_generation[8]": {
-      "max_mean_us": 6662.0,
-      "max_p99_us": 13324.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 2.0107ms (smolyak_points(8, 2) -- degree-5-exact sparse cubature grid generation, the largest of the file's two n values; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2.0219ms/1.9995ms, 1.1% apart) x CI/local ratio 2.209 x 1.5 headroom = 6.662ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (19.803ms/39.606ms, ~66% looser); clean-machine remeasurement per test_kmeans_1000_points above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
-    },
-    "test_quat_rotate_batch_1000": {
-      "max_mean_us": 9526.0,
-      "max_p99_us": 19052.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 2.87485ms (quat_rotate applied to 1000 vectors, one call per vector; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2.8983ms/2.8514ms, 1.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 9.526ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (27.075ms/54.150ms, ~65% looser); clean-machine remeasurement per test_kmeans_1000_points above. This file's other two batch candidates, previously rejected for instability under that same contention, are now stable and have their own entries below (test_euler2rotmat_batch_1000, test_quat_multiply_batch_1000). max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
-    },
-    "test_euler2rotmat_batch_1000": {
-      "max_mean_us": 17922.0,
-      "max_p99_us": 35844.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 5.4088ms (euler2rotmat applied to 1000 Euler-angle triples, one call per triple; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 5.4245ms/5.3931ms, 0.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 17.922ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. This candidate was rejected in the campaign's first measurement pass (108-132% run-to-run drift even at --benchmark-min-rounds=300) due to sustained concurrent CPU contention from an unrelated local process on that machine at the time; remeasured clean here after that process quit and the tight Python-loop-over-Numba-call pattern turned out to be well-behaved on an idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
-    },
-    "test_quat_multiply_batch_1000": {
-      "max_mean_us": 4865.0,
-      "max_p99_us": 9730.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 1.4682ms (quat_multiply chained over 1000 quaternions, one call per step -- rotation composition, distinct from the vector-transform path in test_quat_rotate_batch_1000 above; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 1.4871ms/1.4493ms, 2.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 4.865ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Previously rejected for instability under concurrent CPU contention (112% run-to-run drift); remeasured clean here per test_euler2rotmat_batch_1000 above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
-    },
-    "test_fft_1d_large[65536]": {
-      "max_mean_us": 1323.0,
-      "max_p99_us": 2646.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom instead of x1.5 -- proportional CI noise grows as timings shrink): local median 299.4165us (1D FFT of a 65536-sample real signal, the largest of the file's two 'large' sizes; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 299.2919us/299.5410us, 0.08% apart) x CI/local ratio 2.209 x 2.0 headroom = 1322.82us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (3711us/7422us, ~64% looser) that had needed --benchmark-min-rounds=400 to stabilize under that contention; the doctrine's baseline 30 rounds is sufficient on this idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
-    },
-    "test_stft_large": {
-      "max_mean_us": 445.0,
-      "max_p99_us": 930.8,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 100.667us (STFT of a 16384-sample signal, nperseg=512, the file's 'large' STFT case; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 99.7920us/101.5420us, 1.8% apart) x CI/local ratio 2.209 x 2.0 headroom = 444.75us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (1263us/2526us, ~65% looser) that had needed --benchmark-min-rounds=400; the doctrine's baseline 30 rounds is sufficient on this idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    "test_pcrlb_cubature_cycle": {
+      "max_mean_us": 523.4,
+      "max_p99_us": 1490.4,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (349.0us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (993.6us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
     },
     "test_pulse_compression": {
       "max_mean_us": 232.0,
       "max_p99_us": 464.0,
       "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 52.4376us (pulse compression -- matched-filter chain over the 50ms LFM chirp case, the radar detection front end that feeds a tracker's gating/initiation stage; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 52.1251us/52.7500us, 1.2% apart) x CI/local ratio 2.209 x 2.0 headroom = 231.68us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Local median (52.4us) remains comfortably above the doctrine's ~50us skip-entirely floor on the idle machine, consistent with the earlier contended measurement. Superseded an earlier contended-machine measurement (637us/1274us, ~64% looser) that had needed --benchmark-min-rounds=400; the doctrine's baseline 30 rounds is sufficient on this idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
     },
-    "test_cwt_morlet": {
-      "max_mean_us": 10632.0,
-      "max_p99_us": 21264.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 3.2087290ms (Continuous Wavelet Transform, Morlet wavelet, 1024-sample signal, scales 1-63 -- this file's wavelet-transform family, distinct from its FFT/STFT/matched-filter families; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 3190.5001us/3226.9580us, 1.1% apart) x CI/local ratio 2.209 x 1.5 headroom = 10.632ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (10879us/21758us) -- this candidate's absolute value barely moved (~2% tighter) between the contended and idle measurements, unlike this file's other three entries, because its per-round work is large enough relative to the doctrine's baseline round count to have been comparatively insensitive to the earlier contention. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    "test_qmc_kf_update_1000_samples": {
+      "max_mean_us": 14571.9,
+      "max_p99_us": 29143.8,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (9714.6us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (10487.1us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
     },
-    "test_generalized_hypergeometric_3f2_large[1000]": {
-      "max_mean_us": 259.0,
-      "max_p99_us": 518.0,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 58.667us (generalized_hypergeometric, 3F2, Numba-optimized path, 1000-element z array -- the largest parametrization of this file's headline Numba-optimized hypergeometric family per its own module docstring; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 58.667us/58.667us, 0% apart) x CI/local ratio 2.209 x 2.0 headroom = 259.19us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (723us/1446us, ~64% looser). Other special_functions candidates remain skipped regardless of machine load: test_swerling_detection (~2us) and test_besselj[*] (44-49us) are both under the doctrine's ~50us skip-entirely floor, which is a CI-noise floor unrelated to local contention. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    "test_quat_multiply_batch_1000": {
+      "max_mean_us": 4865.0,
+      "max_p99_us": 9730.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 1.4682ms (quat_multiply chained over 1000 quaternions, one call per step -- rotation composition, distinct from the vector-transform path in test_quat_rotate_batch_1000 above; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 1.4871ms/1.4493ms, 2.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 4.865ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Previously rejected for instability under concurrent CPU contention (112% run-to-run drift); remeasured clean here per test_euler2rotmat_batch_1000 above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
     },
-    "test_kf_cycle_with_sql_storage": {
-      "max_mean_us": 1425.0,
-      "max_p99_us": 36576.2,
-      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 322.5415us (one predict+update+SQL-store cycle -- literally what a tracker pipeline does every scan per track; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 320.5415us/324.5415us, 1.2% apart) x CI/local ratio 2.209 x 2.0 headroom = 1424.99us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (3452us/6904us, ~59% looser). max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    "test_quat_rotate_batch_1000": {
+      "max_mean_us": 9526.0,
+      "max_p99_us": 19052.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 2.87485ms (quat_rotate applied to 1000 vectors, one call per vector; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2.8983ms/2.8514ms, 1.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 9.526ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (27.075ms/54.150ms, ~65% looser); clean-machine remeasurement per test_kmeans_1000_points above. This file's other two batch candidates, previously rejected for instability under that same contention, are now stable and have their own entries below (test_euler2rotmat_batch_1000, test_quat_multiply_batch_1000). max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_riccati_pred_pd05": {
+      "max_mean_us": 5872.7,
+      "max_p99_us": 12601.6,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (3915.1us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (8401.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_ruv2ruv_cubature_100_meas": {
+      "max_mean_us": 72423.8,
+      "max_p99_us": 144847.6,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (48282.6us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (57232.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_smolyak_generation[8]": {
+      "max_mean_us": 6662.0,
+      "max_p99_us": 13324.0,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine): local median 2.0107ms (smolyak_points(8, 2) -- degree-5-exact sparse cubature grid generation, the largest of the file's two n values; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2.0219ms/1.9995ms, 1.1% apart) x CI/local ratio 2.209 x 1.5 headroom = 6.662ms. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (19.803ms/39.606ms, ~66% looser); clean-machine remeasurement per test_kmeans_1000_points above. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md."
+    },
+    "test_sqrt_ckf_cycle": {
+      "max_mean_us": 1219.3,
+      "max_p99_us": 2473.1,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (812.8us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (1648.8us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_sqrt_cub_batch_smoother_20_steps": {
+      "max_mean_us": 14854.1,
+      "max_p99_us": 29708.2,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (9902.7us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (15701.7us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_stft_large": {
+      "max_mean_us": 445.0,
+      "max_p99_us": 930.8,
+      "_derivation": "gate-calibration doctrine (slo-expansion campaign, 2026-08-19, Apple M3 Max, idle machine), OWNER-APPROVED sub-millisecond deviation (x2.0 headroom): local median 100.667us (STFT of a 16384-sample signal, nperseg=512, the file's 'large' STFT case; mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 99.7920us/101.5420us, 1.8% apart) x CI/local ratio 2.209 x 2.0 headroom = 444.75us. Ratio derivation identical to test_jpda_update_100_targets_50_meas above. Superseded an earlier contended-machine measurement (1263us/2526us, ~65% looser) that had needed --benchmark-min-rounds=400; the doctrine's baseline 30 rounds is sufficient on this idle machine. max_p99_us follows this file's existing 2x-mean convention. Full derivation in .superpowers/sdd/2026-08-18-slo-expansion/report.md. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    },
+    "test_store_detection_batch_100": {
+      "max_mean_us": 155278.0,
+      "max_p99_us": 416359.8,
+      "_derivation": "CI-observed recalibration (2026-09-07): the 2026-08-19 derivation (local median 26.42655ms x CI/local ratio 2.209 x 1.5 headroom = 87.564ms) sat close under typical github-ubuntu-latest means (73-83ms, 2026-08-18..09-04) but was already exceeded by the SQLite WAL-checkpoint burst mode its own derivation documents (recorded spikes 104-133ms). After the 2026-09-04 runner-fleet shift the scheduled-run means settled at 101.121/101.231/105.423/106.300ms (2026-09-05..07, +15-21%, persistent warnings). Re-based on the CI instrument itself: mean of those four post-shift runs 103.519ms x 1.5 headroom = 155.278ms, which also clears the documented burst mode. max_p99_us follows this file's existing 2x-mean convention. Supersedes the 2026-08-19 local-median derivation; the local baseline (26.42655ms, Apple M3 Max) is unchanged and retained there for provenance. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
     },
     "test_store_scenario_10_tracks": {
       "max_mean_us": 14454.0,
       "max_p99_us": 28908.0,
       "_derivation": "CI-observed recalibration (2026-09-07): the 2026-08-19 derivation (local median 2.135542ms x CI/local ratio 2.209 x 1.5 headroom = 7.076ms) never matched this I/O-bound benchmark on CI -- every recorded github-ubuntu-latest mean from 2026-08-18 through 2026-09-04 but one ran 8.3-8.5ms (already +18% over the SLO, inside the warning band), so the compute-calibrated 2.209 ratio understated HDF5 write cost from day one. A runner-fleet shift on 2026-09-04 then added ~15% (scheduled-run means 9.586/9.596/9.497/9.865ms on 2026-09-05..07), crossing the 30% failure threshold with no repo change between the last passing and first failing run. Re-based on the CI instrument itself: mean of those four post-shift runs 9.636ms x 1.5 headroom = 14.454ms. max_p99_us follows this file's existing 2x-mean convention. Supersedes the 2026-08-19 local-median derivation; the local baseline (2.135542ms, Apple M3 Max) is unchanged and retained there for provenance."
     },
-    "test_store_detection_batch_100": {
-      "max_mean_us": 155278.0,
-      "max_p99_us": 416359.8,
-      "_derivation": "CI-observed recalibration (2026-09-07): the 2026-08-19 derivation (local median 26.42655ms x CI/local ratio 2.209 x 1.5 headroom = 87.564ms) sat close under typical github-ubuntu-latest means (73-83ms, 2026-08-18..09-04) but was already exceeded by the SQLite WAL-checkpoint burst mode its own derivation documents (recorded spikes 104-133ms). After the 2026-09-04 runner-fleet shift the scheduled-run means settled at 101.121/101.231/105.423/106.300ms (2026-09-05..07, +15-21%, persistent warnings). Re-based on the CI instrument itself: mean of those four post-shift runs 103.519ms x 1.5 headroom = 155.278ms, which also clears the documented burst mode. max_p99_us follows this file's existing 2x-mean convention. Supersedes the 2026-08-19 local-median derivation; the local baseline (26.42655ms, Apple M3 Max) is unchanged and retained there for provenance. max_p99_us re-based 2026-09-07 when tail enforcement was armed (it was previously recorded but never checked): the 2x-mean convention proved unrealistic against recorded CI maxima, so the tail SLO is the 90th percentile of the last 30 recorded run maxima x 1.5 headroom (or the prior 2x-mean value where that is larger). The gate compares hd15iqr (outlier-excluded worst round), which is bounded above by the raw maxima this figure was derived from."
+    "test_uv2spher_ang_cubature_100_meas": {
+      "max_mean_us": 8436.6,
+      "max_p99_us": 16873.2,
+      "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (5624.4us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
+      "_p99_derivation": "90th percentile of the 9 recorded run maxima (8416.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
     }
   }
 }
