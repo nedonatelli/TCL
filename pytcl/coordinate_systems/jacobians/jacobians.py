@@ -216,9 +216,10 @@ def cross_covariance_transform(
     Examples
     --------
     >>> # Transform spherical covariance to Cartesian
+    >>> from pytcl.coordinate_systems.jacobians import calc_spher_inv_jacob
     >>> P_sph = np.diag([1, 0.01, 0.01])  # [r, az, el] variances
     >>> r, az, el = 1000, np.radians(45), np.radians(30)
-    >>> J = spherical_jacobian_inv(r, az, el)
+    >>> J = calc_spher_inv_jacob([r, az, el])
     >>> P_cart = cross_covariance_transform(J, P_sph)
     """
     J = np.asarray(J, dtype=np.float64)
