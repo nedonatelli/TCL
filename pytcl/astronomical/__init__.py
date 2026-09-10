@@ -178,9 +178,7 @@ from pytcl.astronomical.time_systems import (
     TT_TAI_OFFSET,
     LeapSecondTable,
     cal_to_jd,
-    gast,
     get_leap_seconds,
-    gmst,
     gps_to_tai,
     gps_to_utc,
     gps_week_seconds,
@@ -256,8 +254,6 @@ __all__ = [
     "gps_week_seconds",
     "gps_week_to_utc",
     # Time systems - Sidereal time
-    "gmst",
-    "gast",
     # Time systems - Leap seconds
     "get_leap_seconds",
     "LeapSecondTable",

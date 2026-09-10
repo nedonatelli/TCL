@@ -485,7 +485,10 @@ def _high_res_field_spherical(
     B_phi : float
         Longitude component in nT.
     """
-    from pytcl.gravity.spherical_harmonics import associated_legendre
+    from pytcl.magnetism._schmidt import (
+        GEOMAGNETIC_REFERENCE_RADIUS_KM,
+        _schmidt_legendre,
+    )
 
     if n_max_eval is None:
         n_max_eval = coeffs.n_max
@@ -493,7 +496,7 @@ def _high_res_field_spherical(
         n_max_eval = min(n_max_eval, coeffs.n_max)
 
     N = n_max_eval
-    a = 6371.2  # Reference radius in km
+    a = GEOMAGNETIC_REFERENCE_RADIUS_KM
 
     # Time adjustment — vectorized over lower-left triangle
     dt = year - coeffs.epoch
@@ -510,14 +513,7 @@ def _high_res_field_spherical(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    # Magnetic Gauss coefficients require Schmidt semi-normalized Legendre
-    # functions. associated_legendre is geodesy fully normalized:
-    # sqrt((2 - delta_0m)(2n+1)(n-m)!/(n+m)!). Schmidt keeps the
-    # sqrt(2 - delta_0m) factor, so Schmidt = full / sqrt(2n+1).
-    P_full = associated_legendre(N, N, cos_theta, normalized=True)
-    scale = np.ones((N + 1, N + 1))
-    scale /= np.sqrt(2 * np.arange(N + 1) + 1)[:, np.newaxis]
-    P = P_full * scale
+    P = _schmidt_legendre(N, cos_theta)
 
     # dP/dtheta via the Schmidt-basis recursion:
     # sin(theta) * dP(n,m)/dtheta = n*cos(theta)*P(n,m) - sqrt(n^2-m^2)*P(n-1,m)

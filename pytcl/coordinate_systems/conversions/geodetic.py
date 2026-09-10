@@ -74,7 +74,12 @@ def geodetic2ecef(
     z = (N * (1 - e2) + alt) * sin_lat
 
     if np.isscalar(lat) or lat.size == 1:
-        return np.array([float(x), float(y), float(z)], dtype=np.float64)
+        # .item() rather than float(): float() on a (1,)-shaped array
+        # raises under NumPy >= 2.
+        return np.array(
+            [np.asarray(x).item(), np.asarray(y).item(), np.asarray(z).item()],
+            dtype=np.float64,
+        )
 
     return np.array([x, y, z], dtype=np.float64)
 

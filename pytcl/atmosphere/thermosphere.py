@@ -2,11 +2,14 @@
 Barometric thermosphere model.
 
 **This is not NRLMSISE-00.** The module was named ``nrlmsise00`` and described
-itself as a high-fidelity NRL model until gh-79. NRLMSISE-00 requires harmonic
-coefficient tables from NOAA which this library does not distribute; what is
-implemented here is a set of per-species exponential profiles with
-temperature-dependent scale heights, driven by F10.7 and Ap, each clamped to a
-floor.
+itself as a high-fidelity NRL model until gh-79. What is implemented here is a
+set of per-species exponential profiles with temperature-dependent scale
+heights, driven by F10.7 and Ap, each clamped to a floor.
+
+.. deprecated:: 2.11.0
+    The real NRLMSISE-00 -- coefficient tables included, compiled from the
+    reference C -- ships as :mod:`pytcl.atmosphere.nrlmsise00` since v2.10.0.
+    Use it instead; this approximation will be removed in v3.0.0.
 
 It is usable above roughly 200 km, where it agrees with published NRLMSISE-00
 densities to within a factor of about two. Below that it is wrong by up to
@@ -30,6 +33,7 @@ References
   43(12), 1747-1764
 """
 
+import warnings
 from typing import NamedTuple
 
 import numpy as np
@@ -117,13 +121,12 @@ class F107Index(NamedTuple):
     ap_array: NDArray[np.float64] | None = None
 
 
-# This module does NOT implement NRLMSISE-00. That model needs extensive
-# harmonic coefficient tables from NOAA which are not distributed here. What
-# follows is a barometric model: per-species exponential profiles with
-# temperature-dependent scale heights, each clamped to a floor. It was named
-# nrlmsise00 and documented as "a comprehensive thermosphere model", which is
-# how it came to return a sea-level density 44% below the true value with
-# nothing to warn a caller (gh-79).
+# This module does NOT implement NRLMSISE-00 (pytcl.atmosphere.nrlmsise00
+# does, since v2.10.0). What follows is a barometric model: per-species
+# exponential profiles with temperature-dependent scale heights, each clamped
+# to a floor. It was named nrlmsise00 and documented as "a comprehensive
+# thermosphere model", which is how it came to return a sea-level density 44%
+# below the true value with nothing to warn a caller (gh-79).
 
 
 class SimplifiedThermosphere:
@@ -131,11 +134,12 @@ class SimplifiedThermosphere:
     Barometric thermosphere model with solar and geomagnetic coupling.
 
     **This is not NRLMSISE-00.** It was named ``NRLMSISE00`` and described as
-    "a comprehensive thermosphere model" until gh-79; the real model requires
-    harmonic coefficient tables from NOAA that this library does not ship.
-    What this computes is a set of per-species exponential profiles with
-    temperature-dependent scale heights, driven by F10.7 and Ap, with each
-    species density clamped to a floor.
+    "a comprehensive thermosphere model" until gh-79. What this computes is a
+    set of per-species exponential profiles with temperature-dependent scale
+    heights, driven by F10.7 and Ap, with each species density clamped to a
+    floor. The real NRLMSISE-00 ships as
+    :mod:`pytcl.atmosphere.nrlmsise00` since v2.10.0 -- prefer it; this
+    class is deprecated and will be removed in v3.0.0.
 
     Use it above roughly 200 km. Below that it is wrong, in places by more
     than an order of magnitude:
@@ -174,7 +178,10 @@ class SimplifiedThermosphere:
 
     Examples
     --------
-    >>> model = SimplifiedThermosphere()
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore", DeprecationWarning)
+    ...     model = SimplifiedThermosphere()
     >>> output = model(
     ...     latitude=np.radians(45),
     ...     longitude=np.radians(-75),
@@ -199,6 +206,14 @@ class SimplifiedThermosphere:
 
     def __init__(self, use_meter_altitude: bool = True):
         """Initialize the simplified thermosphere model."""
+        warnings.warn(
+            "SimplifiedThermosphere is deprecated and will be removed in "
+            "v3.0.0: it is a barometric approximation, wrong by up to 50x "
+            "below 200 km (gh-79). The real NRLMSISE-00 ships as "
+            "pytcl.atmosphere.nrlmsise00 since v2.10.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.use_meter_altitude = use_meter_altitude
 
     def __call__(
@@ -820,7 +835,10 @@ def simplified_thermosphere(
     Examples
     --------
     >>> # ISS altitude (~400 km), magnetic latitude = 40°, quiet geomagnetic activity
-    >>> output = simplified_thermosphere(
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore", DeprecationWarning)
+    ...     output = simplified_thermosphere(
     ...     latitude=np.radians(40),
     ...     longitude=np.radians(-75),
     ...     altitude=400_000,  # 400 km

@@ -226,7 +226,7 @@ Sidereal Time (GMST):
 .. code-block:: python
 
    import numpy as np
-   from pytcl.astronomical import cal_to_jd, gmst
+   from pytcl.astronomical import cal_to_jd, gmst_iau82
    from pytcl.astronomical.reference_frames import ecef_to_eci, eci_to_ecef
 
    # Satellite position in ECI (km); positions only, shape (3,)
@@ -234,7 +234,7 @@ Sidereal Time (GMST):
 
    # Time of observation -> Julian date -> GMST (radians)
    jd = cal_to_jd(2026, 2, 26, 12, 0, 0.0)
-   theta = gmst(jd)
+   theta = gmst_iau82(jd)
 
    # Transform to ECEF (what ground stations see)
    sat_ecef = eci_to_ecef(sat_eci, theta)
@@ -269,7 +269,7 @@ Each component is available as a matrix:
 
    jd = cal_to_jd(2026, 2, 26, 12, 0, 0.0)
 
-   theta = gmst(jd)
+   theta = gmst_iau82(jd)
    print(f"GMST: {theta:.4f} rad = {np.degrees(theta):.2f} deg")
 
    P = precession_matrix_iau76(jd)      # IAU 1976 precession

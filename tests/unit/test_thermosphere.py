@@ -9,7 +9,20 @@ and composition profiles across altitude range -5 to 1000 km.
 import numpy as np
 import pytest
 
-from pytcl.atmosphere import ThermosphereState, simplified_thermosphere
+from pytcl.atmosphere import (
+    SimplifiedThermosphere,
+    ThermosphereState,
+    simplified_thermosphere,
+)
+
+# The whole module exercises the deprecated barometric approximation on
+# purpose; the deprecation itself is asserted below.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
+
+def test_simplified_thermosphere_is_deprecated():
+    with pytest.warns(DeprecationWarning, match="nrlmsise00"):
+        SimplifiedThermosphere()
 
 
 class TestSimplifiedThermosphereBasic:

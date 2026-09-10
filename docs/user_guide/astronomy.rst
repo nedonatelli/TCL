@@ -420,7 +420,8 @@ Output:
 
 Time scale conversions between UTC, TAI, TT, GPS, and Unix time are also
 available (``utc_to_tai``, ``tai_to_tt``, ``utc_to_gps``, ``unix_to_jd``,
-and friends), along with sidereal time (``gmst``, ``gast``).
+and friends), along with sidereal time (``gmst_iau82``, ``gast_iau82``
+in ``reference_frames``).
 
 Lambert Problem
 ---------------

@@ -14,7 +14,6 @@ from pytcl.trackers.bernoulli import (
 from pytcl.trackers.configs import MultiTargetConfig, SingleTargetConfig
 from pytcl.trackers.hypothesis import (
     Hypothesis,
-    HypothesisAssignment,
     HypothesisTree,
     MHTTrack,
     MHTTrackStatus,
@@ -41,7 +40,6 @@ __all__ = [
     "MHTTrackStatus",
     "MHTTrack",
     "Hypothesis",
-    "HypothesisAssignment",
     "HypothesisTree",
     "generate_joint_associations",
     "compute_association_likelihood",

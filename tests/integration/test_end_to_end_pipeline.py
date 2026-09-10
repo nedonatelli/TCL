@@ -34,7 +34,7 @@ import numpy as np
 import pytest
 
 from pytcl.assignment_algorithms import assign2d
-from pytcl.coordinate_systems import cart2pol, pol2cart, polar_jacobian_inv
+from pytcl.coordinate_systems import calc_polar_jacob, cart2pol, pol2cart
 from pytcl.dynamic_estimation import kf_predict, kf_update
 from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
 from pytcl.io import TrackHDF5Storage
@@ -67,7 +67,7 @@ def _polar_covariance():
 def _convert(r, theta):
     """Polar detection -> Cartesian position and covariance."""
     xy = np.asarray(pol2cart(float(r), float(theta)), dtype=float).ravel()[:2]
-    J = polar_jacobian_inv(float(r), float(theta))
+    J = np.linalg.inv(calc_polar_jacob(np.append(xy, [0.0, 0.0])))
     return xy, J @ _polar_covariance() @ J.T
 
 

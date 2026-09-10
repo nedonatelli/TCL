@@ -58,7 +58,6 @@ from pytcl.astronomical import (  # Orbital elements; Kepler's equation
     escape_velocity,
     flight_path_angle,
     gcrf_to_itrf,
-    gmst,
     hohmann_transfer,
     itrf_to_gcrf,
     jd_to_cal,
@@ -84,6 +83,7 @@ from pytcl.astronomical import (  # Orbital elements; Kepler's equation
     utc_to_tai,
     vis_viva,
 )
+from pytcl.astronomical.reference_frames import gmst_iau82
 
 
 def demo_orbital_elements():
@@ -456,7 +456,7 @@ def demo_time_systems():
     print(f"  GPS: {gps:.6f} (TAI - 19s)")
 
     # Sidereal time
-    gst = gmst(jd)
+    gst = gmst_iau82(jd)
     print(
         f"\nGreenwich Mean Sidereal Time: {np.degrees(gst):.4f} deg = "
         f"{np.degrees(gst) / 15:.4f} hours"

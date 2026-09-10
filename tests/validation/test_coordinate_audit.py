@@ -19,6 +19,10 @@ from pytcl.coordinate_systems import (
     axisangle2rotmat,
     azimuthal_equidistant,
     azimuthal_equidistant_inverse,
+    calc_polar_jacob,
+    calc_ruv_jacob,
+    calc_spher_inv_jacob,
+    calc_spher_jacob,
     cart2cyl,
     cart2pol,
     cart2ruv,
@@ -50,8 +54,6 @@ from pytcl.coordinate_systems import (
     ned_jacobian,
     numerical_jacobian,
     pol2cart,
-    polar_jacobian,
-    polar_jacobian_inv,
     polar_stereographic,
     prime_vertical_radius,
     quat2euler,
@@ -69,11 +71,8 @@ from pytcl.coordinate_systems import (
     roty,
     rotz,
     ruv2cart,
-    ruv_jacobian,
     slerp,
     sphere2cart,
-    spherical_jacobian,
-    spherical_jacobian_inv,
     stereographic,
     stereographic_inverse,
     transverse_mercator,
@@ -640,8 +639,8 @@ class TestProjectionsVsPyproj:
 class TestJacobians:
     """Jacobians validated against numerical differentiation."""
 
-    @pytest.mark.parametrize("system", ["standard", "az-el"])
-    def test_spherical_jacobian_vs_numerical(self, system):
+    @pytest.mark.parametrize("system,system_type", [("standard", 2), ("az-el", 0)])
+    def test_calc_spher_jacob_vs_numerical(self, system, system_type):
         rng = np.random.default_rng(RNG_SEED)
         for _ in range(30):
             p = rng.normal(size=3) * 100
@@ -650,12 +649,12 @@ class TestJacobians:
                 r, az, el = cart2sphere(x, system)
                 return np.array([r, az, el])
 
-            jac = spherical_jacobian(p, system)
+            jac = calc_spher_jacob(p, system_type=system_type)
             jac_num = numerical_jacobian(f, p, dx=1e-5)
             np.testing.assert_allclose(jac, jac_num, atol=1e-6)
 
-    @pytest.mark.parametrize("system", ["standard", "az-el"])
-    def test_spherical_jacobian_inv_and_product(self, system):
+    @pytest.mark.parametrize("system,system_type", [("standard", 2), ("az-el", 0)])
+    def test_calc_spher_inv_jacob_and_product(self, system, system_type):
         rng = np.random.default_rng(RNG_SEED)
         for _ in range(30):
             r = rng.uniform(10, 1e4)
@@ -665,16 +664,18 @@ class TestJacobians:
             def f(s):
                 return sphere2cart(s[0], s[1], s[2], system)
 
-            jac_inv = spherical_jacobian_inv(r, az, el, system)
+            jac_inv = calc_spher_inv_jacob([r, az, el], system_type=system_type)
             jac_num = numerical_jacobian(f, [r, az, el], dx=1e-6)
             np.testing.assert_allclose(jac_inv, jac_num, atol=1e-4, rtol=1e-6)
             # forward and inverse Jacobians must be matrix inverses
             p = sphere2cart(r, az, el, system)
             np.testing.assert_allclose(
-                spherical_jacobian(p, system) @ jac_inv, np.eye(3), atol=1e-9
+                calc_spher_jacob(p, system_type=system_type) @ jac_inv,
+                np.eye(3),
+                atol=1e-9,
             )
 
-    def test_polar_jacobians(self):
+    def test_calc_polar_jacob_vs_numerical(self):
         rng = np.random.default_rng(RNG_SEED)
         for _ in range(30):
             p = rng.normal(size=2) * 100
@@ -683,16 +684,17 @@ class TestJacobians:
                 r, theta = cart2pol(x)
                 return np.array([r, theta])
 
-            jac = polar_jacobian(p)
+            jac = calc_polar_jacob(p)
             np.testing.assert_allclose(
                 jac, numerical_jacobian(f, p, dx=1e-6), atol=1e-6
             )
-            r, theta = cart2pol(p)
-            np.testing.assert_allclose(
-                jac @ polar_jacobian_inv(r, theta), np.eye(2), atol=1e-9
-            )
+            np.testing.assert_allclose(jac @ np.linalg.inv(jac), np.eye(2), atol=1e-9)
 
-    def test_ruv_jacobian_vs_numerical(self):
+    def test_calc_ruv_jacob_vs_numerical(self):
+        # cart2ruv uses the one-way (half) range, so the equivalent
+        # calc_ruv_jacob call is use_half_range=True; the MATLAB default
+        # (False) doubles row 0 -- the trap that motivated retiring the
+        # old ruv_jacobian, which silently used the half-range form.
         rng = np.random.default_rng(RNG_SEED)
         for _ in range(30):
             p = rng.normal(size=3) * 100
@@ -702,9 +704,13 @@ class TestJacobians:
                 r, u, v = cart2ruv(x)
                 return np.array([r, u, v])
 
+            jac_half = calc_ruv_jacob(p, use_half_range=True)
             np.testing.assert_allclose(
-                ruv_jacobian(p), numerical_jacobian(f, p, dx=1e-5), atol=1e-6
+                jac_half, numerical_jacobian(f, p, dx=1e-5), atol=1e-6
             )
+            jac_full = calc_ruv_jacob(p)
+            np.testing.assert_allclose(jac_full[0], 2.0 * jac_half[0], rtol=1e-12)
+            np.testing.assert_allclose(jac_full[1:], jac_half[1:], rtol=1e-12)
 
     def test_enu_ned_jacobians(self):
         rng = np.random.default_rng(RNG_SEED)

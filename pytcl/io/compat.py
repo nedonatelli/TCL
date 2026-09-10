@@ -32,12 +32,23 @@ Use with MultiTargetTracker:
 ...     adapter.process_scan(measurements, dt=1.0, timestamp=float(k))
 """
 
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.track_database import TrackDatabaseManager, TrackDatabaseStatus
+
+
+def _warn_v1_compat(name: str) -> None:
+    warnings.warn(
+        f"{name} is part of the v1.x compatibility layer, deprecated since "
+        "v2.11.0 and scheduled for removal in v3.0.0. Use the v2 filter "
+        "functions and TrackDatabaseManager directly.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 class KalmanTrackAdapter:
@@ -78,6 +89,7 @@ class KalmanTrackAdapter:
         Q: ArrayLike,
         R: ArrayLike,
     ) -> None:
+        _warn_v1_compat("KalmanTrackAdapter")
         self._db = db
         self._track_id = track_id
         self._F = np.asarray(F, dtype=np.float64)
@@ -263,6 +275,7 @@ class EKFTrackAdapter:
         Q: ArrayLike,
         R: ArrayLike,
     ) -> None:
+        _warn_v1_compat("EKFTrackAdapter")
         self._db = db
         self._track_id = track_id
         self._f = f
@@ -370,6 +383,7 @@ class UKFTrackAdapter:
         beta: float = 2.0,
         kappa: float = 0.0,
     ) -> None:
+        _warn_v1_compat("UKFTrackAdapter")
         self._db = db
         self._track_id = track_id
         self._f = f
@@ -491,6 +505,7 @@ class TrackerDatabaseAdapter:
         confirm_hits: int = 3,
         max_misses: int = 5,
     ) -> None:
+        _warn_v1_compat("TrackerDatabaseAdapter")
         self._db = db
         self._tracker = tracker
         self._confirm_hits = confirm_hits
@@ -613,6 +628,7 @@ class IMMTrackAdapter:
         track_id: str,
         imm: Any,
     ) -> None:
+        _warn_v1_compat("IMMTrackAdapter")
         self._db = db
         self._track_id = track_id
         self._imm = imm
@@ -708,6 +724,7 @@ class ParticleFilterTrackAdapter:
         R: ArrayLike,
         n_particles: int = 200,
     ) -> None:
+        _warn_v1_compat("ParticleFilterTrackAdapter")
         self._db = db
         self._track_id = track_id
         self._f = f
@@ -835,6 +852,7 @@ def store_filter_result(
     update_type : str
         'prediction', 'update', or 'smoothed'.
     """
+    _warn_v1_compat("store_filter_result")
     x = np.asarray(result.x, dtype=np.float64)
 
     if hasattr(result, "P"):

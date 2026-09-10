@@ -20,7 +20,7 @@ PACKAGE = REPO_ROOT / "pytcl"
 
 # Lower this whenever the measured count drops; never raise it.
 # History: 797 recorded 2026-08-20 (post-v2.5.0 audit).
-BASELINE = 797
+BASELINE = 788
 
 
 def _count_example_less_public_functions() -> int:

@@ -95,24 +95,6 @@ class Hypothesis(NamedTuple):
     parent_id: int
 
 
-class HypothesisAssignment(NamedTuple):
-    """A track-to-measurement assignment within a hypothesis.
-
-    Attributes
-    ----------
-    track_id : int
-        Track ID.
-    measurement_idx : int
-        Measurement index (-1 for missed detection).
-    likelihood : float
-        Likelihood of this assignment.
-    """
-
-    track_id: int
-    measurement_idx: int
-    likelihood: float
-
-
 def generate_joint_associations(
     gated: NDArray[np.bool_],
     n_tracks: int,
@@ -579,67 +561,6 @@ class HypothesisTree:
         self.tracks[track_id] = new_track
         return track_id
 
-    def expand_hypotheses(
-        self,
-        associations: List[Dict[int, int]],
-        likelihoods: List[float],
-        new_tracks: Dict[int, List[MHTTrack]],
-    ) -> None:
-        """
-        Expand hypotheses with new associations.
-
-        Parameters
-        ----------
-        associations : list of dict
-            Valid joint associations.
-        likelihoods : list of float
-            Likelihood of each association.
-        new_tracks : dict
-            Mapping from association_idx to list of new tracks
-            created by that association.
-        """
-        self.current_scan += 1
-
-        new_hypotheses = []
-
-        for hyp in self.hypotheses:
-            for assoc_idx, (assoc, likelihood) in enumerate(
-                zip(associations, likelihoods)
-            ):
-                # Compute new hypothesis probability
-                new_prob = hyp.probability * likelihood
-
-                # Determine track IDs for new hypothesis
-                new_track_ids = []
-
-                # Update existing tracks based on association
-                for track_id in hyp.track_ids:
-                    if track_id in assoc:
-                        # Track continues with association
-                        new_track_ids.append(track_id)
-
-                # Add new tracks from this association
-                if assoc_idx in new_tracks:
-                    for new_track in new_tracks[assoc_idx]:
-                        tid = self.add_track(new_track)
-                        new_track_ids.append(tid)
-
-                # Create new hypothesis
-                new_hyp = Hypothesis(
-                    id=self._get_next_hypothesis_id(),
-                    probability=new_prob,
-                    track_ids=new_track_ids,
-                    scan_created=self.current_scan,
-                    parent_id=hyp.id,
-                )
-                new_hypotheses.append(new_hyp)
-
-        # Replace hypotheses
-        self.hypotheses = new_hypotheses
-
-        # Prune
-        self.prune()
-
     def prune(self) -> None:
         """Apply all pruning strategies."""
         # Probability-based pruning
@@ -706,7 +627,6 @@ __all__ = [
     "MHTTrackStatus",
     "MHTTrack",
     "Hypothesis",
-    "HypothesisAssignment",
     "generate_joint_associations",
     "compute_association_likelihood",
     "n_scan_prune",

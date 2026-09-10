@@ -215,28 +215,6 @@ class TestCoordinatedTurnJacobianClaim:
         assert not np.allclose(at_zero[:2, 4], at_ninety[:2, 4])
 
 
-class TestSiderealTimeDefault:
-    """``gast`` with its default arguments returns GMST."""
-
-    def test_the_default_equals_gmst_exactly(self):
-        from pytcl.astronomical.time_systems import gast, gmst
-
-        for offset in (0.0, 1234.5, -5000.25):
-            jd = 2451545.0 + offset
-            assert float(np.atleast_1d(gast(jd))[0]) == pytest.approx(
-                float(np.atleast_1d(gmst(jd))[0]), rel=1e-15
-            )
-
-    def test_supplying_nutation_separates_them(self):
-        """So the caveat is about the default, not about the function."""
-        from pytcl.astronomical.time_systems import gast, gmst
-
-        jd = 2451545.0 + 1234.5
-        apparent = float(np.atleast_1d(gast(jd, dpsi=1e-5, eps=0.409))[0])
-        mean = float(np.atleast_1d(gmst(jd))[0])
-        assert apparent != pytest.approx(mean, abs=1e-12)
-
-
 class TestSrifInitializationRecipe:
     """``inv(cholesky(P0)).T`` holds only for diagonal ``P0``."""
 

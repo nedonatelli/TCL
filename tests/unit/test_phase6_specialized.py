@@ -6,7 +6,6 @@ from numpy.testing import assert_allclose
 from pytcl.astronomical import (
     cal_to_jd,
     get_leap_seconds,
-    gmst,
     gps_week_seconds,
     jd_to_cal,
     jd_to_mjd,
@@ -152,8 +151,10 @@ class TestSiderealTime:
 
     def test_gmst_reasonable(self):
         """GMST should be in [0, 2*pi]."""
+        from pytcl.astronomical.reference_frames import gmst_iau82
+
         jd = cal_to_jd(2024, 1, 1, 0, 0, 0)
-        theta = gmst(jd)
+        theta = gmst_iau82(jd)
         assert 0 <= theta < 2 * np.pi
 
 

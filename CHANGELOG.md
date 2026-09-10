@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Five duplicate Jacobians** (`spherical_jacobian`,
+  `spherical_jacobian_inv`, `polar_jacobian`, `polar_jacobian_inv`,
+  `ruv_jacobian`): each was a bit-identical subset of the v2.10
+  `calc_*` MATLAB-port suite. Replacements: `calc_spher_jacob` /
+  `calc_spher_inv_jacob` (old `'az-el'` = `system_type=0`,
+  `'standard'` = `system_type=2`), `calc_polar_jacob`, and
+  `calc_ruv_jacob`. **Range-convention trap**: the old `ruv_jacobian`
+  silently used the one-way (half) range; `calc_ruv_jacob` defaults to
+  the MATLAB two-way convention, whose row 0 is exactly 2x larger --
+  pass `use_half_range=True` for the old behavior.
+- **`time_systems.gmst` / `time_systems.gast`**: duplicated the same
+  IAU-1982 series as `reference_frames.gmst_iau82`, and `gast`'s
+  default arguments silently returned plain GMST. Use `gmst_iau82` /
+  `gast_iau82` (or `tt2gmst` / `tt2gast` in `time_scales`).
+- **`great_circle_tdoa_loc`**: an invention (no MATLAB counterpart
+  ported), with two prior correctness fixes and self-documented
+  reliability caveats; nothing in the library used it.
+- **`HypothesisTree.expand_hypotheses` and `HypothesisAssignment`**:
+  dead code -- the tracker uses its own expansion path and nothing
+  referenced either.
+- The empty `pytcl.dynamic_estimation.measurement_update` package,
+  three orphan scripts (`generate_tutorial_plots.py`,
+  `generate_example_html.py`, `profile_network_flow.py`), and the dead
+  `develop` / `v2.0.0` CI triggers.
+
+### Deprecated
+
+- **`SimplifiedThermosphere` / `simplified_thermosphere`** (removal
+  v3.0.0): a barometric approximation wrong by up to 50x below 200 km
+  (gh-79); the real NRLMSISE-00 -- coefficient tables included -- has
+  shipped as `pytcl.atmosphere.nrlmsise00` since v2.10.0. The module's
+  claim that the library "does not distribute" the coefficient tables
+  had been false since that release and is corrected.
+- **The v1.x io compatibility/migration layer** (removal v3.0.0):
+  `MigrationHelper` and the six `*TrackAdapter` classes plus
+  `store_filter_result` now emit `DeprecationWarning`; nothing in the
+  library uses them.
+
+### Changed
+
+- **`navigation.geodesy` conversions delegate to
+  `coordinate_systems.conversions.geodetic`**: `geodetic_to_ecef`,
+  `ecef_to_geodetic`, `ecef_to_enu`, and `enu_to_ecef` keep their
+  scalar-tuple signatures but now call the canonical array
+  implementations instead of carrying duplicate math (the NED pair
+  already delegated to the ENU pair). Fixed along the way:
+  `geodetic2ecef` crashed on `(1,)`-shaped inputs under NumPy >= 2
+  (`float()` on a size-1 array).
+- **One Schmidt semi-normalization implementation**: wmm, emm, and the
+  magnetic-coordinates potential each carried an identical
+  fully-normalized-to-Schmidt conversion block (and two hardcoded
+  copies of the 6371.2 km reference radius); they now share
+  `pytcl.magnetism._schmidt`. Field values are unchanged (pinned by
+  the existing WMM/EMM/IGRF fixture tests).
+
 ### Added
 
 - **Bernoulli filter** (`pytcl.trackers.bernoulli`): the exact Bayes
