@@ -46,7 +46,6 @@ from pytcl.navigation.great_circle import (
     great_circle_intersect,
     great_circle_inverse,
     great_circle_path_intersect,
-    great_circle_tdoa_loc,
     great_circle_waypoint,
     great_circle_waypoints,
 )
@@ -233,7 +232,6 @@ __all__ = [
     "cross_track_distance",
     "great_circle_intersect",
     "great_circle_path_intersect",
-    "great_circle_tdoa_loc",
     "angular_distance",
     "destination_point",
     # Rhumb line navigation

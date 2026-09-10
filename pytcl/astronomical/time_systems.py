@@ -13,8 +13,6 @@ This module provides conversions between various time systems:
 
 from typing import List, Tuple
 
-import numpy as np
-
 # Constants
 JD_UNIX_EPOCH = 2440587.5  # Julian date of Unix epoch (1970-01-01 00:00:00 UTC)
 JD_GPS_EPOCH = 2444244.5  # Julian date of GPS epoch (1980-01-06 00:00:00 UTC)
@@ -657,96 +655,6 @@ def gps_week_to_utc(week: int, seconds: float) -> Tuple[float, int]:
     return gps_to_utc(jd_gps)
 
 
-def gmst(jd_ut1: float) -> float:
-    """
-    Compute Greenwich Mean Sidereal Time.
-
-    Parameters
-    ----------
-    jd_ut1 : float
-        UT1 as Julian Date.
-
-    Returns
-    -------
-    float
-        GMST in radians.
-
-    Notes
-    -----
-    Uses the IAU 1982 expression for GMST.
-
-    References
-    ----------
-    - Explanatory Supplement to the Astronomical Almanac, 3rd ed.
-    """
-    # Julian centuries from J2000.0 at the preceding 0h UT1
-    jd_0h = np.floor(jd_ut1 - 0.5) + 0.5
-    T = (jd_0h - JD_J2000) / 36525.0
-
-    # GMST in seconds at 0h UT1 (IAU 1982 expression)
-    gmst_sec = 24110.54841 + 8640184.812866 * T + 0.093104 * T**2 - 6.2e-6 * T**3
-
-    # Add rotation for time of day (sidereal/solar day ratio)
-    ut1_seconds = (jd_ut1 - jd_0h) * 86400.0
-    gmst_sec += ut1_seconds * 1.00273790935
-
-    # Normalize to [0, 86400)
-    gmst_sec = gmst_sec % 86400.0
-
-    # Convert to radians
-    return gmst_sec * 2 * np.pi / 86400.0
-
-
-def gast(jd_ut1: float, dpsi: float = 0.0, eps: float = 0.0) -> float:
-    """
-    Compute Greenwich Apparent Sidereal Time.
-
-    Parameters
-    ----------
-    jd_ut1 : float
-        UT1 as Julian Date.
-    dpsi : float, optional
-        Nutation in longitude (radians). Default 0.
-    eps : float, optional
-        Mean obliquity of ecliptic (radians). Default uses approximate value.
-
-    Returns
-    -------
-    float
-        GAST in radians.
-
-    Notes
-    -----
-    GAST = GMST + equation of equinoxes
-    The equation of equinoxes = dpsi * cos(eps)
-
-    For high precision applications, nutation parameters should be computed
-    from the IAU 2006/2000A precession-nutation model.
-
-    Notes
-    -----
-    **With the default ``dpsi=0`` this returns GMST, not GAST.** The equation
-    of the equinoxes is ``dpsi * cos(eps)``, so leaving both at zero removes it
-    entirely and the two are identical to the last bit (gh-25). Supply the
-    nutation in longitude and the obliquity -- from `~pytcl.astronomical.reference_frames.nutation_angles_iau80` -- to
-    get apparent sidereal time. The difference is up to about 1.1 arcseconds,
-    which is 0.02 arcseconds of longitude error at the equator per
-    milliarcsecond of neglected nutation.
-
-    """
-    gmst_val = gmst(jd_ut1)
-
-    if eps == 0.0:
-        # Approximate mean obliquity
-        T = (jd_ut1 - JD_J2000) / 36525.0
-        eps = np.radians(23.439291 - 0.0130042 * T)
-
-    # Equation of equinoxes
-    eq_eq = dpsi * np.cos(eps)
-
-    return gmst_val + eq_eq
-
-
 __all__ = [
     # Julian dates
     "cal_to_jd",
@@ -770,9 +678,6 @@ __all__ = [
     # GPS week
     "gps_week_seconds",
     "gps_week_to_utc",
-    # Sidereal time
-    "gmst",
-    "gast",
     # Leap seconds
     "get_leap_seconds",
     "LeapSecondTable",

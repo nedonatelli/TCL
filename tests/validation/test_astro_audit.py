@@ -210,21 +210,12 @@ class TestSiderealTime:
         ]:
             t = astropy_time.Time(dstr, scale="ut1")
             ref = t.sidereal_time("mean", "greenwich", model="IAU1982").rad
-            assert abs(_angdiff(ts.gmst(t.jd), ref)) < 0.001 * ARCSEC
             assert abs(_angdiff(rf.gmst_iau82(t.jd), ref)) < 0.001 * ARCSEC
 
     def test_gmst_vallado_example(self):
         """Vallado Ex. 3-5: 1992-08-20 12:14 UT1 -> GMST = 152.578788 deg."""
         jd = ts.cal_to_jd(1992, 8, 20, 12, 14, 0.0)
-        assert np.degrees(ts.gmst(jd)) == pytest.approx(152.578788, abs=1e-5)
-
-    def test_gast_identity(self):
-        jd = 2453101.5
-        eps = 0.4090
-        dpsi = -60e-6
-        assert ts.gast(jd, dpsi, eps) == pytest.approx(
-            ts.gmst(jd) + dpsi * np.cos(eps), abs=1e-15
-        )
+        assert np.degrees(rf.gmst_iau82(jd)) == pytest.approx(152.578788, abs=1e-5)
 
     def test_gast_iau82_vs_astropy(self):
         astropy_time = _astropy_time()

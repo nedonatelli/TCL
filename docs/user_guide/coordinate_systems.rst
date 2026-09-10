@@ -208,13 +208,13 @@ Jacobians for coordinate transformations are essential for filter design:
 .. code-block:: python
 
    from pytcl.coordinate_systems import (
-       spherical_jacobian,
-       spherical_jacobian_inv,
+       calc_spher_inv_jacob,
+       calc_spher_jacob,
        geodetic_jacobian,
    )
 
    # Jacobian of the Cartesian-to-spherical transformation at a point
-   J = spherical_jacobian([100.0, 200.0, 50.0], system_type="standard")
+   J = calc_spher_jacob([100.0, 200.0, 50.0], system_type=2)
    print(f"Jacobian shape: {J.shape}")
 
    # Jacobian of the geodetic-to-ECEF transformation
@@ -226,9 +226,9 @@ Output:
 
    Jacobian shape: (3, 3)
 
-``spherical_jacobian`` can be used as the measurement Jacobian ``H`` in
-an EKF with spherical (range/angle) measurements. ``polar_jacobian``,
-``enu_jacobian``, ``ned_jacobian``, ``ruv_jacobian``, and
+``calc_spher_jacob`` can be used as the measurement Jacobian ``H`` in
+an EKF with spherical (range/angle) measurements. ``calc_polar_jacob``,
+``enu_jacobian``, ``ned_jacobian``, ``calc_ruv_jacob``, and
 ``numerical_jacobian`` cover other measurement models.
 
 WGS84 Ellipsoid

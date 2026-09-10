@@ -23,6 +23,7 @@ import plotly.graph_objects as go  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
 from pytcl.coordinate_systems import (  # noqa: E402
+    calc_spher_inv_jacob,
     cart2sphere,
     cross_covariance_transform,
     ecef2enu,
@@ -38,7 +39,6 @@ from pytcl.coordinate_systems import (  # noqa: E402
     rotz,
     slerp,
     sphere2cart,
-    spherical_jacobian_inv,
 )
 
 SHOW_PLOTS = os.environ.get("PYTCL_SHOW_PLOTS", "1") != "0"
@@ -252,8 +252,8 @@ def jacobian_covariance_demo() -> None:
     print(f"  Elevation: {np.degrees(el):.1f} +/- {np.degrees(sigma_el):.2f} deg")
 
     # Get Jacobian of Cartesian w.r.t. spherical at this point
-    # spherical_jacobian_inv: d[x,y,z] = J @ d[r,az,el]
-    J = spherical_jacobian_inv(r, az, el)
+    # calc_spher_inv_jacob: d[x,y,z] = J @ d[r,az,el]
+    J = calc_spher_inv_jacob([r, az, el])
 
     print("\nJacobian (dCartesian/dSpherical):")
     print(J)

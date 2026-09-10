@@ -270,7 +270,7 @@ to a Julian date and compute GMST.
 .. code-block:: python
 
    import numpy as np
-   from pytcl.astronomical import cal_to_jd, gmst
+   from pytcl.astronomical import cal_to_jd, gmst_iau82
    from pytcl.astronomical.reference_frames import eci_to_ecef
    from pytcl.coordinate_systems.conversions import ecef2geodetic
 
@@ -279,7 +279,7 @@ to a Julian date and compute GMST.
 
    # Time of observation -> Julian date -> GMST angle (radians)
    jd = cal_to_jd(2026, 2, 26, 12, 0, 0.0)
-   theta = gmst(jd)
+   theta = gmst_iau82(jd)
 
    # Transform to ECEF (fixed to Earth)
    sat_ecef = eci_to_ecef(sat_eci, theta)
@@ -380,18 +380,18 @@ In Extended Kalman Filters, you need partial derivatives (Jacobians) for lineari
 .. code-block:: python
 
    from pytcl.coordinate_systems.jacobians import (
-       spherical_jacobian,      # d(r, az, el) / d(x, y, z)
-       spherical_jacobian_inv,  # d(x, y, z) / d(r, az, el)
+       calc_spher_jacob,        # d(r, az, el) / d(x, y, z)
+       calc_spher_inv_jacob,    # d(x, y, z) / d(r, az, el)
        geodetic_jacobian,       # d(ECEF) / d(lat, lon, alt)
        enu_jacobian,            # ECEF -> ENU rotation at (lat, lon)
        ned_jacobian,            # ECEF -> NED rotation at (lat, lon)
-       polar_jacobian,          # 2D polar
-       ruv_jacobian,            # d(r, u, v) / d(x, y, z)
+       calc_polar_jacob,        # 2D polar
+       calc_ruv_jacob,          # d(r, u, v) / d(x, y, z)
    )
 
    # Jacobian of the Cartesian -> spherical measurement function
    cart = np.array([1000.0, 500.0, 100.0])
-   H = spherical_jacobian(cart, system_type='az-el')  # 3x3 matrix
+   H = calc_spher_jacob(cart, system_type=0)  # 3x3 matrix (0 = az-el)
 
    # Use in an EKF measurement update
    from pytcl.dynamic_estimation.kalman import ekf_predict, ekf_update
@@ -405,7 +405,7 @@ In Extended Kalman Filters, you need partial derivatives (Jacobians) for lineari
    def H_jacobian(state):
        """Jacobian of the measurement model (position block only)."""
        H = np.zeros((3, state.shape[0]))
-       H[:, :3] = spherical_jacobian(state[:3], system_type='az-el')
+       H[:, :3] = calc_spher_jacob(state[:3], system_type=0)
        return H
 
    # ekf_predict / ekf_update take these as the h and H arguments
@@ -418,12 +418,12 @@ your own:
 .. code-block:: python
 
    from pytcl.coordinate_systems.jacobians import (
-       numerical_jacobian, spherical_jacobian
+       calc_spher_jacob, numerical_jacobian
    )
    from pytcl.coordinate_systems.conversions import cart2sphere
 
    cart = np.array([1000.0, 500.0, 100.0])
-   J_analytic = spherical_jacobian(cart, system_type='az-el')
+   J_analytic = calc_spher_jacob(cart, system_type=0)
    J_numeric = numerical_jacobian(
        lambda p: np.array(cart2sphere(p, system_type='az-el')), cart
    )
@@ -581,12 +581,12 @@ The conversion functions accept arrays, so batches never need a Python loop:
 
    import numpy as np
    from functools import lru_cache
-   from pytcl.coordinate_systems.jacobians import spherical_jacobian
+   from pytcl.coordinate_systems.jacobians import calc_spher_jacob
 
    @lru_cache(maxsize=256)
    def cached_jacobian(point_tuple):
        """Cache Jacobians for quantized points (tuples are hashable)."""
-       return spherical_jacobian(np.array(point_tuple), system_type='az-el')
+       return calc_spher_jacob(np.array(point_tuple), system_type=0)
 
    # Quantize to 10 m resolution to raise the cache hit rate
    point = np.array([1003.7, 498.2, 101.4])
@@ -640,7 +640,7 @@ silently wrong answers.
 
 .. code-block:: python
 
-   from pytcl.astronomical import cal_to_jd, gmst
+   from pytcl.astronomical import cal_to_jd, gmst_iau82
    from pytcl.astronomical.reference_frames import eci_to_ecef
 
    # ECI: fixed to distant stars (inertial)
@@ -648,7 +648,7 @@ silently wrong answers.
 
    # ECEF rotates with Earth: you MUST supply the rotation angle
    # for the observation time
-   theta = gmst(cal_to_jd(2026, 2, 26, 12, 0, 0.0))
+   theta = gmst_iau82(cal_to_jd(2026, 2, 26, 12, 0, 0.0))
    sat_ecef = eci_to_ecef(sat_eci, theta)
 
    # Wrong: using ECI coordinates directly as if they were ECEF
@@ -744,7 +744,7 @@ Advanced Topics
 .. code-block:: python
 
    import numpy as np
-   from pytcl.astronomical import gmst
+   from pytcl.astronomical import gmst_iau82
    from pytcl.astronomical.reference_frames import eci_to_ecef
    from pytcl.coordinate_systems.conversions import ecef2geodetic
 
@@ -757,7 +757,7 @@ Advanced Topics
        """
        track = []
        for jd in jd_times:
-           sat_ecef = eci_to_ecef(sat_eci, gmst(jd))
+           sat_ecef = eci_to_ecef(sat_eci, gmst_iau82(jd))
            track.append(ecef2geodetic(sat_ecef))
        return np.array(track)
 

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **Five duplicate Jacobians** (`spherical_jacobian`,
+  `spherical_jacobian_inv`, `polar_jacobian`, `polar_jacobian_inv`,
+  `ruv_jacobian`): each was a bit-identical subset of the v2.10
+  `calc_*` MATLAB-port suite. Replacements: `calc_spher_jacob` /
+  `calc_spher_inv_jacob` (old `'az-el'` = `system_type=0`,
+  `'standard'` = `system_type=2`), `calc_polar_jacob`, and
+  `calc_ruv_jacob`. **Range-convention trap**: the old `ruv_jacobian`
+  silently used the one-way (half) range; `calc_ruv_jacob` defaults to
+  the MATLAB two-way convention, whose row 0 is exactly 2x larger --
+  pass `use_half_range=True` for the old behavior.
+- **`time_systems.gmst` / `time_systems.gast`**: duplicated the same
+  IAU-1982 series as `reference_frames.gmst_iau82`, and `gast`'s
+  default arguments silently returned plain GMST. Use `gmst_iau82` /
+  `gast_iau82` (or `tt2gmst` / `tt2gast` in `time_scales`).
+- **`great_circle_tdoa_loc`**: an invention (no MATLAB counterpart
+  ported), with two prior correctness fixes and self-documented
+  reliability caveats; nothing in the library used it.
+- **`HypothesisTree.expand_hypotheses` and `HypothesisAssignment`**:
+  dead code -- the tracker uses its own expansion path and nothing
+  referenced either.
+- The empty `pytcl.dynamic_estimation.measurement_update` package,
+  three orphan scripts (`generate_tutorial_plots.py`,
+  `generate_example_html.py`, `profile_network_flow.py`), and the dead
+  `develop` / `v2.0.0` CI triggers.
+
 ### Added
 
 - **Bernoulli filter** (`pytcl.trackers.bernoulli`): the exact Bayes

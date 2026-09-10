@@ -218,7 +218,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - Good
      - Direct/indirect geodesic, great-circle and rhumb problems ported,
        validated against GeographicLib; rhumb intersection is ported as
-       ``rhumb_intersect`` and great-circle TDOA as ``great_circle_tdoa_loc``.
+       ``rhumb_intersect``. (The invented ``great_circle_tdoa_loc`` was removed
+       in v2.11.0: it was not a port and its reliability was self-documented
+       as poor.)
        Great-circle intersection is ported too, as ``great_circle_intersect``
        (plus a path-endpoint form, ``great_circle_path_intersect``).
        **Missing:** the *geodesic* (ellipsoidal) intersection, surface

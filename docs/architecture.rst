@@ -180,7 +180,7 @@ Counts are measured from the packages themselves rather than asserted;
      - 2-D, 3-D and N-D assignment, gating, JPDA, k-best, network flow
    * - ``astronomical``
      - 10
-     - 163
+     - 161
      - Orbital mechanics, SGP4/SDP4, TLEs, ephemerides, reference frames
    * - ``containers``
      - 8
@@ -204,7 +204,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Track and measurement persistence, including HDF5
    * - ``coordinate_systems``
      - 12
-     - 122
+     - 117
      - Frame conversions, u-v direction cosines, rotations, Jacobians,
        map projections
    * - ``gravity``
@@ -213,7 +213,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Spherical-harmonic gravity, EGM, solid Earth tides
    * - ``navigation``
      - 5
-     - 101
+     - 100
      - Geodesy, great circle and rhumb line, INS and INS/GNSS
    * - ``clustering``
      - 4
@@ -225,7 +225,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Track, uncertainty and coverage visualization
    * - ``trackers``
      - 6
-     - 23
+     - 22
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
      - 8

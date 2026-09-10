@@ -629,8 +629,6 @@ Navigation
      - ``pytcl.navigation.great_circle.great_circle_distance``
    * - ``greatCircleIntersect``
      - ``pytcl.navigation.great_circle.great_circle_intersect``
-   * - ``greatCircleTDOALoc``
-     - ``pytcl.navigation.great_circle.great_circle_tdoa_loc``
    * - ``indirectGeodeticProb``
      - ``pytcl.navigation.geodesy.inverse_geodetic``
    * - ``indirectRhumbProblem``
