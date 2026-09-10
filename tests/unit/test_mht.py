@@ -175,6 +175,16 @@ class TestComputeAssociationLikelihood:
 class TestNScanPrune:
     """Tests for N-scan pruning."""
 
+    def test_disabled_window_is_a_no_op(self):
+        """n_scan <= 0 disables pruning entirely."""
+        hypotheses = [
+            Hypothesis(0, 0.6, [1], scan_created=5, parent_id=-1),
+            Hypothesis(1, 0.4, [2], scan_created=5, parent_id=-1),
+        ]
+        pruned, committed = n_scan_prune(hypotheses, {}, n_scan=0, current_scan=5)
+        assert pruned == hypotheses
+        assert committed == set()
+
     def test_no_prune_recent(self):
         """Recent hypotheses are not pruned."""
         tracks = {

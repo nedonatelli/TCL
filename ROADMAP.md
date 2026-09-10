@@ -122,7 +122,6 @@ No dates are attached because none have been decided:
 
 #### Multi-Hypothesis Tracking Enhancements
 
-- Bernoulli filter for track initiation/termination
 - PHD/CPHD filters for clutter-heavy scenarios
 - Generalized labeled multi-Bernoulli (GLMB) tracker
 - Intensity function visualization
