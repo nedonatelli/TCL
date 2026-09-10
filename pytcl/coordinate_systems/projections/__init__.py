@@ -37,6 +37,8 @@ from pytcl.coordinate_systems.projections.projections import (
     ProjectionResult,
     UTMResult,
     azimuthal_equidistant,
+    azimuthal_equidistant_exact,
+    azimuthal_equidistant_exact_inverse,
     azimuthal_equidistant_inverse,
     geodetic2utm,
     geodetic2utm_batch,
@@ -44,6 +46,8 @@ from pytcl.coordinate_systems.projections.projections import (
     lambert_conformal_conic_inverse,
     mercator,
     mercator_inverse,
+    oblique_stereographic,
+    oblique_stereographic_inverse,
     polar_stereographic,
     stereographic,
     stereographic_inverse,
@@ -80,6 +84,8 @@ __all__ = [
     # Stereographic
     "stereographic",
     "stereographic_inverse",
+    "oblique_stereographic",
+    "oblique_stereographic_inverse",
     "polar_stereographic",
     # Lambert Conformal Conic
     "lambert_conformal_conic",
@@ -87,4 +93,6 @@ __all__ = [
     # Azimuthal Equidistant
     "azimuthal_equidistant",
     "azimuthal_equidistant_inverse",
+    "azimuthal_equidistant_exact",
+    "azimuthal_equidistant_exact_inverse",
 ]

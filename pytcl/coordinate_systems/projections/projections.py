@@ -746,8 +746,9 @@ def stereographic(
 
     Both are conformal and each is self-consistent with its own inverse. But
     coordinates from this function are not interchangeable with ``+proj=sterea``
-    output, and it is not survey-grade far from the projection center. For work
-    that must match PROJ, use ``pyproj``.
+    output, and it is not survey-grade far from the projection center. For
+    coordinates that match PROJ (to sub-micrometer), use
+    :func:`oblique_stereographic` -- the EPSG method 9809 implementation.
 
     """
     e = np.sqrt(e2)
@@ -1234,8 +1235,8 @@ def azimuthal_equidistant(
     Notes
     -----
     This implementation uses the spherical approximation for simplicity.
-    For high accuracy over long distances, geodesic calculations should
-    be used.
+    For exact ellipsoidal distances (matching PROJ's ``+proj=aeqd``), use
+    :func:`azimuthal_equidistant_exact`.
 
     This projection is not conformal, so there is no single scale factor.
     The radial scale is exactly 1 by construction and is what
@@ -1361,6 +1362,372 @@ def azimuthal_equidistant_inverse(
     return lat, lon
 
 
+def _sterea_constants(
+    lat0: float, k0: float, a: float, e2: float
+) -> Tuple[float, float, float, float, float]:
+    """Conformal-sphere constants of EPSG method 9809 at the origin.
+
+    Returns (R, n, c, chi0, e) where R is the conformal sphere radius,
+    n and c the latitude-mapping constants, and chi0 the conformal
+    latitude of the origin on that sphere.
+    """
+    e = np.sqrt(e2)
+    sin_lat0 = np.sin(lat0)
+    rho0 = a * (1 - e2) / (1 - e2 * sin_lat0**2) ** 1.5
+    nu0 = a / np.sqrt(1 - e2 * sin_lat0**2)
+    R = np.sqrt(rho0 * nu0)
+    n = np.sqrt(1 + e2 * np.cos(lat0) ** 4 / (1 - e2))
+
+    s1 = (1 + sin_lat0) / (1 - sin_lat0)
+    s2 = (1 - e * sin_lat0) / (1 + e * sin_lat0)
+    w1 = (s1 * s2**e) ** n
+    sin_chi0_prov = (w1 - 1) / (w1 + 1)
+    c = (n + sin_lat0) * (1 - sin_chi0_prov) / ((n - sin_lat0) * (1 + sin_chi0_prov))
+    w2 = c * w1
+    chi0 = np.arcsin((w2 - 1) / (w2 + 1))
+    return R, n, c, chi0, e
+
+
+def oblique_stereographic(
+    lat: float,
+    lon: float,
+    lat0: float,
+    lon0: float,
+    k0: float = 1.0,
+    a: float = WGS84_A,
+    e2: float = WGS84_E2,
+) -> ProjectionResult:
+    """
+    Oblique (double) stereographic projection, EPSG method 9809 (forward).
+
+    The ellipsoid is first mapped conformally onto a sphere of Gaussian
+    radius at the origin using the full EPSG latitude mapping (constants
+    ``n`` and ``c``), then that sphere is projected stereographically.
+    This is the algorithm PROJ implements as ``+proj=sterea`` (the
+    projection of the Dutch RD grid, EPSG:28992), so unlike
+    :func:`stereographic` -- whose simpler conformal-latitude substitution
+    diverges from ``sterea`` by kilometers far from the origin (gh-25) --
+    coordinates from this function are interchangeable with PROJ output.
+
+    Parameters
+    ----------
+    lat : float
+        Geodetic latitude in radians.
+    lon : float
+        Longitude in radians.
+    lat0 : float
+        Origin latitude in radians.
+    lon0 : float
+        Origin longitude in radians.
+    k0 : float, optional
+        Scale factor at the origin. Default is 1.0.
+    a : float, optional
+        Semi-major axis in meters. Default is WGS84.
+    e2 : float, optional
+        First eccentricity squared. Default is WGS84.
+
+    Returns
+    -------
+    ProjectionResult
+        Projected coordinates with scale and convergence.
+
+    References
+    ----------
+    - IOGP Publication 373-7-2, "Coordinate Conversions and
+      Transformations including Formulas", EPSG method code 9809.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> res = oblique_stereographic(np.radians(53.0), np.radians(6.0),
+    ...                             np.radians(52.156161), np.radians(5.387639),
+    ...                             k0=0.9999079)
+    >>> bool(abs(res.scale - 0.9999079) < 1e-3)
+    True
+    """
+    R, n, c, chi0, e = _sterea_constants(lat0, k0, a, e2)
+
+    sin_lat = np.sin(lat)
+    sa = (1 + sin_lat) / (1 - sin_lat)
+    sb = (1 - e * sin_lat) / (1 + e * sin_lat)
+    w = c * (sa * sb**e) ** n
+    chi = np.arcsin((w - 1) / (w + 1))
+    dlam = n * (lon - lon0)
+
+    sin_chi = np.sin(chi)
+    cos_chi = np.cos(chi)
+    sin_chi0 = np.sin(chi0)
+    cos_chi0 = np.cos(chi0)
+    cos_dlam = np.cos(dlam)
+    sin_dlam = np.sin(dlam)
+
+    B = 1 + sin_chi * sin_chi0 + cos_chi * cos_chi0 * cos_dlam
+    x = 2 * R * k0 * cos_chi * sin_dlam / B
+    y = 2 * R * k0 * (sin_chi * cos_chi0 - cos_chi * sin_chi0 * cos_dlam) / B
+
+    # Composite conformal scale: ellipsoid -> conformal sphere
+    # (n R cos(chi) / (nu cos(lat))) times sphere -> plane (2 k0 / B).
+    nu = a / np.sqrt(1 - e2 * sin_lat**2)
+    scale = float(2 * n * R * k0 * cos_chi / (B * nu * np.cos(lat)))
+
+    # Grid convergence via the ray back to the projection centre, which is
+    # straight in the map; conformality transfers sphere bearings to
+    # ellipsoid bearings unchanged (meridians map to meridians).
+    azimuth = np.arctan2(
+        cos_chi * sin_dlam,
+        cos_chi0 * sin_chi - sin_chi0 * cos_chi * cos_dlam,
+    )
+    back_azimuth = np.arctan2(
+        -cos_chi0 * sin_dlam,
+        cos_chi * sin_chi0 - sin_chi * cos_chi0 * cos_dlam,
+    )
+    convergence = float(wrap_to_pi(back_azimuth - azimuth - np.pi))
+
+    return ProjectionResult(float(x), float(y), scale, convergence)
+
+
+def oblique_stereographic_inverse(
+    x: float,
+    y: float,
+    lat0: float,
+    lon0: float,
+    k0: float = 1.0,
+    a: float = WGS84_A,
+    e2: float = WGS84_E2,
+) -> Tuple[float, float]:
+    """
+    Oblique (double) stereographic projection, EPSG method 9809 (inverse).
+
+    Parameters
+    ----------
+    x : float
+        Easting in meters.
+    y : float
+        Northing in meters.
+    lat0 : float
+        Origin latitude in radians.
+    lon0 : float
+        Origin longitude in radians.
+    k0 : float, optional
+        Scale factor at the origin. Default is 1.0.
+    a : float, optional
+        Semi-major axis in meters. Default is WGS84.
+    e2 : float, optional
+        First eccentricity squared. Default is WGS84.
+
+    Returns
+    -------
+    Tuple[float, float]
+        (latitude, longitude) in radians.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat0, lon0 = np.radians(52.156161), np.radians(5.387639)
+    >>> fwd = oblique_stereographic(np.radians(53.0), np.radians(6.0),
+    ...                             lat0, lon0, k0=0.9999079)
+    >>> lat, lon = oblique_stereographic_inverse(fwd.x, fwd.y, lat0, lon0,
+    ...                                          k0=0.9999079)
+    >>> bool(abs(np.degrees(lat) - 53.0) < 1e-9)
+    True
+    """
+    R, n, c, chi0, e = _sterea_constants(lat0, k0, a, e2)
+
+    g = 2 * R * k0 * np.tan(np.pi / 4 - chi0 / 2)
+    h = 4 * R * k0 * np.tan(chi0) + g
+    i = np.arctan2(x, h + y)
+    j = np.arctan2(x, g - y) - i
+    chi = chi0 + 2 * np.arctan((y - x * np.tan(j / 2)) / (2 * R * k0))
+    dlam = j + 2 * i
+    lon = dlam / n + lon0
+
+    # Invert the conformal-latitude mapping for the geodetic latitude:
+    # psi is the sphere's isometric latitude pulled back through n and c.
+    sin_chi = np.sin(chi)
+    psi = 0.5 * np.log((1 + sin_chi) / (c * (1 - sin_chi))) / n
+    lat = 2 * np.arctan(np.exp(psi)) - np.pi / 2
+    for _ in range(25):
+        sin_lat = np.sin(lat)
+        psi_i = np.log(
+            np.tan(lat / 2 + np.pi / 4)
+            * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
+        )
+        lat_new = lat - (psi_i - psi) * np.cos(lat) * (1 - e2 * sin_lat**2) / (1 - e2)
+        if abs(lat_new - lat) < 1e-14:
+            lat = lat_new
+            break
+        lat = lat_new
+
+    return float(lat), float(lon)
+
+
+def azimuthal_equidistant_exact(
+    lat: float,
+    lon: float,
+    lat0: float,
+    lon0: float,
+    a: float = WGS84_A,
+    e2: float = WGS84_E2,
+) -> ProjectionResult:
+    """
+    Exact ellipsoidal azimuthal equidistant projection (forward).
+
+    The map coordinates are the true geodesic distance and azimuth from
+    the projection centre: ``x = s12 sin(az1)``, ``y = s12 cos(az1)``,
+    computed with Karney's algorithm (geographiclib). This is what PROJ's
+    ``+proj=aeqd`` computes on an ellipsoid, so unlike
+    :func:`azimuthal_equidistant` -- a spherical approximation on the
+    authalic sphere -- distances from the centre are exact everywhere,
+    antipodes included.
+
+    Requires the ``geodesy`` extra (geographiclib).
+
+    Parameters
+    ----------
+    lat : float
+        Geodetic latitude in radians.
+    lon : float
+        Longitude in radians.
+    lat0 : float
+        Centre latitude in radians.
+    lon0 : float
+        Centre longitude in radians.
+    a : float, optional
+        Semi-major axis in meters. Default is WGS84.
+    e2 : float, optional
+        First eccentricity squared. Default is WGS84.
+
+    Returns
+    -------
+    ProjectionResult
+        Projected coordinates. ``scale`` is the radial scale, exactly 1
+        by construction; ``convergence`` is the true grid convergence,
+        computed from the geodesic azimuths and reduced length.
+
+    Raises
+    ------
+    DependencyError
+        If geographiclib is not installed.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> res = azimuthal_equidistant_exact(np.radians(40), np.radians(-75),
+    ...                                   np.radians(38.9), np.radians(-77))
+    >>> bool(np.hypot(res.x, res.y) > 0)
+    True
+    >>> res.scale
+    1.0
+    """
+    geod = _karney_geodesic(a, e2)
+    from geographiclib.geodesic import Geodesic
+
+    g = geod.Inverse(
+        np.degrees(lat0),
+        np.degrees(lon0),
+        np.degrees(lat),
+        np.degrees(lon),
+        Geodesic.STANDARD | Geodesic.REDUCEDLENGTH,
+    )
+    s12 = g["s12"]
+    if s12 < 1e-9:
+        return ProjectionResult(0.0, 0.0, 1.0, 0.0)
+
+    az1 = np.radians(g["azi1"])
+    az2 = np.radians(g["azi2"])
+    m12 = g["m12"]
+
+    x = s12 * np.sin(az1)
+    y = s12 * np.cos(az1)
+
+    # Radial scale is exactly 1 by construction. The tangential scale is
+    # s12 / m12 (map arc over the geodesic's reduced length), which the
+    # convergence must account for, exactly as the spherical version
+    # accounts for c / sin(c) -- its special case with m12 = R sin(s/R).
+    back_azimuth = wrap_to_pi(az2 + np.pi)
+    convergence = float(
+        wrap_to_pi(
+            -az1 - np.arctan2((s12 / m12) * np.sin(back_azimuth), -np.cos(back_azimuth))
+        )
+    )
+    return ProjectionResult(float(x), float(y), 1.0, convergence)
+
+
+def azimuthal_equidistant_exact_inverse(
+    x: float,
+    y: float,
+    lat0: float,
+    lon0: float,
+    a: float = WGS84_A,
+    e2: float = WGS84_E2,
+) -> Tuple[float, float]:
+    """
+    Exact ellipsoidal azimuthal equidistant projection (inverse).
+
+    Solves the direct geodesic problem from the projection centre with
+    azimuth ``atan2(x, y)`` and distance ``hypot(x, y)`` (Karney's
+    algorithm, geographiclib). Requires the ``geodesy`` extra.
+
+    Parameters
+    ----------
+    x : float
+        Easting in meters.
+    y : float
+        Northing in meters.
+    lat0 : float
+        Centre latitude in radians.
+    lon0 : float
+        Centre longitude in radians.
+    a : float, optional
+        Semi-major axis in meters. Default is WGS84.
+    e2 : float, optional
+        First eccentricity squared. Default is WGS84.
+
+    Returns
+    -------
+    Tuple[float, float]
+        (latitude, longitude) in radians.
+
+    Raises
+    ------
+    DependencyError
+        If geographiclib is not installed.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> lat0, lon0 = np.radians(38.9), np.radians(-77)
+    >>> fwd = azimuthal_equidistant_exact(np.radians(40), np.radians(-75),
+    ...                                   lat0, lon0)
+    >>> lat, lon = azimuthal_equidistant_exact_inverse(fwd.x, fwd.y,
+    ...                                                lat0, lon0)
+    >>> bool(abs(np.degrees(lat) - 40.0) < 1e-9)
+    True
+    """
+    geod = _karney_geodesic(a, e2)
+    s = float(np.hypot(x, y))
+    if s < 1e-9:
+        return float(lat0), float(lon0)
+    az = np.degrees(np.arctan2(x, y))
+    g = geod.Direct(np.degrees(lat0), np.degrees(lon0), az, s)
+    return float(np.radians(g["lat2"])), float(np.radians(g["lon2"]))
+
+
+def _karney_geodesic(a: float, e2: float):
+    """A geographiclib Geodesic for (a, e2), or a loud DependencyError."""
+    try:
+        from geographiclib.geodesic import Geodesic
+    except ImportError:
+        from pytcl.core.exceptions import DependencyError
+
+        raise DependencyError(
+            "azimuthal_equidistant_exact requires geographiclib. "
+            "Install the `geodesy` extra: pip install nrl-tracker[geodesy]."
+        ) from None
+    f = 1.0 - np.sqrt(1.0 - e2)
+    return Geodesic(a, f)
+
+
 # =============================================================================
 # Batch Operations
 # =============================================================================
@@ -1436,6 +1803,8 @@ __all__ = [
     # Stereographic
     "stereographic",
     "stereographic_inverse",
+    "oblique_stereographic",
+    "oblique_stereographic_inverse",
     "polar_stereographic",
     # Lambert Conformal Conic
     "lambert_conformal_conic",
@@ -1443,4 +1812,6 @@ __all__ = [
     # Azimuthal Equidistant
     "azimuthal_equidistant",
     "azimuthal_equidistant_inverse",
+    "azimuthal_equidistant_exact",
+    "azimuthal_equidistant_exact_inverse",
 ]
