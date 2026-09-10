@@ -7,12 +7,22 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.9.0)
-----------------------
+Current State (v2.10.0)
+-----------------------
 
-* **8,300+ tests** passing; coverage measured honestly (90.0% as CI's
+* **8,500+ tests** passing; coverage measured honestly (90.0% as CI's
   branch-coverage gate sees it, with numba kernels traced; higher locally
   where the MLX layer is visible), docstring examples run in CI
+* **NRLMSISE-00 proper and the long-tail port** (v2.10.0): the
+  vendored reference C compiled as pytcl's first extension (with
+  platform wheels and a machine-precision pure-Python fallback,
+  cross-validated against the official Fortran lineage), the
+  SOFA/ERFA time scales, the full bistatic measurement
+  Jacobian/Hessian/cross-derivative suite, MOSPA/MMOSPA metrics,
+  interval scheduling, and magnetic apex/quasi-dipole/centered-dipole
+  coordinates by field-line tracing -- all fixture-validated with
+  independent second oracles, with further upstream MATLAB defects
+  documented
 * **Estimation expansion** (v2.9.0): the ensemble Kalman filter and
   extended SRIF, the Monte-Carlo (QMC) Kalman family, BLUE polar and
   spherical measurement updates, batch least-squares estimation, the
@@ -74,10 +84,10 @@ Next
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's
-  dimension-specialized subdirectory files and out-of-scope region types
-  (LCD samples and the general-dimension region-cubature rules have
-  shipped), the refraction suite, localization estimators, and filter
-  variants.
+  dimension-specialized subdirectory files and out-of-scope region
+  types (LCD samples and the general-dimension region-cubature rules
+  have shipped), Jacchia 1971, the multivariate-polynomials remainder,
+  calendar/timezone utilities, and filter variants.
 
 Long term (unscheduled)
 -----------------------

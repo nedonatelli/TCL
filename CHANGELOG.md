@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-09-09
+
+Stability registry note (release checklist 3b): no STABLE module
+changed since v2.9.0. Four MATURE modules changed, all non-breaking --
+`atmosphere.models` gained the additive `speed_of_sound_gas_table`,
+and `mathematical_functions.transforms.wavelets`, `trackers.mht` and
+`trackers.single_target` only had stale `# ty: ignore` comments
+removed in the dependency refresh (no code change).
+
 ### Added
 
 - **NRLMSISE-00 proper** (`pytcl.atmosphere.nrlmsise00`), closing
