@@ -469,8 +469,8 @@ def generalized_hypergeometric(
     Uses Numba JIT compilation for the general case (p > 2 or q > 1),
     providing 5-10x speedup over pure Python loops.
 
-    Outside the convergence domain (p = q + 1 with |z| >= 1, or
-    p > q + 1 with z != 0) a ``ValueError`` is raised unless the
+    Outside the convergence domain (p = q + 1 with ``|z| >= 1``, or
+    p > q + 1 with ``z != 0``) a ``ValueError`` is raised unless the
     series terminates (some ``a[i]`` a non-positive integer). A
     ``RuntimeWarning`` is emitted when ``max_terms`` is exhausted
     before the tolerance holds.
