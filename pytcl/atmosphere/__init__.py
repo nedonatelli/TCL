@@ -38,6 +38,10 @@ from pytcl.atmosphere.ionosphere import (
     scintillation_index,
     simple_iri,
 )
+from pytcl.atmosphere.jacchia import (
+    JacchiaState,
+    jacchia_atmos_param,
+)
 from pytcl.atmosphere.models import (
     G0,  # Constants
     GAMMA,
@@ -114,6 +118,8 @@ __all__ = [
     "SimplifiedThermosphere",
     "ThermosphereState",
     "F107Index",
+    "JacchiaState",
+    "jacchia_atmos_param",
     "simplified_thermosphere",
     # Atmosphere constants
     "T0",

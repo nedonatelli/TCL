@@ -8,8 +8,9 @@ radar refraction conversions (bistatic r-u-v ray tracing, bias
 approximation, cubature variants), speed of sound, and (since v2.10.0)
 NRLMSISE-00 itself, shipped as the vendored public-domain reference C
 implementation compiled into ``pytcl.atmosphere._nrlmsise00_c`` with a
-validated pure-Python fallback. What remains unported from MATLAB's
-``Atmosphere_and_Refraction`` (Jacchia 1971) is accounted for in
+validated pure-Python fallback. v2.11.0 adds the Jacchia 1971 model
+(``pytcl.atmosphere.jacchia``), completing the port of MATLAB's
+``Atmosphere_and_Refraction`` models tracked in
 :doc:`../matlab_parity_inventory`.
 
 .. automodule:: pytcl.atmosphere
@@ -40,6 +41,19 @@ are documented in the module and pinned by validation tests (gh-79). For
 the real model at any altitude, use :mod:`pytcl.atmosphere.nrlmsise00`.
 
 .. automodule:: pytcl.atmosphere.thermosphere
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Jacchia 1971
+------------
+
+The Jacchia 1971 reference atmosphere (90 km to 2500 km): exospheric
+temperature from solar and geomagnetic activity, the empirical
+temperature profile, and bi-polynomial densities with the semiannual,
+geomagnetic, and seasonal-latitude corrections.
+
+.. automodule:: pytcl.atmosphere.jacchia
    :members:
    :undoc-members:
    :show-inheritance:

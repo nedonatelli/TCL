@@ -207,6 +207,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "atmosphere.ionosphere": MaturityLevel.MATURE,
     "atmosphere.models": MaturityLevel.MATURE,
     "atmosphere.refraction": MaturityLevel.EXPERIMENTAL,
+    "atmosphere.jacchia": MaturityLevel.EXPERIMENTAL,  # new this release
     "atmosphere.thermosphere": MaturityLevel.DEPRECATED,  # barometric approximation; use nrlmsise00 (removal v3.0.0)
     # clustering
     "clustering.kmeans": MaturityLevel.MATURE,

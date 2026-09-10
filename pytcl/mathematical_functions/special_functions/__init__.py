@@ -51,6 +51,7 @@ from pytcl.mathematical_functions.special_functions.elliptic import (
     elliprf,
     elliprg,
     elliprj,
+    jacobi_elliptic,
 )
 from pytcl.mathematical_functions.special_functions.error_functions import (  # noqa: E501
     dawsn,
@@ -164,6 +165,7 @@ __all__ = [
     "elliprg",
     "elliprj",
     "elliprc",
+    "jacobi_elliptic",
     # Marcum Q function (radar detection)
     "marcum_q",
     "marcum_q1",

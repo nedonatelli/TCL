@@ -46,7 +46,9 @@ from pytcl.gravity.models import (
     WGS84,
     GravityConstants,
     GravityResult,
+    alt_ellips_param_to_flattening,
     bouguer_anomaly,
+    ellips_grav_coeffs,
     free_air_anomaly,
     geoid_height_j2,
     gravitational_potential,
@@ -117,6 +119,8 @@ __all__ = [
     "gravitational_potential",
     "free_air_anomaly",
     "bouguer_anomaly",
+    "alt_ellips_param_to_flattening",
+    "ellips_grav_coeffs",
     # Clenshaw summation (high-degree spherical harmonics)
     "clenshaw_sum_order",
     "clenshaw_sum_order_derivative",

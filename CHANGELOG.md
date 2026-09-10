@@ -66,6 +66,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Jacchia 1971 reference atmosphere**
+  (`pytcl.atmosphere.jacchia.jacchia_atmos_param`, 90-2500 km):
+  exospheric temperature from solar flux, the diurnal bulge, and
+  geomagnetic activity; the empirical temperature profile; and
+  densities from Montenbruck & Gill's bi-polynomial fit with the
+  semiannual, geomagnetic, and seasonal-latitude corrections. The
+  MATLAB original is unrunnable as shipped (undefined EOP variables),
+  so the oracle captures the model physics with the solar geometry as
+  explicit inputs, pinned to 5e-12; the port's own solar geometry
+  (pytcl time scales + a 0.01-degree solar position) is validated
+  against astropy. Four upstream defects handled loudly: the
+  documented-Pa-computed-kPa pressure (fixed: true Pa), the silent
+  NaN at the equator (fixed: the limit value), silent negative
+  pressure where the molar-mass polynomial diverges (RuntimeWarning +
+  NaN), and the astro-chain bug above.
+- **1-D quadrature builders** ported from MATLAB's `Cube_Space`
+  (`clenshaw_curtis_points_1d`, `fejer_points_1d` rules 1 and 2,
+  `conform_map_quad_pts_1d` with all four Hale-Trefethen conformal
+  maps), fixture-validated to 1e-14; plus `jacobi_elliptic`
+  (sn/cn/dn) in `special_functions`. One upstream defect fixed
+  loudly: `conformMapQuadPts1D`'s mapping 3 substitutes the
+  endpoint-limit derivative into whatever occupies its array's first
+  and last positions, corrupting an extreme and an *interior* weight
+  for Gauss-Legendre bases (MATLAB's storage order) and destroying
+  the rule's convergence; the substitution now applies only to
+  Clenshaw-Curtis endpoints, where it is the correct limit.
+- **Gravity ellipsoidal-parameter conversions**
+  (`alt_ellips_param_to_flattening`, `ellips_grav_coeffs`):
+  the EGM2008-style `(omega, a, C20bar, GM)` parameter set to
+  flattening (Moritz 1980), and ellipsoid parameters to spherical
+  harmonic `C_{2n,0}` coefficients (Hofmann-Wellenhof & Moritz),
+  fixture-validated. The flattening iteration gets an iteration cap
+  with an ulp-cycle acceptance -- the MATLAB original loops forever
+  when its fixed point 2-cycles just above its tolerance, and exits
+  silently with NaN on prolate inputs (now a `ConvergenceError`).
 - **EPSG method 9809 oblique (double) stereographic projection**
   (`oblique_stereographic` / `oblique_stereographic_inverse`): the
   algorithm PROJ implements as `+proj=sterea` (the Dutch RD grid).

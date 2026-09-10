@@ -49,18 +49,12 @@ No dates are attached because none have been decided:
   which two are ported (`calcCubPointMoments.m`, `thirdOrderStudentTCubPoints.m`);
   the rest are 1-D quadrature helpers plus single-region rules with no
   directory of their own, notably `thirdOrderTorusCubPoints.m` and
-  `thirdOrderNDimShellCubPoints.m`. Three more `Cube_Space` files
-  (`ClenshawCurtisPoints1D.m`, `FejerPoints1D.m`, `conformMapQuadPts1D.m`)
-  are 1-D quadrature building blocks, not region-cubature rules themselves
-  (no region-dimension argument) -- better scoped as a future
-  `quadrature.py` extension than `region_cubature.py`, deferred pending a
-  consumer.
+  `thirdOrderNDimShellCubPoints.m`. The three `Cube_Space`
+  1-D quadrature building blocks (`ClenshawCurtisPoints1D.m`,
+  `FejerPoints1D.m`, `conformMapQuadPts1D.m`) shipped in v2.11.0 as
+  `quadrature.py` extensions.
 - **Refraction suite remainder** — the suite itself shipped in v2.7.0,
-  NRLMSISE-00 (compiled reference C with a validated pure-Python
-  fallback) and the gas-table speed of sound in v2.10.0 (see
-  CHANGELOG). Still open: Jacchia 1971 (pure MATLAB and portable, but
-  its validation oracle is the astrodynamics MEX chain plus JPL
-  ephemeris data -- an astronomy-integration task).
+  NRLMSISE-00 in v2.10.0, and Jacchia 1971 in v2.11.0 (see CHANGELOG).
   `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
 - **Localization-style static estimators, remainder** — nine of the 11
   shipped in v2.8.0 as `static_estimation.localization`. Still open:
