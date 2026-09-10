@@ -166,18 +166,23 @@ def _store_and_measure(tracks, path, **store_kwargs):
     return os.path.getsize(path)
 
 
+# Module-level so pytest 10 accepts the class scope (class-scoped
+# fixtures defined as instance methods are deprecated: each test gets
+# a fresh instance while the fixture runs once per class).
+@pytest.fixture(scope="class")
+def benchmark_tracks():
+    """100 tracks x 500 scans, CV-filter states and converged covariances."""
+    return _build_benchmark_scenario()
+
+
+@pytest.fixture(scope="class")
+def raw_size(benchmark_tracks):
+    return _raw_bytes(benchmark_tracks)
+
+
 @pytest.mark.skipif(not HAS_H5PY, reason="h5py not installed")
 class TestHDF5CompressionBenchmark:
     """Measured compression ratios on the Task 7 benchmark scenario."""
-
-    @pytest.fixture(scope="class")
-    def benchmark_tracks(self):
-        """100 tracks x 500 scans, CV-filter states and converged covariances."""
-        return _build_benchmark_scenario()
-
-    @pytest.fixture(scope="class")
-    def raw_size(self, benchmark_tracks):
-        return _raw_bytes(benchmark_tracks)
 
     def test_covariance_converges_and_correlates(self, benchmark_tracks):
         """Sanity check the fixture is realistic, not random noise.

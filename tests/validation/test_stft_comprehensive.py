@@ -428,10 +428,24 @@ class TestSTFTParameterHandling:
         assert result.Zxx.shape[0] == 129  # (256/2 + 1)
 
     def test_stft_complex_input(self):
-        """Test STFT with complex input."""
-        x = np.random.randn(1024) + 1j * np.random.randn(1024)
+        """Complex (IQ) input must be preserved, not truncated to real."""
+        rng = np.random.default_rng(7)
+        re = rng.standard_normal(1024)
+        im = rng.standard_normal(1024)
+        x = re + 1j * im
         result = stft(x)
         assert result.Zxx.dtype == np.complex128
+        # Complex input yields the two-sided spectrum (real input is
+        # one-sided) -- itself proof the imaginary part survives.
+        assert result.Zxx.shape[0] == 256
+        # Linearity pins the imaginary part's contribution exactly
+        # (cast the parts to complex so all three are two-sided).
+        real_only = stft(re.astype(np.complex128))
+        imag_only = stft(im.astype(np.complex128))
+        assert not np.allclose(result.Zxx, real_only.Zxx)
+        np.testing.assert_allclose(
+            result.Zxx, real_only.Zxx + 1j * imag_only.Zxx, atol=1e-10
+        )
 
     def test_stft_detrending_options(self):
         """Test STFT with different detrending options."""

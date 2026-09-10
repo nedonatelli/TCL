@@ -15,6 +15,8 @@ from typing import Any, NamedTuple, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import ConvergenceError
+
 # Module logger
 _logger = logging.getLogger("pytcl.navigation.geodesy")
 
@@ -89,6 +91,7 @@ def _inverse_geodetic_cached(
     L = lon2_q - lon1_q
     lam = L
 
+    converged = False
     for _ in range(100):
         sin_lam = np.sin(lam)
         cos_lam = np.cos(lam)
@@ -122,8 +125,37 @@ def _inverse_geodetic_cached(
         )
 
         if abs(lam_new - lam) < 1e-12:
+            converged = True
             break
         lam = lam_new
+
+    if not converged:
+        # Vincenty's lambda iteration fails to converge for nearly
+        # antipodal points -- and the partial result is silently wrong
+        # (measured 3.7 km / 22 degrees at (0, 0) -> (0.5, 179.7) deg).
+        # Karney's algorithm (geographiclib, the `geodesy` extra)
+        # converges everywhere; use it when available, fail loudly
+        # otherwise.
+        try:
+            from geographiclib.geodesic import Geodesic
+        except ImportError:
+            raise ConvergenceError(
+                "Vincenty's inverse iteration did not converge (nearly "
+                "antipodal points). Install the `geodesy` extra for the "
+                "geographiclib fallback, which converges for all point "
+                "pairs."
+            ) from None
+        g = Geodesic(a, f).Inverse(
+            np.degrees(lat1_q),
+            np.degrees(lon1_q),
+            np.degrees(lat2_q),
+            np.degrees(lon2_q),
+        )
+        return (
+            float(g["s12"]),
+            float(np.radians(g["azi1"])),
+            float(np.radians(g["azi2"])),
+        )
 
     u2 = cos2_alpha * (a**2 - b**2) / b**2
     A = 1 + u2 / 16384 * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)))
@@ -809,7 +841,12 @@ def inverse_geodetic(
 
     Notes
     -----
-    May fail to converge for nearly antipodal points.
+    For nearly antipodal points, where Vincenty's iteration does not
+    converge, the computation falls back to geographiclib's Karney
+    algorithm (the ``geodesy`` extra) or raises ``ConvergenceError``
+    when it is not installed -- it never returns a silently wrong
+    result (the unconverged partial answer was measured 3.7 km / 22
+    degrees off).
 
     References
     ----------

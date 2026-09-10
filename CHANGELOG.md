@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Vincenty `inverse_geodetic` no longer silently wrong near the
+  antipode**: when the lambda iteration fails to converge (nearly
+  antipodal points) the result was ~3.7 km / 22 degrees off with no
+  signal. It now falls back to geographiclib's always-convergent
+  Karney algorithm (the `geodesy` extra) or raises
+  `ConvergenceError`.
+- **`compute_association_cost`/`gated_gnn_association` accept the
+  measurement noise `R`** (new `measurement_noise` parameter): the
+  innovation covariance was `H P H'` with no way to add R, making the
+  chi-squared gate statistically wrong (over-rejecting once track
+  covariance converges below the sensor noise). Omitting R keeps the
+  old behavior.
+- **STFT-family functions preserve complex (IQ) input**: `stft`,
+  `spectrogram`, `reassigned_spectrogram` and `mel_spectrogram` cast
+  input to float64, silently discarding the imaginary part of complex
+  signals; complex input now flows through (scipy returns the
+  two-sided spectrum for it).
+- **`generalized_hypergeometric` guards its divergence domain**:
+  p = q+1 with |z| >= 1 and p > q+1 with z != 0 now raise (unless the
+  series terminates) instead of returning a meaningless partial sum,
+  a `RuntimeWarning` is emitted when `max_terms` is exhausted, and
+  `fastmath` no longer licenses reassociation on the convergence
+  test.
+- **Numerical failures warn instead of degrading silently**:
+  `kf_update` emits a `RuntimeWarning` when the innovation covariance
+  is not positive definite (its zero likelihood previously let IMM
+  annihilate a mode with no signal), and `two_filter_smoother` warns
+  on each pseudo-inverse fallback.
+- **Lambert solver** raises the degenerate-transfer-angle error
+  before dividing by `1 - cos(dnu)` instead of emitting
+  divide-by-zero warnings first; **`DEEphemeris`** gains `close()`
+  and releases its kernel file handle on deletion.
+
+### Changed
+
+- The test suite no longer blanket-ignores `DeprecationWarning`:
+  pytcl-originated deprecation warnings are now errors and
+  third-party ones stay visible, so deprecated-API usage cannot
+  accumulate silently again.
+
 ## [2.10.0] - 2026-09-09
 
 Stability registry note (release checklist 3b): no STABLE module

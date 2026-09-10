@@ -160,6 +160,14 @@ def lambert_universal(
 
     sin_dnu = np.sin(dnu)
 
+    # Degenerate transfer angle (dnu -> 0 or 2*pi): the chord formula
+    # divides by 1 - cos(dnu). Guard before dividing rather than
+    # letting inf/nan propagate into the A == 0 check.
+    if 1.0 - cos_dnu == 0.0:
+        raise ValueError(
+            "Cannot solve Lambert problem: transfer angle is zero (degenerate case)"
+        )
+
     # Chord and semi-perimeter
     A = sin_dnu * np.sqrt(r1_mag * r2_mag / (1 - cos_dnu))
 

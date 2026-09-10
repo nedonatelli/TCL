@@ -11,6 +11,7 @@ the series summation loop, providing significant speedup for the general
 case (p > 2 or q > 1).
 """
 
+import warnings
 from typing import Any
 
 import numpy as np
@@ -19,14 +20,14 @@ from numba import njit
 from numpy.typing import ArrayLike, NDArray
 
 
-@njit(cache=True, fastmath=True)
+@njit(cache=True)
 def _hypergeometric_series(
     a: np.ndarray[Any, Any],
     b: np.ndarray[Any, Any],
     z: np.ndarray[Any, Any],
     max_terms: int,
     tol: float,
-) -> np.ndarray[Any, Any]:
+) -> tuple[np.ndarray[Any, Any], bool]:
     """
     Numba-optimized series summation for generalized hypergeometric function.
 
@@ -47,6 +48,8 @@ def _hypergeometric_series(
     -------
     result : ndarray
         Computed pFq values for each z.
+    converged : bool
+        False when max_terms was exhausted before the tolerance held.
     """
     n_z = len(z)
     p = len(a)
@@ -80,7 +83,7 @@ def _hypergeometric_series(
         if converged:
             break
 
-    return result
+    return result, converged
 
 
 def hyp0f1(
@@ -466,6 +469,12 @@ def generalized_hypergeometric(
     Uses Numba JIT compilation for the general case (p > 2 or q > 1),
     providing 5-10x speedup over pure Python loops.
 
+    Outside the convergence domain (p = q + 1 with ``|z| >= 1``, or
+    p > q + 1 with ``z != 0``) a ``ValueError`` is raised unless the
+    series terminates (some ``a[i]`` a non-positive integer). A
+    ``RuntimeWarning`` is emitted when ``max_terms`` is exhausted
+    before the tolerance holds.
+
     Examples
     --------
     >>> round(float(generalized_hypergeometric([1], [2], 1)), 6)  # 1F1(1; 2; 1) = e - 1
@@ -486,9 +495,33 @@ def generalized_hypergeometric(
     elif p == 2 and q == 1:
         return hyp2f1(a[0], a[1], b[0], z)
 
-    # General case: use Numba-optimized series summation
+    # The series terminates (is a polynomial) when any numerator
+    # parameter is a non-positive integer; only then does it converge
+    # outside the |z| < 1 (p = q+1) / z = 0 (p > q+1) domains.
     z_arr = np.atleast_1d(z)
-    result = _hypergeometric_series(a, b, z_arr, max_terms, tol)
+    terminates = any(ai <= 0 and float(ai).is_integer() for ai in a)
+    if not terminates:
+        if p == q + 1 and np.any(np.abs(z_arr) >= 1.0):
+            raise ValueError(
+                "pFq with p = q + 1 diverges for |z| >= 1 (the series "
+                "is not a polynomial); no value exists to return."
+            )
+        if p > q + 1 and np.any(z_arr != 0.0):
+            raise ValueError(
+                "pFq with p > q + 1 diverges for z != 0 (the series "
+                "is not a polynomial); no value exists to return."
+            )
+
+    # General case: use Numba-optimized series summation
+    result, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)
+    if not converged:
+        warnings.warn(
+            f"generalized_hypergeometric did not reach tol={tol:g} "
+            f"within max_terms={max_terms}; the returned partial sum "
+            "may be inaccurate. Increase max_terms.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     return result if result.size > 1 else result[0]
 

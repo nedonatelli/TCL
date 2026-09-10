@@ -43,6 +43,7 @@ def compute_association_cost(
     track_covariances: ArrayLike,
     measurements: ArrayLike,
     measurement_models: Optional[ArrayLike] = None,
+    measurement_noise: Optional[ArrayLike] = None,
 ) -> NDArray[np.float64]:
     """
     Compute cost matrix for track-to-measurement association.
@@ -59,6 +60,13 @@ def compute_association_cost(
         Measurement matrices of shape (n_tracks, n_meas, n_state) or
         (n_meas, n_state) if same for all tracks. If None, assumes
         direct measurement of first n_meas states.
+    measurement_noise : array_like, optional
+        Measurement noise covariance R of shape (n_meas, n_meas), or
+        (n_tracks, n_meas, n_meas) per track, added to the innovation
+        covariance (S = H P H' + R). If None, R = 0 -- the historical
+        behavior, statistically correct only for noise-free
+        measurements; pass the sensor R for a proper Mahalanobis
+        distance and chi-squared gating.
 
     Returns
     -------
@@ -102,10 +110,21 @@ def compute_association_cost(
     # Compute cost matrix using batch Mahalanobis distance for performance
     cost_matrix = np.full((n_tracks, n_meas), np.inf, dtype=np.float64)
 
+    if measurement_noise is None:
+        R_per_track = None
+    else:
+        R_arr = np.asarray(measurement_noise, dtype=np.float64)
+        if R_arr.ndim == 2:
+            R_per_track = np.tile(R_arr, (n_tracks, 1, 1))
+        else:
+            R_per_track = R_arr
+
     for i in range(n_tracks):
         H = H_per_track[i]
         z_pred = H @ X[i]
         S = H @ P[i] @ H.T  # Innovation covariance
+        if R_per_track is not None:
+            S = S + R_per_track[i]
 
         # Compute innovations for all measurements at once
         innovations = Z - z_pred  # (n_meas, meas_dim)
@@ -285,6 +304,7 @@ def gated_gnn_association(
     measurement_models: Optional[ArrayLike] = None,
     gate_probability: float = 0.99,
     cost_of_non_assignment: Optional[float] = None,
+    measurement_noise: Optional[ArrayLike] = None,
 ) -> AssociationResult:
     """
     GNN association with automatic gating.
@@ -301,6 +321,11 @@ def gated_gnn_association(
         Measurements of shape (n_measurements, n_meas).
     measurement_models : array_like, optional
         Measurement matrices. See compute_association_cost for details.
+    measurement_noise : array_like, optional
+        Measurement noise covariance R; see compute_association_cost.
+        The chi-squared gate assumes S = H P H' + R, so omitting R
+        makes the gate over-reject once track covariance shrinks below
+        the sensor noise.
     gate_probability : float, optional
         Probability for chi-squared gate threshold (default: 0.99).
     cost_of_non_assignment : float, optional
@@ -336,6 +361,7 @@ def gated_gnn_association(
         track_covariances,
         measurements,
         measurement_models,
+        measurement_noise,
     )
 
     # Run GNN with gating

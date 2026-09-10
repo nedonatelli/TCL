@@ -5,6 +5,7 @@ This module provides the standard linear Kalman filter for systems with
 linear dynamics and linear measurements with Gaussian noise.
 """
 
+import warnings
 from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
@@ -218,7 +219,17 @@ def kf_update(
         m = len(z)
         likelihood = np.exp(-0.5 * (mahal_sq + log_det_S + m * np.log(2 * np.pi)))
     except np.linalg.LinAlgError:
-        # Fallback if Cholesky fails (S not positive definite)
+        # S is not positive definite: the gain falls back to a direct
+        # solve, but no meaningful likelihood exists. Warn so callers
+        # (IMM mode probabilities, gating) can distinguish numerical
+        # failure from a genuinely improbable measurement.
+        warnings.warn(
+            "kf_update: innovation covariance is not positive definite; "
+            "likelihood set to 0.0 (numerical failure, not evidence). "
+            "Check R and the covariance conditioning.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         K = np.linalg.solve(S.T, H @ P.T).T
         likelihood = 0.0
 
