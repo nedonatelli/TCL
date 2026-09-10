@@ -141,7 +141,10 @@ class DEEphemeris:
 
         Examples
         --------
-        >>> eph = DEEphemeris()  # doctest: +SKIP (downloads the kernel)
+        The example is skipped in CI: constructing the ephemeris
+        downloads the DE440 kernel on first use.
+
+        >>> eph = DEEphemeris()  # doctest: +SKIP
         >>> eph.close()  # doctest: +SKIP
         """
         kernel_file = getattr(self, "_kernel_file", None)
