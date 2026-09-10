@@ -34,7 +34,7 @@ it depends on; only the structurally significant edges are drawn.
 
        subgraph Association_and_Tracking
            AA["assignment_algorithms<br/>9 modules"]
-           TR["trackers<br/>5 modules"]
+           TR["trackers<br/>6 modules"]
            CL["clustering<br/>4 modules"]
            CO["containers<br/>8 modules"]
        end
@@ -224,8 +224,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 30
      - Track, uncertainty and coverage visualization
    * - ``trackers``
-     - 5
-     - 19
+     - 6
+     - 23
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
      - 8

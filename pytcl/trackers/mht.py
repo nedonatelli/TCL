@@ -211,8 +211,6 @@ class MHTTracker:
         else:
             Z = np.array([np.asarray(m, dtype=np.float64) for m in measurements])
 
-        n_meas = len(Z)
-
         # Get current tracks from all hypotheses
         all_track_ids = set()
         for hyp in self.hypothesis_tree.hypotheses:
@@ -234,93 +232,23 @@ class MHTTracker:
             predicted_tracks, Z
         )
 
-        # Generate associations for each hypothesis
-        track_id_list = list(predicted_tracks.keys())
-        n_tracks = len(track_id_list)
-
-        if n_tracks > 0:
-            # Create gating matrix indexed by position
-            gated_matrix = np.zeros((n_tracks, n_meas), dtype=bool)
-            likelihood_mat = np.zeros((n_tracks, n_meas))
-            for i, tid in enumerate(track_id_list):
-                for j in range(n_meas):
-                    if (tid, j) in gated:
-                        gated_matrix[i, j] = True
-                        likelihood_mat[i, j] = likelihood_matrix.get((tid, j), 0.0)
-
-            # Generate joint associations
-            associations = generate_joint_associations(gated_matrix, n_tracks, n_meas)
-        else:
-            associations = [{}]
-
-        # Compute likelihood for each association
-        assoc_likelihoods = []
-        for assoc in associations:
-            # Convert position-based to track_id-based
-            track_assoc = {}
-            for pos_idx, meas_idx in assoc.items():
-                track_id = track_id_list[pos_idx] if n_tracks > 0 else -1
-                track_assoc[track_id] = meas_idx
-
-            # Compute likelihood
-            lik = self._compute_association_likelihood(
-                track_assoc, predicted_tracks, Z, likelihood_matrix
-            )
-            assoc_likelihoods.append(lik)
-
-        # Normalize likelihoods
-        total_lik = sum(assoc_likelihoods)
-        if total_lik > 0:
-            assoc_likelihoods = [lik / total_lik for lik in assoc_likelihoods]
-        elif len(assoc_likelihoods) > 0:
-            assoc_likelihoods = [1.0 / len(assoc_likelihoods)] * len(assoc_likelihoods)
-
-        # Update tracks based on associations
-        new_tracks_per_assoc: Dict[int, List[MHTTrack]] = {}
-        updated_tracks: Dict[
-            int, Dict[int, MHTTrack]
-        ] = {}  # assoc_idx -> track_id -> track
-
-        for assoc_idx, assoc in enumerate(associations):
-            updated_tracks[assoc_idx] = {}
-            new_tracks_per_assoc[assoc_idx] = []
-
-            # Update existing tracks
-            for pos_idx, meas_idx in assoc.items():
-                if n_tracks == 0:
-                    continue
-                track_id = track_id_list[pos_idx]
-                pred_track = predicted_tracks[track_id]
-
-                if meas_idx >= 0:
-                    # Track with measurement
-                    upd_track = self._update_track(pred_track, Z[meas_idx], meas_idx)
-                else:
-                    # Missed detection
-                    upd_track = self._miss_track(pred_track)
-
-                updated_tracks[assoc_idx][track_id] = upd_track
-
-            # Handle unassigned measurements -> new tracks
-            assigned_meas = set(
-                meas_idx for meas_idx in assoc.values() if meas_idx >= 0
-            )
-            for j in range(n_meas):
-                if j not in assigned_meas:
-                    new_track = self._initiate_track(Z[j], j)
-                    new_tracks_per_assoc[assoc_idx].append(new_track)
-
-        # Store updated tracks
-        for assoc_idx, track_dict in updated_tracks.items():
-            for track_id, track in track_dict.items():
-                self.hypothesis_tree.tracks[track_id] = track
-
-        # Expand hypotheses
+        # Expand hypotheses: each hypothesis enumerates joint associations
+        # over its OWN tracks, and every (track, measurement-or-miss)
+        # decision creates a distinct child branch keyed by parent_id, so
+        # hypotheses that disagree about an association carry genuinely
+        # different track states. (The previous implementation stored one
+        # global track per id -- the last association overwrote all
+        # others, so every hypothesis shared a single state and the
+        # branching machinery was dead code.)
+        branch_cache: Dict[tuple[int, int], int] = {}
+        new_track_cache: Dict[int, int] = {}
         self._expand_hypotheses(
-            associations,
-            assoc_likelihoods,
-            new_tracks_per_assoc,
-            track_id_list,
+            predicted_tracks,
+            Z,
+            gated,
+            likelihood_matrix,
+            branch_cache,
+            new_track_cache,
         )
 
         # Build result
@@ -554,60 +482,151 @@ class MHTTracker:
             n_misses=0,
         )
 
+    def _get_branch(
+        self,
+        parent: MHTTrack,
+        meas_idx: int,
+        Z: NDArray[np.floating],
+        branch_cache: Dict[tuple[int, int], int],
+    ) -> int:
+        """Get (creating and memoizing) the child branch of `parent` for
+        one association decision: update with measurement `meas_idx`, or a
+        missed detection when `meas_idx` is -1.
+
+        The child gets a fresh id with ``parent_id`` pointing at the
+        parent branch and ``scan_created`` set to the current scan, so the
+        ancestry chain records when each association decision was made --
+        which is what N-scan pruning walks. Hypotheses that agree on this
+        decision share the same child node via the cache.
+        """
+        key = (parent.id, meas_idx)
+        if key in branch_cache:
+            return branch_cache[key]
+
+        if meas_idx >= 0:
+            child = self._update_track(parent, Z[meas_idx], meas_idx)
+        else:
+            child = self._miss_track(parent)
+
+        child = child._replace(
+            id=self.hypothesis_tree._get_next_track_id(),
+            parent_id=parent.id,
+            scan_created=self._scan,
+        )
+        self.hypothesis_tree.tracks[child.id] = child
+        branch_cache[key] = child.id
+        return child.id
+
+    def _get_new_track(
+        self,
+        meas_idx: int,
+        Z: NDArray[np.floating],
+        new_track_cache: Dict[int, int],
+    ) -> int:
+        """Get (creating and memoizing) the new-track branch for an
+        unassigned measurement. One node per measurement per scan, shared
+        by every hypothesis that treats the measurement as a new target.
+        """
+        if meas_idx in new_track_cache:
+            return new_track_cache[meas_idx]
+        tid = self.hypothesis_tree.add_track(
+            self._initiate_track(Z[meas_idx], meas_idx)
+        )
+        new_track_cache[meas_idx] = tid
+        return tid
+
     def _expand_hypotheses(
         self,
-        associations: List[Dict[int, int]],
-        likelihoods: List[float],
-        new_tracks: Dict[int, List[MHTTrack]],
-        track_id_list: List[int],
+        predicted_tracks: Dict[int, MHTTrack],
+        Z: NDArray[np.floating],
+        gated: set[tuple[int, int]],
+        likelihood_matrix: dict[tuple[int, int], float],
+        branch_cache: Dict[tuple[int, int], int],
+        new_track_cache: Dict[int, int],
     ) -> None:
-        """Expand hypotheses with new associations."""
-        new_hypotheses = []
+        """Expand each hypothesis with the joint associations of its own
+        tracks, creating per-association child branches."""
+        n_meas = len(Z)
+        tree = self.hypothesis_tree
 
-        for hyp in self.hypothesis_tree.hypotheses:
-            for assoc_idx, (assoc, likelihood) in enumerate(
-                zip(associations, likelihoods)
-            ):
-                # Compute new hypothesis probability
+        # (probability, child track ids, parent hypothesis id), merged by
+        # identical track-id sets: different parents can produce the same
+        # global interpretation, whose probabilities then add.
+        merged: Dict[frozenset[int], List] = {}
+
+        for hyp in tree.hypotheses:
+            hyp_tids = [tid for tid in hyp.track_ids if tid in predicted_tracks]
+            n_tracks = len(hyp_tids)
+
+            if n_tracks > 0:
+                gated_matrix = np.zeros((n_tracks, n_meas), dtype=bool)
+                for i, tid in enumerate(hyp_tids):
+                    for j in range(n_meas):
+                        if (tid, j) in gated:
+                            gated_matrix[i, j] = True
+                associations = generate_joint_associations(
+                    gated_matrix, n_tracks, n_meas
+                )
+            else:
+                associations = [{}]
+
+            for assoc in associations:
+                track_assoc = {
+                    hyp_tids[pos_idx]: meas_idx for pos_idx, meas_idx in assoc.items()
+                }
+                likelihood = self._compute_association_likelihood(
+                    track_assoc, predicted_tracks, Z, likelihood_matrix
+                )
                 new_prob = hyp.probability * likelihood
-
-                if new_prob < self.config.min_hypothesis_prob:
+                if new_prob <= 0.0:
                     continue
 
-                # Determine track IDs for new hypothesis
-                new_track_ids = []
+                child_ids = []
+                for tid, meas_idx in track_assoc.items():
+                    child_id = self._get_branch(
+                        predicted_tracks[tid], meas_idx, Z, branch_cache
+                    )
+                    if tree.tracks[child_id].status != MHTTrackStatus.DELETED:
+                        child_ids.append(child_id)
 
-                # Keep surviving tracks from original hypothesis
-                for track_id in hyp.track_ids:
-                    if track_id in self.hypothesis_tree.tracks:
-                        track = self.hypothesis_tree.tracks[track_id]
-                        if track.status != MHTTrackStatus.DELETED:
-                            new_track_ids.append(track_id)
+                assigned = set(m for m in track_assoc.values() if m >= 0)
+                for j in range(n_meas):
+                    if j not in assigned:
+                        child_ids.append(self._get_new_track(j, Z, new_track_cache))
 
-                # Add new tracks from this association
-                if assoc_idx in new_tracks:
-                    for new_track in new_tracks[assoc_idx]:
-                        tid = self.hypothesis_tree.add_track(new_track)
-                        new_track_ids.append(tid)
+                key = frozenset(child_ids)
+                if key in merged:
+                    merged[key][0] += new_prob
+                else:
+                    merged[key] = [new_prob, child_ids, hyp.id]
 
-                # Create new hypothesis
-                new_hyp = Hypothesis(
-                    id=self.hypothesis_tree._get_next_hypothesis_id(),
-                    probability=new_prob,
-                    track_ids=new_track_ids,
+        # Normalize and rebuild the hypothesis set
+        total_prob = sum(entry[0] for entry in merged.values())
+        new_hypotheses = []
+        for prob, child_ids, parent_id in merged.values():
+            new_hypotheses.append(
+                Hypothesis(
+                    id=tree._get_next_hypothesis_id(),
+                    probability=prob / total_prob
+                    if total_prob > 0
+                    else 1.0 / len(merged),
+                    track_ids=child_ids,
                     scan_created=self._scan,
-                    parent_id=hyp.id,
+                    parent_id=parent_id,
                 )
-                new_hypotheses.append(new_hyp)
+            )
 
-        # Update hypotheses
         if new_hypotheses:
-            self.hypothesis_tree.hypotheses = new_hypotheses
-        else:
+            tree.hypotheses = new_hypotheses
+        elif tree.hypotheses:
             # Keep at least one hypothesis
-            if self.hypothesis_tree.hypotheses:
-                best = max(self.hypothesis_tree.hypotheses, key=lambda h: h.probability)
-                self.hypothesis_tree.hypotheses = [best]
+            best = max(tree.hypotheses, key=lambda h: h.probability)
+            tree.hypotheses = [best]
+
+        # Advance the tree's scan counter before pruning: N-scan pruning
+        # measures decision age against it. (It previously never advanced,
+        # which made N-scan pruning a permanent no-op.)
+        tree.current_scan = self._scan
 
         # Prune
         log_pruning = diagnostics_enabled()
