@@ -66,6 +66,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **EPSG method 9809 oblique (double) stereographic projection**
+  (`oblique_stereographic` / `oblique_stereographic_inverse`): the
+  algorithm PROJ implements as `+proj=sterea` (the Dutch RD grid).
+  Coordinates, scale, and convergence match PROJ to sub-micrometer /
+  1e-8 degrees -- closing the gh-25 note that the existing
+  `stereographic` (Gaussian-sphere conformal-latitude substitution)
+  diverges from `sterea` by 1.3-16 km away from the origin.
+- **Exact ellipsoidal azimuthal equidistant projection**
+  (`azimuthal_equidistant_exact` / `_inverse`): true geodesic distance
+  and azimuth from the centre via Karney's algorithm (geographiclib,
+  the `geodesy` extra), matching PROJ's `+proj=aeqd` to nanometers,
+  antipodes included; the spherical `azimuthal_equidistant` remains
+  for dependency-free use. `convergence` generalizes the spherical
+  `c/sin(c)` factor to the geodesic reduced length `s12/m12`, verified
+  against the spherical implementation in the sphere limit.
 - **Bernoulli filter** (`pytcl.trackers.bernoulli`): the exact Bayes
   filter for joint target existence and state estimation
   (`bernoulli_predict`/`bernoulli_update` with `BernoulliState` and

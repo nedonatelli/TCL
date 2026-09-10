@@ -204,7 +204,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Track and measurement persistence, including HDF5
    * - ``coordinate_systems``
      - 12
-     - 117
+     - 121
      - Frame conversions, u-v direction cosines, rotations, Jacobians,
        map projections
    * - ``gravity``
