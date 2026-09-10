@@ -496,17 +496,14 @@ def _magnetic_potential(
     r_m = np.linalg.norm(x_m)
     lat_gc = np.arcsin(x_m[2] / r_m)
     lon = np.arctan2(x_m[1], x_m[0])
-    from pytcl.gravity.spherical_harmonics import associated_legendre
+    from pytcl.magnetism._schmidt import _schmidt_legendre
 
     n_max = coeffs.n_max
     dt = year - coeffs.epoch
     g = coeffs.g + dt * coeffs.g_dot
     h = coeffs.h + dt * coeffs.h_dot
     cos_theta = np.cos(np.pi / 2 - lat_gc)
-    p_full = associated_legendre(n_max, n_max, cos_theta, normalized=True)
-    scale = np.ones((n_max + 1, n_max + 1))
-    scale /= np.sqrt(2 * np.arange(n_max + 1) + 1)[:, np.newaxis]
-    p = p_full * scale
+    p = _schmidt_legendre(n_max, cos_theta)
     r_km = r_m / 1000.0
     v = 0.0
     for n in range(1, n_max + 1):

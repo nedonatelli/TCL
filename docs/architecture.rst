@@ -234,7 +234,7 @@ Counts are measured from the packages themselves rather than asserted;
        standard atmospheres, ionosphere,
        humidity, refractivity
    * - ``magnetism``
-     - 4
+     - 5
      - 46
      - WMM, WMMHR, IGRF, EMM, apex/QD/centered-dipole coordinates
    * - ``scheduling``

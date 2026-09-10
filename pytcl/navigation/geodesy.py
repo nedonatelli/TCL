@@ -15,6 +15,12 @@ from typing import Any, NamedTuple, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.coordinate_systems.conversions.geodetic import (
+    ecef2enu,
+    ecef2geodetic,
+    enu2ecef,
+    geodetic2ecef,
+)
 from pytcl.core.exceptions import ConvergenceError
 
 # Module logger
@@ -284,6 +290,14 @@ def _direct_geodetic_cached(
     return float(lat2), float(lon2), float(azimuth2)
 
 
+def _shaped(component: ArrayLike, shape: tuple) -> NDArray[np.float64]:
+    """Reshape a delegated result component to the caller's input shape,
+    collapsing to a numpy scalar for scalar input (the historical return
+    type of these wrappers)."""
+    arr = np.asarray(component, dtype=np.float64).reshape(shape)
+    return arr[()] if shape == () else arr
+
+
 def geodetic_to_ecef(
     lat: ArrayLike,
     lon: ArrayLike,
@@ -327,20 +341,11 @@ def geodetic_to_ecef(
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)
     alt = np.asarray(alt, dtype=np.float64)
+    shape = np.broadcast(lat, lon, alt).shape
 
-    sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
-    sin_lon = np.sin(lon)
-    cos_lon = np.cos(lon)
-
-    # Radius of curvature in the prime vertical
-    N = ellipsoid.a / np.sqrt(1 - ellipsoid.e2 * sin_lat**2)
-
-    x = (N + alt) * cos_lat * cos_lon
-    y = (N + alt) * cos_lat * sin_lon
-    z = (N * (1 - ellipsoid.e2) + alt) * sin_lat
-
-    return x, y, z
+    lat_b, lon_b, alt_b = np.broadcast_arrays(lat, lon, alt)
+    ecef = geodetic2ecef(lat_b, lon_b, alt_b, ellipsoid.a, ellipsoid.f)
+    return _shaped(ecef[0], shape), _shaped(ecef[1], shape), _shaped(ecef[2], shape)
 
 
 class OsculatingSphere(NamedTuple):
@@ -467,42 +472,12 @@ def ecef_to_geodetic(
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
+    shape = np.broadcast(x, y, z).shape
 
-    a = ellipsoid.a
-    e2 = ellipsoid.e2
-
-    # Longitude
-    lon = np.arctan2(y, x)
-
-    # Distance from z-axis
-    p = np.sqrt(x**2 + y**2)
-
-    # Bowring's method (iterative)
-    # Initial approximation
-    lat = np.arctan2(z, p * (1 - e2))
-
-    for _ in range(10):  # Usually converges in 2-3 iterations
-        sin_lat = np.sin(lat)
-        N = a / np.sqrt(1 - e2 * sin_lat**2)
-        lat_new = np.arctan2(z + e2 * N * sin_lat, p)
-        if np.all(np.abs(lat_new - lat) < 1e-12):
-            break
-        lat = lat_new
-
-    # Altitude
-    sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
-    N = a / np.sqrt(1 - e2 * sin_lat**2)
-
-    # Handle points near poles
-    with np.errstate(divide="ignore", invalid="ignore"):
-        alt = np.where(
-            np.abs(cos_lat) > 1e-10,
-            p / cos_lat - N,
-            np.abs(z) / np.abs(sin_lat) - N * (1 - e2),
-        )
-
-    return lat, lon, alt
+    x_b, y_b, z_b = np.broadcast_arrays(x, y, z)
+    ecef = np.array([x_b.ravel(), y_b.ravel(), z_b.ravel()])
+    lat, lon, alt = ecef2geodetic(ecef, ellipsoid.a, ellipsoid.f)
+    return _shaped(lat, shape), _shaped(lon, shape), _shaped(alt, shape)
 
 
 def ecef_to_enu(
@@ -554,27 +529,13 @@ def ecef_to_enu(
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
+    shape = np.broadcast(x, y, z).shape
 
-    # Reference point in ECEF
-    x_ref, y_ref, z_ref = geodetic_to_ecef(lat_ref, lon_ref, alt_ref, ellipsoid)
-
-    # Vector from reference to point
-    dx = x - x_ref
-    dy = y - y_ref
-    dz = z - z_ref
-
-    # Rotation matrix
-    sin_lat = np.sin(lat_ref)
-    cos_lat = np.cos(lat_ref)
-    sin_lon = np.sin(lon_ref)
-    cos_lon = np.cos(lon_ref)
-
-    # ENU = R @ [dx, dy, dz]
-    east = -sin_lon * dx + cos_lon * dy
-    north = -sin_lat * cos_lon * dx - sin_lat * sin_lon * dy + cos_lat * dz
-    up = cos_lat * cos_lon * dx + cos_lat * sin_lon * dy + sin_lat * dz
-
-    return east, north, up
+    ecef_ref = geodetic2ecef(lat_ref, lon_ref, alt_ref, ellipsoid.a, ellipsoid.f)
+    x_b, y_b, z_b = np.broadcast_arrays(x, y, z)
+    ecef = np.array([x_b.ravel(), y_b.ravel(), z_b.ravel()])
+    enu = ecef2enu(ecef, lat_ref, lon_ref, ecef_ref=ecef_ref)
+    return _shaped(enu[0], shape), _shaped(enu[1], shape), _shaped(enu[2], shape)
 
 
 def enu_to_ecef(
@@ -622,22 +583,13 @@ def enu_to_ecef(
     east = np.asarray(east, dtype=np.float64)
     north = np.asarray(north, dtype=np.float64)
     up = np.asarray(up, dtype=np.float64)
+    shape = np.broadcast(east, north, up).shape
 
-    # Reference point in ECEF
-    x_ref, y_ref, z_ref = geodetic_to_ecef(lat_ref, lon_ref, alt_ref, ellipsoid)
-
-    # Rotation matrix (transpose of ENU->ECEF)
-    sin_lat = np.sin(lat_ref)
-    cos_lat = np.cos(lat_ref)
-    sin_lon = np.sin(lon_ref)
-    cos_lon = np.cos(lon_ref)
-
-    # ECEF = R^T @ [e, n, u] + [x_ref, y_ref, z_ref]
-    dx = -sin_lon * east - sin_lat * cos_lon * north + cos_lat * cos_lon * up
-    dy = cos_lon * east - sin_lat * sin_lon * north + cos_lat * sin_lon * up
-    dz = cos_lat * north + sin_lat * up
-
-    return x_ref + dx, y_ref + dy, z_ref + dz
+    ecef_ref = geodetic2ecef(lat_ref, lon_ref, alt_ref, ellipsoid.a, ellipsoid.f)
+    e_b, n_b, u_b = np.broadcast_arrays(east, north, up)
+    enu = np.array([e_b.ravel(), n_b.ravel(), u_b.ravel()])
+    ecef = enu2ecef(enu, lat_ref, lon_ref, ecef_ref=ecef_ref)
+    return _shaped(ecef[0], shape), _shaped(ecef[1], shape), _shaped(ecef[2], shape)
 
 
 def ecef_to_ned(

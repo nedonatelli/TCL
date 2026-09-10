@@ -6,6 +6,11 @@ import pytest
 from pytcl.io import TrackDatabaseManager, TrackHDF5Storage
 from pytcl.io.migration import AnalysisResult, MigrationHelper
 
+# The v1.x compatibility layer is deprecated (v2.11.0, removal v3.0.0);
+# these tests exercise it on purpose. The deprecation itself is asserted
+# in test_migration.py.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 
 @pytest.fixture()
 def helper():
@@ -256,3 +261,8 @@ class TestMigrationChecklist:
         assert "Validation" in checklist
         assert "Post-Migration" in checklist
         assert "[ ]" in checklist
+
+
+def test_migration_layer_is_deprecated():
+    with pytest.warns(DeprecationWarning, match="v3.0.0"):
+        MigrationHelper()

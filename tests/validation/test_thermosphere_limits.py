@@ -21,6 +21,8 @@ from pytcl.atmosphere import (
     us_standard_atmosphere_1976,
 )
 
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
 MID_LAT = np.radians(45.0)
 
 

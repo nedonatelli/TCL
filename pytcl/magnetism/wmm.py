@@ -18,9 +18,9 @@ from typing import Any, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from pytcl.gravity.spherical_harmonics import (
-    associated_legendre,
-    associated_legendre_derivative,
+from pytcl.magnetism._schmidt import (
+    GEOMAGNETIC_REFERENCE_RADIUS_KM,
+    _schmidt_legendre_with_derivative,
 )
 
 # =============================================================================
@@ -462,7 +462,7 @@ def _compute_magnetic_field_spherical_impl(
     separated for clarity and to support caching.
     """
     n_max = coeffs.n_max
-    a = 6371.2  # Reference radius in km (WMM convention)
+    a = GEOMAGNETIC_REFERENCE_RADIUS_KM
 
     # Time adjustment
     dt = year - coeffs.epoch
@@ -476,21 +476,7 @@ def _compute_magnetic_field_spherical_impl(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    # WMM Gauss coefficients require Schmidt semi-normalized Legendre
-    # functions: P_schmidt = P_full / sqrt(2n+1). Derive both P and
-    # dP/dtheta from the fully normalized implementations, using
-    # dP/dtheta = -sin(theta) * dP/dx with x = cos(theta).
-    P_full = associated_legendre(n_max, n_max, cos_theta, normalized=True)
-    dP_full = associated_legendre_derivative(
-        n_max, n_max, cos_theta, P_full, normalized=True
-    )
-    # associated_legendre is geodesy fully normalized:
-    # sqrt((2 - delta_0m)(2n+1)(n-m)!/(n+m)!). Schmidt semi-normalization
-    # keeps the sqrt(2 - delta_0m) factor, so Schmidt = full / sqrt(2n+1).
-    scale = np.ones((n_max + 1, n_max + 1))
-    scale /= np.sqrt(2 * np.arange(n_max + 1) + 1)[:, np.newaxis]
-    P = P_full * scale
-    dP = -sin_theta * dP_full * scale
+    P, dP = _schmidt_legendre_with_derivative(n_max, cos_theta, sin_theta)
 
     # Initialize field components
     B_r = 0.0

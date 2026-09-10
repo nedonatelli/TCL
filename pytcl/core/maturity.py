@@ -207,7 +207,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "atmosphere.ionosphere": MaturityLevel.MATURE,
     "atmosphere.models": MaturityLevel.MATURE,
     "atmosphere.refraction": MaturityLevel.EXPERIMENTAL,
-    "atmosphere.thermosphere": MaturityLevel.MATURE,
+    "atmosphere.thermosphere": MaturityLevel.DEPRECATED,  # barometric approximation; use nrlmsise00 (removal v3.0.0)
     # clustering
     "clustering.kmeans": MaturityLevel.MATURE,
     # core
@@ -222,15 +222,16 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "gravity.spherical_harmonics": MaturityLevel.MATURE,
     # io
     "io.asdf_io": MaturityLevel.MATURE,
-    "io.compat": MaturityLevel.MATURE,
+    "io.compat": MaturityLevel.DEPRECATED,  # v1.x layer (removal v3.0.0)
     "io.hdf5_storage": MaturityLevel.MATURE,
     "io.hdf5_track_storage": MaturityLevel.MATURE,
-    "io.migration": MaturityLevel.MATURE,
+    "io.migration": MaturityLevel.DEPRECATED,  # v1.x layer (removal v3.0.0)
     "io.readers": MaturityLevel.MATURE,
     "io.serialize": MaturityLevel.MATURE,
     "io.session": MaturityLevel.MATURE,
     "io.sql_storage": MaturityLevel.MATURE,
     # magnetism
+    "magnetism._schmidt": MaturityLevel.MATURE,  # factored from three fixture-pinned copies
     "magnetism.emm": MaturityLevel.MATURE,
     "magnetism.igrf": MaturityLevel.MATURE,
     # mathematical_functions

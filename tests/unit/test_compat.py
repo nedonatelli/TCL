@@ -20,6 +20,12 @@ from pytcl.io.compat import (
 # =============================================================================
 
 
+# The v1.x compatibility layer is deprecated (v2.11.0, removal v3.0.0);
+# these tests exercise it on purpose. The deprecation itself is asserted
+# in test_migration.py.
+pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+
+
 @pytest.fixture()
 def db(tmp_path):
     """Fresh SQL database."""

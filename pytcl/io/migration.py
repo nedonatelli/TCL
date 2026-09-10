@@ -28,6 +28,7 @@ Generate a v2.0.0 template:
 
 import os
 import re
+import warnings
 from typing import Any, Dict, List
 
 import numpy as np
@@ -84,12 +85,26 @@ class MigrationHelper:
 
     Provides code analysis, data conversion, and template generation.
 
+    .. deprecated:: 2.11.0
+        v1.x migration tooling; scheduled for removal in v3.0.0.
+
     Examples
     --------
-    >>> helper = MigrationHelper()
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore", DeprecationWarning)
+    ...     helper = MigrationHelper()
     >>> result = helper.analyze_v1_code("my_tracker.py")  # doctest: +SKIP
     >>> print(result.summary())  # doctest: +SKIP
     """
+
+    def __init__(self) -> None:
+        warnings.warn(
+            "MigrationHelper is part of the v1.x migration tooling, "
+            "deprecated since v2.11.0 and scheduled for removal in v3.0.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     # Patterns for detecting filter usage
     _FILTER_PATTERNS: Dict[str, List[str]] = {
