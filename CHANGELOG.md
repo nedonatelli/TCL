@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Bernoulli filter** (`pytcl.trackers.bernoulli`): the exact Bayes
+  filter for joint target existence and state estimation
+  (`bernoulli_predict`/`bernoulli_update` with `BernoulliState` and
+  `BernoulliConfig`), in the single-Gaussian moment-matched form of
+  Ristic, Vo, Vo & Farina's 2013 tutorial. A principled replacement
+  for ad-hoc M-of-N initiation/termination; validated against the
+  tutorial's closed-form equations computed independently with scipy.
+
 ### Fixed
+
+- **MHT hypotheses now branch per association**: the tracker stored
+  one global track per id, so every association's Kalman update
+  overwrote the others and all hypotheses shared a single state --
+  the branching machinery was dead code. Each (track, measurement)
+  decision now creates a distinct child branch (keyed by `parent_id`),
+  each hypothesis enumerates joint associations over its own tracks
+  only, identical interpretations merge by probability, and duplicate
+  new-track nodes are no longer created per hypothesis. N-scan pruning
+  actually fires: the hypothesis tree's scan counter advances (it
+  never did) and `n_scan_prune` walks branch ancestry to compare
+  committed decisions instead of comparing raw id sets (which were
+  identical across hypotheses by construction). Reference-trajectory
+  tests (crossing targets, forced ambiguity, stale-ambiguity
+  commitment) pin the rebuilt behavior.
 
 - **Vincenty `inverse_geodetic` no longer silently wrong near the
   antipode**: when the lambda iteration fails to converge (nearly

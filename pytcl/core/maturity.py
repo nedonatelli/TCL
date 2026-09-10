@@ -145,7 +145,6 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_models.process_noise.singer": MaturityLevel.MATURE,
     # Assignment Algorithms
     "assignment_algorithms.jpda": MaturityLevel.MATURE,
-    "trackers.mht": MaturityLevel.MATURE,
     "assignment_algorithms.two_dimensional.kbest": MaturityLevel.MATURE,
     "assignment_algorithms.three_dimensional.assignment": MaturityLevel.MATURE,
     # Containers
@@ -333,7 +332,9 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # terrain
     "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage
     # trackers
-    "trackers.hypothesis": MaturityLevel.EXPERIMENTAL,  # 81% coverage
+    "trackers.bernoulli": MaturityLevel.EXPERIMENTAL,  # new this release
+    "trackers.hypothesis": MaturityLevel.EXPERIMENTAL,  # n-scan prune rebuilt this release
+    "trackers.mht": MaturityLevel.EXPERIMENTAL,  # hypothesis branching rebuilt this release
     "trackers.multi_target": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
     # transponders
     "transponders.ais": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release

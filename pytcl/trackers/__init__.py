@@ -5,6 +5,12 @@ This module provides complete tracker implementations that combine
 filtering, data association, and track management.
 """
 
+from pytcl.trackers.bernoulli import (
+    BernoulliConfig,
+    BernoulliState,
+    bernoulli_predict,
+    bernoulli_update,
+)
 from pytcl.trackers.configs import MultiTargetConfig, SingleTargetConfig
 from pytcl.trackers.hypothesis import (
     Hypothesis,
@@ -45,4 +51,9 @@ __all__ = [
     "MHTConfig",
     "MHTResult",
     "MHTTracker",
+    # Bernoulli filter
+    "BernoulliConfig",
+    "BernoulliState",
+    "bernoulli_predict",
+    "bernoulli_update",
 ]

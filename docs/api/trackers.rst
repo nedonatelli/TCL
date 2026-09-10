@@ -46,3 +46,14 @@ Track hypothesis creation, scoring, and pruning.
    :members:
    :undoc-members:
    :show-inheritance:
+
+Bernoulli Filter
+----------------
+
+Joint target existence and state estimation for principled track
+initiation and termination.
+
+.. automodule:: pytcl.trackers.bernoulli
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -323,13 +323,15 @@ def n_scan_prune(
     This implementation applies a single-MAP-hypothesis rule, not
     agreement across all high-probability hypotheses::
 
-        1. Take the single highest-probability (MAP) hypothesis and
-           determine which tracks it committed to by scan
-           (current_scan - n_scan).
-        2. Keep a hypothesis only if its own set of tracks committed by
-           that scan is identical to the MAP hypothesis's set (or if the
-           MAP hypothesis has no tracks committed by that scan yet, in
-           which case nothing is pruned).
+        1. Take the single highest-probability (MAP) hypothesis and,
+           for each of its track branches, walk the ``parent_id`` chain
+           back to the ancestor branch whose association decision was
+           made at or before scan (current_scan - n_scan). That ancestor
+           set is what the MAP hypothesis has committed to.
+        2. Keep a hypothesis only if its own ancestor set at that scan
+           is identical to the MAP hypothesis's set. Track families born
+           after the cutoff have no ancestor there and are excluded from
+           the comparison on both sides.
 
     Hypotheses that agree with each other but disagree with the MAP
     hypothesis are pruned along with genuinely divergent ones -- the
@@ -341,34 +343,33 @@ def n_scan_prune(
 
     cutoff_scan = current_scan - n_scan
 
+    def _ancestor_at_cutoff(track_id: int) -> Optional[int]:
+        """Walk the branch's parent chain to the node whose association
+        decision was made at or before the cutoff scan; None when the
+        whole family is younger than the cutoff."""
+        node = tracks.get(track_id)
+        while node is not None and node.scan_created > cutoff_scan:
+            if node.parent_id < 0:
+                return None
+            node = tracks.get(node.parent_id)
+        return None if node is None else node.id
+
+    def _committed_ancestors(hyp: Hypothesis) -> Set[int]:
+        ancestors = set()
+        for track_id in hyp.track_ids:
+            ancestor = _ancestor_at_cutoff(track_id)
+            if ancestor is not None:
+                ancestors.add(ancestor)
+        return ancestors
+
     # Find best hypothesis
     best_hyp = max(hypotheses, key=lambda h: h.probability)
+    best_tracks_at_cutoff = _committed_ancestors(best_hyp)
 
-    # Get tracks in best hypothesis at cutoff scan
-    best_tracks_at_cutoff = set()
-    for track_id in best_hyp.track_ids:
-        if track_id in tracks:
-            track = tracks[track_id]
-            if track.scan_created <= cutoff_scan:
-                best_tracks_at_cutoff.add(track_id)
-
-    # Prune hypotheses that disagree
-    pruned = []
-    for hyp in hypotheses:
-        # Check if hypothesis agrees with best at cutoff
-        hyp_tracks_at_cutoff = set()
-        for track_id in hyp.track_ids:
-            if track_id in tracks:
-                track = tracks[track_id]
-                if track.scan_created <= cutoff_scan:
-                    hyp_tracks_at_cutoff.add(track_id)
-
-        # Keep if tracks match (or if no tracks at cutoff)
-        if (
-            hyp_tracks_at_cutoff == best_tracks_at_cutoff
-            or len(best_tracks_at_cutoff) == 0
-        ):
-            pruned.append(hyp)
+    # Prune hypotheses whose committed past diverges from the MAP one
+    pruned = [
+        hyp for hyp in hypotheses if _committed_ancestors(hyp) == best_tracks_at_cutoff
+    ]
 
     # Renormalize probabilities
     total_prob = sum(h.probability for h in pruned)
@@ -660,10 +661,23 @@ class HypothesisTree:
         self._remove_orphaned_tracks()
 
     def _remove_orphaned_tracks(self) -> None:
-        """Remove tracks not referenced by any hypothesis."""
-        referenced = set()
-        for hyp in self.hypotheses:
-            referenced.update(hyp.track_ids)
+        """Remove tracks not reachable from any hypothesis.
+
+        A branch is reachable if a hypothesis references it directly or
+        it is an ancestor (via ``parent_id``) of a referenced branch --
+        ancestors must survive because N-scan pruning walks the parent
+        chain to compare committed decisions.
+        """
+        referenced: Set[int] = set()
+        stack = [tid for hyp in self.hypotheses for tid in hyp.track_ids]
+        while stack:
+            tid = stack.pop()
+            if tid in referenced or tid not in self.tracks:
+                continue
+            referenced.add(tid)
+            parent = self.tracks[tid].parent_id
+            if parent >= 0:
+                stack.append(parent)
 
         orphans = set(self.tracks.keys()) - referenced
         for track_id in orphans:
