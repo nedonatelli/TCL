@@ -179,7 +179,15 @@ markers = [
     "examples: runs a script from examples/ end to end",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning",
+    # pytcl's own deprecations are errors: the suite must not depend on
+    # anything the library has deprecated (the blanket
+    # ignore::DeprecationWarning this replaces was the vacuous-gate
+    # shape -- signal discarded suite-wide).
+    "error::DeprecationWarning:pytcl.*",
+    # Third-party deprecations stay visible in the warnings summary but
+    # do not fail the suite; add targeted ignores here only with a
+    # reason and an upstream reference.
+    "default::DeprecationWarning",
 ]
 
 [tool.coverage.run]

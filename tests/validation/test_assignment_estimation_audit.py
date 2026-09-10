@@ -825,12 +825,51 @@ class TestDataAssociation:
         covs = np.array([np.eye(2), 2 * np.eye(2)])
         Z = np.array([[0.1], [4.9]])
         H = np.array([[1.0, 0.0]])
-        C = compute_association_cost(preds, covs, Z, H)
+        R = np.array([[0.5]])
+        # With measurement noise: S = H P H' + R, the statistically
+        # correct innovation covariance.
+        C = compute_association_cost(preds, covs, Z, H, measurement_noise=R)
         for i in range(2):
-            S = H @ covs[i] @ H.T  # NOTE: no measurement noise R in this API
+            S = H @ covs[i] @ H.T + R
             for j in range(2):
                 nu = Z[j] - H @ preds[i]
                 assert_allclose(C[i, j], float(nu @ np.linalg.inv(S) @ nu), rtol=1e-9)
+        # Omitting R keeps the historical R = 0 behavior.
+        C0 = compute_association_cost(preds, covs, Z, H)
+        for i in range(2):
+            S = H @ covs[i] @ H.T
+            for j in range(2):
+                nu = Z[j] - H @ preds[i]
+                assert_allclose(C0[i, j], float(nu @ np.linalg.inv(S) @ nu), rtol=1e-9)
+
+    def test_gate_with_r_admits_noise_scaled_innovations(self):
+        # A converged track (tiny P) with sensor noise R = 1: a 2-sigma
+        # innovation must pass the 99% gate once R is supplied, and be
+        # over-rejected without it -- the defect the R parameter fixes.
+        preds = np.array([[0.0, 0.0]])
+        covs = np.array([1e-4 * np.eye(2)])
+        Z = np.array([[2.0]])
+        H = np.array([[1.0, 0.0]])
+        R = np.array([[1.0]])
+        with_r = gated_gnn_association(
+            preds,
+            covs,
+            Z,
+            H,
+            gate_probability=0.99,
+            cost_of_non_assignment=100.0,
+            measurement_noise=R,
+        )
+        assert with_r.track_to_measurement[0] == 0
+        without_r = gated_gnn_association(
+            preds,
+            covs,
+            Z,
+            H,
+            gate_probability=0.99,
+            cost_of_non_assignment=100.0,
+        )
+        assert without_r.track_to_measurement[0] == -1
 
     def test_gated_gnn_associates_obvious_pairs(self):
         preds = np.array([[0.0, 1.0], [5.0, -1.0]])

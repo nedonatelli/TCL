@@ -136,6 +136,23 @@ class DEEphemeris:
         "solar_system_barycenter": 0,
     }
 
+    def close(self) -> None:
+        """Release the ephemeris kernel file handle.
+
+        Examples
+        --------
+        >>> eph = DEEphemeris()  # doctest: +SKIP (downloads the kernel)
+        >>> eph.close()  # doctest: +SKIP
+        """
+        kernel_file = getattr(self, "_kernel_file", None)
+        if kernel_file is not None and not kernel_file.closed:
+            kernel_file.close()
+        self._kernel_file = None
+        self._kernel = None
+
+    def __del__(self) -> None:
+        self.close()
+
     def __init__(self, version: str = "DE440") -> None:
         """Initialize ephemeris kernel.
 
@@ -164,6 +181,7 @@ class DEEphemeris:
         self.version = version
         self._jplephem = jplephem
         self._kernel: Optional[object] = None
+        self._kernel_file: Optional[Any] = None
         self._cache: dict[str, Any] = {}
 
     @property
@@ -201,8 +219,10 @@ class DEEphemeris:
                             f"Please download manually and place at {kernel_path}"
                         ) from e
 
-                # Load the kernel using DAF and SPK
-                daf = DAF(open(kernel_path, "rb"))
+                # Load the kernel using DAF and SPK; keep the file
+                # handle so close() can release it.
+                self._kernel_file = open(kernel_path, "rb")
+                daf = DAF(self._kernel_file)
                 self._kernel = SPK(daf)
 
             except Exception as e:

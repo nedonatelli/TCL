@@ -247,7 +247,11 @@ def stft(
     principle): better time resolution requires shorter segments, which
     reduces frequency resolution, and vice versa.
     """
-    x = np.asarray(x, dtype=np.float64)
+    x = np.asarray(x)
+    # Complex (IQ) signals are legitimate input; casting them to
+    # float64 would silently discard the imaginary part.
+    if not np.iscomplexobj(x):
+        x = x.astype(np.float64)
 
     if noverlap is None:
         noverlap = nperseg // 2
@@ -422,7 +426,11 @@ def spectrogram(
     density scaling explicitly. Use ``scaling="spectrum"`` if you want a
     power spectrum whose bins sum to the signal's mean square.
     """
-    x = np.asarray(x, dtype=np.float64)
+    x = np.asarray(x)
+    # Complex (IQ) signals are legitimate input; casting them to
+    # float64 would silently discard the imaginary part.
+    if not np.iscomplexobj(x):
+        x = x.astype(np.float64)
 
     if noverlap is None:
         noverlap = nperseg // 8
@@ -495,7 +503,11 @@ def reassigned_spectrogram(
     components. However, it requires more computation than a standard
     spectrogram.
     """
-    x = np.asarray(x, dtype=np.float64)
+    x = np.asarray(x)
+    # Complex (IQ) signals are legitimate input; casting them to
+    # float64 would silently discard the imaginary part.
+    if not np.iscomplexobj(x):
+        x = x.astype(np.float64)
 
     if noverlap is None:
         noverlap = nperseg - 1
@@ -634,7 +646,11 @@ def mel_spectrogram(
     >>> mel_spec.shape[0]
     64
     """
-    x = np.asarray(x, dtype=np.float64)
+    x = np.asarray(x)
+    # Complex (IQ) signals are legitimate input; casting them to
+    # float64 would silently discard the imaginary part.
+    if not np.iscomplexobj(x):
+        x = x.astype(np.float64)
 
     if fmax is None:
         fmax = fs / 2

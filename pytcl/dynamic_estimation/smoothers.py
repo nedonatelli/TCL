@@ -12,6 +12,7 @@ The main algorithms are:
 - Two-filter smoother for parallel processing
 """
 
+import warnings
 from typing import List, NamedTuple, Optional
 
 import numpy as np
@@ -454,6 +455,17 @@ def fixed_interval_smoother(
     return rts_smoother(x0, P0, measurements, F, Q, H, R)
 
 
+def _warn_singular_fusion(step: int, which: str) -> None:
+    """One warning per singular covariance met in two-filter fusion."""
+    warnings.warn(
+        f"two_filter_smoother: singular {which} covariance at step "
+        f"{step}; using the pseudo-inverse. The information-form "
+        "fusion is degraded at this step.",
+        RuntimeWarning,
+        stacklevel=3,
+    )
+
+
 def two_filter_smoother(
     x0_fwd: ArrayLike,
     P0_fwd: ArrayLike,
@@ -581,7 +593,18 @@ def two_filter_smoother(
     try:
         F_inv = np.linalg.inv(F)
     except np.linalg.LinAlgError:
-        # Fall back to pseudo-inverse
+        # A singular F breaks the backward filter's premise (inverse
+        # dynamics); the pseudo-inverse keeps running but the smoothed
+        # covariance is no longer the two-filter fusion it claims to
+        # be. Warn instead of degrading silently.
+        warnings.warn(
+            "two_filter_smoother: transition matrix F is singular; "
+            "falling back to the pseudo-inverse. Smoothed estimates "
+            "may be unreliable -- prefer rts_smoother for singular "
+            "dynamics.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         F_inv = np.linalg.pinv(F)
 
     for k in range(n_steps - 1, -1, -1):
@@ -617,6 +640,7 @@ def two_filter_smoother(
             Y_fwd = np.linalg.inv(P_fwd[k])
             y_fwd = Y_fwd @ x_fwd[k]
         except np.linalg.LinAlgError:
+            _warn_singular_fusion(k, "forward")
             Y_fwd = np.linalg.pinv(P_fwd[k])
             y_fwd = Y_fwd @ x_fwd[k]
 
@@ -624,6 +648,7 @@ def two_filter_smoother(
             Y_bwd = np.linalg.inv(P_bwd[k])
             y_bwd = Y_bwd @ x_bwd[k]
         except np.linalg.LinAlgError:
+            _warn_singular_fusion(k, "backward")
             Y_bwd = np.linalg.pinv(P_bwd[k])
             y_bwd = Y_bwd @ x_bwd[k]
 
@@ -635,6 +660,7 @@ def two_filter_smoother(
         try:
             P_s = np.linalg.inv(Y_smooth)
         except np.linalg.LinAlgError:
+            _warn_singular_fusion(k, "fused")
             P_s = np.linalg.pinv(Y_smooth)
 
         x_s = P_s @ y_smooth
