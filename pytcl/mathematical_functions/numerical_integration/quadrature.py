@@ -712,12 +712,325 @@ def unscented_transform_points(
     return sigma_points, wm, wc
 
 
+def clenshaw_curtis_points_1d(
+    n: int,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Clenshaw-Curtis quadrature points and weights on [-1, 1].
+
+    Port of ``ClenshawCurtisPoints1D``. The n+1 points are the Chebyshev
+    extrema ``cos(k*pi/n)``, k = 0..n (descending from 1 to -1), and the
+    weights are built with Waldvogel's FFT method. The rule integrates
+    polynomials up to order n exactly against the unit weight, so the
+    weights sum to 2 (the length of the interval) -- unlike the
+    probability-normalized cubature generators, whose weights sum to 1.
+
+    Parameters
+    ----------
+    n : int
+        Polynomial order of the rule; must be >= 2. Returns n+1 points.
+
+    Returns
+    -------
+    xi : ndarray
+        Quadrature points of shape (n+1,), descending from 1 to -1.
+    w : ndarray
+        Quadrature weights of shape (n+1,), all positive, summing to 2.
+
+    References
+    ----------
+    - J. Waldvogel, "Fast construction of the Fejer and Clenshaw-Curtis
+      quadrature rules," BIT Numerical Mathematics 46(1):195-202, 2006.
+
+    Examples
+    --------
+    >>> xi, w = clenshaw_curtis_points_1d(8)
+    >>> round(float(np.sum(w * xi**2)), 12)  # integral of x^2 over [-1,1]
+    0.666666666667
+    >>> round(float(np.sum(w)), 12)
+    2.0
+    """
+    if n < 2:
+        raise ValueError("n must be >= 2")
+
+    # Points cos(k*pi/n) via the Chebyshev three-term recurrence, as in
+    # the MATLAB original (bit-compatible with its tables).
+    xi = np.zeros(n + 1)
+    xi[0] = 1.0
+    cos_theta = np.cos(np.pi / n)
+    xi[1] = cos_theta
+    xi[2] = 2 * cos_theta**2 - 1
+    for k in range(3, n):
+        xi[k] = 2 * cos_theta * xi[k - 1] - xi[k - 2]
+    xi[n] = -1.0
+
+    # Weights: Waldvogel Eqs. 2.6, 3.10, 4.2.
+    n2 = n // 2
+    v = np.zeros(n)
+    k = np.arange(n2)
+    v[:n2] = 2.0 / (1 - 4 * k**2)
+    v[n2] = (n - 3) / (2 * n2 - 1) - 1
+    start = n2 + (n % 2)
+    v[n2 + 1 :] = v[start - 1 : 0 : -1]
+
+    w0cc = 1.0 / (n**2 - 1 + n % 2)
+    g = np.zeros(n)
+    g[: n2 + 1] = -w0cc
+    g[n2] = w0cc * ((2 - n % 2) * n - 1)
+    g[n2 + 1 :] = g[start - 1 : 0 : -1]
+
+    w = np.zeros(n + 1)
+    w[:n] = np.real(np.fft.ifft(v + g))
+    w[n] = w0cc
+    return xi, w
+
+
+def fejer_points_1d(
+    n: int,
+    rule: int = 1,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Fejer quadrature points and weights on [-1, 1].
+
+    Port of ``FejerPoints1D`` (Waldvogel's FFT construction). Rule 1
+    uses the Chebyshev roots ``cos((k - 1/2) pi / n)`` (n points, order
+    n-1); rule 2 uses the interior Chebyshev extrema (n-1 points, order
+    n-2). Weights sum to 2, the length of the interval.
+
+    Parameters
+    ----------
+    n : int
+        Number-of-points parameter; rule 1 returns n points, rule 2
+        returns n-1.
+    rule : int, optional
+        1 for Fejer's first rule (default), 2 for the second.
+
+    Returns
+    -------
+    xi : ndarray
+        Quadrature points, descending.
+    w : ndarray
+        Quadrature weights, summing to 2.
+
+    References
+    ----------
+    - J. Waldvogel, "Fast construction of the Fejer and Clenshaw-Curtis
+      quadrature rules," BIT Numerical Mathematics 46(1):195-202, 2006.
+
+    Examples
+    --------
+    >>> xi, w = fejer_points_1d(30)
+    >>> round(float(np.sum(w * xi**4)), 12)  # integral of x^4 over [-1,1]
+    0.4
+    """
+    if rule == 1:
+        # Waldvogel Eq. 4.4.
+        v = np.zeros(n, dtype=complex)
+        nm = (n - 1) // 2
+        k = np.arange(nm + 1)
+        v[: nm + 1] = (2.0 / (1 - 4 * k**2)) * np.exp(1j * k * np.pi / n)
+        start = nm + 2 + (n % 2 == 0)
+        v[start - 1 :] = np.conj(v[nm:0:-1])
+        w = np.real(np.fft.ifft(v))
+
+        # Points cos((k - 1/2) pi / n) via the angle-addition recurrence.
+        xi = np.zeros(n)
+        xi[0] = np.cos(0.5 * np.pi / n)
+        sin_cur = np.sin(0.5 * np.pi / n)
+        cos_t = np.cos(np.pi / n)
+        sin_t = np.sin(np.pi / n)
+        for k in range(1, n):
+            xi[k] = cos_t * xi[k - 1] - sin_t * sin_cur
+            sin_cur = sin_t * xi[k - 1] + sin_cur * cos_t
+        return xi, w
+
+    if rule == 2:
+        # Shares Waldvogel Eq. 3.10 with Clenshaw-Curtis, then drops the
+        # first (always-zero) weight and its endpoint.
+        n2 = n // 2
+        v = np.zeros(n)
+        k = np.arange(n2)
+        v[:n2] = 2.0 / (1 - 4 * k**2)
+        v[n2] = (n - 3) / (2 * n2 - 1) - 1
+        start = n2 + (n % 2)
+        v[n2 + 1 :] = v[start - 1 : 0 : -1]
+        w = np.real(np.fft.ifft(v))[1:]
+
+        xi = np.zeros(n - 1)
+        cos_theta = np.cos(np.pi / n)
+        xi[0] = cos_theta
+        xi[1] = 2 * cos_theta**2 - 1
+        for k in range(2, n - 1):
+            xi[k] = 2 * cos_theta * xi[k - 1] - xi[k - 2]
+        return xi, w
+
+    raise ValueError("rule must be 1 or 2")
+
+
+def conform_map_quad_pts_1d(
+    n: int,
+    mapping: Optional[int] = None,
+    point_type: int = 0,
+    param: Optional[float] = None,
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Conformally mapped quadrature points and weights on [-1, 1].
+
+    Port of ``conformMapQuadPts1D`` (Hale & Trefethen 2008): a base
+    Gauss-Legendre or Clenshaw-Curtis rule is transplanted through a
+    conformal map that spreads the clustered endpoint nodes toward
+    uniform spacing, raising the effective resolution per point for
+    analytic integrands.
+
+    Parameters
+    ----------
+    n : int
+        Number-of-points parameter of the base rule.
+    mapping : int, optional
+        0: degree-``param`` Taylor expansion of arcsine (``param``
+        default 9, should be odd); 1: Kosloff-Tal-Ezer map with
+        ``alpha = 2/(param + 1/param)``; 2: strip map (default when
+        ``point_type=0``; requires Gauss-Legendre base points);
+        3: the appendix approximate strip map. ``param`` defaults to
+        1.4 for mappings 1-3.
+    point_type : int, optional
+        0 (default): Gauss-Legendre base points; 1: Clenshaw-Curtis.
+    param : float, optional
+        Mapping parameter; see ``mapping``.
+
+    Returns
+    -------
+    xi : ndarray
+        Mapped quadrature points.
+    w : ndarray
+        Transplanted weights (Hale & Trefethen Eq. 2.6).
+
+    References
+    ----------
+    - N. Hale and L. N. Trefethen, "New quadrature formulas from
+      conformal maps," SIAM J. Numer. Anal. 46(2):930-948, 2008.
+
+    Examples
+    --------
+    >>> xi, w = conform_map_quad_pts_1d(20)
+    >>> round(float(np.sum(w * np.exp(xi))), 4)  # integral of e^x over [-1,1]
+    2.3504
+    """
+    if point_type == 0:
+        xi, w = gauss_legendre(n)
+    elif point_type == 1:
+        xi, w = clenshaw_curtis_points_1d(n)
+    else:
+        raise ValueError("point_type must be 0 or 1")
+
+    if mapping is None:
+        mapping = 2 if point_type == 0 else 0
+    if param is None:
+        param = 9 if mapping == 0 else 1.4
+    rho = param
+
+    if mapping == 0:
+        # Degree-d arcsine Taylor expansion, normalized to fix g(1) = 1.
+        d = int(rho)
+        coeffs = np.zeros(d + 1)
+        odd = np.arange(1, d + 1, 2, dtype=np.float64)
+        series = np.concatenate(
+            ([1.0], np.cumprod(np.arange(1, d - 1, 2)) / np.cumprod(np.arange(2, d, 2)))
+        )
+        coeffs[d - 1 :: -2][: len(odd)] = (1.0 / odd) * series
+        coeffs = coeffs / np.sum(coeffs)
+        dg = np.polyval(np.polyder(coeffs), xi)
+        xi = np.polyval(coeffs, xi)
+        w = w * dg
+    elif mapping == 1:
+        alpha = 2.0 / (rho + 1.0 / rho)
+        dg = alpha / (np.sqrt(1 - xi**2 * alpha**2) * np.arcsin(alpha))
+        xi = np.arcsin(alpha * xi) / np.arcsin(alpha)
+        w = w * dg
+    elif mapping == 2:
+        if point_type == 1:
+            raise ValueError(
+                "the strip mapping (mapping=2) cannot be used with "
+                "Clenshaw-Curtis points"
+            )
+        from pytcl.mathematical_functions.special_functions.elliptic import (
+            ellipkinc,
+            jacobi_elliptic,
+        )
+
+        # Hale & Trefethen Eq. 3.1: the modulus from rho.
+        num = 0.0
+        den = 0.0
+        for j in range(1, round(0.5 + np.sqrt(10.0 / np.log(rho))) + 1):
+            num += rho ** (-4 * (j - 0.5) ** 2)
+            den += rho ** (-4 * j**2)
+        m4 = 2 * num / (1 + 2 * den)
+        m = m4**4
+
+        K = float(ellipkinc(np.pi / 2, m))
+        u = np.arcsin(xi)
+        omega = 2 * K * u / np.pi
+        sn, cn, dn = jacobi_elliptic(omega, m)
+
+        # Eqs. 3.3 and 3.2.
+        dg = (
+            (2 * K * m4 / (np.pi * np.sqrt(1 - xi**2)))
+            * (cn * dn / (1 - m4**2 * sn**2))
+            / np.arctanh(m4)
+        )
+        xi = np.arctanh(m4 * sn) / np.arctanh(m4)
+        w = w * dg
+    elif mapping == 3:
+        u = np.arcsin(xi)
+        tau = np.pi / np.log(rho)
+        d = 0.5 + 1.0 / (np.exp(tau * np.pi) + 1)
+        pd2pu = np.pi / 2 + u
+        pd2mu = np.pi / 2 - u
+        C = 1.0 / (np.log(1 + np.exp(-tau * np.pi)) - np.log(2) + (np.pi / 2) * tau * d)
+
+        # Eq. A.2, with the removable singularity at +-1 replaced by
+        # Eq. A.3. That substitution is only correct for nodes AT +-1,
+        # i.e. the Clenshaw-Curtis endpoints; the MATLAB original
+        # applies it to whatever sits in the first and last positions
+        # of its point array regardless of base, which for its
+        # Gauss-Legendre storage order corrupts one extreme and one
+        # INTERIOR weight. This port applies it only to the
+        # Clenshaw-Curtis endpoints (a loud fix of the upstream
+        # defect; the oracle test excludes MATLAB's two corrupted
+        # nodes for the Gauss-Legendre case).
+        with np.errstate(divide="ignore", invalid="ignore"):
+            dg = (
+                -C
+                * (tau / np.sqrt(1 - xi**2))
+                * (
+                    1.0 / (np.exp(tau * pd2pu) + 1)
+                    + 1.0 / (np.exp(tau * pd2mu) + 1)
+                    - d
+                )
+            )
+        if point_type == 1:
+            dg[0] = dg[-1] = (C * tau**2 / 4) * np.tanh((np.pi / 2) * tau) ** 2
+        w = w * dg
+        xi = C * (
+            np.log(1 + np.exp(-tau * pd2pu))
+            - np.log(1 + np.exp(-tau * pd2mu))
+            + d * tau * u
+        )
+    else:
+        raise ValueError("mapping must be 0, 1, 2, or 3")
+
+    return xi, w
+
+
 __all__ = [
     # 1D Quadrature rules
     "gauss_legendre",
     "gauss_hermite",
     "gauss_laguerre",
     "gauss_chebyshev",
+    "clenshaw_curtis_points_1d",
+    "fejer_points_1d",
+    "conform_map_quad_pts_1d",
     # Integration functions
     "quad",
     "dblquad",

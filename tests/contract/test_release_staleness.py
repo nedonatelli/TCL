@@ -249,20 +249,9 @@ def test_recorded_test_count_is_fresh():
 # became false). When a port ships under one of these names, this gate
 # fails and forces the prose update that docs/api/atmosphere.rst missed
 # for two releases.
-CLAIMED_ABSENT = {
-    "docs/api/atmosphere.rst": {
-        "text": "What remains unported",
-        "symbols": [
-            "pytcl.atmosphere.thermosphere.jacchia_atmos_param",
-        ],
-    },
-    "ROADMAP.md": {
-        "text": "Refraction suite remainder",
-        "symbols": [
-            "pytcl.atmosphere.thermosphere.jacchia_atmos_param",
-        ],
-    },
-}
+# Jacchia 1971 shipped in v2.11.0 (pytcl.atmosphere.jacchia), retiring
+# both of its absence claims; the registry stays for future claims.
+CLAIMED_ABSENT: dict = {}
 
 
 def _resolves(dotted):

@@ -24,8 +24,11 @@ from pytcl.mathematical_functions.numerical_integration.lcd_samples import (
     gaussian_lcd_samples,
 )
 from pytcl.mathematical_functions.numerical_integration.quadrature import (  # noqa: E501
+    clenshaw_curtis_points_1d,
+    conform_map_quad_pts_1d,
     cubature_gauss_hermite,
     dblquad,
+    fejer_points_1d,
     fixed_quad,
     gauss_chebyshev,
     gauss_hermite,
@@ -52,6 +55,9 @@ __all__ = [
     "gauss_hermite",
     "gauss_laguerre",
     "gauss_chebyshev",
+    "clenshaw_curtis_points_1d",
+    "fejer_points_1d",
+    "conform_map_quad_pts_1d",
     # Integration functions
     "quad",
     "dblquad",

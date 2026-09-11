@@ -48,7 +48,7 @@ it depends on; only the structurally significant edges are drawn.
        subgraph Environment_Models
            GR["gravity<br/>5 modules"]
            MA["magnetism<br/>4 modules"]
-           AT["atmosphere<br/>8 modules"]
+           AT["atmosphere<br/>9 modules"]
            TE["terrain<br/>3 modules"]
        end
 
@@ -209,7 +209,7 @@ Counts are measured from the packages themselves rather than asserted;
        map projections
    * - ``gravity``
      - 5
-     - 58
+     - 60
      - Spherical-harmonic gravity, EGM, solid Earth tides
    * - ``navigation``
      - 5
@@ -228,8 +228,8 @@ Counts are measured from the packages themselves rather than asserted;
      - 22
      - End-to-end single- and multi-target trackers
    * - ``atmosphere``
-     - 8
-     - 67
+     - 9
+     - 69
      - NRLMSISE-00 (compiled reference C), simplified thermosphere,
        standard atmospheres, ionosphere,
        humidity, refractivity

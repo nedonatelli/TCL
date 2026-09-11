@@ -5,6 +5,8 @@ This module provides elliptic integrals used in various physical
 applications including orbits, pendulums, and electromagnetic calculations.
 """
 
+from typing import Tuple
+
 import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
@@ -351,6 +353,46 @@ def elliprc(x: ArrayLike, y: ArrayLike) -> NDArray[np.floating]:
     return np.asarray(sp.elliprc(x, y), dtype=np.float64)
 
 
+def jacobi_elliptic(
+    u: ArrayLike, m: ArrayLike
+) -> Tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
+    """
+    Jacobi elliptic functions sn(u|m), cn(u|m), dn(u|m).
+
+    Counterpart of ``JacobiEllipticFuncVals``; delegates to
+    :func:`scipy.special.ellipj`.
+
+    Parameters
+    ----------
+    u : array_like
+        Argument.
+    m : array_like
+        Parameter (the modulus squared, 0 <= m <= 1).
+
+    Returns
+    -------
+    sn, cn, dn : ndarray
+        The three Jacobi elliptic function values.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> sn, cn, dn = jacobi_elliptic(0.5, 0.3)
+    >>> bool(abs(sn**2 + cn**2 - 1.0) < 1e-12)
+    True
+
+    See Also
+    --------
+    scipy.special.ellipj : Underlying implementation (also returns phi).
+    """
+    sn, cn, dn, _ = sp.ellipj(u, m)
+    return (
+        np.asarray(sn, dtype=np.float64),
+        np.asarray(cn, dtype=np.float64),
+        np.asarray(dn, dtype=np.float64),
+    )
+
+
 __all__ = [
     "ellipk",
     "ellipkm1",
@@ -362,4 +404,5 @@ __all__ = [
     "elliprg",
     "elliprj",
     "elliprc",
+    "jacobi_elliptic",
 ]

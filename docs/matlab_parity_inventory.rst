@@ -188,11 +188,11 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        thermophysical data); NRLMSISE-00 proper (the reference C
        compiled into ``pytcl.atmosphere._nrlmsise00_c`` with a
        validated pure-Python fallback) and its wrapper API.
-       **Missing:** the Jacchia 1971 model (pure MATLAB and
-       portable, but its validation oracle -- Sun position via
-       ``readJPLEphem``, ``GCRS2ITRS``, ``Cal2UTC`` -- is the SOFA MEX
-       chain plus JPL ephemeris data, so it is deferred as an
-       astronomy-integration task). pytcl adds ionosphere models (Klobuchar, TEC)
+       Jacchia 1971 shipped in v2.11.0 as
+       ``pytcl.atmosphere.jacchia`` (the MATLAB original is unrunnable
+       as shipped -- undefined EOP variables -- so the oracle captures
+       the model physics with the solar geometry as explicit inputs;
+       see the capture script). pytcl adds ionosphere models (Klobuchar, TEC)
        that the MATLAB area lacks.
    * - Gravity
      - 14
@@ -339,7 +339,7 @@ The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MO
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
 migration tooling, dual-backend GPU acceleration, and a test suite of 8,000+
-cases that includes 66 validation files checking against independent
+cases that includes 69 validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line

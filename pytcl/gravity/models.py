@@ -15,6 +15,7 @@ from typing import NamedTuple
 
 import numpy as np
 
+from pytcl.core.exceptions import ConvergenceError
 from pytcl.gravity.spherical_harmonics import spherical_harmonic_sum
 
 
@@ -510,6 +511,172 @@ def bouguer_anomaly(
     return fa - bouguer_correction
 
 
+def alt_ellips_param_to_flattening(
+    omega: float,
+    a: float,
+    c20_bar: float,
+    gm: float,
+) -> float:
+    """
+    Flattening from the alternative ellipsoid parameter set.
+
+    Port of ``altEllipsParam2Flattening``. Some reference ellipsoids
+    (EGM2008 among them) are defined by ``(omega, a, C20bar, GM)`` --
+    a fully normalized second-degree zonal harmonic coefficient instead
+    of a flattening. This converts to the flattening ``f`` of the
+    standard parameterization by Moritz's iterative method. The
+    unnormalized ``J2 = -C20bar * sqrt(5)``.
+
+    Parameters
+    ----------
+    omega : float
+        Average rotation rate of the planet in rad/s.
+    a : float
+        Semi-major axis of the reference ellipsoid in meters.
+    c20_bar : float
+        Fully normalized second-degree zonal coefficient.
+    gm : float
+        Universal gravitational constant times planet mass, m^3/s^2.
+
+    Returns
+    -------
+    f : float
+        Flattening factor of the reference ellipsoid.
+
+    References
+    ----------
+    - H. Moritz, "Geodetic reference system 1980," Bulletin geodesique
+      54(3):395-405, 1980.
+
+    Examples
+    --------
+    >>> # EGM2008's defining constants recover (nearly) the WGS84 flattening
+    >>> f = alt_ellips_param_to_flattening(
+    ...     7292115e-11, 6378136.3, -484.1654767e-6, 3986004.415e8
+    ... )
+    >>> round(1.0 / f, 3)
+    298.258
+    """
+    j2 = -c20_bar * np.sqrt(5.0)
+
+    # The MATLAB original iterates with no cap under a tolerance of
+    # 1e3 ulps; for some parameter sets the fixed-point map settles
+    # into a 2-cycle a few hundred ulps wide, just above that
+    # tolerance, and the original then loops forever. This port runs
+    # the same criterion for 500 iterations, then accepts an ulp-scale
+    # cycle (relative amplitude below 1e-10 -- physically nothing) and
+    # fails loudly on anything else.
+    e = 0.8
+    e_old = np.inf
+    for _ in range(500):
+        if abs(e_old - e) <= 1e3 * np.spacing(e):
+            return float(1 - np.sqrt(1 - e**2))
+        e_tilde = e / np.sqrt(1 - e**2)  # The second eccentricity.
+        q0 = 0.5 * ((1 + 3 / e_tilde**2) * np.arctan(e_tilde) - 3 / e_tilde)
+        e_old = e
+        e = np.sqrt(3 * j2 + (4 / 15) * (omega**2 * a**3 / gm) * (e**3 / (2 * q0)))
+
+    if np.isfinite(e) and abs(e_old - e) <= 1e-10 * abs(e):
+        return float(1 - np.sqrt(1 - e**2))
+
+    raise ConvergenceError(
+        "alt_ellips_param_to_flattening: Moritz's eccentricity iteration "
+        "did not converge in 500 iterations (the MATLAB original loops "
+        "forever on such inputs). Check that the parameter set describes "
+        "a physically plausible rotating oblate ellipsoid."
+    )
+
+
+def ellips_grav_coeffs(
+    max_order: int = 2,
+    is_normalized: bool = True,
+    omega: float = WGS84.omega,
+    a: float = WGS84.a,
+    f: float = WGS84.f,
+    gm: float = WGS84.GM,
+) -> tuple:
+    """
+    Spherical harmonic coefficients of the ellipsoidal gravity field.
+
+    Port of ``ellipsGravCoeffs``: the (unnormalized or fully
+    normalized) spherical harmonic coefficients implied by an
+    ellipsoidal approximation to the geoid with rotation rate
+    ``omega``. Only the even zonal terms ``C_{2n,0}`` are nonzero; all
+    sine coefficients are zero by symmetry. ``max_order=2`` is the J2
+    model, ``max_order=4`` the J4 model. The returned ``(C, S, a, c)``
+    plug directly into :func:`pytcl.gravity.spherical_harmonics.
+    spherical_harmonic_sum` (``R=a``, ``GM=c``).
+
+    Parameters
+    ----------
+    max_order : int, optional
+        Maximum degree of the coefficients. Default 2.
+    is_normalized : bool, optional
+        If True (default), return fully normalized coefficients (for
+        fully normalized associated Legendre functions).
+    omega : float, optional
+        Rotation rate in rad/s. Default WGS84.
+    a : float, optional
+        Semi-major axis in meters. Default WGS84.
+    f : float, optional
+        Flattening. Default WGS84.
+    gm : float, optional
+        GM in m^3/s^2. Default WGS84.
+
+    Returns
+    -------
+    C : ndarray
+        Cosine coefficients, shape (max_order+1, max_order+1);
+        ``C[n, m]`` is the degree-n order-m coefficient.
+    S : ndarray
+        Sine coefficients, same shape, all zero.
+    a : float
+        The numerator of the ``(a/r)^n`` term, meters (the input ``a``).
+    c : float
+        The multiplier of the series, m^3/s^2 (equals ``gm``).
+
+    References
+    ----------
+    - B. Hofmann-Wellenhof and H. Moritz, Physical Geodesy, 2nd ed.,
+      Springer, 2006 (Chapters 2.5, 2.7-2.9).
+
+    Examples
+    --------
+    >>> C, S, R, GM = ellips_grav_coeffs()
+    >>> round(C[2, 0] * 1e6, 4)  # the WGS84-derived normalized C20
+    -484.1668
+    >>> bool(np.all(S == 0))
+    True
+    """
+    C = np.zeros((max_order + 1, max_order + 1))
+    S = np.zeros((max_order + 1, max_order + 1))
+
+    b = a * (1 - f)  # Semi-minor axis.
+    E = np.sqrt(a**2 - b**2)  # Linear eccentricity (Eq. 2-174).
+    e = E / a  # First numerical eccentricity.
+    epsilon = E / b  # Second numerical eccentricity.
+
+    # Equations 2-137 and 2-113.
+    m = omega**2 * a**2 * b / gm
+    q0 = 0.5 * ((1 + 3 * b**2 / E**2) * np.arctan(E / b) - 3 * b / E)
+
+    inner_term = (1 / 3) * (1 - (2 / 15) * (m * epsilon / q0))
+    for n in range(max_order // 2 + 1):
+        # Equations 2-170 and 2-167.
+        C[2 * n, 0] = (
+            (-1) ** n
+            * 3
+            * e ** (2 * n)
+            / ((2 * n + 1) * (2 * n + 3))
+            * (1 - n + 5 * n * inner_term)
+        )
+        if is_normalized:
+            # Normalization per Equation 2-80.
+            C[2 * n, 0] /= np.sqrt(2 * (2 * n) + 1)
+
+    return C, S, float(a), float(gm)
+
+
 __all__ = [
     "GravityConstants",
     "GravityResult",
@@ -523,4 +690,6 @@ __all__ = [
     "gravitational_potential",
     "free_air_anomaly",
     "bouguer_anomaly",
+    "alt_ellips_param_to_flattening",
+    "ellips_grav_coeffs",
 ]
