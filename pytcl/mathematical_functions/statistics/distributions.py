@@ -20,47 +20,100 @@ class Distribution(ABC):
 
     All distribution classes inherit from this and provide consistent
     methods for probability calculations.
+
+    Examples
+    --------
+    >>> issubclass(Gaussian, Distribution)
+    True
     """
 
     @abstractmethod
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
-        """Probability density function."""
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gaussian(0.0, 1.0).pdf(0.0)), 6)
+        0.398942
+        """
         pass
 
     @abstractmethod
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
-        """Log of probability density function."""
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gaussian(0.0, 1.0).logpdf(0.0)), 6)
+        -0.918939
+        """
         pass
 
     @abstractmethod
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
-        """Cumulative distribution function."""
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 1.0).cdf(0.0))
+        0.5
+        """
         pass
 
     @abstractmethod
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
-        """Percent point function (inverse of CDF)."""
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 1.0).ppf(0.5))
+        0.0
+        """
         pass
 
     @abstractmethod
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
-        """Generate random samples."""
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> Gaussian(0.0, 1.0).sample(4).shape
+        (4,)
+        """
         pass
 
     @abstractmethod
     def mean(self) -> Union[float, NDArray[np.floating]]:
-        """Distribution mean."""
+        """Distribution mean.
+
+        Examples
+        --------
+        >>> float(Gaussian(1.5, 1.0).mean())
+        1.5
+        """
         pass
 
     @abstractmethod
     def var(self) -> Union[float, NDArray[np.floating]]:
-        """Distribution variance."""
+        """Distribution variance.
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 4.0).var())
+        4.0
+        """
         pass
 
     def std(self) -> Union[float, NDArray[np.floating]]:
-        """Distribution standard deviation."""
+        """Distribution standard deviation.
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 4.0).std())
+        2.0
+        """
         return np.sqrt(self.var())
 
 
@@ -93,26 +146,75 @@ class Gaussian(Distribution):
         self._dist = stats.norm(loc=mean, scale=self._std)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gaussian(0.0, 1.0).pdf(0.0)), 6)
+        0.398942
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gaussian(0.0, 1.0).logpdf(0.0)), 6)
+        -0.918939
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 1.0).cdf(0.0))
+        0.5
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 1.0).ppf(0.5))
+        0.0
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> Gaussian(0.0, 1.0).sample(3).shape
+        (3,)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean.
+
+        Examples
+        --------
+        >>> float(Gaussian(1.5, 2.0).mean())
+        1.5
+        """
         return self._mean
 
     def var(self) -> float:
+        """Distribution variance.
+
+        Examples
+        --------
+        >>> float(Gaussian(0.0, 2.5).var())
+        2.5
+        """
         return self._var
 
 
@@ -152,35 +254,105 @@ class MultivariateGaussian(Distribution):
 
     @property
     def dim(self) -> int:
-        """Dimension of the distribution."""
+        """Dimension of the distribution.
+
+        Examples
+        --------
+        >>> MultivariateGaussian([0, 0], [[1, 0], [0, 1]]).dim
+        2
+        """
         return self._dim
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> round(float(mg.pdf([0.0, 0.0])), 6)
+        0.159155
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> round(float(mg.logpdf([0.0, 0.0])), 6)
+        -1.837877
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> round(float(mg.cdf([0.0, 0.0])), 4)
+        0.25
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (not available; raises).
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> mg.ppf(0.5)
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: PPF not available for multivariate normal
+        """
         raise NotImplementedError("PPF not available for multivariate normal")
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> mg.sample(5).shape
+        (5, 2)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> NDArray[np.floating]:
+        """Distribution mean vector.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([1.0, 2.0], [[1, 0], [0, 1]])
+        >>> mg.mean().tolist()
+        [1.0, 2.0]
+        """
         return self._mean.copy()
 
     def var(self) -> NDArray[np.floating]:
-        """Return diagonal of covariance (marginal variances)."""
+        """Return diagonal of covariance (marginal variances).
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[4.0, 0.0], [0.0, 9.0]])
+        >>> mg.var().tolist()
+        [4.0, 9.0]
+        """
         return np.diag(self._cov)
 
     def cov(self) -> NDArray[np.floating]:
-        """Return full covariance matrix."""
+        """Return full covariance matrix.
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[4.0, 0.0], [0.0, 9.0]])
+        >>> mg.cov().tolist()
+        [[4.0, 0.0], [0.0, 9.0]]
+        """
         return self._cov.copy()
 
     def mahalanobis(self, x: ArrayLike) -> NDArray[np.floating]:
@@ -196,6 +368,12 @@ class MultivariateGaussian(Distribution):
         -------
         d : ndarray
             Mahalanobis distance(s).
+
+        Examples
+        --------
+        >>> mg = MultivariateGaussian([0, 0], [[1, 0], [0, 1]])
+        >>> float(mg.mahalanobis([3.0, 4.0]))
+        5.0
         """
         x = np.asarray(x, dtype=np.float64)
         diff = x - self._mean
@@ -217,6 +395,12 @@ class Uniform(Distribution):
         Lower bound of the distribution.
     high : float
         Upper bound of the distribution.
+
+    Examples
+    --------
+    >>> u = Uniform(low=0.0, high=2.0)
+    >>> float(u.mean())
+    1.0
     """
 
     def __init__(self, low: float = 0.0, high: float = 1.0):
@@ -228,26 +412,76 @@ class Uniform(Distribution):
         self._dist = stats.uniform(loc=low, scale=self._scale)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> float(Uniform(0.0, 2.0).pdf(1.0))
+        0.5
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(Uniform(0.0, 2.0).logpdf(1.0)), 6)
+        -0.693147
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> float(Uniform(0.0, 2.0).cdf(0.5))
+        0.25
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(Uniform(0.0, 2.0).ppf(0.25))
+        0.5
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> s = Uniform(0.0, 2.0).sample(8)
+        >>> bool(((s >= 0.0) & (s <= 2.0)).all())
+        True
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean.
+
+        Examples
+        --------
+        >>> float(Uniform(0.0, 2.0).mean())
+        1.0
+        """
         return (self._low + self._high) / 2
 
     def var(self) -> float:
+        """Distribution variance.
+
+        Examples
+        --------
+        >>> round(float(Uniform(0.0, 1.0).var()), 6)
+        0.083333
+        """
         return self._scale**2 / 12
 
 
@@ -259,6 +493,12 @@ class Exponential(Distribution):
     ----------
     rate : float
         Rate parameter (λ). Mean is 1/λ.
+
+    Examples
+    --------
+    >>> e = Exponential(rate=2.0)
+    >>> float(e.mean())
+    0.5
     """
 
     def __init__(self, rate: float = 1.0):
@@ -268,26 +508,76 @@ class Exponential(Distribution):
         self._dist = stats.expon(scale=1.0 / rate)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> float(Exponential(1.0).pdf(0.0))
+        1.0
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> float(Exponential(1.0).logpdf(1.0))
+        -1.0
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> round(float(Exponential(1.0).cdf(1.0)), 6)
+        0.632121
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> round(float(Exponential(1.0).ppf(0.5)), 6)
+        0.693147
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> s = Exponential(1.0).sample(8)
+        >>> bool((s >= 0.0).all())
+        True
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean (1/rate).
+
+        Examples
+        --------
+        >>> float(Exponential(2.0).mean())
+        0.5
+        """
         return 1.0 / self._rate
 
     def var(self) -> float:
+        """Distribution variance (1/rate**2).
+
+        Examples
+        --------
+        >>> float(Exponential(2.0).var())
+        0.25
+        """
         return 1.0 / self._rate**2
 
 
@@ -307,6 +597,12 @@ class Gamma(Distribution):
     Notes
     -----
     Either rate or scale should be specified, not both.
+
+    Examples
+    --------
+    >>> g = Gamma(shape=2.0, rate=1.0)
+    >>> float(g.mean())
+    2.0
     """
 
     def __init__(
@@ -336,26 +632,75 @@ class Gamma(Distribution):
         self._dist = stats.gamma(a=self._shape, scale=self._scale)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gamma(shape=2.0, rate=1.0).pdf(1.0)), 6)
+        0.367879
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(Gamma(shape=2.0, rate=1.0).logpdf(1.0)), 6)
+        -1.0
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> round(float(Gamma(shape=1.0, rate=1.0).cdf(1.0)), 6)
+        0.632121
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> round(float(Gamma(shape=1.0, rate=1.0).ppf(0.5)), 6)
+        0.693147
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> Gamma(shape=2.0, rate=1.0).sample(6).shape
+        (6,)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean (shape * scale).
+
+        Examples
+        --------
+        >>> float(Gamma(shape=3.0, scale=2.0).mean())
+        6.0
+        """
         return self._shape * self._scale
 
     def var(self) -> float:
+        """Distribution variance (shape * scale**2).
+
+        Examples
+        --------
+        >>> float(Gamma(shape=3.0, scale=2.0).var())
+        12.0
+        """
         return self._shape * self._scale**2
 
 
@@ -367,6 +712,12 @@ class ChiSquared(Distribution):
     ----------
     df : int
         Degrees of freedom.
+
+    Examples
+    --------
+    >>> c = ChiSquared(df=4)
+    >>> float(c.mean())
+    4.0
     """
 
     def __init__(self, df: int):
@@ -376,26 +727,76 @@ class ChiSquared(Distribution):
         self._dist = stats.chi2(df=self._df)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> float(ChiSquared(2).pdf(0.0))
+        0.5
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(ChiSquared(2).logpdf(0.0)), 6)
+        -0.693147
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> round(float(ChiSquared(2).cdf(2.0)), 6)
+        0.632121
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> round(float(ChiSquared(2).ppf(0.5)), 6)
+        1.386294
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> s = ChiSquared(3).sample(5)
+        >>> bool((s >= 0.0).all())
+        True
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean (df).
+
+        Examples
+        --------
+        >>> float(ChiSquared(5).mean())
+        5.0
+        """
         return float(self._df)
 
     def var(self) -> float:
+        """Distribution variance (2 * df).
+
+        Examples
+        --------
+        >>> float(ChiSquared(5).var())
+        10.0
+        """
         return 2.0 * self._df
 
 
@@ -411,6 +812,12 @@ class StudentT(Distribution):
         Location parameter (default 0).
     scale : float, optional
         Scale parameter (default 1).
+
+    Examples
+    --------
+    >>> t = StudentT(df=10)
+    >>> float(t.mean())
+    0.0
     """
 
     def __init__(self, df: float, loc: float = 0.0, scale: float = 1.0):
@@ -425,28 +832,77 @@ class StudentT(Distribution):
         self._dist = stats.t(df=self._df, loc=self._loc, scale=self._scale)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(StudentT(df=1.0).pdf(0.0)), 6)
+        0.31831
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(StudentT(df=1.0).logpdf(0.0)), 6)
+        -1.14473
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> float(StudentT(df=3.0).cdf(0.0))
+        0.5
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(StudentT(df=3.0).ppf(0.5))
+        0.0
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> StudentT(df=5.0).sample(7).shape
+        (7,)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean (loc for df > 1, NaN otherwise).
+
+        Examples
+        --------
+        >>> float(StudentT(df=5.0, loc=2.0).mean())
+        2.0
+        """
         if self._df > 1:
             return self._loc
         return np.nan
 
     def var(self) -> float:
+        """Distribution variance (finite for df > 2).
+
+        Examples
+        --------
+        >>> float(StudentT(df=4.0).var())
+        2.0
+        """
         if self._df > 2:
             return self._scale**2 * self._df / (self._df - 2)
         elif self._df > 1:
@@ -464,6 +920,12 @@ class Beta(Distribution):
         First shape parameter (α > 0).
     b : float
         Second shape parameter (β > 0).
+
+    Examples
+    --------
+    >>> beta = Beta(a=2.0, b=2.0)
+    >>> float(beta.mean())
+    0.5
     """
 
     def __init__(self, a: float, b: float):
@@ -474,26 +936,76 @@ class Beta(Distribution):
         self._dist = stats.beta(a=self._a, b=self._b)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(Beta(2.0, 2.0).pdf(0.5)), 6)
+        1.5
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(Beta(2.0, 2.0).logpdf(0.5)), 6)
+        0.405465
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> round(float(Beta(1.0, 1.0).cdf(0.3)), 6)
+        0.3
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> round(float(Beta(1.0, 1.0).ppf(0.25)), 6)
+        0.25
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> s = Beta(2.0, 2.0).sample(8)
+        >>> bool(((s >= 0.0) & (s <= 1.0)).all())
+        True
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean, a / (a + b).
+
+        Examples
+        --------
+        >>> float(Beta(2.0, 6.0).mean())
+        0.25
+        """
         return self._a / (self._a + self._b)
 
     def var(self) -> float:
+        """Distribution variance.
+
+        Examples
+        --------
+        >>> round(float(Beta(2.0, 2.0).var()), 6)
+        0.05
+        """
         ab = self._a + self._b
         return (self._a * self._b) / (ab**2 * (ab + 1))
 
@@ -506,6 +1018,12 @@ class Poisson(Distribution):
     ----------
     rate : float
         Rate parameter (λ), also the mean.
+
+    Examples
+    --------
+    >>> p = Poisson(rate=3.0)
+    >>> float(p.mean())
+    3.0
     """
 
     def __init__(self, rate: float):
@@ -515,28 +1033,76 @@ class Poisson(Distribution):
         self._dist = stats.poisson(mu=self._rate)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
-        """Probability mass function (PMF)."""
+        """Probability mass function (PMF).
+
+        Examples
+        --------
+        >>> round(float(Poisson(2.0).pdf(0)), 6)
+        0.135335
+        """
         return np.asarray(self._dist.pmf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
-        """Log of probability mass function."""
+        """Log of probability mass function.
+
+        Examples
+        --------
+        >>> float(Poisson(2.0).logpdf(0))
+        -2.0
+        """
         return np.asarray(self._dist.logpmf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> round(float(Poisson(1.0).cdf(0)), 6)
+        0.367879
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(Poisson(2.0).ppf(0.5))
+        2.0
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> s = Poisson(2.0).sample(6)
+        >>> bool((s >= 0.0).all())
+        True
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Distribution mean (rate).
+
+        Examples
+        --------
+        >>> float(Poisson(3.0).mean())
+        3.0
+        """
         return self._rate
 
     def var(self) -> float:
+        """Distribution variance (rate).
+
+        Examples
+        --------
+        >>> float(Poisson(3.0).var())
+        3.0
+        """
         return self._rate
 
 
@@ -552,6 +1118,12 @@ class VonMises(Distribution):
         Mean direction (in radians).
     kappa : float
         Concentration parameter.
+
+    Examples
+    --------
+    >>> vm = VonMises(mu=0.0, kappa=2.0)
+    >>> float(vm.mean())
+    0.0
     """
 
     def __init__(self, mu: float = 0.0, kappa: float = 1.0):
@@ -562,26 +1134,75 @@ class VonMises(Distribution):
         self._dist = stats.vonmises(kappa=self._kappa, loc=self._mu)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> round(float(VonMises(0.0, 1.0).pdf(0.0)), 6)
+        0.34171
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> round(float(VonMises(0.0, 1.0).logpdf(0.0)), 6)
+        -1.073791
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function.
+
+        Examples
+        --------
+        >>> float(VonMises(0.0, 1.0).cdf(0.0))
+        0.5
+        """
         return np.asarray(self._dist.cdf(x), dtype=np.float64)
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (inverse of CDF).
+
+        Examples
+        --------
+        >>> float(VonMises(0.0, 1.0).ppf(0.5))
+        0.0
+        """
         return np.asarray(self._dist.ppf(q), dtype=np.float64)
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> VonMises(0.0, 1.0).sample(5).shape
+        (5,)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> float:
+        """Mean direction (mu).
+
+        Examples
+        --------
+        >>> float(VonMises(mu=1.0, kappa=2.0).mean())
+        1.0
+        """
         return self._mu
 
     def var(self) -> float:
+        """Circular variance, 1 - I_1(kappa) / I_0(kappa).
+
+        Examples
+        --------
+        >>> round(float(VonMises(0.0, 1.0).var()), 6)
+        0.55361
+        """
         # Circular variance: 1 - I_1(kappa)/I_0(kappa)
         from scipy.special import i0, i1
 
@@ -601,6 +1222,12 @@ class Wishart(Distribution):
         Degrees of freedom.
     scale : array_like
         Scale matrix (positive definite).
+
+    Examples
+    --------
+    >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+    >>> w.mean().tolist()
+    [[3.0, 0.0], [0.0, 3.0]]
     """
 
     def __init__(self, df: float, scale: ArrayLike):
@@ -617,26 +1244,88 @@ class Wishart(Distribution):
         self._dist = stats.wishart(df=self._df, scale=self._scale)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Probability density function.
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> round(float(w.pdf([[1.0, 0.0], [0.0, 1.0]])), 6)
+        0.029275
+        """
         return np.asarray(self._dist.pdf(x), dtype=np.float64)
 
     def logpdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Log of probability density function.
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> round(float(w.logpdf([[1.0, 0.0], [0.0, 1.0]])), 6)
+        -3.531024
+        """
         return np.asarray(self._dist.logpdf(x), dtype=np.float64)
 
     def cdf(self, x: ArrayLike) -> NDArray[np.floating]:
+        """Cumulative distribution function (not available; raises).
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> w.cdf([[1.0, 0.0], [0.0, 1.0]])
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: CDF not available for Wishart distribution
+        """
         raise NotImplementedError("CDF not available for Wishart distribution")
 
     def ppf(self, q: ArrayLike) -> NDArray[np.floating]:
+        """Percent point function (not available; raises).
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> w.ppf(0.5)
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: PPF not available for Wishart distribution
+        """
         raise NotImplementedError("PPF not available for Wishart distribution")
 
     def sample(
         self, size: Optional[Union[int, Tuple[int, ...]]] = None
     ) -> NDArray[np.floating]:
+        """Generate random samples.
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> w.sample(1).shape
+        (2, 2)
+        """
         return np.asarray(self._dist.rvs(size=size), dtype=np.float64)
 
     def mean(self) -> NDArray[np.floating]:
+        """Distribution mean matrix (df * scale).
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> w.mean().tolist()
+        [[3.0, 0.0], [0.0, 3.0]]
+        """
         return self._df * self._scale
 
     def var(self) -> float:
+        """Variance is not defined here (raises; use mean()).
+
+        Examples
+        --------
+        >>> w = Wishart(df=3, scale=[[1.0, 0.0], [0.0, 1.0]])
+        >>> w.var()
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: Use mean() for matrix-valued distribution
+        """
         raise NotImplementedError("Use mean() for matrix-valued distribution")
 
 

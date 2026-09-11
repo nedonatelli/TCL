@@ -58,11 +58,12 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - KF/EKF/UKF/CKF, square-root and UD forms, SRIF, information filter,
        H-infinity, IMM, particle filters, RBPF, and RTS/two-filter/fixed-lag
        smoothers all ported (``fixed_interval_smoother`` is a documented
-       alias for the RTS smoother, not a fourth algorithm). **Missing:**
-       EnKF, ESRIF, quasi-Monte-Carlo Kalman variants, BLUE polar/spherical
-       measurement updates, progressive Gaussian update, pure-propagation
-       filter, reduced-state filters, batch least-squares estimators,
-       PCRLB/Riccati analysis tools. Also absent, and larger than that list
+       alias for the RTS smoother, not a fourth algorithm); v2.9.0 added
+       EnKF, ESRIF, the quasi-Monte-Carlo Kalman variants, BLUE
+       polar/spherical measurement updates, batch least-squares
+       estimators, and the PCRLB/Riccati performance-prediction tools.
+       **Missing:** progressive Gaussian update, pure-propagation
+       filter, reduced-state filters. Also absent, and larger than that list
        suggests: the entire ``Measurement_Update/Update_Parts`` tree (30
        files, 27% of the area -- separate gain, measurement-prediction and
        update-with-prediction entry points, which pytcl does not decompose
@@ -158,7 +159,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        plus loose torus and n-dimensional-shell rules; see :doc:`roadmap`).
        There is no cone or wedge rule anywhere in the MATLAB library. Also thin or
        absent: combinatorics (113 vs
-       18), polynomials (55; no pytcl counterpart), geometry beyond basics
+       18), polynomials (55 files; pytcl covers the multivariate-system
+       solvers in ``polynomials/multivariate.py``, the rest is thin),
+       geometry beyond basics
        (81), continuous optimization (37), most specific
        integrals/derivatives (the Carlson symmetric and incomplete elliptic
        integrals *are* ported, in ``special_functions/elliptic.py``), graph
@@ -198,9 +201,12 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - 14
      - Good
      - EGM coefficient loading, geoid height, normal gravity, tide offsets
-       (solid/pole/ocean) ported. **Missing:** lunar gravity coefficients,
-       polar-motion/drift coefficient adjustments, ellipsoidal parameter
-       conversions.
+       (solid/pole/ocean) ported; v2.11.0 added the ellipsoidal parameter
+       conversions (``alt_ellips_param_to_flattening``,
+       ``ellips_grav_coeffs``). **Missing:** lunar gravity coefficients,
+       polar-motion/drift coefficient adjustments, and
+       ``ellipsParam2Grav`` (needs the ellipsoidal-harmonic coordinate
+       conversions as prerequisites).
    * - Magnetism
      - 12
      - Split

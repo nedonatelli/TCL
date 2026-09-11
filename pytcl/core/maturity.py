@@ -182,7 +182,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.rbpf": MaturityLevel.EXPERIMENTAL,
     # Geophysical Models
     "gravity.egm": MaturityLevel.EXPERIMENTAL,
-    "magnetism.wmm": MaturityLevel.EXPERIMENTAL,
+    "magnetism.wmm": MaturityLevel.EXPERIMENTAL,  # igrf/emm (MATURE) build on this; held only because the Schmidt factoring touched it in v2.11.0 (fixtures pin zero drift) -- promote in v2.12
     "gravity.tides": MaturityLevel.EXPERIMENTAL,
     # Terrain
     "terrain.dem": MaturityLevel.EXPERIMENTAL,
@@ -300,37 +300,37 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
     "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage
     # coordinate_systems
-    "coordinate_systems.conversions.uv": MaturityLevel.EXPERIMENTAL,  # new in v2.8.0
-    "coordinate_systems.conversions.covariance_conversions": MaturityLevel.EXPERIMENTAL,  # new in v2.9.0
-    "coordinate_systems.jacobians.component_gradients": MaturityLevel.EXPERIMENTAL,  # new this release
-    "coordinate_systems.jacobians.measurement_jacobians": MaturityLevel.EXPERIMENTAL,  # new this release
-    "coordinate_systems.hessians.component_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
-    "coordinate_systems.hessians.measurement_hessians": MaturityLevel.EXPERIMENTAL,  # new this release
-    "coordinate_systems.hessians.cross_derivatives": MaturityLevel.EXPERIMENTAL,  # new this release
+    "coordinate_systems.conversions.uv": MaturityLevel.MATURE,  # v2.8.0; 97.7% cov (2026-09-11)
+    "coordinate_systems.conversions.covariance_conversions": MaturityLevel.MATURE,  # v2.9.0; 98.9% cov (2026-09-11)
+    "coordinate_systems.jacobians.component_gradients": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
+    "coordinate_systems.jacobians.measurement_jacobians": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
+    "coordinate_systems.hessians.component_hessians": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
+    "coordinate_systems.hessians.measurement_hessians": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
+    "coordinate_systems.hessians.cross_derivatives": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
     # performance_evaluation
-    "performance_evaluation.mospa": MaturityLevel.EXPERIMENTAL,  # new this release
+    "performance_evaluation.mospa": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
     # scheduling
-    "scheduling.intervals": MaturityLevel.EXPERIMENTAL,  # new this release
+    "scheduling.intervals": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
     # astronomical
-    "astronomical.time_scales": MaturityLevel.EXPERIMENTAL,  # new this release
+    "astronomical.time_scales": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
     # atmosphere
-    "atmosphere.nrlmsise00": MaturityLevel.EXPERIMENTAL,  # new this release
-    "atmosphere._nrlmsise00_data": MaturityLevel.EXPERIMENTAL,  # generated coefficients, new this release
-    "atmosphere._nrlmsise00_c": MaturityLevel.EXPERIMENTAL,
-    "atmosphere._gas_properties": MaturityLevel.EXPERIMENTAL,  # new this release  # compiled reference C, new this release
+    "atmosphere.nrlmsise00": MaturityLevel.MATURE,  # v2.10.0; 98.5% cov; pymsis cross-validated
+    "atmosphere._nrlmsise00_data": MaturityLevel.MATURE,  # v2.10.0; generated coefficients, 100% cov
+    "atmosphere._nrlmsise00_c": MaturityLevel.MATURE,  # v2.10.0 compiled reference C; every CI cell builds and runs it, every wheel gates on the canonical check
+    "atmosphere._gas_properties": MaturityLevel.MATURE,  # v2.10.0; 100% cov (2026-09-11)
     # dynamic_estimation
-    "dynamic_estimation.kalman.ensemble": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.kalman.qmc": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.kalman.blue": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.batch_estimation": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.batch_smoothers": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.kalman.sqrt_cubature": MaturityLevel.EXPERIMENTAL,  # new this release
-    "dynamic_estimation.performance_prediction": MaturityLevel.EXPERIMENTAL,  # new this release
+    "dynamic_estimation.kalman.ensemble": MaturityLevel.MATURE,  # v2.9.0; 95.5% cov (2026-09-11)
+    "dynamic_estimation.kalman.qmc": MaturityLevel.MATURE,  # v2.9.0; 94.2% cov (2026-09-11)
+    "dynamic_estimation.kalman.blue": MaturityLevel.MATURE,  # v2.9.0; 100% cov (2026-09-11)
+    "dynamic_estimation.batch_estimation": MaturityLevel.MATURE,  # v2.9.0; 98.6% cov (2026-09-11)
+    "dynamic_estimation.batch_smoothers": MaturityLevel.MATURE,  # v2.9.0; 98.5% cov (2026-09-11)
+    "dynamic_estimation.kalman.sqrt_cubature": MaturityLevel.MATURE,  # v2.9.0; 96.9% cov (2026-09-11)
+    "dynamic_estimation.performance_prediction": MaturityLevel.MATURE,  # v2.9.0; 100% cov (2026-09-11)
     # mathematical_functions
-    "mathematical_functions.polynomials.multivariate": MaturityLevel.EXPERIMENTAL,  # new this release
+    "mathematical_functions.polynomials.multivariate": MaturityLevel.MATURE,  # v2.10.0; 98.1% cov (2026-09-11)
     # static_estimation
-    "static_estimation.localization": MaturityLevel.EXPERIMENTAL,  # new this release
-    "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # 90% coverage
+    "static_estimation.localization": MaturityLevel.MATURE,  # v2.10.0; 96.7% cov (2026-09-11)
+    "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # v2.10.0; 89.9% cov (2026-09-11) -- just under the bar
     # terrain
     "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage
     # trackers

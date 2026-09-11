@@ -124,6 +124,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for ad-hoc M-of-N initiation/termination; validated against the
   tutorial's closed-form equations computed independently with scipy.
 
+### Metadata
+
+- **23 maturity promotions to MATURE**, each recorded with its
+  coverage evidence (full-suite run 2026-09-11): the v2.8-v2.10
+  coordinate-conversion/Jacobian/Hessian suites, MOSPA, interval
+  scheduling, SOFA time scales, the NRLMSISE-00 family (compiled C
+  included), the v2.9 estimation additions (EnKF, QMC, BLUE,
+  square-root cubature, batch LS, batch smoothers, PCRLB), the
+  multivariate polynomial solvers, and static localization.
+  `magnetism.wmm` stays EXPERIMENTAL only because the v2.11.0 Schmidt
+  factoring touched it (fixtures pin zero drift; promote in v2.12) --
+  the igrf/emm-above-wmm coherence gap is now documented in place.
+- **Parity inventory refreshed**: the Dynamic_Estimation "Missing"
+  list no longer names the v2.9-shipped features; the false
+  "polynomials: no pytcl counterpart" claim is corrected; the Gravity
+  row reflects the v2.11.0 parameter conversions.
+- **Doctest ratchet paid down 788 -> 700**: all 88 uncovered public
+  functions in `mathematical_functions.statistics.distributions` now
+  carry executed (never skipped) examples.
+
 ### Infrastructure
 
 - **abi3 wheels**: the NRLMSISE-00 extension now targets the stable
