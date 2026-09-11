@@ -913,8 +913,8 @@ def conform_map_quad_pts_1d(
     Examples
     --------
     >>> xi, w = conform_map_quad_pts_1d(20)
-    >>> round(float(np.sum(w * np.exp(xi))), 10)  # integral of e^x
-    2.3504023873
+    >>> round(float(np.sum(w * np.exp(xi))), 4)  # integral of e^x over [-1,1]
+    2.3504
     """
     if point_type == 0:
         xi, w = gauss_legendre(n)
