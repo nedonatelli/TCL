@@ -15,34 +15,59 @@ performance targets.
 
 ## Current SLOs
 
-24 entries, all thresholds in microseconds in the file itself:
+49 entries, all thresholds in microseconds in the file itself:
 
 | Benchmark | Max mean | Max p99 |
 |-----------|----------|---------|
-| `test_cfar_ca_1000` | 50 us | 100 us |
-| `test_cfar_ca_5000` | 200 us | 400 us |
-| `test_cfar_ca_10000` | 400 us | 800 us |
-| `test_kf_predict[4]` | 50 us | 100 us |
-| `test_kf_update[4-2]` | 100 us | 200 us |
-| `test_jpda_update_100_targets_50_meas` | 111.18 ms | 222.37 ms |
-| `test_hungarian_dense_500x500` | 16.57 ms | 33.15 ms |
 | `test_assign2d_augmented_500x500` | 29.95 ms | 59.89 ms |
-| `test_gate_20_tracks_50_meas` | 4.07 ms | 8.13 ms |
-| `test_batch_1000_3d` | 4.09 ms | 8.19 ms |
-| `test_kmeans_1000_points` | 17.95 ms | 35.91 ms |
-| `test_dbscan_1000_points` | 18.52 ms | 37.04 ms |
-| `test_smolyak_generation[8]` | 6.66 ms | 13.32 ms |
-| `test_quat_rotate_batch_1000` | 9.53 ms | 19.05 ms |
-| `test_euler2rotmat_batch_1000` | 17.92 ms | 35.84 ms |
-| `test_quat_multiply_batch_1000` | 4.87 ms | 9.73 ms |
-| `test_fft_1d_large[65536]` | 1.32 ms | 2.65 ms |
-| `test_stft_large` | 445 us | 890 us |
-| `test_pulse_compression` | 232 us | 464 us |
+| `test_batch_1000_3d` | 4.09 ms | 11.78 ms |
+| `test_batch_ls_gauss_newton_20_meas` | 3.01 ms | 6.02 ms |
+| `test_batch_ls_lin_50_meas` | 335.59 ms | 671.18 ms |
+| `test_blue_polar_meas_update` | 81.9 us | 315.1 us |
+| `test_camera_coords2uv_cubature_100_meas` | 6.40 ms | 12.80 ms |
+| `test_cfar_ca_1000` | 50 us | 282.2 us |
+| `test_cfar_ca_10000` | 400 us | 881.4 us |
+| `test_cfar_ca_5000` | 200 us | 629.6 us |
 | `test_cwt_morlet` | 10.63 ms | 21.26 ms |
+| `test_dbscan_1000_points` | 18.52 ms | 37.04 ms |
+| `test_enkf_update_100_members` | 1.04 ms | 2.08 ms |
+| `test_euler2rotmat_batch_1000` | 17.92 ms | 35.84 ms |
+| `test_fft_1d_large[65536]` | 1.32 ms | 2.65 ms |
+| `test_fp_info_batch_smoother_50_steps` | 7.93 ms | 15.85 ms |
+| `test_gate_20_tracks_50_meas` | 4.07 ms | 12.05 ms |
 | `test_generalized_hypergeometric_3f2_large[1000]` | 259 us | 518 us |
-| `test_kf_cycle_with_sql_storage` | 1.43 ms | 2.85 ms |
-| `test_store_scenario_10_tracks` | 7.08 ms | 14.15 ms |
-| `test_store_detection_batch_100` | 87.56 ms | 175.13 ms |
+| `test_hungarian_dense_500x500` | 16.57 ms | 33.15 ms |
+| `test_jpda_update_100_targets_50_meas` | 111.18 ms | 222.37 ms |
+| `test_kalman_batch_smoother_rts_50_steps` | 8.90 ms | 17.80 ms |
+| `test_kalman_fir_smoother_20_steps` | 2.42 ms | 4.84 ms |
+| `test_kf_cycle_with_sql_storage` | 1.43 ms | 36.58 ms |
+| `test_kf_predict[4]` | 50 us | 193.8 us |
+| `test_kf_update[4-2]` | 100 us | 353.6 us |
+| `test_kmeans_1000_points` | 17.95 ms | 35.91 ms |
+| `test_monostat_ruv2cart_taylor_cm3_100_meas` | 2.89 ms | 5.79 ms |
+| `test_pcrlb_cubature_cycle` | 523.4 us | 1.49 ms |
+| `test_pulse_compression` | 232 us | 464 us |
+| `test_qmc_kf_update_1000_samples` | 14.57 ms | 29.14 ms |
+| `test_quat_multiply_batch_1000` | 4.87 ms | 9.73 ms |
+| `test_quat_rotate_batch_1000` | 9.53 ms | 19.05 ms |
+| `test_riccati_pred_pd05` | 5.87 ms | 12.60 ms |
+| `test_ruv2ruv_cubature_100_meas` | 72.42 ms | 144.85 ms |
+| `test_smolyak_generation[8]` | 6.66 ms | 13.32 ms |
+| `test_sqrt_ckf_cycle` | 1.22 ms | 2.47 ms |
+| `test_sqrt_cub_batch_smoother_20_steps` | 14.85 ms | 29.71 ms |
+| `test_stft_large` | 445 us | 930.8 us |
+| `test_store_detection_batch_100` | 155.28 ms | 416.36 ms |
+| `test_store_scenario_10_tracks` | 14.45 ms | 28.91 ms |
+| `test_uv2spher_ang_cubature_100_meas` | 8.44 ms | 16.87 ms |
+| `test_calc_spher_hessian_100_points` | 8.37 ms | 16.75 ms |
+| `test_calc_spher_rr_jacob_100_states` | 12.17 ms | 24.33 ms |
+| `test_mmospa_approx_20hyp_5tar` | 4.00 ms | 8.01 ms |
+| `test_nrlmsise00_alt_for_pressure` | 59.3 us | 118.6 us |
+| `test_nrlmsise00_compiled_single` | 10.7 us | 21.4 us |
+| `test_nrlmsise00_fallback_single` | 1.19 ms | 2.38 ms |
+| `test_schedule_weighted_intervals_1000` | 4.14 ms | 8.29 ms |
+| `test_spher_ang_gradient_batch_1000` | 11.12 ms | 22.24 ms |
+| `test_trace2earth_mag_apex_single` | 56.55 ms | 113.10 ms |
 
 Regenerate this table from the file rather than editing it by hand:
 
@@ -73,6 +98,29 @@ Keys are pytest node names (including any parametrization suffix), so an SLO
 only binds if its key matches the benchmark's id exactly. Values carry the two
 thresholds in microseconds, plus an optional `_derivation` string recording
 how the number was arrived at.
+
+## Which benchmarks get an SLO (coverage policy)
+
+Not every benchmark carries an absolute threshold, by design (as of
+v2.11.0: 49 of 164). A benchmark gets an SLO when all three hold:
+
+1. **It guards something a user would feel** — the tracker hot path
+   (predict/update/associate/gate), a flagship feature of the release
+   that added it, or a function whose docstring makes a performance
+   claim.
+2. **It is stable under the calibration protocol** — two back-to-back
+   local runs within ~5 percent; benchmarks rejected for instability
+   are recorded as such in `_derivation` when later admitted.
+3. **Its derivation can be written down** — the doctrine below produces
+   a number with an auditable trail; no trail, no threshold.
+
+Everything else is still regression-guarded, but *relatively*:
+`scripts/detect_regressions.py` compares every benchmark against
+`.benchmarks/history.jsonl` on each CI run, so an unthresholded
+benchmark that slows down still trips the benchmark workflow. Absolute
+SLOs exist to catch slow drift that history-based comparison
+normalizes away; the split keeps them where drift matters and spares
+the micro-benchmarks whose absolute numbers are machine noise.
 
 ## How thresholds are derived
 

@@ -26,40 +26,39 @@ permissions:
 jobs:
   # Since the NRLMSISE-00 extension (csrc/nrlmsise00, built by setup.py)
   # the package ships platform wheels, built by cibuildwheel per OS.
-  # Linux covers manylinux + musllinux on x86_64 and (via QEMU) aarch64;
-  # macos-14 builds arm64 only (numba/llvmlite dropped Intel-macOS
-  # wheels, and numba is a core dependency, so pytcl cannot run there);
-  # windows builds AMD64. Every wheel
-  # runs the canonical NRLMSISE-00 check against the compiled backend
-  # before it is accepted.
+  # The extension targets the stable ABI (abi3, Py_LIMITED_API 3.11),
+  # so ONE cp311-abi3 wheel per platform covers every CPython >= 3.11
+  # -- including future releases (3.15+) with no workflow change.
+  # Linux x86_64 and aarch64 build natively on their own runners (no
+  # QEMU); macos-14 builds arm64 only (numba/llvmlite dropped
+  # Intel-macOS wheels, and numba is a core dependency, so pytcl
+  # cannot run there); windows builds AMD64. Every wheel runs the
+  # canonical NRLMSISE-00 check against the compiled backend before
+  # it is accepted.
   build_wheels:
     name: Wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, windows-latest]
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      - name: Set up QEMU for aarch64
-        if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2
         env:
-          CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-*"
+          # abi3: build once on the oldest supported CPython; the
+          # wheel is tagged cp311-abi3 and serves 3.11+.
+          CIBW_BUILD: "cp311-*"
           # musllinux is skipped: scipy/numba wheel coverage there is
           # not dependable, and the import test would source-build.
           CIBW_SKIP: "*-musllinux*"
-          CIBW_ARCHS_LINUX: "x86_64 aarch64"
-          CIBW_ARCHS_MACOS: "arm64"
-          CIBW_ARCHS_WINDOWS: "AMD64"
+          # Each runner builds its native arch (the arm64 Linux wheel
+          # comes from the ubuntu-24.04-arm runner, not QEMU).
+          CIBW_ARCHS: "native"
           # The extension must import and reproduce the reference
           # values, or the wheel is rejected.
           CIBW_TEST_COMMAND: >-

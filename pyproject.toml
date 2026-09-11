@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0,<75", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "nrl-tracker"
 version = "2.10.0"
 description = "Python port of the U.S. Naval Research Laboratory's Tracker Component Library for target tracking algorithms"
 readme = "README.md"
+license = "LicenseRef-NRL-Public-Domain"
+license-files = ["LICENSE"]
 authors = [
     {name = "Original: David F. Crouse, Naval Research Laboratory"},
 ]
@@ -27,7 +29,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "License :: Public Domain",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",

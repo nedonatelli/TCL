@@ -124,6 +124,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for ad-hoc M-of-N initiation/termination; validated against the
   tutorial's closed-form equations computed independently with scipy.
 
+### Infrastructure
+
+- **abi3 wheels**: the NRLMSISE-00 extension now targets the stable
+  ABI (`Py_LIMITED_API` 3.11; two non-limited calls in `pymodule.c`
+  replaced), so one `cp311-abi3` wheel per platform serves every
+  CPython >= 3.11 -- including future 3.15+ with no workflow change --
+  instead of four per-minor-version builds. Linux aarch64 wheels now
+  build natively on `ubuntu-24.04-arm` runners instead of QEMU.
+- **PEP 639 license metadata** (`License-Expression:
+  LicenseRef-NRL-Public-Domain` + `License-File`), replacing the
+  license classifier; the `setuptools<75` cap is gone (build now
+  requires `setuptools>=77.0.3`).
+- **The docs CI gate can actually fail on notebook errors**: the job
+  never installed pandoc, so every notebook silently failed to render
+  and the case-sensitive `ERROR` grep never matched nbsphinx's
+  "Notebook error" (a vacuous-gate defect from the v2.11.0 audit).
+  Pandoc is installed and the gate matches both patterns.
+- **CuPy stack aligned and gated**: the gpu workflow's default CUDA
+  wheel now matches the hardware-validated `gpu` extra (cupy-cuda12x +
+  cu12 runtime wheels, RTX 5090 run of 2026-08-09) instead of
+  silently drifting to cu13; `pytcl/gpu/VALIDATION.json` records that
+  validation and a contract gate fails (under `PYTCL_REQUIRE_CUPY=1`)
+  when commits touch `pytcl/gpu/` after the recorded validation.
+- **SLO calibration for the nine v2.10.0 benchmarks** (NRLMSISE-00
+  compiled/fallback/inversion, Jacobian/Hessian/gradient batches,
+  apex trace, MMOSPA, interval scheduling), each with a recorded
+  derivation; the SLO **coverage policy** is now written down in
+  docs/architecture/PERFORMANCE.md (49 of 164 benchmarks carry
+  absolute thresholds; the rest are history-guarded), and the doc's
+  snapshot table is regenerated to match the JSON.
+- `setup-uv` v9 -> v10 across all workflows.
+
 ### Fixed
 
 - **MHT hypotheses now branch per association**: the tracker stored

@@ -1,0 +1,8 @@
+{
+  "validated_date": "2026-08-09",
+  "hardware": "NVIDIA RTX 5090 (sm_120), CUDA 13.0 host runtime",
+  "stack": "cupy-cuda12x + nvidia-*-cu12 pip wheels (the `gpu` extra)",
+  "result": "all 85 CuPy-gated tests passed with the extra's pins; fail without",
+  "validated_through_commit": "e919189",
+  "note": "e919189 (2026-08-20) postdates the hardware run but is docstring-only; the numerics are unchanged since validation. Any later commit touching pytcl/gpu/ requires a re-run of the gpu workflow and an update of this record."
+}
