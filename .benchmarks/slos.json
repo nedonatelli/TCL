@@ -216,6 +216,51 @@
       "max_p99_us": 16873.2,
       "_derivation": "Calibrated 2026-09-09 from the first 9 CI-recorded main-branch runs (2026-09-07..09) of this v2.9.0 benchmark: mean of observed means (5624.4us) x 1.5 headroom. Early-sample calibration per the CI-observed doctrine; the nightly gate revalidates continuously and a recalibration is warranted if the fleet shifts.",
       "_p99_derivation": "90th percentile of the 9 recorded run maxima (8416.0us) x 1.5, floored at 2x the mean SLO (whichever is larger). The gate compares hd15iqr, which is bounded above by the raw maxima this derives from."
+    },
+    "test_calc_spher_hessian_100_points": {
+      "max_mean_us": 8373.5,
+      "max_p99_us": 16747.0,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): calc_spher_hessian over 100 points; local median 2527.08us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2519.00us/2535.17us, 0.6% apart) x CI/local ratio 2.209 x 1.5 headroom = 8373.5us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_calc_spher_rr_jacob_100_states": {
+      "max_mean_us": 12167.4,
+      "max_p99_us": 24334.8,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): calc_spher_rr_jacob over 100 states; local median 3672.08us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 3671.42us/3672.75us, 0.0% apart) x CI/local ratio 2.209 x 1.5 headroom = 12167.4us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_mmospa_approx_20hyp_5tar": {
+      "max_mean_us": 4004.3,
+      "max_p99_us": 8008.6,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): MMOSPA approximation, 20 hypotheses x 5 targets; local median 906.35us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 903.00us/909.71us, 0.7% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 4004.3us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); sub-millisecond headroom (x2.0) applied per the owner-approved deviation. max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_nrlmsise00_alt_for_pressure": {
+      "max_mean_us": 59.3,
+      "max_p99_us": 118.6,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): NRLMSISE-00 altitude-for-pressure inversion; local median 13.42us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 13.46us/13.38us, 0.6% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 59.3us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); sub-millisecond headroom (x2.0) applied per the owner-approved deviation. max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_nrlmsise00_compiled_single": {
+      "max_mean_us": 10.7,
+      "max_p99_us": 21.4,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): single-point NRLMSISE-00 via the compiled C backend; local median 2.42us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 2.38us/2.46us, 3.4% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 10.7us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); sub-millisecond headroom (x2.0) applied per the owner-approved deviation. max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_nrlmsise00_fallback_single": {
+      "max_mean_us": 1191.6,
+      "max_p99_us": 2383.2,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): single-point NRLMSISE-00 via the pure-Python fallback; local median 269.72us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 271.71us/267.73us, 1.5% apart) x CI/local ratio 2.209 x 2.0 sub-millisecond headroom = 1191.6us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); sub-millisecond headroom (x2.0) applied per the owner-approved deviation. max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_schedule_weighted_intervals_1000": {
+      "max_mean_us": 4142.7,
+      "max_p99_us": 8285.4,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): weighted-interval scheduling of 1000 intervals; local median 1250.24us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 1250.98us/1249.50us, 0.1% apart) x CI/local ratio 2.209 x 1.5 headroom = 4142.7us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_spher_ang_gradient_batch_1000": {
+      "max_mean_us": 11118.1,
+      "max_p99_us": 22236.2,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): spherical-angle gradient batch of 1000; local median 3355.41us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 3383.15us/3327.67us, 1.7% apart) x CI/local ratio 2.209 x 1.5 headroom = 11118.1us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
+    },
+    "test_trace2earth_mag_apex_single": {
+      "max_mean_us": 56550.0,
+      "max_p99_us": 113100.0,
+      "_derivation": "gate-calibration doctrine (v2.11.0 tier-5 calibration, 2026-09-10, Apple M3 Max, idle machine): single magnetic-apex field-line trace (solve_ivp); local median 17066.54us (mean of two back-to-back pytest-benchmark runs, --benchmark-min-rounds=30, medians 16977.83us/17155.25us, 1.0% apart) x CI/local ratio 2.209 x 1.5 headroom = 56550.0us. Ratio derivation identical to test_jpda_update_100_targets_50_meas (no CI history for this benchmark yet to calibrate against directly); max_p99_us follows this file's 2x-mean convention for entries without recorded CI maxima; it will be re-based from CI history like the 2026-09-07 re-basing when enough runs accumulate."
     }
   }
 }

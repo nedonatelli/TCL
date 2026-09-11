@@ -26,26 +26,32 @@ parse_ap_array(PyObject *ap_obj, struct ap_array *aph, int *storm)
         return 0;
     }
     {
-        PyObject *seq = PySequence_Fast(ap_obj, "ap_array must be a sequence");
-        if (seq == NULL) {
+        /* Limited-API (abi3) safe sequence access: PySequence_Fast and
+         * its GET_* macros are not in the stable ABI. */
+        Py_ssize_t n = PySequence_Size(ap_obj);
+        if (n < 0) {
+            PyErr_SetString(PyExc_TypeError,
+                            "ap_array must be a sequence");
             return -1;
         }
-        if (PySequence_Fast_GET_SIZE(seq) != 7) {
-            Py_DECREF(seq);
+        if (n != 7) {
             PyErr_SetString(PyExc_ValueError,
                             "ap_array must have exactly 7 elements");
             return -1;
         }
         for (i = 0; i < 7; i++) {
-            double v =
-                PyFloat_AsDouble(PySequence_Fast_GET_ITEM(seq, i));
+            PyObject *item = PySequence_GetItem(ap_obj, i);
+            double v;
+            if (item == NULL) {
+                return -1;
+            }
+            v = PyFloat_AsDouble(item);
+            Py_DECREF(item);
             if (v == -1.0 && PyErr_Occurred()) {
-                Py_DECREF(seq);
                 return -1;
             }
             aph->a[i] = v;
         }
-        Py_DECREF(seq);
     }
     *storm = 1;
     return 0;
@@ -75,11 +81,13 @@ build_output(const struct nrlmsise_output *out)
         Py_XDECREF(t);
         return NULL;
     }
+    /* PyTuple_SetItem (the checked, ref-stealing function) is in the
+     * limited API; the SET_ITEM macro is not. */
     for (i = 0; i < 9; i++) {
-        PyTuple_SET_ITEM(d, i, PyFloat_FromDouble(out->d[i]));
+        PyTuple_SetItem(d, i, PyFloat_FromDouble(out->d[i]));
     }
     for (i = 0; i < 2; i++) {
-        PyTuple_SET_ITEM(t, i, PyFloat_FromDouble(out->t[i]));
+        PyTuple_SetItem(t, i, PyFloat_FromDouble(out->t[i]));
     }
     result = PyTuple_Pack(2, d, t);
     Py_DECREF(d);

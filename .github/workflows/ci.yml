@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.11"
           enable-cache: true
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -80,7 +80,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -174,7 +174,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.11"
           enable-cache: true
@@ -182,12 +182,19 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
+      # nbsphinx needs pandoc; without it every notebook silently failed
+      # to render, and the case-sensitive "ERROR" grep below never saw
+      # nbsphinx's "Notebook error" (a vacuous-gate defect found in the
+      # v2.11.0 audit).
+      - name: Install pandoc
+        run: sudo apt-get update && sudo apt-get install -y pandoc
+
       - name: Build docs (fail on any Sphinx error or warning)
         run: |
           uv run sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
-          if grep -q "ERROR" /tmp/sphinx.log; then
-            echo "::error::Sphinx build produced docutils ERRORs"
-            grep "ERROR" /tmp/sphinx.log
+          if grep -qE "ERROR|Notebook error" /tmp/sphinx.log; then
+            echo "::error::Sphinx build produced errors"
+            grep -E "ERROR|Notebook error" /tmp/sphinx.log
             exit 1
           fi
           # The build is warning-free as of the docs cleanup. Gating on that
@@ -207,7 +214,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.12"
           enable-cache: true
@@ -239,7 +246,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.11"
           enable-cache: true

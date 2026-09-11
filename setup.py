@@ -13,6 +13,10 @@ performance, never correctness.
 
 from setuptools import Extension, setup
 
+# The extension uses only the stable ABI (abi3): one cp311-abi3 wheel
+# per platform covers every CPython >= 3.11, current and future --
+# no per-minor-version builds, and new CPython releases (3.15+) work
+# without a new wheel.
 setup(
     ext_modules=[
         Extension(
@@ -23,7 +27,9 @@ setup(
                 "csrc/nrlmsise00/nrlmsise-00_data.c",
             ],
             include_dirs=["csrc/nrlmsise00"],
-            define_macros=[("INLINE", None)],
+            define_macros=[("INLINE", None), ("Py_LIMITED_API", "0x030B0000")],
+            py_limited_api=True,
         )
-    ]
+    ],
+    options={"bdist_wheel": {"py_limited_api": "cp311"}},
 )
