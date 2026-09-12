@@ -590,7 +590,10 @@ Mathematical Functions
    * - ``nullspace``
      - ``pytcl.mathematical_functions.basic_matrix.decompositions.null_space``
    * - ``perm``
-     - ``pytcl.mathematical_functions.special_functions.gamma_functions.perm``
+     - *unported* -- MATLAB's ``perm`` is the matrix **permanent**
+       (Ryser); ``gamma_functions.perm`` is the permutation
+       coefficient nPk, a different function (this row previously
+       mismapped the two)
    * - ``polyRootsMultiDim``
      - ``pytcl.mathematical_functions.polynomials.poly_roots_multi_dim``
    * - ``polygamma``

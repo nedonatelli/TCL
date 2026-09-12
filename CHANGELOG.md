@@ -178,6 +178,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`triangle_area` returns the signed area** (2-D), matching
+  ``triangleArea``, whose gradient depends on the sign; it silently
+  returned the absolute value before. ``only_positive=True`` restores
+  the old behavior. Found by the pre-release cross-implementation
+  example sweep, which also corrected the migration map's ``perm``
+  row: MATLAB's ``perm`` is the matrix *permanent* (unported), not
+  the permutation coefficient the row pointed to.
 - **MHT hypotheses now branch per association**: the tracker stored
   one global track per id, so every association's Kalman update
   overwrote the others and all hypotheses shared a single state --

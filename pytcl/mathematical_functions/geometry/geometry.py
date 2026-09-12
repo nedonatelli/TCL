@@ -410,23 +410,38 @@ def triangle_area(
     p1: ArrayLike,
     p2: ArrayLike,
     p3: ArrayLike,
+    only_positive: bool = False,
 ) -> float:
     """
-    Compute the area of a triangle.
+    Compute the (signed, by default) area of a triangle.
+
+    In two dimensions the area is signed, positive for counterclockwise
+    vertex order -- matching ``triangleArea``, whose gradient output
+    depends on that sign. Prior to v2.11.0 this function silently
+    returned the absolute value.
 
     Parameters
     ----------
     p1, p2, p3 : array_like
         Vertices of the triangle.
+    only_positive : bool, optional
+        If True, return the absolute area (the pre-v2.11.0 behavior;
+        matches MATLAB's ``onlyPositive``). Default False. In three
+        dimensions the cross-product norm is inherently unsigned, as
+        in MATLAB.
 
     Returns
     -------
     area : float
-        Area of the triangle.
+        Area of the triangle (signed in 2-D unless ``only_positive``).
 
     Examples
     --------
     >>> triangle_area([0, 0], [1, 0], [0, 1])
+    0.5
+    >>> triangle_area([0, 0], [0, 1], [1, 1])  # clockwise: negative
+    -0.5
+    >>> triangle_area([0, 0], [0, 1], [1, 1], only_positive=True)
     0.5
     """
     p1 = np.asarray(p1, dtype=np.float64)
@@ -437,9 +452,9 @@ def triangle_area(
     v2 = p3 - p1
 
     if len(p1) == 2:
-        return 0.5 * np.abs(v1[0] * v2[1] - v1[1] * v2[0])
-    else:
-        return float(0.5 * np.linalg.norm(np.cross(v1, v2)))
+        area = 0.5 * (v1[0] * v2[1] - v1[1] * v2[0])
+        return float(np.abs(area)) if only_positive else float(area)
+    return float(0.5 * np.linalg.norm(np.cross(v1, v2)))
 
 
 def barycentric_coordinates(
