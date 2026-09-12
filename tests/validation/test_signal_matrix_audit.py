@@ -1286,6 +1286,14 @@ class TestGeometry:
         assert triangle_area([0, 0], [1, 0], [0, 1]) == pytest.approx(0.5)
         assert triangle_area([0, 0, 0], [1, 0, 0], [0, 1, 0]) == pytest.approx(0.5)
 
+    def test_triangle_area_is_signed_like_matlab(self):
+        # MATLAB's triangleArea example: clockwise order gives -0.5;
+        # pytcl returned |area| until v2.11.0.
+        assert triangle_area([0, 0], [0, 1], [1, 1]) == pytest.approx(-0.5)
+        assert triangle_area(
+            [0, 0], [0, 1], [1, 1], only_positive=True
+        ) == pytest.approx(0.5)
+
     def test_barycentric_coordinates(self):
         p1, p2, p3 = [0.0, 0.0], [1.0, 0.0], [0.0, 1.0]
         # Vertices map to unit coordinates
