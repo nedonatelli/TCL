@@ -7,12 +7,22 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.10.0)
+Current State (v2.11.0)
 -----------------------
 
 * **8,500+ tests** passing; coverage measured honestly (90.0% as CI's
   branch-coverage gate sees it, with numba kernels traced; higher locally
   where the MLX layer is visible), docstring examples run in CI
+* **The audit release** (v2.11.0): every silent-wrong-answer path from
+  the full-codebase audit closed (Vincenty antipodal, gating without
+  R, hypergeometric divergence, silent numerical fallbacks); the MHT
+  tracker rebuilt so hypotheses actually branch (plus a Bernoulli
+  filter); duplicate implementations removed, delegated, or factored;
+  EPSG-9809 oblique stereographic and exact geodesic azimuthal
+  equidistant projections matching PROJ to nanometers; Jacchia 1971,
+  the 1-D quadrature builders, and the gravity ellipsoidal-parameter
+  conversions ported against fresh MATLAB fixtures; abi3 wheels and
+  PEP 639 metadata; 23 evidence-backed maturity promotions
 * **NRLMSISE-00 proper and the long-tail port** (v2.10.0): the
   vendored reference C compiled as pytcl's first extension (with
   platform wheels and a machine-precision pure-Python fallback,
