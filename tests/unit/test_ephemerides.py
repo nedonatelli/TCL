@@ -164,8 +164,10 @@ class TestMoonPosition:
         au_to_km = 149597870.7
         distance_km = distance * au_to_km
 
-        # Should be roughly 380,000-390,000 km
-        assert 370000 < distance_km < 400000, (
+        # True perigee-apogee range (356500-406700 km). The old bound
+        # (370000-400000) bracketed the EMB->Moon defect, not the Earth->Moon
+        # distance; see test_ephemerides_oracle.py for the reference check.
+        assert 350000 < distance_km < 410000, (
             f"Moon distance {distance_km:.0f} km is unexpected"
         )
 

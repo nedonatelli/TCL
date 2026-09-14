@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `pytcl.astronomical.ephemerides`: `moon_position(frame="earth_centered")`
+  read SPK segment `3->301` (Earth-Moon barycentre to Moon) instead of
+  Earth to Moon, overstating the geocentric distance by the EMB offset --
+  399977 km vs the correct 404897 km at JD 2460311, a ~4900 km error.
+  `_BODY_IDS["earth"]` was `3` for the same reason, making
+  `planet_position("earth")` return the barycentre rather than Earth
+  (DE440 has no direct `0->399` segment, so this is now computed by
+  chaining `0->3` then `3->399`). `planet_position("moon")` also leaked
+  `KeyError: (0, 301)` where the docstring promised `ValueError`; it now
+  raises `ValueError` and points callers at `moon_position()`. The
+  ephemeris example's rendered figure carried the same defect (it showed
+  "Moon 397,559 km from the Earth" and an Earth-Sun distance of 0.98331
+  AU) and has been regenerated to the correct 402,449 km / 0.98333 AU.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

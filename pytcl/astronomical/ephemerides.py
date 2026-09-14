@@ -123,7 +123,7 @@ class DEEphemeris:
     _BODY_IDS = {
         "mercury": 1,
         "venus": 2,
-        "earth": 3,
+        "earth": 399,
         "moon": 301,
         "mars": 4,
         "jupiter": 5,
@@ -321,9 +321,15 @@ class DEEphemeris:
 
         """
         if frame == "earth_centered":
-            # Moon relative to Earth
-            segment = self.kernel[3, 301]
-            position, velocity = segment.compute_and_differentiate(jd)
+            # Moon relative to Earth: 3->301 alone is EMB->Moon, which
+            # overshoots Earth by the EMB->Earth offset (~4900 km), so
+            # subtract 3->399 to land on the Earth-Moon vector.
+            moon_segment = self.kernel[3, 301]
+            earth_segment = self.kernel[3, 399]
+            moon_pos, moon_vel = moon_segment.compute_and_differentiate(jd)
+            earth_pos, earth_vel = earth_segment.compute_and_differentiate(jd)
+            position = moon_pos - earth_pos
+            velocity = moon_vel - earth_vel
         else:
             # Moon relative to SSB: need to compute Earth->Moon, then add Earth->SSB
             # Get Earth barycenter position
@@ -382,7 +388,8 @@ class DEEphemeris:
         Raises
         ------
         ValueError
-            If planet name is not recognized
+            If planet name is not recognized, or if planet is 'moon' --
+            DE kernels have no direct SSB->Moon segment; use moon_position().
 
         Examples
         --------
@@ -396,10 +403,27 @@ class DEEphemeris:
                 f"Planet must be one of {set(self._BODY_IDS.keys()) - {'sun', 'moon'}}, "
                 f"got '{planet}'"
             )
+        if planet_lower == "moon":
+            raise ValueError(
+                "planet_position() has no direct SSB->Moon segment for "
+                "'moon'; use moon_position() instead."
+            )
 
-        planet_id = self._BODY_IDS[planet_lower]
-        segment = self.kernel[0, planet_id]
-        position, velocity = segment.compute_and_differentiate(jd)
+        if planet_lower == "earth":
+            # DE440 has no direct 0->399 segment; chain through the EMB
+            # the same way moon_position()'s icrf branch does.
+            emb_segment = self.kernel[0, 3]
+            earth_rel_segment = self.kernel[3, 399]
+            emb_pos, emb_vel = emb_segment.compute_and_differentiate(jd)
+            earth_rel_pos, earth_rel_vel = earth_rel_segment.compute_and_differentiate(
+                jd
+            )
+            position = emb_pos + earth_rel_pos
+            velocity = emb_vel + earth_rel_vel
+        else:
+            planet_id = self._BODY_IDS[planet_lower]
+            segment = self.kernel[0, planet_id]
+            position, velocity = segment.compute_and_differentiate(jd)
 
         # Convert from km to AU
         position = np.array(position) * AU_PER_KM
