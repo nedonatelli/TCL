@@ -409,92 +409,101 @@ def reduce_mixture_runnalls(
     return ReductionResult(working, n_original, len(working), total_cost)
 
 
-def west_merge_cost(
-    c1: GaussianComponent,
-    c2: GaussianComponent,
-) -> float:
-    """
-    Compute West's merge cost for two components.
+def _west_kl_distance(mu1, P1, mu2, P2, det1, det2):
+    # KLDistSimp in WestGaussReduction.m: KL(N1 || N2) up to the constant -d/2.
+    diff = mu1 - mu2
+    return 0.5 * (
+        np.trace(np.linalg.solve(P2, P1 - P2 + np.outer(diff, diff)))
+        + np.log(det2)
+        - np.log(det1)
+    )
 
-    West's algorithm uses a simpler cost based on weighted Mahalanobis
-    distance between component means.
 
-    Parameters
-    ----------
-    c1 : GaussianComponent
-        First component.
-    c2 : GaussianComponent
-        Second component.
-
-    Returns
-    -------
-    cost : float
-        Merge cost based on weighted mean separation.
-
-    Examples
-    --------
-    >>> c1 = GaussianComponent(0.3, np.array([0., 0.]), np.eye(2) * 0.1)
-    >>> c2 = GaussianComponent(0.2, np.array([0.1, 0.]), np.eye(2) * 0.1)  # Close
-    >>> c3 = GaussianComponent(0.2, np.array([5., 5.]), np.eye(2) * 0.1)  # Far
-    >>> cost_close = west_merge_cost(c1, c2)
-    >>> cost_far = west_merge_cost(c1, c3)
-    >>> cost_close < cost_far  # Closer components have lower merge cost
-    True
-    """
-    w1, w2 = c1.weight, c2.weight
-    w_merged = w1 + w2
-
-    if w_merged < 1e-15:
-        return 0.0
-
-    # Mean difference
-    diff = c1.mean - c2.mean
-
-    # Use average covariance for distance computation
-    P_avg = (w1 * c1.covariance + w2 * c2.covariance) / w_merged
-
-    try:
-        # Mahalanobis distance squared
-        P_inv = np.linalg.inv(P_avg)
-        mahal_sq = diff @ P_inv @ diff
-    except np.linalg.LinAlgError:
-        return np.inf
-
-    # West's cost: (w1 * w2 / w_merged) * d^2
-    cost = (w1 * w2 / w_merged) * mahal_sq
-
-    return max(0.0, cost)
+def _west_ise_distance(mu1, P1, mu2, P2, jrr2):
+    # ISESimp in WestGaussReduction.m: the ISE between the two components up
+    # to the self term of component 1, which is common to every candidate.
+    d = len(mu1)
+    S = P1 + P2
+    diff = mu1 - mu2
+    jhr = np.exp(-0.5 * diff @ np.linalg.solve(S, diff)) / np.sqrt(
+        (2 * np.pi) ** d * np.linalg.det(S)
+    )
+    return jrr2 - 2 * jhr
 
 
 def reduce_mixture_west(
     components: List[GaussianComponent],
     max_components: int,
     weight_threshold: float = 1e-5,
+    *,
+    distance: str = "kl",
+    enhanced: bool = False,
+    gamma: Optional[float] = None,
+    k_max: Optional[int] = None,
 ) -> ReductionResult:
     """
     Reduce mixture using West's algorithm.
 
-    Similar to Runnalls' but uses a simpler cost function based on
-    weighted Mahalanobis distance between means.
+    Port of ``WestGaussReduction``: repeatedly merge the component with
+    the smallest weight (West, Section 2.3 of [1]) -- or the smallest
+    weight-to-determinant ratio for the enhanced variant (Section 3.2 of
+    [2]) -- into its nearest remaining component under the chosen
+    distance, until ``max_components`` remain. Unlike
+    :func:`reduce_mixture_runnalls` this never searches all pairs: the
+    component to merge is chosen by weight alone and only its partner is
+    chosen by distance.
 
     Parameters
     ----------
     components : list of GaussianComponent
         Input mixture components.
     max_components : int
-        Maximum number of components in output.
+        Number of components to reduce to (``K`` in MATLAB). Reduction can
+        stop earlier when ``gamma`` is set.
     weight_threshold : float
         Components below this weight are pruned first.
+    distance : {"kl", "ise"}
+        Distance used to pick the merge partner: the Kullback-Leibler
+        divergence (default, MATLAB ``distMeas=0``) or the integrated
+        squared error (``distMeas=1``).
+    enhanced : bool
+        Use the enhanced West selection of [2] (MATLAB ``algorithm=1``):
+        the merge candidate minimises weight / det(P) instead of weight.
+    gamma : float, optional
+        Maximum partner distance allowed for a merge (MATLAB
+        ``gammaVal``). Once the nearest partner is at least this far and
+        no more than ``k_max`` components remain, reduction stops with
+        possibly more than ``max_components``. Default: no limit.
+    k_max : int, optional
+        The ``gamma`` stop is only honoured once this many or fewer
+        components remain (MATLAB ``KMax``). Default: no limit.
 
     Returns
     -------
     result : ReductionResult
-        Reduced mixture with cost information.
+        Reduced mixture. Components are returned in MATLAB's surviving-slot
+        order; ``total_cost`` is the sum of the partner distances of the
+        merges performed.
+
+    Notes
+    -----
+    **Deliberate deviation from MATLAB (ISE path).** ``WestGaussReduction``
+    caches each component's ISE self-term ``(4 pi)^-d/2 |P|^-1/2`` and, after
+    a merge, assigns the refreshed value to a local scalar instead of the
+    cache, so a merged component keeps its pre-merge self-term for every
+    later distance evaluation. This port refreshes the cache, which changes
+    which partner is chosen whenever a merged component is later a candidate
+    (three of four multivariate test cases). The fixture tests pin this port
+    against a MATLAB run with that one assignment corrected. The KL path is
+    unaffected and matches MATLAB unmodified.
 
     References
     ----------
-    - M. West, "Approximating posterior distributions by mixture,"
+    - [1] M. West, "Approximating posterior distributions by mixture,"
       Journal of the Royal Statistical Society, Series B, 1993.
+    - [2] H. D. Chen, K. C. Chang, and C. Smith, "Constrained optimized
+      weight adaptation for Gaussian mixture reduction," Proc. SPIE 7697,
+      2010.
 
     Examples
     --------
@@ -509,55 +518,70 @@ def reduce_mixture_west(
     >>> len(result.components)
     2
     """
-    n_original = len(components)
+    if distance not in ("kl", "ise"):
+        raise ValueError(f"distance must be 'kl' or 'ise', got {distance!r}")
 
+    n_original = len(components)
     if n_original == 0:
         return ReductionResult([], 0, 0, 0.0)
 
-    # First, prune low-weight components
     working = prune_mixture(components, weight_threshold)
+    n = len(working)
+    if n <= max_components:
+        return ReductionResult(working, n_original, n, 0.0)
 
-    # If already at or below target, return
-    if len(working) <= max_components:
-        return ReductionResult(working, n_original, len(working), 0.0)
+    w = np.array([c.weight for c in working], dtype=np.float64)
+    mu = np.array([c.mean for c in working], dtype=np.float64)
+    P = np.array([c.covariance for c in working], dtype=np.float64)
+    d = mu.shape[1]
+    det = np.array([np.linalg.det(P[i]) for i in range(n)])
+    if distance == "ise":
+        jrr = ((4 * np.pi) ** d * det) ** -0.5
+    cost = w / det if enhanced else w.copy()
+    gamma_val = np.inf if gamma is None else gamma
+    k_lim = np.inf if k_max is None else k_max
 
+    idx = list(range(n))
+    k_final = max_components
     total_cost = 0.0
+    for r in range(n, max_components, -1):
+        live = idx[:r]
+        i1 = int(np.argmin(cost[live]))
+        f1 = live[i1]
+        best = np.inf
+        i2 = -1
+        for i in range(r):
+            if i == i1:
+                continue
+            f = live[i]
+            if distance == "ise":
+                dist = _west_ise_distance(mu[f1], P[f1], mu[f], P[f], jrr[f])
+            else:
+                dist = _west_kl_distance(mu[f1], P[f1], mu[f], P[f], det[f1], det[f])
+            if dist < best:
+                best = dist
+                i2 = i
+        if best >= gamma_val and r <= k_lim:
+            k_final = r
+            break
+        f2 = live[i2]
+        w_merged = w[f1] + w[f2]
+        lam1 = w[f1] / w_merged
+        lam2 = w[f2] / w_merged
+        diff = mu[f1] - mu[f2]
+        P[f1] = lam1 * P[f1] + lam2 * P[f2] + lam1 * lam2 * np.outer(diff, diff)
+        mu[f1] = lam1 * mu[f1] + lam2 * mu[f2]
+        w[f1] = w_merged
+        det[f1] = np.linalg.det(P[f1])
+        if distance == "ise":
+            jrr[f1] = ((4 * np.pi) ** d * det[f1]) ** -0.5
+        cost[f1] = w_merged / det[f1] if enhanced else cost[f1] + cost[f2]
+        total_cost += best
+        idx[i2] = idx[r - 1]
 
-    # Greedy merging using West's cost
-    while len(working) > max_components:
-        n = len(working)
-        min_cost = np.inf
-        best_i, best_j = 0, 1
-
-        # Find pair with minimum merge cost
-        for i in range(n):
-            for j in range(i + 1, n):
-                cost = west_merge_cost(working[i], working[j])
-                if cost < min_cost:
-                    min_cost = cost
-                    best_i, best_j = i, j
-
-        # Merge the best pair
-        merged = merge_gaussians(working[best_i], working[best_j])
-        total_cost += min_cost
-
-        # Build new list: remove i and j, add merged
-        new_working = []
-        for k in range(n):
-            if k != best_i and k != best_j:
-                new_working.append(working[k])
-        new_working.append(merged.component)
-        working = new_working
-
-    # Renormalize final weights
-    total_weight = sum(c.weight for c in working)
-    if total_weight > 0:
-        working = [
-            GaussianComponent(c.weight / total_weight, c.mean, c.covariance)
-            for c in working
-        ]
-
-    return ReductionResult(working, n_original, len(working), total_cost)
+    keep = idx[:k_final]
+    reduced = [GaussianComponent(float(w[i]), mu[i].copy(), P[i].copy()) for i in keep]
+    return ReductionResult(reduced, n_original, len(reduced), total_cost)
 
 
 class GaussianMixture:
@@ -832,7 +856,6 @@ __all__ = [
     "merge_gaussians",
     "prune_mixture",
     "reduce_mixture_runnalls",
-    "west_merge_cost",
     "reduce_mixture_west",
     "GaussianMixture",
 ]

@@ -87,7 +87,6 @@ from pytcl.clustering import (  # Gaussian mixture operations; K-means; DBSCAN; 
     reduce_mixture_runnalls,
     reduce_mixture_west,
     runnalls_merge_cost,
-    west_merge_cost,
 )
 
 

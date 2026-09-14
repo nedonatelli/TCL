@@ -101,3 +101,23 @@ fixtures:
    different working directory).
 4. `uv run pytest tests/unit/test_cubature_points.py::TestSeventhOrderMatlabFixtures -q`
    should now exercise the fixtures instead of skipping.
+
+## mixred_\<case\>_\<algorithm\>_\{w,mu,P\}.csv (and mixred_\<case\>_in_\*.csv)
+
+Produced by `scripts/matlab_capture/capture_mixture_reduction.m` against
+commit `a9acd8f`. Consumed by `tests/validation/test_mixture_reduction_matlab.py`.
+Cases `r1`/`w1` are `RunnalsGaussMixRed`/`WestGaussReduction`'s own
+docstring examples; `mv2`, `mv3`, `mv4` are independent 2-D/3-D/4-D
+mixtures. `_in_` files hold the inputs (weights as one row, means one
+component per row, covariances one component per row, row-major), the
+algorithm files hold the reduced mixture in the same layout.
+`_west_kl`, `_west_kl_enh` and `_west_ise` are `WestGaussReduction`
+with `(distMeas,algorithm)` = (0,0), (0,1), (1,0).
+
+**`_west_ise_patched_*`** (mv3, mv4) come from `WestGaussReduction.m`
+with one line corrected -- `JrrCur(minIdxFull)=...` changed to
+`Jrr(minIdxFull)=...` so a merged component's ISE self-term is actually
+refreshed. Unmodified MATLAB keeps the stale value and picks different
+partners on these cases; pytcl deliberately implements the corrected
+behaviour (see the `reduce_mixture_west` docstring).
+

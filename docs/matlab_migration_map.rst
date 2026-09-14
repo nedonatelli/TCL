@@ -129,6 +129,8 @@ Clustering and Mixture Reduction
      - ``pytcl.clustering.gaussian_mixture.reduce_mixture_runnalls``
    * - ``WestGaussReduction``
      - ``pytcl.clustering.gaussian_mixture.reduce_mixture_west``
+       (``distance="kl"|"ise"`` = ``distMeas``, ``enhanced`` =
+       ``algorithm``, ``gamma`` = ``gammaVal``, ``k_max`` = ``KMax``)
    * - ``kMeanspp``
      - ``pytcl.clustering.kmeans.kmeans``
 
@@ -469,9 +471,13 @@ Dynamic Estimation
    * - ``infoFilterUpdate``
      - ``pytcl.dynamic_estimation.kalman.linear.information_filter_update``
    * - ``multipleModelPred``
-     - ``pytcl.dynamic_estimation.imm.imm_predict``
+     - ``pytcl.dynamic_estimation.imm.imm_predict`` (IMM only; mixes
+       *before* predicting, whereas MATLAB predicts unmixed and mixes
+       inside the update -- results differ, see the ``imm`` module
+       docstring; no GPB1/GPB2/AMM, equal state dimensions only)
    * - ``multipleModelUpdate``
-     - ``pytcl.dynamic_estimation.imm.imm_update``
+     - ``pytcl.dynamic_estimation.imm.imm_update`` (same ordering caveat
+       as ``imm_predict``)
    * - ``sqrtDiscKalPred``
      - ``pytcl.dynamic_estimation.kalman.square_root.srkf_predict``
    * - ``sqrtKalmanUpdate``

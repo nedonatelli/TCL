@@ -10,6 +10,26 @@ The IMM algorithm consists of four steps:
 2. Mode-matched filtering (prediction/update per mode)
 3. Mode probability update
 4. Output combination
+
+Ordering relative to the MATLAB TCL
+------------------------------------
+This module follows the textbook cycle (Bar-Shalom, Li and Kirubarajan,
+Ch. 11.6.6): :func:`imm_predict` mixes the previous posteriors and *then*
+propagates each mode. MATLAB's ``multipleModelPred`` / ``multipleModelUpdate``
+pair deliberately does the opposite -- every mode is propagated from its own
+unmixed posterior and the mixing is applied to the *predicted* states inside
+the update ("model swaps only occur at the measurement update"). The two are
+not numerically equivalent: the mixed covariance carries ``Q_j`` here versus
+``sum_i mu_ij Q_i`` in MATLAB. On MATLAB's ``demoMultipleModelFiltering``
+two-model scenario the merged position differs by up to 32 m and a mode
+probability by up to 0.27 between the two orderings, with essentially equal
+RMS error against truth. To reproduce MATLAB's sequence exactly, compose the
+primitives in its order: :func:`~pytcl.dynamic_estimation.kalman.linear.kf_predict`
+per mode, :func:`compute_mixing_probabilities` + :func:`mix_states`, then
+:func:`~pytcl.dynamic_estimation.kalman.linear.kf_update` per mode and
+:func:`combine_estimates` (verified to 1e-11 against MATLAB). This module
+also has no GPB1/GPB2/AMM variants and cannot mix modes of unequal state
+dimension.
 """
 
 from typing import Any, List, NamedTuple, Optional
@@ -282,6 +302,13 @@ def imm_predict(
     -------
     result : IMMPrediction
         Predicted states, covariances, and mode probabilities.
+
+    Notes
+    -----
+    Mixes first, then predicts (textbook order). MATLAB's
+    ``multipleModelPred`` predicts unmixed and leaves the mixing to
+    ``multipleModelUpdate``; see the module docstring for why the results
+    differ and how to reproduce MATLAB's sequence.
 
     Examples
     --------
