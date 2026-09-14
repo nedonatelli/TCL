@@ -64,6 +64,22 @@ AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
 KM_PER_DAY_TO_AU_PER_DAY = AU_PER_KM  # velocity conversion factor
 EPSILON_J2000 = 0.4090910179  # Mean obliquity of the ecliptic at J2000.0 (radians)
 
+
+def _combine_segments(
+    segment_a: Any, segment_b: Any, jd: float, sign: float = 1.0
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Compose two SPK segments: ``segment_a + sign * segment_b``.
+
+    Used to chain segments for a body/frame pair the kernel has no direct
+    entry for, e.g. SSB->EMB + EMB->Earth, or EMB->Moon - EMB->Earth.
+    """
+    pos_a, vel_a = segment_a.compute_and_differentiate(jd)
+    pos_b, vel_b = segment_b.compute_and_differentiate(jd)
+    position = np.array(pos_a) + sign * np.array(pos_b)
+    velocity = np.array(vel_a) + sign * np.array(vel_b)
+    return position, velocity
+
+
 __all__ = [
     "DEEphemeris",
     "sun_position",
@@ -123,6 +139,9 @@ class DEEphemeris:
     _BODY_IDS = {
         "mercury": 1,
         "venus": 2,
+        # 399 is the correct NAIF id but, unlike every other entry here,
+        # has no direct kernel[0, id] segment; planet_position() special-
+        # cases "earth" to chain through the EMB instead of indexing it.
         "earth": 399,
         "moon": 301,
         "mars": 4,
@@ -324,27 +343,14 @@ class DEEphemeris:
             # Moon relative to Earth: 3->301 alone is EMB->Moon, which
             # overshoots Earth by the EMB->Earth offset (~4900 km), so
             # subtract 3->399 to land on the Earth-Moon vector.
-            moon_segment = self.kernel[3, 301]
-            earth_segment = self.kernel[3, 399]
-            moon_pos, moon_vel = moon_segment.compute_and_differentiate(jd)
-            earth_pos, earth_vel = earth_segment.compute_and_differentiate(jd)
-            position = moon_pos - earth_pos
-            velocity = moon_vel - earth_vel
-        else:
-            # Moon relative to SSB: need to compute Earth->Moon, then add Earth->SSB
-            # Get Earth barycenter position
-            earth_segment = self.kernel[0, 3]
-            earth_pos, earth_vel = earth_segment.compute_and_differentiate(jd)
-
-            # Get Moon position relative to Earth
-            moon_segment = self.kernel[3, 301]
-            moon_rel_earth_pos, moon_rel_earth_vel = (
-                moon_segment.compute_and_differentiate(jd)
+            position, velocity = _combine_segments(
+                self.kernel[3, 301], self.kernel[3, 399], jd, sign=-1.0
             )
-
-            # Moon position relative to SSB
-            position = earth_pos + moon_rel_earth_pos
-            velocity = earth_vel + moon_rel_earth_vel
+        else:
+            # Moon relative to SSB: SSB->EMB + EMB->Moon.
+            position, velocity = _combine_segments(
+                self.kernel[0, 3], self.kernel[3, 301], jd, sign=1.0
+            )
 
         # Convert from km to AU
         position = np.array(position) * AU_PER_KM
@@ -412,14 +418,9 @@ class DEEphemeris:
         if planet_lower == "earth":
             # DE440 has no direct 0->399 segment; chain through the EMB
             # the same way moon_position()'s icrf branch does.
-            emb_segment = self.kernel[0, 3]
-            earth_rel_segment = self.kernel[3, 399]
-            emb_pos, emb_vel = emb_segment.compute_and_differentiate(jd)
-            earth_rel_pos, earth_rel_vel = earth_rel_segment.compute_and_differentiate(
-                jd
+            position, velocity = _combine_segments(
+                self.kernel[0, 3], self.kernel[3, 399], jd, sign=1.0
             )
-            position = emb_pos + earth_rel_pos
-            velocity = emb_vel + earth_rel_vel
         else:
             planet_id = self._BODY_IDS[planet_lower]
             segment = self.kernel[0, planet_id]
