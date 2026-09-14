@@ -217,7 +217,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Geodesy, great circle and rhumb line, INS and INS/GNSS
    * - ``clustering``
      - 4
-     - 28
+     - 27
      - k-means, DBSCAN, hierarchical, Gaussian mixtures
    * - ``plotting``
      - 4

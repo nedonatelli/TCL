@@ -39,7 +39,6 @@ from pytcl.clustering import (
     reduce_mixture_west,
     runnalls_merge_cost,
     update_centers,
-    west_merge_cost,
 )
 from pytcl.containers import (
     BallTree,
@@ -537,16 +536,9 @@ def test_merge_gaussians_and_costs_analytic():
     )
     assert abs(runnalls_merge_cost(c1, c2) - max(0.0, expected)) < 1e-12
 
-    # West cost: (w1*w2/(w1+w2)) * Mahalanobis^2 under weighted-average cov
-    P_avg = (0.3 * c1.covariance + 0.2 * c2.covariance) / 0.5
-    diff = c1.mean - c2.mean
-    expected_w = (0.3 * 0.2 / 0.5) * (diff @ np.linalg.inv(P_avg) @ diff)
-    assert abs(west_merge_cost(c1, c2) - expected_w) < 1e-12
-
     # Cost ordering: nearer components must be cheaper to merge
     far = GaussianComponent(0.2, np.array([8.0, 8.0]), np.eye(2) * 0.1)
     assert runnalls_merge_cost(c1, c2) < runnalls_merge_cost(c1, far)
-    assert west_merge_cost(c1, c2) < west_merge_cost(c1, far)
 
 
 def test_prune_mixture_renormalizes():

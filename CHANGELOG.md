@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **`west_merge_cost`**: its weighted-Mahalanobis pair cost was never
+  part of West's algorithm (see the `reduce_mixture_west` fix below);
+  nothing else used it.
 - **Five duplicate Jacobians** (`spherical_jacobian`,
   `spherical_jacobian_inv`, `polar_jacobian`, `polar_jacobian_inv`,
   `ruv_jacobian`): each was a bit-identical subset of the v2.10
@@ -178,6 +181,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`reduce_mixture_west` is now West's algorithm** (a port of
+  ``WestGaussReduction``): it merges the *lightest* component into its
+  nearest neighbour under the KL divergence (or ISE with
+  ``distance="ise"``), with the enhanced-West selection (``enhanced``),
+  cost threshold (``gamma``) and cap (``k_max``) of the MATLAB routine.
+  It previously merged the minimum-cost *pair* under an invented
+  weighted-Mahalanobis cost, which produced different mixtures on two of
+  four MATLAB comparison cases. Found by the pre-tag cross-implementation
+  campaign; fixtures from the MATLAB docstring examples plus 2-D/3-D/4-D
+  mixtures now pin both `reduce_mixture_west` and
+  `reduce_mixture_runnalls` (the latter was already bit-exact). One
+  deliberate deviation: MATLAB's ISE path assigns a merged component's
+  refreshed self-term to a local variable and keeps using the stale
+  value; pytcl refreshes it (ISE fixtures come from a MATLAB run with
+  that assignment corrected).
+- **IMM ordering vs MATLAB documented**: `imm_predict`/`imm_update`
+  follow the textbook mix-then-predict cycle, while MATLAB's
+  `multipleModelPred`/`multipleModelUpdate` predict unmixed and mix
+  inside the update, so the two are not numerically equivalent (up to
+  32 m / 0.27 in mode probability on `demoMultipleModelFiltering`,
+  equal RMS error). The `imm` module docstring and migration map now
+  say so and show how to compose the primitives in MATLAB's order
+  (verified to 1e-11).
 - **`triangle_area` returns the signed area** (2-D), matching
   ``triangleArea``, whose gradient depends on the sign; it silently
   returned the absolute value before. ``only_positive=True`` restores

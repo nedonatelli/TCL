@@ -23,7 +23,6 @@ from pytcl.clustering.gaussian_mixture import (
     reduce_mixture_runnalls,
     reduce_mixture_west,
     runnalls_merge_cost,
-    west_merge_cost,
 )
 from pytcl.clustering.hierarchical import (
     DendrogramNode,
@@ -54,7 +53,6 @@ __all__ = [
     "merge_gaussians",
     "prune_mixture",
     "reduce_mixture_runnalls",
-    "west_merge_cost",
     "reduce_mixture_west",
     # K-means
     "KMeansResult",
