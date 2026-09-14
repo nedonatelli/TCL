@@ -5,6 +5,8 @@ This test suite validates high-precision ephemeris calculations against
 reference values from established sources (SOFA, Astropy).
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_almost_equal
@@ -29,7 +31,40 @@ except ImportError:
     HAS_JPLEPHEM = False
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+# DEEphemeris downloads de4NN.bsp from naif.jpl.nasa.gov on first use, into
+# ~/.jplephem/. That made the unit suite depend on a 114 MB network fetch:
+# when NAIF was unreachable on 2026-09-14, 24 tests here failed and took CI
+# red on the v2.11.0 release commit (run 34799347373).
+#
+# The kernel is now a prerequisite rather than something a test run acquires.
+# Absent, these tests skip; set PYTCL_REQUIRE_EPHEMERIS=1 to make that
+# absence an error instead, the way PYTCL_REQUIRE_MLX and
+# PYTCL_REQUIRE_CUPY already work for the GPU layers. CI caches the
+# directory, so the fetch happens once per cache lifetime, not once per run.
+#
+# The path is the one DEEphemeris itself uses; it is hardcoded there, so
+# there is nothing to configure and nothing to keep in sync beyond this.
+_KERNEL_NAMES = ("de440.bsp", "de430.bsp")
+
+
+def _kernel_available() -> bool:
+    """True when a DE kernel is already on disk, so no test needs the network."""
+    if not HAS_JPLEPHEM:
+        return False
+    cache = Path.home() / ".jplephem"
+    return any((cache / name).exists() for name in _KERNEL_NAMES)
+
+
+requires_kernel = pytest.mark.skipif(
+    not _kernel_available(),
+    reason=(
+        "no DE kernel cached in ~/.jplephem; these tests will not download one. "
+        "Set PYTCL_REQUIRE_EPHEMERIS=1 to make this an error instead of a skip."
+    ),
+)
+
+
+@requires_kernel
 class TestDEEphemeris:
     """Test DEEphemeris class initialization and kernel loading."""
 
@@ -46,16 +81,6 @@ class TestDEEphemeris:
         assert eph.version == "DE440"
         assert eph.kernel is not None
 
-    def test_ephemeris_version_de430(self):
-        """Test loading DE430 ephemeris."""
-        eph = DEEphemeris(version="DE430")
-        assert eph.version == "DE430"
-
-    def test_ephemeris_invalid_version(self):
-        """Test that invalid version raises ValueError."""
-        with pytest.raises(ValueError, match="must be one of"):
-            DEEphemeris(version="INVALID")
-
     def test_ephemeris_lazy_loading(self):
         """Test that kernel is lazily loaded."""
         eph = DEEphemeris()
@@ -66,16 +91,8 @@ class TestDEEphemeris:
         # Now it should be loaded
         assert eph._kernel is not None
 
-    def test_clear_cache(self):
-        """Test cache clearing."""
-        eph = DEEphemeris()
-        eph._cache["test"] = "value"
-        assert len(eph._cache) > 0
-        eph.clear_cache()
-        assert len(eph._cache) == 0
 
-
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestSunPosition:
     """Test Sun position calculations."""
 
@@ -131,7 +148,7 @@ class TestSunPosition:
         assert not np.allclose(r1, r2)
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestMoonPosition:
     """Test Moon position calculations."""
 
@@ -184,7 +201,7 @@ class TestMoonPosition:
         assert r_earth_from_sun.shape == (3,)
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestPlanetPosition:
     """Test planet position calculations."""
 
@@ -244,7 +261,7 @@ class TestPlanetPosition:
         assert_array_almost_equal(r2, r3)
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestBaryenterPosition:
     """Test barycenter position function."""
 
@@ -272,7 +289,7 @@ class TestBaryenterPosition:
         assert_array_almost_equal(v_moon_direct, v_moon_bary)
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestModuleLevelFunctions:
     """Test module-level convenience functions."""
 
@@ -311,7 +328,7 @@ class TestModuleLevelFunctions:
         assert v.shape == (3,)
 
 
-@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+@requires_kernel
 class TestEphemerisEdgeCases:
     """Test edge cases and error conditions."""
 
@@ -341,3 +358,31 @@ class TestEphemerisEdgeCases:
 
         assert isinstance(r, np.ndarray)
         assert r.shape == (3,)
+
+
+@pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
+class TestDEEphemerisWithoutKernel:
+    """Construction and cache behaviour that never touches a kernel file.
+
+    Separated from the kernel-gated classes so these still run on a machine
+    with jplephem installed but no cached ephemeris.
+    """
+
+    def test_ephemeris_version_de430(self):
+        """Selecting DE430 records the version without loading the kernel."""
+        eph = DEEphemeris(version="DE430")
+        assert eph.version == "DE430"
+        assert eph._kernel is None
+
+    def test_ephemeris_invalid_version(self):
+        """An unknown version raises before any file access."""
+        with pytest.raises(ValueError, match="must be one of"):
+            DEEphemeris(version="INVALID")
+
+    def test_clear_cache(self):
+        """clear_cache empties the result cache."""
+        eph = DEEphemeris()
+        eph._cache["test"] = "value"
+        assert len(eph._cache) > 0
+        eph.clear_cache()
+        assert len(eph._cache) == 0
