@@ -11,6 +11,7 @@ This module provides conversions between various time systems:
 - Sidereal time (GMST, GAST)
 """
 
+import warnings
 from typing import List, Tuple
 
 # Constants
@@ -105,6 +106,17 @@ class LeapSecondTable:
                 offset = o
             else:
                 break
+
+        if (year, month, day) < self.entries[0][:3]:
+            warnings.warn(
+                f"UTC before 1972 ({year:04d}-{month:02d}-{day:02d}) predates "
+                "the leap-second table; TAI-UTC was a drifting rubber-second "
+                "offset (~8 s in 1970), not the 0 s returned here. Use "
+                "astropy for pre-1972 epochs.",
+                UserWarning,
+                stacklevel=3,
+            )
+
         return offset
 
 
@@ -404,11 +416,6 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
 
     Notes
     -----
-    This is an approximate conversion that may have small errors
-    near leap second boundaries.
-
-    Notes
-    -----
     The leap-second lookup is by table, so the conversion is exact except
     within one second of an insertion. Instants inside a leap second itself --
     23:59:60 on an insertion date -- have no distinct representation here and
@@ -417,12 +424,15 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
     scale, such as astropy.
 
     """
-    # First approximation
-    jd_utc_approx = jd_tai
-    year, month, day, _, _, _ = jd_to_cal(jd_utc_approx)
-    leap_seconds = get_leap_seconds(year, month, day)
+    jd_utc = jd_tai
+    for _ in range(3):
+        year, month, day, _, _, _ = jd_to_cal(jd_utc)
+        leap_seconds = get_leap_seconds(year, month, day)
+        next_utc = jd_tai - leap_seconds / 86400.0
+        if next_utc == jd_utc:
+            break
+        jd_utc = next_utc
 
-    jd_utc = jd_tai - leap_seconds / 86400.0
     return jd_utc, leap_seconds
 
 
