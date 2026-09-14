@@ -23,16 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Moon 397,559 km from the Earth" and an Earth-Sun distance of 0.98331
   AU) and has been regenerated to the correct 402,449 km / 0.98333 AU.
 
-- `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
+- **This changes timestamps callers may have built around.**
+  `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
   `gps_to_utc`, which delegate to it) looked up the leap-second count on
   the *input* scale's calendar date instead of UTC's, so for up to ~37
   seconds after every leap-second insertion the returned UTC timestamp
   was **one second earlier than correct** -- TAI 2017-01-01T00:00:00
   returned UTC 2016-12-31T23:59:23 where the correct value (and astropy)
-  give 23:59:24. This changes timestamps callers may have built around
-  for instants in that window. The lookup now iterates to a fixed point
-  instead of taking the input date on faith. `get_leap_seconds` also
-  silently returned 0 s for dates before 1972 (the table's start), e.g.
+  give 23:59:24. The lookup now iterates to a fixed point instead of
+  taking the input date on faith. `get_leap_seconds` also silently
+  returned 0 s for dates before 1972 (the table's start), e.g.
   8.0 s off astropy at 1970-01-01; it now warns instead of returning a
   value it cannot back up (the table itself is unchanged -- there is no
   pre-1972 fix here, only a warning that the answer for those dates is

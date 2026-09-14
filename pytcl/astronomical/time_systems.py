@@ -99,6 +99,13 @@ class LeapSecondTable:
         -------
         int
             TAI-UTC offset in seconds.
+
+        Warns
+        -----
+        UserWarning
+            If the date precedes 1972-01-01, the table's first entry. The
+            returned offset is `0`, not the true (drifting, sub-integer)
+            TAI-UTC value for that era.
         """
         offset = 0
         for y, m, d, o in self.entries:
@@ -141,6 +148,13 @@ def get_leap_seconds(year: int, month: int, day: int) -> int:
     -------
     int
         TAI-UTC offset in seconds.
+
+    Warns
+    -----
+    UserWarning
+        If the date precedes 1972-01-01, the table's first entry. The
+        returned offset is `0`, not the true (drifting, sub-integer)
+        TAI-UTC value for that era.
 
     Examples
     --------
@@ -424,12 +438,26 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
     scale, such as astropy.
 
     """
+    table_start = _LEAP_SECOND_TABLE.entries[0][:3]
     jd_utc = jd_tai
     for _ in range(3):
         year, month, day, _, _, _ = jd_to_cal(jd_utc)
         leap_seconds = get_leap_seconds(year, month, day)
         next_utc = jd_tai - leap_seconds / 86400.0
         if next_utc == jd_utc:
+            break
+        next_date = jd_to_cal(next_utc)[:3]
+        if (year, month, day) >= table_start and next_date < table_start:
+            # The table's first entry applies to TAI instants whose own
+            # UTC answer reads as a date before the table starts (e.g. TAI
+            # 1972-01-01T00:00:05 -> UTC 1971-12-31T23:59:55, leap=10).
+            # Re-deriving leap seconds from that answer's own date would
+            # look it up as pre-1972 and get 0, then bounce back to the
+            # in-table date next pass -- a permanent two-cycle whose
+            # result depends on the parity of the iteration cap. Accept
+            # this UTC estimate now, using the leap value that produced
+            # it, instead of taking that further step.
+            jd_utc = next_utc
             break
         jd_utc = next_utc
 

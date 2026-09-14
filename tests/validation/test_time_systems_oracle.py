@@ -158,3 +158,48 @@ class TestPre1972LeapLookup:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             assert get_leap_seconds(1972, 1, 1) == 10
+
+
+# TAI instants in the first 10 seconds of the table (the table's first
+# entry is (1972, 1, 1, 10)). Their correct UTC answer reads as a date
+# one day *before* the table starts (e.g. TAI 1972-01-01T00:00:05 ->
+# UTC 1971-12-31T23:59:55, leap=10), which is the one place the
+# fixed-point iteration can be tempted to re-derive leap seconds from a
+# pre-table date and land back on 0.
+TABLE_START_CASES = [
+    "1972-01-01T00:00:00",
+    "1972-01-01T00:00:05",
+    "1972-01-01T00:00:09",
+]
+
+
+class TestTaiToUtcAtTheTableStart:
+    """tai_to_utc's own iteration must not oscillate at the table's first
+    entry, and must not carry get_leap_seconds's pre-1972 warning into a
+    case whose final, returned leap count is the correct in-table 10 s."""
+
+    @pytest.mark.parametrize("iso_tai", TABLE_START_CASES)
+    def test_leap_and_calendar_are_self_consistent(self, iso_tai):
+        expected_leap, expected_cal = _expected_leap_and_utc_calendar(iso_tai)
+        jd_tai = Time(iso_tai, scale="tai").jd
+
+        jd_utc, leap = tai_to_utc(jd_tai)
+
+        # Asserting the *correct* value (10) rather than merely "some
+        # value" is what rules out the failure this window exposed: an
+        # even iteration cap previously landed on leap=0 (the pre-1972
+        # default) instead of oscillating back to the right answer, so a
+        # weaker check here would not have caught it.
+        assert leap == expected_leap == 10
+        assert _rounded_calendar(jd_utc) == expected_cal
+        # Self-consistency: the returned pair must reproduce itself
+        # exactly, not merely be close -- a genuine fixed point, not a
+        # value trusted because the loop ran out of passes.
+        assert jd_tai - leap / 86400.0 == jd_utc
+
+    @pytest.mark.parametrize("iso_tai", TABLE_START_CASES)
+    def test_no_spurious_pre_1972_warning(self, iso_tai):
+        jd_tai = Time(iso_tai, scale="tai").jd
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            tai_to_utc(jd_tai)
