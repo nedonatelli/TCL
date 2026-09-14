@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.11.0] - 2026-09-13
 
+Stability registry note (release checklist 3b): two STABLE modules
+changed since v2.10.0, both non-breaking with no signature change --
+`coordinate_systems.conversions.geodetic` (`geodetic_to_ecef` no longer
+crashes on `(1,)`-shaped input under NumPy >= 2; `.item()` in place of
+`float()`) and `dynamic_estimation.kalman.linear` (`kf_update` now emits
+a `RuntimeWarning` when the innovation covariance is not positive
+definite; return values unchanged). Seventeen MATURE modules changed
+under the audit's correctness fixes, consolidation and delegation; every
+removal in this release (the five duplicate Jacobians, `gmst`/`gast`,
+`great_circle_tdoa_loc`, `west_merge_cost`) comes from a MATURE or
+EXPERIMENTAL module, where minor-version API adjustment is the
+registered contract.
+
 ### Removed
 
 - **`west_merge_cost`**: its weighted-Mahalanobis pair cost was never
