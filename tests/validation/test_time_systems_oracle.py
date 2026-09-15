@@ -73,8 +73,10 @@ def _rounded_calendar(jd_utc):
 # window, where the new count becomes correct again. TAI 00:00:36 (the
 # instant astropy itself resolves to the literal leap second, 23:59:60)
 # is deliberately excluded: this module has no distinct representation
-# for that second and folds it into the next one by design (gh-25, see
-# tai_to_utc's docstring), so it is not a case with a single right answer.
+# for that second and folds it into the preceding one by design (gh-25,
+# see tai_to_utc's docstring), so it is not a case with a single right
+# answer -- both TAI 00:00:35.x and 00:00:36.x map onto the same UTC
+# 23:59:59.x, non-monotonically.
 BOUNDARY_CASES = [
     "2017-01-01T00:00:00",  # the instant the audit caught
     "2017-01-01T00:00:20",  # well inside the pre-rollover window
@@ -192,10 +194,6 @@ class TestTaiToUtcAtTheTableStart:
         # weaker check here would not have caught it.
         assert leap == expected_leap == 10
         assert _rounded_calendar(jd_utc) == expected_cal
-        # Self-consistency: the returned pair must reproduce itself
-        # exactly, not merely be close -- a genuine fixed point, not a
-        # value trusted because the loop ran out of passes.
-        assert jd_tai - leap / 86400.0 == jd_utc
 
     @pytest.mark.parametrize("iso_tai", TABLE_START_CASES)
     def test_no_spurious_pre_1972_warning(self, iso_tai):

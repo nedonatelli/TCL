@@ -121,7 +121,7 @@ class LeapSecondTable:
                 "offset (~8 s in 1970), not the 0 s returned here. Use "
                 "astropy for pre-1972 epochs.",
                 UserWarning,
-                stacklevel=3,
+                stacklevel=2,
             )
 
         return offset
@@ -433,9 +433,14 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
     The leap-second lookup is by table, so the conversion is exact except
     within one second of an insertion. Instants inside a leap second itself --
     23:59:60 on an insertion date -- have no distinct representation here and
-    are attributed to the following second (gh-25). Sub-second work spanning a
-    leap-second boundary needs a library that models UTC as a discontinuous
-    scale, such as astropy.
+    are attributed to the preceding second (gh-25): TAI 2017-01-01T00:00:36.0
+    returns UTC 2016-12-31T23:59:59.0, not the following midnight. Because of
+    this, the returned UTC value is non-monotone across an inserted second --
+    both the leap second and the ordinary second before it map onto the same
+    UTC second, so `jd_utc` briefly steps backward as `jd_tai` increases
+    through the insertion. Sub-second work spanning a leap-second boundary
+    needs a library that models UTC as a discontinuous scale, such as
+    astropy.
 
     """
     table_start = _LEAP_SECOND_TABLE.entries[0][:3]
