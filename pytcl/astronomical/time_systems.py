@@ -115,13 +115,20 @@ class LeapSecondTable:
                 break
 
         if (year, month, day) < self.entries[0][:3]:
+            # stacklevel=3 targets get_leap_seconds's caller, not
+            # get_leap_seconds itself -- that's the documented public
+            # entry point, so its callers should see their own line, not
+            # a line inside this module. A direct LeapSecondTable().
+            # get_offset(...) call is consequently attributed one frame
+            # high (to its caller's caller); that's the accepted
+            # tradeoff of one stacklevel serving both paths.
             warnings.warn(
                 f"UTC before 1972 ({year:04d}-{month:02d}-{day:02d}) predates "
                 "the leap-second table; TAI-UTC was a drifting rubber-second "
                 "offset (~8 s in 1970), not the 0 s returned here. Use "
                 "astropy for pre-1972 epochs.",
                 UserWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
 
         return offset
