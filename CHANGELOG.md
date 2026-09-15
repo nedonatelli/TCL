@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The ephemeris tests no longer download the JPL DE kernel.**
+  `tests/unit/test_ephemerides.py` guarded only on `jplephem` being
+  importable, so a machine with the package but no cached kernel fetched
+  `de440.bsp` (114 MB) from `naif.jpl.nasa.gov` inside the unit run. When
+  NAIF was unreachable on 2026-09-14 that failed 24 tests and took CI red
+  on the v2.11.0 release commit. The kernel is now a prerequisite:
+  absent, the tests skip, and `PYTCL_REQUIRE_EPHEMERIS=1` makes the skip
+  an error instead, matching `PYTCL_REQUIRE_MLX` and
+  `PYTCL_REQUIRE_CUPY`. CI caches the directory and downloads it in a
+  named step, so an outage fails one obvious step rather than two dozen
+  tests. Library behaviour is unchanged -- `DEEphemeris` still
+  auto-downloads for callers.
+
 ### Fixed
 
 - **This changes timestamps callers may have built around.**

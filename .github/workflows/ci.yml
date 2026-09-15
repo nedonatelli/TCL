@@ -85,6 +85,40 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
+      # de440.bsp (114 MB) is a prerequisite of the ephemeris tests, which no
+      # longer download it themselves: when naif.jpl.nasa.gov was unreachable
+      # on 2026-09-14, 24 tests in tests/unit/test_ephemerides.py failed and
+      # took CI red on the v2.11.0 release commit (run 34799347373).
+      #
+      # Both steps are scoped to the cell that installs --extra all, because
+      # that is the only cell where jplephem is importable at all. Scoping
+      # also keeps the eight other cells from saving an empty ~/.jplephem
+      # under this key, which would starve every later run that restored it.
+      - name: Cache JPL ephemeris kernel
+        id: ephemeris-cache
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: actions/cache@v4
+        with:
+          path: ~/.jplephem
+          key: jplephem-de440
+
+      # Acquiring the kernel is a named infrastructure step, not a side
+      # effect of running a test. A NAIF outage now fails one obvious step
+      # with one message, instead of two dozen tests whose failures say
+      # nothing about the code. --retry rides out a transient outage; only a
+      # sustained one stops the job.
+      - name: Download JPL ephemeris kernel
+        if: |
+          matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+          && steps.ephemeris-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.jplephem
+          curl --fail --location --show-error --silent \
+            --retry 5 --retry-delay 10 --retry-all-errors \
+            --output ~/.jplephem/de440.bsp \
+            https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de440.bsp
+          ls -l ~/.jplephem/de440.bsp
+
       - name: Install dependencies
         # The coverage cell alone installs the extras, so tests gated on
         # optional dependencies (astropy-backed time scales, pywavelets,
@@ -140,6 +174,10 @@ jobs:
         env:
           NUMBA_DISABLE_JIT: "1"
           PYTCL_REQUIRE_NRLMSISE00_C: "1"
+          # The cell above guarantees the kernel is present, so a skip here
+          # would mean the cache-and-download pair silently stopped working.
+          # The other cells have no jplephem and are left permissive.
+          PYTCL_REQUIRE_EPHEMERIS: "1"
         run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples" -q
 
       # Patch coverage: the lines THIS change touches must be tested. The
