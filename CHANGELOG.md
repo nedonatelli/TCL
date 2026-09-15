@@ -38,6 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pre-1972 fix here, only a warning that the answer for those dates is
   not to be trusted).
 
+- `pytcl.astronomical.lambert`: `minimum_energy_transfer` did not flip
+  the sign of beta for a transfer angle above pi, so both the returned
+  minimum-energy time of flight and the semi-major axis of the orbit
+  `lambert_universal` converges to at that time of flight were wrong for
+  any long-way transfer -- tof 2471.66 s where the correct value is
+  2632.78 s, and `a` = 6425.35 km where the minimum-energy ellipse
+  requires `a` = s/2 = 6407.54 km exactly, by definition.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
