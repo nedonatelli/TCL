@@ -328,7 +328,7 @@ barycenter (SSB)**, not to Earth.
 Output::
 
    Sun position (AU, barycentric ICRF): [-0.00266542 -0.00510309 -0.00207743]
-   Earth-Moon distance: 366214 km
+   Earth-Moon distance: 370718 km
 
 **Planet Positions**
 

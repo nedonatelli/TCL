@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **This changes timestamps callers may have built around.**
+  `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
+  `gps_to_utc`, which delegate to it) looked up the leap-second count on
+  the *input* scale's calendar date instead of UTC's, so for up to ~37
+  seconds after every leap-second insertion the returned UTC timestamp
+  was **one second earlier than correct** -- TAI 2017-01-01T00:00:00
+  returned UTC 2016-12-31T23:59:23 where the correct value (and astropy)
+  give 23:59:24. The lookup now iterates toward a fixed point instead of
+  taking the input date on faith -- it deliberately stops short of one at
+  the leap-second table's start, and inside an inserted second it never
+  reaches one at all, since that second has no distinct UTC
+  representation and is attributed to the preceding one (gh-25).
+  `get_leap_seconds` also silently returned 0 s for dates before 1972
+  (the table's start), e.g.
+  8.0 s off astropy at 1970-01-01; it now warns instead of returning a
+  value it cannot back up (the table itself is unchanged -- there is no
+  pre-1972 fix here, only a warning that the answer for those dates is
+  not to be trusted).
+
+- `pytcl.astronomical.ephemerides`: `moon_position(frame="earth_centered")`
+  read SPK segment `3->301` (Earth-Moon barycentre to Moon) instead of
+  Earth to Moon, overstating the geocentric distance by the EMB offset --
+  399977 km vs the correct 404897 km at JD 2460311, a ~4900 km error.
+  `_BODY_IDS["earth"]` was `3` for the same reason, making
+  `planet_position("earth")` return the barycentre rather than Earth
+  (DE440 has no direct `0->399` segment, so this is now computed by
+  chaining `0->3` then `3->399`). `planet_position("moon")` also leaked
+  `KeyError: (0, 301)` where the docstring promised `ValueError`; it now
+  raises `ValueError` and points callers at `moon_position()`. The
+  ephemeris example's rendered figure carried the same defect (it showed
+  "Moon 397,559 km from the Earth" and an Earth-Sun distance of 0.98331
+  AU) and has been regenerated to the correct 402,449 km / 0.98333 AU.
+
+- `pytcl.astronomical.lambert`: `minimum_energy_transfer` did not flip
+  the sign of beta for a transfer angle above pi, so both the returned
+  minimum-energy time of flight and the semi-major axis of the orbit
+  `lambert_universal` converges to at that time of flight were wrong for
+  any long-way transfer -- tof 2471.66 s where the correct value is
+  2632.78 s, and `a` = 6425.35 km where the minimum-energy ellipse
+  requires `a` = s/2 = 6407.54 km exactly, by definition.
+
+- `pytcl.astronomical.orbital_mechanics`: `state_to_orbital_elements`
+  used the prograde true-longitude-of-periapsis convention for *every*
+  equatorial orbit, so a retrograde equatorial orbit (`i = pi` exactly)
+  came back with the wrong `omega` and an element -> state -> element ->
+  state round trip did not close -- position error 4683 km for
+  `raan=0.7`, 13334.8 km for `raan=0.0`. The neighbor `i = pi - 1e-12`
+  round-tripped fine, which was the signature of the degenerate branch
+  keying on `n_mag` alone without accounting for orbit sense; it now
+  also flips the sign on the eccentricity vector's y-component with the
+  sign of the orbital angular momentum's z-component (Vallado Algorithm
+  9; MATLAB's `state2OrbElsUniv` applies the same `sign(r2h(3))`
+  convention), closing the round trip to micrometer-scale position
+  error (< 1e-8 km). The circular-orbit branch one level down in the
+  same `if` (`e approx 0`) carried the identical degeneracy in its true
+  longitude `nu` -- 14910 km for `raan=0.0`, 7671 km for `raan=0.7` --
+  and gets the same sign flip.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

@@ -1,6 +1,7 @@
 """Tests for Phase 6: Specialized Domains (astronomical, navigation, atmosphere)."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.astronomical import (
@@ -99,7 +100,8 @@ class TestTimeScales:
     def test_leap_seconds(self):
         """Test leap second lookup."""
         # Before leap seconds
-        assert get_leap_seconds(1970, 1, 1) == 0
+        with pytest.warns(UserWarning, match="before 1972"):
+            assert get_leap_seconds(1970, 1, 1) == 0
 
         # After several leap seconds
         assert get_leap_seconds(1980, 1, 6) == 19  # GPS epoch
