@@ -61,9 +61,15 @@ def test_element_state_round_trip_at_equatorial_limits(inc, e):
     assert v_err < 1e-9, f"e={e}, i={inc}: velocity round-trip error {v_err} km/s"
 
 
-def test_element_state_round_trip_retrograde_equatorial_raan_zero():
-    """Same degeneracy with raan=0.0 -- the 13334.8 km case from the audit."""
-    elements = OrbitalElements(a=8000.0, e=0.01, i=np.pi, raan=0.0, omega=1.0, nu=0.3)
+@pytest.mark.parametrize("e", [0.01, 0.0, 1e-12])
+def test_element_state_round_trip_retrograde_equatorial_raan_zero(e):
+    """Same degeneracy with raan=0.0.
+
+    e=0.01 is the eccentric branch's 13334.8 km case from the audit; e=0.0 and
+    e=1e-12 take the circular branch, which was a separate 14910 km error found
+    only by the whole-branch review after the eccentric branch was fixed.
+    """
+    elements = OrbitalElements(a=8000.0, e=e, i=np.pi, raan=0.0, omega=1.0, nu=0.3)
     r_err, v_err = _roundtrip_errors(elements)
     assert r_err < 1e-6, f"position round-trip error {r_err} km"
     assert v_err < 1e-9, f"velocity round-trip error {v_err} km/s"
