@@ -46,6 +46,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   2632.78 s, and `a` = 6425.35 km where the minimum-energy ellipse
   requires `a` = s/2 = 6407.54 km exactly, by definition.
 
+- `pytcl.astronomical.orbital_mechanics`: `state_to_orbital_elements`
+  used the prograde true-longitude-of-periapsis convention for *every*
+  equatorial orbit, so a retrograde equatorial orbit (`i = pi` exactly)
+  came back with the wrong `omega` and an element -> state -> element ->
+  state round trip did not close -- position error 4683 km for
+  `raan=0.7`, 13335 km for `raan=0.0`. The neighbor `i = pi - 1e-12`
+  round-tripped fine, which was the signature of the degenerate branch
+  keying on `n_mag` alone without accounting for orbit sense; it now
+  also flips the sign on the eccentricity vector's y-component with the
+  sign of the orbital angular momentum's z-component (Vallado Algorithm
+  9; MATLAB's `state2OrbElsUniv` applies the same `sign(r2h(3))`
+  convention), closing the round trip to micrometer-scale position
+  error (< 1e-8 km).
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

@@ -510,8 +510,15 @@ def state_to_orbital_elements(
         if e_vec[2] < 0:
             omega = 2 * np.pi - omega
     elif e > 1e-10:
-        # Equatorial orbit with eccentricity
-        omega = np.arctan2(e_vec[1], e_vec[0])
+        # Equatorial orbit with eccentricity: RAAN is undefined, so
+        # RAAN=0 and omega instead carries the true longitude of
+        # periapsis. For a retrograde orbit (h[2] < 0, i.e. cos(i) < 0)
+        # that longitude equals raan - omega rather than raan + omega
+        # (Vallado Alg. 9; MATLAB's state2OrbElsUniv applies the same
+        # sign(r2h(3)) convention), so the sense of the eccentricity
+        # vector's y-component must follow the sign of h[2].
+        node_sign = 1.0 if h[2] >= 0 else -1.0
+        omega = np.arctan2(node_sign * e_vec[1], e_vec[0])
         if omega < 0:
             omega += 2 * np.pi
     else:
