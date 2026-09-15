@@ -34,8 +34,11 @@ class TestMinimumEnergySemiMajorAxis:
 
 
 class TestMinimumEnergyTimeOfFlightRegression:
-    """REFERENCE: pins the audit's measured geometry so a future
-    regression reproduces the exact numbers that were wrong.
+    """REGRESSION (not REFERENCE -- no independent oracle backs these
+    numbers, they are the implementation's own output): pins the audit's
+    measured geometry so a future change cannot silently reproduce the
+    bug this fixed. The sibling `TestMinimumEnergySemiMajorAxis` class
+    carries the independent-reference weight (`a = s/2` by definition).
 
     r1 = [7000, 0, 0] km, r2 = [0, 8000, 0] km, prograde=False puts the
     transfer angle at 270 deg (long way, dnu > pi). Before the fix this

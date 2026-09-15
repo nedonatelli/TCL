@@ -2,9 +2,9 @@
 Reference-oracle tests for ``pytcl.astronomical.ephemerides``.
 
 Compares ``moon_position``/``planet_position`` directly against the SPK
-segments they wrap (and, transitively, astropy's own DE440 read) to catch
-geocentric/barycentric frame confusion and wrong NAIF body ids -- the kind
-of defect a shape- or finiteness-only test cannot see.
+segments they wrap to catch geocentric/barycentric frame confusion and
+wrong NAIF body ids -- the kind of defect a shape- or finiteness-only
+test cannot see.
 
 Requires jplephem and a DE440 kernel cached at ``~/.jplephem/de440.bsp``;
 skips (never downloads) when either is absent.
