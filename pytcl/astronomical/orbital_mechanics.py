@@ -536,8 +536,10 @@ def state_to_orbital_elements(
             if r[2] < 0:
                 nu = 2 * np.pi - nu
         else:
-            # Circular equatorial
-            nu = np.arctan2(r[1], r[0])
+            # Circular equatorial: same degeneracy as the eccentric branch
+            # above, so the same sense_sign convention applies.
+            sense_sign = 1.0 if h[2] >= 0 else -1.0
+            nu = np.arctan2(sense_sign * r[1], r[0])
             if nu < 0:
                 nu += 2 * np.pi
 

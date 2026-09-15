@@ -3,13 +3,15 @@ vector conversions at the equatorial-orbit degeneracy (i = 0, i = pi).
 
 `state_to_orbital_elements` reports RAAN = 0 for equatorial orbits (the
 node vector is undefined) and instead folds the periapsis longitude into
-`omega`. That longitude must be measured with opposite sense for a
+`omega` (eccentric orbits) or the true longitude into `nu` (circular
+orbits). Either longitude must be measured with opposite sense for a
 retrograde orbit (cos(i) < 0) versus a prograde one, matching MATLAB's
 `state2OrbEls.m` (`state2OrbElsUniv`), which multiplies its equatorial
 angle by `sign(r2h(3))` -- the sign of the angular-momentum z-component
 -- before calling `atan2`. Using the prograde sign unconditionally is
 the defect under test: the element -> state -> element -> state round
-trip must return to the original state.
+trip must return to the original state. The two branches (eccentric vs
+circular) carry the fix independently, so both are parametrized here.
 """
 
 import numpy as np
@@ -33,6 +35,11 @@ def _roundtrip_errors(elements: OrbitalElements) -> tuple[float, float]:
 
 
 @pytest.mark.parametrize(
+    "e",
+    [0.01, 0.0, 1e-12],
+    ids=["eccentric", "circular", "circular-neighbor-1e-12"],
+)
+@pytest.mark.parametrize(
     "inc",
     [0.0, 1e-12, np.pi - 1e-6, np.pi - 1e-12, np.pi],
     ids=[
@@ -43,15 +50,19 @@ def _roundtrip_errors(elements: OrbitalElements) -> tuple[float, float]:
         "retrograde-equatorial",
     ],
 )
-def test_element_state_round_trip_at_equatorial_limits(inc):
-    elements = OrbitalElements(a=8000.0, e=0.01, i=inc, raan=0.7, omega=1.0, nu=0.3)
+def test_element_state_round_trip_at_equatorial_limits(inc, e):
+    # e=0.01 exercises the eccentric equatorial branch; e=0.0 and e=1e-12
+    # (just below the branch's 1e-10 threshold) exercise the circular
+    # equatorial branch, which carries the identical retrograde-sense
+    # degeneracy one branch down in the same `if`.
+    elements = OrbitalElements(a=8000.0, e=e, i=inc, raan=0.7, omega=1.0, nu=0.3)
     r_err, v_err = _roundtrip_errors(elements)
-    assert r_err < 1e-6, f"i={inc}: position round-trip error {r_err} km"
-    assert v_err < 1e-9, f"i={inc}: velocity round-trip error {v_err} km/s"
+    assert r_err < 1e-6, f"e={e}, i={inc}: position round-trip error {r_err} km"
+    assert v_err < 1e-9, f"e={e}, i={inc}: velocity round-trip error {v_err} km/s"
 
 
 def test_element_state_round_trip_retrograde_equatorial_raan_zero():
-    """Same degeneracy with raan=0.0 -- the 10995 km case from the audit."""
+    """Same degeneracy with raan=0.0 -- the 13334.8 km case from the audit."""
     elements = OrbitalElements(a=8000.0, e=0.01, i=np.pi, raan=0.0, omega=1.0, nu=0.3)
     r_err, v_err = _roundtrip_errors(elements)
     assert r_err < 1e-6, f"position round-trip error {r_err} km"
