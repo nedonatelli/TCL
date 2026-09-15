@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The ephemeris tests no longer download the JPL DE kernel.**
+  `tests/unit/test_ephemerides.py` guarded only on `jplephem` being
+  importable, so a machine with the package but no cached kernel fetched
+  `de440.bsp` (114 MB) from `naif.jpl.nasa.gov` inside the unit run. When
+  NAIF was unreachable on 2026-09-14 that failed 24 tests and took CI red
+  on the v2.11.0 release commit. The kernel is now a prerequisite:
+  absent, the tests skip, and `PYTCL_REQUIRE_EPHEMERIS=1` makes the skip
+  an error instead, matching `PYTCL_REQUIRE_MLX` and
+  `PYTCL_REQUIRE_CUPY`. CI caches the directory and downloads it in a
+  named step, so an outage fails one obvious step rather than two dozen
+  tests. Library behaviour is unchanged -- `DEEphemeris` still
+  auto-downloads for callers.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

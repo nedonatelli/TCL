@@ -70,6 +70,25 @@ def _backend_names() -> "list[str]":
     return present
 
 
+def _ephemeris_kernel_cached() -> bool:
+    """True when a JPL DE kernel is on disk in the directory DEEphemeris uses.
+
+    DEEphemeris downloads the kernel on first use, which made the unit suite
+    depend on reaching naif.jpl.nasa.gov: a NAIF outage on 2026-09-14 failed
+    24 tests and took CI red on the v2.11.0 release commit. The tests now
+    skip when the kernel is absent, and this gate exists so that skip can be
+    made an error where the kernel is expected.
+    """
+    from pathlib import Path
+
+    try:
+        import jplephem  # noqa: F401
+    except ImportError:
+        return False
+    cache = Path.home() / ".jplephem"
+    return any((cache / name).exists() for name in ("de440.bsp", "de430.bsp"))
+
+
 def pytest_configure(config: "pytest.Config") -> None:
     import os
 
@@ -100,6 +119,18 @@ def pytest_configure(config: "pytest.Config") -> None:
                 "a C compiler, so in CI this means the extension build "
                 f"broke: {exc}"
             ) from exc
+    if (
+        os.environ.get("PYTCL_REQUIRE_EPHEMERIS") == "1"
+        and not _ephemeris_kernel_cached()
+    ):
+        raise pytest.UsageError(
+            "PYTCL_REQUIRE_EPHEMERIS=1 but no JPL DE kernel is cached in "
+            "~/.jplephem, so the ephemeris tests would skip and this run "
+            "would pass without exercising them. Restore the cache, or "
+            "download de440.bsp from https://naif.jpl.nasa.gov/pub/naif/"
+            "generic_kernels/spk/planets/ -- the suite itself will not "
+            "fetch it."
+        )
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
