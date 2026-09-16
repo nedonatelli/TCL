@@ -15,13 +15,14 @@ import pytest
 
 from pytcl.coordinate_systems import geodetic2ecef
 from pytcl.core.exceptions import DependencyError
-from pytcl.gravity.clenshaw import clenshaw_potential
+from pytcl.gravity.clenshaw import clenshaw_geoid, clenshaw_potential
 from pytcl.gravity.egm import (
     _subtract_reference_field,
     create_test_coefficients,
     geoid_height,
+    load_egm_coefficients,
 )
-from pytcl.gravity.models import WGS84, normal_gravity_somigliana
+from pytcl.gravity.models import WGS84, ellips_grav_coeffs, normal_gravity_somigliana
 
 _data_skip = (FileNotFoundError, DependencyError)
 
@@ -79,3 +80,44 @@ def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
     got = geoid_height(lat, lon, coefficients=coef)
     manual = _geoid_via_explicit_geocentric_path(lat, lon, coef)
     assert got == pytest.approx(manual, abs=1e-9)
+
+
+@pytest.mark.parametrize(
+    "lat_deg,lon_deg",
+    [(0.0, 0.0), (45.0, 10.0), (-70.0, 45.0), (89.9, 0.0), (-89.9, 90.0)],
+)
+def test_clenshaw_geoid_of_pure_reference_field_is_zero(lat_deg, lon_deg):
+    """The disturbing potential of the reference field against itself is 0.
+
+    Direct test of the task 2.2 defect: ``clenshaw_geoid`` zeroed only the
+    ``n=0,1`` terms and called that "the reference field", leaving C20 --
+    the dominant even zonal harmonic -- in, so a pure reference field
+    produced a large false "geoid" instead of the zero it is by
+    construction.
+    """
+    n_max = 10
+    C, S, R, GM = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
+    lat, lon = np.radians(lat_deg), np.radians(lon_deg)
+    gamma = normal_gravity_somigliana(lat, WGS84)
+    N = clenshaw_geoid(lat, lon, C, S, R, GM, gamma, n_max=n_max)
+    assert N == pytest.approx(0.0, abs=1e-6)
+
+
+@pytest.mark.parametrize("lat_deg,lon_deg", [(0.0, 0.0), (45.0, 10.0), (-70.0, 45.0)])
+def test_clenshaw_geoid_agrees_with_egm_geoid_height(lat_deg, lon_deg):
+    """clenshaw_geoid matches geoid_height and stays within the physical range.
+
+    Real EGM96 (degree 360) puts the pre-fix ``clenshaw_geoid`` at
+    +3482.31 m, -1689.60 m and -5643.72 m at these three points -- 30x
+    outside the true geoid's ±110 m range.
+    """
+    try:
+        coef = load_egm_coefficients("EGM96")
+    except _data_skip as exc:
+        pytest.skip(f"EGM96 coefficients unavailable: {exc}")
+    lat, lon = np.radians(lat_deg), np.radians(lon_deg)
+    gamma = normal_gravity_somigliana(lat, WGS84)
+    got = clenshaw_geoid(lat, lon, coef.C, coef.S, coef.R, coef.GM, gamma)
+    expected = geoid_height(lat, lon, coefficients=coef)
+    assert abs(got) < 110.0, "geoid undulation exceeds its physical range"
+    assert got == pytest.approx(expected, abs=0.05)

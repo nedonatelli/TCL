@@ -22,6 +22,7 @@ import pytest
 from numpy.testing import assert_allclose
 from scipy.special import lpmv
 
+from pytcl.coordinate_systems import geodetic2ecef
 from pytcl.gravity import (
     WGS84,
     associated_legendre,
@@ -33,6 +34,7 @@ from pytcl.gravity import (
     clenshaw_sum_order_derivative,
     create_test_coefficients,
     deflection_of_vertical,
+    ellips_grav_coeffs,
     free_air_anomaly,
     geoid_height,
     geoid_height_j2,
@@ -75,6 +77,14 @@ def full_norm_legendre(n: int, m: int, x: float) -> float:
     p = lpmv(m, n, x) * (-1.0) ** m
     norm = np.sqrt((2 - (m == 0)) * (2 * n + 1) * factorial(n - m) / factorial(n + m))
     return norm * p
+
+
+def _geocentric(lat, lon):
+    """Geocentric latitude and radius at the ellipsoid surface below (lat, lon)."""
+    ecef = geodetic2ecef(lat, lon, 0.0)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
+    return lat_gc, r
 
 
 class TestNormalGravity:
@@ -334,24 +344,34 @@ class TestClenshaw:
         V = clenshaw_potential(0.0, 0.0, R, C, S, R, GM)
         assert_allclose(V, GM / R, rtol=1e-12)
 
-    def test_geoid_excludes_reference_terms(self):
-        """clenshaw_geoid must exclude n=0,1 as documented."""
-        C = np.zeros((5, 5))
-        S = np.zeros((5, 5))
-        C[0, 0] = 1.0
-        C[1, 0] = 1e-6
-        N = clenshaw_geoid(0.0, 0.0, C, S, 6.378e6, 3.986e14, 9.81)
-        assert N == 0.0
+    def test_geoid_removes_full_reference_field(self):
+        """clenshaw_geoid removes the ellipsoid's normal field (its even
+        zonal harmonics, dominated by C20), not just the n=0,1 terms."""
+        n_max = 4
+        C, S, R, GM = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
+        gamma = normal_gravity_somigliana(0.0, WGS84)
+        N = clenshaw_geoid(0.0, 0.0, C, S, R, GM, gamma, n_max=n_max)
+        assert_allclose(N, 0.0, atol=1e-6)
 
     def test_geoid_bruns_formula(self):
-        """A single C20 disturbing term follows Bruns' formula."""
-        C = np.zeros((5, 5))
-        S = np.zeros((5, 5))
-        C[2, 0] = 1e-8
-        R, GM, gamma = 6.378e6, 3.986e14, 9.81
+        """A C20 delta over the reference field follows Bruns' formula at
+        the true geocentric latitude and radius."""
+        n_max = 2
+        C, S, R, GM = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
+        delta = 1.0e-8
+        C[2, 0] += delta
         lat = np.radians(30.0)
-        N = clenshaw_geoid(lat, 0.0, C, S, R, GM, gamma)
-        expected = GM / (R * gamma) * 1e-8 * full_norm_legendre(2, 0, np.sin(lat))
+        gamma = normal_gravity_somigliana(lat, WGS84)
+        N = clenshaw_geoid(lat, 0.0, C, S, R, GM, gamma, n_max=n_max)
+
+        lat_gc, r = _geocentric(lat, 0.0)
+        expected = (
+            GM
+            / (r * gamma)
+            * (R / r) ** 2
+            * delta
+            * full_norm_legendre(2, 0, np.sin(lat_gc))
+        )
         assert_allclose(N, expected, rtol=1e-9)
 
 
@@ -441,16 +461,18 @@ class TestGeoidHeightEGM:
             lat = np.radians(lat_deg)
             N = geoid_height(lat, 0.0, coefficients=coef)
             gamma = normal_gravity_somigliana(lat, WGS84)
+            lat_gc, r = _geocentric(lat, 0.0)
             # Higher even zonal reference terms (J4...) remain in the
             # disturbing field; include them in the expectation.
             # After internal subtraction: C_dist[2,0] = delta and
             # C_dist[4,0] = ref[4,0] (the negated J4 reference term)
             expected = (
                 coef.GM
-                / (coef.R * gamma)
+                / (r * gamma)
                 * sum(
-                    (delta if n == 2 else ref[n, 0])
-                    * full_norm_legendre(n, 0, np.sin(lat))
+                    (coef.R / r) ** n
+                    * (delta if n == 2 else ref[n, 0])
+                    * full_norm_legendre(n, 0, np.sin(lat_gc))
                     for n in (2, 4)
                 )
             )
@@ -467,14 +489,17 @@ class TestGeoidHeightEGM:
             Cd[1, :] = 0.0
             Sd[1, :] = 0.0
             _subtract_reference_field(Cd, coef.n_max)
-            x = np.sin(lat)
+            lat_gc, r = _geocentric(lat, lon)
+            x = np.sin(lat_gc)
             T = 0.0
             for n in range(2, coef.n_max + 1):
                 for m in range(n + 1):
-                    T += full_norm_legendre(n, m, x) * (
-                        Cd[n, m] * np.cos(m * lon) + Sd[n, m] * np.sin(m * lon)
+                    T += (
+                        (coef.R / r) ** n
+                        * full_norm_legendre(n, m, x)
+                        * (Cd[n, m] * np.cos(m * lon) + Sd[n, m] * np.sin(m * lon))
                     )
-            T *= coef.GM / coef.R
+            T *= coef.GM / r
             expected = T / normal_gravity_somigliana(lat, WGS84)
             N = geoid_height(lat, lon, coefficients=coef)
             assert_allclose(N, expected, rtol=1e-6)

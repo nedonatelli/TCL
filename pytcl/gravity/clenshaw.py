@@ -57,6 +57,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.coordinate_systems import geodetic2ecef
+from pytcl.gravity.models import ellips_grav_coeffs
 from pytcl.gravity.spherical_harmonics import _sectoral_ratio
 
 # Rescale the backward-recursion state by 1e-140 whenever it exceeds 1e140.
@@ -409,10 +411,15 @@ def clenshaw_geoid(
 
     .. math::
 
-        N = \\frac{GM}{r \\gamma} \\sum_{n=2}^{n_{max}} \\left(\\frac{R}{r}\\right)^n
+        N = \\frac{GM}{r \\gamma} \\sum_{n=0}^{n_{max}} \\left(\\frac{R}{r}\\right)^n
             \\sum_{m=0}^{n} P_n^m(\\sin\\phi) (C_{nm}\\cos m\\lambda + S_{nm}\\sin m\\lambda)
 
-    The n=0 and n=1 terms are excluded as they represent the reference field.
+    with the reference ellipsoid's own field subtracted from ``C, S``
+    first. That field is the ellipsoid's even zonal harmonics
+    (:func:`pytcl.gravity.models.ellips_grav_coeffs`) -- C20 above all --
+    not the ``n=0,1`` terms: C20 left in is a ~3 km false zonal signal.
+    ``lat`` is converted to geocentric latitude and evaluated at the true
+    radius under the point, not at ``r = R``.
 
     Examples
     --------
@@ -424,44 +431,32 @@ def clenshaw_geoid(
     >>> GM = 3.986e14
     >>> gamma = 9.81
     >>> N = clenshaw_geoid(0, 0, C, S, R, GM, gamma)
-    >>> N  # n=0,1 terms are excluded, so a pure central term gives 0
-    0.0
+    >>> round(N, 2)  # central term only: oblateness to cancel is all C20
+    -3453.97
     """
     if n_max is None:
         n_max = C.shape[0] - 1
 
-    # Colatitude
-    colat = np.pi / 2 - lat
-    cos_theta = np.cos(colat)
-    sin_theta = np.sin(colat)
-
-    # Exclude the n=0,1 terms (reference field), as documented
+    # Remove the reference ellipsoid's own field (its even zonal
+    # harmonics, dominated by C20) rather than just the n=0,1 terms,
+    # which leaves C20 in and produces a spurious multi-km "geoid".
+    C_ref, S_ref, _, _ = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
     C_dist = np.array(C, dtype=float, copy=True)
     S_dist = np.array(S, dtype=float, copy=True)
-    nz = min(2, C_dist.shape[0])
-    C_dist[:nz, :] = 0.0
-    S_dist[:nz, :] = 0.0
+    ref_n = C_ref.shape[0]
+    C_dist[:ref_n, :ref_n] -= C_ref
+    S_dist[:ref_n, :ref_n] -= S_ref
 
-    # On the reference ellipsoid, r ≈ R (simplified), so (R/r)^n = 1
-    r = R
+    # The synthesis is defined in geocentric latitude at the true radius
+    # under the point, not geodetic latitude at r = R.
+    ecef = geodetic2ecef(lat, lon, 0.0)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
 
-    # Sum over all orders m
-    V = 0.0
-    for m in range(n_max + 1):
-        # Get the Clenshaw sum for this order
-        sum_C, sum_S = clenshaw_sum_order(
-            m, cos_theta, sin_theta, C_dist, S_dist, n_max
-        )
+    T = clenshaw_potential(lat_gc, lon, r, C_dist, S_dist, R, GM, n_max)
 
-        cos_m_lon = np.cos(m * lon)
-        sin_m_lon = np.sin(m * lon)
-
-        V += sum_C * cos_m_lon + sum_S * sin_m_lon
-
-    # Bruns' formula: N = T / gamma with T = GM/r * V
-    N = GM / (r * gamma) * V
-
-    return N
+    # Bruns' formula: N = T / gamma
+    return T / gamma
 
 
 def clenshaw_potential(
