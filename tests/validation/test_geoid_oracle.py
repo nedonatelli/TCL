@@ -1,4 +1,5 @@
-"""Geoid-height oracle tests for pytcl.gravity.egm and pytcl.gravity.clenshaw.
+"""Geoid/gravity-disturbance oracle tests for pytcl.gravity.egm and
+pytcl.gravity.clenshaw.
 
 Task 2.1 (v2.11.1 correctness patch): ``egm.geoid_height`` fed geodetic
 latitude into a spherical-harmonic synthesis that requires geocentric
@@ -6,47 +7,75 @@ latitude, and evaluated it at the mean reference radius ``R`` instead of
 the true ellipsoid radius under the point. Task 2.2: ``clenshaw_geoid``
 never removed the reference field -- it zeroed the ``n=0,1`` terms and
 called that "the reference field", leaving ``C20`` (the dominant even
-zonal harmonic) in -- and had the same latitude/radius bug. See
-``.superpowers/sdd/2026-09-14-v2.11.1-tier1-patch/task-2.{1,2}-brief.md``.
+zonal harmonic) in -- and had the same latitude/radius bug. Also fixed,
+as a controller-owned scope addition found by code review:
+``egm.gravity_disturbance`` carried the identical ``r = R + h`` /
+geodetic-as-geocentric defect. See
+``.superpowers/sdd/2026-09-14-v2.11.1-tier1-patch/task-2.{1,2}-brief.md``
+and ``task-2.1-2.3-report.md`` (the "fix report" appendix covers the
+review round).
 """
+
+from math import factorial
 
 import numpy as np
 import pytest
+from scipy.special import lpmv
 
 from pytcl.coordinate_systems import geodetic2ecef
 from pytcl.core.exceptions import DependencyError
-from pytcl.gravity.clenshaw import clenshaw_geoid, clenshaw_potential
+from pytcl.gravity.clenshaw import clenshaw_geoid
 from pytcl.gravity.egm import (
+    EGMCoefficients,
     _subtract_reference_field,
     create_test_coefficients,
     geoid_height,
+    gravity_disturbance,
     load_egm_coefficients,
 )
 from pytcl.gravity.models import WGS84, ellips_grav_coeffs, normal_gravity_somigliana
 
 _data_skip = (FileNotFoundError, DependencyError)
 
+# EGM96 constants, matched to pytcl.gravity.egm.EGM_PARAMETERS["EGM96"].
+_GM = 3.986004415e14
+_R = 6378136.3
 
-def _geocentric(lat, lon):
-    """Geocentric latitude and radius at the ellipsoid surface below (lat, lon).
+
+def full_norm_legendre(n: int, m: int, x: float) -> float:
+    """Geodesy fully normalized Pbar_nm via scipy (no Condon-Shortley phase).
+
+    Independent of pytcl's own Legendre/Clenshaw code -- the same
+    from-scratch pattern as ``tests/validation/test_gravity_audit.py``.
+    """
+    p = lpmv(m, n, x) * (-1.0) ** m
+    norm = np.sqrt((2 - (m == 0)) * (2 * n + 1) * factorial(n - m) / factorial(n + m))
+    return norm * p
+
+
+def _geocentric(lat, lon, h=0.0):
+    """Geocentric latitude and radius at height h above (lat, lon).
 
     Derived from :func:`geodetic2ecef` rather than the closed-form
     ``arctan((1-f)**2 * tan(lat))``, per CLAUDE.md's "use the existing
     conversion" convention.
     """
-    ecef = geodetic2ecef(lat, lon, 0.0)
+    ecef = geodetic2ecef(lat, lon, h)
     r = float(np.linalg.norm(ecef))
     lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
     return lat_gc, r
 
 
-def _geoid_via_explicit_geocentric_path(lat, lon, coef):
-    """Independent reimplementation of the corrected ``geoid_height`` body.
+def _independent_geoid_via_legendre_sum(lat, lon, coef):
+    """From-scratch spherical-harmonic sum (scipy ``lpmv``), independent
+    of ``clenshaw_potential``/``clenshaw_sum_order``.
 
-    Uses the same production helpers (``_subtract_reference_field``,
-    ``clenshaw_potential``) but recomputes the geocentric latitude and
-    radius itself, so this pins the fix against reintroduction of the
-    geodetic-latitude / ``r = R`` bug rather than testing a tautology.
+    Only ``_subtract_reference_field`` is reused, which is the
+    reference-removal step ``geoid_height`` itself still uses unchanged
+    (task 2.1 did not touch it) -- not the Clenshaw summation under
+    review. This is a REFERENCE-class oracle: an independent
+    implementation of the actual synthesis, not a second call into the
+    production summation code.
     """
     C_dist = coef.C.copy()
     S_dist = coef.S.copy()
@@ -57,9 +86,57 @@ def _geoid_via_explicit_geocentric_path(lat, lon, coef):
     _subtract_reference_field(C_dist, coef.n_max)
 
     lat_gc, r = _geocentric(lat, lon)
+    x = np.sin(lat_gc)
+    T = 0.0
+    for n in range(2, coef.n_max + 1):
+        for m in range(n + 1):
+            T += (
+                (coef.R / r) ** n
+                * full_norm_legendre(n, m, x)
+                * (C_dist[n, m] * np.cos(m * lon) + S_dist[n, m] * np.sin(m * lon))
+            )
+    T *= coef.GM / r
     gamma = normal_gravity_somigliana(lat, WGS84)
-    T = clenshaw_potential(lat_gc, lon, r, C_dist, S_dist, coef.R, coef.GM, coef.n_max)
     return T / gamma
+
+
+def _c20_plus_delta_for_egm(delta, n_max=2, model_name="TEST"):
+    """Coefficients whose disturbing field, after ``egm.geoid_height`` /
+    ``egm.gravity_disturbance``'s internal ``_subtract_reference_field``
+    step, is *exactly* a single C20 term of magnitude ``delta`` --
+    everything else (including the reference ellipsoid's own C20, which
+    would otherwise dominate) cancels.
+
+    Same construction as ``test_gravity_audit.py::test_c20_only_analytic``.
+    Matched to the *egm.py* subtraction routine specifically: it and
+    ``models.ellips_grav_coeffs`` (used by ``clenshaw_geoid``, see
+    ``_c20_plus_delta_for_clenshaw`` below) differ at the ~1.6e-7
+    relative level (task 2.2's noted, accepted discrepancy between the
+    two reference-field routines), which is negligible against a
+    physical C20 but not against a ``delta`` chosen this small -- using
+    the wrong one of the two here left an 0.8% residual that failed a
+    tight tolerance during review.
+    """
+    ref = np.zeros((n_max + 1, n_max + 1))
+    _subtract_reference_field(ref, n_max)
+    c20_ref = -ref[2, 0]
+    C = np.zeros((n_max + 1, n_max + 1))
+    S = np.zeros((n_max + 1, n_max + 1))
+    C[0, 0] = 1.0
+    C[2, 0] = c20_ref + delta
+    return EGMCoefficients(C=C, S=S, GM=_GM, R=_R, n_max=n_max, model_name=model_name)
+
+
+def _c20_plus_delta_for_clenshaw(delta, n_max=2):
+    """Like :func:`_c20_plus_delta_for_egm`, but matched to
+    ``clenshaw_geoid``'s internal subtraction routine,
+    ``models.ellips_grav_coeffs`` (task 2.2), not ``egm.py``'s."""
+    C_ref, S_ref, R, GM = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
+    C = C_ref.copy()
+    C[2, 0] += delta
+    return EGMCoefficients(
+        C=C, S=S_ref.copy(), GM=GM, R=R, n_max=n_max, model_name="TEST"
+    )
 
 
 POINTS_DEG = [
@@ -74,12 +151,12 @@ POINTS_DEG = [
 def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
     lat_deg, lon_deg
 ):
-    """Direct check of the two terms the audit decomposed (task 2.1)."""
+    """geoid_height matches a from-scratch Legendre-sum oracle (task 2.1)."""
     lat, lon = np.radians(lat_deg), np.radians(lon_deg)
     coef = create_test_coefficients(n_max=10)
     got = geoid_height(lat, lon, coefficients=coef)
-    manual = _geoid_via_explicit_geocentric_path(lat, lon, coef)
-    assert got == pytest.approx(manual, abs=1e-9)
+    expected = _independent_geoid_via_legendre_sum(lat, lon, coef)
+    assert got == pytest.approx(expected, rel=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -89,11 +166,14 @@ def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
 def test_clenshaw_geoid_of_pure_reference_field_is_zero(lat_deg, lon_deg):
     """The disturbing potential of the reference field against itself is 0.
 
-    Direct test of the task 2.2 defect: ``clenshaw_geoid`` zeroed only the
-    ``n=0,1`` terms and called that "the reference field", leaving C20 --
-    the dominant even zonal harmonic -- in, so a pure reference field
-    produced a large false "geoid" instead of the zero it is by
-    construction.
+    A basic identity check, but on its own it is *not* the discriminating
+    oracle for this task: ``clenshaw_geoid``'s synthesis is linear in
+    ``C, S``, so once the reference field is fully subtracted the input
+    to the summation is the zero matrix and the result is 0.0 at *any*
+    latitude or radius -- correct or reverted. See
+    ``test_clenshaw_geoid_matches_bruns_formula_at_the_true_point`` below
+    for the test that actually exercises the geocentric latitude / true
+    radius fix (only that one was reverted against, per the fix report).
     """
     n_max = 10
     C, S, R, GM = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
@@ -101,6 +181,35 @@ def test_clenshaw_geoid_of_pure_reference_field_is_zero(lat_deg, lon_deg):
     gamma = normal_gravity_somigliana(lat, WGS84)
     N = clenshaw_geoid(lat, lon, C, S, R, GM, gamma, n_max=n_max)
     assert N == pytest.approx(0.0, abs=1e-6)
+
+
+@pytest.mark.parametrize("lat_deg,lon_deg", [(0.0, 0.0), (45.0, 10.0), (-70.0, 45.0)])
+def test_clenshaw_geoid_matches_bruns_formula_at_the_true_point(lat_deg, lon_deg):
+    """A C20 delta over the reference field follows Bruns' formula at the
+    true geocentric latitude and radius -- not at (R, geodetic lat).
+
+    Unlike the zero-field test above, the disturbing field here is
+    genuinely non-trivial (a single non-zero C20 delta), so this test
+    actually depends on both halves of the task 2.2 fix; see the fix
+    report's revert-check for confirmation that it fails if either half
+    (geocentric latitude, or true radius) is reverted alone.
+    """
+    n_max = 2
+    delta = 1.0e-8
+    coef = _c20_plus_delta_for_clenshaw(delta, n_max=n_max)
+    lat, lon = np.radians(lat_deg), np.radians(lon_deg)
+    gamma = normal_gravity_somigliana(lat, WGS84)
+    N = clenshaw_geoid(lat, lon, coef.C, coef.S, coef.R, coef.GM, gamma, n_max=n_max)
+
+    lat_gc, r = _geocentric(lat, lon)
+    expected = (
+        coef.GM
+        / (r * gamma)
+        * (coef.R / r) ** 2
+        * delta
+        * full_norm_legendre(2, 0, np.sin(lat_gc))
+    )
+    assert N == pytest.approx(expected, rel=1e-9)
 
 
 @pytest.mark.parametrize("lat_deg,lon_deg", [(0.0, 0.0), (45.0, 10.0), (-70.0, 45.0)])
@@ -121,3 +230,49 @@ def test_clenshaw_geoid_agrees_with_egm_geoid_height(lat_deg, lon_deg):
     expected = geoid_height(lat, lon, coefficients=coef)
     assert abs(got) < 110.0, "geoid undulation exceeds its physical range"
     assert got == pytest.approx(expected, abs=0.05)
+
+
+def _independent_zonal_disturbing_potential(r, lat_gc, R, GM, delta, n=2):
+    """From-scratch (scipy ``lpmv``) potential of a single C_n0 = delta
+    disturbing term, independent of any pytcl spherical-harmonic code."""
+    x = np.sin(lat_gc)
+    return GM / r * (R / r) ** n * full_norm_legendre(n, 0, x) * delta
+
+
+@pytest.mark.parametrize(
+    "lat_deg,lon_deg,h",
+    [(45.0, 10.0, 1000.0), (-70.0, 45.0, 500.0), (89.9, 0.0, 2000.0)],
+)
+def test_gravity_disturbance_uses_geocentric_latitude_at_true_radius(
+    lat_deg, lon_deg, h
+):
+    """gravity_disturbance matches a from-scratch numerical-gradient
+    oracle at the true geocentric latitude and radius -- not at
+    (R + h, geodetic lat).
+
+    ``h != 0`` and a non-equatorial, non-polar latitude are both needed
+    to discriminate the defect: at h=0 the radius half is invisible
+    (R + 0 == R), and at the pole/equator geodetic and geocentric
+    latitude coincide.
+    """
+    n_max = 2
+    delta = 1.0e-8
+    coef = _c20_plus_delta_for_egm(delta, n_max=n_max)
+    lat, lon = np.radians(lat_deg), np.radians(lon_deg)
+
+    dist = gravity_disturbance(lat, lon, h=h, coefficients=coef)
+
+    lat_gc, r = _geocentric(lat, lon, h)
+    eps_r, eps_lat = 1.0, 1e-6
+
+    def T(rr, ll):
+        return _independent_zonal_disturbing_potential(rr, ll, coef.R, coef.GM, delta)
+
+    g_r_expected = (T(r + eps_r, lat_gc) - T(r - eps_r, lat_gc)) / (2 * eps_r)
+    g_lat_expected = (
+        (T(r, lat_gc + eps_lat) - T(r, lat_gc - eps_lat)) / (2 * eps_lat) / r
+    )
+
+    assert dist.delta_g_r == pytest.approx(g_r_expected, rel=1e-6)
+    assert dist.delta_g_lat == pytest.approx(g_lat_expected, rel=1e-6)
+    assert dist.delta_g_lon == pytest.approx(0.0, abs=1e-15)

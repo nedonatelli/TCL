@@ -261,7 +261,11 @@ def gravity_j2(
     lat : float
         Geodetic latitude in radians.
     lon : float
-        Longitude in radians.
+        Longitude in radians. The result is independent of longitude by
+        rotational symmetry: it is read (passed to ``geodetic2ecef`` to
+        get the true geocentric radius and latitude), but its x, y
+        contribution cancels there via ``cos**2(lon) + sin**2(lon) = 1``,
+        so it never affects the returned value.
     h : float, optional
         Height above ellipsoid in meters. Default 0.
     constants : GravityConstants, optional

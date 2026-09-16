@@ -615,12 +615,23 @@ def gravity_disturbance(
     >>> dist = gravity_disturbance(0, 0, h=0, coefficients=coef)
     >>> isinstance(dist.magnitude, float)
     True
+
+    Notes
+    -----
+    Evaluated at the true geocentric radius and latitude under the
+    point (derived from the geodetic input via
+    :func:`pytcl.coordinate_systems.geodetic2ecef`), matching
+    :func:`geoid_height`.
     """
     if coefficients is None:
         coefficients = load_egm_coefficients(model, n_max)
 
-    # Radial distance (approximate)
-    r = coefficients.R + h
+    # clenshaw_gravity's synthesis is defined in geocentric latitude at
+    # the true radius under the point, not geodetic latitude at
+    # r = R + h.
+    ecef = geodetic2ecef(lat, lon, h)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
 
     # Compute gravity disturbance using Clenshaw summation
     # Exclude n=0,1 terms and the normal field (reference field)
@@ -633,7 +644,7 @@ def gravity_disturbance(
     _subtract_reference_field(C_dist, coefficients.n_max)
 
     g_r, g_lat, g_lon = clenshaw_gravity(
-        lat,
+        lat_gc,
         lon,
         r,
         C_dist,

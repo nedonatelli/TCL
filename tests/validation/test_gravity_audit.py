@@ -539,7 +539,9 @@ class TestGravityDisturbanceEGM:
         )
 
     def test_radial_component_vs_potential_derivative(self):
-        """delta_g_r equals the radial derivative of the disturbing potential."""
+        """delta_g_r equals the radial derivative of the disturbing
+        potential, taken at the true geocentric latitude/radius --
+        gravity_disturbance no longer evaluates at (R, geodetic lat)."""
         coef = create_test_coefficients(n_max=6)
         lat, lon = np.radians(20.0), np.radians(-70.0)
         Cd = coef.C.copy()
@@ -548,10 +550,14 @@ class TestGravityDisturbanceEGM:
         Cd[1, :] = 0.0
         Sd[1, :] = 0.0
         _subtract_reference_field(Cd, coef.n_max)
-        r = coef.R
+        lat_gc, r = _geocentric(lat, lon)
         eps = 1.0
-        Tp = clenshaw_potential(lat, lon, r + eps, Cd, Sd, coef.R, coef.GM, coef.n_max)
-        Tm = clenshaw_potential(lat, lon, r - eps, Cd, Sd, coef.R, coef.GM, coef.n_max)
+        Tp = clenshaw_potential(
+            lat_gc, lon, r + eps, Cd, Sd, coef.R, coef.GM, coef.n_max
+        )
+        Tm = clenshaw_potential(
+            lat_gc, lon, r - eps, Cd, Sd, coef.R, coef.GM, coef.n_max
+        )
         d = gravity_disturbance(lat, lon, h=0.0, coefficients=coef)
         assert_allclose(d.delta_g_r, (Tp - Tm) / (2 * eps), rtol=1e-5)
 
