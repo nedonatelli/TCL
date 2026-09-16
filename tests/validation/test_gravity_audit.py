@@ -133,13 +133,16 @@ class TestGravityJ2:
     @pytest.mark.parametrize("lat_deg", [0.0, 30.0, 45.0, 60.0, 89.0, -37.0])
     def test_components_match_gradient(self, lat_deg):
         lat = np.radians(lat_deg)
-        r = WGS84.a
+        # gravity_j2 evaluates at the true geocentric latitude/radius
+        # (task 2.3), not at (WGS84.a, geodetic lat); the numerical
+        # gradient below must be taken at the same point it uses.
+        lat_gc, r = _geocentric(lat, 0.0)
         eps_r, eps_l = 1.0, 1e-6
-        g_up = (self._potential(r + eps_r, lat) - self._potential(r - eps_r, lat)) / (
-            2 * eps_r
-        )
+        g_up = (
+            self._potential(r + eps_r, lat_gc) - self._potential(r - eps_r, lat_gc)
+        ) / (2 * eps_r)
         g_north = (
-            (self._potential(r, lat + eps_l) - self._potential(r, lat - eps_l))
+            (self._potential(r, lat_gc + eps_l) - self._potential(r, lat_gc - eps_l))
             / (2 * eps_l)
             / r
         )
