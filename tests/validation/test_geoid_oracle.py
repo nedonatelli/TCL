@@ -66,16 +66,39 @@ def _geocentric(lat, lon, h=0.0):
     return lat_gc, r
 
 
+def _hand_coded_reference_zonals(n_max):
+    """Fully normalized C_2k,0 of the WGS84 level ellipsoid's normal
+    field (k=1..5, degrees 2/4/6/8/10), typed directly from Heiskanen &
+    Moritz, "Physical Geodesy", eq. 2-92 -- no pytcl gravity code is
+    called. See the fix report for a verification of these numbers
+    against ``models.ellips_grav_coeffs``.
+    """
+    f = WGS84.f
+    e2 = f * (2.0 - f)
+    J2 = WGS84.J2
+    C = np.zeros(n_max + 1)
+    for k in range(1, 6):
+        n = 2 * k
+        if n > n_max:
+            break
+        J2k = (
+            (-1) ** (k + 1)
+            * (3.0 * e2**k)
+            / ((2 * k + 1) * (2 * k + 3))
+            * (1.0 - k + 5.0 * k * J2 / e2)
+        )
+        C[n] = -J2k / np.sqrt(2 * n + 1)
+    return C
+
+
 def _independent_geoid_via_legendre_sum(lat, lon, coef):
     """From-scratch spherical-harmonic sum (scipy ``lpmv``), independent
-    of ``clenshaw_potential``/``clenshaw_sum_order``.
-
-    Only ``_subtract_reference_field`` is reused, which is the
-    reference-removal step ``geoid_height`` itself still uses unchanged
-    (task 2.1 did not touch it) -- not the Clenshaw summation under
-    review. This is a REFERENCE-class oracle: an independent
-    implementation of the actual synthesis, not a second call into the
-    production summation code.
+    of every piece of pytcl gravity code -- not ``clenshaw_potential``/
+    ``clenshaw_sum_order`` (a different, scipy-only summation), and not
+    ``_subtract_reference_field`` either (a hand-coded reference field,
+    see :func:`_hand_coded_reference_zonals`). This is a REFERENCE-class
+    oracle: an independent implementation of the actual synthesis, not a
+    second call into any production code.
     """
     C_dist = coef.C.copy()
     S_dist = coef.S.copy()
@@ -83,7 +106,7 @@ def _independent_geoid_via_legendre_sum(lat, lon, coef):
     if coef.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
-    _subtract_reference_field(C_dist, coef.n_max)
+    C_dist[:, 0] -= _hand_coded_reference_zonals(coef.n_max)
 
     lat_gc, r = _geocentric(lat, lon)
     x = np.sin(lat_gc)
