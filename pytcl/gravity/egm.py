@@ -29,6 +29,7 @@ from typing import Dict, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.coordinate_systems import geodetic2ecef
 from pytcl.core.array_utils import make_readonly
 from pytcl.core.paths import get_data_dir
 from pytcl.diagnostics import logger as _diag_logger
@@ -465,10 +466,12 @@ def geoid_height(
 
     Notes
     -----
-    Evaluated at ``r = R`` rather than iterated to the geoid surface, and the
-    zero-degree term is omitted (gh-25). The omission is a roughly -0.5 m
-    constant offset, so differences between two points are far more accurate
-    than either absolute value.
+    Evaluated at the true ellipsoid radius under the point (not iterated
+    to the exact geoid surface), using the geocentric latitude and radius
+    derived from the geodetic input via :func:`pytcl.coordinate_systems.\
+geodetic2ecef` -- the spherical-harmonic synthesis is defined in those
+    terms, not the geodetic latitude and mean reference radius ``R``. The
+    zero-degree term is omitted (gh-25), a roughly -0.5 m constant offset.
 
     """
     if coefficients is None:
@@ -486,8 +489,11 @@ def geoid_height(
             model_name=coefficients.model_name,
         )
 
-    # Use reference radius as radial distance (on geoid)
-    r = coefficients.R
+    # The synthesis below is defined in geocentric latitude at the true
+    # radius under the point, not geodetic latitude at r = R.
+    ecef = geodetic2ecef(lat, lon, 0.0)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
 
     # Compute disturbing potential using Clenshaw summation
     # Exclude n=0,1 terms and the normal field (reference field)
@@ -500,7 +506,7 @@ def geoid_height(
     _subtract_reference_field(C_dist, coefficients.n_max)
 
     T = clenshaw_potential(
-        lat,
+        lat_gc,
         lon,
         r,
         C_dist,
