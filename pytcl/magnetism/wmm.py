@@ -394,6 +394,52 @@ def _quantize_inputs(
     )
 
 
+def _coefficient_key(
+    coeffs: "MagneticCoefficients",
+) -> Tuple[bytes, bytes, bytes, bytes, float, int]:
+    """Content fingerprint of a coefficient set, for use as a cache key.
+
+    ``coeffs.g``, ``h``, ``g_dot`` and ``h_dot`` are the only arrays
+    ``_compute_magnetic_field_spherical_impl`` reads; ``epoch`` and
+    ``n_max`` are its remaining scalar inputs. Together they are every
+    piece of ``coeffs`` the field depends on, so a change to any of them
+    -- including an in-place mutation of one array, which leaves ``id()``
+    unchanged -- changes this key and therefore cannot hit a stale entry.
+    """
+    return (
+        coeffs.g.tobytes(),
+        coeffs.h.tobytes(),
+        coeffs.g_dot.tobytes(),
+        coeffs.h_dot.tobytes(),
+        coeffs.epoch,
+        coeffs.n_max,
+    )
+
+
+def _decode_and_compute(
+    lat: float,
+    lon: float,
+    r: float,
+    year: float,
+    n_max: int,
+    g_bytes: bytes,
+    h_bytes: bytes,
+    g_dot_bytes: bytes,
+    h_dot_bytes: bytes,
+    epoch: float,
+) -> Tuple[float, float, float]:
+    """Rebuild a `MagneticCoefficients` from packed bytes and evaluate it."""
+    shape = (n_max + 1, n_max + 1)
+    g = np.frombuffer(g_bytes, dtype=np.float64).reshape(shape)
+    h = np.frombuffer(h_bytes, dtype=np.float64).reshape(shape)
+    g_dot = np.frombuffer(g_dot_bytes, dtype=np.float64).reshape(shape)
+    h_dot = np.frombuffer(h_dot_bytes, dtype=np.float64).reshape(shape)
+    coeffs = MagneticCoefficients(
+        g=g, h=h, g_dot=g_dot, h_dot=h_dot, epoch=epoch, n_max=n_max
+    )
+    return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+
+
 @lru_cache(maxsize=_DEFAULT_CACHE_SIZE)
 def _magnetic_field_spherical_cached(
     lat: float,
@@ -401,13 +447,23 @@ def _magnetic_field_spherical_cached(
     r: float,
     year: float,
     n_max: int,
-    coeff_id: int,
+    g_bytes: bytes,
+    h_bytes: bytes,
+    g_dot_bytes: bytes,
+    h_dot_bytes: bytes,
+    epoch: float,
 ) -> Tuple[float, float, float]:
     """
     Cached core computation of magnetic field in spherical coordinates.
 
-    This is the internal cached version. The coefficient arrays are identified
-    by their id() since NamedTuples with numpy arrays aren't hashable.
+    The coefficient arrays are passed in as their own packed bytes (see
+    `_coefficient_key`) rather than looked up from a registry by identity:
+    ``lru_cache`` then keys on the coefficients' actual content, so a
+    mutated array is simply a different call, never a stale hit. Nothing
+    outside this cache retains those bytes, so a coefficient set that
+    nothing else references is not kept alive by having been used here --
+    it is bounded only by this cache's own ``maxsize`` LRU eviction, the
+    same bound that already applied to the field results.
 
     Parameters
     ----------
@@ -421,32 +477,20 @@ def _magnetic_field_spherical_cached(
         Decimal year (quantized).
     n_max : int
         Maximum spherical harmonic degree.
-    coeff_id : int
-        Unique identifier for the coefficient set.
+    g_bytes, h_bytes, g_dot_bytes, h_dot_bytes : bytes
+        Packed float64 bytes of the coefficient arrays, shape
+        ``(n_max + 1, n_max + 1)``.
+    epoch : float
+        Reference epoch of the coefficient set (decimal year).
 
     Returns
     -------
     B_r, B_theta, B_phi : tuple of float
         Magnetic field components in spherical coordinates (nT).
     """
-    # Retrieve coefficients from registry
-    coeffs = _coefficient_registry.get(coeff_id)
-    if coeffs is None:
-        raise ValueError(f"Coefficient set {coeff_id} not found in registry")
-
-    return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
-
-
-# Registry to hold coefficient sets by id
-_coefficient_registry: dict[int, Any] = {}
-
-
-def _register_coefficients(coeffs: "MagneticCoefficients") -> int:
-    """Register a coefficient set and return its unique ID."""
-    coeff_id = id(coeffs)
-    if coeff_id not in _coefficient_registry:
-        _coefficient_registry[coeff_id] = coeffs
-    return coeff_id
+    return _decode_and_compute(
+        lat, lon, r, year, n_max, g_bytes, h_bytes, g_dot_bytes, h_dot_bytes, epoch
+    )
 
 
 def _compute_magnetic_field_spherical_impl(
@@ -564,7 +608,6 @@ def clear_magnetic_cache() -> None:
     >>> clear_magnetic_cache()  # Free cached computations
     """
     _magnetic_field_spherical_cached.cache_clear()
-    _coefficient_registry.clear()
 
 
 def configure_magnetic_cache(
@@ -626,12 +669,24 @@ def configure_magnetic_cache(
             r: float,
             year: float,
             n_max: int,
-            coeff_id: int,
+            g_bytes: bytes,
+            h_bytes: bytes,
+            g_dot_bytes: bytes,
+            h_dot_bytes: bytes,
+            epoch: float,
         ) -> Tuple[float, float, float]:
-            coeffs = _coefficient_registry.get(coeff_id)
-            if coeffs is None:
-                raise ValueError(f"Coefficient set {coeff_id} not found")
-            return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+            return _decode_and_compute(
+                lat,
+                lon,
+                r,
+                year,
+                n_max,
+                g_bytes,
+                h_bytes,
+                g_dot_bytes,
+                h_dot_bytes,
+                epoch,
+            )
 
         _magnetic_field_spherical_cached = new_cached
 
@@ -696,11 +751,21 @@ def magnetic_field_spherical(
         # Quantize inputs for cache key
         q_lat, q_lon, q_r, q_year = _quantize_inputs(lat, lon, r, year)
 
-        # Register coefficients and get ID
-        coeff_id = _register_coefficients(coeffs)
+        g_bytes, h_bytes, g_dot_bytes, h_dot_bytes, epoch, n_max = _coefficient_key(
+            coeffs
+        )
 
         return _magnetic_field_spherical_cached(
-            q_lat, q_lon, q_r, q_year, coeffs.n_max, coeff_id
+            q_lat,
+            q_lon,
+            q_r,
+            q_year,
+            n_max,
+            g_bytes,
+            h_bytes,
+            g_dot_bytes,
+            h_dot_bytes,
+            epoch,
         )
     else:
         # Direct computation without caching

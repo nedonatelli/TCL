@@ -125,6 +125,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the extrapolation magnitude -- whenever the year falls outside the
   coefficient set's window; the returned values are unchanged.
 
+- `pytcl.magnetism.wmm`: `magnetic_field_spherical`'s cache keyed each
+  entry on `id(coeffs)`, so mutating a registered coefficient array in
+  place left the id unchanged and the cache kept serving the
+  pre-mutation field -- measured as a silent 14072 nT error on `B_r`
+  after mutating a single coefficient. The backing registry also held
+  every coefficient set it had ever seen by strong reference, so
+  throwaway models were never collected -- 500 of them left 500 live
+  objects. The cache now keys on the coefficient arrays' own packed
+  content (plus epoch and degree) instead of identity, so a mutation is
+  simply a cache miss, and nothing outside the cache retains a
+  coefficient set once the caller drops it.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

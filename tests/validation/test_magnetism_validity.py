@@ -1,8 +1,8 @@
-"""Validity-window warnings for WMM and EMM (v2.11.1 task 2.4).
+"""Validity-window warnings and cache-content-keying for WMM/EMM (v2.11.1 2.4/2.5).
 
-``wmm()`` and ``emm()`` extrapolated the linear secular-variation terms
-arbitrarily far outside a coefficient set's declared validity window with
-no warning at all. ``EMM_PARAMETERS[model]["valid_start"/"valid_end"]``
+Task 2.4: ``wmm()`` and ``emm()`` extrapolated the linear secular-variation
+terms arbitrarily far outside a coefficient set's declared validity window
+with no warning at all. ``EMM_PARAMETERS[model]["valid_start"/"valid_end"]``
 were declared and never read; WMM carries no explicit window, but its
 five-year validity (epoch to epoch + 5.0) is documented in every
 ``create_wmmYYYY_coefficients`` docstring. Measured before the fix:
@@ -12,22 +12,42 @@ own 2000.0-epoch values of D=10.431 deg, F=54147.7 nT -- 0.78 deg and 279 nT
 off, with zero warnings. This suite pins that same wrong-but-now-warned value
 (the fix adds a warning, it does not change what gets returned) and checks
 both directions of the window and both models.
+
+Task 2.5: ``magnetic_field_spherical``'s LRU cache keyed its entries on
+``id(coeffs)``. Mutating a registered coefficient array in place left the
+id unchanged, so the cache kept serving the field computed from the
+pre-mutation contents. The backing ``_coefficient_registry`` also held
+strong references forever, so every throwaway coefficient set that ever
+passed through the cache stayed alive for the life of the process. This
+suite reproduces the stale-field defect (a mutation must change the
+result) and the retention defect (an unreferenced coefficient set must be
+collectible), and checks that legitimate cache reuse still works.
 """
 
+import gc
 import warnings
 
 import numpy as np
 import pytest
 
 from pytcl.magnetism.emm import EMM_PARAMETERS, create_test_coefficients, emm
-from pytcl.magnetism.wmm import WMM2020, WMM2025, wmm
+from pytcl.magnetism.wmm import (
+    WMM2020,
+    WMM2025,
+    MagneticCoefficients,
+    clear_magnetic_cache,
+    create_wmm2025_coefficients,
+    get_magnetic_cache_info,
+    magnetic_field_spherical,
+    wmm,
+)
 
 DENVER_LAT = np.radians(40.0)
 DENVER_LON = np.radians(-105.0)
 
 
 # =============================================================================
-# WMM validity window
+# Task 2.4: WMM validity window
 # =============================================================================
 
 
@@ -76,7 +96,7 @@ class TestWMMValidityWindow:
 
 
 # =============================================================================
-# EMM / WMMHR validity window
+# Task 2.4: EMM / WMMHR validity window
 # =============================================================================
 
 
@@ -143,3 +163,66 @@ class TestEMMValidityWindow:
                 model="WMMHR2025",
                 coefficients=coef,
             )
+
+
+# =============================================================================
+# Task 2.5: cache keyed on coefficient content, not identity
+# =============================================================================
+
+
+class TestMagneticFieldCache:
+    def setup_method(self):
+        clear_magnetic_cache()
+
+    def test_cache_does_not_serve_stale_fields_after_in_place_mutation(self):
+        coeffs = create_wmm2025_coefficients()
+        args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
+        before = magnetic_field_spherical(*args, coeffs=coeffs)[0]
+        coeffs.g[2, 0] *= 2.0
+        after = magnetic_field_spherical(*args, coeffs=coeffs)[0]
+        assert after != pytest.approx(before), "cache served a stale field"
+
+    def test_mutated_field_matches_an_uncached_computation(self):
+        """Not just "different" -- the post-mutation cached value must be
+        close to what a fresh, uncached computation on the mutated
+        coefficients gives (not bit-exact: the cache quantizes lat/lon/r/year
+        to a configurable precision before keying, by design -- see
+        `_quantize_inputs` -- so a small, expected rounding difference
+        remains between the two paths).
+        """
+        coeffs = create_wmm2025_coefficients()
+        args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
+        magnetic_field_spherical(*args, coeffs=coeffs)  # populate the cache
+        coeffs.g[2, 0] *= 2.0
+        cached = magnetic_field_spherical(*args, coeffs=coeffs, use_cache=True)
+        uncached = magnetic_field_spherical(*args, coeffs=coeffs, use_cache=False)
+        assert cached == pytest.approx(uncached, rel=1e-4)
+
+    def test_unmutated_coefficients_still_hit_the_cache(self):
+        """The fix must not degrade into "never cache" -- repeated calls on
+        the same, unmutated coefficients should still be served from cache.
+        """
+        coeffs = create_wmm2025_coefficients()
+        args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
+        magnetic_field_spherical(*args, coeffs=coeffs)
+        before_hits = get_magnetic_cache_info()["hits"]
+        magnetic_field_spherical(*args, coeffs=coeffs)
+        after_hits = get_magnetic_cache_info()["hits"]
+        assert after_hits == before_hits + 1
+
+    def test_registry_does_not_retain_unreferenced_models(self):
+        """500 throwaway models leaving 500 live objects was the measured
+        defect; using 50 here since that is all a property test needs to
+        show the growth is not O(calls).
+        """
+        baseline = sum(
+            1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients)
+        )
+        args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
+        for _ in range(50):
+            coeffs = create_wmm2025_coefficients()
+            magnetic_field_spherical(*args, coeffs=coeffs)
+            del coeffs
+        gc.collect()
+        after = sum(1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients))
+        assert after - baseline < 5
