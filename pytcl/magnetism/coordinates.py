@@ -284,10 +284,17 @@ def _declination_at(
     year: float | None,
 ) -> float:
     """Angle of magnetic north east of geographic north (radians)."""
-    from pytcl.magnetism.wmm import wmm
+    from pytcl.magnetism.wmm import _wmm_core
 
+    # Callers here (geog_heading2mag, mag_heading2geog) accept any
+    # MagneticCoefficients, IGRF14 included -- most sibling functions in
+    # this module default to it. wmm()'s validity-window warning is keyed
+    # on treating coeffs.epoch as "start of a five-year WMM window," which
+    # is wrong for IGRF-sourced coefficients (see igrf.py's own use of
+    # _wmm_core for the same reason), so this goes straight to the
+    # unwarned core rather than the public, WMM-window-checked wmm().
     y = coeffs.epoch if year is None else year
-    res = wmm(lat, lon, h / 1000.0, y, coeffs)  # wmm takes km
+    res = _wmm_core(lat, lon, h / 1000.0, y, coeffs)  # wmm takes km
     return float(res.D)
 
 

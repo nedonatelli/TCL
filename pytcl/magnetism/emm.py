@@ -622,6 +622,10 @@ def emm(
     if params is not None:
         valid_start = params["valid_start"]
         valid_end = params["valid_end"]
+        # epoch is used below only to phrase the message ("N years
+        # backward/forward from the epoch"); unlike WMM's derived window
+        # (epoch to epoch + 5.0), EMM's valid_start/valid_end are declared
+        # independently and are not computed from epoch.
         epoch = params["epoch"]
         if year < valid_start:
             warnings.warn(

@@ -30,7 +30,9 @@ import warnings
 import numpy as np
 import pytest
 
+from pytcl.magnetism.coordinates import geog_heading2mag, mag_heading2geog
 from pytcl.magnetism.emm import EMM_PARAMETERS, create_test_coefficients, emm
+from pytcl.magnetism.igrf import IGRF14
 from pytcl.magnetism.wmm import (
     WMM2020,
     WMM2025,
@@ -127,6 +129,22 @@ class TestEMMValidityWindow:
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             emm(DENVER_LAT, DENVER_LON, 0.0, 2020.0, coefficients=coef)
+
+    def test_at_its_window_boundaries_is_silent(self):
+        """year == valid_start and year == valid_end are inside the
+        (inclusive) window, not outside it -- the WMM analogue of this
+        (`TestWMMValidityWindow.test_at_the_epoch_boundary_is_silent`) only
+        checks one boundary since WMM's window is derived (epoch is always
+        the start); EMM's two bounds are independently declared, so both
+        need their own check against an off-by-one in either comparison.
+        """
+        coef = create_test_coefficients(n_max=36)
+        valid_start = EMM_PARAMETERS["EMM2017"]["valid_start"]
+        valid_end = EMM_PARAMETERS["EMM2017"]["valid_end"]
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            emm(DENVER_LAT, DENVER_LON, 0.0, valid_start, coefficients=coef)
+            emm(DENVER_LAT, DENVER_LON, 0.0, valid_end, coefficients=coef)
 
     def test_extrapolation_past_2200_matches_the_measured_defect(self):
         """EMM2017 at 2200.0: a 180-year linear extrapolation, zero warnings
@@ -226,3 +244,42 @@ class TestMagneticFieldCache:
         gc.collect()
         after = sum(1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients))
         assert after - baseline < 5
+
+
+# =============================================================================
+# Task 2.4 follow-up: coordinates.py must not measure IGRF coefficients
+# against WMM's validity window
+# =============================================================================
+
+
+class TestCoordinatesAcceptIGRFCoefficientsWithoutFalseWarning:
+    """`geog_heading2mag`/`mag_heading2geog` (and their siblings in
+    coordinates.py) accept any `MagneticCoefficients`, IGRF14 included --
+    most of the module's other functions default to it. Their shared
+    `_declination_at` helper originally called the public, WMM-window-
+    checked `wmm()`, so passing `IGRF14` through it at a year outside
+    WMM2025's window (but squarely inside IGRF's) produced a false-positive
+    "before WMM2025's valid window ... prefer an older WMM release or
+    IGRF" warning -- wrong on every count: these are already IGRF
+    coefficients. Reproduces the exact call the review flagged.
+
+    `_declination_at` now always calls the unwarned `_wmm_core`, the same
+    fix applied to `igrf.py` and for the same reason: it is generic
+    infrastructure that accepts either family of coefficients, and there
+    is no reliable way to tell which family a given `MagneticCoefficients`
+    came from (see the report's discussion of why a generic provenance tag
+    was rejected). One consequence: WMM coefficients routed through this
+    same path also stop warning here -- callers who want the WMM window
+    warning get it by calling `wmm()` directly, which is untouched by this
+    fix and still warns (`TestWMMValidityWindow`).
+    """
+
+    def test_geog_heading2mag_with_igrf_coefficients_is_silent(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            geog_heading2mag([DENVER_LAT, DENVER_LON, 0.0], 0.5, IGRF14, year=1990.0)
+
+    def test_mag_heading2geog_with_igrf_coefficients_is_silent(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            mag_heading2geog([DENVER_LAT, DENVER_LON, 0.0], 0.5, IGRF14, year=1990.0)
