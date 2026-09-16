@@ -148,6 +148,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `-9999.0` before return, matching the convention `_build_gebco_grid`
   already passes to `DEMGrid`.
 
+- `pytcl.atmosphere.models`: `us_standard_atmosphere_1976` clamped its
+  geopotential altitude to `[0, 84852]` m, silently returning the
+  sea-level state for any negative altitude -- the Dead Sea (-430 m)
+  came back as 101325.0 Pa against the standard's 106598.8 Pa (5% low),
+  and -1000 m was 11% low. US76 is actually defined down to a -5000 m
+  floor; the clamp is now `[-5000, 84852]`, and both ends warn instead
+  of clamping silently (the pre-existing 86 km ceiling never warned
+  either). `altitude_from_pressure` inverts only the troposphere
+  gradient layer, so pressures outside that layer's range extrapolated
+  its lapse rate through layers that do not use it -- 30 km's pressure
+  (1197 Pa) inverted to 25379.2 m, 4621 m off; it now warns and clamps
+  to the layer's own pressure range instead.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

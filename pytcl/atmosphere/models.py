@@ -45,6 +45,8 @@ G0 = 9.80665  # Standard gravity (m/s²)
 R = 287.05287  # Specific gas constant for air (J/(kg·K))
 GAMMA = 1.4  # Ratio of specific heats for air
 R_EARTH_US76 = 6356766.0  # Earth radius adopted by US76 for geopotential height (m)
+US76_MIN_ALTITUDE_M = -5000.0  # Geometric altitude; standard's defined floor
+US76_MAX_GEOPOTENTIAL_M = 84852.0  # Geopotential altitude; standard's defined ceiling
 
 # Layer boundaries and lapse rates (altitude in m, lapse rate in K/m)
 # Layer: (base altitude, base temperature, lapse rate)
@@ -79,13 +81,22 @@ def us_standard_atmosphere_1976(
     Parameters
     ----------
     altitude : array_like
-        Geometric altitude in meters. Valid from 0 to ~86 km.
+        Geometric altitude in meters. Defined from -5000 m to ~86 km
+        (84852 m geopotential); outside that range the nearest layer's
+        lapse rate is extrapolated and a warning is raised.
 
     Returns
     -------
     state : AtmosphereState
         Atmospheric state containing temperature, pressure, density,
         and speed of sound.
+
+    Warns
+    -----
+    UserWarning
+        If `altitude` is below -5000 m or above the ~86 km ceiling,
+        since the standard's layer table does not extend past there
+        and the result is extrapolated from the nearest boundary.
 
     Examples
     --------
@@ -99,7 +110,7 @@ def us_standard_atmosphere_1976(
     -----
     The US Standard Atmosphere 1976 is a model of the Earth's atmosphere
     that defines temperature, pressure, and density as functions of altitude.
-    It is valid from sea level to approximately 86 km altitude.
+    It is defined from -5000 m to approximately 86 km altitude.
 
     References
     ----------
@@ -117,8 +128,37 @@ def us_standard_atmosphere_1976(
     for i, z in enumerate(altitude):
         # The US76 layer table is defined in geopotential height
         h = R_EARTH_US76 * z / (R_EARTH_US76 + z)
-        # Clamp altitude to valid range
-        h = np.clip(h, 0, 84852)
+
+        # US76's own domain is -5000 m to 84852 m geopotential; the
+        # -5000 m floor is applied to the geometric input (not to h)
+        # since that is how the standard's table is anchored -- clamping
+        # h itself would shift the -5000 m reference case off the
+        # published pressure by ~75 Pa.
+        if z < US76_MIN_ALTITUDE_M:
+            warnings.warn(
+                f"Altitude {z:.1f} m is below US Standard Atmosphere "
+                f"1976's validity floor of {US76_MIN_ALTITUDE_M:.0f} m; "
+                "the troposphere lapse rate is extrapolated downward "
+                "from the floor and the result will diverge from the "
+                "published model.",
+                stacklevel=2,
+            )
+            h = (
+                R_EARTH_US76
+                * US76_MIN_ALTITUDE_M
+                / (R_EARTH_US76 + US76_MIN_ALTITUDE_M)
+            )
+        elif h > US76_MAX_GEOPOTENTIAL_M:
+            warnings.warn(
+                f"Altitude {z:.1f} m is above US Standard Atmosphere "
+                "1976's validity ceiling of ~86 km "
+                f"({US76_MAX_GEOPOTENTIAL_M:.0f} m geopotential); the "
+                "mesopause temperature is held constant above the "
+                "ceiling and the result will diverge from the "
+                "published model.",
+                stacklevel=2,
+            )
+            h = US76_MAX_GEOPOTENTIAL_M
 
         # Find which layer we're in
         layer_idx, h_base, T_base, L = _get_layer(h)
@@ -268,6 +308,15 @@ def altitude_from_pressure(
     altitude : ndarray
         Geometric altitude in meters.
 
+    Warns
+    -----
+    UserWarning
+        If `pressure` falls outside the troposphere layer this
+        inversion covers (the pressure at the -5000 m floor down to
+        the pressure at the 11000 m tropopause); the result is
+        clamped to that layer's boundary rather than extrapolated
+        through the model's other (differently-sloped) layers.
+
     Examples
     --------
     >>> # Sea level pressure
@@ -280,13 +329,39 @@ def altitude_from_pressure(
 
     Notes
     -----
-    This is an approximate inversion of the ISA model, valid primarily
-    in the troposphere.
+    This inverts the closed-form troposphere gradient formula, so it
+    is only exact within the troposphere layer (-5000 m to 11000 m
+    geopotential). Outside that layer's pressure range the model
+    switches to a different lapse rate that this inversion does not
+    represent.
     """
     pressure = np.asarray(pressure, dtype=np.float64)
 
     L = -0.0065  # Lapse rate
     exponent = -R * L / G0
+
+    trop_h_max = US76_LAYERS[1][0]  # tropopause: floor of the isothermal layer
+    # US76_MIN_ALTITUDE_M is geometric (matches the floor check in
+    # us_standard_atmosphere_1976); convert to geopotential before
+    # plugging into the lapse-rate formula, or p_max comes out ~75 Pa
+    # low (this is the "geometric altitude form" bug from task 2.7).
+    trop_h_min = (
+        R_EARTH_US76 * US76_MIN_ALTITUDE_M / (R_EARTH_US76 + US76_MIN_ALTITUDE_M)
+    )
+    p_max = P0 * ((T0 + L * trop_h_min) / T0) ** (-G0 / (R * L))
+    p_min = P0 * ((T0 + L * trop_h_max) / T0) ** (-G0 / (R * L))
+
+    if np.any(pressure > p_max) or np.any(pressure < p_min):
+        warnings.warn(
+            "Pressure outside the troposphere layer this inversion "
+            f"covers ([{p_min:.1f}, {p_max:.1f}] Pa, spanning the "
+            f"{US76_MIN_ALTITUDE_M:.0f} m floor to the {trop_h_max:.0f} m "
+            "tropopause); the result is clamped to that layer's "
+            "boundary and will diverge from the layered US76 model "
+            "beyond it.",
+            stacklevel=2,
+        )
+        pressure = np.clip(pressure, p_min, p_max)
 
     # Invert P = P0 * (T/T0)^(-g0/(R*L)) with T = T0 + L*h (geopotential),
     # then convert geopotential height back to geometric altitude
