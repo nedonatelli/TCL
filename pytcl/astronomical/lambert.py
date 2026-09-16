@@ -486,6 +486,7 @@ def minimum_energy_transfer(
     r2_mag = np.linalg.norm(r2)
 
     # Chord
+    cross = np.cross(r1, r2)
     cos_dnu = np.dot(r1, r2) / (r1_mag * r2_mag)
     c = np.sqrt(r1_mag**2 + r2_mag**2 - 2 * r1_mag * r2_mag * cos_dnu)
 
@@ -495,9 +496,22 @@ def minimum_energy_transfer(
     # Minimum energy semi-major axis
     a_min = s / 2
 
-    # Minimum energy time of flight (parabolic)
+    # Transfer-angle sense, mirrored from lambert_universal's own dnu
+    # convention (which this function calls below at its default
+    # low_path=True) so beta's branch matches the orbit that solve will
+    # actually return.
+    long_way = (cross[2] < 0) if prograde else (cross[2] >= 0)
+
+    # Minimum energy time of flight (parabolic-referenced ellipse).
+    # beta_e's sign flips for a transfer angle > pi: Vallado, "Fundamentals
+    # of Astrodynamics and Applications," 4th ed., Sec. 7.6.1 (Eq. 7-38);
+    # Battin, "Astronautical Guidance," Ch. 3.3 (Eq. 3.23). The MATLAB TCL
+    # counterpart (Astronomical_Code/orbVelDet2PtMinEng.m) only ever solves
+    # the short-way (dnu < pi) case, so it has no such branch to transcribe.
     alpha = 2 * np.arcsin(np.sqrt(s / (2 * a_min)))
     beta = 2 * np.arcsin(np.sqrt((s - c) / (2 * a_min)))
+    if long_way:
+        beta = -beta
 
     tof_min = np.sqrt(a_min**3 / mu) * (alpha - np.sin(alpha) - (beta - np.sin(beta)))
 

@@ -6,8 +6,10 @@ implementation, or published data.
 Oracles in use: `scipy`, `pyproj`, `geographiclib`, `astropy`/`pyerfa`, the
 official `sgp4` package, `satkit` (independent Rust SGP4 + IAU frames; needs
 `uv sync --group validation`), `mpmath` at 50-60 digits, `scikit-learn`,
-`PyWavelets`, brute-force enumeration, and constants from CODATA 2018, WGS84,
-IERS and IAU. Real-world recordings also serve as references: a vendored ADS-B
+`PyWavelets`, brute-force enumeration, a JPL DE440 kernel read directly via
+`jplephem` (the SPK segments themselves, independent of this codebase's
+ephemeris wrapper), and constants from CODATA 2018, WGS84, IERS and IAU.
+Real-world recordings also serve as references: a vendored ADS-B
 air-traffic capture (aircraft broadcast their own ground speed, which the
 filter never sees).
 

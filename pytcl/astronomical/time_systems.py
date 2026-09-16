@@ -11,6 +11,7 @@ This module provides conversions between various time systems:
 - Sidereal time (GMST, GAST)
 """
 
+import warnings
 from typing import List, Tuple
 
 # Constants
@@ -98,6 +99,13 @@ class LeapSecondTable:
         -------
         int
             TAI-UTC offset in seconds.
+
+        Warns
+        -----
+        UserWarning
+            If the date precedes 1972-01-01, the table's first entry. The
+            returned offset is `0`, not the true (drifting, sub-integer)
+            TAI-UTC value for that era.
         """
         offset = 0
         for y, m, d, o in self.entries:
@@ -105,6 +113,24 @@ class LeapSecondTable:
                 offset = o
             else:
                 break
+
+        if (year, month, day) < self.entries[0][:3]:
+            # stacklevel=3 targets get_leap_seconds's caller, not
+            # get_leap_seconds itself -- that's the documented public
+            # entry point, so its callers should see their own line, not
+            # a line inside this module. A direct LeapSecondTable().
+            # get_offset(...) call is consequently attributed one frame
+            # high (to its caller's caller); that's the accepted
+            # tradeoff of one stacklevel serving both paths.
+            warnings.warn(
+                f"UTC before 1972 ({year:04d}-{month:02d}-{day:02d}) predates "
+                "the leap-second table; TAI-UTC was a drifting rubber-second "
+                "offset (~8 s in 1970), not the 0 s returned here. Use "
+                "astropy for pre-1972 epochs.",
+                UserWarning,
+                stacklevel=3,
+            )
+
         return offset
 
 
@@ -129,6 +155,13 @@ def get_leap_seconds(year: int, month: int, day: int) -> int:
     -------
     int
         TAI-UTC offset in seconds.
+
+    Warns
+    -----
+    UserWarning
+        If the date precedes 1972-01-01, the table's first entry. The
+        returned offset is `0`, not the true (drifting, sub-integer)
+        TAI-UTC value for that era.
 
     Examples
     --------
@@ -404,25 +437,42 @@ def tai_to_utc(jd_tai: float) -> Tuple[float, int]:
 
     Notes
     -----
-    This is an approximate conversion that may have small errors
-    near leap second boundaries.
-
-    Notes
-    -----
     The leap-second lookup is by table, so the conversion is exact except
     within one second of an insertion. Instants inside a leap second itself --
     23:59:60 on an insertion date -- have no distinct representation here and
-    are attributed to the following second (gh-25). Sub-second work spanning a
-    leap-second boundary needs a library that models UTC as a discontinuous
-    scale, such as astropy.
+    are attributed to the preceding second (gh-25): TAI 2017-01-01T00:00:36.0
+    returns UTC 2016-12-31T23:59:59.0, not the following midnight. Because of
+    this, the returned UTC value is non-monotone across an inserted second --
+    both the leap second and the ordinary second before it map onto the same
+    UTC second, so `jd_utc` briefly steps backward as `jd_tai` increases
+    through the insertion. Sub-second work spanning a leap-second boundary
+    needs a library that models UTC as a discontinuous scale, such as
+    astropy.
 
     """
-    # First approximation
-    jd_utc_approx = jd_tai
-    year, month, day, _, _, _ = jd_to_cal(jd_utc_approx)
-    leap_seconds = get_leap_seconds(year, month, day)
+    table_start = _LEAP_SECOND_TABLE.entries[0][:3]
+    jd_utc = jd_tai
+    for _ in range(3):
+        year, month, day, _, _, _ = jd_to_cal(jd_utc)
+        leap_seconds = get_leap_seconds(year, month, day)
+        next_utc = jd_tai - leap_seconds / 86400.0
+        if next_utc == jd_utc:
+            break
+        next_date = jd_to_cal(next_utc)[:3]
+        if (year, month, day) >= table_start and next_date < table_start:
+            # The table's first entry applies to TAI instants whose own
+            # UTC answer reads as a date before the table starts (e.g. TAI
+            # 1972-01-01T00:00:05 -> UTC 1971-12-31T23:59:55, leap=10).
+            # Re-deriving leap seconds from that answer's own date would
+            # look it up as pre-1972 and get 0, then bounce back to the
+            # in-table date next pass -- a permanent two-cycle whose
+            # result depends on the parity of the iteration cap. Accept
+            # this UTC estimate now, using the leap value that produced
+            # it, instead of taking that further step.
+            jd_utc = next_utc
+            break
+        jd_utc = next_utc
 
-    jd_utc = jd_tai - leap_seconds / 86400.0
     return jd_utc, leap_seconds
 
 

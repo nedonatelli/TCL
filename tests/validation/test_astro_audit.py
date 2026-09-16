@@ -152,7 +152,8 @@ class TestTimeScales:
         assert ts.get_leap_seconds(1980, 1, 6) == 19
         assert ts.get_leap_seconds(1981, 6, 30) == 19
         assert ts.get_leap_seconds(1981, 7, 1) == 20
-        assert ts.get_leap_seconds(1971, 12, 31) == 0
+        with pytest.warns(UserWarning, match="before 1972"):
+            assert ts.get_leap_seconds(1971, 12, 31) == 0
 
     def test_tt_tai_gps_offsets(self):
         jd = 2451545.0
