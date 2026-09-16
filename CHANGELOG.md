@@ -82,6 +82,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longitude `nu` -- 14910 km for `raan=0.0`, 7671 km for `raan=0.7` --
   and gets the same sign flip.
 
+- `pytcl.gravity.egm`: `geoid_height` fed geodetic latitude and
+  `r = R` (the mean reference radius) into a spherical-harmonic
+  synthesis defined in geocentric latitude at the true ellipsoid radius
+  under the point. Against real EGM96 (degree 360) the two error terms
+  sign-flip independently between points -- e.g. at (45, 10) latitude
+  error +0.624 m, radius error +1.224 m; at (-23.6174, 133.8747)
+  latitude error -1.422 m, radius error +0.056 m -- so the docstring's
+  claim that differences between two points are more accurate than
+  either absolute value was false and has been removed.
+
+- `pytcl.gravity.clenshaw`: `clenshaw_geoid` zeroed only the `n=0,1`
+  terms and called that "the reference field", but the reference field
+  is the ellipsoid's even zonal harmonics -- C20 above all -- which
+  survived intact; it also evaluated at `r = R` with a comment saying
+  "simplified", omitting the `(R/r)^n` scaling. Against real EGM96
+  (degree 360) this put the geoid at +3482.31 m, -1689.60 m and
+  -5643.72 m at (0,0), (45,10) and (-70,45) -- 30x outside the true
+  geoid's +/-110 m range. Now subtracts the ported
+  `models.ellips_grav_coeffs` reference field and applies the same
+  geocentric latitude / true radius fix as `geoid_height`, which it
+  now agrees with to better than 1 mm.
+
+- `pytcl.gravity.models`: `gravity_j2` used `r = a + h` and treated
+  geodetic latitude as geocentric. At the pole this gave 9.766462 vs
+  `normal_gravity`'s 9.832184 m/s^2 -- a 6572 mGal (0.67%) error; at
+  45 deg it was 3277 mGal. The equator error was only 4.4 mGal, which
+  is why an equator-only test missed it. Fixed by deriving the true
+  radius and geocentric latitude the same way as `geoid_height`.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
