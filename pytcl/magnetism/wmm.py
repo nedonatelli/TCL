@@ -12,6 +12,7 @@ References
 - https://www.ngdc.noaa.gov/geomag/WMM/
 """
 
+import warnings
 from functools import lru_cache
 from typing import Any, NamedTuple, Optional, Tuple
 
@@ -734,16 +735,64 @@ def wmm(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside `coeffs`'s five-year validity window
+        (epoch to epoch + 5.0); the secular-variation terms are being
+        extrapolated and the result is not an official WMM value.
+
     Examples
     --------
     >>> import numpy as np
-    >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
+    >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2026.0)
     >>> print(f"Declination: {np.degrees(result.D):.2f}°")
-    Declination: 7.83°
+    Declination: 7.58°
     >>> print(f"Inclination: {np.degrees(result.I):.2f}°")
-    Inclination: 66.23°
+    Inclination: 66.08°
     >>> print(f"Total intensity: {result.F:.0f} nT")
-    Total intensity: 51573 nT
+    Total intensity: 51207 nT
+    """
+    valid_start = coeffs.epoch
+    valid_end = coeffs.epoch + 5.0
+    label = f"WMM{int(coeffs.epoch)}"
+    if year < valid_start:
+        warnings.warn(
+            f"The year {year:.1f} is before {label}'s valid window "
+            f"({valid_start:.1f} to {valid_end:.1f}); the field is "
+            f"extrapolated {valid_start - year:.1f} years backward from the "
+            f"{coeffs.epoch:.1f} epoch and will diverge from the true field "
+            f"by an unknown amount. For years before {valid_start:.1f}, "
+            "prefer an older WMM release or IGRF.",
+            stacklevel=2,
+        )
+    elif year > valid_end:
+        warnings.warn(
+            f"The year {year:.1f} is beyond {label}'s valid window "
+            f"({valid_start:.1f} to {valid_end:.1f}), {year - valid_end:.1f} "
+            f"years past {valid_end:.1f}; the field is extrapolated forward "
+            f"from the {coeffs.epoch:.1f} epoch and will diverge from the "
+            "true field by an unknown, growing amount. For years after "
+            f"{valid_end:.1f}, prefer a newer WMM release.",
+            stacklevel=2,
+        )
+
+    return _wmm_core(lat, lon, h, year, coeffs)
+
+
+def _wmm_core(
+    lat: float,
+    lon: float,
+    h: float,
+    year: float,
+    coeffs: MagneticCoefficients,
+) -> MagneticResult:
+    """WMM synthesis without the validity-window warning.
+
+    Shared by :func:`wmm` and by :func:`pytcl.magnetism.igrf.igrf`, which
+    evaluates the same geodetic synthesis with IGRF coefficients that
+    carry their own, differently-shaped validity window (checked in
+    :func:`pytcl.magnetism.igrf.create_igrf14_coefficients` instead).
     """
     # Convert geodetic (WGS84) to geocentric spherical coordinates
     a_wgs = 6378.137  # WGS84 semi-major axis, km
@@ -872,7 +921,7 @@ def magnetic_inclination(
     >>> # Inclination at 40°N, 105°W (Denver)
     >>> lat = np.radians(40)
     >>> lon = np.radians(-105)
-    >>> I = magnetic_inclination(lat, lon, 1.6, 2023.0)
+    >>> I = magnetic_inclination(lat, lon, 1.6, 2026.0)
     >>> # Northern hemisphere: inclination should be positive
     >>> bool(I > 0)
     True
@@ -917,8 +966,8 @@ def magnetic_field_intensity(
     >>> import numpy as np
     >>> from pytcl.magnetism import magnetic_field_intensity
     >>> # Field intensity at magnetic equator vs pole
-    >>> F_eq = magnetic_field_intensity(0, 0, 0, 2023.0)  # Equator
-    >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2023.0)  # Near pole
+    >>> F_eq = magnetic_field_intensity(0, 0, 0, 2026.0)  # Equator
+    >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2026.0)  # Near pole
     >>> # Field is stronger at poles
     >>> bool(F_pole > F_eq)
     True

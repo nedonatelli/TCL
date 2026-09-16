@@ -21,6 +21,7 @@ References
   https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
 """
 
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, NamedTuple, Optional, Tuple, Union
@@ -597,6 +598,14 @@ def emm(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside `model`'s declared validity window
+        (`EMM_PARAMETERS[model]["valid_start"]` to `["valid_end"]`); the
+        secular-variation terms are being extrapolated and the result is
+        not an official model value.
+
     Examples
     --------
     >>> import numpy as np
@@ -608,6 +617,33 @@ def emm(
     """
     if coefficients is None:
         coefficients = load_emm_coefficients(model, n_max)
+
+    params = EMM_PARAMETERS.get(model)
+    if params is not None:
+        valid_start = params["valid_start"]
+        valid_end = params["valid_end"]
+        epoch = params["epoch"]
+        if year < valid_start:
+            warnings.warn(
+                f"The year {year:.1f} is before {model}'s valid window "
+                f"({valid_start:.1f} to {valid_end:.1f}); the field is "
+                f"extrapolated {valid_start - year:.1f} years backward from "
+                f"the {epoch:.1f} epoch and will diverge from the true "
+                f"field by an unknown amount. For years before "
+                f"{valid_start:.1f}, prefer an older model or IGRF.",
+                stacklevel=2,
+            )
+        elif year > valid_end:
+            warnings.warn(
+                f"The year {year:.1f} is beyond {model}'s valid window "
+                f"({valid_start:.1f} to {valid_end:.1f}), "
+                f"{year - valid_end:.1f} years past {valid_end:.1f}; the "
+                f"field is extrapolated forward from the {epoch:.1f} epoch "
+                "and will diverge from the true field by an unknown, "
+                f"growing amount. For years after {valid_end:.1f}, prefer "
+                "a newer model release.",
+                stacklevel=2,
+            )
 
     # Handle array inputs by iterating (spherical harmonic sum is scalar)
     lat_arr = np.asarray(lat)
@@ -699,10 +735,16 @@ def wmmhr(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside WMMHR2025's 2025.0-2030.0 validity
+        window; see `emm`.
+
     Notes
     -----
     WMMHR2025 is valid for 2025.0 - 2030.0. For dates outside this
-    range, results may be less accurate.
+    range, results are extrapolated (see Warns).
 
     Secular variation is only computed for degrees 1-15. Higher degree
     terms represent static crustal field.

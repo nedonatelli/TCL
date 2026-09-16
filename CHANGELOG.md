@@ -111,6 +111,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is why an equator-only test missed it. Fixed by deriving the true
   radius and geocentric latitude the same way as `geoid_height`.
 
+- `pytcl.magnetism.wmm` / `pytcl.magnetism.emm`: `wmm()` and `emm()`
+  extrapolated the linear secular-variation terms arbitrarily far outside
+  a coefficient set's declared validity window with no warning --
+  `EMM_PARAMETERS[model]["valid_start"/"valid_end"]` were declared and
+  never read, and WMM's five-year window (epoch to epoch + 5.0) was
+  nowhere enforced. `wmm(40N, 105W, 2000.0)` (WMM2025's window is
+  2025.0-2030.0) returned D=9.651 deg, F=54426.3 nT against IGRF-14's own
+  2000.0-epoch values of D=10.431 deg, F=54147.7 nT -- 0.78 deg / 279 nT
+  off, with zero warnings; at 2100.0 it returned F=42377.6 nT, and
+  EMM2017 at 2200.0 (a 180-year extrapolation) returned F=35661.2 nT,
+  also silent. Both now warn -- naming the requested year, the window,
+  and the extrapolation magnitude -- whenever the year falls outside the
+  coefficient set's window; the returned values are unchanged.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

@@ -11,11 +11,11 @@ Examples
 >>> import numpy as np
 
 >>> # Magnetic field at a location
->>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
+>>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2026.0)
 >>> print(f"Declination: {np.degrees(result.D):.2f}°")
-Declination: 7.83°
+Declination: 7.58°
 >>> print(f"Total intensity: {result.F:.0f} nT")
-Total intensity: 51573 nT
+Total intensity: 51207 nT
 
 >>> # Just the declination
 >>> D = magnetic_declination(np.radians(40), np.radians(-105))

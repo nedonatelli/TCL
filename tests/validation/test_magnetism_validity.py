@@ -1,0 +1,145 @@
+"""Validity-window warnings for WMM and EMM (v2.11.1 task 2.4).
+
+``wmm()`` and ``emm()`` extrapolated the linear secular-variation terms
+arbitrarily far outside a coefficient set's declared validity window with
+no warning at all. ``EMM_PARAMETERS[model]["valid_start"/"valid_end"]``
+were declared and never read; WMM carries no explicit window, but its
+five-year validity (epoch to epoch + 5.0) is documented in every
+``create_wmmYYYY_coefficients`` docstring. Measured before the fix:
+``wmm(40N, 105W, 2000.0)`` (using the default WMM2025 coefficients, whose
+window is 2025.0-2030.0) returned D=9.651 deg, F=54426.3 nT against IGRF-14's
+own 2000.0-epoch values of D=10.431 deg, F=54147.7 nT -- 0.78 deg and 279 nT
+off, with zero warnings. This suite pins that same wrong-but-now-warned value
+(the fix adds a warning, it does not change what gets returned) and checks
+both directions of the window and both models.
+"""
+
+import warnings
+
+import numpy as np
+import pytest
+
+from pytcl.magnetism.emm import EMM_PARAMETERS, create_test_coefficients, emm
+from pytcl.magnetism.wmm import WMM2020, WMM2025, wmm
+
+DENVER_LAT = np.radians(40.0)
+DENVER_LON = np.radians(-105.0)
+
+
+# =============================================================================
+# WMM validity window
+# =============================================================================
+
+
+class TestWMMValidityWindow:
+    def test_warns_before_its_validity_window(self):
+        """WMM2025 is valid from 2025.0; 2000.0 is 25 years early."""
+        with pytest.warns(UserWarning, match="valid.*2025"):
+            wmm(DENVER_LAT, DENVER_LON, 0.0, 2000.0)
+
+    def test_warns_beyond_its_validity_window(self):
+        """WMM2025 is valid through 2030.0; 2100.0 is 70 years late."""
+        with pytest.warns(UserWarning, match="valid.*2030"):
+            wmm(DENVER_LAT, DENVER_LON, 0.0, 2100.0)
+
+    def test_inside_the_window_is_silent(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            wmm(DENVER_LAT, DENVER_LON, 0.0, 2026.7)
+
+    def test_at_the_epoch_boundary_is_silent(self):
+        """year == epoch is the start of the window, not before it."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            wmm(DENVER_LAT, DENVER_LON, 0.0, WMM2025.epoch)
+
+    def test_extrapolation_past_2000_matches_the_measured_defect(self):
+        """The fix adds a warning; it must not change the extrapolated value.
+
+        Pins the exact figures from the v2.11.1 audit: D=9.651 deg,
+        F=54426.3 nT, 0.78 deg / 279 nT off IGRF-14's true 2000.0 field.
+        A regression here means the fix altered wmm()'s output, which the
+        patch-release constraints forbid.
+        """
+        with pytest.warns(UserWarning):
+            result = wmm(DENVER_LAT, DENVER_LON, 0.0, 2000.0)
+        assert np.degrees(result.D) == pytest.approx(9.651, abs=1e-2)
+        assert result.F == pytest.approx(54426.3, abs=1.0)
+
+    def test_older_release_is_valid_over_its_own_window(self):
+        """WMM2020 (epoch 2020.0) treats 2000.0 as before its own window."""
+        with pytest.warns(UserWarning, match="valid.*2020"):
+            wmm(DENVER_LAT, DENVER_LON, 0.0, 2000.0, WMM2020)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            wmm(DENVER_LAT, DENVER_LON, 0.0, 2023.0, WMM2020)
+
+
+# =============================================================================
+# EMM / WMMHR validity window
+# =============================================================================
+
+
+class TestEMMValidityWindow:
+    """EMM_PARAMETERS is nested per model: EMM2017 valid 2000-2022 (n_max
+    790, epoch 2017.0); WMMHR2025 valid 2025-2030 (n_max 133, epoch 2025.0).
+    Uses synthetic in-memory coefficients throughout (``create_test_coefficients``)
+    so these run without the real (multi-MB, not vendored) .COF files -- the
+    window check reads ``EMM_PARAMETERS[model]``, independent of which
+    coefficients object was actually supplied.
+    """
+
+    def test_reads_its_declared_validity_parameters(self):
+        """valid_start/valid_end were declared and never consulted."""
+        coef = create_test_coefficients(n_max=36)
+        valid_end = EMM_PARAMETERS["EMM2017"]["valid_end"]
+        with pytest.warns(UserWarning, match="valid.*2022"):
+            emm(DENVER_LAT, DENVER_LON, 0.0, valid_end + 5.0, coefficients=coef)
+
+    def test_warns_before_its_validity_window(self):
+        coef = create_test_coefficients(n_max=36)
+        valid_start = EMM_PARAMETERS["EMM2017"]["valid_start"]
+        with pytest.warns(UserWarning, match="valid.*2000"):
+            emm(DENVER_LAT, DENVER_LON, 0.0, valid_start - 5.0, coefficients=coef)
+
+    def test_inside_its_window_is_silent(self):
+        coef = create_test_coefficients(n_max=36)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            emm(DENVER_LAT, DENVER_LON, 0.0, 2020.0, coefficients=coef)
+
+    def test_extrapolation_past_2200_matches_the_measured_defect(self):
+        """EMM2017 at 2200.0: a 180-year linear extrapolation, zero warnings
+        before the fix. Value is unpinned (it depends on the synthetic test
+        coefficients, not the real EMM2017 table) but must now warn.
+        """
+        coef = create_test_coefficients(n_max=36)
+        with pytest.warns(UserWarning, match="valid.*2022"):
+            result = emm(DENVER_LAT, DENVER_LON, 0.0, 2200.0, coefficients=coef)
+        assert np.isfinite(result.F)
+
+    def test_wmmhr2025_uses_its_own_window_not_emm2017s(self):
+        """The two models' windows do not collide: WMMHR2025 is 2025-2030,
+        EMM2017 is 2000-2022. A year inside one and outside the other must
+        warn only under the model it is actually outside of.
+        """
+        coef = create_test_coefficients(n_max=36)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            emm(
+                DENVER_LAT,
+                DENVER_LON,
+                0.0,
+                2026.0,
+                model="WMMHR2025",
+                coefficients=coef,
+            )
+        with pytest.warns(UserWarning, match="valid.*2025"):
+            emm(
+                DENVER_LAT,
+                DENVER_LON,
+                0.0,
+                2020.0,
+                model="WMMHR2025",
+                coefficients=coef,
+            )
