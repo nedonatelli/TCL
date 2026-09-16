@@ -7,6 +7,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.core.exceptions import DependencyError
+from pytcl.core.optional_deps import is_available
 from pytcl.terrain import (
     EARTH2014_PARAMETERS,
     GEBCO_PARAMETERS,
@@ -21,9 +22,11 @@ from pytcl.terrain import (
     get_gebco_metadata,
     load_earth2014,
     load_gebco,
+    parse_gebco_netcdf,
 )
 
 _data_skip = (FileNotFoundError, DependencyError)
+_HAS_NETCDF4 = is_available("netCDF4")
 
 # Common test region (New York area, ~1° x 1°)
 _NYC = dict(
@@ -723,6 +726,58 @@ class TestDEMCacheAndPerformance:
         dem2 = load_earth2014(**args)
 
         assert dem1 is dem2
+
+
+@pytest.mark.skipif(not _HAS_NETCDF4, reason="netCDF4 not installed")
+class TestParseGebcoNetCDFFillValue:
+    """A netCDF4 masked array's mask must survive parse_gebco_netcdf.
+
+    ``np.asarray()`` on a masked array drops the mask, so a ``_FillValue``
+    cell reads back as a real elevation. The shipped GEBCO_2025.nc declares
+    no ``_FillValue`` (this does not bite the bundled data), but the parser
+    is exported for user files that may.
+    """
+
+    @staticmethod
+    def _write_gebco_with_fill_value(tmp_path: Path, fill: float) -> Path:
+        import netCDF4 as nc
+
+        lats = np.linspace(-1.0, 1.0, 5)
+        lons = np.linspace(-1.0, 1.0, 5)
+        elevation = np.full((5, 5), 100.0)
+        elevation[2, 2] = fill  # hole at (lat=0, lon=0)
+
+        path = tmp_path / "GEBCO_fill.nc"
+        with nc.Dataset(path, "w") as ds:
+            ds.createDimension("lat", len(lats))
+            ds.createDimension("lon", len(lons))
+            ds.createVariable("lat", "f8", ("lat",))[:] = lats
+            ds.createVariable("lon", "f8", ("lon",))[:] = lons
+            var = ds.createVariable("elevation", "f8", ("lat", "lon"), fill_value=fill)
+            var[:] = elevation
+        return path
+
+    def test_fill_valued_cell_is_not_a_real_elevation(self, tmp_path):
+        """netCDF4 masks the _FillValue cell; the parser must not report
+        it as -32768.0 (the value on disk)."""
+        path = self._write_gebco_with_fill_value(tmp_path, fill=-32768.0)
+
+        data, *_ = parse_gebco_netcdf(path)
+
+        assert data[2, 2] != pytest.approx(-32768.0)
+        assert data[2, 2] == pytest.approx(-9999.0)
+
+    def test_fill_valued_cell_is_invalid_once_wrapped_in_a_demgrid(self, tmp_path):
+        """The audit measured bilinear interpolation beside a leaked fill
+        value returning -11732.5 m. DEMGrid's own nodata check (hardcoded
+        -9999.0) only catches the hole if the parser maps it there."""
+        path = self._write_gebco_with_fill_value(tmp_path, fill=-32768.0)
+
+        data, lat_min, lat_max, lon_min, lon_max = parse_gebco_netcdf(path)
+        grid = DEMGrid(data, lat_min, lat_max, lon_min, lon_max)
+
+        beside_the_hole = grid.get_elevation(np.radians(0.1), np.radians(0.1))
+        assert not beside_the_hole.valid
 
 
 if __name__ == "__main__":

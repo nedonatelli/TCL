@@ -137,6 +137,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   simply a cache miss, and nothing outside the cache retains a
   coefficient set once the caller drops it.
 
+- `pytcl.terrain.loaders`: `parse_gebco_netcdf` read the netCDF
+  `elevation` variable with `np.asarray`, which drops a netCDF4 masked
+  array's mask -- a `_FillValue` cell became a real elevation, and since
+  `DEMGrid`'s nodata sentinel is `-9999.0`, a raw fill value like
+  `-32768` read back as valid, letting bilinear interpolation blend it
+  into neighboring queries. The shipped `GEBCO_2025.nc` declares no
+  `_FillValue` so this did not bite the bundled data, but the parser is
+  exported for user files that may. Masked cells are now filled with
+  `-9999.0` before return, matching the convention `_build_gebco_grid`
+  already passes to `DEMGrid`.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
