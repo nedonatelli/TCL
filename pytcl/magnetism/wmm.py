@@ -405,12 +405,22 @@ def _coefficient_key(
     piece of ``coeffs`` the field depends on, so a change to any of them
     -- including an in-place mutation of one array, which leaves ``id()``
     unchanged -- changes this key and therefore cannot hit a stale entry.
+
+    Packed as float64 regardless of the input arrays' own dtype:
+    ``_decode_and_compute`` always decodes the packed bytes back with
+    ``np.frombuffer(..., dtype=np.float64)``, so a float32 (or other
+    non-float64) coefficient array packed at its native width would
+    leave a buffer whose size is not a multiple of float64's itemsize,
+    raising ``ValueError`` on decode. No in-repo coefficient set is
+    float32, but ``MagneticCoefficients`` is typed to allow it and this
+    cache must not be the reason a previously-working array stops
+    working.
     """
     return (
-        coeffs.g.tobytes(),
-        coeffs.h.tobytes(),
-        coeffs.g_dot.tobytes(),
-        coeffs.h_dot.tobytes(),
+        np.ascontiguousarray(coeffs.g, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.h, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.g_dot, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.h_dot, dtype=np.float64).tobytes(),
         coeffs.epoch,
         coeffs.n_max,
     )

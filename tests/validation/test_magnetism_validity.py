@@ -107,25 +107,33 @@ class TestEMMValidityWindow:
     790, epoch 2017.0); WMMHR2025 valid 2025-2030 (n_max 133, epoch 2025.0).
     Uses synthetic in-memory coefficients throughout (``create_test_coefficients``)
     so these run without the real (multi-MB, not vendored) .COF files -- the
-    window check reads ``EMM_PARAMETERS[model]``, independent of which
-    coefficients object was actually supplied.
+    window check reads ``EMM_PARAMETERS[coefficients.model_name]``, i.e. what
+    the supplied coefficients themselves declare, not the ``model=`` string
+    argument (review round: the two can disagree -- ``model`` stays
+    "EMM2017" by default even when ``coefficients=`` supplies something
+    else, which is the only way every in-repo test exercises EMM at all,
+    since the real .COF files are not vendored). Tests here that want a
+    window checked stamp the synthetic coefficients with the real model's
+    name via ``._replace(model_name=...)``; ``create_test_coefficients()``
+    on its own carries ``model_name="EMM_TEST"``, an unknown model, and
+    must not borrow another model's window.
     """
 
     def test_reads_its_declared_validity_parameters(self):
         """valid_start/valid_end were declared and never consulted."""
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
         valid_end = EMM_PARAMETERS["EMM2017"]["valid_end"]
         with pytest.warns(UserWarning, match="valid.*2022"):
             emm(DENVER_LAT, DENVER_LON, 0.0, valid_end + 5.0, coefficients=coef)
 
     def test_warns_before_its_validity_window(self):
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
         valid_start = EMM_PARAMETERS["EMM2017"]["valid_start"]
         with pytest.warns(UserWarning, match="valid.*2000"):
             emm(DENVER_LAT, DENVER_LON, 0.0, valid_start - 5.0, coefficients=coef)
 
     def test_inside_its_window_is_silent(self):
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             emm(DENVER_LAT, DENVER_LON, 0.0, 2020.0, coefficients=coef)
@@ -138,7 +146,7 @@ class TestEMMValidityWindow:
         the start); EMM's two bounds are independently declared, so both
         need their own check against an off-by-one in either comparison.
         """
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
         valid_start = EMM_PARAMETERS["EMM2017"]["valid_start"]
         valid_end = EMM_PARAMETERS["EMM2017"]["valid_end"]
         with warnings.catch_warnings():
@@ -151,7 +159,7 @@ class TestEMMValidityWindow:
         before the fix. Value is unpinned (it depends on the synthetic test
         coefficients, not the real EMM2017 table) but must now warn.
         """
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
         with pytest.warns(UserWarning, match="valid.*2022"):
             result = emm(DENVER_LAT, DENVER_LON, 0.0, 2200.0, coefficients=coef)
         assert np.isfinite(result.F)
@@ -161,7 +169,7 @@ class TestEMMValidityWindow:
         EMM2017 is 2000-2022. A year inside one and outside the other must
         warn only under the model it is actually outside of.
         """
-        coef = create_test_coefficients(n_max=36)
+        coef = create_test_coefficients(n_max=36)._replace(model_name="WMMHR2025")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
             emm(
@@ -181,6 +189,33 @@ class TestEMMValidityWindow:
                 model="WMMHR2025",
                 coefficients=coef,
             )
+
+    def test_window_check_follows_the_coefficients_not_the_model_string(self):
+        """review round: ``model=`` defaults to "EMM2017" regardless of what
+        ``coefficients=`` actually supplies. A year outside EMM2017's window
+        must not warn when the supplied coefficients are not EMM2017's --
+        it warned every time before this fix, since the check read the
+        ``model`` string argument instead of ``coefficients.model_name``.
+        """
+        coef = create_test_coefficients(n_max=36)
+        assert coef.model_name not in EMM_PARAMETERS
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            emm(DENVER_LAT, DENVER_LON, 0.0, 2200.0, coefficients=coef)
+
+    def test_array_input_warns_exactly_once(self):
+        """The window check used to run once per element via recursion
+        (N+1 warnings for an N-element array), and the inner warnings'
+        stacklevel pointed at emm.py instead of the caller.
+        """
+        coef = create_test_coefficients(n_max=36)._replace(model_name="EMM2017")
+        lats = np.radians(np.array([40.0, 41.0, 42.0]))
+        lons = np.radians(np.array([-105.0, -104.0, -103.0]))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            emm(lats, lons, 0.0, 2200.0, coefficients=coef)
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert len(user_warnings) == 1
 
 
 # =============================================================================
@@ -244,6 +279,29 @@ class TestMagneticFieldCache:
         gc.collect()
         after = sum(1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients))
         assert after - baseline < 5
+
+    def test_float32_coefficients_do_not_crash_the_cached_path(self):
+        """review round: the content-hash cache key packed each array at
+        its own dtype's width, but always decoded it back as float64 --
+        a float32 array's bytes are not a multiple of float64's itemsize,
+        so this raised ``ValueError: buffer size must be a multiple of
+        element size`` on the cached path while ``use_cache=False`` still
+        worked. No in-repo coefficient set is float32, but this branch's
+        cache change must not crash input that worked before it.
+        """
+        coeffs64 = create_wmm2025_coefficients()
+        coeffs32 = MagneticCoefficients(
+            g=coeffs64.g.astype(np.float32),
+            h=coeffs64.h.astype(np.float32),
+            g_dot=coeffs64.g_dot.astype(np.float32),
+            h_dot=coeffs64.h_dot.astype(np.float32),
+            epoch=coeffs64.epoch,
+            n_max=coeffs64.n_max,
+        )
+        args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
+        cached = magnetic_field_spherical(*args, coeffs=coeffs32, use_cache=True)
+        uncached = magnetic_field_spherical(*args, coeffs=coeffs32, use_cache=False)
+        assert cached == pytest.approx(uncached, rel=1e-4)
 
 
 # =============================================================================

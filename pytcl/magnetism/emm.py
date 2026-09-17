@@ -618,44 +618,18 @@ def emm(
     if coefficients is None:
         coefficients = load_emm_coefficients(model, n_max)
 
-    params = EMM_PARAMETERS.get(model)
-    if params is not None:
-        valid_start = params["valid_start"]
-        valid_end = params["valid_end"]
-        # epoch is used below only to phrase the message ("N years
-        # backward/forward from the epoch"); unlike WMM's derived window
-        # (epoch to epoch + 5.0), EMM's valid_start/valid_end are declared
-        # independently and are not computed from epoch.
-        epoch = params["epoch"]
-        if year < valid_start:
-            warnings.warn(
-                f"The year {year:.1f} is before {model}'s valid window "
-                f"({valid_start:.1f} to {valid_end:.1f}); the field is "
-                f"extrapolated {valid_start - year:.1f} years backward from "
-                f"the {epoch:.1f} epoch and will diverge from the true "
-                f"field by an unknown amount. For years before "
-                f"{valid_start:.1f}, prefer an older model or IGRF.",
-                stacklevel=2,
-            )
-        elif year > valid_end:
-            warnings.warn(
-                f"The year {year:.1f} is beyond {model}'s valid window "
-                f"({valid_start:.1f} to {valid_end:.1f}), "
-                f"{year - valid_end:.1f} years past {valid_end:.1f}; the "
-                f"field is extrapolated forward from the {epoch:.1f} epoch "
-                "and will diverge from the true field by an unknown, "
-                f"growing amount. For years after {valid_end:.1f}, prefer "
-                "a newer model release.",
-                stacklevel=2,
-            )
+    _warn_if_outside_emm_window(coefficients, year)
 
-    # Handle array inputs by iterating (spherical harmonic sum is scalar)
+    # Handle array inputs by iterating (spherical harmonic sum is scalar).
+    # Delegates to _emm_scalar rather than recursing into emm() itself, so
+    # the window check above runs once per call regardless of array size
+    # instead of once per element.
     lat_arr = np.asarray(lat)
     if lat_arr.ndim > 0:
         lon_arr = np.broadcast_to(np.asarray(lon), lat_arr.shape)
         h_arr = np.broadcast_to(np.asarray(h), lat_arr.shape)
         results = [
-            emm(float(la), float(lo), float(hi), year, model, n_max, coefficients)
+            _emm_scalar(float(la), float(lo), float(hi), year, coefficients, n_max)
             for la, lo, hi in zip(lat_arr.ravel(), lon_arr.ravel(), h_arr.ravel())
         ]
         shape = lat_arr.shape
@@ -669,6 +643,61 @@ def emm(
             D=np.array([r.D for r in results]).reshape(shape),
         )
 
+    return _emm_scalar(lat, lon, h, year, coefficients, n_max)
+
+
+def _warn_if_outside_emm_window(coefficients: HighResCoefficients, year: float) -> None:
+    """Warn if `year` falls outside the *supplied coefficients'* window.
+
+    Keyed on ``coefficients.model_name`` and ``coefficients.epoch`` --
+    what is actually being evaluated -- rather than the ``model`` string
+    argument, which stays "EMM2017" by default even when the caller
+    passed a different (or synthetic, e.g. `create_test_coefficients`)
+    coefficient set via `coefficients=`.
+    """
+    params = EMM_PARAMETERS.get(coefficients.model_name)
+    if params is None:
+        return
+    valid_start = params["valid_start"]
+    valid_end = params["valid_end"]
+    # The coefficients' own parsed epoch, not the static table value --
+    # unlike WMM's derived window (epoch to epoch + 5.0), EMM's
+    # valid_start/valid_end are declared independently and are not
+    # computed from epoch, so this is only used to phrase the message
+    # ("N years backward/forward from the epoch").
+    epoch = coefficients.epoch
+    if year < valid_start:
+        warnings.warn(
+            f"The year {year:.1f} is before {coefficients.model_name}'s "
+            f"valid window ({valid_start:.1f} to {valid_end:.1f}); the "
+            f"field is extrapolated {valid_start - year:.1f} years "
+            f"backward from the {epoch:.1f} epoch and will diverge from "
+            f"the true field by an unknown amount. For years before "
+            f"{valid_start:.1f}, prefer an older model or IGRF.",
+            stacklevel=3,
+        )
+    elif year > valid_end:
+        warnings.warn(
+            f"The year {year:.1f} is beyond {coefficients.model_name}'s "
+            f"valid window ({valid_start:.1f} to {valid_end:.1f}), "
+            f"{year - valid_end:.1f} years past {valid_end:.1f}; the "
+            f"field is extrapolated forward from the {epoch:.1f} epoch "
+            "and will diverge from the true field by an unknown, "
+            f"growing amount. For years after {valid_end:.1f}, prefer "
+            "a newer model release.",
+            stacklevel=3,
+        )
+
+
+def _emm_scalar(
+    lat: float,
+    lon: float,
+    h: float,
+    year: float,
+    coefficients: HighResCoefficients,
+    n_max: Optional[int],
+) -> MagneticResult:
+    """Scalar EMM/WMMHR field evaluation, no window check or array handling."""
     # Convert geodetic (WGS84) to geocentric spherical coordinates
     a_wgs = 6378.137  # WGS84 semi-major axis, km
     e2 = 6.694379990141e-3  # WGS84 first eccentricity squared
