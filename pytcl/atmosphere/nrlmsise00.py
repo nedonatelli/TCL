@@ -44,6 +44,7 @@ from pytcl.atmosphere._nrlmsise00_data import (
     PTL,
     PTM,
 )
+from pytcl.atmosphere.models import US76_MIN_ALTITUDE_M
 
 
 class NRLMSISEOutput(NamedTuple):
@@ -1855,11 +1856,18 @@ def nrlmsise00(
     )
 
 
-# NRLMSISE-00's documented altitude ceiling (Users Guide v1.50); ghp7's
-# Newton iteration can converge to a nonphysical altitude far past this
-# for a small enough target pressure, since nothing in the model itself
-# stops the extrapolation.
+# NRLMSISE-00's widely-cited upper altitude limit; ghp7's Newton
+# iteration can converge to a nonphysical altitude far past this for a
+# small enough target pressure, since nothing in the model itself stops
+# the extrapolation. (The source document for this figure is not
+# vendored in this repository, so it is not pinned to a page/section.)
 _GHP7_MAX_VALID_ALT_KM = 1000.0
+
+# Reuse US76's own validity floor (task 2.7) rather than 0 km: ordinary
+# high-pressure weather at sea level converges to a legitimate negative
+# altitude (e.g. 105 kPa -> -0.24 km), and 0 km would flag every one of
+# those as non-convergence.
+_GHP7_MIN_VALID_ALT_KM = US76_MIN_ALTITUDE_M / 1000.0
 
 
 def nrlmsise00_alt_for_pressure(
@@ -1894,20 +1902,21 @@ def nrlmsise00_alt_for_pressure(
     Raises
     ------
     ValueError
-        If ``press_pa`` is not positive.
+        If the pressure is not positive.
 
     Warns
     -----
     UserWarning
-        If the Newton iteration behind ``ghp7`` does not converge to a
-        finite altitude within NRLMSISE-00's documented 0-1000 km
-        validity range. Below the pure-Python path this happens for a
-        genuine iteration failure; the compiled reference backend can
-        also silently converge to a nonphysical altitude far outside
-        that range (e.g. thousands of km, for a small enough target
-        pressure) since its own non-convergence signal is only
-        ``printf``'d to native stdout, invisible to Python. Both are
-        surfaced here as one warning.
+        Two distinct cases, worded differently so a reader can tell
+        which happened. (1) The Newton iteration behind ``ghp7`` fails
+        outright and returns a non-finite altitude -- a genuine
+        non-convergence, the same condition the pure-Python path
+        already raises this warning for. (2) The iteration converges
+        (satisfies its own internal residual test) but to a finite
+        altitude outside the model's validity range (``_GHP7_MIN_VALID_ALT_KM``
+        to ``_GHP7_MAX_VALID_ALT_KM``, currently -5.0 to 1000 km) -- the
+        compiled backend's own signal for this is only ``printf``'d to
+        native stdout, invisible to Python, so it is otherwise silent.
 
     Examples
     --------
@@ -1924,7 +1933,7 @@ def nrlmsise00_alt_for_pressure(
     altitude.
     """
     if not press_pa > 0.0:
-        raise ValueError(f"pressure (press_pa) must be positive, got {press_pa!r}")
+        raise ValueError(f"pressure must be positive, got {press_pa!r}")
     press_hpa = press_pa / 100.0
     z, out = _run(
         doy,
@@ -1940,12 +1949,19 @@ def nrlmsise00_alt_for_pressure(
         "ghp7",
         press_hpa,
     )
-    if not (math.isfinite(z) and 0.0 <= z <= _GHP7_MAX_VALID_ALT_KM):
+    if not math.isfinite(z):
         warnings.warn(
-            f"ghp7 did not converge to a valid altitude for "
-            f"press_pa={press_pa!r}: returned alt_km={z!r}, not a finite "
-            f"value within NRLMSISE-00's documented "
-            f"0-{_GHP7_MAX_VALID_ALT_KM:.0f} km altitude range",
+            f"ghp7 did not converge for pressure={press_pa!r} Pa: the "
+            f"Newton iteration produced a non-finite altitude "
+            f"(alt_km={z!r})",
+            stacklevel=2,
+        )
+    elif not (_GHP7_MIN_VALID_ALT_KM <= z <= _GHP7_MAX_VALID_ALT_KM):
+        warnings.warn(
+            f"ghp7 converged for pressure={press_pa!r} Pa to "
+            f"alt_km={z!r}, outside NRLMSISE-00's documented "
+            f"{_GHP7_MIN_VALID_ALT_KM:.1f}-{_GHP7_MAX_VALID_ALT_KM:.0f} km "
+            f"altitude range",
             stacklevel=2,
         )
     return z, out
@@ -2104,7 +2120,7 @@ def nrlmsise00_pressure_altitude(
     second_of_day : float
         Second of the day, from 0; clipped to 86400.
     pressure_pa : float
-        Pressure in Pascals.
+        Pressure in Pascals. Must be positive.
     lat_lon : sequence of 2 floats
         Geodetic latitude and longitude in radians (WGS-84).
     ap, f107, f107a, ap_array, lst : optional
@@ -2121,6 +2137,19 @@ def nrlmsise00_pressure_altitude(
         Exospheric temperature and temperature at altitude, Kelvin.
     d : ndarray, shape (9,)
         The raw model densities at the altitude.
+
+    Raises
+    ------
+    ValueError
+        If ``pressure_pa`` is not positive (delegates to
+        :func:`nrlmsise00_alt_for_pressure`).
+
+    Warns
+    -----
+    UserWarning
+        As in :func:`nrlmsise00_alt_for_pressure`, which this function
+        delegates to -- a non-finite or out-of-domain altitude solution
+        warns rather than returning silently.
 
     Examples
     --------

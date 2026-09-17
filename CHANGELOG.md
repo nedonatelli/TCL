@@ -177,9 +177,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-convergence signal is only `printf`'d to native stdout, which
   Python never sees; the pure-Python fallback already warned
   correctly). Both entry points now warn whenever the returned altitude
-  is non-finite or outside 0-1000 km, for either backend. Non-positive
-  `press_pa`, which was never a valid pressure, now raises `ValueError`
-  instead of silently returning NaN.
+  is non-finite (a genuine non-convergence) or outside -5.0-1000 km (a
+  converged but out-of-domain solution) -- two distinct warning
+  messages, since they are different failures -- for either backend.
+  The lower bound reuses US76's own -5000 m validity floor
+  (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`, task 2.7) rather than
+  0 km: an ordinary high-pressure system (105 kPa converges to
+  `alt_km=-0.24`) is not a defect and must not warn, which a 0 km floor
+  got wrong on the first pass of this fix (caught in review). Non-positive
+  `press_pa`/`pressure_pa`, never a valid pressure, now raises
+  `ValueError` instead of silently returning NaN.
 
 - **Documented limitation, not a fix.** `pytcl.atmosphere.ionosphere`:
   `simple_iri` accepts `altitude` and `longitude` and used neither --
