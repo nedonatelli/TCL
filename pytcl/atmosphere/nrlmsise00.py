@@ -1855,9 +1855,10 @@ def nrlmsise00(
     )
 
 
-# ghp7's own convergence test (Eq. as transcribed in _Model._ghp7 and in
-# the vendored csrc/nrlmsise00/nrlmsise-00.c): the Newton iteration is
-# considered converged once the log10-pressure residual is below this.
+# NRLMSISE-00's documented altitude ceiling (Users Guide v1.50); ghp7's
+# Newton iteration can converge to a nonphysical altitude far past this
+# for a small enough target pressure, since nothing in the model itself
+# stops the extrapolation.
 _GHP7_MAX_VALID_ALT_KM = 1000.0
 
 
@@ -1941,9 +1942,9 @@ def nrlmsise00_alt_for_pressure(
     )
     if not (math.isfinite(z) and 0.0 <= z <= _GHP7_MAX_VALID_ALT_KM):
         warnings.warn(
-            f"ghp7 did not converge to a physically valid altitude for "
-            f"press_pa={press_pa!r}: returned alt_km={z!r} is not finite "
-            f"and within NRLMSISE-00's documented "
+            f"ghp7 did not converge to a valid altitude for "
+            f"press_pa={press_pa!r}: returned alt_km={z!r}, not a finite "
+            f"value within NRLMSISE-00's documented "
             f"0-{_GHP7_MAX_VALID_ALT_KM:.0f} km altitude range",
             stacklevel=2,
         )
