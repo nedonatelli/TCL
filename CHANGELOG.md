@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`test_parity_inventory_closing_counts` no longer requires the
+  validation-file count in `docs/matlab_parity_inventory.rst` to match
+  `tests/validation/*.py` exactly.** That single assertion broke three
+  consecutive v2.11.1 PRs -- every PR adding an oracle test file
+  invalidated it. The same closing sentence already hedges its other
+  number (`8,000+` test cases, checked with a `<=`-to-`+1500` band); the
+  validation-file count now follows the identical convention: the prose
+  reads `80+ validation files` and the gate checks
+  `val_claim <= val_actual <= val_claim + 20`. The band matches a
+  release's worth of observed growth (63 -> 70 -> 82 validation files
+  across v2.10.0 -> v2.11.0 -> this patch) with headroom, so it still
+  fails on a claim that has gone genuinely stale. The failure message
+  now states the exact replacement text for the `.rst` line.
+
 - **The ephemeris tests no longer download the JPL DE kernel.**
   `tests/unit/test_ephemerides.py` guarded only on `jplephem` being
   importable, so a machine with the package but no cached kernel fetched
