@@ -390,7 +390,7 @@ def parse_gebco_netcdf(
         lon_max_actual = np.radians(float(lons[j_end - 1]))
 
     return (
-        np.ma.filled(elevation, _GEBCO_NODATA_VALUE).astype(np.float64),
+        np.ma.filled(elevation, _GEBCO_NODATA_VALUE).astype(np.float64, copy=False),
         lat_min_actual,
         lat_max_actual,
         lon_min_actual,
@@ -532,7 +532,7 @@ def _build_gebco_grid(
         lat_max_a,
         lon_min_a,
         lon_max_a,
-        nodata_value=-9999.0,
+        nodata_value=_GEBCO_NODATA_VALUE,
         name=version,
     )
     make_readonly(grid.data)

@@ -73,6 +73,12 @@ def _hand_coded_reference_zonals(n_max):
     called. See the fix report for a verification of these numbers
     against ``models.ellips_grav_coeffs``.
     """
+    if n_max > 10:
+        raise ValueError(
+            f"_hand_coded_reference_zonals only types out k=1..5 (degrees "
+            f"up to 10); n_max={n_max} would silently under-subtract the "
+            "untyped higher-degree zonals instead of raising here."
+        )
     f = WGS84.f
     e2 = f * (2.0 - f)
     J2 = WGS84.J2
