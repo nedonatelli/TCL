@@ -388,12 +388,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   alone rather than the broadcast output shape, so a scalar `lat` paired
   with an array `lon` or `alt` took the `.item()` branch on a
   multi-element result. The function now broadcasts `lat`, `lon`, `alt`
-  together up front and branches on the broadcast shape instead,
-  matching the already-correct behaviour of the
-  `navigation.geodesy.geodetic_to_ecef` wrapper, which worked around
-  this by pre-broadcasting before calling in. STABLE module; crash fix
-  only, no signature or return-shape change for any input that
-  previously worked.
+  together for the computation, matching the already-correct behaviour
+  of the `navigation.geodesy.geodetic_to_ecef` wrapper (which worked
+  around this by pre-broadcasting before calling in), but the return
+  shape decides the old way: a flat `(3,)` whenever the input `lat` on
+  its own had size 1 and the full broadcast is a single point, exactly
+  as before, even though this is not what `lat`, `lon`, `alt` alone
+  would broadcast to (`np.broadcast_shapes((1,), (), ())` is `(1,)`,
+  not `()`) -- a size-1-array `lat` with scalar `lon`/`alt` still
+  returns `(3,)`, not the more consistent `(3, 1)`, because changing a
+  shape that previously worked is out of scope for a patch release even
+  where the old shape was itself an accident of the same bug. Fixed
+  purely on the crash path: every previously-working input pattern
+  keeps its exact return shape (pinned by
+  `test_return_shape_table` alongside the existing shape/value tests);
+  only inputs that previously raised `ValueError` now return a value.
+  Normalizing the size-1 case to `(3, 1)` is deferred to v2.12.0.
+  STABLE module; crash fix only, no signature change.
 
 - `pytcl.navigation.great_circle`: `great_circle_intersect` returned
   whichever of the two antipodal intersection points `n1 x n2` (the
