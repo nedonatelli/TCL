@@ -1105,8 +1105,13 @@ def lambert_conformal_conic(
     rho0 = a * F * t0**n * k0
     rho = a * F * t**n * k0
 
-    # Coordinates
-    theta = n * (lon - lon0)
+    # Coordinates. The longitude difference is wrapped into [-pi, pi]
+    # before scaling by the cone constant n: for n != 1, sin/cos of
+    # n * (lon - lon0) is not 2*pi-periodic in the unwrapped difference, so
+    # a central meridian near +-180 degrees and a point across the
+    # antimeridian produced a scaled angle far from the true small-angle
+    # value (gh-25 follow-up; same defect class as oblique_stereographic).
+    theta = n * _wrap_longitude_difference(lon, lon0)
     x = rho * np.sin(theta)
     y = rho0 - rho * np.cos(theta)
 
@@ -1211,8 +1216,10 @@ def lambert_conformal_conic_inverse(
             break
         lat = lat_new
 
-    # Longitude
-    lon = theta / n + lon0
+    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # land just past the antimeridian for a central meridian near +-180
+    # degrees (gh-25 follow-up).
+    lon = _wrap_longitude_difference(theta / n + lon0, 0.0)
 
     return lat, lon
 
@@ -1491,7 +1498,12 @@ def oblique_stereographic(
     sb = (1 - e * sin_lat) / (1 + e * sin_lat)
     w = c * (sa * sb**e) ** n
     chi = np.arcsin((w - 1) / (w + 1))
-    dlam = n * (lon - lon0)
+    # Wrap the longitude difference into [-pi, pi] before scaling by n: for
+    # n != 1 (any real ellipsoid), sin/cos of n * (lon - lon0) is not
+    # 2*pi-periodic in the unwrapped difference, so an origin near +-180
+    # degrees and a point on the far side of the antimeridian produced a
+    # scaled angle far from the true small-angle value (gh-25 follow-up).
+    dlam = n * _wrap_longitude_difference(lon, lon0)
 
     sin_chi = np.sin(chi)
     cos_chi = np.cos(chi)
@@ -1578,7 +1590,10 @@ def oblique_stereographic_inverse(
     j = np.arctan2(x, g - y) - i
     chi = chi0 + 2 * np.arctan((y - x * np.tan(j / 2)) / (2 * R * k0))
     dlam = j + 2 * i
-    lon = dlam / n + lon0
+    # Canonicalize into [-pi, pi]: lon0 + offset can otherwise land just
+    # past the antimeridian for an origin near +-180 degrees (gh-25
+    # follow-up).
+    lon = _wrap_longitude_difference(dlam / n + lon0, 0.0)
 
     # Invert the conformal-latitude mapping for the geodetic latitude:
     # psi is the sphere's isometric latitude pulled back through n and c.

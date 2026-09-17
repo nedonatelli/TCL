@@ -14,6 +14,16 @@ recovered the correct point but as a longitude outside [-pi, pi] whenever
 caller would not expect and could not directly compare against a canonical
 reference. They now canonicalize their output through the same
 `_wrap_longitude_difference` helper used by the forward fix above.
+
+`oblique_stereographic` and `lambert_conformal_conic` scale the wrapped
+difference by a non-unity factor (`n`) before taking sin/cos, so unlike
+`mercator`/`transverse_mercator`, an unwrapped difference does not merely
+alias back to the right answer through 2*pi-periodicity: it silently
+computes the wrong map coordinate (up to ~130 km for `oblique_stereographic`,
+tens of thousands of km for `lambert_conformal_conic`) while still
+round-tripping through its own equally-wrong inverse -- the self-consistency
+check alone would not have caught this class, hence the PROJ-oracle
+comparisons below rather than round-trip checks alone.
 """
 
 import numpy as np
@@ -24,8 +34,12 @@ from pytcl.coordinate_systems.projections import (
     azimuthal_equidistant_inverse,
     geodetic2utm,
     geodetic2utm_batch,
+    lambert_conformal_conic,
+    lambert_conformal_conic_inverse,
     mercator,
     mercator_inverse,
+    oblique_stereographic,
+    oblique_stereographic_inverse,
     stereographic,
     stereographic_inverse,
     transverse_mercator,
@@ -155,6 +169,77 @@ def test_azimuthal_equidistant_roundtrip_is_canonical_across_the_antimeridian(
     fwd = azimuthal_equidistant(lat_r, lon_r, lat0_r, lon0_r)
     got_lat, got_lon = azimuthal_equidistant_inverse(fwd.x, fwd.y, lat0_r, lon0_r)
     assert got_lat == pytest.approx(lat_r, abs=1e-9)
+    lon_error = np.arctan2(np.sin(got_lon - lon_r), np.cos(got_lon - lon_r))
+    assert lon_error == pytest.approx(0.0, abs=1e-9)
+    assert -np.pi <= got_lon <= np.pi
+
+
+# lat, lon, lon0 -- a non-seam case (small |lon - lon0|) followed by two
+# seam-crossing cases, so a regression to the ordinary (non-antimeridian)
+# path would also fail these parametrizations.
+STEREO_LCC_CASES = [
+    (10.0, -176.0, -177.0),
+    (10.0, 179.9, -177.0),
+    (-20.0, 178.0, -177.0),
+]
+
+
+@pytest.mark.parametrize("lat,lon,lon0", STEREO_LCC_CASES)
+def test_oblique_stereographic_matches_proj_sterea_across_the_antimeridian(
+    lat, lon, lon0
+):
+    lat0 = 10.0
+    sterea = pyproj.Proj(proj="sterea", lat_0=lat0, lon_0=lon0, ellps="WGS84")
+    want_x, want_y = sterea(lon, lat)
+    r = oblique_stereographic(
+        np.radians(lat), np.radians(lon), np.radians(lat0), np.radians(lon0)
+    )
+    assert r.x == pytest.approx(want_x, abs=1e-6)
+    assert r.y == pytest.approx(want_y, abs=1e-6)
+
+
+@pytest.mark.parametrize("lat,lon,lon0", STEREO_LCC_CASES)
+def test_oblique_stereographic_roundtrip_is_canonical_across_the_antimeridian(
+    lat, lon, lon0
+):
+    lat_r, lon_r, lon0_r = np.radians(lat), np.radians(lon), np.radians(lon0)
+    lat0_r = np.radians(10.0)
+    fwd = oblique_stereographic(lat_r, lon_r, lat0_r, lon0_r)
+    got_lat, got_lon = oblique_stereographic_inverse(fwd.x, fwd.y, lat0_r, lon0_r)
+    assert got_lat == pytest.approx(lat_r, abs=1e-9)
+    lon_error = np.arctan2(np.sin(got_lon - lon_r), np.cos(got_lon - lon_r))
+    assert lon_error == pytest.approx(0.0, abs=1e-9)
+    assert -np.pi <= got_lon <= np.pi
+
+
+@pytest.mark.parametrize("lat,lon,lon0", STEREO_LCC_CASES)
+def test_lambert_conformal_conic_matches_proj_across_the_antimeridian(lat, lon, lon0):
+    lat0, lat1, lat2 = 5.0, 1.0, 9.0
+    lcc = pyproj.Proj(proj="lcc", lat_0=lat0, lon_0=lon0, lat_1=lat1, lat_2=lat2)
+    want_x, want_y = lcc(lon, lat)
+    r = lambert_conformal_conic(
+        np.radians(lat),
+        np.radians(lon),
+        np.radians(lat0),
+        np.radians(lon0),
+        np.radians(lat1),
+        np.radians(lat2),
+    )
+    assert r.x == pytest.approx(want_x, abs=1e-3)
+    assert r.y == pytest.approx(want_y, abs=1e-3)
+
+
+@pytest.mark.parametrize("lat,lon,lon0", STEREO_LCC_CASES)
+def test_lambert_conformal_conic_roundtrip_is_canonical_across_the_antimeridian(
+    lat, lon, lon0
+):
+    lat_r, lon_r, lon0_r = np.radians(lat), np.radians(lon), np.radians(lon0)
+    lat0_r, lat1_r, lat2_r = np.radians(5.0), np.radians(1.0), np.radians(9.0)
+    fwd = lambert_conformal_conic(lat_r, lon_r, lat0_r, lon0_r, lat1_r, lat2_r)
+    got_lat, got_lon = lambert_conformal_conic_inverse(
+        fwd.x, fwd.y, lat0_r, lon0_r, lat1_r, lat2_r
+    )
+    assert got_lat == pytest.approx(lat_r, abs=1e-6)
     lon_error = np.arctan2(np.sin(got_lon - lon_r), np.cos(got_lon - lon_r))
     assert lon_error == pytest.approx(0.0, abs=1e-9)
     assert -np.pi <= got_lon <= np.pi

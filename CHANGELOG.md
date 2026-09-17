@@ -342,11 +342,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mercator_inverse`, `stereographic_inverse`, and
   `azimuthal_equidistant_inverse` all shared this and now canonicalize
   their returned longitude through the same `_wrap_longitude_difference`
-  helper. `lambert_conformal_conic_inverse` and
-  `azimuthal_equidistant_exact_inverse` do not share it (the former's
-  cone constant keeps its `atan2`-derived angle from ever exceeding the
-  range before dividing by it; the latter's geographiclib backend
-  already returns a canonical longitude) and were left unchanged.
+  helper. `azimuthal_equidistant_exact_inverse` does not share it -- its
+  geographiclib backend already returns a canonical longitude.
+
+  `oblique_stereographic` and `lambert_conformal_conic` scale the
+  longitude difference by a non-unity factor (`n`, the EPSG-9809
+  conformal-sphere constant and the LCC cone constant respectively)
+  before taking its sine/cosine, so unlike `mercator`/`transverse_mercator`
+  an unwrapped difference does not alias back to the right answer through
+  2*pi-periodicity -- it silently computes the wrong map coordinate, by
+  up to ~130 km for `oblique_stereographic` (measured: `(10, 179.9)` at
+  `lon0=-177 deg` gave `x=-215,388.7` m against PROJ's `-339,958.0` m) and
+  tens of millions of metres for `lambert_conformal_conic` (the same point
+  at `lat0=5 deg`, standard parallels 1/9 deg gave `x=37,284,062.1` m
+  against PROJ's `-340,346.1` m), while still round-tripping through its
+  own equally-wrong inverse -- self-consistency alone does not catch this
+  class, only comparison against an external oracle does.
+  `oblique_stereographic_inverse` also returned a genuinely wrong
+  longitude near the seam (-178.96 deg for an input of 179.9 deg, not
+  merely a non-canonical one). Both forward functions now wrap the
+  difference (via `_wrap_longitude_difference`) before scaling by `n`,
+  and both inverses canonicalize their output the same way as the four
+  functions above; away from the seam, both were already exact
+  (`test_projections_exact.py`'s `oblique_stereographic` coverage is
+  unmoved) and remain so. `azimuthal_equidistant_exact` was checked and
+  does not share this -- its geographiclib backend matches PROJ's
+  `+proj=aeqd` across the seam to ~1.7e-9 m.
 
 - `pytcl.coordinate_systems.projections.stereographic`'s docstring told
   callers to use `lat0 = +-pi/2` for polar work; that path diverges from
