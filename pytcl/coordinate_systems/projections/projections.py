@@ -726,7 +726,15 @@ def stereographic(
 
     Notes
     -----
-    For polar stereographic, use lat0 = +-pi/2.
+    Do not use ``lat0 = +-pi/2`` for polar work: this function's conformal
+    latitude substitution diverges from PROJ's polar stereographic by 5.7 km
+    at 85 degrees latitude and 34.7 km at 60 degrees (measured against
+    ``+proj=stere`` on WGS84). Use :func:`polar_stereographic` instead,
+    which matches PROJ/UPS to sub-nanometer precision. For the ellipsoidal
+    oblique case (any other ``lat0``), use :func:`oblique_stereographic`
+    (EPSG method 9809), which matches PROJ's ``+proj=sterea`` to
+    sub-micrometer precision; this function's own oblique accuracy is
+    documented below and is generally worse.
 
     Examples
     --------

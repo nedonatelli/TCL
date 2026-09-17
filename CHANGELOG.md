@@ -334,6 +334,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   module-private helper (`_wrap_longitude_difference`) shared by both
   forward functions.
 
+- `pytcl.coordinate_systems.projections.stereographic`'s docstring told
+  callers to use `lat0 = +-pi/2` for polar work; that path diverges from
+  PROJ's polar stereographic by 5.7 km at 85 deg latitude and 34.7 km at
+  60 deg (measured against `+proj=stere` on WGS84), while
+  `polar_stereographic` matches PROJ/UPS to sub-nanometer precision. The
+  docstring now points polar callers at `polar_stereographic` and
+  ellipsoidal-oblique callers at `oblique_stereographic` (EPSG 9809),
+  stating both measured accuracies. Documentation only -- no code
+  change, no test.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
