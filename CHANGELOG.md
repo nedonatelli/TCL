@@ -22,6 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tests. Library behaviour is unchanged -- `DEEphemeris` still
   auto-downloads for callers.
 
+- **Documented limitation, not a fix.** `pytcl.atmosphere.ionosphere`:
+  `simple_iri` accepts `altitude` and `longitude` and used neither --
+  TEC, delays and F2-layer parameters are identical at 100 km and at
+  1000 km, and identical across longitudes, for the same
+  latitude/hour/month/solar_flux. The model is in fact a
+  latitude-and-time-only empirical fit to foF2 and TEC with no vertical
+  profile at all; making it genuinely altitude- or longitude-dependent
+  needs an IRI oracle this repository does not have, so it is now
+  documented as such and warns on every call, naming both ignored
+  parameters, instead of silently returning a value that looks
+  altitude- or longitude-aware but is not. `scintillation_index` does
+  not share this defect -- it has no altitude or longitude parameters
+  to begin with, and its magnetic_latitude/hour/kp_index inputs all
+  measurably affect its output. `atmosphere.ionosphere`'s maturity is
+  demoted MATURE -> EXPERIMENTAL: besides this defect, the module has
+  no oracle test in the suite.
+
 ### Fixed
 
 - **This changes timestamps callers may have built around.**
@@ -92,6 +109,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   claim that differences between two points are more accurate than
   either absolute value was false and has been removed.
 
+- `pytcl.gravity.egm`: `gravity_disturbance` carried the same defect as
+  `geoid_height` above -- it fed geodetic latitude and `r = R + h` into
+  `clenshaw_gravity`'s synthesis, which is defined in geocentric latitude
+  at the true radius under the point. At (45 deg, 10 deg, h=1000 m) with
+  `create_test_coefficients()`, `delta_g_r` moves from -3.697008e-04 to
+  -3.731170e-04 m/s^2, a 0.92% shift, now derived the same way as
+  `geoid_height` via `geodetic2ecef`. `gravity_anomaly` delegates to
+  `gravity_disturbance` and returns its radial component directly, so it
+  carries the identical shift. `deflection_of_vertical` does not call
+  `gravity_disturbance` -- it differentiates `geoid_height` by finite
+  differences -- but `geoid_height` received the same geocentric
+  latitude / true radius fix above, so its output changed too; it was
+  simply not called out there as one of this defect's downstreams.
+
 - `pytcl.gravity.clenshaw`: `clenshaw_geoid` zeroed only the `n=0,1`
   terms and called that "the reference field", but the reference field
   is the ellipsoid's even zonal harmonics -- C20 above all -- which
@@ -123,7 +154,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   EMM2017 at 2200.0 (a 180-year extrapolation) returned F=35661.2 nT,
   also silent. Both now warn -- naming the requested year, the window,
   and the extrapolation magnitude -- whenever the year falls outside the
-  coefficient set's window; the returned values are unchanged.
+  window; the returned values are unchanged.
+
+- `pytcl.magnetism.emm`: `emm()`'s window check above landed keyed on the
+  `model` string argument (default "EMM2017"), not on what the supplied
+  `coefficients=` actually is -- `emm(..., 2026.0,
+  coefficients=create_test_coefficients())` warned about EMM2017's
+  window regardless of the coefficients passed in, and since real EMM
+  `.COF` files are not vendored, `coefficients=` is the only way every
+  in-repo EMM test exercises the function at all. Now keyed on
+  `coefficients.model_name` and `coefficients.epoch` (both fields
+  `HighResCoefficients` already carries) instead, so the warning
+  reflects what is actually being evaluated; a coefficient set whose
+  `model_name` is not one of EMM's declared models (e.g. the synthetic
+  `"EMM_TEST"` from `create_test_coefficients()`) now warns not at all,
+  rather than borrowing EMM2017's window. Also fixed: the array branch
+  recursed into `emm()` per element, so an N-element array call warned
+  N+1 times (the top-level check plus one per element) with the inner
+  warnings' `stacklevel` pointing at `emm.py` instead of the caller;
+  the check is now hoisted above a non-recursive per-element helper and
+  runs exactly once per call.
 
 - `pytcl.magnetism.wmm`: `magnetic_field_spherical`'s cache keyed each
   entry on `id(coeffs)`, so mutating a registered coefficient array in
@@ -135,7 +185,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   objects. The cache now keys on the coefficient arrays' own packed
   content (plus epoch and degree) instead of identity, so a mutation is
   simply a cache miss, and nothing outside the cache retains a
-  coefficient set once the caller drops it.
+  coefficient set once the caller drops it. Review round: that content
+  key packed each array at its own dtype's width, but the cached path
+  always decoded the packed bytes back as float64 -- a float32
+  coefficient array's bytes are not a multiple of float64's itemsize, so
+  `magnetic_field_spherical(..., coeffs)` raised `ValueError: buffer
+  size must be a multiple of element size` on the cached path while
+  `use_cache=False` still worked correctly. `MagneticCoefficients` is
+  typed to allow any floating dtype and this worked before the
+  content-hash key, so this is a regression this patch introduced and
+  had to close, not a pre-existing gap; no in-repo coefficient set is
+  float32 today. Each array is now packed via
+  `np.ascontiguousarray(..., dtype=np.float64).tobytes()` before keying.
 
 - `pytcl.terrain.loaders`: `parse_gebco_netcdf` read the netCDF
   `elevation` variable with `np.asarray`, which drops a netCDF4 masked
@@ -175,11 +236,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   NRLMSISE-00's documented 1000 km ceiling, and `press_pa=1e-20`/`1e-30`
   returned NaN, both with no warning (the reference C's own
   non-convergence signal is only `printf`'d to native stdout, which
-  Python never sees; the pure-Python fallback already warned
-  correctly). Both entry points now warn whenever the returned altitude
-  is non-finite (a genuine non-convergence) or outside -5.0-1000 km (a
-  converged but out-of-domain solution) -- two distinct warning
-  messages, since they are different failures -- for either backend.
+  Python never sees). Both entry points now warn whenever the returned
+  altitude is non-finite (a genuine non-convergence) or outside
+  -5.0 to 1000 km (a converged but out-of-domain solution) -- two
+  distinct warning messages, since they are different failures -- **on
+  the compiled backend**, which is what every installed wheel uses by
+  default and the only path this patch's tests cover
+  (`uses_compiled_backend()` is asserted at the top of
+  `test_nrlmsise00_convergence.py`). The pure-Python fallback's
+  behaviour here is unverified by this patch: it raises an unhandled
+  `ZeroDivisionError` at `press_pa=1e-20`/`1e-30` before the new check
+  is ever reached, and only warns correctly at `press_pa=1e-10` --
+  a pre-existing defect this patch does not fix.
   The lower bound reuses US76's own -5000 m validity floor
   (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`, task 2.7) rather than
   0 km: an ordinary high-pressure system (105 kPa converges to
@@ -187,23 +255,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   got wrong on the first pass of this fix (caught in review). Non-positive
   `press_pa`/`pressure_pa`, never a valid pressure, now raises
   `ValueError` instead of silently returning NaN.
-
-- **Documented limitation, not a fix.** `pytcl.atmosphere.ionosphere`:
-  `simple_iri` accepts `altitude` and `longitude` and used neither --
-  TEC, delays and F2-layer parameters are identical at 100 km and at
-  1000 km, and identical across longitudes, for the same
-  latitude/hour/month/solar_flux. The model is in fact a
-  latitude-and-time-only empirical fit to foF2 and TEC with no vertical
-  profile at all; making it genuinely altitude- or longitude-dependent
-  needs an IRI oracle this repository does not have, so it is now
-  documented as such and warns on every call, naming both ignored
-  parameters, instead of silently returning a value that looks
-  altitude- or longitude-aware but is not. `scintillation_index` does
-  not share this defect -- it has no altitude or longitude parameters
-  to begin with, and its magnetic_latitude/hour/kp_index inputs all
-  measurably affect its output. `atmosphere.ionosphere`'s maturity is
-  demoted MATURE -> EXPERIMENTAL: besides this defect, the module has
-  no oracle test in the suite.
 
 ## [2.11.0] - 2026-09-13
 
