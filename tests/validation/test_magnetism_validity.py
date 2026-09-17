@@ -113,10 +113,13 @@ class TestEMMValidityWindow:
     "EMM2017" by default even when ``coefficients=`` supplies something
     else, which is the only way every in-repo test exercises EMM at all,
     since the real .COF files are not vendored). Tests here that want a
-    window checked stamp the synthetic coefficients with the real model's
-    name via ``._replace(model_name=...)``; ``create_test_coefficients()``
+    known window checked stamp the synthetic coefficients with the real
+    model's name via ``._replace(model_name=...)``; ``create_test_coefficients()``
     on its own carries ``model_name="EMM_TEST"``, an unknown model, and
-    must not borrow another model's window.
+    must not borrow another model's window -- but it also must not go
+    silent about that (second review round: silently skipping the check
+    for an unrecognized model traded a wrong warning for no warning at
+    all, which is worse; it now warns that the window is unknown).
     """
 
     def test_reads_its_declared_validity_parameters(self):
@@ -193,15 +196,36 @@ class TestEMMValidityWindow:
     def test_window_check_follows_the_coefficients_not_the_model_string(self):
         """review round: ``model=`` defaults to "EMM2017" regardless of what
         ``coefficients=`` actually supplies. A year outside EMM2017's window
-        must not warn when the supplied coefficients are not EMM2017's --
-        it warned every time before this fix, since the check read the
+        must not warn *with EMM2017's window text* when the supplied
+        coefficients are not EMM2017's -- before this fix it warned "before
+        EMM2017's valid window" every time, since the check read the
         ``model`` string argument instead of ``coefficients.model_name``.
+        (It still warns -- see
+        ``test_unknown_model_warns_instead_of_silently_skipping_the_check``
+        below -- just not with a window it does not actually know.)
         """
         coef = create_test_coefficients(n_max=36)
         assert coef.model_name not in EMM_PARAMETERS
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")
+        with pytest.warns(UserWarning) as caught:
             emm(DENVER_LAT, DENVER_LON, 0.0, 2200.0, coefficients=coef)
+        assert len(caught) == 1
+        assert "EMM2017" not in str(caught[0].message)
+
+    def test_unknown_model_warns_instead_of_silently_skipping_the_check(self):
+        """Second review round: the first fix for this seam silently
+        returned for any ``model_name`` not in ``EMM_PARAMETERS`` --
+        trading a wrong-window warning for no warning at all on
+        ``create_test_coefficients()``, the one coefficient path every
+        in-repo EMM test actually takes (the real ``.COF`` files are not
+        vendored). A 180-year extrapolation must not be silent merely
+        because pytcl does not know this coefficient set's declared
+        window; it must say so, once, naming the unknown model.
+        """
+        coef = create_test_coefficients(n_max=36)
+        assert coef.model_name not in EMM_PARAMETERS
+        for year in (1950.0, 2026.0, 2200.0):
+            with pytest.warns(UserWarning, match="validity window.*unknown"):
+                emm(DENVER_LAT, DENVER_LON, 0.0, year, coefficients=coef)
 
     def test_array_input_warns_exactly_once(self):
         """The window check used to run once per element via recursion
@@ -216,6 +240,19 @@ class TestEMMValidityWindow:
             emm(lats, lons, 0.0, 2200.0, coefficients=coef)
         user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
         assert len(user_warnings) == 1
+
+    def test_unknown_model_array_input_warns_exactly_once(self):
+        """Same N+1 hazard, on the unknown-model warning path specifically."""
+        coef = create_test_coefficients(n_max=36)
+        assert coef.model_name not in EMM_PARAMETERS
+        lats = np.radians(np.array([40.0, 41.0, 42.0]))
+        lons = np.radians(np.array([-105.0, -104.0, -103.0]))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            emm(lats, lons, 0.0, 2200.0, coefficients=coef)
+        user_warnings = [w for w in caught if issubclass(w.category, UserWarning)]
+        assert len(user_warnings) == 1
+        assert "unknown" in str(user_warnings[0].message)
 
 
 # =============================================================================

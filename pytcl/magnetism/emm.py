@@ -654,9 +654,25 @@ def _warn_if_outside_emm_window(coefficients: HighResCoefficients, year: float) 
     argument, which stays "EMM2017" by default even when the caller
     passed a different (or synthetic, e.g. `create_test_coefficients`)
     coefficient set via `coefficients=`.
+
+    A ``model_name`` this function does not recognize (any synthetic or
+    hand-built coefficient set, e.g. ``"EMM_TEST"``) must not silently
+    skip the check -- that would trade the earlier defect (a wrong
+    window applied without knowing it) for a worse one (no check at
+    all, on the one call path every in-repo test actually takes, since
+    the real ``.COF`` files are not vendored). It warns that the window
+    is unknown instead, so the extrapolation is at least audible.
     """
     params = EMM_PARAMETERS.get(coefficients.model_name)
     if params is None:
+        warnings.warn(
+            f"The validity window for coefficient set "
+            f"{coefficients.model_name!r} is unknown, so no "
+            "extrapolation check was performed; the field may be "
+            "extrapolated arbitrarily far from its epoch "
+            f"({coefficients.epoch:.1f}).",
+            stacklevel=3,
+        )
         return
     valid_start = params["valid_start"]
     valid_end = params["valid_end"]
