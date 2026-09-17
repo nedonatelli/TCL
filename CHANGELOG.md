@@ -133,7 +133,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   geoid's +/-110 m range. Now subtracts the ported
   `models.ellips_grav_coeffs` reference field and applies the same
   geocentric latitude / true radius fix as `geoid_height`, which it
-  now agrees with to better than 1 mm.
+  now agrees with to better than 1 mm. Review round, two more seams in
+  the same function: (1) the fix above made `C[0, 0] = 1.0` (the mass
+  term of a full field) the required input convention, reversed from
+  the disturbing-only convention (`C[0, 0]` already zeroed) the
+  function required before this branch -- a caller still passing the
+  old convention silently got `C_dist[0, 0] = 0 - 1 = -1`, a geoid
+  height off by a full Earth radius; `clenshaw_geoid` now **raises
+  `ValueError`** for a `C[0, 0]` near zero instead of accepting it. (2)
+  It never zeroed the `n=1` row before synthesis, unlike `geoid_height`;
+  with a synthetic `C[1, 0] = 1e-6` this put the two functions **7.8 m**
+  apart (0.00028 m after zeroing `n=1` here too, matching the
+  sub-millimeter agreement above). Unreachable for real EGM96/EGM2008,
+  whose degree-1 terms are exactly zero in a geocentric frame -- both
+  changes only bite a synthetic or non-geocentric coefficient set.
 
 - `pytcl.gravity.models`: `gravity_j2` used `r = a + h` and treated
   geodetic latitude as geocentric. At the pole this gave 9.766462 vs
@@ -224,7 +237,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gradient layer, so pressures outside that layer's range extrapolated
   its lapse rate through layers that do not use it -- 30 km's pressure
   (1197 Pa) inverted to 25379.2 m, 4621 m off; it now warns and clamps
-  to the layer's own pressure range instead.
+  to the layer's own pressure range instead. Review round: the floor
+  check compared the geometric input `z` against -5000, but the
+  geometric-to-geopotential conversion is more negative than `z` below
+  the surface, so `z` in `[-5000, -4996.06)` converted to a geopotential
+  altitude already past -5000 with no warning and no clamp -- a silent,
+  if small (up to ~4 m equivalent), extrapolation past the floor. The
+  check now compares the converted geopotential value instead (matching
+  how the ceiling already does), so that range now warns and **returns
+  the same clamped -5000 m floor pressure as `z = -5000` itself**,
+  rather than the value the unclamped formula extrapolated to.
 
 - `pytcl.atmosphere.nrlmsise00`: `nrlmsise00_alt_for_pressure` (and
   `nrlmsise00_pressure_altitude`, which delegates to it) inverts
