@@ -26,6 +26,20 @@ from pytcl.magnetism.emm import (
     parse_emm_file,
 )
 
+# This file exercises emm()'s synthesis math (spherical harmonics, geodetic
+# conversion, secular variation) with create_test_coefficients()'s synthetic
+# set, whose model_name ("EMM_TEST") has no declared validity window --
+# every call here genuinely triggers emm()'s "validity window is unknown"
+# warning (v2.11.1 review round 2), honestly, and that is not what this
+# file tests. The warning's behavior itself (fires once, names the model,
+# does not fire for a recognized model) is covered by
+# tests/validation/test_magnetism_validity.py::TestEMMValidityWindow.
+# Matched on the message, not all UserWarnings, so a genuinely new warning
+# here still surfaces.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The validity window for coefficient set .* is unknown:UserWarning"
+)
+
 
 class TestHighResCoefficients:
     """Tests for HighResCoefficients creation and structure."""
