@@ -95,7 +95,7 @@ class UTMResult(NamedTuple):
 
 
 def _wrap_longitude_difference(lon: float, lon0: float) -> float:
-    """Longitude difference ``lon - lon0``, wrapped into [-pi, pi].
+    """Longitude difference ``lon - lon0``, wrapped into [-pi, pi).
 
     Cylindrical and transverse projections compute their easting and
     series terms from this difference; without wrapping, a central
@@ -211,7 +211,7 @@ def mercator_inverse(
     >>> import numpy as np
     >>> lat, lon = mercator_inverse(1000000, 5000000)
     """
-    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a central meridian near +-180
     # degrees (gh-25 follow-up).
     lon = _wrap_longitude_difference(x / a + lon0, 0.0)
@@ -495,7 +495,7 @@ def transverse_mercator_inverse(
         + d6 / 720 * (61 + 90 * t2 + 298 * c + 45 * t4 - 252 * ep2 - 3 * c2)
     )
 
-    # Longitude, canonicalized into [-pi, pi]: for a central meridian near
+    # Longitude, canonicalized into [-pi, pi): for a central meridian near
     # +-180 degrees (a forced UTM zone across the antimeridian), lon0 +
     # offset can otherwise land just past the antimeridian (gh-25
     # follow-up).
@@ -913,7 +913,7 @@ def stereographic_inverse(
     # Conformal latitude
     chi = np.arcsin(cos_c * sin_chi0 + y * sin_c * cos_chi0 / rho)
 
-    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a centre near +-180 degrees
     # (gh-25 follow-up).
     lon = _wrap_longitude_difference(
@@ -1105,7 +1105,7 @@ def lambert_conformal_conic(
     rho0 = a * F * t0**n * k0
     rho = a * F * t**n * k0
 
-    # Coordinates. The longitude difference is wrapped into [-pi, pi]
+    # Coordinates. The longitude difference is wrapped into [-pi, pi)
     # before scaling by the cone constant n: for n != 1, sin/cos of
     # n * (lon - lon0) is not 2*pi-periodic in the unwrapped difference, so
     # a central meridian near +-180 degrees and a point across the
@@ -1216,7 +1216,7 @@ def lambert_conformal_conic_inverse(
             break
         lat = lat_new
 
-    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a central meridian near +-180
     # degrees (gh-25 follow-up).
     lon = _wrap_longitude_difference(theta / n + lon0, 0.0)
@@ -1397,7 +1397,7 @@ def azimuthal_equidistant_inverse(
     cos_lat0 = np.cos(lat0)
 
     lat = np.arcsin(cos_c * sin_lat0 + y * sin_c * cos_lat0 / rho)
-    # Canonicalize into [-pi, pi]: lon0 + offset can otherwise land just
+    # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
     # past the antimeridian for a centre near +-180 degrees (gh-25
     # follow-up).
     lon = _wrap_longitude_difference(
@@ -1498,7 +1498,7 @@ def oblique_stereographic(
     sb = (1 - e * sin_lat) / (1 + e * sin_lat)
     w = c * (sa * sb**e) ** n
     chi = np.arcsin((w - 1) / (w + 1))
-    # Wrap the longitude difference into [-pi, pi] before scaling by n: for
+    # Wrap the longitude difference into [-pi, pi) before scaling by n: for
     # n != 1 (any real ellipsoid), sin/cos of n * (lon - lon0) is not
     # 2*pi-periodic in the unwrapped difference, so an origin near +-180
     # degrees and a point on the far side of the antimeridian produced a
@@ -1590,7 +1590,7 @@ def oblique_stereographic_inverse(
     j = np.arctan2(x, g - y) - i
     chi = chi0 + 2 * np.arctan((y - x * np.tan(j / 2)) / (2 * R * k0))
     dlam = j + 2 * i
-    # Canonicalize into [-pi, pi]: lon0 + offset can otherwise land just
+    # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
     # past the antimeridian for an origin near +-180 degrees (gh-25
     # follow-up).
     lon = _wrap_longitude_difference(dlam / n + lon0, 0.0)

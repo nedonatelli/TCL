@@ -327,12 +327,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
   `transverse_mercator` and shared the defect; `Mercator` with
   `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
-  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi]`
+  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi)`
   through one module-private helper (`_wrap_longitude_difference`)
   shared by both forward functions.
 
   The paired inverse functions computed the correct point but as a
-  longitude outside `[-pi, pi]` whenever `lon0 + offset` crossed the
+  longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the
   seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
   -180.1 deg, -182.0 deg and 180.5 deg instead of 179.9 deg, 178.0 deg
   and -179.5 deg. Mathematically exact (confirmed to within 5.3e-8 deg
@@ -351,7 +351,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before taking its sine/cosine, so unlike `mercator`/`transverse_mercator`
   an unwrapped difference does not alias back to the right answer through
   2*pi-periodicity -- it silently computes the wrong map coordinate, by
-  up to ~130 km for `oblique_stereographic` (measured: `(10, 179.9)` at
+  124.6 km for `oblique_stereographic` (measured: `(10, 179.9)` at
   `lon0=-177 deg` gave `x=-215,388.7` m against PROJ's `-339,958.0` m) and
   tens of millions of metres for `lambert_conformal_conic` (the same point
   at `lat0=5 deg`, standard parallels 1/9 deg gave `x=37,284,062.1` m
