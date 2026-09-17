@@ -129,12 +129,22 @@ def us_standard_atmosphere_1976(
         # The US76 layer table is defined in geopotential height
         h = R_EARTH_US76 * z / (R_EARTH_US76 + z)
 
-        # US76's own domain is -5000 m to 84852 m geopotential; the
-        # -5000 m floor is applied to the geometric input (not to h)
-        # since that is how the standard's table is anchored -- clamping
-        # h itself would shift the -5000 m reference case off the
-        # published pressure by ~75 Pa.
-        if z < US76_MIN_ALTITUDE_M:
+        # US76's own domain is -5000 m to 84852 m geopotential. This code
+        # anchors the -5000 m floor to the geometric input z (clamping z,
+        # then converting the clamped value to h) rather than clamping h
+        # directly; the two conventions disagree by about 75 Pa at the
+        # floor (geometric: 177761.57 Pa; geopotential: 177687.05 Pa) and
+        # the standard's own tables are not vendored here to arbitrate
+        # which one it intends.
+        #
+        # The check below compares h, not z, against the floor so it
+        # also catches the sliver of z just above -5000 m (down to about
+        # -4996.06 m) whose geometric-to-geopotential conversion already
+        # puts h past the floor even though z itself has not reached it
+        # -- e.g. z == -5000.0 converts to h == -5003.9 m, already 3.9 m
+        # past a -5000 m geopotential reading. Comparing z alone missed
+        # that sliver silently.
+        if h < US76_MIN_ALTITUDE_M:
             warnings.warn(
                 f"Altitude {z:.1f} m is below US Standard Atmosphere "
                 f"1976's validity floor of {US76_MIN_ALTITUDE_M:.0f} m; "

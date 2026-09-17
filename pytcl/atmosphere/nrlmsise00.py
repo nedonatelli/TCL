@@ -1951,17 +1951,17 @@ def nrlmsise00_alt_for_pressure(
     )
     if not math.isfinite(z):
         warnings.warn(
-            f"ghp7 did not converge for pressure={press_pa!r} Pa: the "
-            f"Newton iteration produced a non-finite altitude "
-            f"(alt_km={z!r})",
+            f"ghp7 did not converge for pressure={float(press_pa)!r} Pa: "
+            f"the Newton iteration produced a non-finite altitude "
+            f"(alt_km={float(z)!r})",
             stacklevel=2,
         )
     elif not (_GHP7_MIN_VALID_ALT_KM <= z <= _GHP7_MAX_VALID_ALT_KM):
         warnings.warn(
-            f"ghp7 converged for pressure={press_pa!r} Pa to "
-            f"alt_km={z!r}, outside NRLMSISE-00's documented "
-            f"{_GHP7_MIN_VALID_ALT_KM:.1f}-{_GHP7_MAX_VALID_ALT_KM:.0f} km "
-            f"altitude range",
+            f"ghp7 converged for pressure={float(press_pa)!r} Pa to "
+            f"alt_km={float(z)!r}, outside NRLMSISE-00's documented "
+            f"{_GHP7_MIN_VALID_ALT_KM:.1f} to {_GHP7_MAX_VALID_ALT_KM:.0f} "
+            "km altitude range",
             stacklevel=2,
         )
     return z, out
