@@ -379,6 +379,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stating both measured accuracies. Documentation only -- no code
   change, no test.
 
+- `pytcl.coordinate_systems.conversions.geodetic`: `geodetic2ecef` raised
+  `ValueError: can only convert an array of size 1 to a Python scalar`
+  for any input mixing a scalar with an array in an argument position
+  other than `lat`, e.g. `geodetic2ecef(0.5, 0.1, np.array([0., 100.,
+  1000.]))`, even though all three parameters are documented
+  `array_like`. The scalar-vs-array branch was decided from `lat.size`
+  alone rather than the broadcast output shape, so a scalar `lat` paired
+  with an array `lon` or `alt` took the `.item()` branch on a
+  multi-element result. The function now broadcasts `lat`, `lon`, `alt`
+  together up front and branches on the broadcast shape instead,
+  matching the already-correct behaviour of the
+  `navigation.geodesy.geodetic_to_ecef` wrapper, which worked around
+  this by pre-broadcasting before calling in. STABLE module; crash fix
+  only, no signature or return-shape change for any input that
+  previously worked.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

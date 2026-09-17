@@ -59,6 +59,8 @@ def geodetic2ecef(
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)
     alt = np.asarray(alt, dtype=np.float64)
+    shape = np.broadcast_shapes(lat.shape, lon.shape, alt.shape)
+    lat, lon, alt = np.broadcast_arrays(lat, lon, alt)
 
     # Eccentricity squared
     e2 = 2 * f - f**2
@@ -73,11 +75,11 @@ def geodetic2ecef(
     y = (N + alt) * cos_lat * np.sin(lon)
     z = (N * (1 - e2) + alt) * sin_lat
 
-    if np.isscalar(lat) or lat.size == 1:
+    if shape == ():
         # .item() rather than float(): float() on a (1,)-shaped array
         # raises under NumPy >= 2.
         return np.array(
-            [np.asarray(x).item(), np.asarray(y).item(), np.asarray(z).item()],
+            [x.item(), y.item(), z.item()],
             dtype=np.float64,
         )
 

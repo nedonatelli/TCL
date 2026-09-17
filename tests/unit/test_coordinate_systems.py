@@ -256,6 +256,28 @@ class TestGeodetic2ECEF:
         ecef = geodetic2ecef(lats, lons, alts)
         assert ecef.shape == (3, 3)
 
+    @pytest.mark.parametrize(
+        "lat,lon,alt",
+        [
+            (0.5, 0.1, np.array([0.0, 100.0, 1000.0])),
+            (np.array([0.5, 0.6]), 0.1, 0.0),
+            (0.5, np.array([0.1, 0.2]), np.array([0.0, 10.0])),
+        ],
+    )
+    def test_broadcasts_scalar_against_array(self, lat, lon, alt):
+        """A scalar mixed with an array in any argument position should
+        broadcast, matching per-element results from the all-scalar path."""
+        ecef = geodetic2ecef(lat, lon, alt)
+        shape = np.broadcast_shapes(np.shape(lat), np.shape(lon), np.shape(alt))
+        assert ecef.shape == (3,) + shape
+
+        lat_b, lon_b, alt_b = np.broadcast_arrays(lat, lon, alt)
+        for idx in np.ndindex(shape):
+            expected = geodetic2ecef(
+                float(lat_b[idx]), float(lon_b[idx]), float(alt_b[idx])
+            )
+            assert np.allclose(ecef[(slice(None), *idx)], expected)
+
 
 class TestECEF2Geodetic:
     """Tests for ECEF to geodetic conversions."""
