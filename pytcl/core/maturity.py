@@ -204,7 +204,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "astronomical.time_systems": MaturityLevel.MATURE,
     # atmosphere
     "atmosphere.humidity": MaturityLevel.EXPERIMENTAL,
-    "atmosphere.ionosphere": MaturityLevel.MATURE,
+    "atmosphere.ionosphere": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: simple_iri silently ignored altitude and longitude, and no oracle test backs the module (task 2.9)
     "atmosphere.models": MaturityLevel.MATURE,
     "atmosphere.refraction": MaturityLevel.EXPERIMENTAL,
     "atmosphere.jacchia": MaturityLevel.EXPERIMENTAL,  # new this release

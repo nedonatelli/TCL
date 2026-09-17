@@ -181,6 +181,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `press_pa`, which was never a valid pressure, now raises `ValueError`
   instead of silently returning NaN.
 
+- **Documented limitation, not a fix.** `pytcl.atmosphere.ionosphere`:
+  `simple_iri` accepts `altitude` and `longitude` and used neither --
+  TEC, delays and F2-layer parameters are identical at 100 km and at
+  1000 km, and identical across longitudes, for the same
+  latitude/hour/month/solar_flux. The model is in fact a
+  latitude-and-time-only empirical fit to foF2 and TEC with no vertical
+  profile at all; making it genuinely altitude- or longitude-dependent
+  needs an IRI oracle this repository does not have, so it is now
+  documented as such and warns on every call, naming both ignored
+  parameters, instead of silently returning a value that looks
+  altitude- or longitude-aware but is not. `scintillation_index` does
+  not share this defect -- it has no altitude or longitude parameters
+  to begin with, and its magnetic_latitude/hour/kp_index inputs all
+  measurably affect its output. `atmosphere.ionosphere`'s maturity is
+  demoted MATURE -> EXPERIMENTAL: besides this defect, the module has
+  no oracle test in the suite.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

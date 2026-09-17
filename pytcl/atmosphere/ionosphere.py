@@ -18,6 +18,7 @@ References
   Electronic Systems, AES-23(3), 325-331.
 """
 
+import warnings
 from typing import NamedTuple
 
 import numpy as np
@@ -312,20 +313,30 @@ def simple_iri(
     solar_flux: float = 150.0,
 ) -> IonosphereState:
     """
-    Simplified International Reference Ionosphere (IRI) model.
+    Empirical, latitude-and-time-only approximation of F2-layer TEC.
 
-    This provides approximate electron density and TEC values based on
-    simplified IRI physics. For accurate predictions, use the full IRI
-    model or external services.
+    This is **not** a reduced IRI model in the sense of evaluating a
+    coarser electron-density profile: it fits the F2 critical frequency
+    (foF2) and total electron content (TEC) from latitude, local hour,
+    month and solar flux alone, using no explicit vertical electron
+    density profile. ``altitude`` and ``longitude`` are accepted for a
+    call signature that resembles a full IRI evaluation, but neither
+    one affects the result -- a warning names both on every call. TEC
+    is identical at 100 km and at 1000 km, and identical at any two
+    longitudes. For an altitude- or longitude-sensitive model, use the
+    full IRI-2020 model or an external service; making this one
+    genuinely altitude/longitude-dependent needs an IRI oracle this
+    repository does not have.
 
     Parameters
     ----------
     latitude : array_like
         Geodetic latitude in radians.
     longitude : array_like
-        Geodetic longitude in radians.
+        Geodetic longitude in radians. Accepted but ignored -- see
+        Warns.
     altitude : array_like
-        Altitude in meters.
+        Altitude in meters. Accepted but ignored -- see Warns.
     hour : array_like
         Local hour (0-24).
     month : int, optional
@@ -338,18 +349,34 @@ def simple_iri(
     state : IonosphereState
         Ionospheric state with TEC, delays, and F2 layer parameters.
 
+    Warns
+    -----
+    UserWarning
+        Always: ``altitude`` and ``longitude`` are accepted but do not
+        affect the returned state.
+
     Notes
     -----
-    This is a simplified empirical model suitable for educational purposes
-    and rough estimates. For operational use, the full IRI-2020 model
-    should be employed.
+    This is a simplified empirical model suitable for educational
+    purposes and rough order-of-magnitude estimates only, not for
+    operational use.
 
     Examples
     --------
-    >>> state = simple_iri(np.radians(40), np.radians(-105), 300e3, 12)
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore")
+    ...     state = simple_iri(np.radians(40), np.radians(-105), 300e3, 12)
     >>> state.tec > 0
     True
     """
+    warnings.warn(
+        "simple_iri: altitude and longitude are ignored -- this model "
+        "depends only on latitude, hour, month and solar_flux; TEC is "
+        "identical for any altitude or longitude at the same "
+        "latitude/hour/month/solar_flux",
+        stacklevel=2,
+    )
     latitude = np.asarray(latitude, dtype=np.float64)
     longitude = np.asarray(longitude, dtype=np.float64)
     altitude = np.asarray(altitude, dtype=np.float64)
@@ -357,7 +384,6 @@ def simple_iri(
 
     # Convert latitude to degrees for calculations
     lat_deg = np.degrees(latitude)
-    # lon_deg not used in simplified model but kept for future expansion
 
     # Simplified F2 layer critical frequency (foF2) model
     # Based on typical diurnal and latitudinal variations
