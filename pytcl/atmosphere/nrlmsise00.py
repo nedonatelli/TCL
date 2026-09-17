@@ -1855,6 +1855,12 @@ def nrlmsise00(
     )
 
 
+# ghp7's own convergence test (Eq. as transcribed in _Model._ghp7 and in
+# the vendored csrc/nrlmsise00/nrlmsise-00.c): the Newton iteration is
+# considered converged once the log10-pressure residual is below this.
+_GHP7_MAX_VALID_ALT_KM = 1000.0
+
+
 def nrlmsise00_alt_for_pressure(
     doy: int,
     sec: float,
@@ -1875,7 +1881,7 @@ def nrlmsise00_alt_for_pressure(
     doy, sec, g_lat_deg, g_long_deg, lst, f107a, f107, ap, ap_array
         As in :func:`nrlmsise00`.
     press_pa : float
-        Pressure in Pascals.
+        Pressure in Pascals. Must be positive.
 
     Returns
     -------
@@ -1883,6 +1889,24 @@ def nrlmsise00_alt_for_pressure(
         The altitude in kilometers at which the model pressure matches.
     output : NRLMSISEOutput
         The model output at that altitude.
+
+    Raises
+    ------
+    ValueError
+        If ``press_pa`` is not positive.
+
+    Warns
+    -----
+    UserWarning
+        If the Newton iteration behind ``ghp7`` does not converge to a
+        finite altitude within NRLMSISE-00's documented 0-1000 km
+        validity range. Below the pure-Python path this happens for a
+        genuine iteration failure; the compiled reference backend can
+        also silently converge to a nonphysical altitude far outside
+        that range (e.g. thousands of km, for a small enough target
+        pressure) since its own non-convergence signal is only
+        ``printf``'d to native stdout, invisible to Python. Both are
+        surfaced here as one warning.
 
     Examples
     --------
@@ -1898,6 +1922,8 @@ def nrlmsise00_alt_for_pressure(
     internally. Preserves the NRL modification returning the computed
     altitude.
     """
+    if not press_pa > 0.0:
+        raise ValueError(f"pressure (press_pa) must be positive, got {press_pa!r}")
     press_hpa = press_pa / 100.0
     z, out = _run(
         doy,
@@ -1913,6 +1939,14 @@ def nrlmsise00_alt_for_pressure(
         "ghp7",
         press_hpa,
     )
+    if not (math.isfinite(z) and 0.0 <= z <= _GHP7_MAX_VALID_ALT_KM):
+        warnings.warn(
+            f"ghp7 did not converge to a physically valid altitude for "
+            f"press_pa={press_pa!r}: returned alt_km={z!r} is not finite "
+            f"and within NRLMSISE-00's documented "
+            f"0-{_GHP7_MAX_VALID_ALT_KM:.0f} km altitude range",
+            stacklevel=2,
+        )
     return z, out
 
 

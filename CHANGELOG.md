@@ -165,6 +165,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (1197 Pa) inverted to 25379.2 m, 4621 m off; it now warns and clamps
   to the layer's own pressure range instead.
 
+- `pytcl.atmosphere.nrlmsise00`: `nrlmsise00_alt_for_pressure` (and
+  `nrlmsise00_pressure_altitude`, which delegates to it) inverts
+  NRLMSISE-00's density/temperature model for altitude at a target
+  pressure via a bounded Newton iteration (`ghp7`). Against the
+  compiled reference backend -- the default in every installed wheel --
+  a non-converging or out-of-domain iteration was returned silently:
+  `press_pa=1e-10` converged to `alt_km=3706.76`, nearly 4x past
+  NRLMSISE-00's documented 1000 km ceiling, and `press_pa=1e-20`/`1e-30`
+  returned NaN, both with no warning (the reference C's own
+  non-convergence signal is only `printf`'d to native stdout, which
+  Python never sees; the pure-Python fallback already warned
+  correctly). Both entry points now warn whenever the returned altitude
+  is non-finite or outside 0-1000 km, for either backend. Non-positive
+  `press_pa`, which was never a valid pressure, now raises `ValueError`
+  instead of silently returning NaN.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
