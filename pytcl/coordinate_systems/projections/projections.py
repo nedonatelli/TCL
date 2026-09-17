@@ -211,8 +211,10 @@ def mercator_inverse(
     >>> import numpy as np
     >>> lat, lon = mercator_inverse(1000000, 5000000)
     """
-    # Longitude
-    lon = x / a + lon0
+    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # land just past the antimeridian for a central meridian near +-180
+    # degrees (gh-25 follow-up).
+    lon = _wrap_longitude_difference(x / a + lon0, 0.0)
 
     # Latitude using iterative solution
     t = np.exp(-y / a)
@@ -493,15 +495,19 @@ def transverse_mercator_inverse(
         + d6 / 720 * (61 + 90 * t2 + 298 * c + 45 * t4 - 252 * ep2 - 3 * c2)
     )
 
-    # Longitude
-    lon = (
+    # Longitude, canonicalized into [-pi, pi]: for a central meridian near
+    # +-180 degrees (a forced UTM zone across the antimeridian), lon0 +
+    # offset can otherwise land just past the antimeridian (gh-25
+    # follow-up).
+    lon = _wrap_longitude_difference(
         lon0
         + (
             d
             - d**3 / 6 * (1 + 2 * t2 + c)
             + d**5 / 120 * (5 - 2 * c + 28 * t2 - 3 * c2 + 8 * ep2 + 24 * t4)
         )
-        / cos_fp
+        / cos_fp,
+        0.0,
     )
 
     return lat, lon
@@ -907,8 +913,13 @@ def stereographic_inverse(
     # Conformal latitude
     chi = np.arcsin(cos_c * sin_chi0 + y * sin_c * cos_chi0 / rho)
 
-    # Longitude
-    lon = lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c)
+    # Longitude, canonicalized into [-pi, pi]: lon0 + offset can otherwise
+    # land just past the antimeridian for a centre near +-180 degrees
+    # (gh-25 follow-up).
+    lon = _wrap_longitude_difference(
+        lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c),
+        0.0,
+    )
 
     # Invert conformal latitude
     lat = chi
@@ -1379,7 +1390,13 @@ def azimuthal_equidistant_inverse(
     cos_lat0 = np.cos(lat0)
 
     lat = np.arcsin(cos_c * sin_lat0 + y * sin_c * cos_lat0 / rho)
-    lon = lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c)
+    # Canonicalize into [-pi, pi]: lon0 + offset can otherwise land just
+    # past the antimeridian for a centre near +-180 degrees (gh-25
+    # follow-up).
+    lon = _wrap_longitude_difference(
+        lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c),
+        0.0,
+    )
 
     return lat, lon
 

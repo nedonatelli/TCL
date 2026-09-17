@@ -327,12 +327,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
   `transverse_mercator` and shared the defect; `Mercator` with
   `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
-  `2.226e6` m. `utm2geodetic` / `transverse_mercator_inverse` and
-  `mercator_inverse` were not affected -- they add an offset to `lon0`
-  rather than subtracting two longitudes, so they had nothing to wrap.
-  The longitude difference is now wrapped into `[-pi, pi]` through one
-  module-private helper (`_wrap_longitude_difference`) shared by both
-  forward functions.
+  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi]`
+  through one module-private helper (`_wrap_longitude_difference`)
+  shared by both forward functions.
+
+  The paired inverse functions computed the correct point but as a
+  longitude outside `[-pi, pi]` whenever `lon0 + offset` crossed the
+  seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
+  -180.1 deg, -182.0 deg and 180.5 deg instead of 179.9 deg, 178.0 deg
+  and -179.5 deg. Mathematically exact (confirmed to within 5.3e-8 deg
+  after canonicalizing), but a value outside the caller's expected
+  range and incoherent next to a forward path that now handles the
+  dateline. `transverse_mercator_inverse` (and `utm2geodetic`),
+  `mercator_inverse`, `stereographic_inverse`, and
+  `azimuthal_equidistant_inverse` all shared this and now canonicalize
+  their returned longitude through the same `_wrap_longitude_difference`
+  helper. `lambert_conformal_conic_inverse` and
+  `azimuthal_equidistant_exact_inverse` do not share it (the former's
+  cone constant keeps its `atan2`-derived angle from ever exceeding the
+  range before dividing by it; the latter's geographiclib backend
+  already returns a canonical longitude) and were left unchanged.
 
 - `pytcl.coordinate_systems.projections.stereographic`'s docstring told
   callers to use `lat0 = +-pi/2` for polar work; that path diverges from
