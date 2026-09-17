@@ -462,12 +462,15 @@ def cross_track_distance(
     Returns
     -------
     CrossTrackResult
-        Cross-track distance (positive = right of path) and along-track distance.
+        Cross-track distance (positive = right of path) and signed
+        along-track distance (positive = ahead of the start point).
 
     Notes
     -----
     Positive cross-track means the point is to the right of the path
-    (when traveling from start to end).
+    (when traveling from start to end). Positive along-track means the
+    point's projection onto the path is ahead of the start point (toward
+    the end point); negative means it falls behind the start point.
 
     Examples
     --------
@@ -489,8 +492,10 @@ def cross_track_distance(
     # Cross-track distance
     dxt = np.arcsin(np.sin(d13) * np.sin(theta13 - theta12))
 
-    # Along-track distance
-    dat = np.arccos(np.cos(d13) / np.cos(dxt))
+    # Signed along-track distance: positive ahead of the start point,
+    # negative behind it. arctan2 keeps the sign that arccos(cos(d13) /
+    # cos(dxt)) discards -- that formula only ever returns [0, pi].
+    dat = np.arctan2(np.sin(d13) * np.cos(theta13 - theta12), np.cos(d13))
 
     return CrossTrackResult(
         cross_track=float(dxt * radius), along_track=float(dat * radius)
@@ -510,6 +515,11 @@ def great_circle_intersect(
 
     Given two points with initial bearings, find where the great circles
     defined by those bearings intersect.
+
+    Port of ``greatCircleIntersect.m``'s branch selection (Baselga &
+    Martinez-Llario 2018); the underlying vector algebra (intersecting
+    the two great-circle planes via their normals' cross product) is this
+    module's own, not MATLAB's spherical-triangle formulation.
 
     Parameters
     ----------
@@ -531,7 +541,12 @@ def great_circle_intersect(
     -----
     Great circles always intersect at two antipodal points (unless they
     are identical or parallel). The returned points are the intersections
-    closest to the given points.
+    closest to the given points: the result's ``lat1``/``lon1`` is the
+    intersection reached by a positive distance heading ``azimuth1`` from
+    the input ``lat1``/``lon1``, not whichever antipodal point the
+    underlying vector algebra happens to return. The branch selection is
+    a port of MATLAB's ``greatCircleIntersect.m`` (Baselga &
+    Martinez-Llario 2018), which selects the positive-distance solution.
 
     Examples
     --------
@@ -595,12 +610,25 @@ def great_circle_intersect(
 
     intersection = intersection / norm
 
-    # Two antipodal points
+    # Two antipodal points. The second is -intersection: negating all
+    # three Cartesian components (not just latitude) is required to land
+    # on the true antipode -- ((lon_i1 + pi) % 2*pi) - pi is a no-op wrap
+    # of lon_i1 itself, not lon_i1 + pi, and silently returned the same
+    # longitude as the first point.
     lat_i1 = np.arcsin(intersection[2])
     lon_i1 = np.arctan2(intersection[1], intersection[0])
 
-    lat_i2 = -lat_i1
-    lon_i2 = ((lon_i1 + np.pi) % (2 * np.pi)) - np.pi
+    lat_i2 = np.arcsin(-intersection[2])
+    lon_i2 = np.arctan2(-intersection[1], -intersection[0])
+
+    # Select the positive-distance branch (port of greatCircleIntersect.m):
+    # the cross product n1 x n2 returns one of the two antipodal solutions
+    # arbitrarily, so keep whichever candidate is reached from point 1 by
+    # heading azimuth1 rather than azimuth1 + pi.
+    bearing_to_i1 = great_circle_azimuth(lat1, lon1, lat_i1, lon_i1)
+    delta = (bearing_to_i1 - azimuth1 + np.pi) % (2 * np.pi) - np.pi
+    if abs(delta) > np.pi / 2:
+        lat_i1, lon_i1, lat_i2, lon_i2 = lat_i2, lon_i2, lat_i1, lon_i1
 
     return IntersectionResult(
         float(lat_i1), float(lon_i1), float(lat_i2), float(lon_i2), True

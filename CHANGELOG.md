@@ -395,6 +395,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only, no signature or return-shape change for any input that
   previously worked.
 
+- `pytcl.navigation.great_circle`: `great_circle_intersect` returned
+  whichever of the two antipodal intersection points `n1 x n2` (the
+  cross product of the two great-circle planes' normals) happened to
+  produce, not the documented "intersections closest to the given
+  points" -- for `az1 = 135 deg`, `az2 = 225 deg` it returned a point
+  whose azimuth from point 1 is 315 deg, i.e. backwards along `az1`. It
+  now selects the branch reached by a positive distance along `az1` from
+  point 1, transcribing the selection rule (not the algorithm -- this
+  module uses vector algebra, not MATLAB's spherical-triangle
+  formulation) from MATLAB's `greatCircleIntersect.m` (Baselga &
+  Martinez-Llario 2018). While fixing this, found and fixed a second,
+  previously undetected bug it depended on: the antipodal point's
+  longitude was computed as `((lon1 + pi) % 2*pi) - pi`, which wraps
+  `lon1` to itself (a no-op for any already-canonical longitude) rather
+  than computing `lon1 + pi` -- the "second" intersection point silently
+  carried the *same* longitude as the first, only the latitude negated.
+  The existing regression test only checked `lat2 == -lat1` and missed
+  it. Both points are now derived directly from the negated Cartesian
+  intersection vector. Also fixed: `cross_track_distance`'s
+  `along_track` used `arccos`, which only returns `[0, pi]`, so a point
+  behind the path start was indistinguishable from the same point ahead
+  of it (measured: both returned +555974.6 m). It is now computed via
+  `arctan2` on the same along-track component, which preserves the sign
+  `arccos` discarded without changing the magnitude for any input that
+  was already correct.
+
+  Deferred, not fixed here (Tier 4): `direct_rhumb` is 380 m off the
+  exact endpoint on a 3000 km leg with no accuracy note in its
+  docstring; MATLAB's exact elliptic-integral rhumb formulation is
+  unported.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
