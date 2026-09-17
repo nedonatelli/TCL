@@ -39,6 +39,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   demoted MATURE -> EXPERIMENTAL: besides this defect, the module has
   no oracle test in the suite.
 
+- **`pytcl.navigation.ins`'s maturity is demoted MATURE -> EXPERIMENTAL.**
+  `ins_error_state_matrix` had no numeric oracle at all before this
+  release -- only a shape check and "some entries are nonzero"
+  (`tests/unit/test_ins.py`). Built against a finite-difference Jacobian
+  of `mechanize_ins_ned` (the mechanization it claims to linearize, see
+  `tests/validation/test_ins_error_matrix.py`), the oracle found 17 of 30
+  non-zero entries in the 9x9 navigation block disagreeing -- 11 of 12 in
+  the attitude rows alone, where the entire
+  `-[omega_in^n x] phi` self-coupling submatrix is absent, three entries
+  have the wrong sign, and one (`F[7,0]`) is off by roughly two orders of
+  magnitude. The three vertical-channel entries responsible for the
+  qualitative defect below are fixed in this release; the rest is
+  intentionally left as a tracked, `xfail(strict=True)`-enumerated
+  inventory rather than being fixed under patch-release constraints on a
+  model nobody had ever checked. `loose_coupled_predict`
+  (`pytcl.navigation.ins_gnss`), the only consumer of this matrix, now
+  documents the same warning; its existing tests only assert that
+  covariance trace does not shrink and would not have caught any of
+  this. Bias-coupling entries (`F[3:6,9:12]`, `F[6:9,12:15]`, rows 9-14)
+  remain unverified either way -- `mechanize_ins_ned` takes no bias
+  arguments, so no finite difference of it can reach them.
+
 ### Fixed
 
 - **This changes timestamps callers may have built around.**
@@ -277,6 +299,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   got wrong on the first pass of this fix (caught in review). Non-positive
   `press_pa`/`pressure_pa`, never a valid pressure, now raises
   `ValueError` instead of silently returning NaN.
+
+- **`pytcl.navigation.ins.ins_error_state_matrix`'s vertical channel was
+  qualitatively wrong, not merely numerically off.** `F[5,2]` (gravity
+  gradient) had the opposite sign, which combined with `F[2,5] = -1`
+  turned the Schuler-coupled `{alt, vD}` subsystem into a bounded
+  oscillation (eigenvalues `+-0.00175j`) where the true INS vertical
+  channel is physically divergent, with a time constant around 570 s --
+  a stability defect, not a precision one. `F[5,0]`'s existing Coriolis
+  term also had the wrong sign (the same class of error, on the same
+  row) and separately omitted `d(g)/d(lat)` entirely; `F[5,3]` (the
+  Coriolis/transport coupling to `vN`) was zero and should not have
+  been. All three are now derived from `mechanize_ins_ned`'s own
+  equations (`d(g)/d(lat)` and `d(g)/d(alt)` via central difference of
+  `normal_gravity`, matching whatever gravity model `gravity_ned` calls)
+  and confirmed against a finite-difference oracle of that mechanization
+  -- see `tests/validation/test_ins_error_matrix.py` and the maturity
+  demotion above for what that oracle found beyond these three entries.
 
 ## [2.11.0] - 2026-09-13
 

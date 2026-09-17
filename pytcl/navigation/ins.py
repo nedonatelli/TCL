@@ -989,6 +989,42 @@ def ins_error_state_matrix(
     - Attitude errors (3): phi_N, phi_E, phi_D
     - Accelerometer biases (3): bax, bay, baz
     - Gyroscope biases (3): bwx, bwy, bwz
+
+    **Verification status (EXPERIMENTAL, v2.11.1).** This matrix was
+    audited against a central-difference Jacobian of
+    :func:`mechanize_ins_ned`, the mechanization it linearizes. Results:
+
+    - Position/velocity block (rows 0-5): mostly agrees. ``F[5,0]``,
+      ``F[5,2]``, ``F[5,3]`` were qualitatively wrong (sign errors and a
+      missing term, making the physically divergent vertical channel a
+      bounded oscillation) and are fixed as of this version. ``F[3,0]``,
+      ``F[3,4]``, ``F[4,0]`` remain quantitatively incomplete -- they omit
+      higher-order Coriolis/transport-rate curvature corrections (roughly
+      10-20% relative error at mid-latitude); this is a magnitude gap, not
+      a sign error, and is tracked rather than fixed here.
+    - Attitude block (rows 6-8): **known broadly incomplete**. The
+      ``-[omega_in^n x] phi`` self-coupling submatrix (``F[6:9,6:9]``) is
+      entirely absent, three entries (``F[6,4]``, ``F[7,3]``, ``F[8,4]``)
+      have the wrong sign, and ``F[7,0]`` differs from the oracle by
+      roughly two orders of magnitude. Of the 12 non-zero entries the
+      oracle exercises in rows 6-8, 11 disagree. Rebuilding this block is
+      out of scope for a patch release; see
+      ``tests/validation/test_ins_error_matrix.py`` for the full,
+      entry-by-entry inventory (every agreeing entry asserted, every
+      disagreeing entry an ``xfail(strict=True)`` with its analytic and
+      numeric values).
+    - Bias-coupling columns (``F[3:6,9:12]``, ``F[6:9,12:15]``, and rows
+      9-14 generally): **unverified, not verified-correct**.
+      :func:`mechanize_ins_ned` takes no bias arguments, so no
+      finite-difference oracle can reach these entries. They follow
+      directly from substituting ``measured = true + bias`` into the
+      already-checked specific-force/gyro terms, but that has not been
+      independently checked. Treat their state as unknown, not as a clean
+      bill of health inherited from the entries that do pass.
+
+    The module ``pytcl.navigation.ins`` is classified EXPERIMENTAL in
+    :mod:`pytcl.core.maturity` for this reason -- see that registry entry
+    for the measured figures.
     """
     lat, lon, alt = state.position
     vN, vE, vD = state.velocity
@@ -999,6 +1035,18 @@ def ins_error_state_matrix(
 
     # Gravity gradient
     g = normal_gravity(lat, alt)
+
+    # Central-differenced against normal_gravity itself (rather than a
+    # hardcoded coefficient) so the vertical-channel terms stay exact for
+    # whichever gravity model mechanize_ins_ned's gravity_ned() calls.
+    _D_LAT = 1e-6  # rad
+    _D_ALT = 1.0  # m
+    dg_dlat = (
+        normal_gravity(lat + _D_LAT, alt) - normal_gravity(lat - _D_LAT, alt)
+    ) / (2 * _D_LAT)
+    dg_dalt = (
+        normal_gravity(lat, alt + _D_ALT) - normal_gravity(lat, alt - _D_ALT)
+    ) / (2 * _D_ALT)
 
     # Initialize F matrix
     F = np.zeros((15, 15), dtype=np.float64)
@@ -1025,8 +1073,16 @@ def ins_error_state_matrix(
     F[4, 3] = 2 * omega_ie * np.sin(lat) + vE * np.tan(lat) / (RE + alt)
     F[4, 5] = 2 * omega_ie * np.cos(lat) + vE / (RE + alt)
 
-    F[5, 0] = -2 * vE * omega_ie * np.sin(lat)
-    F[5, 2] = 2 * g / A_EARTH  # Gravity gradient
+    # Schuler-coupled vertical channel: d(g)/d(alt) is negative (gravity
+    # weakens with altitude), which combined with F[2,5]=-1 makes the
+    # {alt, vD} subsystem have real eigenvalues (physically divergent,
+    # tau ~ 570 s at this state) rather than a bounded oscillation.
+    # The Coriolis term's own sign was also inverted (same class of error
+    # as F[5,2]): d(coriolis_D)/d(lat) = d(omega_N)/d(lat)*vE, and
+    # F contributes the negative of that, giving +2*vE*omega_ie*sin(lat).
+    F[5, 0] = 2 * vE * omega_ie * np.sin(lat) + dg_dlat
+    F[5, 2] = dg_dalt
+    F[5, 3] = -2 * vN / (RN + alt)  # Coriolis/transport coupling to vN
     F[5, 4] = -2 * omega_ie * np.cos(lat) - 2 * vE / (RE + alt)
 
     # Velocity-attitude coupling (specific force skew-symmetric)
