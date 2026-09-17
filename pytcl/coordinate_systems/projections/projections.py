@@ -94,6 +94,18 @@ class UTMResult(NamedTuple):
 # =============================================================================
 
 
+def _wrap_longitude_difference(lon: float, lon0: float) -> float:
+    """Longitude difference ``lon - lon0``, wrapped into [-pi, pi].
+
+    Cylindrical and transverse projections compute their easting and
+    series terms from this difference; without wrapping, a central
+    meridian near +-180 degrees and a point on the far side of the
+    antimeridian produce a difference near +-360 degrees instead of near
+    zero (gh-25 follow-up).
+    """
+    return float(wrap_to_pi(lon - lon0))
+
+
 def mercator(
     lat: float,
     lon: float,
@@ -139,7 +151,7 @@ def mercator(
     x=-8348961.8, y=5591295.9
     """
     # Easting
-    x = a * (lon - lon0)
+    x = a * _wrap_longitude_difference(lon, lon0)
 
     # Northing using isometric latitude
     sin_lat = np.sin(lat)
@@ -311,8 +323,10 @@ def transverse_mercator(
     tan_lat = np.tan(lat)
     eta2 = ep2 * cos_lat**2
 
-    # Longitude difference
-    dlon = lon - lon0
+    # Longitude difference, wrapped so a central meridian near +-180 degrees
+    # doesn't see a point on the far side of the antimeridian as ~360
+    # degrees away (gh-25 follow-up).
+    dlon = _wrap_longitude_difference(lon, lon0)
 
     # Compute projection using series
     t = tan_lat

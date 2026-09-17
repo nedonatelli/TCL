@@ -317,6 +317,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   -- see `tests/validation/test_ins_error_matrix.py` and the maturity
   demotion above for what that oracle found beyond these three entries.
 
+- `pytcl.coordinate_systems.projections`: `mercator` and
+  `transverse_mercator` computed `x = a * (lon - lon0)` (or its series
+  equivalent) with no wrap, so a point on the far side of the
+  antimeridian from its central meridian produced eastings in the
+  billions of metres -- e.g. a forced UTM zone 1 (CM -177 deg) point at
+  10N 179.9E returned `easting=2,365,798,893` m against PROJ's
+  `160,097.0` m, with the UTM scale factor coming out at 312.6 instead
+  of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
+  `transverse_mercator` and shared the defect; `Mercator` with
+  `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
+  `2.226e6` m. `utm2geodetic` / `transverse_mercator_inverse` and
+  `mercator_inverse` were not affected -- they add an offset to `lon0`
+  rather than subtracting two longitudes, so they had nothing to wrap.
+  The longitude difference is now wrapped into `[-pi, pi]` through one
+  module-private helper (`_wrap_longitude_difference`) shared by both
+  forward functions.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
