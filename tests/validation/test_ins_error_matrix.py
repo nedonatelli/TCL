@@ -223,7 +223,13 @@ _KNOWN_WRONG_ENTRIES = {
 
 
 class TestVerticalChannelFixed:
-    """REFERENCE-class checks for the three entries fixed in v2.11.1."""
+    """PROPERTY-class checks for the three entries fixed in v2.11.1.
+
+    The invariant checked is that F equals the Jacobian of the function it
+    claims to linearize (mechanize_ins_ned), not a comparison against an
+    independent implementation or published values -- that makes this
+    PROPERTY class per CONTRIBUTING's table, not REFERENCE.
+    """
 
     @pytest.mark.parametrize("row,col", sorted(_AGREEING_ENTRIES))
     def test_entry_matches_oracle(self, analytic_and_numeric, row, col):

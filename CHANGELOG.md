@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release -- only a shape check and "some entries are nonzero"
   (`tests/unit/test_ins.py`). Built against a finite-difference Jacobian
   of `mechanize_ins_ned` (the mechanization it claims to linearize, see
-  `tests/validation/test_ins_error_matrix.py`), the oracle found 17 of 30
+  `tests/validation/test_ins_error_matrix.py`), the oracle found 17 of 28
   non-zero entries in the 9x9 navigation block disagreeing -- 11 of 12 in
   the attitude rows alone, where the entire
   `-[omega_in^n x] phi` self-coupling submatrix is absent, three entries
