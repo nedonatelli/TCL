@@ -103,6 +103,35 @@ class TestGreatCircleIntersectBranch:
         assert result.lat1 == pytest.approx(lat_x, abs=1e-6)
         assert result.lon1 == pytest.approx(lon_x, abs=1e-6)
 
+    @pytest.mark.parametrize(
+        "az1_deg,az2_deg",
+        [
+            (135.0, 225.0),  # branch swap required (the measured defect)
+            (45.0, 315.0),  # no swap required -- the antipode-formula blind
+            # spot: a reintroduced longitude bug in the *second* point would
+            # pass every other test here undetected, since nothing else
+            # inspects (lat2, lon2) when the primary branch is already right.
+        ],
+    )
+    def test_two_returned_points_are_genuinely_antipodal(self, az1_deg, az2_deg):
+        lat1, lon1 = 0.0, 0.0
+        lat2, lon2 = 0.0, np.radians(10.0)
+        az1, az2 = np.radians(az1_deg), np.radians(az2_deg)
+
+        result = great_circle_intersect(lat1, lon1, az1, lat2, lon2, az2)
+        assert result.valid
+
+        # Oracle-measured separation between the two returned points, not
+        # this module's own great_circle_distance -- independent of the
+        # code under test, including whatever branch it selected.
+        separation = GEO.Inverse(
+            np.degrees(result.lat1),
+            np.degrees(result.lon1),
+            np.degrees(result.lat2),
+            np.degrees(result.lon2),
+        )["s12"]
+        assert separation == pytest.approx(np.pi * EARTH_RADIUS, rel=1e-9)
+
 
 class TestCrossTrackAlongTrackSigned:
     """along_track must be signed: positive ahead of the path start,
