@@ -118,11 +118,6 @@ ALLOWED: dict[tuple[str, str, str], str] = {
         "lon",
     ): "normal gravity is longitude-independent by rotational symmetry; uniform lat/lon signature",
     (
-        "gravity/models.py",
-        "gravity_j2",
-        "lon",
-    ): "normal gravity is longitude-independent by rotational symmetry; uniform lat/lon signature",
-    (
         "gravity/tides.py",
         "atmospheric_pressure_loading",
         "lat",

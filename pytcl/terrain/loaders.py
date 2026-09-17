@@ -35,6 +35,14 @@ from .dem import DEMGrid
 
 # Model parameters
 _GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"
+# Matches DEMGrid's default nodata_value, so a masked cell reads as
+# invalid once _build_gebco_grid wraps this array without overriding it.
+# This sentinel sits inside GEBCO's real bathymetric range (trenches
+# reach about -11000 m), so a genuine seafloor cell of exactly -9999 m
+# is indistinguishable from nodata. The real remedy is a separate
+# boolean mask channel; this patch's frozen return shape cannot carry
+# one, so the collision is latent rather than fixed here.
+_GEBCO_NODATA_VALUE = -9999.0
 
 GEBCO_PARAMETERS: dict[str, dict[str, Any]] = {
     "GEBCO2025": {
@@ -309,7 +317,11 @@ def parse_gebco_netcdf(
     Returns
     -------
     data : ndarray
-        Elevation data array.
+        Elevation data array. Cells the file's ``_FillValue`` or
+        ``missing_value`` marks as masked are filled with -9999.0
+        (matching ``DEMGrid``'s default ``nodata_value``) rather than
+        left as whatever value they held on disk, so a caller wrapping
+        this array in a ``DEMGrid`` sees them as invalid.
     lat_min_actual : float
         Actual minimum latitude of extracted region.
     lat_max_actual : float
@@ -378,7 +390,7 @@ def parse_gebco_netcdf(
         lon_max_actual = np.radians(float(lons[j_end - 1]))
 
     return (
-        np.asarray(elevation, dtype=np.float64),
+        np.ma.filled(elevation, _GEBCO_NODATA_VALUE).astype(np.float64, copy=False),
         lat_min_actual,
         lat_max_actual,
         lon_min_actual,
@@ -520,7 +532,7 @@ def _build_gebco_grid(
         lat_max_a,
         lon_min_a,
         lon_max_a,
-        nodata_value=-9999.0,
+        nodata_value=_GEBCO_NODATA_VALUE,
         name=version,
     )
     make_readonly(grid.data)

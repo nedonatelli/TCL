@@ -21,6 +21,7 @@ References
   https://www.ncei.noaa.gov/products/world-magnetic-model-high-resolution
 """
 
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, NamedTuple, Optional, Tuple, Union
@@ -597,6 +598,14 @@ def emm(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside `model`'s declared validity window
+        (`EMM_PARAMETERS[model]["valid_start"]` to `["valid_end"]`); the
+        secular-variation terms are being extrapolated and the result is
+        not an official model value.
+
     Examples
     --------
     >>> import numpy as np
@@ -609,13 +618,18 @@ def emm(
     if coefficients is None:
         coefficients = load_emm_coefficients(model, n_max)
 
-    # Handle array inputs by iterating (spherical harmonic sum is scalar)
+    _warn_if_outside_emm_window(coefficients, year)
+
+    # Handle array inputs by iterating (spherical harmonic sum is scalar).
+    # Delegates to _emm_scalar rather than recursing into emm() itself, so
+    # the window check above runs once per call regardless of array size
+    # instead of once per element.
     lat_arr = np.asarray(lat)
     if lat_arr.ndim > 0:
         lon_arr = np.broadcast_to(np.asarray(lon), lat_arr.shape)
         h_arr = np.broadcast_to(np.asarray(h), lat_arr.shape)
         results = [
-            emm(float(la), float(lo), float(hi), year, model, n_max, coefficients)
+            _emm_scalar(float(la), float(lo), float(hi), year, coefficients, n_max)
             for la, lo, hi in zip(lat_arr.ravel(), lon_arr.ravel(), h_arr.ravel())
         ]
         shape = lat_arr.shape
@@ -629,6 +643,77 @@ def emm(
             D=np.array([r.D for r in results]).reshape(shape),
         )
 
+    return _emm_scalar(lat, lon, h, year, coefficients, n_max)
+
+
+def _warn_if_outside_emm_window(coefficients: HighResCoefficients, year: float) -> None:
+    """Warn if `year` falls outside the *supplied coefficients'* window.
+
+    Keyed on ``coefficients.model_name`` and ``coefficients.epoch`` --
+    what is actually being evaluated -- rather than the ``model`` string
+    argument, which stays "EMM2017" by default even when the caller
+    passed a different (or synthetic, e.g. `create_test_coefficients`)
+    coefficient set via `coefficients=`.
+
+    A ``model_name`` this function does not recognize (any synthetic or
+    hand-built coefficient set, e.g. ``"EMM_TEST"``) must not silently
+    skip the check -- that would trade the earlier defect (a wrong
+    window applied without knowing it) for a worse one (no check at
+    all, on the one call path every in-repo test actually takes, since
+    the real ``.COF`` files are not vendored). It warns that the window
+    is unknown instead, so the extrapolation is at least audible.
+    """
+    params = EMM_PARAMETERS.get(coefficients.model_name)
+    if params is None:
+        warnings.warn(
+            f"The validity window for coefficient set "
+            f"{coefficients.model_name!r} is unknown, so no "
+            "extrapolation check was performed; the field may be "
+            "extrapolated arbitrarily far from its epoch "
+            f"({coefficients.epoch:.1f}).",
+            stacklevel=3,
+        )
+        return
+    valid_start = params["valid_start"]
+    valid_end = params["valid_end"]
+    # The coefficients' own parsed epoch, not the static table value --
+    # unlike WMM's derived window (epoch to epoch + 5.0), EMM's
+    # valid_start/valid_end are declared independently and are not
+    # computed from epoch, so this is only used to phrase the message
+    # ("N years backward/forward from the epoch").
+    epoch = coefficients.epoch
+    if year < valid_start:
+        warnings.warn(
+            f"The year {year:.1f} is before {coefficients.model_name}'s "
+            f"valid window ({valid_start:.1f} to {valid_end:.1f}); the "
+            f"field is extrapolated {valid_start - year:.1f} years "
+            f"backward from the {epoch:.1f} epoch and will diverge from "
+            f"the true field by an unknown amount. For years before "
+            f"{valid_start:.1f}, prefer an older model or IGRF.",
+            stacklevel=3,
+        )
+    elif year > valid_end:
+        warnings.warn(
+            f"The year {year:.1f} is beyond {coefficients.model_name}'s "
+            f"valid window ({valid_start:.1f} to {valid_end:.1f}), "
+            f"{year - valid_end:.1f} years past {valid_end:.1f}; the "
+            f"field is extrapolated forward from the {epoch:.1f} epoch "
+            "and will diverge from the true field by an unknown, "
+            f"growing amount. For years after {valid_end:.1f}, prefer "
+            "a newer model release.",
+            stacklevel=3,
+        )
+
+
+def _emm_scalar(
+    lat: float,
+    lon: float,
+    h: float,
+    year: float,
+    coefficients: HighResCoefficients,
+    n_max: Optional[int],
+) -> MagneticResult:
+    """Scalar EMM/WMMHR field evaluation, no window check or array handling."""
     # Convert geodetic (WGS84) to geocentric spherical coordinates
     a_wgs = 6378.137  # WGS84 semi-major axis, km
     e2 = 6.694379990141e-3  # WGS84 first eccentricity squared
@@ -699,10 +784,16 @@ def wmmhr(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside WMMHR2025's 2025.0-2030.0 validity
+        window; see `emm`.
+
     Notes
     -----
     WMMHR2025 is valid for 2025.0 - 2030.0. For dates outside this
-    range, results may be less accurate.
+    range, results are extrapolated (see Warns).
 
     Secular variation is only computed for degrees 1-15. Higher degree
     terms represent static crustal field.

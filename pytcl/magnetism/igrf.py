@@ -20,7 +20,7 @@ import numpy as np
 from pytcl.magnetism.wmm import (
     MagneticCoefficients,
     MagneticResult,
-    wmm,
+    _wmm_core,
 )
 
 
@@ -591,8 +591,11 @@ def igrf(
         coeffs = create_igrf14_coefficients(year)
 
     # Same geodetic evaluation as the WMM (WGS84 geodetic-to-geocentric
-    # conversion, Schmidt-normalized synthesis, frame rotation)
-    return wmm(lat, lon, h, year, coeffs)
+    # conversion, Schmidt-normalized synthesis, frame rotation). Uses the
+    # unwarned core directly: IGRF coefficients carry their own validity
+    # window (checked in create_igrf14_coefficients), not WMM's five-year
+    # one, so wmm()'s window check does not apply here.
+    return _wmm_core(lat, lon, h, year, coeffs)
 
 
 def igrf_declination(

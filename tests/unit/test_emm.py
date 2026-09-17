@@ -9,6 +9,7 @@ from numpy.testing import assert_allclose
 
 from pytcl.magnetism import (
     EMM_PARAMETERS,
+    WMM2020,
     create_emm_test_coefficients,
     emm,
     emm_declination,
@@ -23,6 +24,20 @@ from pytcl.magnetism.emm import (
     create_test_coefficients,
     get_data_dir,
     parse_emm_file,
+)
+
+# This file exercises emm()'s synthesis math (spherical harmonics, geodetic
+# conversion, secular variation) with create_test_coefficients()'s synthetic
+# set, whose model_name ("EMM_TEST") has no declared validity window --
+# every call here genuinely triggers emm()'s "validity window is unknown"
+# warning (v2.11.1 review round 2), honestly, and that is not what this
+# file tests. The warning's behavior itself (fires once, names the model,
+# does not fire for a recognized model) is covered by
+# tests/validation/test_magnetism_validity.py::TestEMMValidityWindow.
+# Matched on the message, not all UserWarnings, so a genuinely new warning
+# here still surfaces.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:The validity window for coefficient set .* is unknown:UserWarning"
 )
 
 
@@ -221,7 +236,7 @@ class TestEMMComparisonWithWMM:
 
         # Compare with WMM
         emm_result = emm(lat, lon, 0, 2020.0, coefficients=coef, n_max=12)
-        wmm_result = wmm(lat, lon, 0, 2020.0)
+        wmm_result = wmm(lat, lon, 0, 2020.0, WMM2020)
 
         # Should be within 10% for total field (test coefficients slightly different)
         rel_diff = abs(emm_result.F - wmm_result.F) / wmm_result.F
@@ -355,11 +370,11 @@ class TestSecularVariation:
         D_2020 = emm_declination(
             np.radians(45), np.radians(-75), 0, 2020.0, coefficients=test_coefficients
         )
-        D_2025 = emm_declination(
-            np.radians(45), np.radians(-75), 0, 2025.0, coefficients=test_coefficients
+        D_2022 = emm_declination(
+            np.radians(45), np.radians(-75), 0, 2022.0, coefficients=test_coefficients
         )
         # Should be different
-        assert D_2020 != D_2025
+        assert D_2020 != D_2022
 
 
 class TestNumericalStability:
@@ -582,10 +597,10 @@ class TestEMMFieldCalculations:
         lat_r = np.radians(40.0)
         lon_r = np.radians(-75.0)
         result_2020 = emm(lat_r, lon_r, 0.0, 2020.0, coefficients=coeff)
-        result_2025 = emm(lat_r, lon_r, 0.0, 2025.0, coefficients=coeff)
+        result_2022 = emm(lat_r, lon_r, 0.0, 2022.0, coefficients=coeff)
 
         # Secular variation should produce different results
-        assert result_2020.X != result_2025.X
+        assert result_2020.X != result_2022.X
 
 
 class TestWMMHRCalculations:

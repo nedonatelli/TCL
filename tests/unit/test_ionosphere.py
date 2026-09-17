@@ -384,6 +384,51 @@ class TestSimpleIri:
         assert state.delay_l1 == pytest.approx(expected_l1)
         assert state.delay_l2 == pytest.approx(expected_l2)
 
+    def test_simple_iri_warns_that_altitude_and_longitude_are_ignored(self):
+        """simple_iri accepts altitude and longitude but its result does
+        not depend on either -- see test_simple_iri_tec_is_altitude_and_
+        longitude_independent_as_documented below. Callers get a warning
+        naming both parameters rather than a silently wrong answer."""
+        with pytest.warns(UserWarning, match="altitude and longitude are ignored"):
+            simple_iri(
+                latitude=np.radians(40),
+                longitude=np.radians(-105),
+                altitude=300e3,
+                hour=12,
+            )
+
+    def test_simple_iri_tec_is_altitude_and_longitude_independent_as_documented(
+        self,
+    ):
+        """Pins a known limitation (task 2.9): simple_iri is a
+        latitude/local-time/solar-flux/season fit with no altitude or
+        longitude dependence at all. A future fix that makes it actually
+        altitude- or longitude-sensitive must update this test."""
+        with pytest.warns(UserWarning):
+            low = simple_iri(
+                latitude=np.radians(40),
+                longitude=np.radians(-105),
+                altitude=100e3,
+                hour=12,
+            )
+        with pytest.warns(UserWarning):
+            high = simple_iri(
+                latitude=np.radians(40),
+                longitude=np.radians(-105),
+                altitude=1_000e3,
+                hour=12,
+            )
+        with pytest.warns(UserWarning):
+            other_lon = simple_iri(
+                latitude=np.radians(40),
+                longitude=np.radians(170),
+                altitude=300e3,
+                hour=12,
+            )
+
+        assert low.tec == pytest.approx(high.tec)
+        assert low.tec == pytest.approx(other_lon.tec)
+
 
 # =============================================================================
 # Tests for magnetic_latitude

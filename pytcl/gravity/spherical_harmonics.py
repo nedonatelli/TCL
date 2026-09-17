@@ -228,7 +228,7 @@ def spherical_harmonic_sum(
     Parameters
     ----------
     lat : float
-        Geodetic latitude in radians.
+        Geocentric latitude in radians.
     lon : float
         Longitude in radians.
     r : float
@@ -371,7 +371,7 @@ def gravity_acceleration(
     Parameters
     ----------
     lat : float
-        Geodetic latitude in radians.
+        Geocentric latitude in radians.
     lon : float
         Longitude in radians.
     h : float

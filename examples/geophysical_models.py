@@ -53,6 +53,8 @@ from pytcl.gravity import (  # Normal gravity; Gravity models; Geoid; Anomalies;
     tidal_gravity_correction,
 )
 from pytcl.magnetism import (  # World Magnetic Model; IGRF
+    WMM2020,
+    WMM2025,
     dipole_moment,
     igrf,
     igrf_declination,
@@ -662,7 +664,10 @@ def demo_magnetic_properties():
     print("Magnetic field changes over time due to core dynamics.")
     years = [2020, 2022, 2024, 2025]
     for year in years:
-        dec = magnetic_declination(lat, lon, alt, float(year))
+        # WMM2025's window is 2025.0-2030.0; use WMM2020 (2020.0-2025.0)
+        # for the years before that so this demo stays warning-free.
+        coeffs = WMM2020 if year < 2025 else WMM2025
+        dec = magnetic_declination(lat, lon, alt, float(year), coeffs)
         print(f"  {year}: declination = {np.degrees(dec):.2f}°")
 
 

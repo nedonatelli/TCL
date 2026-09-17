@@ -206,7 +206,7 @@ class TestWMM:
 
     def test_wmm_returns_result(self):
         """WMM returns MagneticResult."""
-        result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-105), 1.0, 2026.0)
         assert hasattr(result, "X")
         assert hasattr(result, "Y")
         assert hasattr(result, "Z")
@@ -217,38 +217,38 @@ class TestWMM:
 
     def test_total_intensity_reasonable(self):
         """Total field intensity is in expected range."""
-        result = wmm(np.radians(45), np.radians(0), 0, 2023.0)
+        result = wmm(np.radians(45), np.radians(0), 0, 2026.0)
         # Field can be stronger at high latitudes
         assert 25000 < result.F < 100000
 
     def test_horizontal_intensity_formula(self):
         """H = sqrt(X^2 + Y^2)."""
-        result = wmm(np.radians(40), np.radians(-75), 0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-75), 0, 2026.0)
         H_calc = np.sqrt(result.X**2 + result.Y**2)
         assert_allclose(result.H, H_calc, rtol=1e-10)
 
     def test_total_intensity_formula(self):
         """F = sqrt(H^2 + Z^2)."""
-        result = wmm(np.radians(40), np.radians(-75), 0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-75), 0, 2026.0)
         F_calc = np.sqrt(result.H**2 + result.Z**2)
         assert_allclose(result.F, F_calc, rtol=1e-10)
 
     def test_declination_function(self):
         """magnetic_declination returns correct value."""
-        result = wmm(np.radians(40), np.radians(-105), 0, 2023.0)
-        D = magnetic_declination(np.radians(40), np.radians(-105), 0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-105), 0, 2026.0)
+        D = magnetic_declination(np.radians(40), np.radians(-105), 0, 2026.0)
         assert_allclose(D, result.D)
 
     def test_inclination_function(self):
         """magnetic_inclination returns correct value."""
-        result = wmm(np.radians(40), np.radians(-105), 0, 2023.0)
-        incl = magnetic_inclination(np.radians(40), np.radians(-105), 0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-105), 0, 2026.0)
+        incl = magnetic_inclination(np.radians(40), np.radians(-105), 0, 2026.0)
         assert_allclose(incl, result.I)
 
     def test_intensity_function(self):
         """magnetic_field_intensity returns correct value."""
-        result = wmm(np.radians(40), np.radians(-105), 0, 2023.0)
-        F = magnetic_field_intensity(np.radians(40), np.radians(-105), 0, 2023.0)
+        result = wmm(np.radians(40), np.radians(-105), 0, 2026.0)
+        F = magnetic_field_intensity(np.radians(40), np.radians(-105), 0, 2026.0)
         assert_allclose(F, result.F)
 
 
@@ -283,7 +283,7 @@ class TestWMMReferenceValues:
 
     def test_denver_declination_easterly(self):
         """Denver has ~+8 deg (easterly) declination, not westerly."""
-        r = wmm(np.radians(39.74), np.radians(-104.99), 1.6, 2023.0)
+        r = wmm(np.radians(39.74), np.radians(-104.99), 1.6, 2023.0, WMM2020)
         assert 7.0 < np.degrees(r.D) < 9.0
 
 
@@ -334,8 +334,8 @@ class TestIGRF:
         lat = np.radians(40)
         lon = np.radians(-75)
 
-        wmm_result = wmm(lat, lon, 0, 2023.0)
-        igrf_result = igrf(lat, lon, 0, 2023.0)
+        wmm_result = wmm(lat, lon, 0, 2026.0)
+        igrf_result = igrf(lat, lon, 0, 2026.0)
 
         # Should be within 1% for total field
         assert abs(wmm_result.F - igrf_result.F) / wmm_result.F < 0.1
@@ -391,25 +391,25 @@ class TestMagneticFieldProperties:
 
     def test_inclination_positive_north(self):
         """Inclination is positive in northern hemisphere."""
-        result = wmm(np.radians(60), 0, 0, 2023.0)
+        result = wmm(np.radians(60), 0, 0, 2026.0)
         assert result.I > 0  # Field points into Earth
 
     def test_inclination_negative_south(self):
         """Inclination is negative in southern hemisphere."""
-        result = wmm(np.radians(-60), 0, 0, 2023.0)
+        result = wmm(np.radians(-60), 0, 0, 2026.0)
         assert result.I < 0  # Field points out of Earth
 
     def test_field_stronger_at_poles(self):
         """Magnetic field is stronger near poles than equator."""
-        F_pole = wmm(np.radians(80), 0, 0, 2023.0).F
-        F_eq = wmm(0, 0, 0, 2023.0).F
+        F_pole = wmm(np.radians(80), 0, 0, 2026.0).F
+        F_eq = wmm(0, 0, 0, 2026.0).F
 
         assert F_pole > F_eq
 
     def test_field_decreases_with_altitude(self):
         """Magnetic field decreases with altitude."""
-        F_0 = wmm(np.radians(45), 0, 0, 2023.0).F
-        F_100 = wmm(np.radians(45), 0, 100, 2023.0).F  # 100 km altitude
+        F_0 = wmm(np.radians(45), 0, 0, 2026.0).F
+        F_100 = wmm(np.radians(45), 0, 100, 2026.0).F  # 100 km altitude
 
         assert F_0 > F_100
 

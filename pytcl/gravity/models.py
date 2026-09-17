@@ -15,6 +15,7 @@ from typing import NamedTuple
 
 import numpy as np
 
+from pytcl.coordinate_systems import geodetic2ecef
 from pytcl.core.exceptions import ConvergenceError
 from pytcl.gravity.spherical_harmonics import spherical_harmonic_sum
 
@@ -260,7 +261,11 @@ def gravity_j2(
     lat : float
         Geodetic latitude in radians.
     lon : float
-        Longitude in radians.
+        Longitude in radians. The result is independent of longitude by
+        rotational symmetry: it is read (passed to ``geodetic2ecef`` to
+        get the true geocentric radius and latitude), but its x, y
+        contribution cancels there via ``cos**2(lon) + sin**2(lon) = 1``,
+        so it never affects the returned value.
     h : float, optional
         Height above ellipsoid in meters. Default 0.
     constants : GravityConstants, optional
@@ -279,14 +284,15 @@ def gravity_j2(
     """
     GM = constants.GM
     a = constants.a
+    f = constants.f
     J2 = constants.J2
     omega = constants.omega
 
-    # Approximate geocentric radius
-    r = a + h  # Simplified
-
-    # Geocentric latitude (approximate)
-    lat_gc = lat  # Simplified, should account for flattening
+    # The J2 potential below is defined in geocentric latitude at the
+    # true radius under the point, not geodetic latitude at r = a + h.
+    ecef = geodetic2ecef(lat, lon, h, a, f)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
 
     sin_lat = np.sin(lat_gc)
     cos_lat = np.cos(lat_gc)

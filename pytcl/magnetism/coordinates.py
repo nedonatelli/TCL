@@ -95,6 +95,17 @@ def cd_rotation_matrix(
     R : ndarray
         (3, 3) rotation matrix; ``R @ v_itrs`` is in CD coordinates.
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window here. Unlike
+    :func:`pytcl.magnetism.wmm.wmm`, this function (and the rest of this
+    module) does not warn when ``year`` (or ``coeffs.epoch``, used when
+    ``year`` is not given) falls outside the coefficient set's declared
+    validity range -- silent extrapolation is possible. A caller who
+    wants that check should call ``wmm()`` directly, or compare ``year``
+    against the coefficient set's own documented window before calling
+    in here.
+
     Examples
     --------
     >>> R = cd_rotation_matrix()
@@ -139,6 +150,11 @@ def itrs2cart_cd(
     z_cd : ndarray
         The positions in CD coordinates, same shape.
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
+
     Examples
     --------
     >>> z = itrs2cart_cd([6378137.0, 0.0, 0.0])
@@ -173,6 +189,11 @@ def cart_cd2itrs(
     -------
     z_itrs : ndarray
         The positions in the ITRS, same shape.
+
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
 
     Examples
     --------
@@ -223,6 +244,11 @@ def spher_itrs2spher_cd(
     z_cd : ndarray
         The spherical CD coordinates, same number of elements.
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
+
     Examples
     --------
     >>> z = spher_itrs2spher_cd([6.4e6, 0.5, 0.2])
@@ -261,6 +287,11 @@ def spher_cd2spher_itrs(
     z_spher : ndarray
         The spherical ITRS coordinates, same number of elements.
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
+
     Examples
     --------
     >>> import numpy as np
@@ -284,10 +315,17 @@ def _declination_at(
     year: float | None,
 ) -> float:
     """Angle of magnetic north east of geographic north (radians)."""
-    from pytcl.magnetism.wmm import wmm
+    from pytcl.magnetism.wmm import _wmm_core
 
+    # Callers here (geog_heading2mag, mag_heading2geog) accept any
+    # MagneticCoefficients, IGRF14 included -- most sibling functions in
+    # this module default to it. wmm()'s validity-window warning is keyed
+    # on treating coeffs.epoch as "start of a five-year WMM window," which
+    # is wrong for IGRF-sourced coefficients (see igrf.py's own use of
+    # _wmm_core for the same reason), so this goes straight to the
+    # unwarned core rather than the public, WMM-window-checked wmm().
     y = coeffs.epoch if year is None else year
-    res = wmm(lat, lon, h / 1000.0, y, coeffs)  # wmm takes km
+    res = _wmm_core(lat, lon, h / 1000.0, y, coeffs)  # wmm takes km
     return float(res.D)
 
 
@@ -324,6 +362,13 @@ def geog_heading2mag(
     heading_mag : float
         Heading in radians east of magnetic north.
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes. This applies regardless of
+    which coefficient set is passed -- ``WMM2025``, ``IGRF14``, or
+    anything else.
+
     Examples
     --------
     >>> h = geog_heading2mag([0.7, -1.2, 0.0], 0.5)
@@ -359,6 +404,11 @@ def mag_heading2geog(
     -------
     heading_geo : float
         Heading in radians east of geographic north.
+
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
 
     Examples
     --------
@@ -441,6 +491,11 @@ def trace2earth_mag_apex(
     sign_val : float
         +1 when the field at the start points toward increasing
         height (magnetically southern side), -1 otherwise.
+
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
 
     Examples
     --------
@@ -557,6 +612,11 @@ def itrs2magnetic_apex(
     apex_point : ndarray
         (3,) the traced apex position in the ITRS (meters).
 
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
+
     Examples
     --------
     >>> z, apex = itrs2magnetic_apex([6.4e6, 1e5, 2e6])
@@ -610,6 +670,11 @@ def itrs2qd(
         height (m)]. The longitude is NaN for a polar-escaping line.
     apex_point : ndarray
         (3,) the traced apex position in the ITRS (meters).
+
+    Notes
+    -----
+    ``coeffs`` is not checked against any validity window; see
+    :func:`cd_rotation_matrix`'s Notes.
 
     Examples
     --------

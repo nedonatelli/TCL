@@ -12,6 +12,7 @@ References
 - https://www.ngdc.noaa.gov/geomag/WMM/
 """
 
+import warnings
 from functools import lru_cache
 from typing import Any, NamedTuple, Optional, Tuple
 
@@ -393,6 +394,62 @@ def _quantize_inputs(
     )
 
 
+def _coefficient_key(
+    coeffs: "MagneticCoefficients",
+) -> Tuple[bytes, bytes, bytes, bytes, float, int]:
+    """Content fingerprint of a coefficient set, for use as a cache key.
+
+    ``coeffs.g``, ``h``, ``g_dot`` and ``h_dot`` are the only arrays
+    ``_compute_magnetic_field_spherical_impl`` reads; ``epoch`` and
+    ``n_max`` are its remaining scalar inputs. Together they are every
+    piece of ``coeffs`` the field depends on, so a change to any of them
+    -- including an in-place mutation of one array, which leaves ``id()``
+    unchanged -- changes this key and therefore cannot hit a stale entry.
+
+    Packed as float64 regardless of the input arrays' own dtype:
+    ``_decode_and_compute`` always decodes the packed bytes back with
+    ``np.frombuffer(..., dtype=np.float64)``, so a float32 (or other
+    non-float64) coefficient array packed at its native width would
+    leave a buffer whose size is not a multiple of float64's itemsize,
+    raising ``ValueError`` on decode. No in-repo coefficient set is
+    float32, but ``MagneticCoefficients`` is typed to allow it and this
+    cache must not be the reason a previously-working array stops
+    working.
+    """
+    return (
+        np.ascontiguousarray(coeffs.g, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.h, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.g_dot, dtype=np.float64).tobytes(),
+        np.ascontiguousarray(coeffs.h_dot, dtype=np.float64).tobytes(),
+        coeffs.epoch,
+        coeffs.n_max,
+    )
+
+
+def _decode_and_compute(
+    lat: float,
+    lon: float,
+    r: float,
+    year: float,
+    n_max: int,
+    g_bytes: bytes,
+    h_bytes: bytes,
+    g_dot_bytes: bytes,
+    h_dot_bytes: bytes,
+    epoch: float,
+) -> Tuple[float, float, float]:
+    """Rebuild a `MagneticCoefficients` from packed bytes and evaluate it."""
+    shape = (n_max + 1, n_max + 1)
+    g = np.frombuffer(g_bytes, dtype=np.float64).reshape(shape)
+    h = np.frombuffer(h_bytes, dtype=np.float64).reshape(shape)
+    g_dot = np.frombuffer(g_dot_bytes, dtype=np.float64).reshape(shape)
+    h_dot = np.frombuffer(h_dot_bytes, dtype=np.float64).reshape(shape)
+    coeffs = MagneticCoefficients(
+        g=g, h=h, g_dot=g_dot, h_dot=h_dot, epoch=epoch, n_max=n_max
+    )
+    return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+
+
 @lru_cache(maxsize=_DEFAULT_CACHE_SIZE)
 def _magnetic_field_spherical_cached(
     lat: float,
@@ -400,13 +457,23 @@ def _magnetic_field_spherical_cached(
     r: float,
     year: float,
     n_max: int,
-    coeff_id: int,
+    g_bytes: bytes,
+    h_bytes: bytes,
+    g_dot_bytes: bytes,
+    h_dot_bytes: bytes,
+    epoch: float,
 ) -> Tuple[float, float, float]:
     """
     Cached core computation of magnetic field in spherical coordinates.
 
-    This is the internal cached version. The coefficient arrays are identified
-    by their id() since NamedTuples with numpy arrays aren't hashable.
+    The coefficient arrays are passed in as their own packed bytes (see
+    `_coefficient_key`) rather than looked up from a registry by identity:
+    ``lru_cache`` then keys on the coefficients' actual content, so a
+    mutated array is simply a different call, never a stale hit. Nothing
+    outside this cache retains those bytes, so a coefficient set that
+    nothing else references is not kept alive by having been used here --
+    it is bounded only by this cache's own ``maxsize`` LRU eviction, the
+    same bound that already applied to the field results.
 
     Parameters
     ----------
@@ -420,32 +487,20 @@ def _magnetic_field_spherical_cached(
         Decimal year (quantized).
     n_max : int
         Maximum spherical harmonic degree.
-    coeff_id : int
-        Unique identifier for the coefficient set.
+    g_bytes, h_bytes, g_dot_bytes, h_dot_bytes : bytes
+        Packed float64 bytes of the coefficient arrays, shape
+        ``(n_max + 1, n_max + 1)``.
+    epoch : float
+        Reference epoch of the coefficient set (decimal year).
 
     Returns
     -------
     B_r, B_theta, B_phi : tuple of float
         Magnetic field components in spherical coordinates (nT).
     """
-    # Retrieve coefficients from registry
-    coeffs = _coefficient_registry.get(coeff_id)
-    if coeffs is None:
-        raise ValueError(f"Coefficient set {coeff_id} not found in registry")
-
-    return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
-
-
-# Registry to hold coefficient sets by id
-_coefficient_registry: dict[int, Any] = {}
-
-
-def _register_coefficients(coeffs: "MagneticCoefficients") -> int:
-    """Register a coefficient set and return its unique ID."""
-    coeff_id = id(coeffs)
-    if coeff_id not in _coefficient_registry:
-        _coefficient_registry[coeff_id] = coeffs
-    return coeff_id
+    return _decode_and_compute(
+        lat, lon, r, year, n_max, g_bytes, h_bytes, g_dot_bytes, h_dot_bytes, epoch
+    )
 
 
 def _compute_magnetic_field_spherical_impl(
@@ -563,7 +618,6 @@ def clear_magnetic_cache() -> None:
     >>> clear_magnetic_cache()  # Free cached computations
     """
     _magnetic_field_spherical_cached.cache_clear()
-    _coefficient_registry.clear()
 
 
 def configure_magnetic_cache(
@@ -625,12 +679,24 @@ def configure_magnetic_cache(
             r: float,
             year: float,
             n_max: int,
-            coeff_id: int,
+            g_bytes: bytes,
+            h_bytes: bytes,
+            g_dot_bytes: bytes,
+            h_dot_bytes: bytes,
+            epoch: float,
         ) -> Tuple[float, float, float]:
-            coeffs = _coefficient_registry.get(coeff_id)
-            if coeffs is None:
-                raise ValueError(f"Coefficient set {coeff_id} not found")
-            return _compute_magnetic_field_spherical_impl(lat, lon, r, year, coeffs)
+            return _decode_and_compute(
+                lat,
+                lon,
+                r,
+                year,
+                n_max,
+                g_bytes,
+                h_bytes,
+                g_dot_bytes,
+                h_dot_bytes,
+                epoch,
+            )
 
         _magnetic_field_spherical_cached = new_cached
 
@@ -695,11 +761,21 @@ def magnetic_field_spherical(
         # Quantize inputs for cache key
         q_lat, q_lon, q_r, q_year = _quantize_inputs(lat, lon, r, year)
 
-        # Register coefficients and get ID
-        coeff_id = _register_coefficients(coeffs)
+        g_bytes, h_bytes, g_dot_bytes, h_dot_bytes, epoch, n_max = _coefficient_key(
+            coeffs
+        )
 
         return _magnetic_field_spherical_cached(
-            q_lat, q_lon, q_r, q_year, coeffs.n_max, coeff_id
+            q_lat,
+            q_lon,
+            q_r,
+            q_year,
+            n_max,
+            g_bytes,
+            h_bytes,
+            g_dot_bytes,
+            h_dot_bytes,
+            epoch,
         )
     else:
         # Direct computation without caching
@@ -734,16 +810,64 @@ def wmm(
     result : MagneticResult
         Magnetic field components and derived quantities.
 
+    Warns
+    -----
+    UserWarning
+        If `year` falls outside `coeffs`'s five-year validity window
+        (epoch to epoch + 5.0); the secular-variation terms are being
+        extrapolated and the result is not an official WMM value.
+
     Examples
     --------
     >>> import numpy as np
-    >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2023.0)
+    >>> result = wmm(np.radians(40), np.radians(-105), 1.0, 2026.0)
     >>> print(f"Declination: {np.degrees(result.D):.2f}°")
-    Declination: 7.83°
+    Declination: 7.58°
     >>> print(f"Inclination: {np.degrees(result.I):.2f}°")
-    Inclination: 66.23°
+    Inclination: 66.08°
     >>> print(f"Total intensity: {result.F:.0f} nT")
-    Total intensity: 51573 nT
+    Total intensity: 51207 nT
+    """
+    valid_start = coeffs.epoch
+    valid_end = coeffs.epoch + 5.0
+    label = f"WMM{int(coeffs.epoch)}"
+    if year < valid_start:
+        warnings.warn(
+            f"The year {year:.1f} is before {label}'s valid window "
+            f"({valid_start:.1f} to {valid_end:.1f}); the field is "
+            f"extrapolated {valid_start - year:.1f} years backward from the "
+            f"{coeffs.epoch:.1f} epoch and will diverge from the true field "
+            f"by an unknown amount. For years before {valid_start:.1f}, "
+            "prefer an older WMM release or IGRF.",
+            stacklevel=2,
+        )
+    elif year > valid_end:
+        warnings.warn(
+            f"The year {year:.1f} is beyond {label}'s valid window "
+            f"({valid_start:.1f} to {valid_end:.1f}), {year - valid_end:.1f} "
+            f"years past {valid_end:.1f}; the field is extrapolated forward "
+            f"from the {coeffs.epoch:.1f} epoch and will diverge from the "
+            "true field by an unknown, growing amount. For years after "
+            f"{valid_end:.1f}, prefer a newer WMM release.",
+            stacklevel=2,
+        )
+
+    return _wmm_core(lat, lon, h, year, coeffs)
+
+
+def _wmm_core(
+    lat: float,
+    lon: float,
+    h: float,
+    year: float,
+    coeffs: MagneticCoefficients,
+) -> MagneticResult:
+    """WMM synthesis without the validity-window warning.
+
+    Shared by :func:`wmm` and by :func:`pytcl.magnetism.igrf.igrf`, which
+    evaluates the same geodetic synthesis with IGRF coefficients that
+    carry their own, differently-shaped validity window (checked in
+    :func:`pytcl.magnetism.igrf.create_igrf14_coefficients` instead).
     """
     # Convert geodetic (WGS84) to geocentric spherical coordinates
     a_wgs = 6378.137  # WGS84 semi-major axis, km
@@ -872,7 +996,7 @@ def magnetic_inclination(
     >>> # Inclination at 40°N, 105°W (Denver)
     >>> lat = np.radians(40)
     >>> lon = np.radians(-105)
-    >>> I = magnetic_inclination(lat, lon, 1.6, 2023.0)
+    >>> I = magnetic_inclination(lat, lon, 1.6, 2026.0)
     >>> # Northern hemisphere: inclination should be positive
     >>> bool(I > 0)
     True
@@ -917,8 +1041,8 @@ def magnetic_field_intensity(
     >>> import numpy as np
     >>> from pytcl.magnetism import magnetic_field_intensity
     >>> # Field intensity at magnetic equator vs pole
-    >>> F_eq = magnetic_field_intensity(0, 0, 0, 2023.0)  # Equator
-    >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2023.0)  # Near pole
+    >>> F_eq = magnetic_field_intensity(0, 0, 0, 2026.0)  # Equator
+    >>> F_pole = magnetic_field_intensity(np.radians(80), 0, 0, 2026.0)  # Near pole
     >>> # Field is stronger at poles
     >>> bool(F_pole > F_eq)
     True

@@ -57,6 +57,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.coordinate_systems import geodetic2ecef
+from pytcl.gravity.models import ellips_grav_coeffs
 from pytcl.gravity.spherical_harmonics import _sectoral_ratio
 
 # Rescale the backward-recursion state by 1e-140 whenever it exceeds 1e140.
@@ -386,7 +388,14 @@ def clenshaw_geoid(
     lon : float
         Longitude in radians.
     C : ndarray
-        Cosine coefficients (fully normalized), shape (n_max+1, n_max+1).
+        Cosine coefficients (fully normalized), shape (n_max+1, n_max+1),
+        for the **full** gravity field -- not the disturbing potential.
+        ``C[0, 0]`` must be the field's mass term (1.0 for a properly
+        normalized field referenced to its own GM); this function
+        subtracts the reference ellipsoid's field (including its own
+        ``C[0, 0] = 1.0``) internally to obtain the disturbing field. A
+        disturbing-only coefficient set with ``C[0, 0]`` already zeroed
+        is not valid input here and is rejected.
     S : ndarray
         Sine coefficients (fully normalized), shape (n_max+1, n_max+1).
     R : float
@@ -403,16 +412,36 @@ def clenshaw_geoid(
     float
         Geoid height in meters.
 
+    Raises
+    ------
+    ValueError
+        If ``C[0, 0]`` is near zero, the signature of a disturbing-only
+        coefficient set (the convention this function required before
+        it started subtracting the reference field itself). A full
+        field's normalized ``C[0, 0]`` is 1.0; passing one with the
+        central term already removed silently subtracts the reference
+        ellipsoid's ``C[0, 0] = 1.0`` a second time, producing a
+        spurious full-Earth-radius geoid height.
+
     Notes
     -----
     The geoid height is computed as:
 
     .. math::
 
-        N = \\frac{GM}{r \\gamma} \\sum_{n=2}^{n_{max}} \\left(\\frac{R}{r}\\right)^n
+        N = \\frac{GM}{r \\gamma} \\sum_{n=0}^{n_{max}} \\left(\\frac{R}{r}\\right)^n
             \\sum_{m=0}^{n} P_n^m(\\sin\\phi) (C_{nm}\\cos m\\lambda + S_{nm}\\sin m\\lambda)
 
-    The n=0 and n=1 terms are excluded as they represent the reference field.
+    with the ``n=1`` row zeroed (matching :func:`pytcl.gravity.egm.\
+geoid_height`; a geocentric-frame field has no degree-1 term, but a
+    coefficient set that carries a nonzero one should not leak it into
+    the geoid) and the reference ellipsoid's own field subtracted from
+    ``C, S`` next. That field is the ellipsoid's even zonal harmonics
+    (:func:`pytcl.gravity.models.ellips_grav_coeffs`) -- C20 above all,
+    plus its own ``C[0, 0] = 1.0`` -- not just the ``n=0,1`` terms: C20
+    left in is a ~3 km false zonal signal. ``lat`` is converted to
+    geocentric latitude and evaluated at the true radius under the
+    point, not at ``r = R``.
 
     Examples
     --------
@@ -424,44 +453,57 @@ def clenshaw_geoid(
     >>> GM = 3.986e14
     >>> gamma = 9.81
     >>> N = clenshaw_geoid(0, 0, C, S, R, GM, gamma)
-    >>> N  # n=0,1 terms are excluded, so a pure central term gives 0
-    0.0
+    >>> round(N, 2)  # central term only: oblateness to cancel is all C20
+    -3453.97
     """
     if n_max is None:
         n_max = C.shape[0] - 1
 
-    # Colatitude
-    colat = np.pi / 2 - lat
-    cos_theta = np.cos(colat)
-    sin_theta = np.sin(colat)
-
-    # Exclude the n=0,1 terms (reference field), as documented
-    C_dist = np.array(C, dtype=float, copy=True)
-    S_dist = np.array(S, dtype=float, copy=True)
-    nz = min(2, C_dist.shape[0])
-    C_dist[:nz, :] = 0.0
-    S_dist[:nz, :] = 0.0
-
-    # On the reference ellipsoid, r ≈ R (simplified), so (R/r)^n = 1
-    r = R
-
-    # Sum over all orders m
-    V = 0.0
-    for m in range(n_max + 1):
-        # Get the Clenshaw sum for this order
-        sum_C, sum_S = clenshaw_sum_order(
-            m, cos_theta, sin_theta, C_dist, S_dist, n_max
+    # A full field's normalized C[0, 0] is 1.0 (the mass term); this
+    # function subtracts the reference ellipsoid's own C[0, 0] = 1.0
+    # below to obtain the disturbing field. A disturbing-only set with
+    # C[0, 0] already zeroed -- the convention this function required
+    # before it started subtracting the reference field itself -- would
+    # go to -1.0 there and return a geoid height off by a full Earth
+    # radius, silently. 0.5 cleanly separates the two: a genuine field's
+    # C[0, 0] does not land near zero.
+    if abs(float(C[0, 0])) < 0.5:
+        raise ValueError(
+            "clenshaw_geoid requires the full gravity field's "
+            f"coefficients, not a disturbing-only set: C[0, 0] = "
+            f"{float(C[0, 0]):.6g}, but a full field's normalized "
+            "C[0, 0] is 1.0. This function subtracts the reference "
+            "ellipsoid's own field (including its C[0, 0] = 1.0) "
+            "internally -- pass the coefficients as loaded, with the "
+            "central term intact."
         )
 
-        cos_m_lon = np.cos(m * lon)
-        sin_m_lon = np.sin(m * lon)
+    # Remove the reference ellipsoid's own field (its even zonal
+    # harmonics, dominated by C20) rather than just the n=0,1 terms,
+    # which leaves C20 in and produces a spurious multi-km "geoid".
+    C_ref, S_ref, _, _ = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
+    C_dist = np.array(C, dtype=float, copy=True)
+    S_dist = np.array(S, dtype=float, copy=True)
+    if C_dist.shape[0] > 1:
+        # No geocentric-frame field has a degree-1 term; zero it before
+        # synthesis rather than let a nonzero one leak into the geoid,
+        # matching pytcl.gravity.egm.geoid_height.
+        C_dist[1, :] = 0.0
+        S_dist[1, :] = 0.0
+    ref_n = C_ref.shape[0]
+    C_dist[:ref_n, :ref_n] -= C_ref
+    S_dist[:ref_n, :ref_n] -= S_ref
 
-        V += sum_C * cos_m_lon + sum_S * sin_m_lon
+    # The synthesis is defined in geocentric latitude at the true radius
+    # under the point, not geodetic latitude at r = R.
+    ecef = geodetic2ecef(lat, lon, 0.0)
+    r = float(np.linalg.norm(ecef))
+    lat_gc = float(np.arctan2(ecef[2], np.hypot(ecef[0], ecef[1])))
 
-    # Bruns' formula: N = T / gamma with T = GM/r * V
-    N = GM / (r * gamma) * V
+    T = clenshaw_potential(lat_gc, lon, r, C_dist, S_dist, R, GM, n_max)
 
-    return N
+    # Bruns' formula: N = T / gamma
+    return T / gamma
 
 
 def clenshaw_potential(
