@@ -146,7 +146,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_FillValue` so this did not bite the bundled data, but the parser is
   exported for user files that may. Masked cells are now filled with
   `-9999.0` before return, matching the convention `_build_gebco_grid`
-  already passes to `DEMGrid`.
+  already passes to `DEMGrid`. Note this sentinel is not itself
+  collision-free: `-9999.0` lies inside GEBCO's real bathymetric range
+  (trenches reach about -11000 m), so a genuine seafloor cell at exactly
+  -9999 m is still indistinguishable from nodata -- fixing that needs a
+  separate mask channel, which is out of scope for this patch.
 
 - `pytcl.atmosphere.models`: `us_standard_atmosphere_1976` clamped its
   geopotential altitude to `[0, 84852]` m, silently returning the

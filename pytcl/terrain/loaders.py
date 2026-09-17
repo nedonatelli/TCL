@@ -37,6 +37,11 @@ from .dem import DEMGrid
 _GEBCO_BASE_URL = "https://www.gebco.net/data-products/gridded-bathymetry-data"
 # Matches DEMGrid's default nodata_value, so a masked cell reads as
 # invalid once _build_gebco_grid wraps this array without overriding it.
+# This sentinel sits inside GEBCO's real bathymetric range (trenches
+# reach about -11000 m), so a genuine seafloor cell of exactly -9999 m
+# is indistinguishable from nodata. The real remedy is a separate
+# boolean mask channel; this patch's frozen return shape cannot carry
+# one, so the collision is latent rather than fixed here.
 _GEBCO_NODATA_VALUE = -9999.0
 
 GEBCO_PARAMETERS: dict[str, dict[str, Any]] = {
