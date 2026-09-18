@@ -10,7 +10,9 @@ as if it had propagated, with zero warning.
 Reproduced exactly as measured: with ``F = [[1, 1], [0, 0]]``, an unknown
 initial state (``Y0 = 0``), and three position-only measurements, ``Y``
 went ``diag(1, 0) -> diag(2, 0) -> diag(3, 0)`` -- indistinguishable from
-running with no dynamics at all (``F = I``).
+*skipping prediction entirely*, not from running with ``F = I``: the
+same scenario with ``F = I`` (and the same ``Q``) actually damps to
+``1.0, 1.909, 2.603`` (measured), since the Q update still runs there.
 
 The brief's own Step 1 sketch calls ``information_filter_predict`` directly
 with a *non-singular* ``Y = eye(2)``; that call takes a different branch
@@ -63,3 +65,48 @@ class TestInformationFilterSingularF:
         result = information_filter(y0, Y0, [None], F, Q, H, R)
 
         assert result.Y_filt[0][1, 1] > 0.0, "velocity information was never created"
+
+
+class TestSRIFPredictSingularCovariance:
+    """srif_predict's SVD fallback must not return nan/inf as an ordinary
+    result when the predicted covariance is genuinely singular.
+
+    Before this fix, a singular ``P_pred`` reaching the SVD fallback
+    (Cholesky already failed) divided by a zero singular value with only
+    numpy's own generic ``RuntimeWarning: divide by zero`` as a signal,
+    and returned ``r_pred``/``R_pred`` containing ``nan``/``inf`` as an
+    ordinary result. ``srif_filter`` then failed several lines later, at
+    its next QR call, with the misleading ``LinAlgError: SVD did not
+    converge`` -- misleading because the SVD in ``srif_predict`` itself
+    converged fine; it was the *result* that was degenerate.
+    """
+
+    def _singular_case(self):
+        n = 2
+        P0 = np.eye(n)
+        R0 = np.linalg.cholesky(np.linalg.inv(P0)).T
+        x0 = np.array([1.0, 0.5])
+        r0 = R0 @ x0
+        F = np.array([[1.0, 1.0], [0.0, 0.0]])
+        Q = np.zeros((2, 2))
+        return r0, R0, F, Q
+
+    def test_singular_predicted_covariance_raises(self):
+        from pytcl.dynamic_estimation.information_filter import srif_predict
+
+        r0, R0, F, Q = self._singular_case()
+
+        with pytest.raises(np.linalg.LinAlgError, match="singular"):
+            srif_predict(r0, R0, F, Q)
+
+    def test_srif_filter_raises_at_the_predict_step_not_later(self):
+        """Confirms the fix moves the failure to its true cause instead of
+        letting srif_filter fail downstream with a misleading QR error."""
+        from pytcl.dynamic_estimation.information_filter import srif_filter
+
+        r0, R0, F, Q = self._singular_case()
+        H = np.array([[1.0, 0.0]])
+        R_meas = np.array([[1.0]])
+
+        with pytest.raises(np.linalg.LinAlgError, match="srif_predict"):
+            srif_filter(r0, R0, [np.array([1.0])], F, Q, H, R_meas)

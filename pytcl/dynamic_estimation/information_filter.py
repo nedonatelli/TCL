@@ -303,20 +303,9 @@ def information_filter(
             #   M = F^{-T} Y F^{-1}
             #   Y_pred = M - M (M + Q^{-1})^{-1} M
             #   y_pred = (I - M (M + Q^{-1})^{-1}) F^{-T} y
+            n = Y.shape[0]
             try:
-                n = Y.shape[0]
                 F_inv = np.linalg.inv(F_k)
-                # Regularize a singular Q negligibly so Q^{-1} exists; the
-                # error is transient (the exact path takes over once Y
-                # becomes full rank).
-                eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
-                Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
-                M = F_inv.T @ Y @ F_inv
-                M = (M + M.T) / 2
-                L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
-                Y = M - L @ M
-                Y = (Y + Y.T) / 2
-                y = (np.eye(n) - L) @ (F_inv.T @ y)
             except np.linalg.LinAlgError as exc:
                 # Previously swallowed here ("F singular: leave information
                 # unchanged"): y and Y were returned untouched, so the
@@ -326,11 +315,22 @@ def information_filter(
                 raise np.linalg.LinAlgError(
                     "information_filter: state transition matrix F is "
                     "singular, so the singular-Y prediction step "
-                    "(F^-1 Y F^-T) cannot be formed. F must be invertible "
+                    "(F^-T Y F^-1) cannot be formed. F must be invertible "
                     "whenever Y is singular (unknown or partially unknown "
                     "state). For rank-deficient dynamics, consider "
                     "esrif_predict/esrif_update instead."
                 ) from exc
+            # Regularize a singular Q negligibly so Q^{-1} exists; the
+            # error is transient (the exact path takes over once Y
+            # becomes full rank).
+            eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
+            Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
+            M = F_inv.T @ Y @ F_inv
+            M = (M + M.T) / 2
+            L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
+            Y = M - L @ M
+            Y = (Y + Y.T) / 2
+            y = (np.eye(n) - L) @ (F_inv.T @ y)
 
         # Update if measurement available
         z = measurements[k]
@@ -458,6 +458,19 @@ def srif_predict(
     except np.linalg.LinAlgError:
         # Fallback using SVD
         U, s, Vt = np.linalg.svd(P_pred)
+        if np.any(s <= 0):
+            # A zero singular value means P_pred is genuinely singular,
+            # not merely asymmetric enough to trip the Cholesky above:
+            # 1/sqrt(s) divides by zero, and the previous code returned
+            # that (a silent RuntimeWarning from numpy, e.g. r_pred =
+            # [1.061, nan] and R_pred containing nan/inf) as an ordinary
+            # result -- srif_filter's next QR call then failed several
+            # lines away with the misleading "SVD did not converge".
+            raise np.linalg.LinAlgError(
+                "srif_predict: predicted covariance F @ P @ F.T + Q is "
+                "singular (SVD found a zero singular value); it has no "
+                "square-root information form."
+            ) from None
         S_sqrt_inv = np.diag(1.0 / np.sqrt(s))
         R_pred = S_sqrt_inv @ Vt
 
