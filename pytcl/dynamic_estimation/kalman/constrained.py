@@ -13,6 +13,7 @@ References
   density function truncation. Journal of Guidance, Control, and Dynamics.
 """
 
+import warnings
 from typing import Any, Callable, Optional
 
 import numpy as np
@@ -20,6 +21,13 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
+
+# Relative regularization for the G P Gt solves in
+# ConstrainedEKF._project_onto_constraints. Scaled to trace(G P Gt) rather
+# than an absolute constant so it stays negligible next to G P Gt at any
+# covariance magnitude while still guarding the inverse near machine
+# precision; see that method's docstring for the failure it replaces.
+_REG_EPS_REL = np.finfo(np.float64).eps
 
 
 class ConstraintFunction:
@@ -289,20 +297,49 @@ class ConstrainedEKF:
                 GP = G @ P_metric
                 GPGt = GP @ G.T
 
-                # Add small regularization for numerical stability
-                mu = np.eye(GPGt.shape[0]) * 1e-6
+                # Regularize relative to the problem's own scale rather than
+                # by a fixed absolute amount: an absolute 1e-6 swamps GPGt
+                # once P shrinks below that, and the Newton step converges
+                # geometrically with ratio mu / (GPGt + mu) instead of in one
+                # step, stalling short of the constraint surface within
+                # max_iter. Scaling mu to trace(GPGt) keeps that ratio at
+                # _REG_EPS_REL regardless of P's magnitude.
+                m_dim = GPGt.shape[0]
+                mu = np.eye(m_dim) * (_REG_EPS_REL * np.trace(GPGt) / m_dim)
 
                 try:
                     GPGt_inv = np.linalg.inv(GPGt + mu)
                     lam = -GPGt_inv @ g_val
                 except np.linalg.LinAlgError:
-                    # If inversion fails, use pseudoinverse
+                    # GPGt is exactly singular (e.g. the constraint has zero
+                    # sensitivity to the current uncertainty), so no relative
+                    # regularization can restore invertibility.
+                    warnings.warn(
+                        "constrained EKF state projection: G P G^T is "
+                        "singular and could not be regularized; falling "
+                        "back to np.linalg.pinv",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
                     lam = -np.linalg.pinv(GPGt) @ g_val
 
                 x_proj = x_proj + P_metric @ G.T @ lam
 
             if converged:
                 break
+        else:
+            residual = max(
+                float(np.max(np.abs(constraint.evaluate(x_proj))))
+                for constraint in violated
+            )
+            if residual > tol:
+                warnings.warn(
+                    f"constrained EKF state projection did not converge "
+                    f"after {max_iter} iterations; max constraint "
+                    f"residual {residual:.3e} exceeds tol {tol:.3e}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         # Covariance projection, once per constraint that was active:
         #     P <- P - P Gᵀ (G P Gᵀ)⁻¹ G P
@@ -311,10 +348,18 @@ class ConstrainedEKF:
             G = constraint.jacobian(x_proj)
             GP = G @ P_proj
             GPGt = GP @ G.T
-            mu = np.eye(GPGt.shape[0]) * 1e-6
+            m_dim = GPGt.shape[0]
+            mu = np.eye(m_dim) * (_REG_EPS_REL * np.trace(GPGt) / m_dim)
             try:
                 GPGt_inv = np.linalg.inv(GPGt + mu)
             except np.linalg.LinAlgError:
+                warnings.warn(
+                    "constrained EKF covariance projection: G P G^T is "
+                    "singular and could not be regularized; falling back "
+                    "to np.linalg.pinv",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
                 GPGt_inv = np.linalg.pinv(GPGt)
             P_proj = P_proj - GP.T @ GPGt_inv @ GP
 

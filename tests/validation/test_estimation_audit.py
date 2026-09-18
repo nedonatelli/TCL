@@ -907,12 +907,62 @@ class TestConstrainedEKF:
             X0, P0, np.array([0.6]), h_lin, H, R, constraints=[con]
         )
         # Constraint satisfied
-        assert abs((A @ res.x)[0]) < 1e-5
+        assert abs((A @ res.x)[0]) < 1e-9
         # Matches analytic minimum-variance projection of unconstrained update
         u = ekf_update(X0, P0, np.array([0.6]), h_lin, H, R)
         lam = np.linalg.solve(A @ u.P @ A.T, A @ u.x)
         x_ref = u.x - u.P @ A.T @ lam
-        np.testing.assert_allclose(res.x, x_ref, atol=1e-5)
+        np.testing.assert_allclose(res.x, x_ref, atol=1e-9)
+
+    def test_equality_constraint_projection_small_covariance(self):
+        # Regression for the projection's regularization being an absolute
+        # 1e-6 instead of scaled to G P G^T: at P = 1e-9*I the old code left
+        # a 0.99 constraint residual instead of enforcing it.
+        A = np.array([[1.0, -1.0]])
+        con = ConstraintFunction(
+            g=lambda x: A @ x, G=lambda x: A, constraint_type="equality"
+        )
+        P_small = 1e-9 * np.eye(2)
+        res = constrained_ekf_update(
+            X0, P_small, np.array([0.6]), h_lin, H, R, constraints=[con]
+        )
+        assert abs((A @ res.x)[0]) < 1e-9
+        u = ekf_update(X0, P_small, np.array([0.6]), h_lin, H, R)
+        lam = np.linalg.solve(A @ u.P @ A.T, A @ u.x)
+        x_ref = u.x - u.P @ A.T @ lam
+        np.testing.assert_allclose(res.x, x_ref, atol=1e-9)
+
+    @pytest.mark.parametrize("scale", [1.0, 1e-3, 1e-6, 1e-9])
+    def test_equality_constraint_residual_independent_of_covariance_scale(self, scale):
+        # The Lagrange solve's regularization must track G P G^T, not sit at
+        # a fixed absolute value: an absolute mu dominates once P shrinks
+        # below it, and the state stalls short of the constraint surface.
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        x = np.array([1.0, 0.0])
+        P = scale * np.eye(2)
+        x_proj, _ = cekf._project_onto_constraints(x, P)
+        assert abs(x_proj[0]) < 1e-9, f"residual {x_proj[0]:.3e} at scale {scale:.0e}"
+
+    def test_unconverged_projection_warns(self):
+        # A nonlinear constraint needs more than one Newton step from this
+        # starting point; max_iter=1 exhausts before the residual meets tol,
+        # which must now be audible instead of silent.
+        def g(x):
+            return np.array([x[0] ** 2 + x[1] ** 2 - 1.0])
+
+        def G(x):
+            return np.array([[2.0 * x[0], 2.0 * x[1]]])
+
+        con = ConstraintFunction(g=g, G=G, constraint_type="equality")
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with pytest.warns(RuntimeWarning, match="did not converge"):
+            cekf._project_onto_constraints(np.array([5.0, 5.0]), np.eye(2), max_iter=1)
 
     def test_constraint_function_numeric_jacobian(self):
         con = ConstraintFunction(g=lambda x: np.array([x[0] ** 2 + x[1] - 1.0]))

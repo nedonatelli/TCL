@@ -792,6 +792,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   determinant test was a pytcl-only addition, not a port of the
   reference implementation.
 
+- `pytcl.dynamic_estimation.kalman.constrained`:
+  `ConstrainedEKF._project_onto_constraints` regularized both `G P G^T`
+  solves (the Lagrange multiplier for the state and the covariance
+  projection) with a fixed `mu = 1e-6 * I`, independent of `G P G^T`'s
+  own magnitude. Measured with an equality constraint pinning `x[0] = 0`
+  from `x = (1, 0)`: at `P = I` the residual was 1.0e-6, but at
+  `P = 1e-6*I` it grew to 9.77e-4 -- a thousand times `tol=1e-6` -- and
+  at `P = 1e-9*I` the constraint was left almost entirely unenforced, at
+  a residual of 0.99, with `max_iter=10` exhausted silently both times.
+  The Newton step's regularization ratio `mu / (G P G^T + mu)` stays
+  near 1 once `G P G^T` drops below the fixed `mu`, so each iteration
+  only shrinks the residual by that same near-1 factor instead of
+  reaching the constraint surface in one step. `mu` is now scaled to the
+  problem, `eps_rel * trace(G P G^T) / m` with `eps_rel` at machine
+  epsilon, keeping that ratio negligible at any covariance magnitude;
+  measured residuals after the fix are at machine-epsilon scale
+  (1e-16 to 1e-14) at all four scales above, including the order-one
+  case, which was not regressed. `_project_onto_constraints` also now
+  warns when `max_iter` is exhausted with the residual still above
+  `tol` ("constrained EKF state projection did not converge after N
+  iterations; max constraint residual ... exceeds tol ..."), and when
+  either solve's inversion still fails after regularization (only
+  possible when `G P G^T` is exactly singular, e.g. a constraint with
+  zero sensitivity to the current covariance) before falling back to
+  `np.linalg.pinv`, which previously did both silently. No MATLAB TCL
+  routine implements this state-constrained EKF projection method (the
+  module cites Simon 2006/2010, not a ported `.m` file); the nearest
+  related routine, `constrainedLSEq.m`, solves equality-constrained
+  least squares exactly via a QR/null-space decomposition and adds no
+  regularization at all.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
