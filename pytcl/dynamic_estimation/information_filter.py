@@ -317,9 +317,20 @@ def information_filter(
                 Y = M - L @ M
                 Y = (Y + Y.T) / 2
                 y = (np.eye(n) - L) @ (F_inv.T @ y)
-            except np.linalg.LinAlgError:
-                # F singular: leave information unchanged
-                pass
+            except np.linalg.LinAlgError as exc:
+                # Previously swallowed here ("F singular: leave information
+                # unchanged"): y and Y were returned untouched, so the
+                # filter reported a confident prediction of a state it
+                # never actually propagated (velocity and other
+                # unobserved components silently never gained information).
+                raise np.linalg.LinAlgError(
+                    "information_filter: state transition matrix F is "
+                    "singular, so the singular-Y prediction step "
+                    "(F^-1 Y F^-T) cannot be formed. F must be invertible "
+                    "whenever Y is singular (unknown or partially unknown "
+                    "state). For rank-deficient dynamics, consider "
+                    "esrif_predict/esrif_update instead."
+                ) from exc
 
         # Update if measurement available
         z = measurements[k]

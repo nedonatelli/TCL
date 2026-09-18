@@ -501,6 +501,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   otherwise) instead of being hardcoded. Return shape and dtype
   unchanged.
 
+- `pytcl.dynamic_estimation.information_filter`: the prediction step for
+  a singular information matrix `Y` (an unknown or partially unknown
+  initial state) requires an invertible `F` to form `F^-1 Y F^-T`; when
+  `F` was singular, the resulting `LinAlgError` was caught and swallowed
+  with a comment claiming it was safe ("F singular: leave information
+  unchanged") and `y`/`Y` were returned untouched -- prediction was
+  silently skipped and the filter reported a confident estimate of a
+  state it never actually propagated. Measured: with `F = [[1, 1], [0,
+  0]]`, `Y0 = 0` (unknown initial state), and three position
+  measurements, `Y` went `diag(1, 0) -> diag(2, 0) -> diag(3, 0)`,
+  identical to running with no dynamics at all (`F = I`), with zero
+  warnings. The `LinAlgError` now propagates, naming `F` as the singular
+  matrix and pointing callers at `esrif_predict`/`esrif_update` for
+  rank-deficient dynamics -- this is a raise on input that was never
+  valid, not a behavior change for any input that previously produced a
+  correct result (a regular `F` with a singular `Y0` is unaffected and
+  continues to propagate information normally, confirmed by measurement).
+  Unverified sibling noted, not fixed here: `srif_update` (currently
+  `information_filter.py:540`) falls back to `cholesky(R_meas + 1e-10 *
+  I)` on a non-PD measurement covariance, the same absolute-jitter
+  pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
