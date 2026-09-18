@@ -17,6 +17,8 @@ Every filter variant is checked against independently-computed references:
 - H-infinity: reduction to the KF as gamma -> infinity.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from scipy.stats import chi2, multivariate_normal
@@ -963,6 +965,52 @@ class TestConstrainedEKF:
         cekf.add_constraint(con)
         with pytest.warns(RuntimeWarning, match="did not converge"):
             cekf._project_onto_constraints(np.array([5.0, 5.0]), np.eye(2), max_iter=1)
+
+    def test_inconsistent_constraint_falls_back_to_pinv_once(self):
+        # g == 1 with a zero Jacobian states "1 = 0" with no gradient: G P G^T
+        # is exactly singular at every iteration, so this is the genuine,
+        # non-contrived way to reach the pinv fallback (a zero-Jacobian AND
+        # zero-g constraint is trivially satisfied and never reaches it).
+        con = ConstraintFunction(
+            g=lambda v: np.array([1.0]),
+            G=lambda v: np.zeros((1, 2)),
+            constraint_type="equality",
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cekf._project_onto_constraints(np.array([0.0, 0.0]), np.eye(2))
+        messages = [str(w.message) for w in caught]
+        state_fallback = [
+            m for m in messages if "state projection" in m and "pinv" in m
+        ]
+        cov_fallback = [
+            m for m in messages if "covariance projection" in m and "pinv" in m
+        ]
+        nonconverge = [m for m in messages if "did not converge" in m]
+        # The state-projection fallback previously warned once per iteration
+        # (10 copies at the default max_iter); it must now warn once per call.
+        assert len(state_fallback) == 1, state_fallback
+        assert len(cov_fallback) == 1, cov_fallback
+        assert len(nonconverge) == 1, nonconverge
+
+    def test_covariance_eigenvalue_floor_relative_to_scale(self):
+        # The unconstrained direction's variance must come back unchanged
+        # regardless of how small P is; an absolute eigenvalue floor
+        # (1e-10) inflated it once P dropped below that.
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        for scale in [1e-6, 1e-9, 1e-12]:
+            cekf = ConstrainedEKF()
+            cekf.add_constraint(con)
+            x = np.array([1.0, 0.0])
+            P = scale * np.eye(2)
+            _, P_proj = cekf._project_onto_constraints(x, P)
+            np.testing.assert_allclose(P_proj[1, 1], scale, rtol=1e-6)
+            assert P_proj[0, 0] < 1e-6 * scale
 
     def test_constraint_function_numeric_jacobian(self):
         con = ConstraintFunction(g=lambda x: np.array([x[0] ** 2 + x[1] - 1.0]))

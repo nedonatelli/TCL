@@ -823,6 +823,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   least squares exactly via a QR/null-space decomposition and adds no
   regularization at all.
 
+  Review round 2 found the same absolute-vs-relative defect 60 lines
+  below the two sites above, in the same method: the projected
+  covariance's eigenvalues were floored at a fixed `1e-10`
+  (`eigvals[eigvals < 1e-10] = 1e-10`), which either overstated an
+  already-near-zero constrained-direction eigenvalue or, once `P`'s own
+  eigenvalues dropped below 1e-10, inflated the *unconstrained*
+  direction up to 1e-10 too -- a 100x inflation measured at
+  `P = 1e-12*I` (`P_proj[1,1]` came back 1e-10 instead of the correct
+  1e-12). The floor is now `sqrt(machine epsilon) * max(abs(eigvals))`
+  of the matrix being floored, rather than an absolute constant;
+  measured worst-case negative-eigenvalue roundoff noise from `eigh`
+  across 20000 randomized projections was 1.43e-12 relative to that
+  same eigenvalue, four orders of magnitude below the chosen floor.
+  After the fix, `P_proj[1,1]` (the unconstrained direction) returns
+  its exact input variance at every scale from 1e-6 to 1e-12, and
+  `P_proj[0,0]` (the constrained direction) scales down with `P`
+  instead of sitting at a constant.
+
+  The same round also found that the state-projection `pinv` fallback
+  warned once per iteration -- ten copies of the identical warning for
+  a single non-converging call, burying the one non-convergence warning
+  that fires at the end. Both fallback sites (state and covariance
+  projection) now warn at most once per `_project_onto_constraints`
+  call via a per-call flag; a deliberately inconsistent constraint
+  (`g` identically 1, `G` identically zero -- "1 = 0" with no gradient)
+  now produces exactly one state-fallback warning, one covariance-
+  fallback warning, and one non-convergence warning, where it produced
+  twelve warnings (ten duplicates plus the other two) before this round.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

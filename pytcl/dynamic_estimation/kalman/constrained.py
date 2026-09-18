@@ -29,6 +29,18 @@ from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdat
 # precision; see that method's docstring for the failure it replaces.
 _REG_EPS_REL = np.finfo(np.float64).eps
 
+# Relative floor for the projected covariance's eigenvalues, in the same
+# method. An absolute 1e-10 either overstates a genuinely near-zero
+# constrained-direction eigenvalue (harmless but misleading below
+# P-scale 1e-6) or, once P's own eigenvalues drop below 1e-10, clamps
+# the *unconstrained* direction up to 1e-10 too -- a 100x inflation at
+# P-scale 1e-12. Scaled to the projected covariance's own largest
+# eigenvalue instead: measured worst-case negative-eigenvalue roundoff
+# noise from eigh, across 20000 randomized projections (n=2..7,
+# P-scale 1e-15..1e3), was 1.43e-12 relative to that eigenvalue;
+# sqrt(machine epsilon) sits four orders of magnitude above that.
+_EIG_FLOOR_REL = np.sqrt(np.finfo(np.float64).eps)
+
 
 class ConstraintFunction:
     """Base class for state constraints."""
@@ -257,6 +269,7 @@ class ConstrainedEKF:
         # after the state has converged.
         P_metric = P_proj.copy()
         active: list[ConstraintFunction] = []
+        state_pinv_warned = False
 
         # Iterative projection
         for iteration in range(max_iter):
@@ -313,14 +326,18 @@ class ConstrainedEKF:
                 except np.linalg.LinAlgError:
                     # GPGt is exactly singular (e.g. the constraint has zero
                     # sensitivity to the current uncertainty), so no relative
-                    # regularization can restore invertibility.
-                    warnings.warn(
-                        "constrained EKF state projection: G P G^T is "
-                        "singular and could not be regularized; falling "
-                        "back to np.linalg.pinv",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
+                    # regularization can restore invertibility. This can
+                    # recur every iteration for the same call; warn once per
+                    # call rather than once per iteration.
+                    if not state_pinv_warned:
+                        warnings.warn(
+                            "constrained EKF state projection: G P G^T is "
+                            "singular and could not be regularized; "
+                            "falling back to np.linalg.pinv",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                        state_pinv_warned = True
                     lam = -np.linalg.pinv(GPGt) @ g_val
 
                 x_proj = x_proj + P_metric @ G.T @ lam
@@ -344,6 +361,7 @@ class ConstrainedEKF:
         # Covariance projection, once per constraint that was active:
         #     P <- P - P Gᵀ (G P Gᵀ)⁻¹ G P
         # evaluated at the converged state.
+        cov_pinv_warned = False
         for constraint in active:
             G = constraint.jacobian(x_proj)
             GP = G @ P_proj
@@ -353,23 +371,30 @@ class ConstrainedEKF:
             try:
                 GPGt_inv = np.linalg.inv(GPGt + mu)
             except np.linalg.LinAlgError:
-                warnings.warn(
-                    "constrained EKF covariance projection: G P G^T is "
-                    "singular and could not be regularized; falling back "
-                    "to np.linalg.pinv",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
+                # Can recur once per active constraint; warn once per call
+                # rather than once per constraint.
+                if not cov_pinv_warned:
+                    warnings.warn(
+                        "constrained EKF covariance projection: G P G^T is "
+                        "singular and could not be regularized; falling "
+                        "back to np.linalg.pinv",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    cov_pinv_warned = True
                 GPGt_inv = np.linalg.pinv(GPGt)
             P_proj = P_proj - GP.T @ GPGt_inv @ GP
 
             # Ensure symmetry
             P_proj = (P_proj + P_proj.T) / 2
 
-            # Enforce positive definiteness
+            # Enforce positive definiteness, flooring relative to this
+            # matrix's own scale rather than an absolute constant -- see
+            # _EIG_FLOOR_REL.
             eigvals, eigvecs = np.linalg.eigh(P_proj)
-            if np.any(eigvals < 1e-10):
-                eigvals[eigvals < 1e-10] = 1e-10
+            eig_floor = _EIG_FLOOR_REL * np.max(np.abs(eigvals))
+            if np.any(eigvals < eig_floor):
+                eigvals[eigvals < eig_floor] = eig_floor
                 P_proj = eigvecs @ np.diag(eigvals) @ eigvecs.T
 
         return x_proj, P_proj
