@@ -514,8 +514,9 @@ class TestGreedy3D:
         result = greedy_3d(cost)
 
         assert isinstance(result, Assignment3DResult)
-        assert result.tuples.shape[0] <= 4
-        assert result.tuples.shape[1] == 3
+        # Dense finite costs always admit a full greedy match -- unlike
+        # `shape[0] <= 4`, this fails on an empty result.
+        assert result.tuples.shape == (4, 3)
         assert result.converged
 
     def test_maximize(self):
@@ -531,8 +532,20 @@ class TestGreedy3D:
         cost = np.random.rand(3, 4, 5)
         result = greedy_3d(cost)
 
-        # Max assignments is min dimension
-        assert result.tuples.shape[0] <= 3
+        # Max assignments is min dimension, and dense finite costs always
+        # reach it -- unlike `shape[0] <= 3`, this fails on an empty result.
+        assert result.tuples.shape == (3, 3)
+
+    def test_all_infeasible_reports_not_converged(self):
+        result = greedy_3d(np.full((3, 3, 3), np.inf))
+        assert len(result.tuples) == 0
+        assert not result.converged
+
+    def test_nan_cost_raises(self):
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            greedy_3d(cost)
 
 
 class TestDecomposeTo2D:
@@ -581,6 +594,16 @@ class TestDecomposeTo2D:
     def test_all_slices_infeasible_reports_not_converged(self):
         result = decompose_to_2d(np.full((3, 3, 3), np.inf))
         assert not result.converged
+
+    def test_nan_cost_raises_rather_than_being_treated_as_infeasible(self):
+        """scipy raises ValueError for both a NaN entry and a genuinely
+        infeasible (all-inf) row/column; treating every ValueError as
+        infeasibility would silently skip a NaN-poisoned slice too and
+        return a confident partial answer over it. NaN must raise."""
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            decompose_to_2d(cost)
 
 
 class TestAssign3DLagrangian:

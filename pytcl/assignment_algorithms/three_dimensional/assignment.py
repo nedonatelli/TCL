@@ -29,7 +29,16 @@ class Assignment3DResult(NamedTuple):
     cost : float
         Total assignment cost.
     converged : bool
-        Whether the algorithm converged (for iterative methods).
+        Meaning depends on the method. For the iterative relaxation
+        (:func:`assign3d_lagrangian`), whether the optimality gap fell
+        below ``tol``. For :func:`assign3d_auction`, whether every row
+        found a bid-assigned pair within ``max_iter`` (the completion
+        pass below it can still fill in unmatched rows regardless). For
+        the non-iterative heuristics (:func:`greedy_3d`,
+        :func:`decompose_to_2d`), whether at least one tuple was
+        assigned at all; ``False`` means the cost tensor yielded no
+        feasible assignment whatsoever, not that the returned assignment
+        (if any) is suboptimal.
     n_iterations : int
         Number of iterations used (for iterative methods).
     gap : float
@@ -50,6 +59,19 @@ def _validate_cost_tensor(
     if cost_tensor.ndim != 3:
         raise ValueError(f"Cost tensor must be 3-dimensional, got {cost_tensor.ndim}")
     return cost_tensor.shape
+
+
+def _reject_nan_cost(cost_tensor: NDArray[np.float64], fn_name: str) -> None:
+    """NaN comparisons are always False, so a NaN entry is silently treated
+    as never the best choice (like inf) but, unlike inf, does not mark a
+    genuinely infeasible slice/tuple -- it just gets skipped with no
+    signal, which would return a confident partial answer over a
+    NaN-poisoned tensor. Reject it explicitly instead."""
+    if np.any(np.isnan(cost_tensor)):
+        raise ValueError(
+            f"{fn_name}: cost_tensor contains NaN, which is not a valid "
+            "cost (use inf to mark a forbidden assignment)"
+        )
 
 
 def greedy_3d(
@@ -91,6 +113,7 @@ def greedy_3d(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "greedy_3d")
 
     if maximize:
         cost = -cost
@@ -142,7 +165,7 @@ def greedy_3d(
     return Assignment3DResult(
         tuples=tuples,
         cost=total_cost,
-        converged=True,
+        converged=len(assignments) > 0,
         n_iterations=1,
         gap=np.inf,  # Unknown optimality gap
     )
@@ -172,15 +195,17 @@ def decompose_to_2d(
     Returns
     -------
     result : Assignment3DResult
-        Assignment result.
+        Assignment result. ``converged`` is ``True`` as long as at least
+        one slice produced an assignment, and ``False`` only when every
+        slice was infeasible (e.g. an all-``inf`` cost tensor).
 
     Examples
     --------
     >>> import numpy as np
     >>> cost = np.random.rand(4, 4, 4)
     >>> result = decompose_to_2d(cost, fixed_dimension=0)
-    >>> result.tuples.shape[0] <= 4
-    True
+    >>> result.tuples.shape
+    (4, 3)
 
     Notes
     -----
@@ -193,6 +218,7 @@ def decompose_to_2d(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "decompose_to_2d")
 
     if fixed_dimension not in (0, 1, 2):
         raise ValueError("fixed_dimension must be 0, 1, or 2")
