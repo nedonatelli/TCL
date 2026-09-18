@@ -238,7 +238,10 @@ def decompose_to_2d(
         try:
             row_ind, col_ind = scipy_lsa(sub_cost, maximize=maximize)
         except ValueError:
-            break
+            # This slice's submatrix has no feasible assignment (e.g. an
+            # all-inf row/column); later slices may still be solvable, so
+            # skip this slice rather than abandoning the whole sweep.
+            continue
 
         # We only take one assignment per slice
         if len(row_ind) > 0:
@@ -271,7 +274,7 @@ def decompose_to_2d(
     return Assignment3DResult(
         tuples=tuples,
         cost=total_cost,
-        converged=True,
+        converged=len(assignments) > 0,
         n_iterations=n1,
         gap=np.inf,
     )

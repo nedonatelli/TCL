@@ -485,6 +485,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   -- no exact ellipsoidal-rhumb oracle (e.g. GeographicLib's `Rhumb`
   class) is available in this environment to check it against.
 
+- `pytcl.assignment_algorithms.three_dimensional.decompose_to_2d`: an
+  infeasible 2-D subproblem on any one slice (`except ValueError:
+  break`) aborted the entire sweep and still reported `converged=True`
+  no matter how much of the tensor was left unassigned. Measured on a
+  `(3, 3, 3)` cost tensor with `cost[0] = inf`: zero tuples, `cost=0.0`,
+  `converged=True`, where slices 1 and 2 both had a perfectly good
+  cost-1.0 assignment available. With `cost[1] = inf`, only
+  `[[0, 0, 0]]` came back (`cost=1.0`) and slice 2 was silently dropped.
+  `break` is now `continue` -- an infeasible slice is skipped, not
+  fatal, so the two cases above now return 2 tuples (cost 2.0, correctly
+  excluding index 0) and `{0, 2}` for the assigned first-indices,
+  respectively. `converged` now reflects whether any slice actually
+  produced an assignment (`False` for an all-`inf` cost tensor, `True`
+  otherwise) instead of being hardcoded. Return shape and dtype
+  unchanged.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

@@ -545,7 +545,10 @@ class TestDecomposeTo2D:
         result = decompose_to_2d(cost)
 
         assert isinstance(result, Assignment3DResult)
-        assert result.tuples.shape[0] <= 5
+        # Dense finite costs are never infeasible, so every slice should be
+        # assigned -- unlike `shape[0] <= 5`, this fails on an empty result.
+        assert result.tuples.shape[0] == 5
+        assert result.converged
 
     def test_different_fixed_dimensions(self):
         """Test decomposition along different dimensions."""
@@ -555,10 +558,29 @@ class TestDecomposeTo2D:
         result1 = decompose_to_2d(cost, fixed_dimension=1)
         result2 = decompose_to_2d(cost, fixed_dimension=2)
 
-        # All should produce valid results
-        assert result0.tuples.shape[1] == 3
-        assert result1.tuples.shape[1] == 3
-        assert result2.tuples.shape[1] == 3
+        # All should produce a full, valid assignment, not just the right
+        # column count (which an empty result also satisfies).
+        assert result0.tuples.shape == (4, 3)
+        assert result1.tuples.shape == (4, 3)
+        assert result2.tuples.shape == (4, 3)
+
+    def test_infeasible_slice_is_skipped_not_fatal(self):
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.inf
+        result = decompose_to_2d(cost)
+        assert len(result.tuples) == 2
+        assert all(t[0] != 0 for t in result.tuples)
+        assert result.cost == pytest.approx(2.0)
+
+    def test_middle_infeasible_slice_does_not_drop_later_slices(self):
+        cost = np.ones((3, 3, 3))
+        cost[1] = np.inf
+        result = decompose_to_2d(cost)
+        assert {t[0] for t in result.tuples} == {0, 2}
+
+    def test_all_slices_infeasible_reports_not_converged(self):
+        result = decompose_to_2d(np.full((3, 3, 3), np.inf))
+        assert not result.converged
 
 
 class TestAssign3DLagrangian:
