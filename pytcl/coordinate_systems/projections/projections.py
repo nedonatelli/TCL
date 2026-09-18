@@ -25,7 +25,7 @@ References
   nanometers." Journal of Geodesy 85.8 (2011): 475-485.
 """
 
-from typing import Any, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -94,6 +94,26 @@ class UTMResult(NamedTuple):
 # =============================================================================
 
 
+def _wrap_longitude_difference(
+    lon: Union[float, NDArray[np.floating[Any]]],
+    lon0: Union[float, NDArray[np.floating[Any]]],
+) -> Union[float, NDArray[np.floating[Any]]]:
+    """Longitude difference ``lon - lon0``, wrapped into [-pi, pi).
+
+    Cylindrical and transverse projections compute their easting and
+    series terms from this difference; without wrapping, a central
+    meridian near +-180 degrees and a point on the far side of the
+    antimeridian produce a difference near +-360 degrees instead of near
+    zero (gh-25 follow-up).
+
+    ``[()]`` rather than ``float()``: indexing a 0-d array with the empty
+    tuple returns a ``np.float64`` scalar (a ``float`` subclass) without
+    forcing array input through ``float()``, which raises for anything but
+    a 0-d array. An array `lon` therefore still comes back as an array.
+    """
+    return wrap_to_pi(lon - lon0)[()]
+
+
 def mercator(
     lat: float,
     lon: float,
@@ -139,7 +159,7 @@ def mercator(
     x=-8348961.8, y=5591295.9
     """
     # Easting
-    x = a * (lon - lon0)
+    x = a * _wrap_longitude_difference(lon, lon0)
 
     # Northing using isometric latitude
     sin_lat = np.sin(lat)
@@ -199,8 +219,14 @@ def mercator_inverse(
     >>> import numpy as np
     >>> lat, lon = mercator_inverse(1000000, 5000000)
     """
-    # Longitude
-    lon = x / a + lon0
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
+    # land just past the antimeridian for a central meridian near +-180
+    # degrees (gh-25 follow-up). Cast: this function's public signature is
+    # scalar-only (`Tuple[float, float]`, unchanged here); the array
+    # support `_wrap_longitude_difference` restores is for other callers
+    # in this module, so its wider Union return is narrowed back for the
+    # type checker without touching this function's own declared type.
+    lon = cast(float, _wrap_longitude_difference(x / a + lon0, 0.0))
 
     # Latitude using iterative solution
     t = np.exp(-y / a)
@@ -311,8 +337,10 @@ def transverse_mercator(
     tan_lat = np.tan(lat)
     eta2 = ep2 * cos_lat**2
 
-    # Longitude difference
-    dlon = lon - lon0
+    # Longitude difference, wrapped so a central meridian near +-180 degrees
+    # doesn't see a point on the far side of the antimeridian as ~360
+    # degrees away (gh-25 follow-up).
+    dlon = _wrap_longitude_difference(lon, lon0)
 
     # Compute projection using series
     t = tan_lat
@@ -334,16 +362,19 @@ def transverse_mercator(
     # Meridian arc length
     N = a / np.sqrt(1 - e2 * sin_lat**2)  # Radius of curvature in prime vertical
 
-    # Arc length from equator to latitude
+    # Arc length from equator to latitude. `sigma = sigma - ...` (not `-=`)
+    # so the series is computed out of place: `sigma = lat` aliases the
+    # caller's array, and an in-place `-=` would mutate it through that
+    # alias across successive loop iterations (gh-25 follow-up).
     sigma = lat
     for i in range(1, 4):
-        sigma -= alpha[i] * np.sin(2 * i * lat)
+        sigma = sigma - alpha[i] * np.sin(2 * i * lat)
     M = A * sigma
 
-    # Arc length from origin latitude
+    # Arc length from origin latitude (same aliasing hazard as above).
     sigma0 = lat0
     for i in range(1, 4):
-        sigma0 -= alpha[i] * np.sin(2 * i * lat0)
+        sigma0 = sigma0 - alpha[i] * np.sin(2 * i * lat0)
     M0 = A * sigma0
 
     # Easting
@@ -432,7 +463,10 @@ def transverse_mercator_inverse(
         151 * n**3 / 96,
     ]
 
-    # Arc length from origin latitude (must match the forward series)
+    # Arc length from origin latitude (must match the forward series).
+    # `sigma0 = sigma0 - ...` (not `-=`): `sigma0 = lat0` aliases the
+    # caller's array, and an in-place `-=` would mutate it through that
+    # alias (gh-25 follow-up).
     sigma0 = lat0
     alpha = [
         0,
@@ -441,16 +475,19 @@ def transverse_mercator_inverse(
         35 * n**3 / 48,
     ]
     for i in range(1, 4):
-        sigma0 -= alpha[i] * np.sin(2 * i * lat0)
+        sigma0 = sigma0 - alpha[i] * np.sin(2 * i * lat0)
     M0 = A * sigma0
 
     # Footprint latitude
     M = M0 + y / k0
     mu = M / A
 
+    # `lat_fp = lat_fp + ...` (not `+=`): `lat_fp = mu` aliases mu, and the
+    # loop reads mu on every iteration, so in-place accumulation feeds each
+    # term a mu already corrupted by the previous one for array input.
     lat_fp = mu
     for i in range(1, 4):
-        lat_fp += beta[i] * np.sin(2 * i * mu)
+        lat_fp = lat_fp + beta[i] * np.sin(2 * i * mu)
 
     # Parameters at footprint latitude
     sin_fp = np.sin(lat_fp)
@@ -479,15 +516,23 @@ def transverse_mercator_inverse(
         + d6 / 720 * (61 + 90 * t2 + 298 * c + 45 * t4 - 252 * ep2 - 3 * c2)
     )
 
-    # Longitude
-    lon = (
-        lon0
-        + (
-            d
-            - d**3 / 6 * (1 + 2 * t2 + c)
-            + d**5 / 120 * (5 - 2 * c + 28 * t2 - 3 * c2 + 8 * ep2 + 24 * t4)
-        )
-        / cos_fp
+    # Longitude, canonicalized into [-pi, pi): for a central meridian near
+    # +-180 degrees (a forced UTM zone across the antimeridian), lon0 +
+    # offset can otherwise land just past the antimeridian (gh-25
+    # follow-up). Cast: narrows the helper's wider Union return back to
+    # this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0
+            + (
+                d
+                - d**3 / 6 * (1 + 2 * t2 + c)
+                + d**5 / 120 * (5 - 2 * c + 28 * t2 - 3 * c2 + 8 * ep2 + 24 * t4)
+            )
+            / cos_fp,
+            0.0,
+        ),
     )
 
     return lat, lon
@@ -712,7 +757,15 @@ def stereographic(
 
     Notes
     -----
-    For polar stereographic, use lat0 = +-pi/2.
+    Do not use ``lat0 = +-pi/2`` for polar work: this function's conformal
+    latitude substitution diverges from PROJ's polar stereographic by 5.7 km
+    at 85 degrees latitude and 34.7 km at 60 degrees (measured against
+    ``+proj=stere`` on WGS84). Use :func:`polar_stereographic` instead,
+    which matches PROJ/UPS to sub-nanometer precision. For the ellipsoidal
+    oblique case (any other ``lat0``), use :func:`oblique_stereographic`
+    (EPSG method 9809), which matches PROJ's ``+proj=sterea`` to
+    sub-micrometer precision; this function's own oblique accuracy is
+    documented below and is generally worse.
 
     Examples
     --------
@@ -885,8 +938,17 @@ def stereographic_inverse(
     # Conformal latitude
     chi = np.arcsin(cos_c * sin_chi0 + y * sin_c * cos_chi0 / rho)
 
-    # Longitude
-    lon = lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c)
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
+    # land just past the antimeridian for a centre near +-180 degrees
+    # (gh-25 follow-up). Cast: narrows the helper's wider Union return
+    # back to this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c),
+            0.0,
+        ),
+    )
 
     # Invert conformal latitude
     lat = chi
@@ -1072,8 +1134,13 @@ def lambert_conformal_conic(
     rho0 = a * F * t0**n * k0
     rho = a * F * t**n * k0
 
-    # Coordinates
-    theta = n * (lon - lon0)
+    # Coordinates. The longitude difference is wrapped into [-pi, pi)
+    # before scaling by the cone constant n: for n != 1, sin/cos of
+    # n * (lon - lon0) is not 2*pi-periodic in the unwrapped difference, so
+    # a central meridian near +-180 degrees and a point across the
+    # antimeridian produced a scaled angle far from the true small-angle
+    # value (gh-25 follow-up; same defect class as oblique_stereographic).
+    theta = n * _wrap_longitude_difference(lon, lon0)
     x = rho * np.sin(theta)
     y = rho0 - rho * np.cos(theta)
 
@@ -1178,8 +1245,12 @@ def lambert_conformal_conic_inverse(
             break
         lat = lat_new
 
-    # Longitude
-    lon = theta / n + lon0
+    # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
+    # land just past the antimeridian for a central meridian near +-180
+    # degrees (gh-25 follow-up). Cast: narrows the helper's wider Union
+    # return back to this function's own unchanged scalar-only declared
+    # type.
+    lon = cast(float, _wrap_longitude_difference(theta / n + lon0, 0.0))
 
     return lat, lon
 
@@ -1357,7 +1428,17 @@ def azimuthal_equidistant_inverse(
     cos_lat0 = np.cos(lat0)
 
     lat = np.arcsin(cos_c * sin_lat0 + y * sin_c * cos_lat0 / rho)
-    lon = lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c)
+    # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
+    # past the antimeridian for a centre near +-180 degrees (gh-25
+    # follow-up). Cast: narrows the helper's wider Union return back to
+    # this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c),
+            0.0,
+        ),
+    )
 
     return lat, lon
 
@@ -1452,7 +1533,12 @@ def oblique_stereographic(
     sb = (1 - e * sin_lat) / (1 + e * sin_lat)
     w = c * (sa * sb**e) ** n
     chi = np.arcsin((w - 1) / (w + 1))
-    dlam = n * (lon - lon0)
+    # Wrap the longitude difference into [-pi, pi) before scaling by n: for
+    # n != 1 (any real ellipsoid), sin/cos of n * (lon - lon0) is not
+    # 2*pi-periodic in the unwrapped difference, so an origin near +-180
+    # degrees and a point on the far side of the antimeridian produced a
+    # scaled angle far from the true small-angle value (gh-25 follow-up).
+    dlam = n * _wrap_longitude_difference(lon, lon0)
 
     sin_chi = np.sin(chi)
     cos_chi = np.cos(chi)
@@ -1539,7 +1625,10 @@ def oblique_stereographic_inverse(
     j = np.arctan2(x, g - y) - i
     chi = chi0 + 2 * np.arctan((y - x * np.tan(j / 2)) / (2 * R * k0))
     dlam = j + 2 * i
-    lon = dlam / n + lon0
+    # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
+    # past the antimeridian for an origin near +-180 degrees (gh-25
+    # follow-up).
+    lon = _wrap_longitude_difference(dlam / n + lon0, 0.0)
 
     # Invert the conformal-latitude mapping for the geodetic latitude:
     # psi is the sphere's isometric latitude pulled back through n and c.

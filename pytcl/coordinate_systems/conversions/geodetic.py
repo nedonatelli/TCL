@@ -59,6 +59,17 @@ def geodetic2ecef(
     lat = np.asarray(lat, dtype=np.float64)
     lon = np.asarray(lon, dtype=np.float64)
     alt = np.asarray(alt, dtype=np.float64)
+    # A pre-existing (buggy) input pattern returned a flat (3,) array
+    # whenever lat alone had size 1, regardless of lon/alt: a size-1-array
+    # lat with scalar lon/alt got squeezed to (3,) even though
+    # np.broadcast_shapes((1,), (), ()) is (1,), not () -- (3,1) would be
+    # the principled shape. That squeeze is preserved below exactly as it
+    # was, so this patch stays additive on the crash path (lat scalar
+    # paired with a larger lon/alt, which always raised) instead of also
+    # changing a shape that previously worked. Normalizing the size-1
+    # case to (3,1) is a v2.12 change, not this one -- see CHANGELOG.
+    lat_was_size_one = lat.size == 1
+    lat, lon, alt = np.broadcast_arrays(lat, lon, alt)
 
     # Eccentricity squared
     e2 = 2 * f - f**2
@@ -73,11 +84,11 @@ def geodetic2ecef(
     y = (N + alt) * cos_lat * np.sin(lon)
     z = (N * (1 - e2) + alt) * sin_lat
 
-    if np.isscalar(lat) or lat.size == 1:
+    if lat_was_size_one and x.size == 1:
         # .item() rather than float(): float() on a (1,)-shaped array
         # raises under NumPy >= 2.
         return np.array(
-            [np.asarray(x).item(), np.asarray(y).item(), np.asarray(z).item()],
+            [x.item(), y.item(), z.item()],
             dtype=np.float64,
         )
 

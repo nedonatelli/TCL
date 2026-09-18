@@ -636,6 +636,19 @@ def loose_coupled_predict(
     -------
     state : INSGNSSState
         Predicted state.
+
+    Warnings
+    --------
+    The covariance propagation here (`F = I + F_cont * dt`) is driven by
+    :func:`pytcl.navigation.ins.ins_error_state_matrix`, which is
+    EXPERIMENTAL as of v2.11.1: its attitude-error rows are known to
+    disagree with a numeric oracle in 11 of 12 non-zero entries (the
+    ``-[omega_in^n x] phi`` self-coupling submatrix is entirely absent),
+    so covariance growth in ``error_cov[6:9, 6:9]`` and its cross-terms is
+    not trustworthy. See
+    ``pytcl.navigation.ins.ins_error_state_matrix``'s docstring and
+    ``tests/validation/test_ins_error_matrix.py`` for the full inventory
+    of which entries are verified and which are not.
     """
     dt = imu.dt
 

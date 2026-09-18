@@ -620,3 +620,106 @@ class TestGridConvergenceMatchesTheProjection:
             np.sin(back - azimuth - np.pi), np.cos(back - azimuth - np.pi)
         )
         assert abs(reported - conformal_form) > 1e-3
+
+
+class TestArrayInputIsNotMutated:
+    """`transverse_mercator` (and `geodetic2utm`, which calls it) used to
+    alias its `lat`/`lat0` array arguments (`sigma = lat` followed by an
+    in-place `sigma -= ...`) and corrupt them in place across the Helmert
+    series loop, so a second call on the same array silently returned a
+    different, wrong answer (gh-25 follow-up).
+    """
+
+    def test_geodetic2utm_repeated_calls_agree_and_leave_lat_unchanged(self):
+        lat = np.array(np.radians(45.0))
+        lon = np.array(np.radians(-75.0))
+        lat_before = lat.copy()
+
+        first = geodetic2utm(lat, lon, zone=18)
+        assert_allclose(lat, lat_before)
+
+        second = geodetic2utm(lat, lon, zone=18)
+        third = geodetic2utm(lat, lon, zone=18)
+
+        assert_allclose(lat, lat_before)
+        assert_allclose(second.northing, first.northing)
+        assert_allclose(third.northing, first.northing)
+        assert_allclose(second.easting, first.easting)
+
+    def test_transverse_mercator_leaves_lat_and_lat0_unchanged(self):
+        lat = np.array(np.radians(45.0))
+        lat0 = np.array(np.radians(40.0))
+        lon = np.array(np.radians(-75.0))
+        lon0 = np.radians(-75.0)
+        lat_before, lat0_before = lat.copy(), lat0.copy()
+
+        first = transverse_mercator(lat, lon, lat0, lon0)
+        second = transverse_mercator(lat, lon, lat0, lon0)
+
+        assert_allclose(lat, lat_before)
+        assert_allclose(lat0, lat0_before)
+        assert_allclose(second.y, first.y)
+        assert_allclose(second.x, first.x)
+
+    def test_transverse_mercator_inverse_leaves_lat0_unchanged(self):
+        x = np.array(500000.0)
+        y = np.array(4000000.0)
+        lat0 = np.array(np.radians(40.0))
+        lat0_before = lat0.copy()
+
+        first = transverse_mercator_inverse(x, y, lat0, np.radians(-75), k0=0.9996)
+        transverse_mercator_inverse(x, y, lat0, np.radians(-75), k0=0.9996)
+
+        assert_allclose(lat0, lat0_before)
+        assert_allclose(
+            transverse_mercator_inverse(x, y, lat0, np.radians(-75), k0=0.9996),
+            first,
+        )
+
+
+class TestWrapLongitudeDifferenceArrayPassthrough:
+    """The gh-25 wrap helper used to cast its result through `float()`,
+    which raises for array input; before gh-25 it silently accepted arrays
+    (per-element scalar calls agreed), so array support must come back
+    without reintroducing the pre-gh-25 unwrapped-difference bug -- hence
+    the same case is exercised against `mercator`, `lambert_conformal_conic`,
+    and `transverse_mercator_inverse` below.
+    """
+
+    def test_mercator_accepts_size_one_array(self):
+        # Only size-1 (or 0-d) array input is claimed here: `mercator`'s
+        # scale factor branches on `cos_lat > 1e-10` with a Python `if`,
+        # which is ambiguous for a multi-element array and is a pre-existing
+        # limitation unrelated to the wrap helper -- out of scope for this
+        # patch (not part of gh-25 or its follow-up).
+        lat = np.array([np.radians(45.0)])
+        lon = np.array([np.radians(-75.0)])
+        result = mercator(lat, lon, lon0=0.0)
+        assert result.x.shape == (1,)
+        scalar = mercator(lat[0], lon[0], lon0=0.0)
+        assert_allclose(result.x[0], scalar.x)
+
+    def test_lambert_conformal_conic_accepts_array_input(self):
+        lat = np.radians(np.array([30.0, 45.0, 60.0]))
+        lon = np.radians(np.array([-100.0, -95.0, -90.0]))
+        lat0, lon0 = np.radians(40.0), np.radians(-96.0)
+        lat1, lat2 = np.radians(33.0), np.radians(45.0)
+
+        result = lambert_conformal_conic(lat, lon, lat0, lon0, lat1, lat2)
+        for i in range(lat.size):
+            scalar = lambert_conformal_conic(lat[i], lon[i], lat0, lon0, lat1, lat2)
+            assert_allclose(result.x[i], scalar.x)
+            assert_allclose(result.y[i], scalar.y)
+
+    def test_transverse_mercator_inverse_accepts_array_input(self):
+        x = np.array([500000.0, 500100.0])
+        y = np.array([4000000.0, 4000100.0])
+        lat, lon = transverse_mercator_inverse(x, y, lon0=np.radians(-75), k0=0.9996)
+        for i in range(x.size):
+            slat, slon = transverse_mercator_inverse(
+                x[i], y[i], lon0=np.radians(-75), k0=0.9996
+            )
+            # Bit-exact, not merely close: any in-place accumulation left in
+            # the footpoint-latitude series would show up here as ~1e-10 rad.
+            assert lat[i] == slat
+            assert lon[i] == slon
