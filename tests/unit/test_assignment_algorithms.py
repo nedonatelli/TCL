@@ -665,6 +665,38 @@ class TestAssign3DAuction:
 class TestAssign3D:
     """Tests for unified assign3d interface."""
 
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    def test_every_method_rejects_nan(self, method):
+        """All four methods must agree that NaN is invalid input.
+
+        `_reject_nan_cost` is shared precisely so the four cannot drift
+        apart. Before it was wired into all four, `method="auction"`
+        returned two tuples at cost 2.0 on this tensor -- a cost computed
+        over a row it could not read -- while greedy and decompose raised.
+        """
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            assign3d(cost, method=method)
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    def test_inf_is_still_accepted_as_a_forbidden_pairing(self, method):
+        """inf means "this pairing is not allowed" and must keep working.
+
+        The NaN guard must not catch it. lagrangian is the one method that
+        raises here, and it did so before the guard existed -- scipy calls
+        a slice with a fully-infinite row infeasible.
+        """
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.inf
+        if method == "lagrangian":
+            with pytest.raises(ValueError, match="infeasible"):
+                assign3d(cost, method=method)
+        else:
+            result = assign3d(cost, method=method)
+            assert result.cost == pytest.approx(2.0)
+            assert all(t[0] != 0 for t in result.tuples)
+
     def test_lagrangian_method(self):
         """Test Lagrangian method selection."""
         cost = np.random.rand(4, 4, 4)

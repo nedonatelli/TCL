@@ -514,6 +514,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   below, which has the same silent-skip exposure for a different
   reason) now reject any NaN in `cost_tensor` upfront with `ValueError`,
   so `except ValueError: continue` only ever sees genuine infeasibility.
+  The shared rejector is wired into all four methods `assign3d`
+  dispatches to, not only those two: `assign3d(method="auction")`
+  returned 2 tuples at cost 2.0 on the same NaN tensor -- a cost summed
+  over a row it never read -- and `assign3d(method="lagrangian")` raised
+  only scipy's opaque "matrix contains invalid numeric entries". All four
+  now raise a `ValueError` naming the function and the argument, and a
+  parametrized test asserts that of every method so they cannot drift
+  apart again. `inf` is unaffected in all four: it remains the way to say
+  a pairing is forbidden, and still yields 2 tuples at cost 2.0 for
+  greedy, decompose and auction (`lagrangian` reports the slice
+  infeasible, as it did before this change).
   `greedy_3d`'s own comparisons (`cost[i, j, k] < best_cost`) are always
   `False` against NaN, which already meant a NaN entry was never
   selected -- but, unlike `inf`, without ever being counted as

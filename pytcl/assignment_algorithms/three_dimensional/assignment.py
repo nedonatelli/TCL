@@ -374,6 +374,7 @@ def assign3d_lagrangian(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "assign3d_lagrangian")
 
     work = -cost if maximize else cost
 
@@ -496,6 +497,7 @@ def assign3d_auction(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "assign3d_auction")
 
     if maximize:
         cost = -cost
