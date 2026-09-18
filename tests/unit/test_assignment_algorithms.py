@@ -547,6 +547,26 @@ class TestGreedy3D:
         with pytest.raises(ValueError, match="NaN"):
             greedy_3d(cost)
 
+    def test_picks_the_correct_tuples_and_cost_by_hand(self):
+        """cost[i, j, k] = 4i + 2j + k over (2, 2, 2): (0,0,0)=0 is the
+        unique global minimum, taking it leaves only (1,1,1)=7 as a valid
+        second pick (i=1, j=1, k=1 are the only indices left) -- so the
+        greedy and optimal answers coincide here: [(0,0,0), (1,1,1)],
+        cost 0 + 7 = 7.
+        """
+        cost = np.arange(8, dtype=float).reshape(2, 2, 2)
+        result = greedy_3d(cost)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1]]
+        assert result.cost == pytest.approx(7.0)
+
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_is_vacuously_converged(self, shape):
+        """A zero-size tensor has no possible assignment to begin with --
+        that is trivially solved, not a failure."""
+        result = greedy_3d(np.zeros(shape))
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
+
 
 class TestDecomposeTo2D:
     """Tests for 2D decomposition method."""
@@ -604,6 +624,52 @@ class TestDecomposeTo2D:
         cost[0] = np.nan
         with pytest.raises(ValueError, match="NaN"):
             decompose_to_2d(cost)
+
+    @pytest.mark.parametrize("maximize, sentinel", [(False, -np.inf), (True, np.inf)])
+    def test_favorable_direction_inf_is_included_not_swallowed(
+        self, maximize, sentinel
+    ):
+        """scipy raises the identical "invalid numeric entries" ValueError
+        for a NaN entry and for an infinity in the favorable direction for
+        this mode (-inf minimizing, +inf maximizing). Only NaN is invalid
+        input -- a favorable-direction inf marks the single best possible
+        pairing in that slice and must be kept, not dropped by the
+        ValueError swallow meant for genuine infeasibility.
+
+        cost[0, 0, 0] is the sole favorable-direction entry; the other 8
+        entries in slice 0 and all of slices 1-2 are 1.0, so the only
+        possible complete answer is the diagonal, with slice 0 costing the
+        sentinel itself.
+        """
+        cost = np.ones((3, 3, 3))
+        cost[0, 0, 0] = sentinel
+        result = decompose_to_2d(cost, maximize=maximize)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+        assert result.cost == sentinel
+        assert result.converged
+
+    def test_picks_the_correct_tuples_and_cost_by_hand(self):
+        """A (3, 3, 3) tensor of 9s with the diagonal set to 1, 2, 3: each
+        slice's unique minimum is its own diagonal entry, and taking it
+        never conflicts with a later slice (each uses a fresh j and k), so
+        the decomposition's greedy per-slice pick is also optimal here:
+        [(0,0,0), (1,1,1), (2,2,2)], cost 1 + 2 + 3 = 6.
+        """
+        cost = np.full((3, 3, 3), 9.0)
+        cost[0, 0, 0] = 1.0
+        cost[1, 1, 1] = 2.0
+        cost[2, 2, 2] = 3.0
+        result = decompose_to_2d(cost)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+        assert result.cost == pytest.approx(6.0)
+
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_is_vacuously_converged(self, shape):
+        """A zero-size tensor has no possible assignment to begin with --
+        that is trivially solved, not a failure."""
+        result = decompose_to_2d(np.zeros(shape))
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
 
 
 class TestAssign3DLagrangian:
@@ -680,22 +746,44 @@ class TestAssign3D:
             assign3d(cost, method=method)
 
     @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
-    def test_inf_is_still_accepted_as_a_forbidden_pairing(self, method):
-        """inf means "this pairing is not allowed" and must keep working.
+    @pytest.mark.parametrize("maximize", [False, True])
+    def test_inf_is_still_accepted_as_a_forbidden_pairing(self, maximize, method):
+        """inf means "this pairing is not allowed" and must keep working,
+        using the sentinel that is unfavorable for the mode: +inf when
+        minimizing, -inf when maximizing (the favorable direction means
+        the opposite -- an infinitely good pairing -- and is covered
+        separately in TestDecomposeTo2D).
 
         The NaN guard must not catch it. lagrangian is the one method that
         raises here, and it did so before the guard existed -- scipy calls
-        a slice with a fully-infinite row infeasible.
+        a slice with a fully-infinite row infeasible, in both directions.
         """
+        forbidden = -np.inf if maximize else np.inf
         cost = np.ones((3, 3, 3))
-        cost[0] = np.inf
+        cost[0] = forbidden
         if method == "lagrangian":
             with pytest.raises(ValueError, match="infeasible"):
-                assign3d(cost, method=method)
+                assign3d(cost, method=method, maximize=maximize)
         else:
-            result = assign3d(cost, method=method)
+            result = assign3d(cost, method=method, maximize=maximize)
             assert result.cost == pytest.approx(2.0)
             assert all(t[0] != 0 for t in result.tuples)
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_problem_is_vacuously_converged_for_every_method(
+        self, shape, method
+    ):
+        """A cost tensor with any dimension 0 has no possible assignment to
+        begin with -- that is trivially solved, not a failure, and all
+        four methods must agree. `assign3d_auction` and `assign3d_lagrangian`
+        used to crash outright on such input (an empty-array reduction in
+        each one's setup, independent of the `converged` predicate fix
+        applied to `greedy_3d` and `decompose_to_2d`).
+        """
+        result = assign3d(np.zeros(shape), method=method)
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
 
     def test_lagrangian_method(self):
         """Test Lagrangian method selection."""

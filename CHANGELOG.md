@@ -513,11 +513,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also with no NaN-specific signal). `decompose_to_2d` (and `greedy_3d`
   below, which has the same silent-skip exposure for a different
   reason) now reject any NaN in `cost_tensor` upfront with `ValueError`,
-  so `except ValueError: continue` only ever sees genuine infeasibility.
-  The shared rejector is wired into all four methods `assign3d`
-  dispatches to, not only those two: `assign3d(method="auction")`
-  returned 2 tuples at cost 2.0 on the same NaN tensor -- a cost summed
-  over a row it never read -- and `assign3d(method="lagrangian")` raised
+  closing the NaN half of the swallow (a second review round found the
+  other half still open; see below). The shared rejector is wired into
+  all four methods `assign3d` dispatches to, not only those two:
+  `assign3d(method="auction")` returned 2 tuples at cost 2.0 on the same
+  NaN tensor. Unlike `decompose_to_2d` and `greedy_3d` above, this was
+  not a silent confident answer -- row 0 was read (every `(i, j, k)`
+  including `i=0` is compared in the bidding loop), the NaN comparisons
+  in that row simply always evaluated `False`, and the pre-patch result
+  already carried `converged=False`, correctly flagging that not every
+  row got a bid-assigned pair. `assign3d(method="lagrangian")` raised
   only scipy's opaque "matrix contains invalid numeric entries". All four
   now raise a `ValueError` naming the function and the argument, and a
   parametrized test asserts that of every method so they cannot drift
@@ -528,19 +533,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `greedy_3d`'s own comparisons (`cost[i, j, k] < best_cost`) are always
   `False` against NaN, which already meant a NaN entry was never
   selected -- but, unlike `inf`, without ever being counted as
-  infeasible either, so it produced the same kind of confident partial
-  answer silently.
+  infeasible either. For a NaN spread across an entire row, as in the
+  tensor measured above, that produced the same kind of confident
+  partial answer silently. Worth disclosing plainly, since it is not
+  true of every NaN: a single, sparse NaN entry previously behaved
+  exactly like `inf` and produced a complete, correct, NaN-avoiding
+  answer. Measured on `cost = np.arange(27).reshape(3, 3, 3)` with
+  `cost[0, 0, 0] = nan`, the pre-patch result was `[[0, 0, 1], [1, 1, 0],
+  [2, 2, 2]]` at cost `39.0` -- identical, tuple for tuple, to
+  `cost[0, 0, 0] = inf` on the same tensor. That is a genuine behavior
+  change for such callers, not just a bug fix: they must switch to
+  `inf`.
 
   `greedy_3d` shared the `converged` half of this defect independently:
   it hardcoded `converged=True` regardless of whether the greedy scan
   found anything at all. Measured: `greedy_3d(np.full((3, 3, 3),
   np.inf))` returned zero tuples with `converged=True`. Unlike
-  `decompose_to_2d`'s `break`, `greedy_3d`'s `if best_tuple is None:
-  break` is not itself the same defect -- it already scans the entire
-  remaining index space each iteration, so hitting it means nothing
-  anywhere is left assignable, a legitimate stopping point, not an
-  early abandonment of solvable work. Only `converged` needed the same
-  fix applied: `len(assignments) > 0` instead of a hardcoded `True`.
+  `decompose_to_2d`'s `break`, `greedy_3d`'s `if best_tuple is None or
+  np.isinf(best_cost): break` is not itself the same defect -- it
+  already scans the entire remaining index space each iteration, so
+  hitting it means nothing anywhere is left assignable, a legitimate
+  stopping point, not an early abandonment of solvable work. Only
+  `converged` needed the same fix applied: `len(assignments) > 0`
+  instead of a hardcoded `True`.
 
   `Assignment3DResult.converged`'s docstring read "Whether the algorithm
   converged (for iterative methods)" for these two non-iterative
@@ -552,6 +567,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   4`, true of an empty result and exercised by `pytest
   --doctest-modules` in CI; it now asserts the exact `(4, 3)` shape a
   dense finite cost tensor always produces.
+
+  Review round 2: the `except ValueError: continue` swallow above was
+  still open, for a different non-infeasible case than NaN. scipy raises
+  the identical "invalid numeric entries" `ValueError` for a NaN entry
+  *and* for an infinity in the favorable direction for the mode (`-inf`
+  when minimizing, `+inf` when maximizing) -- the NaN rejector above
+  closed only the first. Measured: `cost = np.ones((3, 3, 3));
+  cost[0, 0, 0] = np.inf; decompose_to_2d(cost, maximize=True)` returned
+  `[[1, 0, 0], [2, 1, 1]]` at cost `2.0`, `converged=True` -- slice 0's
+  single infinitely-favorable pairing, alongside eight finite ones, was
+  dropped with no signal, and the same happened for
+  `cost[0, 0, 0] = -np.inf` under minimize. `decompose_to_2d` now
+  substitutes a large finite sentinel for a favorable-direction infinity
+  before calling scipy (it still dominates every real entry, so scipy
+  solves normally instead of raising), so the swallow now truly only
+  ever sees genuine infeasibility, as claimed above. The fixed result
+  for both measurements above is `[[0, 0, 0], [1, 1, 1], [2, 2, 2]]` at
+  cost `inf` and `-inf` respectively, correctly including the favorable
+  pairing. A new parametrized test on `decompose_to_2d` covers both
+  directions, and the existing cross-method forbidden-pairing test now
+  runs under both `maximize=False` and `maximize=True` with the
+  mode-appropriate forbidden sentinel.
+
+  Two more vacuous doctests of the same shape-only pattern this round
+  claims to have removed survived elsewhere in the same module, and also
+  run under `pytest --doctest-modules` in CI: `assign3d_lagrangian`
+  asserted `result.tuples.shape[1] == 3`, and `assign3d_auction`
+  asserted `len(result.tuples) <= 4` -- both pass against a completely
+  empty `(0, 3)` result. Both now assert the exact shape a dense finite
+  input always produces (`(5, 3)` and `(4, 3)` respectively).
+
+  `converged`'s fix above (`len(assignments) > 0`) was itself wrong for
+  a zero-size cost tensor: `decompose_to_2d(np.zeros((3, 3, 0)))`,
+  `decompose_to_2d(np.zeros((0, 3, 3)))`, and
+  `greedy_3d(np.zeros((0, 3, 3)))` all reported `converged=False`, when
+  a sensor reporting zero detections (or a tensor with zero of one index
+  dimension) is a vacuously solved problem, not a failed one. Worse,
+  `assign3d_auction` and `assign3d_lagrangian` did not even agree with
+  each other, let alone with those two: `assign3d_auction(np.zeros((0,
+  3, 3)))` crashed outright with `ValueError: zero-size array to
+  reduction operation maximum which has no identity` (its adaptive
+  epsilon takes `np.max`/`np.min` over the finite entries), and
+  `assign3d_lagrangian(np.zeros((3, 3, 0)))` crashed with the same
+  message naming `minimum` (`reduced = relaxed.min(axis=2)`) -- neither
+  reached its `converged` predicate at all. `converged` in `greedy_3d`
+  and `decompose_to_2d` is now `len(assignments) > 0 or
+  min(n1, n2, n3) == 0`; `assign3d_auction` and `assign3d_lagrangian`
+  now short-circuit to the same vacuously-converged empty result
+  (`tuples` of shape `(0, 3)`, `cost=0.0`, `converged=True`) whenever any
+  dimension is 0, instead of ever reaching their reductions. All four
+  methods now agree on every zero-size shape, confirmed by a
+  parametrized test across all four. `decompose_to_2d`'s Returns
+  docstring is corrected to match the new predicate.
+
+  `TestGreedy3D` and `TestDecomposeTo2D` also gained a hand-verified
+  value test apiece: `greedy_3d` on `cost[i, j, k] = 4i + 2j + k` over
+  `(2, 2, 2)` returns `[(0, 0, 0), (1, 1, 1)]` at cost `7.0` (the only
+  two valid picks once the global minimum `(0, 0, 0)` is taken), and
+  `decompose_to_2d` on an all-`9`s `(3, 3, 3)` tensor with the diagonal
+  set to `1, 2, 3` returns `[(0, 0, 0), (1, 1, 1), (2, 2, 2)]` at cost
+  `6.0`. Previously every test in both classes asserted shape only, never
+  that the values produced were actually correct.
 
 - `pytcl.dynamic_estimation.information_filter`: the prediction step for
   a singular information matrix `Y` (an unknown or partially unknown
