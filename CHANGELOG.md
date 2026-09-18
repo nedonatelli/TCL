@@ -58,14 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   release -- only a shape check and "some entries are nonzero"
   (`tests/unit/test_ins.py`). Built against a finite-difference Jacobian
   of `mechanize_ins_ned` (the mechanization it claims to linearize, see
-  `tests/validation/test_ins_error_matrix.py`), the oracle found 17 of 28
-  non-zero entries in the 9x9 navigation block disagreeing -- 11 of 12 in
-  the attitude rows alone, where the entire
-  `-[omega_in^n x] phi` self-coupling submatrix is absent, three entries
-  have the wrong sign, and one (`F[7,0]`) is off by roughly two orders of
-  magnitude. The three vertical-channel entries responsible for the
-  qualitative defect below are fixed in this release; the rest is
-  intentionally left as a tracked, `xfail(strict=True)`-enumerated
+  `tests/validation/test_ins_error_matrix.py`), the oracle checks every
+  entry of the 9x9 navigation block that is non-zero in the analytic
+  matrix, or non-zero in the oracle where the analytic matrix has an
+  implicit zero (a missing self-coupling term) -- 29 entries meet that
+  rule, and it found 18 disagreeing: 11 of 12 in the attitude rows,
+  where the entire `-[omega_in^n x] phi` self-coupling submatrix is
+  absent, three entries have the wrong sign, one (`F[7,0]`) is off by
+  roughly two orders of magnitude, and one is a missing self-coupling
+  the analytic matrix implies is exactly zero (`F[6,0]`); plus one in
+  the velocity rows, `F[4,4]` (`d(vE_dot)/d(vE)`), the same kind of
+  missing self-coupling, entirely absent from the analytic matrix
+  (oracle: a stable +1.5277e-05, checked across eps=1e-4..1e-2 and
+  dt=1e-5..1e-3). The three vertical-channel entries responsible for the
+  qualitative defect below are fixed in this release; the remaining 15
+  are intentionally left as a tracked, `xfail(strict=True)`-enumerated
   inventory rather than being fixed under patch-release constraints on a
   model nobody had ever checked. `loose_coupled_predict`
   (`pytcl.navigation.ins_gnss`), the only consumer of this matrix, now
@@ -345,6 +352,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through one module-private helper (`_wrap_longitude_difference`)
   shared by both forward functions.
 
+  Two seam issues in this same fix, found and closed before release:
+  `_wrap_longitude_difference` initially cast its result through
+  `float()`, which raises `TypeError` for array input even though array
+  input worked (and agreed with per-element scalar calls) before this
+  fix existed -- it now returns `wrap_to_pi(lon - lon0)[()]`, which is a
+  `np.float64` (a `float` subclass) for scalar input and the array
+  unchanged for array input. And `transverse_mercator`'s Helmert-series
+  arc-length computation (`sigma = lat` followed by an in-place `sigma -=
+  ...` in a loop) aliased the caller's `lat`/`lat0` array and silently
+  corrupted it in place across repeated calls -- three successive
+  `geodetic2utm` calls on the same array drifted northing by ~16 km per
+  call while quietly mutating the caller's latitude by ~0.14 deg per
+  call. Both series computations (forward and inverse) now accumulate
+  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`).
+
   The paired inverse functions computed the correct point but as a
   longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the
   seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
@@ -449,7 +471,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Deferred, not fixed here (Tier 4): `direct_rhumb` is 380 m off the
   exact endpoint on a 3000 km leg with no accuracy note in its
   docstring; MATLAB's exact elliptic-integral rhumb formulation is
-  unported.
+  unported. The 380 m figure is carried forward from the pre-v2.11.1
+  audit and has not been independently re-verified in this patch series
+  -- no exact ellipsoidal-rhumb oracle (e.g. GeographicLib's `Rhumb`
+  class) is available in this environment to check it against.
 
 ## [2.11.0] - 2026-09-13
 

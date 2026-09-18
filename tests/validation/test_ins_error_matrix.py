@@ -6,8 +6,14 @@ checked that claim -- only shape and "some entries are nonzero"
 (``tests/unit/test_ins.py``). This file builds an independent oracle by
 central-differencing ``mechanize_ins_ned`` itself, in the same tangent-space
 coordinates the F matrix uses (lat/lon/alt, NED velocity, and attitude as a
-nav-frame rotation-vector perturbation), and checks every non-zero entry of
-the 9x9 navigation block (rows/cols 0-8) against it.
+nav-frame rotation-vector perturbation), and checks every entry of the 9x9
+navigation block (rows/cols 0-8) that is non-zero in the analytic matrix,
+*or* non-zero in the oracle even where the analytic matrix has it as an
+implicit zero (a missing self-coupling term) -- the union of the two, not
+either alone. 29 entries meet that test: 14 in ``_AGREEING_ENTRIES``, 15 in
+``_KNOWN_WRONG_ENTRIES``. Of the 15, 7 are analytic-zero/oracle-non-zero
+(``F[4,4]`` in the velocity block; ``F[6,0]`` and the six off-diagonal
+``-[omega_in^n x] phi`` self-coupling entries in the attitude block).
 
 Every entry that agrees is asserted at a tight tolerance. Every entry that
 does not is an explicit ``xfail(strict=True)`` case carrying the analytic
@@ -38,8 +44,15 @@ from pytcl.navigation.ins import (
 
 # Step sizes are chosen per component and verified (in the task-3.2 report,
 # not re-run on every test invocation) to be stable across a couple of
-# orders of magnitude and across mechanization dt -- these are not tuned to
-# make any particular entry pass.
+# orders of magnitude of eps and across the range of mechanization dt this
+# file actually exercises (1e-4 to 1e-3 s; see _MECHANIZATION_DT below) --
+# these are not tuned to make any particular entry pass. That range does
+# NOT extend down to dt=1e-5: at dt=1e-5, F[1,0]'s agreement with the
+# oracle degrades from rel ~9.8e-3 to rel ~3-5e-1, an order-of-magnitude
+# worse match, because the mechanization's own dt-discretization error
+# stops being negligible next to the finite-difference perturbation at
+# that step size. The claim above is scoped to dt=1e-4..1e-3, not to
+# mechanization dt generally.
 _EPS = {
     "lat": 1e-6,  # rad; ~6 mm on the ground
     "lon": 1e-6,  # rad
@@ -182,9 +195,25 @@ def analytic_and_numeric(canonical_state):
     return analytic, numeric
 
 
+# F[3,3] (d(vN_dot)/d(vN)): the oracle gives a small, sign-consistent but
+# NOT stable value here -- 0 at eps=1e-4 (below the mechanization's own
+# resolution at that step), then -4.3e-7 to -4.7e-7 across eps=1e-3..1.0
+# and -7.1e-7 to -4.3e-7 across dt=1e-5..1e-3. That is two orders of
+# magnitude below F[4,4]'s stable 1.53e-5 (below at every eps/dt tried,
+# never the dominant signal) and consistent with central-difference
+# truncation/roundoff noise on a curvature-scale term rather than a real,
+# resolvable self-coupling. Decision: treated as noise, not added to
+# _KNOWN_WRONG_ENTRIES -- recorded here explicitly rather than left
+# silently uncounted, which is how F[4,4] itself was originally missed.
+
 # (row, col): rtol for entries that agree with the oracle.
 _AGREEING_ENTRIES = {
     (0, 3): 2e-2,
+    # Agrees at rel 9.77e-3 against rtol=2e-2 -- a real ~1% disagreement
+    # with only a factor-2 margin, not clean agreement. This entry lives
+    # in TestVerticalChannelFixed, so if a future mechanization change
+    # trips it, read the failure as "this entry's margin ran out", not as
+    # "the vertical-channel fix broke".
     (1, 0): 2e-2,
     (1, 4): 2e-2,
     (2, 5): 2e-2,
@@ -208,6 +237,12 @@ _KNOWN_WRONG_ENTRIES = {
     (3, 0): "velocity block: missing curvature correction, ~17% low",
     (3, 4): "velocity block: missing curvature correction, ~9.6% low",
     (4, 0): "velocity block: missing curvature correction, ~20% low",
+    (4, 4): (
+        "velocity block: d(vE_dot)/d(vE) self-coupling entirely missing "
+        "(analytic 0.0, oracle +1.5277e-05, stable across eps=1e-4..1e-2 "
+        "and dt=1e-5..1e-3 -- same kind and same order as the attitude "
+        "self-coupling entries below, not finite-difference noise)"
+    ),
     (6, 0): "attitude block: transport-rate coupling term entirely missing",
     (6, 4): "attitude block: wrong sign",
     (6, 7): "attitude block: -[omega_in^n x] phi self-coupling missing",
@@ -268,10 +303,13 @@ class TestKnownWrongEntries:
 
     These are deliberately left unfixed: the attitude block needs the
     transport-rate/earth-rate self-coupling derived and validated as a
-    unit (its own tier of work), and the velocity-row entries here are
+    unit (its own tier of work); most of the velocity-row entries here are
     incomplete higher-order corrections, not sign errors or missing terms,
     so widening a tolerance to pass them would hide a real, if small,
-    disagreement rather than document it.
+    disagreement rather than document it -- the exception is ``F[4,4]``,
+    an entirely missing ``d(vE_dot)/d(vE)`` self-coupling of the same kind
+    and order as the attitude block's missing self-coupling, tracked here
+    rather than fixed for the same patch-release-scope reason.
     """
 
     @pytest.mark.parametrize("row,col", sorted(_KNOWN_WRONG_ENTRIES))

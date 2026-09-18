@@ -25,7 +25,7 @@ References
   nanometers." Journal of Geodesy 85.8 (2011): 475-485.
 """
 
-from typing import Any, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional, Tuple, Union, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -94,7 +94,10 @@ class UTMResult(NamedTuple):
 # =============================================================================
 
 
-def _wrap_longitude_difference(lon: float, lon0: float) -> float:
+def _wrap_longitude_difference(
+    lon: Union[float, NDArray[np.floating[Any]]],
+    lon0: Union[float, NDArray[np.floating[Any]]],
+) -> Union[float, NDArray[np.floating[Any]]]:
     """Longitude difference ``lon - lon0``, wrapped into [-pi, pi).
 
     Cylindrical and transverse projections compute their easting and
@@ -102,8 +105,13 @@ def _wrap_longitude_difference(lon: float, lon0: float) -> float:
     meridian near +-180 degrees and a point on the far side of the
     antimeridian produce a difference near +-360 degrees instead of near
     zero (gh-25 follow-up).
+
+    ``[()]`` rather than ``float()``: indexing a 0-d array with the empty
+    tuple returns a ``np.float64`` scalar (a ``float`` subclass) without
+    forcing array input through ``float()``, which raises for anything but
+    a 0-d array. An array `lon` therefore still comes back as an array.
     """
-    return float(wrap_to_pi(lon - lon0))
+    return wrap_to_pi(lon - lon0)[()]
 
 
 def mercator(
@@ -213,8 +221,12 @@ def mercator_inverse(
     """
     # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a central meridian near +-180
-    # degrees (gh-25 follow-up).
-    lon = _wrap_longitude_difference(x / a + lon0, 0.0)
+    # degrees (gh-25 follow-up). Cast: this function's public signature is
+    # scalar-only (`Tuple[float, float]`, unchanged here); the array
+    # support `_wrap_longitude_difference` restores is for other callers
+    # in this module, so its wider Union return is narrowed back for the
+    # type checker without touching this function's own declared type.
+    lon = cast(float, _wrap_longitude_difference(x / a + lon0, 0.0))
 
     # Latitude using iterative solution
     t = np.exp(-y / a)
@@ -350,16 +362,19 @@ def transverse_mercator(
     # Meridian arc length
     N = a / np.sqrt(1 - e2 * sin_lat**2)  # Radius of curvature in prime vertical
 
-    # Arc length from equator to latitude
+    # Arc length from equator to latitude. `sigma = sigma - ...` (not `-=`)
+    # so the series is computed out of place: `sigma = lat` aliases the
+    # caller's array, and an in-place `-=` would mutate it through that
+    # alias across successive loop iterations (gh-25 follow-up).
     sigma = lat
     for i in range(1, 4):
-        sigma -= alpha[i] * np.sin(2 * i * lat)
+        sigma = sigma - alpha[i] * np.sin(2 * i * lat)
     M = A * sigma
 
-    # Arc length from origin latitude
+    # Arc length from origin latitude (same aliasing hazard as above).
     sigma0 = lat0
     for i in range(1, 4):
-        sigma0 -= alpha[i] * np.sin(2 * i * lat0)
+        sigma0 = sigma0 - alpha[i] * np.sin(2 * i * lat0)
     M0 = A * sigma0
 
     # Easting
@@ -448,7 +463,10 @@ def transverse_mercator_inverse(
         151 * n**3 / 96,
     ]
 
-    # Arc length from origin latitude (must match the forward series)
+    # Arc length from origin latitude (must match the forward series).
+    # `sigma0 = sigma0 - ...` (not `-=`): `sigma0 = lat0` aliases the
+    # caller's array, and an in-place `-=` would mutate it through that
+    # alias (gh-25 follow-up).
     sigma0 = lat0
     alpha = [
         0,
@@ -457,7 +475,7 @@ def transverse_mercator_inverse(
         35 * n**3 / 48,
     ]
     for i in range(1, 4):
-        sigma0 -= alpha[i] * np.sin(2 * i * lat0)
+        sigma0 = sigma0 - alpha[i] * np.sin(2 * i * lat0)
     M0 = A * sigma0
 
     # Footprint latitude
@@ -498,16 +516,20 @@ def transverse_mercator_inverse(
     # Longitude, canonicalized into [-pi, pi): for a central meridian near
     # +-180 degrees (a forced UTM zone across the antimeridian), lon0 +
     # offset can otherwise land just past the antimeridian (gh-25
-    # follow-up).
-    lon = _wrap_longitude_difference(
-        lon0
-        + (
-            d
-            - d**3 / 6 * (1 + 2 * t2 + c)
-            + d**5 / 120 * (5 - 2 * c + 28 * t2 - 3 * c2 + 8 * ep2 + 24 * t4)
-        )
-        / cos_fp,
-        0.0,
+    # follow-up). Cast: narrows the helper's wider Union return back to
+    # this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0
+            + (
+                d
+                - d**3 / 6 * (1 + 2 * t2 + c)
+                + d**5 / 120 * (5 - 2 * c + 28 * t2 - 3 * c2 + 8 * ep2 + 24 * t4)
+            )
+            / cos_fp,
+            0.0,
+        ),
     )
 
     return lat, lon
@@ -915,10 +937,14 @@ def stereographic_inverse(
 
     # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a centre near +-180 degrees
-    # (gh-25 follow-up).
-    lon = _wrap_longitude_difference(
-        lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c),
-        0.0,
+    # (gh-25 follow-up). Cast: narrows the helper's wider Union return
+    # back to this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0 + np.arctan2(x * sin_c, rho * cos_chi0 * cos_c - y * sin_chi0 * sin_c),
+            0.0,
+        ),
     )
 
     # Invert conformal latitude
@@ -1218,8 +1244,10 @@ def lambert_conformal_conic_inverse(
 
     # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
     # land just past the antimeridian for a central meridian near +-180
-    # degrees (gh-25 follow-up).
-    lon = _wrap_longitude_difference(theta / n + lon0, 0.0)
+    # degrees (gh-25 follow-up). Cast: narrows the helper's wider Union
+    # return back to this function's own unchanged scalar-only declared
+    # type.
+    lon = cast(float, _wrap_longitude_difference(theta / n + lon0, 0.0))
 
     return lat, lon
 
@@ -1399,10 +1427,14 @@ def azimuthal_equidistant_inverse(
     lat = np.arcsin(cos_c * sin_lat0 + y * sin_c * cos_lat0 / rho)
     # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
     # past the antimeridian for a centre near +-180 degrees (gh-25
-    # follow-up).
-    lon = _wrap_longitude_difference(
-        lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c),
-        0.0,
+    # follow-up). Cast: narrows the helper's wider Union return back to
+    # this function's own unchanged scalar-only declared type.
+    lon = cast(
+        float,
+        _wrap_longitude_difference(
+            lon0 + np.arctan2(x * sin_c, rho * cos_lat0 * cos_c - y * sin_lat0 * sin_c),
+            0.0,
+        ),
     )
 
     return lat, lon

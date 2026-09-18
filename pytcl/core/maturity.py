@@ -295,7 +295,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "mathematical_functions.statistics.distributions": MaturityLevel.EXPERIMENTAL,  # 83% coverage
     # navigation
     "navigation.rhumb": MaturityLevel.EXPERIMENTAL,  # 85% coverage
-    "navigation.ins": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: ins_error_state_matrix's oracle (tests/validation/test_ins_error_matrix.py) found 17 of 28 non-zero 9x9 navigation-block entries disagreeing with mechanize_ins_ned's own Jacobian -- 11 of 12 in the attitude rows, whose -[omega_in^n x] phi self-coupling submatrix is entirely absent; three vertical-channel entries (sign errors + a missing term) were fixed, the rest is tracked as xfail
+    "navigation.ins": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: ins_error_state_matrix's oracle (tests/validation/test_ins_error_matrix.py) found 18 of 29 9x9 navigation-block entries disagreeing with mechanize_ins_ned's own Jacobian (counting every entry non-zero in the analytic matrix, or non-zero in the oracle where the analytic matrix has an implicit zero) -- 11 of 12 in the attitude rows, whose -[omega_in^n x] phi self-coupling submatrix is entirely absent, plus F[4,4]'s missing vE self-coupling in the velocity rows; three vertical-channel entries (sign errors + a missing term) were fixed, the remaining 15 are tracked as xfail
     # plotting
     "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
     "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage

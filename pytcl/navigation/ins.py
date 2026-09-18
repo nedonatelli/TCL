@@ -1001,7 +1001,11 @@ def ins_error_state_matrix(
       ``F[3,4]``, ``F[4,0]`` remain quantitatively incomplete -- they omit
       higher-order Coriolis/transport-rate curvature corrections (roughly
       10-20% relative error at mid-latitude); this is a magnitude gap, not
-      a sign error, and is tracked rather than fixed here.
+      a sign error, and is tracked rather than fixed here. ``F[4,4]``
+      (``d(vE_dot)/d(vE)``) is entirely missing: the analytic matrix has
+      it as an implicit zero, the oracle gives a stable +1.5277e-05, of
+      the same kind and order as the attitude block's missing
+      self-coupling below.
     - Attitude block (rows 6-8): **known broadly incomplete**. The
       ``-[omega_in^n x] phi`` self-coupling submatrix (``F[6:9,6:9]``) is
       entirely absent, three entries (``F[6,4]``, ``F[7,3]``, ``F[8,4]``)
@@ -1012,7 +1016,10 @@ def ins_error_state_matrix(
       ``tests/validation/test_ins_error_matrix.py`` for the full,
       entry-by-entry inventory (every agreeing entry asserted, every
       disagreeing entry an ``xfail(strict=True)`` with its analytic and
-      numeric values).
+      numeric values). Counting the whole 9x9 navigation block by the same
+      rule -- every entry non-zero in the analytic matrix, or non-zero in
+      the oracle where the analytic matrix has an implicit zero -- 29
+      entries are exercised in total; 15 disagree.
     - Bias-coupling columns (``F[3:6,9:12]``, ``F[6:9,12:15]``, and rows
       9-14 generally): **unverified, not verified-correct**.
       :func:`mechanize_ins_ned` takes no bias arguments, so no

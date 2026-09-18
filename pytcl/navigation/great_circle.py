@@ -540,12 +540,14 @@ def great_circle_intersect(
     Notes
     -----
     Great circles always intersect at two antipodal points (unless they
-    are identical or parallel). The returned points are the intersections
-    closest to the given points: the result's ``lat1``/``lon1`` is the
+    are identical or parallel). The result's ``lat1``/``lon1`` is the
     intersection reached by a positive distance heading ``azimuth1`` from
     the input ``lat1``/``lon1``, not whichever antipodal point the
-    underlying vector algebra happens to return. The branch selection is
-    a port of MATLAB's ``greatCircleIntersect.m`` (Baselga &
+    underlying vector algebra happens to return -- and not necessarily the
+    intersection point nearest to ``lat1``/``lon1`` by great-circle
+    distance, which for a forward distance beyond a quarter-circle
+    (``pi/2``) is the *other*, antipodal point instead. The branch
+    selection is a port of MATLAB's ``greatCircleIntersect.m`` (Baselga &
     Martinez-Llario 2018), which selects the positive-distance solution.
 
     Examples
