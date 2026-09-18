@@ -32,6 +32,7 @@ also has no GPB1/GPB2/AMM variants and cannot mix modes of unequal state
 dimension.
 """
 
+import warnings
 from typing import Any, List, NamedTuple, Optional
 
 import numpy as np
@@ -443,7 +444,22 @@ def imm_update(
     if total_likelihood > 1e-300:
         upd_probs = weighted_likelihoods / total_likelihood
     else:
-        # Keep current probabilities if all likelihoods are zero
+        # Every mode's weighted likelihood underflowed to zero: the filter
+        # has learned nothing from this measurement and falls back to the
+        # prior. Since v2.11, kf_update itself warns and reports
+        # likelihood=0.0 on a non-PD innovation covariance, so an
+        # all-zero vector here is now the expected symptom of a numerical
+        # failure upstream, not merely an implausible measurement -- make
+        # it audible instead of silently keeping the prior probabilities.
+        warnings.warn(
+            "imm_update: every mode likelihood is zero (or underflowed to "
+            "zero); mode probabilities are unchanged from the prior. This "
+            "often means an innovation covariance was not positive "
+            "definite in one or more modes upstream (see kf_update's own "
+            "warning). Check R and the mode covariances' conditioning.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         upd_probs = mode_probs.copy()
 
     # Normalize to ensure sum = 1

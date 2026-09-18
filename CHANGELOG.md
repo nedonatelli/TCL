@@ -523,6 +523,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   I)` on a non-PD measurement covariance, the same absolute-jitter
   pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
 
+- `pytcl.dynamic_estimation.imm`: `imm_update` kept the prior mode
+  probabilities unchanged whenever every mode's weighted likelihood
+  underflowed to zero, with no warning -- the one case where the filter
+  has learned nothing from the measurement. Since v2.11 made
+  `kf_update` itself warn and report `likelihood=0.0` on a non-PD
+  innovation covariance rather than raising, an all-zero likelihood
+  vector reaching `imm_update` is now the expected symptom of a
+  numerical failure upstream, not only a genuinely implausible
+  measurement, and this fallback swallowed it either way. `imm_update`
+  now warns whenever every mode's likelihood is zero, naming the
+  condition and pointing at `kf_update`'s own non-PD warning as the
+  likely cause; the fallback's behavior is unchanged -- mode
+  probabilities still fall back to the prior, confirmed by measurement
+  (`[1/3, 1/3, 1/3]` in, `[1/3, 1/3, 1/3]` out). A partial underflow
+  (some modes zero, at least one nonzero) does not warn, confirmed by
+  measurement with likelihoods `[0.0, 0.0, 1.105e-12]`.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
