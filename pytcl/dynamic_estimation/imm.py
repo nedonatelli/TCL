@@ -444,19 +444,20 @@ def imm_update(
     if total_likelihood > 1e-300:
         upd_probs = weighted_likelihoods / total_likelihood
     else:
-        # Every mode's weighted likelihood underflowed to zero: the filter
-        # has learned nothing from this measurement and falls back to the
-        # prior. Since v2.11, kf_update itself warns and reports
-        # likelihood=0.0 on a non-PD innovation covariance, so an
-        # all-zero vector here is now the expected symptom of a numerical
-        # failure upstream, not merely an implausible measurement -- make
-        # it audible instead of silently keeping the prior probabilities.
+        # Since v2.11, kf_update itself warns and zeros the likelihood on
+        # a non-PD innovation covariance, so an all-zero weighted sum
+        # here is now the expected symptom of a numerical failure
+        # upstream, not merely an implausible measurement or a zero
+        # prior -- make it audible instead of silently keeping the prior
+        # probabilities.
         warnings.warn(
-            "imm_update: every mode likelihood is zero (or underflowed to "
-            "zero); mode probabilities are unchanged from the prior. This "
-            "often means an innovation covariance was not positive "
-            "definite in one or more modes upstream (see kf_update's own "
-            "warning). Check R and the mode covariances' conditioning.",
+            "imm_update: every mode's weighted likelihood (mode_probs * "
+            "likelihood) is zero; mode probabilities are unchanged from "
+            "the prior. This can mean a non-PD innovation covariance "
+            "upstream zeroed a mode's own likelihood (see kf_update's own "
+            "warning), or that the mode(s) with nonzero likelihood "
+            "currently have zero prior probability. Check R, the mode "
+            "covariances' conditioning, and mode_probs.",
             RuntimeWarning,
             stacklevel=2,
         )
