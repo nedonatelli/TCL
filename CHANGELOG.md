@@ -762,6 +762,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   does not warn, confirmed by measurement with likelihoods `[0.0, 0.0,
   1.105e-12]`.
 
+- `pytcl.assignment_algorithms.jpda`: `compute_measurement_likelihood`
+  gated the innovation covariance `S` on `det(S) <= 0`, which an even
+  number of negative eigenvalues defeats -- `det(diag(1, -1, -1)) = 1 >
+  0` despite two of its three axes being negative-definite. Measured:
+  `S = diag(-1e-3, -1e-3)` with innovation `(1e-2, 1e-2)` and Pd 0.9
+  returned likelihood 158.30407311583267 with zero warnings, as if it
+  were a genuinely improbable measurement rather than numerical
+  garbage. `kf_update` has warned in exactly this situation since v2.11;
+  JPDA's own likelihood function did not. It now factors `S` via
+  `scipy.linalg.cho_factor`, taking the quadratic form from
+  `cho_solve` and the log-determinant from the factor's diagonal --
+  the same construction `kf_update` already uses -- and warns with
+  matching wording ("... innovation covariance is not positive
+  definite; likelihood set to 0.0 (numerical failure, not evidence).
+  Check R and the covariance conditioning.") before returning 0.0.
+  `compute_likelihood_matrix`'s batch path carried the identical
+  `det_S > 0` test; it now runs the same Cholesky check per track
+  before trusting that track's `S`, and on failure warns (naming the
+  track index) and leaves only that track's row at its zero-likelihood,
+  ungated initialization -- other tracks in the same batch are
+  unaffected. The already-verified algebraic equivalence between the
+  batch path's single-`inv`-per-track computation and the per-pair
+  scalar path on well-conditioned input is unchanged by this fix
+  (measured max abs difference 3.47e-18 before, 1.39e-17 after, both at
+  float64 roundoff). MATLAB's own Gaussian PDF (`GaussianD.PDF`) uses
+  `invSymQuadForm`, which factors via `chol` and lets a non-PD input
+  raise rather than testing the determinant's sign, confirming the
+  determinant test was a pytcl-only addition, not a port of the
+  reference implementation.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
