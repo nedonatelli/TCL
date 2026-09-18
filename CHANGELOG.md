@@ -501,9 +501,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   otherwise) instead of being hardcoded. Return shape and dtype
   unchanged.
 
+  Review round: `except ValueError: continue` widened the swallow --
+  scipy's `linear_sum_assignment` raises `ValueError` both for a
+  genuinely infeasible slice ("cost matrix is infeasible") and for a
+  NaN entry ("matrix contains invalid numeric entries"), and treating
+  both as "skip this slice" let a NaN-poisoned tensor through as a
+  confident partial answer: measured with `cost[0] = nan` on the same
+  `(3, 3, 3)` tensor, this returned 2 tuples at cost 2.0 with
+  `converged=True`, silently dropping the NaN row rather than flagging
+  it (before the `continue` fix, the same input returned zero tuples,
+  also with no NaN-specific signal). `decompose_to_2d` (and `greedy_3d`
+  below, which has the same silent-skip exposure for a different
+  reason) now reject any NaN in `cost_tensor` upfront with `ValueError`,
+  so `except ValueError: continue` only ever sees genuine infeasibility.
+  `greedy_3d`'s own comparisons (`cost[i, j, k] < best_cost`) are always
+  `False` against NaN, which already meant a NaN entry was never
+  selected -- but, unlike `inf`, without ever being counted as
+  infeasible either, so it produced the same kind of confident partial
+  answer silently.
+
+  `greedy_3d` shared the `converged` half of this defect independently:
+  it hardcoded `converged=True` regardless of whether the greedy scan
+  found anything at all. Measured: `greedy_3d(np.full((3, 3, 3),
+  np.inf))` returned zero tuples with `converged=True`. Unlike
+  `decompose_to_2d`'s `break`, `greedy_3d`'s `if best_tuple is None:
+  break` is not itself the same defect -- it already scans the entire
+  remaining index space each iteration, so hitting it means nothing
+  anywhere is left assignable, a legitimate stopping point, not an
+  early abandonment of solvable work. Only `converged` needed the same
+  fix applied: `len(assignments) > 0` instead of a hardcoded `True`.
+
+  `Assignment3DResult.converged`'s docstring read "Whether the algorithm
+  converged (for iterative methods)" for these two non-iterative
+  heuristics; it now documents what `converged` means per method
+  (`assign3d_lagrangian`'s genuine gap-based convergence,
+  `assign3d_auction`'s within-`max_iter` bidding convergence, and these
+  two heuristics' "found at least one assignment"). `decompose_to_2d`'s
+  own docstring doctest also still asserted `result.tuples.shape[0] <=
+  4`, true of an empty result and exercised by `pytest
+  --doctest-modules` in CI; it now asserts the exact `(4, 3)` shape a
+  dense finite cost tensor always produces.
+
 - `pytcl.dynamic_estimation.information_filter`: the prediction step for
   a singular information matrix `Y` (an unknown or partially unknown
-  initial state) requires an invertible `F` to form `F^-1 Y F^-T`; when
+  initial state) requires an invertible `F` to form `F^-T Y F^-1`; when
   `F` was singular, the resulting `LinAlgError` was caught and swallowed
   with a comment claiming it was safe ("F singular: leave information
   unchanged") and `y`/`Y` were returned untouched -- prediction was
@@ -511,30 +552,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   state it never actually propagated. Measured: with `F = [[1, 1], [0,
   0]]`, `Y0 = 0` (unknown initial state), and three position
   measurements, `Y` went `diag(1, 0) -> diag(2, 0) -> diag(3, 0)`,
-  identical to running with no dynamics at all (`F = I`), with zero
-  warnings. The `LinAlgError` now propagates, naming `F` as the singular
+  identical to *skipping prediction entirely* -- not identical to
+  running with `F = I`, which (same `Q`) actually damps to `1.0`,
+  `1.909`, `2.603`. The `LinAlgError` now propagates, naming `F` as the singular
   matrix and pointing callers at `esrif_predict`/`esrif_update` for
   rank-deficient dynamics -- this is a raise on input that was never
   valid, not a behavior change for any input that previously produced a
   correct result (a regular `F` with a singular `Y0` is unaffected and
   continues to propagate information normally, confirmed by measurement).
+  The guard catches exact singularity only: a near-singular `F` (e.g.
+  `[[1, 1], [0, 1e-18]]`) still passes `np.linalg.inv` and the original
+  silent-skip symptom is unannounced there; a conditioning threshold is a
+  design decision, not this patch's scope.
   Unverified sibling noted, not fixed here: `srif_update` (currently
-  `information_filter.py:540`) falls back to `cholesky(R_meas + 1e-10 *
+  `information_filter.py:553`) falls back to `cholesky(R_meas + 1e-10 *
   I)` on a non-PD measurement covariance, the same absolute-jitter
   pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
 
+- `pytcl.dynamic_estimation.information_filter.srif_predict`: when its
+  primary Cholesky path fails and falls back to an SVD of the predicted
+  covariance `P_pred`, a genuinely singular `P_pred` produced a zero
+  singular value; `1.0 / np.sqrt(s)` then divided by zero and the
+  function returned `nan`/`inf` as an ordinary result, with only numpy's
+  own generic `RuntimeWarning: divide by zero encountered in divide` as
+  any signal. Measured: `r_pred = [1.061, nan]` and `R_pred` containing
+  both `nan` and `inf`. `srif_filter` then failed several lines later at
+  its next QR call with the misleading `LinAlgError: SVD did not
+  converge` (the SVD in `srif_predict` itself converged fine; the
+  *result* was degenerate). This is worse than the `srif_update` sibling
+  noted above, since that one at least raises eventually, just from a
+  1e-10 jitter with no message -- here nothing raised until a caller
+  several steps removed hit an unrelated, wrong error. Now raises
+  `np.linalg.LinAlgError` naming `P_pred` as singular as soon as the SVD
+  reveals it, rather than propagating the division's `nan`/`inf`.
+
 - `pytcl.dynamic_estimation.imm`: `imm_update` kept the prior mode
-  probabilities unchanged whenever every mode's weighted likelihood
-  underflowed to zero, with no warning -- the one case where the filter
-  has learned nothing from the measurement. Since v2.11 made
-  `kf_update` itself warn and report `likelihood=0.0` on a non-PD
-  innovation covariance rather than raising, an all-zero likelihood
-  vector reaching `imm_update` is now the expected symptom of a
-  numerical failure upstream, not only a genuinely implausible
-  measurement, and this fallback swallowed it either way. `imm_update`
-  now warns whenever every mode's likelihood is zero, naming the
-  condition and pointing at `kf_update`'s own non-PD warning as the
-  likely cause; the fallback's behavior is unchanged -- mode
+  probabilities unchanged whenever every mode's *weighted* likelihood
+  (`mode_probs * likelihood`) underflowed to zero, with no warning -- the
+  one case where the filter has learned nothing from the measurement.
+  Since v2.11 made `kf_update` itself warn and report `likelihood=0.0` on
+  a non-PD innovation covariance rather than raising, an all-zero
+  weighted-likelihood sum reaching `imm_update` is now an expected
+  symptom of a numerical failure upstream, not only a genuinely
+  implausible measurement, and this fallback swallowed it either way.
+  `imm_update` now warns whenever every mode's weighted likelihood is
+  zero, naming both possible causes -- a non-PD innovation covariance
+  upstream (as before), or a zero prior probability on the only mode(s)
+  with a nonzero raw likelihood, which zeros the weighted sum the same
+  way. That second cause is real, not hypothetical: measured with
+  `mode_probs=[0, 0, 1]` and raw likelihoods `[0.075, 0.075, 0.0]` (two
+  modes carry real likelihood, the third carries all the prior weight),
+  the weighted sum is zero and the warning correctly fires -- an earlier
+  draft of this message claimed "every mode likelihood is zero" here,
+  which this scenario disproves, so the message says "weighted
+  likelihood" instead. The fallback's behavior is unchanged -- mode
   probabilities still fall back to the prior, confirmed by measurement
   (`[1/3, 1/3, 1/3]` in, `[1/3, 1/3, 1/3]` out). A partial underflow
   (some modes zero, at least one nonzero) does not warn, confirmed by
