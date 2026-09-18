@@ -451,13 +451,19 @@ def imm_update(
         # prior -- make it audible instead of silently keeping the prior
         # probabilities.
         warnings.warn(
-            "imm_update: every mode's weighted likelihood (mode_probs * "
-            "likelihood) is zero; mode probabilities are unchanged from "
-            "the prior. This can mean a non-PD innovation covariance "
-            "upstream zeroed a mode's own likelihood (see kf_update's own "
-            "warning), or that the mode(s) with nonzero likelihood "
-            "currently have zero prior probability. Check R, the mode "
-            "covariances' conditioning, and mode_probs.",
+            "imm_update: the prior-weighted likelihood sum (mode_probs @ "
+            "likelihoods) is at or below 1e-300 (effectively underflowed "
+            "to zero); mode probabilities are unchanged from the prior. "
+            "Most often this is plain likelihood underflow "
+            "(exp(-mahalanobis_sq / 2) hitting zero in float64) from a "
+            "large miss distance or a lost track -- expected behavior for "
+            "a bad enough miss, not necessarily an upstream fault. It can "
+            "also mean a non-PD innovation covariance upstream zeroed a "
+            "mode's own likelihood (check kf_update's own warning, if one "
+            "fired), or that the mode(s) with nonzero likelihood "
+            "currently have zero prior probability. Check the miss "
+            "distance, R, the mode covariances' conditioning, and "
+            "mode_probs.",
             RuntimeWarning,
             stacklevel=2,
         )

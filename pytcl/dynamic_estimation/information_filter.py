@@ -317,12 +317,20 @@ def information_filter(
                     "singular, so the singular-Y prediction step "
                     "(F^-T Y F^-1) cannot be formed. F must be invertible "
                     "whenever Y is singular (unknown or partially unknown "
-                    "state). For rank-deficient dynamics, consider "
-                    "esrif_predict/esrif_update instead."
+                    "state). esrif_predict/esrif_update cannot help here "
+                    "either -- they also require an invertible F (plus "
+                    "nonsingular R_prev and s_q). Use the covariance-form "
+                    "Kalman filter instead (kf_predict/kf_update, which "
+                    "never inverts F), representing the unknown state with "
+                    "a large finite initial covariance rather than a "
+                    "singular Y."
                 ) from exc
-            # Regularize a singular Q negligibly so Q^{-1} exists; the
-            # error is transient (the exact path takes over once Y
-            # becomes full rank).
+            # Regularize a singular Q negligibly so Q^{-1} exists. This is
+            # not transient: only its *use* stops once Y becomes full rank
+            # and this branch is no longer taken; the error it introduces
+            # into Y here is carried forward in every step after this one.
+            # MATLAB's infoFilterDiscPred avoids inverting Q at all (see
+            # CHANGELOG); re-deriving that form is deferred, not done here.
             eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
             Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
             M = F_inv.T @ Y @ F_inv
@@ -464,8 +472,12 @@ def srif_predict(
             # 1/sqrt(s) divides by zero, and the previous code returned
             # that (a silent RuntimeWarning from numpy, e.g. r_pred =
             # [1.061, nan] and R_pred containing nan/inf) as an ordinary
-            # result -- srif_filter's next QR call then failed several
-            # lines away with the misleading "SVD did not converge".
+            # result. np.linalg.qr tolerates nan/inf without raising, so
+            # srif_update ran to completion on that garbage and returned
+            # a nan-laden R_upd; the failure only surfaced several lines
+            # away, in srif_filter's own state-form conversion
+            # (np.linalg.matrix_rank(Y), an SVD -- not a QR call), with
+            # the misleading "SVD did not converge".
             raise np.linalg.LinAlgError(
                 "srif_predict: predicted covariance F @ P @ F.T + Q is "
                 "singular (SVD found a zero singular value); it has no "

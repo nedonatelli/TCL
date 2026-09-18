@@ -75,10 +75,13 @@ class TestSRIFPredictSingularCovariance:
     (Cholesky already failed) divided by a zero singular value with only
     numpy's own generic ``RuntimeWarning: divide by zero`` as a signal,
     and returned ``r_pred``/``R_pred`` containing ``nan``/``inf`` as an
-    ordinary result. ``srif_filter`` then failed several lines later, at
-    its next QR call, with the misleading ``LinAlgError: SVD did not
-    converge`` -- misleading because the SVD in ``srif_predict`` itself
-    converged fine; it was the *result* that was degenerate.
+    ordinary result. ``np.linalg.qr`` tolerates ``nan``/``inf`` without
+    raising, so ``srif_update`` ran to completion on that garbage;
+    ``srif_filter`` then failed several lines later, in its own
+    state-form conversion (``np.linalg.matrix_rank(Y)``, an SVD -- not a
+    QR call), with the misleading ``LinAlgError: SVD did not converge``
+    -- misleading because the SVD in ``srif_predict`` itself converged
+    fine; it was the *result* that was degenerate.
     """
 
     def _singular_case(self):

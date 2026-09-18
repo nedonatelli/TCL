@@ -642,10 +642,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   measurements, `Y` went `diag(1, 0) -> diag(2, 0) -> diag(3, 0)`,
   identical to *skipping prediction entirely* -- not identical to
   running with `F = I`, which (same `Q`) actually damps to `1.0`,
-  `1.909`, `2.603`. The `LinAlgError` now propagates, naming `F` as the singular
-  matrix and pointing callers at `esrif_predict`/`esrif_update` for
-  rank-deficient dynamics -- this is a raise on input that was never
-  valid, not a behavior change for any input that previously produced a
+  `1.909`, `2.603`. The `LinAlgError` now propagates, naming `F` as the
+  singular matrix. It no longer points callers at
+  `esrif_predict`/`esrif_update`: both also require an invertible `F`
+  (plus a nonsingular `R_prev` and `s_q`), so they cannot help here
+  either -- measured, `esrif_predict` raises its own `LinAlgError:
+  Singular matrix` on this same `F`, and again on a singular `R_prev`
+  (the SRIF analog of a singular `Y`). It now points to the
+  covariance-form Kalman filter (`kf_predict`/`kf_update`) instead,
+  which never inverts `F`; the caller represents the unknown state with
+  a large finite initial covariance rather than a singular `Y`.
+  This is a raise on an input this algorithm cannot handle, not on an
+  input that was never valid: the prediction has a well-defined finite
+  limit (measured, using `kf_predict` with `P0 = c * I` for `c` up to
+  `1e12`, this `F`, and `Q = 0.1 * I`: the limit as `c -> infinity` is
+  `Y_pred = diag(0, 10)`), but `information_filter`'s `F^-T Y F^-1` form
+  requires inverting the singular `F` to reach it and cannot. It is
+  still not a behavior change for any input that previously produced a
   correct result (a regular `F` with a singular `Y0` is unaffected and
   continues to propagate information normally, confirmed by measurement).
   The guard catches exact singularity only: a near-singular `F` (e.g.
@@ -656,6 +669,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `information_filter.py:553`) falls back to `cholesky(R_meas + 1e-10 *
   I)` on a non-PD measurement covariance, the same absolute-jitter
   pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
+  Also undisclosed until now: the same branch regularizes a singular
+  `Q` with `eps = 1e-9 * (trace(Q) / n + 1.0)` before inverting it, the
+  same absolute-jitter pattern, and the introduced error does not clear
+  once `Y` becomes full rank -- it is carried forward in `Y`
+  permanently, not transient as the adjacent comment claimed (now
+  fixed). MATLAB's `infoFilterDiscPred` avoids inverting `Q` at all
+  (`DInv = F' + PInvPrev/(F)*Q`) and documents that `Q` may be
+  singular. Measured against that exact formula with `Y = diag(1, 0)`
+  and `F = [[1, 1], [0, 1]]`, the jitter produces a uniform `2.0e-9`
+  relative error versus MATLAB's form at `Q = 0`, `1e-6 * I`, `1e-12 *
+  I`, and `1e-15 * I` alike. Not fixed here -- re-deriving the singular-
+  `Y` prediction step on MATLAB's formula needs its own tests and audit
+  and is deferred to v2.12.
 
 - `pytcl.dynamic_estimation.information_filter.srif_predict`: when its
   primary Cholesky path fails and falls back to an SVD of the predicted
@@ -664,10 +690,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   function returned `nan`/`inf` as an ordinary result, with only numpy's
   own generic `RuntimeWarning: divide by zero encountered in divide` as
   any signal. Measured: `r_pred = [1.061, nan]` and `R_pred` containing
-  both `nan` and `inf`. `srif_filter` then failed several lines later at
-  its next QR call with the misleading `LinAlgError: SVD did not
-  converge` (the SVD in `srif_predict` itself converged fine; the
-  *result* was degenerate). This is worse than the `srif_update` sibling
+  both `nan` and `inf`. `np.linalg.qr` tolerates `nan`/`inf` without
+  raising, so `srif_update` ran to completion on that garbage and
+  returned a nan-laden `R_upd`; `srif_filter` then failed several lines
+  later, not at a QR call but in its own state-form conversion
+  (`np.linalg.matrix_rank(Y)`, an SVD), with the misleading
+  `LinAlgError: SVD did not converge` (the SVD in `srif_predict` itself
+  converged fine; the *result* was degenerate). This is worse than the
+  `srif_update` sibling
   noted above, since that one at least raises eventually, just from a
   1e-10 jitter with no message -- here nothing raised until a caller
   several steps removed hit an unrelated, wrong error. Now raises
@@ -683,21 +713,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   weighted-likelihood sum reaching `imm_update` is now an expected
   symptom of a numerical failure upstream, not only a genuinely
   implausible measurement, and this fallback swallowed it either way.
-  `imm_update` now warns whenever every mode's weighted likelihood is
-  zero, naming both possible causes -- a non-PD innovation covariance
-  upstream (as before), or a zero prior probability on the only mode(s)
-  with a nonzero raw likelihood, which zeros the weighted sum the same
-  way. That second cause is real, not hypothetical: measured with
-  `mode_probs=[0, 0, 1]` and raw likelihoods `[0.075, 0.075, 0.0]` (two
-  modes carry real likelihood, the third carries all the prior weight),
-  the weighted sum is zero and the warning correctly fires -- an earlier
-  draft of this message claimed "every mode likelihood is zero" here,
-  which this scenario disproves, so the message says "weighted
-  likelihood" instead. The fallback's behavior is unchanged -- mode
-  probabilities still fall back to the prior, confirmed by measurement
-  (`[1/3, 1/3, 1/3]` in, `[1/3, 1/3, 1/3]` out). A partial underflow
-  (some modes zero, at least one nonzero) does not warn, confirmed by
-  measurement with likelihoods `[0.0, 0.0, 1.105e-12]`.
+  `imm_update` now warns whenever the prior-weighted likelihood sum
+  (`mode_probs @ likelihoods`) is at or below `1e-300`, naming the
+  likely causes -- a non-PD innovation covariance upstream (as before),
+  or a zero prior probability on the only mode(s) with a nonzero raw
+  likelihood, which zeros the weighted sum the same way. That second
+  cause is real, not hypothetical: measured with `mode_probs=[0, 0, 1]`
+  and raw likelihoods `[0.075, 0.075, 0.0]` (two modes carry real
+  likelihood, the third carries all the prior weight), the weighted sum
+  is zero and the warning correctly fires.
+
+  Review round 3: this message's wording was wrong for the third time.
+  Round 1 said "every mode likelihood is zero"; round 2 changed that to
+  "every mode's weighted likelihood (mode_probs * likelihood) is zero",
+  which the round-2 scenario above already disproves -- the *sum*
+  underflows, not every individual term. Measured counterexample:
+  `mode_probs=[1/3, 1/3, 1/3]`, `mode_covs=[0.01*I, 5e-5*I, 5e-5*I]`,
+  `z=[5.30, 0]`, `H=I`, `R=mode_covs` gives `mode_likelihoods =
+  [8.2697e-305, 0.0, 0.0]` -- the weighted sum is `2.7566e-305`,
+  strictly greater than zero, so "every ... is zero" is false, yet the
+  warning still correctly fires because the *sum* is at or below
+  `1e-300`. The message now names what the code actually tests -- the
+  prior-weighted likelihood sum -- instead of a per-mode claim.
+
+  The causes list was also incomplete, and its `kf_update` pointer was
+  asserted rather than conditional. This patch's own guard test,
+  `test_all_zero_mode_likelihoods_warn`, drives `mahal_sq = 1.0e8` --
+  about ten thousand sigma -- through `S = 0.02 * I`, which is
+  perfectly positive definite; measured, exactly one warning fires
+  (`imm_update`'s) and `kf_update` emits nothing at all, since `S`
+  never fails its Cholesky factorization. The real cause there is plain
+  `exp(-mahal_sq / 2)` underflow -- a gross outlier or a lost track --
+  which is the most common cause in practice and was unnamed, while the
+  message told the reader to "see kf_update's own warning" as though
+  one were guaranteed to exist. The message now names likelihood
+  underflow first and makes the `kf_update` pointer conditional ("if
+  one fired") instead of asserted.
+
+  None of this changes behavior. The fallback's behavior is unchanged --
+  mode probabilities still fall back to the prior, confirmed by
+  measurement (`[1/3, 1/3, 1/3]` in, `[1/3, 1/3, 1/3]` out for both the
+  round-2 and round-3 scenarios above). The pre-existing threshold
+  defect noted for the round-3 scenario -- the right answer there is
+  `[1, 0, 0]`, since mode 0 alone carries the evidence, and the
+  fallback instead returns the prior -- is unchanged and out of scope
+  here; fixing it would change values on a path that currently produces
+  numbers. A partial underflow (some modes zero, at least one nonzero)
+  does not warn, confirmed by measurement with likelihoods `[0.0, 0.0,
+  1.105e-12]`.
 
 ## [2.11.0] - 2026-09-13
 
