@@ -1,5 +1,7 @@
 """Tests for assignment algorithms and data association."""
 
+import warnings
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -646,6 +648,25 @@ class TestDecomposeTo2D:
         result = decompose_to_2d(cost, maximize=maximize)
         assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
         assert result.cost == sentinel
+        assert result.converged
+
+    @pytest.mark.parametrize("finite", [1.0, 1e300, 1e308, np.finfo(np.float64).max])
+    def test_favorable_inf_survives_alongside_enormous_finite_costs(self, finite):
+        """The sentinel substituted for a favorable inf must not overflow.
+
+        An earlier form scaled it from the observed magnitude
+        (max|finite| * 1e6 + 1e6), which overflows back to inf once the
+        finite costs pass about 1e302 -- restoring the exact slice-drop the
+        substitution exists to prevent, with only numpy's generic overflow
+        warning as a signal. Measured at finite=1e308 under that form: 2
+        tuples instead of 3, with (0, 0, 0) dropped.
+        """
+        cost = np.full((3, 3, 3), finite)
+        cost[0, 0, 0] = np.inf
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = decompose_to_2d(cost, maximize=True)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
         assert result.converged
 
     def test_picks_the_correct_tuples_and_cost_by_hand(self):

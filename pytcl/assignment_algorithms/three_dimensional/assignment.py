@@ -271,12 +271,17 @@ def decompose_to_2d(
         # a large finite sentinel for the favorable infinity: it still
         # dominates every real entry, so scipy solves normally instead of
         # raising on input it can otherwise handle.
+        # The sentinel is the largest finite double rather than a multiple
+        # of the observed magnitude: scaling overflowed back to infinity
+        # for finite costs above ~1e302, which silently restored the very
+        # skip this substitution exists to prevent (measured at 1e308: the
+        # slice was dropped again, with only numpy's generic overflow
+        # warning to show for it).
         good_inf = np.inf if maximize else -np.inf
         good_mask = sub_cost == good_inf
         if np.any(good_mask):
-            finite = sub_cost[np.isfinite(sub_cost)]
-            magnitude = (np.max(np.abs(finite)) if finite.size else 1.0) * 1e6 + 1e6
-            sub_cost[good_mask] = magnitude if maximize else -magnitude
+            sentinel = np.finfo(np.float64).max
+            sub_cost[good_mask] = sentinel if maximize else -sentinel
 
         # Solve 2D assignment
         try:
