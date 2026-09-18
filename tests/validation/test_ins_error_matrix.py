@@ -11,7 +11,7 @@ navigation block (rows/cols 0-8) that is non-zero in the analytic matrix,
 *or* non-zero in the oracle even where the analytic matrix has it as an
 implicit zero (a missing self-coupling term) -- the union of the two, not
 either alone. 29 entries meet that test: 14 in ``_AGREEING_ENTRIES``, 15 in
-``_KNOWN_WRONG_ENTRIES``. Of the 15, 7 are analytic-zero/oracle-non-zero
+``_KNOWN_WRONG_ENTRIES``. Of the 15, 8 are analytic-zero/oracle-non-zero
 (``F[4,4]`` in the velocity block; ``F[6,0]`` and the six off-diagonal
 ``-[omega_in^n x] phi`` self-coupling entries in the attitude block).
 

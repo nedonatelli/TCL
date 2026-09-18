@@ -482,9 +482,12 @@ def transverse_mercator_inverse(
     M = M0 + y / k0
     mu = M / A
 
+    # `lat_fp = lat_fp + ...` (not `+=`): `lat_fp = mu` aliases mu, and the
+    # loop reads mu on every iteration, so in-place accumulation feeds each
+    # term a mu already corrupted by the previous one for array input.
     lat_fp = mu
     for i in range(1, 4):
-        lat_fp += beta[i] * np.sin(2 * i * mu)
+        lat_fp = lat_fp + beta[i] * np.sin(2 * i * mu)
 
     # Parameters at footprint latitude
     sin_fp = np.sin(lat_fp)

@@ -365,7 +365,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `geodetic2utm` calls on the same array drifted northing by ~16 km per
   call while quietly mutating the caller's latitude by ~0.14 deg per
   call. Both series computations (forward and inverse) now accumulate
-  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`).
+  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`). A fourth
+  instance of the same pattern, in `transverse_mercator_inverse`'s
+  footpoint-latitude series (`lat_fp = mu` then `lat_fp += beta[i] *
+  np.sin(2 * i * mu)`), does not reach the caller's arguments -- `mu` is
+  derived, not passed in -- but fed each loop iteration a `mu` already
+  corrupted by the previous one, leaving the array path wrong by
+  1.4e-10 to 2.0e-10 rad (0.3 to 1.3 mm of ground distance) relative to
+  per-element scalar calls. Fixed the same way; the array-input test now
+  asserts bit-exact agreement rather than a tolerance, so any
+  reintroduction fails.
 
   The paired inverse functions computed the correct point but as a
   longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the

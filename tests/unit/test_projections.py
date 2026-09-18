@@ -719,5 +719,7 @@ class TestWrapLongitudeDifferenceArrayPassthrough:
             slat, slon = transverse_mercator_inverse(
                 x[i], y[i], lon0=np.radians(-75), k0=0.9996
             )
-            assert_allclose(lat[i], slat, atol=1e-8)
-            assert_allclose(lon[i], slon, atol=1e-8)
+            # Bit-exact, not merely close: any in-place accumulation left in
+            # the footpoint-latitude series would show up here as ~1e-10 rad.
+            assert lat[i] == slat
+            assert lon[i] == slon
