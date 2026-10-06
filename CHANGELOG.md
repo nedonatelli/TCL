@@ -867,6 +867,22 @@ removal in this release (the five duplicate Jacobians, `gmst`/`gast`,
 EXPERIMENTAL module, where minor-version API adjustment is the
 registered contract.
 
+- Test suite, not library behavior: two validation modules set astropy's
+  process-global `iers.conf.auto_download = False` to stay off the
+  network and never restored it, so the setting leaked into every later
+  test. That turned `test_time_scales`' year-2050 sidereal-time
+  comparison into a gate that went red on a calendar rather than on a
+  commit: with downloads disabled astropy refuses to interpolate an
+  Earth-orientation table whose predictive values are more than
+  `auto_max_age` (30) days stale, and raised `ValueError` once wall-clock
+  time drifted past that horizon. Measured: the same selection passed
+  alone and failed when `test_astro_audit` ran first, with no repository
+  change in between. The root `conftest.py` now restores both IERS
+  settings after every test, and the time-scales module pins them for
+  itself so it extrapolates deliberately and offline; the comparison
+  agrees to 4.9e-10 rad against its 5e-9 rad tolerance either way. Found
+  by a `PYTCL_REQUIRE_MLX=1` run during unrelated work.
+
 ### Removed
 
 - **`west_merge_cost`**: its weighted-Mahalanobis pair cost was never
