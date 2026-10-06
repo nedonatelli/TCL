@@ -279,7 +279,13 @@ class ConstrainedEKF:
                 g_val = constraint.evaluate(x_proj)
                 G = constraint.jacobian(x_proj)
 
-                # Only process violated constraints
+                # Only process violated rows of this constraint: a multi-row
+                # ConstraintFunction (e.g. a two-sided box, g = [x-hi, -x+lo])
+                # mixes satisfied and violated rows, and an unmasked G makes
+                # G P G^T singular whenever two rows are anti-parallel at the
+                # same state (opposite bounds on one variable both entering
+                # the solve). `mask` used to be computed and never applied,
+                # so every row entered regardless of violation.
                 if constraint.constraint_type == "inequality":
                     mask = g_val > tol
                 else:
@@ -289,6 +295,12 @@ class ConstrainedEKF:
                     continue
 
                 converged = False
+
+                if constraint not in active:
+                    active.append(constraint)
+
+                G = G[mask]
+                g_val = g_val[mask]
 
                 # Covariance-weighted projection onto the linearised
                 # constraint surface (Simon 2010, "Kalman filtering with state
@@ -304,9 +316,6 @@ class ConstrainedEKF:
                 # the constraint is violated, it dominated whenever the state
                 # was far from the origin and threw the estimate across the
                 # feasible region instead of onto its boundary.
-                if constraint not in active:
-                    active.append(constraint)
-
                 GP = G @ P_metric
                 GPGt = GP @ G.T
 
@@ -360,10 +369,25 @@ class ConstrainedEKF:
 
         # Covariance projection, once per constraint that was active:
         #     P <- P - P Gᵀ (G P Gᵀ)⁻¹ G P
-        # evaluated at the converged state.
+        # evaluated at the converged state, restricted to the rows that
+        # ended up sitting on the boundary there (|g| <= tol). This is a
+        # different predicate from the state loop's `g > tol` /
+        # `abs(g) > tol` violated-row mask: by convergence, every row that
+        # was driven to the boundary has g approx 0, so the violated-row
+        # mask would now exclude exactly the rows that belong in the
+        # active set. A row never violated during the state loop can also
+        # end up here if correcting another row of the same constraint
+        # pushed it onto its own boundary, which is why this is
+        # recomputed fresh from `x_proj` rather than reusing the state
+        # loop's per-iteration mask.
         cov_pinv_warned = False
         for constraint in active:
             G = constraint.jacobian(x_proj)
+            g_val = constraint.evaluate(x_proj)
+            active_mask = np.abs(g_val) <= tol
+            if not np.any(active_mask):
+                continue
+            G = G[active_mask]
             GP = G @ P_proj
             GPGt = GP @ G.T
             m_dim = GPGt.shape[0]

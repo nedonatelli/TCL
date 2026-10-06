@@ -992,8 +992,15 @@ class TestConstrainedEKF:
         # The state-projection fallback previously warned once per iteration
         # (10 copies at the default max_iter); it must now warn once per call.
         assert len(state_fallback) == 1, state_fallback
-        assert len(cov_fallback) == 1, cov_fallback
         assert len(nonconverge) == 1, nonconverge
+        # No covariance projection happens at all here, so its fallback must
+        # not fire. "1 = 0" is never satisfiable, so this constraint never
+        # reaches its boundary and is therefore not in the active set at the
+        # converged state -- and projecting the covariance onto a surface the
+        # state never reached would be wrong. Before the Jacobian-masking
+        # fix the covariance loop ran over every constraint that had ever
+        # been violated, so this warned once here.
+        assert cov_fallback == [], cov_fallback
 
     def test_covariance_eigenvalue_floor_relative_to_scale(self):
         # The unconstrained direction's variance must come back unchanged

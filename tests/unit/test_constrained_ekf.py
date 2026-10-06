@@ -250,21 +250,6 @@ class TestConstrainedEKFLinearConstraints:
         eigvals = np.linalg.eigvalsh(P_proj)
         assert np.all(eigvals > -1e-10)
 
-    @pytest.mark.xfail(
-        raises=np.linalg.LinAlgError,
-        reason=(
-            "Pre-existing bug, not task 4.6's scope: _project_onto_constraints "
-            "computes `mask` (which rows of a multi-row ConstraintFunction are "
-            "actually violated) but never uses it to select rows of G/g_val -- "
-            "all four box-constraint rows enter the projection even though only "
-            "two are violated here, and two of those rows are anti-parallel "
-            "(opposite bounds on the same state), making G P G^T near-singular. "
-            "The eigh fallback used to silently clamp the resulting garbage "
-            "eigenvalue (~-0.2 relative) to a small positive number; task 4.6's "
-            "magnitude guard now correctly reports it as non-PSD instead of "
-            "hiding it. Fixing the mask bug itself is out of scope here."
-        ),
-    )
     def test_multiple_constraints(self):
         """Test multiple simultaneous linear constraints."""
 
@@ -296,6 +281,35 @@ class TestConstrainedEKFLinearConstraints:
         # All constraints satisfied
         assert constraint.is_satisfied(x_proj)
         assert np.linalg.norm(x_proj) <= 10 * np.sqrt(2) + 1e-5
+
+    def test_box_constraint_masks_only_violated_row(self):
+        """Two-sided box |x[0]| <= 1 from x = (3, 0) must project to the
+        violated boundary, not to the midpoint of the feasible region.
+
+        Regression test for `_project_onto_constraints` computing `mask`
+        (which rows of a multi-row constraint are violated) and never
+        applying it to `G`/`g_val`: with both box rows left in, G P G^T
+        over all rows is [[1, -1], [-1, 1]] (rank 1 of 2, exactly
+        singular), and the unmasked solve returned x = (0, 0) -- the
+        midpoint, not the boundary. Row 0 (x[0] - 1 = 2) is violated;
+        row 1 (-x[0] - 1 = -4) is not, and must be excluded.
+        """
+
+        def constraint_fn(x):
+            return np.array([x[0] - 1, -x[0] - 1])
+
+        constraint = ConstraintFunction(constraint_fn)
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(constraint)
+
+        x = np.array([3.0, 0.0])
+        P = np.eye(2)
+
+        x_proj, P_proj = cekf._project_onto_constraints(x, P)
+
+        assert np.allclose(x_proj, [1.0, 0.0])
+        eigvals = np.linalg.eigvalsh(P_proj)
+        assert np.all(eigvals > -1e-10)
 
 
 class TestConstrainedEKFNonlinear:
@@ -409,16 +423,6 @@ class TestConstrainedEKFCovarianceProperties:
         # All eigenvalues should be positive (strict)
         assert np.all(eigvals > 1e-12)
 
-    @pytest.mark.xfail(
-        raises=np.linalg.LinAlgError,
-        reason=(
-            "Same pre-existing mask bug as TestConstrainedEKFLinearConstraints."
-            "test_multiple_constraints: this box constraint's unviolated rows "
-            "are not excluded from G, producing a near-singular G P G^T and a "
-            "projected covariance with a non-roundoff-scale negative "
-            "eigenvalue that task 4.6's guard now reports instead of masking."
-        ),
-    )
     def test_covariance_symmetry(self):
         """Test that projected covariance remains symmetric."""
 

@@ -936,14 +936,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/unit/test_constrained_ekf.py` tests
   (`TestConstrainedEKFLinearConstraints.test_multiple_constraints`,
   `TestConstrainedEKFCovarianceProperties.test_covariance_symmetry`)
-  now `xfail`: both drive a multi-row box constraint whose unviolated
-  rows are never excluded from the constraint Jacobian (`mask` is
-  computed but not applied) before this fix, the resulting near-
+  briefly went `xfail`: both drive a multi-row box constraint whose
+  unviolated rows were never excluded from the constraint Jacobian
+  (`mask` was computed but not applied), and the resulting near-
   singular `G P G^T` produced a non-roundoff-scale negative eigenvalue
-  that the old unconditional clamp silently absorbed; this guard
-  correctly reports it as non-PSD instead, surfacing that pre-existing
-  bug rather than causing it. Fixing the Jacobian-masking bug itself is
-  out of scope here.
+  that the old unconditional clamp used to silently absorb -- this
+  guard correctly reported it as non-PSD instead, surfacing a
+  pre-existing bug rather than causing it. That bug is now fixed and
+  both tests pass on their original assertions again; `mask` is applied
+  to `G` and `g_val` in the state-projection loop, restricting each
+  Newton step to the rows of the constraint actually violated at the
+  current iterate. The covariance projection uses a different
+  predicate, `|g| <= tol` at the *converged* state, rather than reusing
+  the violated-row mask: by convergence the rows driven to the boundary
+  have `g` approximately zero, so the violated-row mask (`g > tol` /
+  `|g| > tol`) would now exclude exactly the rows that belong in the
+  active set. Measured with the two-sided box `|x[0]| <= 1`
+  (`g = [x[0] - 1, -x[0] - 1]`) from `x = (3, 0)`, `P = I`: row 0 is
+  violated by 2.0, row 1 is satisfied by -4.0. Unmasked, `G P G^T` over
+  both rows is `[[1, -1], [-1, 1]]` (eigenvalues `[0, 2]`, exactly
+  singular), and the projection returned `x = (0, 0)` -- the midpoint of
+  the feasible region, not the boundary, a 100% error on an ordinary
+  box constraint. Masked to the one violated row, `G P G^T = [[1]]`
+  (well posed) and the projection now returns the correct `x = (1, 0)`,
+  matching the analytic minimum-variance projection
+  `P - P G^T (G P G^T)^-1 G P` restricted to that same row. A new
+  regression test, `test_box_constraint_masks_only_violated_row`, pins
+  this case; reverting the mask fix reproduces the `x = (0, 0)` failure
+  exactly. The three existing single-row constraint cases checked
+  (`test_position_bound_constraint`'s box-10, `test_covariance_positive_
+  definite`'s box-5, `test_circular_bound_constraint`'s circle) are
+  bit-identical before and after, since a single-row constraint's mask
+  is all-`True` whenever that row is processed at all.
 
 ## [2.11.0] - 2026-09-13
 
