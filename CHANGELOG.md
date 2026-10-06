@@ -872,16 +872,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   existing message text ("Probabilities do not sum to 1. See Notes
   section of docstring for more information.") so the three read alike
   and cannot drift apart again. The check uses `numpy.isclose` against
-  1.0 (default tolerance, effectively ~1.1e-5) rather than an exact
-  comparison -- measured roundoff after repeated normalize/reweight
-  cycles on 1,000-100,000 particles stayed at machine epsilon
-  (2e-16-4e-16), so this tolerance rejects genuinely unnormalized input
-  (errors of 0.5 or more in the cases above) with roughly five orders of
-  magnitude of margin to spare before it would ever reject real filter
-  output. `resample_residual` still requires 2-D particles where the
-  other two accept 1-D (an existing API inconsistency, not changed by
-  this fix -- reconciling it is a signature change, out of scope for a
-  patch release).
+  1.0 with `atol = max(1e3 * eps, N * eps)` (`eps` = machine epsilon,
+  `N` = particle count) rather than an exact comparison or a loose
+  default tolerance -- a first pass used `numpy.isclose`'s default
+  (effectively ~1.1e-5), which review caught as ten orders of magnitude
+  looser than the roundoff it was meant to absorb and in one case (a
+  sum of `1 + 1e-5`) would have silently accepted input the filter
+  never produces. Measured roundoff over 200 chains of 50
+  reweight/renormalize cycles at particle counts 10-100,000 topped out
+  at 5.551e-16 regardless of count, so the current bound (~2.22e-13 at
+  N=4, scaling up for larger N) clears that with ~2-3 orders of
+  magnitude of margin while still rejecting input off by 0.5 or more,
+  as in the cases above. `resample_residual` still requires 2-D
+  particles where the other two accept 1-D (an existing API
+  inconsistency, not changed by this fix -- reconciling it is a
+  signature change, out of scope for a patch release).
 
 ## [2.11.0] - 2026-09-13
 

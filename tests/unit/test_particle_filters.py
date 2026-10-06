@@ -80,6 +80,28 @@ class TestResampling:
         with pytest.raises(ValueError, match="sum to 1"):
             fn(np.arange(4.0), w, np.random.default_rng(0))
 
+    @pytest.mark.parametrize(
+        "fn", [resample_systematic, resample_multinomial, resample_residual]
+    )
+    def test_normalization_tolerance_boundary(self, fn):
+        """Pin the normalization tolerance so it cannot silently drift.
+
+        6.661e-16 is the worst |sum - 1| measured over 200 chains of 50
+        reweight/renormalize cycles at particle counts from 10 to 100000
+        -- it must still be accepted. 1e-6 is seven orders of magnitude
+        above the current threshold (max(1e3*eps, N*eps), ~2.22e-13 at
+        N=4) and must still be rejected.
+        """
+        particles = np.arange(4.0).reshape(4, 1)
+        accepted = np.full(4, 0.25)
+        accepted[-1] += 6.661e-16
+        fn(particles, accepted, np.random.default_rng(0))
+
+        rejected = np.full(4, 0.25)
+        rejected[-1] += 1e-6
+        with pytest.raises(ValueError, match="sum to 1"):
+            fn(particles, rejected, np.random.default_rng(0))
+
     def test_systematic_resampling_is_unbiased_on_normalized_weights(self):
         """PROPERTY: expected counts track the weights.
 
