@@ -1173,15 +1173,15 @@ class TestMatrixUtilsFallbackPaths:
     """
 
     def test_matrix_sqrt_eigh_fallback_on_non_pd_input(self):
-        """Lines 307-310: cholesky raises, eigh fallback clamps and proceeds."""
+        """Lines ~307-331: cholesky raises; eigh fallback rejects an eigenvalue
+        this negative (-0.5, relative to a max of 1.0) as genuinely non-PSD
+        rather than clamping it -- see test_matrix_sqrt_guards.py for the
+        roundoff-scale case this must still clamp silently."""
         from pytcl.dynamic_estimation.kalman.matrix_utils import compute_matrix_sqrt
 
         P = np.array([[1.0, 0.0], [0.0, -0.5]])  # indefinite: cholesky raises
-        sqrt_P = compute_matrix_sqrt(P, use_eigh_fallback=True)
-        reconstructed = sqrt_P @ sqrt_P.T
-        # the negative eigenvalue is clamped to ~0, positive one preserved
-        assert reconstructed[0, 0] == pytest.approx(1.0, abs=1e-9)
-        assert abs(reconstructed[1, 1]) < 1e-6
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            compute_matrix_sqrt(P, use_eigh_fallback=True)
 
         with pytest.raises(np.linalg.LinAlgError):
             compute_matrix_sqrt(P, use_eigh_fallback=False)

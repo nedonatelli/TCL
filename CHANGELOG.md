@@ -888,6 +888,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inconsistency, not changed by this fix -- reconciling it is a
   signature change, out of scope for a patch release).
 
+- `pytcl.dynamic_estimation.kalman`: six eigh fallback sites --
+  `matrix_utils.compute_matrix_sqrt`, `unscented.sigma_points_merwe`,
+  `unscented.sigma_points_julier`, `unscented.ckf_predict`,
+  `unscented.ckf_update` (and transitively `ukf_predict`, which calls
+  `sigma_points_merwe`), and `constrained.ConstrainedEKF`'s covariance
+  projection -- fall back from `np.linalg.cholesky` to `np.linalg.eigh`
+  on a near-singular covariance and clamped every negative eigenvalue
+  they found with no check on how negative it was. `diag(1, -1)` -- a
+  variance of -1, an impossible covariance -- came back as an
+  ordinary-looking `diag(1, 1e-10)` with no warning, from
+  `compute_matrix_sqrt` directly and from every sigma-point/cubature
+  entry point built on it. Each site now compares the most negative
+  eigenvalue to a relative tolerance before clamping: below it, clamped
+  as before (silently -- this is still the common, correct case for
+  genuine roundoff); at or above it, `np.linalg.LinAlgError` naming the
+  offending eigenvalue. The five sites outside `ConstrainedEKF` use
+  `1e-10 * max(abs(eigenvalues))`: measured worst-case negative-
+  eigenvalue noise from `np.linalg.eigh` on matrices that are
+  mathematically PSD (random and explicit-spectrum constructions,
+  n=2..50, condition numbers up to 1e16, scale 1e-15..1e6, ~45,000
+  trials) was 8.4e-16 relative -- essentially machine epsilon --  so
+  1e-10 clears it with roughly 5 orders of magnitude of margin, while
+  sitting 4 orders below the -1e-14-relative case these sites' tests
+  require to still clamp silently and 10 orders below an eigenvalue
+  comparable in magnitude to the matrix's largest (a first pass took
+  the brief's `eps * n * max(abs(eigenvalues))` formula, which fails
+  its own -1e-14 test case: for `diag(1, -1e-14)` that tolerance is
+  ~4.4e-16, twenty times below the eigenvalue it was supposed to let
+  through). `ConstrainedEKF` reuses its own existing scale-relative
+  floor (`_EIG_FLOOR_REL = sqrt(eps)`, unchanged -- see that module for
+  its own, separately-measured 1.43e-12 roundoff figure) as the same
+  raise/clamp boundary rather than introducing a second constant. The
+  square-root UKF's agreement with the standard UKF (max
+  `|P_sr - P_ukf|` the v2.11.0 audit put at 3.1e-11) is unmoved: the
+  new guard only runs inside the `except np.linalg.LinAlgError` branch,
+  which a battery of 1,000 well-conditioned predict/update pairs (n=2..6)
+  never enters, so the measurement is bit-for-bit identical before and
+  after this fix (1.909584e-13 both times, confirmed by instrumenting
+  that `cholesky` never raised during the sweep rather than trusting a
+  zero diff on faith). MATLAB's `cholSemiDef` (the routine
+  `discCubKalPred`/`sqrtDiscCubKalPred` call for this same fallback)
+  clamps unconditionally with no magnitude check and never raises --
+  this guard is a deliberate departure from the spec, not a port of
+  it, permitted because a `LinAlgError` on input that was never valid
+  is in scope for a patch release. Two pre-existing
+  `tests/unit/test_constrained_ekf.py` tests
+  (`TestConstrainedEKFLinearConstraints.test_multiple_constraints`,
+  `TestConstrainedEKFCovarianceProperties.test_covariance_symmetry`)
+  now `xfail`: both drive a multi-row box constraint whose unviolated
+  rows are never excluded from the constraint Jacobian (`mask` is
+  computed but not applied) before this fix, the resulting near-
+  singular `G P G^T` produced a non-roundoff-scale negative eigenvalue
+  that the old unconditional clamp silently absorbed; this guard
+  correctly reports it as non-PSD instead, surfacing that pre-existing
+  bug rather than causing it. Fixing the Jacobian-masking bug itself is
+  out of scope here.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

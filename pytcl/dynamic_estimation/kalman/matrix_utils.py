@@ -32,6 +32,20 @@ import numpy as np
 from numba import njit
 from numpy.typing import NDArray
 
+# Relative bound on how negative an eigenvalue from the eigh fallback is
+# allowed to be before it is treated as a genuinely non-PSD input rather
+# than roundoff. Measured worst-case negative-eigenvalue noise from
+# np.linalg.eigh on matrices that are mathematically PSD (random and
+# explicit-spectrum constructions, n=2..50, condition numbers up to
+# 1e16, scales 1e-15..1e6, ~45000 trials): 8.4e-16 relative to the
+# matrix's own largest-magnitude eigenvalue, i.e. essentially machine
+# epsilon. 1e-10 sits ~5 orders of magnitude above that measured floor
+# (a deliberate margin, not ten) while still sitting 4 orders below the
+# -1e-14 relative case this module's tests require to clamp silently,
+# and 10 orders below an eigenvalue genuinely comparable in magnitude to
+# the matrix's largest.
+_EIG_NEGATIVE_REL_TOL = 1e-10
+
 
 @njit(cache=True)
 def _cholesky_update_core(
@@ -286,7 +300,9 @@ def compute_matrix_sqrt(
     Raises
     ------
     np.linalg.LinAlgError
-        If Cholesky fails and use_eigh_fallback is False.
+        If Cholesky fails and use_eigh_fallback is False, or if the eigh
+        fallback finds a negative eigenvalue too large to be roundoff on
+        a positive semi-definite matrix.
 
     Examples
     --------
@@ -305,6 +321,17 @@ def compute_matrix_sqrt(
             raise
         # Eigendecomposition fallback for near-singular matrices
         eigvals, eigvecs = np.linalg.eigh(P)
+        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
+        # be eigh roundoff on a PSD matrix -- P itself is not PSD, and
+        # clamping it would silently turn an impossible covariance into an
+        # ordinary-looking one.
+        max_abs_eig = np.max(np.abs(eigvals))
+        most_neg_eig = eigvals.min()
+        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
+            raise np.linalg.LinAlgError(
+                f"matrix is not positive semi-definite: eigenvalue "
+                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
+            )
         # Clamp negative eigenvalues to small positive value
         eigvals = np.maximum(eigvals, 1e-10)
         sqrt_P = eigvecs @ np.diag(np.sqrt(scale * eigvals))

@@ -393,6 +393,18 @@ class ConstrainedEKF:
             # _EIG_FLOOR_REL.
             eigvals, eigvecs = np.linalg.eigh(P_proj)
             eig_floor = _EIG_FLOOR_REL * np.max(np.abs(eigvals))
+            # An eigenvalue more negative than -eig_floor is too large to
+            # be eigh roundoff on this projection (_EIG_FLOOR_REL is
+            # already sized to that roundoff -- see its definition above),
+            # so the projected covariance is genuinely non-PSD rather than
+            # merely rank-deficient in the constrained direction.
+            most_neg_eig = eigvals.min()
+            if most_neg_eig < -eig_floor:
+                raise np.linalg.LinAlgError(
+                    f"constrained EKF covariance projection is not "
+                    f"positive semi-definite: eigenvalue {most_neg_eig:.6e} "
+                    f"is too negative to be eigh roundoff"
+                )
             if np.any(eigvals < eig_floor):
                 eigvals[eigvals < eig_floor] = eig_floor
                 P_proj = eigvecs @ np.diag(eigvals) @ eigvecs.T
