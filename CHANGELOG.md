@@ -852,6 +852,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fallback warning, and one non-convergence warning, where it produced
   twelve warnings (ten duplicates plus the other two) before this round.
 
+- `pytcl.dynamic_estimation.particle_filters.bootstrap`: `resample_systematic`
+  and `resample_residual` silently accepted weights that did not sum to 1,
+  unlike `resample_multinomial`, which already raised `ValueError` on the
+  same input via `numpy.random.Generator.choice`. The docstrings said
+  "Normalized weights" but nothing enforced it. Measured with
+  `particles = arange(4.0)` and a fixed seed: weights summing to 0.5
+  (`[0.125]*4`) returned `[1, 3, 3, 3]` from `resample_systematic` --
+  every unfilled stratum dumped onto the last particle -- and `[2, 1, 0,
+  0]` from `resample_residual`; weights summing to 2.0
+  (`[0.5, 0.5, 0.5, 0.5]`) returned `[0, 0, 1, 1]` from both, silently
+  discarding particles 2 and 3; all-zero weights collapsed
+  `resample_systematic` onto a single particle (`[3, 3, 3, 3]`) and made
+  `resample_residual` raise `ValueError` anyway, but only after first
+  emitting `RuntimeWarning: invalid value encountered in divide` from an
+  internal 0/0 -- the right exception for the wrong reason. All three
+  resamplers now validate through one shared private helper,
+  `_validate_normalized_weights`, reusing `resample_multinomial`'s
+  existing message text ("Probabilities do not sum to 1. See Notes
+  section of docstring for more information.") so the three read alike
+  and cannot drift apart again. The check uses `numpy.isclose` against
+  1.0 (default tolerance, effectively ~1.1e-5) rather than an exact
+  comparison -- measured roundoff after repeated normalize/reweight
+  cycles on 1,000-100,000 particles stayed at machine epsilon
+  (2e-16-4e-16), so this tolerance rejects genuinely unnormalized input
+  (errors of 0.5 or more in the cases above) with roughly five orders of
+  magnitude of margin to spare before it would ever reject real filter
+  output. `resample_residual` still requires 2-D particles where the
+  other two accept 1-D (an existing API inconsistency, not changed by
+  this fix -- reconciling it is a signature change, out of scope for a
+  patch release).
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

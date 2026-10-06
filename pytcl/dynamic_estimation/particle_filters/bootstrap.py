@@ -27,6 +27,20 @@ class ParticleState(NamedTuple):
     weights: NDArray[np.floating]
 
 
+def _validate_normalized_weights(weights: NDArray[np.floating]) -> None:
+    """Raise if weights do not sum to 1, within floating-point roundoff.
+
+    Shared by all three resamplers so they reject unnormalized input
+    identically instead of drifting apart (one raising, two silently
+    producing a biased sample).
+    """
+    if not np.isclose(np.sum(weights), 1.0):
+        raise ValueError(
+            "Probabilities do not sum to 1. See Notes section of docstring "
+            "for more information."
+        )
+
+
 def resample_multinomial(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
@@ -49,6 +63,11 @@ def resample_multinomial(
     resampled : ndarray
         Resampled particles with uniform weights.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -58,6 +77,8 @@ def resample_multinomial(
     >>> resampled.shape
     (4, 1)
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 
@@ -90,6 +111,11 @@ def resample_systematic(
     resampled : ndarray
         Resampled particles.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -99,6 +125,8 @@ def resample_systematic(
     >>> resampled.shape
     (4, 1)
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 
@@ -164,6 +192,11 @@ def resample_residual(
     resampled : ndarray
         Resampled particles.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -176,6 +209,8 @@ def resample_residual(
     >>> np.sum(resampled == 4.0) >= 1
     True
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 
