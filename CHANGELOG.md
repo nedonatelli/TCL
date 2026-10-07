@@ -704,8 +704,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[[1, 1], [0, 1e-18]]`) still passes `np.linalg.inv` and the original
   silent-skip symptom is unannounced there; a conditioning threshold is a
   design decision, not this patch's scope.
-  Unverified sibling noted, not fixed here: `srif_update` (currently
-  `information_filter.py:553`) falls back to `cholesky(R_meas + 1e-10 *
+  Unverified sibling noted, not fixed here: `srif_update` falls back to `cholesky(R_meas + 1e-10 *
   I)` on a non-PD measurement covariance, the same absolute-jitter
   pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
   Also undisclosed until now: the same branch regularizes a singular
@@ -878,7 +877,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   After the fix, `P_proj[1,1]` (the unconstrained direction) returns
   its exact input variance at every scale from 1e-6 to 1e-12, and
   `P_proj[0,0]` (the constrained direction) scales down with `P`
-  instead of sitting at a constant.
+  instead of sitting at a constant. That is an improvement only below
+  P-scale ~6.7e-3, where sqrt(eps) * scale crosses the old 1e-10: at
+  `P = I` the constrained-direction floor moved from 1e-10 to 1.49e-8,
+  149x further from the exact 0. The unconstrained-direction fix holds at
+  every scale.
 
   The same round also found that the state-projection `pinv` fallback
   warned once per iteration -- ten copies of the identical warning for

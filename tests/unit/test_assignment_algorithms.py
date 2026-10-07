@@ -660,6 +660,11 @@ class TestDecomposeTo2D:
         substitution exists to prevent, with only numpy's generic overflow
         warning as a signal. Measured at finite=1e308 under that form: 2
         tuples instead of 3, with (0, 0, 0) dropped.
+
+        The finfo.max row is weaker than the others: the sentinel then
+        equals every finite entry rather than exceeding it, so (0, 0, 0)
+        is chosen by scipy's tie-breaking, not because the favorable inf
+        stayed strictly favorable. It still proves no overflow occurs.
         """
         cost = np.full((3, 3, 3), finite)
         cost[0, 0, 0] = np.inf

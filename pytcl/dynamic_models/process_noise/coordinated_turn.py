@@ -163,13 +163,6 @@ def q_coord_turn_3d(
     """
     Create process noise covariance for 3D coordinated turn model.
 
-    Notes
-    -----
-    MATLAB parity was **not** verified for this function in v2.11.1. Its
-    sibling :func:`q_coord_turn_2d` was checked against ``QCoordTurn`` and
-    diverges structurally (see its Notes); whether this function shares
-    that divergence is unknown, not established either way. The module's
-    EXPERIMENTAL maturity reflects that gap as well as the confirmed one.
 
     Parameters
     ----------
@@ -190,8 +183,13 @@ def q_coord_turn_3d(
     Notes
     -----
     Same construction as :func:`q_coord_turn_2d` (independent per-axis
-    blocks, interleaved state) and the same divergence from MATLAB's
-    rank-1 ``QCoordTurn``; see the Notes there.
+    blocks, interleaved state), verified in v2.11.1: at ``T=1,
+    sigma_a=2, sigma_omega=0.1`` the 6x6 result is exactly block-diagonal
+    over the three per-axis 2x2 blocks (largest off-block entry 0.0),
+    rank 3, and its first block equals ``q_coord_turn_2d``'s. MATLAB has
+    no 3-D counterpart to compare element-wise, so the divergence from the
+    rank-1 ``QCoordTurn`` is established through that shared construction
+    rather than measured directly; see the Notes on ``q_coord_turn_2d``.
 
     See Also
     --------

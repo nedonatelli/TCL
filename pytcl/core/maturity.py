@@ -179,7 +179,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.gaussian_sum_filter": MaturityLevel.EXPERIMENTAL,
     "dynamic_estimation.rbpf": MaturityLevel.EXPERIMENTAL,
     # Process noise
-    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1 on q_coord_turn_2d specifically: a per-axis-independent Q (rank 2 for position_velocity, 3 for position_velocity_omega) where QCoordTurn builds Q = G*G' from a column vector and is rank 1 with x/y/omega cross terms; max|diff| 4.0 at T=1, sigma_a=2, sigma_omega=0.1. The registry's unit is the module, and q_coord_turn_3d and q_coord_turn_polar were NOT checked against MATLAB, so this level covers one confirmed divergence plus two unexamined exports. Fix-or-remove is a minor-release decision
+    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1 on q_coord_turn_2d specifically: a per-axis-independent Q (rank 2 for position_velocity, 3 for position_velocity_omega) where QCoordTurn builds Q = G*G' from a column vector and is rank 1 with x/y/omega cross terms; max|diff| 4.0 at T=1, sigma_a=2, sigma_omega=0.1. The registry's unit is the module. q_coord_turn_3d was verified to share q_coord_turn_2d's per-axis construction exactly; q_coord_turn_polar uses a different state and was NOT checked against MATLAB, so this level covers two divergent exports plus one unexamined one. Fix-or-remove is a minor-release decision
     # Geophysical Models
     "gravity.egm": MaturityLevel.EXPERIMENTAL,
     "magnetism.wmm": MaturityLevel.EXPERIMENTAL,  # igrf/emm (MATURE) build on this; held only because the Schmidt factoring touched it in v2.11.0 (fixtures pin zero drift) -- promote in v2.12
