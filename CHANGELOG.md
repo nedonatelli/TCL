@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The two state-vector layouts are now documented, and pinned by
+  `tests/validation/test_state_ordering.py`.** `two_point_diff_init` (a port of
+  `twoPointDiffInit.m`) returns MATLAB's derivative-major `[x, y, vx, vy]`;
+  `f_poly_kal` / `q_poly_kal` are block-diagonal per dimension, i.e.
+  interleaved `[x, vx, y, vy]`. Feeding one to the other raises nothing: for
+  positions (0, 1) then (2, 0) at `T=1` the initializer returns
+  `[2, 0, 2, -1]`, `f_poly_kal(1, 1, num_dims=2)` maps it to `[2, 0, 1, -1]`,
+  and the correct state is `[4, -1, 2, -1]`. Run under MATLAB R2026a, `FPolyKal`
+  and `QPolyKal` differ from ours elementwise (max 1.0 and 0.6667 at `T=1, q=1,
+  num_dims=2`) and agree after the permutation `[0, 2, 1, 3]`; the old
+  docstring claim of a plain match with `QPolyKal` is corrected. No numbers
+  changed and no converter is added.
+- **`q_coord_turn_2d` / `q_coord_turn_3d` docstrings now say they are not a
+  port of `QCoordTurn`, and `dynamic_models.process_noise.coordinated_turn`
+  drops from MATURE to EXPERIMENTAL.** `QCoordTurn` builds `Q = G*G'` from a
+  column vector, so its result is rank 1 with every x/y/velocity/omega pair
+  correlated. Ours is independent per axis: rank 2 for `'position_velocity'`
+  and rank 3 for `'position_velocity_omega'` at `T=1, sigma_a=2,
+  sigma_omega=0.1`. Diagonals agree exactly; the largest elementwise
+  difference from MATLAB's length-5 branch (after permuting to
+  `[x, y, vx, vy, omega]`) is 4.0. Fix-or-remove is deferred to a minor
+  release.
+
 - **`test_parity_inventory_closing_counts` no longer requires the
   validation-file count in `docs/matlab_parity_inventory.rst` to match
   `tests/validation/*.py` exactly.** That single assertion broke three

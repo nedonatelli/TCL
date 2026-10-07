@@ -141,7 +141,6 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # Smoothers
     "dynamic_estimation.smoothers": MaturityLevel.MATURE,
     # Motion Models
-    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.MATURE,
     "dynamic_models.process_noise.singer": MaturityLevel.MATURE,
     # Assignment Algorithms
     "assignment_algorithms.jpda": MaturityLevel.MATURE,
@@ -179,6 +178,8 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # Advanced Filters
     "dynamic_estimation.gaussian_sum_filter": MaturityLevel.EXPERIMENTAL,
     "dynamic_estimation.rbpf": MaturityLevel.EXPERIMENTAL,
+    # Process noise
+    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # per-axis-independent Q (rank 2/3), not a port of QCoordTurn (rank 1, x/y/omega cross terms); max|diff| 4.0 at T=1, sigma_a=2, sigma_omega=0.1 -- fix-or-remove is a minor-release decision
     # Geophysical Models
     "gravity.egm": MaturityLevel.EXPERIMENTAL,
     "magnetism.wmm": MaturityLevel.EXPERIMENTAL,  # igrf/emm (MATURE) build on this; held only because the Schmidt factoring touched it in v2.11.0 (fixtures pin zero drift) -- promote in v2.12
