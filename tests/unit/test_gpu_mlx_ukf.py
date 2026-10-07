@@ -263,8 +263,20 @@ class TestNonPositiveDefiniteFallback:
         )
         assert sigma.shape == (n_tracks, 2 * n + 1, n)
         recovered = self._recovered_cov(sigma, x, n, ALPHA)
-        P_clamped = np.tile(np.diag([1.0, 1.0, 1.0, 1e-10]), (n_tracks, 1, 1))
+        floor = 10 * float(np.finfo(np.float32).eps)
+        P_clamped = np.tile(np.diag([1.0, 1.0, 1.0, floor]), (n_tracks, 1, 1))
         assert np.abs(recovered - P_clamped).max() < 1e-5
+        # An absolute 1e-10 clamp is below float32 roundoff; the floor is
+        # relative to the largest eigenvalue.
+        assert recovered[:, 3, 3].min() > 0.5 * floor
+
+    def test_tiny_covariance_not_inflated_by_absolute_floor(self, backend):
+        """Defect test: diag(1e-12, 0) was clamped up to diag(1e-10, 1e-10)."""
+        P = backend.asarray(np.diag([1e-12, 0.0]).astype(np.float32)[None])
+        L = backend.to_numpy(gpu_ukf._matrix_sqrt(backend, P, 2))[0]
+        recon = np.diag(L @ L.T)
+        assert recon[0] == pytest.approx(1e-12, rel=1e-4)
+        assert recon[1] < 1e-17
 
     def test_indefinite_covariance_is_rejected(self):
         """Defect test: a -0.5 variance used to come back clamped to 1e-10."""

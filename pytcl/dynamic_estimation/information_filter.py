@@ -34,6 +34,13 @@ from pytcl.dynamic_estimation.kalman.linear import (
     information_filter_update,
 )
 
+# P_pred is treated as numerically singular when its smallest singular value
+# is at or below n * eps of its largest (numpy.linalg.matrix_rank's default).
+# Measured worst-case s_min/s_max on exactly rank-deficient PSD matrices
+# (20000 trials, n=2..8) was 0.93 eps, so this is 2.1x above SVD roundoff at
+# n=2 and grows with n; conditioning below 1/(n eps) (4.5e15 at n=2) passes.
+_EPS = float(np.finfo(np.float64).eps)
+
 
 class InformationState(NamedTuple):
     """State in information form.
@@ -457,6 +464,22 @@ def srif_predict(
     x_pred = F @ x
     P_pred = F @ P @ F.T + Q
 
+    # An exact-zero singular value is not the only way P_pred is singular:
+    # with F = [[1, 1], [0, 1e-18]] the smallest is ~1e-37, inv() succeeds,
+    # and R_pred came back with entries ~1e18 and no warning. A genuinely
+    # singular P_pred divided by zero in 1/sqrt(s) and returned nan/inf as an
+    # ordinary result, which np.linalg.qr tolerates, so srif_update ran to
+    # completion and srif_filter failed several steps later with the
+    # misleading "SVD did not converge".
+    s_pred = np.linalg.svd(P_pred, compute_uv=False)
+    if s_pred[-1] <= len(P_pred) * _EPS * s_pred[0]:
+        raise np.linalg.LinAlgError(
+            "srif_predict: predicted covariance F @ P @ F.T + Q is "
+            "singular (smallest singular value is zero or roundoff-sized "
+            "relative to the largest); it has no square-root information "
+            "form."
+        )
+
     # Convert back to square root information form
     # Y_pred = inv(P_pred), R_pred s.t. R_pred.T @ R_pred = Y_pred
     try:
@@ -464,25 +487,7 @@ def srif_predict(
         Y_pred = (Y_pred + Y_pred.T) / 2
         R_pred = np.linalg.cholesky(Y_pred).T  # Upper triangular
     except np.linalg.LinAlgError:
-        # Fallback using SVD
         U, s, Vt = np.linalg.svd(P_pred)
-        if np.any(s <= 0):
-            # A zero singular value means P_pred is genuinely singular,
-            # not merely asymmetric enough to trip the Cholesky above:
-            # 1/sqrt(s) divides by zero, and the previous code returned
-            # that (a silent RuntimeWarning from numpy, e.g. r_pred =
-            # [1.061, nan] and R_pred containing nan/inf) as an ordinary
-            # result. np.linalg.qr tolerates nan/inf without raising, so
-            # srif_update ran to completion on that garbage and returned
-            # a nan-laden R_upd; the failure only surfaced several lines
-            # away, in srif_filter's own state-form conversion
-            # (np.linalg.matrix_rank(Y), an SVD -- not a QR call), with
-            # the misleading "SVD did not converge".
-            raise np.linalg.LinAlgError(
-                "srif_predict: predicted covariance F @ P @ F.T + Q is "
-                "singular (SVD found a zero singular value); it has no "
-                "square-root information form."
-            ) from None
         S_sqrt_inv = np.diag(1.0 / np.sqrt(s))
         R_pred = S_sqrt_inv @ Vt
 

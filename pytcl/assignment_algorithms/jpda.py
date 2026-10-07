@@ -22,6 +22,22 @@ from scipy.stats import chi2
 from pytcl.assignment_algorithms.gating import mahalanobis_batch, mahalanobis_distance
 from pytcl.diagnostics import diagnostics_enabled, logger
 
+# An innovation covariance is symmetric by construction; its asymmetry is
+# float roundoff (~1e-16 relative), so sqrt(eps) sits ~8 orders above that.
+_SYMMETRY_REL_TOL = float(np.sqrt(np.finfo(np.float64).eps))
+
+
+def _is_finite_symmetric(S: NDArray[Any]) -> bool:
+    # Cholesky reads one triangle only, and which one differs between
+    # scipy.linalg.cho_factor (upper) and np.linalg.cholesky (lower), so an
+    # asymmetric S would be tested as two different matrices.
+    if not np.all(np.isfinite(S)):
+        return False
+    return bool(
+        np.max(np.abs(S - S.T), initial=0.0)
+        <= _SYMMETRY_REL_TOL * np.max(np.abs(S), initial=0.0)
+    )
+
 
 class JPDAResult(NamedTuple):
     """Result of JPDA algorithm.
@@ -98,8 +114,19 @@ def compute_measurement_likelihood(
     # (e.g. diag(-1, -1, 1) has det = 1), so a determinant-only test admits
     # negative-definite and indefinite S. Cholesky fails whenever any
     # leading principal minor is non-positive, which is the actual PD test.
+    if not _is_finite_symmetric(innovation_cov):
+        warnings.warn(
+            "compute_measurement_likelihood: innovation covariance is not "
+            "symmetric or contains non-finite values; likelihood set to 0.0 "
+            "(numerical failure, not evidence). Check R and the covariance "
+            "conditioning.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return 0.0
+
     try:
-        S_cho = cho_factor(innovation_cov)
+        S_cho = cho_factor(innovation_cov, check_finite=False)
     except LinAlgError:
         warnings.warn(
             "compute_measurement_likelihood: innovation covariance is not "
@@ -110,7 +137,7 @@ def compute_measurement_likelihood(
         )
         return 0.0
 
-    mahal_sq = innovation @ cho_solve(S_cho, innovation)
+    mahal_sq = innovation @ cho_solve(S_cho, innovation, check_finite=False)
     log_det_S = 2 * np.sum(np.log(np.diag(S_cho[0])))
     likelihood = detection_prob * np.exp(
         -0.5 * (mahal_sq + log_det_S + m * np.log(2 * np.pi))
@@ -199,6 +226,17 @@ def compute_likelihood_matrix(
         # so gate on Cholesky success rather than the sign of det(S). This
         # row's likelihoods and gating stay at their zero/False
         # initialization; other tracks' rows are untouched.
+        if not _is_finite_symmetric(S):
+            warnings.warn(
+                f"compute_likelihood_matrix: innovation covariance for track "
+                f"{i} is not symmetric or contains non-finite values; that "
+                "track's likelihoods and gating are set to 0.0 (numerical "
+                "failure, not evidence). Check R and the covariance "
+                "conditioning.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
         try:
             np.linalg.cholesky(S)
         except LinAlgError:

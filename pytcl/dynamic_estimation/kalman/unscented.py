@@ -21,6 +21,11 @@ from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdat
 # roundoff case these modules' tests require to still clamp silently).
 _EIG_NEGATIVE_REL_TOL = 1e-10
 
+# Relative floor for eigenvalues clamped in the eigh fallbacks; see
+# matrix_utils._EIG_FLOOR_REL for the measurement. An absolute 1e-10 turned
+# diag(1e-12, 0) into diag(1e-10, 1e-10) before sigma-point generation.
+_EIG_FLOOR_REL = 1e-10
+
 
 class SigmaPoints(NamedTuple):
     """Sigma points and weights for unscented transform.
@@ -113,7 +118,7 @@ def sigma_points_merwe(
                 f"covariance is not positive semi-definite: eigenvalue "
                 f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
             )
-        eigvals = np.maximum(eigvals, 1e-10)
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
         sqrt_P = eigvecs @ np.diag(np.sqrt((n + lambda_) * eigvals))
 
     # Generate sigma points
@@ -190,7 +195,7 @@ def sigma_points_julier(
                 f"covariance is not positive semi-definite: eigenvalue "
                 f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
             )
-        eigvals = np.maximum(eigvals, 1e-10)
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
         sqrt_P = eigvecs @ np.diag(np.sqrt((n + kappa) * eigvals))
 
     # Generate sigma points
@@ -596,7 +601,7 @@ def ckf_predict(
                 f"covariance is not positive semi-definite: eigenvalue "
                 f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
             )
-        eigvals = np.maximum(eigvals, 1e-10)
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
         sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
 
     # Generate cubature points
@@ -717,7 +722,7 @@ def ckf_update(
                 f"covariance is not positive semi-definite: eigenvalue "
                 f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
             )
-        eigvals = np.maximum(eigvals, 1e-10)
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
         sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
 
     # Generate cubature points

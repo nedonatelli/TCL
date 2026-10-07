@@ -90,6 +90,16 @@ from pytcl.gpu._backend import Backend, get_compute_backend
 # above it).
 _EIG_NEGATIVE_EPS_MULT = 100.0
 
+# Clamp level for eigenvalues the guard above lets through, as a multiple of
+# working-precision eps times the matrix's largest-magnitude eigenvalue. An
+# absolute 1e-10 is below float32 roundoff and, on float64, inflates any
+# covariance smaller than it. Measured worst |lambda_min| / lambda_max from
+# MLX eigh on rank-deficient float32 PSD matrices was 2.44 eps here (300
+# trials, n=2..39) and 3.2 eps in pytcl.gpu.matrix_utils, so 10 eps is ~3x
+# above roundoff (1.19e-6 relative in float32) while an eigenvalue above
+# that is never inflated.
+_EIG_FLOOR_EPS_MULT = 10.0
+
 #: Below this alpha the Merwe weights exceed 1e4 and a float32 backend loses
 #: every significant digit of the recovered mean and covariance.
 _FLOAT32_MIN_ALPHA = 1e-2
@@ -200,7 +210,8 @@ def _matrix_sqrt(b: Backend, P: Any, n: int) -> Any:
 
     Returns ``L`` with ``L @ L.T == P`` when ``P`` is positive definite. When
     it is only roundoff-negative (rank-deficient), ``L`` reconstructs ``P``
-    with its eigenvalues clamped at 1e-10. A negative eigenvalue past
+    with its eigenvalues clamped at a floor relative to the largest-magnitude
+    eigenvalue (see below). A negative eigenvalue past
     roundoff raises ``LinAlgError``.
 
     Positive definiteness is decided from the diagonal of the Cholesky factor
@@ -238,7 +249,8 @@ def _matrix_sqrt(b: Backend, P: Any, n: int) -> Any:
             f"covariance is not positive semi-definite: eigenvalue "
             f"{most_neg:.6e} is too negative to be eigh roundoff"
         )
-    eigvals = b.maximum(eigvals, 1e-10)
+    floor = _EIG_FLOOR_EPS_MULT * eps * np.abs(ev).max(axis=-1)
+    eigvals = b.maximum(eigvals, b.asarray(floor.astype(ev.dtype))[..., None])
     # Per-track V @ diag(sqrt(w)) so that L @ L.T == V @ diag(w) @ V.T ~= P
     return eigvecs * b.sqrt(eigvals)[..., None, :]
 

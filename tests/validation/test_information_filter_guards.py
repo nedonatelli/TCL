@@ -113,3 +113,21 @@ class TestSRIFPredictSingularCovariance:
 
         with pytest.raises(np.linalg.LinAlgError, match="srif_predict"):
             srif_filter(r0, R0, [np.array([1.0])], F, Q, H, R_meas)
+
+
+class TestSRIFPredictNearSingularCovariance:
+    def test_near_singular_predicted_covariance_raises(self):
+        """Defect test: F = [[1, 1], [0, 1e-18]] gave R_pred entries ~1e18,
+        finite, with no warning; the exact-zero test never fired."""
+        from pytcl.dynamic_estimation.information_filter import srif_predict
+
+        F = np.array([[1.0, 1.0], [0.0, 1e-18]])
+        with pytest.raises(np.linalg.LinAlgError, match="singular"):
+            srif_predict(np.zeros(2), np.eye(2), F, np.zeros((2, 2)))
+
+    def test_ill_conditioned_but_representable_covariance_still_works(self):
+        from pytcl.dynamic_estimation.information_filter import srif_predict
+
+        F = np.diag([1.0, 1e-5])  # P_pred condition number 1e10
+        _, R_pred = srif_predict(np.zeros(2), np.eye(2), F, np.zeros((2, 2)))
+        np.testing.assert_allclose(R_pred.T @ R_pred, np.diag([1.0, 1e10]), rtol=1e-6)

@@ -1210,40 +1210,81 @@ class TestMatrixUtilsFallbackPaths:
             == 0.0
         )
 
-    def test_likelihood_cholesky_failure_falls_back_to_det(self):
-        """Lines 378-381: LinAlgError -> det fallback -> 0.0 for det <= 0."""
+    def test_likelihood_indefinite_det_negative_warns_and_returns_zero(self):
         from pytcl.dynamic_estimation.kalman.matrix_utils import (
             compute_innovation_likelihood,
         )
 
         S = np.array([[1.0, 2.0], [2.0, 1.0]])  # indefinite, det = -3
-        assert compute_innovation_likelihood(np.array([0.1, 0.2]), S) == 0.0
+        with pytest.warns(RuntimeWarning, match="not positive definite"):
+            assert compute_innovation_likelihood(np.array([0.1, 0.2]), S) == 0.0
 
-    def test_likelihood_cholesky_failure_with_positive_det_uses_solve(self):
-        """Line 383: the solve fallback for a non-PD matrix with det > 0.
-
-        -I fails Cholesky yet has det = +1 in even dimension, so the code
-        reaches the direct-solve branch. The quadratic form is negative
-        there, making the 'likelihood' mathematically meaningless -- the
-        assertion is only that the branch executes and returns a finite
-        float, since that is all the fallback promises.
-        """
+    @pytest.mark.parametrize(
+        "innovation, S",
+        [
+            (np.full(2, 1e-2), np.diag([-1e-3, -1e-3])),
+            (np.full(2, 1e-2), -np.eye(2)),
+            (np.full(3, 1e-2), np.diag([1.0, -1.0, -1.0])),
+        ],
+    )
+    def test_likelihood_even_negative_eigenvalues_warns_and_returns_zero(
+        self, innovation, S
+    ):
+        """Defect test: det(S) > 0 despite two negative variances. Measured
+        before the fix: 175.893, 0.15917, 0.063497 with zero warnings."""
         from pytcl.dynamic_estimation.kalman.matrix_utils import (
             compute_innovation_likelihood,
         )
 
-        value = compute_innovation_likelihood(np.array([0.1, 0.2]), -np.eye(2))
-        assert isinstance(value, float) and np.isfinite(value)
+        with pytest.warns(RuntimeWarning, match="not positive definite") as rec:
+            assert compute_innovation_likelihood(innovation, S) == 0.0
+        assert str(rec[0].message) == (
+            "compute_innovation_likelihood: innovation covariance is not "
+            "positive definite; likelihood set to 0.0 (numerical failure, "
+            "not evidence). Check R and the covariance conditioning."
+        )
 
-    def test_mahalanobis_cholesky_failure_falls_back_to_solve(self):
-        """Lines 440-441, with an innovation giving a positive quadratic form."""
+    def test_mahalanobis_negative_definite_warns_and_returns_nan(self):
+        """Defect test: sqrt of a negative quadratic form gave nan with only
+        numpy's generic warning."""
         from pytcl.dynamic_estimation.kalman.matrix_utils import (
             compute_mahalanobis_distance,
         )
 
-        S = np.array([[1.0, 2.0], [2.0, 1.0]])  # eigenvalues 3 and -1
-        innovation = np.array([1.0, 1.0])  # along the +3 eigenvector
-        expected = np.sqrt(innovation @ np.linalg.solve(S, innovation))
-        assert compute_mahalanobis_distance(innovation, S) == pytest.approx(
-            float(expected)
+        with pytest.warns(RuntimeWarning, match="not positive definite"):
+            d = compute_mahalanobis_distance(np.full(2, 1e-2), -np.eye(2))
+        assert np.isnan(d)
+
+    def test_mahalanobis_indefinite_does_not_return_a_finite_distance(self):
+        """Defect test: S with eigenvalues 3 and -1 and an innovation along
+        the +3 eigenvector gave a finite distance from the fallback solve, as
+        if S were a covariance."""
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_mahalanobis_distance,
         )
+
+        S = np.array([[1.0, 2.0], [2.0, 1.0]])
+        with pytest.warns(RuntimeWarning, match="not positive definite"):
+            d = compute_mahalanobis_distance(np.array([1.0, 1.0]), S)
+        assert np.isnan(d)
+
+    @pytest.mark.parametrize("scale", [1e-9, 1e-12, 1e-15])
+    def test_matrix_sqrt_floor_does_not_inflate_tiny_covariance(self, scale):
+        """Defect test: an absolute 1e-10 floor turned diag(1e-12, 0) into
+        diag(1e-10, 1e-10) (100x inflated)."""
+        from pytcl.dynamic_estimation.kalman.matrix_utils import compute_matrix_sqrt
+
+        S = compute_matrix_sqrt(np.diag([scale, 0.0]))
+        recon = S @ S.T
+        assert recon[0, 0] == pytest.approx(scale, rel=1e-12)
+        assert recon[1, 1] <= 1e-10 * scale * 1.0000001
+
+    @pytest.mark.parametrize("predict", ["ukf", "ckf"])
+    def test_sigma_point_floor_does_not_inflate_tiny_covariance(self, predict):
+        from pytcl.dynamic_estimation.kalman.unscented import ckf_predict, ukf_predict
+
+        fn = ukf_predict if predict == "ukf" else ckf_predict
+        P = np.diag([1e-12, 0.0])
+        pred = fn(np.zeros(2), P, lambda x: x, np.zeros((2, 2)))
+        assert pred.P[0, 0] == pytest.approx(1e-12, rel=1e-9)
+        assert pred.P[1, 1] < 1e-20

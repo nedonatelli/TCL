@@ -143,3 +143,53 @@ def test_well_conditioned_batch_path_matches_scalar_path():
             lik_ref[i, j] = compute_measurement_likelihood(innovation, S, 0.9)
 
     assert np.max(np.abs(lik_batch - lik_ref)) < 1e-12
+
+
+ASYMMETRIC = [
+    np.array([[1.0, 0.0], [100.0, 1.0]]),
+    np.array([[1.0, 100.0], [0.0, 1.0]]),
+]
+
+
+@pytest.mark.parametrize("S", ASYMMETRIC)
+def test_asymmetric_covariance_scalar_and_batch_paths_agree(S):
+    """Defect test: cho_factor reads the upper triangle and np.linalg.cholesky
+    the lower, so for S = [[1, 0], [100, 1]] the scalar path returned 0.0585
+    while the batch path warned and returned 0."""
+    innovation = np.ones(2)
+    with pytest.warns(RuntimeWarning, match="not symmetric"):
+        scalar = compute_measurement_likelihood(innovation, S, 1.0)
+    with pytest.warns(RuntimeWarning, match="not symmetric"):
+        batch, gated = compute_likelihood_matrix(
+            [np.zeros(2)], [S], innovation[None, :], np.eye(2), np.zeros((2, 2))
+        )
+    assert scalar == 0.0
+    assert batch[0, 0] == 0.0 and not gated[0, 0]
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf])
+def test_non_finite_covariance_scalar_and_batch_paths_agree(bad):
+    """Defect test: cho_factor's check_finite raised a bare ValueError from a
+    function annotated -> float."""
+    S = np.array([[2.0, 0.5], [0.5, bad]])
+    innovation = np.array([0.3, -0.2])
+    with pytest.warns(RuntimeWarning, match="non-finite"):
+        assert compute_measurement_likelihood(innovation, S, 0.9) == 0.0
+    with pytest.warns(RuntimeWarning, match="non-finite"):
+        batch, _ = compute_likelihood_matrix(
+            [np.zeros(2)], [S], innovation[None, :], np.eye(2), np.zeros((2, 2))
+        )
+    assert batch[0, 0] == 0.0
+
+
+def test_roundoff_asymmetry_is_still_accepted():
+    """S = H P H^T + R is symmetric only to roundoff; that must keep working."""
+    A = np.array([[2.0, 0.5], [0.5, 1.0]])
+    skewed = A.copy()
+    skewed[1, 0] += 1e-14
+    innovation = np.array([0.3, -0.2])
+    expected = compute_measurement_likelihood(innovation, A, 0.9)
+    assert expected > 0.0
+    assert compute_measurement_likelihood(innovation, skewed, 0.9) == pytest.approx(
+        expected, rel=1e-12
+    )

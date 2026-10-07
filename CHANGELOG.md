@@ -1021,6 +1021,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejections. The float64 branch (CuPy) scales the same way but could not be
   exercised on this machine.
 
+- Review round on the v2.11.1 estimation fixes: four instances of defect
+  classes this release claims to close survived in files it modified.
+
+  `pytcl.dynamic_estimation.kalman.matrix_utils.compute_innovation_likelihood`
+  kept the `det(S) <= 0` test in its Cholesky-failure fallback, which an
+  even number of negative eigenvalues defeats. Measured with innovation
+  `(1e-2, 1e-2)`: `S = diag(-1e-3, -1e-3)` returned 175.8934145731474,
+  `S = -I` returned 0.15917085938200579, and `diag(1, -1, -1)` with a
+  3-vector innovation returned 0.06349681069540605, all with no warning.
+  A failed Cholesky now warns with the same wording as JPDA's fix ("...
+  innovation covariance is not positive definite; likelihood set to 0.0
+  (numerical failure, not evidence). Check R and the covariance
+  conditioning.") and returns 0.0. The remaining `det_S <= 0` tests in that
+  function are correct as written: after a successful Cholesky, or for a
+  caller-supplied factor, `prod(diag)**2` can only be zero by underflow or
+  an exactly singular factor (a negative diagonal entry is a valid factor
+  of a PD matrix), which is what they test. `compute_mahalanobis_distance`
+  fell back to the same unguarded quadratic form and returned `nan` from
+  `sqrt` of a negative with only numpy's generic warning, or a finite
+  distance for an indefinite `S`; it now warns and returns `nan`. Probed
+  3946 random ill-conditioned (condition up to 1e17) matrices on which
+  Cholesky fails: none had a fallback result matching a 60-digit
+  reference, so no previously correct answer is lost.
+
+  The absolute `1e-10` eigenvalue floor that `ConstrainedEKF` lost in
+  `a7e144c` also survived at six other sites: `compute_matrix_sqrt`,
+  `sigma_points_merwe`, `sigma_points_julier`, `ckf_predict`, `ckf_update` eigh fallbacks (`kalman/matrix_utils.py`, `kalman/unscented.py`
+  x4) and `gpu/ukf._matrix_sqrt`. Measured: `compute_matrix_sqrt(diag(1e-12,
+  0))` returned a root with `S @ S.T = diag(1e-10, 1e-10)`, and
+  `ukf_predict`/`ckf_predict` returned `P_pred = diag(1e-10, 1e-10)` for
+  that covariance; at `1e-15` the inflation was 1e5x. The CPU floor is now
+  `1e-10 * max(abs(eigvals))`: worst eigh noise on rank-deficient PSD
+  matrices (20000 trials, n=2..8, scales 1e-15..1e6) was 4.3e-16 relative,
+  so the floor is ~2.3e5x above roundoff, and at unit scale it reproduces
+  the old value, so ordinary-scale results do not move. The magnitude
+  guards ahead of each clamp are unchanged. The GPU backend is float32
+  (`supports_float64` False, eps 1.19e-07), so its floor is `10 * eps` of
+  the working precision times the largest eigenvalue (1.19e-06 relative in
+  float32), picked the way `_nearest_psd` picks its eps: measured MLX eigh
+  noise on rank-deficient float32 PSD matrices was 2.44 eps (300 trials,
+  n=2..39; 3.2 eps in the earlier `matrix_utils` sweep), so ~3x above
+  roundoff. Measured after: `gpu/ukf._matrix_sqrt(diag(1e-12, 0))`
+  reconstructs `diag(1e-12, 1.2e-18)` instead of `diag(1e-10, 1e-10)`; the
+  CPU and GPU constants differ deliberately. The float64 CuPy branch scales
+  the same way but could not be exercised on this machine.
+
+  `compute_measurement_likelihood` (`cho_factor`, upper triangle) and
+  `compute_likelihood_matrix` (`np.linalg.cholesky`, lower triangle) tested
+  different matrices for an asymmetric `S`: for `S = [[1, 0], [100, 1]]`
+  with innovation `(1, 1)` the scalar path returned 0.0585 and the batch
+  path warned and returned 0. An innovation covariance is symmetric by
+  construction, so neither triangle is correct; both paths now treat an
+  `S` whose asymmetry exceeds `sqrt(eps)` (1.5e-8) of its largest entry
+  as invalid, warn, and return 0.0 / zero that track's row. Roundoff
+  asymmetry (~1e-14) is still accepted and gives the identical likelihood.
+  A non-finite `S` previously raised a bare `ValueError` from
+  `cho_factor`'s `check_finite` out of a function annotated `-> float`
+  (and returned `nan` before that); both paths now warn and return 0.0.
+
+  `srif_predict` guarded only on an exact-zero singular value, and only on
+  its SVD fallback; `F = [[1, 1], [0, 1e-18]]`, `R0 = I`, `Q = 0` took the
+  primary path and returned `R_pred` with entries ~1e18, finite, with no
+  warning. The guard now applies to both paths on a relative scale: it
+  raises `LinAlgError` when `P_pred`'s smallest singular value is at or
+  below `n * eps` of its largest (`numpy.linalg.matrix_rank`'s default).
+  Measured SVD roundoff on exactly singular PSD matrices was 0.93 eps, so
+  the threshold is 2.1x above it at n=2 and grows with n. Measured at
+  `F = U diag(1, 1/sqrt(c)) U.T`: `c` up to 1e15 still returns a result
+  (`R.T @ R @ P - I` of 9e-3 at 1e15, 7.9e-4 at 1e13), `c = 1e16` raises.
+  The near-singular `F` gap disclosed under the earlier `srif_predict`
+  entries (`information_filter` with `F = [[1, 1], [0, 1e-18]]`) is a
+  different guard and remains open.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
