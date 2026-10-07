@@ -800,6 +800,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   does not warn, confirmed by measurement with likelihoods `[0.0, 0.0,
   1.105e-12]`.
 
+  Deliberately not changed, in the same file: `compute_mixing_probabilities`
+  still substitutes a uniform mixing column, silently, whenever a mode's
+  predicted probability `c_bar` is at or below 1e-15. That is the same
+  silent-substitution shape as the defect above, so it is disclosed rather
+  than left implicit, but it is benign. It replaces a 0/0 with an averaged
+  state, and that column's mixed state then carries a weight of `c_bar` in
+  the combined estimate: measured with an identity transition matrix and a
+  mode probability of 1e-20, the substituted column is `[0.5, 0.5]` and is
+  weighted by 1e-20. It also needs an identity-like transition matrix to
+  trigger at all -- with an ordinary one, a zero-prior mode still receives
+  predicted probability through transitions (0.05 in a 0.95/0.05 model)
+  and the substitution never fires. Warning here would be noise.
+
 - `pytcl.assignment_algorithms.jpda`: `compute_measurement_likelihood`
   gated the innovation covariance `S` on `det(S) <= 0`, which an even
   number of negative eigenvalues defeats -- `det(diag(1, -1, -1)) = 1 >
