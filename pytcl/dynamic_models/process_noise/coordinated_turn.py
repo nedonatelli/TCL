@@ -163,6 +163,14 @@ def q_coord_turn_3d(
     """
     Create process noise covariance for 3D coordinated turn model.
 
+    Notes
+    -----
+    MATLAB parity was **not** verified for this function in v2.11.1. Its
+    sibling :func:`q_coord_turn_2d` was checked against ``QCoordTurn`` and
+    diverges structurally (see its Notes); whether this function shares
+    that divergence is unknown, not established either way. The module's
+    EXPERIMENTAL maturity reflects that gap as well as the confirmed one.
+
     Parameters
     ----------
     T : float
@@ -233,6 +241,14 @@ def q_coord_turn_polar(
     Create process noise covariance for coordinated turn in polar form.
 
     State vector is [x, y, heading, speed, turn_rate].
+
+    Notes
+    -----
+    MATLAB parity was **not** verified for this function in v2.11.1. Its
+    sibling :func:`q_coord_turn_2d` was checked against ``QCoordTurn`` and
+    diverges structurally (see its Notes); whether this function shares
+    that divergence is unknown, not established either way. The module's
+    EXPERIMENTAL maturity reflects that gap as well as the confirmed one.
 
     Parameters
     ----------
