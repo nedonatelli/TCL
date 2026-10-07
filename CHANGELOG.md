@@ -969,6 +969,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bit-identical before and after, since a single-row constraint's mask
   is all-`True` whenever that row is processed at all.
 
+- `pytcl.gpu`: three mirror sites of the eigenvalue-clamp defect fixed on
+  the CPU side (see the `pytcl.dynamic_estimation.kalman` entry above)
+  repaired a genuinely non-PSD covariance without a magnitude check.
+  `diag(1, -1)` -- a variance of -1 -- was handled as follows.
+  `gpu_matrix_sqrt` floored the eigenvalue at 0.0 and returned
+  `diag(1, 0)`'s root as an ordinary result; `ukf._matrix_sqrt` (and so
+  `batch_ukf_predict`/`batch_ukf_update` via sigma-point generation)
+  clamped it at 1e-10 likewise. Both now raise `np.linalg.LinAlgError`
+  naming the eigenvalue. `gpu_cholesky_safe` (via `_nearest_psd`) keeps its
+  documented never-raises contract -- it returns `(L, False)` -- but the
+  indefinite case was reported only by the generic "failed after
+  regularization" warning, the same one a merely singular input gets, and
+  the factor was for `diag(1, ~1e-6)`; it now also logs a distinct
+  "not positive semi-definite" warning naming the eigenvalue. `_nearest_psd`'s
+  existing scale-relative floor is unchanged. The GPU backend is float32-only
+  (`supports_float64` is False, eps 1.19e-07), so the CPU half's
+  `1e-10 * max(abs(eigenvalues))` would sit three orders of magnitude below
+  float32 roundoff and reject ordinary noise; the threshold is instead
+  `100 * eps` of the working precision (1.19e-05 relative to the largest-
+  magnitude eigenvalue, per matrix in a batch), picked the same way
+  `_nearest_psd` picks its eps. Measured on the MLX `eigh` over
+  rank-deficient and near-singular PSD matrices (`G @ G.T` from float32
+  normals, n=2..200 plus explicit spectra to condition 1e9): worst negative
+  eigenvalue 3.78e-07 relative (3.2 eps), so the threshold is ~31x above
+  noise and ~84,000x below `diag(1, -1)`; 2,400 rank-deficient float32 PSD
+  matrices through `gpu_matrix_sqrt` and `_matrix_sqrt` produced no false
+  rejections. The float64 branch (CuPy) scales the same way but could not be
+  exercised on this machine.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

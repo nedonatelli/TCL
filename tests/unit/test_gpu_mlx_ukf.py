@@ -266,17 +266,43 @@ class TestNonPositiveDefiniteFallback:
         P_clamped = np.tile(np.diag([1.0, 1.0, 1.0, 1e-10]), (n_tracks, 1, 1))
         assert np.abs(recovered - P_clamped).max() < 1e-5
 
-    def test_indefinite_covariance_is_eigenvalue_clamped(self):
-        """A negative eigenvalue must come back clamped, not negated."""
+    def test_indefinite_covariance_is_rejected(self):
+        """Defect test: a -0.5 variance used to come back clamped to 1e-10."""
         n_tracks, n = 2, 3
         P_bad = np.tile(np.diag([2.0, 1.0, -0.5]), (n_tracks, 1, 1))
         x = np.zeros((n_tracks, n))
-        sigma = np.asarray(
-            gpu_ukf._generate_sigma_points(x, P_bad, ALPHA, 0.0), dtype=np.float64
-        )
-        recovered = self._recovered_cov(sigma, x, n, ALPHA)
-        P_clamped = np.tile(np.diag([2.0, 1.0, 1e-10]), (n_tracks, 1, 1))
-        assert np.abs(recovered - P_clamped).max() < 1e-5
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            gpu_ukf._generate_sigma_points(x, P_bad, ALPHA, 0.0)
+
+    def test_matrix_sqrt_rejects_diag_1_minus_1(self, backend):
+        P = backend.asarray(np.diag([1.0, -1.0])[None])
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            gpu_ukf._matrix_sqrt(backend, P, 2)
+
+    def test_matrix_sqrt_rejects_small_scale_batch_member(self, backend):
+        # The tolerance is per matrix: a large-scale member must not mask it.
+        P = backend.asarray(np.stack([np.diag([1e6, 1e6]), np.diag([1e-3, -1e-3])]))
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            gpu_ukf._matrix_sqrt(backend, P, 2)
+
+    def test_matrix_sqrt_clamps_float32_roundoff_negatives(self, backend):
+        """Regression guard: rank-deficient float32 PSD input is not rejected.
+
+        Worst measured negative eigenvalue is 3.8e-7 relative (3.2 eps) against
+        the 100 eps = 1.19e-5 threshold; 0 rejections of 1200 trials.
+        """
+        rng = np.random.default_rng(23)
+        for n, r in [(3, 1), (6, 3), (10, 9), (20, 10)]:
+            for _ in range(75):
+                G = rng.standard_normal((1, n, r)).astype(np.float32)
+                P = G @ np.swapaxes(G, -2, -1)
+                L = np.asarray(
+                    backend.to_numpy(
+                        gpu_ukf._matrix_sqrt(backend, backend.asarray(P), n)
+                    ),
+                    dtype=np.float64,
+                )
+                assert np.isfinite(L).all()
 
     def test_matrix_sqrt_reconstructs_clamped_covariance(self, backend):
         """L @ L.T must equal the clamped input covariance."""

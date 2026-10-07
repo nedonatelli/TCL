@@ -49,6 +49,17 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.core.optional_deps import is_available
 from pytcl.gpu._backend import Backend, get_compute_backend
 
+# How many multiples of the working-precision eps a negative eigenvalue may
+# reach, relative to the matrix's largest-magnitude eigenvalue, before it is
+# treated as a genuinely non-PSD input rather than eigh roundoff. This
+# backend is float32-only (eps 1.19e-07), so the threshold must scale with
+# eps: the CPU float64 constant 1e-10 would sit three orders of magnitude
+# below float32 roundoff and reject ordinary noise. Measured on the MLX
+# eigh over rank-deficient and near-singular PSD matrices (n=2..200, ~7000
+# trials): worst negative / max |eigenvalue| was 3.78e-07 = 3.2 eps.
+# 100 eps = 1.19e-05 is ~31x above that, and ~84000x below diag(1, -1).
+_EIG_NEGATIVE_EPS_MULT = 100.0
+
 # Module logger
 _logger = logging.getLogger("pytcl.gpu.matrix_utils")
 
@@ -143,6 +154,20 @@ def _nearest_psd(b: Backend, A_gpu: Any, floor: float) -> Any:
     """
     eigvals, eigvecs = b.eigh(A_gpu)
     eps = float(np.finfo(np.float64 if b.supports_float64 else np.float32).eps)
+    # Flooring alone repairs an indefinite matrix silently; a negative
+    # eigenvalue past roundoff means the input is not a covariance at all.
+    # gpu_cholesky_safe's contract is to return a factor plus success=False
+    # rather than raise, so this is a distinct warning, not an exception.
+    ev = b.to_numpy(eigvals)
+    excess = -ev[..., 0] - _EIG_NEGATIVE_EPS_MULT * eps * np.abs(ev).max(axis=-1)
+    if np.any(excess > 0):
+        most_neg = ev[..., 0].flat[int(np.argmax(excess))]
+        _logger.warning(
+            "matrix is not positive semi-definite: eigenvalue %.6e is too "
+            "negative to be eigh roundoff; the returned factor is for a "
+            "different matrix",
+            most_neg,
+        )
     # eigh returns ascending eigenvalues, so [..., -1:] is the largest per
     # matrix. Flooring relative to it keeps the result resolvably definite at
     # the working precision even when `floor` alone is below eps.
@@ -441,6 +466,13 @@ def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     S : ndarray
         Matrix square root.
 
+    Raises
+    ------
+    numpy.linalg.LinAlgError
+        If a matrix has a negative eigenvalue too large to be eigh roundoff
+        at the backend's working precision, i.e. it is not positive
+        semi-definite.
+
     Examples
     --------
     >>> import numpy as np
@@ -458,7 +490,21 @@ def gpu_matrix_sqrt(A: ArrayLike) -> NDArray[np.floating[Any]]:
     # Eigendecomposition
     eigvals, eigvecs = b.eigh(A_gpu)
 
-    # Ensure non-negative eigenvalues
+    # Float32 trap: the threshold is a multiple of the working-precision eps,
+    # not a fixed 1e-10, which is below float32 roundoff. A negative
+    # eigenvalue past roundoff means A is not PSD; clamping it to 0.0 would
+    # return the root of a different matrix as an ordinary result.
+    eps = float(np.finfo(np.float64 if b.supports_float64 else np.float32).eps)
+    ev = b.to_numpy(eigvals)
+    excess = -ev[..., 0] - _EIG_NEGATIVE_EPS_MULT * eps * np.abs(ev).max(axis=-1)
+    if np.any(excess > 0):
+        most_neg = ev[..., 0].flat[int(np.argmax(excess))]
+        raise np.linalg.LinAlgError(
+            f"matrix is not positive semi-definite: eigenvalue "
+            f"{most_neg:.6e} is too negative to be eigh roundoff"
+        )
+
+    # Clamp the roundoff-scale negatives that remain
     eigvals = b.maximum(eigvals, 0.0)
 
     # Compute sqrt
