@@ -76,7 +76,7 @@ def resample_multinomial(
     tolerance ``numpy.random.Generator.choice`` applies to its ``p``
     argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
     otherwise give a silently biased sample. Weights normalized in float32
-    can miss this band (measured |sum - 1| of 2.2e-8 at N=4 and 3.9e-8 at
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
     N=1000); renormalize them in float64 first.
 
     Examples
@@ -133,7 +133,7 @@ def resample_systematic(
     tolerance ``numpy.random.Generator.choice`` applies to its ``p``
     argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
     otherwise give a silently biased sample. Weights normalized in float32
-    can miss this band (measured |sum - 1| of 2.2e-8 at N=4 and 3.9e-8 at
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
     N=1000); renormalize them in float64 first.
 
     Examples
@@ -223,7 +223,7 @@ def resample_residual(
     tolerance ``numpy.random.Generator.choice`` applies to its ``p``
     argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
     otherwise give a silently biased sample. Weights normalized in float32
-    can miss this band (measured |sum - 1| of 2.2e-8 at N=4 and 3.9e-8 at
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
     N=1000); renormalize them in float64 first.
 
     Examples
