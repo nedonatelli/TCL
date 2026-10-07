@@ -194,10 +194,18 @@ def test_coverage_claims_are_synchronized():
     )
 
 
+# Validation files grew 63 -> 70 -> 82 across the last two full releases
+# (v2.10.0 -> v2.11.0 -> this patch), i.e. roughly 7-12 per release; every
+# oracle test PR adds one, so an exact count broke three consecutive PRs
+# of v2.11.1. +20 absorbs a release's worth of that growth (and then
+# some) while still failing on a claim that has gone genuinely stale.
+VALIDATION_FILE_BAND = 20
+
+
 def test_parity_inventory_closing_counts():
     text = _read("docs/matlab_parity_inventory.rst")
     m = re.search(
-        r"test suite of ([\d,]+)\+\s*\ncases that includes (\d+) validation files",
+        r"test suite of ([\d,]+)\+\s*\ncases that includes (\d+)\+ validation files",
         text,
     )
     assert m, "parity inventory closing counts not found or format changed"
@@ -206,8 +214,13 @@ def test_parity_inventory_closing_counts():
     recorded = _recorded_test_count()
     assert test_claim <= recorded <= test_claim + 1500
     val_actual = len(list((REPO / "tests" / "validation").glob("*.py")))
-    assert val_claim == val_actual, (
-        f"inventory claims {val_claim} validation files, found {val_actual}"
+    suggested = (val_actual // 10) * 10
+    assert val_claim <= val_actual <= val_claim + VALIDATION_FILE_BAND, (
+        f"inventory claims {val_claim}+ validation files, found {val_actual} "
+        f"(band is [{val_claim}, {val_claim + VALIDATION_FILE_BAND}]); in "
+        "docs/matlab_parity_inventory.rst replace 'cases that includes "
+        f"{val_claim}+ validation files' with 'cases that includes "
+        f"{suggested}+ validation files'"
     )
 
 

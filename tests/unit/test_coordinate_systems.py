@@ -256,6 +256,58 @@ class TestGeodetic2ECEF:
         ecef = geodetic2ecef(lats, lons, alts)
         assert ecef.shape == (3, 3)
 
+    @pytest.mark.parametrize(
+        "lat,lon,alt",
+        [
+            (0.5, 0.1, np.array([0.0, 100.0, 1000.0])),
+            (np.array([0.5, 0.6]), 0.1, 0.0),
+            (0.5, np.array([0.1, 0.2]), np.array([0.0, 10.0])),
+        ],
+    )
+    def test_broadcasts_scalar_against_array(self, lat, lon, alt):
+        """A scalar mixed with an array in any argument position should
+        broadcast, matching per-element results from the all-scalar path."""
+        ecef = geodetic2ecef(lat, lon, alt)
+        shape = np.broadcast_shapes(np.shape(lat), np.shape(lon), np.shape(alt))
+        assert ecef.shape == (3,) + shape
+
+        lat_b, lon_b, alt_b = np.broadcast_arrays(lat, lon, alt)
+        for idx in np.ndindex(shape):
+            expected = geodetic2ecef(
+                float(lat_b[idx]), float(lon_b[idx]), float(alt_b[idx])
+            )
+            assert np.allclose(ecef[(slice(None), *idx)], expected)
+
+    @pytest.mark.parametrize(
+        "lat,lon,alt,expected_shape",
+        [
+            # All scalar: always returned flat (3,).
+            (0.5, 0.1, 0.0, (3,)),
+            # lat a size-1 array, lon/alt scalar: pre-existing (accidental)
+            # behaviour squeezed this to flat (3,) too, via the old
+            # `lat.size == 1` branch -- NOT the principled (3, 1) that
+            # broadcast_shapes((1,), (), ()) would give. A patch must not
+            # change a shape that previously worked, so (3,) is pinned
+            # here deliberately; normalizing it to (3, 1) is a v2.12
+            # change (see CHANGELOG), not this one.
+            (np.array([0.5]), 0.1, 0.0, (3,)),
+            # lat a multi-element array, others scalar: already broadcast
+            # correctly before this patch.
+            (np.array([0.5, 0.6]), 0.1, 0.0, (3, 2)),
+            # scalar lat/lon, array alt: previously raised ValueError --
+            # this is the crash this patch fixes, now broadcasts properly.
+            (0.5, 0.1, np.array([0.0, 100.0, 1000.0]), (3, 3)),
+            # All arrays, same shape: already broadcast correctly before.
+            (np.array([0.5, 0.6]), np.array([0.1, 0.2]), np.array([0.0, 10.0]), (3, 2)),
+        ],
+    )
+    def test_return_shape_table(self, lat, lon, alt, expected_shape):
+        """Pins the full scalar/array input -> return-shape table, so the
+        (3,) vs (3, 1) inconsistency for size-1-array lat is explicit
+        rather than incidental."""
+        ecef = geodetic2ecef(lat, lon, alt)
+        assert ecef.shape == expected_shape
+
 
 class TestECEF2Geodetic:
     """Tests for ECEF to geodetic conversions."""

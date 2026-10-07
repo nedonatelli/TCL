@@ -555,7 +555,14 @@ class TestAlignment:
 
 
 class TestErrorStateModel:
-    """Tests for INS error state model."""
+    """Structural checks only -- shape and "which blocks are populated".
+
+    The numeric oracle (does F actually match a finite-differenced
+    Jacobian of mechanize_ins_ned?) lives in
+    tests/validation/test_ins_error_matrix.py, along with the tracked
+    inventory of entries known to disagree with it. These structural
+    checks are a cheap smoke test, not a correctness gate.
+    """
 
     def test_error_state_matrix_shape(self):
         """Test error state matrix has correct shape."""

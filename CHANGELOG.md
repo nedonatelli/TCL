@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`test_parity_inventory_closing_counts` no longer requires the
+  validation-file count in `docs/matlab_parity_inventory.rst` to match
+  `tests/validation/*.py` exactly.** That single assertion broke three
+  consecutive v2.11.1 PRs -- every PR adding an oracle test file
+  invalidated it. The same closing sentence already hedges its other
+  number (`8,000+` test cases, checked with a `<=`-to-`+1500` band); the
+  validation-file count now follows the identical convention: the prose
+  reads `80+ validation files` and the gate checks
+  `val_claim <= val_actual <= val_claim + 20`. The band matches a
+  release's worth of observed growth (63 -> 70 -> 82 validation files
+  across v2.10.0 -> v2.11.0 -> this patch) with headroom, so it still
+  fails on a claim that has gone genuinely stale. The failure message
+  now states the exact replacement text for the `.rst` line.
+
 - **The ephemeris tests no longer download the JPL DE kernel.**
   `tests/unit/test_ephemerides.py` guarded only on `jplephem` being
   importable, so a machine with the package but no cached kernel fetched
@@ -38,6 +52,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   measurably affect its output. `atmosphere.ionosphere`'s maturity is
   demoted MATURE -> EXPERIMENTAL: besides this defect, the module has
   no oracle test in the suite.
+
+- **`pytcl.navigation.ins`'s maturity is demoted MATURE -> EXPERIMENTAL.**
+  `ins_error_state_matrix` had no numeric oracle at all before this
+  release -- only a shape check and "some entries are nonzero"
+  (`tests/unit/test_ins.py`). Built against a finite-difference Jacobian
+  of `mechanize_ins_ned` (the mechanization it claims to linearize, see
+  `tests/validation/test_ins_error_matrix.py`), the oracle checks every
+  entry of the 9x9 navigation block that is non-zero in the analytic
+  matrix, or non-zero in the oracle where the analytic matrix has an
+  implicit zero (a missing self-coupling term) -- 29 entries meet that
+  rule, and it found 18 disagreeing: 11 of 12 in the attitude rows,
+  where the entire `-[omega_in^n x] phi` self-coupling submatrix is
+  absent, three entries have the wrong sign, one (`F[7,0]`) is off by
+  roughly two orders of magnitude, and one is a missing self-coupling
+  the analytic matrix implies is exactly zero (`F[6,0]`); plus one in
+  the velocity rows, `F[4,4]` (`d(vE_dot)/d(vE)`), the same kind of
+  missing self-coupling, entirely absent from the analytic matrix
+  (oracle: a stable +1.5277e-05, checked across eps=1e-4..1e-2 and
+  dt=1e-5..1e-3). The three vertical-channel entries responsible for the
+  qualitative defect below are fixed in this release; the remaining 15
+  are intentionally left as a tracked, `xfail(strict=True)`-enumerated
+  inventory rather than being fixed under patch-release constraints on a
+  model nobody had ever checked. `loose_coupled_predict`
+  (`pytcl.navigation.ins_gnss`), the only consumer of this matrix, now
+  documents the same warning; its existing tests only assert that
+  covariance trace does not shrink and would not have caught any of
+  this. Bias-coupling entries (`F[3:6,9:12]`, `F[6:9,12:15]`, rows 9-14)
+  remain unverified either way -- `mechanize_ins_ned` takes no bias
+  arguments, so no finite difference of it can reach them.
 
 ### Fixed
 
@@ -277,6 +320,170 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   got wrong on the first pass of this fix (caught in review). Non-positive
   `press_pa`/`pressure_pa`, never a valid pressure, now raises
   `ValueError` instead of silently returning NaN.
+
+- **`pytcl.navigation.ins.ins_error_state_matrix`'s vertical channel was
+  qualitatively wrong, not merely numerically off.** `F[5,2]` (gravity
+  gradient) had the opposite sign, which combined with `F[2,5] = -1`
+  turned the Schuler-coupled `{alt, vD}` subsystem into a bounded
+  oscillation (eigenvalues `+-0.00175j`) where the true INS vertical
+  channel is physically divergent, with a time constant around 570 s --
+  a stability defect, not a precision one. `F[5,0]`'s existing Coriolis
+  term also had the wrong sign (the same class of error, on the same
+  row) and separately omitted `d(g)/d(lat)` entirely; `F[5,3]` (the
+  Coriolis/transport coupling to `vN`) was zero and should not have
+  been. All three are now derived from `mechanize_ins_ned`'s own
+  equations (`d(g)/d(lat)` and `d(g)/d(alt)` via central difference of
+  `normal_gravity`, matching whatever gravity model `gravity_ned` calls)
+  and confirmed against a finite-difference oracle of that mechanization
+  -- see `tests/validation/test_ins_error_matrix.py` and the maturity
+  demotion above for what that oracle found beyond these three entries.
+
+- `pytcl.coordinate_systems.projections`: `mercator` and
+  `transverse_mercator` computed `x = a * (lon - lon0)` (or its series
+  equivalent) with no wrap, so a point on the far side of the
+  antimeridian from its central meridian produced eastings in the
+  billions of metres -- e.g. a forced UTM zone 1 (CM -177 deg) point at
+  10N 179.9E returned `easting=2,365,798,893` m against PROJ's
+  `160,097.0` m, with the UTM scale factor coming out at 312.6 instead
+  of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
+  `transverse_mercator` and shared the defect; `Mercator` with
+  `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
+  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi)`
+  through one module-private helper (`_wrap_longitude_difference`)
+  shared by both forward functions.
+
+  Two seam issues in this same fix, found and closed before release:
+  `_wrap_longitude_difference` initially cast its result through
+  `float()`, which raises `TypeError` for array input even though array
+  input worked (and agreed with per-element scalar calls) before this
+  fix existed -- it now returns `wrap_to_pi(lon - lon0)[()]`, which is a
+  `np.float64` (a `float` subclass) for scalar input and the array
+  unchanged for array input. And `transverse_mercator`'s Helmert-series
+  arc-length computation (`sigma = lat` followed by an in-place `sigma -=
+  ...` in a loop) aliased the caller's `lat`/`lat0` array and silently
+  corrupted it in place across repeated calls -- three successive
+  `geodetic2utm` calls on the same array drifted northing by ~16 km per
+  call while quietly mutating the caller's latitude by ~0.14 deg per
+  call. Both series computations (forward and inverse) now accumulate
+  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`). A fourth
+  instance of the same pattern, in `transverse_mercator_inverse`'s
+  footpoint-latitude series (`lat_fp = mu` then `lat_fp += beta[i] *
+  np.sin(2 * i * mu)`), does not reach the caller's arguments -- `mu` is
+  derived, not passed in -- but fed each loop iteration a `mu` already
+  corrupted by the previous one, leaving the array path wrong by
+  1.4e-10 to 2.0e-10 rad (0.3 to 1.3 mm of ground distance) relative to
+  per-element scalar calls. Fixed the same way; the array-input test now
+  asserts bit-exact agreement rather than a tolerance, so any
+  reintroduction fails.
+
+  The paired inverse functions computed the correct point but as a
+  longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the
+  seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
+  -180.1 deg, -182.0 deg and 180.5 deg instead of 179.9 deg, 178.0 deg
+  and -179.5 deg. Mathematically exact (confirmed to within 5.3e-8 deg
+  after canonicalizing), but a value outside the caller's expected
+  range and incoherent next to a forward path that now handles the
+  dateline. `transverse_mercator_inverse` (and `utm2geodetic`),
+  `mercator_inverse`, `stereographic_inverse`, and
+  `azimuthal_equidistant_inverse` all shared this and now canonicalize
+  their returned longitude through the same `_wrap_longitude_difference`
+  helper. `azimuthal_equidistant_exact_inverse` does not share it -- its
+  geographiclib backend already returns a canonical longitude.
+
+  `oblique_stereographic` and `lambert_conformal_conic` scale the
+  longitude difference by a non-unity factor (`n`, the EPSG-9809
+  conformal-sphere constant and the LCC cone constant respectively)
+  before taking its sine/cosine, so unlike `mercator`/`transverse_mercator`
+  an unwrapped difference does not alias back to the right answer through
+  2*pi-periodicity -- it silently computes the wrong map coordinate, by
+  124.6 km for `oblique_stereographic` (measured: `(10, 179.9)` at
+  `lon0=-177 deg` gave `x=-215,388.7` m against PROJ's `-339,958.0` m) and
+  tens of millions of metres for `lambert_conformal_conic` (the same point
+  at `lat0=5 deg`, standard parallels 1/9 deg gave `x=37,284,062.1` m
+  against PROJ's `-340,346.1` m), while still round-tripping through its
+  own equally-wrong inverse -- self-consistency alone does not catch this
+  class, only comparison against an external oracle does.
+  `oblique_stereographic_inverse` also returned a genuinely wrong
+  longitude near the seam (-178.96 deg for an input of 179.9 deg, not
+  merely a non-canonical one). Both forward functions now wrap the
+  difference (via `_wrap_longitude_difference`) before scaling by `n`,
+  and both inverses canonicalize their output the same way as the four
+  functions above; away from the seam, both were already exact
+  (`test_projections_exact.py`'s `oblique_stereographic` coverage is
+  unmoved) and remain so. `azimuthal_equidistant_exact` was checked and
+  does not share this -- its geographiclib backend matches PROJ's
+  `+proj=aeqd` across the seam to ~1.7e-9 m.
+
+- `pytcl.coordinate_systems.projections.stereographic`'s docstring told
+  callers to use `lat0 = +-pi/2` for polar work; that path diverges from
+  PROJ's polar stereographic by 5.7 km at 85 deg latitude and 34.7 km at
+  60 deg (measured against `+proj=stere` on WGS84), while
+  `polar_stereographic` matches PROJ/UPS to sub-nanometer precision. The
+  docstring now points polar callers at `polar_stereographic` and
+  ellipsoidal-oblique callers at `oblique_stereographic` (EPSG 9809),
+  stating both measured accuracies. Documentation only -- no code
+  change, no test.
+
+- `pytcl.coordinate_systems.conversions.geodetic`: `geodetic2ecef` raised
+  `ValueError: can only convert an array of size 1 to a Python scalar`
+  for any input mixing a scalar with an array in an argument position
+  other than `lat`, e.g. `geodetic2ecef(0.5, 0.1, np.array([0., 100.,
+  1000.]))`, even though all three parameters are documented
+  `array_like`. The scalar-vs-array branch was decided from `lat.size`
+  alone rather than the broadcast output shape, so a scalar `lat` paired
+  with an array `lon` or `alt` took the `.item()` branch on a
+  multi-element result. The function now broadcasts `lat`, `lon`, `alt`
+  together for the computation, matching the already-correct behaviour
+  of the `navigation.geodesy.geodetic_to_ecef` wrapper (which worked
+  around this by pre-broadcasting before calling in), but the return
+  shape decides the old way: a flat `(3,)` whenever the input `lat` on
+  its own had size 1 and the full broadcast is a single point, exactly
+  as before, even though this is not what `lat`, `lon`, `alt` alone
+  would broadcast to (`np.broadcast_shapes((1,), (), ())` is `(1,)`,
+  not `()`) -- a size-1-array `lat` with scalar `lon`/`alt` still
+  returns `(3,)`, not the more consistent `(3, 1)`, because changing a
+  shape that previously worked is out of scope for a patch release even
+  where the old shape was itself an accident of the same bug. Fixed
+  purely on the crash path: every previously-working input pattern
+  keeps its exact return shape (pinned by
+  `test_return_shape_table` alongside the existing shape/value tests);
+  only inputs that previously raised `ValueError` now return a value.
+  Normalizing the size-1 case to `(3, 1)` is deferred to v2.12.0.
+  STABLE module; crash fix only, no signature change.
+
+- `pytcl.navigation.great_circle`: `great_circle_intersect` returned
+  whichever of the two antipodal intersection points `n1 x n2` (the
+  cross product of the two great-circle planes' normals) happened to
+  produce, not the documented "intersections closest to the given
+  points" -- for `az1 = 135 deg`, `az2 = 225 deg` it returned a point
+  whose azimuth from point 1 is 315 deg, i.e. backwards along `az1`. It
+  now selects the branch reached by a positive distance along `az1` from
+  point 1, transcribing the selection rule (not the algorithm -- this
+  module uses vector algebra, not MATLAB's spherical-triangle
+  formulation) from MATLAB's `greatCircleIntersect.m` (Baselga &
+  Martinez-Llario 2018). While fixing this, found and fixed a second,
+  previously undetected bug it depended on: the antipodal point's
+  longitude was computed as `((lon1 + pi) % 2*pi) - pi`, which wraps
+  `lon1` to itself (a no-op for any already-canonical longitude) rather
+  than computing `lon1 + pi` -- the "second" intersection point silently
+  carried the *same* longitude as the first, only the latitude negated.
+  The existing regression test only checked `lat2 == -lat1` and missed
+  it. Both points are now derived directly from the negated Cartesian
+  intersection vector. Also fixed: `cross_track_distance`'s
+  `along_track` used `arccos`, which only returns `[0, pi]`, so a point
+  behind the path start was indistinguishable from the same point ahead
+  of it (measured: both returned +555974.6 m). It is now computed via
+  `arctan2` on the same along-track component, which preserves the sign
+  `arccos` discarded without changing the magnitude for any input that
+  was already correct.
+
+  Deferred, not fixed here (Tier 4): `direct_rhumb` is 380 m off the
+  exact endpoint on a 3000 km leg with no accuracy note in its
+  docstring; MATLAB's exact elliptic-integral rhumb formulation is
+  unported. The 380 m figure is carried forward from the pre-v2.11.1
+  audit and has not been independently re-verified in this patch series
+  -- no exact ellipsoidal-rhumb oracle (e.g. GeographicLib's `Rhumb`
+  class) is available in this environment to check it against.
 
 ## [2.11.0] - 2026-09-13
 
