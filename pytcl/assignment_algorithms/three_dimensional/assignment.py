@@ -553,9 +553,19 @@ def assign3d_auction(
             gap=np.inf,
         )
 
+    finite_cost = cost[np.isfinite(cost)]
+    if finite_cost.size == 0:
+        return Assignment3DResult(
+            tuples=np.array([], dtype=np.intp).reshape(0, 3),
+            cost=0.0,
+            converged=False,
+            n_iterations=0,
+            gap=np.inf,
+        )
+
     if epsilon is None:
         # Adaptive epsilon
-        cost_range = np.max(cost[np.isfinite(cost)]) - np.min(cost[np.isfinite(cost)])
+        cost_range = np.max(finite_cost) - np.min(finite_cost)
         epsilon = max(cost_range / (n1 + n2 + n3 + 1), 1e-10)
 
     # Prices for (j, k) pairs

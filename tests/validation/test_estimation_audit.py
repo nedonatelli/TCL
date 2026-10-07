@@ -966,6 +966,69 @@ class TestConstrainedEKF:
         with pytest.warns(RuntimeWarning, match="did not converge"):
             cekf._project_onto_constraints(np.array([5.0, 5.0]), np.eye(2), max_iter=1)
 
+    def test_converged_inequality_with_large_slack_does_not_warn(self):
+        """Defect test: the non-convergence warning used max|g|, so a lower
+        bound satisfied with slack 100 reported "residual 1.000e+02" and
+        warned although is_satisfied was True on the returned state."""
+        H = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: np.array([np.exp(x[0]) - 1.0, -x[0] - 100.0]),
+            G=lambda x: np.array([[np.exp(x[0]), 0.0], [-1.0, 0.0]]),
+            constraint_type="inequality",
+        )
+        f = ConstrainedEKF()
+        f.add_constraint(con)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            x_upd = f.update(
+                np.array([6.0, 0.0]),
+                np.eye(2),
+                np.array([6.0]),
+                lambda v: H @ v,
+                H,
+                np.array([[1e6]]),
+            )
+        assert con.is_satisfied(x_upd.x)
+
+    def test_nonconvergence_warning_reports_the_violation_not_the_slack(self):
+        """Defect test: with max_iter=3 the exp row is still violated (19.64)
+        while the satisfied row sits at -103.03; max|g| reported 1.03e+02."""
+        con = ConstraintFunction(
+            g=lambda x: np.array([np.exp(x[0]) - 1.0, -x[0] - 100.0]),
+            G=lambda x: np.array([[np.exp(x[0]), 0.0], [-1.0, 0.0]]),
+            constraint_type="inequality",
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        x0 = np.array([6.0, 0.0])
+        with pytest.warns(RuntimeWarning, match="did not converge") as rec:
+            x_out, _ = cekf._project_onto_constraints(x0, np.eye(2), max_iter=3)
+        true_violation = float(np.max(np.maximum(con.evaluate(x_out), 0.0)))
+        assert true_violation > 1e-6
+        msg = str(rec[0].message)
+        assert f"{true_violation:.3e}" in msg
+        assert f"{float(np.max(np.abs(con.evaluate(x_out)))):.3e}" not in msg
+        msg.encode("ascii")
+
+    def test_nonconvergence_warning_is_silent_when_equality_converged_on_last_iter(
+        self,
+    ):
+        """Regression guard: a linear equality converges in one step; with
+        max_iter=1 the loop is exhausted yet is_satisfied is True, so no
+        warning may fire."""
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            x_out, _ = cekf._project_onto_constraints(
+                np.array([1.0, 0.0]), np.eye(2), max_iter=1
+            )
+        assert con.is_satisfied(x_out)
+
     def test_inconsistent_constraint_falls_back_to_pinv_once(self):
         # g == 1 with a zero Jacobian states "1 = 0" with no gradient: G P G^T
         # is exactly singular at every iteration, so this is the genuine,

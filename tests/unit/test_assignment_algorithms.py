@@ -806,6 +806,20 @@ class TestAssign3D:
         assert result.tuples.shape == (0, 3)
         assert result.converged
 
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    def test_all_infeasible_tensor_is_reported_by_every_method(self, method):
+        """Defect test: auction crashed with "zero-size array to reduction
+        operation maximum" on an all-inf tensor, where greedy and decompose
+        return converged=False and lagrangian raises "infeasible"."""
+        cost = np.full((3, 3, 3), np.inf)
+        if method == "lagrangian":
+            with pytest.raises(ValueError, match="infeasible"):
+                assign3d(cost, method=method)
+        else:
+            result = assign3d(cost, method=method)
+            assert result.tuples.shape == (0, 3)
+            assert not result.converged
+
     def test_lagrangian_method(self):
         """Test Lagrangian method selection."""
         cost = np.random.rand(4, 4, 4)

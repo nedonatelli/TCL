@@ -107,6 +107,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pytcl.dynamic_estimation.kalman.constrained`: the non-convergence warning
+  added in this patch reported `max|g|` instead of the constraint violation,
+  so an inequality row satisfied with slack counted as a violation. For
+  `g = [exp(x0) - 1, -x0 - 100]` with `constraint_type="inequality"` the
+  default-`max_iter` update returned `x = [1.19e-10, 0]`, which
+  `is_satisfied` accepts, yet warned "max constraint residual 1.000e+02".
+  The warning now fires only when `is_satisfied(x, tol)` is False and
+  reports the largest per-row violation (`max(g, 0)` for inequalities,
+  `|g|` for equalities), so the two cannot disagree; the message reads
+  "largest constraint violation ... exceeds tol ...". At `max_iter=3` the
+  same problem reported 1.030e+02 before and reports 1.964e+01 now.
+- `assign3d_auction` / `assign3d(..., method="auction")` raised "zero-size
+  array to reduction operation maximum" on an all-infeasible tensor
+  (`np.full((3, 3, 3), np.inf)`). It now returns an empty result with
+  `converged=False`, as `greedy` and `decompose` do; `lagrangian` still
+  raises "infeasible".
 - **This changes timestamps callers may have built around.**
   `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
   `gps_to_utc`, which delegate to it) looked up the leap-second count on
@@ -835,7 +851,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   case, which was not regressed. `_project_onto_constraints` also now
   warns when `max_iter` is exhausted with the residual still above
   `tol` ("constrained EKF state projection did not converge after N
-  iterations; max constraint residual ... exceeds tol ..."), and when
+  iterations; largest constraint violation ... exceeds tol ..."), and when
   either solve's inversion still fails after regularization (only
   possible when `G P G^T` is exactly singular, e.g. a constraint with
   zero sensitivity to the current covariance) before falling back to
@@ -891,22 +907,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   emitting `RuntimeWarning: invalid value encountered in divide` from an
   internal 0/0 -- the right exception for the wrong reason. All three
   resamplers now validate through one shared private helper,
-  `_validate_normalized_weights`, reusing `resample_multinomial`'s
-  existing message text ("Probabilities do not sum to 1. See Notes
-  section of docstring for more information.") so the three read alike
-  and cannot drift apart again. The check uses `numpy.isclose` against
-  1.0 with `atol = max(1e3 * eps, N * eps)` (`eps` = machine epsilon,
-  `N` = particle count) rather than an exact comparison or a loose
-  default tolerance -- a first pass used `numpy.isclose`'s default
-  (effectively ~1.1e-5), which review caught as ten orders of magnitude
-  looser than the roundoff it was meant to absorb and in one case (a
-  sum of `1 + 1e-5`) would have silently accepted input the filter
-  never produces. Measured roundoff over 200 chains of 50
-  reweight/renormalize cycles at particle counts 10-100,000 topped out
-  at 5.551e-16 regardless of count, so the current bound (~2.22e-13 at
-  N=4, scaling up for larger N) clears that with ~2-3 orders of
-  magnitude of margin while still rejecting input off by 0.5 or more,
-  as in the cases above. `resample_residual` still requires 2-D
+  `_validate_normalized_weights`, which raises `ValueError` ("Probabilities
+  do not sum to 1 (tolerance sqrt(eps) = 1.49e-08). See the Notes section
+  of the docstring."); each resampler's docstring now has that Notes
+  section. The band is `numpy.isclose(sum, 1.0, rtol=0, atol=sqrt(eps))` =
+  1.4901e-8 for float64, the band `numpy.random.Generator.choice` applies
+  to `p` (measured: it accepts a 1.4e-8 deviation and rejects 2.3e-8), so
+  all three resamplers accept and reject the same sums as the one that
+  delegates to `choice`. Two earlier bands were wrong: `numpy.isclose`'s
+  default (~1.1e-5) was far looser than needed, and `max(1e3 * eps, N *
+  eps)` (2.22e-13 at N=4) was anchored on measured float64
+  renormalization roundoff (worst 5.551e-16) and rejected sums such as
+  `[0.25, 0.25, 0.25, 0.25 + 1e-9]` that resample correctly. Still
+  rejected, eight orders outside the band: sums of 0.5, 2.0 and 0.0.
+  Not covered: weights normalized in float32 can miss the band (measured
+  |sum - 1| of 2.235e-8 for `float32([0.1, 0.2, 0.3, 0.4])` and 3.95e-8
+  for 1000 random float32 weights), and `resample_multinomial` rejects
+  them as it always did; renormalize in float64 first.
+  `resample_residual` still requires 2-D
   particles where the other two accept 1-D (an existing API
   inconsistency, not changed by this fix -- reconciling it is a
   signature change, out of scope for a patch release).

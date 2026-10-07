@@ -101,6 +101,13 @@ class ConstraintFunction:
             return np.allclose(g_val, 0, atol=tol)
 
 
+def _violation(g_val: NDArray[Any], constraint_type: str) -> NDArray[Any]:
+    """Per-row violation, on the same scale `is_satisfied` thresholds."""
+    if constraint_type == "inequality":
+        return np.maximum(g_val, 0.0)
+    return np.abs(g_val)
+
+
 class ConstrainedEKF:
     """
     Extended Kalman Filter with state constraints.
@@ -354,15 +361,16 @@ class ConstrainedEKF:
             if converged:
                 break
         else:
-            residual = max(
-                float(np.max(np.abs(constraint.evaluate(x_proj))))
-                for constraint in violated
-            )
-            if residual > tol:
+            unsatisfied = [c for c in violated if not c.is_satisfied(x_proj, tol)]
+            if unsatisfied:
+                worst = max(
+                    float(np.max(_violation(c.evaluate(x_proj), c.constraint_type)))
+                    for c in unsatisfied
+                )
                 warnings.warn(
                     f"constrained EKF state projection did not converge "
-                    f"after {max_iter} iterations; max constraint "
-                    f"residual {residual:.3e} exceeds tol {tol:.3e}",
+                    f"after {max_iter} iterations; largest constraint "
+                    f"violation {worst:.3e} exceeds tol {tol:.3e}",
                     RuntimeWarning,
                     stacklevel=2,
                 )
