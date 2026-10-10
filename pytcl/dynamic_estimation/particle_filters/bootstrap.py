@@ -27,6 +27,22 @@ class ParticleState(NamedTuple):
     weights: NDArray[np.floating]
 
 
+def _validate_normalized_weights(weights: NDArray[np.floating]) -> None:
+    """Raise if weights do not sum to 1 within ``sqrt(eps)``.
+
+    Shared by all three resamplers. The band, ``sqrt(eps)`` = 1.4901e-8 for
+    float64, is the one ``numpy.random.Generator.choice`` applies to ``p``,
+    so all three resamplers accept and reject the same inputs as
+    ``resample_multinomial`` always did.
+    """
+    atol = np.sqrt(np.finfo(np.float64).eps)
+    if not np.isclose(np.sum(weights), 1.0, rtol=0.0, atol=atol):
+        raise ValueError(
+            "Probabilities do not sum to 1 (tolerance sqrt(eps) = 1.49e-08). "
+            "See the Notes section of the docstring."
+        )
+
+
 def resample_multinomial(
     particles: NDArray[np.floating],
     weights: NDArray[np.floating],
@@ -49,6 +65,20 @@ def resample_multinomial(
     resampled : ndarray
         Resampled particles with uniform weights.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1 within ``sqrt(eps)``.
+
+    Notes
+    -----
+    The sum must be within ``sqrt(eps)`` = 1.4901e-8 (float64) of 1, the
+    tolerance ``numpy.random.Generator.choice`` applies to its ``p``
+    argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
+    otherwise give a silently biased sample. Weights normalized in float32
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
+    N=1000); renormalize them in float64 first.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -58,6 +88,8 @@ def resample_multinomial(
     >>> resampled.shape
     (4, 1)
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 
@@ -90,6 +122,20 @@ def resample_systematic(
     resampled : ndarray
         Resampled particles.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1 within ``sqrt(eps)``.
+
+    Notes
+    -----
+    The sum must be within ``sqrt(eps)`` = 1.4901e-8 (float64) of 1, the
+    tolerance ``numpy.random.Generator.choice`` applies to its ``p``
+    argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
+    otherwise give a silently biased sample. Weights normalized in float32
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
+    N=1000); renormalize them in float64 first.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -99,6 +145,8 @@ def resample_systematic(
     >>> resampled.shape
     (4, 1)
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 
@@ -164,6 +212,20 @@ def resample_residual(
     resampled : ndarray
         Resampled particles.
 
+    Raises
+    ------
+    ValueError
+        If `weights` does not sum to 1 within ``sqrt(eps)``.
+
+    Notes
+    -----
+    The sum must be within ``sqrt(eps)`` = 1.4901e-8 (float64) of 1, the
+    tolerance ``numpy.random.Generator.choice`` applies to its ``p``
+    argument, and rejects sums such as 0.5, 2.0 and 0.0, which would
+    otherwise give a silently biased sample. Weights normalized in float32
+    can miss this band (measured ``|sum - 1|`` of 2.2e-8 at N=4 and 3.9e-8 at
+    N=1000); renormalize them in float64 first.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -176,6 +238,8 @@ def resample_residual(
     >>> np.sum(resampled == 4.0) >= 1
     True
     """
+    _validate_normalized_weights(weights)
+
     if rng is None:
         rng = np.random.default_rng()
 

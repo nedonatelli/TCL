@@ -32,6 +32,7 @@ also has no GPB1/GPB2/AMM variants and cannot mix modes of unequal state
 dimension.
 """
 
+import warnings
 from typing import Any, List, NamedTuple, Optional
 
 import numpy as np
@@ -443,7 +444,29 @@ def imm_update(
     if total_likelihood > 1e-300:
         upd_probs = weighted_likelihoods / total_likelihood
     else:
-        # Keep current probabilities if all likelihoods are zero
+        # Since v2.11, kf_update itself warns and zeros the likelihood on
+        # a non-PD innovation covariance, so an all-zero weighted sum
+        # here is now the expected symptom of a numerical failure
+        # upstream, not merely an implausible measurement or a zero
+        # prior -- make it audible instead of silently keeping the prior
+        # probabilities.
+        warnings.warn(
+            "imm_update: the prior-weighted likelihood sum (mode_probs @ "
+            "likelihoods) is at or below 1e-300 (effectively underflowed "
+            "to zero); mode probabilities are unchanged from the prior. "
+            "Most often this is plain likelihood underflow "
+            "(exp(-mahalanobis_sq / 2) hitting zero in float64) from a "
+            "large miss distance or a lost track -- expected behavior for "
+            "a bad enough miss, not necessarily an upstream fault. It can "
+            "also mean a non-PD innovation covariance upstream zeroed a "
+            "mode's own likelihood (check kf_update's own warning, if one "
+            "fired), or that the mode(s) with nonzero likelihood "
+            "currently have zero prior probability. Check the miss "
+            "distance, R, the mode covariances' conditioning, and "
+            "mode_probs.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         upd_probs = mode_probs.copy()
 
     # Normalize to ensure sum = 1

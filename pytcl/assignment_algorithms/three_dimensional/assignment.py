@@ -29,7 +29,16 @@ class Assignment3DResult(NamedTuple):
     cost : float
         Total assignment cost.
     converged : bool
-        Whether the algorithm converged (for iterative methods).
+        Meaning depends on the method. For the iterative relaxation
+        (:func:`assign3d_lagrangian`), whether the optimality gap fell
+        below ``tol``. For :func:`assign3d_auction`, whether every row
+        found a bid-assigned pair within ``max_iter`` (the completion
+        pass below it can still fill in unmatched rows regardless). For
+        the non-iterative heuristics (:func:`greedy_3d`,
+        :func:`decompose_to_2d`), whether at least one tuple was
+        assigned at all; ``False`` means the cost tensor yielded no
+        feasible assignment whatsoever, not that the returned assignment
+        (if any) is suboptimal.
     n_iterations : int
         Number of iterations used (for iterative methods).
     gap : float
@@ -50,6 +59,19 @@ def _validate_cost_tensor(
     if cost_tensor.ndim != 3:
         raise ValueError(f"Cost tensor must be 3-dimensional, got {cost_tensor.ndim}")
     return cost_tensor.shape
+
+
+def _reject_nan_cost(cost_tensor: NDArray[np.float64], fn_name: str) -> None:
+    """NaN comparisons are always False, so a NaN entry is silently treated
+    as never the best choice (like inf) but, unlike inf, does not mark a
+    genuinely infeasible slice/tuple -- it just gets skipped with no
+    signal, which would return a confident partial answer over a
+    NaN-poisoned tensor. Reject it explicitly instead."""
+    if np.any(np.isnan(cost_tensor)):
+        raise ValueError(
+            f"{fn_name}: cost_tensor contains NaN, which is not a valid "
+            "cost (use inf to mark a forbidden assignment)"
+        )
 
 
 def greedy_3d(
@@ -91,6 +113,7 @@ def greedy_3d(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "greedy_3d")
 
     if maximize:
         cost = -cost
@@ -142,7 +165,7 @@ def greedy_3d(
     return Assignment3DResult(
         tuples=tuples,
         cost=total_cost,
-        converged=True,
+        converged=len(assignments) > 0 or min(n1, n2, n3) == 0,
         n_iterations=1,
         gap=np.inf,  # Unknown optimality gap
     )
@@ -172,15 +195,20 @@ def decompose_to_2d(
     Returns
     -------
     result : Assignment3DResult
-        Assignment result.
+        Assignment result. ``converged`` is ``True`` when at least one
+        slice produced an assignment, or when no assignment was ever
+        possible to begin with (``n1``, ``n2`` or ``n3`` is 0, a
+        vacuously solved problem); it is ``False`` only when an
+        assignment was possible but every slice was infeasible (e.g. an
+        all-``inf`` cost tensor).
 
     Examples
     --------
     >>> import numpy as np
     >>> cost = np.random.rand(4, 4, 4)
     >>> result = decompose_to_2d(cost, fixed_dimension=0)
-    >>> result.tuples.shape[0] <= 4
-    True
+    >>> result.tuples.shape
+    (4, 3)
 
     Notes
     -----
@@ -193,6 +221,7 @@ def decompose_to_2d(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "decompose_to_2d")
 
     if fixed_dimension not in (0, 1, 2):
         raise ValueError("fixed_dimension must be 0, 1, or 2")
@@ -234,11 +263,34 @@ def decompose_to_2d(
         # Extract submatrix of free indices
         sub_cost = slice_cost[np.ix_(free_j, free_k)]
 
+        # scipy raises the identical "invalid numeric entries" ValueError
+        # for a NaN entry and for an infinity in the favorable direction
+        # for this mode (-inf when minimizing, +inf when maximizing) --
+        # the latter marks the single best possible pairing, not an
+        # infeasible one. NaN is already rejected upfront, so substitute
+        # a large finite sentinel for the favorable infinity: it still
+        # dominates every real entry, so scipy solves normally instead of
+        # raising on input it can otherwise handle.
+        # The sentinel is the largest finite double rather than a multiple
+        # of the observed magnitude: scaling overflowed back to infinity
+        # for finite costs above ~1e302, which silently restored the very
+        # skip this substitution exists to prevent (measured at 1e308: the
+        # slice was dropped again, with only numpy's generic overflow
+        # warning to show for it).
+        good_inf = np.inf if maximize else -np.inf
+        good_mask = sub_cost == good_inf
+        if np.any(good_mask):
+            sentinel = np.finfo(np.float64).max
+            sub_cost[good_mask] = sentinel if maximize else -sentinel
+
         # Solve 2D assignment
         try:
             row_ind, col_ind = scipy_lsa(sub_cost, maximize=maximize)
         except ValueError:
-            break
+            # This slice's submatrix has no feasible assignment (e.g. an
+            # all-inf row/column); later slices may still be solvable, so
+            # skip this slice rather than abandoning the whole sweep.
+            continue
 
         # We only take one assignment per slice
         if len(row_ind) > 0:
@@ -252,7 +304,12 @@ def decompose_to_2d(
             k = free_k[col_ind[best_idx]]
             assignment_cost = cost[i, j, k]
 
-            if not np.isinf(assignment_cost):
+            # Only the unfavorable-direction infinity (the mask value for
+            # already-used indices, or a user-supplied forbidden pairing)
+            # means no usable assignment; the favorable direction (see
+            # above) is a genuine, infinitely-favorable pick to keep.
+            bad_inf = -np.inf if maximize else np.inf
+            if assignment_cost != bad_inf:
                 assignments.append((i, j, k))
                 total_cost += assignment_cost
                 used_j[j] = True
@@ -271,7 +328,7 @@ def decompose_to_2d(
     return Assignment3DResult(
         tuples=tuples,
         cost=total_cost,
-        converged=True,
+        converged=len(assignments) > 0 or min(n1, n2, n3) == 0,
         n_iterations=n1,
         gap=np.inf,
     )
@@ -319,8 +376,8 @@ def assign3d_lagrangian(
     >>> rng = np.random.default_rng(42)
     >>> cost = rng.random((5, 5, 5))
     >>> result = assign3d_lagrangian(cost, max_iter=50)
-    >>> result.tuples.shape[1]
-    3
+    >>> result.tuples.shape
+    (5, 3)
     >>> bool(result.gap >= -1e-9)  # gap is a genuine bound
     True
 
@@ -345,6 +402,19 @@ def assign3d_lagrangian(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "assign3d_lagrangian")
+
+    if cost.size == 0:
+        # No possible assignment to begin with (some dimension is 0):
+        # vacuously solved, matching the other three methods. n3 == 0
+        # would otherwise crash the reduction below.
+        return Assignment3DResult(
+            tuples=np.array([], dtype=np.intp).reshape(0, 3),
+            cost=0.0,
+            converged=True,
+            n_iterations=1,
+            gap=0.0,
+        )
 
     work = -cost if maximize else cost
 
@@ -448,8 +518,8 @@ def assign3d_auction(
     >>> import numpy as np
     >>> cost = np.random.rand(4, 4, 4)
     >>> result = assign3d_auction(cost)
-    >>> len(result.tuples) <= 4
-    True
+    >>> result.tuples.shape
+    (4, 3)
 
     Notes
     -----
@@ -467,13 +537,35 @@ def assign3d_auction(
     """
     cost = np.asarray(cost_tensor, dtype=np.float64)
     n1, n2, n3 = _validate_cost_tensor(cost)
+    _reject_nan_cost(cost, "assign3d_auction")
 
     if maximize:
         cost = -cost
 
+    if cost.size == 0:
+        # No possible assignment to begin with (some dimension is 0):
+        # vacuously solved, matching the other three methods.
+        return Assignment3DResult(
+            tuples=np.array([], dtype=np.intp).reshape(0, 3),
+            cost=0.0,
+            converged=True,
+            n_iterations=0,
+            gap=np.inf,
+        )
+
+    finite_cost = cost[np.isfinite(cost)]
+    if finite_cost.size == 0:
+        return Assignment3DResult(
+            tuples=np.array([], dtype=np.intp).reshape(0, 3),
+            cost=0.0,
+            converged=False,
+            n_iterations=0,
+            gap=np.inf,
+        )
+
     if epsilon is None:
         # Adaptive epsilon
-        cost_range = np.max(cost[np.isfinite(cost)]) - np.min(cost[np.isfinite(cost)])
+        cost_range = np.max(finite_cost) - np.min(finite_cost)
         epsilon = max(cost_range / (n1 + n2 + n3 + 1), 1e-10)
 
     # Prices for (j, k) pairs

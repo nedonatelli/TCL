@@ -34,6 +34,13 @@ from pytcl.dynamic_estimation.kalman.linear import (
     information_filter_update,
 )
 
+# P_pred is treated as numerically singular when its smallest singular value
+# is at or below n * eps of its largest (numpy.linalg.matrix_rank's default).
+# Measured worst-case s_min/s_max on exactly rank-deficient PSD matrices
+# (20000 trials, n=2..8) was 0.93 eps, so this is 2.1x above SVD roundoff at
+# n=2 and grows with n; conditioning below 1/(n eps) (4.5e15 at n=2) passes.
+_EPS = float(np.finfo(np.float64).eps)
+
 
 class InformationState(NamedTuple):
     """State in information form.
@@ -303,23 +310,42 @@ def information_filter(
             #   M = F^{-T} Y F^{-1}
             #   Y_pred = M - M (M + Q^{-1})^{-1} M
             #   y_pred = (I - M (M + Q^{-1})^{-1}) F^{-T} y
+            n = Y.shape[0]
             try:
-                n = Y.shape[0]
                 F_inv = np.linalg.inv(F_k)
-                # Regularize a singular Q negligibly so Q^{-1} exists; the
-                # error is transient (the exact path takes over once Y
-                # becomes full rank).
-                eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
-                Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
-                M = F_inv.T @ Y @ F_inv
-                M = (M + M.T) / 2
-                L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
-                Y = M - L @ M
-                Y = (Y + Y.T) / 2
-                y = (np.eye(n) - L) @ (F_inv.T @ y)
-            except np.linalg.LinAlgError:
-                # F singular: leave information unchanged
-                pass
+            except np.linalg.LinAlgError as exc:
+                # Previously swallowed here ("F singular: leave information
+                # unchanged"): y and Y were returned untouched, so the
+                # filter reported a confident prediction of a state it
+                # never actually propagated (velocity and other
+                # unobserved components silently never gained information).
+                raise np.linalg.LinAlgError(
+                    "information_filter: state transition matrix F is "
+                    "singular, so the singular-Y prediction step "
+                    "(F^-T Y F^-1) cannot be formed. F must be invertible "
+                    "whenever Y is singular (unknown or partially unknown "
+                    "state). esrif_predict/esrif_update cannot help here "
+                    "either -- they also require an invertible F (plus "
+                    "nonsingular R_prev and s_q). Use the covariance-form "
+                    "Kalman filter instead (kf_predict/kf_update, which "
+                    "never inverts F), representing the unknown state with "
+                    "a large finite initial covariance rather than a "
+                    "singular Y."
+                ) from exc
+            # Regularize a singular Q negligibly so Q^{-1} exists. This is
+            # not transient: only its *use* stops once Y becomes full rank
+            # and this branch is no longer taken; the error it introduces
+            # into Y here is carried forward in every step after this one.
+            # MATLAB's infoFilterDiscPred avoids inverting Q at all (see
+            # CHANGELOG); re-deriving that form is deferred, not done here.
+            eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
+            Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
+            M = F_inv.T @ Y @ F_inv
+            M = (M + M.T) / 2
+            L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
+            Y = M - L @ M
+            Y = (Y + Y.T) / 2
+            y = (np.eye(n) - L) @ (F_inv.T @ y)
 
         # Update if measurement available
         z = measurements[k]
@@ -438,6 +464,22 @@ def srif_predict(
     x_pred = F @ x
     P_pred = F @ P @ F.T + Q
 
+    # An exact-zero singular value is not the only way P_pred is singular:
+    # with F = [[1, 1], [0, 1e-18]] the smallest is ~1e-37, inv() succeeds,
+    # and R_pred came back with entries ~1e18 and no warning. A genuinely
+    # singular P_pred divided by zero in 1/sqrt(s) and returned nan/inf as an
+    # ordinary result, which np.linalg.qr tolerates, so srif_update ran to
+    # completion and srif_filter failed several steps later with the
+    # misleading "SVD did not converge".
+    s_pred = np.linalg.svd(P_pred, compute_uv=False)
+    if s_pred[-1] <= len(P_pred) * _EPS * s_pred[0]:
+        raise np.linalg.LinAlgError(
+            "srif_predict: predicted covariance F @ P @ F.T + Q is "
+            "singular (smallest singular value is zero or roundoff-sized "
+            "relative to the largest); it has no square-root information "
+            "form."
+        )
+
     # Convert back to square root information form
     # Y_pred = inv(P_pred), R_pred s.t. R_pred.T @ R_pred = Y_pred
     try:
@@ -445,7 +487,6 @@ def srif_predict(
         Y_pred = (Y_pred + Y_pred.T) / 2
         R_pred = np.linalg.cholesky(Y_pred).T  # Upper triangular
     except np.linalg.LinAlgError:
-        # Fallback using SVD
         U, s, Vt = np.linalg.svd(P_pred)
         S_sqrt_inv = np.diag(1.0 / np.sqrt(s))
         R_pred = S_sqrt_inv @ Vt

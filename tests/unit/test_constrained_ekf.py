@@ -282,6 +282,35 @@ class TestConstrainedEKFLinearConstraints:
         assert constraint.is_satisfied(x_proj)
         assert np.linalg.norm(x_proj) <= 10 * np.sqrt(2) + 1e-5
 
+    def test_box_constraint_masks_only_violated_row(self):
+        """Two-sided box |x[0]| <= 1 from x = (3, 0) must project to the
+        violated boundary, not to the midpoint of the feasible region.
+
+        Regression test for `_project_onto_constraints` computing `mask`
+        (which rows of a multi-row constraint are violated) and never
+        applying it to `G`/`g_val`: with both box rows left in, G P G^T
+        over all rows is [[1, -1], [-1, 1]] (rank 1 of 2, exactly
+        singular), and the unmasked solve returned x = (0, 0) -- the
+        midpoint, not the boundary. Row 0 (x[0] - 1 = 2) is violated;
+        row 1 (-x[0] - 1 = -4) is not, and must be excluded.
+        """
+
+        def constraint_fn(x):
+            return np.array([x[0] - 1, -x[0] - 1])
+
+        constraint = ConstraintFunction(constraint_fn)
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(constraint)
+
+        x = np.array([3.0, 0.0])
+        P = np.eye(2)
+
+        x_proj, P_proj = cekf._project_onto_constraints(x, P)
+
+        assert np.allclose(x_proj, [1.0, 0.0])
+        eigvals = np.linalg.eigvalsh(P_proj)
+        assert np.all(eigvals > -1e-10)
+
 
 class TestConstrainedEKFNonlinear:
     """Test CEKF with nonlinear constraints."""

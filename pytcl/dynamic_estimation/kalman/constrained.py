@@ -13,6 +13,7 @@ References
   density function truncation. Journal of Guidance, Control, and Dynamics.
 """
 
+import warnings
 from typing import Any, Callable, Optional
 
 import numpy as np
@@ -20,6 +21,25 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.extended import ekf_predict, ekf_update
 from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
+
+# Relative regularization for the G P Gt solves in
+# ConstrainedEKF._project_onto_constraints. Scaled to trace(G P Gt) rather
+# than an absolute constant so it stays negligible next to G P Gt at any
+# covariance magnitude while still guarding the inverse near machine
+# precision; see that method's docstring for the failure it replaces.
+_REG_EPS_REL = np.finfo(np.float64).eps
+
+# Relative floor for the projected covariance's eigenvalues, in the same
+# method. An absolute 1e-10 either overstates a genuinely near-zero
+# constrained-direction eigenvalue (harmless but misleading below
+# P-scale 1e-6) or, once P's own eigenvalues drop below 1e-10, clamps
+# the *unconstrained* direction up to 1e-10 too -- a 100x inflation at
+# P-scale 1e-12. Scaled to the projected covariance's own largest
+# eigenvalue instead: measured worst-case negative-eigenvalue roundoff
+# noise from eigh, across 20000 randomized projections (n=2..7,
+# P-scale 1e-15..1e3), was 1.43e-12 relative to that eigenvalue;
+# sqrt(machine epsilon) sits four orders of magnitude above that.
+_EIG_FLOOR_REL = np.sqrt(np.finfo(np.float64).eps)
 
 
 class ConstraintFunction:
@@ -79,6 +99,13 @@ class ConstraintFunction:
             return bool(np.all(g_val <= tol))
         else:  # equality
             return np.allclose(g_val, 0, atol=tol)
+
+
+def _violation(g_val: NDArray[Any], constraint_type: str) -> NDArray[Any]:
+    """Per-row violation, on the same scale `is_satisfied` thresholds."""
+    if constraint_type == "inequality":
+        return np.maximum(g_val, 0.0)
+    return np.abs(g_val)
 
 
 class ConstrainedEKF:
@@ -249,6 +276,7 @@ class ConstrainedEKF:
         # after the state has converged.
         P_metric = P_proj.copy()
         active: list[ConstraintFunction] = []
+        state_pinv_warned = False
 
         # Iterative projection
         for iteration in range(max_iter):
@@ -258,7 +286,13 @@ class ConstrainedEKF:
                 g_val = constraint.evaluate(x_proj)
                 G = constraint.jacobian(x_proj)
 
-                # Only process violated constraints
+                # Only process violated rows of this constraint: a multi-row
+                # ConstraintFunction (e.g. a two-sided box, g = [x-hi, -x+lo])
+                # mixes satisfied and violated rows, and an unmasked G makes
+                # G P G^T singular whenever two rows are anti-parallel at the
+                # same state (opposite bounds on one variable both entering
+                # the solve). `mask` used to be computed and never applied,
+                # so every row entered regardless of violation.
                 if constraint.constraint_type == "inequality":
                     mask = g_val > tol
                 else:
@@ -268,6 +302,12 @@ class ConstrainedEKF:
                     continue
 
                 converged = False
+
+                if constraint not in active:
+                    active.append(constraint)
+
+                G = G[mask]
+                g_val = g_val[mask]
 
                 # Covariance-weighted projection onto the linearised
                 # constraint surface (Simon 2010, "Kalman filtering with state
@@ -283,48 +323,122 @@ class ConstrainedEKF:
                 # the constraint is violated, it dominated whenever the state
                 # was far from the origin and threw the estimate across the
                 # feasible region instead of onto its boundary.
-                if constraint not in active:
-                    active.append(constraint)
-
                 GP = G @ P_metric
                 GPGt = GP @ G.T
 
-                # Add small regularization for numerical stability
-                mu = np.eye(GPGt.shape[0]) * 1e-6
+                # Regularize relative to the problem's own scale rather than
+                # by a fixed absolute amount: an absolute 1e-6 swamps GPGt
+                # once P shrinks below that, and the Newton step converges
+                # geometrically with ratio mu / (GPGt + mu) instead of in one
+                # step, stalling short of the constraint surface within
+                # max_iter. Scaling mu to trace(GPGt) keeps that ratio at
+                # _REG_EPS_REL regardless of P's magnitude.
+                m_dim = GPGt.shape[0]
+                mu = np.eye(m_dim) * (_REG_EPS_REL * np.trace(GPGt) / m_dim)
 
                 try:
                     GPGt_inv = np.linalg.inv(GPGt + mu)
                     lam = -GPGt_inv @ g_val
                 except np.linalg.LinAlgError:
-                    # If inversion fails, use pseudoinverse
+                    # GPGt is exactly singular (e.g. the constraint has zero
+                    # sensitivity to the current uncertainty), so no relative
+                    # regularization can restore invertibility. This can
+                    # recur every iteration for the same call; warn once per
+                    # call rather than once per iteration.
+                    if not state_pinv_warned:
+                        warnings.warn(
+                            "constrained EKF state projection: G P G^T is "
+                            "singular and could not be regularized; "
+                            "falling back to np.linalg.pinv",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                        state_pinv_warned = True
                     lam = -np.linalg.pinv(GPGt) @ g_val
 
                 x_proj = x_proj + P_metric @ G.T @ lam
 
             if converged:
                 break
+        else:
+            unsatisfied = [c for c in violated if not c.is_satisfied(x_proj, tol)]
+            if unsatisfied:
+                worst = max(
+                    float(np.max(_violation(c.evaluate(x_proj), c.constraint_type)))
+                    for c in unsatisfied
+                )
+                warnings.warn(
+                    f"constrained EKF state projection did not converge "
+                    f"after {max_iter} iterations; largest constraint "
+                    f"violation {worst:.3e} exceeds tol {tol:.3e}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         # Covariance projection, once per constraint that was active:
         #     P <- P - P Gᵀ (G P Gᵀ)⁻¹ G P
-        # evaluated at the converged state.
+        # evaluated at the converged state, restricted to the rows that
+        # ended up sitting on the boundary there (|g| <= tol). This is a
+        # different predicate from the state loop's `g > tol` /
+        # `abs(g) > tol` violated-row mask: by convergence, every row that
+        # was driven to the boundary has g approx 0, so the violated-row
+        # mask would now exclude exactly the rows that belong in the
+        # active set. A row never violated during the state loop can also
+        # end up here if correcting another row of the same constraint
+        # pushed it onto its own boundary, which is why this is
+        # recomputed fresh from `x_proj` rather than reusing the state
+        # loop's per-iteration mask.
+        cov_pinv_warned = False
         for constraint in active:
             G = constraint.jacobian(x_proj)
+            g_val = constraint.evaluate(x_proj)
+            active_mask = np.abs(g_val) <= tol
+            if not np.any(active_mask):
+                continue
+            G = G[active_mask]
             GP = G @ P_proj
             GPGt = GP @ G.T
-            mu = np.eye(GPGt.shape[0]) * 1e-6
+            m_dim = GPGt.shape[0]
+            mu = np.eye(m_dim) * (_REG_EPS_REL * np.trace(GPGt) / m_dim)
             try:
                 GPGt_inv = np.linalg.inv(GPGt + mu)
             except np.linalg.LinAlgError:
+                # Can recur once per active constraint; warn once per call
+                # rather than once per constraint.
+                if not cov_pinv_warned:
+                    warnings.warn(
+                        "constrained EKF covariance projection: G P G^T is "
+                        "singular and could not be regularized; falling "
+                        "back to np.linalg.pinv",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    cov_pinv_warned = True
                 GPGt_inv = np.linalg.pinv(GPGt)
             P_proj = P_proj - GP.T @ GPGt_inv @ GP
 
             # Ensure symmetry
             P_proj = (P_proj + P_proj.T) / 2
 
-            # Enforce positive definiteness
+            # Enforce positive definiteness, flooring relative to this
+            # matrix's own scale rather than an absolute constant -- see
+            # _EIG_FLOOR_REL.
             eigvals, eigvecs = np.linalg.eigh(P_proj)
-            if np.any(eigvals < 1e-10):
-                eigvals[eigvals < 1e-10] = 1e-10
+            eig_floor = _EIG_FLOOR_REL * np.max(np.abs(eigvals))
+            # An eigenvalue more negative than -eig_floor is too large to
+            # be eigh roundoff on this projection (_EIG_FLOOR_REL is
+            # already sized to that roundoff -- see its definition above),
+            # so the projected covariance is genuinely non-PSD rather than
+            # merely rank-deficient in the constrained direction.
+            most_neg_eig = eigvals.min()
+            if most_neg_eig < -eig_floor:
+                raise np.linalg.LinAlgError(
+                    f"constrained EKF covariance projection is not "
+                    f"positive semi-definite: eigenvalue {most_neg_eig:.6e} "
+                    f"is too negative to be eigh roundoff"
+                )
+            if np.any(eigvals < eig_floor):
+                eigvals[eigvals < eig_floor] = eig_floor
                 P_proj = eigvecs @ np.diag(eigvals) @ eigvecs.T
 
         return x_proj, P_proj

@@ -15,6 +15,31 @@ import numpy as np
 import pytest
 
 astropy_time = pytest.importorskip("astropy.time")
+_iers = pytest.importorskip("astropy.utils.iers")
+
+
+@pytest.fixture(autouse=True)
+def _deterministic_iers():
+    """Pin astropy's Earth-orientation handling for this module.
+
+    The far-future epoch in EPOCHS (JD 2469807.5 is year 2050) sits past
+    the predictive span of any real IERS table, and astropy's default
+    behavior there depends on both the wall-clock date and whether it can
+    reach the network: with ``auto_download`` off it raises rather than
+    extrapolate once the cached table's predictions are more than
+    ``auto_max_age`` days stale. Neither input belongs in a unit test, so
+    this module extrapolates deliberately and offline. The resulting
+    UT1-UTC is irrelevant to what these tests check -- the module
+    docstring explains that they validate argument plumbing, not the
+    underlying SOFA kernels, and the sidereal-time comparison agrees to
+    4.9e-10 rad against a 5e-9 rad tolerance either way.
+
+    The root conftest restores these two settings after every test, so
+    pinning them here does not leak back out.
+    """
+    _iers.conf.auto_download = False
+    _iers.conf.auto_max_age = None
+
 
 from pytcl.astronomical.time_scales import (  # noqa: E402
     besselian_epoch2tdb,

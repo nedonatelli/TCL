@@ -12,6 +12,7 @@ Tests cover:
 """
 
 import numpy as np
+import pytest
 
 from pytcl.dynamic_estimation.particle_filters.bootstrap import (
     bootstrap_pf_predict,
@@ -63,6 +64,78 @@ class TestResampling:
         assert resampled.shape == particles.shape
         count = np.sum(np.all(resampled == particles[1], axis=1))
         assert count >= 2
+
+    BAD_WEIGHTS = [np.full(4, 0.125), np.array([0.5, 0.5, 0.5, 0.5]), np.zeros(4)]
+
+    @pytest.mark.parametrize("w", BAD_WEIGHTS)
+    @pytest.mark.parametrize(
+        "fn", [resample_systematic, resample_multinomial, resample_residual]
+    )
+    def test_every_resampler_rejects_unnormalized_weights(self, fn, w):
+        """Defect test: all three resamplers must reject weights that do
+        not sum to 1, instead of two of them silently returning a biased
+        sample (resample_systematic) or one warning then raising for the
+        wrong reason (resample_residual's divide-by-zero on all-zero
+        weights)."""
+        with pytest.raises(ValueError, match="sum to 1"):
+            fn(np.arange(4.0), w, np.random.default_rng(0))
+
+    @pytest.mark.parametrize(
+        "fn", [resample_systematic, resample_multinomial, resample_residual]
+    )
+    def test_normalization_tolerance_boundary(self, fn):
+        """Regression guard: the band is sqrt(eps) = 1.4901e-8, the one
+        numpy.random.Generator.choice applies (measured: it accepts a
+        1.4e-8 deviation and rejects 2.3e-8). 1e-9 and 1.4e-8 are inside
+        and must be accepted -- the former was rejected by an earlier
+        2.22e-13 band although it resamples correctly. 2.3e-8 and 1e-6
+        are outside and must be rejected.
+        """
+        particles = np.arange(4.0).reshape(4, 1)
+        for dev in (6.661e-16, 1e-9, 1.4e-8):
+            w = np.full(4, 0.25)
+            w[-1] += dev
+            fn(particles, w, np.random.default_rng(0))
+
+        for dev in (2.3e-8, 1e-6):
+            w = np.full(4, 0.25)
+            w[-1] += dev
+            with pytest.raises(ValueError, match="sum to 1"):
+                fn(particles, w, np.random.default_rng(0))
+
+    def test_systematic_accepts_1e9_deviation_with_correct_result(self):
+        """Defect test: [0.25]*3 + [0.25 + 1e-9] raised ValueError under the
+        2.22e-13 band; pre-guard it returned [0, 1, 2, 3], which is correct."""
+        w = np.array([0.25, 0.25, 0.25, 0.25 + 1e-9])
+        out = resample_systematic(np.arange(4.0), w, np.random.default_rng(0))
+        np.testing.assert_array_equal(out, [0.0, 1.0, 2.0, 3.0])
+
+    @pytest.mark.parametrize(
+        "fn", [resample_systematic, resample_multinomial, resample_residual]
+    )
+    def test_validation_message_points_at_a_real_notes_section(self, fn):
+        """Defect test: the error promised a Notes section none of the
+        resamplers had."""
+        assert "Notes\n    -----" in fn.__doc__
+        with pytest.raises(ValueError, match="Notes section"):
+            fn(np.arange(4.0), np.zeros(4), np.random.default_rng(0))
+
+    def test_systematic_resampling_is_unbiased_on_normalized_weights(self):
+        """PROPERTY: expected counts track the weights.
+
+        resample_systematic returns a copy of the selected particle rows,
+        not their indices, so np.bincount only recovers the selection
+        counts here because the particle values happen to equal their
+        own indices (0.0, 1.0, 2.0, 3.0).
+        """
+        w = np.array([0.1, 0.2, 0.3, 0.4])
+        counts = np.zeros(4)
+        for seed in range(2000):
+            idx = resample_systematic(
+                np.arange(4.0), w, rng=np.random.default_rng(seed)
+            )
+            counts += np.bincount(idx.astype(int), minlength=4)
+        assert np.allclose(counts / counts.sum(), w, atol=0.01)
 
 
 class TestEffectiveSampleSize:
