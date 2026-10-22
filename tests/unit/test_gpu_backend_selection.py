@@ -77,19 +77,24 @@ def test_both_backends_failing_raises_with_cupy_cause(monkeypatch):
     assert isinstance(info.value.__cause__, RuntimeError)
 
 
-def test_available_warns_on_installed_but_broken_cupy(monkeypatch):
-    class Broken(types.ModuleType):
-        def __getattr__(self, name):
-            raise AttributeError(name)
-
+def test_available_is_quiet_when_cupy_import_raises_runtime_error(monkeypatch):
     def fake_import(name):
         if name == "cupy":
             raise RuntimeError("CUDA driver version")
-        return Broken(name)
+        return types.ModuleType(name)
 
     monkeypatch.setattr(_backend.importlib, "import_module", fake_import)
-    with pytest.warns(UserWarning, match="CUDA driver version"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert compute_backend_available() is True
+
+    def only_broken(name):
+        raise RuntimeError("CUDA driver version")
+
+    monkeypatch.setattr(_backend.importlib, "import_module", only_broken)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert compute_backend_available() is False
 
 
 def test_available_is_quiet_when_nothing_installed(monkeypatch):

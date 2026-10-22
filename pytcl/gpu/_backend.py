@@ -438,23 +438,17 @@ class MLXBackend(Backend):
 def compute_backend_available() -> bool:
     """Whether any GPU compute backend can be constructed.
 
-    A missing package is the expected case and is quiet. A package that is
-    installed but fails to import (for example a CUDA runtime mismatch) emits a
-    :class:`UserWarning` carrying the original error before the next backend is
-    tried.
+    This is a boolean probe: an absent or broken package both mean "not
+    available" and neither warns. :func:`get_compute_backend` is where a
+    failure is reported.
     """
     for module in ("cupy", "mlx.core"):
         try:
             importlib.import_module(module)
             return True
-        except ImportError:
-            pass
-        except Exception as exc:
-            warnings.warn(
-                f"{module} is installed but failed to import: {exc}",
-                UserWarning,
-                stacklevel=2,
-            )
+        except Exception:
+            # Selection reports failures; the probe only answers availability.
+            continue
     return False
 
 

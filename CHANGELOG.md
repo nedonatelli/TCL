@@ -124,8 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when the fallback is not double precision, says it computes in float32. If
   no fallback exists the `DependencyError` chains to the CuPy failure.
   `get_compute_backend(prefer="cupy")` still raises, and its message now
-  carries the underlying error. `compute_backend_available()` likewise warns
-  on an installed package that fails to import instead of swallowing it.
+  carries the underlying error.
 - **Stored schema versions are checked on read.** `schema_version=99` used to
   load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
   (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
