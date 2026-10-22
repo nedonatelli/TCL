@@ -5,5 +5,9 @@
 #include <stdio.h>
 #define mxMalloc  malloc
 #define mxFree    free
-#define mexPrintf printf
+/* Failure reports are queued (pymodule.c) and issued as one Python
+ * RuntimeWarning per model call; a bare printf bypassed the warning
+ * machinery entirely. */
+void nrlmsise_report(const char *fmt, ...);
+#define mexPrintf nrlmsise_report
 #endif
