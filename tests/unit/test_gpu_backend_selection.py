@@ -51,11 +51,27 @@ def test_prefer_cupy_failure_still_raises_with_original_message(monkeypatch):
 
 
 def test_cupy_not_installed_is_quiet(monkeypatch):
-    monkeypatch.setattr(
-        _backend, "CuPyBackend", _raising(ImportError("No module named 'cupy'"))
-    )
+    absent = ModuleNotFoundError("No module named 'cupy'", name="cupy")
+    monkeypatch.setattr(_backend, "CuPyBackend", _raising(absent))
     with warnings.catch_warnings():
         warnings.simplefilter("error")
+        backend = get_compute_backend()
+    assert backend.name != "cupy"
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ImportError("libcudart.so.12: cannot open shared object file"),
+        ModuleNotFoundError("No module named 'fastrlock'", name="fastrlock"),
+        ModuleNotFoundError(
+            "No module named 'cupy_backends.cuda'", name="cupy_backends.cuda"
+        ),
+    ],
+)
+def test_broken_cupy_install_warns_with_original_text(monkeypatch, exc):
+    monkeypatch.setattr(_backend, "CuPyBackend", _raising(exc))
+    with pytest.warns(UserWarning, match=str(exc).split(":")[0]):
         backend = get_compute_backend()
     assert backend.name != "cupy"
 

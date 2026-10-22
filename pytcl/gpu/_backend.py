@@ -499,8 +499,12 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
     cupy_failure: Optional[Exception] = None
     try:
         return CuPyBackend()
-    except ImportError:
-        pass
+    except ModuleNotFoundError as exc:
+        # Only CuPy's absence is quiet. An installed CuPy that cannot load
+        # (missing libcudart, a wheel for the wrong CUDA) also raises an
+        # ImportError, and hiding it would mean a silent float32 fallback.
+        if exc.name != "cupy":
+            cupy_failure = exc
     except Exception as exc:
         cupy_failure = exc
     try:
