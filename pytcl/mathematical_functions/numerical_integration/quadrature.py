@@ -5,6 +5,7 @@ This module provides Gaussian quadrature rules and numerical integration
 functions commonly used in state estimation and filtering.
 """
 
+import warnings
 from typing import Any, Callable, Literal, Optional, Tuple
 
 import numpy as np
@@ -402,6 +403,14 @@ def romberg(
     result : float
         Estimated integral value.
 
+    Warns
+    -----
+    RuntimeWarning
+        If ``max_steps`` is exhausted before successive diagonal estimates
+        agree to ``tol``. The returned value is then the last estimate, which
+        can be off by far more than ``tol`` (0.50098244 against 0.49998586
+        for a non-smooth integrand at ``tol=1e-15, max_steps=6``).
+
     Examples
     --------
     >>> # Integrate x^2 from 0 to 1 (exact = 1/3)
@@ -419,6 +428,7 @@ def romberg(
 
     h = b - a
     R[0, 0] = 0.5 * h * (f(a) + f(b))
+    last_change = float("inf")
 
     for i in range(1, max_steps):
         h = h / 2.0
@@ -436,10 +446,19 @@ def romberg(
             R[i, j] = (factor * R[i, j - 1] - R[i - 1, j - 1]) / (factor - 1)
 
         # Check convergence
-        if i > 0 and abs(R[i, i] - R[i - 1, i - 1]) < tol:
+        last_change = abs(R[i, i] - R[i - 1, i - 1])
+        if last_change < tol:
             return float(R[i, i])
 
-    return float(R[max_steps - 1, max_steps - 1])
+    estimate = float(R[max_steps - 1, max_steps - 1])
+    warnings.warn(
+        f"romberg did not reach the requested tolerance {tol:g} in "
+        f"{max_steps} steps; returning estimate {estimate:.10g} "
+        f"(last change {last_change:.3g})",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return estimate
 
 
 def simpson(
