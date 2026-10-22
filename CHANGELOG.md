@@ -115,6 +115,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GPU backend auto-selection no longer hides a CUDA failure.**
+  `get_compute_backend()` caught a bare `Exception` around `CuPyBackend()`, so
+  a CUDA driver mismatch fell through to MLX silently and a machine believed to
+  be doing float64 CUDA work computed in float32 (`1 + 1e-10` round-tripped
+  with `-1e-10` of error). A missing CuPy (`ImportError`) stays quiet; any
+  other failure now emits a `UserWarning` with the original error text and,
+  when the fallback is not double precision, says it computes in float32. If
+  no fallback exists the `DependencyError` chains to the CuPy failure.
+  `get_compute_backend(prefer="cupy")` still raises, and its message now
+  carries the underlying error. `compute_backend_available()` likewise warns
+  on an installed package that fails to import instead of swallowing it.
 - **Stored schema versions are checked on read.** `schema_version=99` used to
   load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
   (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
