@@ -1448,15 +1448,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no trailing newline, uncatchable by `warnings.catch_warnings`, immune
   to `-W error` and to suppression -- while the pure-Python fallback
   warns for the same conditions. Each compiled `gtd7`/`ghp7` call now
-  issues one `RuntimeWarning` carrying the C model's message (several
+  issues one `UserWarning` -- matching the fallback's existing category,
+  so one filter covers both backends -- carrying the C model's message (several
   reports in one call are joined with `; `) and writes nothing to
   stdout; a warning filter set to `error` raises from the call. Measured:
   `press_pa=1e-12` through `nrlmsise00_alt_for_pressure` hits ghp7's
   12-iteration limit with residual -0.3189 and now warns "ERROR: ghp7 not
   converging for press 1.000000e-14, diff -3.188880e-01". Returned values
   are unchanged: bit-identical to the pre-fix build over 1926 `gtd7` and
-  `ghp7` inputs, including the failing ones. The fallback's equivalent
-  warnings remain `UserWarning`.
+  `ghp7` inputs, including the failing ones.
 
 ## [2.11.0] - 2026-09-13
 

@@ -59,7 +59,10 @@ def test_out_of_range_solution_warns_with_a_converged_message():
 
 
 def test_nonfinite_solution_warns_with_a_non_convergence_message():
-    with pytest.warns(UserWarning, match="did not converge"):
+    with (
+        pytest.warns(UserWarning, match="did not converge"),
+        pytest.warns(UserWarning, match="ghp7 not converging"),
+    ):
         alt_km, _ = nrlmsise00_alt_for_pressure(press_pa=1e-30, **_KWARGS)
     assert not np.isfinite(alt_km)
 
@@ -130,7 +133,10 @@ def test_pressure_altitude_wrapper_raises_on_non_positive_pressure():
 def test_pressure_altitude_wrapper_warns_on_nonfinite_solution():
     """Same defect, exercised through the meters/radians entry point
     rather than nrlmsise00_alt_for_pressure directly."""
-    with pytest.warns(UserWarning, match="did not converge"):
+    with (
+        pytest.warns(UserWarning, match="did not converge"),
+        pytest.warns(UserWarning, match="ghp7 not converging"),
+    ):
         alt_m, _, _, _ = nrlmsise00_pressure_altitude(
             172, 29000.0, 1e-30, [np.radians(60.0), np.radians(-70.0)]
         )

@@ -4,9 +4,10 @@ The vendored C reported ghp7 non-convergence (and dnet's log-domain
 error) with a bare ``printf`` to native stdout, which
 ``warnings.catch_warnings``, ``-W error`` and pytest's capture never
 see. The pure-Python fallback has always used ``warnings.warn`` for the
-same conditions. The compiled path now issues a ``RuntimeWarning`` per
-model call and writes nothing to stdout; the returned values are
-unchanged (pinned bit-for-bit below from the pre-fix extension).
+same conditions. The compiled path now issues a ``UserWarning`` (the
+fallback's category) per model call and writes nothing to stdout; the
+returned values are unchanged (pinned bit-for-bit below from the
+pre-fix extension).
 """
 
 import ctypes
@@ -79,7 +80,7 @@ def _hex(values):
 
 class TestGhp7NonConvergence:
     def test_warns_runtimewarning_naming_ghp7(self):
-        with pytest.warns(RuntimeWarning, match="ghp7 not converging") as rec:
+        with pytest.warns(UserWarning, match="ghp7 not converging") as rec:
             _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         assert len(rec) == 1
         assert str(rec[0].message) == (
@@ -87,7 +88,7 @@ class TestGhp7NonConvergence:
         )
 
     def test_values_bit_identical_to_pre_fix_output(self):
-        with pytest.warns(RuntimeWarning, match="ghp7"):
+        with pytest.warns(UserWarning, match="ghp7"):
             alt, (d, t) = _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         assert alt.hex() == _GHP7_ALT
         assert _hex(d) == _GHP7_D
@@ -96,11 +97,11 @@ class TestGhp7NonConvergence:
     def test_raises_under_error_filter(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            with pytest.raises(RuntimeWarning, match="ghp7"):
+            with pytest.raises(UserWarning, match="ghp7"):
                 _nrlmsise00_c.ghp7(*_GHP7_ARGS)
 
     def test_nothing_written_to_stdout(self, capfd):
-        with pytest.warns(RuntimeWarning, match="ghp7"):
+        with pytest.warns(UserWarning, match="ghp7"):
             _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         _flush_c_stdio()
         assert capfd.readouterr().out == ""
@@ -108,7 +109,7 @@ class TestGhp7NonConvergence:
     def test_suppressible(self, capfd):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            warnings.filterwarnings("ignore", message=".*ghp7", category=RuntimeWarning)
+            warnings.filterwarnings("ignore", message=".*ghp7", category=UserWarning)
             alt, _ = _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         _flush_c_stdio()
         assert alt.hex() == _GHP7_ALT
@@ -125,8 +126,9 @@ class TestGhp7NonConvergence:
                 g_long_deg=-70.0,
                 lst=16.0,
             )
-        runtime = [w for w in rec if w.category is RuntimeWarning]
-        assert [str(w.message) for w in runtime] == [
+        ghp7 = [w for w in rec if "not converging" in str(w.message)]
+        assert all(w.category is UserWarning for w in ghp7)
+        assert [str(w.message) for w in ghp7] == [
             "ERROR: ghp7 not converging for press 1.000000e-14, diff -3.188880e-01"
         ]
 
@@ -141,7 +143,7 @@ class TestGhp7NonConvergence:
 
 class TestDnetLogError:
     def test_one_aggregated_warning_per_call(self):
-        with pytest.warns(RuntimeWarning, match="dnet log error") as rec:
+        with pytest.warns(UserWarning, match="dnet log error") as rec:
             _nrlmsise00_c.gtd7(*_GTD7_ARGS)
         assert len(rec) == 1
         assert str(rec[0].message) == (
@@ -151,7 +153,7 @@ class TestDnetLogError:
         )
 
     def test_values_bit_identical_to_pre_fix_output(self):
-        with pytest.warns(RuntimeWarning, match="dnet"):
+        with pytest.warns(UserWarning, match="dnet"):
             d, t = _nrlmsise00_c.gtd7(*_GTD7_ARGS)
         assert _hex(d) == _GTD7_D
         assert _hex(t) == _GTD7_T
@@ -159,11 +161,11 @@ class TestDnetLogError:
     def test_raises_under_error_filter(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            with pytest.raises(RuntimeWarning, match="dnet"):
+            with pytest.raises(UserWarning, match="dnet"):
                 _nrlmsise00_c.gtd7(*_GTD7_ARGS)
 
     def test_nothing_written_to_stdout(self, capfd):
-        with pytest.warns(RuntimeWarning, match="dnet"):
+        with pytest.warns(UserWarning, match="dnet"):
             _nrlmsise00_c.gtd7(*_GTD7_ARGS)
         _flush_c_stdio()
         assert capfd.readouterr().out == ""

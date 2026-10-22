@@ -80,7 +80,7 @@ issue_reports(void)
     }
     report_len = 0;
     report_truncated = 0;
-    return PyErr_WarnEx(PyExc_RuntimeWarning, report_buf, 1);
+    return PyErr_WarnEx(PyExc_UserWarning, report_buf, 1);
 }
 
 static int
