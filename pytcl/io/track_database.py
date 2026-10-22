@@ -184,7 +184,8 @@ class TrackDatabaseManager:
         detection_id : str
             Unique detection identifier.
         measurement : ArrayLike
-            Measurement vector.
+            Measurement vector. An (n, 1) column is stored, and read back, as
+            (n,); on a schema 2.0 file any other shape is kept.
         sensor_id : str
             Sensor source identifier.
         timestamp : float
@@ -196,6 +197,9 @@ class TrackDatabaseManager:
         """
         self._check_writable()
         meas = np.asarray(measurement, dtype=np.float64)
+        if meas.ndim > 1 and meas.size == meas.shape[0]:
+            # An (n, 1) column read back as (n,) before schema 2.0; keep that.
+            meas = meas.reshape(meas.shape[0])
         legacy = self._schema_version < 2
         if legacy:
             self._check_legacy_shapes(meas, covariance)
@@ -249,7 +253,7 @@ class TrackDatabaseManager:
         association_status : str, optional
             Filter by status ('unassociated', 'associated', 'clutter').
         limit : int, optional
-            Maximum number of results.
+            Maximum number of results. A negative value means no limit.
 
         Returns
         -------
@@ -283,11 +287,9 @@ class TrackDatabaseManager:
         query += " ORDER BY timestamp"
         if limit is not None:
             if isinstance(limit, bool) or not isinstance(limit, (int, np.integer)):
-                raise ValueError(f"limit must be a non-negative int, got {limit!r}")
-            if limit < 0:
-                raise ValueError(f"limit must be a non-negative int, got {limit!r}")
+                raise ValueError(f"limit must be an int, got {limit!r}")
             query += " LIMIT ?"
-            params.append(int(limit))
+            params.append(max(int(limit), -1))
 
         self._cursor.execute(query, params)
         return [self._row_to_detection(row) for row in self._cursor.fetchall()]
@@ -416,7 +418,7 @@ class TrackDatabaseManager:
         self._check_writable()
         state = np.asarray(initial_state, dtype=np.float64)
         cov = np.asarray(initial_covariance, dtype=np.float64)
-        self._validate_state_shapes(state, cov)
+        state = self._validate_state_shapes(state, cov)
         meta_json = self._sanitize_metadata(metadata)
 
         self._cursor.execute(
@@ -1087,15 +1089,19 @@ class TrackDatabaseManager:
         Parameters
         ----------
         track : Track
-            pytcl Track NamedTuple.
+            pytcl Track NamedTuple, or any object with ``id``, ``state`` and
+            ``covariance`` (``MHTTrack``, ``SimpleTrack``, ...).
         timestamp : float, optional
             Override timestamp. Uses track.time if not provided.
 
         Notes
         -----
-        ``status``, ``hits`` and ``misses`` are stored with the state. They
-        used to be dropped, so a confirmed track with 5 hits and 1 miss read
-        back tentative with 0 and 0.
+        ``status`` and the hit and miss counts (``hits``/``misses``, or
+        ``n_hits``/``n_misses`` on ``MHTTrack``) are stored with the state.
+        They used to be dropped, so a confirmed track with 5 hits and 1 miss
+        read back tentative with 0 and 0. A field the object does not carry,
+        or a status that is not tentative, confirmed or deleted (including
+        ``None``), keeps the value the state update gives it, as before.
         """
         self._check_writable()
         t = timestamp if timestamp is not None else track.time
@@ -1109,15 +1115,22 @@ class TrackDatabaseManager:
             self.initiate_track(track_id, track.state, track.covariance, t)
         else:
             self.update_track_state(track_id, track.state, track.covariance, t)
-        self._cursor.execute(
-            "UPDATE tracks SET status = ?, hits = ?, misses = ? WHERE track_id = ?",
-            (
-                _TRACK_STATUS_TO_DB[track.status.value].value,
-                int(track.hits),
-                int(track.misses),
-                track_id,
-            ),
-        )
+
+        status = getattr(track, "status", None)
+        db_status = _TRACK_STATUS_TO_DB.get(getattr(status, "value", status))
+        fields = {
+            "status": None if db_status is None else db_status.value,
+            "hits": getattr(track, "hits", getattr(track, "n_hits", None)),
+            "misses": getattr(track, "misses", getattr(track, "n_misses", None)),
+        }
+        for column, value in fields.items():
+            if value is not None:
+                if column != "status":
+                    value = int(value)
+                self._cursor.execute(
+                    f"UPDATE tracks SET {column} = ? WHERE track_id = ?",
+                    (value, track_id),
+                )
         self._connection.commit()
 
     def store_from_tracklist(self, track_list: Any) -> None:
@@ -1184,7 +1197,7 @@ class TrackDatabaseManager:
         update_type: str = "update",
     ) -> None:
         """Insert a single state row into track_states."""
-        self._validate_state_shapes(state, covariance)
+        state = self._validate_state_shapes(state, covariance)
         res_bytes = None
         if residual is not None:
             res_bytes = np.asarray(residual, dtype=np.float64).tobytes()
@@ -1236,16 +1249,20 @@ class TrackDatabaseManager:
     @staticmethod
     def _validate_state_shapes(
         state: NDArray[np.float64], covariance: NDArray[np.float64]
-    ) -> None:
-        """Raise unless ``state`` is (n,) and ``covariance`` is (n, n).
+    ) -> NDArray[np.float64]:
+        """Return ``state`` as (n,); raise unless it is (n,) or (n, 1) and
+        ``covariance`` is (n, n).
 
         Track-state rows store ``len(state)`` as the dimension and read the
         covariance back as ``dim * dim`` elements, so any other shape was
-        stored under the wrong dimension and garbled on read.
+        stored under the wrong dimension and garbled on read. An (n, 1)
+        column holds the same n values in the same order and always read
+        back as (n,).
         """
-        if state.ndim != 1:
+        if state.ndim == 0 or state.size != state.shape[0]:
             raise ValueError(
-                f"state must be a 1-D vector of shape (n,), got shape {state.shape}"
+                f"state must be a vector of shape (n,) or (n, 1), got shape "
+                f"{state.shape}"
             )
         n = state.shape[0]
         if covariance.shape != (n, n):
@@ -1253,6 +1270,7 @@ class TrackDatabaseManager:
                 f"covariance must have shape ({n}, {n}) for a state of length "
                 f"{n}, got shape {covariance.shape}"
             )
+        return state.reshape(n)
 
     @staticmethod
     def _check_legacy_shapes(meas: NDArray[np.float64], cov: Any) -> None:

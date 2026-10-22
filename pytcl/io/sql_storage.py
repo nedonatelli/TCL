@@ -371,7 +371,7 @@ class SQLStorage(StorageBackend):
             literally and case-sensitively (``_`` and ``%`` are not
             wildcards; ``"a"`` lists neither ``"ab/x"``, ``"A/x"`` nor the
             bare key ``"a"``). A trailing ``/`` is optional. Default is "/"
-            (all keys).
+            (all keys); ``""`` also lists all keys.
 
         Returns
         -------
@@ -381,7 +381,7 @@ class SQLStorage(StorageBackend):
         if self._cursor is None:
             raise RuntimeError("Storage not open. Call open() first.")
 
-        if group != "/":
+        if group.strip("/"):
             # Compare "group/" as an exact, case-sensitive prefix. LIKE treated
             # "_" as a wildcard, folded ASCII case, and had no "/" boundary,
             # so "a_b" also listed "aXb/y", "A_B/y" and "a_bc/z".

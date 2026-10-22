@@ -214,6 +214,21 @@ class TestSQLKeyPrefix:
 
             assert store.list_keys("a") == ["a/x"]
 
+    @pytest.mark.parametrize("root", ["", "/"])
+    def test_root_group_lists_every_key_as_in_v2_11_0(self, tmp_path, root):
+        """v2.11.0 matched "" with LIKE '%' (every key); the fix returned []."""
+        from tests.validation._v2110 import shipped_module
+
+        listed = []
+        for cls in (shipped_module("pytcl/io/sql_storage.py").SQLStorage, SQLStorage):
+            with cls() as store:
+                store.open(str(tmp_path / f"{cls.__module__}.db"), mode="w")
+                store.store_array("a/x", np.zeros(1))
+                store.store_array("b", np.zeros(1))
+                store.store_scalar("m", 1.0)
+                listed.append(sorted(store.list_keys(root)))
+        assert listed[1] == listed[0] == ["a/x", "b", "m"]
+
 
 class TestReaderScanGrouping:
     def test_int64_times_above_2_53_do_not_merge_silently(self, tmp_path):

@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 
 from pytcl.io.track_database import TrackDatabaseManager
+from tests.validation._v2110 import shipped_module
 
-SHAPES = [(3,), (1, 3), (3, 1), (2, 3), (6,), (3, 3)]
+SHAPES = [(3,), (1, 3), (2, 3), (6,), (3, 3)]
 
 
 @pytest.mark.parametrize("shape", SHAPES)
@@ -59,39 +60,14 @@ def test_new_database_is_schema_2(tmp_path):
 
 
 def _write_v1_database(path):
-    """A version-1.0 file byte-for-byte as the pre-fix code wrote it."""
+    """A version-1.0 file written by the shipped v2.11.0 TrackDatabaseManager."""
     meas = np.array([1.0, 2.0, 3.0])
     cov = np.array([[4.0, 1.0, 0.0], [1.0, 9.0, 0.0], [0.0, 0.0, 1.0]])
-    twod = np.arange(6, dtype=float).reshape(2, 3)
-    con = sqlite3.connect(path)
-    con.execute("""CREATE TABLE detections (
-        detection_id TEXT PRIMARY KEY,
-        timestamp REAL NOT NULL,
-        sensor_id TEXT NOT NULL,
-        measurement BLOB NOT NULL,
-        measurement_dim INTEGER NOT NULL,
-        measurement_dtype TEXT NOT NULL DEFAULT 'float64',
-        covariance BLOB,
-        association_status TEXT DEFAULT 'unassociated',
-        associated_track_id TEXT,
-        association_confidence REAL DEFAULT 0.0,
-        metadata TEXT)""")
-    con.execute(
-        "CREATE TABLE _pytcl_track_db_metadata "
-        "(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
-    )
-    con.execute("INSERT INTO _pytcl_track_db_metadata VALUES ('schema_version','1.0')")
-    rows = [
-        ("vec", 0.0, "s", meas.tobytes(), 3, "float64", cov.tobytes()),
-        ("two_d", 1.0, "s", twod.tobytes(), 2, "float64", None),
-    ]
-    con.executemany(
-        "INSERT INTO detections (detection_id, timestamp, sensor_id, measurement,"
-        " measurement_dim, measurement_dtype, covariance) VALUES (?,?,?,?,?,?,?)",
-        rows,
-    )
-    con.commit()
-    con.close()
+    old = shipped_module("pytcl/io/track_database.py").TrackDatabaseManager(path)
+    old.open("w")
+    old.store_detection("vec", meas, "s", 0.0, covariance=cov)
+    old.store_detection("two_d", np.arange(6, dtype=float).reshape(2, 3), "s", 1.0)
+    old.close()
     return meas, cov
 
 
@@ -171,6 +147,29 @@ class TestTrackStateShapes:
             db.initiate_track("t", np.ones((1, 3)), np.eye(3), 0.0)
         db.close()
 
+    def test_column_state_reads_back_as_v2_11_0_stored_it(self, tmp_path, schema):
+        P = np.array([[4.0, 1.0, 0.0], [1.0, 9.0, 0.0], [0.0, 0.0, 1.0]])
+        col = np.array([[1.0], [2.0], [3.0]])
+        old = shipped_module("pytcl/io/track_database.py").TrackDatabaseManager(
+            tmp_path / "old.db"
+        )
+        old.open("w")
+        old.initiate_track("t", col, P, 0.0)
+        old.update_track_state("t", 2 * col, 2 * P, 1.0)
+        old.store_track_history("t", 3 * col[None], 3 * P[None], [2.0])
+        old_rows = old.get_track_history("t")
+        old.close()
+
+        db = self._db(tmp_path, schema)
+        db.initiate_track("t", col, P, 0.0)
+        db.update_track_state("t", 2 * col, 2 * P, 1.0)
+        db.store_track_history("t", 3 * col[None], 3 * P[None], [2.0])
+        rows = db.get_track_history("t")
+        db.close()
+        assert rows["states"].shape == old_rows["states"].shape == (3, 3)
+        assert np.array_equal(rows["states"], old_rows["states"])
+        assert np.array_equal(rows["covariances"], old_rows["covariances"])
+
     def test_non_square_covariance_raises(self, tmp_path, schema):
         db = self._db(tmp_path, schema)
         with pytest.raises(ValueError, match=r"\(3, 3\).*\(2, 3\)"):
@@ -179,7 +178,9 @@ class TestTrackStateShapes:
         with pytest.raises(ValueError, match=r"\(3, 3\)"):
             db.update_track_state("t", np.ones(3), np.eye(2), 1.0)
         with pytest.raises(ValueError, match=r"shape \(n,\)"):
-            db.update_track_state("t", np.ones((3, 1)), np.eye(3), 1.0)
+            db.update_track_state("t", np.ones((1, 3)), np.eye(3), 1.0)
+        with pytest.raises(ValueError, match=r"\(3, 3\)"):
+            db.update_track_state("t", np.ones((3, 1)), np.ones(9), 1.0)
         db.close()
 
     def test_failed_initiate_leaves_no_track(self, tmp_path, schema):
@@ -434,9 +435,146 @@ def test_retrieve_detections_limit_is_bound_and_validated(tmp_path):
         db.store_detection(f"d{i}", np.zeros(2), "s", float(i))
     assert len(db.retrieve_detections(limit=2)) == 2
     assert db.retrieve_detections(limit=0) == []
-    with pytest.raises(ValueError, match="limit"):
-        db.retrieve_detections(limit=-1)
-    with pytest.raises(ValueError, match="limit"):
-        db.retrieve_detections(limit="1; DROP TABLE detections")
+    for bad in ("1; DROP TABLE detections", True, 2.0):
+        with pytest.raises(ValueError, match="limit"):
+            db.retrieve_detections(limit=bad)
     assert len(db.retrieve_detections()) == 4
     db.close()
+
+
+@pytest.mark.parametrize("limit", [-1, -5, np.int64(-1)])
+def test_negative_limit_means_no_limit_as_in_v2_11_0(tmp_path, limit):
+    ids = []
+    for module, name in (
+        (shipped_module("pytcl/io/track_database.py"), "old.db"),
+        (None, "new.db"),
+    ):
+        cls = TrackDatabaseManager if module is None else module.TrackDatabaseManager
+        db = cls(tmp_path / name)
+        db.open()
+        for i in range(4):
+            db.store_detection(f"d{i}", np.zeros(2), "s", float(i))
+        ids.append([d["detection_id"] for d in db.retrieve_detections(limit=limit)])
+        db.close()
+    assert ids[1] == ids[0] == ["d0", "d1", "d2", "d3"]
+
+
+def _old_and_new(tmp_path, schema="new"):
+    old = shipped_module("pytcl/io/track_database.py").TrackDatabaseManager(
+        tmp_path / "old.db"
+    )
+    old.open("w")
+    path = tmp_path / "new.db"
+    if schema == "v1":
+        _write_v1_database(path)
+    new = TrackDatabaseManager(path)
+    new.open("a")
+    return old, new
+
+
+@pytest.mark.parametrize("schema", ["new", "v1"])
+@pytest.mark.parametrize("shape", [(3, 1), (1, 1), (3, 1, 1)])
+def test_column_measurement_reads_back_as_v2_11_0_stored_it(tmp_path, schema, shape):
+    col = np.arange(1.0, 1.0 + shape[0]).reshape(shape)
+    cov = 2 * np.eye(shape[0])
+    got = []
+    for db in _old_and_new(tmp_path, schema):
+        db.store_detection("c", col, "s", 5.0, covariance=cov)
+        got.append(db.retrieve_detection("c"))
+        db.close()
+    old, new = got
+    assert new["measurement"].shape == old["measurement"].shape == (shape[0],)
+    assert np.array_equal(new["measurement"], old["measurement"])
+    assert np.array_equal(new["covariance"], old["covariance"])
+
+
+def test_compat_adapter_column_x0_stores_as_v2_11_0_did(tmp_path):
+    from pytcl.io.compat import KalmanTrackAdapter
+
+    x0 = np.array([[1.0], [2.0], [3.0], [4.0]])
+    P0 = np.diag([1.0, 2.0, 3.0, 4.0])
+    old, new = _old_and_new(tmp_path)
+    old.initiate_track("trk", x0, P0, 0.0)
+    with pytest.warns(DeprecationWarning):
+        adapter = KalmanTrackAdapter(new, "trk", np.eye(4), np.eye(2, 4), P0, P0)
+    adapter.initialize(x0, P0, timestamp=0.0)
+    want, got = old.get_track_state("trk"), new.get_track_state("trk")
+    old.close()
+    new.close()
+    assert got["state"].shape == want["state"].shape == (4,)
+    assert np.array_equal(got["state"], want["state"])
+    assert np.array_equal(got["covariance"], want["covariance"])
+
+
+def _mht_track(n_hits=4, n_misses=1):
+    from pytcl.trackers.hypothesis import MHTTrack, MHTTrackStatus
+
+    return MHTTrack(
+        id=3,
+        state=np.array([1.0, 2.0]),
+        covariance=np.eye(2),
+        score=0.5,
+        status=MHTTrackStatus.CONFIRMED,
+        history=[0, -1],
+        parent_id=-1,
+        scan_created=0,
+        n_hits=n_hits,
+        n_misses=n_misses,
+    )
+
+
+def test_store_from_track_accepts_mht_track_and_keeps_its_counts(tmp_path):
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open()
+    db.store_from_track(_mht_track(), timestamp=1.0)
+    row = db.get_track("trk_3")
+    assert (row["status"], row["hits"], row["misses"]) == ("confirmed", 4, 1)
+    db.store_from_track(_mht_track(n_hits=6, n_misses=0), timestamp=2.0)
+    row = db.get_track("trk_3")
+    assert (row["status"], row["hits"], row["misses"]) == ("confirmed", 6, 0)
+    assert np.array_equal(db.get_track_state("trk_3")["state"], [1.0, 2.0])
+    db.close()
+
+
+_COLUMNS = ("status", "birth_time", "last_update_time", "hits", "misses")
+
+
+def _stored(db, obj, times):
+    for t in times:
+        db.store_from_track(obj._replace(time=t))
+    row = db.get_track(f"trk_{obj.id}")
+    return {k: row[k] for k in _COLUMNS}
+
+
+def test_status_none_track_stores_the_v2_11_0_row(tmp_path):
+    from collections import namedtuple
+
+    Bare = namedtuple("Bare", "id state covariance status time")
+    obj = Bare(5, np.array([1.0, 2.0]), np.eye(2), None, 1.0)
+    old, new = _old_and_new(tmp_path)
+    want = _stored(old, obj, (1.0, 2.0, 3.0))
+    got = _stored(new, obj, (1.0, 2.0, 3.0))
+    old.close()
+    new.close()
+    assert want == {
+        "status": "tentative",
+        "birth_time": 1.0,
+        "last_update_time": 3.0,
+        "hits": 2,
+        "misses": 0,
+    }
+    assert got == want
+
+
+def test_status_none_with_counts_keeps_v2_11_0_status_and_stores_counts(tmp_path):
+    from collections import namedtuple
+
+    Counted = namedtuple("Counted", "id state covariance status hits misses time")
+    obj = Counted(5, np.array([1.0, 2.0]), np.eye(2), None, 7, 2, 1.0)
+    old, new = _old_and_new(tmp_path)
+    want = _stored(old, obj, (1.0, 2.0))
+    got = _stored(new, obj, (1.0, 2.0))
+    old.close()
+    new.close()
+    assert got["status"] == want["status"] == "tentative"
+    assert (got["hits"], got["misses"]) == (7, 2)
