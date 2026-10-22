@@ -625,6 +625,48 @@ class TestConstrainedEKFEdgeCases:
         assert constraint.is_satisfied(x_proj)
         assert P_proj.shape == (n, n)
 
+    def test_covariance_projection_falls_back_to_pinv_once(self):
+        """An active constraint with zero gradient leaves G P Gᵀ exactly 0.
+
+        Each hinge max(x_i - 5, 0) = 0 is violated at the start, so it
+        joins the active set, but the plane constraint pushes the state
+        past its kink, where both value and Jacobian are exactly zero.
+        The trace-relative regularizer is then zero too, so the inverse
+        raises and the pinv fallback runs for both hinges with a single
+        warning.
+        """
+
+        def hinge(i):
+            def G(x):
+                row = np.zeros((1, 2))
+                row[0, i] = float(x[i] > 5.0)
+                return row
+
+            return ConstraintFunction(
+                lambda x: np.array([max(x[i] - 5.0, 0.0)]),
+                G=G,
+                constraint_type="equality",
+            )
+
+        plane = ConstraintFunction(
+            lambda x: np.array([x[0] + x[1] - 8.0]),
+            G=lambda x: np.array([[1.0, 1.0]]),
+        )
+        cekf = ConstrainedEKF()
+        for c in (hinge(0), hinge(1), plane):
+            cekf.add_constraint(c)
+
+        with pytest.warns(RuntimeWarning, match="covariance projection") as rec:
+            x_proj, P_proj = cekf._project_onto_constraints(
+                np.array([10.0, 10.0]), np.eye(2)
+            )
+
+        assert len([w for w in rec if "covariance projection" in str(w.message)]) == 1
+        np.testing.assert_allclose(x_proj, [4.0, 4.0], atol=1e-6)
+        # The plane's own projection still applies: no variance along [1, 1].
+        ones = np.array([1.0, 1.0])
+        assert ones @ P_proj @ ones == pytest.approx(0.0, abs=1e-6)
+
 
 class TestConvenientFunctions:
     """Test convenience functions for CEKF."""

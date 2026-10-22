@@ -302,18 +302,14 @@ def decompose_to_2d(
 
             j = free_j[row_ind[best_idx]]
             k = free_k[col_ind[best_idx]]
-            assignment_cost = cost[i, j, k]
-
-            # Only the unfavorable-direction infinity (the mask value for
-            # already-used indices, or a user-supplied forbidden pairing)
-            # means no usable assignment; the favorable direction (see
-            # above) is a genuine, infinitely-favorable pick to keep.
-            bad_inf = -np.inf if maximize else np.inf
-            if assignment_cost != bad_inf:
-                assignments.append((i, j, k))
-                total_cost += assignment_cost
-                used_j[j] = True
-                used_k[k] = True
+            # scipy never assigns an unfavorable-direction infinity (it
+            # raises "infeasible" instead, handled above), and favorable
+            # infinities were swapped for the sentinel, so this pick is
+            # always usable.
+            assignments.append((i, j, k))
+            total_cost += cost[i, j, k]
+            used_j[j] = True
+            used_k[k] = True
 
     # Transform back to original indexing
     if fixed_dimension == 1:
