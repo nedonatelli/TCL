@@ -149,7 +149,8 @@ class TestMarcumSwerling:
         assert got == pytest.approx(want, rel=1e-13)
 
     # Measured before the fix: 8.23856e-6 against 9.04805e-6 (-8.9%) at
-    # n=6; rel 1.98e-05 at n=3, 3.27e-04 at n=4.
+    # n=6; rel 1.98e-05 at n=3, 3.27e-04 at n=4. n*snr/2 = 1 is the switch
+    # between the summed mixture and the closed form; n=200 overflowed.
     CASE3 = [
         (1e-6, 6, 0.1),
         (1e-6, 3, 0.5),
@@ -157,13 +158,18 @@ class TestMarcumSwerling:
         (1e-4, 10, 2.0),
         (1e-8, 30, 0.05),
         (1e-2, 100, 0.01),
+        (1e-6, 200, 1e-4),
+        (1e-10, 1000, 2e-3),
+        (1e-6, 1000, 0.1),
+        (1e-6, 3, 0.6),
+        (1e-6, 3, 0.7),
     ]
 
     @pytest.mark.parametrize("pfa,n,snr", CASE3)
     def test_case3_general_n_matches_series(self, pfa, n, snr):
         want = _nb_mixture_pd(snr, pfa, n, 3)
         got = float(swerling_detection_probability(snr, pfa, n, 3))
-        assert got == pytest.approx(want, rel=1e-11)
+        assert got == pytest.approx(want, rel=1e-12)
 
     @pytest.mark.parametrize("pfa,n,snr", [(1e-6, 6, 0.1), (1e-6, 3, 0.5)])
     def test_case3_series_oracle_agrees_with_quadrature(self, pfa, n, snr):

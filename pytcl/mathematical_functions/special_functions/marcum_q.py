@@ -398,8 +398,13 @@ def swerling_detection_probability(
     Before v2.11.1 the Swerling 3 branch evaluated only the single-term form
     that is exact for ``n <= 2``, so ``n > 2`` was wrong: -8.9% at
     ``pfa=1e-6, n=6, snr=0.1`` and -21% at ``pfa=1e-8, n=30, snr=0.05``.
-    The general-``n`` form now agrees with the exact Poisson-mixture series
-    to about 2e-12 relative (``n`` up to 100, ``snr`` 1e-3 to 50).
+    For ``n > 2`` the general-``n`` closed form is used when the mean
+    scan SNR ``n*snr/2`` exceeds 1; below that its terms cancel (by
+    ``n=200, snr=1e-4`` it overflows to ``-inf``), so the exact
+    negative-binomial mixture of gamma tails is summed instead. Against that
+    series in mpmath at 40 digits the relative error is below 1e-13 for
+    ``pfa`` 1e-10 to 1e-2, ``n`` 3 to 100 with ``snr`` 1e-5 to 50, and
+    ``n`` 200 to 1000 with ``n*snr/2`` up to 100.
 
     ``snr = 0`` returns ``pfa`` for every case, elementwise. Cases 1 (for
     ``n > 1``) and 3 used to return NaN or ``-inf`` there.
@@ -456,16 +461,36 @@ def swerling_detection_probability(
         zero = snr == 0
         s = np.where(zero, 1.0, snr)
         k = 1 + n * s / 2
-        pd = (
-            (1 + 2 / (n * s)) ** (n - 2)
-            * (1 + vt / k - 2 * (n - 2) / (n * s))
-            * np.exp(-vt / k)
-        )
-        if n > 2:
+        if n <= 2:
             pd = (
-                pd * sp.gammainc(n - 1, vt / (1 + 2 / (n * s)))
+                (1 + 2 / (n * s)) ** (n - 2)
+                * (1 + vt / k - 2 * (n - 2) / (n * s))
+                * np.exp(-vt / k)
+            )
+            return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
+        # For n > 2 and mean SNR n*snr/2 <= 1 the closed form's terms cancel
+        # (and overflow to -inf by n=200, snr=1e-4), so sum the exact
+        # negative-binomial mixture of gamma tails instead; with ratio <= 1/2
+        # 200 terms leave a tail below 1e-58.
+        theta = n * s / 2
+        series = theta <= 1
+        pd = np.empty(s.shape, dtype=np.float64)
+        if np.any(series):
+            th = theta[series][:, None]
+            j = np.arange(200.0)
+            w = (j + 1) * th**j / (1 + th) ** (j + 2)
+            pd[series] = np.sum(w * sp.gammaincc(n + j, vt), axis=1)
+        closed = ~series
+        if np.any(closed):
+            sc = s[closed]
+            kc = k[closed]
+            pd[closed] = (
+                (1 + 2 / (n * sc)) ** (n - 2)
+                * (1 + vt / kc - 2 * (n - 2) / (n * sc))
+                * np.exp(-vt / kc)
+                * sp.gammainc(n - 1, vt / (1 + 2 / (n * sc)))
                 + sp.gammaincc(n - 1, vt)
-                + np.exp((n - 1) * np.log(vt) - vt - sp.gammaln(n - 1)) / k
+                + np.exp((n - 1) * np.log(vt) - vt - sp.gammaln(n - 1)) / kc
             )
         return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
 
