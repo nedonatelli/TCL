@@ -344,10 +344,10 @@ def _cfar_go_kernel(
 
 # fastmath=True implies nnan/ninf, which makes NaN tests and infinity
 # sentinels dead code; the SO kernels need NaN to propagate.
-SO_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
+_SO_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
 
 
-@njit(cache=True, fastmath=SO_FASTMATH)
+@njit(cache=True, fastmath=_SO_FASTMATH)
 def _cfar_so_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -541,7 +541,7 @@ def _cfar_2d_go_kernel(
             threshold[i, j] = alpha * noise_estimate[i, j]
 
 
-@njit(cache=True, fastmath=SO_FASTMATH, parallel=True)
+@njit(cache=True, fastmath=_SO_FASTMATH, parallel=True)
 def _cfar_2d_so_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,

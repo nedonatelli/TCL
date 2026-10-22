@@ -156,8 +156,9 @@ def log_marcum_q(
     -----
     Where ``Q < 1e-10``, or where ``marcum_q`` returns NaN for finite
     input (``a^2`` or ``b^2`` overflowing), the value is recomputed in the
-    log domain. For ``a*b <= 2e4`` or ``(m-1)^2 > 4ab`` it is a log-sum-exp
-    of the Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
+    log domain. When ``a^2/2`` and ``b^2/2`` are both finite and either
+    ``a*b <= 2e4`` or ``(m-1)^2 > 4ab``, it is a log-sum-exp of the
+    Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
     Otherwise it is a quadrature of the exact integrand
     ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
     factored out, which needs neither squared argument.
@@ -271,7 +272,7 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
     nu = m - 1.0
     d = b - a
 
-    def log_h(x: NDArray[np.floating]) -> NDArray[np.floating]:
+    def _log_h(x: NDArray[np.floating]) -> NDArray[np.floating]:
         return np.log(x) + nu * (np.log(x) - np.log(a)) + _log_ive(nu, a, x)
 
     if d >= 8.0:
@@ -280,28 +281,28 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
             return -np.inf
         v, w = _LAGUERRE
         u = v / d
-        terms = log_h(b + u) - 0.5 * u * u + np.log(w)
+        terms = _log_h(b + u) - 0.5 * u * u + np.log(w)
         top = terms.max()
         return float(lead + top + np.log(np.sum(np.exp(terms - top))) - np.log(d))
     nodes, weights = _LEGENDRE
 
-    def log_integral(lo: float, hi: float) -> float:
+    def _log_integral(lo: float, hi: float) -> float:
         edges = np.linspace(lo, hi, int(np.ceil(hi - lo)) + 1)
         mid = 0.5 * (edges[1:] + edges[:-1])[:, None]
         half = 0.5 * (edges[1:] - edges[:-1])[:, None]
         t = (mid + half * nodes).ravel()
-        terms = log_h(a + t) - 0.5 * t * t + np.log((half * weights).ravel())
+        terms = _log_h(a + t) - 0.5 * t * t + np.log((half * weights).ravel())
         top = terms.max()
         return float(top + np.log(np.sum(np.exp(terms - top))))
 
     if d >= 0.0:
-        return log_integral(d, 50.0)
+        return _log_integral(d, 50.0)
     # For b < a, Q is 1 minus the mass below b; integrating the upper part
     # directly would let quadrature error push log Q above 0.
     lo = max(-a, -45.0)
     if lo >= d:
         return -0.0
-    return float(np.log1p(-np.exp(log_integral(lo, d))))
+    return float(np.log1p(-np.exp(_log_integral(lo, d))))
 
 
 def _log_gammaincc(s: NDArray[np.floating], x: float) -> NDArray[np.floating]:
@@ -512,11 +513,12 @@ def swerling_detection_probability(
     ``pfa=1e-6, n=6, snr=0.1`` and -21% at ``pfa=1e-8, n=30, snr=0.05``.
     For ``n > 2`` the general-``n`` closed form is used when the mean
     scan SNR ``theta = n*snr/2`` exceeds ``max(1, sqrt(n))``; below that
-    its terms cancel (2e-11 relative at ``n=1000, theta=1.5``; ``-inf`` at
-    ``n=200, theta=0.01``), so the exact negative-binomial mixture of gamma
-    tails is summed instead. Against that series in mpmath at 40 digits the
-    relative error is below 2e-13 for ``pfa`` 1e-10 to 1e-2, ``n`` 3 to
-    5000 and ``theta`` 1e-3 to 300, measured on both sides of each switch.
+    its terms cancel (2.6e-11 relative at ``n=1000, theta=1.5, pfa=1e-6``;
+    ``-inf`` at ``n=200, theta=0.01``), so the exact negative-binomial
+    mixture of gamma tails is summed instead. Against that series in mpmath
+    at 40 digits the relative error is below 2e-13 for ``pfa`` 1e-10 to
+    1e-2, ``n`` 3 to 5000 and ``theta`` 1e-3 to 300, measured on both sides
+    of each switch.
 
     ``snr = 0`` returns ``pfa`` for every case, elementwise. Cases 1 (for
     ``n > 1``) and 3 used to return NaN or ``-inf`` there.
@@ -581,7 +583,7 @@ def swerling_detection_probability(
             )
             return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
         # The closed form's terms cancel for mean scan SNR n*snr/2 up to about
-        # sqrt(n) (2e-11 at n=1000, theta=1; -inf at n=200, theta=0.01), so
+        # sqrt(n) (2.6e-11 at n=1000, theta=1.5; -inf at n=200, theta=0.01), so
         # there the exact negative-binomial mixture of gamma tails is summed.
         # Its ratio q = theta/(1+theta) leaves a tail of about J q^J, below
         # 1e-65 for J = 160 (1 + theta).
