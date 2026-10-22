@@ -40,3 +40,19 @@ def test_partial_cancellation_warns_and_keeps_value():
     with pytest.warns(RuntimeWarning, match="half of the available digits"):
         got = generalized_hypergeometric(p, q, z)
     assert got == pytest.approx(want, rel=1e-4)
+
+
+def test_terminating_exact_root_is_zero_not_nan(recwarn):
+    # 3F2([-1,1,1],[1,1],z) = 1 - z, exactly 0 at z = 1.
+    got = generalized_hypergeometric([-1.0, 1.0, 1.0], [1.0, 1.0], [0.5, 1.0, 2.0])
+    assert list(got) == [0.5, 0.0, -1.0]
+    assert generalized_hypergeometric([-1.0, 1.0, 1.0], [1.0, 1.0], 1.0) == 0.0
+    assert not [w for w in recwarn if issubclass(w.category, RuntimeWarning)]
+
+
+def test_terminating_total_cancellation_recovered_exactly():
+    # Laguerre L_80(20): summed in floats it is 4.2e12 (largest term 3.7e28);
+    # the exact polynomial value is -1986.4165.
+    p, q, z = [-80.0, 1.0], [1.0, 1.0], 20.0
+    want = float(mpmath.hyper(p, q, z))
+    assert generalized_hypergeometric(p, q, z) == pytest.approx(want, rel=1e-12)

@@ -12,6 +12,7 @@ case (p > 2 or q > 1).
 """
 
 import warnings
+from fractions import Fraction
 from typing import Any
 
 import numpy as np
@@ -438,10 +439,42 @@ _EPS = float(np.finfo(np.float64).eps)
 _CANCELLATION_WARN = 1e-8
 
 
+def _exact_polynomial_value(a: Any, b: Any, z: float) -> float:
+    """Evaluate a terminating pFq in exact rational arithmetic.
+
+    Floats are exact rationals, so the only rounding is the final
+    conversion. Returns NaN if a denominator parameter hits a pole.
+    """
+    n = int(min(-ai for ai in a if ai <= 0 and float(ai).is_integer()))
+    zf = Fraction(float(z))
+    term = Fraction(1)
+    total = Fraction(1)
+    for k in range(1, n + 1):
+        den = Fraction(k)
+        for ai in a:
+            term *= Fraction(float(ai)) + (k - 1)
+        for bi in b:
+            den *= Fraction(float(bi)) + (k - 1)
+        if den == 0:
+            return float("nan")
+        term = term * zf / den
+        total += term
+    return float(total)
+
+
 def _flag_cancellation(
-    result: NDArray[np.floating], max_term: NDArray[np.floating]
+    result: NDArray[np.floating],
+    max_term: NDArray[np.floating],
+    a: Any,
+    b: Any,
+    z: NDArray[np.floating],
+    terminates: bool,
 ) -> NDArray[np.floating]:
     """Blank out sums whose rounding error swamps the value.
+
+    A terminating series with no surviving digits is re-evaluated in exact
+    arithmetic instead, so an exact zero (``1 - z`` at ``z = 1``) stays 0
+    while a non-terminating sum that merely rounds to 0.0 still becomes NaN.
 
     Summing terms as large as ``max_term`` leaves an absolute error of about
     ``eps * max_term``. When that reaches ``abs(result)`` no significant
@@ -451,6 +484,13 @@ def _flag_cancellation(
     with np.errstate(divide="ignore", invalid="ignore"):
         loss = _EPS * max_term / np.abs(result)
     lost = ~(loss < 1.0)
+    if terminates and np.any(lost):
+        result = result.copy()
+        for j in np.flatnonzero(lost):
+            result[j] = _exact_polynomial_value(a, b, z[j])
+        recovered = lost & ~np.isnan(result)
+        lost = lost & ~recovered
+        loss = np.where(recovered, 0.0, loss)
     degraded = ~lost & (loss > _CANCELLATION_WARN)
     if np.any(lost):
         warnings.warn(
@@ -581,7 +621,7 @@ def generalized_hypergeometric(
             stacklevel=2,
         )
 
-    result = _flag_cancellation(result, max_term)
+    result = _flag_cancellation(result, max_term, a, b, z_arr, terminates)
     return result if result.size > 1 else result[0]
 
 
