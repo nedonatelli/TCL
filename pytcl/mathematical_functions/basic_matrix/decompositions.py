@@ -5,6 +5,7 @@ This module provides matrix decomposition functions that wrap numpy/scipy
 with consistent APIs matching the MATLAB TrackerComponentLibrary conventions.
 """
 
+import warnings
 from typing import Literal, Optional, Tuple
 
 import numpy as np
@@ -32,14 +33,22 @@ def chol_semi_def(
         If True, return upper triangular factor R such that A ≈ R.T @ R.
         If False (default), return lower triangular factor L such that A ≈ L @ L.T.
     tol : float, optional
-        Eigenvalues below tol * max(eigenvalues) are treated as zero.
-        Default is 1e-10.
+        Eigenvalues within ``tol * max(abs(eigenvalues))`` of zero are treated
+        as zero; eigenvalues below ``-tol * max(abs(eigenvalues))`` mean the
+        matrix is indefinite. Default is 1e-10.
 
     Returns
     -------
     L_or_R : ndarray
-        Lower (or upper if upper=True) triangular Cholesky factor.
-        Shape is (n, n).
+        Lower (or upper if upper=True) triangular Cholesky factor with a
+        non-negative diagonal. Shape is (n, n).
+
+    Raises
+    ------
+    numpy.linalg.LinAlgError
+        If ``A`` has an eigenvalue below the negative tolerance, i.e. is not
+        positive semi-definite. Earlier versions silently factored such
+        input into a ``L @ L.T`` that differed from ``A``.
 
     Examples
     --------
@@ -68,10 +77,15 @@ def chol_semi_def(
     # Fall back to eigenvalue decomposition for semi-definite case
     eigenvalues, eigenvectors = la.eigh(A)
 
-    # Threshold small/negative eigenvalues
     max_eig = np.max(np.abs(eigenvalues))
-    threshold = tol * max_eig if max_eig > 0 else tol
-    eigenvalues = np.maximum(eigenvalues, threshold)
+    if np.min(eigenvalues) < -tol * max_eig:
+        raise np.linalg.LinAlgError(
+            "Matrix is not positive semi-definite: smallest eigenvalue "
+            f"{np.min(eigenvalues):.6g} (largest magnitude {max_eig:.6g})"
+        )
+    # Floor at exactly 0: a positive floor would break L @ L.T == A for
+    # rank-deficient input.
+    eigenvalues = np.maximum(eigenvalues, 0.0)
 
     # Construct factor: A ≈ V @ diag(λ) @ V.T = (V @ diag(√λ)) @ (V @ diag(√λ)).T
     sqrt_eig = np.sqrt(eigenvalues)
@@ -80,6 +94,8 @@ def chol_semi_def(
     # Convert to triangular form: factor.T = Q R gives
     # A = factor @ factor.T = R.T @ R, so R is the upper factor
     Q, R = la.qr(factor.T)
+    signs = np.where(np.diag(R) < 0.0, -1.0, 1.0)
+    R = signs[:, None] * R
     if upper:
         return R
     return R.T
@@ -272,6 +288,19 @@ def matrix_sqrt(
     S : ndarray
         Principal square root matrix of shape (n, n).
 
+    Raises
+    ------
+    numpy.linalg.LinAlgError
+        If ``A`` is symmetric with a negative eigenvalue: it has no real
+        square root, and earlier versions returned a ``S`` with
+        ``S @ S != A`` (error 4.0 for ``diag(-4, 9)``).
+
+    Warns
+    -----
+    RuntimeWarning
+        If ``method='denman_beavers'`` exhausts its 50 iterations without
+        converging.
+
     Notes
     -----
     The principal square root has eigenvalues with positive real parts.
@@ -290,6 +319,15 @@ def matrix_sqrt(
 
     if A.ndim != 2 or A.shape[0] != A.shape[1]:
         raise ValueError(f"Expected square matrix, got shape {A.shape}")
+
+    if np.allclose(A, A.T):
+        eig_sym = np.linalg.eigvalsh(0.5 * (A + A.T))
+        scale = np.max(np.abs(eig_sym)) if eig_sym.size else 0.0
+        if np.min(eig_sym, initial=0.0) < -A.shape[0] * np.finfo(float).eps * scale:
+            raise np.linalg.LinAlgError(
+                "Matrix has a negative eigenvalue "
+                f"({np.min(eig_sym):.6g}); no real square root exists"
+            )
 
     if method == "schur":
         return la.sqrtm(A).real
@@ -314,6 +352,13 @@ def matrix_sqrt(
                 break
 
             Y, Z = Y_new, Z_new
+        else:
+            warnings.warn(
+                "matrix_sqrt: Denman-Beavers iteration did not converge in 50 "
+                "iterations; the result may not satisfy S @ S == A",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         return Y
 
