@@ -191,7 +191,12 @@ class TestTotalLeastSquaresRank:
     def test_system_has_requested_singular_values(self):
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
         s = np.linalg.svd(np.column_stack([A, b]), compute_uv=False)
-        assert_allclose(s, [5.0, 1.0, 1e-4], rtol=1e-12)
+        # Weyl: every computed singular value is within ~eps * sigma_max of
+        # the exact one, an absolute bound; rtol=1e-12 on 1e-4 is tighter than
+        # that and failed on OpenBLAS (error 1.3e-16 absolute).
+        assert_allclose(
+            s, [5.0, 1.0, 1e-4], rtol=0, atol=10 * np.finfo(float).eps * 5.0
+        )
 
     def test_rank_truncation_changes_the_solution(self):
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
