@@ -12,10 +12,17 @@ import numpy as np
 import pytest
 import scipy.special as sp
 
+from pytcl.mathematical_functions.special_functions.bessel import bessel_ratio
+from pytcl.mathematical_functions.special_functions.debye import debye
+from pytcl.mathematical_functions.special_functions.hypergeometric import (
+    hyp1f1_regularized,
+)
+from pytcl.mathematical_functions.special_functions.lambert_w import lambert_w_real
 from pytcl.mathematical_functions.special_functions.marcum_q import (
     log_marcum_q,
     swerling_detection_probability,
 )
+from pytcl.mathematical_functions.statistics.distributions import ChiSquared
 
 
 def _poisson_pmf(k, lam):
@@ -339,3 +346,230 @@ class TestMarcumSwerling:
         for idx in np.ndindex(a.shape):
             want = _log_marcum_q_series(a[idx], b[idx], 5)
             assert got[idx] == pytest.approx(want, rel=1e-13, abs=0)
+
+
+def _debye_mpmath(n, x):
+    """D_n(x) = n/x^n * int_0^x t^n/(e^t - 1) dt, 40-digit tanh-sinh.
+
+    Below x = 2 the integral is taken in s = t/x: mpmath's t-form error
+    estimate is wrong there for n >= 40 (it returned 0.95192 for D_40(0.1)
+    against 0.95201 from the s-form and from the series).
+    """
+    with mpmath.workdps(40):
+        x = mpmath.mpf(x)
+        if x < 2:
+            return float(
+                n
+                * mpmath.quad(
+                    lambda s: s ** (n - 1) * (x * s / mpmath.expm1(x * s)), [0, 1]
+                )
+            )
+        pts = [mpmath.mpf(0)]
+        pts += [mpmath.mpf(2 * i) for i in range(1, int(x / 2) + 1)]
+        pts.append(x)
+        pts = sorted(set(pts))
+        integral = mpmath.quad(lambda t: t**n / mpmath.expm1(t), pts)
+        return float(n / x**n * integral)
+
+
+class TestDebye:
+    """Oracle: mpmath quadrature of the Debye integrand at 40 digits."""
+
+    @pytest.mark.parametrize("n", [1, 2, 4, 6, 10])
+    @pytest.mark.parametrize("x", [0.5, 1.0, 1.99, 2.0, 5.0, 40.0])
+    def test_orders_up_to_10_still_match(self, n, x):
+        got = float(debye(n, x)[0])
+        assert got == pytest.approx(_debye_mpmath(n, x), rel=1e-12, abs=0)
+
+    @pytest.mark.parametrize("n", [15, 20, 30, 40, 50])
+    @pytest.mark.parametrize(
+        "x", [0.1, 1.0, 2.0, 5.0, 15.0, 50.0, 70.0, 100.0, 300.0, 700.0]
+    )
+    def test_high_orders_match(self, n, x):
+        got = float(debye(n, x)[0])
+        assert got == pytest.approx(_debye_mpmath(n, x), rel=1e-12, abs=0)
+
+    def test_measured_defects_at_brief_values(self):
+        assert float(debye(30, 2.0)[0]) == pytest.approx(0.3267614, rel=1e-6, abs=0)
+        assert float(debye(20, 2.0)[0]) == pytest.approx(0.3336207, rel=1e-6, abs=0)
+
+    def test_zero_and_infinity(self):
+        got = debye(7, np.array([0.0, np.inf]))
+        assert got[0] == 1.0
+        assert got[1] == 0.0
+
+    def test_array_keeps_shape_and_mixes_regimes(self):
+        x = np.array([[0.5, 3.0], [60.0, 1000.0]])
+        got = debye(25, x)
+        assert got.shape == (2, 2)
+        for idx in np.ndindex(x.shape):
+            assert got[idx] == pytest.approx(
+                _debye_mpmath(25, x[idx]), rel=1e-12, abs=0
+            )
+
+    @pytest.mark.parametrize("x", [-10.0, -1e-9])
+    def test_negative_x_raises(self, x):
+        with pytest.raises(ValueError, match="x must be >= 0"):
+            debye(1, x)
+
+    @pytest.mark.parametrize("n", [0, -3, 2.5])
+    def test_invalid_order_raises(self, n):
+        with pytest.raises(ValueError, match="must be >= 1 and an integer"):
+            debye(n, 1.0)
+
+
+class TestBesselRatio:
+    """Oracle: scipy jv/iv quotient, which bessel_ratio does not call on the
+    converged continued-fraction or reflection paths exercised here."""
+
+    @pytest.mark.parametrize("kind,fn", [("j", sp.jv), ("i", sp.iv)])
+    @pytest.mark.parametrize("n", [-1, -2, -3, -7, -2.0])
+    @pytest.mark.parametrize("x", [0.5, 1.0, 3.0, 9.5])
+    def test_negative_integer_order(self, kind, fn, n, x):
+        want = fn(n + 1, x) / fn(n, x)
+        got = float(bessel_ratio(n, x, kind=kind))
+        assert got == pytest.approx(want, rel=1e-12, abs=0)
+
+    def test_brief_value(self):
+        assert float(bessel_ratio(-1, 1.0)) == pytest.approx(
+            -1.7388857, rel=1e-7, abs=0
+        )
+
+    @pytest.mark.parametrize("kind,fn", [("j", sp.jv), ("i", sp.iv)])
+    @pytest.mark.parametrize("n", [0, 1, 5, 20, -0.5, -2.5])
+    @pytest.mark.parametrize("x", [0.5, 3.0, 10.0])
+    def test_other_orders_still_match(self, kind, fn, n, x):
+        want = fn(n + 1, x) / fn(n, x)
+        got = float(bessel_ratio(n, x, kind=kind))
+        assert got == pytest.approx(want, rel=1e-12, abs=0)
+
+    def test_negative_integer_order_array_and_zero(self):
+        x = np.array([[1.0, 0.0], [3.0, 5.0]])
+        got = bessel_ratio(-2, x)
+        assert got.shape == (2, 2)
+        assert got[0, 1] == 0.0
+        for idx in [(0, 0), (1, 0), (1, 1)]:
+            assert got[idx] == pytest.approx(
+                sp.jv(-1, x[idx]) / sp.jv(-2, x[idx]), rel=1e-12, abs=0
+            )
+
+
+class TestLambertW:
+    """Oracle: mpmath lambertw. lambert_w_real calls scipy, so scipy cannot
+    serve here."""
+
+    @pytest.mark.parametrize("branch", [0, -1])
+    def test_branch_point_is_minus_one(self, branch):
+        with mpmath.workdps(40):
+            assert abs(mpmath.lambertw(-1 / mpmath.e, branch) + 1) < 1e-15
+        got = lambert_w_real(-math.exp(-1), branch=branch)
+        assert float(got) == -1.0
+
+    def test_branch_point_in_array(self):
+        got = lambert_w_real(np.array([-math.exp(-1), 1.0]))
+        assert got[0] == -1.0
+        assert got[1] == pytest.approx(float(mpmath.lambertw(1)), rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize("x", [-0.36, -0.2, 0.0, 1.0, 10.0, 1e5])
+    def test_principal_branch_matches(self, x):
+        want = float(mpmath.lambertw(mpmath.mpf(x), 0).real)
+        got = float(lambert_w_real(x))
+        assert got == pytest.approx(want, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize("x", [-0.36, -0.2, -1e-3, -1e-10])
+    def test_lower_branch_matches(self, x):
+        want = float(mpmath.lambertw(mpmath.mpf(x), -1).real)
+        got = float(lambert_w_real(x, branch=-1))
+        assert got == pytest.approx(want, rel=1e-13, abs=0)
+
+
+def _hyp1f1_reg_mpmath(a, b, z):
+    """1F1(a;b;z)/Gamma(b); at b = -m the limit, taken at b = -m + 1e-25."""
+    with mpmath.workdps(80):
+        a, z = mpmath.mpf(a), mpmath.mpf(z)
+        b = mpmath.mpf(b)
+        if b <= 0 and b == int(b):
+            b = b + mpmath.mpf(10) ** -25
+        return float(mpmath.hyp1f1(a, b, z) * mpmath.rgamma(b))
+
+
+class TestHyp1f1Regularized:
+    """Oracle: mpmath, plus the documented limit e for (1, 0, 1)."""
+
+    def test_documented_limit(self):
+        assert float(hyp1f1_regularized(1, 0, 1)) == pytest.approx(
+            math.e, rel=1e-13, abs=0
+        )
+
+    @pytest.mark.parametrize(
+        "a,b,z",
+        [
+            (1.0, 0.0, 1.0),
+            (1.0, -2.0, 1.0),
+            (0.5, -1.0, 2.0),
+            (2.0, 0.0, -1.5),
+            (3.5, -3.0, 0.7),
+        ],
+    )
+    def test_non_positive_integer_b(self, a, b, z):
+        got = float(hyp1f1_regularized(a, b, z))
+        assert got == pytest.approx(_hyp1f1_reg_mpmath(a, b, z), rel=1e-12, abs=0)
+
+    def test_pole_at_zero_argument_is_zero(self):
+        assert float(hyp1f1_regularized(1.0, 0.0, 0.0)) == 0.0
+
+    @pytest.mark.parametrize(
+        "a,b,z",
+        [(0.5, 1.5, 1.0), (2.0, 3.0, -1.0), (1.0, 3.0, 1.0), (-1.5, 0.5, 4.0)],
+    )
+    def test_ordinary_b_still_matches(self, a, b, z):
+        got = float(hyp1f1_regularized(a, b, z))
+        assert got == pytest.approx(_hyp1f1_reg_mpmath(a, b, z), rel=1e-12, abs=0)
+
+    def test_array_mixes_pole_and_ordinary(self):
+        b = np.array([[0.0, 1.5], [-2.0, 3.0]])
+        got = hyp1f1_regularized(1.0, b, 1.0)
+        assert got.shape == (2, 2)
+        for idx in np.ndindex(b.shape):
+            assert got[idx] == pytest.approx(
+                _hyp1f1_reg_mpmath(1.0, b[idx], 1.0), rel=1e-12, abs=0
+            )
+
+
+class TestChiSquared:
+    """Oracle: closed-form chi-squared pdf and regularized-gamma cdf in mpmath."""
+
+    @staticmethod
+    def _pdf(df, x):
+        with mpmath.workdps(30):
+            h = mpmath.mpf(df) / 2
+            x = mpmath.mpf(x)
+            return float(x ** (h - 1) * mpmath.exp(-x / 2) / (2**h * mpmath.gamma(h)))
+
+    @staticmethod
+    def _cdf(df, x):
+        with mpmath.workdps(30):
+            return float(
+                mpmath.gammainc(
+                    mpmath.mpf(df) / 2, 0, mpmath.mpf(x) / 2, regularized=True
+                )
+            )
+
+    @pytest.mark.parametrize("df", [0.5, 2.0, 2.5, 4, 7.3])
+    @pytest.mark.parametrize("x", [0.3, 1.0, 5.5])
+    def test_pdf_and_cdf(self, df, x):
+        c = ChiSquared(df)
+        assert float(c.pdf(x)) == pytest.approx(self._pdf(df, x), rel=1e-12, abs=0)
+        assert float(c.cdf(x)) == pytest.approx(self._cdf(df, x), rel=1e-12, abs=0)
+
+    def test_fractional_df_is_not_truncated(self):
+        c = ChiSquared(2.5)
+        assert float(c.pdf(1.0)) == pytest.approx(0.28134823, rel=1e-7, abs=0)
+        assert c.mean() == 2.5
+        assert c.var() == 5.0
+
+    @pytest.mark.parametrize("df", [1, 3, 10])
+    def test_integer_df_moments(self, df):
+        c = ChiSquared(df)
+        assert c.mean() == float(df)
+        assert c.var() == 2.0 * df

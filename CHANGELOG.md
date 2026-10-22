@@ -107,6 +107,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `debye(n, x)` was wrong from `n = 10` up and accepted negative `x`. The
+  large-x branch subtracted same-magnitude terms: against a 40-digit mpmath
+  quadrature `debye(30, 2.0)` returned 2.2021e8 (true 0.3267614),
+  `debye(20, 2.0)` returned 0.3466273 (true 0.3336207, 3.9% off), and
+  `debye(1, -10)` returned -716.560 against 5.164443 (negative `x` took the
+  small-x series; it now raises `ValueError`).
+  The x >= 1 range now uses all-positive composite Gauss-Legendre quadrature
+  and, past `n + 2*sqrt(n) + 5`, an incomplete-gamma tail form. Verified
+  against mpmath for every tested n up to 50 and x from 1e-6 to 700; worst
+  relative error 3e-14. Nothing is claimed above n = 50. Non-integer or
+  `n < 1` raises `ValueError`.
+- `bessel_ratio(n, x)` at a negative integer order hit `b_k = 0` in the
+  continued fraction and returned `inf`: `bessel_ratio(-1, 1.0)` was `-inf`
+  against `-1.7388857`. It now uses the reflection `J_{-m} = (-1)^m J_m`,
+  `I_{-m} = I_m`; agreement with scipy `jv`/`iv` quotients is within 1e-12.
+- `lambert_w_real(-1/e)` returned `nan` on both real branches; the exact value
+  is -1. It is now -1, matching the complex-path fix.
+- `hyp1f1_regularized(1, 0, 1)` returned `nan` (`inf/inf`) where the docstring
+  promises a finite limit. It now returns e = 2.718281828459045 via
+  `(a)_{m+1} z^{m+1}/(m+1)! * 1F1(a+m+1; m+2; z)` at `b = -m`.
+- `ChiSquared(df)` truncated `df` with `int()`: `ChiSquared(2.5).pdf(1.0)` was
+  0.30326533 (the df=2 value) against 0.28134823 and `.mean()` was 2.0. `df`
+  is now kept real.
+
 - `swerling_detection_probability(..., swerling_case=3)` evaluated only the
   single-term closed form, which is exact for `n_pulses <= 2` and misses two
   gamma terms beyond that. Measured against the exact Poisson-mixture series:
