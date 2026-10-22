@@ -39,9 +39,47 @@ def test_chol_semi_def_rank_deficient_dense_psd_reconstructs():
     assert np.all(np.diag(L) >= 0.0)
 
 
+def _with_eigenvalues(eigs, seed=7):
+    q, _ = np.linalg.qr(np.random.default_rng(seed).standard_normal((3, 3)))
+    a = q @ np.diag(eigs) @ q.T
+    return 0.5 * (a + a.T), q
+
+
+@pytest.mark.parametrize("neg", [-1e-14, -5e-11])
+def test_chol_semi_def_accepts_rounding_level_negative_eigenvalue(neg):
+    # cholSemiDef.m is meant for filter covariances that are "very slightly
+    # non-positive semi-definite due to finite precision errors"; those must
+    # still factor, to the matrix with the negative eigenvalue floored at 0.
+    A, q = _with_eigenvalues([1.0, 0.5, neg])
+    floored = q @ np.diag([1.0, 0.5, 0.0]) @ q.T
+    L = chol_semi_def(A)
+    assert np.max(np.abs(L @ L.T - floored)) <= 1e-15 + abs(neg)
+    assert np.all(np.diag(L) >= 0.0)
+
+
+def test_chol_semi_def_rejects_eigenvalue_just_past_the_band():
+    A, _ = _with_eigenvalues([1.0, 0.5, -2e-10])
+    with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+        chol_semi_def(A)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_chol_semi_def_accepts_rank_deficient_outer_products(seed):
+    # B @ B.T of rank 2 in 6x6 has computed eigenvalues down to -1.6e-16 of
+    # the largest, so the plain Cholesky fails and the guard must pass it.
+    B = np.random.default_rng(seed).standard_normal((6, 2)) * [[1e3, 1e-2]]
+    P = B @ B.T
+    L = chol_semi_def(P)
+    assert np.max(np.abs(L @ L.T - P)) <= 1e-14 * np.max(np.abs(P))
+    assert np.all(np.diag(L) >= 0.0)
+
+
 @pytest.mark.parametrize("method", ["schur", "eigenvalue", "denman_beavers"])
 def test_matrix_sqrt_rejects_negative_eigenvalues(method):
-    with pytest.raises(np.linalg.LinAlgError):
+    with pytest.raises(
+        np.linalg.LinAlgError,
+        match=r"negative eigenvalue \(-4\); no real square root exists",
+    ):
         matrix_sqrt(np.diag([-4.0, 9.0]), method=method)
 
 
@@ -59,8 +97,10 @@ def test_matrix_sqrt_denman_beavers_warns_on_nonconvergence():
 
 
 def test_romberg_warns_when_it_cannot_reach_the_tolerance():
-    with pytest.warns(RuntimeWarning, match="tolerance"):
-        romberg(lambda t: abs(t - 0.3) ** 0.5, 0.0, 1.0, tol=1e-15, max_steps=6)
+    # The true integral is 0.49998586; six steps stop at 0.50098244.
+    with pytest.warns(RuntimeWarning, match=r"tolerance 1e-15.*estimate 0\.50098243"):
+        got = romberg(lambda t: abs(t - 0.3) ** 0.5, 0.0, 1.0, tol=1e-15, max_steps=6)
+    assert got == pytest.approx(0.50098244, rel=1e-8, abs=0)
 
 
 def test_romberg_converges_silently_on_smooth_integrand():
@@ -91,6 +131,7 @@ def test_mle_reports_unridged_fisher_and_honest_covariance_on_flat_direction():
     assert not res.converged
     assert res.covariance[0, 0] == pytest.approx(1.0, abs=1e-12)
     assert np.isinf(res.covariance[1, 1])
+    assert np.isnan(res.covariance[0, 1]) and np.isnan(res.covariance[1, 0])
 
 
 def test_mle_well_conditioned_is_unchanged_and_converged():

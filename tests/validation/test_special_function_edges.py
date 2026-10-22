@@ -317,8 +317,8 @@ class TestMarcumSwerling:
         else:
             assert got == pytest.approx(want, rel=2e-13, abs=0)
 
-    # Past a*b/2 = max(1e6, (m-1)^2) the series window is replaced by
-    # quadrature of the exact integrand.
+    # Past a*b = 2e4, wherever (m-1)^2 <= 4ab, the series window is replaced
+    # by quadrature of the exact integrand.
     @pytest.mark.parametrize(
         "a,b,m",
         [

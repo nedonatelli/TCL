@@ -50,6 +50,19 @@ def chol_semi_def(
         positive semi-definite. Earlier versions silently factored such
         input into a ``L @ L.T`` that differed from ``A``.
 
+    Notes
+    -----
+    **Deliberate deviation from MATLAB cholSemiDef.** ``cholSemiDef.m``
+    never raises: it floors small or negative pivots and returns a factor
+    "close" to ``A`` for any symmetric input. Here eigenvalues in
+    ``[-tol * max(abs(eigenvalues)), 0)`` (``-1e-10`` relative at the
+    default ``tol``) are rounding error and are floored to exactly 0, so a
+    filter covariance that is slightly indefinite from finite precision
+    (the case ``cholSemiDef.m`` exists for) still factors, to that floored
+    matrix. An eigenvalue below that band raises ``LinAlgError``:
+    ``diag(1, -1)`` used to return a factor with
+    ``norm(L L' - A, inf) = 1.0``.
+
     Examples
     --------
     >>> A = np.array([[4, 2], [2, 1]])  # Singular but positive semi-definite
