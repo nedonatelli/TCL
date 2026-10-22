@@ -21,6 +21,7 @@ loading such a session without the matching keyword argument raises
 """
 
 import json
+import warnings
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
@@ -991,6 +992,14 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
         raise FormatError(
             f"session schema v{env.schema_version} is newer than this "
             f"pytcl supports (v{SESSION_SCHEMA_VERSION})"
+        )
+    if env.schema_version < 1:
+        warnings.warn(
+            f"session has schema version {env.schema_version!r}; this pytcl "
+            f"reads schema versions 1 through {SESSION_SCHEMA_VERSION}. "
+            "Loading it anyway; fields may be misread.",
+            UserWarning,
+            stacklevel=2,
         )
     restore = _RESTORERS[type(env.snapshot).__name__]
     return restore(env.snapshot, **models)

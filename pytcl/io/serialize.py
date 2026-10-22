@@ -15,6 +15,7 @@ malformed data rather than returning partial/garbage results.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, NamedTuple, Sequence
 
 import msgspec
@@ -122,6 +123,19 @@ def _codec(fmt: str) -> tuple[Any, Any]:
         raise ValueError(
             f"unknown fmt {fmt!r}; expected one of {sorted(_CODECS)}"
         ) from None
+
+
+def _warn_unknown_schema_version(source: str, found: Any, known: Sequence[Any]) -> None:
+    """Warn that a stored schema version is not one this reader knows."""
+    if found in known:
+        return
+    warnings.warn(
+        f"{source} has schema version {found!r}; this pytcl reads schema "
+        f"versions {', '.join(repr(k) for k in known)}. Loading it anyway; "
+        "fields written by a different schema may be misread.",
+        UserWarning,
+        stacklevel=3,
+    )
 
 
 def _check_finite(arr: NDArray[np.float64], fmt: str, name: str) -> None:

@@ -115,6 +115,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Stored schema versions are checked on read.** `schema_version=99` used to
+  load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
+  (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
+  `TrackDatabaseManager.open` (known: "1.0", "2.0") now emit a `UserWarning`
+  naming the file's version and the versions the reader knows, and still load.
+  `load_session` warns for versions below 1 and keeps its existing
+  `FormatError` for versions newer than supported. Reopening a file never
+  rewrites its stored version (pinned by `tests/validation/test_io_version_fields.py`).
+  Rejecting unknown versions outright is deferred to v2.12.0.
 - **A resumed `MultiTargetTracker` no longer re-earns confirmation.**
   `save_session` did not store each track's M-of-N `recent` window, so a
   restored tentative track restarted its count: with `confirm_hits=3`, a track

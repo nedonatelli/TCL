@@ -13,6 +13,10 @@ import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.io.serialize import _warn_unknown_schema_version
+
+_SCHEMA_VERSION = "1.0"
+
 
 def _cast_checked(x: ArrayLike, dtype: np.dtype, name: str) -> NDArray[Any]:
     """Cast `x` to `dtype`, refusing silent loss of a complex part.
@@ -109,7 +113,15 @@ class TrackHDF5Storage:
         if mode in ("w", "a"):
             if "_metadata" not in self._file:
                 meta = self._file.create_group("_metadata")
-                meta.attrs["schema_version"] = "1.0"
+                meta.attrs["schema_version"] = _SCHEMA_VERSION
+
+        if "_metadata" in self._file:
+            found = self._file["_metadata"].attrs.get("schema_version")
+            if isinstance(found, bytes):
+                found = found.decode()
+            _warn_unknown_schema_version(
+                f"HDF5 track file {str(self._path)!r}", found, (_SCHEMA_VERSION,)
+            )
 
     def close(self) -> None:
         """Close HDF5 file."""

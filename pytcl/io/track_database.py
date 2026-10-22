@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.io.serialize import _warn_unknown_schema_version
 from pytcl.io.sql_storage import _connect, _warn_if_w_reopens_data
 
 
@@ -1277,7 +1278,14 @@ class TrackDatabaseManager:
         except sqlite3.OperationalError:
             return 1
         row = self._cursor.fetchone()
-        return int(str(row[0]).split(".")[0]) if row else 1
+        if not row:
+            return 1
+        _warn_unknown_schema_version(
+            f"track database {str(self._path)!r}",
+            str(row[0]),
+            ("1.0", _CURRENT_SCHEMA_VERSION_STR),
+        )
+        return int(str(row[0]).split(".")[0])
 
     @staticmethod
     def _deserialize_vector(data: bytes, dim: int) -> NDArray[np.float64]:
