@@ -124,6 +124,11 @@ def lambert_w_real(
         raise ValueError(f"branch must be 0 or -1, got {branch}")
 
     result = sp.lambertw(x, k=branch)
+    # scipy returns nan at the branch point, where both real branches are -1
+    at_branch_point = np.isnan(result) & np.isclose(
+        x, branch_point, rtol=0.0, atol=5e-17
+    )
+    result = np.where(at_branch_point, -1.0 + 0.0j, result)[()]
     return np.real(result).astype(np.float64)
 
 

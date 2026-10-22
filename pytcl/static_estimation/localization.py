@@ -153,8 +153,9 @@ class RangeOnlyLocEst(NamedTuple):
         (3, 3, num_sol) Taylor-series covariance(s), present when a
         measurement covariance was supplied.
     p_crlb : ndarray or None
-        (3, 3, num_sol) Cramer-Rao lower bound covariance(s), present
-        when a measurement covariance was supplied.
+        (3, 3, num_sol) Cramer-Rao lower bound covariance(s), evaluated
+        at each returned solution, present when a measurement covariance
+        was supplied.
     """
 
     x_est: NDArray[np.floating]
@@ -192,8 +193,8 @@ def range_only_static_loc_est_np(
         technique of [2]_.
     r_cov : array_like, optional
         (num_meas, num_meas) measurement covariance. When given, the
-        Taylor-series and CRLB covariances are computed (method 1 only,
-        as in the original).
+        Taylor-series and CRLB covariances are computed. Method 1 only;
+        passing it with method 0 raises ``ValueError``.
 
     Returns
     -------
@@ -215,13 +216,49 @@ def range_only_static_loc_est_np(
 
     Notes
     -----
-    Port of ``rangeOnlyStaticLocEstNP.m``. Two behaviors of the original
-    are preserved deliberately: covariance outputs are only defined for
-    method 1 (the original references variables that method 0 never
-    creates), and the covariance of a uniquely-selected solution is
-    linearized about solution 1's position even when solution 2 was the
-    one selected (the original uses ``xEst1`` in ``Delta`` regardless of
-    which solution won the residual comparison).
+    Port of ``rangeOnlyStaticLocEstNP.m``. Covariance outputs are only
+    defined for method 1, as in the original (it references variables
+    that method 0 never creates).
+
+    **Deliberate deviation from MATLAB (both covariance outputs).** The
+    original's ``PTaylor`` and ``PCRLB`` are wrong, and this port does not
+    reproduce them:
+
+    - ``PTaylor`` is linearized about the wrong point and with the wrong
+      inverse. With more than three measurements the original builds
+      ``Delta`` from ``xEst1`` even when ``xEst2`` won the residual
+      comparison, pairing it with the winning root's ``Rt1``; and it solves
+      ``lsqminnorm(Delta, Rt*I - Gamma)``, which is not the derivative of
+      the ``SStar``-based estimate it returns. The port uses the returned
+      root and the estimator's own derivative,
+      ``solve(SStar Delta, SStar (Rt I - Gamma))``. For the five-sensor
+      test scene with ``R = 4 I``, MATLAB's diagonal is
+      ``[3.54, 4.43, 8.41]``; the corrected one is ``[8.42, 34.9, 69.4]``,
+      and a 2000-draw Monte Carlo of the estimate gives
+      ``[8.43, 34.9, 67.9]``. The original understated the spread 2.4x to
+      8.1x. Against the MATLAB fixture (noisy ranges,
+      ``R = diag(9, 25, 4, 1, 16)``) the port's diagonal is 2.27x, 3.90x
+      and 7.88x MATLAB's (``[22.1, 67.1, 209]`` against
+      ``[9.72, 17.2, 26.5]``).
+    - When noise makes Equation 21's discriminant negative, the root term
+      is clipped to zero and ``Rt = -(a.b)/(b.b - 1)`` no longer equals
+      ``abs(x)``. The port then differentiates ``Rt`` through ``a`` and
+      ``b`` directly; the ``abs(x)``-constrained formula above would be
+      off by orders of magnitude (diagonal ``[12040, 20746, 59357]``
+      against the estimator's true ``[2.66, 1.68, 1.23]`` in one such
+      draw at ``R = 4 I``).
+    - ``PCRLB`` inverts ``dxdr R^-1 dxdr'``, which uses the estimator
+      Jacobian where the measurement Jacobian belongs. The port returns
+      ``pinv(J' R^-1 J)`` with ``J`` the analytic Jacobian of the
+      bistatic ranges at the returned solution. Against the MATLAB
+      fixture, MATLAB's diagonal is 17.1x, 19.6x and 1.1x the bound
+      (``[36.8, 37.5, 11.2]`` against ``[2.15, 1.91, 10.1]``). The
+      original's minimal (three-measurement) ``PCRLB`` is wrong in the
+      same way, though its ``PTaylor`` is right.
+
+    With exactly coplanar sensors the Taylor linearization is singular
+    and ``numpy.linalg.LinAlgError`` is raised, where the original
+    returned a meaningless covariance.
     """
     r_bi = np.asarray(r_bi, dtype=np.float64).ravel()
     z_loc1 = np.asarray(z_loc1, dtype=np.float64)
@@ -230,6 +267,8 @@ def range_only_static_loc_est_np(
     meas_dim = len(r_bi)
     if meas_dim < 3:
         raise ValueError("A minimum of three measurements are required.")
+    if r_cov is not None and method != 1:
+        raise ValueError("r_cov is supported only for method 1.")
 
     # Move the receiver to the origin.
     z_tx = z_loc1 - z_loc2[:, np.newaxis]
@@ -254,9 +293,8 @@ def range_only_static_loc_est_np(
         b = s_star @ r_bi  # Equation 18.
 
         # Equation 21; the real part adds robustness to noise.
-        root_term = np.real(
-            np.sqrt(complex(4.0 * (a @ b) ** 2 - 4.0 * ((b @ b) - 1.0) * (a @ a)))
-        )
+        discriminant = 4.0 * (a @ b) ** 2 - 4.0 * ((b @ b) - 1.0) * (a @ a)
+        root_term = np.real(np.sqrt(complex(discriminant)))
         denom = 2.0 * (b @ b - 1.0)
         r_mono1 = (-2.0 * a @ b - root_term) / denom
         r_mono2 = (-2.0 * a @ b + root_term) / denom
@@ -298,17 +336,35 @@ def range_only_static_loc_est_np(
         p_taylor = np.zeros((3, 3, num_sol))
         p_crlb = np.zeros((3, 3, num_sol))
 
-        delta = S - np.outer(r_bi, x_est1) / np.linalg.norm(x_est1)
+        r_cov_inv = np.linalg.pinv(r_cov_arr)
         gamma = np.diag(r_bi)
-        dxdr = np.linalg.lstsq(delta, np.eye(meas_dim) * rt1 - gamma, rcond=None)[0]
-        p_taylor[:, :, 0] = dxdr @ r_cov_arr @ dxdr.T
-        p_crlb[:, :, 0] = np.linalg.pinv(dxdr @ np.linalg.pinv(r_cov_arr) @ dxdr.T)
+        solutions = [(x_est, rt1)] if num_sol == 1 else [(x_est1, rt1), (x_est2, rt2)]
+        for k, (x_k, rt_k) in enumerate(solutions):
+            norm_x = np.linalg.norm(x_k)
+            if discriminant < 0.0:
+                # Clipped root: Rt = -(a.b)/(b.b - 1) no longer equals abs(x),
+                # so the abs(x) constraint below does not hold; differentiate
+                # Rt through a and b instead.
+                ab = a @ b
+                beta = b @ b - 1.0
+                dab = a @ s_star - b @ s_star @ gamma
+                dbeta = 2.0 * b @ s_star
+                drt = -dab / beta + ab * dbeta / beta**2
+                dxdr = s_star @ (np.eye(meas_dim) * rt_k - gamma) + np.outer(b, drt)
+            else:
+                # Differentiating x = SStar (z + r_bi Rt), Rt = abs(x), gives
+                # SStar Delta dx = SStar (Rt I - Gamma) dr. The original's
+                # lsqminnorm(Delta, ...) is a different left inverse whenever
+                # num_meas > 3 and understates the spread several-fold.
+                delta = S - np.outer(r_bi, x_k) / norm_x
+                dxdr = np.linalg.solve(
+                    s_star @ delta, s_star @ (np.eye(meas_dim) * rt_k - gamma)
+                )
+            p_taylor[:, :, k] = dxdr @ r_cov_arr @ dxdr.T
 
-        if num_sol > 1:
-            delta = S - np.outer(r_bi, x_est2) / np.linalg.norm(x_est2)
-            dxdr = np.linalg.lstsq(delta, np.eye(meas_dim) * rt2 - gamma, rcond=None)[0]
-            p_taylor[:, :, 1] = dxdr @ r_cov_arr @ dxdr.T
-            p_crlb[:, :, 1] = np.linalg.pinv(dxdr @ np.linalg.pinv(r_cov_arr) @ dxdr.T)
+            to_tx = x_k[:, np.newaxis] - z_tx
+            jac = x_k / norm_x + (to_tx / np.linalg.norm(to_tx, axis=0)).T
+            p_crlb[:, :, k] = np.linalg.pinv(jac.T @ r_cov_inv @ jac)
 
     # Adjust for the receiver not being at the origin.
     if x_est.ndim == 1:

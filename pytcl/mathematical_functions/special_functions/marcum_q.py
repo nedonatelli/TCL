@@ -154,8 +154,31 @@ def log_marcum_q(
 
     Notes
     -----
-    For small Q values (large b), this function provides better
-    numerical accuracy than computing log(marcum_q(a, b)).
+    Where ``Q < 1e-10``, or where ``marcum_q`` returns NaN for finite
+    input (``a^2`` or ``b^2`` overflowing), the value is recomputed in the
+    log domain. When ``a^2/2`` and ``b^2/2`` are both finite and either
+    ``a*b <= 2e4`` or ``(m-1)^2 > 4ab``, it is a log-sum-exp of the
+    Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
+    Otherwise it is a quadrature of the exact integrand
+    ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
+    factored out, which needs neither squared argument.
+
+    Measured against mpmath at 40 or more digits with
+    ``b = sqrt(a^2 + 2m) + c`` on 84 points: ``a`` in {0.5, 5, 30, 140},
+    ``m`` in {1, 20, 200}, ``c`` in {7, 30, 200, 1000}; and ``a`` in
+    {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100, 3000}, ``c`` in {7, 30, 200}.
+    The relative error of ``log Q`` is below 2.2e-14 on the first set and
+    below 5e-13 on the second wherever the quadrature is used. Where
+    ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used anyway and loses
+    digits: 2.4e-11 at ``a = 1e3, m = 3000, c = 7`` and 1.5e-12 at
+    ``c = 30``. Results with ``Q >= 1e-10`` come from ``marcum_q``
+    unchanged. Where ``b^2/2`` overflows and ``b - a`` is large, ``Q``
+    underflows and the result is ``-inf``. For ``a >= 1e100`` it matches
+    ``log Phi(a - b)`` to 2e-13.
+
+    Before v2.11.1 that branch called ``scipy.stats.ncx2.logsf``, which
+    underflows to ``-inf`` exactly where this function is needed:
+    ``log_marcum_q(1, 40)`` returned ``-inf`` instead of -763.235.
 
     Examples
     --------
@@ -172,19 +195,175 @@ def log_marcum_q(
     a_b = np.broadcast_to(a, out_shape).ravel()
     b_b = np.broadcast_to(b, out_shape).ravel()
 
-    q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
+    with np.errstate(over="ignore", invalid="ignore"):
+        q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
 
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
-    # For very small Q values, use log survival function for precision
-    small_q = q_val < 1e-10
-    if np.any(small_q):
-        from scipy.stats import ncx2
-
-        result[small_q] = ncx2.logsf(b_b[small_q] ** 2, 2 * m, a_b[small_q] ** 2)
+    # marcum_q returns NaN (or a spurious 0) once a^2 or b^2 overflows, so
+    # NaN results from finite inputs are recomputed here too.
+    finite = np.isfinite(a_b) & np.isfinite(b_b)
+    redo = finite & ((q_val < 1e-10) | np.isnan(q_val))
+    for i in np.flatnonzero(redo):
+        result[i] = _log_marcum_q_tail(a_b[i], b_b[i], m)
+    result[np.isposinf(a_b) & np.isfinite(b_b)] = 0.0
 
     return result.reshape(out_shape)
+
+
+def _log_marcum_q_tail(a: float, b: float, m: int) -> float:
+    """Route log Q_m(a, b) to the series or to the quadrature.
+
+    The series needs a^2/2 and b^2/2 finite, its window grows like
+    sqrt(a*b), and scipy's ``gammaincc`` loses digits at the large orders it
+    then needs (1e-11 relative by a*b/2 = 1e6), so past a*b/2 = 1e4 the
+    quadrature is used. The quadrature needs ``(m-1)^2 <= 4ab`` so the
+    Bessel factor neither underflows nor cancels in its Hankel expansion.
+    """
+    nu2 = (m - 1.0) ** 2
+    with np.errstate(over="ignore"):
+        lam = 0.5 * a * a
+        x = 0.5 * b * b
+        ab = a * b
+        if a == 0.0:
+            return -np.inf if np.isinf(x) else _log_marcum_q_series(a, b, m)
+        if np.isfinite(lam) and np.isfinite(x) and (ab <= 2e4 or nu2 > 4.0 * ab):
+            return _log_marcum_q_series(a, b, m)
+        return _log_marcum_q_quad(a, b, m)
+
+
+_LAGUERRE = np.polynomial.laguerre.laggauss(60)
+_LEGENDRE = np.polynomial.legendre.leggauss(16)
+
+
+def _log_ive(nu: float, a: float, x: NDArray[np.floating]) -> NDArray[np.floating]:
+    """log of the scaled Bessel ``ive(nu, a*x)``, safe where ``a*x`` overflows.
+
+    scipy's ``ive`` returns NaN above about z = 2e9, so from z = 1e9 the
+    Hankel expansion is summed instead. The quadrature only calls this with
+    ``nu^2 / (2 z)`` at most 2, where the expansion converges without
+    significant cancellation.
+    """
+    z = a * x
+    out = np.empty(x.shape, dtype=np.float64)
+    low = z < 1e9
+    with np.errstate(divide="ignore"):
+        out[low] = np.log(sp.ive(nu, z[low]))
+    high = ~low
+    if np.any(high):
+        xh = x[high]
+        total = np.ones(xh.shape)
+        term = np.ones(xh.shape)
+        mu = 4.0 * nu * nu
+        for j in range(1, 60):
+            term = -term * ((mu - (2 * j - 1) ** 2) / (8.0 * j * a)) / xh
+            total += term
+            if np.all(np.abs(term) < 1e-17 * np.abs(total)):
+                break
+        out[high] = -0.5 * (np.log(2 * np.pi) + np.log(a) + np.log(xh)) + np.log(total)
+    return out
+
+
+def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
+    """log Q_m(a, b) by quadrature of the exact Marcum integrand.
+
+    ``Q_m(a, b) = int_b^inf x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2) dx``.
+    For ``d = b - a >= 8`` the Gaussian tail is factored out as
+    ``exp(-d^2/2)`` and the rest integrated by 60-point Gauss-Laguerre in
+    ``d*(x - b)``. For ``0 <= d < 8``, ``t = x - a`` is integrated over
+    ``[d, 50]`` with 16-point Gauss-Legendre on unit panels; for ``d < 0``
+    the mass over ``[max(-a, -45), d]`` is integrated and subtracted from 1.
+    """
+    nu = m - 1.0
+    d = b - a
+
+    def _log_h(x: NDArray[np.floating]) -> NDArray[np.floating]:
+        return np.log(x) + nu * (np.log(x) - np.log(a)) + _log_ive(nu, a, x)
+
+    if d >= 8.0:
+        lead = -0.5 * d * d
+        if np.isinf(lead):
+            return -np.inf
+        v, w = _LAGUERRE
+        u = v / d
+        terms = _log_h(b + u) - 0.5 * u * u + np.log(w)
+        top = terms.max()
+        return float(lead + top + np.log(np.sum(np.exp(terms - top))) - np.log(d))
+    nodes, weights = _LEGENDRE
+
+    def _log_integral(lo: float, hi: float) -> float:
+        edges = np.linspace(lo, hi, int(np.ceil(hi - lo)) + 1)
+        mid = 0.5 * (edges[1:] + edges[:-1])[:, None]
+        half = 0.5 * (edges[1:] - edges[:-1])[:, None]
+        t = (mid + half * nodes).ravel()
+        terms = _log_h(a + t) - 0.5 * t * t + np.log((half * weights).ravel())
+        top = terms.max()
+        return float(top + np.log(np.sum(np.exp(terms - top))))
+
+    if d >= 0.0:
+        return _log_integral(d, 50.0)
+    # For b < a, Q is 1 minus the mass below b; integrating the upper part
+    # directly would let quadrature error push log Q above 0.
+    lo = max(-a, -45.0)
+    if lo >= d:
+        return -0.0
+    return float(np.log1p(-np.exp(_log_integral(lo, d))))
+
+
+def _log_gammaincc(s: NDArray[np.floating], x: float) -> NDArray[np.floating]:
+    """log of the regularized upper incomplete gamma Q(s, x), past underflow."""
+    q = sp.gammaincc(s, x)
+    out = np.empty(s.shape, dtype=np.float64)
+    ok = q > 1e-280
+    out[ok] = np.log(q[ok])
+    tail = ~ok
+    if np.any(tail):
+        # Lentz continued fraction for Gamma(s, x) / (exp(-x) x^s). It only
+        # runs where Q underflows, which needs x far above s, so it converges
+        # in a few dozen steps.
+        st = s[tail]
+        tiny = 1e-300
+        bk = x + 1.0 - st
+        c = np.full(st.shape, 1.0 / tiny)
+        d = 1.0 / bk
+        h = d.copy()
+        for i in range(1, 1000):
+            an = -i * (i - st)
+            bk = bk + 2.0
+            d = an * d + bk
+            d = np.where(np.abs(d) < tiny, tiny, d)
+            c = bk + an / c
+            c = np.where(np.abs(c) < tiny, tiny, c)
+            d = 1.0 / d
+            delta = d * c
+            h = h * delta
+            if np.all(np.abs(delta - 1.0) < 1e-16):
+                break
+        out[tail] = -x + st * np.log(x) - sp.gammaln(st) + np.log(h)
+    return out
+
+
+def _log_marcum_q_series(a: float, b: float, m: int) -> float:
+    """log Q_m(a, b) as a log-sum-exp of its Poisson-mixture series.
+
+    ``Q_m(a, b) = sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``. The terms are
+    unimodal in k with the peak near ``a*b/2``, so only a window around it is
+    summed; the window doubles until both edges are below exp(-40) of the
+    peak.
+    """
+    lam = 0.5 * a * a
+    x = 0.5 * b * b
+    k_peak = max(0.0, 0.5 * (np.sqrt((m - 1.0) ** 2 + 4.0 * lam * x) - (m + 1.0)))
+    half = 50.0 + 10.0 * np.sqrt(k_peak + m)
+    while True:
+        k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
+        terms = sp.xlogy(k, lam) - lam - sp.gammaln(k + 1.0) + _log_gammaincc(m + k, x)
+        top = terms.max()
+        if (k[0] == 0 or terms[0] < top - 40.0) and terms[-1] < top - 40.0:
+            return float(top + np.log(np.sum(np.exp(terms - top))))
+        k_peak = float(k[np.argmax(terms)])
+        half *= 2.0
 
 
 def marcum_q_inv(
@@ -335,6 +514,21 @@ def swerling_detection_probability(
     chi-squared (4 DOF) scan-to-scan fluctuation, and Swerling 4 the exact
     finite-sum for pulse-to-pulse chi-squared (4 DOF) fluctuation.
 
+    Before v2.11.1 the Swerling 3 branch evaluated only the single-term form
+    that is exact for ``n <= 2``, so ``n > 2`` was wrong: -8.9% at
+    ``pfa=1e-6, n=6, snr=0.1`` and -21% at ``pfa=1e-8, n=30, snr=0.05``.
+    For ``n > 2`` the general-``n`` closed form is used when the mean
+    scan SNR ``theta = n*snr/2`` exceeds ``max(1, sqrt(n))``; below that
+    its terms cancel (2.6e-11 relative at ``n=1000, theta=1.5, pfa=1e-6``;
+    ``-inf`` at ``n=200, theta=0.01``), so the exact negative-binomial
+    mixture of gamma tails is summed instead. Against that series in mpmath
+    at 40 digits the relative error is below 2e-13 for ``pfa`` 1e-10 to
+    1e-2, ``n`` 3 to 5000 and ``theta`` 1e-3 to 300, measured on both sides
+    of each switch.
+
+    ``snr = 0`` returns ``pfa`` for every case, elementwise. Cases 1 (for
+    ``n > 1``) and 3 used to return NaN or ``-inf`` there.
+
     Examples
     --------
     >>> pd = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=0)
@@ -364,13 +558,16 @@ def swerling_detection_probability(
         # Scan-to-scan Rayleigh fluctuation (exact, DiFranco & Rubin)
         if n == 1:
             return np.exp(-vt / (1 + snr))
-        c = 1 + 1 / (n * snr)
-        return np.asarray(
+        # snr = 0 makes c infinite and the sum inf * 0 = NaN; its limit is pfa.
+        zero = snr == 0
+        s = np.where(zero, 1.0, snr)
+        c = 1 + 1 / (n * s)
+        pd = (
             1
             - sp.gammainc(n - 1, vt)
-            + c ** (n - 1) * sp.gammainc(n - 1, vt / c) * np.exp(-vt / (1 + n * snr)),
-            dtype=np.float64,
+            + c ** (n - 1) * sp.gammainc(n - 1, vt / c) * np.exp(-vt / (1 + n * s))
         )
+        return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
 
     elif swerling_case == 2:
         # Pulse-to-pulse Rayleigh fluctuation (exact): the integrated sum is
@@ -378,14 +575,55 @@ def swerling_detection_probability(
         return np.asarray(sp.gammaincc(n, vt / (1 + snr)), dtype=np.float64)
 
     elif swerling_case == 3:
-        # Scan-to-scan chi-squared 4 DOF fluctuation (exact closed form)
-        k = 1 + n * snr / 2
-        return np.asarray(
-            (1 + 2 / (n * snr)) ** (n - 2)
-            * (1 + vt / k - 2 * (n - 2) / (n * snr))
-            * np.exp(-vt / k),
-            dtype=np.float64,
-        )
+        # Scan-to-scan chi-squared 4 DOF fluctuation (exact, DiFranco & Rubin).
+        # The single-term form K0 is exact only for n <= 2; n > 2 needs the
+        # two gamma terms as well (dropping them was -8.9% at n=6).
+        zero = snr == 0
+        s = np.where(zero, 1.0, snr)
+        k = 1 + n * s / 2
+        if n <= 2:
+            pd = (
+                (1 + 2 / (n * s)) ** (n - 2)
+                * (1 + vt / k - 2 * (n - 2) / (n * s))
+                * np.exp(-vt / k)
+            )
+            return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
+        # The closed form's terms cancel for mean scan SNR n*snr/2 up to about
+        # sqrt(n) (2.6e-11 at n=1000, theta=1.5; -inf at n=200, theta=0.01), so
+        # there the exact negative-binomial mixture of gamma tails is summed.
+        # Its ratio q = theta/(1+theta) leaves a tail of about J q^J, below
+        # 1e-65 for J = 160 (1 + theta).
+        theta = n * s / 2
+        series = theta <= max(1.0, np.sqrt(n))
+        pd = np.empty(s.shape, dtype=np.float64)
+        if np.any(series):
+            th = theta[series]
+            j = np.arange(np.ceil(160.0 * (1.0 + th.max())))
+            tails = sp.gammaincc(n + j, vt)
+            mix = np.empty(th.shape, dtype=np.float64)
+            block = max(1, 2_000_000 // j.size)
+            for lo in range(0, th.size, block):
+                t = th[lo : lo + block, None]
+                log_w = np.log1p(j) + j * np.log(t / (1 + t)) - 2 * np.log1p(t)
+                mix[lo : lo + block] = np.exp(log_w) @ tails
+            pd[series] = mix
+        closed = ~series
+        if np.any(closed):
+            sc = s[closed]
+            kc = k[closed]
+            # (1 + 2/(n snr))^(n-2) overflows for n above ~1000; the product
+            # with the gamma CDF is formed in log space.
+            log_k0 = (
+                (n - 2) * np.log1p(2 / (n * sc))
+                - vt / kc
+                + np.log(sp.gammainc(n - 1, vt / (1 + 2 / (n * sc))))
+            )
+            pd[closed] = (
+                (1 + vt / kc - 2 * (n - 2) / (n * sc)) * np.exp(log_k0)
+                + sp.gammaincc(n - 1, vt)
+                + np.exp((n - 1) * np.log(vt) - vt - sp.gammaln(n - 1)) / kc
+            )
+        return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
 
     elif swerling_case == 4:
         # Pulse-to-pulse chi-squared 4 DOF fluctuation (exact finite sum).

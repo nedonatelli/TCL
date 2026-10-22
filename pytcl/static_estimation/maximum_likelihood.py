@@ -12,6 +12,7 @@ References
   Wiley, 2001.
 """
 
+import warnings
 from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
@@ -476,6 +477,21 @@ def mle_newton_raphson(
     -------
     result : MLResult
         MLE result with estimate, Fisher info, and covariance.
+        ``fisher_info`` is the observed information ``-H`` exactly as
+        computed, never regularized.
+
+    Warns
+    -----
+    RuntimeWarning
+        If the observed information is not positive definite at the
+        solution (a flat direction or a saddle). Earlier versions added a
+        hidden ridge of ``abs(min eigenvalue) + 1e-6`` to ``fisher_info``,
+        reported ``converged=True``, and returned a covariance of ``1e6``
+        on the flat direction that looked like a measurement. Now
+        ``converged`` is False, ``fisher_info`` is unridged, and
+        ``covariance`` is the inverse on the identified subspace with
+        ``inf`` variance (and NaN cross-covariance) for every parameter
+        that the non-positive directions touch.
 
     Examples
     --------
@@ -548,16 +564,28 @@ def mle_newton_raphson(
     # Compute final Fisher information
     fisher = -hess_func(theta)
 
-    # Ensure positive definiteness
-    eigvals = np.linalg.eigvalsh(fisher)
-    if np.any(eigvals <= 0):
-        # Add regularization
-        fisher = fisher + np.eye(n_params) * (abs(min(eigvals)) + 1e-6)
-
-    try:
+    eigvals, eigvecs = np.linalg.eigh(fisher)
+    flat = eigvals <= 0
+    if np.any(flat):
+        warnings.warn(
+            "mle_newton_raphson: observed Fisher information is not positive "
+            f"definite (smallest eigenvalue {eigvals[0]:.3g}); the likelihood "
+            "is flat or a saddle in at least one direction. No ridge is "
+            "applied: fisher_info is reported unmodified, the covariance is "
+            "infinite on the unidentified parameters, and converged is False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        converged = False
+        V = eigvecs[:, ~flat]
+        cov = (V / eigvals[~flat]) @ V.T
+        Vf = eigvecs[:, flat]
+        touched = np.diag(Vf @ Vf.T) > 1e-12
+        cov[touched, :] = np.nan
+        cov[:, touched] = np.nan
+        cov[touched, touched] = np.inf
+    else:
         cov = np.linalg.inv(fisher)
-    except np.linalg.LinAlgError:
-        cov = np.linalg.pinv(fisher)
 
     return MLResult(
         theta=theta,

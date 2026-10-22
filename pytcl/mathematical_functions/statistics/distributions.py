@@ -710,8 +710,8 @@ class ChiSquared(Distribution):
 
     Parameters
     ----------
-    df : int
-        Degrees of freedom.
+    df : float
+        Degrees of freedom (any positive real).
 
     Examples
     --------
@@ -720,10 +720,10 @@ class ChiSquared(Distribution):
     4.0
     """
 
-    def __init__(self, df: int):
+    def __init__(self, df: float):
         if df <= 0:
             raise ValueError("Degrees of freedom must be positive")
-        self._df = int(df)
+        self._df = float(df)
         self._dist = stats.chi2(df=self._df)
 
     def pdf(self, x: ArrayLike) -> NDArray[np.floating]:

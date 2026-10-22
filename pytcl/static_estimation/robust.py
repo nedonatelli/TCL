@@ -319,7 +319,18 @@ def tau_scale(
     c2: float = 3.0,
 ) -> float:
     """
-    Tau scale estimator.
+    Ratio-of-rho-sums scale estimator (not the Yohai-Zamar tau scale).
+
+    .. warning::
+
+       This function is **not** the Yohai-Zamar tau scale estimator, despite
+       its name. The ``1/n`` normalizations of the two rho sums cancel, so
+       what is computed is ``mad(r)`` times the square root of the ratio of
+       a Tukey rho sum (``c1``) to a Tukey rho sum (``c2``). It is
+       biased: on 200000 N(0, 1) draws it returns 1.091794 where a
+       consistent scale estimate is about 1.0, while :func:`mad` returns
+       1.002221. Prefer :func:`mad`. It will be fixed or removed in v2.12.0;
+       do not rely on its values.
 
     Parameters
     ----------
@@ -335,7 +346,8 @@ def tau_scale(
 
     Notes
     -----
-    Tau scale combines high breakdown point with efficiency.
+    The Yohai-Zamar tau scale combines high breakdown point with efficiency;
+    this implementation does not deliver that. See the warning above.
 
     Examples
     --------
@@ -408,6 +420,11 @@ def irls(
     result : RobustResult
         Robust estimation result.
 
+    Raises
+    ------
+    ValueError
+        If ``max_iter`` is less than one.
+
     Examples
     --------
     >>> A = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5]])
@@ -421,6 +438,9 @@ def irls(
     IRLS iteratively solves weighted least squares problems,
     updating weights based on the current residuals.
     """
+    if max_iter < 1:
+        raise ValueError(f"max_iter must be at least one, got {max_iter}")
+
     A = np.asarray(A, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
 
@@ -621,6 +641,11 @@ def ransac(
     result : RANSACResult
         RANSAC result with best model and inlier mask.
 
+    Raises
+    ------
+    ValueError
+        If ``max_trials`` is less than one.
+
     Examples
     --------
     >>> rng = np.random.default_rng(42)
@@ -650,6 +675,9 @@ def ransac(
     - M. A. Fischler and R. C. Bolles, "Random Sample Consensus,"
       Communications of the ACM, 1981.
     """
+    if max_trials < 1:
+        raise ValueError(f"max_trials must be at least one, got {max_trials}")
+
     A = np.asarray(A, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
 

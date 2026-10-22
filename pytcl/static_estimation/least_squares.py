@@ -26,7 +26,12 @@ class LSResult(NamedTuple):
     x : ndarray
         Estimated parameters.
     residuals : ndarray
-        Residual vector (y - A @ x).
+        Intended to be the residual vector (y - A @ x), but currently
+        mirrors ``np.linalg.lstsq``: for a full-rank overdetermined system
+        (m > n) it is the shape (1,) residual sum of squares (shape (k,) for
+        a 2-D ``b``), and the residual vector is returned only when lstsq
+        returns no sum of squares (rank-deficient or m <= n). Returning the
+        vector always is a return-shape change deferred to v2.12.0.
     rank : int
         Effective rank of the design matrix.
     singular_values : ndarray
@@ -108,7 +113,7 @@ def ordinary_least_squares(
     result : LSResult
         Named tuple containing:
         - x: Estimated parameters of shape (n,) or (n, k)
-        - residuals: Residual vector
+        - residuals: Residual sum of squares or vector (see LSResult)
         - rank: Effective rank of A
         - singular_values: Singular values of A
 
@@ -252,8 +257,11 @@ def total_least_squares(
     b : array_like
         Observation vector of shape (m,).
     rank : int, optional
-        Truncation rank for regularized TLS. If None, uses full rank.
-        Useful when A is rank-deficient.
+        Truncation rank ``k`` for truncated TLS (Fierro, Golub, Hansen and
+        O'Leary, 1997), with ``1 <= k <= n``. The solution is the
+        minimum-norm solution of the best rank-``k`` approximation of
+        ``[A | b]``. If None, uses ``n`` (ordinary TLS). Useful when
+        ``[A | b]`` is nearly rank-deficient.
 
     Returns
     -------
@@ -263,6 +271,12 @@ def total_least_squares(
         - residuals_A: Corrections to A of shape (m, n)
         - residuals_b: Corrections to b of shape (m,)
         - rank: Effective rank used
+
+    Raises
+    ------
+    ValueError
+        If ``rank`` is not an integer in ``[1, n]``, or if the TLS solution
+        does not exist for the requested rank.
 
     Examples
     --------
@@ -277,9 +291,20 @@ def total_least_squares(
     from the data points to the fitted model.
 
     The solution is computed using the SVD of the augmented matrix [A | b].
+    With ``[A | b] = U S V^T`` and ``V`` partitioned over the trailing
+    ``n + 1 - rank`` right singular vectors into ``V12`` (first ``n`` rows)
+    and ``v22`` (last row), ``x = -V12 v22^T / ||v22||^2``.
+
+    The MATLAB ``totalLeastSquares`` has no rank argument (it takes
+    weighting vectors instead); ``rank`` is a Python-side extension.
+    Versions before 2.11.1 accepted ``rank`` but ignored it when forming
+    ``x``.
 
     References
     ----------
+    - R. D. Fierro, G. H. Golub, P. C. Hansen and D. P. O'Leary,
+      "Regularization by Truncated Total Least Squares," SIAM J. Sci.
+      Comput., 18(4), 1997.
     - S. Van Huffel and J. Vandewalle, "The Total Least Squares Problem:
       Computational Aspects and Analysis," SIAM, 1991.
     """
@@ -290,6 +315,10 @@ def total_least_squares(
 
     if rank is None:
         rank = n
+    elif isinstance(rank, bool) or not isinstance(rank, (int, np.integer)):
+        raise ValueError(f"rank must be an integer, got {rank!r}")
+    if not 1 <= rank <= n:
+        raise ValueError(f"rank must satisfy 1 <= rank <= n = {n}, got {rank}")
 
     # Form augmented matrix [A | b]
     if b.ndim == 1:
@@ -300,16 +329,17 @@ def total_least_squares(
     U, s, Vt = np.linalg.svd(C, full_matrices=True)
     V = Vt.T
 
-    # Check if TLS solution exists
-    # The solution exists if V[n, n] != 0
-    if abs(V[n, n]) < 1e-14:
+    v22 = V[n, rank:]
+    if np.linalg.norm(v22) < 1e-14:
         raise ValueError(
-            "TLS solution does not exist. The smallest singular value "
-            "has multiplicity > 1."
+            "TLS solution does not exist for this rank: the last row of V "
+            "vanishes over the trailing singular vectors."
         )
 
-    # TLS solution: x = -V[0:n, n] / V[n, n]
-    x = -V[:n, n] / V[n, n]
+    if rank == n:
+        x = -V[:n, n] / V[n, n]
+    else:
+        x = -(V[:n, rank:] @ v22) / (v22 @ v22)
 
     # Compute corrections using truncated SVD
     # [E | r] = -sum_{i=rank}^{n} s_i * u_i * v_i^T

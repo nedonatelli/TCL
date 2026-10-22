@@ -499,7 +499,14 @@ def bessel_ratio(
     like the reciprocal of ``abs(J_n(x))``: measured agreement with mpmath at n = 0 loosens from
     5e-15 at x = 2.404 to 1e-8 at x = 2.4048255576, i.e. 1e-10 from the
     first zero of J_0 at x ~= 2.40482555769577, and reaches O(1) relative
-    error (measured 1.4) at the float64 neighbor of the zero. At x = 0 the
+    error (measured 1.4) at the float64 neighbor of the zero.
+
+    A negative integer order n = -m makes the fraction's denominator
+    ``2(n+k)/x`` vanish at k = m, where the old code returned +-inf (measured
+    ``bessel_ratio(-1, 1.0) = -inf`` against -1.7388857). Those orders use the
+    reflection J_{-m} = (-1)^m J_m, I_{-m} = I_m, giving
+    J_{n+1}/J_n = -1/(J_m/J_{m-1}) and I_{n+1}/I_n = 1/(I_m/I_{m-1}).
+    At x = 0 the
     limit value 0 is returned for every order (the two-sided limit of the
     ratio); the ratio is nan for non-finite x.
 
@@ -517,6 +524,14 @@ def bessel_ratio(
         sign = 1.0
     else:
         raise ValueError(f"kind must be 'j' or 'i', got '{kind}'")
+
+    if n < 0 and float(n).is_integer():
+        # b_k = 2(n+k)/x is exactly 0 at k = -n, which the fraction cannot
+        # pass; reflect with J_{-m} = (-1)^m J_m and I_{-m} = I_m instead.
+        m = int(-n)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            reflected = sign / bessel_ratio(m - 1, x, kind)
+        return np.where(x == 0.0, 0.0, reflected)
 
     flat = np.atleast_1d(x).ravel()
     out = np.full(flat.shape, np.nan)

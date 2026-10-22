@@ -12,6 +12,7 @@ case (p > 2 or q > 1).
 """
 
 import warnings
+from fractions import Fraction
 from typing import Any
 
 import numpy as np
@@ -27,7 +28,7 @@ def _hypergeometric_series(
     z: np.ndarray[Any, Any],
     max_terms: int,
     tol: float,
-) -> tuple[np.ndarray[Any, Any], bool]:
+) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], bool]:
     """
     Numba-optimized series summation for generalized hypergeometric function.
 
@@ -48,6 +49,9 @@ def _hypergeometric_series(
     -------
     result : ndarray
         Computed pFq values for each z.
+    max_term : ndarray
+        Largest term magnitude seen for each z; the rounding error of
+        ``result`` scales with it, not with ``result``.
     converged : bool
         False when max_terms was exhausted before the tolerance held.
     """
@@ -57,6 +61,7 @@ def _hypergeometric_series(
 
     result = np.ones(n_z, dtype=np.float64)
     term = np.ones(n_z, dtype=np.float64)
+    max_term = np.ones(n_z, dtype=np.float64)
 
     for k in range(1, max_terms):
         # Compute numerator product: prod(a_i + k - 1)
@@ -76,14 +81,17 @@ def _hypergeometric_series(
             term[j] = term[j] * z[j] * ratio
             result[j] += term[j]
 
-            # Check convergence
-            if np.abs(term[j]) >= tol * np.abs(result[j]):
+            # Relative to the largest term, not the partial sum: an
+            # alternating series cancels the sum far below its terms.
+            if np.abs(term[j]) > max_term[j]:
+                max_term[j] = np.abs(term[j])
+            if np.abs(term[j]) >= tol * max_term[j]:
                 converged = False
 
         if converged:
             break
 
-    return result, converged
+    return result, max_term, converged
 
 
 def hyp0f1(
@@ -337,13 +345,28 @@ def hyp1f1_regularized(
     Notes
     -----
     This function remains finite even when b is a non-positive integer,
-    unlike the standard 1F1.
+    unlike the standard 1F1. For b = -m (m = 0, 1, ...) the limit is
+
+        (a)_{m+1} z^{m+1} / (m+1)! * 1F1(a+m+1; m+2; z)
+
+    so that ``hyp1f1_regularized(1, 0, 1)`` is e (it was nan, from
+    ``hyp1f1/gamma`` evaluating inf/inf).
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
 
-    return sp.hyp1f1(a, b, z) / sp.gamma(b)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        result = sp.hyp1f1(a, b, z) / sp.gamma(b)
+        m1 = 1.0 - b
+        limit = (
+            sp.poch(a, m1)
+            * z**m1
+            * sp.rgamma(m1 + 1.0)
+            * sp.hyp1f1(a + m1, m1 + 1.0, z)
+        )
+    pole = (b <= 0.0) & (b == np.round(b))
+    return np.where(pole, limit, result)[()]
 
 
 def pochhammer(
@@ -427,6 +450,96 @@ def falling_factorial(
     return np.asarray(sp.poch(a - n + 1, n), dtype=np.float64)
 
 
+_EPS = float(np.finfo(np.float64).eps)
+_CANCELLATION_WARN = 1e-8
+_EXACT_MAX_TERMS = 500
+
+
+def _exact_polynomial_value(a: Any, b: Any, z: float) -> float:
+    """Evaluate a terminating pFq in exact rational arithmetic.
+
+    Floats are exact rationals, so the only rounding is the final
+    conversion. Returns NaN when an input is not finite, a denominator
+    parameter hits a pole, or the series has more than
+    ``_EXACT_MAX_TERMS`` terms (the rational arithmetic is superlinear in
+    the term count: 0.1 s at 500 terms, 4.6 s at 2000).
+    """
+    if not (np.isfinite(z) and np.all(np.isfinite(a)) and np.all(np.isfinite(b))):
+        return float("nan")
+    n = int(min(-ai for ai in a if ai <= 0 and float(ai).is_integer()))
+    if n > _EXACT_MAX_TERMS:
+        return float("nan")
+    zf = Fraction(float(z))
+    term = Fraction(1)
+    total = Fraction(1)
+    for k in range(1, n + 1):
+        den = Fraction(k)
+        for ai in a:
+            term *= Fraction(float(ai)) + (k - 1)
+        for bi in b:
+            den *= Fraction(float(bi)) + (k - 1)
+        if den == 0:
+            return float("nan")
+        term = term * zf / den
+        total += term
+    return float(total)
+
+
+def _flag_cancellation(
+    result: NDArray[np.floating],
+    max_term: NDArray[np.floating],
+    a: Any,
+    b: Any,
+    z: NDArray[np.floating],
+    terminates: bool,
+) -> NDArray[np.floating]:
+    """Blank out sums whose rounding error swamps the value.
+
+    A terminating series with no surviving digits is re-evaluated in exact
+    arithmetic instead, so an exact zero (``1 - z`` at ``z = 1``) stays 0
+    while a non-terminating sum that merely rounds to 0.0 still becomes NaN.
+
+    Summing terms as large as ``max_term`` leaves an absolute error of about
+    ``eps * max_term``. When that reaches ``abs(result)`` no significant
+    digit survives, so the entry becomes NaN; when it exceeds
+    ``_CANCELLATION_WARN`` of the result, the value is kept with a warning.
+    Entries with a non-finite ``z`` or parameter are NaN without a warning:
+    their NaN comes from the input, not from cancellation.
+    """
+    bad = ~np.isfinite(z)
+    if not (np.all(np.isfinite(a)) and np.all(np.isfinite(b))):
+        bad[:] = True
+    with np.errstate(divide="ignore", invalid="ignore"):
+        loss = np.where(bad, 0.0, _EPS * max_term / np.abs(result))
+    result = np.where(bad, np.nan, result)
+    lost = ~(loss < 1.0)
+    if terminates and np.any(lost):
+        result = result.copy()
+        for j in np.flatnonzero(lost):
+            result[j] = _exact_polynomial_value(a, b, z[j])
+        recovered = lost & ~np.isnan(result)
+        lost = lost & ~recovered
+        loss = np.where(recovered, 0.0, loss)
+    degraded = ~lost & (loss > _CANCELLATION_WARN)
+    if np.any(lost):
+        warnings.warn(
+            "generalized_hypergeometric: catastrophic cancellation; the "
+            "largest series term exceeds the sum by more than 1/eps, so no "
+            "significant digits remain. Returning NaN.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        result = np.where(lost, np.nan, result)
+    if np.any(degraded):
+        warnings.warn(
+            "generalized_hypergeometric: cancellation in the series sum "
+            "has cost more than half of the available digits.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+    return result
+
+
 def generalized_hypergeometric(
     a: ArrayLike,
     b: ArrayLike,
@@ -475,6 +588,23 @@ def generalized_hypergeometric(
     ``RuntimeWarning`` is emitted when ``max_terms`` is exhausted
     before the tolerance holds.
 
+    Convergence is judged against the largest term seen, not the partial
+    sum. An alternating series (negative ``z``) sums to a value far below
+    its terms, and the old test against the partial sum stopped on a term
+    still enormous relative to the true value (``0F0(-40)`` returned
+    -2.23 against ``exp(-40) = 4.2e-18``; ``3F3([1,2,3],[4,5,6],-100)``
+    returned 3.2e12 against 0.1993). The rounding error of the sum is about
+    ``eps`` times the largest term: when that reaches the magnitude of the
+    sum (largest term more than ``1/eps`` times the sum) the result is NaN
+    with a ``RuntimeWarning``, and a ``RuntimeWarning`` is emitted with the
+    value kept once more than half the digits are lost. A terminating
+    series (some ``a[i]`` a non-positive integer) that loses every digit is
+    re-evaluated exactly in rational arithmetic instead (Laguerre
+    ``L_80(20)`` gives -1986.4165), so the NaN applies only to
+    non-terminating series and to terminating ones longer than 500 terms.
+    A non-finite ``z`` or parameter gives NaN without a cancellation
+    warning. ``0F0(z)`` is evaluated as ``exp(z)``.
+
     Examples
     --------
     >>> round(float(generalized_hypergeometric([1], [2], 1)), 6)  # 1F1(1; 2; 1) = e - 1
@@ -488,6 +618,8 @@ def generalized_hypergeometric(
     q = len(b)
 
     # For special cases, use scipy's optimized functions
+    if p == 0 and q == 0:
+        return np.exp(z)
     if p == 0 and q == 1:
         return hyp0f1(b[0], z)
     elif p == 1 and q == 1:
@@ -513,7 +645,7 @@ def generalized_hypergeometric(
             )
 
     # General case: use Numba-optimized series summation
-    result, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)
+    result, max_term, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)
     if not converged:
         warnings.warn(
             f"generalized_hypergeometric did not reach tol={tol:g} "
@@ -523,6 +655,7 @@ def generalized_hypergeometric(
             stacklevel=2,
         )
 
+    result = _flag_cancellation(result, max_term, a, b, z_arr, terminates)
     return result if result.size > 1 else result[0]
 
 
