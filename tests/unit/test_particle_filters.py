@@ -11,6 +11,8 @@ Tests cover:
 - Particle initialization
 """
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -115,8 +117,13 @@ class TestResampling:
     )
     def test_validation_message_points_at_a_real_notes_section(self, fn):
         """Defect test: the error promised a Notes section none of the
-        resamplers had."""
-        assert "Notes\n    -----" in fn.__doc__
+        resamplers had.
+
+        cleandoc, not the raw __doc__: Python 3.13 strips common leading
+        indentation from docstrings at compile time, so the raw text has
+        the header indented on 3.11/3.12 and flush-left on 3.13+.
+        """
+        assert "Notes\n-----" in inspect.cleandoc(fn.__doc__)
         with pytest.raises(ValueError, match="Notes section"):
             fn(np.arange(4.0), np.zeros(4), np.random.default_rng(0))
 
