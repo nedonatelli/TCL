@@ -95,7 +95,7 @@ Next
 
 * **v2.12.0 planned changes**: ``'w'`` mode truncating for
   ``TrackDatabaseManager`` and ``SQLStorage``, the Tukey-biweight
-  ``tau_scale`` fixed or removed, unknown schema versions rejected,
+  ``tau_scale`` fixed or removed, rejecting unknown schema versions,
   ``geodetic2ecef`` returning ``(3, 1)`` for size-1 input, and the
   information-filter singular-``Y`` prediction re-derived.
 
