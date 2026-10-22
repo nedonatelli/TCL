@@ -638,7 +638,7 @@ def _ambiguity_function_kernel(
 
         for j in range(n_delay):
             delay = delays[j]
-            delay_samples = int(delay * fs)
+            delay_samples = int(np.rint(delay * fs))
 
             result = 0.0 + 0.0j
             if delay_samples >= 0:
@@ -686,7 +686,7 @@ def _cross_ambiguity_kernel(
 
         for j in range(n_delay):
             delay = delays[j]
-            delay_samples = int(delay * fs)
+            delay_samples = int(np.rint(delay * fs))
 
             result = 0.0 + 0.0j
             if delay_samples >= 0:

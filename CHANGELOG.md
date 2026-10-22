@@ -107,6 +107,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ambiguity_function` and `cross_ambiguity` mapped each delay to a sample
+  index by truncation (`int(delay * fs)`), so a delay that is exactly k samples
+  could land on sample k-1 when the floating-point product fell just below k.
+  The index is now `int(np.rint(delay * fs))`. At delay 5.0e-4 (exactly 5
+  samples) the ambiguity surface returned 0.32525, the 4-sample value, against
+  the true 0.13535, a 140% error. Pinned by
+  `tests/validation/test_matched_filter_delay.py` at integer-sample delays
+  against the normalized autocorrelation.
 - `debye(n, x)` was wrong from `n = 10` up and accepted negative `x`. The
   large-x branch subtracted same-magnitude terms: against a 40-digit mpmath
   quadrature `debye(30, 2.0)` returned 2.2021e8 (true 0.3267614),
