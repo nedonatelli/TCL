@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`tau_scale` is documented as not the Yohai-Zamar tau scale and is demoted
+  at function level.** The `1/n` normalizations of its two rho sums cancel,
+  leaving `mad(r)` times the square root of a ratio of Tukey rho sums. On
+  200000 N(0, 1) draws it returns 1.0918 against about 1.0 for a consistent
+  scale estimate, where `mad` returns 1.0022. The maturity registry is
+  per-module, so `static_estimation.robust` (`irls`, `ransac`, `mad`, ...)
+  stays MATURE; the demotion lives in a `.. warning::` in the docstring. It
+  will be fixed or removed in v2.12.0.
 - **The two state-vector layouts are now documented, and pinned by
   `tests/validation/test_state_ordering.py`.** `two_point_diff_init` (a port of
   `twoPointDiffInit.m`) returns MATLAB's derivative-major `[x, y, vx, vy]`;
@@ -106,6 +114,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arguments, so no finite difference of it can reach them.
 
 ### Fixed
+
+- **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
+  wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
+  `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at
+  `tol * max_eig`, putting negative entries on the diagonal for rank-deficient
+  PSD input; it now raises `LinAlgError` ("not positive semi-definite"),
+  floors at exactly 0 and returns a non-negative diagonal. `matrix_sqrt`
+  returned `S` with `norm(S^2 - A, inf) = 4.0` (7.568 for `denman_beavers`)
+  for `diag(-4, 9)`; symmetric input with a negative eigenvalue now raises
+  `LinAlgError` for every method, and `denman_beavers` warns
+  (`RuntimeWarning`) when its 50 iterations do not converge.
+- **`romberg` warns when it cannot reach `tol`.** `abs(t - 0.3)**0.5` on
+  [0, 1] at `tol=1e-15, max_steps=6` returned 0.50098244 against 0.49998586
+  with no signal; it now emits a `RuntimeWarning` naming the estimate and the
+  requested tolerance.
+- **`mle_newton_raphson` no longer hides its ridge.** A flat direction gave
+  `fisher_info = 1e-6`, `covariance[1, 1] = 1e6` and `converged=True`. It now
+  reports `-H` unmodified, warns, sets `converged=False`, and returns `inf`
+  variance (NaN cross-covariance) for the parameters the non-positive
+  directions touch.
+- **`irls(max_iter=0)` and `ransac(max_trials=0)`** raised
+  `UnboundLocalError`; they now raise `ValueError` ("at least one").
 
 - `total_least_squares(rank=...)` ignored `rank` when forming `x`: it always
   used the last right singular vector, so `x` was bit-identical for every rank
