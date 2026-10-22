@@ -115,16 +115,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`TrackDatabaseManager` no longer truncates 2-D detections.** The
-  element count was `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,
+- **`TrackDatabaseManager` no longer truncates 2-D detections, and rejects
+  track-state shapes it garbled.** For detections the element count was
+  `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,
   `arange(6).reshape(2, 3)` as `[0., 1.]` and a 3x3 array as its first three
   elements; 1-D vectors were unaffected. Measurements and covariances now
   store their shape and round-trip at every shape. This changes the stored
   format, so the database schema version moves from `1.0` to `2.0`: new
   files are created at `2.0`; existing `1.0` files still read exactly as
-  before and keep writing the legacy layout (one format per file, never a
-  mix), with a `UserWarning` when a write would truncate. Opening a file no
-  longer overwrites its stored version.
+  before and keep the legacy layout (one format per file, never a mix), so
+  writing a non-1-D measurement or a covariance that is not (n, n) into a
+  `1.0` file raises `ValueError` instead of storing data that reads back
+  truncated. Opening a file no longer overwrites its stored version. For
+  track states (`initiate_track`, `update_track_state`, `store_track_history`,
+  both schemas), a state that is not 1-D or a covariance that is not
+  `(n, n)` for `n = len(state)` now raises `ValueError`; a `(1, n)` state
+  used to be stored with `state_dim = 1` and a non-square covariance read
+  back garbled.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at

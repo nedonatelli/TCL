@@ -7,7 +7,6 @@ and lifecycle operations using SQLite for real-time tracking scenarios.
 import json
 import sqlite3
 import struct
-import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -164,7 +163,7 @@ class TrackDatabaseManager:
         meas = np.asarray(measurement, dtype=np.float64)
         legacy = self._schema_version < 2
         if legacy:
-            self._warn_legacy_truncation(meas, covariance)
+            self._check_legacy_shapes(meas, covariance)
             meas_bytes, meas_dim, meas_dtype = meas.tobytes(), len(meas), "float64"
         else:
             meas_bytes, meas_dim, meas_dtype = self._serialize_array(meas)
@@ -366,6 +365,7 @@ class TrackDatabaseManager:
         self._check_open()
         state = np.asarray(initial_state, dtype=np.float64)
         cov = np.asarray(initial_covariance, dtype=np.float64)
+        self._validate_state_shapes(state, cov)
         meta_json = self._sanitize_metadata(metadata)
 
         self._cursor.execute(
@@ -1102,6 +1102,7 @@ class TrackDatabaseManager:
         update_type: str = "update",
     ) -> None:
         """Insert a single state row into track_states."""
+        self._validate_state_shapes(state, covariance)
         res_bytes = None
         if residual is not None:
             res_bytes = np.asarray(residual, dtype=np.float64).tobytes()
@@ -1151,17 +1152,38 @@ class TrackDatabaseManager:
         )
 
     @staticmethod
-    def _warn_legacy_truncation(meas: NDArray[np.float64], cov: Any) -> None:
-        """Warn when a schema-1 file would silently truncate an array."""
-        n = len(meas) if meas.ndim else 0
-        if meas.ndim != 1 or (cov is not None and np.asarray(cov).shape != (n, n)):
-            warnings.warn(
-                "This database uses the legacy schema 1.0, which stores only "
-                "the first dimension's worth of elements of a non-1-D "
-                "measurement or non-square covariance. Create a new database "
-                "(schema 2.0) to store such arrays losslessly.",
-                UserWarning,
-                stacklevel=3,
+    def _validate_state_shapes(
+        state: NDArray[np.float64], covariance: NDArray[np.float64]
+    ) -> None:
+        """Raise unless ``state`` is (n,) and ``covariance`` is (n, n).
+
+        Track-state rows store ``len(state)`` as the dimension and read the
+        covariance back as ``dim * dim`` elements, so any other shape was
+        stored under the wrong dimension and garbled on read.
+        """
+        if state.ndim != 1:
+            raise ValueError(
+                f"state must be a 1-D vector of shape (n,), got shape {state.shape}"
+            )
+        n = state.shape[0]
+        if covariance.shape != (n, n):
+            raise ValueError(
+                f"covariance must have shape ({n}, {n}) for a state of length "
+                f"{n}, got shape {covariance.shape}"
+            )
+
+    @staticmethod
+    def _check_legacy_shapes(meas: NDArray[np.float64], cov: Any) -> None:
+        """Raise for data the schema 1.0 detection layout cannot represent."""
+        n = meas.shape[0] if meas.ndim == 1 else None
+        bad_cov = cov is not None and np.shape(cov) != (n, n)
+        if n is None or bad_cov:
+            raise ValueError(
+                "This database is schema 1.0, whose detection layout stores a "
+                "1-D measurement and an (n, n) covariance only; got measurement "
+                f"shape {meas.shape} and covariance shape "
+                f"{None if cov is None else np.shape(cov)}. A new database "
+                "(created at schema 2.0) stores any shape."
             )
 
     def _read_schema_version(self) -> int:

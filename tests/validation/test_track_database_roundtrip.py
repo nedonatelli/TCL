@@ -1,7 +1,6 @@
 """Round-trip and schema-version tests for TrackDatabaseManager."""
 
 import sqlite3
-import warnings
 
 import numpy as np
 import pytest
@@ -120,8 +119,11 @@ def test_writes_to_schema_1_file_stay_legacy_and_one_version(tmp_path):
     assert np.array_equal(got["measurement"], [7.0, 8.0])
     assert np.array_equal(got["covariance"], np.eye(2))
     assert np.array_equal(db.retrieve_detection("vec")["measurement"], meas)
-    with pytest.warns(UserWarning, match="legacy schema 1.0"):
+    with pytest.raises(ValueError, match="schema 1.0.*schema 2.0"):
         db.store_detection("tw", np.arange(6.0).reshape(2, 3), "s", 3.0)
+    with pytest.raises(ValueError, match="schema 1.0"):
+        db.store_detection("nc", np.zeros(2), "s", 3.0, covariance=np.eye(3))
+    assert [d["detection_id"] for d in db.retrieve_detections()].count("tw") == 0
     db.close()
     assert _version(path) == "1.0"
 
@@ -133,12 +135,57 @@ def test_writes_to_schema_1_file_stay_legacy_and_one_version(tmp_path):
     assert blob == np.array([7.0, 8.0]).tobytes()
 
 
-def test_legacy_1d_write_does_not_warn(tmp_path):
+def test_legacy_valid_write_is_accepted(tmp_path):
     path = tmp_path / "v1.db"
     _write_v1_database(path)
     db = TrackDatabaseManager(path)
     db.open(mode="a")
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        db.store_detection("n", np.ones(3), "s", 2.0, covariance=np.eye(3))
+    db.store_detection("n", np.ones(3), "s", 2.0, covariance=np.eye(3))
+    assert np.array_equal(db.retrieve_detection("n")["covariance"], np.eye(3))
     db.close()
+
+
+@pytest.mark.parametrize("schema", ["new", "v1"])
+class TestTrackStateShapes:
+    def _db(self, tmp_path, schema):
+        path = tmp_path / "t.db"
+        if schema == "v1":
+            _write_v1_database(path)
+        db = TrackDatabaseManager(path)
+        db.open(mode="a")
+        return db
+
+    def test_valid_state_round_trips(self, tmp_path, schema):
+        db = self._db(tmp_path, schema)
+        P = np.array([[4.0, 1.0, 0.0], [1.0, 9.0, 0.0], [0.0, 0.0, 1.0]])
+        db.initiate_track("t", np.array([1.0, 2.0, 3.0]), P, 0.0)
+        got = db.get_track_state("t")
+        assert np.array_equal(got["state"], [1.0, 2.0, 3.0])
+        assert np.array_equal(got["covariance"], P)
+        db.close()
+
+    def test_row_vector_state_raises(self, tmp_path, schema):
+        db = self._db(tmp_path, schema)
+        with pytest.raises(ValueError, match=r"shape \(n,\).*\(1, 3\)"):
+            db.initiate_track("t", np.ones((1, 3)), np.eye(3), 0.0)
+        db.close()
+
+    def test_non_square_covariance_raises(self, tmp_path, schema):
+        db = self._db(tmp_path, schema)
+        with pytest.raises(ValueError, match=r"\(3, 3\).*\(2, 3\)"):
+            db.initiate_track("t", np.ones(3), np.ones((2, 3)), 0.0)
+        db.initiate_track("t", np.ones(3), np.eye(3), 0.0)
+        with pytest.raises(ValueError, match=r"\(3, 3\)"):
+            db.update_track_state("t", np.ones(3), np.eye(2), 1.0)
+        with pytest.raises(ValueError, match=r"shape \(n,\)"):
+            db.update_track_state("t", np.ones((3, 1)), np.eye(3), 1.0)
+        db.close()
+
+    def test_failed_initiate_leaves_no_track(self, tmp_path, schema):
+        db = self._db(tmp_path, schema)
+        with pytest.raises(ValueError):
+            db.initiate_track("t", np.ones(3), np.ones((2, 3)), 0.0)
+        db._connection.commit()
+        with pytest.raises(KeyError):
+            db.get_track("t")
+        db.close()
