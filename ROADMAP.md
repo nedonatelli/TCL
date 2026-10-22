@@ -27,6 +27,26 @@ and git history.
 
 ## Backlog
 
+### v2.12.0 -- planned
+
+Behaviour changes announced in the v2.11.1 CHANGELOG as deferred to v2.12.
+None has shipped:
+
+- **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
+  `'w'` mode will discard an existing file, matching `HDF5Storage`; 2.11.1
+  keeps the data and emits a `FutureWarning`.
+- **`tau_scale` fixed or removed.** `static_estimation.robust.tau_scale` is
+  not the Yohai-Zamar tau scale and returns 1.0918 on N(0, 1) draws against
+  about 1.0 for a consistent estimator; fix it or remove it.
+- **Unknown schema versions rejected.** Stored schema versions that are
+  unknown are warned on in 2.11.1 and will be rejected outright.
+- **`geodetic2ecef` size-1 shape.** Normalize the size-1 input case to
+  return `(3, 1)`.
+- **Information-filter singular-`Y` prediction.** Re-derive the prediction
+  step on MATLAB's formula (needs its own tests and audit), and replace the
+  absolute `1e-10` jitter in `srif_update`'s non-positive-definite
+  measurement-covariance fallback with a relative floor.
+
 ### Measured backlog (from the MATLAB parity inventory)
 
 `docs/matlab_parity_inventory.rst` was produced by walking every directory of

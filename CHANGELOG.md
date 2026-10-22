@@ -67,8 +67,11 @@ under Fixed):
   `UPDATE _pytcl_track_db_metadata SET value = '2.0' WHERE key = 'schema_version'`.
   Detections 2.11.0 wrote into the file in the meantime do not read back
   correctly after that. Do not open 2.11.1 track databases with 2.11.0.
-  Decoding the shape header on read is kept cheap: `retrieve_detections`
-  on 2500 detections stays within about 10% of 2.11.0's time.
+  Decoding the shape header on read costs a measured, bounded amount:
+  `retrieve_detections` over 2500 detections with 2-element measurements
+  is 7-8% slower than 2.11.0 without covariances and 10-17% slower with
+  2x2 covariances (median of 30 queries, three repeats, darwin arm64;
+  other shapes and platforms were not measured).
 - **Session schema v2.** `save_session` now stores each track's M-of-N
   window, so a resumed `MultiTargetTracker` keeps its confirmation
   progress. `SESSION_SCHEMA_VERSION` is 2; v1 files still load (with an
@@ -92,7 +95,9 @@ changed since v2.11.0. Each is non-breaking, with no signature change:
   fallback of `compute_matrix_sqrt` raises `LinAlgError` only on a
   covariance with a negative eigenvalue too large to be roundoff, input
   that previously produced a wrong answer; its clamp floor is now
-  relative and reproduces the old value at unit scale.
+  relative and reproduces the old value at unit scale. Away from unit
+  scale the floor scales with the largest eigenvalue: `diag(1e6, 0)` now
+  floors at 1e-4 where it used to be 1e-10.
   `compute_innovation_likelihood` / `compute_mahalanobis_distance` warn
   and return 0.0 / `nan` on a non-positive-definite `S`, where they
   returned a meaningless number.
@@ -927,7 +932,7 @@ MATURE -> EXPERIMENTAL (`atmosphere.ionosphere`, `navigation.ins`,
   is ever reached, and only warns correctly at `press_pa=1e-10` --
   a pre-existing defect this patch does not fix.
   The lower bound reuses US76's own -5000 m validity floor
-  (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`, task 2.7) rather than
+  (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`) rather than
   0 km: an ordinary high-pressure system (105 kPa converges to
   `alt_km=-0.24`) is not a defect and must not warn, which a 0 km floor
   got wrong on the first pass of this fix (caught in review). Non-positive
@@ -997,7 +1002,7 @@ MATURE -> EXPERIMENTAL (`atmosphere.ionosphere`, `navigation.ins`,
   `arccos` discarded without changing the magnitude for any input that
   was already correct.
 
-  Deferred, not fixed here (Tier 4): `direct_rhumb` is 380 m off the
+  Deferred, not fixed here: `direct_rhumb` is 380 m off the
   exact endpoint on a 3000 km leg with no accuracy note in its
   docstring; MATLAB's exact elliptic-integral rhumb formulation is
   unported. The 380 m figure is carried forward from the pre-v2.11.1
@@ -1187,7 +1192,8 @@ MATURE -> EXPERIMENTAL (`atmosphere.ionosphere`, `navigation.ins`,
   design decision, not this patch's scope.
   Unverified sibling noted, not fixed here: `srif_update` falls back to `cholesky(R_meas + 1e-10 *
   I)` on a non-PD measurement covariance, the same absolute-jitter
-  pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
+  pattern as the relative eigenvalue floor now used in the eigh fallbacks --
+  deferred to v2.12.
   Also undisclosed until now: the same branch regularizes a singular
   `Q` with `eps = 1e-9 * (trace(Q) / n + 1.0)` before inverting it, the
   same absolute-jitter pattern, and the introduced error does not clear

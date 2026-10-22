@@ -10,16 +10,10 @@ history lives in `CHANGELOG.md
 Current State (v2.11.1)
 -----------------------
 
-* **8,500+ tests** passing; coverage measured honestly (94.6% under CI's
-  branch-coverage gate conditions -- numba kernels traced, no MLX --
-  measured for v2.11.1), docstring examples run in CI
-* **The correctness patch** (v2.11.1): silent-wrong-answer fixes that
-  change numerical results -- the leap-second shift in ``tai_to_utc``,
-  the geoid (geocentric latitude and true radius), the INS
-  error-state vertical channel, projections across the antimeridian,
-  and the Earth-centred Moon frame -- plus special-function, detection,
-  estimation-stack and I/O corrections; see the CHANGELOG for the
-  behaviour notes (track-database schema 2.0, session schema v2)
+* **8,500+ tests** passing; coverage measured honestly (94.6% as CI's
+  branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
+  run in CI; v2.11.1 is a correctness patch (see the CHANGELOG for its
+  behaviour notes)
 * **The audit release** (v2.11.0): every silent-wrong-answer path from
   the full-codebase audit closed (Vincenty antipodal, gating without
   R, hypergeometric divergence, silent numerical fallbacks); the MHT
@@ -98,6 +92,12 @@ Current State (v2.11.1)
 
 Next
 ----
+
+* **v2.12.0 planned changes**: ``'w'`` mode truncating for
+  ``TrackDatabaseManager`` and ``SQLStorage``, the Tukey-biweight
+  ``tau_scale`` fixed or removed, unknown schema versions rejected,
+  ``geodetic2ecef`` returning ``(3, 1)`` for size-1 input, and the
+  information-filter singular-``Y`` prediction re-derived.
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's

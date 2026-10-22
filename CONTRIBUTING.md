@@ -522,10 +522,10 @@ Current metrics (v2.11.1):
 - **Modules:** 219
 - **Tests:** 8,500+ (all passing; measured 9,546 via
   `pytest --collect-only`)
-- **Coverage:** 94.65% under CI's gate conditions (`NUMBA_DISABLE_JIT=1`,
-  `--cov-branch`, `--extra all`, no MLX, Python 3.11), measured locally on
-  darwin arm64 at the v2.11.1 release-prep commit, not on the ubuntu-3.11
-  CI cell. CI gate is `--cov-fail-under=85`.
+- **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+  `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
+  04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
+  conditions. CI gate is `--cov-fail-under=85`.
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
