@@ -16,6 +16,24 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.io.storage import StorageBackend
 
 
+def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+    """Open ``path`` under ``mode``; 'w' discards any existing file first.
+
+    'r' uses SQLite's own read-only open as a backstop to the explicit
+    ``_check_writable`` guards on the public write methods.
+    """
+    if mode == "w":
+        for suffix in ("", "-wal", "-shm", "-journal"):
+            Path(path + suffix).unlink(missing_ok=True)
+
+    if mode == "r":
+        uri = Path(path).resolve().as_uri() + "?mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
+    else:
+        connection = sqlite3.connect(path)
+    return connection, connection.cursor()
+
+
 class SQLStorage(StorageBackend):
     """SQL-based storage backend.
 
@@ -69,7 +87,8 @@ class SQLStorage(StorageBackend):
         path : str
             Path to the SQLite database file.
         mode : str, optional
-            'r' (read), 'w' (write), 'a' (append). Default is 'r'.
+            'r' (read-only), 'w' (create, discarding any existing file), 'a'
+            (create if absent, else append). Default is 'r'.
 
         Raises
         ------
@@ -80,6 +99,9 @@ class SQLStorage(StorageBackend):
 
         Notes
         -----
+        Modes are enforced: ``'r'`` rejects writes (they used to persist) and
+        ``'w'`` deletes an existing file (it used to behave as ``'a'``).
+
         Opening a nonexistent path for reading used to create an empty
         database, because ``sqlite3.connect`` creates the file whatever the
         caller intended. Reads against it then failed with
@@ -99,9 +121,7 @@ class SQLStorage(StorageBackend):
                 f"create one; use mode='w' or mode='a' to create it."
             )
 
-        # SQLite has no write-only mode, so 'w' behaves as 'a'.
-        self._connection = sqlite3.connect(str(self._path))
-        self._cursor = self._connection.cursor()
+        self._connection, self._cursor = _connect(str(self._path), mode)
 
         if mode in ("w", "a"):
             self._initialize_tables()
@@ -142,8 +162,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Associated metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         arr = np.asarray(data)
 
@@ -226,8 +245,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Associated metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         value_json = json.dumps({"value": value, "type": type(value).__name__})
         meta_json = json.dumps(metadata or {})
@@ -288,8 +306,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Group-level metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         # Store as special metadata entry
         group_marker = json.dumps({"_is_group": True, **(metadata or {})})
@@ -392,8 +409,7 @@ class SQLStorage(StorageBackend):
         name : str
             Entry name
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         self._cursor.execute(
             f"""DELETE FROM {self._arrays_table} WHERE name = ?""", (name,)
@@ -402,6 +418,15 @@ class SQLStorage(StorageBackend):
             f"""DELETE FROM {self._metadata_table} WHERE key = ?""", (name,)
         )
         self._connection.commit()
+
+    def _check_writable(self) -> None:
+        if self._cursor is None:
+            raise RuntimeError("Storage not open. Call open() first.")
+        if self._mode == "r":
+            raise PermissionError(
+                "Storage was opened read-only (mode='r'); reopen with "
+                "mode='a' or mode='w' to write."
+            )
 
     def flush(self) -> None:
         """Commit any pending transactions."""
