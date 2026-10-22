@@ -167,6 +167,24 @@ def _ttls_reference(A, b, k):
     return np.linalg.lstsq(Ck[:, :-1], Ck[:, -1], rcond=None)[0]
 
 
+class TestOrdinaryLeastSquaresResidualsShape:
+    """Pins the current ``residuals`` contract; v2.12.0 changes it on purpose."""
+
+    def test_full_rank_overdetermined_returns_sum_of_squares(self):
+        A = np.array([[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]])
+        b = np.array([1.0, 2.0, 2.0])
+        out = ordinary_least_squares(A, b)
+        assert out.residuals.shape == (1,)
+        assert_allclose(out.residuals, [np.sum((b - A @ out.x) ** 2)], rtol=1e-12)
+
+    def test_rank_deficient_returns_residual_vector(self):
+        A = np.array([[1.0, 2.0], [2.0, 4.0], [3.0, 6.0]])
+        b = np.array([1.0, 2.0, 2.0])
+        out = ordinary_least_squares(A, b)
+        assert out.residuals.shape == (3,)
+        assert_allclose(out.residuals, b - A @ out.x, rtol=1e-12)
+
+
 class TestTotalLeastSquaresRank:
     """The ``rank`` argument selects truncated TLS (Fierro et al., 1997)."""
 
@@ -183,9 +201,10 @@ class TestTotalLeastSquaresRank:
 
     def test_default_and_full_rank_are_identical(self):
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
-        default = total_least_squares(A, b)
-        full = total_least_squares(A, b, rank=2)
-        assert np.array_equal(default.x, full.x)
+        V = np.linalg.svd(np.column_stack([A, b]))[2].T
+        legacy = -V[:2, 2] / V[2, 2]
+        assert np.array_equal(total_least_squares(A, b).x, legacy)
+        assert np.array_equal(total_least_squares(A, b, rank=2).x, legacy)
 
     def test_full_rank_matches_closed_form_tls(self):
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
