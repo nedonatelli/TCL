@@ -115,6 +115,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`TrackDatabaseManager` row identity and track operations.**
+  `track_to_pytcl` built the `Track.id` from `hash(track_id)`, which Python
+  salts per process: three interpreters returned 1090103678, 1605147417 and
+  300302318 for the same id. It now uses a blake2b digest
+  (`_track_row_id`, range `0..2**31-1`). The integer is rebuilt on read and
+  never stored, so no on-disk format changes and the schema version stays
+  `2.0`. `store_from_track` dropped `status`, `hits` and `misses` (a confirmed
+  track with 5 hits and 1 miss read back tentative with 0 and 0); it now
+  stores them. `merge_tracks(x, x)` doubled `hits` and marked the survivor
+  DEAD; it raises `ValueError`. `associate_detection` wrote an unknown track
+  id into `track_associations`; it raises `KeyError`. The `retrieve_detections`
+  `LIMIT` is a bound parameter, and a negative or non-int `limit` raises
+  `ValueError`.
 - **`TrackDatabaseManager` and `SQLStorage` now enforce read mode, and `'w'`
   warns.** `open('r')` accepted writes: the v2.11.0 audit persisted rows
   through a read-only handle. Every write method (`store_*`,

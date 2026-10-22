@@ -4,6 +4,7 @@ Provides detection management, track initiation, state maintenance,
 and lifecycle operations using SQLite for real-time tracking scenarios.
 """
 
+import hashlib
 import json
 import sqlite3
 import struct
@@ -28,6 +29,23 @@ class TrackDatabaseStatus(Enum):
     CONFIRMED = "confirmed"
     COASTING = "coasting"
     DEAD = "dead"
+
+
+_TRACK_STATUS_TO_DB = {
+    "tentative": TrackDatabaseStatus.TENTATIVE,
+    "confirmed": TrackDatabaseStatus.CONFIRMED,
+    "deleted": TrackDatabaseStatus.DEAD,
+}
+
+
+def _track_row_id(track_id: str) -> int:
+    """Return a process-independent integer id in ``[0, 2**31)`` for a track id.
+
+    ``hash()`` of a str is salted per process, so the same track id mapped to
+    a different integer in every interpreter.
+    """
+    digest = hashlib.blake2b(track_id.encode(), digest_size=4).digest()
+    return int.from_bytes(digest, "big") % 2**31
 
 
 _CURRENT_SCHEMA_VERSION = 2
@@ -263,7 +281,12 @@ class TrackDatabaseManager:
             query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY timestamp"
         if limit is not None:
-            query += f" LIMIT {limit}"
+            if isinstance(limit, bool) or not isinstance(limit, (int, np.integer)):
+                raise ValueError(f"limit must be a non-negative int, got {limit!r}")
+            if limit < 0:
+                raise ValueError(f"limit must be a non-negative int, got {limit!r}")
+            query += " LIMIT ?"
+            params.append(int(limit))
 
         self._cursor.execute(query, params)
         return [self._row_to_detection(row) for row in self._cursor.fetchall()]
@@ -321,8 +344,19 @@ class TrackDatabaseManager:
             Track identifier.
         confidence : float
             Association confidence score (0-1). Default is 1.0.
+
+        Raises
+        ------
+        KeyError
+            If the detection or the track is not in this database. An unknown
+            track used to be written into ``track_associations`` anyway,
+            leaving a reference to a track that does not exist.
         """
         self._check_writable()
+
+        self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
+        if self._cursor.fetchone() is None:
+            raise KeyError(f"no such track: {track_id!r}")
 
         # Get detection timestamp
         self._cursor.execute(
@@ -887,6 +921,9 @@ class TrackDatabaseManager:
         ------
         KeyError
             If either track is absent from the database.
+        ValueError
+            If both ids name the same track. A self-merge doubled ``hits``
+            and then marked the surviving track DEAD.
 
         Notes
         -----
@@ -902,6 +939,9 @@ class TrackDatabaseManager:
         pruning would then delete the track that had just been reinforced.
         """
         self._check_writable()
+
+        if track_id_keep == track_id_merge:
+            raise ValueError(f"cannot merge track {track_id_keep!r} into itself")
 
         for track_id in (track_id_keep, track_id_merge):
             self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
@@ -1003,7 +1043,7 @@ class TrackDatabaseManager:
         status = status_map.get(track_info["status"], TrackStatus.DELETED)
 
         return Track(
-            id=hash(track_id) % (2**31),
+            id=_track_row_id(track_id),
             state=state_info["state"],
             covariance=state_info["covariance"],
             status=status,
@@ -1049,6 +1089,12 @@ class TrackDatabaseManager:
             pytcl Track NamedTuple.
         timestamp : float, optional
             Override timestamp. Uses track.time if not provided.
+
+        Notes
+        -----
+        ``status``, ``hits`` and ``misses`` are stored with the state. They
+        used to be dropped, so a confirmed track with 5 hits and 1 miss read
+        back tentative with 0 and 0.
         """
         self._check_writable()
         t = timestamp if timestamp is not None else track.time
@@ -1062,6 +1108,16 @@ class TrackDatabaseManager:
             self.initiate_track(track_id, track.state, track.covariance, t)
         else:
             self.update_track_state(track_id, track.state, track.covariance, t)
+        self._cursor.execute(
+            "UPDATE tracks SET status = ?, hits = ?, misses = ? WHERE track_id = ?",
+            (
+                _TRACK_STATUS_TO_DB[track.status.value].value,
+                int(track.hits),
+                int(track.misses),
+                track_id,
+            ),
+        )
+        self._connection.commit()
 
     def store_from_tracklist(self, track_list: Any) -> None:
         """Store all tracks from a TrackList.

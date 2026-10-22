@@ -329,3 +329,114 @@ def test_sql_storage_write_mode_preserves_data_and_warns(tmp_path):
         with pytest.warns(FutureWarning, match="does not truncate.*v2.12.0"):
             s.open(path, "w")
         assert np.array_equal(s.retrieve_array("old"), np.arange(3.0))
+
+
+def _confirmed_track(hits=5, misses=1):
+    from pytcl.trackers.multi_target import Track, TrackStatus
+
+    return Track(
+        id=7,
+        state=np.array([1.0, 2.0, 3.0, 4.0]),
+        covariance=np.eye(4),
+        status=TrackStatus.CONFIRMED,
+        hits=hits,
+        misses=misses,
+        time=3.0,
+    )
+
+
+def _db_with_track(tmp_path):
+    track = _confirmed_track()
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open()
+    db.store_from_track(track)
+    return db, db.retrieve_all_tracks()[0]
+
+
+def test_track_row_id_is_stable_across_processes():
+    import subprocess
+    import sys
+
+    script = (
+        "from pytcl.io.track_database import _track_row_id; print(_track_row_id('t-1'))"
+    )
+    ids = {
+        subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        for _ in range(3)
+    }
+    assert len(ids) == 1, f"row id varies per process: {ids}"
+    assert 0 <= int(next(iter(ids))) < 2**31
+
+
+def test_track_to_pytcl_id_matches_row_id(tmp_path):
+    from pytcl.io.track_database import _track_row_id
+
+    db, row = _db_with_track(tmp_path)
+    assert db.track_to_pytcl(row["track_id"]).id == _track_row_id(row["track_id"])
+    db.close()
+
+
+def test_store_from_track_preserves_status_and_counts(tmp_path):
+    db, row = _db_with_track(tmp_path)
+    assert row["status"] == "confirmed"
+    assert (row["hits"], row["misses"]) == (5, 1)
+    db.close()
+
+
+def test_store_from_track_restore_preserves_counts_on_existing_row(tmp_path):
+    db, row = _db_with_track(tmp_path)
+    db.store_from_track(_confirmed_track(hits=9, misses=2)._replace(time=4.0))
+    row = db.get_track(row["track_id"])
+    assert row["status"] == "confirmed"
+    assert (row["hits"], row["misses"]) == (9, 2)
+    db.close()
+
+
+def test_store_from_track_still_refused_in_read_mode(tmp_path):
+    db, _ = _db_with_track(tmp_path)
+    db.close()
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open("r")
+    with pytest.raises(Exception, match="read"):
+        db.store_from_track(_confirmed_track())
+    db.close()
+
+
+def test_associating_an_unknown_track_raises_and_writes_nothing(tmp_path):
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open()
+    db.store_detection("d-1", np.zeros(2), "s", 0.0)
+    with pytest.raises(KeyError, match="no such track"):
+        db.associate_detection("d-1", "does-not-exist")
+    assert db.retrieve_detection("d-1")["association_status"] == "unassociated"
+    assert (
+        db._cursor.execute("SELECT COUNT(*) FROM track_associations").fetchone()[0] == 0
+    )
+    db.close()
+
+
+def test_self_merge_is_rejected_and_changes_nothing(tmp_path):
+    db, row = _db_with_track(tmp_path)
+    with pytest.raises(ValueError, match="itself"):
+        db.merge_tracks(row["track_id"], row["track_id"])
+    after = db.get_track(row["track_id"])
+    assert after["hits"] == 5
+    assert after["status"] == "confirmed"
+    db.close()
+
+
+def test_retrieve_detections_limit_is_bound_and_validated(tmp_path):
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open()
+    for i in range(4):
+        db.store_detection(f"d{i}", np.zeros(2), "s", float(i))
+    assert len(db.retrieve_detections(limit=2)) == 2
+    assert db.retrieve_detections(limit=0) == []
+    with pytest.raises(ValueError, match="limit"):
+        db.retrieve_detections(limit=-1)
+    with pytest.raises(ValueError, match="limit"):
+        db.retrieve_detections(limit="1; DROP TABLE detections")
+    assert len(db.retrieve_detections()) == 4
+    db.close()
