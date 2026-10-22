@@ -60,9 +60,7 @@ class TestCompareScenarios:
 
         result = track_store.compare_scenarios("A", "B")
 
-        assert result["state_differences"]["t"] == pytest.approx(
-            np.sqrt(12.5), rel=1e-15, abs=0
-        )
+        assert result["state_differences"]["t"] == np.sqrt(12.5)
 
     def test_zero_overlap_is_nan_and_warns(self, track_store):
         _store_track(track_store, "t", [0.0, 1.0], scenario_id="A")
@@ -100,6 +98,35 @@ class TestResidualAppend:
 
         assert r[:2, 0].tolist() == [1.0, 2.0]
         assert np.isnan(r[2, 0])
+
+    @pytest.mark.parametrize("has_residuals", [True, False])
+    def test_nan_pad_on_integer_storage_raises_and_leaves_track_intact(
+        self, tmp_path, has_residuals
+    ):
+        """Was: the NaN pad was stored as 0 (arm64) / INT_MIN (x86)."""
+        store = TrackHDF5Storage(str(tmp_path / "i.h5"), dtype="int64")
+        store.open("w")
+        try:
+            store.store_track(
+                "t",
+                np.zeros((2, 1), dtype=np.int64),
+                np.ones((2, 1, 1), dtype=np.int64),
+                [0.0, 1.0],
+                residuals=[[1], [2]] if has_residuals else None,
+            )
+            residual = None if has_residuals else [5]
+            with pytest.raises(TypeError, match="int64"):
+                store.append_track_state("t", [0], [[1]], 2.0, residual=residual)
+
+            got = store.retrieve_track("t")
+            assert got["timestamps"].tolist() == [0.0, 1.0]
+            assert got["states"].shape == (2, 1)
+            if has_residuals:
+                assert got["residuals"][:, 0].tolist() == [1, 2]
+            else:
+                assert got["residuals"] is None
+        finally:
+            store.close()
 
 
 class TestStoredDtype:
@@ -164,7 +191,28 @@ class TestSQLKeyPrefix:
                 store.store_array(key, np.zeros(1))
 
             assert store.list_keys("a_b") == ["a_b/x"]
+            assert store.list_keys("a_b/") == ["a_b/x"]
             assert store.list_keys("a%b") == ["a%b/w"]
+
+    def test_group_match_is_case_sensitive(self, tmp_path):
+        """Was: "a_b" and "A_B" both gave ['A_B/y', 'a_b/x'] (LIKE folds case)."""
+        with SQLStorage() as store:
+            store.open(str(tmp_path / "s.db"), mode="w")
+            for key in ("a_b/x", "A_B/y", "Mission/t"):
+                store.store_array(key, np.zeros(1))
+
+            assert store.list_keys("a_b") == ["a_b/x"]
+            assert store.list_keys("A_B") == ["A_B/y"]
+            assert store.list_keys("mission") == []
+
+    def test_group_does_not_list_the_bare_key_of_the_same_name(self, tmp_path):
+        """Was: list_keys("a") returned the bare key "a" alongside "a/x"."""
+        with SQLStorage() as store:
+            store.open(str(tmp_path / "s.db"), mode="w")
+            store.store_array("a", np.zeros(1))
+            store.store_array("a/x", np.zeros(1))
+
+            assert store.list_keys("a") == ["a/x"]
 
 
 class TestReaderScanGrouping:

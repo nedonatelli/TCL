@@ -156,7 +156,9 @@ def _rows_to_measurement_set(
         raise ValueError(
             f"time column {time_column!r} values {keys[i]!r} and "
             f"{keys[i + 1]!r} are distinct but equal as float64 "
-            f"({times[i]!r}); MeasurementSet.times cannot keep them apart"
+            f"({times[i]!r}); MeasurementSet.times cannot keep them apart. "
+            "Convert the time column to seconds or subtract a reference "
+            "epoch before reading"
         )
     scans: list[NDArray[np.float64]] = []
     ids: list[NDArray[Any]] | None = [] if id_column is not None else None

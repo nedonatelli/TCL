@@ -172,7 +172,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timestamps, no residuals); the dataset is now created with NaN rows for
   the earlier states. Omitting the residual on a track that has residuals
   now appends a NaN row instead of leaving the dataset one row short.
-  Tracks that never use residuals are stored exactly as before.
+  Tracks that never use residuals are stored exactly as before. With an
+  integer storage `dtype` the NaN pad was stored as 0 (arm64) or INT_MIN
+  (x86) behind numpy's cast warning; a pad on such a track now raises
+  `TypeError` before anything is written.
 - **`TrackHDF5Storage.store_track` / `append_track_state` reject complex
   input and warn on inexact integers.** `1+2j` was stored as `1.0` (numpy's
   `ComplexWarning` only); it now raises `TypeError`. An integer beyond
@@ -185,9 +188,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`SQLStorage.list_keys(group)` matches the group literally.** The prefix
   went into `LIKE ?` unescaped and without a `/` boundary, so
   `list_keys("a_b")` returned `['aXb/y', 'a_b/x', 'a_bc/z']`; it now
-  returns `['a_b/x']`. `_` and `%` in the group name are escaped, and the
-  group is matched as `group + "/"` (a trailing `/` is optional), as
-  `StorageBackend.list_keys` documents.
+  returns `['a_b/x']`. `LIKE` also folded ASCII case: with keys `a_b/x` and
+  `A_B/y`, both `list_keys("a_b")` and `list_keys("A_B")` returned both, and
+  `list_keys("mission")` returned `Mission/t`. The group is now compared as
+  an exact, case-sensitive `group + "/"` prefix (a trailing `/` is
+  optional), as `StorageBackend.list_keys` documents and `HDF5Storage`
+  behaves. `list_keys("a")` therefore no longer returns the bare key `a`
+  itself, only keys under `a/`.
 - **`read_measurements_csv` / `read_measurements_parquet` group scans by the
   exact parsed timestamp.** Grouping on `float(t)` merged the int64 times
   `2**53` and `2**53+1` into one scan at `9007199254740992.0`; that input now

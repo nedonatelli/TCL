@@ -368,8 +368,9 @@ class SQLStorage(StorageBackend):
         ----------
         group : str, optional
             Group path. Lists the keys under ``group + "/"``, matched
-            literally (``_`` and ``%`` are not wildcards; ``"a"`` does not
-            list ``"ab/x"``). A trailing ``/`` is optional. Default is "/"
+            literally and case-sensitively (``_`` and ``%`` are not
+            wildcards; ``"a"`` lists neither ``"ab/x"``, ``"A/x"`` nor the
+            bare key ``"a"``). A trailing ``/`` is optional. Default is "/"
             (all keys).
 
         Returns
@@ -381,20 +382,17 @@ class SQLStorage(StorageBackend):
             raise RuntimeError("Storage not open. Call open() first.")
 
         if group != "/":
-            # Match "group/" literally: the bare unescaped prefix let "_" match
-            # any character and stopped at no "/" boundary, so "a_b" also
-            # listed "aXb/y" and "a_bc/z".
+            # Compare "group/" as an exact, case-sensitive prefix. LIKE treated
+            # "_" as a wildcard, folded ASCII case, and had no "/" boundary,
+            # so "a_b" also listed "aXb/y", "A_B/y" and "a_bc/z".
             prefix = group.rstrip("/") + "/"
-            escaped = (
-                prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            )
-            pattern = f"{escaped}%"
             self._cursor.execute(
-                f"""SELECT name FROM {self._arrays_table} WHERE name LIKE ? ESCAPE '\\'
+                f"""SELECT name FROM {self._arrays_table}
+                   WHERE substr(name, 1, ?) = ?
                    UNION
                    SELECT key FROM {self._metadata_table}
-                   WHERE key LIKE ? ESCAPE '\\'""",
-                (pattern, pattern),
+                   WHERE substr(key, 1, ?) = ?""",
+                (len(prefix), prefix, len(prefix), prefix),
             )
         else:
             # List all keys

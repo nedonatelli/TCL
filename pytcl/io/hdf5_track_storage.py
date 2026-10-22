@@ -235,7 +235,9 @@ class TrackHDF5Storage:
         Raises
         ------
         TypeError
-            If any input is complex and the storage dtype is not.
+            If any input is complex and the storage dtype is not, or if a
+            NaN residual pad is needed (see `residual`) and the storage
+            dtype is not floating or complex.
         """
         self._check_open()
         group_path = self._resolve_track_group(track_id, scenario_id)
@@ -252,6 +254,14 @@ class TrackHDF5Storage:
                 _cast_checked(timestamp, np.dtype(np.float64), "timestamp"),
             ),
         ]
+        needs_nan_pad = (residual is None) == ("residuals" in grp)
+        if needs_nan_pad and self._dtype.kind not in "fc":
+            # Checked before any resize so the append stays atomic; numpy
+            # would store the NaN pad as 0 or INT_MIN with only a warning.
+            raise TypeError(
+                f"residuals must be NaN-padded to stay row-aligned, but the "
+                f"storage dtype {self._dtype} cannot hold NaN"
+            )
         if residual is not None:
             r = _cast_checked(residual, self._dtype, "residual")
             if "residuals" not in grp:
@@ -817,8 +827,11 @@ class TrackHDF5Storage:
         -----
         The RMSE for a common track is taken over the states at timestamps
         present in both histories, matched by exact equality (no
-        tolerance). Within one history, a repeated timestamp contributes
-        its first row. Until v2.11.1 rows were paired by index, so two
+        tolerance), so timestamps produced by different float arithmetic
+        (``0.1 * k`` against a cumulative sum of ``0.1``) may not coincide
+        and the RMSE may cover only a subset of the nominally shared
+        scans. Within one history, a repeated timestamp contributes its
+        first row. Until v2.11.1 rows were paired by index, so two
         identical tracks offset by one scan reported a nonzero RMSE.
         """
         self._check_open()
