@@ -19,8 +19,10 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.io.serialize import _warn_unknown_schema_version
 from pytcl.io.sql_storage import _connect, _warn_if_w_reopens_data
 
-# Struct formats for the array shape header, indexed by ndim.
-_SHAPE_FORMATS = tuple(f"<{n}Q" for n in range(33))
+# Struct formats for the array shape header, indexed by ndim. numpy 2 allows
+# up to 64 dimensions; a table that stops short makes such arrays store fine
+# and then fail on read.
+_SHAPE_FORMATS = tuple(f"<{n}Q" for n in range(65))
 
 
 class TrackDatabaseStatus(Enum):
@@ -1241,6 +1243,8 @@ class TrackDatabaseManager:
     def _deserialize_array(data: bytes, dtype: str) -> NDArray[Any]:
         """Inverse of :meth:`_serialize_array` (schema 2)."""
         ndim = data[0]
+        if ndim >= len(_SHAPE_FORMATS):
+            raise ValueError(f"corrupt array header: ndim={ndim}")
         shape = struct.unpack_from(_SHAPE_FORMATS[ndim], data, 1)
         count = math.prod(shape)
         arr = np.frombuffer(data, dtype=dtype, count=count, offset=1 + 8 * ndim)

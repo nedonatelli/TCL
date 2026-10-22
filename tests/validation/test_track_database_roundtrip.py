@@ -26,6 +26,25 @@ def test_array_round_trips_at_every_shape(tmp_path, shape):
     db.close()
 
 
+@pytest.mark.parametrize("ndim", [33, 64])
+def test_high_ndim_array_round_trips(tmp_path, ndim):
+    db = TrackDatabaseManager(tmp_path / "t.db")
+    db.open()
+    value = np.arange(4.0).reshape((2, 2) + (1,) * (ndim - 2))
+    db.store_detection("d", value, "s", 0.0)
+    got = db.retrieve_detection("d")["measurement"]
+    assert got.shape == value.shape
+    assert np.array_equal(got, value)
+    assert len(db.retrieve_detections()) == 1
+    db.close()
+
+
+def test_impossible_header_ndim_raises():
+    data = bytes([65]) + bytes(8 * 65)
+    with pytest.raises(ValueError, match="corrupt array header: ndim=65"):
+        TrackDatabaseManager._deserialize_array(data, "float64")
+
+
 def test_covariance_round_trips(tmp_path):
     db = TrackDatabaseManager(tmp_path / "t.db")
     db.open()
