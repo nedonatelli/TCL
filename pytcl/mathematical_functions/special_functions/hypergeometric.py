@@ -503,9 +503,15 @@ def _flag_cancellation(
     ``eps * max_term``. When that reaches ``abs(result)`` no significant
     digit survives, so the entry becomes NaN; when it exceeds
     ``_CANCELLATION_WARN`` of the result, the value is kept with a warning.
+    Entries with a non-finite ``z`` or parameter are NaN without a warning:
+    their NaN comes from the input, not from cancellation.
     """
+    bad = ~np.isfinite(z)
+    if not (np.all(np.isfinite(a)) and np.all(np.isfinite(b))):
+        bad[:] = True
     with np.errstate(divide="ignore", invalid="ignore"):
-        loss = _EPS * max_term / np.abs(result)
+        loss = np.where(bad, 0.0, _EPS * max_term / np.abs(result))
+    result = np.where(bad, np.nan, result)
     lost = ~(loss < 1.0)
     if terminates and np.any(lost):
         result = result.copy()
@@ -591,8 +597,13 @@ def generalized_hypergeometric(
     ``eps`` times the largest term: when that reaches the magnitude of the
     sum (largest term more than ``1/eps`` times the sum) the result is NaN
     with a ``RuntimeWarning``, and a ``RuntimeWarning`` is emitted with the
-    value kept once more than half the digits are lost. ``0F0(z)`` is
-    evaluated as ``exp(z)``.
+    value kept once more than half the digits are lost. A terminating
+    series (some ``a[i]`` a non-positive integer) that loses every digit is
+    re-evaluated exactly in rational arithmetic instead (Laguerre
+    ``L_80(20)`` gives -1986.4165), so the NaN applies only to
+    non-terminating series and to terminating ones longer than 500 terms.
+    A non-finite ``z`` or parameter gives NaN without a cancellation
+    warning. ``0F0(z)`` is evaluated as ``exp(z)``.
 
     Examples
     --------
