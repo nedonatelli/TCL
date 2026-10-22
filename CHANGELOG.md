@@ -78,6 +78,39 @@ under Fixed):
   `list_keys("mission")` no longer returns `Mission/...`, and
   `list_keys("a")` no longer returns the bare key `a` itself.
 
+Stability registry note (release checklist 3b):
+`scripts/check_release_stability.py v2.11.0` lists five STABLE modules
+changed since v2.11.0. Each is non-breaking, with no signature change:
+
+- `coordinate_systems.conversions.geodetic` -- **non-breaking.**
+  `geodetic2ecef` now accepts a scalar `lat` broadcast against an array
+  `lon` or `alt`, which previously raised `ValueError`; every input that
+  previously worked keeps its exact return shape and values.
+- `dynamic_estimation.kalman.matrix_utils` -- **non-breaking.** The eigh
+  fallback of `compute_matrix_sqrt` raises `LinAlgError` only on a
+  covariance with a negative eigenvalue too large to be roundoff, input
+  that previously produced a wrong answer; its clamp floor is now
+  relative and reproduces the old value at unit scale.
+  `compute_innovation_likelihood` / `compute_mahalanobis_distance` warn
+  and return 0.0 / `nan` on a non-positive-definite `S`, where they
+  returned a meaningless number.
+- `dynamic_estimation.kalman.unscented` -- **non-breaking.** The same
+  guard and relative floor in the eigh fallbacks of
+  `sigma_points_merwe`, `sigma_points_julier`, `ckf_predict` and
+  `ckf_update`: they raise only on a covariance that is not positive
+  semi-definite, where they previously returned a wrong answer.
+- `dynamic_models.discrete_time.polynomial` -- **non-breaking.**
+  Docstring only: `f_poly_kal`'s state layout relative to MATLAB's
+  `FPolyKal` is documented; no code change.
+- `dynamic_models.process_noise.polynomial` -- **non-breaking.**
+  Docstring only: `q_poly_kal`'s state layout relative to `QPolyKal` is
+  documented, and a false claim of a plain match removed; no code change.
+
+No STABLE module needs a major bump or reclassification. Thirty-six MATURE
+and nineteen EXPERIMENTAL modules also changed; three modules were demoted
+MATURE -> EXPERIMENTAL (`atmosphere.ionosphere`, `navigation.ins`,
+`dynamic_models.process_noise.coordinated_turn`; entries under Changed).
+
 ### Changed
 
 - **`tau_scale` is documented as not the Yohai-Zamar tau scale.** The `1/n`
