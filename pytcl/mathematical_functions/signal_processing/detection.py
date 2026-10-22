@@ -342,7 +342,12 @@ def _cfar_go_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-@njit(cache=True, fastmath=True)
+# fastmath=True implies nnan/ninf, which makes NaN tests and infinity
+# sentinels dead code; the SO kernels need NaN to propagate.
+SO_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
+
+
+@njit(cache=True, fastmath=SO_FASTMATH)
 def _cfar_so_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -373,14 +378,20 @@ def _cfar_so_kernel(
             right_sum += signal[j]
             right_count += 1
 
-        left_avg = left_sum / left_count if left_count > 0 else np.inf
-        right_avg = right_sum / right_count if right_count > 0 else np.inf
-
-        noise_est = min(left_avg, right_avg)
-        if noise_est == np.inf:
-            noise_est = 0.0
+        noise_est = 0.0
+        if left_count > 0 and right_count > 0:
+            left_avg = left_sum / left_count
+            right_avg = right_sum / right_count
+            if left_avg == left_avg and right_avg == right_avg:
+                noise_est = min(left_avg, right_avg)
+            else:
+                noise_est = np.nan
+        elif left_count > 0:
+            noise_est = left_sum / left_count
+        elif right_count > 0:
+            noise_est = right_sum / right_count
         noise_estimate[i] = noise_est
-        threshold[i] = alpha * noise_estimate[i]
+        threshold[i] = alpha * noise_est
 
 
 @njit(cache=True, fastmath=True)
@@ -530,7 +541,7 @@ def _cfar_2d_go_kernel(
             threshold[i, j] = alpha * noise_estimate[i, j]
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, fastmath=SO_FASTMATH, parallel=True)
 def _cfar_2d_so_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -576,13 +587,20 @@ def _cfar_2d_so_kernel(
                             bottom_sum += image[ri, ci]
                             bottom_count += 1
 
-            top_avg = top_sum / top_count if top_count > 0 else np.inf
-            bottom_avg = bottom_sum / bottom_count if bottom_count > 0 else np.inf
-            noise_est = min(top_avg, bottom_avg)
-            if noise_est == np.inf:
-                noise_est = 0.0
+            noise_est = 0.0
+            if top_count > 0 and bottom_count > 0:
+                top_avg = top_sum / top_count
+                bottom_avg = bottom_sum / bottom_count
+                if top_avg == top_avg and bottom_avg == bottom_avg:
+                    noise_est = min(top_avg, bottom_avg)
+                else:
+                    noise_est = np.nan
+            elif top_count > 0:
+                noise_est = top_sum / top_count
+            elif bottom_count > 0:
+                noise_est = bottom_sum / bottom_count
             noise_estimate[i, j] = noise_est
-            threshold[i, j] = alpha * noise_estimate[i, j]
+            threshold[i, j] = alpha * noise_est
 
 
 # =============================================================================
@@ -765,6 +783,12 @@ def cfar_so(
     result : CFARResult
         Named tuple with detection results.
 
+    Raises
+    ------
+    ValueError
+        If ``len(signal) < guard_cells + 2``, so that no cell has any
+        reference cell.
+
     Examples
     --------
     >>> import numpy as np
@@ -788,6 +812,12 @@ def cfar_so(
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
+
+    if n < guard_cells + 2:
+        raise ValueError(
+            f"reference window never fits: {n} samples with guard_cells="
+            f"{guard_cells} leave no cell with a reference cell"
+        )
 
     if alpha is None:
         alpha = threshold_factor(pfa, 2 * ref_cells, method="so")
@@ -931,6 +961,12 @@ def cfar_2d(
     result : CFARResult2D
         Named tuple with 2D detections, threshold, and noise estimate.
 
+    Raises
+    ------
+    ValueError
+        If ``method`` is unknown, or for ``method="so"`` if the image is too
+        small in both dimensions for any cell to have a reference cell.
+
     Examples
     --------
     >>> import numpy as np
@@ -953,6 +989,16 @@ def cfar_2d(
 
     guard_rows, guard_cols = guard_cells
     ref_rows, ref_cols = ref_cells
+
+    if (
+        method == "so"
+        and image.shape[0] < guard_rows + 2
+        and image.shape[1] < guard_cols + 2
+    ):
+        raise ValueError(
+            f"reference window never fits: image {image.shape} with guard_cells="
+            f"{guard_cells} leaves no cell with a reference cell"
+        )
 
     # Count reference cells
     outer_rows = 2 * (guard_rows + ref_rows) + 1

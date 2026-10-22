@@ -1202,6 +1202,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entries (`information_filter` with `F = [[1, 1], [0, 1e-18]]`) is a
   different guard and remains open.
 
+- **SO-CFAR's infinity sentinel was dead code under numba `fastmath`, so the
+  JIT and pure-Python paths disagreed.** `fastmath=True` lets the compiler
+  assume no infinities or NaNs, so `noise_est == np.inf` never matched.
+  `cfar_so(np.array([1., 2., 3.]), guard_cells=5, ref_cells=2, pfa=1e-3)`
+  returned `noise=[inf inf inf]` and no detections under the JIT but `0.0`
+  with `NUMBA_DISABLE_JIT=1` (the CI coverage cell); a NaN in a reference
+  window returned `1.0` under the JIT and `nan` without. `_cfar_so_kernel` and
+  `_cfar_2d_so_kernel` no longer use a sentinel and drop the `nnan`/`ninf`
+  fastmath flags (the other flags are kept); a NaN in either reference half now
+  gives a NaN threshold on both paths. `cfar_so` and `cfar_2d(method="so")`
+  raise `ValueError` when no cell can have a reference cell. Timing: SO 1-D
+  (5000 samples) 109-121 us before, 114-126 us after; SO 2-D (256x256)
+  10.0-11.8 ms before, 10.6-11.7 ms after (run-to-run noise); the
+  `cfar_ca_*` benchmarks are untouched.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
