@@ -15,12 +15,16 @@ malformed data rather than returning partial/garbage results.
 
 from __future__ import annotations
 
+import os
+import sys
 import warnings
 from typing import Any, NamedTuple, Sequence
 
 import msgspec
 import numpy as np
 from numpy.typing import NDArray
+
+_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
 
 __all__ = [
     "TrackRecord",
@@ -129,12 +133,17 @@ def _warn_unknown_schema_version(source: str, found: Any, known: Sequence[Any]) 
     """Warn that a stored schema version is not one this reader knows."""
     if found in known:
         return
+    frame = sys._getframe(1)
+    level = 2
+    while frame is not None and frame.f_code.co_filename.startswith(_PACKAGE_DIR):
+        frame = frame.f_back
+        level += 1
     warnings.warn(
         f"{source} has schema version {found!r}; this pytcl reads schema "
         f"versions {', '.join(repr(k) for k in known)}. Loading it anyway; "
         "fields written by a different schema may be misread.",
         UserWarning,
-        stacklevel=3,
+        stacklevel=level,
     )
 
 

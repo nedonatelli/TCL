@@ -21,7 +21,6 @@ loading such a session without the matching keyword argument raises
 """
 
 import json
-import warnings
 from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
@@ -36,7 +35,7 @@ from pytcl.dynamic_estimation import GaussianSumFilter, IMMEstimator, RBPFFilter
 from pytcl.dynamic_estimation.configs import GaussianSumConfig, IMMConfig, RBPFConfig
 from pytcl.dynamic_estimation.gaussian_sum_filter import GaussianComponent
 from pytcl.dynamic_estimation.rbpf import RBPFParticle
-from pytcl.io.serialize import _check_finite, _codec
+from pytcl.io.serialize import _check_finite, _codec, _warn_unknown_schema_version
 from pytcl.trackers import (
     MHTConfig,
     MHTTracker,
@@ -993,14 +992,9 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
             f"session schema v{env.schema_version} is newer than this "
             f"pytcl supports (v{SESSION_SCHEMA_VERSION})"
         )
-    if env.schema_version < 1:
-        warnings.warn(
-            f"session has schema version {env.schema_version!r}; this pytcl "
-            f"reads schema versions 1 through {SESSION_SCHEMA_VERSION}. "
-            "Loading it anyway; fields may be misread.",
-            UserWarning,
-            stacklevel=2,
-        )
+    _warn_unknown_schema_version(
+        "session", env.schema_version, range(1, SESSION_SCHEMA_VERSION + 1)
+    )
     restore = _RESTORERS[type(env.snapshot).__name__]
     return restore(env.snapshot, **models)
 

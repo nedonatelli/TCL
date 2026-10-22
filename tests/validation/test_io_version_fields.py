@@ -172,3 +172,63 @@ def test_session_newer_than_supported_still_raises(tmp_path):
     path = _write_with_schema_version(tmp_path, "session", 99)
     with pytest.raises(FormatError, match="newer than this pytcl supports"):
         load_session_file(path)
+
+
+def _warn_file_of(backend, tmp_path, mode="a"):
+    path = _write_with_schema_version(tmp_path, backend, UNKNOWN[backend])
+    with pytest.warns(UserWarning, match="schema version") as rec:
+        if backend == "hdf5_track":
+            with TrackHDF5Storage(str(path)) as store:
+                store.open(mode)
+        elif backend == "track_db":
+            with TrackDatabaseManager(str(path)) as db:
+                db.open(mode)
+        else:
+            _read(backend, path)
+    return rec[0].filename
+
+
+@pytest.mark.parametrize("backend", ["session", "asdf", "hdf5_track", "track_db"])
+def test_warning_points_at_the_caller(tmp_path, backend):
+    try:
+        assert _warn_file_of(backend, tmp_path) == __file__
+    except _data_skip as exc:
+        pytest.skip(str(exc))
+
+
+@pytest.mark.parametrize("mode", ["r", "a", "w"])
+def test_track_db_warning_points_at_the_caller_in_every_mode(tmp_path, mode):
+    assert _warn_file_of("track_db", tmp_path, mode) == __file__
+
+
+def test_load_session_bytes_warning_points_at_the_caller(tmp_path):
+    from pytcl.io import load_session
+
+    path = _write_with_schema_version(tmp_path, "session", 0)
+    with pytest.warns(UserWarning, match="schema version") as rec:
+        load_session(path.read_bytes())
+    assert rec[0].filename == __file__
+
+
+@pytest.mark.parametrize("stored", ["abc", ""])
+def test_unparseable_track_db_version_warns_and_reads_as_schema_1(tmp_path, stored):
+    from tests.validation.test_track_database_roundtrip import _write_v1_database
+
+    path = tmp_path / "v1.db"
+    meas, cov = _write_v1_database(path)
+    con = sqlite3.connect(path)
+    con.execute(
+        "UPDATE _pytcl_track_db_metadata SET value = ? WHERE key = 'schema_version'",
+        (stored,),
+    )
+    con.commit()
+    con.close()
+    with pytest.warns(UserWarning, match="schema version"):
+        db = TrackDatabaseManager(path)
+        db.open("a")
+    vec = db.retrieve_detection("vec")
+    assert np.array_equal(vec["measurement"], meas)
+    assert np.array_equal(vec["covariance"], cov)
+    assert np.array_equal(db.retrieve_detection("two_d")["measurement"], [0.0, 1.0])
+    db.close()
+    assert _stored_version("track_db", path) == stored

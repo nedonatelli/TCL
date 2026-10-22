@@ -1285,7 +1285,10 @@ class TrackDatabaseManager:
             str(row[0]),
             ("1.0", _CURRENT_SCHEMA_VERSION_STR),
         )
-        return int(str(row[0]).split(".")[0])
+        try:
+            return int(str(row[0]).split(".")[0])
+        except ValueError:
+            return 1
 
     @staticmethod
     def _deserialize_vector(data: bytes, dim: int) -> NDArray[np.float64]:
