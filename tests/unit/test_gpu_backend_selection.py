@@ -9,10 +9,6 @@ from pytcl.core.exceptions import DependencyError
 from pytcl.gpu import _backend
 from pytcl.gpu._backend import compute_backend_available, get_compute_backend
 
-pytestmark = pytest.mark.skipif(
-    not compute_backend_available(), reason="no GPU compute backend installed"
-)
-
 
 def _raising(exc):
     def ctor():
@@ -21,9 +17,22 @@ def _raising(exc):
     return ctor
 
 
+class _Float32Fallback:
+    name = "mlx"
+    supports_float64 = False
+
+
 class _Float64Fallback:
     name = "double"
     supports_float64 = True
+
+
+@pytest.fixture(autouse=True)
+def _stand_in_mlx(monkeypatch):
+    # Selection logic is under test, not MLX itself: a stand-in lets every CI
+    # runner exercise it (none has MLX or CuPy, so a real-backend skipif
+    # left these tests, and the selection code, unrun in CI).
+    monkeypatch.setattr(_backend, "MLXBackend", _Float32Fallback)
 
 
 def test_cupy_construction_failure_warns_before_falling_back(monkeypatch):
