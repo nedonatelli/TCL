@@ -107,6 +107,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `generalized_hypergeometric`: the series declared convergence against the
+  running partial sum, which collapses by cancellation for negative `z`.
+  Measured: `0F0(-40)` returned -2.2304438326 against `exp(-40) = 4.2484e-18`;
+  `0F0(-100)` returned -3.156e26 against 3.72e-44; `3F3([1,2,3],[4,5,6],-100)`
+  returned 3.1752e12 against 0.199294. Convergence is now judged against the
+  largest term seen. When `eps * max_term / abs(sum)` reaches 1 (no digits
+  survive) the entry is NaN with a `RuntimeWarning`; above 1e-8 the value is
+  kept with a `RuntimeWarning`. `3F3(..., -100)` is now NaN (largest term
+  ~1e40); `0F0(z)` is evaluated as `exp(z)`.
+
 - `pytcl.dynamic_estimation.kalman.constrained`: the non-convergence warning
   added in this patch reported `max|g|` instead of the constraint violation,
   so an inequality row satisfied with slack counted as a violation. For

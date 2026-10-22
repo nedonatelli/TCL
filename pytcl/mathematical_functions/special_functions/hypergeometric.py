@@ -27,7 +27,7 @@ def _hypergeometric_series(
     z: np.ndarray[Any, Any],
     max_terms: int,
     tol: float,
-) -> tuple[np.ndarray[Any, Any], bool]:
+) -> tuple[np.ndarray[Any, Any], np.ndarray[Any, Any], bool]:
     """
     Numba-optimized series summation for generalized hypergeometric function.
 
@@ -48,6 +48,9 @@ def _hypergeometric_series(
     -------
     result : ndarray
         Computed pFq values for each z.
+    max_term : ndarray
+        Largest term magnitude seen for each z; the rounding error of
+        ``result`` scales with it, not with ``result``.
     converged : bool
         False when max_terms was exhausted before the tolerance held.
     """
@@ -57,6 +60,7 @@ def _hypergeometric_series(
 
     result = np.ones(n_z, dtype=np.float64)
     term = np.ones(n_z, dtype=np.float64)
+    max_term = np.ones(n_z, dtype=np.float64)
 
     for k in range(1, max_terms):
         # Compute numerator product: prod(a_i + k - 1)
@@ -76,14 +80,17 @@ def _hypergeometric_series(
             term[j] = term[j] * z[j] * ratio
             result[j] += term[j]
 
-            # Check convergence
-            if np.abs(term[j]) >= tol * np.abs(result[j]):
+            # Relative to the largest term, not the partial sum: an
+            # alternating series cancels the sum far below its terms.
+            if np.abs(term[j]) > max_term[j]:
+                max_term[j] = np.abs(term[j])
+            if np.abs(term[j]) >= tol * max_term[j]:
                 converged = False
 
         if converged:
             break
 
-    return result, converged
+    return result, max_term, converged
 
 
 def hyp0f1(
@@ -427,6 +434,43 @@ def falling_factorial(
     return np.asarray(sp.poch(a - n + 1, n), dtype=np.float64)
 
 
+_EPS = float(np.finfo(np.float64).eps)
+_CANCELLATION_WARN = 1e-8
+
+
+def _flag_cancellation(
+    result: NDArray[np.floating], max_term: NDArray[np.floating]
+) -> NDArray[np.floating]:
+    """Blank out sums whose rounding error swamps the value.
+
+    Summing terms as large as ``max_term`` leaves an absolute error of about
+    ``eps * max_term``. When that reaches ``abs(result)`` no significant
+    digit survives, so the entry becomes NaN; when it exceeds
+    ``_CANCELLATION_WARN`` of the result, the value is kept with a warning.
+    """
+    with np.errstate(divide="ignore", invalid="ignore"):
+        loss = _EPS * max_term / np.abs(result)
+    lost = ~(loss < 1.0)
+    degraded = ~lost & (loss > _CANCELLATION_WARN)
+    if np.any(lost):
+        warnings.warn(
+            "generalized_hypergeometric: catastrophic cancellation; the "
+            "largest series term exceeds the sum by more than 1/eps, so no "
+            "significant digits remain. Returning NaN.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        result = np.where(lost, np.nan, result)
+    if np.any(degraded):
+        warnings.warn(
+            "generalized_hypergeometric: cancellation in the series sum "
+            "has cost more than half of the available digits.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+    return result
+
+
 def generalized_hypergeometric(
     a: ArrayLike,
     b: ArrayLike,
@@ -475,6 +519,18 @@ def generalized_hypergeometric(
     ``RuntimeWarning`` is emitted when ``max_terms`` is exhausted
     before the tolerance holds.
 
+    Convergence is judged against the largest term seen, not the partial
+    sum. An alternating series (negative ``z``) sums to a value far below
+    its terms, and the old test against the partial sum stopped on a term
+    still enormous relative to the true value (``0F0(-40)`` returned
+    -2.23 against ``exp(-40) = 4.2e-18``; ``3F3([1,2,3],[4,5,6],-100)``
+    returned 3.2e12 against 0.1993). The rounding error of the sum is about
+    ``eps`` times the largest term: when that reaches the magnitude of the
+    sum (largest term more than ``1/eps`` times the sum) the result is NaN
+    with a ``RuntimeWarning``, and a ``RuntimeWarning`` is emitted with the
+    value kept once more than half the digits are lost. ``0F0(z)`` is
+    evaluated as ``exp(z)``.
+
     Examples
     --------
     >>> round(float(generalized_hypergeometric([1], [2], 1)), 6)  # 1F1(1; 2; 1) = e - 1
@@ -488,6 +544,8 @@ def generalized_hypergeometric(
     q = len(b)
 
     # For special cases, use scipy's optimized functions
+    if p == 0 and q == 0:
+        return np.exp(z)
     if p == 0 and q == 1:
         return hyp0f1(b[0], z)
     elif p == 1 and q == 1:
@@ -513,7 +571,7 @@ def generalized_hypergeometric(
             )
 
     # General case: use Numba-optimized series summation
-    result, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)
+    result, max_term, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)
     if not converged:
         warnings.warn(
             f"generalized_hypergeometric did not reach tol={tol:g} "
@@ -523,6 +581,7 @@ def generalized_hypergeometric(
             stacklevel=2,
         )
 
+    result = _flag_cancellation(result, max_term)
     return result if result.size > 1 else result[0]
 
 
