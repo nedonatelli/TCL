@@ -1,5 +1,7 @@
 """Round-trip and schema-version tests for TrackDatabaseManager."""
 
+import ntpath
+import os
 import sqlite3
 import warnings
 
@@ -363,9 +365,13 @@ def test_track_row_id_is_stable_across_processes():
     )
     ids = {
         subprocess.run(
-            [sys.executable, "-c", script], capture_output=True, text=True, check=True
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
         ).stdout.strip()
-        for _ in range(3)
+        for seed in ("1", "2", "3")
     }
     assert len(ids) == 1, f"row id varies per process: {ids}"
     assert 0 <= int(next(iter(ids))) < 2**31
@@ -578,3 +584,30 @@ def test_status_none_with_counts_keeps_v2_11_0_status_and_stores_counts(tmp_path
     new.close()
     assert got["status"] == want["status"] == "tentative"
     assert (got["hits"], got["misses"]) == (7, 2)
+
+
+@pytest.mark.parametrize(
+    "path, uri",
+    [
+        (r"C:\Users\a b\t?#%.db", "file:///C:/Users/a%20b/t%3F%23%25.db?mode=ro"),
+        (r"Z:\x.db", "file:///Z:/x.db?mode=ro"),
+        (r"\\server\share\dir\t.db", "file:////server/share/dir/t.db?mode=ro"),
+    ],
+)
+def test_read_only_uri_for_windows_paths(path, uri):
+    from pytcl.io.sql_storage import _read_only_uri
+
+    assert _read_only_uri(path, ntpath) == uri
+
+
+def test_read_mode_opens_a_path_with_uri_metacharacters(tmp_path):
+    # "?" is not a legal Windows file-name character.
+    path = tmp_path / ("a b#%.db" if os.name == "nt" else "a b?#%.db")
+    db = TrackDatabaseManager(path)
+    db.open("w")
+    db.store_detection("d", np.array([1.0, 2.0]), "s", 0.0)
+    db.close()
+    db = TrackDatabaseManager(path)
+    db.open("r")
+    assert np.array_equal(db.retrieve_detection("d")["measurement"], [1.0, 2.0])
+    db.close()

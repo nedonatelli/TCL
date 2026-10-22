@@ -44,8 +44,11 @@ def test_confirmation_state_survives_a_round_trip():
 def test_restored_tracker_matches_unsaved_original_on_next_scans():
     original = _tracker_mid_confirmation()
     restored = load_session(save_session(original))
-    misses = [[SCAN[0]], [], SCAN, SCAN]
-    for scan in misses:
+    # Confirmation, then empty scans until both tracks pass max_misses=3 and
+    # are deleted.
+    scans = [[SCAN[0]], [], SCAN, SCAN, [], [], [], []]
+    live = []
+    for scan in scans:
         a = original.process(scan, dt=1.0)
         b = restored.process(scan, dt=1.0)
         assert [(t.id, t.status, t.hits, t.misses) for t in a] == [
@@ -54,6 +57,9 @@ def test_restored_tracker_matches_unsaved_original_on_next_scans():
         for ta, tb in zip(a, b):
             np.testing.assert_array_equal(ta.state, tb.state)
             np.testing.assert_array_equal(ta.covariance, tb.covariance)
+        live.append(len(a))
+    assert live == [2, 2, 2, 2, 2, 2, 0, 0]
+    assert restored._tracks == [] and original._tracks == []
 
 
 def test_window_is_bounded_and_ordered_after_round_trip():
@@ -68,7 +74,12 @@ def test_window_is_bounded_and_ordered_after_round_trip():
 
 
 def _legacy_bytes(t: MultiTargetTracker) -> bytes:
-    """Rebuild the v1 wire layout: no ``recent`` key, schema_version 1."""
+    """A v2 file rewritten to the v1 layout: ``recent`` dropped, version 1.
+
+    Not written by v2.11.0 code, but for the tracker in this file it decodes
+    equal to what v2.11.0's ``save_session`` writes (compared once, when the
+    fixture was written).
+    """
     raw = msgspec.msgpack.decode(save_session(t))
     raw["schema_version"] = 1
     for ts in raw["snapshot"]["tracks"]:

@@ -210,7 +210,7 @@ def _as_float64_column(values: Any, name: str) -> np.ndarray:
         if int(arr.max()) > 2**53 or int(arr.min()) < -(2**53):
             warnings.warn(
                 f"series {name!r} has integers beyond 2**53 in magnitude; "
-                "the Float64 column does not hold them exactly",
+                "the Float64 column may not hold them exactly",
                 UserWarning,
                 stacklevel=3,
             )

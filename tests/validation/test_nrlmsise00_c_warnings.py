@@ -6,11 +6,12 @@ error) with a bare ``printf`` to native stdout, which
 see. The pure-Python fallback has always used ``warnings.warn`` for the
 same conditions. The compiled path now issues a ``UserWarning`` (the
 fallback's category) per model call and writes nothing to stdout; the
-returned values are unchanged (pinned bit-for-bit below from the
-pre-fix extension).
+returned values are bit-identical to the same call with the warning
+ignored, and match values recorded from the pre-fix extension.
 """
 
 import ctypes
+import re
 import sys
 import warnings
 
@@ -74,12 +75,36 @@ _GTD7_D = (
 _GTD7_T = ("0x1.00d461ba9a9b2p+10", "0x1.2b2095bc70ef1p+8")
 
 
+# The pins were recorded from one macOS arm64 build; other compilers may
+# order or fuse (FMA) operations differently. The pure-Python fallback, a
+# reimplementation with its own operation order, agrees with the C on
+# these two inputs to 7.9e-14 relative (ghp7 altitude) and 5e-15 (densities),
+# measured, so rel=1e-9 leaves four orders of margin while still catching
+# any change to the computation.
+_PIN_REL = 1e-9
+
+# The C runtime prints a negative NaN as "-nan" (glibc) or "-nan(ind)" (UCRT).
+_NAN = r"-?nan(\(ind\))?"
+
+
 def _hex(values):
     return tuple(float(v).hex() for v in values)
 
 
+def _matches_pins(values, pins):
+    return list(map(float, values)) == pytest.approx(
+        [float.fromhex(p) for p in pins], rel=_PIN_REL, abs=0, nan_ok=True
+    )
+
+
+def _ignored(fn, *args):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return fn(*args)
+
+
 class TestGhp7NonConvergence:
-    def test_warns_runtimewarning_naming_ghp7(self):
+    def test_warns_userwarning_naming_ghp7(self):
         with pytest.warns(UserWarning, match="ghp7 not converging") as rec:
             _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         assert len(rec) == 1
@@ -87,12 +112,19 @@ class TestGhp7NonConvergence:
             "ERROR: ghp7 not converging for press 1.000000e-14, diff -3.188880e-01"
         )
 
-    def test_values_bit_identical_to_pre_fix_output(self):
+    def test_warning_does_not_change_values(self):
         with pytest.warns(UserWarning, match="ghp7"):
             alt, (d, t) = _nrlmsise00_c.ghp7(*_GHP7_ARGS)
-        assert alt.hex() == _GHP7_ALT
-        assert _hex(d) == _GHP7_D
-        assert _hex(t) == _GHP7_T
+        q_alt, (q_d, q_t) = _ignored(_nrlmsise00_c.ghp7, *_GHP7_ARGS)
+        assert alt.hex() == q_alt.hex()
+        assert _hex(d) == _hex(q_d)
+        assert _hex(t) == _hex(q_t)
+
+    def test_values_match_pre_fix_output(self):
+        alt, (d, t) = _ignored(_nrlmsise00_c.ghp7, *_GHP7_ARGS)
+        assert _matches_pins([alt], [_GHP7_ALT])
+        assert _matches_pins(d, _GHP7_D)
+        assert _matches_pins(t, _GHP7_T)
 
     def test_raises_under_error_filter(self):
         with warnings.catch_warnings():
@@ -112,7 +144,7 @@ class TestGhp7NonConvergence:
             warnings.filterwarnings("ignore", message=".*ghp7", category=UserWarning)
             alt, _ = _nrlmsise00_c.ghp7(*_GHP7_ARGS)
         _flush_c_stdio()
-        assert alt.hex() == _GHP7_ALT
+        assert alt.hex() == _ignored(_nrlmsise00_c.ghp7, *_GHP7_ARGS)[0].hex()
         assert capfd.readouterr().out == ""
 
     def test_reaches_the_public_wrapper(self):
@@ -146,17 +178,24 @@ class TestDnetLogError:
         with pytest.warns(UserWarning, match="dnet log error") as rec:
             _nrlmsise00_c.gtd7(*_GTD7_ARGS)
         assert len(rec) == 1
-        assert str(rec[0].message) == (
-            "dnet log error nan 4.313267e+16 4.000000e+00; "
-            "dnet log error nan 3.177709e+16 4.000000e+01; "
-            "dnet log error nan 2.553271e+00 1.000000e+00"
-        )
+        assert re.fullmatch(
+            f"dnet log error {_NAN} 4.313267e\\+16 4.000000e\\+00; "
+            f"dnet log error {_NAN} 3.177709e\\+16 4.000000e\\+01; "
+            f"dnet log error {_NAN} 2.553271e\\+00 1.000000e\\+00",
+            str(rec[0].message),
+        ), str(rec[0].message)
 
-    def test_values_bit_identical_to_pre_fix_output(self):
+    def test_warning_does_not_change_values(self):
         with pytest.warns(UserWarning, match="dnet"):
             d, t = _nrlmsise00_c.gtd7(*_GTD7_ARGS)
-        assert _hex(d) == _GTD7_D
-        assert _hex(t) == _GTD7_T
+        q_d, q_t = _ignored(_nrlmsise00_c.gtd7, *_GTD7_ARGS)
+        assert _hex(d) == _hex(q_d)
+        assert _hex(t) == _hex(q_t)
+
+    def test_values_match_pre_fix_output(self):
+        d, t = _ignored(_nrlmsise00_c.gtd7, *_GTD7_ARGS)
+        assert _matches_pins(d, _GTD7_D)
+        assert _matches_pins(t, _GTD7_T)
 
     def test_raises_under_error_filter(self):
         with warnings.catch_warnings():

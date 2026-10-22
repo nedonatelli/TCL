@@ -22,7 +22,7 @@ def _cast_checked(x: ArrayLike, dtype: np.dtype, name: str) -> NDArray[Any]:
     """Cast `x` to `dtype`, refusing silent loss of a complex part.
 
     Raises ``TypeError`` on complex input to a non-complex dtype and warns
-    on integer input that a floating dtype cannot hold exactly.
+    on integer input that a floating dtype may not hold exactly.
     """
     arr = np.asarray(x)
     if np.iscomplexobj(arr) and dtype.kind != "c":
@@ -35,7 +35,7 @@ def _cast_checked(x: ArrayLike, dtype: np.dtype, name: str) -> NDArray[Any]:
         if int(arr.max()) > limit or int(arr.min()) < -limit:
             warnings.warn(
                 f"{name} has integer values beyond 2**{np.finfo(dtype).nmant + 1} "
-                f"in magnitude; the {dtype} cast does not store them exactly",
+                f"in magnitude; the {dtype} cast may not store them exactly",
                 UserWarning,
                 stacklevel=3,
             )

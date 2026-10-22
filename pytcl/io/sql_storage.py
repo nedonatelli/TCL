@@ -5,16 +5,32 @@ measurements, and searchable structured data.
 """
 
 import json
+import os
 import sqlite3
 import warnings
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import quote
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
+
+
+def _read_only_uri(path: str, pathmod: Any = os.path) -> str:
+    """Return a SQLite ``mode=ro`` URI for ``path``.
+
+    ``Path.resolve().as_uri()`` turned a UNC path, or a mapped drive that
+    resolves to one, into ``file://server/share/...``; SQLite accepts only
+    an empty or ``localhost`` authority there and refused to open it.
+    ``pathmod`` is ``os.path``; tests pass ``ntpath`` to check Windows paths.
+    """
+    absolute = pathmod.abspath(path).replace(pathmod.sep, "/")
+    if not absolute.startswith("/"):
+        absolute = "/" + absolute
+    return "file://" + quote(absolute, safe="/:") + "?mode=ro"
 
 
 def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
@@ -24,8 +40,7 @@ def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
     ``_check_writable`` guards on the public write methods.
     """
     if mode == "r":
-        uri = Path(path).resolve().as_uri() + "?mode=ro"
-        connection = sqlite3.connect(uri, uri=True)
+        connection = sqlite3.connect(_read_only_uri(path), uri=True)
     else:
         connection = sqlite3.connect(path)
     return connection, connection.cursor()
@@ -37,7 +52,7 @@ def _warn_if_w_reopens_data(
     """Emit the 'w' FutureWarning when ``path`` already holds data rows."""
     if not Path(path).exists():
         return
-    connection = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+    connection = sqlite3.connect(_read_only_uri(path), uri=True)
     try:
         has_rows = False
         for table in tables:
