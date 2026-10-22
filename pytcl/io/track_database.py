@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.io.sql_storage import _connect
+
 
 class TrackDatabaseStatus(Enum):
     """Track lifecycle status for database persistence.
@@ -73,7 +75,8 @@ class TrackDatabaseManager:
         Parameters
         ----------
         mode : str
-            'r' (read), 'w' (write/create), 'a' (append). Default is 'a'.
+            'r' (read-only), 'w' (create, discarding any existing file), 'a'
+            (create if absent, else append). Default is 'a'.
 
         Raises
         ------
@@ -84,6 +87,11 @@ class TrackDatabaseManager:
 
         Notes
         -----
+        Modes are enforced. A write through a handle opened with ``'r'``
+        raises :class:`PermissionError` (it used to persist), and ``'w'``
+        deletes an existing file so the result is empty at the current
+        schema version (it used to keep every prior row).
+
         Read mode does not create the database. It used to: ``sqlite3.connect``
         was called unconditionally, so opening a mistyped path for reading
         produced an empty file and the first query then failed with
@@ -102,8 +110,7 @@ class TrackDatabaseManager:
             )
 
         self._mode = mode
-        self._connection = sqlite3.connect(self._path)
-        self._cursor = self._connection.cursor()
+        self._connection, self._cursor = _connect(str(self._path), mode)
 
         if mode in ("w", "a"):
             self._initialize_tables()
@@ -159,7 +166,7 @@ class TrackDatabaseManager:
         metadata : dict, optional
             Additional metadata.
         """
-        self._check_open()
+        self._check_writable()
         meas = np.asarray(measurement, dtype=np.float64)
         legacy = self._schema_version < 2
         if legacy:
@@ -306,7 +313,7 @@ class TrackDatabaseManager:
         confidence : float
             Association confidence score (0-1). Default is 1.0.
         """
-        self._check_open()
+        self._check_writable()
 
         # Get detection timestamp
         self._cursor.execute(
@@ -362,7 +369,7 @@ class TrackDatabaseManager:
         metadata : dict, optional
             Additional track metadata.
         """
-        self._check_open()
+        self._check_writable()
         state = np.asarray(initial_state, dtype=np.float64)
         cov = np.asarray(initial_covariance, dtype=np.float64)
         self._validate_state_shapes(state, cov)
@@ -477,7 +484,7 @@ class TrackDatabaseManager:
         retrievable by id, so a typo produced a track that existed in every
         respect except the one that counts.
         """
-        self._check_open()
+        self._check_writable()
         s = np.asarray(state, dtype=np.float64)
         c = np.asarray(covariance, dtype=np.float64)
 
@@ -536,7 +543,7 @@ class TrackDatabaseManager:
         residuals : ArrayLike, optional
             Residual history, shape (N, meas_dim).
         """
-        self._check_open()
+        self._check_writable()
         s_arr = np.asarray(states, dtype=np.float64)
         c_arr = np.asarray(covariances, dtype=np.float64)
         t_arr = np.asarray(timestamps, dtype=np.float64)
@@ -779,7 +786,7 @@ class TrackDatabaseManager:
         int
             Number of detections pruned.
         """
-        self._check_open()
+        self._check_writable()
         self._cursor.execute("SELECT MAX(timestamp) FROM detections")
         max_ts = self._cursor.fetchone()[0]
         if max_ts is None:
@@ -811,7 +818,7 @@ class TrackDatabaseManager:
         int
             Number of tracks pruned.
         """
-        self._check_open()
+        self._check_writable()
         self._cursor.execute("SELECT MAX(last_update_time) FROM tracks")
         max_ts = self._cursor.fetchone()[0]
         if max_ts is None:
@@ -885,7 +892,7 @@ class TrackDatabaseManager:
         in newer states made the track look stale, and any staleness-based
         pruning would then delete the track that had just been reinforced.
         """
-        self._check_open()
+        self._check_writable()
 
         for track_id in (track_id_keep, track_id_merge):
             self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
@@ -1034,7 +1041,7 @@ class TrackDatabaseManager:
         timestamp : float, optional
             Override timestamp. Uses track.time if not provided.
         """
-        self._check_open()
+        self._check_writable()
         t = timestamp if timestamp is not None else track.time
         track_id = f"trk_{track.id}"
 
@@ -1067,6 +1074,15 @@ class TrackDatabaseManager:
         if self._cursor is None:
             raise RuntimeError("Database not open. Call open() first.")
 
+    def _check_writable(self) -> None:
+        """Verify the database is open and not in read mode."""
+        self._check_open()
+        if self._mode == "r":
+            raise PermissionError(
+                "Database was opened read-only (mode='r'); reopen with "
+                "mode='a' or mode='w' to write."
+            )
+
     @staticmethod
     def _sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> str:
         """Serialize metadata to JSON, converting numpy types to native Python."""
@@ -1085,7 +1101,7 @@ class TrackDatabaseManager:
 
     def _set_track_status(self, track_id: str, status: TrackDatabaseStatus) -> None:
         """Update a track's status."""
-        self._check_open()
+        self._check_writable()
         self._cursor.execute(
             "UPDATE tracks SET status = ? WHERE track_id = ?",
             (status.value, track_id),
