@@ -58,16 +58,36 @@ def test_so_cfar_jit_and_python_paths_agree_on_noise():
     assert np.allclose(jit[1], plain[1], equal_nan=True)
 
 
-def test_so_cfar_nan_in_reference_window_propagates_on_both_paths():
+@pytest.mark.parametrize("kernel", [det._cfar_so_kernel, _py(det._cfar_so_kernel)])
+def test_so_cfar_nan_in_reference_window_propagates(kernel):
     x = np.array([1.0, np.nan, 3.0, 4.0, 5.0, 6.0, 7.0])
-    jit = _run_1d(det._cfar_so_kernel, x, 1, 1, 3.0)
-    plain = _run_1d(_py(det._cfar_so_kernel), x, 1, 1, 3.0)
-    assert np.allclose(jit[0], plain[0], equal_nan=True)
-    assert np.allclose(jit[1], plain[1], equal_nan=True)
-    # Cells whose reference window touches index 1 (cells 0, 2, 3 via the
-    # leading/lagging side) must carry NaN, not a finite or infinite value.
-    for i in (3,):
-        assert np.isnan(jit[1][i])
+    noise, thr = _run_1d(kernel, x, 1, 1, 3.0)
+    # Only cell 3 has the NaN (index 1) in a reference half; the rest are the
+    # min of the two single-cell halves, or the lone half at the edges.
+    np.testing.assert_array_equal(noise, [3.0, 4.0, 1.0, np.nan, 3.0, 4.0, 5.0])
+    np.testing.assert_array_equal(thr, [9.0, 12.0, 3.0, np.nan, 9.0, 12.0, 15.0])
+
+
+def test_so_cfar_reports_no_detection_at_nan_threshold_cell():
+    x = np.array([1.0, np.nan, 3.0, 1e9, 5.0, 6.0, 7.0])
+    result = cfar_so(x, guard_cells=1, ref_cells=1, pfa=1e-3, alpha=3.0)
+    assert np.isnan(result.threshold[3])
+    assert not result.detections[3]
+    assert 3 not in result.detection_indices
+
+
+@pytest.mark.parametrize("kernel", [det._cfar_so_kernel, _py(det._cfar_so_kernel)])
+def test_so_cfar_empty_reference_window_gives_zero_noise_and_threshold(kernel):
+    x = np.array([1.0, 2.0, 3.0, 4.0])
+    noise, thr = _run_1d(kernel, x, 2, 2, 3.0)
+    np.testing.assert_array_equal(noise, [4.0, 0.0, 0.0, 1.0])
+    np.testing.assert_array_equal(thr, [12.0, 0.0, 0.0, 3.0])
+
+
+def test_so_cfar_flags_every_positive_sample_in_an_empty_window():
+    x = np.array([1.0, 2.0, 3.0, 4.0])
+    result = cfar_so(x, guard_cells=2, ref_cells=2, pfa=1e-3, alpha=3.0)
+    assert result.detections[1] and result.detections[2]
 
 
 def test_so_cfar_2d_jit_and_python_paths_agree_with_nan():

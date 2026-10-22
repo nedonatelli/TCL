@@ -809,6 +809,12 @@ def cfar_so(
     SO-CFAR is complementary to GO-CFAR. It is more sensitive near
     clutter edges but may produce more false alarms when interfering
     targets are present in the reference window.
+
+    Cells whose reference window is empty (near the edges when
+    ``guard_cells + ref_cells`` is large relative to the signal length) get
+    noise estimate and threshold 0.0, so any positive sample there is
+    reported as a detection. A NaN in a cell's reference window gives a NaN
+    threshold, and no detection, at that cell.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
