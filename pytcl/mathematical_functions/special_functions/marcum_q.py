@@ -185,7 +185,7 @@ def log_marcum_q(
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
-    small_q = q_val < 1e-10
+    small_q = (q_val < 1e-10) & np.isfinite(b_b)
     for i in np.flatnonzero(small_q):
         result[i] = _log_marcum_q_series(a_b[i], b_b[i], m)
 
@@ -241,6 +241,8 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
         k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
         terms = sp.xlogy(k, lam) - lam - sp.gammaln(k + 1.0) + _log_gammaincc(m + k, x)
         top = terms.max()
+        if np.isnan(top) or top == np.inf:
+            return float("nan")
         if (k[0] == 0 or terms[0] < top - 40.0) and terms[-1] < top - 40.0:
             return float(top + np.log(np.sum(np.exp(terms - top))))
         k_peak = float(k[np.argmax(terms)])
@@ -399,12 +401,12 @@ def swerling_detection_probability(
     that is exact for ``n <= 2``, so ``n > 2`` was wrong: -8.9% at
     ``pfa=1e-6, n=6, snr=0.1`` and -21% at ``pfa=1e-8, n=30, snr=0.05``.
     For ``n > 2`` the general-``n`` closed form is used when the mean
-    scan SNR ``n*snr/2`` exceeds 1; below that its terms cancel (by
-    ``n=200, snr=1e-4`` it overflows to ``-inf``), so the exact
-    negative-binomial mixture of gamma tails is summed instead. Against that
-    series in mpmath at 40 digits the relative error is below 1e-13 for
-    ``pfa`` 1e-10 to 1e-2, ``n`` 3 to 100 with ``snr`` 1e-5 to 50, and
-    ``n`` 200 to 1000 with ``n*snr/2`` up to 100.
+    scan SNR ``theta = n*snr/2`` exceeds ``max(1, sqrt(n))``; below that
+    its terms cancel (2e-11 relative at ``n=1000, theta=1.5``; ``-inf`` at
+    ``n=200, theta=0.01``), so the exact negative-binomial mixture of gamma
+    tails is summed instead. Against that series in mpmath at 40 digits the
+    relative error is below 2e-13 for ``pfa`` 1e-10 to 1e-2, ``n`` 3 to
+    5000 and ``theta`` 1e-3 to 300, measured on both sides of each switch.
 
     ``snr = 0`` returns ``pfa`` for every case, elementwise. Cases 1 (for
     ``n > 1``) and 3 used to return NaN or ``-inf`` there.
@@ -468,27 +470,38 @@ def swerling_detection_probability(
                 * np.exp(-vt / k)
             )
             return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
-        # For n > 2 and mean SNR n*snr/2 <= 1 the closed form's terms cancel
-        # (and overflow to -inf by n=200, snr=1e-4), so sum the exact
-        # negative-binomial mixture of gamma tails instead; with ratio <= 1/2
-        # 200 terms leave a tail below 1e-58.
+        # The closed form's terms cancel for mean scan SNR n*snr/2 up to about
+        # sqrt(n) (2e-11 at n=1000, theta=1; -inf at n=200, theta=0.01), so
+        # there the exact negative-binomial mixture of gamma tails is summed.
+        # Its ratio q = theta/(1+theta) leaves a tail of about J q^J, below
+        # 1e-65 for J = 160 (1 + theta).
         theta = n * s / 2
-        series = theta <= 1
+        series = theta <= max(1.0, np.sqrt(n))
         pd = np.empty(s.shape, dtype=np.float64)
         if np.any(series):
-            th = theta[series][:, None]
-            j = np.arange(200.0)
-            w = (j + 1) * th**j / (1 + th) ** (j + 2)
-            pd[series] = np.sum(w * sp.gammaincc(n + j, vt), axis=1)
+            th = theta[series]
+            j = np.arange(np.ceil(160.0 * (1.0 + th.max())))
+            tails = sp.gammaincc(n + j, vt)
+            mix = np.empty(th.shape, dtype=np.float64)
+            block = max(1, 2_000_000 // j.size)
+            for lo in range(0, th.size, block):
+                t = th[lo : lo + block, None]
+                log_w = np.log1p(j) + j * np.log(t / (1 + t)) - 2 * np.log1p(t)
+                mix[lo : lo + block] = np.exp(log_w) @ tails
+            pd[series] = mix
         closed = ~series
         if np.any(closed):
             sc = s[closed]
             kc = k[closed]
+            # (1 + 2/(n snr))^(n-2) overflows for n above ~1000; the product
+            # with the gamma CDF is formed in log space.
+            log_k0 = (
+                (n - 2) * np.log1p(2 / (n * sc))
+                - vt / kc
+                + np.log(sp.gammainc(n - 1, vt / (1 + 2 / (n * sc))))
+            )
             pd[closed] = (
-                (1 + 2 / (n * sc)) ** (n - 2)
-                * (1 + vt / kc - 2 * (n - 2) / (n * sc))
-                * np.exp(-vt / kc)
-                * sp.gammainc(n - 1, vt / (1 + 2 / (n * sc)))
+                (1 + vt / kc - 2 * (n - 2) / (n * sc)) * np.exp(log_k0)
                 + sp.gammaincc(n - 1, vt)
                 + np.exp((n - 1) * np.log(vt) - vt - sp.gammaln(n - 1)) / kc
             )

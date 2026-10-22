@@ -114,12 +114,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `n=3, snr=0.5` rel -1.98e-5; `n=4, snr=0.3` rel -3.27e-4;
   `pfa=1e-8, n=30, snr=0.05` -21%; `pfa=1e-2, n=100, snr=0.01` returned
   -4.96e12 against 0.013438. `n > 2` now uses the general-`n`
-  DiFranco-Rubin form when `n*snr/2 > 1`, and below that (where the form
-  cancels, reaching `-inf` at `n=200, snr=1e-4`) sums the exact
-  negative-binomial mixture of gamma tails. Relative error against the
-  series in mpmath is below 1e-13 for `pfa` 1e-10 to 1e-2, `n` 3-100 with
-  `snr` 1e-5 to 50, and `n` 200-1000 with `n*snr/2` up to 100. Cases 0, 1,
-  2 and 4 were already exact to 1e-13.
+  DiFranco-Rubin form, with its overflowing power taken in log space, when
+  `theta = n*snr/2 > max(1, sqrt(n))`. Below that the form cancels (2e-11 at
+  `n=1000, theta=1.5`; `-inf` at `n=200, snr=1e-4`), so the exact
+  negative-binomial mixture of gamma tails is summed instead. Relative error
+  against the series in mpmath is below 2e-13 for `pfa` 1e-10 to 1e-2, `n`
+  3-5000 and `theta` 1e-3 to 300. Cases 0, 1, 2 and 4 were already exact to
+  1e-13.
 
 - `swerling_detection_probability` at `snr = 0` returned NaN (case 1,
   `n_pulses > 1`) or `-inf` (case 3) instead of `Pd = pfa`; only the zero

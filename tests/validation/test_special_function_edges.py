@@ -4,6 +4,8 @@ Every expected value comes from an oracle independent of the implementation
 (mpmath at high precision), never from pytcl itself.
 """
 
+import warnings
+
 import mpmath
 import numpy as np
 import pytest
@@ -146,7 +148,7 @@ class TestMarcumSwerling:
     def test_working_paths_match_series(self, case, pfa, n, snr):
         want = _nb_mixture_pd(snr, pfa, n, case)
         got = float(swerling_detection_probability(snr, pfa, n, case))
-        assert got == pytest.approx(want, rel=1e-13)
+        assert got == pytest.approx(want, rel=1e-13, abs=0)
 
     # Measured before the fix: 8.23856e-6 against 9.04805e-6 (-8.9%) at
     # n=6; rel 1.98e-05 at n=3, 3.27e-04 at n=4. n*snr/2 = 1 is the switch
@@ -163,18 +165,31 @@ class TestMarcumSwerling:
         (1e-6, 1000, 0.1),
         (1e-6, 3, 0.6),
         (1e-6, 3, 0.7),
+        # Review round 1: just above theta = 1 the closed form overflowed for
+        # n > ~1025 (n=1100 gave -inf, n=2000 NaN) and cancelled to 2e-11 at
+        # n=1000. The switch is now theta = sqrt(n); both sides are pinned.
+        (1e-6, 1100, 2 * 1.000001 / 1100),
+        (1e-6, 2000, 2 * 1.5 / 2000),
+        (1e-6, 1000, 2 * 1.5 / 1000),
+        (1e-6, 1000, 2 * 1.000001 / 1000),
+        (1e-6, 1000, 2 * np.sqrt(1000) * (1 - 1e-6) / 1000),
+        (1e-6, 1000, 2 * np.sqrt(1000) * (1 + 1e-6) / 1000),
+        (1e-10, 2000, 2 * 2 * np.sqrt(2000) / 2000),
+        (1e-2, 5000, 2 * 300 / 5000),
     ]
 
     @pytest.mark.parametrize("pfa,n,snr", CASE3)
     def test_case3_general_n_matches_series(self, pfa, n, snr):
         want = _nb_mixture_pd(snr, pfa, n, 3)
-        got = float(swerling_detection_probability(snr, pfa, n, 3))
-        assert got == pytest.approx(want, rel=1e-12)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            got = float(swerling_detection_probability(snr, pfa, n, 3))
+        assert got == pytest.approx(want, rel=1e-12, abs=0)
 
     @pytest.mark.parametrize("pfa,n,snr", [(1e-6, 6, 0.1), (1e-6, 3, 0.5)])
     def test_case3_series_oracle_agrees_with_quadrature(self, pfa, n, snr):
         assert _nb_mixture_pd(snr, pfa, n, 3) == pytest.approx(
-            _swerling3_quad_pd(snr, pfa, n), rel=1e-12
+            _swerling3_quad_pd(snr, pfa, n), rel=1e-12, abs=0
         )
 
     @pytest.mark.parametrize("case", [0, 1, 2, 3, 4])
@@ -183,12 +198,16 @@ class TestMarcumSwerling:
         pfa = 1e-6
         snr = np.array([0.0, 1.0, 0.0, 0.3])
         got = swerling_detection_probability(snr, pfa, n, case)
-        assert got[0] == pytest.approx(pfa, rel=1e-12)
-        assert got[2] == pytest.approx(pfa, rel=1e-12)
-        assert got[1] == pytest.approx(_nb_mixture_pd(1.0, pfa, n, case), rel=1e-11)
-        assert got[3] == pytest.approx(_nb_mixture_pd(0.3, pfa, n, case), rel=1e-11)
+        assert got[0] == pytest.approx(pfa, rel=1e-12, abs=0)
+        assert got[2] == pytest.approx(pfa, rel=1e-12, abs=0)
+        assert got[1] == pytest.approx(
+            _nb_mixture_pd(1.0, pfa, n, case), rel=1e-11, abs=0
+        )
+        assert got[3] == pytest.approx(
+            _nb_mixture_pd(0.3, pfa, n, case), rel=1e-11, abs=0
+        )
         scalar = swerling_detection_probability(0.0, pfa, n, case)
-        assert float(scalar) == pytest.approx(pfa, rel=1e-12)
+        assert float(scalar) == pytest.approx(pfa, rel=1e-12, abs=0)
 
     # Measured before the fix: log_marcum_q(1, 40) = -inf (true -763.235);
     # ncx2.logsf underflows for (m=5,a=10,b=100), (1,1,40), (20,0,100).
@@ -208,12 +227,31 @@ class TestMarcumSwerling:
     def test_log_marcum_q_matches_series(self, a, b, m):
         want = _log_marcum_q_series(a, b, m)
         got = float(log_marcum_q(a, b, m))
-        assert got == pytest.approx(want, rel=1e-13)
+        assert got == pytest.approx(want, rel=1e-13, abs=0)
 
     @pytest.mark.parametrize("a,b,m", [(1.0, 40.0, 1), (10.0, 100.0, 5)])
     def test_log_marcum_q_series_oracle_agrees_with_quadrature(self, a, b, m):
         assert _log_marcum_q_series(a, b, m) == pytest.approx(
-            _log_marcum_q_quad(a, b, m), rel=1e-11
+            _log_marcum_q_quad(a, b, m), rel=1e-11, abs=0
+        )
+
+    def test_case3_array_spanning_the_switch(self):
+        n, pfa = 2000, 1e-6
+        theta = np.array([0.01, 1.0, 44.0, 45.0, 200.0])
+        got = swerling_detection_probability(2 * theta / n, pfa, n, 3)
+        for g, th in zip(got, theta):
+            assert g == pytest.approx(
+                _nb_mixture_pd(2 * th / n, pfa, n, 3), rel=1e-12, abs=0
+            )
+
+    def test_log_marcum_q_infinite_threshold_is_minus_inf(self):
+        # Review round 1: b = inf sent NaN terms into the window-growth loop,
+        # which doubled until np.arange raised "Maximum allowed size exceeded".
+        got = log_marcum_q(np.array([1.0, 0.0, 3.0]), np.array([np.inf, np.inf, 40.0]))
+        assert got[0] == -np.inf
+        assert got[1] == -np.inf
+        assert got[2] == pytest.approx(
+            _log_marcum_q_series(3.0, 40.0, 1), rel=1e-13, abs=0
         )
 
     def test_log_marcum_q_array_mixes_both_regimes(self):
@@ -223,4 +261,4 @@ class TestMarcumSwerling:
         assert got.shape == (2, 2)
         for idx in np.ndindex(a.shape):
             want = _log_marcum_q_series(a[idx], b[idx], 5)
-            assert got[idx] == pytest.approx(want, rel=1e-13)
+            assert got[idx] == pytest.approx(want, rel=1e-13, abs=0)
