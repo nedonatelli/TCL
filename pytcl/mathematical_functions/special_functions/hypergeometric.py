@@ -345,13 +345,28 @@ def hyp1f1_regularized(
     Notes
     -----
     This function remains finite even when b is a non-positive integer,
-    unlike the standard 1F1.
+    unlike the standard 1F1. For b = -m (m = 0, 1, ...) the limit is
+
+        (a)_{m+1} z^{m+1} / (m+1)! * 1F1(a+m+1; m+2; z)
+
+    so that ``hyp1f1_regularized(1, 0, 1)`` is e (it was nan, from
+    ``hyp1f1/gamma`` evaluating inf/inf).
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
     z = np.asarray(z, dtype=np.float64)
 
-    return sp.hyp1f1(a, b, z) / sp.gamma(b)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        result = sp.hyp1f1(a, b, z) / sp.gamma(b)
+        m1 = 1.0 - b
+        limit = (
+            sp.poch(a, m1)
+            * z**m1
+            * sp.rgamma(m1 + 1.0)
+            * sp.hyp1f1(a + m1, m1 + 1.0, z)
+        )
+    pole = (b <= 0.0) & (b == np.round(b))
+    return np.where(pole, limit, result)[()]
 
 
 def pochhammer(
