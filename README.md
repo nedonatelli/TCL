@@ -274,13 +274,16 @@ explicit name mappings plus calling-convention differences are in
 | `Cart2Sphere(cartPoints)` | `cart2sphere(cart_points)` |
 | `discKalPred(x, P, F, Q)` | `kf_predict(x, P, F, Q)` |
 | `KalmanUpdate(x, P, z, R, H)` | `kf_update(x, P, z, H, R)` — note `H`/`R` order |
-| `FPolyKal(T, xDim, 1)` | `f_constant_velocity(dt, dim)` |
+| `FPolyKal(T, xDim, 1)` | `f_constant_velocity(dt, dim)` — state order differs (below) |
 
 Key differences:
 - Function names use `snake_case`; multiple return values become NamedTuples
 - States are 1-D arrays and batches are `(N, dim)` row-major (coordinate
   conversions also accept MATLAB-style column layouts)
 - 0-based indexing, explicit `unassigned_rows` instead of 0-sentinels
+- Polynomial motion models order the state per dimension, `[x, vx, y, vy]`,
+  where MATLAB's `FPolyKal`/`QPolyKal` use `[x, y, vx, vy]`; feeding one
+  layout to the other raises nothing and propagates a wrong state
 
 ## Testing
 

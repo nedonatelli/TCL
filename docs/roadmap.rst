@@ -7,7 +7,7 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.11.0)
+Current State (v2.11.1)
 -----------------------
 
 * **8,500+ tests** passing; coverage measured honestly (90.0% as CI's
