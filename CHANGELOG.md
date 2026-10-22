@@ -115,16 +115,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **GPU backend auto-selection no longer hides a CUDA failure.**
+- **GPU backend auto-selection no longer hides a CuPy failure.**
   `get_compute_backend()` caught a bare `Exception` around `CuPyBackend()`, so
-  a CUDA driver mismatch fell through to MLX silently and a machine believed to
-  be doing float64 CUDA work computed in float32 (`1 + 1e-10` round-tripped
-  with `-1e-10` of error). A missing CuPy (`ImportError`) stays quiet; any
-  other failure now emits a `UserWarning` with the original error text and,
-  when the fallback is not double precision, says it computes in float32. If
-  no fallback exists the `DependencyError` chains to the CuPy failure.
+  an installed CuPy that failed to import or construct fell through to MLX
+  silently, and a machine believed to be doing float64 CUDA work computed in
+  float32 (`1 + 1e-10` stored with `-1e-10` of error). Only an absent CuPy
+  (`ModuleNotFoundError` for `cupy` itself) stays quiet. Any other failure
+  of `import cupy` or of the backend's construction, including an
+  `ImportError` from a missing or mismatched CUDA runtime library, now emits
+  a `UserWarning` with the original error text and, when the fallback is not
+  double precision, says it computes in float32. A CUDA problem that only
+  surfaces at the first device operation is not caught here. If no fallback
+  exists the `DependencyError` chains to the CuPy failure.
   `get_compute_backend(prefer="cupy")` still raises, and its message now
-  carries the underlying error.
+  carries the underlying error. `compute_backend_available()` stays a silent
+  probe.
+- **Compiled NRLMSISE-00 failure reports are warnings, not stdout text.** The
+  compiled extension reported ghp7 non-convergence, dnet's log-domain error
+  and its other internal failure conditions with a bare C `printf` to native
+  stdout (no trailing newline, invisible to `warnings.catch_warnings`, immune
+  to `-W error` and to suppression), while the pure-Python fallback warns for
+  the same conditions. Each compiled `gtd7`/`ghp7` call now issues one
+  `UserWarning`, the fallback's category, so one filter covers both backends.
+  It carries the C model's message (several reports in one call are joined
+  with `; `), nothing is written to stdout, and a warning filter set to
+  `error` raises from the call. Measured: `press_pa=1e-12` (1e-14 hPa)
+  through `nrlmsise00_alt_for_pressure` hits ghp7's 12-iteration limit with
+  residual -0.3189 and now warns "ERROR: ghp7 not converging for press
+  1.000000e-14, diff -3.188880e-01" (the C model's pressure is in hPa).
+  Returned values are unchanged: bit-identical to the v2.11.0 build over 1926
+  `gtd7` and `ghp7` inputs, including the failing ones.
 - **Stored schema versions are checked on read.** `schema_version=99` used to
   load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
   (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
@@ -144,20 +164,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because per-scan history cannot be rebuilt from the cumulative counters);
   re-save them to pick up the fix. A v2 file is rejected by pytcl 2.11.0 as
   a newer schema.
-
 - **`TrackDatabaseManager` row identity and track operations.**
   `track_to_pytcl` built the `Track.id` from `hash(track_id)`, which Python
-  salts per process: three interpreters returned 1090103678, 1605147417 and
-  300302318 for the same id. It now uses a blake2b digest
+  salts per process: under `PYTHONHASHSEED` 1, 2 and 3 the id `"t-1"` gave
+  411653681, 1997854185 and 65334220. It now uses a blake2b digest
   (`_track_row_id`, range `0..2**31-1`). The integer is rebuilt on read and
   never stored, so no on-disk format changes and the schema version stays
   `2.0`. `store_from_track` dropped `status`, `hits` and `misses` (a confirmed
   track with 5 hits and 1 miss read back tentative with 0 and 0); it now
-  stores them. `merge_tracks(x, x)` doubled `hits` and marked the survivor
+  stores them, reading `n_hits`/`n_misses` from an `MHTTrack`. An object
+  without a count, or whose status is not tentative, confirmed or deleted
+  (`None`, for one), keeps the value v2.11.0 stored for that field.
+  `merge_tracks(x, x)` doubled `hits` (2 became 4) and marked the survivor
   DEAD; it raises `ValueError`. `associate_detection` wrote an unknown track
   id into `track_associations`; it raises `KeyError`. The `retrieve_detections`
-  `LIMIT` is a bound parameter, and a negative or non-int `limit` raises
-  `ValueError`.
+  `LIMIT` is a bound parameter: a bool or non-int `limit` raises `ValueError`,
+  and a negative int still means no limit, as SQLite's `LIMIT -1` did.
 - **`TrackDatabaseManager` and `SQLStorage` now enforce read mode, and `'w'`
   warns.** `open('r')` accepted writes: the v2.11.0 audit persisted rows
   through a read-only handle. Every write method (`store_*`,
@@ -180,12 +202,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   before and keep the legacy layout (one format per file, never a mix), so
   writing a non-1-D measurement or a covariance that is not (n, n) into a
   `1.0` file raises `ValueError` instead of storing data that reads back
-  truncated. Opening a file no longer overwrites its stored version. For
-  track states (`initiate_track`, `update_track_state`, `store_track_history`,
-  both schemas), a state that is not 1-D or a covariance that is not
-  `(n, n)` for `n = len(state)` now raises `ValueError`; a `(1, n)` state
-  used to be stored with `state_dim = 1` and a non-square covariance read
-  back garbled.
+  truncated. Opening a file no longer overwrites its stored version.
+  Measurements of shape `(n,)` and `(n, 1)` behave exactly as before on both
+  schemas: they are stored as, and read back as, `(n,)`. What changes on a
+  `2.0` file is that `(1, n)` and genuinely 2-D measurements, and every
+  covariance, read back at their true shape. For track states
+  (`initiate_track`, `update_track_state`, `store_track_history`, both
+  schemas), `(n,)` and `(n, 1)` states are stored as `(n,)` exactly as
+  before; any other state shape, or a covariance that is not `(n, n)`, now
+  raises `ValueError`. A `(1, n)` state used to be stored with
+  `state_dim = 1`, and a non-square covariance read back garbled.
+  Downgrade hazard: pytcl 2.11.0 opening a `2.0` file in `'a'` or `'w'`
+  mode rewrites its version label to `1.0`, after which 2.11.1 fails to read
+  the `2.0` detection rows (`ValueError: buffer size must be a multiple of
+  element size`). The data is intact; restore the label with
+  `UPDATE _pytcl_track_db_metadata SET value = '2.0' WHERE key =
+  'schema_version'`. Detections that 2.11.0 wrote into the file in the
+  meantime are in the `1.0` layout and do not read back correctly after
+  the label is restored.
 - **`TrackHDF5Storage.get_track_trajectory` returns only the rows in the
   requested window.** It sliced `idx[0]:idx[-1]+1` instead of applying the
   time mask, so after an out-of-order append (timestamps `[1, 2, 3, 4, 1.5]`)
@@ -222,9 +256,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `A_B/y`, both `list_keys("a_b")` and `list_keys("A_B")` returned both, and
   `list_keys("mission")` returned `Mission/t`. The group is now compared as
   an exact, case-sensitive `group + "/"` prefix (a trailing `/` is
-  optional), as `StorageBackend.list_keys` documents and `HDF5Storage`
-  behaves. `list_keys("a")` therefore no longer returns the bare key `a`
-  itself, only keys under `a/`.
+  optional), so the case and `/`-boundary scoping match `HDF5Storage`'s.
+  `list_keys("a")` therefore no longer returns the bare key `a` itself, only
+  keys under `a/`. `list_keys("")` and `list_keys("/")` list every key, as
+  in v2.11.0.
+- **`SQLStorage` and `TrackDatabaseManager` build a read-mode URI SQLite
+  accepts for UNC paths.**
+  The read-only connection URI was built with `Path.resolve().as_uri()`,
+  which turns `\\server\share\t.db` (or a mapped drive that resolves to
+  one) into `file://server/share/t.db`; SQLite accepts only an empty or
+  `localhost` authority there and refused the file. The URI is now
+  `file:////server/share/t.db`, with `?`, `#`, `%` and spaces
+  percent-encoded.
 - **`read_measurements_csv` / `read_measurements_parquet` group scans by the
   exact parsed timestamp.** Grouping on `float(t)` merged the int64 times
   `2**53` and `2**53+1` into one scan at `9007199254740992.0`; that input now
@@ -1441,22 +1484,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The near-singular `F` gap disclosed under the earlier `srif_predict`
   entries (`information_filter` with `F = [[1, 1], [0, 1e-18]]`) is a
   different guard and remains open.
-
-- `pytcl.atmosphere.nrlmsise00`: the compiled NRLMSISE-00 extension
-  reported ghp7 non-convergence, dnet's log-domain error and its other
-  internal failure conditions with a bare C `printf` to native stdout --
-  no trailing newline, uncatchable by `warnings.catch_warnings`, immune
-  to `-W error` and to suppression -- while the pure-Python fallback
-  warns for the same conditions. Each compiled `gtd7`/`ghp7` call now
-  issues one `UserWarning` -- matching the fallback's existing category,
-  so one filter covers both backends -- carrying the C model's message (several
-  reports in one call are joined with `; `) and writes nothing to
-  stdout; a warning filter set to `error` raises from the call. Measured:
-  `press_pa=1e-12` through `nrlmsise00_alt_for_pressure` hits ghp7's
-  12-iteration limit with residual -0.3189 and now warns "ERROR: ghp7 not
-  converging for press 1.000000e-14, diff -3.188880e-01". Returned values
-  are unchanged: bit-identical to the pre-fix build over 1926 `gtd7` and
-  `ghp7` inputs, including the failing ones.
 
 ## [2.11.0] - 2026-09-13
 
