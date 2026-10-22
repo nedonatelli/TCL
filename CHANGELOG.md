@@ -200,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   format, so the database schema version moves from `1.0` to `2.0`: new
   files are created at `2.0`; existing `1.0` files still read exactly as
   before and keep the legacy layout (one format per file, never a mix), so
-  writing a non-1-D measurement or a covariance that is not (n, n) into a
+  writing a `(1, n)` or genuinely 2-D measurement, or a covariance that is not (n, n) into a
   `1.0` file raises `ValueError` instead of storing data that reads back
   truncated. Opening a file no longer overwrites its stored version.
   Measurements of shape `(n,)` and `(n, 1)` behave exactly as before on both
@@ -258,8 +258,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an exact, case-sensitive `group + "/"` prefix (a trailing `/` is
   optional), so the case and `/`-boundary scoping match `HDF5Storage`'s.
   `list_keys("a")` therefore no longer returns the bare key `a` itself, only
-  keys under `a/`. `list_keys("")` and `list_keys("/")` list every key, as
-  in v2.11.0.
+  keys under `a/`. A root group (`""`, `"/"`, `"//"`) lists every
+  key; `"//"` returned `[]` in v2.11.0.
 - **`SQLStorage` and `TrackDatabaseManager` build a read-mode URI SQLite
   accepts for UNC paths.**
   The read-only connection URI was built with `Path.resolve().as_uri()`,
