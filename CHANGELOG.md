@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The two state-vector layouts are now documented, and pinned by
+  `tests/validation/test_state_ordering.py`.** `two_point_diff_init` (a port of
+  `twoPointDiffInit.m`) returns MATLAB's derivative-major `[x, y, vx, vy]`;
+  `f_poly_kal` / `q_poly_kal` are block-diagonal per dimension, i.e.
+  interleaved `[x, vx, y, vy]`. Feeding one to the other raises nothing: for
+  positions (0, 1) then (2, 0) at `T=1` the initializer returns
+  `[2, 0, 2, -1]`, `f_poly_kal(1, 1, num_dims=2)` maps it to `[2, 0, 1, -1]`,
+  and the correct state is `[4, -1, 2, -1]`. Run under MATLAB R2026a, `FPolyKal`
+  and `QPolyKal` differ from ours elementwise (max 1.0 and 0.6667 at `T=1, q=1,
+  num_dims=2`) and agree after the permutation `[0, 2, 1, 3]`; the old
+  docstring claim of a plain match with `QPolyKal` is corrected. No numbers
+  changed and no converter is added.
+- **`q_coord_turn_2d` / `q_coord_turn_3d` docstrings now say they are not a
+  port of `QCoordTurn`, and `dynamic_models.process_noise.coordinated_turn`
+  drops from MATURE to EXPERIMENTAL.** `QCoordTurn` builds `Q = G*G'` from a
+  column vector, so its result is rank 1 with every x/y/velocity/omega pair
+  correlated. Ours is independent per axis: rank 2 for `'position_velocity'`
+  and rank 3 for `'position_velocity_omega'` at `T=1, sigma_a=2,
+  sigma_omega=0.1`. Diagonals agree exactly; the largest elementwise
+  difference from MATLAB's length-5 branch (after permuting to
+  `[x, y, vx, vy, omega]`) is 4.0. Fix-or-remove is deferred to a minor
+  release.
+
 - **`test_parity_inventory_closing_counts` no longer requires the
   validation-file count in `docs/matlab_parity_inventory.rst` to match
   `tests/validation/*.py` exactly.** That single assertion broke three
@@ -84,6 +107,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pytcl.dynamic_estimation.kalman.constrained`: the non-convergence warning
+  added in this patch reported `max|g|` instead of the constraint violation,
+  so an inequality row satisfied with slack counted as a violation. For
+  `g = [exp(x0) - 1, -x0 - 100]` with `constraint_type="inequality"` the
+  default-`max_iter` update returned `x = [1.19e-10, 0]`, which
+  `is_satisfied` accepts, yet warned "max constraint residual 1.000e+02".
+  The warning now fires only when `is_satisfied(x, tol)` is False and
+  reports the largest per-row violation (`max(g, 0)` for inequalities,
+  `|g|` for equalities), so the two cannot disagree; the message reads
+  "largest constraint violation ... exceeds tol ...". At `max_iter=3` the
+  same problem reported 1.030e+02 before and reports 1.964e+01 now.
+- `assign3d_auction` / `assign3d(..., method="auction")` raised "zero-size
+  array to reduction operation maximum" on an all-infeasible tensor
+  (`np.full((3, 3, 3), np.inf)`). It now returns an empty result with
+  `converged=False`, as `greedy` and `decompose` do; `lagrangian` still
+  raises "infeasible".
 - **This changes timestamps callers may have built around.**
   `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
   `gps_to_utc`, which delegate to it) looked up the leap-second count on
@@ -485,6 +524,610 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   -- no exact ellipsoidal-rhumb oracle (e.g. GeographicLib's `Rhumb`
   class) is available in this environment to check it against.
 
+- `pytcl.assignment_algorithms.three_dimensional.decompose_to_2d`: an
+  infeasible 2-D subproblem on any one slice (`except ValueError:
+  break`) aborted the entire sweep and still reported `converged=True`
+  no matter how much of the tensor was left unassigned. Measured on a
+  `(3, 3, 3)` cost tensor with `cost[0] = inf`: zero tuples, `cost=0.0`,
+  `converged=True`, where slices 1 and 2 both had a perfectly good
+  cost-1.0 assignment available. With `cost[1] = inf`, only
+  `[[0, 0, 0]]` came back (`cost=1.0`) and slice 2 was silently dropped.
+  `break` is now `continue` -- an infeasible slice is skipped, not
+  fatal, so the two cases above now return 2 tuples (cost 2.0, correctly
+  excluding index 0) and `{0, 2}` for the assigned first-indices,
+  respectively. `converged` now reflects whether any slice actually
+  produced an assignment (`False` for an all-`inf` cost tensor, `True`
+  otherwise) instead of being hardcoded. Return shape and dtype
+  unchanged.
+
+  Review round: `except ValueError: continue` widened the swallow --
+  scipy's `linear_sum_assignment` raises `ValueError` both for a
+  genuinely infeasible slice ("cost matrix is infeasible") and for a
+  NaN entry ("matrix contains invalid numeric entries"), and treating
+  both as "skip this slice" let a NaN-poisoned tensor through as a
+  confident partial answer: measured with `cost[0] = nan` on the same
+  `(3, 3, 3)` tensor, this returned 2 tuples at cost 2.0 with
+  `converged=True`, silently dropping the NaN row rather than flagging
+  it (before the `continue` fix, the same input returned zero tuples,
+  also with no NaN-specific signal). `decompose_to_2d` (and `greedy_3d`
+  below, which has the same silent-skip exposure for a different
+  reason) now reject any NaN in `cost_tensor` upfront with `ValueError`,
+  closing the NaN half of the swallow (a second review round found the
+  other half still open; see below). The shared rejector is wired into
+  all four methods `assign3d` dispatches to, not only those two:
+  `assign3d(method="auction")` returned 2 tuples at cost 2.0 on the same
+  NaN tensor. Unlike `decompose_to_2d` and `greedy_3d` above, this was
+  not a silent confident answer -- row 0 was read (every `(i, j, k)`
+  including `i=0` is compared in the bidding loop), the NaN comparisons
+  in that row simply always evaluated `False`, and the pre-patch result
+  already carried `converged=False`, correctly flagging that not every
+  row got a bid-assigned pair. `assign3d(method="lagrangian")` raised
+  only scipy's opaque "matrix contains invalid numeric entries". All four
+  now raise a `ValueError` naming the function and the argument, and a
+  parametrized test asserts that of every method so they cannot drift
+  apart again. `inf` is unaffected in all four: it remains the way to say
+  a pairing is forbidden, and still yields 2 tuples at cost 2.0 for
+  greedy, decompose and auction (`lagrangian` reports the slice
+  infeasible, as it did before this change).
+  `greedy_3d`'s own comparisons (`cost[i, j, k] < best_cost`) are always
+  `False` against NaN, which already meant a NaN entry was never
+  selected -- but, unlike `inf`, without ever being counted as
+  infeasible either. For a NaN spread across an entire row, as in the
+  tensor measured above, that produced the same kind of confident
+  partial answer silently. Worth disclosing plainly, since it is not
+  true of every NaN: a single, sparse NaN entry previously behaved
+  exactly like `inf` and produced a complete, correct, NaN-avoiding
+  answer. Measured on `cost = np.arange(27).reshape(3, 3, 3)` with
+  `cost[0, 0, 0] = nan`, the pre-patch result was `[[0, 0, 1], [1, 1, 0],
+  [2, 2, 2]]` at cost `39.0` -- identical, tuple for tuple, to
+  `cost[0, 0, 0] = inf` on the same tensor. That is a genuine behavior
+  change for such callers, not just a bug fix: they must switch to
+  `inf`.
+
+  `greedy_3d` shared the `converged` half of this defect independently:
+  it hardcoded `converged=True` regardless of whether the greedy scan
+  found anything at all. Measured: `greedy_3d(np.full((3, 3, 3),
+  np.inf))` returned zero tuples with `converged=True`. Unlike
+  `decompose_to_2d`'s `break`, `greedy_3d`'s `if best_tuple is None or
+  np.isinf(best_cost): break` is not itself the same defect -- it
+  already scans the entire remaining index space each iteration, so
+  hitting it means nothing anywhere is left assignable, a legitimate
+  stopping point, not an early abandonment of solvable work. Only
+  `converged` needed the same fix applied: `len(assignments) > 0`
+  instead of a hardcoded `True`.
+
+  `Assignment3DResult.converged`'s docstring read "Whether the algorithm
+  converged (for iterative methods)" for these two non-iterative
+  heuristics; it now documents what `converged` means per method
+  (`assign3d_lagrangian`'s genuine gap-based convergence,
+  `assign3d_auction`'s within-`max_iter` bidding convergence, and these
+  two heuristics' "found at least one assignment"). `decompose_to_2d`'s
+  own docstring doctest also still asserted `result.tuples.shape[0] <=
+  4`, true of an empty result and exercised by `pytest
+  --doctest-modules` in CI; it now asserts the exact `(4, 3)` shape a
+  dense finite cost tensor always produces.
+
+  Review round 2: the `except ValueError: continue` swallow above was
+  still open, for a different non-infeasible case than NaN. scipy raises
+  the identical "invalid numeric entries" `ValueError` for a NaN entry
+  *and* for an infinity in the favorable direction for the mode (`-inf`
+  when minimizing, `+inf` when maximizing) -- the NaN rejector above
+  closed only the first. Measured: `cost = np.ones((3, 3, 3));
+  cost[0, 0, 0] = np.inf; decompose_to_2d(cost, maximize=True)` returned
+  `[[1, 0, 0], [2, 1, 1]]` at cost `2.0`, `converged=True` -- slice 0's
+  single infinitely-favorable pairing, alongside eight finite ones, was
+  dropped with no signal, and the same happened for
+  `cost[0, 0, 0] = -np.inf` under minimize. `decompose_to_2d` now
+  substitutes a large finite sentinel for a favorable-direction infinity
+  before calling scipy (it still dominates every real entry, so scipy
+  solves normally instead of raising), so the swallow now truly only
+  ever sees genuine infeasibility, as claimed above. The fixed result
+  for both measurements above is `[[0, 0, 0], [1, 1, 1], [2, 2, 2]]` at
+  cost `inf` and `-inf` respectively, correctly including the favorable
+  pairing. A new parametrized test on `decompose_to_2d` covers both
+  directions, and the existing cross-method forbidden-pairing test now
+  runs under both `maximize=False` and `maximize=True` with the
+  mode-appropriate forbidden sentinel.
+
+  Two more vacuous doctests of the same shape-only pattern this round
+  claims to have removed survived elsewhere in the same module, and also
+  run under `pytest --doctest-modules` in CI: `assign3d_lagrangian`
+  asserted `result.tuples.shape[1] == 3`, and `assign3d_auction`
+  asserted `len(result.tuples) <= 4` -- both pass against a completely
+  empty `(0, 3)` result. Both now assert the exact shape a dense finite
+  input always produces (`(5, 3)` and `(4, 3)` respectively).
+
+  `converged`'s fix above (`len(assignments) > 0`) was itself wrong for
+  a zero-size cost tensor: `decompose_to_2d(np.zeros((3, 3, 0)))`,
+  `decompose_to_2d(np.zeros((0, 3, 3)))`, and
+  `greedy_3d(np.zeros((0, 3, 3)))` all reported `converged=False`, when
+  a sensor reporting zero detections (or a tensor with zero of one index
+  dimension) is a vacuously solved problem, not a failed one. Worse,
+  `assign3d_auction` and `assign3d_lagrangian` did not even agree with
+  each other, let alone with those two: `assign3d_auction(np.zeros((0,
+  3, 3)))` crashed outright with `ValueError: zero-size array to
+  reduction operation maximum which has no identity` (its adaptive
+  epsilon takes `np.max`/`np.min` over the finite entries), and
+  `assign3d_lagrangian(np.zeros((3, 3, 0)))` crashed with the same
+  message naming `minimum` (`reduced = relaxed.min(axis=2)`) -- neither
+  reached its `converged` predicate at all. `converged` in `greedy_3d`
+  and `decompose_to_2d` is now `len(assignments) > 0 or
+  min(n1, n2, n3) == 0`; `assign3d_auction` and `assign3d_lagrangian`
+  now short-circuit to the same vacuously-converged empty result
+  (`tuples` of shape `(0, 3)`, `cost=0.0`, `converged=True`) whenever any
+  dimension is 0, instead of ever reaching their reductions. All four
+  methods now agree on every zero-size shape, confirmed by a
+  parametrized test across all four. `decompose_to_2d`'s Returns
+  docstring is corrected to match the new predicate.
+
+  `TestGreedy3D` and `TestDecomposeTo2D` also gained a hand-verified
+  value test apiece: `greedy_3d` on `cost[i, j, k] = 4i + 2j + k` over
+  `(2, 2, 2)` returns `[(0, 0, 0), (1, 1, 1)]` at cost `7.0` (the only
+  two valid picks once the global minimum `(0, 0, 0)` is taken), and
+  `decompose_to_2d` on an all-`9`s `(3, 3, 3)` tensor with the diagonal
+  set to `1, 2, 3` returns `[(0, 0, 0), (1, 1, 1), (2, 2, 2)]` at cost
+  `6.0`. Previously every test in both classes asserted shape only, never
+  that the values produced were actually correct.
+
+- `pytcl.dynamic_estimation.information_filter`: the prediction step for
+  a singular information matrix `Y` (an unknown or partially unknown
+  initial state) requires an invertible `F` to form `F^-T Y F^-1`; when
+  `F` was singular, the resulting `LinAlgError` was caught and swallowed
+  with a comment claiming it was safe ("F singular: leave information
+  unchanged") and `y`/`Y` were returned untouched -- prediction was
+  silently skipped and the filter reported a confident estimate of a
+  state it never actually propagated. Measured: with `F = [[1, 1], [0,
+  0]]`, `Y0 = 0` (unknown initial state), and three position
+  measurements, `Y` went `diag(1, 0) -> diag(2, 0) -> diag(3, 0)`,
+  identical to *skipping prediction entirely* -- not identical to
+  running with `F = I`, which (same `Q`) actually damps to `1.0`,
+  `1.909`, `2.603`. The `LinAlgError` now propagates, naming `F` as the
+  singular matrix. It no longer points callers at
+  `esrif_predict`/`esrif_update`: both also require an invertible `F`
+  (plus a nonsingular `R_prev` and `s_q`), so they cannot help here
+  either -- measured, `esrif_predict` raises its own `LinAlgError:
+  Singular matrix` on this same `F`, and again on a singular `R_prev`
+  (the SRIF analog of a singular `Y`). It now points to the
+  covariance-form Kalman filter (`kf_predict`/`kf_update`) instead,
+  which never inverts `F`; the caller represents the unknown state with
+  a large finite initial covariance rather than a singular `Y`.
+  This is a raise on an input this algorithm cannot handle, not on an
+  input that was never valid: the prediction has a well-defined finite
+  limit (measured, using `kf_predict` with `P0 = c * I` for `c` up to
+  `1e12`, this `F`, and `Q = 0.1 * I`: the limit as `c -> infinity` is
+  `Y_pred = diag(0, 10)`), but `information_filter`'s `F^-T Y F^-1` form
+  requires inverting the singular `F` to reach it and cannot. It is
+  still not a behavior change for any input that previously produced a
+  correct result (a regular `F` with a singular `Y0` is unaffected and
+  continues to propagate information normally, confirmed by measurement).
+  The guard catches exact singularity only: a near-singular `F` (e.g.
+  `[[1, 1], [0, 1e-18]]`) still passes `np.linalg.inv` and the original
+  silent-skip symptom is unannounced there; a conditioning threshold is a
+  design decision, not this patch's scope.
+  Unverified sibling noted, not fixed here: `srif_update` falls back to `cholesky(R_meas + 1e-10 *
+  I)` on a non-PD measurement covariance, the same absolute-jitter
+  pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
+  Also undisclosed until now: the same branch regularizes a singular
+  `Q` with `eps = 1e-9 * (trace(Q) / n + 1.0)` before inverting it, the
+  same absolute-jitter pattern, and the introduced error does not clear
+  once `Y` becomes full rank -- it is carried forward in `Y`
+  permanently, not transient as the adjacent comment claimed (now
+  fixed). MATLAB's `infoFilterDiscPred` avoids inverting `Q` at all
+  (`DInv = F' + PInvPrev/(F)*Q`) and documents that `Q` may be
+  singular. Measured against that exact formula with `Y = diag(1, 0)`
+  and `F = [[1, 1], [0, 1]]`, the jitter produces a uniform `2.0e-9`
+  relative error versus MATLAB's form at `Q = 0`, `1e-6 * I`, `1e-12 *
+  I`, and `1e-15 * I` alike. Not fixed here -- re-deriving the singular-
+  `Y` prediction step on MATLAB's formula needs its own tests and audit
+  and is deferred to v2.12.
+
+- `pytcl.dynamic_estimation.information_filter.srif_predict`: when its
+  primary Cholesky path fails and falls back to an SVD of the predicted
+  covariance `P_pred`, a genuinely singular `P_pred` produced a zero
+  singular value; `1.0 / np.sqrt(s)` then divided by zero and the
+  function returned `nan`/`inf` as an ordinary result, with only numpy's
+  own generic `RuntimeWarning: divide by zero encountered in divide` as
+  any signal. Measured: `r_pred = [1.061, nan]` and `R_pred` containing
+  both `nan` and `inf`. `np.linalg.qr` tolerates `nan`/`inf` without
+  raising, so `srif_update` ran to completion on that garbage and
+  returned a nan-laden `R_upd`; `srif_filter` then failed several lines
+  later, not at a QR call but in its own state-form conversion
+  (`np.linalg.matrix_rank(Y)`, an SVD), with the misleading
+  `LinAlgError: SVD did not converge` (the SVD in `srif_predict` itself
+  converged fine; the *result* was degenerate). This is worse than the
+  `srif_update` sibling
+  noted above, since that one at least raises eventually, just from a
+  1e-10 jitter with no message -- here nothing raised until a caller
+  several steps removed hit an unrelated, wrong error. Now raises
+  `np.linalg.LinAlgError` naming `P_pred` as singular as soon as the SVD
+  reveals it, rather than propagating the division's `nan`/`inf`.
+
+- `pytcl.dynamic_estimation.imm`: `imm_update` kept the prior mode
+  probabilities unchanged whenever every mode's *weighted* likelihood
+  (`mode_probs * likelihood`) underflowed to zero, with no warning -- the
+  one case where the filter has learned nothing from the measurement.
+  Since v2.11 made `kf_update` itself warn and report `likelihood=0.0` on
+  a non-PD innovation covariance rather than raising, an all-zero
+  weighted-likelihood sum reaching `imm_update` is now an expected
+  symptom of a numerical failure upstream, not only a genuinely
+  implausible measurement, and this fallback swallowed it either way.
+  `imm_update` now warns whenever the prior-weighted likelihood sum
+  (`mode_probs @ likelihoods`) is at or below `1e-300`, naming the
+  likely causes -- a non-PD innovation covariance upstream (as before),
+  or a zero prior probability on the only mode(s) with a nonzero raw
+  likelihood, which zeros the weighted sum the same way. That second
+  cause is real, not hypothetical: measured with `mode_probs=[0, 0, 1]`
+  and raw likelihoods `[0.075, 0.075, 0.0]` (two modes carry real
+  likelihood, the third carries all the prior weight), the weighted sum
+  is zero and the warning correctly fires.
+
+  Review round 3: this message's wording was wrong for the third time.
+  Round 1 said "every mode likelihood is zero"; round 2 changed that to
+  "every mode's weighted likelihood (mode_probs * likelihood) is zero",
+  which the round-2 scenario above already disproves -- the *sum*
+  underflows, not every individual term. Measured counterexample:
+  `mode_probs=[1/3, 1/3, 1/3]`, `mode_covs=[0.01*I, 5e-5*I, 5e-5*I]`,
+  `z=[5.30, 0]`, `H=I`, `R=mode_covs` gives `mode_likelihoods =
+  [8.2697e-305, 0.0, 0.0]` -- the weighted sum is `2.7566e-305`,
+  strictly greater than zero, so "every ... is zero" is false, yet the
+  warning still correctly fires because the *sum* is at or below
+  `1e-300`. The message now names what the code actually tests -- the
+  prior-weighted likelihood sum -- instead of a per-mode claim.
+
+  The causes list was also incomplete, and its `kf_update` pointer was
+  asserted rather than conditional. This patch's own guard test,
+  `test_all_zero_mode_likelihoods_warn`, drives `mahal_sq = 1.0e8` --
+  about ten thousand sigma -- through `S = 0.02 * I`, which is
+  perfectly positive definite; measured, exactly one warning fires
+  (`imm_update`'s) and `kf_update` emits nothing at all, since `S`
+  never fails its Cholesky factorization. The real cause there is plain
+  `exp(-mahal_sq / 2)` underflow -- a gross outlier or a lost track --
+  which is the most common cause in practice and was unnamed, while the
+  message told the reader to "see kf_update's own warning" as though
+  one were guaranteed to exist. The message now names likelihood
+  underflow first and makes the `kf_update` pointer conditional ("if
+  one fired") instead of asserted.
+
+  None of this changes behavior. The fallback's behavior is unchanged --
+  mode probabilities still fall back to the prior, confirmed by
+  measurement (`[1/3, 1/3, 1/3]` in, `[1/3, 1/3, 1/3]` out for both the
+  round-2 and round-3 scenarios above). The pre-existing threshold
+  defect noted for the round-3 scenario -- the right answer there is
+  `[1, 0, 0]`, since mode 0 alone carries the evidence, and the
+  fallback instead returns the prior -- is unchanged and out of scope
+  here; fixing it would change values on a path that currently produces
+  numbers. A partial underflow (some modes zero, at least one nonzero)
+  does not warn, confirmed by measurement with likelihoods `[0.0, 0.0,
+  1.105e-12]`.
+
+  Deliberately not changed, in the same file: `compute_mixing_probabilities`
+  still substitutes a uniform mixing column, silently, whenever a mode's
+  predicted probability `c_bar` is at or below 1e-15. That is the same
+  silent-substitution shape as the defect above, so it is disclosed rather
+  than left implicit, but it is benign. It replaces a 0/0 with an averaged
+  state, and that column's mixed state then carries a weight of `c_bar` in
+  the combined estimate: measured with an identity transition matrix and a
+  mode probability of 1e-20, the substituted column is `[0.5, 0.5]` and is
+  weighted by 1e-20. It also needs an identity-like transition matrix to
+  trigger at all -- with an ordinary one, a zero-prior mode still receives
+  predicted probability through transitions (0.05 in a 0.95/0.05 model)
+  and the substitution never fires. Warning here would be noise.
+
+- `pytcl.assignment_algorithms.jpda`: `compute_measurement_likelihood`
+  gated the innovation covariance `S` on `det(S) <= 0`, which an even
+  number of negative eigenvalues defeats -- `det(diag(1, -1, -1)) = 1 >
+  0` despite two of its three axes being negative-definite. Measured:
+  `S = diag(-1e-3, -1e-3)` with innovation `(1e-2, 1e-2)` and Pd 0.9
+  returned likelihood 158.30407311583267 with zero warnings, as if it
+  were a genuinely improbable measurement rather than numerical
+  garbage. `kf_update` has warned in exactly this situation since v2.11;
+  JPDA's own likelihood function did not. It now factors `S` via
+  `scipy.linalg.cho_factor`, taking the quadratic form from
+  `cho_solve` and the log-determinant from the factor's diagonal --
+  the same construction `kf_update` already uses -- and warns with
+  matching wording ("... innovation covariance is not positive
+  definite; likelihood set to 0.0 (numerical failure, not evidence).
+  Check R and the covariance conditioning.") before returning 0.0.
+  `compute_likelihood_matrix`'s batch path carried the identical
+  `det_S > 0` test; it now runs the same Cholesky check per track
+  before trusting that track's `S`, and on failure warns (naming the
+  track index) and leaves only that track's row at its zero-likelihood,
+  ungated initialization -- other tracks in the same batch are
+  unaffected. The already-verified algebraic equivalence between the
+  batch path's single-`inv`-per-track computation and the per-pair
+  scalar path on well-conditioned input is unchanged by this fix
+  (measured max abs difference 3.47e-18 before, 1.39e-17 after, both at
+  float64 roundoff). MATLAB's own Gaussian PDF (`GaussianD.PDF`) uses
+  `invSymQuadForm`, which factors via `chol` and lets a non-PD input
+  raise rather than testing the determinant's sign, confirming the
+  determinant test was a pytcl-only addition, not a port of the
+  reference implementation.
+
+- `pytcl.dynamic_estimation.kalman.constrained`:
+  `ConstrainedEKF._project_onto_constraints` regularized both `G P G^T`
+  solves (the Lagrange multiplier for the state and the covariance
+  projection) with a fixed `mu = 1e-6 * I`, independent of `G P G^T`'s
+  own magnitude. Measured with an equality constraint pinning `x[0] = 0`
+  from `x = (1, 0)`: at `P = I` the residual was 1.0e-6, but at
+  `P = 1e-6*I` it grew to 9.77e-4 -- a thousand times `tol=1e-6` -- and
+  at `P = 1e-9*I` the constraint was left almost entirely unenforced, at
+  a residual of 0.99, with `max_iter=10` exhausted silently both times.
+  The Newton step's regularization ratio `mu / (G P G^T + mu)` stays
+  near 1 once `G P G^T` drops below the fixed `mu`, so each iteration
+  only shrinks the residual by that same near-1 factor instead of
+  reaching the constraint surface in one step. `mu` is now scaled to the
+  problem, `eps_rel * trace(G P G^T) / m` with `eps_rel` at machine
+  epsilon, keeping that ratio negligible at any covariance magnitude;
+  measured residuals after the fix are at machine-epsilon scale
+  (1e-16 to 1e-14) at all four scales above, including the order-one
+  case, which was not regressed. `_project_onto_constraints` also now
+  warns when `max_iter` is exhausted with the residual still above
+  `tol` ("constrained EKF state projection did not converge after N
+  iterations; largest constraint violation ... exceeds tol ..."), and when
+  either solve's inversion still fails after regularization (only
+  possible when `G P G^T` is exactly singular, e.g. a constraint with
+  zero sensitivity to the current covariance) before falling back to
+  `np.linalg.pinv`, which previously did both silently. No MATLAB TCL
+  routine implements this state-constrained EKF projection method (the
+  module cites Simon 2006/2010, not a ported `.m` file); the nearest
+  related routine, `constrainedLSEq.m`, solves equality-constrained
+  least squares exactly via a QR/null-space decomposition and adds no
+  regularization at all.
+
+  Review round 2 found the same absolute-vs-relative defect 60 lines
+  below the two sites above, in the same method: the projected
+  covariance's eigenvalues were floored at a fixed `1e-10`
+  (`eigvals[eigvals < 1e-10] = 1e-10`), which either overstated an
+  already-near-zero constrained-direction eigenvalue or, once `P`'s own
+  eigenvalues dropped below 1e-10, inflated the *unconstrained*
+  direction up to 1e-10 too -- a 100x inflation measured at
+  `P = 1e-12*I` (`P_proj[1,1]` came back 1e-10 instead of the correct
+  1e-12). The floor is now `sqrt(machine epsilon) * max(abs(eigvals))`
+  of the matrix being floored, rather than an absolute constant;
+  measured worst-case negative-eigenvalue roundoff noise from `eigh`
+  across 20000 randomized projections was 1.43e-12 relative to that
+  same eigenvalue, four orders of magnitude below the chosen floor.
+  After the fix, `P_proj[1,1]` (the unconstrained direction) returns
+  its exact input variance at every scale from 1e-6 to 1e-12, and
+  `P_proj[0,0]` (the constrained direction) scales down with `P`
+  instead of sitting at a constant. That is an improvement only below
+  P-scale ~6.7e-3, where sqrt(eps) * scale crosses the old 1e-10: at
+  `P = I` the constrained-direction floor moved from 1e-10 to 1.49e-8,
+  149x further from the exact 0. The unconstrained-direction fix holds at
+  every scale.
+
+  The same round also found that the state-projection `pinv` fallback
+  warned once per iteration -- ten copies of the identical warning for
+  a single non-converging call, burying the one non-convergence warning
+  that fires at the end. Both fallback sites (state and covariance
+  projection) now warn at most once per `_project_onto_constraints`
+  call via a per-call flag; a deliberately inconsistent constraint
+  (`g` identically 1, `G` identically zero -- "1 = 0" with no gradient)
+  now produces exactly one state-fallback warning, one covariance-
+  fallback warning, and one non-convergence warning, where it produced
+  twelve warnings (ten duplicates plus the other two) before this round.
+
+- `pytcl.dynamic_estimation.particle_filters.bootstrap`: `resample_systematic`
+  and `resample_residual` silently accepted weights that did not sum to 1,
+  unlike `resample_multinomial`, which already raised `ValueError` on the
+  same input via `numpy.random.Generator.choice`. The docstrings said
+  "Normalized weights" but nothing enforced it. Measured with
+  `particles = arange(4.0)` and a fixed seed: weights summing to 0.5
+  (`[0.125]*4`) returned `[1, 3, 3, 3]` from `resample_systematic` --
+  every unfilled stratum dumped onto the last particle -- and `[2, 1, 0,
+  0]` from `resample_residual`; weights summing to 2.0
+  (`[0.5, 0.5, 0.5, 0.5]`) returned `[0, 0, 1, 1]` from both, silently
+  discarding particles 2 and 3; all-zero weights collapsed
+  `resample_systematic` onto a single particle (`[3, 3, 3, 3]`) and made
+  `resample_residual` raise `ValueError` anyway, but only after first
+  emitting `RuntimeWarning: invalid value encountered in divide` from an
+  internal 0/0 -- the right exception for the wrong reason. All three
+  resamplers now validate through one shared private helper,
+  `_validate_normalized_weights`, which raises `ValueError` ("Probabilities
+  do not sum to 1 (tolerance sqrt(eps) = 1.49e-08). See the Notes section
+  of the docstring."); each resampler's docstring now has that Notes
+  section. The band is `numpy.isclose(sum, 1.0, rtol=0, atol=sqrt(eps))` =
+  1.4901e-8 for float64, the band `numpy.random.Generator.choice` applies
+  to `p` (measured: it accepts a 1.4e-8 deviation and rejects 2.3e-8), so
+  all three resamplers accept and reject the same sums as the one that
+  delegates to `choice`. Two earlier bands were wrong: `numpy.isclose`'s
+  default (~1.1e-5) was far looser than needed, and `max(1e3 * eps, N *
+  eps)` (2.22e-13 at N=4) was anchored on measured float64
+  renormalization roundoff (worst 5.551e-16) and rejected sums such as
+  `[0.25, 0.25, 0.25, 0.25 + 1e-9]` that resample correctly. Still
+  rejected, eight orders outside the band: sums of 0.5, 2.0 and 0.0.
+  Not covered: weights normalized in float32 can miss the band (measured
+  |sum - 1| of 2.235e-8 for `float32([0.1, 0.2, 0.3, 0.4])` and 3.95e-8
+  for 1000 random float32 weights), and `resample_multinomial` rejects
+  them as it always did; renormalize in float64 first.
+  `resample_residual` still requires 2-D
+  particles where the other two accept 1-D (an existing API
+  inconsistency, not changed by this fix -- reconciling it is a
+  signature change, out of scope for a patch release).
+
+- `pytcl.dynamic_estimation.kalman`: six eigh fallback sites --
+  `matrix_utils.compute_matrix_sqrt`, `unscented.sigma_points_merwe`,
+  `unscented.sigma_points_julier`, `unscented.ckf_predict`,
+  `unscented.ckf_update` (and transitively `ukf_predict`, which calls
+  `sigma_points_merwe`), and `constrained.ConstrainedEKF`'s covariance
+  projection -- fall back from `np.linalg.cholesky` to `np.linalg.eigh`
+  on a near-singular covariance and clamped every negative eigenvalue
+  they found with no check on how negative it was. `diag(1, -1)` -- a
+  variance of -1, an impossible covariance -- came back as an
+  ordinary-looking `diag(1, 1e-10)` with no warning, from
+  `compute_matrix_sqrt` directly and from every sigma-point/cubature
+  entry point built on it. Each site now compares the most negative
+  eigenvalue to a relative tolerance before clamping: below it, clamped
+  as before (silently -- this is still the common, correct case for
+  genuine roundoff); at or above it, `np.linalg.LinAlgError` naming the
+  offending eigenvalue. The five sites outside `ConstrainedEKF` use
+  `1e-10 * max(abs(eigenvalues))`: measured worst-case negative-
+  eigenvalue noise from `np.linalg.eigh` on matrices that are
+  mathematically PSD (random and explicit-spectrum constructions,
+  n=2..50, condition numbers up to 1e16, scale 1e-15..1e6, ~45,000
+  trials) was 8.4e-16 relative -- essentially machine epsilon --  so
+  1e-10 clears it with roughly 5 orders of magnitude of margin, while
+  sitting 4 orders below the -1e-14-relative case these sites' tests
+  require to still clamp silently and 10 orders below an eigenvalue
+  comparable in magnitude to the matrix's largest (a first pass took
+  the brief's `eps * n * max(abs(eigenvalues))` formula, which fails
+  its own -1e-14 test case: for `diag(1, -1e-14)` that tolerance is
+  ~4.4e-16, twenty times below the eigenvalue it was supposed to let
+  through). `ConstrainedEKF` reuses its own existing scale-relative
+  floor (`_EIG_FLOOR_REL = sqrt(eps)`, unchanged -- see that module for
+  its own, separately-measured 1.43e-12 roundoff figure) as the same
+  raise/clamp boundary rather than introducing a second constant. The
+  square-root UKF's agreement with the standard UKF (max
+  `|P_sr - P_ukf|` the v2.11.0 audit put at 3.1e-11) is unmoved: the
+  new guard only runs inside the `except np.linalg.LinAlgError` branch,
+  which a battery of 1,000 well-conditioned predict/update pairs (n=2..6)
+  never enters, so the measurement is bit-for-bit identical before and
+  after this fix (1.909584e-13 both times, confirmed by instrumenting
+  that `cholesky` never raised during the sweep rather than trusting a
+  zero diff on faith). MATLAB's `cholSemiDef` (the routine
+  `discCubKalPred`/`sqrtDiscCubKalPred` call for this same fallback)
+  clamps unconditionally with no magnitude check and never raises --
+  this guard is a deliberate departure from the spec, not a port of
+  it, permitted because a `LinAlgError` on input that was never valid
+  is in scope for a patch release. Two pre-existing
+  `tests/unit/test_constrained_ekf.py` tests
+  (`TestConstrainedEKFLinearConstraints.test_multiple_constraints`,
+  `TestConstrainedEKFCovarianceProperties.test_covariance_symmetry`)
+  briefly went `xfail`: both drive a multi-row box constraint whose
+  unviolated rows were never excluded from the constraint Jacobian
+  (`mask` was computed but not applied), and the resulting near-
+  singular `G P G^T` produced a non-roundoff-scale negative eigenvalue
+  that the old unconditional clamp used to silently absorb -- this
+  guard correctly reported it as non-PSD instead, surfacing a
+  pre-existing bug rather than causing it. That bug is now fixed and
+  both tests pass on their original assertions again; `mask` is applied
+  to `G` and `g_val` in the state-projection loop, restricting each
+  Newton step to the rows of the constraint actually violated at the
+  current iterate. The covariance projection uses a different
+  predicate, `|g| <= tol` at the *converged* state, rather than reusing
+  the violated-row mask: by convergence the rows driven to the boundary
+  have `g` approximately zero, so the violated-row mask (`g > tol` /
+  `|g| > tol`) would now exclude exactly the rows that belong in the
+  active set. Measured with the two-sided box `|x[0]| <= 1`
+  (`g = [x[0] - 1, -x[0] - 1]`) from `x = (3, 0)`, `P = I`: row 0 is
+  violated by 2.0, row 1 is satisfied by -4.0. Unmasked, `G P G^T` over
+  both rows is `[[1, -1], [-1, 1]]` (eigenvalues `[0, 2]`, exactly
+  singular), and the projection returned `x = (0, 0)` -- the midpoint of
+  the feasible region, not the boundary, a 100% error on an ordinary
+  box constraint. Masked to the one violated row, `G P G^T = [[1]]`
+  (well posed) and the projection now returns the correct `x = (1, 0)`,
+  matching the analytic minimum-variance projection
+  `P - P G^T (G P G^T)^-1 G P` restricted to that same row. A new
+  regression test, `test_box_constraint_masks_only_violated_row`, pins
+  this case; reverting the mask fix reproduces the `x = (0, 0)` failure
+  exactly. The three existing single-row constraint cases checked
+  (`test_position_bound_constraint`'s box-10, `test_covariance_positive_
+  definite`'s box-5, `test_circular_bound_constraint`'s circle) are
+  bit-identical before and after, since a single-row constraint's mask
+  is all-`True` whenever that row is processed at all.
+
+- `pytcl.gpu`: three mirror sites of the eigenvalue-clamp defect fixed on
+  the CPU side (see the `pytcl.dynamic_estimation.kalman` entry above)
+  repaired a genuinely non-PSD covariance without a magnitude check.
+  `diag(1, -1)` -- a variance of -1 -- was handled as follows.
+  `gpu_matrix_sqrt` floored the eigenvalue at 0.0 and returned
+  `diag(1, 0)`'s root as an ordinary result; `ukf._matrix_sqrt` (and so
+  `batch_ukf_predict`/`batch_ukf_update` via sigma-point generation)
+  clamped it at 1e-10 likewise. Both now raise `np.linalg.LinAlgError`
+  naming the eigenvalue. `gpu_cholesky_safe` (via `_nearest_psd`) keeps its
+  documented never-raises contract -- it returns `(L, False)` -- but the
+  indefinite case was reported only by the generic "failed after
+  regularization" warning, the same one a merely singular input gets, and
+  the factor was for `diag(1, ~1e-6)`; it now also logs a distinct
+  "not positive semi-definite" warning naming the eigenvalue. `_nearest_psd`'s
+  existing scale-relative floor is unchanged. The GPU backend is float32-only
+  (`supports_float64` is False, eps 1.19e-07), so the CPU half's
+  `1e-10 * max(abs(eigenvalues))` would sit three orders of magnitude below
+  float32 roundoff and reject ordinary noise; the threshold is instead
+  `100 * eps` of the working precision (1.19e-05 relative to the largest-
+  magnitude eigenvalue, per matrix in a batch), picked the same way
+  `_nearest_psd` picks its eps. Measured on the MLX `eigh` over
+  rank-deficient and near-singular PSD matrices (`G @ G.T` from float32
+  normals, n=2..200 plus explicit spectra to condition 1e9): worst negative
+  eigenvalue 3.78e-07 relative (3.2 eps), so the threshold is ~31x above
+  noise and ~84,000x below `diag(1, -1)`; 2,400 rank-deficient float32 PSD
+  matrices through `gpu_matrix_sqrt` and `_matrix_sqrt` produced no false
+  rejections. The float64 branch (CuPy) scales the same way but could not be
+  exercised on this machine.
+
+- Review round on the v2.11.1 estimation fixes: four instances of defect
+  classes this release claims to close survived in files it modified.
+
+  `pytcl.dynamic_estimation.kalman.matrix_utils.compute_innovation_likelihood`
+  kept the `det(S) <= 0` test in its Cholesky-failure fallback, which an
+  even number of negative eigenvalues defeats. Measured with innovation
+  `(1e-2, 1e-2)`: `S = diag(-1e-3, -1e-3)` returned 175.8934145731474,
+  `S = -I` returned 0.15917085938200579, and `diag(1, -1, -1)` with a
+  3-vector innovation returned 0.06349681069540605, all with no warning.
+  A failed Cholesky now warns with the same wording as JPDA's fix ("...
+  innovation covariance is not positive definite; likelihood set to 0.0
+  (numerical failure, not evidence). Check R and the covariance
+  conditioning.") and returns 0.0. The remaining `det_S <= 0` tests in that
+  function are correct as written: after a successful Cholesky, or for a
+  caller-supplied factor, `prod(diag)**2` can only be zero by underflow or
+  an exactly singular factor (a negative diagonal entry is a valid factor
+  of a PD matrix), which is what they test. `compute_mahalanobis_distance`
+  fell back to the same unguarded quadratic form and returned `nan` from
+  `sqrt` of a negative with only numpy's generic warning, or a finite
+  distance for an indefinite `S`; it now warns and returns `nan`. Probed
+  3946 random ill-conditioned (condition up to 1e17) matrices on which
+  Cholesky fails: none had a fallback result matching a 60-digit
+  reference, so no previously correct answer is lost.
+
+  The absolute `1e-10` eigenvalue floor that `ConstrainedEKF` lost in
+  `a7e144c` also survived at six other sites: `compute_matrix_sqrt`,
+  `sigma_points_merwe`, `sigma_points_julier`, `ckf_predict`, `ckf_update` eigh fallbacks (`kalman/matrix_utils.py`, `kalman/unscented.py`
+  x4) and `gpu/ukf._matrix_sqrt`. Measured: `compute_matrix_sqrt(diag(1e-12,
+  0))` returned a root with `S @ S.T = diag(1e-10, 1e-10)`, and
+  `ukf_predict`/`ckf_predict` returned `P_pred = diag(1e-10, 1e-10)` for
+  that covariance; at `1e-15` the inflation was 1e5x. The CPU floor is now
+  `1e-10 * max(abs(eigvals))`: worst eigh noise on rank-deficient PSD
+  matrices (20000 trials, n=2..8, scales 1e-15..1e6) was 4.3e-16 relative,
+  so the floor is ~2.3e5x above roundoff, and at unit scale it reproduces
+  the old value, so ordinary-scale results do not move. The magnitude
+  guards ahead of each clamp are unchanged. The GPU backend is float32
+  (`supports_float64` False, eps 1.19e-07), so its floor is `10 * eps` of
+  the working precision times the largest eigenvalue (1.19e-06 relative in
+  float32), picked the way `_nearest_psd` picks its eps: measured MLX eigh
+  noise on rank-deficient float32 PSD matrices was 2.44 eps (300 trials,
+  n=2..39; 3.2 eps in the earlier `matrix_utils` sweep), so ~3x above
+  roundoff. Measured after: `gpu/ukf._matrix_sqrt(diag(1e-12, 0))`
+  reconstructs `diag(1e-12, 1.2e-18)` instead of `diag(1e-10, 1e-10)`; the
+  CPU and GPU constants differ deliberately. The float64 CuPy branch scales
+  the same way but could not be exercised on this machine.
+
+  `compute_measurement_likelihood` (`cho_factor`, upper triangle) and
+  `compute_likelihood_matrix` (`np.linalg.cholesky`, lower triangle) tested
+  different matrices for an asymmetric `S`: for `S = [[1, 0], [100, 1]]`
+  with innovation `(1, 1)` the scalar path returned 0.0585 and the batch
+  path warned and returned 0. An innovation covariance is symmetric by
+  construction, so neither triangle is correct; both paths now treat an
+  `S` whose asymmetry exceeds `sqrt(eps)` (1.5e-8) of its largest entry
+  as invalid, warn, and return 0.0 / zero that track's row. Roundoff
+  asymmetry (~1e-14) is still accepted and gives the identical likelihood.
+  A non-finite `S` previously raised a bare `ValueError` from
+  `cho_factor`'s `check_finite` out of a function annotated `-> float`
+  (and returned `nan` before that); both paths now warn and return 0.0.
+
+  `srif_predict` guarded only on an exact-zero singular value, and only on
+  its SVD fallback; `F = [[1, 1], [0, 1e-18]]`, `R0 = I`, `Q = 0` took the
+  primary path and returned `R_pred` with entries ~1e18, finite, with no
+  warning. The guard now applies to both paths on a relative scale: it
+  raises `LinAlgError` when `P_pred`'s smallest singular value is at or
+  below `n * eps` of its largest (`numpy.linalg.matrix_rank`'s default).
+  Measured SVD roundoff on exactly singular PSD matrices was 0.93 eps, so
+  the threshold is 2.1x above it at n=2 and grows with n. Measured at
+  `F = U diag(1, 1/sqrt(c)) U.T`: `c` up to 1e15 still returns a result
+  (`R.T @ R @ P - I` of 9e-3 at 1e15, 7.9e-4 at 1e13), `c = 1e16` raises.
+  The near-singular `F` gap disclosed under the earlier `srif_predict`
+  entries (`information_filter` with `F = [[1, 1], [0, 1e-18]]`) is a
+  different guard and remains open.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules
@@ -499,6 +1142,22 @@ removal in this release (the five duplicate Jacobians, `gmst`/`gast`,
 `great_circle_tdoa_loc`, `west_merge_cost`) comes from a MATURE or
 EXPERIMENTAL module, where minor-version API adjustment is the
 registered contract.
+
+- Test suite, not library behavior: two validation modules set astropy's
+  process-global `iers.conf.auto_download = False` to stay off the
+  network and never restored it, so the setting leaked into every later
+  test. That turned `test_time_scales`' year-2050 sidereal-time
+  comparison into a gate that went red on a calendar rather than on a
+  commit: with downloads disabled astropy refuses to interpolate an
+  Earth-orientation table whose predictive values are more than
+  `auto_max_age` (30) days stale, and raised `ValueError` once wall-clock
+  time drifted past that horizon. Measured: the same selection passed
+  alone and failed when `test_astro_audit` ran first, with no repository
+  change in between. The root `conftest.py` now restores both IERS
+  settings after every test, and the time-scales module pins them for
+  itself so it extrapolates deliberately and offline; the comparison
+  agrees to 4.9e-10 rad against its 5e-9 rad tolerance either way. Found
+  by a `PYTCL_REQUIRE_MLX=1` run during unrelated work.
 
 ### Removed
 

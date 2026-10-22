@@ -282,6 +282,35 @@ class TestConstrainedEKFLinearConstraints:
         assert constraint.is_satisfied(x_proj)
         assert np.linalg.norm(x_proj) <= 10 * np.sqrt(2) + 1e-5
 
+    def test_box_constraint_masks_only_violated_row(self):
+        """Two-sided box |x[0]| <= 1 from x = (3, 0) must project to the
+        violated boundary, not to the midpoint of the feasible region.
+
+        Regression test for `_project_onto_constraints` computing `mask`
+        (which rows of a multi-row constraint are violated) and never
+        applying it to `G`/`g_val`: with both box rows left in, G P G^T
+        over all rows is [[1, -1], [-1, 1]] (rank 1 of 2, exactly
+        singular), and the unmasked solve returned x = (0, 0) -- the
+        midpoint, not the boundary. Row 0 (x[0] - 1 = 2) is violated;
+        row 1 (-x[0] - 1 = -4) is not, and must be excluded.
+        """
+
+        def constraint_fn(x):
+            return np.array([x[0] - 1, -x[0] - 1])
+
+        constraint = ConstraintFunction(constraint_fn)
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(constraint)
+
+        x = np.array([3.0, 0.0])
+        P = np.eye(2)
+
+        x_proj, P_proj = cekf._project_onto_constraints(x, P)
+
+        assert np.allclose(x_proj, [1.0, 0.0])
+        eigvals = np.linalg.eigvalsh(P_proj)
+        assert np.all(eigvals > -1e-10)
+
 
 class TestConstrainedEKFNonlinear:
     """Test CEKF with nonlinear constraints."""
@@ -595,6 +624,48 @@ class TestConstrainedEKFEdgeCases:
         # Check constraint
         assert constraint.is_satisfied(x_proj)
         assert P_proj.shape == (n, n)
+
+    def test_covariance_projection_falls_back_to_pinv_once(self):
+        """An active constraint with zero gradient leaves G P Gᵀ exactly 0.
+
+        Each hinge max(x_i - 5, 0) = 0 is violated at the start, so it
+        joins the active set, but the plane constraint pushes the state
+        past its kink, where both value and Jacobian are exactly zero.
+        The trace-relative regularizer is then zero too, so the inverse
+        raises and the pinv fallback runs for both hinges with a single
+        warning.
+        """
+
+        def hinge(i):
+            def G(x):
+                row = np.zeros((1, 2))
+                row[0, i] = float(x[i] > 5.0)
+                return row
+
+            return ConstraintFunction(
+                lambda x: np.array([max(x[i] - 5.0, 0.0)]),
+                G=G,
+                constraint_type="equality",
+            )
+
+        plane = ConstraintFunction(
+            lambda x: np.array([x[0] + x[1] - 8.0]),
+            G=lambda x: np.array([[1.0, 1.0]]),
+        )
+        cekf = ConstrainedEKF()
+        for c in (hinge(0), hinge(1), plane):
+            cekf.add_constraint(c)
+
+        with pytest.warns(RuntimeWarning, match="covariance projection") as rec:
+            x_proj, P_proj = cekf._project_onto_constraints(
+                np.array([10.0, 10.0]), np.eye(2)
+            )
+
+        assert len([w for w in rec if "covariance projection" in str(w.message)]) == 1
+        np.testing.assert_allclose(x_proj, [4.0, 4.0], atol=1e-6)
+        # The plane's own projection still applies: no variance along [1, 1].
+        ones = np.array([1.0, 1.0])
+        assert ones @ P_proj @ ones == pytest.approx(0.0, abs=1e-6)
 
 
 class TestConvenientFunctions:

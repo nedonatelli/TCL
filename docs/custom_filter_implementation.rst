@@ -535,6 +535,40 @@ Using Dynamic Models
    interleaved as ``[x, vx, y, vy, ...]``. A measurement matrix written for the
    ``[x, y, vx, vy]`` ordering would silently "measure" a velocity component.
 
+.. warning::
+
+   The library does not use one state layout. The dynamic models
+   (``f_poly_kal``, ``q_poly_kal``, ``f_constant_velocity``,
+   ``q_constant_velocity``, the coordinated-turn matrices) are interleaved
+   per dimension, ``[x, vx, y, vy]``. MATLAB's ``FPolyKal`` / ``QPolyKal`` and
+   ``two_point_diff_init`` (a port of ``twoPointDiffInit.m``) are
+   derivative-major, ``[x, y, vx, vy]``. The two are the same models under a
+   permutation, and composing them raises nothing.
+
+   For positions ``(0, 1)`` then ``(2, 0)`` one second apart,
+   ``two_point_diff_init`` returns ``[2, 0, 2, -1]`` (position ``(2, 0)``,
+   velocity ``(2, -1)``). ``f_poly_kal(order=1, T=1, num_dims=2)`` applied to
+   it gives ``[2, 0, 1, -1]``; the correct propagated state is
+   ``[4, -1, 2, -1]``. Reorder before handing the initializer's output to the
+   filter, and reorder the covariance the same way:
+
+   .. code-block:: python
+
+       import numpy as np
+       from pytcl.dynamic_estimation.batch_estimation import two_point_diff_init
+
+       T = 1.0
+       z = np.array([[0.0, 2.0], [1.0, 0.0]])
+       R = np.eye(2)
+       res = two_point_diff_init(T, z, R)
+       perm = np.arange(2 * z.shape[0]).reshape(2, z.shape[0]).T.ravel()
+       x0 = res.x[perm]
+       P0 = res.P[np.ix_(perm, perm)]
+
+   A library converter is not yet provided. ``q_coord_turn_2d`` additionally
+   differs from MATLAB's ``QCoordTurn`` in structure, not just layout; see its
+   docstring.
+
 Using Coordinate Transformations
 ---------------------------------
 

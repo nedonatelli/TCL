@@ -734,7 +734,9 @@ def two_point_diff_init(
     -------
     result : BatchLSResult
         ``x`` is (2*z_dim,) or (2*z_dim, N); ``P`` is stacked
-        accordingly.
+        accordingly. The state is derivative-major, as in MATLAB:
+        ``[positions; velocities]``, e.g. ``[x, y, vx, vy]``. ``P`` uses
+        the same ordering.
 
     Examples
     --------
@@ -748,6 +750,14 @@ def two_point_diff_init(
     -----
     Port of ``twoPointDiffInit.m`` (Equations 39, 40 and 56 of the
     initialization survey it cites).
+
+    **The state ordering is not the one used by the dynamic models.**
+    :func:`pytcl.dynamic_models.f_poly_kal` and
+    :func:`pytcl.dynamic_models.q_poly_kal` are interleaved per dimension
+    (``[x, vx, y, vy]``). Passing this function's output to them does not
+    raise; it silently propagates a wrong state. Reorder first with
+    ``perm = np.arange(2 * z_dim).reshape(2, z_dim).T.ravel()``, then use
+    ``x[perm]`` and ``P[np.ix_(perm, perm)]``.
     """
     z = np.asarray(z, dtype=np.float64)
     R = np.asarray(R, dtype=np.float64)

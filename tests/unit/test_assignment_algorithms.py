@@ -1,5 +1,7 @@
 """Tests for assignment algorithms and data association."""
 
+import warnings
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -514,8 +516,9 @@ class TestGreedy3D:
         result = greedy_3d(cost)
 
         assert isinstance(result, Assignment3DResult)
-        assert result.tuples.shape[0] <= 4
-        assert result.tuples.shape[1] == 3
+        # Dense finite costs always admit a full greedy match -- unlike
+        # `shape[0] <= 4`, this fails on an empty result.
+        assert result.tuples.shape == (4, 3)
         assert result.converged
 
     def test_maximize(self):
@@ -531,8 +534,40 @@ class TestGreedy3D:
         cost = np.random.rand(3, 4, 5)
         result = greedy_3d(cost)
 
-        # Max assignments is min dimension
-        assert result.tuples.shape[0] <= 3
+        # Max assignments is min dimension, and dense finite costs always
+        # reach it -- unlike `shape[0] <= 3`, this fails on an empty result.
+        assert result.tuples.shape == (3, 3)
+
+    def test_all_infeasible_reports_not_converged(self):
+        result = greedy_3d(np.full((3, 3, 3), np.inf))
+        assert len(result.tuples) == 0
+        assert not result.converged
+
+    def test_nan_cost_raises(self):
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            greedy_3d(cost)
+
+    def test_picks_the_correct_tuples_and_cost_by_hand(self):
+        """cost[i, j, k] = 4i + 2j + k over (2, 2, 2): (0,0,0)=0 is the
+        unique global minimum, taking it leaves only (1,1,1)=7 as a valid
+        second pick (i=1, j=1, k=1 are the only indices left) -- so the
+        greedy and optimal answers coincide here: [(0,0,0), (1,1,1)],
+        cost 0 + 7 = 7.
+        """
+        cost = np.arange(8, dtype=float).reshape(2, 2, 2)
+        result = greedy_3d(cost)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1]]
+        assert result.cost == pytest.approx(7.0)
+
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_is_vacuously_converged(self, shape):
+        """A zero-size tensor has no possible assignment to begin with --
+        that is trivially solved, not a failure."""
+        result = greedy_3d(np.zeros(shape))
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
 
 
 class TestDecomposeTo2D:
@@ -545,7 +580,10 @@ class TestDecomposeTo2D:
         result = decompose_to_2d(cost)
 
         assert isinstance(result, Assignment3DResult)
-        assert result.tuples.shape[0] <= 5
+        # Dense finite costs are never infeasible, so every slice should be
+        # assigned -- unlike `shape[0] <= 5`, this fails on an empty result.
+        assert result.tuples.shape[0] == 5
+        assert result.converged
 
     def test_different_fixed_dimensions(self):
         """Test decomposition along different dimensions."""
@@ -555,10 +593,109 @@ class TestDecomposeTo2D:
         result1 = decompose_to_2d(cost, fixed_dimension=1)
         result2 = decompose_to_2d(cost, fixed_dimension=2)
 
-        # All should produce valid results
-        assert result0.tuples.shape[1] == 3
-        assert result1.tuples.shape[1] == 3
-        assert result2.tuples.shape[1] == 3
+        # All should produce a full, valid assignment, not just the right
+        # column count (which an empty result also satisfies).
+        assert result0.tuples.shape == (4, 3)
+        assert result1.tuples.shape == (4, 3)
+        assert result2.tuples.shape == (4, 3)
+
+    def test_infeasible_slice_is_skipped_not_fatal(self):
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.inf
+        result = decompose_to_2d(cost)
+        assert len(result.tuples) == 2
+        assert all(t[0] != 0 for t in result.tuples)
+        assert result.cost == pytest.approx(2.0)
+
+    def test_middle_infeasible_slice_does_not_drop_later_slices(self):
+        cost = np.ones((3, 3, 3))
+        cost[1] = np.inf
+        result = decompose_to_2d(cost)
+        assert {t[0] for t in result.tuples} == {0, 2}
+
+    def test_all_slices_infeasible_reports_not_converged(self):
+        result = decompose_to_2d(np.full((3, 3, 3), np.inf))
+        assert not result.converged
+
+    def test_nan_cost_raises_rather_than_being_treated_as_infeasible(self):
+        """scipy raises ValueError for both a NaN entry and a genuinely
+        infeasible (all-inf) row/column; treating every ValueError as
+        infeasibility would silently skip a NaN-poisoned slice too and
+        return a confident partial answer over it. NaN must raise."""
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            decompose_to_2d(cost)
+
+    @pytest.mark.parametrize("maximize, sentinel", [(False, -np.inf), (True, np.inf)])
+    def test_favorable_direction_inf_is_included_not_swallowed(
+        self, maximize, sentinel
+    ):
+        """scipy raises the identical "invalid numeric entries" ValueError
+        for a NaN entry and for an infinity in the favorable direction for
+        this mode (-inf minimizing, +inf maximizing). Only NaN is invalid
+        input -- a favorable-direction inf marks the single best possible
+        pairing in that slice and must be kept, not dropped by the
+        ValueError swallow meant for genuine infeasibility.
+
+        cost[0, 0, 0] is the sole favorable-direction entry; the other 8
+        entries in slice 0 and all of slices 1-2 are 1.0, so the only
+        possible complete answer is the diagonal, with slice 0 costing the
+        sentinel itself.
+        """
+        cost = np.ones((3, 3, 3))
+        cost[0, 0, 0] = sentinel
+        result = decompose_to_2d(cost, maximize=maximize)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+        assert result.cost == sentinel
+        assert result.converged
+
+    @pytest.mark.parametrize("finite", [1.0, 1e300, 1e308, np.finfo(np.float64).max])
+    def test_favorable_inf_survives_alongside_enormous_finite_costs(self, finite):
+        """The sentinel substituted for a favorable inf must not overflow.
+
+        An earlier form scaled it from the observed magnitude
+        (max|finite| * 1e6 + 1e6), which overflows back to inf once the
+        finite costs pass about 1e302 -- restoring the exact slice-drop the
+        substitution exists to prevent, with only numpy's generic overflow
+        warning as a signal. Measured at finite=1e308 under that form: 2
+        tuples instead of 3, with (0, 0, 0) dropped.
+
+        The finfo.max row is weaker than the others: the sentinel then
+        equals every finite entry rather than exceeding it, so (0, 0, 0)
+        is chosen by scipy's tie-breaking, not because the favorable inf
+        stayed strictly favorable. It still proves no overflow occurs.
+        """
+        cost = np.full((3, 3, 3), finite)
+        cost[0, 0, 0] = np.inf
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            result = decompose_to_2d(cost, maximize=True)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+        assert result.converged
+
+    def test_picks_the_correct_tuples_and_cost_by_hand(self):
+        """A (3, 3, 3) tensor of 9s with the diagonal set to 1, 2, 3: each
+        slice's unique minimum is its own diagonal entry, and taking it
+        never conflicts with a later slice (each uses a fresh j and k), so
+        the decomposition's greedy per-slice pick is also optimal here:
+        [(0,0,0), (1,1,1), (2,2,2)], cost 1 + 2 + 3 = 6.
+        """
+        cost = np.full((3, 3, 3), 9.0)
+        cost[0, 0, 0] = 1.0
+        cost[1, 1, 1] = 2.0
+        cost[2, 2, 2] = 3.0
+        result = decompose_to_2d(cost)
+        assert result.tuples.tolist() == [[0, 0, 0], [1, 1, 1], [2, 2, 2]]
+        assert result.cost == pytest.approx(6.0)
+
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_is_vacuously_converged(self, shape):
+        """A zero-size tensor has no possible assignment to begin with --
+        that is trivially solved, not a failure."""
+        result = decompose_to_2d(np.zeros(shape))
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
 
 
 class TestAssign3DLagrangian:
@@ -619,6 +756,74 @@ class TestAssign3DAuction:
 
 class TestAssign3D:
     """Tests for unified assign3d interface."""
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    def test_every_method_rejects_nan(self, method):
+        """All four methods must agree that NaN is invalid input.
+
+        `_reject_nan_cost` is shared precisely so the four cannot drift
+        apart. Before it was wired into all four, `method="auction"`
+        returned two tuples at cost 2.0 on this tensor -- a cost computed
+        over a row it could not read -- while greedy and decompose raised.
+        """
+        cost = np.ones((3, 3, 3))
+        cost[0] = np.nan
+        with pytest.raises(ValueError, match="NaN"):
+            assign3d(cost, method=method)
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    @pytest.mark.parametrize("maximize", [False, True])
+    def test_inf_is_still_accepted_as_a_forbidden_pairing(self, maximize, method):
+        """inf means "this pairing is not allowed" and must keep working,
+        using the sentinel that is unfavorable for the mode: +inf when
+        minimizing, -inf when maximizing (the favorable direction means
+        the opposite -- an infinitely good pairing -- and is covered
+        separately in TestDecomposeTo2D).
+
+        The NaN guard must not catch it. lagrangian is the one method that
+        raises here, and it did so before the guard existed -- scipy calls
+        a slice with a fully-infinite row infeasible, in both directions.
+        """
+        forbidden = -np.inf if maximize else np.inf
+        cost = np.ones((3, 3, 3))
+        cost[0] = forbidden
+        if method == "lagrangian":
+            with pytest.raises(ValueError, match="infeasible"):
+                assign3d(cost, method=method, maximize=maximize)
+        else:
+            result = assign3d(cost, method=method, maximize=maximize)
+            assert result.cost == pytest.approx(2.0)
+            assert all(t[0] != 0 for t in result.tuples)
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    @pytest.mark.parametrize("shape", [(0, 3, 3), (3, 0, 3), (3, 3, 0)])
+    def test_zero_size_problem_is_vacuously_converged_for_every_method(
+        self, shape, method
+    ):
+        """A cost tensor with any dimension 0 has no possible assignment to
+        begin with -- that is trivially solved, not a failure, and all
+        four methods must agree. `assign3d_auction` and `assign3d_lagrangian`
+        used to crash outright on such input (an empty-array reduction in
+        each one's setup, independent of the `converged` predicate fix
+        applied to `greedy_3d` and `decompose_to_2d`).
+        """
+        result = assign3d(np.zeros(shape), method=method)
+        assert result.tuples.shape == (0, 3)
+        assert result.converged
+
+    @pytest.mark.parametrize("method", ["greedy", "decompose", "lagrangian", "auction"])
+    def test_all_infeasible_tensor_is_reported_by_every_method(self, method):
+        """Defect test: auction crashed with "zero-size array to reduction
+        operation maximum" on an all-inf tensor, where greedy and decompose
+        return converged=False and lagrangian raises "infeasible"."""
+        cost = np.full((3, 3, 3), np.inf)
+        if method == "lagrangian":
+            with pytest.raises(ValueError, match="infeasible"):
+                assign3d(cost, method=method)
+        else:
+            result = assign3d(cost, method=method)
+            assert result.tuples.shape == (0, 3)
+            assert not result.converged
 
     def test_lagrangian_method(self):
         """Test Lagrangian method selection."""

@@ -9,16 +9,34 @@ This is more sophisticated than GNN which makes hard assignment decisions,
 as JPDA can handle measurement origin uncertainty in cluttered environments.
 """
 
+import warnings
 from typing import Any, List, NamedTuple, Optional
 
 import numpy as np
 from numba import njit
 from numpy.linalg import LinAlgError
 from numpy.typing import ArrayLike, NDArray
+from scipy.linalg import cho_factor, cho_solve
 from scipy.stats import chi2
 
 from pytcl.assignment_algorithms.gating import mahalanobis_batch, mahalanobis_distance
 from pytcl.diagnostics import diagnostics_enabled, logger
+
+# An innovation covariance is symmetric by construction; its asymmetry is
+# float roundoff (~1e-16 relative), so sqrt(eps) sits ~8 orders above that.
+_SYMMETRY_REL_TOL = float(np.sqrt(np.finfo(np.float64).eps))
+
+
+def _is_finite_symmetric(S: NDArray[Any]) -> bool:
+    # Cholesky reads one triangle only, and which one differs between
+    # scipy.linalg.cho_factor (upper) and np.linalg.cholesky (lower), so an
+    # asymmetric S would be tested as two different matrices.
+    if not np.all(np.isfinite(S)):
+        return False
+    return bool(
+        np.max(np.abs(S - S.T), initial=0.0)
+        <= _SYMMETRY_REL_TOL * np.max(np.abs(S), initial=0.0)
+    )
 
 
 class JPDAResult(NamedTuple):
@@ -90,14 +108,39 @@ def compute_measurement_likelihood(
         Measurement likelihood.
     """
     m = len(innovation)
-    det_S = np.linalg.det(innovation_cov)
 
-    if det_S <= 0:
+    # det(S) > 0 alone does not imply positive-definiteness: an even number
+    # of negative eigenvalues also multiplies to a positive determinant
+    # (e.g. diag(-1, -1, 1) has det = 1), so a determinant-only test admits
+    # negative-definite and indefinite S. Cholesky fails whenever any
+    # leading principal minor is non-positive, which is the actual PD test.
+    if not _is_finite_symmetric(innovation_cov):
+        warnings.warn(
+            "compute_measurement_likelihood: innovation covariance is not "
+            "symmetric or contains non-finite values; likelihood set to 0.0 "
+            "(numerical failure, not evidence). Check R and the covariance "
+            "conditioning.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return 0.0
 
-    mahal_sq = innovation @ np.linalg.solve(innovation_cov, innovation)
-    likelihood = (
-        detection_prob * np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
+    try:
+        S_cho = cho_factor(innovation_cov, check_finite=False)
+    except LinAlgError:
+        warnings.warn(
+            "compute_measurement_likelihood: innovation covariance is not "
+            "positive definite; likelihood set to 0.0 (numerical failure, "
+            "not evidence). Check R and the covariance conditioning.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return 0.0
+
+    mahal_sq = innovation @ cho_solve(S_cho, innovation, check_finite=False)
+    log_det_S = 2 * np.sum(np.log(np.diag(S_cho[0])))
+    likelihood = detection_prob * np.exp(
+        -0.5 * (mahal_sq + log_det_S + m * np.log(2 * np.pi))
     )
 
     return likelihood
@@ -178,6 +221,35 @@ def compute_likelihood_matrix(
         S = H @ track_covariances[i] @ H.T + R
         m = S.shape[0]
 
+        # det(S) > 0 does not imply positive-definiteness (an even number of
+        # negative eigenvalues also multiplies to a positive determinant),
+        # so gate on Cholesky success rather than the sign of det(S). This
+        # row's likelihoods and gating stay at their zero/False
+        # initialization; other tracks' rows are untouched.
+        if not _is_finite_symmetric(S):
+            warnings.warn(
+                f"compute_likelihood_matrix: innovation covariance for track "
+                f"{i} is not symmetric or contains non-finite values; that "
+                "track's likelihoods and gating are set to 0.0 (numerical "
+                "failure, not evidence). Check R and the covariance "
+                "conditioning.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+        try:
+            np.linalg.cholesky(S)
+        except LinAlgError:
+            warnings.warn(
+                f"compute_likelihood_matrix: innovation covariance for track "
+                f"{i} is not positive definite; that track's likelihoods and "
+                "gating are set to 0.0 (numerical failure, not evidence). "
+                "Check R and the covariance conditioning.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+
         # S depends only on the track, not the measurement: invert it once
         # and reuse the inverse (and det(S)) across every measurement,
         # instead of re-solving and re-computing det(S) per (track,
@@ -196,11 +268,13 @@ def compute_likelihood_matrix(
         try:
             S_inv = np.linalg.inv(S)
         except LinAlgError:
-            # Singular S: fall back to the original per-pair path for this
-            # track so behavior is unchanged (mahalanobis_distance's own
-            # dispatch raises the same error only when its own route is
-            # also singular; compute_measurement_likelihood's det_S <= 0
-            # check covers non-exactly-singular non-PD S).
+            # S already passed the Cholesky PD check above, so np.linalg.inv
+            # should never raise here; this is a defensive fallback to the
+            # original per-pair path for the pathological case where it
+            # does anyway (mahalanobis_distance's own dispatch raises the
+            # same error only when its own route is also singular;
+            # compute_measurement_likelihood's own Cholesky guard still
+            # zeroes the likelihood if reached with a non-PD S).
             for j in range(n_meas):
                 innovation = measurements[j] - z_pred
                 mahal_dist = mahalanobis_distance(innovation, S)
@@ -229,10 +303,10 @@ def compute_likelihood_matrix(
         gated[i, :] = track_gated
 
         if det_S > 0 and n_meas:
-            # Preserves compute_measurement_likelihood's det_S <= 0 -> 0.0
-            # semantics: `gated` above is unaffected by det_S's sign (the
-            # old loop set gated[i, j] purely from the mahal_dist/threshold
-            # comparison too), only the likelihood value is zeroed.
+            # S already passed the Cholesky PD check above, so det_S > 0
+            # holds mathematically; this is a defensive floor against det()
+            # underflowing to exactly 0.0 for a technically-PD but severely
+            # ill-conditioned S.
             norm_const = detection_prob / np.sqrt((2 * np.pi) ** m * det_S)
             likelihood_matrix[i, track_gated] = norm_const * np.exp(
                 -0.5 * mahal_sq[track_gated]

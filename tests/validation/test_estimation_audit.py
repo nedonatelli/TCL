@@ -17,6 +17,8 @@ Every filter variant is checked against independently-computed references:
 - H-infinity: reduction to the KF as gamma -> infinity.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 from scipy.stats import chi2, multivariate_normal
@@ -907,12 +909,178 @@ class TestConstrainedEKF:
             X0, P0, np.array([0.6]), h_lin, H, R, constraints=[con]
         )
         # Constraint satisfied
-        assert abs((A @ res.x)[0]) < 1e-5
+        assert abs((A @ res.x)[0]) < 1e-9
         # Matches analytic minimum-variance projection of unconstrained update
         u = ekf_update(X0, P0, np.array([0.6]), h_lin, H, R)
         lam = np.linalg.solve(A @ u.P @ A.T, A @ u.x)
         x_ref = u.x - u.P @ A.T @ lam
-        np.testing.assert_allclose(res.x, x_ref, atol=1e-5)
+        np.testing.assert_allclose(res.x, x_ref, atol=1e-9)
+
+    def test_equality_constraint_projection_small_covariance(self):
+        # Regression for the projection's regularization being an absolute
+        # 1e-6 instead of scaled to G P G^T: at P = 1e-9*I the old code left
+        # a 0.99 constraint residual instead of enforcing it.
+        A = np.array([[1.0, -1.0]])
+        con = ConstraintFunction(
+            g=lambda x: A @ x, G=lambda x: A, constraint_type="equality"
+        )
+        P_small = 1e-9 * np.eye(2)
+        res = constrained_ekf_update(
+            X0, P_small, np.array([0.6]), h_lin, H, R, constraints=[con]
+        )
+        assert abs((A @ res.x)[0]) < 1e-9
+        u = ekf_update(X0, P_small, np.array([0.6]), h_lin, H, R)
+        lam = np.linalg.solve(A @ u.P @ A.T, A @ u.x)
+        x_ref = u.x - u.P @ A.T @ lam
+        np.testing.assert_allclose(res.x, x_ref, atol=1e-9)
+
+    @pytest.mark.parametrize("scale", [1.0, 1e-3, 1e-6, 1e-9])
+    def test_equality_constraint_residual_independent_of_covariance_scale(self, scale):
+        # The Lagrange solve's regularization must track G P G^T, not sit at
+        # a fixed absolute value: an absolute mu dominates once P shrinks
+        # below it, and the state stalls short of the constraint surface.
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        x = np.array([1.0, 0.0])
+        P = scale * np.eye(2)
+        x_proj, _ = cekf._project_onto_constraints(x, P)
+        assert abs(x_proj[0]) < 1e-9, f"residual {x_proj[0]:.3e} at scale {scale:.0e}"
+
+    def test_unconverged_projection_warns(self):
+        # A nonlinear constraint needs more than one Newton step from this
+        # starting point; max_iter=1 exhausts before the residual meets tol,
+        # which must now be audible instead of silent.
+        def g(x):
+            return np.array([x[0] ** 2 + x[1] ** 2 - 1.0])
+
+        def G(x):
+            return np.array([[2.0 * x[0], 2.0 * x[1]]])
+
+        con = ConstraintFunction(g=g, G=G, constraint_type="equality")
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with pytest.warns(RuntimeWarning, match="did not converge"):
+            cekf._project_onto_constraints(np.array([5.0, 5.0]), np.eye(2), max_iter=1)
+
+    def test_converged_inequality_with_large_slack_does_not_warn(self):
+        """Defect test: the non-convergence warning used max|g|, so a lower
+        bound satisfied with slack 100 reported "residual 1.000e+02" and
+        warned although is_satisfied was True on the returned state."""
+        H = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: np.array([np.exp(x[0]) - 1.0, -x[0] - 100.0]),
+            G=lambda x: np.array([[np.exp(x[0]), 0.0], [-1.0, 0.0]]),
+            constraint_type="inequality",
+        )
+        f = ConstrainedEKF()
+        f.add_constraint(con)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            x_upd = f.update(
+                np.array([6.0, 0.0]),
+                np.eye(2),
+                np.array([6.0]),
+                lambda v: H @ v,
+                H,
+                np.array([[1e6]]),
+            )
+        assert con.is_satisfied(x_upd.x)
+
+    def test_nonconvergence_warning_reports_the_violation_not_the_slack(self):
+        """Defect test: with max_iter=3 the exp row is still violated (19.64)
+        while the satisfied row sits at -103.03; max|g| reported 1.03e+02."""
+        con = ConstraintFunction(
+            g=lambda x: np.array([np.exp(x[0]) - 1.0, -x[0] - 100.0]),
+            G=lambda x: np.array([[np.exp(x[0]), 0.0], [-1.0, 0.0]]),
+            constraint_type="inequality",
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        x0 = np.array([6.0, 0.0])
+        with pytest.warns(RuntimeWarning, match="did not converge") as rec:
+            x_out, _ = cekf._project_onto_constraints(x0, np.eye(2), max_iter=3)
+        true_violation = float(np.max(np.maximum(con.evaluate(x_out), 0.0)))
+        assert true_violation > 1e-6
+        msg = str(rec[0].message)
+        assert f"{true_violation:.3e}" in msg
+        assert f"{float(np.max(np.abs(con.evaluate(x_out)))):.3e}" not in msg
+        msg.encode("ascii")
+
+    def test_nonconvergence_warning_is_silent_when_equality_converged_on_last_iter(
+        self,
+    ):
+        """Regression guard: a linear equality converges in one step; with
+        max_iter=1 the loop is exhausted yet is_satisfied is True, so no
+        warning may fire."""
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            x_out, _ = cekf._project_onto_constraints(
+                np.array([1.0, 0.0]), np.eye(2), max_iter=1
+            )
+        assert con.is_satisfied(x_out)
+
+    def test_inconsistent_constraint_falls_back_to_pinv_once(self):
+        # g == 1 with a zero Jacobian states "1 = 0" with no gradient: G P G^T
+        # is exactly singular at every iteration, so this is the genuine,
+        # non-contrived way to reach the pinv fallback (a zero-Jacobian AND
+        # zero-g constraint is trivially satisfied and never reaches it).
+        con = ConstraintFunction(
+            g=lambda v: np.array([1.0]),
+            G=lambda v: np.zeros((1, 2)),
+            constraint_type="equality",
+        )
+        cekf = ConstrainedEKF()
+        cekf.add_constraint(con)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cekf._project_onto_constraints(np.array([0.0, 0.0]), np.eye(2))
+        messages = [str(w.message) for w in caught]
+        state_fallback = [
+            m for m in messages if "state projection" in m and "pinv" in m
+        ]
+        cov_fallback = [
+            m for m in messages if "covariance projection" in m and "pinv" in m
+        ]
+        nonconverge = [m for m in messages if "did not converge" in m]
+        # The state-projection fallback previously warned once per iteration
+        # (10 copies at the default max_iter); it must now warn once per call.
+        assert len(state_fallback) == 1, state_fallback
+        assert len(nonconverge) == 1, nonconverge
+        # No covariance projection happens at all here, so its fallback must
+        # not fire. "1 = 0" is never satisfiable, so this constraint never
+        # reaches its boundary and is therefore not in the active set at the
+        # converged state -- and projecting the covariance onto a surface the
+        # state never reached would be wrong. Before the Jacobian-masking
+        # fix the covariance loop ran over every constraint that had ever
+        # been violated, so this warned once here.
+        assert cov_fallback == [], cov_fallback
+
+    def test_covariance_eigenvalue_floor_relative_to_scale(self):
+        # The unconstrained direction's variance must come back unchanged
+        # regardless of how small P is; an absolute eigenvalue floor
+        # (1e-10) inflated it once P dropped below that.
+        G = np.array([[1.0, 0.0]])
+        con = ConstraintFunction(
+            g=lambda x: G @ x, G=lambda x: G, constraint_type="equality"
+        )
+        for scale in [1e-6, 1e-9, 1e-12]:
+            cekf = ConstrainedEKF()
+            cekf.add_constraint(con)
+            x = np.array([1.0, 0.0])
+            P = scale * np.eye(2)
+            _, P_proj = cekf._project_onto_constraints(x, P)
+            np.testing.assert_allclose(P_proj[1, 1], scale, rtol=1e-6)
+            assert P_proj[0, 0] < 1e-6 * scale
 
     def test_constraint_function_numeric_jacobian(self):
         con = ConstraintFunction(g=lambda x: np.array([x[0] ** 2 + x[1] - 1.0]))

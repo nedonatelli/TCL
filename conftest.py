@@ -160,6 +160,35 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _restore_astropy_iers_conf() -> Iterator[None]:
+    """Keep one test's astropy IERS settings out of every later test.
+
+    ``astropy.utils.iers.conf`` is process-global. Two validation modules
+    set ``auto_download = False`` to stay off the network, and before this
+    fixture that leaked for the rest of the session -- which turned
+    test_time_scales' year-2050 sidereal-time comparison into a gate that
+    went red on a calendar rather than on a commit: with downloads
+    disabled, astropy refuses to interpolate an Earth-orientation table
+    whose predictive values are more than ``auto_max_age`` (30) days old,
+    so it raised ValueError once wall-clock time drifted past that
+    horizon. Measured: the same selection passed alone and failed when
+    test_astro_audit ran first.
+
+    Restoring the configuration does not unload an already-cached IERS
+    table, so a module that needs determinism must still pin its own
+    settings; this only stops the configuration itself from leaking.
+    """
+    try:
+        from astropy.utils import iers
+    except ImportError:
+        yield
+        return
+    saved = (iers.conf.auto_download, iers.conf.auto_max_age)
+    yield
+    iers.conf.auto_download, iers.conf.auto_max_age = saved
+
+
+@pytest.fixture(autouse=True)
 def _numpy_legacy_scalar_repr() -> Iterator[None]:
     """Print NumPy scalars as plain values (1.0, True) in doctests.
 

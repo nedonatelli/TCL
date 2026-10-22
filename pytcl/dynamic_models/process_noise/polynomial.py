@@ -53,9 +53,28 @@ def q_poly_kal(
     Notes
     -----
     This is the discretization of continuous white noise on the highest
-    derivative (e.g., Q = q*[[T³/3, T²/2], [T²/2, T]] for order=1), matching
-    QPolyKal in the MATLAB Tracker Component Library. For the discrete white
-    noise model, use q_discrete_white_noise.
+    derivative (e.g., Q = q*[[T³/3, T²/2], [T²/2, T]] for order=1). For the
+    discrete white noise model, use q_discrete_white_noise.
+
+    **State layout differs from MATLAB.** This is the same model as
+    ``QPolyKal`` in the MATLAB Tracker Component Library, but under a
+    permutation of the state. For ``num_dims > 1`` this function is
+    block-diagonal with one block per spatial dimension, so the state is
+    interleaved: ``[x, vx, y, vy]``. ``QPolyKal`` is ``kron(Q1, diag(q0))``,
+    which is derivative-major: ``[x, y, vx, vy]``. The two are not equal
+    elementwise; for ``order=1, T=1, q=1, num_dims=2`` the largest
+    elementwise difference is 0.6667. They agree after reordering the
+    state (``Q_matlab = Q[p][:, p]`` with ``p = [0, 2, 1, 3]``). Neither is
+    wrong, so do not change the numbers to make them match; the layout must
+    agree with the state vector you propagate.
+
+    ``q`` is a scalar shared by all dimensions here, whereas ``QPolyKal``
+    accepts a per-dimension vector ``q0``.
+
+    :func:`pytcl.dynamic_estimation.batch_estimation.two_point_diff_init`
+    returns the derivative-major layout, so its output cannot be fed to this
+    function's companion :func:`pytcl.dynamic_models.f_poly_kal` without
+    reordering.
     """
     n = order + 1
 

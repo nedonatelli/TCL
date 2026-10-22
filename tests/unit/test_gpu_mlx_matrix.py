@@ -175,13 +175,41 @@ class TestBatchOpsVersusNumpy:
 
         assert_allclose(S, np.diag([2.0, 3.0]), atol=1e-5)
 
-    def test_matrix_sqrt_clips_negative_eigenvalues(self):
-        A = np.diag([4.0, -1.0])
+    def test_matrix_sqrt_rejects_non_psd(self):
+        # Defect test: diag(4, -1) used to come back as diag(2, 0).
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            gpu_matrix_sqrt(np.diag([4.0, -1.0]))
 
-        S = to_np(gpu_matrix_sqrt(A))
+    def test_matrix_sqrt_rejects_non_psd_small_scale_batch_member(self):
+        # Defect test: the tolerance is per matrix, so a large-scale batch
+        # member must not mask a non-PSD small-scale one.
+        A = np.stack([np.diag([1e6, 1e6]), np.diag([1e-3, -1e-3])])
+        with pytest.raises(np.linalg.LinAlgError, match="not positive semi-definite"):
+            gpu_matrix_sqrt(A)
 
-        assert np.isfinite(S).all()
-        assert_allclose(S, np.diag([2.0, 0.0]), atol=1e-5)
+    def test_matrix_sqrt_clamps_float32_roundoff_negatives(self):
+        # Regression guard: rank-deficient float32 PSD matrices carry negative
+        # eigenvalues up to 3.8e-7 relative (3.2 eps, measured); none may be
+        # rejected. 0 rejections of 1200 trials when measured.
+        rng = np.random.default_rng(21)
+        for n, r in [(3, 1), (6, 3), (10, 9), (20, 10)]:
+            for _ in range(75):
+                G = rng.standard_normal((n, r)).astype(np.float32)
+                A = G @ G.T
+                S = to_np(gpu_matrix_sqrt(A))
+                assert np.isfinite(S).all()
+                assert_allclose(S @ S, A, atol=1e-3 * np.abs(A).max())
+
+    def test_matrix_sqrt_clamps_negative_below_threshold(self):
+        # Regression guard: -1e-6 relative is 8.4 eps, under the 100 eps
+        # threshold, so it is still clamped rather than rejected.
+        S = to_np(gpu_matrix_sqrt(np.diag([1.0, -1e-6])))
+        assert_allclose(S, np.diag([1.0, 0.0]), atol=1e-5)
+
+    def test_matrix_sqrt_rejects_negative_above_threshold(self):
+        # -1e-4 relative is 840 eps, over the 100 eps threshold.
+        with pytest.raises(np.linalg.LinAlgError):
+            gpu_matrix_sqrt(np.diag([1.0, -1e-4]))
 
 
 class TestBatchInverseAndSolve:
@@ -245,6 +273,33 @@ class TestCholeskySafeContract:
         # eigenvalues are max(eig(A), floor) = [~0, 3].
         recon = L @ L.T
         assert_allclose(recon, np.full((2, 2), 1.5), atol=1e-4)
+
+    def test_non_psd_warns_distinctly(self, caplog):
+        # Defect test: diag(1, -1) was repaired with only the generic
+        # "failed after regularization" warning, indistinguishable from a
+        # merely singular input.
+        with caplog.at_level("WARNING", logger="pytcl.gpu.matrix_utils"):
+            _, success = gpu_cholesky_safe(np.diag([1.0, -1.0]))
+
+        assert success is False
+        assert "not positive semi-definite" in caplog.text
+        assert "-1.000000e+00" in caplog.text
+
+    def test_non_psd_small_scale_batch_member_warns(self, caplog):
+        A = np.stack([np.diag([1e6, 1e6]), np.diag([1e-3, -1e-3])])
+        with caplog.at_level("WARNING", logger="pytcl.gpu.matrix_utils"):
+            gpu_cholesky_safe(A)
+        assert "not positive semi-definite" in caplog.text
+
+    def test_singular_psd_does_not_warn_non_psd(self, caplog):
+        # Regression guard: roundoff-negative eigenvalues of a rank-deficient
+        # float32 PSD matrix are not reported as non-PSD.
+        rng = np.random.default_rng(22)
+        for n, r in [(3, 1), (6, 3), (10, 9)]:
+            for _ in range(50):
+                G = rng.standard_normal((n, r)).astype(np.float32)
+                gpu_cholesky_safe(G @ G.T)
+        assert "not positive semi-definite" not in caplog.text
 
     def test_singular_psd_regularizes_and_succeeds(self):
         A = np.array([[1.0, 1.0], [1.0, 1.0]])

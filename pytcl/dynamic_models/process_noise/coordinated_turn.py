@@ -87,9 +87,37 @@ def q_coord_turn_2d(
 
     Notes
     -----
-    The process noise accounts for uncertainty in the turn dynamics.
-    For the coordinated turn, this includes uncertainty in both
-    the linear acceleration and the turn rate.
+    **This is not a port of MATLAB's ``QCoordTurn``.** It stacks an
+    independent discrete-white-noise-acceleration block per axis,
+    ``sigma_a**2 * [[T**4/4, T**3/2], [T**3/2, T**2]]``, plus a diagonal
+    ``sigma_omega**2 * T**2`` for omega. ``QCoordTurn`` instead builds
+    ``Q = G * G.T`` from a single column vector
+    ``G = [sigmaV*T**2/2; sigmaV*T**2/2; sigmaV*T; sigmaV*T; sigmaTurn*T]``
+    (state ``[x; y; xdot; ydot; omega]``), so its result is rank 1 and every
+    x/y/velocity/omega pair is correlated. Here there is no x-y, no
+    position-omega and no velocity-omega coupling.
+
+    The comparable MATLAB branch is the length-5 state (2D, no linear
+    acceleration) with ``sigmaV2 = sigma_a**2`` and
+    ``sigmaTurn2 = sigma_omega**2``, which is this function with
+    ``state_type='position_velocity_omega'`` after permuting this
+    function's ``[x, vx, y, vy, omega]`` to MATLAB's
+    ``[x, y, vx, vy, omega]``. ``state_type='position_velocity'`` has no
+    MATLAB counterpart (``QCoordTurn`` rejects 4-element states); its
+    comparable object is the leading 4x4 block of that same length-5 result.
+    MATLAB's length-6 branch (adds a linear-acceleration state) has no
+    counterpart here.
+
+    Measured at ``T=1, sigma_a=2, sigma_omega=0.1``: the diagonals agree
+    exactly, but the largest elementwise difference from ``QCoordTurn`` is
+    4.0 for both state types. The ``'position_velocity'`` result has rank 2
+    (eigenvalues ``[0, 0, 5, 5]``) and the ``'position_velocity_omega'``
+    result has rank 3 (eigenvalues ``[0, 0, 0.01, 5, 5]``); ``QCoordTurn``
+    has rank 1 in both. Matching diagonal blocks is the only property the
+    two share, so filters tuned against one will not reproduce the other.
+
+    The state is interleaved, unlike MATLAB's derivative-major layout; see
+    :func:`pytcl.dynamic_models.q_poly_kal`.
 
     See Also
     --------
@@ -135,6 +163,7 @@ def q_coord_turn_3d(
     """
     Create process noise covariance for 3D coordinated turn model.
 
+
     Parameters
     ----------
     T : float
@@ -150,6 +179,17 @@ def q_coord_turn_3d(
     -------
     Q : ndarray
         Process noise covariance matrix.
+
+    Notes
+    -----
+    Same construction as :func:`q_coord_turn_2d` (independent per-axis
+    blocks, interleaved state), verified in v2.11.1: at ``T=1,
+    sigma_a=2, sigma_omega=0.1`` the 6x6 result is exactly block-diagonal
+    over the three per-axis 2x2 blocks (largest off-block entry 0.0),
+    rank 3, and its first block equals ``q_coord_turn_2d``'s. MATLAB has
+    no 3-D counterpart to compare element-wise, so the divergence from the
+    rank-1 ``QCoordTurn`` is established through that shared construction
+    rather than measured directly; see the Notes on ``q_coord_turn_2d``.
 
     See Also
     --------
@@ -199,6 +239,14 @@ def q_coord_turn_polar(
     Create process noise covariance for coordinated turn in polar form.
 
     State vector is [x, y, heading, speed, turn_rate].
+
+    Notes
+    -----
+    MATLAB parity was **not** verified for this function in v2.11.1. Its
+    sibling :func:`q_coord_turn_2d` was checked against ``QCoordTurn`` and
+    diverges structurally (see its Notes); whether this function shares
+    that divergence is unknown, not established either way. The module's
+    EXPERIMENTAL maturity reflects that gap as well as the confirmed one.
 
     Parameters
     ----------

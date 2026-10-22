@@ -25,12 +25,36 @@ size- and machine-dependent; re-measure before relying on a specific
 number.
 """
 
+import warnings
 from functools import lru_cache
 from typing import Any, Optional, Tuple
 
 import numpy as np
 from numba import njit
 from numpy.typing import NDArray
+
+# Relative bound on how negative an eigenvalue from the eigh fallback is
+# allowed to be before it is treated as a genuinely non-PSD input rather
+# than roundoff. Measured worst-case negative-eigenvalue noise from
+# np.linalg.eigh on matrices that are mathematically PSD (random and
+# explicit-spectrum constructions, n=2..50, condition numbers up to
+# 1e16, scales 1e-15..1e6, ~45000 trials): 8.4e-16 relative to the
+# matrix's own largest-magnitude eigenvalue, i.e. essentially machine
+# epsilon. 1e-10 sits ~5 orders of magnitude above that measured floor
+# (a deliberate margin, not ten) while still sitting 4 orders below the
+# -1e-14 relative case this module's tests require to clamp silently,
+# and 10 orders below an eigenvalue genuinely comparable in magnitude to
+# the matrix's largest.
+_EIG_NEGATIVE_REL_TOL = 1e-10
+
+# Relative floor for eigenvalues clamped in the eigh fallbacks, scaled to
+# the matrix's own largest-magnitude eigenvalue. An absolute 1e-10 inflated
+# any covariance whose scale is below it (diag(1e-12, 0) came back as
+# diag(1e-10, 1e-10)). Measured eigh noise on rank-deficient PSD matrices
+# (20000 trials, n=2..8, scales 1e-15..1e6) was 1.94 eps = 4.3e-16
+# relative; 1e-10 is ~2.3e5 times that, and at unit scale reproduces the
+# old absolute value exactly.
+_EIG_FLOOR_REL = 1e-10
 
 
 @njit(cache=True)
@@ -286,7 +310,9 @@ def compute_matrix_sqrt(
     Raises
     ------
     np.linalg.LinAlgError
-        If Cholesky fails and use_eigh_fallback is False.
+        If Cholesky fails and use_eigh_fallback is False, or if the eigh
+        fallback finds a negative eigenvalue too large to be roundoff on
+        a positive semi-definite matrix.
 
     Examples
     --------
@@ -305,8 +331,18 @@ def compute_matrix_sqrt(
             raise
         # Eigendecomposition fallback for near-singular matrices
         eigvals, eigvecs = np.linalg.eigh(P)
-        # Clamp negative eigenvalues to small positive value
-        eigvals = np.maximum(eigvals, 1e-10)
+        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
+        # be eigh roundoff on a PSD matrix -- P itself is not PSD, and
+        # clamping it would silently turn an impossible covariance into an
+        # ordinary-looking one.
+        max_abs_eig = np.max(np.abs(eigvals))
+        most_neg_eig = eigvals.min()
+        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
+            raise np.linalg.LinAlgError(
+                f"matrix is not positive semi-definite: eigenvalue "
+                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
+            )
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
         sqrt_P = eigvecs @ np.diag(np.sqrt(scale * eigvals))
 
     return sqrt_P
@@ -376,11 +412,17 @@ def compute_innovation_likelihood(
             y_normalized = scipy.linalg.solve_triangular(S_chol, innovation, lower=True)
             mahal_sq = np.sum(y_normalized**2)
         except np.linalg.LinAlgError:
-            # Fallback to direct determinant and solve
-            det_S = np.linalg.det(S)
-            if det_S <= 0:
-                return 0.0
-            mahal_sq = innovation @ np.linalg.solve(S, innovation)
+            # det(S) > 0 does not imply positive-definiteness: an even
+            # number of negative eigenvalues multiplies to a positive
+            # determinant, so Cholesky failure is the PD verdict.
+            warnings.warn(
+                "compute_innovation_likelihood: innovation covariance is not "
+                "positive definite; likelihood set to 0.0 (numerical failure, "
+                "not evidence). Check R and the covariance conditioning.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return 0.0
 
     likelihood = np.exp(-0.5 * mahal_sq) / np.sqrt((2 * np.pi) ** m * det_S)
     return float(likelihood)
@@ -438,7 +480,17 @@ def compute_mahalanobis_distance(
             y_normalized = scipy.linalg.solve_triangular(S_chol, innovation, lower=True)
             mahal_sq = np.sum(y_normalized**2)
         except np.linalg.LinAlgError:
-            mahal_sq = innovation @ np.linalg.solve(S, innovation)
+            # Without PD, innovation @ solve(S, innovation) is either
+            # negative (sqrt gives nan) or a meaningless positive number.
+            warnings.warn(
+                "compute_mahalanobis_distance: innovation covariance is not "
+                "positive definite; distance is undefined and returned as "
+                "nan (numerical failure, not evidence). Check R and the "
+                "covariance conditioning.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return float("nan")
 
     return float(np.sqrt(mahal_sq))
 

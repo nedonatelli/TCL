@@ -83,6 +83,23 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.gpu._backend import Backend, get_compute_backend
 
+# Multiples of the working-precision eps (relative to the largest-magnitude
+# eigenvalue) a negative eigenvalue may reach before it is a non-PSD input
+# rather than eigh roundoff. See pytcl.gpu.matrix_utils for the measurement
+# (worst 3.2 eps on float32 rank-deficient PSD matrices; 100 eps is ~31x
+# above it).
+_EIG_NEGATIVE_EPS_MULT = 100.0
+
+# Clamp level for eigenvalues the guard above lets through, as a multiple of
+# working-precision eps times the matrix's largest-magnitude eigenvalue. An
+# absolute 1e-10 is below float32 roundoff and, on float64, inflates any
+# covariance smaller than it. Measured worst |lambda_min| / lambda_max from
+# MLX eigh on rank-deficient float32 PSD matrices was 2.44 eps here (300
+# trials, n=2..39) and 3.2 eps in pytcl.gpu.matrix_utils, so 10 eps is ~3x
+# above roundoff (1.19e-6 relative in float32) while an eigenvalue above
+# that is never inflated.
+_EIG_FLOOR_EPS_MULT = 10.0
+
 #: Below this alpha the Merwe weights exceed 1e4 and a float32 backend loses
 #: every significant digit of the recovered mean and covariance.
 _FLOAT32_MIN_ALPHA = 1e-2
@@ -192,7 +209,10 @@ def _matrix_sqrt(b: Backend, P: Any, n: int) -> Any:
     """Batched lower-triangular square root of ``P`` with a non-PD fallback.
 
     Returns ``L`` with ``L @ L.T == P`` when ``P`` is positive definite. When
-    it is not, ``L`` reconstructs ``P`` with its eigenvalues clamped at 1e-10.
+    it is only roundoff-negative (rank-deficient), ``L`` reconstructs ``P``
+    with its eigenvalues clamped at a floor relative to the largest-magnitude
+    eigenvalue (see below). A negative eigenvalue past
+    roundoff raises ``LinAlgError``.
 
     Positive definiteness is decided from the diagonal of the Cholesky factor
     rather than from a raised exception: NumPy and CuPy raise ``LinAlgError``,
@@ -216,7 +236,21 @@ def _matrix_sqrt(b: Backend, P: Any, n: int) -> Any:
         return L
 
     eigvals, eigvecs = b.eigh(P)
-    eigvals = b.maximum(eigvals, 1e-10)
+    # Float32 trap: the threshold is a multiple of the working-precision eps,
+    # not a fixed 1e-10, which is below float32 roundoff. A negative
+    # eigenvalue past roundoff means P is not a covariance; clamping it
+    # would hand the filter sigma points for a different matrix.
+    eps = float(np.finfo(np.float64 if b.supports_float64 else np.float32).eps)
+    ev = b.to_numpy(eigvals)
+    excess = -ev[..., 0] - _EIG_NEGATIVE_EPS_MULT * eps * np.abs(ev).max(axis=-1)
+    if np.any(excess > 0):
+        most_neg = ev[..., 0].flat[int(np.argmax(excess))]
+        raise np.linalg.LinAlgError(
+            f"covariance is not positive semi-definite: eigenvalue "
+            f"{most_neg:.6e} is too negative to be eigh roundoff"
+        )
+    floor = _EIG_FLOOR_EPS_MULT * eps * np.abs(ev).max(axis=-1)
+    eigvals = b.maximum(eigvals, b.asarray(floor.astype(ev.dtype))[..., None])
     # Per-track V @ diag(sqrt(w)) so that L @ L.T == V @ diag(w) @ V.T ~= P
     return eigvecs * b.sqrt(eigvals)[..., None, :]
 

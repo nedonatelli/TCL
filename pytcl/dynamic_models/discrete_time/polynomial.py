@@ -57,6 +57,24 @@ def f_poly_kal(
     Notes
     -----
     The state vector is ordered as [x, vx, ax, y, vy, ay, ...] for each dimension.
+
+    **State layout differs from MATLAB.** This is the same model as
+    ``FPolyKal`` in the MATLAB Tracker Component Library, but under a
+    permutation of the state. ``FPolyKal`` is ``kron(F1, eye(numDim))``,
+    which is derivative-major: ``[x, y, vx, vy]``. This function is
+    block-diagonal per spatial dimension, which is interleaved:
+    ``[x, vx, y, vy]``. For ``order=1, T=1, num_dims=2`` the largest
+    elementwise difference between the two matrices is 1.0. They agree
+    after reordering the state (``F_matlab = F[p][:, p]`` with
+    ``p = [0, 2, 1, 3]``). Neither is wrong, so do not change the numbers
+    to make them match.
+
+    :func:`pytcl.dynamic_estimation.batch_estimation.two_point_diff_init`
+    returns the derivative-major layout. Applying this ``F`` to its output
+    does not raise and silently produces a wrong state: for positions
+    (0, 1) then (2, 0) at ``T=1`` the initializer returns
+    ``[2, 0, 2, -1]``, this ``F`` maps it to ``[2, 0, 1, -1]``, and the
+    correct propagated state is ``[4, -1, 2, -1]``.
     """
     n = order + 1
 
