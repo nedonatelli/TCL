@@ -5,15 +5,72 @@ measurements, and searchable structured data.
 """
 
 import json
+import os
 import sqlite3
+import warnings
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
+from urllib.parse import quote
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
+
+
+def _read_only_uri(path: str, pathmod: Any = os.path) -> str:
+    """Return a SQLite ``mode=ro`` URI for ``path``.
+
+    ``Path.resolve().as_uri()`` turned a UNC path, or a mapped drive that
+    resolves to one, into ``file://server/share/...``; SQLite accepts only
+    an empty or ``localhost`` authority there and refused to open it.
+    ``pathmod`` is ``os.path``; tests pass ``ntpath`` to check Windows paths.
+    """
+    absolute = pathmod.abspath(path).replace(pathmod.sep, "/")
+    if not absolute.startswith("/"):
+        absolute = "/" + absolute
+    return "file://" + quote(absolute, safe="/:") + "?mode=ro"
+
+
+def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
+    """Open ``path`` under ``mode``.
+
+    'r' uses SQLite's own read-only open as a backstop to the explicit
+    ``_check_writable`` guards on the public write methods.
+    """
+    if mode == "r":
+        connection = sqlite3.connect(_read_only_uri(path), uri=True)
+    else:
+        connection = sqlite3.connect(path)
+    return connection, connection.cursor()
+
+
+def _warn_if_w_reopens_data(
+    path: str, tables: tuple[str, ...], owner: str, stacklevel: int
+) -> None:
+    """Emit the 'w' FutureWarning when ``path`` already holds data rows."""
+    if not Path(path).exists():
+        return
+    connection = sqlite3.connect(_read_only_uri(path), uri=True)
+    try:
+        has_rows = False
+        for table in tables:
+            try:
+                row = connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+            except sqlite3.DatabaseError:
+                continue
+            has_rows = has_rows or row is not None
+    finally:
+        connection.close()
+    if has_rows:
+        warnings.warn(
+            f"mode='w' does not truncate an existing {owner} file; from "
+            f"v2.12.0 it will, matching HDF5Storage. Use mode='a' to keep "
+            f"appending.",
+            FutureWarning,
+            stacklevel=stacklevel,
+        )
 
 
 class SQLStorage(StorageBackend):
@@ -69,7 +126,11 @@ class SQLStorage(StorageBackend):
         path : str
             Path to the SQLite database file.
         mode : str, optional
-            'r' (read), 'w' (write), 'a' (append). Default is 'r'.
+            'r' (read-only), 'w' (create), 'a' (create if absent, else
+            append). Default is 'r'. Today 'w' does NOT truncate an existing
+            file: it behaves like 'a' and emits a ``FutureWarning`` when the
+            file already holds data. From v2.12.0 'w' will discard the
+            existing file, matching ``HDF5Storage``.
 
         Raises
         ------
@@ -80,6 +141,9 @@ class SQLStorage(StorageBackend):
 
         Notes
         -----
+        Read mode is enforced: writes through a ``'r'`` handle raise
+        :class:`PermissionError` (they used to persist).
+
         Opening a nonexistent path for reading used to create an empty
         database, because ``sqlite3.connect`` creates the file whatever the
         caller intended. Reads against it then failed with
@@ -93,15 +157,18 @@ class SQLStorage(StorageBackend):
         self._path = Path(path)
         self._mode = mode
 
+        if mode == "w":
+            _warn_if_w_reopens_data(
+                path, (self._arrays_table, self._metadata_table), "SQLStorage", 3
+            )
+
         if mode == "r" and not self._path.exists():
             raise FileNotFoundError(
                 f"No such database: {path}. Opening for reading does not "
                 f"create one; use mode='w' or mode='a' to create it."
             )
 
-        # SQLite has no write-only mode, so 'w' behaves as 'a'.
-        self._connection = sqlite3.connect(str(self._path))
-        self._cursor = self._connection.cursor()
+        self._connection, self._cursor = _connect(str(self._path), mode)
 
         if mode in ("w", "a"):
             self._initialize_tables()
@@ -142,8 +209,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Associated metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         arr = np.asarray(data)
 
@@ -226,8 +292,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Associated metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         value_json = json.dumps({"value": value, "type": type(value).__name__})
         meta_json = json.dumps(metadata or {})
@@ -288,8 +353,7 @@ class SQLStorage(StorageBackend):
         metadata : dict, optional
             Group-level metadata
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         # Store as special metadata entry
         group_marker = json.dumps({"_is_group": True, **(metadata or {})})
@@ -318,7 +382,11 @@ class SQLStorage(StorageBackend):
         Parameters
         ----------
         group : str, optional
-            Group path prefix. Default is "/" (all keys).
+            Group path. Lists the keys under ``group + "/"``, matched
+            literally and case-sensitively (``_`` and ``%`` are not
+            wildcards; ``"a"`` lists neither ``"ab/x"``, ``"A/x"`` nor the
+            bare key ``"a"``). A trailing ``/`` is optional. Default is "/"
+            (all keys); ``""`` also lists all keys.
 
         Returns
         -------
@@ -328,13 +396,18 @@ class SQLStorage(StorageBackend):
         if self._cursor is None:
             raise RuntimeError("Storage not open. Call open() first.")
 
-        if group != "/":
-            # List keys matching prefix
+        if group.strip("/"):
+            # Compare "group/" as an exact, case-sensitive prefix. LIKE treated
+            # "_" as a wildcard, folded ASCII case, and had no "/" boundary,
+            # so "a_b" also listed "aXb/y", "A_B/y" and "a_bc/z".
+            prefix = group.rstrip("/") + "/"
             self._cursor.execute(
-                f"""SELECT name FROM {self._arrays_table} WHERE name LIKE ?
+                f"""SELECT name FROM {self._arrays_table}
+                   WHERE substr(name, 1, ?) = ?
                    UNION
-                   SELECT key FROM {self._metadata_table} WHERE key LIKE ?""",
-                (f"{group}%", f"{group}%"),
+                   SELECT key FROM {self._metadata_table}
+                   WHERE substr(key, 1, ?) = ?""",
+                (len(prefix), prefix, len(prefix), prefix),
             )
         else:
             # List all keys
@@ -392,8 +465,7 @@ class SQLStorage(StorageBackend):
         name : str
             Entry name
         """
-        if self._cursor is None:
-            raise RuntimeError("Storage not open. Call open() first.")
+        self._check_writable()
 
         self._cursor.execute(
             f"""DELETE FROM {self._arrays_table} WHERE name = ?""", (name,)
@@ -402,6 +474,15 @@ class SQLStorage(StorageBackend):
             f"""DELETE FROM {self._metadata_table} WHERE key = ?""", (name,)
         )
         self._connection.commit()
+
+    def _check_writable(self) -> None:
+        if self._cursor is None:
+            raise RuntimeError("Storage not open. Call open() first.")
+        if self._mode == "r":
+            raise PermissionError(
+                "Storage was opened read-only (mode='r'); reopen with "
+                "mode='a' or mode='w' to write."
+            )
 
     def flush(self) -> None:
         """Commit any pending transactions."""

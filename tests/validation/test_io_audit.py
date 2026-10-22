@@ -383,7 +383,8 @@ class TestSQLStorageContract:
         store.open(path, mode="w")
         store.store_scalar("keep", 1)
         store.close()
-        store.open(path, mode="w")
+        with pytest.warns(FutureWarning, match="does not truncate"):
+            store.open(path, mode="w")
         assert store.retrieve_scalar("keep") == 1
         store.close()
 
@@ -784,7 +785,8 @@ class TestTrackDatabaseRobustness:
         mgr.close()
         mgr.close()  # double close is safe
 
-        mgr.open(mode="w")
+        with pytest.warns(FutureWarning, match="does not truncate"):
+            mgr.open(mode="w")
         assert mgr.get_track("t1")["track_id"] == "t1"
         mgr.close()
 
@@ -833,7 +835,11 @@ class TestTrackConversion:
         assert len(list(tl_confirmed)) == 1
 
     def test_store_from_track_and_tracklist(self, db):
-        t1 = _TrackTuple(7, np.array([1.0, 2.0]), np.eye(2), None, 0, 0, 3.0)
+        from pytcl.trackers.multi_target import TrackStatus
+
+        t1 = _TrackTuple(
+            7, np.array([1.0, 2.0]), np.eye(2), TrackStatus.TENTATIVE, 0, 0, 3.0
+        )
         db.store_from_track(t1)
         st = db.get_track_state("trk_7")
         np.testing.assert_array_equal(st["state"], [1.0, 2.0])
@@ -845,7 +851,7 @@ class TestTrackConversion:
         db.store_from_track(t1b)
         st = db.get_track_state("trk_7")
         np.testing.assert_array_equal(st["state"], [5.0, 6.0])
-        assert db.get_track("trk_7")["hits"] == 1
+        assert db.get_track("trk_7")["hits"] == 0
 
         # Timestamp override
         db.store_from_track(t1b._replace(time=99.0), timestamp=10.0)
@@ -853,8 +859,10 @@ class TestTrackConversion:
 
         db.store_from_tracklist(
             [
-                _TrackTuple(8, np.zeros(2), np.eye(2), None, 0, 0, 0.0),
-                _TrackTuple(9, np.ones(2), np.eye(2), None, 0, 0, 0.0),
+                _TrackTuple(
+                    8, np.zeros(2), np.eye(2), TrackStatus.TENTATIVE, 0, 0, 0.0
+                ),
+                _TrackTuple(9, np.ones(2), np.eye(2), TrackStatus.TENTATIVE, 0, 0, 0.0),
             ]
         )
         assert db.get_track("trk_8")["track_id"] == "trk_8"

@@ -10,12 +10,78 @@
  * a single model call must not be interleaved with another. Every call
  * here runs start-to-finish while holding the GIL, which serializes
  * them; the GIL is deliberately NOT released around the (microsecond
- * scale) computation.
+ * scale) computation. The same serialization makes the file-static
+ * report buffer below safe without thread-local storage.
  */
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <stdarg.h>
+#include <string.h>
 
+#include "mex.h"
 #include "nrlmsise-00.h"
+
+#define REPORT_SEP "; "
+#define REPORT_ELLIPSIS "..."
+
+static char report_buf[1024];
+static size_t report_len;
+static int report_truncated;
+
+/* Called from deep inside the C model (via mexPrintf), so it must not
+ * touch the Python C-API; issue_reports() hands the queued text to the
+ * warning machinery once the model call has returned. */
+void
+nrlmsise_report(const char *fmt, ...)
+{
+    va_list args;
+    size_t room;
+    int n;
+
+    if (report_truncated) {
+        return;
+    }
+    if (report_len > 0) {
+        if (report_len + sizeof(REPORT_SEP) > sizeof(report_buf)) {
+            report_truncated = 1;
+            return;
+        }
+        memcpy(report_buf + report_len, REPORT_SEP, sizeof(REPORT_SEP));
+        report_len += sizeof(REPORT_SEP) - 1;
+    }
+    room = sizeof(report_buf) - report_len;
+    va_start(args, fmt);
+    n = vsnprintf(report_buf + report_len, room, fmt, args);
+    va_end(args);
+    if (n < 0 || (size_t)n >= room) {
+        report_len = sizeof(report_buf) - 1;
+        report_truncated = 1;
+    }
+    else {
+        report_len += (size_t)n;
+    }
+    while (report_len > 0 && report_buf[report_len - 1] == '\n') {
+        report_buf[--report_len] = '\0';
+    }
+}
+
+/* Returns -1 with an exception set when a filter promotes the warning
+ * to an error. State is cleared before warning so a showwarning hook
+ * that re-enters the model starts from an empty buffer. */
+static int
+issue_reports(void)
+{
+    if (report_len == 0) {
+        return 0;
+    }
+    if (report_truncated) {
+        memcpy(report_buf + sizeof(report_buf) - sizeof(REPORT_ELLIPSIS),
+               REPORT_ELLIPSIS, sizeof(REPORT_ELLIPSIS));
+    }
+    report_len = 0;
+    report_truncated = 0;
+    return PyErr_WarnEx(PyExc_UserWarning, report_buf, 1);
+}
 
 static int
 parse_ap_array(PyObject *ap_obj, struct ap_array *aph, int *storm)
@@ -135,6 +201,9 @@ py_gtd7(PyObject *self, PyObject *args)
     else {
         gtd7(&input, &flags, &output);
     }
+    if (issue_reports() < 0) {
+        return NULL;
+    }
     return build_output(&output);
 }
 
@@ -173,6 +242,9 @@ py_ghp7(PyObject *self, PyObject *args)
     input.ap_a = storm ? &aph : NULL;
 
     alt = ghp7(&input, &flags, &output, press);
+    if (issue_reports() < 0) {
+        return NULL;
+    }
     out_obj = build_output(&output);
     if (out_obj == NULL) {
         return NULL;

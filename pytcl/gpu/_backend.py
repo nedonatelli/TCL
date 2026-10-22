@@ -22,6 +22,8 @@ See Also
 pytcl.gpu.utils : Backend detection and host/device array transfer.
 """
 
+import importlib
+import warnings
 from typing import Any, Optional, Tuple
 
 import numpy as np
@@ -434,19 +436,20 @@ class MLXBackend(Backend):
 
 
 def compute_backend_available() -> bool:
-    """Whether any GPU compute backend can be constructed."""
-    try:
-        import cupy  # noqa: F401
+    """Whether any GPU compute backend can be constructed.
 
-        return True
-    except Exception:
-        pass
-    try:
-        import mlx.core  # noqa: F401
-
-        return True
-    except Exception:
-        return False
+    This is a boolean probe: an absent or broken package both mean "not
+    available" and neither warns. :func:`get_compute_backend` is where a
+    failure is reported.
+    """
+    for module in ("cupy", "mlx.core"):
+        try:
+            importlib.import_module(module)
+            return True
+        except Exception:
+            # Selection reports failures; the probe only answers availability.
+            continue
+    return False
 
 
 def get_compute_backend(prefer: Optional[str] = None) -> Backend:
@@ -474,7 +477,8 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
             return CuPyBackend()
         except Exception as exc:
             raise DependencyError(
-                "cupy is required for the requested GPU backend. "
+                "cupy is required for the requested GPU backend "
+                f"({type(exc).__name__}: {exc}). "
                 "Install with: pip install nrl-tracker[gpu]",
                 package="cupy",
                 feature="GPU compute backend",
@@ -492,13 +496,28 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
                 install_command="pip install nrl-tracker[gpu-apple]",
             ) from exc
 
+    cupy_failure: Optional[Exception] = None
     try:
         return CuPyBackend()
-    except Exception:
-        pass
-    try:
-        return MLXBackend()
+    except ModuleNotFoundError as exc:
+        # Only CuPy's absence is quiet. An installed CuPy that cannot load
+        # (missing libcudart, a wheel for the wrong CUDA) also raises an
+        # ImportError, and hiding it would mean a silent float32 fallback.
+        if exc.name != "cupy":
+            cupy_failure = exc
     except Exception as exc:
+        cupy_failure = exc
+    try:
+        fallback = MLXBackend()
+    except Exception as exc:
+        if cupy_failure is not None:
+            raise DependencyError(
+                f"The CuPy backend failed to initialise ({cupy_failure}) and "
+                "no fallback backend is installed",
+                package="cupy",
+                feature="GPU compute backend",
+                install_command="pip install nrl-tracker[gpu]",
+            ) from cupy_failure
         raise DependencyError(
             "A GPU compute backend is required: install cupy (NVIDIA) with "
             "pip install nrl-tracker[gpu] or mlx (Apple Silicon) with "
@@ -507,3 +526,15 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
             feature="GPU compute backend",
             install_command="pip install nrl-tracker[gpu]",
         ) from exc
+    if cupy_failure is not None:
+        notice = (
+            f"The CuPy backend failed to initialise ({cupy_failure}); "
+            f"falling back to the {fallback.name} backend"
+        )
+        if not fallback.supports_float64:
+            notice += (
+                ", which computes in float32. Results are precision-limited "
+                "relative to the double-precision CuPy backend"
+            )
+        warnings.warn(notice, UserWarning, stacklevel=2)
+    return fallback

@@ -7,8 +7,11 @@ Laboratory's Tracker Component Library
 modifications (documented in the MATLAB tree's "Tracker Library
 Changes.txt") are: `ghp7` returns the computed altitude, MEX memory
 and printing hooks, and shadowing-warning renames. `mex.h` here is
-pytcl's 8-line shim mapping those MEX hooks back to the C standard
-library so the code compiles standalone.
+pytcl's shim so the code compiles standalone: the memory hooks map
+back to `malloc`/`free`, and `mexPrintf` routes to `nrlmsise_report`
+in `pymodule.c`, which queues the message and raises it as a Python
+`UserWarning` once the model call returns (instead of printing to
+native stdout).
 
 Provenance: MATLAB TCL commit a9acd8f. License: public domain -- see
 License.txt (Brodowski's release statement, contingent on the original

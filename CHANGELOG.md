@@ -115,6 +115,169 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GPU backend auto-selection no longer hides a CuPy failure.**
+  `get_compute_backend()` caught a bare `Exception` around `CuPyBackend()`, so
+  an installed CuPy that failed to import or construct fell through to MLX
+  silently, and a machine believed to be doing float64 CUDA work computed in
+  float32 (`1 + 1e-10` stored with `-1e-10` of error). Only an absent CuPy
+  (`ModuleNotFoundError` for `cupy` itself) stays quiet. Any other failure
+  of `import cupy` or of the backend's construction, including an
+  `ImportError` from a missing or mismatched CUDA runtime library, now emits
+  a `UserWarning` with the original error text and, when the fallback is not
+  double precision, says it computes in float32. A CUDA problem that only
+  surfaces at the first device operation is not caught here. If no fallback
+  exists the `DependencyError` chains to the CuPy failure.
+  `get_compute_backend(prefer="cupy")` still raises, and its message now
+  carries the underlying error. `compute_backend_available()` stays a silent
+  probe.
+- **Compiled NRLMSISE-00 failure reports are warnings, not stdout text.** The
+  compiled extension reported ghp7 non-convergence, dnet's log-domain error
+  and its other internal failure conditions with a bare C `printf` to native
+  stdout (no trailing newline, invisible to `warnings.catch_warnings`, immune
+  to `-W error` and to suppression), while the pure-Python fallback warns for
+  the same conditions. Each compiled `gtd7`/`ghp7` call now issues one
+  `UserWarning`, the fallback's category, so one filter covers both backends.
+  It carries the C model's message (several reports in one call are joined
+  with `; `), nothing is written to stdout, and a warning filter set to
+  `error` raises from the call. Measured: `press_pa=1e-12` (1e-14 hPa)
+  through `nrlmsise00_alt_for_pressure` hits ghp7's 12-iteration limit with
+  residual -0.3189 and now warns "ERROR: ghp7 not converging for press
+  1.000000e-14, diff -3.188880e-01" (the C model's pressure is in hPa).
+  Returned values are unchanged: bit-identical to the v2.11.0 build over 1926
+  `gtd7` and `ghp7` inputs, including the failing ones.
+- **Stored schema versions are checked on read.** `schema_version=99` used to
+  load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
+  (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
+  `TrackDatabaseManager.open` (known: "1.0", "2.0") now emit a `UserWarning`
+  naming the file's version and the versions the reader knows, and still load.
+  `load_session` warns for versions below 1 and keeps its existing
+  `FormatError` for versions newer than supported. Reopening a file never
+  rewrites its stored version (pinned by `tests/validation/test_io_version_fields.py`).
+  Rejecting unknown versions outright is deferred to v2.12.0.
+- **A resumed `MultiTargetTracker` no longer re-earns confirmation.**
+  `save_session` did not store each track's M-of-N `recent` window, so a
+  restored tentative track restarted its count: with `confirm_hits=3`, a track
+  holding 2 hits confirmed on the next detection in the original but stayed
+  `TENTATIVE` after a round trip. The window is now saved as
+  `TrackSnapshot.recent`, and `SESSION_SCHEMA_VERSION` is bumped 1 -> 2. Files
+  written at v1 still load, with an empty window (the previous behaviour,
+  because per-scan history cannot be rebuilt from the cumulative counters);
+  re-save them to pick up the fix. A v2 file is rejected by pytcl 2.11.0 as
+  a newer schema.
+- **`TrackDatabaseManager` row identity and track operations.**
+  `track_to_pytcl` built the `Track.id` from `hash(track_id)`, which Python
+  salts per process: under `PYTHONHASHSEED` 1, 2 and 3 the id `"t-1"` gave
+  411653681, 1997854185 and 65334220. It now uses a blake2b digest
+  (`_track_row_id`, range `0..2**31-1`). The integer is rebuilt on read and
+  never stored, so no on-disk format changes and the schema version stays
+  `2.0`. `store_from_track` dropped `status`, `hits` and `misses` (a confirmed
+  track with 5 hits and 1 miss read back tentative with 0 and 0); it now
+  stores them, reading `n_hits`/`n_misses` from an `MHTTrack`. An object
+  without a count, or whose status is not tentative, confirmed or deleted
+  (`None`, for one), keeps the value v2.11.0 stored for that field.
+  `merge_tracks(x, x)` doubled `hits` (2 became 4) and marked the survivor
+  DEAD; it raises `ValueError`. `associate_detection` wrote an unknown track
+  id into `track_associations`; it raises `KeyError`. The `retrieve_detections`
+  `LIMIT` is a bound parameter: a bool or non-int `limit` raises `ValueError`,
+  and a negative int still means no limit, as SQLite's `LIMIT -1` did.
+- **`TrackDatabaseManager` and `SQLStorage` now enforce read mode, and `'w'`
+  warns.** `open('r')` accepted writes: the v2.11.0 audit persisted rows
+  through a read-only handle. Every write method (`store_*`,
+  `associate_detection`, `initiate_track`, `confirm_track`,
+  `update_track_state`, `mark_track_*`, `prune_*`, `merge_tracks`, and
+  `SQLStorage.store_*` / `delete`) now raises `PermissionError` in read mode,
+  and the connection is opened with SQLite's `mode=ro` as a backstop.
+  `open('w')` still does not truncate an existing file (it behaves like
+  `'a'`, as the I/O audit pinned), but it now emits a `FutureWarning` when
+  the file already holds rows: from v2.12.0 `'w'` will discard the existing
+  file, matching `HDF5Storage`. Use `'a'` to keep appending.
+- **`TrackDatabaseManager` no longer truncates 2-D detections, and rejects
+  track-state shapes it garbled.** For detections the element count was
+  `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,
+  `arange(6).reshape(2, 3)` as `[0., 1.]` and a 3x3 array as its first three
+  elements; 1-D vectors were unaffected. Measurements and covariances now
+  store their shape and round-trip at every shape. This changes the stored
+  format, so the database schema version moves from `1.0` to `2.0`: new
+  files are created at `2.0`; existing `1.0` files still read exactly as
+  before and keep the legacy layout (one format per file, never a mix), so
+  writing a `(1, n)` or genuinely 2-D measurement, or a covariance that is not (n, n) into a
+  `1.0` file raises `ValueError` instead of storing data that reads back
+  truncated. Opening a file no longer overwrites its stored version.
+  Measurements of shape `(n,)` and `(n, 1)` behave exactly as before on both
+  schemas: they are stored as, and read back as, `(n,)`. What changes on a
+  `2.0` file is that `(1, n)` and genuinely 2-D measurements, and every
+  covariance, read back at their true shape. For track states
+  (`initiate_track`, `update_track_state`, `store_track_history`, both
+  schemas), `(n,)` and `(n, 1)` states are stored as `(n,)` exactly as
+  before; any other state shape, or a covariance that is not `(n, n)`, now
+  raises `ValueError`. A `(1, n)` state used to be stored with
+  `state_dim = 1`, and a non-square covariance read back garbled.
+  Downgrade hazard: pytcl 2.11.0 opening a `2.0` file in `'a'` or `'w'`
+  mode rewrites its version label to `1.0`, after which 2.11.1 fails to read
+  the `2.0` detection rows (`ValueError: buffer size must be a multiple of
+  element size`). The data is intact; restore the label with
+  `UPDATE _pytcl_track_db_metadata SET value = '2.0' WHERE key =
+  'schema_version'`. Detections that 2.11.0 wrote into the file in the
+  meantime are in the `1.0` layout and do not read back correctly after
+  the label is restored.
+- **`TrackHDF5Storage.get_track_trajectory` returns only the rows in the
+  requested window.** It sliced `idx[0]:idx[-1]+1` instead of applying the
+  time mask, so after an out-of-order append (timestamps `[1, 2, 3, 4, 1.5]`)
+  a query for `[1.0, 2.0]` returned all five rows; it now returns
+  `[1, 2, 1.5]`.
+- **`TrackHDF5Storage.compare_scenarios` computes RMSE over shared
+  timestamps, as documented.** It paired rows by index, so two identical
+  `x = 2t` tracks offset by one scan reported RMSE 2.0; it now matches
+  timestamps by exact equality and reports 0.0. A common track with no
+  shared timestamp gets NaN and a `RuntimeWarning` (it previously got an
+  index-paired number).
+- **`TrackHDF5Storage.append_track_state` keeps `residuals` row-aligned.** A
+  residual passed for a track with no residuals dataset was discarded (3
+  timestamps, no residuals); the dataset is now created with NaN rows for
+  the earlier states. Omitting the residual on a track that has residuals
+  now appends a NaN row instead of leaving the dataset one row short.
+  Tracks that never use residuals are stored exactly as before. With an
+  integer storage `dtype` the NaN pad was stored as 0 (arm64) or INT_MIN
+  (x86) behind numpy's cast warning; a pad on such a track now raises
+  `TypeError` before anything is written.
+- **`TrackHDF5Storage.store_track` / `append_track_state` reject complex
+  input and warn on inexact integers.** `1+2j` was stored as `1.0` (numpy's
+  `ComplexWarning` only); it now raises `TypeError`. An integer beyond
+  `2**53` in magnitude (`2**53+1` stored as `9007199254740992`) now warns.
+  The stored dtype is unchanged.
+- **`HDF5Storage` string metadata that is a JSON string literal round-trips.**
+  `'"quoted"'` read back as `quoted` and `'"1"'` as `'1'`. Such strings are
+  now JSON-escaped once on write, so `get_metadata` (and 2.11.0's reader)
+  returns them unchanged. Files written before v2.11.1 read as before.
+- **`SQLStorage.list_keys(group)` matches the group literally.** The prefix
+  went into `LIKE ?` unescaped and without a `/` boundary, so
+  `list_keys("a_b")` returned `['aXb/y', 'a_b/x', 'a_bc/z']`; it now
+  returns `['a_b/x']`. `LIKE` also folded ASCII case: with keys `a_b/x` and
+  `A_B/y`, both `list_keys("a_b")` and `list_keys("A_B")` returned both, and
+  `list_keys("mission")` returned `Mission/t`. The group is now compared as
+  an exact, case-sensitive `group + "/"` prefix (a trailing `/` is
+  optional), so the case and `/`-boundary scoping match `HDF5Storage`'s.
+  `list_keys("a")` therefore no longer returns the bare key `a` itself, only
+  keys under `a/`. A root group (`""`, `"/"`, `"//"`) lists every
+  key; `"//"` returned `[]` in v2.11.0.
+- **`SQLStorage` and `TrackDatabaseManager` build a read-mode URI SQLite
+  accepts for UNC paths.**
+  The read-only connection URI was built with `Path.resolve().as_uri()`,
+  which turns `\\server\share\t.db` (or a mapped drive that resolves to
+  one) into `file://server/share/t.db`; SQLite accepts only an empty or
+  `localhost` authority there and refused the file. The URI is now
+  `file:////server/share/t.db`, with `?`, `#`, `%` and spaces
+  percent-encoded.
+- **`read_measurements_csv` / `read_measurements_parquet` group scans by the
+  exact parsed timestamp.** Grouping on `float(t)` merged the int64 times
+  `2**53` and `2**53+1` into one scan at `9007199254740992.0`; that input now
+  raises `ValueError`, because `MeasurementSet.times` is float64 and cannot
+  keep them apart. Distinct int64 times beyond `2**53` that stay distinct in
+  float64 group correctly. A NaN timestamp raised `KeyError: nan`; it now
+  raises `ValueError` naming the column.
+- **`metrics_to_polars` warns when its Float64 cast is lossy.** `True` was
+  exported as `1.0` and `2**53+1` as `9007199254740992.0` without notice.
+  Both now emit a `UserWarning`; the columns stay Float64 as documented.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at

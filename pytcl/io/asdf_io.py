@@ -21,6 +21,7 @@ tuples of Python/numpy objects.
 
 from __future__ import annotations
 
+import os
 from os import PathLike
 from typing import Any, Sequence
 
@@ -29,7 +30,11 @@ from numpy.typing import NDArray
 
 from pytcl.core.exceptions import DependencyError
 from pytcl.core.optional_deps import DISTRIBUTION_NAME
-from pytcl.io.serialize import SimpleTrack, _check_aligned
+from pytcl.io.serialize import (
+    SimpleTrack,
+    _check_aligned,
+    _warn_unknown_schema_version,
+)
 
 __all__ = [
     "save_tracks_asdf",
@@ -39,6 +44,7 @@ __all__ = [
 ]
 
 _SCHEMA_VERSION = 1
+_KNOWN_SCHEMA_VERSIONS = (1,)
 
 
 def _dependency_error() -> DependencyError:
@@ -215,6 +221,11 @@ def load_tracks_asdf(
 
     with asdf.open(path) as af:
         pytcl_tree = af.tree["pytcl"]
+        _warn_unknown_schema_version(
+            f"ASDF file {os.fspath(path)!r}",
+            pytcl_tree.get("schema_version"),
+            _KNOWN_SCHEMA_VERSIONS,
+        )
         times = np.asarray(pytcl_tree["times"], dtype=np.float64)
         tracks = pytcl_tree["tracks"]
         track_ids = np.asarray(tracks["track_id"])
@@ -319,6 +330,11 @@ def load_states_asdf(
 
     with asdf.open(path) as af:
         pytcl_tree = af.tree["pytcl"]
+        _warn_unknown_schema_version(
+            f"ASDF file {os.fspath(path)!r}",
+            pytcl_tree.get("schema_version"),
+            _KNOWN_SCHEMA_VERSIONS,
+        )
         x = np.array(pytcl_tree["x"], dtype=np.float64)
         P = np.array(pytcl_tree["P"], dtype=np.float64)
 

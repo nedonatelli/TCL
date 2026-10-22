@@ -6,11 +6,40 @@ dependency (see pyproject.toml); no optional install step is needed.
 """
 
 import json
+import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from pytcl.io.serialize import _warn_unknown_schema_version
+
+_SCHEMA_VERSION = "1.0"
+
+
+def _cast_checked(x: ArrayLike, dtype: np.dtype, name: str) -> NDArray[Any]:
+    """Cast `x` to `dtype`, refusing silent loss of a complex part.
+
+    Raises ``TypeError`` on complex input to a non-complex dtype and warns
+    on integer input that a floating dtype may not hold exactly.
+    """
+    arr = np.asarray(x)
+    if np.iscomplexobj(arr) and dtype.kind != "c":
+        raise TypeError(
+            f"{name} is complex but the storage dtype is {dtype}; casting "
+            "would discard the imaginary part"
+        )
+    if arr.dtype.kind in "iu" and dtype.kind in "fc" and arr.size:
+        limit = 2 ** (np.finfo(dtype).nmant + 1)
+        if int(arr.max()) > limit or int(arr.min()) < -limit:
+            warnings.warn(
+                f"{name} has integer values beyond 2**{np.finfo(dtype).nmant + 1} "
+                f"in magnitude; the {dtype} cast may not store them exactly",
+                UserWarning,
+                stacklevel=3,
+            )
+    return np.asarray(arr, dtype=dtype)
 
 
 class TrackHDF5Storage:
@@ -84,7 +113,15 @@ class TrackHDF5Storage:
         if mode in ("w", "a"):
             if "_metadata" not in self._file:
                 meta = self._file.create_group("_metadata")
-                meta.attrs["schema_version"] = "1.0"
+                meta.attrs["schema_version"] = _SCHEMA_VERSION
+
+        if "_metadata" in self._file:
+            found = self._file["_metadata"].attrs.get("schema_version")
+            if isinstance(found, bytes):
+                found = found.decode()
+            _warn_unknown_schema_version(
+                f"HDF5 track file {str(self._path)!r}", found, (_SCHEMA_VERSION,)
+            )
 
     def close(self) -> None:
         """Close HDF5 file."""
@@ -140,11 +177,23 @@ class TrackHDF5Storage:
             Innovation residuals, shape (N, meas_dim).
         scenario_id : str, optional
             Store under /scenarios/{scenario_id}/tracks/.
+
+        Raises
+        ------
+        TypeError
+            If any input is complex and the storage dtype is not; the cast
+            would discard the imaginary part.
+
+        Warns
+        -----
+        UserWarning
+            If an integer input has a value beyond ``2**53`` in magnitude,
+            which a float64 cast cannot represent exactly.
         """
         self._check_open()
-        s = np.asarray(states, dtype=self._dtype)
-        c = np.asarray(covariances, dtype=self._dtype)
-        t = np.asarray(timestamps, dtype=np.float64)
+        s = _cast_checked(states, self._dtype, "states")
+        c = _cast_checked(covariances, self._dtype, "covariances")
+        t = _cast_checked(timestamps, np.dtype(np.float64), "timestamps")
 
         group_path = self._resolve_track_group(track_id, scenario_id)
         grp = self._ensure_group(group_path)
@@ -154,7 +203,7 @@ class TrackHDF5Storage:
         self._create_chunked_dataset(grp, "timestamps", t)
 
         if residuals is not None:
-            r = np.asarray(residuals, dtype=self._dtype)
+            r = _cast_checked(residuals, self._dtype, "residuals")
             self._create_chunked_dataset(grp, "residuals", r)
 
         if metadata:
@@ -188,32 +237,62 @@ class TrackHDF5Storage:
         timestamp : float
             Timestamp.
         residual : ArrayLike, optional
-            Innovation residual.
+            Innovation residual. If the track has no residuals dataset yet,
+            one is created with NaN rows for the earlier states; if the track
+            has residuals and this is omitted, a NaN row is appended. Either
+            way ``residuals`` stays row-aligned with ``timestamps``.
         scenario_id : str, optional
             Scenario identifier.
+
+        Raises
+        ------
+        TypeError
+            If any input is complex and the storage dtype is not, or if a
+            NaN residual pad is needed (see `residual`) and the storage
+            dtype is not floating or complex.
         """
         self._check_open()
         group_path = self._resolve_track_group(track_id, scenario_id)
         grp = self._file[group_path]
 
-        # Resize and append
-        for name, data in [
-            ("state_history", np.asarray(state, dtype=self._dtype)),
-            ("covariance_history", np.asarray(covariance, dtype=self._dtype)),
-            ("timestamps", np.float64(timestamp)),
-        ]:
+        rows = [
+            ("state_history", _cast_checked(state, self._dtype, "state")),
+            (
+                "covariance_history",
+                _cast_checked(covariance, self._dtype, "covariance"),
+            ),
+            (
+                "timestamps",
+                _cast_checked(timestamp, np.dtype(np.float64), "timestamp"),
+            ),
+        ]
+        needs_nan_pad = (residual is None) == ("residuals" in grp)
+        if needs_nan_pad and self._dtype.kind not in "fc":
+            # Checked before any resize so the append stays atomic; numpy
+            # would store the NaN pad as 0 or INT_MIN with only a warning.
+            raise TypeError(
+                f"residuals must be NaN-padded to stay row-aligned, but the "
+                f"storage dtype {self._dtype} cannot hold NaN"
+            )
+        if residual is not None:
+            r = _cast_checked(residual, self._dtype, "residual")
+            if "residuals" not in grp:
+                # Backfill the earlier rows so residuals stays row-aligned
+                # with timestamps (it used to drop the residual silently).
+                n_prev = grp["timestamps"].shape[0]
+                backfill = np.full((n_prev,) + r.shape, np.nan, dtype=self._dtype)
+                self._create_chunked_dataset(grp, "residuals", backfill)
+            rows.append(("residuals", r))
+        elif "residuals" in grp:
+            nan_row = np.full(grp["residuals"].shape[1:], np.nan, dtype=self._dtype)
+            rows.append(("residuals", nan_row))
+
+        for name, data in rows:
             ds = grp[name]
             new_shape = list(ds.shape)
             new_shape[0] += 1
             ds.resize(new_shape)
             ds[-1] = data
-
-        if residual is not None and "residuals" in grp:
-            ds = grp["residuals"]
-            new_shape = list(ds.shape)
-            new_shape[0] += 1
-            ds.resize(new_shape)
-            ds[-1] = np.asarray(residual, dtype=self._dtype)
 
     def retrieve_track(
         self,
@@ -415,14 +494,18 @@ class TrackHDF5Storage:
                     "covariances": np.empty((0,)),
                     "timestamps": np.empty((0,)),
                 }
-            i_start, i_end = idx[0], idx[-1] + 1
-        else:
-            i_start, i_end = 0, len(timestamps)
+            # Index with the mask, not idx[0]:idx[-1]+1: after an out-of-order
+            # append the in-range rows are not contiguous.
+            return {
+                "states": np.array(grp["state_history"])[idx],
+                "covariances": np.array(grp["covariance_history"])[idx],
+                "timestamps": timestamps[idx],
+            }
 
         return {
-            "states": np.array(grp["state_history"][i_start:i_end]),
-            "covariances": np.array(grp["covariance_history"][i_start:i_end]),
-            "timestamps": timestamps[i_start:i_end],
+            "states": np.array(grp["state_history"]),
+            "covariances": np.array(grp["covariance_history"]),
+            "timestamps": timestamps,
         }
 
     def get_state_at_time(
@@ -745,6 +828,23 @@ class TrackHDF5Storage:
         dict
             Keys: common_tracks, unique_to_1, unique_to_2,
             state_differences (dict of track_id -> RMSE).
+
+        Warns
+        -----
+        RuntimeWarning
+            For each common track whose two histories share no timestamp;
+            its RMSE is NaN.
+
+        Notes
+        -----
+        The RMSE for a common track is taken over the states at timestamps
+        present in both histories, matched by exact equality (no
+        tolerance), so timestamps produced by different float arithmetic
+        (``0.1 * k`` against a cumulative sum of ``0.1``) may not coincide
+        and the RMSE may cover only a subset of the nominally shared
+        scans. Within one history, a repeated timestamp contributes its
+        first row. Until v2.11.1 rows were paired by index, so two
+        identical tracks offset by one scan reported a nonzero RMSE.
         """
         self._check_open()
         tracks1 = set(self.list_tracks(scenario_id1))
@@ -757,11 +857,23 @@ class TrackHDF5Storage:
             t1 = self.retrieve_track(tid, scenario_id1)
             t2 = self.retrieve_track(tid, scenario_id2)
 
-            # RMSE on overlapping timestamps
-            min_len = min(len(t1["states"]), len(t2["states"]))
-            if min_len > 0:
-                diff = t1["states"][:min_len] - t2["states"][:min_len]
-                differences[tid] = float(np.sqrt(np.mean(diff**2)))
+            if len(t1["states"]) == 0 or len(t2["states"]) == 0:
+                continue
+            _, i1, i2 = np.intersect1d(
+                t1["timestamps"], t2["timestamps"], return_indices=True
+            )
+            if len(i1) == 0:
+                warnings.warn(
+                    f"track '{tid}' has no timestamps in common between "
+                    f"scenarios '{scenario_id1}' and '{scenario_id2}'; "
+                    "its RMSE is NaN",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                differences[tid] = float("nan")
+                continue
+            diff = t1["states"][i1] - t2["states"][i2]
+            differences[tid] = float(np.sqrt(np.mean(diff**2)))
 
         return {
             "common_tracks": sorted(common),

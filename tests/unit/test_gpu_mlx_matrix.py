@@ -372,7 +372,9 @@ class TestBackendSelection:
         from pytcl.gpu import _backend
 
         def fail(self, *args, **kwargs):
-            raise ImportError("no compute backend")
+            # What an uninstalled package raises; any other ImportError is a
+            # broken install and is reported as such.
+            raise ModuleNotFoundError("No module named 'cupy'", name="cupy")
 
         monkeypatch.setattr(_backend.CuPyBackend, "__init__", fail)
         monkeypatch.setattr(_backend.MLXBackend, "__init__", fail)

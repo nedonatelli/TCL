@@ -4,14 +4,19 @@ Provides detection management, track initiation, state maintenance,
 and lifecycle operations using SQLite for real-time tracking scenarios.
 """
 
+import hashlib
 import json
 import sqlite3
+import struct
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+
+from pytcl.io.serialize import _warn_unknown_schema_version
+from pytcl.io.sql_storage import _connect, _warn_if_w_reopens_data
 
 
 class TrackDatabaseStatus(Enum):
@@ -25,6 +30,27 @@ class TrackDatabaseStatus(Enum):
     CONFIRMED = "confirmed"
     COASTING = "coasting"
     DEAD = "dead"
+
+
+_TRACK_STATUS_TO_DB = {
+    "tentative": TrackDatabaseStatus.TENTATIVE,
+    "confirmed": TrackDatabaseStatus.CONFIRMED,
+    "deleted": TrackDatabaseStatus.DEAD,
+}
+
+
+def _track_row_id(track_id: str) -> int:
+    """Return a process-independent integer id in ``[0, 2**31)`` for a track id.
+
+    ``hash()`` of a str is salted per process, so the same track id mapped to
+    a different integer in every interpreter.
+    """
+    digest = hashlib.blake2b(track_id.encode(), digest_size=4).digest()
+    return int.from_bytes(digest, "big") % 2**31
+
+
+_CURRENT_SCHEMA_VERSION = 2
+_CURRENT_SCHEMA_VERSION_STR = "2.0"
 
 
 class TrackDatabaseManager:
@@ -60,6 +86,7 @@ class TrackDatabaseManager:
         self._connection: Optional[sqlite3.Connection] = None
         self._cursor: Optional[sqlite3.Cursor] = None
         self._mode: Optional[str] = None
+        self._schema_version = _CURRENT_SCHEMA_VERSION
 
     def open(self, mode: str = "a") -> None:
         """Open database connection.
@@ -67,7 +94,11 @@ class TrackDatabaseManager:
         Parameters
         ----------
         mode : str
-            'r' (read), 'w' (write/create), 'a' (append). Default is 'a'.
+            'r' (read-only), 'w' (create), 'a' (create if absent, else
+            append). Default is 'a'. Today 'w' does NOT truncate an existing
+            file: it behaves like 'a' and emits a ``FutureWarning`` when the
+            file already holds rows. From v2.12.0 'w' will discard the
+            existing file, matching ``HDF5Storage``.
 
         Raises
         ------
@@ -78,6 +109,9 @@ class TrackDatabaseManager:
 
         Notes
         -----
+        Read mode is enforced: a write through a handle opened with ``'r'``
+        raises :class:`PermissionError` (it used to persist).
+
         Read mode does not create the database. It used to: ``sqlite3.connect``
         was called unconditionally, so opening a mistyped path for reading
         produced an empty file and the first query then failed with
@@ -95,12 +129,21 @@ class TrackDatabaseManager:
                 f"not create one; use mode='w' or mode='a' to create it."
             )
 
+        if mode == "w":
+            _warn_if_w_reopens_data(
+                str(self._path),
+                ("detections", "tracks", "track_states", "track_associations"),
+                "TrackDatabaseManager",
+                3,
+            )
+
         self._mode = mode
-        self._connection = sqlite3.connect(self._path)
-        self._cursor = self._connection.cursor()
+        self._connection, self._cursor = _connect(str(self._path), mode)
 
         if mode in ("w", "a"):
             self._initialize_tables()
+        else:
+            self._schema_version = self._read_schema_version()
 
     def close(self) -> None:
         """Close database connection."""
@@ -141,7 +184,8 @@ class TrackDatabaseManager:
         detection_id : str
             Unique detection identifier.
         measurement : ArrayLike
-            Measurement vector.
+            Measurement vector. An (n, 1) column is stored, and read back, as
+            (n,); on a schema 2.0 file any other shape is kept.
         sensor_id : str
             Sensor source identifier.
         timestamp : float
@@ -151,14 +195,22 @@ class TrackDatabaseManager:
         metadata : dict, optional
             Additional metadata.
         """
-        self._check_open()
+        self._check_writable()
         meas = np.asarray(measurement, dtype=np.float64)
-        meas_bytes, meas_dim, meas_dtype = self._serialize_array(meas)
+        if meas.ndim > 1 and meas.size == meas.shape[0]:
+            # An (n, 1) column read back as (n,) before schema 2.0; keep that.
+            meas = meas.reshape(meas.shape[0])
+        legacy = self._schema_version < 2
+        if legacy:
+            self._check_legacy_shapes(meas, covariance)
+            meas_bytes, meas_dim, meas_dtype = meas.tobytes(), len(meas), "float64"
+        else:
+            meas_bytes, meas_dim, meas_dtype = self._serialize_array(meas)
 
         cov_bytes = None
         if covariance is not None:
             cov = np.asarray(covariance, dtype=np.float64)
-            cov_bytes = cov.tobytes()
+            cov_bytes = cov.tobytes() if legacy else self._serialize_array(cov)[0]
 
         meta_json = self._sanitize_metadata(metadata)
 
@@ -201,7 +253,7 @@ class TrackDatabaseManager:
         association_status : str, optional
             Filter by status ('unassociated', 'associated', 'clutter').
         limit : int, optional
-            Maximum number of results.
+            Maximum number of results. A negative value means no limit.
 
         Returns
         -------
@@ -234,7 +286,10 @@ class TrackDatabaseManager:
             query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY timestamp"
         if limit is not None:
-            query += f" LIMIT {limit}"
+            if isinstance(limit, bool) or not isinstance(limit, (int, np.integer)):
+                raise ValueError(f"limit must be an int, got {limit!r}")
+            query += " LIMIT ?"
+            params.append(max(int(limit), -1))
 
         self._cursor.execute(query, params)
         return [self._row_to_detection(row) for row in self._cursor.fetchall()]
@@ -292,8 +347,19 @@ class TrackDatabaseManager:
             Track identifier.
         confidence : float
             Association confidence score (0-1). Default is 1.0.
+
+        Raises
+        ------
+        KeyError
+            If the detection or the track is not in this database. An unknown
+            track used to be written into ``track_associations`` anyway,
+            leaving a reference to a track that does not exist.
         """
-        self._check_open()
+        self._check_writable()
+
+        self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
+        if self._cursor.fetchone() is None:
+            raise KeyError(f"no such track: {track_id!r}")
 
         # Get detection timestamp
         self._cursor.execute(
@@ -349,9 +415,10 @@ class TrackDatabaseManager:
         metadata : dict, optional
             Additional track metadata.
         """
-        self._check_open()
+        self._check_writable()
         state = np.asarray(initial_state, dtype=np.float64)
         cov = np.asarray(initial_covariance, dtype=np.float64)
+        state = self._validate_state_shapes(state, cov)
         meta_json = self._sanitize_metadata(metadata)
 
         self._cursor.execute(
@@ -463,7 +530,7 @@ class TrackDatabaseManager:
         retrievable by id, so a typo produced a track that existed in every
         respect except the one that counts.
         """
-        self._check_open()
+        self._check_writable()
         s = np.asarray(state, dtype=np.float64)
         c = np.asarray(covariance, dtype=np.float64)
 
@@ -522,7 +589,7 @@ class TrackDatabaseManager:
         residuals : ArrayLike, optional
             Residual history, shape (N, meas_dim).
         """
-        self._check_open()
+        self._check_writable()
         s_arr = np.asarray(states, dtype=np.float64)
         c_arr = np.asarray(covariances, dtype=np.float64)
         t_arr = np.asarray(timestamps, dtype=np.float64)
@@ -765,7 +832,7 @@ class TrackDatabaseManager:
         int
             Number of detections pruned.
         """
-        self._check_open()
+        self._check_writable()
         self._cursor.execute("SELECT MAX(timestamp) FROM detections")
         max_ts = self._cursor.fetchone()[0]
         if max_ts is None:
@@ -797,7 +864,7 @@ class TrackDatabaseManager:
         int
             Number of tracks pruned.
         """
-        self._check_open()
+        self._check_writable()
         self._cursor.execute("SELECT MAX(last_update_time) FROM tracks")
         max_ts = self._cursor.fetchone()[0]
         if max_ts is None:
@@ -857,6 +924,9 @@ class TrackDatabaseManager:
         ------
         KeyError
             If either track is absent from the database.
+        ValueError
+            If both ids name the same track. A self-merge doubled ``hits``
+            and then marked the surviving track DEAD.
 
         Notes
         -----
@@ -871,7 +941,10 @@ class TrackDatabaseManager:
         in newer states made the track look stale, and any staleness-based
         pruning would then delete the track that had just been reinforced.
         """
-        self._check_open()
+        self._check_writable()
+
+        if track_id_keep == track_id_merge:
+            raise ValueError(f"cannot merge track {track_id_keep!r} into itself")
 
         for track_id in (track_id_keep, track_id_merge):
             self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
@@ -973,7 +1046,7 @@ class TrackDatabaseManager:
         status = status_map.get(track_info["status"], TrackStatus.DELETED)
 
         return Track(
-            id=hash(track_id) % (2**31),
+            id=_track_row_id(track_id),
             state=state_info["state"],
             covariance=state_info["covariance"],
             status=status,
@@ -1016,11 +1089,21 @@ class TrackDatabaseManager:
         Parameters
         ----------
         track : Track
-            pytcl Track NamedTuple.
+            pytcl Track NamedTuple, or any object with ``id``, ``state`` and
+            ``covariance`` (``MHTTrack``, ``SimpleTrack``, ...).
         timestamp : float, optional
             Override timestamp. Uses track.time if not provided.
+
+        Notes
+        -----
+        ``status`` and the hit and miss counts (``hits``/``misses``, or
+        ``n_hits``/``n_misses`` on ``MHTTrack``) are stored with the state.
+        They used to be dropped, so a confirmed track with 5 hits and 1 miss
+        read back tentative with 0 and 0. A field the object does not carry,
+        or a status that is not tentative, confirmed or deleted (including
+        ``None``), keeps the value the state update gives it, as before.
         """
-        self._check_open()
+        self._check_writable()
         t = timestamp if timestamp is not None else track.time
         track_id = f"trk_{track.id}"
 
@@ -1032,6 +1115,23 @@ class TrackDatabaseManager:
             self.initiate_track(track_id, track.state, track.covariance, t)
         else:
             self.update_track_state(track_id, track.state, track.covariance, t)
+
+        status = getattr(track, "status", None)
+        db_status = _TRACK_STATUS_TO_DB.get(getattr(status, "value", status))
+        fields = {
+            "status": None if db_status is None else db_status.value,
+            "hits": getattr(track, "hits", getattr(track, "n_hits", None)),
+            "misses": getattr(track, "misses", getattr(track, "n_misses", None)),
+        }
+        for column, value in fields.items():
+            if value is not None:
+                if column != "status":
+                    value = int(value)
+                self._cursor.execute(
+                    f"UPDATE tracks SET {column} = ? WHERE track_id = ?",
+                    (value, track_id),
+                )
+        self._connection.commit()
 
     def store_from_tracklist(self, track_list: Any) -> None:
         """Store all tracks from a TrackList.
@@ -1053,6 +1153,15 @@ class TrackDatabaseManager:
         if self._cursor is None:
             raise RuntimeError("Database not open. Call open() first.")
 
+    def _check_writable(self) -> None:
+        """Verify the database is open and not in read mode."""
+        self._check_open()
+        if self._mode == "r":
+            raise PermissionError(
+                "Database was opened read-only (mode='r'); reopen with "
+                "mode='a' or mode='w' to write."
+            )
+
     @staticmethod
     def _sanitize_metadata(metadata: Optional[Dict[str, Any]]) -> str:
         """Serialize metadata to JSON, converting numpy types to native Python."""
@@ -1071,7 +1180,7 @@ class TrackDatabaseManager:
 
     def _set_track_status(self, track_id: str, status: TrackDatabaseStatus) -> None:
         """Update a track's status."""
-        self._check_open()
+        self._check_writable()
         self._cursor.execute(
             "UPDATE tracks SET status = ? WHERE track_id = ?",
             (status.value, track_id),
@@ -1088,6 +1197,7 @@ class TrackDatabaseManager:
         update_type: str = "update",
     ) -> None:
         """Insert a single state row into track_states."""
+        state = self._validate_state_shapes(state, covariance)
         res_bytes = None
         if residual is not None:
             res_bytes = np.asarray(residual, dtype=np.float64).tobytes()
@@ -1112,8 +1222,91 @@ class TrackDatabaseManager:
     def _serialize_array(
         arr: NDArray[np.float64],
     ) -> Tuple[bytes, int, str]:
-        """Serialize ndarray to (bytes, first_dim, dtype_str)."""
-        return arr.tobytes(), arr.shape[0], str(arr.dtype)
+        """Serialize ndarray to (bytes, element_count, dtype_str).
+
+        The byte string is a shape header (``uint8`` ndim, then ``uint64``
+        extents, little-endian) followed by the C-order data, so the shape
+        survives the round trip. The element count is ``arr.size``; the
+        schema-1 layout used ``arr.shape[0]`` and truncated 2-D arrays.
+        """
+        arr = np.ascontiguousarray(arr)
+        header = struct.pack(f"<B{arr.ndim}Q", arr.ndim, *arr.shape)
+        return header + arr.tobytes(), int(arr.size), str(arr.dtype)
+
+    @staticmethod
+    def _deserialize_array(data: bytes, dtype: str) -> NDArray[Any]:
+        """Inverse of :meth:`_serialize_array` (schema 2)."""
+        ndim = data[0]
+        shape = struct.unpack_from(f"<{ndim}Q", data, 1)
+        offset = 1 + 8 * ndim
+        count = int(np.prod(shape, dtype=np.int64))
+        return (
+            np.frombuffer(data, dtype=np.dtype(dtype), count=count, offset=offset)
+            .reshape(shape)
+            .copy()
+        )
+
+    @staticmethod
+    def _validate_state_shapes(
+        state: NDArray[np.float64], covariance: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Return ``state`` as (n,); raise unless it is (n,) or (n, 1) and
+        ``covariance`` is (n, n).
+
+        Track-state rows store ``len(state)`` as the dimension and read the
+        covariance back as ``dim * dim`` elements, so any other shape was
+        stored under the wrong dimension and garbled on read. An (n, 1)
+        column holds the same n values in the same order and always read
+        back as (n,).
+        """
+        if state.ndim == 0 or state.size != state.shape[0]:
+            raise ValueError(
+                f"state must be a vector of shape (n,) or (n, 1), got shape "
+                f"{state.shape}"
+            )
+        n = state.shape[0]
+        if covariance.shape != (n, n):
+            raise ValueError(
+                f"covariance must have shape ({n}, {n}) for a state of length "
+                f"{n}, got shape {covariance.shape}"
+            )
+        return state.reshape(n)
+
+    @staticmethod
+    def _check_legacy_shapes(meas: NDArray[np.float64], cov: Any) -> None:
+        """Raise for data the schema 1.0 detection layout cannot represent."""
+        n = meas.shape[0] if meas.ndim == 1 else None
+        bad_cov = cov is not None and np.shape(cov) != (n, n)
+        if n is None or bad_cov:
+            raise ValueError(
+                "This database is schema 1.0, whose detection layout stores a "
+                "1-D measurement and an (n, n) covariance only; got measurement "
+                f"shape {meas.shape} and covariance shape "
+                f"{None if cov is None else np.shape(cov)}. A new database "
+                "(created at schema 2.0) stores any shape."
+            )
+
+    def _read_schema_version(self) -> int:
+        """Return the file's major schema version; absence means 1."""
+        try:
+            self._cursor.execute(
+                "SELECT value FROM _pytcl_track_db_metadata "
+                "WHERE key = 'schema_version'"
+            )
+        except sqlite3.OperationalError:
+            return 1
+        row = self._cursor.fetchone()
+        if not row:
+            return 1
+        _warn_unknown_schema_version(
+            f"track database {str(self._path)!r}",
+            str(row[0]),
+            ("1.0", _CURRENT_SCHEMA_VERSION_STR),
+        )
+        try:
+            return int(str(row[0]).split(".")[0])
+        except ValueError:
+            return 1
 
     @staticmethod
     def _deserialize_vector(data: bytes, dim: int) -> NDArray[np.float64]:
@@ -1129,15 +1322,20 @@ class TrackDatabaseManager:
 
     def _row_to_detection(self, row: tuple[Any, ...]) -> Dict[str, Any]:
         """Convert a detections table row to a dict."""
-        meas = np.frombuffer(row[3], dtype=np.dtype(row[5]))[: row[4]].copy()
         cov = None
-        if row[6] is not None:
-            cov_dim = row[4]
-            cov = (
-                np.frombuffer(row[6], dtype=np.float64)[: cov_dim * cov_dim]
-                .reshape(cov_dim, cov_dim)
-                .copy()
-            )
+        if self._schema_version < 2:
+            meas = np.frombuffer(row[3], dtype=np.dtype(row[5]))[: row[4]].copy()
+            if row[6] is not None:
+                cov_dim = row[4]
+                cov = (
+                    np.frombuffer(row[6], dtype=np.float64)[: cov_dim * cov_dim]
+                    .reshape(cov_dim, cov_dim)
+                    .copy()
+                )
+        else:
+            meas = self._deserialize_array(row[3], row[5])
+            if row[6] is not None:
+                cov = self._deserialize_array(row[6], "float64")
         return {
             "detection_id": row[0],
             "timestamp": row[1],
@@ -1170,6 +1368,11 @@ class TrackDatabaseManager:
         """Create all tables and indices if they do not exist."""
         if self._cursor is None:
             return
+
+        self._cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='detections'"
+        )
+        preexisting = self._cursor.fetchone() is not None
 
         self._cursor.execute("""CREATE TABLE IF NOT EXISTS detections (
             detection_id TEXT PRIMARY KEY,
@@ -1252,7 +1455,13 @@ class TrackDatabaseManager:
             "ON track_associations(detection_id)"
         )
 
-        # Store schema version
-        self._cursor.execute("""INSERT OR REPLACE INTO _pytcl_track_db_metadata
-               (key, value) VALUES ('schema_version', '1.0')""")
+        # A file with no version row is new (every schema-1 file wrote one);
+        # an existing file keeps its version, and with it its row format, so
+        # rows of two formats never share one version label.
+        self._cursor.execute(
+            "INSERT OR IGNORE INTO _pytcl_track_db_metadata (key, value) "
+            "VALUES ('schema_version', ?)",
+            ("1.0" if preexisting else _CURRENT_SCHEMA_VERSION_STR,),
+        )
         self._connection.commit()
+        self._schema_version = self._read_schema_version()

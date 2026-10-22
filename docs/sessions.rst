@@ -23,9 +23,11 @@ that produced it, and the tagged snapshot itself. `load_session` decodes
 that envelope strictly -- malformed or truncated bytes, or bytes carrying a
 `schema_version` newer than this install supports, raise
 :class:`~pytcl.core.exceptions.FormatError` rather than returning a
-partially-reconstructed object. `SESSION_SCHEMA_VERSION` (currently ``1``)
+partially-reconstructed object. `SESSION_SCHEMA_VERSION` (currently ``2``)
 is exported from :mod:`pytcl.io` for anyone who wants to check it before
-decoding.
+decoding. Version 2 added each multi-target track's M-of-N confirmation
+window; a version 1 file still loads, with an empty window, and pytcl
+2.11.0 rejects a version 2 file as newer than it supports.
 
 Typed Configs
 -----------------
