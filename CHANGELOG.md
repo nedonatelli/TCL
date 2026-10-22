@@ -115,6 +115,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`TrackDatabaseManager` no longer truncates 2-D detections.** The
+  element count was `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,
+  `arange(6).reshape(2, 3)` as `[0., 1.]` and a 3x3 array as its first three
+  elements; 1-D vectors were unaffected. Measurements and covariances now
+  store their shape and round-trip at every shape. This changes the stored
+  format, so the database schema version moves from `1.0` to `2.0`: new
+  files are created at `2.0`; existing `1.0` files still read exactly as
+  before and keep writing the legacy layout (one format per file, never a
+  mix), with a `UserWarning` when a write would truncate. Opening a file no
+  longer overwrites its stored version.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at

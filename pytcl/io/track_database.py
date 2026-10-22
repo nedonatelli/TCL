@@ -6,6 +6,8 @@ and lifecycle operations using SQLite for real-time tracking scenarios.
 
 import json
 import sqlite3
+import struct
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -25,6 +27,10 @@ class TrackDatabaseStatus(Enum):
     CONFIRMED = "confirmed"
     COASTING = "coasting"
     DEAD = "dead"
+
+
+_CURRENT_SCHEMA_VERSION = 2
+_CURRENT_SCHEMA_VERSION_STR = "2.0"
 
 
 class TrackDatabaseManager:
@@ -60,6 +66,7 @@ class TrackDatabaseManager:
         self._connection: Optional[sqlite3.Connection] = None
         self._cursor: Optional[sqlite3.Cursor] = None
         self._mode: Optional[str] = None
+        self._schema_version = _CURRENT_SCHEMA_VERSION
 
     def open(self, mode: str = "a") -> None:
         """Open database connection.
@@ -101,6 +108,8 @@ class TrackDatabaseManager:
 
         if mode in ("w", "a"):
             self._initialize_tables()
+        else:
+            self._schema_version = self._read_schema_version()
 
     def close(self) -> None:
         """Close database connection."""
@@ -153,12 +162,17 @@ class TrackDatabaseManager:
         """
         self._check_open()
         meas = np.asarray(measurement, dtype=np.float64)
-        meas_bytes, meas_dim, meas_dtype = self._serialize_array(meas)
+        legacy = self._schema_version < 2
+        if legacy:
+            self._warn_legacy_truncation(meas, covariance)
+            meas_bytes, meas_dim, meas_dtype = meas.tobytes(), len(meas), "float64"
+        else:
+            meas_bytes, meas_dim, meas_dtype = self._serialize_array(meas)
 
         cov_bytes = None
         if covariance is not None:
             cov = np.asarray(covariance, dtype=np.float64)
-            cov_bytes = cov.tobytes()
+            cov_bytes = cov.tobytes() if legacy else self._serialize_array(cov)[0]
 
         meta_json = self._sanitize_metadata(metadata)
 
@@ -1112,8 +1126,55 @@ class TrackDatabaseManager:
     def _serialize_array(
         arr: NDArray[np.float64],
     ) -> Tuple[bytes, int, str]:
-        """Serialize ndarray to (bytes, first_dim, dtype_str)."""
-        return arr.tobytes(), arr.shape[0], str(arr.dtype)
+        """Serialize ndarray to (bytes, element_count, dtype_str).
+
+        The byte string is a shape header (``uint8`` ndim, then ``uint64``
+        extents, little-endian) followed by the C-order data, so the shape
+        survives the round trip. The element count is ``arr.size``; the
+        schema-1 layout used ``arr.shape[0]`` and truncated 2-D arrays.
+        """
+        arr = np.ascontiguousarray(arr)
+        header = struct.pack(f"<B{arr.ndim}Q", arr.ndim, *arr.shape)
+        return header + arr.tobytes(), int(arr.size), str(arr.dtype)
+
+    @staticmethod
+    def _deserialize_array(data: bytes, dtype: str) -> NDArray[Any]:
+        """Inverse of :meth:`_serialize_array` (schema 2)."""
+        ndim = data[0]
+        shape = struct.unpack_from(f"<{ndim}Q", data, 1)
+        offset = 1 + 8 * ndim
+        count = int(np.prod(shape, dtype=np.int64))
+        return (
+            np.frombuffer(data, dtype=np.dtype(dtype), count=count, offset=offset)
+            .reshape(shape)
+            .copy()
+        )
+
+    @staticmethod
+    def _warn_legacy_truncation(meas: NDArray[np.float64], cov: Any) -> None:
+        """Warn when a schema-1 file would silently truncate an array."""
+        n = len(meas) if meas.ndim else 0
+        if meas.ndim != 1 or (cov is not None and np.asarray(cov).shape != (n, n)):
+            warnings.warn(
+                "This database uses the legacy schema 1.0, which stores only "
+                "the first dimension's worth of elements of a non-1-D "
+                "measurement or non-square covariance. Create a new database "
+                "(schema 2.0) to store such arrays losslessly.",
+                UserWarning,
+                stacklevel=3,
+            )
+
+    def _read_schema_version(self) -> int:
+        """Return the file's major schema version; absence means 1."""
+        try:
+            self._cursor.execute(
+                "SELECT value FROM _pytcl_track_db_metadata "
+                "WHERE key = 'schema_version'"
+            )
+        except sqlite3.OperationalError:
+            return 1
+        row = self._cursor.fetchone()
+        return int(str(row[0]).split(".")[0]) if row else 1
 
     @staticmethod
     def _deserialize_vector(data: bytes, dim: int) -> NDArray[np.float64]:
@@ -1129,15 +1190,20 @@ class TrackDatabaseManager:
 
     def _row_to_detection(self, row: tuple[Any, ...]) -> Dict[str, Any]:
         """Convert a detections table row to a dict."""
-        meas = np.frombuffer(row[3], dtype=np.dtype(row[5]))[: row[4]].copy()
         cov = None
-        if row[6] is not None:
-            cov_dim = row[4]
-            cov = (
-                np.frombuffer(row[6], dtype=np.float64)[: cov_dim * cov_dim]
-                .reshape(cov_dim, cov_dim)
-                .copy()
-            )
+        if self._schema_version < 2:
+            meas = np.frombuffer(row[3], dtype=np.dtype(row[5]))[: row[4]].copy()
+            if row[6] is not None:
+                cov_dim = row[4]
+                cov = (
+                    np.frombuffer(row[6], dtype=np.float64)[: cov_dim * cov_dim]
+                    .reshape(cov_dim, cov_dim)
+                    .copy()
+                )
+        else:
+            meas = self._deserialize_array(row[3], row[5])
+            if row[6] is not None:
+                cov = self._deserialize_array(row[6], "float64")
         return {
             "detection_id": row[0],
             "timestamp": row[1],
@@ -1170,6 +1236,11 @@ class TrackDatabaseManager:
         """Create all tables and indices if they do not exist."""
         if self._cursor is None:
             return
+
+        self._cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='detections'"
+        )
+        preexisting = self._cursor.fetchone() is not None
 
         self._cursor.execute("""CREATE TABLE IF NOT EXISTS detections (
             detection_id TEXT PRIMARY KEY,
@@ -1252,7 +1323,13 @@ class TrackDatabaseManager:
             "ON track_associations(detection_id)"
         )
 
-        # Store schema version
-        self._cursor.execute("""INSERT OR REPLACE INTO _pytcl_track_db_metadata
-               (key, value) VALUES ('schema_version', '1.0')""")
+        # A file with no version row is new (every schema-1 file wrote one);
+        # an existing file keeps its version, and with it its row format, so
+        # rows of two formats never share one version label.
+        self._cursor.execute(
+            "INSERT OR IGNORE INTO _pytcl_track_db_metadata (key, value) "
+            "VALUES ('schema_version', ?)",
+            ("1.0" if preexisting else _CURRENT_SCHEMA_VERSION_STR,),
+        )
         self._connection.commit()
+        self._schema_version = self._read_schema_version()
