@@ -14,7 +14,7 @@ Each notebook is self-contained with explanations, code examples, and visualizat
       git clone https://github.com/nedonatelli/TCL.git
       cd TCL
       uv sync
-      uv run jupyter notebook docs/notebooks/
+      uv run --with jupyterlab jupyter lab docs/notebooks/
 
 Filtering & Estimation
 ----------------------
