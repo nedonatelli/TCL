@@ -67,6 +67,8 @@ under Fixed):
   `UPDATE _pytcl_track_db_metadata SET value = '2.0' WHERE key = 'schema_version'`.
   Detections 2.11.0 wrote into the file in the meantime do not read back
   correctly after that. Do not open 2.11.1 track databases with 2.11.0.
+  Decoding the shape header on read is kept cheap: `retrieve_detections`
+  on 2500 detections stays within about 10% of 2.11.0's time.
 - **Session schema v2.** `save_session` now stores each track's M-of-N
   window, so a resumed `MultiTargetTracker` keeps its confirmation
   progress. `SESSION_SCHEMA_VERSION` is 2; v1 files still load (with an
