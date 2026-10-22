@@ -55,7 +55,9 @@ __all__ = [
     "load_session_file",
 ]
 
-SESSION_SCHEMA_VERSION = 1
+#: Wire-format version. v2 added ``TrackSnapshot.recent`` (the M-of-N
+#: confirmation window). v1 files still load; see `TrackSnapshot`.
+SESSION_SCHEMA_VERSION = 2
 
 _log = logger.bind(site="session")
 
@@ -145,6 +147,12 @@ class TrackSnapshot(msgspec.Struct):
     nis_history : list of float, optional
         Recent normalized innovation squared values, present only when
         the track accumulated a health window under enabled diagnostics.
+    recent : list of bool, optional
+        The M-of-N confirmation window, oldest outcome first (``True`` is a
+        hit). Added in schema v2. ``None`` in a v1 file, which never stored
+        it; such a track resumes with an empty window, exactly as v1 loaders
+        always restored it, because the per-scan history cannot be rebuilt
+        from the cumulative ``hits``/``misses`` counters.
     """
 
     id: int
@@ -155,6 +163,7 @@ class TrackSnapshot(msgspec.Struct):
     misses: int
     time: float
     nis_history: Optional[list[float]] = None
+    recent: Optional[list[bool]] = None
 
 
 class MultiTargetSnapshot(msgspec.Struct, tag=True):
@@ -511,6 +520,7 @@ def _snap_multi_target(t: MultiTargetTracker) -> MultiTargetSnapshot:
                 misses=track.misses,
                 time=track.time,
                 nis_history=None if history is None else list(history),
+                recent=list(track.recent),
             )
         )
     return MultiTargetSnapshot(
@@ -555,6 +565,8 @@ def _restore_multi_target(
             misses=ts.misses,
             time=ts.time,
         )
+        if ts.recent is not None:
+            track.recent = deque(ts.recent)
         if ts.nis_history is not None:
             track._nis_history = deque(ts.nis_history, maxlen=NIS_WINDOW)
         tracks.append(track)

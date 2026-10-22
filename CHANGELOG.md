@@ -115,6 +115,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A resumed `MultiTargetTracker` no longer re-earns confirmation.**
+  `save_session` did not store each track's M-of-N `recent` window, so a
+  restored tentative track restarted its count: with `confirm_hits=3`, a track
+  holding 2 hits confirmed on the next detection in the original but stayed
+  `TENTATIVE` after a round trip. The window is now saved as
+  `TrackSnapshot.recent`, and `SESSION_SCHEMA_VERSION` is bumped 1 -> 2. Files
+  written at v1 still load, with an empty window (the previous behaviour,
+  because per-scan history cannot be rebuilt from the cumulative counters);
+  re-save them to pick up the fix. A v2 file is rejected by pytcl 2.11.0 as
+  a newer schema.
+
 - **`TrackDatabaseManager` row identity and track operations.**
   `track_to_pytcl` built the `Track.id` from `hash(track_id)`, which Python
   salts per process: three interpreters returned 1090103678, 1605147417 and
