@@ -1244,12 +1244,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   five-sensor test scene with `R = 4 I`, the `p_taylor` diagonal goes from
   `[3.54, 4.43, 8.41]` to `[8.42, 34.9, 69.4]`. A 2000-draw Monte Carlo of the
   estimate measures `[8.43, 34.9, 67.9]`, so the old values understated the
-  spread by 2.4x to 8.1x. With `R = diag(9, 25, 4, 1, 16)`, the `p_crlb` diagonal
-  goes from `[36.8, 37.9, 11.2]` to `[2.17, 1.91, 10.1]`, which is the analytic
-  Fisher inverse (the old values were 17x to 20x too large in x and y). The
-  three-measurement two-solution `p_taylor` was already correct, but its
-  `p_crlb` had the same defect. Estimates and return shapes are unchanged.
-  The docstring now records the deviation from MATLAB.
+  spread by 2.4x to 8.1x. Against the MATLAB fixture (noisy ranges,
+  `R = diag(9, 25, 4, 1, 16)`), the new `p_taylor` diagonal is 2.27x, 3.90x
+  and 7.88x MATLAB's, and MATLAB's `p_crlb` diagonal `[36.8, 37.5, 11.2]` is
+  17.1x, 19.6x and 1.1x the analytic Fisher inverse `[2.15, 1.91, 10.1]`. When
+  noise makes the root discriminant negative (about 3% of draws at 50 m range
+  noise, 31% at 200 m), the clipped root is now linearized through its own
+  closed form. The constrained formula is off by orders of magnitude there:
+  one draw gives `[12040, 20746, 59357]` against the true `[2.66, 1.68, 1.23]`.
+  The three-measurement two-solution `p_taylor` was already correct, but its
+  `p_crlb` had the same defect. Exactly coplanar sensors now raise
+  `LinAlgError` instead of returning a meaningless covariance, and `r_cov`
+  with `method=0` raises `ValueError` instead of `UnboundLocalError`.
+  Estimates and return shapes are unchanged. The docstring now records the
+  deviation from MATLAB.
 
 ## [2.11.0] - 2026-09-13
 

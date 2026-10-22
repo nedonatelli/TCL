@@ -132,6 +132,9 @@ Z_TX5 = np.array(
     ]
 )
 R_B5 = np.linalg.norm(T_LOC[:, None] - Z_TX5, axis=0) + np.linalg.norm(T_LOC - Z_RX)
+# Central differences with a 1e-2 m step on ranges of ~1e4 m: truncation and
+# roundoff each sit near 1e-9 relative; measured worst element 1.7e-9.
+TAYLOR_FD_RTOL = 1e-6
 
 
 def _bistatic_range_jacobian(x, z_tx, z_rx):
@@ -185,17 +188,53 @@ class TestRangeOnlyStaticLocEstNP:
         result = range_only_static_loc_est_np(r_noisy, Z_TX5, Z_RX, 1, r_cov)
         ref = _load("se_range_only_case4.csv").ravel()
         np.testing.assert_allclose(result.x_est, ref[:3], rtol=RTOL_EXACT)
-        # The fixture's PTaylor (ref[3:12]) and PCRLB (ref[12:21]) carry the
-        # upstream covariance defects; the port is pinned to the oracles.
         g = _estimator_jacobian_fd(r_noisy, Z_TX5, Z_RX)
         np.testing.assert_allclose(
-            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=1e-6, atol=1e-6
+            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=TAYLOR_FD_RTOL, atol=0
         )
         j = _bistatic_range_jacobian(result.x_est, Z_TX5, Z_RX)
         np.testing.assert_allclose(
             result.p_crlb[:, :, 0],
             np.linalg.inv(j.T @ np.linalg.inv(r_cov) @ j),
             rtol=1e-9,
+        )
+
+    def test_matlab_covariances_diverge_by_the_documented_factors(self):
+        # The fixture's PTaylor (ref[3:12]) and PCRLB (ref[12:21]) carry the
+        # upstream defects. Pin the ratios quoted in the docstring/CHANGELOG
+        # so the divergence is explicit; rtol 1e-3 covers their rounding.
+        r_noisy = R_B5 + np.array([3.0, -5.0, 2.0, -1.0, 4.0])
+        r_cov = np.diag([9.0, 25.0, 4.0, 1.0, 16.0])
+        result = range_only_static_loc_est_np(r_noisy, Z_TX5, Z_RX, 1, r_cov)
+        ref = _load("se_range_only_case4.csv").ravel()
+        matlab_taylor = ref[3:12].reshape(3, 3, order="F")
+        matlab_crlb = ref[12:21].reshape(3, 3, order="F")
+        np.testing.assert_allclose(
+            np.diag(result.p_taylor[:, :, 0]) / np.diag(matlab_taylor),
+            [2.271, 3.904, 7.881],
+            rtol=1e-3,
+        )
+        np.testing.assert_allclose(
+            np.diag(matlab_crlb) / np.diag(result.p_crlb[:, :, 0]),
+            [17.08, 19.61, 1.106],
+            rtol=1e-3,
+        )
+
+    def test_clipped_discriminant_taylor_is_the_estimator_derivative(self):
+        # This draw makes Equation 21's discriminant negative (about -2.4e7),
+        # so the root term is clipped to 0 and abs(x_est) != Rt. Linearizing
+        # with the abs(x) constraint there gave diag [12040, 20746, 59357].
+        r_clip = R_B5 + np.array([1.0, -28.0, 129.0, 101.0, -271.0])
+        s_rel = (Z_TX5 - Z_RX[:, None]).T
+        s_star = np.linalg.pinv(s_rel)
+        a = s_star @ (0.5 * (np.sum(s_rel**2, axis=1) - r_clip**2))
+        b = s_star @ r_clip
+        assert (a @ b) ** 2 - ((b @ b) - 1.0) * (a @ a) < -1e6
+        r_cov = 4.0 * np.eye(5)
+        result = range_only_static_loc_est_np(r_clip, Z_TX5, Z_RX, 1, r_cov)
+        g = _estimator_jacobian_fd(r_clip, Z_TX5, Z_RX)
+        np.testing.assert_allclose(
+            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=TAYLOR_FD_RTOL, atol=0
         )
 
     def test_taylor_covariance_is_the_linearization_of_the_returned_root(self):
@@ -211,7 +250,7 @@ class TestRangeOnlyStaticLocEstNP:
             g @ _bistatic_range_jacobian(T_LOC, Z_TX5, Z_RX), np.eye(3), atol=1e-6
         )
         np.testing.assert_allclose(
-            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=1e-6, atol=1e-6
+            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=TAYLOR_FD_RTOL, atol=0
         )
 
     def test_crlb_is_the_fisher_inverse(self):
@@ -257,6 +296,10 @@ class TestRangeOnlyStaticLocEstNP:
         np.testing.assert_allclose(
             np.diag(np.cov(draws.T)), np.diag(p_taylor), rtol=0.12
         )
+
+    def test_r_cov_with_method_zero_raises(self):
+        with pytest.raises(ValueError, match="only for method 1"):
+            range_only_static_loc_est_np(R_B5, Z_TX5, Z_RX, 0, np.eye(5))
 
     def test_too_few_measurements_raise(self):
         with pytest.raises(ValueError, match="three"):
