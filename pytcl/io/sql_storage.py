@@ -6,6 +6,7 @@ measurements, and searchable structured data.
 
 import json
 import sqlite3
+import warnings
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Union
@@ -17,21 +18,44 @@ from pytcl.io.storage import StorageBackend
 
 
 def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
-    """Open ``path`` under ``mode``; 'w' discards any existing file first.
+    """Open ``path`` under ``mode``.
 
     'r' uses SQLite's own read-only open as a backstop to the explicit
     ``_check_writable`` guards on the public write methods.
     """
-    if mode == "w":
-        for suffix in ("", "-wal", "-shm", "-journal"):
-            Path(path + suffix).unlink(missing_ok=True)
-
     if mode == "r":
         uri = Path(path).resolve().as_uri() + "?mode=ro"
         connection = sqlite3.connect(uri, uri=True)
     else:
         connection = sqlite3.connect(path)
     return connection, connection.cursor()
+
+
+def _warn_if_w_reopens_data(
+    path: str, tables: tuple[str, ...], owner: str, stacklevel: int
+) -> None:
+    """Emit the 'w' FutureWarning when ``path`` already holds data rows."""
+    if not Path(path).exists():
+        return
+    connection = sqlite3.connect(Path(path).resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        has_rows = False
+        for table in tables:
+            try:
+                row = connection.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
+            except sqlite3.DatabaseError:
+                continue
+            has_rows = has_rows or row is not None
+    finally:
+        connection.close()
+    if has_rows:
+        warnings.warn(
+            f"mode='w' does not truncate an existing {owner} file; from "
+            f"v2.12.0 it will, matching HDF5Storage. Use mode='a' to keep "
+            f"appending.",
+            FutureWarning,
+            stacklevel=stacklevel,
+        )
 
 
 class SQLStorage(StorageBackend):
@@ -87,8 +111,11 @@ class SQLStorage(StorageBackend):
         path : str
             Path to the SQLite database file.
         mode : str, optional
-            'r' (read-only), 'w' (create, discarding any existing file), 'a'
-            (create if absent, else append). Default is 'r'.
+            'r' (read-only), 'w' (create), 'a' (create if absent, else
+            append). Default is 'r'. Today 'w' does NOT truncate an existing
+            file: it behaves like 'a' and emits a ``FutureWarning`` when the
+            file already holds data. From v2.12.0 'w' will discard the
+            existing file, matching ``HDF5Storage``.
 
         Raises
         ------
@@ -99,8 +126,8 @@ class SQLStorage(StorageBackend):
 
         Notes
         -----
-        Modes are enforced: ``'r'`` rejects writes (they used to persist) and
-        ``'w'`` deletes an existing file (it used to behave as ``'a'``).
+        Read mode is enforced: writes through a ``'r'`` handle raise
+        :class:`PermissionError` (they used to persist).
 
         Opening a nonexistent path for reading used to create an empty
         database, because ``sqlite3.connect`` creates the file whatever the
@@ -114,6 +141,11 @@ class SQLStorage(StorageBackend):
 
         self._path = Path(path)
         self._mode = mode
+
+        if mode == "w":
+            _warn_if_w_reopens_data(
+                path, (self._arrays_table, self._metadata_table), "SQLStorage", 3
+            )
 
         if mode == "r" and not self._path.exists():
             raise FileNotFoundError(

@@ -1,6 +1,7 @@
 """Round-trip and schema-version tests for TrackDatabaseManager."""
 
 import sqlite3
+import warnings
 
 import numpy as np
 import pytest
@@ -244,28 +245,37 @@ def test_every_write_method_is_refused_in_read_mode(tmp_path, name):
     assert path.read_bytes() == before
 
 
-def test_write_mode_truncates(tmp_path):
+def test_write_mode_preserves_rows_and_warns(tmp_path):
     path = tmp_path / "t.db"
     db = TrackDatabaseManager(path)
     db.open("w")
     db.store_detection("old", np.zeros(2), "s", 0.0)
     db.close()
     db2 = TrackDatabaseManager(path)
-    db2.open("w")
-    assert db2.retrieve_all_detections() == []
-    assert db2.retrieve_all_tracks() == []
+    with pytest.warns(FutureWarning, match="does not truncate.*v2.12.0"):
+        db2.open("w")
+    assert [d["detection_id"] for d in db2.retrieve_all_detections()] == ["old"]
     db2.close()
 
 
-def test_write_mode_over_schema_1_file_yields_fresh_schema_2(tmp_path):
+def test_write_mode_on_new_or_empty_file_does_not_warn(tmp_path):
+    path = tmp_path / "t.db"
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        for _ in range(2):
+            db = TrackDatabaseManager(path)
+            db.open("w")
+            db.close()
+
+
+def test_write_mode_keeps_schema_1_file_version(tmp_path):
     path = tmp_path / "t.db"
     _write_v1_database(path)
     db = TrackDatabaseManager(path)
-    db.open("w")
-    assert db.retrieve_all_detections() == []
-    db.store_detection("row", np.arange(6.0).reshape(2, 3), "s", 0.0)
+    with pytest.warns(FutureWarning):
+        db.open("w")
     db.close()
-    assert _version(path) == "2.0"
+    assert _version(path) == "1.0"
 
 
 def test_append_mode_keeps_rows(tmp_path):
@@ -306,15 +316,16 @@ def test_sql_storage_read_mode_rejects_writes(tmp_path):
     assert (tmp_path / "s.db").read_bytes() == before
 
 
-def test_sql_storage_write_mode_truncates(tmp_path):
+def test_sql_storage_write_mode_preserves_data_and_warns(tmp_path):
     from pytcl.io.sql_storage import SQLStorage
 
     path = str(tmp_path / "s.db")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with SQLStorage() as s:
+            s.open(path, "w")
+            s.store_array("old", np.arange(3.0))
     with SQLStorage() as s:
-        s.open(path, "w")
-        s.store_array("old", np.arange(3.0))
-    with SQLStorage() as s:
-        s.open(path, "w")
-        assert s.list_keys() == []
-        with pytest.raises(KeyError):
-            s.retrieve_array("old")
+        with pytest.warns(FutureWarning, match="does not truncate.*v2.12.0"):
+            s.open(path, "w")
+        assert np.array_equal(s.retrieve_array("old"), np.arange(3.0))

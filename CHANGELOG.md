@@ -115,18 +115,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`TrackDatabaseManager` and `SQLStorage` now enforce their file modes.**
-  `open('r')` accepted writes: the v2.11.0 audit persisted rows through a
-  read-only handle. Every write method (`store_*`, `associate_detection`,
-  `initiate_track`, `confirm_track`, `update_track_state`, `mark_track_*`,
-  `prune_*`, `merge_tracks`, and `SQLStorage.store_*` / `delete`) now raises
-  `PermissionError` in read mode, and the connection is opened with SQLite's
-  `mode=ro` as a backstop. `open('w')` did not truncate, so prior rows
-  survived a mode documented as creating a file; it now deletes the existing
-  file, leaving a fresh one (schema 2.0 for `TrackDatabaseManager`).
-  `open('a')` still appends. Code that relied on `'w'` to reopen and keep
-  data must use `'a'`.
-
+- **`TrackDatabaseManager` and `SQLStorage` now enforce read mode, and `'w'`
+  warns.** `open('r')` accepted writes: the v2.11.0 audit persisted rows
+  through a read-only handle. Every write method (`store_*`,
+  `associate_detection`, `initiate_track`, `confirm_track`,
+  `update_track_state`, `mark_track_*`, `prune_*`, `merge_tracks`, and
+  `SQLStorage.store_*` / `delete`) now raises `PermissionError` in read mode,
+  and the connection is opened with SQLite's `mode=ro` as a backstop.
+  `open('w')` still does not truncate an existing file (it behaves like
+  `'a'`, as the I/O audit pinned), but it now emits a `FutureWarning` when
+  the file already holds rows: from v2.12.0 `'w'` will discard the existing
+  file, matching `HDF5Storage`. Use `'a'` to keep appending.
 - **`TrackDatabaseManager` no longer truncates 2-D detections, and rejects
   track-state shapes it garbled.** For detections the element count was
   `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,

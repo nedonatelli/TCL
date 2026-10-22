@@ -376,15 +376,16 @@ class TestSQLStorageContract:
         assert [store.retrieve_scalar(f"k{i}") for i in range(3)] == [0, 1, 2]
         store.close()
 
-    def test_write_mode_truncates(self, tmp_path):
+    def test_write_mode_does_not_truncate(self, tmp_path):
+        # SQLStorage documents 'w' as treated like 'a'
         path = str(tmp_path / "w.db")
         store = SQLStorage()
         store.open(path, mode="w")
         store.store_scalar("keep", 1)
         store.close()
-        store.open(path, mode="w")
-        with pytest.raises(KeyError):
-            store.retrieve_scalar("keep")
+        with pytest.warns(FutureWarning, match="does not truncate"):
+            store.open(path, mode="w")
+        assert store.retrieve_scalar("keep") == 1
         store.close()
 
     def test_flush_and_context_manager(self, tmp_path):
@@ -775,8 +776,8 @@ class TestTrackDatabaseRobustness:
             with pytest.raises(RuntimeError):
                 call()
 
-    def test_open_w_truncates_and_a_preserves(self, tmp_path):
-        """'w' starts a fresh file; 'a' keeps existing data."""
+    def test_open_w_does_not_truncate(self, tmp_path):
+        """Documented: 'w' is write/create, existing data is preserved."""
         path = str(tmp_path / "persist.db")
         mgr = TrackDatabaseManager(path)
         mgr.open(mode="w")
@@ -784,10 +785,9 @@ class TestTrackDatabaseRobustness:
         mgr.close()
         mgr.close()  # double close is safe
 
-        mgr.open(mode="w")
-        with pytest.raises(KeyError):
-            mgr.get_track("t1")
-        mgr.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        with pytest.warns(FutureWarning, match="does not truncate"):
+            mgr.open(mode="w")
+        assert mgr.get_track("t1")["track_id"] == "t1"
         mgr.close()
 
         mgr.open(mode="a")
