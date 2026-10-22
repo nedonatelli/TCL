@@ -4,25 +4,25 @@ Debye functions.
 Debye functions appear in solid-state physics for computing
 thermodynamic properties of solids (heat capacity, entropy).
 
-Performance
------------
-This module uses Numba JIT compilation with rapidly convergent series
-expansions (Abramowitz & Stegun 27.1.1-27.1.3), providing ~10-50x speedup
-for batch computations compared to scipy.integrate.quad.
+Method
+------
+Three regimes, each free of cancellation. For x < 1 the Bernoulli series of
+Abramowitz & Stegun 27.1.1 (Numba JIT). For 1 <= x < n + 2*sqrt(n) + 5 a
+composite Gauss-Legendre rule on D_n(x) = n * int_0^1 s^(n-1) g(s*x) ds with
+g(y) = y/expm1(y), whose terms are all positive. Beyond that the integral is
+past the bulk of its mass, which peaks near t = n, and the tail form
+n * n!/x^n * [zeta(n+1) - sum_j Q(n+1, j*x)/j^(n+1)] with Q the regularized
+upper incomplete gamma function subtracts a sum below ~5% of zeta(n+1).
 
 Accuracy
 --------
-Typical relative error is ~1e-16 (machine precision), measured against a
-30-40-digit mpmath oracle for n in {1, 4, 6, 8, 9, 10}, x in
-{0.5, 0.99, 1.0, 1.01, 1.9, 1.99, 1.999, 2.0, 10.0}. The worst points on
-that grid are ~2e-11 just below the x0=2.0 boundary (n=9/10 near
-x=1.99-1.999, where the small-x series is nearing the edge of its
-useful precision) and ~4e-12 exactly at the boundary (n=9/10 at x=2.0,
-where the large-x branch's own alternating-sum cancellation happens to
-be smallest). The small-x/large-x branch switch is at x0=2.0: before
-this was tightened from x0=1.0, the same grid measured up to 8.6e-9 at
-x=1.0-1.01 for n>=8 (catastrophic cancellation in the large-x branch
-right at the old boundary).
+Verified against a 40-digit mpmath quadrature of the Debye integrand for every
+integer n in {1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50} on x between 1e-6 and
+700 (including both regime boundaries). The worst relative error measured
+is 3e-14 (n = 50), and 1.1e-15 for n <= 2. Nothing is claimed for
+n > 50, which was not measured. The previous large-x branch subtracted
+same-magnitude terms and was wrong from n = 10 up: D_20(2) was 3.9% off and
+D_30(2) was 2.2e8 against 0.3267614.
 """
 
 from typing import Any
@@ -30,10 +30,7 @@ from typing import Any
 import numpy as np
 from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
-from scipy.special import zeta
-
-# Pre-compute zeta values for common orders (n=1 to 10)
-_ZETA_VALUES = np.array([zeta(k + 1) for k in range(11)])
+from scipy.special import gammaincc, gammaln, zeta
 
 # B_{2k} / (2k)! for k = 1..10 (Bernoulli numbers over factorials), used in
 # the small-x expansion of t/(e^t - 1) = 1 - t/2 + sum B_{2k} t^{2k}/(2k)!
@@ -69,73 +66,69 @@ def _debye_small_x(x: float, n: int, coef: np.ndarray[Any, Any]) -> float:
     return result
 
 
-@njit(cache=True)
-def _debye_large_x(x: float, n: int, n_fact: float, zeta_n_plus_1: float) -> float:
-    """
-    Complement series for x >= 1 (A&S 27.1.2-27.1.3).
-
-    D_n(x) = (n/x^n) * [n! * zeta(n+1)
-             - sum_{j>=1} e^{-jx} * (n!/j^{n+1}) * sum_{i=0}^{n} (jx)^i/i!]
-    """
-    total = n_fact * zeta_n_plus_1
-    for j in range(1, 500):
-        jx = j * x
-        if jx > 700.0:
-            break
-        # Partial exponential sum: sum_{i=0}^{n} (jx)^i / i!
-        s = 1.0
-        term = 1.0
-        for i in range(1, n + 1):
-            term *= jx / i
-            s += term
-        contrib = np.exp(-jx) * n_fact / float(j) ** (n + 1) * s
-        total -= contrib
-        if contrib < 1e-17 * total:
-            break
-    return n / x**n * total
-
-
 @njit(cache=True, parallel=True)
-def _debye_batch(
+def _debye_small_batch(
     n: int,
     x_arr: np.ndarray[Any, Any],
-    zeta_n_plus_1: float,
     coef: np.ndarray[Any, Any],
 ) -> np.ndarray[Any, Any]:
-    """
-    Batch computation of Debye function for array input.
-
-    Parameters
-    ----------
-    n : int
-        Order of the Debye function.
-    x_arr : ndarray
-        Array of x values.
-    zeta_n_plus_1 : float
-        Pre-computed zeta(n+1) value.
-    coef : ndarray
-        Bernoulli coefficients B_{2k}/(2k)! for the small-x series.
-
-    Returns
-    -------
-    ndarray
-        Debye function values.
-    """
+    """Bernoulli series for an array of x, each in [0, _X_SMALL)."""
     result = np.empty(len(x_arr), dtype=np.float64)
-    n_fact = 1.0
-    for k in range(1, n + 1):
-        n_fact *= k
-
     for i in prange(len(x_arr)):  # ty: ignore[not-iterable]
-        xi = x_arr[i]
-        if xi == 0.0:
-            result[i] = 1.0
-        elif xi < 2.0:
-            result[i] = _debye_small_x(xi, n, coef)
-        else:
-            result[i] = _debye_large_x(xi, n, n_fact, zeta_n_plus_1)
-
+        result[i] = _debye_small_x(x_arr[i], n, coef)
     return result
+
+
+_X_SMALL = 1.0
+_PANEL_T = 4.0
+_GL_NODES, _GL_WEIGHTS = np.polynomial.legendre.leggauss(32)
+
+
+def _debye_quadrature(n: int, x: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Composite Gauss-Legendre on D_n(x) = n * int_0^1 s^(n-1) g(sx) ds.
+
+    g(y) = y / expm1(y) is positive and smooth (nearest singularity at
+    y = 2*pi*i), so every term is positive and nothing cancels. Panels are at
+    most ``_PANEL_T`` long in t = s*x, well inside the 2*pi pole distance.
+    """
+    out = np.empty_like(x)
+    npanel = np.ceil(x / _PANEL_T).astype(np.int64)
+    for p in np.unique(npanel):
+        sel = npanel == p
+        xs = x[sel][:, None, None]
+        lo = (np.arange(p) / p)[None, :, None]
+        s = lo + (_GL_NODES[None, None, :] + 1.0) / (2.0 * p)
+        y = s * xs
+        integrand = s ** (n - 1) * (y / np.expm1(y))
+        out[sel] = (
+            n * (integrand * _GL_WEIGHTS[None, None, :]).sum(axis=(1, 2)) / (2.0 * p)
+        )
+    return out
+
+
+def _debye_complement(n: int, x: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Tail form for x past the bulk of t^n/(e^t - 1), which peaks near t = n.
+
+    D_n(x) = n * n! / x^n * [zeta(n+1) - sum_j Q(n+1, j*x) / j^(n+1)] with Q
+    the regularized upper incomplete gamma function. The subtracted sum is
+    below ~5% of zeta(n+1) in the region this is used, so it loses at most
+    one digit.
+    """
+    zeta_np1 = float(zeta(n + 1))
+    tail = np.zeros_like(x)
+    with np.errstate(over="ignore", invalid="ignore"):
+        for j in range(1, 2000):
+            term = gammaincc(n + 1, j * x) / float(j) ** (n + 1)
+            tail += term
+            if np.all(term <= 1e-17 * zeta_np1):
+                break
+    with np.errstate(divide="ignore", over="ignore"):
+        scale = n * np.exp(gammaln(n + 1) - n * np.log(x))
+    return scale * (zeta_np1 - tail)
+
+
+def _x_complement(n: int) -> float:
+    return n + 2.0 * np.sqrt(n) + 5.0
 
 
 def debye(
@@ -151,7 +144,8 @@ def debye(
     Parameters
     ----------
     n : int
-        Order of the Debye function (positive integer).
+        Order of the Debye function (positive integer). Accuracy is verified
+        for n <= 50 (see the module docstring).
     x : array_like
         Argument of the function, x >= 0.
 
@@ -159,6 +153,11 @@ def debye(
     -------
     D : ndarray
         Values of D_n(x).
+
+    Raises
+    ------
+    ValueError
+        If n is not a positive integer or any x is negative.
 
     Notes
     -----
@@ -168,10 +167,6 @@ def debye(
 
     The Debye function D_3(x) appears in the heat capacity
     of solids at low temperatures.
-
-    This implementation uses Numba JIT compilation for performance,
-    achieving ~10-50x speedup compared to scipy.integrate.quad for
-    batch computations.
 
     Examples
     --------
@@ -187,18 +182,31 @@ def debye(
     - Debye, P. (1912). "Zur Theorie der spezifischen Wärmen".
       Annalen der Physik, 344(14), 789-839.
     """
-    if n < 1:
-        raise ValueError(f"Order n must be >= 1, got {n}")
+    if int(n) != n or n < 1:
+        raise ValueError(f"Order n must be >= 1 and an integer, got {n}")
+    n = int(n)
 
     x = np.atleast_1d(np.asarray(x, dtype=np.float64))
+    if np.any(x < 0):
+        raise ValueError("x must be >= 0")
 
-    # Get pre-computed zeta value if available, otherwise compute
-    if n < len(_ZETA_VALUES):
-        zeta_n_plus_1 = _ZETA_VALUES[n]
-    else:
-        zeta_n_plus_1 = zeta(n + 1)
+    result = np.full(x.shape, np.nan)
+    flat = x.ravel()
+    out = result.ravel()
+    x_switch = _x_complement(n)
 
-    return _debye_batch(n, x, zeta_n_plus_1, _BERNOULLI_COEF)
+    out[flat == 0.0] = 1.0
+    small = (flat > 0.0) & (flat < _X_SMALL)
+    if small.any():
+        out[small] = _debye_small_batch(n, flat[small], _BERNOULLI_COEF)
+    mid = (flat >= _X_SMALL) & (flat < x_switch)
+    if mid.any():
+        out[mid] = _debye_quadrature(n, flat[mid])
+    large = (flat >= x_switch) & np.isfinite(flat)
+    if large.any():
+        out[large] = _debye_complement(n, flat[large])
+    out[np.isposinf(flat)] = 0.0
+    return out.reshape(x.shape)
 
 
 def debye_1(x: ArrayLike) -> NDArray[np.floating]:
