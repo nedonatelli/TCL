@@ -17,6 +17,31 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.io.storage import StorageBackend
 
 
+def _decodes_to_json_str(value: str) -> bool:
+    try:
+        return isinstance(json.loads(value), str)
+    except json.JSONDecodeError:
+        return False
+
+
+def _write_metadata_attrs(attrs: Any, metadata: Dict[str, Any]) -> None:
+    """Write `metadata` into an h5py attribute set.
+
+    Values h5py cannot store are written as ``json.dumps(str(v))``, which
+    `HDF5Storage.get_metadata` unwraps. A user string that is itself a JSON
+    string literal (``'"quoted"'``) is JSON-encoded once more so that unwrap
+    returns it unchanged; files written before v2.11.1 read as before.
+    """
+    for key, value in metadata.items():
+        if isinstance(value, str) and _decodes_to_json_str(value):
+            attrs[key] = json.dumps(value)
+            continue
+        try:
+            attrs[key] = value
+        except (TypeError, ValueError):
+            attrs[key] = json.dumps(str(value))
+
+
 class HDF5Storage(StorageBackend):
     """HDF5-based storage backend.
 
@@ -111,12 +136,7 @@ class HDF5Storage(StorageBackend):
 
         # Store metadata as attributes
         if metadata:
-            for key, value in metadata.items():
-                try:
-                    dataset.attrs[key] = value
-                except (TypeError, ValueError):
-                    # For non-serializable objects, store as JSON string
-                    dataset.attrs[key] = json.dumps(str(value))
+            _write_metadata_attrs(dataset.attrs, metadata)
 
     def retrieve_array(self, name: str) -> NDArray[Any]:
         """Retrieve a stored array.
@@ -171,11 +191,7 @@ class HDF5Storage(StorageBackend):
         dataset = self._file.create_dataset(name, data=value)
 
         if metadata:
-            for key, val in metadata.items():
-                try:
-                    dataset.attrs[key] = val
-                except (TypeError, ValueError):
-                    dataset.attrs[key] = json.dumps(str(val))
+            _write_metadata_attrs(dataset.attrs, metadata)
 
     def retrieve_scalar(self, name: str) -> Union[int, float, str, bool]:
         """Retrieve a scalar value.
@@ -219,12 +235,7 @@ class HDF5Storage(StorageBackend):
             self._file.create_group(name)
 
         if metadata:
-            group = self._file[name]
-            for key, val in metadata.items():
-                try:
-                    group.attrs[key] = val
-                except (TypeError, ValueError):
-                    group.attrs[key] = json.dumps(str(val))
+            _write_metadata_attrs(self._file[name].attrs, metadata)
 
     def list_keys(self, group: str = "/") -> List[str]:
         """List datasets and groups in a location.
@@ -258,7 +269,15 @@ class HDF5Storage(StorageBackend):
         Returns
         -------
         dict
-            Metadata attributes
+            Metadata attributes. String values round-trip exactly, including
+            strings that look like JSON (``'"quoted"'``, ``'123'``).
+
+        Notes
+        -----
+        Before v2.11.1 a user string that was a JSON string literal, such
+        as ``'"quoted"'``, was stored unescaped and read back as
+        ``'quoted'``. Files written by those versions are indistinguishable
+        from a stored non-native value and still read that way.
         """
         if self._file is None:
             raise RuntimeError("Storage file not open. Call open() first.")
@@ -272,7 +291,8 @@ class HDF5Storage(StorageBackend):
         for key, value in obj.attrs.items():
             if isinstance(value, str):
                 # store_* serializes non-native values as json.dumps(str(v)),
-                # which always decodes back to a str. Only reverse that case;
+                # which always decodes back to a str, and escapes user strings
+                # of that form (_write_metadata_attrs). Only reverse that case;
                 # leave user strings that happen to parse as JSON (e.g. "123",
                 # "true") untouched so string metadata round-trips exactly.
                 try:

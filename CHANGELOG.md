@@ -156,6 +156,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `(n, n)` for `n = len(state)` now raises `ValueError`; a `(1, n)` state
   used to be stored with `state_dim = 1` and a non-square covariance read
   back garbled.
+- **`TrackHDF5Storage.get_track_trajectory` returns only the rows in the
+  requested window.** It sliced `idx[0]:idx[-1]+1` instead of applying the
+  time mask, so after an out-of-order append (timestamps `[1, 2, 3, 4, 1.5]`)
+  a query for `[1.0, 2.0]` returned all five rows; it now returns
+  `[1, 2, 1.5]`.
+- **`TrackHDF5Storage.compare_scenarios` computes RMSE over shared
+  timestamps, as documented.** It paired rows by index, so two identical
+  `x = 2t` tracks offset by one scan reported RMSE 2.0; it now matches
+  timestamps by exact equality and reports 0.0. A common track with no
+  shared timestamp gets NaN and a `RuntimeWarning` (it previously got an
+  index-paired number).
+- **`TrackHDF5Storage.append_track_state` keeps `residuals` row-aligned.** A
+  residual passed for a track with no residuals dataset was discarded (3
+  timestamps, no residuals); the dataset is now created with NaN rows for
+  the earlier states. Omitting the residual on a track that has residuals
+  now appends a NaN row instead of leaving the dataset one row short.
+  Tracks that never use residuals are stored exactly as before.
+- **`TrackHDF5Storage.store_track` / `append_track_state` reject complex
+  input and warn on inexact integers.** `1+2j` was stored as `1.0` (numpy's
+  `ComplexWarning` only); it now raises `TypeError`. An integer beyond
+  `2**53` in magnitude (`2**53+1` stored as `9007199254740992`) now warns.
+  The stored dtype is unchanged.
+- **`HDF5Storage` string metadata that is a JSON string literal round-trips.**
+  `'"quoted"'` read back as `quoted` and `'"1"'` as `'1'`. Such strings are
+  now JSON-escaped once on write, so `get_metadata` (and 2.11.0's reader)
+  returns them unchanged. Files written before v2.11.1 read as before.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at
