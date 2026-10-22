@@ -437,15 +437,23 @@ def falling_factorial(
 
 _EPS = float(np.finfo(np.float64).eps)
 _CANCELLATION_WARN = 1e-8
+_EXACT_MAX_TERMS = 500
 
 
 def _exact_polynomial_value(a: Any, b: Any, z: float) -> float:
     """Evaluate a terminating pFq in exact rational arithmetic.
 
     Floats are exact rationals, so the only rounding is the final
-    conversion. Returns NaN if a denominator parameter hits a pole.
+    conversion. Returns NaN when an input is not finite, a denominator
+    parameter hits a pole, or the series has more than
+    ``_EXACT_MAX_TERMS`` terms (the rational arithmetic is superlinear in
+    the term count: 0.1 s at 500 terms, 4.6 s at 2000).
     """
+    if not (np.isfinite(z) and np.all(np.isfinite(a)) and np.all(np.isfinite(b))):
+        return float("nan")
     n = int(min(-ai for ai in a if ai <= 0 and float(ai).is_integer()))
+    if n > _EXACT_MAX_TERMS:
+        return float("nan")
     zf = Fraction(float(z))
     term = Fraction(1)
     total = Fraction(1)

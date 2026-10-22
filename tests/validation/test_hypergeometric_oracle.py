@@ -56,3 +56,17 @@ def test_terminating_total_cancellation_recovered_exactly():
     p, q, z = [-80.0, 1.0], [1.0, 1.0], 20.0
     want = float(mpmath.hyper(p, q, z))
     assert generalized_hypergeometric(p, q, z) == pytest.approx(want, rel=1e-12)
+
+
+@pytest.mark.parametrize("z", [math.inf, -math.inf, math.nan])
+def test_terminating_nonfinite_z_returns_nan_with_warning(z):
+    with pytest.warns(RuntimeWarning):
+        got = generalized_hypergeometric([-1.0, 1.0, 1.0], [1.0, 1.0], z)
+    assert math.isnan(got)
+
+
+def test_terminating_over_bound_cancellation_returns_nan_with_warning():
+    # 5000 terms is past the exact-arithmetic bound (it took ~64 s unbounded).
+    with pytest.warns(RuntimeWarning):
+        got = generalized_hypergeometric([-5000.0, 1.0, 1.0], [1.0, 1.0], 0.37)
+    assert math.isnan(got)
