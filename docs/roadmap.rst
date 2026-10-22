@@ -10,9 +10,16 @@ history lives in `CHANGELOG.md
 Current State (v2.11.1)
 -----------------------
 
-* **8,500+ tests** passing; coverage measured honestly (90.0% as CI's
-  branch-coverage gate sees it, with numba kernels traced; higher locally
-  where the MLX layer is visible), docstring examples run in CI
+* **8,500+ tests** passing; coverage measured honestly (94.6% under CI's
+  branch-coverage gate conditions -- numba kernels traced, no MLX --
+  measured for v2.11.1), docstring examples run in CI
+* **The correctness patch** (v2.11.1): silent-wrong-answer fixes that
+  change numerical results -- the leap-second shift in ``tai_to_utc``,
+  the geoid (geocentric latitude and true radius), the INS
+  error-state vertical channel, projections across the antimeridian,
+  and the Earth-centred Moon frame -- plus special-function, detection,
+  estimation-stack and I/O corrections; see the CHANGELOG for the
+  behaviour notes (track-database schema 2.0, session schema v2)
 * **The audit release** (v2.11.0): every silent-wrong-answer path from
   the full-codebase audit closed (Vincenty antipodal, gating without
   R, hypergeometric divergence, silent numerical fallbacks); the MHT
