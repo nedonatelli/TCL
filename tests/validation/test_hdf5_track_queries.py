@@ -165,3 +165,67 @@ class TestSQLKeyPrefix:
 
             assert store.list_keys("a_b") == ["a_b/x"]
             assert store.list_keys("a%b") == ["a%b/w"]
+
+
+class TestReaderScanGrouping:
+    def test_int64_times_above_2_53_do_not_merge_silently(self, tmp_path):
+        """Was: one scan [[1.0], [2.0]] at 9007199254740992.0."""
+        pl = pytest.importorskip("polars")
+        from pytcl.io.readers import read_measurements_parquet
+
+        path = str(tmp_path / "m.parquet")
+        pl.DataFrame({"t": [2**53, 2**53 + 1], "x": [1.0, 2.0]}).write_parquet(path)
+
+        with pytest.raises(ValueError, match="float64"):
+            read_measurements_parquet(path, time_column="t", measurement_columns=["x"])
+
+    def test_distinct_int64_times_group_by_exact_value(self, tmp_path):
+        pl = pytest.importorskip("polars")
+        from pytcl.io.readers import read_measurements_parquet
+
+        path = str(tmp_path / "m.parquet")
+        big = 2**53 + 2
+        pl.DataFrame({"t": [big, 2**53, big], "x": [1.0, 2.0, 3.0]}).write_parquet(path)
+
+        ms = read_measurements_parquet(path, time_column="t", measurement_columns=["x"])
+
+        assert ms.times.tolist() == [float(2**53), float(big)]
+        assert [s[:, 0].tolist() for s in ms.scans] == [[2.0], [1.0, 3.0]]
+
+    def test_nan_time_raises_value_error(self, tmp_path):
+        """Was: KeyError: nan."""
+        pl = pytest.importorskip("polars")
+        from pytcl.io.readers import read_measurements_parquet
+
+        path = str(tmp_path / "m.parquet")
+        pl.DataFrame({"t": [float("nan"), 1.0], "x": [1.0, 2.0]}).write_parquet(path)
+
+        with pytest.raises(ValueError, match="NaN"):
+            read_measurements_parquet(path, time_column="t", measurement_columns=["x"])
+
+
+class TestMetricsExport:
+    def test_bool_series_warns(self):
+        pytest.importorskip("polars")
+        from pytcl.io.dataframes import metrics_to_polars
+
+        with pytest.warns(UserWarning, match="bool"):
+            df = metrics_to_polars([0.0, 1.0], flag=np.array([True, False]))
+        assert df["flag"].to_list() == [1.0, 0.0]
+
+    def test_integer_beyond_2_53_warns(self):
+        """Was: 2**53+1 exported silently as 9007199254740992.0."""
+        pytest.importorskip("polars")
+        from pytcl.io.dataframes import metrics_to_polars
+
+        with pytest.warns(UserWarning, match="2\\*\\*53"):
+            metrics_to_polars([0.0, 1.0], big=np.array([2**53 + 1, 0]))
+
+    def test_exact_integers_export_silently(self):
+        pytest.importorskip("polars")
+        from pytcl.io.dataframes import metrics_to_polars
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            df = metrics_to_polars([0, 1], n=np.array([2**53, -(2**53)]))
+        assert df["n"].to_list() == [float(2**53), -float(2**53)]

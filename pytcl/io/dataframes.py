@@ -12,6 +12,7 @@ annotated ``Any`` and documented as ``polars.DataFrame`` in each docstring.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Sequence
 
 import numpy as np
@@ -196,6 +197,26 @@ def explode_state_columns(df: Any, layout: Sequence[str]) -> Any:
     )
 
 
+def _as_float64_column(values: Any, name: str) -> np.ndarray:
+    """Cast `values` to float64, warning where the documented cast is lossy."""
+    arr = np.asarray(values)
+    if arr.dtype == np.bool_:
+        warnings.warn(
+            f"series {name!r} is bool; exported as Float64 1.0/0.0",
+            UserWarning,
+            stacklevel=3,
+        )
+    elif arr.dtype.kind in "iu" and arr.size:
+        if int(arr.max()) > 2**53 or int(arr.min()) < -(2**53):
+            warnings.warn(
+                f"series {name!r} has integers beyond 2**53 in magnitude; "
+                "the Float64 column does not hold them exactly",
+                UserWarning,
+                stacklevel=3,
+            )
+    return np.asarray(arr, dtype=np.float64)
+
+
 def metrics_to_polars(times: Sequence[float], **series: Any) -> Any:
     """Assemble scalar-per-scan metric series into a flat polars DataFrame.
 
@@ -220,6 +241,13 @@ def metrics_to_polars(times: Sequence[float], **series: Any) -> Any:
     DependencyError
         If polars is not installed.
 
+    Warns
+    -----
+    UserWarning
+        If `times` or a series is boolean (exported as 1.0/0.0), or holds
+        integers beyond ``2**53`` in magnitude, which Float64 cannot
+        represent exactly. The column is still Float64.
+
     Examples
     --------
     >>> import numpy as np
@@ -231,11 +259,11 @@ def metrics_to_polars(times: Sequence[float], **series: Any) -> Any:
     """
     pl = _import_polars()
 
-    t_arr = np.asarray(times, dtype=np.float64)
+    t_arr = _as_float64_column(times, "t")
     data: dict[str, list[float]] = {"t": t_arr.tolist()}
     schema: dict[str, Any] = {"t": pl.Float64}
     for name, values in series.items():
-        arr = np.asarray(values, dtype=np.float64)
+        arr = _as_float64_column(values, name)
         if arr.ndim != 1:
             raise ValueError(f"series {name!r} must be 1-D, got shape {arr.shape}")
         if len(arr) != len(t_arr):

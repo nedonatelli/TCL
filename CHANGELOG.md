@@ -188,6 +188,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   returns `['a_b/x']`. `_` and `%` in the group name are escaped, and the
   group is matched as `group + "/"` (a trailing `/` is optional), as
   `StorageBackend.list_keys` documents.
+- **`read_measurements_csv` / `read_measurements_parquet` group scans by the
+  exact parsed timestamp.** Grouping on `float(t)` merged the int64 times
+  `2**53` and `2**53+1` into one scan at `9007199254740992.0`; that input now
+  raises `ValueError`, because `MeasurementSet.times` is float64 and cannot
+  keep them apart. Distinct int64 times beyond `2**53` that stay distinct in
+  float64 group correctly. A NaN timestamp raised `KeyError: nan`; it now
+  raises `ValueError` naming the column.
+- **`metrics_to_polars` warns when its Float64 cast is lossy.** `True` was
+  exported as `1.0` and `2**53+1` as `9007199254740992.0` without notice.
+  Both now emit a `UserWarning`; the columns stay Float64 as documented.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at

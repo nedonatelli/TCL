@@ -137,15 +137,31 @@ def _rows_to_measurement_set(
     """
     _check_columns(available, time_column, measurement_columns, id_column)
 
-    groups: dict[float, list[Mapping[str, Any]]] = {}
+    # Key on the parsed value itself, not float(value): int64 timestamps
+    # beyond 2**53 collide in float64 and were silently merged into one scan.
+    groups: dict[Any, list[Mapping[str, Any]]] = {}
     for row in rows:
-        groups.setdefault(float(row[time_column]), []).append(row)
+        t = row[time_column]
+        if t != t:
+            raise ValueError(
+                f"time column {time_column!r} contains NaN; a NaN timestamp "
+                "cannot be assigned to a scan"
+            )
+        groups.setdefault(t, []).append(row)
 
-    times = np.array(sorted(groups), dtype=np.float64)
+    keys = sorted(groups)
+    times = np.array([float(k) for k in keys], dtype=np.float64)
+    if len(times) > 1 and not np.all(np.diff(times) > 0):
+        i = int(np.flatnonzero(np.diff(times) <= 0)[0])
+        raise ValueError(
+            f"time column {time_column!r} values {keys[i]!r} and "
+            f"{keys[i + 1]!r} are distinct but equal as float64 "
+            f"({times[i]!r}); MeasurementSet.times cannot keep them apart"
+        )
     scans: list[NDArray[np.float64]] = []
     ids: list[NDArray[Any]] | None = [] if id_column is not None else None
-    for t in times:
-        group_rows = groups[float(t)]
+    for key in keys:
+        group_rows = groups[key]
         scans.append(
             np.array(
                 [[float(row[c]) for c in measurement_columns] for row in group_rows],
@@ -177,8 +193,7 @@ def read_measurements_csv(
         CSV file to read; must have a header row.
     time_column : str
         Name of the column holding each row's scan timestamp. Rows with the
-        exact same value (compared as parsed ``float``) are grouped into
-        the same scan.
+        exact same parsed value are grouped into the same scan.
     measurement_columns : sequence of str
         Names of the columns to stack into each scan's measurement matrix,
         in order.
@@ -197,6 +212,8 @@ def read_measurements_csv(
     ValueError
         If `time_column`, any of `measurement_columns`, or `id_column` is
         not a column in the file; the message lists the available columns.
+        Also if the time column holds a NaN, or two distinct values that
+        are equal once converted to float64 (integers beyond ``2**53``).
     DependencyError
         If polars is not installed.
 
@@ -268,6 +285,8 @@ def read_measurements_parquet(
     ValueError
         If `time_column`, any of `measurement_columns`, or `id_column` is
         not a column in the file; the message lists the available columns.
+        Also if the time column holds a NaN, or two distinct values that
+        are equal once converted to float64 (integers beyond ``2**53``).
     DependencyError
         If polars is not installed.
 
