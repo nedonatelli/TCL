@@ -1,6 +1,7 @@
 """Tests for static estimation module."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.static_estimation import (  # Least squares; Robust estimation
@@ -146,6 +147,75 @@ class TestTotalLeastSquares:
         result = total_least_squares(A, b)
 
         assert result.rank == 2
+
+
+def _system_with_singular_values(sv, m=8, seed=0):
+    """Build (A, b) so that [A | b] has exactly the singular values ``sv``."""
+    rng = np.random.default_rng(seed)
+    k = len(sv)
+    U, _ = np.linalg.qr(rng.standard_normal((m, k)))
+    V, _ = np.linalg.qr(rng.standard_normal((k, k)))
+    C = U @ np.diag(sv) @ V.T
+    return C[:, : k - 1], C[:, k - 1]
+
+
+def _ttls_reference(A, b, k):
+    """Min-norm LS solution of the best rank-k approximation of [A | b]."""
+    U, s, Vt = np.linalg.svd(np.column_stack([A, b]), full_matrices=False)
+    s = np.where(np.arange(len(s)) < k, s, 0.0)
+    Ck = (U * s) @ Vt
+    return np.linalg.lstsq(Ck[:, :-1], Ck[:, -1], rcond=None)[0]
+
+
+class TestTotalLeastSquaresRank:
+    """The ``rank`` argument selects truncated TLS (Fierro et al., 1997)."""
+
+    def test_system_has_requested_singular_values(self):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        s = np.linalg.svd(np.column_stack([A, b]), compute_uv=False)
+        assert_allclose(s, [5.0, 1.0, 1e-4], rtol=1e-12)
+
+    def test_rank_truncation_changes_the_solution(self):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        full = total_least_squares(A, b)
+        truncated = total_least_squares(A, b, rank=1)
+        assert not np.allclose(full.x, truncated.x)
+
+    def test_default_and_full_rank_are_identical(self):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        default = total_least_squares(A, b)
+        full = total_least_squares(A, b, rank=2)
+        assert np.array_equal(default.x, full.x)
+
+    def test_full_rank_matches_closed_form_tls(self):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        v = np.linalg.svd(np.column_stack([A, b]))[2][-1]
+        assert_allclose(total_least_squares(A, b).x, -v[:2] / v[2], rtol=1e-12)
+
+    @pytest.mark.parametrize("k", [1, 2])
+    def test_truncated_solution_matches_rank_k_lstsq_oracle(self, k):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        out = total_least_squares(A, b, rank=k)
+        assert out.x == pytest.approx(_ttls_reference(A, b, k), rel=1e-9, abs=0)
+
+    def test_corrections_make_truncated_system_consistent(self):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        out = total_least_squares(A, b, rank=1)
+        resid = (A + out.residuals_A) @ out.x - (b + out.residuals_b)
+        assert_allclose(resid, 0.0, atol=1e-12)
+
+    @pytest.mark.parametrize("rank", [0, 3, -1, 1.5, True])
+    def test_invalid_rank_raises(self, rank):
+        A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
+        with pytest.raises(ValueError, match="rank"):
+            total_least_squares(A, b, rank=rank)
+
+    def test_nonexistent_truncated_solution_raises(self):
+        # e_3 is the leading right singular vector, so v22 vanishes for k=1.
+        A = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]])
+        b = np.array([0.0, 0.0, 3.0])
+        with pytest.raises(ValueError, match="does not exist"):
+            total_least_squares(A, b, rank=1)
 
 
 class TestGeneralizedLeastSquares:

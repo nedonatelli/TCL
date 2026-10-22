@@ -107,6 +107,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `total_least_squares(rank=...)` ignored `rank` when forming `x`: it always
+  used the last right singular vector, so `x` was bit-identical for every rank
+  (on a system with singular values `[5, 1, 1e-4]`, `rank=1` returned the
+  full-rank solution). `rank=k` now gives truncated TLS (Fierro, Golub, Hansen
+  and O'Leary, 1997), the minimum-norm solution of the best rank-k
+  approximation of `[A | b]`, checked against `np.linalg.lstsq` on that
+  approximation. `rank=None` and `rank=n` are unchanged bit for bit. A `rank`
+  outside `1 <= rank <= n` or a non-integer now raises `ValueError`, as does a
+  rank for which the TTLS solution does not exist.
+
 - `ambiguity_function` and `cross_ambiguity` mapped each delay to a sample
   index by truncation (`int(delay * fs)`), so a delay that is exactly k samples
   could land on sample k-1 when the floating-point product fell just below k.
