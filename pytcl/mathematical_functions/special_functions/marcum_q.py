@@ -154,12 +154,20 @@ def log_marcum_q(
 
     Notes
     -----
-    Where ``Q < 1e-10`` the value is a log-sum-exp of the Poisson-mixture
-    series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``, with the log upper
-    incomplete gamma taken from a continued fraction once ``gammaincc``
-    underflows. Against that series evaluated in mpmath at 40 digits the
-    relative error of ``log Q`` is below 2e-14 for ``a`` in [0, 60],
-    ``b - a`` in [9, 93] and ``m`` in [1, 40] (log Q down to about -5000).
+    Where ``Q < 1e-10``, or where ``marcum_q`` returns NaN for finite
+    input (``a^2`` or ``b^2`` overflowing), the value is recomputed in the
+    log domain. For ``a*b <= 2e4`` or ``(m-1)^2 > 4ab`` it is a log-sum-exp
+    of the Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
+    Otherwise it is a quadrature of the exact integrand
+    ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
+    factored out, which needs neither squared argument.
+
+    Measured against mpmath at 40 or more digits on 246 points with
+    ``b = sqrt(a^2 + 2m) + c``, ``c`` from 7 to 1000: the relative error of
+    ``log Q`` is below 2.2e-14 for ``a`` up to 140 and ``m`` up to 200, and
+    below 5e-13 for ``a`` up to 1e12 and ``m`` up to 3000. Where ``b^2/2``
+    overflows and ``b - a`` is large, ``Q`` underflows and the result is
+    ``-inf``. For ``a >= 1e100`` it matches ``log Phi(a - b)`` to 2e-13.
 
     Before v2.11.1 that branch called ``scipy.stats.ncx2.logsf``, which
     underflows to ``-inf`` exactly where this function is needed:
@@ -180,16 +188,120 @@ def log_marcum_q(
     a_b = np.broadcast_to(a, out_shape).ravel()
     b_b = np.broadcast_to(b, out_shape).ravel()
 
-    q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
+    with np.errstate(over="ignore", invalid="ignore"):
+        q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
 
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
-    small_q = (q_val < 1e-10) & np.isfinite(b_b)
-    for i in np.flatnonzero(small_q):
-        result[i] = _log_marcum_q_series(a_b[i], b_b[i], m)
+    # marcum_q returns NaN (or a spurious 0) once a^2 or b^2 overflows, so
+    # NaN results from finite inputs are recomputed here too.
+    finite = np.isfinite(a_b) & np.isfinite(b_b)
+    redo = finite & ((q_val < 1e-10) | np.isnan(q_val))
+    for i in np.flatnonzero(redo):
+        result[i] = _log_marcum_q_tail(a_b[i], b_b[i], m)
+    result[np.isposinf(a_b) & np.isfinite(b_b)] = 0.0
 
     return result.reshape(out_shape)
+
+
+def _log_marcum_q_tail(a: float, b: float, m: int) -> float:
+    """Route log Q_m(a, b) to the series or to the quadrature.
+
+    The series needs a^2/2 and b^2/2 finite, its window grows like
+    sqrt(a*b), and scipy's ``gammaincc`` loses digits at the large orders it
+    then needs (1e-11 relative by a*b/2 = 1e6), so past a*b/2 = 1e4 the
+    quadrature is used. The quadrature needs ``(m-1)^2 <= 4ab`` so the
+    Bessel factor neither underflows nor cancels in its Hankel expansion.
+    """
+    nu2 = (m - 1.0) ** 2
+    with np.errstate(over="ignore"):
+        lam = 0.5 * a * a
+        x = 0.5 * b * b
+        ab = a * b
+        if a == 0.0:
+            return -np.inf if np.isinf(x) else _log_marcum_q_series(a, b, m)
+        if np.isfinite(lam) and np.isfinite(x) and (ab <= 2e4 or nu2 > 4.0 * ab):
+            return _log_marcum_q_series(a, b, m)
+        return _log_marcum_q_quad(a, b, m)
+
+
+_LAGUERRE = np.polynomial.laguerre.laggauss(60)
+_LEGENDRE = np.polynomial.legendre.leggauss(16)
+
+
+def _log_ive(nu: float, a: float, x: NDArray[np.floating]) -> NDArray[np.floating]:
+    """log of the scaled Bessel ``ive(nu, a*x)``, safe where ``a*x`` overflows.
+
+    scipy's ``ive`` returns NaN above about z = 2e9, so from z = 1e9 the
+    Hankel expansion is summed instead. The quadrature only calls this with
+    ``nu^2 / (2 z)`` at most 2, where the expansion converges without
+    significant cancellation.
+    """
+    z = a * x
+    out = np.empty(x.shape, dtype=np.float64)
+    low = z < 1e9
+    with np.errstate(divide="ignore"):
+        out[low] = np.log(sp.ive(nu, z[low]))
+    high = ~low
+    if np.any(high):
+        xh = x[high]
+        total = np.ones(xh.shape)
+        term = np.ones(xh.shape)
+        mu = 4.0 * nu * nu
+        for j in range(1, 60):
+            term = -term * ((mu - (2 * j - 1) ** 2) / (8.0 * j * a)) / xh
+            total += term
+            if np.all(np.abs(term) < 1e-17 * np.abs(total)):
+                break
+        out[high] = -0.5 * (np.log(2 * np.pi) + np.log(a) + np.log(xh)) + np.log(total)
+    return out
+
+
+def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
+    """log Q_m(a, b) by quadrature of the exact Marcum integrand.
+
+    ``Q_m(a, b) = int_b^inf x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2) dx``.
+    For ``d = b - a >= 8`` the Gaussian tail is factored out as
+    ``exp(-d^2/2)`` and the rest integrated by 60-point Gauss-Laguerre in
+    ``d*(x - b)``. For ``0 <= d < 8``, ``t = x - a`` is integrated over
+    ``[d, 50]`` with 16-point Gauss-Legendre on unit panels; for ``d < 0``
+    the mass over ``[max(-a, -45), d]`` is integrated and subtracted from 1.
+    """
+    nu = m - 1.0
+    d = b - a
+
+    def log_h(x: NDArray[np.floating]) -> NDArray[np.floating]:
+        return np.log(x) + nu * (np.log(x) - np.log(a)) + _log_ive(nu, a, x)
+
+    if d >= 8.0:
+        lead = -0.5 * d * d
+        if np.isinf(lead):
+            return -np.inf
+        v, w = _LAGUERRE
+        u = v / d
+        terms = log_h(b + u) - 0.5 * u * u + np.log(w)
+        top = terms.max()
+        return float(lead + top + np.log(np.sum(np.exp(terms - top))) - np.log(d))
+    nodes, weights = _LEGENDRE
+
+    def log_integral(lo: float, hi: float) -> float:
+        edges = np.linspace(lo, hi, int(np.ceil(hi - lo)) + 1)
+        mid = 0.5 * (edges[1:] + edges[:-1])[:, None]
+        half = 0.5 * (edges[1:] - edges[:-1])[:, None]
+        t = (mid + half * nodes).ravel()
+        terms = log_h(a + t) - 0.5 * t * t + np.log((half * weights).ravel())
+        top = terms.max()
+        return float(top + np.log(np.sum(np.exp(terms - top))))
+
+    if d >= 0.0:
+        return log_integral(d, 50.0)
+    # For b < a, Q is 1 minus the mass below b; integrating the upper part
+    # directly would let quadrature error push log Q above 0.
+    lo = max(-a, -45.0)
+    if lo >= d:
+        return -0.0
+    return float(np.log1p(-np.exp(log_integral(lo, d))))
 
 
 def _log_gammaincc(s: NDArray[np.floating], x: float) -> NDArray[np.floating]:
@@ -241,8 +353,6 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
         k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
         terms = sp.xlogy(k, lam) - lam - sp.gammaln(k + 1.0) + _log_gammaincc(m + k, x)
         top = terms.max()
-        if np.isnan(top) or top == np.inf:
-            return float("nan")
         if (k[0] == 0 or terms[0] < top - 40.0) and terms[-1] < top - 40.0:
             return float(top + np.log(np.sum(np.exp(terms - top))))
         k_peak = float(k[np.argmax(terms)])

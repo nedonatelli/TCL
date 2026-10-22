@@ -4,6 +4,7 @@ Every expected value comes from an oracle independent of the implementation
 (mpmath at high precision), never from pytcl itself.
 """
 
+import math
 import warnings
 
 import mpmath
@@ -111,22 +112,39 @@ def _log_marcum_q_series(a, b, m):
 
 
 def _log_marcum_q_quad(a, b, m):
-    """log Q_m(a, b) by quadrature of the Marcum integrand (a > 0)."""
-    with mpmath.workdps(40):
-        a = mpmath.mpf(a)
-        b = mpmath.mpf(b)
-        scale = 1 / (b - a)
+    """log Q_m(a, b) by mpmath quadrature of the Marcum integrand (a > 0).
 
-        def integrand(x):
+    Integrates over ``t = x - a`` with the Bessel factor scaled by
+    ``exp(-a x)``; working precision grows with ``log10(a)`` so ``a + t``
+    keeps its digits. For ``b < a`` the mass below ``b`` is subtracted from 1.
+    """
+    dps = 40 + int(max(0.0, math.log10(a)))
+    with mpmath.workdps(dps):
+        a = mpmath.mpf(a)
+        d = mpmath.mpf(b) - a
+        nu = m - 1
+
+        def integrand(t, shift):
+            x = a + t
             return (
-                x**m
-                / a ** (m - 1)
-                * mpmath.exp(-(x**2 + a**2) / 2)
-                * mpmath.besseli(m - 1, a * x)
+                x
+                * (x / a) ** nu
+                * mpmath.besseli(nu, a * x)
+                * mpmath.exp(-a * x - t * t / 2 + shift)
             )
 
-        pts = [b + scale * c for c in (0, 0.1, 0.3, 1, 3, 10, 30, 100)]
-        return float(mpmath.log(mpmath.quad(integrand, pts + [mpmath.inf])))
+        if d >= 0:
+            # exp(-d^2/2) is factored out so the integrand is O(1) at t = d.
+            s = 1 / max(d, 1)
+            pts = [d + s * c for c in (0, 0.03, 0.1, 0.3, 1, 3, 10, 30, 100)]
+            total = mpmath.quad(
+                lambda t: integrand(t, d * d / 2), pts + [d + 60], maxdegree=10
+            )
+            return float(mpmath.log(total) - d * d / 2)
+        lo = max(-a, mpmath.mpf(-60))
+        pts = [lo] + [p for p in (-30, -20, -10, -5, -2) if lo < p < d] + [d]
+        below = mpmath.quad(lambda t: integrand(t, 0), pts, maxdegree=10)
+        return float(mpmath.log1p(-below))
 
 
 class TestMarcumSwerling:
@@ -253,6 +271,65 @@ class TestMarcumSwerling:
         assert got[2] == pytest.approx(
             _log_marcum_q_series(3.0, 40.0, 1), rel=1e-13, abs=0
         )
+
+    # Review round 2: b^2/2 or a*b overflowing sent inf into the series
+    # window, and np.arange raised "Maximum allowed size exceeded";
+    # (0, 1e155) returned NaN. Q underflows to 0 there, so log Q is -inf.
+    @pytest.mark.parametrize(
+        "a,b,m",
+        [
+            (1.0, 1e160, 1),
+            (1.0, 1e200, 2),
+            (1e160, 1e161, 1),
+            (0.0, 1e155, 1),
+            (1e-308, 1.7e308, 1),
+        ],
+    )
+    def test_log_marcum_q_overflowing_threshold_is_minus_inf(self, a, b, m):
+        assert log_marcum_q(a, b, m) == -np.inf
+
+    # For a >= 1e100 the Marcum integrand is the Gaussian density to within
+    # O(m/a), so log Q = log Phi(a - b) to double precision.
+    @pytest.mark.parametrize(
+        "a,b,m",
+        [
+            (1e160, 1.0, 1),
+            (1e160, 9e159, 1),
+            (1e154, 1e-300, 3),
+            (1e300, 1e300, 5),
+            (1.7e308, 1.7e308, 1),
+            (1e160, 1e160 + 1e150, 1),
+            (1e100, 1e100 + 3e84, 1),
+        ],
+    )
+    def test_log_marcum_q_huge_arguments_match_gaussian_limit(self, a, b, m):
+        want = sp.log_ndtr(a - b)
+        got = float(log_marcum_q(a, b, m))
+        if want == 0.0:
+            assert got == 0.0
+        else:
+            assert got == pytest.approx(want, rel=2e-13, abs=0)
+
+    # Past a*b/2 = max(1e6, (m-1)^2) the series window is replaced by
+    # quadrature of the exact integrand.
+    @pytest.mark.parametrize(
+        "a,b,m",
+        [
+            (1e5, 1e5 + 30.0, 5),
+            (1e5, 1e5 + 8.0, 1),
+            (3e3, 3e3 + 20.0, 200),
+            (1e8, 1e8 + 1000.0, 1),
+            (1e12, 1e12 + 12.0, 3),
+        ],
+    )
+    def test_log_marcum_q_large_product_matches_quadrature(self, a, b, m):
+        want = _log_marcum_q_quad(a, b, m)
+        got = float(log_marcum_q(a, b, m))
+        assert got == pytest.approx(want, rel=1e-13, abs=0)
+
+    def test_log_marcum_q_nan_input_is_nan(self):
+        got = log_marcum_q(np.array([np.nan, 1.0]), np.array([1.0, np.nan]))
+        assert np.isnan(got).all()
 
     def test_log_marcum_q_array_mixes_both_regimes(self):
         a = np.array([[1.0, 2.0], [10.0, 0.0]])

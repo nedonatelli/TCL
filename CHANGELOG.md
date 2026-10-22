@@ -134,9 +134,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `(m=1, a=1, b=40)` and `(m=20, a=0, b=100)`; where it stayed finite it
   could still be off by 5e-8 in `log Q` (`a=30, b=60`). The branch is now a
   log-sum-exp of the Poisson-mixture series with a continued-fraction log
-  upper incomplete gamma; relative error of `log Q` against mpmath at 40
-  digits is below 2e-14 for `a` in [0, 60], `b - a` in [9, 93], `m` in
-  [1, 40]. The new oracle file `tests/validation/test_special_function_edges.py`
+  upper incomplete gamma, and for `a*b > 2e4` a quadrature of the exact
+  integrand. The latter is needed because the series needs `a^2/2` and
+  `b^2/2` finite and loses digits at large `a*b`: `(1e5, 1e5+8)` was off by
+  4e-7. Finite inputs whose squares overflow no longer raise `ValueError:
+  Maximum allowed size exceeded` (`(1, 1e160)`, `(1e160, 1e161)`) or return
+  NaN (`(0, 1e155)`): `Q` underflows there and the result is `-inf`, and
+  `(1e300, 1e300, m=5)` gives log 0.5. `b = inf` gives `-inf` (it raised
+  the same `ValueError`). Relative error of `log Q` against mpmath is below
+  2.2e-14 for `a` up to 140 and `m` up to 200, and below 5e-13 for `a` up
+  to 1e12 and `m` up to 3000. The new oracle file `tests/validation/test_special_function_edges.py`
   replaces `test_marcum_q.py`'s `log_marcum_q < 0` check, which `-inf`
   satisfied.
 
