@@ -182,6 +182,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `'"quoted"'` read back as `quoted` and `'"1"'` as `'1'`. Such strings are
   now JSON-escaped once on write, so `get_metadata` (and 2.11.0's reader)
   returns them unchanged. Files written before v2.11.1 read as before.
+- **`SQLStorage.list_keys(group)` matches the group literally.** The prefix
+  went into `LIKE ?` unescaped and without a `/` boundary, so
+  `list_keys("a_b")` returned `['aXb/y', 'a_b/x', 'a_bc/z']`; it now
+  returns `['a_b/x']`. `_` and `%` in the group name are escaped, and the
+  group is matched as `group + "/"` (a trailing `/` is optional), as
+  `StorageBackend.list_keys` documents.
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at

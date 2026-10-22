@@ -11,7 +11,7 @@ import warnings
 import numpy as np
 import pytest
 
-from pytcl.io import HDF5Storage, TrackHDF5Storage
+from pytcl.io import HDF5Storage, SQLStorage, TrackHDF5Storage
 
 
 @pytest.fixture
@@ -153,3 +153,15 @@ class TestHDF5MetadataStrings:
         with HDF5Storage() as store:
             store.open(path, mode="r")
             assert store.get_metadata("d") == {"cfg": "{'a': 1}"}
+
+
+class TestSQLKeyPrefix:
+    def test_like_wildcards_in_keys_are_escaped(self, tmp_path):
+        """Was: list_keys("a_b") -> ['aXb/y', 'a_b/x', 'a_bc/z']."""
+        with SQLStorage() as store:
+            store.open(str(tmp_path / "s.db"), mode="w")
+            for key in ("a_b/x", "aXb/y", "a_bc/z", "a%b/w"):
+                store.store_array(key, np.zeros(1))
+
+            assert store.list_keys("a_b") == ["a_b/x"]
+            assert store.list_keys("a%b") == ["a%b/w"]

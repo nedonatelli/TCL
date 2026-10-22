@@ -367,7 +367,10 @@ class SQLStorage(StorageBackend):
         Parameters
         ----------
         group : str, optional
-            Group path prefix. Default is "/" (all keys).
+            Group path. Lists the keys under ``group + "/"``, matched
+            literally (``_`` and ``%`` are not wildcards; ``"a"`` does not
+            list ``"ab/x"``). A trailing ``/`` is optional. Default is "/"
+            (all keys).
 
         Returns
         -------
@@ -378,12 +381,20 @@ class SQLStorage(StorageBackend):
             raise RuntimeError("Storage not open. Call open() first.")
 
         if group != "/":
-            # List keys matching prefix
+            # Match "group/" literally: the bare unescaped prefix let "_" match
+            # any character and stopped at no "/" boundary, so "a_b" also
+            # listed "aXb/y" and "a_bc/z".
+            prefix = group.rstrip("/") + "/"
+            escaped = (
+                prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            )
+            pattern = f"{escaped}%"
             self._cursor.execute(
-                f"""SELECT name FROM {self._arrays_table} WHERE name LIKE ?
+                f"""SELECT name FROM {self._arrays_table} WHERE name LIKE ? ESCAPE '\\'
                    UNION
-                   SELECT key FROM {self._metadata_table} WHERE key LIKE ?""",
-                (f"{group}%", f"{group}%"),
+                   SELECT key FROM {self._metadata_table}
+                   WHERE key LIKE ? ESCAPE '\\'""",
+                (pattern, pattern),
             )
         else:
             # List all keys
