@@ -1235,6 +1235,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   10.0-11.8 ms before, 10.6-11.7 ms after (run-to-run noise); the
   `cfar_ca_*` benchmarks are untouched.
 
+- **`range_only_static_loc_est_np` returned wrong `p_taylor` and `p_crlb`,
+  copied from `rangeOnlyStaticLocEstNP.m` (lines 139-153).** With more than
+  three measurements, the Taylor covariance was linearized about `xEst1` even
+  when `xEst2` was returned, and it used `lsqminnorm(Delta, ...)`, which is not
+  the derivative of the `pinv(S)`-based estimate. The CRLB inverted
+  `dxdr R^-1 dxdr'` (the estimator Jacobian) instead of `J' R^-1 J`. In the
+  five-sensor test scene with `R = 4 I`, the `p_taylor` diagonal goes from
+  `[3.54, 4.43, 8.41]` to `[8.42, 34.9, 69.4]`. A 2000-draw Monte Carlo of the
+  estimate measures `[8.43, 34.9, 67.9]`, so the old values understated the
+  spread by 2.4x to 8.1x. With `R = diag(9, 25, 4, 1, 16)`, the `p_crlb` diagonal
+  goes from `[36.8, 37.9, 11.2]` to `[2.17, 1.91, 10.1]`, which is the analytic
+  Fisher inverse (the old values were 17x to 20x too large in x and y). The
+  three-measurement two-solution `p_taylor` was already correct, but its
+  `p_crlb` had the same defect. Estimates and return shapes are unchanged.
+  The docstring now records the deviation from MATLAB.
+
 ## [2.11.0] - 2026-09-13
 
 Stability registry note (release checklist 3b): two STABLE modules

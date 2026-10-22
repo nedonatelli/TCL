@@ -134,6 +134,28 @@ Z_TX5 = np.array(
 R_B5 = np.linalg.norm(T_LOC[:, None] - Z_TX5, axis=0) + np.linalg.norm(T_LOC - Z_RX)
 
 
+def _bistatic_range_jacobian(x, z_tx, z_rx):
+    """Analytic d r_i / d x of r_i = abs(x - z_rx) + abs(x - z_tx_i)."""
+    to_tx = x[:, None] - z_tx
+    return (x - z_rx) / np.linalg.norm(x - z_rx) + (
+        to_tx / np.linalg.norm(to_tx, axis=0)
+    ).T
+
+
+def _estimator_jacobian_fd(r, z_tx, z_rx, step=1e-2):
+    """Central-difference d x_est / d r of the spherical-intersection
+    estimator itself: the oracle for its first-order (Taylor) covariance,
+    independent of any closed-form derivative."""
+    cols = []
+    for i in range(len(r)):
+        dr = np.zeros(len(r))
+        dr[i] = step
+        hi = range_only_static_loc_est_np(r + dr, z_tx, z_rx, 1).x_est
+        lo = range_only_static_loc_est_np(r - dr, z_tx, z_rx, 1).x_est
+        cols.append((hi - lo) / (2.0 * step))
+    return np.column_stack(cols)
+
+
 class TestRangeOnlyStaticLocEstNP:
     def test_spherical_intersection_matches_matlab(self):
         result = range_only_static_loc_est_np(R_B5, Z_TX5, Z_RX, 1)
@@ -157,18 +179,83 @@ class TestRangeOnlyStaticLocEstNP:
         # The true target is the second solution in this geometry.
         np.testing.assert_allclose(result.x_est[:, 1], T_LOC, rtol=1e-6)
 
-    def test_noisy_covariances_match_matlab(self):
+    def test_noisy_estimate_matches_matlab_covariances_diverge_by_design(self):
         r_noisy = R_B5 + np.array([3.0, -5.0, 2.0, -1.0, 4.0])
         r_cov = np.diag([9.0, 25.0, 4.0, 1.0, 16.0])
         result = range_only_static_loc_est_np(r_noisy, Z_TX5, Z_RX, 1, r_cov)
         ref = _load("se_range_only_case4.csv").ravel()
         np.testing.assert_allclose(result.x_est, ref[:3], rtol=RTOL_EXACT)
-        # MATLAB's reshape is column-major.
+        # The fixture's PTaylor (ref[3:12]) and PCRLB (ref[12:21]) carry the
+        # upstream covariance defects; the port is pinned to the oracles.
+        g = _estimator_jacobian_fd(r_noisy, Z_TX5, Z_RX)
         np.testing.assert_allclose(
-            result.p_taylor[:, :, 0].ravel(order="F"), ref[3:12], rtol=RTOL_EXACT
+            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=1e-6, atol=1e-6
+        )
+        j = _bistatic_range_jacobian(result.x_est, Z_TX5, Z_RX)
+        np.testing.assert_allclose(
+            result.p_crlb[:, :, 0],
+            np.linalg.inv(j.T @ np.linalg.inv(r_cov) @ j),
+            rtol=1e-9,
+        )
+
+    def test_taylor_covariance_is_the_linearization_of_the_returned_root(self):
+        # rangeOnlyStaticLocEstNP linearizes about xEst1 even when xEst2 is
+        # returned (it is here), and uses lsqminnorm(Delta, ...), which is not
+        # the derivative of the SStar-based estimate when num_meas > 3. With
+        # R = 4 I the MATLAB diagonal was [3.543, 4.434, 8.407].
+        r_cov = 4.0 * np.eye(5)
+        result = range_only_static_loc_est_np(R_B5, Z_TX5, Z_RX, 1, r_cov)
+        np.testing.assert_allclose(result.x_est, T_LOC, rtol=1e-9)
+        g = _estimator_jacobian_fd(R_B5, Z_TX5, Z_RX)
+        np.testing.assert_allclose(
+            g @ _bistatic_range_jacobian(T_LOC, Z_TX5, Z_RX), np.eye(3), atol=1e-6
         )
         np.testing.assert_allclose(
-            result.p_crlb[:, :, 0].ravel(order="F"), ref[12:21], rtol=RTOL_EXACT
+            result.p_taylor[:, :, 0], g @ r_cov @ g.T, rtol=1e-6, atol=1e-6
+        )
+
+    def test_crlb_is_the_fisher_inverse(self):
+        # The original inverts dxdr R^-1 dxdr' (estimator Jacobian, wrong
+        # orientation); the diagonal came out 17x-20x the true bound here.
+        r_cov = np.diag([9.0, 25.0, 4.0, 1.0, 16.0])
+        result = range_only_static_loc_est_np(R_B5, Z_TX5, Z_RX, 1, r_cov)
+        j = _bistatic_range_jacobian(T_LOC, Z_TX5, Z_RX)
+        expected = np.linalg.inv(j.T @ np.linalg.inv(r_cov) @ j)
+        np.testing.assert_allclose(result.p_crlb[:, :, 0], expected, rtol=1e-9)
+
+    def test_minimal_system_covariances_per_solution(self):
+        r_cov = np.diag([9.0, 25.0, 4.0])
+        tx = Z_TX5[:, :3]
+        result = range_only_static_loc_est_np(R_B5[:3], tx, Z_RX, 1, r_cov)
+        for k in range(2):
+            x = result.x_est[:, k]
+            j_inv = np.linalg.inv(_bistatic_range_jacobian(x, tx, Z_RX))
+            np.testing.assert_allclose(
+                result.p_taylor[:, :, k], j_inv @ r_cov @ j_inv.T, rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                result.p_crlb[:, :, k], j_inv @ r_cov @ j_inv.T, rtol=1e-6
+            )
+
+    def test_taylor_covariance_matches_monte_carlo_spread(self):
+        # PROPERTY: the sample covariance of the returned estimate over noisy
+        # draws. Relative std of a 2000-draw variance is sqrt(2/2000) = 3.2%;
+        # measured disagreement at this seed is 2.1%. The pre-fix p_taylor
+        # was 2.4x-8.1x too small on these diagonals.
+        r_cov = 4.0 * np.eye(5)
+        p_taylor = range_only_static_loc_est_np(R_B5, Z_TX5, Z_RX, 1, r_cov).p_taylor[
+            :, :, 0
+        ]
+        rng = np.random.default_rng(20260914)
+        noise = rng.standard_normal((2000, 5)) @ np.linalg.cholesky(r_cov).T
+        draws = np.array(
+            [
+                range_only_static_loc_est_np(R_B5 + n, Z_TX5, Z_RX, 1).x_est
+                for n in noise
+            ]
+        )
+        np.testing.assert_allclose(
+            np.diag(np.cov(draws.T)), np.diag(p_taylor), rtol=0.12
         )
 
     def test_too_few_measurements_raise(self):

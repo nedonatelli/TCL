@@ -153,8 +153,9 @@ class RangeOnlyLocEst(NamedTuple):
         (3, 3, num_sol) Taylor-series covariance(s), present when a
         measurement covariance was supplied.
     p_crlb : ndarray or None
-        (3, 3, num_sol) Cramer-Rao lower bound covariance(s), present
-        when a measurement covariance was supplied.
+        (3, 3, num_sol) Cramer-Rao lower bound covariance(s), evaluated
+        at each returned solution, present when a measurement covariance
+        was supplied.
     """
 
     x_est: NDArray[np.floating]
@@ -215,13 +216,35 @@ def range_only_static_loc_est_np(
 
     Notes
     -----
-    Port of ``rangeOnlyStaticLocEstNP.m``. Two behaviors of the original
-    are preserved deliberately: covariance outputs are only defined for
-    method 1 (the original references variables that method 0 never
-    creates), and the covariance of a uniquely-selected solution is
-    linearized about solution 1's position even when solution 2 was the
-    one selected (the original uses ``xEst1`` in ``Delta`` regardless of
-    which solution won the residual comparison).
+    Port of ``rangeOnlyStaticLocEstNP.m``. Covariance outputs are only
+    defined for method 1, as in the original (it references variables
+    that method 0 never creates).
+
+    **Deliberate deviation from MATLAB (both covariance outputs).** The
+    original's ``PTaylor`` and ``PCRLB`` are wrong, and this port does not
+    reproduce them:
+
+    - ``PTaylor`` is linearized about the wrong point and with the wrong
+      inverse. With more than three measurements the original builds
+      ``Delta`` from ``xEst1`` even when ``xEst2`` won the residual
+      comparison, pairing it with the winning root's ``Rt1``; and it solves
+      ``lsqminnorm(Delta, Rt*I - Gamma)``, which is not the derivative of
+      the ``SStar``-based estimate it returns. The port uses the returned
+      root and the estimator's own derivative,
+      ``solve(SStar Delta, SStar (Rt I - Gamma))``. For the five-sensor
+      test scene with ``R = 4 I``, MATLAB's diagonal is
+      ``[3.54, 4.43, 8.41]``; the corrected one is ``[8.42, 34.9, 69.4]``,
+      and a 2000-draw Monte Carlo of the estimate gives
+      ``[8.43, 34.9, 67.9]``. The original understated the spread 2.4x to
+      8.1x.
+    - ``PCRLB`` inverts ``dxdr R^-1 dxdr'``, which uses the estimator
+      Jacobian where the measurement Jacobian belongs. The port returns
+      ``pinv(J' R^-1 J)`` with ``J`` the analytic Jacobian of the
+      bistatic ranges at the returned solution. In the same scene with
+      ``R = diag(9, 25, 4, 1, 16)``, MATLAB's diagonal was 17x to 20x the
+      true bound in x and y (``[36.8, 37.9, 11.2]`` against
+      ``[2.17, 1.91, 10.1]``). The original's minimal (three-measurement)
+      ``PCRLB`` is wrong in the same way, though its ``PTaylor`` is right.
     """
     r_bi = np.asarray(r_bi, dtype=np.float64).ravel()
     z_loc1 = np.asarray(z_loc1, dtype=np.float64)
@@ -298,17 +321,24 @@ def range_only_static_loc_est_np(
         p_taylor = np.zeros((3, 3, num_sol))
         p_crlb = np.zeros((3, 3, num_sol))
 
-        delta = S - np.outer(r_bi, x_est1) / np.linalg.norm(x_est1)
+        r_cov_inv = np.linalg.pinv(r_cov_arr)
         gamma = np.diag(r_bi)
-        dxdr = np.linalg.lstsq(delta, np.eye(meas_dim) * rt1 - gamma, rcond=None)[0]
-        p_taylor[:, :, 0] = dxdr @ r_cov_arr @ dxdr.T
-        p_crlb[:, :, 0] = np.linalg.pinv(dxdr @ np.linalg.pinv(r_cov_arr) @ dxdr.T)
+        solutions = [(x_est, rt1)] if num_sol == 1 else [(x_est1, rt1), (x_est2, rt2)]
+        for k, (x_k, rt_k) in enumerate(solutions):
+            norm_x = np.linalg.norm(x_k)
+            # Differentiating the estimate x = SStar (z + r_bi Rt), Rt = abs(x),
+            # gives SStar Delta dx = SStar (Rt I - Gamma) dr. The original's
+            # lsqminnorm(Delta, ...) is a different left inverse whenever
+            # num_meas > 3 and understates the spread several-fold.
+            delta = S - np.outer(r_bi, x_k) / norm_x
+            dxdr = np.linalg.solve(
+                s_star @ delta, s_star @ (np.eye(meas_dim) * rt_k - gamma)
+            )
+            p_taylor[:, :, k] = dxdr @ r_cov_arr @ dxdr.T
 
-        if num_sol > 1:
-            delta = S - np.outer(r_bi, x_est2) / np.linalg.norm(x_est2)
-            dxdr = np.linalg.lstsq(delta, np.eye(meas_dim) * rt2 - gamma, rcond=None)[0]
-            p_taylor[:, :, 1] = dxdr @ r_cov_arr @ dxdr.T
-            p_crlb[:, :, 1] = np.linalg.pinv(dxdr @ np.linalg.pinv(r_cov_arr) @ dxdr.T)
+            to_tx = x_k[:, np.newaxis] - z_tx
+            jac = x_k / norm_x + (to_tx / np.linalg.norm(to_tx, axis=0)).T
+            p_crlb[:, :, k] = np.linalg.pinv(jac.T @ r_cov_inv @ jac)
 
     # Adjust for the receiver not being at the origin.
     if x_est.ndim == 1:
