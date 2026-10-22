@@ -154,8 +154,16 @@ def log_marcum_q(
 
     Notes
     -----
-    For small Q values (large b), this function provides better
-    numerical accuracy than computing log(marcum_q(a, b)).
+    Where ``Q < 1e-10`` the value is a log-sum-exp of the Poisson-mixture
+    series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``, with the log upper
+    incomplete gamma taken from a continued fraction once ``gammaincc``
+    underflows. Against that series evaluated in mpmath at 40 digits the
+    relative error of ``log Q`` is below 2e-14 for ``a`` in [0, 60],
+    ``b - a`` in [9, 93] and ``m`` in [1, 40] (log Q down to about -5000).
+
+    Before v2.11.1 that branch called ``scipy.stats.ncx2.logsf``, which
+    underflows to ``-inf`` exactly where this function is needed:
+    ``log_marcum_q(1, 40)`` returned ``-inf`` instead of -763.235.
 
     Examples
     --------
@@ -177,14 +185,66 @@ def log_marcum_q(
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
-    # For very small Q values, use log survival function for precision
     small_q = q_val < 1e-10
-    if np.any(small_q):
-        from scipy.stats import ncx2
-
-        result[small_q] = ncx2.logsf(b_b[small_q] ** 2, 2 * m, a_b[small_q] ** 2)
+    for i in np.flatnonzero(small_q):
+        result[i] = _log_marcum_q_series(a_b[i], b_b[i], m)
 
     return result.reshape(out_shape)
+
+
+def _log_gammaincc(s: NDArray[np.floating], x: float) -> NDArray[np.floating]:
+    """log of the regularized upper incomplete gamma Q(s, x), past underflow."""
+    q = sp.gammaincc(s, x)
+    out = np.empty(s.shape, dtype=np.float64)
+    ok = q > 1e-280
+    out[ok] = np.log(q[ok])
+    tail = ~ok
+    if np.any(tail):
+        # Lentz continued fraction for Gamma(s, x) / (exp(-x) x^s). It only
+        # runs where Q underflows, which needs x far above s, so it converges
+        # in a few dozen steps.
+        st = s[tail]
+        tiny = 1e-300
+        bk = x + 1.0 - st
+        c = np.full(st.shape, 1.0 / tiny)
+        d = 1.0 / bk
+        h = d.copy()
+        for i in range(1, 1000):
+            an = -i * (i - st)
+            bk = bk + 2.0
+            d = an * d + bk
+            d = np.where(np.abs(d) < tiny, tiny, d)
+            c = bk + an / c
+            c = np.where(np.abs(c) < tiny, tiny, c)
+            d = 1.0 / d
+            delta = d * c
+            h = h * delta
+            if np.all(np.abs(delta - 1.0) < 1e-16):
+                break
+        out[tail] = -x + st * np.log(x) - sp.gammaln(st) + np.log(h)
+    return out
+
+
+def _log_marcum_q_series(a: float, b: float, m: int) -> float:
+    """log Q_m(a, b) as a log-sum-exp of its Poisson-mixture series.
+
+    ``Q_m(a, b) = sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``. The terms are
+    unimodal in k with the peak near ``a*b/2``, so only a window around it is
+    summed; the window doubles until both edges are below exp(-40) of the
+    peak.
+    """
+    lam = 0.5 * a * a
+    x = 0.5 * b * b
+    k_peak = max(0.0, 0.5 * (np.sqrt((m - 1.0) ** 2 + 4.0 * lam * x) - (m + 1.0)))
+    half = 50.0 + 10.0 * np.sqrt(k_peak + m)
+    while True:
+        k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
+        terms = sp.xlogy(k, lam) - lam - sp.gammaln(k + 1.0) + _log_gammaincc(m + k, x)
+        top = terms.max()
+        if (k[0] == 0 or terms[0] < top - 40.0) and terms[-1] < top - 40.0:
+            return float(top + np.log(np.sum(np.exp(terms - top))))
+        k_peak = float(k[np.argmax(terms)])
+        half *= 2.0
 
 
 def marcum_q_inv(
@@ -335,6 +395,15 @@ def swerling_detection_probability(
     chi-squared (4 DOF) scan-to-scan fluctuation, and Swerling 4 the exact
     finite-sum for pulse-to-pulse chi-squared (4 DOF) fluctuation.
 
+    Before v2.11.1 the Swerling 3 branch evaluated only the single-term form
+    that is exact for ``n <= 2``, so ``n > 2`` was wrong: -8.9% at
+    ``pfa=1e-6, n=6, snr=0.1`` and -21% at ``pfa=1e-8, n=30, snr=0.05``.
+    The general-``n`` form now agrees with the exact Poisson-mixture series
+    to about 2e-12 relative (``n`` up to 100, ``snr`` 1e-3 to 50).
+
+    ``snr = 0`` returns ``pfa`` for every case, elementwise. Cases 1 (for
+    ``n > 1``) and 3 used to return NaN or ``-inf`` there.
+
     Examples
     --------
     >>> pd = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=0)
@@ -364,13 +433,16 @@ def swerling_detection_probability(
         # Scan-to-scan Rayleigh fluctuation (exact, DiFranco & Rubin)
         if n == 1:
             return np.exp(-vt / (1 + snr))
-        c = 1 + 1 / (n * snr)
-        return np.asarray(
+        # snr = 0 makes c infinite and the sum inf * 0 = NaN; its limit is pfa.
+        zero = snr == 0
+        s = np.where(zero, 1.0, snr)
+        c = 1 + 1 / (n * s)
+        pd = (
             1
             - sp.gammainc(n - 1, vt)
-            + c ** (n - 1) * sp.gammainc(n - 1, vt / c) * np.exp(-vt / (1 + n * snr)),
-            dtype=np.float64,
+            + c ** (n - 1) * sp.gammainc(n - 1, vt / c) * np.exp(-vt / (1 + n * s))
         )
+        return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
 
     elif swerling_case == 2:
         # Pulse-to-pulse Rayleigh fluctuation (exact): the integrated sum is
@@ -378,14 +450,24 @@ def swerling_detection_probability(
         return np.asarray(sp.gammaincc(n, vt / (1 + snr)), dtype=np.float64)
 
     elif swerling_case == 3:
-        # Scan-to-scan chi-squared 4 DOF fluctuation (exact closed form)
-        k = 1 + n * snr / 2
-        return np.asarray(
-            (1 + 2 / (n * snr)) ** (n - 2)
-            * (1 + vt / k - 2 * (n - 2) / (n * snr))
-            * np.exp(-vt / k),
-            dtype=np.float64,
+        # Scan-to-scan chi-squared 4 DOF fluctuation (exact, DiFranco & Rubin).
+        # The single-term form K0 is exact only for n <= 2; n > 2 needs the
+        # two gamma terms as well (dropping them was -8.9% at n=6).
+        zero = snr == 0
+        s = np.where(zero, 1.0, snr)
+        k = 1 + n * s / 2
+        pd = (
+            (1 + 2 / (n * s)) ** (n - 2)
+            * (1 + vt / k - 2 * (n - 2) / (n * s))
+            * np.exp(-vt / k)
         )
+        if n > 2:
+            pd = (
+                pd * sp.gammainc(n - 1, vt / (1 + 2 / (n * s)))
+                + sp.gammaincc(n - 1, vt)
+                + np.exp((n - 1) * np.log(vt) - vt - sp.gammaln(n - 1)) / k
+            )
+        return np.asarray(np.where(zero, pfa, pd), dtype=np.float64)
 
     elif swerling_case == 4:
         # Pulse-to-pulse chi-squared 4 DOF fluctuation (exact finite sum).

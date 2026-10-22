@@ -107,6 +107,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `swerling_detection_probability(..., swerling_case=3)` evaluated only the
+  single-term closed form, which is exact for `n_pulses <= 2` and misses two
+  gamma terms beyond that. Measured against the exact Poisson-mixture series:
+  `pfa=1e-6, n=6, snr=0.1` gave 8.23856e-6 against 9.04805e-6 (-8.9%);
+  `n=3, snr=0.5` rel -1.98e-5; `n=4, snr=0.3` rel -3.27e-4;
+  `pfa=1e-8, n=30, snr=0.05` -21%; `pfa=1e-2, n=100, snr=0.01` returned
+  -4.96e12 against 0.013438. The general-`n` DiFranco-Rubin form now agrees
+  with the series to 2e-12 relative over `n` 3-100, `snr` 1e-3 to 50,
+  `pfa` 1e-10 to 1e-2. Cases 0, 1, 2 and 4 were already exact to 1e-13.
+
+- `swerling_detection_probability` at `snr = 0` returned NaN (case 1,
+  `n_pulses > 1`) or `-inf` (case 3) instead of `Pd = pfa`; only the zero
+  elements of an array were affected. Every case now returns `pfa` there,
+  elementwise.
+
+- `log_marcum_q`: the `Q < 1e-10` branch called `scipy.stats.ncx2.logsf`,
+  which underflows to `-inf` for the arguments the function exists for.
+  Measured: `log_marcum_q(1, 40)` returned `-inf` against -763.235;
+  `ncx2.logsf` itself returns `-inf` at `(m=5, a=10, b=100)`,
+  `(m=1, a=1, b=40)` and `(m=20, a=0, b=100)`; where it stayed finite it
+  could still be off by 5e-8 in `log Q` (`a=30, b=60`). The branch is now a
+  log-sum-exp of the Poisson-mixture series with a continued-fraction log
+  upper incomplete gamma; relative error of `log Q` against mpmath at 40
+  digits is below 2e-14 for `a` in [0, 60], `b - a` in [9, 93], `m` in
+  [1, 40]. The new oracle file `tests/validation/test_special_function_edges.py`
+  replaces `test_marcum_q.py`'s `log_marcum_q < 0` check, which `-inf`
+  satisfied.
+
 - `generalized_hypergeometric`: the series declared convergence against the
   running partial sum, which collapses by cancellation for negative `z`.
   Measured: `0F0(-40)` returned -2.2304438326 against `exp(-40) = 4.2484e-18`;
