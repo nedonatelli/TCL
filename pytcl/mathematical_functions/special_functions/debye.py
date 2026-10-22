@@ -16,13 +16,15 @@ upper incomplete gamma function subtracts a sum below ~5% of zeta(n+1).
 
 Accuracy
 --------
-Verified against a 40-digit mpmath quadrature of the Debye integrand for every
-integer n in {1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 40, 50} on x between 1e-6 and
-700 (including both regime boundaries). The worst relative error measured
-is 3e-14 (n = 50), and 1.1e-15 for n <= 2. Nothing is claimed for
-n > 50, which was not measured. The previous large-x branch subtracted
-same-magnitude terms and was wrong from n = 10 up: D_20(2) was 3.9% off and
-D_30(2) was 2.2e8 against 0.3267614.
+Measured against a 40-digit mpmath quadrature of the Debye integrand for
+every integer n from 1 to 10 and n in {12, 15, 20, 25, 30, 35, 40, 45, 50},
+on 21 x values between 1e-6 and 700 plus each side of both regime
+boundaries (x = 1 and x = n + 2*sqrt(n) + 5). The worst relative error on
+that grid is 5.7e-14 (n = 45, x = 700), so the claimed bound is about 1e-13,
+on that grid only. n = 60 measured 7.2e-14 at x = 300 but is outside the
+claim. The previous large-x branch subtracted same-magnitude terms and was
+wrong from n = 10 up: D_20(2) was 3.9% off and D_30(2) was 2.2e8 against
+0.3267614.
 """
 
 from typing import Any
@@ -144,8 +146,9 @@ def debye(
     Parameters
     ----------
     n : int
-        Order of the Debye function (positive integer). Accuracy is verified
-        for n <= 50 (see the module docstring).
+        Order of the Debye function (positive integer). Accuracy is measured
+        on a grid of orders up to 50 (see the module docstring); other
+        orders are not verified.
     x : array_like
         Argument of the function, x >= 0.
 

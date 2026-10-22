@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`tau_scale` is documented as not the Yohai-Zamar tau scale and is demoted
-  at function level.** The `1/n` normalizations of its two rho sums cancel,
-  leaving `mad(r)` times the square root of a ratio of Tukey rho sums. On
-  200000 N(0, 1) draws it returns 1.0918 against about 1.0 for a consistent
-  scale estimate, where `mad` returns 1.0022. The maturity registry is
-  per-module, so `static_estimation.robust` (`irls`, `ransac`, `mad`, ...)
-  stays MATURE; the demotion lives in a `.. warning::` in the docstring. It
-  will be fixed or removed in v2.12.0.
+- **`tau_scale` is documented as not the Yohai-Zamar tau scale.** The `1/n`
+  normalizations of its two rho sums cancel, leaving `mad(r)` times the
+  square root of a ratio of Tukey rho sums. On 200000 N(0, 1) draws it
+  returns 1.0918 against about 1.0 for a consistent scale estimate, where
+  `mad` returns 1.0022. The maturity registry is per-module, so
+  `static_estimation.robust` (`irls`, `ransac`, `mad`, ...) stays MATURE;
+  the disclosure lives in a `.. warning::` in the docstring. It will be
+  fixed or removed in v2.12.0.
 - **The two state-vector layouts are now documented, and pinned by
   `tests/validation/test_state_ordering.py`.** `two_point_diff_init` (a port of
   `twoPointDiffInit.m`) returns MATLAB's derivative-major `[x, y, vx, vy]`;
@@ -120,24 +120,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at
   `tol * max_eig`, putting negative entries on the diagonal for rank-deficient
   PSD input; it now raises `LinAlgError` ("not positive semi-definite"),
-  floors at exactly 0 and returns a non-negative diagonal. `matrix_sqrt`
+  floors at exactly 0 and returns a non-negative diagonal. Eigenvalues within
+  `tol * max_eig` below zero (1e-10 relative by default) are still accepted as
+  rounding error and floored, so slightly indefinite filter covariances keep
+  factoring; MATLAB's `cholSemiDef.m` never raises, and the docstring records
+  the deviation. `matrix_sqrt`
   returned `S` with `norm(S^2 - A, inf) = 4.0` (7.568 for `denman_beavers`)
   for `diag(-4, 9)`; symmetric input with a negative eigenvalue now raises
   `LinAlgError` for every method, and `denman_beavers` warns
   (`RuntimeWarning`) when its 50 iterations do not converge.
+
 - **`romberg` warns when it cannot reach `tol`.** `abs(t - 0.3)**0.5` on
   [0, 1] at `tol=1e-15, max_steps=6` returned 0.50098244 against 0.49998586
   with no signal; it now emits a `RuntimeWarning` naming the estimate and the
   requested tolerance.
+
 - **`mle_newton_raphson` no longer hides its ridge.** A flat direction gave
   `fisher_info = 1e-6`, `covariance[1, 1] = 1e6` and `converged=True`. It now
   reports `-H` unmodified, warns, sets `converged=False`, and returns `inf`
   variance (NaN cross-covariance) for the parameters the non-positive
   directions touch.
+
 - **`irls(max_iter=0)` and `ransac(max_trials=0)`** raised
   `UnboundLocalError`; they now raise `ValueError` ("at least one").
 
-- `total_least_squares(rank=...)` ignored `rank` when forming `x`: it always
+- **`total_least_squares(rank=...)` ignored `rank` when forming `x`.** It always
   used the last right singular vector, so `x` was bit-identical for every rank
   (on a system with singular values `[5, 1, 1e-4]`, `rank=1` returned the
   full-rank solution). `rank=k` now gives truncated TLS (Fierro, Golub, Hansen
@@ -147,87 +154,152 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside `1 <= rank <= n` or a non-integer now raises `ValueError`, as does a
   rank for which the TTLS solution does not exist.
 
-- `ambiguity_function` and `cross_ambiguity` mapped each delay to a sample
-  index by truncation (`int(delay * fs)`), so a delay that is exactly k samples
-  could land on sample k-1 when the floating-point product fell just below k.
+- **`range_only_static_loc_est_np` returned wrong `p_taylor` and `p_crlb`,
+  copied from `rangeOnlyStaticLocEstNP.m` (lines 139-153).** With more than
+  three measurements, the Taylor covariance was linearized about `xEst1` even
+  when `xEst2` was returned, and it used `lsqminnorm(Delta, ...)`, which is not
+  the derivative of the `pinv(S)`-based estimate. The CRLB inverted
+  `dxdr R^-1 dxdr'` (the estimator Jacobian) instead of `J' R^-1 J`. In the
+  five-sensor test scene with `R = 4 I`, the `p_taylor` diagonal goes from
+  `[3.54, 4.43, 8.41]` to `[8.42, 34.9, 69.4]`. A 2000-draw Monte Carlo of the
+  estimate measures `[8.43, 34.9, 67.9]`, so the old values understated the
+  spread by 2.4x to 8.1x. Against the MATLAB fixture (noisy ranges,
+  `R = diag(9, 25, 4, 1, 16)`), the new `p_taylor` diagonal is 2.27x, 3.90x
+  and 7.88x MATLAB's, and MATLAB's `p_crlb` diagonal `[36.8, 37.5, 11.2]` is
+  17.1x, 19.6x and 1.1x the analytic Fisher inverse `[2.15, 1.91, 10.1]`. When
+  noise makes the root discriminant negative (about 3% of draws at 50 m range
+  noise, 31% at 200 m), the clipped root is now linearized through its own
+  closed form. On one such draw at `R = 4 I`, v2.11.0 returned the diagonal
+  `[1.94, 4.71, 5.51]` against the estimator's true (finite-difference)
+  `[2.66, 1.68, 1.23]`, which the port now returns.
+  The three-measurement two-solution `p_taylor` was already correct, but its
+  `p_crlb` had the same defect. Exactly coplanar sensors now raise
+  `LinAlgError` instead of returning a meaningless covariance, and `r_cov`
+  with `method=0` raises `ValueError` instead of `UnboundLocalError`.
+  Estimates and return shapes are unchanged. The docstring now records the
+  deviation from MATLAB.
+
+- **`ambiguity_function` and `cross_ambiguity` truncated the delay index.**
+  They mapped each delay to a sample index by `int(delay * fs)`, so a delay
+  that is exactly k samples could land on sample k-1 when the floating-point
+  product fell just below k.
   The index is now `int(np.rint(delay * fs))`. At delay 5.0e-4 (exactly 5
   samples) the ambiguity surface returned 0.32525, the 4-sample value, against
   the true 0.13535, a 140% error. Pinned by
   `tests/validation/test_matched_filter_delay.py` at integer-sample delays
   against the normalized autocorrelation.
-- `debye(n, x)` was wrong from `n = 10` up and accepted negative `x`. The
+
+- **SO-CFAR's infinity sentinel was dead code under numba `fastmath`, so the
+  JIT and pure-Python paths disagreed.** `fastmath=True` lets the compiler
+  assume no infinities or NaNs, so `noise_est == np.inf` never matched.
+  `cfar_so(np.array([1., 2., 3.]), guard_cells=5, ref_cells=2, pfa=1e-3)`
+  returned `noise=[inf inf inf]` and no detections under the JIT but `0.0`
+  with `NUMBA_DISABLE_JIT=1` (the CI coverage cell); a NaN in a reference
+  window returned `1.0` under the JIT and `nan` without. `_cfar_so_kernel` and
+  `_cfar_2d_so_kernel` no longer use a sentinel and drop the `nnan`/`ninf`
+  fastmath flags (the other flags are kept); a NaN in either reference half now
+  gives a NaN threshold on both paths. `cfar_so` and `cfar_2d(method="so")`
+  raise `ValueError` when no cell can have a reference cell. Timing: SO 1-D
+  (5000 samples) 109-121 us before, 114-126 us after; SO 2-D (256x256)
+  10.0-11.8 ms before, 10.6-11.7 ms after (run-to-run noise); the
+  `cfar_ca_*` benchmarks are untouched.
+
+- **`debye(n, x)` was wrong from `n = 10` up and accepted negative `x`.** The
   large-x branch subtracted same-magnitude terms: against a 40-digit mpmath
   quadrature `debye(30, 2.0)` returned 2.2021e8 (true 0.3267614),
   `debye(20, 2.0)` returned 0.3466273 (true 0.3336207, 3.9% off), and
   `debye(1, -10)` returned -716.560 against 5.164443 (negative `x` took the
   small-x series; it now raises `ValueError`).
   The x >= 1 range now uses all-positive composite Gauss-Legendre quadrature
-  and, past `n + 2*sqrt(n) + 5`, an incomplete-gamma tail form. Verified
-  against mpmath for every tested n up to 50 and x from 1e-6 to 700; worst
-  relative error 3e-14. Nothing is claimed above n = 50. Non-integer or
-  `n < 1` raises `ValueError`.
-- `bessel_ratio(n, x)` at a negative integer order hit `b_k = 0` in the
-  continued fraction and returned `inf`: `bessel_ratio(-1, 1.0)` was `-inf`
-  against `-1.7388857`. It now uses the reflection `J_{-m} = (-1)^m J_m`,
-  `I_{-m} = I_m`; agreement with scipy `jv`/`iv` quotients is within 1e-12.
-- `lambert_w_real(-1/e)` returned `nan` on both real branches; the exact value
-  is -1. It is now -1, matching the complex-path fix.
-- `hyp1f1_regularized(1, 0, 1)` returned `nan` (`inf/inf`) where the docstring
-  promises a finite limit. It now returns e = 2.718281828459045 via
-  `(a)_{m+1} z^{m+1}/(m+1)! * 1F1(a+m+1; m+2; z)` at `b = -m`.
-- `ChiSquared(df)` truncated `df` with `int()`: `ChiSquared(2.5).pdf(1.0)` was
-  0.30326533 (the df=2 value) against 0.28134823 and `.mean()` was 2.0. `df`
-  is now kept real.
+  and, past `n + 2*sqrt(n) + 5`, an incomplete-gamma tail form. Measured
+  against mpmath for every integer n from 1 to 10 and n in {12, 15, 20, 25,
+  30, 35, 40, 45, 50}, on 21 x values from 1e-6 to 700 plus each side of both
+  regime boundaries: worst relative error 5.7e-14 (n = 45, x = 700), so the
+  bound claimed is about 1e-13 on that grid only. Orders off the grid are not
+  verified (n = 60 measured 7.2e-14). Non-integer or `n < 1` raises
+  `ValueError`.
 
-- `swerling_detection_probability(..., swerling_case=3)` evaluated only the
-  single-term closed form, which is exact for `n_pulses <= 2` and misses two
-  gamma terms beyond that. Measured against the exact Poisson-mixture series:
+- **`bessel_ratio(n, x)` at a negative integer order returned `inf`.** It hit
+  `b_k = 0` in the continued fraction: `bessel_ratio(-1, 1.0)` was `-inf`
+  against `-1.7388857`. It now uses the reflection `J_{-m} = (-1)^m J_m`,
+  `I_{-m} = I_m`. Agreement with scipy `jv`/`iv` quotients for n in
+  {-1, -2, -3, -7} and x from 0.5 to 9.5 (step 0.25, both kinds) is within
+  1e-12; the worst measured was 4.7e-15.
+
+- **`lambert_w_real(-1/e)` returned `nan` on both real branches**; the exact
+  value is -1. It is now -1, matching the complex-path fix.
+
+- **`hyp1f1_regularized(1, 0, 1)` returned `nan` (`inf/inf`)** where the
+  docstring promises a finite limit. It now returns e = 2.718281828459045 via
+  `(a)_{m+1} z^{m+1}/(m+1)! * 1F1(a+m+1; m+2; z)` at `b = -m`.
+
+- **`ChiSquared(df)` truncated `df` with `int()`.** `ChiSquared(2.5).pdf(1.0)`
+  was 0.30326533 (the df=2 value) against 0.28134823 and `.mean()` was 2.0.
+  `df` is now kept real.
+
+- **`swerling_detection_probability(..., swerling_case=3)` was wrong for
+  `n_pulses > 2`.** It evaluated only the single-term closed form, which is
+  exact for `n_pulses <= 2` and misses two gamma terms beyond that. Measured
+  against the exact Poisson-mixture series:
   `pfa=1e-6, n=6, snr=0.1` gave 8.23856e-6 against 9.04805e-6 (-8.9%);
   `n=3, snr=0.5` rel -1.98e-5; `n=4, snr=0.3` rel -3.27e-4;
   `pfa=1e-8, n=30, snr=0.05` -21%; `pfa=1e-2, n=100, snr=0.01` returned
   -4.96e12 against 0.013438. `n > 2` now uses the general-`n`
   DiFranco-Rubin form, with its overflowing power taken in log space, when
-  `theta = n*snr/2 > max(1, sqrt(n))`. Below that the form cancels (2e-11 at
-  `n=1000, theta=1.5`; `-inf` at `n=200, snr=1e-4`), so the exact
-  negative-binomial mixture of gamma tails is summed instead. Relative error
-  against the series in mpmath is below 2e-13 for `pfa` 1e-10 to 1e-2, `n`
-  3-5000 and `theta` 1e-3 to 300. Cases 0, 1, 2 and 4 were already exact to
-  1e-13.
+  `theta = n*snr/2 > max(1, sqrt(n))`. Below that the form cancels (2.6e-11
+  at `n=1000, theta=1.5, pfa=1e-6`; `-inf` at `n=200, snr=1e-4`), so the
+  exact negative-binomial mixture of gamma tails is summed instead. Relative
+  error against the series in mpmath is below 2e-13 for `pfa` 1e-10 to 1e-2,
+  `n` 3-5000 and `theta` 1e-3 to 300. Cases 0, 1, 2 and 4 already matched
+  the series to 1e-13 on the 16 tested points (`n` up to 10; worst 8.3e-15).
 
-- `swerling_detection_probability` at `snr = 0` returned NaN (case 1,
-  `n_pulses > 1`) or `-inf` (case 3) instead of `Pd = pfa`; only the zero
+- **`swerling_detection_probability` at `snr = 0` returned NaN (case 1,
+  `n_pulses > 1`) or `-inf` (case 3) instead of `Pd = pfa`**; only the zero
   elements of an array were affected. Every case now returns `pfa` there,
   elementwise.
 
-- `log_marcum_q`: the `Q < 1e-10` branch called `scipy.stats.ncx2.logsf`,
-  which underflows to `-inf` for the arguments the function exists for.
+- **`log_marcum_q` returned `-inf` where it was needed.** The `Q < 1e-10`
+  branch called `scipy.stats.ncx2.logsf`, which underflows to `-inf` for the
+  arguments the function exists for.
   Measured: `log_marcum_q(1, 40)` returned `-inf` against -763.235;
   `ncx2.logsf` itself returns `-inf` at `(m=5, a=10, b=100)`,
   `(m=1, a=1, b=40)` and `(m=20, a=0, b=100)`; where it stayed finite it
   could still be off by 5e-8 in `log Q` (`a=30, b=60`). The branch is now a
   log-sum-exp of the Poisson-mixture series with a continued-fraction log
   upper incomplete gamma, and for `a*b > 2e4` a quadrature of the exact
-  integrand. The latter is needed because the series needs `a^2/2` and
-  `b^2/2` finite and loses digits at large `a*b`: `(1e5, 1e5+8)` was off by
-  4e-7. Finite inputs whose squares overflow no longer raise `ValueError:
+  integrand. The quadrature is there because the series needs `a^2/2` and
+  `b^2/2` finite and loses digits at large `a*b`: at `(1e5, 1e5+8)` the
+  series alone would be off by 4.0e-7 (v2.11.0 was off by 2.2e-8 there; the
+  quadrature matches mpmath to the last digit). Finite inputs whose squares
+  overflow no longer raise `ValueError:
   Maximum allowed size exceeded` (`(1, 1e160)`, `(1e160, 1e161)`) or return
   NaN (`(0, 1e155)`): `Q` underflows there and the result is `-inf`, and
   `(1e300, 1e300, m=5)` gives log 0.5. `b = inf` gives `-inf` (it raised
-  the same `ValueError`). Relative error of `log Q` against mpmath is below
-  2.2e-14 for `a` up to 140 and `m` up to 200, and below 5e-13 for `a` up
-  to 1e12 and `m` up to 3000. The new oracle file `tests/validation/test_special_function_edges.py`
-  replaces `test_marcum_q.py`'s `log_marcum_q < 0` check, which `-inf`
-  satisfied.
+  the same `ValueError`). On points in that `Q < 1e-10` tail
+  (`b = sqrt(a^2 + 2m) + c`, `c` from 7 to 1000, on the 84-point grid in the
+  docstring), the relative error of `log Q` against mpmath is below 2.2e-14
+  for `a` up to 140 and `m` up to 200, and below 5e-13 for `a` up to 1e12
+  and `m` up to 3000 where the quadrature is used. Where `a*b > 2e4` but
+  `(m-1)^2 > 4ab` the series is still used and loses digits (2.4e-11 at
+  `a = 1e3, m = 3000, c = 7`). Results with `Q >= 1e-10` come from
+  `marcum_q` unchanged. The new oracle file
+  `tests/validation/test_special_function_edges.py` replaces
+  `test_marcum_q.py`'s `log_marcum_q < 0` check, which `-inf` satisfied.
 
-- `generalized_hypergeometric`: the series declared convergence against the
-  running partial sum, which collapses by cancellation for negative `z`.
+- **`generalized_hypergeometric` declared convergence against the running
+  partial sum**, which collapses by cancellation for negative `z`.
   Measured: `0F0(-40)` returned -2.2304438326 against `exp(-40) = 4.2484e-18`;
   `0F0(-100)` returned -3.156e26 against 3.72e-44; `3F3([1,2,3],[4,5,6],-100)`
   returned 3.1752e12 against 0.199294. Convergence is now judged against the
   largest term seen. When `eps * max_term / abs(sum)` reaches 1 (no digits
   survive) the entry is NaN with a `RuntimeWarning`; above 1e-8 the value is
-  kept with a `RuntimeWarning`. `3F3(..., -100)` is now NaN (largest term
-  ~1e40); `0F0(z)` is evaluated as `exp(z)`.
+  kept with a `RuntimeWarning`. A terminating series (an upper parameter that
+  is a non-positive integer) that loses every digit is re-evaluated exactly in
+  rational arithmetic instead (Laguerre `L_80(20)` gives -1986.4165), so the
+  NaN applies only to non-terminating series and to terminating ones longer
+  than 500 terms. A non-finite `z` or parameter gives NaN without the
+  cancellation warning. `3F3(..., -100)` is now NaN (largest term ~1e40);
+  `0F0(z)` is evaluated as `exp(z)`.
 
 - `pytcl.dynamic_estimation.kalman.constrained`: the non-convergence warning
   added in this patch reported `max|g|` instead of the constraint violation,
@@ -1249,45 +1321,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The near-singular `F` gap disclosed under the earlier `srif_predict`
   entries (`information_filter` with `F = [[1, 1], [0, 1e-18]]`) is a
   different guard and remains open.
-
-- **SO-CFAR's infinity sentinel was dead code under numba `fastmath`, so the
-  JIT and pure-Python paths disagreed.** `fastmath=True` lets the compiler
-  assume no infinities or NaNs, so `noise_est == np.inf` never matched.
-  `cfar_so(np.array([1., 2., 3.]), guard_cells=5, ref_cells=2, pfa=1e-3)`
-  returned `noise=[inf inf inf]` and no detections under the JIT but `0.0`
-  with `NUMBA_DISABLE_JIT=1` (the CI coverage cell); a NaN in a reference
-  window returned `1.0` under the JIT and `nan` without. `_cfar_so_kernel` and
-  `_cfar_2d_so_kernel` no longer use a sentinel and drop the `nnan`/`ninf`
-  fastmath flags (the other flags are kept); a NaN in either reference half now
-  gives a NaN threshold on both paths. `cfar_so` and `cfar_2d(method="so")`
-  raise `ValueError` when no cell can have a reference cell. Timing: SO 1-D
-  (5000 samples) 109-121 us before, 114-126 us after; SO 2-D (256x256)
-  10.0-11.8 ms before, 10.6-11.7 ms after (run-to-run noise); the
-  `cfar_ca_*` benchmarks are untouched.
-
-- **`range_only_static_loc_est_np` returned wrong `p_taylor` and `p_crlb`,
-  copied from `rangeOnlyStaticLocEstNP.m` (lines 139-153).** With more than
-  three measurements, the Taylor covariance was linearized about `xEst1` even
-  when `xEst2` was returned, and it used `lsqminnorm(Delta, ...)`, which is not
-  the derivative of the `pinv(S)`-based estimate. The CRLB inverted
-  `dxdr R^-1 dxdr'` (the estimator Jacobian) instead of `J' R^-1 J`. In the
-  five-sensor test scene with `R = 4 I`, the `p_taylor` diagonal goes from
-  `[3.54, 4.43, 8.41]` to `[8.42, 34.9, 69.4]`. A 2000-draw Monte Carlo of the
-  estimate measures `[8.43, 34.9, 67.9]`, so the old values understated the
-  spread by 2.4x to 8.1x. Against the MATLAB fixture (noisy ranges,
-  `R = diag(9, 25, 4, 1, 16)`), the new `p_taylor` diagonal is 2.27x, 3.90x
-  and 7.88x MATLAB's, and MATLAB's `p_crlb` diagonal `[36.8, 37.5, 11.2]` is
-  17.1x, 19.6x and 1.1x the analytic Fisher inverse `[2.15, 1.91, 10.1]`. When
-  noise makes the root discriminant negative (about 3% of draws at 50 m range
-  noise, 31% at 200 m), the clipped root is now linearized through its own
-  closed form. The constrained formula is off by orders of magnitude there:
-  one draw gives `[12040, 20746, 59357]` against the true `[2.66, 1.68, 1.23]`.
-  The three-measurement two-solution `p_taylor` was already correct, but its
-  `p_crlb` had the same defect. Exactly coplanar sensors now raise
-  `LinAlgError` instead of returning a meaningless covariance, and `r_cov`
-  with `method=0` raises `ValueError` instead of `UnboundLocalError`.
-  Estimates and return shapes are unchanged. The docstring now records the
-  deviation from MATLAB.
 
 ## [2.11.0] - 2026-09-13
 

@@ -163,12 +163,18 @@ def log_marcum_q(
     ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
     factored out, which needs neither squared argument.
 
-    Measured against mpmath at 40 or more digits on 246 points with
-    ``b = sqrt(a^2 + 2m) + c``, ``c`` from 7 to 1000: the relative error of
-    ``log Q`` is below 2.2e-14 for ``a`` up to 140 and ``m`` up to 200, and
-    below 5e-13 for ``a`` up to 1e12 and ``m`` up to 3000. Where ``b^2/2``
-    overflows and ``b - a`` is large, ``Q`` underflows and the result is
-    ``-inf``. For ``a >= 1e100`` it matches ``log Phi(a - b)`` to 2e-13.
+    Measured against mpmath at 40 or more digits with
+    ``b = sqrt(a^2 + 2m) + c`` on 84 points: ``a`` in {0.5, 5, 30, 140},
+    ``m`` in {1, 20, 200}, ``c`` in {7, 30, 200, 1000}; and ``a`` in
+    {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100, 3000}, ``c`` in {7, 30, 200}.
+    The relative error of ``log Q`` is below 2.2e-14 on the first set and
+    below 5e-13 on the second wherever the quadrature is used. Where
+    ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used anyway and loses
+    digits: 2.4e-11 at ``a = 1e3, m = 3000, c = 7`` and 1.5e-12 at
+    ``c = 30``. Results with ``Q >= 1e-10`` come from ``marcum_q``
+    unchanged. Where ``b^2/2`` overflows and ``b - a`` is large, ``Q``
+    underflows and the result is ``-inf``. For ``a >= 1e100`` it matches
+    ``log Phi(a - b)`` to 2e-13.
 
     Before v2.11.1 that branch called ``scipy.stats.ncx2.logsf``, which
     underflows to ``-inf`` exactly where this function is needed:
