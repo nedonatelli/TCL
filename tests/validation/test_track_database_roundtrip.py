@@ -189,3 +189,132 @@ class TestTrackStateShapes:
         with pytest.raises(KeyError):
             db.get_track("t")
         db.close()
+
+
+def _seeded(path, mode="w"):
+    db = TrackDatabaseManager(path)
+    db.open(mode)
+    db.store_detection("old", np.zeros(2), "s", 0.0)
+    db.initiate_track("trk", np.zeros(2), np.eye(2), 0.0)
+    db.close()
+
+
+def test_read_mode_rejects_writes(tmp_path):
+    path = tmp_path / "t.db"
+    TrackDatabaseManager(path).open("w")
+    db = TrackDatabaseManager(path)
+    db.open("r")
+    with pytest.raises(PermissionError, match="read-only"):
+        db.store_detection("d", np.zeros(2), "s", 0.0)
+    assert db.retrieve_all_detections() == []
+    db.close()
+
+
+_WRITERS = {
+    "store_detection": lambda db: db.store_detection("d", np.zeros(2), "s", 0.0),
+    "associate_detection": lambda db: db.associate_detection("old", "trk"),
+    "initiate_track": lambda db: db.initiate_track("t2", np.zeros(2), np.eye(2), 0.0),
+    "confirm_track": lambda db: db.confirm_track("trk"),
+    "update_track_state": lambda db: db.update_track_state(
+        "trk", np.ones(2), np.eye(2), 1.0
+    ),
+    "store_track_history": lambda db: db.store_track_history(
+        "trk", np.ones((1, 2)), np.eye(2)[None], [1.0]
+    ),
+    "mark_track_tentative": lambda db: db.mark_track_tentative("trk"),
+    "mark_track_confirmed": lambda db: db.mark_track_confirmed("trk"),
+    "mark_track_coasting": lambda db: db.mark_track_coasting("trk"),
+    "mark_track_dead": lambda db: db.mark_track_dead("trk"),
+    "prune_old_detections": lambda db: db.prune_old_detections(-1.0),
+    "prune_dead_tracks": lambda db: db.prune_dead_tracks(-1.0),
+    "merge_tracks": lambda db: db.merge_tracks("trk", "trk2"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(_WRITERS))
+def test_every_write_method_is_refused_in_read_mode(tmp_path, name):
+    path = tmp_path / "t.db"
+    _seeded(path)
+    before = path.read_bytes()
+    db = TrackDatabaseManager(path)
+    db.open("r")
+    with pytest.raises(PermissionError, match="read-only"):
+        _WRITERS[name](db)
+    db.close()
+    assert path.read_bytes() == before
+
+
+def test_write_mode_truncates(tmp_path):
+    path = tmp_path / "t.db"
+    db = TrackDatabaseManager(path)
+    db.open("w")
+    db.store_detection("old", np.zeros(2), "s", 0.0)
+    db.close()
+    db2 = TrackDatabaseManager(path)
+    db2.open("w")
+    assert db2.retrieve_all_detections() == []
+    assert db2.retrieve_all_tracks() == []
+    db2.close()
+
+
+def test_write_mode_over_schema_1_file_yields_fresh_schema_2(tmp_path):
+    path = tmp_path / "t.db"
+    _write_v1_database(path)
+    db = TrackDatabaseManager(path)
+    db.open("w")
+    assert db.retrieve_all_detections() == []
+    db.store_detection("row", np.arange(6.0).reshape(2, 3), "s", 0.0)
+    db.close()
+    assert _version(path) == "2.0"
+
+
+def test_append_mode_keeps_rows(tmp_path):
+    path = tmp_path / "t.db"
+    _seeded(path)
+    db = TrackDatabaseManager(path)
+    db.open("a")
+    assert [d["detection_id"] for d in db.retrieve_all_detections()] == ["old"]
+    db.close()
+
+
+def test_read_mode_missing_file_raises_and_creates_nothing(tmp_path):
+    path = tmp_path / "missing.db"
+    with pytest.raises(FileNotFoundError):
+        TrackDatabaseManager(path).open("r")
+    assert not path.exists()
+
+
+def test_sql_storage_read_mode_rejects_writes(tmp_path):
+    from pytcl.io.sql_storage import SQLStorage
+
+    path = str(tmp_path / "s.db")
+    with SQLStorage() as s:
+        s.open(path, "w")
+        s.store_array("a", np.arange(3.0))
+    before = (tmp_path / "s.db").read_bytes()
+    with SQLStorage() as s:
+        s.open(path, "r")
+        for write in (
+            lambda: s.store_array("b", np.zeros(2)),
+            lambda: s.store_scalar("c", 1.0),
+            lambda: s.store_group("g"),
+            lambda: s.delete("a"),
+        ):
+            with pytest.raises(PermissionError, match="read-only"):
+                write()
+        assert np.array_equal(s.retrieve_array("a"), np.arange(3.0))
+    assert (tmp_path / "s.db").read_bytes() == before
+
+
+def test_sql_storage_write_mode_truncates(tmp_path):
+    from pytcl.io.sql_storage import SQLStorage
+
+    path = str(tmp_path / "s.db")
+    with SQLStorage() as s:
+        s.open(path, "w")
+        s.store_array("old", np.arange(3.0))
+    with SQLStorage() as s:
+        s.open(path, "w")
+        assert s.list_keys() == []
+        with pytest.raises(KeyError):
+            s.retrieve_array("old")
