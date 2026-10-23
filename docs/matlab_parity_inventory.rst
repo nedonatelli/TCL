@@ -63,7 +63,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        polar/spherical measurement updates, batch least-squares
        estimators, and the PCRLB/Riccati performance-prediction tools.
        **Missing:** progressive Gaussian update, pure-propagation
-       filter, reduced-state filters. Also absent, and larger than that list
+       filter, reduced-state filters, and the GPB1/GPB2/AMM multiple-model
+       family with unequal-dimension mixing (``multipleModelPred.m``,
+       ``multipleModelUpdate.m``; planned for v2.13). Also absent, and larger than that list
        suggests: the entire ``Measurement_Update/Update_Parts`` tree (30
        files, 27% of the area -- separate gain, measurement-prediction and
        update-with-prediction entry points, which pytcl does not decompose
@@ -123,6 +125,8 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        ellipsoidal azimuthal-equidistant family (pytcl's
        ``azimuthal_equidistant`` is a spherical approximation) and its
        Jacobians, other exotic projections (bipolar, gnomonic),
+       ``stateCart2Ruv`` (planned for v2.13; pytcl has the inverse
+       ``state_ruv2cart``),
        ellipsoidal-harmonic coordinates, RF transform-parameter
        estimation.
    * - Mathematical_Functions
@@ -159,7 +163,7 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        plus loose torus and n-dimensional-shell rules; see :doc:`roadmap`).
        There is no cone or wedge rule anywhere in the MATLAB library. Also thin or
        absent: combinatorics (113 vs
-       18), polynomials (55 files; pytcl covers the multivariate-system
+       18; the matrix permanent ``perm.m`` is planned for v2.13), polynomials (55 files; pytcl covers the multivariate-system
        solvers in ``polynomials/multivariate.py``, the rest is thin),
        geometry beyond basics
        (81), continuous optimization (37), most specific
@@ -206,7 +210,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        ``ellips_grav_coeffs``). **Missing:** lunar gravity coefficients,
        polar-motion/drift coefficient adjustments, and
        ``ellipsParam2Grav`` (needs the ellipsoidal-harmonic coordinate
-       conversions as prerequisites).
+       conversions as prerequisites), and the longitude derivative and
+       Hessian of ``spherHarmonicEval.m`` (planned for v2.13;
+       ``gravity_acceleration``'s east component is hard-coded to 0).
    * - Magnetism
      - 12
      - Split
@@ -260,7 +266,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - Good
      - Runnalls and West mixture reduction, k-means(++)
        ported; pytcl adds DBSCAN and hierarchical clustering. **Missing:**
-       ISE-based reduction and its gradients, brute-force reduction,
+       the ``gammaBound``/``KMax`` stopping rules of
+       ``RunnalsGaussMixRed.m`` (planned for v2.13), ISE-based reduction
+       and its gradients, brute-force reduction,
        windowed grid centroiding.
    * - Container_Classes
      - 265

@@ -29,23 +29,77 @@ and git history.
 
 ### v2.12.0 -- planned
 
-Behaviour changes announced in the v2.11.1 CHANGELOG as deferred to v2.12.
-None has shipped:
+The audit carry-forward, in the order of the release's PRs. The `'w'`,
+schema-version and information-filter bullets are the changes the v2.11.1
+CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
 
+- **Gates that can fail.** The audit's vacuous CI gates re-verified and
+  fixed: the `error::DeprecationWarning:pytcl.*` filter, the docs job
+  without `pipefail`, the empty `CLAIMED_ABSENT`, the GPU VALIDATION gate
+  that filters its own file, the `gpu.yml` runner label, the coverage cell
+  against the shipped fastmath path, and coverage-gate headroom.
+- **Dependency floors.** `numpy>=2.3.2`, `scipy>=1.16.1`, `numba>=0.63.0`,
+  `h5py>=3.15.0`, `msgspec>=0.20.0`, `loguru>=0.7`, `rich>=13`, enforced by
+  a `lowest-direct` CI cell.
 - **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
   `'w'` mode will discard an existing file, matching `HDF5Storage`; 2.11.1
   keeps the data and emits a `FutureWarning`.
-- **`tau_scale` fixed or removed.** `static_estimation.robust.tau_scale` is
-  not the Yohai-Zamar tau scale and returns 1.0918 on N(0, 1) draws against
-  about 1.0 for a consistent estimator; fix it or remove it.
 - **Unknown schema versions.** 2.11.1 warns on stored schema versions it
   does not know; rejecting them outright is deferred to v2.12.0.
-- **`geodetic2ecef` size-1 shape.** Normalize the size-1 input case to
-  return `(3, 1)`.
+- **`LSResult.residuals`** returns the residual vector.
+- **Exact `factorial` / `factorial2`.** `exact=True` returns exact integers.
+- **`ecef2geodetic`.** Unknown `method` strings are rejected instead of
+  silently taking the closed form, and the closed form's NaN at the ECEF
+  origin is fixed.
 - **Information-filter singular-`Y` prediction.** Re-derive the prediction
   step on MATLAB's formula (needs its own tests and audit). The absolute
   `1e-10` jitter in `srif_update`'s non-positive-definite
   measurement-covariance fallback is also deferred to v2.12.
+- **`marcum_q` and `log_marcum_q`.** `marcum_q` at large arguments and the
+  `log_marcum_q` series corner.
+- **CFAR empty reference windows** give NaN noise and threshold (no
+  detection) in every 1-D and 2-D variant.
+- **`tau_scale`** implements the Maronna-Zamar (2002) tau scale;
+  `static_estimation.robust.tau_scale` currently returns 1.0918 on N(0, 1)
+  draws against about 1.0 for a consistent estimator.
+- **`q_coord_turn_2d`** matches MATLAB's `QCoordTurn`.
+- **`simple_iri`** is checked against IRI-2020.
+- **US76 floor.** The inclusive -5000 m boundary of `us_standard_atmosphere_1976`.
+- **pFq at infinite `z`.**
+- **MLE ridge trigger** for near-singular Hessians.
+- **`store_track_history`** validates lengths before any insert and writes
+  atomically.
+- **Lint.** `BLE001` and `B905` enabled, each hit fixed or individually
+  justified.
+- **The 19 duplicate implementations** consolidated to one each; a STABLE
+  public name is kept as a delegating alias.
+- **Vacuous-test paydown.** Every test file the audit listed as
+  shape- or `isfinite`-only gets REFERENCE or PROPERTY assertions.
+
+### v2.13.0 -- planned
+
+The audit's Tier 4 ports, moved out of v2.12 so that release stays
+correctness-only. Names are the pytcl names each would take:
+
+- **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
+  (Ryser's formula); pytcl `matrix_permanent`.
+- **`stateCart2Ruv`.** MATLAB
+  `Coordinate_Systems/State_Coordinate_System_Conversion/stateCart2Ruv.m`;
+  pytcl `state_cart2ruv`, the inverse of the shipped `state_ruv2cart`.
+- **Spherical-harmonic dV/dlon and Hessian.** MATLAB
+  `Mathematical_Functions/Spherical_Harmonics/spherHarmonicEval.m`; pytcl
+  `spherical_harmonic_sum` gains the longitude derivative and Hessian.
+  `gravity_acceleration`'s east component is hard-coded to 0 until then.
+- **Runnalls `gammaBound` / `KMax`.** MATLAB
+  `Clustering_and_Mixture_Reduction/RunnalsGaussMixRed.m`; pytcl
+  `reduce_mixture_runnalls` gains `gamma` and `k_max`. MATLAB's `BDist`
+  omits the 1/2 of Runnalls' Equation 21, so its `gammaBound` is 2x
+  pytcl's cost.
+- **IMM GPB1 / GPB2 / AMM family with unequal-dimension mixing.** MATLAB
+  `Dynamic_Estimation/State_Propagation/multipleModelPred.m` and
+  `Dynamic_Estimation/Measurement_Update/Complete_Measurement_Updates/multipleModelUpdate.m`;
+  pytcl `pytcl.dynamic_estimation.imm` gains the `GPB1`, `GPB2` and `AMM`
+  algorithms.
 
 ### Measured backlog (from the MATLAB parity inventory)
 
@@ -223,6 +277,17 @@ what is still open.
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
 | CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow was dispatched for the first time during v2.8.0 release prep and sat queued: its default `gpu-t4-4-core` runner label is not provisioned for this account, so the workflow cannot run until a GitHub GPU larger runner is added or it is dispatched with the `runner` input pointing at a self-hosted GPU machine. Every hardware run to date remains ad hoc |
+| Debye functions are 20-30x slower on large arrays at large x | Open; not claimed by a release |
+| `lambert_w_real` is 1 ulp inside -1/e (2.9e-9 / 1.5e-8 relative) | Inherited from scipy; open |
+| pFq max-term convergence is fooled by series whose early terms are tiny | Open |
+| `us_standard_atmosphere_1976` clamps above 86 km | Open |
+| NRLMSISE warnings are still `UserWarning` | Open |
+| AIS message type 27 | Open; carried from the audit, not claimed by a release |
+| State-ordering converter | Open; carried from the audit, not claimed by a release |
+| The INS 15x15 error-state model rebuild | Open; the strict-xfail inventory in `tests/validation/test_ins_error_matrix.py` is the acceptance list |
+| Magnetism validity windows on `MagneticCoefficients` | Open; carried from the audit, not claimed by a release |
+| The GEBCO mask channel | Open; carried from the audit, not claimed by a release |
+| `mercator` with multi-element arrays | Open; carried from the audit, not claimed by a release |
 
 ### Medium Priority
 
@@ -283,6 +348,11 @@ Unscheduled, in rough order:
 - Native WebAssembly compilation for browser-based tracking
 - Federated learning for multi-agent scenarios
 - Quantum computing backend exploration
+- `geodetic2ecef` returns `(3,) + broadcast_shape` for array input, so
+  size-1 array input gives `(3, 1)`; scalars stay `(3,)`. Breaking for a
+  STABLE module; also requires the four `float(ecef[2])` callers in
+  `gravity/models.py:293`, `gravity/egm.py:494,632`,
+  `gravity/clenshaw.py:499` to take `.item()`.
 
 ---
 
