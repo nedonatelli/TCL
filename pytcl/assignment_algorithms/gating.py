@@ -31,7 +31,12 @@ def _mahalanobis_distance_3d(
     innovation: np.ndarray[Any, Any],
     S_inv: np.ndarray[Any, Any],
 ) -> float:
-    """JIT-compiled Mahalanobis distance for 3D innovations."""
+    """JIT-compiled Mahalanobis distance for 3D innovations.
+
+    Unsupported input: an infinite innovation component. Compiled under
+    ``fastmath`` (``ninf``) the kernel returns inf where its interpreted
+    form returns nan, so the result is undefined.
+    """
     result = 0.0
     for i in range(3):
         for j in range(3):

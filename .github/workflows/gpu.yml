@@ -11,17 +11,21 @@ name: GPU
 #
 # Run before tagging a release. Manual by default so a paid GPU runner is not
 # billed on every push.
+#
+# No GitHub-hosted GPU runner is provisioned for this repository, and it has
+# no self-hosted runner registered either: the one run against the old
+# default label (gpu-t4-4-core, run 33821558601) queued 16 minutes and was
+# cancelled. Dispatch must name the label of a registered self-hosted runner
+# on an NVIDIA machine, so there is deliberately no default to queue against.
 
 on:
   workflow_dispatch:
     inputs:
       runner:
         description: >-
-          Runner label for the GPU machine. GitHub-hosted larger runners are
-          defined at the organization/enterprise level, so this is a label you
-          configure rather than a fixed name.
+          Label of a registered self-hosted runner on an NVIDIA machine.
         required: true
-        default: gpu-t4-4-core
+        type: string
       cuda_wheel:
         description: "CuPy wheel matching the driver's CUDA major version"
         required: true
@@ -40,7 +44,7 @@ permissions:
 
 jobs:
   gpu:
-    runs-on: ${{ github.event.inputs.runner || 'gpu-t4-4-core' }}
+    runs-on: ${{ inputs.runner }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -52,10 +56,15 @@ jobs:
           enable-cache: true
 
       - name: Report the device
+        shell: bash
         run: |
           nvidia-smi --query-gpu=name,memory.total,driver_version \
             --format=csv,noheader
-          nvcc --version 2>/dev/null | tail -1 || echo "(no nvcc; driver runtime only)"
+          if command -v nvcc >/dev/null; then
+            nvcc --version | tail -1
+          else
+            echo "(no nvcc; driver runtime only)"
+          fi
 
       - name: Install dependencies
         run: |

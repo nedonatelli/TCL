@@ -55,6 +55,7 @@ from pytcl.core.exceptions import (
     NumericalError,
     ParameterError,
     ParseError,
+    PytclDeprecationWarning,
     RangeError,
     SingularMatrixError,
     StateError,
@@ -130,6 +131,8 @@ __all__ = [
     "DataError",
     "FormatError",
     "ParseError",
+    # Warnings
+    "PytclDeprecationWarning",
     # Validation utilities
     "validate_array",
     "validate_inputs",

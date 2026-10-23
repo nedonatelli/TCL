@@ -39,6 +39,8 @@ from typing import NamedTuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import PytclDeprecationWarning
+
 # Molecular weights (g/mol)
 _MW = {
     "N2": 28.014,
@@ -211,7 +213,7 @@ class SimplifiedThermosphere:
             "v3.0.0: it is a barometric approximation, wrong by up to 50x "
             "below 200 km (gh-79). The real NRLMSISE-00 ships as "
             "pytcl.atmosphere.nrlmsise00 since v2.10.0.",
-            DeprecationWarning,
+            PytclDeprecationWarning,
             stacklevel=2,
         )
         self.use_meter_altitude = use_meter_altitude

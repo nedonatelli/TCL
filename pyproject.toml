@@ -132,6 +132,9 @@ dev = [
     # Arbitrary-precision oracle for special-function audit tests
     # (tests/validation/test_special_functions_audit.py). Test-only.
     "mpmath>=1.3",
+    # tests/contract/test_ci_workflow_gates.py parses the workflows with
+    # yaml.safe_load; declared rather than left to transitive dev deps.
+    "pyyaml>=6.0",
     # The docs code-block gate (tests/contract/test_docs_code_blocks.py) runs
     # every docs page under a forced Agg backend; several pages plot with
     # matplotlib, and without it 36 pages skip and the gate's own self-tests
@@ -179,15 +182,18 @@ markers = [
     "examples: runs a script from examples/ end to end",
 ]
 filterwarnings = [
-    # pytcl's own deprecations are errors: the suite must not depend on
-    # anything the library has deprecated (the blanket
-    # ignore::DeprecationWarning this replaces was the vacuous-gate
-    # shape -- signal discarded suite-wide).
-    "error::DeprecationWarning:pytcl.*",
+    # The last matching rule wins, so the error rule must come after the
+    # blanket default. It keys on a category, not a module: the module
+    # field matches the frame a warning is attributed to, which with
+    # stacklevel>=2 is the caller, never pytcl. The v2.11 pair
+    # (error::DeprecationWarning:pytcl.* then default::DeprecationWarning)
+    # failed both ways and never fired.
+    #
     # Third-party deprecations stay visible in the warnings summary but
     # do not fail the suite; add targeted ignores here only with a
     # reason and an upstream reference.
     "default::DeprecationWarning",
+    "error::pytcl.core.exceptions.PytclDeprecationWarning",
 ]
 
 [tool.coverage.run]

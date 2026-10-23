@@ -89,8 +89,11 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build --sdist
 
+      # No -q: grep -q exits on the first match, tar takes SIGPIPE, and
+      # pipefail would fail a good sdist.
       - name: Verify the sdist carries the C sources
-        run: tar tzf dist/*.tar.gz | grep -q "csrc/nrlmsise00/nrlmsise-00.c"
+        shell: bash
+        run: tar tzf dist/*.tar.gz | grep "csrc/nrlmsise00/nrlmsise-00.c"
 
       - uses: actions/upload-artifact@v4
         with:
