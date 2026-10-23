@@ -262,9 +262,20 @@ def test_recorded_test_count_is_fresh():
 # became false). When a port ships under one of these names, this gate
 # fails and forces the prose update that docs/api/atmosphere.rst missed
 # for two releases.
-# Jacchia 1971 shipped in v2.11.0 (pytcl.atmosphere.jacchia), retiring
-# both of its absence claims; the registry stays for future claims.
-CLAIMED_ABSENT: dict = {}
+# The registry must hold every live absence claim: an empty one makes both
+# tests below loop over nothing and pass unconditionally, which it did
+# from 6370238 until v2.12.0 (test_claimed_absent_registry_is_populated
+# now forbids that). PR 8 adds the v2.13 entries PR 0 wrote (Task 8.2).
+CLAIMED_ABSENT: dict = {
+    "docs/matlab_migration_map.rst": {
+        "text": "*unported* -- MATLAB's ``perm`` is the matrix **permanent**",
+        "symbols": [
+            "pytcl.mathematical_functions.combinatorics.permanent",
+            "pytcl.mathematical_functions.permanent",
+            "pytcl.mathematical_functions.basic_matrix.permanent",
+        ],
+    },
+}
 
 
 def _resolves(dotted):
@@ -303,3 +314,7 @@ def test_claimed_absent_registry_is_not_stale():
     for rel, claim in CLAIMED_ABSENT.items():
         assert (REPO / rel).exists(), f"{rel} disappeared; update CLAIMED_ABSENT"
         assert claim["symbols"], f"{rel} entry has no symbols to check"
+
+
+def test_claimed_absent_registry_is_populated():
+    assert CLAIMED_ABSENT, "the registry is empty, so both absence tests are vacuous"
