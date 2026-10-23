@@ -145,7 +145,19 @@ wrong — passing tests are necessary, not sufficient.
    prints which backends were missing.
 
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
-   an NVIDIA machine; the `GPU` workflow covers it on demand.
+   an NVIDIA machine. Its validation is recorded in
+   `pytcl/gpu/VALIDATION.json`, and `tests/contract/test_gpu_validation_record.py`
+   reports every commit touching `pytcl/gpu/` after the recorded one. To
+   validate, on the NVIDIA box:
+
+   ```bash
+   PYTCL_REQUIRE_CUPY=1 uv run pytest tests/ -p no:randomly
+   ```
+
+   then update `validated_date`, `hardware` and `validated_through_commit`
+   in `VALIDATION.json` (the record's own commits are not counted as GPU
+   changes). The `GPU` workflow runs the same suite but needs a registered
+   self-hosted runner label at dispatch; none is provisioned today.
 4. **PR with green CI** — lint (ruff, pinned), types (ty, locked), tests
    (Ubuntu + macOS × 4 Python, plus Windows on 3.12 — 9 combinations, not a
    full 4×3 matrix), docstring examples (`--doctest-modules`), docs build
