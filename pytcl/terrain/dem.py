@@ -19,7 +19,7 @@ References
 ----------
 - Farr, T. G., et al. "The Shuttle Radar Topography Mission."
   Reviews of Geophysics 45.2 (2007).
-- GEBCO Compilation Group (2023) GEBCO 2023 Grid
+- GEBCO Compilation Group (2025) GEBCO 2025 Grid
 - Hirt, C. and Rexer, M. "Earth2014: 1 arc-min shape, topography,
   bedrock and ice-sheet models." Geophysical Journal International
   198.3 (2014): 1544-1555.

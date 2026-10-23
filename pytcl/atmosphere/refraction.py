@@ -94,8 +94,10 @@ def approx_refractivity(
     """
     Approximate the refractivity of air from temperature and pressure.
 
-    Implements Equation 6 in Annex I of ITU-R P.453-11. The
-    approximation does not depend on frequency.
+    Implements Equation 6 in Annex I of ITU-R P.453-11, the edition this
+    port follows. Later editions renumber the equations and write the same
+    expression in terms of dry pressure, so the equation number does not
+    carry over. The approximation does not depend on frequency.
 
     Port of ``approxRefractivity.m``.
 

@@ -65,7 +65,8 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        **Missing:** progressive Gaussian update, pure-propagation
        filter, reduced-state filters, and the GPB1/GPB2/AMM multiple-model
        family with unequal-dimension mixing (``multipleModelPred.m``,
-       ``multipleModelUpdate.m``; planned for v2.13). Also absent, and larger than that list
+       ``multipleModelUpdate.m``; planned for v2.13). The Bernoulli
+       filter is ported in ``pytcl/trackers/bernoulli.py`` (v2.11.0). Also absent, and larger than that list
        suggests: the entire ``Measurement_Update/Update_Parts`` tree (30
        files, 27% of the area -- separate gain, measurement-prediction and
        update-with-prediction entry points, which pytcl does not decompose
@@ -104,7 +105,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        sub-mm against pyproj/EPSG, but ``stereographic`` and
        ``azimuthal_equidistant`` are spherical approximations that diverge
        from PROJ by kilometres away from the projection centre (their own
-       docstrings tabulate this; gh-25). The angle-only direction-cosine UV
+       docstrings tabulate this; gh-25); ``oblique_stereographic``
+       (EPSG 9809) and ``azimuthal_equidistant_exact`` are the ellipsoidal
+       counterparts that match PROJ. The angle-only direction-cosine UV
        measurement system's core conversions are ported
        (``coordinate_systems.conversions.uv``, v2.8.0: u-v <->
        spherical, full bistatic r-u-v, camera-to-uv), its
@@ -122,11 +125,9 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        ``coordinate_systems/hessians/`` (v2.10.0, same fixture
        validation).
        **Missing:** the calendar/timezone utilities of the time suite, the
-       ellipsoidal azimuthal-equidistant family (pytcl's
-       ``azimuthal_equidistant`` is a spherical approximation) and its
-       Jacobians, other exotic projections (bipolar, gnomonic),
-       ``stateCart2Ruv`` (planned for v2.13; pytcl has the inverse
-       ``state_ruv2cart``),
+       Jacobians of the ellipsoidal azimuthal-equidistant projection, other
+       exotic projections (bipolar, gnomonic), ``stateCart2Ruv`` (planned
+       for v2.13; pytcl has the inverse ``state_ruv2cart``),
        ellipsoidal-harmonic coordinates, RF transform-parameter
        estimation.
    * - Mathematical_Functions
@@ -156,8 +157,8 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        region-cubature rules (Cube/Simplex/Sphere/Spherical-Surface) have
        since shipped. **Remaining:** the 48 dimension-specialized
        subdirectory files within that same region-cubature subset (fixed
-       2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/), three
-       1-D quadrature building blocks, and the region types outside that
+       2D/3D formulas in Cube/, Square/, Tetrahedra/, Triangles/), and the
+       region types outside that
        subset (``Prism``, ``Pyramid``, ``Cross_Polytope``, ``Exp_Weight``,
        ``Weighted_Ellipse``, ``Hexagon``, ``Spherical_Shell`` -- 33 files --
        plus loose torus and n-dimensional-shell rules; see :doc:`roadmap`).
