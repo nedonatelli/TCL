@@ -208,6 +208,37 @@ jobs:
           fail_ci_if_error: false
 
 
+  floors:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.1.0
+        with:
+          # lowest-direct relocking is measured on this version; a newer uv
+          # may resolve differently and silently test something else.
+          version: "0.12.3"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Resolve direct dependencies to their floors (scratch lock, never committed)
+        run: uv lock --resolution lowest-direct
+      - name: Install the runtime at its floors
+        run: uv sync --locked --resolution lowest-direct --no-dev
+      - name: Install the test runner without moving the floors
+        run: |
+          uv run --no-sync python scripts/check_dependency_floors.py --write-constraints /tmp/floors.txt
+          uv pip install --constraint /tmp/floors.txt pytest pytest-xdist pytest-benchmark pytest-timeout hypothesis mpmath matplotlib pyyaml
+      - name: Prove the floors are what got installed
+        run: uv run --no-sync python scripts/check_dependency_floors.py --check
+      - name: Test at the floors
+        env:
+          PYTCL_REQUIRE_NRLMSISE00_C: "1"
+        run: uv run --no-sync pytest tests/ -n auto --benchmark-skip -m "not examples"
+
   docs:
     runs-on: ubuntu-latest
     steps:
