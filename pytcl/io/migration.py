@@ -8,8 +8,11 @@ Examples
 --------
 Analyze a legacy tracking script:
 
+>>> import warnings
 >>> from pytcl.io.migration import MigrationHelper
->>> helper = MigrationHelper()
+>>> with warnings.catch_warnings():
+...     warnings.simplefilter("ignore", DeprecationWarning)
+...     helper = MigrationHelper()
 >>> analysis = helper.analyze_v1_code("legacy_tracker.py")  # doctest: +SKIP
 >>> print(analysis.recommendations)  # doctest: +SKIP
 

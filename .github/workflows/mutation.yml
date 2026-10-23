@@ -10,9 +10,10 @@ name: Mutation
 # level promises "thoroughly tested".
 #
 # Report-only by design: a surviving mutant needs human triage (equivalent
-# mutants exist), so the job never fails the build. The report lands in the
-# run's step summary. The very first smoke run already surfaced survivors
-# in ValidationError.__init__, so the signal is real.
+# mutants exist), so surviving mutants never fail the build; a genuine
+# `mutmut results` error does. The report lands in the run's step
+# summary. The very first smoke run already surfaced survivors in
+# ValidationError.__init__, so the signal is real.
 #
 # Scope lives HERE as mutant-name patterns, not in [tool.mutmut] --
 # source_paths must stay the whole package or the mutants/ copy is an

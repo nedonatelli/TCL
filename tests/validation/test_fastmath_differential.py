@@ -39,19 +39,32 @@ def _jit_disabled():
     return bool(numba.config.DISABLE_JIT)
 
 
+def _is_fastmath_off(value):
+    return isinstance(value, ast.Constant) and value.value is False
+
+
 def _ast_fastmath_kernels(root):
-    names = []
+    """``module:name`` of every function decorated with fastmath enabled."""
+    keys = []
     for path in sorted(root.rglob("*.py")):
+        module = ".".join(path.relative_to(root.parent).with_suffix("").parts)
+        module = module.removesuffix(".__init__")
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef):
                 continue
             for dec in node.decorator_list:
                 if isinstance(dec, ast.Call) and any(
-                    kw.arg == "fastmath" for kw in dec.keywords
+                    kw.arg == "fastmath" and not _is_fastmath_off(kw.value)
+                    for kw in dec.keywords
                 ):
-                    names.append(node.name)
-    return names
+                    keys.append(f"{module}:{node.name}")
+    return keys
+
+
+def _kernel_key(kernel):
+    func = getattr(kernel, "py_func", kernel)
+    return f"{func.__module__}:{func.__name__}"
 
 
 _RNG_SEED = 20261023
@@ -290,9 +303,28 @@ def _call(kernel, args):
 
 
 def test_registry_lists_every_fastmath_kernel():
-    assert set(_ast_fastmath_kernels(PYTCL_ROOT)) == {
-        k.__name__ for k in _FASTMATH_KERNELS
-    }
+    assert sorted(_ast_fastmath_kernels(PYTCL_ROOT)) == sorted(
+        _kernel_key(k) for k in _FASTMATH_KERNELS
+    )
+
+
+def test_kernel_scan_keys_by_module_and_skips_fastmath_off(tmp_path):
+    pkg = tmp_path / "pkg"
+    (pkg / "sub").mkdir(parents=True)
+    body = (
+        "from numba import njit\n"
+        "@njit(fastmath=True)\ndef k(x):\n    return x\n"
+        "@njit(fastmath=False)\ndef off(x):\n    return x\n"
+        "@njit(fastmath={'nsz'})\ndef flags(x):\n    return x\n"
+    )
+    (pkg / "a.py").write_text(body)
+    (pkg / "sub" / "b.py").write_text(body)
+    assert sorted(_ast_fastmath_kernels(pkg)) == [
+        "pkg.a:flags",
+        "pkg.a:k",
+        "pkg.sub.b:flags",
+        "pkg.sub.b:k",
+    ]
 
 
 @pytest.mark.skipif(

@@ -72,12 +72,31 @@ def test_every_piped_run_step_has_pipefail():
             )
 
 
+STATUS_DISCARD = (
+    r"\|\|\s*(?:true\b|echo\b|:(?=\s|;|\)|$)|exit\s+0\b)"
+    r"|continue-on-error:\s*true\b"
+)
+
+
 def test_no_unreviewed_or_true():
     found = {
-        (wf, line.strip())
-        for wf, line in _lines_matching(WORKFLOWS, r"\|\|\s*(true|echo)")
+        (wf, line.strip()) for wf, line in _lines_matching(WORKFLOWS, STATUS_DISCARD)
     }
     assert found <= ALLOWED_OR_TRUE
+
+
+def test_status_discard_pattern_catches_every_form():
+    rx = re.compile(STATUS_DISCARD)
+    for line in (
+        "cmd || true",
+        'cmd || echo "x"',
+        "cmd || :",
+        "cmd || exit 0",
+        "        continue-on-error: true",
+    ):
+        assert rx.search(line), line
+    for line in ("cmd || status=$?", "cmd || exit 1", "a || b"):
+        assert not rx.search(line), line
 
 
 def test_ci_pytest_lines_do_not_repeat_addopts_quiet():
