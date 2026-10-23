@@ -52,7 +52,7 @@ jobs:
         # "# doctest: +SKIP" tries to fetch the 114 MB DE440 kernel from
         # naif.jpl.nasa.gov and hung this job for ten minutes before timing
         # out; the per-test timeout turns any repeat into a fast, clear failure.
-        run: uv run pytest --doctest-modules pytcl -q --timeout=60
+        run: uv run pytest --doctest-modules pytcl --timeout=60
 
   test:
     runs-on: ${{ matrix.os }}
@@ -142,7 +142,7 @@ jobs:
           # NRLMSISE-00 extension in CI means the build broke; fail
           # loudly instead of silently testing the pure-Python fallback.
           PYTCL_REQUIRE_NRLMSISE00_C: "1"
-        run: uv run pytest tests/ -n auto --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ -n auto --benchmark-skip -m "not examples"
 
       # Serial, because coverage under xdist has to merge per-worker data and
       # the gate is not worth the flakiness for one job.
@@ -178,7 +178,7 @@ jobs:
           # would mean the cache-and-download pair silently stopped working.
           # The other cells have no jplephem and are left permissive.
           PYTCL_REQUIRE_EPHEMERIS: "1"
-        run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples" -q
+        run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples"
 
       # Patch coverage: the lines THIS change touches must be tested. The
       # global floor (85) lets an individual module rot as long as the
@@ -227,12 +227,18 @@ jobs:
       - name: Install pandoc
         run: sudo apt-get update && sudo apt-get install -y pandoc
 
+      # shell: bash runs with pipefail; GitHub's default "bash -e {0}" does
+      # not, so "sphinx-build | tee" took tee's status and a fatal
+      # "Configuration error:" exited 0. The status is captured rather than
+      # left to -e so the diagnostics below still print on a failed build.
       - name: Build docs (fail on any Sphinx error or warning)
+        shell: bash
         run: |
-          uv run sphinx-build -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log
-          if grep -qE "ERROR|Notebook error" /tmp/sphinx.log; then
+          set -o pipefail
+          status=0
+          uv run sphinx-build -W --keep-going -b html docs /tmp/docs_build 2>&1 | tee /tmp/sphinx.log || status=$?
+          if grep -E "ERROR|Notebook error|Extension error|Configuration error|Traceback" /tmp/sphinx.log; then
             echo "::error::Sphinx build produced errors"
-            grep -E "ERROR|Notebook error" /tmp/sphinx.log
             exit 1
           fi
           # The build is warning-free as of the docs cleanup. Gating on that
@@ -244,6 +250,10 @@ jobs:
             echo "::error::Sphinx build produced $count warning(s); the docs build must stay warning-free"
             grep "WARNING:" /tmp/sphinx.log
             exit 1
+          fi
+          if [ "$status" -ne 0 ]; then
+            echo "::error::sphinx-build exited $status"
+            exit "$status"
           fi
 
   examples:

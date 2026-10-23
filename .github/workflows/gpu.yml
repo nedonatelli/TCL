@@ -52,10 +52,15 @@ jobs:
           enable-cache: true
 
       - name: Report the device
+        shell: bash
         run: |
           nvidia-smi --query-gpu=name,memory.total,driver_version \
             --format=csv,noheader
-          nvcc --version 2>/dev/null | tail -1 || echo "(no nvcc; driver runtime only)"
+          if command -v nvcc >/dev/null; then
+            nvcc --version | tail -1
+          else
+            echo "(no nvcc; driver runtime only)"
+          fi
 
       - name: Install dependencies
         run: |

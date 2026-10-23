@@ -70,13 +70,16 @@ jobs:
             "pytcl.containers.base*" "pytcl.containers.kd_tree*" \
             || true
 
+      # grep -v exits 1 when every line is filtered (no survivors), which is
+      # a valid report; exit 2 is a real error and still fails.
       - name: Publish survivor report
         if: always()
+        shell: bash
         run: |
           {
             echo "## Mutation results (STABLE modules)"
             echo '```'
-            uv run mutmut results 2>/dev/null | grep -v "not checked" | tail -200
+            uv run mutmut results | { grep -v "not checked" || [ $? -eq 1 ]; } | tail -200
             echo '```'
             echo "Surviving mutants are logic changes no unit/validation test noticed."
             echo "Triage each: strengthen the test, or record it as an equivalent mutant."
