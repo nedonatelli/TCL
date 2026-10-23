@@ -179,15 +179,18 @@ markers = [
     "examples: runs a script from examples/ end to end",
 ]
 filterwarnings = [
-    # pytcl's own deprecations are errors: the suite must not depend on
-    # anything the library has deprecated (the blanket
-    # ignore::DeprecationWarning this replaces was the vacuous-gate
-    # shape -- signal discarded suite-wide).
-    "error::DeprecationWarning:pytcl.*",
+    # The last matching rule wins, so the error rule must come after the
+    # blanket default. It keys on a category, not a module: the module
+    # field matches the frame a warning is attributed to, which with
+    # stacklevel>=2 is the caller, never pytcl. The v2.11 pair
+    # (error::DeprecationWarning:pytcl.* then default::DeprecationWarning)
+    # failed both ways and never fired.
+    #
     # Third-party deprecations stay visible in the warnings summary but
     # do not fail the suite; add targeted ignores here only with a
     # reason and an upstream reference.
     "default::DeprecationWarning",
+    "error::pytcl.core.exceptions.PytclDeprecationWarning",
 ]
 
 [tool.coverage.run]

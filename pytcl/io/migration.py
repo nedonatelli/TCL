@@ -33,6 +33,8 @@ from typing import Any, Dict, List
 
 import numpy as np
 
+from pytcl.core.exceptions import PytclDeprecationWarning
+
 
 class AnalysisResult:
     """Result of analyzing a v1.x tracking pipeline.
@@ -102,7 +104,7 @@ class MigrationHelper:
         warnings.warn(
             "MigrationHelper is part of the v1.x migration tooling, "
             "deprecated since v2.11.0 and scheduled for removal in v3.0.0.",
-            DeprecationWarning,
+            PytclDeprecationWarning,
             stacklevel=2,
         )
 

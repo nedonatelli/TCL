@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
+  a `DeprecationWarning` subclass that every pytcl deprecation now emits
+  (`SimplifiedThermosphere`, the v1.x compatibility adapters in
+  `pytcl.io.compat`, and `MigrationHelper`). The test suite turns it into
+  an error; the v2.11 rule that was meant to do so never fired, because
+  pytest applies the last matching filter and its module field matched
+  the caller rather than pytcl. What to do: nothing; filters on
+  `DeprecationWarning` still match.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

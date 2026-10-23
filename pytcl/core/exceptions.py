@@ -29,6 +29,8 @@ Exception Hierarchy
         ├── FormatError (invalid data format)
         └── ParseError (data parsing failures)
 
+    PytclDeprecationWarning (DeprecationWarning subclass)
+
 Examples
 --------
 Catching specific exception types:
@@ -891,6 +893,20 @@ class ParseError(DataError, ValueError):
 
 
 # =============================================================================
+# Warnings
+# =============================================================================
+
+
+class PytclDeprecationWarning(DeprecationWarning):
+    """
+    Deprecation of a pytcl API.
+
+    The test suite turns it into an error; subclassing DeprecationWarning
+    keeps every existing filter working.
+    """
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -919,4 +935,6 @@ __all__ = [
     "DataError",
     "FormatError",
     "ParseError",
+    # Warnings
+    "PytclDeprecationWarning",
 ]
