@@ -286,22 +286,22 @@ Get atmospheric density for satellite drag calculations:
 .. code-block:: python
 
    import numpy as np
-   from pytcl.atmosphere import simplified_thermosphere
+   from pytcl.atmosphere import nrlmsise00
 
-   # Simplified thermosphere model with solar/geomagnetic activity
-   output = simplified_thermosphere(
-       latitude=np.deg2rad(45.0),
-       longitude=np.deg2rad(-75.0),
-       altitude=400e3,          # meters
-       year=2024,
-       day_of_year=100,
-       seconds_in_day=12 * 3600.0,
+   # NRLMSISE-00 with solar/geomagnetic activity (degrees and kilometers)
+   output = nrlmsise00(
+       doy=100,
+       sec=12 * 3600.0,         # UT seconds of the day
+       alt_km=400.0,
+       g_lat_deg=45.0,
+       g_long_deg=-75.0,
+       lst=12.0 - 75.0 / 15.0,  # local solar time, hours
+       f107a=130.0,  # 81-day average 10.7 cm solar flux (SFU)
        f107=150.0,   # 10.7 cm solar flux (SFU)
-       f107a=130.0,  # 81-day average
        ap=15.0,      # Planetary magnetic index
    )
-   print(f"Density: {output.density:.3e} kg/m^3")
+   print(f"Density: {output.d[5]:.3e} kg/m^3")
 
    # Composition is available on the same result
-   print(f"Atomic oxygen: {output.o_density:.3e} m^-3")
-   print(f"Temperature: {output.temperature:.1f} K")
+   print(f"Atomic oxygen: {output.d[1]:.3e} m^-3")
+   print(f"Temperature: {output.t[1]:.1f} K")

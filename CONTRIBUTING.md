@@ -606,17 +606,13 @@ for f in examples/*.py; do echo "Running $f..."; python "$f" || exit 1; done
 
 Update both `ROADMAP.md` and `docs/roadmap.rst`:
 
-**In `ROADMAP.md`:**
-- Check off completed items with `[x]` or ~~strikethrough~~
-- Update phase status (e.g., "✅ Completed in vX.Y.Z")
-- Add any new planned features discovered during development
-- Update version targets for upcoming phases if needed
+Both files are forward-looking only:
 
-**In `docs/roadmap.rst`:**
-- Update "Current State (vX.Y.Z)" section header with new version
-- Update statistics (functions, tests, coverage)
-- Add new completed phase under "Completed Phases"
-- Update the "Version Targets" table with new release
+- Delete shipped items from `ROADMAP.md` and `docs/roadmap.rst`. Do not
+  check them off or move them to a completed section; keep at most a
+  one-line pointer to the CHANGELOG.
+- The next release's ROADMAP bullets must match the CHANGELOG's deferral
+  sentences word for word.
 
 ### 7. Update Documentation
 

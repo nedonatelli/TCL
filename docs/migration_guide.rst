@@ -385,7 +385,7 @@ Module Mapping Reference
    * - ``Terrain/``
      - ``pytcl.terrain``
    * - ``Atmosphere_and_Refraction/``
-     - ``pytcl.atmosphere`` (atmosphere models only; refraction is unported)
+     - ``pytcl.atmosphere`` (atmosphere models and the refraction suite)
    * - ``Mathematical_Functions/Signal_Processing/``
      - ``pytcl.mathematical_functions.signal_processing``
 

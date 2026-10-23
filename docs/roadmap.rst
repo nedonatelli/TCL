@@ -20,9 +20,8 @@ Current State (v2.11.1)
   tracker rebuilt so hypotheses actually branch (plus a Bernoulli
   filter); duplicate implementations removed, delegated, or factored;
   EPSG-9809 oblique stereographic and exact geodesic azimuthal
-  equidistant projections matching PROJ to nanometers; Jacchia 1971,
-  the 1-D quadrature builders, and the gravity ellipsoidal-parameter
-  conversions ported against fresh MATLAB fixtures; abi3 wheels and
+  equidistant projections matching PROJ to nanometers; the gravity
+  ellipsoidal-parameter conversions ported against fresh MATLAB fixtures; abi3 wheels and
   PEP 639 metadata; 23 evidence-backed maturity promotions
 * **NRLMSISE-00 proper and the long-tail port** (v2.10.0): the
   vendored reference C compiled as pytcl's first extension (with
@@ -93,17 +92,31 @@ Current State (v2.11.1)
 Next
 ----
 
-* **v2.12.0 planned changes**: ``'w'`` mode truncating for
-  ``TrackDatabaseManager`` and ``SQLStorage``, the Tukey-biweight
-  ``tau_scale`` fixed or removed, rejecting unknown schema versions,
-  ``geodetic2ecef`` returning ``(3, 1)`` for size-1 input, and the
-  information-filter singular-``Y`` prediction re-derived.
+* **v2.12.0 planned**: the audit carry-forward. Vacuous CI gates fixed,
+  dependency floors (numpy 2.3.2, scipy 1.16.1, numba 0.63.0) enforced by
+  a ``lowest-direct`` CI cell, ``'w'`` mode truncating for
+  ``TrackDatabaseManager`` and ``SQLStorage``, unknown schema versions
+  rejected, ``LSResult.residuals`` as the residual vector, exact
+  ``factorial``/``factorial2``, ``ecef2geodetic`` rejecting unknown
+  methods, the information-filter singular-``Y`` prediction re-derived,
+  ``marcum_q`` at large arguments, CFAR empty windows as NaN, ``tau_scale``
+  as the Maronna-Zamar scale, ``q_coord_turn_2d`` matching ``QCoordTurn``,
+  ``simple_iri`` checked against IRI-2020, and the BLE001/B905 lint rules,
+  the duplicate-implementation consolidation and the vacuous-test
+  paydown.
+
+* **v2.13.0 planned**: the audit's Tier 4 ports -- matrix permanent,
+  ``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian, Runnalls
+  ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family.
+
+* **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
+  input (a breaking change for a STABLE module).
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's
   dimension-specialized subdirectory files and out-of-scope region
   types (LCD samples and the general-dimension region-cubature rules
-  have shipped), Jacchia 1971, the multivariate-polynomials remainder,
+  have shipped), the multivariate-polynomials remainder,
   calendar/timezone utilities, and filter variants.
 
 Long term (unscheduled)

@@ -178,27 +178,27 @@ at the end of this page.
 
 **Atmospheric Drag** (for low Earth orbits)
 
-``pytcl.atmosphere.simplified_thermosphere`` provides upper-atmosphere
-density. It is a **simplified barometric model** with solar-flux and
-geomagnetic coupling -- not NRLMSISE-00 -- and is only meaningful above
-roughly 200 km.
+``pytcl.atmosphere.nrlmsise00`` provides upper-atmosphere density from
+the NRLMSISE-00 empirical model, with solar-flux and geomagnetic coupling.
 
 .. code-block:: python
 
-   from pytcl.atmosphere import simplified_thermosphere
+   from pytcl.atmosphere import nrlmsise00
 
-   # Density at 400 km altitude (angles in radians, altitude in meters)
-   state_atm = simplified_thermosphere(
-       latitude=np.radians(40.0),
-       longitude=np.radians(-74.0),
-       altitude=400e3,
-       year=2026,
-       day_of_year=57,
-       seconds_in_day=43200.0,
+   # Density at 400 km altitude (angles in degrees, altitude in kilometers)
+   state_atm = nrlmsise00(
+       doy=57,
+       sec=43200.0,
+       alt_km=400.0,
+       g_lat_deg=40.0,
+       g_long_deg=-74.0,
+       lst=12.0 - 74.0 / 15.0,  # local solar time, hours
+       f107a=150.0,
        f107=150.0,   # 10.7 cm solar flux (SFU)
        ap=4.0,       # geomagnetic index
    )
-   print(f"Density at 400 km: {state_atm.density:.3e} kg/m^3")
+   rho = state_atm.d[5]
+   print(f"Density at 400 km: {rho:.3e} kg/m^3")
 
    def drag_acceleration(rho, vel, area, mass, cd=2.2):
        """Cannonball drag: a = -0.5 (cd A / m) rho |v| v."""
@@ -206,11 +206,11 @@ roughly 200 km.
        return -0.5 * (cd * area / mass) * rho * v_mag * vel
 
    vel = np.array([7500.0, 0.0, 0.0])  # m/s
-   a_drag = drag_acceleration(state_atm.density, vel, area=10.0, mass=500.0)
+   a_drag = drag_acceleration(rho, vel, area=10.0, mass=500.0)
 
 Output::
 
-   Density at 400 km: 2.886e-12 kg/m^3
+   Density at 400 km: 3.000e-12 kg/m^3
 
 Reference Frames: ECEF and ECI
 -------------------------------

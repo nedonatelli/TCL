@@ -2,9 +2,8 @@
 Atmospheric Modeling and Orbital Decay Analysis
 
 Demonstrates the NRLMSISE-00 empirical atmosphere (the reference C
-implementation, compiled into pytcl) alongside the simplified
-thermosphere model and drag calculations for analyzing satellite
-orbital decay and atmospheric interactions.
+implementation, compiled into pytcl) and drag calculations for
+analyzing satellite orbital decay and atmospheric interactions.
 
 Key scenarios:
 1. NRLMSISE-00 density and composition, quiet vs geomagnetic storm
@@ -22,11 +21,22 @@ import plotly.graph_objects as go
 import plotly.subplots as sp
 
 from pytcl.atmosphere import (
-    SimplifiedThermosphere,
     nrlmsise00,
     us_standard_atmosphere_1976,
     uses_compiled_backend,
 )
+
+
+def _nrlmsise00_profile(
+    altitudes_km, f107, f107a, ap, lat_deg=0.0, lon_deg=0.0, doy=1, sec=0.0
+):
+    """Evaluate NRLMSISE-00 over altitudes; returns (d, t) arrays, one row each."""
+    lst = (sec / 3600.0 + lon_deg / 15.0) % 24.0
+    outs = [
+        nrlmsise00(doy, sec, float(alt), lat_deg, lon_deg, lst, f107a, f107, ap)
+        for alt in altitudes_km
+    ]
+    return np.array([o.d for o in outs]), np.array([o.t for o in outs])
 
 
 def plot_nrlmsise00_profiles():
@@ -102,7 +112,7 @@ def plot_nrlmsise00_profiles():
 
 def plot_density_vs_altitude():
     """
-    Plot atmospheric density from the simplified thermosphere across altitude range.
+    Plot NRLMSISE-00 density across the altitude range.
 
     Compares quiet and active solar activity conditions.
     """
@@ -113,33 +123,15 @@ def plot_density_vs_altitude():
             np.linspace(100, 1000, 100),  # Upper atmosphere
         ]
     )
-    altitudes_m = altitudes_km * 1000
 
     # Quiet solar activity (F107=70, Ap=0)
-    model = SimplifiedThermosphere()
-    output_quiet = model(
-        latitude=np.radians(45) * np.ones_like(altitudes_m),
-        longitude=np.radians(-75) * np.ones_like(altitudes_m),
-        altitude=altitudes_m,
-        year=2024,
-        day_of_year=100,
-        seconds_in_day=43200,
-        f107=70,
-        f107a=70,
-        ap=0,
+    d_quiet, _ = _nrlmsise00_profile(
+        altitudes_km, 70, 70, 0, lat_deg=45.0, lon_deg=-75.0, doy=100, sec=43200.0
     )
 
     # Active solar activity (F107=200, Ap=50)
-    output_active = model(
-        latitude=np.radians(45) * np.ones_like(altitudes_m),
-        longitude=np.radians(-75) * np.ones_like(altitudes_m),
-        altitude=altitudes_m,
-        year=2024,
-        day_of_year=100,
-        seconds_in_day=43200,
-        f107=200,
-        f107a=200,
-        ap=50,
+    d_active, _ = _nrlmsise00_profile(
+        altitudes_km, 200, 200, 50, lat_deg=45.0, lon_deg=-75.0, doy=100, sec=43200.0
     )
 
     # US Standard Atmosphere for comparison (up to 85 km only)
@@ -154,7 +146,7 @@ def plot_density_vs_altitude():
     fig.add_trace(
         go.Scatter(
             x=altitudes_km,
-            y=np.maximum(output_quiet.density, 1e-20),
+            y=np.maximum(d_quiet[:, 5], 1e-20),
             name="Quiet (F107=70, Ap=0)",
             mode="lines",
             line=dict(color="blue", width=2),
@@ -166,7 +158,7 @@ def plot_density_vs_altitude():
     fig.add_trace(
         go.Scatter(
             x=altitudes_km,
-            y=np.maximum(output_active.density, 1e-20),
+            y=np.maximum(d_active[:, 5], 1e-20),
             name="Active (F107=200, Ap=50)",
             mode="lines",
             line=dict(color="red", width=2, dash="dash"),
@@ -193,7 +185,7 @@ def plot_density_vs_altitude():
     fig.update_xaxes(title_text="Altitude (km)", range=[0, 1000])
 
     fig.update_layout(
-        title="Atmospheric Density vs. Altitude<br><sub>Simplified Thermosphere (Quiet vs. Active Solar Activity)</sub>",
+        title="Atmospheric Density vs. Altitude<br><sub>NRLMSISE-00 (Quiet vs. Active Solar Activity)</sub>",
         hovermode="x unified",
         height=600,
         template="plotly_white",
@@ -208,32 +200,19 @@ def plot_composition_profile():
     """
     # Altitude range
     altitudes_km = np.linspace(80, 500, 200)
-    altitudes_m = altitudes_km * 1000
-
-    model = SimplifiedThermosphere()
-    output = model(
-        latitude=np.zeros_like(altitudes_m),
-        longitude=np.zeros_like(altitudes_m),
-        altitude=altitudes_m,
-        year=2024,
-        day_of_year=1,
-        seconds_in_day=0,
-        f107=150,
-        f107a=150,
-        ap=5,
-    )
+    d, _ = _nrlmsise00_profile(altitudes_km, 150, 150, 5)
 
     fig = go.Figure()
 
     # Plot each species
     species = [
-        ("N2", output.n2_density, "blue"),
-        ("O2", output.o2_density, "green"),
-        ("O", output.o_density, "red"),
-        ("He", output.he_density, "purple"),
-        ("H", output.h_density, "orange"),
-        ("Ar", output.ar_density, "brown"),
-        ("N", output.n_density, "pink"),
+        ("N2", d[:, 2], "blue"),
+        ("O2", d[:, 3], "green"),
+        ("O", d[:, 1], "red"),
+        ("He", d[:, 0], "purple"),
+        ("H", d[:, 6], "orange"),
+        ("Ar", d[:, 4], "brown"),
+        ("N", d[:, 7], "pink"),
     ]
 
     for name, density, color in species:
@@ -253,7 +232,7 @@ def plot_composition_profile():
     fig.update_xaxes(title_text="Altitude (km)")
 
     fig.update_layout(
-        title="Atmospheric Composition vs. Altitude<br><sub>Simplified Thermosphere at F107=150, Ap=5</sub>",
+        title="Atmospheric Composition vs. Altitude<br><sub>NRLMSISE-00 at F107=150, Ap=5</sub>",
         height=600,
         hovermode="x unified",
         template="plotly_white",
@@ -269,9 +248,6 @@ def plot_temperature_profile():
     altitudes_km = np.concatenate(
         [np.linspace(0, 100, 50), np.linspace(100, 1000, 100)]
     )
-    altitudes_m = altitudes_km * 1000
-
-    model = SimplifiedThermosphere()
 
     # Different solar activity levels
     conditions = [
@@ -284,21 +260,11 @@ def plot_temperature_profile():
     fig = go.Figure()
 
     for label, f107, f107a, ap, color in conditions:
-        output = model(
-            latitude=np.zeros_like(altitudes_m),
-            longitude=np.zeros_like(altitudes_m),
-            altitude=altitudes_m,
-            year=2024,
-            day_of_year=1,
-            seconds_in_day=0,
-            f107=f107,
-            f107a=f107a,
-            ap=ap,
-        )
+        _, t = _nrlmsise00_profile(altitudes_km, f107, f107a, ap)
 
         fig.add_trace(
             go.Scatter(
-                x=output.temperature,
+                x=t[:, 1],
                 y=altitudes_km,
                 name=label,
                 mode="lines",
@@ -314,7 +280,7 @@ def plot_temperature_profile():
     fig.update_xaxes(title_text="Temperature (K)", range=[150, 1100])
 
     fig.update_layout(
-        title="Temperature Profile vs. Altitude<br><sub>Simplified Thermosphere Under Various Solar Activity Levels</sub>",
+        title="Temperature Profile vs. Altitude<br><sub>NRLMSISE-00 Under Various Solar Activity Levels</sub>",
         height=600,
         hovermode="x unified",
         template="plotly_white",
@@ -328,29 +294,20 @@ def plot_solar_activity_effect():
     Plot density response to varying solar activity index (F107).
     """
     # Fixed altitude ISS orbit
-    iss_altitude = 408_000  # meters
+    iss_altitude = 408.0  # km
 
     # Vary F107 from quiet to stormy
     f107_range = np.linspace(50, 300, 50)
 
-    model = SimplifiedThermosphere()
     densities = []
     temperatures = []
 
     for f107 in f107_range:
-        output = model(
-            latitude=np.radians(51.6),  # ISS inclination
-            longitude=np.radians(0),
-            altitude=iss_altitude,
-            year=2024,
-            day_of_year=1,
-            seconds_in_day=0,
-            f107=f107,
-            f107a=f107,
-            ap=5,
-        )
-        densities.append(output.density)
-        temperatures.append(output.temperature)
+        output = nrlmsise00(
+            1, 0.0, iss_altitude, 51.6, 0.0, 0.0, float(f107), float(f107), 5.0
+        )  # latitude 51.6 deg: ISS inclination
+        densities.append(output.d[5])
+        temperatures.append(output.t[1])
 
     fig = sp.make_subplots(
         rows=1, cols=2, specs=[[{"secondary_y": False}, {"secondary_y": False}]]
@@ -406,42 +363,21 @@ def plot_composition_transitions():
     Plot composition transition from molecular to atomic atmosphere.
     """
     altitudes_km = np.linspace(70, 300, 300)
-    altitudes_m = altitudes_km * 1000
-
-    model = SimplifiedThermosphere()
-    output = model(
-        latitude=np.zeros_like(altitudes_m),
-        longitude=np.zeros_like(altitudes_m),
-        altitude=altitudes_m,
-        year=2024,
-        day_of_year=1,
-        seconds_in_day=0,
-        f107=150,
-        f107a=150,
-        ap=5,
-    )
+    d, _ = _nrlmsise00_profile(altitudes_km, 150, 150, 5)
 
     # Calculate composition percentages
-    total_dens = (
-        output.n2_density
-        + output.o2_density
-        + output.o_density
-        + output.he_density
-        + output.h_density
-        + output.ar_density
-        + output.n_density
-    )
+    total_dens = d[:, [0, 1, 2, 3, 4, 6, 7]].sum(axis=1)
 
     fig = go.Figure()
 
     # Stacked area chart (as percentages)
     species_data = [
-        ("N2", output.n2_density / total_dens * 100, "blue"),
-        ("O2", output.o2_density / total_dens * 100, "green"),
-        ("O", output.o_density / total_dens * 100, "red"),
-        ("He", output.he_density / total_dens * 100, "purple"),
-        ("H", output.h_density / total_dens * 100, "orange"),
-        ("Other", (output.ar_density + output.n_density) / total_dens * 100, "gray"),
+        ("N2", d[:, 2] / total_dens * 100, "blue"),
+        ("O2", d[:, 3] / total_dens * 100, "green"),
+        ("O", d[:, 1] / total_dens * 100, "red"),
+        ("He", d[:, 0] / total_dens * 100, "purple"),
+        ("H", d[:, 6] / total_dens * 100, "orange"),
+        ("Other", (d[:, 4] + d[:, 7]) / total_dens * 100, "gray"),
     ]
 
     for name, fractions, color in species_data:
