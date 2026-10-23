@@ -95,7 +95,7 @@ correctness-only. Names are the pytcl names each would take:
   `reduce_mixture_runnalls` gains `gamma` and `k_max`. MATLAB's `BDist`
   omits the 1/2 of Runnalls' Equation 21, so its `gammaBound` is 2x
   pytcl's cost.
-- **IMM GPB1 / GPB2 / AMM family with unequal-dimension mixing.** MATLAB
+- **IMM GPB1 / GPB2 / AMM family.** MATLAB
   `Dynamic_Estimation/State_Propagation/multipleModelPred.m` and
   `Dynamic_Estimation/Measurement_Update/Complete_Measurement_Updates/multipleModelUpdate.m`;
   pytcl `pytcl.dynamic_estimation.imm` gains the `GPB1`, `GPB2` and `AMM`
@@ -123,12 +123,8 @@ No dates are attached because none have been decided:
   which two are ported (`calcCubPointMoments.m`, `thirdOrderStudentTCubPoints.m`);
   the rest are 1-D quadrature helpers plus single-region rules with no
   directory of their own, notably `thirdOrderTorusCubPoints.m` and
-  `thirdOrderNDimShellCubPoints.m`. The three `Cube_Space`
-  1-D quadrature building blocks (`ClenshawCurtisPoints1D.m`,
-  `FejerPoints1D.m`, `conformMapQuadPts1D.m`) shipped in v2.11.0 as
-  `quadrature.py` extensions.
-- **Refraction suite remainder** — the suite itself shipped in v2.7.0,
-  NRLMSISE-00 in v2.10.0, and Jacchia 1971 in v2.11.0 (see CHANGELOG).
+  `thirdOrderNDimShellCubPoints.m`.
+- **Refraction suite remainder** —
   `Design_of_Lenses/` (3 optics files) stays excluded as out of scope
 - **Localization-style static estimators, remainder** — nine of the 11
   shipped in v2.8.0 as `static_estimation.localization`. Still open:

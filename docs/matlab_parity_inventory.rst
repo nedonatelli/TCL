@@ -64,7 +64,7 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        estimators, and the PCRLB/Riccati performance-prediction tools.
        **Missing:** progressive Gaussian update, pure-propagation
        filter, reduced-state filters, and the GPB1/GPB2/AMM multiple-model
-       family with unequal-dimension mixing (``multipleModelPred.m``,
+       family (``multipleModelPred.m``,
        ``multipleModelUpdate.m``; planned for v2.13). The Bernoulli
        filter is ported in ``pytcl/trackers/bernoulli.py`` (v2.11.0). Also absent, and larger than that list
        suggests: the entire ``Measurement_Update/Update_Parts`` tree (30

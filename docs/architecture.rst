@@ -230,7 +230,7 @@ Counts are measured from the packages themselves rather than asserted;
    * - ``atmosphere``
      - 9
      - 69
-     - NRLMSISE-00 (compiled reference C), simplified thermosphere,
+     - NRLMSISE-00 (compiled reference C),
        standard atmospheres, ionosphere,
        humidity, refractivity
    * - ``magnetism``

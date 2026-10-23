@@ -58,7 +58,7 @@ python examples/orbital_mechanics.py
 
 ### Geophysical Models (1 example)
 
-- **[atmospheric_modeling.py](atmospheric_modeling.py)** - NRLMSISE-00 (compiled reference C) and simplified thermosphere with solar/geomagnetic activity effects
+- **[atmospheric_modeling.py](atmospheric_modeling.py)** - NRLMSISE-00 (compiled reference C) density, composition and temperature with solar/geomagnetic activity effects
 
 ### Filtering & Signal Processing (2 examples)
 

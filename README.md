@@ -25,7 +25,7 @@ The Tracker Component Library provides building blocks for developing target tra
 - **Astronomical Code**: SGP4/SDP4 propagation, TLE parsing, special orbits (parabolic/hyperbolic), ephemerides, relativistic corrections
 - **Reference Frames**: GCRF, ITRF, TEME, TOD, MOD with full transformation chains
 - **Navigation**: Geodetic calculations, INS mechanization, GNSS utilities, INS/GNSS integration
-- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, simplified thermosphere, ionosphere, humidity/dew point, astronomical and radar refraction with ray tracing, speed of sound), tides, terrain (GEBCO 2025, Earth2014)
+- **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM, IGRF, EMM, WMMHR2025), atmosphere (US Standard 1976/ISA, NRLMSISE-00 and Jacchia 1971 thermosphere models, ionosphere, humidity/dew point, astronomical and radar refraction with ray tracing, speed of sound), tides, terrain (GEBCO 2025, Earth2014)
 - **Signal Processing**: Digital filters, matched filtering, CFAR detection, transforms (FFT, STFT, wavelets)
 - **GPU Acceleration**: CuPy (NVIDIA CUDA) and MLX (Apple Silicon) backends for batch Kalman filtering and particle filters
 - **Results I/O**: CSV/Parquet measurement readers, polars DataFrame accessors for track histories, msgspec (MessagePack/JSON) serialization, ASDF archival export, HDF5 compression (measured 4.73x), and AIS/NMEA transponder decoding

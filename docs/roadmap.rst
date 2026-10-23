@@ -20,9 +20,8 @@ Current State (v2.11.1)
   tracker rebuilt so hypotheses actually branch (plus a Bernoulli
   filter); duplicate implementations removed, delegated, or factored;
   EPSG-9809 oblique stereographic and exact geodesic azimuthal
-  equidistant projections matching PROJ to nanometers; Jacchia 1971,
-  the 1-D quadrature builders, and the gravity ellipsoidal-parameter
-  conversions ported against fresh MATLAB fixtures; abi3 wheels and
+  equidistant projections matching PROJ to nanometers; the gravity
+  ellipsoidal-parameter conversions ported against fresh MATLAB fixtures; abi3 wheels and
   PEP 639 metadata; 23 evidence-backed maturity promotions
 * **NRLMSISE-00 proper and the long-tail port** (v2.10.0): the
   vendored reference C compiled as pytcl's first extension (with

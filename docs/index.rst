@@ -97,7 +97,7 @@ The Tracker Component Library provides:
 * **Navigation**: INS mechanization, INS/GNSS integration, great circle/rhumb line
   navigation, TDOA localization
 * **Geophysical Models**: Gravity (WGS84, EGM96/2008), magnetism (WMM2025 default, WMM2020, IGRF-14, IGRF-13, EMM),
-  atmosphere (simplified thermosphere), tidal effects, terrain/DEM utilities
+  atmosphere (NRLMSISE-00 thermosphere), tidal effects, terrain/DEM utilities
 * **Astronomical**: Orbital mechanics, Kepler propagation, Lambert problem,
   reference frame transformations, JPL ephemerides (DE405/430/432s/440),
   relativistic corrections (Schwarzschild, geodetic precession, Shapiro delay)
