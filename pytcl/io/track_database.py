@@ -6,6 +6,7 @@ and lifecycle operations using SQLite for real-time tracking scenarios.
 
 import hashlib
 import json
+import math
 import sqlite3
 import struct
 from enum import Enum
@@ -17,6 +18,11 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.serialize import _warn_unknown_schema_version
 from pytcl.io.sql_storage import _connect, _warn_if_w_reopens_data
+
+# Struct formats for the array shape header, indexed by ndim. numpy 2 allows
+# up to 64 dimensions; a table that stops short makes such arrays store fine
+# and then fail on read.
+_SHAPE_FORMATS = tuple(f"<{n}Q" for n in range(65))
 
 
 class TrackDatabaseStatus(Enum):
@@ -1237,14 +1243,12 @@ class TrackDatabaseManager:
     def _deserialize_array(data: bytes, dtype: str) -> NDArray[Any]:
         """Inverse of :meth:`_serialize_array` (schema 2)."""
         ndim = data[0]
-        shape = struct.unpack_from(f"<{ndim}Q", data, 1)
-        offset = 1 + 8 * ndim
-        count = int(np.prod(shape, dtype=np.int64))
-        return (
-            np.frombuffer(data, dtype=np.dtype(dtype), count=count, offset=offset)
-            .reshape(shape)
-            .copy()
-        )
+        if ndim >= len(_SHAPE_FORMATS):
+            raise ValueError(f"corrupt array header: ndim={ndim}")
+        shape = struct.unpack_from(_SHAPE_FORMATS[ndim], data, 1)
+        count = math.prod(shape)
+        arr = np.frombuffer(data, dtype=dtype, count=count, offset=1 + 8 * ndim)
+        return (arr if ndim == 1 else arr.reshape(shape)).copy()
 
     @staticmethod
     def _validate_state_shapes(

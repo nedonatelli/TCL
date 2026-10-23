@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.11.0, released 13 September 2026
+**Current Version:** v2.11.1, released 22 October 2026
 **Test Suite:** 8,500+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
@@ -26,6 +26,26 @@ and git history.
 ---
 
 ## Backlog
+
+### v2.12.0 -- planned
+
+Behaviour changes announced in the v2.11.1 CHANGELOG as deferred to v2.12.
+None has shipped:
+
+- **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
+  `'w'` mode will discard an existing file, matching `HDF5Storage`; 2.11.1
+  keeps the data and emits a `FutureWarning`.
+- **`tau_scale` fixed or removed.** `static_estimation.robust.tau_scale` is
+  not the Yohai-Zamar tau scale and returns 1.0918 on N(0, 1) draws against
+  about 1.0 for a consistent estimator; fix it or remove it.
+- **Unknown schema versions.** 2.11.1 warns on stored schema versions it
+  does not know; rejecting them outright is deferred to v2.12.0.
+- **`geodetic2ecef` size-1 shape.** Normalize the size-1 input case to
+  return `(3, 1)`.
+- **Information-filter singular-`Y` prediction.** Re-derive the prediction
+  step on MATLAB's formula (needs its own tests and audit). The absolute
+  `1e-10` jitter in `srif_update`'s non-positive-definite
+  measurement-covariance fallback is also deferred to v2.12.
 
 ### Measured backlog (from the MATLAB parity inventory)
 

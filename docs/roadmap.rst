@@ -7,12 +7,13 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.11.0)
+Current State (v2.11.1)
 -----------------------
 
-* **8,500+ tests** passing; coverage measured honestly (90.0% as CI's
-  branch-coverage gate sees it, with numba kernels traced; higher locally
-  where the MLX layer is visible), docstring examples run in CI
+* **8,500+ tests** passing; coverage measured honestly (94.6% as CI's
+  branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
+  run in CI; v2.11.1 is a correctness patch (see the CHANGELOG for its
+  behaviour notes)
 * **The audit release** (v2.11.0): every silent-wrong-answer path from
   the full-codebase audit closed (Vincenty antipodal, gating without
   R, hypergeometric divergence, silent numerical fallbacks); the MHT
@@ -91,6 +92,12 @@ Current State (v2.11.0)
 
 Next
 ----
+
+* **v2.12.0 planned changes**: ``'w'`` mode truncating for
+  ``TrackDatabaseManager`` and ``SQLStorage``, the Tukey-biweight
+  ``tau_scale`` fixed or removed, rejecting unknown schema versions,
+  ``geodetic2ecef`` returning ``(3, 1)`` for size-1 input, and the
+  information-filter singular-``Y`` prediction re-derived.
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's

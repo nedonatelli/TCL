@@ -5,12 +5,12 @@
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-8500%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,450+ functions** | **219 modules** | **8,500+ tests** | **90% coverage**
+**1,450+ functions** | **219 modules** | **8,500+ tests** | **94% coverage**
 
 ## Overview
 
@@ -274,13 +274,16 @@ explicit name mappings plus calling-convention differences are in
 | `Cart2Sphere(cartPoints)` | `cart2sphere(cart_points)` |
 | `discKalPred(x, P, F, Q)` | `kf_predict(x, P, F, Q)` |
 | `KalmanUpdate(x, P, z, R, H)` | `kf_update(x, P, z, H, R)` — note `H`/`R` order |
-| `FPolyKal(T, xDim, 1)` | `f_constant_velocity(dt, dim)` |
+| `FPolyKal(T, xDim, 1)` | `f_constant_velocity(dt, dim)` — state order differs (below) |
 
 Key differences:
 - Function names use `snake_case`; multiple return values become NamedTuples
 - States are 1-D arrays and batches are `(N, dim)` row-major (coordinate
   conversions also accept MATLAB-style column layouts)
 - 0-based indexing, explicit `unassigned_rows` instead of 0-sentinels
+- Polynomial motion models order the state per dimension, `[x, vx, y, vy]`,
+  where MATLAB's `FPolyKal`/`QPolyKal` use `[x, y, vx, vy]`; feeding one
+  layout to the other raises nothing and propagates a wrong state
 
 ## Testing
 

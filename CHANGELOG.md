@@ -7,6 +7,117 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.11.1] - 2026-10-22
+
+**This release changes numerical results.** It is a correctness patch: no
+exported name is added or removed, but the functions listed below return different
+numbers than 2.11.0 did, because 2.11.0's numbers were wrong. If you
+compare outputs across the upgrade, expect differences in these, most
+likely to affect you first (full entries lead the Fixed section, in this
+order):
+
+1. **The leap-second shift.** `tai_to_utc`, and through it `tt_to_utc`
+   and `gps_to_utc`, returned a UTC timestamp one second early for the
+   tens of seconds after every leap-second insertion. `get_leap_seconds`
+   now warns for dates before 1972 instead of silently returning 0.
+2. **The geoid.** `geoid_height` evaluated the harmonic synthesis at
+   geodetic latitude and the mean radius instead of geocentric latitude
+   and the true radius, so every geoid height moves. `gravity_disturbance`,
+   `gravity_anomaly`, `deflection_of_vertical`, `clenshaw_geoid` (which
+   also failed to remove the reference ellipsoid's even zonals) and
+   `gravity_j2` carried the same latitude/radius defect and move with it.
+3. **The INS vertical channel.** `ins_error_state_matrix` modelled the
+   vertical channel as a bounded oscillation; it is now divergent, as the
+   physical INS vertical channel is. Covariances propagated with this
+   matrix, including through `loose_coupled_predict`, change.
+4. **The antimeridian projections.** `mercator`, `transverse_mercator`,
+   `geodetic2utm` / `geodetic2utm_batch`, `oblique_stereographic` and
+   `lambert_conformal_conic` returned wrong coordinates for a point on the
+   far side of the antimeridian from the central meridian, and the
+   inverses return longitudes canonicalized into `[-pi, pi)`.
+5. **The Moon frame.** `moon_position(frame="earth_centered")` returned
+   the Moon relative to the Earth-Moon barycentre rather than the Earth,
+   and `planet_position("earth")` returned the barycentre.
+
+Many smaller-audience numerical corrections follow in Fixed, among them
+range-only localization covariances (a deliberate divergence from
+MATLAB's `rangeOnlyStaticLocEstNP`), `debye`, `swerling_detection_probability`
+(case 3), `log_marcum_q`, `generalized_hypergeometric`,
+`total_least_squares(rank=...)`, `minimum_energy_transfer`,
+`state_to_orbital_elements`, `great_circle_intersect`,
+`us_standard_atmosphere_1976` below sea level, and the delay index of
+`ambiguity_function` / `cross_ambiguity`.
+
+Behaviour changes in `pytcl.io` to read before upgrading (full entries
+under Fixed):
+
+- **`'w'` keeps data and warns.** `TrackDatabaseManager.open('w')` and
+  `SQLStorage`'s `'w'` mode still do not truncate an existing file, as in
+  2.11.0, but now emit a `FutureWarning` when the file already holds
+  rows. From v2.12.0 `'w'` will discard the existing file, matching
+  `HDF5Storage`; use `'a'` to keep appending. Read mode (`'r'`) now
+  enforces itself and raises `PermissionError` on writes.
+- **Track database schema 2.0, and a downgrade hazard.** New
+  `TrackDatabaseManager` files are created at schema `2.0` so 2-D
+  detections and covariances round-trip at their true shape; existing
+  `1.0` files still read and write exactly as before. If pytcl 2.11.0
+  opens a `2.0` file in `'a'` or `'w'` mode it rewrites the version
+  label to `1.0`, after which 2.11.1 cannot read the `2.0` detection
+  rows. The data is intact; recover with
+  `UPDATE _pytcl_track_db_metadata SET value = '2.0' WHERE key = 'schema_version'`.
+  Detections 2.11.0 wrote into the file in the meantime do not read back
+  correctly after that. Do not open 2.11.1 track databases with 2.11.0.
+  Decoding the shape header on read costs a measured, bounded amount:
+  `retrieve_detections` over 2500 detections with 2-element measurements
+  is 7-8% slower than 2.11.0 without covariances and 10-17% slower with
+  2x2 covariances (median of 30 queries, three repeats, darwin arm64;
+  other shapes and platforms were not measured).
+- **Session schema v2.** `save_session` now stores each track's M-of-N
+  window, so a resumed `MultiTargetTracker` keeps its confirmation
+  progress. `SESSION_SCHEMA_VERSION` is 2; v1 files still load (with an
+  empty window, the old behaviour; re-save to pick up the fix), and
+  pytcl 2.11.0 rejects a v2 file as a newer schema.
+- **`SQLStorage.list_keys(group)` scoping.** The group is now matched as
+  an exact, case-sensitive `group + "/"` prefix, as `HDF5Storage` does.
+  `list_keys("a_b")` no longer returns `aXb/...` or `a_bc/...` keys,
+  `list_keys("mission")` no longer returns `Mission/...`, and
+  `list_keys("a")` no longer returns the bare key `a` itself.
+
+Stability registry note (release checklist 3b):
+`scripts/check_release_stability.py v2.11.0` lists five STABLE modules
+changed since v2.11.0. Each is non-breaking, with no signature change:
+
+- `coordinate_systems.conversions.geodetic` -- **non-breaking.**
+  `geodetic2ecef` now accepts a scalar `lat` broadcast against an array
+  `lon` or `alt`, which previously raised `ValueError`; every input that
+  previously worked keeps its exact return shape and values.
+- `dynamic_estimation.kalman.matrix_utils` -- **non-breaking.** The eigh
+  fallback of `compute_matrix_sqrt` raises `LinAlgError` only on a
+  covariance with a negative eigenvalue too large to be roundoff, input
+  that previously produced a wrong answer; its clamp floor is now
+  relative and reproduces the old value at unit scale. Away from unit
+  scale the floor scales with the largest eigenvalue: `diag(1e6, 0)` now
+  floors at 1e-4 where it used to be 1e-10.
+  `compute_innovation_likelihood` / `compute_mahalanobis_distance` warn
+  and return 0.0 / `nan` on a non-positive-definite `S`, where they
+  returned a meaningless number.
+- `dynamic_estimation.kalman.unscented` -- **non-breaking.** The same
+  guard and relative floor in the eigh fallbacks of
+  `sigma_points_merwe`, `sigma_points_julier`, `ckf_predict` and
+  `ckf_update`: they raise only on a covariance that is not positive
+  semi-definite, where they previously returned a wrong answer.
+- `dynamic_models.discrete_time.polynomial` -- **non-breaking.**
+  Docstring only: `f_poly_kal`'s state layout relative to MATLAB's
+  `FPolyKal` is documented; no code change.
+- `dynamic_models.process_noise.polynomial` -- **non-breaking.**
+  Docstring only: `q_poly_kal`'s state layout relative to `QPolyKal` is
+  documented, and a false claim of a plain match removed; no code change.
+
+No STABLE module needs a major bump or reclassification. Thirty-six MATURE
+and nineteen EXPERIMENTAL modules also changed; three modules were demoted
+MATURE -> EXPERIMENTAL (`atmosphere.ionosphere`, `navigation.ins`,
+`dynamic_models.process_noise.coordinated_turn`; entries under Changed).
+
 ### Changed
 
 - **`tau_scale` is documented as not the Yohai-Zamar tau scale.** The `1/n`
@@ -115,6 +226,188 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **This changes timestamps callers may have built around.**
+  `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
+  `gps_to_utc`, which delegate to it) looked up the leap-second count on
+  the *input* scale's calendar date instead of UTC's, so for up to ~37
+  seconds after every leap-second insertion the returned UTC timestamp
+  was **one second earlier than correct** -- TAI 2017-01-01T00:00:00
+  returned UTC 2016-12-31T23:59:23 where the correct value (and astropy)
+  give 23:59:24. The lookup now iterates toward a fixed point instead of
+  taking the input date on faith -- it deliberately stops short of one at
+  the leap-second table's start, and inside an inserted second it never
+  reaches one at all, since that second has no distinct UTC
+  representation and is attributed to the preceding one (gh-25).
+  `get_leap_seconds` also silently returned 0 s for dates before 1972
+  (the table's start), e.g.
+  8.0 s off astropy at 1970-01-01; it now warns instead of returning a
+  value it cannot back up (the table itself is unchanged -- there is no
+  pre-1972 fix here, only a warning that the answer for those dates is
+  not to be trusted).
+
+- `pytcl.gravity.egm`: `geoid_height` fed geodetic latitude and
+  `r = R` (the mean reference radius) into a spherical-harmonic
+  synthesis defined in geocentric latitude at the true ellipsoid radius
+  under the point. Against real EGM96 (degree 360) the two error terms
+  sign-flip independently between points -- e.g. at (45, 10) latitude
+  error +0.624 m, radius error +1.224 m; at (-23.6174, 133.8747)
+  latitude error -1.422 m, radius error +0.056 m -- so the docstring's
+  claim that differences between two points are more accurate than
+  either absolute value was false and has been removed.
+
+- `pytcl.gravity.egm`: `gravity_disturbance` carried the same defect as
+  `geoid_height` above -- it fed geodetic latitude and `r = R + h` into
+  `clenshaw_gravity`'s synthesis, which is defined in geocentric latitude
+  at the true radius under the point. At (45 deg, 10 deg, h=1000 m) with
+  `create_test_coefficients()`, `delta_g_r` moves from -3.697008e-04 to
+  -3.731170e-04 m/s^2, a 0.92% shift, now derived the same way as
+  `geoid_height` via `geodetic2ecef`. `gravity_anomaly` delegates to
+  `gravity_disturbance` and returns its radial component directly, so it
+  carries the identical shift. `deflection_of_vertical` does not call
+  `gravity_disturbance` -- it differentiates `geoid_height` by finite
+  differences -- but `geoid_height` received the same geocentric
+  latitude / true radius fix above, so its output changed too; it was
+  simply not called out there as one of this defect's downstreams.
+
+- `pytcl.gravity.clenshaw`: `clenshaw_geoid` zeroed only the `n=0,1`
+  terms and called that "the reference field", but the reference field
+  is the ellipsoid's even zonal harmonics -- C20 above all -- which
+  survived intact; it also evaluated at `r = R` with a comment saying
+  "simplified", omitting the `(R/r)^n` scaling. Against real EGM96
+  (degree 360) this put the geoid at +3482.31 m, -1689.60 m and
+  -5643.72 m at (0,0), (45,10) and (-70,45) -- 30x outside the true
+  geoid's +/-110 m range. Now subtracts the ported
+  `models.ellips_grav_coeffs` reference field and applies the same
+  geocentric latitude / true radius fix as `geoid_height`, which it
+  now agrees with to better than 1 mm. Review round, two more seams in
+  the same function: (1) the fix above made `C[0, 0] = 1.0` (the mass
+  term of a full field) the required input convention, reversed from
+  the disturbing-only convention (`C[0, 0]` already zeroed) the
+  function required before this branch -- a caller still passing the
+  old convention silently got `C_dist[0, 0] = 0 - 1 = -1`, a geoid
+  height off by a full Earth radius; `clenshaw_geoid` now **raises
+  `ValueError`** for a `C[0, 0]` near zero instead of accepting it. (2)
+  It never zeroed the `n=1` row before synthesis, unlike `geoid_height`;
+  with a synthetic `C[1, 0] = 1e-6` this put the two functions **7.8 m**
+  apart (0.00028 m after zeroing `n=1` here too, matching the
+  sub-millimeter agreement above). Unreachable for real EGM96/EGM2008,
+  whose degree-1 terms are exactly zero in a geocentric frame -- both
+  changes only bite a synthetic or non-geocentric coefficient set.
+
+- `pytcl.gravity.models`: `gravity_j2` used `r = a + h` and treated
+  geodetic latitude as geocentric. At the pole this gave 9.766462 vs
+  `normal_gravity`'s 9.832184 m/s^2 -- a 6572 mGal (0.67%) error; at
+  45 deg it was 3277 mGal. The equator error was only 4.4 mGal, which
+  is why an equator-only test missed it. Fixed by deriving the true
+  radius and geocentric latitude the same way as `geoid_height`.
+
+- **`pytcl.navigation.ins.ins_error_state_matrix`'s vertical channel was
+  qualitatively wrong, not merely numerically off.** `F[5,2]` (gravity
+  gradient) had the opposite sign, which combined with `F[2,5] = -1`
+  turned the Schuler-coupled `{alt, vD}` subsystem into a bounded
+  oscillation (eigenvalues `+-0.00175j`) where the true INS vertical
+  channel is physically divergent, with a time constant around 570 s --
+  a stability defect, not a precision one. `F[5,0]`'s existing Coriolis
+  term also had the wrong sign (the same class of error, on the same
+  row) and separately omitted `d(g)/d(lat)` entirely; `F[5,3]` (the
+  Coriolis/transport coupling to `vN`) was zero and should not have
+  been. All three are now derived from `mechanize_ins_ned`'s own
+  equations (`d(g)/d(lat)` and `d(g)/d(alt)` via central difference of
+  `normal_gravity`, matching whatever gravity model `gravity_ned` calls)
+  and confirmed against a finite-difference oracle of that mechanization
+  -- see `tests/validation/test_ins_error_matrix.py` and the maturity
+  demotion above for what that oracle found beyond these three entries.
+
+- `pytcl.coordinate_systems.projections`: `mercator` and
+  `transverse_mercator` computed `x = a * (lon - lon0)` (or its series
+  equivalent) with no wrap, so a point on the far side of the
+  antimeridian from its central meridian produced eastings in the
+  billions of metres -- e.g. a forced UTM zone 1 (CM -177 deg) point at
+  10N 179.9E returned `easting=2,365,798,893` m against PROJ's
+  `160,097.0` m, with the UTM scale factor coming out at 312.6 instead
+  of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
+  `transverse_mercator` and shared the defect; `Mercator` with
+  `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
+  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi)`
+  through one module-private helper (`_wrap_longitude_difference`)
+  shared by both forward functions.
+
+  Two seam issues in this same fix, found and closed before release:
+  `_wrap_longitude_difference` initially cast its result through
+  `float()`, which raises `TypeError` for array input even though array
+  input worked (and agreed with per-element scalar calls) before this
+  fix existed -- it now returns `wrap_to_pi(lon - lon0)[()]`, which is a
+  `np.float64` (a `float` subclass) for scalar input and the array
+  unchanged for array input. And `transverse_mercator`'s Helmert-series
+  arc-length computation (`sigma = lat` followed by an in-place `sigma -=
+  ...` in a loop) aliased the caller's `lat`/`lat0` array and silently
+  corrupted it in place across repeated calls -- three successive
+  `geodetic2utm` calls on the same array drifted northing by ~16 km per
+  call while quietly mutating the caller's latitude by ~0.14 deg per
+  call. Both series computations (forward and inverse) now accumulate
+  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`). A fourth
+  instance of the same pattern, in `transverse_mercator_inverse`'s
+  footpoint-latitude series (`lat_fp = mu` then `lat_fp += beta[i] *
+  np.sin(2 * i * mu)`), does not reach the caller's arguments -- `mu` is
+  derived, not passed in -- but fed each loop iteration a `mu` already
+  corrupted by the previous one, leaving the array path wrong by
+  1.4e-10 to 2.0e-10 rad (0.3 to 1.3 mm of ground distance) relative to
+  per-element scalar calls. Fixed the same way; the array-input test now
+  asserts bit-exact agreement rather than a tolerance, so any
+  reintroduction fails.
+
+  The paired inverse functions computed the correct point but as a
+  longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the
+  seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
+  -180.1 deg, -182.0 deg and 180.5 deg instead of 179.9 deg, 178.0 deg
+  and -179.5 deg. Mathematically exact (confirmed to within 5.3e-8 deg
+  after canonicalizing), but a value outside the caller's expected
+  range and incoherent next to a forward path that now handles the
+  dateline. `transverse_mercator_inverse` (and `utm2geodetic`),
+  `mercator_inverse`, `stereographic_inverse`, and
+  `azimuthal_equidistant_inverse` all shared this and now canonicalize
+  their returned longitude through the same `_wrap_longitude_difference`
+  helper. `azimuthal_equidistant_exact_inverse` does not share it -- its
+  geographiclib backend already returns a canonical longitude.
+
+  `oblique_stereographic` and `lambert_conformal_conic` scale the
+  longitude difference by a non-unity factor (`n`, the EPSG-9809
+  conformal-sphere constant and the LCC cone constant respectively)
+  before taking its sine/cosine, so unlike `mercator`/`transverse_mercator`
+  an unwrapped difference does not alias back to the right answer through
+  2*pi-periodicity -- it silently computes the wrong map coordinate, by
+  124.6 km for `oblique_stereographic` (measured: `(10, 179.9)` at
+  `lon0=-177 deg` gave `x=-215,388.7` m against PROJ's `-339,958.0` m) and
+  tens of millions of metres for `lambert_conformal_conic` (the same point
+  at `lat0=5 deg`, standard parallels 1/9 deg gave `x=37,284,062.1` m
+  against PROJ's `-340,346.1` m), while still round-tripping through its
+  own equally-wrong inverse -- self-consistency alone does not catch this
+  class, only comparison against an external oracle does.
+  `oblique_stereographic_inverse` also returned a genuinely wrong
+  longitude near the seam (-178.96 deg for an input of 179.9 deg, not
+  merely a non-canonical one). Both forward functions now wrap the
+  difference (via `_wrap_longitude_difference`) before scaling by `n`,
+  and both inverses canonicalize their output the same way as the four
+  functions above; away from the seam, both were already exact
+  (`test_projections_exact.py`'s `oblique_stereographic` coverage is
+  unmoved) and remain so. `azimuthal_equidistant_exact` was checked and
+  does not share this -- its geographiclib backend matches PROJ's
+  `+proj=aeqd` across the seam to ~1.7e-9 m.
+
+- `pytcl.astronomical.ephemerides`: `moon_position(frame="earth_centered")`
+  read SPK segment `3->301` (Earth-Moon barycentre to Moon) instead of
+  Earth to Moon, overstating the geocentric distance by the EMB offset --
+  399977 km vs the correct 404897 km at JD 2460311, a ~4900 km error.
+  `_BODY_IDS["earth"]` was `3` for the same reason, making
+  `planet_position("earth")` return the barycentre rather than Earth
+  (DE440 has no direct `0->399` segment, so this is now computed by
+  chaining `0->3` then `3->399`). `planet_position("moon")` also leaked
+  `KeyError: (0, 301)` where the docstring promised `ValueError`; it now
+  raises `ValueError` and points callers at `moon_position()`. The
+  ephemeris example's rendered figure carried the same defect (it showed
+  "Moon 397,559 km from the Earth" and an Earth-Sun distance of 0.98331
+  AU) and has been regenerated to the correct 402,449 km / 0.98333 AU.
+
 - **GPU backend auto-selection no longer hides a CuPy failure.**
   `get_compute_backend()` caught a bare `Exception` around `CuPyBackend()`, so
   an installed CuPy that failed to import or construct fell through to MLX
@@ -130,6 +423,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `get_compute_backend(prefer="cupy")` still raises, and its message now
   carries the underlying error. `compute_backend_available()` stays a silent
   probe.
+
 - **Compiled NRLMSISE-00 failure reports are warnings, not stdout text.** The
   compiled extension reported ghp7 non-convergence, dnet's log-domain error
   and its other internal failure conditions with a bare C `printf` to native
@@ -145,6 +439,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.000000e-14, diff -3.188880e-01" (the C model's pressure is in hPa).
   Returned values are unchanged: bit-identical to the v2.11.0 build over 1926
   `gtd7` and `ghp7` inputs, including the failing ones.
+
 - **Stored schema versions are checked on read.** `schema_version=99` used to
   load silently from every io backend. `load_tracks_asdf`/`load_states_asdf`
   (known: 1), `TrackHDF5Storage.open` (known: "1.0") and
@@ -154,6 +449,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FormatError` for versions newer than supported. Reopening a file never
   rewrites its stored version (pinned by `tests/validation/test_io_version_fields.py`).
   Rejecting unknown versions outright is deferred to v2.12.0.
+
 - **A resumed `MultiTargetTracker` no longer re-earns confirmation.**
   `save_session` did not store each track's M-of-N `recent` window, so a
   restored tentative track restarted its count: with `confirm_hits=3`, a track
@@ -164,6 +460,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because per-scan history cannot be rebuilt from the cumulative counters);
   re-save them to pick up the fix. A v2 file is rejected by pytcl 2.11.0 as
   a newer schema.
+
 - **`TrackDatabaseManager` row identity and track operations.**
   `track_to_pytcl` built the `Track.id` from `hash(track_id)`, which Python
   salts per process: under `PYTHONHASHSEED` 1, 2 and 3 the id `"t-1"` gave
@@ -180,6 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   id into `track_associations`; it raises `KeyError`. The `retrieve_detections`
   `LIMIT` is a bound parameter: a bool or non-int `limit` raises `ValueError`,
   and a negative int still means no limit, as SQLite's `LIMIT -1` did.
+
 - **`TrackDatabaseManager` and `SQLStorage` now enforce read mode, and `'w'`
   warns.** `open('r')` accepted writes: the v2.11.0 audit persisted rows
   through a read-only handle. Every write method (`store_*`,
@@ -191,6 +489,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `'a'`, as the I/O audit pinned), but it now emits a `FutureWarning` when
   the file already holds rows: from v2.12.0 `'w'` will discard the existing
   file, matching `HDF5Storage`. Use `'a'` to keep appending.
+
 - **`TrackDatabaseManager` no longer truncates 2-D detections, and rejects
   track-state shapes it garbled.** For detections the element count was
   `arr.shape[0]`, so `[[1, 2, 3]]` read back as `[1.]`,
@@ -220,17 +519,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   'schema_version'`. Detections that 2.11.0 wrote into the file in the
   meantime are in the `1.0` layout and do not read back correctly after
   the label is restored.
+
 - **`TrackHDF5Storage.get_track_trajectory` returns only the rows in the
   requested window.** It sliced `idx[0]:idx[-1]+1` instead of applying the
   time mask, so after an out-of-order append (timestamps `[1, 2, 3, 4, 1.5]`)
   a query for `[1.0, 2.0]` returned all five rows; it now returns
   `[1, 2, 1.5]`.
+
 - **`TrackHDF5Storage.compare_scenarios` computes RMSE over shared
   timestamps, as documented.** It paired rows by index, so two identical
   `x = 2t` tracks offset by one scan reported RMSE 2.0; it now matches
   timestamps by exact equality and reports 0.0. A common track with no
   shared timestamp gets NaN and a `RuntimeWarning` (it previously got an
   index-paired number).
+
 - **`TrackHDF5Storage.append_track_state` keeps `residuals` row-aligned.** A
   residual passed for a track with no residuals dataset was discarded (3
   timestamps, no residuals); the dataset is now created with NaN rows for
@@ -240,15 +542,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   integer storage `dtype` the NaN pad was stored as 0 (arm64) or INT_MIN
   (x86) behind numpy's cast warning; a pad on such a track now raises
   `TypeError` before anything is written.
+
 - **`TrackHDF5Storage.store_track` / `append_track_state` reject complex
   input and warn on inexact integers.** `1+2j` was stored as `1.0` (numpy's
   `ComplexWarning` only); it now raises `TypeError`. An integer beyond
   `2**53` in magnitude (`2**53+1` stored as `9007199254740992`) now warns.
   The stored dtype is unchanged.
+
 - **`HDF5Storage` string metadata that is a JSON string literal round-trips.**
   `'"quoted"'` read back as `quoted` and `'"1"'` as `'1'`. Such strings are
   now JSON-escaped once on write, so `get_metadata` (and 2.11.0's reader)
   returns them unchanged. Files written before v2.11.1 read as before.
+
 - **`SQLStorage.list_keys(group)` matches the group literally.** The prefix
   went into `LIKE ?` unescaped and without a `/` boundary, so
   `list_keys("a_b")` returned `['aXb/y', 'a_b/x', 'a_bc/z']`; it now
@@ -260,6 +565,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `list_keys("a")` therefore no longer returns the bare key `a` itself, only
   keys under `a/`. A root group (`""`, `"/"`, `"//"`) lists every
   key; `"//"` returned `[]` in v2.11.0.
+
 - **`SQLStorage` and `TrackDatabaseManager` build a read-mode URI SQLite
   accepts for UNC paths.**
   The read-only connection URI was built with `Path.resolve().as_uri()`,
@@ -268,6 +574,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `localhost` authority there and refused the file. The URI is now
   `file:////server/share/t.db`, with `?`, `#`, `%` and spaces
   percent-encoded.
+
 - **`read_measurements_csv` / `read_measurements_parquet` group scans by the
   exact parsed timestamp.** Grouping on `float(t)` merged the int64 times
   `2**53` and `2**53+1` into one scan at `9007199254740992.0`; that input now
@@ -275,9 +582,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keep them apart. Distinct int64 times beyond `2**53` that stay distinct in
   float64 group correctly. A NaN timestamp raised `KeyError: nan`; it now
   raises `ValueError` naming the column.
+
 - **`metrics_to_polars` warns when its Float64 cast is lossy.** `True` was
   exported as `1.0` and `2**53+1` as `9007199254740992.0` without notice.
   Both now emit a `UserWarning`; the columns stay Float64 as documented.
+
 - **`chol_semi_def` and `matrix_sqrt` reject input they used to factor
   wrongly.** `chol_semi_def(diag(1, -1))` returned a factor with
   `norm(L L' - A, inf) = 1.0` and no error, and floored eigenvalues at
@@ -475,43 +784,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `|g|` for equalities), so the two cannot disagree; the message reads
   "largest constraint violation ... exceeds tol ...". At `max_iter=3` the
   same problem reported 1.030e+02 before and reports 1.964e+01 now.
+
 - `assign3d_auction` / `assign3d(..., method="auction")` raised "zero-size
   array to reduction operation maximum" on an all-infeasible tensor
   (`np.full((3, 3, 3), np.inf)`). It now returns an empty result with
   `converged=False`, as `greedy` and `decompose` do; `lagrangian` still
   raises "infeasible".
-- **This changes timestamps callers may have built around.**
-  `pytcl.astronomical.time_systems`: `tai_to_utc` (and `tt_to_utc` /
-  `gps_to_utc`, which delegate to it) looked up the leap-second count on
-  the *input* scale's calendar date instead of UTC's, so for up to ~37
-  seconds after every leap-second insertion the returned UTC timestamp
-  was **one second earlier than correct** -- TAI 2017-01-01T00:00:00
-  returned UTC 2016-12-31T23:59:23 where the correct value (and astropy)
-  give 23:59:24. The lookup now iterates toward a fixed point instead of
-  taking the input date on faith -- it deliberately stops short of one at
-  the leap-second table's start, and inside an inserted second it never
-  reaches one at all, since that second has no distinct UTC
-  representation and is attributed to the preceding one (gh-25).
-  `get_leap_seconds` also silently returned 0 s for dates before 1972
-  (the table's start), e.g.
-  8.0 s off astropy at 1970-01-01; it now warns instead of returning a
-  value it cannot back up (the table itself is unchanged -- there is no
-  pre-1972 fix here, only a warning that the answer for those dates is
-  not to be trusted).
-
-- `pytcl.astronomical.ephemerides`: `moon_position(frame="earth_centered")`
-  read SPK segment `3->301` (Earth-Moon barycentre to Moon) instead of
-  Earth to Moon, overstating the geocentric distance by the EMB offset --
-  399977 km vs the correct 404897 km at JD 2460311, a ~4900 km error.
-  `_BODY_IDS["earth"]` was `3` for the same reason, making
-  `planet_position("earth")` return the barycentre rather than Earth
-  (DE440 has no direct `0->399` segment, so this is now computed by
-  chaining `0->3` then `3->399`). `planet_position("moon")` also leaked
-  `KeyError: (0, 301)` where the docstring promised `ValueError`; it now
-  raises `ValueError` and points callers at `moon_position()`. The
-  ephemeris example's rendered figure carried the same defect (it showed
-  "Moon 397,559 km from the Earth" and an Earth-Sun distance of 0.98331
-  AU) and has been regenerated to the correct 402,449 km / 0.98333 AU.
 
 - `pytcl.astronomical.lambert`: `minimum_energy_transfer` did not flip
   the sign of beta for a transfer angle above pi, so both the returned
@@ -537,62 +815,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same `if` (`e approx 0`) carried the identical degeneracy in its true
   longitude `nu` -- 14910 km for `raan=0.0`, 7671 km for `raan=0.7` --
   and gets the same sign flip.
-
-- `pytcl.gravity.egm`: `geoid_height` fed geodetic latitude and
-  `r = R` (the mean reference radius) into a spherical-harmonic
-  synthesis defined in geocentric latitude at the true ellipsoid radius
-  under the point. Against real EGM96 (degree 360) the two error terms
-  sign-flip independently between points -- e.g. at (45, 10) latitude
-  error +0.624 m, radius error +1.224 m; at (-23.6174, 133.8747)
-  latitude error -1.422 m, radius error +0.056 m -- so the docstring's
-  claim that differences between two points are more accurate than
-  either absolute value was false and has been removed.
-
-- `pytcl.gravity.egm`: `gravity_disturbance` carried the same defect as
-  `geoid_height` above -- it fed geodetic latitude and `r = R + h` into
-  `clenshaw_gravity`'s synthesis, which is defined in geocentric latitude
-  at the true radius under the point. At (45 deg, 10 deg, h=1000 m) with
-  `create_test_coefficients()`, `delta_g_r` moves from -3.697008e-04 to
-  -3.731170e-04 m/s^2, a 0.92% shift, now derived the same way as
-  `geoid_height` via `geodetic2ecef`. `gravity_anomaly` delegates to
-  `gravity_disturbance` and returns its radial component directly, so it
-  carries the identical shift. `deflection_of_vertical` does not call
-  `gravity_disturbance` -- it differentiates `geoid_height` by finite
-  differences -- but `geoid_height` received the same geocentric
-  latitude / true radius fix above, so its output changed too; it was
-  simply not called out there as one of this defect's downstreams.
-
-- `pytcl.gravity.clenshaw`: `clenshaw_geoid` zeroed only the `n=0,1`
-  terms and called that "the reference field", but the reference field
-  is the ellipsoid's even zonal harmonics -- C20 above all -- which
-  survived intact; it also evaluated at `r = R` with a comment saying
-  "simplified", omitting the `(R/r)^n` scaling. Against real EGM96
-  (degree 360) this put the geoid at +3482.31 m, -1689.60 m and
-  -5643.72 m at (0,0), (45,10) and (-70,45) -- 30x outside the true
-  geoid's +/-110 m range. Now subtracts the ported
-  `models.ellips_grav_coeffs` reference field and applies the same
-  geocentric latitude / true radius fix as `geoid_height`, which it
-  now agrees with to better than 1 mm. Review round, two more seams in
-  the same function: (1) the fix above made `C[0, 0] = 1.0` (the mass
-  term of a full field) the required input convention, reversed from
-  the disturbing-only convention (`C[0, 0]` already zeroed) the
-  function required before this branch -- a caller still passing the
-  old convention silently got `C_dist[0, 0] = 0 - 1 = -1`, a geoid
-  height off by a full Earth radius; `clenshaw_geoid` now **raises
-  `ValueError`** for a `C[0, 0]` near zero instead of accepting it. (2)
-  It never zeroed the `n=1` row before synthesis, unlike `geoid_height`;
-  with a synthetic `C[1, 0] = 1e-6` this put the two functions **7.8 m**
-  apart (0.00028 m after zeroing `n=1` here too, matching the
-  sub-millimeter agreement above). Unreachable for real EGM96/EGM2008,
-  whose degree-1 terms are exactly zero in a geocentric frame -- both
-  changes only bite a synthetic or non-geocentric coefficient set.
-
-- `pytcl.gravity.models`: `gravity_j2` used `r = a + h` and treated
-  geodetic latitude as geocentric. At the pole this gave 9.766462 vs
-  `normal_gravity`'s 9.832184 m/s^2 -- a 6572 mGal (0.67%) error; at
-  45 deg it was 3277 mGal. The equator error was only 4.4 mGal, which
-  is why an equator-only test missed it. Fixed by deriving the true
-  radius and geocentric latitude the same way as `geoid_height`.
 
 - `pytcl.magnetism.wmm` / `pytcl.magnetism.emm`: `wmm()` and `emm()`
   extrapolated the linear secular-variation terms arbitrarily far outside
@@ -710,105 +932,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is ever reached, and only warns correctly at `press_pa=1e-10` --
   a pre-existing defect this patch does not fix.
   The lower bound reuses US76's own -5000 m validity floor
-  (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`, task 2.7) rather than
+  (`pytcl.atmosphere.models.US76_MIN_ALTITUDE_M`) rather than
   0 km: an ordinary high-pressure system (105 kPa converges to
   `alt_km=-0.24`) is not a defect and must not warn, which a 0 km floor
   got wrong on the first pass of this fix (caught in review). Non-positive
   `press_pa`/`pressure_pa`, never a valid pressure, now raises
   `ValueError` instead of silently returning NaN.
-
-- **`pytcl.navigation.ins.ins_error_state_matrix`'s vertical channel was
-  qualitatively wrong, not merely numerically off.** `F[5,2]` (gravity
-  gradient) had the opposite sign, which combined with `F[2,5] = -1`
-  turned the Schuler-coupled `{alt, vD}` subsystem into a bounded
-  oscillation (eigenvalues `+-0.00175j`) where the true INS vertical
-  channel is physically divergent, with a time constant around 570 s --
-  a stability defect, not a precision one. `F[5,0]`'s existing Coriolis
-  term also had the wrong sign (the same class of error, on the same
-  row) and separately omitted `d(g)/d(lat)` entirely; `F[5,3]` (the
-  Coriolis/transport coupling to `vN`) was zero and should not have
-  been. All three are now derived from `mechanize_ins_ned`'s own
-  equations (`d(g)/d(lat)` and `d(g)/d(alt)` via central difference of
-  `normal_gravity`, matching whatever gravity model `gravity_ned` calls)
-  and confirmed against a finite-difference oracle of that mechanization
-  -- see `tests/validation/test_ins_error_matrix.py` and the maturity
-  demotion above for what that oracle found beyond these three entries.
-
-- `pytcl.coordinate_systems.projections`: `mercator` and
-  `transverse_mercator` computed `x = a * (lon - lon0)` (or its series
-  equivalent) with no wrap, so a point on the far side of the
-  antimeridian from its central meridian produced eastings in the
-  billions of metres -- e.g. a forced UTM zone 1 (CM -177 deg) point at
-  10N 179.9E returned `easting=2,365,798,893` m against PROJ's
-  `160,097.0` m, with the UTM scale factor coming out at 312.6 instead
-  of near 1.0. `geodetic2utm` and `geodetic2utm_batch` both delegate to
-  `transverse_mercator` and shared the defect; `Mercator` with
-  `lon0=170 deg`, `lon=-170 deg` returned `x=-3.785e7` m against PROJ's
-  `2.226e6` m. The longitude difference is now wrapped into `[-pi, pi)`
-  through one module-private helper (`_wrap_longitude_difference`)
-  shared by both forward functions.
-
-  Two seam issues in this same fix, found and closed before release:
-  `_wrap_longitude_difference` initially cast its result through
-  `float()`, which raises `TypeError` for array input even though array
-  input worked (and agreed with per-element scalar calls) before this
-  fix existed -- it now returns `wrap_to_pi(lon - lon0)[()]`, which is a
-  `np.float64` (a `float` subclass) for scalar input and the array
-  unchanged for array input. And `transverse_mercator`'s Helmert-series
-  arc-length computation (`sigma = lat` followed by an in-place `sigma -=
-  ...` in a loop) aliased the caller's `lat`/`lat0` array and silently
-  corrupted it in place across repeated calls -- three successive
-  `geodetic2utm` calls on the same array drifted northing by ~16 km per
-  call while quietly mutating the caller's latitude by ~0.14 deg per
-  call. Both series computations (forward and inverse) now accumulate
-  out-of-place (`sigma = sigma - ...`, not `sigma -= ...`). A fourth
-  instance of the same pattern, in `transverse_mercator_inverse`'s
-  footpoint-latitude series (`lat_fp = mu` then `lat_fp += beta[i] *
-  np.sin(2 * i * mu)`), does not reach the caller's arguments -- `mu` is
-  derived, not passed in -- but fed each loop iteration a `mu` already
-  corrupted by the previous one, leaving the array path wrong by
-  1.4e-10 to 2.0e-10 rad (0.3 to 1.3 mm of ground distance) relative to
-  per-element scalar calls. Fixed the same way; the array-input test now
-  asserts bit-exact agreement rather than a tolerance, so any
-  reintroduction fails.
-
-  The paired inverse functions computed the correct point but as a
-  longitude outside `[-pi, pi)` whenever `lon0 + offset` crossed the
-  seam -- e.g. `utm2geodetic` on the zone-1 case above round-tripped to
-  -180.1 deg, -182.0 deg and 180.5 deg instead of 179.9 deg, 178.0 deg
-  and -179.5 deg. Mathematically exact (confirmed to within 5.3e-8 deg
-  after canonicalizing), but a value outside the caller's expected
-  range and incoherent next to a forward path that now handles the
-  dateline. `transverse_mercator_inverse` (and `utm2geodetic`),
-  `mercator_inverse`, `stereographic_inverse`, and
-  `azimuthal_equidistant_inverse` all shared this and now canonicalize
-  their returned longitude through the same `_wrap_longitude_difference`
-  helper. `azimuthal_equidistant_exact_inverse` does not share it -- its
-  geographiclib backend already returns a canonical longitude.
-
-  `oblique_stereographic` and `lambert_conformal_conic` scale the
-  longitude difference by a non-unity factor (`n`, the EPSG-9809
-  conformal-sphere constant and the LCC cone constant respectively)
-  before taking its sine/cosine, so unlike `mercator`/`transverse_mercator`
-  an unwrapped difference does not alias back to the right answer through
-  2*pi-periodicity -- it silently computes the wrong map coordinate, by
-  124.6 km for `oblique_stereographic` (measured: `(10, 179.9)` at
-  `lon0=-177 deg` gave `x=-215,388.7` m against PROJ's `-339,958.0` m) and
-  tens of millions of metres for `lambert_conformal_conic` (the same point
-  at `lat0=5 deg`, standard parallels 1/9 deg gave `x=37,284,062.1` m
-  against PROJ's `-340,346.1` m), while still round-tripping through its
-  own equally-wrong inverse -- self-consistency alone does not catch this
-  class, only comparison against an external oracle does.
-  `oblique_stereographic_inverse` also returned a genuinely wrong
-  longitude near the seam (-178.96 deg for an input of 179.9 deg, not
-  merely a non-canonical one). Both forward functions now wrap the
-  difference (via `_wrap_longitude_difference`) before scaling by `n`,
-  and both inverses canonicalize their output the same way as the four
-  functions above; away from the seam, both were already exact
-  (`test_projections_exact.py`'s `oblique_stereographic` coverage is
-  unmoved) and remain so. `azimuthal_equidistant_exact` was checked and
-  does not share this -- its geographiclib backend matches PROJ's
-  `+proj=aeqd` across the seam to ~1.7e-9 m.
 
 - `pytcl.coordinate_systems.projections.stereographic`'s docstring told
   callers to use `lat0 = +-pi/2` for polar work; that path diverges from
@@ -873,7 +1002,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `arccos` discarded without changing the magnitude for any input that
   was already correct.
 
-  Deferred, not fixed here (Tier 4): `direct_rhumb` is 380 m off the
+  Deferred, not fixed here: `direct_rhumb` is 380 m off the
   exact endpoint on a 3000 km leg with no accuracy note in its
   docstring; MATLAB's exact elliptic-integral rhumb formulation is
   unported. The 380 m figure is carried forward from the pre-v2.11.1
@@ -1063,7 +1192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   design decision, not this patch's scope.
   Unverified sibling noted, not fixed here: `srif_update` falls back to `cholesky(R_meas + 1e-10 *
   I)` on a non-PD measurement covariance, the same absolute-jitter
-  pattern as task 4.4's fix elsewhere -- flagged for Tier 1 follow-up.
+  pattern as the relative eigenvalue floor now used in the eigh fallbacks --
+  deferred to v2.12.
   Also undisclosed until now: the same branch regularizes a singular
   `Q` with `eps = 1e-9 * (trace(Q) / n + 1.0)` before inverting it, the
   same absolute-jitter pattern, and the introduced error does not clear
@@ -1575,6 +1705,10 @@ registered contract.
   copies of the 6371.2 km reference radius); they now share
   `pytcl.magnetism._schmidt`. Field values are unchanged (pinned by
   the existing WMM/EMM/IGRF fixture tests).
+- The test suite no longer blanket-ignores `DeprecationWarning`:
+  pytcl-originated deprecation warnings are now errors and
+  third-party ones stay visible, so deprecated-API usage cannot
+  accumulate silently again.
 
 ### Added
 
@@ -1767,13 +1901,6 @@ registered contract.
   before dividing by `1 - cos(dnu)` instead of emitting
   divide-by-zero warnings first; **`DEEphemeris`** gains `close()`
   and releases its kernel file handle on deletion.
-
-### Changed
-
-- The test suite no longer blanket-ignores `DeprecationWarning`:
-  pytcl-originated deprecation warnings are now errors and
-  third-party ones stay visible, so deprecated-API usage cannot
-  accumulate silently again.
 
 ## [2.10.0] - 2026-09-09
 

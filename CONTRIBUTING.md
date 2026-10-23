@@ -453,7 +453,7 @@ When porting a function from the original MATLAB library:
 
 ## Current Development Status
 
-**Version:** v2.11.0 (released). See "Current metrics" under
+**Version:** v2.11.1 (released). See "Current metrics" under
 [Verify Current Metrics](#2-verify-current-metrics) below for up-to-date
 function/module/test/coverage numbers -- this section used to duplicate
 those and drift out of sync, so it now just points there.
@@ -516,17 +516,16 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.11.0):
-- **Functions:** 1,450+ (top-level `def`; measured 1,520 via
+Current metrics (v2.11.1):
+- **Functions:** 1,450+ (top-level `def`; measured 1,538 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 219
-- **Tests:** 8,500+ (all passing; measured 9,397 via
+- **Tests:** 8,500+ (all passing; measured 9,546 via
   `pytest --collect-only`)
-- **Coverage:** 90.02% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
-  `--cov-branch`, no MLX -- the ubuntu-3.11 cell at commit 50057c4);
-  higher locally where the MLX layer is traceable. CI gate is
-  `--cov-fail-under=85`
-  (measurement minus the house 3-point headroom).
+- **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+  `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
+  04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
+  conditions. CI gate is `--cov-fail-under=85`.
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
