@@ -161,7 +161,9 @@ jobs:
       # first CI run under the JIT-disabled + branch mode measured 88.80%
       # on this very job (run 32393664562, commit 347441a) -- a
       # measurement under the gate's own exact conditions, minus the
-      # house 3-point headroom for suite drift.
+      # house 3-point headroom for suite drift. 85 -> 91 on 2026-10-23:
+      # 94.60% measured on this job at 04007f1 (run 39843508948), minus
+      # the house 3 points.
       #
       # --cov-branch, same date: line coverage counts a partially-taken
       # branch as covered, which is how the ZXZ gimbal-lock bug hid -- its
@@ -178,10 +180,10 @@ jobs:
           # would mean the cache-and-download pair silently stopped working.
           # The other cells have no jplephem and are left permissive.
           PYTCL_REQUIRE_EPHEMERIS: "1"
-        run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=85 --benchmark-skip -m "not examples"
+        run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=91 --benchmark-skip -m "not examples"
 
       # Patch coverage: the lines THIS change touches must be tested. The
-      # global floor (85) lets an individual module rot as long as the
+      # global floor (91) lets an individual module rot as long as the
       # aggregate holds; every wrong-logic bug in the post-v2.5.0 audit --
       # the ZXZ gimbal branch, the ignored parameters, the M-of-N logic --
       # was changed-or-new code that nothing executed. 90 on the diff, with

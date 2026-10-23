@@ -17,6 +17,7 @@ registry entries fail from the other direction.
 """
 
 import importlib
+import math
 import re
 import subprocess
 import sys
@@ -192,6 +193,30 @@ def test_coverage_claims_are_synchronized():
         f"docs/index.rst says {idx and idx.group(1)}%, CONTRIBUTING "
         f"measures {m.group(0)}"
     )
+
+
+def _contributing_coverage_percent():
+    m = re.search(r"\*\*Coverage:\*\* (\d+\.\d+)%", _read("CONTRIBUTING.md"))
+    assert m, "CONTRIBUTING coverage measurement not found"
+    return float(m.group(1))
+
+
+def _ci_cov_fail_under():
+    gates = re.findall(r"--cov-fail-under=(\d+)", _read(".github/workflows/ci.yml"))
+    assert len(gates) == 1, f"expected one --cov-fail-under in ci.yml, found {gates}"
+    return int(gates[0])
+
+
+def test_coverage_gate_is_the_measurement_minus_three():
+    """CI's floor tracks the measurement with the house 3-point headroom.
+
+    A floor far below the measurement lets coverage fall by the gap with
+    the check still green: 85 against a measured 94.60 was 9 points of
+    unguarded regression.
+    """
+    measured = _contributing_coverage_percent()
+    gate = _ci_cov_fail_under()
+    assert gate == math.floor(measured - 3)
 
 
 # Validation files grew 63 -> 70 -> 82 across the last two full releases

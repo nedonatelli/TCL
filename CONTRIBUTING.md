@@ -537,7 +537,8 @@ Current metrics (v2.11.1):
 - **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
   04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
-  conditions. CI gate is `--cov-fail-under=85`.
+  conditions. CI gate is `--cov-fail-under=91`
+  (the measurement minus the house 3 points).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric
