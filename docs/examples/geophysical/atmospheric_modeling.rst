@@ -1,7 +1,7 @@
 Atmospheric Modeling
 ====================
 
-This example demonstrates the simplified thermosphere model and drag calculations for analyzing satellite orbital decay and atmospheric interactions.
+This example demonstrates the NRLMSISE-00 atmosphere model and drag calculations for analyzing satellite orbital decay and atmospheric interactions.
 
 .. raw:: html
 
@@ -49,11 +49,10 @@ Key Scenarios
 Models Covered
 --------------
 
-**Simplified Thermosphere**
-   - Barometric per-species model with solar-activity (F10.7) and
+**NRLMSISE-00**
+   - Empirical per-species model with solar-activity (F10.7) and
      geomagnetic (Ap) inputs
-   - Usable above ~200 km (within ~2x of published NRLMSISE-00 values);
-     below ~86 km use the US Standard Atmosphere instead (gh-79)
+   - The reference C implementation, compiled into pytcl (v2.10.0)
 
 **US Standard Atmosphere 1976**
    - Reference atmosphere up to 85 km
@@ -64,7 +63,7 @@ Code Highlights
 
 The example demonstrates:
 
-- Density profiles across altitude with ``SimplifiedThermosphere()``
+- Density profiles across altitude with ``nrlmsise00``
 - Species composition (N2, O2, O, He, H, Ar, N) vs altitude
 - Temperature profiles under various solar activity levels
 - Solar flux (F10.7) effects on ISS-altitude conditions
