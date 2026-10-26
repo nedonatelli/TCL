@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caller rather than pytcl. What to do: nothing; filters on
   `DeprecationWarning` still match.
 
+### Fixed
+
+- `mahalanobis_distance` (and the gates built on it) returned 0.0 for a
+  2x2 or 3x3 innovation covariance containing NaN on x86-64, so such a
+  measurement passed every gate; arm64 returned NaN. The closed-form
+  inverse kernels were compiled with `fastmath` NaN assumptions, under
+  which x86 compared a NaN determinant equal to zero and skipped the
+  inverse. Both platforms now return NaN. Results for finite input are
+  bitwise unchanged. What to do: nothing, unless you relied on a NaN
+  covariance passing a gate.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

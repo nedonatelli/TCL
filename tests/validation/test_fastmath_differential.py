@@ -338,3 +338,41 @@ def test_compiled_and_interpreted_kernels_agree(kernel):
         assert len(compiled) == len(interpreted)
         for c, p in zip(compiled, interpreted):
             np.testing.assert_allclose(c, p, rtol=1e-12, atol=0, equal_nan=True)
+
+
+def _nan_entry(n):
+    s = 2.0 * np.eye(n)
+    s[0, 1] = np.nan
+    return s
+
+
+@pytest.mark.parametrize(
+    "kernel, n", [(gating._invert_2x2, 2), (gating._invert_3x3, 3)], ids=["2x2", "3x3"]
+)
+def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
+    """Regression: on x86 the compiled form returned an uninitialized inverse.
+
+    Under ``nnan`` x86 lowered ``det != 0.0`` without the unordered check,
+    so a NaN determinant compared equal to zero and the inverse was skipped;
+    ``mahalanobis_distance`` then returned 0.0 for a NaN covariance. arm64
+    keeps the check either way, so the IR test below is what fails here.
+    """
+    paths = [kernel] if _jit_disabled() else [kernel, kernel.py_func]
+    for path in paths:
+        inv, det = path(_nan_entry(n))
+        assert np.isnan(det)
+        assert np.isnan(inv).all()
+    nu = np.ones(n)
+    assert np.isnan(gating.mahalanobis_distance(nu, _nan_entry(n)))
+
+
+@pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
+@pytest.mark.parametrize(
+    "kernel, n", [(gating._invert_2x2, 2), (gating._invert_3x3, 3)], ids=["2x2", "3x3"]
+)
+def test_invert_kernels_compare_the_determinant_without_nnan(kernel, n):
+    kernel(np.eye(n))
+    ir = kernel.inspect_llvm(kernel.signatures[0])
+    compares = [line for line in ir.splitlines() if " fcmp " in line]
+    assert compares
+    assert [c for c in compares if " fast " in c or " nnan " in c] == []
