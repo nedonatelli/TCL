@@ -132,6 +132,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bitwise unchanged. What to do: nothing, unless you relied on a NaN
   covariance passing a gate.
 
+- **`information_filter` predicts from a singular information matrix with
+  MATLAB's `infoFilterDiscPred` formula.** The singular-`Y` branch
+  inverted `Q + 1e-9 (trace(Q)/n + 1) I`, so every prediction from a
+  partially or fully unknown state carried a uniform 2.0e-9 relative
+  error (3.1e-8 on a 4-state case), even at exact `Q = 0`, and the error
+  stayed in `Y` for the rest of the run. The branch now transcribes
+  `infoFilterDiscPred.m:47-58` (`DInv = F' + Y F^-1 Q`, `Y_pred =
+  DInv \ (Y F^-1)`, `y_pred = DInv \ y`), which inverts neither `Q` nor
+  `Y`. It matches MATLAB fixtures (`tests/fixtures/matlab/info_pred_*.csv`)
+  to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
+  raises `LinAlgError`. What to do: nothing; predictions from a singular
+  information matrix change by about 2e-9 relative.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

@@ -200,6 +200,48 @@ def state_to_information(
     return y, Y
 
 
+def _information_predict_singular(
+    y: NDArray[np.floating],
+    Y: NDArray[np.floating],
+    F: NDArray[np.floating],
+    Q: NDArray[np.floating],
+) -> Tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """Information prediction that inverts neither ``Y`` nor ``Q``.
+
+    Transcribes MATLAB TCL ``infoFilterDiscPred.m:47-58``::
+
+        DInv=F'+PInvPrev/(F)*Q;
+        PInvPred=DInv\\PInvPrev/(F);
+        PInvPred=(PInvPred+PInvPred')/2;
+        yPred=DInv\\yPrev;
+    """
+    try:
+        F_inv = np.linalg.inv(F)
+    except np.linalg.LinAlgError as exc:
+        # Previously swallowed ("F singular: leave information unchanged"):
+        # y and Y came back untouched, a confident prediction of a state the
+        # filter never propagated.
+        raise np.linalg.LinAlgError(
+            "information_filter: state transition matrix F is "
+            "singular, so the singular-Y prediction step "
+            "(F^-T Y F^-1) cannot be formed. F must be invertible "
+            "whenever Y is singular (unknown or partially unknown "
+            "state). esrif_predict/esrif_update cannot help here "
+            "either -- they also require an invertible F (plus "
+            "nonsingular R_prev and s_q). Use the covariance-form "
+            "Kalman filter instead (kf_predict/kf_update, which "
+            "never inverts F), representing the unknown state with "
+            "a large finite initial covariance rather than a "
+            "singular Y."
+        ) from exc
+    Y_F_inv = Y @ F_inv
+    D_inv = F.T + Y_F_inv @ Q
+    Y_pred = np.linalg.solve(D_inv, Y_F_inv)
+    Y_pred = (Y_pred + Y_pred.T) / 2
+    y_pred = np.linalg.solve(D_inv, y)
+    return y_pred, Y_pred
+
+
 def information_filter(
     y0: ArrayLike,
     Y0: ArrayLike,
@@ -300,52 +342,10 @@ def information_filter(
         H_k = np.asarray(H_list[k], dtype=np.float64) if H_list else H
         R_k = np.asarray(R_list[k], dtype=np.float64) if R_list else R
 
-        # Predict (requires positive definite Y)
         if np.linalg.matrix_rank(Y) == Y.shape[0]:
             y, Y = information_filter_predict(y, Y, F_k, Q_k)
         else:
-            # Singular Y (partially/fully unknown state): use the
-            # information-form prediction, which is well-defined for
-            # singular Y as long as F and Q are invertible:
-            #   M = F^{-T} Y F^{-1}
-            #   Y_pred = M - M (M + Q^{-1})^{-1} M
-            #   y_pred = (I - M (M + Q^{-1})^{-1}) F^{-T} y
-            n = Y.shape[0]
-            try:
-                F_inv = np.linalg.inv(F_k)
-            except np.linalg.LinAlgError as exc:
-                # Previously swallowed here ("F singular: leave information
-                # unchanged"): y and Y were returned untouched, so the
-                # filter reported a confident prediction of a state it
-                # never actually propagated (velocity and other
-                # unobserved components silently never gained information).
-                raise np.linalg.LinAlgError(
-                    "information_filter: state transition matrix F is "
-                    "singular, so the singular-Y prediction step "
-                    "(F^-T Y F^-1) cannot be formed. F must be invertible "
-                    "whenever Y is singular (unknown or partially unknown "
-                    "state). esrif_predict/esrif_update cannot help here "
-                    "either -- they also require an invertible F (plus "
-                    "nonsingular R_prev and s_q). Use the covariance-form "
-                    "Kalman filter instead (kf_predict/kf_update, which "
-                    "never inverts F), representing the unknown state with "
-                    "a large finite initial covariance rather than a "
-                    "singular Y."
-                ) from exc
-            # Regularize a singular Q negligibly so Q^{-1} exists. This is
-            # not transient: only its *use* stops once Y becomes full rank
-            # and this branch is no longer taken; the error it introduces
-            # into Y here is carried forward in every step after this one.
-            # MATLAB's infoFilterDiscPred avoids inverting Q at all (see
-            # CHANGELOG); re-deriving that form is deferred, not done here.
-            eps = 1e-9 * (np.trace(Q_k) / n + 1.0)
-            Q_inv = np.linalg.inv(Q_k + eps * np.eye(n))
-            M = F_inv.T @ Y @ F_inv
-            M = (M + M.T) / 2
-            L = np.linalg.solve((M + Q_inv).T, M.T).T  # M (M + Q^{-1})^{-1}
-            Y = M - L @ M
-            Y = (Y + Y.T) / 2
-            y = (np.eye(n) - L) @ (F_inv.T @ y)
+            y, Y = _information_predict_singular(y, Y, F_k, Q_k)
 
         # Update if measurement available
         z = measurements[k]

@@ -121,3 +121,14 @@ refreshed. Unmodified MATLAB keeps the stale value and picks different
 partners on these cases; pytcl deliberately implements the corrected
 behaviour (see the `reduce_mixture_west` docstring).
 
+
+## info_pred_\<case\>.csv
+
+Produced by `scripts/matlab_capture/capture_info_filter_pred.m` against
+commit `a9acd8f` (`infoFilterDiscPred`). Consumed by
+`TestSingularYPredictionMatchesMatlab` in
+`tests/validation/test_information_filter_guards.py`, which mirrors the
+inputs. Row 1 is `yPred'`, the remaining rows are `PInvPred`, `%.17g`.
+Cases `q0`, `q1e-6`, `q1e-12`, `q1e-15`, `q1e-2`, `qdiag` predict from
+`Y = diag(1, 0)` with the named `Q`; `y0` from `Y = 0`; `4state` from a
+rank-2 `Y` with rank-1 `Q`.

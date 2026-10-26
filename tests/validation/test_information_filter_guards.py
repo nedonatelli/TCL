@@ -27,10 +27,15 @@ below drive it through that function instead, using the brief's own F and
 measurement scenario.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from pytcl.dynamic_estimation.information_filter import information_filter
+from pytcl.dynamic_estimation.kalman.linear import information_filter_predict
+
+FIXTURE_DIR = Path(__file__).parent.parent / "fixtures" / "matlab"
 
 
 class TestInformationFilterSingularF:
@@ -131,3 +136,74 @@ class TestSRIFPredictNearSingularCovariance:
         F = np.diag([1.0, 1e-5])  # P_pred condition number 1e10
         _, R_pred = srif_predict(np.zeros(2), np.eye(2), F, np.zeros((2, 2)))
         np.testing.assert_allclose(R_pred.T @ R_pred, np.diag([1.0, 1e10]), rtol=1e-6)
+
+
+# Inputs mirrored from scripts/matlab_capture/capture_info_filter_pred.m.
+_F2 = np.array([[1.0, 1.0], [0.0, 1.0]])
+_Y2 = np.diag([1.0, 0.0])
+_y2 = np.array([0.5, 0.0])
+_F4 = np.array(
+    [
+        [1.0, 0.0, 0.5, 0.0],
+        [0.0, 1.0, 0.0, 0.5],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+)
+_A4 = np.array([[1.0, 0.2], [0.3, 1.5], [0.1, 0.0], [0.0, 0.4]])
+_Y4 = _A4 @ _A4.T
+_y4 = _Y4 @ np.array([1.0, -2.0, 0.5, 0.3])
+_g4 = np.array([0.125, 0.125, 0.5, 0.5])
+
+_INFO_PRED_CASES = {
+    "q0": (_y2, _Y2, _F2, np.zeros((2, 2))),
+    "q1e-6": (_y2, _Y2, _F2, 1e-6 * np.eye(2)),
+    "q1e-12": (_y2, _Y2, _F2, 1e-12 * np.eye(2)),
+    "q1e-15": (_y2, _Y2, _F2, 1e-15 * np.eye(2)),
+    "q1e-2": (_y2, _Y2, _F2, 1e-2 * np.eye(2)),
+    "qdiag": (_y2, _Y2, _F2, np.diag([0.0, 1e-2])),
+    "y0": (np.zeros(2), np.zeros((2, 2)), _F2, 1e-2 * np.eye(2)),
+    "4state": (_y4, _Y4, _F4, 0.1 * np.outer(_g4, _g4)),
+}
+
+
+class TestSingularYPredictionMatchesMatlab:
+    """The singular-Y prediction is infoFilterDiscPred.m:47-58 (MATLAB TCL
+    a9acd8f). v2.11.1 inverted ``Q + 1e-9 (tr(Q)/n + 1) I`` instead, which
+    put a uniform 2.0e-9 relative error on every case here, exact ``Q = 0``
+    included.
+    """
+
+    @pytest.mark.parametrize("name", list(_INFO_PRED_CASES))
+    def test_one_prediction_matches_matlab(self, name):
+        path = FIXTURE_DIR / f"info_pred_{name}.csv"
+        if not path.exists():
+            pytest.skip(f"MATLAB fixture not present: {path.name}")
+        ref = np.loadtxt(path, delimiter=",", ndmin=2)
+        y, Y, F, Q = _INFO_PRED_CASES[name]
+        H = np.zeros((1, len(y)))
+        res = information_filter(y, Y, [None], F, Q, H, np.eye(1))
+        np.testing.assert_allclose(res.y_filt[0], ref[0], rtol=1e-12, atol=0)
+        np.testing.assert_allclose(res.Y_filt[0], ref[1:], rtol=1e-12, atol=0)
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_full_rank_y_agrees_with_covariance_route(self, seed):
+        """PROPERTY: for full-rank Y the MATLAB form and
+        ``information_filter_predict`` (inv(Y), F P F' + Q, inv) are the
+        same prediction."""
+        from pytcl.dynamic_estimation.information_filter import (
+            _information_predict_singular,
+        )
+
+        rng = np.random.default_rng(seed)
+        n = 4
+        A = rng.standard_normal((n, n))
+        Y = A @ A.T + n * np.eye(n)
+        y = rng.standard_normal(n)
+        F = np.eye(n) + 0.3 * rng.standard_normal((n, n))
+        B = rng.standard_normal((n, n))
+        Q = 0.1 * B @ B.T
+        y_m, Y_m = _information_predict_singular(y, Y, F, Q)
+        y_c, Y_c = information_filter_predict(y, Y, F, Q)
+        np.testing.assert_allclose(y_m, y_c, rtol=1e-12)
+        np.testing.assert_allclose(Y_m, Y_c, rtol=1e-12)
