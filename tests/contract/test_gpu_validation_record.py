@@ -9,6 +9,10 @@ vacuous-gate failure mode the v2.11.0 audit flagged. Like the CuPy
 test gates, it enforces only when PYTCL_REQUIRE_CUPY=1 (set on the
 GPU box); elsewhere it reports staleness as a skip so the build stays
 green on machines that cannot validate.
+
+The record file itself is excluded from the watched path: recording a
+validation commits VALIDATION.json, and counting that commit made every
+record stale the moment it was written (446aa51 did exactly that).
 """
 
 import json
@@ -22,15 +26,16 @@ REPO = Path(__file__).resolve().parents[2]
 RECORD = REPO / "pytcl" / "gpu" / "VALIDATION.json"
 
 
-def _commits_after(validated_commit: str) -> list:
+def _commits_after(validated_commit: str, head: str = "HEAD") -> list[str]:
     out = subprocess.run(
         [
             "git",
             "log",
-            "--format=%h %s",
-            f"{validated_commit}..HEAD",
+            "--format=%H %s",
+            f"{validated_commit}..{head}",
             "--",
             "pytcl/gpu/",
+            ":(exclude)pytcl/gpu/VALIDATION.json",
         ],
         cwd=REPO,
         capture_output=True,
@@ -61,3 +66,17 @@ def test_validation_record_is_current():
     if os.environ.get("PYTCL_REQUIRE_CUPY") == "1":
         pytest.fail(message)
     pytest.skip("UNVALIDATED GPU CHANGES: " + message)
+
+
+def test_record_file_itself_is_not_a_gpu_change():
+    # Full SHAs: an abbreviated %h grows past 7 characters as the object
+    # count grows, which would break a literal comparison.
+    assert _commits_after(
+        "e919189f4b0b9c545f6e9639fb6d6372ed9e85b4",
+        head="781ebce5f1be842d39fa743d6aa05b2f443d0046",
+    ) == [
+        "04007f18beb4a60e405aeee51f2e21f4305148d8 "
+        "fix: io and gpu correctness (v2.11.1 Tier 1, PR 6 of 8) (#203)",
+        "df1aa1722f231b30ca35aacec223d96bf960616b "
+        "fix: estimation-stack correctness (v2.11.1 Tier 1, PR 4 of 8) (#196)",
+    ]

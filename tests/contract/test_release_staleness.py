@@ -17,6 +17,8 @@ registry entries fail from the other direction.
 """
 
 import importlib
+import inspect
+import math
 import re
 import subprocess
 import sys
@@ -194,6 +196,30 @@ def test_coverage_claims_are_synchronized():
     )
 
 
+def _contributing_coverage_percent():
+    m = re.search(r"\*\*Coverage:\*\* (\d+\.\d+)%", _read("CONTRIBUTING.md"))
+    assert m, "CONTRIBUTING coverage measurement not found"
+    return float(m.group(1))
+
+
+def _ci_cov_fail_under():
+    gates = re.findall(r"--cov-fail-under=(\d+)", _read(".github/workflows/ci.yml"))
+    assert len(gates) == 1, f"expected one --cov-fail-under in ci.yml, found {gates}"
+    return int(gates[0])
+
+
+def test_coverage_gate_is_the_measurement_minus_three():
+    """CI's floor tracks the measurement with the house 3-point headroom.
+
+    A floor far below the measurement lets coverage fall by the gap with
+    the check still green: 85 against a measured 94.60 was 9 points of
+    unguarded regression.
+    """
+    measured = _contributing_coverage_percent()
+    gate = _ci_cov_fail_under()
+    assert gate == math.floor(measured - 3)
+
+
 # Validation files grew 63 -> 70 -> 82 across the last two full releases
 # (v2.10.0 -> v2.11.0 -> this patch), i.e. roughly 7-12 per release; every
 # oracle test PR adds one, so an exact count broke three consecutive PRs
@@ -262,12 +288,59 @@ def test_recorded_test_count_is_fresh():
 # became false). When a port ships under one of these names, this gate
 # fails and forces the prose update that docs/api/atmosphere.rst missed
 # for two releases.
-# Jacchia 1971 shipped in v2.11.0 (pytcl.atmosphere.jacchia), retiring
-# both of its absence claims; the registry stays for future claims.
-CLAIMED_ABSENT: dict = {}
+# The registry holds every absence claim found by a grep for "unported"
+# and "not ported" in docs/*.rst on 2026-10-23, each verified against the
+# code. Not registered: matlab_migration_map.rst:75 and
+# matlab_parity_inventory.rst:358 are pointers and summaries naming no
+# function; migration_guide.rst:388 ("refraction is unported") is false and
+# PR 0 (Task 0.2) removes it. An empty registry makes both tests below loop
+# over nothing and pass unconditionally, which it did from 6370238 until
+# v2.12.0 (test_claimed_absent_registry_is_populated now forbids that).
+# PR 8 adds the v2.13 entries PR 0 wrote (Task 8.2).
+#
+# "symbols" are names that would exist if the port shipped; "parameters"
+# maps an existing function to arguments it would gain.
+CLAIMED_ABSENT: list = [
+    {
+        "file": "docs/matlab_migration_map.rst",
+        "text": "*unported* -- MATLAB's ``perm`` is the matrix **permanent**",
+        "symbols": [
+            "pytcl.mathematical_functions.combinatorics.permanent",
+            "pytcl.mathematical_functions.permanent",
+            "pytcl.mathematical_functions.basic_matrix.permanent",
+        ],
+    },
+    {
+        "file": "docs/matlab_migration_map.rst",
+        "text": "``zTx``/``zRx`` arguments of ``Cart2Sphere`` — are unported",
+        "parameters": {
+            "pytcl.coordinate_systems.cart2sphere": ["z_tx", "z_rx", "zTx", "zRx"],
+        },
+    },
+    {
+        "file": "docs/matlab_parity_inventory.rst",
+        "text": "17-file ``Array_Processing`` subtree (tapering, beam patterns,",
+        "symbols": [
+            "pytcl.array_processing",
+            "pytcl.mathematical_functions.array_processing",
+            "pytcl.mathematical_functions.signal_processing.array_processing",
+        ],
+    },
+    {
+        "file": "docs/matlab_parity_inventory.rst",
+        "text": "coefficient-returning functions -- Earth2014 and EGM2008 terrain --",
+        "symbols": [
+            "pytcl.terrain.get_earth2014_terrain_coeffs",
+            "pytcl.terrain.get_egm2008_terrain_coeffs",
+            "pytcl.gravity.get_earth2014_terrain_coeffs",
+            "pytcl.gravity.get_egm2008_terrain_coeffs",
+        ],
+    },
+]
 
 
-def _resolves(dotted):
+def _lookup(dotted):
+    """The object a dotted name refers to, or None if it does not resolve."""
     parts = dotted.split(".")
     for split in range(len(parts), 0, -1):
         try:
@@ -279,27 +352,47 @@ def _resolves(dotted):
             for attr in parts[split:]:
                 obj = getattr(obj, attr)
         except AttributeError:
-            return False
-        return True
-    return False
+            return None
+        return obj
+    return None
+
+
+def _resolves(dotted):
+    return _lookup(dotted) is not None
 
 
 def test_unported_claims_have_not_shipped():
-    for rel, claim in CLAIMED_ABSENT.items():
+    for claim in CLAIMED_ABSENT:
+        rel = claim["file"]
         text = _read(rel)
         assert claim["text"] in text, (
             f"{rel} no longer contains the registered claim text "
             f"{claim['text']!r} -- update CLAIMED_ABSENT to match the prose"
         )
-        for dotted in claim["symbols"]:
+        for dotted in claim.get("symbols", []):
             assert not _resolves(dotted), (
                 f"{rel} claims {dotted} is unported, but it now resolves -- "
                 "update the prose (and then this registry)"
             )
+        for dotted, names in claim.get("parameters", {}).items():
+            func = _lookup(dotted)
+            assert func is not None, f"{dotted} no longer resolves; update {rel}"
+            present = set(inspect.signature(func).parameters) & set(names)
+            assert not present, (
+                f"{rel} claims {dotted} lacks {sorted(present)}, but it now "
+                "takes them -- update the prose (and then this registry)"
+            )
 
 
 def test_claimed_absent_registry_is_not_stale():
-    """Registered files must exist; empty symbol lists are meaningless."""
-    for rel, claim in CLAIMED_ABSENT.items():
+    """Registered files must exist; an entry must name something to check."""
+    for claim in CLAIMED_ABSENT:
+        rel = claim["file"]
         assert (REPO / rel).exists(), f"{rel} disappeared; update CLAIMED_ABSENT"
-        assert claim["symbols"], f"{rel} entry has no symbols to check"
+        assert claim.get("symbols") or claim.get("parameters"), (
+            f"{rel} entry {claim['text']!r} has nothing to check"
+        )
+
+
+def test_claimed_absent_registry_is_populated():
+    assert CLAIMED_ABSENT, "the registry is empty, so both absence tests are vacuous"

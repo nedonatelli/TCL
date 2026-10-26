@@ -145,7 +145,19 @@ wrong — passing tests are necessary, not sufficient.
    prints which backends were missing.
 
    The CuPy device layer has the same shape (`PYTCL_REQUIRE_CUPY=1`) and needs
-   an NVIDIA machine; the `GPU` workflow covers it on demand.
+   an NVIDIA machine. Its validation is recorded in
+   `pytcl/gpu/VALIDATION.json`, and `tests/contract/test_gpu_validation_record.py`
+   reports every commit touching `pytcl/gpu/` after the recorded one. To
+   validate, on the NVIDIA box:
+
+   ```bash
+   PYTCL_REQUIRE_CUPY=1 uv run pytest tests/ -p no:randomly
+   ```
+
+   then update `validated_date`, `hardware` and `validated_through_commit`
+   in `VALIDATION.json` (the record's own commits are not counted as GPU
+   changes). The `GPU` workflow runs the same suite but needs a registered
+   self-hosted runner label at dispatch; none is provisioned today.
 4. **PR with green CI** — lint (ruff, pinned), types (ty, locked), tests
    (Ubuntu + macOS × 4 Python, plus Windows on 3.12 — 9 combinations, not a
    full 4×3 matrix), docstring examples (`--doctest-modules`), docs build
@@ -525,7 +537,8 @@ Current metrics (v2.11.1):
 - **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
   04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
-  conditions. CI gate is `--cov-fail-under=85`.
+  conditions. CI gate is `--cov-fail-under=91`
+  (the measurement minus the house 3 points).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
 RBPF verified)". The NRLMSISE-00 entry was wrong -- the model was a barometric

@@ -38,6 +38,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.io.track_database import TrackDatabaseManager, TrackDatabaseStatus
 
 
@@ -46,7 +47,7 @@ def _warn_v1_compat(name: str) -> None:
         f"{name} is part of the v1.x compatibility layer, deprecated since "
         "v2.11.0 and scheduled for removal in v3.0.0. Use the v2 filter "
         "functions and TrackDatabaseManager directly.",
-        DeprecationWarning,
+        PytclDeprecationWarning,
         stacklevel=3,
     )
 

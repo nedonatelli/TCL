@@ -31,7 +31,12 @@ def _mahalanobis_distance_3d(
     innovation: np.ndarray[Any, Any],
     S_inv: np.ndarray[Any, Any],
 ) -> float:
-    """JIT-compiled Mahalanobis distance for 3D innovations."""
+    """JIT-compiled Mahalanobis distance for 3D innovations.
+
+    Unsupported input: an infinite innovation component. Compiled under
+    ``fastmath`` (``ninf``) the kernel returns inf where its interpreted
+    form returns nan, so the result is undefined.
+    """
     result = 0.0
     for i in range(3):
         for j in range(3):
@@ -53,7 +58,15 @@ def _mahalanobis_distance_general(
     return result
 
 
-@njit(cache=True, fastmath=True)
+# fastmath=True implies nnan, under which x86 lowers ``det != 0.0`` to a
+# ucomisd without the parity (unordered) check: a NaN determinant then
+# compares equal to zero, the inverse is left uninitialized, and
+# mahalanobis_distance returned 0.0 for a NaN covariance on x86 (NaN on
+# arm64). Without nnan/ninf the comparison is IEEE on every target.
+_INVERT_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
+
+
+@njit(cache=True, fastmath=_INVERT_FASTMATH)
 def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
     """Closed-form inverse of a 2x2 matrix; no LAPACK dispatch involved.
 
@@ -63,6 +76,8 @@ def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     than executed, since numba's fastmath float division by exact 0.0
     raises ZeroDivisionError instead of producing inf); the caller must
     fall back to `np.linalg.solve` in that case, not use this result.
+    A NaN determinant (a NaN entry in S) is not zero: the inverse is
+    all NaN, compiled and interpreted, on every platform.
     """
     det = S[0, 0] * S[1, 1] - S[0, 1] * S[1, 0]
     inv = np.empty((2, 2))
@@ -74,7 +89,7 @@ def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     return inv, det
 
 
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=_INVERT_FASTMATH)
 def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
     """Closed-form (adjugate/cofactor) inverse of a 3x3 matrix.
 
@@ -82,6 +97,7 @@ def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     check determinant != 0 before using the inverse -- for an exactly
     singular S the returned `inv` is uninitialized garbage (see
     `_invert_2x2` for why: division by zero is skipped, not executed).
+    A NaN determinant gives an all-NaN inverse, as in `_invert_2x2`.
     """
     a, b, c = S[0, 0], S[0, 1], S[0, 2]
     d, e, f = S[1, 0], S[1, 1], S[1, 2]

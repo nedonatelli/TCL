@@ -10,12 +10,12 @@ Requirements
 ^^^^^^^^^^^^
 
 * Python 3.11 or later
-* NumPy >= 1.24
-* SciPy >= 1.10
-* Numba >= 0.57
-* h5py >= 3.8
+* NumPy >= 2.3.2
+* SciPy >= 1.16.1
+* Numba >= 0.63.0
+* h5py >= 3.15.0
 * loguru >= 0.7
-* msgspec >= 0.18
+* msgspec >= 0.20.0
 * rich >= 13
 
 Install from PyPI

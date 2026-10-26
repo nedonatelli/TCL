@@ -313,7 +313,13 @@ def _cfar_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled GO-CFAR kernel."""
+    """JIT-compiled GO-CFAR kernel.
+
+    Unsupported input: NaN in the reference cells. Compiled under
+    ``fastmath`` (``nnan``) the comparison of the two averages drops the
+    NaN and yields a finite threshold where the interpreted form yields
+    NaN, so the result is undefined.
+    """
     n = len(signal)
     half_window = guard_cells + ref_cells
 
@@ -500,7 +506,13 @@ def _cfar_2d_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled 2D GO-CFAR kernel with parallel execution."""
+    """JIT-compiled 2D GO-CFAR kernel with parallel execution.
+
+    Unsupported input: NaN in the reference cells. Compiled under
+    ``fastmath`` (``nnan``) the comparison of the two averages drops the
+    NaN and yields a finite threshold where the interpreted form yields
+    NaN, so the result is undefined.
+    """
     n_rows, n_cols = image.shape
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols

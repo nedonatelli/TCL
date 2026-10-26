@@ -10,9 +10,10 @@ name: Mutation
 # level promises "thoroughly tested".
 #
 # Report-only by design: a surviving mutant needs human triage (equivalent
-# mutants exist), so the job never fails the build. The report lands in the
-# run's step summary. The very first smoke run already surfaced survivors
-# in ValidationError.__init__, so the signal is real.
+# mutants exist), so surviving mutants never fail the build; a genuine
+# `mutmut results` error does. The report lands in the run's step
+# summary. The very first smoke run already surfaced survivors in
+# ValidationError.__init__, so the signal is real.
 #
 # Scope lives HERE as mutant-name patterns, not in [tool.mutmut] --
 # source_paths must stay the whole package or the mutants/ copy is an
@@ -33,6 +34,10 @@ jobs:
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
+        with:
+          # tests/validation/_v2110.py loads v2.11.0 code from git history;
+          # without it mutmut's clean-run stats fail and nothing is mutated.
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v10.1.0
@@ -70,13 +75,16 @@ jobs:
             "pytcl.containers.base*" "pytcl.containers.kd_tree*" \
             || true
 
+      # grep -v exits 1 when every line is filtered (no survivors), which is
+      # a valid report; exit 2 is a real error and still fails.
       - name: Publish survivor report
         if: always()
+        shell: bash
         run: |
           {
             echo "## Mutation results (STABLE modules)"
             echo '```'
-            uv run mutmut results 2>/dev/null | grep -v "not checked" | tail -200
+            uv run mutmut results | { grep -v "not checked" || [ $? -eq 1 ]; } | tail -200
             echo '```'
             echo "Surviving mutants are logic changes no unit/validation test noticed."
             echo "Triage each: strengthen the test, or record it as an equivalent mutant."

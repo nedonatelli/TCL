@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
+  a `DeprecationWarning` subclass that every pytcl deprecation now emits
+  (`SimplifiedThermosphere`, the v1.x compatibility adapters in
+  `pytcl.io.compat`, and `MigrationHelper`). The test suite turns it into
+  an error; the v2.11 rule that was meant to do so never fired, because
+  pytest applies the last matching filter and its module field matched
+  the caller rather than pytcl. What to do: nothing; filters on
+  `DeprecationWarning` still match.
+
+### Changed
+
+- **The runtime dependency floors rise to versions CI actually tests.**
+  The old floors were never installed by any CI cell; every cell ran the
+  lock's newest releases. A new `floors` job in `ci.yml` resolves each
+  direct dependency to its floor (`uv lock --resolution lowest-direct`),
+  proves with `scripts/check_dependency_floors.py --check` that the
+  installed versions equal the floors, and runs the suite there on
+  every supported Python, 3.11 through 3.14.
+
+  | Package | 2.11.1 floor | New floor |
+  |---------|--------------|-----------|
+  | numpy   | 1.24.0       | 2.3.2     |
+  | scipy   | 1.10.0       | 1.16.1    |
+  | numba   | 0.57.0       | 0.63.0    |
+  | h5py    | 3.8.0        | 3.15.0    |
+  | msgspec | 0.18         | 0.20.0    |
+  | loguru  | 0.7          | 0.7       |
+  | rich    | 13           | 13        |
+
+  Each floor is the oldest release with wheels for all four supported
+  Pythons (3.11-3.14), so one floor holds everywhere with no markers:
+  numpy 2.2 and scipy 1.15 (SPEC 0's floors) have no cp314 wheels, and
+  numba 0.63.0 is the first release with cp314 wheels and numpy 2.3
+  support (it requires llvmlite 0.46). The extras' floors (astropy,
+  pyproj, netCDF4, ...) are unchanged and remain untested. What to do: if
+  your environment pins numpy < 2.3.2, scipy < 1.16.1, numba < 0.63.0,
+  h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
+  2.11.1.
+
+### Fixed
+
+- `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
+  through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
+  run of the new `floors` job. Those releases' batching wrapper passes
+  keyword arrays positionally, so the call's lone `s=` cross term landed
+  in `solve_discrete_are`'s `e` slot. The call now
+  passes `e=None` explicitly; five tests in
+  `tests/validation/test_performance_prediction.py` fail at scipy 1.16.1
+  without it. What to do: nothing; results under other SciPy versions are
+  unchanged.
+
+- `mahalanobis_distance` (and the gates built on it) returned 0.0 for a
+  2x2 or 3x3 innovation covariance containing NaN on x86-64, so such a
+  measurement passed every gate; arm64 returned NaN. The closed-form
+  inverse kernels were compiled with `fastmath` NaN assumptions, under
+  which x86 compared a NaN determinant equal to zero and skipped the
+  inverse. Both platforms now return NaN. Results for finite input are
+  bitwise unchanged. What to do: nothing, unless you relied on a NaN
+  covariance passing a gate.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

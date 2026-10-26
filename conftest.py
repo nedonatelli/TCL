@@ -133,6 +133,28 @@ def pytest_configure(config: "pytest.Config") -> None:
         )
 
 
+PYTCL_DEPRECATION_GATE = "error::pytcl.core.exceptions.PytclDeprecationWarning"
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionstart(session: "pytest.Session") -> None:
+    """Make pytcl's own deprecations an error, after coverage has started.
+
+    The rule is appended to the ini ``filterwarnings`` rather than listed in
+    pyproject.toml. Resolving it imports pytcl, and pytest resolves ini
+    filters in ``pytest_load_initial_conftests``, before pytest-cov starts
+    measuring: every module-level line of pytcl then counted as missed, and
+    the coverage job read 84.41% against 94.60% for the same tests.
+    pytest-cov starts in ``pytest_load_initial_conftests``, or here in
+    ``pytest_sessionstart`` on an xdist worker, hence ``trylast``.
+
+    Appended, the rule keeps the ini semantics: it follows
+    ``default::DeprecationWarning`` (the last matching rule wins), and
+    ``filterwarnings`` marks and ``-W`` still override it.
+    """
+    session.config.addinivalue_line("filterwarnings", PYTCL_DEPRECATION_GATE)
+
+
 def pytest_terminal_summary(terminalreporter, exitstatus, config) -> None:
     """Say plainly when a GPU layer did not run.
 
