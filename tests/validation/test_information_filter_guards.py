@@ -32,7 +32,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from pytcl.dynamic_estimation.information_filter import information_filter
+from pytcl.dynamic_estimation.information_filter import (
+    information_filter,
+    srif_update,
+)
 from pytcl.dynamic_estimation.kalman.linear import information_filter_predict
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures" / "matlab"
@@ -207,3 +210,63 @@ class TestSingularYPredictionMatchesMatlab:
         y_c, Y_c = information_filter_predict(y, Y, F, Q)
         np.testing.assert_allclose(y_m, y_c, rtol=1e-12)
         np.testing.assert_allclose(Y_m, Y_c, rtol=1e-12)
+
+
+def _V2111_srif_update(*args):
+    from tests.validation._v2111 import shipped_module
+
+    return shipped_module("pytcl/dynamic_estimation/information_filter.py").srif_update(
+        *args
+    )
+
+
+def _case(R_meas):
+    """Zero prior, so the posterior information is the measurement's own
+    ``R_meas^-1`` and scales exactly with ``R_meas``."""
+    return np.zeros(2), np.zeros((2, 2)), np.array([0.3, -0.7]), np.eye(2), R_meas
+
+
+def _pd_case():
+    R0 = np.linalg.inv(np.linalg.cholesky(2.0 * np.eye(2))).T
+    return (
+        R0 @ np.array([1.0, 0.5]),
+        R0,
+        np.array([1.2, 0.4]),
+        np.array([[1.0, 0.0], [0.5, 1.0]]),
+        np.array([[0.5, 0.1], [0.1, 0.3]]),
+    )
+
+
+def _info(result):
+    _, R_upd = result
+    return R_upd.T @ R_upd
+
+
+def _bitwise_equal(a, b):
+    return all(np.array_equal(x, y) for x, y in zip(a, b, strict=True))
+
+
+class TestSRIFUpdateMeasurementCovariance:
+    """srif_update's non-PD fallback added an absolute ``1e-10 I`` to
+    ``R_meas``: a zero variance became 1e10 information without a word,
+    ``-1e-12`` was accepted as ``9.9e-11``, and a covariance below ``1e-10``
+    in scale was swamped by the jitter. The fallback now floors eigenvalues
+    relative to the largest (``matrix_utils._EIG_FLOOR_REL``) and rejects a
+    zero or negative variance.
+    """
+
+    @pytest.mark.parametrize("r_meas", [0.0, -1e-12, -1e-8])
+    def test_zero_or_negative_measurement_variance_raises(self, r_meas):
+        with pytest.raises(np.linalg.LinAlgError, match="variance"):
+            srif_update(
+                np.zeros(1), np.eye(1), np.zeros(1), np.eye(1), np.array([[r_meas]])
+            )
+
+    def test_semidefinite_measurement_covariance_is_floored_relatively(self):
+        R_meas = np.diag([1e-14, 0.0])
+        a = srif_update(*_case(R_meas))
+        b = srif_update(*_case(R_meas * 1e6))
+        np.testing.assert_allclose(_info(a), _info(b) * 1e6, rtol=1e-9, atol=0)
+
+    def test_positive_definite_path_is_unchanged(self):
+        assert _bitwise_equal(srif_update(*_pd_case()), _V2111_srif_update(*_pd_case()))

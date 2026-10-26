@@ -33,6 +33,10 @@ from pytcl.dynamic_estimation.kalman.linear import (
     information_filter_predict,
     information_filter_update,
 )
+from pytcl.dynamic_estimation.kalman.matrix_utils import (
+    _EIG_FLOOR_REL,
+    _EIG_NEGATIVE_REL_TOL,
+)
 
 # P_pred is treated as numerically singular when its smallest singular value
 # is at or below n * eps of its largest (numpy.linalg.matrix_rank's default).
@@ -548,10 +552,23 @@ def srif_update(
     >>> np.linalg.det(R_upd.T @ R_upd) > np.linalg.det(R_prior.T @ R_prior)
     True
 
+    Raises
+    ------
+    numpy.linalg.LinAlgError
+        If ``R_meas`` has a zero or negative variance: its largest
+        eigenvalue is not positive, or its most negative eigenvalue is
+        larger in magnitude than eigh roundoff (``1e-10`` relative to the
+        largest-magnitude eigenvalue).
+
     Notes
     -----
     The update uses QR decomposition to combine the prior information
     with the measurement information while maintaining numerical stability.
+
+    A positive-definite ``R_meas`` is whitened by its Cholesky factor. A
+    positive semi-definite one is whitened from its eigendecomposition,
+    with eigenvalues floored at ``1e-10`` times the largest, so the result
+    does not depend on the units ``R_meas`` is expressed in.
     """
     r = np.asarray(r, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
@@ -560,14 +577,25 @@ def srif_update(
     R_meas = np.asarray(R_meas, dtype=np.float64)
 
     n = len(r)
-    m = len(z)
 
     # Get square root of measurement information
     try:
         L_meas = np.linalg.cholesky(R_meas)
         R_meas_inv = np.linalg.inv(L_meas).T
     except np.linalg.LinAlgError:
-        R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas + np.eye(m) * 1e-10)).T
+        eigvals, eigvecs = np.linalg.eigh(R_meas)
+        max_eig = eigvals.max()
+        most_neg_eig = eigvals.min()
+        if max_eig <= 0 or most_neg_eig < -_EIG_NEGATIVE_REL_TOL * np.max(
+            np.abs(eigvals)
+        ):
+            raise np.linalg.LinAlgError(
+                "srif_update: measurement covariance R_meas has a negative or "
+                f"zero variance (eigenvalue {most_neg_eig:.6e}, largest "
+                f"{max_eig:.6e}); it has no square-root information form."
+            )
+        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_eig)
+        R_meas_inv = np.diag(eigvals**-0.5) @ eigvecs.T
 
     # Form the information from measurement
     H_bar = R_meas_inv @ H

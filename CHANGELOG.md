@@ -111,6 +111,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1e6 m of the centre are not physical geodetic inputs, so if you pass
   placeholders, use exact zeros or filter them out.
 
+- **`srif_update` floors a semi-definite measurement covariance relative
+  to its scale, and rejects a zero or negative variance.** When Cholesky
+  failed it retried on `R_meas + 1e-10 I`. A zero variance silently became
+  1e10 of information, `-1e-12` was accepted as `+9.9e-11`, and a
+  covariance whose scale was near or below 1e-10 was swamped by the jitter:
+  `diag(1e-14, 0)` gave information `diag(1.0e10, 1.0e10)` instead of
+  `diag(1e14, 1e24)`. The fallback now whitens from `eigh`, flooring
+  eigenvalues at `1e-10` times the largest (`matrix_utils._EIG_FLOOR_REL`),
+  and raises `LinAlgError` when the largest eigenvalue is not positive or
+  the most negative one is beyond eigh roundoff
+  (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). Positive-definite input
+  still takes the Cholesky path and is bit-identical to 2.11.1. This
+  closes the 2.11.1 deferral. What to do: a zero or negative measurement
+  variance now raises LinAlgError; pass the variance you mean, or drop the
+  measurement.
+
 ### Fixed
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
