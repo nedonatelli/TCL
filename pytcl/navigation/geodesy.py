@@ -462,7 +462,10 @@ def ecef_to_geodetic(
 
     Notes
     -----
-    Uses Bowring's iterative algorithm for robust conversion.
+    Calls :func:`pytcl.coordinate_systems.ecef2geodetic` with its default
+    ``method='iterative'`` (Bowring-style iteration). That method is off by
+    metres deep inside the Earth; use ``ecef2geodetic(..., method='direct')``
+    there. At the ECEF origin it returns ``(pi/2, 0, -b)``.
 
     References
     ----------

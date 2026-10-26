@@ -89,6 +89,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was. What to do: a file written by a newer pytcl needs that pytcl; a file
   with a corrupted version field can be repaired by rewriting the version
   row/attribute, and nothing else in it is touched by the failed open.
+- **`ecef2geodetic` rejects unknown `method` strings and handles the ECEF
+  origin.** Any `method` other than `'iterative'` (`'Direct'` and
+  `'closed'` included) silently ran the closed form; anything but
+  `'iterative'` or `'direct'` now raises `MethodError` (a `ValueError`). At the origin the closed form returned
+  NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`, as
+  `'iterative'` does. Docstrings state the measured accuracy of each method
+  per altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
+  `(3, 1)` shape change moved to v3.0 because the module is STABLE.
+  What to do: pass `method='iterative'` or `method='direct'` exactly; any
+  other spelling used to run the closed form silently.
 
 ### Fixed
 
