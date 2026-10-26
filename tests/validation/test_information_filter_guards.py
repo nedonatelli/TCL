@@ -267,7 +267,7 @@ class TestSRIFUpdateMeasurementCovariance:
         b = srif_update(*_case(R_meas * 1e6))
         np.testing.assert_allclose(_info(a), _info(b) * 1e6, rtol=1e-9, atol=0)
 
-    @pytest.mark.parametrize("scale", [1.0, 3.0, 1e-6])
+    @pytest.mark.parametrize("scale", [1.0, 3.0, 1e-6, 0.1, 2.0, 7.0, 1e-14])
     def test_correlated_singular_covariance_is_floored_along_its_null_space(
         self, scale
     ):
@@ -276,10 +276,9 @@ class TestSRIFUpdateMeasurementCovariance:
         The zero is floored at ``1e-10 * 2 s``, so with a zero prior and
         ``H = I`` the posterior information is ``V diag(1/floored) V'`` =
         ``u u' / (2 s) + w w' / (2e-10 s)``. v2.11.1's ``+ 1e-10 I`` jitter
-        gave ``1e10`` along ``w`` whatever ``s`` was. These scales make
-        Cholesky fail, so they reach the eigh fallback; at others (0.1, 2)
-        Cholesky succeeds on a roundoff pivot and the fallback is not
-        taken."""
+        gave ``1e10`` along ``w`` whatever ``s`` was. At s = 0.1, 2, 7 and
+        1e-14 Cholesky succeeds on a roundoff pivot; before the eigenvalue
+        gate that path returned ``1/L22^2`` unfloored (1.1e30 at 1e-14)."""
         u = np.array([1.0, 1.0]) / np.sqrt(2.0)
         w = np.array([1.0, -1.0]) / np.sqrt(2.0)
         floored = np.array([2.0 * scale, 1e-10 * 2.0 * scale])
@@ -288,12 +287,31 @@ class TestSRIFUpdateMeasurementCovariance:
         got = _info(srif_update(*_case(scale * np.ones((2, 2)))))
         np.testing.assert_allclose(got, want, rtol=1e-9, atol=0)
         assert u @ got @ u == pytest.approx(1.0 / floored[0], rel=1e-5, abs=0)
+        bound = 1.0 / (1e-10 * floored[0])
+        assert np.linalg.eigvalsh(got).max() <= bound * (1 + 1e-9)
 
     def test_diagonal_positive_definite_path_is_unchanged(self):
         """Bit-identical to v2.11.1 for diagonal R_meas, where inv(L) and
         inv(L).T coincide. Non-diagonal R_meas changed on purpose; see
         TestSRIFUpdateCorrelatedMeasurement."""
         assert _bitwise_equal(srif_update(*_pd_case()), _V2111_srif_update(*_pd_case()))
+
+    @pytest.mark.parametrize("seed", range(20))
+    def test_random_diagonal_positive_definite_is_bit_identical(self, seed):
+        """Diagonal R_meas with variances spread over eight decades (well
+        inside the 1e-10 floor) still takes the Cholesky path bitwise."""
+        rng = np.random.default_rng(200 + seed)
+        n, m = 4, 3
+        A = rng.standard_normal((n, n))
+        R0 = np.triu(A) + n * np.eye(n)
+        args = (
+            rng.standard_normal(n),
+            R0,
+            rng.standard_normal(m),
+            rng.standard_normal((m, n)),
+            np.diag(10.0 ** rng.uniform(-4, 4, m)),
+        )
+        assert _bitwise_equal(srif_update(*args), _V2111_srif_update(*args))
 
 
 # Inputs mirrored from scripts/matlab_capture/capture_srif_update.m.
