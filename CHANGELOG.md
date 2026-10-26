@@ -60,6 +60,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaces it. What to do: open with `'a'` wherever you relied on `'w'`
   keeping existing rows.
 
+- **Unknown stored schema versions raise `FormatError`** (a `ValueError`)
+  in all five readers: `load_session`/`load_session_file`,
+  `load_tracks_asdf`, `load_states_asdf`, `TrackHDF5Storage.open` and
+  `TrackDatabaseManager.open`. 2.11.1 warned (`UserWarning`) and loaded
+  the file anyway. A session at version 0 is now rejected; a session newer
+  than this pytcl was already rejected. A track database whose version
+  field does not parse (`"abc"`, `""`), which 2.11.1 read as schema 1, is
+  rejected too. The check runs before `TrackDatabaseManager.open('a')`
+  creates any table or index, and both `open` methods close the file
+  handle before raising, so a rejected file is left byte-for-byte as it
+  was. What to do: a file written by a newer pytcl needs that pytcl; a file
+  with a corrupted version field can be repaired by rewriting the version
+  row/attribute, and nothing else in it is touched by the failed open.
+
 ### Fixed
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0

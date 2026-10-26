@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.io.serialize import _warn_unknown_schema_version
+from pytcl.core.exceptions import FormatError
+from pytcl.io.serialize import _reject_unknown_schema_version
 from pytcl.io.sql_storage import _connect, _truncate_sqlite
 
 # Struct formats for the array shape header, indexed by ndim. numpy 2 allows
@@ -111,6 +112,9 @@ class TrackDatabaseManager:
             If ``mode`` is not one of 'r', 'w', 'a'.
         FileNotFoundError
             If ``mode='r'`` and the database does not exist.
+        FormatError
+            If the database records a schema version this pytcl does not
+            read. The connection is closed and the file left unmodified.
 
         Notes
         -----
@@ -140,10 +144,16 @@ class TrackDatabaseManager:
         self._mode = mode
         self._connection, self._cursor = _connect(str(self._path), mode)
 
-        if mode in ("w", "a"):
-            self._initialize_tables()
-        else:
-            self._schema_version = self._read_schema_version()
+        try:
+            if mode in ("w", "a"):
+                self._initialize_tables()
+            else:
+                self._schema_version = self._read_schema_version()
+        except FormatError:
+            self._connection.close()
+            self._connection = None
+            self._cursor = None
+            raise
 
     def close(self) -> None:
         """Close database connection."""
@@ -1296,15 +1306,12 @@ class TrackDatabaseManager:
         row = self._cursor.fetchone()
         if not row:
             return 1
-        _warn_unknown_schema_version(
+        _reject_unknown_schema_version(
             f"track database {str(self._path)!r}",
             str(row[0]),
             ("1.0", _CURRENT_SCHEMA_VERSION_STR),
         )
-        try:
-            return int(str(row[0]).split(".")[0])
-        except ValueError:
-            return 1
+        return int(str(row[0]).split(".")[0])
 
     @staticmethod
     def _deserialize_vector(data: bytes, dim: int) -> NDArray[np.float64]:
@@ -1366,6 +1373,9 @@ class TrackDatabaseManager:
         """Create all tables and indices if they do not exist."""
         if self._cursor is None:
             return
+
+        # Reject an unknown version before any CREATE, so the file is untouched.
+        self._read_schema_version()
 
         self._cursor.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='detections'"

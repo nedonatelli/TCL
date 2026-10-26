@@ -13,7 +13,8 @@ import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.io.serialize import _warn_unknown_schema_version
+from pytcl.core.exceptions import FormatError
+from pytcl.io.serialize import _reject_unknown_schema_version
 
 _SCHEMA_VERSION = "1.0"
 
@@ -106,22 +107,30 @@ class TrackHDF5Storage:
         ----------
         mode : str
             'r' (read), 'w' (write/create), 'a' (append). Default is 'r'.
+
+        Raises
+        ------
+        FormatError
+            If the file records a schema version this pytcl does not read.
+            The file is closed and left unmodified.
         """
         self._mode = mode
         self._file = h5py.File(self._path, mode)
-
-        if mode in ("w", "a"):
-            if "_metadata" not in self._file:
-                meta = self._file.create_group("_metadata")
-                meta.attrs["schema_version"] = _SCHEMA_VERSION
 
         if "_metadata" in self._file:
             found = self._file["_metadata"].attrs.get("schema_version")
             if isinstance(found, bytes):
                 found = found.decode()
-            _warn_unknown_schema_version(
-                f"HDF5 track file {str(self._path)!r}", found, (_SCHEMA_VERSION,)
-            )
+            try:
+                _reject_unknown_schema_version(
+                    f"HDF5 track file {str(self._path)!r}", found, (_SCHEMA_VERSION,)
+                )
+            except FormatError:
+                self.close()
+                raise
+        elif mode in ("w", "a"):
+            meta = self._file.create_group("_metadata")
+            meta.attrs["schema_version"] = _SCHEMA_VERSION
 
     def close(self) -> None:
         """Close HDF5 file."""

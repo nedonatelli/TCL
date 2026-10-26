@@ -1,8 +1,9 @@
 """Stored schema versions are validated on read, and never rewritten on reopen.
 
-``schema_version=99`` used to load silently from every io backend. A version
-the reader does not know now warns (UserWarning) and still loads; a session
-newer than this pytcl keeps its pre-existing FormatError.
+``schema_version=99`` loaded silently from every io backend through v2.11.0;
+v2.11.1 warned and loaded it anyway. A version the reader does not know now
+raises FormatError and leaves the file untouched; a session newer than this
+pytcl keeps its pre-existing FormatError.
 """
 
 import sqlite3
@@ -118,14 +119,14 @@ def _stored_version(backend, path):
 
 
 @pytest.mark.parametrize("backend", BACKENDS)
-def test_unknown_schema_version_warns_on_read(tmp_path, backend):
+def test_unknown_schema_version_is_rejected(tmp_path, backend):
     try:
         path = _write_with_schema_version(tmp_path, backend, UNKNOWN[backend])
-        with pytest.warns(UserWarning, match="schema version") as rec:
+        with pytest.raises(FormatError, match="schema version") as exc_info:
             _read(backend, path)
     except _data_skip as exc:
         pytest.skip(str(exc))
-    msg = str(rec[0].message)
+    msg = str(exc_info.value)
     assert repr(UNKNOWN[backend]) in msg
     assert "reads schema versions" in msg
 
@@ -160,12 +161,46 @@ def test_reopening_does_not_rewrite_the_version(tmp_path, backend):
         pytest.skip(str(exc))
 
 
+def _store(backend, path):
+    if backend == "hdf5_track":
+        return TrackHDF5Storage(str(path))
+    return TrackDatabaseManager(str(path))
+
+
+def _handle_of(store):
+    if isinstance(store, TrackHDF5Storage):
+        return store._file
+    return store._connection
+
+
 @pytest.mark.parametrize("backend", ["hdf5_track", "track_db"])
-def test_reopening_an_unknown_version_leaves_it_alone(tmp_path, backend):
+@pytest.mark.parametrize("mode", ["r", "a"])
+def test_rejected_file_is_byte_identical_and_released(tmp_path, backend, mode):
     path = _write_with_schema_version(tmp_path, backend, "99.0")
-    with pytest.warns(UserWarning, match="schema version"):
-        _read(backend, path)
-    assert _stored_version(backend, path) == "99.0"
+    before = path.read_bytes()
+    store = _store(backend, path)
+    with pytest.raises(FormatError, match="schema version"):
+        store.open(mode)
+    assert path.read_bytes() == before
+    assert _handle_of(store) is None
+    path.unlink()
+
+
+def test_rejected_track_db_with_a_different_layout_is_not_migrated(tmp_path):
+    # A newer schema need not have this pytcl's tables and indices; v2.11.1
+    # created them (CREATE ... IF NOT EXISTS, then commit) before warning.
+    path = _write_with_schema_version(tmp_path, "track_db", "99.0")
+    con = sqlite3.connect(path)
+    con.execute("DROP TABLE track_associations")
+    con.execute("DROP INDEX idx_det_time")
+    con.commit()
+    con.close()
+    before = path.read_bytes()
+    db = TrackDatabaseManager(str(path))
+    with pytest.raises(FormatError, match="schema version"):
+        db.open("a")
+    assert db._connection is None
+    assert path.read_bytes() == before
 
 
 def test_session_newer_than_supported_still_raises(tmp_path):
@@ -174,48 +209,43 @@ def test_session_newer_than_supported_still_raises(tmp_path):
         load_session_file(path)
 
 
-def _warn_file_of(backend, tmp_path, mode="a"):
+def _reject_in_mode(backend, tmp_path, mode="a"):
     path = _write_with_schema_version(tmp_path, backend, UNKNOWN[backend])
-    with pytest.warns(UserWarning, match="schema version") as rec:
-        if backend == "hdf5_track":
-            with TrackHDF5Storage(str(path)) as store:
+    with pytest.raises(FormatError, match="schema version"):
+        if backend in ("hdf5_track", "track_db"):
+            with _store(backend, path) as store:
                 store.open(mode)
-        elif backend == "track_db":
-            with TrackDatabaseManager(str(path)) as db:
-                db.open(mode)
         else:
             _read(backend, path)
-    return rec[0].filename
 
 
 @pytest.mark.parametrize("backend", ["session", "asdf", "hdf5_track", "track_db"])
-def test_warning_points_at_the_caller(tmp_path, backend):
+def test_every_backend_rejects_through_its_public_reader(tmp_path, backend):
     try:
-        assert _warn_file_of(backend, tmp_path) == __file__
+        _reject_in_mode(backend, tmp_path)
     except _data_skip as exc:
         pytest.skip(str(exc))
 
 
 @pytest.mark.parametrize("mode", ["r", "a"])
-def test_track_db_warning_points_at_the_caller_in_every_mode(tmp_path, mode):
-    assert _warn_file_of("track_db", tmp_path, mode) == __file__
+def test_track_db_rejects_in_every_reading_mode(tmp_path, mode):
+    _reject_in_mode("track_db", tmp_path, mode)
 
 
-def test_load_session_bytes_warning_points_at_the_caller(tmp_path):
+def test_load_session_bytes_rejects_version_0(tmp_path):
     from pytcl.io import load_session
 
     path = _write_with_schema_version(tmp_path, "session", 0)
-    with pytest.warns(UserWarning, match="schema version") as rec:
+    with pytest.raises(FormatError, match="schema version 0"):
         load_session(path.read_bytes())
-    assert rec[0].filename == __file__
 
 
 @pytest.mark.parametrize("stored", ["abc", ""])
-def test_unparseable_track_db_version_warns_and_reads_as_schema_1(tmp_path, stored):
+def test_unparseable_track_db_version_is_rejected(tmp_path, stored):
     from tests.validation.test_track_database_roundtrip import _write_v1_database
 
     path = tmp_path / "v1.db"
-    meas, cov = _write_v1_database(path)
+    _write_v1_database(path)
     con = sqlite3.connect(path)
     con.execute(
         "UPDATE _pytcl_track_db_metadata SET value = ? WHERE key = 'schema_version'",
@@ -223,12 +253,10 @@ def test_unparseable_track_db_version_warns_and_reads_as_schema_1(tmp_path, stor
     )
     con.commit()
     con.close()
-    with pytest.warns(UserWarning, match="schema version"):
-        db = TrackDatabaseManager(path)
+    before = path.read_bytes()
+    db = TrackDatabaseManager(path)
+    with pytest.raises(FormatError, match="schema version"):
         db.open("a")
-    vec = db.retrieve_detection("vec")
-    assert np.array_equal(vec["measurement"], meas)
-    assert np.array_equal(vec["covariance"], cov)
-    assert np.array_equal(db.retrieve_detection("two_d")["measurement"], [0.0, 1.0])
-    db.close()
+    assert db._connection is None
+    assert path.read_bytes() == before
     assert _stored_version("track_db", path) == stored
