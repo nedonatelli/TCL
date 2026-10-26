@@ -113,8 +113,9 @@ Next
   input (a breaking change for a STABLE module).
 
 * **v2.13.0 planned changes**: a robust interior ``ecef2geodetic``
-  solver for points within ~1e5 m of the Earth's centre (v2.12.0 warns
-  there).
+  solver for points near the Earth's centre, where on WGS84 ``'direct'``
+  fails within 4.28e4 m and ``'iterative'`` errs by more than 1 mm within
+  3.14e5 m (v2.12.0 warns within 4.27e5 m and 1.28e6 m respectively).
 
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's

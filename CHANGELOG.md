@@ -73,8 +73,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   opened `'w'` is replaced by a schema-2.0 file, and a file that is not a
   SQLite database is replaced rather than raising. `MigrationHelper`
   opens its `output_db` with `'w'`, so migrating onto an existing file now
-  replaces it. What to do: open with `'a'` wherever you relied on `'w'`
-  keeping existing rows.
+  replaces it. On Windows, `'w'` raises `PermissionError` while another
+  process holds the file open, since the file cannot be deleted then.
+  What to do: open with `'a'` wherever you relied on `'w'` keeping
+  existing rows, and close other handles before reopening with `'w'`.
 
 - **Unknown stored schema versions raise `FormatError`** (a `ValueError`)
   in all five readers: `load_session`/`load_session_file`,

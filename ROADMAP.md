@@ -103,10 +103,11 @@ correctness-only. Names are the pytcl names each would take:
 
 ### v2.13.0 -- planned
 
-- **Robust interior `ecef2geodetic` solver.** A robust interior solver for
-  points within ~1e5 m of the Earth's centre; v2.12.0 warns there because
-  `'direct'` returns NaN or wrong values and `'iterative'` is off by up to
-  metres.
+- **Robust interior `ecef2geodetic` solver.** A robust solver for points
+  near the Earth's centre. Measured on WGS84, `'direct'` returns NaN or
+  values wrong by up to 3.5e159 m within 4.28e4 m, and `'iterative'` is
+  off by up to 4.25e4 m and by more than 1 mm out to 3.14e5 m; v2.12.0
+  warns within 4.27e5 m (`'direct'`) and 1.28e6 m (`'iterative'`).
 
 ### Measured backlog (from the MATLAB parity inventory)
 
@@ -291,6 +292,7 @@ what is still open.
 | Magnetism validity windows on `MagneticCoefficients` | Open; carried from the audit, not claimed by a release |
 | The GEBCO mask channel | Open; carried from the audit, not claimed by a release |
 | `mercator` with multi-element arrays | Open; carried from the audit, not claimed by a release |
+| `ecef2geodetic` is unreliable near the Earth's centre | `'direct'` returns NaN or wildly wrong values within 4.28e4 m, and `'iterative'` errs by more than 1 mm within 3.14e5 m (up to 4.25e4 m), measured on WGS84. v2.12.0 returns the values unchanged and emits a `RuntimeWarning` within 4.27e5 m (`'direct'`) or 1.28e6 m (`'iterative'`); a robust interior solver is planned for v2.13 |
 
 ### Medium Priority
 

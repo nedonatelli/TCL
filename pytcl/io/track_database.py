@@ -121,6 +121,14 @@ class TrackDatabaseManager:
         Read mode is enforced: a write through a handle opened with ``'r'``
         raises :class:`PermissionError` (it used to persist).
 
+        ``'w'`` unlinks the path before connecting. On Windows that raises
+        :class:`PermissionError` while another process holds the file open.
+        A symlinked path is replaced by a regular file; the symlink's target
+        is left intact. Calling ``open('w')`` again without :meth:`close`
+        leaks the old connection, and on Windows the unlink then raises
+        :class:`PermissionError` because that connection still holds the
+        file.
+
         Read mode does not create the database. It used to: ``sqlite3.connect``
         was called unconditionally, so opening a mistyped path for reading
         produced an empty file and the first query then failed with

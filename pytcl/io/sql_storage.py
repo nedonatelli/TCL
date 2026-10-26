@@ -125,6 +125,14 @@ class SQLStorage(StorageBackend):
         Read mode is enforced: writes through a ``'r'`` handle raise
         :class:`PermissionError` (they used to persist).
 
+        ``'w'`` unlinks the path before connecting. On Windows that raises
+        :class:`PermissionError` while another process holds the file open.
+        A symlinked path is replaced by a regular file; the symlink's target
+        is left intact. Calling ``open('w')`` again without :meth:`close`
+        leaks the old connection, and on Windows the unlink then raises
+        :class:`PermissionError` because that connection still holds the
+        file.
+
         Opening a nonexistent path for reading used to create an empty
         database, because ``sqlite3.connect`` creates the file whatever the
         caller intended. Reads against it then failed with
