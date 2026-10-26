@@ -216,6 +216,10 @@ jobs:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # tests/validation/_v2110.py loads v2.11.0 code from git history,
+          # and under CI a missing commit fails rather than skips.
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v10.1.0
         with:

@@ -34,6 +34,10 @@ jobs:
     timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
+        with:
+          # tests/validation/_v2110.py loads v2.11.0 code from git history;
+          # without it mutmut's clean-run stats fail and nothing is mutated.
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v10.1.0
