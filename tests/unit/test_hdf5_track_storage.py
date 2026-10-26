@@ -20,8 +20,10 @@ class TestTrackHDF5Storage:
     @pytest.fixture
     def temp_h5(self):
         """Create temporary HDF5 file."""
+        # Closed before yielding: Windows cannot unlink a file that is still open.
         with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as f:
-            yield f.name
+            name = f.name
+        yield name
 
     @pytest.fixture
     def sample_track_data(self):

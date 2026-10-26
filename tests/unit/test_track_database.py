@@ -14,8 +14,10 @@ class TestTrackDatabaseManager:
     @pytest.fixture
     def temp_db(self):
         """Create temporary database file."""
+        # Closed before yielding: Windows cannot unlink a file that is still open.
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            yield f.name
+            name = f.name
+        yield name
 
     @pytest.fixture
     def populated_db(self, temp_db):

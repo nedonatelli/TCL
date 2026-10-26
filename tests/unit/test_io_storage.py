@@ -22,8 +22,10 @@ class TestHDF5Storage:
     @pytest.fixture
     def temp_file(self):
         """Create temporary HDF5 file."""
+        # Closed before yielding: Windows cannot unlink a file that is still open.
         with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as f:
-            yield f.name
+            name = f.name
+        yield name
 
     def test_context_manager(self, temp_file):
         """Test HDF5Storage context manager."""
@@ -151,8 +153,10 @@ class TestSQLStorage:
     @pytest.fixture
     def temp_db(self):
         """Create temporary SQLite database."""
+        # Closed before yielding: Windows cannot unlink a file that is still open.
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            yield f.name
+            name = f.name
+        yield name
 
     def test_context_manager(self, temp_db):
         """Test SQLStorage context manager."""
