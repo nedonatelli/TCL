@@ -196,7 +196,7 @@ def test_warning_points_at_the_caller(tmp_path, backend):
         pytest.skip(str(exc))
 
 
-@pytest.mark.parametrize("mode", ["r", "a", "w"])
+@pytest.mark.parametrize("mode", ["r", "a"])
 def test_track_db_warning_points_at_the_caller_in_every_mode(tmp_path, mode):
     assert _warn_file_of("track_db", tmp_path, mode) == __file__
 

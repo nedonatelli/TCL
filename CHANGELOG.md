@@ -48,6 +48,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
   2.11.1.
 
+- **`mode='w'` truncates** in `TrackDatabaseManager.open` and
+  `SQLStorage.open`, as 2.11.1 announced with a `FutureWarning` (now
+  removed). `'w'` deletes the existing file and its SQLite `-journal`,
+  `-wal` and `-shm` files before creating a new one, matching
+  `HDF5Storage`; deleting the journal files keeps a crashed writer's hot
+  journal from being replayed into the new database. A schema-1.0 file
+  opened `'w'` is replaced by a schema-2.0 file, and a file that is not a
+  SQLite database is replaced rather than raising. `MigrationHelper`
+  opens its `output_db` with `'w'`, so migrating onto an existing file now
+  replaces it. What to do: open with `'a'` wherever you relied on `'w'`
+  keeping existing rows.
+
 ### Fixed
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0

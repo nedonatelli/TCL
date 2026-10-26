@@ -17,7 +17,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.serialize import _warn_unknown_schema_version
-from pytcl.io.sql_storage import _connect, _warn_if_w_reopens_data
+from pytcl.io.sql_storage import _connect, _truncate_sqlite
 
 # Struct formats for the array shape header, indexed by ndim. numpy 2 allows
 # up to 64 dimensions; a table that stops short makes such arrays store fine
@@ -101,10 +101,9 @@ class TrackDatabaseManager:
         ----------
         mode : str
             'r' (read-only), 'w' (create), 'a' (create if absent, else
-            append). Default is 'a'. Today 'w' does NOT truncate an existing
-            file: it behaves like 'a' and emits a ``FutureWarning`` when the
-            file already holds rows. From v2.12.0 'w' will discard the
-            existing file, matching ``HDF5Storage``.
+            append). Default is 'a'. 'w' creates the file, discarding any
+            existing file and its SQLite journal files (matching
+            ``HDF5Storage``).
 
         Raises
         ------
@@ -136,12 +135,7 @@ class TrackDatabaseManager:
             )
 
         if mode == "w":
-            _warn_if_w_reopens_data(
-                str(self._path),
-                ("detections", "tracks", "track_states", "track_associations"),
-                "TrackDatabaseManager",
-                3,
-            )
+            _truncate_sqlite(Path(self._path))
 
         self._mode = mode
         self._connection, self._cursor = _connect(str(self._path), mode)
