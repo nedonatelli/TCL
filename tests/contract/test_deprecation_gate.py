@@ -7,9 +7,12 @@ pytcl site warns with ``stacklevel>=2``, so the caller (a test module) was
 matched, never pytcl; and pytest applies the last matching filter, so the
 ``default`` rule listed after it overrode it anyway.
 
-The gate now keys on a category instead of a module. These tests run the
-repo's own ``filterwarnings`` list, read from ``pyproject.toml``, in a
-sub-session, so a reordering or a rewrite of the config is caught here.
+The gate now keys on a category instead of a module. The error rule is
+appended by the root ``conftest.py`` at session start rather than listed in
+``pyproject.toml``, because naming a pytcl category there imports pytcl
+before pytest-cov starts measuring. These tests run the repo's own
+``filterwarnings`` list and the repo's own root conftest in a sub-session, so
+a rewrite of either is caught here.
 """
 
 import ast
@@ -33,6 +36,11 @@ def _filterwarnings_toml() -> str:
 
 
 _FILTERWARNINGS_FROM_REPO_PYPROJECT = _filterwarnings_toml()
+
+
+def _repo_config(pytester) -> None:
+    pytester.makepyprojecttoml(_FILTERWARNINGS_FROM_REPO_PYPROJECT)
+    pytester.makeconftest((ROOT / "conftest.py").read_text(encoding="utf-8"))
 
 
 def _category_name(node: ast.expr) -> str | None:
@@ -80,8 +88,18 @@ def test_scan_finds_a_plain_deprecation(tmp_path):
     assert [f.rsplit(":", 1)[1] for f in found] == ["2", "3"]
 
 
+def test_ini_filters_name_no_pytcl_category():
+    """A pytcl category in the ini list is imported before coverage starts.
+
+    pytest resolves every ini filter's category in
+    ``pytest_load_initial_conftests``, ahead of pytest-cov, so the coverage
+    job would measure pytcl's module-level lines as missed.
+    """
+    assert [r for r in _repo_filterwarnings() if "pytcl" in r] == []
+
+
 def test_gate_turns_a_pytcl_deprecation_into_an_error(pytester):
-    pytester.makepyprojecttoml(_FILTERWARNINGS_FROM_REPO_PYPROJECT)
+    _repo_config(pytester)
     pytester.makepyfile(
         "from pytcl.atmosphere.thermosphere import SimplifiedThermosphere\n"
         "def test_x():\n    SimplifiedThermosphere()\n"
@@ -91,8 +109,36 @@ def test_gate_turns_a_pytcl_deprecation_into_an_error(pytester):
 
 
 def test_gate_leaves_third_party_deprecations_visible_but_passing(pytester):
-    pytester.makepyprojecttoml(_FILTERWARNINGS_FROM_REPO_PYPROJECT)
+    _repo_config(pytester)
     pytester.makepyfile(
         "import warnings\ndef test_x():\n    warnings.warn('x', DeprecationWarning)\n"
     )
     pytester.runpytest("-p", "no:randomly").assert_outcomes(passed=1, warnings=1)
+
+
+def test_gate_applies_to_doctests(pytester):
+    """``pytest --doctest-modules pytcl`` uses the same root conftest."""
+    _repo_config(pytester)
+    pytester.makepyfile(
+        m='''
+def f():
+    """
+    >>> from pytcl.atmosphere.thermosphere import SimplifiedThermosphere
+    >>> _ = SimplifiedThermosphere()
+    """
+'''
+    )
+    pytester.runpytest(
+        "--doctest-modules", "m.py", "-p", "no:randomly"
+    ).assert_outcomes(failed=1)
+
+
+def test_a_filterwarnings_mark_still_overrides_the_gate(pytester):
+    _repo_config(pytester)
+    pytester.makepyfile(
+        "import pytest\n"
+        "from pytcl.atmosphere.thermosphere import SimplifiedThermosphere\n"
+        "@pytest.mark.filterwarnings('ignore::DeprecationWarning')\n"
+        "def test_x():\n    SimplifiedThermosphere()\n"
+    )
+    pytester.runpytest("-p", "no:randomly").assert_outcomes(passed=1)
