@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`LSResult.residuals` from `ordinary_least_squares` is always the
+  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
+  shape (1,) sum of squares for a full-rank overdetermined system, the
+  vector otherwise. What to do: code that read `result.residuals[0]` as the
+  residual sum of squares must use `np.sum(result.residuals**2)` (per
+  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
+
 - **The runtime dependency floors rise to versions CI actually tests.**
   The old floors were never installed by any CI cell; every cell ran the
   lock's newest releases. A new `floors` job in `ci.yml` resolves each

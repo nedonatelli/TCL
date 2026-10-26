@@ -26,12 +26,8 @@ class LSResult(NamedTuple):
     x : ndarray
         Estimated parameters.
     residuals : ndarray
-        Intended to be the residual vector (y - A @ x), but currently
-        mirrors ``np.linalg.lstsq``: for a full-rank overdetermined system
-        (m > n) it is the shape (1,) residual sum of squares (shape (k,) for
-        a 2-D ``b``), and the residual vector is returned only when lstsq
-        returns no sum of squares (rank-deficient or m <= n). Returning the
-        vector always is a return-shape change deferred to v2.12.0.
+        Residual vector ``b - A @ x``, with the shape of ``b``, for every
+        system (full rank or not, overdetermined or not).
     rank : int
         Effective rank of the design matrix.
     singular_values : ndarray
@@ -113,7 +109,7 @@ def ordinary_least_squares(
     result : LSResult
         Named tuple containing:
         - x: Estimated parameters of shape (n,) or (n, k)
-        - residuals: Residual sum of squares or vector (see LSResult)
+        - residuals: Residual vector b - A @ x, shape of b
         - rank: Effective rank of A
         - singular_values: Singular values of A
 
@@ -133,15 +129,11 @@ def ordinary_least_squares(
     b = np.asarray(b, dtype=np.float64)
 
     # Solve using SVD for numerical stability
-    x, residuals, rank, s = np.linalg.lstsq(A, b, rcond=rcond)
-
-    # Compute residuals if not returned by lstsq
-    if len(residuals) == 0:
-        residuals = b - A @ x
+    x, _, rank, s = np.linalg.lstsq(A, b, rcond=rcond)
 
     return LSResult(
         x=x,
-        residuals=np.atleast_1d(residuals),
+        residuals=b - A @ x,
         rank=int(rank),
         singular_values=s,
     )
