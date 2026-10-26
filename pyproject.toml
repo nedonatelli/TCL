@@ -186,18 +186,16 @@ markers = [
     "examples: runs a script from examples/ end to end",
 ]
 filterwarnings = [
-    # The last matching rule wins, so the error rule must come after the
-    # blanket default. It keys on a category, not a module: the module
-    # field matches the frame a warning is attributed to, which with
-    # stacklevel>=2 is the caller, never pytcl. The v2.11 pair
-    # (error::DeprecationWarning:pytcl.* then default::DeprecationWarning)
-    # failed both ways and never fired.
-    #
     # Third-party deprecations stay visible in the warnings summary but
     # do not fail the suite; add targeted ignores here only with a
     # reason and an upstream reference.
+    #
+    # pytcl's own deprecations are an error, but that rule is appended by
+    # pytest_sessionstart in the root conftest.py, not listed here: pytest
+    # imports a filter's category while parsing this list, before
+    # pytest-cov starts, so naming a pytcl class here imports all of
+    # pytcl unmeasured (84.41% instead of 94.60% on the coverage job).
     "default::DeprecationWarning",
-    "error::pytcl.core.exceptions.PytclDeprecationWarning",
 ]
 
 [tool.coverage.run]
