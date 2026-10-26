@@ -79,7 +79,8 @@ CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
 ### v2.13.0 -- planned
 
 The audit's Tier 4 ports, moved out of v2.12 so that release stays
-correctness-only. Names are the pytcl names each would take:
+correctness-only, plus one follow-up from v2.12. Names are the pytcl
+names each would take:
 
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
   (Ryser's formula); pytcl `matrix_permanent`.
@@ -100,9 +101,6 @@ correctness-only. Names are the pytcl names each would take:
   `Dynamic_Estimation/Measurement_Update/Complete_Measurement_Updates/multipleModelUpdate.m`;
   pytcl `pytcl.dynamic_estimation.imm` gains the `GPB1`, `GPB2` and `AMM`
   algorithms.
-
-### v2.13.0 -- planned
-
 - **Robust interior `ecef2geodetic` solver.** A robust solver for points
   near the Earth's centre. Measured on WGS84, `'direct'` returns NaN or
   values wrong by up to 3.5e159 m within 4.28e4 m, and `'iterative'` is
