@@ -11,8 +11,9 @@ supported via the ``fmt`` argument, matching :mod:`pytcl.io.serialize`:
   so saving a session containing non-finite values raises ``ValueError``
   rather than silently producing invalid JSON.
 
-Decoding is strict: malformed or truncated bytes, or bytes from a newer
-schema version, raise :class:`~pytcl.core.exceptions.FormatError`.
+Decoding is strict: malformed or truncated bytes, or bytes recording a
+schema version this pytcl does not read, raise
+:class:`~pytcl.core.exceptions.FormatError`.
 
 Some snapshotted objects (trackers built with callable dynamics rather
 than fixed matrices) cannot be fully rebuilt from the snapshot alone --
@@ -35,7 +36,7 @@ from pytcl.dynamic_estimation import GaussianSumFilter, IMMEstimator, RBPFFilter
 from pytcl.dynamic_estimation.configs import GaussianSumConfig, IMMConfig, RBPFConfig
 from pytcl.dynamic_estimation.gaussian_sum_filter import GaussianComponent
 from pytcl.dynamic_estimation.rbpf import RBPFParticle
-from pytcl.io.serialize import _check_finite, _codec, _warn_unknown_schema_version
+from pytcl.io.serialize import _check_finite, _codec, _reject_unknown_schema_version
 from pytcl.trackers import (
     MHTConfig,
     MHTTracker,
@@ -974,8 +975,8 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
     Raises
     ------
     FormatError
-        If `data` is malformed, or was produced by a newer schema version
-        than this pytcl supports.
+        If `data` is malformed, or records a schema version this pytcl
+        does not read (a newer one, or one below 1).
     ConfigurationError
         If the snapshot needs a rehydration keyword argument that was not
         supplied, or was given one it does not need (either because the
@@ -992,7 +993,7 @@ def load_session(data: bytes, *, fmt: str = "msgpack", **models: Any) -> Any:
             f"session schema v{env.schema_version} is newer than this "
             f"pytcl supports (v{SESSION_SCHEMA_VERSION})"
         )
-    _warn_unknown_schema_version(
+    _reject_unknown_schema_version(
         "session", env.schema_version, range(1, SESSION_SCHEMA_VERSION + 1)
     )
     restore = _RESTORERS[type(env.snapshot).__name__]

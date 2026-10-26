@@ -267,16 +267,17 @@ def test_every_write_method_is_refused_in_read_mode(tmp_path, name):
     assert path.read_bytes() == before
 
 
-def test_write_mode_preserves_rows_and_warns(tmp_path):
+def test_write_mode_discards_rows_without_warning(tmp_path):
     path = tmp_path / "t.db"
     db = TrackDatabaseManager(path)
     db.open("w")
     db.store_detection("old", np.zeros(2), "s", 0.0)
     db.close()
     db2 = TrackDatabaseManager(path)
-    with pytest.warns(FutureWarning, match="does not truncate.*v2.12.0"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         db2.open("w")
-    assert [d["detection_id"] for d in db2.retrieve_all_detections()] == ["old"]
+    assert db2.retrieve_all_detections() == []
     db2.close()
 
 
@@ -290,14 +291,17 @@ def test_write_mode_on_new_or_empty_file_does_not_warn(tmp_path):
             db.close()
 
 
-def test_write_mode_keeps_schema_1_file_version(tmp_path):
+def test_write_mode_replaces_schema_1_file_with_schema_2(tmp_path):
     path = tmp_path / "t.db"
     _write_v1_database(path)
     db = TrackDatabaseManager(path)
-    with pytest.warns(FutureWarning):
-        db.open("w")
+    db.open("w")
+    assert db.retrieve_all_detections() == []
+    value = np.arange(6, dtype=float).reshape(2, 3)
+    db.store_detection("two_d", value, "s", 0.0)
+    assert np.array_equal(db.retrieve_detection("two_d")["measurement"], value)
     db.close()
-    assert _version(path) == "1.0"
+    assert _version(path) == "2.0"
 
 
 def test_append_mode_keeps_rows(tmp_path):
@@ -338,7 +342,7 @@ def test_sql_storage_read_mode_rejects_writes(tmp_path):
     assert (tmp_path / "s.db").read_bytes() == before
 
 
-def test_sql_storage_write_mode_preserves_data_and_warns(tmp_path):
+def test_sql_storage_write_mode_discards_data_without_warning(tmp_path):
     from pytcl.io.sql_storage import SQLStorage
 
     path = str(tmp_path / "s.db")
@@ -347,10 +351,74 @@ def test_sql_storage_write_mode_preserves_data_and_warns(tmp_path):
         with SQLStorage() as s:
             s.open(path, "w")
             s.store_array("old", np.arange(3.0))
-    with SQLStorage() as s:
-        with pytest.warns(FutureWarning, match="does not truncate.*v2.12.0"):
+        with SQLStorage() as s:
             s.open(path, "w")
-        assert np.array_equal(s.retrieve_array("old"), np.arange(3.0))
+            assert s.list_keys() == []
+            with pytest.raises(KeyError):
+                s.retrieve_array("old")
+
+
+def _store_one_row(tmp_path, owner):
+    from pytcl.io.sql_storage import SQLStorage
+
+    path = tmp_path / f"{owner}.db"
+    if owner == "sql_storage":
+        with SQLStorage() as s:
+            s.open(str(path), "w")
+            s.store_scalar("k", 1)
+    else:
+        _seeded(path)
+    return path
+
+
+def _open(owner, path, mode):
+    from pytcl.io.sql_storage import SQLStorage
+
+    if owner == "sql_storage":
+        store = SQLStorage()
+        store.open(str(path), mode)
+    else:
+        store = TrackDatabaseManager(path)
+        store.open(mode)
+    return store
+
+
+def _row_count(owner, path):
+    tables = (
+        ("_pytcl_metadata", "_pytcl_arrays")
+        if owner == "sql_storage"
+        else ("detections", "tracks", "track_states", "track_associations")
+    )
+    con = sqlite3.connect(path)
+    try:
+        return sum(
+            con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables
+        )
+    finally:
+        con.close()
+
+
+@pytest.mark.parametrize("owner", ["sql_storage", "track_db"])
+def test_w_mode_removes_sqlite_sidecars(tmp_path, owner):
+    path = _store_one_row(tmp_path, owner)
+    for suffix in ("-journal", "-wal", "-shm"):
+        (tmp_path / (path.name + suffix)).write_bytes(b"stale")
+    _open(owner, path, "w").close()
+    assert not any(
+        (tmp_path / (path.name + s)).exists() for s in ("-journal", "-wal", "-shm")
+    )
+    assert _row_count(owner, path) == 0
+
+
+def test_w_mode_replaces_a_file_that_is_not_sqlite(tmp_path):
+    path = tmp_path / "x.db"
+    path.write_bytes(b"not a database")
+    with TrackDatabaseManager(path) as db:
+        db.open("w")
+        db.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+    with TrackDatabaseManager(path) as db:
+        db.open("r")
+        assert db.get_track("t1")["track_id"] == "t1"
 
 
 def _confirmed_track(hits=5, misses=1):

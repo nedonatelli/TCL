@@ -15,16 +15,13 @@ malformed data rather than returning partial/garbage results.
 
 from __future__ import annotations
 
-import os
-import sys
-import warnings
 from typing import Any, NamedTuple, Sequence
 
 import msgspec
 import numpy as np
 from numpy.typing import NDArray
 
-_PACKAGE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + os.sep
+from pytcl.core.exceptions import FormatError
 
 __all__ = [
     "TrackRecord",
@@ -129,21 +126,16 @@ def _codec(fmt: str) -> tuple[Any, Any]:
         ) from None
 
 
-def _warn_unknown_schema_version(source: str, found: Any, known: Sequence[Any]) -> None:
-    """Warn that a stored schema version is not one this reader knows."""
+def _reject_unknown_schema_version(
+    source: str, found: Any, known: Sequence[Any]
+) -> None:
+    """Raise FormatError if a stored schema version is not one this reader knows."""
     if found in known:
         return
-    frame = sys._getframe(1)
-    level = 2
-    while frame is not None and frame.f_code.co_filename.startswith(_PACKAGE_DIR):
-        frame = frame.f_back
-        level += 1
-    warnings.warn(
+    raise FormatError(
         f"{source} has schema version {found!r}; this pytcl reads schema "
-        f"versions {', '.join(repr(k) for k in known)}. Loading it anyway; "
-        "fields written by a different schema may be misread.",
-        UserWarning,
-        stacklevel=level,
+        f"versions {', '.join(repr(k) for k in known)}. Upgrade pytcl or "
+        "convert the file."
     )
 
 

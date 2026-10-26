@@ -355,8 +355,8 @@ class TestECEF2Geodetic:
         ecef = geodetic2ecef(lat_orig, lon_orig, alt_orig)
         lat, lon, alt = ecef2geodetic(ecef, method="direct")
 
-        # Direct method has lower accuracy than iterative
-        assert np.isclose(lat, lat_orig, atol=0.01)  # ~0.5 degrees
+        # Measured 3e-16 rad at the surface (tests/validation/test_geodetic_oracle.py)
+        assert np.isclose(lat, lat_orig, atol=1e-15, rtol=0)
         assert np.isclose(lon, lon_orig, atol=1e-9)
 
     def test_multiple_points(self):

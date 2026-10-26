@@ -283,7 +283,8 @@ class MigrationHelper:
             Covariances default to identity if not provided.
             Timestamps default to 0..N-1 if not provided.
         output_db : str
-            Path to the output SQLite database.
+            Path to the output SQLite database. An existing file at this
+            path is replaced.
 
         Returns
         -------

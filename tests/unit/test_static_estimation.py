@@ -167,15 +167,21 @@ def _ttls_reference(A, b, k):
     return np.linalg.lstsq(Ck[:, :-1], Ck[:, -1], rcond=None)[0]
 
 
-class TestOrdinaryLeastSquaresResidualsShape:
-    """Pins the current ``residuals`` contract; v2.12.0 changes it on purpose."""
+class TestOrdinaryLeastSquaresResiduals:
+    A = np.array([[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]])
 
-    def test_full_rank_overdetermined_returns_sum_of_squares(self):
-        A = np.array([[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]])
-        b = np.array([1.0, 2.0, 2.0])
-        out = ordinary_least_squares(A, b)
-        assert out.residuals.shape == (1,)
-        assert_allclose(out.residuals, [np.sum((b - A @ out.x) ** 2)], rtol=1e-12)
+    @pytest.mark.parametrize(
+        "b",
+        [
+            np.array([1.0, 2.0, 2.0]),
+            np.array([[1.0, 0.0], [2.0, 1.0], [2.0, 5.0]]),
+        ],
+    )
+    def test_residuals_are_b_minus_ax(self, b):
+        out = ordinary_least_squares(self.A, b)
+        assert out.residuals.shape == b.shape
+        assert_allclose(out.residuals, b - self.A @ out.x, rtol=0, atol=1e-15)
+        assert_allclose(self.A.T @ out.residuals, 0.0, rtol=0, atol=1e-14)
 
     def test_rank_deficient_returns_residual_vector(self):
         A = np.array([[1.0, 2.0], [2.0, 4.0], [3.0, 6.0]])

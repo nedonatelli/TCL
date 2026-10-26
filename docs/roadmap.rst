@@ -107,7 +107,11 @@ Next
 
 * **v2.13.0 planned**: the audit's Tier 4 ports -- matrix permanent,
   ``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian, Runnalls
-  ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family.
+  ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family; plus a
+  robust interior ``ecef2geodetic`` solver for points near the Earth's
+  centre, where on WGS84 ``'direct'`` fails within 4.28e4 m and
+  ``'iterative'`` errs by more than 1 mm within 3.14e5 m (v2.12.0 warns
+  within 4.27e5 m and 1.28e6 m respectively).
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).

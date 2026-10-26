@@ -33,7 +33,7 @@ from pytcl.core.optional_deps import DISTRIBUTION_NAME
 from pytcl.io.serialize import (
     SimpleTrack,
     _check_aligned,
-    _warn_unknown_schema_version,
+    _reject_unknown_schema_version,
 )
 
 __all__ = [
@@ -200,6 +200,8 @@ def load_tracks_asdf(
     ------
     DependencyError
         If asdf is not installed.
+    FormatError
+        If the file records a schema version this pytcl does not read.
 
     Examples
     --------
@@ -221,7 +223,7 @@ def load_tracks_asdf(
 
     with asdf.open(path) as af:
         pytcl_tree = af.tree["pytcl"]
-        _warn_unknown_schema_version(
+        _reject_unknown_schema_version(
             f"ASDF file {os.fspath(path)!r}",
             pytcl_tree.get("schema_version"),
             _KNOWN_SCHEMA_VERSIONS,
@@ -313,6 +315,8 @@ def load_states_asdf(
     ------
     DependencyError
         If asdf is not installed.
+    FormatError
+        If the file records a schema version this pytcl does not read.
 
     Examples
     --------
@@ -330,7 +334,7 @@ def load_states_asdf(
 
     with asdf.open(path) as af:
         pytcl_tree = af.tree["pytcl"]
-        _warn_unknown_schema_version(
+        _reject_unknown_schema_version(
             f"ASDF file {os.fspath(path)!r}",
             pytcl_tree.get("schema_version"),
             _KNOWN_SCHEMA_VERSIONS,

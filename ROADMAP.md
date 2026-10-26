@@ -79,7 +79,8 @@ CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
 ### v2.13.0 -- planned
 
 The audit's Tier 4 ports, moved out of v2.12 so that release stays
-correctness-only. Names are the pytcl names each would take:
+correctness-only, plus one follow-up from v2.12. Names are the pytcl
+names each would take:
 
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
   (Ryser's formula); pytcl `matrix_permanent`.
@@ -100,6 +101,11 @@ correctness-only. Names are the pytcl names each would take:
   `Dynamic_Estimation/Measurement_Update/Complete_Measurement_Updates/multipleModelUpdate.m`;
   pytcl `pytcl.dynamic_estimation.imm` gains the `GPB1`, `GPB2` and `AMM`
   algorithms.
+- **Robust interior `ecef2geodetic` solver.** A robust solver for points
+  near the Earth's centre. Measured on WGS84, `'direct'` returns NaN or
+  values wrong by up to 3.5e159 m within 4.28e4 m, and `'iterative'` is
+  off by up to 4.25e4 m and by more than 1 mm out to 3.14e5 m; v2.12.0
+  warns within 4.27e5 m (`'direct'`) and 1.28e6 m (`'iterative'`).
 
 ### Measured backlog (from the MATLAB parity inventory)
 
@@ -284,6 +290,7 @@ what is still open.
 | Magnetism validity windows on `MagneticCoefficients` | Open; carried from the audit, not claimed by a release |
 | The GEBCO mask channel | Open; carried from the audit, not claimed by a release |
 | `mercator` with multi-element arrays | Open; carried from the audit, not claimed by a release |
+| `ecef2geodetic` is unreliable near the Earth's centre | `'direct'` returns NaN or wildly wrong values within 4.28e4 m, and `'iterative'` errs by more than 1 mm within 3.14e5 m (up to 4.25e4 m), measured on WGS84. v2.12.0 returns the values unchanged and emits a `RuntimeWarning` within 4.27e5 m (`'direct'`) or 1.28e6 m (`'iterative'`); a robust interior solver is planned for v2.13 |
 
 ### Medium Priority
 

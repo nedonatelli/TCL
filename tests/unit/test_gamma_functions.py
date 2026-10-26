@@ -10,6 +10,8 @@ Tests cover:
 - Combinations and permutations
 """
 
+import math
+
 import numpy as np
 import pytest
 
@@ -389,3 +391,48 @@ class TestGammaFunctionsIntegration:
         result = comb(n, k)
         expected = perm(n, k) / factorial(k)
         assert result == pytest.approx(expected, rel=1e-10)
+
+
+def _double_factorial(n):
+    out = 1
+    while n > 1:
+        out *= n
+        n -= 2
+    return out
+
+
+class TestExactFactorial:
+    @pytest.mark.parametrize("n", [0, 5, 20, 21, 25, 170, 171])
+    @pytest.mark.parametrize("wrap", [int, np.int64, np.array])
+    def test_scalar_exact_is_a_python_int(self, n, wrap):
+        got = factorial(wrap(n), exact=True)
+        assert type(got) is int and got == math.factorial(n)
+
+    def test_array_exact_keeps_every_digit(self):
+        got = factorial(np.array([[3], [25]]), exact=True)
+        assert got.dtype == object and got.shape == (2, 1)
+        assert got[1, 0] == 15511210043330985984000000
+
+    def test_array_exact_small_values_are_int64(self):
+        got = factorial(np.array([0, 5, 20]), exact=True)
+        assert got.dtype == np.int64
+        assert list(got) == [1, 120, 2432902008176640000]
+
+    def test_negative_is_zero(self):
+        assert factorial(-1, exact=True) == 0
+
+    def test_non_integer_raises(self):
+        with pytest.raises(ValueError):
+            factorial(2.5, exact=True)
+
+    def test_factorial2_exact(self):
+        assert factorial2(7, exact=True) == 105
+        assert type(factorial2(7, exact=True)) is int
+        assert list(factorial2(np.array([7, 31]), exact=True)) == [
+            105,
+            _double_factorial(31),
+        ]
+
+    @pytest.mark.parametrize("n", [0, 1, 2, 40, 41, 100])
+    def test_factorial2_exact_matches_loop(self, n):
+        assert factorial2(n, exact=True) == _double_factorial(n)

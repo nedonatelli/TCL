@@ -48,6 +48,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
   2.11.1.
 
+- **`special_functions.factorial` and `factorial2` with `exact=True` return
+  exact integers.** They cast scipy's exact result to float64, so
+  `factorial(25, exact=True)` was rounded. They now return a Python `int`
+  for scalar or 0-d input, an `int64` array when every value fits, and an
+  `object` array of Python ints otherwise; `exact=False` is unchanged.
+  What to do: if you passed `exact=True` and then used float operations or
+  a dtype check on the result, convert explicitly with `float(...)` or
+  `.astype(float)`.
+
+- **`LSResult.residuals` from `ordinary_least_squares` is always the
+  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
+  shape (1,) sum of squares for a full-rank overdetermined system, the
+  vector otherwise. What to do: code that read `result.residuals[0]` as the
+  residual sum of squares must use `np.sum(result.residuals**2)` (per
+  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
+
+- **`mode='w'` truncates** in `TrackDatabaseManager.open` and
+  `SQLStorage.open`, as 2.11.1 announced with a `FutureWarning` (now
+  removed). `'w'` deletes the existing file and its SQLite `-journal`,
+  `-wal` and `-shm` files before creating a new one, matching
+  `HDF5Storage`; deleting the journal files keeps a crashed writer's hot
+  journal from being replayed into the new database. A schema-1.0 file
+  opened `'w'` is replaced by a schema-2.0 file, and a file that is not a
+  SQLite database is replaced rather than raising. `MigrationHelper`
+  opens its `output_db` with `'w'`, so migrating onto an existing file now
+  replaces it. On Windows, `'w'` raises `PermissionError` while another
+  process holds the file open, since the file cannot be deleted then.
+  What to do: open with `'a'` wherever you relied on `'w'` keeping
+  existing rows, and close other handles before reopening with `'w'`.
+
+- **Unknown stored schema versions raise `FormatError`** (a `ValueError`)
+  in all five readers: `load_session`/`load_session_file`,
+  `load_tracks_asdf`, `load_states_asdf`, `TrackHDF5Storage.open` and
+  `TrackDatabaseManager.open`. 2.11.1 warned (`UserWarning`) and loaded
+  the file anyway. A session at version 0 is now rejected; a session newer
+  than this pytcl was already rejected. A track database whose version
+  field does not parse (`"abc"`, `""`), which 2.11.1 read as schema 1, is
+  rejected too. The check runs before `TrackDatabaseManager.open('a')`
+  creates any table or index, and both `open` methods close the file
+  handle before raising, so a rejected file is left byte-for-byte as it
+  was. What to do: a file written by a newer pytcl needs that pytcl; a file
+  with a corrupted version field can be repaired by rewriting the version
+  row/attribute, and nothing else in it is touched by the failed open.
+
+- **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
+  and warns near the Earth's centre.** Any `method` other than
+  `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
+  closed form; anything but `'iterative'` or `'direct'` now raises
+  `MethodError` (a `ValueError`). At the exact origin the closed form
+  returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
+  as `'iterative'` does. Near the centre each method fails, measured on
+  WGS84 by the forward residual over 309 directions at radii from 1e-300 m
+  to 2.6e6 m: `'direct'` returns NaN or values wrong by up to 3.5e159 m
+  within 4.28e4 m and is accurate to 3.5e-9 m beyond; `'iterative'` is off
+  by up to 4.25e4 m (worst at 16 m from the centre) and by more than 1 mm
+  out to 3.14e5 m. Both edges scale with `e2 a`, the first eccentricity
+  squared times the semi-major axis (42.7 km for WGS84). Values there are
+  unchanged from 2.11.1 (a robust solver is planned for v2.13), but each
+  call now emits one `RuntimeWarning` naming the method, the number of
+  affected rows and that method's failure when a row lies within
+  `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
+  1.28e6 m) of the centre. A sphere (`f = 0`) never warns, and neither
+  does the exact origin. Every other row is bit-identical to
+  2.11.1. Docstrings state the measured accuracy of each method per
+  altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
+  `(3, 1)` shape change moved to v3.0 because the module is STABLE.
+  What to do: pass `method='iterative'` or `method='direct'` exactly (any
+  other spelling used to run the closed form silently); points that close
+  to the centre are not physical geodetic inputs, so if you pass
+  placeholders, use exact zeros or filter them out.
+
+- **`srif_update` floors a semi-definite measurement covariance relative
+  to its scale, and rejects a covariance with no positive variance or a
+  negative one.** When Cholesky
+  failed it retried on `R_meas + 1e-10 I`. A zero variance silently became
+  1e10 of information, `-1e-12` was accepted as `+9.9e-11`, and a
+  covariance whose scale was near or below 1e-10 was swamped by the jitter:
+  `diag(1e-14, 0)` gave information `diag(1.0e10, 1.0e10)` instead of
+  `diag(1e14, 1e24)`. The fallback now whitens from `eigh`, flooring
+  eigenvalues at `1e-10` times the largest (`matrix_utils._EIG_FLOOR_REL`),
+  and raises `LinAlgError` when no variance is positive (the largest
+  eigenvalue is zero or negative) or any variance is negative beyond eigh
+  roundoff (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). A zero variance
+  beside a positive one does not raise; it is floored at 1e-10 of the
+  largest. Positive-definite input still takes the Cholesky path. This
+  closes the 2.11.1 deferral. What to do: a measurement covariance with no
+  positive variance, or with a negative one, now raises LinAlgError; pass
+  the variance you mean, or drop the measurement.
+
 ### Fixed
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
@@ -68,6 +157,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inverse. Both platforms now return NaN. Results for finite input are
   bitwise unchanged. What to do: nothing, unless you relied on a NaN
   covariance passing a gate.
+
+- **`information_filter` predicts from a singular information matrix with
+  MATLAB's `infoFilterDiscPred` formula.** The singular-`Y` branch
+  inverted `Q + 1e-9 (trace(Q)/n + 1) I`, so every prediction from a
+  partially or fully unknown state carried a uniform 2.0e-9 relative
+  error (3.1e-8 on a 4-state case), even at exact `Q = 0`, and the error
+  stayed in `Y` for the rest of the run. The branch now transcribes
+  `infoFilterDiscPred.m:47-58` (`DInv = F' + Y F^-1 Q`, `Y_pred =
+  DInv \ (Y F^-1)`, `y_pred = DInv \ y`), which inverts neither `Q` nor
+  `Y`. It matches MATLAB fixtures (`tests/fixtures/matlab/info_pred_*.csv`)
+  to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
+  raises `LinAlgError`. What to do: nothing; predictions from a singular
+  information matrix change by 2e-9 to 3e-8 relative on the measured
+  cases.
+
+- **`srif_update` uses the right measurement information for a correlated
+  `R_meas`.** Its Cholesky path whitened with `inv(L).T` for `R_meas = L
+  L'`, which carries `inv(L' L)`, not `inv(R_meas)`, whenever `R_meas` is
+  not diagonal. `R_meas = [[2, 1], [1, 1]]` added `[[0.5, -0.5], [-0.5,
+  2.5]]` of information instead of `[[1, -1], [-1, 2]]`, and the posterior
+  information on two MATLAB-captured cases was off by 50% and 45%
+  relative. It now whitens with `inv(L)`, as MATLAB's
+  `sqrtInfoFilterUpdate.m:67-68` does (`SR\H`), and matches
+  `tests/fixtures/matlab/srif_update_*.csv` to 3.4e-16 relative. Diagonal
+  `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
+  estimates computed with a non-diagonal measurement covariance; the
+  results change, and they now match the Kalman filter.
 
 ## [2.11.1] - 2026-10-22
 
