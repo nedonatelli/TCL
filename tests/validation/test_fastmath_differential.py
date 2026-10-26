@@ -371,8 +371,15 @@ def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
     "kernel, n", [(gating._invert_2x2, 2), (gating._invert_3x3, 3)], ids=["2x2", "3x3"]
 )
 def test_invert_kernels_compare_the_determinant_without_nnan(kernel, n):
-    kernel(np.eye(n))
-    ir = kernel.inspect_llvm(kernel.signatures[0])
+    """The x86 failure mode, checked where it can be seen on any platform.
+
+    A kernel loaded from numba's on-disk cache returns empty IR from
+    ``inspect_llvm``, so the kernel is recompiled uncached here with its
+    own ``fastmath`` flags.
+    """
+    fresh = numba.njit(fastmath=kernel.targetoptions["fastmath"])(kernel.py_func)
+    fresh(np.eye(n))
+    ir = fresh.inspect_llvm(fresh.signatures[0])
     compares = [line for line in ir.splitlines() if " fcmp " in line]
     assert compares
     assert [c for c in compares if " fast " in c or " nnan " in c] == []
