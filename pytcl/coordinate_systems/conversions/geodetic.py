@@ -6,6 +6,7 @@ longitude, altitude) and Earth-centered coordinate systems (ECEF), as well
 as local tangent plane coordinates (ENU, NED).
 """
 
+import warnings
 from typing import Optional, Tuple
 
 import numpy as np
@@ -96,6 +97,12 @@ def geodetic2ecef(
     return np.array([x, y, z], dtype=np.float64)
 
 
+#: Radius (m) from the Earth's centre inside which neither method is reliable.
+#: Measured against a forward-residual oracle: ``'direct'`` is NaN or wrong
+#: within about 5e4 m, ``'iterative'`` is off by more than 1 mm out to 3e5 m.
+INTERIOR_UNRELIABLE_RADIUS = 1.0e6
+
+
 def _vermeille(
     x: NDArray[np.floating],
     y: NDArray[np.floating],
@@ -137,7 +144,8 @@ def ecef2geodetic(
     f : float, optional
         Flattening of the reference ellipsoid.
     method : str, optional
-        Algorithm to use, matched exactly (case-sensitive):
+        Algorithm to use, matched exactly (case-sensitive; see Notes for the
+        region near the Earth's centre where neither is reliable):
 
         - ``'iterative'``: Bowring-style fixed-point iteration (default)
         - ``'direct'``: Closed-form solution (Vermeille's method)
@@ -148,8 +156,8 @@ def ecef2geodetic(
         2000 km, and about 5x near GEO (35000 km to 36000 km). For altitudes
         of -6300 km to -1000 km (deep inside the Earth) ``'direct'`` stays
         within nanometres while ``'iterative'`` is off by metres (6 m worst
-        measured). Both are accurate to well under a millimetre above the
-        surface.
+        measured). Both are accurate to well under a millimetre from 10 km
+        below the surface up to 36000 km altitude.
 
     Returns
     -------
@@ -165,10 +173,24 @@ def ecef2geodetic(
     MethodError
         If ``method`` is not exactly ``'iterative'`` or ``'direct'``.
 
+    Warns
+    -----
+    RuntimeWarning
+        Once per call, if any point lies within
+        ``INTERIOR_UNRELIABLE_RADIUS`` (1e6 m) of the Earth's centre, other
+        than the exact origin.
+
     Notes
     -----
-    At the ECEF origin latitude is undefined; both methods return
-    ``(pi/2, 0, -b)`` there, where ``b`` is the semi-minor axis.
+    Within 1e6 m of the Earth's centre (about 5300 km below the surface)
+    neither method is reliable, and the values are returned unchanged.
+    Measured by the distance between the input and the point rebuilt from
+    the result: ``'direct'`` is NaN or wrong (up to 1e21 m) within about
+    5e4 m and accurate to 3e-9 m beyond; ``'iterative'`` is off by up to
+    4e3 m within 3e4 m, 2.4 m at 1e5 m and 1.4e-3 m at 3e5 m. Such points
+    are not physical geodetic inputs. The exact ECEF origin, where latitude
+    is undefined, is the one exception: both methods return ``(pi/2, 0, -b)``
+    there, with ``b`` the semi-minor axis, and do not warn.
 
     Examples
     --------
@@ -198,6 +220,19 @@ def ecef2geodetic(
     x = ecef[0]
     y = ecef[1]
     z = ecef[2]
+
+    radius = np.sqrt(x**2 + y**2 + z**2)
+    n_interior = int(
+        np.count_nonzero((radius < INTERIOR_UNRELIABLE_RADIUS) & (radius > 0))
+    )
+    if n_interior:
+        warnings.warn(
+            f"ecef2geodetic(method={method!r}): {n_interior} point(s) lie within "
+            f"{INTERIOR_UNRELIABLE_RADIUS:g} m of the Earth's centre, where results "
+            "are unreliable (NaN or errors of metres); the exact origin is exempt",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     # Derived constants
     e2 = 2 * f - f**2  # First eccentricity squared

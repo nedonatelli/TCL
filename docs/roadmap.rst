@@ -112,6 +112,10 @@ Next
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).
 
+* **v2.13.0 planned changes**: a robust interior ``ecef2geodetic``
+  solver for points within ~1e5 m of the Earth's centre (v2.12.0 warns
+  there).
+
 * **Measured backlog**: the remaining MATLAB parity gaps
   (:doc:`matlab_parity_inventory`) — the cubature-point library's
   dimension-specialized subdirectory files and out-of-scope region

@@ -89,16 +89,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was. What to do: a file written by a newer pytcl needs that pytcl; a file
   with a corrupted version field can be repaired by rewriting the version
   row/attribute, and nothing else in it is touched by the failed open.
-- **`ecef2geodetic` rejects unknown `method` strings and handles the ECEF
-  origin.** Any `method` other than `'iterative'` (`'Direct'` and
-  `'closed'` included) silently ran the closed form; anything but
-  `'iterative'` or `'direct'` now raises `MethodError` (a `ValueError`). At the origin the closed form returned
-  NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`, as
-  `'iterative'` does. Docstrings state the measured accuracy of each method
-  per altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
+- **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
+  and warns near the Earth's centre.** Any `method` other than
+  `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
+  closed form; anything but `'iterative'` or `'direct'` now raises
+  `MethodError` (a `ValueError`). At the exact origin the closed form
+  returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
+  as `'iterative'` does. Within `INTERIOR_UNRELIABLE_RADIUS` (1e6 m) of the
+  centre neither method is reliable, as measured by forward residual:
+  `'direct'` is NaN or wrong (up to 1e21 m) within about 5e4 m;
+  `'iterative'` is off by up to 4e3 m within 3e4 m, 2.4 m at 1e5 m and
+  1.4e-3 m at 3e5 m. Values there are unchanged from 2.11.1 (a robust
+  solver is planned for v2.13), but each call now emits one
+  `RuntimeWarning` naming the method and the number of affected rows;
+  the exact origin does not warn. Every other row is bit-identical to
+  2.11.1. Docstrings state the measured accuracy of each method per
+  altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
   `(3, 1)` shape change moved to v3.0 because the module is STABLE.
-  What to do: pass `method='iterative'` or `method='direct'` exactly; any
-  other spelling used to run the closed form silently.
+  What to do: pass `method='iterative'` or `method='direct'` exactly (any
+  other spelling used to run the closed form silently); points within
+  1e6 m of the centre are not physical geodetic inputs, so if you pass
+  placeholders, use exact zeros or filter them out.
 
 ### Fixed
 

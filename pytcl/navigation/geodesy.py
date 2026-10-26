@@ -465,7 +465,9 @@ def ecef_to_geodetic(
     Calls :func:`pytcl.coordinate_systems.ecef2geodetic` with its default
     ``method='iterative'`` (Bowring-style iteration). That method is off by
     metres deep inside the Earth; use ``ecef2geodetic(..., method='direct')``
-    there. At the ECEF origin it returns ``(pi/2, 0, -b)``.
+    there. Within 1e6 m of the Earth's centre neither method is reliable and a
+    ``RuntimeWarning`` is emitted; the exact ECEF origin returns
+    ``(pi/2, 0, -b)`` without warning.
 
     References
     ----------

@@ -2,8 +2,8 @@
 
 The oracle solves ``p = (N + h) cos(lat)``, ``z = (N (1 - e2) + h) sin(lat)``
 by 2-D Newton in mpmath at 40 digits. Measured on 20000 seeded points per
-band (this file samples fewer so the suite stays fast; tolerances are 1.5x
-the 20000-point maximum).
+band. This file samples 2000 points per band to stay fast, but the
+tolerances are 1.5x the 20000-point maxima below.
 
 Maximum error, ``direct`` -- latitude (rad) / altitude (m):
 
@@ -19,16 +19,35 @@ Maximum error, ``iterative`` -- latitude (rad) / altitude (m):
     geo       2.6e-15 / 8.8e-08
     interior  2.8e-04 / 6.1
 
+Near the Earth's centre, forward residual (metres between the input and the
+point rebuilt from the result, mpmath at 40 digits) over 307 directions
+(axes, 300 random, 7 near-axis); ``INTERIOR_UNRELIABLE_RADIUS`` is 1e6 m:
+
+    radius      direct                        iterative
+    1e-300..1e-10 m  NaN, or up to 1e111 m    up to 2e-9 m
+    1e-3 .. 100 m    NaN, z axis 3e5 .. 1e-6  up to 4e4 m (x axis, 10 m)
+    3e4 m            NaN (15 of 67 dirs)      up to 4.3e3 m
+    5e4 m            at most 2.5e-9 m         up to 3.1e2 m
+    1e5 m            at most 1.7e-9 m         up to 2.4 m
+    3e5 m            at most 2.5e-9 m         1.4e-3 m (last radius above 1 mm)
+    3.5e5 .. 8e5 m   at most 3e-9 m           at most 4.7e-4 m
+
+Outside the radius ``iterative`` is limited by its 1e-12 rad stopping
+tolerance (about 1e-5 m at 2e6 m), so a 1 mm criterion sets the radius.
+
 Before the fix, ``method='Direct'`` (any non-``'iterative'`` string) silently
 ran the closed form, and the closed form returned NaN with two
 RuntimeWarnings at the ECEF origin.
 """
+
+import warnings
 
 import mpmath as mp
 import numpy as np
 import pytest
 
 from pytcl.coordinate_systems import ecef2geodetic, geodetic2ecef
+from pytcl.coordinate_systems.conversions.geodetic import INTERIOR_UNRELIABLE_RADIUS
 from pytcl.core.constants import WGS84
 from pytcl.core.exceptions import MethodError
 
@@ -86,6 +105,7 @@ def _max_errors(method, band):
     return lat_err, h_err
 
 
+@pytest.mark.filterwarnings("ignore:ecef2geodetic:RuntimeWarning")
 @pytest.mark.parametrize("band", BANDS)
 def test_direct_matches_the_oracle(band):
     lat_err, h_err = _max_errors("direct", band)
@@ -93,6 +113,7 @@ def test_direct_matches_the_oracle(band):
     assert h_err <= H_TOL[band]
 
 
+@pytest.mark.filterwarnings("ignore:ecef2geodetic:RuntimeWarning")
 def test_iterative_is_off_deep_inside():
     _, h_err = _max_errors("iterative", "interior")
     assert h_err > 1.0
@@ -117,3 +138,89 @@ def test_origin_matches_between_methods():
 def test_method_is_case_sensitive(method):
     with pytest.raises(MethodError, match="'iterative' or 'direct'"):
         ecef2geodetic(np.array([7e6, 0.0, 0.0]), method=method)
+
+
+R = INTERIOR_UNRELIABLE_RADIUS
+
+# Hex floats from v2.11.1 (781ebce) at 1.000001e6 m from the centre and at
+# 1.0488e6 m, just outside the warning radius.
+V2111 = {
+    ((0.0, 0.0, 1000001.0), "iterative"): (
+        "0x1.921fb54442d18p+0",
+        "0x0.0p+0",
+        "-0x1.46f33d41c97d0p+22",
+    ),
+    ((0.0, 0.0, 1000001.0), "direct"): (
+        "0x1.921fb54442d18p+0",
+        "0x0.0p+0",
+        "-0x1.46f33d41c97d0p+22",
+    ),
+    ((1000001.0, 0.0, 0.0), "iterative"): (
+        "0x0.0p+0",
+        "0x0.0p+0",
+        "-0x1.4841600000000p+22",
+    ),
+    ((1000001.0, 0.0, 0.0), "direct"): (
+        "0x0.0p+0",
+        "0x0.0p+0",
+        "-0x1.48415fffffffep+22",
+    ),
+    ((600000.0, 500000.0, 700000.0), "iterative"): (
+        "0x1.808e24c8b75ccp-1",
+        "0x1.63b4bc3f16a8ap-1",
+        "-0x1.44aeaba6ea257p+22",
+    ),
+    ((600000.0, 500000.0, 700000.0), "direct"): (
+        "0x1.808e24c8b7461p-1",
+        "0x1.63b4bc3f16a8ap-1",
+        "-0x1.44aeaba6ea282p+22",
+    ),
+}
+
+
+@pytest.mark.parametrize("method", ["iterative", "direct"])
+@pytest.mark.parametrize(
+    "point",
+    [(0.0, 0.0, 0.99 * R), (0.99 * R, 0.0, 0.0), (3e5, -4e5, 5e5), (1.0, 2.0, 3.0)],
+)
+def test_rows_inside_the_radius_warn_once(method, point):
+    with pytest.warns(RuntimeWarning, match=rf"\(method='{method}'\): 1 point") as rec:
+        ecef2geodetic(np.array(point), method=method)
+    assert len(rec) == 1
+
+
+@pytest.mark.parametrize("key", list(V2111))
+def test_rows_outside_the_radius_do_not_warn_and_match_v2_11_1(key):
+    point, method = key
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = ecef2geodetic(np.array(point), method=method)
+    assert tuple(float(v).hex() for v in out) == V2111[key]
+
+
+@pytest.mark.parametrize("method", ["iterative", "direct"])
+def test_exact_origin_does_not_warn(method):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        lat, lon, h = ecef2geodetic(np.zeros(3), method=method)
+    assert (lat, lon) == (np.pi / 2, 0.0)
+    assert h == pytest.approx(-WGS84.b, rel=1e-15, abs=0)
+
+
+@pytest.mark.parametrize("method", ["iterative", "direct"])
+def test_mixed_array_warns_once_and_surface_rows_are_unchanged(method):
+    surface = np.array(
+        [geodetic2ecef(0.3, 0.4, 100.0), geodetic2ecef(-0.9, 2.0, 5e5)]
+    ).T
+    alone = ecef2geodetic(surface, method=method)
+    mixed = np.column_stack(
+        [surface[:, 0], [3e5, 4e5, 5e5], np.zeros(3), surface[:, 1]]
+    )
+    with pytest.warns(RuntimeWarning, match="1 point") as rec:
+        out = ecef2geodetic(mixed, method=method)
+    assert len(rec) == 1
+    # 'iterative' stops when every row has converged, so its rows are coupled
+    # (as in v2.11.1): the altitude moves by up to 5e-6 m, not bitwise.
+    tol = 0.0 if method == "direct" else 1e-5
+    for got, want in zip(out, alone):
+        assert abs(got[0] - want[0]) <= tol and abs(got[3] - want[1]) <= tol

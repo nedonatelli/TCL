@@ -101,6 +101,13 @@ correctness-only. Names are the pytcl names each would take:
   pytcl `pytcl.dynamic_estimation.imm` gains the `GPB1`, `GPB2` and `AMM`
   algorithms.
 
+### v2.13.0 -- planned
+
+- **Robust interior `ecef2geodetic` solver.** A robust interior solver for
+  points within ~1e5 m of the Earth's centre; v2.12.0 warns there because
+  `'direct'` returns NaN or wrong values and `'iterative'` is off by up to
+  metres.
+
 ### Measured backlog (from the MATLAB parity inventory)
 
 `docs/matlab_parity_inventory.rst` was produced by walking every directory of
