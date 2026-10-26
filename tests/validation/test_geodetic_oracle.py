@@ -19,21 +19,31 @@ Maximum error, ``iterative`` -- latitude (rad) / altitude (m):
     geo       2.6e-15 / 8.8e-08
     interior  2.8e-04 / 6.1
 
-Near the Earth's centre, forward residual (metres between the input and the
-point rebuilt from the result, mpmath at 40 digits) over 307 directions
-(axes, 300 random, 7 near-axis); ``INTERIOR_UNRELIABLE_RADIUS`` is 1e6 m:
+Near the Earth's centre, forward residual (distance between the input and
+the point rebuilt from the result, mpmath at 40 digits) over 309 directions
+(300 seeded random, 9 axis and near-axis). Radii are in units of ``e2 a``
+(42697.7 m for WGS84). The edges were bisected to 2e-5 relative; the 1 mm
+criterion is scaled by ``a / 6378137`` for the ``a = 1`` case.
 
-    radius      direct                        iterative
-    1e-300..1e-10 m  NaN, or up to 1e111 m    up to 2e-9 m
-    1e-3 .. 100 m    NaN, z axis 3e5 .. 1e-6  up to 4e4 m (x axis, 10 m)
-    3e4 m            NaN (15 of 67 dirs)      up to 4.3e3 m
-    5e4 m            at most 2.5e-9 m         up to 3.1e2 m
-    1e5 m            at most 1.7e-9 m         up to 2.4 m
-    3e5 m            at most 2.5e-9 m         1.4e-3 m (last radius above 1 mm)
-    3.5e5 .. 8e5 m   at most 3e-9 m           at most 4.7e-4 m
+    ellipsoid             e2 a       direct NaN/wrong   iterative > 1 mm
+    WGS84                 42697.7 m  r < 1.0034 e2 a    r < 7.352 e2 a
+    WGS84 scaled to a=1   0.0066944  r < 1.0034 e2 a    r < 7.352 e2 a
+    a = WGS84.a, f=1/50   252574 m   r < 1.0204 e2 a    r < 10.501 e2 a
 
-Outside the radius ``iterative`` is limited by its 1e-12 rad stopping
-tolerance (about 1e-5 m at 2e6 m), so a 1 mm criterion sets the radius.
+Inside its edge ``direct`` gives NaN on 67487 of 74160 WGS84 rows (240
+radii, 1e-300 m .. 1 e2 a) and finite values up to 3.5e159 m wrong (WGS84;
+8.3e159 m at f = 1/50); outside it, at most 3.4e-9 m (WGS84) and 4.2e-9 m
+(f = 1/50) at the 70 log-spaced radii up to 60 e2 a. ``iterative`` is
+wrong by up to 0.995 e2 a (42501 m, at 16 m from the centre) on WGS84 and
+1.012 e2 a at f = 1/50; at those radii beyond its edge it is within
+4.4e-4 m (WGS84), limited by its 1e-12 rad stopping tolerance. Warning radii: ``direct`` 10 e2 a (about
+10x its edge), ``iterative`` 30 e2 a (4.1x its WGS84 edge, 2.9x at
+f = 1/50); 4.27e5 m and 1.28e6 m for WGS84.
+
+On a sphere (f = 0, e2 a = 0) neither method warns. Over 306 directions at
+radii 1e-300 m .. 1.5 a: ``iterative`` within 1.7e-8 m everywhere;
+``direct`` within 2.9e-9 m from 7.8e-47 m up, NaN at 1.3e-47 m and below
+(squared coordinates underflow).
 
 Before the fix, ``method='Direct'`` (any non-``'iterative'`` string) silently
 ran the closed form, and the closed form returned NaN with two
@@ -47,9 +57,10 @@ import numpy as np
 import pytest
 
 from pytcl.coordinate_systems import ecef2geodetic, geodetic2ecef
-from pytcl.coordinate_systems.conversions.geodetic import INTERIOR_UNRELIABLE_RADIUS
 from pytcl.core.constants import WGS84
 from pytcl.core.exceptions import MethodError
+from pytcl.navigation.geodesy import SPHERE
+from tests.validation._v2111 import shipped_module
 
 mp.mp.dps = 40
 _A = mp.mpf(float(WGS84.a))
@@ -140,81 +151,102 @@ def test_method_is_case_sensitive(method):
         ecef2geodetic(np.array([7e6, 0.0, 0.0]), method=method)
 
 
-R = INTERIOR_UNRELIABLE_RADIUS
-
-# Hex floats from v2.11.1 (781ebce) at 1.000001e6 m from the centre and at
-# 1.0488e6 m, just outside the warning radius.
-V2111 = {
-    ((0.0, 0.0, 1000001.0), "iterative"): (
-        "0x1.921fb54442d18p+0",
-        "0x0.0p+0",
-        "-0x1.46f33d41c97d0p+22",
-    ),
-    ((0.0, 0.0, 1000001.0), "direct"): (
-        "0x1.921fb54442d18p+0",
-        "0x0.0p+0",
-        "-0x1.46f33d41c97d0p+22",
-    ),
-    ((1000001.0, 0.0, 0.0), "iterative"): (
-        "0x0.0p+0",
-        "0x0.0p+0",
-        "-0x1.4841600000000p+22",
-    ),
-    ((1000001.0, 0.0, 0.0), "direct"): (
-        "0x0.0p+0",
-        "0x0.0p+0",
-        "-0x1.48415fffffffep+22",
-    ),
-    ((600000.0, 500000.0, 700000.0), "iterative"): (
-        "0x1.808e24c8b75ccp-1",
-        "0x1.63b4bc3f16a8ap-1",
-        "-0x1.44aeaba6ea257p+22",
-    ),
-    ((600000.0, 500000.0, 700000.0), "direct"): (
-        "0x1.808e24c8b7461p-1",
-        "0x1.63b4bc3f16a8ap-1",
-        "-0x1.44aeaba6ea282p+22",
-    ),
-}
+_E2A = (2 * WGS84.f - WGS84.f**2) * WGS84.a
+R = {"direct": 10.0 * _E2A, "iterative": 30.0 * _E2A}
+METHODS = ["iterative", "direct"]
 
 
-@pytest.mark.parametrize("method", ["iterative", "direct"])
-@pytest.mark.parametrize(
-    "point",
-    [(0.0, 0.0, 0.99 * R), (0.99 * R, 0.0, 0.0), (3e5, -4e5, 5e5), (1.0, 2.0, 3.0)],
-)
-def test_rows_inside_the_radius_warn_once(method, point):
+def _shipped():
+    return shipped_module("pytcl/coordinate_systems/conversions/geodetic.py")
+
+
+def _no_warning(*args, **kwargs):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        return ecef2geodetic(*args, **kwargs)
+
+
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("scale", [0.99, 0.5, 1e-3])
+@pytest.mark.parametrize("axis", [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.6, -0.48, 0.64)])
+def test_rows_inside_the_radius_warn_once(method, scale, axis):
+    point = scale * R[method] * np.array(axis)
     with pytest.warns(RuntimeWarning, match=rf"\(method='{method}'\): 1 point") as rec:
-        ecef2geodetic(np.array(point), method=method)
+        ecef2geodetic(point, method=method)
     assert len(rec) == 1
 
 
-@pytest.mark.parametrize("key", list(V2111))
-def test_rows_outside_the_radius_do_not_warn_and_match_v2_11_1(key):
-    point, method = key
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        out = ecef2geodetic(np.array(point), method=method)
-    assert tuple(float(v).hex() for v in out) == V2111[key]
+def test_warning_text_names_each_methods_failure():
+    with pytest.warns(RuntimeWarning, match="'direct' returns NaN") as rec:
+        ecef2geodetic(np.array([1e3, 0.0, 0.0]), method="direct")
+    assert "4.27e+05 m" in str(rec[0].message)
+    with pytest.warns(RuntimeWarning, match="'iterative' is off by up to") as rec:
+        ecef2geodetic(np.array([1e3, 0.0, 0.0]), method="iterative")
+    assert "1.28e+06 m" in str(rec[0].message)
 
 
-@pytest.mark.parametrize("method", ["iterative", "direct"])
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("axis", [(1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.6, -0.48, 0.64)])
+def test_rows_just_outside_the_radius_do_not_warn_and_match_v2_11_1(method, axis):
+    point = 1.01 * R[method] * np.array(axis)
+    got = _no_warning(point, method=method)
+    want = _shipped().ecef2geodetic(point, method=method)
+    assert tuple(float(v).hex() for v in got) == tuple(float(v).hex() for v in want)
+
+
+@pytest.mark.parametrize("method", METHODS)
+def test_every_row_outside_the_radius_is_bit_identical_to_v2_11_1(method):
+    rng = np.random.default_rng(7)
+    lat = np.arcsin(rng.uniform(-1, 1, 500))
+    lon = rng.uniform(-np.pi, np.pi, 500)
+    r = np.exp(rng.uniform(np.log(R[method]), np.log(4.2e7), 500))
+    ecef = np.array(
+        [r * np.cos(lat) * np.cos(lon), r * np.cos(lat) * np.sin(lon), r * np.sin(lat)]
+    )
+    shipped = _shipped().ecef2geodetic
+    for layout in (ecef, ecef.T, ecef[:, 0].copy()):
+        got = _no_warning(layout, method=method)
+        want = shipped(layout, method=method)
+        for g, w in zip(got, want):
+            assert np.array_equal(g, w)
+
+
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize(
+    "point", [(3e5, 2e5, 4e5), (1.0, 2.0, 3.0), (SPHERE.a, 0.0, 0.0)]
+)
+def test_sphere_never_warns_and_is_accurate(method, point):
+    lat, lon, h = _no_warning(np.array(point), SPHERE.a, SPHERE.f, method=method)
+    x, y, z = point
+    r = np.sqrt(x**2 + y**2 + z**2)
+    assert lat == pytest.approx(np.arcsin(z / r), rel=0, abs=1e-15)
+    assert lon == pytest.approx(np.arctan2(y, x), rel=0, abs=1e-15)
+    assert h == pytest.approx(r - SPHERE.a, rel=0, abs=2e-8)
+
+
+@pytest.mark.parametrize("method", METHODS)
+def test_radius_scales_with_the_ellipsoid(method):
+    a, f = 1.0, WGS84.f
+    _no_warning(np.array([1.0, 0.0, 0.0]), a, f, method=method)
+    with pytest.warns(RuntimeWarning, match="1 point"):
+        ecef2geodetic(np.array([0.05, 0.0, 0.0]), a, f, method=method)
+
+
+@pytest.mark.parametrize("method", METHODS)
 def test_exact_origin_does_not_warn(method):
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        lat, lon, h = ecef2geodetic(np.zeros(3), method=method)
+    lat, lon, h = _no_warning(np.zeros(3), method=method)
     assert (lat, lon) == (np.pi / 2, 0.0)
     assert h == pytest.approx(-WGS84.b, rel=1e-15, abs=0)
 
 
-@pytest.mark.parametrize("method", ["iterative", "direct"])
+@pytest.mark.parametrize("method", METHODS)
 def test_mixed_array_warns_once_and_surface_rows_are_unchanged(method):
     surface = np.array(
         [geodetic2ecef(0.3, 0.4, 100.0), geodetic2ecef(-0.9, 2.0, 5e5)]
     ).T
     alone = ecef2geodetic(surface, method=method)
     mixed = np.column_stack(
-        [surface[:, 0], [3e5, 4e5, 5e5], np.zeros(3), surface[:, 1]]
+        [surface[:, 0], [1e5, 2e5, 1e5], np.zeros(3), surface[:, 1]]
     )
     with pytest.warns(RuntimeWarning, match="1 point") as rec:
         out = ecef2geodetic(mixed, method=method)

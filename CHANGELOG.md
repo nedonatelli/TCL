@@ -95,20 +95,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   closed form; anything but `'iterative'` or `'direct'` now raises
   `MethodError` (a `ValueError`). At the exact origin the closed form
   returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
-  as `'iterative'` does. Within `INTERIOR_UNRELIABLE_RADIUS` (1e6 m) of the
-  centre neither method is reliable, as measured by forward residual:
-  `'direct'` is NaN or wrong (up to 1e21 m) within about 5e4 m;
-  `'iterative'` is off by up to 4e3 m within 3e4 m, 2.4 m at 1e5 m and
-  1.4e-3 m at 3e5 m. Values there are unchanged from 2.11.1 (a robust
-  solver is planned for v2.13), but each call now emits one
-  `RuntimeWarning` naming the method and the number of affected rows;
-  the exact origin does not warn. Every other row is bit-identical to
+  as `'iterative'` does. Near the centre each method fails, measured on
+  WGS84 by the forward residual over 309 directions at radii from 1e-300 m
+  to 2.6e6 m: `'direct'` returns NaN or values wrong by up to 3.5e159 m
+  within 4.28e4 m and is accurate to 3.5e-9 m beyond; `'iterative'` is off
+  by up to 4.25e4 m (worst at 16 m from the centre) and by more than 1 mm
+  out to 3.14e5 m. Both edges scale with `e2 a`, the first eccentricity
+  squared times the semi-major axis (42.7 km for WGS84). Values there are
+  unchanged from 2.11.1 (a robust solver is planned for v2.13), but each
+  call now emits one `RuntimeWarning` naming the method, the number of
+  affected rows and that method's failure when a row lies within
+  `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
+  1.28e6 m) of the centre. A sphere (`f = 0`) never warns, and neither
+  does the exact origin. Every other row is bit-identical to
   2.11.1. Docstrings state the measured accuracy of each method per
   altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
   `(3, 1)` shape change moved to v3.0 because the module is STABLE.
   What to do: pass `method='iterative'` or `method='direct'` exactly (any
-  other spelling used to run the closed form silently); points within
-  1e6 m of the centre are not physical geodetic inputs, so if you pass
+  other spelling used to run the closed form silently); points that close
+  to the centre are not physical geodetic inputs, so if you pass
   placeholders, use exact zeros or filter them out.
 
 - **`srif_update` floors a semi-definite measurement covariance relative

@@ -97,10 +97,11 @@ def geodetic2ecef(
     return np.array([x, y, z], dtype=np.float64)
 
 
-#: Radius (m) from the Earth's centre inside which neither method is reliable.
-#: Measured against a forward-residual oracle: ``'direct'`` is NaN or wrong
-#: within about 5e4 m, ``'iterative'`` is off by more than 1 mm out to 3e5 m.
-INTERIOR_UNRELIABLE_RADIUS = 1.0e6
+# Warning radius per method, as a multiple of e2 * a (42.7 km for WGS84). The
+# forward residual on WGS84, WGS84 scaled to a = 1 and f = 1/50 puts the
+# 'direct' failure edge at 1.00 to 1.02 e2 * a and the 'iterative' 1 mm edge
+# at 7.35 e2 * a (10.5 at f = 1/50); the radii are about 10x and 3x those.
+_INTERIOR_WARN_E2A = {"direct": 10.0, "iterative": 30.0}
 
 
 def _vermeille(
@@ -156,8 +157,9 @@ def ecef2geodetic(
         2000 km, and about 5x near GEO (35000 km to 36000 km). For altitudes
         of -6300 km to -1000 km (deep inside the Earth) ``'direct'`` stays
         within nanometres while ``'iterative'`` is off by metres (6 m worst
-        measured). Both are accurate to well under a millimetre from 10 km
-        below the surface up to 36000 km altitude.
+        measured). Both are accurate to well under a millimetre in the three
+        bands above the interior; altitudes between 2000 km and 35000 km
+        were not measured.
 
     Returns
     -------
@@ -176,21 +178,34 @@ def ecef2geodetic(
     Warns
     -----
     RuntimeWarning
-        Once per call, if any point lies within
-        ``INTERIOR_UNRELIABLE_RADIUS`` (1e6 m) of the Earth's centre, other
-        than the exact origin.
+        Once per call, if any point other than the exact origin lies within
+        a method-specific radius of the Earth's centre: ``10 e2 a`` for
+        ``'direct'`` and ``30 e2 a`` for ``'iterative'``, where ``e2`` is the
+        first eccentricity squared. For WGS84 (``e2 a`` = 42.7 km) these are
+        4.27e5 m and 1.28e6 m. A sphere (``f = 0``) never warns.
 
     Notes
     -----
-    Within 1e6 m of the Earth's centre (about 5300 km below the surface)
-    neither method is reliable, and the values are returned unchanged.
-    Measured by the distance between the input and the point rebuilt from
-    the result: ``'direct'`` is NaN or wrong (up to 1e21 m) within about
-    5e4 m and accurate to 3e-9 m beyond; ``'iterative'`` is off by up to
-    4e3 m within 3e4 m, 2.4 m at 1e5 m and 1.4e-3 m at 3e5 m. Such points
-    are not physical geodetic inputs. The exact ECEF origin, where latitude
-    is undefined, is the one exception: both methods return ``(pi/2, 0, -b)``
-    there, with ``b`` the semi-minor axis, and do not warn.
+    Near the Earth's centre the results are returned unchanged, but are
+    unreliable. Measured by the forward residual (the distance between the
+    input and the point rebuilt from the result, in 40-digit arithmetic)
+    over 309 directions at radii from 1e-300 m to ``60 e2 a``, for WGS84:
+
+    - ``'direct'`` returns NaN, or values wrong by up to 3.5e159 m, within
+      ``1.00 e2 a`` (4.28e4 m), and is accurate to 3.5e-9 m beyond it;
+    - ``'iterative'`` is off by up to 4.25e4 m (about ``e2 a``, worst at
+      16 m from the centre), by more than 1 mm out to ``7.35 e2 a``
+      (3.14e5 m), and by at most 4.4e-4 m beyond it.
+
+    The same multiples of ``e2 a`` hold for WGS84 scaled to ``a = 1``; at
+    ``f = 1/50`` the edges are ``1.02 e2 a`` and ``10.5 e2 a``. Such points
+    are not physical geodetic inputs. On a sphere both methods are accurate
+    (residual at most 1.7e-8 m for radii from 1e-46 m to ``1.5 a``), except
+    that ``'direct'`` returns NaN, without a warning, for radii below about
+    1e-46 m, where the squared coordinates underflow. The exact ECEF
+    origin, where latitude is undefined, is the one exception to the
+    warning: both methods return ``(pi/2, 0, -b)`` there, with ``b`` the
+    semi-minor axis.
 
     Examples
     --------
@@ -221,23 +236,33 @@ def ecef2geodetic(
     y = ecef[1]
     z = ecef[2]
 
-    radius = np.sqrt(x**2 + y**2 + z**2)
-    n_interior = int(
-        np.count_nonzero((radius < INTERIOR_UNRELIABLE_RADIUS) & (radius > 0))
-    )
-    if n_interior:
-        warnings.warn(
-            f"ecef2geodetic(method={method!r}): {n_interior} point(s) lie within "
-            f"{INTERIOR_UNRELIABLE_RADIUS:g} m of the Earth's centre, where results "
-            "are unreliable (NaN or errors of metres); the exact origin is exempt",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-
     # Derived constants
     e2 = 2 * f - f**2  # First eccentricity squared
     b = a * (1 - f)  # Semi-minor axis
     ep2 = (a**2 - b**2) / b**2  # Second eccentricity squared
+
+    radius = np.sqrt(x**2 + y**2 + z**2)
+    warn_radius = _INTERIOR_WARN_E2A[method] * e2 * a
+    n_interior = int(np.count_nonzero((radius < warn_radius) & (radius > 0)))
+    if n_interior:
+        if method == "direct":
+            failure = (
+                f"'direct' returns NaN or values wrong by many orders of "
+                f"magnitude within about e2*a = {e2 * a:.3g} m"
+            )
+        else:
+            failure = (
+                f"'iterative' is off by up to about e2*a = {e2 * a:.3g} m "
+                "nearest the centre and by more than 1 mm out to about "
+                "7 to 10 e2*a"
+            )
+        warnings.warn(
+            f"ecef2geodetic(method={method!r}): {n_interior} point(s) lie within "
+            f"{warn_radius:.3g} m of the Earth's centre; {failure} (the exact "
+            "origin is exempt)",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     # Longitude is straightforward
     lon = np.arctan2(y, x)
