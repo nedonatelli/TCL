@@ -45,13 +45,17 @@ def _connect(path: str, mode: str) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
     return connection, connection.cursor()
 
 
+_SQLITE_SIDECAR_SUFFIXES = ("-journal", "-wal", "-shm")
+
+
 def _truncate_sqlite(path: Path) -> None:
     """Remove ``path`` and its SQLite journal files, if present.
 
     A ``-journal`` or ``-wal`` left behind by a crashed writer would
     otherwise be replayed into the new database.
     """
-    for target in (path, *(Path(f"{path}{s}") for s in ("-journal", "-wal", "-shm"))):
+    sidecars = (Path(f"{path}{suffix}") for suffix in _SQLITE_SIDECAR_SUFFIXES)
+    for target in (path, *sidecars):
         target.unlink(missing_ok=True)
 
 

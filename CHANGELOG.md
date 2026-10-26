@@ -20,22 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`special_functions.factorial` and `factorial2` with `exact=True` return
-  exact integers.** They cast scipy's exact result to float64, so
-  `factorial(25, exact=True)` was rounded. They now return a Python `int`
-  for scalar or 0-d input, an `int64` array when every value fits, and an
-  `object` array of Python ints otherwise; `exact=False` is unchanged.
-  What to do: if you passed `exact=True` and then used float operations or
-  a dtype check on the result, convert explicitly with `float(...)` or
-  `.astype(float)`.
-
-- **`LSResult.residuals` from `ordinary_least_squares` is always the
-  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
-  shape (1,) sum of squares for a full-rank overdetermined system, the
-  vector otherwise. What to do: code that read `result.residuals[0]` as the
-  residual sum of squares must use `np.sum(result.residuals**2)` (per
-  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
-
 - **The runtime dependency floors rise to versions CI actually tests.**
   The old floors were never installed by any CI cell; every cell ran the
   lock's newest releases. A new `floors` job in `ci.yml` resolves each
@@ -64,6 +48,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
   2.11.1.
 
+- **`special_functions.factorial` and `factorial2` with `exact=True` return
+  exact integers.** They cast scipy's exact result to float64, so
+  `factorial(25, exact=True)` was rounded. They now return a Python `int`
+  for scalar or 0-d input, an `int64` array when every value fits, and an
+  `object` array of Python ints otherwise; `exact=False` is unchanged.
+  What to do: if you passed `exact=True` and then used float operations or
+  a dtype check on the result, convert explicitly with `float(...)` or
+  `.astype(float)`.
+
+- **`LSResult.residuals` from `ordinary_least_squares` is always the
+  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
+  shape (1,) sum of squares for a full-rank overdetermined system, the
+  vector otherwise. What to do: code that read `result.residuals[0]` as the
+  residual sum of squares must use `np.sum(result.residuals**2)` (per
+  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
+
 - **`mode='w'` truncates** in `TrackDatabaseManager.open` and
   `SQLStorage.open`, as 2.11.1 announced with a `FutureWarning` (now
   removed). `'w'` deletes the existing file and its SQLite `-journal`,
@@ -91,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was. What to do: a file written by a newer pytcl needs that pytcl; a file
   with a corrupted version field can be repaired by rewriting the version
   row/attribute, and nothing else in it is touched by the failed open.
+
 - **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
   and warns near the Earth's centre.** Any `method` other than
   `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
@@ -168,7 +169,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Y`. It matches MATLAB fixtures (`tests/fixtures/matlab/info_pred_*.csv`)
   to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
   raises `LinAlgError`. What to do: nothing; predictions from a singular
-  information matrix change by about 2e-9 relative.
+  information matrix change by 2e-9 to 3e-8 relative on the measured
+  cases.
 
 - **`srif_update` uses the right measurement information for a correlated
   `R_meas`.** Its Cholesky path whitened with `inv(L).T` for `R_meas = L
