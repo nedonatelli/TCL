@@ -567,13 +567,10 @@ def srif_update(
     with the measurement information while maintaining numerical stability.
 
     A positive-definite ``R_meas = L L'`` is whitened by ``inv(L)``, as in
-    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). One whose
-    smallest eigenvalue is below ``1e-10`` times the largest (semi-definite,
-    or singular up to roundoff, where Cholesky can still succeed) is
-    whitened from its eigendecomposition, with eigenvalues floored at
-    ``1e-10`` times the largest, so the result does not depend on the units
-    ``R_meas`` is expressed in and no direction carries more than
-    ``1e10 / max eigenvalue`` of information.
+    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A
+    positive semi-definite one is whitened from its eigendecomposition,
+    with eigenvalues floored at ``1e-10`` times the largest, so the result
+    does not depend on the units ``R_meas`` is expressed in.
     """
     r = np.asarray(r, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
@@ -583,21 +580,13 @@ def srif_update(
 
     n = len(r)
 
-    # Get square root of measurement information. Cholesky can succeed on a
-    # singular R_meas through a roundoff pivot (s [[1, 1], [1, 1]] at s = 0.1
-    # gave 4.0e18 of information where the floor allows 5.0e10), so it is
-    # used only when the eigenvalues clear the floor the eigh path applies.
-    eigvals = np.linalg.eigvalsh(R_meas)
-    R_meas_inv = None
-    if eigvals[0] >= _EIG_FLOOR_REL * eigvals[-1]:
-        try:
-            # R_meas = L L', so inv(L) whitens (sqrtInfoFilterUpdate.m:67-68,
-            # SR\H). v2.11.1 used inv(L).T, which carries inv(L' L) instead
-            # of inv(R_meas) whenever R_meas is not diagonal.
-            R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas))
-        except np.linalg.LinAlgError:
-            pass
-    if R_meas_inv is None:
+    # Get square root of measurement information
+    try:
+        # R_meas = L L', so inv(L) whitens (sqrtInfoFilterUpdate.m:67-68,
+        # SR\H). v2.11.1 used inv(L).T, which carries inv(L' L) instead of
+        # inv(R_meas) whenever R_meas is not diagonal.
+        R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas))
+    except np.linalg.LinAlgError:
         eigvals, eigvecs = np.linalg.eigh(R_meas)
         max_eig = eigvals.max()
         most_neg_eig = eigvals.min()

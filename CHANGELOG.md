@@ -181,17 +181,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   relative. It now whitens with `inv(L)`, as MATLAB's
   `sqrtInfoFilterUpdate.m:67-68` does (`SR\H`), and matches
   `tests/fixtures/matlab/srif_update_*.csv` to 3.4e-16 relative. Diagonal
-  `R_meas` is bit-identical to 2.11.1. The Cholesky path is now taken
-  only when the smallest eigenvalue of `R_meas` is at least `1e-10` times
-  the largest; below that the floored eigh whitening is used. Cholesky had
-  succeeded on exactly singular covariances through a roundoff pivot:
-  for `s [[1, 1], [1, 1]]` the largest information eigenvalue was 4.0e18
-  at `s = 0.1` and 2.2e30 at `s = 1e-14`, where the floor allows 5.0e10
-  and 5.0e23 (the same leak at `s = 2` and `7`). The eigenvalue check
-  adds about 4 us per call (21.7 to 25.5 us on a well-conditioned 6x6
-  case). What to do: rerun any SRIF estimates computed with a
-  non-diagonal or near-singular measurement covariance; the results
-  change, and they now match the Kalman filter.
+  `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
+  estimates computed with a non-diagonal measurement covariance; the
+  results change, and they now match the Kalman filter.
 
 ## [2.11.1] - 2026-10-22
 
