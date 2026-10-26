@@ -112,20 +112,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   placeholders, use exact zeros or filter them out.
 
 - **`srif_update` floors a semi-definite measurement covariance relative
-  to its scale, and rejects a zero or negative variance.** When Cholesky
+  to its scale, and rejects a covariance with no positive variance or a
+  negative one.** When Cholesky
   failed it retried on `R_meas + 1e-10 I`. A zero variance silently became
   1e10 of information, `-1e-12` was accepted as `+9.9e-11`, and a
   covariance whose scale was near or below 1e-10 was swamped by the jitter:
   `diag(1e-14, 0)` gave information `diag(1.0e10, 1.0e10)` instead of
   `diag(1e14, 1e24)`. The fallback now whitens from `eigh`, flooring
   eigenvalues at `1e-10` times the largest (`matrix_utils._EIG_FLOOR_REL`),
-  and raises `LinAlgError` when the largest eigenvalue is not positive or
-  the most negative one is beyond eigh roundoff
-  (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). Positive-definite input
-  still takes the Cholesky path and is bit-identical to 2.11.1. This
-  closes the 2.11.1 deferral. What to do: a zero or negative measurement
-  variance now raises LinAlgError; pass the variance you mean, or drop the
-  measurement.
+  and raises `LinAlgError` when no variance is positive (the largest
+  eigenvalue is zero or negative) or any variance is negative beyond eigh
+  roundoff (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). A zero variance
+  beside a positive one does not raise; it is floored at 1e-10 of the
+  largest. Positive-definite input still takes the Cholesky path. This
+  closes the 2.11.1 deferral. What to do: a measurement covariance with no
+  positive variance, or with a negative one, now raises LinAlgError; pass
+  the variance you mean, or drop the measurement.
 
 ### Fixed
 
@@ -160,6 +162,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
   raises `LinAlgError`. What to do: nothing; predictions from a singular
   information matrix change by about 2e-9 relative.
+
+- **`srif_update` uses the right measurement information for a correlated
+  `R_meas`.** Its Cholesky path whitened with `inv(L).T` for `R_meas = L
+  L'`, which carries `inv(L' L)`, not `inv(R_meas)`, whenever `R_meas` is
+  not diagonal. `R_meas = [[2, 1], [1, 1]]` added `[[0.5, -0.5], [-0.5,
+  2.5]]` of information instead of `[[1, -1], [-1, 2]]`, and the posterior
+  information on two MATLAB-captured cases was off by 50% and 45%
+  relative. It now whitens with `inv(L)`, as MATLAB's
+  `sqrtInfoFilterUpdate.m:67-68` does (`SR\H`), and matches
+  `tests/fixtures/matlab/srif_update_*.csv` to 3.4e-16 relative. Diagonal
+  `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
+  estimates computed with a non-diagonal measurement covariance; the
+  results change, and they now match the Kalman filter.
 
 ## [2.11.1] - 2026-10-22
 

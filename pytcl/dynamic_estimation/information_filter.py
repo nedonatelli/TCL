@@ -555,17 +555,19 @@ def srif_update(
     Raises
     ------
     numpy.linalg.LinAlgError
-        If ``R_meas`` has a zero or negative variance: its largest
-        eigenvalue is not positive, or its most negative eigenvalue is
-        larger in magnitude than eigh roundoff (``1e-10`` relative to the
-        largest-magnitude eigenvalue).
+        If ``R_meas`` has no positive variance (its largest eigenvalue is
+        zero or negative), or any variance is negative beyond roundoff (an
+        eigenvalue below ``-1e-10`` times the largest-magnitude one). A zero
+        variance beside a positive one does not raise; it is floored at
+        ``1e-10`` times the largest.
 
     Notes
     -----
     The update uses QR decomposition to combine the prior information
     with the measurement information while maintaining numerical stability.
 
-    A positive-definite ``R_meas`` is whitened by its Cholesky factor. A
+    A positive-definite ``R_meas = L L'`` is whitened by ``inv(L)``, as in
+    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A
     positive semi-definite one is whitened from its eigendecomposition,
     with eigenvalues floored at ``1e-10`` times the largest, so the result
     does not depend on the units ``R_meas`` is expressed in.
@@ -580,8 +582,10 @@ def srif_update(
 
     # Get square root of measurement information
     try:
-        L_meas = np.linalg.cholesky(R_meas)
-        R_meas_inv = np.linalg.inv(L_meas).T
+        # R_meas = L L', so inv(L) whitens (sqrtInfoFilterUpdate.m:67-68,
+        # SR\H). v2.11.1 used inv(L).T, which carries inv(L' L) instead of
+        # inv(R_meas) whenever R_meas is not diagonal.
+        R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas))
     except np.linalg.LinAlgError:
         eigvals, eigvecs = np.linalg.eigh(R_meas)
         max_eig = eigvals.max()
@@ -590,8 +594,9 @@ def srif_update(
             np.abs(eigvals)
         ):
             raise np.linalg.LinAlgError(
-                "srif_update: measurement covariance R_meas has a negative or "
-                f"zero variance (eigenvalue {most_neg_eig:.6e}, largest "
+                "srif_update: measurement covariance R_meas has no positive "
+                "variance, or a variance negative beyond roundoff (most "
+                f"negative eigenvalue {most_neg_eig:.6e}, largest "
                 f"{max_eig:.6e}); it has no square-root information form."
             )
         eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_eig)

@@ -233,7 +233,7 @@ def _pd_case():
         R0,
         np.array([1.2, 0.4]),
         np.array([[1.0, 0.0], [0.5, 1.0]]),
-        np.array([[0.5, 0.1], [0.1, 0.3]]),
+        np.diag([0.5, 0.3]),
     )
 
 
@@ -268,5 +268,87 @@ class TestSRIFUpdateMeasurementCovariance:
         b = srif_update(*_case(R_meas * 1e6))
         np.testing.assert_allclose(_info(a), _info(b) * 1e6, rtol=1e-9, atol=0)
 
-    def test_positive_definite_path_is_unchanged(self):
+    def test_diagonal_positive_definite_path_is_unchanged(self):
+        """Bit-identical to v2.11.1 for diagonal R_meas, where inv(L) and
+        inv(L).T coincide. Non-diagonal R_meas changed on purpose; see
+        TestSRIFUpdateCorrelatedMeasurement."""
         assert _bitwise_equal(srif_update(*_pd_case()), _V2111_srif_update(*_pd_case()))
+
+
+# Inputs mirrored from scripts/matlab_capture/capture_srif_update.m.
+_SRIF_CASES = {
+    "2state": (
+        2.0 * np.eye(2),
+        np.array([1.0, 0.5]),
+        np.array([1.2, 0.4]),
+        np.array([[2.0, 1.0], [1.0, 1.0]]),
+        np.eye(2),
+    ),
+    "3state": (
+        np.array([[1.0, 0.2, 0.1], [0.2, 2.0, 0.3], [0.1, 0.3, 0.5]]),
+        np.array([1.0, -0.4, 0.3]),
+        np.array([1.6, -0.7]),
+        np.array([[0.5, 0.3], [0.3, 0.4]]),
+        np.array([[1.0, 0.0, 0.5], [0.0, 1.0, -0.2]]),
+    ),
+}
+
+
+def _srif_prior(P0, x0):
+    R0 = np.linalg.cholesky(np.linalg.inv(P0)).T
+    return R0 @ x0, R0
+
+
+class TestSRIFUpdateCorrelatedMeasurement:
+    """srif_update whitened with ``inv(L).T`` for ``R_meas = L L'``, so the
+    measurement information was ``inv(L' L)``, not ``inv(R_meas)``, for any
+    non-diagonal ``R_meas``. MATLAB's sqrtInfoFilterUpdate.m:67-68 whitens
+    with ``SR\\H``, i.e. ``inv(L)``.
+    """
+
+    @pytest.mark.parametrize("name", list(_SRIF_CASES))
+    def test_matches_matlab(self, name):
+        path = FIXTURE_DIR / f"srif_update_{name}.csv"
+        if not path.exists():
+            pytest.skip(f"MATLAB fixture not present: {path.name}")
+        ref = np.loadtxt(path, delimiter=",", ndmin=2)
+        P0, x0, z, R_meas, H = _SRIF_CASES[name]
+        r_upd, R_upd = srif_update(*_srif_prior(P0, x0), z, H, R_meas)
+        np.testing.assert_allclose(
+            np.linalg.solve(R_upd, r_upd), ref[0], rtol=1e-12, atol=0
+        )
+        np.testing.assert_allclose(R_upd.T @ R_upd, ref[1:], rtol=1e-12, atol=0)
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_posterior_equals_information_form_update(self, seed):
+        """REFERENCE: Y = Y0 + H' R^-1 H, y = y0 + H' R^-1 z, formed with
+        ``np.linalg.inv(R_meas)``."""
+        rng = np.random.default_rng(seed)
+        n, m = 3, 2
+        A = rng.standard_normal((n, n))
+        P0 = A @ A.T + np.eye(n)
+        x0 = rng.standard_normal(n)
+        H = rng.standard_normal((m, n))
+        z = rng.standard_normal(m)
+        B = rng.standard_normal((m, m))
+        R_meas = B @ B.T + 0.1 * np.eye(m)
+        r_upd, R_upd = srif_update(*_srif_prior(P0, x0), z, H, R_meas)
+        R_inv = np.linalg.inv(R_meas)
+        Y0 = np.linalg.inv(P0)
+        Y = Y0 + H.T @ R_inv @ H
+        y = Y0 @ x0 + H.T @ R_inv @ z
+        np.testing.assert_allclose(R_upd.T @ R_upd, Y, rtol=1e-12)
+        np.testing.assert_allclose(R_upd.T @ r_upd, y, rtol=1e-12)
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_whitener_carries_inverse_measurement_covariance(self, seed):
+        """With a zero prior and H = I the posterior information is the
+        whitener's W.T @ W, which must be R_meas^-1."""
+        rng = np.random.default_rng(100 + seed)
+        m = 4
+        B = rng.standard_normal((m, m))
+        R_meas = B @ B.T + 0.1 * np.eye(m)
+        _, R_upd = srif_update(
+            np.zeros(m), np.zeros((m, m)), np.zeros(m), np.eye(m), R_meas
+        )
+        np.testing.assert_allclose(R_upd.T @ R_upd, np.linalg.inv(R_meas), rtol=1e-12)

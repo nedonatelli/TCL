@@ -7,6 +7,8 @@
 %infoFilterDiscPred.m:47-58) needs only F invertible; neither Q nor PInvPrev
 %is inverted, so the cases cover exactly singular Q and Y.
 %
+%Captured with MATLAB R2026a against matlab-tcl a9acd8f.
+%
 %Format: one file per case, %.17g. Row 1 is yPred', rows 2..end are
 %PInvPred. Inputs are mirrored verbatim in
 %tests/validation/test_information_filter_guards.py.
