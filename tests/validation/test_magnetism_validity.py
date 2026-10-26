@@ -305,16 +305,14 @@ class TestMagneticFieldCache:
         defect; using 50 here since that is all a property test needs to
         show the growth is not O(calls).
         """
-        baseline = sum(
-            1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients)
-        )
+        baseline = sum(1 for o in gc.get_objects() if type(o) is MagneticCoefficients)
         args = (DENVER_LAT, DENVER_LON, 6371.2, 2026.7)
         for _ in range(50):
             coeffs = create_wmm2025_coefficients()
             magnetic_field_spherical(*args, coeffs=coeffs)
             del coeffs
         gc.collect()
-        after = sum(1 for o in gc.get_objects() if isinstance(o, MagneticCoefficients))
+        after = sum(1 for o in gc.get_objects() if type(o) is MagneticCoefficients)
         assert after - baseline < 5
 
     def test_float32_coefficients_do_not_crash_the_cached_path(self):
