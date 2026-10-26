@@ -213,7 +213,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -231,7 +231,7 @@ jobs:
       - name: Install the test runner without moving the floors
         run: |
           uv run --no-sync python scripts/check_dependency_floors.py --write-constraints /tmp/floors.txt
-          uv pip install --constraint /tmp/floors.txt pytest pytest-xdist pytest-benchmark pytest-timeout hypothesis mpmath matplotlib pyyaml
+          uv pip install --constraint /tmp/floors.txt pytest pytest-xdist pytest-benchmark pytest-timeout hypothesis mpmath matplotlib pyyaml packaging
       - name: Prove the floors are what got installed
         run: uv run --no-sync python scripts/check_dependency_floors.py --check
       - name: Test at the floors

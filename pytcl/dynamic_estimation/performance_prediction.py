@@ -254,8 +254,9 @@ def riccati_post_no_clutter(
     r = np.atleast_2d(np.asarray(r, dtype=np.float64))
     q = np.asarray(q, dtype=np.float64)
 
-    # e=None is explicit because SciPy 1.16.0-1.16.1's batching wrapper
-    # appends keyword arrays positionally, so a lone s= lands in e's slot.
+    # e=None is explicit because the batching wrapper in SciPy 1.16.0
+    # through 1.16.2 appends keyword arrays positionally, so a lone s=
+    # lands in e's slot (scipy gh-23336, fixed in 1.16.3).
     p_prev = solve_discrete_are(f.T, f.T @ h.T, q, h @ q @ h.T + r, e=None, s=q @ h.T)
     if pd == 1.0:
         return RiccatiResult(p_prev, True)

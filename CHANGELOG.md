@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   direct dependency to its floor (`uv lock --resolution lowest-direct`),
   proves with `scripts/check_dependency_floors.py --check` that the
   installed versions equal the floors, and runs the suite there on
-  Python 3.11 and 3.14.
+  every supported Python, 3.11 through 3.14.
 
   | Package | 2.11.1 floor | New floor |
   |---------|--------------|-----------|
@@ -50,10 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0 and
-  1.16.1, found by the first run of the new `floors` job. Those releases'
-  batching wrapper passes keyword arrays positionally, so the call's lone
-  `s=` cross term landed in `solve_discrete_are`'s `e` slot. The call now
+- `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
+  through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
+  run of the new `floors` job. Those releases' batching wrapper passes
+  keyword arrays positionally, so the call's lone `s=` cross term landed
+  in `solve_discrete_are`'s `e` slot. The call now
   passes `e=None` explicitly; five tests in
   `tests/validation/test_performance_prediction.py` fail at scipy 1.16.1
   without it. What to do: nothing; results under other SciPy versions are
