@@ -180,8 +180,7 @@ class TestSingularYPredictionMatchesMatlab:
     @pytest.mark.parametrize("name", list(_INFO_PRED_CASES))
     def test_one_prediction_matches_matlab(self, name):
         path = FIXTURE_DIR / f"info_pred_{name}.csv"
-        if not path.exists():
-            pytest.skip(f"MATLAB fixture not present: {path.name}")
+        assert path.exists(), f"committed MATLAB fixture missing: {path.name}"
         ref = np.loadtxt(path, delimiter=",", ndmin=2)
         y, Y, F, Q = _INFO_PRED_CASES[name]
         H = np.zeros((1, len(y)))
@@ -227,7 +226,7 @@ def _case(R_meas):
 
 
 def _pd_case():
-    R0 = np.linalg.inv(np.linalg.cholesky(2.0 * np.eye(2))).T
+    R0 = np.linalg.cholesky(np.linalg.inv(2.0 * np.eye(2))).T
     return (
         R0 @ np.array([1.0, 0.5]),
         R0,
@@ -267,6 +266,28 @@ class TestSRIFUpdateMeasurementCovariance:
         a = srif_update(*_case(R_meas))
         b = srif_update(*_case(R_meas * 1e6))
         np.testing.assert_allclose(_info(a), _info(b) * 1e6, rtol=1e-9, atol=0)
+
+    @pytest.mark.parametrize("scale", [1.0, 3.0, 1e-6])
+    def test_correlated_singular_covariance_is_floored_along_its_null_space(
+        self, scale
+    ):
+        """REFERENCE: ``R_meas = s [[1, 1], [1, 1]]`` has eigenvalue ``2 s``
+        along ``u = (1, 1)/sqrt(2)`` and ``0`` along ``w = (1, -1)/sqrt(2)``.
+        The zero is floored at ``1e-10 * 2 s``, so with a zero prior and
+        ``H = I`` the posterior information is ``V diag(1/floored) V'`` =
+        ``u u' / (2 s) + w w' / (2e-10 s)``. v2.11.1's ``+ 1e-10 I`` jitter
+        gave ``1e10`` along ``w`` whatever ``s`` was. These scales make
+        Cholesky fail, so they reach the eigh fallback; at others (0.1, 2)
+        Cholesky succeeds on a roundoff pivot and the fallback is not
+        taken."""
+        u = np.array([1.0, 1.0]) / np.sqrt(2.0)
+        w = np.array([1.0, -1.0]) / np.sqrt(2.0)
+        floored = np.array([2.0 * scale, 1e-10 * 2.0 * scale])
+        V = np.column_stack([u, w])
+        want = V @ np.diag(1.0 / floored) @ V.T
+        got = _info(srif_update(*_case(scale * np.ones((2, 2)))))
+        np.testing.assert_allclose(got, want, rtol=1e-9, atol=0)
+        assert u @ got @ u == pytest.approx(1.0 / floored[0], rel=1e-5, abs=0)
 
     def test_diagonal_positive_definite_path_is_unchanged(self):
         """Bit-identical to v2.11.1 for diagonal R_meas, where inv(L) and
@@ -309,8 +330,7 @@ class TestSRIFUpdateCorrelatedMeasurement:
     @pytest.mark.parametrize("name", list(_SRIF_CASES))
     def test_matches_matlab(self, name):
         path = FIXTURE_DIR / f"srif_update_{name}.csv"
-        if not path.exists():
-            pytest.skip(f"MATLAB fixture not present: {path.name}")
+        assert path.exists(), f"committed MATLAB fixture missing: {path.name}"
         ref = np.loadtxt(path, delimiter=",", ndmin=2)
         P0, x0, z, R_meas, H = _SRIF_CASES[name]
         r_upd, R_upd = srif_update(*_srif_prior(P0, x0), z, H, R_meas)

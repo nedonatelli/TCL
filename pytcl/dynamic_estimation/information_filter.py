@@ -538,7 +538,7 @@ def srif_update(
     >>> n = 2
     >>> # Prior in SRIF form
     >>> P_prior = np.eye(n) * 2.0
-    >>> R_prior = np.linalg.inv(np.linalg.cholesky(P_prior)).T
+    >>> R_prior = np.linalg.cholesky(np.linalg.inv(P_prior)).T  # see srif_filter
     >>> x_prior = np.array([1.0, 0.5])
     >>> r_prior = R_prior @ x_prior
     >>> # Measurement update
