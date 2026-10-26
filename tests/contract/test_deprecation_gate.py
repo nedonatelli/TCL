@@ -11,8 +11,8 @@ The gate now keys on a category instead of a module. The error rule is
 appended by the root ``conftest.py`` at session start rather than listed in
 ``pyproject.toml``, because naming a pytcl category there imports pytcl
 before pytest-cov starts measuring. These tests run the repo's own
-``filterwarnings`` list and the repo's own root conftest in a sub-session, so
-a rewrite of either is caught here.
+``filterwarnings`` list and the root conftest's gate hook in a sub-session,
+so a rewrite of either is caught here.
 """
 
 import ast
@@ -38,9 +38,25 @@ def _filterwarnings_toml() -> str:
 _FILTERWARNINGS_FROM_REPO_PYPROJECT = _filterwarnings_toml()
 
 
+# The sub-session takes only the gate hook from the root conftest, loaded from
+# the real file. Copying the whole conftest also copied its PYTCL_REQUIRE_*
+# checks, and pytester points HOME at a temp dir, so with CI's
+# PYTCL_REQUIRE_EPHEMERIS=1 the inner session aborted before collecting.
+_GATE_CONFTEST = f"""
+import importlib.util
+
+_spec = importlib.util.spec_from_file_location(
+    "_pytcl_root_conftest", {str(ROOT / "conftest.py")!r}
+)
+_root = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_root)
+pytest_sessionstart = _root.pytest_sessionstart
+"""
+
+
 def _repo_config(pytester) -> None:
     pytester.makepyprojecttoml(_FILTERWARNINGS_FROM_REPO_PYPROJECT)
-    pytester.makeconftest((ROOT / "conftest.py").read_text(encoding="utf-8"))
+    pytester.makeconftest(_GATE_CONFTEST)
 
 
 def _category_name(node: ast.expr) -> str | None:
