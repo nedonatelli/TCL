@@ -5,6 +5,8 @@ This module provides gamma functions, factorials, and related special
 functions used in statistics and probability calculations.
 """
 
+from typing import Any, Union
+
 import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
@@ -361,7 +363,15 @@ def betaincinv(a: ArrayLike, b: ArrayLike, y: ArrayLike) -> NDArray[np.floating]
     return np.asarray(sp.betaincinv(a, b, y), dtype=np.float64)
 
 
-def factorial(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
+def _exact_result(result: Any) -> Any:
+    if isinstance(result, np.ndarray) and result.ndim == 0:
+        return int(result.item())
+    return result
+
+
+def factorial(
+    n: ArrayLike, exact: bool = False
+) -> Union[int, NDArray[np.integer], NDArray[np.object_], NDArray[np.floating]]:
     """
     Factorial function.
 
@@ -372,13 +382,17 @@ def factorial(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     n : array_like
         Input values (non-negative integers).
     exact : bool, optional
-        If True, compute exact integer factorial (may overflow for large n).
-        If False (default), use gamma function approximation.
+        If True, compute exact integers (no overflow, any size). If False
+        (default), use the gamma function and return float64.
 
     Returns
     -------
-    nfact : ndarray
-        Values of n!.
+    nfact : int or ndarray
+        Values of n!. With ``exact=False``, a float64 array. With
+        ``exact=True``, a Python ``int`` for scalar or 0-d input, an
+        ``int64`` array when every value fits, and otherwise an ``object``
+        array of Python ints. Negative ``n`` gives 0; non-integer ``n``
+        raises ``ValueError``.
 
     Examples
     --------
@@ -391,10 +405,14 @@ def factorial(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     --------
     scipy.special.factorial : Factorial function.
     """
-    return np.asarray(sp.factorial(n, exact=exact), dtype=np.float64)
+    if exact:
+        return _exact_result(sp.factorial(n, exact=True))
+    return np.asarray(sp.factorial(n, exact=False), dtype=np.float64)
 
 
-def factorial2(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
+def factorial2(
+    n: ArrayLike, exact: bool = False
+) -> Union[int, NDArray[np.integer], NDArray[np.object_], NDArray[np.floating]]:
     """
     Double factorial.
 
@@ -405,12 +423,17 @@ def factorial2(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     n : array_like
         Input values (non-negative integers).
     exact : bool, optional
-        If True, compute exact integer result.
+        If True, compute exact integers (no overflow, any size). If False
+        (default), return float64.
 
     Returns
     -------
-    nfact2 : ndarray
-        Values of n!!.
+    nfact2 : int or ndarray
+        Values of n!!. With ``exact=False``, a float64 array. With
+        ``exact=True``, a Python ``int`` for scalar or 0-d input, an
+        ``int64`` array when every value fits, and otherwise an ``object``
+        array of Python ints. Negative ``n`` gives 0; non-integer ``n``
+        raises ``ValueError``.
 
     Examples
     --------
@@ -423,7 +446,9 @@ def factorial2(n: ArrayLike, exact: bool = False) -> NDArray[np.floating]:
     --------
     scipy.special.factorial2 : Double factorial.
     """
-    return np.asarray(sp.factorial2(n, exact=exact), dtype=np.float64)
+    if exact:
+        return _exact_result(sp.factorial2(n, exact=True))
+    return np.asarray(sp.factorial2(n, exact=False), dtype=np.float64)
 
 
 def comb(

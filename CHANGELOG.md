@@ -20,6 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`special_functions.factorial` and `factorial2` with `exact=True` return
+  exact integers.** They cast scipy's exact result to float64, so
+  `factorial(25, exact=True)` was rounded. They now return a Python `int`
+  for scalar or 0-d input, an `int64` array when every value fits, and an
+  `object` array of Python ints otherwise; `exact=False` is unchanged.
+  What to do: if you passed `exact=True` and then used float operations or
+  a dtype check on the result, convert explicitly with `float(...)` or
+  `.astype(float)`.
+
 - **`LSResult.residuals` from `ordinary_least_squares` is always the
   residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
   shape (1,) sum of squares for a full-rank overdetermined system, the
