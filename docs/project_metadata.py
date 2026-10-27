@@ -54,7 +54,7 @@ def read_pyproject_metadata() -> Dict[str, Any]:
         desc_match = re.search(r'description\s*=\s*"([^"]+)"', content)
         if desc_match:
             metadata["description"] = desc_match.group(1)
-    except OSError as e:
+    except (OSError, UnicodeDecodeError) as e:
         print(f"Warning: Could not read pyproject.toml: {e}")
 
     return metadata
