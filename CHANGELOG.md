@@ -172,6 +172,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `us_standard_atmosphere_1976`'s -5000 m floor is now inclusive and
+  applies to the geometric input altitude, matching Table I of the
+  standard (NOAA-S/T 76-1562), whose first entry is `Z = -5000 m`
+  (`H = -5004 m`, T = 320.676 K, P = 1.7776E+3 mb). v2.11.1 compared the
+  geopotential altitude against -5000 m, so every `z` in [-5000, -4996.07] m
+  warned "below ... floor" (even `z = -4999.0`) and returned the clamped
+  177761.57 Pa: a 75.9 Pa step against the continuous 177685.71 Pa at
+  `z = -4996`. That sliver now returns its own value (177761.57 Pa at
+  -5000 m down to 177687.04 Pa at -4996.07 m) without a warning; below
+  -5000 m it still warns and clamps to the -5000 m entry. `mach_number` and
+  `true_airspeed_from_mach` call it and inherit the change.
+  What to do: nothing; -5000 m to -4996 m no longer warns and is no longer
+  clamped.
+
 - `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
   the definition `statsmodels.robust.scale.scale_tau` and R's
   `robustbase::scaleTau2` implement. v2.11.1 documented that the function

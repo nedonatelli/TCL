@@ -18,6 +18,7 @@ altitude relation).
 
 import warnings
 
+import numpy as np
 import pytest
 
 from pytcl.atmosphere.models import altitude_from_pressure, us_standard_atmosphere_1976
@@ -80,6 +81,24 @@ class TestUS76BelowSeaLevel:
     def test_warns_below_the_five_km_floor(self):
         with pytest.warns(UserWarning, match="-5000"):
             us_standard_atmosphere_1976(-6000.0)
+
+    def test_floor_is_inclusive(self, recwarn):
+        """Table I of NOAA-S/T 76-1562, geometric Z = -5000 m:
+        T = 320.676 K, P = 1.7776E+3 mb."""
+        out = us_standard_atmosphere_1976(-5000.0)
+        assert not recwarn
+        assert out.temperature == pytest.approx(320.676, abs=5e-4, rel=0)
+        assert out.pressure == pytest.approx(1.7776e5, abs=5.0, rel=0)
+
+    def test_no_step_just_above_the_floor(self, recwarn):
+        z = np.linspace(-5000.0, -4990.0, 1001)
+        p = us_standard_atmosphere_1976(z).pressure
+        assert not recwarn
+        assert np.all(np.diff(p) < 0) and np.max(np.abs(np.diff(p))) < 0.2
+
+    def test_below_the_floor_warns_with_true_text(self):
+        with pytest.warns(UserWarning, match=r"-5000\.1 m is below"):
+            us_standard_atmosphere_1976(-5000.1)
 
     def test_does_not_warn_within_the_defined_range(self):
         with warnings.catch_warnings():
