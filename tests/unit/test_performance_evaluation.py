@@ -208,6 +208,14 @@ class TestMOTMetrics:
 
         assert result.num_false_positives == 2
 
+    def test_unequal_frame_counts_raise(self):
+        # The third ground-truth frame has no estimate frame; v2.11.1 dropped
+        # it and reported MOTA = 1.0 instead of counting the miss.
+        gt = [[np.array([0, 0])], [np.array([1, 1])], [np.array([2, 2])]]
+        est = [[np.array([0, 0])], [np.array([1, 1])]]
+        with pytest.raises(ValueError, match="zip"):
+            mot_metrics(gt, est, threshold=1.0)
+
 
 class TestRMSE:
     """Tests for RMSE metric."""
