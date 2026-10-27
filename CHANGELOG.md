@@ -213,6 +213,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing; results at `a >= 1e3` change, and at `a >= 1e7` they were
   wrong by up to 100%.
 
+- **`log_marcum_q`'s series corner sums Poisson terms instead of calling
+  `gammaincc`.** Where `a*b > 2e4` and `(m-1)^2 > 4ab` the
+  Poisson-mixture series took its incomplete gammas from
+  `scipy.special.gammaincc`, its weights from `j log(x) - x - gammaln(j+1)`
+  (an absolute 1e-9 at `x = 5e5`), and `a^2/2`, `b^2/2` rounded to double:
+  -27.462231887380316 against -27.46223188673473 (2.35e-11 relative) at
+  `(a=1e3, b=1009.9955134495867, m=3000)`, 3.1e-11 at `(a=1e3, m=1e4,
+  c=-3)`, 8.3e-9 at `(a=10, m=1e7, c=-3)`, and 0.0 against -9.7e-46 at
+  `(a=10, m=1e7, c=-10)`, where `b = sqrt(a^2 + 2m) + c`. For integer orders
+  the incomplete gammas are now Poisson tail sums of log pmf terms in
+  Loader's saddle-point form, `a^2/2` and `b^2/2` are carried to twice
+  working precision, and above `Q = 0.5` the result is `log1p` of minus
+  the complementary series. Against the mpmath series oracle on
+  `a = 1e3`, `m` in {3000, 1e4}, `c` in {-3, 0, 7, 20}, `log Q` is within
+  2.0e-15 relative, and within 8.1e-14 on `a = 10`, `m = 1e7`, `c` in
+  {-40, -10, -3, 0, 3, 10, 20}. The same series serves `log_marcum_q`
+  below `Q = 1e-10` where `a*b <= 2e4`; the oracle rows there stay within
+  the bounds of the entry above. What to do: nothing.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

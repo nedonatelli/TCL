@@ -240,6 +240,21 @@ class TestLogMarcumQ:
         with pytest.raises(ValueError, match="Order m must be >= 1"):
             log_marcum_q(1, 2, m=0)
 
+    @pytest.mark.parametrize("row", _oracle_rows(corner=True), ids=_row_id)
+    def test_series_corner_matches_the_oracle(self, row):
+        """``a*b > 2e4``, ``(m-1)^2 > 4ab``: the Poisson-mixture series.
+
+        Its incomplete gammas came from ``scipy.special.gammaincc`` before
+        v2.12.0: -27.462231887380316 against -27.46223188673473 (2.35e-11)
+        at ``(1e3, 1009.9955134495867, m=3000)``.
+        """
+        got = log_marcum_q(row.a, row.b, row.m)
+        assert got == pytest.approx(float(row.log_q), rel=1e-13, abs=0)
+
+    def test_series_corner_rows_are_present(self):
+        corner = {(row.a, row.m) for row in _oracle_rows(corner=True)}
+        assert {(1e3, 3000), (1e3, 10_000), (10.0, 10_000_000)} <= corner
+
 
 # =============================================================================
 # Tests for inverse Marcum Q

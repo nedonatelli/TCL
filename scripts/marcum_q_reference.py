@@ -53,6 +53,9 @@ OUT = Path(__file__).resolve().parent.parent / "tests/fixtures/marcum_q/oracle.c
 A_GRID = [10.0, 1e3, 1e5, 1e7, 1e8]
 M_GRID = [1, 2, 100, 10_000, 10_000_000]
 C_GRID = [-40.0, -10.0, -3.0, 0.0, 3.0, 10.0, 20.0]
+CORNER_A = 1e3
+CORNER_M = [3000, 10_000]
+CORNER_C = [-3.0, 0.0, 7.0, 20.0]
 SERIES_MAX_TERMS = 200_000
 
 
@@ -71,6 +74,9 @@ def _grid() -> list[tuple[float, float, int]]:
                 if a >= 1e3 and _is_corner(a, b, m):
                     continue
                 points.append((a, b, m))
+    for m in CORNER_M:
+        for c in CORNER_C:
+            points.append((CORNER_A, math.sqrt(CORNER_A**2 + 2.0 * m) + c, m))
     return points
 
 
@@ -271,6 +277,8 @@ def main() -> None:
         "# Grid: b = sqrt(a^2 + 2m) + c; a in {10, 1e3, 1e5, 1e7, 1e8},",
         "#   m in {1, 2, 100, 1e4, 1e7}, c in {-40, -10, -3, 0, 3, 10, 20};",
         "#   b < 0 skipped; (m-1)^2 > 4ab skipped for a >= 1e3;",
+        "# Series corner ((m-1)^2 > 4ab): a = 1e3, m in {3000, 1e4},",
+        "#   c in {-3, 0, 7, 20}; also a = 10, m = 1e7 from the grid above;",
         f"# Rows: {len(rows)}. Dropped: {len(dropped) or 'none'}",
         *dropped,
         "# Checked by one method only, as (a, m) over every c:",

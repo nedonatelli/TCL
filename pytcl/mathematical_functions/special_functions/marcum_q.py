@@ -70,9 +70,11 @@ def marcum_q(
     1e7, 1e8          1, 2, 100, 1e4, 1e7    2.9e-14
     ================  =====================  =========
 
-    Where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` (``a = 10, m = 1e7``;
-    ``a = 1e3, m >= 3000``) the series loses digits: 6.5e-10 at
-    ``a = 1e3, m = 3000, c = 7``.
+    Where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` (the series corner), on
+    ``a = 1e3``, ``m`` in {3000, 1e4}, ``c`` in {-3, 0, 7, 20} and
+    ``a = 10``, ``m = 1e7``, ``c`` in {-40, ..., 20}: 7e-15 at ``a = 1e3``
+    and 2.3e-13 at ``a = 10`` (at ``Q = 5e-176``; ``exp`` scales the error
+    of ``log Q`` by ``-log Q``).
 
     Examples
     --------
@@ -193,7 +195,9 @@ def log_marcum_q(
     (``a^2`` or ``b^2`` overflowing), the value is computed in the log
     domain. When ``a^2/2`` and ``b^2/2`` are both finite and either
     ``a*b <= 2e4`` or ``(m-1)^2 > 4ab``, it is a log-sum-exp of the
-    Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
+    Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``, or of
+    its complement ``sum_k Pois(k; a^2/2) P(m + k, b^2/2)`` where
+    ``Q > 0.5``.
     Otherwise it is a quadrature of the exact integrand
     ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
     factored out, which needs neither squared argument. Elsewhere it is
@@ -216,8 +220,13 @@ def log_marcum_q(
     1e7, 1e8          1e7                    1.6e-15
     ================  =====================  ======================
 
-    Where ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used and loses
-    digits: 2.4e-11 at ``a = 1e3, m = 3000, c = 7`` and 4e-7 at ``c = -3``.
+    Where ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used. Its
+    incomplete gammas are Poisson tail sums of log pmf terms, with ``a^2/2``
+    and ``b^2/2`` carried to twice working precision. ``log Q`` is within
+    2.0e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c`` in {-3, 0, 7, 20},
+    and within 8.1e-14 on ``a = 10``, ``m = 1e7``, ``c`` in
+    {-40, -10, -3, 0, 3, 10, 20} (the maximum at ``c = -10``, where
+    ``log Q = -9.7e-46``).
     v2.11.1 also measured ``c`` in {7, 30, 200, 1000} for ``a`` in
     {0.5, 5, 30, 140}, ``m`` in {1, 20, 200} (below 2.2e-14), and ``c`` in
     {7, 30, 200} for ``a`` in {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100}
@@ -280,11 +289,10 @@ def log_marcum_q(
 def _log_marcum_q_tail(a: float, b: float, m: int) -> float:
     """Route log Q_m(a, b) to the series or to the quadrature.
 
-    The series needs a^2/2 and b^2/2 finite, its window grows like
-    sqrt(a*b), and scipy's ``gammaincc`` loses digits at the large orders it
-    then needs (1e-11 relative by a*b/2 = 1e6), so past a*b/2 = 1e4 the
-    quadrature is used. The quadrature needs ``(m-1)^2 <= 4ab`` so the
-    Bessel factor neither underflows nor cancels in its Hankel expansion.
+    The series needs a^2/2 and b^2/2 finite and its windows grow like
+    sqrt(a*b) and sqrt(b^2/2), so past a*b/2 = 1e4 the quadrature is used.
+    The quadrature needs ``(m-1)^2 <= 4ab`` so the Bessel factor neither
+    underflows nor cancels in its Hankel expansion.
     """
     nu2 = (m - 1.0) ** 2
     with np.errstate(over="ignore"):
@@ -379,59 +387,148 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
     return float(np.log1p(-np.exp(_log_integral(lo, d))))
 
 
-def _log_gammaincc(s: NDArray[np.floating], x: float) -> NDArray[np.floating]:
-    """log of the regularized upper incomplete gamma Q(s, x), past underflow."""
-    q = sp.gammaincc(s, x)
-    out = np.empty(s.shape, dtype=np.float64)
-    ok = q > 1e-280
-    out[ok] = np.log(q[ok])
-    tail = ~ok
-    if np.any(tail):
-        # Lentz continued fraction for Gamma(s, x) / (exp(-x) x^s). It only
-        # runs where Q underflows, which needs x far above s, so it converges
-        # in a few dozen steps.
-        st = s[tail]
-        tiny = 1e-300
-        bk = x + 1.0 - st
-        c = np.full(st.shape, 1.0 / tiny)
-        d = 1.0 / bk
-        h = d.copy()
-        for i in range(1, 1000):
-            an = -i * (i - st)
-            bk = bk + 2.0
-            d = an * d + bk
-            d = np.where(np.abs(d) < tiny, tiny, d)
-            c = bk + an / c
-            c = np.where(np.abs(c) < tiny, tiny, c)
-            d = 1.0 / d
-            delta = d * c
-            h = h * delta
-            if np.all(np.abs(delta - 1.0) < 1e-16):
-                break
-        out[tail] = -x + st * np.log(x) - sp.gammaln(st) + np.log(h)
+_LOG_2PI = float(np.log(2.0 * np.pi))
+
+
+def _stirlerr(j: NDArray[np.floating]) -> NDArray[np.floating]:
+    """``log(j!) - log(sqrt(2 pi j) (j/e)^j)`` for ``j >= 16``."""
+    jj = j * j
+    return (
+        1 / 12 - (1 / 360 - (1 / 1260 - (1 / 1680 - 1 / (1188 * jj)) / jj) / jj) / jj
+    ) / j
+
+
+def _bd0(j: NDArray[np.floating], mu: float) -> NDArray[np.floating]:
+    """``j log(j/mu) + mu - j``, without its cancellation near ``j = mu``."""
+    with np.errstate(divide="ignore"):
+        out = j * np.log(j / mu) + mu - j
+    near = np.abs(j - mu) < 0.1 * (j + mu)
+    if np.any(near):
+        jn = j[near]
+        v = (jn - mu) / (jn + mu)
+        v2 = v * v
+        term = v * v2
+        odd = term / 3.0
+        for k in range(2, 12):
+            term = term * v2
+            odd = odd + term / (2 * k + 1)
+        out[near] = (jn - mu) * v + 2.0 * jn * odd
     return out
+
+
+def _half_square(v: float) -> tuple[float, float]:
+    """v*v/2 as an unevaluated sum hi + lo (Dekker's exact product)."""
+    hi = v * v
+    if not np.isfinite(hi):
+        return 0.5 * hi, 0.0
+    t = 134217729.0 * v
+    v1 = t - (t - v)
+    v2 = v - v1
+    lo = ((v1 * v1 - hi) + 2.0 * v1 * v2) + v2 * v2
+    return 0.5 * hi, 0.5 * lo
+
+
+def _log_poisson_pmf(
+    j: NDArray[np.floating], mu: float, mu_lo: float = 0.0
+) -> NDArray[np.floating]:
+    """``log(mu^j exp(-mu) / j!)`` to an absolute 1e-15 at any ``mu``.
+
+    The direct ``j log(mu) - mu - gammaln(j + 1)`` cancels terms of size
+    ``mu log(mu)``: an absolute 1e-9 at ``mu = 5e5``. From ``j = 16`` the
+    saddle-point form ``-stirlerr(j) - bd0(j, mu) - log(2 pi j)/2``
+    (Loader 2000) is used instead.
+    """
+    out = sp.xlogy(j, mu) - mu - sp.gammaln(j + 1.0)
+    big = j >= 16.0
+    if np.any(big):
+        jb = j[big]
+        out[big] = -_stirlerr(jb) - _bd0(jb, mu) - 0.5 * (_LOG_2PI + np.log(jb))
+    if mu_lo:
+        out += mu_lo * (j / mu - 1.0)
+    return out
+
+
+def _poisson_reach(j: float, x: float) -> int:
+    """Steps from ``j`` (away from the mode of Poisson(x)) for the pmf to fall
+    by more than ``e^-45``."""
+    ratio = abs(np.log((j + 1.0) / x)) if x > 0 else np.inf
+    steps = min(45.0 / ratio if ratio > 0 else np.inf, np.sqrt(90.0 * (j + 1.0)))
+    return int(np.ceil(steps)) + 50
+
+
+def _log_poisson_tails(
+    n: NDArray[np.int64], x: float, x_lo: float = 0.0
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``log P(N <= n - 1)`` and ``log P(N >= n)`` for ``N ~ Poisson(x)``.
+
+    For integer ``n`` these are the regularized incomplete gammas
+    ``Q(n, x)`` and ``P(n, x)``. Each is a cumulative ``logaddexp`` of
+    log pmf terms, all positive, so both keep their relative accuracy in
+    the tail. The pmf window runs to where the terms are ``e^-45`` below
+    those it is read at; past the bulk (``mode +- sqrt(90 x) + 50``) a tail
+    is read as ``log 1 = 0``.
+    """
+    mode = np.floor(x)
+    bulk = int(np.ceil(np.sqrt(90.0 * x))) + 50
+    lo_cdf = int(n.min()) - 1
+    hi_cdf = min(int(n.max()) - 1, int(mode) + bulk)
+    log_cdf = np.zeros(n.shape)
+    if lo_cdf <= hi_cdf:
+        start = min(lo_cdf, int(mode) - bulk)
+        if lo_cdf < mode - bulk:
+            start = lo_cdf - _poisson_reach(lo_cdf, x)
+        j = np.arange(max(start, 0), hi_cdf + 1, dtype=np.float64)
+        acc = np.logaddexp.accumulate(_log_poisson_pmf(j, x, x_lo))
+        inside = n - 1 <= hi_cdf
+        log_cdf[inside] = acc[n[inside] - 1 - int(j[0])]
+    lo_sf = max(int(n.min()), int(mode) - bulk)
+    hi_sf = int(n.max())
+    log_sf = np.zeros(n.shape)
+    if lo_sf <= hi_sf:
+        stop = max(hi_sf, int(mode) + bulk)
+        if hi_sf > mode + bulk:
+            stop = hi_sf + _poisson_reach(hi_sf, x)
+        j = np.arange(max(lo_sf, 0), stop + 1, dtype=np.float64)
+        acc = np.logaddexp.accumulate(_log_poisson_pmf(j, x, x_lo)[::-1])[::-1]
+        inside = n >= lo_sf
+        log_sf[inside] = acc[n[inside] - int(j[0])]
+    return log_cdf, log_sf
 
 
 def _log_marcum_q_series(a: float, b: float, m: int) -> float:
     """log Q_m(a, b) as a log-sum-exp of its Poisson-mixture series.
 
-    ``Q_m(a, b) = sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``. The terms are
+    ``Q_m(a, b) = sum_k Pois(k; a^2/2) Q(m + k, b^2/2)`` and
+    ``1 - Q_m(a, b) = sum_k Pois(k; a^2/2) P(m + k, b^2/2)``. The terms are
     unimodal in k with the peak near ``a*b/2``, so only a window around it is
     summed; the window doubles until both edges are below exp(-40) of the
-    peak.
+    peak. Above ``Q = 1/2`` the result is ``log1p`` of minus the complement.
     """
-    lam = 0.5 * a * a
-    x = 0.5 * b * b
+    lam, lam_lo = _half_square(a)
+    x, x_lo = _half_square(b)
     k_peak = max(0.0, 0.5 * (np.sqrt((m - 1.0) ** 2 + 4.0 * lam * x) - (m + 1.0)))
     half = 50.0 + 10.0 * np.sqrt(k_peak + m)
     while True:
         k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
-        terms = sp.xlogy(k, lam) - lam - sp.gammaln(k + 1.0) + _log_gammaincc(m + k, x)
-        top = terms.max()
-        if (k[0] == 0 or terms[0] < top - 40.0) and terms[-1] < top - 40.0:
-            return float(top + np.log(np.sum(np.exp(terms - top))))
-        k_peak = float(k[np.argmax(terms)])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_w = _log_poisson_pmf(k, lam, lam_lo)
+        log_cdf, log_sf = _log_poisson_tails(m + k.astype(np.int64), x, x_lo)
+        q_terms = log_w + log_cdf
+        p_terms = log_w + log_sf
+        if all(
+            (k[0] == 0 or t[0] < t.max() - 40.0) and t[-1] < t.max() - 40.0
+            for t in (q_terms, p_terms)
+        ):
+            break
+        k_peak = float(k[np.argmax(q_terms)])
         half *= 2.0
+    top = q_terms.max()
+    log_q = float(top + np.log(np.sum(np.exp(q_terms - top))))
+    if log_q < -np.log(2.0):
+        return log_q
+    top = p_terms.max()
+    log_p = top + np.log(np.sum(np.exp(p_terms - top)))
+    return float(np.log1p(-np.exp(log_p)))
 
 
 def marcum_q_inv(
