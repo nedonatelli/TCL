@@ -328,6 +328,16 @@ class TestPlotCovarianceEllipses:
         # 3 ellipses + 3 center points
         assert len(fig.data) == 6
 
+    @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
+    def test_unequal_means_and_covariances_raise(self):
+        # v2.11.1 silently drew two ellipses and dropped the third mean.
+        from pytcl.plotting import plot_covariance_ellipses
+
+        means = [[0, 0], [5, 5], [10, 0]]
+        covariances = [np.eye(2), np.eye(2)]
+        with pytest.raises(ValueError, match="zip"):
+            plot_covariance_ellipses(means, covariances)
+
 
 class TestPlotCovarianceEllipsoid:
     """Tests for plot_covariance_ellipsoid function."""
@@ -356,6 +366,14 @@ class TestCoordinatePlotting:
 
         assert len(traces) == 3  # X, Y, Z
         assert all(isinstance(t, go.Scatter3d) for t in traces)
+
+    @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
+    def test_plot_coordinate_axes_short_colors_raise(self):
+        # v2.11.1 silently returned two traces and dropped the Z axis.
+        from pytcl.plotting import plot_coordinate_axes_3d
+
+        with pytest.raises(ValueError, match="zip"):
+            plot_coordinate_axes_3d(colors=("red", "green"))
 
     @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
     def test_plot_coordinate_axes_with_rotation(self):

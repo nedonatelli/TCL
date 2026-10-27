@@ -356,7 +356,7 @@ def plot_covariance_ellipses(
     if colors is None:
         colors = [default_colors[i % len(default_colors)] for i in range(len(means))]
 
-    for i, (mean, cov) in enumerate(zip(means, covariances)):
+    for i, (mean, cov) in enumerate(zip(means, covariances, strict=True)):
         mean = np.asarray(mean)
         cov = np.asarray(cov)
 

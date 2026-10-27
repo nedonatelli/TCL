@@ -69,7 +69,7 @@ def plot_coordinate_axes_3d(
     rotated_axes = rotation_matrix @ axes
 
     traces = []
-    for i, (color, name) in enumerate(zip(colors, names)):
+    for i, (color, name) in enumerate(zip(colors, names, strict=True)):
         end_point = origin + rotated_axes[:, i]
         traces.append(
             go.Scatter3d(
