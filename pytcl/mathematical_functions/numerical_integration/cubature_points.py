@@ -963,7 +963,7 @@ def _sphere_surface_points(
 
     pts = []
     wts = []
-    for tk, wk in zip(t, wt):
+    for tk, wk in zip(t, wt, strict=True):
         s = np.sqrt(1.0 - tk * tk)
         block = np.column_stack([np.full(len(sub_pts), tk), s * sub_pts])
         pts.append(block)
@@ -1253,7 +1253,7 @@ def _fourteenth_order_unit_sphere_points_3d() -> Tuple[
     )
 
     cyclic_points = []
-    for ui, vi, wi in zip(u, v, w):
+    for ui, vi, wi in zip(u, v, w, strict=True):
         cyclic_points.extend(
             [
                 [ui, vi, wi],
@@ -2147,7 +2147,7 @@ def smolyak_points(
                 wts = np.multiply.outer(wts, rules[ki][1])
             mesh = np.meshgrid(*(rules[ki][0] for ki in k), indexing="ij")
             pts = np.stack([axis.ravel() for axis in mesh], axis=-1)
-            for point, wval in zip(pts, wts.ravel()):
+            for point, wval in zip(pts, wts.ravel(), strict=True):
                 key = tuple(point.round(12))
                 entry = accum.get(key)
                 if entry is None:
