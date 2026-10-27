@@ -19,10 +19,13 @@ import ast
 import copy
 import importlib
 import pathlib
+import re
 
 import numba
 import numpy as np
 import pytest
+
+from pytcl.core._numba import NAN_SAFE_FASTMATH
 
 gating = importlib.import_module("pytcl.assignment_algorithms.gating")
 detection = importlib.import_module(
@@ -158,7 +161,9 @@ def _cfar_signals():
     with_nan[[5, 20]] = np.nan
     with_inf = base.copy()
     with_inf[12] = np.inf
-    return signals, [with_nan], [with_inf]
+    with_ninf = base.copy()
+    with_ninf[30] = -np.inf
+    return signals, [with_nan], [with_inf, with_ninf]
 
 
 _WINDOWS = [(2, 4), (0, 3), (3, 0), (0, 0), (25, 25)]
@@ -220,6 +225,12 @@ def _ambiguity_signals():
     return chirp, noise
 
 
+def _with_nan(sig):
+    out = sig.copy()
+    out[len(out) // 2] = complex(np.nan, 0.0)
+    return out
+
+
 def _ambiguity_grid(n, fs):
     delays = np.array([-n - 3, -5, -1, 0, 1, 7, n + 2], dtype=float) / fs
     dopplers = np.array([-0.2, 0.0, 0.05, 0.3]) * fs
@@ -231,7 +242,8 @@ def _ambiguity_cases():
     fs = 1000.0
     delays, dopplers = _ambiguity_grid(len(chirp), fs)
     out = np.empty((len(dopplers), len(delays)), dtype=np.complex128)
-    return [(sig, delays, dopplers, fs, out.copy()) for sig in (chirp, noise)] + [
+    signals = (chirp, noise, _with_nan(chirp))
+    return [(sig, delays, dopplers, fs, out.copy()) for sig in signals] + [
         (chirp[:1], delays, dopplers, fs, out.copy())
     ]
 
@@ -244,6 +256,8 @@ def _cross_ambiguity_cases():
     return [
         (chirp, noise, delays, dopplers, fs, out.copy()),
         (noise, chirp, delays, dopplers, fs, out.copy()),
+        (_with_nan(chirp), noise, delays, dopplers, fs, out.copy()),
+        (chirp, _with_nan(noise), delays, dopplers, fs, out.copy()),
         (chirp[:1], noise[:1], delays, dopplers, fs, out.copy()),
     ]
 
@@ -352,34 +366,72 @@ def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
     assert np.isnan(gating.mahalanobis_distance(nu, _nan_entry(n)))
 
 
-_FCMP_PREDICATES = {
-    "false", "oeq", "ogt", "oge", "olt", "ole", "one", "ord",
-    "ueq", "ugt", "uge", "ult", "ule", "une", "uno", "true",
-}  # fmt: skip
+_FAST_MATH_FLAGS = {"fast", "nnan", "ninf", "nsz", "arcp", "contract", "afn", "reassoc"}
+_NAN_UNSAFE_FLAGS = {"fast", "nnan", "ninf"}
+_MINMAX_INTRINSIC = re.compile(r"@llvm\.(minnum|maxnum|minimum|maximum)\.")
 
 
-def _fcmp_flags(line):
-    """The fast-math flags on one LLVM ``fcmp`` instruction."""
-    tokens = line.split(" fcmp ", 1)[1].split()
-    return set(tokens[: next(i for i, t in enumerate(tokens) if t in _FCMP_PREDICATES)])
+def _fast_math_flags(line, opcode):
+    """The fast-math flags on one LLVM ``fcmp`` or ``select`` instruction."""
+    flags = set()
+    for token in line.split(f" {opcode} ", 1)[1].split():
+        if token not in _FAST_MATH_FLAGS:
+            break
+        flags.add(token)
+    return flags
 
 
-def _nan_unsafe_compares(kernel, fastmath):
-    """Every ``fcmp`` in ``kernel`` compiled with ``fastmath`` that may assume
-    no NaN or no infinity.
+def _ir(py_func, fastmath, parallel, args):
+    """LLVM IR of ``py_func`` compiled uncached with ``fastmath``.
 
     A kernel loaded from numba's on-disk cache returns empty IR from
-    ``inspect_llvm``, so the kernel is recompiled uncached here.
+    ``inspect_llvm``, so every kernel is recompiled here.
     """
-    parallel = kernel.targetoptions.get("parallel", False)
-    fresh = numba.njit(fastmath=fastmath, parallel=parallel)(kernel.py_func)
-    _call(fresh, _FASTMATH_KERNELS[kernel]()[0])
-    ir = fresh.inspect_llvm(fresh.signatures[0])
-    return [
-        line.strip()
-        for line in ir.splitlines()
-        if " fcmp " in line and _fcmp_flags(line) & {"fast", "nnan", "ninf"}
-    ]
+    fresh = numba.njit(fastmath=fastmath, parallel=parallel)(py_func)
+    _call(fresh, args)
+    return fresh.inspect_llvm(fresh.signatures[0])
+
+
+def _fcmp_count(ir):
+    return sum(" fcmp " in line for line in ir.splitlines())
+
+
+def _nan_hazards(py_func, fastmath, args, parallel=False):
+    """Signs that compiling ``py_func`` with ``fastmath`` weakened a NaN or
+    infinity test, against the same function compiled with fastmath off.
+
+    Under ``nnan`` LLVM deletes a guard such as ``x != x`` outright, so no
+    flagged ``fcmp`` is left to see; the deficit in the ``fcmp`` count
+    against the fastmath-off build is what shows it. A compare it keeps
+    may carry ``nnan``/``ninf``, a ``select`` built on one may too, and a
+    max/min may become an ``llvm.maxnum``-family call that drops NaN.
+    """
+    hazards = []
+    ir = _ir(py_func, fastmath, parallel, args)
+    n_off = _fcmp_count(_ir(py_func, False, parallel, args))
+    n_own = _fcmp_count(ir)
+    if n_own < n_off:
+        hazards.append(f"{n_off - n_own} of {n_off} fcmp folded away")
+    for line in ir.splitlines():
+        line = line.strip()
+        if " fcmp " in line and _fast_math_flags(line, "fcmp") & _NAN_UNSAFE_FLAGS:
+            hazards.append(line)
+        elif " select " in line and (
+            _fast_math_flags(line, "select") & _NAN_UNSAFE_FLAGS
+        ):
+            hazards.append(line)
+        elif " call " in line and _MINMAX_INTRINSIC.search(line):
+            hazards.append(line)
+    return hazards
+
+
+def _kernel_hazards(kernel, fastmath):
+    return _nan_hazards(
+        kernel.py_func,
+        fastmath,
+        _FASTMATH_KERNELS[kernel]()[0],
+        parallel=kernel.targetoptions.get("parallel", False),
+    )
 
 
 @pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
@@ -388,15 +440,33 @@ def test_no_kernel_compares_floats_under_nnan_or_ninf(kernel):
     """The x86 failure mode, checked where it can be seen on any platform.
 
     Under ``nnan``/``ninf`` LLVM may compile a float comparison as if neither
-    operand were NaN or infinite. x86 then lowered ``det != 0.0`` in
-    ``_invert_2x2``/``_invert_3x3`` without the unordered check, so a NaN
-    determinant compared equal to zero, and the GO-CFAR ``max`` of two
-    half-window averages dropped a NaN one. arm64 keeps the IEEE answer
-    for the determinant test either way, so the flags are checked in the
-    IR rather than through outcomes. A kernel that compares floats must
-    leave ``nnan`` and ``ninf`` out of its ``fastmath`` set.
+    operand were NaN or infinite, or delete it. x86 then lowered
+    ``det != 0.0`` in ``_invert_2x2``/``_invert_3x3`` without the unordered
+    check, so a NaN determinant compared equal to zero, and the GO-CFAR
+    ``max`` of two half-window averages dropped a NaN one. arm64 keeps the
+    IEEE answer for the determinant test either way, so the IR is checked
+    rather than outcomes. A kernel that compares floats must leave ``nnan``
+    and ``ninf`` out of its ``fastmath`` set.
     """
-    assert _nan_unsafe_compares(kernel, kernel.targetoptions["fastmath"]) == []
+    assert _kernel_hazards(kernel, kernel.targetoptions["fastmath"]) == []
+
+
+def _guard_only(x):
+    out = np.empty_like(x)
+    for i in range(len(x)):
+        out[i] = 0.0 if x[i] != x[i] else x[i]
+    return out
+
+
+@pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
+def test_ir_scan_sees_a_nan_guard_folded_away():
+    """Under ``fastmath=True`` the guard leaves no ``fcmp`` at all; the scan
+    must still report it, and must pass the same guard without nnan/ninf."""
+    args = (np.array([1.0, np.nan, np.inf]),)
+    fast_ir = _ir(_guard_only, True, False, args)
+    assert _fcmp_count(fast_ir) == 0
+    assert _nan_hazards(_guard_only, True, args) != []
+    assert _nan_hazards(_guard_only, NAN_SAFE_FASTMATH, args) == []
 
 
 @pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
@@ -415,4 +485,4 @@ def test_no_kernel_compares_floats_under_nnan_or_ninf(kernel):
 def test_ir_scan_sees_the_compares_under_full_fastmath(kernel):
     """The scan above is not vacuous: each kernel that compares floats is
     caught by it when compiled with ``fastmath=True``."""
-    assert _nan_unsafe_compares(kernel, True) != []
+    assert _kernel_hazards(kernel, True) != []
