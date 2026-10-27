@@ -609,9 +609,11 @@ class TrackDatabaseManager:
 
         Raises
         ------
+        KeyError
+            If ``track_id`` is not a track in this database.
         ValueError
             If the inputs differ in length, or any row is rejected. Nothing
-            is stored in either case.
+            is stored in any of these cases.
         """
         self._check_writable()
         s_arr = np.asarray(states, dtype=np.float64)
@@ -631,6 +633,13 @@ class TrackDatabaseManager:
             raise ValueError(
                 f"states, covariances, timestamps and residuals must have the "
                 f"same length, got {detail}"
+            )
+
+        self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
+        if self._cursor.fetchone() is None:
+            raise KeyError(
+                f"No track {track_id!r} in this database. Create it with "
+                f"initiate_track() before recording state updates."
             )
 
         self._cursor.execute("SAVEPOINT store_track_history")

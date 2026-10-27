@@ -177,9 +177,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used
   to store a prefix silently (`(5, 5, 3)` stored 3 rows; residuals of
   length 8 against 5 dropped 3) or store rows then raise `IndexError`; a
-  row rejected mid-call left its predecessors behind. What to do: pass
-  states, covariances, timestamps (and residuals) of equal length; a
-  mismatch now raises instead of storing a prefix.
+  row rejected mid-call left its predecessors behind. An unknown `track_id`
+  used to write rows that belong to no track; it now raises `KeyError`
+  before anything is written, as `store_track_state` does. Internal callers
+  are `HDF5TrackStorage.export_to_sql` and `convert_legacy_tracks_to_sql`;
+  both create the track with `initiate_track` first and slice the four
+  arrays consistently, so valid data is unaffected, but an HDF5 track whose
+  `residuals` dataset is shorter than its `timestamps` now raises
+  `ValueError` with nothing stored, where it stored a prefix and raised
+  `IndexError`. What to do: pass states, covariances, timestamps (and
+  residuals) of equal length; a mismatch now raises instead of storing a
+  prefix. Call `initiate_track` before `store_track_history`; an unknown id
+  now raises `KeyError` instead of leaving orphan rows.
 
 - `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
   hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time

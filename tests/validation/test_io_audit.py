@@ -666,6 +666,20 @@ class TestTrackInitiationAndState:
         assert db._connection.execute("SELECT hits FROM tracks").fetchone()[0] != 99
         assert _history_len(db, "t1") == 1
 
+    def test_unknown_track_raises_before_any_row(self, db):
+        db.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        db._connection.execute("UPDATE tracks SET hits = 99")
+        states, covs, times, _ = _history_arrays(5, 5, 5, None)
+        with pytest.raises(KeyError, match="No track 'typo'"):
+            db.store_track_history("typo", states, covs, times)
+        assert db._connection.in_transaction
+        assert db._connection.execute("SELECT hits FROM tracks").fetchone()[0] == 99
+        assert (
+            db._connection.execute("SELECT COUNT(*) FROM track_states").fetchone()[0]
+            == 1
+        )
+        assert _history_len(db, "t1") == 1
+
     def test_successful_call_persists_across_reopen(self, tmp_path):
         path = str(tmp_path / "hist.db")
         mgr = TrackDatabaseManager(path)
