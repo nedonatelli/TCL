@@ -204,11 +204,13 @@ def log_marcum_q(
     factored out, which needs neither squared argument. Elsewhere it is
     ``log Q`` from ``marcum_q`` where ``Q <= 0.5``. Above, it is
     ``log1p(-P)`` with ``P = 1 - Q``. scipy's ``P`` (``gammainc`` at
-    ``a = 0``, else ``scipy.stats.ncx2.cdf``) is used only where it was
-    measured within 3.1e-15 relative: ``m <= 10``, ``a <= 10`` and
-    ``P >= 1e-30`` (on ``a`` in {0, 1, 10}, ``b = sqrt(a^2 + 2m) - z/sqrt(2)``,
-    ``z`` from 1 to 30). Elsewhere ``P`` is the series' own tail sum, at
-    about 2 ms an element: within 1e-13 of mpmath on ``a`` in {0, 1},
+    ``a = 0``, else ``scipy.stats.ncx2.cdf``) is used only for ``m <= 10``,
+    ``a <= 10`` and ``P >= 1e-30``, where it was measured within 9.1e-15
+    relative (the maximum at ``a = 0``, ``m = 3``, ``P`` near 1e-30, where
+    scipy's ``gammainc`` is itself 8.1e-15 off; the series measures 1.8e-14
+    there, so scipy is kept). Elsewhere ``P`` is the series' own tail sum,
+    at about 2 to 12 ms an element, growing with ``a`` (measured
+    ``a <= 141``): within 1e-13 of mpmath on ``a`` in {0, 1},
     ``m`` in {100, 1e4, 1e6, 1e7}, ``z`` in {3, 5, 10, 14}, where scipy's
     ``P`` was off by up to 3.1e-2 (``a = 0``, ``m = 1e7``).
 
@@ -222,7 +224,7 @@ def log_marcum_q(
     10                1, 2, 100              2.8e-15
     10                1e4                    1.5e-14
     1e3               1, 2, 100              7.7e-16
-    1e5, 1e7, 1e8     1, 2, 100, 1e4         6.4e-15
+    1e5, 1e7, 1e8     1, 2, 100, 1e4         6.5e-15
     1e7, 1e8          1e7                    1.6e-15
     ================  =====================  ======================
 
@@ -234,7 +236,7 @@ def log_marcum_q(
     integer bracket (which shrinks every step at any magnitude), and its
     terms are sampled at a stride below a quarter of their width. Below
     ``log Q = -2.8e14`` the terms' rounding exceeds one unit of log, and a
-    fixed grid of the same stride is summed instead: within 2.4e-16 of
+    fixed grid of the same stride is summed instead: within 3.7e-16 of
     ``-(a^2+b^2)/2 + (m-1) log(b/a) + log I_{m-1}(ab)`` (mpmath) on 115
     points, ``a`` in {1e-3, 0.5, 10, 1e3}, ``m`` in {1e5, 1e6, 1e7}, ``b``
     from 1e5 to 1e14. More than 2^16 terms in a sum raises
@@ -244,7 +246,7 @@ def log_marcum_q(
     was 433 terms and the slowest call 0.04 s. Inputs with ``a^2/2`` above
     2^53 (``m`` near 3e8) return but are not measured.
     ``log Q`` is within 2.1e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c``
-    in {-3, 0, 7, 20}, and within 3.8e-15 on ``a = 10``, ``m = 1e7``, ``c``
+    in {-3, 0, 7, 20}, and within 3.9e-15 on ``a = 10``, ``m = 1e7``, ``c``
     in {-40, -10, -3, 0, 3, 10, 20}. Called directly on all 159 oracle rows
     (``a`` up to 1e8, where the terms peak at ``k = 5e15``) the series is
     within 5.6e-15. On ``a``, ``b`` in 12 log-spaced values over
@@ -288,10 +290,11 @@ def log_marcum_q(
 
     # Near Q = 1, log(Q) keeps only the absolute accuracy of Q, so log1p of
     # minus 1 - Q is used. scipy's 1 - Q (gammainc at a = 0, else ncx2.cdf)
-    # is kept only where it was measured within 3.1e-15 relative (m <= 10,
-    # a <= 10, 1 - Q >= 1e-30); it degrades with m (3% at a = 0, m = 1e7)
-    # and returns 0 for representable values near 1e-300. Elsewhere the
-    # series forms 1 - Q from its own tail terms, at about 2 ms an element.
+    # is kept only for m <= 10, a <= 10, 1 - Q >= 1e-30, where it was measured
+    # within 9.1e-15 relative (the series is 1.8e-14 at that worst point); it
+    # degrades with m (3% at a = 0, m = 1e7) and returns 0 for representable
+    # values near 1e-300. Elsewhere the series forms 1 - Q from its own tail
+    # terms, at about 2 to 12 ms an element, growing with a.
     finite = np.isfinite(a_b) & np.isfinite(b_b)
     near_one = finite & ~large & (b_b > 0.0) & (q_val > 0.5)
     if np.any(near_one):
@@ -790,11 +793,12 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
     adaptive tests cannot resolve the terms, and a fixed grid of
     ``+-(12 sigma_a + 20)`` at stride ``sigma_a / 4`` is summed, with
     ``sigma_a = (1/k* + 1/(m+k*))^(-1/2)`` from the Poisson curvatures.
-    Where ``1 - Q`` peaks below ``e^-800`` the result is ``-0.0``. Against a full ``h = 1`` sum of the
-    same terms the strided sum was within 2.9e-14 on 391 points (``a``
-    from 15 to 1e3, ``m`` from 1 to 1e5, ``b = sqrt(a^2 + 2m) + c`` with
-    ``c`` from -20 to 20). At most ``2^16`` terms are evaluated per
-    sum; more raises :class:`~pytcl.core.exceptions.ConvergenceError`.
+    Where ``1 - Q`` peaks below ``e^-800`` the result is ``-0.0``. Against
+    a full ``h = 1`` sum of the same terms the strided sum was within
+    2.9e-14 on 391 points (``a`` from 15 to 1e3, ``m`` from 1 to 1e5,
+    ``b = sqrt(a^2 + 2m) + c`` with ``c`` from -20 to 20). At most ``2^16``
+    terms are evaluated per sum; more raises
+    :class:`~pytcl.core.exceptions.ConvergenceError`.
     """
     lam, lam_lo = _half_square(a)
     x, x_lo = _half_square(b)

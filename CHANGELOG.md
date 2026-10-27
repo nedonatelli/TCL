@@ -198,12 +198,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directly instead of inheriting `ncx2.sf` values above `Q = 1e-10`.
   Elsewhere, where `Q > 0.5`, it takes `log1p(-P)` with `P = 1 - Q` instead
   of `log Q`. scipy's `P` (`gammainc` at `a = 0`, `ncx2.cdf` otherwise) is
-  kept only where it was measured within 3.1e-15 relative (`m <= 10`,
-  `a <= 10`, `P >= 1e-30`); elsewhere `P` is the Poisson series' own tail
+  kept only for `m <= 10`, `a <= 10`, `P >= 1e-30`, where it was measured
+  within 9.1e-15 relative (the maximum at `a = 0`, `m = 3`, `P` near 1e-30,
+  where scipy's `gammainc` is itself 8.1e-15 off and the series measures
+  1.8e-14, so scipy is kept); elsewhere `P` is the Poisson series' own tail
   sum below, within 1e-13 of mpmath on `a` in {0, 1}, `m` in {100, 1e4, 1e6,
   1e7}, `b = sqrt(a^2 + 2m) - z/sqrt(2)`, `z` in {3, 5, 10, 14}, where
   scipy's `P` was off by up to 3.1e-2 at `a = 0`, `m = 1e7`. Those elements
-  cost about 2 ms each instead of being vectorised. The quadrature now forms
+  cost about 2 to 12 ms each, growing with `a` (measured `a <= 141`),
+  instead of being vectorised. The quadrature now forms
   `log(x/a)` as `log1p`, which removes a 4e-8 relative error at `m = 1e7`.
   Measured against a new mpmath oracle
   (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`) on
@@ -235,7 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   below a quarter of the peak's width. The bracket is held in integers, so
   the search ends at any magnitude. Below `log Q = -2.8e14`, where the
   terms' rounding exceeds one unit of log, a fixed grid is summed: within
-  2.4e-16 of the Bessel form `-(a^2+b^2)/2 + (m-1) log(b/a) + log
+  3.7e-16 of the Bessel form `-(a^2+b^2)/2 + (m-1) log(b/a) + log
   I_{m-1}(ab)` on 115 points with `m` from 1e5 to 1e7 and `b` up to 1e14
   (inputs there that once reached the backstop; v2.11.1 returned
   `marcum_q = 0.0`, which is unchanged). More than 2^16 terms in a sum
@@ -244,7 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was 433 terms and the slowest call 0.04 s. Inputs with `a^2/2` above
   2^53 (`m` near 3e8) return, unmeasured. Against the mpmath series oracle on
   `a = 1e3`, `m` in {3000, 1e4}, `c` in {-3, 0, 7, 20}, `log Q` is within
-  2.1e-15 relative, and within 3.8e-15 on `a = 10`, `m = 1e7`, `c` in
+  2.1e-15 relative, and within 3.9e-15 on `a = 10`, `m = 1e7`, `c` in
   {-40, -10, -3, 0, 3, 10, 20}; the series called directly on all 159
   oracle rows (up to `a = 1e8`) is within 5.6e-15. On `a`, `b` in 12
   log-spaced values over [1e-3, 1e8] and `m` in {1, 2, 30, 3000, 1e7},
