@@ -357,9 +357,6 @@ def tau_scale(
     ``cf = 2 * ((1 - c**2) * Phi(c) - c * phi(c) + c**2) - 1``
     (0.9247153921761315 at ``c2 = 3``).
 
-    On 200000 N(0, 1) draws earlier releases returned about 1.09, where this
-    returns about 1.0.
-
     References
     ----------
     .. [MZ2002] R. A. Maronna and R. H. Zamar, "Robust estimates of location and
