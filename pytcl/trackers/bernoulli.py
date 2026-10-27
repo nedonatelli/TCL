@@ -93,10 +93,10 @@ def _moment_match(
 ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Collapse a normalized Gaussian mixture to a single Gaussian."""
     x = np.zeros_like(means[0])
-    for w, m in zip(weights, means):
+    for w, m in zip(weights, means, strict=True):
         x = x + w * m
     P = np.zeros_like(covs[0])
-    for w, m, c in zip(weights, means, covs):
+    for w, m, c in zip(weights, means, covs, strict=True):
         d = m - x
         P = P + w * (c + np.outer(d, d))
     return x, P
@@ -282,7 +282,7 @@ def bernoulli_update(
     if Z:
         K = state.P @ H.T @ np.linalg.inv(S)
         P_upd = state.P - K @ S @ K.T
-        for z, qi in zip(Z, q):
+        for z, qi in zip(Z, q, strict=True):
             weights.append(cfg.detection_prob * qi / cfg.clutter_intensity)
             means.append(state.x + K @ (z - z_pred))
             covs.append(P_upd)
