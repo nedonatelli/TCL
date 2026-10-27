@@ -630,7 +630,9 @@ def emm(
         h_arr = np.broadcast_to(np.asarray(h), lat_arr.shape)
         results = [
             _emm_scalar(float(la), float(lo), float(hi), year, coefficients, n_max)
-            for la, lo, hi in zip(lat_arr.ravel(), lon_arr.ravel(), h_arr.ravel())
+            for la, lo, hi in zip(
+                lat_arr.ravel(), lon_arr.ravel(), h_arr.ravel(), strict=True
+            )
         ]
         shape = lat_arr.shape
         return MagneticResult(

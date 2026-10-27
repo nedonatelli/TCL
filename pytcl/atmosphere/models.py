@@ -703,7 +703,7 @@ def speed_of_sound_gas_table(
     t = temperature
     p = pressure
     c2 = 0.0
-    for (name, _), mass_density in zip(gas_table, mass_densities):
+    for (name, _), mass_density in zip(gas_table, mass_densities, strict=True):
         props = gas_properties(name, t)
         if props is None:
             continue
