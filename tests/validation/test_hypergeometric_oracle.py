@@ -666,3 +666,181 @@ class TestCertifiedOverflow:
         # The certified sum is within a factor of about 1.5 of the value;
         # 7e1e8c9 decided on the sum and returned inf for these.
         assert np.isnan(_certified_overflow(a, -3092.1991021034255, z))
+
+
+@pytest.mark.timeout(60, method="thread")
+class TestExpansionAndProofPaths:
+    """Each branch of the DLMF 13.7.2 evaluation and of the overflow proofs,
+    against mpmath with exact parameters, the exact series, or the
+    documented NaN with its warning."""
+
+    def test_log_gamma_of_the_difference(self):
+        from pytcl.mathematical_functions.special_functions.hypergeometric import (
+            _lgamma_diff,
+        )
+
+        assert _lgamma_diff(-0.5, 2.5) == (math.inf, 0.0)  # Gamma(-3): a pole
+        log_abs, sign = _lgamma_diff(-0.5, 2.0)  # Gamma(-2.5) = -0.9453
+        assert sign == -1.0 and log_abs == pytest.approx(math.lgamma(-2.5), rel=1e-14)
+        assert _lgamma_diff(2.5, -0.5) == (pytest.approx(math.lgamma(3.0)), 1.0)
+
+    def test_coefficient_by_reflection_with_negative_b(self, recwarn):
+        # Gamma(-0.5)/Gamma(2.8): the b < 0, b - a > 0 branch of _gamma_ratio.
+        want = float(_mp_exact_params(-3.3, -0.5, -1e10))
+        assert hyp1f1(-3.3, -0.5, -1e10) == pytest.approx(want, rel=5e-14, abs=0)
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, z, rel",
+        [
+            # Gamma(200)/Gamma(5): no shift fits, the logarithms place the
+            # value inside the double range and scipy is used (1.1e-14).
+            (195.0, 200.0, -1000.0, 5e-14),
+            # scipy's value where the exponential term is not negligible
+            # against the algebraic one at -z = 1e2 (scipy is 2.9e-12 off).
+            (40.0, 41.0, -100.0, 1e-11),
+            # z > 0, 1e2 <= z < 1e9: the expansion settles but does not
+            # overflow, so scipy's value is returned.
+            (0.5, 1.5, 200.0, 5e-14),
+            # z > 0 with Gamma(a) = 1e28: the algebraic term is within eps of
+            # the exponential one, so the expansion declines and scipy is used.
+            (1e-28, 0.5, 100.0, 5e-14),
+        ],
+    )
+    def test_values_where_the_expansion_hands_over_to_scipy(
+        self, a, b, z, rel, recwarn
+    ):
+        want = float(_mp_exact_params(a, b, z))
+        assert hyp1f1(a, b, z) == pytest.approx(want, rel=rel, abs=0)
+        assert not recwarn
+
+    def test_underflow_without_a_coefficient_shift(self, recwarn):
+        # Gamma(10200)/Gamma(10): the shift would need 10,030 steps; the
+        # logarithms prove the value (1e-34879) is below the double range.
+        with mpmath.workdps(50):
+            assert (
+                mpmath.log10(abs(mpmath.hyp1f1(10190, 10200, mpmath.mpf(-1e7)))) < -3e4
+            )
+        assert hyp1f1(10190.0, 10200.0, -1e7) == 0.0
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            (-195.5, 5.0, -1e5),  # Gamma(5)/Gamma(200.5): no shift fits
+            (-10190.5, 10.0, -2e8),  # more than 10,000 shift steps
+            (-190.3, -200.5, -1e5),  # reflected: Gamma(11.2)/Gamma(201.5)
+            (-190.3, -200.5, -1e10),
+        ],
+    )
+    def test_overflow_without_a_coefficient_shift(self, a, b, z, recwarn):
+        # The leading algebraic term Gamma(b)/Gamma(b - a) (-z)^-a with exact
+        # parameters is far beyond the double range; its sign is the result.
+        with mpmath.workdps(50):
+            A, B, x = mpmath.mpf(a), mpmath.mpf(b), mpmath.mpf(-z)
+            lead = mpmath.gamma(B) * mpmath.rgamma(B - A) * x ** (-A)
+        assert abs(lead) > mpmath.mpf(np.finfo(np.float64).max) * 1e100
+        assert hyp1f1(a, b, z) == math.copysign(math.inf, float(mpmath.sign(lead)))
+        assert not recwarn
+
+    def test_overflow_proven_from_the_tail_with_no_head(self, recwarn):
+        # a, b > 0: every term has one sign; the expansion diverges (ratio
+        # 125) so the largest term alone proves the overflow (1.75e598).
+        with mpmath.workdps(30):
+            assert mpmath.hyp1f1(500.5, 1000.5, 2000) > mpmath.mpf(
+                np.finfo(np.float64).max
+            )
+        assert hyp1f1(500.5, 1000.5, 2000.0) == math.inf
+        assert not recwarn
+
+    def test_overflow_too_marginal_for_the_tail_is_proven_by_the_series(self, recwarn):
+        # scipy overflows from z = 1134.9284963691885 on; there the largest
+        # term is below DBL_MAX and the certified sum decides.
+        z = 1135.0284963691884
+        with mpmath.workdps(30):
+            value = mpmath.hyp1f1(500.5, 1000.5, z) / mpmath.mpf(
+                np.finfo(np.float64).max
+            )
+        assert float(value) == pytest.approx(1.0752834, rel=1e-6)
+        assert hyp1f1(500.5, 1000.5, z) == math.inf
+        assert not recwarn
+
+    def test_overflow_by_one_ulp_is_nan_with_warning(self):
+        # 1.0000000000002 DBL_MAX: within the factor the certified sum
+        # leaves undecided, so neither inf nor a finite value is returned.
+        z = 1134.9284963691885
+        with mpmath.workdps(30):
+            ratio = mpmath.hyp1f1(500.5, 1000.5, z) / mpmath.mpf(
+                np.finfo(np.float64).max
+            )
+            assert 1.0 < ratio < 1.0 + 1e-12
+        with pytest.warns(RuntimeWarning, match="could not be proven"):
+            assert np.isnan(hyp1f1(500.5, 1000.5, z))
+
+    def test_overflow_dominated_by_the_head_is_proven_by_the_series(self, recwarn):
+        # k0 = 501: the terms before it carry the value, so the tail proof
+        # declines and the certified sum gives the sign (-1.68e741).
+        want = _series_sum(-500.5, 0.5, 3000.0, 600)
+        assert want < 0 and abs(want) > mpmath.mpf(np.finfo(np.float64).max)
+        assert hyp1f1(-500.5, 0.5, 3000.0) == -math.inf
+        assert not recwarn
+
+    def test_overflow_past_the_tail_cap_is_nan_with_warning(self):
+        # scipy returns inf; the exponential series of the expansion decays
+        # too slowly to settle in 200 terms, the tail proof needs k0 > 1e6
+        # and the certified sum more than 1e6 terms.
+        with pytest.warns(RuntimeWarning, match="could not be proven"):
+            assert np.isnan(hyp1f1(0.5, -1000000.5, 1e6))
+
+    def test_expansion_whose_exponential_series_diverges_is_nan_with_warning(self):
+        # 1F1(1e-17; 5e9; -1e9) = 1 - 2e-18, but the exponential series has
+        # ratio 5 at |z| = 1e9 where scipy is not called.
+        with pytest.warns(RuntimeWarning, match="asymptotic expansion"):
+            assert np.isnan(hyp1f1(1e-17, 5e9, -1e9))
+
+    def test_terminating_overflow_in_hyp1f1_is_summed_exactly(self, recwarn):
+        # (-5)_5 z^5 / (5! 5!) = -z^5 / 120 leads: scipy gives +inf.
+        assert hyp1f1(-5.0, 1.0, 1e100) == -math.inf
+        assert generalized_hypergeometric([-5.0], [1.0], 1e100) == -math.inf
+        assert not recwarn
+
+    def test_limit_at_infinity_with_a_non_finite_parameter_is_nan(self, recwarn):
+        assert np.isnan(generalized_hypergeometric([np.inf], [2.0, 3.0], np.inf))
+        assert np.isnan(generalized_hypergeometric([1.0], [np.nan, 3.0], -np.inf))
+        assert not recwarn
+
+    def test_certified_series_declines_at_a_zero_crossing(self):
+        from pytcl.mathematical_functions.special_functions.hypergeometric import (
+            _certified_series,
+        )
+
+        a, b, z0 = -1401.3019969167487, -3092.1991021034255, 1950.0466930916314
+        assert _certified_series(a, b, z0) is None  # |sum| below its error bound
+        assert np.isnan(_certified_overflow(a, b, z0))
+        # 1e-4 away the value is +-e^(709.8 + 24.6) with signs -/+.
+        for dz, sign in ((1e-4, -1.0), (-1e-4, 1.0)):
+            want = _series_sum(a, b, z0 + dz, 120)
+            assert mpmath.sign(want) == sign
+            got_sign, log_lower = _certified_series(a, b, z0 + dz)
+            assert got_sign == sign
+            assert log_lower < float(mpmath.log(abs(want))) < log_lower + 1e-6
+            assert _certified_overflow(a, b, z0 + dz) == sign * math.inf
+
+    def test_certified_series_with_a_rounded_parameter(self):
+        from pytcl.mathematical_functions.special_functions.hypergeometric import (
+            _certified_series,
+        )
+
+        b, x = -500.3, 2e4
+        # a rounded onto a non-positive integer: the exact and the rounded
+        # series differ in kind, so any rounding error declines.
+        assert _certified_series(-300.0, b, x, 1e-14) is None
+        # a within 1e-10 of it: the perturbation bound P = err / 1e-10 is
+        # 0.1 for err = 1e-11 (declined) and 1e-3 for 1e-13 (certified).
+        a = -299.9999999999
+        assert _certified_series(a, b, x, 1e-11) is None
+        want = _series_sum(a, b, x, 80)  # -1.787e9016
+        for err in (1e-13, 0.0):
+            sign, log_lower = _certified_series(a, b, x, err)
+            assert sign == -1.0 == mpmath.sign(want)
+            assert log_lower < float(mpmath.log(abs(want))) < log_lower + 1e-2

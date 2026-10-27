@@ -469,8 +469,6 @@ def _bd0(j: NDArray[np.floating], mu: float) -> NDArray[np.floating]:
 def _half_square(v: float) -> tuple[float, float]:
     """v*v/2 as an unevaluated sum hi + lo (Dekker's exact product)."""
     hi = v * v
-    if not np.isfinite(hi):
-        return 0.5 * hi, 0.0
     t = 134217729.0 * v
     v1 = t - (t - v)
     v2 = v - v1

@@ -292,16 +292,10 @@ def _xvalue(m: float, e: int) -> float:
         return float(np.ldexp(m, e))
 
 
-def _proven_overflow(log_mag: float, scale: float) -> int:
-    """+1 if ``log_mag`` exceeds the double range beyond its rounding error
-    (about ``eps * scale``), -1 if it is below the overflow threshold by
-    as much, 0 if undecided."""
-    margin = 1e-12 * scale + 1e-9
-    if log_mag > _LOG_DOUBLE_MAX + margin:
-        return 1
-    if log_mag < _LOG_DOUBLE_MAX - margin:
-        return -1
-    return 0
+def _proven_overflow(log_mag: float, scale: float) -> bool:
+    """Whether ``log_mag`` exceeds the double range beyond its rounding
+    error (about ``eps * scale``)."""
+    return log_mag > _LOG_DOUBLE_MAX + 1e-12 * scale + 1e-9
 
 
 def _overflow_from_tail(a: float, b: float, z: float) -> float:
@@ -349,7 +343,7 @@ def _overflow_from_tail(a: float, b: float, z: float) -> float:
     if log_head_bound > best - _LN2:
         return np.nan
     log_lower = best + math.log1p(-math.exp(log_head_bound - best))
-    if _proven_overflow(log_lower, scale) == 1:
+    if _proven_overflow(log_lower, scale):
         return sp.gammasgn(b) * sp.gammasgn(a) * np.inf
     return np.nan
 
@@ -385,8 +379,6 @@ def _certified_series(
     k = np.arange(n, dtype=np.float64)
     with np.errstate(divide="ignore", invalid="ignore"):
         ratio = (a + k) * z / ((b + k) * (k + 1.0))
-    if not np.all(np.isfinite(ratio)):
-        return None
     perturbation = 0.0
     if a_err:
         with np.errstate(divide="ignore"):
@@ -413,8 +405,6 @@ def _certified_series(
     total = math.fsum(scaled.tolist())
     magnitude = math.fsum(np.abs(scaled).tolist())
     r = (n + abs(a)) * abs(z) / ((n - abs(b)) * (n + 1.0))
-    if not r < 1.0:
-        return None
     remainder = abs(scaled[-1]) * r / (1.0 - r)
     eps = np.finfo(np.float64).eps
     rounding = (8.0 * (n + 2) * eps + 2.0 * perturbation) * magnitude
@@ -442,7 +432,7 @@ def _certified_overflow(a: float, b: float, z: float) -> float:
         if certified is None:
             continue
         sign, log_lower = certified
-        if _proven_overflow(log_lower + shift, abs(log_lower) + abs(shift)) == 1:
+        if _proven_overflow(log_lower + shift, abs(log_lower) + abs(shift)):
             return sign * np.inf
         return np.nan
     return np.nan
@@ -481,7 +471,7 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
             if log_alg >= log_mag + _LOG_EPS - 1.0:
                 return fallback
         scale = z + abs(a - b) * abs(log_z) + abs(lg_a) + abs(lg_b)
-        if _proven_overflow(log_mag, scale) == 1:
+        if _proven_overflow(log_mag, scale):
             return math.copysign(np.inf, sign * series)
         return np.nan
 
@@ -508,7 +498,7 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
             log_alg = lg_b - lg_c - a * math.log(x) + math.log(abs(series))
             scale = abs(lg_b) + abs(lg_c) + abs(a * math.log(x))
             sign = sp.gammasgn(b) * sign_c * math.copysign(1.0, series)
-            if _proven_overflow(log_alg, scale) == 1:
+            if _proven_overflow(log_alg, scale):
                 value = sign * np.inf
             elif log_alg < _LOG_DOUBLE_TINY - 1e-12 * scale - 1.0:
                 value = sign * 0.0

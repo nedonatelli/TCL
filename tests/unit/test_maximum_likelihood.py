@@ -384,3 +384,10 @@ class TestInformationCriteria:
         aic2 = aic(-150.0, 2)  # Worse model
 
         assert aic1 < aic2  # Lower is better
+
+
+def test_nan_noise_bound_is_rejected():
+    from pytcl.static_estimation.maximum_likelihood import _covariance_from_information
+
+    with pytest.raises(ValueError, match="noise_bound is NaN"):
+        _covariance_from_information(np.eye(2), 1e-12, noise_bound=np.nan)

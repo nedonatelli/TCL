@@ -751,3 +751,23 @@ class TestMarcumQIntegration:
         b = np.sqrt(threshold)
         expected = marcum_q(a, b, m=n_pulses)
         assert pd == pytest.approx(expected, rel=1e-6)
+
+
+class TestSeriesCorners:
+    def test_bracket_overflow_raises(self):
+        # lam (m + x) overflows the quadratic for the upper bracket.
+        with pytest.raises(ConvergenceError, match="bracket overflows"):
+            log_marcum_q(1e77, 1e78, 10**78)
+
+    def test_fixed_grid_with_the_peak_near_zero(self):
+        # noise above 1 nat (b^2/2 = 5e15) with k* = 50 inside 12 sigma + 20:
+        # the fixed grid runs at unit stride from k = 0. Oracle: with
+        # Q(n, x) = pmf(n-1; x) S, 1 <= S <= 1/(1 - n/x), the sum over k of
+        # Pois(k; a^2/2) pmf(k; b^2/2) is exp(-(a^2+b^2)/2) I_0(a b), and
+        # S - 1 is below 1e-13 for every order that counts.
+        a, b = 1e-6, 1e8
+        with mpmath.workdps(50):
+            A, B = mpmath.mpf(a), mpmath.mpf(b)
+            want = float(-(A * A + B * B) / 2 + mpmath.log(mpmath.besseli(0, A * B)))
+        assert marcum_q(a, b, 1) == 0.0
+        assert log_marcum_q(a, b, 1) == pytest.approx(want, rel=1e-15, abs=0)
