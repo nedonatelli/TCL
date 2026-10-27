@@ -137,6 +137,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positive variance, or with a negative one, now raises LinAlgError; pass
   the variance you mean, or drop the measurement.
 
+- **CFAR cells with an empty reference window report NaN, not a zero
+  threshold.** A cell whose clipped window held no reference cell (its
+  guard cells covering both ends of the signal, or `ref_cells=0`) got
+  noise estimate and threshold 0.0 in `cfar_ca`, `cfar_go`, `cfar_so`,
+  `cfar_os` and `cfar_2d`, so any positive sample there was reported as a
+  detection: on `[1, 1, 5, 1, 1]` with `guard_cells=2, ref_cells=1` cell 2
+  was a detection in all four 1-D detectors, and `cfar_2d` on a 5x5 image
+  with guard `(2, 2)`, ref `(1, 1)` gave the centre cell threshold 0.0.
+  Those cells now get NaN noise estimate and threshold and are never
+  detections; in 2-D a cell is empty when its row window and its column
+  window are both empty. A cell with one half window clipped away keeps
+  its 2.11.1 value, and a window that fits no cell at all now gives
+  all-NaN output from `cfar_ca`, `cfar_go` and `cfar_os` (`cfar_so` and
+  `cfar_2d(method='so')` still raise `ValueError`). The kernels are
+  unchanged; the rule is applied after them from the window geometry,
+  checked against a brute-force count of every cell's reference cells
+  for 1-D lengths 1 to 40 and 2-D shapes up to 9x9. What to do: cells with no reference cells now have NaN threshold and noise and are never detections; use np.nanmax / np.isnan when you post-process thresholds.
+
 ### Fixed
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0

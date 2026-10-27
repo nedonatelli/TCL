@@ -44,18 +44,19 @@ def _ref_noise_1d(signal, i, guard_cells, ref_cells, method):
     half_window = guard_cells + ref_cells
     left = signal[max(0, i - half_window) : max(0, i - guard_cells)]
     right = signal[min(n, i + guard_cells + 1) : min(n, i + half_window + 1)]
+    if len(left) + len(right) == 0:
+        return np.nan
     if method == "ca":
-        combined = np.concatenate([left, right])
-        return float(combined.mean()) if len(combined) else 0.0
-    left_avg = float(left.mean()) if len(left) else np.inf
-    right_avg = float(right.mean()) if len(right) else np.inf
+        return float(np.concatenate([left, right]).mean())
     if method == "go":
-        return (
-            max(left_avg, right_avg) if np.isfinite(max(left_avg, right_avg)) else 0.0
-        )
+        # An empty half is neutral at 0.0, as in the kernel.
+        left_avg = float(left.mean()) if len(left) else 0.0
+        right_avg = float(right.mean()) if len(right) else 0.0
+        return max(left_avg, right_avg)
     if method == "so":
-        val = min(left_avg, right_avg)
-        return 0.0 if val == np.inf else val
+        left_avg = float(left.mean()) if len(left) else np.inf
+        right_avg = float(right.mean()) if len(right) else np.inf
+        return min(left_avg, right_avg)
     raise ValueError(method)
 
 
@@ -65,6 +66,8 @@ def _ref_noise_os_1d(signal, i, guard_cells, ref_cells, k):
     left = signal[max(0, i - half_window) : max(0, i - guard_cells)]
     right = signal[min(n, i + guard_cells + 1) : min(n, i + half_window + 1)]
     combined = np.sort(np.concatenate([left, right]))
+    if len(combined) == 0:
+        return np.nan
     idx = min(k - 1, len(combined) - 1)
     return float(combined[idx])
 
@@ -76,6 +79,9 @@ def _ref_noise_2d(image, i, j, guard_rows, guard_cols, ref_rows, ref_cols, metho
     col_min, col_max = max(0, j - half_col), min(n_cols, j + half_col + 1)
     g_row_min, g_row_max = max(0, i - guard_rows), min(n_rows, i + guard_rows + 1)
     g_col_min, g_col_max = max(0, j - guard_cols), min(n_cols, j + guard_cols + 1)
+    n_window = (row_max - row_min) * (col_max - col_min)
+    if n_window == (g_row_max - g_row_min) * (g_col_max - g_col_min):
+        return np.nan
 
     if method == "ca":
         window = image[row_min:row_max, col_min:col_max]
@@ -96,8 +102,7 @@ def _ref_noise_2d(image, i, j, guard_rows, guard_cols, ref_rows, ref_cols, metho
         if method == "so":
             top_avg = float(np.mean(top)) if top else np.inf
             bottom_avg = float(np.mean(bottom)) if bottom else np.inf
-            val = min(top_avg, bottom_avg)
-            return 0.0 if val == np.inf else val
+            return min(top_avg, bottom_avg)
         # go: least-of becomes greatest-of; an empty half is neutral at 0.0
         # rather than +inf, mirroring the kernel's own empty-half handling.
         top_avg = float(np.mean(top)) if top else 0.0
