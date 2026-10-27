@@ -96,7 +96,7 @@ def _broken_imports(text):
             continue
         try:
             module = importlib.import_module(target)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 -- the test reports any import failure, whatever its type
             broken.append(f"{target} ({type(exc).__name__})")
             continue
         for raw in (names or "").split(","):

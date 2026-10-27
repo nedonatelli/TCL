@@ -30,7 +30,7 @@ def _has_compute_backend() -> bool:
         try:
             __import__(module)
             return True
-        except Exception:
+        except ImportError:
             continue
     return False
 
@@ -65,7 +65,7 @@ def _backend_names() -> "list[str]":
         try:
             __import__(module)
             present.append(label)
-        except Exception:
+        except ImportError:
             continue
     return present
 

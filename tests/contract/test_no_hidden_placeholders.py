@@ -71,7 +71,7 @@ def _validation_names():
 def _exported(package):
     try:
         module = importlib.import_module(package)
-    except Exception:
+    except Exception:  # noqa: BLE001 -- an unimportable package exports nothing, whatever the failure
         return set()
     return {n for n in dir(module) if not n.startswith("_")}
 

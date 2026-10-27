@@ -1067,7 +1067,7 @@ def generate_orbital_mechanics():
         # Import the module to get the visualization output
         exec(open(str(ROOT / "examples" / "orbital_mechanics.py")).read())
         print("  Saved: orbital_propagation.html")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating orbital mechanics: {e}")
 
 
@@ -1129,7 +1129,7 @@ def generate_tracking_3d():
         )
 
         save_figure(fig, "tracking_3d")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating 3D tracking: {e}")
 
 
@@ -1191,7 +1191,7 @@ def generate_gaussian_mixtures():
         )
 
         save_figure(fig, "gaussian_mixtures")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating Gaussian mixtures: {e}")
 
 
@@ -1267,7 +1267,7 @@ def generate_particle_filters_demo():
         )
 
         save_figure(fig, "particle_filters_demo")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating particle filters: {e}")
 
 
@@ -1314,7 +1314,7 @@ def generate_relativity_effects():
         )
 
         save_figure(fig, "relativity_effects")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating relativity effects: {e}")
 
 
@@ -1411,7 +1411,7 @@ def generate_advanced_filters():
         )
 
         save_figure(fig, "advanced_filters_comparison")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating advanced filters: {e}")
 
 
@@ -1467,7 +1467,7 @@ def generate_special_functions():
         )
 
         save_figure(fig, "special_functions")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating special functions: {e}")
 
 
@@ -1539,7 +1539,7 @@ def generate_static_estimation():
         )
 
         save_figure(fig, "static_estimation")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating static estimation: {e}")
 
 
@@ -1641,7 +1641,7 @@ def generate_filter_uncertainty():
         )
 
         save_figure(fig, "filter_uncertainty")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating filter uncertainty: {e}")
 
 
@@ -1684,7 +1684,7 @@ def generate_geophysical_models():
         )
 
         save_figure(fig, "geophysical_models")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating geophysical models: {e}")
 
 
@@ -1746,7 +1746,7 @@ def generate_ephemeris_demo():
         )
 
         save_figure(fig, "ephemeris_demo")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- one failing figure must not abort the batch; reported and skipped
         print(f"  Error generating ephemeris demo: {e}")
 
 
