@@ -172,6 +172,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `TrackDatabaseManager.store_track_history` checks that `states`,
+  `covariances`, `timestamps` and `residuals` have equal length before
+  writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used
+  to store a prefix silently (`(5, 5, 3)` stored 3 rows; residuals of
+  length 8 against 5 dropped 3) or store rows then raise `IndexError`; a
+  row rejected mid-call left its predecessors behind. What to do: pass
+  states, covariances, timestamps (and residuals) of equal length; a
+  mismatch now raises instead of storing a prefix.
+
 - `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
   hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time
   proportional to `abs(z)` for non-terminating 1F1 at `z > 0` (14 s at

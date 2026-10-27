@@ -8,6 +8,7 @@ region tests). No external numerical reference is required.
 
 import os
 import pickle
+import sqlite3
 import warnings
 from collections import namedtuple
 
@@ -414,6 +415,21 @@ def db(tmp_path):
     mgr.close()
 
 
+def _history_arrays(ns, nc, nt, nr):
+    rng = np.random.default_rng(1)
+    states = rng.normal(size=(ns, 2))
+    covs = np.array([np.eye(2) * (i + 1) for i in range(nc)])
+    times = np.arange(1, nt + 1, dtype=float)
+    res = None if nr is None else rng.normal(size=(nr, 2))
+    return states, covs, times, res
+
+
+def _history_len(db, track_id):
+    return db._connection.execute(
+        "SELECT COUNT(*) FROM track_states WHERE track_id = ?", (track_id,)
+    ).fetchone()[0]
+
+
 def _populate_detections(db):
     """Store a grid of detections and return the ground-truth list."""
     truth = []
@@ -612,6 +628,62 @@ class TestTrackInitiationAndState:
 
         st = db.get_track_state("t1")
         np.testing.assert_array_equal(st["state"], states[-1])
+
+    @pytest.mark.parametrize(
+        "ns, nc, nt, nr",
+        [(5, 5, 3, None), (3, 5, 5, None), (5, 3, 5, None), (5, 5, 5, 2), (5, 5, 5, 8)],
+    )
+    def test_length_mismatch_raises_before_any_row(self, db, ns, nc, nt, nr):
+        db.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        with pytest.raises(ValueError, match="same length"):
+            db.store_track_history("t1", *_history_arrays(ns, nc, nt, nr))
+        assert _history_len(db, "t1") == 1
+
+    def test_a_failing_row_rolls_back_the_whole_call(self, db):
+        """A uniform ndarray cannot carry a wrong-shape row, so row 3 fails on
+        a NaN timestamp instead: SQLite binds NaN as NULL and the NOT NULL
+        column rejects it."""
+        db.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        states, covs, times, _ = _history_arrays(5, 5, 5, None)
+        times[3] = np.nan
+        with pytest.raises(sqlite3.IntegrityError):
+            db.store_track_history("t1", states, covs, times)
+        db.initiate_track("t2", np.zeros(2), np.eye(2), 0.0)  # a later commit
+        assert _history_len(db, "t1") == 1
+
+    def test_failed_call_leaves_callers_pending_work_pending(self, db):
+        db.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        db._connection.execute("UPDATE tracks SET hits = 99")
+        assert db._connection.in_transaction
+        states, covs, times, _ = _history_arrays(5, 5, 5, None)
+        times[3] = np.nan
+        with pytest.raises(sqlite3.IntegrityError):
+            db.store_track_history("t1", states, covs, times)
+        assert db._connection.in_transaction
+        assert _history_len(db, "t1") == 1
+        assert db._connection.execute("SELECT hits FROM tracks").fetchone()[0] == 99
+        db._connection.rollback()
+        assert db._connection.execute("SELECT hits FROM tracks").fetchone()[0] != 99
+        assert _history_len(db, "t1") == 1
+
+    def test_successful_call_persists_across_reopen(self, tmp_path):
+        path = str(tmp_path / "hist.db")
+        mgr = TrackDatabaseManager(path)
+        mgr.open(mode="w")
+        mgr.initiate_track("t1", np.zeros(2), np.eye(2), 0.0)
+        states, covs, times, res = _history_arrays(4, 4, 4, 4)
+        mgr.store_track_history("t1", states, covs, times, res)
+        mgr._connection.close()
+        mgr._connection = None
+        mgr2 = TrackDatabaseManager(path)
+        mgr2.open(mode="r")
+        try:
+            hist = mgr2.get_track_history("t1", start_time=0.5)
+            np.testing.assert_array_equal(hist["states"], states)
+            np.testing.assert_array_equal(hist["timestamps"], times)
+            np.testing.assert_array_equal(hist["residuals"], res)
+        finally:
+            mgr2.close()
 
     def test_get_initiation_queue(self, db):
         for i in range(6):
