@@ -352,20 +352,67 @@ def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
     assert np.isnan(gating.mahalanobis_distance(nu, _nan_entry(n)))
 
 
-@pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
-@pytest.mark.parametrize(
-    "kernel, n", [(gating._invert_2x2, 2), (gating._invert_3x3, 3)], ids=["2x2", "3x3"]
-)
-def test_invert_kernels_compare_the_determinant_without_nnan(kernel, n):
-    """The x86 failure mode, checked where it can be seen on any platform.
+_FCMP_PREDICATES = {
+    "false", "oeq", "ogt", "oge", "olt", "ole", "one", "ord",
+    "ueq", "ugt", "uge", "ult", "ule", "une", "uno", "true",
+}  # fmt: skip
+
+
+def _fcmp_flags(line):
+    """The fast-math flags on one LLVM ``fcmp`` instruction."""
+    tokens = line.split(" fcmp ", 1)[1].split()
+    return set(tokens[: next(i for i, t in enumerate(tokens) if t in _FCMP_PREDICATES)])
+
+
+def _nan_unsafe_compares(kernel, fastmath):
+    """Every ``fcmp`` in ``kernel`` compiled with ``fastmath`` that may assume
+    no NaN or no infinity.
 
     A kernel loaded from numba's on-disk cache returns empty IR from
-    ``inspect_llvm``, so the kernel is recompiled uncached here with its
-    own ``fastmath`` flags.
+    ``inspect_llvm``, so the kernel is recompiled uncached here.
     """
-    fresh = numba.njit(fastmath=kernel.targetoptions["fastmath"])(kernel.py_func)
-    fresh(np.eye(n))
+    parallel = kernel.targetoptions.get("parallel", False)
+    fresh = numba.njit(fastmath=fastmath, parallel=parallel)(kernel.py_func)
+    _call(fresh, _FASTMATH_KERNELS[kernel]()[0])
     ir = fresh.inspect_llvm(fresh.signatures[0])
-    compares = [line for line in ir.splitlines() if " fcmp " in line]
-    assert compares
-    assert [c for c in compares if " fast " in c or " nnan " in c] == []
+    return [
+        line.strip()
+        for line in ir.splitlines()
+        if " fcmp " in line and _fcmp_flags(line) & {"fast", "nnan", "ninf"}
+    ]
+
+
+@pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
+@pytest.mark.parametrize("kernel", list(_FASTMATH_KERNELS), ids=lambda k: k.__name__)
+def test_no_kernel_compares_floats_under_nnan_or_ninf(kernel):
+    """The x86 failure mode, checked where it can be seen on any platform.
+
+    Under ``nnan``/``ninf`` LLVM may compile a float comparison as if neither
+    operand were NaN or infinite. x86 then lowered ``det != 0.0`` in
+    ``_invert_2x2``/``_invert_3x3`` without the unordered check, so a NaN
+    determinant compared equal to zero, and the GO-CFAR ``max`` of two
+    half-window averages dropped a NaN one. arm64 keeps the IEEE answer
+    for the determinant test either way, so the flags are checked in the
+    IR rather than through outcomes. A kernel that compares floats must
+    leave ``nnan`` and ``ninf`` out of its ``fastmath`` set.
+    """
+    assert _nan_unsafe_compares(kernel, kernel.targetoptions["fastmath"]) == []
+
+
+@pytest.mark.skipif(_jit_disabled(), reason="NUMBA_DISABLE_JIT=1: no IR to inspect")
+@pytest.mark.parametrize(
+    "kernel",
+    [
+        gating._invert_2x2,
+        gating._invert_3x3,
+        detection._cfar_go_kernel,
+        detection._cfar_so_kernel,
+        detection._cfar_2d_go_kernel,
+        detection._cfar_2d_so_kernel,
+    ],
+    ids=lambda k: k.__name__,
+)
+def test_ir_scan_sees_the_compares_under_full_fastmath(kernel):
+    """The scan above is not vacuous: each kernel that compares floats is
+    caught by it when compiled with ``fastmath=True``."""
+    assert _nan_unsafe_compares(kernel, True) != []
