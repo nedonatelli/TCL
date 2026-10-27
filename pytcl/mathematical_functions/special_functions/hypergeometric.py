@@ -110,10 +110,10 @@ _LOG_EPS = math.log(np.finfo(np.float64).eps)
 _LN2 = math.log(2.0)
 _CERTIFIED_SUM_MAX_TERMS = 1_000_000
 _ASYMPTOTIC_MAX_TERMS = 200
-# scipy's hyp1f1 at 1e2 <= -z < 1e9 loses about eps * abs(b - a) / d of its
+# scipy's hyp1f1 at 1e2 <= -z < 1e9 loses up to eps * abs(b - a) / d of its
 # relative accuracy when the exact b - a is a distance d from a pole of
-# Gamma(b - a) (a non-positive integer): it rounds b - a first. Inside this
-# distance the expansion is used, and NaN where it does not certify.
+# Gamma(b - a) (a non-positive integer), b - a not being carried exactly
+# inside it. Inside this distance the expansion is used where it certifies.
 _POLE_DISTANCE = 1e-6
 
 
@@ -195,8 +195,10 @@ def _pole_distance(b: Any, a: Any) -> Any:
 
     Zero exactly when the exact difference is a non-positive integer, a
     pole of Gamma(b - a): the rounded difference alone says -300 for
-    -400.3 - (-100.3), whose exact value is -300 - 1.4e-14. Scalars and
-    arrays alike.
+    -400.3 - (-100.3), whose exact value is -300 - 1.4e-14. Exact for
+    abs(b - a) < 2**53; beyond that the TwoSum error can itself be an
+    integer and the distance is only approximate (never a false zero).
+    Scalars and arrays alike.
     """
     c, err = _two_diff(b, a)
     n = np.minimum(0.0, np.round(c))
@@ -540,7 +542,11 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     large = general & (np.abs(z) >= _HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
     # At a pole itself (b - a exactly a non-positive integer) the algebraic
     # term vanishes and scipy is right; it is the near miss that it rounds.
-    pole_distance = _pole_distance(b, a)
+    # Where the expansion does not certify, scipy's value is kept there as
+    # everywhere else: its near-pole error cannot be estimated pointwise
+    # (see the docstring).
+    pole_distance = np.full(z.shape, np.inf)
+    pole_distance[finite_params] = _pole_distance(b[finite_params], a[finite_params])
     near_pole = (
         large & (z < 0) & (pole_distance > 0.0) & (pole_distance < _POLE_DISTANCE)
     )
@@ -554,8 +560,8 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
             a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
         )
     uncertified = far & np.isnan(result)
-    unanswered = uncertified & (beyond | near_pole)
-    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~unanswered)
+    unanswered = uncertified & beyond
+    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~beyond)
     result[use_scipy] = sp.hyp1f1(a[use_scipy], b[use_scipy], z[use_scipy])
     scipy_inf = use_scipy & np.isinf(result) & np.isfinite(z)
     overflowed = scipy_inf & general
@@ -575,9 +581,8 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
             "hyp1f1: returning NaN. Either the large-|z| asymptotic "
             "expansion (DLMF 13.7.2) does not reach double precision here "
             "and scipy's hyp1f1 is not used at |z| >= 1e9 (its run time "
-            "grows with |z|) or within 1e-6 of a pole of Gamma(b - a) at "
-            "z < 0 (it rounds b - a first), or scipy overflowed and the "
-            "overflow could not be proven.",
+            "grows with |z|), or scipy overflowed and the overflow could "
+            "not be proven.",
             RuntimeWarning,
             stacklevel=3,
         )
@@ -680,15 +685,24 @@ def hyp1f1(
     - near a pole of Gamma(b - a), that is when the exact ``b - a`` is
       within 1e-6 of a non-positive integer but not at one, at
       ``1e2 <= -z < 1e9``: the expansion where it certifies (1.1e-14 over
-      150 random points at ``-z`` to 2e4), else NaN with a
-      ``RuntimeWarning``. scipy rounds ``b - a`` first and its relative
-      error there grows like ``eps * abs(b - a) / d`` with ``d`` the
-      distance to the pole (2.3e-7 at ``d`` in [1e-8, 1e-6), 2.0e-1 below
-      1e-12, in the same sample; ``hyp1f1(-100.3, -400.3, -5000)``, where
-      ``fl(b - a) = -300`` and the exact difference is -300 - 1.4e-14,
-      is 0.0 in scipy and 9.366e99 exactly). The expansion's integer
-      tests use the exact difference (TwoSum), so ``hyp1f1(-100.3,
-      -400.3, -1e10)`` is ``+inf`` (4.4e734) where it was 0.0.
+      150 random points at ``-z`` to 2e4; ``hyp1f1(25.6, 0.6, -1000)`` is
+      1.047e-66 where scipy gives -0.0), else scipy's value. scipy does
+      not carry ``b - a`` exactly there and its relative error reaches
+      ``eps * abs(b - a) / d`` with ``d`` the distance to the pole (the
+      maximum over 150 random points at ``-z`` to 2e4: 2.3e-7 at ``d`` in
+      [1e-8, 1e-6), 2.0e-1 below 1e-12), but it is often accurate: on
+      2,182 random points with ``abs(a) <= 150``, ``-z`` from 1e2 to 3e3
+      and the expansion not certifying, scipy was within 1e-12 at 1,440
+      and worse at 742 (its error is not predictable from the inputs: a
+      one-ulp shift of ``a`` often leaves it unchanged, and the bound
+      above is exceeded at every one of the 1,440 too). Unfixed scipy
+      values of this kind: ``hyp1f1(-100.3, -400.3, -5000)`` is 0.0 (exact
+      9.366e99; ``fl(b - a) = -300``, exact -300 - 1.4e-14),
+      ``hyp1f1(12.3, 2.3, -100)`` is off by 45%, ``hyp1f1(20.1, 0.1, -150)``
+      and ``hyp1f1(30.1, 10.1, -300)`` have the wrong sign. The expansion's
+      own integer tests use the exact difference (TwoSum), so
+      ``hyp1f1(-100.3, -400.3, -1e10)`` is ``+inf`` (4.4e734) where it was
+      0.0.
     - elsewhere the value is scipy's, unchanged, including its errors: up
       to 3.4e-11 at ``z < 0`` (b near 6e3) and 1.4e-11 at finite ``z > 0``
       in the samples above; its near-pole loss at ``-z < 1e2`` (5.0e-3 at
@@ -905,15 +919,22 @@ def hyp1f1_regularized(
 
     so that ``hyp1f1_regularized(1, 0, 1)`` is e (it was nan, from
     ``hyp1f1/gamma`` evaluating inf/inf). Large ``abs(z)`` is evaluated as
-    in :func:`hyp1f1`. The shifted parameter ``a + m + 1`` is rounded;
-    when ``1 - a`` is within 1e-6 of a non-positive integer and that
-    rounding is inexact the value, proportional to sin(pi a), is lost, and
-    NaN with a ``RuntimeWarning`` is returned instead
+    in :func:`hyp1f1`. The shifted parameter ``a + m + 1`` is rounded. At
+    ``z < 0`` the value has a part proportional to sin(pi a), which is
+    sensitive to that rounding when ``1 - a`` is within 1e-6 of a
+    non-positive integer; the sensitivity is measured with a one-ulp
+    shift of the parameter, and when the rounding moves the value by more
+    than 1e-12 NaN with a ``RuntimeWarning`` is returned
     (``hyp1f1_regularized(1.0000000000000002, -3, -1e10)``, whose value is
-    -5.33e-25, was 0.0). The prefactor ``(a)_{m+1} z^{m+1} / (m+1)!`` is
+    -5.33e-25, was 0.0; at ``b = -3`` and ``a = 1 + 2 ulp`` the refusal
+    starts at ``z = -25``, where the rounded value was off by 5e-11, and
+    ``z = -10`` keeps its 2.4e-15; at ``z >= 0`` and at small ``abs(z)``
+    nothing changes, ``hyp1f1_regularized(1.0000000000000002, -3, 1)`` is
+    e to 3.9e-16). The prefactor ``(a)_{m+1} z^{m+1} / (m+1)!`` is
     evaluated in double precision and overflows for large ``m`` or
-    ``abs(z)``, giving NaN (``hyp1f1_regularized(32.000000000000007, -33,
-    -1e9)``, 5.9e-212).
+    ``abs(z)``, giving NaN or ``+-inf`` for a finite value
+    (``hyp1f1_regularized(32.000000000000007, -33, -1e9)`` is NaN,
+    5.9e-212; ``hyp1f1_regularized(0.5, -150, 3)`` is ``inf``, 1.01e72).
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -925,21 +946,34 @@ def hyp1f1_regularized(
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         result[~pole] = _hyp1f1(a[~pole], b[~pole], z[~pole]) / sp.gamma(b[~pole])
         a, m1, z = a[pole], 1.0 - b[pole], z[pole]
-        # The shifted parameter a + m + 1 is rounded; when that rounding
-        # lands within 1e-6 of a pole of Gamma(1 - a) the value, which is
-        # proportional to sin(pi a) there, is lost with it.
         shifted, shift_err = _two_diff(a, -m1)
-        unsafe = (shift_err != 0.0) & (_pole_distance(1.0, a) < _POLE_DISTANCE)
-        at_pole = (
-            sp.poch(a, m1) * z**m1 * sp.rgamma(m1 + 1.0) * _hyp1f1(shifted, m1 + 1.0, z)
-        )
+        prefactor = sp.poch(a, m1) * z**m1 * sp.rgamma(m1 + 1.0)
+        at_pole = prefactor * _hyp1f1(shifted, m1 + 1.0, z)
+        # The shifted parameter a + m + 1 is rounded. At z < 0 the value has
+        # a part proportional to sin(pi a), which 1 - a near a pole of
+        # Gamma(1 - a) makes sensitive to that rounding: the sensitivity is
+        # measured by a one-ulp shift and the value refused when it moves
+        # by more than 1e-12 (from z = -25 on for a = 1 + 2 ulp, b = -3).
+        check = np.isfinite(a) & (shift_err != 0.0) & (z < 0.0)
+        check[check] &= _pole_distance(1.0, a[check]) < _POLE_DISTANCE
+        unsafe = np.zeros(z.shape, dtype=bool)
+        for i in np.flatnonzero(check):
+            v0, step = float(at_pole.flat[i]), float(np.spacing(shifted.flat[i]))
+            v1 = prefactor.flat[i] * float(
+                _hyp1f1(shifted.flat[i] + step, m1.flat[i] + 1.0, z.flat[i])
+            )
+            if v0 == 0.0 or not np.isfinite(v1):
+                unsafe.flat[i] = True
+                continue
+            shift = abs(v1 - v0) / abs(v0) * abs(float(shift_err.flat[i])) / step
+            unsafe.flat[i] = shift > 1e-12
         result[pole] = np.where(unsafe, np.nan, at_pole)
     if np.any(unsafe):
         warnings.warn(
             "hyp1f1_regularized: returning NaN at a non-positive integer b "
-            "where a + 1 - b is rounded and 1 - a is within 1e-6 of a "
-            "non-positive integer; the value is proportional to sin(pi a) "
-            "and is lost in that rounding.",
+            "where a + 1 - b is rounded, 1 - a is within 1e-6 of a "
+            "non-positive integer, and the rounding moves the value by more "
+            "than 1e-12 (its sin(pi a) part is lost in it).",
             RuntimeWarning,
             stacklevel=2,
         )

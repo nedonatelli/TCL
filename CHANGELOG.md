@@ -201,17 +201,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `hyp1f1(9999.5, 0.5, -1)` and `hyp1f1(-1e4, 1, 1)` return NaN with no
   warning (the values of the last three are 1, 0.29107 and -0.025079).
   Near a pole of Gamma(b - a) (the exact `b - a` within 1e-6 of a
-  non-positive integer, but not at one) scipy rounds `b - a` first and
-  its relative error at `1e2 <= -z < 1e9` grows like
-  `eps * abs(b - a) / d` with `d` the distance to the pole: over 150
-  random points with `-z` to 2e4, 2.3e-7 at `d` in [1e-8, 1e-6) and
-  2.0e-1 below 1e-12; `hyp1f1(-100.3, -400.3, -5000)` is 0.0 in scipy
-  and 9.366e99 exactly (`fl(b - a) = -300`, the exact difference
-  -300 - 1.4e-14). There pytcl now uses the expansion where it certifies
-  (1.1e-14 over the same 150 points) and returns NaN with a
-  `RuntimeWarning` otherwise; at `-z < 1e2` (5.0e-3 at `d` below 1e-12
-  over 150 points) and at `z > 0` (3.4e-13 at `hyp1f1(-100.3, -400.3,
-  500)`) scipy's value is kept. The expansion's own integer tests on
+  non-positive integer, but not at one) scipy does not carry `b - a`
+  exactly, and its relative error at `1e2 <= -z < 1e9` reaches
+  `eps * abs(b - a) / d` with `d` the distance to the pole (the maximum
+  over 150 random points with `-z` to 2e4: 2.3e-7 at `d` in [1e-8, 1e-6)
+  and 2.0e-1 below 1e-12). There pytcl now uses the expansion where it
+  certifies (1.1e-14 over the same 150 points; `hyp1f1(25.6, 0.6,
+  -1000)` is 1.047e-66 where scipy gives -0.0) and keeps scipy's value
+  otherwise, as before: scipy is often accurate there (on 2,182 random
+  points with `abs(a) <= 150`, `-z` from 1e2 to 3e3 and the expansion
+  not certifying, within 1e-12 at 1,440 and worse at 742), and its error
+  cannot be predicted from the inputs (a one-ulp shift of `a` often
+  leaves it unchanged; the bound above is exceeded at every accurate
+  point too), so nothing there is turned into NaN. Unfixed scipy values
+  of this kind, disclosed: `hyp1f1(-100.3, -400.3, -5000)` is 0.0 (exact
+  9.366e99; `fl(b - a) = -300`, the exact difference -300 - 1.4e-14),
+  `hyp1f1(12.3, 2.3, -100)` is off by 45%, `hyp1f1(20.1, 0.1, -150)` and
+  `hyp1f1(30.1, 10.1, -300)` have the wrong sign; at `-z < 1e2` scipy
+  loses up to 5.0e-3 at `d` below 1e-12 (150 points) and at `z > 0`
+  3.4e-13 (`hyp1f1(-100.3, -400.3, 500)`). The expansion's own integer tests on
   `b - a` use the exact difference (TwoSum): with the rounded one,
   `hyp1f1(-100.3, -400.3, -1e10)`, `hyp1f1(-60.7, -210.7, -1e12)` and
   `hyp1f1(0.5000000000000001, -4.5, -1e10)` returned 0.0 for 4.4e734
@@ -249,22 +257,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
   `OverflowError` and now returns `+-inf`. `hyp1f1_regularized` at a
   non-positive integer `b = -m` rounds its shifted parameter `a + m + 1`;
-  when `1 - a` is within 1e-6 of a non-positive integer and that rounding
-  is inexact it now returns NaN with a `RuntimeWarning` instead of a
-  value that has lost its sin(pi a) factor
-  (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was 0.0; the
-  value is -5.33e-25). 0F1, 2F1, U and the general pFq series were
+  at `z < 0`, when `1 - a` is within 1e-6 of a non-positive integer and
+  that rounding is inexact, the value's sin(pi a) part is sensitive to
+  it: the sensitivity is measured with a one-ulp shift and NaN with a
+  `RuntimeWarning` is returned where the rounding moves the value by more
+  than 1e-12 (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was
+  0.0, the value is -5.33e-25; at `b = -3`, `a = 1 + 2 ulp` the refusal
+  starts at `z = -25`, where v2.11.1 was off by 5e-11, and `z = -10`
+  keeps its 2.4e-15; at `z >= 0` and small `abs(z)` nothing changes:
+  `hyp1f1_regularized(1.0000000000000002, -3, 1)` is e to 3.9e-16, and a
+  100,000-point sample with `abs(z)` to 1e2 is unchanged). Its prefactor
+  `(a)_{m+1} z^{m+1} / (m+1)!` is evaluated in double precision and, for
+  large `m` or `abs(z)`, overflows to NaN or `+-inf` for a finite value
+  (`hyp1f1_regularized(0.5, -150, 3)` is `inf`, the value 1.01e72;
+  `(1.5, -200, 50)` is NaN, 2.9e364), as in v2.11.1; unchanged, on the
+  backlog. 0F1, 2F1, U and the general pFq series were
   audited and do not hang. No other pytcl module calls these functions.
   What to do: nothing for calls that hung (they now return) or overflowed
   (they now carry the true sign); expect NaN with a `RuntimeWarning` where
   an overflow cannot be proven, which in the samples above was only past
   the 1e6-term cap (`abs(z)` above about 1.6e5 with scipy overflowing),
-  at `abs(z) >= 1e9` where the expansion does not reach double precision,
-  or within 1e-6 of a pole of Gamma(b - a) at `1e2 <= -z < 1e9` where it
-  does not certify (scipy's value there had lost up to every digit);
-  parameters that round `b - a` to a non-positive integer now give the
-  value of the exact difference. A certified sum near the 1e6-term cap
-  costs about 0.2 s per element (0.4 s at `z < 0`).
+  or at `abs(z) >= 1e9` where the expansion does not reach double
+  precision; parameters that round `b - a` to a non-positive integer now
+  give the value of the exact difference at `abs(z) >= 1e9`, at `-inf`,
+  and at `1e2 <= -z < 1e9` where the expansion certifies, and scipy's
+  value (disclosed above) elsewhere. `hyp1f1_regularized` at a
+  non-positive integer `b` and `z < 0` returns NaN with a
+  `RuntimeWarning` where the rounding of `a + 1 - b` moves the value by
+  more than 1e-12. A certified sum near the 1e6-term cap costs about
+  0.2 s per element (0.4 s at `z < 0`).
 
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in

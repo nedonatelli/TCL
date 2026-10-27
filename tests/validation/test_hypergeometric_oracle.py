@@ -540,11 +540,28 @@ class TestExactIntegerTests:
         assert want != 0.0
         assert hyp1f1(a, b, z) == pytest.approx(want, rel=5e-14, abs=0)
 
-    def test_near_pole_in_the_scipy_band_without_the_expansion_is_nan(self):
-        # 9.366e99 exactly; scipy returns 0.0 and the expansion does not
-        # certify at -z = 5e3 for a(a - b + 1) of 3e4.
-        with pytest.warns(RuntimeWarning, match="pole of Gamma"):
-            assert np.isnan(hyp1f1(-100.3, -400.3, -5000.0))
+    @pytest.mark.parametrize(
+        "a, b, z, dps",
+        [
+            (15.7, -84.3, -150.0, 60),  # -574373.13432876; b - a = -100 - 3.6e-15
+            (117.17471070022194, 0.17471117939940314, -183.93047506716982, 250),
+        ],
+    )
+    def test_near_pole_without_the_expansion_keeps_scipy(self, a, b, z, dps, recwarn):
+        # 1fbe3f5 returned NaN here; scipy is accurate at these points.
+        assert 0.0 < _pole_distance(b, a) < 1e-6
+        want = float(_kummer_sum(a, b, z, dps))
+        assert hyp1f1(a, b, z) == pytest.approx(want, rel=1e-13, abs=0)
+        assert not recwarn
+
+    def test_parameters_at_infinity_warn_nothing(self):
+        # 1fbe3f5 ran the TwoSum over infinite parameters (inf - inf).
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            for f in (hyp1f1, lambda a, b, z: generalized_hypergeometric([a], [b], z)):
+                assert np.isnan(f(np.inf, 1.0, 1.0))
+                assert f(1.0, np.inf, 1.0) == 1.0
+                assert np.isnan(f(-np.inf, 2.0, -200.0))
 
     def test_exact_pole_in_the_scipy_band_stays_with_scipy(self, recwarn):
         # b - a = -1 exactly: the algebraic term vanishes and scipy is right.
@@ -553,11 +570,49 @@ class TestExactIntegerTests:
         assert hyp1f1(-0.5, -0.5, -100.0) == pytest.approx(math.exp(-100.0), rel=5e-14)
         assert not recwarn
 
-    def test_regularized_at_a_pole_with_a_rounded_shift_is_nan(self):
-        # a + m + 1 = 5.0000000000000002 rounds to 5, and 1 - a is 2.2e-16
-        # from a pole of Gamma(1 - a); the value, -5.33e-25, was 0.0.
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            (1.0000000000000002, -3.0, -1e10),  # -5.33e-25; was 0.0
+            (1.0000000000000002, -3.0, -60.0),  # -9.69e-17; was 1.1e-19
+            (1.0000000000000002, -3.0, -25.0),  # v2.11.1 off by 5e-11
+            (1.0000001, -3.0, -500.0),  # v2.11.1 off by 2.2e-9
+        ],
+    )
+    def test_regularized_at_a_pole_with_a_rounded_shift_is_nan(self, a, b, z):
+        # a + m + 1 rounds (5.0000000000000002 to 5) and 1 - a is within
+        # 1e-6 of a pole of Gamma(1 - a); the sin(pi a) part is lost.
         with pytest.warns(RuntimeWarning, match="sin\\(pi a\\)"):
-            assert np.isnan(hyp1f1_regularized(1.0000000000000002, -3.0, -1e10))
+            assert np.isnan(hyp1f1_regularized(a, b, z))
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            (1.0000000000000002, -3.0, 1.0),  # e
+            (1.0000000000000002, -3.0, -1.0),
+            (1.0000000000000002, -3.0, -10.0),
+            (1.0000001, -3.0, 0.5),
+            (2.0000001, -1.0, 2.0),
+            (0.9999999, -2.0, 1.0),
+            (1.0000001, 0.0, 1.0),
+            (1.0000001, -3.0, 50.0),
+        ],
+    )
+    def test_regularized_at_a_pole_with_a_rounded_shift_at_small_z(
+        self, a, b, z, recwarn
+    ):
+        # 1fbe3f5 returned NaN for all of these; the rounding of a + m + 1
+        # is harmless where the sin(pi a) part is negligible.
+        m = int(-b)
+        with mpmath.workdps(60):
+            want = float(
+                mpmath.rf(mpmath.mpf(a), m + 1)
+                * mpmath.mpf(z) ** (m + 1)
+                / mpmath.factorial(m + 1)
+                * mpmath.hyp1f1(mpmath.mpf(a) + m + 1, m + 2, mpmath.mpf(z))
+            )
+        assert hyp1f1_regularized(a, b, z) == pytest.approx(want, rel=1e-14, abs=0)
+        assert not recwarn
 
     def test_regularized_at_a_pole_with_an_exact_shift(self, recwarn):
         a, m, z = 2.5, 3, -1e10
