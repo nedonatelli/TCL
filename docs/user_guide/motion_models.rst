@@ -125,8 +125,15 @@ Coordinated Turn
 
    from pytcl.dynamic_models import q_coord_turn_2d, q_coord_turn_3d
 
-   Q_2d = q_coord_turn_2d(T=1.0, sigma_a=1.0, sigma_omega=0.01)
-   Q_3d = q_coord_turn_3d(T=1.0, sigma_a=1.0, sigma_omega=0.01)
+   Q_2d = q_coord_turn_2d(
+       T=1.0, sigma_a=1.0, sigma_omega=0.01, state_type="position_velocity_omega"
+   )
+   Q_3d = q_coord_turn_3d(
+       T=1.0, sigma_a=1.0, sigma_omega=0.01, state_type="position_velocity_omega"
+   )
+
+Both are MATLAB's ``QCoordTurn`` and rank 1, so ``np.linalg.cholesky`` of
+them fails; give a square-root filter the vector ``G`` from their Notes instead.
 
 Continuous-Time Dynamics
 ------------------------

@@ -50,184 +50,180 @@ References
 import numpy as np
 from numpy.typing import NDArray
 
+_STATE_TYPES = ("position_velocity", "position_velocity_omega")
+
+
+def _q_coord_turn(
+    T: float,
+    sigma_a: float,
+    sigma_omega: float | None,
+    num_dims: int,
+    state_type: str,
+) -> NDArray[np.floating]:
+    if state_type not in _STATE_TYPES:
+        raise ValueError(
+            f"state_type must be one of {_STATE_TYPES}, got {state_type!r}"
+        )
+    G = np.tile(np.array([T**2 / 2, T]) * sigma_a, num_dims)
+    if state_type == "position_velocity_omega":
+        G = np.append(G, T * (0.0 if sigma_omega is None else sigma_omega))
+    elif sigma_omega is not None and sigma_omega != 0:
+        raise ValueError(
+            "sigma_omega has no effect without a turn-rate state; pass "
+            "state_type='position_velocity_omega'"
+        )
+    return np.outer(G, G)
+
 
 def q_coord_turn_2d(
     T: float,
     sigma_a: float,
-    sigma_omega: float = 0.0,
+    sigma_omega: float | None = None,
     state_type: str = "position_velocity",
 ) -> NDArray[np.floating]:
     """
     Create process noise covariance for 2D coordinated turn model.
 
+    Port of MATLAB TCL's ``QCoordTurn`` (2-D, no linear acceleration).
+
     Parameters
     ----------
     T : float
         Time step in seconds.
     sigma_a : float
-        Standard deviation of acceleration noise [m/s²].
+        Standard deviation of the noise driving the velocity components
+        [m/s²]. ``QCoordTurn``'s ``sigmaV2`` is ``sigma_a**2``.
     sigma_omega : float, optional
-        Standard deviation of turn rate noise [rad/s²].
-        Only used if state_type includes omega.
+        Standard deviation of turn rate noise [rad/s²]. ``QCoordTurn``'s
+        ``sigmaTurn2`` is ``sigma_omega**2``. Requires
+        ``state_type='position_velocity_omega'`` unless it is 0; omitted
+        there, it is 0.
     state_type : str, optional
         State vector composition:
         - 'position_velocity': [x, vx, y, vy] (default)
         - 'position_velocity_omega': [x, vx, y, vy, omega]
 
+        Any other value raises ``ValueError``.
+
     Returns
     -------
     Q : ndarray
-        Process noise covariance matrix.
+        Process noise covariance matrix, rank 1.
+
+    Raises
+    ------
+    ValueError
+        If ``state_type`` is not one of the values above, or if a nonzero
+        ``sigma_omega`` is given with ``state_type='position_velocity'``.
 
     Examples
     --------
-    >>> Q = q_coord_turn_2d(T=1.0, sigma_a=1.0)
-    >>> Q.shape
-    (4, 4)
+    >>> import numpy as np
+    >>> Q = q_coord_turn_2d(T=1.0, sigma_a=2.0, sigma_omega=0.1,
+    ...                     state_type='position_velocity_omega')
+    >>> Q[0]
+    array([1. , 2. , 1. , 2. , 0.1])
+    >>> int(np.linalg.matrix_rank(Q))
+    1
 
     Notes
     -----
-    **This is not a port of MATLAB's ``QCoordTurn``.** It stacks an
-    independent discrete-white-noise-acceleration block per axis,
-    ``sigma_a**2 * [[T**4/4, T**3/2], [T**3/2, T**2]]``, plus a diagonal
-    ``sigma_omega**2 * T**2`` for omega. ``QCoordTurn`` instead builds
-    ``Q = G * G.T`` from a single column vector
-    ``G = [sigmaV*T**2/2; sigmaV*T**2/2; sigmaV*T; sigmaV*T; sigmaTurn*T]``
-    (state ``[x; y; xdot; ydot; omega]``), so its result is rank 1 and every
-    x/y/velocity/omega pair is correlated. Here there is no x-y, no
-    position-omega and no velocity-omega coupling.
+    ``Q = G G'`` with the single column
+    ``G = [sigma_a*T**2/2, sigma_a*T, sigma_a*T**2/2, sigma_a*T, sigma_omega*T]``,
+    as in ``QCoordTurn``. Every x, y, velocity and omega pair is correlated
+    and ``Q`` has rank 1, so ``np.linalg.cholesky(Q)`` fails; a square-root
+    filter should take ``G`` itself as the noise factor.
 
-    The comparable MATLAB branch is the length-5 state (2D, no linear
-    acceleration) with ``sigmaV2 = sigma_a**2`` and
-    ``sigmaTurn2 = sigma_omega**2``, which is this function with
-    ``state_type='position_velocity_omega'`` after permuting this
-    function's ``[x, vx, y, vy, omega]`` to MATLAB's
-    ``[x, y, vx, vy, omega]``. ``state_type='position_velocity'`` has no
-    MATLAB counterpart (``QCoordTurn`` rejects 4-element states); its
-    comparable object is the leading 4x4 block of that same length-5 result.
-    MATLAB's length-6 branch (adds a linear-acceleration state) has no
-    counterpart here.
+    ``QCoordTurn`` orders its state ``[x, y, xdot, ydot, omega]``; this
+    function uses the interleaved ``[x, vx, y, vy, omega]`` of
+    :func:`f_coord_turn_2d`. Permuting this result with indices
+    ``[0, 2, 1, 3, 4]`` gives ``QCoordTurn``'s matrix (``QCoordTurn`` with
+    ``sigmaV2 = sigma_a**2`` evaluates ``sqrt(sigmaV2)``, which is
+    ``sigma_a`` only up to rounding).
 
-    Measured at ``T=1, sigma_a=2, sigma_omega=0.1``: the diagonals agree
-    exactly, but the largest elementwise difference from ``QCoordTurn`` is
-    4.0 for both state types. The ``'position_velocity'`` result has rank 2
-    (eigenvalues ``[0, 0, 5, 5]``) and the ``'position_velocity_omega'``
-    result has rank 3 (eigenvalues ``[0, 0, 0.01, 5, 5]``); ``QCoordTurn``
-    has rank 1 in both. Matching diagonal blocks is the only property the
-    two share, so filters tuned against one will not reproduce the other.
+    ``QCoordTurn`` rejects 4-element states, so
+    ``state_type='position_velocity'`` returns the leading 4x4 block of the
+    ``'position_velocity_omega'`` result. ``QCoordTurn``'s length-6 branch (adds a
+    linear-acceleration state) has no counterpart here.
 
-    The state is interleaved, unlike MATLAB's derivative-major layout; see
-    :func:`pytcl.dynamic_models.q_poly_kal`.
+    Until v2.12.0 this function stacked independent per-axis
+    discrete-white-noise-acceleration blocks instead (rank 2 for
+    ``'position_velocity'``, 3 with omega; largest elementwise difference
+    from ``QCoordTurn`` 4.0 at ``T=1, sigma_a=2, sigma_omega=0.1``).
 
     See Also
     --------
     f_coord_turn_2d : State transition matrix for 2D coordinated turn.
     """
-    var_a = sigma_a**2
-
-    # Discrete white noise acceleration model for x and y
-    Q_pos_vel = var_a * np.array(
-        [
-            [T**4 / 4, T**3 / 2],
-            [T**3 / 2, T**2],
-        ],
-        dtype=np.float64,
-    )
-
-    if state_type == "position_velocity_omega":
-        n = 5
-        Q = np.zeros((n, n), dtype=np.float64)
-        # x, vx block
-        Q[0:2, 0:2] = Q_pos_vel
-        # y, vy block
-        Q[2:4, 2:4] = Q_pos_vel
-        # omega (turn rate uncertainty)
-        Q[4, 4] = sigma_omega**2 * T**2
-    else:
-        n = 4
-        Q = np.zeros((n, n), dtype=np.float64)
-        # x, vx block
-        Q[0:2, 0:2] = Q_pos_vel
-        # y, vy block
-        Q[2:4, 2:4] = Q_pos_vel
-
-    return Q
+    return _q_coord_turn(T, sigma_a, sigma_omega, 2, state_type)
 
 
 def q_coord_turn_3d(
     T: float,
     sigma_a: float,
-    sigma_omega: float = 0.0,
+    sigma_omega: float | None = None,
     state_type: str = "position_velocity",
 ) -> NDArray[np.floating]:
     """
     Create process noise covariance for 3D coordinated turn model.
 
+    Port of MATLAB TCL's ``QCoordTurn`` (3-D, no linear acceleration).
 
     Parameters
     ----------
     T : float
         Time step in seconds.
     sigma_a : float
-        Standard deviation of acceleration noise [m/s²].
+        Standard deviation of the noise driving the velocity components
+        [m/s²]. ``QCoordTurn``'s ``sigmaV2`` is ``sigma_a**2``.
     sigma_omega : float, optional
-        Standard deviation of turn rate noise [rad/s²].
+        Standard deviation of turn rate noise [rad/s²]. ``QCoordTurn``'s
+        ``sigmaTurn2`` is ``sigma_omega**2``. Requires
+        ``state_type='position_velocity_omega'`` unless it is 0; omitted
+        there, it is 0.
     state_type : str, optional
-        State vector composition.
+        State vector composition:
+        - 'position_velocity': [x, vx, y, vy, z, vz] (default)
+        - 'position_velocity_omega': [x, vx, y, vy, z, vz, omega]
+
+        Any other value raises ``ValueError``.
 
     Returns
     -------
     Q : ndarray
-        Process noise covariance matrix.
+        Process noise covariance matrix, rank 1.
+
+    Raises
+    ------
+    ValueError
+        If ``state_type`` is not one of the values above, or if a nonzero
+        ``sigma_omega`` is given with ``state_type='position_velocity'``.
 
     Notes
     -----
-    Same construction as :func:`q_coord_turn_2d` (independent per-axis
-    blocks, interleaved state), verified in v2.11.1: at ``T=1,
-    sigma_a=2, sigma_omega=0.1`` the 6x6 result is exactly block-diagonal
-    over the three per-axis 2x2 blocks (largest off-block entry 0.0),
-    rank 3, and its first block equals ``q_coord_turn_2d``'s. MATLAB has
-    no 3-D counterpart to compare element-wise, so the divergence from the
-    rank-1 ``QCoordTurn`` is established through that shared construction
-    rather than measured directly; see the Notes on ``q_coord_turn_2d``.
+    ``Q = G G'`` with the single column
+    ``G = [sigma_a*T**2/2, sigma_a*T] * 3 + [sigma_omega*T]`` (one
+    position/velocity pair per axis, then omega), as in ``QCoordTurn``'s
+    3-D branch. ``Q`` has rank 1, so ``np.linalg.cholesky(Q)`` fails; a
+    square-root filter should take ``G`` itself as the noise factor.
+
+    ``QCoordTurn`` orders its 3-D state ``[x, y, z, xdot, ydot, zdot,
+    omega]``; this function uses the interleaved
+    ``[x, vx, y, vy, z, vz, omega]``. Permuting this result with indices
+    ``[0, 2, 4, 1, 3, 5, 6]`` gives ``QCoordTurn``'s matrix.
+    ``state_type='position_velocity'`` returns the leading 6x6 block of the
+    ``'position_velocity_omega'`` result (``QCoordTurn`` rejects 6-element
+    states). The length-8 linear-acceleration branch has no counterpart
+    here.
+
+    Until v2.12.0 this function stacked independent per-axis blocks (rank 3
+    without omega, 4 with it).
 
     See Also
     --------
     f_coord_turn_3d : State transition matrix for 3D coordinated turn.
     """
-    var_a = sigma_a**2
-
-    # Discrete white noise acceleration model
-    Q_pos_vel = var_a * np.array(
-        [
-            [T**4 / 4, T**3 / 2],
-            [T**3 / 2, T**2],
-        ],
-        dtype=np.float64,
-    )
-
-    if state_type == "position_velocity_omega":
-        n = 7
-        Q = np.zeros((n, n), dtype=np.float64)
-        # x, vx block
-        Q[0:2, 0:2] = Q_pos_vel
-        # y, vy block
-        Q[2:4, 2:4] = Q_pos_vel
-        # z, vz block
-        Q[4:6, 4:6] = Q_pos_vel
-        # omega (turn rate uncertainty)
-        Q[6, 6] = sigma_omega**2 * T**2
-    else:
-        n = 6
-        Q = np.zeros((n, n), dtype=np.float64)
-        # x, vx block
-        Q[0:2, 0:2] = Q_pos_vel
-        # y, vy block
-        Q[2:4, 2:4] = Q_pos_vel
-        # z, vz block
-        Q[4:6, 4:6] = Q_pos_vel
-
-    return Q
+    return _q_coord_turn(T, sigma_a, sigma_omega, 3, state_type)
 
 
 def q_coord_turn_polar(
@@ -242,11 +238,10 @@ def q_coord_turn_polar(
 
     Notes
     -----
-    MATLAB parity was **not** verified for this function in v2.11.1. Its
-    sibling :func:`q_coord_turn_2d` was checked against ``QCoordTurn`` and
-    diverges structurally (see its Notes); whether this function shares
-    that divergence is unknown, not established either way. The module's
-    EXPERIMENTAL maturity reflects that gap as well as the confirmed one.
+    MATLAB parity has **not** been verified for this function; it is not
+    ``QCoordTurn`` (whose state is Cartesian) and is not compared against
+    any MATLAB reference. The module's EXPERIMENTAL maturity reflects that
+    gap.
 
     Parameters
     ----------

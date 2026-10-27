@@ -12,6 +12,7 @@ from numba import njit
 from numpy.typing import ArrayLike, NDArray
 from scipy.stats import chi2
 
+from pytcl.core._numba import NAN_SAFE_FASTMATH
 from pytcl.diagnostics import diagnostics_enabled, logger
 
 
@@ -58,15 +59,7 @@ def _mahalanobis_distance_general(
     return result
 
 
-# fastmath=True implies nnan, under which x86 lowers ``det != 0.0`` to a
-# ucomisd without the parity (unordered) check: a NaN determinant then
-# compares equal to zero, the inverse is left uninitialized, and
-# mahalanobis_distance returned 0.0 for a NaN covariance on x86 (NaN on
-# arm64). Without nnan/ninf the comparison is IEEE on every target.
-_INVERT_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
-
-
-@njit(cache=True, fastmath=_INVERT_FASTMATH)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
     """Closed-form inverse of a 2x2 matrix; no LAPACK dispatch involved.
 
@@ -89,7 +82,7 @@ def _invert_2x2(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     return inv, det
 
 
-@njit(cache=True, fastmath=_INVERT_FASTMATH)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]":
     """Closed-form (adjugate/cofactor) inverse of a 3x3 matrix.
 

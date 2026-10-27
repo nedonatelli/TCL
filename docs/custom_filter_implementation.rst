@@ -565,9 +565,9 @@ Using Dynamic Models
        x0 = res.x[perm]
        P0 = res.P[np.ix_(perm, perm)]
 
-   A library converter is not yet provided. ``q_coord_turn_2d`` additionally
-   differs from MATLAB's ``QCoordTurn`` in structure, not just layout; see its
-   docstring.
+   A library converter is not yet provided. ``q_coord_turn_2d`` and
+   ``q_coord_turn_3d`` match MATLAB's ``QCoordTurn`` after the same
+   permutation; see their docstrings.
 
 Using Coordinate Transformations
 ---------------------------------

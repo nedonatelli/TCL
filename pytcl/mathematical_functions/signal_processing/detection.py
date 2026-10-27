@@ -32,6 +32,8 @@ from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import brentq
 
+from pytcl.core._numba import NAN_SAFE_FASTMATH
+
 # =============================================================================
 # Result Types
 # =============================================================================
@@ -304,7 +306,7 @@ def _cfar_ca_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-@njit(cache=True, fastmath=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _cfar_go_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -313,13 +315,7 @@ def _cfar_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled GO-CFAR kernel.
-
-    Unsupported input: NaN in the reference cells. Compiled under
-    ``fastmath`` (``nnan``) the comparison of the two averages drops the
-    NaN and yields a finite threshold where the interpreted form yields
-    NaN, so the result is undefined.
-    """
+    """JIT-compiled GO-CFAR kernel."""
     n = len(signal)
     half_window = guard_cells + ref_cells
 
@@ -344,16 +340,15 @@ def _cfar_go_kernel(
         left_avg = left_sum / left_count if left_count > 0 else 0.0
         right_avg = right_sum / right_count if right_count > 0 else 0.0
 
-        noise_estimate[i] = max(left_avg, right_avg)
-        threshold[i] = alpha * noise_estimate[i]
+        if left_avg == left_avg and right_avg == right_avg:
+            noise_est = max(left_avg, right_avg)
+        else:
+            noise_est = np.nan
+        noise_estimate[i] = noise_est
+        threshold[i] = alpha * noise_est
 
 
-# fastmath=True implies nnan/ninf, which makes NaN tests and infinity
-# sentinels dead code; the SO kernels need NaN to propagate.
-_SO_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
-
-
-@njit(cache=True, fastmath=_SO_FASTMATH)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _cfar_so_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -447,7 +442,7 @@ def _cfar_os_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_ca_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -495,7 +490,7 @@ def _cfar_2d_ca_kernel(
             threshold[i, j] = alpha * noise_estimate[i, j]
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_go_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -506,13 +501,7 @@ def _cfar_2d_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled 2D GO-CFAR kernel with parallel execution.
-
-    Unsupported input: NaN in the reference cells. Compiled under
-    ``fastmath`` (``nnan``) the comparison of the two averages drops the
-    NaN and yields a finite threshold where the interpreted form yields
-    NaN, so the result is undefined.
-    """
+    """JIT-compiled 2D GO-CFAR kernel with parallel execution."""
     n_rows, n_cols = image.shape
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols
@@ -549,11 +538,15 @@ def _cfar_2d_go_kernel(
 
             top_avg = top_sum / top_count if top_count > 0 else 0.0
             bottom_avg = bottom_sum / bottom_count if bottom_count > 0 else 0.0
-            noise_estimate[i, j] = max(top_avg, bottom_avg)
-            threshold[i, j] = alpha * noise_estimate[i, j]
+            if top_avg == top_avg and bottom_avg == bottom_avg:
+                noise_est = max(top_avg, bottom_avg)
+            else:
+                noise_est = np.nan
+            noise_estimate[i, j] = noise_est
+            threshold[i, j] = alpha * noise_est
 
 
-@njit(cache=True, fastmath=_SO_FASTMATH, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_so_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -616,6 +609,48 @@ def _cfar_2d_so_kernel(
 
 
 # =============================================================================
+# Empty Reference Windows
+# =============================================================================
+
+
+def _empty_window_mask_1d(
+    n: int, guard_cells: int, ref_cells: int
+) -> NDArray[np.bool_]:
+    """True at each cell whose clipped 1-D reference window holds no cell.
+
+    In the kernels' window arithmetic the leading half of cell ``i`` is
+    ``[max(0, i - guard - ref), max(0, i - guard))``, empty when ``ref`` is
+    0 or ``i <= guard``, and the lagging half is
+    ``[min(n, i + guard + 1), min(n, i + guard + ref + 1))``, empty when
+    ``ref`` is 0 or ``i >= n - 1 - guard``. Both are empty on one
+    contiguous run of cells.
+    """
+    mask = np.zeros(n, dtype=bool)
+    if ref_cells <= 0:
+        mask[:] = True
+    else:
+        mask[max(0, n - 1 - guard_cells) : guard_cells + 1] = True
+    return mask
+
+
+def _empty_window_mask_2d(
+    shape: tuple[int, int],
+    guard_cells: tuple[int, int],
+    ref_cells: tuple[int, int],
+) -> NDArray[np.bool_]:
+    """True at each cell whose clipped 2-D reference window holds no cell.
+
+    The window is the clipped outer rectangle minus the clipped guard
+    rectangle, which lies inside it, so it is empty exactly when both clip
+    to the same rows and the same columns: when the cell's 1-D row window
+    and 1-D column window are both empty.
+    """
+    rows = _empty_window_mask_1d(shape[0], guard_cells[0], ref_cells[0])
+    cols = _empty_window_mask_1d(shape[1], guard_cells[1], ref_cells[1])
+    return np.logical_and.outer(rows, cols)
+
+
+# =============================================================================
 # 1D CFAR Algorithms
 # =============================================================================
 
@@ -669,6 +704,12 @@ def cfar_ca(
     The CA-CFAR is optimal for homogeneous noise (noise power constant
     across all cells). It suffers in heterogeneous environments and near
     closely-spaced targets.
+
+    Near the ends of the signal the window is clipped and the noise estimate
+    averages the reference cells that remain. A cell whose reference window
+    holds no cell (its guard cells cover both ends of the signal, or
+    ``ref_cells=0`` with an explicit ``alpha``) has NaN noise estimate and
+    threshold and is never a detection.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -681,6 +722,9 @@ def cfar_ca(
 
     # Use JIT-compiled kernel for performance
     _cfar_ca_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
+    empty = _empty_window_mask_1d(n, guard_cells, ref_cells)
+    noise_estimate[empty] = np.nan
+    threshold[empty] = np.nan
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -739,6 +783,13 @@ def cfar_go(
     GO-CFAR reduces false alarms at clutter edges (where noise level
     changes abruptly) compared to CA-CFAR, at the cost of slightly
     reduced detection probability in homogeneous noise.
+
+    A half window clipped away entirely by the end of the signal counts as
+    0.0 in the maximum. A cell whose reference window holds no cell (its
+    guard cells cover both ends of the signal, or ``ref_cells=0`` with an
+    explicit ``alpha``) has NaN noise estimate and threshold and is never a
+    detection. A NaN in a cell's reference window gives a NaN threshold, and
+    no detection, at that cell.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -751,6 +802,9 @@ def cfar_go(
 
     # Use JIT-compiled kernel for performance
     _cfar_go_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
+    empty = _empty_window_mask_1d(n, guard_cells, ref_cells)
+    noise_estimate[empty] = np.nan
+    threshold[empty] = np.nan
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -822,11 +876,12 @@ def cfar_so(
     clutter edges but may produce more false alarms when interfering
     targets are present in the reference window.
 
-    Cells whose reference window is empty (near the edges when
-    ``guard_cells + ref_cells`` is large relative to the signal length) get
-    noise estimate and threshold 0.0, so any positive sample there is
-    reported as a detection. A NaN in a cell's reference window gives a NaN
-    threshold, and no detection, at that cell.
+    A cell with one half window clipped away entirely by the end of the
+    signal uses the other half. A cell whose reference window holds no cell
+    (its guard cells cover both ends of the signal, or ``ref_cells=0`` with
+    an explicit ``alpha``) has NaN noise estimate and threshold and is never
+    a detection. A NaN in a cell's reference window gives a NaN threshold,
+    and no detection, at that cell.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -845,6 +900,9 @@ def cfar_so(
 
     # Use JIT-compiled kernel for performance
     _cfar_so_kernel(signal, guard_cells, ref_cells, alpha, noise_estimate, threshold)
+    empty = _empty_window_mask_1d(n, guard_cells, ref_cells)
+    noise_estimate[empty] = np.nan
+    threshold[empty] = np.nan
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -911,6 +969,12 @@ def cfar_os(
     off between:
     - Low k: Robust to multiple interferers, but sensitive to noise
     - High k: Less robust to interferers, but better in homogeneous noise
+
+    Near the ends of the signal the window is clipped and ``k`` is capped at
+    the number of reference cells that remain. A cell whose reference window
+    holds no cell (its guard cells cover both ends of the signal, or
+    ``ref_cells=0`` with an explicit ``alpha``) has NaN noise estimate and
+    threshold and is never a detection.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -928,6 +992,9 @@ def cfar_os(
 
     # Use JIT-compiled kernel for performance
     _cfar_os_kernel(signal, guard_cells, ref_cells, k, alpha, noise_estimate, threshold)
+    empty = _empty_window_mask_1d(n, guard_cells, ref_cells)
+    noise_estimate[empty] = np.nan
+    threshold[empty] = np.nan
 
     detections = signal > threshold
     detection_indices = np.where(detections)[0]
@@ -1002,6 +1069,14 @@ def cfar_2d(
 
         (2*guard_rows + 2*ref_rows + 1) * (2*guard_cols + 2*ref_cols + 1)
         - (2*guard_rows + 1) * (2*guard_cols + 1)
+
+    Near the image edges the window is clipped to the image. A cell whose
+    clipped window holds no cell (in each dimension, its guard cells cover
+    both ends of the image or the reference count is 0, the latter only with
+    an explicit ``alpha``) has NaN noise estimate and threshold and is never
+    a detection. For ``'go'`` and ``'so'`` the halves are the window rows
+    above the cell under test and the rest; a NaN in a cell's window gives a
+    NaN threshold, and no detection, at that cell.
     """
     image = np.asarray(image, dtype=np.float64)
 
@@ -1067,6 +1142,10 @@ def cfar_2d(
         )
     else:
         raise ValueError(f"Unknown method: {method}")
+
+    empty = _empty_window_mask_2d(image.shape, guard_cells, ref_cells)
+    noise_estimate[empty] = np.nan
+    threshold[empty] = np.nan
 
     detections = image > threshold
 

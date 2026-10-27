@@ -503,7 +503,10 @@ Dynamic Models
        (arbitrary ``order``, matching MATLAB; ``f_constant_velocity`` is
        the ``order=1`` case)
    * - ``QCoordTurn``
-     - ``pytcl.dynamic_models.process_noise.q_coord_turn_2d``
+     - ``pytcl.dynamic_models.process_noise.q_coord_turn_2d`` (length-5
+       state) and ``q_coord_turn_3d`` (length-7) -- interleaved state and
+       standard deviations, not variances; the linear-acceleration states
+       (lengths 6 and 8) have no counterpart.
    * - ``QGaussMarkov``
      - ``pytcl.dynamic_models.process_noise.q_singer`` -- **order 2 only**,
        same limitation as ``FGaussMarkov`` above.

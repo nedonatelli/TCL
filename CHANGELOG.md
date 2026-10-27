@@ -137,7 +137,244 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positive variance, or with a negative one, now raises LinAlgError; pass
   the variance you mean, or drop the measurement.
 
+- **`q_coord_turn_2d` and `q_coord_turn_3d` reject inputs they used to
+  ignore.** An unknown `state_type` (a typo such as
+  `'position_velocity_omgea'`) silently built the no-omega matrix, and a
+  `sigma_omega` passed without `state_type='position_velocity_omega'` was
+  dropped: the user guide's own example `q_coord_turn_2d(T=1.0,
+  sigma_a=1.0, sigma_omega=0.01)` returned the 4x4 matrix with no
+  turn-rate noise. Both now raise `ValueError`. `sigma_omega` defaults to
+  `None` (0 for the omega state, as before); an explicit 0 with
+  `'position_velocity'` is accepted. What to do: pass
+  state_type='position_velocity_omega' when you supply sigma_omega; a
+  misspelled state_type now raises.
+
+- **CFAR cells with an empty reference window report NaN, not a zero
+  threshold.** A cell whose clipped window held no reference cell (its
+  guard cells covering both ends of the signal, or `ref_cells=0` with an
+  explicit `alpha`) got noise estimate and threshold 0.0 in `cfar_ca`,
+  `cfar_go`, `cfar_so`, `cfar_os` and `cfar_2d`, so any positive sample
+  there was reported as a detection: on `[1, 1, 5, 1, 1]` with
+  `guard_cells=2, ref_cells=1` cell 2 was a detection in all four 1-D
+  detectors, and `cfar_2d` on a 5x5 image with guard `(2, 2)`, ref
+  `(1, 1)` gave the centre cell threshold 0.0. Those cells now get NaN noise
+  estimate and threshold and are never detections; in 2-D a cell is empty
+  when its row window and its column window are both empty. A cell with
+  one half window clipped away keeps its 2.11.1 value, and a window that
+  fits no cell at all now gives all-NaN output from `cfar_ca`, `cfar_go`
+  and `cfar_os` (`cfar_so` and `cfar_2d(method='so')` still raise
+  `ValueError`). The kernels are unchanged; the rule is applied after them
+  from the window geometry, checked against a brute-force count of every
+  cell's reference cells for 1-D lengths 1 to 40 and 2-D shapes up to 9x9.
+  What to do: cells with no reference cells now have NaN threshold and
+  noise and are never detections; use `np.nanmax` / `np.isnan` when you
+  post-process thresholds.
+
 ### Fixed
+
+- `TrackDatabaseManager.store_track_history` checks that `states`,
+  `covariances`, `timestamps` and `residuals` have equal length before
+  writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used
+  to store a prefix silently (`(5, 5, 3)` stored 3 rows; residuals of
+  length 8 against 5 dropped 3) or store rows then raise `IndexError`; a
+  row rejected mid-call left its predecessors behind. An unknown `track_id`
+  used to write rows that belong to no track; it now raises `KeyError`
+  before anything is written, as `store_track_state` does. Internal callers
+  are `HDF5TrackStorage.export_to_sql` and `convert_legacy_tracks_to_sql`;
+  both create the track with `initiate_track` first and slice the four
+  arrays consistently, so valid data is unaffected, but an HDF5 track whose
+  `residuals` dataset is shorter than its `timestamps` now raises
+  `ValueError` with nothing stored, where it stored a prefix and raised
+  `IndexError`. What to do: pass states, covariances, timestamps (and
+  residuals) of equal length; a mismatch now raises instead of storing a
+  prefix. Call `initiate_track` before `store_track_history`; an unknown id
+  now raises `KeyError` instead of leaving orphan rows.
+
+- `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
+  hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time
+  proportional to `abs(z)` for non-terminating 1F1 at `z > 0` (14 s at
+  1e13, over 60 s from 1e14, e.g. 1F1(0.5; 1.5; 1e15)) and at `z < 0` when
+  `b - a` is a non-positive integer (4 s at -1e12, 36 s at -1e13). It is no
+  longer called at `abs(z) >= 1e9`: non-terminating 1F1 there uses the
+  DLMF 13.7.2 asymptotic expansion, whose Gamma(b)/Gamma(b-a) coefficient
+  is computed without rounding `b - a` into a Gamma argument (Stirling
+  differences, exact sin(pi x) reflection, extended exponent). From
+  `abs(z) = 1e2` the expansion replaces scipy at `z < 0` when `b > 0` and
+  `b - a > 0`; at `1e2 <= z < 1e9` it is used only to prove an overflow,
+  and scipy's finite values are kept. Measured against mpmath (an exact
+  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4; each
+  figure is the maximum over the stated random sample, not a bound: the
+  expansion reached 3.1e-14 relative at `1e2 <= -z < 1e9` (939 points,
+  where scipy reached 2.6e-11 but was better by about 1e-14 at 34 of them)
+  and 1.4e-14 at `-z >= 1e9` for either sign of `b` (two samples, 600 and
+  1,000 points, to 1e13; scipy gave up to 2.4e-12 there); across
+  `z = +-1e2` and `+-1e9` the value moved 2.4e-14 more than mpmath's (20
+  parameter sets). Elsewhere values are scipy's and unchanged, including
+  its errors: up to 3.4e-11 at `z < 0` (b near 6e3), 1.22e-12 at
+  1F1(1; 1000; 1995) and 1.4e-11 at other finite `z > 0` in these
+  samples, and its silent NaN for large parameters (`max(abs(a), abs(b))`
+  above about 150) at `abs(z)` from 1e-300 to 1e4: 14 of the 150,000
+  points below, all with `max(abs(a), abs(b)) >= 277` and `abs(z)` from
+  10 to 1e4, and `hyp1f1(116.18, -146.25, 11.66)`, `hyp1f1(-1401.302,
+  -3092.199, 1950.047)` (an overflow), `hyp1f1(1, 9999.5, -1e-300)`,
+  `hyp1f1(9999.5, 0.5, -1)` and `hyp1f1(-1e4, 1, 1)` return NaN with no
+  warning (the values of the last three are 1, 0.29107 and -0.025079).
+  Near a pole of Gamma(b - a) (the exact `b - a` within 1e-6 of a
+  non-positive integer, but not at one) scipy does not carry `b - a`
+  exactly, and its relative error at `1e2 <= -z < 1e9` reaches
+  `eps * abs(b - a) / d` with `d` the distance to the pole (the maximum
+  over 150 random points with `-z` to 2e4: 2.3e-7 at `d` in [1e-8, 1e-6)
+  and 2.0e-1 below 1e-12). There pytcl now uses the expansion where it
+  certifies (1.1e-14 over the same 150 points; `hyp1f1(25.6, 0.6,
+  -1000)` is 1.047e-66 where scipy gives -0.0) and keeps scipy's value
+  otherwise, as before: scipy is often accurate there (on 2,182 random
+  points with `abs(a) <= 150`, `-z` from 1e2 to 3e3 and the expansion
+  not certifying, within 1e-12 at 1,440 and worse at 742), and its error
+  cannot be predicted from the inputs (a one-ulp shift of `a` often
+  leaves it unchanged; the bound above is exceeded at every accurate
+  point too), so nothing there is turned into NaN. Unfixed scipy values
+  of this kind, disclosed: `hyp1f1(-100.3, -400.3, -5000)` is 0.0 (exact
+  9.366e99; `fl(b - a) = -300`, the exact difference -300 - 1.4e-14),
+  `hyp1f1(12.3, 2.3, -100)` is off by 45%, `hyp1f1(20.1, 0.1, -150)` and
+  `hyp1f1(30.1, 10.1, -300)` have the wrong sign; at `-z < 1e2` scipy
+  loses up to 5.0e-3 at `d` below 1e-12 (150 points) and at `z > 0`
+  3.4e-13 (`hyp1f1(-100.3, -400.3, 500)`). The expansion's own integer tests on
+  `b - a` use the exact difference (TwoSum): with the rounded one,
+  `hyp1f1(-100.3, -400.3, -1e10)`, `hyp1f1(-60.7, -210.7, -1e12)` and
+  `hyp1f1(0.5000000000000001, -4.5, -1e10)` returned 0.0 for 4.4e734
+  (`+inf`), -1.8e578 (`-inf`) and -8.0e-21, at `z = -inf` too; scipy
+  gives the same 0.0 at `-1e10` and `-1e11`. Termination: two grids,
+  17,280 and 11,880 calls with `a` and `b` from -1e4 to 1e4 and `z` from
+  0 to `+-1e300`, `+-inf` and NaN, all return (slowest 0.15 s) and none
+  raises; 16,000 random calls with parameters to 1e8 and `abs(z)` to
+  1e300 raise nothing (slowest 2.2 s, a 308-term exact polynomial at
+  `z = 1e57`). One known regression against 2.11.1: `hyp1f1(-0.5, 1e17,
+  -1e10)` returns NaN where 2.11.1 gave the correct 1.00000005 (`b` past
+  2^53, where `b - a` is not exact). Silent wrong answers fixed on the same path: scipy returns
+  `+inf` for every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800),
+  1F1(-10.5; 1e5; 1e6) and 1F1(4.8699; -264.582; 1307.64) now give
+  `-inf`. A `+-inf` is now returned only when a certified lower bound on
+  the magnitude exceeds the double range: from the expansion's logarithm,
+  from the series tail (past which every term has one sign, so the tail is
+  at least its largest term, less a bound on the terms before it), or from
+  the whole series summed with a certified sign and error bound (directly,
+  or in Kummer's form for `z < 0`, whose rounded `b - a` is accounted
+  for), which is limited to 1e6 terms
+  (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series is
+  summed exactly. The sum itself is known only to within a factor of
+  about 1.5 when its sign is certified, so the bound, not the sum, decides
+  (two internally constructed points with exact value 0.99999998 and
+  0.99999999 times the largest double gave `+inf` from the sum; the
+  bound declines them). A value below the double range is a signed 0.0,
+  as in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
+  150,000 random points (`abs(a)` to 200, `abs(b)` to 1e4, `abs(z)` to
+  1e6) scipy overflowed at 29,630; pytcl returned the proven `+-inf` at
+  29,503 (300, and then 120 more, checked against an exact series sum,
+  all correct)
+  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5) and
+  none from the gap between the bound and the sum. `hyp1f1` at
+  `z = +-inf` returns the limit (it hung, or gave `+inf` for `1 - z/2`).
+  A terminating pFq whose exact value exceeds the double range
+  (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
+  `OverflowError` and now returns `+-inf`. `hyp1f1_regularized` at a
+  non-positive integer `b = -m` rounds its shifted parameter `a + m + 1`;
+  at `z < 0`, when `1 - a` is within 1e-6 of a non-positive integer and
+  that rounding is inexact, the value's sin(pi a) part is sensitive to
+  it: the sensitivity is measured with a one-ulp shift and NaN with a
+  `RuntimeWarning` is returned where the rounding moves the value by more
+  than 1e-12 (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was
+  0.0, the value is -5.33e-25; at `b = -3`, `a = 1 + 2 ulp` the refusal
+  starts at `z = -25`, where v2.11.1 was off by 5e-11, and `z = -10`
+  keeps its 2.4e-15; at `z >= 0` and small `abs(z)` nothing changes:
+  `hyp1f1_regularized(1.0000000000000002, -3, 1)` is e to 3.9e-16, and a
+  100,000-point sample with `abs(z)` to 1e2 is unchanged). Its prefactor
+  `(a)_{m+1} z^{m+1} / (m+1)!` is evaluated in double precision and, for
+  large `m` or `abs(z)`, overflows to NaN or `+-inf` for a finite value
+  (`hyp1f1_regularized(0.5, -150, 3)` is `inf`, the value 1.01e72;
+  `(1.5, -200, 50)` is NaN, 2.9e364), as in v2.11.1; unchanged, on the
+  backlog. 0F1, 2F1, U and the general pFq series were
+  audited and do not hang. No other pytcl module calls these functions.
+  What to do: nothing for calls that hung (they now return) or overflowed
+  (they now carry the true sign); expect NaN with a `RuntimeWarning` where
+  an overflow cannot be proven, which in the samples above was only past
+  the 1e6-term cap (`abs(z)` above about 1.6e5 with scipy overflowing),
+  or at `abs(z) >= 1e9` where the expansion does not reach double
+  precision; parameters that round `b - a` to a non-positive integer now
+  give the value of the exact difference at `abs(z) >= 1e9`, at `-inf`,
+  and at `1e2 <= -z < 1e9` where the expansion certifies, and scipy's
+  value (disclosed above) elsewhere. `hyp1f1_regularized` at a
+  non-positive integer `b` and `z < 0` returns NaN with a
+  `RuntimeWarning` where the rounding of `a + 1 - b` moves the value by
+  more than 1e-12. A certified sum near the 1e6-term cap costs about
+  0.2 s per element (0.4 s at `z < 0`).
+
+- `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
+  where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
+  its docstring. v2.11.1 returned NaN for every non-trivial case (3F3,
+  1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z)), and two answers
+  were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
+  and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
+  scipy's `hyp1f1`. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF
+  13.7.2), so the two entry points agree: 1F1(-0.5; 1; +inf) and
+  1F1(1; -1.5; +inf), which hung inside scipy 1.17.1's `hyp1f1` (as large
+  finite `z` did; see the `hyp1f1` entry above), now return their true
+  limits, `-inf` and `+inf`; a terminating series with a pole
+  (`[-2, 1, 1]; [-1, 3]`) raised `ZeroDivisionError` at infinite `z` and
+  now returns NaN (finite `z` still raises). Limits of 0.0 were checked
+  against mpmath at `z = -1e2` and `-1e4`, not beyond. A NaN `z` still
+  gives NaN, and divergent 3F2 and 3F1 still raise `ValueError`. Nothing
+  inside pytcl calls `generalized_hypergeometric`. What to do: nothing;
+  NaN results at infinite z become the true limit where one exists.
+
+- `us_standard_atmosphere_1976`'s -5000 m floor is now inclusive and
+  applies to the geometric input altitude, matching Table I of the
+  standard (NOAA-S/T 76-1562), whose first entry is `Z = -5000 m`
+  (`H = -5004 m`, T = 320.676 K, P = 1.7776E+3 mb). v2.11.1 compared the
+  geopotential altitude against -5000 m, so every `z` in [-5000, -4996.07] m
+  warned "below ... floor" (even `z = -4999.0`) and returned the clamped
+  177761.57 Pa: a 75.9 Pa step against the continuous 177685.71 Pa at
+  `z = -4996`. That sliver now returns its own value (177761.57 Pa at
+  -5000 m down to 177687.04 Pa at -4996.07 m) without a warning; below
+  -5000 m it still warns and clamps to the -5000 m entry. `mach_number` and
+  `true_airspeed_from_mach` call it and inherit the change.
+  What to do: nothing; -5000 m to -4996 m no longer warns and is no longer
+  clamped.
+
+- `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
+  the definition `statsmodels.robust.scale.scale_tau` and R's
+  `robustbase::scaleTau2` implement. v2.11.1 documented that the function
+  was not a tau scale (a ratio of two Tukey rho sums times the MAD) and
+  promised it would be "fixed or removed in v2.12.0"; this closes that
+  promise by fixing it, and the `.. warning::` is gone. On N(0, 1) draws
+  v2.11.1 returned 1.0918 (n = 200000); the new value is 0.9969 to 1.0009
+  over five seeds at n = 200000. Values match statsmodels 0.15.0 to
+  `rel=1e-12` on the vendored cases and on 20 seeds of Student-t(3) at
+  n = 500 (live test, needs the `validation` group, which now includes
+  `statsmodels>=0.14`). When the raw MAD is zero (more than half the
+  residuals tied, as with quantized data) it returns 0.0, where statsmodels
+  divides by zero. Nothing inside pytcl calls `tau_scale`. What to do:
+  `tau_scale` values change (N(0, 1) now about 1.0, not 1.09); the
+  docstring's earlier Yohai-Zamar attribution was wrong.
+
+- **`q_coord_turn_2d` and `q_coord_turn_3d` are now MATLAB's `QCoordTurn`.**
+  v2.11.1 stacked independent per-axis acceleration blocks (rank 2 or 3 in
+  2-D, 3 or 4 in 3-D) and its docstring said so; `QCoordTurn` builds
+  `Q = G*G'` from one column, so its result is rank 1 with x/y/z, velocity
+  and omega cross terms. At `T=1, sigma_a=2, sigma_omega=0.1` the old 2-D
+  result differed from `QCoordTurn` by up to 4.0 elementwise. The new
+  results are bitwise equal, after permuting pytcl's interleaved state to
+  MATLAB's `[x, y, (z,) vx, vy, (vz,) omega]`, to `QCoordTurn` case 5
+  (2-D) and case 7 (3-D) captured under MATLAB R2026a at `T` in
+  {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in {0, 0.01}.
+  Signatures, standard-deviation parameters and the interleaved layout are
+  unchanged; `state_type='position_velocity'` returns the leading block of
+  the omega result (`QCoordTurn` has no 4- or 6-element branch).
+  `np.linalg.cholesky` of the result now fails; pass `G` to square-root
+  filters. Nothing inside pytcl calls either function. The module stays
+  EXPERIMENTAL until `q_coord_turn_polar` is reviewed. What to do: Q from
+  q_coord_turn_2d/3d is now rank 1 with x/y/omega cross terms, as in
+  MATLAB's QCoordTurn; filters tuned against the old per-axis Q need
+  retuning.
 
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
   through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
@@ -184,6 +421,179 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
   estimates computed with a non-diagonal measurement covariance; the
   results change, and they now match the Kalman filter.
+
+- **`marcum_q` at large arguments uses the log-domain quadrature, not
+  `scipy.stats.ncx2.sf`.** Every element with `a > 0`, `b > 0` went through
+  `ncx2.sf`, which loses digits and then fails as `a*b` grows: 4.5e-7
+  relative at `(a=1e7, b=1e7-3, m=2)`, 4.7e-3 against 0.5 at
+  `(a=1e7, b=sqrt(a^2+2), m=1)`, and 8.6e-179 against 2.8e-89 at
+  `(a=1e8, b=sqrt(a^2+4)+20, m=2)`, with Boost "Series did not converge"
+  warnings. Elements with `a*b > 2e4` (finite, positive) are now `exp` of
+  the log-domain evaluation `log_marcum_q` already used for its tails: a
+  quadrature of the Marcum integrand where `(m-1)^2 <= 4ab`, the
+  Poisson-mixture series otherwise. `log_marcum_q` computes those elements
+  directly instead of inheriting `ncx2.sf` values above `Q = 1e-10`.
+  Elsewhere, where `Q > 0.5`, it takes `log1p(-P)` with `P = 1 - Q` instead
+  of `log Q`. scipy's `P` (`gammainc` at `a = 0`, `ncx2.cdf` otherwise) is
+  kept only for `m <= 10`, `a <= 10`, `P >= 1e-30`, where it was measured
+  within 9.1e-15 relative (the maximum at `a = 0`, `m = 3`, `P` near 1e-30,
+  where scipy's `gammainc` is itself 8.1e-15 off and the series measures
+  1.8e-14, so scipy is kept); elsewhere `P` is the Poisson series' own tail
+  sum below, within 1e-13 of mpmath on `a` in {0, 1}, `m` in {100, 1e4, 1e6,
+  1e7}, `b = sqrt(a^2 + 2m) - z/sqrt(2)`, `z` in {3, 5, 10, 14}, where
+  scipy's `P` was off by up to 3.1e-2 at `a = 0`, `m = 1e7`. Those elements
+  cost about 2 to 12 ms each, growing with `a` (measured `a <= 141`),
+  instead of being vectorised. The quadrature now forms
+  `log(x/a)` as `log1p`, which removes a 4e-8 relative error at `m = 1e7`.
+  Measured against a new mpmath oracle
+  (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`) on
+  151 points, `b = sqrt(a^2 + 2m) + c` with `a` in {10, 1e3, 1e5, 1e7, 1e8},
+  `m` in {1, 2, 100, 1e4, 1e7}, `c` in {-40, -10, -3, 0, 3, 10, 20}
+  (series-corner points excluded): `Q` within 3.4e-14 relative for
+  `a >= 1e3` and 2.9e-13 at `a = 10`; `log Q` within 1.5e-14. It is one
+  quadrature per element: a 1e4-element array in the new domain took 0.38 to
+  0.67 s (Apple Silicon, `a` from 1e3 to 1e8), against 0.19 s for `ncx2.sf`
+  at `a = 1e3` and 42 ms and 311 ms per element at `a = 1e7` and `1e8`. What
+  to do: nothing; results at `a >= 1e3` change, and at `a >= 1e7` they were
+  wrong by up to 100%.
+
+- **`log_marcum_q`'s series corner sums Poisson terms instead of calling
+  `gammaincc`.** Where `a*b > 2e4` and `(m-1)^2 > 4ab` the
+  Poisson-mixture series took its incomplete gammas from
+  `scipy.special.gammaincc`, its weights from `j log(x) - x - gammaln(j+1)`
+  (an absolute 1e-9 at `x = 5e5`), and `a^2/2`, `b^2/2` rounded to double:
+  -27.462231887380316 against -27.46223188673473 (2.35e-11 relative) at
+  `(a=1e3, b=1009.9955134495867, m=3000)`, 3.1e-11 at `(a=1e3, m=1e4,
+  c=-3)`, 8.3e-9 at `(a=10, m=1e7, c=-3)`, and 0.0 against -9.7e-46 at
+  `(a=10, m=1e7, c=-10)`, where `b = sqrt(a^2 + 2m) + c`. The incomplete
+  gammas are now Poisson tail sums of log pmf terms in Loader's
+  saddle-point form below order 1e4 and Temme's uniform expansion above,
+  `a^2/2` and `b^2/2` are carried to twice working precision, and only the
+  tail sum is formed (`Q`, or `1 - Q` followed by `log1p`). Its terms are
+  log-concave in `k`, so the peak is found by ternary search in a bracket
+  that provably holds it, and the sum samples every `h`-th term with `h`
+  below a quarter of the peak's width. The bracket is held in integers, so
+  the search ends at any magnitude. Below `log Q = -2.8e14`, where the
+  terms' rounding exceeds one unit of log, a fixed grid is summed: within
+  3.7e-16 of the Bessel form `-(a^2+b^2)/2 + (m-1) log(b/a) + log
+  I_{m-1}(ab)` on 115 points with `m` from 1e5 to 1e7 and `b` up to 1e14
+  (inputs there that once reached the backstop; v2.11.1 returned
+  `marcum_q = 0.0`, which is unchanged). More than 2^16 terms in a sum
+  raises `ConvergenceError`; on 13,346 calls spanning every regime and
+  its boundaries (`m` from 1 to 1e7), none did, the largest evaluation
+  was 433 terms and the slowest call 0.04 s. Inputs with `a^2/2` above
+  2^53 (`m` near 3e8) return, unmeasured. Against the mpmath series oracle on
+  `a = 1e3`, `m` in {3000, 1e4}, `c` in {-3, 0, 7, 20}, `log Q` is within
+  2.1e-15 relative, and within 3.9e-15 on `a = 10`, `m = 1e7`, `c` in
+  {-40, -10, -3, 0, 3, 10, 20}; the series called directly on all 159
+  oracle rows (up to `a = 1e8`) is within 5.6e-15. On `a`, `b` in 12
+  log-spaced values over [1e-3, 1e8] and `m` in {1, 2, 30, 3000, 1e7},
+  all 720 calls of each function complete within 0.25 MiB of traced
+  memory, and on that grid's `b <= a/10` band `marcum_q` equals 2.11.1's
+  value exactly (1.0 where `b << a`). The same series serves
+  `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`: on `a` in {0, 1},
+  `m` in {1000, 3000, 9999}, `b = sqrt(a^2 + 2m) + c`, `c` in [0, 20] at
+  0.125 spacing, it is within 9.3e-15 of mpmath. What to do: nothing.
+
+- `cfar_go` and `cfar_2d(method='go')` ignored a NaN in a cell's reference
+  window. The kernels were compiled with `fastmath` NaN assumptions, under
+  which the max of the two half-window averages dropped a NaN average and
+  kept the other: on `[1, 2, 3, 1e9, 5, nan, 7]` with `guard_cells=1,
+  ref_cells=1, alpha=3` cell 3 got noise estimate 2.0 and was a detection,
+  and the interpreted path (`NUMBA_DISABLE_JIT=1`) agreed only when the
+  NaN sat in the lagging half, because Python's `max(2.0, nan)` is 2.0.
+  A NaN average in either half now gives a NaN noise estimate and
+  threshold, and no detection, compiled and interpreted, as `cfar_so`
+  already did. The GO kernels drop the `nnan`/`ninf` fastmath flags and
+  keep the rest; on 450 random NaN-free inputs (positive, negative, some
+  with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
+  their output is bitwise identical to 2.11.1. `cfar_2d(method='ca')` drops
+  the same two flags: on x86 with AVX-512 its vectorised window sum carried
+  `ninf`, under which an infinite sample gives an undefined result (found by
+  the registry-wide IR check on CI; its output on 40 random NaN-free images
+  is bitwise unchanged). What to do: nothing, unless you relied on a NaN
+  sample in the reference window leaving a GO threshold finite.
+
+- **`mle_newton_raphson` flags a flat direction that roundoff left
+  slightly positive.** The check fired only on an eigenvalue `<= 0`. The
+  numerical four-point Hessian's roundoff is about `eps *
+  abs(log-likelihood) / h**2` per entry, so a model it cannot identify
+  passed whenever that roundoff came out positive: for `-0.5 (t0 + t1 -
+  1)^2` the flat direction got 2.8e-12, and the result was a variance of
+  1.8e11 on both parameters, `converged=True` and no warning.
+  Identifiability is now judged on the diagonally scaled information `C =
+  D^-1/2 F D^-1/2` (`D = abs(diag(F))`), so it does not depend on the
+  parameters' units. With a caller-supplied `hessian` an eigenvalue of `C`
+  at or below `n * eps` of the largest counts as zero. With the numerical
+  Hessian, an eigenvalue within the stencil's modelled error, `2 (eps
+  abs(L) / h**2 + eps max(abs(t_i), abs(t_j), 1) / h abs(F_ij))` per entry
+  and scaled like `C`, also counts as zero; if `L` or `F` is not finite
+  the result is v2.11.1's. Measured on random samples, each rate holding
+  only for its sample: of 300 unidentified Gaussian-location models
+  (sample sizes 10 to 1e5, location up to 1e3, normalizing constant
+  included) 7 escape the warning (v2.11.1: 154). The rule also flags
+  identified models whose numerical Fisher is too noisy to trust, and some
+  that were accurate: of 300 diagonal quadratics (curvatures 1e-6 to 1e6)
+  whose numerical Fisher diagonal was within 1% of the truth, 1 is newly
+  flagged; of 600 linear regressions (2 to 4 parameters, regressor scales
+  1e-2 to 1e2, 10 to 1e4 samples), 50 (8%) are newly flagged, where
+  v2.11.1's variances were within 1% of exact on 6, within 10% on 21 and
+  within 100% on all 50; of 1500 correlated quadratics (2 to 4 parameters,
+  correlation condition number up to 1e3, scales 1e-3 to 1e3), 226 (15%)
+  are newly flagged, where v2.11.1 was within 1% on 19, within 10% on 97
+  and within 100% on 217. Unflagged cases more than 10% off: 1 of the
+  regressions and 2 of the correlated quadratics. A newly flagged
+  identified model reports infinite variance. With an analytic `hessian`,
+  the change goes the other way: v2.11.1 tested the unscaled matrix and
+  warned, with infinite variance, on identified models whose Fisher was
+  badly scaled (1002 of 3000 random ones with 2 to 6 parameters and scales
+  1e-9 to 1e9). These now return `inv(fisher_info)`, whose diagonal was
+  within `2.8e-15 * cond(C)` relative of exact on that sample. Every model
+  neither version flags keeps v2.11.1's covariance,
+  `np.linalg.inv(fisher_info)`, bit for bit (all such cases in the
+  3000-model analytic sample and the numerical samples above). A flagged
+  model's covariance is the inverse on the identified subspace of `C`,
+  scaled back. No other pytcl function calls `mle_newton_raphson`. What to
+  do: a model the numerical Hessian cannot identify now warns, reports
+  converged=False and infinite variances, where it used to report a
+  confident 1.8e11. Pass `hessian` if an identified model's numerical
+  Fisher is flagged.
+
+- **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
+  For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
+  1e-14, `np.linalg.cholesky` succeeds on a roundoff pivot, so the floored
+  eigendecomposition was never used and the largest posterior information
+  eigenvalue (zero prior, `H = I`) was 3.95e18, 5.64e15, 1.19e15 and
+  2.24e30, against floors of 5.0e10, 2.5e9, 7.1e8 and 5.0e23
+  (`1/(1e-10*max_eig)`). They now meet the floor exactly. When Cholesky
+  succeeds, `sum(W**2) * trace(R_meas)` for the whitener `W = inv(L)` (at
+  least the condition number of `L L'`) decides whether to check further;
+  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is tested on its
+  correlation matrix `D^-1/2 R_meas D^-1/2`, and only if that matrix's
+  smallest eigenvalue is at most `m*eps` of its largest is `R_meas`
+  floored (one `eigh`). Cholesky's accuracy depends on the correlation
+  matrix, not on the units, so standard deviations 1e3 and 1e-6 with
+  correlation 0.1 (condition number 1e18) keep their exact information,
+  1.0101e12. On 13,000 singular `R_meas` (`s [[1, 1], [1, 1]]` for s from
+  1e-100 to 1e100, exact-integer and floating `B B'`, badly scaled `D B B'
+  D`, singular blocks beside a diagonal block; `m` from 2 to 6; Cholesky
+  succeeded on 4,513) no posterior information exceeded the floor.
+  Positive-definite `R_meas` keeps its exact result: diagonal `R_meas` is
+  bitwise identical to v2.11.1 at any condition number (5,000 random
+  cases, variances 1e-150 to 1e150); correlated `R_meas` is bitwise
+  identical to v2.11.1's QR stage fed the `inv(L)` whitener on 1,000
+  random `D C D` with `cond(C) <= 4` and standard deviations 1e-10 to
+  1e10, and on 5,000 random rotations with condition numbers to 9.1e13.
+  Where the correlation matrix itself is nearly singular, random rotations
+  (300 per cell, `m` from 2 to 6) were never floored at condition number
+  3.2e14 or below; at 1e15, 0 of 300 were floored for `m = 2` and 2 to 133
+  for `m` = 3 to 6; at 2e15, 3 to 236; at 1e16, 221 to 299. Only the lower
+  triangle of `R_meas` is read, as by `np.linalg.cholesky` in v2.11.1.
+  Cost on a well-conditioned 6x6 update: 21.5 to 23.0 us. `srif_filter`
+  calls `srif_update` and changes with it. What to do: nothing, unless you
+  passed a singular or roundoff-singular correlated `R_meas`; its null
+  direction now carries the floored information, `1/(1e-10*max_eig)`,
+  instead of an arbitrarily large amount.
 
 ## [2.11.1] - 2026-10-22
 

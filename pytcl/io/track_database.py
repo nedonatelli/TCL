@@ -606,25 +606,58 @@ class TrackDatabaseManager:
             Timestamps, shape (N,).
         residuals : ArrayLike, optional
             Residual history, shape (N, meas_dim).
+
+        Raises
+        ------
+        KeyError
+            If ``track_id`` is not a track in this database.
+        ValueError
+            If the inputs differ in length, or any row is rejected. Nothing
+            is stored in any of these cases.
         """
         self._check_writable()
         s_arr = np.asarray(states, dtype=np.float64)
         c_arr = np.asarray(covariances, dtype=np.float64)
         t_arr = np.asarray(timestamps, dtype=np.float64)
+        r_arr = None if residuals is None else np.asarray(residuals, dtype=np.float64)
 
-        n = len(t_arr)
-        for i in range(n):
-            res = None
-            if residuals is not None:
-                res = np.asarray(residuals, dtype=np.float64)[i]
-            self._store_state_row(
-                track_id,
-                s_arr[i],
-                c_arr[i],
-                float(t_arr[i]),
-                residual=res,
-                update_type="update",
+        lengths = {
+            "states": len(s_arr),
+            "covariances": len(c_arr),
+            "timestamps": len(t_arr),
+        }
+        if r_arr is not None:
+            lengths["residuals"] = len(r_arr)
+        if len(set(lengths.values())) != 1:
+            detail = ", ".join(f"{k}={v}" for k, v in lengths.items())
+            raise ValueError(
+                f"states, covariances, timestamps and residuals must have the "
+                f"same length, got {detail}"
             )
+
+        self._cursor.execute("SELECT 1 FROM tracks WHERE track_id = ?", (track_id,))
+        if self._cursor.fetchone() is None:
+            raise KeyError(
+                f"No track {track_id!r} in this database. Create it with "
+                f"initiate_track() before recording state updates."
+            )
+
+        self._cursor.execute("SAVEPOINT store_track_history")
+        try:
+            for i in range(len(t_arr)):
+                self._store_state_row(
+                    track_id,
+                    s_arr[i],
+                    c_arr[i],
+                    float(t_arr[i]),
+                    residual=None if r_arr is None else r_arr[i],
+                    update_type="update",
+                )
+        except BaseException:
+            self._cursor.execute("ROLLBACK TO store_track_history")
+            self._cursor.execute("RELEASE store_track_history")
+            raise
+        self._cursor.execute("RELEASE store_track_history")
         self._connection.commit()
 
     def get_track_state(self, track_id: str) -> Dict[str, Any]:

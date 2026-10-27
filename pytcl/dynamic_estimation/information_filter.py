@@ -567,10 +567,23 @@ def srif_update(
     with the measurement information while maintaining numerical stability.
 
     A positive-definite ``R_meas = L L'`` is whitened by ``inv(L)``, as in
-    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A
-    positive semi-definite one is whitened from its eigendecomposition,
-    with eigenvalues floored at ``1e-10`` times the largest, so the result
-    does not depend on the units ``R_meas`` is expressed in.
+    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A positive
+    semi-definite one is whitened from its eigendecomposition, with
+    eigenvalues floored at ``1e-10`` times the largest, so the result does
+    not depend on the units ``R_meas`` is expressed in. So is one whose
+    correlation matrix ``D^-1/2 R_meas D^-1/2`` (``D`` its diagonal) is
+    singular at roundoff scale, smallest eigenvalue at most ``m * eps``
+    times the largest for ``m`` measurements, on which Cholesky can succeed
+    through a roundoff pivot. The test is on the correlation matrix because
+    Cholesky's accuracy depends on its conditioning, not on the units: a
+    positive-definite ``R_meas`` with standard deviations 1e3 and 1e-6 and
+    correlation 0.1 (condition number 1e18) keeps its exact information. A
+    diagonal one with positive variances always takes the Cholesky path.
+    Only the lower triangle of ``R_meas`` is read, as by
+    ``np.linalg.cholesky``.
+
+    v2.11.1 whitened with ``inv(L).T``, which is wrong for a correlated
+    ``R_meas`` (corrected earlier in v2.12.0, PR #210).
     """
     r = np.asarray(r, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
@@ -581,13 +594,34 @@ def srif_update(
     n = len(r)
 
     # Get square root of measurement information
+    eig = None
     try:
         # R_meas = L L', so inv(L) whitens (sqrtInfoFilterUpdate.m:67-68,
         # SR\H). v2.11.1 used inv(L).T, which carries inv(L' L) instead of
         # inv(R_meas) whenever R_meas is not diagonal.
         R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas))
+        # Cholesky can succeed on a singular R_meas through a roundoff pivot
+        # (s [[1, 1], [1, 1]] at s = 0.1 gave 4e18 of information). Then the
+        # whitener is huge: sum(W**2) * trace(R_meas) is at least
+        # cond(L L'), so only a near-singular R_meas is examined further.
+        # Cholesky's error is relative to sqrt(R_ii R_jj), so singularity at
+        # roundoff scale is judged on the correlation matrix, not on R_meas:
+        # diag(1e6, 1e-12) with a tiny cross term is well determined. Like
+        # cholesky and eigh, only the lower triangle is read; a diagonal
+        # R_meas skips the test.
+        m = len(R_meas)
+        whitened_cond = np.vdot(R_meas_inv, R_meas_inv) * R_meas.trace()
+        if not whitened_cond * (2 * (m + 1) ** 2 * _EPS) <= 1.0 and np.any(
+            np.tril(R_meas, -1)
+        ):
+            d = np.sqrt(np.diagonal(R_meas))
+            c = np.linalg.eigvalsh(R_meas / np.outer(d, d))
+            if c[0] <= m * _EPS * c[-1]:
+                eig = np.linalg.eigh(R_meas)
     except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(R_meas)
+        eig = np.linalg.eigh(R_meas)
+    if eig is not None:
+        eigvals, eigvecs = eig
         max_eig = eigvals.max()
         most_neg_eig = eigvals.min()
         if max_eig <= 0 or most_neg_eig < -_EIG_NEGATIVE_REL_TOL * np.max(

@@ -615,5 +615,6 @@ class TestTauScale:
         scale_clean = tau_scale(clean)
         scale_outlier = tau_scale(with_outlier)
 
-        # Should not be heavily affected by outlier
-        assert scale_outlier < 10 * scale_clean
+        # statsmodels 0.15.0 scale_tau(...)[1]; see tests/validation/test_tau_scale.py
+        assert scale_clean == pytest.approx(1.470655510277057, rel=1e-12, abs=0)
+        assert scale_outlier == pytest.approx(1.744097372590729, rel=1e-12, abs=0)

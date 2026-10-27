@@ -64,7 +64,9 @@ builders from :mod:`pytcl.dynamic_models` instead of hand-rolling this:
     R = np.array([[2.5**2]])
 
 ``q_constant_acceleration``, ``q_singer``, and ``q_coord_turn_2d`` cover
-higher-order and maneuvering models.
+higher-order and maneuvering models. ``q_coord_turn_2d`` is rank 1
+(MATLAB's ``QCoordTurn``) since v2.12.0; filters tuned against its earlier
+per-axis ``Q`` need retuning.
 
 Estimation Methods
 ------------------

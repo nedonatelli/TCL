@@ -365,24 +365,28 @@ class TestProcessNoiseVsVanLoan:
                 np.testing.assert_allclose(Qk[s : s + 3, s : s + 3], Q1)
             np.testing.assert_allclose(Qk[:3, 3:6], 0.0, atol=0)
 
-    def test_q_coord_turn_2d_3d_blocks(self):
-        # Per-axis DWNA blocks; omega variance sigma_omega^2 * T^2.
+    def test_q_coord_turn_2d_3d_hand_entries(self):
+        # QCoordTurn: Q = G G' with G = [0.25, 1, 0.25, 1, (0.25, 1,) 0.05]
+        # at T = 0.5, sigma_a = 2, sigma_omega = 0.1 (interleaved state).
         T, sa, so = 0.5, 2.0, 0.1
-        block = sa**2 * np.array([[T**4 / 4, T**3 / 2], [T**3 / 2, T**2]])
         Q = q_coord_turn_2d(T, sa)
-        np.testing.assert_allclose(Q[:2, :2], block)
-        np.testing.assert_allclose(Q[2:, 2:], block)
-        np.testing.assert_allclose(Q[:2, 2:], 0.0, atol=0)
+        assert Q.shape == (4, 4)
+        np.testing.assert_allclose(Q[0], [0.0625, 0.25, 0.0625, 0.25], atol=0)
+        np.testing.assert_allclose(Q[1], [0.25, 1.0, 0.25, 1.0], atol=0)
 
         Q5 = q_coord_turn_2d(T, sa, so, state_type="position_velocity_omega")
         assert Q5.shape == (5, 5)
-        np.testing.assert_allclose(Q5[4, 4], so**2 * T**2)
+        np.testing.assert_allclose(Q5[:4, :4], Q, atol=0)
+        np.testing.assert_allclose(
+            Q5[4], [0.0125, 0.05, 0.0125, 0.05, 0.0025], rtol=1e-15, atol=0
+        )
 
         Q6 = q_coord_turn_3d(T, sa)
         assert Q6.shape == (6, 6)
-        np.testing.assert_allclose(Q6[4:6, 4:6], block)
+        np.testing.assert_allclose(Q6[1], [0.25, 1.0, 0.25, 1.0, 0.25, 1.0], atol=0)
         Q7 = q_coord_turn_3d(T, sa, so, state_type="position_velocity_omega")
-        np.testing.assert_allclose(Q7[6, 6], so**2 * T**2)
+        np.testing.assert_allclose(Q7[:6, :6], Q6, atol=0)
+        np.testing.assert_allclose(Q7[6, 6], 0.0025, rtol=1e-15, atol=0)
 
     def test_q_coord_turn_polar_hand_entries(self):
         T, sa, sod = 0.5, 2.0, 0.1

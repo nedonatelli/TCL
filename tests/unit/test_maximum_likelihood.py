@@ -1,6 +1,9 @@
 """Tests for maximum likelihood estimation module."""
 
+import warnings
+
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.static_estimation import (
@@ -167,6 +170,151 @@ class TestMLENewtonRaphson:
         assert result.covariance[0, 0] > 0
 
 
+def _ll(t):
+    return -0.5 * (t[0] + t[1] - 1.0) ** 2
+
+
+def _score(t):
+    return -(t[0] + t[1] - 1.0) * np.ones(2)
+
+
+def _fit_with_analytic_hessian(H):
+    """Quadratic log-likelihood ``0.5 t' H t`` with its optimum at the start."""
+    return mle_newton_raphson(
+        lambda t: 0.5 * t @ H @ t, lambda t: H @ t, np.zeros(2), hessian=lambda t: H
+    )
+
+
+def test_numerical_hessian_on_an_unidentified_model_is_flagged():
+    """Only ``t0 + t1`` is identified. The four-point Hessian's roundoff
+    gave the flat direction an eigenvalue of 2.8e-12 (1.4e-12 of the largest),
+    which v2.11.1 inverted into a variance of 1.8e11 with converged=True."""
+    with pytest.warns(RuntimeWarning, match="not positive definite"):
+        r = mle_newton_raphson(_ll, _score, np.zeros(2))
+    assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+
+
+@pytest.mark.parametrize(
+    "eps, flagged",
+    [(1e-6, False), (1e-10, False), (1e-14, False), (4e-16, True), (1e-16, True)],
+)
+def test_analytic_near_singular_threshold(eps, flagged):
+    """REFERENCE: ``inv([[1, 1], [1, 1 + e]])[0, 0] = (1 + e) / e``, with
+    ``e`` the stored ``(1 + eps) - 1`` (9.992e-15 at eps = 1e-14, so
+    ``1 / eps`` itself is off by 8e-4). A caller's analytic Hessian is
+    trusted down to ``n * eps`` of its largest eigenvalue; at eps = 4e-16
+    (stored 4.4e-16) the small eigenvalue is roundoff, which v2.11.1
+    inverted because it was positive."""
+    H = -np.array([[1.0, 1.0], [1.0, 1.0 + eps]])
+    if flagged:
+        with pytest.warns(RuntimeWarning, match="not positive definite"):
+            r = _fit_with_analytic_hessian(H)
+        assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            r = _fit_with_analytic_hessian(H)
+        e = (1.0 + eps) - 1.0
+        assert r.converged
+        assert r.covariance[0, 0] == pytest.approx((1.0 + e) / e, rel=1e-6, abs=0)
+
+
+def test_unidentified_model_with_a_nonzero_optimum_is_flagged():
+    """Only ``t0 + t1`` is identified. The stencil's roundoff scales with
+    ``abs(log_likelihood)``, here 22.8 at the optimum (residuals plus the
+    normalizing constant), so the flat direction's numerical eigenvalue is
+    roundoff far above any fixed ratio of the largest."""
+    x = np.random.default_rng(3).normal(3.0, 1.0, 10)
+
+    def ll(t):
+        return -0.5 * np.sum((x - t[0] - t[1]) ** 2) - 10 * 0.9189385332046727
+
+    def score(t):
+        return np.sum(x - t[0] - t[1]) * np.ones(2)
+
+    with pytest.warns(RuntimeWarning, match="not positive definite"):
+        r = mle_newton_raphson(ll, score, np.array([0.4, -1.3]))
+    assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+
+
+def test_identified_model_in_disparate_units_is_not_flagged():
+    """REFERENCE: curvatures 1e4 and 1e-6, so the covariance is
+    ``diag(1e-4, 1e6)``. A ratio test on the unscaled information (1e-10)
+    called the second parameter unidentified."""
+
+    def ll(t):
+        return -0.5 * (1e4 * (t[0] - 1) ** 2 + 1e-6 * (t[1] - 2) ** 2)
+
+    def score(t):
+        return -np.array([1e4 * (t[0] - 1), 1e-6 * (t[1] - 2)])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        r = mle_newton_raphson(ll, score, np.zeros(2))
+    assert r.converged
+    assert_allclose(np.diag(r.covariance), [1e-4, 1e6], rtol=1e-6, atol=0)
+
+
+def test_analytic_badly_scaled_fisher_keeps_v2111_covariance():
+    """A TOA-like Fisher ``D [[1, .3], [.3, 1]] D``, ``D = diag(1e9, 0.1)``
+    (1 ns clock, 10 m position; condition number 1.1e20) is identified, and
+    its covariance is v2.11.1's ``inv`` bit for bit."""
+    from tests.validation._v2111 import shipped_module
+
+    D = np.diag([1e9, 1e-1])
+    H = -(D @ np.array([[1.0, 0.3], [0.3, 1.0]]) @ D)
+    args = (lambda t: 0.5 * t @ H @ t, lambda t: H @ t, np.zeros(2))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        r = mle_newton_raphson(*args, hessian=lambda t: H)
+    old = shipped_module(
+        "pytcl/static_estimation/maximum_likelihood.py"
+    ).mle_newton_raphson(*args, hessian=lambda t: H)
+    assert r.converged
+    assert np.array_equal(r.covariance, old.covariance)
+    assert r.covariance[1, 1] == pytest.approx(1e2 / 0.91, rel=1e-9, abs=0)
+
+
+def _quadratic_score(t):
+    return -np.array([2.0 * (t[0] - 1), 0.5 * (t[1] - 2)])
+
+
+def _quadratic_ll(t):
+    return -0.5 * (2.0 * (t[0] - 1) ** 2 + 0.5 * (t[1] - 2) ** 2)
+
+
+@pytest.mark.parametrize(
+    "ll",
+    [
+        lambda t: np.nan if np.array_equal(t, [1.0, 2.0]) else _quadratic_ll(t),
+        lambda t: np.nan,
+        lambda t: -np.inf,
+    ],
+    ids=["nan-at-optimum", "nan-everywhere", "minus-inf-everywhere"],
+)
+def test_non_finite_log_likelihood_returns_v2111_result(ll):
+    """No error model exists for a non-finite log-likelihood or Fisher
+    matrix; the result is v2.11.1's (it raised from the SVD of a NaN
+    bound before)."""
+    from tests.validation._v2111 import shipped_module
+
+    old = shipped_module(
+        "pytcl/static_estimation/maximum_likelihood.py"
+    ).mle_newton_raphson
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = mle_newton_raphson(ll, _quadratic_score, np.zeros(2))
+        o = old(ll, _quadratic_score, np.zeros(2))
+    assert r.converged == o.converged and r.n_iter == o.n_iter
+    for got, want in [
+        (r.theta, o.theta),
+        (r.fisher_info, o.fisher_info),
+        (r.covariance, o.covariance),
+        (r.log_likelihood, o.log_likelihood),
+    ]:
+        assert np.array_equal(got, want, equal_nan=True)
+
+
 class TestMLEScoring:
     """Tests for Fisher scoring MLE."""
 
@@ -236,3 +384,10 @@ class TestInformationCriteria:
         aic2 = aic(-150.0, 2)  # Worse model
 
         assert aic1 < aic2  # Lower is better
+
+
+def test_nan_noise_bound_is_rejected():
+    from pytcl.static_estimation.maximum_likelihood import _covariance_from_information
+
+    with pytest.raises(ValueError, match="noise_bound is NaN"):
+        _covariance_from_information(np.eye(2), 1e-12, noise_bound=np.nan)
