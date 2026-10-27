@@ -668,9 +668,9 @@ def hyp1f1(
     scipy's ``hyp1f1`` takes time proportional to ``abs(z)`` (about 14 s at
     ``z = 1e13``, over 60 s beyond) and is not called at ``abs(z) >= 1e9``:
     non-terminating 1F1 there uses the DLMF 13.7.2 asymptotic expansion.
-    From ``abs(z) = 1e2`` the expansion also replaces scipy at ``z > 0``
-    (where it only returns proven overflows) and at ``z < 0`` when
-    ``b > 0`` and ``b - a > 0``. Measured against mpmath (an exact series
+    From ``abs(z) = 1e2`` the expansion replaces scipy at ``z < 0`` when
+    ``b > 0`` and ``b - a > 0``; at ``1e2 <= z < 1e9`` it is used only to
+    prove an overflow, and scipy's finite values are kept. Measured against mpmath (an exact series
     sum where ``b < 0``), ``a`` in [-60, 60], ``abs(b)`` up to 1e4; every
     figure is the maximum measured over the stated random sample, not a
     bound:

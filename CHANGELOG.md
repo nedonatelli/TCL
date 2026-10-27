@@ -190,8 +190,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   DLMF 13.7.2 asymptotic expansion, whose Gamma(b)/Gamma(b-a) coefficient
   is computed without rounding `b - a` into a Gamma argument (Stirling
   differences, exact sin(pi x) reflection, extended exponent). From
-  `abs(z) = 1e2` the expansion also replaces scipy at `z > 0` and at
-  `z < 0` when `b > 0` and `b - a > 0`. Measured against mpmath (an exact
+  `abs(z) = 1e2` the expansion replaces scipy at `z < 0` when `b > 0` and
+  `b - a > 0`; at `1e2 <= z < 1e9` it is used only to prove an overflow,
+  and scipy's finite values are kept. Measured against mpmath (an exact
   series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4; each
   figure is the maximum over the stated random sample, not a bound: the
   expansion reached 3.1e-14 relative at `1e2 <= -z < 1e9` (939 points,

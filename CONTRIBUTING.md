@@ -531,7 +531,7 @@ pytest --cov=pytcl --cov-report=term
 Current metrics (v2.11.1):
 - **Functions:** 1,450+ (top-level `def`; measured 1,538 via
   `grep -r "^def " pytcl/ | wc -l`)
-- **Modules:** 219
+- **Modules:** 220
 - **Tests:** 9,500+ (all passing; measured 10,603 via
   `pytest --collect-only`)
 - **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,

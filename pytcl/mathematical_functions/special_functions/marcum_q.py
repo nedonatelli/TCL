@@ -38,6 +38,13 @@ def marcum_q(
     Q : ndarray
         Values of Q_m(a, b).
 
+    Raises
+    ------
+    ConvergenceError
+        If the series used where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` needs
+        more than 2^16 terms in a sum (its backstop) or its bracket
+        overflows. See :func:`log_marcum_q` for the measured range.
+
     Notes
     -----
     For m = 1, this is the standard Marcum Q function:
@@ -189,6 +196,17 @@ def log_marcum_q(
     log_Q : ndarray
         Values of log(Q_m(a, b)).
 
+    Raises
+    ------
+    ConvergenceError
+        If the series (used where ``Q < 1e-10`` and ``a*b <= 2e4``, and
+        where ``a*b > 2e4`` with ``(m-1)^2 > 4ab``) needs more than 2^16
+        terms in a sum, or its bracket overflows. On 13,346 calls over
+        ``a``, ``b`` in {0, 1e-300, 1e-3, ..., 1e8, 1e200, inf, nan} plus
+        points beside each regime boundary, ``m`` from 1 to 1e7, no call
+        raised, the largest evaluation was 433 terms and the slowest call
+        0.04 s.
+
     Notes
     -----
     Where ``a > 0``, ``b > 0`` and ``a*b > 2e4`` (all finite), where
@@ -240,10 +258,7 @@ def log_marcum_q(
     ``-(a^2+b^2)/2 + (m-1) log(b/a) + log I_{m-1}(ab)`` (mpmath) on 115
     points, ``a`` in {1e-3, 0.5, 10, 1e3}, ``m`` in {1e5, 1e6, 1e7}, ``b``
     from 1e5 to 1e14. More than 2^16 terms in a sum raises
-    ``ConvergenceError``. On 13,346 calls over ``a``, ``b`` in {0, 1e-300,
-    1e-3, ..., 1e8, 1e200, inf, nan} plus points beside each regime
-    boundary, ``m`` from 1 to 1e7, no call raised, the largest evaluation
-    was 433 terms and the slowest call 0.04 s. Inputs with ``a^2/2`` above
+    ``ConvergenceError`` (see Raises). Inputs with ``a^2/2`` above
     2^53 (``m`` near 3e8) return but are not measured.
     ``log Q`` is within 2.1e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c``
     in {-3, 0, 7, 20}, and within 3.9e-15 on ``a = 10``, ``m = 1e7``, ``c``
