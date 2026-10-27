@@ -492,6 +492,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unless you relied on a NaN sample in the reference window leaving a GO
   threshold finite.
 
+- **`mle_newton_raphson` treats a roundoff-sized Fisher eigenvalue as
+  zero.** The flat-direction check fired only on an eigenvalue `<= 0`, so
+  a model the numerical Hessian cannot identify passed whenever roundoff
+  left the flat direction slightly positive: for `-0.5 (t0 + t1 - 1)^2`
+  the four-point Hessian gave that direction 2.8e-12 (1.4e-12 of the
+  largest eigenvalue), and the result was a variance of 1.8e11 on both
+  parameters (6.0e10 in an earlier measurement), `converged=True` and no
+  warning. An eigenvalue now counts as zero at or below `rel_tol` times
+  the largest: `1e-8` for the numerical Hessian (below that the `h = 1e-5`
+  Hessian itself is unreliable) and `n * eps` (4.4e-16 at n = 2,
+  `np.linalg.matrix_rank`'s convention) for a caller-supplied `hessian`.
+  On 2000 random unidentified two-parameter quadratics the numerical
+  Hessian's flat-direction ratio was at most 4.5e-11 where
+  `max(abs(theta)) <= 10` (1112 cases) and 6.4e-10 at the 99th percentile
+  overall, but it grows with `abs(theta)`: one case at `abs(theta)` =
+  4.6e3 reached 1.2e-8 and is still missed. On `-[[1, 1], [1, 1 + eps]]`
+  with an analytic Hessian, eps = 1e-6, 1e-10 and 1e-14 are still
+  identified with the covariance `inv` gives (within 1e-6 of the closed
+  form), and eps = 4e-16, whose small eigenvalue is roundoff, is now
+  flagged. A model whose smallest eigenvalue clears the threshold keeps
+  v2.11.1's covariance, `np.linalg.inv(fisher_info)`. No other pytcl
+  function calls `mle_newton_raphson`. What to do: a model the numerical
+  Hessian cannot identify now warns, reports converged=False and infinite
+  variances, where it used to report a confident 6e10.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

@@ -1,6 +1,9 @@
 """Tests for maximum likelihood estimation module."""
 
+import warnings
+
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.static_estimation import (
@@ -165,6 +168,55 @@ class TestMLENewtonRaphson:
 
         assert result.covariance.shape == (1, 1)
         assert result.covariance[0, 0] > 0
+
+
+def _ll(t):
+    return -0.5 * (t[0] + t[1] - 1.0) ** 2
+
+
+def _score(t):
+    return -(t[0] + t[1] - 1.0) * np.ones(2)
+
+
+def _fit_with_analytic_hessian(H):
+    """Quadratic log-likelihood ``0.5 t' H t`` with its optimum at the start."""
+    return mle_newton_raphson(
+        lambda t: 0.5 * t @ H @ t, lambda t: H @ t, np.zeros(2), hessian=lambda t: H
+    )
+
+
+def test_numerical_hessian_on_an_unidentified_model_is_flagged():
+    """Only ``t0 + t1`` is identified. The four-point Hessian's roundoff
+    gave the flat direction an eigenvalue of 2.8e-12 (1.4e-12 of the largest),
+    which v2.11.1 inverted into a variance of 1.8e11 with converged=True."""
+    with pytest.warns(RuntimeWarning, match="not positive definite"):
+        r = mle_newton_raphson(_ll, _score, np.zeros(2))
+    assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+
+
+@pytest.mark.parametrize(
+    "eps, flagged",
+    [(1e-6, False), (1e-10, False), (1e-14, False), (4e-16, True), (1e-16, True)],
+)
+def test_analytic_near_singular_threshold(eps, flagged):
+    """REFERENCE: ``inv([[1, 1], [1, 1 + e]])[0, 0] = (1 + e) / e``, with
+    ``e`` the stored ``(1 + eps) - 1`` (9.992e-15 at eps = 1e-14, so
+    ``1 / eps`` itself is off by 8e-4). A caller's analytic Hessian is
+    trusted down to ``n * eps`` of its largest eigenvalue; at eps = 4e-16
+    (stored 4.4e-16) the small eigenvalue is roundoff, which v2.11.1
+    inverted because it was positive."""
+    H = -np.array([[1.0, 1.0], [1.0, 1.0 + eps]])
+    if flagged:
+        with pytest.warns(RuntimeWarning, match="not positive definite"):
+            r = _fit_with_analytic_hessian(H)
+        assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+    else:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            r = _fit_with_analytic_hessian(H)
+        e = (1.0 + eps) - 1.0
+        assert r.converged
+        assert r.covariance[0, 0] == pytest.approx((1.0 + e) / e, rel=1e-6, abs=0)
 
 
 class TestMLEScoring:
