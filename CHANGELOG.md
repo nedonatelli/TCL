@@ -185,6 +185,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   estimates computed with a non-diagonal measurement covariance; the
   results change, and they now match the Kalman filter.
 
+- **`marcum_q` at large arguments uses the log-domain quadrature, not
+  `scipy.stats.ncx2.sf`.** Every element with `a > 0`, `b > 0` went
+  through `ncx2.sf`, which loses digits and then fails as `a*b` grows:
+  4.5e-7 relative at `(a=1e7, b=1e7-3, m=2)`, 4.7e-3 against 0.5 at
+  `(a=1e7, b=sqrt(a^2+2), m=1)`, and 8.6e-179 against 2.8e-89 at
+  `(a=1e8, b=sqrt(a^2+4)+20, m=2)`, with Boost "Series did not converge"
+  warnings. Elements with `a*b > 2e4` (finite, positive) are now `exp` of
+  the log-domain evaluation `log_marcum_q` already used for its tails: a
+  quadrature of the Marcum integrand where `(m-1)^2 <= 4ab`, the
+  Poisson-mixture series otherwise. `log_marcum_q` computes those
+  elements directly instead of inheriting `ncx2.sf` values above
+  `Q = 1e-10`, and elsewhere takes `log1p(-ncx2.cdf)` where `Q > 0.5`, so
+  `log Q` keeps its relative accuracy as `Q` nears 1. The quadrature now
+  forms `log(x/a)` as `log1p`, which removes a 4e-8 relative error at
+  `m = 1e7`. Measured against a new mpmath oracle
+  (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`)
+  on 151 points, `b = sqrt(a^2 + 2m) + c` with `a` in {10, 1e3, 1e5, 1e7,
+  1e8}, `m` in {1, 2, 100, 1e4, 1e7}, `c` in {-40, -10, -3, 0, 3, 10, 20}
+  (series-corner points excluded): `Q` within 2.9e-14 relative for
+  `a >= 1e3` and 2.6e-13 at `a = 10`; `log Q` within 6.4e-15, except
+  1.7e-12 at `(a=10, m=1e4, c=-10)`, which is outside the `a*b > 2e4`
+  domain. It is one quadrature per element: a 1e4-element array in the
+  new domain took 0.38 to 0.67 s (Apple Silicon, `a` from 1e3 to 1e8),
+  against 0.19 s for `ncx2.sf` at `a = 1e3` and 42 ms and 311 ms per
+  element at `a = 1e7` and `1e8`. What to do:
+  nothing; results at `a >= 1e3` change, and at `a >= 1e7` they were
+  wrong by up to 100%.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

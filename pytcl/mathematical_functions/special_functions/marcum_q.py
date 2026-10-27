@@ -48,6 +48,32 @@ def marcum_q(
     - Q_m(0, b) = 1 - gammainc(m, b^2/2) = gammaincc(m, b^2/2)
     - Q_m(a, 0) = 1
 
+    Where ``a > 0``, ``b > 0`` and ``a*b > 2e4``, all finite, the value is
+    ``exp`` of the log-domain evaluation :func:`log_marcum_q` uses there: a
+    quadrature of the Marcum integrand where ``(m-1)^2 <= 4ab``, otherwise
+    the Poisson-mixture series. Everywhere else it is
+    ``scipy.stats.ncx2.sf``. Before v2.12.0 every element went through
+    ``ncx2.sf``, which at large arguments returned 4.7e-3 for ``Q = 0.5``
+    (``a = 1e7``) and 8.6e-179 for 2.8e-89 (``a = 1e8``, ``m = 2``,
+    ``b - a = 20``), with Boost "Series did not converge" warnings.
+
+    Relative error against the mpmath oracle in
+    ``tests/fixtures/marcum_q/oracle.csv``, at ``b = sqrt(a^2 + 2m) + c``
+    for ``c`` in {-40, -10, -3, 0, 3, 10, 20}:
+
+    ================  =====================  =========
+    ``a``             ``m``                  max error
+    ================  =====================  =========
+    10                1, 2, 100, 1e4         2.6e-13
+    1e3               1, 2, 100              2.9e-14
+    1e5               1, 2, 100, 1e4         2.9e-14
+    1e7, 1e8          1, 2, 100, 1e4, 1e7    2.9e-14
+    ================  =====================  =========
+
+    Where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` (``a = 10, m = 1e7``;
+    ``a = 1e3, m >= 3000``) the series loses digits: 6.5e-10 at
+    ``a = 1e3, m = 3000, c = 7``.
+
     Examples
     --------
     >>> float(marcum_q(0, 0))  # Q_1(0, 0) = 1
@@ -82,16 +108,24 @@ def marcum_q(
     if np.any(a_zero):
         result[a_zero] = sp.gammaincc(m, 0.5 * b[a_zero] ** 2)
 
-    # General case: use ncx2 survival function
+    large = _large_product(a, b)
+    for idx in map(tuple, np.argwhere(large)):
+        result[idx] = np.exp(_log_marcum_q_tail(a[idx], b[idx], m))
+
     # Q_m(a, b) = P(X > b^2) where X ~ chi^2(2m, a^2)
-    general = (~a_zero) & (~b_zero)
+    general = (~a_zero) & (~b_zero) & (~large)
     if np.any(general):
         from scipy.stats import ncx2
 
-        # Degrees of freedom = 2m, non-centrality = a^2
         result[general] = ncx2.sf(b[general] ** 2, 2 * m, a[general] ** 2)
 
     return result
+
+
+def _large_product(a: NDArray[np.floating], b: NDArray[np.floating]) -> NDArray:
+    """Elements ``ncx2.sf`` gets wrong: finite, positive, ``a*b > 2e4``."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        return np.isfinite(a) & np.isfinite(b) & (a > 0) & (b > 0) & (a * b > 2e4)
 
 
 def marcum_q1(
@@ -154,27 +188,42 @@ def log_marcum_q(
 
     Notes
     -----
-    Where ``Q < 1e-10``, or where ``marcum_q`` returns NaN for finite
-    input (``a^2`` or ``b^2`` overflowing), the value is recomputed in the
-    log domain. When ``a^2/2`` and ``b^2/2`` are both finite and either
+    Where ``a > 0``, ``b > 0`` and ``a*b > 2e4`` (all finite), where
+    ``Q < 1e-10``, and where ``marcum_q`` returns NaN for finite input
+    (``a^2`` or ``b^2`` overflowing), the value is computed in the log
+    domain. When ``a^2/2`` and ``b^2/2`` are both finite and either
     ``a*b <= 2e4`` or ``(m-1)^2 > 4ab``, it is a log-sum-exp of the
     Poisson-mixture series ``sum_k Pois(k; a^2/2) Q(m + k, b^2/2)``.
     Otherwise it is a quadrature of the exact integrand
     ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
-    factored out, which needs neither squared argument.
+    factored out, which needs neither squared argument. Elsewhere it is
+    ``log Q`` from ``marcum_q`` where ``Q <= 0.5`` and ``log1p(-P)`` above,
+    with ``P = 1 - Q`` from ``scipy.stats.ncx2.cdf`` (``gammainc`` at
+    ``a = 0``), so ``log Q`` keeps its relative accuracy as ``Q`` nears 1.
 
-    Measured against mpmath at 40 or more digits with
-    ``b = sqrt(a^2 + 2m) + c`` on 84 points: ``a`` in {0.5, 5, 30, 140},
-    ``m`` in {1, 20, 200}, ``c`` in {7, 30, 200, 1000}; and ``a`` in
-    {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100, 3000}, ``c`` in {7, 30, 200}.
-    The relative error of ``log Q`` is below 2.2e-14 on the first set and
-    below 5e-13 on the second wherever the quadrature is used. Where
-    ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used anyway and loses
-    digits: 2.4e-11 at ``a = 1e3, m = 3000, c = 7`` and 1.5e-12 at
-    ``c = 30``. Results with ``Q >= 1e-10`` come from ``marcum_q``
-    unchanged. Where ``b^2/2`` overflows and ``b - a`` is large, ``Q``
-    underflows and the result is ``-inf``. For ``a >= 1e100`` it matches
-    ``log Phi(a - b)`` to 2e-13.
+    Relative error of ``log Q`` against the mpmath oracle in
+    ``tests/fixtures/marcum_q/oracle.csv``, at ``b = sqrt(a^2 + 2m) + c``
+    for ``c`` in {-40, -10, -3, 0, 3, 10, 20}:
+
+    ================  =====================  ======================
+    ``a``             ``m``                  max error
+    ================  =====================  ======================
+    10                1, 2, 100              4.2e-15
+    10                1e4                    3.0e-14; 1.7e-12 at
+                                             ``c = -10``
+    1e3               1, 2, 100              7.7e-16
+    1e5, 1e7, 1e8     1, 2, 100, 1e4         6.4e-15
+    1e7, 1e8          1e7                    1.6e-15
+    ================  =====================  ======================
+
+    Where ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used and loses
+    digits: 2.4e-11 at ``a = 1e3, m = 3000, c = 7`` and 4e-7 at ``c = -3``.
+    v2.11.1 also measured ``c`` in {7, 30, 200, 1000} for ``a`` in
+    {0.5, 5, 30, 140}, ``m`` in {1, 20, 200} (below 2.2e-14), and ``c`` in
+    {7, 30, 200} for ``a`` in {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100}
+    (below 5e-13); those sets were not remeasured. Where ``b^2/2``
+    overflows and ``b - a`` is large, ``Q`` underflows and the result is
+    ``-inf``. For ``a >= 1e100`` it matches ``log Phi(a - b)`` to 2e-13.
 
     Before v2.11.1 that branch called ``scipy.stats.ncx2.logsf``, which
     underflows to ``-inf`` exactly where this function is needed:
@@ -195,16 +244,32 @@ def log_marcum_q(
     a_b = np.broadcast_to(a, out_shape).ravel()
     b_b = np.broadcast_to(b, out_shape).ravel()
 
+    large = _large_product(a_b, b_b)
     with np.errstate(over="ignore", invalid="ignore"):
-        q_val = np.atleast_1d(marcum_q(a_b, b_b, m))
+        q_val = np.where(large, 1.0, marcum_q(np.where(large, 0.0, a_b), b_b, m))
 
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
+    # Near Q = 1, log(Q) keeps only the absolute accuracy of Q; log1p of the
+    # directly computed 1 - Q keeps the relative accuracy of log Q.
+    near_one = ~large & (q_val > 0.5)
+    if np.any(near_one):
+        from scipy.stats import ncx2
+
+        an, bn = a_b[near_one], b_b[near_one]
+        with np.errstate(over="ignore", invalid="ignore"):
+            p_val = np.where(
+                an == 0.0,
+                sp.gammainc(m, 0.5 * bn**2),
+                ncx2.cdf(bn**2, 2 * m, an**2),
+            )
+        result[near_one] = np.log1p(-p_val)
+
     # marcum_q returns NaN (or a spurious 0) once a^2 or b^2 overflows, so
     # NaN results from finite inputs are recomputed here too.
     finite = np.isfinite(a_b) & np.isfinite(b_b)
-    redo = finite & ((q_val < 1e-10) | np.isnan(q_val))
+    redo = large | (finite & ((q_val < 1e-10) | np.isnan(q_val)))
     for i in np.flatnonzero(redo):
         result[i] = _log_marcum_q_tail(a_b[i], b_b[i], m)
     result[np.isposinf(a_b) & np.isfinite(b_b)] = 0.0
@@ -278,8 +343,11 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
     nu = m - 1.0
     d = b - a
 
-    def _log_h(x: NDArray[np.floating]) -> NDArray[np.floating]:
-        return np.log(x) + nu * (np.log(x) - np.log(a)) + _log_ive(nu, a, x)
+    def _log_h(t: NDArray[np.floating]) -> NDArray[np.floating]:
+        # log(x/a) as log1p(t/a): log(x) - log(a) cancels to an absolute
+        # 4e-15, which the factor nu turns into 4e-8 at nu = 1e7.
+        x = a + t
+        return np.log(x) + nu * np.log1p(t / a) + _log_ive(nu, a, x)
 
     if d >= 8.0:
         lead = -0.5 * d * d
@@ -287,7 +355,7 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
             return -np.inf
         v, w = _LAGUERRE
         u = v / d
-        terms = _log_h(b + u) - 0.5 * u * u + np.log(w)
+        terms = _log_h(d + u) - 0.5 * u * u + np.log(w)
         top = terms.max()
         return float(lead + top + np.log(np.sum(np.exp(terms - top))) - np.log(d))
     nodes, weights = _LEGENDRE
@@ -297,7 +365,7 @@ def _log_marcum_q_quad(a: float, b: float, m: int) -> float:
         mid = 0.5 * (edges[1:] + edges[:-1])[:, None]
         half = 0.5 * (edges[1:] - edges[:-1])[:, None]
         t = (mid + half * nodes).ravel()
-        terms = _log_h(a + t) - 0.5 * t * t + np.log((half * weights).ravel())
+        terms = _log_h(t) - 0.5 * t * t + np.log((half * weights).ravel())
         top = terms.max()
         return float(top + np.log(np.sum(np.exp(terms - top))))
 

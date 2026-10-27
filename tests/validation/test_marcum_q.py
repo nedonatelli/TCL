@@ -14,6 +14,11 @@ always correct; only the name was wrong) and the deprecated alias was
 removed in v2.8.0.
 """
 
+import math
+from pathlib import Path
+from typing import NamedTuple
+
+import mpmath
 import numpy as np
 import pytest
 
@@ -25,6 +30,61 @@ from pytcl.mathematical_functions.special_functions.marcum_q import (
     rician_cdf,
     swerling_detection_probability,
 )
+
+_ORACLE = Path(__file__).resolve().parent.parent / "fixtures/marcum_q/oracle.csv"
+
+
+class _OracleRow(NamedTuple):
+    a: float
+    b: float
+    m: int
+    log_q: str
+
+
+def _is_series_corner(row: _OracleRow) -> bool:
+    ab = row.a * row.b
+    return ab > 2e4 and (row.m - 1.0) ** 2 > 4.0 * ab
+
+
+def _oracle_rows(corner: bool = False) -> list[_OracleRow]:
+    """Rows of ``scripts/marcum_q_reference.py``'s output, in or out of the corner."""
+    lines = [ln for ln in _ORACLE.read_text().splitlines() if not ln.startswith("#")]
+    rows = []
+    for line in lines[1:]:
+        a, b, m, log_q = line.split(",")
+        row = _OracleRow(float(a), float(b), int(m), log_q)
+        if _is_series_corner(row) == corner:
+            rows.append(row)
+    return rows
+
+
+def _row_id(row: _OracleRow) -> str:
+    c = row.b - math.sqrt(row.a**2 + 2.0 * row.m)
+    return f"a={row.a:g}-m={row.m}-c={c:+.0f}"
+
+
+def _log_oracle_params() -> list:
+    """Oracle rows, with the one measured miss marked strict-xfail.
+
+    At ``a = 10, m = 1e4, c = -10`` (outside the ``a*b > 2e4`` domain),
+    ``log1p(-ncx2.cdf)`` is off by 1.7e-12 relative on ``log Q = -1.5e-46``.
+    """
+    params = []
+    for row in _oracle_rows():
+        c = row.b - math.sqrt(row.a**2 + 2.0 * row.m)
+        if (row.a, row.m, round(c)) == (10.0, 10_000, -10):
+            mark = pytest.mark.xfail(reason="ncx2.cdf: 1.7e-12 relative", strict=True)
+            params.append(pytest.param(row, marks=mark))
+        else:
+            params.append(row)
+    return params
+
+
+def mpmath_exp_as_float(log_q: str) -> float:
+    """exp of a decimal string at 40 digits; 0.0 below the double range."""
+    with mpmath.workdps(40):
+        return float(mpmath.exp(mpmath.mpf(log_q)))
+
 
 # =============================================================================
 # Tests for Marcum Q function
@@ -91,6 +151,46 @@ class TestMarcumQ:
         """Test invalid m raises ValueError."""
         with pytest.raises(ValueError, match="Order m must be >= 1"):
             marcum_q(1, 2, m=0)
+
+
+class TestMarcumQLargeArguments:
+    """``a*b > 2e4`` against the mpmath oracle in tests/fixtures/marcum_q.
+
+    Before v2.12.0 these went through ``scipy.stats.ncx2.sf``: 4.7e-3
+    against 0.5 at ``(1e7, sqrt(1e14 + 2), m=1)`` and 8.6e-179 against
+    2.8e-89 at ``(1e8, sqrt(1e16 + 4) + 20, m=2)``.
+    """
+
+    @pytest.mark.parametrize("row", _oracle_rows(), ids=_row_id)
+    def test_marcum_q_matches_the_oracle(self, row):
+        got = marcum_q(row.a, row.b, row.m)
+        want = mpmath_exp_as_float(row.log_q)
+        assert got == pytest.approx(want, rel=1e-12, abs=0)
+
+    @pytest.mark.parametrize("row", _log_oracle_params(), ids=_row_id)
+    def test_log_marcum_q_matches_the_oracle(self, row):
+        got = log_marcum_q(row.a, row.b, row.m)
+        assert got == pytest.approx(float(row.log_q), rel=1e-12, abs=0)
+
+    def test_no_boost_warnings_at_large_arguments(self, recwarn):
+        marcum_q(1e8, 1e8 + 20.0, 10_000_000)
+        assert not recwarn
+
+    def test_mixed_regime_array_matches_scalar_calls(self):
+        a = np.array([0.0, 10.0, 1e3, 1e7, 1e8, 1e3])
+        b = np.array([3.0, 0.0, 1010.0, 1e7 + 3.0, 1e8 + 20.0, 1009.9955134495867])
+        m = 2
+        got = marcum_q(a, b, m)
+        want = [marcum_q(ai, bi, m) for ai, bi in zip(a, b, strict=True)]
+        assert np.array_equal(got, want)
+
+    def test_broadcast_scalar_matches_scalar_calls(self):
+        a = np.array([[0.0, 5.0], [1e3, 1e8]])
+        b = 1e3 + 3.0
+        got = marcum_q(a, b, 3)
+        assert got.shape == (2, 2)
+        for idx in np.ndindex(a.shape):
+            assert got[idx] == marcum_q(a[idx], b, 3)
 
 
 class TestMarcumQ1:
