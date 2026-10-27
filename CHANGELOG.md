@@ -172,6 +172,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
+  hang at large finite `z`. scipy 1.17.1's `hyp1f1` never returns for
+  non-terminating 1F1 at `z >= 1e13` (all 28 parameter sets probed, e.g.
+  1F1(0.5; 1.5; 1e15)), nor at `z <= -1e13` when `b - a` is a non-positive
+  integer (it takes 4 s at -1e12, growing with `abs(z)`). Non-terminating
+  1F1 at `abs(z) >= 1e2` now uses the DLMF 13.7.2 asymptotic expansion
+  wherever both of its series reach double precision; from `abs(z) >= 1e9`
+  scipy is never called, and an expansion that does not reach double
+  precision gives NaN with a `RuntimeWarning` (seen only for `abs(a)` near
+  1e4). Against mpmath the expansion is within 2.5e-14 relative over 22
+  parameter sets from `abs(z) = 1e2` to 1e300, and the value is continuous
+  to 2.4e-14 across `z = +-1e2`, `+-1e6` and `+-1e9` (20 sets). On a
+  181-point scan of `z` in [-1e10, -10] the worst error fell from scipy's
+  1.4e-12 to 2.5e-13 (that remainder is scipy's own, where the expansion
+  does not reach double precision). 108 parameter pairs (`a` from -9999.5
+  to 1e4, `b` from -2 to 1e5) times 36 values of `z` from `+-1e2` to
+  `+-1e300` and `+-inf` all return. Two more silent wrong answers on the
+  same path are fixed: scipy returned `+inf` for every overflow, so
+  1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800) and 1F1(-10.5; 1e5; 1e6) now
+  give `-inf`; and `hyp1f1` at `z = +-inf` returns the limit (it hung, or
+  for a terminating series gave `+inf` for `1 - z/2`). A terminating pFq
+  whose exact value exceeds the double range (`generalized_hypergeometric(
+  [-5], [], 1e100)`, `(1 - z)^5`) raised `OverflowError` and now returns
+  `+-inf`. 0F1, 2F1 and the general pFq series were audited and do not
+  hang. No other pytcl module calls these functions. What to do: nothing;
+  calls that hung now return, and overflowing 1F1 values carry their true
+  sign.
+
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
   its docstring. v2.11.1 returned NaN for every non-trivial case (3F3,
@@ -179,9 +207,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
   and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
   scipy's `hyp1f1`. 1F1(-0.5; 1; +inf) and 1F1(1; -1.5; +inf) hung inside
-  scipy 1.17.1's `hyp1f1`; they now return NaN at once, because a negative
-  non-integer `a` or a negative `b` is outside the rules (their true limits
-  are `-inf` and `+inf`); a terminating series with a pole
+  scipy 1.17.1's `hyp1f1` (as large finite z did; see the `hyp1f1` entry
+  below); they now return NaN at once, because a negative non-integer `a`
+  or a negative `b` is outside the rules (their true limits are `-inf` and
+  `+inf`, which `hyp1f1` itself now returns); a terminating series with a pole
   (`[-2, 1, 1]; [-1, 3]`) raised `ZeroDivisionError` at infinite `z` and
   now returns NaN (finite `z` still raises). Limits of 0.0 were checked
   against mpmath at `z = -1e2` and `-1e4`, not beyond. A NaN `z` still

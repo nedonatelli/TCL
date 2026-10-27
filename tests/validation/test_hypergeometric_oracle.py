@@ -8,6 +8,8 @@ import pytest
 
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
     generalized_hypergeometric,
+    hyp1f1,
+    hyp1f1_regularized,
 )
 
 CASES = [
@@ -187,3 +189,101 @@ class TestInfiniteArgument:
         np.testing.assert_array_equal(got[:3], [math.inf, 0.0, math.nan])
         want = float(mpmath.hyper(a, b, 1.0))
         assert got[3] == pytest.approx(want, rel=1e-13, abs=0)
+
+
+def _mp_double(v):
+    """mpmath value rounded to a double, with overflow kept as a signed inf."""
+    if abs(v) > mpmath.mpf(np.finfo(np.float64).max):
+        return math.copysign(math.inf, float(mpmath.sign(v)))
+    return float(v)
+
+
+class TestLargeFiniteArgument:
+    """scipy's hyp1f1 never returns for z >= 1e13 and takes time linear in
+    abs(z) when b - a is a non-positive integer; large abs(z) goes through
+    DLMF 13.7.2 instead. Returning at all is the termination check (run
+    under the suite's timeout); values are checked against mpmath."""
+
+    FORMERLY_HANGING = [
+        (-0.5, 1.0, 1e15),
+        (1.0, -1.5, 1e15),
+        (0.5, 1.5, 1e15),
+        (0.5, 1.5, 1e300),
+        (1.0, 1.0, 1e13),
+        (0.5, 0.5, -1e13),
+        (2.5, -1.5, -1e16),
+        (2.5, 1.5, -1e15),
+        (0.5, 1.5, -1e300),
+        (-10.5, 3.0, -1e20),
+        (25.5, 40.25, -1e13),
+        (3.7, -2.2, -1e100),
+    ]
+
+    @pytest.mark.parametrize("a, b, z", FORMERLY_HANGING)
+    def test_returns_and_matches_mpmath(self, a, b, z, recwarn):
+        want = _mp_double(mpmath.hyp1f1(a, b, z))
+        for got in (hyp1f1(a, b, z), generalized_hypergeometric([a], [b], z)):
+            if math.isfinite(want) and want != 0.0:
+                assert got == pytest.approx(want, rel=5e-14, abs=0)
+            else:
+                assert got == want
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            (-0.5, 1.0, 800.0),
+            (-2.5, 0.5, 800.0),
+            (-10.5, 1e5, 1e6),
+            (1e4, -1.5, 100.0),
+            (1.0, -1.5, 800.0),
+        ],
+    )
+    def test_overflow_has_the_true_sign(self, a, b, z):
+        # scipy returns +inf for every overflow; the first three are -inf.
+        want = _mp_double(mpmath.hyp1f1(a, b, z))
+        assert math.isinf(want)
+        assert hyp1f1(a, b, z) == want
+
+    @pytest.mark.parametrize(
+        "a, b", [(0.5, 1.5), (2.5, 1.0), (-0.5, 3.0), (10.0, 0.5), (3.7, -2.2)]
+    )
+    @pytest.mark.parametrize("edge", [-1e2, -1e9])
+    def test_continuous_across_the_switch(self, a, b, edge):
+        for z in (np.nextafter(edge, 0.0), edge):
+            want = float(mpmath.hyp1f1(a, b, z))
+            assert hyp1f1(a, b, z) == pytest.approx(want, rel=5e-14, abs=0)
+
+    def test_array_routes_elementwise(self):
+        z = np.array([-1e15, -10.0, 1e15, np.nan, -np.inf, np.inf])
+        got = hyp1f1(0.5, 1.5, z)
+        want = [_mp_double(mpmath.hyp1f1(0.5, 1.5, x)) for x in z[:3]]
+        np.testing.assert_allclose(got[:3], want, rtol=5e-14, atol=0)
+        np.testing.assert_array_equal(got[3:], [np.nan, 0.0, np.inf])
+
+    def test_infinite_z_in_hyp1f1_is_the_limit(self):
+        # 1F1(-0.5; 1; z) ~ e^z z^(-3/2) / Gamma(-1/2); 1F1(-1; 2; z) = 1 - z/2.
+        assert hyp1f1(-0.5, 1.0, np.inf) == -np.inf
+        assert hyp1f1(-1.0, 2.0, np.inf) == -np.inf
+        assert hyp1f1(-1.0, 2.0, -np.inf) == np.inf
+
+    def test_regularized_returns_at_large_z(self):
+        want = float(mpmath.hyp1f1(0.5, 1.5, -1e15) / mpmath.gamma(1.5))
+        got = hyp1f1_regularized(0.5, 1.5, -1e15)
+        assert got == pytest.approx(want, rel=5e-14, abs=0)
+
+    def test_expansion_out_of_range_is_nan_with_warning(self):
+        # Neither series of DLMF 13.7.2 settles for |a| ~ 1e4, b ~ 1e5 at 1e9.
+        with pytest.warns(RuntimeWarning, match="asymptotic expansion"):
+            assert np.isnan(hyp1f1(-9999.5, 1e5, 1e9))
+
+    @pytest.mark.parametrize(
+        "a, b, z, want",
+        [
+            ([-5.0], [], 1e100, -math.inf),  # (1 - z)^5
+            ([-5.0], [], -1e100, math.inf),
+            ([-80.0, 1.0], [1.0, 1.0], 1e20, math.inf),  # L_80, leading 1/80!
+        ],
+    )
+    def test_terminating_overflow_is_signed_inf(self, a, b, z, want, recwarn):
+        assert generalized_hypergeometric(a, b, z) == want
