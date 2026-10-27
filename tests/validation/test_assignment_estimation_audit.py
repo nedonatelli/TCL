@@ -1022,7 +1022,8 @@ class TestRobust:
 
     def test_tau_scale_robust_to_outlier(self):
         r = np.array([1.0, 1.1, 0.9, 1.0, 1.2, 100.0])
-        assert 0 < tau_scale(r) < 10.0
+        # statsmodels 0.15.0 scale_tau(r)[1]
+        assert tau_scale(r) == pytest.approx(0.1599814675390941, rel=1e-12, abs=0)
 
     def test_huber_tukey_regression_reject_outlier(self):
         A = np.column_stack([np.ones(8), np.arange(8.0)])

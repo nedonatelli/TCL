@@ -160,6 +160,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
+  the definition `statsmodels.robust.scale.scale_tau` and R's
+  `robustbase::scaleTau2` implement. v2.11.1 documented that the function
+  was not a tau scale (a ratio of two Tukey rho sums times the MAD) and
+  promised it would be "fixed or removed in v2.12.0"; this closes that
+  promise by fixing it, and the `.. warning::` is gone. On N(0, 1) draws
+  v2.11.1 returned 1.0918 (n = 200000); the new value is 0.9969 to 1.0009
+  over five seeds at n = 200000. Values match statsmodels 0.15.0 to
+  `rel=1e-12` on the vendored cases and on 20 seeds of Student-t(3) at
+  n = 500 (live test, needs the `validation` group, which now includes
+  `statsmodels>=0.14`). When the raw MAD is zero (more than half the
+  residuals tied, as with quantized data) it returns 0.0, where statsmodels
+  divides by zero. Nothing inside pytcl calls `tau_scale`. What to do:
+  `tau_scale` values change (N(0, 1) now about 1.0, not 1.09); the
+  docstring's earlier Yohai-Zamar attribution was wrong.
+
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
   through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
   run of the new `floors` job. Those releases' batching wrapper passes

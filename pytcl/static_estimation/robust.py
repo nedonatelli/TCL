@@ -16,6 +16,7 @@ from typing import Any, Callable, NamedTuple, Optional
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from scipy import stats
 
 
 class RobustResult(NamedTuple):
@@ -319,35 +320,51 @@ def tau_scale(
     c2: float = 3.0,
 ) -> float:
     """
-    Ratio-of-rho-sums scale estimator (not the Yohai-Zamar tau scale).
+    Maronna-Zamar tau scale of a residual vector.
 
-    .. warning::
-
-       This function is **not** the Yohai-Zamar tau scale estimator, despite
-       its name. The ``1/n`` normalizations of the two rho sums cancel, so
-       what is computed is ``mad(r)`` times the square root of the ratio of
-       a Tukey rho sum (``c1``) to a Tukey rho sum (``c2``). It is
-       biased: on 200000 N(0, 1) draws it returns 1.091794 where a
-       consistent scale estimate is about 1.0, while :func:`mad` returns
-       1.002221. Prefer :func:`mad`. It will be fixed or removed in v2.12.0;
-       do not rely on its values.
+    The tau scale of Maronna and Zamar [MZ2002]_ is a robust scale with a 50%
+    breakdown point. It is the definition implemented by
+    ``statsmodels.robust.scale.scale_tau`` and R's
+    ``robustbase::scaleTau2``.
 
     Parameters
     ----------
     residuals : array_like
         Residual vector.
-    c1, c2 : float
-        Tuning constants.
+    c1 : float, optional
+        Bisquare constant of the weights in the robust location estimate
+        (default 4.5), applied to residuals standardized by the raw MAD.
+    c2 : float, optional
+        Winsorizing constant (default 3.0): squared standardized deviations
+        from the location are capped at ``c2**2``.
 
     Returns
     -------
     scale : float
-        Estimated scale.
+        Estimated scale, consistent for the standard deviation at the
+        normal distribution. 0.0 when the raw MAD is zero (for example when
+        more than half the residuals are tied, as with quantized data).
 
     Notes
     -----
-    The Yohai-Zamar tau scale combines high breakdown point with efficiency;
-    this implementation does not deliver that. See the warning above.
+    With ``med = median(r)`` and ``s0 = median(abs(r - med))`` (the raw MAD,
+    without the 1.4826 factor), the location is the bisquare-weighted mean
+    ``mu = sum(w * r) / sum(w)`` with ``w = (1 - (u / c1)**2)**2`` for
+    ``abs(u) <= c1`` and 0 beyond, ``u = (r - med) / s0``. The scale is
+    ``s0 * sqrt(mean(min(((r - mu) / s0)**2, c2**2)) / cf)``, where the
+    consistency factor ``cf`` makes the estimate unbiased at the normal
+    distribution. With ``c = c2 * norm.ppf(0.75)`` it is
+    ``cf = 2 * ((1 - c**2) * Phi(c) - c * phi(c) + c**2) - 1``
+    (0.9247153921761315 at ``c2 = 3``).
+
+    On 200000 N(0, 1) draws earlier releases returned about 1.09, where this
+    returns about 1.0.
+
+    References
+    ----------
+    .. [MZ2002] R. A. Maronna and R. H. Zamar, "Robust estimates of location and
+       dispersion for high-dimensional datasets," Technometrics, vol. 44,
+       no. 4, pp. 307-317, 2002.
 
     Examples
     --------
@@ -357,28 +374,19 @@ def tau_scale(
     True
     """
     r = np.asarray(residuals, dtype=np.float64)
-    n = len(r)
+    med = np.median(r)
+    s0 = float(np.median(np.abs(r - med)))
+    if s0 == 0.0:
+        return 0.0
 
-    # Initial scale from MAD
-    s0 = mad(r)
-    if s0 < 1e-10:
-        return s0
+    u = (r - med) / s0
+    w = (1.0 - (u / c1) ** 2) ** 2 * (np.abs(u) <= c1)
+    mu = np.sum(w * r) / np.sum(w)
+    var = s0**2 * np.mean(np.minimum(((r - mu) / s0) ** 2, c2**2))
 
-    # Standardize
-    u = r / s0
-
-    # Compute weights
-    w1 = tukey_rho(u, c1)
-    w2 = tukey_rho(u, c2)
-
-    # Tau scale
-    num = np.sum(w1)
-    denom = np.sum(w2)
-
-    if denom < 1e-10:
-        return s0
-
-    return s0 * np.sqrt(num / n) * np.sqrt(n / denom)
+    c = c2 * stats.norm.ppf(0.75)
+    cf = 2.0 * ((1.0 - c**2) * stats.norm.cdf(c) - c * stats.norm.pdf(c) + c**2) - 1.0
+    return float(np.sqrt(var / cf))
 
 
 # =============================================================================
