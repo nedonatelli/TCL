@@ -206,7 +206,7 @@ def encode_tracks(
     _check_aligned(history, times)
     encode, _ = _codec(fmt)
     scans = []
-    for scan, t in zip(history, times):
+    for scan, t in zip(history, times, strict=True):
         records = []
         for tr in scan:
             state = np.asarray(tr.state, dtype=np.float64)

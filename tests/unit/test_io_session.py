@@ -509,3 +509,17 @@ class TestDecodeErrors:
         )
         with pytest.raises(FormatError):
             load_session(tampered)
+
+    def test_gsf_component_lists_of_unequal_length_raise_format_error(self):
+        f = GaussianSumFilter(max_components=3)
+        f.initialize(np.zeros(2), np.eye(2), num_components=3)
+        tampered = _tamper(save_session(f), lambda env: env.snapshot.components_w.pop())
+        with pytest.raises(FormatError, match="components"):
+            load_session(tampered)
+
+    def test_rbpf_particle_lists_of_unequal_length_raise_format_error(self):
+        f = RBPFFilter(max_particles=4)
+        f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=4)
+        tampered = _tamper(save_session(f), lambda env: env.snapshot.particles_P.pop())
+        with pytest.raises(FormatError, match="particles"):
+            load_session(tampered)

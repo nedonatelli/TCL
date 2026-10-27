@@ -777,6 +777,14 @@ def _snap_gaussian_sum(f: GaussianSumFilter) -> GaussianSumSnapshot:
     )
 
 
+def _check_parallel_lengths(kind: str, **fields: list[Any]) -> None:
+    lengths = {name: len(v) for name, v in fields.items()}
+    if len(set(lengths.values())) > 1:
+        raise FormatError(
+            f"malformed session: the {kind}_* lists differ in length {lengths}"
+        )
+
+
 def _restore_gaussian_sum(
     s: GaussianSumSnapshot, **rehydration: Any
 ) -> GaussianSumFilter:
@@ -785,6 +793,12 @@ def _restore_gaussian_sum(
             "Gaussian-sum snapshots are self-contained and take no "
             f"rehydration kwargs; got: {sorted(rehydration)}"
         )
+    _check_parallel_lengths(
+        "components",
+        x=s.components_x,
+        P=s.components_P,
+        w=s.components_w,
+    )
     filt = GaussianSumFilter(config=s.config, rng=_rng_from_json(s.rng_state))
     filt.components = [
         GaussianComponent(
@@ -792,7 +806,7 @@ def _restore_gaussian_sum(
             P=np.asarray(P, dtype=np.float64),
             w=w,
         )
-        for x, P, w in zip(s.components_x, s.components_P, s.components_w)
+        for x, P, w in zip(s.components_x, s.components_P, s.components_w, strict=True)
     ]
     return filt
 
@@ -819,6 +833,13 @@ def _restore_rbpf(s: RBPFSnapshot, **rehydration: Any) -> RBPFFilter:
             "RBPF snapshots are self-contained and take no rehydration "
             f"kwargs; got: {sorted(rehydration)}"
         )
+    _check_parallel_lengths(
+        "particles",
+        y=s.particles_y,
+        x=s.particles_x,
+        P=s.particles_P,
+        w=s.particles_w,
+    )
     filt = RBPFFilter(config=s.config, rng=_rng_from_json(s.rng_state))
     filt.particles = [
         RBPFParticle(
@@ -828,7 +849,7 @@ def _restore_rbpf(s: RBPFSnapshot, **rehydration: Any) -> RBPFFilter:
             w=w,
         )
         for y, x, P, w in zip(
-            s.particles_y, s.particles_x, s.particles_P, s.particles_w
+            s.particles_y, s.particles_x, s.particles_P, s.particles_w, strict=True
         )
     ]
     return filt
