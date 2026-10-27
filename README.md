@@ -10,7 +10,7 @@
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,450+ functions** | **219 modules** | **9,500+ tests** | **94% coverage**
+**1,450+ functions** | **220 modules** | **9,500+ tests** | **94% coverage**
 
 ## Overview
 

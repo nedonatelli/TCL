@@ -32,6 +32,8 @@ from numba import njit, prange
 from numpy.typing import ArrayLike, NDArray
 from scipy.optimize import brentq
 
+from pytcl.core._numba import NAN_SAFE_FASTMATH
+
 # =============================================================================
 # Result Types
 # =============================================================================
@@ -304,14 +306,7 @@ def _cfar_ca_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-# fastmath=True implies nnan/ninf, under which LLVM may compile a float
-# comparison as if neither operand were NaN: the GO kernels' max() then
-# dropped a NaN average and the NaN tests in the GO/SO kernels were dead
-# code. Kernels that compare floats keep every other fastmath flag.
-_NAN_SAFE_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
-
-
-@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _cfar_go_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -353,7 +348,7 @@ def _cfar_go_kernel(
         threshold[i] = alpha * noise_est
 
 
-@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH)
 def _cfar_so_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -495,7 +490,7 @@ def _cfar_2d_ca_kernel(
             threshold[i, j] = alpha * noise_estimate[i, j]
 
 
-@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_go_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -551,7 +546,7 @@ def _cfar_2d_go_kernel(
             threshold[i, j] = alpha * noise_est
 
 
-@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_so_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -710,10 +705,10 @@ def cfar_ca(
     across all cells). It suffers in heterogeneous environments and near
     closely-spaced targets.
 
-    Near the ends of the signal the window is clipped and the noise
-    estimate averages the reference cells that remain.
-    A cell whose reference window holds no cell (its guard cells cover both
-    ends of the signal, or ``ref_cells=0``) has NaN noise estimate and
+    Near the ends of the signal the window is clipped and the noise estimate
+    averages the reference cells that remain. A cell whose reference window
+    holds no cell (its guard cells cover both ends of the signal, or
+    ``ref_cells=0`` with an explicit ``alpha``) has NaN noise estimate and
     threshold and is never a detection.
     """
     signal = np.asarray(signal, dtype=np.float64)
@@ -790,11 +785,11 @@ def cfar_go(
     reduced detection probability in homogeneous noise.
 
     A half window clipped away entirely by the end of the signal counts as
-    0.0 in the maximum.
-    A cell whose reference window holds no cell (its guard cells cover both
-    ends of the signal, or ``ref_cells=0``) has NaN noise estimate and
-    threshold and is never a detection. A NaN in a cell's
-    reference window gives a NaN threshold, and no detection, at that cell.
+    0.0 in the maximum. A cell whose reference window holds no cell (its
+    guard cells cover both ends of the signal, or ``ref_cells=0`` with an
+    explicit ``alpha``) has NaN noise estimate and threshold and is never a
+    detection. A NaN in a cell's reference window gives a NaN threshold, and
+    no detection, at that cell.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -882,11 +877,11 @@ def cfar_so(
     targets are present in the reference window.
 
     A cell with one half window clipped away entirely by the end of the
-    signal uses the other half.
-    A cell whose reference window holds no cell (its guard cells cover both
-    ends of the signal, or ``ref_cells=0``) has NaN noise estimate and
-    threshold and is never a detection. A NaN in a cell's
-    reference window gives a NaN threshold, and no detection, at that cell.
+    signal uses the other half. A cell whose reference window holds no cell
+    (its guard cells cover both ends of the signal, or ``ref_cells=0`` with
+    an explicit ``alpha``) has NaN noise estimate and threshold and is never
+    a detection. A NaN in a cell's reference window gives a NaN threshold,
+    and no detection, at that cell.
     """
     signal = np.asarray(signal, dtype=np.float64)
     n = len(signal)
@@ -975,10 +970,10 @@ def cfar_os(
     - Low k: Robust to multiple interferers, but sensitive to noise
     - High k: Less robust to interferers, but better in homogeneous noise
 
-    Near the ends of the signal the window is clipped and ``k`` is capped
-    at the number of reference cells that remain.
-    A cell whose reference window holds no cell (its guard cells cover both
-    ends of the signal, or ``ref_cells=0``) has NaN noise estimate and
+    Near the ends of the signal the window is clipped and ``k`` is capped at
+    the number of reference cells that remain. A cell whose reference window
+    holds no cell (its guard cells cover both ends of the signal, or
+    ``ref_cells=0`` with an explicit ``alpha``) has NaN noise estimate and
     threshold and is never a detection.
     """
     signal = np.asarray(signal, dtype=np.float64)
@@ -1077,10 +1072,11 @@ def cfar_2d(
 
     Near the image edges the window is clipped to the image. A cell whose
     clipped window holds no cell (in each dimension, its guard cells cover
-    both ends of the image or the reference count is 0) has NaN noise
-    estimate and threshold and is never a detection. For ``'go'`` and ``'so'`` the halves are the window rows
-    above the cell under test and the rest; a NaN in a cell's window gives
-    a NaN threshold, and no detection, at that cell.
+    both ends of the image or the reference count is 0, the latter only with
+    an explicit ``alpha``) has NaN noise estimate and threshold and is never
+    a detection. For ``'go'`` and ``'so'`` the halves are the window rows
+    above the cell under test and the rest; a NaN in a cell's window gives a
+    NaN threshold, and no detection, at that cell.
     """
     image = np.asarray(image, dtype=np.float64)
 

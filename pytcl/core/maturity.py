@@ -212,6 +212,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # clustering
     "clustering.kmeans": MaturityLevel.MATURE,
     # core
+    "core._numba": MaturityLevel.MATURE,  # one flag set shared by the NaN-safe kernels
     "core.paths": MaturityLevel.MATURE,
     # diagnostics
     "diagnostics.render": MaturityLevel.MATURE,

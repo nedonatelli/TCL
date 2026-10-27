@@ -54,7 +54,7 @@ it depends on; only the structurally significant edges are drawn.
 
        subgraph Foundation
            MF["mathematical_functions<br/>26 modules"]
-           CR["core<br/>7 modules"]
+           CR["core<br/>8 modules"]
        end
 
        subgraph Support
@@ -187,9 +187,9 @@ Counts are measured from the packages themselves rather than asserted;
      - 35
      - Spatial indices (k-d tree, R-tree, VP-tree, cover tree) and track sets
    * - ``core``
-     - 7
+     - 8
      - 73
-     - Constants, exceptions, validation, array helpers, data paths
+     - Constants, exceptions, validation, array helpers, data paths, numba flags
    * - ``dynamic_models``
      - 7
      - 37
