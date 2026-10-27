@@ -95,17 +95,18 @@ def _hypergeometric_series(
     return result, max_term, converged
 
 
-# scipy's hyp1f1 runs in time proportional to |z| on some inputs: about 4 s
-# at z = -1e12 when b - a is a non-positive integer, and it never returns
-# for z >= 1e13 (scipy 1.17.1). From 1e9 on, non-terminating 1F1 uses only
-# the DLMF 13.7.2 expansion. From 1e3 on the expansion is used wherever it
-# reaches double precision, since scipy's error grows with |z| (to 1.4e-12
-# at -3e3 and 5.3e-12 at -3e4 for b = 1e3 and 1e4, against mpmath); the
-# expansion measured at most 2.5e-14 there.
+# scipy's hyp1f1 takes time proportional to |z| for non-terminating 1F1 at
+# z > 0 (14 s at 1e13, over 60 s at 1e14; scipy 1.17.1) and at z < 0 when
+# b - a is a non-positive integer (4 s at -1e12, 36 s at -1e13). From 1e9 on
+# it is not called: non-terminating 1F1 uses the DLMF 13.7.2 expansion. From
+# 1e2 on the expansion is also used where it is at least as accurate as
+# scipy: always for z > 0 (where it only ever returns an overflow), and for
+# z < 0 when b > 0 and b - a > 0.
 _HYP1F1_ASYMPTOTIC_MIN_ABS_Z = 1e2
 _HYP1F1_SCIPY_MAX_ABS_Z = 1e9
 _LOG_DOUBLE_MAX = math.log(np.finfo(np.float64).max)
 _LOG_DOUBLE_TINY = math.log(np.finfo(np.float64).smallest_subnormal)
+_LOG_EPS = math.log(np.finfo(np.float64).eps)
 _ASYMPTOTIC_MAX_TERMS = 200
 
 
@@ -129,50 +130,175 @@ def _asymptotic_sum(p: float, q: float, x: float) -> float | None:
     return None
 
 
-def _gamma_ratio(b: float, a: float) -> float:
-    """Gamma(b) / Gamma(b - a), with both arguments shifted down to about 10.
+def _xmul(*factors: float) -> tuple[float, int]:
+    """Product as (mantissa, exponent) so intermediates cannot overflow."""
+    m, e = 1.0, 0
+    for f in factors:
+        fm, fe = math.frexp(f)
+        m, de = math.frexp(m * fm)
+        e += fe + de
+    return m, e
 
-    Near 170 an ulp of ``b - a`` is 3e-14, which digamma (about 5) turns
-    into a 1e-13 error in Gamma; scipy's ``poch(b - a, a)`` is no better.
-    The shift costs one rounding per step instead.
+
+def _xpow(x: float, p: float) -> tuple[float, int]:
+    """x**p as (mantissa, exponent); p is halved exactly until x**p fits."""
+    k = 0
+    while abs(p * math.log2(x)) / 2.0**k > 1000.0:
+        k += 1
+    m, e = math.frexp(x ** (p / 2.0**k))
+    for _ in range(k):
+        m, de = math.frexp(m * m)
+        e = 2 * e + de
+    return m, e
+
+
+def _sinpi(x: float) -> float:
+    """sin(pi x) with the argument reduced exactly."""
+    n = round(x)
+    r = math.sin(math.pi * (x - n))
+    return -r if n % 2 else r
+
+
+def _sinpi_diff(b: float, a: float) -> float:
+    """sin(pi (b - a)) without rounding ``b - a`` first.
+
+    Near a pole of Gamma(b - a) the rounding of ``b - a`` is amplified by
+    1/sin; here both arguments are reduced exactly and their fractional
+    difference is carried with its rounding error (TwoSum).
     """
-    hi, lo = max(b, b - a), min(b, b - a)
-    n = max(0, math.ceil(hi - 170.0), math.floor(lo - 10.0))
-    if lo - n <= 0 or n > 10_000:
-        return sp.poch(b - a, a)
-    prod = 1.0
-    for k in range(1, n + 1):
-        bk = b - k
-        prod *= bk / (bk - a)
-    return sp.gamma(b - n) * sp.rgamma(b - n - a) * prod
+    nb, na = round(b), round(a)
+    rb, ra = b - nb, a - na
+    d = rb - ra
+    t = d - rb
+    err = (rb - (d - t)) + (-ra - t)
+    n = round(d)
+    r = math.sin(math.pi * ((d - n) + err))
+    return -r if (nb - na + n) % 2 else r
 
 
-def _signed_exp(sign: float, log_mag: float) -> float:
-    if log_mag > _LOG_DOUBLE_MAX:
-        return sign * np.inf
-    if log_mag < _LOG_DOUBLE_TINY:
-        return sign * 0.0
-    return sign * math.exp(log_mag)
+_STIRLING_COEFFS = tuple(
+    bn / (2 * k * (2 * k - 1))
+    for k, bn in enumerate(
+        (1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66, -691 / 2730, 7 / 6, -3617 / 510),
+        start=1,
+    )
+)
 
 
-def _overflow_sign_from_tail(a: float, b: float, z: float) -> float:
-    """``+-inf`` for a series scipy overflowed at z > 0, or NaN.
+def _gamma_ratio_stirling(b: float, a: float) -> tuple[float, int]:
+    """Gamma(b) / Gamma(b - a) for b, b - a >= 20, as (mantissa, exponent).
 
-    From k0 = max(ceil(-a), ceil(-b)) on every term of the 1F1 series has
-    the sign of Gamma(b)/Gamma(a). When the terms before k0 sum to well
-    below the overflow threshold, the overflow is the tail's and takes that
-    sign; otherwise the sign is unknown.
+    The difference of Stirling series, b^a exp(R) with
+    R = -(b - a - 1/2) log1p(-a/b) - a + sum_k c_k (b^(1-2k) - (b-a)^(1-2k)),
+    never feeds the rounded ``b - a`` to a Gamma function, so the error
+    stays near eps * abs(a) instead of growing with b.
+    """
+    c = b - a
+    r = -(c - 0.5) * math.log1p(-a / b) - a
+    r += sum(
+        ck * (b ** (1 - 2 * k) - c ** (1 - 2 * k))
+        for k, ck in enumerate(_STIRLING_COEFFS, start=1)
+    )
+    m, e = _xpow(b, a)
+    m, de = math.frexp(m * math.exp(r))
+    return m, e + de
+
+
+def _gamma_ratio(b: float, a: float) -> tuple[float, int] | None:
+    """Gamma(b) / Gamma(b - a) as (mantissa, exponent), or None.
+
+    Positive arguments are shifted down to about 10 (near 170 an ulp of
+    ``b - a`` is 3e-14, which digamma turns into 1e-13 in Gamma, and
+    scipy's ``poch`` is no better); negative ones are reflected with an
+    exactly reduced sin(pi x). None when no shift fits in 10,000 steps.
+    """
+    c = b - a
+    if b > 0 and c > 0 and min(b, c) >= 20.0:
+        return _gamma_ratio_stirling(b, a)
+    if b > 0 and c > 0:
+        hi, lo = max(b, c), min(b, c)
+        n = max(0, math.ceil(hi - 170.0), math.floor(lo - 10.0))
+        if lo - n <= 0 or n > 10_000:
+            return None
+        m, e = _xmul(sp.gamma(b - n), sp.rgamma(b - n - a))
+        for k in range(1, n + 1):
+            bk = b - k
+            fm, fe = math.frexp(bk / (bk - a))
+            m, de = math.frexp(m * fm)
+            e += fe + de
+        return m, e
+    if b < 0 and c < 0:
+        inner = _gamma_ratio(1.0 - c, a)
+        if inner is None:
+            return None
+        m, e = _xmul(inner[0], _sinpi_diff(b, a) / _sinpi(b))
+        return m, e + inner[1]
+    if max(b, 1.0 - b) > 170.0 or max(c, 1.0 - c) > 170.0:
+        return None
+    if b > 0:
+        return _xmul(sp.gamma(b), _sinpi_diff(b, a) / math.pi, sp.gamma(1.0 - c))
+    return _xmul(math.pi / _sinpi(b), sp.rgamma(1.0 - b), sp.rgamma(c))
+
+
+def _xvalue(m: float, e: int) -> float:
+    with np.errstate(over="ignore", under="ignore"):
+        return float(np.ldexp(m, e))
+
+
+def _proven_overflow(log_mag: float, scale: float) -> int:
+    """+1 if ``log_mag`` exceeds the double range beyond its rounding error
+    (about ``eps * scale``), -1 if it is below the overflow threshold by
+    as much, 0 if undecided."""
+    margin = 1e-12 * scale + 1e-9
+    if log_mag > _LOG_DOUBLE_MAX + margin:
+        return 1
+    if log_mag < _LOG_DOUBLE_MAX - margin:
+        return -1
+    return 0
+
+
+def _overflow_from_tail(a: float, b: float, z: float) -> float:
+    """``+-inf`` when the 1F1 series at z > 0 provably overflows, else NaN.
+
+    From k0 = max(0, ceil(-a), ceil(-b)) on, every term has the sign of
+    Gamma(b)/Gamma(a), so the tail is at least its largest term in
+    magnitude. The overflow is proven when that term exceeds the double
+    range and the terms before k0 sum to far less.
     """
     k0 = max(0, math.ceil(-a), math.ceil(-b))
     if k0 > 1_000_000:
         return np.nan
-    k = np.arange(k0, dtype=np.float64)
-    with np.errstate(divide="ignore"):
-        log_ratio = np.log(np.abs((a + k) / (b + k))) + math.log(z) - np.log(k + 1)
-    log_terms = np.concatenate(([0.0], np.cumsum(log_ratio)[:-1])) if k0 else []
-    if k0 and np.log(k0) + np.max(log_terms) > _LOG_DOUBLE_MAX - 10.0:
-        return np.nan
-    return sp.gammasgn(b) * sp.gammasgn(a) * np.inf
+    log_z = math.log(z)
+    if k0:
+        k = np.arange(k0, dtype=np.float64)
+        with np.errstate(divide="ignore"):
+            log_ratio = np.log(np.abs((a + k) / (b + k))) + log_z - np.log(k + 1)
+        log_head = np.concatenate(([0.0], np.cumsum(log_ratio)[:-1]))
+        if math.log(k0) + float(np.max(log_head)) > _LOG_DOUBLE_MAX - 10.0:
+            return np.nan
+
+    def _log_term(k: float) -> float:
+        return (
+            sp.gammaln(a + k)
+            - sp.gammaln(a)
+            - sp.gammaln(b + k)
+            + sp.gammaln(b)
+            + k * log_z
+            - sp.gammaln(k + 1.0)
+        )
+
+    # The terms peak where (a + k) z = (b + k)(k + 1).
+    q = b + 1.0 - z
+    disc = q * q - 4.0 * (b - a * z)
+    peak = (-q + math.sqrt(disc)) / 2.0 if disc >= 0 else float(k0)
+    candidates = {float(k0)} | {
+        float(k) for k in (math.floor(peak), math.ceil(peak)) if k >= k0
+    }
+    best = max(_log_term(k) for k in candidates)
+    scale = abs(best) + max(candidates) * (abs(log_z) + 50.0)
+    if _proven_overflow(best, scale) == 1:
+        return sp.gammasgn(b) * sp.gammasgn(a) * np.inf
+    return np.nan
 
 
 def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> float:
@@ -182,44 +308,34 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
     e^z z^(a-b) S_e and an algebraic term Gamma(b)/Gamma(b-a) z^(-a) S_a
     (moduli; the phase factor has modulus 1). Each series must reach half
     an ulp before its terms grow, and the other term must be below an ulp
-    of the dominant one; otherwise NaN. For z > 0 the exponential term is
-    returned only when it overflows (as ``+-inf``): a finite value would
-    lose about ``z * eps`` from the logarithms. ``overflowed`` marks a z
-    where scipy overflowed; the value is then taken from the logarithms
-    (or from the series tail's sign, see ``_overflow_sign_from_tail``).
+    of the dominant one; otherwise NaN. For z > 0 only a proven overflow is
+    returned (as ``+-inf``): a finite value from the logarithms would lose
+    about ``z * eps``. ``overflowed`` marks a z where scipy returned
+    ``+-inf``; that is passed on only once proven, here or from the series
+    tail (``_overflow_from_tail``).
     """
-    log_eps = math.log(np.finfo(np.float64).eps)
     if z > 0:
         sign = sp.gammasgn(b) * sp.gammasgn(a)
         if np.isinf(z):
             return sign * np.inf
-        fallback = _overflow_sign_from_tail(a, b, z) if overflowed else np.nan
+        fallback = _overflow_from_tail(a, b, z) if overflowed else np.nan
         series = _asymptotic_sum(b - a, 1.0 - a, z)
         if series is None:
             return fallback
-        log_mag = (
-            z
-            + (a - b) * math.log(z)
-            + sp.gammaln(b)
-            - sp.gammaln(a)
-            + math.log(abs(series))
-        )
+        log_z = math.log(z)
+        lg_a, lg_b = sp.gammaln(a), sp.gammaln(b)
+        log_mag = z + (a - b) * log_z + lg_b - lg_a + math.log(abs(series))
         if not (b - a <= 0 and float(b - a).is_integer()):
             alg_series = _asymptotic_sum(a, a - b + 1.0, z)
             if alg_series is None:
                 return fallback
-            log_alg = (
-                sp.gammaln(b)
-                - sp.gammaln(b - a)
-                - a * math.log(z)
-                + math.log(abs(alg_series))
-            )
-            if log_alg >= log_mag + log_eps - 1.0:
+            log_alg = lg_b - sp.gammaln(b - a) - a * log_z + math.log(abs(alg_series))
+            if log_alg >= log_mag + _LOG_EPS - 1.0:
                 return fallback
-        sign = math.copysign(1.0, sign * series)
-        if overflowed:
-            return _signed_exp(sign, log_mag)
-        return sign * np.inf if log_mag > _LOG_DOUBLE_MAX else np.nan
+        scale = z + abs(a - b) * abs(log_z) + abs(lg_a) + abs(lg_b)
+        if _proven_overflow(log_mag, scale) == 1:
+            return math.copysign(np.inf, sign * series)
+        return np.nan
 
     x = -z
     algebraic_zero = b - a <= 0 and float(b - a).is_integer()
@@ -233,17 +349,26 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
         series = _asymptotic_sum(a, a - b + 1.0, x)
         if series is None:
             return np.nan
-        log_alg = (
-            sp.gammaln(b) - sp.gammaln(b - a) - a * math.log(x) + math.log(abs(series))
-        )
-        with np.errstate(over="ignore", under="ignore"):
-            coef = _gamma_ratio(b, a)
-            half = np.float64(x) ** (-0.5 * a)
-            value = half * coef * half * series
-        if not (np.isfinite(value) and abs(value) >= np.finfo(np.float64).tiny):
+        coef = _gamma_ratio(b, a)
+        if coef is None:
+            # Only a result provably out of the double range is returned.
+            lg_b, lg_c = sp.gammaln(b), sp.gammaln(b - a)
+            log_alg = lg_b - lg_c - a * math.log(x) + math.log(abs(series))
+            scale = abs(lg_b) + abs(lg_c) + abs(a * math.log(x))
             sign = sp.gammasgn(b) * sp.gammasgn(b - a) * math.copysign(1.0, series)
-            value = _signed_exp(sign, log_alg)
-    floor = max(_LOG_DOUBLE_TINY, log_alg + log_eps - 1.0)
+            if _proven_overflow(log_alg, scale) == 1:
+                value = sign * np.inf
+            elif log_alg < _LOG_DOUBLE_TINY - 1e-12 * scale - 1.0:
+                value = sign * 0.0
+            else:
+                return np.nan
+        else:
+            pm, pe = _xpow(x, -a)
+            m, e = _xmul(coef[0], pm, series)
+            e += coef[1] + pe
+            value = _xvalue(m, e)
+            log_alg = math.log(abs(m)) + e * math.log(2.0)
+    floor = max(_LOG_DOUBLE_TINY, log_alg + _LOG_EPS - 1.0)
     log_exp = -x + (a - b) * math.log(x) + sp.gammaln(b) - sp.gammaln(a)
     exp_series = _asymptotic_sum(b - a, 1.0 - a, x)
     if exp_series is None or log_exp + math.log(abs(exp_series)) >= floor:
@@ -252,7 +377,7 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
 
 
 def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
-    """scipy's hyp1f1, with large ``abs(z)`` and overflow signs handled here."""
+    """scipy's hyp1f1, routed away from where it hangs or overflows wrongly."""
     a, b, z = np.broadcast_arrays(
         np.asarray(a, dtype=np.float64),
         np.asarray(b, dtype=np.float64),
@@ -261,7 +386,12 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     finite_params = np.isfinite(a) & np.isfinite(b)
     terminating = finite_params & (a <= 0) & (a == np.round(a))
     general = finite_params & ~terminating & ~((b <= 0) & (b == np.round(b)))
-    far = general & (np.abs(z) >= _HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
+    beyond = np.abs(z) >= _HYP1F1_SCIPY_MAX_ABS_Z
+    far = (
+        general
+        & (np.abs(z) >= _HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
+        & (beyond | (z > 0) | ((b > 0) & (b - a > 0)))
+    )
     result = np.full(z.shape, np.nan)
     for i in np.flatnonzero(far):
         result.flat[i] = _hyp1f1_large_z(a.flat[i], b.flat[i], z.flat[i])
@@ -271,20 +401,27 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
             a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
         )
     uncertified = far & np.isnan(result)
-    beyond_scipy = uncertified & (np.abs(z) >= _HYP1F1_SCIPY_MAX_ABS_Z)
-    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~beyond_scipy)
+    unanswered = uncertified & beyond
+    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~beyond)
     result[use_scipy] = sp.hyp1f1(a[use_scipy], b[use_scipy], z[use_scipy])
-    overflowed = general & use_scipy & np.isinf(result) & (z > 0) & ((a < 0) | (b < 0))
+    scipy_inf = use_scipy & np.isinf(result) & np.isfinite(z)
+    overflowed = scipy_inf & general
     for i in np.flatnonzero(overflowed):
         result.flat[i] = _hyp1f1_large_z(
             a.flat[i], b.flat[i], z.flat[i], overflowed=True
         )
-    if np.any(beyond_scipy) or np.any(np.isnan(result[overflowed])):
+    for i in np.flatnonzero(scipy_inf & terminating):
+        result.flat[i] = _exact_polynomial_value(
+            a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
+        )
+    unproven = scipy_inf & (general | terminating) & np.isnan(result)
+    if np.any(unanswered) or np.any(unproven):
         warnings.warn(
-            "hyp1f1: the large-|z| asymptotic expansion (DLMF 13.7.2) does "
-            "not reach double precision for these parameters at this z, and "
-            "scipy's hyp1f1 does not return at |z| this large (or its "
-            "overflow sign cannot be confirmed); returning NaN.",
+            "hyp1f1: returning NaN. Either the large-|z| asymptotic "
+            "expansion (DLMF 13.7.2) does not reach double precision here "
+            "and scipy's hyp1f1 is not used at |z| >= 1e9 (its run time "
+            "grows with |z|), or scipy overflowed and the overflow could "
+            "not be proven.",
             RuntimeWarning,
             stacklevel=3,
         )
@@ -367,22 +504,32 @@ def hyp1f1(
     -----
     Also known as Kummer's function M(a, b, z).
 
-    scipy's ``hyp1f1`` is used for ``abs(z) < 1e2``. Beyond that, a
-    non-terminating 1F1 uses the DLMF 13.7.2 asymptotic expansion wherever
-    both of its series reach double precision, and scipy otherwise. From
-    ``abs(z) >= 1e9`` scipy is never called (it does not return for
-    ``z >= 1e13``), and an expansion that does not reach double precision
-    gives NaN with a ``RuntimeWarning``. Against mpmath on negative z over
-    22 parameter sets (``abs(a)`` to 50.5, ``b`` to 1e4), the expansion is
-    within 2.5e-14 relative from ``abs(z) = 1e2`` to 1e300, and over 20
-    sets the value moves by at most 2.4e-14 more than mpmath's across
-    ``z = +-1e2``, ``+-1e6`` and ``+-1e9``. Where the expansion does not
-    reach double precision the value is scipy's: on a 181-point scan of
-    ``z`` in [-1e10, -10] the worst returned error was 2.5e-13 (a = -30.5,
-    b = 2, z = -794), against 1.4e-12 from scipy alone. Positive z that overflows returns ``+-inf`` with the
-    sign of Gamma(b)/Gamma(a); scipy returns ``+inf`` regardless. At
-    ``z = +-inf`` the limit is returned (a terminating series gives its
-    polynomial's limit).
+    scipy's ``hyp1f1`` takes time proportional to ``abs(z)`` (about 14 s at
+    ``z = 1e13``, over 60 s beyond) and is not called at ``abs(z) >= 1e9``:
+    non-terminating 1F1 there uses the DLMF 13.7.2 asymptotic expansion.
+    From ``abs(z) = 1e2`` the expansion also replaces scipy at ``z > 0``
+    (where it only returns proven overflows) and at ``z < 0`` when
+    ``b > 0`` and ``b - a > 0``. Measured against mpmath (an exact series
+    sum where ``b < 0``), ``a`` in [-60, 60], ``abs(b)`` up to 1e4:
+
+    - expansion at ``1e2 <= -z < 1e9``: at most 3.1e-14 relative over 939
+      random points, where scipy reaches 2.6e-11 (scipy is better by up to
+      9.8e-15 at 34 of them);
+    - expansion at ``-z >= 1e9``, either sign of ``b``: at most 1.3e-14
+      over 600 random points up to 1e12;
+    - the value is continuous to 2.4e-14 across ``z = +-1e2`` and
+      ``+-1e9``;
+    - elsewhere the value is scipy's, unchanged: up to 3.4e-11 at
+      ``z < 0`` (b near 6e3) and 1.4e-11 for finite ``z > 0``.
+
+    A ``+-inf`` is returned only when the overflow is proven, from the
+    expansion's logarithm or from a lower bound on the series tail (past
+    ``k = max(-a, -b)`` every term has one sign); a terminating series
+    that scipy overflows is summed exactly. Otherwise NaN with a
+    ``RuntimeWarning``, which happens for ``abs(a)`` near 1e4 (for example
+    1F1(-9999.5; 1.5; 1e6)) and at ``abs(z) >= 1e9`` when the expansion
+    does not reach double precision. scipy returns ``+inf`` for every
+    overflow whatever its sign. At ``z = +-inf`` the limit is returned.
 
     Special cases:
     - 1F1(0; b; z) = 1
@@ -865,7 +1012,11 @@ def generalized_hypergeometric(
 
     At ``z = +inf`` or ``z = -inf`` the limit is returned where one exists
     (DLMF 16.11). Parameters are real: they are cast to float64, so a
-    complex parameter raises ``TypeError``. With ``n`` the smallest ``abs(a[i])`` over the non-positive
+    complex parameter raises ``TypeError``. 1F1 (``p == q == 1``) is
+    :func:`hyp1f1` at every ``z``, so its infinite-``z`` value is the true
+    limit from DLMF 13.7.2 (for example ``-inf`` for 1F1(-0.5; 1; +inf)); a
+    non-positive integer ``b`` follows scipy's ``inf``. For every other
+    ``(p, q)``, with ``n`` the smallest ``abs(a[i])`` over the non-positive
     integer ``a[i]`` and ``c_n = prod (a_i)_n / (prod (b_j)_n * n!)`` the
     leading coefficient of the terminating polynomial:
 
@@ -917,6 +1068,9 @@ def generalized_hypergeometric(
                 "is not a polynomial); no value exists to return."
             )
 
+    if p == 1 and q == 1:
+        return hyp1f1(a[0], b[0], z)
+
     infinite = np.isinf(z)
     if np.any(infinite):
         out = np.empty(z.shape)
@@ -932,8 +1086,6 @@ def generalized_hypergeometric(
         return np.exp(z)
     if p == 0 and q == 1:
         return hyp0f1(b[0], z)
-    elif p == 1 and q == 1:
-        return hyp1f1(a[0], b[0], z)
     elif p == 2 and q == 1:
         return hyp2f1(a[0], a[1], b[0], z)
 

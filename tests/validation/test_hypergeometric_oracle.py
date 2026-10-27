@@ -1,6 +1,7 @@
 """Independent mpmath oracle for generalized_hypergeometric."""
 
 import math
+import warnings
 
 import mpmath
 import numpy as np
@@ -165,15 +166,42 @@ class TestInfiniteArgument:
     @pytest.mark.parametrize(
         "a, b",
         [
-            ([-0.5], [1.0]),
-            ([1.0], [-1.5]),
             ([-2.0, 1.0, 1.0], [-1.0, 3.0]),
             ([1.0, 1.0], [-0.5]),
+            ([-0.5, 1.0], [2.0, 3.0]),
         ],
     )
-    def test_negative_non_integer_a_or_pole_b_is_nan(self, a, b):
+    def test_negative_or_pole_parameter_beyond_1f1_is_nan(self, a, b):
         for z in (math.inf, -math.inf):
             assert np.isnan(generalized_hypergeometric(a, b, z))
+
+    @pytest.mark.parametrize(
+        "a, b, plus, minus",
+        [
+            # DLMF 13.7.2: e^z z^(a-b) Gamma(b)/Gamma(a) dominates at +inf;
+            # Gamma(b)/Gamma(b-a) (-z)^(-a) at -inf.
+            (-0.5, 1.0, -math.inf, math.inf),
+            (1.0, -1.5, math.inf, 0.0),
+            (0.5, -0.5, -math.inf, 0.0),
+            (-2.0000001, 3.0, -math.inf, math.inf),
+        ],
+    )
+    def test_1f1_limits_from_dlmf_13_7_2(self, a, b, plus, minus):
+        got = [generalized_hypergeometric([a], [b], z) for z in (math.inf, -math.inf)]
+        assert got == [plus, minus]
+
+    def test_1f1_agrees_with_hyp1f1_at_infinity(self):
+        for a in (-0.5, 1.0, 0.5, -2.0000001, 2.5, -1.0, 0.0, -3.0):
+            for b in (1.0, -1.5, -0.5, 3.0, 0.5, -2.0000001, -2.0):
+                for z in (math.inf, -math.inf):
+                    np.testing.assert_array_equal(
+                        generalized_hypergeometric([a], [b], z), hyp1f1(a, b, z)
+                    )
+        z = np.array([math.inf, 1e15, -math.inf])
+        np.testing.assert_array_equal(
+            generalized_hypergeometric([-0.5], [1.0], z),
+            [-math.inf, -math.inf, math.inf],
+        )
 
     @pytest.mark.parametrize(
         "a, b", [([1.0, 1.0, 1.0], [2.0]), ([1.0] * 3, [2.0, 3.0])]
@@ -198,28 +226,52 @@ def _mp_double(v):
     return float(v)
 
 
-class TestLargeFiniteArgument:
-    """scipy's hyp1f1 never returns for z >= 1e13 and takes time linear in
-    abs(z) when b - a is a non-positive integer; large abs(z) goes through
-    DLMF 13.7.2 instead. Returning at all is the termination check (run
-    under the suite's timeout); values are checked against mpmath."""
+def _series_sum(a, b, z, dps):
+    """The 1F1 series summed term by term in mpmath, with exact parameters.
 
-    FORMERLY_HANGING = [
+    mpmath's own hyp1f1 stops once early terms are negligible, which misses
+    the terms past b + k = 0 that grow again when b is a large negative
+    number (it returns 53.36 for the first case below, whose sum is
+    -5.5e522)."""
+    with mpmath.workdps(dps):
+        a, b, z = mpmath.mpf(a), mpmath.mpf(b), mpmath.mpf(z)
+        term = total = mpmath.mpf(1)
+        tiny = mpmath.mpf(10) ** -dps
+        k = 0
+        while k < 2 * abs(b) + 2 * abs(z) or abs(term) > abs(total) * tiny:
+            term *= (a + k) * z / ((b + k) * (k + 1))
+            total += term
+            k += 1
+        return total
+
+
+@pytest.mark.timeout(60, method="thread")
+class TestLargeFiniteArgument:
+    """scipy's hyp1f1 takes time proportional to abs(z) (14 s at 1e13, past
+    60 s from 1e14) for non-terminating 1F1 at z > 0, and at z < 0 when
+    b - a is a non-positive integer; large abs(z) goes through DLMF 13.7.2
+    instead. The class timeout is the termination check; values are
+    checked against mpmath."""
+
+    HUNG_IN_SCIPY = [  # killed after 60 s
         (-0.5, 1.0, 1e15),
         (1.0, -1.5, 1e15),
         (0.5, 1.5, 1e15),
         (0.5, 1.5, 1e300),
-        (1.0, 1.0, 1e13),
-        (0.5, 0.5, -1e13),
         (2.5, -1.5, -1e16),
         (2.5, 1.5, -1e15),
+    ]
+    SLOW_IN_SCIPY = [(1.0, 1.0, 1e13), (0.5, 0.5, -1e13)]  # 14 s and 36 s
+    EXPANSION_REGION = [  # scipy returns at once; the first is 0.0 there
         (0.5, 1.5, -1e300),
         (-10.5, 3.0, -1e20),
         (25.5, 40.25, -1e13),
         (3.7, -2.2, -1e100),
     ]
 
-    @pytest.mark.parametrize("a, b, z", FORMERLY_HANGING)
+    @pytest.mark.parametrize(
+        "a, b, z", HUNG_IN_SCIPY + SLOW_IN_SCIPY + EXPANSION_REGION
+    )
     def test_returns_and_matches_mpmath(self, a, b, z, recwarn):
         want = _mp_double(mpmath.hyp1f1(a, b, z))
         for got in (hyp1f1(a, b, z), generalized_hypergeometric([a], [b], z)):
@@ -228,6 +280,51 @@ class TestLargeFiniteArgument:
             else:
                 assert got == want
         assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, z, dps",
+        [
+            (-14.5, -8129.0587257028, 2564.876787104456, 600),
+            (-14.5, -8129.0587257028, 3000.0, 1350),
+        ],
+    )
+    def test_overflow_past_a_large_negative_b(self, a, b, z, dps):
+        # scipy returns +inf; the series sums to -5.5e522 and -5.4e1264.
+        want = _series_sum(a, b, z, dps)
+        assert want < 0 and abs(want) > mpmath.mpf(np.finfo(np.float64).max)
+        assert hyp1f1(a, b, z) == -math.inf
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            # b < 0 beyond 1e9: scipy was off by 1.4e-12 and 2.4e-12.
+            (0.5, -3000.25, -1e9),
+            (-0.5, -3000.25, -1e9),
+            # b - a just past a pole of Gamma; stays with scipy below 1e9.
+            (16.5, -20.00941712517169, -9347.412609871704),
+            (-27.6795, -5430.66, -2.86e9),
+            (44.5, -17.49997441131839, -1e10),
+        ],
+    )
+    def test_negative_b_matches_mpmath(self, a, b, z):
+        with mpmath.workdps(100):
+            want = float(mpmath.hyp1f1(a, b, z))
+        assert hyp1f1(a, b, z) == pytest.approx(want, rel=5e-14, abs=0)
+
+    def test_underflow_without_a_coefficient_is_zero(self):
+        # Gamma(1)/Gamma(-9998.5) (1e9)^(-9999.5) is far below the double
+        # range; this used to emit numpy's "invalid value" warning.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert hyp1f1(9999.5, 1.0, -1e9) == 0.0
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [(-9999.5, 1.5, 1e6), (9999.5, -9999.5, 1e6), (1e4, -9999.5, 1e6)],
+    )
+    def test_unproven_scipy_overflow_is_nan_with_warning(self, a, b, z):
+        with pytest.warns(RuntimeWarning, match="could not be proven"):
+            assert np.isnan(hyp1f1(a, b, z))
 
     @pytest.mark.parametrize(
         "a, b, z",

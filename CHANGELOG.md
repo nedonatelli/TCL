@@ -173,32 +173,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
-  hang at large finite `z`. scipy 1.17.1's `hyp1f1` never returns for
-  non-terminating 1F1 at `z >= 1e13` (all 28 parameter sets probed, e.g.
-  1F1(0.5; 1.5; 1e15)), nor at `z <= -1e13` when `b - a` is a non-positive
-  integer (it takes 4 s at -1e12, growing with `abs(z)`). Non-terminating
-  1F1 at `abs(z) >= 1e2` now uses the DLMF 13.7.2 asymptotic expansion
-  wherever both of its series reach double precision; from `abs(z) >= 1e9`
-  scipy is never called, and an expansion that does not reach double
-  precision gives NaN with a `RuntimeWarning` (seen only for `abs(a)` near
-  1e4). Against mpmath the expansion is within 2.5e-14 relative over 22
-  parameter sets from `abs(z) = 1e2` to 1e300, and the value is continuous
-  to 2.4e-14 across `z = +-1e2`, `+-1e6` and `+-1e9` (20 sets). On a
-  181-point scan of `z` in [-1e10, -10] the worst error fell from scipy's
-  1.4e-12 to 2.5e-13 (that remainder is scipy's own, where the expansion
-  does not reach double precision). 108 parameter pairs (`a` from -9999.5
-  to 1e4, `b` from -2 to 1e5) times 36 values of `z` from `+-1e2` to
-  `+-1e300` and `+-inf` all return. Two more silent wrong answers on the
-  same path are fixed: scipy returned `+inf` for every overflow, so
-  1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800) and 1F1(-10.5; 1e5; 1e6) now
-  give `-inf`; and `hyp1f1` at `z = +-inf` returns the limit (it hung, or
-  for a terminating series gave `+inf` for `1 - z/2`). A terminating pFq
-  whose exact value exceeds the double range (`generalized_hypergeometric(
-  [-5], [], 1e100)`, `(1 - z)^5`) raised `OverflowError` and now returns
-  `+-inf`. 0F1, 2F1 and the general pFq series were audited and do not
-  hang. No other pytcl module calls these functions. What to do: nothing;
-  calls that hung now return, and overflowing 1F1 values carry their true
-  sign.
+  hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time
+  proportional to `abs(z)` for non-terminating 1F1 at `z > 0` (14 s at
+  1e13, over 60 s from 1e14, e.g. 1F1(0.5; 1.5; 1e15)) and at `z < 0` when
+  `b - a` is a non-positive integer (4 s at -1e12, 36 s at -1e13). It is no
+  longer called at `abs(z) >= 1e9`: non-terminating 1F1 there uses the
+  DLMF 13.7.2 asymptotic expansion, whose Gamma(b)/Gamma(b-a) coefficient
+  is computed without rounding `b - a` into a Gamma argument (Stirling
+  differences, exact sin(pi x) reflection, extended exponent). From
+  `abs(z) = 1e2` the expansion also replaces scipy at `z > 0` and at
+  `z < 0` when `b > 0` and `b - a > 0`. Measured against mpmath (an exact
+  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4: the
+  expansion is within 3.1e-14 relative at `1e2 <= -z < 1e9` (939 random
+  points, where scipy reached 2.6e-11 but was better by up to 9.8e-15 at
+  34 of them) and within 1.3e-14 at `-z >= 1e9` for either sign of `b`
+  (600 points to 1e12; scipy gave up to 2.4e-12 there); the value is
+  continuous to 2.4e-14 across `z = +-1e2` and `+-1e9`. Elsewhere values
+  are scipy's and unchanged, including its error: up to 3.4e-11 at
+  `z < 0` (b near 6e3), 1.22e-12 at 1F1(1; 1000; 1995) and 1.4e-11 for
+  other finite `z > 0`. 17,280 calls over a grid with `a` and `b` from
+  -1e4 to 1e4 and `z` from 0 to `+-1e300`, `+-inf` and NaN all return.
+  Silent wrong answers fixed on the same path: scipy returns `+inf` for
+  every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800) and
+  1F1(-10.5; 1e5; 1e6) now give `-inf`. A `+-inf` is now returned only
+  when the overflow is proven (from the expansion's logarithm, or a lower
+  bound on the series tail, past which every term has one sign; a
+  terminating series is summed exactly); otherwise the result is NaN with
+  a `RuntimeWarning`. That NaN replaces v2.11.1's `+inf` for `abs(a)` or
+  `abs(b)` near 1e4, e.g. 1F1(-9999.5; 1.5; 1e6), 1F1(9999.5; -9999.5;
+  1e6) and 1F1(1e4; -9999.5; 1e6), where mpmath does not converge either.
+  `hyp1f1` at `z = +-inf` returns the limit (it hung, or gave `+inf` for
+  `1 - z/2`). A terminating pFq whose exact value exceeds the double range
+  (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
+  `OverflowError` and now returns `+-inf`. 0F1, 2F1, U and the general pFq
+  series were audited and do not hang. No other pytcl module calls these
+  functions. What to do: nothing for calls that hung (they now return) or
+  overflowed (they now carry the true sign); expect NaN with a
+  `RuntimeWarning` where an overflow cannot be proven, so far seen only
+  for `abs(a)` or `abs(b)` near 1e4.
 
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
@@ -206,11 +218,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z)), and two answers
   were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
   and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
-  scipy's `hyp1f1`. 1F1(-0.5; 1; +inf) and 1F1(1; -1.5; +inf) hung inside
-  scipy 1.17.1's `hyp1f1` (as large finite z did; see the `hyp1f1` entry
-  below); they now return NaN at once, because a negative non-integer `a`
-  or a negative `b` is outside the rules (their true limits are `-inf` and
-  `+inf`, which `hyp1f1` itself now returns); a terminating series with a pole
+  scipy's `hyp1f1`. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF
+  13.7.2), so the two entry points agree: 1F1(-0.5; 1; +inf) and
+  1F1(1; -1.5; +inf), which hung inside scipy 1.17.1's `hyp1f1` (as large
+  finite `z` did; see the `hyp1f1` entry above), now return their true
+  limits, `-inf` and `+inf`; a terminating series with a pole
   (`[-2, 1, 1]; [-1, 3]`) raised `ZeroDivisionError` at infinite `z` and
   now returns NaN (finite `z` still raises). Limits of 0.0 were checked
   against mpmath at `z = -1e2` and `-1e4`, not beyond. A NaN `z` still
