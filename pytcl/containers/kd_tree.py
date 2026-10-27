@@ -208,7 +208,7 @@ class KDTree(BaseSpatialIndex):
             neighbors = self._query_single(X[i], k)
             n_found = len(neighbors)
             if n_found > 0:
-                indices, distances = zip(*neighbors)
+                indices, distances = zip(*neighbors, strict=True)
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
@@ -237,7 +237,7 @@ class KDTree(BaseSpatialIndex):
 
             if node.bucket is not None:
                 dists = np.sqrt(np.sum((self.data[node.bucket] - query) ** 2, axis=1))
-                for idx, d in zip(node.bucket, dists):
+                for idx, d in zip(node.bucket, dists, strict=True):
                     _offer(int(idx), float(d))
                 return
 
@@ -479,7 +479,7 @@ class BallTree(BaseSpatialIndex):
             neighbors = self._query_single(X[i], k)
             n_found = len(neighbors)
             if n_found > 0:
-                indices, distances = zip(*neighbors)
+                indices, distances = zip(*neighbors, strict=True)
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 
