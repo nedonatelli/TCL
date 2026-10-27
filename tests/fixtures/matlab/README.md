@@ -143,3 +143,16 @@ inputs. QR signs differ between LAPACK builds, so each file holds
 sign-invariant quantities: row 1 is the updated state `x'`, the remaining
 rows the updated information matrix `T'*T`, `%.17g`. Both cases (`2state`,
 `3state`) use a non-diagonal measurement covariance.
+
+## qcoordturn_case\<N\>.csv
+
+Produced by `scripts/matlab_capture/capture_qcoordturn.m` with MATLAB
+R2026a against commit `a9acd8f` (`QCoordTurn`). Consumed by
+`test_2d_matches_qcoordturn` and `test_3d_matches_qcoordturn` in
+`tests/unit/test_process_noise.py`. `case5` is the 2-D state
+`[x; y; xdot; ydot; omega]`, `case7` the 3-D state
+`[x; y; z; xdot; ydot; zdot; omega]`. Each data row is `T`, `sigmaV2`,
+`sigmaTurn2`, then `Q` in MATLAB's state order flattened row-major,
+`%.17g`, over `T` in {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in
+{0, 0.01}. `#` lines carry provenance. The linear-acceleration cases (6 and
+8) have no pytcl counterpart and are not captured.
