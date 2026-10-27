@@ -50,20 +50,35 @@ References
 import numpy as np
 from numpy.typing import NDArray
 
+_STATE_TYPES = ("position_velocity", "position_velocity_omega")
+
 
 def _q_coord_turn(
-    T: float, sigma_a: float, sigma_omega: float, num_dims: int, with_omega: bool
+    T: float,
+    sigma_a: float,
+    sigma_omega: float | None,
+    num_dims: int,
+    state_type: str,
 ) -> NDArray[np.floating]:
+    if state_type not in _STATE_TYPES:
+        raise ValueError(
+            f"state_type must be one of {_STATE_TYPES}, got {state_type!r}"
+        )
     G = np.tile(np.array([T**2 / 2, T]) * sigma_a, num_dims)
-    if with_omega:
-        G = np.append(G, T * sigma_omega)
+    if state_type == "position_velocity_omega":
+        G = np.append(G, T * (0.0 if sigma_omega is None else sigma_omega))
+    elif sigma_omega is not None and sigma_omega != 0:
+        raise ValueError(
+            "sigma_omega has no effect without a turn-rate state; pass "
+            "state_type='position_velocity_omega'"
+        )
     return np.outer(G, G)
 
 
 def q_coord_turn_2d(
     T: float,
     sigma_a: float,
-    sigma_omega: float = 0.0,
+    sigma_omega: float | None = None,
     state_type: str = "position_velocity",
 ) -> NDArray[np.floating]:
     """
@@ -80,17 +95,26 @@ def q_coord_turn_2d(
         [m/s²]. ``QCoordTurn``'s ``sigmaV2`` is ``sigma_a**2``.
     sigma_omega : float, optional
         Standard deviation of turn rate noise [rad/s²]. ``QCoordTurn``'s
-        ``sigmaTurn2`` is ``sigma_omega**2``. Only used if state_type
-        includes omega.
+        ``sigmaTurn2`` is ``sigma_omega**2``. Requires
+        ``state_type='position_velocity_omega'`` unless it is 0; omitted
+        there, it is 0.
     state_type : str, optional
         State vector composition:
         - 'position_velocity': [x, vx, y, vy] (default)
         - 'position_velocity_omega': [x, vx, y, vy, omega]
 
+        Any other value raises ``ValueError``.
+
     Returns
     -------
     Q : ndarray
         Process noise covariance matrix, rank 1.
+
+    Raises
+    ------
+    ValueError
+        If ``state_type`` is not one of the values above, or if a nonzero
+        ``sigma_omega`` is given with ``state_type='position_velocity'``.
 
     Examples
     --------
@@ -119,8 +143,7 @@ def q_coord_turn_2d(
 
     ``QCoordTurn`` rejects 4-element states, so
     ``state_type='position_velocity'`` returns the leading 4x4 block of the
-    ``'position_velocity_omega'`` result; it does not depend on
-    ``sigma_omega``. ``QCoordTurn``'s length-6 branch (adds a
+    ``'position_velocity_omega'`` result. ``QCoordTurn``'s length-6 branch (adds a
     linear-acceleration state) has no counterpart here.
 
     Until v2.12.0 this function stacked independent per-axis
@@ -132,15 +155,13 @@ def q_coord_turn_2d(
     --------
     f_coord_turn_2d : State transition matrix for 2D coordinated turn.
     """
-    return _q_coord_turn(
-        T, sigma_a, sigma_omega, 2, state_type == "position_velocity_omega"
-    )
+    return _q_coord_turn(T, sigma_a, sigma_omega, 2, state_type)
 
 
 def q_coord_turn_3d(
     T: float,
     sigma_a: float,
-    sigma_omega: float = 0.0,
+    sigma_omega: float | None = None,
     state_type: str = "position_velocity",
 ) -> NDArray[np.floating]:
     """
@@ -157,16 +178,26 @@ def q_coord_turn_3d(
         [m/s²]. ``QCoordTurn``'s ``sigmaV2`` is ``sigma_a**2``.
     sigma_omega : float, optional
         Standard deviation of turn rate noise [rad/s²]. ``QCoordTurn``'s
-        ``sigmaTurn2`` is ``sigma_omega**2``.
+        ``sigmaTurn2`` is ``sigma_omega**2``. Requires
+        ``state_type='position_velocity_omega'`` unless it is 0; omitted
+        there, it is 0.
     state_type : str, optional
         State vector composition:
         - 'position_velocity': [x, vx, y, vy, z, vz] (default)
         - 'position_velocity_omega': [x, vx, y, vy, z, vz, omega]
 
+        Any other value raises ``ValueError``.
+
     Returns
     -------
     Q : ndarray
         Process noise covariance matrix, rank 1.
+
+    Raises
+    ------
+    ValueError
+        If ``state_type`` is not one of the values above, or if a nonzero
+        ``sigma_omega`` is given with ``state_type='position_velocity'``.
 
     Notes
     -----
@@ -192,9 +223,7 @@ def q_coord_turn_3d(
     --------
     f_coord_turn_3d : State transition matrix for 3D coordinated turn.
     """
-    return _q_coord_turn(
-        T, sigma_a, sigma_omega, 3, state_type == "position_velocity_omega"
-    )
+    return _q_coord_turn(T, sigma_a, sigma_omega, 3, state_type)
 
 
 def q_coord_turn_polar(

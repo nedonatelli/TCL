@@ -126,7 +126,8 @@ class TestCoordTurnMatchesMatlabUpToPermutation:
     def test_matlab_reference_is_rank_one(self):
         assert np.linalg.matrix_rank(MATLAB_Q_COORD_TURN_5) == 1
 
-    def test_interleaved_elementwise_differs_from_matlab(self):
+    def test_unpermuted_comparison_is_wrong(self):
+        # Comparing against MATLAB without the permutation is not a validation.
         assert np.max(np.abs(self._q5() - MATLAB_Q_COORD_TURN_5)) == pytest.approx(
             3.0, abs=0
         )
@@ -138,7 +139,7 @@ class TestCoordTurnMatchesMatlabUpToPermutation:
         )
 
     def test_position_velocity_is_matlab_leading_block(self):
-        q4 = q_coord_turn_2d(self.T, self.SIGMA_A, self.SIGMA_OMEGA)
+        q4 = q_coord_turn_2d(self.T, self.SIGMA_A)
         p = INTERLEAVED_TO_MAJOR_2D
         np.testing.assert_allclose(
             q4[np.ix_(p, p)], MATLAB_Q_COORD_TURN_5[:4, :4], rtol=1e-15, atol=0

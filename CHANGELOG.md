@@ -137,6 +137,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positive variance, or with a negative one, now raises LinAlgError; pass
   the variance you mean, or drop the measurement.
 
+- **`q_coord_turn_2d` and `q_coord_turn_3d` reject inputs they used to
+  ignore.** An unknown `state_type` (a typo such as
+  `'position_velocity_omgea'`) silently built the no-omega matrix, and a
+  `sigma_omega` passed without `state_type='position_velocity_omega'` was
+  dropped: the user guide's own example `q_coord_turn_2d(T=1.0,
+  sigma_a=1.0, sigma_omega=0.01)` returned the 4x4 matrix with no
+  turn-rate noise. Both now raise `ValueError`. `sigma_omega` defaults to
+  `None` (0 for the omega state, as before); an explicit 0 with
+  `'position_velocity'` is accepted. What to do: pass
+  state_type='position_velocity_omega' when you supply sigma_omega; a
+  misspelled state_type now raises.
+
 - **CFAR cells with an empty reference window report NaN, not a zero
   threshold.** A cell whose clipped window held no reference cell (its
   guard cells covering both ends of the signal, or `ref_cells=0` with an

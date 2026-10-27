@@ -70,7 +70,7 @@ def test_2d_matches_qcoordturn(case):
 
 @pytest.mark.parametrize("case", _qcoordturn_fixtures("case5"))
 def test_2d_position_velocity_is_leading_block(case):
-    got = q_coord_turn_2d(case.T, np.sqrt(case.sigmaV2), np.sqrt(case.sigmaTurn2))
+    got = q_coord_turn_2d(case.T, np.sqrt(case.sigmaV2))
     np.testing.assert_allclose(got, _to_interleaved(case.Q)[:4, :4], rtol=1e-15, atol=0)
 
 
@@ -87,7 +87,7 @@ def test_3d_matches_qcoordturn(case):
 
 @pytest.mark.parametrize("case", _qcoordturn_fixtures("case7"))
 def test_3d_position_velocity_is_leading_block(case):
-    got = q_coord_turn_3d(case.T, np.sqrt(case.sigmaV2), np.sqrt(case.sigmaTurn2))
+    got = q_coord_turn_3d(case.T, np.sqrt(case.sigmaV2))
     np.testing.assert_allclose(got, _to_interleaved(case.Q)[:6, :6], rtol=1e-15, atol=0)
 
 
@@ -106,6 +106,23 @@ def test_matlab_example_point():
         atol=0,
     )
     assert np.linalg.matrix_rank(Q) == 1
+
+
+@pytest.mark.parametrize("fn", [q_coord_turn_2d, q_coord_turn_3d])
+def test_unknown_state_type_raises(fn):
+    with pytest.raises(ValueError, match="position_velocity_omega"):
+        fn(1.0, 2.0, state_type="position_velocity_omgea")
+
+
+@pytest.mark.parametrize("fn", [q_coord_turn_2d, q_coord_turn_3d])
+def test_ignored_sigma_omega_raises(fn):
+    with pytest.raises(ValueError, match="state_type='position_velocity_omega'"):
+        fn(1.0, 2.0, 0.1)
+
+
+@pytest.mark.parametrize("fn", [q_coord_turn_2d, q_coord_turn_3d])
+def test_zero_sigma_omega_without_omega_state_is_accepted(fn):
+    np.testing.assert_array_equal(fn(1.0, 2.0, 0.0), fn(1.0, 2.0))
 
 
 class TestSingerProcessNoise:
