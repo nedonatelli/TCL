@@ -183,25 +183,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differences, exact sin(pi x) reflection, extended exponent). From
   `abs(z) = 1e2` the expansion also replaces scipy at `z > 0` and at
   `z < 0` when `b > 0` and `b - a > 0`. Measured against mpmath (an exact
-  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4: the
-  expansion is within 3.1e-14 relative at `1e2 <= -z < 1e9` (939 random
-  points, where scipy reached 2.6e-11 but was better by up to 9.8e-15 at
-  34 of them) and within 1.3e-14 at `-z >= 1e9` for either sign of `b`
-  (600 points to 1e12; scipy gave up to 2.4e-12 there); the value is
-  continuous to 2.4e-14 across `z = +-1e2` and `+-1e9`. Elsewhere values
-  are scipy's and unchanged, including its error: up to 3.4e-11 at
-  `z < 0` (b near 6e3), 1.22e-12 at 1F1(1; 1000; 1995) and 1.4e-11 for
-  other finite `z > 0`. 17,280 calls over a grid with `a` and `b` from
-  -1e4 to 1e4 and `z` from 0 to `+-1e300`, `+-inf` and NaN all return.
-  Silent wrong answers fixed on the same path: scipy returns `+inf` for
-  every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800) and
-  1F1(-10.5; 1e5; 1e6) now give `-inf`. A `+-inf` is now returned only
-  when the overflow is proven (from the expansion's logarithm, or a lower
-  bound on the series tail, past which every term has one sign; a
-  terminating series is summed exactly); otherwise the result is NaN with
-  a `RuntimeWarning`. That NaN replaces v2.11.1's `+inf` for `abs(a)` or
-  `abs(b)` near 1e4, e.g. 1F1(-9999.5; 1.5; 1e6), 1F1(9999.5; -9999.5;
-  1e6) and 1F1(1e4; -9999.5; 1e6), where mpmath does not converge either.
+  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4; each
+  figure is the maximum over the stated random sample, not a bound: the
+  expansion reached 3.1e-14 relative at `1e2 <= -z < 1e9` (939 points,
+  where scipy reached 2.6e-11 but was better by about 1e-14 at 34 of them)
+  and 1.4e-14 at `-z >= 1e9` for either sign of `b` (two samples, 600 and
+  1,000 points, to 1e13; scipy gave up to 2.4e-12 there); across
+  `z = +-1e2` and `+-1e9` the value moved 2.4e-14 more than mpmath's (20
+  parameter sets). Elsewhere values are scipy's and unchanged, including
+  its errors: up to 3.4e-11 at `z < 0` (b near 6e3), 1.22e-12 at
+  1F1(1; 1000; 1995) and 1.4e-11 at other finite `z > 0` in these
+  samples, and its silent NaN for some large parameters at small `abs(z)`
+  (`hyp1f1(1, 9999.5, -1e-300)`, `hyp1f1(9999.5, 0.5, -1)` and
+  `hyp1f1(-1e4, 1, 1)` return NaN with no warning; the values are 1,
+  0.29107 and -0.025079). Termination: two grids, 17,280 and 11,880 calls
+  with `a` and `b` from -1e4 to 1e4 and `z` from 0 to `+-1e300`, `+-inf`
+  and NaN, all return (slowest 0.12 s) and none raises. Silent wrong
+  answers fixed on the same path: scipy returns `+inf` for every
+  overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800), 1F1(-10.5; 1e5;
+  1e6) and 1F1(4.8699; -264.582; 1307.64) now give `-inf`. A `+-inf` is
+  now returned only when the overflow is proven: from the expansion's
+  logarithm, from a lower bound on the series tail (past which every term
+  has one sign), or from the whole series summed with a certified sign
+  (directly, or in Kummer's form for `z < 0`), which is limited to 1e6
+  terms (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series
+  is summed exactly. A value below the double range is a signed 0.0, as
+  in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
+  150,000 random points (`abs(a)` to 200, `abs(b)` to 1e4, `abs(z)` to
+  1e6) scipy overflowed at 29,630; pytcl returned the proven `+-inf` at
+  29,503 (300 of them checked against an exact series sum, all correct)
+  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5).
   `hyp1f1` at `z = +-inf` returns the limit (it hung, or gave `+inf` for
   `1 - z/2`). A terminating pFq whose exact value exceeds the double range
   (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
@@ -209,8 +220,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   series were audited and do not hang. No other pytcl module calls these
   functions. What to do: nothing for calls that hung (they now return) or
   overflowed (they now carry the true sign); expect NaN with a
-  `RuntimeWarning` where an overflow cannot be proven, so far seen only
-  for `abs(a)` or `abs(b)` near 1e4.
+  `RuntimeWarning` where an overflow cannot be proven, which in the
+  samples above was only past the 1e6-term cap (`abs(z)` above about
+  1.6e5 with scipy overflowing) or at `abs(z) >= 1e9` where the expansion
+  does not reach double precision.
 
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in

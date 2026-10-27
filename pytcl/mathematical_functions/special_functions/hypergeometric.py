@@ -107,6 +107,8 @@ _HYP1F1_SCIPY_MAX_ABS_Z = 1e9
 _LOG_DOUBLE_MAX = math.log(np.finfo(np.float64).max)
 _LOG_DOUBLE_TINY = math.log(np.finfo(np.float64).smallest_subnormal)
 _LOG_EPS = math.log(np.finfo(np.float64).eps)
+_LN2 = math.log(2.0)
+_CERTIFIED_SUM_MAX_TERMS = 1_000_000
 _ASYMPTOTIC_MAX_TERMS = 200
 
 
@@ -200,8 +202,9 @@ def _gamma_ratio_stirling(b: float, a: float) -> tuple[float, int]:
         for k, ck in enumerate(_STIRLING_COEFFS, start=1)
     )
     m, e = _xpow(b, a)
-    m, de = math.frexp(m * math.exp(r))
-    return m, e + de
+    k = math.floor(r / _LN2)
+    m, de = math.frexp(m * math.exp(r - k * _LN2))
+    return m, e + k + de
 
 
 def _gamma_ratio(b: float, a: float) -> tuple[float, int] | None:
@@ -298,6 +301,75 @@ def _overflow_from_tail(a: float, b: float, z: float) -> float:
     scale = abs(best) + max(candidates) * (abs(log_z) + 50.0)
     if _proven_overflow(best, scale) == 1:
         return sp.gammasgn(b) * sp.gammasgn(a) * np.inf
+    return np.nan
+
+
+def _certified_series(a: float, b: float, z: float) -> tuple[float, float] | None:
+    """Sign and natural log of abs(1F1(a; b; z)) from its series, or None.
+
+    Every term up to N = 2 max(abs(a), abs(b)) + 6 abs(z) + 100 is formed
+    by the term-ratio recurrence in mantissa/exponent form (relative error
+    under 8 k eps in term k), scaled by the largest term and summed
+    exactly (``math.fsum``). Past N each ratio is at most
+    r = (N + abs(a)) abs(z) / ((N - abs(b)) (N + 1)) < 1, so the rest is at
+    most abs(t_N) r / (1 - r). The sign is certified only when abs(sum)
+    exceeds the rounding bound plus that remainder; None otherwise, or when
+    N exceeds ``_CERTIFIED_SUM_MAX_TERMS``.
+    """
+    n = math.ceil(2.0 * max(abs(a), abs(b)) + 6.0 * abs(z) + 100.0)
+    if n > _CERTIFIED_SUM_MAX_TERMS:
+        return None
+    k = np.arange(n, dtype=np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = (a + k) * z / ((b + k) * (k + 1.0))
+    if not np.all(np.isfinite(ratio)):
+        return None
+    rm, re = np.frexp(ratio)
+    mant = np.empty(n + 1)
+    expo = np.empty(n + 1, dtype=np.int64)
+    mant[0], expo[0] = 0.5, 1
+    carry_m, carry_e = 0.5, 1
+    for start in range(0, n, 512):
+        stop = min(n, start + 512)
+        block_m = carry_m * np.cumprod(rm[start:stop])
+        block_e = carry_e + np.cumsum(re[start:stop])
+        bm, be = np.frexp(block_m)
+        mant[start + 1 : stop + 1] = bm
+        expo[start + 1 : stop + 1] = block_e + be
+        carry_m, carry_e = float(bm[-1]), int(block_e[-1] + be[-1])
+    nonzero = mant != 0.0
+    top = int(np.max(expo[nonzero]))
+    with np.errstate(under="ignore"):
+        scaled = np.ldexp(mant, (expo - top).astype(np.int64))
+    total = math.fsum(scaled.tolist())
+    magnitude = math.fsum(np.abs(scaled).tolist())
+    r = (n + abs(a)) * abs(z) / ((n - abs(b)) * (n + 1.0))
+    if not r < 1.0:
+        return None
+    remainder = abs(scaled[-1]) * r / (1.0 - r)
+    rounding = 8.0 * (n + 2) * np.finfo(np.float64).eps * magnitude
+    if abs(total) <= 2.0 * (rounding + remainder):
+        return None
+    return math.copysign(1.0, total), math.log(abs(total)) + top * _LN2
+
+
+def _certified_overflow(a: float, b: float, z: float) -> float:
+    """``+-inf`` when a certified series sum proves 1F1 overflows, else NaN.
+
+    For z < 0 Kummer's form e^z 1F1(b - a; b; -z) is tried first: with
+    b > 0 and b - a > 0 its terms are all positive.
+    """
+    forms = [(a, b, z, 0.0)]
+    if z < 0:
+        forms.insert(0, (b - a, b, -z, z))
+    for p, q, w, shift in forms:
+        certified = _certified_series(p, q, w)
+        if certified is None:
+            continue
+        sign, log_abs = certified
+        if _proven_overflow(log_abs + shift, abs(log_abs) + abs(shift)) == 1:
+            return sign * np.inf
+        return np.nan
     return np.nan
 
 
@@ -407,9 +479,11 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     scipy_inf = use_scipy & np.isinf(result) & np.isfinite(z)
     overflowed = scipy_inf & general
     for i in np.flatnonzero(overflowed):
-        result.flat[i] = _hyp1f1_large_z(
-            a.flat[i], b.flat[i], z.flat[i], overflowed=True
-        )
+        ai, bi, zi = a.flat[i], b.flat[i], z.flat[i]
+        value = _hyp1f1_large_z(ai, bi, zi, overflowed=True)
+        if np.isnan(value):
+            value = _certified_overflow(ai, bi, zi)
+        result.flat[i] = value
     for i in np.flatnonzero(scipy_inf & terminating):
         result.flat[i] = _exact_polynomial_value(
             a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
@@ -510,26 +584,39 @@ def hyp1f1(
     From ``abs(z) = 1e2`` the expansion also replaces scipy at ``z > 0``
     (where it only returns proven overflows) and at ``z < 0`` when
     ``b > 0`` and ``b - a > 0``. Measured against mpmath (an exact series
-    sum where ``b < 0``), ``a`` in [-60, 60], ``abs(b)`` up to 1e4:
+    sum where ``b < 0``), ``a`` in [-60, 60], ``abs(b)`` up to 1e4; every
+    figure is the maximum measured over the stated random sample, not a
+    bound:
 
-    - expansion at ``1e2 <= -z < 1e9``: at most 3.1e-14 relative over 939
-      random points, where scipy reaches 2.6e-11 (scipy is better by up to
-      9.8e-15 at 34 of them);
-    - expansion at ``-z >= 1e9``, either sign of ``b``: at most 1.3e-14
-      over 600 random points up to 1e12;
-    - the value is continuous to 2.4e-14 across ``z = +-1e2`` and
-      ``+-1e9``;
-    - elsewhere the value is scipy's, unchanged: up to 3.4e-11 at
-      ``z < 0`` (b near 6e3) and 1.4e-11 for finite ``z > 0``.
+    - expansion at ``1e2 <= -z < 1e9``: 3.1e-14 relative over 939 points,
+      where scipy reached 2.6e-11; scipy was better at 34 of them, by
+      about 1e-14;
+    - expansion at ``-z >= 1e9``, either sign of ``b``: 1.4e-14 over two
+      samples of 600 and 1,000 points up to 1e13;
+    - across ``z = +-1e2`` and ``+-1e9`` the value moved 2.4e-14 more
+      than mpmath's over 20 parameter sets;
+    - elsewhere the value is scipy's, unchanged, including its errors: up
+      to 3.4e-11 at ``z < 0`` (b near 6e3) and 1.4e-11 at finite ``z > 0``
+      in the samples above, and scipy's silent NaN for some large
+      parameters at small ``abs(z)`` (``hyp1f1(1, 9999.5, -1e-300)``,
+      ``hyp1f1(9999.5, 0.5, -1)`` and ``hyp1f1(-1e4, 1, 1)`` return NaN
+      without a warning; their values are 1, 0.29107 and -0.025079).
 
-    A ``+-inf`` is returned only when the overflow is proven, from the
-    expansion's logarithm or from a lower bound on the series tail (past
-    ``k = max(-a, -b)`` every term has one sign); a terminating series
-    that scipy overflows is summed exactly. Otherwise NaN with a
-    ``RuntimeWarning``, which happens for ``abs(a)`` near 1e4 (for example
-    1F1(-9999.5; 1.5; 1e6)) and at ``abs(z) >= 1e9`` when the expansion
-    does not reach double precision. scipy returns ``+inf`` for every
-    overflow whatever its sign. At ``z = +-inf`` the limit is returned.
+    A ``+-inf`` is returned only when the overflow is proven: from the
+    expansion's logarithm, from a lower bound on the series tail (past
+    ``k = max(-a, -b)`` every term has one sign), or from the whole series
+    summed with a certified sign (term magnitudes in mantissa/exponent
+    form, directly or in Kummer's form e^z 1F1(b - a; b; -z) for
+    ``z < 0``), which needs at most 1e6 terms
+    (``2 max(abs(a), abs(b)) + 6 abs(z) + 100``); a terminating series that
+    scipy overflows is summed exactly. A value below the double range is a
+    signed 0.0. Otherwise the result is NaN with a ``RuntimeWarning``: on
+    150,000 random points (``abs(a)`` to 200, ``abs(b)`` to 1e4,
+    ``abs(z)`` to 1e6) that happened at 127 of 29,630 scipy overflows, all
+    beyond the 1e6-term cap (``abs(z)`` above 1.6e5), and it happens at
+    ``abs(z) >= 1e9`` when the expansion does not reach double precision.
+    scipy returns ``+inf`` for every overflow whatever its sign. At
+    ``z = +-inf`` the limit is returned.
 
     Special cases:
     - 1F1(0; b; z) = 1

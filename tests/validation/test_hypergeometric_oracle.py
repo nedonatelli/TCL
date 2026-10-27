@@ -1,6 +1,8 @@
 """Independent mpmath oracle for generalized_hypergeometric."""
 
 import math
+import subprocess
+import sys
 import warnings
 
 import mpmath
@@ -250,8 +252,13 @@ class TestLargeFiniteArgument:
     """scipy's hyp1f1 takes time proportional to abs(z) (14 s at 1e13, past
     60 s from 1e14) for non-terminating 1F1 at z > 0, and at z < 0 when
     b - a is a non-positive integer; large abs(z) goes through DLMF 13.7.2
-    instead. The class timeout is the termination check; values are
-    checked against mpmath."""
+    instead. Values are checked against mpmath.
+
+    Termination: the thread-method timeout ends the process and fails
+    loudly on a Python-level loop, but it cannot interrupt scipy's C loop,
+    which holds the GIL (neither can the signal method). The cases that
+    hung in scipy therefore also run in a subprocess with a 60 s timeout
+    (``test_hung_cases_return_in_a_subprocess``)."""
 
     HUNG_IN_SCIPY = [  # killed after 60 s
         (-0.5, 1.0, 1e15),
@@ -280,6 +287,50 @@ class TestLargeFiniteArgument:
             else:
                 assert got == want
         assert not recwarn
+
+    @pytest.mark.parametrize("a, b, z", HUNG_IN_SCIPY)
+    def test_hung_cases_return_in_a_subprocess(self, a, b, z):
+        code = (
+            "from pytcl.mathematical_functions.special_functions import hyp1f1;"
+            f"print(float(hyp1f1({a!r}, {b!r}, {z!r})))"
+        )
+        done = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, timeout=60
+        )
+        assert done.returncode == 0, done.stderr
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [(1000.0, 1025.0, -1e5), (2000.0, 2030.0, -1e6), (9999.5, -22.99, -1e9)],
+    )
+    def test_value_below_the_double_range_is_zero(self, a, b, z):
+        # 52f4cec raised ValueError here (a Stirling mantissa underflowed);
+        # 1F1(1000; 1025; -1e5) is 6.86e-2385.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            got = hyp1f1(a, b, z)
+        assert got == 0.0 and not math.copysign(1.0, got) < 0
+
+    def test_array_with_an_underflowing_element(self):
+        got = hyp1f1([1.0, 9999.5], [2.0, -22.99], -1e9)
+        want = float(mpmath.hyp1f1(1, 2, -1e9))
+        assert got[0] == pytest.approx(want, rel=5e-14, abs=0)
+        assert got[1] == 0.0
+
+    @pytest.mark.parametrize(
+        "a, b, z, dps",
+        [
+            (-0.5, -1000.5, 900.0, 900),
+            (4.8699, -264.582, 1307.64, 1000),
+            (-390.574, 109.530, -1724.15, 1200),
+        ],
+    )
+    def test_scipy_overflow_proven_by_the_series(self, a, b, z, dps):
+        # 52f4cec returned NaN for all three; v2.11.1's +inf had the wrong
+        # sign for the second.
+        want = _series_sum(a, b, z, dps)
+        assert abs(want) > mpmath.mpf(np.finfo(np.float64).max)
+        assert hyp1f1(a, b, z) == math.copysign(math.inf, float(mpmath.sign(want)))
 
     @pytest.mark.parametrize(
         "a, b, z, dps",
