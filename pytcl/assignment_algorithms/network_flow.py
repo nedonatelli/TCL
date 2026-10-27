@@ -355,7 +355,7 @@ def min_cost_flow_successive_shortest_paths(
         # Find bottleneck capacity (reverse arcs are limited by cancelable flow)
         min_flow = min(
             flow[e] if is_rev else residual_capacity[e]
-            for e, is_rev in zip(path_edges, path_reverse_flags)
+            for e, is_rev in zip(path_edges, path_reverse_flags, strict=True)
         )
         min_flow = min(
             min_flow,
@@ -364,7 +364,7 @@ def min_cost_flow_successive_shortest_paths(
         )
 
         # Push flow along path
-        for edge_idx, is_reverse in zip(path_edges, path_reverse_flags):
+        for edge_idx, is_reverse in zip(path_edges, path_reverse_flags, strict=True):
             if is_reverse == 0:
                 # Forward edge: increase flow
                 flow[edge_idx] += min_flow
