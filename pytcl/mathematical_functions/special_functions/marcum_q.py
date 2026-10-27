@@ -66,16 +66,16 @@ def marcum_q(
     ================  =====================  =========
     ``a``             ``m``                  max error
     ================  =====================  =========
-    10                1, 2, 100, 1e4         2.6e-13
-    1e3               1, 2, 100              2.9e-14
+    10                1, 2, 100, 1e4         2.9e-13
+    1e3               1, 2, 100              3.4e-14
     1e5               1, 2, 100, 1e4         2.9e-14
-    1e7, 1e8          1, 2, 100, 1e4, 1e7    2.9e-14
+    1e7, 1e8          1, 2, 100, 1e4, 1e7    2.7e-14
     ================  =====================  =========
 
     Where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` (the series corner), on
     ``a = 1e3``, ``m`` in {3000, 1e4}, ``c`` in {-3, 0, 7, 20} and
-    ``a = 10``, ``m = 1e7``, ``c`` in {-40, ..., 20}: 3.6e-15 at ``a = 1e3``
-    and 1.4e-14 at ``a = 10``.
+    ``a = 10``, ``m = 1e7``, ``c`` in {-40, ..., 20}: 1.2e-14 at ``a = 1e3``
+    and 2.8e-14 at ``a = 10``.
 
     Examples
     --------
@@ -202,9 +202,15 @@ def log_marcum_q(
     Otherwise it is a quadrature of the exact integrand
     ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)`` with ``exp(-(b-a)^2/2)``
     factored out, which needs neither squared argument. Elsewhere it is
-    ``log Q`` from ``marcum_q`` where ``Q <= 0.5`` and ``log1p(-P)`` above,
-    with ``P = 1 - Q`` from ``scipy.stats.ncx2.cdf`` (``gammainc`` at
-    ``a = 0``), so ``log Q`` keeps its relative accuracy as ``Q`` nears 1.
+    ``log Q`` from ``marcum_q`` where ``Q <= 0.5``. Above, it is
+    ``log1p(-P)`` with ``P = 1 - Q``. scipy's ``P`` (``gammainc`` at
+    ``a = 0``, else ``scipy.stats.ncx2.cdf``) is used only where it was
+    measured within 3.1e-15 relative: ``m <= 10``, ``a <= 10`` and
+    ``P >= 1e-30`` (on ``a`` in {0, 1, 10}, ``b = sqrt(a^2 + 2m) - z/sqrt(2)``,
+    ``z`` from 1 to 30). Elsewhere ``P`` is the series' own tail sum, at
+    about 2 ms an element: within 1e-13 of mpmath on ``a`` in {0, 1},
+    ``m`` in {100, 1e4, 1e6, 1e7}, ``z`` in {3, 5, 10, 14}, where scipy's
+    ``P`` was off by up to 3.1e-2 (``a = 0``, ``m = 1e7``).
 
     Relative error of ``log Q`` against the mpmath oracle in
     ``tests/fixtures/marcum_q/oracle.csv``, at ``b = sqrt(a^2 + 2m) + c``
@@ -213,9 +219,8 @@ def log_marcum_q(
     ================  =====================  ======================
     ``a``             ``m``                  max error
     ================  =====================  ======================
-    10                1, 2, 100              4.2e-15
-    10                1e4                    3.0e-14; 1.7e-12 at
-                                             ``c = -10``
+    10                1, 2, 100              2.8e-15
+    10                1e4                    1.5e-14
     1e3               1, 2, 100              7.7e-16
     1e5, 1e7, 1e8     1, 2, 100, 1e4         6.4e-15
     1e7, 1e8          1e7                    1.6e-15
@@ -225,16 +230,29 @@ def log_marcum_q(
     incomplete gammas are Poisson tail sums of log pmf terms, or Temme's
     uniform expansion for orders above 1e4, with ``a^2/2`` and ``b^2/2``
     carried to twice working precision; only the tail sum (``Q`` or
-    ``1 - Q``) is formed, and its terms are sampled at a stride below a
-    quarter of their width, so memory and time stay bounded for any input
-    (at most 2^16 terms; past that it raises ``ConvergenceError``).
+    ``1 - Q``) is formed, its peak is found by ternary search on an
+    integer bracket (which shrinks every step at any magnitude), and its
+    terms are sampled at a stride below a quarter of their width. Below
+    ``log Q = -2.8e14`` the terms' rounding exceeds one unit of log, and a
+    fixed grid of the same stride is summed instead: within 2.4e-16 of
+    ``-(a^2+b^2)/2 + (m-1) log(b/a) + log I_{m-1}(ab)`` (mpmath) on 115
+    points, ``a`` in {1e-3, 0.5, 10, 1e3}, ``m`` in {1e5, 1e6, 1e7}, ``b``
+    from 1e5 to 1e14. More than 2^16 terms in a sum raises
+    ``ConvergenceError``. On 13,346 calls over ``a``, ``b`` in {0, 1e-300,
+    1e-3, ..., 1e8, 1e200, inf, nan} plus points beside each regime
+    boundary, ``m`` from 1 to 1e7, no call raised, the largest evaluation
+    was 433 terms and the slowest call 0.04 s. Inputs with ``a^2/2`` above
+    2^53 (``m`` near 3e8) return but are not measured.
     ``log Q`` is within 2.1e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c``
     in {-3, 0, 7, 20}, and within 3.8e-15 on ``a = 10``, ``m = 1e7``, ``c``
     in {-40, -10, -3, 0, 3, 10, 20}. Called directly on all 159 oracle rows
     (``a`` up to 1e8, where the terms peak at ``k = 5e15``) the series is
     within 5.6e-15. On ``a``, ``b`` in 12 log-spaced values over
     [1e-3, 1e8] and ``m`` in {1, 2, 30, 3000, 1e7}, the traced memory of
-    all 1440 calls together peaks at 0.25 MiB.
+    all 1440 calls together peaks at 0.25 MiB. Where ``Q < 1e-10`` and
+    ``a*b <= 2e4`` the same series serves; on ``a`` in {0, 1}, ``m`` in
+    {1000, 3000, 9999}, ``b = sqrt(a^2 + 2m) + c``, ``c`` in [0, 20] at
+    0.125 spacing it is within 9.3e-15 of mpmath.
     v2.11.1 also measured ``c`` in {7, 30, 200, 1000} for ``a`` in
     {0.5, 5, 30, 140}, ``m`` in {1, 20, 200} (below 2.2e-14), and ``c`` in
     {7, 30, 200} for ``a`` in {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100}
@@ -268,24 +286,30 @@ def log_marcum_q(
     with np.errstate(divide="ignore"):
         result = np.log(q_val)
 
-    # Near Q = 1, log(Q) keeps only the absolute accuracy of Q; log1p of the
-    # directly computed 1 - Q keeps the relative accuracy of log Q.
-    near_one = ~large & (q_val > 0.5)
+    # Near Q = 1, log(Q) keeps only the absolute accuracy of Q, so log1p of
+    # minus 1 - Q is used. scipy's 1 - Q (gammainc at a = 0, else ncx2.cdf)
+    # is kept only where it was measured within 3.1e-15 relative (m <= 10,
+    # a <= 10, 1 - Q >= 1e-30); it degrades with m (3% at a = 0, m = 1e7)
+    # and returns 0 for representable values near 1e-300. Elsewhere the
+    # series forms 1 - Q from its own tail terms, at about 2 ms an element.
+    finite = np.isfinite(a_b) & np.isfinite(b_b)
+    near_one = finite & ~large & (b_b > 0.0) & (q_val > 0.5)
     if np.any(near_one):
         from scipy.stats import ncx2
 
         an, bn = a_b[near_one], b_b[near_one]
         with np.errstate(over="ignore", invalid="ignore"):
             p_val = np.where(
-                an == 0.0,
-                sp.gammainc(m, 0.5 * bn**2),
-                ncx2.cdf(bn**2, 2 * m, an**2),
+                an == 0.0, sp.gammainc(m, 0.5 * bn**2), ncx2.cdf(bn**2, 2 * m, an**2)
             )
-        result[near_one] = np.log1p(-p_val)
+        trusted = (m <= 10) & (an <= 10.0) & (p_val >= 1e-30)
+        idx = np.flatnonzero(near_one)
+        result[idx[trusted]] = np.log1p(-p_val[trusted])
+        for i in idx[~trusted]:
+            result[i] = _log_marcum_q_tail(a_b[i], b_b[i], m)
 
     # marcum_q returns NaN (or a spurious 0) once a^2 or b^2 overflows, so
     # NaN results from finite inputs are recomputed here too.
-    finite = np.isfinite(a_b) & np.isfinite(b_b)
     redo = large | (finite & ((q_val < 1e-10) | np.isnan(q_val)))
     for i in np.flatnonzero(redo):
         result[i] = _log_marcum_q_tail(a_b[i], b_b[i], m)
@@ -446,7 +470,9 @@ def _log_poisson_pmf(
     saddle-point form ``-stirlerr(j) - bd0(j, mu) - log(2 pi j)/2``
     (Loader 2000) is used instead.
     """
-    out = sp.xlogy(j, mu) - mu - sp.gammaln(j + 1.0)
+    with np.errstate(over="ignore", invalid="ignore"):
+        # Only read below j = 16; above, the terms may be inf - inf.
+        out = sp.xlogy(j, mu) - mu - sp.gammaln(j + 1.0)
     big = j >= 16.0
     if np.any(big):
         jb = j[big]
@@ -472,9 +498,11 @@ def _log_poisson_tails(
     For integer ``n`` these are the regularized incomplete gammas
     ``Q(n, x)`` and ``P(n, x)``. Each is a cumulative ``logaddexp`` of
     log pmf terms, all positive, so both keep their relative accuracy in
-    the tail. The pmf window runs to where the terms are ``e^-45`` below
-    those it is read at; past the bulk (``mode +- sqrt(90 x) + 50``) a tail
-    is read as ``log 1 = 0``.
+    the tail. The pmf window covers the bulk (``mode +- sqrt(90 x) + 50``)
+    and runs past the outermost order read until the terms are ``e^-45``
+    below the term at that order, so a tail read near the bulk edge keeps
+    the mass beyond it. A tail read beyond the bulk on its large side is
+    ``log 1 = 0``.
     """
     mode = np.floor(x)
     bulk = int(np.ceil(np.sqrt(90.0 * x))) + 50
@@ -482,9 +510,7 @@ def _log_poisson_tails(
     hi_cdf = min(int(n.max()) - 1, int(mode) + bulk)
     log_cdf = np.zeros(n.shape)
     if lo_cdf <= hi_cdf:
-        start = min(lo_cdf, int(mode) - bulk)
-        if lo_cdf < mode - bulk:
-            start = lo_cdf - _poisson_reach(lo_cdf, x)
+        start = min(int(mode) - bulk, lo_cdf - _poisson_reach(lo_cdf, x))
         j = np.arange(max(start, 0), hi_cdf + 1, dtype=np.float64)
         acc = np.logaddexp.accumulate(_log_poisson_pmf(j, x, x_lo))
         inside = n - 1 <= hi_cdf
@@ -493,9 +519,7 @@ def _log_poisson_tails(
     hi_sf = int(n.max())
     log_sf = np.zeros(n.shape)
     if lo_sf <= hi_sf:
-        stop = max(hi_sf, int(mode) + bulk)
-        if hi_sf > mode + bulk:
-            stop = hi_sf + _poisson_reach(hi_sf, x)
+        stop = max(int(mode) + bulk, hi_sf + _poisson_reach(hi_sf, x))
         j = np.arange(max(lo_sf, 0), stop + 1, dtype=np.float64)
         acc = np.logaddexp.accumulate(_log_poisson_pmf(j, x, x_lo)[::-1])[::-1]
         inside = n >= lo_sf
@@ -728,9 +752,13 @@ def _log_poisson_q_p(
         log_q[temme], log_p[temme] = _log_poisson_q_p_temme(n[temme], x)
     small = near & ~temme
     if np.any(small):
-        log_q[small], log_p[small] = _log_poisson_tails(
-            n[small].astype(np.int64), x, x_lo
-        )
+        sq, sp_ = _log_poisson_tails(n[small].astype(np.int64), x, x_lo)
+        # The window sums keep relative accuracy only on the smaller side;
+        # the side near 1 is log1p of minus the other.
+        q_small = sq <= sp_
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_q[small] = np.where(q_small, sq, np.log1p(-np.exp(sp_)))
+            log_p[small] = np.where(q_small, np.log1p(-np.exp(sq)), sp_)
     shift = ~small & (x_lo != 0.0)
     if np.any(shift):
         # dQ/dx = -pmf(n-1; x) = -dP/dx: carry the rounding of x = b^2/2.
@@ -754,49 +782,92 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
     sum then runs over ``k* +- (12 sigma + 20)``, ``sigma`` from the terms'
     curvature at the peak, widened until both edges are ``e^-40`` below the
     peak. Where ``sigma >= 8`` it samples every ``h = floor(sigma/4)``-th
-    term and multiplies by ``h``: the terms are a smooth peak of width
-    ``sigma``, so the error is of order ``exp(-2 pi^2 (sigma/h)^2) < 1e-130``;
-    the sum is repeated on the grid offset by ``h/2`` and must agree to
-    1e-14, else ``h`` is halved. At most ``2^16`` terms are evaluated per
+    term and multiplies by ``h``. The sum is repeated on the grid offset by
+    ``h/2`` and must agree to 1e-14 in log (for ``Q``, to the larger of
+    that and ``16 eps |log Q|``, the rounding of the terms), else ``h`` is
+    halved; that acceptance test is the stride's error bound. Where the
+    terms' rounding ``16 eps |log Q|`` exceeds 1 (``log Q < -2.8e14``) the
+    adaptive tests cannot resolve the terms, and a fixed grid of
+    ``+-(12 sigma_a + 20)`` at stride ``sigma_a / 4`` is summed, with
+    ``sigma_a = (1/k* + 1/(m+k*))^(-1/2)`` from the Poisson curvatures.
+    Where ``1 - Q`` peaks below ``e^-800`` the result is ``-0.0``. Against a full ``h = 1`` sum of the
+    same terms the strided sum was within 2.9e-14 on 391 points (``a``
+    from 15 to 1e3, ``m`` from 1 to 1e5, ``b = sqrt(a^2 + 2m) + c`` with
+    ``c`` from -20 to 20). At most ``2^16`` terms are evaluated per
     sum; more raises :class:`~pytcl.core.exceptions.ConvergenceError`.
     """
     lam, lam_lo = _half_square(a)
     x, x_lo = _half_square(b)
     upper = (b - a) * (b + a) >= 2.0 * m
     if lam == 0.0:
-        log_q, log_p = _log_poisson_q_p(np.array([float(m)]), x, x_lo)
+        log_q, _ = _log_poisson_q_p(np.array([float(m)]), x, x_lo)
         return float(log_q[0])
 
     def _terms(k: NDArray[np.floating]) -> NDArray[np.floating]:
         log_q, log_p = _log_poisson_q_p(m + k, x, x_lo)
         return _log_poisson_pmf(k, lam, lam_lo) + (log_q if upper else log_p)
 
+    # The bracket is held in Python ints so that it shrinks by at least one
+    # every step at any magnitude; past 2^53 adjacent floats differ by more
+    # than one and a float bracket can stop moving.
     if upper:
-        lo = max(0.0, np.floor(lam) - 1.0)
+        lo = max(0, int(np.floor(lam)) - 1)
         c1 = m + 1.0 - lam
         c0 = m - lam * (m + x)
-        k_u = 0.5 * (-c1 + np.sqrt(c1 * c1 - 4.0 * c0)) if c1 * c1 > 4.0 * c0 else lo
-        hi = max(lo + 1.0, np.ceil(k_u) + 1.0)
+        with np.errstate(over="ignore"):
+            disc = c1 * c1 - 4.0 * c0
+        k_u = 0.5 * (-c1 + np.sqrt(disc)) if disc > 0.0 else float(lo)
+        if not np.isfinite(k_u):
+            raise ConvergenceError(
+                f"Marcum Q series bracket overflows at a={a!r}, b={b!r}, m={m}"
+            )
+        hi = max(lo + 1, int(np.ceil(k_u)) + 1)
     else:
-        lo, hi = 0.0, np.ceil(lam) + 1.0
-    while hi - lo > 2.0:
-        third = np.floor((hi - lo) / 3.0)
-        t1, t2 = _terms(np.array([lo + third, hi - third]))
+        lo, hi = 0, int(np.ceil(lam)) + 1
+    while hi - lo > 2:
+        third = (hi - lo) // 3
+        t1, t2 = _terms(np.array([float(lo + third), float(hi - third)]))
         if t1 < t2:
-            lo = lo + third + 1.0
+            lo += third + 1
         else:
-            hi = hi - third
-    cand = np.arange(lo, hi + 1.0)
+            hi -= third
+    cand = np.array([float(k) for k in range(lo, hi + 1)])
     k_star = float(cand[np.argmax(_terms(cand))])
     top = float(_terms(np.array([k_star]))[0])
+    if not upper and top < -800.0:
+        # 1 - Q is below e^-745 (the sum is at most e^40 times its peak),
+        # so log Q = -(1 - Q) rounds to -0.0.
+        return -0.0
+
+    # Width of the peak if every factor had the curvature of a Poisson
+    # log pmf (-1/k from the weights, about -1/n from the tail factor).
+    sigma_a = 1.0 / np.sqrt(1.0 / max(k_star, 1.0) + 1.0 / (m + k_star))
+    # Each term is a sum of parts as large as |top|, so it carries about
+    # 16 eps |top| of absolute rounding.
+    noise = 16.0 * np.finfo(float).eps * abs(top)
+    if noise > 1.0:
+        # log Q < -2.8e14. The adaptive tests below would compare
+        # differences smaller than the rounding of the terms, and the answer
+        # cannot be relatively better than 4e-15 anyway: sum a fixed grid
+        # of +-(12 sigma_a + 20) at a stride of sigma_a / 4.
+        h = max(1.0, np.floor(sigma_a / 4.0))
+        if k_star < 12.0 * sigma_a + 20.0:
+            h = 1.0
+        j = np.ceil((12.0 * sigma_a + 20.0) / h)
+        k = k_star + h * np.arange(-j, j + 1.0)
+        t = _terms(k[k >= 0.0])
+        peak = t.max()
+        return float(np.log(h) + peak + np.log(np.sum(np.exp(t - peak))))
 
     d = max(1.0, np.floor(0.5 * np.sqrt(k_star)))
+    sigma = 1.0
     if k_star >= d:
         t_lo, t_hi = _terms(np.array([k_star - d, k_star + d]))
-        curv = (t_lo + t_hi - 2.0 * top) / (d * d)
-        sigma = 1.0 / np.sqrt(-curv) if curv < 0.0 else np.sqrt(k_star + 1.0)
-    else:
-        sigma = 1.0
+        drop = t_lo + t_hi - 2.0 * top
+        if drop < -100.0 * noise:
+            sigma = d / np.sqrt(-drop)
+        else:
+            sigma = sigma_a
     h = max(1.0, np.floor(sigma / 4.0))
     reach = 12.0 * sigma + 20.0
 
@@ -813,7 +884,8 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
                 )
             t = _terms(k)
             peak = t.max()
-            if (k[0] < h or t[0] < peak - 40.0) and t[-1] < peak - 40.0:
+            edge = peak - 40.0 - noise
+            if (k[0] < h or t[0] < edge) and t[-1] < edge:
                 return float(np.log(h) + peak + np.log(np.sum(np.exp(t - peak))))
             span *= 2.0
 
@@ -822,7 +894,10 @@ def _log_marcum_q_series(a: float, b: float, m: int) -> float:
     log_tail = _window_sum(h, 0.0)
     while h > 1.0:
         other = _window_sum(h, np.floor(h / 2.0))
-        if abs(np.expm1(other - log_tail)) <= 1e-14:
+        # For Q the result is log_tail itself, whose relative precision is
+        # limited to about 16 eps by the rounding of its terms.
+        tol = max(1e-14, 16.0 * np.finfo(float).eps * abs(log_tail)) if upper else 1e-14
+        if abs(other - log_tail) <= tol:
             break
         h = max(1.0, np.floor(h / 2.0))
         log_tail = _window_sum(h, 0.0)

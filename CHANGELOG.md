@@ -186,31 +186,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   results change, and they now match the Kalman filter.
 
 - **`marcum_q` at large arguments uses the log-domain quadrature, not
-  `scipy.stats.ncx2.sf`.** Every element with `a > 0`, `b > 0` went
-  through `ncx2.sf`, which loses digits and then fails as `a*b` grows:
-  4.5e-7 relative at `(a=1e7, b=1e7-3, m=2)`, 4.7e-3 against 0.5 at
+  `scipy.stats.ncx2.sf`.** Every element with `a > 0`, `b > 0` went through
+  `ncx2.sf`, which loses digits and then fails as `a*b` grows: 4.5e-7
+  relative at `(a=1e7, b=1e7-3, m=2)`, 4.7e-3 against 0.5 at
   `(a=1e7, b=sqrt(a^2+2), m=1)`, and 8.6e-179 against 2.8e-89 at
   `(a=1e8, b=sqrt(a^2+4)+20, m=2)`, with Boost "Series did not converge"
   warnings. Elements with `a*b > 2e4` (finite, positive) are now `exp` of
   the log-domain evaluation `log_marcum_q` already used for its tails: a
   quadrature of the Marcum integrand where `(m-1)^2 <= 4ab`, the
-  Poisson-mixture series otherwise. `log_marcum_q` computes those
-  elements directly instead of inheriting `ncx2.sf` values above
-  `Q = 1e-10`, and elsewhere takes `log1p(-ncx2.cdf)` where `Q > 0.5`, so
-  `log Q` keeps its relative accuracy as `Q` nears 1. The quadrature now
-  forms `log(x/a)` as `log1p`, which removes a 4e-8 relative error at
-  `m = 1e7`. Measured against a new mpmath oracle
-  (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`)
-  on 151 points, `b = sqrt(a^2 + 2m) + c` with `a` in {10, 1e3, 1e5, 1e7,
-  1e8}, `m` in {1, 2, 100, 1e4, 1e7}, `c` in {-40, -10, -3, 0, 3, 10, 20}
-  (series-corner points excluded): `Q` within 2.9e-14 relative for
-  `a >= 1e3` and 2.6e-13 at `a = 10`; `log Q` within 6.4e-15, except
-  1.7e-12 at `(a=10, m=1e4, c=-10)`, which is outside the `a*b > 2e4`
-  domain. It is one quadrature per element: a 1e4-element array in the
-  new domain took 0.38 to 0.67 s (Apple Silicon, `a` from 1e3 to 1e8),
-  against 0.19 s for `ncx2.sf` at `a = 1e3` and 42 ms and 311 ms per
-  element at `a = 1e7` and `1e8`. What to do:
-  nothing; results at `a >= 1e3` change, and at `a >= 1e7` they were
+  Poisson-mixture series otherwise. `log_marcum_q` computes those elements
+  directly instead of inheriting `ncx2.sf` values above `Q = 1e-10`.
+  Elsewhere, where `Q > 0.5`, it takes `log1p(-P)` with `P = 1 - Q` instead
+  of `log Q`. scipy's `P` (`gammainc` at `a = 0`, `ncx2.cdf` otherwise) is
+  kept only where it was measured within 3.1e-15 relative (`m <= 10`,
+  `a <= 10`, `P >= 1e-30`); elsewhere `P` is the Poisson series' own tail
+  sum below, within 1e-13 of mpmath on `a` in {0, 1}, `m` in {100, 1e4, 1e6,
+  1e7}, `b = sqrt(a^2 + 2m) - z/sqrt(2)`, `z` in {3, 5, 10, 14}, where
+  scipy's `P` was off by up to 3.1e-2 at `a = 0`, `m = 1e7`. Those elements
+  cost about 2 ms each instead of being vectorised. The quadrature now forms
+  `log(x/a)` as `log1p`, which removes a 4e-8 relative error at `m = 1e7`.
+  Measured against a new mpmath oracle
+  (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`) on
+  151 points, `b = sqrt(a^2 + 2m) + c` with `a` in {10, 1e3, 1e5, 1e7, 1e8},
+  `m` in {1, 2, 100, 1e4, 1e7}, `c` in {-40, -10, -3, 0, 3, 10, 20}
+  (series-corner points excluded): `Q` within 3.4e-14 relative for
+  `a >= 1e3` and 2.9e-13 at `a = 10`; `log Q` within 1.5e-14. It is one
+  quadrature per element: a 1e4-element array in the new domain took 0.38 to
+  0.67 s (Apple Silicon, `a` from 1e3 to 1e8), against 0.19 s for `ncx2.sf`
+  at `a = 1e3` and 42 ms and 311 ms per element at `a = 1e7` and `1e8`. What
+  to do: nothing; results at `a >= 1e3` change, and at `a >= 1e7` they were
   wrong by up to 100%.
 
 - **`log_marcum_q`'s series corner sums Poisson terms instead of calling
@@ -228,9 +232,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tail sum is formed (`Q`, or `1 - Q` followed by `log1p`). Its terms are
   log-concave in `k`, so the peak is found by ternary search in a bracket
   that provably holds it, and the sum samples every `h`-th term with `h`
-  below a quarter of the peak's width, so each call evaluates at most a
-  few hundred terms whatever `a`, `b` and `m` are (a hard limit of 2^16
-  raises `ConvergenceError`). Against the mpmath series oracle on
+  below a quarter of the peak's width. The bracket is held in integers, so
+  the search ends at any magnitude. Below `log Q = -2.8e14`, where the
+  terms' rounding exceeds one unit of log, a fixed grid is summed: within
+  2.4e-16 of the Bessel form `-(a^2+b^2)/2 + (m-1) log(b/a) + log
+  I_{m-1}(ab)` on 115 points with `m` from 1e5 to 1e7 and `b` up to 1e14
+  (inputs there that once reached the backstop; v2.11.1 returned
+  `marcum_q = 0.0`, which is unchanged). More than 2^16 terms in a sum
+  raises `ConvergenceError`; on 13,346 calls spanning every regime and
+  its boundaries (`m` from 1 to 1e7), none did, the largest evaluation
+  was 433 terms and the slowest call 0.04 s. Inputs with `a^2/2` above
+  2^53 (`m` near 3e8) return, unmeasured. Against the mpmath series oracle on
   `a = 1e3`, `m` in {3000, 1e4}, `c` in {-3, 0, 7, 20}, `log Q` is within
   2.1e-15 relative, and within 3.8e-15 on `a = 10`, `m = 1e7`, `c` in
   {-40, -10, -3, 0, 3, 10, 20}; the series called directly on all 159
@@ -239,8 +251,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all 720 calls of each function complete within 0.25 MiB of traced
   memory, and on that grid's `b <= a/10` band `marcum_q` equals 2.11.1's
   value exactly (1.0 where `b << a`). The same series serves
-  `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`; the oracle rows
-  there stay within the bounds of the entry above. What to do: nothing.
+  `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`: on `a` in {0, 1},
+  `m` in {1000, 3000, 9999}, `b = sqrt(a^2 + 2m) + c`, `c` in [0, 20] at
+  0.125 spacing, it is within 9.3e-15 of mpmath. What to do: nothing.
 
 ## [2.11.1] - 2026-10-22
 

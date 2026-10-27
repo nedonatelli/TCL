@@ -70,23 +70,6 @@ def _row_id(row: _OracleRow) -> str:
     return f"a={row.a:g}-m={row.m}-c={c:+.0f}"
 
 
-def _log_oracle_params() -> list:
-    """Oracle rows, with the one measured miss marked strict-xfail.
-
-    At ``a = 10, m = 1e4, c = -10`` (outside the ``a*b > 2e4`` domain),
-    ``log1p(-ncx2.cdf)`` is off by 1.7e-12 relative on ``log Q = -1.5e-46``.
-    """
-    params = []
-    for row in _oracle_rows():
-        c = row.b - math.sqrt(row.a**2 + 2.0 * row.m)
-        if (row.a, row.m, round(c)) == (10.0, 10_000, -10):
-            mark = pytest.mark.xfail(reason="ncx2.cdf: 1.7e-12 relative", strict=True)
-            params.append(pytest.param(row, marks=mark))
-        else:
-            params.append(row)
-    return params
-
-
 def mpmath_exp_as_float(log_q: str) -> float:
     """exp of a decimal string at 40 digits; 0.0 below the double range."""
     with mpmath.workdps(40):
@@ -174,7 +157,7 @@ class TestMarcumQLargeArguments:
         want = mpmath_exp_as_float(row.log_q)
         assert got == pytest.approx(want, rel=1e-12, abs=0)
 
-    @pytest.mark.parametrize("row", _log_oracle_params(), ids=_row_id)
+    @pytest.mark.parametrize("row", _oracle_rows(), ids=_row_id)
     def test_log_marcum_q_matches_the_oracle(self, row):
         got = log_marcum_q(row.a, row.b, row.m)
         assert got == pytest.approx(float(row.log_q), rel=1e-12, abs=0)
@@ -262,6 +245,148 @@ class TestLogMarcumQ:
         corner = {(row.a, row.m) for row in _oracle_rows(corner=True)}
         assert {(1e3, 3000), (1e3, 10_000), (10.0, 10_000_000)} <= corner
 
+    @staticmethod
+    def _mpmath_log_q(a: float, b: float, m: int, dps: int = 30) -> float:
+        """``log sum_k Pois(k; a^2/2) Q(m + k, b^2/2)`` with mpmath's gammainc."""
+        with mpmath.workdps(dps):
+            lam = mpmath.mpf(a) ** 2 / 2
+            x = mpmath.mpf(b) ** 2 / 2
+            total = mpmath.mpf(0)
+            k = 0
+            while True:
+                w = mpmath.exp(-lam) * lam**k / mpmath.factorial(k)
+                if w == 0 or (k > lam and w < mpmath.mpf(10) ** (5 - dps)):
+                    break
+                q = mpmath.gammainc(m + k, x, mpmath.inf, regularized=True)
+                total += w * q
+                k += 1
+            return float(mpmath.log(total))
+
+    @pytest.mark.parametrize("m", [1000, 3000, 9999])
+    @pytest.mark.parametrize("a", [0.0, 1.0])
+    def test_b_sweep_across_the_poisson_bulk_edge(self, a, m):
+        """``b = sqrt(a^2 + 2m) + c``, ``c`` in [0, 20] step 0.25.
+
+        The Poisson tail window once started at the bulk edge when the order
+        read sat just inside it, dropping the mass beyond: up to 4.3e-2 at
+        ``(0, 148.637..., 9999)``, where v2.11.1 was correct.
+        """
+        mu = math.sqrt(a * a + 2.0 * m)
+        for c in np.linspace(0.0, 20.0, 81):
+            b = float(mu + c)
+            want = self._mpmath_log_q(a, b, m)
+            assert log_marcum_q(a, b, m) == pytest.approx(want, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize(
+        ("b", "m", "want"),
+        [
+            (85.09406559801923, 3000, -59.855966560818529236),
+            (148.6371420607918, 9999, -54.591974316565443494),
+        ],
+    )
+    def test_bulk_edge_pins(self, b, m, want):
+        """Orders read exactly at the bulk edge; values from mpmath."""
+        assert log_marcum_q(0.0, b, m) == pytest.approx(want, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize("z", [3, 5, 10, 14])
+    @pytest.mark.parametrize("m", [100, 10_000, 1_000_000, 10_000_000])
+    @pytest.mark.parametrize("a", [0.0, 1.0])
+    def test_near_one_is_relatively_accurate(self, a, m, z):
+        """``log Q`` near 0 at ``b = sqrt(a^2 + 2m) - z/sqrt(2)``.
+
+        ``log1p(-P)`` took ``P`` from scipy: at ``a = 0`` its ``gammainc``
+        was 3.1e-2 off at ``m = 1e7``, and ``ncx2.cdf`` at ``a = 1`` 6.7e-10.
+        """
+        b = math.sqrt(a * a + 2.0 * m) - z / math.sqrt(2.0)
+        want = self._mpmath_log_q(a, b, m, dps=90)
+        assert log_marcum_q(a, b, m) == pytest.approx(want, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize(
+        ("a", "m", "z"),
+        [
+            (0.0, 10_000_000, 5),
+            (0.0, 10_000_000, 10),
+            (1.0, 10_000_000, 10),
+            (1.0, 10_000_000, 14),
+            (10.0, 1_000_000, 10),
+            (10.0, 1_000_000, 14),
+        ],
+    )
+    def test_near_one_review_pins(self, a, m, z):
+        """``b = sqrt(2 (m - z sqrt(m)))``: scipy's ``1 - Q`` was 3.1e-2 off
+        (``a = 0``, ``m = 1e7``, ``z = 5``) and 1.2e-9 (``a = 1``, ``m = 1e7``).
+        """
+        b = math.sqrt(2.0 * (m - z * math.sqrt(m)))
+        want = self._mpmath_log_q(a, b, m, dps=90)
+        assert log_marcum_q(a, b, m) == pytest.approx(want, rel=1e-13, abs=0)
+
+    @staticmethod
+    def _mpmath_log_q_large_b(a: float, b: float, m: int) -> tuple[float, float]:
+        """``log Q`` where ``b^2/2`` dwarfs every order ``m + k`` that counts.
+
+        ``Q(n, x) = pmf(n-1; x) S`` with ``1 <= S <= 1/(1 - n/x)``, and
+        ``sum_k Pois(k; a^2/2) pmf(m+k-1; b^2/2)`` is
+        ``exp(-(a^2+b^2)/2) (b/a)^(m-1) I_{m-1}(a b)``. Returns that log
+        (Debye expansion of the Bessel function, ``nu = m - 1 >= 1e5``)
+        and the bracket width ``-log(1 - n_max/x)``.
+        """
+        with mpmath.workdps(50):
+            A, B = mpmath.mpf(a), mpmath.mpf(b)
+            nu = mpmath.mpf(m - 1)
+            t = A * B / nu
+            r = mpmath.sqrt(1 + t * t)
+            p = 1 / r
+            u1 = (3 * p - 5 * p**3) / 24
+            u2 = (81 * p**2 - 462 * p**4 + 385 * p**6) / 1152
+            u3 = (30375 * p**3 - 369603 * p**5 + 765765 * p**7 - 425425 * p**9) / 414720
+            log_i = (
+                nu * (r + mpmath.log(t / (1 + r)))
+                - mpmath.log(2 * mpmath.pi * nu) / 2
+                - mpmath.log(r) / 2
+                + mpmath.log(1 + u1 / nu + u2 / nu**2 + u3 / nu**3)
+            )
+            log_q = (m - 1) * mpmath.log(B / A) - (A * A + B * B) / 2 + log_i
+            lam, x = A * A / 2, B * B / 2
+            k = (-m + mpmath.sqrt(m * m + 4 * lam * x)) / 2
+            n_max = m + k + 40 * mpmath.sqrt(k + 1) + 100
+            return float(log_q), float(-mpmath.log(1 - n_max / x))
+
+    @pytest.mark.parametrize("m", [100_000, 10_000_000])
+    @pytest.mark.parametrize("a", [1e-3, 0.5, 10.0])
+    def test_huge_b_in_the_series_corner(self, a, m):
+        """``b`` from 1e8 to 1e14: terms near ``-b^2/2`` once broke the
+        adaptive window tests and reached the ``ConvergenceError`` backstop.
+        """
+        checked = 0
+        for b in np.logspace(8.0, 14.0, 13):
+            if (m - 1.0) ** 2 <= 4.0 * a * b:
+                continue
+            want, slack = self._mpmath_log_q_large_b(a, b, m)
+            assert marcum_q(a, b, m) == 0.0
+            if slack <= abs(want) * 1e-17:
+                got = log_marcum_q(a, b, m)
+                assert got == pytest.approx(want, rel=1e-15, abs=0)
+                checked += 1
+        assert checked >= 1
+
+    @pytest.mark.parametrize(
+        ("a", "b", "want"),
+        [
+            (0.001, 7.0353064238e10, -2.474776823837688771337e21),
+            (10.0, 2.4999995e12, -3.124998749975124742553e24),
+        ],
+    )
+    def test_huge_b_pins(self, a, b, want):
+        """These raised ConvergenceError; v2.11.1 returned 0.0 for ``Q``.
+
+        ``want`` is ``-(a^2 + b^2)/2 + (m-1) log(b/a) + log I_{m-1}(a b)``
+        in mpmath (Debye expansion), which brackets ``log Q`` to 2e-11
+        absolute here because ``m + k << b^2/2`` for every term that counts.
+        """
+        assert marcum_q(a, b, 10_000_000) == 0.0
+        got = log_marcum_q(a, b, 10_000_000)
+        assert got == pytest.approx(want, rel=1e-15, abs=0)
+
 
 def _temme_coefficients(n_series: int = 40, n_terms: int = 4) -> list[list[Fraction]]:
     """Temme's ``c_k(eta)`` Taylor coefficients in exact rational arithmetic.
@@ -338,6 +463,7 @@ class TestMarcumQSeriesBounded:
         assert peak < 16 * 2**20
 
     def test_grid_completes_in_bounded_memory(self):
+        """A memory bound and a smoke check; it carries no accuracy weight."""
         tracemalloc.start()
         try:
             with warnings.catch_warnings():
@@ -388,16 +514,28 @@ class TestMarcumQSeriesBounded:
         for table, series in zip(_mq._TEMME_C, exact, strict=True):
             assert table == tuple(float(c) for c in series[: len(table)])
 
-    @pytest.mark.parametrize("x", [3e4, 5.1e5, 1e7])
-    def test_temme_matches_poisson_sums(self, x):
-        """The smaller of ``Q(n, x)``, ``P(n, x)`` against summed pmf terms."""
-        offsets = np.linspace(-40.0, 40.0, 161) * np.sqrt(x)
-        n = np.unique(np.round(x + offsets)).astype(np.int64)
-        want_q, want_p = _mq._log_poisson_tails(n, x)
-        got_q, got_p = _mq._log_poisson_q_p_temme(n.astype(np.float64), x)
-        for got, want in ((got_q, want_q), (got_p, want_p)):
-            small = want <= -np.log(2.0)
-            assert got[small] == pytest.approx(want[small], rel=1e-14, abs=0)
+    @pytest.mark.parametrize("z", [-10, -3, 0, 3, 10])
+    @pytest.mark.parametrize("x", [3e4, 1e7])
+    def test_temme_matches_mpmath(self, x, z):
+        """The smaller of ``Q(n, x)``, ``P(n, x)`` at ``n = x + z sqrt(x)``."""
+        n = float(round(x + z * math.sqrt(x)))
+        got_q, got_p = _mq._log_poisson_q_p_temme(np.array([n]), x)
+        with mpmath.workdps(80):
+            q = mpmath.gammainc(n, x, mpmath.inf, regularized=True)
+            want_q, want_p = float(mpmath.log(q)), float(mpmath.log1p(-q))
+        got, want = (got_q[0], want_q) if want_q < want_p else (got_p[0], want_p)
+        assert got == pytest.approx(want, rel=1e-15, abs=0)
+
+    def test_ternary_search_terminates_past_2_53(self):
+        """``a^2/2 >= 2^53``: the float bracket of 2.12.0-dev never shrank.
+
+        No accuracy is claimed here (no oracle reaches ``m = 3e8``); the
+        assertion is that both calls return.
+        """
+        a, m = 1.4e8, 300_000_000
+        b = math.sqrt(a * a + 2.0 * m) + 5.0
+        assert 0.0 < marcum_q(a, b, m) < 1.0
+        assert log_marcum_q(a, b, m) < 0.0
 
     @pytest.mark.parametrize("m", [1, 2, 30, 3000, 10_000_000])
     @pytest.mark.parametrize("func", [marcum_q, log_marcum_q])
