@@ -193,37 +193,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parameter sets). Elsewhere values are scipy's and unchanged, including
   its errors: up to 3.4e-11 at `z < 0` (b near 6e3), 1.22e-12 at
   1F1(1; 1000; 1995) and 1.4e-11 at other finite `z > 0` in these
-  samples, and its silent NaN for some large parameters at small `abs(z)`
-  (`hyp1f1(1, 9999.5, -1e-300)`, `hyp1f1(9999.5, 0.5, -1)` and
-  `hyp1f1(-1e4, 1, 1)` return NaN with no warning; the values are 1,
-  0.29107 and -0.025079). Termination: two grids, 17,280 and 11,880 calls
-  with `a` and `b` from -1e4 to 1e4 and `z` from 0 to `+-1e300`, `+-inf`
-  and NaN, all return (slowest 0.12 s) and none raises. Silent wrong
-  answers fixed on the same path: scipy returns `+inf` for every
-  overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800), 1F1(-10.5; 1e5;
-  1e6) and 1F1(4.8699; -264.582; 1307.64) now give `-inf`. A `+-inf` is
-  now returned only when the overflow is proven: from the expansion's
-  logarithm, from a lower bound on the series tail (past which every term
-  has one sign), or from the whole series summed with a certified sign
-  (directly, or in Kummer's form for `z < 0`), which is limited to 1e6
-  terms (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series
-  is summed exactly. A value below the double range is a signed 0.0, as
-  in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
+  samples, and its silent NaN for large parameters (`max(abs(a), abs(b))`
+  above about 150) at `abs(z)` from 1e-300 to 1e4: 14 of the 150,000
+  points below, all with `max(abs(a), abs(b)) >= 277` and `abs(z)` from
+  10 to 1e4, and `hyp1f1(116.18, -146.25, 11.66)`, `hyp1f1(-1401.302,
+  -3092.199, 1950.047)` (an overflow), `hyp1f1(1, 9999.5, -1e-300)`,
+  `hyp1f1(9999.5, 0.5, -1)` and `hyp1f1(-1e4, 1, 1)` return NaN with no
+  warning (the values of the last three are 1, 0.29107 and -0.025079).
+  Near a pole of Gamma(b - a) (the exact `b - a` within 1e-6 of a
+  non-positive integer, but not at one) scipy rounds `b - a` first and
+  its relative error at `1e2 <= -z < 1e9` grows like
+  `eps * abs(b - a) / d` with `d` the distance to the pole: over 150
+  random points with `-z` to 2e4, 2.3e-7 at `d` in [1e-8, 1e-6) and
+  2.0e-1 below 1e-12; `hyp1f1(-100.3, -400.3, -5000)` is 0.0 in scipy
+  and 9.366e99 exactly (`fl(b - a) = -300`, the exact difference
+  -300 - 1.4e-14). There pytcl now uses the expansion where it certifies
+  (1.1e-14 over the same 150 points) and returns NaN with a
+  `RuntimeWarning` otherwise; at `-z < 1e2` (5.0e-3 at `d` below 1e-12
+  over 150 points) and at `z > 0` (3.4e-13 at `hyp1f1(-100.3, -400.3,
+  500)`) scipy's value is kept. The expansion's own integer tests on
+  `b - a` use the exact difference (TwoSum): with the rounded one,
+  `hyp1f1(-100.3, -400.3, -1e10)`, `hyp1f1(-60.7, -210.7, -1e12)` and
+  `hyp1f1(0.5000000000000001, -4.5, -1e10)` returned 0.0 for 4.4e734
+  (`+inf`), -1.8e578 (`-inf`) and -8.0e-21, at `z = -inf` too; scipy
+  gives the same 0.0 at `-1e10` and `-1e11`. Termination: two grids,
+  17,280 and 11,880 calls with `a` and `b` from -1e4 to 1e4 and `z` from
+  0 to `+-1e300`, `+-inf` and NaN, all return (slowest 0.15 s) and none
+  raises; 16,000 random calls with parameters to 1e8 and `abs(z)` to
+  1e300 raise nothing (slowest 2.2 s, a 308-term exact polynomial at
+  `z = 1e57`). Silent wrong answers fixed on the same path: scipy returns
+  `+inf` for every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800),
+  1F1(-10.5; 1e5; 1e6) and 1F1(4.8699; -264.582; 1307.64) now give
+  `-inf`. A `+-inf` is now returned only when a certified lower bound on
+  the magnitude exceeds the double range: from the expansion's logarithm,
+  from the series tail (past which every term has one sign, so the tail is
+  at least its largest term, less a bound on the terms before it), or from
+  the whole series summed with a certified sign and error bound (directly,
+  or in Kummer's form for `z < 0`, whose rounded `b - a` is accounted
+  for), which is limited to 1e6 terms
+  (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series is
+  summed exactly. The sum itself is known only to within a factor of
+  about 1.5 when its sign is certified, so the bound, not the sum, decides
+  (two internally constructed points with exact value 0.99999998 and
+  0.99999999 times the largest double gave `+inf` from the sum; the
+  bound declines them). A value below the double range is a signed 0.0,
+  as in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
   150,000 random points (`abs(a)` to 200, `abs(b)` to 1e4, `abs(z)` to
   1e6) scipy overflowed at 29,630; pytcl returned the proven `+-inf` at
-  29,503 (300 of them checked against an exact series sum, all correct)
-  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5).
-  `hyp1f1` at `z = +-inf` returns the limit (it hung, or gave `+inf` for
-  `1 - z/2`). A terminating pFq whose exact value exceeds the double range
+  29,503 (300, and then 120 more, checked against an exact series sum,
+  all correct)
+  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5) and
+  none from the gap between the bound and the sum. `hyp1f1` at
+  `z = +-inf` returns the limit (it hung, or gave `+inf` for `1 - z/2`).
+  A terminating pFq whose exact value exceeds the double range
   (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
-  `OverflowError` and now returns `+-inf`. 0F1, 2F1, U and the general pFq
-  series were audited and do not hang. No other pytcl module calls these
-  functions. What to do: nothing for calls that hung (they now return) or
-  overflowed (they now carry the true sign); expect NaN with a
-  `RuntimeWarning` where an overflow cannot be proven, which in the
-  samples above was only past the 1e6-term cap (`abs(z)` above about
-  1.6e5 with scipy overflowing) or at `abs(z) >= 1e9` where the expansion
-  does not reach double precision.
+  `OverflowError` and now returns `+-inf`. `hyp1f1_regularized` at a
+  non-positive integer `b = -m` rounds its shifted parameter `a + m + 1`;
+  when `1 - a` is within 1e-6 of a non-positive integer and that rounding
+  is inexact it now returns NaN with a `RuntimeWarning` instead of a
+  value that has lost its sin(pi a) factor
+  (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was 0.0; the
+  value is -5.33e-25). 0F1, 2F1, U and the general pFq series were
+  audited and do not hang. No other pytcl module calls these functions.
+  What to do: nothing for calls that hung (they now return) or overflowed
+  (they now carry the true sign); expect NaN with a `RuntimeWarning` where
+  an overflow cannot be proven, which in the samples above was only past
+  the 1e6-term cap (`abs(z)` above about 1.6e5 with scipy overflowing),
+  at `abs(z) >= 1e9` where the expansion does not reach double precision,
+  or within 1e-6 of a pole of Gamma(b - a) at `1e2 <= -z < 1e9` where it
+  does not certify (scipy's value there had lost up to every digit);
+  parameters that round `b - a` to a non-positive integer now give the
+  value of the exact difference. A certified sum near the 1e6-term cap
+  costs about 0.2 s per element (0.4 s at `z < 0`).
 
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in

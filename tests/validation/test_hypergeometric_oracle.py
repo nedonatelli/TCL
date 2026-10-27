@@ -4,12 +4,16 @@ import math
 import subprocess
 import sys
 import warnings
+from fractions import Fraction
 
 import mpmath
 import numpy as np
 import pytest
 
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
+    _CERTIFIED_SUM_MAX_TERMS,
+    _certified_overflow,
+    _pole_distance,
     generalized_hypergeometric,
     hyp1f1,
     hyp1f1_regularized,
@@ -435,3 +439,175 @@ class TestLargeFiniteArgument:
     )
     def test_terminating_overflow_is_signed_inf(self, a, b, z, want, recwarn):
         assert generalized_hypergeometric(a, b, z) == want
+
+
+def _kummer_sum(a, b, z, dps):
+    """e^z 1F1(b - a; b; -z) summed term by term with exact parameters.
+
+    ``b - a`` is formed in mpmath, so a difference that rounds to an
+    integer in double precision keeps its fractional part here."""
+    with mpmath.workdps(dps):
+        a, b, z = mpmath.mpf(a), mpmath.mpf(b), mpmath.mpf(z)
+        c, x = b - a, -z
+        term = total = mpmath.mpf(1)
+        tiny = mpmath.mpf(10) ** -dps
+        k = 0
+        while k < 2 * abs(b) + 2 * abs(x) or abs(term) > abs(total) * tiny:
+            term *= (c + k) * x / ((b + k) * (k + 1))
+            total += term
+            k += 1
+        return mpmath.exp(z) * total
+
+
+def _mp_exact_params(a, b, z, dps=50):
+    """mpmath's hyp1f1 with the doubles taken exactly (b - a never rounded)."""
+    with mpmath.workdps(dps):
+        return mpmath.hyp1f1(mpmath.mpf(a), mpmath.mpf(b), mpmath.mpf(z))
+
+
+@pytest.mark.timeout(60, method="thread")
+class TestExactIntegerTests:
+    """The integer tests on b - a use the exact difference. 7e1e8c9 rounded
+    it first and returned 0.0 for every value below: fl(-400.3 - -100.3)
+    is -300 while the exact difference is -300 - 1.4e-14, so the algebraic
+    term Gamma(b)/Gamma(b - a) z^(-a), which is the whole value, was
+    dropped."""
+
+    def test_pole_distance_matches_exact_rational_arithmetic(self):
+        rng = np.random.default_rng(0)
+        for _ in range(3000):
+            a = rng.choice([-1.0, 1.0]) * 10 ** rng.uniform(-3, 8)
+            step = rng.choice([0.0, 1e-16, 1e-14, 1e-12, 1e-9, 0.3])
+            b = a + rng.integers(-500, 500) + rng.choice([-1.0, 1.0]) * step
+            exact = Fraction(b) - Fraction(a)
+            n = min(0, round(exact))
+            want = abs(exact - n)
+            got = _pole_distance(b, a)
+            assert (got == 0.0) == (want == 0)
+            assert got == pytest.approx(float(want), rel=1e-15, abs=0)
+
+    @pytest.mark.parametrize(
+        "a, b, z",
+        [
+            (-100.3, -400.3, -1e10),
+            (-100.3, -400.3, -1e12),
+            (-60.7, -210.7, -1e12),
+            (-100.3, -400.3 + 1e-12, -1e10),  # the other side of the pole
+            (-100.3, -400.3 - 1e-12, -1e10),
+        ],
+    )
+    def test_near_integer_b_minus_a_overflow_beyond_1e9(self, a, b, z, recwarn):
+        assert _pole_distance(b, a) != 0.0 and Fraction(b) - Fraction(a) != round(b - a)
+        want = _mp_exact_params(a, b, z)
+        assert abs(want) > mpmath.mpf(np.finfo(np.float64).max)
+        for got in (hyp1f1(a, b, z), generalized_hypergeometric([a], [b], z)):
+            assert got == math.copysign(math.inf, float(mpmath.sign(want)))
+        assert not recwarn
+
+    def test_near_integer_b_minus_a_finite_beyond_1e9(self, recwarn):
+        a, b, z = 0.5000000000000001, -4.5, -1e10
+        want = float(_mp_exact_params(a, b, z))  # -7.996e-21
+        assert want != 0.0
+        for got in (hyp1f1(a, b, z), generalized_hypergeometric([a], [b], z)):
+            assert got == pytest.approx(want, rel=5e-14, abs=0)
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, want",
+        [
+            (-100.3, -400.3, math.inf),
+            (-100.3, -400.3 + 1e-12, -math.inf),
+            (-60.7, -210.7, -math.inf),
+            (0.5000000000000001, -4.5, 0.0),  # a > 0: z^(-a) -> 0
+            (2.5, -0.5, 0.0),  # exact b - a = -3: the term vanishes
+        ],
+    )
+    def test_near_integer_b_minus_a_at_minus_infinity(self, a, b, want, recwarn):
+        assert hyp1f1(a, b, -np.inf) == want
+        assert generalized_hypergeometric([a], [b], -np.inf) == want
+        assert not recwarn
+
+    @pytest.mark.parametrize(
+        "a, b, z, dps",
+        [
+            (-60.7, -210.7, -2e4, 60),  # -5.25e110; scipy gives 0.0
+            (0.5000000000000001, -4.5, -5000.0, 60),  # -1.13e-17; scipy 0.0
+        ],
+    )
+    def test_near_pole_in_the_scipy_band_uses_the_expansion(self, a, b, z, dps):
+        assert 0.0 < _pole_distance(b, a) < 1e-6
+        want = float(_kummer_sum(a, b, z, dps))
+        assert want != 0.0
+        assert hyp1f1(a, b, z) == pytest.approx(want, rel=5e-14, abs=0)
+
+    def test_near_pole_in_the_scipy_band_without_the_expansion_is_nan(self):
+        # 9.366e99 exactly; scipy returns 0.0 and the expansion does not
+        # certify at -z = 5e3 for a(a - b + 1) of 3e4.
+        with pytest.warns(RuntimeWarning, match="pole of Gamma"):
+            assert np.isnan(hyp1f1(-100.3, -400.3, -5000.0))
+
+    def test_exact_pole_in_the_scipy_band_stays_with_scipy(self, recwarn):
+        # b - a = -1 exactly: the algebraic term vanishes and scipy is right.
+        want = float(_mp_exact_params(2.5, 1.5, -100.0))
+        assert hyp1f1(2.5, 1.5, -100.0) == pytest.approx(want, rel=5e-14, abs=0)
+        assert hyp1f1(-0.5, -0.5, -100.0) == pytest.approx(math.exp(-100.0), rel=5e-14)
+        assert not recwarn
+
+    def test_regularized_at_a_pole_with_a_rounded_shift_is_nan(self):
+        # a + m + 1 = 5.0000000000000002 rounds to 5, and 1 - a is 2.2e-16
+        # from a pole of Gamma(1 - a); the value, -5.33e-25, was 0.0.
+        with pytest.warns(RuntimeWarning, match="sin\\(pi a\\)"):
+            assert np.isnan(hyp1f1_regularized(1.0000000000000002, -3.0, -1e10))
+
+    def test_regularized_at_a_pole_with_an_exact_shift(self, recwarn):
+        a, m, z = 2.5, 3, -1e10
+        with mpmath.workdps(50):
+            want = float(
+                mpmath.rf(a, m + 1)
+                * mpmath.mpf(z) ** (m + 1)
+                / mpmath.factorial(m + 1)
+                * mpmath.hyp1f1(a + m + 1, m + 2, mpmath.mpf(z))
+            )
+        assert hyp1f1_regularized(a, -float(m), z) == pytest.approx(want, rel=5e-14)
+        assert not recwarn
+
+
+@pytest.mark.timeout(60, method="thread")
+class TestCertifiedOverflow:
+    CAP_CASE = (-80.725, -2418.98)  # expansion and tail proof both fail here
+
+    @staticmethod
+    def _terms(a, b, z):
+        return math.ceil(2.0 * max(abs(a), abs(b)) + 6.0 * abs(z) + 100.0)
+
+    def test_sum_at_the_term_cap_is_proven(self, recwarn):
+        a, b = self.CAP_CASE
+        z = 165843.0
+        assert self._terms(a, b, z) <= _CERTIFIED_SUM_MAX_TERMS
+        # Past k = 2419 every term has the sign of Gamma(b) Gamma(a) > 0
+        # (both arguments lie in an interval (-odd, -even)).
+        assert hyp1f1(a, b, z) == math.inf
+        assert not recwarn
+
+    def test_sum_past_the_term_cap_is_nan_with_warning(self):
+        a, b = self.CAP_CASE
+        z = 165844.0
+        assert self._terms(a, b, z) > _CERTIFIED_SUM_MAX_TERMS
+        with pytest.warns(RuntimeWarning, match="could not be proven"):
+            assert np.isnan(hyp1f1(a, b, z))
+
+    def test_seed_43_past_cap_point_is_nan_with_warning(self):
+        with pytest.warns(RuntimeWarning, match="could not be proven"):
+            assert np.isnan(hyp1f1(-80.725, -2418.98, 178743.4))
+
+    @pytest.mark.parametrize(
+        "a, z",
+        [
+            (-1375.3019969147488, 1932.0649875745569),  # 0.99999998 DBL_MAX
+            (-1375.3019969067489, 1932.064987578126),  # 0.99999999 DBL_MAX
+        ],
+    )
+    def test_finite_value_just_below_the_double_range_is_not_proven(self, a, z):
+        # The certified sum is within a factor of about 1.5 of the value;
+        # 7e1e8c9 decided on the sum and returned inf for these.
+        assert np.isnan(_certified_overflow(a, -3092.1991021034255, z))

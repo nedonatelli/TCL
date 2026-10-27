@@ -110,6 +110,11 @@ _LOG_EPS = math.log(np.finfo(np.float64).eps)
 _LN2 = math.log(2.0)
 _CERTIFIED_SUM_MAX_TERMS = 1_000_000
 _ASYMPTOTIC_MAX_TERMS = 200
+# scipy's hyp1f1 at 1e2 <= -z < 1e9 loses about eps * abs(b - a) / d of its
+# relative accuracy when the exact b - a is a distance d from a pole of
+# Gamma(b - a) (a non-positive integer): it rounds b - a first. Inside this
+# distance the expansion is used, and NaN where it does not certify.
+_POLE_DISTANCE = 1e-6
 
 
 def _asymptotic_sum(p: float, q: float, x: float) -> float | None:
@@ -176,6 +181,43 @@ def _sinpi_diff(b: float, a: float) -> float:
     n = round(d)
     r = math.sin(math.pi * ((d - n) + err))
     return -r if (nb - na + n) % 2 else r
+
+
+def _two_diff(b: Any, a: Any) -> tuple[Any, Any]:
+    """``b - a`` as the rounded difference and its exact error (TwoSum)."""
+    c = b - a
+    t = c - b
+    return c, (b - (c - t)) + (-a - t)
+
+
+def _pole_distance(b: Any, a: Any) -> Any:
+    """Distance from the exact ``b - a`` to the nearest non-positive integer.
+
+    Zero exactly when the exact difference is a non-positive integer, a
+    pole of Gamma(b - a): the rounded difference alone says -300 for
+    -400.3 - (-100.3), whose exact value is -300 - 1.4e-14. Scalars and
+    arrays alike.
+    """
+    c, err = _two_diff(b, a)
+    n = np.minimum(0.0, np.round(c))
+    return np.abs((c - n) + err)
+
+
+def _lgamma_diff(b: float, a: float) -> tuple[float, float]:
+    """log(abs(Gamma(b - a))) and the sign of Gamma(b - a), ``b - a`` exact.
+
+    Below 1/2 the reflection formula is used with sin(pi (b - a)) from the
+    exactly reduced difference, so a near-pole value is right; at a pole
+    the result is (inf, 0.0).
+    """
+    c = b - a
+    if c >= 0.5:
+        return float(sp.gammaln(c)), 1.0
+    s = _sinpi_diff(b, a)
+    if s == 0.0:
+        return math.inf, 0.0
+    log_abs = math.log(math.pi) - math.log(abs(s)) - float(sp.gammaln(1.0 - c))
+    return log_abs, math.copysign(1.0, s)
 
 
 _STIRLING_COEFFS = tuple(
@@ -265,19 +307,22 @@ def _overflow_from_tail(a: float, b: float, z: float) -> float:
 
     From k0 = max(0, ceil(-a), ceil(-b)) on, every term has the sign of
     Gamma(b)/Gamma(a), so the tail is at least its largest term in
-    magnitude. The overflow is proven when that term exceeds the double
-    range and the terms before k0 sum to far less.
+    magnitude. The overflow is proven when that term less a bound on the
+    sum of the terms before k0 (k0 times the largest of them, which must
+    stay under half the tail term) exceeds the double range.
     """
     k0 = max(0, math.ceil(-a), math.ceil(-b))
     if k0 > 1_000_000:
         return np.nan
     log_z = math.log(z)
+    log_head_bound = -math.inf
     if k0:
         k = np.arange(k0, dtype=np.float64)
         with np.errstate(divide="ignore"):
             log_ratio = np.log(np.abs((a + k) / (b + k))) + log_z - np.log(k + 1)
         log_head = np.concatenate(([0.0], np.cumsum(log_ratio)[:-1]))
-        if math.log(k0) + float(np.max(log_head)) > _LOG_DOUBLE_MAX - 10.0:
+        log_head_bound = math.log(k0) + float(np.max(log_head))
+        if log_head_bound > _LOG_DOUBLE_MAX - 10.0:
             return np.nan
 
     def _log_term(k: float) -> float:
@@ -299,22 +344,38 @@ def _overflow_from_tail(a: float, b: float, z: float) -> float:
     }
     best = max(_log_term(k) for k in candidates)
     scale = abs(best) + max(candidates) * (abs(log_z) + 50.0)
-    if _proven_overflow(best, scale) == 1:
+    if log_head_bound > best - _LN2:
+        return np.nan
+    log_lower = best + math.log1p(-math.exp(log_head_bound - best))
+    if _proven_overflow(log_lower, scale) == 1:
         return sp.gammasgn(b) * sp.gammasgn(a) * np.inf
     return np.nan
 
 
-def _certified_series(a: float, b: float, z: float) -> tuple[float, float] | None:
-    """Sign and natural log of abs(1F1(a; b; z)) from its series, or None.
+def _certified_series(
+    a: float, b: float, z: float, a_err: float = 0.0
+) -> tuple[float, float] | None:
+    """Sign of 1F1(a; b; z) and the log of a lower bound on its magnitude
+    from its series, or None.
 
     Every term up to N = 2 max(abs(a), abs(b)) + 6 abs(z) + 100 is formed
     by the term-ratio recurrence in mantissa/exponent form (relative error
     under 8 k eps in term k), scaled by the largest term and summed
     exactly (``math.fsum``). Past N each ratio is at most
     r = (N + abs(a)) abs(z) / ((N - abs(b)) (N + 1)) < 1, so the rest is at
-    most abs(t_N) r / (1 - r). The sign is certified only when abs(sum)
-    exceeds the rounding bound plus that remainder; None otherwise, or when
-    N exceeds ``_CERTIFIED_SUM_MAX_TERMS``.
+    most abs(t_N) r / (1 - r). With E the rounding bound plus that
+    remainder, the sign is certified only when abs(sum) > 2 E, and the
+    magnitude is then at least abs(sum) - E, which is what is returned
+    (the sum itself is known only to within a factor of about 1.5). None
+    otherwise, or when N exceeds ``_CERTIFIED_SUM_MAX_TERMS``.
+
+    ``a_err`` is the magnitude of the rounding error in ``a`` when it is a
+    rounded difference (Kummer's form): term k of the exact series is term
+    k here times prod_{j<k} (1 + err / (a + j)), within a factor
+    exp(+-P) of it with P = a_err sum_{j<N} 1 / abs(a + j). P is added to
+    the rounding bound (e^P - 1 < 2 P for P <= 1e-2) and is None beyond
+    that, which includes every ``a`` within ``a_err`` of a non-positive
+    integer, where the exact and the rounded series differ in kind.
     """
     n = math.ceil(2.0 * max(abs(a), abs(b)) + 6.0 * abs(z) + 100.0)
     if n > _CERTIFIED_SUM_MAX_TERMS:
@@ -324,6 +385,12 @@ def _certified_series(a: float, b: float, z: float) -> tuple[float, float] | Non
         ratio = (a + k) * z / ((b + k) * (k + 1.0))
     if not np.all(np.isfinite(ratio)):
         return None
+    perturbation = 0.0
+    if a_err:
+        with np.errstate(divide="ignore"):
+            perturbation = a_err * float(np.sum(1.0 / np.abs(a + k)))
+        if not perturbation <= 1e-2:
+            return None
     rm, re = np.frexp(ratio)
     mant = np.empty(n + 1)
     expo = np.empty(n + 1, dtype=np.int64)
@@ -347,27 +414,33 @@ def _certified_series(a: float, b: float, z: float) -> tuple[float, float] | Non
     if not r < 1.0:
         return None
     remainder = abs(scaled[-1]) * r / (1.0 - r)
-    rounding = 8.0 * (n + 2) * np.finfo(np.float64).eps * magnitude
-    if abs(total) <= 2.0 * (rounding + remainder):
+    eps = np.finfo(np.float64).eps
+    rounding = (8.0 * (n + 2) * eps + 2.0 * perturbation) * magnitude
+    error = rounding + remainder
+    if abs(total) <= 2.0 * error:
         return None
-    return math.copysign(1.0, total), math.log(abs(total)) + top * _LN2
+    return math.copysign(1.0, total), math.log(abs(total) - error) + top * _LN2
 
 
 def _certified_overflow(a: float, b: float, z: float) -> float:
     """``+-inf`` when a certified series sum proves 1F1 overflows, else NaN.
 
-    For z < 0 Kummer's form e^z 1F1(b - a; b; -z) is tried first: with
-    b > 0 and b - a > 0 its terms are all positive.
+    The overflow is proven when the certified lower bound on the magnitude
+    exceeds the double range. For z < 0 Kummer's form
+    e^z 1F1(b - a; b; -z) is tried first (with b > 0 and b - a > 0 its
+    terms are all positive); the rounding error of ``b - a`` is passed on
+    to the certification, which accounts for it or declines.
     """
-    forms = [(a, b, z, 0.0)]
+    forms = [(a, b, z, 0.0, 0.0)]
     if z < 0:
-        forms.insert(0, (b - a, b, -z, z))
-    for p, q, w, shift in forms:
-        certified = _certified_series(p, q, w)
+        c, err = _two_diff(b, a)
+        forms.insert(0, (c, b, -z, z, abs(err)))
+    for p, q, w, shift, p_err in forms:
+        certified = _certified_series(p, q, w, p_err)
         if certified is None:
             continue
-        sign, log_abs = certified
-        if _proven_overflow(log_abs + shift, abs(log_abs) + abs(shift)) == 1:
+        sign, log_lower = certified
+        if _proven_overflow(log_lower + shift, abs(log_lower) + abs(shift)) == 1:
             return sign * np.inf
         return np.nan
     return np.nan
@@ -397,11 +470,12 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
         log_z = math.log(z)
         lg_a, lg_b = sp.gammaln(a), sp.gammaln(b)
         log_mag = z + (a - b) * log_z + lg_b - lg_a + math.log(abs(series))
-        if not (b - a <= 0 and float(b - a).is_integer()):
+        if _pole_distance(b, a) > 0.0:
             alg_series = _asymptotic_sum(a, a - b + 1.0, z)
             if alg_series is None:
                 return fallback
-            log_alg = lg_b - sp.gammaln(b - a) - a * log_z + math.log(abs(alg_series))
+            lg_c = _lgamma_diff(b, a)[0]
+            log_alg = lg_b - lg_c - a * log_z + math.log(abs(alg_series))
             if log_alg >= log_mag + _LOG_EPS - 1.0:
                 return fallback
         scale = z + abs(a - b) * abs(log_z) + abs(lg_a) + abs(lg_b)
@@ -410,11 +484,14 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
         return np.nan
 
     x = -z
-    algebraic_zero = b - a <= 0 and float(b - a).is_integer()
+    # The exact b - a decides whether the algebraic term vanishes: the
+    # rounded difference is an integer for (-100.3, -400.3), where the term
+    # is 4.4e734 at z = -1e10 (fl(b - a) = -300, exact -300 - 1.4e-14).
+    algebraic_zero = _pole_distance(b, a) == 0.0
     if np.isinf(x):
         if algebraic_zero or a > 0:
             return 0.0
-        return sp.gammasgn(b) * sp.gammasgn(b - a) * np.inf
+        return sp.gammasgn(b) * _lgamma_diff(b, a)[1] * np.inf
     if algebraic_zero:
         value, log_alg = 0.0, -np.inf
     else:
@@ -424,10 +501,11 @@ def _hyp1f1_large_z(a: float, b: float, z: float, overflowed: bool = False) -> f
         coef = _gamma_ratio(b, a)
         if coef is None:
             # Only a result provably out of the double range is returned.
-            lg_b, lg_c = sp.gammaln(b), sp.gammaln(b - a)
+            lg_b = sp.gammaln(b)
+            lg_c, sign_c = _lgamma_diff(b, a)
             log_alg = lg_b - lg_c - a * math.log(x) + math.log(abs(series))
             scale = abs(lg_b) + abs(lg_c) + abs(a * math.log(x))
-            sign = sp.gammasgn(b) * sp.gammasgn(b - a) * math.copysign(1.0, series)
+            sign = sp.gammasgn(b) * sign_c * math.copysign(1.0, series)
             if _proven_overflow(log_alg, scale) == 1:
                 value = sign * np.inf
             elif log_alg < _LOG_DOUBLE_TINY - 1e-12 * scale - 1.0:
@@ -459,11 +537,14 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     terminating = finite_params & (a <= 0) & (a == np.round(a))
     general = finite_params & ~terminating & ~((b <= 0) & (b == np.round(b)))
     beyond = np.abs(z) >= _HYP1F1_SCIPY_MAX_ABS_Z
-    far = (
-        general
-        & (np.abs(z) >= _HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
-        & (beyond | (z > 0) | ((b > 0) & (b - a > 0)))
+    large = general & (np.abs(z) >= _HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
+    # At a pole itself (b - a exactly a non-positive integer) the algebraic
+    # term vanishes and scipy is right; it is the near miss that it rounds.
+    pole_distance = _pole_distance(b, a)
+    near_pole = (
+        large & (z < 0) & (pole_distance > 0.0) & (pole_distance < _POLE_DISTANCE)
     )
+    far = large & (beyond | (z > 0) | ((b > 0) & (b - a > 0)) | near_pole)
     result = np.full(z.shape, np.nan)
     for i in np.flatnonzero(far):
         result.flat[i] = _hyp1f1_large_z(a.flat[i], b.flat[i], z.flat[i])
@@ -473,8 +554,8 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
             a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
         )
     uncertified = far & np.isnan(result)
-    unanswered = uncertified & beyond
-    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~beyond)
+    unanswered = uncertified & (beyond | near_pole)
+    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~unanswered)
     result[use_scipy] = sp.hyp1f1(a[use_scipy], b[use_scipy], z[use_scipy])
     scipy_inf = use_scipy & np.isinf(result) & np.isfinite(z)
     overflowed = scipy_inf & general
@@ -494,8 +575,9 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
             "hyp1f1: returning NaN. Either the large-|z| asymptotic "
             "expansion (DLMF 13.7.2) does not reach double precision here "
             "and scipy's hyp1f1 is not used at |z| >= 1e9 (its run time "
-            "grows with |z|), or scipy overflowed and the overflow could "
-            "not be proven.",
+            "grows with |z|) or within 1e-6 of a pole of Gamma(b - a) at "
+            "z < 0 (it rounds b - a first), or scipy overflowed and the "
+            "overflow could not be proven.",
             RuntimeWarning,
             stacklevel=3,
         )
@@ -595,28 +677,52 @@ def hyp1f1(
       samples of 600 and 1,000 points up to 1e13;
     - across ``z = +-1e2`` and ``+-1e9`` the value moved 2.4e-14 more
       than mpmath's over 20 parameter sets;
+    - near a pole of Gamma(b - a), that is when the exact ``b - a`` is
+      within 1e-6 of a non-positive integer but not at one, at
+      ``1e2 <= -z < 1e9``: the expansion where it certifies (1.1e-14 over
+      150 random points at ``-z`` to 2e4), else NaN with a
+      ``RuntimeWarning``. scipy rounds ``b - a`` first and its relative
+      error there grows like ``eps * abs(b - a) / d`` with ``d`` the
+      distance to the pole (2.3e-7 at ``d`` in [1e-8, 1e-6), 2.0e-1 below
+      1e-12, in the same sample; ``hyp1f1(-100.3, -400.3, -5000)``, where
+      ``fl(b - a) = -300`` and the exact difference is -300 - 1.4e-14,
+      is 0.0 in scipy and 9.366e99 exactly). The expansion's integer
+      tests use the exact difference (TwoSum), so ``hyp1f1(-100.3,
+      -400.3, -1e10)`` is ``+inf`` (4.4e734) where it was 0.0.
     - elsewhere the value is scipy's, unchanged, including its errors: up
       to 3.4e-11 at ``z < 0`` (b near 6e3) and 1.4e-11 at finite ``z > 0``
-      in the samples above, and scipy's silent NaN for some large
-      parameters at small ``abs(z)`` (``hyp1f1(1, 9999.5, -1e-300)``,
+      in the samples above; its near-pole loss at ``-z < 1e2`` (5.0e-3 at
+      ``d`` below 1e-12 over 150 points) and at ``z > 0`` (3.4e-13 at
+      ``hyp1f1(-100.3, -400.3, 500)``); and its silent NaN for large
+      parameters (``max(abs(a), abs(b))`` above about 150) at ``abs(z)``
+      from 1e-300 to 1e4: 14 of the 150,000 points above (all with
+      ``max(abs(a), abs(b)) >= 277`` and ``abs(z)`` from 10 to 1e4),
+      ``hyp1f1(116.18, -146.25, 11.66)``, ``hyp1f1(-1401.302,
+      -3092.199, 1950.047)`` (an overflow), ``hyp1f1(1, 9999.5, -1e-300)``,
       ``hyp1f1(9999.5, 0.5, -1)`` and ``hyp1f1(-1e4, 1, 1)`` return NaN
-      without a warning; their values are 1, 0.29107 and -0.025079).
+      without a warning; the values of the last three are 1, 0.29107 and
+      -0.025079.
 
-    A ``+-inf`` is returned only when the overflow is proven: from the
-    expansion's logarithm, from a lower bound on the series tail (past
-    ``k = max(-a, -b)`` every term has one sign), or from the whole series
-    summed with a certified sign (term magnitudes in mantissa/exponent
-    form, directly or in Kummer's form e^z 1F1(b - a; b; -z) for
-    ``z < 0``), which needs at most 1e6 terms
+    A ``+-inf`` is returned only when a lower bound on the magnitude is
+    proven to exceed the double range: from the expansion's logarithm,
+    from the series tail (past ``k = max(-a, -b)`` every term has one
+    sign, so the tail is at least its largest term, less a bound on the
+    terms before), or from the whole series summed with a certified sign
+    and error bound (term magnitudes in mantissa/exponent form, directly
+    or in Kummer's form e^z 1F1(b - a; b; -z) for ``z < 0``, whose rounded
+    ``b - a`` is accounted for), which needs at most 1e6 terms
     (``2 max(abs(a), abs(b)) + 6 abs(z) + 100``); a terminating series that
     scipy overflows is summed exactly. A value below the double range is a
     signed 0.0. Otherwise the result is NaN with a ``RuntimeWarning``: on
     150,000 random points (``abs(a)`` to 200, ``abs(b)`` to 1e4,
     ``abs(z)`` to 1e6) that happened at 127 of 29,630 scipy overflows, all
-    beyond the 1e6-term cap (``abs(z)`` above 1.6e5), and it happens at
-    ``abs(z) >= 1e9`` when the expansion does not reach double precision.
-    scipy returns ``+inf`` for every overflow whatever its sign. At
-    ``z = +-inf`` the limit is returned.
+    beyond the 1e6-term cap (``abs(z)`` above 1.6e5; none in the band
+    between the certified lower bound and the sum itself), and it happens
+    at ``abs(z) >= 1e9`` when the expansion does not reach double
+    precision. scipy returns ``+inf`` for every overflow whatever its
+    sign. At ``z = +-inf`` the limit is returned. A certified sum near the
+    cap costs about 0.2 s per element (0.4 s at ``z < 0``, where both
+    forms may be tried).
 
     Special cases:
     - 1F1(0; b; z) = 1
@@ -799,7 +905,15 @@ def hyp1f1_regularized(
 
     so that ``hyp1f1_regularized(1, 0, 1)`` is e (it was nan, from
     ``hyp1f1/gamma`` evaluating inf/inf). Large ``abs(z)`` is evaluated as
-    in :func:`hyp1f1`.
+    in :func:`hyp1f1`. The shifted parameter ``a + m + 1`` is rounded;
+    when ``1 - a`` is within 1e-6 of a non-positive integer and that
+    rounding is inexact the value, proportional to sin(pi a), is lost, and
+    NaN with a ``RuntimeWarning`` is returned instead
+    (``hyp1f1_regularized(1.0000000000000002, -3, -1e10)``, whose value is
+    -5.33e-25, was 0.0). The prefactor ``(a)_{m+1} z^{m+1} / (m+1)!`` is
+    evaluated in double precision and overflows for large ``m`` or
+    ``abs(z)``, giving NaN (``hyp1f1_regularized(32.000000000000007, -33,
+    -1e9)``, 5.9e-212).
     """
     a = np.asarray(a, dtype=np.float64)
     b = np.asarray(b, dtype=np.float64)
@@ -811,8 +925,23 @@ def hyp1f1_regularized(
     with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
         result[~pole] = _hyp1f1(a[~pole], b[~pole], z[~pole]) / sp.gamma(b[~pole])
         a, m1, z = a[pole], 1.0 - b[pole], z[pole]
-        result[pole] = (
-            sp.poch(a, m1) * z**m1 * sp.rgamma(m1 + 1.0) * _hyp1f1(a + m1, m1 + 1.0, z)
+        # The shifted parameter a + m + 1 is rounded; when that rounding
+        # lands within 1e-6 of a pole of Gamma(1 - a) the value, which is
+        # proportional to sin(pi a) there, is lost with it.
+        shifted, shift_err = _two_diff(a, -m1)
+        unsafe = (shift_err != 0.0) & (_pole_distance(1.0, a) < _POLE_DISTANCE)
+        at_pole = (
+            sp.poch(a, m1) * z**m1 * sp.rgamma(m1 + 1.0) * _hyp1f1(shifted, m1 + 1.0, z)
+        )
+        result[pole] = np.where(unsafe, np.nan, at_pole)
+    if np.any(unsafe):
+        warnings.warn(
+            "hyp1f1_regularized: returning NaN at a non-positive integer b "
+            "where a + 1 - b is rounded and 1 - a is within 1e-6 of a "
+            "non-positive integer; the value is proportional to sin(pi a) "
+            "and is lost in that rounding.",
+            RuntimeWarning,
+            stacklevel=2,
         )
     return result[()]
 
