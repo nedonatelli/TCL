@@ -275,6 +275,46 @@ def test_analytic_badly_scaled_fisher_keeps_v2111_covariance():
     assert r.covariance[1, 1] == pytest.approx(1e2 / 0.91, rel=1e-9, abs=0)
 
 
+def _quadratic_score(t):
+    return -np.array([2.0 * (t[0] - 1), 0.5 * (t[1] - 2)])
+
+
+def _quadratic_ll(t):
+    return -0.5 * (2.0 * (t[0] - 1) ** 2 + 0.5 * (t[1] - 2) ** 2)
+
+
+@pytest.mark.parametrize(
+    "ll",
+    [
+        lambda t: np.nan if np.array_equal(t, [1.0, 2.0]) else _quadratic_ll(t),
+        lambda t: np.nan,
+        lambda t: -np.inf,
+    ],
+    ids=["nan-at-optimum", "nan-everywhere", "minus-inf-everywhere"],
+)
+def test_non_finite_log_likelihood_returns_v2111_result(ll):
+    """No error model exists for a non-finite log-likelihood or Fisher
+    matrix; the result is v2.11.1's (it raised from the SVD of a NaN
+    bound before)."""
+    from tests.validation._v2111 import shipped_module
+
+    old = shipped_module(
+        "pytcl/static_estimation/maximum_likelihood.py"
+    ).mle_newton_raphson
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = mle_newton_raphson(ll, _quadratic_score, np.zeros(2))
+        o = old(ll, _quadratic_score, np.zeros(2))
+    assert r.converged == o.converged and r.n_iter == o.n_iter
+    for got, want in [
+        (r.theta, o.theta),
+        (r.fisher_info, o.fisher_info),
+        (r.covariance, o.covariance),
+        (r.log_likelihood, o.log_likelihood),
+    ]:
+        assert np.array_equal(got, want, equal_nan=True)
+
+
 class TestMLEScoring:
     """Tests for Fisher scoring MLE."""
 

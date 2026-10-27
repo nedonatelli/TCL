@@ -503,21 +503,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   D^-1/2 F D^-1/2` (`D = abs(diag(F))`), so it does not depend on the
   parameters' units. With a caller-supplied `hessian` an eigenvalue of `C`
   at or below `n * eps` of the largest counts as zero. With the numerical
-  Hessian, an eigenvalue within the stencil's modelled error, `4 (eps
+  Hessian, an eigenvalue within the stencil's modelled error, `2 (eps
   abs(L) / h**2 + eps max(abs(t_i), abs(t_j), 1) / h abs(F_ij))` per entry
-  and scaled like `C`, also counts as zero. On 300 random unidentified
-  data-driven models (Gaussian samples of size 10 to 1e5, location up to
-  1e3, normalizing constant included) 3 escape the warning (v2.11.1: 154);
-  on 300 identified models with curvatures from 1e-6 to 1e6 whose
-  numerical Fisher diagonal was within 1% of the truth, 2 are falsely
-  flagged (v2.11.1: none). An identified model keeps v2.11.1's covariance,
-  `np.linalg.inv(fisher_info)`, bit for bit, including badly scaled ones
-  such as the TOA-like analytic Fisher `D [[1, .3], [.3, 1]] D`, `D =
-  diag(1e9, 0.1)` (condition number 1.1e20). A flagged model's covariance
-  is the inverse on the identified subspace of `C`, scaled back. No other
-  pytcl function calls `mle_newton_raphson`. What to do: a model the
-  numerical Hessian cannot identify now warns, reports converged=False and
-  infinite variances, where it used to report a confident 1.8e11.
+  and scaled like `C`, also counts as zero; if `L` or `F` is not finite
+  the result is v2.11.1's. Measured on random samples, each rate holding
+  only for its sample: of 300 unidentified Gaussian-location models
+  (sample sizes 10 to 1e5, location up to 1e3, normalizing constant
+  included) 7 escape the warning (v2.11.1: 154). The rule also flags
+  identified models whose numerical Fisher is too noisy to trust, and some
+  that were accurate: of 300 diagonal quadratics (curvatures 1e-6 to 1e6)
+  whose numerical Fisher diagonal was within 1% of the truth, 1 is newly
+  flagged; of 600 linear regressions (2 to 4 parameters, regressor scales
+  1e-2 to 1e2, 10 to 1e4 samples), 50 (8%) are newly flagged, where
+  v2.11.1's variances were within 1% of exact on 6, within 10% on 21 and
+  within 100% on all 50; of 1500 correlated quadratics (2 to 4 parameters,
+  correlation condition number up to 1e3, scales 1e-3 to 1e3), 226 (15%)
+  are newly flagged, where v2.11.1 was within 1% on 19, within 10% on 97
+  and within 100% on 217. Unflagged cases more than 10% off: 1 of the
+  regressions and 2 of the correlated quadratics. A newly flagged
+  identified model reports infinite variance. With an analytic `hessian`,
+  the change goes the other way: v2.11.1 tested the unscaled matrix and
+  warned, with infinite variance, on identified models whose Fisher was
+  badly scaled (1002 of 3000 random ones with 2 to 6 parameters and scales
+  1e-9 to 1e9). These now return `inv(fisher_info)`, whose diagonal was
+  within `2.8e-15 * cond(C)` relative of exact on that sample. Every model
+  neither version flags keeps v2.11.1's covariance,
+  `np.linalg.inv(fisher_info)`, bit for bit (all such cases in the
+  3000-model analytic sample and the numerical samples above). A flagged
+  model's covariance is the inverse on the identified subspace of `C`,
+  scaled back. No other pytcl function calls `mle_newton_raphson`. What to
+  do: a model the numerical Hessian cannot identify now warns, reports
+  converged=False and infinite variances, where it used to report a
+  confident 1.8e11. Pass `hessian` if an identified model's numerical
+  Fisher is flagged.
 
 - **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
   For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
