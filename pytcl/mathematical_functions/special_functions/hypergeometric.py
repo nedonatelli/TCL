@@ -11,6 +11,7 @@ the series summation loop, providing significant speedup for the general
 case (p > 2 or q > 1).
 """
 
+import math
 import warnings
 from fractions import Fraction
 from typing import Any
@@ -540,6 +541,46 @@ def _flag_cancellation(
     return result
 
 
+def _negative_factors(x: float, n: int) -> int:
+    """Number of negative factors in the Pochhammer symbol (x)_n."""
+    return 0 if x >= 0 else min(n, math.ceil(-x))
+
+
+def _pfq_limit_at_infinity(
+    a: NDArray[np.floating], b: NDArray[np.floating], z: float
+) -> float:
+    """Limit of pFq(a; b; z) as z -> +inf or -inf (DLMF 16.11).
+
+    The caller has already rejected the divergent non-terminating cases
+    (p = q + 1 other than 2F1, and p > q + 1).
+    """
+    if not (np.all(np.isfinite(a)) and np.all(np.isfinite(b))):
+        return np.nan
+    p, q = len(a), len(b)
+    degrees = [int(-ai) for ai in a if ai <= 0 and float(ai).is_integer()]
+    if degrees:
+        n = min(degrees)
+        if any(-n < bj <= 0 and float(bj).is_integer() for bj in b):
+            return np.nan
+        if n == 0:
+            return 1.0
+        negatives = sum(_negative_factors(x, n) for x in (*a, *b))
+        if z < 0:
+            negatives += n
+        return -np.inf if negatives % 2 else np.inf
+    if not (np.all(a > 0) and np.all(b > 0)):
+        return np.nan
+    if (p, q) == (2, 1):
+        return np.nan if z > 0 else 0.0
+    if z > 0:
+        return np.inf
+    if p == q:
+        return 0.0
+    if p == q - 1 and a.sum() - b.sum() + 0.5 < 0:
+        return 0.0
+    return np.nan
+
+
 def generalized_hypergeometric(
     a: ArrayLike,
     b: ArrayLike,
@@ -602,8 +643,32 @@ def generalized_hypergeometric(
     re-evaluated exactly in rational arithmetic instead (Laguerre
     ``L_80(20)`` gives -1986.4165), so the NaN applies only to
     non-terminating series and to terminating ones longer than 500 terms.
-    A non-finite ``z`` or parameter gives NaN without a cancellation
+    A NaN ``z`` or a non-finite parameter gives NaN without a cancellation
     warning. ``0F0(z)`` is evaluated as ``exp(z)``.
+
+    At ``z = +inf`` or ``z = -inf`` the limit is returned where one exists
+    (DLMF 16.11). Parameters are real (the function casts them to
+    float64). With ``n`` the smallest ``abs(a[i])`` over the non-positive
+    integer ``a[i]`` and ``c_n = prod (a_i)_n / (prod (b_j)_n * n!)`` the
+    leading coefficient of the terminating polynomial:
+
+    ======================================  ===================  ===========================================
+    Case                                    ``z = +inf``         ``z = -inf``
+    ======================================  ===================  ===========================================
+    terminating                             ``sign(c_n) * inf``  ``sign(c_n) * (-1)**n * inf``
+    terminating, ``n = 0``                  1.0                  1.0
+    non-terminating, ``p == q``             ``+inf``             0.0
+    non-terminating, ``p == q - 1``         ``+inf``             0.0 if ``sum(a) - sum(b) + 1/2 < 0``, else NaN (oscillates)
+    non-terminating, ``p <= q - 2``         ``+inf``             NaN (oscillating growth)
+    non-terminating, ``(p, q) == (2, 1)``   NaN (branch cut)     0.0
+    non-terminating, other ``p >= q + 1``   ``ValueError``       ``ValueError``
+    anything else                           NaN                  NaN
+    ======================================  ===================  ===========================================
+
+    The non-terminating rows other than the ``ValueError`` one require
+    every ``a[i] > 0`` and every ``b[j] > 0``; a negative non-integer
+    ``a[i]``, a non-positive ``b[j]``, or a terminating series with a pole
+    (``(b_j)_n = 0``) is "anything else".
 
     Examples
     --------
@@ -617,22 +682,13 @@ def generalized_hypergeometric(
     p = len(a)
     q = len(b)
 
-    # For special cases, use scipy's optimized functions
-    if p == 0 and q == 0:
-        return np.exp(z)
-    if p == 0 and q == 1:
-        return hyp0f1(b[0], z)
-    elif p == 1 and q == 1:
-        return hyp1f1(a[0], b[0], z)
-    elif p == 2 and q == 1:
-        return hyp2f1(a[0], a[1], b[0], z)
-
     # The series terminates (is a polynomial) when any numerator
     # parameter is a non-positive integer; only then does it converge
-    # outside the |z| < 1 (p = q+1) / z = 0 (p > q+1) domains.
+    # outside the |z| < 1 (p = q+1) / z = 0 (p > q+1) domains. 2F1 is
+    # analytically continued by scipy instead.
     z_arr = np.atleast_1d(z)
     terminates = any(ai <= 0 and float(ai).is_integer() for ai in a)
-    if not terminates:
+    if not terminates and (p, q) != (2, 1):
         if p == q + 1 and np.any(np.abs(z_arr) >= 1.0):
             raise ValueError(
                 "pFq with p = q + 1 diverges for |z| >= 1 (the series "
@@ -643,6 +699,26 @@ def generalized_hypergeometric(
                 "pFq with p > q + 1 diverges for z != 0 (the series "
                 "is not a polynomial); no value exists to return."
             )
+
+    infinite = np.isinf(z)
+    if np.any(infinite):
+        out = np.empty(z.shape)
+        if not np.all(infinite):
+            out[...] = generalized_hypergeometric(
+                a, b, np.where(infinite, 0.0, z), max_terms, tol
+            )
+        out[infinite] = [_pfq_limit_at_infinity(a, b, zi) for zi in z[infinite]]
+        return out if out.ndim else out[()]
+
+    # For special cases, use scipy's optimized functions
+    if p == 0 and q == 0:
+        return np.exp(z)
+    if p == 0 and q == 1:
+        return hyp0f1(b[0], z)
+    elif p == 1 and q == 1:
+        return hyp1f1(a[0], b[0], z)
+    elif p == 2 and q == 1:
+        return hyp2f1(a[0], a[1], b[0], z)
 
     # General case: use Numba-optimized series summation
     result, max_term, converged = _hypergeometric_series(a, b, z_arr, max_terms, tol)

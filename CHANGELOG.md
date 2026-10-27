@@ -172,6 +172,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
+  where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
+  its docstring. v2.11.1 returned NaN for every non-trivial case (3F3,
+  1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z)), and two answers
+  were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
+  and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
+  scipy's `hyp1f1`. 1F1(-0.5; 1; +inf) and 1F1(1; -1.5; +inf) hung inside
+  scipy 1.17.1's `hyp1f1`; they now return NaN at once, because a negative
+  non-integer `a` or a negative `b` is outside the rules (their true limits
+  are `-inf` and `+inf`); a terminating series with a pole
+  (`[-2, 1, 1]; [-1, 3]`) raised `ZeroDivisionError` at infinite `z` and
+  now returns NaN (finite `z` still raises). Limits of 0.0 were checked
+  against mpmath at `z = -1e2` and `-1e4`, not beyond. A NaN `z` still
+  gives NaN, and divergent 3F2 and 3F1 still raise `ValueError`. Nothing
+  inside pytcl calls `generalized_hypergeometric`. What to do: nothing;
+  NaN results at infinite z become the true limit where one exists.
+
 - `us_standard_atmosphere_1976`'s -5000 m floor is now inclusive and
   applies to the geometric input altitude, matching Table I of the
   standard (NOAA-S/T 76-1562), whose first entry is `Z = -5000 m`
