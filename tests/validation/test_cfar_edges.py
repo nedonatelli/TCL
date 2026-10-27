@@ -11,7 +11,7 @@ the kernels' ``py_func``.
 import numpy as np
 import pytest
 
-from pytcl.mathematical_functions.signal_processing import cfar_2d, cfar_so
+from pytcl.mathematical_functions.signal_processing import cfar_2d, cfar_go, cfar_so
 from pytcl.mathematical_functions.signal_processing import detection as det
 
 
@@ -98,3 +98,47 @@ def test_so_cfar_2d_jit_and_python_paths_agree_with_nan():
     assert np.isnan(jit[1]).any()
     assert np.allclose(jit[0], plain[0], equal_nan=True)
     assert np.allclose(jit[1], plain[1], equal_nan=True)
+
+
+@pytest.mark.parametrize("kernel", [det._cfar_go_kernel, _py(det._cfar_go_kernel)])
+@pytest.mark.parametrize(
+    "x, noise",
+    [
+        # NaN in cell 3's leading half.
+        (
+            [1.0, np.nan, 3.0, 4.0, 5.0, 6.0, 7.0],
+            [3.0, 4.0, 5.0, np.nan, 7.0, 4.0, 5.0],
+        ),
+        # NaN in cell 3's lagging half: Python's max(2.0, nan) is 2.0.
+        (
+            [1.0, 2.0, 3.0, 4.0, 5.0, np.nan, 7.0],
+            [3.0, 4.0, 5.0, np.nan, 7.0, 4.0, 5.0],
+        ),
+    ],
+    ids=["leading", "lagging"],
+)
+def test_go_cfar_nan_in_either_reference_half_propagates(kernel, x, noise):
+    # guard 1, ref 1: cell i's halves are x[i-2] and x[i+2]; a missing half
+    # counts as 0.0, so the edge cells take the lone half.
+    got_noise, got_thr = _run_1d(kernel, np.array(x), 1, 1, 3.0)
+    np.testing.assert_array_equal(got_noise, noise)
+    np.testing.assert_array_equal(got_thr, 3.0 * np.array(noise))
+
+
+@pytest.mark.parametrize(
+    "kernel", [det._cfar_2d_go_kernel, _py(det._cfar_2d_go_kernel)]
+)
+def test_go_cfar_2d_nan_in_lagging_half_propagates(kernel):
+    # Cell (2, 2), guard (1, 1), ref (1, 1): the leading half is row 0 (mean
+    # 1.0), the lagging half holds row 4, where the NaN sits.
+    img = np.ones((5, 5))
+    img[4, 2] = np.nan
+    noise, thr = _run_2d(kernel, img, (1, 1), (1, 1), 3.0)
+    assert np.isnan(noise[2, 2]) and np.isnan(thr[2, 2])
+
+
+def test_go_cfar_reports_no_detection_at_nan_threshold_cell():
+    x = np.array([1.0, 2.0, 3.0, 1e9, 5.0, np.nan, 7.0])
+    result = cfar_go(x, guard_cells=1, ref_cells=1, alpha=3.0)
+    assert np.isnan(result.threshold[3])
+    assert not result.detections[3]

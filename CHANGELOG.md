@@ -258,6 +258,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `m` in {1000, 3000, 9999}, `b = sqrt(a^2 + 2m) + c`, `c` in [0, 20] at
   0.125 spacing, it is within 9.3e-15 of mpmath. What to do: nothing.
 
+- `cfar_go` and `cfar_2d(method='go')` ignored a NaN in a cell's reference
+  window. The kernels were compiled with `fastmath` NaN assumptions, under
+  which the max of the two half-window averages dropped a NaN average and
+  kept the other: on `[1, 2, 3, 1e9, 5, nan, 7]` with `guard_cells=1,
+  ref_cells=1, alpha=3` cell 3 got noise estimate 2.0 and was a detection,
+  and the interpreted path (`NUMBA_DISABLE_JIT=1`) agreed only when the
+  NaN sat in the lagging half, because Python's `max(2.0, nan)` is 2.0.
+  A NaN average in either half now gives a NaN noise estimate and
+  threshold, and no detection, compiled and interpreted, as `cfar_so`
+  already did. The GO kernels drop the `nnan`/`ninf` fastmath flags and
+  keep the rest; on 450 random NaN-free inputs (positive, negative, some
+  with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
+  their output is bitwise identical to 2.11.1. What to do: nothing, unless you relied on a NaN sample in the
+  reference window leaving a GO threshold finite.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

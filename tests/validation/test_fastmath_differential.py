@@ -175,14 +175,6 @@ def _cfar_1d_cases(include_nan=True, include_inf=True):
     return cases
 
 
-def _cfar_1d_cases_finite_or_inf():
-    # NaN data is excluded: under nnan the compiled GO kernel drops the
-    # comparison with a NaN average and returns a finite threshold where the
-    # interpreted max() returns NaN. Recorded as unsupported input in the
-    # kernel's docstring.
-    return _cfar_1d_cases(include_nan=False)
-
-
 def _cfar_os_cases(include_nan=True, include_inf=True):
     finite, nan, inf = _cfar_signals()
     signals = finite + (nan if include_nan else []) + (inf if include_inf else [])
@@ -217,12 +209,6 @@ def _cfar_2d_cases(include_nan=True, include_inf=True):
                 (img, gr, gc, rr, rc, 3.5, np.empty(img.shape), np.empty(img.shape))
             )
     return cases
-
-
-def _cfar_2d_cases_finite_or_inf():
-    # NaN data is excluded for the 2D GO kernel, for the nnan reason given
-    # in _cfar_1d_cases_finite_or_inf.
-    return _cfar_2d_cases(include_nan=False)
 
 
 def _ambiguity_signals():
@@ -270,11 +256,11 @@ _FASTMATH_KERNELS = {
     gating._invert_3x3: _invert_3x3_cases,
     gating.mahalanobis_batch: _batch_cases,
     detection._cfar_ca_kernel: _cfar_1d_cases,
-    detection._cfar_go_kernel: _cfar_1d_cases_finite_or_inf,
+    detection._cfar_go_kernel: _cfar_1d_cases,
     detection._cfar_so_kernel: _cfar_1d_cases,
     detection._cfar_os_kernel: _cfar_os_cases,
     detection._cfar_2d_ca_kernel: _cfar_2d_cases,
-    detection._cfar_2d_go_kernel: _cfar_2d_cases_finite_or_inf,
+    detection._cfar_2d_go_kernel: _cfar_2d_cases,
     detection._cfar_2d_so_kernel: _cfar_2d_cases,
     matched_filter._ambiguity_function_kernel: _ambiguity_cases,
     matched_filter._cross_ambiguity_kernel: _cross_ambiguity_cases,

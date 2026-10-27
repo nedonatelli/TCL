@@ -304,7 +304,14 @@ def _cfar_ca_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-@njit(cache=True, fastmath=True)
+# fastmath=True implies nnan/ninf, under which LLVM may compile a float
+# comparison as if neither operand were NaN: the GO kernels' max() then
+# dropped a NaN average and the NaN tests in the GO/SO kernels were dead
+# code. Kernels that compare floats keep every other fastmath flag.
+_NAN_SAFE_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
+
+
+@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH)
 def _cfar_go_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -313,13 +320,7 @@ def _cfar_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled GO-CFAR kernel.
-
-    Unsupported input: NaN in the reference cells. Compiled under
-    ``fastmath`` (``nnan``) the comparison of the two averages drops the
-    NaN and yields a finite threshold where the interpreted form yields
-    NaN, so the result is undefined.
-    """
+    """JIT-compiled GO-CFAR kernel."""
     n = len(signal)
     half_window = guard_cells + ref_cells
 
@@ -344,16 +345,15 @@ def _cfar_go_kernel(
         left_avg = left_sum / left_count if left_count > 0 else 0.0
         right_avg = right_sum / right_count if right_count > 0 else 0.0
 
-        noise_estimate[i] = max(left_avg, right_avg)
-        threshold[i] = alpha * noise_estimate[i]
+        if left_avg == left_avg and right_avg == right_avg:
+            noise_est = max(left_avg, right_avg)
+        else:
+            noise_est = np.nan
+        noise_estimate[i] = noise_est
+        threshold[i] = alpha * noise_est
 
 
-# fastmath=True implies nnan/ninf, which makes NaN tests and infinity
-# sentinels dead code; the SO kernels need NaN to propagate.
-_SO_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
-
-
-@njit(cache=True, fastmath=_SO_FASTMATH)
+@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH)
 def _cfar_so_kernel(
     signal: np.ndarray[Any, Any],
     guard_cells: int,
@@ -495,7 +495,7 @@ def _cfar_2d_ca_kernel(
             threshold[i, j] = alpha * noise_estimate[i, j]
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_go_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
@@ -506,13 +506,7 @@ def _cfar_2d_go_kernel(
     noise_estimate: np.ndarray[Any, Any],
     threshold: np.ndarray[Any, Any],
 ) -> None:
-    """JIT-compiled 2D GO-CFAR kernel with parallel execution.
-
-    Unsupported input: NaN in the reference cells. Compiled under
-    ``fastmath`` (``nnan``) the comparison of the two averages drops the
-    NaN and yields a finite threshold where the interpreted form yields
-    NaN, so the result is undefined.
-    """
+    """JIT-compiled 2D GO-CFAR kernel with parallel execution."""
     n_rows, n_cols = image.shape
     half_row = guard_rows + ref_rows
     half_col = guard_cols + ref_cols
@@ -549,11 +543,15 @@ def _cfar_2d_go_kernel(
 
             top_avg = top_sum / top_count if top_count > 0 else 0.0
             bottom_avg = bottom_sum / bottom_count if bottom_count > 0 else 0.0
-            noise_estimate[i, j] = max(top_avg, bottom_avg)
-            threshold[i, j] = alpha * noise_estimate[i, j]
+            if top_avg == top_avg and bottom_avg == bottom_avg:
+                noise_est = max(top_avg, bottom_avg)
+            else:
+                noise_est = np.nan
+            noise_estimate[i, j] = noise_est
+            threshold[i, j] = alpha * noise_est
 
 
-@njit(cache=True, fastmath=_SO_FASTMATH, parallel=True)
+@njit(cache=True, fastmath=_NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_so_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
