@@ -229,7 +229,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   0 to `+-1e300`, `+-inf` and NaN, all return (slowest 0.15 s) and none
   raises; 16,000 random calls with parameters to 1e8 and `abs(z)` to
   1e300 raise nothing (slowest 2.2 s, a 308-term exact polynomial at
-  `z = 1e57`). Silent wrong answers fixed on the same path: scipy returns
+  `z = 1e57`). One known regression against 2.11.1: `hyp1f1(-0.5, 1e17,
+  -1e10)` returns NaN where 2.11.1 gave the correct 1.00000005 (`b` past
+  2^53, where `b - a` is not exact). Silent wrong answers fixed on the same path: scipy returns
   `+inf` for every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800),
   1F1(-10.5; 1e5; 1e6) and 1F1(4.8699; -264.582; 1307.64) now give
   `-inf`. A `+-inf` is now returned only when a certified lower bound on
