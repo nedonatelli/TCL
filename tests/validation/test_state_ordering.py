@@ -112,52 +112,42 @@ def test_matlab_reference_literals_are_not_the_package_output():
     assert not np.allclose(q_poly_kal(1, 1.0, 1.0, num_dims=2), MATLAB_Q_POLY_KAL)
 
 
-class TestCoordTurnDivergesFromMatlab:
+class TestCoordTurnMatchesMatlabUpToPermutation:
     T = 1.0
     SIGMA_A = 2.0
     SIGMA_OMEGA = 0.1
     TO_MATLAB_5 = np.array([0, 2, 1, 3, 4])
 
-    def _ours_5(self):
-        Q = q_coord_turn_2d(
+    def _q5(self):
+        return q_coord_turn_2d(
             self.T, self.SIGMA_A, self.SIGMA_OMEGA, "position_velocity_omega"
         )
-        return Q[np.ix_(self.TO_MATLAB_5, self.TO_MATLAB_5)]
 
     def test_matlab_reference_is_rank_one(self):
         assert np.linalg.matrix_rank(MATLAB_Q_COORD_TURN_5) == 1
 
-    def test_ranks(self):
+    def test_interleaved_elementwise_differs_from_matlab(self):
+        assert np.max(np.abs(self._q5() - MATLAB_Q_COORD_TURN_5)) == pytest.approx(
+            3.0, abs=0
+        )
+
+    def test_permuted_equals_matlab(self):
+        p = self.TO_MATLAB_5
+        np.testing.assert_allclose(
+            self._q5()[np.ix_(p, p)], MATLAB_Q_COORD_TURN_5, rtol=1e-15, atol=0
+        )
+
+    def test_position_velocity_is_matlab_leading_block(self):
         q4 = q_coord_turn_2d(self.T, self.SIGMA_A, self.SIGMA_OMEGA)
-        q5 = q_coord_turn_2d(
-            self.T, self.SIGMA_A, self.SIGMA_OMEGA, "position_velocity_omega"
-        )
-        assert np.linalg.matrix_rank(q4) == 2
-        assert np.linalg.matrix_rank(q5) == 3
-        assert np.allclose(np.linalg.eigvalsh(q4), [0, 0, 5, 5])
-        assert np.allclose(np.linalg.eigvalsh(q5), [0, 0, 0.01, 5, 5])
-
-    def test_diagonals_agree_but_matrices_do_not(self):
-        ours = self._ours_5()
-        assert np.allclose(np.diag(ours), np.diag(MATLAB_Q_COORD_TURN_5))
-        assert np.max(np.abs(ours - MATLAB_Q_COORD_TURN_5)) == pytest.approx(4.0)
-
-    def test_position_velocity_block_differs_from_matlab_leading_block(self):
-        q4 = q_coord_turn_2d(self.T, self.SIGMA_A)
         p = INTERLEAVED_TO_MAJOR_2D
-        diff = q4[np.ix_(p, p)] - MATLAB_Q_COORD_TURN_5[:4, :4]
-        assert np.max(np.abs(diff)) == pytest.approx(4.0)
-
-    def test_has_no_cross_axis_or_omega_coupling(self):
-        q5 = q_coord_turn_2d(
-            self.T, self.SIGMA_A, self.SIGMA_OMEGA, "position_velocity_omega"
+        np.testing.assert_allclose(
+            q4[np.ix_(p, p)], MATLAB_Q_COORD_TURN_5[:4, :4], rtol=1e-15, atol=0
         )
-        assert np.all(q5[0:2, 2:4] == 0.0)
-        assert np.all(q5[0:4, 4] == 0.0)
 
-    def test_3d_has_the_same_structure(self):
+    def test_3d_is_rank_one_with_cross_axis_coupling(self):
         q7 = q_coord_turn_3d(
             self.T, self.SIGMA_A, self.SIGMA_OMEGA, "position_velocity_omega"
         )
-        assert np.linalg.matrix_rank(q7) == 4
-        assert np.all(q7[0:2, 2:4] == 0.0)
+        assert np.linalg.matrix_rank(q7) == 1
+        assert q7[0, 2] == 1.0
+        assert q7[1, 6] == pytest.approx(0.2, abs=0)

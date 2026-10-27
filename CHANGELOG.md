@@ -176,6 +176,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tau_scale` values change (N(0, 1) now about 1.0, not 1.09); the
   docstring's earlier Yohai-Zamar attribution was wrong.
 
+- **`q_coord_turn_2d` and `q_coord_turn_3d` are now MATLAB's `QCoordTurn`.**
+  v2.11.1 stacked independent per-axis acceleration blocks (rank 2 or 3 in
+  2-D, 3 or 4 in 3-D) and its docstring said so; `QCoordTurn` builds
+  `Q = G*G'` from one column, so its result is rank 1 with x/y/z, velocity
+  and omega cross terms. At `T=1, sigma_a=2, sigma_omega=0.1` the old 2-D
+  result differed from `QCoordTurn` by up to 4.0 elementwise. The new
+  results are bitwise equal, after permuting pytcl's interleaved state to
+  MATLAB's `[x, y, (z,) vx, vy, (vz,) omega]`, to `QCoordTurn` case 5
+  (2-D) and case 7 (3-D) captured under MATLAB R2026a at `T` in
+  {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in {0, 0.01}.
+  Signatures, standard-deviation parameters and the interleaved layout are
+  unchanged; `state_type='position_velocity'` returns the leading block of
+  the omega result (`QCoordTurn` has no 4- or 6-element branch).
+  `np.linalg.cholesky` of the result now fails; pass `G` to square-root
+  filters. Nothing inside pytcl calls either function. The module stays
+  EXPERIMENTAL until `q_coord_turn_polar` is reviewed. What to do: Q from
+  q_coord_turn_2d/3d is now rank 1 with x/y/omega cross terms, as in
+  MATLAB's QCoordTurn; filters tuned against the old per-axis Q need
+  retuning.
+
 - `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
   through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
   run of the new `floors` job. Those releases' batching wrapper passes
