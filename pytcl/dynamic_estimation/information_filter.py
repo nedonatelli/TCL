@@ -567,10 +567,14 @@ def srif_update(
     with the measurement information while maintaining numerical stability.
 
     A positive-definite ``R_meas = L L'`` is whitened by ``inv(L)``, as in
-    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A
-    positive semi-definite one is whitened from its eigendecomposition,
-    with eigenvalues floored at ``1e-10`` times the largest, so the result
-    does not depend on the units ``R_meas`` is expressed in.
+    MATLAB TCL's ``sqrtInfoFilterUpdate.m`` (``SR\\H``). A positive
+    semi-definite one is whitened from its eigendecomposition, with
+    eigenvalues floored at ``1e-10`` times the largest, so the result does
+    not depend on the units ``R_meas`` is expressed in. So is a
+    non-diagonal one singular at roundoff scale (smallest eigenvalue at
+    most ``m * eps`` times the largest, for ``m`` measurements), on which
+    Cholesky can succeed through a roundoff pivot. A diagonal one with
+    positive variances always takes the Cholesky path.
     """
     r = np.asarray(r, dtype=np.float64).flatten()
     R = np.asarray(R, dtype=np.float64)
@@ -581,13 +585,29 @@ def srif_update(
     n = len(r)
 
     # Get square root of measurement information
+    eig = None
     try:
         # R_meas = L L', so inv(L) whitens (sqrtInfoFilterUpdate.m:67-68,
         # SR\H). v2.11.1 used inv(L).T, which carries inv(L' L) instead of
         # inv(R_meas) whenever R_meas is not diagonal.
         R_meas_inv = np.linalg.inv(np.linalg.cholesky(R_meas))
+        # Cholesky can succeed on a singular R_meas through a roundoff pivot
+        # (s [[1, 1], [1, 1]] at s = 0.1 gave 4e18 of information). Then the
+        # whitener is huge: sum(W**2) * trace(R_meas) is at least
+        # cond(L L'), so only a near-singular R_meas pays for eigh. A
+        # diagonal one has no cancellation, so its Cholesky factor is exact.
+        m = len(R_meas)
+        whitened_cond = np.vdot(R_meas_inv, R_meas_inv) * R_meas.trace()
+        if not whitened_cond * (2 * (m + 1) ** 2 * _EPS) <= 1.0 and np.any(
+            R_meas != np.diag(np.diagonal(R_meas))
+        ):
+            eig = np.linalg.eigh(R_meas)
+            if eig[0][0] > m * _EPS * eig[0][-1]:
+                eig = None
     except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(R_meas)
+        eig = np.linalg.eigh(R_meas)
+    if eig is not None:
+        eigvals, eigvecs = eig
         max_eig = eigvals.max()
         most_neg_eig = eigvals.min()
         if max_eig <= 0 or most_neg_eig < -_EIG_NEGATIVE_REL_TOL * np.max(

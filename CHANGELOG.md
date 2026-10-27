@@ -517,6 +517,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Hessian cannot identify now warns, reports converged=False and infinite
   variances, where it used to report a confident 6e10.
 
+- **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
+  For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
+  1e-14, `np.linalg.cholesky` succeeds on a roundoff pivot, so the floored
+  eigendecomposition was never used and the largest posterior information
+  eigenvalue (zero prior, `H = I`) was 3.95e18, 5.64e15, 1.19e15 and
+  2.24e30, against floors of 5.0e10, 2.5e9, 7.1e8 and 5.0e23
+  (`1/(1e-10*max_eig)`). They now meet the floor exactly. When Cholesky
+  succeeds, `sum(W**2) * trace(R_meas)` for the whitener `W = inv(L)` (at
+  least the condition number of `L L'`) decides whether to check further;
+  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is decomposed with
+  `eigh`, once, and floored only if its smallest eigenvalue is at most
+  `m*eps` times the largest. A positive-definite `R_meas` keeps its exact
+  result: bitwise identical to v2.11.1 for diagonal `R_meas` at any
+  condition number (5,000 random cases with variances from 1e-150 to
+  1e150, plus `diag(1e4, 1e-8)`, `diag(1, 5e-11)` and condition numbers
+  1e12, 1e14 and 1e20), and for correlated `R_meas` bitwise identical to
+  v2.11.1's QR stage fed the `inv(L)` whitener up to condition number 2e15
+  for `m = 2` (5,000 random cases with `m` from 2 to 6 and condition
+  numbers to 9.1e13, of which 23 took the `eigh` check). Beyond
+  `1/(m*eps)` (from 3e15 at `m = 2`) a correlated positive-definite
+  `R_meas` is indistinguishable from a singular one and is floored. On
+  5,000 random rank-deficient `R_meas` (`m` from 2 to 6, scales 1e-14 to
+  1e6; Cholesky succeeded on 1,364) no posterior information exceeded the
+  floor. Cost on a well-conditioned 6x6 update: 20.6 to 22.1 us.
+  `srif_filter` calls `srif_update` and changes with it. What to do:
+  nothing, unless you passed a singular or roundoff-singular correlated
+  `R_meas`; its null direction now carries the floored information,
+  `1/(1e-10*max_eig)`, instead of an arbitrarily large amount.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

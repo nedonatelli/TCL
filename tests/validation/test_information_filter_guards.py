@@ -267,7 +267,7 @@ class TestSRIFUpdateMeasurementCovariance:
         b = srif_update(*_case(R_meas * 1e6))
         np.testing.assert_allclose(_info(a), _info(b) * 1e6, rtol=1e-9, atol=0)
 
-    @pytest.mark.parametrize("scale", [1.0, 3.0, 1e-6])
+    @pytest.mark.parametrize("scale", [1.0, 3.0, 1e-6, 0.1, 2.0, 7.0, 1e-14])
     def test_correlated_singular_covariance_is_floored_along_its_null_space(
         self, scale
     ):
@@ -276,10 +276,11 @@ class TestSRIFUpdateMeasurementCovariance:
         The zero is floored at ``1e-10 * 2 s``, so with a zero prior and
         ``H = I`` the posterior information is ``V diag(1/floored) V'`` =
         ``u u' / (2 s) + w w' / (2e-10 s)``. v2.11.1's ``+ 1e-10 I`` jitter
-        gave ``1e10`` along ``w`` whatever ``s`` was. These scales make
-        Cholesky fail, so they reach the eigh fallback; at others (0.1, 2)
-        Cholesky succeeds on a roundoff pivot and the fallback is not
-        taken."""
+        gave ``1e10`` along ``w`` whatever ``s`` was. At s = 1, 3 and 1e-6
+        Cholesky fails; at 0.1, 2, 7 and 1e-14 it succeeds on a roundoff
+        pivot, and v2.11.1 and v2.12.0 before the roundoff gate returned
+        its unfloored information (largest eigenvalue 3.95e18, 5.64e15,
+        1.19e15 and 2.24e30)."""
         u = np.array([1.0, 1.0]) / np.sqrt(2.0)
         w = np.array([1.0, -1.0]) / np.sqrt(2.0)
         floored = np.array([2.0 * scale, 1e-10 * 2.0 * scale])
@@ -288,12 +289,106 @@ class TestSRIFUpdateMeasurementCovariance:
         got = _info(srif_update(*_case(scale * np.ones((2, 2)))))
         np.testing.assert_allclose(got, want, rtol=1e-9, atol=0)
         assert u @ got @ u == pytest.approx(1.0 / floored[0], rel=1e-5, abs=0)
+        bound = 1.0 / (1e-10 * floored[0])
+        assert np.linalg.eigvalsh(got).max() <= bound * (1 + 1e-9)
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_random_singular_covariance_is_floored(self, seed):
+        """PROPERTY: a rank-deficient R_meas never yields more information
+        than the floor allows, ``1 / (1e-10 * max eig)``, whether or not
+        Cholesky succeeds on it."""
+        rng = np.random.default_rng(300 + seed)
+        m = int(rng.integers(2, 7))
+        B = rng.standard_normal((m, int(rng.integers(1, m))))
+        R_meas = 10.0 ** rng.uniform(-14, 6) * (B @ B.T)
+        _, R_upd = srif_update(
+            np.zeros(m), np.zeros((m, m)), np.zeros(m), np.eye(m), R_meas
+        )
+        bound = 1.0 / (1e-10 * np.linalg.eigvalsh(R_meas)[-1])
+        assert np.linalg.eigvalsh(R_upd.T @ R_upd)[-1] <= bound * (1 + 1e-8)
 
     def test_diagonal_positive_definite_path_is_unchanged(self):
         """Bit-identical to v2.11.1 for diagonal R_meas, where inv(L) and
         inv(L).T coincide. Non-diagonal R_meas changed on purpose; see
         TestSRIFUpdateCorrelatedMeasurement."""
         assert _bitwise_equal(srif_update(*_pd_case()), _V2111_srif_update(*_pd_case()))
+
+    @pytest.mark.parametrize(
+        "R_meas",
+        [
+            np.diag([1e4, 1e-8]),
+            np.diag([1.0, 5e-11]),
+            np.diag([1.0, 1e-12]),
+            np.diag([3.0, 3e-14]),
+            np.diag([1.0, 1e-20]),
+        ],
+        ids=["1e4,1e-8", "1,5e-11", "cond1e12", "cond1e14", "cond1e20"],
+    )
+    def test_ill_conditioned_diagonal_is_bit_identical(self, R_meas):
+        """A positive-definite R_meas keeps its information however
+        ill-conditioned. The reverted first fix gated Cholesky on a 1e-10
+        eigenvalue ratio, and ``diag(1e4, 1e-8)`` lost 100x of its
+        second-component information."""
+        args = (*_pd_case()[:4], R_meas)
+        assert _bitwise_equal(srif_update(*args), _V2111_srif_update(*args))
+
+    @pytest.mark.parametrize("seed", range(20))
+    def test_random_diagonal_positive_definite_is_bit_identical(self, seed):
+        rng = np.random.default_rng(200 + seed)
+        n, m = 4, 3
+        A = rng.standard_normal((n, n))
+        R0 = np.triu(A) + n * np.eye(n)
+        args = (
+            rng.standard_normal(n),
+            R0,
+            rng.standard_normal(m),
+            rng.standard_normal((m, n)),
+            np.diag(10.0 ** rng.uniform(-10, 10, m)),
+        )
+        assert _bitwise_equal(srif_update(*args), _V2111_srif_update(*args))
+
+
+def _rotated(cond, theta=0.3):
+    c, s = np.cos(theta), np.sin(theta)
+    V = np.array([[c, -s], [s, c]])
+    return V @ np.diag([1.0, 1.0 / cond]) @ V.T
+
+
+def _v2111_on_prewhitened(r, R, z, H, R_meas):
+    """v2.11.1's QR stage fed the MATLAB whitener ``inv(L)``
+    (sqrtInfoFilterUpdate.m:67-68) and ``R_meas = I``, which v2.11.1 passes
+    through exactly. v2.11.1 itself whitened a correlated R_meas with
+    ``inv(L).T`` (corrected in v2.12.0), so it is not the reference there."""
+    W = np.linalg.inv(np.linalg.cholesky(R_meas))
+    return _V2111_srif_update(r, R, W @ z, W @ H, np.eye(len(R_meas)))
+
+
+class TestSRIFUpdateCorrelatedPositiveDefinite:
+    """A correlated positive-definite R_meas stays on the Cholesky path,
+    bitwise, up to a condition number near ``1 / (m * eps)``; only a
+    smallest eigenvalue at roundoff scale routes it to the floor."""
+
+    @pytest.mark.parametrize("cond", [1e8, 1e12, 1e14, 1e15])
+    def test_rotated_ill_conditioned_is_bit_identical(self, cond):
+        args = (*_pd_case()[:4], _rotated(cond))
+        assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
+
+    @pytest.mark.parametrize("seed", range(20))
+    def test_random_positive_definite_is_bit_identical(self, seed):
+        rng = np.random.default_rng(400 + seed)
+        n, m = 4, int(rng.integers(2, 7))
+        A = rng.standard_normal((n, n))
+        Q, _ = np.linalg.qr(rng.standard_normal((m, m)))
+        R_meas = (Q * 10.0 ** rng.uniform(-14, 0, m)) @ Q.T
+        R_meas = (R_meas + R_meas.T) / 2
+        args = (
+            rng.standard_normal(n),
+            np.triu(A) + n * np.eye(n),
+            rng.standard_normal(m),
+            rng.standard_normal((m, n)),
+            R_meas,
+        )
+        assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
 
 
 # Inputs mirrored from scripts/matlab_capture/capture_srif_update.m.
