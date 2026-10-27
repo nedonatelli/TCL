@@ -14,14 +14,20 @@ always correct; only the name was wrong) and the deprecated alias was
 removed in v2.8.0.
 """
 
+import importlib
 import math
+import tracemalloc
+import warnings
+from fractions import Fraction
 from pathlib import Path
 from typing import NamedTuple
 
 import mpmath
 import numpy as np
 import pytest
+from scipy.stats import ncx2
 
+from pytcl.core.exceptions import ConvergenceError
 from pytcl.mathematical_functions.special_functions.marcum_q import (
     log_marcum_q,
     marcum_q,
@@ -31,6 +37,7 @@ from pytcl.mathematical_functions.special_functions.marcum_q import (
     swerling_detection_probability,
 )
 
+_mq = importlib.import_module("pytcl.mathematical_functions.special_functions.marcum_q")
 _ORACLE = Path(__file__).resolve().parent.parent / "fixtures/marcum_q/oracle.csv"
 
 
@@ -254,6 +261,155 @@ class TestLogMarcumQ:
     def test_series_corner_rows_are_present(self):
         corner = {(row.a, row.m) for row in _oracle_rows(corner=True)}
         assert {(1e3, 3000), (1e3, 10_000), (10.0, 10_000_000)} <= corner
+
+
+def _temme_coefficients(n_series: int = 40, n_terms: int = 4) -> list[list[Fraction]]:
+    """Temme's ``c_k(eta)`` Taylor coefficients in exact rational arithmetic.
+
+    ``mu = lambda - 1`` is reverted from ``eta^2/2 = mu - log(1 + mu)`` by
+    Lagrange inversion; ``c_0 = 1/mu - 1/eta`` and ``c_k = c_{k-1}'/eta +
+    (-1)^k g_k / mu``, with ``g_k`` fixed by cancelling the pole at
+    ``eta = 0`` (it comes out as the Stirling coefficients 1/12, 1/288, ...).
+    """
+    n = n_series
+
+    def mul(p, q):
+        r = [Fraction(0)] * n
+        for i, pi in enumerate(p):
+            if pi:
+                for j in range(n - i):
+                    r[i + j] += pi * q[j]
+        return r
+
+    def inv(p):
+        r = [Fraction(0)] * n
+        r[0] = 1 / p[0]
+        for k in range(1, n):
+            r[k] = -sum(p[i] * r[k - i] for i in range(1, k + 1)) / p[0]
+        return r
+
+    def sqrt1(p):
+        r = [Fraction(1)] + [Fraction(0)] * (n - 1)
+        for k in range(1, n):
+            r[k] = (p[k] - sum(r[i] * r[k - i] for i in range(1, k))) / 2
+        return r
+
+    g2 = [Fraction(2 * (-1) ** i, i + 2) for i in range(n)]
+    mu_over_eta = inv(sqrt1(g2))
+    mu = [Fraction(0)] * n
+    power = [Fraction(1)] + [Fraction(0)] * (n - 1)
+    for k in range(1, n):
+        power = mul(power, mu_over_eta)
+        mu[k] = power[k - 1] / k
+    eta_over_mu = inv(mu[1:] + [Fraction(0)])
+    coeffs = [[eta_over_mu[j + 1] for j in range(n - 1)]]
+    for _ in range(1, n_terms):
+        prev = coeffs[-1]
+        coeffs.append(
+            [
+                (j + 2) * prev[j + 2] - prev[1] * eta_over_mu[j + 1]
+                for j in range(len(prev) - 2)
+            ]
+        )
+    return coeffs
+
+
+class TestMarcumQSeriesBounded:
+    """The Poisson-mixture series runs in bounded memory for any input.
+
+    Before this fix, ``(a=1e5, b=1, m=3000)`` (``b << a``, so the terms of
+    ``Q`` peak near ``k = a^2/2 = 5e9``, far from the seed) doubled its
+    window without bound and was killed at 49 GB; v2.11.1 returned 1.0.
+    """
+
+    _GRID = np.logspace(-3, 8, 12)
+    _ORDERS = (1, 2, 30, 3000, 10_000_000)
+
+    def test_reproducer_is_bounded_and_matches_v2_11_1(self):
+        tracemalloc.start()
+        try:
+            q = marcum_q(1e5, 1.0, 3000)
+            log_q = log_marcum_q(1e5, 1.0, 3000)
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert q == 1.0
+        assert log_q == 0.0
+        assert peak < 16 * 2**20
+
+    def test_grid_completes_in_bounded_memory(self):
+        tracemalloc.start()
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                for m in self._ORDERS:
+                    for a in self._GRID:
+                        for b in self._GRID:
+                            q = marcum_q(a, b, m)
+                            log_q = log_marcum_q(a, b, m)
+                            assert 0.0 <= q <= 1.0
+                            assert log_q <= 0.0
+            peak = tracemalloc.get_traced_memory()[1]
+        finally:
+            tracemalloc.stop()
+        assert peak < 16 * 2**20
+
+    def test_b_much_less_than_a_matches_v2_11_1(self):
+        """On ``b <= a/10`` v2.11.1 was ``ncx2.sf`` and ``log`` of it."""
+        checked = 0
+        for m in self._ORDERS:
+            for a in self._GRID:
+                for b in self._GRID[self._GRID <= a / 10]:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        old = ncx2.sf(b * b, 2 * m, a * a)
+                    assert marcum_q(a, b, m) == old
+                    if old >= 1e-10:
+                        # v2.11.1's log Q carried Q's absolute error only.
+                        assert abs(log_marcum_q(a, b, m) - np.log(old)) <= 2.3e-16
+                    checked += 1
+        assert checked > 300
+
+    @pytest.mark.parametrize(
+        "row", _oracle_rows() + _oracle_rows(corner=True), ids=_row_id
+    )
+    def test_series_alone_matches_every_oracle_row(self, row):
+        """Including ``a = 1e8``, where the peak is at ``k = 5e15``."""
+        got = _mq._log_marcum_q_series(row.a, row.b, row.m)
+        assert got == pytest.approx(float(row.log_q), rel=1e-14, abs=0)
+
+    def test_window_backstop_raises(self, monkeypatch):
+        monkeypatch.setattr(_mq, "_SERIES_MAX_POINTS", 50)
+        with pytest.raises(ConvergenceError, match="more than 50 terms"):
+            _mq._log_marcum_q_series(1e3, 1009.9955134495867, 3000)
+
+    def test_temme_table_is_the_exact_series(self):
+        exact = _temme_coefficients()
+        for table, series in zip(_mq._TEMME_C, exact, strict=True):
+            assert table == tuple(float(c) for c in series[: len(table)])
+
+    @pytest.mark.parametrize("x", [3e4, 5.1e5, 1e7])
+    def test_temme_matches_poisson_sums(self, x):
+        """The smaller of ``Q(n, x)``, ``P(n, x)`` against summed pmf terms."""
+        offsets = np.linspace(-40.0, 40.0, 161) * np.sqrt(x)
+        n = np.unique(np.round(x + offsets)).astype(np.int64)
+        want_q, want_p = _mq._log_poisson_tails(n, x)
+        got_q, got_p = _mq._log_poisson_q_p_temme(n.astype(np.float64), x)
+        for got, want in ((got_q, want_q), (got_p, want_p)):
+            small = want <= -np.log(2.0)
+            assert got[small] == pytest.approx(want[small], rel=1e-14, abs=0)
+
+    @pytest.mark.parametrize("m", [1, 2, 30, 3000, 10_000_000])
+    @pytest.mark.parametrize("func", [marcum_q, log_marcum_q])
+    def test_arrays_with_special_values_match_scalar_calls(self, func, m):
+        v = np.array([0.0, 1e-3, 1.0, 30.0, 1e3, 1e5, 1e8, 1e200, np.inf, np.nan])
+        a, b = np.meshgrid(v, v, indexing="ij")
+        with warnings.catch_warnings():
+            # b**2 overflows at 1e200 inside scipy's ncx2 path, as in v2.11.1.
+            warnings.simplefilter("ignore", RuntimeWarning)
+            got = func(a, b, m)
+            want = np.array([[func(ai, bi, m) for bi in v] for ai in v])
+        assert np.array_equal(got, want, equal_nan=True)
 
 
 # =============================================================================

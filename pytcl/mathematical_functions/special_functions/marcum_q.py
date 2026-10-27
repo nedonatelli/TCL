@@ -9,6 +9,8 @@ import numpy as np
 import scipy.special as sp
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.exceptions import ConvergenceError
+
 
 def marcum_q(
     a: ArrayLike,
@@ -72,9 +74,8 @@ def marcum_q(
 
     Where ``a*b > 2e4`` and ``(m-1)^2 > 4ab`` (the series corner), on
     ``a = 1e3``, ``m`` in {3000, 1e4}, ``c`` in {-3, 0, 7, 20} and
-    ``a = 10``, ``m = 1e7``, ``c`` in {-40, ..., 20}: 7e-15 at ``a = 1e3``
-    and 2.3e-13 at ``a = 10`` (at ``Q = 5e-176``; ``exp`` scales the error
-    of ``log Q`` by ``-log Q``).
+    ``a = 10``, ``m = 1e7``, ``c`` in {-40, ..., 20}: 3.6e-15 at ``a = 1e3``
+    and 1.4e-14 at ``a = 10``.
 
     Examples
     --------
@@ -221,12 +222,19 @@ def log_marcum_q(
     ================  =====================  ======================
 
     Where ``a*b > 2e4`` but ``(m-1)^2 > 4ab`` the series is used. Its
-    incomplete gammas are Poisson tail sums of log pmf terms, with ``a^2/2``
-    and ``b^2/2`` carried to twice working precision. ``log Q`` is within
-    2.0e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c`` in {-3, 0, 7, 20},
-    and within 8.1e-14 on ``a = 10``, ``m = 1e7``, ``c`` in
-    {-40, -10, -3, 0, 3, 10, 20} (the maximum at ``c = -10``, where
-    ``log Q = -9.7e-46``).
+    incomplete gammas are Poisson tail sums of log pmf terms, or Temme's
+    uniform expansion for orders above 1e4, with ``a^2/2`` and ``b^2/2``
+    carried to twice working precision; only the tail sum (``Q`` or
+    ``1 - Q``) is formed, and its terms are sampled at a stride below a
+    quarter of their width, so memory and time stay bounded for any input
+    (at most 2^16 terms; past that it raises ``ConvergenceError``).
+    ``log Q`` is within 2.1e-15 on ``a = 1e3``, ``m`` in {3000, 1e4}, ``c``
+    in {-3, 0, 7, 20}, and within 3.8e-15 on ``a = 10``, ``m = 1e7``, ``c``
+    in {-40, -10, -3, 0, 3, 10, 20}. Called directly on all 159 oracle rows
+    (``a`` up to 1e8, where the terms peak at ``k = 5e15``) the series is
+    within 5.6e-15. On ``a``, ``b`` in 12 log-spaced values over
+    [1e-3, 1e8] and ``m`` in {1, 2, 30, 3000, 1e7}, the traced memory of
+    all 1440 calls together peaks at 0.25 MiB.
     v2.11.1 also measured ``c`` in {7, 30, 200, 1000} for ``a`` in
     {0.5, 5, 30, 140}, ``m`` in {1, 20, 200} (below 2.2e-14), and ``c`` in
     {7, 30, 200} for ``a`` in {1e3, 1e5, 1e8, 1e12}, ``m`` in {1, 100}
@@ -289,10 +297,10 @@ def log_marcum_q(
 def _log_marcum_q_tail(a: float, b: float, m: int) -> float:
     """Route log Q_m(a, b) to the series or to the quadrature.
 
-    The series needs a^2/2 and b^2/2 finite and its windows grow like
-    sqrt(a*b) and sqrt(b^2/2), so past a*b/2 = 1e4 the quadrature is used.
-    The quadrature needs ``(m-1)^2 <= 4ab`` so the Bessel factor neither
-    underflows nor cancels in its Hankel expansion.
+    The series needs a^2/2 and b^2/2 finite. Past a*b = 2e4 the quadrature,
+    measured there first, is kept wherever it applies: it needs
+    ``(m-1)^2 <= 4ab`` so the Bessel factor neither underflows nor cancels
+    in its Hankel expansion.
     """
     nu2 = (m - 1.0) ** 2
     with np.errstate(over="ignore"):
@@ -495,40 +503,332 @@ def _log_poisson_tails(
     return log_cdf, log_sf
 
 
+# Temme's coefficients c_k(eta), k = 0..3, as Taylor series in eta (DLMF
+# 8.12.10-11), from exact rational series arithmetic;
+# tests/validation/test_marcum_q.py regenerates them.
+_TEMME_C = (
+    (
+        -0.3333333333333333,
+        0.08333333333333333,
+        -0.014814814814814815,
+        0.0011574074074074073,
+        0.0003527336860670194,
+        -0.0001787551440329218,
+        3.919263178522438e-05,
+        -2.185448510679992e-06,
+        -1.85406221071516e-06,
+        8.296711340953087e-07,
+        -1.7665952736826078e-07,
+        6.707853543401498e-09,
+        1.0261809784240309e-08,
+        -4.382036018453353e-09,
+        9.14769958223679e-10,
+        -2.5514193994946248e-11,
+        -5.830772132550426e-11,
+        2.4361948020667415e-11,
+        -5.0276692801141755e-12,
+        1.1004392031956135e-13,
+        3.371763262400985e-13,
+        -1.392388722418162e-13,
+        2.8534893807047445e-14,
+        -5.139111834242572e-16,
+        -1.9752288294349442e-15,
+        8.099521156704561e-16,
+        -1.6522531216398162e-16,
+        2.5305430097478883e-18,
+        1.1686939738559576e-17,
+        -4.770037049820485e-18,
+    ),
+    (
+        -0.001851851851851852,
+        -0.003472222222222222,
+        0.0026455026455026454,
+        -0.0009902263374485596,
+        0.00020576131687242798,
+        -4.018775720164609e-07,
+        -1.8098550334489977e-05,
+        7.64916091608111e-06,
+        -1.6120900894563446e-06,
+        4.647127802807434e-09,
+        1.378633446915721e-07,
+        -5.752545603517705e-08,
+        1.1951628599778148e-08,
+        -1.7543241719747647e-11,
+        -1.0091543710600413e-09,
+        4.162792991842583e-10,
+        -8.56390702649298e-11,
+        6.067215101604758e-14,
+        7.1624989648114856e-12,
+        -2.933186643771437e-12,
+        5.996696365683689e-13,
+        -2.1671786527323313e-16,
+        -4.978339972369262e-14,
+        2.0291628823713425e-14,
+        -4.13125571381061e-15,
+        8.286516239883097e-19,
+        3.4100308869333327e-16,
+        -1.3854195302893971e-16,
+        2.812346653228875e-17,
+        -3.406444194143029e-21,
+    ),
+    (
+        0.004133597883597883,
+        -0.0026813271604938273,
+        0.0007716049382716049,
+        2.0093878600823047e-06,
+        -0.0001073665322636516,
+        5.2923448829120125e-05,
+        -1.2760635188618728e-05,
+        3.423578734096138e-08,
+        1.3721957309062934e-06,
+        -6.298992138380055e-07,
+        1.4280614206064242e-07,
+        -2.0477098421990866e-10,
+        -1.409252991086752e-08,
+        6.228974084922022e-09,
+        -1.3670488396617114e-09,
+        9.428356159014678e-13,
+        1.2872252400089318e-10,
+        -5.5645956134363323e-11,
+        1.197593554636698e-11,
+        -4.1689782251838634e-15,
+        -1.0940640427884595e-12,
+        4.662239946390136e-13,
+        -9.905105763906907e-14,
+        1.8931876768373515e-17,
+        8.859221872591127e-15,
+        -3.737820398046405e-15,
+        7.868833639035156e-16,
+        -9.000027395741211e-20,
+        -6.928881229347671e-17,
+        2.9020384270164786e-17,
+    ),
+    (
+        0.0006494341563786008,
+        0.00022947209362139917,
+        -0.0004691894943952557,
+        0.00026772063206283885,
+        -7.561801671883977e-05,
+        -2.396505113867297e-07,
+        1.1082654115347302e-05,
+        -5.6749528269915965e-06,
+        1.4230900732435883e-06,
+        -2.7861080291528143e-11,
+        -1.6958404091930278e-07,
+        8.099464905388083e-08,
+        -1.9111168485973655e-08,
+        2.3928620439808118e-12,
+        2.0620131815488797e-09,
+        -9.460496661855133e-10,
+        2.1541049775774907e-10,
+        -1.388823336813903e-14,
+        -2.1894761681963938e-11,
+        9.790998951171684e-12,
+        -2.178219188018096e-12,
+        6.208819573407901e-17,
+        2.126978363279737e-13,
+        -9.344688791517433e-14,
+        2.045367122678285e-14,
+        -2.58260790403495e-19,
+        -1.9405297673344544e-15,
+        8.415979290484816e-16,
+        -1.8200430439538226e-16,
+        1.0735443641247309e-21,
+    ),
+)
+
+_TEMME_POLY = tuple(np.array(ck[::-1]) for ck in _TEMME_C)
+_TEMME_MIN_ORDER = 1e4
+_SERIES_MAX_POINTS = 1 << 16
+
+
+def _log_poisson_q_p_temme(
+    n: NDArray[np.floating], x: float
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``(log Q(n, x), log P(n, x))`` by Temme's uniform expansion.
+
+    ``Q(n, x) = erfc(eta sqrt(n/2))/2 + exp(-n eta^2/2)
+    sum_k c_k(eta) n^-k / sqrt(2 pi n)`` with ``n eta^2 / 2 = bd0(n, x)``.
+    The smaller of ``Q`` and ``P`` is formed as ``exp(-bd0)`` times a
+    bracket that does not cancel for ``|x/n - 1| <= 1/2``, and the other is
+    ``log1p`` of minus it. With ``n >= 1e4`` the omitted ``c_4/n^4`` is
+    below 1e-19.
+    """
+    mu = (x - n) / n
+    bd = _bd0(n, x)
+    sign = np.where(mu >= 0.0, 1.0, -1.0)
+    eta = sign * np.sqrt(2.0 * bd / n)
+    s = sign * np.sqrt(bd)
+    total = np.zeros(n.shape)
+    for ck in _TEMME_POLY[::-1]:
+        total = total / n + np.polyval(ck, eta)
+    corr = total / np.sqrt(2.0 * np.pi * n)
+    upper = mu >= 0.0
+    bracket = np.where(upper, 0.5 * sp.erfcx(s) + corr, 0.5 * sp.erfcx(-s) - corr)
+    log_small = np.log(bracket) - bd
+    log_large = np.log1p(-np.exp(log_small))
+    return np.where(upper, log_small, log_large), np.where(upper, log_large, log_small)
+
+
+def _log_poisson_q_p_geometric(
+    n: NDArray[np.floating], x: float
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``(log Q(n, x), log P(n, x))`` where ``|x/n - 1| > 1/2``.
+
+    For ``x > n``, ``Q = pmf(n-1) sum_i prod_{l<=i} (n-l)/x``; for
+    ``x < n``, ``P = pmf(n) sum_i prod_{l<=i} x/(n+l)``. Successive ratios
+    are below 2/3, so 120 terms reach 1e-21.
+    """
+    log_q = np.empty(n.shape)
+    log_p = np.empty(n.shape)
+    up = x > n
+    if np.any(up):
+        nu = n[up]
+        term = np.ones(nu.shape)
+        total = np.ones(nu.shape)
+        for i in range(1, 121):
+            term = term * np.maximum(nu - i, 0.0) / x
+            total += term
+        small = _log_poisson_pmf(nu - 1.0, x) + np.log(total)
+        log_q[up] = small
+        log_p[up] = np.log1p(-np.exp(small))
+    down = ~up
+    if np.any(down):
+        nd = n[down]
+        term = np.ones(nd.shape)
+        total = np.ones(nd.shape)
+        for i in range(1, 121):
+            term = term * x / (nd + i)
+            total += term
+        with np.errstate(divide="ignore"):
+            small = _log_poisson_pmf(nd, x) + np.log(total)
+        log_p[down] = small
+        log_q[down] = np.log1p(-np.exp(small))
+    return log_q, log_p
+
+
+def _log_poisson_q_p(
+    n: NDArray[np.floating], x: float, x_lo: float = 0.0
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """``(log Q(n, x + x_lo), log P(n, x + x_lo))`` at independent orders ``n``.
+
+    ``Q(n, x) = P(Poisson(x) <= n - 1)`` and ``P = 1 - Q``. Each element
+    costs O(1) except integer ``n < 1e4`` within ``|x/n - 1| <= 1/2``,
+    which are read from :func:`_log_poisson_tails` over a window of at most
+    about 2e4 terms.
+    """
+    log_q = np.empty(n.shape)
+    log_p = np.empty(n.shape)
+    near = np.abs(x - n) <= 0.5 * n
+    far = ~near
+    if np.any(far):
+        log_q[far], log_p[far] = _log_poisson_q_p_geometric(n[far], x)
+    temme = near & (n >= _TEMME_MIN_ORDER)
+    if np.any(temme):
+        log_q[temme], log_p[temme] = _log_poisson_q_p_temme(n[temme], x)
+    small = near & ~temme
+    if np.any(small):
+        log_q[small], log_p[small] = _log_poisson_tails(
+            n[small].astype(np.int64), x, x_lo
+        )
+    shift = ~small & (x_lo != 0.0)
+    if np.any(shift):
+        # dQ/dx = -pmf(n-1; x) = -dP/dx: carry the rounding of x = b^2/2.
+        log_pmf = _log_poisson_pmf(n[shift] - 1.0, x)
+        log_q[shift] -= x_lo * np.exp(log_pmf - log_q[shift])
+        log_p[shift] += x_lo * np.exp(log_pmf - log_p[shift])
+    return log_q, log_p
+
+
 def _log_marcum_q_series(a: float, b: float, m: int) -> float:
-    """log Q_m(a, b) as a log-sum-exp of its Poisson-mixture series.
+    """log Q_m(a, b) from its Poisson-mixture series, in O(1) memory.
 
     ``Q_m(a, b) = sum_k Pois(k; a^2/2) Q(m + k, b^2/2)`` and
-    ``1 - Q_m(a, b) = sum_k Pois(k; a^2/2) P(m + k, b^2/2)``. The terms are
-    unimodal in k with the peak near ``a*b/2``, so only a window around it is
-    summed; the window doubles until both edges are below exp(-40) of the
-    peak. Above ``Q = 1/2`` the result is ``log1p`` of minus the complement.
+    ``1 - Q_m(a, b) = sum_k Pois(k; a^2/2) P(m + k, b^2/2)``. Only the tail
+    sum is formed: ``Q`` where ``b^2 >= a^2 + 2m``, ``1 - Q`` otherwise,
+    then ``log1p``. Both sums have log-concave terms (a Poisson pmf times a
+    Poisson cdf or survival function in ``k``), so the peak ``k*`` is found
+    by ternary search inside a bracket that provably holds it:
+    ``[lam - 1, k_u + 1]`` for ``Q``, where ``k_u`` solves
+    ``(k+1)(m+k) = lam (m+k+x)``, and ``[0, lam + 1]`` for ``1 - Q``. The
+    sum then runs over ``k* +- (12 sigma + 20)``, ``sigma`` from the terms'
+    curvature at the peak, widened until both edges are ``e^-40`` below the
+    peak. Where ``sigma >= 8`` it samples every ``h = floor(sigma/4)``-th
+    term and multiplies by ``h``: the terms are a smooth peak of width
+    ``sigma``, so the error is of order ``exp(-2 pi^2 (sigma/h)^2) < 1e-130``;
+    the sum is repeated on the grid offset by ``h/2`` and must agree to
+    1e-14, else ``h`` is halved. At most ``2^16`` terms are evaluated per
+    sum; more raises :class:`~pytcl.core.exceptions.ConvergenceError`.
     """
     lam, lam_lo = _half_square(a)
     x, x_lo = _half_square(b)
-    k_peak = max(0.0, 0.5 * (np.sqrt((m - 1.0) ** 2 + 4.0 * lam * x) - (m + 1.0)))
-    half = 50.0 + 10.0 * np.sqrt(k_peak + m)
-    while True:
-        k = np.arange(max(0.0, np.floor(k_peak - half)), np.ceil(k_peak + half) + 1.0)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            log_w = _log_poisson_pmf(k, lam, lam_lo)
-        log_cdf, log_sf = _log_poisson_tails(m + k.astype(np.int64), x, x_lo)
-        q_terms = log_w + log_cdf
-        p_terms = log_w + log_sf
-        if all(
-            (k[0] == 0 or t[0] < t.max() - 40.0) and t[-1] < t.max() - 40.0
-            for t in (q_terms, p_terms)
-        ):
+    upper = (b - a) * (b + a) >= 2.0 * m
+    if lam == 0.0:
+        log_q, log_p = _log_poisson_q_p(np.array([float(m)]), x, x_lo)
+        return float(log_q[0])
+
+    def _terms(k: NDArray[np.floating]) -> NDArray[np.floating]:
+        log_q, log_p = _log_poisson_q_p(m + k, x, x_lo)
+        return _log_poisson_pmf(k, lam, lam_lo) + (log_q if upper else log_p)
+
+    if upper:
+        lo = max(0.0, np.floor(lam) - 1.0)
+        c1 = m + 1.0 - lam
+        c0 = m - lam * (m + x)
+        k_u = 0.5 * (-c1 + np.sqrt(c1 * c1 - 4.0 * c0)) if c1 * c1 > 4.0 * c0 else lo
+        hi = max(lo + 1.0, np.ceil(k_u) + 1.0)
+    else:
+        lo, hi = 0.0, np.ceil(lam) + 1.0
+    while hi - lo > 2.0:
+        third = np.floor((hi - lo) / 3.0)
+        t1, t2 = _terms(np.array([lo + third, hi - third]))
+        if t1 < t2:
+            lo = lo + third + 1.0
+        else:
+            hi = hi - third
+    cand = np.arange(lo, hi + 1.0)
+    k_star = float(cand[np.argmax(_terms(cand))])
+    top = float(_terms(np.array([k_star]))[0])
+
+    d = max(1.0, np.floor(0.5 * np.sqrt(k_star)))
+    if k_star >= d:
+        t_lo, t_hi = _terms(np.array([k_star - d, k_star + d]))
+        curv = (t_lo + t_hi - 2.0 * top) / (d * d)
+        sigma = 1.0 / np.sqrt(-curv) if curv < 0.0 else np.sqrt(k_star + 1.0)
+    else:
+        sigma = 1.0
+    h = max(1.0, np.floor(sigma / 4.0))
+    reach = 12.0 * sigma + 20.0
+
+    def _window_sum(h: float, offset: float) -> float:
+        span = reach
+        while True:
+            j = np.ceil(span / h)
+            k = k_star + offset + h * np.arange(-j, j + 1.0)
+            k = k[k >= 0.0]
+            if k.size > _SERIES_MAX_POINTS:
+                raise ConvergenceError(
+                    f"Marcum Q series needs more than {_SERIES_MAX_POINTS} "
+                    f"terms at a={a!r}, b={b!r}, m={m}"
+                )
+            t = _terms(k)
+            peak = t.max()
+            if (k[0] < h or t[0] < peak - 40.0) and t[-1] < peak - 40.0:
+                return float(np.log(h) + peak + np.log(np.sum(np.exp(t - peak))))
+            span *= 2.0
+
+    if k_star - reach < 0.0:
+        h = 1.0
+    log_tail = _window_sum(h, 0.0)
+    while h > 1.0:
+        other = _window_sum(h, np.floor(h / 2.0))
+        if abs(np.expm1(other - log_tail)) <= 1e-14:
             break
-        k_peak = float(k[np.argmax(q_terms)])
-        half *= 2.0
-    top = q_terms.max()
-    log_q = float(top + np.log(np.sum(np.exp(q_terms - top))))
-    if log_q < -np.log(2.0):
-        return log_q
-    top = p_terms.max()
-    log_p = top + np.log(np.sum(np.exp(p_terms - top)))
-    return float(np.log1p(-np.exp(log_p)))
+        h = max(1.0, np.floor(h / 2.0))
+        log_tail = _window_sum(h, 0.0)
+    if upper:
+        return log_tail
+    return float(np.log1p(-np.exp(log_tail)))
 
 
 def marcum_q_inv(

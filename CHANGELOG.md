@@ -221,16 +221,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   -27.462231887380316 against -27.46223188673473 (2.35e-11 relative) at
   `(a=1e3, b=1009.9955134495867, m=3000)`, 3.1e-11 at `(a=1e3, m=1e4,
   c=-3)`, 8.3e-9 at `(a=10, m=1e7, c=-3)`, and 0.0 against -9.7e-46 at
-  `(a=10, m=1e7, c=-10)`, where `b = sqrt(a^2 + 2m) + c`. For integer orders
-  the incomplete gammas are now Poisson tail sums of log pmf terms in
-  Loader's saddle-point form, `a^2/2` and `b^2/2` are carried to twice
-  working precision, and above `Q = 0.5` the result is `log1p` of minus
-  the complementary series. Against the mpmath series oracle on
+  `(a=10, m=1e7, c=-10)`, where `b = sqrt(a^2 + 2m) + c`. The incomplete
+  gammas are now Poisson tail sums of log pmf terms in Loader's
+  saddle-point form below order 1e4 and Temme's uniform expansion above,
+  `a^2/2` and `b^2/2` are carried to twice working precision, and only the
+  tail sum is formed (`Q`, or `1 - Q` followed by `log1p`). Its terms are
+  log-concave in `k`, so the peak is found by ternary search in a bracket
+  that provably holds it, and the sum samples every `h`-th term with `h`
+  below a quarter of the peak's width, so each call evaluates at most a
+  few hundred terms whatever `a`, `b` and `m` are (a hard limit of 2^16
+  raises `ConvergenceError`). Against the mpmath series oracle on
   `a = 1e3`, `m` in {3000, 1e4}, `c` in {-3, 0, 7, 20}, `log Q` is within
-  2.0e-15 relative, and within 8.1e-14 on `a = 10`, `m = 1e7`, `c` in
-  {-40, -10, -3, 0, 3, 10, 20}. The same series serves `log_marcum_q`
-  below `Q = 1e-10` where `a*b <= 2e4`; the oracle rows there stay within
-  the bounds of the entry above. What to do: nothing.
+  2.1e-15 relative, and within 3.8e-15 on `a = 10`, `m = 1e7`, `c` in
+  {-40, -10, -3, 0, 3, 10, 20}; the series called directly on all 159
+  oracle rows (up to `a = 1e8`) is within 5.6e-15. On `a`, `b` in 12
+  log-spaced values over [1e-3, 1e8] and `m` in {1, 2, 30, 3000, 1e7},
+  all 720 calls of each function complete within 0.25 MiB of traced
+  memory, and on that grid's `b <= a/10` band `marcum_q` equals 2.11.1's
+  value exactly (1.0 where `b << a`). The same series serves
+  `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`; the oracle rows
+  there stay within the bounds of the entry above. What to do: nothing.
 
 ## [2.11.1] - 2026-10-22
 
