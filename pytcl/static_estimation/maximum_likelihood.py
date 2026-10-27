@@ -446,43 +446,67 @@ def efficiency(
 
 _EPS = float(np.finfo(np.float64).eps)
 
-# Flat-direction roundoff of the h = 1e-5 four-point Hessian grows with
-# abs(theta): measured up to 4.5e-11 of the largest eigenvalue at
-# max(abs(theta)) <= 10, but 1.2e-8 at 4.6e3. Below 1e-8 the Hessian itself
-# is unreliable.
-_NUMERICAL_HESSIAN_REL_TOL = 1e-8
+# Multiplier on the four-point Hessian's per-entry error model in
+# mle_newton_raphson. On 300 unidentified and 300 identified data-driven
+# models, k = 4 missed 3 and falsely flagged 2; k = 1 missed 9 and flagged 1.
+_HESSIAN_NOISE_K = 4.0
+
+
+def _information_scaling(info: NDArray[np.floating]) -> NDArray[np.floating]:
+    """``D^-1/2`` as a vector, ``D = abs(diag(info))`` with 1 where zero."""
+    d = np.abs(np.diagonal(info))
+    return 1.0 / np.sqrt(np.where(d > 0, d, 1.0))
 
 
 def _covariance_from_information(
-    info: NDArray[np.floating], rel_tol: float
+    info: NDArray[np.floating],
+    rel_tol: float,
+    *,
+    noise_bound: Optional[float] = None,
 ) -> tuple[NDArray[np.floating], NDArray[np.bool_]]:
     """Invert an information matrix on the subspace it identifies.
+
+    Identifiability is judged on the scaled matrix
+    ``C = D^-1/2 info D^-1/2``, ``D = abs(diag(info))`` (1 where a diagonal
+    entry is zero), so it does not depend on the parameters' units: a
+    Fisher matrix ``D [[1, .3], [.3, 1]] D`` with ``D = diag(1e9, 0.1)``
+    (condition number 1.1e20) is fully identified.
 
     Parameters
     ----------
     info : ndarray
         Symmetric information matrix, shape (n, n).
     rel_tol : float
-        Eigenvalues at or below ``rel_tol * max(largest eigenvalue, 0)``
-        are unidentified directions.
+        Eigenvalues of ``C`` at or below ``rel_tol * max(largest
+        eigenvalue of C, 0)`` are unidentified directions.
+    noise_bound : float, optional
+        Absolute uncertainty of the eigenvalues of ``C``, e.g. the 2-norm
+        of ``D^-1/2 E D^-1/2`` for an entrywise error bound ``E`` on a
+        numerically differentiated ``info``. Eigenvalues at or below it are
+        also unidentified. Default None: ``info`` is exact.
 
     Returns
     -------
     cov : ndarray
-        ``inv(info)`` when no direction is unidentified. Otherwise the
-        inverse on the identified eigen-subspace, with ``inf`` variance and
-        NaN cross-covariance for every parameter an unidentified direction
+        ``inv(info)`` when no direction is unidentified. Otherwise
+        ``D^-1/2 pinv(C) D^-1/2`` with ``pinv`` taken on the identified
+        eigen-subspace of ``C``, and ``inf`` variance and NaN
+        cross-covariance for every parameter an unidentified direction
         touches.
     unidentified : ndarray of bool
         Per-parameter mask of the parameters an unidentified direction
         touches.
     """
-    eigvals, eigvecs = np.linalg.eigh(info)
-    flat = eigvals <= rel_tol * max(eigvals[-1], 0.0)
+    s = _information_scaling(info)
+    eigvals, eigvecs = np.linalg.eigh(info * np.outer(s, s))
+    threshold = rel_tol * max(eigvals[-1], 0.0)
+    if noise_bound is not None:
+        threshold = max(threshold, noise_bound)
+    flat = eigvals <= threshold
     if not np.any(flat):
         return np.linalg.inv(info), np.zeros(len(eigvals), dtype=bool)
     V = eigvecs[:, ~flat]
-    cov = (V / eigvals[~flat]) @ V.T
+    cov = np.outer(s, s) * ((V / eigvals[~flat]) @ V.T)
     Vf = eigvecs[:, flat]
     touched = np.diag(Vf @ Vf.T) > 1e-12
     cov[touched, :] = np.nan
@@ -530,25 +554,32 @@ def mle_newton_raphson(
     Warns
     -----
     RuntimeWarning
-        If the observed information is not positive definite at the
-        solution (a flat direction or a saddle). An eigenvalue counts as
-        zero at or below ``rel_tol`` times the largest: ``n * eps``
-        (``np.linalg.matrix_rank``'s convention, 4.4e-16 at n = 2) for a
-        caller-supplied ``hessian``, and ``1e-8`` for the numerical
-        Hessian, which is itself unreliable below that. The numerical
-        Hessian's roundoff on a flat direction grows with the magnitude of
-        ``theta``: on 2000 random unidentified two-parameter quadratics it
-        stayed below 4.5e-11 of the largest eigenvalue where
-        ``max(abs(theta)) <= 10``, but reached 1.2e-8, and escaped the
-        warning, at 4.6e3. Supply ``hessian`` for large-magnitude
-        parameters. Earlier versions added a hidden ridge of
-        ``abs(min eigenvalue) + 1e-6`` to ``fisher_info``, reported
-        ``converged=True``, and returned a covariance of ``1e6`` on the flat
-        direction that looked like a measurement. Now ``converged`` is
-        False, ``fisher_info`` is unridged, and ``covariance`` is the
-        inverse on the identified subspace with ``inf`` variance (and NaN
-        cross-covariance) for every parameter that the unidentified
-        directions touch.
+        If the observed information is not positive definite, to within
+        its accuracy, at the solution (a flat direction or a saddle). The
+        test is on ``C = D^-1/2 F D^-1/2``, ``F`` the observed information
+        and ``D = abs(diag(F))``, so it does not depend on the parameters'
+        units. With a caller-supplied ``hessian`` an eigenvalue of ``C`` at
+        or below ``n * eps`` times the largest counts as zero
+        (``np.linalg.matrix_rank``'s convention). The numerical Hessian is
+        far less accurate: the four-point stencil's error in entry
+        ``(i, j)`` is modelled as ``4 (eps abs(L) / h**2 + eps max(abs(t_i),
+        abs(t_j), 1) / h abs(F_ij))``, where ``L`` is the log-likelihood at
+        the solution, and an eigenvalue of ``C`` within the 2-norm of that
+        error (scaled like ``C``) also counts as zero. The roundoff is set
+        mainly by ``abs(L)``, which a real likelihood's residuals and
+        normalizing constant keep well above zero. On 300 random
+        unidentified data-driven models (location up to 1e3, sample sizes
+        10 to 1e5) the warning missed 3, and on 300 identified ones with
+        curvatures from 1e-6 to 1e6 it falsely flagged 2. Supply
+        ``hessian`` where that matters. Earlier versions added a hidden
+        ridge of ``abs(min eigenvalue) + 1e-6`` to ``fisher_info``,
+        reported ``converged=True``, and returned a covariance of ``1e6`` on
+        the flat direction that looked like a measurement. Now
+        ``converged`` is False, ``fisher_info`` is unridged, and
+        ``covariance`` is the inverse on the identified subspace of ``C``,
+        scaled back, with ``inf`` variance (and NaN cross-covariance) for
+        every parameter that the unidentified directions touch. An
+        identified model's covariance is ``inv(fisher_info)``, as before.
 
     Examples
     --------
@@ -621,18 +652,31 @@ def mle_newton_raphson(
     # Compute final Fisher information
     fisher = -hess_func(theta)
 
-    rel_tol = n_params * _EPS if hessian is not None else _NUMERICAL_HESSIAN_REL_TOL
-    cov, unidentified = _covariance_from_information(fisher, rel_tol)
+    ll_value = float(log_likelihood(theta))
+    rel_tol = n_params * _EPS
+    noise_bound = None
+    if hessian is None:
+        t = np.maximum(np.abs(theta), 1.0)
+        E = _HESSIAN_NOISE_K * (
+            _EPS * abs(ll_value) / h**2
+            + _EPS * np.maximum.outer(t, t) / h * np.abs(fisher)
+        )
+        sc = _information_scaling(fisher)
+        noise_bound = float(np.linalg.norm(E * np.outer(sc, sc), 2))
+    cov, unidentified = _covariance_from_information(
+        fisher, rel_tol, noise_bound=noise_bound
+    )
     if np.any(unidentified):
-        eigvals = np.linalg.eigvalsh(fisher)
+        sc = _information_scaling(fisher)
+        scaled = np.linalg.eigvalsh(fisher * np.outer(sc, sc))
         warnings.warn(
             "mle_newton_raphson: observed Fisher information is not positive "
-            f"definite (smallest eigenvalue {eigvals[0]:.3g}, largest "
-            f"{eigvals[-1]:.3g}, at most {rel_tol:.3g} of it counts as zero); "
-            "the likelihood is flat or a saddle in at least one direction. No "
-            "ridge is applied: fisher_info is reported unmodified, the "
-            "covariance is infinite on the unidentified parameters, and "
-            "converged is False.",
+            "definite to within its accuracy (eigenvalues of the "
+            "diagonally scaled information: smallest "
+            f"{scaled[0]:.3g}, largest {scaled[-1]:.3g}); the likelihood is "
+            "flat or a saddle in at least one direction. No ridge is "
+            "applied: fisher_info is reported unmodified, the covariance is "
+            "infinite on the unidentified parameters, and converged is False.",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -640,7 +684,7 @@ def mle_newton_raphson(
 
     return MLResult(
         theta=theta,
-        log_likelihood=float(log_likelihood(theta)),
+        log_likelihood=ll_value,
         fisher_info=fisher,
         covariance=cov,
         n_iter=iteration + 1,

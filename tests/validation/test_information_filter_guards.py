@@ -365,13 +365,66 @@ def _v2111_on_prewhitened(r, R, z, H, R_meas):
 
 class TestSRIFUpdateCorrelatedPositiveDefinite:
     """A correlated positive-definite R_meas stays on the Cholesky path,
-    bitwise, up to a condition number near ``1 / (m * eps)``; only a
-    smallest eigenvalue at roundoff scale routes it to the floor."""
+    bitwise, unless its correlation matrix is singular at roundoff scale
+    (smallest eigenvalue at most ``m * eps`` of the largest)."""
 
     @pytest.mark.parametrize("cond", [1e8, 1e12, 1e14, 1e15])
     def test_rotated_ill_conditioned_is_bit_identical(self, cond):
         args = (*_pd_case()[:4], _rotated(cond))
         assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
+
+    @pytest.mark.parametrize("rho", [0.1, 1e-6, 1e-300])
+    def test_disparate_units_keep_their_information(self, rho):
+        """REFERENCE: standard deviations 1e3 and 1e-6 with correlation
+        ``rho`` (condition number 1e18, correlation matrix condition at
+        most 1.2). With a zero prior and ``H = I`` the posterior information
+        is ``inv(R_meas)``, whose (1, 1) entry is ``1 / (1e-12 (1 - rho^2))``
+        (1.0101e12 at rho = 0.1). A normwise singularity test floored it to
+        1e4."""
+        sd = np.array([1e3, 1e-6])
+        R_meas = np.outer(sd, sd) * np.array([[1.0, rho], [rho, 1.0]])
+        got = _info(srif_update(*_case(R_meas)))
+        assert got[1, 1] == pytest.approx(
+            1.0 / (1e-12 * (1.0 - rho**2)), rel=1e-12, abs=0
+        )
+        args = (*_pd_case()[:4], R_meas)
+        assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
+
+    def test_tiny_cross_term_on_badly_scaled_diagonal_is_bit_identical(self):
+        R_meas = np.array([[1e6, 1e-4], [1e-4, 1e-12]])
+        args = (*_pd_case()[:4], R_meas)
+        assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
+
+    @pytest.mark.parametrize("seed", range(20))
+    def test_random_scaled_well_correlated_is_bit_identical(self, seed):
+        """``D C D`` with ``cond(C) <= 4`` and standard deviations from
+        1e-10 to 1e10, m = 6: condition numbers far past ``1 / (m eps)``,
+        but the correlation matrix is far from singular."""
+        rng = np.random.default_rng(500 + seed)
+        m = 6
+        Q, _ = np.linalg.qr(rng.standard_normal((m, m)))
+        C = (Q * rng.uniform(0.5, 2.0, m)) @ Q.T
+        c = np.sqrt(np.diagonal(C))
+        C = C / np.outer(c, c)
+        C = (C + C.T) / 2
+        sd = 10.0 ** rng.uniform(-10, 10, m)
+        A = rng.standard_normal((4, 4))
+        args = (
+            rng.standard_normal(4),
+            np.triu(A) + 4 * np.eye(4),
+            rng.standard_normal(m),
+            rng.standard_normal((m, 4)),
+            np.outer(sd, sd) * C,
+        )
+        assert _bitwise_equal(srif_update(*args), _v2111_on_prewhitened(*args))
+
+    def test_only_the_lower_triangle_is_read(self):
+        """``cholesky`` reads the lower triangle, so v2.11.1 treated this as
+        ``diag(1, 1e-20)``; a stray upper entry must not route it to the
+        floor."""
+        R_meas = np.array([[1.0, 1e-300], [0.0, 1e-20]])
+        args = (*_pd_case()[:4], R_meas)
+        assert _bitwise_equal(srif_update(*args), _V2111_srif_update(*args))
 
     @pytest.mark.parametrize("seed", range(20))
     def test_random_positive_definite_is_bit_identical(self, seed):

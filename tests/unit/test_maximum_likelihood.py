@@ -219,6 +219,62 @@ def test_analytic_near_singular_threshold(eps, flagged):
         assert r.covariance[0, 0] == pytest.approx((1.0 + e) / e, rel=1e-6, abs=0)
 
 
+def test_unidentified_model_with_a_nonzero_optimum_is_flagged():
+    """Only ``t0 + t1`` is identified. The stencil's roundoff scales with
+    ``abs(log_likelihood)``, here 22.8 at the optimum (residuals plus the
+    normalizing constant), so the flat direction's numerical eigenvalue is
+    roundoff far above any fixed ratio of the largest."""
+    x = np.random.default_rng(3).normal(3.0, 1.0, 10)
+
+    def ll(t):
+        return -0.5 * np.sum((x - t[0] - t[1]) ** 2) - 10 * 0.9189385332046727
+
+    def score(t):
+        return np.sum(x - t[0] - t[1]) * np.ones(2)
+
+    with pytest.warns(RuntimeWarning, match="not positive definite"):
+        r = mle_newton_raphson(ll, score, np.array([0.4, -1.3]))
+    assert not r.converged and np.all(np.isinf(np.diag(r.covariance)))
+
+
+def test_identified_model_in_disparate_units_is_not_flagged():
+    """REFERENCE: curvatures 1e4 and 1e-6, so the covariance is
+    ``diag(1e-4, 1e6)``. A ratio test on the unscaled information (1e-10)
+    called the second parameter unidentified."""
+
+    def ll(t):
+        return -0.5 * (1e4 * (t[0] - 1) ** 2 + 1e-6 * (t[1] - 2) ** 2)
+
+    def score(t):
+        return -np.array([1e4 * (t[0] - 1), 1e-6 * (t[1] - 2)])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        r = mle_newton_raphson(ll, score, np.zeros(2))
+    assert r.converged
+    assert_allclose(np.diag(r.covariance), [1e-4, 1e6], rtol=1e-6, atol=0)
+
+
+def test_analytic_badly_scaled_fisher_keeps_v2111_covariance():
+    """A TOA-like Fisher ``D [[1, .3], [.3, 1]] D``, ``D = diag(1e9, 0.1)``
+    (1 ns clock, 10 m position; condition number 1.1e20) is identified, and
+    its covariance is v2.11.1's ``inv`` bit for bit."""
+    from tests.validation._v2111 import shipped_module
+
+    D = np.diag([1e9, 1e-1])
+    H = -(D @ np.array([[1.0, 0.3], [0.3, 1.0]]) @ D)
+    args = (lambda t: 0.5 * t @ H @ t, lambda t: H @ t, np.zeros(2))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        r = mle_newton_raphson(*args, hessian=lambda t: H)
+    old = shipped_module(
+        "pytcl/static_estimation/maximum_likelihood.py"
+    ).mle_newton_raphson(*args, hessian=lambda t: H)
+    assert r.converged
+    assert np.array_equal(r.covariance, old.covariance)
+    assert r.covariance[1, 1] == pytest.approx(1e2 / 0.91, rel=1e-9, abs=0)
+
+
 class TestMLEScoring:
     """Tests for Fisher scoring MLE."""
 

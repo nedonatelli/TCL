@@ -492,30 +492,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unless you relied on a NaN sample in the reference window leaving a GO
   threshold finite.
 
-- **`mle_newton_raphson` treats a roundoff-sized Fisher eigenvalue as
-  zero.** The flat-direction check fired only on an eigenvalue `<= 0`, so
-  a model the numerical Hessian cannot identify passed whenever roundoff
-  left the flat direction slightly positive: for `-0.5 (t0 + t1 - 1)^2`
-  the four-point Hessian gave that direction 2.8e-12 (1.4e-12 of the
-  largest eigenvalue), and the result was a variance of 1.8e11 on both
-  parameters (6.0e10 in an earlier measurement), `converged=True` and no
-  warning. An eigenvalue now counts as zero at or below `rel_tol` times
-  the largest: `1e-8` for the numerical Hessian (below that the `h = 1e-5`
-  Hessian itself is unreliable) and `n * eps` (4.4e-16 at n = 2,
-  `np.linalg.matrix_rank`'s convention) for a caller-supplied `hessian`.
-  On 2000 random unidentified two-parameter quadratics the numerical
-  Hessian's flat-direction ratio was at most 4.5e-11 where
-  `max(abs(theta)) <= 10` (1112 cases) and 6.4e-10 at the 99th percentile
-  overall, but it grows with `abs(theta)`: one case at `abs(theta)` =
-  4.6e3 reached 1.2e-8 and is still missed. On `-[[1, 1], [1, 1 + eps]]`
-  with an analytic Hessian, eps = 1e-6, 1e-10 and 1e-14 are still
-  identified with the covariance `inv` gives (within 1e-6 of the closed
-  form), and eps = 4e-16, whose small eigenvalue is roundoff, is now
-  flagged. A model whose smallest eigenvalue clears the threshold keeps
-  v2.11.1's covariance, `np.linalg.inv(fisher_info)`. No other pytcl
-  function calls `mle_newton_raphson`. What to do: a model the numerical
-  Hessian cannot identify now warns, reports converged=False and infinite
-  variances, where it used to report a confident 6e10.
+- **`mle_newton_raphson` flags a flat direction that roundoff left
+  slightly positive.** The check fired only on an eigenvalue `<= 0`. The
+  numerical four-point Hessian's roundoff is about `eps *
+  abs(log-likelihood) / h**2` per entry, so a model it cannot identify
+  passed whenever that roundoff came out positive: for `-0.5 (t0 + t1 -
+  1)^2` the flat direction got 2.8e-12, and the result was a variance of
+  1.8e11 on both parameters, `converged=True` and no warning.
+  Identifiability is now judged on the diagonally scaled information `C =
+  D^-1/2 F D^-1/2` (`D = abs(diag(F))`), so it does not depend on the
+  parameters' units. With a caller-supplied `hessian` an eigenvalue of `C`
+  at or below `n * eps` of the largest counts as zero. With the numerical
+  Hessian, an eigenvalue within the stencil's modelled error, `4 (eps
+  abs(L) / h**2 + eps max(abs(t_i), abs(t_j), 1) / h abs(F_ij))` per entry
+  and scaled like `C`, also counts as zero. On 300 random unidentified
+  data-driven models (Gaussian samples of size 10 to 1e5, location up to
+  1e3, normalizing constant included) 3 escape the warning (v2.11.1: 154);
+  on 300 identified models with curvatures from 1e-6 to 1e6 whose
+  numerical Fisher diagonal was within 1% of the truth, 2 are falsely
+  flagged (v2.11.1: none). An identified model keeps v2.11.1's covariance,
+  `np.linalg.inv(fisher_info)`, bit for bit, including badly scaled ones
+  such as the TOA-like analytic Fisher `D [[1, .3], [.3, 1]] D`, `D =
+  diag(1e9, 0.1)` (condition number 1.1e20). A flagged model's covariance
+  is the inverse on the identified subspace of `C`, scaled back. No other
+  pytcl function calls `mle_newton_raphson`. What to do: a model the
+  numerical Hessian cannot identify now warns, reports converged=False and
+  infinite variances, where it used to report a confident 1.8e11.
 
 - **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
   For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
@@ -526,25 +528,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`1/(1e-10*max_eig)`). They now meet the floor exactly. When Cholesky
   succeeds, `sum(W**2) * trace(R_meas)` for the whitener `W = inv(L)` (at
   least the condition number of `L L'`) decides whether to check further;
-  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is decomposed with
-  `eigh`, once, and floored only if its smallest eigenvalue is at most
-  `m*eps` times the largest. A positive-definite `R_meas` keeps its exact
-  result: bitwise identical to v2.11.1 for diagonal `R_meas` at any
-  condition number (5,000 random cases with variances from 1e-150 to
-  1e150, plus `diag(1e4, 1e-8)`, `diag(1, 5e-11)` and condition numbers
-  1e12, 1e14 and 1e20), and for correlated `R_meas` bitwise identical to
-  v2.11.1's QR stage fed the `inv(L)` whitener up to condition number 2e15
-  for `m = 2` (5,000 random cases with `m` from 2 to 6 and condition
-  numbers to 9.1e13, of which 23 took the `eigh` check). Beyond
-  `1/(m*eps)` (from 3e15 at `m = 2`) a correlated positive-definite
-  `R_meas` is indistinguishable from a singular one and is floored. On
-  5,000 random rank-deficient `R_meas` (`m` from 2 to 6, scales 1e-14 to
-  1e6; Cholesky succeeded on 1,364) no posterior information exceeded the
-  floor. Cost on a well-conditioned 6x6 update: 20.6 to 22.1 us.
-  `srif_filter` calls `srif_update` and changes with it. What to do:
-  nothing, unless you passed a singular or roundoff-singular correlated
-  `R_meas`; its null direction now carries the floored information,
-  `1/(1e-10*max_eig)`, instead of an arbitrarily large amount.
+  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is tested on its
+  correlation matrix `D^-1/2 R_meas D^-1/2`, and only if that matrix's
+  smallest eigenvalue is at most `m*eps` of its largest is `R_meas`
+  floored (one `eigh`). Cholesky's accuracy depends on the correlation
+  matrix, not on the units, so standard deviations 1e3 and 1e-6 with
+  correlation 0.1 (condition number 1e18) keep their exact information,
+  1.0101e12. On 13,000 singular `R_meas` (`s [[1, 1], [1, 1]]` for s from
+  1e-100 to 1e100, exact-integer and floating `B B'`, badly scaled `D B B'
+  D`, singular blocks beside a diagonal block; `m` from 2 to 6; Cholesky
+  succeeded on 4,513) no posterior information exceeded the floor.
+  Positive-definite `R_meas` keeps its exact result: diagonal `R_meas` is
+  bitwise identical to v2.11.1 at any condition number (5,000 random
+  cases, variances 1e-150 to 1e150); correlated `R_meas` is bitwise
+  identical to v2.11.1's QR stage fed the `inv(L)` whitener on 1,000
+  random `D C D` with `cond(C) <= 4` and standard deviations 1e-10 to
+  1e10, and on 5,000 random rotations with condition numbers to 9.1e13.
+  Where the correlation matrix itself is nearly singular, random rotations
+  (300 per cell, `m` from 2 to 6) were never floored at condition number
+  3.2e14 or below; at 1e15, 0 of 300 were floored for `m = 2` and 2 to 133
+  for `m` = 3 to 6; at 2e15, 3 to 236; at 1e16, 221 to 299. Only the lower
+  triangle of `R_meas` is read, as by `np.linalg.cholesky` in v2.11.1.
+  Cost on a well-conditioned 6x6 update: 21.5 to 23.0 us. `srif_filter`
+  calls `srif_update` and changes with it. What to do: nothing, unless you
+  passed a singular or roundoff-singular correlated `R_meas`; its null
+  direction now carries the floored information, `1/(1e-10*max_eig)`,
+  instead of an arbitrarily large amount.
 
 ## [2.11.1] - 2026-10-22
 
