@@ -269,7 +269,7 @@ def unscented_transform(
     if np.any(neg_mask):
         neg_residuals = residuals[neg_mask]
         neg_weights = -Wc[neg_mask]
-        for i, (w, r) in enumerate(zip(neg_weights, neg_residuals)):
+        for i, (w, r) in enumerate(zip(neg_weights, neg_residuals, strict=True)):
             cov -= 2 * w * np.outer(r, r)
 
     if noise_cov is not None:

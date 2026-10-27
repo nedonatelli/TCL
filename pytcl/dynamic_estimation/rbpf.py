@@ -287,7 +287,7 @@ class RBPFFilter:
         # Update particles with new weights
         self.particles = [
             RBPFParticle(y=p.y, x=p.x, P=p.P, w=w)
-            for p, w in zip(new_particles, weights)
+            for p, w in zip(new_particles, weights, strict=True)
         ]
 
         # Resample if needed
@@ -680,5 +680,6 @@ def rbpf_update(
 
     # Update with new weights
     return [
-        RBPFParticle(y=p.y, x=p.x, P=p.P, w=w) for p, w in zip(new_particles, weights)
+        RBPFParticle(y=p.y, x=p.x, P=p.P, w=w)
+        for p, w in zip(new_particles, weights, strict=True)
     ]
