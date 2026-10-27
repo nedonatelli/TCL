@@ -507,9 +507,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already did. The GO kernels drop the `nnan`/`ninf` fastmath flags and
   keep the rest; on 450 random NaN-free inputs (positive, negative, some
   with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
-  their output is bitwise identical to 2.11.1. What to do: nothing,
-  unless you relied on a NaN sample in the reference window leaving a GO
-  threshold finite.
+  their output is bitwise identical to 2.11.1. `cfar_2d(method='ca')` drops
+  the same two flags: on x86 with AVX-512 its vectorised window sum carried
+  `ninf`, under which an infinite sample gives an undefined result (found by
+  the registry-wide IR check on CI; its output on 40 random NaN-free images
+  is bitwise unchanged). What to do: nothing, unless you relied on a NaN
+  sample in the reference window leaving a GO threshold finite.
 
 - **`mle_newton_raphson` flags a flat direction that roundoff left
   slightly positive.** The check fired only on an eigenvalue `<= 0`. The

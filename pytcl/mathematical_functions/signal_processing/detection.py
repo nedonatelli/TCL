@@ -442,7 +442,7 @@ def _cfar_os_kernel(
         threshold[i] = alpha * noise_estimate[i]
 
 
-@njit(cache=True, fastmath=True, parallel=True)
+@njit(cache=True, fastmath=NAN_SAFE_FASTMATH, parallel=True)
 def _cfar_2d_ca_kernel(
     image: np.ndarray[Any, Any],
     guard_rows: int,
