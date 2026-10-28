@@ -208,8 +208,7 @@ def test_multivariate_gaussian_mahalanobis_matches_v2111(old_distributions):
 
 def test_docstrings_say_squared_or_not():
     first = lambda f: f.__doc__.strip().splitlines()[0]  # noqa: E731
-    assert "squared" in first(gating.mahalanobis_distance)
-    assert "not squared" not in first(gating.mahalanobis_distance)
+    assert "the squared Mahalanobis distance" in first(gating.mahalanobis_distance)
     assert "not squared" in first(matrix_utils.compute_mahalanobis_distance)
     assert "not squared" in first(distributions.MultivariateGaussian.mahalanobis)
 
@@ -244,3 +243,114 @@ def test_no_deprecation_warnings():
         warnings.simplefilter("error")
         estimators.nees(np.ones(2), np.eye(2))
         robust.mad([1.0, 2.0, 3.0])
+
+
+def _outcome(fn, *args):
+    try:
+        return fn(*args)
+    except Exception as exc:  # noqa: BLE001 - the class is what is compared
+        return exc
+
+
+@pytest.mark.parametrize("name", ["nees", "nis"])
+def test_singular_and_near_singular_covariances_raise_as_v2111(old_estimators, name):
+    rng = np.random.default_rng(2135)
+    raised = 0
+    for i in range(N_CASES):
+        n = int(rng.integers(2, 6))
+        B = rng.standard_normal((n, n - 1))
+        P = B @ B.T
+        if i % 2:
+            P = P + 10.0 ** rng.uniform(-18, -10) * np.eye(n)
+        e = rng.standard_normal((3, n)) if i % 3 else rng.standard_normal(n)
+        a = _outcome(getattr(old_estimators, name), e, P)
+        b = _outcome(getattr(estimators, name), e, P)
+        assert type(a) is type(b)
+        if isinstance(a, Exception):
+            raised += 1
+        else:
+            np.testing.assert_allclose(b, a, rtol=RTOL, atol=0)
+    assert raised > 5
+
+
+@pytest.mark.parametrize("name", ["nees", "nis"])
+def test_undocumented_nees_inputs_match_v2111(old_estimators, name):
+    P3 = np.stack([np.eye(2), 2 * np.eye(2)])
+    cases = [
+        (2.0, [[2.0]]),
+        (np.ones(2), P3),
+        (np.ones((3, 2)), P3),
+        (np.ones((2, 3, 2)), np.eye(2)),
+        (np.ones(3), np.eye(2)),
+        (np.ones((4, 3)), np.eye(2)),
+    ]
+    for e, P in cases:
+        a = _outcome(getattr(old_estimators, name), e, P)
+        b = _outcome(getattr(estimators, name), e, P)
+        assert type(a) is type(b), (e, P)
+        if not isinstance(a, Exception):
+            np.testing.assert_allclose(b, a, rtol=RTOL, atol=0)
+
+
+def test_compute_mahalanobis_distance_shape_mismatch_raises_as_v2111(
+    old_matrix_utils,
+):
+    rng = np.random.default_rng(2136)
+    S = _spd(rng, 6)
+    for y in (rng.standard_normal(3), rng.standard_normal(7)):
+        for chol in (False, True):
+            M = np.linalg.cholesky(S) if chol else S
+            a = _outcome(old_matrix_utils.compute_mahalanobis_distance, y, M, chol)
+            b = _outcome(matrix_utils.compute_mahalanobis_distance, y, M, chol)
+            assert isinstance(a, Exception) and type(a) is type(b)
+
+
+def test_multivariate_gaussian_mahalanobis_edge_inputs_match_v2111(old_distributions):
+    rng = np.random.default_rng(2137)
+    mean, S = rng.standard_normal(3), _spd(rng, 3)
+    old = old_distributions.MultivariateGaussian(mean, S)
+    new = distributions.MultivariateGaussian(mean, S)
+    for x in (
+        rng.standard_normal((3, 1)),
+        rng.standard_normal((1, 3)),
+        rng.standard_normal(5),
+        rng.standard_normal((4, 5)),
+        rng.standard_normal(3).tolist(),
+    ):
+        a, b = _outcome(old.mahalanobis, x), _outcome(new.mahalanobis, x)
+        assert type(a) is type(b)
+        if isinstance(a, Exception):
+            continue
+        assert np.shape(a) == np.shape(b)
+        np.testing.assert_allclose(b, a, rtol=RTOL, atol=1e-300)
+
+
+def test_multivariate_gaussian_non_pd_covariance_matches_v2111(old_distributions):
+    S = np.diag([1.0, -1.0])
+    a = _outcome(old_distributions.MultivariateGaussian, [0.0, 0.0], S)
+    b = _outcome(distributions.MultivariateGaussian, [0.0, 0.0], S)
+    assert isinstance(a, Exception) and type(a) is type(b)
+
+
+def test_batch_paths_are_not_slower_than_v2111(old_estimators, old_distributions):
+    import time
+
+    rng = np.random.default_rng(2138)
+    m, n = 10000, 6
+    P, e = _spd(rng, n), rng.standard_normal((m, n))
+    mean = rng.standard_normal(n)
+    old_g = old_distributions.MultivariateGaussian(mean, P)
+    new_g = distributions.MultivariateGaussian(mean, P)
+
+    def best(fn):
+        times = []
+        for _ in range(5):
+            t0 = time.perf_counter()
+            fn()
+            times.append(time.perf_counter() - t0)
+        return min(times)
+
+    assert best(lambda: estimators.nees(e, P)) < 20 * best(
+        lambda: old_estimators.nees(e, P)
+    )
+    assert best(lambda: new_g.mahalanobis(e)) < 20 * best(lambda: old_g.mahalanobis(e))

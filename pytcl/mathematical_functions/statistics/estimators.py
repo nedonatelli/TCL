@@ -514,10 +514,10 @@ def nees(
     Notes
     -----
     Unnormalized: the value is ``e' P^{-1} e`` per sample, not divided by
-    the state dimension. Each sample is computed by
-    `pytcl.performance_evaluation.estimation_metrics.nees`, which raises
-    `numpy.linalg.LinAlgError` for a singular covariance (no pseudo-inverse
-    fallback).
+    the state dimension. The quadratic form is the one
+    `pytcl.performance_evaluation.estimation_metrics.nees` uses, evaluated
+    for the whole batch with a single inverse. A singular covariance raises
+    `numpy.linalg.LinAlgError` (no pseudo-inverse fallback).
 
     See Also
     --------
@@ -526,14 +526,7 @@ def nees(
     error = np.asarray(error, dtype=np.float64)
     covariance = np.asarray(covariance, dtype=np.float64)
 
-    if error.ndim == 1:
-        return np.float64(
-            estimation_metrics.nees(error, np.zeros_like(error), covariance)
-        )
-    return np.array(
-        [estimation_metrics.nees(row, np.zeros_like(row), covariance) for row in error],
-        dtype=np.float64,
-    )
+    return estimation_metrics._quadratic_form(error, covariance)
 
 
 def nis(

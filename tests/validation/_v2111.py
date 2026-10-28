@@ -6,6 +6,7 @@ released code rather than a hand-written imitation of it.
 
 import functools
 import os
+import re
 import shutil
 import subprocess
 import types
@@ -50,7 +51,12 @@ def _load(relpath: str) -> types.ModuleType:
     module = types.ModuleType(name)
     module.__file__ = f"{V2111_COMMIT}:{relpath}"
     # numba cannot cache a function whose source file is a git object name.
-    source = shown.stdout.replace(b"cache=True", b"cache=False")
+    source = re.sub(
+        rb"^(@(?:numba\.)?n?jit\(.*?)\bcache=True",
+        rb"\1cache=False",
+        shown.stdout,
+        flags=re.MULTILINE,
+    )
     exec(compile(source, module.__file__, "exec"), module.__dict__)
     return module
 

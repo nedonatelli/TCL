@@ -36,9 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value changes.** `statistics.estimators.nees/nis` compute each sample
   through `estimation_metrics.nees`, `static_estimation.robust.mad`
   delegates to `statistics.estimators.mad`, and
-  `kalman.matrix_utils.compute_mahalanobis_distance` and
-  `MultivariateGaussian.mahalanobis` delegate to
-  `assignment_algorithms.gating.mahalanobis_distance`. Docstrings now say
+  `MultivariateGaussian.mahalanobis` delegates to the same Cholesky-based
+  body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
+  factors the covariance once and vectorises over the batch. Docstrings now say
   whether a Mahalanobis result is squared (`gating`) or not (the others),
   and `combinatorics.factorial` and `special_functions.factorial` name
   their contract difference. The MATLAB migration map's `calcNEES` row

@@ -376,20 +376,16 @@ class MultivariateGaussian(Distribution):
         5.0
         """
         from pytcl.dynamic_estimation.kalman.matrix_utils import (
-            compute_mahalanobis_distance,
+            _mahalanobis_distances,
         )
 
         x = np.asarray(x, dtype=np.float64)
         diff = x - self._mean
 
         if diff.ndim == 1:
-            return np.float64(compute_mahalanobis_distance(diff, self._cov))
+            return np.float64(_mahalanobis_distances(diff[np.newaxis, :], self._cov)[0])
         flat = diff.reshape(-1, diff.shape[-1])
-        out = np.array(
-            [compute_mahalanobis_distance(row, self._cov) for row in flat],
-            dtype=np.float64,
-        )
-        return out.reshape(diff.shape[:-1])
+        return _mahalanobis_distances(flat, self._cov).reshape(diff.shape[:-1])
 
 
 class Uniform(Distribution):
