@@ -138,7 +138,7 @@ def test_knn_matches_brute_force(tree_name, dim, n, kind):
             got_idx = result.indices[qi][: len(ref)]
             assert len(set(got_idx.tolist())) == len(ref)
             # Reported distance consistent with reported index
-            for ii, dd in zip(got_idx, result.distances[qi][: len(ref)]):
+            for ii, dd in zip(got_idx, result.distances[qi][: len(ref)], strict=True):
                 true_d = np.sqrt(np.sum((data[ii] - q) ** 2))
                 assert abs(true_d - dd) < 1e-8
 

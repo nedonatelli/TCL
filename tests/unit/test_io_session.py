@@ -137,7 +137,7 @@ class TestIMMSession:
         np.testing.assert_array_equal(back.x, e.x)
         np.testing.assert_array_equal(back.P, e.P)
         np.testing.assert_array_equal(back.mode_probs, e.mode_probs)
-        for f1, f2 in zip(back.F_list, e.F_list):
+        for f1, f2 in zip(back.F_list, e.F_list, strict=True):
             np.testing.assert_array_equal(f1, f2)
 
     def test_rejects_rehydration_kwargs(self):
@@ -167,7 +167,7 @@ class TestMultiTargetSession:
         t = _mt_tracker()
         back = load_session(save_session(t))
         assert len(back.tracks) == len(t.tracks)
-        for ta, tb in zip(t.tracks, back.tracks):
+        for ta, tb in zip(t.tracks, back.tracks, strict=True):
             assert ta.id == tb.id and ta.status is tb.status
             assert (ta.hits, ta.misses) == (tb.hits, tb.misses)
             np.testing.assert_array_equal(ta.state, tb.state)
@@ -180,7 +180,7 @@ class TestMultiTargetSession:
         ra = a.process(z, dt=1.0)
         rb = b.process(z, dt=1.0)
         assert [t.id for t in ra] == [t.id for t in rb]
-        for ta, tb in zip(ra, rb):
+        for ta, tb in zip(ra, rb, strict=True):
             np.testing.assert_array_equal(ta.state, tb.state)
 
     def test_next_id_preserved(self):
@@ -229,7 +229,7 @@ class TestMultiTargetSession:
         t = _mt_tracker()
         back = load_session(save_session(t, fmt="json"), fmt="json")
         assert len(back.tracks) == len(t.tracks)
-        for ta, tb in zip(t.tracks, back.tracks):
+        for ta, tb in zip(t.tracks, back.tracks, strict=True):
             assert ta.id == tb.id and ta.status is tb.status
             assert (ta.hits, ta.misses) == (tb.hits, tb.misses)
             np.testing.assert_array_equal(ta.state, tb.state)
@@ -280,7 +280,7 @@ class TestMHTSession:
         z = [np.array([0.5, -0.5])]
         ra, rb = a.process(z, dt=1.0), b.process(z, dt=1.0)
         assert [t.id for t in ra.all_tracks] == [t.id for t in rb.all_tracks]
-        for ta, tb in zip(ra.all_tracks, rb.all_tracks):
+        for ta, tb in zip(ra.all_tracks, rb.all_tracks, strict=True):
             np.testing.assert_array_equal(ta.state, tb.state)
 
     def test_callable_dynamics_require_rehydration(self):
@@ -317,7 +317,7 @@ class TestRBPFSession:
         Qx = 0.01 * np.eye(2)
         for filt in (a, b):
             filt.predict(lambda y: g_mat @ y, Qy, lambda x, y: f_mat @ x, f_mat, Qx)
-        for pa, pb in zip(a.get_particles(), b.get_particles()):
+        for pa, pb in zip(a.get_particles(), b.get_particles(), strict=True):
             np.testing.assert_array_equal(pa.y, pb.y)
             np.testing.assert_array_equal(pa.x, pb.x)
             np.testing.assert_array_equal(pa.P, pb.P)
@@ -342,7 +342,7 @@ class TestRBPFSession:
         f.initialize(np.zeros(2), np.zeros(2), np.eye(2), num_particles=5)
         back = load_session(save_session(f, fmt=fmt), fmt=fmt)
         assert len(back.get_particles()) == len(f.get_particles())
-        for pa, pb in zip(f.get_particles(), back.get_particles()):
+        for pa, pb in zip(f.get_particles(), back.get_particles(), strict=True):
             np.testing.assert_array_equal(pa.y, pb.y)
             np.testing.assert_array_equal(pa.x, pb.x)
             np.testing.assert_array_equal(pa.P, pb.P)
@@ -384,7 +384,7 @@ class TestGSFSession:
         f.initialize(np.zeros(2), np.eye(2), num_components=2)
         back = load_session(save_session(f))
         assert back.get_num_components() == f.get_num_components()
-        for ca, cb in zip(f.get_components(), back.get_components()):
+        for ca, cb in zip(f.get_components(), back.get_components(), strict=True):
             np.testing.assert_array_equal(ca.x, cb.x)
             np.testing.assert_array_equal(ca.P, cb.P)
             assert ca.w == cb.w
@@ -394,7 +394,7 @@ class TestGSFSession:
         f = GaussianSumFilter(max_components=3)
         f.initialize(np.zeros(2), np.eye(2), num_components=2)
         back = load_session(save_session(f, fmt=fmt), fmt=fmt)
-        for ca, cb in zip(f.get_components(), back.get_components()):
+        for ca, cb in zip(f.get_components(), back.get_components(), strict=True):
             np.testing.assert_array_equal(ca.x, cb.x)
             np.testing.assert_array_equal(ca.P, cb.P)
             assert ca.w == cb.w
@@ -467,7 +467,7 @@ class TestGSFSession:
         assert xa.tobytes() == xb.tobytes()
         assert Pa.tobytes() == Pb.tobytes()
         assert a.get_num_components() == b.get_num_components()
-        for ca, cb in zip(a.get_components(), b.get_components()):
+        for ca, cb in zip(a.get_components(), b.get_components(), strict=True):
             assert ca.x.tobytes() == cb.x.tobytes()
             assert ca.P.tobytes() == cb.P.tobytes()
             assert ca.w == cb.w

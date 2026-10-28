@@ -76,7 +76,7 @@ class TestUS76BelowSeaLevel:
     def test_pressure_increases_monotonically_below_sea_level(self):
         altitudes = [-5000.0, -2000.0, -1000.0, -430.0, 0.0]
         pressures = [us_standard_atmosphere_1976(a).pressure for a in altitudes]
-        assert all(a > b for a, b in zip(pressures, pressures[1:]))
+        assert all(a > b for a, b in zip(pressures[:-1], pressures[1:], strict=True))
 
     def test_warns_below_the_five_km_floor(self):
         with pytest.warns(UserWarning, match="-5000"):

@@ -264,7 +264,7 @@ class TestMarcumSwerling:
         n, pfa = 2000, 1e-6
         theta = np.array([0.01, 1.0, 44.0, 45.0, 200.0])
         got = swerling_detection_probability(2 * theta / n, pfa, n, 3)
-        for g, th in zip(got, theta):
+        for g, th in zip(got, theta, strict=True):
             assert g == pytest.approx(
                 _nb_mixture_pd(2 * th / n, pfa, n, 3), rel=1e-12, abs=0
             )

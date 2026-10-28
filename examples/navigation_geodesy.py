@@ -337,7 +337,7 @@ def plot_coverage_map() -> None:
     )
 
     # Add coverage circles for each altitude
-    for alt, color in zip(altitudes, colors):
+    for alt, color in zip(altitudes, colors, strict=True):
         # Calculate ground range for this altitude
         delta_h = alt - sensor_alt
         min_elev = np.radians(2.0)

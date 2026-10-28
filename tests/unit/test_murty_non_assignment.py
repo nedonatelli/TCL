@@ -38,7 +38,7 @@ def enumerate_all(cost, cna, maximize=False):
     for r in range(min(n, m) + 1):
         for rows in itertools.combinations(range(n), r):
             for cols in itertools.permutations(range(m), r):
-                base = sum(cost[i, j] for i, j in zip(rows, cols))
+                base = sum(cost[i, j] for i, j in zip(rows, cols, strict=True))
                 penalty = cna * ((n - r) + (m - r))
                 total = base - penalty if maximize else base + penalty
                 out.append(round(float(total), 9))
@@ -85,7 +85,11 @@ class TestRankedListIsComplete:
             cost = rng.uniform(0, 10, size=(3, 3))
             res = solver(cost, k=12, cost_of_non_assignment=5.0)
             seen = {
-                tuple(sorted(zip(a.row_indices.tolist(), a.col_indices.tolist())))
+                tuple(
+                    sorted(
+                        zip(a.row_indices.tolist(), a.col_indices.tolist(), strict=True)
+                    )
+                )
                 for a in res.assignments
             }
             assert len(seen) == res.n_found, "duplicate assignments returned"
@@ -101,7 +105,7 @@ class TestReportedCostsAreConsistent:
             n, m = 3, 4
             cost = rng.uniform(0, 10, size=(n, m))
             res = solver(cost, k=6, cost_of_non_assignment=cna)
-            for a, reported in zip(res.assignments, res.costs):
+            for a, reported in zip(res.assignments, res.costs, strict=True):
                 pairs = float(cost[a.row_indices, a.col_indices].sum())
                 r = len(a.row_indices)
                 expected = pairs + cna * ((n - r) + (m - r))

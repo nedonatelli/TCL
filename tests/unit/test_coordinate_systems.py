@@ -921,7 +921,7 @@ class TestScalarAndLayoutPaths:
         for fn in (cart2sphere, cart2cyl, cart2ruv):
             row_out = fn(pts3)
             col_out = fn(col3)
-            for a, b in zip(row_out, col_out):
+            for a, b in zip(row_out, col_out, strict=True):
                 assert_allclose(a, b, atol=1e-12, err_msg=fn.__name__)
 
         pts2 = np.array([[1.0, 2.0], [3.0, 4.0], [-5.0, 6.0], [7.0, -8.0], [0.0, 1.0]])

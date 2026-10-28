@@ -335,7 +335,7 @@ class TestEveryRegisteredModuleExists:
         for module_path in MODULE_MATURITY:
             try:
                 importlib.import_module(f"pytcl.{module_path}")
-            except Exception as exc:  # noqa: BLE001 - reporting, not handling
+            except Exception as exc:  # noqa: BLE001 -- reporting, not handling
                 unimportable.append(f"{module_path} ({type(exc).__name__})")
 
         assert not unimportable, (

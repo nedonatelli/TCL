@@ -453,7 +453,7 @@ class TestOptionalInputForms:
             y, p_inv_sqrt, F, s_q, np.zeros(2), np.eye(2)
         )
         with_none = _sqrt_info_filter_disc_pred(y, p_inv_sqrt, F, s_q, None, np.eye(2))
-        for a, b in zip(with_none, with_zero):
+        for a, b in zip(with_none, with_zero, strict=True):
             np.testing.assert_allclose(a, b, atol=1e-13)
 
     def test_interval_smoother_accepts_2d_covariances(self):

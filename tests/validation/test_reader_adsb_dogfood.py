@@ -52,7 +52,7 @@ def _track_from_measurement_set(ms):
     state = cov = previous = None
     scores = []
 
-    for t, scan in zip(ms.times, ms.scans):
+    for t, scan in zip(ms.times, ms.scans, strict=True):
         for z in scan:
             if state is None:
                 state = np.array([z[0], 0.0, z[1], 0.0])

@@ -91,7 +91,9 @@ class TestPositionStdConversion:
             position_std_to_error_state_units(10.0, np.radians(d), 0.0)[1]
             for d in (0.0, 30.0, 60.0, 85.0)
         ]
-        assert all(later > earlier for earlier, later in zip(at, at[1:])), at
+        assert all(
+            later > earlier for earlier, later in zip(at[:-1], at[1:], strict=True)
+        ), at
 
     def test_latitude_uncertainty_barely_changes_with_latitude(self):
         """The meridian radius spans only ``(1 - e^2)^(-3/2)``, about 1.01.
@@ -172,7 +174,9 @@ class TestFilterWeighting:
             cov = np.diag([std[0] ** 2, std[1] ** 2, meters**2])
             fractions.append(self._absorbed_fraction(cov))
 
-        assert all(b < a for a, b in zip(fractions, fractions[1:])), fractions
+        assert all(b < a for a, b in zip(fractions[:-1], fractions[1:], strict=True)), (
+            fractions
+        )
         assert fractions[0] > 0.98, "a 1 m fix against a 10 m filter is nearly trusted"
         assert fractions[-1] < 0.02, "a 100 m fix should barely move a 10 m filter"
 

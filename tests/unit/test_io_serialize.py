@@ -43,8 +43,8 @@ class TestTrackRoundTrip:
         times2, history2 = decode_tracks(blob, fmt=fmt)
         assert times2 == times
         assert len(history2) == len(history)
-        for scan, scan2 in zip(history, history2):
-            for tr, tr2 in zip(scan, scan2):
+        for scan, scan2 in zip(history, history2, strict=True):
+            for tr, tr2 in zip(scan, scan2, strict=True):
                 assert tr2.id == tr.id
                 assert tr2.status == tr.status.value
                 assert_array_equal(tr2.state, np.asarray(tr.state, dtype=np.float64))

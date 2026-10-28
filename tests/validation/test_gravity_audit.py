@@ -609,13 +609,13 @@ class TestFundamentalArguments:
 
     def test_at_j2000(self):
         vals = fundamental_arguments(0.0)
-        for ref, v in zip(self.REF_J2000.values(), vals):
+        for ref, v in zip(self.REF_J2000.values(), vals, strict=True):
             assert_allclose(np.degrees(v), ref, atol=1e-9)
 
     @pytest.mark.parametrize("T", [0.1, -0.2, 0.25])
     def test_at_other_epochs(self, T):
         vals = fundamental_arguments(T)
-        for coeffs, v in zip(self.POLY.values(), vals):
+        for coeffs, v in zip(self.POLY.values(), vals, strict=True):
             a0, a1, a2, a3, a4 = coeffs
             ref = (a0 + (a1 * T + a2 * T**2 + a3 * T**3 + a4 * T**4) / 3600.0) % 360.0
             assert_allclose(np.degrees(v), ref, atol=1e-8)
@@ -1017,5 +1017,5 @@ class TestClenshawHighDegree:
         assert_allclose(ss, ss_ref, rtol=1e-12, atol=1e-300)
         vals = clenshaw_sum_order_derivative(m, ct, st, C, S, n_max)
         refs = _prefix_clenshaw_sum_order_derivative(m, ct, st, C, S, n_max)
-        for got, want in zip(vals, refs):
+        for got, want in zip(vals, refs, strict=True):
             assert_allclose(got, want, rtol=1e-12, atol=1e-300)

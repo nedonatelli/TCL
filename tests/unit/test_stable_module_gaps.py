@@ -56,7 +56,9 @@ class TestAuctionRectangularAndDegenerate:
 
         assert total_t == pytest.approx(total_w)
         # assignments correspond under transposition
-        assert set(zip(rows_t, cols_t)) == set(zip(cols_w, rows_w))
+        assert set(zip(rows_t, cols_t, strict=True)) == set(
+            zip(cols_w, rows_w, strict=True)
+        )
         # and the reported total is the sum of the assigned entries
         assert total_t == pytest.approx(cost[rows_t, cols_t].sum())
 
@@ -74,7 +76,10 @@ class TestAssign2dMaximize:
     def test_maximize_picks_the_large_entries(self):
         rewards = np.array([[10.0, 1.0], [1.0, 10.0]])
         result = assign2d(rewards, cost_of_non_assignment=0.5, maximize=True)
-        assert set(zip(result.row_indices, result.col_indices)) == {(0, 0), (1, 1)}
+        assert set(zip(result.row_indices, result.col_indices, strict=True)) == {
+            (0, 0),
+            (1, 1),
+        }
         assert result.cost == pytest.approx(20.0)
 
     def test_maximize_reports_the_reward_sum_not_a_cost(self):
@@ -85,7 +90,7 @@ class TestAssign2dMaximize:
         unassigned_cols)."""
         rewards = np.array([[0.1, 0.2], [0.3, 5.0]])
         result = assign2d(rewards, cost_of_non_assignment=1.0, maximize=True)
-        assert (1, 1) in set(zip(result.row_indices, result.col_indices))
+        assert (1, 1) in set(zip(result.row_indices, result.col_indices, strict=True))
         assert (
             result.cost >= rewards[result.row_indices, result.col_indices].sum() - 1e-9
         )

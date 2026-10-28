@@ -133,7 +133,7 @@ class TestSnrLoss:
     @pytest.mark.parametrize("pfa", [1e-3, 1e-6, 1e-9])
     def test_it_decreases_monotonically_with_reference_cells(self, pfa):
         losses = [snr_loss(n, pfa=pfa) for n in (4, 8, 16, 32, 64, 128)]
-        assert all(b < a for a, b in zip(losses, losses[1:])), losses
+        assert all(b < a for a, b in zip(losses[:-1], losses[1:], strict=True)), losses
         assert all(value > 0.0 for value in losses)
 
     def test_it_responds_to_the_operating_point(self):

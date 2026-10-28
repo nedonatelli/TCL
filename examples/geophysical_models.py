@@ -332,7 +332,10 @@ def demo_gravity_anomalies():
 
     # Simulated observed gravity (with anomaly)
     g_normal = np.array(
-        [normal_gravity(np.radians(lat), alt) for lat, alt in zip(lats, alts)]
+        [
+            normal_gravity(np.radians(lat), alt)
+            for lat, alt in zip(lats, alts, strict=True)
+        ]
     )
     # Add a gravity anomaly (e.g., from subsurface density variation)
     anomaly_true = np.array([0.0, 10.0, 25.0, 15.0, 5.0]) * 1e-5  # m/s²

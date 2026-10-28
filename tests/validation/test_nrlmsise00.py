@@ -47,7 +47,7 @@ def _records():
         if ln.strip()
     ]
     assert len(inputs) == len(outputs)
-    return list(zip(inputs, outputs))
+    return list(zip(inputs, outputs, strict=True))
 
 
 def _run_record(rec, py_fallback=False):
@@ -80,7 +80,7 @@ class TestAgainstReferenceC:
             warnings.simplefilter("ignore")  # dnet edge warnings on extreme fills
             for rec, exp in _records():
                 got = _run_record(rec)
-                for g, e in zip(got, exp):
+                for g, e in zip(got, exp, strict=True):
                     denom = abs(e) if e != 0 else 1.0
                     worst = max(worst, abs(g - e) / denom)
         assert worst < RTOL, f"worst relative error {worst:.3e}"
@@ -93,7 +93,7 @@ class TestAgainstReferenceC:
             warnings.simplefilter("ignore")
             for rec, exp in _records():
                 got = _run_record(rec, py_fallback=True)
-                for g, e in zip(got, exp):
+                for g, e in zip(got, exp, strict=True):
                     denom = abs(e) if e != 0 else 1.0
                     worst = max(worst, abs(g - e) / denom)
         assert worst < RTOL, f"worst relative error {worst:.3e}"

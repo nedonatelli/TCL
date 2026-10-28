@@ -106,7 +106,9 @@ def _max_errors(method, band):
     lat = np.arcsin(rng.uniform(-1, 1, N_POINTS))
     lon = rng.uniform(-np.pi, np.pi, N_POINTS)
     h = rng.uniform(lo, hi, N_POINTS)
-    ecef = np.array([geodetic2ecef(a, b, c) for a, b, c in zip(lat, lon, h)]).T
+    ecef = np.array(
+        [geodetic2ecef(a, b, c) for a, b, c in zip(lat, lon, h, strict=True)]
+    ).T
     lat_out, _, h_out = ecef2geodetic(ecef, method=method)
     lat_err = h_err = 0.0
     for i in range(N_POINTS):
@@ -207,7 +209,7 @@ def test_every_row_outside_the_radius_is_bit_identical_to_v2_11_1(method):
     for layout in (ecef, ecef.T, ecef[:, 0].copy()):
         got = _no_warning(layout, method=method)
         want = shipped(layout, method=method)
-        for g, w in zip(got, want):
+        for g, w in zip(got, want, strict=True):
             assert np.array_equal(g, w)
 
 
@@ -254,5 +256,5 @@ def test_mixed_array_warns_once_and_surface_rows_are_unchanged(method):
     # 'iterative' stops when every row has converged, so its rows are coupled
     # (as in v2.11.1): the altitude moves by up to 5e-6 m, not bitwise.
     tol = 0.0 if method == "direct" else 1e-5
-    for got, want in zip(out, alone):
+    for got, want in zip(out, alone, strict=True):
         assert abs(got[0] - want[0]) <= tol and abs(got[3] - want[1]) <= tol

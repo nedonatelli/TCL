@@ -419,7 +419,7 @@ def ospa_over_time_demo() -> Tuple[List[float], List[float], List[float]]:
     loc_history = []
     card_history = []
 
-    for truth, estimates in zip(truth_history, estimate_history):
+    for truth, estimates in zip(truth_history, estimate_history, strict=True):
         if len(truth) == 0 and len(estimates) == 0:
             ospa_history.append(0.0)
             loc_history.append(0.0)

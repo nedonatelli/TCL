@@ -98,10 +98,10 @@ class TestUpdateOracle:
             means.append(state.x + K @ (z - H @ state.x))
             covs.append(P_k)
         w = np.array(weights) / sum(weights)
-        x_exp = sum(wi * mi for wi, mi in zip(w, means))
+        x_exp = sum(wi * mi for wi, mi in zip(w, means, strict=True))
         P_exp = sum(
             wi * (ci + np.outer(mi - x_exp, mi - x_exp))
-            for wi, mi, ci in zip(w, means, covs)
+            for wi, mi, ci in zip(w, means, covs, strict=True)
         )
         np.testing.assert_allclose(upd.x, x_exp, rtol=1e-10)
         np.testing.assert_allclose(upd.P, P_exp, rtol=1e-10)

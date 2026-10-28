@@ -882,7 +882,7 @@ class TestMultiTargetTracker:
         assert len(confirmed) == 2
         est_pos = sorted([tuple(t.state[[0, 2]]) for t in confirmed])
         true_pos = sorted([tuple(x[[0, 2]]) for x in truths])
-        for ep, tp in zip(est_pos, true_pos):
+        for ep, tp in zip(est_pos, true_pos, strict=True):
             np.testing.assert_allclose(ep, tp, atol=1.0)
 
     def test_association_matches_linear_sum_assignment(self):
@@ -1108,7 +1108,7 @@ class TestMHTTracker:
         assert len(result.confirmed_tracks) == 2
         est_pos = sorted(tuple(t.state[[0, 2]]) for t in result.confirmed_tracks)
         true_pos = sorted(tuple(x[[0, 2]]) for x in truths)
-        for ep, tp in zip(est_pos, true_pos):
+        for ep, tp in zip(est_pos, true_pos, strict=True):
             np.testing.assert_allclose(ep, tp, atol=1.0)
 
     def test_hypothesis_count_bounded(self):

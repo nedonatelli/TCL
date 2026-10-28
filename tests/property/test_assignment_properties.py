@@ -180,7 +180,7 @@ class TestHungarianCostConsistency:
     def test_total_cost_matches_selected_entries(self, cost, maximize):
         row_ind, col_ind, total_cost = hungarian(cost, maximize=maximize)
         independent_sum = sum(
-            cost[i, j] for i, j in zip(row_ind.tolist(), col_ind.tolist())
+            cost[i, j] for i, j in zip(row_ind.tolist(), col_ind.tolist(), strict=True)
         )
         note(
             f"shape={cost.shape} total_cost={total_cost} "

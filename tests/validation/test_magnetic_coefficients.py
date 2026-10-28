@@ -132,7 +132,10 @@ class TestWorldMagneticModel:
                 coefficients.h_dot[n, m],
             )
             for label, reference, actual in zip(
-                ("g", "h", "g_dot", "h_dot"), values, ours
+                ("g", "h", "g_dot", "h_dot"),
+                values,
+                ours,
+                strict=True,
             ):
                 if reference != actual:
                     mismatches.append(

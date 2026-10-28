@@ -111,7 +111,7 @@ class TestInstanceRNG:
             return f
 
         a, b = make(), make()
-        for pa, pb in zip(a.get_particles(), b.get_particles()):
+        for pa, pb in zip(a.get_particles(), b.get_particles(), strict=True):
             np.testing.assert_array_equal(pa.y, pb.y)
 
     def test_rbpf_default_untouched(self):
@@ -132,5 +132,5 @@ class TestInstanceRNG:
             return f
 
         a, b = make(), make()
-        for ca, cb in zip(a.components, b.components):
+        for ca, cb in zip(a.components, b.components, strict=True):
             np.testing.assert_array_equal(ca.x, cb.x)

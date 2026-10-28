@@ -113,7 +113,7 @@ class TestGatingScenarioBenchmarks:
         def perform_gating():
             gated = []
             for i, (track_state, track_cov) in enumerate(
-                zip(data["track_states"], data["track_covs"])
+                zip(data["track_states"], data["track_covs"], strict=True)
             ):
                 for j, meas in enumerate(data["measurements"]):
                     innovation = meas - track_state

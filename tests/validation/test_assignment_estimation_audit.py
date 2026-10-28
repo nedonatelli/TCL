@@ -132,7 +132,7 @@ def _brute_assign2d_cost(C, cna):
     for k in range(0, min(n, m) + 1):
         for rows in itertools.combinations(range(n), k):
             for cols in itertools.permutations(range(m), k):
-                c = sum(C[r, cc] for r, cc in zip(rows, cols))
+                c = sum(C[r, cc] for r, cc in zip(rows, cols, strict=True))
                 c += (n - k + m - k) * cna
                 best = min(best, c)
     return best
@@ -274,7 +274,9 @@ class TestMurtyKBest:
         res = murty(C, k=10)
         seen = set()
         for a in res.assignments:
-            key = tuple(zip(a.row_indices.tolist(), a.col_indices.tolist()))
+            key = tuple(
+                zip(a.row_indices.tolist(), a.col_indices.tolist(), strict=True)
+            )
             assert key not in seen, "duplicate assignment returned"
             seen.add(key)
             assert_allclose(C[a.row_indices, a.col_indices].sum(), a.cost)

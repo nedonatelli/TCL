@@ -86,13 +86,13 @@ def demo_2d_assignment():
     # Hungarian algorithm (optimal)
     row_h, col_h, cost_h = hungarian(cost)
     print("\n--- Hungarian Algorithm (Optimal) ---")
-    print(f"Assignments: {list(zip(row_h, col_h))}")
+    print(f"Assignments: {list(zip(row_h, col_h, strict=True))}")
     print(f"Total cost: {cost_h}")
 
     # Auction algorithm
     row_a, col_a, cost_a = auction(cost)
     print("\n--- Auction Algorithm ---")
-    print(f"Assignments: {list(zip(row_a, col_a))}")
+    print(f"Assignments: {list(zip(row_a, col_a, strict=True))}")
     print(f"Total cost: {cost_a}")
 
     # Using assign2d unified interface
@@ -107,7 +107,7 @@ def demo_2d_assignment():
     rect_cost = np.random.rand(3, 6) * 10  # 3 tracks, 6 measurements
     row_rect, col_rect, cost_rect = hungarian(rect_cost)
     print("3 tracks assigned to 6 measurements")
-    print(f"Assignments: {list(zip(row_rect, col_rect))}")
+    print(f"Assignments: {list(zip(row_rect, col_rect, strict=True))}")
     assigned_cols = set(col_rect)
     unassigned_cols = [i for i in range(6) if i not in assigned_cols]
     print(f"Unassigned measurements: {unassigned_cols}")
@@ -125,7 +125,9 @@ def demo_2d_assignment():
     result_skip = assign2d(cost_with_skip, cost_of_non_assignment=20)
     print("Cost matrix with one track having no good matches:")
     print(cost_with_skip)
-    print(f"Assignments: {list(zip(result_skip.row_indices, result_skip.col_indices))}")
+    print(
+        f"Assignments: {list(zip(result_skip.row_indices, result_skip.col_indices, strict=True))}"
+    )
     print(f"Unassigned rows: {list(result_skip.unassigned_rows)}")
 
 
@@ -155,11 +157,13 @@ def demo_kbest_assignment():
     print(f"\n--- Finding {k} Best Assignments ---")
     print(f"Found: {result.n_found} assignments")
 
-    for i, (assignment, cost_val) in enumerate(zip(result.assignments, result.costs)):
+    for i, (assignment, cost_val) in enumerate(
+        zip(result.assignments, result.costs, strict=True)
+    ):
         row_ind = assignment.row_indices
         col_ind = assignment.col_indices
         print(f"\n  Solution {i + 1} (cost={cost_val:.1f}):")
-        print(f"    Assignments: {list(zip(row_ind, col_ind))}")
+        print(f"    Assignments: {list(zip(row_ind, col_ind, strict=True))}")
 
     # With cost threshold
     print("\n--- With Cost Threshold ---")
@@ -593,7 +597,7 @@ def visualize_assignment_problem():
     fig = go.Figure(data=go.Heatmap(z=cost, colorscale="Viridis"))
 
     # Add assignment lines
-    for t_idx, m_idx in zip(track_indices, measurement_indices):
+    for t_idx, m_idx in zip(track_indices, measurement_indices, strict=True):
         fig.add_annotation(
             x=m_idx,
             y=t_idx,

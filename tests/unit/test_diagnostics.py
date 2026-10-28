@@ -498,7 +498,7 @@ class TestFilterHealth:
             with_diag = run()
         finally:
             disable_debug_logging()
-        for a, b in zip(baseline, with_diag):
-            for ta, tb in zip(a, b):
+        for a, b in zip(baseline, with_diag, strict=True):
+            for ta, tb in zip(a, b, strict=True):
                 np.testing.assert_array_equal(ta.state, tb.state)
                 np.testing.assert_array_equal(ta.covariance, tb.covariance)

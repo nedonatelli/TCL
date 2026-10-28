@@ -173,7 +173,7 @@ def nonlinear_filtering_tutorial():
         # Correct the cross-covariance calculation
         Pzz = np.eye(2) * 1e-10
         Pxz = np.zeros((4, 2))
-        for sp, hs in zip(sigma_pred, h_sigma):
+        for sp, hs in zip(sigma_pred, h_sigma, strict=True):
             Pzz += np.outer(hs - z_pred, hs - z_pred)
             Pxz += np.outer(sp - x_pred, hs - z_pred)
         Pzz = Pzz / len(sigma_pred) + R

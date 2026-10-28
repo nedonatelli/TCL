@@ -110,7 +110,7 @@ def _assert_same(first, second, what: str) -> None:
         np.testing.assert_array_equal(first, second, err_msg=what)
     elif isinstance(first, tuple):
         assert len(first) == len(second), what
-        for a, b in zip(first, second):
+        for a, b in zip(first, second, strict=True):
             np.testing.assert_allclose(a, b, rtol=0, atol=0, err_msg=what)
     else:
         assert first == second, what
