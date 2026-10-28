@@ -111,7 +111,11 @@ Next
   robust interior ``ecef2geodetic`` solver for points near the Earth's
   centre, where on WGS84 ``'direct'`` fails within 4.28e4 m and
   ``'iterative'`` errs by more than 1 mm within 3.14e5 m (v2.12.0 warns
-  within 4.27e5 m and 1.28e6 m respectively).
+  within 4.27e5 m and 1.28e6 m respectively); and the two geomagnetic
+  latitude quantizations near the poles -- the WMM/IGRF cache's default
+  6-decimal latitude key (never closer than 3.3e-7 rad to a pole) and
+  the ``arcsin(z / r)`` geocentric conversion in ``emm``/``wmm`` (geodetic
+  colatitudes below about 1e-8 rad evaluate at the pole).
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).

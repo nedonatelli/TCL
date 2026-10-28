@@ -436,14 +436,21 @@ def clenshaw_geoid(
 geoid_height`; a geocentric-frame field has no degree-1 term, but a
     coefficient set that carries a nonzero one should not leak it into
     the geoid) and the reference ellipsoid's own field subtracted from
-    ``C, S`` next: ``1.0`` from ``C[0, 0]`` (the central term is
-    dropped) and the WGS84 even zonal harmonics from ``C[2k, 0]``,
-    rescaled to this ``R`` and ``GM`` exactly as
-    :func:`pytcl.gravity.egm.geoid_height` does (MATLAB
+    ``C, S`` next: ``1.0`` from ``C[0, 0]`` and the WGS84 even zonal
+    harmonics from ``C[2k, 0]``, rescaled to this ``R`` and ``GM`` exactly
+    as :func:`pytcl.gravity.egm.geoid_height` does (MATLAB
     ``getEGMWGS84TCoeffs``). Not just the ``n=0,1`` terms: C20 left in is
     a ~3 km false zonal signal. ``lat`` is converted to
     geocentric latitude and evaluated at the true radius under the
     point, not at ``r = R``.
+
+    The zero-degree term is omitted, as in
+    :func:`pytcl.gravity.egm.geoid_height` (gh-25): MATLAB's
+    ``GM_WGS84 / GM`` central coefficient and its ``W0 - U0`` correction,
+    a roughly -0.5 m constant offset together. ``geoid_height`` zeroes
+    ``C[0, 0]`` while this function subtracts ``1.0``, so the two give
+    identical heights only when ``C[0, 0] == 1`` (as in the EGM files);
+    otherwise this function keeps ``(C[0, 0] - 1) GM / (r gamma)``.
 
     Examples
     --------

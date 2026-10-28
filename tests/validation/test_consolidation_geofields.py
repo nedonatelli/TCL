@@ -478,23 +478,27 @@ def _components(B_r, B_theta, B_phi):
 @pytest.mark.parametrize("lon", [0.7, -2.0])
 def test_field_is_continuous_onto_the_pole(north, lon):
     """B_phi divides by ``sin(theta)`` down to the smallest nonzero
-    colatitude and takes its polar limit at exactly 0. X, Y, Z, H, F (relative to F) and I, D (radians) at colatitudes 1e-9,
-    1e-10, 1e-11 and 0 agree to the field's own change over 1e-9 rad:
-    measured 1.0e-9 and 2.4e-8 rad for EMM (public ``emm``, geodetic
-    latitude), 5.8e-10 and 5.4e-9 rad for WMM2020
-    (``magnetic_field_spherical`` without the cache, whose 6-decimal
-    latitude key never reaches the pole). v2.11.1 zeroed B_phi below
-    ``sin(theta) = 1e-10``: D jumped by 47 deg (WMM2020, lon 0.7) and H by
-    32%."""
+    colatitude and takes its polar limit at exactly 0. X, Y, Z, H, F
+    (relative to F) and I, D (radians) at geocentric colatitudes 1e-9,
+    1e-10, 1e-11 and 0 agree to the field's own change over 1e-9 rad.
+
+    Both models are driven at geocentric colatitude: EMM through
+    ``_high_res_field_spherical`` (public ``emm``'s ``arcsin(z / r)``
+    maps every geodetic colatitude below about 1e-8 onto the pole), WMM2020
+    through ``magnetic_field_spherical`` without the cache (whose default
+    latitude key never reaches the pole). Measured spreads: EMM 6.0e-10 of
+    F and 5.3e-9 rad, WMM2020 5.8e-10 and 5.4e-9 rad. v2.11.1 zeroed
+    B_phi below ``sin(theta) = 1e-10``: D jumped by 47 deg (WMM2020, lon
+    0.7) and H by 32%."""
     emm_coef = emm.create_test_coefficients(n_max=36)
     wmm_coef = wmm.create_wmm2020_coefficients()
     emm_vals, wmm_vals = [], []
     for colat in (1e-9, 1e-10, 1e-11, 0.0):
         lat = np.pi / 2 - colat if north else -(np.pi / 2 - colat)
-        with pytest.warns(UserWarning, match="validity window"):
-            res = emm.emm(lat, lon, 0.0, 2020.0, coefficients=emm_coef)
         emm_vals.append(
-            (np.array([res.X, res.Y, res.Z, res.H, res.F]), np.array([res.I, res.D]))
+            _components(
+                *emm._high_res_field_spherical(lat, lon, 6380.0, 2020.0, emm_coef)
+            )
         )
         wmm_vals.append(
             _components(
@@ -507,8 +511,8 @@ def test_field_is_continuous_onto_the_pole(north, lon):
         fields = np.array([v[0] for v in vals])
         angles = np.array([v[1] for v in vals])
         assert np.all(np.isfinite(fields)) and np.all(np.isfinite(angles))
-        assert np.max(np.ptp(fields, axis=0)) <= 2e-9 * fields[0, 4]
-        assert np.max(np.ptp(angles, axis=0)) <= 5e-8
+        assert np.max(np.ptp(fields, axis=0)) <= 1e-9 * fields[0, 4]
+        assert np.max(np.ptp(angles, axis=0)) <= 1e-8
 
 
 def _emm_grid():

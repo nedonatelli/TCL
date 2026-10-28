@@ -79,7 +79,7 @@ CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
 ### v2.13.0 -- planned
 
 The audit's Tier 4 ports, moved out of v2.12 so that release stays
-correctness-only, plus one follow-up from v2.12. Names are the pytcl
+correctness-only, plus two follow-ups from v2.12. Names are the pytcl
 names each would take:
 
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
@@ -106,6 +106,14 @@ names each would take:
   values wrong by up to 3.5e159 m within 4.28e4 m, and `'iterative'` is
   off by up to 4.25e4 m and by more than 1 mm out to 3.14e5 m; v2.12.0
   warns within 4.27e5 m (`'direct'`) and 1.28e6 m (`'iterative'`).
+- **Geomagnetic latitude quantizations near the poles.** The WMM/IGRF
+  field cache rounds latitude to 6 decimals by default
+  (`configure_magnetic_cache`), so public `wmm`, `igrf` and the heading
+  conversions never evaluate closer than 3.3e-7 rad to a pole; and
+  `emm`/`wmm` convert geodetic to geocentric latitude with
+  `arcsin(z / r)`, which maps geodetic colatitudes below about 1e-8 rad
+  onto the pole. `arctan2(z, p)` removes the second; the first needs a
+  cache key that keeps the polar colatitude.
 
 ### Measured backlog (from the MATLAB parity inventory)
 

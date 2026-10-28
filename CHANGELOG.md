@@ -699,20 +699,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   m^2/s^2. On a field that is exactly the WGS84 normal field both now
   return at most 3.5e-7 m (latitudes -90 to 90 deg every 5 deg), where
   v2.11.1 returned 0.38 mm and 1.52 mm, and the two routes now give
-  identical heights. With the EGM `GM` and `R` (every degree of latitude,
+  identical heights whenever `C[0, 0] == 1` (as in the EGM files; both
+  omit the zero-degree term). With the EGM `GM` and `R` (every degree of latitude,
   `n_max` 4 to 36; the change is zonal, so it does not depend on the
   other coefficients) `geoid_height` moves by -0.191 mm at the equator to
   +0.384 mm at the poles and `clenshaw_geoid` by -0.764 mm to +1.524 mm.
-  `clenshaw_geoid` moves more when its `R` and `GM` are further from
-  WGS84's: its own example (`R = 6.378e6`, `GM = 3.986e14`) goes from
-  -3453.97 m to -3454.12 m. `gravity_disturbance` and `gravity_anomaly`
+  For other `R` and `GM`, `clenshaw_geoid` moves by more, because the
+  reference field now follows them: degree `n` is scaled by
+  `(GM_WGS84 / GM) (a_WGS84 / R)^n`, which makes the result independent
+  of the frame chosen for the series (v2.11.1's was not). Its own example
+  (`R = 6.378e6`, `GM = 3.986e14`, central term only) moves by -0.152 m
+  at the equator to +0.306 m at the poles (-3453.97 m to -3454.12 m at
+  the equator), and `R = 6.4e6`, `GM = 3.99e14` moves by -54.6 m to
+  +27.2 m. `gravity_disturbance` and `gravity_anomaly`
   move by at most 1.8e-4 mGal (latitudes to +-89.5 deg, heights 0 and
   10 km) and `deflection_of_vertical` by at most 1.9e-5 arcsec (latitudes
   to +-60 deg). Measured with the built-in degree-36 test set; the real
   EGM96 and EGM2008 files were not available to the test run. What to
   do: nothing for EGM coefficient sets, which shift by less than 1.6 mm;
-  if you call `clenshaw_geoid` with your own `R` and `GM`, expect the
-  reference field to follow them.
+  if you call `clenshaw_geoid` with an `R` and `GM` far from WGS84's,
+  expect shifts of up to tens of metres toward the frame-independent
+  value.
 
 - **Geomagnetic fields match an exact synthesis at and near the poles.**
   EMM and WMMHR divided the colatitude derivative of the Schmidt
@@ -731,17 +738,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pole), `B_r`, `B_theta` and `B_phi` are within 5.4e-16 of the field
   magnitude at colatitudes 0, 1e-11, 1e-10, 1e-9, 1e-6, 1e-4, 1e-3,
   1e-2, 0.06, 0.2, 0.6 and 1.2 rad from either pole. X, Y, Z, H, F, I
-  and D at colatitudes 1e-9, 1e-10, 1e-11 and 0 agree to within the
-  field's own change over 1e-9 rad (1.0e-9 of F and 2.4e-8 rad). v2.11.1
+  and D at geocentric colatitudes 1e-9, 1e-10, 1e-11 and 0 agree to
+  within the field's own change over 1e-9 rad (EMM 6.0e-10 of F and
+  5.3e-9 rad, WMM2020 5.8e-10 and 5.4e-9 rad). v2.11.1
   was off by 2.9% (EMM test set, north) and 8.9% (south) at the three
   smallest nonzero colatitudes, by 1.2e-9 at 1e-3 rad, and at the pole
   had `B_theta = 0` (12% of the field for WMM2020) and `B_phi = 0`; there
   H was 32% low and D 47 deg off for WMM2020 at longitude 0.7. Public
   `wmm`, `igrf`, their declination/inclination/intensity helpers and
-  the heading conversions round latitude to 6 decimals for their cache,
-  so they never evaluate
-  closer than 3.3e-7 rad to the pole; `magnetic_field_spherical(...,
-  use_cache=False)`, `emm` and the magnetic coordinates do. Away from
+  the heading conversions round latitude to 6 decimals for their cache
+  by default (`configure_magnetic_cache`), so they never evaluate closer
+  than 3.3e-7 rad to the pole; `magnetic_field_spherical(...,
+  use_cache=False)`, `emm` and the magnetic coordinates do. Public `emm`
+  and `wmm` convert geodetic to geocentric latitude with `arcsin(z / r)`,
+  which maps geodetic colatitudes below about 1e-8 rad onto the pole
+  itself (unchanged from v2.11.1). Away from
   the poles the values move by the old table rounding: at most 1.8e-12
   of the field magnitude over latitudes -70 to 70 deg (WMMHR2025; 9.4e-13
   with the test set, 9.9e-13 for WMM2020), and up to 3.1e-12 of each
