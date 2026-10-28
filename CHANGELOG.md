@@ -174,13 +174,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Four public entry points no longer truncate silently when given parallel
   inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
-  fewer estimate frames than ground-truth frames dropped the extra frames
-  (three ground-truth frames against two estimate frames reported
+  a different number of estimate frames than ground-truth frames dropped
+  the extra frames (three ground-truth frames against two estimate frames reported
   MOTA = 1.0 instead of counting the miss); `plot_covariance_ellipses`
-  with fewer covariances than means drew fewer ellipses;
+  with a different number of covariances than means drew the shorter count;
   `plot_coordinate_axes_3d` with a two-entry `colors` or `names` returned
-  two traces and dropped the Z axis. These now raise `ValueError` from
-  `zip(..., strict=True)`. `load_session` on a Gaussian-sum or RBPF
+  two traces and dropped the Z axis. These now raise `ValueError` naming the
+  arguments and their lengths. `load_session` on a Gaussian-sum or RBPF
   snapshot whose per-component (per-particle) lists differ in length
   restored a filter with the shortest list's count; it now raises
   `FormatError`, as it does for other malformed sessions. What to do:

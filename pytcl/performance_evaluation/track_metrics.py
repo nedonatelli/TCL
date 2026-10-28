@@ -404,6 +404,12 @@ def mot_metrics(
     MOTMetrics
         Named tuple containing MOTA, MOTP, and counts.
 
+    Raises
+    ------
+    ValueError
+        If ``ground_truth`` and ``estimates`` have different numbers of
+        frames.
+
     Notes
     -----
     MOTA (Multiple Object Tracking Accuracy) accounts for false positives,
@@ -422,6 +428,12 @@ def mot_metrics(
     >>> result.motp < 1.0  # Some localization error
     True
     """
+    if len(ground_truth) != len(estimates):
+        raise ValueError(
+            "ground_truth and estimates must have the same number of frames, "
+            f"got {len(ground_truth)} and {len(estimates)}"
+        )
+
     total_gt = 0
     total_fp = 0
     total_misses = 0

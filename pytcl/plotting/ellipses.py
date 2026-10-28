@@ -338,8 +338,19 @@ def plot_covariance_ellipses(
     -------
     fig : go.Figure
         Plotly figure with the ellipses.
+
+    Raises
+    ------
+    ValueError
+        If ``means`` and ``covariances`` have different lengths.
     """
     import plotly.graph_objects as go
+
+    if len(means) != len(covariances):
+        raise ValueError(
+            "means and covariances must have the same length, "
+            f"got {len(means)} and {len(covariances)}"
+        )
 
     fig = go.Figure()
 

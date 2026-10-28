@@ -335,7 +335,10 @@ class TestPlotCovarianceEllipses:
 
         means = [[0, 0], [5, 5], [10, 0]]
         covariances = [np.eye(2), np.eye(2)]
-        with pytest.raises(ValueError, match="zip"):
+        with pytest.raises(
+            ValueError,
+            match=r"means and covariances must have the same length, got 3 and 2",
+        ):
             plot_covariance_ellipses(means, covariances)
 
 
@@ -372,7 +375,10 @@ class TestCoordinatePlotting:
         # v2.11.1 silently returned two traces and dropped the Z axis.
         from pytcl.plotting import plot_coordinate_axes_3d
 
-        with pytest.raises(ValueError, match="zip"):
+        with pytest.raises(
+            ValueError,
+            match=r"colors and names must each have 3 entries \(X, Y, Z\), got 2 and 3",
+        ):
             plot_coordinate_axes_3d(colors=("red", "green"))
 
     @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")

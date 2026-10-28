@@ -53,8 +53,19 @@ def plot_coordinate_axes_3d(
     -------
     traces : list of go.Scatter3d
         List of three Plotly traces for the axes.
+
+    Raises
+    ------
+    ValueError
+        If ``colors`` and ``names`` do not both have three entries.
     """
     import plotly.graph_objects as go
+
+    if len(colors) != 3 or len(names) != 3:
+        raise ValueError(
+            "colors and names must each have 3 entries (X, Y, Z), "
+            f"got {len(colors)} and {len(names)}"
+        )
 
     origin = np.asarray(origin, dtype=np.float64)
     if rotation_matrix is None:
