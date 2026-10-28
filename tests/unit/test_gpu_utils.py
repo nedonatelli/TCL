@@ -10,6 +10,7 @@ Tests coverage for:
 """
 
 import platform
+import sys
 
 import numpy as np
 import pytest
@@ -367,6 +368,45 @@ class TestPlatformDetection:
 
         if result:
             assert is_apple_silicon()
+
+    def test_mlx_that_imports_but_fails_is_unavailable(self, monkeypatch):
+        """An installed MLX whose first array creation fails reports False."""
+        import types
+
+        import pytcl.gpu.utils as gpu_utils
+
+        def broken_array(_):
+            raise RuntimeError("Metal device lost")
+
+        mlx_core = types.SimpleNamespace(array=broken_array)
+        monkeypatch.setitem(sys.modules, "mlx", types.ModuleType("mlx"))
+        monkeypatch.setitem(sys.modules, "mlx.core", mlx_core)
+        monkeypatch.setattr(gpu_utils, "is_apple_silicon", lambda: True)
+        monkeypatch.setattr(gpu_utils, "is_available", lambda _: True)
+        gpu_utils.is_mlx_available.cache_clear()
+        try:
+            assert gpu_utils.is_mlx_available() is False
+        finally:
+            gpu_utils.is_mlx_available.cache_clear()
+
+    def test_cupy_without_a_device_is_unavailable(self, monkeypatch):
+        """An installed CuPy whose device query fails reports False."""
+        import types
+
+        import pytcl.gpu.utils as gpu_utils
+
+        def no_device(_):
+            raise RuntimeError("cudaErrorNoDevice")
+
+        cupy = types.ModuleType("cupy")
+        cupy.cuda = types.SimpleNamespace(Device=no_device)
+        monkeypatch.setitem(sys.modules, "cupy", cupy)
+        monkeypatch.setattr(gpu_utils, "is_available", lambda _: True)
+        gpu_utils.is_cupy_available.cache_clear()
+        try:
+            assert gpu_utils.is_cupy_available() is False
+        finally:
+            gpu_utils.is_cupy_available.cache_clear()
 
 
 class TestMLXBackend:
