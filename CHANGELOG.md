@@ -39,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **One haversine, one meridional radius, one Earth radius; no value
-  changes beyond the `great_circle_distance` fix under Fixed.** The
+  changes beyond the great-circle fix under Fixed and the 1-ulp
+  `osculating_sphere` change below.** The
   inline haversine copies in `terrain.visibility.line_of_sight`,
   `terrain.visibility.radar_coverage_map` and
   `terrain.dem.get_elevation_profile` call
@@ -55,10 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `haversine_distance`, `great_circle.EARTH_RADIUS`, `rhumb.EARTH_RADIUS`,
   the `earth_radius` parameters of `terrain.visibility` and
   `DEMGrid.get_gradient`) is `core.constants.EARTH_MEAN_RADIUS`, the same
-  value. `osculating_sphere` keeps its own form (`a (1 - e2) / denom**3`,
-  sharing `denom` with the prime-vertical radius): routing it through the
-  shared body changed its radius by 1 ulp in 28% of cases, so it stays.
-  What to do: nothing.
+  value. `core.constants.SPHERE_EARTH.a` is the constant as well.
+  `osculating_sphere` uses the shared body too; its radius moves by at most
+  1 ulp (2.9e-16 relative) in about 28% of cases (2764 of 10000 over WGS84
+  and GRS80), because its formula was `a (1 - e2) / denom**3` and is now
+  `a (1 - e2) / (1 - e2 sin^2)**1.5`. What to do: nothing.
 
 - `special_orbits.escape_velocity_at_radius(mu, r)` now delegates to
   `orbital_mechanics.escape_velocity(r, mu)`; values are identical. The
@@ -234,27 +236,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`great_circle_distance` no longer rounds its inputs; results move by
-  up to 0.74 mm, and short distances by a visible fraction.** It rounded
-  all four coordinates to 10 decimals (up to 5e-11 rad each) before the
-  haversine, so every distance carried up to about 1 mm of error from the
-  rounding alone. Measured against geographiclib on a sphere of radius
-  6371000 m (`Geodesic(6371000.0, 0)`): over 2000 random global pairs per
-  seed (4 seeds) v2.11.1 was off by up to 5.1e-9 relative and the new
-  value by up to 1.6e-14; over 2000 pairs 0 to 64 m apart v2.11.1 was off
-  by up to 2.3e-4 relative (the rounding is absolute, so the error is
-  relative to a short distance) and the new value by up to 5.0e-10. The
-  two versions differ by at most 6.6e-4 m on the 2000 pairs of the first
-  seed and 7.4e-4 m over the four seeds; these are the ranges measured.
-  It now calls `geodesy.haversine_distance` on the exact coordinates; the
-  cache is keyed on the exact floats, so `get_great_circle_cache_info` and
-  `clear_great_circle_cache` behave as before and a cache hit costs 0.1 µs
-  instead of 1.05 µs (a miss 1.24 µs instead of 2.11 µs). Also changed by
-  this: `great_circle_inverse`, `great_circle_waypoint`,
-  `great_circle_waypoints`, `cross_track_distance`, `angular_distance` and
-  `compare_great_circle_rhumb`, which all call it.
-  `great_circle_azimuth` still rounds its inputs. What to do: nothing,
-  unless you compare against stored v2.11.1 distances; allow 1 mm.
+- **`great_circle_distance` and `great_circle_azimuth` no longer round their
+  inputs; distances move by up to 0.74 mm and short-pair azimuths by far
+  more.** Both rounded all four coordinates to 10 decimals (up to 5e-11 rad
+  each) before computing, so every distance carried up to about 1 mm of
+  error from the rounding alone and an azimuth carried an error of
+  1e-10 rad divided by the pair's separation in radians. Both now compute
+  on the exact coordinates. Measured against geographiclib on a sphere of
+  radius 6371000 m (`Geodesic(6371000.0, 0)`), maximum over the pairs
+  sampled (the reference takes degrees, so part of each new-code
+  figure below is the oracle's):
+
+  | pairs sampled | distance, relative: v2.11.1 / new | azimuth, rad: v2.11.1 / new |
+  |---|---|---|
+  | 2000 global, per seed (4 seeds) | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
+  | 1000 at 64 m | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
+  | 1000 at 1 m | 6.5e-4 / 2.3e-9 | 7.3e-4 / 2.3e-9 |
+  | 1000 at 0.01 m | 7.2e-2 / 2.4e-7 | 6.3e-2 / 2.9e-7 |
+
+  Earlier drafts quoted 2.3e-4 relative for pairs "0 to 64 m" apart; that
+  was a single mixed sample, replaced by the separations above. Nothing
+  here is measured below 0.01 m or above the global sample. The new error
+  grows as pairs shrink (`lat2 - lat1` loses digits); v2.11.1's grows
+  faster. A pair 3e-11 rad apart (0.2 mm) returned azimuth 0.0 from
+  `great_circle_azimuth` and `great_circle_inverse` while the true bearing
+  was 0.46 rad; it now returns 0.46. The distances of the two versions
+  differ by at most 7.4e-4 m (4 seeds x 2000 global pairs).
+  Also changed, because they call these two: `great_circle_inverse`
+  (distance by up to 6.9e-4 m, azimuths by up to 1.3e-9 rad on global
+  pairs and by up to 1e-2 rad on pairs about 1 m apart),
+  `cross_track_distance` (cross-track by up to 6.7e-3 m and along-track by
+  up to 7.3e-3 m over 1000 global point/track pairs),
+  `great_circle_path_intersect` (latitude by up to 1.5e-9 rad, longitude by
+  up to 3.5e-9 rad over 1000 pairs; no `valid` flag changed),
+  `great_circle_waypoint`, `great_circle_waypoints`, `angular_distance`
+  and `compare_great_circle_rhumb`. `great_circle_intersect` did not change
+  on 1000 random inputs; it uses the azimuth only to choose between the two
+  intersections. The caches are now keyed on the exact floats: hit rates
+  depend on exact inputs, where two calls within 1e-10 rad used to share an
+  entry; `get_great_circle_cache_info` and `clear_great_circle_cache` keep
+  their meaning. A cache hit costs 0.1 µs instead of 1.05 µs and a miss
+  1.24 µs instead of 2.11 µs. What to do: nothing, unless you compare
+  against stored v2.11.1 distances (allow 1 mm) or azimuths of pairs
+  closer than about a kilometre.
 
 - **Solid-tide sidereal time and the ecliptic obliquity constant now follow
   IAU models; results shift slightly.** The tide module's GMST used a linear

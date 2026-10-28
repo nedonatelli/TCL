@@ -16,6 +16,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.coordinate_systems.conversions.geodetic import (
+    _meridional_radius_e2,
     ecef2enu,
     ecef2geodetic,
     enu2ecef,
@@ -407,7 +408,7 @@ def osculating_sphere(
     e2 = ellipsoid.e2
     denom = np.sqrt(1 - e2 * np.sin(lat) ** 2)
     # Radii of curvature in the meridian and the prime vertical.
-    m0 = a * (1 - e2) / denom**3
+    m0 = _meridional_radius_e2(lat, a, e2)
     n0 = a / denom
     radius = float(np.sqrt(m0 * n0))
 

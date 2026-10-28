@@ -248,7 +248,7 @@ CLARKE1866: Final[EllipsoidParameters] = EllipsoidParameters(
 
 #: Sphere with Earth mean radius
 SPHERE_EARTH: Final[EllipsoidParameters] = EllipsoidParameters(
-    a=6_371_000.0,
+    a=EARTH_MEAN_RADIUS,
     f=0.0,
     GM=3.986004418e14,
     omega=7.292115e-5,

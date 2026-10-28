@@ -13,12 +13,15 @@ Row 18, the 6371000 m mean Earth radius is ``EARTH_MEAN_RADIUS``.
 """
 
 import inspect
+import re
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from pytcl.coordinate_systems.conversions import meridional_radius
 from pytcl.coordinate_systems.projections import projections
+from pytcl.core import constants
 from pytcl.core.constants import EARTH_MEAN_RADIUS
 from pytcl.navigation import geodesy, great_circle, ins, rhumb
 from pytcl.terrain import dem as dem_mod
@@ -354,21 +357,161 @@ class TestEarthRadius:
         return out
 
     @pytest.mark.parametrize("mod", [geodesy, great_circle, rhumb, visibility])
-    def test_every_default_is_the_mean_radius(self, mod):
+    def test_every_default_is_the_constant_itself(self, mod):
         defaults = self._radius_defaults(mod)
         assert defaults
-        assert all(v == EARTH_MEAN_RADIUS for v in defaults.values()), defaults
+        assert all(v is EARTH_MEAN_RADIUS for v in defaults.values()), defaults
 
     def test_dem_gradient_default(self):
         p = inspect.signature(dem_mod.DEMGrid.get_gradient).parameters
-        assert p["earth_radius"].default == EARTH_MEAN_RADIUS
+        assert p["earth_radius"].default is EARTH_MEAN_RADIUS
 
-    def test_no_inline_mean_radius_literal_in_the_geodesy_sources(self):
-        for mod in (geodesy, great_circle, rhumb, visibility, dem_mod):
-            src = inspect.getsource(mod)
-            code = [
-                ln
-                for ln in src.splitlines()
-                if "6371000" in ln and not ln.strip().startswith(("#", "Earth"))
-            ]
-            assert not [ln for ln in code if "Default is" not in ln], code
+    def test_sphere_earth_constant(self):
+        assert constants.SPHERE_EARTH.a is EARTH_MEAN_RADIUS
+
+    # Spellings of the mean radius in metres: 6371000, 6_371_000, 6371000.0,
+    # 6.371e6, 6371e3, with any exponent sign or case.
+    _LITERAL = re.compile(r"6_?371_?000(?![\d_])|6\.371[eE]\+?0?6\b|6371[eE]\+?0?3\b")
+    # (path, line text) pairs that spell it and are not a second definition.
+    _ALLOWED = (
+        ("core/constants.py", "EARTH_MEAN_RADIUS: Final[float] = 6_371_000.0"),
+        # The prose in these docstrings names the constant being defaulted.
+        ("terrain/dem.py", "``EARTH_MEAN_RADIUS`` (6371000.0)"),
+        ("terrain/visibility.py", "``EARTH_MEAN_RADIUS`` (6371000.0)"),
+        # Doctest examples of an illustrative surface radius for the
+        # time-dilation formula; not a default and not the mean radius's job.
+        ("astronomical/relativity.py", "r_earth = 6.371e6"),
+        ("astronomical/relativity.py", "r_ground = 6.371e6"),
+    )
+
+    def test_mean_radius_is_spelled_once_in_the_package(self):
+        root = Path(inspect.getfile(constants)).parents[1]
+        hits = []
+        for path in root.rglob("*.py"):
+            rel = path.relative_to(root).as_posix()
+            for n, line in enumerate(path.read_text().splitlines(), 1):
+                if self._LITERAL.search(line) and not any(
+                    rel == r and text in line for r, text in self._ALLOWED
+                ):
+                    hits.append(f"{rel}:{n}: {line.strip()}")
+        assert not hits, hits
+
+    def test_literal_scan_sees_every_spelling(self):
+        for text in ("6371000", "6_371_000", "6371000.0", "6.371e6", "6371e3"):
+            assert self._LITERAL.search(f"a = {text}"), text
+        assert not self._LITERAL.search("r = 6371.2")
+
+
+class TestAzimuth:
+    def _short_pairs(self, sep, seed):
+        rng = np.random.default_rng(seed)
+        out = []
+        for _ in range(1000):
+            lat, lon = rng.uniform(-1.4, 1.4), rng.uniform(-3, 3)
+            th = rng.uniform(0, 2 * np.pi)
+            s = sep / EARTH_MEAN_RADIUS
+            out.append(
+                (lat, lon, lat + s * np.cos(th), lon + s * np.sin(th) / np.cos(lat))
+            )
+        return out
+
+    @staticmethod
+    def _err(fn, args, sphere):
+        ref = np.radians(sphere.Inverse(*np.degrees(args))["azi1"]) % (2 * np.pi)
+        d = abs(fn(*args) - ref)
+        return min(d, 2 * np.pi - d)
+
+    # Measured (1000-2000 pairs, seed-dependent maxima): global 2.2e-15 rad;
+    # separations 64 m / 1 m / 0.01 m: 4.3e-11 / 2.3e-9 / 2.9e-7 rad
+    # (v2.11.1: 1.3e-9 / 1.0e-5 / 7.3e-4 / 6.3e-2). The reference takes
+    # degrees, so part of the short-pair figure is the oracle's.
+    @pytest.mark.parametrize(
+        ("sep", "bound"), [(None, 1e-12), (64.0, 1e-9), (1.0, 1e-7), (0.01, 1e-5)]
+    )
+    def test_matches_geographiclib_sphere(self, sep, bound):
+        geographiclib = pytest.importorskip("geographiclib.geodesic")
+        sphere = geographiclib.Geodesic(6371000.0, 0)
+        if sep is None:
+            rng = np.random.default_rng(1)
+            pairs = list(
+                zip(
+                    rng.uniform(-1.4, 1.4, 1000),
+                    rng.uniform(-3, 3, 1000),
+                    rng.uniform(-1.4, 1.4, 1000),
+                    rng.uniform(-3, 3, 1000),
+                    strict=True,
+                )
+            )
+        else:
+            pairs = self._short_pairs(sep, 2)
+        worst = max(
+            self._err(great_circle.great_circle_azimuth, p, sphere) for p in pairs
+        )
+        assert worst < bound
+
+    def test_inverse_agrees_with_the_individual_functions_bitwise(self):
+        near = (0.7, 0.1, 0.7 + 3e-11, 0.1 + 2e-11)
+        for args in [*zip(*_pairs(300, 12), strict=True), near]:
+            r = great_circle.great_circle_inverse(*args)
+            lat1, lon1, lat2, lon2 = args
+            assert r.distance == great_circle.great_circle_distance(*args)
+            assert r.azimuth1 == great_circle.great_circle_azimuth(*args)
+            back = great_circle.great_circle_azimuth(lat2, lon2, lat1, lon1)
+            assert r.azimuth2 == (back + np.pi) % (2 * np.pi)
+
+    def test_sub_millimetre_pair_has_a_real_azimuth(self, old_gc):
+        args = (0.7, 0.1, 0.7 + 3e-11, 0.1 + 2e-11)
+        assert old_gc.great_circle_azimuth(*args) == 0.0
+        assert great_circle.great_circle_azimuth(*args) == pytest.approx(0.46, abs=0.02)
+
+    def test_global_pairs_move_only_by_the_old_rounding(self, old_gc):
+        # measured 1.3e-9 rad over 2000 pairs
+        for args in zip(*_pairs(500, 13), strict=True):
+            d = abs(
+                great_circle.great_circle_azimuth(*args)
+                - old_gc.great_circle_azimuth(*args)
+            )
+            assert min(d, 2 * np.pi - d) < 1e-7
+
+    def test_cache_is_keyed_on_exact_coordinates(self):
+        great_circle.clear_great_circle_cache()
+        a = great_circle.great_circle_azimuth(0.7, 0.1, 0.9, 0.5)
+        b = great_circle.great_circle_azimuth(0.7 + 3e-11, 0.1, 0.9, 0.5)
+        assert a != b
+        info = great_circle.get_cache_info()["azimuth"]
+        assert info["currsize"] == 2 and info["hits"] == 0
+        assert not hasattr(great_circle, "_quantize_coord")
+
+
+class TestOsculatingSphere:
+    @pytest.mark.parametrize("ell", ["wgs84", "grs80", "hayford"])
+    def test_matches_v2111_to_one_ulp(self, old_geodesy, ell):
+        new_e, old_e = _ellipsoids(geodesy)[ell], _ellipsoids(old_geodesy)[ell]
+        worst = 0.0
+        for lat in np.linspace(-1.55, 1.55, 400):
+            n = geodesy.osculating_sphere(lat, 0.3, new_e)
+            o = old_geodesy.osculating_sphere(lat, 0.3, old_e)
+            assert type(n.radius) is type(o.radius)
+            worst = max(worst, abs(n.radius - o.radius) / o.radius)
+            np.testing.assert_allclose(n.center, o.center, rtol=1e-12, atol=1e-8)
+        # measured 2.9e-16 (1 ulp) in about 28% of cases
+        assert worst <= 4.5e-16
+
+    def test_uses_the_shared_meridional_body(self, monkeypatch):
+        calls = []
+        real = geodesy._meridional_radius_e2
+
+        def spy(lat, a, e2):
+            calls.append((lat, a, e2))
+            return real(lat, a, e2)
+
+        monkeypatch.setattr(geodesy, "_meridional_radius_e2", spy)
+        geodesy.osculating_sphere(0.7, 0.1)
+        assert calls == [(0.7, geodesy.WGS84.a, geodesy.WGS84.e2)]
+
+    def test_shared_body_is_the_formula(self):
+        from pytcl.coordinate_systems.conversions import geodetic
+
+        lat, a, e2 = np.linspace(-1.5, 1.5, 7), 6378137.0, 0.00669437999014
+        want = a * (1 - e2) / (1 - e2 * np.sin(lat) ** 2) ** 1.5
+        np.testing.assert_array_equal(geodetic._meridional_radius_e2(lat, a, e2), want)
