@@ -285,7 +285,7 @@ def test_compiled_and_interpreted_paths_agree_on_the_nan_cells(monkeypatch):
     interpreted = _public_results()
     assert len(compiled) == len(interpreted)
     n_nan = 0
-    for c, p in zip(compiled, interpreted):
+    for c, p in zip(compiled, interpreted, strict=True):
         # fastmath reassociates the window sums, so finite values agree to
         # rounding; the NaN cells and the detections agree exactly.
         for field in ("threshold", "noise_estimate"):

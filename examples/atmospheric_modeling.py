@@ -101,7 +101,7 @@ def plot_nrlmsise00_profiles():
     fig.update_layout(title="NRLMSISE-00: quiet vs geomagnetic storm")
 
     ratio_400 = None
-    for alt, qd, sd in zip(altitudes_km, quiet_rho, storm_rho):
+    for alt, qd, sd in zip(altitudes_km, quiet_rho, storm_rho, strict=True):
         if abs(alt - 400.0) < 6:
             ratio_400 = sd / qd
             break

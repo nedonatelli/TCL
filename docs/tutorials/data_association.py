@@ -199,7 +199,7 @@ def data_association_tutorial():
             track_indices, meas_indices = linear_sum_assignment(cost_matrix)
 
             assignments = {}
-            for track_idx, meas_idx in zip(track_indices, meas_indices):
+            for track_idx, meas_idx in zip(track_indices, meas_indices, strict=True):
                 if cost_matrix[track_idx, meas_idx] < 1000:
                     assignments[track_idx] = meas_idx
 

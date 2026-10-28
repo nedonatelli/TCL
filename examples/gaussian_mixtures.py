@@ -147,7 +147,7 @@ def demo_moment_matching():
     covariances = [np.eye(2) * 0.5, np.eye(2) * 0.8, np.eye(2) * 0.3]
 
     print("\nOriginal mixture (3 components):")
-    for i, (w, m) in enumerate(zip(weights, means)):
+    for i, (w, m) in enumerate(zip(weights, means, strict=True)):
         print(f"  Component {i + 1}: weight={w:.1f}, mean={m}")
 
     # Moment match to single Gaussian - takes (weights, means, covariances)
@@ -158,7 +158,7 @@ def demo_moment_matching():
     print(f"  Covariance:\n{cov}")
 
     # The mean should be the weighted average
-    weighted_mean = sum(w * m for w, m in zip(weights, means))
+    weighted_mean = sum(w * m for w, m in zip(weights, means, strict=True))
     print(
         f"\nVerification - weighted mean: ({weighted_mean[0]:.3f}, "
         f"{weighted_mean[1]:.3f})"
@@ -299,7 +299,7 @@ def demo_kmeans():
 
     # Cluster sizes
     unique, counts = np.unique(result.labels, return_counts=True)
-    print("\n  Cluster sizes:", dict(zip(unique, counts)))
+    print("\n  Cluster sizes:", dict(zip(unique, counts, strict=True)))
 
     # Plot K-means result
     if SHOW_PLOTS:
@@ -455,7 +455,7 @@ def demo_elbow_method():
     k_values = elbow_result["k_values"]
     inertias = elbow_result["inertias"]
 
-    for k, inertia in zip(k_values, inertias):
+    for k, inertia in zip(k_values, inertias, strict=True):
         bar = "#" * int(inertia / max(inertias) * 30)
         print(f"  K={k}: {inertia:>8.1f} {bar}")
 

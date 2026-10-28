@@ -527,7 +527,7 @@ class TestPerDetectionMeasurementCovariance:
             supplied.process(scan, dt=1.0, measurement_covariances=[R] * len(scan))
 
         assert len(fixed.tracks) == len(supplied.tracks)
-        for a, b in zip(fixed.tracks, supplied.tracks):
+        for a, b in zip(fixed.tracks, supplied.tracks, strict=True):
             assert a.id == b.id
             assert a.status is b.status
             assert_allclose(a.state, b.state, rtol=1e-12, atol=1e-12)

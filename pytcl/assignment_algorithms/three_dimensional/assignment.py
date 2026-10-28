@@ -436,7 +436,7 @@ def assign3d_lagrangian(
         pair_cost = work[row_ind, col_ind, :]
         r_idx, k_idx = scipy_lsa(pair_cost, maximize=False)
         tuples = np.array(
-            [(row_ind[r], col_ind[r], k) for r, k in zip(r_idx, k_idx)],
+            [(row_ind[r], col_ind[r], k) for r, k in zip(r_idx, k_idx, strict=True)],
             dtype=np.intp,
         ).reshape(-1, 3)
         upper = (

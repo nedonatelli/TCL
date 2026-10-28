@@ -1070,7 +1070,7 @@ def workflow_clutter_handling(
                         try:
                             db.associate_detection(det_ids[best_j], track_id)
                             n_associated += 1
-                        except (KeyError, Exception):
+                        except KeyError:
                             pass
 
         # Monitor initiation queue

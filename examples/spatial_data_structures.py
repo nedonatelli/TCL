@@ -89,7 +89,9 @@ def demo_kdtree_basics():
 
     print(f"\n{k} nearest neighbors:")
     # indices/distances are 2D arrays, extract the first row for single query
-    for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
+    for i, (idx, dist) in enumerate(
+        zip(result.indices[0], result.distances[0], strict=True)
+    ):
         print(f"  {i + 1}. Point {idx}: {points[idx]} (distance={dist:.4f})")
 
     # Plot KDTree result
@@ -229,7 +231,9 @@ def demo_balltree():
 
     print(f"\nQuery: origin in {n_dims}D")
     print(f"{k} nearest neighbors:")
-    for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
+    for i, (idx, dist) in enumerate(
+        zip(result.indices[0], result.distances[0], strict=True)
+    ):
         print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: Ball Tree is often more efficient than K-D Tree")
@@ -450,7 +454,9 @@ def demo_vptree():
 
     print(f"\nQuery point: {query}")
     print(f"{k} nearest neighbors:")
-    for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
+    for i, (idx, dist) in enumerate(
+        zip(result.indices[0], result.distances[0], strict=True)
+    ):
         print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: VP-Tree works with any distance metric,")
@@ -481,7 +487,9 @@ def demo_covertree():
 
     print(f"\nQuery: origin in 4D")
     print(f"{k} nearest neighbors:")
-    for i, (idx, dist) in enumerate(zip(result.indices[0], result.distances[0])):
+    for i, (idx, dist) in enumerate(
+        zip(result.indices[0], result.distances[0], strict=True)
+    ):
         print(f"  {i + 1}. Point {idx}: distance = {dist:.4f}")
 
     print("\nNote: Cover Tree provides O(c^12 log n) query complexity")

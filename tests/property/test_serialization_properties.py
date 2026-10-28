@@ -29,8 +29,8 @@ class TestMsgpackRoundTrip:
         )
         assert times2 == times
         assert [len(s) for s in history2] == [len(s) for s in history]
-        for scan, scan2 in zip(history, history2):
-            for tr, tr2 in zip(scan, scan2):
+        for scan, scan2 in zip(history, history2, strict=True):
+            for tr, tr2 in zip(scan, scan2, strict=True):
                 # tobytes() compares raw bit patterns, so NaN == NaN here.
                 assert tr2.state.tobytes() == tr.state.tobytes()
                 assert tr2.covariance.tobytes() == tr.covariance.tobytes()
@@ -45,8 +45,8 @@ class TestJsonContract:
             encode_tracks(history, times, fmt="json"), fmt="json"
         )
         assert times2 == times
-        for scan, scan2 in zip(history, history2):
-            for tr, tr2 in zip(scan, scan2):
+        for scan, scan2 in zip(history, history2, strict=True):
+            for tr, tr2 in zip(scan, scan2, strict=True):
                 assert tr2.state.tobytes() == tr.state.tobytes()
                 assert tr2.covariance.tobytes() == tr.covariance.tobytes()
 
@@ -107,8 +107,8 @@ class TestAsdfRoundTrip:
         times2, history2 = load_tracks_asdf(path)
         assert times2 == times
         assert [len(s) for s in history2] == [len(s) for s in history]
-        for scan, scan2 in zip(history, history2):
-            for tr, tr2 in zip(scan, scan2):
+        for scan, scan2 in zip(history, history2, strict=True):
+            for tr, tr2 in zip(scan, scan2, strict=True):
                 assert tr2.state.tobytes() == tr.state.tobytes()
                 assert tr2.covariance.tobytes() == tr.covariance.tobytes()
                 assert tr2.covariance.shape == tr.covariance.shape

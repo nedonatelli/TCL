@@ -100,7 +100,7 @@ def is_mlx_available() -> bool:
         _ = mx.array([1.0, 2.0, 3.0])
         _logger.info("MLX available on Apple Silicon")
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- functional probe: any failure means unavailable
         _logger.debug("MLX not functional: %s", e)
         return False
 
@@ -138,7 +138,7 @@ def is_cupy_available() -> bool:
         _ = device.compute_capability
         _logger.info("CuPy available: %s", device.pci_bus_id)
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 -- functional probe: any failure means unavailable
         _logger.debug("CuPy/CUDA not available: %s", e)
         return False
 

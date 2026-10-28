@@ -419,7 +419,7 @@ def _partition_solution(
     required_set = set(required)
     free_pairs = [
         (int(r), int(c))
-        for r, c in zip(row_ind, col_ind)
+        for r, c in zip(row_ind, col_ind, strict=True)
         if (int(r), int(c)) not in required_set
     ]
 

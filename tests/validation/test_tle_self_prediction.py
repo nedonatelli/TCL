@@ -75,7 +75,9 @@ def _pair_errors(sat):
     tles = [parse_tle(t["line1"], t["line2"]) for t in sat["tles"]]
     jds = [tle_epoch_to_jd(t) for t in tles]
     rows = []
-    for older, newer, jd0, jd1 in zip(tles, tles[1:], jds, jds[1:]):
+    for older, newer, jd0, jd1 in zip(
+        tles[:-1], tles[1:], jds[:-1], jds[1:], strict=True
+    ):
         horizon_days = jd1 - jd0
         if horizon_days < MIN_HORIZON_DAYS:
             continue

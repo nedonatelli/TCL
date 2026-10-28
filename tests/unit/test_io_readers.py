@@ -199,12 +199,12 @@ class TestReadMeasurementsParquet:
         )
 
         assert ms_csv.times.tobytes() == ms_parquet.times.tobytes()
-        for a, b in zip(ms_csv.scans, ms_parquet.scans):
+        for a, b in zip(ms_csv.scans, ms_parquet.scans, strict=True):
             assert a.tobytes() == b.tobytes()
 
         assert ms_csv.ids is not None and ms_parquet.ids is not None
         assert len(ms_csv.ids) == len(ms_parquet.ids)
-        for a, b in zip(ms_csv.ids, ms_parquet.ids):
+        for a, b in zip(ms_csv.ids, ms_parquet.ids, strict=True):
             assert a.dtype == b.dtype
             assert a.dtype.kind in "iu", f"expected a numeric id dtype, got {a.dtype}"
             assert a.tolist() == b.tolist()

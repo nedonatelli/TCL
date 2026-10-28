@@ -480,7 +480,7 @@ def _jpda_exact(
 
     # Compute marginal association probabilities
     for h_idx, (assignment, prob) in enumerate(
-        zip(hypothesis_assignments, hypothesis_probs)
+        zip(hypothesis_assignments, hypothesis_probs, strict=True)
     ):
         detected_tracks = set[Any]()
         for j, track_idx in enumerate(assignment):

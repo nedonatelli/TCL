@@ -2100,7 +2100,7 @@ class TestBallMatlabFixtures:
 
         def _cluster(p, wt):
             sums: dict = {}
-            for key, wi in zip(map(tuple, np.round(p, 12)), wt):
+            for key, wi in zip(map(tuple, np.round(p, 12)), wt, strict=True):
                 sums[key] = sums.get(key, 0.0) + wi
             return sums
 

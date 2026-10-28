@@ -125,7 +125,9 @@ class TestRBPFPrediction:
         new_y = [p.y for p in self.rbpf.particles]
 
         # At least some particles should have changed
-        changed = sum(1 for o, n in zip(old_y, new_y) if not np.allclose(o, n))
+        changed = sum(
+            1 for o, n in zip(old_y, new_y, strict=True) if not np.allclose(o, n)
+        )
         assert changed > 0
 
     def test_predict_preserves_weights(self):
@@ -154,7 +156,7 @@ class TestRBPFPrediction:
 
         new_traces = [np.trace(p.P) for p in self.rbpf.particles]
 
-        for old_tr, new_tr in zip(old_traces, new_traces):
+        for old_tr, new_tr in zip(old_traces, new_traces, strict=True):
             assert new_tr >= old_tr
 
 

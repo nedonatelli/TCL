@@ -54,7 +54,7 @@ def read_pyproject_metadata() -> Dict[str, Any]:
         desc_match = re.search(r'description\s*=\s*"([^"]+)"', content)
         if desc_match:
             metadata["description"] = desc_match.group(1)
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         print(f"Warning: Could not read pyproject.toml: {e}")
 
     return metadata
@@ -82,7 +82,7 @@ def count_public_functions() -> int:
             count += len(re.findall(r"^def [a-zA-Z]\w*", content, re.MULTILINE))
             # Public methods (single indent)
             count += len(re.findall(r"    def [a-zA-Z]\w*", content, re.MULTILINE))
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             pass
     return count
 
@@ -124,7 +124,7 @@ def count_test_functions() -> int:
             # Count function definitions starting with 'def test_'
             matches = re.findall(r"def test_\w+", content)
             count += len(matches)
-        except Exception:
+        except (OSError, UnicodeDecodeError):
             pass
 
     return count

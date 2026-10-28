@@ -935,7 +935,7 @@ class TestGenzKeister:
         # merely a numerical coincidence.
         for m in range(1, max_m + 1):
             pts, w = genz_keister_points(n, m, algorithm=algorithm)
-            for p, wt in zip(pts, w):
+            for p, wt in zip(pts, w, strict=True):
                 match = np.all(np.isclose(pts, -p, atol=1e-8), axis=1)
                 assert np.any(match), f"n={n} m={m} point {p} has no antipodal partner"
                 assert_allclose(w[match], wt, atol=1e-8)
@@ -1549,7 +1549,7 @@ class TestStudentT:
 
     def test_antipodal_symmetry(self):
         pts, w = student_t_cubature_points(4, 6.0)
-        for p, wt in zip(pts, w):
+        for p, wt in zip(pts, w, strict=True):
             match = np.all(np.isclose(pts, -p), axis=1)
             assert np.any(match)
             assert_allclose(w[match], wt)

@@ -285,7 +285,7 @@ class CoverTree(MetricSpatialIndex):
             neighbors = self._query_single(X[i], k)
             n_found = len(neighbors)
             if n_found > 0:
-                indices, distances = zip(*neighbors)
+                indices, distances = zip(*neighbors, strict=True)
                 all_indices[i, :n_found] = indices
                 all_distances[i, :n_found] = distances
 

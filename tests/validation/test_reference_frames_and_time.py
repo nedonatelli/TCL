@@ -93,7 +93,7 @@ class TestPrecessionAnglesIau76:
         """
         forward = precession_angles_iau76(1.0)
         backward = precession_angles_iau76(-1.0)
-        for ahead, behind in zip(forward, backward):
+        for ahead, behind in zip(forward, backward, strict=True):
             assert behind < 0.0 < ahead
             assert abs(behind) == pytest.approx(abs(ahead), rel=1e-3)
 

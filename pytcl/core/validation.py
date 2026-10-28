@@ -126,7 +126,7 @@ def validate_array(
             raise ValidationError(
                 f"{name} must have {len(shape)} dimensions, got {result.ndim}"
             )
-        for i, (expected, actual) in enumerate(zip(shape, result.shape)):
+        for i, (expected, actual) in enumerate(zip(shape, result.shape, strict=True)):
             if expected is not None and expected != actual:
                 raise ValidationError(
                     f"{name} dimension {i} must be {expected}, got {actual}"
@@ -487,7 +487,11 @@ def validate_same_shape(*arrays: ArrayLike, names: Sequence[str] | None = None) 
     shapes = [np.asarray(arr).shape for arr in arrays]
 
     if not all(s == shapes[0] for s in shapes):
-        shape_strs = [f"{name}: {shape}" for name, shape in zip(names, shapes)]
+        shape_strs = [
+            f"{name}: {shape}"
+            for name, shape in zip(names, shapes, strict=False)  # labels only; a
+            # short names list trims the message, it must not mask this error
+        ]
         raise ValidationError(
             f"Arrays must have the same shape. Got: {', '.join(shape_strs)}"
         )
@@ -885,7 +889,12 @@ def check_compatible_shapes(
         dims = [s[dimension] if len(s) > dimension else None for s in shapes]
         valid_dims = [d for d in dims if d is not None]
         if valid_dims and not all(d == valid_dims[0] for d in valid_dims):
-            dim_strs = [f"{n}={d}" for n, d in zip(names, dims) if d is not None]
+            dim_strs = [
+                f"{n}={d}"
+                for n, d in zip(names, dims, strict=False)  # labels only; a short
+                # names list trims the message, it must not mask this error
+                if d is not None
+            ]
             raise ValidationError(
                 f"Arrays have incompatible sizes along dimension {dimension}: "
                 f"{', '.join(dim_strs)}"

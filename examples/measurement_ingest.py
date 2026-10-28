@@ -96,7 +96,7 @@ def run_tracker(history_csv: Path):
     history = []
     times = []
     prev_t = None
-    for t, scan in zip(ms.times, ms.scans):
+    for t, scan in zip(ms.times, ms.scans, strict=True):
         dt = DT if prev_t is None else float(t - prev_t)
         prev_t = t
         tracks = tracker.process([row for row in scan], dt=dt)

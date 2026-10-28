@@ -132,7 +132,7 @@ def test_every_tested_public_name_is_reachable_or_declared_internal():
         try:
             if _is_reachable(package, name):
                 continue
-        except Exception:
+        except Exception:  # noqa: BLE001 -- unresolvable names are skipped, whatever the failure
             continue
         if f"{package}.{name}" in INTERNAL:
             continue

@@ -196,7 +196,7 @@ def example_leo_satellite_tracking():
     elevation_pass = []
     range_pass = []
 
-    for lat_sat, lon_sat in zip(lat_pass, lon_pass):
+    for lat_sat, lon_sat in zip(lat_pass, lon_pass, strict=True):
         lat_sat_rad = np.radians(lat_sat)
         lon_sat_rad = np.radians(lon_sat)
 
@@ -235,7 +235,7 @@ def example_leo_satellite_tracking():
     # Determine horizon crossings
     horizon_points = [
         (el, az, rng)
-        for el, az, rng in zip(elevation_pass, azimuth_pass, range_pass)
+        for el, az, rng in zip(elevation_pass, azimuth_pass, range_pass, strict=True)
         if abs(el) < 1
     ]
     if horizon_points:

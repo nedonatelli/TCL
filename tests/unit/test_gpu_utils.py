@@ -10,11 +10,13 @@ Tests coverage for:
 """
 
 import platform
+import sys
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
+from pytcl.core.exceptions import DependencyError
 from pytcl.gpu.utils import (
     clear_gpu_memory,
     ensure_gpu_array,
@@ -167,7 +169,7 @@ class TestGPUArrayConversion:
         try:
             result = to_gpu(arr)
             assert result is not None
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_to_gpu_returns_array_like(self):
@@ -177,7 +179,7 @@ class TestGPUArrayConversion:
         try:
             result = to_gpu(arr)
             to_cpu(result)
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_to_gpu_dtype_preservation(self):
@@ -188,7 +190,7 @@ class TestGPUArrayConversion:
             result = to_gpu(arr, dtype=np.float32)
             cpu_result = to_cpu(result)
             assert cpu_result.dtype == np.float32
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
 
@@ -202,7 +204,7 @@ class TestEnsureGPUArray:
         try:
             result = ensure_gpu_array(arr)
             assert result is not None
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_ensure_gpu_array_already_gpu(self):
@@ -213,7 +215,7 @@ class TestEnsureGPUArray:
             gpu_arr = to_gpu(arr)
             result = ensure_gpu_array(gpu_arr)
             assert result is not None
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_ensure_gpu_array_multidimensional(self):
@@ -223,7 +225,7 @@ class TestEnsureGPUArray:
         try:
             result = ensure_gpu_array(arr)
             assert result is not None
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
 
@@ -232,17 +234,11 @@ class TestGPUSynchronization:
 
     def test_sync_gpu_no_error(self):
         """Test that sync_gpu doesn't raise error."""
-        try:
-            sync_gpu()
-        except Exception:
-            pytest.skip("GPU not available")
+        sync_gpu()
 
     def test_sync_gpu_safe_when_no_gpu(self):
         """Test sync_gpu is safe even without GPU."""
-        try:
-            sync_gpu()
-        except Exception:
-            pass
+        sync_gpu()
 
 
 class TestGPUMemoryManagement:
@@ -250,21 +246,15 @@ class TestGPUMemoryManagement:
 
     def test_get_gpu_memory_info_returns_dict(self):
         """Test that get_gpu_memory_info returns dictionary."""
-        try:
-            info = get_gpu_memory_info()
-            assert isinstance(info, dict)
-        except Exception:
-            pytest.skip("GPU not available")
+        info = get_gpu_memory_info()
+        assert isinstance(info, dict)
 
     def test_get_gpu_memory_info_structure(self):
         """Test structure of GPU memory info."""
-        try:
-            info = get_gpu_memory_info()
-            assert len(info) > 0
-            for key in info:
-                assert isinstance(key, str)
-        except Exception:
-            pytest.skip("GPU not available")
+        info = get_gpu_memory_info()
+        assert len(info) > 0
+        for key in info:
+            assert isinstance(key, str)
 
     def test_get_gpu_memory_info_no_gpu(self):
         """Test memory info returns zeros when no GPU is available."""
@@ -278,17 +268,11 @@ class TestGPUMemoryManagement:
 
     def test_clear_gpu_memory_no_error(self):
         """Test that clear_gpu_memory doesn't raise error."""
-        try:
-            clear_gpu_memory()
-        except Exception:
-            pytest.skip("GPU not available")
+        clear_gpu_memory()
 
     def test_clear_gpu_memory_safe_when_no_gpu(self):
         """Test clear_gpu_memory is safe even without GPU."""
-        try:
-            clear_gpu_memory()
-        except Exception:
-            pass
+        clear_gpu_memory()
 
 
 class TestGPUIntegration:
@@ -302,7 +286,7 @@ class TestGPUIntegration:
             gpu_arr = to_gpu(arr)
             cpu_result = to_cpu(gpu_arr)
             assert np.allclose(cpu_result, arr)
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_roundtrip_multidimensional(self):
@@ -314,7 +298,7 @@ class TestGPUIntegration:
             cpu_result = to_cpu(gpu_arr)
             assert cpu_result.shape == arr.shape
             assert np.allclose(cpu_result, arr, rtol=1e-5)
-        except Exception:
+        except DependencyError:
             pytest.skip("GPU not available")
 
     def test_backend_detection_consistent(self):
@@ -340,16 +324,13 @@ class TestGPUIntegration:
 
     def test_memory_operations_safe(self):
         """Test memory operations are safe and don't crash."""
-        try:
-            info1 = get_gpu_memory_info()
-            clear_gpu_memory()
-            sync_gpu()
-            info2 = get_gpu_memory_info()
+        info1 = get_gpu_memory_info()
+        clear_gpu_memory()
+        sync_gpu()
+        info2 = get_gpu_memory_info()
 
-            assert isinstance(info1, dict)
-            assert isinstance(info2, dict)
-        except Exception:
-            pytest.skip("GPU not available")
+        assert isinstance(info1, dict)
+        assert isinstance(info2, dict)
 
 
 class TestBackendStringValues:
@@ -387,6 +368,45 @@ class TestPlatformDetection:
 
         if result:
             assert is_apple_silicon()
+
+    def test_mlx_that_imports_but_fails_is_unavailable(self, monkeypatch):
+        """An installed MLX whose first array creation fails reports False."""
+        import types
+
+        import pytcl.gpu.utils as gpu_utils
+
+        def broken_array(_):
+            raise RuntimeError("Metal device lost")
+
+        mlx_core = types.SimpleNamespace(array=broken_array)
+        monkeypatch.setitem(sys.modules, "mlx", types.ModuleType("mlx"))
+        monkeypatch.setitem(sys.modules, "mlx.core", mlx_core)
+        monkeypatch.setattr(gpu_utils, "is_apple_silicon", lambda: True)
+        monkeypatch.setattr(gpu_utils, "is_available", lambda _: True)
+        gpu_utils.is_mlx_available.cache_clear()
+        try:
+            assert gpu_utils.is_mlx_available() is False
+        finally:
+            gpu_utils.is_mlx_available.cache_clear()
+
+    def test_cupy_without_a_device_is_unavailable(self, monkeypatch):
+        """An installed CuPy whose device query fails reports False."""
+        import types
+
+        import pytcl.gpu.utils as gpu_utils
+
+        def no_device(_):
+            raise RuntimeError("cudaErrorNoDevice")
+
+        cupy = types.ModuleType("cupy")
+        cupy.cuda = types.SimpleNamespace(Device=no_device)
+        monkeypatch.setitem(sys.modules, "cupy", cupy)
+        monkeypatch.setattr(gpu_utils, "is_available", lambda _: True)
+        gpu_utils.is_cupy_available.cache_clear()
+        try:
+            assert gpu_utils.is_cupy_available() is False
+        finally:
+            gpu_utils.is_cupy_available.cache_clear()
 
 
 class TestMLXBackend:

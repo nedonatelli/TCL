@@ -119,7 +119,7 @@ class TestPhysicalSanity:
             ).density
             for alt in (150e3, 400e3, 800e3, 1500e3)
         ]
-        assert all(a > b for a, b in zip(rhos, rhos[1:]))
+        assert all(a > b for a, b in zip(rhos[:-1], rhos[1:], strict=True))
 
     def test_low_altitude_matches_the_standard_atmosphere(self):
         # US76's tabulated extension gives rho(95 km) ~ 1.39e-6 kg/m^3

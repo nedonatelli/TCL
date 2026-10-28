@@ -284,7 +284,9 @@ def gnn_association(
     meas_to_track = np.full(n_meas, -1, dtype=np.intp)
     costs: List[float] = []
 
-    for i, j in zip(assignment_result.row_indices, assignment_result.col_indices):
+    for i, j in zip(
+        assignment_result.row_indices, assignment_result.col_indices, strict=True
+    ):
         track_to_meas[i] = j
         meas_to_track[j] = i
         costs.append(C[i, j])

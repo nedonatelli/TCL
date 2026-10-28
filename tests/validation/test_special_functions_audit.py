@@ -224,7 +224,7 @@ class TestBesselRatioStability:
         x = np.array([0.5, 1.0, 10.0])
         out = sf.bessel_ratio(5, x, "j")
         assert out.shape == x.shape
-        for xi, oi in zip(x, out):
+        for xi, oi in zip(x, out, strict=True):
             assert np.isclose(oi, _mp_bessel_ratio(5, float(xi), "j"), rtol=1e-13)
 
 

@@ -193,7 +193,7 @@ class TestCrossingTargets:
             key=lambda p: p[1],
         )
         ref = sorted([(p[0], p[1]) for p in true_final], key=lambda p: p[1])
-        for (ex, ey), (rx, ry) in zip(est, ref):
+        for (ex, ey), (rx, ry) in zip(est, ref, strict=True):
             assert abs(ex - rx) < 1.0 and abs(ey - ry) < 1.0, (
                 f"estimate ({ex:.2f}, {ey:.2f}) far from truth ({rx:.2f}, {ry:.2f})"
             )

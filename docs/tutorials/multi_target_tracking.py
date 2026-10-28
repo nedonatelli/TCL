@@ -138,7 +138,7 @@ def multi_target_tracking_tutorial():
     estimated_positions = {}
 
     for step_idx, (measurements, true_assoc) in enumerate(
-        zip(all_measurements, measurement_association)
+        zip(all_measurements, measurement_association, strict=True)
     ):
         # Predict track positions
         for track in tracks:

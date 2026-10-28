@@ -114,7 +114,7 @@ def tracks_to_polars(history: Sequence[Sequence[Any]], times: Sequence[float]) -
     statuses: list[str] = []
     states: list[list[float]] = []
     covariances: list[list[float]] = []
-    for scan, t in zip(history, times):
+    for scan, t in zip(history, times, strict=True):
         for tr in scan:
             track_ids.append(int(tr.id))
             ts.append(float(t))

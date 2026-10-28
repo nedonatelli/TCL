@@ -227,7 +227,7 @@ def _recover_feasible_nd(
             # sub has axes (dims[d], dims[d+1], ...); minimize the trailing ones
             block[t] = sub.reshape(dims[d], -1).min(axis=1)
         r_idx, c_idx = linear_sum_assignment(block)
-        chosen = {int(r): int(c) for r, c in zip(r_idx, c_idx)}
+        chosen = {int(r): int(c) for r, c in zip(r_idx, c_idx, strict=True)}
         for t in range(n_assign):
             # Dimension d may be smaller than the number of tuples; unmatched
             # tuples keep the greedy best index (feasibility is enforced only

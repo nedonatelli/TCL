@@ -144,7 +144,7 @@ def ospa(
 
     # Compute localization component
     localization_sum = 0.0
-    for i, j in zip(row_ind, col_ind):
+    for i, j in zip(row_ind, col_ind, strict=True):
         localization_sum += cost_matrix[i, j]
 
     # Cardinality penalty
@@ -208,7 +208,7 @@ def ospa_over_time(
         raise ValueError("Sequences must have the same length")
 
     ospa_values = np.zeros(len(X_sequence))
-    for k, (X, Y) in enumerate(zip(X_sequence, Y_sequence)):
+    for k, (X, Y) in enumerate(zip(X_sequence, Y_sequence, strict=True)):
         result = ospa(X, Y, c, p)
         ospa_values[k] = result.ospa
 
@@ -404,6 +404,12 @@ def mot_metrics(
     MOTMetrics
         Named tuple containing MOTA, MOTP, and counts.
 
+    Raises
+    ------
+    ValueError
+        If ``ground_truth`` and ``estimates`` have different numbers of
+        frames.
+
     Notes
     -----
     MOTA (Multiple Object Tracking Accuracy) accounts for false positives,
@@ -422,6 +428,12 @@ def mot_metrics(
     >>> result.motp < 1.0  # Some localization error
     True
     """
+    if len(ground_truth) != len(estimates):
+        raise ValueError(
+            "ground_truth and estimates must have the same number of frames, "
+            f"got {len(ground_truth)} and {len(estimates)}"
+        )
+
     total_gt = 0
     total_fp = 0
     total_misses = 0
@@ -433,7 +445,9 @@ def mot_metrics(
     prev_assignment: dict[int, int] = {}  # gt_idx -> est_idx from previous frame
     ever_tracked: set[int] = set()  # gt indices covered at least once
 
-    for k, (gt_frame, est_frame) in enumerate(zip(ground_truth, estimates)):
+    for k, (gt_frame, est_frame) in enumerate(
+        zip(ground_truth, estimates, strict=True)
+    ):
         n_gt = len(gt_frame)
         n_est = len(est_frame)
         total_gt += n_gt
@@ -464,7 +478,7 @@ def mot_metrics(
         frame_matches = 0
         frame_distance = 0.0
 
-        for i, j in zip(row_ind, col_ind):
+        for i, j in zip(row_ind, col_ind, strict=True):
             if cost_matrix[i, j] <= threshold:
                 current_assignment[i] = j
                 frame_matches += 1

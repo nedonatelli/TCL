@@ -446,7 +446,7 @@ def compute_backend_available() -> bool:
         try:
             importlib.import_module(module)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001 -- availability probe; selection reports failures
             # Selection reports failures; the probe only answers availability.
             continue
     return False
@@ -505,7 +505,7 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
         # ImportError, and hiding it would mean a silent float32 fallback.
         if exc.name != "cupy":
             cupy_failure = exc
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 -- any CuPy init failure is recorded and reported by the fallback path
         cupy_failure = exc
     try:
         fallback = MLXBackend()

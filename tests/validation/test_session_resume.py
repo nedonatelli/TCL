@@ -54,7 +54,7 @@ def test_restored_tracker_matches_unsaved_original_on_next_scans():
         assert [(t.id, t.status, t.hits, t.misses) for t in a] == [
             (t.id, t.status, t.hits, t.misses) for t in b
         ]
-        for ta, tb in zip(a, b):
+        for ta, tb in zip(a, b, strict=True):
             np.testing.assert_array_equal(ta.state, tb.state)
             np.testing.assert_array_equal(ta.covariance, tb.covariance)
         live.append(len(a))
@@ -68,7 +68,7 @@ def test_window_is_bounded_and_ordered_after_round_trip():
     t.process([], dt=1.0)
     t.process([], dt=1.0)
     restored = load_session(save_session(t))
-    for a, b in zip(t._tracks, restored._tracks):
+    for a, b in zip(t._tracks, restored._tracks, strict=True):
         assert list(b.recent) == list(a.recent)
         assert len(b.recent) <= restored.confirm_window
 

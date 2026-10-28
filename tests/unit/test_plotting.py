@@ -328,6 +328,19 @@ class TestPlotCovarianceEllipses:
         # 3 ellipses + 3 center points
         assert len(fig.data) == 6
 
+    @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
+    def test_unequal_means_and_covariances_raise(self):
+        # v2.11.1 silently drew two ellipses and dropped the third mean.
+        from pytcl.plotting import plot_covariance_ellipses
+
+        means = [[0, 0], [5, 5], [10, 0]]
+        covariances = [np.eye(2), np.eye(2)]
+        with pytest.raises(
+            ValueError,
+            match=r"means and covariances must have the same length, got 3 and 2",
+        ):
+            plot_covariance_ellipses(means, covariances)
+
 
 class TestPlotCovarianceEllipsoid:
     """Tests for plot_covariance_ellipsoid function."""
@@ -356,6 +369,17 @@ class TestCoordinatePlotting:
 
         assert len(traces) == 3  # X, Y, Z
         assert all(isinstance(t, go.Scatter3d) for t in traces)
+
+    @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
+    def test_plot_coordinate_axes_short_colors_raise(self):
+        # v2.11.1 silently returned two traces and dropped the Z axis.
+        from pytcl.plotting import plot_coordinate_axes_3d
+
+        with pytest.raises(
+            ValueError,
+            match=r"colors and names must each have 3 entries \(X, Y, Z\), got 2 and 3",
+        ):
+            plot_coordinate_axes_3d(colors=("red", "green"))
 
     @pytest.mark.skipif(not HAS_PLOTLY, reason="plotly not installed")
     def test_plot_coordinate_axes_with_rotation(self):
@@ -472,56 +496,26 @@ class TestCoordinatePlottingBasic:
     """Basic tests for coordinate plotting functions that handle API variations gracefully."""
 
     def test_plot_coordinate_axes_3d_basic(self):
-        """Test coordinate axes plotting - gracefully handle API variations."""
-        try:
-            # Try with no arguments first
-            fig = plot_coordinate_axes_3d()
-            # Accept either a figure or a list of traces
-            assert fig is not None
-        except TypeError as e:
-            # Some functions may require arguments
-            pytest.skip(f"Function requires specific arguments: {e}")
-        except Exception as e:
-            pytest.skip(f"Function not available or has issues: {e}")
+        """Test coordinate axes plotting with default arguments."""
+        assert plot_coordinate_axes_3d() is not None
 
     def test_plot_rotation_comparison_minimal(self):
         """Test rotation comparison plotting with two matrices."""
-        try:
-            dcm1 = np.eye(3)
-            dcm2 = np.eye(3)
-            # Try with both required arguments
-            fig = plot_rotation_comparison(dcm1, dcm2)
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function signature issue: {e}")
+        assert plot_rotation_comparison(np.eye(3), np.eye(3)) is not None
 
     def test_plot_euler_angles_minimal(self):
         """Test Euler angles plotting."""
-        try:
-            # Try with required angles argument
-            angles = np.array([0.1, 0.2, 0.3])
-            fig = plot_euler_angles(angles)
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function not available: {e}")
+        assert plot_euler_angles(np.array([0.1, 0.2, 0.3])) is not None
 
     def test_plot_quaternion_interpolation_minimal(self):
         """Test quaternion interpolation plotting."""
-        try:
-            q1 = np.array([1, 0, 0, 0])
-            q2 = np.array([0, 1, 0, 0])
-            fig = plot_quaternion_interpolation(q1, q2)
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function signature issue: {e}")
+        q1 = np.array([1, 0, 0, 0])
+        q2 = np.array([0, 1, 0, 0])
+        assert plot_quaternion_interpolation(q1, q2) is not None
 
     def test_plot_spherical_grid_minimal(self):
         """Test spherical grid plotting."""
-        try:
-            fig = plot_spherical_grid()
-            assert fig is not None
-        except Exception as e:
-            pytest.skip(f"Function not available: {e}")
+        assert plot_spherical_grid() is not None
 
     def test_plot_points_spherical_with_valid_shapes(self):
         """Spherical points plotting takes an (n, 3) array of (r, theta, phi)."""

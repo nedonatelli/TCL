@@ -283,7 +283,7 @@ def spectrum_analysis_demo() -> None:
     amplitudes = [1.0, 0.5, 0.3]
 
     signal = np.zeros_like(t)
-    for f, a in zip(frequencies, amplitudes):
+    for f, a in zip(frequencies, amplitudes, strict=True):
         signal += a * np.sin(2 * np.pi * f * t)
 
     # Add noise

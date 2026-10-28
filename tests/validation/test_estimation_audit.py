@@ -176,7 +176,7 @@ TRUTH_FILT, TRUTH_PRED = _closed_form_filter()
 
 
 def _assert_matches_truth(states, atol=1e-9):
-    for (xa, Pa), (xb, Pb) in zip(TRUTH_FILT, states):
+    for (xa, Pa), (xb, Pb) in zip(TRUTH_FILT, states, strict=True):
         np.testing.assert_allclose(xb, xa, atol=atol)
         np.testing.assert_allclose(Pb, Pa, atol=atol)
 
@@ -272,7 +272,7 @@ class TestLinearEquivalence:
     def test_information_filter_driver(self):
         y0, Y0 = state_to_information(X0, P0)
         res = information_filter(y0, Y0, ZS, F, Q, H, R)
-        _assert_matches_truth(list(zip(res.x_filt, res.P_filt)))
+        _assert_matches_truth(list(zip(res.x_filt, res.P_filt, strict=True)))
 
     def test_srif_steps(self):
         Y0 = np.linalg.inv(P0)
@@ -290,7 +290,7 @@ class TestLinearEquivalence:
         Y0 = np.linalg.inv(P0)
         R0 = np.linalg.cholesky(Y0).T
         res = srif_filter(R0 @ X0, R0, ZS, F, Q, H, R)
-        _assert_matches_truth(list(zip(res.x_filt, res.P_filt)), atol=1e-8)
+        _assert_matches_truth(list(zip(res.x_filt, res.P_filt, strict=True)), atol=1e-8)
 
     def test_hinf_large_gamma_equals_kf(self):
         x, P = X0.copy(), P0.copy()

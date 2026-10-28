@@ -176,7 +176,7 @@ def min_cost_flow_dijkstra_potentials(
             edge_data[e]["flow"]
             if r
             else edge_data[e]["capacity"] - edge_data[e]["flow"]
-            for e, r in zip(path_edges, path_revs)
+            for e, r in zip(path_edges, path_revs, strict=True)
         )
         min_flow = min(
             min_flow,
@@ -185,7 +185,7 @@ def min_cost_flow_dijkstra_potentials(
         )
 
         # Push flow (reverse arcs cancel existing flow)
-        for edge_idx, is_rev in zip(path_edges, path_revs):
+        for edge_idx, is_rev in zip(path_edges, path_revs, strict=True):
             if is_rev:
                 edge_data[edge_idx]["flow"] -= min_flow
             else:

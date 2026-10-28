@@ -126,7 +126,7 @@ class TestGaussianSumFilterPrediction:
 
         new_traces = [np.trace(c.P) for c in self.gsf.components]
 
-        for old_tr, new_tr in zip(old_traces, new_traces):
+        for old_tr, new_tr in zip(old_traces, new_traces, strict=True):
             assert new_tr > old_tr
 
     def test_predict_changes_mean(self):
@@ -191,7 +191,7 @@ class TestGaussianSumFilterUpdate:
 
         new_traces = [np.trace(c.P) for c in self.gsf.components]
 
-        for old_tr, new_tr in zip(old_traces, new_traces):
+        for old_tr, new_tr in zip(old_traces, new_traces, strict=True):
             assert new_tr < old_tr
 
     def test_update_adapts_weights_based_on_likelihood(self):

@@ -63,7 +63,7 @@ class TestThermosphereIsUsable:
     def test_density_decreases_monotonically_through_the_thermosphere(self):
         alts = [200e3, 300e3, 400e3, 600e3, 800e3]
         rho = [_density(a) for a in alts]
-        assert all(b < a for a, b in zip(rho, rho[1:])), rho
+        assert all(b < a for a, b in zip(rho[:-1], rho[1:], strict=True)), rho
 
     def test_higher_solar_flux_raises_thermospheric_density(self):
         """The F10.7 coupling is the physical content that distinguishes this

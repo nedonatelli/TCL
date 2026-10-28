@@ -172,6 +172,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Four public entry points no longer truncate silently when given parallel
+  inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
+  a different number of estimate frames than ground-truth frames dropped
+  the extra frames (three ground-truth frames against two estimate frames reported
+  MOTA = 1.0 instead of counting the miss); `plot_covariance_ellipses`
+  with a different number of covariances than means drew the shorter count;
+  `plot_coordinate_axes_3d` with a two-entry `colors` or `names` returned
+  two traces and dropped the Z axis, and one with more than three entries
+  ignored the extras. These now raise `ValueError` naming the
+  arguments and their lengths. `load_session` on a Gaussian-sum or RBPF
+  snapshot whose per-component (per-particle) lists differ in length
+  restored a filter with the shortest list's count; it now raises
+  `FormatError`, as it does for other malformed sessions. What to do:
+  pass equal-length frame lists to `mot_metrics`, one covariance per mean
+  to `plot_covariance_ellipses`, and exactly three `colors` and `names` to
+  `plot_coordinate_axes_3d`; sessions written by `save_session` are
+  unaffected.
+
 - `TrackDatabaseManager.store_track_history` checks that `states`,
   `covariances`, `timestamps` and `residuals` have equal length before
   writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used

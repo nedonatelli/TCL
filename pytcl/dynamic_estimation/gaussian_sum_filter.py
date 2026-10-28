@@ -239,7 +239,7 @@ class GaussianSumFilter:
         # Update components with new weights
         self.components = [
             GaussianComponent(x=c.x, P=c.P, w=w)
-            for c, w in zip(updated_components, weights)
+            for c, w in zip(updated_components, weights, strict=True)
         ]
 
         # Manage components (prune, merge)
@@ -530,5 +530,5 @@ def gaussian_sum_filter_update(
 
     return [
         GaussianComponent(x=c.x, P=c.P, w=w)
-        for c, w in zip(updated_components, weights)
+        for c, w in zip(updated_components, weights, strict=True)
     ]

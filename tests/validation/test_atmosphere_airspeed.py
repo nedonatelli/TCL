@@ -172,7 +172,10 @@ class TestConversionProperties:
         speeds = [
             float(true_airspeed_from_mach(1.0, alt)) for alt in range(0, 11_000, 2_000)
         ]
-        assert all(later < earlier for earlier, later in zip(speeds, speeds[1:])), (
+        assert all(
+            later < earlier
+            for earlier, later in zip(speeds[:-1], speeds[1:], strict=True)
+        ), (
             f"speed of sound does not decrease monotonically through the "
             f"troposphere: {speeds}"
         )
@@ -206,7 +209,7 @@ class TestConversionProperties:
 
         vectorized = true_airspeed_from_mach(machs, altitudes)
         assert vectorized.shape == (3,)
-        for index, (mach, altitude) in enumerate(zip(machs, altitudes)):
+        for index, (mach, altitude) in enumerate(zip(machs, altitudes, strict=True)):
             assert vectorized[index] == pytest.approx(
                 float(true_airspeed_from_mach(mach, altitude)), rel=1e-12
             )

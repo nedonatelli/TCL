@@ -336,7 +336,7 @@ def test_compiled_and_interpreted_kernels_agree(kernel):
         compiled = _defined_part(kernel, _call(kernel, args))
         interpreted = _defined_part(kernel, _call(kernel.py_func, args))
         assert len(compiled) == len(interpreted)
-        for c, p in zip(compiled, interpreted):
+        for c, p in zip(compiled, interpreted, strict=True):
             np.testing.assert_allclose(c, p, rtol=1e-12, atol=0, equal_nan=True)
 
 
