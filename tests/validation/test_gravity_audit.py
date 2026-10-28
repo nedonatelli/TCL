@@ -23,6 +23,7 @@ from numpy.testing import assert_allclose
 from scipy.special import lpmv
 
 from pytcl.coordinate_systems import geodetic2ecef
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.gravity import (
     WGS84,
     associated_legendre,
@@ -621,8 +622,10 @@ class TestFundamentalArguments:
             assert_allclose(np.degrees(v), ref, atol=1e-8)
 
     def test_julian_centuries(self):
-        assert_allclose(julian_centuries_j2000(51544.5), 0.0, atol=1e-12)
-        assert_allclose(julian_centuries_j2000(51544.5 + 36525.0), 1.0, atol=1e-12)
+        with pytest.warns(PytclDeprecationWarning):
+            assert_allclose(julian_centuries_j2000(51544.5), 0.0, atol=1e-12)
+        with pytest.warns(PytclDeprecationWarning):
+            assert_allclose(julian_centuries_j2000(51544.5 + 36525.0), 1.0, atol=1e-12)
 
 
 class TestBodyPositions:

@@ -1,8 +1,10 @@
 """Tests for tidal effects module."""
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.gravity.tides import (
     GRAVIMETRIC_FACTOR,
     LOVE_H2,
@@ -63,13 +65,15 @@ class TestTimeConversions:
 
     def test_julian_centuries_j2000(self):
         """Julian centuries at J2000.0 should be zero."""
-        T = julian_centuries_j2000(51544.5)  # J2000.0
+        with pytest.warns(PytclDeprecationWarning):
+            T = julian_centuries_j2000(51544.5)  # J2000.0
         assert_allclose(T, 0.0, atol=1e-10)
 
     def test_julian_centuries_one_century(self):
         """One century after J2000.0."""
         # 36525 days = 1 Julian century
-        T = julian_centuries_j2000(51544.5 + 36525)
+        with pytest.warns(PytclDeprecationWarning):
+            T = julian_centuries_j2000(51544.5 + 36525)
         assert_allclose(T, 1.0, atol=1e-10)
 
     def test_fundamental_arguments_range(self):

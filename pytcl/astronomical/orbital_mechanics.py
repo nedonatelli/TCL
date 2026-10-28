@@ -931,6 +931,10 @@ def escape_velocity(r: float, mu: float = GM_EARTH) -> float:
     """
     Compute escape velocity at given radius.
 
+    The argument order is ``(r, mu)``;
+    :func:`pytcl.astronomical.special_orbits.escape_velocity_at_radius` takes
+    ``(mu, r)``. Swapping them gives a wrong value without an error.
+
     Parameters
     ----------
     r : float

@@ -22,6 +22,8 @@ from typing import NamedTuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.astronomical.orbital_mechanics import escape_velocity
+
 
 class OrbitType(Enum):
     """Classification of orbit types based on eccentricity."""
@@ -352,6 +354,10 @@ def escape_velocity_at_radius(mu: float, r: float) -> float:
     with zero velocity, corresponding to a parabolic orbit:
     v_esc = sqrt(2*mu/r)
 
+    The argument order is ``(mu, r)``;
+    :func:`pytcl.astronomical.orbital_mechanics.escape_velocity` takes
+    ``(r, mu)``. Swapping them gives a wrong value without an error.
+
     Parameters
     ----------
     mu : float
@@ -364,7 +370,7 @@ def escape_velocity_at_radius(mu: float, r: float) -> float:
     v_esc : float
         Escape velocity (km/s).
     """
-    return np.sqrt(2.0 * mu / r)
+    return escape_velocity(r, mu)
 
 
 def hyperbolic_excess_velocity(mu: float, a: float) -> float:

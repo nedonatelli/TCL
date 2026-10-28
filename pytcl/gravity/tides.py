@@ -20,13 +20,20 @@ References
   displacements," JGR, 102, B9, 20469-20477, 1997.
 """
 
+import warnings
 from typing import NamedTuple, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.astronomical.ephemerides import EPSILON_J2000 as _OBLIQUITY_J2000
+from pytcl.astronomical.reference_frames import gmst_iau82 as _gmst_iau82
+from pytcl.astronomical.reference_frames import (
+    julian_centuries_j2000 as _julian_centuries_jd,
+)
 from pytcl.core.constants import MOON_GM as _MOON_GM
 from pytcl.core.constants import SUN_GM as _SUN_GM
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.gravity.models import WGS84
 
 
@@ -137,14 +144,12 @@ def _normalize_angle(angle: float) -> float:
     return angle % (2 * np.pi)
 
 
-# Mean obliquity of the ecliptic at J2000.0 (radians)
-_OBLIQUITY_J2000 = np.radians(23.4392911)
+_MJD_TO_JD = 2400000.5
 
 
 def _gmst_radians(mjd: float) -> float:
-    """Greenwich Mean Sidereal Time in radians (approximate, ~arcsec level)."""
-    d = mjd - 51544.5
-    return np.radians((280.46061837 + 360.98564736629 * d) % 360.0)
+    """Greenwich Mean Sidereal Time in radians (IAU 1982), from an MJD."""
+    return _gmst_iau82(mjd + _MJD_TO_JD)
 
 
 def _body_unit_earth_fixed(
@@ -177,6 +182,11 @@ def julian_centuries_j2000(mjd: float) -> float:
     """
     Convert Modified Julian Date to Julian centuries since J2000.0.
 
+    .. deprecated:: 2.12.0
+        Removal in v3.0.0. Use
+        ``pytcl.astronomical.julian_centuries_j2000(mjd + 2400000.5)``,
+        which takes a Julian date, not an MJD.
+
     Parameters
     ----------
     mjd : float
@@ -189,14 +199,21 @@ def julian_centuries_j2000(mjd: float) -> float:
 
     Examples
     --------
-    >>> T = julian_centuries_j2000(51544.5)  # J2000.0 epoch
-    >>> abs(T) < 1e-10  # Should be zero at J2000
-    True
-    >>> T = julian_centuries_j2000(51544.5 + 36525)  # One century later
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore")
+    ...     T = julian_centuries_j2000(51544.5 + 36525)
     >>> abs(T - 1.0) < 1e-10
     True
     """
-    # J2000.0 = JD 2451545.0 = MJD 51544.5
+    warnings.warn(
+        "pytcl.gravity.julian_centuries_j2000 is deprecated since v2.12.0 and "
+        "scheduled for removal in v3.0.0. Use "
+        "pytcl.astronomical.julian_centuries_j2000(mjd + 2400000.5); the "
+        "astronomical function takes a Julian date, not an MJD.",
+        PytclDeprecationWarning,
+        stacklevel=2,
+    )
     return (mjd - 51544.5) / 36525.0
 
 
@@ -312,7 +329,7 @@ def moon_position_approximate(mjd: float) -> Tuple[float, float, float]:
     >>> -np.pi/2 <= lat <= np.pi/2  # Valid latitude
     True
     """
-    T = julian_centuries_j2000(mjd)
+    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
 
     # Mean elements (degrees) - normalize to [0, 360)
     L0 = (218.3164477 + 481267.88123421 * T) % 360  # Mean longitude
@@ -392,7 +409,7 @@ def sun_position_approximate(mjd: float) -> Tuple[float, float, float]:
     >>> lat == 0.0  # Sun on ecliptic
     True
     """
-    T = julian_centuries_j2000(mjd)
+    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
 
     # Mean elements (degrees) - normalize to [0, 360)
     L0 = (280.46646 + 36000.76983 * T) % 360  # Mean longitude
@@ -723,7 +740,7 @@ def ocean_tide_loading_displacement(
     >>> isinstance(disp, TidalDisplacement)
     True
     """
-    T = julian_centuries_j2000(mjd)
+    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
     l, l_prime, F, D, Omega = fundamental_arguments(T)  # noqa: E741
 
     # Days since J2000.0
