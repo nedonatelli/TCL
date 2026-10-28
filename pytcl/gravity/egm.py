@@ -35,7 +35,11 @@ from pytcl.core.paths import get_data_dir
 from pytcl.diagnostics import logger as _diag_logger
 
 from .clenshaw import clenshaw_gravity, clenshaw_potential
-from .models import WGS84, normal_gravity_somigliana
+from .models import (
+    WGS84,
+    _subtract_reference_field,
+    normal_gravity_somigliana,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.gravity.egm")
@@ -123,33 +127,6 @@ EGM_PARAMETERS: Dict[str, Dict[str, float]] = {
         "n_max_full": 2190,
     },
 }
-
-
-def _subtract_reference_field(C: NDArray[np.floating], n_max: int) -> None:
-    """Subtract the WGS84 normal field's even zonal harmonics in place.
-
-    The disturbing potential T = W - U requires removing the reference
-    ellipsoid's normal potential U, whose only nonzero coefficients are
-    the even zonal harmonics J2, J4, J6, ... computed from the ellipsoid
-    parameters (Heiskanen & Moritz, "Physical Geodesy", eq. 2-92).
-    Without this step the geoid height / gravity disturbance would be
-    dominated by the full C20 term (a ~3 km false zonal signal).
-    """
-    f = WGS84.f
-    e2 = f * (2.0 - f)  # First eccentricity squared
-    J2 = WGS84.J2
-    for k in range(1, 6):  # Degrees 2, 4, 6, 8, 10
-        n = 2 * k
-        if n > n_max:
-            break
-        J2k = (
-            (-1) ** (k + 1)
-            * (3.0 * e2**k)
-            / ((2 * k + 1) * (2 * k + 3))
-            * (1.0 - k + 5.0 * k * J2 / e2)
-        )
-        # Fully normalized zonal coefficient of the normal field
-        C[n, 0] -= -J2k / np.sqrt(2 * n + 1)
 
 
 def _parse_coefficient(token: str) -> float:
@@ -503,7 +480,9 @@ geodetic2ecef` -- the spherical-harmonic synthesis is defined in those
     if coefficients.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
-    _subtract_reference_field(C_dist, coefficients.n_max)
+    _subtract_reference_field(
+        C_dist, coefficients.n_max, coefficients.GM, coefficients.R
+    )
 
     T = clenshaw_potential(
         lat_gc,
@@ -641,7 +620,9 @@ def gravity_disturbance(
     if coefficients.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
-    _subtract_reference_field(C_dist, coefficients.n_max)
+    _subtract_reference_field(
+        C_dist, coefficients.n_max, coefficients.GM, coefficients.R
+    )
 
     g_r, g_lat, g_lon = clenshaw_gravity(
         lat_gc,

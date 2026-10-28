@@ -30,6 +30,7 @@ from typing import Any, NamedTuple, Optional, Tuple, Union, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.coordinate_systems.conversions.geodetic import _meridional_radius_e2
 from pytcl.core.array_utils import wrap_to_pi
 
 # WGS84 ellipsoid parameters
@@ -495,7 +496,7 @@ def transverse_mercator_inverse(
     tan_fp = np.tan(lat_fp)
 
     N_fp = a / np.sqrt(1 - e2 * sin_fp**2)
-    R_fp = a * (1 - e2) / (1 - e2 * sin_fp**2) ** 1.5
+    R_fp = _meridional_radius_e2(lat_fp, a, e2)
 
     t = tan_fp
     t2 = t**2
@@ -1454,7 +1455,7 @@ def _sterea_constants(
     """
     e = np.sqrt(e2)
     sin_lat0 = np.sin(lat0)
-    rho0 = a * (1 - e2) / (1 - e2 * sin_lat0**2) ** 1.5
+    rho0 = _meridional_radius_e2(lat0, a, e2)
     nu0 = a / np.sqrt(1 - e2 * sin_lat0**2)
     R = np.sqrt(rho0 * nu0)
     n = np.sqrt(1 + e2 * np.cos(lat0) ** 4 / (1 - e2))

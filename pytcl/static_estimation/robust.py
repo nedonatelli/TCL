@@ -18,6 +18,8 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy import stats
 
+from pytcl.mathematical_functions.statistics.estimators import mad as _mad
+
 
 class RobustResult(NamedTuple):
     """Result of robust estimation.
@@ -301,7 +303,9 @@ def mad(residuals: ArrayLike, c: float = 1.4826) -> float:
 
         MAD = c * median(|r - median(r)|)
 
-    This is a robust scale estimator with 50% breakdown point.
+    This is a robust scale estimator with 50% breakdown point. It returns
+    ``float(pytcl.mathematical_functions.statistics.estimators.mad(
+    residuals, scale=c))``.
 
     Examples
     --------
@@ -310,8 +314,7 @@ def mad(residuals: ArrayLike, c: float = 1.4826) -> float:
     >>> scale < 1.0  # Robust to the outlier
     True
     """
-    r = np.asarray(residuals, dtype=np.float64)
-    return c * float(np.median(np.abs(r - np.median(r))))
+    return float(_mad(residuals, scale=c))
 
 
 def tau_scale(

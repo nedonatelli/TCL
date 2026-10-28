@@ -16,11 +16,13 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.coordinate_systems.conversions.geodetic import (
+    _meridional_radius_e2,
     ecef2enu,
     ecef2geodetic,
     enu2ecef,
     geodetic2ecef,
 )
+from pytcl.core.constants import EARTH_MEAN_RADIUS
 from pytcl.core.exceptions import ConvergenceError
 
 # Module logger
@@ -65,7 +67,7 @@ class Ellipsoid(NamedTuple):
 # Standard ellipsoids
 WGS84 = Ellipsoid(a=6378137.0, f=1.0 / 298.257223563)
 GRS80 = Ellipsoid(a=6378137.0, f=1.0 / 298.257222101)
-SPHERE = Ellipsoid(a=6371000.0, f=0.0)
+SPHERE = Ellipsoid(a=EARTH_MEAN_RADIUS, f=0.0)
 
 
 def _quantize_geodetic(val: float) -> float:
@@ -406,7 +408,7 @@ def osculating_sphere(
     e2 = ellipsoid.e2
     denom = np.sqrt(1 - e2 * np.sin(lat) ** 2)
     # Radii of curvature in the meridian and the prime vertical.
-    m0 = a * (1 - e2) / denom**3
+    m0 = _meridional_radius_e2(lat, a, e2)
     n0 = a / denom
     radius = float(np.sqrt(m0 * n0))
 
@@ -829,7 +831,7 @@ def haversine_distance(
     lon1: float,
     lat2: float,
     lon2: float,
-    radius: float = 6371000.0,
+    radius: float = EARTH_MEAN_RADIUS,
 ) -> float:
     """
     Compute great-circle distance using the haversine formula.

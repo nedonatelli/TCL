@@ -404,6 +404,9 @@ def factorial(
     See Also
     --------
     scipy.special.factorial : Factorial function.
+    pytcl.mathematical_functions.combinatorics.factorial : Scalar exact
+        ``int`` via ``math.factorial``; raises ``ValueError`` for negative
+        ``n`` instead of returning 0.
     """
     if exact:
         return _exact_result(sp.factorial(n, exact=True))

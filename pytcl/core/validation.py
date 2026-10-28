@@ -8,6 +8,7 @@ messages when inputs don't meet requirements.
 
 from __future__ import annotations
 
+import warnings
 from functools import wraps
 from typing import Any, Callable, Literal, Sequence, TypeVar
 
@@ -16,7 +17,7 @@ from numpy.typing import ArrayLike, NDArray
 
 # Import ValidationError from exceptions module for consistency
 # Re-export for backward compatibility
-from pytcl.core.exceptions import ValidationError
+from pytcl.core.exceptions import PytclDeprecationWarning, ValidationError
 
 # Type variable for generic function signatures
 F = TypeVar("F", bound=Callable[..., Any])
@@ -294,14 +295,14 @@ def ensure_square_matrix(arr: ArrayLike, name: str = "matrix") -> NDArray[Any]:
     return result
 
 
-def ensure_symmetric(
+def check_symmetric(
     arr: ArrayLike,
     name: str = "matrix",
     rtol: float = 1e-10,
     atol: float = 1e-10,
 ) -> NDArray[Any]:
     """
-    Ensure input is a symmetric matrix.
+    Check that input is a symmetric matrix, returning it unchanged.
 
     Parameters
     ----------
@@ -317,20 +318,93 @@ def ensure_symmetric(
     Returns
     -------
     NDArray
-        Symmetric matrix (symmetrized if nearly symmetric).
+        The input as a square float array, not symmetrized.
 
     Raises
     ------
     ValidationError
-        If input is not symmetric within tolerance.
+        If input is not square or not symmetric within tolerance.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.validation import check_symmetric
+    >>> P = check_symmetric([[2.0, 1.0 + 1e-12], [1.0, 2.0]])
+    >>> bool(P[0, 1] == P[1, 0])
+    False
+    >>> check_symmetric([[2.0, 1.5], [0.0, 2.0]], name="P")
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ValidationError: P must be symmetric
+
+    See Also
+    --------
+    pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric :
+        Symmetrizes a matrix as ``(P + P.T) / 2`` without checking it.
     """
     result = ensure_square_matrix(arr, name)
 
     if not np.allclose(result, result.T, rtol=rtol, atol=atol):
         raise ValidationError(f"{name} must be symmetric")
 
-    # Enforce exact symmetry
+    return result
+
+
+def _check_and_symmetrize(
+    arr: ArrayLike,
+    name: str = "matrix",
+    rtol: float = 1e-10,
+    atol: float = 1e-10,
+) -> NDArray[Any]:
+    result = check_symmetric(arr, name, rtol, atol)
     return (result + result.T) / 2
+
+
+def ensure_symmetric(
+    arr: ArrayLike,
+    name: str = "matrix",
+    rtol: float = 1e-10,
+    atol: float = 1e-10,
+) -> NDArray[Any]:
+    """
+    Check that input is symmetric, then symmetrize it.
+
+    .. deprecated:: 2.12.0
+        Removal in v3.0.0. Call :func:`check_symmetric` to validate, or
+        :func:`pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric`
+        to symmetrize.
+
+    Parameters
+    ----------
+    arr : array_like
+        Input array.
+    name : str, optional
+        Name of the parameter (for error messages).
+    rtol : float, optional
+        Relative tolerance for symmetry check. Default is 1e-10.
+    atol : float, optional
+        Absolute tolerance for symmetry check. Default is 1e-10.
+
+    Returns
+    -------
+    NDArray
+        ``(A + A.T) / 2``.
+
+    Raises
+    ------
+    ValidationError
+        If input is not symmetric within tolerance.
+    """
+    warnings.warn(
+        "pytcl.core.validation.ensure_symmetric is deprecated since v2.12.0 "
+        "and scheduled for removal in v3.0.0. Call check_symmetric to "
+        "validate, or "
+        "pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric to "
+        "symmetrize.",
+        PytclDeprecationWarning,
+        stacklevel=2,
+    )
+    return _check_and_symmetrize(arr, name, rtol, atol)
 
 
 def ensure_positive_definite(
@@ -378,7 +452,7 @@ def ensure_positive_definite(
     was corrected earlier; this is that fix applied to the validating
     counterpart, which the earlier pass missed.
     """
-    result = ensure_symmetric(arr, name)
+    result = _check_and_symmetrize(arr, name)
 
     try:
         eigenvalues = np.linalg.eigvalsh(result)
@@ -443,7 +517,7 @@ def ensure_positive_semidefinite(
     >>> from pytcl.core.validation import ensure_positive_semidefinite
     >>> _ = ensure_positive_semidefinite(np.diag([1.0, 0.0]))
     """
-    result = ensure_symmetric(arr, name)
+    result = _check_and_symmetrize(arr, name)
 
     try:
         eigenvalues = np.linalg.eigvalsh(result)
@@ -646,7 +720,7 @@ class ArraySpec:
         if self.positive_definite:
             result = ensure_positive_definite(result, name)
         elif self.symmetric:
-            result = ensure_symmetric(result, name)
+            result = _check_and_symmetrize(result, name)
         elif self.square:
             result = ensure_square_matrix(result, name)
 

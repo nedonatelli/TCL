@@ -17,11 +17,13 @@ from typing import Any, NamedTuple, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.constants import EARTH_MEAN_RADIUS
+from pytcl.navigation.geodesy import haversine_distance
+
 # Module logger
 _logger = logging.getLogger("pytcl.navigation.great_circle")
 
 # Cache configuration for great circle calculations
-_GC_CACHE_DECIMALS = 10  # 1e-10 rad ~ 0.64 mm at Earth's surface (not 0.01 mm)
 _GC_CACHE_MAXSIZE = 256  # Max cached coordinate pairs
 
 
@@ -101,49 +103,35 @@ class CrossTrackResult(NamedTuple):
     along_track: float
 
 
-# Default Earth radius (mean radius in meters)
-EARTH_RADIUS = 6371000.0
-
-
-def _quantize_coord(val: float) -> float:
-    """Quantize coordinate value for cache key compatibility."""
-    return round(val, _GC_CACHE_DECIMALS)
+EARTH_RADIUS = EARTH_MEAN_RADIUS
 
 
 @lru_cache(maxsize=_GC_CACHE_MAXSIZE)
 def _gc_distance_cached(
-    lat1_q: float,
-    lon1_q: float,
-    lat2_q: float,
-    lon2_q: float,
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
 ) -> float:
-    """Cached great circle distance computation (internal).
-
-    Uses haversine formula for numerical stability.
-    Returns angular distance in radians.
-    """
-    dlat = lat2_q - lat1_q
-    dlon = lon2_q - lon1_q
-
-    a = np.sin(dlat / 2) ** 2 + np.cos(lat1_q) * np.cos(lat2_q) * np.sin(dlon / 2) ** 2
-    return 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    """Cached angular distance in radians, keyed on the exact coordinates."""
+    return haversine_distance(lat1, lon1, lat2, lon2, radius=1.0)
 
 
 @lru_cache(maxsize=_GC_CACHE_MAXSIZE)
 def _gc_azimuth_cached(
-    lat1_q: float,
-    lon1_q: float,
-    lat2_q: float,
-    lon2_q: float,
+    lat1: float,
+    lon1: float,
+    lat2: float,
+    lon2: float,
 ) -> float:
     """Cached great circle azimuth computation (internal).
 
     Returns azimuth in radians [0, 2π).
     """
-    dlon = lon2_q - lon1_q
+    dlon = lon2 - lon1
 
-    x = np.sin(dlon) * np.cos(lat2_q)
-    y = np.cos(lat1_q) * np.sin(lat2_q) - np.sin(lat1_q) * np.cos(lat2_q) * np.cos(dlon)
+    x = np.sin(dlon) * np.cos(lat2)
+    y = np.cos(lat1) * np.sin(lat2) - np.sin(lat1) * np.cos(lat2) * np.cos(dlon)
 
     azimuth = np.arctan2(x, y)
     return azimuth % (2 * np.pi)
@@ -186,14 +174,7 @@ def great_circle_distance(
     >>> print(f"Distance: {dist/1000:.0f} km")
     Distance: 5570 km
     """
-    # Use cached angular distance computation
-    angular_dist = _gc_distance_cached(
-        _quantize_coord(lat1),
-        _quantize_coord(lon1),
-        _quantize_coord(lat2),
-        _quantize_coord(lon2),
-    )
-    return radius * angular_dist
+    return radius * _gc_distance_cached(lat1, lon1, lat2, lon2)
 
 
 def great_circle_azimuth(
@@ -229,12 +210,7 @@ def great_circle_azimuth(
     >>> print(f"Initial bearing: {np.degrees(az):.1f}°")
     Initial bearing: 51.2°
     """
-    return _gc_azimuth_cached(
-        _quantize_coord(lat1),
-        _quantize_coord(lon1),
-        _quantize_coord(lat2),
-        _quantize_coord(lon2),
-    )
+    return _gc_azimuth_cached(lat1, lon1, lat2, lon2)
 
 
 def great_circle_inverse(

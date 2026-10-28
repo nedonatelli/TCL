@@ -144,7 +144,10 @@ def _gstime(jdut1: float) -> float:
     """Greenwich mean sidereal time (rad) from a UT1 Julian date.
 
     Implements the IAU-82 GMST polynomial used by the reference SGP4
-    initialization (``opsmode = 'i'``).
+    initialization (``opsmode = 'i'``). This is the SGP4 specification's
+    own GMST, kept separate from
+    :func:`pytcl.astronomical.reference_frames.gmst_iau82`; the two agree
+    to 1.5e-5 arcsec.
 
     Parameters
     ----------

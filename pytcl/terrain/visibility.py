@@ -28,6 +28,9 @@ from typing import List, NamedTuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.constants import EARTH_MEAN_RADIUS
+from pytcl.navigation.geodesy import haversine_distance
+
 from .dem import DEMGrid
 
 
@@ -121,7 +124,7 @@ def line_of_sight(
     tgt_lon: float,
     tgt_height: float,
     n_samples: int = 100,
-    earth_radius: float = 6371000.0,
+    earth_radius: float = EARTH_MEAN_RADIUS,
     refraction_coeff: float = 0.0,
 ) -> LOSResult:
     """Compute line of sight between observer and target.
@@ -145,7 +148,7 @@ def line_of_sight(
     n_samples : int, optional
         Number of sample points along path. Default is 100.
     earth_radius : float, optional
-        Earth radius in meters. Default is 6371000.0.
+        Earth radius in meters. Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
     refraction_coeff : float, optional
         Atmospheric refraction coefficient (typically 0.13 for radio).
         Set to 0 for optical line of sight. Default is 0.0.
@@ -196,14 +199,9 @@ def line_of_sight(
     sample_lons = np.linspace(obs_lon, tgt_lon, n_samples)
 
     # Compute distances from observer
-    dlat = sample_lats - obs_lat
-    dlon = sample_lons - obs_lon
-    a = (
-        np.sin(dlat / 2) ** 2
-        + np.cos(obs_lat) * np.cos(sample_lats) * np.sin(dlon / 2) ** 2
+    distances = haversine_distance(
+        obs_lat, obs_lon, sample_lats, sample_lons, earth_radius
     )
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-    distances = earth_radius * c
 
     total_distance = distances[-1]
     if total_distance < 1e-6:
@@ -280,7 +278,7 @@ def viewshed(
     target_height: float = 0.0,
     n_radials: int = 360,
     samples_per_radial: int = 100,
-    earth_radius: float = 6371000.0,
+    earth_radius: float = EARTH_MEAN_RADIUS,
     refraction_coeff: float = 0.0,
 ) -> ViewshedResult:
     """Compute viewshed (visible area) from an observer location.
@@ -304,7 +302,7 @@ def viewshed(
     samples_per_radial : int, optional
         Number of samples per radial. Default is 100.
     earth_radius : float, optional
-        Earth radius in meters. Default is 6371000.0.
+        Earth radius in meters. Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
     refraction_coeff : float, optional
         Atmospheric refraction coefficient. Default is 0.0.
 
@@ -449,7 +447,7 @@ def compute_horizon(
     n_azimuths: int = 360,
     max_range: float = 50000.0,
     samples_per_radial: int = 100,
-    earth_radius: float = 6371000.0,
+    earth_radius: float = EARTH_MEAN_RADIUS,
 ) -> List[HorizonPoint]:
     """Compute terrain horizon profile from an observer location.
 
@@ -470,7 +468,7 @@ def compute_horizon(
     samples_per_radial : int, optional
         Number of samples per radial. Default is 100.
     earth_radius : float, optional
-        Earth radius in meters. Default is 6371000.0.
+        Earth radius in meters. Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
 
     Returns
     -------
@@ -565,7 +563,7 @@ def terrain_masking_angle(
     azimuth: float,
     max_range: float = 50000.0,
     n_samples: int = 100,
-    earth_radius: float = 6371000.0,
+    earth_radius: float = EARTH_MEAN_RADIUS,
 ) -> float:
     """Compute terrain masking angle in a specific direction.
 
@@ -589,7 +587,7 @@ def terrain_masking_angle(
     n_samples : int, optional
         Number of sample points. Default is 100.
     earth_radius : float, optional
-        Earth radius in meters. Default is 6371000.0.
+        Earth radius in meters. Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
 
     Returns
     -------
@@ -664,7 +662,7 @@ def radar_coverage_map(
     target_height: float = 1000.0,
     n_radials: int = 360,
     samples_per_radial: int = 200,
-    earth_radius: float = 6371000.0,
+    earth_radius: float = EARTH_MEAN_RADIUS,
     refraction_coeff: float = 0.13,
 ) -> ViewshedResult:
     """Compute radar coverage map accounting for terrain masking.
@@ -693,7 +691,7 @@ def radar_coverage_map(
     samples_per_radial : int, optional
         Samples per radial. Default is 200.
     earth_radius : float, optional
-        Earth radius in meters. Default is 6371000.0.
+        Earth radius in meters. Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
     refraction_coeff : float, optional
         Atmospheric refraction coefficient (0.13 for 4/3 Earth). Default is 0.13.
 
@@ -749,14 +747,9 @@ def radar_coverage_map(
                 cell_lon = dem.lon_min + j * dem.d_lon
 
                 # Compute distance
-                dlat = cell_lat - radar_lat
-                dlon = cell_lon - radar_lon
-                a = (
-                    np.sin(dlat / 2) ** 2
-                    + np.cos(radar_lat) * np.cos(cell_lat) * np.sin(dlon / 2) ** 2
+                dist = haversine_distance(
+                    radar_lat, radar_lon, cell_lat, cell_lon, earth_radius
                 )
-                c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-                dist = earth_radius * c
 
                 if dist < 1e-6:
                     continue

@@ -10,6 +10,8 @@ from typing import Optional, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.performance_evaluation import estimation_metrics
+
 
 def weighted_mean(
     x: ArrayLike,
@@ -325,6 +327,11 @@ def mad(
     >>> mad([1, 2, 3, 4, 5])
     1.4826
 
+    See Also
+    --------
+    pytcl.static_estimation.robust.mad : Float-returning wrapper over this
+        function (``c`` is this function's ``scale``).
+
     Notes
     -----
     For normally distributed data, scale * MAD approximates the
@@ -478,7 +485,7 @@ def moment(
 def nees(
     error: ArrayLike,
     covariance: ArrayLike,
-) -> NDArray[np.floating]:
+) -> Union[np.float64, NDArray[np.floating]]:
     """
     Normalized Estimation Error Squared (NEES).
 
@@ -503,22 +510,29 @@ def nees(
     >>> cov = np.array([[1, 0], [0, 1]])
     >>> nees(error, cov)
     1.25
+
+    Notes
+    -----
+    Unnormalized: the value is ``e' P^{-1} e`` per sample, not divided by
+    the state dimension. The quadratic form is the one
+    `pytcl.performance_evaluation.estimation_metrics.nees` uses, evaluated
+    for the whole batch with a single inverse. A singular covariance raises
+    `numpy.linalg.LinAlgError` (no pseudo-inverse fallback).
+
+    See Also
+    --------
+    pytcl.performance_evaluation.estimation_metrics.nees : Single-sample core.
     """
     error = np.asarray(error, dtype=np.float64)
     covariance = np.asarray(covariance, dtype=np.float64)
 
-    cov_inv = np.linalg.inv(covariance)
-
-    if error.ndim == 1:
-        return error @ cov_inv @ error
-    else:
-        return np.sum(error @ cov_inv * error, axis=1)
+    return estimation_metrics._quadratic_form(error, covariance)
 
 
 def nis(
     innovation: ArrayLike,
     innovation_covariance: ArrayLike,
-) -> NDArray[np.floating]:
+) -> Union[np.float64, NDArray[np.floating]]:
     """
     Normalized Innovation Squared (NIS).
 
@@ -539,7 +553,8 @@ def nis(
 
     Notes
     -----
-    This is equivalent to NEES applied to innovations.
+    This is equivalent to NEES applied to innovations, unnormalized, and
+    raises `numpy.linalg.LinAlgError` for a singular covariance.
     """
     return nees(innovation, innovation_covariance)
 

@@ -428,16 +428,48 @@ def compute_innovation_likelihood(
     return float(likelihood)
 
 
+def _mahalanobis_distances(
+    diffs: NDArray[np.floating],
+    S: NDArray[np.floating],
+    S_is_cholesky: bool = False,
+) -> NDArray[np.floating]:
+    """Mahalanobis distance of each row of ``diffs``, factoring S once."""
+    import scipy.linalg
+
+    S = np.asarray(S, dtype=np.float64)
+    if S_is_cholesky:
+        L = S
+    else:
+        try:
+            L = np.linalg.cholesky(S)
+        except np.linalg.LinAlgError:
+            # Without PD, innovation @ solve(S, innovation) is either
+            # negative (sqrt gives nan) or a meaningless positive number.
+            warnings.warn(
+                "compute_mahalanobis_distance: innovation covariance is not "
+                "positive definite; distance is undefined and returned as "
+                "nan (numerical failure, not evidence). Check R and the "
+                "covariance conditioning.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+            return np.full(diffs.shape[0], np.nan)
+    y = scipy.linalg.solve_triangular(L, diffs.T, lower=True)
+    return np.sqrt(np.sum(y**2, axis=0))
+
+
 def compute_mahalanobis_distance(
     innovation: NDArray[np.floating],
     S: NDArray[np.floating],
     S_is_cholesky: bool = False,
 ) -> float:
     """
-    Compute the Mahalanobis distance of an innovation.
+    Compute the Mahalanobis distance of an innovation (not squared).
 
     The Mahalanobis distance is sqrt(y.T @ S^{-1} @ y), which measures
-    how many standard deviations the innovation is from zero.
+    how many standard deviations the innovation is from zero. For the
+    squared distance use
+    `pytcl.assignment_algorithms.gating.mahalanobis_distance`.
 
     Parameters
     ----------
@@ -453,7 +485,15 @@ def compute_mahalanobis_distance(
     Returns
     -------
     distance : float
-        Mahalanobis distance.
+        Mahalanobis distance (not squared).
+
+    Notes
+    -----
+    This function deliberately does not delegate to
+    `pytcl.assignment_algorithms.gating.mahalanobis_distance`: their
+    contracts differ. Gating returns the squared distance without validating
+    S's shape or positive-definiteness; this function validates both and
+    returns nan (with a RuntimeWarning) for a non-positive-definite S.
 
     Examples
     --------
@@ -465,34 +505,13 @@ def compute_mahalanobis_distance(
     True
     """
     innovation = np.asarray(innovation, dtype=np.float64).flatten()
-    S = np.asarray(S, dtype=np.float64)
-
-    if S_is_cholesky:
-        import scipy.linalg
-
-        y_normalized = scipy.linalg.solve_triangular(S, innovation, lower=True)
-        mahal_sq = np.sum(y_normalized**2)
-    else:
-        try:
-            S_chol = np.linalg.cholesky(S)
-            import scipy.linalg
-
-            y_normalized = scipy.linalg.solve_triangular(S_chol, innovation, lower=True)
-            mahal_sq = np.sum(y_normalized**2)
-        except np.linalg.LinAlgError:
-            # Without PD, innovation @ solve(S, innovation) is either
-            # negative (sqrt gives nan) or a meaningless positive number.
-            warnings.warn(
-                "compute_mahalanobis_distance: innovation covariance is not "
-                "positive definite; distance is undefined and returned as "
-                "nan (numerical failure, not evidence). Check R and the "
-                "covariance conditioning.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-            return float("nan")
-
-    return float(np.sqrt(mahal_sq))
+    S_shape = np.shape(S)
+    if S_shape != (innovation.size, innovation.size):
+        raise ValueError(
+            f"innovation has {innovation.size} elements but S has shape {S_shape}; "
+            f"expected ({innovation.size}, {innovation.size})"
+        )
+    return float(_mahalanobis_distances(innovation[np.newaxis, :], S, S_is_cholesky)[0])
 
 
 @lru_cache(maxsize=128)

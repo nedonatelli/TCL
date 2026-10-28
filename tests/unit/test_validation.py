@@ -11,6 +11,7 @@ Tests cover:
 import numpy as np
 import pytest
 
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.core.validation import (
     ArraySpec,
     ScalarSpec,
@@ -160,18 +161,21 @@ class TestEnsureFunctions:
     def test_ensure_symmetric(self):
         """Test ensure_symmetric."""
         # Exactly symmetric
-        result = ensure_symmetric([[1, 2], [2, 1]])
+        with pytest.warns(PytclDeprecationWarning):
+            result = ensure_symmetric([[1, 2], [2, 1]])
         assert result.shape == (2, 2)
         np.testing.assert_array_equal(result, result.T)
 
         # Nearly symmetric (within tolerance)
         mat = [[1, 2.0000000001], [2, 1]]
-        result = ensure_symmetric(mat)
+        with pytest.warns(PytclDeprecationWarning):
+            result = ensure_symmetric(mat)
         np.testing.assert_array_almost_equal(result, result.T)
 
         # Not symmetric
         with pytest.raises(ValidationError, match="symmetric"):
-            ensure_symmetric([[1, 2], [3, 1]])
+            with pytest.warns(PytclDeprecationWarning):
+                ensure_symmetric([[1, 2], [3, 1]])
 
     def test_ensure_positive_definite(self):
         """Test ensure_positive_definite."""

@@ -62,7 +62,8 @@ from pytcl.core.optional_deps import DISTRIBUTION_NAME
 # Constants for unit conversion
 AU_PER_KM = 1.0 / 149597870.7  # 1 AU in km
 KM_PER_DAY_TO_AU_PER_DAY = AU_PER_KM  # velocity conversion factor
-EPSILON_J2000 = 0.4090910179  # Mean obliquity of the ecliptic at J2000.0 (radians)
+# IAU 1976 mean obliquity at J2000.0 (84381.448"), JPL's "ecliptic of J2000".
+EPSILON_J2000 = float(np.deg2rad(84381.448 / 3600.0))
 
 
 def _combine_segments(

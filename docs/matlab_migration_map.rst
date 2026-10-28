@@ -660,7 +660,11 @@ Performance Evaluation
    * - MATLAB
      - pytcl
    * - ``calcNEES``
-     - ``pytcl.performance_evaluation.estimation_metrics.nees``
+     - ``pytcl.performance_evaluation.estimation_metrics.nees`` (one sample,
+       unnormalized). ``calcNEES = mean(nees over samples) / x_dim``, and
+       MATLAB uses ``pinv``; pytcl uses ``inv`` and raises
+       ``LinAlgError`` on a singular covariance, because a singular
+       covariance has no NEES and a finite pseudo-inverse value hides it.
    * - ``calcRMSE``
      - ``pytcl.performance_evaluation.estimation_metrics.rmse``
 

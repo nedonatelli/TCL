@@ -488,7 +488,7 @@ def _high_res_field_spherical(
     """
     from pytcl.magnetism._schmidt import (
         GEOMAGNETIC_REFERENCE_RADIUS_KM,
-        _schmidt_legendre,
+        _schmidt_legendre_with_derivative,
     )
 
     if n_max_eval is None:
@@ -514,18 +514,7 @@ def _high_res_field_spherical(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    P = _schmidt_legendre(N, cos_theta)
-
-    # dP/dtheta via the Schmidt-basis recursion:
-    # sin(theta) * dP(n,m)/dtheta = n*cos(theta)*P(n,m) - sqrt(n^2-m^2)*P(n-1,m)
-    dP = np.zeros((N + 1, N + 1))
-    if abs(sin_theta) > 1e-10:
-        for n in range(1, N + 1):
-            ms = np.arange(0, n + 1)
-            f = np.sqrt((n - ms) * (n + ms))  # zero at m == n
-            prev = np.zeros(n + 1)
-            prev[:n] = P[n - 1, :n]
-            dP[n, : n + 1] = (n * cos_theta * P[n, : n + 1] - f * prev) / sin_theta
+    P, dP = _schmidt_legendre_with_derivative(N, cos_theta, sin_theta)
 
     # Precompute radial power: (a/r)^(n+2) for n = 0..N
     r_ratio = a / r
@@ -553,11 +542,15 @@ def _high_res_field_spherical(
     B_r = np.sum(B_r_terms[mask])
     B_theta = np.sum(B_theta_terms[mask])
 
-    if abs(sin_theta) > 1e-10:
+    if sin_theta != 0.0:
+        # P[n, m] carries sin(theta)**m from the sin-seeded table, so the
+        # division is exact however small sin(theta) is.
         B_phi_terms = rp * m_idx * P / sin_theta * gh_sin
         B_phi = np.sum(B_phi_terms[mask])
     else:
-        B_phi = 0.0
+        # At the pole m * P[n, m] / sin(theta) tends to dP[n, 1] / cos(theta)
+        # for m = 1 and to 0 for m >= 2.
+        B_phi = np.sum(rp[1:] * dP[1:, 1:2] * gh_sin[1:, 1:2]) / cos_theta
 
     return B_r, B_theta, B_phi
 

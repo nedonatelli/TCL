@@ -15,7 +15,7 @@ claimed 25-40% at the low end.
 """
 
 from functools import lru_cache
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -229,7 +229,7 @@ def cross_covariance_transform(
 
 
 def numerical_jacobian(
-    func: Callable[[ArrayLike], ArrayLike],
+    func: Callable[[Any], ArrayLike],
     x: ArrayLike,
     dx: float = 1e-7,
 ) -> NDArray[np.floating]:
@@ -239,7 +239,7 @@ def numerical_jacobian(
     Parameters
     ----------
     func : callable
-        Function f(x) -> y.
+        Function f(x) -> y. It receives ``x`` with the shape given here.
     x : array_like
         Point at which to compute Jacobian.
     dx : float, optional
@@ -249,6 +249,19 @@ def numerical_jacobian(
     -------
     J : ndarray
         Jacobian matrix.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> J = numerical_jacobian(lambda v: np.array([v[0]**2, v[0]*v[1]]), [2.0, 3.0])
+    >>> np.round(J, 5)
+    array([[4., 0.],
+           [3., 2.]])
+
+    See Also
+    --------
+    pytcl.dynamic_estimation.kalman.extended.numerical_jacobian :
+        Flattens ``x`` and the outputs of ``f`` before differencing.
     """
     x = np.asarray(x, dtype=np.float64)
     f0 = np.asarray(func(x), dtype=np.float64)

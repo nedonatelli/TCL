@@ -23,6 +23,7 @@ from typing import NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.coordinate_systems.conversions.geodetic import _meridional_radius_e2
 from pytcl.coordinate_systems.rotations import quat2rotmat, quat_multiply, rotmat2quat
 from pytcl.navigation.geodesy import WGS84, Ellipsoid
 
@@ -369,7 +370,7 @@ def radii_of_curvature(
     RE = a / np.sqrt(1 - e2 * sin2_lat)
 
     # Meridian radius
-    RN = a * (1 - e2) / (1 - e2 * sin2_lat) ** 1.5
+    RN = _meridional_radius_e2(lat, a, e2)
 
     return RN, RE
 

@@ -10,6 +10,9 @@ from typing import Any, Callable
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.coordinate_systems.jacobians.jacobians import (
+    numerical_jacobian as _numerical_jacobian,
+)
 from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
 
 
@@ -216,24 +219,11 @@ def numerical_jacobian(
            [3., 2.]])
     """
     x = np.asarray(x, dtype=np.float64).flatten()
-    f0 = np.asarray(f(x), dtype=np.float64).flatten()
 
-    n = len(x)
-    m = len(f0)
-    J = np.zeros((m, n), dtype=np.float64)
+    def flat_f(v: NDArray[Any]) -> NDArray[Any]:
+        return np.asarray(f(v), dtype=np.float64).flatten()
 
-    for i in range(n):
-        x_plus = x.copy()
-        x_minus = x.copy()
-        x_plus[i] += dx
-        x_minus[i] -= dx
-
-        f_plus = np.asarray(f(x_plus), dtype=np.float64).flatten()
-        f_minus = np.asarray(f(x_minus), dtype=np.float64).flatten()
-
-        J[:, i] = (f_plus - f_minus) / (2 * dx)
-
-    return J
+    return _numerical_jacobian(flat_f, x, dx)
 
 
 def ekf_predict_auto(

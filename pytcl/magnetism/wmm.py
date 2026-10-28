@@ -554,13 +554,19 @@ def _compute_magnetic_field_spherical_impl(
             B_r += (n + 1) * r_power * P[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
             B_theta += -r_power * dP[n, m] * (gnm * cos_m_lon + hnm * sin_m_lon)
 
-            if abs(sin_theta) > 1e-10:
+            if sin_theta != 0.0:
                 B_phi += (
                     r_power
                     * m
                     * P[n, m]
                     / sin_theta
                     * (gnm * sin_m_lon - hnm * cos_m_lon)
+                )
+            elif m == 1:
+                # At the pole m * P[n, m] / sin(theta) tends to
+                # dP[n, 1] / cos(theta) for m = 1 and to 0 for m >= 2.
+                B_phi += (
+                    r_power * dP[n, 1] / cos_theta * (gnm * sin_m_lon - hnm * cos_m_lon)
                 )
 
     return B_r, B_theta, B_phi

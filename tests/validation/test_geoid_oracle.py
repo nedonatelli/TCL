@@ -18,6 +18,7 @@ review round).
 
 from math import factorial
 
+import mpmath as mp
 import numpy as np
 import pytest
 from scipy.special import lpmv
@@ -66,12 +67,16 @@ def _geocentric(lat, lon, h=0.0):
     return lat_gc, r
 
 
-def _hand_coded_reference_zonals(n_max):
+def _hand_coded_reference_zonals(n_max, GM, R):
     """Fully normalized C_2k,0 of the WGS84 level ellipsoid's normal
-    field (k=1..5, degrees 2/4/6/8/10), typed directly from Heiskanen &
-    Moritz, "Physical Geodesy", eq. 2-92 -- no pytcl gravity code is
-    called. See the fix report for a verification of these numbers
-    against ``models.ellips_grav_coeffs``.
+    field (k=1..5, degrees 2/4/6/8/10) in the ``(GM, R)`` frame, typed
+    directly from Heiskanen & Moritz, "Physical Geodesy": eq. 2-92 for
+    J2k, with J2 itself from the closed form eq. 2-165 (not the rounded
+    GRS80 ``WGS84.J2``) evaluated in 40-digit mpmath, so the float
+    cancellation in ``q0`` that ``ellipsGravCoeffs`` has is not shared,
+    rescaled by ``(GM_e / GM) * (a / R)**n`` as
+    MATLAB's ``getEGMWGS84TCoeffs`` does. No pytcl gravity code is
+    called.
     """
     if n_max > 10:
         raise ValueError(
@@ -79,9 +84,15 @@ def _hand_coded_reference_zonals(n_max):
             f"up to 10); n_max={n_max} would silently under-subtract the "
             "untyped higher-degree zonals instead of raising here."
         )
-    f = WGS84.f
+    a, f, gm_e, omega = WGS84.a, WGS84.f, WGS84.GM, WGS84.omega
     e2 = f * (2.0 - f)
-    J2 = WGS84.J2
+    with mp.workdps(40):
+        mf = mp.mpf(f)
+        me2 = mf * (2 - mf)
+        ep = mp.sqrt(me2 / (1 - me2))
+        m = mp.mpf(omega) ** 2 * mp.mpf(a) ** 3 * (1 - mf) / mp.mpf(gm_e)
+        q0 = ((1 + 3 / ep**2) * mp.atan(ep) - 3 / ep) / 2
+        J2 = float(me2 / 3 * (1 - mp.mpf(2) / 15 * m * ep / q0))
     C = np.zeros(n_max + 1)
     for k in range(1, 6):
         n = 2 * k
@@ -93,7 +104,7 @@ def _hand_coded_reference_zonals(n_max):
             / ((2 * k + 1) * (2 * k + 3))
             * (1.0 - k + 5.0 * k * J2 / e2)
         )
-        C[n] = -J2k / np.sqrt(2 * n + 1)
+        C[n] = -J2k / np.sqrt(2 * n + 1) * (gm_e / GM) * (a / R) ** n
     return C
 
 
@@ -112,7 +123,7 @@ def _independent_geoid_via_legendre_sum(lat, lon, coef):
     if coef.n_max >= 1:
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
-    C_dist[:, 0] -= _hand_coded_reference_zonals(coef.n_max)
+    C_dist[:, 0] -= _hand_coded_reference_zonals(coef.n_max, coef.GM, coef.R)
 
     lat_gc, r = _geocentric(lat, lon)
     x = np.sin(lat_gc)
@@ -137,17 +148,15 @@ def _c20_plus_delta_for_egm(delta, n_max=2, model_name="TEST"):
     would otherwise dominate) cancels.
 
     Same construction as ``test_gravity_audit.py::test_c20_only_analytic``.
-    Matched to the *egm.py* subtraction routine specifically: it and
-    ``models.ellips_grav_coeffs`` (used by ``clenshaw_geoid``, see
-    ``_c20_plus_delta_for_clenshaw`` below) differ at the ~1.6e-7
-    relative level (task 2.2's noted, accepted discrepancy between the
-    two reference-field routines), which is negligible against a
-    physical C20 but not against a ``delta`` chosen this small -- using
-    the wrong one of the two here left an 0.8% residual that failed a
-    tight tolerance during review.
+    Matched to the *egm.py* subtraction routine specifically: it
+    rescales ``models.ellips_grav_coeffs`` (used unscaled by
+    ``clenshaw_geoid``, see ``_c20_plus_delta_for_clenshaw`` below) from
+    the WGS84 ``(GM, a)`` to the model's ``(GM, R)``, a ~2.2e-7 relative
+    change in C20 that is negligible against a physical C20 but not
+    against a ``delta`` chosen this small.
     """
     ref = np.zeros((n_max + 1, n_max + 1))
-    _subtract_reference_field(ref, n_max)
+    _subtract_reference_field(ref, n_max, _GM, _R)
     c20_ref = -ref[2, 0]
     C = np.zeros((n_max + 1, n_max + 1))
     S = np.zeros((n_max + 1, n_max + 1))
@@ -180,12 +189,19 @@ POINTS_DEG = [
 def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
     lat_deg, lon_deg
 ):
-    """geoid_height matches a from-scratch Legendre-sum oracle (task 2.1)."""
+    """geoid_height matches a from-scratch Legendre-sum oracle (task 2.1).
+
+    0.5 um, not 1e-9 relative: ``ellips_grav_coeffs`` (the MATLAB
+    ``ellipsGravCoeffs`` port) loses 5.1e-11 of C20 to cancellation in
+    ``q0``, about 3e-7 m of geoid (measured 0.9e-7 to 2.9e-7 m here); the
+    oracle computes J2 in mpmath and does not share that cancellation.
+    The geocentric-latitude defect is metres.
+    """
     lat, lon = np.radians(lat_deg), np.radians(lon_deg)
     coef = create_test_coefficients(n_max=10)
     got = geoid_height(lat, lon, coefficients=coef)
     expected = _independent_geoid_via_legendre_sum(lat, lon, coef)
-    assert got == pytest.approx(expected, rel=1e-9)
+    assert got == pytest.approx(expected, rel=0, abs=5e-7)
 
 
 @pytest.mark.parametrize(

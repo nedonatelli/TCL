@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  (also `pytcl.core.validation.check_symmetric`). It validates that `arr` is
+  square and symmetric within the tolerances and returns it unchanged,
+  raising `ValidationError` otherwise; it replaces the check-and-symmetrize
+  contract of the deprecated `ensure_symmetric` (see Deprecated). What to
+  do: nothing.
 - `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
   a `DeprecationWarning` subclass that every pytcl deprecation now emits
   (`SimplifiedThermosphere`, the v1.x compatibility adapters in
@@ -18,8 +24,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caller rather than pytcl. What to do: nothing; filters on
   `DeprecationWarning` still match.
 
+### Deprecated
+
+- `pytcl.core.validation.ensure_symmetric` (removal in v3.0.0). It checked
+  *and* symmetrized, while `kalman.matrix_utils.ensure_symmetric` only
+  symmetrizes; two contracts under one name. The new
+  `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  validates and returns the input unchanged. The validators in
+  `core.validation` now use it internally, with unchanged return values.
+  What to do: call `check_symmetric` to validate, or
+  `pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric` to
+  symmetrize.
+- `pytcl.gravity.julian_centuries_j2000(mjd)` (removal in v3.0.0). It takes a
+  Modified Julian Date, while `pytcl.astronomical.julian_centuries_j2000(jd)`
+  takes a Julian date; the same name under two argument conventions returns
+  -65.7 instead of 0 when an MJD reaches the astronomical one, with no error.
+  What to do: replace `gravity.julian_centuries_j2000(mjd)` with
+  `astronomical.julian_centuries_j2000(mjd + 2400000.5)`.
+
 ### Changed
 
+- **One haversine, one meridional radius, one Earth radius; no value
+  changes beyond the great-circle fix under Fixed and the 1-ulp
+  `osculating_sphere` change below.** The
+  inline haversine copies in `terrain.visibility.line_of_sight`,
+  `terrain.visibility.radar_coverage_map` and
+  `terrain.dem.get_elevation_profile` call
+  `navigation.geodesy.haversine_distance` (bit-identical; the three run
+  within 2% of their v2.11.1 time). The meridional radius
+  `a (1 - e2) / (1 - e2 sin^2)^1.5` that `navigation.ins.radii_of_curvature`,
+  `navigation.rhumb.rhumb_distance_ellipsoidal`, `navigation.rhumb.direct_rhumb`,
+  `projections.transverse_mercator_inverse`, `projections.oblique_stereographic`
+  and `projections.oblique_stereographic_inverse` each carried is one private
+  body that STABLE `conversions.geodetic.meridional_radius` also calls;
+  every output is bit-identical, checked against v2.11.1 for WGS84, GRS80, a
+  sphere and Hayford. Every 6371000 m default (`geodesy.SPHERE`,
+  `haversine_distance`, `great_circle.EARTH_RADIUS`, `rhumb.EARTH_RADIUS`,
+  the `earth_radius` parameters of `terrain.visibility` and
+  `DEMGrid.get_gradient`) is `core.constants.EARTH_MEAN_RADIUS`, the same
+  value. `core.constants.SPHERE_EARTH.a` is the constant as well.
+  `osculating_sphere` uses the shared body too; its radius moves by at most
+  1 ulp (2.9e-16 relative) in about 28% of cases (2764 of 10000 over WGS84
+  and GRS80), because its formula was `a (1 - e2) / denom**3` and is now
+  `a (1 - e2) / (1 - e2 sin^2)**1.5`. What to do: nothing.
+
+- `special_orbits.escape_velocity_at_radius(mu, r)` now delegates to
+  `orbital_mechanics.escape_velocity(r, mu)`; values are identical. The
+  argument orders stay reversed and both docstrings say so. What to do:
+  nothing.
+
+- **One body each for NEES/NIS, MAD and the Mahalanobis family; one return
+  value changes, `MultivariateGaussian.mahalanobis` on an asymmetric
+  covariance.** `statistics.estimators.nees/nis` compute each sample
+  through `estimation_metrics._quadratic_form`, the private body that
+  `estimation_metrics.nees` and `estimation_metrics.nis` also call,
+  `static_estimation.robust.mad`
+  delegates to `statistics.estimators.mad`, and
+  `MultivariateGaussian.mahalanobis` delegates to the same Cholesky-based
+  body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
+  factors the covariance once and vectorises over the batch. It
+  deliberately does not delegate to `gating.mahalanobis_distance`: gating
+  returns the squared distance without validating S's shape or
+  positive-definiteness, while this function validates and returns nan on
+  a non-positive-definite S. Docstrings now say
+  whether a Mahalanobis result is squared (`gating`) or not (the others),
+  and `combinatorics.factorial` and `special_functions.factorial` name
+  their contract difference. The MATLAB migration map's `calcNEES` row
+  now states the normalization (`mean(nees) / x_dim`) and that pytcl
+  raises `LinAlgError` on a singular covariance where MATLAB uses `pinv`.
+  The one value change: for an asymmetric `cov`, which is invalid input
+  that the constructor still accepts, `MultivariateGaussian.mahalanobis`
+  used to invert the full matrix and now factors the lower triangle, as
+  scipy's `multivariate_normal` does for the pdf. Measured on
+  `cov=[[2, 0.9], [0.3, 1]]`, `x=[1, 2]`: 1.9532 in v2.11.1, 2.0208 now.
+  Symmetric covariances are unchanged. What to do: pass a symmetric
+  covariance (`pytcl.core.check_symmetric` validates one).
+- **One matrix square root for the sigma-point and cubature filters; only the
+  error message changes.** `unscented.sigma_points_merwe`,
+  `unscented.sigma_points_julier`, `unscented.ckf_predict` and
+  `unscented.ckf_update` call `kalman.matrix_utils.compute_matrix_sqrt`
+  instead of four inline copies of its Cholesky-then-eigh body. Results are
+  bit-identical to v2.11.1 on positive-definite and singular positive
+  semi-definite covariances. For a covariance that is not positive
+  semi-definite the `LinAlgError` text was "covariance is not positive
+  semi-definite: ..." and is now "matrix is not positive semi-definite: ...".
+  What to do: code that matches the old text must match the new one; the
+  exception type is unchanged.
 - **The runtime dependency floors rise to versions CI actually tests.**
   The old floors were never installed by any CI cell; every cell ran the
   lock's newest releases. A new `floors` job in `ci.yml` resolves each
@@ -171,6 +261,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-process thresholds.
 
 ### Fixed
+
+- **`great_circle_distance` and `great_circle_azimuth` no longer round their
+  inputs; distances move by up to 0.74 mm and short-pair azimuths by far
+  more.** Both rounded all four coordinates to 10 decimals (up to 5e-11 rad
+  each) before computing, so every distance carried up to about 1 mm of
+  error from the rounding alone and an azimuth carried an error of
+  1e-10 rad divided by the pair's separation in radians. Both now compute
+  on the exact coordinates. Measured against geographiclib on a sphere of
+  radius 6371000 m (`Geodesic(6371000.0, 0)`), maximum over the pairs
+  sampled (the reference takes degrees, so part of each new-code
+  figure below is the oracle's):
+
+  | pairs sampled | distance, relative: v2.11.1 / new | azimuth, rad: v2.11.1 / new |
+  |---|---|---|
+  | 2000 global: distance, per seed over 4 seeds; azimuth, one 2000-pair sample | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
+  | 1000 at 64 m (both columns) | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
+  | 1000 at 1 m | 6.5e-4 / 2.3e-9 | 7.3e-4 / 2.3e-9 |
+  | 1000 at 0.01 m | 7.2e-2 / 2.4e-7 | 6.3e-2 / 2.9e-7 |
+
+  Earlier drafts quoted 2.3e-4 relative for pairs "0 to 64 m" apart; that
+  was a single mixed sample, replaced by the separations above. Nothing
+  here is measured below 0.01 m or above the global sample. The new error
+  grows as pairs shrink (`lat2 - lat1` loses digits); v2.11.1's grows
+  faster. A pair 3e-11 rad apart (0.2 mm) returned azimuth 0.0 from
+  `great_circle_azimuth` and `great_circle_inverse` while the true bearing
+  was 0.46 rad; it now returns 0.46. The distances of the two versions
+  differ by at most 7.4e-4 m (4 seeds x 2000 global pairs).
+  Also changed, because they call these two: `great_circle_inverse`
+  (distance by up to 6.9e-4 m, azimuths by up to 1.3e-9 rad on global
+  pairs and by up to 1e-2 rad on pairs about 1 m apart),
+  `cross_track_distance` (cross-track by up to 6.7e-3 m and along-track by
+  up to 7.3e-3 m over 1000 global point/track pairs),
+  `great_circle_path_intersect` (latitude by up to 1.5e-9 rad, longitude by
+  up to 3.5e-9 rad over 1000 pairs; no `valid` flag changed),
+  `great_circle_waypoint`, `great_circle_waypoints`, `angular_distance`
+  and `compare_great_circle_rhumb`. `great_circle_intersect` did not change
+  on 1000 random inputs; it uses the azimuth only to choose between the two
+  intersections. The caches are now keyed on the exact floats: hit rates
+  depend on exact inputs, where two calls within 1e-10 rad used to share an
+  entry; `get_great_circle_cache_info` and `clear_great_circle_cache` keep
+  their meaning. A cache hit costs 0.1 µs instead of 1.05 µs and a miss
+  1.24 µs instead of 2.11 µs. What to do: nothing, unless you compare
+  against stored v2.11.1 distances (allow 1 mm) or azimuths of pairs
+  closer than about a kilometre.
+
+- **Solid-tide sidereal time and the ecliptic obliquity constant now follow
+  IAU models; results shift slightly.** The tide module's GMST used a linear
+  polynomial without the T^2 term. Against the exact IAU 1982 polynomial
+  it was off by -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
+  60000 and -0.0935" at 61000.7. It now shares one IAU 1982 body with
+  `reference_frames.gmst_iau82` (fed the MJD directly, so no precision is
+  lost forming a Julian date) and agrees with the exact value to under
+  1e-8" at all four epochs. Below about MJD 25000, forming `mjd - 51544.5`
+  still rounds as it did in v2.11.1 (up to about 1e-5"). Solid-tide displacement outputs shift by at
+  most 5e-8 m and gravity outputs by under 1e-12. The tide module's own
+  obliquity moved only 4e-5" (it already used the IAU 1976 value).
+  `EPSILON_J2000` (`pytcl.astronomical.ephemerides`) was 0.4090910179 rad,
+  which matched no model; it is now the IAU 1976 value 84381.448" =
+  0.40909280422232897 rad, JPL's "ecliptic of J2000", 0.3685" larger. It
+  drives every `frame="ecliptic"` output: `sun_position`, `moon_position`
+  and `planet_position` (module functions and the `DEEphemeris` methods of
+  the same names). At JD 2460311 the SSB-relative ICRF vectors those return
+  rotate by 0.36" in angle, which at their distance scale of about 1 AU is
+  258 km for the Moon vector (0.98 AU from the SSB) and 389 km for Mars
+  (1.48 AU); `frame="earth_centered"` returns ICRF and is not rotated by this
+  constant. `barycenter_position` takes no frame and is
+  unchanged.
+  What to do: ecliptic-frame ephemeris output and solid-tide phases shift by
+  the stated amounts; nothing to change in calling code.
 
 - Four public entry points no longer truncate silently when given parallel
   inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
@@ -612,6 +771,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passed a singular or roundoff-singular correlated `R_meas`; its null
   direction now carries the floored information, `1/(1e-10*max_eig)`,
   instead of an arbitrarily large amount.
+
+- **EGM geoid heights, `clenshaw_geoid` and the gravity outputs subtract
+  MATLAB's WGS84 reference field, through one helper.** `geoid_height`,
+  `geoid_heights`, `gravity_disturbance`, `gravity_anomaly` and
+  `deflection_of_vertical` removed the normal field with the
+  Heiskanen-Moritz 2-92 series, evaluated with the rounded GRS80
+  `J2 = 1.08263e-3`, cut at degree 10, and not rescaled from WGS84's `GM`
+  and `a` to the model's. `clenshaw_geoid` subtracted `ellips_grav_coeffs`
+  unscaled. Both now subtract the port of MATLAB `getEGMWGS84TCoeffs`:
+  `ellips_grav_coeffs` for the WGS84 `omega`, `a`, `f` and `GM`, with
+  degree `n` scaled by `(GM_WGS84 / GM) (a_WGS84 / R)^n`. The central term
+  is dropped by both, as before. For the EGM96/EGM2008 `GM` and `R` the
+  normalized zonals change by 5.5e-8 (C20), 7.4e-9 (C40), -2.8e-7 (C60),
+  -1.4e-6 (C80) and -1.4e-5 (C10,0) relative from `geoid_height`'s old
+  series, and degrees 12 and up are no longer dropped (below 4.2e-17).
+  Against the closed-form WGS84 normal potential (mpmath, latitudes -40
+  to 90 deg, heights 0 to 1000 km), the subtracted series was off by up
+  to 3.8e-3 m^2/s^2 (0.38 mm of geoid) in `geoid_height` and 1.5e-2
+  m^2/s^2 (1.5 mm) in `clenshaw_geoid`, and is now off by at most 3.5e-6
+  m^2/s^2. On a field that is exactly the WGS84 normal field both now
+  return at most 3.5e-7 m (latitudes -90 to 90 deg every 5 deg), where
+  v2.11.1 returned 0.38 mm and 1.52 mm, and the two routes now give
+  identical heights whenever `C[0, 0] == 1` (as in the EGM files; both
+  omit the zero-degree term). With the EGM `GM` and `R` (every degree of latitude,
+  `n_max` 4 to 36; the change is zonal, so it does not depend on the
+  other coefficients) `geoid_height` moves by -0.191 mm at the equator to
+  +0.384 mm at the poles and `clenshaw_geoid` by -0.764 mm to +1.524 mm.
+  For other `R` and `GM`, `clenshaw_geoid` moves by more, because the
+  reference field now follows them: degree `n` is scaled by
+  `(GM_WGS84 / GM) (a_WGS84 / R)^n`, which makes the result independent
+  of the frame chosen for the series (v2.11.1's was not). Its own example
+  (`R = 6.378e6`, `GM = 3.986e14`, central term only) moves by -0.152 m
+  at the equator to +0.306 m at the poles (-3453.97 m to -3454.12 m at
+  the equator), and `R = 6.4e6`, `GM = 3.99e14` moves by -54.6 m to
+  +27.2 m. `gravity_disturbance` and `gravity_anomaly`
+  move by at most 1.8e-4 mGal (latitudes to +-89.5 deg, heights 0 and
+  10 km) and `deflection_of_vertical` by at most 1.9e-5 arcsec (latitudes
+  to +-60 deg). Measured with the built-in degree-36 test set; the real
+  EGM96 and EGM2008 files were not available to the test run. What to
+  do: nothing for EGM coefficient sets, which shift by less than 1.6 mm;
+  if you call `clenshaw_geoid` with an `R` and `GM` far from WGS84's,
+  expect shifts of up to tens of metres toward the frame-independent
+  value.
+
+- **Geomagnetic fields match an exact synthesis at and near the poles.**
+  EMM and WMMHR divided the colatitude derivative of the Schmidt
+  functions by `sin(theta)` and set it to zero at the pole, and WMM and
+  IGRF set it to zero within about 1.4e-7 rad of the pole. All four set
+  the east component `B_phi` to zero wherever `sin(theta) <= 1e-10`, and
+  read their Legendre table from the gravity cache, which rounds
+  `cos(theta)` to 12 decimals, so within about 1.4e-6 rad of a pole they
+  used the pole's values. One shared table now uses `sin(theta)`
+  directly; the derivative comes from the same-degree identity, which
+  never divides by `sin(theta)`; `B_phi` divides by `sin(theta)` down to
+  the smallest nonzero colatitude (the table carries the matching
+  `sin(theta)**m`) and takes its finite polar limit,
+  `dP[n, 1] / cos(theta)` from the `m = 1` terms, at exactly the pole.
+  Against an exact mpmath synthesis (degree-36 test set; WMM2020 at the
+  pole), `B_r`, `B_theta` and `B_phi` are within 5.4e-16 of the field
+  magnitude at colatitudes 0, 1e-11, 1e-10, 1e-9, 1e-6, 1e-4, 1e-3,
+  1e-2, 0.06, 0.2, 0.6 and 1.2 rad from either pole. X, Y, Z, H, F, I
+  and D at geocentric colatitudes 1e-9, 1e-10, 1e-11 and 0 agree to
+  within the field's own change over 1e-9 rad (EMM 6.0e-10 of F and
+  5.3e-9 rad, WMM2020 5.8e-10 and 5.4e-9 rad). v2.11.1
+  was off by 2.9% (EMM test set, north) and 8.9% (south) at the three
+  smallest nonzero colatitudes, by 1.2e-9 at 1e-3 rad, and at the pole
+  had `B_theta = 0` (12% of the field for WMM2020) and `B_phi = 0`; there
+  H was 32% low and D 47 deg off for WMM2020 at longitude 0.7. Public
+  `wmm`, `igrf`, their declination/inclination/intensity helpers and
+  the heading conversions round latitude to 6 decimals for their cache
+  by default (`configure_magnetic_cache`), so they never evaluate closer
+  than 3.3e-7 rad to the pole; `magnetic_field_spherical(...,
+  use_cache=False)`, `emm` and the magnetic coordinates do. Public `emm`
+  and `wmm` convert geodetic to geocentric latitude with `arcsin(z / r)`,
+  which maps geodetic colatitudes below about 1e-8 rad onto the pole
+  itself (unchanged from v2.11.1). Away from
+  the poles the values move by the old table rounding: at most 1.8e-12
+  of the field magnitude over latitudes -70 to 70 deg (WMMHR2025; 9.4e-13
+  with the test set, 9.9e-13 for WMM2020), and up to 3.1e-12 of each
+  output of `itrs2magnetic_apex` and `itrs2qd`. `magnetic_north_pole`
+  was measured bitwise unchanged for 2015, 2020 and 2025. Affected: `emm`,
+  `wmmhr`, `emm_declination`, `emm_inclination`, `emm_intensity`, `wmm`,
+  `magnetic_field_spherical`, `magnetic_declination`,
+  `magnetic_inclination`, `magnetic_field_intensity`, `igrf`,
+  `igrf_declination`, `igrf_inclination`, `magnetic_north_pole`,
+  `trace2earth_mag_apex`, `itrs2magnetic_apex`, `itrs2qd`,
+  `geog_heading2mag` and `mag_heading2geog`. The tables are memoised on
+  the exact `(cos, sin)` pair (16 entries). Measured per call: an EMM
+  point with a new colatitude takes 0.16 ms instead of 0.62 ms at degree
+  36, 0.52 ms instead of 5.6 ms at degree 133 and 11 ms instead of 177 ms
+  at degree 790; WMM2020 at a repeated colatitude 82 us instead of
+  128 us; the magnetic potential behind `itrs2magnetic_apex` 56 us
+  instead of 64 us. What to do: nothing, unless you relied on a zero
+  horizontal field at the geographic poles.
+
+- **A `float32` sea-level refractivity `ns` gets a float64 decay
+  constant.** `cart2ruv_std_refrac`, `ruv2cart_std_refrac`, their
+  `_cubature` variants and `std_refrac_bias_approx` derive the decay
+  constant through `atmos_exp_decay_const`, the one implementation of the
+  CRPL formula. v2.11.1 evaluated a NumPy `float32` `ns` in float32, 6.5e-7
+  relative off; every other input type gives the identical value. What to
+  do: nothing.
 
 ## [2.11.1] - 2026-10-22
 

@@ -10,7 +10,7 @@ References
   Applications to Tracking and Navigation," Wiley, 2001.
 """
 
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -154,6 +154,16 @@ def velocity_rmse(
     return float(rmse(true_vel, est_vel))
 
 
+def _quadratic_form(
+    error: NDArray[np.float64], covariance: NDArray[np.float64]
+) -> Union[np.float64, NDArray[np.float64]]:
+    """``e' P^{-1} e`` for one error vector, or per row of a 2-D batch."""
+    P_inv = np.linalg.inv(covariance)
+    if error.ndim == 1:
+        return error @ P_inv @ error
+    return np.sum(error @ P_inv * error, axis=1)
+
+
 def nees(
     true_state: NDArray[np.float64],
     estimated_state: NDArray[np.float64],
@@ -199,8 +209,7 @@ def nees(
     covariance = np.asarray(covariance)
 
     error = true_state - estimated_state
-    P_inv = np.linalg.inv(covariance)
-    return float(error @ P_inv @ error)
+    return float(_quadratic_form(error, covariance))
 
 
 def nees_sequence(
@@ -316,8 +325,7 @@ def nis(
     innovation = np.asarray(innovation)
     innovation_covariance = np.asarray(innovation_covariance)
 
-    S_inv = np.linalg.inv(innovation_covariance)
-    return float(innovation @ S_inv @ innovation)
+    return float(_quadratic_form(innovation, innovation_covariance))
 
 
 def nis_sequence(

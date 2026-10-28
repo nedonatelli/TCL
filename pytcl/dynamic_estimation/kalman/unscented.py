@@ -11,20 +11,9 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
-
-# Relative bound on how negative an eigh-fallback eigenvalue is allowed to
-# be before it is treated as a genuinely non-PSD covariance rather than
-# roundoff -- see pytcl.dynamic_estimation.kalman.matrix_utils for the
-# measurement behind this value (worst case 8.4e-16 relative, over
-# ~45000 trials spanning n=2..50 and condition numbers up to 1e16; 1e-10
-# is ~5 orders of magnitude above that and 4 orders below the -1e-14
-# roundoff case these modules' tests require to still clamp silently).
-_EIG_NEGATIVE_REL_TOL = 1e-10
-
-# Relative floor for eigenvalues clamped in the eigh fallbacks; see
-# matrix_utils._EIG_FLOOR_REL for the measurement. An absolute 1e-10 turned
-# diag(1e-12, 0) into diag(1e-10, 1e-10) before sigma-point generation.
-_EIG_FLOOR_REL = 1e-10
+from pytcl.dynamic_estimation.kalman.matrix_utils import (
+    compute_matrix_sqrt,
+)
 
 
 class SigmaPoints(NamedTuple):
@@ -103,23 +92,7 @@ def sigma_points_merwe(
     n = len(x)
     lambda_ = alpha**2 * (n + kappa) - n
 
-    # Compute matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky((n + lambda_) * P)
-    except np.linalg.LinAlgError:
-        # Fall back to eigendecomposition for near-singular P
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt((n + lambda_) * eigvals))
+    sqrt_P = compute_matrix_sqrt(P, scale=n + lambda_)
 
     # Generate sigma points
     points = np.zeros((2 * n + 1, n), dtype=np.float64)
@@ -181,22 +154,7 @@ def sigma_points_julier(
 
     n = len(x)
 
-    # Compute matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky((n + kappa) * P)
-    except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt((n + kappa) * eigvals))
+    sqrt_P = compute_matrix_sqrt(P, scale=n + kappa)
 
     # Generate sigma points
     points = np.zeros((2 * n + 1, n), dtype=np.float64)
@@ -588,21 +546,7 @@ def ckf_predict(
     n = len(x)
 
     # Matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky(P)
-    except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
+    sqrt_P = compute_matrix_sqrt(P)
 
     # Generate cubature points
     if (points is None) != (weights is None):
@@ -709,21 +653,7 @@ def ckf_update(
     m = len(z)
 
     # Matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky(P)
-    except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
+    sqrt_P = compute_matrix_sqrt(P)
 
     # Generate cubature points
     if (points is None) != (weights is None):

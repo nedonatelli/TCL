@@ -23,6 +23,7 @@ from numpy.testing import assert_allclose
 from scipy.special import lpmv
 
 from pytcl.coordinate_systems import geodetic2ecef
+from pytcl.core.exceptions import PytclDeprecationWarning
 from pytcl.gravity import (
     WGS84,
     associated_legendre,
@@ -452,7 +453,7 @@ class TestGeoidHeightEGM:
         S = np.zeros((n_max + 1, n_max + 1))
         # Recover the reference C20 subtracted internally
         ref = np.zeros((n_max + 1, n_max + 1))
-        _subtract_reference_field(ref, n_max)
+        _subtract_reference_field(ref, n_max, 3.986004415e14, 6378136.3)
         c20_ref = -ref[2, 0]
         delta = 1.0e-8
         C[0, 0] = 1.0
@@ -491,7 +492,7 @@ class TestGeoidHeightEGM:
             Cd[0, 0] = 0.0
             Cd[1, :] = 0.0
             Sd[1, :] = 0.0
-            _subtract_reference_field(Cd, coef.n_max)
+            _subtract_reference_field(Cd, coef.n_max, coef.GM, coef.R)
             lat_gc, r = _geocentric(lat, lon)
             x = np.sin(lat_gc)
             T = 0.0
@@ -549,7 +550,7 @@ class TestGravityDisturbanceEGM:
         Cd[0, 0] = 0.0
         Cd[1, :] = 0.0
         Sd[1, :] = 0.0
-        _subtract_reference_field(Cd, coef.n_max)
+        _subtract_reference_field(Cd, coef.n_max, coef.GM, coef.R)
         lat_gc, r = _geocentric(lat, lon)
         eps = 1.0
         Tp = clenshaw_potential(
@@ -569,7 +570,7 @@ class TestDeflectionOfVertical:
         C = np.zeros((n_max + 1, n_max + 1))
         S = np.zeros((n_max + 1, n_max + 1))
         ref = np.zeros((n_max + 1, n_max + 1))
-        _subtract_reference_field(ref, n_max)
+        _subtract_reference_field(ref, n_max, 3.986004415e14, 6378136.3)
         delta = 1.0e-7
         C[0, 0] = 1.0
         C[2, 0] = -ref[2, 0] + delta  # Reference C20 plus a zonal disturbance
@@ -621,8 +622,10 @@ class TestFundamentalArguments:
             assert_allclose(np.degrees(v), ref, atol=1e-8)
 
     def test_julian_centuries(self):
-        assert_allclose(julian_centuries_j2000(51544.5), 0.0, atol=1e-12)
-        assert_allclose(julian_centuries_j2000(51544.5 + 36525.0), 1.0, atol=1e-12)
+        with pytest.warns(PytclDeprecationWarning):
+            assert_allclose(julian_centuries_j2000(51544.5), 0.0, atol=1e-12)
+        with pytest.warns(PytclDeprecationWarning):
+            assert_allclose(julian_centuries_j2000(51544.5 + 36525.0), 1.0, atol=1e-12)
 
 
 class TestBodyPositions:

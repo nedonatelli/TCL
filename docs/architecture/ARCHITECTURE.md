@@ -44,7 +44,7 @@ pyTCL uses multi-level caching for computationally expensive operations:
 |--------|----------|------------|------------------|
 | gravity.spherical_harmonics | associated_legendre | 64 | 8 decimals |
 | astronomical.reference_frames | precession_matrix | 128 | 0.001 days |
-| navigation.great_circle | distance/azimuth | 256 | 10 decimals |
+| navigation.great_circle | distance/azimuth | 256 | exact inputs |
 | navigation.geodesy | inverse/direct | 128 | 10 decimals |
 | magnetism.wmm | magnetic_field_spherical | 1024 | 6 decimals |
 

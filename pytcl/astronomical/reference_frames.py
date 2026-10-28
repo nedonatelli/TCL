@@ -333,21 +333,27 @@ def gmst_iau82(jd_ut1: float) -> float:
     gmst : float
         GMST (radians), in [0, 2*pi).
     """
-    # Julian centuries since J2000 at 0h UT1
     jd_0h = np.floor(jd_ut1 - 0.5) + 0.5
-    T_u = (jd_0h - JD_J2000) / 36525.0
+    return _gmst_iau82_core(jd_0h - JD_J2000, jd_ut1 - jd_0h)
 
-    # GMST at 0h UT1 (seconds)
+
+def _gmst_iau82_core(days_0h: Any, ut1_fraction_days: Any) -> Any:
+    """IAU 1982 GMST from the 0h UT1 epoch and the elapsed fraction of day.
+
+    ``days_0h`` is the 0h UT1 epoch in days since J2000.0 and
+    ``ut1_fraction_days`` the time since that 0h, so callers holding a
+    Modified Julian Date can avoid forming a Julian date.
+    """
+    T_u = days_0h / 36525.0
+
     gmst_0h_sec = (
         24110.54841 + 8640184.812866 * T_u + 0.093104 * T_u**2 - 6.2e-6 * T_u**3
     )
 
-    # Add UT1 fraction
-    ut1_fraction = (jd_ut1 - jd_0h) * 86400.0
+    ut1_fraction = ut1_fraction_days * 86400.0
     omega_earth = 1.00273790935  # Ratio of sidereal to solar day
     gmst_sec = gmst_0h_sec + omega_earth * ut1_fraction
 
-    # Convert to radians
     gmst = (gmst_sec % 86400.0) / 86400.0 * 2 * np.pi
     return gmst
 
