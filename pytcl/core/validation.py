@@ -325,6 +325,13 @@ def check_symmetric(
     ValidationError
         If input is not square or not symmetric within tolerance.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pytcl.core.validation import check_symmetric
+    >>> check_symmetric([[2.0, 1.0], [1.0, 2.0]]).shape
+    (2, 2)
+
     See Also
     --------
     pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric :

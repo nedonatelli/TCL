@@ -250,6 +250,14 @@ def numerical_jacobian(
     J : ndarray
         Jacobian matrix.
 
+    Examples
+    --------
+    >>> import numpy as np
+    >>> J = numerical_jacobian(lambda v: np.array([v[0]**2, v[0]*v[1]]), [2.0, 3.0])
+    >>> np.round(J, 5)
+    array([[4., 0.],
+           [3., 2.]])
+
     See Also
     --------
     pytcl.dynamic_estimation.kalman.extended.numerical_jacobian :
