@@ -114,6 +114,15 @@ names each would take:
   `arcsin(z / r)`, which maps geodetic colatitudes below about 1e-8 rad
   onto the pole. `arctan2(z, p)` removes the second; the first needs a
   cache key that keeps the polar colatitude.
+- **Vincenty cache input rounding.** `navigation.geodesy`'s inverse/direct
+  caches round their inputs to 1e-10 rad (about 0.64 mm) before computing,
+  the same rounding the great-circle caches no longer do; keying on the
+  exact inputs removes it.
+- **Remaining inline squared-Mahalanobis copies.** `trackers/multi_target.py`,
+  `trackers/single_target.py`, `trackers/mht.py` and
+  `clustering/gaussian_mixture.py` each compute the squared distance inline
+  instead of through the shared Cholesky body in
+  `kalman.matrix_utils.compute_mahalanobis_distance`.
 
 ### Measured backlog (from the MATLAB parity inventory)
 

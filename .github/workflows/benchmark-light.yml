@@ -54,6 +54,8 @@ jobs:
                            benchmarks/test_cubature_bench.py \
                            benchmarks/test_special_functions_bench.py \
                            benchmarks/test_signal_processing_bench.py \
+                           benchmarks/test_statistics_batch_bench.py \
+                           benchmarks/test_magnetism_bench.py \
             --benchmark-only \
             --benchmark-json=/tmp/benchmark_results.json \
             --benchmark-warmup=on \

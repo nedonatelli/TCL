@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  (also `pytcl.core.validation.check_symmetric`). It validates that `arr` is
+  square and symmetric within the tolerances and returns it unchanged,
+  raising `ValidationError` otherwise; it replaces the check-and-symmetrize
+  contract of the deprecated `ensure_symmetric` (see Deprecated). What to
+  do: nothing.
 - `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
   a `DeprecationWarning` subclass that every pytcl deprecation now emits
   (`SimplifiedThermosphere`, the v1.x compatibility adapters in
@@ -67,9 +73,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   argument orders stay reversed and both docstrings say so. What to do:
   nothing.
 
-- **One body each for NEES/NIS, MAD and the Mahalanobis family; no return
-  value changes.** `statistics.estimators.nees/nis` compute each sample
-  through `estimation_metrics.nees`, `static_estimation.robust.mad`
+- **One body each for NEES/NIS, MAD and the Mahalanobis family; one return
+  value changes, `MultivariateGaussian.mahalanobis` on an asymmetric
+  covariance.** `statistics.estimators.nees/nis` compute each sample
+  through `estimation_metrics._quadratic_form`, the private body that
+  `estimation_metrics.nees` and `estimation_metrics.nis` also call,
+  `static_estimation.robust.mad`
   delegates to `statistics.estimators.mad`, and
   `MultivariateGaussian.mahalanobis` delegates to the same Cholesky-based
   body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
@@ -83,7 +92,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their contract difference. The MATLAB migration map's `calcNEES` row
   now states the normalization (`mean(nees) / x_dim`) and that pytcl
   raises `LinAlgError` on a singular covariance where MATLAB uses `pinv`.
-  What to do: nothing.
+  The one value change: for an asymmetric `cov`, which is invalid input
+  that the constructor still accepts, `MultivariateGaussian.mahalanobis`
+  used to invert the full matrix and now factors the lower triangle, as
+  scipy's `multivariate_normal` does for the pdf. Measured on
+  `cov=[[2, 0.9], [0.3, 1]]`, `x=[1, 2]`: 1.9532 in v2.11.1, 2.0208 now.
+  Symmetric covariances are unchanged. What to do: pass a symmetric
+  covariance (`pytcl.core.check_symmetric` validates one).
+- **One matrix square root for the sigma-point and cubature filters; only the
+  error message changes.** `unscented.sigma_points_merwe`,
+  `unscented.sigma_points_julier`, `unscented.ckf_predict` and
+  `unscented.ckf_update` call `kalman.matrix_utils.compute_matrix_sqrt`
+  instead of four inline copies of its Cholesky-then-eigh body. Results are
+  bit-identical to v2.11.1 on positive-definite and singular positive
+  semi-definite covariances. For a covariance that is not positive
+  semi-definite the `LinAlgError` text was "covariance is not positive
+  semi-definite: ..." and is now "matrix is not positive semi-definite: ...".
+  What to do: code that matches the old text must match the new one; the
+  exception type is unchanged.
 - **The runtime dependency floors rise to versions CI actually tests.**
   The old floors were never installed by any CI cell; every cell ran the
   lock's newest releases. A new `floors` job in `ci.yml` resolves each
@@ -249,8 +275,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   | pairs sampled | distance, relative: v2.11.1 / new | azimuth, rad: v2.11.1 / new |
   |---|---|---|
-  | 2000 global, per seed (4 seeds) | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
-  | 1000 at 64 m | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
+  | 2000 global: distance, per seed over 4 seeds; azimuth, one 2000-pair sample | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
+  | 1000 at 64 m (both columns) | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
   | 1000 at 1 m | 6.5e-4 / 2.3e-9 | 7.3e-4 / 2.3e-9 |
   | 1000 at 0.01 m | 7.2e-2 / 2.4e-7 | 6.3e-2 / 2.9e-7 |
 
