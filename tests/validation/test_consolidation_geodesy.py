@@ -370,8 +370,13 @@ class TestEarthRadius:
         assert constants.SPHERE_EARTH.a is EARTH_MEAN_RADIUS
 
     # Spellings of the mean radius in metres: 6371000, 6_371_000, 6371000.0,
-    # 6.371e6, 6371e3, with any exponent sign or case.
-    _LITERAL = re.compile(r"6_?371_?000(?![\d_])|6\.371[eE]\+?0?6\b|6371[eE]\+?0?3\b")
+    # 6.371e6, 6371e3, with any exponent sign or case; and in kilometres:
+    # 6371.0, 6371e0. The 6371.2 km geomagnetic reference radius is a different
+    # constant and does not match.
+    _LITERAL = re.compile(
+        r"6_?371_?000(?![\d_])|6\.371[eE]\+?0?6\b|6371[eE]\+?0?3\b"
+        r"|(?<![\d.])6371\.0+(?!\d)|(?<![\d.])6371[eE]\+?0+(?!\d)"
+    )
     # (path, line text) pairs that spell it and are not a second definition.
     _ALLOWED = (
         ("core/constants.py", "EARTH_MEAN_RADIUS: Final[float] = 6_371_000.0"),
@@ -397,9 +402,19 @@ class TestEarthRadius:
         assert not hits, hits
 
     def test_literal_scan_sees_every_spelling(self):
-        for text in ("6371000", "6_371_000", "6371000.0", "6.371e6", "6371e3"):
+        for text in (
+            "6371000",
+            "6_371_000",
+            "6371000.0",
+            "6.371e6",
+            "6371e3",
+            "6371.0",
+            "6371.00",
+            "6371e0",
+        ):
             assert self._LITERAL.search(f"a = {text}"), text
         assert not self._LITERAL.search("r = 6371.2")
+        assert not self._LITERAL.search("r = 16371.0")
 
 
 class TestAzimuth:

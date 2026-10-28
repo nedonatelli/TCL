@@ -325,8 +325,7 @@ def nis(
     innovation = np.asarray(innovation)
     innovation_covariance = np.asarray(innovation_covariance)
 
-    S_inv = np.linalg.inv(innovation_covariance)
-    return float(innovation @ S_inv @ innovation)
+    return float(_quadratic_form(innovation, innovation_covariance))
 
 
 def nis_sequence(
