@@ -338,6 +338,16 @@ def check_symmetric(
     return result
 
 
+def _check_and_symmetrize(
+    arr: ArrayLike,
+    name: str = "matrix",
+    rtol: float = 1e-10,
+    atol: float = 1e-10,
+) -> NDArray[Any]:
+    result = check_symmetric(arr, name, rtol, atol)
+    return (result + result.T) / 2
+
+
 def ensure_symmetric(
     arr: ArrayLike,
     name: str = "matrix",
@@ -382,8 +392,7 @@ def ensure_symmetric(
         PytclDeprecationWarning,
         stacklevel=2,
     )
-    result = check_symmetric(arr, name, rtol, atol)
-    return (result + result.T) / 2
+    return _check_and_symmetrize(arr, name, rtol, atol)
 
 
 def ensure_positive_definite(
@@ -431,8 +440,7 @@ def ensure_positive_definite(
     was corrected earlier; this is that fix applied to the validating
     counterpart, which the earlier pass missed.
     """
-    result = check_symmetric(arr, name)
-    result = (result + result.T) / 2
+    result = _check_and_symmetrize(arr, name)
 
     try:
         eigenvalues = np.linalg.eigvalsh(result)
@@ -497,8 +505,7 @@ def ensure_positive_semidefinite(
     >>> from pytcl.core.validation import ensure_positive_semidefinite
     >>> _ = ensure_positive_semidefinite(np.diag([1.0, 0.0]))
     """
-    result = check_symmetric(arr, name)
-    result = (result + result.T) / 2
+    result = _check_and_symmetrize(arr, name)
 
     try:
         eigenvalues = np.linalg.eigvalsh(result)
@@ -701,8 +708,7 @@ class ArraySpec:
         if self.positive_definite:
             result = ensure_positive_definite(result, name)
         elif self.symmetric:
-            result = check_symmetric(result, name)
-            result = (result + result.T) / 2
+            result = _check_and_symmetrize(result, name)
         elif self.square:
             result = ensure_square_matrix(result, name)
 

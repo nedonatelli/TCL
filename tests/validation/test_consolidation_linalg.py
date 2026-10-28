@@ -104,11 +104,68 @@ def _jacobian_cases():
         yield (lambda v, W=W: np.tanh(W @ v) + (W @ v) ** 2), x, dx
 
 
-def test_numerical_jacobian_matches_v2111(old_extended):
+@pytest.fixture(scope="module")
+def old_jacobians():
+    return shipped_module("pytcl/coordinate_systems/jacobians/jacobians.py")
+
+
+def _recording(f, seen):
+    def wrapped(v):
+        seen.append(np.shape(v))
+        return f(v)
+
+    return wrapped
+
+
+def _shaped(x, kind):
+    if kind == "col":
+        return x.reshape(-1, 1)
+    if kind == "int":
+        return np.round(x * 3).astype(np.int64)
+    return x
+
+
+@pytest.mark.parametrize("kind", ["1d", "col", "int"])
+def test_extended_numerical_jacobian_matches_v2111(old_extended, kind):
     for f, x, dx in _jacobian_cases():
-        old = old_extended.numerical_jacobian(f, x, dx)
-        np.testing.assert_array_equal(extended.numerical_jacobian(f, x, dx), old)
-        np.testing.assert_array_equal(jac_numerical_jacobian(f, x, dx), old)
+        x = _shaped(x, kind)
+        s_old, s_new = [], []
+        old = old_extended.numerical_jacobian(_recording(f, s_old), x, dx)
+        new = extended.numerical_jacobian(_recording(f, s_new), x, dx)
+        np.testing.assert_array_equal(new, old)
+        assert s_new == s_old
+
+
+@pytest.mark.parametrize("kind", ["1d", "col", "int"])
+def test_jacobians_numerical_jacobian_matches_v2111(old_jacobians, kind):
+    for f, x, dx in _jacobian_cases():
+        x = _shaped(x, kind)
+        s_old, s_new = [], []
+        g = (lambda v, f=f: f(np.ravel(v))) if kind == "col" else f
+        try:
+            old = old_jacobians.numerical_jacobian(_recording(g, s_old), x, dx)
+        except ValueError:
+            with pytest.raises(ValueError):
+                jac_numerical_jacobian(_recording(g, s_new), x, dx)
+            continue
+        new = jac_numerical_jacobian(_recording(g, s_new), x, dx)
+        np.testing.assert_array_equal(new, old)
+        assert s_new == s_old
+
+
+def test_jacobians_numerical_jacobian_passes_x_unflattened():
+    seen = []
+    jac_numerical_jacobian(_recording(lambda v: v.ravel() ** 2, seen), np.ones((2, 1)))
+    assert set(seen) == {(2, 1)}
+
+
+def test_sigma_point_fallback_message_names_matrix():
+    P = np.diag([1.0, -1.0])
+    for fn in (unscented.sigma_points_merwe, unscented.sigma_points_julier):
+        with pytest.raises(
+            np.linalg.LinAlgError, match="matrix is not positive semi-definite"
+        ):
+            fn(np.zeros(2), P)
 
 
 def test_extended_numerical_jacobian_keeps_keyword_f():

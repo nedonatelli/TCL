@@ -218,7 +218,12 @@ def numerical_jacobian(
     array([[4., 0.],
            [3., 2.]])
     """
-    return _numerical_jacobian(f, x, dx)
+    x = np.asarray(x, dtype=np.float64).flatten()
+
+    def flat_f(v: NDArray[Any]) -> NDArray[Any]:
+        return np.asarray(f(v), dtype=np.float64).flatten()
+
+    return _numerical_jacobian(flat_f, x, dx)
 
 
 def ekf_predict_auto(
