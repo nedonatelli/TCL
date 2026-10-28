@@ -10,7 +10,7 @@ References
   Applications to Tracking and Navigation," Wiley, 2001.
 """
 
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -154,7 +154,9 @@ def velocity_rmse(
     return float(rmse(true_vel, est_vel))
 
 
-def _quadratic_form(error: NDArray[np.float64], covariance: NDArray[np.float64]):
+def _quadratic_form(
+    error: NDArray[np.float64], covariance: NDArray[np.float64]
+) -> Union[np.float64, NDArray[np.float64]]:
     """``e' P^{-1} e`` for one error vector, or per row of a 2-D batch."""
     P_inv = np.linalg.inv(covariance)
     if error.ndim == 1:

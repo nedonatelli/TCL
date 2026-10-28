@@ -38,7 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delegates to `statistics.estimators.mad`, and
   `MultivariateGaussian.mahalanobis` delegates to the same Cholesky-based
   body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
-  factors the covariance once and vectorises over the batch. Docstrings now say
+  factors the covariance once and vectorises over the batch. It
+  deliberately does not delegate to `gating.mahalanobis_distance`: gating
+  returns the squared distance without validating S's shape or
+  positive-definiteness, while this function validates and returns nan on
+  a non-positive-definite S. Docstrings now say
   whether a Mahalanobis result is squared (`gating`) or not (the others),
   and `combinatorics.factorial` and `special_functions.factorial` name
   their contract difference. The MATLAB migration map's `calcNEES` row

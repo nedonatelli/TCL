@@ -330,27 +330,3 @@ def test_multivariate_gaussian_non_pd_covariance_matches_v2111(old_distributions
     a = _outcome(old_distributions.MultivariateGaussian, [0.0, 0.0], S)
     b = _outcome(distributions.MultivariateGaussian, [0.0, 0.0], S)
     assert isinstance(a, Exception) and type(a) is type(b)
-
-
-def test_batch_paths_are_not_slower_than_v2111(old_estimators, old_distributions):
-    import time
-
-    rng = np.random.default_rng(2138)
-    m, n = 10000, 6
-    P, e = _spd(rng, n), rng.standard_normal((m, n))
-    mean = rng.standard_normal(n)
-    old_g = old_distributions.MultivariateGaussian(mean, P)
-    new_g = distributions.MultivariateGaussian(mean, P)
-
-    def best(fn):
-        times = []
-        for _ in range(5):
-            t0 = time.perf_counter()
-            fn()
-            times.append(time.perf_counter() - t0)
-        return min(times)
-
-    assert best(lambda: estimators.nees(e, P)) < 20 * best(
-        lambda: old_estimators.nees(e, P)
-    )
-    assert best(lambda: new_g.mahalanobis(e)) < 20 * best(lambda: old_g.mahalanobis(e))

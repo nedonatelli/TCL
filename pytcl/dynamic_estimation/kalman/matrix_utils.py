@@ -487,6 +487,14 @@ def compute_mahalanobis_distance(
     distance : float
         Mahalanobis distance (not squared).
 
+    Notes
+    -----
+    This function deliberately does not delegate to
+    `pytcl.assignment_algorithms.gating.mahalanobis_distance`: their
+    contracts differ. Gating returns the squared distance without validating
+    S's shape or positive-definiteness; this function validates both and
+    returns nan (with a RuntimeWarning) for a non-positive-definite S.
+
     Examples
     --------
     >>> import numpy as np
@@ -497,6 +505,12 @@ def compute_mahalanobis_distance(
     True
     """
     innovation = np.asarray(innovation, dtype=np.float64).flatten()
+    S_shape = np.shape(S)
+    if S_shape != (innovation.size, innovation.size):
+        raise ValueError(
+            f"innovation has {innovation.size} elements but S has shape {S_shape}; "
+            f"expected ({innovation.size}, {innovation.size})"
+        )
     return float(_mahalanobis_distances(innovation[np.newaxis, :], S, S_is_cholesky)[0])
 
 
