@@ -3,10 +3,10 @@
 Deliberate value changes, each pinned against an external oracle (astropy)
 or a published constant:
 
-* Tide GMST is now IAU 1982 (``reference_frames.gmst_iau82``). The
+* Tide GMST is now IAU 1982 (one shared core with ``gmst_iau82``). The
   v2.11.1 tide polynomial lacked the T^2 term; its error against astropy's
   IAU1982 model was -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
-  60000 and -0.0937" at 61000.7.
+  60000 and -0.0935" at 61000.7.
 * ``EPSILON_J2000`` is the IAU 1976 84381.448" (0.40909280422232897 rad);
   v2.11.1's 0.4090910179 was 0.3685" smaller. At JD 2460311 the ecliptic
   vectors from ``moon_position``/``planet_position`` (SSB-relative, ICRF
@@ -14,7 +14,9 @@ or a published constant:
   389 km / 0.361" for Mars.
 """
 
+import math
 import warnings
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -43,36 +45,80 @@ def _wrapped_arcsec(a, b):
     return ((np.asarray(a) - np.asarray(b) + np.pi) % (2 * np.pi) - np.pi) / ARCSEC
 
 
-def _astropy_gmst(jd):
+def _astropy_gmst(jd, fmt="jd"):
     time = pytest.importorskip("astropy.time")
     return (
-        time.Time(jd, format="jd", scale="ut1")
+        time.Time(jd, format=fmt, scale="ut1")
         .sidereal_time("mean", "greenwich", model="IAU1982")
         .rad
     )
 
 
-@pytest.mark.parametrize(
-    ("mjd", "tol"),
-    [(51544.5, 1e-6), (58000.0, 1e-6), (60000.0, 1e-6), (61000.7, 2e-5)],
-)
-def test_tide_gmst_matches_astropy_iau82(mjd, tol):
-    # 61000.7 is looser: gmst_iau82 splits a float JD (ulp 4.7e-10 d), which
-    # costs 1.46e-5" there; the MJD input is not the cause.
-    err = _wrapped_arcsec(tides._gmst_radians(mjd), _astropy_gmst(mjd + 2400000.5))
-    assert abs(float(err)) < tol
+def _exact_gmst_iau82_arcsec(jd):
+    """IAU 1982 GMST (arcsec of time-angle, mod 360 deg) in exact rational
+    arithmetic on the exact value of the float ``jd`` (Fraction input)."""
+    jd = Fraction(jd)
+    jd_0h = Fraction(math.floor(jd - Fraction(1, 2))) + Fraction(1, 2)
+    t = (jd_0h - 2451545) / 36525
+    sec = (
+        Fraction("24110.54841")
+        + Fraction("8640184.812866") * t
+        + Fraction("0.093104") * t**2
+        - Fraction("6.2e-6") * t**3
+        + Fraction("1.00273790935") * (jd - jd_0h) * 86400
+    )
+    return (sec % 86400) * 15
+
+
+def _gmst_error_arcsec(gmst_rad, exact_arcsec):
+    got = Fraction(float(gmst_rad)) * 648000 / Fraction(math.pi)
+    # pi as a float is 1.2e-16 relative; the wrap leaves < 4e-10" of slack
+    diff = float((got - exact_arcsec + 648000) % 1296000 - 648000)
+    return diff
+
+
+@pytest.mark.parametrize("mjd", MJDS)
+def test_tide_gmst_matches_exact_iau82_from_the_mjd(mjd):
+    exact = _exact_gmst_iau82_arcsec(Fraction(mjd) + Fraction(24000005, 10))
+    assert abs(_gmst_error_arcsec(tides._gmst_radians(mjd), exact)) < 1e-8
+
+
+@pytest.mark.parametrize("mjd", MJDS)
+def test_gmst_iau82_matches_exact_iau82(mjd):
+    jd = mjd + 2400000.5
+    exact = _exact_gmst_iau82_arcsec(Fraction(jd))
+    assert abs(_gmst_error_arcsec(reference_frames.gmst_iau82(jd), exact)) < 1e-8
+
+
+@pytest.mark.parametrize("mjd", MJDS)
+def test_tide_gmst_agrees_with_astropy(mjd):
+    # ERFA itself is off the exact value by 1.46e-5" at 61000.7 (its own
+    # rounding); elsewhere it agrees to 1e-6".
+    tol = 2e-5 if mjd == 61000.7 else 1e-6
+    ref = _astropy_gmst(mjd, "mjd")
+    assert abs(float(_wrapped_arcsec(tides._gmst_radians(mjd), ref))) < tol
+
+
+def test_gmst_iau82_is_bitwise_v2111():
+    old = shipped_module("pytcl/astronomical/reference_frames.py")
+    rng = np.random.default_rng(2124)
+    jds = 2451545.0 + rng.uniform(-30000, 30000, 500)
+    for jd in jds:
+        assert reference_frames.gmst_iau82(float(jd)) == old.gmst_iau82(float(jd))
+    np.testing.assert_array_equal(reference_frames.gmst_iau82(jds), old.gmst_iau82(jds))
 
 
 @pytest.mark.parametrize("mjd", MJDS)
 def test_v2111_tide_gmst_error_was_the_missing_t2_term(old_tides, mjd):
-    got = _wrapped_arcsec(old_tides._gmst_radians(mjd), _astropy_gmst(mjd + 2400000.5))
+    exact = _exact_gmst_iau82_arcsec(Fraction(mjd) + Fraction(24000005, 10))
+    got = _gmst_error_arcsec(old_tides._gmst_radians(mjd), exact)
     expected = {
         51544.5: -1.8e-5,
         58000.0: -0.0436,
         60000.0: -0.0747,
-        61000.7: -0.0937,
+        61000.7: -0.0935,
     }[mjd]
-    assert float(got) == pytest.approx(expected, abs=2e-4)
+    assert got == pytest.approx(expected, abs=2e-4)
 
 
 def test_tide_gmst_scalar_and_array_shapes_match_v2111(old_tides):
@@ -174,6 +220,9 @@ def test_tide_internals_do_not_warn():
         tides.moon_position_approximate(58000.0)
         tides.sun_position_approximate(58000.0)
         tides.solid_earth_tide_displacement(0.5, 0.5, 58000.0)
+        tides.ocean_tide_loading_displacement(
+            58000.0, np.full((3, 8), 1e-3), np.full((3, 8), 0.5)
+        )
 
 
 def test_escape_velocity_at_radius_matches_v2111():
@@ -231,6 +280,9 @@ def test_ephemeris_ecliptic_shift_is_the_obliquity_change():
         arcsec = shift / np.linalg.norm(icrf) / ARCSEC
         assert km == pytest.approx(expected[name][0], abs=0.05)
         assert arcsec == pytest.approx(expected[name][1], abs=2e-4)
-        np.testing.assert_allclose(
-            ecl, reference_frames.equatorial_to_ecliptic(icrf, EPSILON_J2000), rtol=0
+        eps = 84381.448 * ARCSEC
+        c, sn = np.cos(eps), np.sin(eps)
+        by_hand = np.array(
+            [icrf[0], c * icrf[1] + sn * icrf[2], -sn * icrf[1] + c * icrf[2]]
         )
+        np.testing.assert_allclose(ecl, by_hand, rtol=0, atol=1e-15)

@@ -27,7 +27,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.astronomical.ephemerides import EPSILON_J2000 as _OBLIQUITY_J2000
-from pytcl.astronomical.reference_frames import gmst_iau82 as _gmst_iau82
+from pytcl.astronomical.reference_frames import _gmst_iau82_core
 from pytcl.astronomical.reference_frames import (
     julian_centuries_j2000 as _julian_centuries_jd,
 )
@@ -145,11 +145,14 @@ def _normalize_angle(angle: float) -> float:
 
 
 _MJD_TO_JD = 2400000.5
+_MJD_J2000 = 51544.5
 
 
 def _gmst_radians(mjd: float) -> float:
     """Greenwich Mean Sidereal Time in radians (IAU 1982), from an MJD."""
-    return _gmst_iau82(mjd + _MJD_TO_JD)
+    days = mjd - _MJD_J2000
+    days_0h = np.floor(days + 0.5) - 0.5
+    return _gmst_iau82_core(days_0h, days - days_0h)
 
 
 def _body_unit_earth_fixed(

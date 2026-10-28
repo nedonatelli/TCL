@@ -214,19 +214,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Solid-tide sidereal time and the ecliptic obliquity constant now follow
   IAU models; results shift slightly.** The tide module's GMST used a linear
-  polynomial without the T^2 term. Against astropy's IAU 1982 mean sidereal
-  time it was off by -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
-  60000 and -0.0937" at 61000.7; it now calls
-  `reference_frames.gmst_iau82` and agrees to under 1e-6" (1.5e-5" at
-  61000.7, the float limit of a Julian date there). Solid-tide displacement
-  and gravity phases shift by those amounts. `EPSILON_J2000`
-  (`pytcl.astronomical.ephemerides`, used for every `frame="ecliptic"`
-  output, and by the tide module) was 0.4090910179 rad, which matched no
-  model; it is now the IAU 1976 value 84381.448" = 0.40909280422232897 rad,
-  JPL's "ecliptic of J2000", 0.3685" larger. At JD 2460311 ecliptic
-  vectors from `moon_position` and `planet_position` move by 258 km
-  (0.362") for the Moon and 389 km (0.361") for Mars. What to do: ecliptic-frame ephemeris output and solid-tide phases
-  shift by the stated amounts; nothing to change in calling code.
+  polynomial without the T^2 term. Against the exact IAU 1982 polynomial
+  it was off by -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
+  60000 and -0.0935" at 61000.7. It now shares one IAU 1982 body with
+  `reference_frames.gmst_iau82` (fed the MJD directly, so no precision is
+  lost forming a Julian date) and agrees with the exact value to under
+  1e-8" at all four epochs. Solid-tide displacement outputs shift by at
+  most 5e-8 m and gravity outputs by under 1e-12. The tide module's own
+  obliquity moved only 4e-5" (it already used the IAU 1976 value).
+  `EPSILON_J2000` (`pytcl.astronomical.ephemerides`) was 0.4090910179 rad,
+  which matched no model; it is now the IAU 1976 value 84381.448" =
+  0.40909280422232897 rad, JPL's "ecliptic of J2000", 0.3685" larger. It
+  drives every `frame="ecliptic"` output: `sun_position`, `moon_position`
+  and `planet_position` (module functions and the `DEEphemeris` methods of
+  the same names). At JD 2460311 the SSB-relative ICRF vectors those return
+  rotate by 0.36" in angle, which at their distance scale of about 1 AU is
+  258 km for the Moon vector (0.98 AU from the SSB) and 389 km for Mars
+  (1.48 AU); `frame="earth_centered"` returns ICRF and is not rotated by this
+  constant. `barycenter_position` takes no frame and is
+  unchanged.
+  What to do: ecliptic-frame ephemeris output and solid-tide phases shift by
+  the stated amounts; nothing to change in calling code.
 
 - Four public entry points no longer truncate silently when given parallel
   inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
