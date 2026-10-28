@@ -11,11 +11,14 @@ References
   Gravitational Model 2008 (EGM2008)," JGR, 2012.
 """
 
+from functools import lru_cache
 from typing import NamedTuple
 
 import numpy as np
+from numpy.typing import NDArray
 
 from pytcl.coordinate_systems import geodetic2ecef
+from pytcl.core.array_utils import make_readonly
 from pytcl.core.exceptions import ConvergenceError
 from pytcl.gravity.spherical_harmonics import spherical_harmonic_sum
 
@@ -681,6 +684,47 @@ def ellips_grav_coeffs(
             C[2 * n, 0] /= np.sqrt(2 * (2 * n) + 1)
 
     return C, S, float(a), float(gm)
+
+
+@lru_cache(maxsize=16)
+def _reference_zonals(n_max: int, GM: float, R: float) -> NDArray[np.floating]:
+    """Fully normalized even zonals of the WGS84 normal field, in the
+    model's ``(GM, R)`` frame.
+
+    Port of the reference-field half of ``getEGMWGS84TCoeffs``: the
+    ellipsoid's coefficients come from :func:`ellips_grav_coeffs` with
+    the WGS84 ``omega``, ``a``, ``f`` and ``GM`` (including the
+    atmosphere), then degree ``n`` is rescaled by
+    ``(GM_WGS84 / GM) * (a_WGS84 / R)**n`` so it sums against the
+    model's own ``GM / r * (R / r)**n`` series.
+    """
+    C_ell, _, a_ell, gm_ell = ellips_grav_coeffs(
+        max_order=n_max,
+        is_normalized=True,
+        omega=WGS84.omega,
+        a=WGS84.a,
+        f=WGS84.f,
+        gm=WGS84.GM,
+    )
+    degrees = np.arange(n_max + 1)
+    zonals = (gm_ell / GM) * (a_ell / R) ** degrees * C_ell[:, 0]
+    make_readonly(zonals)
+    return zonals
+
+
+def _subtract_reference_field(
+    C: NDArray[np.floating], n_max: int, GM: float, R: float
+) -> None:
+    """Subtract the WGS84 normal field's even zonal harmonics in place.
+
+    The disturbing potential T = W - U requires removing the reference
+    ellipsoid's normal potential U, whose only nonzero coefficients are
+    the even zonal harmonics (:func:`_reference_zonals`). Without this
+    step the geoid height / gravity disturbance would be dominated by
+    the full C20 term (a ~3 km false zonal signal). Degree 0 is left to
+    the caller, which drops it.
+    """
+    C[2 : n_max + 1, 0] -= _reference_zonals(n_max, GM, R)[2:]
 
 
 __all__ = [

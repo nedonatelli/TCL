@@ -18,6 +18,7 @@ review round).
 
 from math import factorial
 
+import mpmath as mp
 import numpy as np
 import pytest
 from scipy.special import lpmv
@@ -71,7 +72,9 @@ def _hand_coded_reference_zonals(n_max, GM, R):
     field (k=1..5, degrees 2/4/6/8/10) in the ``(GM, R)`` frame, typed
     directly from Heiskanen & Moritz, "Physical Geodesy": eq. 2-92 for
     J2k, with J2 itself from the closed form eq. 2-165 (not the rounded
-    GRS80 ``WGS84.J2``), rescaled by ``(GM_e / GM) * (a / R)**n`` as
+    GRS80 ``WGS84.J2``) evaluated in 40-digit mpmath, so the float
+    cancellation in ``q0`` that ``ellipsGravCoeffs`` has is not shared,
+    rescaled by ``(GM_e / GM) * (a / R)**n`` as
     MATLAB's ``getEGMWGS84TCoeffs`` does. No pytcl gravity code is
     called.
     """
@@ -83,10 +86,13 @@ def _hand_coded_reference_zonals(n_max, GM, R):
         )
     a, f, gm_e, omega = WGS84.a, WGS84.f, WGS84.GM, WGS84.omega
     e2 = f * (2.0 - f)
-    ep = np.sqrt(e2 / (1.0 - e2))
-    m = omega**2 * a**2 * (a * (1.0 - f)) / gm_e
-    q0 = 0.5 * ((1.0 + 3.0 / ep**2) * np.arctan(ep) - 3.0 / ep)
-    J2 = e2 / 3.0 * (1.0 - 2.0 / 15.0 * m * ep / q0)
+    with mp.workdps(40):
+        mf = mp.mpf(f)
+        me2 = mf * (2 - mf)
+        ep = mp.sqrt(me2 / (1 - me2))
+        m = mp.mpf(omega) ** 2 * mp.mpf(a) ** 3 * (1 - mf) / mp.mpf(gm_e)
+        q0 = ((1 + 3 / ep**2) * mp.atan(ep) - 3 / ep) / 2
+        J2 = float(me2 / 3 * (1 - mp.mpf(2) / 15 * m * ep / q0))
     C = np.zeros(n_max + 1)
     for k in range(1, 6):
         n = 2 * k
@@ -187,8 +193,9 @@ def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
 
     0.5 um, not 1e-9 relative: ``ellips_grav_coeffs`` (the MATLAB
     ``ellipsGravCoeffs`` port) loses 5.1e-11 of C20 to cancellation in
-    ``q0``, about 3e-7 m of geoid; the hand-typed oracle is 3.6e-13 off
-    the mpmath value. The geocentric-latitude defect is metres.
+    ``q0``, about 3e-7 m of geoid (measured 0.9e-7 to 2.9e-7 m here); the
+    oracle computes J2 in mpmath and does not share that cancellation.
+    The geocentric-latitude defect is metres.
     """
     lat, lon = np.radians(lat_deg), np.radians(lon_deg)
     coef = create_test_coefficients(n_max=10)

@@ -35,7 +35,11 @@ from pytcl.core.paths import get_data_dir
 from pytcl.diagnostics import logger as _diag_logger
 
 from .clenshaw import clenshaw_gravity, clenshaw_potential
-from .models import WGS84, ellips_grav_coeffs, normal_gravity_somigliana
+from .models import (
+    WGS84,
+    _subtract_reference_field,
+    normal_gravity_somigliana,
+)
 
 # Module logger
 _logger = logging.getLogger("pytcl.gravity.egm")
@@ -123,47 +127,6 @@ EGM_PARAMETERS: Dict[str, Dict[str, float]] = {
         "n_max_full": 2190,
     },
 }
-
-
-@lru_cache(maxsize=16)
-def _reference_zonals(n_max: int, GM: float, R: float) -> NDArray[np.floating]:
-    """Fully normalized even zonals of the WGS84 normal field, in the
-    model's ``(GM, R)`` frame.
-
-    Port of the reference-field half of ``getEGMWGS84TCoeffs``: the
-    ellipsoid's coefficients come from :func:`ellips_grav_coeffs` with
-    the WGS84 ``omega``, ``a``, ``f`` and ``GM`` (including the
-    atmosphere), then degree ``n`` is rescaled by
-    ``(GM_WGS84 / GM) * (a_WGS84 / R)**n`` so it sums against the
-    model's own ``GM / r * (R / r)**n`` series.
-    """
-    C_ell, _, a_ell, gm_ell = ellips_grav_coeffs(
-        max_order=n_max,
-        is_normalized=True,
-        omega=WGS84.omega,
-        a=WGS84.a,
-        f=WGS84.f,
-        gm=WGS84.GM,
-    )
-    degrees = np.arange(n_max + 1)
-    zonals = (gm_ell / GM) * (a_ell / R) ** degrees * C_ell[:, 0]
-    make_readonly(zonals)
-    return zonals
-
-
-def _subtract_reference_field(
-    C: NDArray[np.floating], n_max: int, GM: float, R: float
-) -> None:
-    """Subtract the WGS84 normal field's even zonal harmonics in place.
-
-    The disturbing potential T = W - U requires removing the reference
-    ellipsoid's normal potential U, whose only nonzero coefficients are
-    the even zonal harmonics (:func:`_reference_zonals`). Without this
-    step the geoid height / gravity disturbance would be dominated by
-    the full C20 term (a ~3 km false zonal signal). Degree 0 is left to
-    the caller, which drops it.
-    """
-    C[2 : n_max + 1, 0] -= _reference_zonals(n_max, GM, R)[2:]
 
 
 def _parse_coefficient(token: str) -> float:

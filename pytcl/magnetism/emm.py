@@ -542,11 +542,15 @@ def _high_res_field_spherical(
     B_r = np.sum(B_r_terms[mask])
     B_theta = np.sum(B_theta_terms[mask])
 
-    if abs(sin_theta) > 1e-10:
+    if sin_theta != 0.0:
+        # P[n, m] carries sin(theta)**m from the sin-seeded table, so the
+        # division is exact however small sin(theta) is.
         B_phi_terms = rp * m_idx * P / sin_theta * gh_sin
         B_phi = np.sum(B_phi_terms[mask])
     else:
-        B_phi = 0.0
+        # At the pole m * P[n, m] / sin(theta) tends to dP[n, 1] / cos(theta)
+        # for m = 1 and to 0 for m >= 2.
+        B_phi = np.sum(rp[1:] * dP[1:, 1:2] * gh_sin[1:, 1:2]) / cos_theta
 
     return B_r, B_theta, B_phi
 

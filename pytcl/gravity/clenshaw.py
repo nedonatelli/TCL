@@ -58,7 +58,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pytcl.coordinate_systems import geodetic2ecef
-from pytcl.gravity.models import ellips_grav_coeffs
+from pytcl.gravity.models import _subtract_reference_field
 from pytcl.gravity.spherical_harmonics import _sectoral_ratio
 
 # Rescale the backward-recursion state by 1e-140 whenever it exceeds 1e140.
@@ -436,10 +436,12 @@ def clenshaw_geoid(
 geoid_height`; a geocentric-frame field has no degree-1 term, but a
     coefficient set that carries a nonzero one should not leak it into
     the geoid) and the reference ellipsoid's own field subtracted from
-    ``C, S`` next. That field is the ellipsoid's even zonal harmonics
-    (:func:`pytcl.gravity.models.ellips_grav_coeffs`) -- C20 above all,
-    plus its own ``C[0, 0] = 1.0`` -- not just the ``n=0,1`` terms: C20
-    left in is a ~3 km false zonal signal. ``lat`` is converted to
+    ``C, S`` next: ``1.0`` from ``C[0, 0]`` (the central term is
+    dropped) and the WGS84 even zonal harmonics from ``C[2k, 0]``,
+    rescaled to this ``R`` and ``GM`` exactly as
+    :func:`pytcl.gravity.egm.geoid_height` does (MATLAB
+    ``getEGMWGS84TCoeffs``). Not just the ``n=0,1`` terms: C20 left in is
+    a ~3 km false zonal signal. ``lat`` is converted to
     geocentric latitude and evaluated at the true radius under the
     point, not at ``r = R``.
 
@@ -454,7 +456,7 @@ geoid_height`; a geocentric-frame field has no degree-1 term, but a
     >>> gamma = 9.81
     >>> N = clenshaw_geoid(0, 0, C, S, R, GM, gamma)
     >>> round(N, 2)  # central term only: oblateness to cancel is all C20
-    -3453.97
+    -3454.12
     """
     if n_max is None:
         n_max = C.shape[0] - 1
@@ -481,18 +483,16 @@ geoid_height`; a geocentric-frame field has no degree-1 term, but a
     # Remove the reference ellipsoid's own field (its even zonal
     # harmonics, dominated by C20) rather than just the n=0,1 terms,
     # which leaves C20 in and produces a spurious multi-km "geoid".
-    C_ref, S_ref, _, _ = ellips_grav_coeffs(max_order=n_max, is_normalized=True)
     C_dist = np.array(C, dtype=float, copy=True)
     S_dist = np.array(S, dtype=float, copy=True)
+    C_dist[0, 0] -= 1.0
     if C_dist.shape[0] > 1:
         # No geocentric-frame field has a degree-1 term; zero it before
         # synthesis rather than let a nonzero one leak into the geoid,
         # matching pytcl.gravity.egm.geoid_height.
         C_dist[1, :] = 0.0
         S_dist[1, :] = 0.0
-    ref_n = C_ref.shape[0]
-    C_dist[:ref_n, :ref_n] -= C_ref
-    S_dist[:ref_n, :ref_n] -= S_ref
+    _subtract_reference_field(C_dist, n_max, GM, R)
 
     # The synthesis is defined in geocentric latitude at the true radius
     # under the point, not geodetic latitude at r = R.

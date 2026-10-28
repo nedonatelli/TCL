@@ -32,7 +32,8 @@ import pytest
 from pytcl.atmosphere import refraction
 from pytcl.core.exceptions import DependencyError
 from pytcl.gravity import egm
-from pytcl.gravity.models import WGS84, ellips_grav_coeffs
+from pytcl.gravity.clenshaw import clenshaw_geoid
+from pytcl.gravity.models import WGS84, ellips_grav_coeffs, normal_gravity_somigliana
 from pytcl.magnetism import _schmidt
 from tests.validation._v2111 import shipped_module
 
@@ -112,18 +113,32 @@ def test_reference_zonals_are_ellips_grav_coeffs_exactly(n_max, gm, r):
         np.testing.assert_array_equal(C[2:, 0], -C_ell[2:, 0])
 
 
-mp.mp.dps = 40
-_A = mp.mpf(WGS84.a)
-_F = mp.mpf(WGS84.f)
-_GM_E = mp.mpf(WGS84.GM)
-_OMEGA = mp.mpf(WGS84.omega)
-_B = _A * (1 - _F)
-_E = mp.sqrt(_A**2 - _B**2)
-_E2 = _F * (2 - _F)
+@pytest.fixture(autouse=True)
+def _mp_precision():
+    with mp.workdps(40):
+        yield
+
+
+@functools.lru_cache(maxsize=None)
+def _ellipsoid():
+    """WGS84 (a, f, GM, omega, b, E, e^2) as 40-digit mpmath numbers."""
+    with mp.workdps(40):
+        a, f = mp.mpf(WGS84.a), mp.mpf(WGS84.f)
+        b = a * (1 - f)
+        return (
+            a,
+            f,
+            mp.mpf(WGS84.GM),
+            mp.mpf(WGS84.omega),
+            b,
+            mp.sqrt(a**2 - b**2),
+            f * (2 - f),
+        )
 
 
 def _q(u):
-    return ((1 + 3 * u**2 / _E**2) * mp.atan(_E / u) - 3 * u / _E) / 2
+    _, _, _, _, _, E, _ = _ellipsoid()
+    return ((1 + 3 * u**2 / E**2) * mp.atan(E / u) - 3 * u / E) / 2
 
 
 def _closed_form_gravitational_potential(p, z):
@@ -131,14 +146,43 @@ def _closed_form_gravitational_potential(p, z):
     cylindrical ``(p, z)``: Heiskanen & Moritz eq. 2-124 in ellipsoidal
     coordinates ``(u, beta)`` with the centrifugal potential
     ``omega^2 (u^2 + E^2) cos^2(beta) / 2`` removed."""
+    a, _, gm_e, omega, b, E, _ = _ellipsoid()
     r2 = p**2 + z**2
-    u = mp.sqrt(
-        (r2 - _E**2) / 2 * (1 + mp.sqrt(1 + 4 * _E**2 * z**2 / (r2 - _E**2) ** 2))
-    )
+    u = mp.sqrt((r2 - E**2) / 2 * (1 + mp.sqrt(1 + 4 * E**2 * z**2 / (r2 - E**2) ** 2)))
     sin_beta = z / u
-    return _GM_E / _E * mp.atan(_E / u) + _OMEGA**2 * _A**2 / 2 * _q(u) / _q(_B) * (
+    return gm_e / E * mp.atan(E / u) + omega**2 * a**2 / 2 * _q(u) / _q(b) * (
         sin_beta**2 - mp.mpf(1) / 3
     )
+
+
+def _point(lat_deg, h):
+    """Cylindrical ``(p, z)`` of a geodetic point on WGS84, in mpmath."""
+    a, _, _, _, _, _, e2 = _ellipsoid()
+    phi = mp.radians(lat_deg)
+    n_radius = a / mp.sqrt(1 - e2 * mp.sin(phi) ** 2)
+    return (n_radius + h) * mp.cos(phi), (n_radius * (1 - e2) + h) * mp.sin(phi)
+
+
+def _exact_reference_zonals(n_max, gm, r):
+    """Fully normalized WGS84 zonals in the ``(gm, r)`` frame: H-M 2-92
+    for J2k with J2 from the closed form 2-165, all in 40-digit mpmath
+    (no float q0 cancellation), rounded to float at the end."""
+    a, _, gm_e, omega, b, E, e2 = _ellipsoid()
+    ep = E / b
+    m = omega**2 * a**2 * b / gm_e
+    j2 = e2 / 3 * (1 - mp.mpf(2) / 15 * m * ep / _q(b))
+    out = np.zeros(n_max + 1)
+    for k in range(1, n_max // 2 + 1):
+        j2k = (
+            (-1) ** (k + 1)
+            * 3
+            * e2**k
+            / ((2 * k + 1) * (2 * k + 3))
+            * (1 - k + 5 * k * j2 / e2)
+        )
+        n = 2 * k
+        out[n] = float(-j2k / mp.sqrt(2 * n + 1) * (gm_e / gm) * (a / r) ** n)
+    return out
 
 
 @pytest.mark.parametrize("lat_deg", [-40.0, 0.0, 15.0, 30.0, 45.0, 60.0, 75.0, 90.0])
@@ -157,12 +201,9 @@ def test_reference_field_matches_closed_form_normal_potential(lat_deg, h):
     egm._subtract_reference_field(C, n_max, EGM_GM, EGM_R)
     zonals = -C[:, 0]
 
-    phi = mp.radians(lat_deg)
-    n_radius = _A / mp.sqrt(1 - _E2 * mp.sin(phi) ** 2)
-    p = (n_radius + h) * mp.cos(phi)
-    z = (n_radius * (1 - _E2) + h) * mp.sin(phi)
+    p, z = _point(lat_deg, h)
     r = mp.sqrt(p**2 + z**2)
-    truth = _closed_form_gravitational_potential(p, z) - _GM_E / r
+    truth = _closed_form_gravitational_potential(p, z) - _ellipsoid()[2] / r
     series = (
         EGM_GM
         / r
@@ -198,12 +239,28 @@ def test_geoid_change_from_v2111_is_the_reference_field_change(old_egm):
 
 
 def test_gravity_outputs_move_by_the_measured_amounts(old_egm):
-    """gravity_disturbance / gravity_anomaly move by at most 1.8e-4 mGal
-    and deflection_of_vertical by at most 1.9e-5 arcsec (latitudes -60
-    to 60 deg for the deflection, -89.5 to 89.5 deg for the rest; heights 0
-    and 10 km)."""
+    """At 45 deg, lon 0.3, h 0 the disturbance moves by -4.340e-10 (radial)
+    and +8.850e-10 m/s^2 (north), the anomaly by -4.340e-10 m/s^2 and the
+    north deflection by -1.860e-5 arcsec. Elsewhere (latitudes to
+    +-89.5 deg, heights 0 and 10 km; deflection to +-60 deg) the moves stay
+    under 1.8e-4 mGal and 1.9e-5 arcsec."""
     coef = egm.create_test_coefficients(n_max=36)
-    for lat_deg in (-89.5, -60.0, -30.0, 0.0, 30.0, 45.0, 60.0, 89.5):
+    lat = np.radians(45.0)
+    new = egm.gravity_disturbance(lat, 0.3, 0.0, coefficients=coef)
+    old = old_egm.gravity_disturbance(lat, 0.3, 0.0, coefficients=coef)
+    assert new.delta_g_r - old.delta_g_r == pytest.approx(-4.340e-10, rel=1e-3, abs=0)
+    assert new.delta_g_lat - old.delta_g_lat == pytest.approx(
+        8.850e-10, rel=1e-3, abs=0
+    )
+    anomaly_change = egm.gravity_anomaly(
+        lat, 0.3, 0.0, coefficients=coef
+    ) - old_egm.gravity_anomaly(lat, 0.3, 0.0, coefficients=coef)
+    assert anomaly_change == pytest.approx(-4.340e-10, rel=1e-3, abs=0)
+    xi_new, _ = egm.deflection_of_vertical(lat, 0.3, coefficients=coef)
+    xi_old, _ = old_egm.deflection_of_vertical(lat, 0.3, coefficients=coef)
+    assert xi_new - xi_old == pytest.approx(-1.860e-5, rel=1e-3, abs=0)
+
+    for lat_deg in (-89.5, -60.0, -30.0, 0.0, 30.0, 60.0, 89.5):
         lat = np.radians(lat_deg)
         for h in (0.0, 1.0e4):
             new = egm.gravity_disturbance(lat, 0.3, h, coefficients=coef)
@@ -215,11 +272,65 @@ def test_gravity_outputs_move_by_the_measured_amounts(old_egm):
                 lat, 0.3, h, coefficients=coef
             ) - old_egm.gravity_anomaly(lat, 0.3, h, coefficients=coef)
             assert abs(anomaly_change) < 2.0e-9
-    for lat_deg in (-60.0, -30.0, 0.0, 30.0, 45.0, 60.0):
+    for lat_deg in (-60.0, -30.0, 0.0, 30.0, 60.0):
         lat = np.radians(lat_deg)
         new = egm.deflection_of_vertical(lat, 0.3, coefficients=coef)
         old = old_egm.deflection_of_vertical(lat, 0.3, coefficients=coef)
         assert np.max(np.abs(np.subtract(new, old))) < 2.0e-5
+
+
+def test_clenshaw_geoid_and_geoid_height_agree():
+    """One reference field: the two geoid routes give identical heights
+    (measured bitwise equal on these seeded points, n_max 10 and 36)."""
+    rng = np.random.default_rng(20261023)
+    for n_max in (10, 36):
+        coef = egm.create_test_coefficients(n_max=n_max)
+        for _ in range(12):
+            lat = rng.uniform(-np.pi / 2, np.pi / 2)
+            lon = rng.uniform(-np.pi, np.pi)
+            gamma = normal_gravity_somigliana(lat, WGS84)
+            got = clenshaw_geoid(lat, lon, coef.C, coef.S, coef.R, coef.GM, gamma)
+            want = egm.geoid_height(lat, lon, coefficients=coef)
+            assert got == pytest.approx(want, rel=0, abs=1e-12)
+
+
+def test_geoid_of_the_exact_normal_field_is_zero():
+    """A field that is exactly the WGS84 normal field (40-digit zonals in
+    the EGM frame, central term 1) has zero geoid beyond degree 0. Both
+    routes give at most 3.5e-7 m (the q0 cancellation in
+    ``ellipsGravCoeffs``) over latitudes -90 to 90 deg every 5 deg;
+    v2.11.1 gave 0.38 mm (``geoid_height``) and 1.52 mm
+    (``clenshaw_geoid``)."""
+    n_max = 20
+    C = np.zeros((n_max + 1, n_max + 1))
+    S = np.zeros_like(C)
+    C[0, 0] = 1.0
+    C[:, 0] += _exact_reference_zonals(n_max, EGM_GM, EGM_R)
+    coef = egm.EGMCoefficients(
+        C=C, S=S, GM=EGM_GM, R=EGM_R, n_max=n_max, model_name="TEST"
+    )
+    for lat in np.radians(np.linspace(-90.0, 90.0, 37)):
+        for lon in (0.0, 1.0):
+            gamma = normal_gravity_somigliana(lat, WGS84)
+            assert abs(egm.geoid_height(lat, lon, coefficients=coef)) < 5e-7
+            assert abs(clenshaw_geoid(lat, lon, C, S, EGM_R, EGM_GM, gamma)) < 5e-7
+
+
+def test_clenshaw_geoid_change_from_v2111():
+    """For the EGM GM and R: -0.764 mm at the equator to +1.524 mm at the
+    poles (every 1 deg, n_max 10 and 36)."""
+    old_clenshaw = shipped_module("pytcl/gravity/clenshaw.py")
+    coef = egm.create_test_coefficients(n_max=36)
+    lats = np.radians(np.linspace(-90.0, 90.0, 181))
+    delta = []
+    for lat in lats:
+        gamma = normal_gravity_somigliana(lat, WGS84)
+        args = (lat, 0.3, coef.C, coef.S, coef.R, coef.GM, gamma)
+        delta.append(clenshaw_geoid(*args) - old_clenshaw.clenshaw_geoid(*args))
+    delta = np.array(delta)
+    assert delta.min() == pytest.approx(-0.764e-3, rel=0, abs=2e-6)
+    assert delta.max() == pytest.approx(1.524e-3, rel=0, abs=2e-6)
+    assert delta[90] == pytest.approx(delta.min(), rel=0, abs=1e-12)
 
 
 @pytest.mark.parametrize("model", ["EGM96", "EGM2008"])
@@ -272,11 +383,21 @@ def _exact_schmidt(n, m, theta):
     return norm * s**m * q, norm * d
 
 
+def _exact_m_p_over_sin(n, m, theta):
+    """``m P[n,m](theta) / sin(theta)`` without the division:
+    ``m N sin^(m-1)(theta) d^m P_n/dx^m (cos theta)``, finite at the poles."""
+    if m == 0:
+        return mp.mpf(0)
+    norm = mp.sqrt(2 * mp.factorial(n - m) / mp.factorial(n + m))
+    return m * norm * mp.sin(theta) ** (m - 1) * _poly_at(n, m, mp.cos(theta))
+
+
 def _exact_field(theta, lon, r, coeffs, year):
-    """B_r, B_theta of a Schmidt Gauss expansion at the exact colatitude."""
+    """B_r, B_theta, B_phi of a Schmidt Gauss expansion at the exact
+    colatitude."""
     dt = year - coeffs.epoch
     a = mp.mpf(_schmidt.GEOMAGNETIC_REFERENCE_RADIUS_KM)
-    B_r = B_theta = mp.mpf(0)
+    B_r = B_theta = B_phi = mp.mpf(0)
     for n in range(1, coeffs.n_max + 1):
         rp = (a / mp.mpf(r)) ** (n + 2)
         secular = n <= getattr(coeffs, "n_max_sv", coeffs.n_max)
@@ -286,10 +407,12 @@ def _exact_field(theta, lon, r, coeffs, year):
                 g += dt * coeffs.g_dot[n, m]
                 h += dt * coeffs.h_dot[n, m]
             gc = g * mp.cos(m * lon) + h * mp.sin(m * lon)
+            gs = g * mp.sin(m * lon) - h * mp.cos(m * lon)
             p, d = _exact_schmidt(n, m, theta)
             B_r += (n + 1) * rp * p * gc
             B_theta -= rp * d * gc
-    return float(B_r), float(B_theta)
+            B_phi += rp * _exact_m_p_over_sin(n, m, theta) * gs
+    return float(B_r), float(B_theta), float(B_phi)
 
 
 _COLATITUDES = [0.0, 1e-9, 1e-6, 1e-3, 0.3, 1.5, np.pi - 1e-6, np.pi]
@@ -317,12 +440,14 @@ def test_schmidt_table_and_derivative_are_exact(theta):
 
 
 @pytest.mark.parametrize(
-    "theta", [0.0, 1e-9, 1e-6, 1e-4, 1e-3, 1e-2, 0.06, 0.2, 0.6, 1.2]
+    "theta",
+    [0.0, 1e-11, 1e-10, 1e-9, 1e-6, 1e-4, 1e-3, 1e-2, 0.06, 0.2, 0.6, 1.2],
 )
 @pytest.mark.parametrize("north", [True, False])
 def test_emm_field_matches_exact_synthesis(theta, north):
-    """EMM's (B_r, B_theta) against an exact mpmath synthesis at the true
-    colatitude, relative to the field magnitude. Measured at most 5.6e-16.
+    """EMM's (B_r, B_theta, B_phi) against an exact mpmath synthesis at
+    the true colatitude, relative to the field magnitude. Only the exact
+    pole takes B_phi's polar limit. Measured at most 5.6e-16.
 
     v2.11.1 was off by 2.9% (north) and 8.9% (south) at colatitude 0,
     1e-9 and 1e-6 -- zero derivatives at the pole, and a Legendre table
@@ -337,8 +462,53 @@ def test_emm_field_matches_exact_synthesis(theta, north):
     got = np.array(emm._high_res_field_spherical(lat, lon, r, year, coef))
     assert np.all(np.isfinite(got))
     exact = np.array(_exact_field(mp.mpf(np.pi / 2) - mp.mpf(lat), lon, r, coef, year))
-    err = np.max(np.abs(got[:2] - exact)) / np.linalg.norm(exact)
+    err = np.max(np.abs(got - exact)) / np.linalg.norm(exact)
     assert err <= 1e-14
+
+
+def _components(B_r, B_theta, B_phi):
+    X, Y, Z = -B_theta, B_phi, -B_r
+    H = np.hypot(X, Y)
+    return np.array([X, Y, Z, H, np.hypot(H, Z)]), np.array(
+        [np.arctan2(Z, H), np.arctan2(Y, X)]
+    )
+
+
+@pytest.mark.parametrize("north", [True, False])
+@pytest.mark.parametrize("lon", [0.7, -2.0])
+def test_field_is_continuous_onto_the_pole(north, lon):
+    """B_phi divides by ``sin(theta)`` down to the smallest nonzero
+    colatitude and takes its polar limit at exactly 0. X, Y, Z, H, F (relative to F) and I, D (radians) at colatitudes 1e-9,
+    1e-10, 1e-11 and 0 agree to the field's own change over 1e-9 rad:
+    measured 1.0e-9 and 2.4e-8 rad for EMM (public ``emm``, geodetic
+    latitude), 5.8e-10 and 5.4e-9 rad for WMM2020
+    (``magnetic_field_spherical`` without the cache, whose 6-decimal
+    latitude key never reaches the pole). v2.11.1 zeroed B_phi below
+    ``sin(theta) = 1e-10``: D jumped by 47 deg (WMM2020, lon 0.7) and H by
+    32%."""
+    emm_coef = emm.create_test_coefficients(n_max=36)
+    wmm_coef = wmm.create_wmm2020_coefficients()
+    emm_vals, wmm_vals = [], []
+    for colat in (1e-9, 1e-10, 1e-11, 0.0):
+        lat = np.pi / 2 - colat if north else -(np.pi / 2 - colat)
+        with pytest.warns(UserWarning, match="validity window"):
+            res = emm.emm(lat, lon, 0.0, 2020.0, coefficients=emm_coef)
+        emm_vals.append(
+            (np.array([res.X, res.Y, res.Z, res.H, res.F]), np.array([res.I, res.D]))
+        )
+        wmm_vals.append(
+            _components(
+                *wmm.magnetic_field_spherical(
+                    lat, lon, 6380.0, 2022.0, wmm_coef, use_cache=False
+                )
+            )
+        )
+    for vals in (emm_vals, wmm_vals):
+        fields = np.array([v[0] for v in vals])
+        angles = np.array([v[1] for v in vals])
+        assert np.all(np.isfinite(fields)) and np.all(np.isfinite(angles))
+        assert np.max(np.ptp(fields, axis=0)) <= 2e-9 * fields[0, 4]
+        assert np.max(np.ptp(angles, axis=0)) <= 5e-8
 
 
 def _emm_grid():
@@ -401,7 +571,7 @@ def test_wmm_at_the_pole_matches_exact_synthesis(north):
     lon, r, year = 0.7, 6380.0, 2022.0
     got = np.array(wmm._compute_magnetic_field_spherical_impl(lat, lon, r, year, coef))
     exact = np.array(_exact_field(mp.mpf(np.pi / 2) - mp.mpf(lat), lon, r, coef, year))
-    assert np.max(np.abs(got[:2] - exact)) / np.linalg.norm(exact) <= 1e-14
+    assert np.max(np.abs(got - exact)) / np.linalg.norm(exact) <= 1e-14
 
 
 def test_wmm_away_from_poles_matches_v2111(old_wmm):

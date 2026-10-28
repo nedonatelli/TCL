@@ -14,11 +14,71 @@ v2.12.0 it no longer rescales the gravity table, whose cache rounds
 ``1 / sin(theta)**2`` toward the poles).
 """
 
+from functools import lru_cache
+
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.array_utils import make_readonly
+
 # Geomagnetic reference sphere radius in km (the WMM/IGRF convention).
 GEOMAGNETIC_REFERENCE_RADIUS_KM = 6371.2
+
+
+@lru_cache(maxsize=8)
+def _recursion_coefficients(
+    n_max: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
+    """Sectoral factors and column-recursion coefficients for degree n_max.
+
+    ``sectoral[k]`` is ``P[k, k] / sin(theta)**k``; row ``k`` of the
+    column recursion is ``P[k, m] = a[k, m] cos(theta) P[k-1, m]
+    - b[k, m] P[k-2, m]`` for ``m < k``.
+    """
+    k = np.arange(n_max + 1)
+    ratios = np.ones(n_max + 1)
+    ratios[2:] = np.sqrt((2 * k[2:] - 1) / (2 * k[2:]))
+    sectoral = np.cumprod(ratios)
+    n = k[:, np.newaxis].astype(np.float64)
+    m = k[np.newaxis, :].astype(np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        denom = np.sqrt(n**2 - m**2)
+        a = np.where(m < n, (2 * n - 1) / denom, 0.0)
+        b = np.where(m < n, np.sqrt(np.maximum((n - 1) ** 2 - m**2, 0.0)) / denom, 0.0)
+    make_readonly(sectoral, a, b)
+    return sectoral, a, b
+
+
+@lru_cache(maxsize=16)
+def _schmidt_tables(
+    n_max: int, cos_theta: float, sin_theta: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Read-only (P, dP/dtheta), memoised on the exact (cos, sin) pair."""
+    sectoral, a, b = _recursion_coefficients(n_max)
+    P = np.zeros((n_max + 2, n_max + 2))
+    k = np.arange(n_max + 1)
+    with np.errstate(under="ignore"):
+        P[k, k] = sectoral * sin_theta**k
+    for row in range(1, n_max + 1):
+        P[row, :row] = (
+            a[row, :row] * cos_theta * P[row - 1, :row]
+            - b[row, :row] * P[row - 2, :row]
+        )
+    P = P[: n_max + 1, : n_max + 1]
+
+    n = k[:, np.newaxis]
+    m = k[np.newaxis, :]
+    lower = np.zeros_like(P)
+    lower[:, 1:] = P[:, :-1]
+    upper = np.zeros_like(P)
+    upper[:, :-1] = P[:, 1:]
+    c = np.where(m == 1, np.sqrt(2.0), 1.0)
+    d = np.where(m == 0, np.sqrt(2.0), 1.0)
+    alpha = np.sqrt(np.maximum((n + m) * (n - m + 1), 0))
+    beta = np.sqrt(np.maximum((n - m) * (n + m + 1), 0))
+    dP = 0.5 * (c * alpha * lower - d * beta * upper)
+    make_readonly(P, dP)
+    return P, dP
 
 
 def _schmidt_legendre(
@@ -28,7 +88,8 @@ def _schmidt_legendre(
 
     The standard Schmidt column recursion, seeded with ``sin_theta``
     itself rather than ``sqrt(1 - cos_theta**2)``, which loses the
-    sine's relative precision near the poles.
+    sine's relative precision near the poles. The result is read-only
+    and shared between calls with the same arguments.
 
     Parameters
     ----------
@@ -43,19 +104,7 @@ def _schmidt_legendre(
         Array of shape (n_max+1, n_max+1); ``P[n, m]`` is the Schmidt
         semi-normalized function of degree n, order m.
     """
-    P = np.zeros((n_max + 2, n_max + 2))
-    P[0, 0] = 1.0
-    if n_max >= 1:
-        P[1, 1] = sin_theta
-    for k in range(2, n_max + 1):
-        P[k, k] = np.sqrt((2 * k - 1) / (2 * k)) * sin_theta * P[k - 1, k - 1]
-    for k in range(1, n_max + 1):
-        m = np.arange(k)
-        P[k, :k] = (
-            (2 * k - 1) * cos_theta * P[k - 1, :k]
-            - np.sqrt((k - 1) ** 2 - m**2) * P[k - 2, :k]
-        ) / np.sqrt(k**2 - m**2)
-    return P[: n_max + 1, : n_max + 1]
+    return _schmidt_tables(n_max, float(cos_theta), float(sin_theta))[0]
 
 
 def _schmidt_legendre_with_derivative(
@@ -70,7 +119,8 @@ def _schmidt_legendre_with_derivative(
 
     with ``c_1 = sqrt(2)``, ``d_0 = sqrt(2)`` and 1 otherwise. It never
     divides by ``sin(theta)``, so it holds at the poles, where the
-    ``m = 1`` derivatives are nonzero.
+    ``m = 1`` derivatives are nonzero. Both arrays are read-only and
+    shared between calls with the same arguments.
 
     Returns
     -------
@@ -78,16 +128,4 @@ def _schmidt_legendre_with_derivative(
         Shape (n_max+1, n_max+1) each: the Schmidt semi-normalized
         functions and their derivatives with respect to colatitude.
     """
-    P = _schmidt_legendre(n_max, cos_theta, sin_theta)
-    n = np.arange(n_max + 1)[:, np.newaxis]
-    m = np.arange(n_max + 1)[np.newaxis, :]
-    lower = np.zeros_like(P)
-    lower[:, 1:] = P[:, :-1]
-    upper = np.zeros_like(P)
-    upper[:, :-1] = P[:, 1:]
-    c = np.where(m == 1, np.sqrt(2.0), 1.0)
-    d = np.where(m == 0, np.sqrt(2.0), 1.0)
-    a = np.sqrt(np.maximum((n + m) * (n - m + 1), 0))
-    b = np.sqrt(np.maximum((n - m) * (n + m + 1), 0))
-    dP = 0.5 * (c * a * lower - d * b * upper)
-    return P, dP
+    return _schmidt_tables(n_max, float(cos_theta), float(sin_theta))
