@@ -219,7 +219,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   60000 and -0.0935" at 61000.7. It now shares one IAU 1982 body with
   `reference_frames.gmst_iau82` (fed the MJD directly, so no precision is
   lost forming a Julian date) and agrees with the exact value to under
-  1e-8" at all four epochs. Solid-tide displacement outputs shift by at
+  1e-8" at all four epochs. Below about MJD 25000, forming `mjd - 51544.5`
+  still rounds as it did in v2.11.1 (up to about 1e-5"). Solid-tide displacement outputs shift by at
   most 5e-8 m and gravity outputs by under 1e-12. The tide module's own
   obliquity moved only 4e-5" (it already used the IAU 1976 value).
   `EPSILON_J2000` (`pytcl.astronomical.ephemerides`) was 0.4090910179 rad,
