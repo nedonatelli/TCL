@@ -38,7 +38,7 @@ from typing import Callable, List, NamedTuple, Optional, Sequence, Tuple, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from pytcl.coordinate_systems.jacobians.jacobians import numerical_jacobian
+from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
 from pytcl.dynamic_estimation.kalman.linear import kf_predict, kf_update
 from pytcl.dynamic_estimation.kalman.sqrt_cubature import (
     sqrt_ckf_predict,

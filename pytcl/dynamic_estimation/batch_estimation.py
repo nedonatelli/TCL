@@ -129,7 +129,7 @@ def _per_step_callables(fun, num_steps):
 
 
 def _default_jacobians(h_jacob, h_list, z_dim, num_steps):
-    from pytcl.coordinate_systems.jacobians.jacobians import numerical_jacobian
+    from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
 
     if h_jacob is None:
         return [
