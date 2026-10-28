@@ -18,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caller rather than pytcl. What to do: nothing; filters on
   `DeprecationWarning` still match.
 
+### Deprecated
+
+- `pytcl.core.validation.ensure_symmetric` (removal in v3.0.0). It checked
+  *and* symmetrized, while `kalman.matrix_utils.ensure_symmetric` only
+  symmetrizes; two contracts under one name. The new
+  `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  validates and returns the input unchanged. The validators in
+  `core.validation` now use it internally, with unchanged return values.
+  What to do: call `check_symmetric` to validate, or
+  `pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric` to
+  symmetrize.
+
 ### Changed
 
 - **The runtime dependency floors rise to versions CI actually tests.**

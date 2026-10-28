@@ -961,7 +961,7 @@ def esrif_predict(
     x_prev = np.linalg.solve(R_p, y_prev)
 
     if f_jacob is None:
-        from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
+        from pytcl.coordinate_systems.jacobians.jacobians import numerical_jacobian
 
         F = numerical_jacobian(f, x_prev)
     else:
@@ -1054,7 +1054,7 @@ def esrif_update(
     x_pred = np.linalg.solve(R_p, y_pred)
 
     if h_jacob is None:
-        from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
+        from pytcl.coordinate_systems.jacobians.jacobians import numerical_jacobian
 
         H = numerical_jacobian(h, x_pred)
     else:

@@ -188,7 +188,7 @@ Counts are measured from the packages themselves rather than asserted;
      - Spatial indices (k-d tree, R-tree, VP-tree, cover tree) and track sets
    * - ``core``
      - 8
-     - 73
+     - 74
      - Constants, exceptions, validation, array helpers, data paths, numba flags
    * - ``dynamic_models``
      - 7

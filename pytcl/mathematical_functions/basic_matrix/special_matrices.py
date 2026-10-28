@@ -211,10 +211,11 @@ def block_diag(*arrs: ArrayLike) -> NDArray[np.floating]:
     See Also
     --------
     scipy.linalg.block_diag : Equivalent scipy function.
+    pytcl.core.array_utils.block_diag : Same layout; keeps integer dtypes.
     """
-    from scipy.linalg import block_diag as scipy_block_diag
+    from pytcl.core.array_utils import block_diag as _block_diag
 
-    return scipy_block_diag(*arrs).astype(np.float64)
+    return _block_diag(*arrs).astype(np.float64)
 
 
 def companion(c: ArrayLike) -> NDArray[np.floating]:
@@ -447,9 +448,11 @@ def vec(A: ArrayLike) -> NDArray[np.floating]:
     See Also
     --------
     unvec : Inverse operation.
+    pytcl.core.array_utils.vec : Same stacking, but returns shape (m*n, 1).
     """
-    A = np.asarray(A, dtype=np.float64)
-    return A.flatten(order="F")
+    from pytcl.core.array_utils import vec as _vec
+
+    return _vec(np.asarray(A, dtype=np.float64)).ravel()
 
 
 def unvec(v: ArrayLike, m: int, n: int) -> NDArray[np.floating]:
@@ -480,9 +483,11 @@ def unvec(v: ArrayLike, m: int, n: int) -> NDArray[np.floating]:
     See Also
     --------
     vec : Forward operation.
+    pytcl.core.array_utils.unvec : Same reshape, taking a ``(m, n)`` tuple.
     """
-    v = np.asarray(v, dtype=np.float64)
-    return v.reshape((m, n), order="F")
+    from pytcl.core.array_utils import unvec as _unvec
+
+    return _unvec(np.asarray(v, dtype=np.float64), (m, n))
 
 
 def commutation_matrix(m: int, n: int) -> NDArray[np.floating]:

@@ -15,7 +15,7 @@ claimed 25-40% at the low end.
 """
 
 from functools import lru_cache
-from typing import Callable, Tuple
+from typing import Any, Callable, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -229,7 +229,7 @@ def cross_covariance_transform(
 
 
 def numerical_jacobian(
-    func: Callable[[ArrayLike], ArrayLike],
+    func: Callable[[NDArray[Any]], ArrayLike],
     x: ArrayLike,
     dx: float = 1e-7,
 ) -> NDArray[np.floating]:
@@ -248,14 +248,29 @@ def numerical_jacobian(
     Returns
     -------
     J : ndarray
-        Jacobian matrix.
+        Jacobian matrix of shape (m, n) where m = len(f(x)), n = len(x).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> def f(x):
+    ...     return np.array([x[0]**2, x[0]*x[1]])
+    >>> x = np.array([2.0, 3.0])
+    >>> J = numerical_jacobian(f, x)
+    >>> J  # [[2*x[0], 0], [x[1], x[0]]] = [[4, 0], [3, 2]]
+    array([[4., 0.],
+           [3., 2.]])
+
+    See Also
+    --------
+    pytcl.dynamic_estimation.kalman.extended.numerical_jacobian :
+        Same computation, with the function argument named ``f``.
     """
-    x = np.asarray(x, dtype=np.float64)
-    f0 = np.asarray(func(x), dtype=np.float64)
+    x = np.asarray(x, dtype=np.float64).flatten()
+    f0 = np.asarray(func(x), dtype=np.float64).flatten()
 
     n = len(x)
-    m = len(f0) if f0.ndim > 0 else 1
-
+    m = len(f0)
     J = np.zeros((m, n), dtype=np.float64)
 
     for i in range(n):
@@ -264,8 +279,8 @@ def numerical_jacobian(
         x_plus[i] += dx
         x_minus[i] -= dx
 
-        f_plus = np.asarray(func(x_plus), dtype=np.float64)
-        f_minus = np.asarray(func(x_minus), dtype=np.float64)
+        f_plus = np.asarray(func(x_plus), dtype=np.float64).flatten()
+        f_minus = np.asarray(func(x_minus), dtype=np.float64).flatten()
 
         J[:, i] = (f_plus - f_minus) / (2 * dx)
 

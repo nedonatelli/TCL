@@ -45,6 +45,7 @@ from pytcl.core.exceptions import (
     DimensionError,
     MethodError,
     ParameterError,
+    PytclDeprecationWarning,
     TCLError,
     ValidationError,
 )
@@ -479,9 +480,11 @@ class TestValidationContracts:
             ensure_row_vector([[1, 2], [3, 4]])
         with pytest.raises(ValidationError):
             ensure_square_matrix([[1, 2, 3], [4, 5, 6]])
-        with pytest.raises(ValidationError):
-            ensure_symmetric([[1, 2], [3, 4]])
-        S = ensure_symmetric([[1, 2 + 1e-12], [2, 4]])
+        with pytest.warns(PytclDeprecationWarning):
+            with pytest.raises(ValidationError):
+                ensure_symmetric([[1, 2], [3, 4]])
+        with pytest.warns(PytclDeprecationWarning):
+            S = ensure_symmetric([[1, 2 + 1e-12], [2, 4]])
         np.testing.assert_allclose(S, S.T, atol=0)  # exactly symmetrized
         with pytest.raises(ValidationError):
             ensure_positive_definite([[1, 2], [2, 1]])

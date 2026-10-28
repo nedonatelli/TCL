@@ -26,6 +26,8 @@ from typing import Callable, NamedTuple, Optional, Sequence, Union
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
+from pytcl.core.array_utils import block_diag
+
 
 class BatchLSResult(NamedTuple):
     """Result of a batch least-squares estimate.
@@ -127,7 +129,7 @@ def _per_step_callables(fun, num_steps):
 
 
 def _default_jacobians(h_jacob, h_list, z_dim, num_steps):
-    from pytcl.dynamic_estimation.kalman.extended import numerical_jacobian
+    from pytcl.coordinate_systems.jacobians.jacobians import numerical_jacobian
 
     if h_jacob is None:
         return [
@@ -341,7 +343,7 @@ def batch_ls_nonlin_meas_lin_dyn(
     R = _tile3(R, num_steps)
     F = _tile3(F, num_steps - 1)
 
-    r_stacked_inv = np.linalg.inv(_block_diag([R[:, :, k] for k in range(num_steps)]))
+    r_stacked_inv = np.linalg.inv(block_diag(*[R[:, :, k] for k in range(num_steps)]))
     trans = _get_trans_mats_base(F, k_d)
 
     j = np.zeros((z_dim * num_steps, x_dim))
@@ -428,7 +430,7 @@ def batch_ls_nonlin_meas_nonlin_dyn(
     hj_list = _default_jacobians(h_jacob, h_list, z_dim, num_steps)
     R = _tile3(R, num_steps)
 
-    r_stacked_inv = np.linalg.inv(_block_diag([R[:, :, k] for k in range(num_steps)]))
+    r_stacked_inv = np.linalg.inv(block_diag(*[R[:, :, k] for k in range(num_steps)]))
 
     j = np.zeros((z_dim * num_steps, x_dim))
     z_pred = np.zeros(z_dim * num_steps)
@@ -446,12 +448,6 @@ def batch_ls_nonlin_meas_nonlin_dyn(
         j[span, :] = np.atleast_2d(hj_list[k](x_est))
     p_est = np.linalg.pinv(j.T @ r_stacked_inv @ j)
     return BatchLSResult(x_est, p_est)
-
-
-def _block_diag(mats):
-    from scipy.linalg import block_diag
-
-    return block_diag(*mats)
 
 
 def batch_ls_nonlin_meas_lin_dyn_lm(
@@ -698,7 +694,7 @@ def batch_ls_nonlin_meas_nonlin_dyn_lm(
     j = np.zeros((z_dim * num_steps, len(x_est)))
     for k in range(num_steps):
         j[k * z_dim : (k + 1) * z_dim, :] = np.atleast_2d(hj_list[k](x_est))
-    r_stacked_inv = np.linalg.inv(_block_diag([R3[:, :, k] for k in range(num_steps)]))
+    r_stacked_inv = np.linalg.inv(block_diag(*[R3[:, :, k] for k in range(num_steps)]))
     p_est = np.linalg.pinv(j.T @ r_stacked_inv @ j)
     x_batch = np.tile(x_est[:, np.newaxis], (1, num_steps))
     return BatchLSLMResult(x_est, p_est, x_batch, bool(res.success))
