@@ -329,8 +329,13 @@ def check_symmetric(
     --------
     >>> import numpy as np
     >>> from pytcl.core.validation import check_symmetric
-    >>> check_symmetric([[2.0, 1.0], [1.0, 2.0]]).shape
-    (2, 2)
+    >>> P = check_symmetric([[2.0, 1.0 + 1e-12], [1.0, 2.0]])
+    >>> bool(P[0, 1] == P[1, 0])
+    False
+    >>> check_symmetric([[2.0, 1.5], [0.0, 2.0]], name="P")
+    Traceback (most recent call last):
+        ...
+    pytcl.core.exceptions.ValidationError: P must be symmetric
 
     See Also
     --------
