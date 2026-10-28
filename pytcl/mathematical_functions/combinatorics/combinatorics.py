@@ -6,6 +6,7 @@ related operations commonly used in assignment problems and data association.
 """
 
 import itertools
+import math
 from functools import lru_cache
 from typing import Any, Iterator, List, Optional, Tuple
 
@@ -24,7 +25,18 @@ def factorial(n: int) -> int:
     Returns
     -------
     n! : int
-        Factorial of n.
+        Factorial of n, an exact Python integer.
+
+    Raises
+    ------
+    ValueError
+        If n is negative.
+
+    See Also
+    --------
+    pytcl.mathematical_functions.special_functions.factorial : Array input,
+        gamma-based float values, and 0 for negative arguments instead of
+        raising.
 
     Examples
     --------
@@ -35,10 +47,7 @@ def factorial(n: int) -> int:
         raise ValueError("n must be non-negative")
     if n == 0 or n == 1:
         return 1
-    result = 1
-    for i in range(2, n + 1):
-        result *= i
-    return result
+    return math.factorial(n)
 
 
 def n_choose_k(n: int, k: int) -> int:

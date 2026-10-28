@@ -121,10 +121,13 @@ def mahalanobis_distance(
     innovation_covariance: ArrayLike,
 ) -> float:
     """
-    Compute the squared Mahalanobis distance.
+    Compute the squared Mahalanobis distance (squared, not the distance).
 
     The Mahalanobis distance measures how many standard deviations
-    a point is from the center of a distribution.
+    a point is from the center of a distribution. This function returns its
+    square; take ``np.sqrt`` of it, or call
+    `pytcl.dynamic_estimation.kalman.matrix_utils.compute_mahalanobis_distance`,
+    for the distance itself.
 
     Parameters
     ----------

@@ -355,9 +355,9 @@ class MultivariateGaussian(Distribution):
         """
         return self._cov.copy()
 
-    def mahalanobis(self, x: ArrayLike) -> NDArray[np.floating]:
+    def mahalanobis(self, x: ArrayLike) -> Union[np.float64, NDArray[np.floating]]:
         """
-        Compute Mahalanobis distance from the mean.
+        Compute Mahalanobis distance from the mean (not squared).
 
         Parameters
         ----------
@@ -375,14 +375,21 @@ class MultivariateGaussian(Distribution):
         >>> float(mg.mahalanobis([3.0, 4.0]))
         5.0
         """
+        from pytcl.dynamic_estimation.kalman.matrix_utils import (
+            compute_mahalanobis_distance,
+        )
+
         x = np.asarray(x, dtype=np.float64)
         diff = x - self._mean
-        cov_inv = np.linalg.inv(self._cov)
 
         if diff.ndim == 1:
-            return np.sqrt(diff @ cov_inv @ diff)
-        else:
-            return np.sqrt(np.sum(diff @ cov_inv * diff, axis=-1))
+            return np.float64(compute_mahalanobis_distance(diff, self._cov))
+        flat = diff.reshape(-1, diff.shape[-1])
+        out = np.array(
+            [compute_mahalanobis_distance(row, self._cov) for row in flat],
+            dtype=np.float64,
+        )
+        return out.reshape(diff.shape[:-1])
 
 
 class Uniform(Distribution):

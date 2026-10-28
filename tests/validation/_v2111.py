@@ -49,7 +49,9 @@ def _load(relpath: str) -> types.ModuleType:
     name = "v2111_" + relpath.removesuffix(".py").replace("/", "_")
     module = types.ModuleType(name)
     module.__file__ = f"{V2111_COMMIT}:{relpath}"
-    exec(compile(shown.stdout, module.__file__, "exec"), module.__dict__)
+    # numba cannot cache a function whose source file is a git object name.
+    source = shown.stdout.replace(b"cache=True", b"cache=False")
+    exec(compile(source, module.__file__, "exec"), module.__dict__)
     return module
 
 

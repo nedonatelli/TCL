@@ -33,6 +33,8 @@ import numpy as np
 from numba import njit
 from numpy.typing import NDArray
 
+from pytcl.assignment_algorithms.gating import mahalanobis_distance
+
 # Relative bound on how negative an eigenvalue from the eigh fallback is
 # allowed to be before it is treated as a genuinely non-PSD input rather
 # than roundoff. Measured worst-case negative-eigenvalue noise from
@@ -434,10 +436,13 @@ def compute_mahalanobis_distance(
     S_is_cholesky: bool = False,
 ) -> float:
     """
-    Compute the Mahalanobis distance of an innovation.
+    Compute the Mahalanobis distance of an innovation (not squared).
 
     The Mahalanobis distance is sqrt(y.T @ S^{-1} @ y), which measures
-    how many standard deviations the innovation is from zero.
+    how many standard deviations the innovation is from zero. For the
+    squared distance use
+    `pytcl.assignment_algorithms.gating.mahalanobis_distance`, which this
+    function takes the square root of.
 
     Parameters
     ----------
@@ -453,7 +458,7 @@ def compute_mahalanobis_distance(
     Returns
     -------
     distance : float
-        Mahalanobis distance.
+        Mahalanobis distance (not squared).
 
     Examples
     --------
@@ -474,11 +479,7 @@ def compute_mahalanobis_distance(
         mahal_sq = np.sum(y_normalized**2)
     else:
         try:
-            S_chol = np.linalg.cholesky(S)
-            import scipy.linalg
-
-            y_normalized = scipy.linalg.solve_triangular(S_chol, innovation, lower=True)
-            mahal_sq = np.sum(y_normalized**2)
+            np.linalg.cholesky(S)
         except np.linalg.LinAlgError:
             # Without PD, innovation @ solve(S, innovation) is either
             # negative (sqrt gives nan) or a meaningless positive number.
@@ -491,6 +492,7 @@ def compute_mahalanobis_distance(
                 stacklevel=2,
             )
             return float("nan")
+        return float(np.sqrt(mahalanobis_distance(innovation, S)))
 
     return float(np.sqrt(mahal_sq))
 

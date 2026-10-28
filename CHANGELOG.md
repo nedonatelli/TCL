@@ -32,6 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **One body each for NEES/NIS, MAD and the Mahalanobis family; no return
+  value changes.** `statistics.estimators.nees/nis` compute each sample
+  through `estimation_metrics.nees`, `static_estimation.robust.mad`
+  delegates to `statistics.estimators.mad`, and
+  `kalman.matrix_utils.compute_mahalanobis_distance` and
+  `MultivariateGaussian.mahalanobis` delegate to
+  `assignment_algorithms.gating.mahalanobis_distance`. Docstrings now say
+  whether a Mahalanobis result is squared (`gating`) or not (the others),
+  and `combinatorics.factorial` and `special_functions.factorial` name
+  their contract difference. The MATLAB migration map's `calcNEES` row
+  now states the normalization (`mean(nees) / x_dim`) and that pytcl
+  raises `LinAlgError` on a singular covariance where MATLAB uses `pinv`.
+  What to do: nothing.
 - **The runtime dependency floors rise to versions CI actually tests.**
   The old floors were never installed by any CI cell; every cell ran the
   lock's newest releases. A new `floors` job in `ci.yml` resolves each
