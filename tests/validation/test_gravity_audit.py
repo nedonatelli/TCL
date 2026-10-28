@@ -453,7 +453,7 @@ class TestGeoidHeightEGM:
         S = np.zeros((n_max + 1, n_max + 1))
         # Recover the reference C20 subtracted internally
         ref = np.zeros((n_max + 1, n_max + 1))
-        _subtract_reference_field(ref, n_max)
+        _subtract_reference_field(ref, n_max, 3.986004415e14, 6378136.3)
         c20_ref = -ref[2, 0]
         delta = 1.0e-8
         C[0, 0] = 1.0
@@ -492,7 +492,7 @@ class TestGeoidHeightEGM:
             Cd[0, 0] = 0.0
             Cd[1, :] = 0.0
             Sd[1, :] = 0.0
-            _subtract_reference_field(Cd, coef.n_max)
+            _subtract_reference_field(Cd, coef.n_max, coef.GM, coef.R)
             lat_gc, r = _geocentric(lat, lon)
             x = np.sin(lat_gc)
             T = 0.0
@@ -550,7 +550,7 @@ class TestGravityDisturbanceEGM:
         Cd[0, 0] = 0.0
         Cd[1, :] = 0.0
         Sd[1, :] = 0.0
-        _subtract_reference_field(Cd, coef.n_max)
+        _subtract_reference_field(Cd, coef.n_max, coef.GM, coef.R)
         lat_gc, r = _geocentric(lat, lon)
         eps = 1.0
         Tp = clenshaw_potential(
@@ -570,7 +570,7 @@ class TestDeflectionOfVertical:
         C = np.zeros((n_max + 1, n_max + 1))
         S = np.zeros((n_max + 1, n_max + 1))
         ref = np.zeros((n_max + 1, n_max + 1))
-        _subtract_reference_field(ref, n_max)
+        _subtract_reference_field(ref, n_max, 3.986004415e14, 6378136.3)
         delta = 1.0e-7
         C[0, 0] = 1.0
         C[2, 0] = -ref[2, 0] + delta  # Reference C20 plus a zonal disturbance

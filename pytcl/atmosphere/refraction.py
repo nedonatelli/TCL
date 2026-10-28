@@ -806,8 +806,7 @@ class CubatureConversionResult(NamedTuple):
 
 def _std_decay_const(ns: float) -> float:
     """The CRPL decay constant used by every exponential-model default."""
-    delta_n = -7.32 * np.exp(0.005577 * ns)
-    return float(np.log(ns / (ns + delta_n)) / 1000.0)
+    return float(atmos_exp_decay_const(ns).ce)
 
 
 def _refractivity_2d(x, y, ns, r_e, ce):

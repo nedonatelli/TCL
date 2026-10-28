@@ -557,8 +557,8 @@ def _magnetic_potential(
     dt = year - coeffs.epoch
     g = coeffs.g + dt * coeffs.g_dot
     h = coeffs.h + dt * coeffs.h_dot
-    cos_theta = np.cos(np.pi / 2 - lat_gc)
-    p = _schmidt_legendre(n_max, cos_theta)
+    theta = np.pi / 2 - lat_gc
+    p = _schmidt_legendre(n_max, np.cos(theta), np.sin(theta))
     r_km = r_m / 1000.0
     v = 0.0
     for n in range(1, n_max + 1):

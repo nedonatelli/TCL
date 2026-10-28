@@ -488,7 +488,7 @@ def _high_res_field_spherical(
     """
     from pytcl.magnetism._schmidt import (
         GEOMAGNETIC_REFERENCE_RADIUS_KM,
-        _schmidt_legendre,
+        _schmidt_legendre_with_derivative,
     )
 
     if n_max_eval is None:
@@ -514,18 +514,7 @@ def _high_res_field_spherical(
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
 
-    P = _schmidt_legendre(N, cos_theta)
-
-    # dP/dtheta via the Schmidt-basis recursion:
-    # sin(theta) * dP(n,m)/dtheta = n*cos(theta)*P(n,m) - sqrt(n^2-m^2)*P(n-1,m)
-    dP = np.zeros((N + 1, N + 1))
-    if abs(sin_theta) > 1e-10:
-        for n in range(1, N + 1):
-            ms = np.arange(0, n + 1)
-            f = np.sqrt((n - ms) * (n + ms))  # zero at m == n
-            prev = np.zeros(n + 1)
-            prev[:n] = P[n - 1, :n]
-            dP[n, : n + 1] = (n * cos_theta * P[n, : n + 1] - f * prev) / sin_theta
+    P, dP = _schmidt_legendre_with_derivative(N, cos_theta, sin_theta)
 
     # Precompute radial power: (a/r)^(n+2) for n = 0..N
     r_ratio = a / r

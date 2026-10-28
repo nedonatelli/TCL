@@ -678,6 +678,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   direction now carries the floored information, `1/(1e-10*max_eig)`,
   instead of an arbitrarily large amount.
 
+- **EGM geoid heights and gravity outputs subtract MATLAB's WGS84
+  reference field.** `geoid_height`, `geoid_heights`, `gravity_disturbance`,
+  `gravity_anomaly` and `deflection_of_vertical` removed the normal field
+  with the Heiskanen-Moritz 2-92 series, evaluated with the rounded GRS80
+  `J2 = 1.08263e-3`, cut at degree 10, and not rescaled from WGS84's `GM`
+  and `a` to the model's. They now subtract the port of MATLAB
+  `getEGMWGS84TCoeffs`: `ellips_grav_coeffs` for the WGS84 `omega`, `a`,
+  `f` and `GM`, with degree `n` scaled by `(GM_WGS84 / GM) (a_WGS84 / R)^n`.
+  For the EGM96/EGM2008 `GM` and `R` the normalized zonals change by
+  5.5e-8 (C20), 7.4e-9 (C40), -2.8e-7 (C60), -1.4e-6 (C80) and -1.4e-5
+  (C10,0) relative, and degrees 12 and up are no longer dropped (below
+  4.2e-17). Against the closed-form WGS84 normal potential (mpmath,
+  latitudes -40 to 90 deg, heights 0 to 1000 km), the subtracted series
+  was off by up to 3.8e-3 m^2/s^2 (0.38 mm of geoid) and is now off by at
+  most 3.5e-6 m^2/s^2. Geoid heights move by -0.191 mm at the equator to
+  +0.384 mm at the poles (every degree of latitude, `n_max` 4, 10 and 36;
+  the change is zonal, so it does not depend on the model's other
+  coefficients).
+  `gravity_disturbance` and `gravity_anomaly` move by at most 1.8e-4 mGal
+  (latitudes to +-89.5 deg, heights 0 and 10 km) and
+  `deflection_of_vertical` by at most 1.9e-5 arcsec (latitudes to +-60
+  deg). Measured with the built-in degree-36 test set; the real EGM96 and
+  EGM2008 files were not available to the test run. What to do: nothing;
+  geoid heights shift by less than 0.4 mm.
+
+- **Geomagnetic fields are exact at and near the poles.** EMM and WMMHR
+  divided the colatitude derivative of the Schmidt functions by
+  `sin(theta)` and set it to zero at the pole, and WMM and IGRF set it to
+  zero within about 1.4e-7 rad of the pole. All four also read their
+  Legendre table from the gravity cache, which rounds `cos(theta)` to 12
+  decimals, so within about 1.4e-6 rad of a pole they used the pole's
+  values. One shared table now uses `sin(theta)` directly, and the
+  derivative comes from the same-degree identity, which never divides by
+  `sin(theta)`. Against an exact mpmath synthesis (degree-36 test set and
+  WMM2020), `B_r` and `B_theta` are within 5.6e-16 of the field magnitude
+  at colatitudes 0, 1e-9, 1e-6, 1e-4, 1e-3, 1e-2, 0.06, 0.2, 0.6 and
+  1.2 rad from either pole. v2.11.1 was off by 2.9% (EMM test set, north)
+  and 8.9% (south) at the three smallest, by 1.2e-9 at 1e-3 rad, and by
+  12% for WMM2020 at the pole. Away from the poles the values move by the
+  old table rounding: at most 1.8e-12 of the field magnitude over
+  latitudes -70 to 70 deg (WMMHR2025, 9.4e-13 with the test set, 9.9e-13
+  for WMM2020), and up to 3.1e-12 of each output of `itrs2magnetic_apex`
+  and `itrs2qd`. Affected: `emm`, `wmmhr`, `emm_declination`,
+  `emm_inclination`, `emm_intensity`, `wmm`, `magnetic_field_spherical`,
+  `magnetic_declination`, `magnetic_inclination`,
+  `magnetic_field_intensity`, `igrf`, `igrf_declination`,
+  `igrf_inclination`, `trace2earth_mag_apex`, `itrs2magnetic_apex`,
+  `itrs2qd`, `geog_heading2mag` and `mag_heading2geog`. At exactly
+  `sin(theta) <= 1e-10` the east component `B_phi` is still set to zero,
+  as in v2.11.1, so `Y` at the pole itself stays zero while `X` and `H`
+  are now nonzero (and `D` becomes 0 or pi instead of 0). A cache
+  miss is faster: 0.85 ms instead of 5.9 ms per EMM point at degree 133,
+  13 ms instead of 180 ms at degree 790. What to do: nothing, unless you
+  relied on a zero horizontal field at the geographic poles.
+
+- **A `float32` sea-level refractivity `ns` gets a float64 decay
+  constant.** `cart2ruv_std_refrac`, `ruv2cart_std_refrac`, their
+  `_cubature` variants and `std_refrac_bias_approx` derive the decay
+  constant through `atmos_exp_decay_const`, the one implementation of the
+  CRPL formula. v2.11.1 evaluated a NumPy `float32` `ns` in float32, 6.5e-7
+  relative off; every other input type gives the identical value. What to
+  do: nothing.
+
 ## [2.11.1] - 2026-10-22
 
 **This release changes numerical results.** It is a correctness patch: no

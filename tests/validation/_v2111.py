@@ -50,6 +50,7 @@ def _load(relpath: str) -> types.ModuleType:
     name = "v2111_" + relpath.removesuffix(".py").replace("/", "_")
     module = types.ModuleType(name)
     module.__file__ = f"{V2111_COMMIT}:{relpath}"
+    module.__package__ = relpath.rsplit("/", 1)[0].replace("/", ".")
     # numba cannot cache a function whose source file is a git object name.
     source = re.sub(
         rb"^(@(?:numba\.)?n?jit\(.*?)\bcache=True",
@@ -63,6 +64,9 @@ def _load(relpath: str) -> types.ModuleType:
 
 def shipped_module(relpath: str) -> types.ModuleType:
     """Return the v2.11.1 version of ``relpath`` (e.g. ``pytcl/io/x.py``).
+
+    Its imports, relative ones included, resolve to the current package, so
+    only the code in ``relpath`` itself is the shipped version.
 
     Skips when the history is unavailable (unpacked sdist, shallow clone, no
     git); under ``CI`` it fails instead, so CI cannot pass by skipping.
