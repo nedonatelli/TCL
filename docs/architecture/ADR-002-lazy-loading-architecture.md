@@ -105,13 +105,13 @@ The navigation module implements Patterns 3 and 4:
 1. **`pytcl/navigation/great_circle.py`**:
    - `_gc_distance_cached()`: Cached angular distance (256 entries)
    - `_gc_azimuth_cached()`: Cached azimuth (256 entries)
-   - `_GC_CACHE_DECIMALS = 10`: ~0.01mm precision quantization
+   - Keys are the exact input floats; inputs are not rounded (since v2.12.0)
    - Cache management: `clear_great_circle_cache()`, `get_cache_info()`
 
 2. **`pytcl/navigation/geodesy.py`**:
    - `_inverse_geodetic_cached()`: Cached Vincenty inverse (128 entries)
    - `_direct_geodetic_cached()`: Cached Vincenty direct (128 entries)
-   - `_VINCENTY_CACHE_DECIMALS = 10`: ~0.01mm precision quantization
+   - `_VINCENTY_CACHE_DECIMALS = 10`: inputs rounded to 1e-10 rad (~0.64 mm)
    - Cache management: `clear_geodesy_cache()`, `get_geodesy_cache_info()`
 
 ### Cache Configuration Guidelines
