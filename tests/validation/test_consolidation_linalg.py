@@ -4,6 +4,7 @@ Each delegation is pinned against the code shipped in v2.11.1: the old and
 new paths must agree bit for bit on 200 seeded inputs.
 """
 
+import importlib
 import warnings
 
 import numpy as np
@@ -15,10 +16,17 @@ from pytcl.coordinate_systems.jacobians.jacobians import (
 from pytcl.core import array_utils
 from pytcl.core.exceptions import PytclDeprecationWarning, ValidationError
 from pytcl.core.validation import check_symmetric, ensure_symmetric
-from pytcl.dynamic_estimation import batch_estimation
+from pytcl.dynamic_estimation import (
+    batch_estimation,
+    batch_smoothers,
+)
 from pytcl.dynamic_estimation.kalman import extended, unscented
 from pytcl.mathematical_functions.basic_matrix import special_matrices
 from tests.validation._v2111 import shipped_module
+
+information_filter = importlib.import_module(
+    "pytcl.dynamic_estimation.information_filter"
+)
 
 N_CASES = 200
 
@@ -87,10 +95,8 @@ def test_sigma_points_match_v2111(old_unscented, name):
 
 
 def test_unscented_has_no_private_copy_of_eig_constants():
-    from pytcl.dynamic_estimation.kalman import matrix_utils
-
-    assert unscented._EIG_FLOOR_REL is matrix_utils._EIG_FLOOR_REL
-    assert unscented._EIG_NEGATIVE_REL_TOL is matrix_utils._EIG_NEGATIVE_REL_TOL
+    assert not hasattr(unscented, "_EIG_FLOOR_REL")
+    assert not hasattr(unscented, "_EIG_NEGATIVE_REL_TOL")
 
 
 def _jacobian_cases():
@@ -281,3 +287,148 @@ def test_validators_do_not_emit_the_deprecation():
         warnings.simplefilter("error", PytclDeprecationWarning)
         ensure_positive_definite(np.eye(2))
         ensure_positive_semidefinite(np.eye(2))
+
+
+@pytest.fixture(scope="module")
+def old_information():
+    return shipped_module("pytcl/dynamic_estimation/information_filter.py")
+
+
+@pytest.fixture(scope="module")
+def old_smoothers():
+    return shipped_module("pytcl/dynamic_estimation/batch_smoothers.py")
+
+
+_F2 = np.array([[1.0, 0.1], [0.0, 1.0]])
+_H2 = np.array([[1.0, 0.0], [0.5, 1.0]])
+
+
+def _as_shape(fun, shape):
+    return lambda x: np.asarray(fun(np.ravel(x))).reshape(shape)
+
+
+def _same_outcome(old_call, new_call):
+    try:
+        old = old_call()
+    except (ValueError, np.linalg.LinAlgError) as exc:
+        with pytest.raises(type(exc)):
+            new_call()
+        return None, None
+    return old, new_call()
+
+
+@pytest.mark.parametrize("shape", [(-1,), (-1, 1)])
+def test_esrif_predict_matches_v2111_for_flat_and_column_f(old_information, shape):
+    rng = np.random.default_rng(2125)
+    f = _as_shape(lambda x: _F2 @ x + 0.01 * x**2, shape)
+    for _ in range(20):
+        x0 = rng.standard_normal(2)
+        R0 = np.eye(2) + 0.1 * np.triu(rng.standard_normal((2, 2)))
+        args = (R0 @ x0, R0, f, None, 0.1 * np.eye(2))
+        old = old_information.esrif_predict(*args)
+        new = information_filter.esrif_predict(*args)
+        np.testing.assert_array_equal(new.y_sqrt, old.y_sqrt)
+        np.testing.assert_array_equal(new.R, old.R)
+
+
+@pytest.mark.parametrize("shape", [(-1,), (-1, 1)])
+def test_esrif_update_matches_v2111_for_flat_and_column_h(old_information, shape):
+    rng = np.random.default_rng(2126)
+    h = _as_shape(lambda x: _H2[:1] @ x + 0.01 * x[:1] ** 2, shape)
+    for _ in range(20):
+        x0 = rng.standard_normal(2)
+        R0 = np.eye(2) + 0.1 * np.triu(rng.standard_normal((2, 2)))
+        z = _H2[:1] @ x0 + 0.05 * rng.standard_normal(1)
+        args = (R0 @ x0, R0, z, 0.2 * np.eye(1), h)
+        old = old_information.esrif_update(*args)
+        new = information_filter.esrif_update(*args)
+        np.testing.assert_array_equal(new.y_sqrt, old.y_sqrt)
+        np.testing.assert_array_equal(new.R, old.R)
+
+
+@pytest.mark.parametrize("shape", [(-1,), (-1, 1)])
+def test_batch_estimation_default_jacobian_matches_v2111(old_batch, shape):
+    rng = np.random.default_rng(2127)
+    hs = [
+        _as_shape(
+            (lambda k: lambda x: np.array([x[0] + k * x[1], x[1] ** 2]))(k), shape
+        )
+        for k in range(4)
+    ]
+    for _ in range(10):
+        truth = rng.standard_normal(2) + 3.0
+        z = np.column_stack([np.ravel(hs[k](truth)) for k in range(4)])
+        x0 = truth + 0.3 * rng.standard_normal(2)
+        args = (x0, z, hs, 0.01 * np.eye(2))
+        old, new = _same_outcome(
+            lambda: old_batch.batch_ls_nonlin_meas_nonlin_dyn(*args),
+            lambda: batch_estimation.batch_ls_nonlin_meas_nonlin_dyn(*args),
+        )
+        if old is not None:
+            np.testing.assert_array_equal(new.x, old.x)
+            np.testing.assert_array_equal(new.P, old.P)
+
+
+@pytest.mark.parametrize("shape", [(-1,), (-1, 1)])
+def test_ekalman_batch_smoother_default_jacobian_matches_v2111(old_smoothers, shape):
+    rng = np.random.default_rng(2128)
+    f = _as_shape(lambda x: _F2 @ x, shape)
+    h = _as_shape(lambda x: x[:1] ** 1, shape)
+    truth = [np.array([1.0, 0.5])]
+    for _ in range(5):
+        truth.append(_F2 @ truth[-1])
+    z = np.array([[t[0] + 0.01 * rng.standard_normal() for t in truth]])
+    args = (np.array([1.0, 0.4]), np.eye(2), z, h, None, f, None)
+    args += (0.01 * np.eye(1), 0.001 * np.eye(2))
+    old, new = _same_outcome(
+        lambda: old_smoothers.ekalman_batch_smoother(*args),
+        lambda: batch_smoothers.ekalman_batch_smoother(*args),
+    )
+    if old is not None:
+        np.testing.assert_array_equal(new.x, old.x)
+
+
+def _psd_cases():
+    rng = np.random.default_rng(2129)
+    for i in range(N_CASES):
+        n = int(rng.integers(1, 6))
+        A = rng.standard_normal((n, n))
+        P = A @ A.T + (0.1 if i % 2 else 0.0) * np.eye(n)
+        if i % 4 == 0 and n > 1:
+            P = A[:, :-1] @ A[:, :-1].T
+        yield n, P, rng
+
+
+def test_ckf_predict_update_match_v2111_on_pd_and_singular_psd(old_unscented):
+    for n, P, rng in _psd_cases():
+        x = rng.standard_normal(n)
+        Q = 0.1 * np.eye(n)
+        R = 0.2 * np.eye(n)
+        z = rng.standard_normal(n)
+        f = lambda v: np.cos(v) + 0.5 * v  # noqa: E731
+        old_p = old_unscented.ckf_predict(x, P, f, Q)
+        new_p = unscented.ckf_predict(x, P, f, Q)
+        np.testing.assert_array_equal(new_p.x, old_p.x)
+        np.testing.assert_array_equal(new_p.P, old_p.P)
+        old_u = old_unscented.ckf_update(x, P, z, f, R)
+        new_u = unscented.ckf_update(x, P, z, f, R)
+        np.testing.assert_array_equal(new_u.x, old_u.x)
+        np.testing.assert_array_equal(new_u.P, old_u.P)
+
+
+def test_ckf_not_psd_message_is_the_shared_one():
+    P = np.diag([1.0, -1.0])
+    with pytest.raises(
+        np.linalg.LinAlgError, match="matrix is not positive semi-definite"
+    ):
+        unscented.ckf_predict(np.zeros(2), P, lambda v: v, np.eye(2))
+    with pytest.raises(
+        np.linalg.LinAlgError, match="matrix is not positive semi-definite"
+    ):
+        unscented.ckf_update(np.zeros(2), P, np.zeros(2), lambda v: v, np.eye(2))
+
+
+def test_ckf_not_psd_still_raises_in_v2111(old_unscented):
+    P = np.diag([1.0, -1.0])
+    with pytest.raises(np.linalg.LinAlgError, match="covariance is not positive"):
+        old_unscented.ckf_predict(np.zeros(2), P, lambda v: v, np.eye(2))

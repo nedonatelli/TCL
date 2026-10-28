@@ -12,8 +12,6 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.dynamic_estimation.kalman.linear import KalmanPrediction, KalmanUpdate
 from pytcl.dynamic_estimation.kalman.matrix_utils import (
-    _EIG_FLOOR_REL,
-    _EIG_NEGATIVE_REL_TOL,
     compute_matrix_sqrt,
 )
 
@@ -548,21 +546,7 @@ def ckf_predict(
     n = len(x)
 
     # Matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky(P)
-    except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
+    sqrt_P = compute_matrix_sqrt(P)
 
     # Generate cubature points
     if (points is None) != (weights is None):
@@ -669,21 +653,7 @@ def ckf_update(
     m = len(z)
 
     # Matrix square root
-    try:
-        sqrt_P = np.linalg.cholesky(P)
-    except np.linalg.LinAlgError:
-        eigvals, eigvecs = np.linalg.eigh(P)
-        # A negative eigenvalue past _EIG_NEGATIVE_REL_TOL is too large to
-        # be eigh roundoff on a PSD matrix -- P itself is not PSD.
-        max_abs_eig = np.max(np.abs(eigvals))
-        most_neg_eig = eigvals.min()
-        if most_neg_eig < -_EIG_NEGATIVE_REL_TOL * max_abs_eig:
-            raise np.linalg.LinAlgError(
-                f"covariance is not positive semi-definite: eigenvalue "
-                f"{most_neg_eig:.6e} is too negative to be eigh roundoff"
-            )
-        eigvals = np.maximum(eigvals, _EIG_FLOOR_REL * max_abs_eig)
-        sqrt_P = eigvecs @ np.diag(np.sqrt(eigvals))
+    sqrt_P = compute_matrix_sqrt(P)
 
     # Generate cubature points
     if (points is None) != (weights is None):
