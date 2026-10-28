@@ -22,6 +22,7 @@ Row 17, decay constant. ``_std_decay_const`` returns
 
 import functools
 import importlib
+import warnings
 from math import comb, factorial
 from unittest import mock
 
@@ -658,11 +659,21 @@ def test_std_decay_const_float32_is_now_computed_in_float64(old_refraction):
     assert abs(old - new) / new == pytest.approx(6.5e-7, rel=0.05, abs=0)
 
 
-def test_std_decay_const_shape_error_unchanged(old_refraction):
-    with pytest.raises(TypeError):
-        old_refraction._std_decay_const(np.array([313.0]))
-    with pytest.raises(TypeError):
-        refraction._std_decay_const(np.array([313.0]))
+def test_std_decay_const_shape_handling_unchanged(old_refraction):
+    """A 1-d ``ns`` is a TypeError from numpy 2.4 and a DeprecationWarning
+    plus a float on the 2.3 floor; either way, the new code matches v2.11.1."""
+
+    def outcome(fn):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            try:
+                return fn(np.array([313.0]))
+            except TypeError as exc:
+                return type(exc)
+
+    assert outcome(refraction._std_decay_const) == outcome(
+        old_refraction._std_decay_const
+    )
 
 
 def test_refraction_defaults_equal_v2111(old_refraction):

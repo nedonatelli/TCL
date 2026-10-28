@@ -394,7 +394,7 @@ class TestEarthRadius:
         hits = []
         for path in root.rglob("*.py"):
             rel = path.relative_to(root).as_posix()
-            for n, line in enumerate(path.read_text().splitlines(), 1):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                 if self._LITERAL.search(line) and not any(
                     rel == r and text in line for r, text in self._ALLOWED
                 ):
