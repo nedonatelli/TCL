@@ -38,6 +38,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **One haversine, one meridional radius, one Earth radius; no value
+  changes beyond the `great_circle_distance` fix under Fixed.** The
+  inline haversine copies in `terrain.visibility.line_of_sight`,
+  `terrain.visibility.radar_coverage_map` and
+  `terrain.dem.get_elevation_profile` call
+  `navigation.geodesy.haversine_distance` (bit-identical; the three run
+  within 2% of their v2.11.1 time). The meridional radius
+  `a (1 - e2) / (1 - e2 sin^2)^1.5` that `navigation.ins.radii_of_curvature`,
+  `navigation.rhumb.rhumb_distance_ellipsoidal`, `navigation.rhumb.direct_rhumb`,
+  `projections.transverse_mercator_inverse`, `projections.oblique_stereographic`
+  and `projections.oblique_stereographic_inverse` each carried is one private
+  body that STABLE `conversions.geodetic.meridional_radius` also calls;
+  every output is bit-identical, checked against v2.11.1 for WGS84, GRS80, a
+  sphere and Hayford. Every 6371000 m default (`geodesy.SPHERE`,
+  `haversine_distance`, `great_circle.EARTH_RADIUS`, `rhumb.EARTH_RADIUS`,
+  the `earth_radius` parameters of `terrain.visibility` and
+  `DEMGrid.get_gradient`) is `core.constants.EARTH_MEAN_RADIUS`, the same
+  value. `osculating_sphere` keeps its own form (`a (1 - e2) / denom**3`,
+  sharing `denom` with the prime-vertical radius): routing it through the
+  shared body changed its radius by 1 ulp in 28% of cases, so it stays.
+  What to do: nothing.
+
 - `special_orbits.escape_velocity_at_radius(mu, r)` now delegates to
   `orbital_mechanics.escape_velocity(r, mu)`; values are identical. The
   argument orders stay reversed and both docstrings say so. What to do:
@@ -211,6 +233,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-process thresholds.
 
 ### Fixed
+
+- **`great_circle_distance` no longer rounds its inputs; results move by
+  up to 0.74 mm, and short distances by a visible fraction.** It rounded
+  all four coordinates to 10 decimals (up to 5e-11 rad each) before the
+  haversine, so every distance carried up to about 1 mm of error from the
+  rounding alone. Measured against geographiclib on a sphere of radius
+  6371000 m (`Geodesic(6371000.0, 0)`): over 2000 random global pairs per
+  seed (4 seeds) v2.11.1 was off by up to 5.1e-9 relative and the new
+  value by up to 1.6e-14; over 2000 pairs 0 to 64 m apart v2.11.1 was off
+  by up to 2.3e-4 relative (the rounding is absolute, so the error is
+  relative to a short distance) and the new value by up to 5.0e-10. The
+  two versions differ by at most 6.6e-4 m on the 2000 pairs of the first
+  seed and 7.4e-4 m over the four seeds; these are the ranges measured.
+  It now calls `geodesy.haversine_distance` on the exact coordinates; the
+  cache is keyed on the exact floats, so `get_great_circle_cache_info` and
+  `clear_great_circle_cache` behave as before and a cache hit costs 0.1 µs
+  instead of 1.05 µs (a miss 1.24 µs instead of 2.11 µs). Also changed by
+  this: `great_circle_inverse`, `great_circle_waypoint`,
+  `great_circle_waypoints`, `cross_track_distance`, `angular_distance` and
+  `compare_great_circle_rhumb`, which all call it.
+  `great_circle_azimuth` still rounds its inputs. What to do: nothing,
+  unless you compare against stored v2.11.1 distances; allow 1 mm.
 
 - **Solid-tide sidereal time and the ecliptic obliquity constant now follow
   IAU models; results shift slightly.** The tide module's GMST used a linear

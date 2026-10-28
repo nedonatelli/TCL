@@ -21,6 +21,7 @@ from pytcl.coordinate_systems.conversions.geodetic import (
     enu2ecef,
     geodetic2ecef,
 )
+from pytcl.core.constants import EARTH_MEAN_RADIUS
 from pytcl.core.exceptions import ConvergenceError
 
 # Module logger
@@ -65,7 +66,7 @@ class Ellipsoid(NamedTuple):
 # Standard ellipsoids
 WGS84 = Ellipsoid(a=6378137.0, f=1.0 / 298.257223563)
 GRS80 = Ellipsoid(a=6378137.0, f=1.0 / 298.257222101)
-SPHERE = Ellipsoid(a=6371000.0, f=0.0)
+SPHERE = Ellipsoid(a=EARTH_MEAN_RADIUS, f=0.0)
 
 
 def _quantize_geodetic(val: float) -> float:
@@ -829,7 +830,7 @@ def haversine_distance(
     lon1: float,
     lat2: float,
     lon2: float,
-    radius: float = 6371000.0,
+    radius: float = EARTH_MEAN_RADIUS,
 ) -> float:
     """
     Compute great-circle distance using the haversine formula.

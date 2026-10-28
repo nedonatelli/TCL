@@ -30,6 +30,9 @@ from typing import List, NamedTuple, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.core.constants import EARTH_MEAN_RADIUS
+from pytcl.navigation.geodesy import haversine_distance
+
 
 class DEMPoint(NamedTuple):
     """Single point elevation query result.
@@ -333,7 +336,7 @@ class DEMGrid:
         self,
         lat: float,
         lon: float,
-        earth_radius: float = 6371000.0,
+        earth_radius: float = EARTH_MEAN_RADIUS,
     ) -> TerrainGradient:
         """Compute terrain gradient at a point.
 
@@ -347,7 +350,7 @@ class DEMGrid:
             Longitude in radians.
         earth_radius : float, optional
             Earth radius in meters for converting angular to linear distances.
-            Default is 6371000.0.
+            Default is ``EARTH_MEAN_RADIUS`` (6371000.0).
 
         Returns
         -------
@@ -460,12 +463,9 @@ def get_elevation_profile(
     elevations = dem.get_elevations(lats, lons)
 
     # Compute distances using great circle approximation
-    earth_radius = 6371000.0
-    dlat = lats - lat_start
-    dlon = lons - lon_start
-    a = np.sin(dlat / 2) ** 2 + np.cos(lat_start) * np.cos(lats) * np.sin(dlon / 2) ** 2
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-    distances = earth_radius * c
+    distances = np.asarray(
+        haversine_distance(lat_start, lon_start, lats, lons, EARTH_MEAN_RADIUS)
+    )
 
     return distances, elevations
 
@@ -757,7 +757,7 @@ def create_synthetic_terrain(
     lon_grid, lat_grid = np.meshgrid(lons, lats)
 
     # Convert to approximate distances from center
-    earth_radius = 6371.0  # km
+    earth_radius = EARTH_MEAN_RADIUS / 1000.0  # km
     lat_center = (lat_min + lat_max) / 2
     lon_center = (lon_min + lon_max) / 2
 

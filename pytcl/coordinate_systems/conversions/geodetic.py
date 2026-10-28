@@ -7,7 +7,7 @@ as local tangent plane coordinates (ENU, NED).
 """
 
 import warnings
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -1070,6 +1070,16 @@ def prime_vertical_radius(
     return a / np.sqrt(1 - e2 * sin_lat**2)
 
 
+def _meridional_radius_e2(lat: Any, a: Any, e2: Any) -> Any:
+    """Meridional radius from the eccentricity squared, in the caller's dtype.
+
+    The one body of the formula. Callers that hold ``e2`` rather than ``f``
+    (``Ellipsoid.e2`` is ``f * (2 - f)``, which is not always bit-equal to
+    ``2 * f - f**2``) call this directly so their values do not move.
+    """
+    return a * (1 - e2) / (1 - e2 * np.sin(lat) ** 2) ** 1.5
+
+
 def meridional_radius(
     lat: ArrayLike,
     a: float = WGS84.a,
@@ -1092,10 +1102,7 @@ def meridional_radius(
     M : ndarray
         Meridional radius of curvature in meters.
     """
-    lat = np.asarray(lat, dtype=np.float64)
-    e2 = 2 * f - f**2
-    sin_lat = np.sin(lat)
-    return a * (1 - e2) / (1 - e2 * sin_lat**2) ** 1.5
+    return _meridional_radius_e2(np.asarray(lat, dtype=np.float64), a, 2 * f - f**2)
 
 
 __all__ = [

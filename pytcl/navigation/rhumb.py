@@ -14,6 +14,8 @@ from typing import NamedTuple, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
+from pytcl.coordinate_systems.conversions.geodetic import _meridional_radius_e2
+from pytcl.core.constants import EARTH_MEAN_RADIUS
 from pytcl.navigation.geodesy import WGS84, Ellipsoid
 
 
@@ -68,8 +70,7 @@ class RhumbIntersectionResult(NamedTuple):
     valid: bool
 
 
-# Default Earth radius (mean radius in meters)
-EARTH_RADIUS = 6371000.0
+EARTH_RADIUS = EARTH_MEAN_RADIUS
 
 
 def _isometric_latitude(lat: float, e2: float = 0.0) -> float:
@@ -415,7 +416,7 @@ def rhumb_distance_ellipsoidal(
     # For high accuracy, use elliptic integrals
     lat_mid = (lat1 + lat2) / 2
     sin_lat = np.sin(lat_mid)
-    M = a * (1 - e2) / (1 - e2 * sin_lat**2) ** 1.5  # Meridional radius
+    M = _meridional_radius_e2(lat_mid, a, e2)
 
     # Rhumb distance
     if abs(dlat) > 1e-12:
@@ -516,8 +517,7 @@ def direct_rhumb(
     e2 = ellipsoid.e2
 
     # Meridional radius at starting latitude
-    sin_lat = np.sin(lat1)
-    M = a * (1 - e2) / (1 - e2 * sin_lat**2) ** 1.5
+    M = _meridional_radius_e2(lat1, a, e2)
 
     # Initial latitude increment
     dlat = distance * np.cos(bearing) / M
@@ -526,8 +526,7 @@ def direct_rhumb(
     lat2 = lat1 + dlat
     for _ in range(5):
         lat_mid = (lat1 + lat2) / 2
-        sin_lat = np.sin(lat_mid)
-        M = a * (1 - e2) / (1 - e2 * sin_lat**2) ** 1.5
+        M = _meridional_radius_e2(lat_mid, a, e2)
         dlat = distance * np.cos(bearing) / M
         lat2_new = lat1 + dlat
         if abs(lat2_new - lat2) < 1e-12:
