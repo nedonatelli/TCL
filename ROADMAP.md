@@ -63,7 +63,6 @@ CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
   `static_estimation.robust.tau_scale` currently returns 1.0918 on N(0, 1)
   draws against about 1.0 for a consistent estimator.
 - **`q_coord_turn_2d`** matches MATLAB's `QCoordTurn`.
-- **`simple_iri`** is checked against IRI-2020.
 - **US76 floor.** The inclusive -5000 m boundary of `us_standard_atmosphere_1976`.
 - **pFq at infinite `z`.**
 - **MLE ridge trigger** for near-singular Hessians.
@@ -85,6 +84,29 @@ names each would take:
 - **EGM gravity disturbance / anomaly / deflection reference values.**
   `gravity_disturbance`, `gravity_anomaly` and `deflection_of_vertical` have no
   value tests: they need authoritative EGM2008 reference values (NGA).
+  `tests/unit/test_egm_comprehensive.py` has never run anywhere (it needs
+  `EGM2008.cof`); someone with that file must run it once before its oracle
+  claims count.
+- **`simple_iri` checked against IRI-2020** (pending IRI permission).
+- **Pinned defects, deferred until the owner decides otherwise:**
+  - `lambert_universal` returns zero velocities for antipodal positions: its
+    `A == 0` check misses a value of about 1e-16.
+  - `lambert_universal` gives inf/nan for `tof=0`: there is no `tof > 0`
+    validation.
+  - `shapiro_delay` returns 0.0 when the gravitating body is on the
+    observer-source path, where the true delay diverges.
+  - `debye` rejects `x < 0`, which MATLAB accepts. Owner decision: pytcl
+    normalises `D(0) = 1` where MATLAB returns the raw integral.
+  - SQL `store_group` metadata is unreadable, and the `_group:` marker leaks
+    into `list_keys()`.
+  - Ellipsoidal oblique `stereographic` deviates from PROJ `sterea`. This is
+    a documented model choice and `oblique_stereographic` is the recommended
+    function; the strict xfail stays as the documented-limit pin.
+- **Pseudo-inverse sites to the unidentifiable-covariance convention.**
+  `least_squares.weighted_least_squares` (`pinv(AtWA)`),
+  `information_filter.py` and `smoothers.py` still return finite
+  pseudo-inverse values where CONTRIBUTING.md's convention returns `inf`
+  variance with a `RuntimeWarning`; migrate them.
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
   (Ryser's formula); pytcl `matrix_permanent`.
 - **`stateCart2Ruv`.** MATLAB

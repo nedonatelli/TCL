@@ -10,7 +10,7 @@ history lives in `CHANGELOG.md
 Current State (v2.11.1)
 -----------------------
 
-* **10,000+ tests** passing; coverage measured honestly (94.6% as CI's
+* **11,000+ tests** passing; coverage measured honestly (94.6% as CI's
   branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
   run in CI; v2.11.1 is a correctness patch (see the CHANGELOG for its
   behaviour notes)
@@ -101,7 +101,7 @@ Next
   methods, the information-filter singular-``Y`` prediction re-derived,
   ``marcum_q`` at large arguments, CFAR empty windows as NaN, ``tau_scale``
   as the Maronna-Zamar scale, ``q_coord_turn_2d`` matching ``QCoordTurn``,
-  ``simple_iri`` checked against IRI-2020, and the BLE001/B905 lint rules,
+  and the BLE001/B905 lint rules,
   the duplicate-implementation consolidation and the vacuous-test
   paydown.
 
@@ -125,7 +125,24 @@ Next
   which MATLAB's algorithm excludes and v2.12.0 rejects with
   ``LinAlgError``; and EGM ``gravity_disturbance``, ``gravity_anomaly`` and
   ``deflection_of_vertical``, which need authoritative EGM2008 reference
-  values before they can have value tests.
+  values before they can have value tests (and
+  ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
+  must be run once by someone with ``EGM2008.cof`` before its oracle claims
+  count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
+  migration of ``least_squares.weighted_least_squares``,
+  ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
+  results to the unidentifiable-covariance convention in CONTRIBUTING.md;
+  and these pinned defects, deferred until the owner decides otherwise:
+  ``lambert_universal`` returning zero velocities for antipodal positions
+  (its ``A == 0`` check misses about 1e-16) and inf/nan for ``tof=0`` (no
+  ``tof > 0`` validation); ``shapiro_delay`` returning 0.0 when the
+  gravitating body is on the observer-source path; ``debye`` rejecting
+  ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalises
+  ``D(0) = 1``, MATLAB returns the raw integral); SQL ``store_group``
+  metadata being unreadable, with the ``_group:`` marker leaking into
+  ``list_keys()``; and ellipsoidal oblique ``stereographic`` deviating from
+  PROJ ``sterea`` (a documented model choice; ``oblique_stereographic`` is
+  recommended and the strict xfail stays as the documented-limit pin).
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).

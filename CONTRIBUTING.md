@@ -45,7 +45,8 @@ We follow these conventions:
   with `inf` variance on the unidentified parameters, NaN on their cross
   terms, the identified block intact, and a `RuntimeWarning`; an iterative
   estimator also reports `converged=False` (`mle_newton_raphson`,
-  `mle_scoring`). Never return a finite pseudo-inverse.
+  `mle_scoring`). In `static_estimation` MLE/CRB code, and in new code,
+  never return a finite pseudo-inverse.
   Raise only when no point estimate exists: `total_least_squares` for an
   infeasible rank, `range_only_static_loc_est_np` for coplanar sensors (a
   geometry MATLAB's algorithm excludes). Zero information is infinite
@@ -53,7 +54,9 @@ We follow these conventions:
   into any gate or fusion step where a `pinv` value would be silently
   wrong. Use
   `static_estimation.maximum_likelihood._covariance_from_information`
-  rather than a new implementation.
+  rather than a new implementation. Known exceptions pending migration
+  (ROADMAP v2.13): `least_squares.weighted_least_squares` (`pinv(AtWA)`),
+  `information_filter.py` and `smoothers.py`.
 
 ### Text encoding
 
@@ -542,11 +545,12 @@ pytest --collect-only -q | tail -1
 pytest --cov=pytcl --cov-report=term
 ```
 
-Current metrics (v2.11.1):
-- **Functions:** 1,450+ (top-level `def`; measured 1,538 via
+Current metrics (v2.11.1), with the function, module and test counts
+re-measured on the v2.12.0 branch:
+- **Functions:** 1,450+ (top-level `def`; measured 1,590 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 220
-- **Tests:** 10,000+ (all passing; measured 11,313 via
+- **Tests:** 11,000+ (all passing; measured 11,611 via
   `pytest --collect-only`)
 - **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit

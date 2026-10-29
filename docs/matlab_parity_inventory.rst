@@ -353,8 +353,8 @@ What pytcl has that the MATLAB library does not
 The comparison runs both ways. pytcl adds: the standard OSPA metric and CLEAR-MOT evaluation,
 ionospheric delay models, R-trees and cover trees, DBSCAN and hierarchical
 clustering, min-cost-flow assignment, SQL and HDF5 track storage with
-migration tooling, dual-backend GPU acceleration, and a test suite of 10,000+
-cases that includes 110+ validation files checking against independent
+migration tooling, dual-backend GPU acceleration, and a test suite of 11,000+
+cases that includes 109+ validation files checking against independent
 references — the MATLAB library distributes no test suite at all.
 
 Honest bottom line
