@@ -1,18 +1,30 @@
 """
 Tests for Debye functions.
 
-Tests cover:
-- Debye function D_n for various orders
-- Special convenience functions D_1, D_2, D_3, D_4
-- Physical applications: heat capacity, entropy
-- Limiting behavior (small x, large x)
-- Array, scalar, and list input handling
+Oracles (none of them call pytcl):
+
+- D_n(x): mpmath Gauss-Legendre quadrature at 30 digits of the defining
+  integral ``n / x^n * int_0^x t^n / (e^t - 1) dt``, split into subintervals
+  because the integrand peaks near t = n. For x < 1 the substitution t = x*s
+  is used instead, since ``t^n`` varies by many orders of magnitude over
+  [0, x] and a plain subdivision loses digits there. Gauss-Legendre rather
+  than tanh-sinh: tanh-sinh measured 7e-9 off a 40-term Bernoulli series for
+  n = 10, x = 1e-3.
+- Heat capacity: the direct phonon-mode integral
+  ``3/x^3 * int_0^x t^4 e^t / (e^t - 1)^2 dt``, not the by-parts form
+  ``4 D_3 - 3x/(e^x - 1)`` that the library uses.
+- Entropy: the direct mode integral
+  ``3/x^3 * int_0^x t^2 [t/(e^t - 1) - ln(1 - e^-t)] dt``.
+- Closed-form limits: Debye T^3 law ``C/(3Nk) = (4 pi^4 / 5) (T/theta)^3`` and
+  its entropy ``S/(3Nk) = (4 pi^4 / 15) (T/theta)^3`` at low T; the
+  high-temperature expansion ``C/(3Nk) = 1 - x^2/20 + x^4/560 - x^6/18144``.
 """
+
+import functools
 
 import mpmath as mp
 import numpy as np
 import pytest
-from scipy.special import zeta
 
 from pytcl.mathematical_functions.special_functions.debye import (
     debye,
@@ -25,493 +37,274 @@ from pytcl.mathematical_functions.special_functions.debye import (
 )
 
 
-def _debye_mpmath_oracle(n: int, x: float) -> mp.mpf:
-    """Reference D_n(x) via direct numerical integration at 30-digit precision."""
-    if x == 0:
-        return mp.mpf(1)
+def _grid(x: mp.mpf, n: int) -> list:
+    """Quadrature breakpoints in t covering [0, x] and the peak near t = n."""
+    top = min(x, 8 * n + 100)
+    m = max(16, int(top / 4) + 1)
+    pts = [top * mp.mpf(i) / m for i in range(m + 1)]
+    if x > top:
+        pts.append(x)
+    return pts
+
+
+@functools.lru_cache(maxsize=None)
+def _debye_oracle(n: int, x: float) -> mp.mpf:
+    """D_n(x) at 30 digits from the defining integral."""
     with mp.workdps(30):
-        nx = int(n)
         xx = mp.mpf(x)
-        integral = mp.quad(lambda t: t**nx / (mp.e**t - 1), [0, xx])
-        return (mp.mpf(nx) / xx**nx) * integral
+        pts = _grid(xx, n)
+        if x < 1:
+            integral = mp.quad(
+                lambda u: u**n * xx / mp.expm1(xx * u),
+                [p / xx for p in pts],
+                method="gauss-legendre",
+            )
+            return n * integral
+        integral = mp.quad(lambda t: t**n / mp.expm1(t), pts, method="gauss-legendre")
+        return n * integral / xx**n
+
+
+@functools.lru_cache(maxsize=None)
+def _heat_capacity_oracle(x: float) -> mp.mpf:
+    """C_V / (3 N k_B) at Theta_D / T = x from the phonon-mode integral."""
+    with mp.workdps(30):
+        xx = mp.mpf(x)
+
+        def mode(t):
+            return t**4 * mp.exp(t) / mp.expm1(t) ** 2
+
+        return 3 * mp.quad(mode, _grid(xx, 3), method="gauss-legendre") / xx**3
+
+
+@functools.lru_cache(maxsize=None)
+def _entropy_oracle(x: float) -> mp.mpf:
+    """S / (3 N k_B) at Theta_D / T = x from the phonon-mode integral."""
+    with mp.workdps(30):
+        xx = mp.mpf(x)
+
+        def mode(t):
+            return t**2 * (t / mp.expm1(t) - mp.log(-mp.expm1(-t)))
+
+        return 3 * mp.quad(mode, _grid(xx, 3), method="gauss-legendre") / xx**3
+
+
+def _x_switch(n: int) -> float:
+    """Large-x regime boundary of the implementation: n + 2 sqrt(n) + 5."""
+    return n + 2.0 * np.sqrt(n) + 5.0
+
+
+_ORDERS = (1, 2, 3, 4, 6, 10, 12, 20, 30, 50)
+_XS = (1e-3, 0.5, 1.0, 2.0, 5.0, 17.0, 40.0, 150.0, 700.0)
+_BOUNDARY_ORDERS = (1, 4, 6, 8, 9, 10)
+_BOUNDARY_XS = (0.99, 1.0, 1.01, 1.9, 1.99, 2.0, 10.0)
+_SWITCH_POINTS = [(n, _x_switch(n) + d) for n in (3, 12, 30) for d in (-0.01, 0.01)]
+
+
+def _debye_value(n, x):
+    return float(debye(n, x)[0])
 
 
 # =============================================================================
-# Tests for general Debye function
+# D_n(x) against the quadrature oracle
 # =============================================================================
 
 
-class TestDebye:
-    """Tests for general Debye function D_n(x)."""
+class TestDebyeValues:
+    """D_n(x) against 30-digit quadrature, rel 1e-13."""
 
-    def test_debye_at_zero(self):
-        """Test D_n(0) = 1 for all orders."""
-        for n in range(1, 6):
-            result = debye(n, 0.0)
-            assert result[0] == pytest.approx(1.0, rel=1e-6)
+    @pytest.mark.parametrize("n", _ORDERS)
+    @pytest.mark.parametrize("x", _XS)
+    def test_grid(self, n, x):
+        assert _debye_value(n, x) == pytest.approx(
+            float(_debye_oracle(n, x)), rel=1e-13, abs=0
+        )
 
-    def test_debye_order_1(self):
-        """Test D_1(x) basic evaluation."""
-        result = debye(1, 1.0)
-        assert np.isfinite(result[0])
-        assert result[0] > 0
-        assert result[0] < 1  # D_n(x) decreases from 1
+    @pytest.mark.parametrize("n", _BOUNDARY_ORDERS)
+    @pytest.mark.parametrize("x", _BOUNDARY_XS)
+    def test_small_x_branch_boundary(self, n, x):
+        """x in [0.99, 2.0] straddles the former x0 = 1 and x0 = 2 switches."""
+        assert _debye_value(n, x) == pytest.approx(
+            float(_debye_oracle(n, x)), rel=1e-13, abs=0
+        )
 
-    def test_debye_order_3(self):
-        """Test D_3(x) basic evaluation."""
-        result = debye(3, 1.0)
-        assert np.isfinite(result[0])
-        assert result[0] > 0
-        assert result[0] < 1
+    @pytest.mark.parametrize(("n", "x"), _SWITCH_POINTS)
+    def test_large_x_regime_boundary(self, n, x):
+        assert _debye_value(n, x) == pytest.approx(
+            float(_debye_oracle(n, x)), rel=1e-13, abs=0
+        )
 
-    def test_debye_scalar_input(self):
-        """Test Debye function with scalar input."""
-        result = debye(1, 1.5)
-        assert np.isfinite(result)
+    @pytest.mark.parametrize("n", (1, 3, 12, 50))
+    def test_array_input_matches_oracle_elementwise(self, n):
+        x = np.array([0.5, 2.0, 17.0, 150.0])
+        got = debye(n, x)
+        expected = [float(_debye_oracle(n, float(v))) for v in x]
+        assert got.shape == (4,)
+        np.testing.assert_allclose(got, expected, rtol=1e-13, atol=0)
 
-    def test_debye_small_x(self):
-        """Test D_n(x) for small x using series expansion."""
-        x = 0.05  # Small x should use series expansion
+    @pytest.mark.parametrize("n", range(1, 7))
+    def test_value_at_zero_is_one(self, n):
+        np.testing.assert_array_equal(debye(n, 0.0), [1.0])
+
+    @pytest.mark.parametrize("n", (1, 3, 12))
+    def test_value_at_infinity_is_zero(self, n):
+        np.testing.assert_array_equal(debye(n, np.inf), [0.0])
+
+    @pytest.mark.parametrize(
+        ("fn", "n"), [(debye_1, 1), (debye_2, 2), (debye_3, 3), (debye_4, 4)]
+    )
+    def test_convenience_functions_match_oracle(self, fn, n):
+        xs = [0.5, 1.5, 5.0, 40.0]
+        np.testing.assert_allclose(
+            fn(xs),
+            [float(_debye_oracle(n, v)) for v in xs],
+            rtol=1e-13,
+            atol=0,
+        )
+
+    def test_list_input(self):
+        np.testing.assert_allclose(
+            debye_1([0.5, 1.0, 2.0]),
+            [float(_debye_oracle(1, v)) for v in (0.5, 1.0, 2.0)],
+            rtol=1e-13,
+            atol=0,
+        )
+
+    def test_low_x_expansion_leading_terms(self):
+        """D_n(x) = 1 - n x / (2 (n + 1)) + n x^2 / (12 (n + 2)) + O(x^4)."""
+        x = 1e-4
         for n in range(1, 5):
-            result = debye(n, x)
-            assert np.isfinite(result[0])
-            # For small x, D_n(x) ≈ 1 - n*x/(2*(n+1))
-            expected_approx = 1 - n * x / (2 * (n + 1))
-            assert result[0] == pytest.approx(expected_approx, rel=0.01)
+            expected = 1 - n * x / (2 * (n + 1)) + n * x**2 / (12 * (n + 2))
+            assert _debye_value(n, x) == pytest.approx(expected, rel=1e-14, abs=0)
 
-    def test_debye_large_x(self):
-        """Test D_n(x) asymptotic for large x."""
-        x = 150.0  # Large x
-        n = 3
-        result = debye(n, x)
-        assert np.isfinite(result[0])
-        # For large x, D_n(x) -> n! * zeta(n+1) * n / x^n
-        import math
+    def test_large_x_asymptote(self):
+        """D_n(x) -> n * n! * zeta(n + 1) / x^n; the correction is O(e^-x)."""
+        x = 150.0
+        # zeta(4) = pi^4 / 90
+        expected = 3 * 6 * (np.pi**4 / 90) / x**3
+        assert _debye_value(3, x) == pytest.approx(expected, rel=1e-13, abs=0)
 
-        expected_asymp = math.factorial(n) * zeta(n + 1) * n / (x**n)
-        assert result[0] == pytest.approx(expected_asymp, rel=0.1)
 
-    def test_debye_array_input(self):
-        """Test D_n with array input."""
-        x = np.array([0.0, 0.5, 1.0, 2.0, 5.0])
-        result = debye(3, x)
-        assert len(result) == 5
-        assert result[0] == pytest.approx(1.0, rel=1e-6)
-        assert np.all(np.isfinite(result))
-        # D_n should be monotonically decreasing
-        assert np.all(np.diff(result) <= 0)
-
-    def test_debye_monotonically_decreasing(self):
-        """Test that D_n(x) is monotonically decreasing for x > 0."""
-        x = np.linspace(0.1, 10, 50)
-        for n in range(1, 5):
-            result = debye(n, x)
-            # Allow small numerical fluctuations
-            assert np.all(np.diff(result) < 1e-6)
-
-    def test_debye_higher_orders(self):
-        """Test D_n for higher orders n > 4."""
-        for n in [5, 6, 8, 10]:
-            result = debye(n, 2.0)
-            assert np.isfinite(result[0])
-            assert result[0] > 0
-
-    def test_debye_invalid_order(self):
-        """Test that n < 1 raises ValueError."""
+class TestDebyeErrors:
+    def test_invalid_order(self):
         with pytest.raises(ValueError, match="Order n must be >= 1"):
             debye(0, 1.0)
 
-    def test_debye_order_beyond_cache(self):
-        """Test D_n for orders beyond pre-computed zeta values."""
-        result = debye(15, 5.0)
-        assert np.isfinite(result[0])
-        assert result[0] > 0
+    def test_non_integer_order(self):
+        with pytest.raises(ValueError, match="Order n must be >= 1"):
+            debye(1.5, 1.0)
 
-    def test_debye_zero_behavior(self):
-        """Test Debye function behavior near zero."""
-        x_small = np.array([1e-6, 1e-5, 1e-4, 0.001])
-        result = debye(1, x_small)
-        assert np.all(np.isfinite(result))
+    @pytest.mark.parametrize("x", (-1e-9, -1.0, -50.0))
+    def test_negative_x_rejected(self, x):
+        with pytest.raises(ValueError, match="x must be >= 0"):
+            debye(3, x)
 
-    def test_debye_with_zeros_in_array(self):
-        """Test Debye with array containing near-zero values."""
-        x = np.array([0.0, 0.001, 0.01, 0.1, 1.0])
-        result = debye_1(x)
-        assert result.shape == x.shape
-        assert np.all(np.isfinite(result))
+    def test_negative_element_in_array_rejected(self):
+        with pytest.raises(ValueError, match="x must be >= 0"):
+            debye(3, np.array([1.0, -1.0]))
 
 
 # =============================================================================
-# Tests for convenience functions D_1, D_2, D_3, D_4
-# =============================================================================
-
-
-class TestDebyeConvenienceFunctions:
-    """Tests for D_1, D_2, D_3, D_4 convenience functions."""
-
-    def test_debye_1_at_zero(self):
-        """Test D_1(0) = 1."""
-        result = debye_1(0.0)
-        assert result[0] == pytest.approx(1.0, rel=1e-6)
-
-    def test_debye_2_at_zero(self):
-        """Test D_2(0) = 1."""
-        result = debye_2(0.0)
-        assert result[0] == pytest.approx(1.0, rel=1e-6)
-
-    def test_debye_3_at_zero(self):
-        """Test D_3(0) = 1."""
-        result = debye_3(0.0)
-        assert result[0] == pytest.approx(1.0, rel=1e-6)
-
-    def test_debye_4_at_zero(self):
-        """Test D_4(0) = 1."""
-        result = debye_4(0.0)
-        assert result[0] == pytest.approx(1.0, rel=1e-6)
-
-    def test_debye_1_equals_debye(self):
-        """Test debye_1 gives same result as debye(1, x)."""
-        x = np.array([0.5, 1.0, 2.0, 5.0])
-        result1 = debye_1(x)
-        result2 = debye(1, x)
-        np.testing.assert_allclose(result1, result2)
-
-    def test_debye_2_equals_debye(self):
-        """Test debye_2 gives same result as debye(2, x)."""
-        x = np.array([0.5, 1.0, 2.0, 5.0])
-        result1 = debye_2(x)
-        result2 = debye(2, x)
-        np.testing.assert_allclose(result1, result2)
-
-    def test_debye_3_equals_debye(self):
-        """Test debye_3 gives same result as debye(3, x)."""
-        x = np.array([0.5, 1.0, 2.0, 5.0])
-        result1 = debye_3(x)
-        result2 = debye(3, x)
-        np.testing.assert_allclose(result1, result2)
-
-    def test_debye_4_equals_debye(self):
-        """Test debye_4 gives same result as debye(4, x)."""
-        x = np.array([0.5, 1.0, 2.0, 5.0])
-        result1 = debye_4(x)
-        result2 = debye(4, x)
-        np.testing.assert_allclose(result1, result2)
-
-    def test_debye_1_scalar(self):
-        """Test Debye D_1 with scalar."""
-        result = debye_1(1.5)
-        assert np.isfinite(result)
-
-    def test_debye_2_scalar(self):
-        """Test Debye D_2 with scalar."""
-        result = debye_2(1.5)
-        assert np.isfinite(result)
-
-    def test_debye_3_scalar(self):
-        """Test Debye D_3 with scalar."""
-        result = debye_3(1.5)
-        assert np.isfinite(result)
-
-    def test_debye_4_scalar(self):
-        """Test Debye D_4 with scalar."""
-        result = debye_4(1.5)
-        assert np.isfinite(result)
-
-    def test_debye_1_list_input(self):
-        """Test Debye D_1 with list input."""
-        result = debye_1([0.5, 1.0, 2.0])
-        assert result.shape == (3,)
-        assert np.all(np.isfinite(result))
-
-    def test_debye_consistency_across_orders(self):
-        """Test consistency of convenience vs general debye function."""
-        x = 1.5
-        assert np.isclose(debye_1(x), debye(1, x))
-        assert np.isclose(debye_2(x), debye(2, x))
-        assert np.isclose(debye_3(x), debye(3, x))
-        assert np.isclose(debye_4(x), debye(4, x))
-
-
-# =============================================================================
-# Tests for heat capacity
+# Heat capacity
 # =============================================================================
 
 
 class TestDebyeHeatCapacity:
-    """Tests for Debye model heat capacity."""
+    """Debye-model C_V / (3 N k_B)."""
 
-    def test_heat_capacity_high_temperature(self):
-        """Test C_V approaches classical limit at high T."""
-        # At T >> Theta_D, C_V / (3*N*k_B) -> 1
-        T = np.array([1000.0, 2000.0, 5000.0])
-        theta_D = 100.0  # Much lower than T
-        result = debye_heat_capacity(T, theta_D)
-        # Should be close to 1 for T >> Theta_D
-        for r in result:
-            assert r == pytest.approx(1.0, rel=0.05)
+    @pytest.mark.parametrize(
+        ("temperature", "theta"),
+        [
+            (300.0, 428.0),
+            (200.0, 300.0),
+            (1000.0, 300.0),
+            (5000.0, 100.0),
+            (50.0, 400.0),
+            (20.0, 400.0),
+            (10.0, 400.0),
+        ],
+    )
+    def test_matches_phonon_mode_integral(self, temperature, theta):
+        x = theta / temperature
+        got = debye_heat_capacity(temperature, theta)
+        assert got[0] == pytest.approx(
+            float(_heat_capacity_oracle(x)), rel=1e-12, abs=0
+        )
 
-    def test_heat_capacity_low_temperature(self):
-        """Test C_V follows T^3 law at low T."""
-        # At T << Theta_D, C_V ~ (T/Theta_D)^3
-        theta_D = 400.0
-        T = np.array([10.0, 20.0])  # Much lower than Theta_D
-        result = debye_heat_capacity(T, theta_D)
-        # C_V should be small and proportional to T^3
-        assert result[0] < result[1]  # Increases with T
-        assert np.all(result < 1)
+    def test_array_input(self):
+        theta = 300.0
+        T = np.array([60.0, 150.0, 300.0, 600.0])
+        expected = [float(_heat_capacity_oracle(theta / t)) for t in T]
+        np.testing.assert_allclose(
+            debye_heat_capacity(T, theta), expected, rtol=1e-12, atol=0
+        )
 
-    def test_heat_capacity_intermediate(self):
-        """Test C_V at intermediate temperature."""
-        T = 200.0  # Intermediate temperature
-        theta_D = 300.0
-        result = debye_heat_capacity(T, theta_D)
-        assert np.isfinite(result)
-        assert 0 < result < 1
+    def test_low_temperature_t_cubed_law(self):
+        """C/(3Nk) = (4 pi^4 / 5) (T/theta)^3 up to O(e^-x)."""
+        theta, T = 1000.0, 10.0
+        expected = 4 * np.pi**4 / 5 * (T / theta) ** 3
+        assert debye_heat_capacity(T, theta)[0] == pytest.approx(
+            expected, rel=1e-13, abs=0
+        )
 
-    def test_heat_capacity_invalid_temperature(self):
-        """Test negative temperature raises ValueError."""
+    def test_high_temperature_expansion(self):
+        """C/(3Nk) = 1 - x^2/20 + x^4/560 - x^6/18144 + O(x^8)."""
+        x = 0.05
+        expected = 1 - x**2 / 20 + x**4 / 560 - x**6 / 18144
+        assert debye_heat_capacity(1.0 / x, 1.0)[0] == pytest.approx(
+            expected, rel=1e-13, abs=0
+        )
+
+    def test_invalid_temperature(self):
         with pytest.raises(ValueError, match="Temperature must be positive"):
             debye_heat_capacity(-100.0, 300.0)
 
-    def test_heat_capacity_invalid_debye_temperature(self):
-        """Test negative Debye temperature raises ValueError."""
+    def test_invalid_debye_temperature(self):
         with pytest.raises(ValueError, match="Debye temperature must be positive"):
             debye_heat_capacity(300.0, -100.0)
 
-    def test_heat_capacity_array_input(self):
-        """Test heat capacity with array input."""
-        T = np.linspace(50, 500, 10)
-        theta_D = 300.0
-        result = debye_heat_capacity(T, theta_D)
-        assert len(result) == 10
-        assert np.all(np.isfinite(result))
-        # Should increase with temperature
-        assert np.all(np.diff(result) > 0)
-
-    def test_heat_capacity_aluminum(self):
-        """Test realistic example: aluminum at various temperatures."""
-        theta_D = 428.0  # Aluminum Debye temperature
-        T_room = 300.0
-        result = debye_heat_capacity(T_room, theta_D)
-        # C_V/(3*N*k_B) = 4*D_3(x) - 3*x/(e^x - 1) at x = 428/300 is ~0.905
-        assert np.isclose(result[0], 0.90518982126177901, rtol=1e-10)
-
-    def test_heat_capacity_different_debye_temps(self):
-        """Test heat capacity with different Debye temperatures."""
-        T = np.array([50, 100, 200])
-        for theta_d in [100, 250, 500]:
-            c_v = debye_heat_capacity(T, theta_d)
-            assert c_v.shape == T.shape
-            assert np.all(np.isfinite(c_v))
-
 
 # =============================================================================
-# Tests for entropy
+# Entropy
 # =============================================================================
 
 
 class TestDebyeEntropy:
-    """Tests for Debye model entropy."""
+    """Debye-model S / (3 N k_B)."""
 
-    def test_entropy_increases_with_temperature(self):
-        """Test entropy increases with temperature."""
+    @pytest.mark.parametrize(
+        ("temperature", "theta"),
+        [
+            (300.0, 300.0),
+            (100.0, 300.0),
+            (1000.0, 300.0),
+            (50.0, 400.0),
+            (20.0, 400.0),
+            (10.0, 400.0),
+        ],
+    )
+    def test_matches_phonon_mode_integral(self, temperature, theta):
+        x = theta / temperature
+        got = debye_entropy(temperature, theta)
+        assert got[0] == pytest.approx(float(_entropy_oracle(x)), rel=1e-12, abs=0)
+
+    def test_array_input(self):
+        theta = 300.0
         T = np.array([100.0, 200.0, 300.0, 400.0])
-        theta_D = 300.0
-        result = debye_entropy(T, theta_D)
-        assert np.all(np.diff(result) > 0)
+        expected = [float(_entropy_oracle(theta / t)) for t in T]
+        np.testing.assert_allclose(
+            debye_entropy(T, theta), expected, rtol=1e-12, atol=0
+        )
 
-    def test_entropy_low_temperature(self):
-        """Test entropy at low temperature."""
-        T = 50.0
-        theta_D = 400.0
-        result = debye_entropy(T, theta_D)
-        assert np.isfinite(result)
-        assert result > 0  # Entropy should be positive
+    def test_low_temperature_t_cubed_law(self):
+        """S/(3Nk) = (4 pi^4 / 15) (T/theta)^3 up to O(e^-x)."""
+        theta, T = 1000.0, 10.0
+        expected = 4 * np.pi**4 / 15 * (T / theta) ** 3
+        assert debye_entropy(T, theta)[0] == pytest.approx(expected, rel=1e-13, abs=0)
 
-    def test_entropy_high_temperature(self):
-        """Test entropy at high temperature."""
-        T = 1000.0
-        theta_D = 300.0
-        result = debye_entropy(T, theta_D)
-        assert np.isfinite(result)
-
-    def test_entropy_invalid_temperature(self):
-        """Test negative temperature raises ValueError."""
+    def test_invalid_temperature(self):
         with pytest.raises(ValueError, match="Temperature must be positive"):
             debye_entropy(-100.0, 300.0)
 
-    def test_entropy_invalid_debye_temperature(self):
-        """Test negative Debye temperature raises ValueError."""
+    def test_invalid_debye_temperature(self):
         with pytest.raises(ValueError, match="Debye temperature must be positive"):
             debye_entropy(300.0, -100.0)
-
-    def test_entropy_array_input(self):
-        """Test entropy with array input."""
-        T = np.linspace(50, 500, 10)
-        theta_D = 300.0
-        result = debye_entropy(T, theta_D)
-        assert len(result) == 10
-        assert np.all(np.isfinite(result))
-
-    def test_entropy_large_x(self):
-        """Test entropy for large x = Theta_D / T (low T limit)."""
-        T = 10.0  # Very low temperature
-        theta_D = 1000.0  # High Debye temperature, so x > 100
-        result = debye_entropy(T, theta_D)
-        # Should still be finite and positive
-        assert np.isfinite(result)
-        assert result > 0
-
-    def test_entropy_positive(self):
-        """Test that Debye entropy is positive."""
-        T = np.array([50, 100, 200, 300])
-        theta_d = 250
-        S = debye_entropy(T, theta_d)
-        assert np.all(S >= 0)
-
-    def test_entropy_different_debye_temps(self):
-        """Test entropy with different Debye temperatures."""
-        T = np.array([50, 100, 200])
-        for theta_d in [100, 250, 500]:
-            S = debye_entropy(T, theta_d)
-            assert S.shape == T.shape
-            assert np.all(np.isfinite(S))
-
-
-# =============================================================================
-# Accuracy at the small-x/large-x branch boundary (mpmath oracle)
-# =============================================================================
-
-
-class TestDebyeBoundaryAccuracy:
-    """Pin the measured accuracy of the small-x/large-x branch switch.
-
-    Regression test for a claims-audit finding: the module previously
-    switched branches at x0=1.0, which put x in [1.0, ~2.0) on the
-    large-x branch, where an alternating sum cancels catastrophically
-    for higher n (measured up to 8.6e-9 relative error at n=10, x=1.0).
-    The switch is now at x0=2.0. These tests pin the after-fix accuracy
-    against a 30-digit mpmath oracle so the boundary cannot silently
-    regress.
-    """
-
-    _ORDERS = (1, 4, 6, 8, 9, 10)
-    _XS = (0.5, 0.99, 1.0, 1.01, 2.0, 10.0)
-
-    @pytest.mark.parametrize("n", _ORDERS)
-    @pytest.mark.parametrize("x", _XS)
-    def test_boundary_grid_within_measured_bound(self, n, x):
-        """D_n(x) stays within the measured worst-case bound on the audit grid."""
-        got = float(debye(n, x)[0])
-        ref = _debye_mpmath_oracle(n, x)
-        rel_err = abs((mp.mpf(got) - ref) / ref)
-        # Measured worst case on this grid post-fix is ~3.8e-12
-        # (n=9/10 at x=2.0, the branch boundary itself); bound with headroom.
-        assert float(rel_err) < 5e-11
-
-    @pytest.mark.parametrize("n", (6, 9, 10))
-    @pytest.mark.parametrize("x", (1.9, 1.99))
-    def test_just_below_boundary_within_measured_bound(self, n, x):
-        """D_n(x) just below the x0=2.0 switch is the actual worst region.
-
-        The small-x series is still selected here (x < 2.0) but is nearing
-        the edge of its useful precision; this is worse than the boundary
-        point x=2.0 itself, which falls to the large-x branch instead.
-        Measured worst case: 1.86e-11 (n=10, x=1.999, not parametrized here
-        to keep the grid small); bound with headroom.
-        """
-        got = float(debye(n, x)[0])
-        ref = _debye_mpmath_oracle(n, x)
-        rel_err = abs((mp.mpf(got) - ref) / ref)
-        assert float(rel_err) < 3e-11
-
-    @pytest.mark.parametrize("n", _ORDERS)
-    def test_old_boundary_now_near_machine_precision(self, n):
-        """x=1.0 and x=1.01 (the old x0=1.0 boundary) are now near machine eps.
-
-        Before the x0=1.0 -> 2.0 fix these points fell on the large-x
-        branch and lost up to 8.6e-9 relative to cancellation; they now
-        fall on the small-x series, which is well-conditioned there.
-        """
-        for x in (1.0, 1.01):
-            got = float(debye(n, x)[0])
-            ref = _debye_mpmath_oracle(n, x)
-            rel_err = abs((mp.mpf(got) - ref) / ref)
-            assert float(rel_err) < 1e-12
-
-
-# =============================================================================
-# Integration tests
-# =============================================================================
-
-
-class TestDebyeIntegration:
-    """Integration tests for Debye functions."""
-
-    def test_debye_physical_consistency(self):
-        """Test that D_n for different n have consistent ordering."""
-        x = 2.0
-        d1 = debye(1, x)[0]
-        d2 = debye(2, x)[0]
-        d3 = debye(3, x)[0]
-        d4 = debye(4, x)[0]
-        # All should be positive and finite
-        assert all(np.isfinite([d1, d2, d3, d4]))
-        assert all(d > 0 for d in [d1, d2, d3, d4])
-
-    def test_heat_capacity_entropy_relationship(self):
-        """Test physical relationship between heat capacity and entropy."""
-        T = np.array([100.0, 200.0, 300.0])
-        theta_D = 300.0
-        cv = debye_heat_capacity(T, theta_D)
-        s = debye_entropy(T, theta_D)
-        # Both should increase with temperature
-        assert np.all(np.diff(cv) > 0)
-        assert np.all(np.diff(s) > 0)
-
-    def test_batch_performance(self):
-        """Test batch computation works correctly."""
-        x = np.logspace(-2, 2, 100)  # 0.01 to 100
-        result = debye(3, x)
-        assert len(result) == 100
-        assert np.all(np.isfinite(result))
-        assert result[0] > result[-1]  # Decreasing
-
-    def test_all_regimes(self):
-        """Test all three computation regimes: small, medium, large x."""
-        # Small x (series expansion)
-        small = debye(3, 0.05)
-        assert np.isfinite(small[0])
-
-        # Medium x (numerical integration)
-        medium = debye(3, 5.0)
-        assert np.isfinite(medium[0])
-
-        # Large x (asymptotic)
-        large = debye(3, 150.0)
-        assert np.isfinite(large[0])
-
-        # Check ordering
-        assert small[0] > medium[0] > large[0]
-
-    def test_debye_physical_parameters(self):
-        """Test Debye functions with typical material parameters."""
-        materials = {"Cu": 343, "Al": 428, "Fe": 467, "Pb": 105}
-        T = np.array([100, 200, 300])
-        for _, theta_d in materials.items():
-            c_v = debye_heat_capacity(T, theta_d)
-            S = debye_entropy(T, theta_d)
-            assert np.all(np.isfinite(c_v))
-            assert np.all(np.isfinite(S))
-
-    def test_debye_continuous_evaluation(self):
-        """Test continuous evaluation of Debye functions."""
-        x = np.linspace(0.01, 20, 1000)
-        d1 = debye_1(x)
-        d2 = debye_2(x)
-        d3 = debye_3(x)
-        d4 = debye_4(x)
-        assert np.all(np.isfinite(d1))
-        assert np.all(np.isfinite(d2))
-        assert np.all(np.isfinite(d3))
-        assert np.all(np.isfinite(d4))

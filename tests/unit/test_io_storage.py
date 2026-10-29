@@ -77,7 +77,7 @@ class TestHDF5Storage:
         with HDF5Storage() as store:
             store.open(temp_file, mode="r")
             keys = store.list_keys("gravity")
-            assert "coefficients" in keys
+            assert sorted(keys) == ["coefficients"]
 
     def test_list_keys(self, temp_file):
         """Test listing keys."""
@@ -89,10 +89,7 @@ class TestHDF5Storage:
 
         with HDF5Storage() as store:
             store.open(temp_file, mode="r")
-            keys = store.list_keys()
-            assert "a" in keys
-            assert "b" in keys
-            assert "c" in keys
+            assert sorted(store.list_keys()) == ["a", "b", "c"]
 
     def test_get_metadata(self, temp_file):
         """Test metadata retrieval."""
@@ -202,6 +199,10 @@ class TestSQLStorage:
             store.store_group("mission", metadata={"start": "2025-01-01"})
             store.store_scalar("mission/duration", 3600)
 
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.retrieve_scalar("mission/duration") == 3600
+
     def test_list_keys(self, temp_db):
         """Test listing keys."""
         with SQLStorage() as store:
@@ -212,10 +213,7 @@ class TestSQLStorage:
 
         with SQLStorage() as store:
             store.open(temp_db, mode="r")
-            keys = store.list_keys()
-            assert "data1" in keys
-            assert "data2" in keys
-            assert "scalar1" in keys
+            assert sorted(store.list_keys()) == ["data1", "data2", "scalar1"]
 
     def test_get_metadata(self, temp_db):
         """Test metadata retrieval."""
@@ -254,7 +252,7 @@ class TestSQLStorage:
         with SQLStorage() as store:
             store.open(temp_db, mode="r")
             retrieved = store.retrieve_array("floats")
-            np.testing.assert_array_almost_equal(retrieved, data)
+            np.testing.assert_array_equal(retrieved, data)
 
     def test_replace_existing(self, temp_db):
         """Test replacing existing data."""
