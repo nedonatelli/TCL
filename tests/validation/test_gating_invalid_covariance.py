@@ -106,8 +106,10 @@ class TestDefectExistedInV2111:
     def test_length_3_against_6x6_returned_a_number(self, old_gating):
         S = _spd(6, 1)
         nu = np.random.default_rng(101).standard_normal(7)[:3]
+        # The fastmath kernel's summation order differs by platform: 1 ulp
+        # apart between macOS and Linux CI.
         assert old_gating.mahalanobis_distance(nu, S) == pytest.approx(
-            0.6724271595640299, abs=0
+            0.6724271595640299, rel=1e-12, abs=0
         )
         with pytest.raises(ValueError, match=r"\(3,\).*\(6, 6\)"):
             gating.mahalanobis_distance(nu, S)
