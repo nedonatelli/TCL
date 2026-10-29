@@ -267,14 +267,13 @@ def compute_likelihood_matrix(
         # faster than both the original loop and the cho_factor attempt.
         try:
             S_inv = np.linalg.inv(S)
+            innovations = measurements - z_pred
+            mahal_sq = np.empty(n_meas)
+            mahalanobis_batch(innovations, S_inv, mahal_sq)
         except LinAlgError:
-            # S already passed the Cholesky PD check above, so np.linalg.inv
-            # should never raise here; this is a defensive fallback to the
-            # original per-pair path for the pathological case where it
-            # does anyway (mahalanobis_distance's own dispatch raises the
-            # same error only when its own route is also singular;
-            # compute_measurement_likelihood's own Cholesky guard still
-            # zeroes the likelihood if reached with a non-PD S).
+            # S passed the Cholesky check above, so an inverse that fails or
+            # that mahalanobis_batch rejects as non-positive-definite is
+            # numerical; fall back to the per-pair path.
             for j in range(n_meas):
                 innovation = measurements[j] - z_pred
                 mahal_dist = mahalanobis_distance(innovation, S)
@@ -287,10 +286,6 @@ def compute_likelihood_matrix(
             continue
 
         det_S = np.linalg.det(S)
-
-        innovations = measurements - z_pred
-        mahal_sq = np.empty(n_meas)
-        mahalanobis_batch(innovations, S_inv, mahal_sq)
 
         if gate_threshold is None:
             track_gated = np.ones(n_meas, dtype=bool)

@@ -117,22 +117,39 @@ def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
 
 
 @njit(cache=True)
-def _not_pd_3x3(S: np.ndarray[Any, Any], det: float) -> bool:
-    """True when the leading principal minors of a symmetric 3x3 are not all > 0.
+def _not_pd_2x2(S: np.ndarray[Any, Any]) -> bool:
+    """True when the symmetric part of a 2x2 has a leading minor <= 0.
 
-    A NaN minor is not flagged, so a NaN covariance propagates NaN as before.
+    ``nu' S^-1 nu = y' S y`` with ``y = S^-1 nu``, and ``y' S y`` is
+    ``y' sym(S) y``, so the symmetric part ``(S + S')/2`` decides whether the
+    form is non-negative for every ``nu``. A NaN minor is not flagged, so a
+    NaN covariance propagates NaN as before.
     """
-    minor2 = S[0, 0] * S[1, 1] - S[0, 1] * S[1, 0]
-    return S[0, 0] <= 0.0 or minor2 <= 0.0 or det <= 0.0
+    b = (S[0, 1] + S[1, 0]) * 0.5
+    return S[0, 0] <= 0.0 or S[0, 0] * S[1, 1] - b * b <= 0.0
+
+
+@njit(cache=True)
+def _not_pd_3x3(S: np.ndarray[Any, Any]) -> bool:
+    """True when the symmetric part of a 3x3 has a leading minor <= 0."""
+    a = S[0, 0]
+    e = S[1, 1]
+    i = S[2, 2]
+    b = (S[0, 1] + S[1, 0]) * 0.5
+    c = (S[0, 2] + S[2, 0]) * 0.5
+    f = (S[1, 2] + S[2, 1]) * 0.5
+    minor2 = a * e - b * b
+    det = a * (e * i - f * f) - b * (b * i - f * c) + c * (b * f - e * c)
+    return a <= 0.0 or minor2 <= 0.0 or det <= 0.0
 
 
 @njit(cache=True)
 def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
-    """True when a Cholesky factorization of S (lower triangle) hits a pivot <= 0.
+    """True when a Cholesky of the symmetric part of S hits a pivot <= 0.
 
     A pivot is the exact leading-principal-minor ratio, so this is an exact
-    positive-definiteness test for a symmetric matrix at n^3/6 multiply-adds.
-    A NaN pivot is not flagged, so a NaN covariance propagates NaN as before.
+    positive-definiteness test at n^3/6 multiply-adds. A NaN pivot is not
+    flagged, so a NaN covariance propagates NaN as before.
     """
     n = S.shape[0]
     L = np.zeros((n, n))
@@ -145,11 +162,22 @@ def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
         d = np.sqrt(d2)
         L[j, j] = d
         for i in range(j + 1, n):
-            t = S[i, j]
+            t = (S[i, j] + S[j, i]) * 0.5
             for k in range(j):
                 t -= L[i, k] * L[j, k]
             L[i, j] = t / d
     return False
+
+
+def _not_pd(S: "NDArray[np.float64]") -> bool:
+    n = S.shape[0]
+    if n == 1:
+        return bool(S.item(0) <= 0.0)
+    if n == 2:
+        return _not_pd_2x2(S)
+    if n == 3:
+        return _not_pd_3x3(S)
+    return _not_pd_general(S)
 
 
 def _shape_error(
@@ -164,8 +192,9 @@ def _shape_error(
 
 def _raise_not_pd() -> None:
     raise np.linalg.LinAlgError(
-        "innovation covariance is not positive definite; a squared Mahalanobis "
-        "distance is only defined for a positive-definite covariance"
+        "innovation covariance is not positive definite or too ill-conditioned; "
+        "a squared Mahalanobis distance is only defined for a positive-definite "
+        "covariance"
     )
 
 
@@ -187,9 +216,7 @@ def mahalanobis_distance(
     innovation : array_like
         Innovation (measurement residual) vector of shape (m,).
     innovation_covariance : array_like
-        Symmetric positive-definite innovation covariance matrix of shape
-        (m, m). Only the lower triangle is read by the positive-definiteness
-        test; a non-symmetric matrix is not detected.
+        Positive-definite innovation covariance matrix of shape (m, m).
 
     Returns
     -------
@@ -202,9 +229,14 @@ def mahalanobis_distance(
         If ``innovation`` is not 1-d or ``innovation_covariance`` is not
         (m, m) for an innovation of length m. The message names both shapes.
     numpy.linalg.LinAlgError
-        If the covariance is exactly singular or is not positive definite
-        (indefinite or negative definite). A NaN covariance is not rejected;
-        it propagates NaN.
+        If the covariance is exactly singular, or is not positive definite
+        or too ill-conditioned (indefinite, negative definite, or a
+        condition number near 1e12 or above, where the leading minors or
+        pivots round to a non-positive value). Positive definiteness is
+        tested on the symmetric part ``(S + S.T) / 2``, which is exact for
+        "the form is non-negative for every innovation", so a non-symmetric
+        ``S`` with a negative form is rejected too. A NaN covariance is
+        not rejected; it propagates NaN.
 
     Examples
     --------
@@ -242,45 +274,62 @@ def mahalanobis_distance(
       `numpy.linalg.LinAlgError` on an exactly singular covariance.
 
     Positive definiteness is tested beside that arithmetic, never in place of
-    it, so valid inputs return the same bits on every branch. n == 2 and
-    n == 3 use the leading principal minors (the determinant is already
-    computed by the closed-form inverse); other sizes run an n^3/6 Cholesky
-    pivot test, a fraction of the cost of the inverse or solve.
+    it, so valid inputs return the same bits on every branch. n == 1 tests
+    the entry, n == 2 and n == 3 the leading principal minors of the
+    symmetric part, other sizes run an n^3/6 Cholesky pivot test on it, a
+    fraction of the cost of the inverse or solve.
     """
     nu = np.asarray(innovation, dtype=np.float64)
     S = np.asarray(innovation_covariance, dtype=np.float64)
     if nu.ndim != 1 or S.shape != nu.shape * 2:
         raise _shape_error(nu, S, "innovation")
-    return _squared_distance(nu, S, True)
-
-
-def _squared_distance(
-    nu: "NDArray[np.float64]", S: "NDArray[np.float64]", check_pd: bool
-) -> float:
     n = nu.shape[0]
 
     if n == 2:
         S_inv, det = _invert_2x2(S)
         if det != 0.0:
-            if check_pd and (S.item(0) <= 0.0 or det <= 0.0):
+            if _not_pd_2x2(S):
                 _raise_not_pd()
             return float(_mahalanobis_distance_2d(nu, S_inv))
     elif n == 3:
         S_inv, det = _invert_3x3(S)
         if det != 0.0:
-            if check_pd and _not_pd_3x3(S, det):
+            if _not_pd_3x3(S):
                 _raise_not_pd()
             return float(_mahalanobis_distance_3d(nu, S_inv))
     elif n <= 10:
         S_inv = np.linalg.inv(S)
-        if check_pd and _not_pd_general(S):
+        if n == 1:
+            if S.item(0) <= 0.0:
+                _raise_not_pd()
+        elif _not_pd_general(S):
             _raise_not_pd()
         return float(_mahalanobis_distance_general(nu, S_inv))
 
     # Use solve instead of inverse for numerical stability
     S_inv_nu = np.linalg.solve(S, nu)
-    if check_pd and _not_pd_general(S):
+    if _not_pd_general(S):
         _raise_not_pd()
+    return float(nu @ S_inv_nu)
+
+
+def _squared_distance(nu: "NDArray[np.float64]", S: "NDArray[np.float64]") -> float:
+    """`mahalanobis_distance` dispatch without validation; S is already checked."""
+    n = nu.shape[0]
+
+    if n == 2:
+        S_inv, det = _invert_2x2(S)
+        if det != 0.0:
+            return float(_mahalanobis_distance_2d(nu, S_inv))
+    elif n == 3:
+        S_inv, det = _invert_3x3(S)
+        if det != 0.0:
+            return float(_mahalanobis_distance_3d(nu, S_inv))
+    elif n <= 10:
+        S_inv = np.linalg.inv(S)
+        return float(_mahalanobis_distance_general(nu, S_inv))
+
+    S_inv_nu = np.linalg.solve(S, nu)
     return float(nu @ S_inv_nu)
 
 
@@ -446,10 +495,12 @@ def gate_measurements(
     Raises
     ------
     ValueError
-        If the predicted measurement is not 1-d or the covariance is not
-        (m, m), or the gate type is unknown.
+        If the predicted measurement is not 1-d, the covariance is not
+        (m, m), the measurements are not (n_meas, m), or the gate type is
+        unknown.
     numpy.linalg.LinAlgError
-        If the covariance is not positive definite, for either gate type.
+        If the covariance is not positive definite or is too ill-conditioned
+        (see `mahalanobis_distance`), for either gate type.
 
     Notes
     -----
@@ -465,7 +516,13 @@ def gate_measurements(
 
     if z_pred.ndim != 1 or S.shape != z_pred.shape * 2:
         raise _shape_error(z_pred, S, "predicted_measurement")
-    if _not_pd_general(S):
+    if Z.ndim != 2 or Z.shape[1] != z_pred.shape[0]:
+        raise ValueError(
+            f"measurements of shape {Z.shape} are incompatible with a "
+            f"predicted measurement of shape {z_pred.shape}: expected "
+            "(n_meas, m) and (m,)"
+        )
+    if _not_pd(S):
         _raise_not_pd()
 
     n_meas = Z.shape[0]
@@ -476,14 +533,14 @@ def gate_measurements(
         innovation = Z[i] - z_pred
 
         if gate_type == "ellipsoidal":
-            d2 = _squared_distance(innovation, S, False)
+            d2 = _squared_distance(innovation, S)
             if d2 <= gate_threshold:
                 valid_indices.append(i)
                 distances.append(d2)
         elif gate_type == "rectangular":
             if rectangular_gate(innovation, S, num_sigmas=gate_threshold):
                 # For rectangular gate, still compute Mahalanobis distance for ranking
-                d2 = _squared_distance(innovation, S, False)
+                d2 = _squared_distance(innovation, S)
                 valid_indices.append(i)
                 distances.append(d2)
         else:
@@ -616,7 +673,7 @@ def mahalanobis_batch(
         If ``innovations`` is not 2-d, ``S_inv`` is not (dim, dim), or
         ``output`` is not (n_measurements,). The message names the shapes.
     numpy.linalg.LinAlgError
-        If ``S_inv`` is not positive definite.
+        If ``S_inv`` is not positive definite or is too ill-conditioned.
     """
     if (
         innovations.ndim != 2
@@ -628,7 +685,7 @@ def mahalanobis_batch(
             f"{S_inv.shape} and output of shape {output.shape} are "
             "incompatible: expected (n, m), (m, m) and (n,)"
         )
-    if _not_pd_general(S_inv):
+    if _not_pd(S_inv):
         _raise_not_pd()
     _mahalanobis_batch_kernel(innovations, S_inv, output)
 

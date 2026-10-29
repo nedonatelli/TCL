@@ -7,11 +7,15 @@ negative and is only defined for a positive-definite S. Valid inputs keep
 their v2.11.1 bits.
 """
 
+import importlib
+
 import numpy as np
 import pytest
 
 from pytcl.assignment_algorithms import gating
 from tests.validation._v2111 import shipped_module
+
+jpda = importlib.import_module("pytcl.assignment_algorithms.jpda")
 
 SIZES = [1, 2, 3, 5, 10, 12]
 INVALID_SIZES = [2, 3, 5, 12]
@@ -92,6 +96,33 @@ class TestValidInputsKeepV2111Bits:
         assert new.tolist() == old.tolist()
 
 
+class TestDefectExistedInV2111:
+    def test_length_7_against_6x6_returned_a_number(self, old_gating):
+        S = _spd(6, 1)
+        nu = np.random.default_rng(101).standard_normal(7)
+        # v2.11.1 reads S out of bounds here, so the value is not stable
+        # (-5.45 and -5.12 were both observed); only "no error" is anchored.
+        assert isinstance(old_gating.mahalanobis_distance(nu, S), float)
+        with pytest.raises(ValueError, match=r"\(7,\).*\(6, 6\)"):
+            gating.mahalanobis_distance(nu, S)
+
+    def test_length_3_against_6x6_returned_a_number(self, old_gating):
+        S = _spd(6, 1)
+        nu = np.random.default_rng(101).standard_normal(7)[:3]
+        assert old_gating.mahalanobis_distance(nu, S) == pytest.approx(
+            0.6724271595640299, abs=0
+        )
+        with pytest.raises(ValueError, match=r"\(3,\).*\(6, 6\)"):
+            gating.mahalanobis_distance(nu, S)
+
+    def test_indefinite_returned_0_667(self, old_gating):
+        nu = np.array([1.0, 1.0])
+        S = np.array([[1.0, 2.0], [2.0, 1.0]])
+        assert old_gating.mahalanobis_distance(nu, S) == pytest.approx(2 / 3, abs=0)
+        with pytest.raises(np.linalg.LinAlgError, match="positive definite"):
+            gating.mahalanobis_distance(nu, S)
+
+
 class TestShapeMismatch:
     @pytest.mark.parametrize(
         "length", [7, 3, 5, 12], ids=["7-vs-6x6", "3-vs-6x6", "5-vs-6x6", "12-vs-6x6"]
@@ -118,6 +149,13 @@ class TestShapeMismatch:
         with pytest.raises(ValueError, match=r"\(7,\).*\(6, 6\)"):
             gating.gate_measurements(
                 np.zeros(7), _spd(6, 1), np.ones((4, 7)), 10.0, gate_type
+            )
+
+    @pytest.mark.parametrize("gate_type", ["ellipsoidal", "rectangular"])
+    def test_gate_measurements_column_broadcast(self, gate_type):
+        with pytest.raises(ValueError, match=r"\(4, 1\).*\(3,\)"):
+            gating.gate_measurements(
+                np.zeros(3), np.eye(3), np.ones((4, 1)), 10.0, gate_type
             )
 
     def test_mahalanobis_batch(self):
@@ -192,15 +230,91 @@ class TestSingularUnchanged:
         assert str(new.value) == str(old.value)
 
 
+def _asym(n):
+    S = np.eye(n)
+    S[0, 1] = 3.0 if n != 2 else 0.0
+    if n == 2:
+        S[1, 0] = 3.0
+    return S
+
+
+class TestNonSymmetric:
+    @pytest.mark.parametrize(
+        "S",
+        [
+            np.array([[1.0, 0.0], [3.0, 1.0]]),
+            np.array([[1.0, 3.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+            np.array([[1.0, 0.0, 0.0], [3.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+            _asym(5),
+            _asym(12),
+        ],
+        ids=["2x2", "3x3-upper", "3x3-lower", "5x5", "12x12"],
+    )
+    def test_negative_form_is_rejected(self, old_gating, S):
+        n = S.shape[0]
+        nu = np.zeros(n)
+        nu[:2] = 1.0
+        assert old_gating.mahalanobis_distance(nu, S) < 0
+        with pytest.raises(np.linalg.LinAlgError, match="positive definite"):
+            gating.mahalanobis_distance(nu, S)
+        with pytest.raises(np.linalg.LinAlgError, match="positive definite"):
+            gating.gate_measurements(np.zeros(n), S, np.ones((2, n)), 10.0)
+
+    def test_literal_examples(self, old_gating):
+        assert old_gating.mahalanobis_distance(
+            np.array([1.0, 1.0]), np.array([[1.0, 0.0], [3.0, 1.0]])
+        ) == pytest.approx(-1.0, abs=0)
+
+
+class TestIllConditioned:
+    @pytest.mark.parametrize("cond", [1e4, 1e8, 1e11, 1e12, 1e13, 1e14, 1e16])
+    @pytest.mark.parametrize("n", [2, 3, 4, 6])
+    def test_one_verdict_for_distance_and_gate(self, n, cond):
+        rng = np.random.default_rng(n)
+        q, _ = np.linalg.qr(rng.standard_normal((n, n)))
+        S = (q * np.geomspace(1.0, 1.0 / cond, n)) @ q.T
+        S = (S + S.T) / 2
+
+        def raises(fn):
+            try:
+                fn()
+            except np.linalg.LinAlgError as exc:
+                assert "ill-conditioned" in str(exc) or "Singular" in str(exc)
+                return True
+            return False
+
+        d = raises(lambda: gating.mahalanobis_distance(np.ones(n), S))
+        g = raises(
+            lambda: gating.gate_measurements(np.zeros(n), S, np.ones((2, n)), 1e30)
+        )
+        assert d == g
+
+
+class TestJpdaFallback:
+    def test_batch_rejection_falls_back_to_per_pair(self, monkeypatch):
+        tracks_x = [np.array([0.0, 0.0, 1.0, 1.0])]
+        P = [np.diag([1.0, 1.0, 0.5, 0.5])]
+        H = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]])
+        R = 0.1 * np.eye(2)
+        Z = np.array([[0.2, 0.1], [1.0, -0.5], [4.0, 4.0]])
+        expected = jpda.compute_likelihood_matrix(tracks_x, P, Z, H, R, 0.9, 9.21)
+
+        def reject(*args):
+            raise np.linalg.LinAlgError("rejected")
+
+        monkeypatch.setattr(jpda, "mahalanobis_batch", reject)
+        got = jpda.compute_likelihood_matrix(tracks_x, P, Z, H, R, 0.9, 9.21)
+        assert got[1].tolist() == expected[1].tolist()
+        assert got[0] == pytest.approx(expected[0], rel=1e-12)
+
+
 class TestNaNStillPropagates:
-    @pytest.mark.parametrize("n", [2, 3, 5, 12])
-    def test_nan_covariance(self, n):
+    @pytest.mark.parametrize("n", [1, 2, 3, 5, 12])
+    def test_nan_covariance_returns_nan_like_v2111(self, old_gating, n):
         S = _spd(n, 9)
         S[0, 0] = np.nan
-        with np.errstate(invalid="ignore"):
-            try:
-                result = gating.mahalanobis_distance(np.ones(n), S)
-            except np.linalg.LinAlgError as exc:
-                assert "positive definite" not in str(exc)
-            else:
-                assert np.isnan(result)
+        with np.errstate(all="ignore"):
+            old = old_gating.mahalanobis_distance(np.ones(n), S)
+            new = gating.mahalanobis_distance(np.ones(n), S)
+        assert np.isnan(old)
+        assert np.isnan(new)
