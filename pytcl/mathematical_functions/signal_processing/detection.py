@@ -115,13 +115,13 @@ def _solve_alpha(
     """Solve pfa_func(alpha) = pfa for alpha (pfa_func monotone decreasing)."""
     hi = 1.0
     while pfa_func(hi) > pfa:
-        hi *= 2.0
         if hi > 1e12:
             raise ValueError(
                 f"pfa={pfa:g} is below what the threshold search reaches "
                 f"(alpha up to 1e12) for {what}; use a larger pfa or more "
                 f"reference cells"
             )
+        hi *= 2.0
     return float(brentq(lambda a: pfa_func(a) - pfa, 0.0, hi))
 
 

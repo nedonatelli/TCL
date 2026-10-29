@@ -653,6 +653,8 @@ def ransac(
     ------
     ValueError
         If ``max_trials`` is less than one.
+    numpy.linalg.LinAlgError
+        If every sampled least-squares fit fails.
 
     Examples
     --------
