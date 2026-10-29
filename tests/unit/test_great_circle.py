@@ -13,7 +13,6 @@ algebra instead, since geographiclib has no such function.
 
 import numpy as np
 import pytest
-from geographiclib.geodesic import Geodesic
 
 from pytcl.core.constants import EARTH_MEAN_RADIUS
 from pytcl.navigation.great_circle import (
@@ -30,6 +29,8 @@ from pytcl.navigation.great_circle import (
     great_circle_waypoint,
     great_circle_waypoints,
 )
+
+Geodesic = pytest.importorskip("geographiclib.geodesic").Geodesic
 
 R = EARTH_MEAN_RADIUS
 SPHERE = Geodesic(R, 0.0)
