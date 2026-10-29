@@ -356,6 +356,9 @@ class TestSRUKFPredict:
         # the Kalman prediction F P F' + Q with F = [[1, 1], [0, 1]].
         F = np.array([[1.0, 1.0], [0.0, 1.0]])
         kf = kf_predict(x, P, F, Q)
+        # rtol 1e-9, not 1e-12: the default alpha=1e-3 makes the sigma weights
+        # ~1e6 with opposite signs, so the sums cancel to ~1e-10 relative error
+        # (alpha=1 reaches 1e-12; see test_sr_ukf_linear_matches_kf_at_unit_alpha).
         np.testing.assert_allclose(pred.x, [1.5, 0.5], rtol=1e-9, atol=0)
         np.testing.assert_allclose(pred.S @ pred.S.T, kf.P, rtol=1e-9, atol=0)
 
@@ -488,6 +491,30 @@ class TestSRUKFUpdate:
 
 class TestSRUKFConsistency:
     """Tests for SR-UKF consistency with standard UKF."""
+
+    def test_sr_ukf_linear_matches_kf_at_unit_alpha(self):
+        """With alpha=1, kappa=0 every sigma weight is O(1)."""
+        F = np.array([[1.0, 1.0], [0.0, 1.0]])
+        H = np.array([[1.0, 0.0]])
+        x = np.array([0.0, 1.0])
+        P = np.eye(2) * 0.1
+        Q = np.eye(2) * 0.01
+        R = np.array([[0.1]])
+        z = np.array([0.5])
+        kw = {"alpha": 1.0, "beta": 2.0, "kappa": 0.0}
+
+        pred = sr_ukf_predict(
+            x, np.linalg.cholesky(P), lambda v: F @ v, np.linalg.cholesky(Q), **kw
+        )
+        upd = sr_ukf_update(
+            pred.x, pred.S, z, lambda v: H @ v, np.linalg.cholesky(R), **kw
+        )
+
+        kf_pred = kf_predict(x, P, F, Q)
+        kf_upd = kf_update(kf_pred.x, kf_pred.P, z, H, R)
+        np.testing.assert_allclose(pred.S @ pred.S.T, kf_pred.P, rtol=1e-12, atol=1e-15)
+        np.testing.assert_allclose(upd.x, kf_upd.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(upd.S @ upd.S.T, kf_upd.P, rtol=1e-12, atol=1e-15)
 
     def test_sr_ukf_linear_matches_kf(self):
         """Test SR-UKF matches linear KF on linear system."""

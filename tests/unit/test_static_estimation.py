@@ -491,6 +491,20 @@ class TestIRLS:
             rtol=1e-9,
         )
 
+    def test_leverage_outlier_does_not_converge_in_500_iterations(self):
+        """Pin: the scale-reestimating IRLS creeps on this dataset.
+
+        The leverage outlier makes successive iterates move ~0.015 per step,
+        so 500 iterations end short of tolerance and ``converged`` says so.
+        """
+        A = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5]])
+        b = np.array([2, 3, 4, 5, 100])
+
+        result = irls(A, b, scale_func=_exact_mad, max_iter=500, tol=1e-14)
+
+        assert not result.converged
+        assert result.n_iter == 500
+
 
 class TestHuberRegression:
     """Tests for Huber regression."""

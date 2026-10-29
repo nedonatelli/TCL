@@ -182,6 +182,9 @@ class TestFixedLagSmoother:
         return np.array(xs), np.array(Ps)
 
     def test_basic_fixed_lag(self):
+        """Oracle: the batch smoother (validated against MATLAB in
+        test_batch_smoothers.py) run on each prefix, taking element k-lag;
+        not a closed form."""
         x0 = np.array([0.0, 1.0])
         P0 = np.eye(2) * 5.0
         Q = np.eye(2) * 0.1
@@ -218,6 +221,9 @@ class TestTwoFilterSmoother:
     """Tests for two-filter (Fraser-Potter) smoother."""
 
     def test_basic_two_filter(self):
+        """Oracle: the batch smoother (validated against MATLAB in
+        test_batch_smoothers.py) on the batch extended by a virtual
+        observation of the backward prior; not a closed form."""
         # The backward filter treats (x0_bwd, P0_bwd) as a direct observation
         # of the state one step past the last measurement. That is exactly an
         # RTS smoother on the batch extended by that observation (H = I,

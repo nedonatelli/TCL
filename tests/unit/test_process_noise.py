@@ -272,11 +272,17 @@ def test_q_singer_taylor_branch_matches_integral(
     np.testing.assert_allclose(q_singer(T, tau, sigma_m), expected, rtol=1e-9, atol=0)
 
 
-def test_q_coord_turn_polar_literal_values():
-    # pytcl-only model: MATLAB's QPolarCoordTurn2D is a different model (its
-    # state carries speed and heading with correlated terms), so there is no
-    # MATLAB oracle. Hand-computed from the documented formulas at T=2,
-    # sigma_a=3, sigma_omega_dot=0.5 (T^2=4, T^3=8, T^4=16).
+def test_q_coord_turn_polar_regression_pin_unverified_model():
+    """Regression pin only: there is no oracle for this model.
+
+    The docstring gives no formulas or reference, the source calls it a
+    "simplified model", and ``QPolarCoordTurn2D`` (MATLAB) is a different
+    model. No continuous-time noise model could be derived from it (position
+    variance T^4/4 with no coupling to the speed noise), so these numbers are
+    the current implementation's output at T=2, sigma_a=3,
+    sigma_omega_dot=0.5, not an independent value. A failure means the output
+    changed, not that it is wrong.
+    """
     Q = q_coord_turn_polar(T=2.0, sigma_a=3.0, sigma_omega_dot=0.5)
     expected = np.zeros((5, 5))
     expected[0, 0] = expected[1, 1] = 9.0 * 16 / 4  # 36
