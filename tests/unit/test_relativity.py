@@ -251,6 +251,23 @@ class TestShapiroDelay:
         )
 
 
+class TestShapiroDelayThroughTheBody:
+    @pytest.mark.xfail(
+        strict=True,
+        reason="shapiro_delay returns 0.0 when the body lies on the segment "
+        "between observer and source (denominator 0); the delay diverges there",
+    )
+    def test_body_on_the_path_diverges(self):
+        delay = shapiro_delay(
+            np.array([1.0e11, 0.0, 0.0]),
+            np.array([-1.0e11, 0.0, 0.0]),
+            np.zeros(3),
+            GM_SUN,
+        )
+
+        assert delay == np.inf
+
+
 class TestSchwarzchildPrecession:
     """Perihelion advance 6 pi GM / (c^2 a (1 - e^2)) per orbit."""
 

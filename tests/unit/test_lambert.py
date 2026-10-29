@@ -40,7 +40,12 @@ def _assert_reaches_r2(solution, r1, r2, tof, mu=GM_EARTH):
 
 
 class TestStumpffFunctions:
-    """Stumpff c2, c3 against their closed forms and Taylor series."""
+    """Stumpff c2, c3 against their closed forms and Taylor series.
+
+    The 1e-12 closed-form checks cover |psi| >= 0.5 only. Just outside the
+    Taylor branch (1e-6 < |psi| < 0.5) the implementation's 1 - cos cancellation
+    costs up to ~6e-12 relative accuracy, so those points are tested at 1e-10.
+    """
 
     @pytest.mark.parametrize("psi", [0.5, 2.0, 9.0])
     def test_positive_argument_closed_form(self, psi):
@@ -113,9 +118,12 @@ class TestLambertUniversal:
             ([7000.0, 0.0, 100.0], [0.0, 7500.0, 500.0], 2000.0, True),
         ],
     )
-    def test_solution_reaches_r2_under_kepler_propagation(self, r1, r2, tof, prograde):
+    @pytest.mark.parametrize("low_path", [True, False])
+    def test_solution_reaches_r2_under_kepler_propagation(
+        self, r1, r2, tof, prograde, low_path
+    ):
         r1, r2 = np.array(r1), np.array(r2)
-        solution = lambert_universal(r1, r2, tof, prograde=prograde)
+        solution = lambert_universal(r1, r2, tof, prograde=prograde, low_path=low_path)
 
         _assert_reaches_r2(solution, r1, r2, tof)
 
@@ -136,6 +144,12 @@ class TestLambertUniversal:
         solution = lambert_universal(r1, r2, tof)
 
         _assert_reaches_r2(solution, r1, r2, tof)
+
+    def test_low_path_false_selects_the_other_transfer(self):
+        low = lambert_universal(self.R1, self.R2, 3600.0, low_path=True)
+        high = lambert_universal(self.R1, self.R2, 3600.0, low_path=False)
+
+        assert np.linalg.norm(high.v1 - low.v1) > 1.0
 
     def test_custom_mu_changes_solution_consistently(self):
         mu = 3.986004418e5 * 1.5

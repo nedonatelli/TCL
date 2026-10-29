@@ -54,7 +54,7 @@ def _authalic_radius():
 
 
 class TestMercator:
-    """Mercator against ``+proj=merc``."""
+    """Mercator against ``+proj=merc`` at four points (lat -30 to 85, lon -100 to 20)."""
 
     POINTS = [(45.0, -70.0), (-30.0, 20.0), (85.0, -75.0), (10.0, -100.0)]
 
@@ -112,7 +112,8 @@ class TestMercator:
 class TestTransverseMercator:
     """Transverse Mercator against ``+proj=tmerc`` (PROJ uses the exact
     Poder/Engsager series; pytcl's Helmert series agrees to a few millimetres
-    within 5 degrees of the central meridian)."""
+    within the 5 degrees of the central meridian covered by the test points,
+    on WGS84, k0 = 0.9996 and, for the custom-ellipsoid case, f = 1/150)."""
 
     POINTS = [(45.0, -74.0), (10.0, -73.0), (60.0, -76.0), (-30.0, -70.0)]
 
@@ -187,7 +188,7 @@ class TestTransverseMercator:
 
 
 class TestUTM:
-    """UTM against the EPSG:326xx / 327xx projected CRSs."""
+    """UTM against EPSG:326xx / 327xx at the six listed points (zones 18, 30, 32, 56)."""
 
     CASES = [
         (45.0, -75.5, 32618, 18, "N"),
@@ -299,6 +300,22 @@ class TestStereographic:
             _factors(proj, lat, lon).parallel_scale, rel=1e-9, abs=0
         )
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason="stereographic's ellipsoidal oblique form (Gaussian-radius sphere) "
+        "deviates from PROJ's sterea by hundreds of metres at 1 degree; documented "
+        "in its docstring, use oblique_stereographic instead",
+    )
+    def test_ellipsoidal_oblique_matches_proj(self, pyproj):
+        proj = pyproj.Proj(f"+proj=sterea +lat_0=45 +lon_0=-75 +k_0=1 {WGS84}")
+        result = stereographic(
+            np.radians(46.0), np.radians(-74.0), np.radians(45), np.radians(-75)
+        )
+        x, y = proj(-74.0, 46.0)
+
+        assert abs(result.x - x) < 1e-3
+        assert abs(result.y - y) < 1e-3
+
     def test_scale_at_center_is_k0(self):
         lat0, lon0 = np.radians(45), np.radians(-75)
         result = stereographic(lat0, lon0, lat0, lon0, k0=0.9996)
@@ -336,7 +353,8 @@ class TestStereographic:
 
 
 class TestLambertConformalConic:
-    """Lambert Conformal Conic (2SP) against ``+proj=lcc``."""
+    """Lambert Conformal Conic (2SP, parallels 33/45 N, origin 39 N 96 W, WGS84)
+    against ``+proj=lcc`` at the listed points only."""
 
     PARAMS = "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96"
     ARGS = (np.radians(39), np.radians(-96), np.radians(33), np.radians(45))

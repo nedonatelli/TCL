@@ -82,6 +82,9 @@ The audit's Tier 4 ports, moved out of v2.12 so that release stays
 correctness-only, plus follow-ups from v2.12. Names are the pytcl
 names each would take:
 
+- **EGM gravity disturbance / anomaly / deflection reference values.**
+  `gravity_disturbance`, `gravity_anomaly` and `deflection_of_vertical` have no
+  value tests: they need authoritative EGM2008 reference values (NGA).
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
   (Ryser's formula); pytcl `matrix_permanent`.
 - **`stateCart2Ruv`.** MATLAB

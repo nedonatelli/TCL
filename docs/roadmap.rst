@@ -123,7 +123,9 @@ Next
   pending owner sign-off as an extension beyond MATLAB, both mirror
   solutions of ``range_only_static_loc_est_np`` for coplanar sensors,
   which MATLAB's algorithm excludes and v2.12.0 rejects with
-  ``LinAlgError``.
+  ``LinAlgError``; and EGM ``gravity_disturbance``, ``gravity_anomaly`` and
+  ``deflection_of_vertical``, which need authoritative EGM2008 reference
+  values before they can have value tests.
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).
