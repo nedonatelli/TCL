@@ -1,12 +1,17 @@
-"""Tests for map projections."""
+"""Tests for map projections.
+
+Coordinates, scale factors and grid convergence are checked against PROJ
+through pyproj, an independent implementation. Where a pytcl projection is a
+documented approximation (the spherical azimuthal equidistant, the Gaussian-
+sphere ``stereographic``), the oracle is the PROJ projection that does the
+same computation (``+proj=aeqd +R=<authalic radius>``, ``+proj=stere +R=a``).
+"""
 
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from pytcl.coordinate_systems.projections import (
-    ProjectionResult,
-    UTMResult,
     azimuthal_equidistant,
     azimuthal_equidistant_inverse,
     geodetic2utm,
@@ -15,6 +20,7 @@ from pytcl.coordinate_systems.projections import (
     lambert_conformal_conic_inverse,
     mercator,
     mercator_inverse,
+    oblique_stereographic,
     polar_stereographic,
     stereographic,
     stereographic_inverse,
@@ -25,465 +31,433 @@ from pytcl.coordinate_systems.projections import (
     utm_zone,
 )
 
+WGS84 = "+ellps=WGS84 +units=m +no_defs"
+A = 6378137.0
+F = 1.0 / 298.257223563
+E2 = F * (2.0 - F)
+
+
+@pytest.fixture(scope="module")
+def pyproj():
+    return pytest.importorskip("pyproj")
+
+
+def _factors(proj, lat_deg, lon_deg):
+    return proj.get_factors(lon_deg, lat_deg)
+
+
+def _authalic_radius():
+    """Radius of the sphere with the WGS84 surface area (closed form)."""
+    e = np.sqrt(E2)
+    b = A * (1.0 - F)
+    return float(np.sqrt(A**2 / 2.0 + b**2 / 2.0 * np.arctanh(e) / e))
+
 
 class TestMercator:
-    """Tests for Mercator projection."""
+    """Mercator against ``+proj=merc``."""
 
-    def test_mercator_equator(self):
-        """Mercator at equator should have unit scale."""
-        result = mercator(0, 0)
-        assert_allclose(result.x, 0, atol=1e-6)
-        assert_allclose(result.y, 0, atol=1e-6)
-        assert_allclose(result.scale, 1.0, atol=0.01)
+    POINTS = [(45.0, -70.0), (-30.0, 20.0), (85.0, -75.0), (10.0, -100.0)]
 
-    def test_mercator_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(45)
-        lon = np.radians(-75)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_forward_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"+proj=merc +lon_0=-75 {WGS84}")
+        result = mercator(np.radians(lat), np.radians(lon), lon0=np.radians(-75))
+        x, y = proj(lon, lat)
 
-        result = mercator(lat, lon)
-        lat_inv, lon_inv = mercator_inverse(result.x, result.y)
-
-        assert_allclose(lat_inv, lat, atol=1e-10)
-        assert_allclose(lon_inv, lon, atol=1e-10)
-
-    def test_mercator_scale_increases_with_latitude(self):
-        """Scale should increase with latitude."""
-        result_30 = mercator(np.radians(30), 0)
-        result_60 = mercator(np.radians(60), 0)
-
-        assert result_60.scale > result_30.scale
-
-    def test_mercator_convergence_zero(self):
-        """Mercator convergence should be zero."""
-        result = mercator(np.radians(45), np.radians(30))
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(
+            _factors(proj, lat, lon).parallel_scale, rel=1e-9, abs=0
+        )
         assert result.convergence == 0.0
 
-    def test_mercator_symmetric(self):
-        """Mercator should be symmetric about equator."""
-        result_n = mercator(np.radians(45), 0)
-        result_s = mercator(np.radians(-45), 0)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_inverse_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"+proj=merc +lon_0=-75 {WGS84}")
+        x, y = proj(lon, lat)
 
-        assert_allclose(result_n.x, result_s.x)
-        assert_allclose(result_n.y, -result_s.y)
+        lat_inv, lon_inv = mercator_inverse(x, y, lon0=np.radians(-75))
 
-    def test_mercator_with_central_meridian(self):
-        """Test Mercator with non-zero central meridian."""
+        assert abs(np.degrees(lat_inv) - lat) < 1e-9
+        assert abs(np.degrees(lon_inv) - lon) < 1e-9
+
+    def test_scale_is_secant_of_latitude_on_the_sphere(self):
+        """Closed form: with e = 0, k = 1/cos(lat) and y = R ln tan(pi/4 + lat/2)."""
+        lat = np.radians(60.0)
+        result = mercator(lat, 0.0, e=0.0)
+
+        assert result.scale == pytest.approx(2.0, rel=1e-12, abs=0)
+        assert result.y == pytest.approx(
+            A * np.log(np.tan(np.pi / 4 + lat / 2)), rel=1e-12, abs=0
+        )
+
+    def test_equator_origin(self):
+        result = mercator(0.0, 0.0)
+        assert result.x == 0.0
+        assert abs(result.y) < 1e-6
+        assert result.scale == 1.0
+
+    def test_symmetric_about_equator(self):
+        north = mercator(np.radians(45), np.radians(10))
+        south = mercator(np.radians(-45), np.radians(10))
+
+        assert north.x == south.x
+        assert north.y == -south.y
+
+    def test_central_meridian_has_zero_easting(self):
         lon0 = np.radians(-75)
-        result = mercator(np.radians(40), np.radians(-75), lon0=lon0)
-        assert_allclose(result.x, 0, atol=1e-10)
+        assert mercator(np.radians(40), lon0, lon0=lon0).x == 0.0
 
 
 class TestTransverseMercator:
-    """Tests for Transverse Mercator projection."""
+    """Transverse Mercator against ``+proj=tmerc`` (PROJ uses the exact
+    Poder/Engsager series; pytcl's Helmert series agrees to a few millimetres
+    within 5 degrees of the central meridian)."""
 
-    def test_tm_on_central_meridian(self):
-        """On central meridian, x should be zero."""
-        lon0 = np.radians(-75)
-        result = transverse_mercator(np.radians(45), lon0, lon0=lon0)
-        assert_allclose(result.x, 0, atol=1e-6)
+    POINTS = [(45.0, -74.0), (10.0, -73.0), (60.0, -76.0), (-30.0, -70.0)]
 
-    def test_tm_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(45)
-        lon = np.radians(-74)  # 1 degree from central meridian
-        lon0 = np.radians(-75)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_forward_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"+proj=tmerc +lon_0=-75 +k_0=0.9996 {WGS84}")
+        result = transverse_mercator(
+            np.radians(lat), np.radians(lon), lon0=np.radians(-75), k0=0.9996
+        )
+        x, y = proj(lon, lat)
+        factors = _factors(proj, lat, lon)
 
-        result = transverse_mercator(lat, lon, lon0=lon0)
-        lat_inv, lon_inv = transverse_mercator_inverse(result.x, result.y, lon0=lon0)
+        assert abs(result.x - x) < 5e-3
+        assert abs(result.y - y) < 5e-3
+        assert result.scale == pytest.approx(factors.parallel_scale, rel=1e-8, abs=0)
+        assert abs(result.convergence - np.radians(factors.meridian_convergence)) < 1e-8
 
-        assert_allclose(lat_inv, lat, atol=1e-8)
-        assert_allclose(lon_inv, lon, atol=1e-8)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_inverse_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"+proj=tmerc +lon_0=-75 +k_0=0.9996 {WGS84}")
+        x, y = proj(lon, lat)
 
-    def test_tm_scale_at_central_meridian(self):
-        """Scale at central meridian should equal k0."""
-        k0 = 0.9996
-        lon0 = np.radians(-75)
-        result = transverse_mercator(np.radians(45), lon0, lon0=lon0, k0=k0)
-        assert_allclose(result.scale, k0, rtol=1e-4)
-
-    def test_tm_scale_increases_away_from_meridian(self):
-        """Scale should increase away from central meridian."""
-        lon0 = np.radians(-75)
-        k0 = 0.9996
-
-        result_0 = transverse_mercator(np.radians(45), lon0, lon0=lon0, k0=k0)
-        result_2 = transverse_mercator(
-            np.radians(45), lon0 + np.radians(2), lon0=lon0, k0=k0
+        lat_inv, lon_inv = transverse_mercator_inverse(
+            x, y, lon0=np.radians(-75), k0=0.9996
         )
 
-        assert result_2.scale > result_0.scale
+        assert abs(np.degrees(lat_inv) - lat) < 1e-7
+        assert abs(np.degrees(lon_inv) - lon) < 1e-7
 
-    def test_tm_roundtrip_wgs84_default(self):
-        """Forward/inverse round trip must close for the WGS84 default ellipsoid.
+    @pytest.mark.parametrize("lat,lon", [(10.0, -73.0), (45.0, -74.0), (60.0, -76.0)])
+    def test_custom_ellipsoid_matches_proj(self, pyproj, lat, lon):
+        """A non-WGS84 ellipsoid (f = 1/150), forward and inverse.
 
-        This held before the gh-25-class fix to `transverse_mercator_inverse`
-        (which only affects callers passing a non-WGS84 `a`/`e2`) and must
-        continue to hold afterwards.
+        Regression for the inverse once taking the WGS84 semi-minor axis
+        regardless of the caller's ``a`` and ``e2`` (gh-25 class).
         """
-        lon0 = np.radians(-75)
-        for lat_deg, lon_deg in [(10, -73), (45, -74), (60, -76)]:
-            lat = np.radians(lat_deg)
-            lon = np.radians(lon_deg)
-
-            result = transverse_mercator(lat, lon, lon0=lon0)
-            lat_inv, lon_inv = transverse_mercator_inverse(
-                result.x, result.y, lon0=lon0
-            )
-
-            assert_allclose(np.degrees(lat_inv), lat_deg, atol=1e-6)
-            assert_allclose(np.degrees(lon_inv), lon_deg, atol=1e-6)
-
-    def test_tm_roundtrip_custom_ellipsoid(self):
-        """Forward/inverse round trip must close for a non-WGS84 ellipsoid.
-
-        Regression test for the bug where `transverse_mercator_inverse` used
-        the global WGS84 semi-minor axis instead of deriving `b` from the
-        caller's `a`/`e2`, silently mixing two ellipsoids for any non-WGS84
-        caller (gh-25-class bug; the forward sibling was already fixed).
-        """
-        a = 6378137.0
         f = 1.0 / 150.0
         e2 = 2 * f - f**2
+        proj = pyproj.Proj(f"+proj=tmerc +lon_0=-75 +a={A} +rf=150 +units=m +no_defs")
+        x, y = proj(lon, lat)
+
+        result = transverse_mercator(
+            np.radians(lat), np.radians(lon), lon0=np.radians(-75), a=A, e2=e2
+        )
+        lat_inv, lon_inv = transverse_mercator_inverse(
+            x, y, lon0=np.radians(-75), a=A, e2=e2
+        )
+
+        assert abs(result.x - x) < 5e-3
+        assert abs(result.y - y) < 5e-3
+        assert abs(np.degrees(lat_inv) - lat) < 1e-7
+        assert abs(np.degrees(lon_inv) - lon) < 1e-7
+
+    def test_central_meridian_has_zero_easting_and_scale_k0(self, pyproj):
         lon0 = np.radians(-75)
+        result = transverse_mercator(np.radians(45), lon0, lon0=lon0, k0=0.9996)
 
-        for lat_deg, lon_deg in [(10, -73), (45, -74), (60, -76)]:
-            lat = np.radians(lat_deg)
-            lon = np.radians(lon_deg)
+        assert abs(result.x) < 1e-6
+        assert result.scale == pytest.approx(0.9996, rel=1e-12, abs=0)
 
-            result = transverse_mercator(lat, lon, lon0=lon0, a=a, e2=e2)
-            lat_inv, lon_inv = transverse_mercator_inverse(
-                result.x, result.y, lon0=lon0, a=a, e2=e2
-            )
+    def test_scale_grows_away_from_the_central_meridian(self, pyproj):
+        """On the sphere-like closed form k = k0 (1 + (dlon cos(lat))^2 / 2)."""
+        proj = pyproj.Proj(f"+proj=tmerc +lon_0=-75 +k_0=0.9996 {WGS84}")
+        result = transverse_mercator(
+            np.radians(45), np.radians(-73), lon0=np.radians(-75), k0=0.9996
+        )
 
-            # atol in degrees; 1e-6 deg is ~0.1 m at Earth's radius.
-            assert_allclose(np.degrees(lat_inv), lat_deg, atol=1e-6)
-            assert_allclose(np.degrees(lon_inv), lon_deg, atol=1e-6)
+        assert result.scale == pytest.approx(
+            _factors(proj, 45.0, -73.0).parallel_scale, rel=1e-8, abs=0
+        )
+        assert result.scale > 0.9996
 
 
 class TestUTM:
-    """Tests for UTM projection."""
+    """UTM against the EPSG:326xx / 327xx projected CRSs."""
 
-    def test_utm_against_epsg_reference(self):
-        """Match EPSG-projected coordinates (regression).
+    CASES = [
+        (45.0, -75.5, 32618, 18, "N"),
+        (-33.9, 151.2, 32756, 56, "S"),
+        (0.0, -75.0, 32618, 18, "N"),
+        (-1.0, -75.0, 32718, 18, "S"),
+        (60.0, 5.0, 32632, 32, "N"),
+        (51.5, -0.1, 32630, 30, "N"),
+    ]
 
-        The meridian-arc series previously used conformal-latitude
-        coefficients, putting northings off by ~10.7 km at 45 deg.
-        Reference values computed with pyproj (EPSG:32618/32756).
-        """
-        cases = [
-            (45.0, -75.5, 18, "N", 460592.351, 4983071.988),
-            (-33.9, 151.2, 56, "S", 333568.941, 6247473.337),
-        ]
-        for lat, lon, zone, hemi, easting, northing in cases:
-            r = geodetic2utm(np.radians(lat), np.radians(lon))
-            assert r.zone == zone
-            assert r.hemisphere == hemi
-            assert_allclose(r.easting, easting, atol=0.01)
-            assert_allclose(r.northing, northing, atol=0.01)
+    @pytest.mark.parametrize("lat,lon,epsg,zone,hemisphere", CASES)
+    def test_forward_matches_epsg(self, pyproj, lat, lon, epsg, zone, hemisphere):
+        transformer = pyproj.Transformer.from_crs(4326, epsg, always_xy=True)
+        easting, northing = transformer.transform(lon, lat)
 
-            lat_back, lon_back = utm2geodetic(
-                r.easting, r.northing, r.zone, r.hemisphere
-            )
-            assert_allclose(np.degrees(lat_back), lat, atol=1e-7)
-            assert_allclose(np.degrees(lon_back), lon, atol=1e-7)
+        result = geodetic2utm(np.radians(lat), np.radians(lon))
 
-    def test_utm_zone_calculation(self):
-        """Test UTM zone calculation."""
-        # Zone 18 covers -78 to -72 degrees
-        assert utm_zone(np.radians(-75)) == 18
-        assert utm_zone(np.radians(-73)) == 18
+        assert result.zone == zone
+        assert result.hemisphere == hemisphere
+        assert abs(result.easting - easting) < 1e-3
+        assert abs(result.northing - northing) < 1e-3
 
-        # Zone 1 starts at -180
-        assert utm_zone(np.radians(-177)) == 1
+    @pytest.mark.parametrize("lat,lon,epsg,zone,hemisphere", CASES)
+    def test_inverse_matches_epsg(self, pyproj, lat, lon, epsg, zone, hemisphere):
+        transformer = pyproj.Transformer.from_crs(4326, epsg, always_xy=True)
+        easting, northing = transformer.transform(lon, lat)
 
-        # Zone 60 ends at 180
-        assert utm_zone(np.radians(177)) == 60
+        lat_inv, lon_inv = utm2geodetic(easting, northing, zone, hemisphere)
 
-    def test_utm_central_meridian(self):
-        """Test UTM central meridian calculation."""
-        # Zone 18: central meridian at -75 degrees
-        lon0 = utm_central_meridian(18)
-        assert_allclose(np.degrees(lon0), -75, atol=0.1)
+        assert abs(np.degrees(lat_inv) - lat) < 1e-7
+        assert abs(np.degrees(lon_inv) - lon) < 1e-7
 
-        # Zone 31: central meridian at 3 degrees
-        lon0 = utm_central_meridian(31)
-        assert_allclose(np.degrees(lon0), 3, atol=0.1)
+    def test_central_meridian_false_easting_and_scale(self, pyproj):
+        result = geodetic2utm(np.radians(45), np.radians(-75), zone=18)
 
-    def test_utm_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(45)
-        lon = np.radians(-75.5)
+        assert result.easting == pytest.approx(500000.0, rel=1e-12, abs=0)
+        assert result.scale == pytest.approx(0.9996, rel=1e-12, abs=0)
 
-        result = geodetic2utm(lat, lon)
-        lat_inv, lon_inv = utm2geodetic(
-            result.easting, result.northing, result.zone, result.hemisphere
-        )
+    def test_equator_northing_is_zero(self):
+        result = geodetic2utm(0.0, np.radians(-75))
 
-        assert_allclose(lat_inv, lat, atol=1e-8)
-        assert_allclose(lon_inv, lon, atol=1e-8)
-
-    def test_utm_false_easting(self):
-        """Central meridian should have 500000 easting."""
-        lat = np.radians(45)
-        lon = np.radians(-75)  # Central meridian of zone 18
-
-        result = geodetic2utm(lat, lon, zone=18)
-        assert_allclose(result.easting, 500000, atol=1)
-
-    def test_utm_northern_hemisphere(self):
-        """Northern hemisphere should have hemisphere='N'."""
-        result = geodetic2utm(np.radians(45), np.radians(-75))
+        assert abs(result.northing) < 1e-6
         assert result.hemisphere == "N"
 
-    def test_utm_southern_hemisphere(self):
-        """Southern hemisphere should have hemisphere='S'."""
-        result = geodetic2utm(np.radians(-45), np.radians(-75))
-        assert result.hemisphere == "S"
+    def test_zone_calculation(self):
+        assert utm_zone(np.radians(-75)) == 18
+        assert utm_zone(np.radians(-73)) == 18
+        assert utm_zone(np.radians(-177)) == 1
+        assert utm_zone(np.radians(177)) == 60
 
-    def test_utm_false_northing_south(self):
-        """Southern hemisphere should have 10,000,000 added to northing."""
-        result = geodetic2utm(np.radians(-1), np.radians(-75))
-        assert result.northing > 9000000
-
-    def test_utm_scale_factor(self):
-        """UTM scale factor at central meridian should be ~0.9996."""
-        lat = np.radians(45)
-        lon = np.radians(-75)  # Central meridian
-
-        result = geodetic2utm(lat, lon, zone=18)
-        assert_allclose(result.scale, 0.9996, rtol=1e-3)
-
-    def test_utm_result_type(self):
-        """Result should be UTMResult namedtuple."""
-        result = geodetic2utm(np.radians(45), np.radians(-75))
-        assert isinstance(result, UTMResult)
-        assert hasattr(result, "easting")
-        assert hasattr(result, "northing")
-        assert hasattr(result, "zone")
-        assert hasattr(result, "hemisphere")
+    @pytest.mark.parametrize(
+        "zone,central_deg", [(18, -75.0), (31, 3.0), (1, -177.0), (60, 177.0)]
+    )
+    def test_central_meridian(self, zone, central_deg):
+        """Zone n is centred on 6n - 183 degrees."""
+        assert np.degrees(utm_central_meridian(zone)) == pytest.approx(
+            central_deg, rel=1e-12, abs=0
+        )
 
 
 class TestStereographic:
-    """Tests for Stereographic projection."""
+    """Stereographic projections against PROJ ``stere`` / ``sterea``."""
 
-    def test_stereographic_center(self):
-        """At center point, x and y should be zero."""
-        lat0 = np.radians(45)
-        lon0 = np.radians(-75)
+    POINTS = [(46.0, -74.0), (30.0, -60.0), (60.0, -100.0)]
 
-        result = stereographic(lat0, lon0, lat0, lon0)
-        assert_allclose(result.x, 0, atol=1e-6)
-        assert_allclose(result.y, 0, atol=1e-6)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_oblique_sphere_matches_proj(self, pyproj, lat, lon):
+        """With e2 = 0 ``stereographic`` is the spherical oblique stereographic."""
+        proj = pyproj.Proj(
+            f"+proj=stere +R={A} +lat_0=45 +lon_0=-75 +k_0=1 +units=m +no_defs"
+        )
+        result = stereographic(
+            np.radians(lat), np.radians(lon), np.radians(45), np.radians(-75), e2=0.0
+        )
+        x, y = proj(lon, lat)
+        factors = _factors(proj, lat, lon)
 
-    def test_stereographic_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(46)
-        lon = np.radians(-74)
-        lat0 = np.radians(45)
-        lon0 = np.radians(-75)
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(factors.parallel_scale, rel=1e-9, abs=0)
+        assert abs(result.convergence - np.radians(factors.meridian_convergence)) < 1e-9
 
-        result = stereographic(lat, lon, lat0, lon0)
-        lat_inv, lon_inv = stereographic_inverse(result.x, result.y, lat0, lon0)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_oblique_sphere_inverse_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(
+            f"+proj=stere +R={A} +lat_0=45 +lon_0=-75 +k_0=1 +units=m +no_defs"
+        )
+        x, y = proj(lon, lat)
 
-        assert_allclose(lat_inv, lat, atol=1e-8)
-        assert_allclose(lon_inv, lon, atol=1e-8)
+        lat_inv, lon_inv = stereographic_inverse(
+            x, y, np.radians(45), np.radians(-75), e2=0.0
+        )
 
-    def test_stereographic_scale_at_center(self):
-        """Scale at center should equal k0."""
-        lat0 = np.radians(45)
-        lon0 = np.radians(-75)
-        k0 = 1.0
+        assert abs(np.degrees(lat_inv) - lat) < 1e-9
+        assert abs(np.degrees(lon_inv) - lon) < 1e-9
 
-        result = stereographic(lat0, lon0, lat0, lon0, k0=k0)
-        # At the center point, the scale factor is k0 (not 2*k0)
-        assert_allclose(result.scale, k0, rtol=0.1)
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_ellipsoidal_oblique_matches_sterea(self, pyproj, lat, lon):
+        """EPSG method 9809 against ``+proj=sterea``."""
+        proj = pyproj.Proj(f"+proj=sterea +lat_0=45 +lon_0=-75 +k_0=0.9999 {WGS84}")
+        result = oblique_stereographic(
+            np.radians(lat), np.radians(lon), np.radians(45), np.radians(-75), k0=0.9999
+        )
+        x, y = proj(lon, lat)
 
-    def test_polar_stereographic_north(self):
-        """Test polar stereographic at north pole."""
-        result = polar_stereographic(np.radians(85), np.radians(45), north=True)
-        assert isinstance(result, ProjectionResult)
-        # Distance from pole should be positive
-        assert np.sqrt(result.x**2 + result.y**2) > 0
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(
+            _factors(proj, lat, lon).parallel_scale, rel=1e-9, abs=0
+        )
 
-    def test_polar_stereographic_south(self):
-        """Test polar stereographic at south pole."""
-        result = polar_stereographic(np.radians(-85), np.radians(45), north=False)
-        assert isinstance(result, ProjectionResult)
+    def test_scale_at_center_is_k0(self):
+        lat0, lon0 = np.radians(45), np.radians(-75)
+        result = stereographic(lat0, lon0, lat0, lon0, k0=0.9996)
 
-    def test_polar_stereographic_at_pole(self):
-        """At pole, x and y should be zero."""
-        result = polar_stereographic(np.radians(90), 0, north=True)
-        assert_allclose(result.x, 0, atol=1e-6)
-        assert_allclose(result.y, 0, atol=1e-6)
+        assert result.x == 0.0
+        assert result.y == 0.0
+        assert result.scale == pytest.approx(0.9996, rel=1e-12, abs=0)
+
+    @pytest.mark.parametrize(
+        "lat,lon,north,proj_def",
+        [
+            (85.0, 45.0, True, "+proj=stere +lat_0=90 +lon_0=0 +k_0=0.994"),
+            (70.0, -120.0, True, "+proj=stere +lat_0=90 +lon_0=0 +k_0=0.994"),
+            (-85.0, 45.0, False, "+proj=stere +lat_0=-90 +lon_0=0 +k_0=0.994"),
+            (-60.0, 170.0, False, "+proj=stere +lat_0=-90 +lon_0=0 +k_0=0.994"),
+        ],
+    )
+    def test_polar_matches_proj(self, pyproj, lat, lon, north, proj_def):
+        proj = pyproj.Proj(f"{proj_def} {WGS84}")
+        result = polar_stereographic(np.radians(lat), np.radians(lon), north=north)
+        x, y = proj(lon, lat)
+        factors = _factors(proj, lat, lon)
+
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(factors.parallel_scale, rel=1e-9, abs=0)
+        assert abs(result.convergence - np.radians(factors.meridian_convergence)) < 1e-9
+
+    def test_polar_origin_at_pole(self):
+        result = polar_stereographic(np.radians(90), 0.0, north=True)
+
+        assert abs(result.x) < 1e-6
+        assert abs(result.y) < 1e-6
+        assert result.scale == pytest.approx(0.994, rel=1e-12, abs=0)
 
 
 class TestLambertConformalConic:
-    """Tests for Lambert Conformal Conic projection."""
+    """Lambert Conformal Conic (2SP) against ``+proj=lcc``."""
 
-    def test_lcc_on_central_meridian(self):
-        """On central meridian, x should be zero."""
-        lat0 = np.radians(39)
-        lon0 = np.radians(-96)
-        lat1 = np.radians(33)
-        lat2 = np.radians(45)
+    PARAMS = "+proj=lcc +lat_1=33 +lat_2=45 +lat_0=39 +lon_0=-96"
+    ARGS = (np.radians(39), np.radians(-96), np.radians(33), np.radians(45))
 
-        result = lambert_conformal_conic(np.radians(40), lon0, lat0, lon0, lat1, lat2)
-        assert_allclose(result.x, 0, atol=1)
+    @pytest.mark.parametrize(
+        "lat,lon", [(40.0, -100.0), (80.0, -96.0), (30.0, -90.0), (33.0, -96.0)]
+    )
+    def test_forward_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"{self.PARAMS} {WGS84}")
+        result = lambert_conformal_conic(np.radians(lat), np.radians(lon), *self.ARGS)
+        x, y = proj(lon, lat)
+        factors = _factors(proj, lat, lon)
 
-    def test_lcc_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(40)
-        lon = np.radians(-100)
-        lat0 = np.radians(39)
-        lon0 = np.radians(-96)
-        lat1 = np.radians(33)
-        lat2 = np.radians(45)
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(factors.parallel_scale, rel=1e-9, abs=0)
+        assert abs(result.convergence - np.radians(factors.meridian_convergence)) < 1e-9
 
-        result = lambert_conformal_conic(lat, lon, lat0, lon0, lat1, lat2)
-        lat_inv, lon_inv = lambert_conformal_conic_inverse(
-            result.x, result.y, lat0, lon0, lat1, lat2
-        )
+    @pytest.mark.parametrize("lat,lon", [(40.0, -100.0), (30.0, -90.0)])
+    def test_inverse_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(f"{self.PARAMS} {WGS84}")
+        x, y = proj(lon, lat)
 
-        assert_allclose(lat_inv, lat, atol=1e-8)
-        assert_allclose(lon_inv, lon, atol=1e-8)
+        lat_inv, lon_inv = lambert_conformal_conic_inverse(x, y, *self.ARGS)
 
-    def test_lcc_scale_at_standard_parallels(self):
-        """Scale should be close to 1 at standard parallels."""
-        lat1 = np.radians(33)
-        lat2 = np.radians(45)
-        lat0 = np.radians(39)
-        lon0 = np.radians(-96)
+        assert abs(np.degrees(lat_inv) - lat) < 1e-9
+        assert abs(np.degrees(lon_inv) - lon) < 1e-9
 
-        result1 = lambert_conformal_conic(lat1, lon0, lat0, lon0, lat1, lat2)
-        result2 = lambert_conformal_conic(lat2, lon0, lat0, lon0, lat1, lat2)
-
-        assert_allclose(result1.scale, 1.0, rtol=0.01)
-        assert_allclose(result2.scale, 1.0, rtol=0.01)
+    def test_scale_is_exactly_one_at_the_standard_parallels(self):
+        for lat_deg in (33.0, 45.0):
+            result = lambert_conformal_conic(
+                np.radians(lat_deg), np.radians(-96), *self.ARGS
+            )
+            assert result.scale == pytest.approx(1.0, rel=1e-9, abs=0)
 
 
 class TestAzimuthalEquidistant:
-    """Tests for Azimuthal Equidistant projection."""
+    """Spherical azimuthal equidistant (authalic radius) against
+    ``+proj=aeqd +R=<authalic radius>``."""
 
-    def test_azeq_center(self):
-        """At center point, x and y should be zero."""
-        lat0 = np.radians(38.9)
-        lon0 = np.radians(-77)
+    LAT0, LON0 = 38.9, -77.0
 
-        result = azimuthal_equidistant(lat0, lon0, lat0, lon0)
-        assert_allclose(result.x, 0, atol=1e-6)
-        assert_allclose(result.y, 0, atol=1e-6)
+    @pytest.mark.parametrize(
+        "lat,lon", [(40.0, -77.0), (40.0, -75.0), (20.0, 30.0), (38.9, -77.0)]
+    )
+    def test_forward_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(
+            f"+proj=aeqd +R={_authalic_radius()} +lat_0={self.LAT0} +lon_0={self.LON0} +units=m +no_defs"
+        )
+        result = azimuthal_equidistant(
+            np.radians(lat),
+            np.radians(lon),
+            np.radians(self.LAT0),
+            np.radians(self.LON0),
+        )
+        x, y = proj(lon, lat)
 
-    def test_azeq_roundtrip(self):
-        """Forward and inverse should be consistent."""
-        lat = np.radians(40)
-        lon = np.radians(-75)
-        lat0 = np.radians(38.9)
-        lon0 = np.radians(-77)
+        assert abs(result.x - x) < 1e-5
+        assert abs(result.y - y) < 1e-5
 
-        result = azimuthal_equidistant(lat, lon, lat0, lon0)
-        lat_inv, lon_inv = azimuthal_equidistant_inverse(result.x, result.y, lat0, lon0)
+    @pytest.mark.parametrize("lat,lon", [(40.0, -77.0), (40.0, -75.0), (20.0, 30.0)])
+    def test_inverse_matches_proj(self, pyproj, lat, lon):
+        proj = pyproj.Proj(
+            f"+proj=aeqd +R={_authalic_radius()} +lat_0={self.LAT0} +lon_0={self.LON0} +units=m +no_defs"
+        )
+        x, y = proj(lon, lat)
 
-        assert_allclose(lat_inv, lat, atol=1e-6)
-        assert_allclose(lon_inv, lon, atol=1e-6)
+        lat_inv, lon_inv = azimuthal_equidistant_inverse(
+            x, y, np.radians(self.LAT0), np.radians(self.LON0)
+        )
 
-    def test_azeq_distance_preservation(self):
-        """Distance from center should be preserved."""
-        lat0 = np.radians(38.9)
-        lon0 = np.radians(-77)
+        assert abs(np.degrees(lat_inv) - lat) < 1e-9
+        assert abs(np.degrees(lon_inv) - lon) < 1e-9
 
-        # Point at known distance
-        lat = np.radians(40)
-        lon = np.radians(-77)  # Due north
+    def test_due_north_distance_is_radius_times_latitude_difference(self):
+        """Along the central meridian the radial distance is R * dlat exactly."""
+        result = azimuthal_equidistant(
+            np.radians(40.0),
+            np.radians(self.LON0),
+            np.radians(self.LAT0),
+            np.radians(self.LON0),
+        )
 
-        result = azimuthal_equidistant(lat, lon, lat0, lon0)
-
-        # The projected distance should approximately equal the geodesic distance
-        # The projected point should be north of the origin (positive y)
-        assert result.y > 0
-        assert_allclose(result.x, 0, atol=1000)  # Due north
-
-        # Distance should be reasonable (about 120-140 km for 1.1 degrees)
-        dist = np.sqrt(result.x**2 + result.y**2)
-        assert 100000 < dist < 200000  # 100-200 km range
+        assert abs(result.x) < 1e-6
+        assert result.y == pytest.approx(
+            _authalic_radius() * np.radians(40.0 - self.LAT0), rel=1e-12, abs=0
+        )
 
 
 class TestBatchOperations:
-    """Tests for batch projection operations."""
+    """Batch UTM against EPSG:32618 / 32718."""
 
-    def test_geodetic2utm_batch(self):
-        """Test batch UTM conversion."""
-        lats = np.radians(np.array([40, 41, 42, 43]))
-        lons = np.radians(np.array([-75, -75, -75, -75]))
+    def test_geodetic2utm_batch_matches_epsg(self, pyproj):
+        lat_deg = np.array([40.0, 41.0, 42.0, 43.0])
+        lon_deg = np.array([-75.0, -75.0, -74.0, -73.5])
+        transformer = pyproj.Transformer.from_crs(4326, 32618, always_xy=True)
+        east, north = transformer.transform(lon_deg, lat_deg)
 
-        eastings, northings, zones, hemispheres = geodetic2utm_batch(lats, lons)
+        eastings, northings, zones, hemispheres = geodetic2utm_batch(
+            np.radians(lat_deg), np.radians(lon_deg)
+        )
 
-        assert len(eastings) == 4
-        assert len(northings) == 4
+        assert_allclose(eastings, east, rtol=0, atol=1e-3)
+        assert_allclose(northings, north, rtol=0, atol=1e-3)
         assert np.all(zones == 18)
         assert np.all(hemispheres == "N")
 
-    def test_batch_matches_single(self):
-        """Batch results should match individual conversions."""
-        lats = np.radians(np.array([40, 41, -42]))
-        lons = np.radians(np.array([-75, -74, -73]))
+    def test_batch_mixed_hemispheres_matches_epsg(self, pyproj):
+        lat_deg = np.array([40.0, -42.0])
+        lon_deg = np.array([-75.0, -73.0])
 
-        eastings, northings, zones, hemispheres = geodetic2utm_batch(lats, lons)
+        eastings, northings, zones, hemispheres = geodetic2utm_batch(
+            np.radians(lat_deg), np.radians(lon_deg)
+        )
 
-        for i in range(len(lats)):
-            single = geodetic2utm(lats[i], lons[i])
-            assert_allclose(eastings[i], single.easting, atol=1e-6)
-            assert_allclose(northings[i], single.northing, atol=1e-6)
-
-
-class TestProjectionResult:
-    """Tests for ProjectionResult namedtuple."""
-
-    def test_projection_result_fields(self):
-        """ProjectionResult should have expected fields."""
-        result = ProjectionResult(1000, 2000, 1.0, 0.01)
-        assert result.x == 1000
-        assert result.y == 2000
-        assert result.scale == 1.0
-        assert result.convergence == 0.01
-
-
-class TestEdgeCases:
-    """Tests for edge cases and numerical stability."""
-
-    def test_mercator_high_latitude(self):
-        """Mercator should handle high latitudes."""
-        result = mercator(np.radians(85), 0)
-        assert np.isfinite(result.x)
-        assert np.isfinite(result.y)
-        assert result.scale > 10  # Very large scale
-
-    def test_utm_equator(self):
-        """UTM should handle equator correctly."""
-        result = geodetic2utm(0, np.radians(-75))
-        assert_allclose(result.northing, 0, atol=1)
-        assert result.hemisphere == "N"
-
-    def test_stereographic_antipode(self):
-        """Test stereographic far from center."""
-        lat0 = np.radians(45)
-        lon0 = np.radians(0)
-
-        # Point far from center
-        result = stereographic(np.radians(-30), np.radians(90), lat0, lon0)
-        assert np.isfinite(result.x)
-        assert np.isfinite(result.y)
-
-    def test_lcc_at_pole(self):
-        """LCC should handle points approaching poles."""
-        lat0 = np.radians(39)
-        lon0 = np.radians(-96)
-        lat1 = np.radians(33)
-        lat2 = np.radians(45)
-
-        result = lambert_conformal_conic(np.radians(80), lon0, lat0, lon0, lat1, lat2)
-        assert np.isfinite(result.x)
-        assert np.isfinite(result.y)
+        for i, epsg in enumerate((32618, 32718)):
+            transformer = pyproj.Transformer.from_crs(4326, epsg, always_xy=True)
+            east, north = transformer.transform(lon_deg[i], lat_deg[i])
+            assert abs(eastings[i] - east) < 1e-3
+            assert abs(northings[i] - north) < 1e-3
+        assert list(hemispheres) == ["N", "S"]
 
 
 class TestNorwayException:
