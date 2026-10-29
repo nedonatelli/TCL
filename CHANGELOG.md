@@ -44,6 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
+  (promised in 2.11.0): 100.0% line, 100.0% branch, fixtures pin zero drift
+  across the Schmidt factoring. `mathematical_functions.special_functions.hypergeometric`
+  EXPERIMENTAL -> MATURE: 99.4% line (482/485), 98.4% branch (183/186), up
+  from 65%. Held at EXPERIMENTAL: `dynamic_models.process_noise.coordinated_turn`
+  (`q_coord_turn_polar` has no MATLAB oracle; `QPolarCoordTurn2D` is a
+  different model), `atmosphere.ionosphere` (the IRI port is deferred), and
+  `static_estimation.maximum_likelihood` (98.2% line, 87.0% branch). Each
+  figure comes from the test files that import the module, not the whole
+  suite. What to do: nothing.
+
 - **One convention for an unidentifiable covariance.** When a point
   estimate exists but the information matrix is singular in some
   directions, the estimate is returned with `inf` variance on the

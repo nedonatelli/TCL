@@ -179,10 +179,10 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_estimation.gaussian_sum_filter": MaturityLevel.EXPERIMENTAL,
     "dynamic_estimation.rbpf": MaturityLevel.EXPERIMENTAL,
     # Process noise
-    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1 because q_coord_turn_2d/3d were per-axis-independent, not QCoordTurn. v2.12.0 ports QCoordTurn (rank-1 G*G'), bitwise equal to the case 5/7 MATLAB fixtures; held here only until q_coord_turn_polar, never checked against MATLAB, is reviewed
+    "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1 because q_coord_turn_2d/3d were per-axis-independent, not QCoordTurn. v2.12.0 ports QCoordTurn (rank-1 G*G'), bitwise equal to the case 5/7 MATLAB fixtures; kept EXPERIMENTAL on 2026-10-28: q_coord_turn_polar has no oracle (its test is a regression pin; MATLAB QPolarCoordTurn2D is a different model), so the module cannot be called verified
     # Geophysical Models
     "gravity.egm": MaturityLevel.EXPERIMENTAL,
-    "magnetism.wmm": MaturityLevel.EXPERIMENTAL,  # igrf/emm (MATURE) build on this; held only because the Schmidt factoring touched it in v2.11.0 (fixtures pin zero drift) -- promote in v2.12
+    "magnetism.wmm": MaturityLevel.MATURE,  # promoted 2026-10-28 (promised in 2.11.0): 100.0% line (166/166), 100.0% branch (26/26), measured from the 9 test files importing it; fixtures pin zero drift across the v2.11.0 Schmidt factoring
     "gravity.tides": MaturityLevel.EXPERIMENTAL,
     # Terrain
     "terrain.dem": MaturityLevel.EXPERIMENTAL,
@@ -204,7 +204,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "astronomical.time_systems": MaturityLevel.MATURE,
     # atmosphere
     "atmosphere.humidity": MaturityLevel.EXPERIMENTAL,
-    "atmosphere.ionosphere": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: simple_iri silently ignored altitude and longitude, and no oracle test backs the module (task 2.9)
+    "atmosphere.ionosphere": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: simple_iri silently ignored altitude and longitude, and no oracle test backs the module (task 2.9); unchanged 2026-10-28: the IRI port (task 4.6) is deferred
     "atmosphere.models": MaturityLevel.MATURE,
     "atmosphere.refraction": MaturityLevel.EXPERIMENTAL,
     "atmosphere.jacchia": MaturityLevel.EXPERIMENTAL,  # new this release
@@ -293,7 +293,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "mathematical_functions.basic_matrix.decompositions": MaturityLevel.EXPERIMENTAL,  # 86% coverage
     "mathematical_functions.signal_processing.matched_filter": MaturityLevel.EXPERIMENTAL,  # 66% coverage
     "mathematical_functions.special_functions.debye": MaturityLevel.EXPERIMENTAL,  # 55% coverage
-    "mathematical_functions.special_functions.hypergeometric": MaturityLevel.EXPERIMENTAL,  # 65% coverage
+    "mathematical_functions.special_functions.hypergeometric": MaturityLevel.MATURE,  # promoted 2026-10-28: 99.4% line (482/485), 98.4% branch (183/186), measured from the 6 test files importing it (was 65% coverage)
     "mathematical_functions.statistics.distributions": MaturityLevel.EXPERIMENTAL,  # 83% coverage
     # navigation
     "navigation.rhumb": MaturityLevel.EXPERIMENTAL,  # 85% coverage
@@ -332,7 +332,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "mathematical_functions.polynomials.multivariate": MaturityLevel.MATURE,  # v2.10.0; 98.1% cov (2026-09-11)
     # static_estimation
     "static_estimation.localization": MaturityLevel.MATURE,  # v2.10.0; 96.7% cov (2026-09-11)
-    "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # v2.10.0; 89.9% cov (2026-09-11) -- just under the bar
+    "static_estimation.maximum_likelihood": MaturityLevel.EXPERIMENTAL,  # v2.10.0; re-measured 2026-10-28 from the 10 test files importing it: 98.2% line (223/227) but 87.0% branch (40/46), under the 90% bar on branches
     # terrain
     "terrain.visibility": MaturityLevel.EXPERIMENTAL,  # 88% coverage
     # trackers
