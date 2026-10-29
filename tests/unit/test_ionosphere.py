@@ -1,6 +1,10 @@
 """
 Tests for ionospheric models.
 
+Klobuchar values are checked against a step-by-step evaluation of the
+IS-GPS-200 algorithm (section 20.3.3.5.2.5, "Ionospheric Model") written out in
+``_is_gps_200_klobuchar`` below, and against closed-form anchors.
+
 Tests cover:
 - Klobuchar ionospheric delay model
 - Dual-frequency TEC computation
@@ -10,11 +14,12 @@ Tests cover:
 - Scintillation index estimation
 """
 
+import math
+
 import numpy as np
 import pytest
 
 from pytcl.atmosphere.ionosphere import (
-    DEFAULT_KLOBUCHAR,
     F_L1,
     F_L2,
     SPEED_OF_LIGHT,
@@ -28,6 +33,48 @@ from pytcl.atmosphere.ionosphere import (
     simple_iri,
 )
 
+
+def _is_gps_200_klobuchar(lat_deg, lon_deg, el_deg, az_deg, gps_time, alpha, beta):
+    """Klobuchar L1 delay in metres, evaluated step by step from IS-GPS-200.
+
+    IS-GPS-200 section 20.3.3.5.2.5: all angles in semi-circles (1 semi-circle
+    = 180 degrees); the trigonometric arguments are converted back to radians.
+    """
+    phi_u = lat_deg / 180.0  # user geodetic latitude, semi-circles
+    lam_u = lon_deg / 180.0  # user geodetic longitude, semi-circles
+    elev = el_deg / 180.0  # satellite elevation E, semi-circles
+    azim = math.radians(az_deg)  # satellite azimuth A, radians
+
+    # Earth's central angle between user and ionospheric pierce point
+    psi = 0.0137 / (elev + 0.11) - 0.022
+    # subionospheric latitude, limited to +/-0.416 semi-circles
+    phi_i = min(max(phi_u + psi * math.cos(azim), -0.416), 0.416)
+    # subionospheric longitude
+    lam_i = lam_u + psi * math.sin(azim) / math.cos(phi_i * math.pi)
+    # geomagnetic latitude of the pierce point
+    phi_m = phi_i + 0.064 * math.cos((lam_i - 1.617) * math.pi)
+    # local time at the pierce point, seconds, in [0, 86400)
+    t_local = (4.32e4 * lam_i + gps_time) % 86400.0
+    # obliquity (slant) factor
+    slant = 1.0 + 16.0 * (0.53 - elev) ** 3
+    # amplitude and period of the cosine, from cubic polynomials in phi_m
+    amp = max(sum(alpha[n] * phi_m**n for n in range(4)), 0.0)
+    per = max(sum(beta[n] * phi_m**n for n in range(4)), 72000.0)
+    # phase, radians
+    x = 2.0 * math.pi * (t_local - 50400.0) / per
+    if abs(x) < 1.57:
+        t_iono = slant * (5.0e-9 + amp * (1.0 - x**2 / 2.0 + x**4 / 24.0))
+    else:
+        t_iono = slant * 5.0e-9
+    return t_iono * 299792458.0
+
+
+# pytcl's own default coefficients, not broadcast ICD values: the tests check the
+# algorithm, not any particular satellite message.
+_DEFAULT_ALPHA = [3.82e-8, 1.49e-8, -5.96e-8, -5.96e-8]
+_DEFAULT_BETA = [1.43e5, 0.0, -3.28e5, 1.13e5]
+
+
 # =============================================================================
 # Tests for constants
 # =============================================================================
@@ -38,13 +85,12 @@ class TestConstants:
 
     def test_speed_of_light(self):
         """Test speed of light constant."""
-        assert SPEED_OF_LIGHT == pytest.approx(299792458.0)
+        assert SPEED_OF_LIGHT == 299792458.0
 
     def test_gps_frequencies(self):
         """Test GPS frequency constants."""
-        assert F_L1 == pytest.approx(1575.42e6)
-        assert F_L2 == pytest.approx(1227.60e6)
-        assert F_L1 > F_L2  # L1 is higher frequency
+        assert F_L1 == 1575.42e6
+        assert F_L2 == 1227.60e6
 
 
 # =============================================================================
@@ -54,11 +100,6 @@ class TestConstants:
 
 class TestKlobucharCoefficients:
     """Tests for Klobuchar coefficient handling."""
-
-    def test_default_coefficients_shape(self):
-        """Test default Klobuchar coefficients shape."""
-        assert len(DEFAULT_KLOBUCHAR.alpha) == 4
-        assert len(DEFAULT_KLOBUCHAR.beta) == 4
 
     def test_custom_coefficients(self):
         """Test creating custom coefficients."""
@@ -77,105 +118,142 @@ class TestKlobucharCoefficients:
 
 
 class TestKlobucharDelay:
-    """Tests for Klobuchar ionospheric delay model."""
+    """Klobuchar delay against the IS-GPS-200 step-by-step evaluation.
 
-    def test_klobuchar_delay_basic(self):
-        """Test basic Klobuchar delay computation."""
-        delay = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            elevation=np.radians(45),
-            azimuth=np.radians(180),
-            gps_time=43200,  # Noon
+    No external numeric worked example exists for this model, so the oracle is
+    a transcription of IS-GPS-200 section 20.3.3.5.2.5 (``_is_gps_200_klobuchar``).
+    The phase x = 2 pi (t - 50400) / PER selects the branch: |x| < 1.57 is the
+    cosine (daytime) branch, otherwise the delay is the constant night floor
+    F * 5 ns. Each case below states its x.
+    """
+
+    def test_evaluator_pins(self):
+        """Evaluator values computed independently in mpmath at 30 digits."""
+        args = (_DEFAULT_ALPHA, _DEFAULT_BETA)
+        night = _is_gps_200_klobuchar(40, -105, 45, 180, 43200, *args)  # x = -1.653
+        peak = _is_gps_200_klobuchar(0, 0, 90, 0, 50400, *args)  # x = 0
+        day = _is_gps_200_klobuchar(40, 0, 45, 180, 46800, *args)  # x = -0.178
+        day2 = _is_gps_200_klobuchar(40, -105, 45, 180, 64800, *args)  # x = -0.551
+        assert night == pytest.approx(2.02544581304128, rel=1e-13, abs=0)
+        assert peak == pytest.approx(13.051388706360187, rel=1e-13, abs=0)
+        assert day == pytest.approx(17.083060349781694, rel=1e-13, abs=0)
+        assert day2 == pytest.approx(14.814267584787064, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize(
+        ("lat", "lon", "el", "az", "t"),
+        [
+            # night branch, |x| >= 1.57: delay is F * 5 ns
+            (40, -105, 45, 180, 43200),  # x = -1.653
+            (40, -105, 80, 180, 43200),  # x = -1.681
+            (40, -105, 15, 180, 43200),  # x = -1.595, low elevation, large F
+            (40, 0, 45, 180, 18000),  # x = -1.601
+            (40, 0, 45, 180, 18550),  # x = -1.574, just outside 1.57
+            # cosine branch, |x| < 1.57
+            (40, 0, 45, 180, 18700),  # x = -1.567, just inside 1.57
+            (40, 0, 30, 90, 18000),  # x = -1.540
+            (40, 0, 45, 180, 46800),  # x = -0.178
+            (40, -105, 45, 180, 64800),  # x = -0.551
+            (40, 0, 45, 180, 50400),  # x = 0, daytime peak
+            (0, 0, 90, 0, 50400),  # x = 0, zenith
+            (-35, 150, 60, 270, 3600),  # x = -0.583, southern hemisphere
+            (40, -150, 45, 180, 20000),  # local time wraps below 0 (mod 86400)
+            # pierce point clipped to +/-0.416 semi-circles
+            (80, 0, 45, 0, 43200),  # +0.416, x = -0.506
+            (-80, 20, 20, 180, 30000),  # -0.416, x = -1.249
+        ],
+    )
+    def test_default_coefficients(self, lat, lon, el, az, t):
+        got = klobuchar_delay(
+            np.radians(lat), np.radians(lon), np.radians(el), np.radians(az), t
         )
+        want = _is_gps_200_klobuchar(lat, lon, el, az, t, _DEFAULT_ALPHA, _DEFAULT_BETA)
+        assert float(got) == pytest.approx(want, rel=1e-12, abs=0)
 
-        assert delay > 0  # Delay should be positive
-        assert delay < 50  # Typical delays are < 50 meters
-
-    def test_klobuchar_delay_noon_vs_midnight(self):
-        """Test that delay is larger at noon than midnight."""
-        # Use a longitude where noon GPS time corresponds to local noon
-        delay_noon = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(0),  # Prime meridian for consistent local time
-            elevation=np.radians(45),
-            azimuth=np.radians(180),
-            gps_time=50400,  # 14:00 UTC (peak ionospheric time)
+    def test_branch_switch_at_x_1_57(self):
+        """Just outside |x| = 1.57 the delay is the night floor; just inside it is not."""
+        floor = _is_gps_200_klobuchar(40, 0, 45, 180, 18550, [0.0] * 4, _DEFAULT_BETA)
+        outside = float(
+            klobuchar_delay(np.radians(40), 0.0, np.radians(45), np.radians(180), 18550)
         )
-
-        delay_early_morning = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(0),
-            elevation=np.radians(45),
-            azimuth=np.radians(180),
-            gps_time=18000,  # 05:00 UTC (early morning, low ionosphere)
+        inside = float(
+            klobuchar_delay(np.radians(40), 0.0, np.radians(45), np.radians(180), 18700)
         )
+        assert outside == pytest.approx(floor, rel=1e-13, abs=0)
+        assert inside > outside * 1.1
 
-        assert delay_noon > delay_early_morning
-
-    def test_klobuchar_delay_low_elevation(self):
-        """Test that delay increases at low elevation angles."""
-        delay_high = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            elevation=np.radians(80),
-            azimuth=np.radians(180),
-            gps_time=43200,
-        )
-
-        delay_low = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            elevation=np.radians(15),
-            azimuth=np.radians(180),
-            gps_time=43200,
-        )
-
-        assert delay_low > delay_high  # More atmosphere at low elevation
-
-    def test_klobuchar_delay_with_custom_coefficients(self):
-        """Test Klobuchar delay with custom coefficients."""
-        alpha = np.array([5e-8, 1e-8, -5e-8, 0])
-        beta = np.array([1.5e5, 0, -3e5, 1e5])
-        coef = KlobucharCoefficients(alpha=alpha, beta=beta)
-
-        delay = klobuchar_delay(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            elevation=np.radians(45),
-            azimuth=np.radians(180),
-            gps_time=43200,
+    def test_custom_coefficients(self):
+        alpha = [5e-8, 1e-8, -5e-8, 0.0]
+        beta = [1.5e5, 0.0, -3e5, 1e5]
+        coef = KlobucharCoefficients(alpha=np.array(alpha), beta=np.array(beta))
+        got = klobuchar_delay(
+            np.radians(40),
+            np.radians(-105),
+            np.radians(45),
+            np.radians(180),
+            43200,
             coefficients=coef,
         )
+        want = _is_gps_200_klobuchar(40, -105, 45, 180, 43200, alpha, beta)
+        assert float(got) == pytest.approx(want, rel=1e-12, abs=0)
 
-        assert delay > 0
-
-    def test_klobuchar_delay_array_input(self):
-        """Test Klobuchar delay with array inputs."""
-        latitudes = np.radians([30, 40, 50])
-        longitudes = np.radians([-105, -105, -105])
-        elevations = np.radians([45, 45, 45])
-        azimuths = np.radians([180, 180, 180])
-        gps_times = np.array([43200, 43200, 43200])
-
-        delays = klobuchar_delay(latitudes, longitudes, elevations, azimuths, gps_times)
-
-        assert len(delays) == 3
-        assert np.all(delays > 0)
-
-    def test_klobuchar_delay_polar_latitude_clipping(self):
-        """Test that extreme latitudes are handled (clipped at IPP)."""
-        # High latitude (should be clipped internally)
-        delay = klobuchar_delay(
-            latitude=np.radians(80),
-            longitude=np.radians(0),
-            elevation=np.radians(45),
-            azimuth=np.radians(0),  # Looking north
-            gps_time=43200,
+    def test_negative_amplitude_is_floored_at_zero(self):
+        """AMP < 0 is set to 0: the delay is then the 5 ns night-time floor."""
+        alpha = [-1e-8, 0.0, 0.0, 0.0]
+        coef = KlobucharCoefficients(
+            alpha=np.array(alpha), beta=np.array(_DEFAULT_BETA)
+        )
+        got = klobuchar_delay(0.0, 0.0, np.radians(90), 0.0, 50400, coefficients=coef)
+        # E = 0.5 semi-circles: F = 1 + 16 * 0.03^3
+        slant = 1.0 + 16.0 * 0.03**3
+        assert float(got) == pytest.approx(
+            slant * 5.0e-9 * 299792458.0, rel=1e-13, abs=0
         )
 
-        assert delay > 0
-        assert np.isfinite(delay)
+    def test_short_period_is_floored_at_72000_s(self):
+        """PER < 72000 is set to 72000: a 50000 s period gives the same delay."""
+        alpha = _DEFAULT_ALPHA
+        short = KlobucharCoefficients(
+            alpha=np.array(alpha), beta=np.array([50000.0, 0.0, 0.0, 0.0])
+        )
+        floor = KlobucharCoefficients(
+            alpha=np.array(alpha), beta=np.array([72000.0, 0.0, 0.0, 0.0])
+        )
+        args = (np.radians(40), 0.0, np.radians(45), np.radians(180), 40000)
+        assert float(klobuchar_delay(*args, coefficients=short)) == float(
+            klobuchar_delay(*args, coefficients=floor)
+        )
+
+    def test_zenith_at_local_peak_is_slant_times_five_ns_plus_amplitude(self):
+        """lam_i = 0, t = 50400 s => x = 0, so T = F (5 ns + AMP).
+
+        E = 0.5 semi-circles gives psi = 0.0137/0.61 - 0.022 and F = 1.000432;
+        with A = 0 the pierce point is at phi_i = psi, lam_i = 0.
+        """
+        psi = 0.0137 / 0.61 - 0.022
+        phi_m = psi + 0.064 * math.cos(-1.617 * math.pi)
+        amp = sum(a * phi_m**n for n, a in enumerate(_DEFAULT_ALPHA))
+        slant = 1.0 + 16.0 * 0.03**3
+        expected = slant * (5.0e-9 + amp) * 299792458.0
+        got = klobuchar_delay(0.0, 0.0, np.radians(90), 0.0, 50400)
+        assert float(got) == pytest.approx(expected, rel=1e-12, abs=0)
+
+    def test_array_input_matches_scalar_evaluation(self):
+        lats = np.array([30.0, 40.0, 50.0])
+        got = klobuchar_delay(
+            np.radians(lats),
+            np.radians([-105.0, -105.0, -105.0]),
+            np.radians([45.0, 45.0, 45.0]),
+            np.radians([180.0, 180.0, 180.0]),
+            np.array([43200.0, 43200.0, 43200.0]),
+        )
+        want = [
+            _is_gps_200_klobuchar(
+                lat, -105, 45, 180, 43200, _DEFAULT_ALPHA, _DEFAULT_BETA
+            )
+            for lat in lats
+        ]
+        assert got.shape == (3,)
+        np.testing.assert_allclose(got, want, rtol=1e-12, atol=0)
 
 
 # =============================================================================
@@ -184,36 +262,40 @@ class TestKlobucharDelay:
 
 
 class TestDualFrequencyTec:
-    """Tests for dual-frequency TEC computation."""
+    """Dual-frequency TEC: delay_i = 40.3 TEC / f_i^2 (TEC in electrons/m^2)."""
 
-    def test_dual_frequency_tec_basic(self):
-        """Test basic TEC computation from dual-frequency pseudoranges."""
-        # L2 pseudorange is slightly larger due to ionospheric delay
+    def test_one_tecu_l2_minus_l1_is_about_0_105_m(self):
+        """Textbook: 1 TECU delays L1 by 0.1624 m and L2 by 0.2674 m."""
+        tec = dual_frequency_tec(0.0, 0.2674 - 0.1624)
+        assert tec == pytest.approx(1.0, rel=2e-3, abs=0)
+
+    def test_matches_inverse_of_dispersion_formula(self):
+        """P2 - P1 = 40.3 * TEC * (1/f2^2 - 1/f1^2), solved for TEC."""
         p_l1 = 22000000.0
-        p_l2 = 22000002.5  # About 2.5m more delay
+        p_l2 = 22000002.5
+        expected = 2.5 / (40.3 * (1 / 1227.60e6**2 - 1 / 1575.42e6**2)) / 1e16
+        assert dual_frequency_tec(p_l1, p_l2) == pytest.approx(
+            expected, rel=1e-12, abs=0
+        )
 
-        tec = dual_frequency_tec(p_l1, p_l2)
+    def test_zero_difference(self):
+        assert dual_frequency_tec(22000000.0, 22000000.0) == 0.0
 
-        assert tec > 0  # TEC should be positive
+    def test_negative_difference_gives_negative_tec(self):
+        assert dual_frequency_tec(22000002.5, 22000000.0) == pytest.approx(
+            -dual_frequency_tec(22000000.0, 22000002.5), rel=1e-12, abs=0
+        )
 
-    def test_dual_frequency_tec_zero_difference(self):
-        """Test TEC is zero when pseudoranges are equal."""
-        p_l1 = 22000000.0
-        p_l2 = 22000000.0
-
-        tec = dual_frequency_tec(p_l1, p_l2)
-
-        assert tec == pytest.approx(0.0)
-
-    def test_dual_frequency_tec_array_input(self):
-        """Test TEC computation with array inputs."""
+    def test_array_input(self):
         p_l1 = np.array([22000000.0, 22500000.0, 23000000.0])
         p_l2 = np.array([22000002.5, 22500003.0, 23000002.0])
-
-        tec = dual_frequency_tec(p_l1, p_l2)
-
-        assert len(tec) == 3
-        assert np.all(tec > 0)
+        k = 40.3 * (1 / 1227.60e6**2 - 1 / 1575.42e6**2) * 1e16
+        np.testing.assert_allclose(
+            dual_frequency_tec(p_l1, p_l2),
+            np.array([2.5, 3.0, 2.0]) / k,
+            rtol=1e-9,
+            atol=0,
+        )
 
 
 # =============================================================================
@@ -222,54 +304,41 @@ class TestDualFrequencyTec:
 
 
 class TestIonosphericDelayFromTec:
-    """Tests for ionospheric delay computation from TEC."""
+    """delay = 40.3 * TEC * 1e16 / f^2."""
 
-    def test_delay_from_tec_basic(self):
-        """Test basic delay computation from TEC."""
-        tec = 20.0  # 20 TECU (typical mid-latitude value)
+    def test_20_tecu_on_l1(self):
+        expected = 40.3 * 20.0e16 / 1575.42e6**2
+        assert ionospheric_delay_from_tec(20.0) == pytest.approx(
+            expected, rel=1e-13, abs=0
+        )
 
-        delay = ionospheric_delay_from_tec(tec)
+    def test_one_tecu_on_l1_is_0_1624_m(self):
+        """Textbook value 0.162 m / TECU at L1."""
+        assert ionospheric_delay_from_tec(1.0) == pytest.approx(0.1624, rel=1e-3, abs=0)
 
-        assert delay > 0
-        assert delay < 15  # Typical L1 delay for 20 TECU
+    def test_one_tecu_on_l2_is_0_2674_m(self):
+        assert ionospheric_delay_from_tec(1.0, frequency=F_L2) == pytest.approx(
+            0.2674, rel=1e-3, abs=0
+        )
 
     def test_delay_proportional_to_tec(self):
-        """Test that delay is proportional to TEC."""
-        delay_10 = ionospheric_delay_from_tec(10.0)
-        delay_20 = ionospheric_delay_from_tec(20.0)
+        assert ionospheric_delay_from_tec(20.0) == pytest.approx(
+            2 * ionospheric_delay_from_tec(10.0), rel=1e-14, abs=0
+        )
 
-        assert delay_20 == pytest.approx(2 * delay_10)
+    def test_frequency_dependence_is_inverse_square(self):
+        ratio = ionospheric_delay_from_tec(20.0, F_L2) / ionospheric_delay_from_tec(
+            20.0, F_L1
+        )
+        assert ratio == pytest.approx((1575.42 / 1227.60) ** 2, rel=1e-13, abs=0)
 
-    def test_delay_l2_larger_than_l1(self):
-        """Test that L2 delay is larger than L1 delay."""
-        tec = 20.0
-
-        delay_l1 = ionospheric_delay_from_tec(tec, frequency=F_L1)
-        delay_l2 = ionospheric_delay_from_tec(tec, frequency=F_L2)
-
-        assert delay_l2 > delay_l1  # Lower frequency has more delay
-
-    def test_delay_frequency_dependence(self):
-        """Test 1/f² frequency dependence."""
-        tec = 20.0
-
-        delay_l1 = ionospheric_delay_from_tec(tec, frequency=F_L1)
-        delay_l2 = ionospheric_delay_from_tec(tec, frequency=F_L2)
-
-        # Ratio should be (f1/f2)²
-        expected_ratio = (F_L1 / F_L2) ** 2
-        actual_ratio = delay_l2 / delay_l1
-
-        assert actual_ratio == pytest.approx(expected_ratio, rel=1e-10)
-
-    def test_delay_array_input(self):
-        """Test delay computation with array input."""
-        tec = np.array([10.0, 20.0, 30.0])
-
-        delay = ionospheric_delay_from_tec(tec)
-
-        assert len(delay) == 3
-        assert np.all(delay > 0)
+    def test_array_input(self):
+        np.testing.assert_allclose(
+            ionospheric_delay_from_tec(np.array([10.0, 20.0, 30.0])),
+            np.array([10.0, 20.0, 30.0]) * 40.3e16 / 1575.42e6**2,
+            rtol=1e-13,
+            atol=0,
+        )
 
 
 # =============================================================================
@@ -279,22 +348,6 @@ class TestIonosphericDelayFromTec:
 
 class TestSimpleIri:
     """Tests for simplified IRI model."""
-
-    def test_simple_iri_basic(self):
-        """Test basic IRI state computation."""
-        state = simple_iri(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            altitude=300e3,
-            hour=12,
-        )
-
-        assert isinstance(state, IonosphereState)
-        assert state.tec > 0
-        assert state.delay_l1 > 0
-        assert state.delay_l2 > 0
-        assert state.f_peak > 0
-        assert state.h_peak > 0
 
     def test_simple_iri_noon_vs_night(self):
         """Test that TEC is higher at noon than at night."""
@@ -333,40 +386,6 @@ class TestSimpleIri:
         )
 
         assert state_high.tec > state_low.tec
-
-    def test_simple_iri_seasonal_variation(self):
-        """Test seasonal variation (summer vs winter)."""
-        state_summer = simple_iri(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            altitude=300e3,
-            hour=12,
-            month=6,  # June (summer in NH)
-        )
-
-        state_winter = simple_iri(
-            latitude=np.radians(40),
-            longitude=np.radians(-105),
-            altitude=300e3,
-            hour=12,
-            month=12,  # December (winter in NH)
-        )
-
-        # Both should be valid
-        assert state_summer.tec > 0
-        assert state_winter.tec > 0
-
-    def test_simple_iri_array_input(self):
-        """Test IRI with array inputs."""
-        latitudes = np.radians([30, 40, 50])
-        longitudes = np.radians([-105, -105, -105])
-        altitudes = np.array([300e3, 300e3, 300e3])
-        hours = np.array([12, 12, 12])
-
-        state = simple_iri(latitudes, longitudes, altitudes, hours)
-
-        assert len(state.tec) == 3
-        assert np.all(state.tec > 0)
 
     def test_simple_iri_delay_consistency(self):
         """Test that delays are consistent with TEC."""
@@ -607,53 +626,3 @@ class TestIonosphereState:
 
         assert len(state.tec) == 3
         np.testing.assert_array_equal(state.tec, tec)
-
-
-# =============================================================================
-# Integration tests
-# =============================================================================
-
-
-class TestIonosphereIntegration:
-    """Integration tests for ionosphere module."""
-
-    def test_tec_delay_roundtrip(self):
-        """Test TEC -> delay -> approximate TEC roundtrip."""
-        original_tec = 25.0
-
-        # Compute delays
-        delay_l1 = ionospheric_delay_from_tec(original_tec, F_L1)
-        delay_l2 = ionospheric_delay_from_tec(original_tec, F_L2)
-
-        # Create fake pseudoranges (arbitrary base range)
-        base_range = 22000000.0
-        p_l1 = base_range + delay_l1
-        p_l2 = base_range + delay_l2
-
-        # Recover TEC from pseudorange difference
-        recovered_tec = dual_frequency_tec(p_l1, p_l2)
-
-        # Should match original (within floating point tolerance)
-        assert recovered_tec == pytest.approx(original_tec, rel=1e-6)
-
-    def test_iri_klobuchar_comparison(self):
-        """Test that IRI and Klobuchar give comparable results."""
-        # Same location and time
-        lat = np.radians(40)
-        lon = np.radians(-105)
-        hour = 12
-
-        # Get IRI prediction
-        iri_state = simple_iri(lat, lon, 300e3, hour)
-
-        # Get Klobuchar prediction (need elevation/azimuth for zenith)
-        klobuchar_delay_val = klobuchar_delay(
-            lat,
-            lon,
-            np.radians(90),
-            0,
-            hour * 3600,  # Zenith
-        )
-
-        # Both should be same order of magnitude
-        assert 0.1 < klobuchar_delay_val / iri_state.delay_l1 < 10

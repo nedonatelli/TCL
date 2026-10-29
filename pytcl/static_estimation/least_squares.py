@@ -268,7 +268,9 @@ def total_least_squares(
     ------
     ValueError
         If ``rank`` is not an integer in ``[1, n]``, or if the TLS solution
-        does not exist for the requested rank.
+        does not exist for the requested rank. This is not an unidentified
+        covariance, which pytcl reports as ``inf`` variance alongside the
+        estimate: here there is no point estimate to return.
 
     Examples
     --------

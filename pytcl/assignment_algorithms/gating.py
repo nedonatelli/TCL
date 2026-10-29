@@ -116,6 +116,77 @@ def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     return inv, det
 
 
+@njit(cache=True)
+def _not_pd_2x2(S: np.ndarray[Any, Any]) -> bool:
+    """True when the symmetric part of a 2x2 has a leading minor <= 0.
+
+    ``nu' S^-1 nu = y' S y`` with ``y = S^-1 nu``, and ``y' S y`` is
+    ``y' sym(S) y``, so the symmetric part ``(S + S')/2`` decides whether the
+    form is non-negative for every ``nu``. The test is ``|b| / sqrt(a e) < 1``
+    rather than ``a e - b^2 > 0`` so that it is scale-free: the product
+    underflows for entries near 1e-170. Written as ``not (... > 0)`` so a
+    NaN entry is flagged: the quadratic-form kernels are fastmath, where a
+    NaN input gives platform-dependent garbage (2.8e-309 on Linux).
+    """
+    a = S[0, 0]
+    e = S[1, 1]
+    b = (S[0, 1] + S[1, 0]) * 0.5
+    return not (a > 0.0 and e > 0.0 and abs(b) / np.sqrt(a) / np.sqrt(e) < 1.0)
+
+
+@njit(cache=True)
+def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
+    """True when a Cholesky of the symmetric part of S hits a pivot <= 0.
+
+    A pivot is the exact leading-principal-minor ratio, so this is an exact
+    positive-definiteness test at n^3/6 multiply-adds. A NaN pivot is
+    flagged, as in `_not_pd_2x2`.
+    """
+    n = S.shape[0]
+    L = np.zeros((n, n))
+    for j in range(n):
+        d2 = S[j, j]
+        for k in range(j):
+            d2 -= L[j, k] * L[j, k]
+        if not d2 > 0.0:
+            return True
+        d = np.sqrt(d2)
+        L[j, j] = d
+        for i in range(j + 1, n):
+            t = (S[i, j] + S[j, i]) * 0.5
+            for k in range(j):
+                t -= L[i, k] * L[j, k]
+            L[i, j] = t / d
+    return False
+
+
+def _not_pd(S: "NDArray[np.float64]") -> bool:
+    n = S.shape[0]
+    if n == 1:
+        return not S.item(0) > 0.0
+    if n == 2:
+        return _not_pd_2x2(S)
+    return _not_pd_general(S)
+
+
+def _shape_error(
+    innovation: "NDArray[np.float64]", S: "NDArray[np.float64]", what: str
+) -> ValueError:
+    return ValueError(
+        f"{what} of shape {innovation.shape} is incompatible with a "
+        f"covariance of shape {S.shape}: expected a 1-d vector of length m "
+        "and an (m, m) covariance"
+    )
+
+
+def _raise_not_pd() -> None:
+    raise np.linalg.LinAlgError(
+        "innovation covariance is not positive definite or too ill-conditioned; "
+        "a squared Mahalanobis distance is only defined for a positive-definite "
+        "covariance"
+    )
+
+
 def mahalanobis_distance(
     innovation: ArrayLike,
     innovation_covariance: ArrayLike,
@@ -134,12 +205,28 @@ def mahalanobis_distance(
     innovation : array_like
         Innovation (measurement residual) vector of shape (m,).
     innovation_covariance : array_like
-        Innovation covariance matrix of shape (m, m).
+        Positive-definite innovation covariance matrix of shape (m, m).
 
     Returns
     -------
     float
         Squared Mahalanobis distance.
+
+    Raises
+    ------
+    ValueError
+        If ``innovation`` is not 1-d or ``innovation_covariance`` is not
+        (m, m) for an innovation of length m. The message names both shapes.
+    numpy.linalg.LinAlgError
+        If the covariance is exactly singular, or is not positive definite
+        or too ill-conditioned (indefinite, negative definite, or a
+        condition number near 1e16 (1/eps) or above, where the leading
+        minors or pivots round to a non-positive value). Positive definiteness is
+        tested on the symmetric part ``(S + S.T) / 2``, which is exact for
+        "the form is non-negative for every innovation", so a non-symmetric
+        ``S`` with a negative form is rejected too. A NaN entry in the
+        covariance is rejected as well (v2.11.1 returned NaN on some
+        platforms and garbage such as 2.8e-309 on Linux).
 
     Examples
     --------
@@ -175,9 +262,49 @@ def mahalanobis_distance(
     - n > 10, or an exactly-singular 2D/3D covariance: the original generic
       `np.linalg.solve` path. Every branch raises the same
       `numpy.linalg.LinAlgError` on an exactly singular covariance.
+
+    Positive definiteness is tested beside that arithmetic, never in place of
+    it, so valid inputs return the same bits on every branch. n == 1 tests
+    the entry, n == 2 a scale-free minor test on the symmetric part, other
+    sizes run an n^3/6 Cholesky pivot test on it, a fraction of the cost of
+    the inverse or solve.
     """
     nu = np.asarray(innovation, dtype=np.float64)
     S = np.asarray(innovation_covariance, dtype=np.float64)
+    if nu.ndim != 1 or S.shape != nu.shape * 2:
+        raise _shape_error(nu, S, "innovation")
+    n = nu.shape[0]
+
+    if n == 2:
+        S_inv, det = _invert_2x2(S)
+        if det != 0.0:
+            if _not_pd_2x2(S):
+                _raise_not_pd()
+            return float(_mahalanobis_distance_2d(nu, S_inv))
+    elif n == 3:
+        S_inv, det = _invert_3x3(S)
+        if det != 0.0:
+            if _not_pd_general(S):
+                _raise_not_pd()
+            return float(_mahalanobis_distance_3d(nu, S_inv))
+    elif n <= 10:
+        S_inv = np.linalg.inv(S)
+        if n == 1:
+            if not S.item(0) > 0.0:
+                _raise_not_pd()
+        elif _not_pd_general(S):
+            _raise_not_pd()
+        return float(_mahalanobis_distance_general(nu, S_inv))
+
+    # Use solve instead of inverse for numerical stability
+    S_inv_nu = np.linalg.solve(S, nu)
+    if _not_pd_general(S):
+        _raise_not_pd()
+    return float(nu @ S_inv_nu)
+
+
+def _squared_distance(nu: "NDArray[np.float64]", S: "NDArray[np.float64]") -> float:
+    """`mahalanobis_distance` dispatch without validation; S is already checked."""
     n = nu.shape[0]
 
     if n == 2:
@@ -192,7 +319,6 @@ def mahalanobis_distance(
         S_inv = np.linalg.inv(S)
         return float(_mahalanobis_distance_general(nu, S_inv))
 
-    # Use solve instead of inverse for numerical stability
     S_inv_nu = np.linalg.solve(S, nu)
     return float(nu @ S_inv_nu)
 
@@ -356,6 +482,16 @@ def gate_measurements(
     >>> valid_idx
     array([0, 2])
 
+    Raises
+    ------
+    ValueError
+        If the predicted measurement is not 1-d, the covariance is not
+        (m, m), the measurements are not (n_meas, m), or the gate type is
+        unknown.
+    numpy.linalg.LinAlgError
+        If the covariance is not positive definite or is too ill-conditioned
+        (see `mahalanobis_distance`), for either gate type.
+
     Notes
     -----
     This function efficiently gates multiple measurements against a single
@@ -368,6 +504,17 @@ def gate_measurements(
     if Z.ndim == 1:
         Z = Z.reshape(1, -1)
 
+    if z_pred.ndim != 1 or S.shape != z_pred.shape * 2:
+        raise _shape_error(z_pred, S, "predicted_measurement")
+    if Z.ndim != 2 or Z.shape[1] != z_pred.shape[0]:
+        raise ValueError(
+            f"measurements of shape {Z.shape} are incompatible with a "
+            f"predicted measurement of shape {z_pred.shape}: expected "
+            "(n_meas, m) and (m,)"
+        )
+    if _not_pd(S):
+        _raise_not_pd()
+
     n_meas = Z.shape[0]
     valid_indices: List[int] = []
     distances: List[float] = []
@@ -376,14 +523,14 @@ def gate_measurements(
         innovation = Z[i] - z_pred
 
         if gate_type == "ellipsoidal":
-            d2 = mahalanobis_distance(innovation, S)
+            d2 = _squared_distance(innovation, S)
             if d2 <= gate_threshold:
                 valid_indices.append(i)
                 distances.append(d2)
         elif gate_type == "rectangular":
             if rectangular_gate(innovation, S, num_sigmas=gate_threshold):
                 # For rectangular gate, still compute Mahalanobis distance for ranking
-                d2 = mahalanobis_distance(innovation, S)
+                d2 = _squared_distance(innovation, S)
                 valid_indices.append(i)
                 distances.append(d2)
         else:
@@ -469,26 +616,12 @@ def compute_gate_volume(
 
 
 @njit(cache=True, fastmath=True, parallel=False)
-def mahalanobis_batch(
+def _mahalanobis_batch_kernel(
     innovations: np.ndarray[Any, Any],
     S_inv: np.ndarray[Any, Any],
     output: np.ndarray[Any, Any],
 ) -> None:
-    """
-    Compute Mahalanobis distances for a batch of innovations.
-
-    JIT-compiled for performance. Computes squared Mahalanobis distances
-    for multiple innovations against a single covariance matrix.
-
-    Parameters
-    ----------
-    innovations : ndarray
-        Innovations of shape (n_measurements, dim).
-    S_inv : ndarray
-        Inverse of innovation covariance matrix of shape (dim, dim).
-    output : ndarray
-        Output array of shape (n_measurements,) to store distances.
-    """
+    """JIT-compiled batch quadratic form; callers validate shapes."""
     n_meas = innovations.shape[0]
     dim = innovations.shape[1]
 
@@ -498,6 +631,53 @@ def mahalanobis_batch(
             for k in range(dim):
                 result += innovations[i, j] * S_inv[j, k] * innovations[i, k]
         output[i] = result
+
+
+def mahalanobis_batch(
+    innovations: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
+    output: np.ndarray[Any, Any],
+) -> None:
+    """
+    Compute Mahalanobis distances for a batch of innovations.
+
+    Computes squared Mahalanobis distances for multiple innovations against a
+    single covariance matrix, using a JIT-compiled kernel.
+
+    Parameters
+    ----------
+    innovations : ndarray
+        Innovations of shape (n_measurements, dim).
+    S_inv : ndarray
+        Inverse of a symmetric positive-definite innovation covariance
+        matrix, of shape (dim, dim). The inverse of a positive-definite
+        matrix is positive definite, so the contract of
+        `mahalanobis_distance` is enforced on ``S_inv`` itself, once per
+        batch, because the covariance is not available here.
+    output : ndarray
+        Output array of shape (n_measurements,) to store distances.
+
+    Raises
+    ------
+    ValueError
+        If ``innovations`` is not 2-d, ``S_inv`` is not (dim, dim), or
+        ``output`` is not (n_measurements,). The message names the shapes.
+    numpy.linalg.LinAlgError
+        If ``S_inv`` is not positive definite or is too ill-conditioned.
+    """
+    if (
+        innovations.ndim != 2
+        or S_inv.shape != (innovations.shape[1],) * 2
+        or output.shape != (innovations.shape[0],)
+    ):
+        raise ValueError(
+            f"innovations of shape {innovations.shape}, S_inv of shape "
+            f"{S_inv.shape} and output of shape {output.shape} are "
+            "incompatible: expected (n, m), (m, m) and (n,)"
+        )
+    if _not_pd(S_inv):
+        _raise_not_pd()
+    _mahalanobis_batch_kernel(innovations, S_inv, output)
 
 
 __all__ = [

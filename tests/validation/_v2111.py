@@ -33,6 +33,16 @@ def _unavailable(reason: str) -> None:
 def _load(relpath: str) -> types.ModuleType:
     if shutil.which("git") is None:
         _unavailable("git executable not found")
+    # Asks git rather than testing for _ROOT/.git: mutmut runs the suite from
+    # its mutants/ copy, which has no .git of its own but sits inside the
+    # checkout, and the .git test failed its clean run there.
+    inside = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=_ROOT,
+        capture_output=True,
+    )
+    if inside.returncode != 0:
+        _unavailable("not a git checkout")
     have = subprocess.run(
         ["git", "cat-file", "-e", f"{V2111_COMMIT}^{{commit}}"],
         cwd=_ROOT,
@@ -71,6 +81,4 @@ def shipped_module(relpath: str) -> types.ModuleType:
     Skips when the history is unavailable (unpacked sdist, shallow clone, no
     git); under ``CI`` it fails instead, so CI cannot pass by skipping.
     """
-    if not (_ROOT / ".git").exists():
-        _unavailable("not a git checkout")
     return _load(relpath)

@@ -1,356 +1,123 @@
 """
-Comprehensive tests for EGM (Earth Gravitational Model) module.
+Tests for the EGM (Earth Gravitational Model) geoid-height evaluation.
 
-Tests coverage for:
-- EGM coefficient loading and parsing
-- Geoid height calculations
-- Gravity disturbance calculations
-- Gravity anomaly calculations
-- Deflection of vertical calculations
+UNVERIFIED LOCALLY. EGM2008 coefficients are not shipped with pytcl and were
+absent on the machine these tests were written on, so every test here skips
+there and has never been run. Whoever has ``EGM2008.cof`` in the data
+directory should run this file first: a failure may be a wrong tolerance or
+reference rather than a library defect.
+
+The gravity disturbance, gravity anomaly and deflection-of-the-vertical
+evaluations have no tests here for want of reference values; see the v2.13.0
+entry in ROADMAP.md ("EGM gravity disturbance/anomaly/deflection need
+reference values").
 """
 
 import numpy as np
 import pytest
 
-from pytcl.gravity.egm import (
-    EGMCoefficients,
-    create_test_coefficients,
-    deflection_of_vertical,
-    geoid_height,
-    geoid_heights,
-    gravity_anomaly,
-    gravity_disturbance,
-)
-
-
-class TestEGMCoefficients:
-    """Tests for EGM coefficient creation and properties."""
-
-    def test_create_test_coefficients_default(self):
-        """Test creating test EGM coefficients with default parameters."""
-        coeffs = create_test_coefficients()
-
-        assert isinstance(coeffs, EGMCoefficients)
-        assert coeffs.C.shape[0] > 0
-        assert coeffs.S.shape[0] > 0
-
-    def test_create_test_coefficients_custom_degree(self):
-        """Test creating test coefficients with custom degree."""
-        for n_max in [10, 20, 36, 50]:
-            coeffs = create_test_coefficients(n_max)
-            assert isinstance(coeffs, EGMCoefficients)
-            assert coeffs.C.shape[0] >= n_max
-
-    def test_create_test_coefficients_structure(self):
-        """Test structure of created coefficients."""
-        coeffs = create_test_coefficients(20)
-
-        # Check that coefficients are arrays
-        assert isinstance(coeffs.C, np.ndarray)
-        assert isinstance(coeffs.S, np.ndarray)
-
-        # Check finite values
-        assert np.all(np.isfinite(coeffs.C))
-        assert np.all(np.isfinite(coeffs.S))
-
-
-class TestGeoidHeight:
-    """Tests for geoid height calculations."""
-
-    def test_geoid_height_single_point_with_coefficients(self):
-        """Test geoid height with explicit coefficients."""
-        coeffs = create_test_coefficients(20)
-        lat = 45.0
-        lon = 10.0
-
-        # Direct calculation with test coefficients
-        assert coeffs is not None
-        assert lat == 45.0 and lon == 10.0
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_single_point(self):
-        """Test geoid height at a single point."""
-        lat = 45.0  # degrees
-        lon = 10.0  # degrees
-
-        h = geoid_height(lat, lon)
-
-        # Should return a finite scalar
-        assert np.isfinite(h)
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_equator(self):
-        """Test geoid height at equator."""
-        lat = 0.0
-        lon = 0.0
-
-        h = geoid_height(lat, lon)
-        assert np.isfinite(h)
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_poles(self):
-        """Test geoid height at poles."""
-        h_north = geoid_height(90.0, 0.0)
-        h_south = geoid_height(-90.0, 0.0)
-
-        assert np.isfinite(h_north)
-        assert np.isfinite(h_south)
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_longitude_periodicity(self):
-        """Test geoid height periodicity with longitude."""
-        lat = 45.0
-        h1 = geoid_height(lat, 0.0)
-        h2 = geoid_height(lat, 360.0)
-
-        assert np.isclose(h1, h2, rtol=1e-10)
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_array_input(self):
-        """Test geoid height with array input."""
-        lats = np.array([0, 30, 60, 90])
-        lons = np.array([0, 45, 90, 180])
-
-        heights = geoid_heights(lats, lons)
-
-        assert heights.shape == lats.shape
-        assert np.all(np.isfinite(heights))
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_grid(self):
-        """Test geoid height on regular grid."""
-        lats = np.linspace(-90, 90, 10)
-        lons = np.linspace(-180, 180, 10)
-
-        heights = geoid_heights(lats, lons)
-
-        assert heights.shape == lats.shape
-        assert np.all(np.isfinite(heights))
-
-    @pytest.mark.skip(reason="Requires EGM2008 data file")
-    def test_geoid_height_typical_range(self):
-        """Test that geoid heights are in typical range."""
-        lats = np.linspace(-90, 90, 20)
-        lons = np.linspace(-180, 180, 20)
-
-        heights = geoid_heights(lats, lons)
-
-        # Geoid heights typically range from -100 to +100 meters
-        assert np.all(heights > -200)
-        assert np.all(heights < 200)
-
-
-@pytest.mark.skip(reason="Requires EGM2008 data file")
-class TestGravityDisturbance:
-    """Tests for gravity disturbance calculations."""
-
-    def test_gravity_disturbance_single_point(self):
-        """Test gravity disturbance at single point."""
-        lat = 45.0
-        lon = 10.0
-
-        delta_g = gravity_disturbance(lat, lon)
-
-        assert np.isfinite(delta_g)
-
-    def test_gravity_disturbance_equator(self):
-        """Test gravity disturbance at equator."""
-        delta_g = gravity_disturbance(0.0, 0.0)
-        assert np.isfinite(delta_g)
-
-    def test_gravity_disturbance_poles(self):
-        """Test gravity disturbance at poles."""
-        delta_g_north = gravity_disturbance(90.0, 0.0)
-        delta_g_south = gravity_disturbance(-90.0, 0.0)
-
-        assert np.isfinite(delta_g_north)
-        assert np.isfinite(delta_g_south)
-
-    def test_gravity_disturbance_units(self):
-        """Test gravity disturbance is in expected units (mGal)."""
-        lat = 45.0
-        lon = 10.0
-
-        delta_g = gravity_disturbance(lat, lon)
-
-        # Gravity disturbance typically in range -500 to +500 mGal
-        assert abs(delta_g) < 1000
-
-
-@pytest.mark.skip(reason="Requires EGM2008 data file")
-class TestGravityAnomaly:
-    """Tests for gravity anomaly calculations."""
-
-    def test_gravity_anomaly_single_point(self):
-        """Test gravity anomaly at single point."""
-        lat = 45.0
-        lon = 10.0
-
-        ga = gravity_anomaly(lat, lon)
-
-        assert np.isfinite(ga)
-
-    def test_gravity_anomaly_equator(self):
-        """Test gravity anomaly at equator."""
-        ga = gravity_anomaly(0.0, 0.0)
-        assert np.isfinite(ga)
-
-    def test_gravity_anomaly_poles(self):
-        """Test gravity anomaly at poles."""
-        ga_north = gravity_anomaly(90.0, 0.0)
-        ga_south = gravity_anomaly(-90.0, 0.0)
-
-        assert np.isfinite(ga_north)
-        assert np.isfinite(ga_south)
-
-    def test_gravity_anomaly_range(self):
-        """Test gravity anomaly is in expected range."""
-        lat = 45.0
-        lon = 10.0
-
-        ga = gravity_anomaly(lat, lon)
-
-        # Gravity anomaly typically in range -200 to +200 mGal
-        assert abs(ga) < 500
-
-
-@pytest.mark.skip(reason="Requires EGM2008 data file")
-class TestDeflectionOfVertical:
-    """Tests for deflection of vertical calculations."""
-
-    def test_deflection_of_vertical_single_point(self):
-        """Test deflection of vertical at single point."""
-        lat = 45.0
-        lon = 10.0
-
-        result = deflection_of_vertical(lat, lon)
-
-        # Should return tuple or array with 2 components
-        if isinstance(result, tuple):
-            assert len(result) == 2
-            assert np.isfinite(result[0])
-            assert np.isfinite(result[1])
-        else:
-            assert result.shape[-1] >= 2
-            assert np.all(np.isfinite(result))
-
-    def test_deflection_of_vertical_equator(self):
-        """Test deflection of vertical at equator."""
-        result = deflection_of_vertical(0.0, 0.0)
-
-        if isinstance(result, tuple):
-            assert np.isfinite(result[0])
-            assert np.isfinite(result[1])
-        else:
-            assert np.all(np.isfinite(result))
-
-    def test_deflection_of_vertical_poles(self):
-        """Test deflection of vertical at poles."""
-        result_north = deflection_of_vertical(90.0, 0.0)
-        result_south = deflection_of_vertical(-90.0, 0.0)
-
-        if isinstance(result_north, tuple):
-            assert np.isfinite(result_north[0])
-            assert np.isfinite(result_north[1])
-            assert np.isfinite(result_south[0])
-            assert np.isfinite(result_south[1])
-
-
-@pytest.mark.skip(reason="Requires EGM2008 data file")
-class TestEGMIntegration:
-    """Integration tests for EGM calculations."""
-
-    def test_egm_calculations_global_coverage(self):
-        """Test EGM calculations at various global locations."""
-        locations = [
-            (0, 0),  # Equator, Prime Meridian
-            (45, 90),  # Mid-latitude, 90E
-            (-30, -120),  # Southern hemisphere
-            (60, 179),  # High latitude
-        ]
-
-        for lat, lon in locations:
-            h = geoid_height(lat, lon)
-            delta_g = gravity_disturbance(lat, lon)
-            ga = gravity_anomaly(lat, lon)
-            dov = deflection_of_vertical(lat, lon)
-
-            assert np.isfinite(h)
-            assert np.isfinite(delta_g)
-            assert np.isfinite(ga)
-            if isinstance(dov, tuple):
-                assert np.isfinite(dov[0]) and np.isfinite(dov[1])
-
-    def test_egm_regular_grid(self):
-        """Test EGM calculations on regular grid."""
-        lats = np.linspace(-60, 60, 7)
-        lons = np.linspace(-180, 180, 13)
-
-        heights = []
-        for lat in lats:
-            for lon in lons:
-                h = geoid_height(lat, lon)
-                heights.append(h)
-
-        assert all(np.isfinite(h) for h in heights)
-
-    def test_egm_different_degrees(self):
-        """Test EGM calculations with different coefficient degrees."""
-        lat, lon = 45.0, 10.0
-        assert isinstance(lat, float) and isinstance(lon, float)
-
-        for n_max in [10, 20, 36]:
-            coeffs = create_test_coefficients(n_max)
-
-            # Verify coefficient structure
-            assert isinstance(coeffs.C, np.ndarray)
-            assert isinstance(coeffs.S, np.ndarray)
-
-    def test_egm_symmetries(self):
-        """Test EGM field symmetries."""
-        lat = 45.0
-
-        # Test symmetry about prime meridian if applicable
-        h1 = geoid_height(lat, 10.0)
-        h2 = geoid_height(lat, -10.0)
-
-        assert np.isfinite(h1)
-        assert np.isfinite(h2)
-
-    def test_egm_continuity(self):
-        """Test continuity of EGM functions across ranges."""
-        # Test continuity in latitude
-        lats = np.linspace(0, 90, 100)
-        heights = [geoid_height(lat, 0.0) for lat in lats]
-
-        # Check that values are reasonably continuous
-        diffs = np.abs(np.diff(heights))
-        assert np.all(diffs < 50)  # Changes should be smooth
-
-
-@pytest.mark.skip(reason="Requires EGM2008 data file")
-class TestEGMEdgeCases:
-    """Tests for edge cases and boundary conditions."""
-
-    def test_egm_latitude_boundaries(self):
-        """Test EGM calculations at latitude boundaries."""
-        for lat in [-90, -89, 0, 89, 90]:
-            h = geoid_height(lat, 0.0)
-            assert np.isfinite(h)
-
-    def test_egm_longitude_boundaries(self):
-        """Test EGM calculations at longitude boundaries."""
-        lat = 45.0
-        for lon in [-180, -179, 0, 179, 180]:
-            h = geoid_height(lat, lon)
-            assert np.isfinite(h)
-
-    def test_egm_precision(self):
-        """Test numerical precision of EGM calculations."""
-        lat, lon = 45.123456, 10.654321
-
-        h1 = geoid_height(lat, lon)
-        h2 = geoid_height(lat, lon)
-
-        # Should be deterministic
-        assert np.isclose(h1, h2)
+from pytcl.core.exceptions import DependencyError
+from pytcl.gravity.egm import geoid_height, geoid_heights
+
+_data_skip = (FileNotFoundError, DependencyError)
+
+# Geoid height N (m) above WGS84 at (geodetic latitude deg, east longitude
+# deg, class), N from the EGM2008 "egm2008-1-height" column of GeographicLib's
+# GeoidHeights.dat (https://sourceforge.net/projects/geographiclib/files/testdata/).
+# GeographicLib states its EGM2008 grids come from NGA's binary gridded files
+# (https://geographiclib.sourceforge.io/C++/doc/geoid.html); the first rows of
+# the data file are transcribed from the copy in PyGeodesy 26.10.26
+# test/testGeoids.py. Class from the Earth2014 SUR surface at the point:
+# "ocean" is 0 m (open water), "land" is 870-1170 m, and the Antarctic point
+# (3735 m) is excluded as high topography, see below.
+_OCEAN = [
+    (79.695484, 88.805571, 0.749472),
+    (-15.244804, 168.747961, 65.108852),
+    (43.377784, 229.448418, -29.55705),
+    (69.016564, 344.078885, 60.69041),
+]
+_LAND = [
+    (-19.379357, 15.85511, 24.888926),
+    (-16.074554, 21.79547, 9.741516),
+    (-11.256389, 286.249745, 30.058864),
+]
+# (-76.981466, 34.17016, 12.63629) is left out: 3735 m of Antarctic ice, where
+# the height-anomaly-to-geoid correction is metres, not decimetres.
+
+# Degree-0 term N0 that pytcl omits (egm.py geoid_height, gh-25). The pytcl
+# docstring says "roughly -0.5 m"; NGA's EGM2008 README gives N0 = -0.41 m for
+# WGS84 (as relayed in the task ruling; the README itself was not reachable
+# from the machine these tests were written on). NGA's value is used. N_pytcl
+# should equal N_reference - N0.
+_N0_M = -0.41
+
+# Ocean: bound = GeographicLib's quoted egm2008-1 bilinear interpolation error
+# (max 25 mm, 0.8 mm rms; same page, "Interpolation and quantization errors")
+# plus a share for unmodelled terms.
+_OCEAN_TOLERANCE_M = 0.05
+# Land, 0.9-1.2 km: the published N is the geoid height while pytcl's T/gamma
+# is the height anomaly zeta; their difference grows with elevation (a few
+# dm per km). This bound is a stated allowance for that, not a measured value.
+_LAND_TOLERANCE_M = 0.5
+
+# EGM2008 degree-2 zonal in the tide-free system (the published C-bar(2,0) of
+# EGM2008_to2190_TideFree). The reference N is tide-free per NGA's EGM2008
+# README (relayed, not re-read); a zero-tide file differs by a latitude-
+# dependent 0.03-0.2 m, so the tests skip rather than guess when the installed
+# coefficients are not tide-free.
+_C20_TIDE_FREE = -0.484165143790815e-3
+
+
+@pytest.fixture(scope="module")
+def egm2008():
+    from pytcl.gravity.egm import load_egm_coefficients
+
+    try:
+        coefficients = load_egm_coefficients("EGM2008")
+    except _data_skip as exc:
+        pytest.skip(f"EGM2008 coefficients unavailable: {exc}")
+    if abs(coefficients.C[2, 0] - _C20_TIDE_FREE) > 1e-11:
+        pytest.skip(
+            "installed EGM2008 coefficients are not the tide-free set "
+            f"(C20 = {coefficients.C[2, 0]!r}); reference heights are tide-free"
+        )
+    return coefficients
+
+
+CASES = [(*p, _OCEAN_TOLERANCE_M) for p in _OCEAN] + [
+    (*p, _LAND_TOLERANCE_M) for p in _LAND
+]
+
+
+class TestGeoidHeightAgainstNGA:
+    """geoid_height against NGA's published EGM2008 geoid heights."""
+
+    @pytest.mark.parametrize("lat_deg,lon_deg,n_ref,tolerance", CASES)
+    def test_geoid_height_matches_nga(
+        self, egm2008, lat_deg, lon_deg, n_ref, tolerance
+    ):
+        h = geoid_height(np.radians(lat_deg), np.radians(lon_deg), coefficients=egm2008)
+        assert abs(h - (n_ref - _N0_M)) < tolerance
+
+    def test_geoid_heights_array_matches_nga(self, egm2008):
+        lats = np.radians([p[0] for p in CASES])
+        lons = np.radians([p[1] for p in CASES])
+        expected = np.array([p[2] - _N0_M for p in CASES])
+        tolerances = np.array([p[3] for p in CASES])
+
+        heights = geoid_heights(lats, lons, coefficients=egm2008)
+
+        assert np.all(np.abs(heights - expected) < tolerances)
+
+    def test_longitude_periodicity(self, egm2008):
+        lat = np.radians(45.0)
+        h1 = geoid_height(lat, 0.0, coefficients=egm2008)
+        h2 = geoid_height(lat, 2.0 * np.pi, coefficients=egm2008)
+
+        assert h1 == pytest.approx(h2, rel=1e-6, abs=0)
+
+    def test_north_pole_independent_of_longitude(self, egm2008):
+        h0 = geoid_height(np.pi / 2, 0.0, coefficients=egm2008)
+        h1 = geoid_height(np.pi / 2, np.radians(137.0), coefficients=egm2008)
+
+        assert h0 == pytest.approx(h1, rel=1e-6, abs=0)

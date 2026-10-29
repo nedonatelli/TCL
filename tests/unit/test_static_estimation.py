@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
+from scipy.stats import norm
 
 from pytcl.static_estimation import (  # Least squares; Robust estimation
     cauchy_weight,
@@ -26,6 +27,11 @@ from pytcl.static_estimation import (  # Least squares; Robust estimation
 )
 
 
+def _exact_mad(e):
+    """Median-centred MAD with the exact Gaussian constant (statsmodels')."""
+    return float(np.median(np.abs(e - np.median(e))) / norm.ppf(0.75))
+
+
 class TestOrdinaryLeastSquares:
     """Tests for ordinary least squares."""
 
@@ -46,8 +52,9 @@ class TestOrdinaryLeastSquares:
 
         result = ordinary_least_squares(A, b)
 
-        # Check residuals are small
-        assert np.linalg.norm(result.residuals) < 0.5
+        x_ref = np.linalg.lstsq(A, b, rcond=None)[0]
+        assert_allclose(result.x, x_ref, rtol=1e-12)
+        assert_allclose(result.residuals, b - A @ x_ref, rtol=1e-10, atol=1e-15)
 
     def test_rank_determination(self):
         """Correctly determines rank."""
@@ -65,8 +72,7 @@ class TestOrdinaryLeastSquares:
 
         result = ordinary_least_squares(A, b)
 
-        assert len(result.singular_values) == 2
-        assert_allclose(sorted(result.singular_values, reverse=True), [2, 1])
+        assert_allclose(result.singular_values, [2.0, 1.0], rtol=1e-14)
 
 
 class TestWeightedLeastSquares:
@@ -90,9 +96,10 @@ class TestWeightedLeastSquares:
 
         result = weighted_least_squares(A, b, weights=weights)
 
-        # Middle point should be fit more closely
-        residuals = b - A @ result.x
-        assert abs(residuals[1]) < abs(residuals[0])
+        W = np.diag(weights.astype(float))
+        x_ref = np.linalg.solve(A.T @ W @ A, A.T @ W @ b)
+        assert_allclose(result.x, x_ref, rtol=1e-12)
+        assert_allclose(result.residuals, b - A @ x_ref, rtol=1e-10, atol=1e-15)
 
     def test_covariance_output(self):
         """Returns covariance matrix."""
@@ -101,10 +108,8 @@ class TestWeightedLeastSquares:
 
         result = weighted_least_squares(A, b)
 
-        assert result.covariance.shape == (2, 2)
-        # Covariance should be positive definite
-        eigenvalues = np.linalg.eigvalsh(result.covariance)
-        assert np.all(eigenvalues > 0)
+        # Unit weights: Cov = (A'A)^-1 = [[14, -6], [-6, 3]] / 6.
+        assert_allclose(result.covariance, np.array([[14.0, -6.0], [-6.0, 3.0]]) / 6.0)
 
     def test_weight_matrix(self):
         """Full weight matrix works."""
@@ -114,7 +119,7 @@ class TestWeightedLeastSquares:
 
         result = weighted_least_squares(A, b, W=W)
 
-        assert result.x.shape == (2,)
+        assert_allclose(result.x, np.linalg.solve(A.T @ W @ A, A.T @ W @ b), rtol=1e-12)
 
 
 class TestTotalLeastSquares:
@@ -136,8 +141,12 @@ class TestTotalLeastSquares:
 
         result = total_least_squares(A, b)
 
-        assert result.residuals_A.shape == A.shape
-        assert result.residuals_b.shape == b.shape
+        # Closed form: the smallest singular triplet of [A | b] gives the
+        # minimal correction [dA | db] = -s_min u_min v_min'.
+        U, sv, Vt = np.linalg.svd(np.column_stack([A, b]), full_matrices=False)
+        delta = -sv[-1] * np.outer(U[:, -1], Vt[-1])
+        assert_allclose(result.residuals_A, delta[:, :2], rtol=1e-9, atol=1e-15)
+        assert_allclose(result.residuals_b, delta[:, 2], rtol=1e-9, atol=1e-15)
 
     def test_rank_output(self):
         """Returns effective rank."""
@@ -208,7 +217,9 @@ class TestTotalLeastSquaresRank:
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
         full = total_least_squares(A, b)
         truncated = total_least_squares(A, b, rank=1)
-        assert not np.allclose(full.x, truncated.x)
+        assert_allclose(full.x, _ttls_reference(A, b, 2), rtol=1e-9)
+        assert_allclose(truncated.x, _ttls_reference(A, b, 1), rtol=1e-9)
+        assert np.max(np.abs(full.x - truncated.x)) > 1e-3
 
     def test_default_and_full_rank_are_identical(self):
         A, b = _system_with_singular_values([5.0, 1.0, 1e-4])
@@ -270,7 +281,8 @@ class TestGeneralizedLeastSquares:
 
         result = generalized_least_squares(A, b, Sigma)
 
-        assert result.x.shape == (2,)
+        W = np.linalg.inv(Sigma)
+        assert_allclose(result.x, np.linalg.solve(A.T @ W @ A, A.T @ W @ b), rtol=1e-12)
 
 
 class TestRecursiveLeastSquares:
@@ -292,10 +304,14 @@ class TestRecursiveLeastSquares:
         for i in range(n_samples):
             x, P = recursive_least_squares(x, P, A[i], b[i])
 
-        # Batch OLS
-        x_batch = ordinary_least_squares(A, b).x
+        # With prior N(0, 100 I) the RLS estimate is exactly the batch
+        # solution of (A'A + I/100) x = A'b.
+        x_batch = np.linalg.solve(A.T @ A + np.eye(2) / 100.0, A.T @ b)
 
-        assert_allclose(x, x_batch, atol=0.1)
+        assert_allclose(x, x_batch, rtol=1e-9)
+        assert_allclose(
+            P, np.linalg.inv(A.T @ A + np.eye(2) / 100.0), rtol=1e-8, atol=1e-15
+        )
 
     def test_forgetting_factor(self):
         """Forgetting factor emphasizes recent data."""
@@ -314,8 +330,14 @@ class TestRecursiveLeastSquares:
                 x, P, np.array([1, 0]), 1.0, forgetting_factor=0.95
             )
 
-        # Should be closer to 1 than to 0
-        assert x[0] > 0.5
+        # Exponentially weighted batch solution: minimise
+        # sum_i lam^(N-i) (b_i - x0)^2 + lam^N (x0 - 1)^2 over the first
+        # component (the second is unobserved and keeps its prior of 0).
+        lam, n = 0.95, 20
+        w = lam ** (n - np.arange(1, n + 1))
+        b_obs = np.r_[np.zeros(10), np.ones(10)]
+        expected = (w @ b_obs + lam**n) / (w.sum() + lam**n)
+        assert_allclose(x[0], expected, rtol=1e-10)
 
 
 class TestRidgeRegression:
@@ -327,9 +349,10 @@ class TestRidgeRegression:
         b = np.array([1, 2, 2])
 
         x_ridge = ridge_regression(A, b, alpha=1e-10)
-        x_ols = ordinary_least_squares(A, b).x
+        x_ols = np.linalg.lstsq(A, b, rcond=None)[0]
 
-        assert_allclose(x_ridge, x_ols, atol=1e-6)
+        # First-order shrinkage bound: x_ridge - x_ols ~ -alpha (A'A)^-1 x_ols.
+        assert_allclose(x_ridge, x_ols, rtol=1e-9)
 
     def test_shrinkage(self):
         """Higher regularization shrinks parameters."""
@@ -339,7 +362,10 @@ class TestRidgeRegression:
         x_low = ridge_regression(A, b, alpha=0.1)
         x_high = ridge_regression(A, b, alpha=10.0)
 
-        assert np.linalg.norm(x_high) < np.linalg.norm(x_low)
+        for x, alpha in ((x_low, 0.1), (x_high, 10.0)):
+            assert_allclose(
+                x, np.linalg.solve(A.T @ A + alpha * np.eye(2), A.T @ b), rtol=1e-12
+            )
 
     def test_ill_conditioned(self):
         """Handles ill-conditioned problems."""
@@ -349,7 +375,7 @@ class TestRidgeRegression:
 
         # Should not fail
         x = ridge_regression(A, b, alpha=1.0)
-        assert np.isfinite(x).all()
+        assert_allclose(x, np.linalg.solve(A.T @ A + np.eye(2), A.T @ b), rtol=1e-12)
 
 
 class TestHuberWeight:
@@ -367,15 +393,15 @@ class TestHuberWeight:
         r = np.array([2.0, 4.0])
         weights = huber_weight(r, c=1.345)
 
-        assert weights[0] < 1.0
-        assert weights[1] < weights[0]
+        # w = c / |r| beyond the threshold.
+        assert_allclose(weights, [1.345 / 2.0, 1.345 / 4.0], rtol=1e-14)
 
     def test_symmetry(self):
         """Weights are symmetric."""
         r = np.array([2.0, -2.0])
         weights = huber_weight(r, c=1.345)
 
-        assert_allclose(weights[0], weights[1])
+        assert_allclose(weights, [1.345 / 2.0, 1.345 / 2.0], rtol=1e-14)
 
 
 class TestTukeyWeight:
@@ -386,7 +412,7 @@ class TestTukeyWeight:
         r = np.array([0.0, 1.0, 2.0])
         weights = tukey_weight(r, c=4.685)
 
-        assert np.all(weights > 0)
+        assert_allclose(weights, [(1 - (r_ / 4.685) ** 2) ** 2 for r_ in r], rtol=1e-14)
 
     def test_large_residuals(self):
         """Large residuals get zero weight."""
@@ -401,8 +427,9 @@ class TestTukeyWeight:
         r = np.array([c - 0.01, c, c + 0.01])
         weights = tukey_weight(r, c=c)
 
-        assert weights[1] < 0.01  # Very small at boundary
-        assert weights[2] == 0.0  # Zero beyond
+        assert_allclose(
+            weights, [(1 - ((c - 0.01) / c) ** 2) ** 2, 0.0, 0.0], rtol=1e-12
+        )
 
 
 class TestMAD:
@@ -415,8 +442,9 @@ class TestMAD:
 
         scale = mad(data)
 
-        # Should be close to 1 for standard normal
-        assert 0.9 < scale < 1.1
+        assert_allclose(
+            scale, 1.4826 * np.median(np.abs(data - np.median(data))), rtol=1e-14
+        )
 
     def test_with_outliers(self):
         """Robust to outliers."""
@@ -424,8 +452,9 @@ class TestMAD:
 
         scale = mad(data)
 
-        # Should not be dominated by outlier
-        assert scale < 10
+        # median = 3.5, |dev| sorted = [.5, .5, 1.5, 1.5, 2.5, 996.5],
+        # median |dev| = 1.5, so the outlier does not enter.
+        assert_allclose(scale, 1.4826 * 1.5, rtol=1e-14)
 
 
 class TestIRLS:
@@ -438,17 +467,43 @@ class TestIRLS:
 
         result = irls(A, b)
 
+        # b = 1 + x exactly: zero residuals, unit weights, x = [1, 1].
         assert result.converged
+        assert_allclose(result.x, [1.0, 1.0], rtol=1e-12)
+        assert_allclose(result.weights, np.ones(4), rtol=1e-12)
 
     def test_outlier_downweighting(self):
         """Outliers get lower weights."""
+        x = np.arange(1, 9, dtype=float)
+        A = np.column_stack([np.ones(8), x])
+        b = 2 + x + np.array([0.1, -0.2, 0.15, -0.1, 0.05, 0.2, -0.15, 0.0])
+        b[-1] = 60.0  # outlier
+
+        result = irls(A, b, scale_func=_exact_mad, max_iter=2000, tol=1e-14)
+
+        # statsmodels 0.15.0 RLM(b, A, M=HuberT(1.345)) with the same
+        # median-centred MAD / Phi^-1(0.75) scale, tol=1e-14.
+        assert result.converged
+        assert_allclose(result.x, [1.8701454105365432, 1.0466251207990838], rtol=1e-9)
+        assert_allclose(
+            result.weights,
+            [1.0] * 6 + [0.9117467064280294, 0.006349670266076819],
+            rtol=1e-9,
+        )
+
+    def test_leverage_outlier_does_not_converge_in_500_iterations(self):
+        """Pin: the scale-reestimating IRLS creeps on this dataset.
+
+        The leverage outlier makes successive iterates move ~0.015 per step,
+        so 500 iterations end short of tolerance and ``converged`` says so.
+        """
         A = np.array([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5]])
-        b = np.array([2, 3, 4, 5, 100])  # Last is outlier
+        b = np.array([2, 3, 4, 5, 100])
 
-        result = irls(A, b)
+        result = irls(A, b, scale_func=_exact_mad, max_iter=500, tol=1e-14)
 
-        # Outlier should have low weight
-        assert result.weights[-1] < result.weights[0]
+        assert not result.converged
+        assert result.n_iter == 500
 
 
 class TestHuberRegression:
@@ -462,7 +517,9 @@ class TestHuberRegression:
         result_huber = huber_regression(A, b)
         result_ols = ordinary_least_squares(A, b)
 
-        assert_allclose(result_huber.x, result_ols.x, atol=0.1)
+        # b = 1 + x is an exact line: Huber and OLS both recover [1, 1].
+        assert_allclose(result_huber.x, [1.0, 1.0], rtol=1e-12)
+        assert_allclose(result_ols.x, [1.0, 1.0], rtol=1e-12)
 
     def test_outlier_resistance(self):
         """Resistant to outliers."""
@@ -473,10 +530,11 @@ class TestHuberRegression:
         # Add a few outliers
         b[-5:] = 100
 
-        result = huber_regression(A, b)
+        result = huber_regression(A, b, max_iter=500, tol=1e-14)
 
-        # Slope should be close to 1, not pulled by outliers
-        assert 0.8 < result.x[1] < 1.2
+        # statsmodels 0.15.0 RLM(b, A, M=HuberT(1.345)) with the median-centred
+        # MAD scale (pytcl's 1.4826 differs from 1/Phi^-1(0.75) by 1.5e-6).
+        assert_allclose(result.x, [0.7411332403203881, 1.0171454460762526], rtol=1e-5)
 
 
 class TestTukeyRegression:
@@ -491,11 +549,14 @@ class TestTukeyRegression:
         # Add one gross outlier
         b[-1] = 1000
 
-        result = tukey_regression(A, b)
+        result = tukey_regression(A, b, max_iter=500, tol=1e-14)
 
-        # Outlier should have much lower weight than typical inliers
-        median_weight = np.median(result.weights[:-1])
-        assert result.weights[-1] < median_weight * 0.5
+        # statsmodels 0.15.0 RLM(b, A, M=TukeyBiweight(4.685)): the outlier's
+        # weight is exactly 0, which IRLS floors at 1e-10; the median inlier
+        # weight is 0.96001692787.
+        assert_allclose(result.x, [0.9521377101870738, 1.0039663570020796], rtol=1e-5)
+        assert result.weights[-1] == 1e-10
+        assert_allclose(np.median(result.weights[:-1]), 0.9600169278268497, rtol=1e-5)
 
 
 class TestRANSAC:
@@ -522,8 +583,15 @@ class TestRANSAC:
 
         result = ransac(A, b, random_state=42)
 
-        # Should find most inliers
-        assert result.n_inliers >= 60
+        # The fit is the least-squares solution on exactly the points it
+        # calls inliers, and those are the points within the threshold.
+        mask = result.inliers
+        assert result.n_inliers == mask.sum()
+        x_ref = np.linalg.lstsq(A[mask], b[mask], rcond=None)[0]
+        assert_allclose(result.x, x_ref, rtol=1e-9)
+        assert_allclose(result.residuals, b - A @ result.x, rtol=1e-9)
+        assert np.all(mask[:n_inliers])
+        assert not np.any(mask[n_inliers:])
 
     def test_parameter_estimation(self):
         """Estimates parameters correctly."""
@@ -543,8 +611,15 @@ class TestRANSAC:
 
         result = ransac(A, b, random_state=42)
 
-        # Should be close to true parameters
-        assert_allclose(result.x, true_x, atol=0.5)
+        # The returned fit is least squares on exactly the points it calls
+        # inliers (RANSAC refits on the consensus set).
+        x_ref = np.linalg.lstsq(A[result.inliers], b[result.inliers], rcond=None)[0]
+        assert_allclose(result.x, x_ref, rtol=1e-9)
+        # Points more than 10 off the true line can never be consensus members
+        # (the default threshold is a couple of noise sigmas).
+        far = np.abs(b - A @ true_x) > 10
+        assert far.sum() >= 10
+        assert not np.any(result.inliers[far])
 
 
 class TestRANSACNTrials:
@@ -552,23 +627,27 @@ class TestRANSACNTrials:
 
     def test_low_outlier_rate(self):
         """Few trials for low outlier rate."""
-        n_trials = ransac_n_trials(100, 10, 2)  # 10% outliers
-
-        assert n_trials < 20
+        # ceil(log(0.01) / log(1 - 0.9^2)) = ceil(2.77)
+        assert ransac_n_trials(100, 10, 2) == 3
 
     def test_high_outlier_rate(self):
         """More trials for high outlier rate."""
         n_trials_low = ransac_n_trials(100, 10, 2)
         n_trials_high = ransac_n_trials(100, 40, 2)
 
-        assert n_trials_high > n_trials_low
+        assert n_trials_low == 3
+        # ceil(log(0.01) / log(1 - 0.6^2)) = ceil(10.3)
+        assert n_trials_high == 11
 
     def test_more_samples_need_more_trials(self):
         """More samples per trial needs more trials."""
         n_trials_2 = ransac_n_trials(100, 30, 2)
         n_trials_5 = ransac_n_trials(100, 30, 5)
 
-        assert n_trials_5 > n_trials_2
+        # ceil(log(0.01) / log(1 - 0.7^2)) = ceil(6.84); with 5 samples
+        # ceil(log(0.01) / log(1 - 0.7^5)) = ceil(25.05).
+        assert n_trials_2 == 7
+        assert n_trials_5 == 26
 
 
 class TestRhoFunctions:
@@ -587,8 +666,7 @@ class TestRhoFunctions:
         r = np.array([0.0, 10.0, 100.0])
         rho = tukey_rho(r, c=c)
 
-        assert rho[0] < rho[1]
-        assert_allclose(rho[1], rho[2])  # Both at max
+        assert_allclose(rho, [0.0, c**2 / 6, c**2 / 6], rtol=1e-14)
 
 
 class TestCauchyWeight:
@@ -599,9 +677,7 @@ class TestCauchyWeight:
         r = np.array([0.0, 1.0, 2.0, 4.0])
         weights = cauchy_weight(r, c=2.385)
 
-        assert weights[0] == 1.0
-        assert weights[1] > weights[2] > weights[3]
-        assert np.all(weights > 0)  # Never zero
+        assert_allclose(weights, 1.0 / (1.0 + (r / 2.385) ** 2), rtol=1e-14)
 
 
 class TestTauScale:

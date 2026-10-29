@@ -11,6 +11,7 @@ Tests cover:
 
 import numpy as np
 import pytest
+from scipy.stats import multivariate_normal
 
 from pytcl.dynamic_estimation.imm import (
     IMMEstimator,
@@ -44,6 +45,7 @@ from pytcl.dynamic_estimation.kalman.ud_filter import (
     ud_update,
     ud_update_scalar,
 )
+from pytcl.dynamic_estimation.kalman.unscented import ukf_predict, ukf_update
 
 # =============================================================================
 # Tests for Cholesky Update (matrix_utils.py)
@@ -140,7 +142,7 @@ class TestQRUpdate:
         P_new = S_new @ S_new.T
 
         expected = F @ P @ F.T + Q
-        np.testing.assert_allclose(P_new, expected, rtol=1e-6)
+        np.testing.assert_allclose(P_new, expected, rtol=1e-12, atol=0)
 
     def test_qr_update_preserves_positive_definite(self):
         """Test QR update preserves positive definiteness."""
@@ -152,8 +154,9 @@ class TestQRUpdate:
 
         S_new = qr_update(S_x, S_noise, F)
 
-        eigenvalues = np.linalg.eigvalsh(S_new @ S_new.T)
-        assert np.all(eigenvalues > 0)
+        np.testing.assert_allclose(
+            S_new @ S_new.T, np.diag([0.11, 0.21, 0.31]), rtol=1e-12, atol=0
+        )
 
 
 class TestEnsureSymmetric:
@@ -242,7 +245,9 @@ class TestComputeInnovationLikelihood:
         S = np.eye(3) * 0.5
 
         likelihood = compute_innovation_likelihood(y, S)
-        assert likelihood > 0
+
+        expected = multivariate_normal(mean=np.zeros(3), cov=S).pdf(y)
+        np.testing.assert_allclose(likelihood, expected, rtol=1e-12, atol=0)
 
 
 class TestComputeMahalanobisDistance:
@@ -295,8 +300,15 @@ class TestComputeMerweWeights:
         n = 3
         W_m, W_c = compute_merwe_weights(n)
 
-        assert len(W_m) == 2 * n + 1
-        assert len(W_c) == 2 * n + 1
+        # Defaults alpha=1e-3, beta=2, kappa=0: lambda = alpha^2 (n + kappa) - n.
+        lam = 1e-3**2 * n - n
+        w_rest = 1.0 / (2 * (n + lam))
+        W_m_expected = np.full(2 * n + 1, w_rest)
+        W_c_expected = np.full(2 * n + 1, w_rest)
+        W_m_expected[0] = lam / (n + lam)
+        W_c_expected[0] = lam / (n + lam) + (1 - 1e-3**2 + 2.0)
+        np.testing.assert_allclose(W_m, W_m_expected, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(W_c, W_c_expected, rtol=1e-12, atol=0)
 
     def test_merwe_weights_custom_params(self):
         """Test weights with custom parameters."""
@@ -307,6 +319,14 @@ class TestComputeMerweWeights:
 
         W_m, W_c = compute_merwe_weights(n, alpha=alpha, beta=beta, kappa=kappa)
 
+        lam = alpha**2 * (n + kappa) - n
+        w_rest = 1.0 / (2 * (n + lam))
+        W_m_expected = np.full(2 * n + 1, w_rest)
+        W_c_expected = np.full(2 * n + 1, w_rest)
+        W_m_expected[0] = lam / (n + lam)
+        W_c_expected[0] = lam / (n + lam) + (1 - alpha**2 + beta)
+        np.testing.assert_allclose(W_m, W_m_expected, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(W_c, W_c_expected, rtol=1e-12, atol=0)
         np.testing.assert_allclose(np.sum(W_m), 1.0, rtol=1e-10)
 
 
@@ -332,8 +352,15 @@ class TestSRUKFPredict:
 
         pred = sr_ukf_predict(x, S, f, S_Q)
 
-        np.testing.assert_allclose(pred.x, [1.5, 0.5], rtol=1e-6)
-        assert pred.S.shape == (2, 2)
+        # f is linear, so the unscented transform is exact: the covariance is
+        # the Kalman prediction F P F' + Q with F = [[1, 1], [0, 1]].
+        F = np.array([[1.0, 1.0], [0.0, 1.0]])
+        kf = kf_predict(x, P, F, Q)
+        # rtol 1e-9, not 1e-12: the default alpha=1e-3 makes the sigma weights
+        # ~1e6 with opposite signs, so the sums cancel to ~1e-10 relative error
+        # (alpha=1 reaches 1e-12; see test_sr_ukf_linear_matches_kf_at_unit_alpha).
+        np.testing.assert_allclose(pred.x, [1.5, 0.5], rtol=1e-9, atol=0)
+        np.testing.assert_allclose(pred.S @ pred.S.T, kf.P, rtol=1e-9, atol=0)
 
     def test_sr_ukf_predict_preserves_cholesky(self):
         """Test that prediction returns valid Cholesky factor."""
@@ -349,8 +376,11 @@ class TestSRUKFPredict:
 
         # Check lower triangular
         np.testing.assert_allclose(pred.S, np.tril(pred.S), atol=1e-10)
-        # Check positive diagonal
-        assert np.all(np.diag(pred.S) > 0)
+        # A lower-triangular factor with positive diagonal is unique: the
+        # Cholesky factor of P + Q = 0.11 I.
+        np.testing.assert_allclose(
+            pred.S, np.linalg.cholesky(np.eye(2) * 0.11), rtol=1e-9, atol=1e-12
+        )
 
     def test_sr_ukf_predict_nonlinear(self):
         """Test SR-UKF prediction with nonlinear dynamics."""
@@ -364,10 +394,10 @@ class TestSRUKFPredict:
 
         pred = sr_ukf_predict(x, S, f, S_Q)
 
-        # Check that covariance is positive definite
-        P_pred = pred.S @ pred.S.T
-        eigenvalues = np.linalg.eigvalsh(P_pred)
-        assert np.all(eigenvalues > 0)
+        # Oracle: the covariance-form UKF with the same sigma-point scaling.
+        ref = ukf_predict(x, np.eye(2) * 0.1, f, np.eye(2) * 0.01)
+        np.testing.assert_allclose(pred.x, ref.x, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(pred.S @ pred.S.T, ref.P, rtol=1e-9, atol=0)
 
     def test_sr_ukf_predict_custom_params(self):
         """Test SR-UKF prediction with custom sigma point parameters."""
@@ -381,8 +411,11 @@ class TestSRUKFPredict:
 
         pred = sr_ukf_predict(x, S, f, S_Q, alpha=0.1, beta=2.0, kappa=0.0)
 
-        assert pred.x is not None
-        assert pred.S is not None
+        # Identity dynamics: the mean is unchanged and P = I + 0.1 I.
+        np.testing.assert_allclose(pred.x, x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            pred.S @ pred.S.T, np.eye(2) * 1.1, rtol=1e-9, atol=1e-12
+        )
 
 
 class TestSRUKFUpdate:
@@ -401,10 +434,20 @@ class TestSRUKFUpdate:
 
         upd = sr_ukf_update(x, S, z, h, S_R)
 
-        assert upd.x is not None
-        assert upd.S is not None
-        assert upd.y is not None
-        assert upd.likelihood > 0
+        # h is linear, so this is the Kalman update (innovation covariance
+        # 0.1 + 0.05, normal density of the innovation for the likelihood).
+        kf = kf_update(
+            x, np.eye(2) * 0.1, z, np.array([[1.0, 0.0]]), np.array([[0.05]])
+        )
+        np.testing.assert_allclose(upd.x, kf.x, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(upd.S @ upd.S.T, kf.P, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(upd.y, [0.1], rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            upd.likelihood,
+            multivariate_normal(mean=[0.0], cov=[[0.15]]).pdf([0.1]),
+            rtol=1e-9,
+            atol=0,
+        )
 
     def test_sr_ukf_update_reduces_uncertainty(self):
         """Test that update reduces uncertainty (trace of covariance)."""
@@ -421,8 +464,9 @@ class TestSRUKFUpdate:
 
         upd = sr_ukf_update(x, S, z, h, S_R)
 
-        P_upd = upd.S @ upd.S.T
-        assert np.trace(P_upd) < np.trace(P)
+        kf = kf_update(x, P, z, np.eye(2), R)
+        np.testing.assert_allclose(upd.S @ upd.S.T, kf.P, rtol=1e-9, atol=1e-12)
+        np.testing.assert_allclose(upd.x, kf.x, rtol=1e-9, atol=0)
 
     def test_sr_ukf_update_nonlinear(self):
         """Test SR-UKF update with nonlinear measurement."""
@@ -438,15 +482,39 @@ class TestSRUKFUpdate:
 
         upd = sr_ukf_update(x, S, z, h, S_R)
 
-        assert upd.likelihood > 0
-        # Check that covariance is valid
-        P_upd = upd.S @ upd.S.T
-        eigenvalues = np.linalg.eigvalsh(P_upd)
-        assert np.all(eigenvalues > 0)
+        # Oracle: the covariance-form UKF update with the same scaling.
+        ref = ukf_update(x, np.eye(2) * 0.5, z, h, np.array([[0.1]]))
+        np.testing.assert_allclose(upd.x, ref.x, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(upd.S @ upd.S.T, ref.P, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(upd.likelihood, ref.likelihood, rtol=1e-9, atol=0)
 
 
 class TestSRUKFConsistency:
     """Tests for SR-UKF consistency with standard UKF."""
+
+    def test_sr_ukf_linear_matches_kf_at_unit_alpha(self):
+        """With alpha=1, kappa=0 every sigma weight is O(1)."""
+        F = np.array([[1.0, 1.0], [0.0, 1.0]])
+        H = np.array([[1.0, 0.0]])
+        x = np.array([0.0, 1.0])
+        P = np.eye(2) * 0.1
+        Q = np.eye(2) * 0.01
+        R = np.array([[0.1]])
+        z = np.array([0.5])
+        kw = {"alpha": 1.0, "beta": 2.0, "kappa": 0.0}
+
+        pred = sr_ukf_predict(
+            x, np.linalg.cholesky(P), lambda v: F @ v, np.linalg.cholesky(Q), **kw
+        )
+        upd = sr_ukf_update(
+            pred.x, pred.S, z, lambda v: H @ v, np.linalg.cholesky(R), **kw
+        )
+
+        kf_pred = kf_predict(x, P, F, Q)
+        kf_upd = kf_update(kf_pred.x, kf_pred.P, z, H, R)
+        np.testing.assert_allclose(pred.S @ pred.S.T, kf_pred.P, rtol=1e-12, atol=1e-15)
+        np.testing.assert_allclose(upd.x, kf_upd.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(upd.S @ upd.S.T, kf_upd.P, rtol=1e-12, atol=1e-15)
 
     def test_sr_ukf_linear_matches_kf(self):
         """Test SR-UKF matches linear KF on linear system."""
@@ -476,8 +544,9 @@ class TestSRUKFConsistency:
         kf_pred = kf_predict(x, P, F, Q)
         kf_upd = kf_update(kf_pred.x, kf_pred.P, z, H, R)
 
-        # Results should be similar (not exact due to sigma point approximation)
-        np.testing.assert_allclose(sr_upd.x, kf_upd.x, atol=0.1)
+        # Both maps are linear, so the unscented transform is exact.
+        np.testing.assert_allclose(sr_upd.x, kf_upd.x, rtol=1e-9, atol=0)
+        np.testing.assert_allclose(sr_upd.S @ sr_upd.S.T, kf_upd.P, rtol=1e-9, atol=0)
 
 
 # =============================================================================
@@ -591,9 +660,11 @@ class TestUDUpdateScalar:
 
         x_upd, U_upd, D_upd = ud_update_scalar(x, U, D, z, h, r)
 
-        # Check that state was updated
-        assert not np.allclose(x_upd, x)
-        # Check that U remains unit upper triangular
+        kf = kf_update(x, U @ np.diag(D) @ U.T, np.array([z]), h[None, :], [[r]])
+        np.testing.assert_allclose(x_upd, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            ud_reconstruct(U_upd, D_upd), kf.P, rtol=1e-12, atol=0
+        )
         np.testing.assert_allclose(np.diag(U_upd), np.ones(2), rtol=1e-10)
 
     def test_ud_update_scalar_reduces_uncertainty(self):
@@ -608,7 +679,9 @@ class TestUDUpdateScalar:
         x_upd, U_upd, D_upd = ud_update_scalar(x, U, D, z, h, r)
         P_upd = ud_reconstruct(U_upd, D_upd)
 
-        assert np.trace(P_upd) < np.trace(P)
+        kf = kf_update(x, P, np.array([z]), h[None, :], [[r]])
+        np.testing.assert_allclose(P_upd, kf.P, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(x_upd, kf.x, rtol=1e-12, atol=0)
 
 
 class TestUDUpdate:
@@ -625,8 +698,18 @@ class TestUDUpdate:
 
         x_upd, U_upd, D_upd, y, likelihood = ud_update(x, U, D, z, H, R)
 
-        assert likelihood > 0
-        assert len(y) == 1
+        kf = kf_update(x, P, z, H, R)
+        np.testing.assert_allclose(y, [0.1], rtol=1e-12, atol=0)
+        np.testing.assert_allclose(x_upd, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            ud_reconstruct(U_upd, D_upd), kf.P, rtol=1e-12, atol=0
+        )
+        np.testing.assert_allclose(
+            likelihood,
+            multivariate_normal(mean=[0.0], cov=[[0.3]]).pdf([0.1]),
+            rtol=1e-12,
+            atol=0,
+        )
 
     def test_ud_update_matches_kf(self):
         """Test U-D update matches standard KF."""
@@ -658,9 +741,17 @@ class TestUDUpdate:
 
         x_upd, U_upd, D_upd, y, likelihood = ud_update(x, U, D, z, H, R)
 
-        assert likelihood > 0
-        P_upd = ud_reconstruct(U_upd, D_upd)
-        assert np.trace(P_upd) < np.trace(P)
+        kf = kf_update(x, P, z, H, R)
+        np.testing.assert_allclose(x_upd, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            ud_reconstruct(U_upd, D_upd), kf.P, rtol=1e-12, atol=0
+        )
+        np.testing.assert_allclose(
+            likelihood,
+            multivariate_normal(mean=np.zeros(2), cov=np.eye(2) * 0.6).pdf(z - x[:2]),
+            rtol=1e-12,
+            atol=0,
+        )
 
 
 # =============================================================================
@@ -683,7 +774,9 @@ class TestSRKFPredict:
         pred = srkf_predict(x, S, F, S_Q)
 
         np.testing.assert_allclose(pred.x, [1.0, 1.0])
-        assert pred.S.shape == (2, 2)
+        np.testing.assert_allclose(
+            pred.S @ pred.S.T, F @ P @ F.T + Q, rtol=1e-12, atol=0
+        )
 
     def test_srkf_predict_with_control(self):
         """Test SR-KF prediction with control input."""
@@ -733,8 +826,15 @@ class TestSRKFUpdate:
 
         upd = srkf_update(x, S, z, H, S_R)
 
-        assert upd.x is not None
-        assert upd.likelihood > 0
+        kf = kf_update(x, P, z, H, R)
+        np.testing.assert_allclose(upd.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(upd.S @ upd.S.T, kf.P, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            upd.likelihood,
+            multivariate_normal(mean=[0.0], cov=[[0.45]]).pdf([0.2]),
+            rtol=1e-12,
+            atol=0,
+        )
 
     def test_srkf_update_matches_kf(self):
         """Test SR-KF update matches standard KF."""
@@ -772,8 +872,16 @@ class TestSRKFPredictUpdate:
 
         result = srkf_predict_update(x, S, z, F, S_Q, H, S_R)
 
-        assert result.x is not None
-        assert result.likelihood > 0
+        pred = kf_predict(x, np.eye(2) * 0.1, F, np.eye(2) * 0.01)
+        kf = kf_update(pred.x, pred.P, z, H, np.array([[0.1]]))
+        np.testing.assert_allclose(result.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.S @ result.S.T, kf.P, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            result.likelihood,
+            multivariate_normal(mean=[0.0], cov=kf.S).pdf(kf.y),
+            rtol=1e-12,
+            atol=0,
+        )
 
     def test_srkf_predict_update_equivalence(self):
         """Test combined equals separate calls."""
@@ -823,10 +931,14 @@ class TestComputeMixingProbabilities:
 
         mixing_probs, c_bar = compute_mixing_probabilities(mode_probs, Pi)
 
-        # c_bar should reflect the bias
-        assert c_bar[0] > c_bar[1]
-        # mixing_probs columns should sum to 1
-        np.testing.assert_allclose(np.sum(mixing_probs, axis=0), [1.0, 1.0], rtol=1e-10)
+        # c_j = sum_i Pi[i, j] mu_i; mu_{i|j} = Pi[i, j] mu_i / c_j.
+        np.testing.assert_allclose(c_bar, [0.86, 0.14], rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            mixing_probs,
+            [[0.855 / 0.86, 0.045 / 0.14], [0.005 / 0.86, 0.095 / 0.14]],
+            rtol=1e-12,
+            atol=0,
+        )
 
 
 class TestMixStates:
@@ -884,8 +996,14 @@ class TestCombineEstimates:
         x, P = combine_estimates(mode_states, mode_covs, mode_probs)
 
         np.testing.assert_allclose(x, [0.5, 0.5])
-        # Covariance should be larger due to spread
-        assert np.trace(P) > np.trace(mode_covs[0])
+        # Mean of the mode covariances plus the spread of the means:
+        # sum_i mu_i (x_i - x)(x_i - x)' = 0.25 [[1, -1], [-1, 1]].
+        np.testing.assert_allclose(
+            P,
+            np.eye(2) * 0.1 + 0.25 * np.array([[1.0, -1.0], [-1.0, 1.0]]),
+            rtol=1e-12,
+            atol=0,
+        )
 
 
 class TestIMMPredict:
@@ -906,9 +1024,13 @@ class TestIMMPredict:
 
         pred = imm_predict([x1, x2], [P1, P2], mu, Pi, [F1, F2], [Q1, Q2])
 
-        assert pred.x is not None
-        assert len(pred.mode_states) == 2
-        assert len(pred.mode_probs) == 2
+        # Identical modes with F = I: mixing changes nothing, every mode
+        # covariance becomes P + Q, and mu_pred = Pi' mu = [0.86, 0.14].
+        np.testing.assert_allclose(pred.x, x1, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(pred.P, np.eye(4) * 0.11, rtol=1e-12, atol=0)
+        for ms in pred.mode_states:
+            np.testing.assert_allclose(ms, x1, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(pred.mode_probs, [0.86, 0.14], rtol=1e-12, atol=0)
 
     def test_imm_predict_mode_probs_sum_to_one(self):
         """Test that predicted mode probs sum to 1."""
@@ -940,9 +1062,19 @@ class TestIMMUpdate:
 
         upd = imm_update([x1, x2], [P1, P2], mu, z, [H, H], [R, R])
 
-        assert upd.x is not None
-        assert len(upd.mode_likelihoods) == 2
-        np.testing.assert_allclose(np.sum(upd.mode_probs), 1.0, rtol=1e-10)
+        # Both modes share x, P, H, R: innovation [0.1, 0.1] with covariance
+        # H P H' + R = 0.3 I, equal likelihoods, so the posterior mode
+        # probabilities are the prior and x is the single Kalman update.
+        like = multivariate_normal(mean=np.zeros(2), cov=np.eye(2) * 0.3).pdf(
+            [0.1, 0.1]
+        )
+        np.testing.assert_allclose(
+            upd.mode_likelihoods, [like, like], rtol=1e-12, atol=0
+        )
+        np.testing.assert_allclose(upd.mode_probs, mu, rtol=1e-12, atol=0)
+        kf = kf_update(x1, P1, z, H, R)
+        np.testing.assert_allclose(upd.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(upd.P, kf.P, rtol=1e-12, atol=0)
 
     def test_imm_update_mode_prob_shift(self):
         """Test that mode probabilities shift based on likelihoods."""
@@ -959,8 +1091,17 @@ class TestIMMUpdate:
 
         upd = imm_update([x1, x2], [P1, P2], mu, z, [H, H], [R, R])
 
-        # Mode 1 should have higher probability after update
-        assert upd.mode_probs[0] > upd.mode_probs[1]
+        # Bayes: mu_j proportional to mu_j N(z - H x_j; 0, H P H' + R).
+        like = np.array(
+            [
+                multivariate_normal(mean=[0.0], cov=[[0.2]]).pdf([0.0]),
+                multivariate_normal(mean=[0.0], cov=[[0.2]]).pdf([-4.0]),
+            ]
+        )
+        np.testing.assert_allclose(upd.mode_likelihoods, like, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            upd.mode_probs, like / like.sum(), rtol=1e-12, atol=0
+        )
 
 
 class TestIMMPredictUpdate:
@@ -982,8 +1123,13 @@ class TestIMMPredictUpdate:
             states, covs, probs, trans, z, [F_cv, F_cv], [Q, Q], [H, H], [R, R]
         )
 
-        assert len(result.mode_probs) == 2
-        np.testing.assert_allclose(np.sum(result.mode_probs), 1.0, rtol=1e-10)
+        # Identical modes: equal likelihoods, so mu = Pi' mu_prior = [0.82, 0.18]
+        # and x is the single-model Kalman predict-update.
+        np.testing.assert_allclose(result.mode_probs, [0.82, 0.18], rtol=1e-12, atol=0)
+        pred = kf_predict(states[0].astype(float), covs[0], F_cv, Q)
+        kf = kf_update(pred.x, pred.P, z, H, R)
+        np.testing.assert_allclose(result.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.P, kf.P, rtol=1e-12, atol=0)
 
 
 class TestIMMEstimator:
@@ -996,8 +1142,9 @@ class TestIMMEstimator:
 
         assert imm.n_modes == 2
         assert imm.state_dim == 4
-        assert len(imm.mode_states) == 2
-        assert len(imm.mode_covs) == 2
+        np.testing.assert_array_equal(imm.mode_states, np.zeros((2, 4)))
+        np.testing.assert_array_equal(imm.mode_covs, [np.eye(4), np.eye(4)])
+        np.testing.assert_array_equal(imm.mode_probs, [0.5, 0.5])
 
     def test_imm_estimator_initialize(self):
         """Test IMMEstimator initialization with state."""
@@ -1034,8 +1181,9 @@ class TestIMMEstimator:
         R = np.eye(2) * 0.1
         imm.set_measurement_model(H, R)
 
-        assert len(imm.H_list) == 2
-        assert len(imm.R_list) == 2
+        for k in range(2):
+            np.testing.assert_array_equal(imm.H_list[k], H)
+            np.testing.assert_array_equal(imm.R_list[k], R)
 
     def test_imm_estimator_predict(self):
         """Test IMMEstimator prediction."""
@@ -1053,8 +1201,10 @@ class TestIMMEstimator:
 
         result = imm.predict()
 
-        assert result.x is not None
-        np.testing.assert_allclose(np.sum(result.mode_probs), 1.0, rtol=1e-10)
+        kf = kf_predict(x0, P0, F, Q)
+        np.testing.assert_allclose(result.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.P, kf.P, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.mode_probs, [0.5, 0.5], rtol=1e-12, atol=0)
 
     def test_imm_estimator_update(self):
         """Test IMMEstimator update."""
@@ -1078,8 +1228,14 @@ class TestIMMEstimator:
         z = np.array([1.0, 0.0])
         result = imm.update(z)
 
-        assert result.x is not None
-        assert len(result.mode_likelihoods) == 2
+        pred = kf_predict(x0, P0, F, Q)
+        kf = kf_update(pred.x, pred.P, z, H, R)
+        like = multivariate_normal(mean=np.zeros(2), cov=kf.S).pdf(kf.y)
+        np.testing.assert_allclose(result.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.P, kf.P, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(
+            result.mode_likelihoods, [like, like], rtol=1e-12, atol=0
+        )
 
     def test_imm_estimator_predict_update(self):
         """Test IMMEstimator combined predict-update."""
@@ -1102,7 +1258,10 @@ class TestIMMEstimator:
         z = np.array([1.0, 0.0])
         result = imm.predict_update(z)
 
-        assert result.x is not None
+        pred = kf_predict(x0, P0, F, Q)
+        kf = kf_update(pred.x, pred.P, z, H, R)
+        np.testing.assert_allclose(result.x, kf.x, rtol=1e-12, atol=0)
+        np.testing.assert_allclose(result.P, kf.P, rtol=1e-12, atol=0)
 
     def test_imm_estimator_get_state(self):
         """Test IMMEstimator get_state method."""
@@ -1117,8 +1276,9 @@ class TestIMMEstimator:
 
         np.testing.assert_allclose(state.x, x0)
         np.testing.assert_allclose(state.P, P0)
-        assert len(state.mode_states) == 2
-        assert len(state.mode_covs) == 2
+        for k in range(2):
+            np.testing.assert_allclose(state.mode_states[k], x0, rtol=1e-14, atol=0)
+            np.testing.assert_allclose(state.mode_covs[k], P0, rtol=1e-14, atol=0)
 
     def test_imm_estimator_update_without_measurement_model_raises(self):
         """Test that update without measurement model raises error."""
@@ -1157,9 +1317,19 @@ class TestIMMEstimator:
             z = np.array([float(k), 0.5 * k])
             imm.predict_update(z)
 
-        # Check that mode probs are valid
-        np.testing.assert_allclose(np.sum(imm.mode_probs), 1.0, rtol=1e-10)
-        assert np.all(imm.mode_probs >= 0)
+        # All modes share one model, so the likelihoods are equal and the
+        # IMM reduces to a single Kalman filter, with mode probabilities
+        # following the Markov chain mu <- Pi' mu.
+        x_ref, P_ref = x0, P0
+        mu_ref = np.array([0.9, 0.1])
+        for k in range(5):
+            pred = kf_predict(x_ref, P_ref, F, Q)
+            kf = kf_update(pred.x, pred.P, np.array([float(k), 0.5 * k]), H, R)
+            x_ref, P_ref = kf.x, kf.P
+            mu_ref = Pi.T @ mu_ref
+        np.testing.assert_allclose(imm.x, x_ref, rtol=1e-10, atol=0)
+        np.testing.assert_allclose(imm.P, P_ref, rtol=1e-10, atol=1e-14)
+        np.testing.assert_allclose(imm.mode_probs, mu_ref, rtol=1e-10, atol=0)
 
 
 class TestMatrixUtilsFallbackPaths:
@@ -1276,7 +1446,7 @@ class TestMatrixUtilsFallbackPaths:
 
         S = compute_matrix_sqrt(np.diag([scale, 0.0]))
         recon = S @ S.T
-        assert recon[0, 0] == pytest.approx(scale, rel=1e-12)
+        assert recon[0, 0] == pytest.approx(scale, rel=1e-12, abs=0)
         assert recon[1, 1] <= 1e-10 * scale * 1.0000001
 
     @pytest.mark.parametrize("predict", ["ukf", "ckf"])
@@ -1286,5 +1456,5 @@ class TestMatrixUtilsFallbackPaths:
         fn = ukf_predict if predict == "ukf" else ckf_predict
         P = np.diag([1e-12, 0.0])
         pred = fn(np.zeros(2), P, lambda x: x, np.zeros((2, 2)))
-        assert pred.P[0, 0] == pytest.approx(1e-12, rel=1e-9)
+        assert pred.P[0, 0] == pytest.approx(1e-12, rel=1e-9, abs=0)
         assert pred.P[1, 1] < 1e-20

@@ -77,7 +77,7 @@ class TestHDF5Storage:
         with HDF5Storage() as store:
             store.open(temp_file, mode="r")
             keys = store.list_keys("gravity")
-            assert "coefficients" in keys
+            assert sorted(keys) == ["coefficients"]
 
     def test_list_keys(self, temp_file):
         """Test listing keys."""
@@ -89,10 +89,7 @@ class TestHDF5Storage:
 
         with HDF5Storage() as store:
             store.open(temp_file, mode="r")
-            keys = store.list_keys()
-            assert "a" in keys
-            assert "b" in keys
-            assert "c" in keys
+            assert sorted(store.list_keys()) == ["a", "b", "c"]
 
     def test_get_metadata(self, temp_file):
         """Test metadata retrieval."""
@@ -202,6 +199,53 @@ class TestSQLStorage:
             store.store_group("mission", metadata={"start": "2025-01-01"})
             store.store_scalar("mission/duration", 3600)
 
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.retrieve_scalar("mission/duration") == 3600
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=KeyError,
+        reason="store_group writes metadata into the '_group:<name>' value column, "
+        "so get_metadata('mission') cannot find it: group metadata is write-only "
+        "(HDF5 is unaffected)",
+    )
+    def test_store_group_metadata_is_readable(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.get_metadata("mission")["start"] == "2025-01-01"
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="the internal '_group:<name>' marker row leaks into list_keys() "
+        "at the root",
+    )
+    def test_root_listing_excludes_group_marker(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+            store.store_scalar("mission/duration", 3600)
+            store.store_scalar("x", 1)
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert sorted(store.list_keys()) == ["mission/duration", "x"]
+
+    def test_group_listing_is_exactly_its_members(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+            store.store_scalar("mission/duration", 3600)
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.list_keys("mission") == ["mission/duration"]
+
     def test_list_keys(self, temp_db):
         """Test listing keys."""
         with SQLStorage() as store:
@@ -212,10 +256,7 @@ class TestSQLStorage:
 
         with SQLStorage() as store:
             store.open(temp_db, mode="r")
-            keys = store.list_keys()
-            assert "data1" in keys
-            assert "data2" in keys
-            assert "scalar1" in keys
+            assert sorted(store.list_keys()) == ["data1", "data2", "scalar1"]
 
     def test_get_metadata(self, temp_db):
         """Test metadata retrieval."""
@@ -254,7 +295,7 @@ class TestSQLStorage:
         with SQLStorage() as store:
             store.open(temp_db, mode="r")
             retrieved = store.retrieve_array("floats")
-            np.testing.assert_array_almost_equal(retrieved, data)
+            np.testing.assert_array_equal(retrieved, data)
 
     def test_replace_existing(self, temp_db):
         """Test replacing existing data."""

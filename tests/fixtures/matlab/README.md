@@ -156,3 +156,28 @@ R2026a against commit `a9acd8f` (`QCoordTurn`). Consumed by
 `%.17g`, over `T` in {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in
 {0, 0.01}. `#` lines carry provenance. The linear-acceleration cases (6 and
 8) have no pytcl counterpart and are not captured.
+
+## qpolykal_order\<K\>.csv, qpolykaldirectdisc_order\<K\>.csv, qgaussmarkov_order2.csv
+
+Produced by `scripts/matlab_capture/capture_process_noise.m` with MATLAB
+R2026a against commit `a9acd8f`. All use `numDim=2`, so MATLAB's state is
+derivative-major (`[x; y; vx; vy; ...]`, `kron(Q1, diag(q0))`); pytcl's
+state is per-dimension interleaved, and
+`tests/unit/test_process_noise.py` permutes the pytcl result to MATLAB's
+order as documented in `q_poly_kal`'s docstring. Each data row is the
+parameters followed by `Q` flattened row-major, `%.17g`; `#` lines carry
+provenance.
+
+| File | MATLAB call | pytcl functions | Row parameters |
+|------|-------------|-----------------|----------------|
+| `qpolykal_order{0,1,2,3}.csv` | `QPolyKal(T, (K+1)*2, K, q0)` | `q_poly_kal`, `q_continuous_white_noise` | `T`, `q0` over `T` in {0.1, 1, 3.7}, `q0` in {0.5, 4} |
+| `qpolykaldirectdisc_order{1,2,3}.csv` | `QPolyKalDirectDisc(T, (K+1)*2, K, sigmaV2)` | `q_discrete_white_noise`, `q_constant_velocity` (K=1), `q_constant_acceleration` (K=2) | `T`, `sigmaV2` over the same grid |
+| `qgaussmarkov_order2.csv` | `QGaussMarkov(T, 6, 2*sigmam^2/tau, tau, 2)` | `q_singer`, `q_singer_2d`, `q_singer_3d` | `T`, `tau`, `sigmam` over (T, tau) in {(1, 10), (1, 20), (3.7, 5), (2, 20), (0.5, 5)}, `sigmam` in {0.5, 3} |
+
+`qgaussmarkov_order2.csv` holds `T/tau >= 0.05` only. Below that `q_singer`
+switches to a Taylor series, and `QGaussMarkov`'s closed form loses about
+three digits to cancellation (its header warns of this), so the Taylor branch
+is checked against a 50-digit quadrature instead (see
+`test_q_singer_taylor_branch_matches_integral`). `q_coord_turn_polar` has no
+MATLAB counterpart (`QPolarCoordTurn2D` is a different model) and is checked
+against hand-computed literals.

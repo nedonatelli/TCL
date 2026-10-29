@@ -209,14 +209,15 @@ def shapiro_delay(
     r_os = np.linalg.norm(observer_pos - light_source_pos)
 
     # Shapiro delay formula (second-order PN)
-    # Check for valid geometry (gravitating body should affect path)
-    # The formula is valid when the impact parameter is close to the body
     numerator = r_observer + r_source + r_os
     denominator = r_observer + r_source - r_os
 
-    # If denominator <= 0, it means the path doesn't pass near the gravitating body
+    # By the triangle inequality the denominator is >= 0, and it is zero (to
+    # rounding) only when the body lies on the straight segment between
+    # observer and source, where the logarithm diverges. This branch returns
+    # 0.0 for that case; it is not a "path misses the body" test (that gives
+    # a positive denominator and a finite delay).
     if denominator <= 0.0:
-        # Return zero delay if geometry is invalid (light path doesn't bend)
         return 0.0
 
     delay = (2.0 * gm / (C_LIGHT**3)) * np.log(numerator / denominator)

@@ -26,7 +26,6 @@ from pytcl.navigation.ins import (
     gravity_ned,
     gyrocompass_alignment,
     initialize_ins_state,
-    ins_error_state_matrix,
     ins_process_noise_matrix,
     mechanize_ins_ned,
     normal_gravity,
@@ -555,48 +554,12 @@ class TestAlignment:
 
 
 class TestErrorStateModel:
-    """Structural checks only -- shape and "which blocks are populated".
+    """Process-noise matrix checks.
 
-    The numeric oracle (does F actually match a finite-differenced
-    Jacobian of mechanize_ins_ned?) lives in
-    tests/validation/test_ins_error_matrix.py, along with the tracked
-    inventory of entries known to disagree with it. These structural
-    checks are a cheap smoke test, not a correctness gate.
+    The error-state matrix F is checked against a finite-differenced
+    Jacobian of mechanize_ins_ned in tests/validation/test_ins_error_matrix.py,
+    along with the tracked inventory of entries known to disagree with it.
     """
-
-    def test_error_state_matrix_shape(self):
-        """Test error state matrix has correct shape."""
-        state = initialize_ins_state(lat=np.radians(45), lon=0, alt=1000)
-        F = ins_error_state_matrix(state)
-
-        assert F.shape == (15, 15)
-
-    def test_error_state_matrix_structure(self):
-        """Test error state matrix has expected structure."""
-        state = initialize_ins_state(lat=np.radians(45), lon=0, alt=1000, vN=100, vE=50)
-        F = ins_error_state_matrix(state)
-
-        # Position-velocity coupling should be non-zero
-        assert np.any(F[0:3, 3:6] != 0)
-
-        # Velocity-attitude coupling should be non-zero
-        assert np.any(F[3:6, 6:9] != 0)
-
-        # Attitude-gyro bias coupling should be non-zero
-        assert np.any(F[6:9, 12:15] != 0)
-
-    def test_process_noise_matrix_shape(self):
-        """Test process noise matrix has correct shape."""
-        state = initialize_ins_state(lat=np.radians(45), lon=0, alt=1000)
-        Q = ins_process_noise_matrix(
-            accel_noise_std=0.01,
-            gyro_noise_std=1e-4,
-            accel_bias_std=1e-5,
-            gyro_bias_std=1e-7,
-            state=state,
-        )
-
-        assert Q.shape == (15, 15)
 
     def test_process_noise_matrix_symmetry(self):
         """Test process noise matrix is symmetric positive semi-definite."""

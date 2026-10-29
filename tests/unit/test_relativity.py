@@ -1,15 +1,18 @@
 """Test suite for relativistic corrections module.
 
-Tests cover all public functions with physical validation against known results
-and edge case handling.
+Every expected value is a closed form written out independently of the
+module, a numerical quadrature of the underlying integral, or a published
+figure with its source. The module's own output is never an oracle.
 """
 
 import numpy as np
 import pytest
+from scipy.integrate import quad
 
 from pytcl.astronomical.relativity import (
     AU,
     C_LIGHT,
+    G_GRAV,
     GM_EARTH,
     GM_SUN,
     geodetic_precession,
@@ -23,493 +26,459 @@ from pytcl.astronomical.relativity import (
     shapiro_delay,
 )
 
+C2 = C_LIGHT**2
+ARCSEC_PER_RAD = 206264.806
+
+
+def _shapiro_by_quadrature(obs, src, body, gm):
+    """Shapiro delay (2GM/c^3) * integral of ds/r along the straight path."""
+    obs, src, body = (np.asarray(x, dtype=float) for x in (obs, src, body))
+    length = np.linalg.norm(src - obs)
+
+    def inv_r(s):
+        point = obs + (src - obs) * (s / length)
+        return 1.0 / np.linalg.norm(point - body)
+
+    integral, _ = quad(inv_r, 0.0, length, epsabs=0, epsrel=1e-13, limit=200)
+    return 2.0 * gm / C_LIGHT**3 * integral
+
 
 class TestSchwarzchildRadius:
-    """Test Schwarzschild radius calculations."""
+    """r_s = 2GM/c^2."""
 
-    def test_earth_schwarzschild_radius(self):
-        """Schwarzschild radius for Earth should be ~8.87 mm."""
-        mass_earth = 5.972e24  # kg
-        r_s = schwarzschild_radius(mass_earth)
-        assert 8.8e-3 < r_s < 8.9e-3, f"Expected ~8.87 mm, got {r_s:.3e} m"
+    @pytest.mark.parametrize("mass", [5.972e24, 1.989e30, 1e24])
+    def test_closed_form(self, mass):
+        assert schwarzschild_radius(mass) == pytest.approx(
+            2.0 * G_GRAV * mass / C2, rel=1e-12, abs=0
+        )
 
-    def test_sun_schwarzschild_radius(self):
-        """Schwarzschild radius for Sun should be ~2.95 km."""
-        mass_sun = 1.989e30  # kg
-        r_s = schwarzschild_radius(mass_sun)
-        assert 2.9e3 < r_s < 3.0e3, f"Expected ~2.95 km, got {r_s:.3e} m"
+    def test_earth_is_8_87_mm(self):
+        """Standard textbook figure, 8.87 mm, quoted to three digits."""
+        assert schwarzschild_radius(5.972e24) == pytest.approx(8.87e-3, rel=1e-3, abs=0)
+
+    def test_sun_is_2_95_km(self):
+        """Standard textbook figure, 2.95 km, quoted to three digits."""
+        assert schwarzschild_radius(1.989e30) == pytest.approx(2.95e3, rel=2e-3, abs=0)
 
     def test_zero_mass(self):
-        """Zero mass should give zero radius."""
         assert schwarzschild_radius(0.0) == 0.0
 
-    def test_radius_increases_with_mass(self):
-        """Schwarzschild radius should increase linearly with mass."""
-        r_s1 = schwarzschild_radius(1e24)
-        r_s2 = schwarzschild_radius(2e24)
-        assert abs(r_s2 / r_s1 - 2.0) < 1e-10
+    def test_radius_is_linear_in_mass(self):
+        assert schwarzschild_radius(2e24) == pytest.approx(
+            2.0 * schwarzschild_radius(1e24), rel=1e-12, abs=0
+        )
 
 
 class TestGravitationalTimeDilation:
-    """Test gravitational time dilation calculations."""
+    """Schwarzschild g_00: sqrt(1 - 2GM/(r c^2))."""
 
-    def test_dilation_at_infinity(self):
-        """Time should pass normally at infinity (dilation = 1)."""
-        # Test at very large distance
-        r_large = 1e20  # Very far
-        dilation = gravitational_time_dilation(r_large, GM_EARTH)
-        assert abs(dilation - 1.0) < 1e-15
+    @pytest.mark.parametrize(
+        "r,gm",
+        [
+            (1e20, GM_EARTH),
+            (6.371e6, GM_EARTH),
+            (1e7, GM_EARTH),
+            (1e8, GM_EARTH),
+            (1e7, GM_SUN),
+            (26.56e6, GM_EARTH),
+        ],
+    )
+    def test_closed_form(self, r, gm):
+        assert gravitational_time_dilation(r, gm) == pytest.approx(
+            np.sqrt(1.0 - 2.0 * gm / (C2 * r)), rel=1e-12, abs=0
+        )
 
-    def test_dilation_at_earth_surface(self):
-        """Time dilation at Earth's surface should be ~0.9999999993."""
-        r_earth = 6.371e6  # meters
-        dilation = gravitational_time_dilation(r_earth, GM_EARTH)
-        # Expected: sqrt(1 - 2*3.986e14/(3e8^2*6.371e6))
-        expected_squared = 1.0 - 2.0 * GM_EARTH / (C_LIGHT**2 * r_earth)
-        expected = np.sqrt(expected_squared)
-        assert abs(dilation - expected) < 1e-15
+    def test_weak_field_limit(self):
+        r = 1e12
+        assert gravitational_time_dilation(r, GM_EARTH) == pytest.approx(
+            1.0 - GM_EARTH / (C2 * r), rel=1e-12, abs=0
+        )
 
-    def test_dilation_increases_outward(self):
-        """Time dilation should increase (approach 1) as distance increases."""
-        r1 = 1e7
-        r2 = 1e8
-        d1 = gravitational_time_dilation(r1, GM_EARTH)
-        d2 = gravitational_time_dilation(r2, GM_EARTH)
-        assert d2 > d1  # More distant point has larger dilation
+    def test_gps_orbit_loses_14427_ns_per_day(self):
+        """Earth-clock rate deficit at GPS radius (the module docstring's
+        figure). 1 - sqrt(1 - 2x) with x ~ 1.7e-10 cancels to ~6 digits."""
+        deficit_ns = (1 - gravitational_time_dilation(26.56e6, GM_EARTH)) * 86400e9
+        assert deficit_ns == pytest.approx(
+            GM_EARTH / (C2 * 26.56e6) * 86400e9, rel=1e-6, abs=0
+        )
 
-    def test_dilation_below_schwarzschild_radius(self):
-        """Should raise error for r <= Schwarzschild radius."""
-        r_s_earth = schwarzschild_radius(5.972e24)
-        with pytest.raises(ValueError):
-            gravitational_time_dilation(r_s_earth - 1e-3, GM_EARTH)
-
-    def test_sun_vs_earth_dilation(self):
-        """At same distance, Sun's gravity gives stronger dilation than Earth's."""
-        r = 1e7
-        dilation_earth = gravitational_time_dilation(r, GM_EARTH)
-        dilation_sun = gravitational_time_dilation(r, GM_SUN)
-        assert dilation_sun < dilation_earth  # Stronger effect from Sun
+    def test_at_or_inside_schwarzschild_radius(self):
+        r_s = schwarzschild_radius(5.972e24)
+        with pytest.raises(ValueError, match="Schwarzschild radius"):
+            gravitational_time_dilation(r_s - 1e-3, GM_EARTH)
 
 
 class TestProperTimeRate:
-    """Test proper time rate calculations (SR + GR combined)."""
+    """dtau/dt = 1 - v^2/(2c^2) - GM/(c^2 r)."""
 
-    def test_stationary_at_infinity(self):
-        """Proper time at rest at infinity should equal coordinate time."""
-        rate = proper_time_rate(0.0, 1e20, GM_EARTH)
-        assert abs(rate - 1.0) < 1e-15
+    @pytest.mark.parametrize(
+        "v,r,gm",
+        [
+            (0.0, 1e20, GM_EARTH),
+            (3870.0, 26.56e6, GM_EARTH),
+            (0.1 * C_LIGHT, 1e7, GM_EARTH),
+            (0.0, 6.371e6, GM_EARTH),
+        ],
+    )
+    def test_closed_form(self, v, r, gm):
+        assert proper_time_rate(v, r, gm) == pytest.approx(
+            1.0 - v**2 / (2.0 * C2) - gm / (C2 * r), rel=1e-12, abs=0
+        )
 
-    def test_gps_satellite(self):
-        """GPS satellite experiences both SR and GR time dilation effects."""
-        v_gps = 3870.0  # m/s, typical GPS speed
-        r_gps = 26.56e6  # meters, ~20,200 km altitude
-        rate = proper_time_rate(v_gps, r_gps, GM_EARTH)
+    def test_gps_net_fractional_frequency_offset(self):
+        """GPS clock offset against the geoid: 4.4647e-10.
 
-        # Both effects slow down time
-        assert rate < 1.0
+        Ashby, "Relativity in the Global Positioning System", Living Rev.
+        Relativity 6 (2003) 1: for a circular orbit of a = 26561.75 km the
+        satellite clock runs fast by 4.4647e-10 relative to a clock on the
+        geoid, whose potential is Phi_0/c^2 = 6.969290134e-10. The five
+        quoted digits bound the agreement.
+        """
+        a = 26561.75e3
+        v = np.sqrt(GM_EARTH / a)
+        satellite = proper_time_rate(v, a, GM_EARTH) - 1.0
 
-        # SR effect: ~-v^2/(2c^2) ≈ -8.3e-11
-        # GR effect: ~-GM/(c^2*r) ≈ -5.3e-10
-        # Net should be between SR-only and GR dominant
-        sr_only = 1.0 - (v_gps**2) / (2.0 * C_LIGHT**2)
-        # Rate is less than sr_only because GR adds negative time dilation
-        # Rate = sr_only + gr_effect, where gr_effect is negative
-        assert rate < sr_only  # GR adds more time dilation
+        assert satellite + 6.969290134e-10 == pytest.approx(4.4647e-10, rel=2e-5, abs=0)
 
-    def test_high_velocity_dominates_at_small_r(self):
-        """At very small radius with high velocity, SR should dominate."""
-        v = 0.1 * C_LIGHT  # Relativistic velocity
-        r = 1e7  # Distance to GR effect
-        rate = proper_time_rate(v, r, GM_EARTH)
+    @pytest.mark.filterwarnings("ignore::scipy.integrate.IntegrationWarning")
+    def test_periodic_term_matches_is_gps_200(self):
+        """Eccentric-orbit clock term F*e*sqrt(a)*sin(E), IS-GPS-200 20.3.3.3.3.1.
 
-        # SR effect should be significant
-        sr_component = 1.0 - (v**2) / (2.0 * C_LIGHT**2)
-        gr_component = -GM_EARTH / (C_LIGHT**2 * r)
+        F = -4.442807633e-10 s/sqrt(m) is the IS-GPS-200 constant (it is
+        -2 sqrt(mu)/c^2 for mu = 3.986005e14; here GM_EARTH differs by 1.5e-7
+        relative). The clock correction is the time integral of the periodic
+        part of dtau/dt, integrated here over eccentric anomaly with
+        dt = (1 - e cos E) dE / n.
+        """
+        e, a = 0.2, 26559.8e3
+        n = np.sqrt(GM_EARTH / a**3)
+        mean_offset = -1.5 * GM_EARTH / (a * C2)
 
-        expected = sr_component + gr_component
-        assert abs(rate - expected) < 1e-15
+        def periodic_rate(anomaly):
+            r = a * (1.0 - e * np.cos(anomaly))
+            v = np.sqrt(GM_EARTH * (2.0 / r - 1.0 / a))
+            return (
+                (proper_time_rate(v, r, GM_EARTH) - 1.0 - mean_offset)
+                * (1.0 - e * np.cos(anomaly))
+                / n
+            )
+
+        f_is_gps_200 = -4.442807633e-10
+        for anomaly in (np.pi / 2, 2.0):
+            accumulated, _ = quad(periodic_rate, 0.0, anomaly, epsabs=0, epsrel=1e-8)
+            assert accumulated == pytest.approx(
+                f_is_gps_200 * e * np.sqrt(a) * np.sin(anomaly), rel=1e-5, abs=0
+            )
 
 
 class TestShapiroDelay:
-    """Test Shapiro delay (light bending in gravitational field)."""
+    """Shapiro delay (2GM/c^3) ln((r_o + r_s + r_os) / (r_o + r_s - r_os))."""
 
-    def test_shapiro_delay_positive(self):
-        """Shapiro delay should be positive when light bends through gravity field."""
-        # Create a geometry where light path passes near the gravitating body
-        obs = np.array([2.0e11, 0.0, 0.0])  # Observer far on one side
-        source = np.array([0.0, 2.0e11, 0.0])  # Source far on perpendicular side
-        sun = np.array([0.0, 0.0, 0.0])  # Sun at origin
+    BODY = np.zeros(3)
 
-        delay = shapiro_delay(obs, source, sun, GM_SUN)
-        assert delay >= 0.0  # Should be positive or zero
+    @pytest.mark.parametrize(
+        "obs,src",
+        [
+            ([2.0e11, 0.0, 0.0], [0.0, 2.0e11, 0.0]),
+            ([1.496e11, 0.5e11, 0.0], [-1.496e11, 0.5e11, 0.0]),
+            ([1.496e11, 0.1e11, 0.0], [-1.496e11, 0.1e11, 0.0]),
+            ([1.0e11, 0.2e10, 0.0], [-1.0e11, 0.2e10, 0.0]),
+            ([1.0e11, 0.2e10, 3e9], [-2.0e11, 4e9, -1e10]),
+        ],
+    )
+    def test_matches_line_integral_of_inverse_distance(self, obs, src):
+        delay = shapiro_delay(np.array(obs), np.array(src), self.BODY, GM_SUN)
 
-    def test_shapiro_delay_superior_conjunction(self):
-        """Shapiro delay is larger when light path passes closer to Sun."""
-        # Two scenarios: one with more straight path, one with closer passage
+        assert delay == pytest.approx(
+            _shapiro_by_quadrature(obs, src, self.BODY, GM_SUN), rel=1e-9, abs=0
+        )
 
-        # More distant geometry
-        obs1 = np.array([1.496e11, 0.5e11, 0.0])
-        source1 = np.array([-1.496e11, 0.5e11, 0.0])
+    def test_closer_passage_gives_larger_delay(self):
+        wide = shapiro_delay(
+            np.array([1.496e11, 0.5e11, 0.0]),
+            np.array([-1.496e11, 0.5e11, 0.0]),
+            self.BODY,
+            GM_SUN,
+        )
+        close = shapiro_delay(
+            np.array([1.496e11, 0.1e11, 0.0]),
+            np.array([-1.496e11, 0.1e11, 0.0]),
+            self.BODY,
+            GM_SUN,
+        )
 
-        # Closer passage (light bends more)
-        obs2 = np.array([1.496e11, 0.1e11, 0.0])
-        source2 = np.array([-1.496e11, 0.1e11, 0.0])
+        assert close == pytest.approx(
+            2.0
+            * GM_SUN
+            / C_LIGHT**3
+            * np.log(
+                (2 * 1.496e11 + 2 * np.hypot(1.496e11, 0.1e11))
+                / (2 * np.hypot(1.496e11, 0.1e11) - 2 * 1.496e11)
+            ),
+            rel=1e-12,
+            abs=0,
+        )
+        assert wide == pytest.approx(
+            2.0
+            * GM_SUN
+            / C_LIGHT**3
+            * np.log(
+                (2 * 1.496e11 + 2 * np.hypot(1.496e11, 0.5e11))
+                / (2 * np.hypot(1.496e11, 0.5e11) - 2 * 1.496e11)
+            ),
+            rel=1e-12,
+            abs=0,
+        )
 
-        sun = np.array([0.0, 0.0, 0.0])
-
-        delay1 = shapiro_delay(obs1, source1, sun, GM_SUN)
-        delay2 = shapiro_delay(obs2, source2, sun, GM_SUN)
-
-        # Closer passage should have larger delay
-        assert delay2 >= delay1
-
-    def test_shapiro_delay_no_body(self):
-        """Shapiro delay should be ~0 when gravitating body is far from light path."""
+    def test_far_body_matches_quadrature(self):
         obs = np.array([1.0, 0.0, 0.0])
-        source = np.array([0.0, 1.0, 0.0])
-        sun_far = np.array([1000.0, 1000.0, 0.0])  # Very far from light path
+        src = np.array([0.0, 1.0, 0.0])
+        far = np.array([1000.0, 1000.0, 0.0])
 
-        delay = shapiro_delay(obs, source, sun_far, GM_SUN)
-        # Should be very small (essentially zero for light path far from body)
-        assert abs(delay) < 1e-8
+        assert shapiro_delay(obs, src, far, GM_SUN) == pytest.approx(
+            _shapiro_by_quadrature(obs, src, far, GM_SUN), rel=1e-9, abs=0
+        )
 
-    def test_shapiro_collinear_error(self):
-        """Shapiro delay formula handles collinear geometries."""
+    def test_source_between_body_and_observer(self):
+        """Collinear with the body: the log argument is exactly 4."""
         obs = np.array([2.0e11, 0.0, 0.0])
-        body = np.array([0.0, 0.0, 0.0])
-        source = np.array(
-            [0.5e11, 0.0, 0.0]
-        )  # Between body and observer (on same line)
+        src = np.array([0.5e11, 0.0, 0.0])
 
-        # For collinear geometry, formula is less meaningful but should still return finite value
-        delay = shapiro_delay(obs, source, body, GM_SUN)
-        assert np.isfinite(delay)
+        delay = shapiro_delay(obs, src, self.BODY, GM_SUN)
+
+        assert delay == pytest.approx(
+            2.0 * GM_SUN / C_LIGHT**3 * np.log(4.0), rel=1e-12, abs=0
+        )
+
+
+class TestShapiroDelayThroughTheBody:
+    @pytest.mark.xfail(
+        strict=True,
+        reason="shapiro_delay returns 0.0 when the body lies on the segment "
+        "between observer and source (denominator 0); the delay diverges there",
+    )
+    def test_body_on_the_path_diverges(self):
+        delay = shapiro_delay(
+            np.array([1.0e11, 0.0, 0.0]),
+            np.array([-1.0e11, 0.0, 0.0]),
+            np.zeros(3),
+            GM_SUN,
+        )
+
+        assert delay == np.inf
 
 
 class TestSchwarzchildPrecession:
-    """Test perihelion precession due to general relativity."""
+    """Perihelion advance 6 pi GM / (c^2 a (1 - e^2)) per orbit."""
 
-    def test_mercury_precession(self):
-        """Mercury's GR perihelion precession should be ~43 arcsec/century."""
-        a_mercury = 0.38709927 * AU  # Semi-major axis
-        e_mercury = 0.20563593  # Eccentricity
-
-        # Precession per orbit
-        precession_rad = schwarzschild_precession_per_orbit(
-            a_mercury, e_mercury, GM_SUN
+    def test_mercury_matches_published_43_arcsec_per_century(self):
+        """GR contribution to Mercury's perihelion advance, 42.98 arcsec/century
+        (Will, "The Confrontation between General Relativity and Experiment",
+        Living Rev. Relativity 17 (2014) 4), with a, e from Standish and the
+        87.969 d sidereal period."""
+        per_orbit = schwarzschild_precession_per_orbit(
+            0.38709927 * AU, 0.20563593, GM_SUN
         )
-        precession_arcsec = precession_rad * 206265  # Convert to arcseconds
+        per_century = per_orbit * ARCSEC_PER_RAD * 36525.0 / 87.969
 
-        # Mercury orbital period
-        orbital_period = 87.969 / 365.25  # years
-        orbits_per_century = 100.0 / orbital_period
+        assert per_century == pytest.approx(42.98, rel=5e-4, abs=0)
 
-        precession_per_century = precession_arcsec * orbits_per_century
-
-        # Expected: ~43 arcsec/century from GR
-        # (Observed is ~5600 arcsec/century, but includes Newtonian precession)
-        assert 40 < precession_per_century < 45, (
-            f"Got {precession_per_century:.1f} arcsec/century"
+    @pytest.mark.parametrize("e", [0.0, 0.1, 0.5, 0.3])
+    def test_closed_form(self, e):
+        a = 1.0e7
+        assert schwarzschild_precession_per_orbit(a, e, GM_EARTH) == pytest.approx(
+            6.0 * np.pi * GM_EARTH / (C2 * a * (1.0 - e**2)), rel=1e-12, abs=0
         )
 
-    def test_circular_orbit_zero_ecc(self):
-        """Circular orbit (e=0) should give precession for any semi-major axis."""
-        a = 1.0e7  # arbitrary
-        e = 0.0
-        precession = schwarzschild_precession_per_orbit(a, e, GM_EARTH)
-        assert precession > 0.0
-
-    def test_eccentricity_effect(self):
-        """Higher eccentricity should increase precession rate."""
-        a = 1e7
-        e1 = 0.1
-        e2 = 0.5
-
-        p1 = schwarzschild_precession_per_orbit(a, e1, GM_EARTH)
-        p2 = schwarzschild_precession_per_orbit(a, e2, GM_EARTH)
-
-        assert p2 > p1  # Higher e gives larger precession
-
-    def test_invalid_eccentricity(self):
-        """Should raise error for invalid eccentricity."""
-        with pytest.raises(ValueError):
-            schwarzschild_precession_per_orbit(1e7, 1.5, GM_SUN)
-
-        with pytest.raises(ValueError):
-            schwarzschild_precession_per_orbit(1e7, -0.1, GM_SUN)
+    @pytest.mark.parametrize("e", [1.5, -0.1, 1.0])
+    def test_invalid_eccentricity(self, e):
+        with pytest.raises(ValueError, match="must be in"):
+            schwarzschild_precession_per_orbit(1e7, e, GM_SUN)
 
 
 class TestPostNewtonianAcceleration:
-    """Test 1PN order acceleration corrections."""
+    """1PN: GM/(c^2 r^3) [(4GM/r - v.v) r + 4 (r.v) v] added to -GM r / r^3."""
 
-    def test_circular_leo_orbit(self):
-        """For LEO circular orbit, PN correction should be measurable."""
-        # ~300 km altitude circular orbit
+    @staticmethod
+    def _expected_correction(r_vec, v_vec, gm=GM_EARTH):
+        r = np.linalg.norm(r_vec)
+        return (gm / (C2 * r**3)) * (
+            (4.0 * gm / r - np.dot(v_vec, v_vec)) * r_vec
+            + 4.0 * np.dot(r_vec, v_vec) * v_vec
+        )
+
+    @pytest.mark.parametrize(
+        "r_vec,v_vec",
+        [
+            ([6.678e6, 0.0, 0.0], [0.0, 7.7e3, 0.0]),
+            ([1e7, 0.0, 0.0], [0.0, 0.0, 0.0]),
+            ([1e7, 0.0, 0.0], [1e3, 0.0, 0.0]),
+            ([1e7, 0.0, 0.0], [0.0, 1e3, 0.0]),
+            ([4.2e6, -3.1e6, 2.5e6], [-2.1e3, 4.4e3, 3.3e3]),
+        ],
+    )
+    def test_correction_matches_formula(self, r_vec, v_vec):
+        r_vec, v_vec = np.array(r_vec), np.array(v_vec)
+        newtonian = -GM_EARTH / np.linalg.norm(r_vec) ** 3 * r_vec
+
+        total = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH)
+
+        assert total == pytest.approx(
+            newtonian + self._expected_correction(r_vec, v_vec), rel=1e-12, abs=0
+        )
+        # The correction itself, resolved through the 1e-9 cancellation
+        assert total - newtonian == pytest.approx(
+            self._expected_correction(r_vec, v_vec), rel=1e-6, abs=0
+        )
+
+    def test_circular_leo_ratio_is_three_gm_over_c2_r(self):
+        """Circular orbit: (4GM/r - v^2)/c^2 = 3GM/(c^2 r)."""
         r = 6.678e6
-        v = 7.7e3  # Circular orbit velocity
-
         r_vec = np.array([r, 0.0, 0.0])
-        v_vec = np.array([0.0, v, 0.0])
-
-        a_total = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH)
-        a_newt = -GM_EARTH / r**2 * np.array([1.0, 0.0, 0.0])
-
-        # PN corrections exist but should be very small
-        correction = a_total - a_newt
-
-        # Check that PN effects exist and are measurable (ppm level)
-        assert np.linalg.norm(correction) > 0.0
-
-    def test_leo_pn_ratio(self):
-        """|a_1PN| / |a_Newton| for LEO should be ~2e-9 (3*GM/(c^2*r))."""
-        r = 6.678e6
-        v = np.sqrt(GM_EARTH / r)  # Exactly circular
-
-        r_vec = np.array([r, 0.0, 0.0])
-        v_vec = np.array([0.0, v, 0.0])
+        v_vec = np.array([0.0, np.sqrt(GM_EARTH / r), 0.0])
 
         a_total = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH)
         a_newt = -GM_EARTH / r**3 * r_vec
         ratio = np.linalg.norm(a_total - a_newt) / np.linalg.norm(a_newt)
 
-        # For circular orbit: (4*GM/r - v^2)/c^2 = 3*GM/(c^2*r)
-        expected = 3.0 * GM_EARTH / (C_LIGHT**2 * r)
-        assert np.isclose(ratio, expected, rtol=1e-9)
-        assert 3e-10 < ratio < 1e-8
+        assert ratio == pytest.approx(3.0 * GM_EARTH / (C2 * r), rel=1e-6, abs=0)
 
-    def test_circular_pn_correction_outward(self):
-        """For a circular orbit, the 1PN correction points radially outward."""
+    def test_circular_correction_points_radially_outward(self):
         r = 6.678e6
-        v = np.sqrt(GM_EARTH / r)
         r_vec = np.array([r, 0.0, 0.0])
-        v_vec = np.array([0.0, v, 0.0])
+        v_vec = np.array([0.0, np.sqrt(GM_EARTH / r), 0.0])
 
         correction = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH) - (
             -GM_EARTH / r**3 * r_vec
         )
-        assert correction[0] > 0.0
-        assert np.allclose(correction[1:], 0.0)
 
-    def test_zero_velocity(self):
-        """At zero velocity, PN terms should reduce with Newtonian as dominant."""
-        r_vec = np.array([1e7, 0.0, 0.0])
-        v_vec = np.array([0.0, 0.0, 0.0])
-
-        a = post_newtonian_acceleration(r_vec, v_vec, GM_EARTH)
-        a_newt = -GM_EARTH / np.linalg.norm(r_vec) ** 2 * np.array([1.0, 0.0, 0.0])
-
-        # With zero velocity, there are still some PN terms from the metric
-        # They should be reasonably small relative to Newtonian
-        ratio = np.linalg.norm(a - a_newt) / np.linalg.norm(a_newt)
-        assert ratio < 0.05  # Less than 5% correction
-
-    def test_radial_velocity(self):
-        """Radial velocity components affect acceleration direction."""
-        r_vec = np.array([1e7, 0.0, 0.0])
-        v_rad = np.array([1e3, 0.0, 0.0])  # Outward velocity
-        v_tan = np.array([0.0, 1e3, 0.0])  # Tangential velocity
-
-        a_rad = post_newtonian_acceleration(r_vec, v_rad, GM_EARTH)
-        a_tan = post_newtonian_acceleration(r_vec, v_tan, GM_EARTH)
-
-        # Radial vs tangential velocity should affect the PN term differently
-        a_newt = -GM_EARTH / np.linalg.norm(r_vec) ** 2 * np.array([1.0, 0.0, 0.0])
-
-        # Both should be different from pure Newtonian
-        assert np.linalg.norm(a_rad - a_newt) > 0.0
-        assert np.linalg.norm(a_tan - a_newt) > 0.0
-        # Radial velocity adds a 4*(r.v)*v term absent for tangential motion
-        assert not np.array_equal(a_rad, a_tan)
+        assert correction[0] == pytest.approx(
+            3.0 * GM_EARTH**2 / (C2 * r**3), rel=1e-6, abs=0
+        )
+        assert correction[1] == 0.0
+        assert correction[2] == 0.0
 
 
 class TestGeodeticPrecession:
-    """Test geodetic (de Sitter) precession."""
+    """de Sitter precession 3 pi GM / (c^2 a (1 - e^2)) per orbit."""
 
-    def test_prograde(self):
-        """Geodetic precession should be positive (prograde)."""
-        precession = geodetic_precession(6.678e6, 0.0, np.radians(51.6), GM_EARTH)
-        assert precession > 0.0
+    @pytest.mark.parametrize("a,e", [(6.678e6, 0.0), (42.164e6, 0.0), (2.0e7, 0.3)])
+    def test_closed_form_and_inclination_independence(self, a, e):
+        expected = 3.0 * np.pi * GM_EARTH / (C2 * a * (1.0 - e**2))
+        for inclination in (0.0, np.radians(51.6), np.pi / 2):
+            assert geodetic_precession(a, e, inclination, GM_EARTH) == pytest.approx(
+                expected, rel=1e-12, abs=0
+            )
 
-    def test_leo_magnitude(self):
-        """LEO satellite should precess ~6.3e-9 rad per orbit."""
-        precession = geodetic_precession(6.678e6, 0.0, 0.0, GM_EARTH)
-        expected = 3.0 * np.pi * GM_EARTH / (C_LIGHT**2 * 6.678e6)
-        assert np.isclose(precession, expected, rtol=1e-12)
-        assert 5e-9 < precession < 8e-9
-
-    def test_earth_sun_de_sitter(self):
-        """Earth orbit around Sun accumulates ~1.92 arcsec/century (de Sitter)."""
+    def test_earth_sun_de_sitter_is_1_92_arcsec_per_century(self):
+        """19.2 mas/yr geodetic precession of the Earth-Moon system
+        (Will 2014, Living Rev. Relativity 17, sec. 3.6)."""
         per_orbit = geodetic_precession(AU, 0.0167, 0.0, GM_SUN)
-        arcsec_per_century = per_orbit * (36525.0 / 365.25636) * 206264.806
-        assert 1.85 < arcsec_per_century < 2.0
+        per_century = per_orbit * (36525.0 / 365.25636) * ARCSEC_PER_RAD
 
-    def test_inclination_independent(self):
-        """Geodetic precession magnitude does not depend on inclination."""
-        a, e = 6.678e6, 0.0
-        p1 = geodetic_precession(a, e, 0.0, GM_EARTH)
-        p2 = geodetic_precession(a, e, np.pi / 2, GM_EARTH)
-        assert p1 == p2
+        assert per_century == pytest.approx(1.92, rel=3e-3, abs=0)
 
-    def test_altitude_effect(self):
-        """Higher altitude should reduce precession magnitude."""
-        e = 0.0
-        i = np.radians(45)
+    def test_gravity_probe_b_geodetic_rate(self):
+        """Gravity Probe B predicted 6606 mas/yr (Everitt et al., Phys. Rev.
+        Lett. 106, 221101 (2011)) for a polar orbit at 642 km; the semi-major
+        axis a = 7027 km is rounded, which bounds agreement at ~0.1%."""
+        a = 7027e3
+        period = 2.0 * np.pi * np.sqrt(a**3 / GM_EARTH)
+        per_year = geodetic_precession(a, 0.0, np.pi / 2, GM_EARTH) * (
+            365.25 * 86400.0 / period
+        )
 
-        a_leo = 6.678e6  # LEO
-        a_geo = 42.164e6  # GEO
-
-        p_leo = geodetic_precession(a_leo, e, i, GM_EARTH)
-        p_geo = geodetic_precession(a_geo, e, i, GM_EARTH)
-
-        # GEO precession should be smaller magnitude
-        assert abs(p_geo) < abs(p_leo)
+        assert per_year * ARCSEC_PER_RAD * 1e3 == pytest.approx(6606.0, rel=1e-3, abs=0)
 
 
 class TestLenseThirringPrecession:
-    """Test Lense-Thirring (frame-dragging) precession."""
+    """Nodal rate 2 G J / (c^2 a^3 (1 - e^2)^(3/2))."""
 
     J_EARTH = 5.86e33  # Earth's spin angular momentum (kg m^2/s)
 
-    def test_lense_thirring_positive(self):
-        """Lense-Thirring effect should cause prograde precession."""
-        a = 12.27e6  # LAGEOS
-        e = 0.0045
-        i = np.radians(109.9)
+    @pytest.mark.parametrize(
+        "a,e,i_deg",
+        [(12.27e6, 0.0045, 109.9), (6.678e6, 0.0, 51.6), (42.164e6, 0.0, 51.6)],
+    )
+    def test_closed_form(self, a, e, i_deg):
+        rate = lense_thirring_precession(
+            a, e, np.radians(i_deg), self.J_EARTH, GM_EARTH
+        )
 
-        precession = lense_thirring_precession(a, e, i, self.J_EARTH, GM_EARTH)
-        assert precession > 0.0  # Prograde
+        assert rate == pytest.approx(
+            2.0 * G_GRAV * self.J_EARTH / (C2 * a**3 * (1.0 - e**2) ** 1.5),
+            rel=1e-12,
+            abs=0,
+        )
 
-    def test_lageos_nodal_drag(self):
-        """LAGEOS nodal Lense-Thirring precession should be ~31 mas/year."""
-        a = 12.27e6
-        e = 0.0045
-        i = np.radians(109.9)
+    def test_lageos_nodal_drag_is_about_31_mas_per_year(self):
+        """Ciufolini and Pavlis, Nature 431, 958 (2004): the LAGEOS nodal
+        Lense-Thirring drift is quoted as 31 mas/yr (two digits)."""
+        rate = lense_thirring_precession(
+            12.27e6, 0.0045, np.radians(109.9), self.J_EARTH, GM_EARTH
+        )
 
-        rate = lense_thirring_precession(a, e, i, self.J_EARTH, GM_EARTH)
-        mas_per_year = rate * 86400 * 365.25 * 206264.806 * 1e3
-
-        assert 31.0 * 0.8 < mas_per_year < 31.0 * 1.2, (
-            f"Got {mas_per_year:.1f} mas/year"
+        assert rate * 86400 * 365.25 * ARCSEC_PER_RAD * 1e3 == pytest.approx(
+            31.0, rel=0.02, abs=0
         )
 
     def test_no_rotation_no_precession(self):
-        """Zero angular momentum should give zero Lense-Thirring effect."""
-        a = 6.678e6
-        e = 0.0
-        i = np.radians(51.6)
-
-        precession = lense_thirring_precession(a, e, i, 0.0, GM_EARTH)
-        assert precession == 0.0
-
-    def test_altitude_effect(self):
-        """Higher altitude should reduce Lense-Thirring effect."""
-        e = 0.0
-        i = np.radians(51.6)
-
-        a_leo = 6.678e6
-        a_geo = 42.164e6
-
-        p_leo = lense_thirring_precession(a_leo, e, i, self.J_EARTH, GM_EARTH)
-        p_geo = lense_thirring_precession(a_geo, e, i, self.J_EARTH, GM_EARTH)
-
-        assert p_geo < p_leo
+        rate = lense_thirring_precession(6.678e6, 0.0, np.radians(51.6), 0.0, GM_EARTH)
+        assert rate == 0.0
 
 
 class TestRelativisticsRangeCorrection:
-    """Test relativistic (Shapiro) range corrections for ranging measurements."""
+    """Shapiro range correction (2GM/c^2) ln((r1 + r2 + rho)/(r1 + r2 - rho))."""
 
-    def test_range_correction_positive(self):
-        """Range correction should be positive (measured range is longer)."""
-        r1 = 6.371e6  # Ground station
-        r2 = 3.84e8  # Moon
-        rho = r2 - r1
+    @pytest.mark.parametrize(
+        "r1,r2", [(6.371e6, 3.84e8), (6.371e6, 26.561e6), (7.0e6, 4.2164e7)]
+    )
+    def test_radial_path_is_log_of_radius_ratio(self, r1, r2):
+        """Along a radial path the integral of ds/r is ln(r2/r1) exactly."""
+        correction = relativistic_range_correction(r1, r2, r2 - r1, GM_EARTH)
 
-        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
-        assert correction > 0.0
-
-    def test_gps_ranging_centimeter_scale(self):
-        """GPS-to-ground Shapiro range correction should be ~1 cm scale."""
-        r_ground = 6.371e6
-        r_gps = 26.561e6
-        rho = r_gps - r_ground  # Satellite at zenith
-
-        correction = relativistic_range_correction(r_ground, r_gps, rho, GM_EARTH)
-
-        # Expected: (2*GM/c^2) * ln((r1+r2+rho)/(r1+r2-rho)) ~ 12.7 mm
-        assert 1e-3 < correction < 0.1, f"Got {correction * 1e3:.2f} mm"
-
-    def test_matches_closed_form(self):
-        """Result should match the Shapiro logarithmic formula exactly."""
-        r1, r2, rho = 6.371e6, 26.561e6, 25.0e6
-
-        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
-        expected = (2.0 * GM_EARTH / C_LIGHT**2) * np.log(
-            (r1 + r2 + rho) / (r1 + r2 - rho)
+        assert correction == pytest.approx(
+            2.0 * GM_EARTH / C2 * np.log(r2 / r1), rel=1e-12, abs=0
         )
-        assert np.isclose(correction, expected, rtol=1e-14)
 
-    def test_grazing_path_larger_correction(self):
-        """A path passing closer to the mass has a larger correction."""
-        r1 = 6.371e6
-        r2 = 26.561e6
+    def test_gps_zenith_range_correction(self):
+        """2GM/c^2 = 8.870 mm times ln(26.561/6.371) gives 12.66 mm."""
+        correction = relativistic_range_correction(
+            6.371e6, 26.561e6, 26.561e6 - 6.371e6, GM_EARTH
+        )
 
-        rho_radial = r2 - r1  # Satellite at zenith
-        # Low-elevation geometry: longer path, closer approach to Earth
-        rho_grazing = np.sqrt(r2**2 - r1**2)
+        assert correction == pytest.approx(
+            8.870056e-3 * np.log(26.561 / 6.371), rel=1e-6, abs=0
+        )
 
-        c_radial = relativistic_range_correction(r1, r2, rho_radial, GM_EARTH)
-        c_grazing = relativistic_range_correction(r1, r2, rho_grazing, GM_EARTH)
+    def test_oblique_path_matches_quadrature(self):
+        r1, r2 = 6.371e6, 26.561e6
+        rho = np.sqrt(r2**2 - r1**2)
+        obs = np.array([r1, 0.0, 0.0])
+        src = np.array([r1, rho, 0.0])
+        assert np.linalg.norm(src) == pytest.approx(np.hypot(r1, rho), rel=1e-12, abs=0)
 
-        assert c_grazing > c_radial
+        correction = relativistic_range_correction(
+            r1, np.linalg.norm(src), rho, GM_EARTH
+        )
+
+        assert correction == pytest.approx(
+            C_LIGHT * _shapiro_by_quadrature(obs, src, np.zeros(3), GM_EARTH),
+            rel=1e-9,
+            abs=0,
+        )
 
     def test_consistent_with_shapiro_delay(self):
-        """Range correction should equal c times the Shapiro time delay."""
         obs = np.array([6.371e6, 0.0, 0.0])
         src = np.array([0.0, 26.561e6, 0.0])
-        body = np.array([0.0, 0.0, 0.0])
-
-        r1 = np.linalg.norm(obs)
-        r2 = np.linalg.norm(src)
-        rho = np.linalg.norm(obs - src)
+        body = np.zeros(3)
 
         delay = shapiro_delay(obs, src, body, GM_EARTH)
-        correction = relativistic_range_correction(r1, r2, rho, GM_EARTH)
+        correction = relativistic_range_correction(
+            np.linalg.norm(obs),
+            np.linalg.norm(src),
+            np.linalg.norm(obs - src),
+            GM_EARTH,
+        )
 
-        assert np.isclose(correction, C_LIGHT * delay, rtol=1e-12)
-
-
-class TestPhysicalConsistency:
-    """Cross-cutting tests for physical consistency."""
-
-    def test_weak_field_limit(self):
-        """At large distances, PN effects should match weak-field expansion."""
-        # At r >> r_s, all relativistic effects should be small
-        r = 1e12  # Very large distance
-
-        dilation = gravitational_time_dilation(r, GM_EARTH)
-        expected = 1.0 - GM_EARTH / (C_LIGHT**2 * r)  # Weak field approximation
-
-        assert abs(dilation - expected) < 1e-15
-
-    def test_schwarzschild_precession_dimensionless(self):
-        """Precession per orbit should be dimensionless (radians)."""
-        a = 1e7
-        e = 0.3
-        precession = schwarzschild_precession_per_orbit(a, e, GM_EARTH)
-
-        # Should be small fraction of 2π
-        assert 0 < precession < 0.1
-
-    def test_shapiro_delay_causality(self):
-        """Shapiro delay should satisfy causality (finite, non-negative)."""
-        positions = [
-            (np.array([1.0e11, 0.5e11, 0.0]), np.array([-1.0e11, 0.5e11, 0.0])),
-            (np.array([1.0e11, 0.1e11, 0.0]), np.array([-1.0e11, 0.1e11, 0.0])),
-            (np.array([1.0e11, 0.2e10, 0.0]), np.array([-1.0e11, 0.2e10, 0.0])),
-        ]
-
-        center = np.array([0.0, 0.0, 0.0])
-
-        for obs, src in positions:
-            delay = shapiro_delay(obs, src, center, GM_SUN)
-            assert np.isfinite(delay) and delay >= 0.0
+        assert correction == pytest.approx(C_LIGHT * delay, rel=1e-12, abs=0)

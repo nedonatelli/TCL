@@ -315,49 +315,95 @@ class TestCreateTestEarth2014DEM:
         assert "TEST" in dem.name
 
 
-class TestDEMIntegration:
-    """Integration tests for test DEMs with DEM interface."""
+def _plane_dem(n=11, z=lambda i, j: 100.0 + 7.0 * i - 3.0 * j):
+    """A DEM whose elevation is a known function of the (row, column) index."""
+    data = np.array([[z(i, j) for j in range(n)] for i in range(n)])
+    return DEMGrid(
+        data,
+        np.radians(35.0),
+        np.radians(36.0),
+        np.radians(-120.0),
+        np.radians(-119.0),
+    )
 
-    def test_gebco_elevation_profile(self):
-        """Can extract elevation profile from GEBCO test DEM."""
+
+class TestDEMOnKnownSurface:
+    """DEM queries on surfaces whose elevation is known in closed form."""
+
+    def test_elevation_profile_follows_the_plane(self):
+        Geodesic = pytest.importorskip("geographiclib.geodesic").Geodesic
+
+        from pytcl.core.constants import EARTH_MEAN_RADIUS
         from pytcl.terrain import get_elevation_profile
 
-        dem = create_test_gebco_dem()
+        dem = _plane_dem()
+        start = (35.2, -119.8)
+        end = (35.8, -119.2)
+
         distances, elevations = get_elevation_profile(
             dem,
-            lat_start=np.radians(36.0),
-            lon_start=np.radians(-124.0),
-            lat_end=np.radians(39.0),
-            lon_end=np.radians(-121.0),
-            n_points=50,
+            np.radians(start[0]),
+            np.radians(start[1]),
+            np.radians(end[0]),
+            np.radians(end[1]),
+            n_points=7,
         )
-        assert len(distances) == 50
-        assert len(elevations) == 50
-        assert not np.any(np.isnan(elevations))
 
-    def test_earth2014_gradient(self):
-        """Can compute gradient from Earth2014 test DEM."""
-        dem = create_test_earth2014_dem()
-        gradient = dem.get_gradient(np.radians(37.5), np.radians(-122.5))
-        assert not np.isnan(gradient.slope)
-        assert not np.isnan(gradient.aspect)
+        fractions = np.linspace(0.0, 1.0, 7)
+        lats = start[0] + fractions * (end[0] - start[0])
+        lons = start[1] + fractions * (end[1] - start[1])
+        i = (lats - 35.0) / 0.1
+        j = (lons + 120.0) / 0.1
+        assert_allclose(elevations, 100.0 + 7.0 * i - 3.0 * j, rtol=1e-9)
+        sphere = Geodesic(EARTH_MEAN_RADIUS, 0.0)
+        expected = [
+            sphere.Inverse(*start, la, lo)["s12"]
+            for la, lo in zip(lats, lons, strict=True)
+        ]
+        assert_allclose(distances, expected, rtol=1e-9, atol=1e-6)
 
-    def test_gebco_line_of_sight(self):
-        """Can compute LOS using GEBCO test DEM."""
-        from pytcl.terrain import line_of_sight
+    def test_gradient_of_the_plane(self):
+        from pytcl.core.constants import EARTH_MEAN_RADIUS
 
-        dem = create_test_gebco_dem()
-        los = line_of_sight(
-            dem,
-            obs_lat=np.radians(37.0),
-            obs_lon=np.radians(-123.0),
-            obs_height=100.0,
-            tgt_lat=np.radians(38.0),
-            tgt_lon=np.radians(-122.0),
-            tgt_height=50.0,
+        dem = _plane_dem()
+        lat = np.radians(35.5)
+
+        gradient = dem.get_gradient(lat, np.radians(-119.5))
+
+        d = np.radians(0.1)
+        dz_dy = 7.0 / (EARTH_MEAN_RADIUS * d)
+        dz_dx = -3.0 / (EARTH_MEAN_RADIUS * np.cos(lat) * d)
+        assert gradient.dz_dy == pytest.approx(dz_dy, rel=1e-9, abs=0)
+        assert gradient.dz_dx == pytest.approx(dz_dx, rel=1e-9, abs=0)
+        assert gradient.slope == pytest.approx(
+            np.arctan(np.hypot(dz_dx, dz_dy)), rel=1e-9, abs=0
         )
-        assert hasattr(los, "visible")
-        assert hasattr(los, "clearance")
+        # Steepest descent heads south-east here (elevation falls with j, rises
+        # with i), so the aspect is measured clockwise from north.
+        assert gradient.aspect == pytest.approx(
+            np.arctan2(-dz_dx, -dz_dy) % (2 * np.pi), rel=1e-9, abs=0
+        )
+
+    @pytest.mark.parametrize(
+        "lat_deg,lon_deg",
+        [(0.0, 0.0), (75.0, 0.0), (5.0, 177.5), (-60.0, -30.0)],
+        ids=["equator", "high-latitude", "dateline", "southern"],
+    )
+    def test_query_at_node_returns_the_stored_value(self, lat_deg, lon_deg):
+        n = 11
+        data = np.arange(n * n, dtype=float).reshape(n, n)
+        dem = DEMGrid(
+            data,
+            np.radians(lat_deg - 5.0),
+            np.radians(lat_deg + 5.0),
+            np.radians(lon_deg - 2.5),
+            np.radians(lon_deg + 2.5),
+        )
+
+        point = dem.get_elevation(np.radians(lat_deg), np.radians(lon_deg))
+
+        assert point.valid
+        assert point.elevation == pytest.approx(data[5, 5], rel=1e-12, abs=0)
 
 
 class TestLoadGEBCOErrors:
@@ -445,43 +491,6 @@ class TestResolutionHandling:
         assert 25 < meta.resolution < 35
 
 
-class TestNumericalStability:
-    """Tests for numerical stability at edge cases."""
-
-    def test_equator(self):
-        """Test DEM creation and query at equator."""
-        dem = create_test_gebco_dem(
-            lat_min=np.radians(-5.0),
-            lat_max=np.radians(5.0),
-            lon_min=np.radians(-5.0),
-            lon_max=np.radians(5.0),
-        )
-        point = dem.get_elevation(0, 0)
-        assert not np.isnan(point.elevation)
-
-    def test_high_latitude(self):
-        """Test DEM creation at high latitude."""
-        dem = create_test_earth2014_dem(
-            lat_min=np.radians(70.0),
-            lat_max=np.radians(80.0),
-            lon_min=np.radians(-10.0),
-            lon_max=np.radians(10.0),
-        )
-        point = dem.get_elevation(np.radians(75.0), 0)
-        assert not np.isnan(point.elevation)
-
-    def test_dateline_crossing(self):
-        """Test DEM at dateline (±180°)."""
-        dem = create_test_gebco_dem(
-            lat_min=np.radians(0.0),
-            lat_max=np.radians(10.0),
-            lon_min=np.radians(175.0),
-            lon_max=np.radians(180.0),
-        )
-        point = dem.get_elevation(np.radians(5.0), np.radians(177.5))
-        assert not np.isnan(point.elevation)
-
-
 class TestTerrainDataDirectory:
     """Tests for terrain data directory management."""
 
@@ -503,229 +512,252 @@ class TestTerrainDataDirectory:
         assert hasattr(data_dir, "exists") or hasattr(data_dir, "__fspath__")
 
 
-class TestCoefficientCreation:
-    """Tests for creating test DEM data."""
-
-    def test_create_test_gebco_dem_default(self):
-        """Test creating test GEBCO DEM."""
-        dem = create_test_gebco_dem()
-        assert dem is not None
-        assert hasattr(dem, "data") or isinstance(dem, np.ndarray)
-
-    def test_create_test_gebco_dem_custom_extent(self):
-        """Test creating test GEBCO with custom extent."""
-        dem = create_test_gebco_dem()
-        assert isinstance(dem, DEMGrid)
-
-    def test_create_test_earth2014_dem_default(self):
-        """Test creating test Earth2014 DEM."""
-        dem = create_test_earth2014_dem()
-        assert isinstance(dem, DEMGrid)
-
-    def test_create_test_earth2014_dem_surface(self):
-        """Test creating test Earth2014 surface layer."""
-        dem = create_test_earth2014_dem(layer="SUR")
-        assert isinstance(dem, DEMGrid)
+def _gebco_elevation(i, j):
+    """Known elevation at row i, column j: bilinear in the indices, so the
+    interpolated value between nodes is itself exactly this function."""
+    return 100 + 7 * i - 3 * j + 2 * i * j
 
 
-class TestDEMQueries:
-    """Tests for DEM query operations."""
+def _write_gebco(path, lat0, lon0, n=21, step=0.1):
+    """Write a GEBCO-schema file whose elevations are ``_gebco_elevation``."""
+    import netCDF4 as nc
 
-    def test_load_gebco_minimal(self):
-        """Test loading GEBCO data with minimal parameters."""
-        try:
-            dem = load_gebco(
-                **_NYC,
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
-
-    def test_load_earth2014_minimal(self):
-        """Test loading Earth2014 data."""
-        try:
-            dem = load_earth2014(
-                **_NYC,
-                layer="SUR",
-            )
-        except _data_skip:
-            pytest.skip("Earth2014 data file not available")
-        assert isinstance(dem, DEMGrid)
+    lats = lat0 + step * np.arange(n)
+    lons = lon0 + step * np.arange(n)
+    elevation = np.array(
+        [[_gebco_elevation(i, j) for j in range(n)] for i in range(n)], dtype=np.int16
+    )
+    with nc.Dataset(path, "w") as ds:
+        ds.createDimension("lat", n)
+        ds.createDimension("lon", n)
+        ds.createVariable("lat", "f8", ("lat",))[:] = lats
+        ds.createVariable("lon", "f8", ("lon",))[:] = lons
+        ds.createVariable("elevation", "i2", ("lat", "lon"))[:] = elevation
+    return lats, lons, elevation
 
 
-class TestTerrainInterpolation:
-    """Tests for terrain data interpolation."""
+@pytest.fixture
+def synthetic_data_dir(tmp_path, monkeypatch):
+    """Point the loaders at a temp directory, so no test reads the real
+    GEBCO_2025.nc, and clear the loader caches on both sides."""
+    from pytcl.terrain.loaders import _load_gebco_cached
 
-    def test_gebco_coverage_global(self):
-        """Test GEBCO covers global regions."""
-        try:
-            dem1 = load_gebco(
-                **_NYC,
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        dem2 = load_gebco(
-            lat_min=np.radians(50.0),
-            lat_max=np.radians(51.0),
-            lon_min=np.radians(0.0),
-            lon_max=np.radians(1.0),
+    monkeypatch.setenv("PYTCL_DATA_DIR", str(tmp_path))
+    _load_gebco_cached.cache_clear()
+    yield tmp_path
+    _load_gebco_cached.cache_clear()
+
+
+@pytest.mark.skipif(not _HAS_NETCDF4, reason="netCDF4 not installed")
+class TestLoadGebcoSyntheticFile:
+    """load_gebco on a file of known elevations (the schema that
+    ``scripts/make_synthetic_gebco.py`` writes, with analytic values)."""
+
+    @staticmethod
+    def _load(i0, i1, j0, j1, lat0=10.0, lon0=20.0):
+        """Load the nodes i0..i1, j0..j1 (bounds sit half a cell outside)."""
+        return load_gebco(
+            lat_min=np.radians(lat0 + 0.1 * (i0 - 0.5)),
+            lat_max=np.radians(lat0 + 0.1 * (i1 + 0.5)),
+            lon_min=np.radians(lon0 + 0.1 * (j0 - 0.5)),
+            lon_max=np.radians(lon0 + 0.1 * (j1 + 0.5)),
         )
-        assert isinstance(dem1, DEMGrid)
-        assert isinstance(dem2, DEMGrid)
 
-    def test_earth2014_layers(self):
-        """Test different Earth2014 layers."""
-        try:
-            dem = load_earth2014(
-                **_NYC,
-                layer="SUR",
-            )
-        except _data_skip:
-            pytest.skip("Earth2014 data files not available")
+    def test_grid_values_and_bounds(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
 
-        for layer in ["SUR", "BED", "TBI"]:
-            dem = load_earth2014(
-                **_NYC,
-                layer=layer,
-            )
-            assert isinstance(dem, DEMGrid)
+        dem = self._load(3, 6, 2, 5)
 
+        expected = [[_gebco_elevation(i, j) for j in range(2, 6)] for i in range(3, 7)]
+        assert dem.data.shape == (4, 4)
+        assert_allclose(dem.data, expected, rtol=0, atol=0)
+        assert dem.lat_min == pytest.approx(np.radians(10.3), rel=1e-12, abs=0)
+        assert dem.lat_max == pytest.approx(np.radians(10.6), rel=1e-12, abs=0)
+        assert dem.lon_min == pytest.approx(np.radians(20.2), rel=1e-12, abs=0)
+        assert dem.lon_max == pytest.approx(np.radians(20.5), rel=1e-12, abs=0)
+        assert dem.name == "GEBCO2025"
 
-class TestDEMBounds:
-    """Tests for DEM boundary conditions."""
+    def test_every_grid_node_is_returned_exactly(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
 
-    def test_gebco_equatorial_region(self):
-        """Test GEBCO at equatorial region."""
-        try:
-            dem = load_gebco(
-                lat_min=np.radians(-1.0),
-                lat_max=np.radians(1.0),
-                lon_min=np.radians(-1.0),
+        dem = self._load(3, 6, 2, 5)
+
+        for i in range(3, 7):
+            for j in range(2, 6):
+                point = dem.get_elevation(
+                    np.radians(10.0 + 0.1 * i), np.radians(20.0 + 0.1 * j)
+                )
+                assert point.valid
+                assert point.elevation == pytest.approx(
+                    _gebco_elevation(i, j), rel=1e-9, abs=0
+                )
+
+    @pytest.mark.parametrize(
+        "fi,fj", [(0.25, 0.5), (0.5, 0.5), (0.9, 0.1), (0.5, 0.0), (0.0, 0.75)]
+    )
+    def test_bilinear_value_between_nodes(self, synthetic_data_dir, fi, fj):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
+        dem = self._load(3, 6, 2, 5)
+        i, j = 3 + fi, 2 + fj
+
+        point = dem.get_elevation(
+            np.radians(10.0 + 0.1 * i), np.radians(20.0 + 0.1 * j)
+        )
+
+        assert point.valid
+        assert point.elevation == pytest.approx(_gebco_elevation(i, j), rel=1e-6, abs=0)
+
+    def test_nearest_neighbour_between_nodes(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
+        dem = self._load(3, 6, 2, 5)
+
+        point = dem.get_elevation(
+            np.radians(10.0 + 0.1 * 3.25),
+            np.radians(20.0 + 0.1 * 2.75),
+            interpolation="nearest",
+        )
+
+        assert point.elevation == _gebco_elevation(3, 3)
+
+    @pytest.mark.parametrize(
+        "lat0,lon0",
+        [(-0.2, -0.2), (89.8, 0.0), (0.0, 179.8), (-89.9, -90.0)],
+        ids=["prime-meridian-equator", "north-pole", "dateline", "south-pole"],
+    )
+    def test_grids_at_coordinate_extremes(self, synthetic_data_dir, lat0, lon0):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", lat0, lon0, n=3)
+
+        dem = self._load(0, 2, 0, 2, lat0=lat0, lon0=lon0)
+
+        expected = [[_gebco_elevation(i, j) for j in range(3)] for i in range(3)]
+        assert_allclose(dem.data, expected, rtol=0, atol=0)
+
+    def test_region_outside_the_file_is_rejected(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
+
+        with pytest.raises(ValueError, match="outside GEBCO coverage"):
+            load_gebco(
+                lat_min=np.radians(50.0),
+                lat_max=np.radians(51.0),
+                lon_min=np.radians(0.0),
                 lon_max=np.radians(1.0),
             )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
 
-    def test_gebco_poles(self):
-        """Test GEBCO near poles."""
+    def test_repeated_load_returns_the_cached_grid(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
+
+        assert self._load(3, 6, 2, 5) is self._load(3, 6, 2, 5)
+
+    def test_loaded_grid_is_read_only(self, synthetic_data_dir):
+        _write_gebco(synthetic_data_dir / "GEBCO2025.nc", 10.0, 20.0)
+        dem = self._load(3, 6, 2, 5)
+
+        with pytest.raises(ValueError, match="read-only"):
+            dem.data[0, 0] = 0.0
+
+    def test_committed_fixture_matches_an_independent_netcdf_read(
+        self, synthetic_data_dir
+    ):
+        """tests/fixtures/terrain/synthetic_gebco.nc (written by
+        scripts/make_synthetic_gebco.py): every node loaded equals the value
+        netCDF4 reads straight from the file."""
+        import shutil
+
+        import netCDF4 as nc
+
+        fixture = (
+            Path(__file__).parents[1] / "fixtures" / "terrain" / "synthetic_gebco.nc"
+        )
+        shutil.copy(fixture, synthetic_data_dir / "GEBCO2025.nc")
+        with nc.Dataset(fixture) as ds:
+            lats = np.asarray(ds.variables["lat"][:])
+            lons = np.asarray(ds.variables["lon"][:])
+            raw = np.asarray(ds.variables["elevation"][:], dtype=float)
+
+        dem = load_gebco(
+            lat_min=np.radians(lats[0] - 0.01),
+            lat_max=np.radians(lats[-1] + 0.01),
+            lon_min=np.radians(lons[0] - 0.01),
+            lon_max=np.radians(lons[-1] + 0.01),
+        )
+
+        assert dem.data.shape == raw.shape
+        assert_allclose(dem.data, raw, rtol=0, atol=0)
+        mid = raw.shape[0] // 2
+        point = dem.get_elevation(np.radians(lats[mid]), np.radians(lons[mid]))
+        assert point.elevation == pytest.approx(raw[mid, mid], rel=1e-9, abs=0)
+
+        half = dem.get_elevation(
+            np.radians(0.5 * (lats[mid] + lats[mid + 1])), np.radians(lons[mid])
+        )
+        assert half.elevation == pytest.approx(
+            0.5 * (raw[mid, mid] + raw[mid + 1, mid]), rel=1e-9, abs=0
+        )
+
+
+_EARTH2014_N_COLS = 21600
+_EARTH2014_N_ROWS = 10800
+
+
+def _earth2014_raw_block(path, lat_min_rad, lon_min_rad, shape):
+    """Read an Earth2014 block straight from the int16 big-endian file.
+
+    Cell (i, j) is centred on latitude -90 + (i + 0.5)/60 and longitude
+    -180 + (j + 0.5)/60 degrees, rows running south to north.
+    """
+    i0 = round((np.degrees(lat_min_rad) + 90.0) * 60.0 - 0.5)
+    j0 = round((np.degrees(lon_min_rad) + 180.0) * 60.0 - 0.5)
+    grid = np.memmap(
+        path,
+        dtype=">i2",
+        mode="r",
+        shape=(_EARTH2014_N_ROWS, _EARTH2014_N_COLS),
+    )
+    return np.asarray(grid[i0 : i0 + shape[0], j0 : j0 + shape[1]], dtype=float)
+
+
+class TestLoadEarth2014RealFile:
+    """load_earth2014 against the raw bytes of the installed file; skipped
+    where the (445 MB) Earth2014 files are absent."""
+
+    @pytest.mark.parametrize("layer", ["SUR", "BED", "TBI"])
+    def test_block_equals_raw_file_contents(self, layer):
+        from pytcl.terrain.loaders import _find_earth2014_file
+
         try:
-            dem = load_gebco(
-                lat_min=np.radians(80.0),
-                lat_max=np.radians(85.0),
-                lon_min=np.radians(-180.0),
-                lon_max=np.radians(180.0),
-            )
+            dem = load_earth2014(**_NYC, layer=layer)
+            path = _find_earth2014_file(layer)
         except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
+            pytest.skip(f"Earth2014 {layer} data file not available")
 
-    def test_gebco_prime_meridian(self):
-        """Test GEBCO crossing prime meridian."""
-        try:
-            dem = load_gebco(
-                lat_min=np.radians(50.0),
-                lat_max=np.radians(55.0),
-                lon_min=np.radians(-5.0),
-                lon_max=np.radians(5.0),
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
+        raw = _earth2014_raw_block(path, dem.lat_min, dem.lon_min, dem.data.shape)
 
-    def test_gebco_date_line(self):
-        """Test GEBCO near date line."""
-        try:
-            dem = load_gebco(
-                lat_min=np.radians(0.0),
-                lat_max=np.radians(5.0),
-                lon_min=np.radians(175.0),
-                lon_max=np.radians(180.0),
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
+        assert dem.data.shape == (62, 62)
+        assert_allclose(dem.data, raw, rtol=0, atol=0)
+        assert dem.name == f"Earth2014-{layer}"
 
-
-class TestTerrainStatistics:
-    """Tests for terrain data statistics and properties."""
-
-    def test_gebco_dem_structure(self):
-        """Test GEBCO DEM has expected structure."""
-        try:
-            dem = load_gebco(
-                **_NYC,
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
-        assert dem.data is not None
-        assert dem.data.shape[0] > 0
-        assert dem.data.shape[1] > 0
-
-    def test_earth2014_dem_structure(self):
-        """Test Earth2014 DEM has expected structure."""
+    def test_himalaya_peak_sits_at_everest(self):
+        """Orientation check: the highest SUR cell in a 2 degree window around
+        Everest (27.99 N, 86.93 E) is above 7000 m and within half a degree of
+        it. A flipped row order would put the window in the southern ocean."""
         try:
             dem = load_earth2014(
-                **_NYC,
+                lat_min=np.radians(27.0),
+                lat_max=np.radians(29.0),
+                lon_min=np.radians(86.0),
+                lon_max=np.radians(88.0),
                 layer="SUR",
             )
         except _data_skip:
-            pytest.skip("Earth2014 data file not available")
-        assert isinstance(dem, DEMGrid)
-        assert dem.data is not None
+            pytest.skip("Earth2014 SUR data file not available")
 
+        i, j = np.unravel_index(np.argmax(dem.data), dem.data.shape)
+        peak_lat = np.degrees(dem.lat_min + i * dem.d_lat)
+        peak_lon = np.degrees(dem.lon_min + j * dem.d_lon)
 
-class TestDEMDataTypes:
-    """Tests for DEM data types and formats."""
-
-    def test_gebco_returns_demgrid(self):
-        """Test that GEBCO returns DEMGrid."""
-        try:
-            dem = load_gebco(
-                **_NYC,
-            )
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        assert isinstance(dem, DEMGrid)
-
-    def test_earth2014_returns_demgrid(self):
-        """Test that Earth2014 returns DEMGrid."""
-        try:
-            dem = load_earth2014(
-                **_NYC,
-                layer="SUR",
-            )
-        except _data_skip:
-            pytest.skip("Earth2014 data file not available")
-        assert isinstance(dem, DEMGrid)
-
-
-class TestDEMCacheAndPerformance:
-    """Tests for DEM caching and performance considerations."""
-
-    def test_repeated_gebco_consistency(self):
-        """Test that repeated GEBCO queries return consistent results."""
-        args = dict(**_NYC)
-        try:
-            dem1 = load_gebco(**args)
-        except _data_skip:
-            pytest.skip("GEBCO data file not available")
-        dem2 = load_gebco(**args)
-
-        # Cached load should return the same object
-        assert dem1 is dem2
-
-    def test_repeated_earth2014_consistency(self):
-        """Test that repeated Earth2014 queries return consistent results."""
-        args = dict(**_NYC)
-        try:
-            dem1 = load_earth2014(**args)
-        except _data_skip:
-            pytest.skip("Earth2014 data file not available")
-        dem2 = load_earth2014(**args)
-
-        assert dem1 is dem2
+        assert dem.data[i, j] > 7000.0
+        assert abs(peak_lat - 27.99) < 0.5
+        assert abs(peak_lon - 86.93) < 0.5
 
 
 @pytest.mark.skipif(not _HAS_NETCDF4, reason="netCDF4 not installed")

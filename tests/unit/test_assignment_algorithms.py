@@ -1,5 +1,6 @@
 """Tests for assignment algorithms and data association."""
 
+import itertools
 import warnings
 
 import numpy as np
@@ -585,19 +586,51 @@ class TestDecomposeTo2D:
         assert result.tuples.shape[0] == 5
         assert result.converged
 
-    def test_different_fixed_dimensions(self):
-        """Test decomposition along different dimensions."""
-        cost = np.random.rand(4, 4, 4)
+    @staticmethod
+    def _brute_force_decomposition(cost, fixed_dimension):
+        """Enumerate every matching of each slice's free (j, k) block.
 
-        result0 = decompose_to_2d(cost, fixed_dimension=0)
-        result1 = decompose_to_2d(cost, fixed_dimension=1)
-        result2 = decompose_to_2d(cost, fixed_dimension=2)
+        Per slice: take the minimum-total-cost matching of the still-free
+        rows and columns, keep its single cheapest pair, retire that row and
+        column, and move to the next slice (the documented heuristic).
+        """
+        moved = np.moveaxis(cost, fixed_dimension, 0)
+        n_fixed, n_j, n_k = moved.shape
+        free_j, free_k = list(range(n_j)), list(range(n_k))
+        picks = []
+        for i in range(n_fixed):
+            if not free_j or not free_k:
+                break
+            size = min(len(free_j), len(free_k))
+            best = None
+            for js in itertools.combinations(free_j, size):
+                for ks in itertools.permutations(free_k, size):
+                    total = sum(moved[i, j, k] for j, k in zip(js, ks, strict=True))
+                    if best is None or total < best[0]:
+                        best = (total, list(zip(js, ks, strict=True)))
+            j, k = min(best[1], key=lambda jk: moved[i, jk[0], jk[1]])
+            picks.append((i, j, k))
+            free_j.remove(j)
+            free_k.remove(k)
+        order = {
+            0: (0, 1, 2),
+            1: (1, 0, 2),
+            2: (1, 2, 0),
+        }[fixed_dimension]
+        tuples = np.array([[p[o] for o in order] for p in picks], dtype=np.intp)
+        total = sum(moved[p] for p in picks)
+        return tuples, total
 
-        # All should produce a full, valid assignment, not just the right
-        # column count (which an empty result also satisfies).
-        assert result0.tuples.shape == (4, 3)
-        assert result1.tuples.shape == (4, 3)
-        assert result2.tuples.shape == (4, 3)
+    @pytest.mark.parametrize("fixed_dimension", [0, 1, 2])
+    def test_different_fixed_dimensions(self, fixed_dimension):
+        """Slices equal a brute-force enumeration on a seeded 4x3x2 tensor."""
+        cost = np.random.default_rng(20261028).random((4, 3, 2))
+
+        result = decompose_to_2d(cost, fixed_dimension=fixed_dimension)
+        tuples, total = self._brute_force_decomposition(cost, fixed_dimension)
+
+        np.testing.assert_array_equal(result.tuples, tuples)
+        np.testing.assert_allclose(result.cost, total, rtol=1e-14, atol=0)
 
     def test_infeasible_slice_is_skipped_not_fatal(self):
         cost = np.ones((3, 3, 3))

@@ -28,6 +28,8 @@ from pytcl.coordinate_systems.rotations.rotations import rot_axis_to_vec
 from pytcl.core.constants import SPEED_OF_LIGHT
 from pytcl.mathematical_functions.polynomials import poly_roots_multi_dim
 
+_EPS = float(np.finfo(np.float64).eps)
+
 
 def _create_a_and_w(
     ref_rx_loc: NDArray[np.floating],
@@ -202,6 +204,23 @@ def range_only_static_loc_est_np(
         Location estimate and, when ``r_cov`` was supplied, the two
         covariance estimates.
 
+    Raises
+    ------
+    numpy.linalg.LinAlgError
+        If the sensors are coplanar: the smallest singular value of the
+        sensor offsets from ``z_loc2`` is at or below ``8 * eps * C *
+        sqrt(3 * num_meas)``, ``C`` the largest absolute input coordinate.
+        That is 4x the rounding the offsets of exactly coplanar sensors can
+        carry, so exactly coplanar sensors are caught at any coordinate
+        scale, ECEF included. Nearly coplanar sensors above it are accepted
+        and degrade as described below (exact ranges, one transmitter of a
+        10 km array lifted 1e-6 m: 3 km error; lifted 1 m: 3 mm). MATLAB's
+        algorithm excludes coplanar geometry.
+    ValueError
+        If fewer than three measurements are given, ``r_cov`` is given
+        with method 0, method 0 is used with three measurements, or
+        ``method`` is unknown.
+
     Examples
     --------
     >>> import numpy as np
@@ -256,9 +275,16 @@ def range_only_static_loc_est_np(
       original's minimal (three-measurement) ``PCRLB`` is wrong in the
       same way, though its ``PTaylor`` is right.
 
-    With exactly coplanar sensors the Taylor linearization is singular
-    and ``numpy.linalg.LinAlgError`` is raised, where the original
-    returned a meaningless covariance.
+    Coplanar sensors are outside the original's domain
+    (``rangeOnlyStaticLocEstNP.m`` requires non-coplanar sensors). There
+    the pseudo-inverse confines the estimate to the sensors' plane and
+    the ``Rt = abs(x)`` constraint then biases the in-plane coordinates
+    too, by 422 m for a target 3 km above a five-sensor ground array, so
+    this port raises ``LinAlgError`` with or without ``r_cov``. Versions
+    up to 2.11.1 raised only when ``r_cov`` was given and otherwise
+    returned that estimate. The geometry determines the target up to its
+    mirror image in the plane; returning both mirror solutions is a
+    planned extension beyond MATLAB.
     """
     r_bi = np.asarray(r_bi, dtype=np.float64).ravel()
     z_loc1 = np.asarray(z_loc1, dtype=np.float64)
@@ -274,6 +300,17 @@ def range_only_static_loc_est_np(
     z_tx = z_loc1 - z_loc2[:, np.newaxis]
 
     S = z_tx.T
+    # Each entry of S carries up to 2 eps C of rounding (C the largest input
+    # coordinate), so exactly coplanar sensors give a smallest singular value
+    # up to 2 eps C sqrt(3 num_meas); the tolerance is 4x that bound.
+    coord_scale = max(np.max(np.abs(z_loc1)), np.max(np.abs(z_loc2)))
+    rank_tol = 8.0 * _EPS * coord_scale * np.sqrt(3 * meas_dim)
+    rank = np.linalg.matrix_rank(S, tol=rank_tol)
+    if rank < 3:
+        raise np.linalg.LinAlgError(
+            f"The sensors are coplanar (sensor offsets have rank {rank} < 3); "
+            "MATLAB's rangeOnlyStaticLocEstNP algorithm excludes this geometry."
+        )
     s_star = np.linalg.pinv(S)
 
     # Equation 10 of [2].

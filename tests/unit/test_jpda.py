@@ -629,3 +629,46 @@ class TestLikelihoodMatrixEmptyMeasurementsRegression:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestLikelihoodMatrixPerPairFallbackFailure:
+    """An S that passes the Cholesky test can still be rejected by the
+    per-pair `mahalanobis_distance` (condition number near 1e16). The track is
+    zeroed with a RuntimeWarning, like a failed Cholesky, and nothing raises.
+    """
+
+    def test_per_pair_linalgerror_zeroes_only_that_track(self, monkeypatch):
+        import importlib
+
+        jpda_mod = importlib.import_module("pytcl.assignment_algorithms.jpda")
+
+        def batch_rejects(*args, **kwargs):
+            raise np.linalg.LinAlgError("batch rejected")
+
+        calls = []
+
+        def pair_rejects_track_zero(innovation, S):
+            calls.append(1)
+            if S[0, 0] > 1.5:
+                raise np.linalg.LinAlgError("pair rejected")
+            return float(innovation @ np.linalg.solve(S, innovation))
+
+        monkeypatch.setattr(jpda_mod, "mahalanobis_batch", batch_rejects)
+        monkeypatch.setattr(jpda_mod, "mahalanobis_distance", pair_rejects_track_zero)
+
+        H = np.eye(2)
+        R = np.zeros((2, 2))
+        states = [np.zeros(2), np.zeros(2)]
+        covs = [2.0 * np.eye(2), np.eye(2)]
+        meas = np.array([[0.1, 0.0], [0.0, 0.2]])
+
+        with pytest.warns(RuntimeWarning, match="track 0"):
+            L, gated = jpda_mod.compute_likelihood_matrix(
+                states, covs, meas, H, R, detection_prob=0.9, gate_threshold=None
+            )
+
+        assert calls
+        assert not L[0].any()
+        assert not gated[0].any()
+        assert gated[1].all()
+        assert (L[1] > 0).all()

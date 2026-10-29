@@ -14,6 +14,7 @@ always correct; only the name was wrong) and the deprecated alias was
 removed in v2.8.0.
 """
 
+import functools
 import importlib
 import math
 import tracemalloc
@@ -76,6 +77,97 @@ def mpmath_exp_as_float(log_q: str) -> float:
         return float(mpmath.exp(mpmath.mpf(log_q)))
 
 
+# Moderate-argument oracles, independent of pytcl and scipy. All at 30 digits.
+# Q_m(a, b) = 1 - int_0^b x (x/a)^(m-1) exp(-(x^2 + a^2)/2) I_{m-1}(a x) dx,
+# the definition; for a = 0 the closed form exp(-y) sum_{k<m} y^k / k!, y = b^2/2.
+# Swerling: Q(n + k, vt) is the regularised upper incomplete gamma function.
+
+
+@functools.lru_cache(maxsize=None)
+def _mp_rice_cdf_m(a: float, b: float, m: int) -> "mpmath.mpf":
+    """P_m(a, b) = 1 - Q_m(a, b) by direct quadrature of the density."""
+    with mpmath.workdps(30):
+        aa, bb = mpmath.mpf(a), mpmath.mpf(b)
+        pts = [bb * i / 8 for i in range(9)]
+        return mpmath.quad(
+            lambda x: (
+                x
+                * (x / aa) ** (m - 1)
+                * mpmath.exp(-(x * x + aa * aa) / 2)
+                * mpmath.besseli(m - 1, aa * x)
+            ),
+            pts,
+            method="gauss-legendre",
+        )
+
+
+@functools.lru_cache(maxsize=None)
+def _mp_marcum_q(a: float, b: float, m: int) -> "mpmath.mpf":
+    with mpmath.workdps(30):
+        if a == 0:
+            y = mpmath.mpf(b) ** 2 / 2
+            return mpmath.exp(-y) * sum(y**k / mpmath.factorial(k) for k in range(m))
+        return 1 - _mp_rice_cdf_m(a, b, m)
+
+
+def _mp_q_gamma(shape: int, x: "mpmath.mpf") -> "mpmath.mpf":
+    return mpmath.gammainc(shape, x, mpmath.inf, regularized=True)
+
+
+def _mp_vt(pfa: float, n: int) -> "mpmath.mpf":
+    """Normalised threshold vt with Q(n, vt) = pfa (n pulses, square law)."""
+    with mpmath.workdps(30):
+        lo, hi = mpmath.mpf(0), mpmath.mpf(200)
+        for _ in range(110):  # bisection: Q(n, v) - pfa is decreasing in v
+            mid = (lo + hi) / 2
+            if _mp_q_gamma(n, mid) > pfa:
+                lo = mid
+            else:
+                hi = mid
+        return (lo + hi) / 2
+
+
+@functools.lru_cache(maxsize=None)
+def _mp_swerling(snr: float, pfa: float, n: int, case: int) -> "mpmath.mpf":
+    """Pd as a mixture of gamma tails over the noncentrality of the sum.
+
+    Given integrated noncentrality lam, the n-pulse square-law statistic has
+    Pd = sum_k Pois(k; lam) Q(n + k, vt). Averaging over the target model:
+    case 0, lam = n snr fixed; otherwise lam ~ Gamma(r, theta) gives the
+    negative binomial weight C(k + r - 1, k) (theta/(1+theta))^k (1+theta)^-r,
+    with (r, theta) = (1, n snr) for Swerling 1 (one exponential power per
+    scan), (n, snr) for 2 (n independent exponentials), (2, n snr / 2) for 3
+    and (2n, snr / 2) for 4 (chi-squared with 4 DOF, per scan / per pulse).
+    """
+    with mpmath.workdps(30):
+        vt = _mp_vt(pfa, n)
+        snr_m = mpmath.mpf(snr)
+        total = mpmath.mpf(0)
+        if case == 0:
+            lam = n * snr_m
+            k = 0
+            while True:
+                term = mpmath.exp(-lam) * lam**k / mpmath.factorial(k)
+                total += term * _mp_q_gamma(n + k, vt)
+                if k > lam and term < mpmath.mpf(10) ** -34:
+                    return total
+                k += 1
+        r, theta = {
+            1: (1, n * snr_m),
+            2: (n, snr_m),
+            3: (2, n * snr_m / 2),
+            4: (2 * n, snr_m / 2),
+        }[case]
+        ratio = theta / (1 + theta)
+        k = 0
+        while True:
+            weight = mpmath.binomial(k + r - 1, k) * ratio**k / (1 + theta) ** r
+            total += weight * _mp_q_gamma(n + k, vt)
+            if weight < mpmath.mpf(10) ** -34 and k > r * ratio / (1 - ratio):
+                return total
+            k += 1
+
+
 # =============================================================================
 # Tests for Marcum Q function
 # =============================================================================
@@ -85,57 +177,51 @@ class TestMarcumQ:
     """Tests for generalized Marcum Q function."""
 
     def test_marcum_q_zero_zero(self):
-        """Test Q_1(0, 0) = 1."""
-        result = marcum_q(0, 0)
-        assert result == pytest.approx(1.0, rel=1e-10)
+        """Q_1(0, 0) = 1."""
+        assert marcum_q(0, 0) == pytest.approx(1.0, rel=1e-14, abs=0)
 
-    def test_marcum_q_a_zero(self):
-        """Test Q_m(0, b) uses incomplete gamma."""
-        result = marcum_q(0, 2, m=1)
-        # Q_1(0, b) = exp(-b^2/2)
-        expected = np.exp(-2)
-        assert result == pytest.approx(expected, rel=1e-6)
+    @pytest.mark.parametrize("m", [1, 2, 3, 5])
+    @pytest.mark.parametrize("b", [0.5, 2.0, 4.0])
+    def test_marcum_q_a_zero_is_the_gamma_tail(self, m, b):
+        """Q_m(0, b) = exp(-y) sum_{k<m} y^k / k!, y = b^2/2 (Q_1 = exp(-b^2/2))."""
+        y = b * b / 2.0
+        expected = math.exp(-y) * sum(y**k / math.factorial(k) for k in range(m))
+        assert marcum_q(0, b, m=m) == pytest.approx(expected, rel=1e-12, abs=0)
 
-    def test_marcum_q_b_zero(self):
-        """Test Q_m(a, 0) = 1 for any a."""
-        a_values = np.array([0, 1, 5, 10])
-        for a in a_values:
-            result = marcum_q(a, 0)
-            assert result == pytest.approx(1.0, rel=1e-10)
+    def test_marcum_q1_a_zero_is_exp(self):
+        assert marcum_q(0, 2, m=1) == pytest.approx(math.exp(-2.0), rel=1e-13, abs=0)
 
-    def test_marcum_q_bounds(self):
-        """Test Q is bounded by 0 and 1."""
-        a = np.linspace(0, 5, 20)
-        b = np.linspace(0, 5, 20)
-        for ai in a:
-            for bi in b:
-                result = marcum_q(ai, bi)
-                assert 0.0 <= result <= 1.0
+    @pytest.mark.parametrize("m", [1, 2, 4])
+    @pytest.mark.parametrize("a", [0, 1, 5, 10])
+    def test_marcum_q_b_zero_is_one(self, a, m):
+        """Q_m(a, 0) = 1 for every a and m."""
+        assert marcum_q(a, 0, m=m) == pytest.approx(1.0, rel=1e-14, abs=0)
 
-    def test_marcum_q_decreasing_in_b(self):
-        """Test Q_m(a, b) is decreasing in b."""
-        a = np.full(20, 2.0)
-        b = np.linspace(0.1, 5, 20)
-        result = marcum_q(a, b)
-        assert np.all(np.diff(result) <= 0)
+    @pytest.mark.parametrize(
+        ("a", "b", "m"),
+        [
+            (3.0, 4.0, 1),
+            (2.0, 2.0, 1),
+            (2.0, 3.0, 2),
+            (1.0, 5.0, 1),
+            (5.0, 3.0, 3),
+            (0.5, 0.2, 1),
+            (4.0, 8.0, 4),
+            (0.1, 1.5, 2),
+        ],
+    )
+    def test_marcum_q_matches_quadrature_of_the_definition(self, a, b, m):
+        assert marcum_q(a, b, m=m) == pytest.approx(
+            float(_mp_marcum_q(a, b, m)), rel=1e-12, abs=0
+        )
 
-    def test_marcum_q_known_value(self):
-        """Test Q_1(3, 4) has known value."""
-        result = marcum_q(3, 4)
-        # Value from scipy.stats.ncx2.sf
-        assert 0.1 < result < 0.3
-
-    def test_marcum_q_order_2(self):
-        """Test higher order Marcum Q."""
-        result = marcum_q(2, 3, m=2)
-        assert 0 < result < 1
-
-    def test_marcum_q_array(self):
-        """Test Marcum Q with array inputs."""
-        a = np.array([1, 2, 3])
-        b = np.array([2, 3, 4])
-        result = marcum_q(a, b)
-        assert result.shape == (3,)
+    def test_marcum_q_array_matches_quadrature_elementwise(self):
+        a = np.array([1.0, 2.0, 3.0])
+        b = np.array([2.0, 3.0, 4.0])
+        got = marcum_q(a, b)
+        assert got.shape == (3,)
+        want = [float(_mp_marcum_q(ai, bi, 1)) for ai, bi in zip(a, b, strict=True)]
+        np.testing.assert_allclose(got, want, rtol=1e-12, atol=0)
 
     def test_marcum_q_invalid_m(self):
         """Test invalid m raises ValueError."""
@@ -186,17 +272,14 @@ class TestMarcumQLargeArguments:
 class TestMarcumQ1:
     """Tests for standard Marcum Q function."""
 
-    def test_marcum_q1_equals_m1(self):
-        """Test Q_1 equals marcum_q with m=1."""
-        a, b = 2, 3
-        result1 = marcum_q1(a, b)
-        result2 = marcum_q(a, b, m=1)
-        assert result1 == pytest.approx(result2, rel=1e-10)
+    @pytest.mark.parametrize(("a", "b"), [(2.0, 2.0), (2.0, 3.0), (3.0, 4.0)])
+    def test_marcum_q1_matches_quadrature(self, a, b):
+        assert marcum_q1(a, b) == pytest.approx(
+            float(_mp_marcum_q(a, b, 1)), rel=1e-12, abs=0
+        )
 
-    def test_marcum_q1_known_value(self):
-        """Test Q_1(2, 2) has known value."""
-        result = marcum_q1(2, 2)
-        assert 0.6 < result < 0.8
+    def test_marcum_q1_a_zero_is_exp(self):
+        assert marcum_q1(0.0, 3.0) == pytest.approx(math.exp(-4.5), rel=1e-13, abs=0)
 
 
 # =============================================================================
@@ -210,20 +293,19 @@ class TestLogMarcumQ:
     def test_log_marcum_q_zero_zero(self):
         """Test log(Q_1(0, 0)) = log(1) = 0."""
         result = log_marcum_q(0, 0)
-        assert result == pytest.approx(0.0, abs=1e-10)
+        assert result == 0.0
 
-    def test_log_marcum_q_relation(self):
-        """Test log_marcum_q equals log(marcum_q) for moderate values."""
-        a, b = 2, 3
-        result = log_marcum_q(a, b)
-        expected = np.log(marcum_q(a, b))
-        assert result == pytest.approx(expected, rel=1e-6)
+    @pytest.mark.parametrize(
+        ("a", "b", "m"),
+        [(2.0, 3.0, 1), (1.0, 5.0, 1), (5.0, 3.0, 3), (4.0, 8.0, 4)],
+    )
+    def test_log_marcum_q_matches_quadrature(self, a, b, m):
+        want = float(mpmath.log(_mp_marcum_q(a, b, m)))
+        assert log_marcum_q(a, b, m=m) == pytest.approx(want, rel=1e-12, abs=0)
 
-    def test_log_marcum_q_negative_for_small_q(self):
-        """Test log is negative when Q < 1."""
-        a, b = 1, 5
-        result = log_marcum_q(a, b)
-        assert result < 0
+    def test_log_marcum_q_a_zero(self):
+        """log Q_1(0, b) = -b^2 / 2."""
+        assert log_marcum_q(0.0, 3.0) == pytest.approx(-4.5, rel=1e-13, abs=0)
 
     def test_log_marcum_q_invalid_m(self):
         """Test invalid m raises ValueError."""
@@ -558,43 +640,36 @@ class TestMarcumQSeriesBounded:
 class TestMarcumQInv:
     """Tests for inverse Marcum Q function."""
 
-    def test_marcum_q_inv_roundtrip(self):
-        """Test Q(a, Q_inv(a, q)) = q."""
-        a, q = 2, 0.5
-        b = marcum_q_inv(a, q)
-        result = marcum_q(a, b)
-        assert result == pytest.approx(q, rel=1e-6)
+    @pytest.mark.parametrize("q", [0.1, 0.5, 0.9])
+    def test_a_zero_m1_closed_form(self, q):
+        """Q_1(0, b) = exp(-b^2/2)  =>  b = sqrt(-2 ln q)."""
+        assert marcum_q_inv(0.0, q) == pytest.approx(
+            math.sqrt(-2.0 * math.log(q)), rel=1e-12, abs=0
+        )
 
-    def test_marcum_q_inv_q_half(self):
-        """Test inverse for q = 0.5."""
-        a = 3.0
-        b = marcum_q_inv(a, 0.5)
-        assert b > 0
-        assert marcum_q(a, b) == pytest.approx(0.5, rel=1e-6)
+    @pytest.mark.parametrize(
+        ("a", "q", "m"),
+        [
+            (2.0, 0.5, 1),
+            (3.0, 0.5, 1),
+            (2.0, 0.1, 1),
+            (2.0, 0.9, 1),
+            (2.0, 0.5, 2),
+            (2.0, 0.5, 3),
+        ],
+    )
+    def test_returned_b_has_oracle_q_equal_to_q(self, a, q, m):
+        """The oracle's Q_m(a, b) at the returned b equals the requested q."""
+        b = float(marcum_q_inv(a, q, m=m))
+        assert float(_mp_marcum_q(a, b, m)) == pytest.approx(q, rel=1e-11, abs=0)
 
-    def test_marcum_q_inv_small_q(self):
-        """Test inverse for small q."""
-        a, q = 2, 0.1
-        b = marcum_q_inv(a, q)
-        assert b > 0
-        assert marcum_q(a, b) == pytest.approx(q, rel=0.01)
-
-    def test_marcum_q_inv_large_q(self):
-        """Test inverse for large q."""
-        a, q = 2, 0.9
-        b = marcum_q_inv(a, q)
-        assert b >= 0
-        assert marcum_q(a, b) == pytest.approx(q, rel=0.01)
-
-    def test_marcum_q_inv_invalid_q(self):
-        """Test invalid q raises ValueError."""
+    def test_invalid_q(self):
         with pytest.raises(ValueError, match="q must be in"):
             marcum_q_inv(1, 0)
         with pytest.raises(ValueError, match="q must be in"):
             marcum_q_inv(1, 1)
 
-    def test_marcum_q_inv_invalid_m(self):
-        """Test invalid m raises ValueError."""
+    def test_invalid_m(self):
         with pytest.raises(ValueError, match="Order m must be >= 1"):
             marcum_q_inv(1, 0.5, m=0)
 
@@ -605,35 +680,22 @@ class TestMarcumQInv:
 
 
 class TestRicianCdf:
-    """Tests for the Rician CDF (complementary Marcum Q)."""
+    """Tests for the Rician CDF P(a, b) = 1 - Q_1(a, b)."""
 
-    def test_rician_cdf_relation(self):
-        """Test P(a, b) = 1 - Q_1(a, b)."""
-        a, b = 2, 3
-        result = rician_cdf(a, b)
-        expected = 1 - marcum_q(a, b, m=1)
-        assert result == pytest.approx(expected, rel=1e-10)
+    @pytest.mark.parametrize(("a", "b"), [(2.0, 3.0), (1.0, 5.0), (0.5, 0.2)])
+    def test_matches_quadrature_of_the_rice_density(self, a, b):
+        assert rician_cdf(a, b) == pytest.approx(
+            float(_mp_rice_cdf_m(a, b, 1)), rel=1e-12, abs=0
+        )
 
-    def test_rician_cdf_b_zero(self):
-        """Test P(a, 0) = 0."""
-        result = rician_cdf(2, 0)
-        assert result == pytest.approx(0.0, rel=1e-10)
+    def test_b_zero(self):
+        assert rician_cdf(2, 0) == 0.0
 
-    def test_rician_cdf_bounds(self):
-        """Test the CDF is bounded by 0 and 1."""
-        a = np.linspace(0, 5, 20)
-        b = np.linspace(0, 5, 20)
-        for ai in a:
-            for bi in b:
-                result = rician_cdf(ai, bi)
-                assert 0.0 <= result <= 1.0
-
-    def test_rician_cdf_increasing_in_b(self):
-        """Test P(a, b) is increasing in b."""
-        a = np.full(20, 2.0)
-        b = np.linspace(0.1, 5, 20)
-        result = rician_cdf(a, b)
-        assert np.all(np.diff(result) >= 0)
+    def test_a_zero_is_the_rayleigh_cdf(self):
+        """P(0, b) = 1 - exp(-b^2/2)."""
+        assert rician_cdf(0.0, 2.0) == pytest.approx(
+            -math.expm1(-2.0), rel=1e-13, abs=0
+        )
 
 
 # =============================================================================
@@ -642,115 +704,41 @@ class TestRicianCdf:
 
 
 class TestSwerlingDetection:
-    """Tests for Swerling detection probability."""
+    """Swerling Pd against gamma-tail mixtures summed in mpmath (see _mp_swerling)."""
 
-    def test_swerling_case_0(self):
-        """Test Swerling case 0 (non-fluctuating)."""
-        result = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=0)
-        assert 0 < result < 1
-
-    def test_swerling_case_1(self):
-        """Test Swerling case 1 (slow Rayleigh)."""
-        result = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=1)
-        assert 0 < result < 1
-
-    def test_swerling_case_2(self):
-        """Test Swerling case 2 (fast Rayleigh)."""
-        result = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=2)
-        assert 0 < result < 1
-
-    def test_swerling_case_3(self):
-        """Test Swerling case 3 (slow chi-squared)."""
-        result = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=3)
-        assert 0 < result < 1
-
-    def test_swerling_case_4(self):
-        """Test Swerling case 4 (fast chi-squared)."""
-        result = swerling_detection_probability(10, 1e-6, n_pulses=10, swerling_case=4)
-        assert 0 < result < 1
-
-    def test_swerling_increasing_snr(self):
-        """Test detection probability increases with SNR."""
-        snr_values = np.array([1, 5, 10, 20])
-        results = []
-        for snr in snr_values:
-            results.append(
-                swerling_detection_probability(snr, 1e-6, n_pulses=10, swerling_case=0)
-            )
-        results = np.array(results)
-        assert np.all(np.diff(results) > 0)
-
-    def test_swerling_more_pulses_better(self):
-        """Test more integrated pulses gives higher detection."""
-        # With higher SNR to ensure detection probability is reasonable
-        result_1 = swerling_detection_probability(20, 1e-6, n_pulses=1, swerling_case=0)
-        result_10 = swerling_detection_probability(
-            20, 1e-6, n_pulses=10, swerling_case=0
+    @pytest.mark.parametrize("case", [0, 1, 2, 3, 4])
+    @pytest.mark.parametrize("n", [1, 4])
+    @pytest.mark.parametrize("snr", [0.5, 3.0, 8.0])
+    def test_matches_mixture_oracle(self, case, n, snr):
+        got = swerling_detection_probability(snr, 1e-6, n_pulses=n, swerling_case=case)
+        assert float(got) == pytest.approx(
+            float(_mp_swerling(snr, 1e-6, n, case)), rel=1e-11, abs=0
         )
-        # Both should be high with SNR=20
-        assert result_10 > 0.5
-        assert result_1 > 0.5
 
-    def test_swerling_invalid_case(self):
-        """Test invalid Swerling case raises ValueError."""
+    @pytest.mark.parametrize("snr", [0.5, 3.0, 8.0])
+    def test_single_pulse_rayleigh_closed_form(self, snr):
+        """Swerling 1 and 2 with one pulse: Pd = pfa^(1 / (1 + snr))."""
+        pfa = 1e-6
+        want = pfa ** (1.0 / (1.0 + snr))
+        for case in (1, 2):
+            got = swerling_detection_probability(snr, pfa, 1, case)
+            assert float(got) == pytest.approx(want, rel=1e-13, abs=0)
+
+    @pytest.mark.parametrize("case", [0, 1, 2, 3, 4])
+    def test_zero_snr_returns_pfa(self, case):
+        got = swerling_detection_probability(0.0, 1e-6, n_pulses=4, swerling_case=case)
+        assert float(got) == pytest.approx(1e-6, rel=1e-11, abs=0)
+
+    def test_array_snr_matches_oracle_elementwise(self):
+        snr = np.array([0.5, 3.0, 8.0])
+        got = swerling_detection_probability(snr, 1e-6, n_pulses=4, swerling_case=1)
+        assert got.shape == (3,)
+        want = [float(_mp_swerling(float(s), 1e-6, 4, 1)) for s in snr]
+        np.testing.assert_allclose(got, want, rtol=1e-11, atol=0)
+
+    def test_invalid_case(self):
         with pytest.raises(ValueError, match="swerling_case must be 0-4"):
             swerling_detection_probability(10, 1e-6, swerling_case=5)
-
-    def test_swerling_high_snr(self):
-        """Test high SNR gives high detection probability."""
-        result = swerling_detection_probability(100, 1e-6, n_pulses=10, swerling_case=0)
-        assert result > 0.99
-
-    def test_swerling_array_snr(self):
-        """Test with array SNR input."""
-        snr = np.array([1, 5, 10])
-        result = swerling_detection_probability(snr, 1e-6, n_pulses=5, swerling_case=1)
-        assert result.shape == (3,)
-
-
-# =============================================================================
-# Integration tests
-# =============================================================================
-
-
-class TestMarcumQIntegration:
-    """Integration tests for Marcum Q functions."""
-
-    def test_marcum_rician_sum_one(self):
-        """Test Q + P = 1."""
-        a, b = 2, 3
-        q = marcum_q(a, b)
-        p = rician_cdf(a, b)
-        assert q + p == pytest.approx(1.0, rel=1e-10)
-
-    def test_marcum_q_inv_consistent(self):
-        """Test marcum_q_inv is consistent across orders."""
-        a, q = 2, 0.5
-        for m in [1, 2, 3]:
-            b = marcum_q_inv(a, q, m=m)
-            result = marcum_q(a, b, m=m)
-            assert result == pytest.approx(q, rel=0.01)
-
-    def test_log_exp_roundtrip(self):
-        """Test exp(log_marcum_q) = marcum_q for moderate values."""
-        a, b = 2, 3
-        log_q = log_marcum_q(a, b)
-        result = np.exp(log_q)
-        expected = marcum_q(a, b)
-        assert result == pytest.approx(expected, rel=1e-6)
-
-    def test_swerling_case_0_vs_marcum(self):
-        """Test Swerling 0 uses Marcum Q correctly."""
-        snr = 10
-        pfa = 1e-6
-        n_pulses = 1
-        pd = swerling_detection_probability(snr, pfa, n_pulses, swerling_case=0)
-        # Direct computation
-        threshold = -2 * n_pulses * np.log(pfa)
-        a = np.sqrt(2 * n_pulses * snr)
-        b = np.sqrt(threshold)
-        expected = marcum_q(a, b, m=n_pulses)
-        assert pd == pytest.approx(expected, rel=1e-6)
 
 
 class TestSeriesCorners:

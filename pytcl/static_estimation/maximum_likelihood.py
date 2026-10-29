@@ -316,6 +316,18 @@ def cramer_rao_bound(
     -------
     result : CRBResult
         Named tuple with CRB matrix, variances, and efficiency info.
+        For a singular ``fisher_info`` the bound is ``inf`` on every
+        parameter an unidentified direction touches, NaN on their cross
+        terms, and the inverse on the identified subspace elsewhere (the
+        unidentified directions are eigenvalues of ``D^-1/2 F D^-1/2``,
+        ``D = abs(diag(F))``, at or below ``n * eps`` times the largest).
+
+    Warns
+    -----
+    RuntimeWarning
+        If ``fisher_info`` is not positive definite. Versions up to 2.11.1 returned
+        ``pinv(fisher_info)``, a finite bound on parameters with no
+        information.
 
     Examples
     --------
@@ -334,12 +346,16 @@ def cramer_rao_bound(
     """
     F = np.asarray(fisher_info, dtype=np.float64)
 
-    # CRB is inverse of Fisher information
-    try:
-        crb = np.linalg.inv(F)
-    except np.linalg.LinAlgError:
-        # Use pseudoinverse for singular Fisher info
-        crb = np.linalg.pinv(F)
+    crb, unidentified = _covariance_from_information(F, F.shape[0] * _EPS)
+    if np.any(unidentified):
+        warnings.warn(
+            "cramer_rao_bound: Fisher information is not positive definite "
+            f"({_scaled_eigenvalue_range(F)}); the likelihood is flat or a "
+            "saddle in at least one direction. The bound is infinite on "
+            f"parameters {np.flatnonzero(unidentified).tolist()}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     variances = np.diag(crb)
     std_bounds = np.sqrt(np.maximum(variances, 0))
@@ -457,6 +473,16 @@ def _information_scaling(info: NDArray[np.floating]) -> NDArray[np.floating]:
     """``D^-1/2`` as a vector, ``D = abs(diag(info))`` with 1 where zero."""
     d = np.abs(np.diagonal(info))
     return 1.0 / np.sqrt(np.where(d > 0, d, 1.0))
+
+
+def _scaled_eigenvalue_range(info: NDArray[np.floating]) -> str:
+    """Warning text: extreme eigenvalues of ``D^-1/2 info D^-1/2``."""
+    sc = _information_scaling(info)
+    scaled = np.linalg.eigvalsh(info * np.outer(sc, sc))
+    return (
+        "eigenvalues of the diagonally scaled information: smallest "
+        f"{scaled[0]:.3g}, largest {scaled[-1]:.3g}"
+    )
 
 
 def _covariance_from_information(
@@ -701,13 +727,10 @@ def mle_newton_raphson(
         fisher, rel_tol, noise_bound=noise_bound
     )
     if np.any(unidentified):
-        sc = _information_scaling(fisher)
-        scaled = np.linalg.eigvalsh(fisher * np.outer(sc, sc))
         warnings.warn(
             "mle_newton_raphson: observed Fisher information is not positive "
-            "definite to within its accuracy (eigenvalues of the "
-            "diagonally scaled information: smallest "
-            f"{scaled[0]:.3g}, largest {scaled[-1]:.3g}); the likelihood is "
+            "definite to within its accuracy "
+            f"({_scaled_eigenvalue_range(fisher)}); the likelihood is "
             "flat or a saddle in at least one direction. No ridge is "
             "applied: fisher_info is reported unmodified, the covariance is "
             "infinite on the unidentified parameters, and converged is False.",
@@ -758,7 +781,20 @@ def mle_scoring(
     Returns
     -------
     result : MLResult
-        MLE result.
+        MLE result. ``covariance`` is ``inv(fisher_info(theta))`` when that
+        is nonsingular; otherwise it is the inverse on the identified
+        subspace, with ``inf`` variance and NaN cross-covariance on every
+        parameter an unidentified direction touches (an eigenvalue of
+        ``D^-1/2 F D^-1/2``, ``D = abs(diag(F))``, at or below ``n * eps``
+        times the largest).
+
+    Warns
+    -----
+    RuntimeWarning
+        If the Fisher information at the solution is not positive definite
+        (a flat direction); ``converged`` is then False, as in
+        ``mle_newton_raphson``. Versions up to 2.11.1 returned ``pinv(F)``,
+        a finite covariance on parameters with no information.
 
     Notes
     -----
@@ -800,12 +836,21 @@ def mle_scoring(
 
         theta = theta_new
 
-    # Final Fisher information and covariance
     F = fisher_info(theta)
-    try:
-        cov = np.linalg.inv(F)
-    except np.linalg.LinAlgError:
-        cov = np.linalg.pinv(F)
+    cov, unidentified = _covariance_from_information(
+        np.asarray(F, dtype=np.float64), len(theta) * _EPS
+    )
+    if np.any(unidentified):
+        warnings.warn(
+            "mle_scoring: Fisher information is not positive definite at the "
+            f"solution ({_scaled_eigenvalue_range(F)}); the likelihood is flat "
+            "or a saddle in at least one direction. The covariance is "
+            "infinite on parameters "
+            f"{np.flatnonzero(unidentified).tolist()}, and converged is False.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        converged = False
 
     return MLResult(
         theta=theta,

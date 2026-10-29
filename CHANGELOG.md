@@ -44,6 +44,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
+  (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
+  two magnetic-cache test files), fixtures pin zero drift
+  across the Schmidt factoring. `mathematical_functions.special_functions.hypergeometric`
+  EXPERIMENTAL -> MATURE: 99.4% line (482/485), 98.4% branch (183/186), up
+  from 65%. Held at EXPERIMENTAL: `dynamic_models.process_noise.coordinated_turn`
+  (`q_coord_turn_polar` has no MATLAB oracle; `QPolarCoordTurn2D` is a
+  different model), `atmosphere.ionosphere` (the IRI port is deferred), and
+  `static_estimation.maximum_likelihood` (98.2% line, 87.0% branch). Each
+  figure comes from the test files that import the module, not the whole
+  suite. What to do: nothing.
+
+- **One convention for an unidentifiable covariance.** When a point
+  estimate exists but the information matrix is singular in some
+  directions, the estimate is returned with `inf` variance on the
+  unidentified parameters, NaN on their cross terms, the identified block
+  intact, and a `RuntimeWarning` (the rule `mle_newton_raphson` has
+  followed since 2.11.1, now in CONTRIBUTING.md). `mle_scoring` and
+  `cramer_rao_bound` returned `pinv(F)` for a singular Fisher matrix, a
+  finite value on parameters with no information (0.25 on every entry for
+  `ll = -0.5 (t0 + t1 - 1)^2`); they now follow the rule, and
+  `mle_scoring` reports `converged=False`, as `mle_newton_raphson` does.
+  A direction is flagged when the diagonally scaled Fisher matrix has an
+  eigenvalue at or below `n * eps` times its largest (a scaled condition
+  number above about `1 / (n * eps)`), where `inv` already returned
+  noise; identified matrices still get `inv(F)` bit for bit.
+  `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
+  sensors with or without `r_cov`, judged by a coordinate-scaled
+  tolerance (smallest singular value of the sensor offsets at or below
+  `8 eps C sqrt(3 num_meas)`, `C` the largest absolute input coordinate,
+  4x the rounding exactly coplanar offsets can carry), so exactly
+  coplanar sensors are caught at ECEF scale too, while nearly coplanar
+  ones above it are accepted as before. No point estimate exists there
+  inside MATLAB's domain: the pseudo-inverse confines the estimate to the
+  plane and biases the in-plane coordinates too (422 m in y for a target
+  3 km above a five-sensor ground array). v2.11.1 raised only with
+  `r_cov` and otherwise returned that estimate. `total_least_squares`
+  still raises for an infeasible rank. What to do: range_only_static_loc_est_np
+  still raises LinAlgError for coplanar sensors, now also without r_cov;
+  check np.isinf(np.diag(cov)) (or the RuntimeWarning) instead of
+  relying on a finite pseudo-inverse from mle_scoring and
+  cramer_rao_bound, which no longer return one for an unidentified model.
 - **One haversine, one meridional radius, one Earth radius; no value
   changes beyond the great-circle fix under Fixed and the 1-ulp
   `osculating_sphere` change below.** The
@@ -84,9 +126,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
   factors the covariance once and vectorises over the batch. It
   deliberately does not delegate to `gating.mahalanobis_distance`: gating
-  returns the squared distance without validating S's shape or
-  positive-definiteness, while this function validates and returns nan on
-  a non-positive-definite S. Docstrings now say
+  returns the squared distance, raises `ValueError` on a mismatched shape and
+  `numpy.linalg.LinAlgError` on a non-positive-definite S, while this
+  function returns the unsquared distance and gives nan with a
+  `RuntimeWarning` on a non-positive-definite S. Docstrings now say
   whether a Mahalanobis result is squared (`gating`) or not (the others),
   and `combinatorics.factorial` and `special_functions.factorial` name
   their contract difference. The MATLAB migration map's `calcNEES` row
@@ -261,6 +304,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-process thresholds.
 
 ### Fixed
+
+- **`threshold_factor` raises its own `ValueError` when the requested Pfa is
+  unreachable for GO, SO and OS.** When `pfa` was below what the threshold
+  search reaches (alpha up to 1e12; e.g. `threshold_factor(1e-15, 2, "so")`),
+  the search gave up silently and scipy's `brentq` raised "f(a) and f(b) must
+  have different signs", which names neither the pfa nor the method. The new
+  message names `pfa`, the method and `n_ref`. scipy's error was already a
+  `ValueError`, so only the message changes. What to do: catch ValueError
+  (previously scipy's bracket error).
+
+- **`mahalanobis_distance` and the gating functions built on it reject a
+  mismatched or non-positive-definite covariance instead of returning a
+  number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned a
+  number (the kernel reads the inverse out of bounds, so the value varied
+  between runs, -5.07 to -5.81 observed) and a length-3 one 0.40 to 0.67; an indefinite but invertible `S`
+  (`[[1, 2], [2, 1]]` with innovation `[1, 1]`) returned 0.667, and a
+  non-symmetric `[[1, 0], [3, 1]]` with `[1, 1]` returned -1.0, all with no
+  signal. A squared distance is never negative and is defined only for a
+  positive-definite `S`. `mahalanobis_distance`, `ellipsoidal_gate`,
+  `gate_measurements` (both gate types, checked once per call) and
+  `mahalanobis_batch` (which takes `S_inv`, so the check is applied to
+  `S_inv`, positive definite exactly when `S` is) now raise `ValueError`,
+  naming both shapes, when the innovation is not 1-d or `S` is not
+  `(m, m)` (and, in `gate_measurements`, when the measurements are not
+  `(n_meas, m)`: a `(k, 1)` array used to broadcast silently), and
+  `numpy.linalg.LinAlgError` when `S` is not positive definite or is too
+  ill-conditioned. The test is on the symmetric part `(S + S.T) / 2`, which
+  is exact for "the form is non-negative for every innovation"; a symmetric
+  `S` is unaffected, and the test is scale-free (an `S` of 1e-170 times the
+  identity is still accepted, as in v2.11.1). "Too ill-conditioned" means a
+  minor (n = 2) or Cholesky pivot rounds to a non-positive value, which
+  happens for some positive-definite `S` at condition number about 1e16 or
+  above (measured on 300 random `S` per size: none rejected up to 1e15; at
+  1e16, 14 of 300 at n = 2 and 0 at n = 3 and 4; at 1e17, 203, 92 and 74);
+  for those v2.11.1's value was already wrong. Callers that now raise on such
+  an `S`: `mahalanobis_distance` itself, `ellipsoidal_gate`,
+  `gate_measurements`, `mahalanobis_batch`, `trackers.mht` (its gating
+  call), `assignment_algorithms.data_association` (cost-matrix
+  construction, whose existing singular fallback re-raises).
+  `jpda.compute_likelihood_matrix` does not raise: it zeroes a track whose
+  `S` fails its own Cholesky test (non-positive-definite, non-symmetric or
+  non-finite) with a `RuntimeWarning`, falls back to the per-pair path if
+  only the batch kernel rejects the inverse, and zeroes the track the same
+  way if that fallback's `mahalanobis_distance` also raises `LinAlgError`
+  (an `S` that passes Cholesky at condition number near 1e16). Valid symmetric
+  positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
+  3, 5, 10 and 12 (tested against the shipped module). A NaN entry in the
+  covariance now raises `LinAlgError` too: v2.11.1's fastmath kernels gave
+  NaN on macOS but garbage on Linux (2.8e-309 and 3e-75 at n = 2 and 3 in
+  CI). Cost, measured against v2.11.1 on Apple silicon in
+  one session: about +0.17 to +0.21 us per `mahalanobis_distance` call at
+  n = 2 and 3 (+27 to +32% of a 0.64 us call), about +7 to +13% at n = 1, 6
+  and 12; `gate_measurements` on 50 measurements is 15% faster, because the
+  check runs once per call rather than once per measurement.
+  `mahalanobis_batch` is now a Python wrapper around the unchanged JIT
+  kernel (+0.28 us at 50 x 3), so a user `@njit` function that calls it now
+  gets a `TypingError`; call `mahalanobis_batch` from Python instead. What
+  to do: catch `ValueError` for a shape
+  mismatch and `numpy.linalg.LinAlgError` for a non-positive-definite `S`;
+  both previously returned a silent wrong number.
 
 - **`great_circle_distance` and `great_circle_azimuth` no longer round their
   inputs; distances move by up to 0.74 mm and short-pair azimuths by far

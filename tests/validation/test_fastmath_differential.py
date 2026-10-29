@@ -268,7 +268,7 @@ _FASTMATH_KERNELS = {
     gating._mahalanobis_distance_general: _gating_general_cases,
     gating._invert_2x2: _invert_2x2_cases,
     gating._invert_3x3: _invert_3x3_cases,
-    gating.mahalanobis_batch: _batch_cases,
+    gating._mahalanobis_batch_kernel: _batch_cases,
     detection._cfar_ca_kernel: _cfar_1d_cases,
     detection._cfar_go_kernel: _cfar_1d_cases,
     detection._cfar_so_kernel: _cfar_1d_cases,
@@ -363,7 +363,8 @@ def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
         assert np.isnan(det)
         assert np.isnan(inv).all()
     nu = np.ones(n)
-    assert np.isnan(gating.mahalanobis_distance(nu, _nan_entry(n)))
+    with pytest.raises(np.linalg.LinAlgError, match="not positive definite"):
+        gating.mahalanobis_distance(nu, _nan_entry(n))
 
 
 _FAST_MATH_FLAGS = {"fast", "nnan", "ninf", "nsz", "arcp", "contract", "afn", "reassoc"}
