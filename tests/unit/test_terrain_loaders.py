@@ -331,7 +331,7 @@ class TestDEMOnKnownSurface:
     """DEM queries on surfaces whose elevation is known in closed form."""
 
     def test_elevation_profile_follows_the_plane(self):
-        from geographiclib.geodesic import Geodesic
+        Geodesic = pytest.importorskip("geographiclib.geodesic").Geodesic
 
         from pytcl.core.constants import EARTH_MEAN_RADIUS
         from pytcl.terrain import get_elevation_profile
