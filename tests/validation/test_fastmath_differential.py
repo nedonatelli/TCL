@@ -363,7 +363,8 @@ def test_invert_kernels_return_all_nan_for_a_nan_entry(kernel, n):
         assert np.isnan(det)
         assert np.isnan(inv).all()
     nu = np.ones(n)
-    assert np.isnan(gating.mahalanobis_distance(nu, _nan_entry(n)))
+    with pytest.raises(np.linalg.LinAlgError, match="not positive definite"):
+        gating.mahalanobis_distance(nu, _nan_entry(n))
 
 
 _FAST_MATH_FLAGS = {"fast", "nnan", "ninf", "nsz", "arcp", "contract", "afn", "reassoc"}

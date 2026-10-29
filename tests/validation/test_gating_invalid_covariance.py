@@ -325,13 +325,21 @@ class TestJpdaFallback:
         assert got[0] == pytest.approx(expected[0], rel=1e-12, abs=0)
 
 
-class TestNaNStillPropagates:
+class TestNaNCovarianceRejected:
+    """v2.11.1 had no stable answer to pin: at n = 2 and 3 its fastmath
+    kernels returned NaN on macOS and garbage on Linux (2.8e-309, 3e-75 in
+    CI), so the new contract is checked on its own terms."""
+
     @pytest.mark.parametrize("n", [1, 2, 3, 5, 12])
-    def test_nan_covariance_returns_nan_like_v2111(self, old_gating, n):
+    @pytest.mark.parametrize("where", ["diagonal", "off_diagonal"])
+    def test_nan_covariance_raises(self, n, where):
         S = _spd(n, 9)
-        S[0, 0] = np.nan
+        if where == "diagonal" or n == 1:
+            S[0, 0] = np.nan
+        else:
+            S[0, 1] = S[1, 0] = np.nan
         with np.errstate(all="ignore"):
-            old = old_gating.mahalanobis_distance(np.ones(n), S)
-            new = gating.mahalanobis_distance(np.ones(n), S)
-        assert np.isnan(old)
-        assert np.isnan(new)
+            with pytest.raises(np.linalg.LinAlgError, match="not positive definite"):
+                gating.mahalanobis_distance(np.ones(n), S)
+            with pytest.raises(np.linalg.LinAlgError, match="not positive definite"):
+                gating.gate_measurements(np.zeros(n), S, np.ones((2, n)), 9.0)

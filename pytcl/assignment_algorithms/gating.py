@@ -124,13 +124,14 @@ def _not_pd_2x2(S: np.ndarray[Any, Any]) -> bool:
     ``y' sym(S) y``, so the symmetric part ``(S + S')/2`` decides whether the
     form is non-negative for every ``nu``. The test is ``|b| / sqrt(a e) < 1``
     rather than ``a e - b^2 > 0`` so that it is scale-free: the product
-    underflows for entries near 1e-170. A NaN entry is not flagged, so a NaN
-    covariance propagates NaN as before.
+    underflows for entries near 1e-170. Written as ``not (... > 0)`` so a
+    NaN entry is flagged: the quadratic-form kernels are fastmath, where a
+    NaN input gives platform-dependent garbage (2.8e-309 on Linux).
     """
     a = S[0, 0]
     e = S[1, 1]
     b = (S[0, 1] + S[1, 0]) * 0.5
-    return a <= 0.0 or e <= 0.0 or abs(b) / np.sqrt(a) / np.sqrt(e) >= 1.0
+    return not (a > 0.0 and e > 0.0 and abs(b) / np.sqrt(a) / np.sqrt(e) < 1.0)
 
 
 @njit(cache=True)
@@ -138,8 +139,8 @@ def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
     """True when a Cholesky of the symmetric part of S hits a pivot <= 0.
 
     A pivot is the exact leading-principal-minor ratio, so this is an exact
-    positive-definiteness test at n^3/6 multiply-adds. A NaN pivot is not
-    flagged, so a NaN covariance propagates NaN as before.
+    positive-definiteness test at n^3/6 multiply-adds. A NaN pivot is
+    flagged, as in `_not_pd_2x2`.
     """
     n = S.shape[0]
     L = np.zeros((n, n))
@@ -147,7 +148,7 @@ def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
         d2 = S[j, j]
         for k in range(j):
             d2 -= L[j, k] * L[j, k]
-        if d2 <= 0.0:
+        if not d2 > 0.0:
             return True
         d = np.sqrt(d2)
         L[j, j] = d
@@ -162,7 +163,7 @@ def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
 def _not_pd(S: "NDArray[np.float64]") -> bool:
     n = S.shape[0]
     if n == 1:
-        return bool(S.item(0) <= 0.0)
+        return not S.item(0) > 0.0
     if n == 2:
         return _not_pd_2x2(S)
     return _not_pd_general(S)
@@ -223,8 +224,9 @@ def mahalanobis_distance(
         minors or pivots round to a non-positive value). Positive definiteness is
         tested on the symmetric part ``(S + S.T) / 2``, which is exact for
         "the form is non-negative for every innovation", so a non-symmetric
-        ``S`` with a negative form is rejected too. A NaN covariance is
-        not rejected; it propagates NaN.
+        ``S`` with a negative form is rejected too. A NaN entry in the
+        covariance is rejected as well (v2.11.1 returned NaN on some
+        platforms and garbage such as 2.8e-309 on Linux).
 
     Examples
     --------
@@ -288,7 +290,7 @@ def mahalanobis_distance(
     elif n <= 10:
         S_inv = np.linalg.inv(S)
         if n == 1:
-            if S.item(0) <= 0.0:
+            if not S.item(0) > 0.0:
                 _raise_not_pd()
         elif _not_pd_general(S):
             _raise_not_pd()

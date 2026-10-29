@@ -118,7 +118,8 @@ def lambert_universal(
     Raises
     ------
     ValueError
-        If solution does not converge.
+        If ``r1`` or ``r2`` is not a 3-vector, or the solution does not
+        converge.
 
     Examples
     --------
@@ -131,6 +132,10 @@ def lambert_universal(
     """
     r1 = np.asarray(r1, dtype=float)
     r2 = np.asarray(r2, dtype=float)
+    if r1.shape != (3,) or r2.shape != (3,):
+        raise ValueError(
+            f"r1 and r2 must be 3-vectors, got shapes {r1.shape} and {r2.shape}"
+        )
 
     r1_mag = np.linalg.norm(r1)
     r2_mag = np.linalg.norm(r2)

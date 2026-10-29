@@ -350,8 +350,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   way if that fallback's `mahalanobis_distance` also raises `LinAlgError`
   (an `S` that passes Cholesky at condition number near 1e16). Valid symmetric
   positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
-  3, 5, 10 and 12 (tested against the shipped module). A NaN covariance
-  still propagates NaN. Cost, measured against v2.11.1 on Apple silicon in
+  3, 5, 10 and 12 (tested against the shipped module). A NaN entry in the
+  covariance now raises `LinAlgError` too: v2.11.1's fastmath kernels gave
+  NaN on macOS but garbage on Linux (2.8e-309 and 3e-75 at n = 2 and 3 in
+  CI). Cost, measured against v2.11.1 on Apple silicon in
   one session: about +0.17 to +0.21 us per `mahalanobis_distance` call at
   n = 2 and 3 (+27 to +32% of a 0.64 us call), about +7 to +13% at n = 1, 6
   and 12; `gate_measurements` on 50 measurements is 15% faster, because the

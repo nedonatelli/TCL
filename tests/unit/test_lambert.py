@@ -169,7 +169,7 @@ class TestLambertUniversal:
             )
 
     def test_mismatched_vector_lengths_rejected(self):
-        with pytest.raises(ValueError, match="not aligned"):
+        with pytest.raises(ValueError, match="must be 3-vectors"):
             lambert_universal(np.array([1.0, 2.0]), self.R2, 100.0)
 
     @pytest.mark.xfail(
