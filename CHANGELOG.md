@@ -52,18 +52,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   followed since 2.11.1, now in CONTRIBUTING.md). `mle_scoring` and
   `cramer_rao_bound` returned `pinv(F)` for a singular Fisher matrix, a
   finite value on parameters with no information (0.25 on every entry for
-  `ll = -0.5 (t0 + t1 - 1)^2`). `range_only_static_loc_est_np` with
-  exactly coplanar sensors and `r_cov` raised `LinAlgError`; it now
-  returns the estimate with `p_taylor` and `p_crlb` `inf` normal to the
-  sensors' plane, and its in-plane block agrees with a 2-D solve of the
-  same geometry to 5e-15 relative. On the clipped-root branch it returned
-  0 there. `p_crlb` of an identified geometry is `inv` rather than `pinv`
-  of the same matrix. `total_least_squares` still raises for an
-  infeasible rank, since no estimate exists. What to do: check
-  np.isinf(np.diag(cov)) (or the RuntimeWarning) instead of catching
-  LinAlgError from range_only_static_loc_est_np; mle_scoring and
-  cramer_rao_bound no longer return a finite pseudo-inverse for an
-  unidentified model.
+  `ll = -0.5 (t0 + t1 - 1)^2`); they now follow the rule, and
+  `mle_scoring` reports `converged=False`, as `mle_newton_raphson` does.
+  A direction is flagged when the diagonally scaled Fisher matrix has an
+  eigenvalue at or below `n * eps` times its largest (a scaled condition
+  number above about `1 / (n * eps)`), where `inv` already returned
+  noise; identified matrices still get `inv(F)` bit for bit.
+  `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
+  sensors with or without `r_cov`, because no point estimate exists there
+  inside MATLAB's domain: the pseudo-inverse confines the estimate to the
+  plane and biases the in-plane coordinates too (422 m in y for a target
+  3 km above a five-sensor ground array). v2.11.1 raised only with
+  `r_cov` and otherwise returned that estimate. `total_least_squares`
+  still raises for an infeasible rank. What to do: range_only_static_loc_est_np
+  still raises LinAlgError for coplanar sensors, now also without r_cov;
+  check np.isinf(np.diag(cov)) (or the RuntimeWarning) instead of
+  relying on a finite pseudo-inverse from mle_scoring and
+  cramer_rao_bound, which no longer return one for an unidentified model.
 - **One haversine, one meridional radius, one Earth radius; no value
   changes beyond the great-circle fix under Fixed and the 1-ulp
   `osculating_sphere` change below.** The

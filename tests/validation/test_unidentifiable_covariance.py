@@ -5,13 +5,10 @@ directions, the estimate is returned with ``inf`` variance on the
 unidentified parameters, NaN on their cross terms, the identified block
 intact, and a ``RuntimeWarning``. v2.11.1 returned a finite pseudo-inverse
 from ``mle_scoring`` and ``cramer_rao_bound`` (0.25 on every entry of the
-model below) and raised ``LinAlgError`` from ``range_only_static_loc_est_np``
-for coplanar sensors. ``total_least_squares`` still raises, because no
-solution exists for an infeasible rank.
-
-REFERENCE class: the range-only x-y block is compared with an independent
-2-D solve of the same geometry, the problem restricted to the identified
-plane.
+model below). Where no point estimate exists the function raises:
+``total_least_squares`` for an infeasible rank, and
+``range_only_static_loc_est_np`` for coplanar sensors, a geometry MATLAB's
+algorithm excludes.
 """
 
 import numpy as np
@@ -28,8 +25,7 @@ from tests.validation._v2111 import shipped_module
 # ll = -0.5 (t0 + t1 - 1)^2 identifies t0 + t1 only.
 FLAT_FISHER = np.ones((2, 2))
 
-# Receiver, transmitters and target all on the plane z = 0: z has zero
-# Fisher information, x and y are identified.
+# Receiver and transmitters all on the plane z = 0, outside MATLAB's domain.
 RX = np.array([100.0, 200.0, 0.0])
 TX = np.array(
     [
@@ -41,9 +37,6 @@ TX = np.array(
 TARGET = np.array([4e3, -2e3, 0.0])
 R_COV = np.diag([9.0, 25.0, 4.0, 1.0, 16.0])
 R_BI = np.linalg.norm(TARGET[:, None] - TX, axis=0) + np.linalg.norm(TARGET - RX)
-
-# Both sides are closed-form linear algebra on ranges of ~1e4 m.
-RTOL_ORACLE = 1e-10
 
 
 def _assert_unidentified(cov, unidentified):
@@ -71,6 +64,7 @@ class TestMleScoring:
         with pytest.warns(RuntimeWarning, match="mle_scoring"):
             res = self._run()
         assert res.theta[0] + res.theta[1] == pytest.approx(1.0, rel=1e-15, abs=0)
+        assert not res.converged
         _assert_unidentified(res.covariance, [True, True])
 
     def test_v2111_returned_a_finite_pseudo_inverse(self):
@@ -107,68 +101,28 @@ class TestCramerRaoBound:
         )
 
 
-def _oracle_2d():
-    """Taylor covariance and CRLB of the planar problem, from first principles.
+class TestRangeOnlyCoplanarRaises:
+    @pytest.mark.parametrize("height", [0.0, 3e3], ids=["in_plane", "off_plane"])
+    @pytest.mark.parametrize("r_cov", [None, R_COV], ids=["no_r_cov", "r_cov"])
+    def test_coplanar_sensors_raise(self, height, r_cov):
+        target = np.array([4e3, -2e3, height])
+        r = np.linalg.norm(target[:, None] - TX, axis=0) + np.linalg.norm(target - RX)
+        with pytest.raises(np.linalg.LinAlgError, match="sensors are coplanar"):
+            range_only_static_loc_est_np(r, TX, RX, 1, r_cov)
 
-    The estimator is the fixed point ``x = S+ (z(r) + r |x|)`` with
-    ``z_i = (|s_i|^2 - r_i^2) / 2``, ``S`` the transmitters relative to the
-    receiver and ``S+`` its pseudo-inverse; the implicit function theorem
-    gives ``dx/dr = -(dG/dx)^-1 dG/dr`` for ``G(x, r) = S+ (z + r |x|) - x``.
-    """
-    s = (TX[:2] - RX[:2, None]).T
-    x = TARGET[:2] - RX[:2]
-    norm_x = np.linalg.norm(x)
-    s_plus = np.linalg.pinv(s)
-    dg_dx = s_plus @ np.outer(R_BI, x / norm_x) - np.eye(2)
-    dg_dr = s_plus @ (norm_x * np.eye(len(R_BI)) - np.diag(R_BI))
-    dxdr = -np.linalg.solve(dg_dx, dg_dr)
-    p_taylor = dxdr @ R_COV @ dxdr.T
+    def test_method_zero_raises(self):
+        with pytest.raises(np.linalg.LinAlgError, match="sensors are coplanar"):
+            range_only_static_loc_est_np(R_BI, TX, RX, 0)
 
-    to_tx = x[:, None] - s.T
-    jac = x / norm_x + (to_tx / np.linalg.norm(to_tx, axis=0)).T
-    p_crlb = np.linalg.inv(jac.T @ np.linalg.inv(R_COV) @ jac)
-    return p_taylor, p_crlb
-
-
-class TestRangeOnlyCoplanar:
-    def test_returns_estimate_with_infinite_z_variance_and_warns(self):
-        with pytest.warns(RuntimeWarning, match="range_only_static_loc_est_np"):
-            res = range_only_static_loc_est_np(R_BI, TX, RX, 1, R_COV)
-        np.testing.assert_allclose(res.x_est, TARGET, rtol=1e-12, atol=1e-9)
-        for p in (res.p_taylor[:, :, 0], res.p_crlb[:, :, 0]):
-            _assert_unidentified(p, [False, False, True])
-
-    def test_xy_block_matches_planar_solve(self):
-        with pytest.warns(RuntimeWarning):
-            res = range_only_static_loc_est_np(R_BI, TX, RX, 1, R_COV)
-        p_taylor, p_crlb = _oracle_2d()
-        np.testing.assert_allclose(
-            res.p_taylor[:2, :2, 0], p_taylor, rtol=RTOL_ORACLE, atol=0
-        )
-        np.testing.assert_allclose(
-            res.p_crlb[:2, :2, 0], p_crlb, rtol=RTOL_ORACLE, atol=0
-        )
-
-    def test_clipped_root_branch_marks_z(self):
-        # Ranges no target fits: Equation 21's discriminant is negative, so the
-        # root is clipped and the Taylor derivative takes its other branch.
-        # v2.11.1 returned 0 for the z variances here, a certainty about the
-        # one coordinate the sensors cannot see.
-        r = np.array([846877.0, 1663346.0, 826160.0, 1106634.0, 58703.0])
-        s = (TX - RX[:, None]).T
-        s_plus = np.linalg.pinv(s)
-        a = s_plus @ (0.5 * (np.sum(s * s, axis=1) - r**2))
-        b = s_plus @ r
-        assert (a @ b) ** 2 - (b @ b - 1.0) * (a @ a) < 0.0
-        with pytest.warns(RuntimeWarning, match="range_only_static_loc_est_np"):
-            res = range_only_static_loc_est_np(r, TX, RX, 1, R_COV)
-        for p in (res.p_taylor[:, :, 0], res.p_crlb[:, :, 0]):
-            _assert_unidentified(p, [False, False, True])
-
-    def test_v2111_raised(self):
+    def test_v2111_returned_a_biased_estimate_without_r_cov(self):
+        # Why the geometry is rejected: the pseudo-inverse confines the
+        # estimate to the plane and the Rt = |x| constraint then biases y.
         old = shipped_module("pytcl/static_estimation/localization.py")
-        with pytest.raises(np.linalg.LinAlgError):
-            old.range_only_static_loc_est_np(R_BI, TX, RX, 1, R_COV)
+        target = np.array([4e3, -2e3, 3e3])
+        r = np.linalg.norm(target[:, None] - TX, axis=0) + np.linalg.norm(target - RX)
+        x_est = old.range_only_static_loc_est_np(r, TX, RX, 1).x_est
+        assert x_est[2] == 0.0
+        assert abs(x_est[1] - target[1]) > 100.0
 
 
 class TestTotalLeastSquaresStillRaises:

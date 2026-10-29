@@ -325,7 +325,7 @@ def cramer_rao_bound(
     Warns
     -----
     RuntimeWarning
-        If ``fisher_info`` is singular. Versions up to 2.11.1 returned
+        If ``fisher_info`` is not positive definite. Versions up to 2.11.1 returned
         ``pinv(fisher_info)``, a finite bound on parameters with no
         information.
 
@@ -349,8 +349,10 @@ def cramer_rao_bound(
     crb, unidentified = _covariance_from_information(F, F.shape[0] * _EPS)
     if np.any(unidentified):
         warnings.warn(
-            "cramer_rao_bound: the Fisher information is singular; the bound "
-            f"is infinite on parameters {np.flatnonzero(unidentified).tolist()}.",
+            "cramer_rao_bound: Fisher information is not positive definite "
+            f"({_scaled_eigenvalue_range(F)}); the likelihood is flat or a "
+            "saddle in at least one direction. The bound is infinite on "
+            f"parameters {np.flatnonzero(unidentified).tolist()}.",
             RuntimeWarning,
             stacklevel=2,
         )
@@ -471,6 +473,16 @@ def _information_scaling(info: NDArray[np.floating]) -> NDArray[np.floating]:
     """``D^-1/2`` as a vector, ``D = abs(diag(info))`` with 1 where zero."""
     d = np.abs(np.diagonal(info))
     return 1.0 / np.sqrt(np.where(d > 0, d, 1.0))
+
+
+def _scaled_eigenvalue_range(info: NDArray[np.floating]) -> str:
+    """Warning text: extreme eigenvalues of ``D^-1/2 info D^-1/2``."""
+    sc = _information_scaling(info)
+    scaled = np.linalg.eigvalsh(info * np.outer(sc, sc))
+    return (
+        "eigenvalues of the diagonally scaled information: smallest "
+        f"{scaled[0]:.3g}, largest {scaled[-1]:.3g}"
+    )
 
 
 def _covariance_from_information(
@@ -715,13 +727,10 @@ def mle_newton_raphson(
         fisher, rel_tol, noise_bound=noise_bound
     )
     if np.any(unidentified):
-        sc = _information_scaling(fisher)
-        scaled = np.linalg.eigvalsh(fisher * np.outer(sc, sc))
         warnings.warn(
             "mle_newton_raphson: observed Fisher information is not positive "
-            "definite to within its accuracy (eigenvalues of the "
-            "diagonally scaled information: smallest "
-            f"{scaled[0]:.3g}, largest {scaled[-1]:.3g}); the likelihood is "
+            "definite to within its accuracy "
+            f"({_scaled_eigenvalue_range(fisher)}); the likelihood is "
             "flat or a saddle in at least one direction. No ridge is "
             "applied: fisher_info is reported unmodified, the covariance is "
             "infinite on the unidentified parameters, and converged is False.",
@@ -782,9 +791,10 @@ def mle_scoring(
     Warns
     -----
     RuntimeWarning
-        If the Fisher information at the solution is singular. Versions up
-        to 2.11.1 returned ``pinv(F)``, a finite covariance on parameters
-        with no information.
+        If the Fisher information at the solution is not positive definite
+        (a flat direction); ``converged`` is then False, as in
+        ``mle_newton_raphson``. Versions up to 2.11.1 returned ``pinv(F)``,
+        a finite covariance on parameters with no information.
 
     Notes
     -----
@@ -832,12 +842,15 @@ def mle_scoring(
     )
     if np.any(unidentified):
         warnings.warn(
-            "mle_scoring: the Fisher information is singular at the "
-            "solution; the covariance is infinite on parameters "
-            f"{np.flatnonzero(unidentified).tolist()}.",
+            "mle_scoring: Fisher information is not positive definite at the "
+            f"solution ({_scaled_eigenvalue_range(F)}); the likelihood is flat "
+            "or a saddle in at least one direction. The covariance is "
+            "infinite on parameters "
+            f"{np.flatnonzero(unidentified).tolist()}, and converged is False.",
             RuntimeWarning,
             stacklevel=2,
         )
+        converged = False
 
     return MLResult(
         theta=theta,

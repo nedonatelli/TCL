@@ -119,7 +119,11 @@ Next
   cache's rounding of inputs to 1e-10 rad (about 0.64 mm) in
   ``navigation.geodesy``; and the inline squared-Mahalanobis copies in
   ``trackers/multi_target.py``, ``trackers/single_target.py``,
-  ``trackers/mht.py`` and ``clustering/gaussian_mixture.py``.
+  ``trackers/mht.py`` and ``clustering/gaussian_mixture.py``; and,
+  pending owner sign-off as an extension beyond MATLAB, both mirror
+  solutions of ``range_only_static_loc_est_np`` for coplanar sensors,
+  which MATLAB's algorithm excludes and v2.12.0 rejects with
+  ``LinAlgError``.
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).

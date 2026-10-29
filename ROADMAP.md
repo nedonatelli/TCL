@@ -79,7 +79,7 @@ CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
 ### v2.13.0 -- planned
 
 The audit's Tier 4 ports, moved out of v2.12 so that release stays
-correctness-only, plus two follow-ups from v2.12. Names are the pytcl
+correctness-only, plus follow-ups from v2.12. Names are the pytcl
 names each would take:
 
 - **Matrix permanent.** MATLAB `Mathematical_Functions/Combinatorics/perm.m`
@@ -123,6 +123,13 @@ names each would take:
   `clustering/gaussian_mixture.py` each compute the squared distance inline
   instead of through the shared Cholesky body in
   `kalman.matrix_utils.compute_mahalanobis_distance`.
+- **Coplanar-sensor range-only localization (beyond MATLAB, pending owner
+  sign-off).** MATLAB `rangeOnlyStaticLocEstNP.m` excludes coplanar
+  sensors, and since v2.12.0 `range_only_static_loc_est_np` raises
+  `LinAlgError` for them. The geometry still determines the target up to
+  its mirror image in the sensors' plane: a least-squares solve on
+  `[S_plane, -r]` recovers x, y and `abs(z)` exactly, so the extension
+  would return both mirror solutions.
 
 ### Measured backlog (from the MATLAB parity inventory)
 

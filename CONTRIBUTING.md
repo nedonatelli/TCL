@@ -43,12 +43,15 @@ We follow these conventions:
 - **Unidentifiable covariance:** when a point estimate exists but the
   information matrix is singular in some directions, return the estimate
   with `inf` variance on the unidentified parameters, NaN on their cross
-  terms, the identified block intact, and a `RuntimeWarning`. Never raise
-  and never return a finite pseudo-inverse; raise only when no point
-  estimate exists (`total_least_squares` for an infeasible rank). Zero
-  information is infinite variance, so `inf` is the true value, and it
-  propagates as non-finite into any gate or fusion step where a `pinv`
-  value would be silently wrong. Use
+  terms, the identified block intact, and a `RuntimeWarning`; an iterative
+  estimator also reports `converged=False` (`mle_newton_raphson`,
+  `mle_scoring`, `cramer_rao_bound`). Never return a finite pseudo-inverse.
+  Raise only when no point estimate exists: `total_least_squares` for an
+  infeasible rank, `range_only_static_loc_est_np` for coplanar sensors (a
+  geometry MATLAB's algorithm excludes). Zero information is infinite
+  variance, so `inf` is the true value, and it propagates as non-finite
+  into any gate or fusion step where a `pinv` value would be silently
+  wrong. Use
   `static_estimation.maximum_likelihood._covariance_from_information`
   rather than a new implementation.
 
