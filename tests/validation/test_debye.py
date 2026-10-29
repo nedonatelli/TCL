@@ -193,14 +193,48 @@ class TestDebyeErrors:
         with pytest.raises(ValueError, match="Order n must be >= 1"):
             debye(1.5, 1.0)
 
-    @pytest.mark.parametrize("x", (-1e-9, -1.0, -50.0))
-    def test_negative_x_rejected(self, x):
-        with pytest.raises(ValueError, match="x must be >= 0"):
-            debye(3, x)
 
-    def test_negative_element_in_array_rejected(self):
-        with pytest.raises(ValueError, match="x must be >= 0"):
-            debye(3, np.array([1.0, -1.0]))
+class TestDebyeNegativeX:
+    """D_n(x) for x < 0.
+
+    MATLAB TCL's ``Debye.m`` accepts any x (its own example plots from -1), so
+    rejecting x < 0 is a port-fidelity defect. Oracle: signed 30-digit
+    quadrature of n/x^n * int_0^x t^n/(e^t - 1) dt, cross-checked in the test
+    by D_n(-x) = D_n(x) + n x / (n + 1).
+
+    Normalisation gap, an owner decision and not fixed here: pytcl normalises
+    (D_n(0) = 1, the MathWorld definition) while MATLAB returns the raw
+    integral (D(0) = 0). The oracle follows pytcl's normalisation.
+    """
+
+    @pytest.mark.parametrize("n", (1, 3, 4, 10))
+    @pytest.mark.parametrize("x", (-0.5, -1.0))
+    def test_oracle_satisfies_reflection_identity(self, n, x):
+        want = float(_debye_oracle(n, x))
+        reflected = float(_debye_oracle(n, -x)) + n * (-x) / (n + 1)
+        assert want == pytest.approx(reflected, rel=1e-13, abs=0)
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=ValueError,
+        reason="debye() rejects x < 0 ('x must be >= 0'); MATLAB Debye.m accepts it",
+    )
+    @pytest.mark.parametrize("n", (1, 3, 4, 10))
+    @pytest.mark.parametrize("x", (-0.5, -1.0))
+    def test_negative_x_matches_signed_quadrature(self, n, x):
+        assert _debye_value(n, x) == pytest.approx(
+            float(_debye_oracle(n, x)), rel=1e-13, abs=0
+        )
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=ValueError,
+        reason="debye() rejects x < 0 ('x must be >= 0'); MATLAB Debye.m accepts it",
+    )
+    def test_negative_element_in_array(self):
+        got = debye(3, np.array([-1.0, 0.0, 1.0]))
+        want = [float(_debye_oracle(3, -1.0)), 1.0, float(_debye_oracle(3, 1.0))]
+        np.testing.assert_allclose(got, want, rtol=1e-13, atol=0)
 
 
 # =============================================================================

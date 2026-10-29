@@ -203,6 +203,49 @@ class TestSQLStorage:
             store.open(temp_db, mode="r")
             assert store.retrieve_scalar("mission/duration") == 3600
 
+    @pytest.mark.xfail(
+        strict=True,
+        raises=KeyError,
+        reason="store_group writes metadata into the '_group:<name>' value column, "
+        "so get_metadata('mission') cannot find it: group metadata is write-only "
+        "(HDF5 is unaffected)",
+    )
+    def test_store_group_metadata_is_readable(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.get_metadata("mission")["start"] == "2025-01-01"
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=AssertionError,
+        reason="the internal '_group:<name>' marker row leaks into list_keys() "
+        "at the root",
+    )
+    def test_root_listing_excludes_group_marker(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+            store.store_scalar("mission/duration", 3600)
+            store.store_scalar("x", 1)
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert sorted(store.list_keys()) == ["mission/duration", "x"]
+
+    def test_group_listing_is_exactly_its_members(self, temp_db):
+        with SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group("mission", metadata={"start": "2025-01-01"})
+            store.store_scalar("mission/duration", 3600)
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.list_keys("mission") == ["mission/duration"]
+
     def test_list_keys(self, temp_db):
         """Test listing keys."""
         with SQLStorage() as store:

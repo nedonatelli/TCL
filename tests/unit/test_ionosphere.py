@@ -69,6 +69,8 @@ def _is_gps_200_klobuchar(lat_deg, lon_deg, el_deg, az_deg, gps_time, alpha, bet
     return t_iono * 299792458.0
 
 
+# pytcl's own default coefficients, not broadcast ICD values: the tests check the
+# algorithm, not any particular satellite message.
 _DEFAULT_ALPHA = [3.82e-8, 1.49e-8, -5.96e-8, -5.96e-8]
 _DEFAULT_BETA = [1.43e5, 0.0, -3.28e5, 1.13e5]
 
@@ -116,30 +118,48 @@ class TestKlobucharCoefficients:
 
 
 class TestKlobucharDelay:
-    """Klobuchar delay against the IS-GPS-200 step-by-step evaluation."""
+    """Klobuchar delay against the IS-GPS-200 step-by-step evaluation.
+
+    No external numeric worked example exists for this model, so the oracle is
+    a transcription of IS-GPS-200 section 20.3.3.5.2.5 (``_is_gps_200_klobuchar``).
+    The phase x = 2 pi (t - 50400) / PER selects the branch: |x| < 1.57 is the
+    cosine (daytime) branch, otherwise the delay is the constant night floor
+    F * 5 ns. Each case below states its x.
+    """
 
     def test_evaluator_pins(self):
-        """Two values of the evaluator computed independently in mpmath at 30 digits."""
-        basic = _is_gps_200_klobuchar(
-            40, -105, 45, 180, 43200, _DEFAULT_ALPHA, _DEFAULT_BETA
-        )
-        peak = _is_gps_200_klobuchar(0, 0, 90, 0, 50400, _DEFAULT_ALPHA, _DEFAULT_BETA)
-        assert basic == pytest.approx(2.02544581304128, rel=1e-13, abs=0)
+        """Evaluator values computed independently in mpmath at 30 digits."""
+        args = (_DEFAULT_ALPHA, _DEFAULT_BETA)
+        night = _is_gps_200_klobuchar(40, -105, 45, 180, 43200, *args)  # x = -1.653
+        peak = _is_gps_200_klobuchar(0, 0, 90, 0, 50400, *args)  # x = 0
+        day = _is_gps_200_klobuchar(40, 0, 45, 180, 46800, *args)  # x = -0.178
+        day2 = _is_gps_200_klobuchar(40, -105, 45, 180, 64800, *args)  # x = -0.551
+        assert night == pytest.approx(2.02544581304128, rel=1e-13, abs=0)
         assert peak == pytest.approx(13.051388706360187, rel=1e-13, abs=0)
+        assert day == pytest.approx(17.083060349781694, rel=1e-13, abs=0)
+        assert day2 == pytest.approx(14.814267584787064, rel=1e-13, abs=0)
 
     @pytest.mark.parametrize(
         ("lat", "lon", "el", "az", "t"),
         [
-            (40, -105, 45, 180, 43200),  # worked example in the docstring
-            (40, -105, 80, 180, 43200),
-            (40, -105, 15, 180, 43200),  # low elevation, large slant factor
-            (40, 0, 45, 180, 50400),  # near the daytime peak
-            (40, 0, 45, 180, 18000),  # early morning
-            (40, 0, 30, 90, 18000),  # night: |x| >= 1.57
-            (-35, 150, 60, 270, 3600),  # southern hemisphere, wraps past midnight
-            (0, 0, 90, 0, 50400),  # zenith, x = 0
-            (80, 0, 45, 0, 43200),  # pierce point clipped at +0.416
-            (-80, 20, 20, 180, 30000),  # pierce point clipped at -0.416
+            # night branch, |x| >= 1.57: delay is F * 5 ns
+            (40, -105, 45, 180, 43200),  # x = -1.653
+            (40, -105, 80, 180, 43200),  # x = -1.681
+            (40, -105, 15, 180, 43200),  # x = -1.595, low elevation, large F
+            (40, 0, 45, 180, 18000),  # x = -1.601
+            (40, 0, 45, 180, 18550),  # x = -1.574, just outside 1.57
+            # cosine branch, |x| < 1.57
+            (40, 0, 45, 180, 18700),  # x = -1.567, just inside 1.57
+            (40, 0, 30, 90, 18000),  # x = -1.540
+            (40, 0, 45, 180, 46800),  # x = -0.178
+            (40, -105, 45, 180, 64800),  # x = -0.551
+            (40, 0, 45, 180, 50400),  # x = 0, daytime peak
+            (0, 0, 90, 0, 50400),  # x = 0, zenith
+            (-35, 150, 60, 270, 3600),  # x = -0.583, southern hemisphere
+            (40, -150, 45, 180, 20000),  # local time wraps below 0 (mod 86400)
+            # pierce point clipped to +/-0.416 semi-circles
+            (80, 0, 45, 0, 43200),  # +0.416, x = -0.506
+            (-80, 20, 20, 180, 30000),  # -0.416, x = -1.249
         ],
     )
     def test_default_coefficients(self, lat, lon, el, az, t):
@@ -148,6 +168,18 @@ class TestKlobucharDelay:
         )
         want = _is_gps_200_klobuchar(lat, lon, el, az, t, _DEFAULT_ALPHA, _DEFAULT_BETA)
         assert float(got) == pytest.approx(want, rel=1e-12, abs=0)
+
+    def test_branch_switch_at_x_1_57(self):
+        """Just outside |x| = 1.57 the delay is the night floor; just inside it is not."""
+        floor = _is_gps_200_klobuchar(40, 0, 45, 180, 18550, [0.0] * 4, _DEFAULT_BETA)
+        outside = float(
+            klobuchar_delay(np.radians(40), 0.0, np.radians(45), np.radians(180), 18550)
+        )
+        inside = float(
+            klobuchar_delay(np.radians(40), 0.0, np.radians(45), np.radians(180), 18700)
+        )
+        assert outside == pytest.approx(floor, rel=1e-13, abs=0)
+        assert inside > outside * 1.1
 
     def test_custom_coefficients(self):
         alpha = [5e-8, 1e-8, -5e-8, 0.0]
