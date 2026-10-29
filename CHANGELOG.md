@@ -126,9 +126,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
   factors the covariance once and vectorises over the batch. It
   deliberately does not delegate to `gating.mahalanobis_distance`: gating
-  returns the squared distance without validating S's shape or
-  positive-definiteness, while this function validates and returns nan on
-  a non-positive-definite S. Docstrings now say
+  returns the squared distance, raises `ValueError` on a mismatched shape and
+  `numpy.linalg.LinAlgError` on a non-positive-definite S, while this
+  function returns the unsquared distance and gives nan with a
+  `RuntimeWarning` on a non-positive-definite S. Docstrings now say
   whether a Mahalanobis result is squared (`gating`) or not (the others),
   and `combinatorics.factorial` and `special_functions.factorial` name
   their contract difference. The MATLAB migration map's `calcNEES` row
@@ -341,10 +342,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an `S`: `mahalanobis_distance` itself, `ellipsoidal_gate`,
   `gate_measurements`, `mahalanobis_batch`, `trackers.mht` (its gating
   call), `assignment_algorithms.data_association` (cost-matrix
-  construction, whose existing singular fallback re-raises), and
-  `jpda.compute_likelihood_matrix`, which already zeroes a track whose `S`
-  fails its own Cholesky test and now also falls back to the per-pair path
-  if only the batch kernel rejects the inverse. Valid symmetric
+  construction, whose existing singular fallback re-raises).
+  `jpda.compute_likelihood_matrix` does not raise: it zeroes a track whose
+  `S` fails its own Cholesky test (non-positive-definite, non-symmetric or
+  non-finite) with a `RuntimeWarning`, falls back to the per-pair path if
+  only the batch kernel rejects the inverse, and zeroes the track the same
+  way if that fallback's `mahalanobis_distance` also raises `LinAlgError`
+  (an `S` that passes Cholesky at condition number near 1e16). Valid symmetric
   positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
   3, 5, 10 and 12 (tested against the shipped module). A NaN covariance
   still propagates NaN. Cost, measured against v2.11.1 on Apple silicon in
@@ -353,7 +357,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and 12; `gate_measurements` on 50 measurements is 15% faster, because the
   check runs once per call rather than once per measurement.
   `mahalanobis_batch` is now a Python wrapper around the unchanged JIT
-  kernel (+0.28 us at 50 x 3). What to do: catch `ValueError` for a shape
+  kernel (+0.28 us at 50 x 3), so a user `@njit` function that calls it now
+  gets a `TypingError`; call `mahalanobis_batch` from Python instead. What
+  to do: catch `ValueError` for a shape
   mismatch and `numpy.linalg.LinAlgError` for a non-positive-definite `S`;
   both previously returned a silent wrong number.
 

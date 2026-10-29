@@ -274,15 +274,29 @@ def compute_likelihood_matrix(
             # S passed the Cholesky check above, so an inverse that fails or
             # that mahalanobis_batch rejects as non-positive-definite is
             # numerical; fall back to the per-pair path.
-            for j in range(n_meas):
-                innovation = measurements[j] - z_pred
-                mahal_dist = mahalanobis_distance(innovation, S)
+            try:
+                for j in range(n_meas):
+                    innovation = measurements[j] - z_pred
+                    mahal_dist = mahalanobis_distance(innovation, S)
 
-                if gate_threshold is None or mahal_dist <= gate_threshold:
-                    gated[i, j] = True
-                    likelihood_matrix[i, j] = compute_measurement_likelihood(
-                        innovation, S, detection_prob
-                    )
+                    if gate_threshold is None or mahal_dist <= gate_threshold:
+                        gated[i, j] = True
+                        likelihood_matrix[i, j] = compute_measurement_likelihood(
+                            innovation, S, detection_prob
+                        )
+            except LinAlgError:
+                gated[i, :] = False
+                likelihood_matrix[i, :] = 0.0
+                warnings.warn(
+                    f"compute_likelihood_matrix: innovation covariance for "
+                    f"track {i} passed the Cholesky test but is too "
+                    "ill-conditioned for the Mahalanobis distance; that "
+                    "track's likelihoods and gating are set to 0.0 "
+                    "(numerical failure, not evidence). Check R and the "
+                    "covariance conditioning.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             continue
 
         det_S = np.linalg.det(S)

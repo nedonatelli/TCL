@@ -491,9 +491,11 @@ def compute_mahalanobis_distance(
     -----
     This function deliberately does not delegate to
     `pytcl.assignment_algorithms.gating.mahalanobis_distance`: their
-    contracts differ. Gating returns the squared distance without validating
-    S's shape or positive-definiteness; this function validates both and
-    returns nan (with a RuntimeWarning) for a non-positive-definite S.
+    contracts differ. Gating returns the squared distance, raises
+    ``ValueError`` on a mismatched shape and ``numpy.linalg.LinAlgError`` on
+    a non-positive-definite S; this function returns the (unsquared)
+    distance and gives nan (with a RuntimeWarning) for a non-positive-definite
+    S.
 
     Examples
     --------
