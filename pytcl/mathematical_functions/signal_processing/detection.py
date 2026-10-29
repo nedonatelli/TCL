@@ -109,9 +109,7 @@ def _pfa_os(alpha: float, n: int, k: int) -> float:
     return p
 
 
-def _solve_alpha(
-    pfa_func: Callable[[float], float], pfa: float, what: str = ""
-) -> float:
+def _solve_alpha(pfa_func: Callable[[float], float], pfa: float, what: str) -> float:
     """Solve pfa_func(alpha) = pfa for alpha (pfa_func monotone decreasing)."""
     hi = 1.0
     while pfa_func(hi) > pfa:
@@ -150,6 +148,15 @@ def threshold_factor(
     -------
     alpha : float
         Threshold multiplier.
+
+    Raises
+    ------
+    ValueError
+        If ``pfa`` is not strictly between 0 and 1, or ``n_ref`` is less than
+        1. For ``'go'``, ``'so'`` and ``'os'``, also if ``pfa`` is so small
+        that no threshold multiplier up to 1e12 reaches it (use a larger
+        ``pfa`` or more reference cells). Any other ``method`` is also
+        rejected with a ``ValueError``.
 
     Examples
     --------
