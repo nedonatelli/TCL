@@ -182,7 +182,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "dynamic_models.process_noise.coordinated_turn": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1 because q_coord_turn_2d/3d were per-axis-independent, not QCoordTurn. v2.12.0 ports QCoordTurn (rank-1 G*G'), bitwise equal to the case 5/7 MATLAB fixtures; kept EXPERIMENTAL on 2026-10-28: q_coord_turn_polar has no oracle (its test is a regression pin; MATLAB QPolarCoordTurn2D is a different model), so the module cannot be called verified
     # Geophysical Models
     "gravity.egm": MaturityLevel.EXPERIMENTAL,
-    "magnetism.wmm": MaturityLevel.MATURE,  # promoted 2026-10-28 (promised in 2.11.0): 100.0% line (166/166), 100.0% branch (26/26), measured from the 9 test files importing it; fixtures pin zero drift across the v2.11.0 Schmidt factoring
+    "magnetism.wmm": MaturityLevel.MATURE,  # promoted 2026-10-28 (promised in 2.11.0): 100.0% line (166/166), 100.0% branch (26/26), measured from the 9 test files importing it (93.4% line, 100% branch from the 7 without the magnetic-cache tests); fixtures pin zero drift across the v2.11.0 Schmidt factoring
     "gravity.tides": MaturityLevel.EXPERIMENTAL,
     # Terrain
     "terrain.dem": MaturityLevel.EXPERIMENTAL,

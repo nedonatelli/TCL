@@ -16,8 +16,9 @@ name: Mutation
 # aborts (clean-test failure, stats failure, no test covers a mutant). A
 # run that tested zero mutants fails the "Require tested mutants" step; the
 # job ran zero mutants from #203 until PR 1 because `|| true` hid exactly
-# that. The report lands in the run's step summary. The very first smoke run already surfaced survivors in
-# ValidationError.__init__, so the signal is real.
+# that. The report lands in the run's step summary. The very first smoke
+# run already surfaced survivors in ValidationError.__init__, so the signal
+# is real.
 #
 # Scope lives HERE as mutant-name patterns, not in [tool.mutmut] --
 # source_paths must stay the whole package or the mutants/ copy is an

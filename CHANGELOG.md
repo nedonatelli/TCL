@@ -45,7 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
-  (promised in 2.11.0): 100.0% line, 100.0% branch, fixtures pin zero drift
+  (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
+  two magnetic-cache test files), fixtures pin zero drift
   across the Schmidt factoring. `mathematical_functions.special_functions.hypergeometric`
   EXPERIMENTAL -> MATURE: 99.4% line (482/485), 98.4% branch (183/186), up
   from 65%. Held at EXPERIMENTAL: `dynamic_models.process_noise.coordinated_turn`
