@@ -109,13 +109,19 @@ def _pfa_os(alpha: float, n: int, k: int) -> float:
     return p
 
 
-def _solve_alpha(pfa_func: Callable[[float], float], pfa: float) -> float:
+def _solve_alpha(
+    pfa_func: Callable[[float], float], pfa: float, what: str = ""
+) -> float:
     """Solve pfa_func(alpha) = pfa for alpha (pfa_func monotone decreasing)."""
     hi = 1.0
     while pfa_func(hi) > pfa:
         hi *= 2.0
         if hi > 1e12:
-            break
+            raise ValueError(
+                f"pfa={pfa:g} is below what the threshold search reaches "
+                f"(alpha up to 1e12) for {what}; use a larger pfa or more "
+                f"reference cells"
+            )
     return float(brentq(lambda a: pfa_func(a) - pfa, 0.0, hi))
 
 
@@ -181,13 +187,19 @@ def threshold_factor(
         # Exact GO/SO-CFAR threshold with n_ref // 2 cells per half window
         n_half = max(1, n_ref // 2)
         pfa_func = _pfa_go if method == "go" else _pfa_so
-        alpha = _solve_alpha(lambda a: pfa_func(a, n_half), pfa)
+        alpha = _solve_alpha(
+            lambda a: pfa_func(a, n_half), pfa, f"method={method!r}, n_ref={n_ref}"
+        )
     elif method == "os":
         if k is None:
             k = int(0.75 * n_ref)  # Default: 75th percentile
         k = max(1, min(int(k), n_ref))
         # Exact OS-CFAR threshold from Rohling (1983)
-        alpha = _solve_alpha(lambda a: _pfa_os(a, n_ref, k), pfa)
+        alpha = _solve_alpha(
+            lambda a: _pfa_os(a, n_ref, k),
+            pfa,
+            f"method={method!r}, n_ref={n_ref}, k={k}",
+        )
     else:
         raise ValueError(f"Unknown method: {method}")
 

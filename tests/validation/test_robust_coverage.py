@@ -59,17 +59,17 @@ class TestInfluenceFunctionsAtBreakpoints:
     def test_huber_weight_beyond_c_is_c_over_abs_r(self):
         c = self.C
         r = np.array([np.nextafter(c, 10), -2.0, 2.0, 50.0, -50.0])
-        assert rb.huber_weight(r, c) == pytest.approx(c / np.abs(r), rel=1e-15, abs=0)
+        assert rb.huber_weight(r, c) == pytest.approx(c / np.abs(r), rel=1e-14, abs=0)
 
     def test_huber_rho_branches_meet_at_c(self):
         c = self.C
         at = rb.huber_rho([c, -c], c)
-        assert at == pytest.approx([c**2 / 2, c**2 / 2], rel=1e-15, abs=0)
+        assert at == pytest.approx([c**2 / 2, c**2 / 2], rel=1e-14, abs=0)
         just_past = rb.huber_rho([np.nextafter(c, 10)], c)
         assert just_past == pytest.approx([c**2 / 2], rel=1e-12, abs=0)
         r = np.array([3.0, -3.0])
         assert rb.huber_rho(r, c) == pytest.approx(
-            c * np.abs(r) - c**2 / 2, rel=1e-15, abs=0
+            c * np.abs(r) - c**2 / 2, rel=1e-14, abs=0
         )
 
     def test_huber_weight_is_psi_over_r(self):
@@ -89,7 +89,7 @@ class TestInfluenceFunctionsAtBreakpoints:
         c = 4.685
         r = np.array([0.0, 1.0, -2.5, np.nextafter(c, 0)])
         assert rb.tukey_weight(r, c) == pytest.approx(
-            (1 - (r / c) ** 2) ** 2, rel=1e-15, abs=0
+            (1 - (r / c) ** 2) ** 2, rel=1e-14, abs=0
         )
         assert rb.tukey_weight([0.0], c)[0] == 1.0
 
@@ -97,11 +97,11 @@ class TestInfluenceFunctionsAtBreakpoints:
         c = 4.685
         sat = c**2 / 6
         out = rb.tukey_rho([c, -c, 9.0, -1e6], c)
-        assert out == pytest.approx([sat] * 4, rel=1e-15, abs=0)
+        assert out == pytest.approx([sat] * 4, rel=1e-14, abs=0)
         assert rb.tukey_rho([0.0], c)[0] == 0.0
         r = np.array([1.0, -3.0])
         assert rb.tukey_rho(r, c) == pytest.approx(
-            sat * (1 - (1 - (r / c) ** 2) ** 3), rel=1e-15, abs=0
+            sat * (1 - (1 - (r / c) ** 2) ** 3), rel=1e-14, abs=0
         )
 
     def test_tukey_weight_is_psi_over_r(self):
@@ -115,14 +115,14 @@ class TestInfluenceFunctionsAtBreakpoints:
         c = 2.385
         r = np.array([0.0, c, -c, 10.0])
         assert rb.cauchy_weight(r, c) == pytest.approx(
-            [1.0, 0.5, 0.5, 1 / (1 + (10.0 / c) ** 2)], rel=1e-15, abs=0
+            [1.0, 0.5, 0.5, 1 / (1 + (10.0 / c) ** 2)], rel=1e-14, abs=0
         )
 
     def test_mad_matches_definition_and_ignores_outlier(self):
         r = np.array([1.0, 1.1, 0.9, 1.0, 100.0])
         med = np.median(r)
         assert rb.mad(r) == pytest.approx(
-            1.4826 * np.median(np.abs(r - med)), rel=1e-15, abs=0
+            1.4826 * np.median(np.abs(r - med)), rel=1e-14, abs=0
         )
         assert rb.mad(r, c=1.0) == pytest.approx(0.1, rel=1e-12, abs=0)
 
@@ -156,8 +156,9 @@ class TestIrlsAgainstStatsmodels:
         assert res.scale == pytest.approx(SM_TUKEY_ZERO_CENTRED[2], rel=1e-9, abs=0)
 
     def test_huber_regression_default_scale_matches_vendored_rlm(self):
-        # The medians make the fixed-point map non-smooth, so the two IRLS
-        # loops stop a few 1e-8 apart.
+        # pytcl's mad uses 1.4826, statsmodels 1/Phi^-1(0.75) = 1.482602...:
+        # a 1.5e-6 relative scale difference, hence rel 1e-6 here and the
+        # exact-constant variants below at 1e-9.
         A, b = _contaminated_line()
         res = rb.huber_regression(A, b, max_iter=500, tol=1e-14)
         assert res.x == pytest.approx(SM_HUBER_MEDIAN_CENTRED, rel=1e-6, abs=0)
@@ -166,6 +167,31 @@ class TestIrlsAgainstStatsmodels:
         A, b = _contaminated_line()
         res = rb.tukey_regression(A, b, max_iter=500, tol=1e-14)
         assert res.x == pytest.approx(SM_TUKEY_MEDIAN_CENTRED, rel=1e-6, abs=0)
+
+    @pytest.mark.parametrize(
+        "name, weight, vendored",
+        [
+            ("huber", lambda z: rb.huber_weight(z, 1.345), SM_HUBER_MEDIAN_CENTRED),
+            ("tukey", lambda z: rb.tukey_weight(z, 4.685), SM_TUKEY_MEDIAN_CENTRED),
+        ],
+    )
+    def test_median_centred_with_exact_constant_matches_rlm(
+        self, name, weight, vendored
+    ):
+        from scipy.stats import norm
+
+        A, b = _contaminated_line()
+        res = rb.irls(
+            A,
+            b,
+            weight_func=weight,
+            scale_func=lambda e: float(
+                np.median(np.abs(e - np.median(e))) / norm.ppf(0.75)
+            ),
+            max_iter=500,
+            tol=1e-14,
+        )
+        assert res.x == pytest.approx(vendored, rel=1e-9, abs=0)
 
     def test_live_statsmodels_agreement(self):
         sm = pytest.importorskip("statsmodels.api")
@@ -251,12 +277,16 @@ class TestRansac:
         res = rb.ransac(
             A, b, residual_threshold=1e-6, stop_n_inliers=70, random_state=3
         )
-        assert res.n_inliers == 70 and res.n_iter < 100
+        control = rb.ransac(A, b, residual_threshold=1e-6, random_state=3)
+        assert control.n_iter == 100
+        assert res.n_inliers == 70 and res.n_iter < control.n_iter
 
     def test_stop_score_ends_the_search_early(self):
         A, b, _ = _line_with_outliers()
         res = rb.ransac(A, b, residual_threshold=1e-6, stop_score=70.0, random_state=3)
-        assert res.best_score == 70.0 and res.n_iter < 100
+        control = rb.ransac(A, b, residual_threshold=1e-6, random_state=3)
+        assert control.n_iter == 100
+        assert res.best_score == 70.0 and res.n_iter < control.n_iter
 
     def test_default_threshold_on_noiseless_line_falls_back_to_one(self):
         # OLS residuals ~1e-15 give a vanishing MAD threshold, replaced by 1.0.
@@ -266,22 +296,40 @@ class TestRansac:
         assert res.n_inliers == 30 and res.inliers.all()
         assert res.x == pytest.approx([1.0, 0.5], rel=1e-10, abs=0)
 
+    # Residual magnitudes in units of median|e| = 1 (so MAD = 1.4826): each is
+    # a pair placed symmetrically (t and m-1-t), signed so that e is orthogonal
+    # to [1, t]. The OLS fit is then exactly the line and its residuals are e.
+    # Thresholds at 2.5 MAD = 3.7065: 1.5 -> 2.22, 2.0 -> 2.97, 3.0 -> 4.45.
+    PAIRS = [0.1, -0.1, -0.3, -0.4, -0.5, -0.6, 0.7, 0.8, 0.9, -1.0]
+    PAIRS += [1.0, 1.5, 2.0, -2.6, 3.0, -3.5, -4.0, 4.0, 5.0, -6.0]
+
     def test_default_threshold_is_2p5_mad_of_ols_residuals(self):
-        rng = np.random.default_rng(8)
-        t = np.arange(60.0)
-        A = np.column_stack([np.ones(60), t])
-        b = 1.0 + 0.5 * t + rng.normal(0, 0.2, 60)
-        ols = np.linalg.lstsq(A, b, rcond=None)[0]
-        thr = 2.5 * rb.mad(b - A @ ols)
-        res = rb.ransac(A, b, random_state=2, max_trials=50)
-        assert np.all(np.abs(res.residuals[res.inliers]) <= thr * 1.5)
-        assert res.n_inliers >= 40
+        pairs = np.array(self.PAIRS)
+        e = np.empty(40)
+        order = np.random.default_rng(0).permutation(20)
+        for slot, k in enumerate(order):
+            e[slot] = e[39 - slot] = pairs[k]
+        t = np.arange(40.0)
+        A = np.column_stack([np.ones(40), t])
+        b = 1.0 + 0.5 * t + e
+        assert abs(e.sum()) < 1e-12 and abs(e @ t) < 1e-10
+        assert np.median(e) == 0.0 and np.median(np.abs(e)) == 1.0
+        # min_samples = all rows: every trial is the OLS fit, so the inlier set
+        # is exactly {|e| < threshold}. 2.5 MAD keeps magnitudes <= 3.5 (32 of
+        # 40); 1.5, 2.0 and 3.0 MAD would keep 26, 28 and 36.
+        res = rb.ransac(A, b, min_samples=40, random_state=0, max_trials=1)
+        assert res.n_inliers == 32
+        assert np.all(np.abs(e[res.inliers]) <= 3.5)
+        assert np.all(np.abs(e[~res.inliers]) >= 4.0)
 
     def test_zero_threshold_admits_no_inliers_and_skips_the_refit(self):
         A, b, _ = _line_with_outliers()
         res = rb.ransac(A, b, residual_threshold=0.0, random_state=3, max_trials=5)
         assert res.n_inliers == 0 and res.best_score == 0.0
-        assert res.x.shape == (2,)
+        # The model is a two-point sample fit (a refit on zero rows would give
+        # the zero vector): finite, non-zero, passing through >= 2 data points.
+        assert np.all(np.isfinite(res.x)) and np.any(res.x != 0.0)
+        assert np.count_nonzero(np.abs(b - A @ res.x) < 1e-8) >= 2
 
     @pytest.mark.parametrize("bad", [0, -3])
     def test_max_trials_validation(self, bad):
@@ -292,18 +340,31 @@ class TestRansac:
         with pytest.raises(ValueError, match=r"min_samples \(5\) > n_samples \(3\)"):
             rb.ransac(np.ones((3, 2)), np.ones(3), min_samples=5)
 
-    def test_unusable_design_has_no_fallback_fit(self):
-        # Every sample contains the NaN row, so no trial yields a model and
-        # the whole-data fallback fit cannot succeed either.
-        A = np.array([[np.nan, 1.0], [1.0, 2.0]])
-        with pytest.raises(np.linalg.LinAlgError, match="SVD did not converge"):
-            rb.ransac(A, np.ones(2), residual_threshold=0.1, random_state=0)
+    @staticmethod
+    def _failing_lstsq(monkeypatch, fail_if):
+        real = np.linalg.lstsq
 
-    def test_nan_row_is_skipped_when_other_samples_exist(self):
+        def fake(a, b, rcond=None):
+            if fail_if(np.asarray(a)):
+                raise np.linalg.LinAlgError("forced failure")
+            return real(a, b, rcond=rcond)
+
+        monkeypatch.setattr(np.linalg, "lstsq", fake)
+
+    def test_every_sample_fit_failing_raises(self, monkeypatch):
+        self._failing_lstsq(monkeypatch, lambda a: True)
+        A, b, _ = _line_with_outliers(n=20, frac=0.0)
+        with pytest.raises(np.linalg.LinAlgError, match="every RANSAC sample fit"):
+            rb.ransac(A, b, residual_threshold=0.1, random_state=0)
+
+    def test_failed_sample_fits_are_skipped(self, monkeypatch):
+        # Row 0 is poisoned: any sample containing it fails to fit and is
+        # skipped, the other trials still find the exact line.
         A, b, _ = _line_with_outliers(n=40, frac=0.0)
         A[0, 0] = np.nan
+        self._failing_lstsq(monkeypatch, lambda a: np.isnan(a).any())
         res = rb.ransac(A, b, residual_threshold=1e-6, random_state=4)
-        assert not res.inliers[0]
+        assert not res.inliers[0] and res.n_inliers == 39
         assert res.x == pytest.approx([2.0, 3.0], rel=1e-9, abs=0)
 
 

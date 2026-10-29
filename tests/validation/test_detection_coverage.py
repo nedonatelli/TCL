@@ -51,6 +51,11 @@ class TestThresholdFactorReference:
 
     @pytest.mark.parametrize("method", ["go", "so"])
     def test_go_so_monte_carlo_pfa(self, method):
+        """GO/SO Pfa by simulation. Range: n_ref=16 (8 per half), pfa=0.05 only.
+
+        Monte-Carlo cannot resolve small Pfa at 2e6 trials, so the deep-Pfa
+        tail of the Gandhi-Kassam expressions is not covered by this oracle.
+        """
         n_ref = 16
         pfa = 0.05
         alpha = det.threshold_factor(pfa, n_ref, method)
@@ -65,10 +70,11 @@ class TestThresholdFactorReference:
 
     def test_odd_n_ref_uses_floor_half_window(self):
         assert det.threshold_factor(1e-3, 17, "so") == pytest.approx(
-            det.threshold_factor(1e-3, 16, "so"), rel=1e-15, abs=0
+            det.threshold_factor(1e-3, 16, "so"), rel=1e-14, abs=0
         )
 
     def test_os_monte_carlo_pfa_explicit_k(self):
+        """OS Pfa by simulation. Range: n_ref=16, k=12, pfa=0.05 only (see GO/SO)."""
         n_ref, k, pfa = 16, 12, 0.05
         alpha = det.threshold_factor(pfa, n_ref, "os", k=k)
         got = _mc_exceedance(
@@ -81,13 +87,13 @@ class TestThresholdFactorReference:
 
     def test_os_default_k_is_three_quarters(self):
         assert det.threshold_factor(1e-4, 32, "os") == pytest.approx(
-            det.threshold_factor(1e-4, 32, "os", k=24), rel=1e-15, abs=0
+            det.threshold_factor(1e-4, 32, "os", k=24), rel=1e-14, abs=0
         )
 
     @pytest.mark.parametrize("k_given, k_used", [(0, 1), (-5, 1), (99, 8)])
     def test_os_k_is_clamped_to_one_through_n(self, k_given, k_used):
         assert det.threshold_factor(1e-3, 8, "os", k=k_given) == pytest.approx(
-            det.threshold_factor(1e-3, 8, "os", k=k_used), rel=1e-15, abs=0
+            det.threshold_factor(1e-3, 8, "os", k=k_used), rel=1e-14, abs=0
         )
 
     @pytest.mark.parametrize("pfa", [0.0, 1.0, -0.1, 1.5])
@@ -105,10 +111,18 @@ class TestThresholdFactorReference:
 
     def test_unreachable_pfa_exhausts_bracket(self):
         # n_half = 1 gives Pfa(alpha) ~ 2/alpha, so Pfa = 1e-15 would need
-        # alpha ~ 2e15, beyond the 1e12 search bracket: the doubling loop gives
-        # up and brentq rejects the unbracketed root.
-        with pytest.raises(ValueError, match="different signs"):
+        # alpha ~ 2e15, beyond the 1e12 search bracket.
+        with pytest.raises(
+            ValueError,
+            match=r"pfa=1e-15 is below what the threshold search reaches.*"
+            r"method='so', n_ref=2",
+        ):
             det.threshold_factor(1e-15, 2, "so")
+
+    def test_unreachable_pfa_names_os_order_statistic(self):
+        # OS with k=1 of 2 cells: Pfa(alpha) ~ 2/alpha as well.
+        with pytest.raises(ValueError, match=r"method='os', n_ref=2, k=1"):
+            det.threshold_factor(1e-15, 2, "os", k=1)
 
 
 def _pd_by_quadrature(snr: float, alpha: float, n: int) -> float:

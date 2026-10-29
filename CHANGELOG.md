@@ -292,6 +292,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`threshold_factor` raises its own `ValueError` when the requested Pfa is
+  unreachable for GO, SO and OS.** When `pfa` was below what the threshold
+  search reaches (alpha up to 1e12; e.g. `threshold_factor(1e-15, 2, "so")`),
+  the search gave up silently and scipy's `brentq` raised "f(a) and f(b) must
+  have different signs", which names neither the pfa nor the method. The new
+  message names `pfa`, the method and `n_ref`. scipy's error was already a
+  `ValueError`, so only the message changes. What to do: catch ValueError
+  (previously scipy's bracket error).
+
 - **`mahalanobis_distance` and the gating functions built on it reject a
   mismatched or non-positive-definite covariance instead of returning a
   number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned a

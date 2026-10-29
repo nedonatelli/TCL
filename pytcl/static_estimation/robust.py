@@ -753,11 +753,8 @@ def ransac(
         b_inliers = b[best_inliers]
         best_x, _, _, _ = np.linalg.lstsq(A_inliers, b_inliers, rcond=None)
 
-    # Handle case where no good model found
     if best_x is None:
-        best_x, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
-        best_inliers = np.ones(m, dtype=bool)
-        best_n_inliers = m
+        raise np.linalg.LinAlgError("every RANSAC sample fit failed")
 
     # Final residuals
     residuals = b - A @ best_x

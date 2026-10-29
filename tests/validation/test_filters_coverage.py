@@ -138,10 +138,10 @@ class TestChebyshevAndElliptic:
         c = flt.bessel_design(n, 100.0, FS, output=output)
         w = np.linspace(1e-4, 2 * np.pi * 100.0 / FS, 4001)
         _, h = signal.freqz(c.b, c.a, worN=w)
-        # scipy normalises the 'phase' Bessel with a fitted scale factor, so the
-        # midpoint is met to about 1%, not to rounding.
+        # scipy normalises the 'phase' Bessel with a fitted scale factor:
+        # 1%, observed 1.03% at n=4, not rounding.
         assert np.unwrap(np.angle(h))[-1] == pytest.approx(
-            -n * np.pi / 4, rel=0.02, abs=0
+            -n * np.pi / 4, rel=0.015, abs=0
         )
 
     @pytest.mark.parametrize("output", ["sos", "ba"])
@@ -152,18 +152,35 @@ class TestChebyshevAndElliptic:
         )
 
     @pytest.mark.parametrize(
-        "design",
+        "design, edge_db",
         [
-            lambda: flt.cheby1_design(3, 1.0, (100.0, 200.0), FS, btype="band"),
-            lambda: flt.cheby2_design(3, 30.0, (100.0, 200.0), FS, btype="band"),
-            lambda: flt.ellip_design(3, 1.0, 30.0, (100.0, 200.0), FS, btype="band"),
-            lambda: flt.bessel_design(3, (100.0, 200.0), FS, btype="band"),
+            # cheby1 / ellip: the band edges are where the gain leaves the
+            # ripple band; cheby2: the edges are the stopband edges; bessel
+            # with norm="mag": the -3 dB points.
+            (lambda: flt.cheby1_design(3, 1.0, (100.0, 200.0), FS, btype="band"), -1.0),
+            (
+                lambda: flt.cheby2_design(3, 30.0, (100.0, 200.0), FS, btype="band"),
+                -30.0,
+            ),
+            (
+                lambda: flt.ellip_design(
+                    3, 1.0, 30.0, (100.0, 200.0), FS, btype="band"
+                ),
+                -1.0,
+            ),
+            (
+                lambda: flt.bessel_design(
+                    3, (100.0, 200.0), FS, btype="band", norm="mag"
+                ),
+                10 * np.log10(0.5),
+            ),
         ],
     )
-    def test_band_designs_pass_the_centre_and_reject_dc(self, design):
+    def test_band_designs_hit_their_edge_gain_at_both_edges(self, design, edge_db):
         c = design()
-        assert abs(_gain_db(c, 140.0)[0]) < 3.0
-        assert _gain_db(c, 1.0)[0] < -20.0
+        assert _gain_db(c, [100.0, 200.0]) == pytest.approx(
+            [edge_db, edge_db], rel=1e-8, abs=0
+        )
 
 
 class TestFirDesign:
@@ -209,6 +226,9 @@ class TestFirDesign:
     def test_remez_default_weight(self):
         h = flt.fir_design_remez(41, [0, 100, 150, 500], [1, 0], fs=FS)
         assert len(h) == 41
+        assert h == pytest.approx(h[::-1], rel=1e-12, abs=0)
+        assert abs(_gain_db(h, 50.0)[0]) < 1.5
+        assert _gain_db(h, 300.0)[0] < -25.0
 
 
 def _sine(n=1001, f=5.0):
@@ -383,8 +403,9 @@ class TestSosZpk:
         p = 0.7 * np.exp(1j * np.array([0.9, -0.9]))
         sos = flt.zpk_to_sos(z, p, 0.25)
         z2, p2, k2 = flt.sos_to_zpk(sos)
-        assert np.sort_complex(p2) == pytest.approx(
-            np.sort_complex(p), rel=1e-12, abs=0
-        )
-        assert z2 == pytest.approx(z, rel=1e-6, abs=0)
+        assert len(p2) == len(p)
+        for root in p:
+            assert np.min(np.abs(p2 - root)) < 1e-12
+        # a double zero at -1 splits to -1 +- O(sqrt(eps))
+        assert np.max(np.abs(z2 - z)) < 1e-6
         assert k2 == pytest.approx(0.25, rel=1e-12, abs=0)
