@@ -13,6 +13,7 @@ algorithm excludes.
 
 import numpy as np
 import pytest
+from scipy.spatial.transform import Rotation
 
 from pytcl.static_estimation import (
     cramer_rao_bound,
@@ -113,6 +114,71 @@ class TestRangeOnlyCoplanarRaises:
     def test_method_zero_raises(self):
         with pytest.raises(np.linalg.LinAlgError, match="sensors are coplanar"):
             range_only_static_loc_est_np(R_BI, TX, RX, 0)
+
+    @staticmethod
+    def _ecef_scene(lift):
+        # Fixed rotation and a 6.27e6 m offset: rounding the rotated
+        # coordinates leaves exactly coplanar sensors with a smallest singular
+        # value ~1e-13 of the largest, which matrix_rank's default S-relative
+        # tolerance (5 eps s_max) accepts as rank 3.
+        q = Rotation.from_rotvec([0.3, -0.5, 0.8]).as_matrix()
+        off = np.array([3.2e6, -4.1e6, 3.5e6])
+        tx = TX.copy()
+        tx[2, 1] = lift
+        target = np.array([4e3, -2e3, 3e3])
+        rx, tx, target = q @ RX + off, q @ tx + off[:, None], q @ target + off
+        r = np.linalg.norm(target[:, None] - tx, axis=0) + np.linalg.norm(target - rx)
+        return r, tx, rx, target
+
+    def test_coplanar_sensors_at_ecef_scale_raise(self):
+        r, tx, rx, _ = self._ecef_scene(0.0)
+        with pytest.raises(np.linalg.LinAlgError, match="sensors are coplanar"):
+            range_only_static_loc_est_np(r, tx, rx, 1)
+
+    def test_sensor_lifted_one_metre_at_ecef_scale_is_accepted(self):
+        # Measured error 5.0e-4 m here (2.8e-3 m for the same layout at the
+        # origin); the estimator amplifies rounding by the near-coplanarity.
+        r, tx, rx, target = self._ecef_scene(1.0)
+        x_est = range_only_static_loc_est_np(r, tx, rx, 1).x_est
+        assert np.linalg.norm(x_est - target) < 5e-3
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_non_coplanar_outputs_keep_v2111_bits(self, seed):
+        old = shipped_module("pytcl/static_estimation/localization.py")
+        rng = np.random.default_rng(seed)
+        tx = rng.uniform(-1e4, 1e4, (3, 5))
+        rx = rng.uniform(-1e3, 1e3, 3)
+        target = rng.uniform(-1e4, 1e4, 3)
+        r = np.linalg.norm(target[:, None] - tx, axis=0) + np.linalg.norm(target - rx)
+        r = r + rng.normal(0.0, 3.0, 5)
+        r_cov = np.diag(rng.uniform(1.0, 25.0, 5))
+        cases = [(r, tx, 0, None), (r, tx, 1, None), (r, tx, 1, r_cov)]
+        cases.append((r[:3], tx[:, :3], 1, r_cov[:3, :3]))
+        for r_k, tx_k, method, cov in cases:
+            new = range_only_static_loc_est_np(r_k, tx_k, rx, method, cov)
+            ref = old.range_only_static_loc_est_np(r_k, tx_k, rx, method, cov)
+            for a, b in zip(new, ref, strict=True):
+                if b is None:
+                    assert a is None
+                else:
+                    np.testing.assert_array_equal(a, b)
+
+    def test_docstring_scene_keeps_v2111_bits(self):
+        old = shipped_module("pytcl/static_estimation/localization.py")
+        t = np.array([4e3, -2e3, 3e3])
+        rx = np.array([100.0, 200.0, -50.0])
+        tx = np.array(
+            [
+                [0.0, 8e3, -6e3, 2e3, -3e3],
+                [0.0, 1e3, 5e3, -7e3, 2e3],
+                [0.0, -2e3, 1e3, 4e3, 9e3],
+            ]
+        )
+        r = np.linalg.norm(t[:, None] - tx, axis=0) + np.linalg.norm(t - rx)
+        new = range_only_static_loc_est_np(r, tx, rx, 1, 4.0 * np.eye(5))
+        ref = old.range_only_static_loc_est_np(r, tx, rx, 1, 4.0 * np.eye(5))
+        for a, b in zip(new, ref, strict=True):
+            np.testing.assert_array_equal(a, b)
 
     def test_v2111_returned_a_biased_estimate_without_r_cov(self):
         # Why the geometry is rejected: the pseudo-inverse confines the

@@ -59,7 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   number above about `1 / (n * eps)`), where `inv` already returned
   noise; identified matrices still get `inv(F)` bit for bit.
   `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
-  sensors with or without `r_cov`, because no point estimate exists there
+  sensors with or without `r_cov`, judged by a coordinate-scaled
+  tolerance (smallest singular value of the sensor offsets at or below
+  `8 eps C sqrt(3 num_meas)`, `C` the largest absolute input coordinate,
+  4x the rounding exactly coplanar offsets can carry), so exactly
+  coplanar sensors are caught at ECEF scale too, while nearly coplanar
+  ones above it are accepted as before. No point estimate exists there
   inside MATLAB's domain: the pseudo-inverse confines the estimate to the
   plane and biases the in-plane coordinates too (422 m in y for a target
   3 km above a five-sensor ground array). v2.11.1 raised only with

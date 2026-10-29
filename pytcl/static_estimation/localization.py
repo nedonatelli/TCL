@@ -28,6 +28,8 @@ from pytcl.coordinate_systems.rotations.rotations import rot_axis_to_vec
 from pytcl.core.constants import SPEED_OF_LIGHT
 from pytcl.mathematical_functions.polynomials import poly_roots_multi_dim
 
+_EPS = float(np.finfo(np.float64).eps)
+
 
 def _create_a_and_w(
     ref_rx_loc: NDArray[np.floating],
@@ -205,9 +207,15 @@ def range_only_static_loc_est_np(
     Raises
     ------
     numpy.linalg.LinAlgError
-        If the sensors are coplanar: the sensor offsets from ``z_loc2``
-        have rank below 3 by ``numpy.linalg.matrix_rank``'s default
-        tolerance. MATLAB's algorithm excludes this geometry.
+        If the sensors are coplanar: the smallest singular value of the
+        sensor offsets from ``z_loc2`` is at or below ``8 * eps * C *
+        sqrt(3 * num_meas)``, ``C`` the largest absolute input coordinate.
+        That is 4x the rounding the offsets of exactly coplanar sensors can
+        carry, so exactly coplanar sensors are caught at any coordinate
+        scale, ECEF included. Nearly coplanar sensors above it are accepted
+        and degrade as described below (exact ranges, one transmitter of a
+        10 km array lifted 1e-6 m: 3 km error; lifted 1 m: 3 mm). MATLAB's
+        algorithm excludes coplanar geometry.
     ValueError
         If fewer than three measurements are given, ``r_cov`` is given
         with method 0, method 0 is used with three measurements, or
@@ -292,7 +300,12 @@ def range_only_static_loc_est_np(
     z_tx = z_loc1 - z_loc2[:, np.newaxis]
 
     S = z_tx.T
-    rank = np.linalg.matrix_rank(S)
+    # Each entry of S carries up to 2 eps C of rounding (C the largest input
+    # coordinate), so exactly coplanar sensors give a smallest singular value
+    # up to 2 eps C sqrt(3 num_meas); the tolerance is 4x that bound.
+    coord_scale = max(np.max(np.abs(z_loc1)), np.max(np.abs(z_loc2)))
+    rank_tol = 8.0 * _EPS * coord_scale * np.sqrt(3 * meas_dim)
+    rank = np.linalg.matrix_rank(S, tol=rank_tol)
     if rank < 3:
         raise np.linalg.LinAlgError(
             f"The sensors are coplanar (sensor offsets have rank {rank} < 3); "

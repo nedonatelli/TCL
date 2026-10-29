@@ -45,7 +45,7 @@ We follow these conventions:
   with `inf` variance on the unidentified parameters, NaN on their cross
   terms, the identified block intact, and a `RuntimeWarning`; an iterative
   estimator also reports `converged=False` (`mle_newton_raphson`,
-  `mle_scoring`, `cramer_rao_bound`). Never return a finite pseudo-inverse.
+  `mle_scoring`). Never return a finite pseudo-inverse.
   Raise only when no point estimate exists: `total_least_squares` for an
   infeasible rank, `range_only_static_loc_est_np` for coplanar sensors (a
   geometry MATLAB's algorithm excludes). Zero information is infinite
