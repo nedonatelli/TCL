@@ -316,6 +316,18 @@ def cramer_rao_bound(
     -------
     result : CRBResult
         Named tuple with CRB matrix, variances, and efficiency info.
+        For a singular ``fisher_info`` the bound is ``inf`` on every
+        parameter an unidentified direction touches, NaN on their cross
+        terms, and the inverse on the identified subspace elsewhere (the
+        unidentified directions are eigenvalues of ``D^-1/2 F D^-1/2``,
+        ``D = abs(diag(F))``, at or below ``n * eps`` times the largest).
+
+    Warns
+    -----
+    RuntimeWarning
+        If ``fisher_info`` is singular. Versions up to 2.11.1 returned
+        ``pinv(fisher_info)``, a finite bound on parameters with no
+        information.
 
     Examples
     --------
@@ -334,12 +346,14 @@ def cramer_rao_bound(
     """
     F = np.asarray(fisher_info, dtype=np.float64)
 
-    # CRB is inverse of Fisher information
-    try:
-        crb = np.linalg.inv(F)
-    except np.linalg.LinAlgError:
-        # Use pseudoinverse for singular Fisher info
-        crb = np.linalg.pinv(F)
+    crb, unidentified = _covariance_from_information(F, F.shape[0] * _EPS)
+    if np.any(unidentified):
+        warnings.warn(
+            "cramer_rao_bound: the Fisher information is singular; the bound "
+            f"is infinite on parameters {np.flatnonzero(unidentified).tolist()}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     variances = np.diag(crb)
     std_bounds = np.sqrt(np.maximum(variances, 0))
@@ -758,7 +772,19 @@ def mle_scoring(
     Returns
     -------
     result : MLResult
-        MLE result.
+        MLE result. ``covariance`` is ``inv(fisher_info(theta))`` when that
+        is nonsingular; otherwise it is the inverse on the identified
+        subspace, with ``inf`` variance and NaN cross-covariance on every
+        parameter an unidentified direction touches (an eigenvalue of
+        ``D^-1/2 F D^-1/2``, ``D = abs(diag(F))``, at or below ``n * eps``
+        times the largest).
+
+    Warns
+    -----
+    RuntimeWarning
+        If the Fisher information at the solution is singular. Versions up
+        to 2.11.1 returned ``pinv(F)``, a finite covariance on parameters
+        with no information.
 
     Notes
     -----
@@ -800,12 +826,18 @@ def mle_scoring(
 
         theta = theta_new
 
-    # Final Fisher information and covariance
     F = fisher_info(theta)
-    try:
-        cov = np.linalg.inv(F)
-    except np.linalg.LinAlgError:
-        cov = np.linalg.pinv(F)
+    cov, unidentified = _covariance_from_information(
+        np.asarray(F, dtype=np.float64), len(theta) * _EPS
+    )
+    if np.any(unidentified):
+        warnings.warn(
+            "mle_scoring: the Fisher information is singular at the "
+            "solution; the covariance is infinite on parameters "
+            f"{np.flatnonzero(unidentified).tolist()}.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     return MLResult(
         theta=theta,

@@ -19,6 +19,7 @@ References
    Magazine, vol. 29, no. 8, Part II, pp. 4-53, Aug. 2014.
 """
 
+import warnings
 from typing import NamedTuple, Optional, Sequence, Union
 
 import numpy as np
@@ -27,6 +28,7 @@ from numpy.typing import ArrayLike, NDArray
 from pytcl.coordinate_systems.rotations.rotations import rot_axis_to_vec
 from pytcl.core.constants import SPEED_OF_LIGHT
 from pytcl.mathematical_functions.polynomials import poly_roots_multi_dim
+from pytcl.static_estimation.maximum_likelihood import _covariance_from_information
 
 
 def _create_a_and_w(
@@ -173,9 +175,10 @@ def range_only_static_loc_est_np(
     """
     Target location in 3D from bistatic range-only measurements.
 
-    One receiver and multiple transmitters (or vice versa); the sensors
-    cannot all be coplanar. With noisy measurements, results degrade as
-    the geometry approaches coplanarity.
+    One receiver and multiple transmitters (or vice versa). With noisy
+    measurements, results degrade as the geometry approaches coplanarity;
+    with exactly coplanar sensors the estimate lies in their plane and the
+    component normal to it is unidentified.
 
     Parameters
     ----------
@@ -200,7 +203,19 @@ def range_only_static_loc_est_np(
     -------
     result : RangeOnlyLocEst
         Location estimate and, when ``r_cov`` was supplied, the two
-        covariance estimates.
+        covariance estimates. Where the geometry leaves a direction
+        unidentified, both covariances are ``inf`` on every Cartesian
+        component that direction touches and NaN on their cross terms;
+        the identified block is the inverse on the identified subspace.
+
+    Warns
+    -----
+    RuntimeWarning
+        If ``r_cov`` was supplied and a direction is unidentified: a
+        singular value of ``SStar Delta`` (or, on the clipped-root branch,
+        of the sensor geometry ``S``) at or below ``3 * eps`` times the
+        largest, or an eigenvalue of the diagonally scaled ``J' R^-1 J`` at
+        or below ``3 * eps`` times the largest.
 
     Examples
     --------
@@ -249,16 +264,18 @@ def range_only_static_loc_est_np(
       draw at ``R = 4 I``).
     - ``PCRLB`` inverts ``dxdr R^-1 dxdr'``, which uses the estimator
       Jacobian where the measurement Jacobian belongs. The port returns
-      ``pinv(J' R^-1 J)`` with ``J`` the analytic Jacobian of the
-      bistatic ranges at the returned solution. Against the MATLAB
+      ``inv(J' R^-1 J)`` with ``J`` the analytic Jacobian of the
+      bistatic ranges at the returned solution (the inverse on its identified
+      subspace when it is singular, as above). Against the MATLAB
       fixture, MATLAB's diagonal is 17.1x, 19.6x and 1.1x the bound
       (``[36.8, 37.5, 11.2]`` against ``[2.15, 1.91, 10.1]``). The
       original's minimal (three-measurement) ``PCRLB`` is wrong in the
       same way, though its ``PTaylor`` is right.
 
-    With exactly coplanar sensors the Taylor linearization is singular
-    and ``numpy.linalg.LinAlgError`` is raised, where the original
-    returned a meaningless covariance.
+    With exactly coplanar sensors the original returned a meaningless
+    covariance and v2.11.1 raised ``numpy.linalg.LinAlgError``; the port
+    now returns the estimate with ``inf`` variance normal to the sensors'
+    plane and a ``RuntimeWarning``.
     """
     r_bi = np.asarray(r_bi, dtype=np.float64).ravel()
     z_loc1 = np.asarray(z_loc1, dtype=np.float64)
@@ -338,10 +355,16 @@ def range_only_static_loc_est_np(
 
         r_cov_inv = np.linalg.pinv(r_cov_arr)
         gamma = np.diag(r_bi)
+        rel_tol = 3 * np.finfo(np.float64).eps
+        unidentified = np.zeros(3, dtype=bool)
         solutions = [(x_est, rt1)] if num_sol == 1 else [(x_est1, rt1), (x_est2, rt2)]
         for k, (x_k, rt_k) in enumerate(solutions):
             norm_x = np.linalg.norm(x_k)
             if discriminant < 0.0:
+                # The clipped-root derivative does not involve s_star @ delta;
+                # its unidentified directions are those of the geometry S.
+                _, sv, vt = np.linalg.svd(S)
+                flat = sv <= rel_tol * sv[0]
                 # Clipped root: Rt = -(a.b)/(b.b - 1) no longer equals abs(x),
                 # so the abs(x) constraint below does not hold; differentiate
                 # Rt through a and b instead.
@@ -356,15 +379,39 @@ def range_only_static_loc_est_np(
                 # SStar Delta dx = SStar (Rt I - Gamma) dr. The original's
                 # lsqminnorm(Delta, ...) is a different left inverse whenever
                 # num_meas > 3 and understates the spread several-fold.
-                delta = S - np.outer(r_bi, x_k) / norm_x
-                dxdr = np.linalg.solve(
-                    s_star @ delta, s_star @ (np.eye(meas_dim) * rt_k - gamma)
-                )
-            p_taylor[:, :, k] = dxdr @ r_cov_arr @ dxdr.T
+                # Where s_star @ delta is singular (coplanar sensors), solve on
+                # its identified subspace and mark the rest below.
+                m = s_star @ (S - np.outer(r_bi, x_k) / norm_x)
+                rhs = s_star @ (np.eye(meas_dim) * rt_k - gamma)
+                u, sv, vt = np.linalg.svd(m)
+                flat = sv <= rel_tol * sv[0]
+                if np.any(flat):
+                    dxdr = vt[~flat].T @ ((u[:, ~flat].T @ rhs) / sv[~flat, None])
+                else:
+                    dxdr = np.linalg.solve(m, rhs)
+            p_k = dxdr @ r_cov_arr @ dxdr.T
+            touched = np.sum(vt[flat] ** 2, axis=0) > 1e-12
+            p_k[touched, :] = np.nan
+            p_k[:, touched] = np.nan
+            p_k[touched, touched] = np.inf
+            p_taylor[:, :, k] = p_k
 
             to_tx = x_k[:, np.newaxis] - z_tx
             jac = x_k / norm_x + (to_tx / np.linalg.norm(to_tx, axis=0)).T
-            p_crlb[:, :, k] = np.linalg.pinv(jac.T @ r_cov_inv @ jac)
+            p_crlb[:, :, k], crlb_touched = _covariance_from_information(
+                jac.T @ r_cov_inv @ jac, rel_tol
+            )
+            unidentified |= touched | crlb_touched
+        if np.any(unidentified):
+            warnings.warn(
+                "range_only_static_loc_est_np: the sensor geometry leaves "
+                "Cartesian components "
+                f"{np.flatnonzero(unidentified).tolist()} unidentified "
+                "(e.g. coplanar sensors); p_taylor and p_crlb are infinite "
+                "there.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     # Adjust for the receiver not being at the origin.
     if x_est.ndim == 1:

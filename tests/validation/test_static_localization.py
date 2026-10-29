@@ -297,10 +297,13 @@ class TestRangeOnlyStaticLocEstNP:
             np.diag(np.cov(draws.T)), np.diag(p_taylor), rtol=0.12
         )
 
-    def test_exactly_coplanar_sensors_with_r_cov_raise(self):
-        # Receiver and transmitters all on the ground plane z = 0: the
-        # Taylor linearization is singular, where v2.11.0 returned a
-        # covariance with no error.
+    def test_exactly_coplanar_sensors_with_r_cov_warn(self):
+        # Receiver and transmitters all on the ground plane z = 0, target
+        # above it: z is unidentified, so both covariances are infinite
+        # there, and the estimate lies in the sensors' plane. v2.11.0
+        # returned a covariance with no error; v2.11.1 raised LinAlgError.
+        # The identified block is checked against a planar oracle in
+        # test_unidentifiable_covariance.py.
         z_rx = np.zeros(3)
         z_tx = np.array(
             [
@@ -310,8 +313,14 @@ class TestRangeOnlyStaticLocEstNP:
             ]
         )
         r = np.linalg.norm(T_LOC[:, None] - z_tx, axis=0) + np.linalg.norm(T_LOC)
-        with pytest.raises(np.linalg.LinAlgError):
-            range_only_static_loc_est_np(r, z_tx, z_rx, 1, 4.0 * np.eye(5))
+        with pytest.warns(RuntimeWarning, match=r"components \[2\] unidentified"):
+            res = range_only_static_loc_est_np(r, z_tx, z_rx, 1, 4.0 * np.eye(5))
+        assert res.x_est[2] == 0.0
+        for p in (res.p_taylor[:, :, 0], res.p_crlb[:, :, 0]):
+            assert np.isposinf(p[2, 2])
+            assert np.all(np.isnan(p[2, :2]))
+            assert np.all(np.isnan(p[:2, 2]))
+            assert np.all(np.isfinite(p[:2, :2]))
 
     def test_r_cov_with_method_zero_raises(self):
         with pytest.raises(ValueError, match="only for method 1"):

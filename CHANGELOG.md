@@ -44,6 +44,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **One convention for an unidentifiable covariance.** When a point
+  estimate exists but the information matrix is singular in some
+  directions, the estimate is returned with `inf` variance on the
+  unidentified parameters, NaN on their cross terms, the identified block
+  intact, and a `RuntimeWarning` (the rule `mle_newton_raphson` has
+  followed since 2.11.1, now in CONTRIBUTING.md). `mle_scoring` and
+  `cramer_rao_bound` returned `pinv(F)` for a singular Fisher matrix, a
+  finite value on parameters with no information (0.25 on every entry for
+  `ll = -0.5 (t0 + t1 - 1)^2`). `range_only_static_loc_est_np` with
+  exactly coplanar sensors and `r_cov` raised `LinAlgError`; it now
+  returns the estimate with `p_taylor` and `p_crlb` `inf` normal to the
+  sensors' plane, and its in-plane block agrees with a 2-D solve of the
+  same geometry to 5e-15 relative. On the clipped-root branch it returned
+  0 there. `p_crlb` of an identified geometry is `inv` rather than `pinv`
+  of the same matrix. `total_least_squares` still raises for an
+  infeasible rank, since no estimate exists. What to do: check
+  np.isinf(np.diag(cov)) (or the RuntimeWarning) instead of catching
+  LinAlgError from range_only_static_loc_est_np; mle_scoring and
+  cramer_rao_bound no longer return a finite pseudo-inverse for an
+  unidentified model.
 - **One haversine, one meridional radius, one Earth radius; no value
   changes beyond the great-circle fix under Fixed and the 1-ulp
   `osculating_sphere` change below.** The

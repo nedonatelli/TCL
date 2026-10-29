@@ -40,6 +40,17 @@ We follow these conventions:
 - **Type hints:** Required for all public functions
 - **Docstrings:** NumPy style
 - **Printed output must be ASCII** — see below
+- **Unidentifiable covariance:** when a point estimate exists but the
+  information matrix is singular in some directions, return the estimate
+  with `inf` variance on the unidentified parameters, NaN on their cross
+  terms, the identified block intact, and a `RuntimeWarning`. Never raise
+  and never return a finite pseudo-inverse; raise only when no point
+  estimate exists (`total_least_squares` for an infeasible rank). Zero
+  information is infinite variance, so `inf` is the true value, and it
+  propagates as non-finite into any gate or fusion step where a `pinv`
+  value would be silently wrong. Use
+  `static_estimation.maximum_likelihood._covariance_from_information`
+  rather than a new implementation.
 
 ### Text encoding
 
