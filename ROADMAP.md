@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
 **Current Version:** v2.11.1, released 22 October 2026
-**Test Suite:** 9,500+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Test Suite:** 10,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
 third by function count — see `docs/matlab_parity_inventory.rst`, which

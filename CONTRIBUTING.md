@@ -546,7 +546,7 @@ Current metrics (v2.11.1):
 - **Functions:** 1,450+ (top-level `def`; measured 1,538 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 220
-- **Tests:** 9,500+ (all passing; measured 10,956 via
+- **Tests:** 10,000+ (all passing; measured 11,313 via
   `pytest --collect-only`)
 - **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
