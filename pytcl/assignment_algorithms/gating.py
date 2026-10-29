@@ -116,6 +116,59 @@ def _invert_3x3(S: np.ndarray[Any, Any]) -> "tuple[np.ndarray[Any, Any], float]"
     return inv, det
 
 
+@njit(cache=True)
+def _not_pd_3x3(S: np.ndarray[Any, Any], det: float) -> bool:
+    """True when the leading principal minors of a symmetric 3x3 are not all > 0.
+
+    A NaN minor is not flagged, so a NaN covariance propagates NaN as before.
+    """
+    minor2 = S[0, 0] * S[1, 1] - S[0, 1] * S[1, 0]
+    return S[0, 0] <= 0.0 or minor2 <= 0.0 or det <= 0.0
+
+
+@njit(cache=True)
+def _not_pd_general(S: np.ndarray[Any, Any]) -> bool:
+    """True when a Cholesky factorization of S (lower triangle) hits a pivot <= 0.
+
+    A pivot is the exact leading-principal-minor ratio, so this is an exact
+    positive-definiteness test for a symmetric matrix at n^3/6 multiply-adds.
+    A NaN pivot is not flagged, so a NaN covariance propagates NaN as before.
+    """
+    n = S.shape[0]
+    L = np.zeros((n, n))
+    for j in range(n):
+        d2 = S[j, j]
+        for k in range(j):
+            d2 -= L[j, k] * L[j, k]
+        if d2 <= 0.0:
+            return True
+        d = np.sqrt(d2)
+        L[j, j] = d
+        for i in range(j + 1, n):
+            t = S[i, j]
+            for k in range(j):
+                t -= L[i, k] * L[j, k]
+            L[i, j] = t / d
+    return False
+
+
+def _shape_error(
+    innovation: "NDArray[np.float64]", S: "NDArray[np.float64]", what: str
+) -> ValueError:
+    return ValueError(
+        f"{what} of shape {innovation.shape} is incompatible with a "
+        f"covariance of shape {S.shape}: expected a 1-d vector of length m "
+        "and an (m, m) covariance"
+    )
+
+
+def _raise_not_pd() -> None:
+    raise np.linalg.LinAlgError(
+        "innovation covariance is not positive definite; a squared Mahalanobis "
+        "distance is only defined for a positive-definite covariance"
+    )
+
+
 def mahalanobis_distance(
     innovation: ArrayLike,
     innovation_covariance: ArrayLike,
@@ -134,12 +187,24 @@ def mahalanobis_distance(
     innovation : array_like
         Innovation (measurement residual) vector of shape (m,).
     innovation_covariance : array_like
-        Innovation covariance matrix of shape (m, m).
+        Symmetric positive-definite innovation covariance matrix of shape
+        (m, m). Only the lower triangle is read by the positive-definiteness
+        test; a non-symmetric matrix is not detected.
 
     Returns
     -------
     float
         Squared Mahalanobis distance.
+
+    Raises
+    ------
+    ValueError
+        If ``innovation`` is not 1-d or ``innovation_covariance`` is not
+        (m, m) for an innovation of length m. The message names both shapes.
+    numpy.linalg.LinAlgError
+        If the covariance is exactly singular or is not positive definite
+        (indefinite or negative definite). A NaN covariance is not rejected;
+        it propagates NaN.
 
     Examples
     --------
@@ -175,25 +240,47 @@ def mahalanobis_distance(
     - n > 10, or an exactly-singular 2D/3D covariance: the original generic
       `np.linalg.solve` path. Every branch raises the same
       `numpy.linalg.LinAlgError` on an exactly singular covariance.
+
+    Positive definiteness is tested beside that arithmetic, never in place of
+    it, so valid inputs return the same bits on every branch. n == 2 and
+    n == 3 use the leading principal minors (the determinant is already
+    computed by the closed-form inverse); other sizes run an n^3/6 Cholesky
+    pivot test, a fraction of the cost of the inverse or solve.
     """
     nu = np.asarray(innovation, dtype=np.float64)
     S = np.asarray(innovation_covariance, dtype=np.float64)
+    if nu.ndim != 1 or S.shape != nu.shape * 2:
+        raise _shape_error(nu, S, "innovation")
+    return _squared_distance(nu, S, True)
+
+
+def _squared_distance(
+    nu: "NDArray[np.float64]", S: "NDArray[np.float64]", check_pd: bool
+) -> float:
     n = nu.shape[0]
 
     if n == 2:
         S_inv, det = _invert_2x2(S)
         if det != 0.0:
+            if check_pd and (S.item(0) <= 0.0 or det <= 0.0):
+                _raise_not_pd()
             return float(_mahalanobis_distance_2d(nu, S_inv))
     elif n == 3:
         S_inv, det = _invert_3x3(S)
         if det != 0.0:
+            if check_pd and _not_pd_3x3(S, det):
+                _raise_not_pd()
             return float(_mahalanobis_distance_3d(nu, S_inv))
     elif n <= 10:
         S_inv = np.linalg.inv(S)
+        if check_pd and _not_pd_general(S):
+            _raise_not_pd()
         return float(_mahalanobis_distance_general(nu, S_inv))
 
     # Use solve instead of inverse for numerical stability
     S_inv_nu = np.linalg.solve(S, nu)
+    if check_pd and _not_pd_general(S):
+        _raise_not_pd()
     return float(nu @ S_inv_nu)
 
 
@@ -356,6 +443,14 @@ def gate_measurements(
     >>> valid_idx
     array([0, 2])
 
+    Raises
+    ------
+    ValueError
+        If the predicted measurement is not 1-d or the covariance is not
+        (m, m), or the gate type is unknown.
+    numpy.linalg.LinAlgError
+        If the covariance is not positive definite, for either gate type.
+
     Notes
     -----
     This function efficiently gates multiple measurements against a single
@@ -368,6 +463,11 @@ def gate_measurements(
     if Z.ndim == 1:
         Z = Z.reshape(1, -1)
 
+    if z_pred.ndim != 1 or S.shape != z_pred.shape * 2:
+        raise _shape_error(z_pred, S, "predicted_measurement")
+    if _not_pd_general(S):
+        _raise_not_pd()
+
     n_meas = Z.shape[0]
     valid_indices: List[int] = []
     distances: List[float] = []
@@ -376,14 +476,14 @@ def gate_measurements(
         innovation = Z[i] - z_pred
 
         if gate_type == "ellipsoidal":
-            d2 = mahalanobis_distance(innovation, S)
+            d2 = _squared_distance(innovation, S, False)
             if d2 <= gate_threshold:
                 valid_indices.append(i)
                 distances.append(d2)
         elif gate_type == "rectangular":
             if rectangular_gate(innovation, S, num_sigmas=gate_threshold):
                 # For rectangular gate, still compute Mahalanobis distance for ranking
-                d2 = mahalanobis_distance(innovation, S)
+                d2 = _squared_distance(innovation, S, False)
                 valid_indices.append(i)
                 distances.append(d2)
         else:
@@ -469,26 +569,12 @@ def compute_gate_volume(
 
 
 @njit(cache=True, fastmath=True, parallel=False)
-def mahalanobis_batch(
+def _mahalanobis_batch_kernel(
     innovations: np.ndarray[Any, Any],
     S_inv: np.ndarray[Any, Any],
     output: np.ndarray[Any, Any],
 ) -> None:
-    """
-    Compute Mahalanobis distances for a batch of innovations.
-
-    JIT-compiled for performance. Computes squared Mahalanobis distances
-    for multiple innovations against a single covariance matrix.
-
-    Parameters
-    ----------
-    innovations : ndarray
-        Innovations of shape (n_measurements, dim).
-    S_inv : ndarray
-        Inverse of innovation covariance matrix of shape (dim, dim).
-    output : ndarray
-        Output array of shape (n_measurements,) to store distances.
-    """
+    """JIT-compiled batch quadratic form; callers validate shapes."""
     n_meas = innovations.shape[0]
     dim = innovations.shape[1]
 
@@ -498,6 +584,53 @@ def mahalanobis_batch(
             for k in range(dim):
                 result += innovations[i, j] * S_inv[j, k] * innovations[i, k]
         output[i] = result
+
+
+def mahalanobis_batch(
+    innovations: np.ndarray[Any, Any],
+    S_inv: np.ndarray[Any, Any],
+    output: np.ndarray[Any, Any],
+) -> None:
+    """
+    Compute Mahalanobis distances for a batch of innovations.
+
+    Computes squared Mahalanobis distances for multiple innovations against a
+    single covariance matrix, using a JIT-compiled kernel.
+
+    Parameters
+    ----------
+    innovations : ndarray
+        Innovations of shape (n_measurements, dim).
+    S_inv : ndarray
+        Inverse of a symmetric positive-definite innovation covariance
+        matrix, of shape (dim, dim). The inverse of a positive-definite
+        matrix is positive definite, so the contract of
+        `mahalanobis_distance` is enforced on ``S_inv`` itself, once per
+        batch, because the covariance is not available here.
+    output : ndarray
+        Output array of shape (n_measurements,) to store distances.
+
+    Raises
+    ------
+    ValueError
+        If ``innovations`` is not 2-d, ``S_inv`` is not (dim, dim), or
+        ``output`` is not (n_measurements,). The message names the shapes.
+    numpy.linalg.LinAlgError
+        If ``S_inv`` is not positive definite.
+    """
+    if (
+        innovations.ndim != 2
+        or S_inv.shape != (innovations.shape[1],) * 2
+        or output.shape != (innovations.shape[0],)
+    ):
+        raise ValueError(
+            f"innovations of shape {innovations.shape}, S_inv of shape "
+            f"{S_inv.shape} and output of shape {output.shape} are "
+            "incompatible: expected (n, m), (m, m) and (n,)"
+        )
+    if _not_pd_general(S_inv):
+        _raise_not_pd()
+    _mahalanobis_batch_kernel(innovations, S_inv, output)
 
 
 __all__ = [

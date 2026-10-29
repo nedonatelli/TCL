@@ -268,7 +268,7 @@ _FASTMATH_KERNELS = {
     gating._mahalanobis_distance_general: _gating_general_cases,
     gating._invert_2x2: _invert_2x2_cases,
     gating._invert_3x3: _invert_3x3_cases,
-    gating.mahalanobis_batch: _batch_cases,
+    gating._mahalanobis_batch_kernel: _batch_cases,
     detection._cfar_ca_kernel: _cfar_1d_cases,
     detection._cfar_go_kernel: _cfar_1d_cases,
     detection._cfar_so_kernel: _cfar_1d_cases,

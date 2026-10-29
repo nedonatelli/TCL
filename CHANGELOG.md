@@ -262,6 +262,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`mahalanobis_distance` and the gating functions built on it reject a
+  mismatched or non-positive-definite covariance instead of returning a
+  number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned
+  -5.45 and a length-3 one 0.40, because the 2-D, 3-D and general kernels
+  indexed `S` by the innovation's length without checking its shape, and an
+  indefinite but invertible `S` (for example `[[1, 2], [2, 1]]`) returned a
+  finite value (0.667 in one measured case) with no signal. A squared
+  distance is never negative and is defined only for a positive-definite
+  `S`. `mahalanobis_distance`, `ellipsoidal_gate`, `gate_measurements`
+  (both gate types, checked once per call) and `mahalanobis_batch` (which
+  takes `S_inv`, so the check is applied to `S_inv`, positive definite
+  exactly when `S` is) now raise `ValueError`, naming both shapes, when the
+  innovation is not 1-d or `S` is not `(m, m)`, and
+  `numpy.linalg.LinAlgError` when `S` is not positive definite
+  (indefinite or negative definite), the same error an exactly singular `S`
+  already raised. Valid symmetric positive-definite inputs return bitwise
+  the v2.11.1 values for n = 1, 2, 3, 5, 10 and 12 (tested against the
+  shipped module). A NaN covariance still propagates NaN. Only the lower
+  triangle is tested, so a non-symmetric `S` is not detected. Cost, measured
+  against v2.11.1 on Apple silicon in one session: about +0.13 to +0.2 us
+  per `mahalanobis_distance` call at n = 2 and 3 (+20% and +31% of a
+  0.63 us call), about +10% at n = 1, 6 and 12; `gate_measurements` on 50
+  measurements is 13% faster, because the check runs once per call rather
+  than once per measurement. `mahalanobis_batch` is now a Python wrapper
+  around the unchanged JIT kernel (+0.27 us at 50 x 3). What to do: catch
+  `ValueError` for a shape mismatch and `numpy.linalg.LinAlgError` for a
+  non-positive-definite `S`; both previously returned a silent wrong
+  number.
+
 - **`great_circle_distance` and `great_circle_azimuth` no longer round their
   inputs; distances move by up to 0.74 mm and short-pair azimuths by far
   more.** Both rounded all four coordinates to 10 decimals (up to 5e-11 rad
