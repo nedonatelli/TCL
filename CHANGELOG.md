@@ -265,8 +265,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`mahalanobis_distance` and the gating functions built on it reject a
   mismatched or non-positive-definite covariance instead of returning a
   number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned a
-  number (-5.45 and -5.12 in two measurements: the kernel reads `S` out of
-  bounds) and a length-3 one 0.40 to 0.67; an indefinite but invertible `S`
+  number (the kernel reads the inverse out of bounds, so the value varied
+  between runs, -5.07 to -5.81 observed) and a length-3 one 0.40 to 0.67; an indefinite but invertible `S`
   (`[[1, 2], [2, 1]]` with innovation `[1, 1]`) returned 0.667, and a
   non-symmetric `[[1, 0], [3, 1]]` with `[1, 1]` returned -1.0, all with no
   signal. A squared distance is never negative and is defined only for a
@@ -280,10 +280,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `numpy.linalg.LinAlgError` when `S` is not positive definite or is too
   ill-conditioned. The test is on the symmetric part `(S + S.T) / 2`, which
   is exact for "the form is non-negative for every innovation"; a symmetric
-  `S` is unaffected. "Too ill-conditioned" means the leading minors (n = 2,
-  3) or Cholesky pivots round to a non-positive value, which happens for
-  some positive-definite `S` with condition number near 1e12 or above; for
-  those v2.11.1's value was already wrong. Callers that now raise on such
+  `S` is unaffected, and the test is scale-free (an `S` of 1e-170 times the
+  identity is still accepted, as in v2.11.1). "Too ill-conditioned" means a
+  minor (n = 2) or Cholesky pivot rounds to a non-positive value, which
+  happens for some positive-definite `S` at condition number about 1e16 or
+  above (measured on 300 random `S` per size: none rejected up to 1e15; at
+  1e16, 14 of 300 at n = 2 and 0 at n = 3 and 4; at 1e17, 203, 92 and 74);
+  for those v2.11.1's value was already wrong. Callers that now raise on such
   an `S`: `mahalanobis_distance` itself, `ellipsoidal_gate`,
   `gate_measurements`, `mahalanobis_batch`, `trackers.mht` (its gating
   call), `assignment_algorithms.data_association` (cost-matrix
@@ -294,8 +297,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
   3, 5, 10 and 12 (tested against the shipped module). A NaN covariance
   still propagates NaN. Cost, measured against v2.11.1 on Apple silicon in
-  one session: about +0.15 to +0.17 us per `mahalanobis_distance` call at
-  n = 2 and 3 (+26 to +28% of a 0.63 us call), about +6 to +11% at n = 1, 6
+  one session: about +0.17 to +0.21 us per `mahalanobis_distance` call at
+  n = 2 and 3 (+27 to +32% of a 0.64 us call), about +7 to +13% at n = 1, 6
   and 12; `gate_measurements` on 50 measurements is 15% faster, because the
   check runs once per call rather than once per measurement.
   `mahalanobis_batch` is now a Python wrapper around the unchanged JIT

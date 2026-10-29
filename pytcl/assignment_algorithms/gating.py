@@ -122,25 +122,15 @@ def _not_pd_2x2(S: np.ndarray[Any, Any]) -> bool:
 
     ``nu' S^-1 nu = y' S y`` with ``y = S^-1 nu``, and ``y' S y`` is
     ``y' sym(S) y``, so the symmetric part ``(S + S')/2`` decides whether the
-    form is non-negative for every ``nu``. A NaN minor is not flagged, so a
-    NaN covariance propagates NaN as before.
+    form is non-negative for every ``nu``. The test is ``|b| / sqrt(a e) < 1``
+    rather than ``a e - b^2 > 0`` so that it is scale-free: the product
+    underflows for entries near 1e-170. A NaN entry is not flagged, so a NaN
+    covariance propagates NaN as before.
     """
-    b = (S[0, 1] + S[1, 0]) * 0.5
-    return S[0, 0] <= 0.0 or S[0, 0] * S[1, 1] - b * b <= 0.0
-
-
-@njit(cache=True)
-def _not_pd_3x3(S: np.ndarray[Any, Any]) -> bool:
-    """True when the symmetric part of a 3x3 has a leading minor <= 0."""
     a = S[0, 0]
     e = S[1, 1]
-    i = S[2, 2]
     b = (S[0, 1] + S[1, 0]) * 0.5
-    c = (S[0, 2] + S[2, 0]) * 0.5
-    f = (S[1, 2] + S[2, 1]) * 0.5
-    minor2 = a * e - b * b
-    det = a * (e * i - f * f) - b * (b * i - f * c) + c * (b * f - e * c)
-    return a <= 0.0 or minor2 <= 0.0 or det <= 0.0
+    return a <= 0.0 or e <= 0.0 or abs(b) / np.sqrt(a) / np.sqrt(e) >= 1.0
 
 
 @njit(cache=True)
@@ -175,8 +165,6 @@ def _not_pd(S: "NDArray[np.float64]") -> bool:
         return bool(S.item(0) <= 0.0)
     if n == 2:
         return _not_pd_2x2(S)
-    if n == 3:
-        return _not_pd_3x3(S)
     return _not_pd_general(S)
 
 
@@ -231,8 +219,8 @@ def mahalanobis_distance(
     numpy.linalg.LinAlgError
         If the covariance is exactly singular, or is not positive definite
         or too ill-conditioned (indefinite, negative definite, or a
-        condition number near 1e12 or above, where the leading minors or
-        pivots round to a non-positive value). Positive definiteness is
+        condition number near 1e16 (1/eps) or above, where the leading
+        minors or pivots round to a non-positive value). Positive definiteness is
         tested on the symmetric part ``(S + S.T) / 2``, which is exact for
         "the form is non-negative for every innovation", so a non-symmetric
         ``S`` with a negative form is rejected too. A NaN covariance is
@@ -275,9 +263,9 @@ def mahalanobis_distance(
 
     Positive definiteness is tested beside that arithmetic, never in place of
     it, so valid inputs return the same bits on every branch. n == 1 tests
-    the entry, n == 2 and n == 3 the leading principal minors of the
-    symmetric part, other sizes run an n^3/6 Cholesky pivot test on it, a
-    fraction of the cost of the inverse or solve.
+    the entry, n == 2 a scale-free minor test on the symmetric part, other
+    sizes run an n^3/6 Cholesky pivot test on it, a fraction of the cost of
+    the inverse or solve.
     """
     nu = np.asarray(innovation, dtype=np.float64)
     S = np.asarray(innovation_covariance, dtype=np.float64)
@@ -294,7 +282,7 @@ def mahalanobis_distance(
     elif n == 3:
         S_inv, det = _invert_3x3(S)
         if det != 0.0:
-            if _not_pd_3x3(S):
+            if _not_pd_general(S):
                 _raise_not_pd()
             return float(_mahalanobis_distance_3d(nu, S_inv))
     elif n <= 10:

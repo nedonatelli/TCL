@@ -97,12 +97,9 @@ class TestValidInputsKeepV2111Bits:
 
 
 class TestDefectExistedInV2111:
-    def test_length_7_against_6x6_returned_a_number(self, old_gating):
+    def test_length_7_against_6x6_raises(self):
         S = _spd(6, 1)
         nu = np.random.default_rng(101).standard_normal(7)
-        # v2.11.1 reads S out of bounds here, so the value is not stable
-        # (-5.45 and -5.12 were both observed); only "no error" is anchored.
-        assert isinstance(old_gating.mahalanobis_distance(nu, S), float)
         with pytest.raises(ValueError, match=r"\(7,\).*\(6, 6\)"):
             gating.mahalanobis_distance(nu, S)
 
@@ -290,6 +287,25 @@ class TestIllConditioned:
         assert d == g
 
 
+class TestScaleFree:
+    @pytest.mark.parametrize(
+        "n, scale",
+        [(2, 1e-170), (2, 1e150), (3, 1e-110), (3, 1e-120), (3, 1e150), (5, 1e-120)],
+    )
+    def test_all_entry_points_agree_with_v2111(self, old_gating, n, scale):
+        S = scale * np.eye(n)
+        nu = np.ones(n)
+        expected = old_gating.mahalanobis_distance(nu, S)
+        assert gating.mahalanobis_distance(nu, S) == expected
+        _, dists = gating.gate_measurements(np.zeros(n), S, nu[None, :], 1e300)
+        assert dists.tolist() == [expected]
+        out = np.empty(1)
+        gating.mahalanobis_batch(nu[None, :], np.linalg.inv(S), out)
+        old_out = np.empty(1)
+        old_gating.mahalanobis_batch(nu[None, :], np.linalg.inv(S), old_out)
+        assert out.tolist() == old_out.tolist()
+
+
 class TestJpdaFallback:
     def test_batch_rejection_falls_back_to_per_pair(self, monkeypatch):
         tracks_x = [np.array([0.0, 0.0, 1.0, 1.0])]
@@ -305,7 +321,8 @@ class TestJpdaFallback:
         monkeypatch.setattr(jpda, "mahalanobis_batch", reject)
         got = jpda.compute_likelihood_matrix(tracks_x, P, Z, H, R, 0.9, 9.21)
         assert got[1].tolist() == expected[1].tolist()
-        assert got[0] == pytest.approx(expected[0], rel=1e-12)
+        # per-pair solve and batched inverse round differently, so not bitwise
+        assert got[0] == pytest.approx(expected[0], rel=1e-12, abs=0)
 
 
 class TestNaNStillPropagates:
