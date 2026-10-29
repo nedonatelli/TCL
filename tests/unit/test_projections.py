@@ -102,7 +102,9 @@ class TestMercator:
         south = mercator(np.radians(-45), np.radians(10))
 
         assert north.x == south.x
-        assert north.y == -south.y
+        # log(tan(pi/4 + phi/2)) is odd in phi only to rounding: 1 ulp apart
+        # under mutmut's trampolined build on Linux.
+        assert north.y == pytest.approx(-south.y, rel=4e-16, abs=0)
 
     def test_central_meridian_has_zero_easting(self):
         lon0 = np.radians(-75)
