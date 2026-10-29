@@ -10,9 +10,13 @@ name: Mutation
 # level promises "thoroughly tested".
 #
 # Report-only by design: a surviving mutant needs human triage (equivalent
-# mutants exist), so surviving mutants never fail the build; a genuine
-# `mutmut results` error does. The report lands in the run's step
-# summary. The very first smoke run already surfaced survivors in
+# mutants exist), so surviving mutants never fail the build. An aborted run
+# does: mutmut 3.7.0 exits 0 when a run completes, survivors or not
+# (mutmut/__main__.py `_run` ends without exit()), and exits 1 when it
+# aborts (clean-test failure, stats failure, no test covers a mutant). A
+# run that tested zero mutants fails the "Require tested mutants" step; the
+# job ran zero mutants from #203 until PR 1 because `|| true` hid exactly
+# that. The report lands in the run's step summary. The very first smoke run already surfaced survivors in
 # ValidationError.__init__, so the signal is real.
 #
 # Scope lives HERE as mutant-name patterns, not in [tool.mutmut] --
@@ -72,8 +76,23 @@ jobs:
             "pytcl.coordinate_systems.rotations.rotations*" \
             "pytcl.assignment_algorithms.gating*" \
             "pytcl.assignment_algorithms.two_dimensional.assignment*" \
-            "pytcl.containers.base*" "pytcl.containers.kd_tree*" \
-            || true
+            "pytcl.containers.base*" "pytcl.containers.kd_tree*"
+
+      # `mutmut results --all true` lists every mutant as `<key>: <status>`;
+      # killed is hidden without --all. Counted statuses are the ones that
+      # mean a test run happened ("not checked", "no tests" and "skipped"
+      # do not). grep -c exits 1 on zero matches, which the guard below
+      # turns into the explicit failure.
+      - name: Require tested mutants
+        shell: bash
+        run: |
+          tested=$(uv run mutmut results --all true \
+            | { grep -cE ': (killed|survived|timeout|suspicious|segfault)$' || [ $? -eq 1 ]; })
+          echo "mutants tested: ${tested}"
+          if [ "${tested}" -eq 0 ]; then
+            echo "::error::mutmut tested zero mutants"
+            exit 1
+          fi
 
       # grep -v exits 1 when every line is filtered (no survivors), which is
       # a valid report; exit 2 is a real error and still fails.

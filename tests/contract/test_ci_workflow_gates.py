@@ -27,9 +27,6 @@ ALLOWED_OR_TRUE = {
     # Retry-loop guard: clears a half-finished rebase before each attempt;
     # the attempt itself is checked.
     ("benchmark-full.yml", "git rebase --abort >/dev/null 2>&1 || true"),
-    # Report-only by design (header lines 12-15): a surviving mutant needs
-    # human triage, so mutmut's non-zero exit must not fail the job.
-    ("mutation.yml", "|| true"),
 }
 
 
