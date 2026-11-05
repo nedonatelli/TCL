@@ -163,7 +163,7 @@ class TestLambertUniversal:
             lambert_universal(r, r, 3600.0)
 
     def test_negative_time_of_flight_rejected(self):
-        with pytest.raises(ValueError, match="did not converge"):
+        with pytest.raises(ValueError, match="positive and finite"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), -5.0
             )
@@ -172,27 +172,29 @@ class TestLambertUniversal:
         with pytest.raises(ValueError, match="must be 3-vectors"):
             lambert_universal(np.array([1.0, 2.0]), self.R2, 100.0)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="lambert_universal returns zero velocities (e=1, a=3189 km) for "
-        "antipodal positions instead of raising as lambert_izzo does",
-    )
     def test_antipodal_positions_rejected(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="collinear"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([-6378.0, 0.0, 0.0]), 3600.0
             )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="lambert_universal returns inf/nan velocities for tof == 0 "
-        "instead of raising",
-    )
     def test_zero_time_of_flight_rejected(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="positive and finite"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), 0.0
             )
+
+    @pytest.mark.parametrize("tof", [np.nan, np.inf])
+    def test_non_finite_time_of_flight_rejected(self, tof):
+        with pytest.raises(ValueError, match="positive and finite"):
+            lambert_universal(
+                np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), tof
+            )
+
+    def test_antiparallel_unequal_magnitudes_rejected(self):
+        r1 = np.array([1234.5, -6789.0, 321.0])
+        with pytest.raises(ValueError, match="collinear"):
+            lambert_universal(r1, -3.7 * r1, 3600.0)
 
 
 class TestLambertIzzo:
@@ -251,6 +253,11 @@ class TestMinimumEnergyTransfer:
         r = np.array([6678.0, 0.0, 0.0])
         with pytest.raises(ValueError, match="transfer angle is zero"):
             minimum_energy_transfer(r, r)
+
+    def test_antipodal_positions_rejected(self):
+        r = np.array([6678.0, 0.0, 0.0])
+        with pytest.raises(ValueError, match="collinear"):
+            minimum_energy_transfer(r, -r)
 
     def test_scalar_radii_rejected(self):
         with pytest.raises(ValueError, match="zero dimension"):

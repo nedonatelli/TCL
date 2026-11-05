@@ -133,9 +133,7 @@ Next
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
   results to the unidentifiable-covariance convention in CONTRIBUTING.md;
   and these pinned defects, deferred until the owner decides otherwise:
-  ``lambert_universal`` returning zero velocities for antipodal positions
-  (its ``A == 0`` check misses about 1e-16) and inf/nan for ``tof=0`` (no
-  ``tof > 0`` validation); ``shapiro_delay`` returning 0.0 when the
+  ``shapiro_delay`` returning 0.0 when the
   gravitating body is on the observer-source path; ``debye`` rejecting
   ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalizes
   ``D(0) = 1``, MATLAB returns the raw integral); SQL ``store_group``

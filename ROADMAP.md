@@ -89,10 +89,6 @@ names each would take:
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
 - **Pinned defects, deferred until the owner decides otherwise:**
-  - `lambert_universal` returns zero velocities for antipodal positions: its
-    `A == 0` check misses a value of about 1e-16.
-  - `lambert_universal` gives inf/nan for `tof=0`: there is no `tof > 0`
-    validation.
   - `shapiro_delay` returns 0.0 when the gravitating body is on the
     observer-source path, where the true delay diverges.
   - `debye` rejects `x < 0`, which MATLAB accepts. Owner decision: pytcl

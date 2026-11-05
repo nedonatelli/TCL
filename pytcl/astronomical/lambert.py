@@ -22,6 +22,10 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
+# |sin(dnu)| at or below which r1 and r2 count as collinear; see the Notes
+# of lambert_universal.
+_COLLINEAR_SIN_TOL = 16.0 * np.finfo(float).eps
+
 
 class LambertSolution(NamedTuple):
     """Solution to Lambert's problem.
@@ -96,7 +100,7 @@ def lambert_universal(
     r2 : ndarray
         Final position vector (km), shape (3,).
     tof : float
-        Time of flight (seconds). Must be positive.
+        Time of flight (seconds). Must be positive and finite.
     mu : float, optional
         Gravitational parameter (km^3/s^2). Default is Earth.
     prograde : bool, optional
@@ -118,8 +122,24 @@ def lambert_universal(
     Raises
     ------
     ValueError
-        If ``r1`` or ``r2`` is not a 3-vector, or the solution does not
+        If ``r1`` or ``r2`` is not a 3-vector, ``tof`` is not positive and
+        finite, ``r1`` and ``r2`` are collinear (transfer angle 0 or pi,
+        where the transfer plane is undefined), or the solution does not
         converge.
+
+    Notes
+    -----
+    The collinearity test is ``|r1 x r2| / (|r1| |r2|) <= 16 eps``. That
+    ratio is ``|sin(dnu)|``; each component of the computed cross product
+    is a difference of two rounded products, so for exactly collinear
+    inputs it is rounding noise (at most 0.66 eps over 20000 random
+    parallel and antiparallel pairs spanning twelve decades of magnitude),
+    and 16 eps leaves a wide margin above it. ``sin(dnu)`` itself is not
+    used, because ``dnu`` comes from ``arccos``, whose rounding error near
+    ``cos(dnu) = -1`` is about ``sqrt(eps)``. For the same reason,
+    near-antipodal inputs that pass the test lose accuracy: with
+    ``|sin(dnu)|`` of 1e-6 the propagated end point misses ``r2`` by about
+    1e-3 relative.
 
     Examples
     --------
@@ -167,17 +187,23 @@ def lambert_universal(
 
     # Degenerate transfer angle (dnu -> 0 or 2*pi): the chord formula
     # divides by 1 - cos(dnu). Guard before dividing rather than
-    # letting inf/nan propagate into the A == 0 check.
+    # letting inf/nan propagate.
     if 1.0 - cos_dnu == 0.0:
         raise ValueError(
             "Cannot solve Lambert problem: transfer angle is zero (degenerate case)"
         )
 
+    if np.linalg.norm(cross) <= _COLLINEAR_SIN_TOL * r1_mag * r2_mag:
+        raise ValueError(
+            "Cannot solve Lambert problem: r1 and r2 are collinear, so the "
+            "transfer plane is undefined"
+        )
+
+    if not (np.isfinite(tof) and tof > 0):
+        raise ValueError(f"tof must be positive and finite, got {tof}")
+
     # Chord and semi-perimeter
     A = sin_dnu * np.sqrt(r1_mag * r2_mag / (1 - cos_dnu))
-
-    if A == 0:
-        raise ValueError("Cannot solve Lambert problem: A = 0 (degenerate case)")
 
     # Initial guess for psi (universal variable)
     psi = 0.0
