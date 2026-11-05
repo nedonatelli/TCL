@@ -133,9 +133,7 @@ Next
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
   results to the unidentifiable-covariance convention in CONTRIBUTING.md;
   and these pinned defects, deferred until the owner decides otherwise:
-  ``debye`` rejecting
-  ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalizes
-  ``D(0) = 1``, MATLAB returns the raw integral); SQL ``store_group``
+  SQL ``store_group``
   metadata being unreadable, with the ``_group:`` marker leaking into
   ``list_keys()``; and ellipsoidal oblique ``stereographic`` deviating from
   PROJ ``sterea`` (a documented model choice; ``oblique_stereographic`` is
