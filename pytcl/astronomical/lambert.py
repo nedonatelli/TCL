@@ -23,9 +23,10 @@ from numpy.typing import NDArray
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
 # |sin(dnu)| below which lambert_universal rejects a transfer angle near pi,
-# or near 2*pi on the long way. Near dnu = pi, A is proportional to sin(dnu), and sin(arccos(c)) has
-# relative error about eps / sin(dnu)^2 from the rounding of c: order 1 at
-# sqrt(eps), about 2e-2 at 1e-7. See the Notes of lambert_universal.
+# or near 2*pi on the long way. Near dnu = pi, A is proportional to
+# sin(dnu), and sin(arccos(c)) has relative error about eps / sin(dnu)^2
+# from the rounding of c: order 1 at sqrt(eps), about 2e-2 at 1e-7. See
+# the Notes of lambert_universal.
 _ANTIPODAL_SIN_TOL = 1e-7
 
 
@@ -145,7 +146,10 @@ def lambert_universal(
       returned ``v1`` propagated by an independent integrator (scipy DOP853,
       rtol 1e-13), the relative miss of ``r2`` is 6.8e-3 at
       ``sin(dnu) = 1e-7``, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
-      1e-4; that one geometry is the extent of the measurement.
+      1e-4. Other geometries miss by more just above the threshold:
+      up to 0.28 relative at ``sin(dnu)`` = 1.1e-7 over ``|r2| / |r1|`` 0.8 to 2 and ``tof`` 1500 to 8000 s, both ``low_path`` values. A few inputs now
+      rejected below the threshold were accurate to about 1e-3 in v2.11.1
+      (4 of 801 sampled).
     - The long way around nearly parallel positions (``dnu`` near 2 pi).
       Every v2.11.1 solution in this band that was checked (68, with
       ``|r2| / |r1|`` of 0.8, 1.3 and 2 and ``tof`` from 1500 to 8000 s)
@@ -163,7 +167,8 @@ def lambert_universal(
     ``sin(dnu)`` = 1e-5, 5.9e-5, 3.5e-4, 2.1e-3 and 1.2e-2 with
     ``|r2| = 1.3 |r1|``, ``tof = 5000`` s) or returns a nearly radial
     ``v1`` that misses ``r2`` by order 1; the largest ``sin(dnu)`` with a
-    miss above 1e-3 was 8.4e-5.
+    miss above 1e-3 was about 8e-5 (8.4e-5 in a separate sweep of 1e-5 to
+    0.3).
 
     Examples
     --------

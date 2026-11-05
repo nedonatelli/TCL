@@ -414,15 +414,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the relative miss of `r2` was 1.38 at `sin(dnu) = 1.5e-8`, 2.01 at 3e-8,
   0.20 at 5e-8 and 1e2 to 1e8 further down, and none of 600 exactly
   antipodal v2.11.1 solutions reached `r2` within 1e-6. Above the
-  threshold accuracy still degrades toward antipodal; in that one geometry
+  threshold accuracy still degrades toward antipodal; in that geometry
   the miss is 6.8e-3 at 1e-7, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
-  1e-4. The long way around nearly parallel positions (`dnu` near 2 pi,
+  1e-4, and up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s. A few rejected near-pi
+  inputs (4 of 801 sampled) were accurate to about 1e-3 in v2.11.1. The long way around nearly parallel positions (`dnu` near 2 pi,
   `|sin(dnu)| < 1e-7`) is rejected too, with its own message: all 68
   v2.11.1 solutions checked there (`|r2| / |r1|` 0.8 to 2, `tof` 1500 to
   8000 s) missed `r2` by order 1, returning a nearly radial `v1`. Above
   the threshold the long way stays unreliable and is documented, not
   fixed: it raises "did not converge" or misses by order 1 at up to
-  `sin(dnu)` = 8.4e-5 in the same sweep. The short way around nearly
+  `sin(dnu)` of about 8e-5 in the same sweep. The short way around nearly
   parallel positions (`dnu` near 0) is not rejected: it is well
   conditioned, and in the first geometry misses `r2` by below 1e-12 down
   to `sin(dnu) = 2e-8`. The solve path itself

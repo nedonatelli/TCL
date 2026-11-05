@@ -92,11 +92,11 @@ names each would take:
   v2.12.0 rejects `|sin(dnu)| < 1e-7` near `dnu = pi` and, on the long
   way, near `2 pi`. Above that the `arccos` transfer angle still loses
   accuracy near pi (relative miss 6.8e-3 at `sin(dnu) = 1e-7` and 1.1e-3
-  at 1e-6 for `|r2| = 1.3 |r1|`, `tof = 5000` s). The long way near
+  at 1e-6 for `|r2| = 1.3 |r1|`, `tof = 5000` s; up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s). The long way near
   `2 pi` is worse: for `sin(dnu)` from 1e-7 to 1e-2 it either raises "did
   not converge" (as throughout the sampled 1e-5 to 1.2e-2 for that
   geometry) or returns a nearly radial `v1` missing `r2` by order 1, at up
-  to `sin(dnu)` = 8.4e-5 over `|r2| / |r1|` of 0.8 to 2 and `tof` of 1500
+  to `sin(dnu)` of about 8e-5 over `|r2| / |r1|` of 0.8 to 2 and `tof` of 1500
   to 8000 s.
   Compute `dnu = atan2(|r1 x r2|, r1 . r2)` and make the
   `abs(tof_calc - tof) < tol` stopping test relative to `tof`: the atan2
