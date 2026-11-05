@@ -129,7 +129,10 @@ Next
   ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
   must be run once by someone with ``EGM2008.cof`` before its oracle claims
   count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
-  and migration of ``least_squares.weighted_least_squares``,
+  an accurate near-antipodal ``lambert_universal`` (``atan2`` transfer
+  angle plus a stopping test relative to ``tof``; v2.12.0 rejects
+  ``|sin(dnu)| < sqrt(eps)`` but loses accuracy above it, 1.1e-3 relative
+  at ``sin(dnu) = 1e-6`` in one measured geometry); and migration of ``least_squares.weighted_least_squares``,
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
   results to the unidentifiable-covariance convention in CONTRIBUTING.md.
 

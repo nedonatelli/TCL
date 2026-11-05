@@ -88,6 +88,14 @@ names each would take:
   `EGM2008.cof`); someone with that file must run it once before its oracle
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
+- **Near-antipodal `lambert_universal`.** v2.12.0 rejects
+  `|sin(dnu)| < sqrt(eps)`, but above that the `arccos` transfer angle
+  still loses accuracy (relative miss 1.1e-3 at `sin(dnu) = 1e-6` in one
+  measured geometry). Compute `dnu = atan2(|r1 x r2|, r1 . r2)` and make the
+  `abs(tof_calc - tof) < tol` stopping test relative to `tof`: the atan2
+  change alone moved ordinary results by up to 3.3e-13 relative and flipped
+  14 of 3000 random geometries to "did not converge" in one branch, because
+  the absolute 1e-10 s test sits at the floating-point floor.
 - **Pseudo-inverse sites to the unidentifiable-covariance convention.**
   `least_squares.weighted_least_squares` (`pinv(AtWA)`),
   `information_filter.py` and `smoothers.py` still return finite
