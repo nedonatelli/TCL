@@ -356,7 +356,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `"_group:<name>"`. `get_metadata(name)` now returns the stored dict
   (`{}` for a group stored without metadata), as `HDF5Storage` returns a
   group's attributes; an array or scalar of the same name still takes
-  precedence. `list_keys()` at any level omits `_group:` rows. The fix is
+  precedence. `list_keys()` at any level omits the rows `store_group`
+  writes (a `_group:` key whose value begins `{"_is_group": true`); a
+  scalar the caller stored under a `_group:` name is still listed. Groups
+  themselves are not listed, unlike `HDF5Storage.list_keys`. The fix is
   read-side only: the on-disk layout is unchanged, and databases written by
   v2.11.1 read correctly (tested against v2.11.1's own `store_group`). The
   metadata key `_is_group` is reserved and is not read back. What to do:
