@@ -22,9 +22,11 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
-# |sin(dnu)| below which lambert_universal rejects r1 and r2 as (nearly)
-# collinear; see its Notes.
-_COLLINEAR_SIN_TOL = np.sqrt(np.finfo(float).eps)
+# |sin(dnu)| below which lambert_universal rejects nearly antipodal r1 and
+# r2. Near dnu = pi, A is proportional to sin(dnu), and sin(arccos(c)) has
+# relative error about eps / sin(dnu)^2 from the rounding of c: order 1 at
+# sqrt(eps), about 2e-2 at 1e-7. See the Notes of lambert_universal.
+_ANTIPODAL_SIN_TOL = 1e-7
 
 
 class LambertSolution(NamedTuple):
@@ -123,23 +125,34 @@ def lambert_universal(
     ------
     ValueError
         If ``r1`` or ``r2`` is not a 3-vector, ``tof`` is not positive and
-        finite, ``r1`` and ``r2`` are collinear or nearly so (see Notes),
-        or the solution does not converge.
+        finite, ``r1`` and ``r2`` are collinear or nearly antipodal (see
+        Notes), or the solution does not converge.
 
     Notes
     -----
-    The collinearity test rejects ``|r1 x r2| / (|r1| |r2|) < sqrt(eps)``
-    (about 1.49e-8). That ratio is ``|sin(dnu)|`` computed without
-    cancellation; ``dnu`` itself comes from ``arccos``, whose rounding error
-    near ``cos(dnu) = -1`` is about ``sqrt(eps)``, so below the threshold the
-    transfer angle carries no correct digits and the result is meaningless
-    (propagated end points missing ``r2`` by 1e2 to 1e8 relative). Above it
-    the accuracy still degrades as the positions approach antipodal.
-    Measured for ``|r1| = 7000`` km, ``|r2| = 1.3 |r1|``, ``tof = 5000``
-    s, with the returned ``v1`` propagated by an independent integrator
-    (scipy DOP853, rtol 1e-13), the relative miss of ``r2`` is 2.6e-7 at
-    ``sin(dnu) = 1e-4``, 2.0e-5 at 1e-5, 1.1e-3 at 1e-6 and 6.8e-3 at
-    1e-7; that one geometry is the extent of the measurement.
+    Exactly collinear ``r1`` and ``r2`` (``r1 x r2 = 0``) are rejected:
+    the transfer plane is undefined. Nearly antipodal ones are rejected
+    when ``|r1 x r2| / (|r1| |r2|) = |sin(dnu)| < 1e-7``. Near
+    ``dnu = pi`` the chord term ``A`` is proportional to ``sin(dnu)``,
+    which is computed as ``sin(arccos(c))``; rounding ``c`` costs a
+    relative error of about ``eps / sin(dnu)^2`` in it, order 1 at
+    ``sqrt(eps)`` and about 2e-2 at 1e-7. Above the threshold accuracy
+    still degrades toward antipodal. Measured for ``|r1| = 7000`` km,
+    ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, with the returned ``v1``
+    propagated by an independent integrator (scipy DOP853, rtol 1e-13),
+    the relative miss of ``r2`` is 6.8e-3 at ``sin(dnu) = 1e-7``, 1.1e-3
+    at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at 1e-4; that one geometry is the
+    extent of the measurement.
+
+    The nearly parallel side is not rejected: there ``A`` tends to
+    ``sqrt(2 |r1| |r2|)`` and does not depend on the rounded angle, and the
+    short-way solution in the same geometry misses ``r2`` by below 1e-12
+    down to ``sin(dnu) = 2e-8``, below which ``cos(dnu)`` rounds to 1 and
+    the zero-transfer-angle error is raised. The long way around a nearly
+    parallel pair (``dnu`` near ``2 pi``) is not reliable: in that geometry
+    with ``tof = 5000`` s it does not converge at ``sin(dnu)`` = 1e-2,
+    1e-3, 1e-5 and 1e-6, and misses ``r2`` by order 1 from 1e-7 to 2e-8
+    (and at 1e-6 with ``tof = 1500`` s).
 
     Examples
     --------
@@ -193,10 +206,17 @@ def lambert_universal(
             "Cannot solve Lambert problem: transfer angle is zero (degenerate case)"
         )
 
-    if np.linalg.norm(cross) < _COLLINEAR_SIN_TOL * r1_mag * r2_mag:
+    cross_mag = np.linalg.norm(cross)
+    if cross_mag == 0.0:
         raise ValueError(
-            "Cannot solve Lambert problem: r1 and r2 are collinear to within "
-            "|sin(transfer angle)| < sqrt(eps)"
+            "Cannot solve Lambert problem: r1 and r2 are collinear, so the "
+            "transfer plane is undefined"
+        )
+    if cos_dnu < 0.0 and cross_mag < _ANTIPODAL_SIN_TOL * r1_mag * r2_mag:
+        raise ValueError(
+            "Cannot solve Lambert problem: r1 and r2 are within "
+            "|sin(transfer angle)| < 1e-7 of antipodal, where the computed "
+            "transfer angle has too few correct digits"
         )
 
     if not (np.isfinite(tof) and tof > 0):
