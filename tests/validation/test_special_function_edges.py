@@ -7,7 +7,6 @@ Every expected value comes from an oracle independent of the implementation
 import math
 import warnings
 
-import mpmath
 import numpy as np
 import pytest
 import scipy.special as sp
@@ -23,6 +22,8 @@ from pytcl.mathematical_functions.special_functions.marcum_q import (
     swerling_detection_probability,
 )
 from pytcl.mathematical_functions.statistics.distributions import ChiSquared
+
+mpmath = pytest.importorskip("mpmath")
 
 
 def _poisson_pmf(k, lam):
@@ -412,6 +413,12 @@ class TestDebye:
         """The s-form integrand x*s/expm1(x*s) is smooth for x < 0 too, so it
         is an oracle independent of the reflection identity debye uses."""
         assert debye(1, x)[0] == pytest.approx(_debye_mpmath(1, x), rel=1e-13, abs=0)
+
+    def test_huge_negative_x_does_not_overflow(self):
+        """D_3(-1e308) = D_3(1e308) + (3/4) 1e308, both finite; n * x
+        overflows before the division by n + 1 would bring it back."""
+        got = debye(3, -1e308)[0]
+        assert got == pytest.approx(0.75e308, rel=1e-15, abs=0)
 
     @pytest.mark.parametrize("n", [0, -3, 2.5])
     def test_invalid_order_raises(self, n):
