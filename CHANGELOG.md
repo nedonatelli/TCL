@@ -44,6 +44,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`stereographic` and `stereographic_inverse` match PROJ `+proj=sterea`
+  for an ellipsoid and a non-polar origin.** For `e2 > 0` and
+  `|lat0| < pi/2` they now delegate to `oblique_stereographic` /
+  `oblique_stereographic_inverse` (EPSG method 9809). The old Gaussian-radius
+  conformal sphere disagreed with `sterea`; measured on WGS84, maximum over
+  24 azimuths, the coordinates move by:
+
+  | `lat0` | at 400 km | at 1,738 km |
+  |--------|-----------|-------------|
+  | 0 deg  | 1.34 km   | 5.94 km     |
+  | 30 deg | 0.04 km   | 0.73 km     |
+  | 45 deg | 1.38 km   | 6.70 km     |
+  | 60 deg | 2.73 km   | 12.48 km    |
+  | 75 deg | 3.71 km   | 16.52 km    |
+
+  The new values are within 1.8e-7 m of PROJ at the same points (and
+  `lat0` = -45 and 89 deg). `scale` was the conformal sphere's scale and is
+  now the point scale on the ellipsoid, a change of up to 2.8e-4 at
+  1,738 km (PROJ agreement 1.4e-9 relative); `convergence` changes by up
+  to 9.1e-4 rad (PROJ agreement 1.3e-11 rad). `stereographic_inverse`'s
+  `tol` and `max_iter` no longer apply to this case. Unchanged, bitwise:
+  the sphere (`e2 == 0`) and the polar origin (`lat0 = +-pi/2`), whose
+  docstring still points to `polar_stereographic`. What to do: nothing if
+  you wanted PROJ-compatible coordinates; to reproduce v2.11.1 values,
+  pin v2.11.1.
+
 - **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
   (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
   two magnetic-cache test files), fixtures pin zero drift

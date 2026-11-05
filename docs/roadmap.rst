@@ -129,13 +129,9 @@ Next
   ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
   must be run once by someone with ``EGM2008.cof`` before its oracle claims
   count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
-  migration of ``least_squares.weighted_least_squares``,
+  and migration of ``least_squares.weighted_least_squares``,
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
-  results to the unidentifiable-covariance convention in CONTRIBUTING.md;
-  and these pinned defects, deferred until the owner decides otherwise:
-  ellipsoidal oblique ``stereographic`` deviating from
-  PROJ ``sterea`` (a documented model choice; ``oblique_stereographic`` is
-  recommended and the strict xfail stays as the documented-limit pin).
+  results to the unidentifiable-covariance convention in CONTRIBUTING.md.
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).
