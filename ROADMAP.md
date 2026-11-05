@@ -89,8 +89,6 @@ names each would take:
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
 - **Pinned defects, deferred until the owner decides otherwise:**
-  - `shapiro_delay` returns 0.0 when the gravitating body is on the
-    observer-source path, where the true delay diverges.
   - `debye` rejects `x < 0`, which MATLAB accepts. Owner decision: pytcl
     normalizes `D(0) = 1` where MATLAB returns the raw integral.
   - SQL `store_group` metadata is unreadable, and the `_group:` marker leaks

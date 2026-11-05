@@ -252,11 +252,6 @@ class TestShapiroDelay:
 
 
 class TestShapiroDelayThroughTheBody:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="shapiro_delay returns 0.0 when the body lies on the segment "
-        "between observer and source (denominator 0); the delay diverges there",
-    )
     def test_body_on_the_path_diverges(self):
         delay = shapiro_delay(
             np.array([1.0e11, 0.0, 0.0]),
