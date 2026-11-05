@@ -200,7 +200,7 @@ class TestLambertUniversal:
     def test_near_antipodal_below_threshold_rejected(self):
         """|sin(dnu)| = 9e-8 < 1e-7: sin(arccos(c)) is ~3% off from rounding."""
         r1, r2 = self._near_antipodal(9e-8)
-        with pytest.raises(ValueError, match="antipodal"):
+        with pytest.raises(ValueError, match="of antipodal"):
             lambert_universal(r1, r2, 5000.0)
 
     @pytest.mark.parametrize("sin_dnu", [1.1e-7, 1e-4])
@@ -243,6 +243,40 @@ class TestLambertUniversal:
             atol=1e-12,
         ).y[:3, -1]
         assert np.linalg.norm(end - r2) / np.linalg.norm(r2) < 1e-10
+
+    @staticmethod
+    def _near_parallel(sin_dnu):
+        th = np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        return r1, 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+
+    @pytest.mark.parametrize("tof", [1500.0, 5000.0])
+    def test_long_way_near_two_pi_below_threshold_rejected(self, tof):
+        """v2.11.1 returned a nearly radial v1 missing r2 by order 1 (tof
+        1500 s) or did not converge (5000 s)."""
+        r1, r2 = self._near_parallel(9e-8)
+        with pytest.raises(ValueError, match="2\\*pi"):
+            lambert_universal(r1, r2, tof, low_path=False)
+
+    @pytest.mark.parametrize("tof", [1500.0, 5000.0])
+    def test_long_way_near_two_pi_above_threshold_is_v2111_bitwise(self, tof):
+        """Not rejected at 1.1e-7: the unchanged v2.11.1 path runs."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/astronomical/lambert.py")
+        r1, r2 = self._near_parallel(1.1e-7)
+        new_sol = lambert_universal(r1, r2, tof, low_path=False)
+        old_sol = old.lambert_universal(r1, r2, tof, low_path=False)
+
+        assert np.array_equal(new_sol.v1, old_sol.v1)
+        assert np.array_equal(new_sol.v2, old_sol.v2)
+
+    def test_long_way_near_two_pi_non_convergence_raises(self):
+        """Above the threshold the long way may not converge; it must raise,
+        not return (|r2| = 1.3 |r1|, tof 5000 s, sin(dnu) = 1e-3)."""
+        r1, r2 = self._near_parallel(1e-3)
+        with pytest.raises(ValueError, match="did not converge"):
+            lambert_universal(r1, r2, 5000.0, low_path=False)
 
     def test_exactly_parallel_unequal_magnitudes_rejected(self):
         r1 = np.array([7000.0, 0.0, 0.0])
