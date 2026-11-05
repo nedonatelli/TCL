@@ -133,7 +133,7 @@ def _track(rows, ref):
     """Constant-velocity filter over one ship's position reports.
 
     Returns (final state, NIS per update, broadcast SOG per update-adjacent
-    report). State is [E, vE, N, vN] in metres and metres per second, in a
+    report). State is [E, vE, N, vN] in meters and meters per second, in a
     local ENU frame about ``ref``.
     """
     lat0, lon0, alt0 = ref

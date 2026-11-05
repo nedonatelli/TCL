@@ -382,8 +382,8 @@ class TestMonteCarloRMSEPlotting:
         )
 
 
-class TestNISChartIsLabelledNIS:
-    """A NIS chart must not be labelled NEES.
+class TestNISChartIsLabeledNIS:
+    """A NIS chart must not be labeled NEES.
 
     ``plot_nis_sequence`` forwards to ``plot_nees_sequence``, which hardcoded
     "NEES" as both the y-axis title and the series name; only ``title`` was

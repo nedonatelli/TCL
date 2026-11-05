@@ -13,7 +13,7 @@ Quadrature: composite fixed-order 48-node Gauss-Legendre of the Marcum
 integrand ``x (x/a)^(m-1) exp(-(x^2+a^2)/2) I_{m-1}(a x)``, written as
 ``x (x/a)^(m-1) ive(m-1, a x) exp(-(x-a)^2/2)``, at ``40 + log10(a)``
 digits. Panels are ``1/max(|c|, 1)`` wide, where ``c = b - sqrt(a^2+2m)``
-is the distance from the centre of the distribution, so every panel spans
+is the distance from the center of the distribution, so every panel spans
 at most about one e-fold of the integrand. For ``c >= 0`` the upper tail
 ``int_b^inf`` is integrated; for ``c < 0`` the lower tail ``int_0^b`` is
 integrated and ``log Q = log1p(-lower)``. Each value is recomputed with

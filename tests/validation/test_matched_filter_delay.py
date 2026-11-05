@@ -29,7 +29,7 @@ def test_ambiguity_at_integer_sample_delays_equals_the_autocorrelation():
     fs = 1e4
     x = _lfm_chirp(n=256, fs=fs)
     acf = np.correlate(x, x, mode="full") / np.dot(x, x)
-    centre = len(x) - 1
+    center = len(x) - 1
     _, _, af = ambiguity_function(
         x,
         fs=fs,
@@ -40,7 +40,7 @@ def test_ambiguity_at_integer_sample_delays_equals_the_autocorrelation():
     )
     for k in (0, 1, 5, 17):
         got = af[1, _N_HALF + k]
-        assert abs(got) == pytest.approx(abs(acf[centre + k]), rel=1e-9, abs=0), (
+        assert abs(got) == pytest.approx(abs(acf[center + k]), rel=1e-9, abs=0), (
             f"k={k}"
         )
 
@@ -49,7 +49,7 @@ def test_cross_ambiguity_at_integer_sample_delays_equals_the_cross_correlation()
     fs = 1e4
     x = _lfm_chirp(n=256, fs=fs)
     ccf = np.correlate(x, x, mode="full") / np.dot(x, x)
-    centre = len(x) - 1
+    center = len(x) - 1
     _, _, caf = cross_ambiguity(
         x,
         x,
@@ -61,6 +61,6 @@ def test_cross_ambiguity_at_integer_sample_delays_equals_the_cross_correlation()
     )
     for k in (0, 1, 5, 17):
         got = caf[1, _N_HALF + k]
-        assert abs(got) == pytest.approx(abs(ccf[centre + k]), rel=1e-9, abs=0), (
+        assert abs(got) == pytest.approx(abs(ccf[center + k]), rel=1e-9, abs=0), (
             f"k={k}"
         )

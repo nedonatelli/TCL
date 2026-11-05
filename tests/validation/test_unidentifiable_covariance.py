@@ -135,7 +135,7 @@ class TestRangeOnlyCoplanarRaises:
         with pytest.raises(np.linalg.LinAlgError, match="sensors are coplanar"):
             range_only_static_loc_est_np(r, tx, rx, 1)
 
-    def test_sensor_lifted_one_metre_at_ecef_scale_is_accepted(self):
+    def test_sensor_lifted_one_meter_at_ecef_scale_is_accepted(self):
         # Measured error 5.0e-4 m here (2.8e-3 m for the same layout at the
         # origin); the estimator amplifies rounding by the near-coplanarity.
         r, tx, rx, target = self._ecef_scene(1.0)

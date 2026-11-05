@@ -195,7 +195,7 @@ def test_geoid_height_uses_geocentric_latitude_at_the_ellipsoid_radius(
     ``ellipsGravCoeffs`` port) loses 5.1e-11 of C20 to cancellation in
     ``q0``, about 3e-7 m of geoid (measured 0.9e-7 to 2.9e-7 m here); the
     oracle computes J2 in mpmath and does not share that cancellation.
-    The geocentric-latitude defect is metres.
+    The geocentric-latitude defect is meters.
     """
     lat, lon = np.radians(lat_deg), np.radians(lon_deg)
     coef = create_test_coefficients(n_max=10)

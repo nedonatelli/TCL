@@ -24,7 +24,7 @@ from pytcl.coordinate_systems.rotations import rot_axis_to_vec
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures" / "matlab"
 
 # Literal transcriptions; measured max disagreement 7.3e-12 on
-# kilometre-scale coordinates.
+# kilometer-scale coordinates.
 ATOL = 1e-9
 
 

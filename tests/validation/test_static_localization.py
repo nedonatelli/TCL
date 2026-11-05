@@ -563,7 +563,7 @@ class TestRangeRateToStaticPos:
         assert res.exit_code == 0
         # The 3D solutions pass through the eigendecomposition of a
         # heavier lifted system; measured set agreement 2.2e-3 absolute
-        # on kilometre-scale coordinates (~1e-6 relative).
+        # on kilometer-scale coordinates (~1e-6 relative).
         _assert_same_solution_set(res.z_cart, _load("se_rr2pos_3d.csv"), 1e-5)
         assert np.min(np.linalg.norm(res.z_cart - u3[:, None], axis=0)) < 1e-3
 
@@ -728,7 +728,7 @@ class TestDirectionOnlyStaticLocEst:
 
     def test_alg1_converges_at_least_as_deep_as_matlab(self):
         # SciPy BFGS replaces quasiNetwonBFGS: same cost surface, so
-        # the port must land within the same shallow bowl (metres on a
+        # the port must land within the same shallow bowl (meters on a
         # km scale) at a cost no worse than the MATLAB optimum.
         from pytcl.static_estimation.localization import _direction_cost
 

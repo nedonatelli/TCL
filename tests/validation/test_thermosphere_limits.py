@@ -8,7 +8,7 @@ per-species exponential profiles with floors.
 
 Nothing warned a caller, and there were no validation tests, so a sea-level
 density 44% below truth was invisible. These tests pin the limits now stated
-in the docstring, so the documented numbers cannot drift away from behaviour
+in the docstring, so the documented numbers cannot drift away from behavior
 without something failing.
 """
 

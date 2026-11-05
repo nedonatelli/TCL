@@ -180,7 +180,7 @@ class TestMoonPosition:
 
     @requires_de440
     def test_moon_icrf_is_ssb_to_moon(self):
-        """ICRF Moon is SSB->EMB + EMB->Moon, about 1 AU from the barycentre.
+        """ICRF Moon is SSB->EMB + EMB->Moon, about 1 AU from the barycenter.
 
         The earlier bound ``distance < 1.0`` rejected the correct value.
         """
@@ -350,7 +350,7 @@ class TestEphemerisEdgeCases:
 
 @pytest.mark.skipif(not HAS_JPLEPHEM, reason="jplephem not installed")
 class TestDEEphemerisWithoutKernel:
-    """Construction and cache behaviour that never touches a kernel file.
+    """Construction and cache behavior that never touches a kernel file.
 
     Separated from the kernel-gated classes so these still run on a machine
     with jplephem installed but no cached ephemeris.

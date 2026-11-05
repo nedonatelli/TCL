@@ -468,14 +468,14 @@ def reduce_mixture_west(
         squared error (``distMeas=1``).
     enhanced : bool
         Use the enhanced West selection of [2] (MATLAB ``algorithm=1``):
-        the merge candidate minimises weight / det(P) instead of weight.
+        the merge candidate minimizes weight / det(P) instead of weight.
     gamma : float, optional
         Maximum partner distance allowed for a merge (MATLAB
         ``gammaVal``). Once the nearest partner is at least this far and
         no more than ``k_max`` components remain, reduction stops with
         possibly more than ``max_components``. Default: no limit.
     k_max : int, optional
-        The ``gamma`` stop is only honoured once this many or fewer
+        The ``gamma`` stop is only honored once this many or fewer
         components remain (MATLAB ``KMax``). Default: no limit.
 
     Returns

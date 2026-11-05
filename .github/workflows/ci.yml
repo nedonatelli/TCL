@@ -152,7 +152,7 @@ jobs:
       # counts as unexecuted however thoroughly the tests exercise it --
       # gating.py reported 56% while actually at 94%, and the artifact hid
       # ~50 lines of genuinely dead kernels in rotations.py behind the same
-      # number. Compiled behaviour is still verified: every other matrix
+      # number. Compiled behavior is still verified: every other matrix
       # cell runs the suite with JIT on; only this measurement leg
       # interprets the kernels as Python so their lines count.
       #

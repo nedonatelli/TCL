@@ -419,7 +419,7 @@ def spectrogram(
     Shows how the spectral content of the signal evolves over time.
 
     The returned ``power`` is not simply the magnitude squared of the STFT:
-    it carries whichever normalisation ``scaling`` and ``mode`` select, and
+    it carries whichever normalization ``scaling`` and ``mode`` select, and
     the default ``scaling="density"`` is a power spectral density, dividing
     by ``fs * sum(window**2)`` and doubling the one-sided bins. Compare
     `reassigned_spectrogram`, which documents and implements the same

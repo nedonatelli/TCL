@@ -369,8 +369,8 @@ class TestEarthRadius:
     def test_sphere_earth_constant(self):
         assert constants.SPHERE_EARTH.a is EARTH_MEAN_RADIUS
 
-    # Spellings of the mean radius in metres: 6371000, 6_371_000, 6371000.0,
-    # 6.371e6, 6371e3, with any exponent sign or case; and in kilometres:
+    # Spellings of the mean radius in meters: 6371000, 6_371_000, 6371000.0,
+    # 6.371e6, 6371e3, with any exponent sign or case; and in kilometers:
     # 6371.0, 6371e0. The 6371.2 km geomagnetic reference radius is a different
     # constant and does not match.
     _LITERAL = re.compile(
@@ -474,7 +474,7 @@ class TestAzimuth:
             back = great_circle.great_circle_azimuth(lat2, lon2, lat1, lon1)
             assert r.azimuth2 == (back + np.pi) % (2 * np.pi)
 
-    def test_sub_millimetre_pair_has_a_real_azimuth(self, old_gc):
+    def test_sub_millimeter_pair_has_a_real_azimuth(self, old_gc):
         args = (0.7, 0.1, 0.7 + 3e-11, 0.1 + 2e-11)
         assert old_gc.great_circle_azimuth(*args) == 0.0
         assert great_circle.great_circle_azimuth(*args) == pytest.approx(0.46, abs=0.02)

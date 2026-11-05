@@ -113,7 +113,7 @@ class TestWestMatlab:
 
 
 class TestWestSemantics:
-    """Behaviour that needs no fixture: the lightest-first rule and the
+    """Behavior that needs no fixture: the lightest-first rule and the
     ``gamma``/``k_max`` early stop of WestGaussReduction."""
 
     def _three(self):

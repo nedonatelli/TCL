@@ -100,7 +100,7 @@ class TestAgainstPublishedSpeedOfSound:
         """The speed of sound is only right if the temperature behind it is.
 
         Asserting the temperature separately means a compensating error -- a
-        wrong temperature cancelled by a wrong gas constant -- cannot pass.
+        wrong temperature canceled by a wrong gas constant -- cannot pass.
         """
         state = us_standard_atmosphere_1976(_geometric_altitude(geopotential))
         assert float(np.asarray(state.temperature)) == pytest.approx(

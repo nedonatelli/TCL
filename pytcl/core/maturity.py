@@ -44,10 +44,10 @@ they are assigned from evidence rather than impression:
 - **STABLE** is never assigned automatically. Freezing an API is a release
   commitment, not something a coverage number implies; promoting a module
   here is a deliberate act.
-- **MATURE** requires at least 90% line coverage, no behaviour change in the
+- **MATURE** requires at least 90% line coverage, no behavior change in the
   current release, and a code path CI can actually execute.
 - **EXPERIMENTAL** covers everything else: below that coverage bar, changed
-  behaviour this release, or -- for :mod:`pytcl.gpu` -- a CuPy branch that no
+  behavior this release, or -- for :mod:`pytcl.gpu` -- a CuPy branch that no
   CI runner can reach, so the reported coverage reflects only the MLX half.
 
 Two invariants are enforced by ``tests/unit/test_maturity_comprehensive.py``:
@@ -274,7 +274,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "clustering.gaussian_mixture": MaturityLevel.EXPERIMENTAL,  # 86% coverage
     "clustering.hierarchical": MaturityLevel.EXPERIMENTAL,  # 83% coverage
     # core
-    "core.maturity": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "core.maturity": MaturityLevel.EXPERIMENTAL,  # behavior changed this release
     # dynamic_models
     "dynamic_models.continuous_time.dynamics": MaturityLevel.EXPERIMENTAL,  # 88% coverage
     # gpu
@@ -288,7 +288,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     # io
     "io.dataframes": MaturityLevel.EXPERIMENTAL,  # 90% coverage
     "io.storage": MaturityLevel.EXPERIMENTAL,  # 70% coverage
-    "io.track_database": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "io.track_database": MaturityLevel.EXPERIMENTAL,  # behavior changed this release
     # mathematical_functions
     "mathematical_functions.basic_matrix.decompositions": MaturityLevel.EXPERIMENTAL,  # 86% coverage
     "mathematical_functions.signal_processing.matched_filter": MaturityLevel.EXPERIMENTAL,  # 66% coverage
@@ -299,7 +299,7 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "navigation.rhumb": MaturityLevel.EXPERIMENTAL,  # 85% coverage
     "navigation.ins": MaturityLevel.EXPERIMENTAL,  # demoted v2.11.1: ins_error_state_matrix's oracle (tests/validation/test_ins_error_matrix.py) found 18 of 29 9x9 navigation-block entries disagreeing with mechanize_ins_ned's own Jacobian (counting every entry non-zero in the analytic matrix, or non-zero in the oracle where the analytic matrix has an implicit zero) -- 11 of 12 in the attitude rows, whose -[omega_in^n x] phi self-coupling submatrix is entirely absent, plus F[4,4]'s missing vE self-coupling in the velocity rows; three vertical-channel entries (sign errors + a missing term) were fixed, the remaining 15 are tracked as xfail
     # plotting
-    "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "plotting.metrics": MaturityLevel.EXPERIMENTAL,  # behavior changed this release
     "plotting.tracks": MaturityLevel.EXPERIMENTAL,  # 85% coverage
     # coordinate_systems
     "coordinate_systems.conversions.uv": MaturityLevel.MATURE,  # v2.8.0; 97.7% cov (2026-09-11)
@@ -339,9 +339,9 @@ MODULE_MATURITY: Dict[str, MaturityLevel] = {
     "trackers.bernoulli": MaturityLevel.EXPERIMENTAL,  # new this release
     "trackers.hypothesis": MaturityLevel.EXPERIMENTAL,  # n-scan prune rebuilt this release
     "trackers.mht": MaturityLevel.EXPERIMENTAL,  # hypothesis branching rebuilt this release
-    "trackers.multi_target": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "trackers.multi_target": MaturityLevel.EXPERIMENTAL,  # behavior changed this release
     # transponders
-    "transponders.ais": MaturityLevel.EXPERIMENTAL,  # behaviour changed this release
+    "transponders.ais": MaturityLevel.EXPERIMENTAL,  # behavior changed this release
 }
 
 

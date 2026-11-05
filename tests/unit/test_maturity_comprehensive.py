@@ -325,7 +325,7 @@ class TestEveryRegisteredModuleExists:
     assessments were being lost that way.
 
     Nothing checked this, which is why it drifted across a package
-    reorganisation.
+    reorganization.
     """
 
     def test_every_registered_path_imports(self):

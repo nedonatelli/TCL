@@ -35,7 +35,7 @@ from pytcl.atmosphere.ionosphere import (
 
 
 def _is_gps_200_klobuchar(lat_deg, lon_deg, el_deg, az_deg, gps_time, alpha, beta):
-    """Klobuchar L1 delay in metres, evaluated step by step from IS-GPS-200.
+    """Klobuchar L1 delay in meters, evaluated step by step from IS-GPS-200.
 
     IS-GPS-200 section 20.3.3.5.2.5: all angles in semi-circles (1 semi-circle
     = 180 degrees); the trigonometric arguments are converted back to radians.

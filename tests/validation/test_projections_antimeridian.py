@@ -3,7 +3,7 @@
 Oracle: PROJ via pyproj. `geodetic2utm`, `mercator`, and `transverse_mercator`
 computed `x = a * (lon - lon0)` (or its series equivalent) without wrapping
 the longitude difference into [-pi, pi), so a forced UTM zone or a central
-meridian near +-180 degrees produced eastings in the billions of metres for
+meridian near +-180 degrees produced eastings in the billions of meters for
 any point on the far side of the seam (gh-25 follow-up). Skips without
 pyproj.
 
@@ -20,7 +20,7 @@ difference by a non-unity factor (`n`) before taking sin/cos, so unlike
 `mercator`/`transverse_mercator`, an unwrapped difference does not merely
 alias back to the right answer through 2*pi-periodicity: it silently
 computes the wrong map coordinate (124.6 km for `oblique_stereographic`,
-tens of millions of metres for `lambert_conformal_conic`) while still
+tens of millions of meters for `lambert_conformal_conic`) while still
 round-tripping through its own equally-wrong inverse -- the self-consistency
 check alone would not have caught this class, hence the PROJ-oracle
 comparisons below rather than round-trip checks alone.

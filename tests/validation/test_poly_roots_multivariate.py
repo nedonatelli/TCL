@@ -22,7 +22,7 @@ from pytcl.mathematical_functions.polynomials import poly_roots_multi_dim
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures" / "matlab"
 
 # Root sets agree with MATLAB to ~2e-13 on the unit-scale system and
-# ~1e-9 relative on the kilometre-scale localization system (the roots
+# ~1e-9 relative on the kilometer-scale localization system (the roots
 # pass through an eigendecomposition of the lifted problem).
 ATOL_UNIT = 1e-10
 RTOL_KM = 1e-6

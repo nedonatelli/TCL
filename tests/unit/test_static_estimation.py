@@ -28,7 +28,7 @@ from pytcl.static_estimation import (  # Least squares; Robust estimation
 
 
 def _exact_mad(e):
-    """Median-centred MAD with the exact Gaussian constant (statsmodels')."""
+    """Median-centered MAD with the exact Gaussian constant (statsmodels')."""
     return float(np.median(np.abs(e - np.median(e))) / norm.ppf(0.75))
 
 
@@ -330,7 +330,7 @@ class TestRecursiveLeastSquares:
                 x, P, np.array([1, 0]), 1.0, forgetting_factor=0.95
             )
 
-        # Exponentially weighted batch solution: minimise
+        # Exponentially weighted batch solution: minimize
         # sum_i lam^(N-i) (b_i - x0)^2 + lam^N (x0 - 1)^2 over the first
         # component (the second is unobserved and keeps its prior of 0).
         lam, n = 0.95, 20
@@ -482,7 +482,7 @@ class TestIRLS:
         result = irls(A, b, scale_func=_exact_mad, max_iter=2000, tol=1e-14)
 
         # statsmodels 0.15.0 RLM(b, A, M=HuberT(1.345)) with the same
-        # median-centred MAD / Phi^-1(0.75) scale, tol=1e-14.
+        # median-centered MAD / Phi^-1(0.75) scale, tol=1e-14.
         assert result.converged
         assert_allclose(result.x, [1.8701454105365432, 1.0466251207990838], rtol=1e-9)
         assert_allclose(
@@ -532,7 +532,7 @@ class TestHuberRegression:
 
         result = huber_regression(A, b, max_iter=500, tol=1e-14)
 
-        # statsmodels 0.15.0 RLM(b, A, M=HuberT(1.345)) with the median-centred
+        # statsmodels 0.15.0 RLM(b, A, M=HuberT(1.345)) with the median-centered
         # MAD scale (pytcl's 1.4826 differs from 1/Phi^-1(0.75) by 1.5e-6).
         assert_allclose(result.x, [0.7411332403203881, 1.0171454460762526], rtol=1e-5)
 

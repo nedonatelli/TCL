@@ -13,7 +13,7 @@ Current State (v2.11.1)
 * **11,000+ tests** passing; coverage measured honestly (94.6% as CI's
   branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
   run in CI; v2.11.1 is a correctness patch (see the CHANGELOG for its
-  behaviour notes)
+  behavior notes)
 * **The audit release** (v2.11.0): every silent-wrong-answer path from
   the full-codebase audit closed (Vincenty antipodal, gating without
   R, hypergeometric divergence, silent numerical fallbacks); the MHT
@@ -109,7 +109,7 @@ Next
   ``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian, Runnalls
   ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family; plus a
   robust interior ``ecef2geodetic`` solver for points near the Earth's
-  centre, where on WGS84 ``'direct'`` fails within 4.28e4 m and
+  center, where on WGS84 ``'direct'`` fails within 4.28e4 m and
   ``'iterative'`` errs by more than 1 mm within 3.14e5 m (v2.12.0 warns
   within 4.27e5 m and 1.28e6 m respectively); and the two geomagnetic
   latitude quantizations near the poles -- the WMM/IGRF cache's default
@@ -137,7 +137,7 @@ Next
   (its ``A == 0`` check misses about 1e-16) and inf/nan for ``tof=0`` (no
   ``tof > 0`` validation); ``shapiro_delay`` returning 0.0 when the
   gravitating body is on the observer-source path; ``debye`` rejecting
-  ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalises
+  ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalizes
   ``D(0) = 1``, MATLAB returns the raw integral); SQL ``store_group``
   metadata being unreadable, with the ``_group:`` marker leaking into
   ``list_keys()``; and ellipsoidal oblique ``stereographic`` deviating from

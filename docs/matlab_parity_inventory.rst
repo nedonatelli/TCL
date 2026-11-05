@@ -104,7 +104,7 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
        ``ruv2cart``) and the standard projections ported; UTM is validated to
        sub-mm against pyproj/EPSG, but ``stereographic`` and
        ``azimuthal_equidistant`` are spherical approximations that diverge
-       from PROJ by kilometres away from the projection centre (their own
+       from PROJ by kilometers away from the projection center (their own
        docstrings tabulate this; gh-25); ``oblique_stereographic``
        (EPSG 9809) and ``azimuthal_equidistant_exact`` are the ellipsoidal
        counterparts that match PROJ. The angle-only direction-cosine UV

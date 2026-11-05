@@ -220,11 +220,11 @@ class TestPositiveDefiniteMeansStrictlyPositive:
         assert ensure_positive_definite(self.DEFINITE).shape == (2, 2)
 
     def test_semidefinite_variant_accepts_what_definite_rejects(self):
-        """The lenient behaviour did not disappear, it moved somewhere honest.
+        """The lenient behavior did not disappear, it moved somewhere honest.
 
         A covariance may legitimately be singular -- a perfectly known state
         component gives a zero eigenvalue -- so callers that wanted the old
-        behaviour have ``ensure_positive_semidefinite``.
+        behavior have ``ensure_positive_semidefinite``.
         """
         assert ensure_positive_semidefinite(self.SINGULAR).shape == (2, 2)
         assert ensure_positive_semidefinite(self.ZERO).shape == (2, 2)

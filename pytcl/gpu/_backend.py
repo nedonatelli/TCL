@@ -512,7 +512,7 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
     except Exception as exc:
         if cupy_failure is not None:
             raise DependencyError(
-                f"The CuPy backend failed to initialise ({cupy_failure}) and "
+                f"The CuPy backend failed to initialize ({cupy_failure}) and "
                 "no fallback backend is installed",
                 package="cupy",
                 feature="GPU compute backend",
@@ -528,7 +528,7 @@ def get_compute_backend(prefer: Optional[str] = None) -> Backend:
         ) from exc
     if cupy_failure is not None:
         notice = (
-            f"The CuPy backend failed to initialise ({cupy_failure}); "
+            f"The CuPy backend failed to initialize ({cupy_failure}); "
             f"falling back to the {fallback.name} backend"
         )
         if not fallback.supports_float64:

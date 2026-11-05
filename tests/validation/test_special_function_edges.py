@@ -191,7 +191,7 @@ class TestMarcumSwerling:
         (1e-6, 3, 0.6),
         (1e-6, 3, 0.7),
         # Review round 1: just above theta = 1 the closed form overflowed for
-        # n > ~1025 (n=1100 gave -inf, n=2000 NaN) and cancelled to 2e-11 at
+        # n > ~1025 (n=1100 gave -inf, n=2000 NaN) and canceled to 2e-11 at
         # n=1000. The switch is now theta = sqrt(n); both sides are pinned.
         (1e-6, 1100, 2 * 1.000001 / 1100),
         (1e-6, 2000, 2 * 1.5 / 2000),

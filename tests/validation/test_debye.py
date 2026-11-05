@@ -202,9 +202,9 @@ class TestDebyeNegativeX:
     quadrature of n/x^n * int_0^x t^n/(e^t - 1) dt, cross-checked in the test
     by D_n(-x) = D_n(x) + n x / (n + 1).
 
-    Normalisation gap, an owner decision and not fixed here: pytcl normalises
+    Normalization gap, an owner decision and not fixed here: pytcl normalizes
     (D_n(0) = 1, the MathWorld definition) while MATLAB returns the raw
-    integral (D(0) = 0). The oracle follows pytcl's normalisation.
+    integral (D(0) = 0). The oracle follows pytcl's normalization.
     """
 
     @pytest.mark.parametrize("n", (1, 3, 4, 10))

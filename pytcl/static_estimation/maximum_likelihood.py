@@ -596,7 +596,7 @@ def mle_newton_raphson(
         or below ``n * eps`` times the largest counts as zero
         (``np.linalg.matrix_rank``'s convention). The numerical Hessian is
         far less accurate: the four-point stencil's error in entry
-        ``(i, j)`` is modelled as ``2 (eps abs(L) / h**2 + eps max(abs(t_i),
+        ``(i, j)`` is modeled as ``2 (eps abs(L) / h**2 + eps max(abs(t_i),
         abs(t_j), 1) / h abs(F_ij))``, where ``L`` is the log-likelihood at
         the solution, and an eigenvalue of ``C`` within the 2-norm of that
         error (scaled like ``C``) also counts as zero. The roundoff is set
