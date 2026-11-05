@@ -234,7 +234,7 @@ def debye(
         out[large] = _debye_complement(n, flat[large])
     out[np.isposinf(flat)] = 0.0
     negative = signed < 0.0
-    out[negative] += n * flat[negative] / (n + 1)
+    out[negative] += flat[negative] * (n / (n + 1))
     return out.reshape(x.shape)
 
 

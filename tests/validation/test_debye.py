@@ -22,7 +22,6 @@ Oracles (none of them call pytcl):
 
 import functools
 
-import mpmath as mp
 import numpy as np
 import pytest
 
@@ -35,6 +34,8 @@ from pytcl.mathematical_functions.special_functions.debye import (
     debye_entropy,
     debye_heat_capacity,
 )
+
+mp = pytest.importorskip("mpmath")
 
 
 def _grid(x: mp.mpf, n: int) -> list:
