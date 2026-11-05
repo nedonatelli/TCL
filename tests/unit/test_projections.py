@@ -338,6 +338,35 @@ class TestStereographic:
         assert abs(np.degrees(lat_inv) - lat) < 1e-9
         assert abs(np.degrees(lon_inv) - lon) < 1e-9
 
+    def test_sphere_and_polar_cases_are_v2111_bitwise(self):
+        """v2.12.0 changed only the ellipsoidal oblique case; the sphere and
+        the polar origin run the v2.11.1 code (git 781ebce) unchanged."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/coordinate_systems/projections/projections.py")
+        rng = np.random.default_rng(20261104)
+        for _ in range(25):
+            lat0 = rng.uniform(-1.5, 1.5)
+            lon0 = rng.uniform(-3.0, 3.0)
+            lat = float(np.clip(lat0 + rng.uniform(-0.3, 0.3), -1.55, 1.55))
+            lon = lon0 + rng.uniform(-0.3, 0.3)
+            x, y = rng.uniform(-5.0e5, 5.0e5, 2)
+            args = (0.9999, A, 0.0)
+            assert tuple(stereographic(lat, lon, lat0, lon0, *args)) == tuple(
+                old.stereographic(lat, lon, lat0, lon0, *args)
+            )
+            assert tuple(stereographic_inverse(x, y, lat0, lon0, *args)) == tuple(
+                old.stereographic_inverse(x, y, lat0, lon0, *args)
+            )
+            for pole in (np.pi / 2, -np.pi / 2):
+                lat_p = float(np.sign(pole) * rng.uniform(1.2, 1.57))
+                assert tuple(stereographic(lat_p, lon, pole, lon0)) == tuple(
+                    old.stereographic(lat_p, lon, pole, lon0)
+                )
+                assert tuple(stereographic_inverse(x, y, pole, lon0)) == tuple(
+                    old.stereographic_inverse(x, y, pole, lon0)
+                )
+
     def test_scale_at_center_is_k0(self):
         lat0, lon0 = np.radians(45), np.radians(-75)
         result = stereographic(lat0, lon0, lat0, lon0, k0=0.9996)

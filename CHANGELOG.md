@@ -404,15 +404,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `r2` the transfer plane is undefined, but the `A == 0` check missed
   the computed `A` of about 1e-16 times the scale, so the function returned
   zero velocities (e = 1, a = 3189 km for `r1 = [6378, 0, 0]`,
-  `r2 = -r1`). It now raises when `|r1 x r2| / (|r1| |r2|) < sqrt(eps)`
-  (about 1.49e-8; nearly parallel positions included). Below that the
-  `arccos` transfer angle has no correct digits: v2.11.1 solved such inputs
-  silently, with propagated end points missing `r2` by 1e2 to 1e8 relative,
-  and none of 600 exactly antipodal v2.11.1 solutions reached `r2` within
-  1e-6. Above it accuracy still degrades toward antipodal; for one geometry
-  (`|r1| = 7000` km, `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy
-  DOP853 propagation) the relative miss is 2.6e-7 at `sin(dnu) = 1e-4`,
-  2.0e-5 at 1e-5, 1.1e-3 at 1e-6 and 6.8e-3 at 1e-7. The solve path itself
+  `r2 = -r1`). It now raises when `r1 x r2 = 0`, and when the positions
+  are nearly antipodal, `cos(dnu) < 0` with `|r1 x r2| / (|r1| |r2|) =
+  |sin(dnu)| < 1e-7`. There the chord term is proportional to `sin(dnu)`,
+  computed as `sin(arccos(c))`, whose relative error from rounding `c` is
+  about `eps / sin(dnu)^2`: order 1 at `sqrt(eps)`, about 2e-2 at 1e-7.
+  v2.11.1 solved such inputs silently: for `|r1| = 7000` km,
+  `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy DOP853 propagation,
+  the relative miss of `r2` was 1.38 at `sin(dnu) = 1.5e-8`, 2.01 at 3e-8,
+  0.20 at 5e-8 and 1e2 to 1e8 further down, and none of 600 exactly
+  antipodal v2.11.1 solutions reached `r2` within 1e-6. Above the
+  threshold accuracy still degrades toward antipodal; in that one geometry
+  the miss is 6.8e-3 at 1e-7, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
+  1e-4. Nearly parallel positions (`cos(dnu) > 0`) are not rejected: that
+  side is well conditioned, and the short-way solution in the same geometry
+  misses `r2` by below 1e-12 down to `sin(dnu) = 2e-8`. The solve path itself
   is unchanged, so every input that does not raise returns bitwise the
   v2.11.1 result. `tof = 0` returned inf/nan
   velocities and a negative `tof` raised "did not converge"; `tof <= 0`,

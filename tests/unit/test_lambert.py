@@ -197,24 +197,57 @@ class TestLambertUniversal:
         r1 = np.array([7000.0, 0.0, 0.0])
         return r1, 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
 
-    def test_near_antipodal_below_sqrt_eps_rejected(self):
-        """|sin(dnu)| = 1e-9 < sqrt(eps): arccos leaves no correct digits."""
-        r1, r2 = self._near_antipodal(1e-9)
-        with pytest.raises(ValueError, match="collinear"):
+    def test_near_antipodal_below_threshold_rejected(self):
+        """|sin(dnu)| = 9e-8 < 1e-7: sin(arccos(c)) is ~3% off from rounding."""
+        r1, r2 = self._near_antipodal(9e-8)
+        with pytest.raises(ValueError, match="antipodal"):
             lambert_universal(r1, r2, 5000.0)
 
-    def test_near_antipodal_above_sqrt_eps_is_v2111_bitwise(self):
-        """|sin(dnu)| = 1e-4 is solved by the unchanged v2.11.1 path."""
+    @pytest.mark.parametrize("sin_dnu", [1.1e-7, 1e-4])
+    def test_near_antipodal_above_threshold_is_v2111_bitwise(self, sin_dnu):
+        """Solved by the unchanged v2.11.1 path."""
         from tests.validation._v2111 import shipped_module
 
         old = shipped_module("pytcl/astronomical/lambert.py")
-        r1, r2 = self._near_antipodal(1e-4)
+        r1, r2 = self._near_antipodal(sin_dnu)
         new_sol = lambert_universal(r1, r2, 5000.0)
         old_sol = old.lambert_universal(r1, r2, 5000.0)
 
         assert np.array_equal(new_sol.v1, old_sol.v1)
         assert np.array_equal(new_sol.v2, old_sol.v2)
         assert (new_sol.a, new_sol.e) == (old_sol.a, old_sol.e)
+
+    @pytest.mark.parametrize("sin_dnu", [2e-8, 9e-8, 1e-6])
+    def test_nearly_parallel_short_way_is_solved(self, sin_dnu):
+        """The small-angle side is well conditioned (A -> sqrt(2 r1 r2)), so
+        the antipodal threshold must not reject it. The transfer is nearly
+        rectilinear (e -> 1), which kepler_propagate_state rejects, so the
+        oracle is direct DOP853 integration of the two-body equations."""
+        from scipy.integrate import solve_ivp
+
+        th = np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        r2 = 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+        solution = lambert_universal(r1, r2, 5000.0)
+
+        def two_body(_, state):
+            r = state[:3]
+            return np.r_[state[3:], -GM_EARTH * r / np.linalg.norm(r) ** 3]
+
+        end = solve_ivp(
+            two_body,
+            (0.0, 5000.0),
+            np.r_[r1, solution.v1],
+            method="DOP853",
+            rtol=1e-13,
+            atol=1e-12,
+        ).y[:3, -1]
+        assert np.linalg.norm(end - r2) / np.linalg.norm(r2) < 1e-10
+
+    def test_exactly_parallel_unequal_magnitudes_rejected(self):
+        r1 = np.array([7000.0, 0.0, 0.0])
+        with pytest.raises(ValueError, match="collinear|transfer angle is zero"):
+            lambert_universal(r1, 1.3 * r1, 5000.0)
 
     def test_antiparallel_unequal_magnitudes_rejected(self):
         r1 = np.array([1234.5, -6789.0, 321.0])

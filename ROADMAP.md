@@ -88,10 +88,14 @@ names each would take:
   `EGM2008.cof`); someone with that file must run it once before its oracle
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
-- **Near-antipodal `lambert_universal`.** v2.12.0 rejects
-  `|sin(dnu)| < sqrt(eps)`, but above that the `arccos` transfer angle
-  still loses accuracy (relative miss 1.1e-3 at `sin(dnu) = 1e-6` in one
-  measured geometry). Compute `dnu = atan2(|r1 x r2|, r1 . r2)` and make the
+- **Near-antipodal and long-way near-parallel `lambert_universal`.**
+  v2.12.0 rejects nearly antipodal positions with `|sin(dnu)| < 1e-7`, but
+  above that the `arccos` transfer angle still loses accuracy (relative
+  miss 6.8e-3 at `sin(dnu) = 1e-7` and 1.1e-3 at 1e-6 for `|r2| = 1.3 |r1|`,
+  `tof = 5000` s). The long way around nearly parallel positions (`dnu`
+  near `2 pi`) is worse: in that geometry it does not converge at
+  `sin(dnu)` = 1e-2 to 1e-6 and misses `r2` by order 1 from 1e-7 to 2e-8.
+  Compute `dnu = atan2(|r1 x r2|, r1 . r2)` and make the
   `abs(tof_calc - tof) < tol` stopping test relative to `tof`: the atan2
   change alone moved ordinary results by up to 3.3e-13 relative and flipped
   14 of 3000 random geometries to "did not converge" in one branch, because
