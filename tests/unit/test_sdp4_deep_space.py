@@ -199,7 +199,7 @@ class TestDeepSpaceAgreement:
 class TestNearEarthNonRegression:
     """The near-Earth path must be untouched by the deep-space work."""
 
-    def test_iss_matches_reference_to_sub_millimetre(self):
+    def test_iss_matches_reference_to_sub_millimeter(self):
         sat = _ours(ISS)
         assert not sat.is_deep_space
         ref = _reference(ISS)

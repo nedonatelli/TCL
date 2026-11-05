@@ -849,7 +849,7 @@ def stereographic(
     # Grid convergence: the angle from true north to grid north. The
     # stereographic projection is conformal, so this is exactly the
     # difference between the grid and true bearings of any one direction;
-    # taking the direction from the point back to the projection centre,
+    # taking the direction from the point back to the projection center,
     # whose grid bearing is ``azimuth + pi`` because that ray is straight in
     # the map, gives ``back_azimuth - azimuth - pi``. Both azimuths are on
     # the conformal sphere, matching the projection above.
@@ -940,7 +940,7 @@ def stereographic_inverse(
     chi = np.arcsin(cos_c * sin_chi0 + y * sin_c * cos_chi0 / rho)
 
     # Longitude, canonicalized into [-pi, pi): lon0 + offset can otherwise
-    # land just past the antimeridian for a centre near +-180 degrees
+    # land just past the antimeridian for a center near +-180 degrees
     # (gh-25 follow-up). Cast: narrows the helper's wider Union return
     # back to this function's own unchanged scalar-only declared type.
     lon = cast(
@@ -1313,7 +1313,7 @@ def azimuthal_equidistant(
     This projection is not conformal, so there is no single scale factor.
     The radial scale is exactly 1 by construction and is what
     ``ProjectionResult.scale`` reports; the tangential scale is
-    ``c / sin(c)`` for angular distance ``c`` from the centre, reaching
+    ``c / sin(c)`` for angular distance ``c`` from the center, reaching
     about 1.005 at 1,000 km and 1.11 at 5,000 km. ``convergence`` accounts
     for this and is the true grid convergence, not the conformal
     approximation.
@@ -1352,7 +1352,7 @@ def azimuthal_equidistant(
 
     # Radial scale is exactly 1 by construction; this projection is not
     # conformal, so there is no single scale factor -- the tangential scale
-    # is c / sin(c), which grows without bound away from the centre (about
+    # is c / sin(c), which grows without bound away from the center (about
     # 1.11 at 5,000 km). ``ProjectionResult.scale`` reports the radial one.
     scale = 1.0
 
@@ -1430,7 +1430,7 @@ def azimuthal_equidistant_inverse(
 
     lat = np.arcsin(cos_c * sin_lat0 + y * sin_c * cos_lat0 / rho)
     # Canonicalize into [-pi, pi): lon0 + offset can otherwise land just
-    # past the antimeridian for a centre near +-180 degrees (gh-25
+    # past the antimeridian for a center near +-180 degrees (gh-25
     # follow-up). Cast: narrows the helper's wider Union return back to
     # this function's own unchanged scalar-only declared type.
     lon = cast(
@@ -1557,7 +1557,7 @@ def oblique_stereographic(
     nu = a / np.sqrt(1 - e2 * sin_lat**2)
     scale = float(2 * n * R * k0 * cos_chi / (B * nu * np.cos(lat)))
 
-    # Grid convergence via the ray back to the projection centre, which is
+    # Grid convergence via the ray back to the projection center, which is
     # straight in the map; conformality transfers sphere bearings to
     # ellipsoid bearings unchanged (meridians map to meridians).
     azimuth = np.arctan2(
@@ -1663,11 +1663,11 @@ def azimuthal_equidistant_exact(
     Exact ellipsoidal azimuthal equidistant projection (forward).
 
     The map coordinates are the true geodesic distance and azimuth from
-    the projection centre: ``x = s12 sin(az1)``, ``y = s12 cos(az1)``,
+    the projection center: ``x = s12 sin(az1)``, ``y = s12 cos(az1)``,
     computed with Karney's algorithm (geographiclib). This is what PROJ's
     ``+proj=aeqd`` computes on an ellipsoid, so unlike
     :func:`azimuthal_equidistant` -- a spherical approximation on the
-    authalic sphere -- distances from the centre are exact everywhere,
+    authalic sphere -- distances from the center are exact everywhere,
     antipodes included.
 
     Requires the ``geodesy`` extra (geographiclib).
@@ -1679,9 +1679,9 @@ def azimuthal_equidistant_exact(
     lon : float
         Longitude in radians.
     lat0 : float
-        Centre latitude in radians.
+        Center latitude in radians.
     lon0 : float
-        Centre longitude in radians.
+        Center longitude in radians.
     a : float, optional
         Semi-major axis in meters. Default is WGS84.
     e2 : float, optional
@@ -1754,7 +1754,7 @@ def azimuthal_equidistant_exact_inverse(
     """
     Exact ellipsoidal azimuthal equidistant projection (inverse).
 
-    Solves the direct geodesic problem from the projection centre with
+    Solves the direct geodesic problem from the projection center with
     azimuth ``atan2(x, y)`` and distance ``hypot(x, y)`` (Karney's
     algorithm, geographiclib). Requires the ``geodesy`` extra.
 
@@ -1765,9 +1765,9 @@ def azimuthal_equidistant_exact_inverse(
     y : float
         Northing in meters.
     lat0 : float
-        Centre latitude in radians.
+        Center latitude in radians.
     lon0 : float
-        Centre longitude in radians.
+        Center longitude in radians.
     a : float, optional
         Semi-major axis in meters. Default is WGS84.
     e2 : float, optional

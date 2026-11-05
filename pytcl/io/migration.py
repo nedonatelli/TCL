@@ -418,7 +418,7 @@ class MigrationHelper:
         key = (backend, filter_type)
         if key not in templates:
             # Deliberate graceful fallback (see test_fallback_template): an
-            # unrecognised combination returns the nearest template rather
+            # unrecognized combination returns the nearest template rather
             # than failing. The template's own header names what it is, so
             # the substitution is visible in the output.
             for fallback_filter in ["kf", "ekf"]:

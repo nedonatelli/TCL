@@ -284,7 +284,7 @@ class TestGeodetic2ECEF:
             # All scalar: always returned flat (3,).
             (0.5, 0.1, 0.0, (3,)),
             # lat a size-1 array, lon/alt scalar: pre-existing (accidental)
-            # behaviour squeezed this to flat (3,) too, via the old
+            # behavior squeezed this to flat (3,) too, via the old
             # `lat.size == 1` branch -- NOT the principled (3, 1) that
             # broadcast_shapes((1,), (), ()) would give. A patch must not
             # change a shape that previously worked, so (3,) is pinned

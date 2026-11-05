@@ -54,7 +54,7 @@ def test_moon_earth_centered_is_geocentric_not_barycentric():
 
 
 @requires_kernel
-def test_planet_position_earth_is_earth_not_the_barycentre():
+def test_planet_position_earth_is_earth_not_the_barycenter():
     """planet_position('earth') must chain 0->3->399, not stop at the EMB."""
     jd = 2460311.0
     earth, _ = planet_position("earth", jd)

@@ -57,7 +57,7 @@ REL_TOL = 1e-14
 
 # Central-difference steps, calibrated per target (see module docstring):
 # pieces have O(1) gradient norms so h=1e-5 suffices; the assembled
-# objective's near-cancelling gradient needs h=1e-4 to stay above the
+# objective's near-canceling gradient needs h=1e-4 to stay above the
 # eps*|f|/h roundoff floor.
 FD_STEP = 1e-5
 FD_STEP_OBJECTIVE = 1e-4

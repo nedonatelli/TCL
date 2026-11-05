@@ -702,7 +702,7 @@ _EARTH2014_N_ROWS = 10800
 def _earth2014_raw_block(path, lat_min_rad, lon_min_rad, shape):
     """Read an Earth2014 block straight from the int16 big-endian file.
 
-    Cell (i, j) is centred on latitude -90 + (i + 0.5)/60 and longitude
+    Cell (i, j) is centered on latitude -90 + (i + 0.5)/60 and longitude
     -180 + (j + 0.5)/60 degrees, rows running south to north.
     """
     i0 = round((np.degrees(lat_min_rad) + 90.0) * 60.0 - 0.5)

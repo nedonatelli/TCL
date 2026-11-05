@@ -113,7 +113,7 @@ class TestMercator:
 
 class TestTransverseMercator:
     """Transverse Mercator against ``+proj=tmerc`` (PROJ uses the exact
-    Poder/Engsager series; pytcl's Helmert series agrees to a few millimetres
+    Poder/Engsager series; pytcl's Helmert series agrees to a few millimeters
     within the 5 degrees of the central meridian covered by the test points,
     on WGS84, k0 = 0.9996 and, for the custom-ellipsoid case, f = 1/150)."""
 
@@ -245,7 +245,7 @@ class TestUTM:
         "zone,central_deg", [(18, -75.0), (31, 3.0), (1, -177.0), (60, 177.0)]
     )
     def test_central_meridian(self, zone, central_deg):
-        """Zone n is centred on 6n - 183 degrees."""
+        """Zone n is centered on 6n - 183 degrees."""
         assert np.degrees(utm_central_meridian(zone)) == pytest.approx(
             central_deg, rel=1e-12, abs=0
         )
@@ -305,7 +305,7 @@ class TestStereographic:
     @pytest.mark.xfail(
         strict=True,
         reason="stereographic's ellipsoidal oblique form (Gaussian-radius sphere) "
-        "deviates from PROJ's sterea by hundreds of metres at 1 degree; documented "
+        "deviates from PROJ's sterea by hundreds of meters at 1 degree; documented "
         "in its docstring, use oblique_stereographic instead",
     )
     def test_ellipsoidal_oblique_matches_proj(self, pyproj):
@@ -581,7 +581,7 @@ class TestGridConvergenceMatchesTheProjection:
     def test_a_point_on_the_central_meridian_has_zero_convergence(self):
         """The case the old formulas got most visibly wrong.
 
-        Directly north of the centre, the meridian through the point *is*
+        Directly north of the center, the meridian through the point *is*
         the map's y-axis, so grid north and true north coincide. Both
         projections used to report pi here.
         """
@@ -592,7 +592,7 @@ class TestGridConvergenceMatchesTheProjection:
     def test_azimuthal_equidistant_is_not_merely_the_conformal_form(self):
         """AEQD is not conformal, so it needs the c/sin(c) tangential term.
 
-        Far from the centre the two forms diverge; this pins that the
+        Far from the center the two forms diverge; this pins that the
         non-conformal one is what ships.
         """
         args = (np.radians(35), np.radians(60), np.radians(-10), np.radians(-20))

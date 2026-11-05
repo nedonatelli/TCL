@@ -1,7 +1,7 @@
 """
 Benchmarks for the batch NEES and Mahalanobis paths (v2.12.0 Task 6.2).
 
-Both batch paths are vectorised over the sample axis; a per-row Python loop
+Both batch paths are vectorized over the sample axis; a per-row Python loop
 was ~200x slower at this size.
 """
 

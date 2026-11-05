@@ -42,7 +42,7 @@ _LAND = [
     (-11.256389, 286.249745, 30.058864),
 ]
 # (-76.981466, 34.17016, 12.63629) is left out: 3735 m of Antarctic ice, where
-# the height-anomaly-to-geoid correction is metres, not decimetres.
+# the height-anomaly-to-geoid correction is meters, not decimeters.
 
 # Degree-0 term N0 that pytcl omits (egm.py geoid_height, gh-25). The pytcl
 # docstring says "roughly -0.5 m"; NGA's EGM2008 README gives N0 = -0.41 m for
@@ -53,7 +53,7 @@ _N0_M = -0.41
 
 # Ocean: bound = GeographicLib's quoted egm2008-1 bilinear interpolation error
 # (max 25 mm, 0.8 mm rms; same page, "Interpolation and quantization errors")
-# plus a share for unmodelled terms.
+# plus a share for unmodeled terms.
 _OCEAN_TOLERANCE_M = 0.05
 # Land, 0.9-1.2 km: the published N is the geoid height while pytcl's T/gamma
 # is the height anomaly zeta; their difference grows with elevation (a few

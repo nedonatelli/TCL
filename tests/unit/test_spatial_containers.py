@@ -618,7 +618,7 @@ class TestKDTreeLeafSize:
 
     ``KDTree._build_tree`` recursed to one point per node and never read
     ``self.leaf_size``, so the documented "Maximum number of points in a leaf
-    node" did nothing -- while ``BallTree``, in the same module, honoured the
+    node" did nothing -- while ``BallTree``, in the same module, honored the
     identical parameter. The pair of properties below is what distinguishes
     an implemented parameter from an ignored one: the structure changes, the
     results do not.
@@ -665,7 +665,7 @@ class TestKDTreeLeafSize:
 
 
 class TestRTreeMinEntries:
-    """``min_entries`` must be honoured, or refused as unsatisfiable.
+    """``min_entries`` must be honored, or refused as unsatisfiable.
 
     It was accepted, stored, and consulted nowhere: ``RTree(max_entries=4,
     min_entries=3)`` filled with 20 boxes produced leaves of size 2, below
@@ -700,7 +700,7 @@ class TestRTreeMinEntries:
 
     @pytest.mark.parametrize("max_entries", [2, 3, 4, 5, 10, 16])
     @pytest.mark.parametrize("n_points", [5, 20, 60, 200])
-    def test_accepted_configurations_honour_the_minimum(self, max_entries, n_points):
+    def test_accepted_configurations_honor_the_minimum(self, max_entries, n_points):
         """Every non-root leaf must hold at least min_entries."""
         min_entries = (max_entries + 1) // 2
         tree = RTree(max_entries=max_entries, min_entries=min_entries)

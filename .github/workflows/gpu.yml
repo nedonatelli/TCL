@@ -15,7 +15,7 @@ name: GPU
 # No GitHub-hosted GPU runner is provisioned for this repository, and it has
 # no self-hosted runner registered either: the one run against the old
 # default label (gpu-t4-4-core, run 33821558601) queued 16 minutes and was
-# cancelled. Dispatch must name the label of a registered self-hosted runner
+# canceled. Dispatch must name the label of a registered self-hosted runner
 # on an NVIDIA machine, so there is deliberately no default to queue against.
 
 on:

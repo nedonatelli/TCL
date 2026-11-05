@@ -13,10 +13,10 @@ The statsmodels constants below were produced with statsmodels 0.15.0::
     sm.RLM(b, A, M=sm.robust.norms.HuberT(1.345)).fit(maxiter=500, tol=1e-14)
     sm.RLM(b, A, M=sm.robust.norms.TukeyBiweight(4.685)).fit(maxiter=500, tol=1e-14)
 
-``RLM``'s built-in ``"mad"`` scale is centred at zero
-(``median(|r|) / 0.6745``); pytcl's ``mad`` is centred at the residual median,
-so the zero-centred pair is compared through a matching ``scale_func`` and the
-median-centred pair through ``statsmodels.robust.scale.mad`` passed to ``RLM``.
+``RLM``'s built-in ``"mad"`` scale is centered at zero
+(``median(|r|) / 0.6745``); pytcl's ``mad`` is centered at the residual median,
+so the zero-centered pair is compared through a matching ``scale_func`` and the
+median-centered pair through ``statsmodels.robust.scale.mad`` passed to ``RLM``.
 """
 
 import numpy as np
@@ -36,15 +36,15 @@ def _contaminated_line():
     return A, b
 
 
-# statsmodels 0.15.0 RLM, scale_est="mad" (zero-centred), tol=1e-14.
-SM_HUBER_ZERO_CENTRED = (1.5084033101030552, 0.7992570424286283, 0.47705486291221244)
-SM_TUKEY_ZERO_CENTRED = (1.4897591677311568, 0.8000210382408394, 0.47306990161578344)
+# statsmodels 0.15.0 RLM, scale_est="mad" (zero-centered), tol=1e-14.
+SM_HUBER_ZERO_CENTERED = (1.5084033101030552, 0.7992570424286283, 0.47705486291221244)
+SM_TUKEY_ZERO_CENTERED = (1.4897591677311568, 0.8000210382408394, 0.47306990161578344)
 # statsmodels 0.15.0 RLM, scale_est=lambda m, r: scale.mad(r, center=np.median).
-SM_HUBER_MEDIAN_CENTRED = (1.5067767232798466, 0.799613179333079)
-SM_TUKEY_MEDIAN_CENTRED = (1.4900551579473964, 0.8000447762482659)
+SM_HUBER_MEDIAN_CENTERED = (1.5067767232798466, 0.799613179333079)
+SM_TUKEY_MEDIAN_CENTERED = (1.4900551579473964, 0.8000447762482659)
 
 
-def _zero_centred_mad(e):
+def _zero_centered_mad(e):
     return float(np.median(np.abs(e)) / GAUSSIAN_3_4)
 
 
@@ -128,32 +128,32 @@ class TestInfluenceFunctionsAtBreakpoints:
 
 
 class TestIrlsAgainstStatsmodels:
-    def test_huber_zero_centred_scale_matches_vendored_rlm(self):
+    def test_huber_zero_centered_scale_matches_vendored_rlm(self):
         A, b = _contaminated_line()
         res = rb.irls(
             A,
             b,
             weight_func=lambda z: rb.huber_weight(z, 1.345),
-            scale_func=_zero_centred_mad,
+            scale_func=_zero_centered_mad,
             max_iter=500,
             tol=1e-14,
         )
         assert res.converged
-        assert res.x == pytest.approx(SM_HUBER_ZERO_CENTRED[:2], rel=1e-9, abs=0)
-        assert res.scale == pytest.approx(SM_HUBER_ZERO_CENTRED[2], rel=1e-9, abs=0)
+        assert res.x == pytest.approx(SM_HUBER_ZERO_CENTERED[:2], rel=1e-9, abs=0)
+        assert res.scale == pytest.approx(SM_HUBER_ZERO_CENTERED[2], rel=1e-9, abs=0)
 
-    def test_tukey_zero_centred_scale_matches_vendored_rlm(self):
+    def test_tukey_zero_centered_scale_matches_vendored_rlm(self):
         A, b = _contaminated_line()
         res = rb.irls(
             A,
             b,
             weight_func=lambda z: rb.tukey_weight(z, 4.685),
-            scale_func=_zero_centred_mad,
+            scale_func=_zero_centered_mad,
             max_iter=500,
             tol=1e-14,
         )
-        assert res.x == pytest.approx(SM_TUKEY_ZERO_CENTRED[:2], rel=1e-9, abs=0)
-        assert res.scale == pytest.approx(SM_TUKEY_ZERO_CENTRED[2], rel=1e-9, abs=0)
+        assert res.x == pytest.approx(SM_TUKEY_ZERO_CENTERED[:2], rel=1e-9, abs=0)
+        assert res.scale == pytest.approx(SM_TUKEY_ZERO_CENTERED[2], rel=1e-9, abs=0)
 
     def test_huber_regression_default_scale_matches_vendored_rlm(self):
         # pytcl's mad uses 1.4826, statsmodels 1/Phi^-1(0.75) = 1.482602...:
@@ -161,21 +161,21 @@ class TestIrlsAgainstStatsmodels:
         # exact-constant variants below at 1e-9.
         A, b = _contaminated_line()
         res = rb.huber_regression(A, b, max_iter=500, tol=1e-14)
-        assert res.x == pytest.approx(SM_HUBER_MEDIAN_CENTRED, rel=1e-6, abs=0)
+        assert res.x == pytest.approx(SM_HUBER_MEDIAN_CENTERED, rel=1e-6, abs=0)
 
     def test_tukey_regression_default_scale_matches_vendored_rlm(self):
         A, b = _contaminated_line()
         res = rb.tukey_regression(A, b, max_iter=500, tol=1e-14)
-        assert res.x == pytest.approx(SM_TUKEY_MEDIAN_CENTRED, rel=1e-6, abs=0)
+        assert res.x == pytest.approx(SM_TUKEY_MEDIAN_CENTERED, rel=1e-6, abs=0)
 
     @pytest.mark.parametrize(
         "name, weight, vendored",
         [
-            ("huber", lambda z: rb.huber_weight(z, 1.345), SM_HUBER_MEDIAN_CENTRED),
-            ("tukey", lambda z: rb.tukey_weight(z, 4.685), SM_TUKEY_MEDIAN_CENTRED),
+            ("huber", lambda z: rb.huber_weight(z, 1.345), SM_HUBER_MEDIAN_CENTERED),
+            ("tukey", lambda z: rb.tukey_weight(z, 4.685), SM_TUKEY_MEDIAN_CENTERED),
         ],
     )
-    def test_median_centred_with_exact_constant_matches_rlm(
+    def test_median_centered_with_exact_constant_matches_rlm(
         self, name, weight, vendored
     ):
         from scipy.stats import norm

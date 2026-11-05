@@ -93,7 +93,7 @@ class TestAzimuthalEquidistantExact:
         [
             (40.0, -75.0),
             (0.0, 10.0),
-            (-38.0, 102.5),  # near the antipode of the centre
+            (-38.0, 102.5),  # near the antipode of the center
             (52.0, 170.0),
             (-90.0, 0.0),
         ],
@@ -132,7 +132,7 @@ class TestAzimuthalEquidistantExact:
             np.testing.assert_allclose(exact.y, sph.y, rtol=1e-8)
             np.testing.assert_allclose(exact.convergence, sph.convergence, atol=1e-8)
 
-    def test_centre_maps_to_origin(self):
+    def test_center_maps_to_origin(self):
         r = azimuthal_equidistant_exact(self.LAT0, self.LON0, self.LAT0, self.LON0)
         assert r == (0.0, 0.0, 1.0, 0.0)
 

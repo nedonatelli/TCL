@@ -42,7 +42,7 @@ FIXTURE = (
 KNOTS_TO_MS = 0.514444
 FEET_TO_M = 0.3048
 
-# ADS-B position accuracy is metres; 50 m is conservative for the NIC values
+# ADS-B position accuracy is meters; 50 m is conservative for the NIC values
 # these reports carry. The process noise covers ordinary course corrections,
 # not deliberate manoeuvres -- the tail asserted below is exactly the cost of
 # that choice, and is reported rather than tuned away.
@@ -66,7 +66,7 @@ def _track(reports, ref):
     """Constant-velocity filter over one aircraft.
 
     Returns (final state, NIS per update). The state is [E, vE, N, vN] in
-    metres and metres per second, in a local ENU frame about ``ref``.
+    meters and meters per second, in a local ENU frame about ``ref``.
     """
     lat0, lon0, alt0 = ref
     F = np.eye(4)

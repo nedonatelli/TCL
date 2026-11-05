@@ -10,7 +10,7 @@ on:
 permissions:
   contents: write
 
-# Serialise runs: this job commits benchmark history back to main, and two
+# Serialize runs: this job commits benchmark history back to main, and two
 # concurrent runs will race on the push. Queue rather than cancel, so a run
 # triggered by a second merge still records its results.
 concurrency:

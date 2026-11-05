@@ -100,7 +100,7 @@ def test_legacy_v1_file_loads_with_an_empty_window():
     restored = load_session(_legacy_bytes(original))
     assert _statuses(restored) == _statuses(original)
     assert all(len(tr.recent) == 0 for tr in restored._tracks)
-    # Today's behaviour, unchanged for old files: confirmation restarts, so the
+    # Today's behavior, unchanged for old files: confirmation restarts, so the
     # third hit does not confirm a track whose window was not stored.
     restored.process(SCAN, dt=1.0)
     assert {s for _, s in _statuses(restored)} == {"TENTATIVE"}

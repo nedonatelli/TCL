@@ -179,7 +179,7 @@ def _symmetry_tol(P: np.ndarray) -> float:
     commutativity argument -- so any observed asymmetry should be at the
     scale of a handful of ULPs of P's own magnitude, not a fixed absolute
     number. P's magnitude genuinely varies by orders across the generator:
-    ~1e-6 at dim=1 with near-cancelling terms, up to ~1e7 at dim=5 with
+    ~1e-6 at dim=1 with near-canceling terms, up to ~1e7 at dim=5 with
     near-max-magnitude entries (see the F @ P @ F.T norm bound in
     _psd_tol's docstring) -- a fixed atol calibrated for one end would be
     either meaninglessly loose or spuriously tight at the other.

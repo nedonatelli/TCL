@@ -8,7 +8,7 @@ Two defects that a converging filter hides.
 measurement covariance was in m^2 against innovations in radians.
 
 The consequence is subtler than "the gains are wrong by a factor of two". With
-the shipped defaults the two errors cancelled: covariance and measurement noise
+the shipped defaults the two errors canceled: covariance and measurement noise
 were *both* wrongly in meters, so the ratio came out right and the filter
 absorbed a sensible half of each innovation. The damage appears the moment a
 caller supplies a correctly scaled ``position_cov`` -- then the filter's own

@@ -420,7 +420,7 @@ def min_cost_flow_simplex(
     guaranteed correctness and optimality.
 
     Time complexity: O(V*E + K*E log V), where the first term is the
-    potential-initialising Bellman-Ford pass and K is the number of
+    potential-initializing Bellman-Ford pass and K is the number of
     shortest paths. Space complexity: O(V + E).
 
     Parameters

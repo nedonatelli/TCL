@@ -138,7 +138,7 @@ def plot_nees_sequence(
         Figure title.
     metric_name : str, optional
         Name used for the series and the y-axis. Defaults to ``"NEES"``;
-        `plot_nis_sequence` passes ``"NIS"`` so its chart is not labelled
+        `plot_nis_sequence` passes ``"NIS"`` so its chart is not labeled
         with the wrong statistic.
 
     Returns
@@ -237,10 +237,10 @@ def plot_nis_sequence(
     Returns
     -------
     fig : go.Figure
-        Plotly figure, with the series and y-axis labelled ``NIS``. This
+        Plotly figure, with the series and y-axis labeled ``NIS``. This
         shares `plot_nees_sequence`'s implementation, which previously
         hardcoded ``NEES`` in both places -- so a NIS chart came back
-        labelled with the other statistic.
+        labeled with the other statistic.
     """
     return plot_nees_sequence(
         nis_values,

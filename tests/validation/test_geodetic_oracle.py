@@ -19,7 +19,7 @@ Maximum error, ``iterative`` -- latitude (rad) / altitude (m):
     geo       2.6e-15 / 8.8e-08
     interior  2.8e-04 / 6.1
 
-Near the Earth's centre, forward residual (distance between the input and
+Near the Earth's center, forward residual (distance between the input and
 the point rebuilt from the result, mpmath at 40 digits) over 309 directions
 (300 seeded random, 9 axis and near-axis). Radii are in units of ``e2 a``
 (42697.7 m for WGS84). The edges were bisected to 2e-5 relative; the 1 mm
@@ -34,7 +34,7 @@ Inside its edge ``direct`` gives NaN on 67487 of 74160 WGS84 rows (240
 radii, 1e-300 m .. 1 e2 a) and finite values up to 3.5e159 m wrong (WGS84;
 8.3e159 m at f = 1/50); outside it, at most 3.4e-9 m (WGS84) and 4.2e-9 m
 (f = 1/50) at the 70 log-spaced radii up to 60 e2 a. ``iterative`` is
-wrong by up to 0.995 e2 a (42501 m, at 16 m from the centre) on WGS84 and
+wrong by up to 0.995 e2 a (42501 m, at 16 m from the center) on WGS84 and
 1.012 e2 a at f = 1/50; at those radii beyond its edge it is within
 4.4e-4 m (WGS84), limited by its 1e-12 rad stopping tolerance. Warning radii: ``direct`` 10 e2 a (about
 10x its edge), ``iterative`` 30 e2 a (4.1x its WGS84 edge, 2.9x at

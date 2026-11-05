@@ -121,7 +121,7 @@ class TestSingleTargetTracker:
 
         assert distances == sorted(distances)
         assert distances[0] == pytest.approx(0.0, abs=1e-12)
-        # A Gaussian likelihood is bounded above by its normalisation and
+        # A Gaussian likelihood is bounded above by its normalization and
         # decreases with distance; this does neither.
         assert distances[-1] > 1.0
 

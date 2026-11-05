@@ -274,7 +274,7 @@ def to_gpu(
     dtype : dtype, optional
         Data type for the GPU array. If None, uses the input dtype.
 
-        Honoured on CuPy only. MLX does not support float64, so on Apple
+        Honored on CuPy only. MLX does not support float64, so on Apple
         Silicon every float array lands as float32 whatever is requested --
         ``_numpy_dtype_to_mlx`` maps float64 to float32. Results computed
         through the MLX backend therefore carry single precision regardless
@@ -447,7 +447,7 @@ def ensure_gpu_array(
     Returns
     -------
     GPUArray
-        Array on GPU (cupy.ndarray or mlx.array). ``dtype`` is honoured on
+        Array on GPU (cupy.ndarray or mlx.array). ``dtype`` is honored on
         CuPy; on MLX the array is float32 regardless, so the declared
         ``float64`` default is unreachable there.
 

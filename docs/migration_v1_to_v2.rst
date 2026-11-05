@@ -7,7 +7,7 @@ rather than warn. That is deliberate — a shim that quietly accepts an old call
 and does something slightly different is the failure mode this release exists
 to remove — but it means an upgrade needs a read-through rather than a bump.
 
-Every change below was made because the old behaviour could give a confidently
+Every change below was made because the old behavior could give a confidently
 wrong answer, and each entry says what that answer was.
 
 .. contents:: On this page
@@ -46,7 +46,7 @@ multiplied only the nonzero extents. It now reports ``0.0``, which is the
 volume it encloses.
 
 If you relied on the old value you wanted the R-tree insertion measure, not a
-volume; that behaviour is retained privately for the tree's own use.
+volume; that behavior is retained privately for the tree's own use.
 
 
 Navigation
@@ -56,11 +56,11 @@ INS/GNSS position covariance is in ``[rad, rad, m]``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The error state has always been ``[dlat, dlon, dheight]`` in ``[rad, rad, m]``,
-but ``initialize_ins_gnss`` placed a metres-valued ``position_std`` directly on
+but ``initialize_ins_gnss`` placed a meters-valued ``position_std`` directly on
 all three diagonal entries.
 
-With the old defaults the two errors cancelled — measurement noise was also
-wrongly in metres — so the filter behaved sensibly. The damage appeared the
+With the old defaults the two errors canceled — measurement noise was also
+wrongly in meters — so the filter behaved sensibly. The damage appeared the
 moment a caller supplied a **correctly scaled** ``position_cov``: the filter's
 own covariance was then larger by roughly the square of an Earth radius, and it
 absorbed essentially 100% of every measurement regardless of quality.
@@ -69,13 +69,13 @@ absorbed essentially 100% of every measurement regardless of quality.
 
    from pytcl.navigation.ins_gnss import position_std_to_error_state_units
 
-   # v2.0.0: convert metres to the units the states use
+   # v2.0.0: convert meters to the units the states use
    std = position_std_to_error_state_units(2.0, lat, height)   # 2 m accuracy
    gnss = gnss._replace(position_cov=np.diag([std[0]**2, std[1]**2, 2.0**2]))
 
 If you pass ``position_cov``, convert it. If you rely on the defaults, no code
 change is needed, but the filter is now weighted differently — retune if you
-had compensated for the old behaviour.
+had compensated for the old behavior.
 
 ``compute_dop`` needs the user position for HDOP and VDOP
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -182,7 +182,7 @@ MHT ``track.score``
    Now the standard log-likelihood-ratio increment. It carried a factor of 0.5
    that the missed-detection branch did not, so hits and misses accumulated on
    different scales. Nothing reads this field — confirm and delete go by
-   M-of-N — so tracking behaviour is unchanged.
+   M-of-N — so tracking behavior is unchanged.
 
 
 GPU filters

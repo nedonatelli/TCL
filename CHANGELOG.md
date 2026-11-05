@@ -124,7 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   delegates to `statistics.estimators.mad`, and
   `MultivariateGaussian.mahalanobis` delegates to the same Cholesky-based
   body as `kalman.matrix_utils.compute_mahalanobis_distance`, which
-  factors the covariance once and vectorises over the batch. It
+  factors the covariance once and vectorizes over the batch. It
   deliberately does not delegate to `gating.mahalanobis_distance`: gating
   returns the squared distance, raises `ValueError` on a mismatched shape and
   `numpy.linalg.LinAlgError` on a non-positive-definite S, while this
@@ -226,30 +226,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   row/attribute, and nothing else in it is touched by the failed open.
 
 - **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
-  and warns near the Earth's centre.** Any `method` other than
+  and warns near the Earth's center.** Any `method` other than
   `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
   closed form; anything but `'iterative'` or `'direct'` now raises
   `MethodError` (a `ValueError`). At the exact origin the closed form
   returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
-  as `'iterative'` does. Near the centre each method fails, measured on
+  as `'iterative'` does. Near the center each method fails, measured on
   WGS84 by the forward residual over 309 directions at radii from 1e-300 m
   to 2.6e6 m: `'direct'` returns NaN or values wrong by up to 3.5e159 m
   within 4.28e4 m and is accurate to 3.5e-9 m beyond; `'iterative'` is off
-  by up to 4.25e4 m (worst at 16 m from the centre) and by more than 1 mm
+  by up to 4.25e4 m (worst at 16 m from the center) and by more than 1 mm
   out to 3.14e5 m. Both edges scale with `e2 a`, the first eccentricity
   squared times the semi-major axis (42.7 km for WGS84). Values there are
   unchanged from 2.11.1 (a robust solver is planned for v2.13), but each
   call now emits one `RuntimeWarning` naming the method, the number of
   affected rows and that method's failure when a row lies within
   `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
-  1.28e6 m) of the centre. A sphere (`f = 0`) never warns, and neither
+  1.28e6 m) of the center. A sphere (`f = 0`) never warns, and neither
   does the exact origin. Every other row is bit-identical to
   2.11.1. Docstrings state the measured accuracy of each method per
   altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
   `(3, 1)` shape change moved to v3.0 because the module is STABLE.
   What to do: pass `method='iterative'` or `method='direct'` exactly (any
   other spelling used to run the closed form silently); points that close
-  to the centre are not physical geodetic inputs, so if you pass
+  to the center are not physical geodetic inputs, so if you pass
   placeholders, use exact zeros or filter them out.
 
 - **`srif_update` floors a semi-definite measurement covariance relative
@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there was reported as a detection: on `[1, 1, 5, 1, 1]` with
   `guard_cells=2, ref_cells=1` cell 2 was a detection in all four 1-D
   detectors, and `cfar_2d` on a 5x5 image with guard `(2, 2)`, ref
-  `(1, 1)` gave the centre cell threshold 0.0. Those cells now get NaN noise
+  `(1, 1)` gave the center cell threshold 0.0. Those cells now get NaN noise
   estimate and threshold and are never detections; in 2-D a cell is empty
   when its row window and its column window are both empty. A cell with
   one half window clipped away keeps its 2.11.1 value, and a window that
@@ -407,7 +407,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   their meaning. A cache hit costs 0.1 µs instead of 1.05 µs and a miss
   1.24 µs instead of 2.11 µs. What to do: nothing, unless you compare
   against stored v2.11.1 distances (allow 1 mm) or azimuths of pairs
-  closer than about a kilometre.
+  closer than about a kilometer.
 
 - **Solid-tide sidereal time and the ecliptic obliquity constant now follow
   IAU models; results shift slightly.** The tide module's GMST used a linear
@@ -723,7 +723,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1e7}, `b = sqrt(a^2 + 2m) - z/sqrt(2)`, `z` in {3, 5, 10, 14}, where
   scipy's `P` was off by up to 3.1e-2 at `a = 0`, `m = 1e7`. Those elements
   cost about 2 to 12 ms each, growing with `a` (measured `a <= 141`),
-  instead of being vectorised. The quadrature now forms
+  instead of being vectorized. The quadrature now forms
   `log(x/a)` as `log1p`, which removes a 4e-8 relative error at `m = 1e7`.
   Measured against a new mpmath oracle
   (`tests/fixtures/marcum_q/oracle.csv`, `scripts/marcum_q_reference.py`) on
@@ -788,7 +788,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keep the rest; on 450 random NaN-free inputs (positive, negative, some
   with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
   their output is bitwise identical to 2.11.1. `cfar_2d(method='ca')` drops
-  the same two flags: on x86 with AVX-512 its vectorised window sum carried
+  the same two flags: on x86 with AVX-512 its vectorized window sum carried
   `ninf`, under which an infinite sample gives an undefined result (found by
   the registry-wide IR check on CI; its output on 40 random NaN-free images
   is bitwise unchanged). What to do: nothing, unless you relied on a NaN
@@ -805,7 +805,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   D^-1/2 F D^-1/2` (`D = abs(diag(F))`), so it does not depend on the
   parameters' units. With a caller-supplied `hessian` an eigenvalue of `C`
   at or below `n * eps` of the largest counts as zero. With the numerical
-  Hessian, an eigenvalue within the stencil's modelled error, `2 (eps
+  Hessian, an eigenvalue within the stencil's modeled error, `2 (eps
   abs(L) / h**2 + eps max(abs(t_i), abs(t_j), 1) / h abs(F_ij))` per entry
   and scaled like `C`, also counts as zero; if `L` or `F` is not finite
   the result is v2.11.1's. Measured on random samples, each rate holding
@@ -915,7 +915,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   EGM96 and EGM2008 files were not available to the test run. What to
   do: nothing for EGM coefficient sets, which shift by less than 1.6 mm;
   if you call `clenshaw_geoid` with an `R` and `GM` far from WGS84's,
-  expect shifts of up to tens of metres toward the frame-independent
+  expect shifts of up to tens of meters toward the frame-independent
   value.
 
 - **Geomagnetic fields match an exact synthesis at and near the poles.**

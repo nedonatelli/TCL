@@ -3,11 +3,11 @@
 Agreement is asserted only for the listed city pairs, start points and
 bearings (mid-latitude and southern-hemisphere routes up to ~20,000 km),
 at 1e-9 relative for distances and 1e-9 rad for angles; nothing is claimed
-for points within a few metres of a pole.
+for points within a few meters of a pole.
 
 The oracle is geographiclib's geodesic solver on a sphere (flattening 0,
 radius equal to the module's mean Earth radius), whose direct and inverse
-solutions are accurate to nanometres. Cross-track distances use vector
+solutions are accurate to nanometers. Cross-track distances use vector
 algebra instead, since geographiclib has no such function.
 """
 
@@ -184,7 +184,7 @@ class TestGreatCircleDirect:
 
 
 def _cross_track_oracle(point, start, end):
-    """Signed (right-positive) cross-track and along-track distances in metres,
+    """Signed (right-positive) cross-track and along-track distances in meters,
     from unit-vector algebra: the path's pole n = p1 x p2, point p."""
 
     def unit(lat_lon):

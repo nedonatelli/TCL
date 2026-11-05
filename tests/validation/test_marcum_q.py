@@ -115,7 +115,7 @@ def _mp_q_gamma(shape: int, x: "mpmath.mpf") -> "mpmath.mpf":
 
 
 def _mp_vt(pfa: float, n: int) -> "mpmath.mpf":
-    """Normalised threshold vt with Q(n, vt) = pfa (n pulses, square law)."""
+    """Normalized threshold vt with Q(n, vt) = pfa (n pulses, square law)."""
     with mpmath.workdps(30):
         lo, hi = mpmath.mpf(0), mpmath.mpf(200)
         for _ in range(110):  # bisection: Q(n, v) - pfa is decreasing in v
@@ -475,7 +475,7 @@ def _temme_coefficients(n_series: int = 40, n_terms: int = 4) -> list[list[Fract
 
     ``mu = lambda - 1`` is reverted from ``eta^2/2 = mu - log(1 + mu)`` by
     Lagrange inversion; ``c_0 = 1/mu - 1/eta`` and ``c_k = c_{k-1}'/eta +
-    (-1)^k g_k / mu``, with ``g_k`` fixed by cancelling the pole at
+    (-1)^k g_k / mu``, with ``g_k`` fixed by canceling the pole at
     ``eta = 0`` (it comes out as the Stirling coefficients 1/12, 1/288, ...).
     """
     n = n_series

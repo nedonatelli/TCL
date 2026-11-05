@@ -335,7 +335,7 @@ def test_clenshaw_geoid_change_from_v2111():
 
 
 @pytest.mark.parametrize("model", ["EGM96", "EGM2008"])
-def test_real_model_geoid_moves_sub_millimetre(model, old_egm):
+def test_real_model_geoid_moves_sub_millimeter(model, old_egm):
     try:
         coef = egm.load_egm_coefficients(model, n_max=360)
     except _data_skip as exc:

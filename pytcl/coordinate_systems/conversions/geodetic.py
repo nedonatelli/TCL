@@ -146,7 +146,7 @@ def ecef2geodetic(
         Flattening of the reference ellipsoid.
     method : str, optional
         Algorithm to use, matched exactly (case-sensitive; see Notes for the
-        region near the Earth's centre where neither is reliable):
+        region near the Earth's center where neither is reliable):
 
         - ``'iterative'``: Bowring-style fixed-point iteration (default)
         - ``'direct'``: Closed-form solution (Vermeille's method)
@@ -156,8 +156,8 @@ def ecef2geodetic(
         about 90x for altitudes of -10 km to 100 km, about 55x for 100 km to
         2000 km, and about 5x near GEO (35000 km to 36000 km). For altitudes
         of -6300 km to -1000 km (deep inside the Earth) ``'direct'`` stays
-        within nanometres while ``'iterative'`` is off by metres (6 m worst
-        measured). Both are accurate to well under a millimetre in the three
+        within nanometers while ``'iterative'`` is off by meters (6 m worst
+        measured). Both are accurate to well under a millimeter in the three
         bands above the interior; altitudes between 2000 km and 35000 km
         were not measured.
 
@@ -179,14 +179,14 @@ def ecef2geodetic(
     -----
     RuntimeWarning
         Once per call, if any point other than the exact origin lies within
-        a method-specific radius of the Earth's centre: ``10 e2 a`` for
+        a method-specific radius of the Earth's center: ``10 e2 a`` for
         ``'direct'`` and ``30 e2 a`` for ``'iterative'``, where ``e2`` is the
         first eccentricity squared. For WGS84 (``e2 a`` = 42.7 km) these are
         4.27e5 m and 1.28e6 m. A sphere (``f = 0``) never warns.
 
     Notes
     -----
-    Near the Earth's centre the results are returned unchanged, but are
+    Near the Earth's center the results are returned unchanged, but are
     unreliable. Measured by the forward residual (the distance between the
     input and the point rebuilt from the result, in 40-digit arithmetic)
     over 309 directions at radii from 1e-300 m to ``60 e2 a``, for WGS84:
@@ -194,7 +194,7 @@ def ecef2geodetic(
     - ``'direct'`` returns NaN, or values wrong by up to 3.5e159 m, within
       ``1.00 e2 a`` (4.28e4 m), and is accurate to 3.5e-9 m beyond it;
     - ``'iterative'`` is off by up to 4.25e4 m (about ``e2 a``, worst at
-      16 m from the centre), by more than 1 mm out to ``7.35 e2 a``
+      16 m from the center), by more than 1 mm out to ``7.35 e2 a``
       (3.14e5 m), and by at most 4.4e-4 m beyond it.
 
     The same multiples of ``e2 a`` hold for WGS84 scaled to ``a = 1``; at
@@ -253,12 +253,12 @@ def ecef2geodetic(
         else:
             failure = (
                 f"'iterative' is off by up to about e2*a = {e2 * a:.3g} m "
-                "nearest the centre and by more than 1 mm out to about "
+                "nearest the center and by more than 1 mm out to about "
                 "7 to 10 e2*a"
             )
         warnings.warn(
             f"ecef2geodetic(method={method!r}): {n_interior} point(s) lie within "
-            f"{warn_radius:.3g} m of the Earth's centre; {failure} (the exact "
+            f"{warn_radius:.3g} m of the Earth's center; {failure} (the exact "
             "origin is exempt)",
             RuntimeWarning,
             stacklevel=2,

@@ -131,7 +131,7 @@ class TestBatchUpdateMatchesCPU:
         assert eigenvalues.min() > -1e-6
 
     def test_track_specific_matrices(self):
-        """Per-track H and R must be honoured, not silently broadcast."""
+        """Per-track H and R must be honored, not silently broadcast."""
         n = 8
         x, P, z = _random_batch(n, seed=17)
         rng = np.random.default_rng(2)

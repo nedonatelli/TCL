@@ -262,7 +262,7 @@ class TestProjectionClaimsMatchMeasurement:
     def _pyproj():
         return pytest.importorskip("pyproj")
 
-    def test_transverse_mercator_is_millimetre_accurate_within_4_degrees(self):
+    def test_transverse_mercator_is_millimeter_accurate_within_4_degrees(self):
         """Docstring claims 0.7 mm worst case at 4 degrees, over lat 0-75."""
         pyproj = self._pyproj()
         from pytcl.coordinate_systems.projections.projections import (

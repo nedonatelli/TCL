@@ -138,7 +138,7 @@ class TestChebyshevAndElliptic:
         c = flt.bessel_design(n, 100.0, FS, output=output)
         w = np.linspace(1e-4, 2 * np.pi * 100.0 / FS, 4001)
         _, h = signal.freqz(c.b, c.a, worN=w)
-        # scipy normalises the 'phase' Bessel with a fitted scale factor:
+        # scipy normalizes the 'phase' Bessel with a fitted scale factor:
         # 1%, observed 1.03% at n=4, not rounding.
         assert np.unwrap(np.angle(h))[-1] == pytest.approx(
             -n * np.pi / 4, rel=0.015, abs=0

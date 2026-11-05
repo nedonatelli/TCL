@@ -76,7 +76,7 @@ class GNSSMeasurement(NamedTuple):
         Position covariance (3x3) in geodetic frame, units
         ``[rad^2, rad^2, m^2]`` on the diagonal -- matching ``position``'s
         ``(rad, rad, m)``. It is used directly as the measurement covariance
-        against a ``(rad, rad, m)`` innovation, so supplying metres^2 for
+        against a ``(rad, rad, m)`` innovation, so supplying meters^2 for
         the latitude/longitude entries (how GNSS accuracy is usually quoted)
         inflates R by ~1e13; convert with
         :func:`position_std_to_error_state_units`. This is the v2.0.0
