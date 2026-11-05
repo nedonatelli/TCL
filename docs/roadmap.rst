@@ -133,9 +133,7 @@ Next
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
   results to the unidentifiable-covariance convention in CONTRIBUTING.md;
   and these pinned defects, deferred until the owner decides otherwise:
-  SQL ``store_group``
-  metadata being unreadable, with the ``_group:`` marker leaking into
-  ``list_keys()``; and ellipsoidal oblique ``stereographic`` deviating from
+  ellipsoidal oblique ``stereographic`` deviating from
   PROJ ``sterea`` (a documented model choice; ``oblique_stereographic`` is
   recommended and the strict xfail stays as the documented-limit pin).
 

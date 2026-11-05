@@ -89,8 +89,6 @@ names each would take:
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
 - **Pinned defects, deferred until the owner decides otherwise:**
-  - SQL `store_group` metadata is unreadable, and the `_group:` marker leaks
-    into `list_keys()`.
   - Ellipsoidal oblique `stereographic` deviates from PROJ `sterea`. This is
     a documented model choice and `oblique_stereographic` is the recommended
     function; the strict xfail stays as the documented-limit pin.
