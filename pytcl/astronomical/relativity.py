@@ -157,6 +157,54 @@ def proper_time_rate(v: float, r: float, gm: float = GM_EARTH) -> float:
     return special_rel + general_rel
 
 
+def _two_sum(x: NDArray[np.floating], y: NDArray[np.floating]) -> tuple:
+    """x + y as an unevaluated sum s + err, exactly (Knuth)."""
+    s = x + y
+    v = s - x
+    return s, (x - (s - v)) + (y - v)
+
+
+def _two_prod(x: NDArray[np.floating], y: NDArray[np.floating]) -> tuple:
+    """x * y as an unevaluated sum p + err, exactly (Dekker splitting)."""
+    p = x * y
+    cx = 134217729.0 * x
+    xh = cx - (cx - x)
+    xl = x - xh
+    cy = 134217729.0 * y
+    yh = cy - (cy - y)
+    yl = y - yh
+    return p, ((xh * yh - p) + xh * yl + xl * yh) + xl * yl
+
+
+def _cross_norm_sq_of_differences(
+    p: NDArray[np.floating], q: NDArray[np.floating], o: NDArray[np.floating]
+) -> float:
+    """|(p - o) x (q - o)|^2 to about full relative precision.
+
+    For a body near the observer-source line the cross product is a small
+    difference of large products, and both the rounding of ``p - o`` and
+    that of the products would each cost ``eps * |p - o| |q - o|``
+    absolutely. The differences are carried as exact two-term sums and the
+    leading products formed exactly, so the result keeps its relative
+    accuracy however small it is (barring overflow of the products).
+    """
+    ah, al = _two_sum(np.asarray(p, dtype=float), -np.asarray(o, dtype=float))
+    bh, bl = _two_sum(np.asarray(q, dtype=float), -np.asarray(o, dtype=float))
+    idx = ((1, 2), (2, 0), (0, 1))
+    total = 0.0
+    for i, j in idx:
+        p1, e1 = _two_prod(ah[i], bh[j])
+        p2, e2 = _two_prod(ah[j], bh[i])
+        low = (
+            (e1 - e2)
+            + (ah[i] * bl[j] + al[i] * bh[j])
+            - (ah[j] * bl[i] + al[j] * bh[i])
+        )
+        component = (p1 - p2) + low
+        total += component * component
+    return float(total)
+
+
 def shapiro_delay(
     observer_pos: NDArray[np.floating],
     light_source_pos: NDArray[np.floating],
@@ -187,8 +235,11 @@ def shapiro_delay(
     Returns
     -------
     float
-        Shapiro delay (seconds). ``inf`` when the body lies on the segment
-        between observer and source, where the delay diverges.
+        Shapiro delay (seconds). ``inf`` only when the body lies exactly on
+        the closed segment between observer and source, where the delay
+        diverges. Near the segment the result keeps full relative accuracy
+        (the denominator is evaluated without cancellation; see the source
+        comments).
 
     Examples
     --------
@@ -204,21 +255,37 @@ def shapiro_delay(
     >>> print(f"Shapiro delay: {delay*1e6:.1f} microseconds")
     Shapiro delay: 6.2 microseconds
     """
-    # Compute distances
-    r_observer = np.linalg.norm(observer_pos - gravitating_body_pos)
-    r_source = np.linalg.norm(light_source_pos - gravitating_body_pos)
-    r_os = np.linalg.norm(observer_pos - light_source_pos)
-
-    # Shapiro delay formula (second-order PN)
+    a = np.asarray(observer_pos, dtype=float) - gravitating_body_pos
+    b = np.asarray(light_source_pos, dtype=float) - gravitating_body_pos
+    r_observer = np.linalg.norm(a)
+    r_source = np.linalg.norm(b)
+    r_os = np.linalg.norm(np.asarray(observer_pos, dtype=float) - light_source_pos)
     numerator = r_observer + r_source + r_os
-    denominator = r_observer + r_source - r_os
 
-    # By the triangle inequality the denominator is >= 0, and it is zero (to
-    # rounding) only when the body lies on the straight segment between
-    # observer and source, where the logarithm diverges. A body just off the
-    # segment gives a small positive denominator and a large finite delay.
-    if denominator <= 0.0:
-        return np.inf
+    # The denominator r_o + r_s - r_os cancels catastrophically when the
+    # body is near the observer-source segment, exactly where the delay is
+    # largest. With a = obs - body and b = src - body,
+    # r_os^2 = r_o^2 + r_s^2 - 2 a.b, so
+    #   (r_o + r_s)^2 - r_os^2 = 2 (r_o r_s + a.b)
+    #   r_o + r_s - r_os = 2 (r_o r_s + a.b) / (r_o + r_s + r_os),
+    # and since (r_o r_s)^2 - (a.b)^2 = |a x b|^2,
+    #   r_o r_s + a.b = |a x b|^2 / (r_o r_s - a.b).
+    # The last form adds positive terms when a.b < 0 (body between observer
+    # and source); the middle one does when a.b >= 0. The denominator is
+    # zero, and the delay diverges, only for a body on the closed segment.
+    ab = float(np.dot(a, b))
+    if ab < 0.0:
+        cross_sq = _cross_norm_sq_of_differences(
+            observer_pos, light_source_pos, gravitating_body_pos
+        )
+        if cross_sq == 0.0:
+            return np.inf
+        denominator = 2.0 * cross_sq / ((r_observer * r_source - ab) * numerator)
+    else:
+        product = r_observer * r_source + ab
+        if product == 0.0:
+            return np.inf
+        denominator = 2.0 * product / numerator
 
     delay = (2.0 * gm / (C_LIGHT**3)) * np.log(numerator / denominator)
     return delay
