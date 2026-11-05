@@ -376,12 +376,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   What to do: drop any `x >= 0` guard or `ValueError` handler written for
   negative arguments.
 
-- **`shapiro_delay` returns `inf` when the gravitating body lies on the
-  segment between observer and source.** The log argument's denominator
-  `r_o + r_s - r_os` is zero (to rounding) only there, where the delay
-  diverges, and the function returned 0.0, the value for no delay at all.
-  A body just off the segment still gives a large finite delay. What to do:
-  if you relied on 0.0 for this geometry, test for `np.isinf` instead.
+- **`shapiro_delay` is accurate with the gravitating body on or near the
+  observer-source segment.** The log argument's denominator
+  `r_o + r_s - r_os` cancelled catastrophically near the segment: v2.11.1
+  returned 0.0, the value for no delay at all, for a body exactly on it
+  (where the delay diverges) and for bodies within rounding of it. With
+  observer and source at +-1e11 m, a body 1 m or 1 km off the path gave
+  0.0 where the delay is 5.13e-4 s and 3.77e-4 s, and at 1e6 m the result
+  was 1.0e-12 relative off; on oblique paths the errors were up to 100%
+  at 1 m and 1 km and 9.4e-6 at 1e6 m. The denominator is now
+  `2 |a x b|^2 / ((r_o r_s - a.b)(r_o + r_s + r_os))` with
+  `a = obs - body`, `b = src - body`, when `a.b < 0`, and
+  `2 (r_o r_s + a.b) / (r_o + r_s + r_os)` otherwise, with `|a x b|^2`
+  formed in compensated arithmetic. Against the original formula at 50
+  digits it is within 2.2e-16 relative at 1 m, 1 km and 1e6 m off (axis-
+  aligned and 300 oblique paths each) and 1.6e-14 on 2000 random
+  geometries, where it moves the v2.11.1 values by at most 1.9e-14
+  relative. It returns `inf` only when `|a x b| = 0` with the body between
+  or at the endpoints. What to do: if you relied on 0.0 for a body on the
+  path, test for `np.isinf` instead.
 
 - **`lambert_universal` raises `ValueError` for antipodal positions and for
   a time of flight that is not positive and finite.** For antipodal `r1`
