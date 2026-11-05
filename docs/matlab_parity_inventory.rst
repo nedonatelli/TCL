@@ -102,12 +102,14 @@ MATLAB ships ``Mathematical_Functions/Graph_Algorithms/minCostFlow.m``.
      - Cartesian/spherical/polar/geodetic/ENU/NED/SEZ conversions, rotations,
        quaternions, r-u-v (range plus direction cosines, ``cart2ruv``/
        ``ruv2cart``) and the standard projections ported; UTM is validated to
-       sub-mm against pyproj/EPSG, but ``stereographic`` and
-       ``azimuthal_equidistant`` are spherical approximations that diverge
-       from PROJ by kilometers away from the projection center (their own
-       docstrings tabulate this; gh-25); ``oblique_stereographic``
-       (EPSG 9809) and ``azimuthal_equidistant_exact`` are the ellipsoidal
-       counterparts that match PROJ. The angle-only direction-cosine UV
+       sub-mm against pyproj/EPSG; ``stereographic`` matches PROJ
+       ``sterea`` for an ellipsoid and a non-polar origin, by delegating
+       to ``oblique_stereographic`` (EPSG 9809), since v2.12.0;
+       ``azimuthal_equidistant`` is a spherical approximation that
+       diverges from PROJ by kilometers away from the projection center
+       (its docstring tabulates this; gh-25), and
+       ``azimuthal_equidistant_exact`` is the ellipsoidal counterpart that
+       matches PROJ. The angle-only direction-cosine UV
        measurement system's core conversions are ported
        (``coordinate_systems.conversions.uv``, v2.8.0: u-v <->
        spherical, full bistatic r-u-v, camera-to-uv), its

@@ -758,15 +758,22 @@ def stereographic(
 
     Notes
     -----
-    Do not use ``lat0 = +-pi/2`` for polar work: this function's conformal
-    latitude substitution diverges from PROJ's polar stereographic by 5.7 km
-    at 85 degrees latitude and 34.7 km at 60 degrees (measured against
-    ``+proj=stere`` on WGS84). Use :func:`polar_stereographic` instead,
-    which matches PROJ/UPS to sub-nanometer precision. For the ellipsoidal
-    oblique case (any other ``lat0``), use :func:`oblique_stereographic`
-    (EPSG method 9809), which matches PROJ's ``+proj=sterea`` to
-    sub-micrometer precision; this function's own oblique accuracy is
-    documented below and is generally worse.
+    Three cases, by ellipsoid and center:
+
+    - Ellipsoidal oblique (``e2 > 0`` and ``|lat0| < pi/2``): delegates to
+      :func:`oblique_stereographic`, EPSG method 9809, which matches PROJ's
+      ``+proj=sterea`` to sub-micrometer precision. ``scale`` is the point
+      scale on the ellipsoid. Before v2.12.0 this case used a
+      Gaussian-radius conformal sphere with a plain conformal-latitude
+      substitution and differed from ``sterea`` by up to kilometers
+      (gh-25).
+    - Sphere (``e2 == 0``): the spherical stereographic projection, which
+      matches ``+proj=stere +R=a``.
+    - Polar (``lat0 = +-pi/2`` with ``e2 > 0``): a conformal-latitude
+      substitution that diverges from PROJ's polar stereographic by 5.7 km
+      at 85 degrees latitude and 34.7 km at 60 degrees (measured against
+      ``+proj=stere`` on WGS84). Use :func:`polar_stereographic` instead,
+      which matches PROJ/UPS to sub-nanometer precision.
 
     Examples
     --------
@@ -774,37 +781,10 @@ def stereographic(
     >>> # Polar stereographic centered at North Pole
     >>> result = stereographic(np.radians(85), np.radians(45),
     ...                        np.radians(90), 0)
-
-    Notes
-    -----
-    The oblique case maps onto a conformal sphere of *Gaussian* radius,
-    ``sqrt(M0 * N0)`` at the origin latitude. PROJ's ``+proj=sterea`` uses a
-    sphere of radius ``N0`` instead, so the two disagree away from the center
-    (gh-25). **How much depends strongly on the origin latitude**, because the
-    two radii coincide where the meridional and prime-vertical curvatures do.
-    Measured against ``+proj=sterea`` on WGS84:
-
-    ==========  =============  ==============
-    ``lat0``    At 400 km      At 1,738 km
-    ==========  =============  ==============
-    0 deg       1.34 km        5.9 km
-    30 deg      0.03 km        0.73 km
-    45 deg      1.38 km        6.7 km
-    60 deg      2.73 km        12.5 km
-    75 deg      3.71 km        16.5 km
-    ==========  =============  ==============
-
-    An earlier version of this note quoted a single pair of figures, 2.5 km and
-    8.7 km, as though they were properties of the projection. They are one
-    origin latitude: the disagreement varies eightyfold across the table above.
-
-    Both are conformal and each is self-consistent with its own inverse. But
-    coordinates from this function are not interchangeable with ``+proj=sterea``
-    output, and it is not survey-grade far from the projection center. For
-    coordinates that match PROJ (to sub-micrometer), use
-    :func:`oblique_stereographic` -- the EPSG method 9809 implementation.
-
     """
+    if e2 > 0 and abs(lat0) < np.pi / 2:
+        return oblique_stereographic(lat, lon, lat0, lon0, k0, a, e2)
+
     e = np.sqrt(e2)
 
     # Conformal latitudes
@@ -897,15 +877,27 @@ def stereographic_inverse(
     e2 : float, optional
         First eccentricity squared. Default is WGS84.
     tol : float, optional
-        Convergence tolerance. Default is 1e-12.
+        Convergence tolerance of the polar case's latitude iteration.
+        Default is 1e-12.
     max_iter : int, optional
-        Maximum iterations. Default is 10.
+        Maximum iterations of the polar case's latitude iteration. Default
+        is 10.
 
     Returns
     -------
     Tuple[float, float]
         (latitude, longitude) in radians.
+
+    Notes
+    -----
+    Inverts :func:`stereographic` case by case: the ellipsoidal oblique case
+    (``e2 > 0`` and ``|lat0| < pi/2``) delegates to
+    :func:`oblique_stereographic_inverse` (EPSG method 9809, PROJ
+    ``+proj=sterea``), which ignores ``tol`` and ``max_iter``.
     """
+    if e2 > 0 and abs(lat0) < np.pi / 2:
+        return oblique_stereographic_inverse(x, y, lat0, lon0, k0, a, e2)
+
     e = np.sqrt(e2)
 
     # Conformal latitude of center
@@ -1486,10 +1478,9 @@ def oblique_stereographic(
     radius at the origin using the full EPSG latitude mapping (constants
     ``n`` and ``c``), then that sphere is projected stereographically.
     This is the algorithm PROJ implements as ``+proj=sterea`` (the
-    projection of the Dutch RD grid, EPSG:28992), so unlike
-    :func:`stereographic` -- whose simpler conformal-latitude substitution
-    diverges from ``sterea`` by kilometers far from the origin (gh-25) --
-    coordinates from this function are interchangeable with PROJ output.
+    projection of the Dutch RD grid, EPSG:28992), so coordinates from this
+    function are interchangeable with PROJ output. :func:`stereographic`
+    delegates here for an ellipsoid and a non-polar origin.
 
     Parameters
     ----------

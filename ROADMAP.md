@@ -88,10 +88,6 @@ names each would take:
   `EGM2008.cof`); someone with that file must run it once before its oracle
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
-- **Pinned defects, deferred until the owner decides otherwise:**
-  - Ellipsoidal oblique `stereographic` deviates from PROJ `sterea`. This is
-    a documented model choice and `oblique_stereographic` is the recommended
-    function; the strict xfail stays as the documented-limit pin.
 - **Pseudo-inverse sites to the unidentifiable-covariance convention.**
   `least_squares.weighted_least_squares` (`pinv(AtWA)`),
   `information_filter.py` and `smoothers.py` still return finite

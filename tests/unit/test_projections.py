@@ -302,12 +302,6 @@ class TestStereographic:
             _factors(proj, lat, lon).parallel_scale, rel=1e-9, abs=0
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="stereographic's ellipsoidal oblique form (Gaussian-radius sphere) "
-        "deviates from PROJ's sterea by hundreds of meters at 1 degree; documented "
-        "in its docstring, use oblique_stereographic instead",
-    )
     def test_ellipsoidal_oblique_matches_proj(self, pyproj):
         proj = pyproj.Proj(f"+proj=sterea +lat_0=45 +lon_0=-75 +k_0=1 {WGS84}")
         result = stereographic(
@@ -317,6 +311,29 @@ class TestStereographic:
 
         assert abs(result.x - x) < 1e-3
         assert abs(result.y - y) < 1e-3
+
+    @pytest.mark.parametrize("lat0", [-60.0, 0.0, 30.0, 75.0])
+    @pytest.mark.parametrize("lat,lon", POINTS)
+    def test_ellipsoidal_oblique_forward_and_inverse_match_sterea(
+        self, pyproj, lat0, lat, lon
+    ):
+        """All four ProjectionResult fields and the inverse, against PROJ."""
+        proj = pyproj.Proj(f"+proj=sterea +lat_0={lat0} +lon_0=-75 +k_0=0.9999 {WGS84}")
+        lat0_r, lon0_r = np.radians(lat0), np.radians(-75)
+        result = stereographic(
+            np.radians(lat), np.radians(lon), lat0_r, lon0_r, k0=0.9999
+        )
+        x, y = proj(lon, lat)
+        factors = _factors(proj, lat, lon)
+
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert result.scale == pytest.approx(factors.parallel_scale, rel=1e-9, abs=0)
+        assert abs(result.convergence - np.radians(factors.meridian_convergence)) < 1e-9
+
+        lat_inv, lon_inv = stereographic_inverse(x, y, lat0_r, lon0_r, k0=0.9999)
+        assert abs(np.degrees(lat_inv) - lat) < 1e-9
+        assert abs(np.degrees(lon_inv) - lon) < 1e-9
 
     def test_scale_at_center_is_k0(self):
         lat0, lon0 = np.radians(45), np.radians(-75)
