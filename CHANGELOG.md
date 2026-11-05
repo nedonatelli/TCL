@@ -44,6 +44,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`stereographic` and `stereographic_inverse` match PROJ `+proj=sterea`
+  for an ellipsoid and a non-polar origin.** For `e2 > 0` and
+  `|lat0| < pi/2` they now delegate to `oblique_stereographic` /
+  `oblique_stereographic_inverse` (EPSG method 9809). The old Gaussian-radius
+  conformal sphere disagreed with `sterea`; measured on WGS84, maximum over
+  24 azimuths, the coordinates move by:
+
+  | `lat0` | at 400 km | at 1,738 km |
+  |--------|-----------|-------------|
+  | 0 deg  | 1.34 km   | 5.94 km     |
+  | 30 deg | 0.04 km   | 0.73 km     |
+  | 45 deg | 1.38 km   | 6.70 km     |
+  | 60 deg | 2.73 km   | 12.48 km    |
+  | 75 deg | 3.71 km   | 16.52 km    |
+
+  The new values are within 4.8e-8 m of PROJ at the same points (and
+  `lat0` = -45 and 89 deg). Closer to the pole PROJ's `sterea` itself drifts
+  (1.03e-3 m at `lat0` = 89.99 deg against EPSG 9809 at 60 digits, which
+  pytcl matches to 6.1e-9 m). Like PROJ, EPSG 9809 tears along the
+  origin's antimeridian beyond the pole: at `lat0` = 75 deg, `lat` =
+  85 deg, `x` tends to -27.32 m from one side and +27.32 m from the other,
+  a 55 m jump, which the old sphere did not have. `scale` was the conformal sphere's scale and is
+  now the point scale on the ellipsoid, a change of up to 2.8e-4 at
+  1,738 km (PROJ agreement 1.4e-9 relative); `convergence` changes by up
+  to 9.1e-4 rad (PROJ agreement 1.3e-11 rad). `stereographic_inverse`'s
+  `tol` and `max_iter` no longer apply to this case. Unchanged, bitwise:
+  the sphere (`e2 == 0`) and the polar origin (`lat0 = +-pi/2`), whose
+  docstring still points to `polar_stereographic`. What to do: nothing if
+  you wanted PROJ-compatible coordinates; to reproduce v2.11.1 values,
+  pin v2.11.1.
+
 - **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
   (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
   two magnetic-cache test files), fixtures pin zero drift
@@ -304,6 +335,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-process thresholds.
 
 ### Fixed
+
+- **`oblique_stereographic` and `oblique_stereographic_inverse` no longer
+  return NaN for an origin or a point at or next to a pole.** The EPSG
+  9809 forms `(1 + sin) / (1 - sin)` and `asin((w - 1) / (w + 1))` became
+  inf/inf for an origin within a few ulps of pi/2 (`nextafter(pi/2, 0)`,
+  89.9999999 deg) and for a point exactly at a pole, and lost digits
+  nearby; the inverse cancelled catastrophically for a southern origin near
+  -pi/2. They are now evaluated in cancellation-free forms (and the
+  southern inverse in the mirrored northern aspect). Against EPSG 9809 at
+  60 digits, on 3000 random origins with `|lat0| <= 1.55` rad and points
+  within 0.3 rad of them, the error fell from 2.5e-7 m to 6.1e-9 m;
+  values move by at most 2.5e-7 m (8.6e-8 m for `|lat0| < 80` deg), and
+  inverse latitudes by at most 4.6e-11 rad. What to do: nothing.
+
+- **`SQLStorage` group metadata is readable, and the internal group marker
+  no longer appears in `list_keys()`.** `store_group(name, metadata)` writes
+  the metadata into the value column of an internal `_group:<name>` row, so
+  `get_metadata(name)` raised `KeyError` and the root `list_keys()` listed
+  `"_group:<name>"`. `get_metadata(name)` now returns the stored dict
+  (`{}` for a group stored without metadata), as `HDF5Storage` returns a
+  group's attributes; an array or scalar of the same name still takes
+  precedence. `list_keys()` at any level omits the rows `store_group`
+  writes (a `_group:` key whose value begins `{"_is_group": true`); a
+  scalar the caller stored under a `_group:` name is still listed. Groups
+  themselves are not listed, unlike `HDF5Storage.list_keys`. The fix is
+  read-side only: the on-disk layout is unchanged, and databases written by
+  v2.11.1 read correctly (tested against v2.11.1's own `store_group`). The
+  metadata key `_is_group` is reserved and is not read back. What to do:
+  drop any filtering of `_group:` keys from `list_keys()` results.
+
+- **`debye` accepts `x < 0`, as MATLAB TCL's `Debye.m` does.** It raised
+  `ValueError("x must be >= 0")`. Negative arguments (scalars or elements
+  of a mixed-sign array, and `debye_1` to `debye_4`) are now evaluated
+  through the exact identity `D_n(-x) = D_n(x) + n x / (n + 1)`, derived in
+  the docstring; `D_n(-inf)` is `inf`. Values match signed mpmath
+  quadrature to 1e-13 relative at the tested points (n in {1, 3, 4, 10} at
+  x = -0.5 and -1; n = 1 at x = -10 and -1e-9). The normalization is unchanged and now
+  documented: pytcl returns the MathWorld normalized function
+  (`D_n(0) = 1`), while `Debye.m` returns the raw integral
+  `int_0^x t^n / (e^t - 1) dt` (`Debye(0) = 0`); multiply by `x^n / n` to
+  convert. `ValueError` for a non-integer or non-positive `n` is unchanged.
+  What to do: drop any `x >= 0` guard or `ValueError` handler written for
+  negative arguments.
+
+- **`shapiro_delay` is accurate with the gravitating body on or near the
+  observer-source segment.** The log argument's denominator
+  `r_o + r_s - r_os` cancelled catastrophically near the segment: v2.11.1
+  returned 0.0, the value for no delay at all, for a body exactly on it
+  (where the delay diverges) and for bodies within rounding of it. With
+  observer and source at +-1e11 m, a body 1 m or 1 km off the path gave
+  0.0 where the delay is 5.13e-4 s and 3.77e-4 s, and at 1e6 m the result
+  was 1.0e-12 relative off; on oblique paths the errors were up to 100%
+  at 1 m and 1 km and 9.4e-6 at 1e6 m. The denominator is now
+  `2 |a x b|^2 / ((r_o r_s - a.b)(r_o + r_s + r_os))` with
+  `a = obs - body`, `b = src - body`, when `a.b < 0`, and
+  `2 (r_o r_s + a.b) / (r_o + r_s + r_os)` otherwise, with `|a x b|^2`
+  formed in compensated arithmetic. Against the original formula at 50
+  digits it is within 2.2e-16 relative at 1 m, 1 km and 1e6 m off (axis-
+  aligned and 300 oblique paths each) and 1.6e-14 on 2000 random
+  geometries, where it moves the v2.11.1 values by at most 1.9e-14
+  relative. It returns `inf` only when `|a x b| = 0` with the body between
+  or at the endpoints. What to do: if you relied on 0.0 for a body on the
+  path, test for `np.isinf` instead.
+
+- **`lambert_universal` raises `ValueError` for antipodal positions and for
+  a time of flight that is not positive and finite.** For antipodal `r1`
+  and `r2` the transfer plane is undefined, but the `A == 0` check missed
+  the computed `A` of about 1e-16 times the scale, so the function returned
+  zero velocities (e = 1, a = 3189 km for `r1 = [6378, 0, 0]`,
+  `r2 = -r1`). It now raises when `r1 x r2 = 0`, and when the positions
+  are nearly antipodal, `cos(dnu) < 0` with `|r1 x r2| / (|r1| |r2|) =
+  |sin(dnu)| < 1e-7`. There the chord term is proportional to `sin(dnu)`,
+  computed as `sin(arccos(c))`, whose relative error from rounding `c` is
+  about `eps / sin(dnu)^2`: order 1 at `sqrt(eps)`, about 2e-2 at 1e-7.
+  v2.11.1 solved such inputs silently: for `|r1| = 7000` km,
+  `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy DOP853 propagation,
+  the relative miss of `r2` was 1.38 at `sin(dnu) = 1.5e-8`, 2.01 at 3e-8,
+  0.20 at 5e-8 and 1e2 to 1e8 further down, and none of 600 exactly
+  antipodal v2.11.1 solutions reached `r2` within 1e-6. Above the
+  threshold accuracy still degrades toward antipodal; in that geometry
+  the miss is 6.8e-3 at 1e-7, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
+  1e-4, and up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s. A few rejected near-pi
+  inputs (4 of 801 sampled) were accurate to about 1e-3 in v2.11.1. The long way around nearly parallel positions (`dnu` near 2 pi,
+  `|sin(dnu)| < 1e-7`) is rejected too, with its own message: all 68
+  v2.11.1 solutions checked there (`|r2| / |r1|` 0.8 to 2, `tof` 1500 to
+  8000 s) missed `r2` by order 1, returning a nearly radial `v1`. Above
+  the threshold the long way stays unreliable and is documented, not
+  fixed: it raises "did not converge" or misses by order 1 at up to
+  `sin(dnu)` of about 8e-5 in the same sweep. The short way around nearly
+  parallel positions (`dnu` near 0) is not rejected: it is well
+  conditioned, and in the first geometry misses `r2` by below 1e-12 down
+  to `sin(dnu) = 2e-8`. The solve path itself
+  is unchanged, so every input that does not raise returns bitwise the
+  v2.11.1 result. `tof = 0` returned inf/nan
+  velocities and a negative `tof` raised "did not converge"; `tof <= 0`,
+  `nan` and `inf` now raise "tof must be positive and finite".
+  `minimum_energy_transfer` calls it, so for antipodal positions it now
+  raises too, where it returned zero velocities (e = 1, a = 3339 km for
+  `r1 = [6678, 0, 0]`). What to do:
+  catch `ValueError` for collinear inputs and non-positive times of flight;
+  a handler that matched "did not converge" for negative `tof` must match
+  the new message.
 
 - **`threshold_factor` raises its own `ValueError` when the requested Pfa is
   unreachable for GO, SO and OS.** When `pfa` was below what the threshold

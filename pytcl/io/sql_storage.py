@@ -17,6 +17,20 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
 
+# store_group writes a group as a metadata-table row keyed _GROUP_PREFIX +
+# name whose value is json.dumps({"_is_group": True, ...}), so it always
+# begins with _GROUP_VALUE_PREFIX. A row is a group marker only when both
+# hold; a user scalar that merely has a "_group:" name is an ordinary key.
+_GROUP_PREFIX = "_group:"
+_GROUP_VALUE_PREFIX = json.dumps({"_is_group": True})[:-1]
+_NOT_GROUP_MARKER = "NOT (substr(key, 1, ?) = ? AND substr(value, 1, ?) = ?)"
+_NOT_GROUP_MARKER_ARGS = (
+    len(_GROUP_PREFIX),
+    _GROUP_PREFIX,
+    len(_GROUP_VALUE_PREFIX),
+    _GROUP_VALUE_PREFIX,
+)
+
 
 def _read_only_uri(path: str, pathmod: Any = os.path) -> str:
     """Return a SQLite ``mode=ro`` URI for ``path``.
@@ -342,7 +356,14 @@ class SQLStorage(StorageBackend):
         name : str
             Group name
         metadata : dict, optional
-            Group-level metadata
+            Group-level metadata, read back with ``get_metadata(name)``.
+            The key ``_is_group`` is reserved and is not read back.
+
+        Notes
+        -----
+        The group is an internal ``_group:<name>`` row whose value column
+        holds the metadata. ``list_keys`` never lists it; a scalar stored
+        under a ``_group:`` name is still an ordinary, listed key.
         """
         self._check_writable()
 
@@ -354,7 +375,7 @@ class SQLStorage(StorageBackend):
                 f"""INSERT OR REPLACE INTO {self._metadata_table}
                    (key, value, metadata)
                    VALUES (?, ?, ?)""",
-                (f"_group:{name}", group_marker, "{}"),
+                (_GROUP_PREFIX + name, group_marker, "{}"),
             )
         except sqlite3.OperationalError:
             self._initialize_tables()
@@ -362,7 +383,7 @@ class SQLStorage(StorageBackend):
                 f"""INSERT OR REPLACE INTO {self._metadata_table}
                    (key, value, metadata)
                    VALUES (?, ?, ?)""",
-                (f"_group:{name}", group_marker, "{}"),
+                (_GROUP_PREFIX + name, group_marker, "{}"),
             )
 
         self._connection.commit()
@@ -382,7 +403,10 @@ class SQLStorage(StorageBackend):
         Returns
         -------
         list of str
-            Keys in the group
+            Array and scalar keys at every depth under ``group``. The
+            internal rows written by `store_group` are never listed, so
+            unlike `HDF5Storage.list_keys`, which lists a group's immediate
+            children including subgroups, groups themselves do not appear.
         """
         if self._cursor is None:
             raise RuntimeError("Storage not open. Call open() first.")
@@ -397,14 +421,18 @@ class SQLStorage(StorageBackend):
                    WHERE substr(name, 1, ?) = ?
                    UNION
                    SELECT key FROM {self._metadata_table}
-                   WHERE substr(key, 1, ?) = ?""",
-                (len(prefix), prefix, len(prefix), prefix),
+                   WHERE substr(key, 1, ?) = ? AND {_NOT_GROUP_MARKER}""",
+                (len(prefix), prefix, len(prefix), prefix, *_NOT_GROUP_MARKER_ARGS),
             )
         else:
             # List all keys
-            self._cursor.execute(f"""SELECT name FROM {self._arrays_table}
+            self._cursor.execute(
+                f"""SELECT name FROM {self._arrays_table}
                    UNION
-                   SELECT key FROM {self._metadata_table}""")
+                   SELECT key FROM {self._metadata_table}
+                   WHERE {_NOT_GROUP_MARKER}""",
+                _NOT_GROUP_MARKER_ARGS,
+            )
 
         return [row[0] for row in self._cursor.fetchall()]
 
@@ -414,12 +442,16 @@ class SQLStorage(StorageBackend):
         Parameters
         ----------
         name : str
-            Entry name
+            Entry name: an array, a scalar or a group made by `store_group`,
+            looked up in that order.
 
         Returns
         -------
         dict
-            Metadata
+            Metadata, JSON-decoded. For a group, the dict passed to
+            `store_group` (``{}`` if none), as `HDF5Storage.get_metadata`
+            returns a group's attributes; this also reads databases written
+            by v2.11.1 and earlier.
         """
         if self._cursor is None:
             raise RuntimeError("Storage not open. Call open() first.")
@@ -445,6 +477,18 @@ class SQLStorage(StorageBackend):
 
         if row:
             return json.loads(row[0])
+
+        self._cursor.execute(
+            f"""SELECT value FROM {self._metadata_table}
+               WHERE key = ? AND substr(value, 1, ?) = ? LIMIT 1""",
+            (_GROUP_PREFIX + name, len(_GROUP_VALUE_PREFIX), _GROUP_VALUE_PREFIX),
+        )
+        row = self._cursor.fetchone()
+
+        if row:
+            group_metadata = json.loads(row[0])
+            group_metadata.pop("_is_group", None)
+            return group_metadata
 
         raise KeyError(f"Entry '{name}' not found")
 
