@@ -2,9 +2,11 @@
 
 Coordinates, scale factors and grid convergence are checked against PROJ
 through pyproj, an independent implementation. Where a pytcl projection is a
-documented approximation (the spherical azimuthal equidistant, the Gaussian-
-sphere ``stereographic``), the oracle is the PROJ projection that does the
+documented approximation (the spherical azimuthal equidistant, the polar
+``stereographic`` on a sphere), the oracle is the PROJ projection that does the
 same computation (``+proj=aeqd +R=<authalic radius>``, ``+proj=stere +R=a``).
+Within a few hundredths of a degree of the pole PROJ's ``sterea`` itself loses
+accuracy, so there the oracle is EPSG method 9809 evaluated at 60 digits.
 """
 
 import numpy as np
@@ -21,6 +23,7 @@ from pytcl.coordinate_systems.projections import (
     mercator,
     mercator_inverse,
     oblique_stereographic,
+    oblique_stereographic_inverse,
     polar_stereographic,
     stereographic,
     stereographic_inverse,
@@ -369,6 +372,108 @@ class TestStereographic:
         assert abs(result.x) < 1e-6
         assert abs(result.y) < 1e-6
         assert result.scale == pytest.approx(0.994, rel=1e-12, abs=0)
+
+
+def _sterea_mpmath(lat, lon, lat0, lon0):
+    """EPSG method 9809 (IOGP 373-7-2) transcribed literally, at 60 digits.
+
+    The literal ``(1 + sin)/(1 - sin)`` and ``asin((w - 1)/(w + 1))`` forms
+    are exact at this precision for every float input short of the pole.
+    """
+    mp = pytest.importorskip("mpmath")
+    with mp.workdps(60):
+        a = mp.mpf(A)
+        f = 1 / mp.mpf("298.257223563")
+        e2 = f * (2 - f)
+        e = mp.sqrt(e2)
+        lat, lon, lat0, lon0 = (mp.mpf(float(v)) for v in (lat, lon, lat0, lon0))
+        s0 = mp.sin(lat0)
+        rho0 = a * (1 - e2) / (1 - e2 * s0**2) ** mp.mpf(1.5)
+        nu0 = a / mp.sqrt(1 - e2 * s0**2)
+        R = mp.sqrt(rho0 * nu0)
+        n = mp.sqrt(1 + e2 * mp.cos(lat0) ** 4 / (1 - e2))
+        w1 = ((1 + s0) / (1 - s0) * ((1 - e * s0) / (1 + e * s0)) ** e) ** n
+        sc = (w1 - 1) / (w1 + 1)
+        c = (n + s0) * (1 - sc) / ((n - s0) * (1 + sc))
+        w2 = c * w1
+        chi0 = mp.asin((w2 - 1) / (w2 + 1))
+        sl = mp.sin(lat)
+        w = c * ((1 + sl) / (1 - sl) * ((1 - e * sl) / (1 + e * sl)) ** e) ** n
+        chi = mp.asin((w - 1) / (w + 1))
+        L = n * (lon - lon0)
+        B = 1 + mp.sin(chi) * mp.sin(chi0) + mp.cos(chi) * mp.cos(chi0) * mp.cos(L)
+        x = 2 * R * mp.cos(chi) * mp.sin(L) / B
+        y = (
+            2
+            * R
+            * (mp.sin(chi) * mp.cos(chi0) - mp.cos(chi) * mp.sin(chi0) * mp.cos(L))
+        )
+        return float(x), float(y / B)
+
+
+class TestObliqueStereographicNearThePole:
+    """EPSG 9809 for an origin or a point at or next to a pole.
+
+    The literal EPSG forms ``(1 + sin)/(1 - sin)`` overflowed to inf/inf, so
+    v2.12.0 development builds returned NaN for an origin within one ulp of
+    pi/2 (and v2.11.1's ``oblique_stereographic`` did too).
+    """
+
+    NEAR_POLE = [np.nextafter(np.pi / 2, 0), np.radians(89.9999999), np.radians(89.99)]
+
+    def test_origin_one_ulp_from_the_pole_matches_proj(self, pyproj):
+        lat0 = np.nextafter(np.pi / 2, 0)
+        proj = pyproj.Proj(
+            f"+proj=sterea +lat_0={float(np.degrees(lat0))!r} +lon_0=0 +k_0=1 {WGS84}"
+        )
+        result = stereographic(np.radians(85.0), np.radians(45.0), lat0, 0.0)
+        x, y = proj(45.0, 85.0)
+
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+
+    @pytest.mark.parametrize("lat0_deg", [45.0, 89.0])
+    def test_point_at_the_pole_matches_proj(self, pyproj, lat0_deg):
+        proj = pyproj.Proj(f"+proj=sterea +lat_0={lat0_deg} +lon_0=0 +k_0=1 {WGS84}")
+        result = stereographic(np.pi / 2, 0.3, np.radians(lat0_deg), 0.0)
+        x, y = proj(np.degrees(0.3), 90.0)
+
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+        assert np.isfinite(result.scale) and np.isfinite(result.convergence)
+
+    @pytest.mark.parametrize("lat0", NEAR_POLE)
+    @pytest.mark.parametrize("lat_deg", [85.0, 90.0])
+    def test_near_pole_origin_matches_60_digit_epsg_9809(self, lat0, lat_deg):
+        """At lat0 = 89.99 deg PROJ's sterea is 1.03e-3 m from this oracle and
+        at 89.9999999 deg 5.6e5 m, so PROJ cannot referee these origins."""
+        lat, lon = np.radians(lat_deg), np.radians(45.0)
+        x, y = _sterea_mpmath(lat, lon, lat0, 0.0)
+        result = oblique_stereographic(lat, lon, lat0, 0.0)
+
+        assert abs(result.x - x) < 1e-6
+        assert abs(result.y - y) < 1e-6
+
+    @pytest.mark.parametrize("sign", [1.0, -1.0])
+    @pytest.mark.parametrize("lat0", NEAR_POLE)
+    def test_near_pole_round_trip_in_both_hemispheres(self, sign, lat0):
+        lat = sign * np.radians(85.0)
+        result = stereographic(lat, 0.7, sign * lat0, 0.0)
+        lat_inv, lon_inv = stereographic_inverse(result.x, result.y, sign * lat0, 0.0)
+
+        assert abs(lat_inv - lat) < 1e-12
+        assert abs(lon_inv - 0.7) < 1e-12
+
+    @pytest.mark.parametrize("lat0", NEAR_POLE)
+    def test_southern_aspect_mirrors_northern(self, lat0):
+        north = oblique_stereographic(np.radians(85.0), 0.7, lat0, 0.0)
+        south = oblique_stereographic(-np.radians(85.0), 0.7, -lat0, 0.0)
+        x_scale = max(abs(north.x), 1.0)
+
+        assert abs(south.x - north.x) < 1e-9 * x_scale
+        assert abs(south.y + north.y) < 1e-9 * x_scale
+        lat_s, lon_s = oblique_stereographic_inverse(south.x, south.y, -lat0, 0.0)
+        assert np.isfinite(lat_s) and np.isfinite(lon_s)
 
 
 class TestLambertConformalConic:

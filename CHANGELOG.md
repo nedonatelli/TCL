@@ -59,8 +59,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | 60 deg | 2.73 km   | 12.48 km    |
   | 75 deg | 3.71 km   | 16.52 km    |
 
-  The new values are within 1.8e-7 m of PROJ at the same points (and
-  `lat0` = -45 and 89 deg). `scale` was the conformal sphere's scale and is
+  The new values are within 4.8e-8 m of PROJ at the same points (and
+  `lat0` = -45 and 89 deg). Closer to the pole PROJ's `sterea` itself drifts
+  (1.03e-3 m at `lat0` = 89.99 deg against EPSG 9809 at 60 digits, which
+  pytcl matches to 6.1e-9 m). Like PROJ, EPSG 9809 tears along the
+  origin's antimeridian beyond the pole: at `lat0` = 75 deg, `lat` =
+  85 deg, `x` tends to -27.32 m from one side and +27.32 m from the other,
+  a 55 m jump, which the old sphere did not have. `scale` was the conformal sphere's scale and is
   now the point scale on the ellipsoid, a change of up to 2.8e-4 at
   1,738 km (PROJ agreement 1.4e-9 relative); `convergence` changes by up
   to 9.1e-4 rad (PROJ agreement 1.3e-11 rad). `stereographic_inverse`'s
@@ -330,6 +335,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   post-process thresholds.
 
 ### Fixed
+
+- **`oblique_stereographic` and `oblique_stereographic_inverse` no longer
+  return NaN for an origin or a point at or next to a pole.** The EPSG
+  9809 forms `(1 + sin) / (1 - sin)` and `asin((w - 1) / (w + 1))` became
+  inf/inf for an origin within a few ulps of pi/2 (`nextafter(pi/2, 0)`,
+  89.9999999 deg) and for a point exactly at a pole, and lost digits
+  nearby; the inverse cancelled catastrophically for a southern origin near
+  -pi/2. They are now evaluated in cancellation-free forms (and the
+  southern inverse in the mirrored northern aspect). Against EPSG 9809 at
+  60 digits, on 3000 random origins with `|lat0| <= 1.55` rad and points
+  within 0.3 rad of them, the error fell from 2.5e-7 m to 6.1e-9 m;
+  values move by at most 2.5e-7 m (8.6e-8 m for `|lat0| < 80` deg), and
+  inverse latitudes by at most 4.6e-11 rad. What to do: nothing.
 
 - **`SQLStorage` group metadata is readable, and the internal group marker
   no longer appears in `list_keys()`.** `store_group(name, metadata)` writes
