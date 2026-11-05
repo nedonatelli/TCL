@@ -305,6 +305,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`debye` accepts `x < 0`, as MATLAB TCL's `Debye.m` does.** It raised
+  `ValueError("x must be >= 0")`. Negative arguments (scalars or elements
+  of a mixed-sign array, and `debye_1` to `debye_4`) are now evaluated
+  through the exact identity `D_n(-x) = D_n(x) + n x / (n + 1)`, derived in
+  the docstring; `D_n(-inf)` is `inf`. Values match signed mpmath
+  quadrature to 1e-13 relative at the tested points (n in {1, 3, 4, 10} at
+  x = -0.5 and -1; n = 1 at x = -10 and -1e-9). The normalization is unchanged and now
+  documented: pytcl returns the MathWorld normalized function
+  (`D_n(0) = 1`), while `Debye.m` returns the raw integral
+  `int_0^x t^n / (e^t - 1) dt` (`Debye(0) = 0`); multiply by `x^n / n` to
+  convert. `ValueError` for a non-integer or non-positive `n` is unchanged.
+  What to do: drop any `x >= 0` guard or `ValueError` handler written for
+  negative arguments.
+
 - **`shapiro_delay` returns `inf` when the gravitating body lies on the
   segment between observer and source.** The log argument's denominator
   `r_o + r_s - r_os` is zero (to rounding) only there, where the delay

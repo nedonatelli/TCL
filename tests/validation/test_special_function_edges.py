@@ -408,9 +408,10 @@ class TestDebye:
             )
 
     @pytest.mark.parametrize("x", [-10.0, -1e-9])
-    def test_negative_x_raises(self, x):
-        with pytest.raises(ValueError, match="x must be >= 0"):
-            debye(1, x)
+    def test_negative_x_matches_s_form_quadrature(self, x):
+        """The s-form integrand x*s/expm1(x*s) is smooth for x < 0 too, so it
+        is an oracle independent of the reflection identity debye uses."""
+        assert debye(1, x)[0] == pytest.approx(_debye_mpmath(1, x), rel=1e-13, abs=0)
 
     @pytest.mark.parametrize("n", [0, -3, 2.5])
     def test_invalid_order_raises(self, n):
