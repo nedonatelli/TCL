@@ -22,8 +22,8 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
-# |sin(dnu)| below which lambert_universal rejects nearly antipodal r1 and
-# r2. Near dnu = pi, A is proportional to sin(dnu), and sin(arccos(c)) has
+# |sin(dnu)| below which lambert_universal rejects a transfer angle near pi,
+# or near 2*pi on the long way. Near dnu = pi, A is proportional to sin(dnu), and sin(arccos(c)) has
 # relative error about eps / sin(dnu)^2 from the rounding of c: order 1 at
 # sqrt(eps), about 2e-2 at 1e-7. See the Notes of lambert_universal.
 _ANTIPODAL_SIN_TOL = 1e-7
@@ -125,34 +125,45 @@ def lambert_universal(
     ------
     ValueError
         If ``r1`` or ``r2`` is not a 3-vector, ``tof`` is not positive and
-        finite, ``r1`` and ``r2`` are collinear or nearly antipodal (see
-        Notes), or the solution does not converge.
+        finite, ``r1`` and ``r2`` are collinear, nearly antipodal, or nearly
+        parallel on the long way (see Notes), or the solution does not
+        converge.
 
     Notes
     -----
     Exactly collinear ``r1`` and ``r2`` (``r1 x r2 = 0``) are rejected:
-    the transfer plane is undefined. Nearly antipodal ones are rejected
-    when ``|r1 x r2| / (|r1| |r2|) = |sin(dnu)| < 1e-7``. Near
-    ``dnu = pi`` the chord term ``A`` is proportional to ``sin(dnu)``,
-    which is computed as ``sin(arccos(c))``; rounding ``c`` costs a
-    relative error of about ``eps / sin(dnu)^2`` in it, order 1 at
-    ``sqrt(eps)`` and about 2e-2 at 1e-7. Above the threshold accuracy
-    still degrades toward antipodal. Measured for ``|r1| = 7000`` km,
-    ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, with the returned ``v1``
-    propagated by an independent integrator (scipy DOP853, rtol 1e-13),
-    the relative miss of ``r2`` is 6.8e-3 at ``sin(dnu) = 1e-7``, 1.1e-3
-    at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at 1e-4; that one geometry is the
-    extent of the measurement.
+    the transfer plane is undefined. With ``|sin(dnu)| =
+    |r1 x r2| / (|r1| |r2|) < 1e-7``, two further cases are rejected, and
+    the error names which:
 
-    The nearly parallel side is not rejected: there ``A`` tends to
-    ``sqrt(2 |r1| |r2|)`` and does not depend on the rounded angle, and the
-    short-way solution in the same geometry misses ``r2`` by below 1e-12
-    down to ``sin(dnu) = 2e-8``, below which ``cos(dnu)`` rounds to 1 and
-    the zero-transfer-angle error is raised. The long way around a nearly
-    parallel pair (``dnu`` near ``2 pi``) is not reliable: in that geometry
-    with ``tof = 5000`` s it does not converge at ``sin(dnu)`` = 1e-2,
-    1e-3, 1e-5 and 1e-6, and misses ``r2`` by order 1 from 1e-7 to 2e-8
-    (and at 1e-6 with ``tof = 1500`` s).
+    - Nearly antipodal (``dnu`` near pi, either way). The chord term ``A``
+      is proportional to ``sin(dnu)``, computed as ``sin(arccos(c))``;
+      rounding ``c`` costs a relative error of about ``eps / sin(dnu)^2``
+      in it, order 1 at ``sqrt(eps)`` and about 2e-2 at 1e-7. Above the
+      threshold accuracy still degrades toward antipodal. Measured for
+      ``|r1| = 7000`` km, ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, with the
+      returned ``v1`` propagated by an independent integrator (scipy DOP853,
+      rtol 1e-13), the relative miss of ``r2`` is 6.8e-3 at
+      ``sin(dnu) = 1e-7``, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
+      1e-4; that one geometry is the extent of the measurement.
+    - The long way around nearly parallel positions (``dnu`` near 2 pi).
+      Every v2.11.1 solution in this band that was checked (68, with
+      ``|r2| / |r1|`` of 0.8, 1.3 and 2 and ``tof`` from 1500 to 8000 s)
+      missed ``r2`` by order 1.
+
+    The short way around nearly parallel positions (``dnu`` near 0) is not
+    rejected: there ``A`` tends to ``sqrt(2 |r1| |r2|)`` and does not depend
+    on the rounded angle, and in the geometry above the solution misses
+    ``r2`` by below 1e-12 down to ``sin(dnu) = 2e-8``, below which
+    ``cos(dnu)`` rounds to 1 and the zero-transfer-angle error is raised.
+
+    The long way near 2 pi stays unreliable above the threshold. In a
+    sweep of ``sin(dnu)`` from 1e-7 to 1e-2 (the geometries above) it
+    either raises the did-not-converge ``ValueError`` (for example at
+    ``sin(dnu)`` = 1e-5, 5.9e-5, 3.5e-4, 2.1e-3 and 1.2e-2 with
+    ``|r2| = 1.3 |r1|``, ``tof = 5000`` s) or returns a nearly radial
+    ``v1`` that misses ``r2`` by order 1; the largest ``sin(dnu)`` with a
+    miss above 1e-3 was 8.4e-5.
 
     Examples
     --------
@@ -212,12 +223,19 @@ def lambert_universal(
             "Cannot solve Lambert problem: r1 and r2 are collinear, so the "
             "transfer plane is undefined"
         )
-    if cos_dnu < 0.0 and cross_mag < _ANTIPODAL_SIN_TOL * r1_mag * r2_mag:
-        raise ValueError(
-            "Cannot solve Lambert problem: r1 and r2 are within "
-            "|sin(transfer angle)| < 1e-7 of antipodal, where the computed "
-            "transfer angle has too few correct digits"
-        )
+    if cross_mag < _ANTIPODAL_SIN_TOL * r1_mag * r2_mag:
+        if cos_dnu < 0.0:
+            raise ValueError(
+                "Cannot solve Lambert problem: r1 and r2 are within "
+                "|sin(transfer angle)| < 1e-7 of antipodal, where the computed "
+                "transfer angle has too few correct digits"
+            )
+        if dnu > np.pi:
+            raise ValueError(
+                "Cannot solve Lambert problem: long-way transfer angle within "
+                "|sin(transfer angle)| < 1e-7 of 2*pi (r1 and r2 nearly "
+                "parallel), where the solution misses r2 by order 1"
+            )
 
     if not (np.isfinite(tof) and tof > 0):
         raise ValueError(f"tof must be positive and finite, got {tof}")
