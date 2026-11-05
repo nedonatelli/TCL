@@ -336,6 +336,16 @@ class TestSQLStorageContract:
         assert sql_store.get_metadata("mission") == {"name": "m1"}
         assert sql_store.get_metadata("mission/leg") == {"n": 2}
 
+    def test_user_scalar_with_group_prefix_is_an_ordinary_key(self, sql_store):
+        """Only store_group's own rows are hidden; v2.11.1 listed this key."""
+        sql_store.store_scalar("_group:user", 7)
+        sql_store.store_group("g", metadata={"k": 1})
+        assert sql_store.list_keys("/") == ["_group:user"]
+        assert sql_store.list_keys("") == ["_group:user"]
+        assert sql_store.retrieve_scalar("_group:user") == 7
+        with pytest.raises(KeyError):
+            sql_store.get_metadata("user")
+
     def test_group_without_metadata_reads_empty(self, sql_store):
         sql_store.store_group("g")
         assert sql_store.get_metadata("g") == {}

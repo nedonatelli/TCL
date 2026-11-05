@@ -17,8 +17,19 @@ from numpy.typing import ArrayLike, NDArray
 
 from pytcl.io.storage import StorageBackend
 
-# Key prefix of the metadata-table row that store_group writes for a group.
+# store_group writes a group as a metadata-table row keyed _GROUP_PREFIX +
+# name whose value is json.dumps({"_is_group": True, ...}), so it always
+# begins with _GROUP_VALUE_PREFIX. A row is a group marker only when both
+# hold; a user scalar that merely has a "_group:" name is an ordinary key.
 _GROUP_PREFIX = "_group:"
+_GROUP_VALUE_PREFIX = json.dumps({"_is_group": True})[:-1]
+_NOT_GROUP_MARKER = "NOT (substr(key, 1, ?) = ? AND substr(value, 1, ?) = ?)"
+_NOT_GROUP_MARKER_ARGS = (
+    len(_GROUP_PREFIX),
+    _GROUP_PREFIX,
+    len(_GROUP_VALUE_PREFIX),
+    _GROUP_VALUE_PREFIX,
+)
 
 
 def _read_only_uri(path: str, pathmod: Any = os.path) -> str:
@@ -351,7 +362,8 @@ class SQLStorage(StorageBackend):
         Notes
         -----
         The group is an internal ``_group:<name>`` row whose value column
-        holds the metadata. ``list_keys`` never lists it.
+        holds the metadata. ``list_keys`` never lists it; a scalar stored
+        under a ``_group:`` name is still an ordinary, listed key.
         """
         self._check_writable()
 
@@ -391,8 +403,10 @@ class SQLStorage(StorageBackend):
         Returns
         -------
         list of str
-            Keys in the group. The internal ``_group:<name>`` rows written
-            by `store_group` are never listed.
+            Array and scalar keys at every depth under ``group``. The
+            internal rows written by `store_group` are never listed, so
+            unlike `HDF5Storage.list_keys`, which lists a group's immediate
+            children including subgroups, groups themselves do not appear.
         """
         if self._cursor is None:
             raise RuntimeError("Storage not open. Call open() first.")
@@ -407,16 +421,8 @@ class SQLStorage(StorageBackend):
                    WHERE substr(name, 1, ?) = ?
                    UNION
                    SELECT key FROM {self._metadata_table}
-                   WHERE substr(key, 1, ?) = ?
-                   AND substr(key, 1, ?) != ?""",
-                (
-                    len(prefix),
-                    prefix,
-                    len(prefix),
-                    prefix,
-                    len(_GROUP_PREFIX),
-                    _GROUP_PREFIX,
-                ),
+                   WHERE substr(key, 1, ?) = ? AND {_NOT_GROUP_MARKER}""",
+                (len(prefix), prefix, len(prefix), prefix, *_NOT_GROUP_MARKER_ARGS),
             )
         else:
             # List all keys
@@ -424,8 +430,8 @@ class SQLStorage(StorageBackend):
                 f"""SELECT name FROM {self._arrays_table}
                    UNION
                    SELECT key FROM {self._metadata_table}
-                   WHERE substr(key, 1, ?) != ?""",
-                (len(_GROUP_PREFIX), _GROUP_PREFIX),
+                   WHERE {_NOT_GROUP_MARKER}""",
+                _NOT_GROUP_MARKER_ARGS,
             )
 
         return [row[0] for row in self._cursor.fetchall()]
@@ -474,8 +480,8 @@ class SQLStorage(StorageBackend):
 
         self._cursor.execute(
             f"""SELECT value FROM {self._metadata_table}
-               WHERE key = ? LIMIT 1""",
-            (_GROUP_PREFIX + name,),
+               WHERE key = ? AND substr(value, 1, ?) = ? LIMIT 1""",
+            (_GROUP_PREFIX + name, len(_GROUP_VALUE_PREFIX), _GROUP_VALUE_PREFIX),
         )
         row = self._cursor.fetchone()
 
