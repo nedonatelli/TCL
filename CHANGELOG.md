@@ -305,6 +305,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`shapiro_delay` returns `inf` when the gravitating body lies on the
+  segment between observer and source.** The log argument's denominator
+  `r_o + r_s - r_os` is zero (to rounding) only there, where the delay
+  diverges, and the function returned 0.0, the value for no delay at all.
+  A body just off the segment still gives a large finite delay. What to do:
+  if you relied on 0.0 for this geometry, test for `np.isinf` instead.
+
 - **`lambert_universal` raises `ValueError` for antipodal positions and for
   a time of flight that is not positive and finite.** For antipodal `r1`
   and `r2` the transfer plane is undefined, but the `A == 0` check missed

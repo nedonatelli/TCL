@@ -187,7 +187,8 @@ def shapiro_delay(
     Returns
     -------
     float
-        Shapiro delay (seconds)
+        Shapiro delay (seconds). ``inf`` when the body lies on the segment
+        between observer and source, where the delay diverges.
 
     Examples
     --------
@@ -214,11 +215,10 @@ def shapiro_delay(
 
     # By the triangle inequality the denominator is >= 0, and it is zero (to
     # rounding) only when the body lies on the straight segment between
-    # observer and source, where the logarithm diverges. This branch returns
-    # 0.0 for that case; it is not a "path misses the body" test (that gives
-    # a positive denominator and a finite delay).
+    # observer and source, where the logarithm diverges. A body just off the
+    # segment gives a small positive denominator and a large finite delay.
     if denominator <= 0.0:
-        return 0.0
+        return np.inf
 
     delay = (2.0 * gm / (C_LIGHT**3)) * np.log(numerator / denominator)
     return delay
