@@ -388,10 +388,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `r2` the transfer plane is undefined, but the `A == 0` check missed
   the computed `A` of about 1e-16 times the scale, so the function returned
   zero velocities (e = 1, a = 3189 km for `r1 = [6378, 0, 0]`,
-  `r2 = -r1`). It now raises when `|r1 x r2| / (|r1| |r2|) <= 16 eps`
-  (exactly collinear inputs measured at most 0.66 eps over 20000 random
-  pairs). The solve path itself is unchanged, so every input that does not
-  raise returns bitwise the v2.11.1 result. `tof = 0` returned inf/nan
+  `r2 = -r1`). It now raises when `|r1 x r2| / (|r1| |r2|) < sqrt(eps)`
+  (about 1.49e-8; nearly parallel positions included). Below that the
+  `arccos` transfer angle has no correct digits: v2.11.1 solved such inputs
+  silently, with propagated end points missing `r2` by 1e2 to 1e8 relative,
+  and none of 600 exactly antipodal v2.11.1 solutions reached `r2` within
+  1e-6. Above it accuracy still degrades toward antipodal; for one geometry
+  (`|r1| = 7000` km, `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy
+  DOP853 propagation) the relative miss is 2.6e-7 at `sin(dnu) = 1e-4`,
+  2.0e-5 at 1e-5, 1.1e-3 at 1e-6 and 6.8e-3 at 1e-7. The solve path itself
+  is unchanged, so every input that does not raise returns bitwise the
+  v2.11.1 result. `tof = 0` returned inf/nan
   velocities and a negative `tof` raised "did not converge"; `tof <= 0`,
   `nan` and `inf` now raise "tof must be positive and finite".
   `minimum_energy_transfer` calls it, so for antipodal positions it now

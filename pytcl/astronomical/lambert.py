@@ -22,9 +22,9 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
-# |sin(dnu)| at or below which r1 and r2 count as collinear; see the Notes
-# of lambert_universal.
-_COLLINEAR_SIN_TOL = 16.0 * np.finfo(float).eps
+# |sin(dnu)| below which lambert_universal rejects r1 and r2 as (nearly)
+# collinear; see its Notes.
+_COLLINEAR_SIN_TOL = np.sqrt(np.finfo(float).eps)
 
 
 class LambertSolution(NamedTuple):
@@ -123,23 +123,23 @@ def lambert_universal(
     ------
     ValueError
         If ``r1`` or ``r2`` is not a 3-vector, ``tof`` is not positive and
-        finite, ``r1`` and ``r2`` are collinear (transfer angle 0 or pi,
-        where the transfer plane is undefined), or the solution does not
-        converge.
+        finite, ``r1`` and ``r2`` are collinear or nearly so (see Notes),
+        or the solution does not converge.
 
     Notes
     -----
-    The collinearity test is ``|r1 x r2| / (|r1| |r2|) <= 16 eps``. That
-    ratio is ``|sin(dnu)|``; each component of the computed cross product
-    is a difference of two rounded products, so for exactly collinear
-    inputs it is rounding noise (at most 0.66 eps over 20000 random
-    parallel and antiparallel pairs spanning twelve decades of magnitude),
-    and 16 eps leaves a wide margin above it. ``sin(dnu)`` itself is not
-    used, because ``dnu`` comes from ``arccos``, whose rounding error near
-    ``cos(dnu) = -1`` is about ``sqrt(eps)``. For the same reason,
-    near-antipodal inputs that pass the test lose accuracy: with
-    ``|sin(dnu)|`` of 1e-6 the propagated end point misses ``r2`` by about
-    1e-3 relative.
+    The collinearity test rejects ``|r1 x r2| / (|r1| |r2|) < sqrt(eps)``
+    (about 1.49e-8). That ratio is ``|sin(dnu)|`` computed without
+    cancellation; ``dnu`` itself comes from ``arccos``, whose rounding error
+    near ``cos(dnu) = -1`` is about ``sqrt(eps)``, so below the threshold the
+    transfer angle carries no correct digits and the result is meaningless
+    (propagated end points missing ``r2`` by 1e2 to 1e8 relative). Above it
+    the accuracy still degrades as the positions approach antipodal.
+    Measured for ``|r1| = 7000`` km, ``|r2| = 1.3 |r1|``, ``tof = 5000``
+    s, with the returned ``v1`` propagated by an independent integrator
+    (scipy DOP853, rtol 1e-13), the relative miss of ``r2`` is 2.6e-7 at
+    ``sin(dnu) = 1e-4``, 2.0e-5 at 1e-5, 1.1e-3 at 1e-6 and 6.8e-3 at
+    1e-7; that one geometry is the extent of the measurement.
 
     Examples
     --------
@@ -193,10 +193,10 @@ def lambert_universal(
             "Cannot solve Lambert problem: transfer angle is zero (degenerate case)"
         )
 
-    if np.linalg.norm(cross) <= _COLLINEAR_SIN_TOL * r1_mag * r2_mag:
+    if np.linalg.norm(cross) < _COLLINEAR_SIN_TOL * r1_mag * r2_mag:
         raise ValueError(
-            "Cannot solve Lambert problem: r1 and r2 are collinear, so the "
-            "transfer plane is undefined"
+            "Cannot solve Lambert problem: r1 and r2 are collinear to within "
+            "|sin(transfer angle)| < sqrt(eps)"
         )
 
     if not (np.isfinite(tof) and tof > 0):

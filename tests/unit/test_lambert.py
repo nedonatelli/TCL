@@ -191,6 +191,31 @@ class TestLambertUniversal:
                 np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), tof
             )
 
+    @staticmethod
+    def _near_antipodal(sin_dnu):
+        th = np.pi - np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        return r1, 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+
+    def test_near_antipodal_below_sqrt_eps_rejected(self):
+        """|sin(dnu)| = 1e-9 < sqrt(eps): arccos leaves no correct digits."""
+        r1, r2 = self._near_antipodal(1e-9)
+        with pytest.raises(ValueError, match="collinear"):
+            lambert_universal(r1, r2, 5000.0)
+
+    def test_near_antipodal_above_sqrt_eps_is_v2111_bitwise(self):
+        """|sin(dnu)| = 1e-4 is solved by the unchanged v2.11.1 path."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/astronomical/lambert.py")
+        r1, r2 = self._near_antipodal(1e-4)
+        new_sol = lambert_universal(r1, r2, 5000.0)
+        old_sol = old.lambert_universal(r1, r2, 5000.0)
+
+        assert np.array_equal(new_sol.v1, old_sol.v1)
+        assert np.array_equal(new_sol.v2, old_sol.v2)
+        assert (new_sol.a, new_sol.e) == (old_sol.a, old_sol.e)
+
     def test_antiparallel_unequal_magnitudes_rejected(self):
         r1 = np.array([1234.5, -6789.0, 321.0])
         with pytest.raises(ValueError, match="collinear"):
