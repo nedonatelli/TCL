@@ -327,9 +327,23 @@ class TestSQLStorageContract:
         assert sorted(sql_store.list_keys("a/")) == ["a/one", "a/scalar", "a/two"]
         assert sql_store.list_keys("b/") == ["b/one"]
 
-    def test_store_group_marker(self, sql_store):
+    def test_store_group_marker_is_internal(self, sql_store):
         sql_store.store_group("mission", metadata={"name": "m1"})
-        assert "_group:mission" in sql_store.list_keys("/")
+        sql_store.store_group("mission/leg", metadata={"n": 2})
+        assert sql_store.list_keys("/") == []
+        assert sql_store.list_keys("") == []
+        assert sql_store.list_keys("mission") == []
+        assert sql_store.get_metadata("mission") == {"name": "m1"}
+        assert sql_store.get_metadata("mission/leg") == {"n": 2}
+
+    def test_group_without_metadata_reads_empty(self, sql_store):
+        sql_store.store_group("g")
+        assert sql_store.get_metadata("g") == {}
+
+    def test_array_metadata_takes_precedence_over_group(self, sql_store):
+        sql_store.store_group("g", metadata={"from": "group"})
+        sql_store.store_array("g", np.zeros(1), metadata={"from": "array"})
+        assert sql_store.get_metadata("g") == {"from": "array"}
 
     def test_delete_both_tables(self, sql_store):
         sql_store.store_array("x", np.zeros(2))
