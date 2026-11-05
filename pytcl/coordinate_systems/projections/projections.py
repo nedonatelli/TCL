@@ -762,8 +762,10 @@ def stereographic(
 
     - Ellipsoidal oblique (``e2 > 0`` and ``|lat0| < pi/2``): delegates to
       :func:`oblique_stereographic`, EPSG method 9809, which matches PROJ's
-      ``+proj=sterea`` to sub-micrometer precision. ``scale`` is the point
-      scale on the ellipsoid. Before v2.12.0 this case used a
+      ``+proj=sterea`` to sub-micrometer precision for origins up to
+      89 degrees latitude, away from the tear described in its Notes.
+      ``scale`` is the point scale on the ellipsoid. Before v2.12.0 this
+      case used a
       Gaussian-radius conformal sphere with a plain conformal-latitude
       substitution and differed from ``sterea`` by up to kilometers
       (gh-25).
@@ -1447,19 +1449,60 @@ def _sterea_constants(
     """
     e = np.sqrt(e2)
     sin_lat0 = np.sin(lat0)
+    cos_lat0 = np.cos(lat0)
     rho0 = _meridional_radius_e2(lat0, a, e2)
     nu0 = a / np.sqrt(1 - e2 * sin_lat0**2)
     R = np.sqrt(rho0 * nu0)
-    n = np.sqrt(1 + e2 * np.cos(lat0) ** 4 / (1 - e2))
+    n2_minus_1 = e2 * cos_lat0**4 / (1 - e2)
+    n = np.sqrt(1 + n2_minus_1)
 
-    s1 = (1 + sin_lat0) / (1 - sin_lat0)
+    # The EPSG formulas use S1 = (1 + sin)/(1 - sin) and recover angles from
+    # sin = (w - 1)/(w + 1), which overflow or lose all digits near the pole.
+    # Same quantities, stably: S1 = tan(pi/4 + lat/2)^2, sin(chi) =
+    # (w - 1)/(w + 1) is chi = 2 atan(sqrt(w)) - pi/2, and since
+    # (1 - sin chi0')/(1 + sin chi0') = 1/w1, EPSG's c * w1 is exactly
+    # (n + sin lat0)/(n - sin lat0). Writing n -+ sin lat0 as
+    # (n - 1) + (1 -+ sin lat0) avoids cancelling two numbers near 1.
+    s1 = _tan_quarter_squared(lat0)
     s2 = (1 - e * sin_lat0) / (1 + e * sin_lat0)
     w1 = (s1 * s2**e) ** n
-    sin_chi0_prov = (w1 - 1) / (w1 + 1)
-    c = (n + sin_lat0) * (1 - sin_chi0_prov) / ((n - sin_lat0) * (1 + sin_chi0_prov))
-    w2 = c * w1
-    chi0 = np.arcsin((w2 - 1) / (w2 + 1))
+    if sin_lat0 >= 0:
+        one_minus_sin = cos_lat0**2 / (1 + sin_lat0)
+        one_plus_sin = 1 + sin_lat0
+    else:
+        one_minus_sin = 1 - sin_lat0
+        one_plus_sin = cos_lat0**2 / (1 - sin_lat0)
+    n_minus_1 = n2_minus_1 / (n + 1)
+    w2 = (n_minus_1 + one_plus_sin) / (n_minus_1 + one_minus_sin)
+    c = w2 / w1
+    chi0 = _chi_from_w(w2)
     return R, n, c, chi0, e
+
+
+def _tan_quarter(phi: float) -> float:
+    """tan(pi/4 + phi/2), accurate up to either pole.
+
+    Evaluating the tangent directly rounds ``pi/4 + phi/2``, an absolute
+    error of about 1e-16 that is a large relative error when ``phi`` is
+    within a few ulps of pi/2. ``(1 + sin phi) / cos phi`` and its
+    reciprocal form ``cos phi / (1 - sin phi)`` are the same value; each is
+    free of cancellation in its own hemisphere.
+    """
+    sin_phi = np.sin(phi)
+    cos_phi = np.cos(phi)
+    if sin_phi >= 0:
+        return (1 + sin_phi) / cos_phi
+    return cos_phi / (1 - sin_phi)
+
+
+def _tan_quarter_squared(phi: float) -> float:
+    """(1 + sin phi) / (1 - sin phi), finite and accurate up to the pole."""
+    return _tan_quarter(phi) ** 2
+
+
+def _chi_from_w(w: float) -> float:
+    """chi with sin(chi) = (w - 1) / (w + 1), accurate as w -> 0 or inf."""
+    return 2 * np.arctan(np.sqrt(w)) - np.pi / 2
 
 
 def oblique_stereographic(
@@ -1504,6 +1547,23 @@ def oblique_stereographic(
     ProjectionResult
         Projected coordinates with scale and convergence.
 
+    Notes
+    -----
+    Accuracy: within 6.1e-9 m of EPSG 9809 evaluated at 60 digits on 3000
+    random origins with ``|lat0| <= 1.55`` rad and points within 0.3 rad of
+    them, and finite for an origin or a point at either pole. PROJ's
+    ``sterea`` agrees to sub-micrometer for origins up to 89 degrees, but
+    itself drifts closer to the pole (1.03e-3 m at ``lat0`` = 89.99 deg).
+
+    The map tears along the origin's antimeridian beyond the pole. The
+    longitude difference is scaled by ``n > 1`` (any real ellipsoid), so
+    ``lon - lon0`` just below +180 and just above -180 map to different
+    points: with ``lat0`` = 75 deg and ``lat`` = 85 deg, ``x`` tends to
+    -27.32 m from one side and +27.32 m from the other, a 55 m jump (at
+    0.001 deg either side, -17.28 m and +17.28 m). PROJ's ``sterea`` tears
+    the same way; exactly on the line it takes the +180 branch and this
+    function the -180 branch.
+
     References
     ----------
     - IOGP Publication 373-7-2, "Coordinate Conversions and
@@ -1521,10 +1581,10 @@ def oblique_stereographic(
     R, n, c, chi0, e = _sterea_constants(lat0, k0, a, e2)
 
     sin_lat = np.sin(lat)
-    sa = (1 + sin_lat) / (1 - sin_lat)
+    sa = _tan_quarter_squared(lat)
     sb = (1 - e * sin_lat) / (1 + e * sin_lat)
     w = c * (sa * sb**e) ** n
-    chi = np.arcsin((w - 1) / (w + 1))
+    chi = _chi_from_w(w)
     # Wrap the longitude difference into [-pi, pi) before scaling by n: for
     # n != 1 (any real ellipsoid), sin/cos of n * (lon - lon0) is not
     # 2*pi-periodic in the unwrapped difference, so an origin near +-180
@@ -1609,6 +1669,13 @@ def oblique_stereographic_inverse(
     >>> bool(abs(np.degrees(lat) - 53.0) < 1e-9)
     True
     """
+    if lat0 < 0:
+        # The projection is symmetric under (lat, lat0, y) -> -(lat, lat0, y).
+        # Solve in the northern aspect: the EPSG inverse's h = 4 R k0
+        # tan(chi0) + g cancels catastrophically as chi0 -> -pi/2.
+        lat_north, lon = oblique_stereographic_inverse(x, -y, -lat0, lon0, k0, a, e2)
+        return -lat_north, lon
+
     R, n, c, chi0, e = _sterea_constants(lat0, k0, a, e2)
 
     g = 2 * R * k0 * np.tan(np.pi / 4 - chi0 / 2)
@@ -1623,15 +1690,14 @@ def oblique_stereographic_inverse(
     lon = _wrap_longitude_difference(dlam / n + lon0, 0.0)
 
     # Invert the conformal-latitude mapping for the geodetic latitude:
-    # psi is the sphere's isometric latitude pulled back through n and c.
-    sin_chi = np.sin(chi)
-    psi = 0.5 * np.log((1 + sin_chi) / (c * (1 - sin_chi))) / n
+    # psi is the sphere's isometric latitude log(tan(pi/4 + chi/2)) pulled
+    # back through n and c; _tan_quarter keeps it finite at the poles.
+    psi = (np.log(_tan_quarter(chi)) - 0.5 * np.log(c)) / n
     lat = 2 * np.arctan(np.exp(psi)) - np.pi / 2
     for _ in range(25):
         sin_lat = np.sin(lat)
         psi_i = np.log(
-            np.tan(lat / 2 + np.pi / 4)
-            * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
+            _tan_quarter(lat) * ((1 - e * sin_lat) / (1 + e * sin_lat)) ** (e / 2)
         )
         lat_new = lat - (psi_i - psi) * np.cos(lat) * (1 - e2 * sin_lat**2) / (1 - e2)
         if abs(lat_new - lat) < 1e-14:
