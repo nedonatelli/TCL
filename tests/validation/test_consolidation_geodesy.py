@@ -160,7 +160,13 @@ class TestMeridionalRadius:
             assert tuple(new) == tuple(old)
 
     @pytest.mark.parametrize("e2", [0.0, 0.00669437999014, 0.0067, 0.05])
-    def test_projections_bitwise(self, old_proj, e2):
+    def test_projections_match_v2111(self, old_proj, e2):
+        """The meridional radius enters EPSG 9809 only through R; R and n stay
+        bitwise. The rest of oblique_stereographic was rewritten in
+        cancellation-free forms in v2.12.0 (near-pole NaN fix), which moves
+        its values by at most 4.6e-9 m, 1.8e-15 relative in scale and
+        8.9e-16 rad in convergence and inverse angles on this grid; the
+        bounds below are 4x those measurements (2.2x for the scale)."""
         a = 6378137.0
         rng = np.random.default_rng(5)
         for _ in range(100):
@@ -169,16 +175,21 @@ class TestMeridionalRadius:
             lat = lat0 + rng.uniform(-0.05, 0.05)
             lon = lon0 + rng.uniform(-0.05, 0.05)
             x, y = rng.uniform(-2e5, 2e5, 2)
+            const = projections._sterea_constants(lat0, 0.9999, a, e2)
+            const_o = old_proj._sterea_constants(lat0, 0.9999, a, e2)
+            assert (const[0], const[1]) == (const_o[0], const_o[1])
             fwd = projections.oblique_stereographic(lat, lon, lat0, lon0, 0.9999, a, e2)
             fwd_o = old_proj.oblique_stereographic(lat, lon, lat0, lon0, 0.9999, a, e2)
-            assert tuple(fwd) == tuple(fwd_o)
+            assert abs(fwd.x - fwd_o.x) < 2e-8 and abs(fwd.y - fwd_o.y) < 2e-8
+            assert fwd.scale == pytest.approx(fwd_o.scale, rel=4e-15, abs=0)
+            assert abs(fwd.convergence - fwd_o.convergence) < 4e-15
             inv = projections.oblique_stereographic_inverse(
                 x, y, lat0, lon0, 0.9999, a, e2
             )
             inv_o = old_proj.oblique_stereographic_inverse(
                 x, y, lat0, lon0, 0.9999, a, e2
             )
-            assert tuple(inv) == tuple(inv_o)
+            assert abs(inv[0] - inv_o[0]) < 4e-15 and abs(inv[1] - inv_o[1]) < 4e-15
             tm = projections.transverse_mercator_inverse(
                 x, y, lat0, lon0, 0.9996, a, e2
             )
