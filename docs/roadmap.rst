@@ -129,20 +129,17 @@ Next
   ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
   must be run once by someone with ``EGM2008.cof`` before its oracle claims
   count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
-  migration of ``least_squares.weighted_least_squares``,
+  an accurate ``lambert_universal`` near antipodal positions and on the
+  long way around nearly parallel ones (``atan2`` transfer angle plus a
+  stopping test relative to ``tof``; v2.12.0 rejects ``|sin(dnu)| < 1e-7``
+  near ``dnu = pi`` and, on the long way, near ``2 pi``, but near pi loses
+  accuracy above it, 6.8e-3 relative at 1e-7 and 1.1e-3 at 1e-6 for
+  ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, and up to 0.28 relative at ``sin(dnu)`` = 1.1e-7 over ``|r2| / |r1|`` 0.8 to 2 and ``tof`` 1500 to 8000 s;
+  the long way near ``2 pi`` either does not converge or misses by order 1
+  at up to ``sin(dnu)`` of about 8e-5 over ``|r2| / |r1|`` 0.8 to 2 and
+  ``tof`` 1500 to 8000 s); and migration of ``least_squares.weighted_least_squares``,
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
-  results to the unidentifiable-covariance convention in CONTRIBUTING.md;
-  and these pinned defects, deferred until the owner decides otherwise:
-  ``lambert_universal`` returning zero velocities for antipodal positions
-  (its ``A == 0`` check misses about 1e-16) and inf/nan for ``tof=0`` (no
-  ``tof > 0`` validation); ``shapiro_delay`` returning 0.0 when the
-  gravitating body is on the observer-source path; ``debye`` rejecting
-  ``x < 0`` where MATLAB accepts it (owner decision: pytcl normalizes
-  ``D(0) = 1``, MATLAB returns the raw integral); SQL ``store_group``
-  metadata being unreadable, with the ``_group:`` marker leaking into
-  ``list_keys()``; and ellipsoidal oblique ``stereographic`` deviating from
-  PROJ ``sterea`` (a documented model choice; ``oblique_stereographic`` is
-  recommended and the strict xfail stays as the documented-limit pin).
+  results to the unidentifiable-covariance convention in CONTRIBUTING.md.
 
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).
