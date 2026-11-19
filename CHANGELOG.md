@@ -14,7 +14,7 @@ carry-forward: the changes 2.11.1 announced for 2.12, the remaining
 silent-wrong-answer fixes, and gates that can fail. Several calls that used
 to return a wrong value now raise, and several return different numbers
 because 2.11.1's were wrong. Most likely to affect you first, in this order
-(full entries lead the Changed and Fixed sections in the same order):
+(their full entries lead the Changed and Fixed sections):
 
 1. **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
    `'w'` mode delete the existing file and its SQLite journal files, as
@@ -140,7 +140,8 @@ signature change:
 - `dynamic_estimation.kalman.unscented` -- **non-breaking.** The four
   inline matrix square roots call `matrix_utils.compute_matrix_sqrt`;
   results are bitwise identical and only the `LinAlgError` text for a
-  non-positive-semi-definite covariance changes (entry under Changed).
+  non-positive-semi-definite covariance changes (entry under Changed). One
+  `zip` gains `strict=True` over sequences paired by construction.
 
 No STABLE module needs a major bump or reclassification. Fifty-one MATURE,
 twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
