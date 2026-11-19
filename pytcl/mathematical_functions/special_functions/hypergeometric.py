@@ -542,7 +542,17 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     )
     far = large & (beyond | (z > 0) | ((b > 0) & (b - a > 0)) | near_pole)
     result = np.full(z.shape, np.nan)
-    for i in np.flatnonzero(far):
+    # For 0 < z < 1e9 the expansion can only return a proven overflow, which
+    # needs scipy to have overflowed too; elsewhere it yields NaN and scipy's
+    # finite value is used, so the per-element call is skipped there.
+    scipy_first = far & (z > 0) & ~beyond
+    scipy_overflowed = np.zeros(z.shape, dtype=bool)
+    if np.any(scipy_first):
+        scipy_overflowed[scipy_first] = np.isinf(
+            sp.hyp1f1(a[scipy_first], b[scipy_first], z[scipy_first])
+        )
+    expand = (far & ~scipy_first) | scipy_overflowed
+    for i in np.flatnonzero(expand):
         result.flat[i] = _hyp1f1_large_z(a.flat[i], b.flat[i], z.flat[i])
     polynomial_limit = terminating & np.isinf(z)
     for i in np.flatnonzero(polynomial_limit):

@@ -28,9 +28,6 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.ephemerides import EPSILON_J2000 as _OBLIQUITY_J2000
 from pytcl.astronomical.reference_frames import _gmst_iau82_core
-from pytcl.astronomical.reference_frames import (
-    julian_centuries_j2000 as _julian_centuries_jd,
-)
 from pytcl.core.constants import MOON_GM as _MOON_GM
 from pytcl.core.constants import SUN_GM as _SUN_GM
 from pytcl.core.exceptions import PytclDeprecationWarning
@@ -144,7 +141,6 @@ def _normalize_angle(angle: float) -> float:
     return angle % (2 * np.pi)
 
 
-_MJD_TO_JD = 2400000.5
 _MJD_J2000 = 51544.5
 
 
@@ -332,7 +328,7 @@ def moon_position_approximate(mjd: float) -> Tuple[float, float, float]:
     >>> -np.pi/2 <= lat <= np.pi/2  # Valid latitude
     True
     """
-    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
+    T = (mjd - _MJD_J2000) / 36525.0
 
     # Mean elements (degrees) - normalize to [0, 360)
     L0 = (218.3164477 + 481267.88123421 * T) % 360  # Mean longitude
@@ -412,7 +408,7 @@ def sun_position_approximate(mjd: float) -> Tuple[float, float, float]:
     >>> lat == 0.0  # Sun on ecliptic
     True
     """
-    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
+    T = (mjd - _MJD_J2000) / 36525.0
 
     # Mean elements (degrees) - normalize to [0, 360)
     L0 = (280.46646 + 36000.76983 * T) % 360  # Mean longitude
@@ -743,7 +739,7 @@ def ocean_tide_loading_displacement(
     >>> isinstance(disp, TidalDisplacement)
     True
     """
-    T = _julian_centuries_jd(mjd + _MJD_TO_JD)
+    T = (mjd - _MJD_J2000) / 36525.0
     l, l_prime, F, D, Omega = fundamental_arguments(T)  # noqa: E741
 
     # Days since J2000.0
