@@ -68,8 +68,8 @@ because 2.11.1's were wrong. Most likely to affect you first, in this order
     `LinAlgError` for a measurement covariance with no positive variance
     or a negative one.
 18. **Unidentifiable covariances.** `mle_scoring` and `cramer_rao_bound`
-    return `inf` variance with a `RuntimeWarning` for a singular Fisher
-    matrix instead of `pinv(F)`; `mle_newton_raphson` flags flat
+    return `inf` variance with a `RuntimeWarning` for a singular or
+    indefinite Fisher matrix instead of `pinv(F)` or negative variances; `mle_newton_raphson` flags flat
     directions roundoff left slightly positive; and
     `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
     sensors without `r_cov` too.
@@ -330,8 +330,8 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   the variance you mean, or drop the measurement.
 
 - **One convention for an unidentifiable covariance.** When a point
-  estimate exists but the information matrix is singular in some
-  directions, the estimate is returned with `inf` variance on the
+  estimate exists but the information matrix is singular, or indefinite
+  (a negative eigenvalue), in some directions, the estimate is returned with `inf` variance on the
   unidentified parameters, NaN on their cross terms, the identified block
   intact, and a `RuntimeWarning` (the rule `mle_newton_raphson` has
   followed since 2.11.1, now in CONTRIBUTING.md). `mle_scoring` and
@@ -342,7 +342,10 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   A direction is flagged when the diagonally scaled Fisher matrix has an
   eigenvalue at or below `n * eps` times its largest (a scaled condition
   number above about `1 / (n * eps)`), where `inv` already returned
-  noise; identified matrices still get `inv(F)` bit for bit.
+  noise; identified matrices still get `inv(F)` bit for bit. An
+  indefinite `F` is treated the same way: `inv(F)` returned negative
+  variances in v2.11.1 (`F = [[1, 2], [2, 1]]` gave -1/3 on the diagonal),
+  and it now gives `inf` with a `RuntimeWarning`.
   `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
   sensors with or without `r_cov`, judged by a coordinate-scaled
   tolerance (smallest singular value of the sensor offsets at or below
@@ -545,7 +548,11 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   value exactly (1.0 where `b << a`). The same series serves
   `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`: on `a` in {0, 1},
   `m` in {1000, 3000, 9999}, `b = sqrt(a^2 + 2m) + c`, `c` in [0, 20] at
-  0.125 spacing, it is within 9.3e-15 of mpmath. What to do: nothing.
+  0.125 spacing, it is within 9.3e-15 of mpmath. `rician_cdf` and
+  `swerling_detection_probability` (case 0) call `marcum_q` and inherit the
+  change. `marcum_q_inv` still inverts through `ncx2.isf`, so for
+  `a*b > 2e4` it is not the exact inverse of `marcum_q`. What to do:
+  nothing.
 
 - `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
   the definition `statsmodels.robust.scale.scale_tau` and R's
@@ -696,10 +703,21 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   `nan` and `inf` now raise "tof must be positive and finite".
   `minimum_energy_transfer` calls it, so for antipodal positions it now
   raises too, where it returned zero velocities (e = 1, a = 3339 km for
-  `r1 = [6678, 0, 0]`). What to do:
+  `r1 = [6678, 0, 0]`). An `r1` or `r2` that is not a 3-vector raises
+  `ValueError` naming both shapes ("r1 and r2 must be 3-vectors, got
+  shapes (2,) and (3,)"); v2.11.1 raised numpy's own `ValueError` ("shapes
+  (2,) and (3,) not aligned"). What to do:
   catch `ValueError` for collinear inputs and non-positive times of flight;
   a handler that matched "did not converge" for negative `tof` must match
   the new message.
+
+- **`ransac` raises `numpy.linalg.LinAlgError` when every sampled fit
+  fails.** The message is "every RANSAC sample fit failed". v2.11.1
+  returned an all-inlier `lstsq` fit of the whole data set there, which
+  reported every point as an inlier of a model RANSAC had not validated.
+  What to do: catch `numpy.linalg.LinAlgError` if you relied on that
+  fallback, and call `numpy.linalg.lstsq(A, b)` yourself for the
+  whole-data-set fit.
 
 - **`debye` accepts `x < 0`, as MATLAB TCL's `Debye.m` does.** It raised
   `ValueError("x must be >= 0")`. Negative arguments (scalars or elements
@@ -1153,11 +1171,18 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
 
 - `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
   where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
-  its docstring. v2.11.1 returned NaN for every non-trivial case (3F3,
-  1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z)), and two answers
-  were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
+  its docstring. v2.11.1 returned NaN for most non-trivial cases (3F3,
+  1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z), 0F1), but not all
+  (non-terminating 2F1 gave `inf` at `+inf`), and some answers were wrong:
+  1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
   and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
-  scipy's `hyp1f1`. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF
+  scipy's `hyp1f1`, and the terminating 2F1(-2, 1; 3; +inf) gave `-inf`
+  (now `+inf`, the correct limit). 0F1 at `+inf` is now `inf`, and at
+  `-inf` it is 0.0 for `b > 1/2` and NaN otherwise, where v2.11.1 gave NaN
+  for both. A non-terminating 2F1 at `+inf` is now NaN (a branch cut),
+  where scipy gave `inf`, and at `-inf` it is 0.0 where v2.11.1 gave NaN
+  (2F1(1, 2; 3; -inf)). A scalar infinite `z` for 0F1 and 2F1 returns
+  `np.float64` instead of a 0-d array. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF
   13.7.2), so the two entry points agree: 1F1(-0.5; 1; +inf) and
   1F1(1; -1.5; +inf), which hung inside scipy 1.17.1's `hyp1f1` (as large
   finite `z` did; see the `hyp1f1` entry above), now return their true
