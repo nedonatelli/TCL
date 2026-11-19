@@ -7,13 +7,21 @@ regularly updated plan lives in `ROADMAP.md
 history lives in `CHANGELOG.md
 <https://github.com/nedonatelli/TCL/blob/main/CHANGELOG.md>`_.
 
-Current State (v2.11.1)
+Current State (v2.12.0)
 -----------------------
 
 * **11,000+ tests** passing; coverage measured honestly (94.6% as CI's
   branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
-  run in CI; v2.11.1 is a correctness patch (see the CHANGELOG for its
-  behavior notes)
+  run in CI
+* **The audit carry-forward** (v2.12.0): the changes v2.11.1 announced
+  (``'w'`` truncating, unknown schema versions rejected), the remaining
+  silent-wrong-answer fixes (``marcum_q`` at large arguments, CFAR empty
+  windows as NaN, gating on invalid covariances, ``tau_scale`` as the
+  Maronna-Zamar scale, ``q_coord_turn_2d`` as MATLAB's ``QCoordTurn``,
+  ``stereographic`` as EPSG 9809), dependency floors that CI installs and
+  tests, CI gates that can fail, and one implementation each of the
+  duplicated bodies; it changes behavior and numerical results (see the
+  CHANGELOG's numbered list)
 * **The audit release** (v2.11.0): every silent-wrong-answer path from
   the full-codebase audit closed (Vincenty antipodal, gating without
   R, hypergeometric divergence, silent numerical fallbacks); the MHT
@@ -92,19 +100,6 @@ Current State (v2.11.1)
 Next
 ----
 
-* **v2.12.0 planned**: the audit carry-forward. Vacuous CI gates fixed,
-  dependency floors (numpy 2.3.2, scipy 1.16.1, numba 0.63.0) enforced by
-  a ``lowest-direct`` CI cell, ``'w'`` mode truncating for
-  ``TrackDatabaseManager`` and ``SQLStorage``, unknown schema versions
-  rejected, ``LSResult.residuals`` as the residual vector, exact
-  ``factorial``/``factorial2``, ``ecef2geodetic`` rejecting unknown
-  methods, the information-filter singular-``Y`` prediction re-derived,
-  ``marcum_q`` at large arguments, CFAR empty windows as NaN, ``tau_scale``
-  as the Maronna-Zamar scale, ``q_coord_turn_2d`` matching ``QCoordTurn``,
-  and the BLE001/B905 lint rules,
-  the duplicate-implementation consolidation and the vacuous-test
-  paydown.
-
 * **v2.13.0 planned**: the audit's Tier 4 ports -- matrix permanent,
   ``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian, Runnalls
   ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family; plus a
@@ -141,6 +136,9 @@ Next
   ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
   results to the unidentifiable-covariance convention in CONTRIBUTING.md.
 
+Long term (unscheduled)
+-----------------------
+
 * **v3.0.0**: ``geodetic2ecef`` returning ``(3, 1)`` for size-1 array
   input (a breaking change for a STABLE module).
 
@@ -151,12 +149,9 @@ Next
   have shipped), the multivariate-polynomials remainder,
   calendar/timezone utilities, and filter variants.
 
-Long term (unscheduled)
------------------------
-
-RAPIDS and distributed tracking, ROS 2 integration, PHD/CPHD and labeled
-multi-Bernoulli trackers, and the exploratory items listed under
-"Long-Term Vision" in ROADMAP.md.
+* RAPIDS and distributed tracking, ROS 2 integration, PHD/CPHD and
+  labeled multi-Bernoulli trackers, and the exploratory items listed
+  under "Long-Term Vision" in ROADMAP.md.
 
 Contributing
 ------------
