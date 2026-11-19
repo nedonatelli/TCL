@@ -92,6 +92,14 @@ geoid and gravity reference field, geomagnetic fields at the poles,
 `oblique_stereographic` at the poles, and `us_standard_atmosphere_1976`'s
 -5000 m floor.
 
+The CuPy code paths are not hardware-validated for this release.
+`pytcl/gpu/VALIDATION.json` records the last NVIDIA run at e919189; the
+changes since (backend selection reporting CuPy initialization failures,
+`gpu.matrix_utils` and `gpu.ukf` fixes from 2.11.1, and BLE001/B905 lint)
+are covered on CI only by the CPU and MLX paths. What to do: if you use the
+`gpu` extra, run `PYTCL_REQUIRE_CUPY=1 pytest tests/` on your hardware
+before relying on it.
+
 Stability registry note (release checklist 3b):
 `scripts/check_release_stability.py v2.11.1` lists eight STABLE modules
 changed since v2.11.1. Each is non-breaking for valid input, with no
