@@ -92,6 +92,59 @@ geoid and gravity reference field, geomagnetic fields at the poles,
 `oblique_stereographic` at the poles, and `us_standard_atmosphere_1976`'s
 -5000 m floor.
 
+Stability registry note (release checklist 3b):
+`scripts/check_release_stability.py v2.11.1` lists eight STABLE modules
+changed since v2.11.1. Each is non-breaking for valid input, with no
+signature change:
+
+- `assignment_algorithms.gating` -- **non-breaking; fixes silent wrong
+  answers on invalid input.** `mahalanobis_distance`, `ellipsoidal_gate`,
+  `gate_measurements` and `mahalanobis_batch` raise `ValueError` naming
+  both shapes on a shape mismatch, and `numpy.linalg.LinAlgError` when the
+  symmetric part of `S` is not positive definite or `S` holds a NaN, where
+  v2.11.1 returned a wrong number. A valid symmetric positive-definite `S`
+  gives results bitwise identical to v2.11.1. `mahalanobis_batch` is now a
+  Python wrapper around the unchanged JIT kernel, so it can no longer be
+  called from a user `@njit` function (entry under Fixed).
+- `containers.kd_tree` -- **non-breaking.** Three `zip` calls over
+  sequences paired by construction take `strict=True` (lint rule B905);
+  no behavior change.
+- `coordinate_systems.conversions.geodetic` -- **non-breaking.**
+  `ecef2geodetic` raises `MethodError` for an unknown `method`, where it
+  silently ran an algorithm the caller did not request; the closed form
+  returns `(pi/2, 0, -b)` at the exact ECEF origin, where it returned NaN;
+  and a `RuntimeWarning` is emitted for points near the Earth's center,
+  whose values are unchanged. The closed form now evaluates under
+  `np.errstate(divide="ignore", invalid="ignore")`, so on a sphere
+  (`f = 0`), where the new warning never fires, its NaN for radii below
+  about 1e-46 m comes without numpy's `RuntimeWarning`s (documented in the
+  docstring). Every other row is bit-identical. `meridional_radius` is
+  unchanged: it calls a private body with the same formula
+  (entries under Changed).
+- `core.constants` -- **non-breaking.** `SPHERE_EARTH.a` references
+  `EARTH_MEAN_RADIUS`, the same value, 6_371_000.0; bitwise identical.
+- `core.exceptions` -- **non-breaking, additive.** `PytclDeprecationWarning`
+  is added (entry under Added).
+- `dynamic_estimation.kalman.extended` -- **non-breaking.**
+  `numerical_jacobian` delegates to
+  `coordinate_systems.jacobians.numerical_jacobian` with the same central
+  difference; results are bitwise identical.
+- `dynamic_estimation.kalman.matrix_utils` -- **non-breaking.**
+  `compute_mahalanobis_distance` delegates to the shared Cholesky body that
+  `MultivariateGaussian.mahalanobis` also uses; valid input is bitwise
+  identical to v2.11.1. It now raises `ValueError` naming both shapes when
+  `S` is not `(m, m)` for an innovation of length `m`: v2.11.1 raised
+  `ValueError` from `solve_triangular` for a square `S` of the wrong size,
+  but returned NaN with a `RuntimeWarning` for a non-square, 0-d or 1-d
+  `S`.
+- `dynamic_estimation.kalman.unscented` -- **non-breaking.** The four
+  inline matrix square roots call `matrix_utils.compute_matrix_sqrt`;
+  results are bitwise identical and only the `LinAlgError` text for a
+  non-positive-semi-definite covariance changes (entry under Changed).
+
+No STABLE module needs a major bump or reclassification. Fifty-one MATURE,
+twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
+
 ### Changed
 
 - **`mode='w'` truncates** in `TrackDatabaseManager.open` and
