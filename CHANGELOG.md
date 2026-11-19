@@ -292,7 +292,8 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   affected rows and that method's failure when a row lies within
   `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
   1.28e6 m) of the center. A sphere (`f = 0`) never warns, and neither
-  does the exact origin. Every other row is bit-identical to
+  does the exact origin; on a sphere `'direct'` returns NaN below about
+  1e-46 m, now without numpy's divide/invalid warnings. Every other row is bit-identical to
   2.11.1. Docstrings state the measured accuracy of each method per
   altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
   `(3, 1)` shape change moved to v3.0 because the module is STABLE.
@@ -425,8 +426,11 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   used to invert the full matrix and now factors the lower triangle, as
   scipy's `multivariate_normal` does for the pdf. Measured on
   `cov=[[2, 0.9], [0.3, 1]]`, `x=[1, 2]`: 1.9532 in v2.11.1, 2.0208 now.
-  Symmetric covariances are unchanged. What to do: pass a symmetric
-  covariance (`pytcl.core.check_symmetric` validates one).
+  Symmetric covariances are unchanged. `compute_mahalanobis_distance` now
+  raises `ValueError` naming both shapes for a non-square, 0-d or 1-d `S`,
+  where v2.11.1 returned NaN with a `RuntimeWarning`. What to do: pass a
+  symmetric covariance (`pytcl.core.check_symmetric` validates one) of
+  shape `(m, m)`.
 
 - **One matrix square root for the sigma-point and cubature filters; only the
   error message changes.** `unscented.sigma_points_merwe`,
