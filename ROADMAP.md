@@ -88,20 +88,21 @@ names each would take:
   `EGM2008.cof`); someone with that file must run it once before its oracle
   claims count.
 - **`simple_iri` checked against IRI-2020** (pending IRI permission).
-- **Pinned defects, deferred until the owner decides otherwise:**
-  - `lambert_universal` returns zero velocities for antipodal positions: its
-    `A == 0` check misses a value of about 1e-16.
-  - `lambert_universal` gives inf/nan for `tof=0`: there is no `tof > 0`
-    validation.
-  - `shapiro_delay` returns 0.0 when the gravitating body is on the
-    observer-source path, where the true delay diverges.
-  - `debye` rejects `x < 0`, which MATLAB accepts. Owner decision: pytcl
-    normalizes `D(0) = 1` where MATLAB returns the raw integral.
-  - SQL `store_group` metadata is unreadable, and the `_group:` marker leaks
-    into `list_keys()`.
-  - Ellipsoidal oblique `stereographic` deviates from PROJ `sterea`. This is
-    a documented model choice and `oblique_stereographic` is the recommended
-    function; the strict xfail stays as the documented-limit pin.
+- **Near-antipodal and long-way near-parallel `lambert_universal`.**
+  v2.12.0 rejects `|sin(dnu)| < 1e-7` near `dnu = pi` and, on the long
+  way, near `2 pi`. Above that the `arccos` transfer angle still loses
+  accuracy near pi (relative miss 6.8e-3 at `sin(dnu) = 1e-7` and 1.1e-3
+  at 1e-6 for `|r2| = 1.3 |r1|`, `tof = 5000` s; up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s). The long way near
+  `2 pi` is worse: for `sin(dnu)` from 1e-7 to 1e-2 it either raises "did
+  not converge" (as throughout the sampled 1e-5 to 1.2e-2 for that
+  geometry) or returns a nearly radial `v1` missing `r2` by order 1, at up
+  to `sin(dnu)` of about 8e-5 over `|r2| / |r1|` of 0.8 to 2 and `tof` of 1500
+  to 8000 s.
+  Compute `dnu = atan2(|r1 x r2|, r1 . r2)` and make the
+  `abs(tof_calc - tof) < tol` stopping test relative to `tof`: the atan2
+  change alone moved ordinary results by up to 3.3e-13 relative and flipped
+  14 of 3000 random geometries to "did not converge" in one branch, because
+  the absolute 1e-10 s test sits at the floating-point floor.
 - **Pseudo-inverse sites to the unidentifiable-covariance convention.**
   `least_squares.weighted_least_squares` (`pinv(AtWA)`),
   `information_filter.py` and `smoothers.py` still return finite

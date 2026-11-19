@@ -163,7 +163,7 @@ class TestLambertUniversal:
             lambert_universal(r, r, 3600.0)
 
     def test_negative_time_of_flight_rejected(self):
-        with pytest.raises(ValueError, match="did not converge"):
+        with pytest.raises(ValueError, match="positive and finite"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), -5.0
             )
@@ -172,27 +172,121 @@ class TestLambertUniversal:
         with pytest.raises(ValueError, match="must be 3-vectors"):
             lambert_universal(np.array([1.0, 2.0]), self.R2, 100.0)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="lambert_universal returns zero velocities (e=1, a=3189 km) for "
-        "antipodal positions instead of raising as lambert_izzo does",
-    )
     def test_antipodal_positions_rejected(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="collinear"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([-6378.0, 0.0, 0.0]), 3600.0
             )
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="lambert_universal returns inf/nan velocities for tof == 0 "
-        "instead of raising",
-    )
     def test_zero_time_of_flight_rejected(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="positive and finite"):
             lambert_universal(
                 np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), 0.0
             )
+
+    @pytest.mark.parametrize("tof", [np.nan, np.inf])
+    def test_non_finite_time_of_flight_rejected(self, tof):
+        with pytest.raises(ValueError, match="positive and finite"):
+            lambert_universal(
+                np.array([6378.0, 0.0, 0.0]), np.array([7000.0, 1000.0, 0.0]), tof
+            )
+
+    @staticmethod
+    def _near_antipodal(sin_dnu):
+        th = np.pi - np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        return r1, 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+
+    def test_near_antipodal_below_threshold_rejected(self):
+        """|sin(dnu)| = 9e-8 < 1e-7: sin(arccos(c)) is ~3% off from rounding."""
+        r1, r2 = self._near_antipodal(9e-8)
+        with pytest.raises(ValueError, match="of antipodal"):
+            lambert_universal(r1, r2, 5000.0)
+
+    @pytest.mark.parametrize("sin_dnu", [1.1e-7, 1e-4])
+    def test_near_antipodal_above_threshold_is_v2111_bitwise(self, sin_dnu):
+        """Solved by the unchanged v2.11.1 path."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/astronomical/lambert.py")
+        r1, r2 = self._near_antipodal(sin_dnu)
+        new_sol = lambert_universal(r1, r2, 5000.0)
+        old_sol = old.lambert_universal(r1, r2, 5000.0)
+
+        assert np.array_equal(new_sol.v1, old_sol.v1)
+        assert np.array_equal(new_sol.v2, old_sol.v2)
+        assert (new_sol.a, new_sol.e) == (old_sol.a, old_sol.e)
+
+    @pytest.mark.parametrize("sin_dnu", [2e-8, 9e-8, 1e-6])
+    def test_nearly_parallel_short_way_is_solved(self, sin_dnu):
+        """The small-angle side is well conditioned (A -> sqrt(2 r1 r2)), so
+        the antipodal threshold must not reject it. The transfer is nearly
+        rectilinear (e -> 1), which kepler_propagate_state rejects, so the
+        oracle is direct DOP853 integration of the two-body equations."""
+        from scipy.integrate import solve_ivp
+
+        th = np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        r2 = 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+        solution = lambert_universal(r1, r2, 5000.0)
+
+        def two_body(_, state):
+            r = state[:3]
+            return np.r_[state[3:], -GM_EARTH * r / np.linalg.norm(r) ** 3]
+
+        end = solve_ivp(
+            two_body,
+            (0.0, 5000.0),
+            np.r_[r1, solution.v1],
+            method="DOP853",
+            rtol=1e-13,
+            atol=1e-12,
+        ).y[:3, -1]
+        assert np.linalg.norm(end - r2) / np.linalg.norm(r2) < 1e-10
+
+    @staticmethod
+    def _near_parallel(sin_dnu):
+        th = np.arcsin(sin_dnu)
+        r1 = np.array([7000.0, 0.0, 0.0])
+        return r1, 1.3 * 7000.0 * np.array([np.cos(th), np.sin(th), 0.0])
+
+    @pytest.mark.parametrize("tof", [1500.0, 5000.0])
+    def test_long_way_near_two_pi_below_threshold_rejected(self, tof):
+        """v2.11.1 returned a nearly radial v1 missing r2 by order 1 (tof
+        1500 s) or did not converge (5000 s)."""
+        r1, r2 = self._near_parallel(9e-8)
+        with pytest.raises(ValueError, match="2\\*pi"):
+            lambert_universal(r1, r2, tof, low_path=False)
+
+    @pytest.mark.parametrize("tof", [1500.0, 5000.0])
+    def test_long_way_near_two_pi_above_threshold_is_v2111_bitwise(self, tof):
+        """Not rejected at 1.1e-7: the unchanged v2.11.1 path runs."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/astronomical/lambert.py")
+        r1, r2 = self._near_parallel(1.1e-7)
+        new_sol = lambert_universal(r1, r2, tof, low_path=False)
+        old_sol = old.lambert_universal(r1, r2, tof, low_path=False)
+
+        assert np.array_equal(new_sol.v1, old_sol.v1)
+        assert np.array_equal(new_sol.v2, old_sol.v2)
+
+    def test_long_way_near_two_pi_non_convergence_raises(self):
+        """Above the threshold the long way may not converge; it must raise,
+        not return (|r2| = 1.3 |r1|, tof 5000 s, sin(dnu) = 1e-3)."""
+        r1, r2 = self._near_parallel(1e-3)
+        with pytest.raises(ValueError, match="did not converge"):
+            lambert_universal(r1, r2, 5000.0, low_path=False)
+
+    def test_exactly_parallel_unequal_magnitudes_rejected(self):
+        r1 = np.array([7000.0, 0.0, 0.0])
+        with pytest.raises(ValueError, match="collinear|transfer angle is zero"):
+            lambert_universal(r1, 1.3 * r1, 5000.0)
+
+    def test_antiparallel_unequal_magnitudes_rejected(self):
+        r1 = np.array([1234.5, -6789.0, 321.0])
+        with pytest.raises(ValueError, match="collinear"):
+            lambert_universal(r1, -3.7 * r1, 3600.0)
 
 
 class TestLambertIzzo:
@@ -251,6 +345,11 @@ class TestMinimumEnergyTransfer:
         r = np.array([6678.0, 0.0, 0.0])
         with pytest.raises(ValueError, match="transfer angle is zero"):
             minimum_energy_transfer(r, r)
+
+    def test_antipodal_positions_rejected(self):
+        r = np.array([6678.0, 0.0, 0.0])
+        with pytest.raises(ValueError, match="collinear"):
+            minimum_energy_transfer(r, -r)
 
     def test_scalar_radii_rejected(self):
         with pytest.raises(ValueError, match="zero dimension"):

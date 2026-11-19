@@ -22,7 +22,6 @@ Oracles (none of them call pytcl):
 
 import functools
 
-import mpmath as mp
 import numpy as np
 import pytest
 
@@ -35,6 +34,8 @@ from pytcl.mathematical_functions.special_functions.debye import (
     debye_entropy,
     debye_heat_capacity,
 )
+
+mp = pytest.importorskip("mpmath")
 
 
 def _grid(x: mp.mpf, n: int) -> list:
@@ -202,9 +203,9 @@ class TestDebyeNegativeX:
     quadrature of n/x^n * int_0^x t^n/(e^t - 1) dt, cross-checked in the test
     by D_n(-x) = D_n(x) + n x / (n + 1).
 
-    Normalization gap, an owner decision and not fixed here: pytcl normalizes
-    (D_n(0) = 1, the MathWorld definition) while MATLAB returns the raw
-    integral (D(0) = 0). The oracle follows pytcl's normalization.
+    Normalization: pytcl keeps the MathWorld definition (D_n(0) = 1) while
+    MATLAB returns the raw integral (D(0) = 0); the ``debye`` docstring
+    documents the difference. The oracle follows pytcl's normalization.
     """
 
     @pytest.mark.parametrize("n", (1, 3, 4, 10))
@@ -214,11 +215,6 @@ class TestDebyeNegativeX:
         reflected = float(_debye_oracle(n, -x)) + n * (-x) / (n + 1)
         assert want == pytest.approx(reflected, rel=1e-13, abs=0)
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=ValueError,
-        reason="debye() rejects x < 0 ('x must be >= 0'); MATLAB Debye.m accepts it",
-    )
     @pytest.mark.parametrize("n", (1, 3, 4, 10))
     @pytest.mark.parametrize("x", (-0.5, -1.0))
     def test_negative_x_matches_signed_quadrature(self, n, x):
@@ -226,11 +222,6 @@ class TestDebyeNegativeX:
             float(_debye_oracle(n, x)), rel=1e-13, abs=0
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=ValueError,
-        reason="debye() rejects x < 0 ('x must be >= 0'); MATLAB Debye.m accepts it",
-    )
     def test_negative_element_in_array(self):
         got = debye(3, np.array([-1.0, 0.0, 1.0]))
         want = [float(_debye_oracle(3, -1.0)), 1.0, float(_debye_oracle(3, 1.0))]

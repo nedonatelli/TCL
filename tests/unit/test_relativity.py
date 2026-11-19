@@ -30,6 +30,21 @@ C2 = C_LIGHT**2
 ARCSEC_PER_RAD = 206264.806
 
 
+def _shapiro_mpmath(obs, src, body, gm):
+    """(2GM/c^3) ln((r_o + r_s + r_os)/(r_o + r_s - r_os)) at 50 digits, on
+    the float inputs taken as exact."""
+    mp = pytest.importorskip("mpmath")
+    with mp.workdps(50):
+        o, s, b = ([mp.mpf(float(v)) for v in x] for x in (obs, src, body))
+
+        def dist(p, q):
+            return mp.sqrt(sum((p[i] - q[i]) ** 2 for i in range(3)))
+
+        r_o, r_s, r_os = dist(o, b), dist(s, b), dist(o, s)
+        ratio = (r_o + r_s + r_os) / (r_o + r_s - r_os)
+        return float(2 * mp.mpf(gm) / mp.mpf(C_LIGHT) ** 3 * mp.log(ratio))
+
+
 def _shapiro_by_quadrature(obs, src, body, gm):
     """Shapiro delay (2GM/c^3) * integral of ds/r along the straight path."""
     obs, src, body = (np.asarray(x, dtype=float) for x in (obs, src, body))
@@ -252,11 +267,6 @@ class TestShapiroDelay:
 
 
 class TestShapiroDelayThroughTheBody:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="shapiro_delay returns 0.0 when the body lies on the segment "
-        "between observer and source (denominator 0); the delay diverges there",
-    )
     def test_body_on_the_path_diverges(self):
         delay = shapiro_delay(
             np.array([1.0e11, 0.0, 0.0]),
@@ -266,6 +276,52 @@ class TestShapiroDelayThroughTheBody:
         )
 
         assert delay == np.inf
+
+    def test_observer_at_the_body_diverges(self):
+        body = np.array([3.0e10, -2.0e10, 1.0e9])
+        assert shapiro_delay(body, np.array([1.0e11, 0.0, 0.0]), body) == np.inf
+
+    @pytest.mark.parametrize("offset", [1.0, 1.0e3, 1.0e6])
+    def test_body_just_off_the_path_axis_aligned(self, offset):
+        """1 m off a 2e11 m path is a finite 5.1e-4 s; v2.11.1 returned 0.0
+        and the first v2.12 fix inf, both from the cancelling denominator."""
+        obs = np.array([1.0e11, 0.0, 0.0])
+        src = np.array([-1.0e11, 0.0, 0.0])
+        body = np.array([0.0, offset, 0.0])
+
+        assert shapiro_delay(obs, src, body, GM_SUN) == pytest.approx(
+            _shapiro_mpmath(obs, src, body, GM_SUN), rel=1e-12, abs=0
+        )
+
+    @pytest.mark.parametrize("offset", [1.0, 1.0e3, 1.0e6])
+    def test_body_just_off_an_oblique_path(self, offset):
+        """Generic coordinates: the rounding of obs - body alone would cost
+        1e-6 relative at 1 m, so this needs the compensated cross product."""
+        rng = np.random.default_rng(int(offset))
+        for _ in range(20):
+            u = rng.normal(size=3)
+            u /= np.linalg.norm(u)
+            perp = rng.normal(size=3)
+            perp -= perp.dot(u) * u
+            perp /= np.linalg.norm(perp)
+            center = rng.normal(size=3) * 1.0e10
+            obs = center + rng.uniform(1.0e10, 1.0e12) * u
+            src = center - rng.uniform(1.0e10, 1.0e12) * u
+            body = obs + rng.uniform(0.05, 0.95) * (src - obs) + offset * perp
+
+            assert shapiro_delay(obs, src, body, GM_SUN) == pytest.approx(
+                _shapiro_mpmath(obs, src, body, GM_SUN), rel=1e-12, abs=0
+            )
+
+    def test_typical_geometries_match_50_digit_formula(self):
+        rng = np.random.default_rng(2026)
+        for _ in range(200):
+            obs, src, body = rng.normal(size=(3, 3)) * rng.uniform(
+                1.0e9, 1.0e13, size=(3, 1)
+            )
+            assert shapiro_delay(obs, src, body, GM_SUN) == pytest.approx(
+                _shapiro_mpmath(obs, src, body, GM_SUN), rel=1e-12, abs=0
+            )
 
 
 class TestSchwarzchildPrecession:

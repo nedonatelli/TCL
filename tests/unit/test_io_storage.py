@@ -203,13 +203,6 @@ class TestSQLStorage:
             store.open(temp_db, mode="r")
             assert store.retrieve_scalar("mission/duration") == 3600
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=KeyError,
-        reason="store_group writes metadata into the '_group:<name>' value column, "
-        "so get_metadata('mission') cannot find it: group metadata is write-only "
-        "(HDF5 is unaffected)",
-    )
     def test_store_group_metadata_is_readable(self, temp_db):
         with SQLStorage() as store:
             store.open(temp_db, mode="w")
@@ -219,12 +212,6 @@ class TestSQLStorage:
             store.open(temp_db, mode="r")
             assert store.get_metadata("mission")["start"] == "2025-01-01"
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="the internal '_group:<name>' marker row leaks into list_keys() "
-        "at the root",
-    )
     def test_root_listing_excludes_group_marker(self, temp_db):
         with SQLStorage() as store:
             store.open(temp_db, mode="w")
@@ -235,6 +222,34 @@ class TestSQLStorage:
         with SQLStorage() as store:
             store.open(temp_db, mode="r")
             assert sorted(store.list_keys()) == ["mission/duration", "x"]
+
+    def test_v2111_group_database_reads_with_current_code(self, temp_db):
+        """A database written by v2.11.1's own store_group (git 781ebce) reads
+        its group metadata and lists no marker; the layout is unchanged."""
+        from tests.validation._v2111 import shipped_module
+
+        old = shipped_module("pytcl/io/sql_storage.py")
+        with old.SQLStorage() as store:
+            store.open(temp_db, mode="w")
+            store.store_group(
+                "mission", metadata={"start": "2025-01-01", "n": 3, "w": [1.5]}
+            )
+            store.store_group("mission/leg")
+            store.store_scalar("mission/duration", 3600)
+        with old.SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert "_group:mission" in store.list_keys()
+
+        with SQLStorage() as store:
+            store.open(temp_db, mode="r")
+            assert store.get_metadata("mission") == {
+                "start": "2025-01-01",
+                "n": 3,
+                "w": [1.5],
+            }
+            assert store.get_metadata("mission/leg") == {}
+            assert store.list_keys() == ["mission/duration"]
+            assert store.list_keys("mission") == ["mission/duration"]
 
     def test_group_listing_is_exactly_its_members(self, temp_db):
         with SQLStorage() as store:

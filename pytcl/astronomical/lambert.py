@@ -22,6 +22,13 @@ from numpy.typing import NDArray
 
 from pytcl.astronomical.orbital_mechanics import GM_EARTH
 
+# |sin(dnu)| below which lambert_universal rejects a transfer angle near pi,
+# or near 2*pi on the long way. Near dnu = pi, A is proportional to
+# sin(dnu), and sin(arccos(c)) has relative error about eps / sin(dnu)^2
+# from the rounding of c: order 1 at sqrt(eps), about 2e-2 at 1e-7. See
+# the Notes of lambert_universal.
+_ANTIPODAL_SIN_TOL = 1e-7
+
 
 class LambertSolution(NamedTuple):
     """Solution to Lambert's problem.
@@ -96,7 +103,7 @@ def lambert_universal(
     r2 : ndarray
         Final position vector (km), shape (3,).
     tof : float
-        Time of flight (seconds). Must be positive.
+        Time of flight (seconds). Must be positive and finite.
     mu : float, optional
         Gravitational parameter (km^3/s^2). Default is Earth.
     prograde : bool, optional
@@ -118,8 +125,50 @@ def lambert_universal(
     Raises
     ------
     ValueError
-        If ``r1`` or ``r2`` is not a 3-vector, or the solution does not
+        If ``r1`` or ``r2`` is not a 3-vector, ``tof`` is not positive and
+        finite, ``r1`` and ``r2`` are collinear, nearly antipodal, or nearly
+        parallel on the long way (see Notes), or the solution does not
         converge.
+
+    Notes
+    -----
+    Exactly collinear ``r1`` and ``r2`` (``r1 x r2 = 0``) are rejected:
+    the transfer plane is undefined. With ``|sin(dnu)| =
+    |r1 x r2| / (|r1| |r2|) < 1e-7``, two further cases are rejected, and
+    the error names which:
+
+    - Nearly antipodal (``dnu`` near pi, either way). The chord term ``A``
+      is proportional to ``sin(dnu)``, computed as ``sin(arccos(c))``;
+      rounding ``c`` costs a relative error of about ``eps / sin(dnu)^2``
+      in it, order 1 at ``sqrt(eps)`` and about 2e-2 at 1e-7. Above the
+      threshold accuracy still degrades toward antipodal. Measured for
+      ``|r1| = 7000`` km, ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, with the
+      returned ``v1`` propagated by an independent integrator (scipy DOP853,
+      rtol 1e-13), the relative miss of ``r2`` is 6.8e-3 at
+      ``sin(dnu) = 1e-7``, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
+      1e-4. Other geometries miss by more just above the threshold:
+      up to 0.28 relative at ``sin(dnu)`` = 1.1e-7 over ``|r2| / |r1|`` 0.8 to 2 and ``tof`` 1500 to 8000 s, both ``low_path`` values. A few inputs now
+      rejected below the threshold were accurate to about 1e-3 in v2.11.1
+      (4 of 801 sampled).
+    - The long way around nearly parallel positions (``dnu`` near 2 pi).
+      Every v2.11.1 solution in this band that was checked (68, with
+      ``|r2| / |r1|`` of 0.8, 1.3 and 2 and ``tof`` from 1500 to 8000 s)
+      missed ``r2`` by order 1.
+
+    The short way around nearly parallel positions (``dnu`` near 0) is not
+    rejected: there ``A`` tends to ``sqrt(2 |r1| |r2|)`` and does not depend
+    on the rounded angle, and in the geometry above the solution misses
+    ``r2`` by below 1e-12 down to ``sin(dnu) = 2e-8``, below which
+    ``cos(dnu)`` rounds to 1 and the zero-transfer-angle error is raised.
+
+    The long way near 2 pi stays unreliable above the threshold. In a
+    sweep of ``sin(dnu)`` from 1e-7 to 1e-2 (the geometries above) it
+    either raises the did-not-converge ``ValueError`` (for example at
+    ``sin(dnu)`` = 1e-5, 5.9e-5, 3.5e-4, 2.1e-3 and 1.2e-2 with
+    ``|r2| = 1.3 |r1|``, ``tof = 5000`` s) or returns a nearly radial
+    ``v1`` that misses ``r2`` by order 1; the largest ``sin(dnu)`` with a
+    miss above 1e-3 was about 8e-5 (8.4e-5 in a separate sweep of 1e-5 to
+    0.3).
 
     Examples
     --------
@@ -167,17 +216,37 @@ def lambert_universal(
 
     # Degenerate transfer angle (dnu -> 0 or 2*pi): the chord formula
     # divides by 1 - cos(dnu). Guard before dividing rather than
-    # letting inf/nan propagate into the A == 0 check.
+    # letting inf/nan propagate.
     if 1.0 - cos_dnu == 0.0:
         raise ValueError(
             "Cannot solve Lambert problem: transfer angle is zero (degenerate case)"
         )
 
+    cross_mag = np.linalg.norm(cross)
+    if cross_mag == 0.0:
+        raise ValueError(
+            "Cannot solve Lambert problem: r1 and r2 are collinear, so the "
+            "transfer plane is undefined"
+        )
+    if cross_mag < _ANTIPODAL_SIN_TOL * r1_mag * r2_mag:
+        if cos_dnu < 0.0:
+            raise ValueError(
+                "Cannot solve Lambert problem: r1 and r2 are within "
+                "|sin(transfer angle)| < 1e-7 of antipodal, where the computed "
+                "transfer angle has too few correct digits"
+            )
+        if dnu > np.pi:
+            raise ValueError(
+                "Cannot solve Lambert problem: long-way transfer angle within "
+                "|sin(transfer angle)| < 1e-7 of 2*pi (r1 and r2 nearly "
+                "parallel), where the solution misses r2 by order 1"
+            )
+
+    if not (np.isfinite(tof) and tof > 0):
+        raise ValueError(f"tof must be positive and finite, got {tof}")
+
     # Chord and semi-perimeter
     A = sin_dnu * np.sqrt(r1_mag * r2_mag / (1 - cos_dnu))
-
-    if A == 0:
-        raise ValueError("Cannot solve Lambert problem: A = 0 (degenerate case)")
 
     # Initial guess for psi (universal variable)
     psi = 0.0

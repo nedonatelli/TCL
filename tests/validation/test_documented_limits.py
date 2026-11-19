@@ -246,16 +246,16 @@ class TestSrifInitializationRecipe:
 
 
 class TestProjectionClaimsMatchMeasurement:
-    """Two quantified claims that were wrong until a claims sweep measured them.
+    """Quantified projection claims, pinned against PROJ.
 
-    Neither overstated accuracy, which is the failure mode that hurts callers.
-    Both were misleading in subtler ways: the transverse Mercator note
-    understated its own accuracy by three orders of magnitude, and the
-    stereographic note quoted one origin latitude's disagreement as though it
-    were a property of the projection.
+    The transverse Mercator note once understated its own accuracy by three
+    orders of magnitude. The stereographic note once tabulated a km-scale
+    disagreement with ``+proj=sterea`` that varied eightyfold with origin
+    latitude; since v2.12.0 the ellipsoidal oblique case delegates to EPSG
+    method 9809 and the docstring claims sub-micrometer agreement instead.
 
-    These pin the tables now in the docstrings, so the documentation cannot
-    drift away from behavior unnoticed.
+    These pin the docstring claims, so the documentation cannot drift away
+    from behavior unnoticed.
     """
 
     @staticmethod
@@ -284,18 +284,13 @@ class TestProjectionClaimsMatchMeasurement:
         assert worst < 0.002, f"{worst * 1000:.3f} mm exceeds the documented 0.7 mm"
         assert worst > 1e-6, "suspiciously exact -- is this comparing against itself?"
 
-    @pytest.mark.parametrize(
-        "lat0,at_400_km,tolerance",
-        [(0.0, 1.34, 0.35), (30.0, 0.03, 0.35), (60.0, 2.73, 0.6), (75.0, 3.71, 0.8)],
-    )
-    def test_stereographic_disagreement_varies_with_origin_latitude(
-        self, lat0, at_400_km, tolerance
-    ):
-        """The point of the corrected docstring: one number cannot describe this.
+    @pytest.mark.parametrize("lat0", [0.0, 30.0, 45.0, 60.0, 75.0])
+    @pytest.mark.parametrize("distance_m", [400_000.0, 1_738_000.0])
+    def test_stereographic_ellipsoidal_oblique_matches_sterea(self, lat0, distance_m):
+        """Docstring claims sub-micrometer agreement with ``+proj=sterea``.
 
-        The disagreement with PROJ spans eightyfold across these origins, so a
-        single quoted figure -- as the docstring used to give -- is wrong
-        almost everywhere.
+        Before v2.12.0 these origins and distances disagreed by 0.03 to
+        16.5 km (the table the docstring used to carry).
         """
         pyproj = self._pyproj()
         from pytcl.coordinate_systems.projections.projections import stereographic
@@ -306,8 +301,15 @@ class TestProjectionClaimsMatchMeasurement:
             always_xy=True,
         )
         geod = pyproj.Geod(ellps="WGS84")
-        lon2, lat2, _ = geod.fwd(0.0, lat0, 0.0, 400_000.0)
-        xr, yr = tr.transform(lon2, lat2)
-        res = stereographic(np.radians(lat2), np.radians(lon2), np.radians(lat0), 0.0)
-        km = float(np.hypot(res.x - xr, res.y - yr)) / 1000.0
-        assert km == pytest.approx(at_400_km, abs=tolerance)
+        worst = 0.0
+        # Azimuths avoid due north: from lat0 = 75 that ray crosses the pole
+        # onto lon - lon0 = 180, where EPSG 9809 scales the longitude by
+        # n != 1 and PROJ (+180) and pytcl (-180) take different branches.
+        for azimuth in np.arange(22.5, 360.0, 45.0):
+            lon2, lat2, _ = geod.fwd(0.0, lat0, float(azimuth), distance_m)
+            xr, yr = tr.transform(lon2, lat2)
+            res = stereographic(
+                np.radians(lat2), np.radians(lon2), np.radians(lat0), 0.0
+            )
+            worst = max(worst, float(np.hypot(res.x - xr, res.y - yr)))
+        assert worst < 1e-6, f"{worst:.3e} m exceeds the documented sub-micrometer"

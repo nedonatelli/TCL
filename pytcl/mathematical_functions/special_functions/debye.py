@@ -150,7 +150,8 @@ def debye(
         on a grid of orders up to 50 (see the module docstring); other
         orders are not verified.
     x : array_like
-        Argument of the function, x >= 0.
+        Argument of the function. Any real value; ``x < 0`` is evaluated
+        through the reflection identity in the Notes.
 
     Returns
     -------
@@ -160,13 +161,35 @@ def debye(
     Raises
     ------
     ValueError
-        If n is not a positive integer or any x is negative.
+        If n is not a positive integer.
 
     Notes
     -----
     Special cases:
     - D_n(0) = 1
     - D_n(inf) = n! * zeta(n+1) / x^n -> 0
+    - D_n(-inf) = inf
+
+    Negative arguments. For x > 0, substitute t = -u in the integral to -x
+    and use 1/(e^-u - 1) = -(1 + 1/(e^u - 1))::
+
+        int_0^-x t^n/(e^t - 1) dt = (-1)^(n+1) int_0^x u^n/(e^-u - 1) du
+                                  = (-1)^n int_0^x u^n [1 + 1/(e^u - 1)] du
+                                  = (-1)^n [x^(n+1)/(n+1)
+                                            + int_0^x u^n/(e^u - 1) du].
+
+    The prefactor is n/(-x)^n = (-1)^n n/x^n; for integer n the two signs
+    cancel, giving::
+
+        D_n(-x) = D_n(x) + n x / (n + 1),
+
+    a sum of two positive terms, so nothing is lost to cancellation.
+
+    Normalization. This is the normalized Debye function of MathWorld, with
+    the ``n / x^n`` factor, so ``D_n(0) = 1``. MATLAB TCL's ``Debye.m``
+    returns the raw integral ``int_0^x t^n / (e^t - 1) dt`` (its
+    ``Debye(0) = 0``); multiply this function by ``x^n / n`` to get the
+    MATLAB value.
 
     The Debye function D_3(x) appears in the heat capacity
     of solids at low temperatures.
@@ -179,6 +202,8 @@ def debye(
     0.674416
     >>> round(float(debye(3, 10)[0]), 6)
     0.019296
+    >>> round(float(debye(3, -1)[0]), 6)  # D_3(1) + 3/4
+    1.424416
 
     References
     ----------
@@ -190,11 +215,10 @@ def debye(
     n = int(n)
 
     x = np.atleast_1d(np.asarray(x, dtype=np.float64))
-    if np.any(x < 0):
-        raise ValueError("x must be >= 0")
 
     result = np.full(x.shape, np.nan)
-    flat = x.ravel()
+    signed = x.ravel()
+    flat = np.abs(signed)
     out = result.ravel()
     x_switch = _x_complement(n)
 
@@ -209,6 +233,8 @@ def debye(
     if large.any():
         out[large] = _debye_complement(n, flat[large])
     out[np.isposinf(flat)] = 0.0
+    negative = signed < 0.0
+    out[negative] += flat[negative] * (n / (n + 1))
     return out.reshape(x.shape)
 
 
@@ -219,7 +245,8 @@ def debye_1(x: ArrayLike) -> NDArray[np.floating]:
     Parameters
     ----------
     x : array_like
-        Argument of the function, x >= 0.
+        Argument of the function. Any real value; ``x < 0`` is evaluated
+        through the reflection identity in the Notes of ``debye``.
 
     Returns
     -------
@@ -240,7 +267,8 @@ def debye_2(x: ArrayLike) -> NDArray[np.floating]:
     Parameters
     ----------
     x : array_like
-        Argument of the function, x >= 0.
+        Argument of the function. Any real value; ``x < 0`` is evaluated
+        through the reflection identity in the Notes of ``debye``.
 
     Returns
     -------
@@ -264,7 +292,8 @@ def debye_3(x: ArrayLike) -> NDArray[np.floating]:
     Parameters
     ----------
     x : array_like
-        Argument of the function, x >= 0.
+        Argument of the function. Any real value; ``x < 0`` is evaluated
+        through the reflection identity in the Notes of ``debye``.
 
     Returns
     -------
@@ -290,7 +319,8 @@ def debye_4(x: ArrayLike) -> NDArray[np.floating]:
     Parameters
     ----------
     x : array_like
-        Argument of the function, x >= 0.
+        Argument of the function. Any real value; ``x < 0`` is evaluated
+        through the reflection identity in the Notes of ``debye``.
 
     Returns
     -------
