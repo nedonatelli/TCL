@@ -387,3 +387,27 @@ class TestEdgeCases:
         # Future
         disp2 = solid_earth_tide_displacement(np.radians(45), 0, 70000)
         assert np.isfinite(disp2.radial)
+
+
+class TestEpochMatchesV2111:
+    """T is formed from the MJD directly, bit for bit as in v2.11.1."""
+
+    @staticmethod
+    def _old():
+        from tests.validation._v2111 import shipped_module
+
+        return shipped_module("pytcl/gravity/tides.py")
+
+    def test_moon_sun_ocean_loading_bitwise(self):
+        old = self._old()
+        rng = np.random.default_rng(7)
+        amp = rng.uniform(0.001, 0.05, (3, 8))
+        ph = rng.uniform(0.0, 2 * np.pi, (3, 8))
+        for mjd in rng.uniform(40000.0, 70000.0, 400):
+            mjd = float(mjd)
+            assert moon_position_approximate(mjd) == old.moon_position_approximate(mjd)
+            assert sun_position_approximate(mjd) == old.sun_position_approximate(mjd)
+            new = ocean_tide_loading_displacement(mjd, amp, ph)
+            ref = old.ocean_tide_loading_displacement(mjd, amp, ph)
+            for got, want in zip(new, ref, strict=True):
+                assert np.array_equal(got, want)

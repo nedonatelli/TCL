@@ -1,7 +1,7 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.11.1, released 22 October 2026
-**Test Suite:** 10,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
+**Current Version:** v2.12.0, released 19 November 2026
+**Test Suite:** 11,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
 third by function count — see `docs/matlab_parity_inventory.rst`, which
@@ -26,54 +26,6 @@ and git history.
 ---
 
 ## Backlog
-
-### v2.12.0 -- planned
-
-The audit carry-forward, in the order of the release's PRs. The `'w'`,
-schema-version and information-filter bullets are the changes the v2.11.1
-CHANGELOG announced as deferred to v2.12; the rest are further audit findings:
-
-- **Gates that can fail.** The audit's vacuous CI gates re-verified and
-  fixed: the `error::DeprecationWarning:pytcl.*` filter, the docs job
-  without `pipefail`, the empty `CLAIMED_ABSENT`, the GPU VALIDATION gate
-  that filters its own file, the `gpu.yml` runner label, the coverage cell
-  against the shipped fastmath path, and coverage-gate headroom.
-- **Dependency floors.** `numpy>=2.3.2`, `scipy>=1.16.1`, `numba>=0.63.0`,
-  `h5py>=3.15.0`, `msgspec>=0.20.0`, `loguru>=0.7`, `rich>=13`, enforced by
-  a `lowest-direct` CI cell.
-- **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
-  `'w'` mode will discard an existing file, matching `HDF5Storage`; 2.11.1
-  keeps the data and emits a `FutureWarning`.
-- **Unknown schema versions.** 2.11.1 warns on stored schema versions it
-  does not know; rejecting them outright is deferred to v2.12.0.
-- **`LSResult.residuals`** returns the residual vector.
-- **Exact `factorial` / `factorial2`.** `exact=True` returns exact integers.
-- **`ecef2geodetic`.** Unknown `method` strings are rejected instead of
-  silently taking the closed form, and the closed form's NaN at the ECEF
-  origin is fixed.
-- **Information-filter singular-`Y` prediction.** Re-derive the prediction
-  step on MATLAB's formula (needs its own tests and audit). The absolute
-  `1e-10` jitter in `srif_update`'s non-positive-definite
-  measurement-covariance fallback is also deferred to v2.12.
-- **`marcum_q` and `log_marcum_q`.** `marcum_q` at large arguments and the
-  `log_marcum_q` series corner.
-- **CFAR empty reference windows** give NaN noise and threshold (no
-  detection) in every 1-D and 2-D variant.
-- **`tau_scale`** implements the Maronna-Zamar (2002) tau scale;
-  `static_estimation.robust.tau_scale` currently returns 1.0918 on N(0, 1)
-  draws against about 1.0 for a consistent estimator.
-- **`q_coord_turn_2d`** matches MATLAB's `QCoordTurn`.
-- **US76 floor.** The inclusive -5000 m boundary of `us_standard_atmosphere_1976`.
-- **pFq at infinite `z`.**
-- **MLE ridge trigger** for near-singular Hessians.
-- **`store_track_history`** validates lengths before any insert and writes
-  atomically.
-- **Lint.** `BLE001` and `B905` enabled, each hit fixed or individually
-  justified.
-- **The 19 duplicate implementations** consolidated to one each; a STABLE
-  public name is kept as a delegating alias.
-- **Vacuous-test paydown.** Every test file the audit listed as
-  shape- or `isfinite`-only gets REFERENCE or PROPERTY assertions.
 
 ### v2.13.0 -- planned
 
@@ -103,6 +55,15 @@ names each would take:
   change alone moved ordinary results by up to 3.3e-13 relative and flipped
   14 of 3000 random geometries to "did not converge" in one branch, because
   the absolute 1e-10 s test sits at the floating-point floor.
+- **`hyp1f1` overflow proofs: speed and coverage.** v2.12.0 returns `+-inf`
+  only for a proven overflow. The proof is a Python-level series sum, so an
+  array of overflowing elements runs 17 to 28 times slower than 2.11.1's
+  scipy pass-through at `abs(a)`, `abs(b)` up to 1000, and with
+  cancellation in the series (`abs(a)`, `abs(b)` above about 200) up to 11%
+  of overflows stay unproven and return NaN with a `RuntimeWarning`. Move
+  the term recurrence into a numba kernel, and prove overflows past the
+  cancellation (for example from the tail beyond `k = ceil(-a)`, or in
+  higher precision).
 - **Pseudo-inverse sites to the unidentifiable-covariance convention.**
   `least_squares.weighted_least_squares` (`pinv(AtWA)`),
   `information_filter.py` and `smoothers.py` still return finite
@@ -328,10 +289,11 @@ what is still open.
 | Issue | Status |
 |-------|--------|
 | Sphinx prose code blocks are not all executed | Every `pytcl` import in `docs/` is checked (244/244 resolve) and the architecture and data-structures pages run under tests, but the remaining prose blocks are still not run |
-| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow was dispatched for the first time during v2.8.0 release prep and sat queued: its default `gpu-t4-4-core` runner label is not provisioned for this account, so the workflow cannot run until a GitHub GPU larger runner is added or it is dispatched with the `runner` input pointing at a self-hosted GPU machine. Every hardware run to date remains ad hoc |
+| CuPy tests skip on machines without an NVIDIA GPU | By design; exercised manually on real NVIDIA hardware for 2.0.0 and 2.1.0 (see the CHANGELOG). The manual `GPU` workflow (`.github/workflows/gpu.yml`) has no default runner: `workflow_dispatch` requires a `runner` input, the label of a registered self-hosted runner on an NVIDIA machine, and the job runs on `runs-on: ${{ inputs.runner }}`. No GitHub-hosted GPU runner is provisioned for this repository and no self-hosted runner is registered, so the workflow cannot run yet; the one run against the old `gpu-t4-4-core` default queued and was canceled. Every hardware run to date remains ad hoc |
 | Debye functions are 20-30x slower on large arrays at large x | Open; not claimed by a release |
 | `lambert_w_real` is 1 ulp inside -1/e (2.9e-9 / 1.5e-8 relative) | Inherited from scipy; open |
 | pFq max-term convergence is fooled by series whose early terms are tiny | Open |
+| `hyp1f1_regularized` prefactor overflows at large `m` or `abs(z)` | At a non-positive integer `b = -m` the prefactor `(a)_{m+1} z^{m+1} / (m+1)!` is evaluated in double precision and returns NaN or `+-inf` for a finite value (`hyp1f1_regularized(0.5, -150, 3)` is `inf`, the value 1.01e72); open, unchanged in v2.12.0 |
 | `us_standard_atmosphere_1976` clamps above 86 km | Open |
 | NRLMSISE warnings are still `UserWarning` | Open |
 | AIS message type 27 | Open; carried from the audit, not claimed by a release |
@@ -487,6 +449,6 @@ for reference implementations.
 
 ---
 
-**Next:** the measured backlog above; the `[visualization-xy]` extra stays
+**Next:** v2.13.0 above, then the measured backlog; the `[visualization-xy]` extra stays
 gated on an upstream xy stable release.
 No dates are attached to anything in this document: none have been decided.

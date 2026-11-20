@@ -7,42 +7,250 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+## [2.12.0] - 2026-11-19
 
-- `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
-  (also `pytcl.core.validation.check_symmetric`). It validates that `arr` is
-  square and symmetric within the tolerances and returns it unchanged,
-  raising `ValidationError` otherwise; it replaces the check-and-symmetrize
-  contract of the deprecated `ensure_symmetric` (see Deprecated). What to
-  do: nothing.
-- `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
-  a `DeprecationWarning` subclass that every pytcl deprecation now emits
-  (`SimplifiedThermosphere`, the v1.x compatibility adapters in
-  `pytcl.io.compat`, and `MigrationHelper`). The test suite turns it into
-  an error; the v2.11 rule that was meant to do so never fired, because
-  pytest applies the last matching filter and its module field matched
-  the caller rather than pytcl. What to do: nothing; filters on
-  `DeprecationWarning` still match.
+**This release changes behavior and numerical results.** It is the audit
+carry-forward: the changes 2.11.1 announced for 2.12, the remaining
+silent-wrong-answer fixes, and gates that can fail. Several calls that used
+to return a wrong value now raise, and several return different numbers
+because 2.11.1's were wrong. Most likely to affect you first, in this order
+(their full entries lead the Changed and Fixed sections):
 
-### Deprecated
+1. **`'w'` truncates.** `TrackDatabaseManager.open('w')` and `SQLStorage`'s
+   `'w'` mode delete the existing file and its SQLite journal files, as
+   2.11.1's `FutureWarning` announced; use `'a'` to keep existing rows.
+2. **Unknown schema versions raise.** All five readers (sessions, both ASDF
+   loaders, `TrackHDF5Storage`, `TrackDatabaseManager`) raise `FormatError`
+   on a stored schema version they do not know, where 2.11.1 warned and
+   loaded the file.
+3. **`LSResult.residuals`** from `ordinary_least_squares` is always the
+   residual vector `b - A @ x`, never `lstsq`'s shape-(1,) sum of squares.
+4. **The dependency floors.** numpy 2.3.2, scipy 1.16.1, numba 0.63.0,
+   h5py 3.15.0 and msgspec 0.20.0, each installed and tested by a new
+   `floors` CI job.
+5. **CFAR NaN.** A cell with no reference cells gets NaN noise estimate
+   and threshold, never a detection, in every 1-D and 2-D detector; a NaN
+   in a GO reference window now gives NaN instead of being dropped.
+6. **`marcum_q`** at large arguments uses the log-domain quadrature instead
+   of `ncx2.sf`, which was wrong by up to 100% at `a >= 1e7`; the
+   `log_marcum_q` series corner changes with it.
+7. **`tau_scale`** is the Maronna-Zamar tau scale (about 1.0 on N(0, 1),
+   not 1.09), matching statsmodels.
+8. **`q_coord_turn_2d` and `q_coord_turn_3d`** are MATLAB's `QCoordTurn`
+   (rank 1, with cross terms), and an unknown `state_type` or a
+   `sigma_omega` the matrix would ignore raises `ValueError`.
+9. **`EPSILON_J2000`** is the IAU 1976 obliquity, 0.3685" larger, so every
+   `frame="ecliptic"` ephemeris output rotates (258 km for the Moon
+   vector at JD 2460311).
+10. **Gating.** `mahalanobis_distance`, `ellipsoidal_gate`,
+    `gate_measurements` and `mahalanobis_batch` raise `LinAlgError` for a
+    non-positive-definite or NaN `S`, and `ValueError` naming both shapes
+    for a shape mismatch, where 2.11.1 returned a number; valid `S` is
+    bitwise unchanged.
+11. **`stereographic`** with an ellipsoid and a non-polar origin is EPSG
+    9809 (PROJ `sterea`): coordinates move by kilometers (up to 16.5 km
+    at 1,738 km from the origin).
+12. **`lambert_universal`** raises `ValueError` for collinear and
+    near-antipodal positions, the long way around nearly parallel ones,
+    and `tof <= 0` or non-finite; `minimum_energy_transfer` inherits the
+    antipodal check.
+13. **`debye`** accepts `x < 0` instead of raising.
+14. **`SQLStorage.get_metadata(group)`** returns the group's metadata
+    instead of raising `KeyError`, and `list_keys()` omits the internal
+    `_group:` rows.
+15. **`shapiro_delay`** returns `inf` for a body on the path and is
+    accurate near it, where 2.11.1 returned 0.0.
+16. **`ecef2geodetic`** raises `MethodError` for any `method` other than
+    `'iterative'` or `'direct'` (`'Direct'` and `'closed'` used to run the
+    closed form silently), and warns near the Earth's center.
+17. **`srif_update`** uses the right information for a correlated
+    `R_meas` (two MATLAB cases were 50% and 45% off) and raises
+    `LinAlgError` for a measurement covariance with no positive variance
+    or a negative one.
+18. **Unidentifiable covariances.** `mle_scoring` and `cramer_rao_bound`
+    return `inf` variance with a `RuntimeWarning` for a singular or
+    indefinite Fisher matrix instead of `pinv(F)` or negative variances;
+    `mle_newton_raphson` flags flat directions roundoff left slightly
+    positive; and `range_only_static_loc_est_np` raises `LinAlgError` for
+    coplanar sensors without `r_cov` too.
+19. **`factorial` and `factorial2` with `exact=True`** return Python ints
+    or integer arrays, not rounded float64.
+20. **Parallel inputs of unequal length raise.** `mot_metrics`,
+    `plot_covariance_ellipses`, `plot_coordinate_axes_3d`, `load_session`
+    on a mismatched Gaussian-sum or RBPF snapshot, and
+    `TrackDatabaseManager.store_track_history` (which also raises
+    `KeyError` for an unknown `track_id`) used to truncate silently.
+21. **Two deprecations.** `pytcl.core.validation.ensure_symmetric` and
+    `pytcl.gravity.julian_centuries_j2000` emit `PytclDeprecationWarning`
+    (removal in v3.0.0).
 
-- `pytcl.core.validation.ensure_symmetric` (removal in v3.0.0). It checked
-  *and* symmetrized, while `kalman.matrix_utils.ensure_symmetric` only
-  symmetrizes; two contracts under one name. The new
-  `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
-  validates and returns the input unchanged. The validators in
-  `core.validation` now use it internally, with unchanged return values.
-  What to do: call `check_symmetric` to validate, or
-  `pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric` to
-  symmetrize.
-- `pytcl.gravity.julian_centuries_j2000(mjd)` (removal in v3.0.0). It takes a
-  Modified Julian Date, while `pytcl.astronomical.julian_centuries_j2000(jd)`
-  takes a Julian date; the same name under two argument conventions returns
-  -65.7 instead of 0 when an MJD reaches the astronomical one, with no error.
-  What to do: replace `gravity.julian_centuries_j2000(mjd)` with
-  `astronomical.julian_centuries_j2000(mjd + 2400000.5)`.
+Smaller-audience numerical corrections follow in Fixed, among them
+`great_circle_distance` / `great_circle_azimuth` (no input rounding; up to
+0.74 mm), `information_filter` from a singular information matrix, the EGM
+geoid and gravity reference field, geomagnetic fields at the poles,
+`hyp1f1` and `generalized_hypergeometric` at large and infinite `z`,
+`oblique_stereographic` at the poles, and `us_standard_atmosphere_1976`'s
+-5000 m floor.
+
+The CuPy code paths are not hardware-validated for this release.
+`pytcl/gpu/VALIDATION.json` records the last NVIDIA run at e919189; the
+changes since (backend selection reporting CuPy initialization failures,
+`gpu.matrix_utils` and `gpu.ukf` fixes from 2.11.1, and BLE001/B905 lint)
+are covered on CI only by the CPU and MLX paths. What to do: if you use the
+`gpu` extra, run `PYTCL_REQUIRE_CUPY=1 pytest tests/` on your hardware
+before relying on it.
+
+Stability registry note (release checklist 3b):
+`scripts/check_release_stability.py v2.11.1` lists eight STABLE modules
+changed since v2.11.1. Each is non-breaking for valid input, with no
+signature change:
+
+- `assignment_algorithms.gating` -- **non-breaking; fixes silent wrong
+  answers on invalid input.** `mahalanobis_distance`, `ellipsoidal_gate`,
+  `gate_measurements` and `mahalanobis_batch` raise `ValueError` naming
+  both shapes on a shape mismatch, and `numpy.linalg.LinAlgError` when the
+  symmetric part of `S` is not positive definite or `S` holds a NaN, where
+  v2.11.1 returned a wrong number. A valid symmetric positive-definite `S`
+  gives results bitwise identical to v2.11.1. `mahalanobis_batch` is now a
+  Python wrapper around the unchanged JIT kernel, so it can no longer be
+  called from a user `@njit` function (entry under Fixed).
+- `containers.kd_tree` -- **non-breaking.** Three `zip` calls over
+  sequences paired by construction take `strict=True` (lint rule B905);
+  no behavior change.
+- `coordinate_systems.conversions.geodetic` -- **non-breaking.**
+  `ecef2geodetic` raises `MethodError` for an unknown `method`, where it
+  silently ran an algorithm the caller did not request; the closed form
+  returns `(pi/2, 0, -b)` at the exact ECEF origin, where it returned NaN;
+  and a `RuntimeWarning` is emitted for points near the Earth's center,
+  whose values are unchanged. The closed form now evaluates under
+  `np.errstate(divide="ignore", invalid="ignore")`, so on a sphere
+  (`f = 0`), where the new warning never fires, its NaN for radii below
+  about 1e-46 m comes without numpy's `RuntimeWarning`s (documented in the
+  docstring). Every other row is bit-identical. `meridional_radius` is
+  unchanged: it calls a private body with the same formula
+  (entries under Changed).
+- `core.constants` -- **non-breaking.** `SPHERE_EARTH.a` references
+  `EARTH_MEAN_RADIUS`, the same value, 6_371_000.0; bitwise identical.
+- `core.exceptions` -- **non-breaking, additive.** `PytclDeprecationWarning`
+  is added (entry under Added).
+- `dynamic_estimation.kalman.extended` -- **non-breaking.**
+  `numerical_jacobian` delegates to
+  `coordinate_systems.jacobians.numerical_jacobian` with the same central
+  difference; results are bitwise identical.
+- `dynamic_estimation.kalman.matrix_utils` -- **non-breaking.**
+  `compute_mahalanobis_distance` delegates to the shared Cholesky body that
+  `MultivariateGaussian.mahalanobis` also uses; valid input is bitwise
+  identical to v2.11.1. It now raises `ValueError` naming both shapes when
+  `S` is not `(m, m)` for an innovation of length `m`: v2.11.1 raised
+  `ValueError` from `solve_triangular` for a square `S` of the wrong size,
+  but returned NaN with a `RuntimeWarning` for a non-square, 0-d or 1-d
+  `S`.
+- `dynamic_estimation.kalman.unscented` -- **non-breaking.** The four
+  inline matrix square roots call `matrix_utils.compute_matrix_sqrt`;
+  results are bitwise identical and only the `LinAlgError` text for a
+  non-positive-semi-definite covariance changes (entry under Changed). One
+  `zip` gains `strict=True` over sequences paired by construction.
+
+No STABLE module needs a major bump or reclassification. Fifty-one MATURE,
+twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
 
 ### Changed
+
+- **`mode='w'` truncates** in `TrackDatabaseManager.open` and
+  `SQLStorage.open`, as 2.11.1 announced with a `FutureWarning` (now
+  removed). `'w'` deletes the existing file and its SQLite `-journal`,
+  `-wal` and `-shm` files before creating a new one, matching
+  `HDF5Storage`; deleting the journal files keeps a crashed writer's hot
+  journal from being replayed into the new database. A schema-1.0 file
+  opened `'w'` is replaced by a schema-2.0 file, and a file that is not a
+  SQLite database is replaced rather than raising. `MigrationHelper`
+  opens its `output_db` with `'w'`, so migrating onto an existing file now
+  replaces it. On Windows, `'w'` raises `PermissionError` while another
+  process holds the file open, since the file cannot be deleted then.
+  What to do: open with `'a'` wherever you relied on `'w'` keeping
+  existing rows, and close other handles before reopening with `'w'`.
+
+- **Unknown stored schema versions raise `FormatError`** (a `ValueError`)
+  in all five readers: `load_session`/`load_session_file`,
+  `load_tracks_asdf`, `load_states_asdf`, `TrackHDF5Storage.open` and
+  `TrackDatabaseManager.open`. 2.11.1 warned (`UserWarning`) and loaded
+  the file anyway. A session at version 0 is now rejected; a session newer
+  than this pytcl was already rejected. A track database whose version
+  field does not parse (`"abc"`, `""`), which 2.11.1 read as schema 1, is
+  rejected too. The check runs before `TrackDatabaseManager.open('a')`
+  creates any table or index, and both `open` methods close the file
+  handle before raising, so a rejected file is left byte-for-byte as it
+  was. What to do: a file written by a newer pytcl needs that pytcl; a file
+  with a corrupted version field can be repaired by rewriting the version
+  row/attribute, and nothing else in it is touched by the failed open.
+
+- **`LSResult.residuals` from `ordinary_least_squares` is always the
+  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
+  shape (1,) sum of squares for a full-rank overdetermined system, the
+  vector otherwise. What to do: code that read `result.residuals[0]` as the
+  residual sum of squares must use `np.sum(result.residuals**2)` (per
+  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
+
+- **The runtime dependency floors rise to versions CI actually tests.**
+  The old floors were never installed by any CI cell; every cell ran the
+  lock's newest releases. A new `floors` job in `ci.yml` resolves each
+  direct dependency to its floor (`uv lock --resolution lowest-direct`),
+  proves with `scripts/check_dependency_floors.py --check` that the
+  installed versions equal the floors, and runs the suite there on
+  every supported Python, 3.11 through 3.14.
+
+  | Package | 2.11.1 floor | New floor |
+  |---------|--------------|-----------|
+  | numpy   | 1.24.0       | 2.3.2     |
+  | scipy   | 1.10.0       | 1.16.1    |
+  | numba   | 0.57.0       | 0.63.0    |
+  | h5py    | 3.8.0        | 3.15.0    |
+  | msgspec | 0.18         | 0.20.0    |
+  | loguru  | 0.7          | 0.7       |
+  | rich    | 13           | 13        |
+
+  Each floor is the oldest release with wheels for all four supported
+  Pythons (3.11-3.14), so one floor holds everywhere with no markers:
+  numpy 2.2 and scipy 1.15 (SPEC 0's floors) have no cp314 wheels, and
+  numba 0.63.0 is the first release with cp314 wheels and numpy 2.3
+  support (it requires llvmlite 0.46). The extras' floors (astropy,
+  pyproj, netCDF4, ...) are unchanged and remain untested. What to do: if
+  your environment pins numpy < 2.3.2, scipy < 1.16.1, numba < 0.63.0,
+  h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
+  2.11.1.
+
+- **CFAR cells with an empty reference window report NaN, not a zero
+  threshold.** A cell whose clipped window held no reference cell (its
+  guard cells covering both ends of the signal, or `ref_cells=0` with an
+  explicit `alpha`) got noise estimate and threshold 0.0 in `cfar_ca`,
+  `cfar_go`, `cfar_so`, `cfar_os` and `cfar_2d`, so any positive sample
+  there was reported as a detection: on `[1, 1, 5, 1, 1]` with
+  `guard_cells=2, ref_cells=1` cell 2 was a detection in all four 1-D
+  detectors, and `cfar_2d` on a 5x5 image with guard `(2, 2)`, ref
+  `(1, 1)` gave the center cell threshold 0.0. Those cells now get NaN noise
+  estimate and threshold and are never detections; in 2-D a cell is empty
+  when its row window and its column window are both empty. A cell with
+  one half window clipped away keeps its 2.11.1 value, and a window that
+  fits no cell at all now gives all-NaN output from `cfar_ca`, `cfar_go`
+  and `cfar_os` (`cfar_so` and `cfar_2d(method='so')` still raise
+  `ValueError`). The kernels are unchanged; the rule is applied after them
+  from the window geometry, checked against a brute-force count of every
+  cell's reference cells for 1-D lengths 1 to 40 and 2-D shapes up to 9x9.
+  What to do: cells with no reference cells now have NaN threshold and
+  noise and are never detections; use `np.nanmax` / `np.isnan` when you
+  post-process thresholds.
+
+- **`q_coord_turn_2d` and `q_coord_turn_3d` reject inputs they used to
+  ignore.** An unknown `state_type` (a typo such as
+  `'position_velocity_omgea'`) silently built the no-omega matrix, and a
+  `sigma_omega` passed without `state_type='position_velocity_omega'` was
+  dropped: the user guide's own example `q_coord_turn_2d(T=1.0,
+  sigma_a=1.0, sigma_omega=0.01)` returned the 4x4 matrix with no
+  turn-rate noise. Both now raise `ValueError`. `sigma_omega` defaults to
+  `None` (0 for the omega state, as before); an explicit 0 with
+  `'position_velocity'` is accepted. What to do: pass
+  state_type='position_velocity_omega' when you supply sigma_omega; a
+  misspelled state_type now raises.
 
 - **`stereographic` and `stereographic_inverse` match PROJ `+proj=sterea`
   for an ellipsoid and a non-polar origin.** For `e2 > 0` and
@@ -75,21 +283,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   you wanted PROJ-compatible coordinates; to reproduce v2.11.1 values,
   pin v2.11.1.
 
-- **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
-  (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
-  two magnetic-cache test files), fixtures pin zero drift
-  across the Schmidt factoring. `mathematical_functions.special_functions.hypergeometric`
-  EXPERIMENTAL -> MATURE: 99.4% line (482/485), 98.4% branch (183/186), up
-  from 65%. Held at EXPERIMENTAL: `dynamic_models.process_noise.coordinated_turn`
-  (`q_coord_turn_polar` has no MATLAB oracle; `QPolarCoordTurn2D` is a
-  different model), `atmosphere.ionosphere` (the IRI port is deferred), and
-  `static_estimation.maximum_likelihood` (98.2% line, 87.0% branch). Each
-  figure comes from the test files that import the module, not the whole
-  suite. What to do: nothing.
+- **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
+  and warns near the Earth's center.** Any `method` other than
+  `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
+  closed form; anything but `'iterative'` or `'direct'` now raises
+  `MethodError` (a `ValueError`). At the exact origin the closed form
+  returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
+  as `'iterative'` does. Near the center each method fails, measured on
+  WGS84 by the forward residual over 309 directions at radii from 1e-300 m
+  to 2.6e6 m: `'direct'` returns NaN or values wrong by up to 3.5e159 m
+  within 4.28e4 m and is accurate to 3.5e-9 m beyond; `'iterative'` is off
+  by up to 4.25e4 m (worst at 16 m from the center) and by more than 1 mm
+  out to 3.14e5 m. Both edges scale with `e2 a`, the first eccentricity
+  squared times the semi-major axis (42.7 km for WGS84). Values there are
+  unchanged from 2.11.1 (a robust solver is planned for v2.13), but each
+  call now emits one `RuntimeWarning` naming the method, the number of
+  affected rows and that method's failure when a row lies within
+  `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
+  1.28e6 m) of the center. A sphere (`f = 0`) never warns, and neither
+  does the exact origin; on a sphere `'direct'` returns NaN below about
+  1e-46 m, now without numpy's divide/invalid warnings. Every other row is bit-identical to
+  2.11.1. Docstrings state the measured accuracy of each method per
+  altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
+  `(3, 1)` shape change moved to v3.0 because the module is STABLE.
+  What to do: pass `method='iterative'` or `method='direct'` exactly (any
+  other spelling used to run the closed form silently); points that close
+  to the center are not physical geodetic inputs, so if you pass
+  placeholders, use exact zeros or filter them out.
+
+- **`srif_update` floors a semi-definite measurement covariance relative
+  to its scale, and rejects a covariance with no positive variance or a
+  negative one.** When Cholesky
+  failed it retried on `R_meas + 1e-10 I`. A zero variance silently became
+  1e10 of information, `-1e-12` was accepted as `+9.9e-11`, and a
+  covariance whose scale was near or below 1e-10 was swamped by the jitter:
+  `diag(1e-14, 0)` gave information `diag(1.0e10, 1.0e10)` instead of
+  `diag(1e14, 1e24)`. The fallback now whitens from `eigh`, flooring
+  eigenvalues at `1e-10` times the largest (`matrix_utils._EIG_FLOOR_REL`),
+  and raises `LinAlgError` when no variance is positive (the largest
+  eigenvalue is zero or negative) or any variance is negative beyond eigh
+  roundoff (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). A zero variance
+  beside a positive one does not raise; it is floored at 1e-10 of the
+  largest. Positive-definite input still takes the Cholesky path. This
+  closes the 2.11.1 deferral. What to do: a measurement covariance with no
+  positive variance, or with a negative one, now raises LinAlgError; pass
+  the variance you mean, or drop the measurement.
 
 - **One convention for an unidentifiable covariance.** When a point
-  estimate exists but the information matrix is singular in some
-  directions, the estimate is returned with `inf` variance on the
+  estimate exists but the information matrix is singular, or indefinite
+  (a negative eigenvalue), in some directions, the estimate is returned with `inf` variance on the
   unidentified parameters, NaN on their cross terms, the identified block
   intact, and a `RuntimeWarning` (the rule `mle_newton_raphson` has
   followed since 2.11.1, now in CONTRIBUTING.md). `mle_scoring` and
@@ -100,7 +342,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A direction is flagged when the diagonally scaled Fisher matrix has an
   eigenvalue at or below `n * eps` times its largest (a scaled condition
   number above about `1 / (n * eps)`), where `inv` already returned
-  noise; identified matrices still get `inv(F)` bit for bit.
+  noise; identified matrices still get `inv(F)` bit for bit. An indefinite
+  `F` is treated the same way: `inv(F)` returned negative variances in
+  v2.11.1 (`F = [[1, 2], [2, 1]]` gave -1/3 on the diagonal), and it now
+  gives `inf` with a `RuntimeWarning`.
   `range_only_static_loc_est_np` raises `LinAlgError` for coplanar
   sensors with or without `r_cov`, judged by a coordinate-scaled
   tolerance (smallest singular value of the sensor offsets at or below
@@ -117,6 +362,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check np.isinf(np.diag(cov)) (or the RuntimeWarning) instead of
   relying on a finite pseudo-inverse from mle_scoring and
   cramer_rao_bound, which no longer return one for an unidentified model.
+
+- **`special_functions.factorial` and `factorial2` with `exact=True` return
+  exact integers.** They cast scipy's exact result to float64, so
+  `factorial(25, exact=True)` was rounded. They now return a Python `int`
+  for scalar or 0-d input, an `int64` array when every value fits, and an
+  `object` array of Python ints otherwise; `exact=False` is unchanged.
+  What to do: if you passed `exact=True` and then used float operations or
+  a dtype check on the result, convert explicitly with `float(...)` or
+  `.astype(float)`.
+
+- **Maturity registry, 2026-10-28.** `magnetism.wmm` EXPERIMENTAL -> MATURE
+  (promised in 2.11.0): 100.0% line, 100.0% branch (93.4% line without the
+  two magnetic-cache test files), fixtures pin zero drift
+  across the Schmidt factoring. `mathematical_functions.special_functions.hypergeometric`
+  EXPERIMENTAL -> MATURE: 99.4% line (482/485), 98.4% branch (183/186), up
+  from 65%. Held at EXPERIMENTAL: `dynamic_models.process_noise.coordinated_turn`
+  (`q_coord_turn_polar` has no MATLAB oracle; `QPolarCoordTurn2D` is a
+  different model), `atmosphere.ionosphere` (the IRI port is deferred), and
+  `static_estimation.maximum_likelihood` (98.2% line, 87.0% branch). Each
+  figure comes from the test files that import the module, not the whole
+  suite. What to do: nothing.
+
 - **One haversine, one meridional radius, one Earth radius; no value
   changes beyond the great-circle fix under Fixed and the 1-ulp
   `osculating_sphere` change below.** The
@@ -171,8 +438,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   used to invert the full matrix and now factors the lower triangle, as
   scipy's `multivariate_normal` does for the pdf. Measured on
   `cov=[[2, 0.9], [0.3, 1]]`, `x=[1, 2]`: 1.9532 in v2.11.1, 2.0208 now.
-  Symmetric covariances are unchanged. What to do: pass a symmetric
-  covariance (`pytcl.core.check_symmetric` validates one).
+  Symmetric covariances are unchanged. `compute_mahalanobis_distance` now
+  raises `ValueError` naming both shapes for a non-square, 0-d or 1-d `S`,
+  where v2.11.1 returned NaN with a `RuntimeWarning`. What to do: pass a
+  symmetric covariance (`pytcl.core.check_symmetric` validates one) of
+  shape `(m, m)`.
+
 - **One matrix square root for the sigma-point and cubature filters; only the
   error message changes.** `unscented.sigma_points_merwe`,
   `unscented.sigma_points_julier`, `unscented.ckf_predict` and
@@ -184,656 +455,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   semi-definite: ..." and is now "matrix is not positive semi-definite: ...".
   What to do: code that matches the old text must match the new one; the
   exception type is unchanged.
-- **The runtime dependency floors rise to versions CI actually tests.**
-  The old floors were never installed by any CI cell; every cell ran the
-  lock's newest releases. A new `floors` job in `ci.yml` resolves each
-  direct dependency to its floor (`uv lock --resolution lowest-direct`),
-  proves with `scripts/check_dependency_floors.py --check` that the
-  installed versions equal the floors, and runs the suite there on
-  every supported Python, 3.11 through 3.14.
-
-  | Package | 2.11.1 floor | New floor |
-  |---------|--------------|-----------|
-  | numpy   | 1.24.0       | 2.3.2     |
-  | scipy   | 1.10.0       | 1.16.1    |
-  | numba   | 0.57.0       | 0.63.0    |
-  | h5py    | 3.8.0        | 3.15.0    |
-  | msgspec | 0.18         | 0.20.0    |
-  | loguru  | 0.7          | 0.7       |
-  | rich    | 13           | 13        |
-
-  Each floor is the oldest release with wheels for all four supported
-  Pythons (3.11-3.14), so one floor holds everywhere with no markers:
-  numpy 2.2 and scipy 1.15 (SPEC 0's floors) have no cp314 wheels, and
-  numba 0.63.0 is the first release with cp314 wheels and numpy 2.3
-  support (it requires llvmlite 0.46). The extras' floors (astropy,
-  pyproj, netCDF4, ...) are unchanged and remain untested. What to do: if
-  your environment pins numpy < 2.3.2, scipy < 1.16.1, numba < 0.63.0,
-  h5py < 3.15.0 or msgspec < 0.20.0, upgrade them or stay on pytcl
-  2.11.1.
-
-- **`special_functions.factorial` and `factorial2` with `exact=True` return
-  exact integers.** They cast scipy's exact result to float64, so
-  `factorial(25, exact=True)` was rounded. They now return a Python `int`
-  for scalar or 0-d input, an `int64` array when every value fits, and an
-  `object` array of Python ints otherwise; `exact=False` is unchanged.
-  What to do: if you passed `exact=True` and then used float operations or
-  a dtype check on the result, convert explicitly with `float(...)` or
-  `.astype(float)`.
-
-- **`LSResult.residuals` from `ordinary_least_squares` is always the
-  residual vector `b - A @ x`.** It used to mirror `np.linalg.lstsq`: the
-  shape (1,) sum of squares for a full-rank overdetermined system, the
-  vector otherwise. What to do: code that read `result.residuals[0]` as the
-  residual sum of squares must use `np.sum(result.residuals**2)` (per
-  column for a 2-D `b`: `np.sum(result.residuals**2, axis=0)`).
-
-- **`mode='w'` truncates** in `TrackDatabaseManager.open` and
-  `SQLStorage.open`, as 2.11.1 announced with a `FutureWarning` (now
-  removed). `'w'` deletes the existing file and its SQLite `-journal`,
-  `-wal` and `-shm` files before creating a new one, matching
-  `HDF5Storage`; deleting the journal files keeps a crashed writer's hot
-  journal from being replayed into the new database. A schema-1.0 file
-  opened `'w'` is replaced by a schema-2.0 file, and a file that is not a
-  SQLite database is replaced rather than raising. `MigrationHelper`
-  opens its `output_db` with `'w'`, so migrating onto an existing file now
-  replaces it. On Windows, `'w'` raises `PermissionError` while another
-  process holds the file open, since the file cannot be deleted then.
-  What to do: open with `'a'` wherever you relied on `'w'` keeping
-  existing rows, and close other handles before reopening with `'w'`.
-
-- **Unknown stored schema versions raise `FormatError`** (a `ValueError`)
-  in all five readers: `load_session`/`load_session_file`,
-  `load_tracks_asdf`, `load_states_asdf`, `TrackHDF5Storage.open` and
-  `TrackDatabaseManager.open`. 2.11.1 warned (`UserWarning`) and loaded
-  the file anyway. A session at version 0 is now rejected; a session newer
-  than this pytcl was already rejected. A track database whose version
-  field does not parse (`"abc"`, `""`), which 2.11.1 read as schema 1, is
-  rejected too. The check runs before `TrackDatabaseManager.open('a')`
-  creates any table or index, and both `open` methods close the file
-  handle before raising, so a rejected file is left byte-for-byte as it
-  was. What to do: a file written by a newer pytcl needs that pytcl; a file
-  with a corrupted version field can be repaired by rewriting the version
-  row/attribute, and nothing else in it is touched by the failed open.
-
-- **`ecef2geodetic` rejects unknown `method` strings, fixes the ECEF origin
-  and warns near the Earth's center.** Any `method` other than
-  `'iterative'` (`'Direct'` and `'closed'` included) silently ran the
-  closed form; anything but `'iterative'` or `'direct'` now raises
-  `MethodError` (a `ValueError`). At the exact origin the closed form
-  returned NaN with two `RuntimeWarning`s; it now returns `(pi/2, 0, -b)`,
-  as `'iterative'` does. Near the center each method fails, measured on
-  WGS84 by the forward residual over 309 directions at radii from 1e-300 m
-  to 2.6e6 m: `'direct'` returns NaN or values wrong by up to 3.5e159 m
-  within 4.28e4 m and is accurate to 3.5e-9 m beyond; `'iterative'` is off
-  by up to 4.25e4 m (worst at 16 m from the center) and by more than 1 mm
-  out to 3.14e5 m. Both edges scale with `e2 a`, the first eccentricity
-  squared times the semi-major axis (42.7 km for WGS84). Values there are
-  unchanged from 2.11.1 (a robust solver is planned for v2.13), but each
-  call now emits one `RuntimeWarning` naming the method, the number of
-  affected rows and that method's failure when a row lies within
-  `10 e2 a` (`'direct'`, 4.27e5 m for WGS84) or `30 e2 a` (`'iterative'`,
-  1.28e6 m) of the center. A sphere (`f = 0`) never warns, and neither
-  does the exact origin. Every other row is bit-identical to
-  2.11.1. Docstrings state the measured accuracy of each method per
-  altitude band. The default stays `'iterative'`; `geodetic2ecef`'s
-  `(3, 1)` shape change moved to v3.0 because the module is STABLE.
-  What to do: pass `method='iterative'` or `method='direct'` exactly (any
-  other spelling used to run the closed form silently); points that close
-  to the center are not physical geodetic inputs, so if you pass
-  placeholders, use exact zeros or filter them out.
-
-- **`srif_update` floors a semi-definite measurement covariance relative
-  to its scale, and rejects a covariance with no positive variance or a
-  negative one.** When Cholesky
-  failed it retried on `R_meas + 1e-10 I`. A zero variance silently became
-  1e10 of information, `-1e-12` was accepted as `+9.9e-11`, and a
-  covariance whose scale was near or below 1e-10 was swamped by the jitter:
-  `diag(1e-14, 0)` gave information `diag(1.0e10, 1.0e10)` instead of
-  `diag(1e14, 1e24)`. The fallback now whitens from `eigh`, flooring
-  eigenvalues at `1e-10` times the largest (`matrix_utils._EIG_FLOOR_REL`),
-  and raises `LinAlgError` when no variance is positive (the largest
-  eigenvalue is zero or negative) or any variance is negative beyond eigh
-  roundoff (`_EIG_NEGATIVE_REL_TOL`, 1e-10 relative). A zero variance
-  beside a positive one does not raise; it is floored at 1e-10 of the
-  largest. Positive-definite input still takes the Cholesky path. This
-  closes the 2.11.1 deferral. What to do: a measurement covariance with no
-  positive variance, or with a negative one, now raises LinAlgError; pass
-  the variance you mean, or drop the measurement.
-
-- **`q_coord_turn_2d` and `q_coord_turn_3d` reject inputs they used to
-  ignore.** An unknown `state_type` (a typo such as
-  `'position_velocity_omgea'`) silently built the no-omega matrix, and a
-  `sigma_omega` passed without `state_type='position_velocity_omega'` was
-  dropped: the user guide's own example `q_coord_turn_2d(T=1.0,
-  sigma_a=1.0, sigma_omega=0.01)` returned the 4x4 matrix with no
-  turn-rate noise. Both now raise `ValueError`. `sigma_omega` defaults to
-  `None` (0 for the omega state, as before); an explicit 0 with
-  `'position_velocity'` is accepted. What to do: pass
-  state_type='position_velocity_omega' when you supply sigma_omega; a
-  misspelled state_type now raises.
-
-- **CFAR cells with an empty reference window report NaN, not a zero
-  threshold.** A cell whose clipped window held no reference cell (its
-  guard cells covering both ends of the signal, or `ref_cells=0` with an
-  explicit `alpha`) got noise estimate and threshold 0.0 in `cfar_ca`,
-  `cfar_go`, `cfar_so`, `cfar_os` and `cfar_2d`, so any positive sample
-  there was reported as a detection: on `[1, 1, 5, 1, 1]` with
-  `guard_cells=2, ref_cells=1` cell 2 was a detection in all four 1-D
-  detectors, and `cfar_2d` on a 5x5 image with guard `(2, 2)`, ref
-  `(1, 1)` gave the center cell threshold 0.0. Those cells now get NaN noise
-  estimate and threshold and are never detections; in 2-D a cell is empty
-  when its row window and its column window are both empty. A cell with
-  one half window clipped away keeps its 2.11.1 value, and a window that
-  fits no cell at all now gives all-NaN output from `cfar_ca`, `cfar_go`
-  and `cfar_os` (`cfar_so` and `cfar_2d(method='so')` still raise
-  `ValueError`). The kernels are unchanged; the rule is applied after them
-  from the window geometry, checked against a brute-force count of every
-  cell's reference cells for 1-D lengths 1 to 40 and 2-D shapes up to 9x9.
-  What to do: cells with no reference cells now have NaN threshold and
-  noise and are never detections; use `np.nanmax` / `np.isnan` when you
-  post-process thresholds.
 
 ### Fixed
 
-- **`oblique_stereographic` and `oblique_stereographic_inverse` no longer
-  return NaN for an origin or a point at or next to a pole.** The EPSG
-  9809 forms `(1 + sin) / (1 - sin)` and `asin((w - 1) / (w + 1))` became
-  inf/inf for an origin within a few ulps of pi/2 (`nextafter(pi/2, 0)`,
-  89.9999999 deg) and for a point exactly at a pole, and lost digits
-  nearby; the inverse cancelled catastrophically for a southern origin near
-  -pi/2. They are now evaluated in cancellation-free forms (and the
-  southern inverse in the mirrored northern aspect). Against EPSG 9809 at
-  60 digits, on 3000 random origins with `|lat0| <= 1.55` rad and points
-  within 0.3 rad of them, the error fell from 2.5e-7 m to 6.1e-9 m;
-  values move by at most 2.5e-7 m (8.6e-8 m for `|lat0| < 80` deg), and
-  inverse latitudes by at most 4.6e-11 rad. What to do: nothing.
-
-- **`SQLStorage` group metadata is readable, and the internal group marker
-  no longer appears in `list_keys()`.** `store_group(name, metadata)` writes
-  the metadata into the value column of an internal `_group:<name>` row, so
-  `get_metadata(name)` raised `KeyError` and the root `list_keys()` listed
-  `"_group:<name>"`. `get_metadata(name)` now returns the stored dict
-  (`{}` for a group stored without metadata), as `HDF5Storage` returns a
-  group's attributes; an array or scalar of the same name still takes
-  precedence. `list_keys()` at any level omits the rows `store_group`
-  writes (a `_group:` key whose value begins `{"_is_group": true`); a
-  scalar the caller stored under a `_group:` name is still listed. Groups
-  themselves are not listed, unlike `HDF5Storage.list_keys`. The fix is
-  read-side only: the on-disk layout is unchanged, and databases written by
-  v2.11.1 read correctly (tested against v2.11.1's own `store_group`). The
-  metadata key `_is_group` is reserved and is not read back. What to do:
-  drop any filtering of `_group:` keys from `list_keys()` results.
-
-- **`debye` accepts `x < 0`, as MATLAB TCL's `Debye.m` does.** It raised
-  `ValueError("x must be >= 0")`. Negative arguments (scalars or elements
-  of a mixed-sign array, and `debye_1` to `debye_4`) are now evaluated
-  through the exact identity `D_n(-x) = D_n(x) + n x / (n + 1)`, derived in
-  the docstring; `D_n(-inf)` is `inf`. Values match signed mpmath
-  quadrature to 1e-13 relative at the tested points (n in {1, 3, 4, 10} at
-  x = -0.5 and -1; n = 1 at x = -10 and -1e-9). The normalization is unchanged and now
-  documented: pytcl returns the MathWorld normalized function
-  (`D_n(0) = 1`), while `Debye.m` returns the raw integral
-  `int_0^x t^n / (e^t - 1) dt` (`Debye(0) = 0`); multiply by `x^n / n` to
-  convert. `ValueError` for a non-integer or non-positive `n` is unchanged.
-  What to do: drop any `x >= 0` guard or `ValueError` handler written for
-  negative arguments.
-
-- **`shapiro_delay` is accurate with the gravitating body on or near the
-  observer-source segment.** The log argument's denominator
-  `r_o + r_s - r_os` cancelled catastrophically near the segment: v2.11.1
-  returned 0.0, the value for no delay at all, for a body exactly on it
-  (where the delay diverges) and for bodies within rounding of it. With
-  observer and source at +-1e11 m, a body 1 m or 1 km off the path gave
-  0.0 where the delay is 5.13e-4 s and 3.77e-4 s, and at 1e6 m the result
-  was 1.0e-12 relative off; on oblique paths the errors were up to 100%
-  at 1 m and 1 km and 9.4e-6 at 1e6 m. The denominator is now
-  `2 |a x b|^2 / ((r_o r_s - a.b)(r_o + r_s + r_os))` with
-  `a = obs - body`, `b = src - body`, when `a.b < 0`, and
-  `2 (r_o r_s + a.b) / (r_o + r_s + r_os)` otherwise, with `|a x b|^2`
-  formed in compensated arithmetic. Against the original formula at 50
-  digits it is within 2.2e-16 relative at 1 m, 1 km and 1e6 m off (axis-
-  aligned and 300 oblique paths each) and 1.6e-14 on 2000 random
-  geometries, where it moves the v2.11.1 values by at most 1.9e-14
-  relative. It returns `inf` only when `|a x b| = 0` with the body between
-  or at the endpoints. What to do: if you relied on 0.0 for a body on the
-  path, test for `np.isinf` instead.
-
-- **`lambert_universal` raises `ValueError` for antipodal positions and for
-  a time of flight that is not positive and finite.** For antipodal `r1`
-  and `r2` the transfer plane is undefined, but the `A == 0` check missed
-  the computed `A` of about 1e-16 times the scale, so the function returned
-  zero velocities (e = 1, a = 3189 km for `r1 = [6378, 0, 0]`,
-  `r2 = -r1`). It now raises when `r1 x r2 = 0`, and when the positions
-  are nearly antipodal, `cos(dnu) < 0` with `|r1 x r2| / (|r1| |r2|) =
-  |sin(dnu)| < 1e-7`. There the chord term is proportional to `sin(dnu)`,
-  computed as `sin(arccos(c))`, whose relative error from rounding `c` is
-  about `eps / sin(dnu)^2`: order 1 at `sqrt(eps)`, about 2e-2 at 1e-7.
-  v2.11.1 solved such inputs silently: for `|r1| = 7000` km,
-  `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy DOP853 propagation,
-  the relative miss of `r2` was 1.38 at `sin(dnu) = 1.5e-8`, 2.01 at 3e-8,
-  0.20 at 5e-8 and 1e2 to 1e8 further down, and none of 600 exactly
-  antipodal v2.11.1 solutions reached `r2` within 1e-6. Above the
-  threshold accuracy still degrades toward antipodal; in that geometry
-  the miss is 6.8e-3 at 1e-7, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
-  1e-4, and up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s. A few rejected near-pi
-  inputs (4 of 801 sampled) were accurate to about 1e-3 in v2.11.1. The long way around nearly parallel positions (`dnu` near 2 pi,
-  `|sin(dnu)| < 1e-7`) is rejected too, with its own message: all 68
-  v2.11.1 solutions checked there (`|r2| / |r1|` 0.8 to 2, `tof` 1500 to
-  8000 s) missed `r2` by order 1, returning a nearly radial `v1`. Above
-  the threshold the long way stays unreliable and is documented, not
-  fixed: it raises "did not converge" or misses by order 1 at up to
-  `sin(dnu)` of about 8e-5 in the same sweep. The short way around nearly
-  parallel positions (`dnu` near 0) is not rejected: it is well
-  conditioned, and in the first geometry misses `r2` by below 1e-12 down
-  to `sin(dnu) = 2e-8`. The solve path itself
-  is unchanged, so every input that does not raise returns bitwise the
-  v2.11.1 result. `tof = 0` returned inf/nan
-  velocities and a negative `tof` raised "did not converge"; `tof <= 0`,
-  `nan` and `inf` now raise "tof must be positive and finite".
-  `minimum_energy_transfer` calls it, so for antipodal positions it now
-  raises too, where it returned zero velocities (e = 1, a = 3339 km for
-  `r1 = [6678, 0, 0]`). What to do:
-  catch `ValueError` for collinear inputs and non-positive times of flight;
-  a handler that matched "did not converge" for negative `tof` must match
-  the new message.
-
-- **`threshold_factor` raises its own `ValueError` when the requested Pfa is
-  unreachable for GO, SO and OS.** When `pfa` was below what the threshold
-  search reaches (alpha up to 1e12; e.g. `threshold_factor(1e-15, 2, "so")`),
-  the search gave up silently and scipy's `brentq` raised "f(a) and f(b) must
-  have different signs", which names neither the pfa nor the method. The new
-  message names `pfa`, the method and `n_ref`. scipy's error was already a
-  `ValueError`, so only the message changes. What to do: catch ValueError
-  (previously scipy's bracket error).
-
-- **`mahalanobis_distance` and the gating functions built on it reject a
-  mismatched or non-positive-definite covariance instead of returning a
-  number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned a
-  number (the kernel reads the inverse out of bounds, so the value varied
-  between runs, -5.07 to -5.81 observed) and a length-3 one 0.40 to 0.67; an indefinite but invertible `S`
-  (`[[1, 2], [2, 1]]` with innovation `[1, 1]`) returned 0.667, and a
-  non-symmetric `[[1, 0], [3, 1]]` with `[1, 1]` returned -1.0, all with no
-  signal. A squared distance is never negative and is defined only for a
-  positive-definite `S`. `mahalanobis_distance`, `ellipsoidal_gate`,
-  `gate_measurements` (both gate types, checked once per call) and
-  `mahalanobis_batch` (which takes `S_inv`, so the check is applied to
-  `S_inv`, positive definite exactly when `S` is) now raise `ValueError`,
-  naming both shapes, when the innovation is not 1-d or `S` is not
-  `(m, m)` (and, in `gate_measurements`, when the measurements are not
-  `(n_meas, m)`: a `(k, 1)` array used to broadcast silently), and
-  `numpy.linalg.LinAlgError` when `S` is not positive definite or is too
-  ill-conditioned. The test is on the symmetric part `(S + S.T) / 2`, which
-  is exact for "the form is non-negative for every innovation"; a symmetric
-  `S` is unaffected, and the test is scale-free (an `S` of 1e-170 times the
-  identity is still accepted, as in v2.11.1). "Too ill-conditioned" means a
-  minor (n = 2) or Cholesky pivot rounds to a non-positive value, which
-  happens for some positive-definite `S` at condition number about 1e16 or
-  above (measured on 300 random `S` per size: none rejected up to 1e15; at
-  1e16, 14 of 300 at n = 2 and 0 at n = 3 and 4; at 1e17, 203, 92 and 74);
-  for those v2.11.1's value was already wrong. Callers that now raise on such
-  an `S`: `mahalanobis_distance` itself, `ellipsoidal_gate`,
-  `gate_measurements`, `mahalanobis_batch`, `trackers.mht` (its gating
-  call), `assignment_algorithms.data_association` (cost-matrix
-  construction, whose existing singular fallback re-raises).
-  `jpda.compute_likelihood_matrix` does not raise: it zeroes a track whose
-  `S` fails its own Cholesky test (non-positive-definite, non-symmetric or
-  non-finite) with a `RuntimeWarning`, falls back to the per-pair path if
-  only the batch kernel rejects the inverse, and zeroes the track the same
-  way if that fallback's `mahalanobis_distance` also raises `LinAlgError`
-  (an `S` that passes Cholesky at condition number near 1e16). Valid symmetric
-  positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
-  3, 5, 10 and 12 (tested against the shipped module). A NaN entry in the
-  covariance now raises `LinAlgError` too: v2.11.1's fastmath kernels gave
-  NaN on macOS but garbage on Linux (2.8e-309 and 3e-75 at n = 2 and 3 in
-  CI). Cost, measured against v2.11.1 on Apple silicon in
-  one session: about +0.17 to +0.21 us per `mahalanobis_distance` call at
-  n = 2 and 3 (+27 to +32% of a 0.64 us call), about +7 to +13% at n = 1, 6
-  and 12; `gate_measurements` on 50 measurements is 15% faster, because the
-  check runs once per call rather than once per measurement.
-  `mahalanobis_batch` is now a Python wrapper around the unchanged JIT
-  kernel (+0.28 us at 50 x 3), so a user `@njit` function that calls it now
-  gets a `TypingError`; call `mahalanobis_batch` from Python instead. What
-  to do: catch `ValueError` for a shape
-  mismatch and `numpy.linalg.LinAlgError` for a non-positive-definite `S`;
-  both previously returned a silent wrong number.
-
-- **`great_circle_distance` and `great_circle_azimuth` no longer round their
-  inputs; distances move by up to 0.74 mm and short-pair azimuths by far
-  more.** Both rounded all four coordinates to 10 decimals (up to 5e-11 rad
-  each) before computing, so every distance carried up to about 1 mm of
-  error from the rounding alone and an azimuth carried an error of
-  1e-10 rad divided by the pair's separation in radians. Both now compute
-  on the exact coordinates. Measured against geographiclib on a sphere of
-  radius 6371000 m (`Geodesic(6371000.0, 0)`), maximum over the pairs
-  sampled (the reference takes degrees, so part of each new-code
-  figure below is the oracle's):
-
-  | pairs sampled | distance, relative: v2.11.1 / new | azimuth, rad: v2.11.1 / new |
-  |---|---|---|
-  | 2000 global: distance, per seed over 4 seeds; azimuth, one 2000-pair sample | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
-  | 1000 at 64 m (both columns) | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
-  | 1000 at 1 m | 6.5e-4 / 2.3e-9 | 7.3e-4 / 2.3e-9 |
-  | 1000 at 0.01 m | 7.2e-2 / 2.4e-7 | 6.3e-2 / 2.9e-7 |
-
-  Earlier drafts quoted 2.3e-4 relative for pairs "0 to 64 m" apart; that
-  was a single mixed sample, replaced by the separations above. Nothing
-  here is measured below 0.01 m or above the global sample. The new error
-  grows as pairs shrink (`lat2 - lat1` loses digits); v2.11.1's grows
-  faster. A pair 3e-11 rad apart (0.2 mm) returned azimuth 0.0 from
-  `great_circle_azimuth` and `great_circle_inverse` while the true bearing
-  was 0.46 rad; it now returns 0.46. The distances of the two versions
-  differ by at most 7.4e-4 m (4 seeds x 2000 global pairs).
-  Also changed, because they call these two: `great_circle_inverse`
-  (distance by up to 6.9e-4 m, azimuths by up to 1.3e-9 rad on global
-  pairs and by up to 1e-2 rad on pairs about 1 m apart),
-  `cross_track_distance` (cross-track by up to 6.7e-3 m and along-track by
-  up to 7.3e-3 m over 1000 global point/track pairs),
-  `great_circle_path_intersect` (latitude by up to 1.5e-9 rad, longitude by
-  up to 3.5e-9 rad over 1000 pairs; no `valid` flag changed),
-  `great_circle_waypoint`, `great_circle_waypoints`, `angular_distance`
-  and `compare_great_circle_rhumb`. `great_circle_intersect` did not change
-  on 1000 random inputs; it uses the azimuth only to choose between the two
-  intersections. The caches are now keyed on the exact floats: hit rates
-  depend on exact inputs, where two calls within 1e-10 rad used to share an
-  entry; `get_great_circle_cache_info` and `clear_great_circle_cache` keep
-  their meaning. A cache hit costs 0.1 µs instead of 1.05 µs and a miss
-  1.24 µs instead of 2.11 µs. What to do: nothing, unless you compare
-  against stored v2.11.1 distances (allow 1 mm) or azimuths of pairs
-  closer than about a kilometer.
-
-- **Solid-tide sidereal time and the ecliptic obliquity constant now follow
-  IAU models; results shift slightly.** The tide module's GMST used a linear
-  polynomial without the T^2 term. Against the exact IAU 1982 polynomial
-  it was off by -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
-  60000 and -0.0935" at 61000.7. It now shares one IAU 1982 body with
-  `reference_frames.gmst_iau82` (fed the MJD directly, so no precision is
-  lost forming a Julian date) and agrees with the exact value to under
-  1e-8" at all four epochs. Below about MJD 25000, forming `mjd - 51544.5`
-  still rounds as it did in v2.11.1 (up to about 1e-5"). Solid-tide displacement outputs shift by at
-  most 5e-8 m and gravity outputs by under 1e-12. The tide module's own
-  obliquity moved only 4e-5" (it already used the IAU 1976 value).
-  `EPSILON_J2000` (`pytcl.astronomical.ephemerides`) was 0.4090910179 rad,
-  which matched no model; it is now the IAU 1976 value 84381.448" =
-  0.40909280422232897 rad, JPL's "ecliptic of J2000", 0.3685" larger. It
-  drives every `frame="ecliptic"` output: `sun_position`, `moon_position`
-  and `planet_position` (module functions and the `DEEphemeris` methods of
-  the same names). At JD 2460311 the SSB-relative ICRF vectors those return
-  rotate by 0.36" in angle, which at their distance scale of about 1 AU is
-  258 km for the Moon vector (0.98 AU from the SSB) and 389 km for Mars
-  (1.48 AU); `frame="earth_centered"` returns ICRF and is not rotated by this
-  constant. `barycenter_position` takes no frame and is
-  unchanged.
-  What to do: ecliptic-frame ephemeris output and solid-tide phases shift by
-  the stated amounts; nothing to change in calling code.
-
-- Four public entry points no longer truncate silently when given parallel
-  inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
-  a different number of estimate frames than ground-truth frames dropped
-  the extra frames (three ground-truth frames against two estimate frames reported
-  MOTA = 1.0 instead of counting the miss); `plot_covariance_ellipses`
-  with a different number of covariances than means drew the shorter count;
-  `plot_coordinate_axes_3d` with a two-entry `colors` or `names` returned
-  two traces and dropped the Z axis, and one with more than three entries
-  ignored the extras. These now raise `ValueError` naming the
-  arguments and their lengths. `load_session` on a Gaussian-sum or RBPF
-  snapshot whose per-component (per-particle) lists differ in length
-  restored a filter with the shortest list's count; it now raises
-  `FormatError`, as it does for other malformed sessions. What to do:
-  pass equal-length frame lists to `mot_metrics`, one covariance per mean
-  to `plot_covariance_ellipses`, and exactly three `colors` and `names` to
-  `plot_coordinate_axes_3d`; sessions written by `save_session` are
-  unaffected.
-
-- `TrackDatabaseManager.store_track_history` checks that `states`,
-  `covariances`, `timestamps` and `residuals` have equal length before
-  writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used
-  to store a prefix silently (`(5, 5, 3)` stored 3 rows; residuals of
-  length 8 against 5 dropped 3) or store rows then raise `IndexError`; a
-  row rejected mid-call left its predecessors behind. An unknown `track_id`
-  used to write rows that belong to no track; it now raises `KeyError`
-  before anything is written, as `store_track_state` does. Internal callers
-  are `HDF5TrackStorage.export_to_sql` and `convert_legacy_tracks_to_sql`;
-  both create the track with `initiate_track` first and slice the four
-  arrays consistently, so valid data is unaffected, but an HDF5 track whose
-  `residuals` dataset is shorter than its `timestamps` now raises
-  `ValueError` with nothing stored, where it stored a prefix and raised
-  `IndexError`. What to do: pass states, covariances, timestamps (and
-  residuals) of equal length; a mismatch now raises instead of storing a
-  prefix. Call `initiate_track` before `store_track_history`; an unknown id
-  now raises `KeyError` instead of leaving orphan rows.
-
-- `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
-  hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time
-  proportional to `abs(z)` for non-terminating 1F1 at `z > 0` (14 s at
-  1e13, over 60 s from 1e14, e.g. 1F1(0.5; 1.5; 1e15)) and at `z < 0` when
-  `b - a` is a non-positive integer (4 s at -1e12, 36 s at -1e13). It is no
-  longer called at `abs(z) >= 1e9`: non-terminating 1F1 there uses the
-  DLMF 13.7.2 asymptotic expansion, whose Gamma(b)/Gamma(b-a) coefficient
-  is computed without rounding `b - a` into a Gamma argument (Stirling
-  differences, exact sin(pi x) reflection, extended exponent). From
-  `abs(z) = 1e2` the expansion replaces scipy at `z < 0` when `b > 0` and
-  `b - a > 0`; at `1e2 <= z < 1e9` it is used only to prove an overflow,
-  and scipy's finite values are kept. Measured against mpmath (an exact
-  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4; each
-  figure is the maximum over the stated random sample, not a bound: the
-  expansion reached 3.1e-14 relative at `1e2 <= -z < 1e9` (939 points,
-  where scipy reached 2.6e-11 but was better by about 1e-14 at 34 of them)
-  and 1.4e-14 at `-z >= 1e9` for either sign of `b` (two samples, 600 and
-  1,000 points, to 1e13; scipy gave up to 2.4e-12 there); across
-  `z = +-1e2` and `+-1e9` the value moved 2.4e-14 more than mpmath's (20
-  parameter sets). Elsewhere values are scipy's and unchanged, including
-  its errors: up to 3.4e-11 at `z < 0` (b near 6e3), 1.22e-12 at
-  1F1(1; 1000; 1995) and 1.4e-11 at other finite `z > 0` in these
-  samples, and its silent NaN for large parameters (`max(abs(a), abs(b))`
-  above about 150) at `abs(z)` from 1e-300 to 1e4: 14 of the 150,000
-  points below, all with `max(abs(a), abs(b)) >= 277` and `abs(z)` from
-  10 to 1e4, and `hyp1f1(116.18, -146.25, 11.66)`, `hyp1f1(-1401.302,
-  -3092.199, 1950.047)` (an overflow), `hyp1f1(1, 9999.5, -1e-300)`,
-  `hyp1f1(9999.5, 0.5, -1)` and `hyp1f1(-1e4, 1, 1)` return NaN with no
-  warning (the values of the last three are 1, 0.29107 and -0.025079).
-  Near a pole of Gamma(b - a) (the exact `b - a` within 1e-6 of a
-  non-positive integer, but not at one) scipy does not carry `b - a`
-  exactly, and its relative error at `1e2 <= -z < 1e9` reaches
-  `eps * abs(b - a) / d` with `d` the distance to the pole (the maximum
-  over 150 random points with `-z` to 2e4: 2.3e-7 at `d` in [1e-8, 1e-6)
-  and 2.0e-1 below 1e-12). There pytcl now uses the expansion where it
-  certifies (1.1e-14 over the same 150 points; `hyp1f1(25.6, 0.6,
-  -1000)` is 1.047e-66 where scipy gives -0.0) and keeps scipy's value
-  otherwise, as before: scipy is often accurate there (on 2,182 random
-  points with `abs(a) <= 150`, `-z` from 1e2 to 3e3 and the expansion
-  not certifying, within 1e-12 at 1,440 and worse at 742), and its error
-  cannot be predicted from the inputs (a one-ulp shift of `a` often
-  leaves it unchanged; the bound above is exceeded at every accurate
-  point too), so nothing there is turned into NaN. Unfixed scipy values
-  of this kind, disclosed: `hyp1f1(-100.3, -400.3, -5000)` is 0.0 (exact
-  9.366e99; `fl(b - a) = -300`, the exact difference -300 - 1.4e-14),
-  `hyp1f1(12.3, 2.3, -100)` is off by 45%, `hyp1f1(20.1, 0.1, -150)` and
-  `hyp1f1(30.1, 10.1, -300)` have the wrong sign; at `-z < 1e2` scipy
-  loses up to 5.0e-3 at `d` below 1e-12 (150 points) and at `z > 0`
-  3.4e-13 (`hyp1f1(-100.3, -400.3, 500)`). The expansion's own integer tests on
-  `b - a` use the exact difference (TwoSum): with the rounded one,
-  `hyp1f1(-100.3, -400.3, -1e10)`, `hyp1f1(-60.7, -210.7, -1e12)` and
-  `hyp1f1(0.5000000000000001, -4.5, -1e10)` returned 0.0 for 4.4e734
-  (`+inf`), -1.8e578 (`-inf`) and -8.0e-21, at `z = -inf` too; scipy
-  gives the same 0.0 at `-1e10` and `-1e11`. Termination: two grids,
-  17,280 and 11,880 calls with `a` and `b` from -1e4 to 1e4 and `z` from
-  0 to `+-1e300`, `+-inf` and NaN, all return (slowest 0.15 s) and none
-  raises; 16,000 random calls with parameters to 1e8 and `abs(z)` to
-  1e300 raise nothing (slowest 2.2 s, a 308-term exact polynomial at
-  `z = 1e57`). One known regression against 2.11.1: `hyp1f1(-0.5, 1e17,
-  -1e10)` returns NaN where 2.11.1 gave the correct 1.00000005 (`b` past
-  2^53, where `b - a` is not exact). Silent wrong answers fixed on the same path: scipy returns
-  `+inf` for every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800),
-  1F1(-10.5; 1e5; 1e6) and 1F1(4.8699; -264.582; 1307.64) now give
-  `-inf`. A `+-inf` is now returned only when a certified lower bound on
-  the magnitude exceeds the double range: from the expansion's logarithm,
-  from the series tail (past which every term has one sign, so the tail is
-  at least its largest term, less a bound on the terms before it), or from
-  the whole series summed with a certified sign and error bound (directly,
-  or in Kummer's form for `z < 0`, whose rounded `b - a` is accounted
-  for), which is limited to 1e6 terms
-  (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series is
-  summed exactly. The sum itself is known only to within a factor of
-  about 1.5 when its sign is certified, so the bound, not the sum, decides
-  (two internally constructed points with exact value 0.99999998 and
-  0.99999999 times the largest double gave `+inf` from the sum; the
-  bound declines them). A value below the double range is a signed 0.0,
-  as in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
-  150,000 random points (`abs(a)` to 200, `abs(b)` to 1e4, `abs(z)` to
-  1e6) scipy overflowed at 29,630; pytcl returned the proven `+-inf` at
-  29,503 (300, and then 120 more, checked against an exact series sum,
-  all correct)
-  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5) and
-  none from the gap between the bound and the sum. `hyp1f1` at
-  `z = +-inf` returns the limit (it hung, or gave `+inf` for `1 - z/2`).
-  A terminating pFq whose exact value exceeds the double range
-  (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
-  `OverflowError` and now returns `+-inf`. `hyp1f1_regularized` at a
-  non-positive integer `b = -m` rounds its shifted parameter `a + m + 1`;
-  at `z < 0`, when `1 - a` is within 1e-6 of a non-positive integer and
-  that rounding is inexact, the value's sin(pi a) part is sensitive to
-  it: the sensitivity is measured with a one-ulp shift and NaN with a
-  `RuntimeWarning` is returned where the rounding moves the value by more
-  than 1e-12 (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was
-  0.0, the value is -5.33e-25; at `b = -3`, `a = 1 + 2 ulp` the refusal
-  starts at `z = -25`, where v2.11.1 was off by 5e-11, and `z = -10`
-  keeps its 2.4e-15; at `z >= 0` and small `abs(z)` nothing changes:
-  `hyp1f1_regularized(1.0000000000000002, -3, 1)` is e to 3.9e-16, and a
-  100,000-point sample with `abs(z)` to 1e2 is unchanged). Its prefactor
-  `(a)_{m+1} z^{m+1} / (m+1)!` is evaluated in double precision and, for
-  large `m` or `abs(z)`, overflows to NaN or `+-inf` for a finite value
-  (`hyp1f1_regularized(0.5, -150, 3)` is `inf`, the value 1.01e72;
-  `(1.5, -200, 50)` is NaN, 2.9e364), as in v2.11.1; unchanged, on the
-  backlog. 0F1, 2F1, U and the general pFq series were
-  audited and do not hang. No other pytcl module calls these functions.
-  What to do: nothing for calls that hung (they now return) or overflowed
-  (they now carry the true sign); expect NaN with a `RuntimeWarning` where
-  an overflow cannot be proven, which in the samples above was only past
-  the 1e6-term cap (`abs(z)` above about 1.6e5 with scipy overflowing),
-  or at `abs(z) >= 1e9` where the expansion does not reach double
-  precision; parameters that round `b - a` to a non-positive integer now
-  give the value of the exact difference at `abs(z) >= 1e9`, at `-inf`,
-  and at `1e2 <= -z < 1e9` where the expansion certifies, and scipy's
-  value (disclosed above) elsewhere. `hyp1f1_regularized` at a
-  non-positive integer `b` and `z < 0` returns NaN with a
-  `RuntimeWarning` where the rounding of `a + 1 - b` moves the value by
-  more than 1e-12. A certified sum near the 1e6-term cap costs about
-  0.2 s per element (0.4 s at `z < 0`).
-
-- `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
-  where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
-  its docstring. v2.11.1 returned NaN for every non-trivial case (3F3,
-  1F2, the terminating 3F2 polynomials, 1F1(-2; 3; z)), and two answers
-  were wrong: 1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`),
-  and 1F1(-1; -3; -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from
-  scipy's `hyp1f1`. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF
-  13.7.2), so the two entry points agree: 1F1(-0.5; 1; +inf) and
-  1F1(1; -1.5; +inf), which hung inside scipy 1.17.1's `hyp1f1` (as large
-  finite `z` did; see the `hyp1f1` entry above), now return their true
-  limits, `-inf` and `+inf`; a terminating series with a pole
-  (`[-2, 1, 1]; [-1, 3]`) raised `ZeroDivisionError` at infinite `z` and
-  now returns NaN (finite `z` still raises). Limits of 0.0 were checked
-  against mpmath at `z = -1e2` and `-1e4`, not beyond. A NaN `z` still
-  gives NaN, and divergent 3F2 and 3F1 still raise `ValueError`. Nothing
-  inside pytcl calls `generalized_hypergeometric`. What to do: nothing;
-  NaN results at infinite z become the true limit where one exists.
-
-- `us_standard_atmosphere_1976`'s -5000 m floor is now inclusive and
-  applies to the geometric input altitude, matching Table I of the
-  standard (NOAA-S/T 76-1562), whose first entry is `Z = -5000 m`
-  (`H = -5004 m`, T = 320.676 K, P = 1.7776E+3 mb). v2.11.1 compared the
-  geopotential altitude against -5000 m, so every `z` in [-5000, -4996.07] m
-  warned "below ... floor" (even `z = -4999.0`) and returned the clamped
-  177761.57 Pa: a 75.9 Pa step against the continuous 177685.71 Pa at
-  `z = -4996`. That sliver now returns its own value (177761.57 Pa at
-  -5000 m down to 177687.04 Pa at -4996.07 m) without a warning; below
-  -5000 m it still warns and clamps to the -5000 m entry. `mach_number` and
-  `true_airspeed_from_mach` call it and inherit the change.
-  What to do: nothing; -5000 m to -4996 m no longer warns and is no longer
-  clamped.
-
-- `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
-  the definition `statsmodels.robust.scale.scale_tau` and R's
-  `robustbase::scaleTau2` implement. v2.11.1 documented that the function
-  was not a tau scale (a ratio of two Tukey rho sums times the MAD) and
-  promised it would be "fixed or removed in v2.12.0"; this closes that
-  promise by fixing it, and the `.. warning::` is gone. On N(0, 1) draws
-  v2.11.1 returned 1.0918 (n = 200000); the new value is 0.9969 to 1.0009
-  over five seeds at n = 200000. Values match statsmodels 0.15.0 to
-  `rel=1e-12` on the vendored cases and on 20 seeds of Student-t(3) at
-  n = 500 (live test, needs the `validation` group, which now includes
-  `statsmodels>=0.14`). When the raw MAD is zero (more than half the
-  residuals tied, as with quantized data) it returns 0.0, where statsmodels
-  divides by zero. Nothing inside pytcl calls `tau_scale`. What to do:
-  `tau_scale` values change (N(0, 1) now about 1.0, not 1.09); the
-  docstring's earlier Yohai-Zamar attribution was wrong.
-
-- **`q_coord_turn_2d` and `q_coord_turn_3d` are now MATLAB's `QCoordTurn`.**
-  v2.11.1 stacked independent per-axis acceleration blocks (rank 2 or 3 in
-  2-D, 3 or 4 in 3-D) and its docstring said so; `QCoordTurn` builds
-  `Q = G*G'` from one column, so its result is rank 1 with x/y/z, velocity
-  and omega cross terms. At `T=1, sigma_a=2, sigma_omega=0.1` the old 2-D
-  result differed from `QCoordTurn` by up to 4.0 elementwise. The new
-  results are bitwise equal, after permuting pytcl's interleaved state to
-  MATLAB's `[x, y, (z,) vx, vy, (vz,) omega]`, to `QCoordTurn` case 5
-  (2-D) and case 7 (3-D) captured under MATLAB R2026a at `T` in
-  {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in {0, 0.01}.
-  Signatures, standard-deviation parameters and the interleaved layout are
-  unchanged; `state_type='position_velocity'` returns the leading block of
-  the omega result (`QCoordTurn` has no 4- or 6-element branch).
-  `np.linalg.cholesky` of the result now fails; pass `G` to square-root
-  filters. Nothing inside pytcl calls either function. The module stays
-  EXPERIMENTAL until `q_coord_turn_polar` is reviewed. What to do: Q from
-  q_coord_turn_2d/3d is now rank 1 with x/y/omega cross terms, as in
-  MATLAB's QCoordTurn; filters tuned against the old per-axis Q need
-  retuning.
-
-- `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
-  through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
-  run of the new `floors` job. Those releases' batching wrapper passes
-  keyword arrays positionally, so the call's lone `s=` cross term landed
-  in `solve_discrete_are`'s `e` slot. The call now
-  passes `e=None` explicitly; five tests in
-  `tests/validation/test_performance_prediction.py` fail at scipy 1.16.1
-  without it. What to do: nothing; results under other SciPy versions are
-  unchanged.
-
-- `mahalanobis_distance` (and the gates built on it) returned 0.0 for a
-  2x2 or 3x3 innovation covariance containing NaN on x86-64, so such a
-  measurement passed every gate; arm64 returned NaN. The closed-form
-  inverse kernels were compiled with `fastmath` NaN assumptions, under
-  which x86 compared a NaN determinant equal to zero and skipped the
-  inverse. Both platforms now return NaN. Results for finite input are
-  bitwise unchanged. What to do: nothing, unless you relied on a NaN
-  covariance passing a gate.
-
-- **`information_filter` predicts from a singular information matrix with
-  MATLAB's `infoFilterDiscPred` formula.** The singular-`Y` branch
-  inverted `Q + 1e-9 (trace(Q)/n + 1) I`, so every prediction from a
-  partially or fully unknown state carried a uniform 2.0e-9 relative
-  error (3.1e-8 on a 4-state case), even at exact `Q = 0`, and the error
-  stayed in `Y` for the rest of the run. The branch now transcribes
-  `infoFilterDiscPred.m:47-58` (`DInv = F' + Y F^-1 Q`, `Y_pred =
-  DInv \ (Y F^-1)`, `y_pred = DInv \ y`), which inverts neither `Q` nor
-  `Y`. It matches MATLAB fixtures (`tests/fixtures/matlab/info_pred_*.csv`)
-  to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
-  raises `LinAlgError`. What to do: nothing; predictions from a singular
-  information matrix change by 2e-9 to 3e-8 relative on the measured
-  cases.
-
-- **`srif_update` uses the right measurement information for a correlated
-  `R_meas`.** Its Cholesky path whitened with `inv(L).T` for `R_meas = L
-  L'`, which carries `inv(L' L)`, not `inv(R_meas)`, whenever `R_meas` is
-  not diagonal. `R_meas = [[2, 1], [1, 1]]` added `[[0.5, -0.5], [-0.5,
-  2.5]]` of information instead of `[[1, -1], [-1, 2]]`, and the posterior
-  information on two MATLAB-captured cases was off by 50% and 45%
-  relative. It now whitens with `inv(L)`, as MATLAB's
-  `sqrtInfoFilterUpdate.m:67-68` does (`SR\H`), and matches
-  `tests/fixtures/matlab/srif_update_*.csv` to 3.4e-16 relative. Diagonal
-  `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
-  estimates computed with a non-diagonal measurement covariance; the
-  results change, and they now match the Kalman filter.
+- `cfar_go` and `cfar_2d(method='go')` ignored a NaN in a cell's reference
+  window. The kernels were compiled with `fastmath` NaN assumptions, under
+  which the max of the two half-window averages dropped a NaN average and
+  kept the other: on `[1, 2, 3, 1e9, 5, nan, 7]` with `guard_cells=1,
+  ref_cells=1, alpha=3` cell 3 got noise estimate 2.0 and was a detection,
+  and the interpreted path (`NUMBA_DISABLE_JIT=1`) agreed only when the
+  NaN sat in the lagging half, because Python's `max(2.0, nan)` is 2.0.
+  A NaN average in either half now gives a NaN noise estimate and
+  threshold, and no detection, compiled and interpreted, as `cfar_so`
+  already did. The GO kernels drop the `nnan`/`ninf` fastmath flags and
+  keep the rest; on 450 random NaN-free inputs (positive, negative, some
+  with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
+  their output is bitwise identical to 2.11.1. `cfar_2d(method='ca')` drops
+  the same two flags: on x86 with AVX-512 its vectorized window sum carried
+  `ninf`, under which an infinite sample gives an undefined result (found by
+  the registry-wide IR check on CI; its output on 40 random NaN-free images
+  is bitwise unchanged). What to do: nothing, unless you relied on a NaN
+  sample in the reference window leaving a GO threshold finite.
 
 - **`marcum_q` at large arguments uses the log-domain quadrature, not
   `scipy.stats.ncx2.sf`.** Every element with `a > 0`, `b > 0` went through
@@ -906,26 +548,275 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   value exactly (1.0 where `b << a`). The same series serves
   `log_marcum_q` below `Q = 1e-10` where `a*b <= 2e4`: on `a` in {0, 1},
   `m` in {1000, 3000, 9999}, `b = sqrt(a^2 + 2m) + c`, `c` in [0, 20] at
-  0.125 spacing, it is within 9.3e-15 of mpmath. What to do: nothing.
+  0.125 spacing, it is within 9.3e-15 of mpmath. `rician_cdf` and
+  `swerling_detection_probability` (case 0) call `marcum_q` and inherit the
+  change. `marcum_q_inv` still inverts through `ncx2.isf`, so for
+  `a*b > 2e4` it is not the exact inverse of `marcum_q`. What to do:
+  nothing.
 
-- `cfar_go` and `cfar_2d(method='go')` ignored a NaN in a cell's reference
-  window. The kernels were compiled with `fastmath` NaN assumptions, under
-  which the max of the two half-window averages dropped a NaN average and
-  kept the other: on `[1, 2, 3, 1e9, 5, nan, 7]` with `guard_cells=1,
-  ref_cells=1, alpha=3` cell 3 got noise estimate 2.0 and was a detection,
-  and the interpreted path (`NUMBA_DISABLE_JIT=1`) agreed only when the
-  NaN sat in the lagging half, because Python's `max(2.0, nan)` is 2.0.
-  A NaN average in either half now gives a NaN noise estimate and
-  threshold, and no detection, compiled and interpreted, as `cfar_so`
-  already did. The GO kernels drop the `nnan`/`ninf` fastmath flags and
-  keep the rest; on 450 random NaN-free inputs (positive, negative, some
-  with a `+inf` sample; 1-D lengths 1 to 399, 2-D shapes up to 59x59)
-  their output is bitwise identical to 2.11.1. `cfar_2d(method='ca')` drops
-  the same two flags: on x86 with AVX-512 its vectorized window sum carried
-  `ninf`, under which an infinite sample gives an undefined result (found by
-  the registry-wide IR check on CI; its output on 40 random NaN-free images
-  is bitwise unchanged). What to do: nothing, unless you relied on a NaN
-  sample in the reference window leaving a GO threshold finite.
+- `tau_scale` is now the Maronna-Zamar tau scale (Technometrics 44(4):307-317),
+  the definition `statsmodels.robust.scale.scale_tau` and R's
+  `robustbase::scaleTau2` implement. v2.11.1 documented that the function
+  was not a tau scale (a ratio of two Tukey rho sums times the MAD) and
+  promised it would be "fixed or removed in v2.12.0"; this closes that
+  promise by fixing it, and the `.. warning::` is gone. On N(0, 1) draws
+  v2.11.1 returned 1.0918 (n = 200000); the new value is 0.9969 to 1.0009
+  over five seeds at n = 200000. Values match statsmodels 0.15.0 to
+  `rel=1e-12` on the vendored cases and on 20 seeds of Student-t(3) at
+  n = 500 (live test, needs the `validation` group, which now includes
+  `statsmodels>=0.14`). When the raw MAD is zero (more than half the
+  residuals tied, as with quantized data) it returns 0.0, where statsmodels
+  divides by zero. Nothing inside pytcl calls `tau_scale`. What to do:
+  `tau_scale` values change (N(0, 1) now about 1.0, not 1.09); the
+  docstring's earlier Yohai-Zamar attribution was wrong.
+
+- **`q_coord_turn_2d` and `q_coord_turn_3d` are now MATLAB's `QCoordTurn`.**
+  v2.11.1 stacked independent per-axis acceleration blocks (rank 2 or 3 in
+  2-D, 3 or 4 in 3-D) and its docstring said so; `QCoordTurn` builds
+  `Q = G*G'` from one column, so its result is rank 1 with x/y/z, velocity
+  and omega cross terms. At `T=1, sigma_a=2, sigma_omega=0.1` the old 2-D
+  result differed from `QCoordTurn` by up to 4.0 elementwise. The new
+  results are bitwise equal, after permuting pytcl's interleaved state to
+  MATLAB's `[x, y, (z,) vx, vy, (vz,) omega]`, to `QCoordTurn` case 5
+  (2-D) and case 7 (3-D) captured under MATLAB R2026a at `T` in
+  {0.1, 1, 3.7}, `sigmaV2` in {1, 4}, `sigmaTurn2` in {0, 0.01}.
+  Signatures, standard-deviation parameters and the interleaved layout are
+  unchanged; `state_type='position_velocity'` returns the leading block of
+  the omega result (`QCoordTurn` has no 4- or 6-element branch).
+  `np.linalg.cholesky` of the result now fails; pass `G` to square-root
+  filters. Nothing inside pytcl calls either function. The module stays
+  EXPERIMENTAL until `q_coord_turn_polar` is reviewed. What to do: Q from
+  q_coord_turn_2d/3d is now rank 1 with x/y/omega cross terms, as in
+  MATLAB's QCoordTurn; filters tuned against the old per-axis Q need
+  retuning.
+
+- **Solid-tide sidereal time and the ecliptic obliquity constant now follow
+  IAU models; results shift slightly.** The tide module's GMST used a linear
+  polynomial without the T^2 term. Against the exact IAU 1982 polynomial
+  it was off by -1.8e-5" at J2000, -0.0436" at MJD 58000, -0.0747" at
+  60000 and -0.0935" at 61000.7. It now shares one IAU 1982 body with
+  `reference_frames.gmst_iau82` (fed the MJD directly, so no precision is
+  lost forming a Julian date) and agrees with the exact value to under
+  1e-8" at all four epochs. Below about MJD 25000, forming `mjd - 51544.5`
+  still rounds as it did in v2.11.1 (up to about 1e-5"). Solid-tide displacement outputs shift by at
+  most 5e-8 m and gravity outputs by under 1e-12. The tide module's own
+  obliquity moved only 4e-5" (it already used the IAU 1976 value).
+  `EPSILON_J2000` (`pytcl.astronomical.ephemerides`) was 0.4090910179 rad,
+  which matched no model; it is now the IAU 1976 value 84381.448" =
+  0.40909280422232897 rad, JPL's "ecliptic of J2000", 0.3685" larger. It
+  drives every `frame="ecliptic"` output: `sun_position`, `moon_position`
+  and `planet_position` (module functions and the `DEEphemeris` methods of
+  the same names). At JD 2460311 the SSB-relative ICRF vectors those return
+  rotate by 0.36" in angle, which at their distance scale of about 1 AU is
+  258 km for the Moon vector (0.98 AU from the SSB) and 389 km for Mars
+  (1.48 AU); `frame="earth_centered"` returns ICRF and is not rotated by this
+  constant. `barycenter_position` takes no frame and is
+  unchanged.
+  What to do: ecliptic-frame ephemeris output and solid-tide phases shift by
+  the stated amounts; nothing to change in calling code.
+
+- **`mahalanobis_distance` and the gating functions built on it reject a
+  mismatched or non-positive-definite covariance instead of returning a
+  number.** In v2.11.1 a length-7 innovation against a 6x6 `S` returned a
+  number (the kernel reads the inverse out of bounds, so the value varied
+  between runs, -5.07 to -5.81 observed) and a length-3 one 0.40 to 0.67; an indefinite but invertible `S`
+  (`[[1, 2], [2, 1]]` with innovation `[1, 1]`) returned 0.667, and a
+  non-symmetric `[[1, 0], [3, 1]]` with `[1, 1]` returned -1.0, all with no
+  signal. A squared distance is never negative and is defined only for a
+  positive-definite `S`. `mahalanobis_distance`, `ellipsoidal_gate`,
+  `gate_measurements` (both gate types, checked once per call) and
+  `mahalanobis_batch` (which takes `S_inv`, so the check is applied to
+  `S_inv`, positive definite exactly when `S` is) now raise `ValueError`,
+  naming both shapes, when the innovation is not 1-d or `S` is not
+  `(m, m)` (and, in `gate_measurements`, when the measurements are not
+  `(n_meas, m)`: a `(k, 1)` array used to broadcast silently), and
+  `numpy.linalg.LinAlgError` when `S` is not positive definite or is too
+  ill-conditioned. The test is on the symmetric part `(S + S.T) / 2`, which
+  is exact for "the form is non-negative for every innovation"; a symmetric
+  `S` is unaffected, and the test is scale-free (an `S` of 1e-170 times the
+  identity is still accepted, as in v2.11.1). "Too ill-conditioned" means a
+  minor (n = 2) or Cholesky pivot rounds to a non-positive value, which
+  happens for some positive-definite `S` at condition number about 1e16 or
+  above (measured on 300 random `S` per size: none rejected up to 1e15; at
+  1e16, 14 of 300 at n = 2 and 0 at n = 3 and 4; at 1e17, 203, 92 and 74);
+  for those v2.11.1's value was already wrong. Callers that now raise on such
+  an `S`: `mahalanobis_distance` itself, `ellipsoidal_gate`,
+  `gate_measurements`, `mahalanobis_batch`, `trackers.mht` (its gating
+  call), `assignment_algorithms.data_association` (cost-matrix
+  construction, whose existing singular fallback re-raises).
+  `jpda.compute_likelihood_matrix` does not raise: it zeroes a track whose
+  `S` fails its own Cholesky test (non-positive-definite, non-symmetric or
+  non-finite) with a `RuntimeWarning`, falls back to the per-pair path if
+  only the batch kernel rejects the inverse, and zeroes the track the same
+  way if that fallback's `mahalanobis_distance` also raises `LinAlgError`
+  (an `S` that passes Cholesky at condition number near 1e16). Valid symmetric
+  positive-definite inputs return bitwise the v2.11.1 values for n = 1, 2,
+  3, 5, 10 and 12 (tested against the shipped module). A NaN entry in the
+  covariance now raises `LinAlgError` too: v2.11.1's fastmath kernels gave
+  NaN on macOS but garbage on Linux (2.8e-309 and 3e-75 at n = 2 and 3 in
+  CI); on x86-64 a 2x2 or 3x3 `S` containing NaN returned 0.0, so the
+  measurement passed every gate, because the closed-form inverse kernels'
+  `fastmath` NaN assumptions made x86 compare a NaN determinant equal to
+  zero and skip the inverse. Cost, measured against v2.11.1 on Apple silicon in
+  one session: about +0.17 to +0.21 us per `mahalanobis_distance` call at
+  n = 2 and 3 (+27 to +32% of a 0.64 us call), about +7 to +13% at n = 1, 6
+  and 12; `gate_measurements` on 50 measurements is 15% faster, because the
+  check runs once per call rather than once per measurement.
+  `mahalanobis_batch` is now a Python wrapper around the unchanged JIT
+  kernel (+0.28 us at 50 x 3), so a user `@njit` function that calls it now
+  gets a `TypingError`; call `mahalanobis_batch` from Python instead. What
+  to do: catch `ValueError` for a shape
+  mismatch and `numpy.linalg.LinAlgError` for a non-positive-definite `S`;
+  both previously returned a silent wrong number.
+
+- **`lambert_universal` raises `ValueError` for antipodal positions and for
+  a time of flight that is not positive and finite.** For antipodal `r1`
+  and `r2` the transfer plane is undefined, but the `A == 0` check missed
+  the computed `A` of about 1e-16 times the scale, so the function returned
+  zero velocities (e = 1, a = 3189 km for `r1 = [6378, 0, 0]`,
+  `r2 = -r1`). It now raises when `r1 x r2 = 0`, and when the positions
+  are nearly antipodal, `cos(dnu) < 0` with `|r1 x r2| / (|r1| |r2|) =
+  |sin(dnu)| < 1e-7`. There the chord term is proportional to `sin(dnu)`,
+  computed as `sin(arccos(c))`, whose relative error from rounding `c` is
+  about `eps / sin(dnu)^2`: order 1 at `sqrt(eps)`, about 2e-2 at 1e-7.
+  v2.11.1 solved such inputs silently: for `|r1| = 7000` km,
+  `|r2| = 1.3 |r1|`, `tof = 5000` s, checked by scipy DOP853 propagation,
+  the relative miss of `r2` was 1.38 at `sin(dnu) = 1.5e-8`, 2.01 at 3e-8,
+  0.20 at 5e-8 and 1e2 to 1e8 further down, and none of 600 exactly
+  antipodal v2.11.1 solutions reached `r2` within 1e-6. Above the
+  threshold accuracy still degrades toward antipodal; in that geometry
+  the miss is 6.8e-3 at 1e-7, 1.1e-3 at 1e-6, 2.0e-5 at 1e-5 and 2.6e-7 at
+  1e-4, and up to 0.28 relative at `sin(dnu)` = 1.1e-7 over `|r2| / |r1|` 0.8 to 2 and `tof` 1500 to 8000 s. A few rejected near-pi
+  inputs (4 of 801 sampled) were accurate to about 1e-3 in v2.11.1. The long way around nearly parallel positions (`dnu` near 2 pi,
+  `|sin(dnu)| < 1e-7`) is rejected too, with its own message: all 68
+  v2.11.1 solutions checked there (`|r2| / |r1|` 0.8 to 2, `tof` 1500 to
+  8000 s) missed `r2` by order 1, returning a nearly radial `v1`. Above
+  the threshold the long way stays unreliable and is documented, not
+  fixed: it raises "did not converge" or misses by order 1 at up to
+  `sin(dnu)` of about 8e-5 in the same sweep. The short way around nearly
+  parallel positions (`dnu` near 0) is not rejected: it is well
+  conditioned, and in the first geometry misses `r2` by below 1e-12 down
+  to `sin(dnu) = 2e-8`. The solve path itself
+  is unchanged, so every input that does not raise returns bitwise the
+  v2.11.1 result. `tof = 0` returned inf/nan
+  velocities and a negative `tof` raised "did not converge"; `tof <= 0`,
+  `nan` and `inf` now raise "tof must be positive and finite".
+  `minimum_energy_transfer` calls it, so for antipodal positions it now
+  raises too, where it returned zero velocities (e = 1, a = 3339 km for
+  `r1 = [6678, 0, 0]`). An `r1` or `r2` that is not a 3-vector raises
+  `ValueError` naming both shapes ("r1 and r2 must be 3-vectors, got
+  shapes (2,) and (3,)"); v2.11.1 raised numpy's own `ValueError` ("shapes
+  (2,) and (3,) not aligned"). What to do:
+  catch `ValueError` for collinear inputs and non-positive times of flight;
+  a handler that matched "did not converge" for negative `tof` must match
+  the new message.
+
+- **`ransac` raises `numpy.linalg.LinAlgError` when every sampled fit
+  fails.** The message is "every RANSAC sample fit failed". v2.11.1
+  returned an all-inlier `lstsq` fit of the whole data set there, which
+  reported every point as an inlier of a model RANSAC had not validated.
+  What to do: catch `numpy.linalg.LinAlgError` if you relied on that
+  fallback, and call `numpy.linalg.lstsq(A, b)` yourself for the
+  whole-data-set fit.
+
+- **`debye` accepts `x < 0`, as MATLAB TCL's `Debye.m` does.** It raised
+  `ValueError("x must be >= 0")`. Negative arguments (scalars or elements
+  of a mixed-sign array, and `debye_1` to `debye_4`) are now evaluated
+  through the exact identity `D_n(-x) = D_n(x) + n x / (n + 1)`, derived in
+  the docstring; `D_n(-inf)` is `inf`. Values match signed mpmath
+  quadrature to 1e-13 relative at the tested points (n in {1, 3, 4, 10} at
+  x = -0.5 and -1; n = 1 at x = -10 and -1e-9). The normalization is unchanged and now
+  documented: pytcl returns the MathWorld normalized function
+  (`D_n(0) = 1`), while `Debye.m` returns the raw integral
+  `int_0^x t^n / (e^t - 1) dt` (`Debye(0) = 0`); multiply by `x^n / n` to
+  convert. `ValueError` for a non-integer or non-positive `n` is unchanged.
+  What to do: drop any `x >= 0` guard or `ValueError` handler written for
+  negative arguments.
+
+- **`SQLStorage` group metadata is readable, and the internal group marker
+  no longer appears in `list_keys()`.** `store_group(name, metadata)` writes
+  the metadata into the value column of an internal `_group:<name>` row, so
+  `get_metadata(name)` raised `KeyError` and the root `list_keys()` listed
+  `"_group:<name>"`. `get_metadata(name)` now returns the stored dict
+  (`{}` for a group stored without metadata), as `HDF5Storage` returns a
+  group's attributes; an array or scalar of the same name still takes
+  precedence. `list_keys()` at any level omits the rows `store_group`
+  writes (a `_group:` key whose value begins `{"_is_group": true`); a
+  scalar the caller stored under a `_group:` name is still listed. Groups
+  themselves are not listed, unlike `HDF5Storage.list_keys`. The fix is
+  read-side only: the on-disk layout is unchanged, and databases written by
+  v2.11.1 read correctly (tested against v2.11.1's own `store_group`). The
+  metadata key `_is_group` is reserved and is not read back. What to do:
+  drop any filtering of `_group:` keys from `list_keys()` results.
+
+- **`shapiro_delay` is accurate with the gravitating body on or near the
+  observer-source segment.** The log argument's denominator
+  `r_o + r_s - r_os` cancelled catastrophically near the segment: v2.11.1
+  returned 0.0, the value for no delay at all, for a body exactly on it
+  (where the delay diverges) and for bodies within rounding of it. With
+  observer and source at +-1e11 m, a body 1 m or 1 km off the path gave
+  0.0 where the delay is 5.13e-4 s and 3.77e-4 s, and at 1e6 m the result
+  was 1.0e-12 relative off; on oblique paths the errors were up to 100%
+  at 1 m and 1 km and 9.4e-6 at 1e6 m. The denominator is now
+  `2 |a x b|^2 / ((r_o r_s - a.b)(r_o + r_s + r_os))` with
+  `a = obs - body`, `b = src - body`, when `a.b < 0`, and
+  `2 (r_o r_s + a.b) / (r_o + r_s + r_os)` otherwise, with `|a x b|^2`
+  formed in compensated arithmetic. Against the original formula at 50
+  digits it is within 2.2e-16 relative at 1 m, 1 km and 1e6 m off (axis-
+  aligned and 300 oblique paths each) and 1.6e-14 on 2000 random
+  geometries, where it moves the v2.11.1 values by at most 1.9e-14
+  relative. It returns `inf` only when `|a x b| = 0` with the body between
+  or at the endpoints. What to do: if you relied on 0.0 for a body on the
+  path, test for `np.isinf` instead.
+
+- **`srif_update` uses the right measurement information for a correlated
+  `R_meas`.** Its Cholesky path whitened with `inv(L).T` for `R_meas = L
+  L'`, which carries `inv(L' L)`, not `inv(R_meas)`, whenever `R_meas` is
+  not diagonal. `R_meas = [[2, 1], [1, 1]]` added `[[0.5, -0.5], [-0.5,
+  2.5]]` of information instead of `[[1, -1], [-1, 2]]`, and the posterior
+  information on two MATLAB-captured cases was off by 50% and 45%
+  relative. It now whitens with `inv(L)`, as MATLAB's
+  `sqrtInfoFilterUpdate.m:67-68` does (`SR\H`), and matches
+  `tests/fixtures/matlab/srif_update_*.csv` to 3.4e-16 relative. Diagonal
+  `R_meas` is bit-identical to 2.11.1. What to do: rerun any SRIF
+  estimates computed with a non-diagonal measurement covariance; the
+  results change, and they now match the Kalman filter.
+
+- **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
+  For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
+  1e-14, `np.linalg.cholesky` succeeds on a roundoff pivot, so the floored
+  eigendecomposition was never used and the largest posterior information
+  eigenvalue (zero prior, `H = I`) was 3.95e18, 5.64e15, 1.19e15 and
+  2.24e30, against floors of 5.0e10, 2.5e9, 7.1e8 and 5.0e23
+  (`1/(1e-10*max_eig)`). They now meet the floor exactly. When Cholesky
+  succeeds, `sum(W**2) * trace(R_meas)` for the whitener `W = inv(L)` (at
+  least the condition number of `L L'`) decides whether to check further;
+  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is tested on its
+  correlation matrix `D^-1/2 R_meas D^-1/2`, and only if that matrix's
+  smallest eigenvalue is at most `m*eps` of its largest is `R_meas`
+  floored (one `eigh`). Cholesky's accuracy depends on the correlation
+  matrix, not on the units, so standard deviations 1e3 and 1e-6 with
+  correlation 0.1 (condition number 1e18) keep their exact information,
+  1.0101e12. On 13,000 singular `R_meas` (`s [[1, 1], [1, 1]]` for s from
+  1e-100 to 1e100, exact-integer and floating `B B'`, badly scaled `D B B'
+  D`, singular blocks beside a diagonal block; `m` from 2 to 6; Cholesky
+  succeeded on 4,513) no posterior information exceeded the floor.
+  Positive-definite `R_meas` keeps its exact result: diagonal `R_meas` is
+  bitwise identical to v2.11.1 at any condition number (5,000 random
+  cases, variances 1e-150 to 1e150); correlated `R_meas` is bitwise
+  identical to v2.11.1's QR stage fed the `inv(L)` whitener on 1,000
+  random `D C D` with `cond(C) <= 4` and standard deviations 1e-10 to
+  1e10, and on 5,000 random rotations with condition numbers to 9.1e13.
+  Where the correlation matrix itself is nearly singular, random rotations
+  (300 per cell, `m` from 2 to 6) were never floored at condition number
+  3.2e14 or below; at 1e15, 0 of 300 were floored for `m = 2` and 2 to 133
+  for `m` = 3 to 6; at 2e15, 3 to 236; at 1e16, 221 to 299. Only the lower
+  triangle of `R_meas` is read, as by `np.linalg.cholesky` in v2.11.1.
+  Cost on a well-conditioned 6x6 update: 21.5 to 23.0 us. `srif_filter`
+  calls `srif_update` and changes with it. What to do: nothing, unless you
+  passed a singular or roundoff-singular correlated `R_meas`; its null
+  direction now carries the floored information, `1/(1e-10*max_eig)`,
+  instead of an arbitrarily large amount.
 
 - **`mle_newton_raphson` flags a flat direction that roundoff left
   slightly positive.** The check fired only on an eigenvalue `<= 0`. The
@@ -972,41 +863,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   confident 1.8e11. Pass `hessian` if an identified model's numerical
   Fisher is flagged.
 
-- **`srif_update` floors an `R_meas` that is singular at roundoff scale.**
-  For exactly singular `R_meas = s [[1, 1], [1, 1]]` at s = 0.1, 2, 7 and
-  1e-14, `np.linalg.cholesky` succeeds on a roundoff pivot, so the floored
-  eigendecomposition was never used and the largest posterior information
-  eigenvalue (zero prior, `H = I`) was 3.95e18, 5.64e15, 1.19e15 and
-  2.24e30, against floors of 5.0e10, 2.5e9, 7.1e8 and 5.0e23
-  (`1/(1e-10*max_eig)`). They now meet the floor exactly. When Cholesky
-  succeeds, `sum(W**2) * trace(R_meas)` for the whitener `W = inv(L)` (at
-  least the condition number of `L L'`) decides whether to check further;
-  past `1/(2*(m+1)**2*eps)` a non-diagonal `R_meas` is tested on its
-  correlation matrix `D^-1/2 R_meas D^-1/2`, and only if that matrix's
-  smallest eigenvalue is at most `m*eps` of its largest is `R_meas`
-  floored (one `eigh`). Cholesky's accuracy depends on the correlation
-  matrix, not on the units, so standard deviations 1e3 and 1e-6 with
-  correlation 0.1 (condition number 1e18) keep their exact information,
-  1.0101e12. On 13,000 singular `R_meas` (`s [[1, 1], [1, 1]]` for s from
-  1e-100 to 1e100, exact-integer and floating `B B'`, badly scaled `D B B'
-  D`, singular blocks beside a diagonal block; `m` from 2 to 6; Cholesky
-  succeeded on 4,513) no posterior information exceeded the floor.
-  Positive-definite `R_meas` keeps its exact result: diagonal `R_meas` is
-  bitwise identical to v2.11.1 at any condition number (5,000 random
-  cases, variances 1e-150 to 1e150); correlated `R_meas` is bitwise
-  identical to v2.11.1's QR stage fed the `inv(L)` whitener on 1,000
-  random `D C D` with `cond(C) <= 4` and standard deviations 1e-10 to
-  1e10, and on 5,000 random rotations with condition numbers to 9.1e13.
-  Where the correlation matrix itself is nearly singular, random rotations
-  (300 per cell, `m` from 2 to 6) were never floored at condition number
-  3.2e14 or below; at 1e15, 0 of 300 were floored for `m = 2` and 2 to 133
-  for `m` = 3 to 6; at 2e15, 3 to 236; at 1e16, 221 to 299. Only the lower
-  triangle of `R_meas` is read, as by `np.linalg.cholesky` in v2.11.1.
-  Cost on a well-conditioned 6x6 update: 21.5 to 23.0 us. `srif_filter`
-  calls `srif_update` and changes with it. What to do: nothing, unless you
-  passed a singular or roundoff-singular correlated `R_meas`; its null
-  direction now carries the floored information, `1/(1e-10*max_eig)`,
-  instead of an arbitrarily large amount.
+- Four public entry points no longer truncate silently when given parallel
+  inputs of unequal length. `mot_metrics(ground_truth, estimates)` with
+  a different number of estimate frames than ground-truth frames dropped
+  the extra frames (three ground-truth frames against two estimate frames reported
+  MOTA = 1.0 instead of counting the miss); `plot_covariance_ellipses`
+  with a different number of covariances than means drew the shorter count;
+  `plot_coordinate_axes_3d` with a two-entry `colors` or `names` returned
+  two traces and dropped the Z axis, and one with more than three entries
+  ignored the extras. These now raise `ValueError` naming the
+  arguments and their lengths. `load_session` on a Gaussian-sum or RBPF
+  snapshot whose per-component (per-particle) lists differ in length
+  restored a filter with the shortest list's count; it now raises
+  `FormatError`, as it does for other malformed sessions. What to do:
+  pass equal-length frame lists to `mot_metrics`, one covariance per mean
+  to `plot_covariance_ellipses`, and exactly three `colors` and `names` to
+  `plot_coordinate_axes_3d`; sessions written by `save_session` are
+  unaffected.
+
+- `TrackDatabaseManager.store_track_history` checks that `states`,
+  `covariances`, `timestamps` and `residuals` have equal length before
+  writing, and writes the whole call inside a SAVEPOINT. Unequal lengths used
+  to store a prefix silently (`(5, 5, 3)` stored 3 rows; residuals of
+  length 8 against 5 dropped 3) or store rows then raise `IndexError`; a
+  row rejected mid-call left its predecessors behind. An unknown `track_id`
+  used to write rows that belong to no track; it now raises `KeyError`
+  before anything is written, as `store_track_state` does. Internal callers
+  are `HDF5TrackStorage.export_to_sql` and `convert_legacy_tracks_to_sql`;
+  both create the track with `initiate_track` first and slice the four
+  arrays consistently, so valid data is unaffected, but an HDF5 track whose
+  `residuals` dataset is shorter than its `timestamps` now raises
+  `ValueError` with nothing stored, where it stored a prefix and raised
+  `IndexError`. What to do: pass states, covariances, timestamps (and
+  residuals) of equal length; a mismatch now raises instead of storing a
+  prefix. Call `initiate_track` before `store_track_history`; an unknown id
+  now raises `KeyError` instead of leaving orphan rows.
+
+- **`great_circle_distance` and `great_circle_azimuth` no longer round their
+  inputs; distances move by up to 0.74 mm and short-pair azimuths by far
+  more.** Both rounded all four coordinates to 10 decimals (up to 5e-11 rad
+  each) before computing, so every distance carried up to about 1 mm of
+  error from the rounding alone and an azimuth carried an error of
+  1e-10 rad divided by the pair's separation in radians. Both now compute
+  on the exact coordinates. Measured against geographiclib on a sphere of
+  radius 6371000 m (`Geodesic(6371000.0, 0)`), maximum over the pairs
+  sampled (the reference takes degrees, so part of each new-code
+  figure below is the oracle's):
+
+  | pairs sampled | distance, relative: v2.11.1 / new | azimuth, rad: v2.11.1 / new |
+  |---|---|---|
+  | 2000 global: distance, per seed over 4 seeds; azimuth, one 2000-pair sample | up to 5.1e-9 / 1.6e-14 | 1.3e-9 / 2.2e-15 |
+  | 1000 at 64 m (both columns) | 1.1e-5 / 4.6e-11 | 1.0e-5 / 4.3e-11 |
+  | 1000 at 1 m | 6.5e-4 / 2.3e-9 | 7.3e-4 / 2.3e-9 |
+  | 1000 at 0.01 m | 7.2e-2 / 2.4e-7 | 6.3e-2 / 2.9e-7 |
+
+  Earlier drafts quoted 2.3e-4 relative for pairs "0 to 64 m" apart; that
+  was a single mixed sample, replaced by the separations above. Nothing
+  here is measured below 0.01 m or above the global sample. The new error
+  grows as pairs shrink (`lat2 - lat1` loses digits); v2.11.1's grows
+  faster. A pair 3e-11 rad apart (0.2 mm) returned azimuth 0.0 from
+  `great_circle_azimuth` and `great_circle_inverse` while the true bearing
+  was 0.46 rad; it now returns 0.46. The distances of the two versions
+  differ by at most 7.4e-4 m (4 seeds x 2000 global pairs).
+  Also changed, because they call these two: `great_circle_inverse`
+  (distance by up to 6.9e-4 m, azimuths by up to 1.3e-9 rad on global
+  pairs and by up to 1e-2 rad on pairs about 1 m apart),
+  `cross_track_distance` (cross-track by up to 6.7e-3 m and along-track by
+  up to 7.3e-3 m over 1000 global point/track pairs),
+  `great_circle_path_intersect` (latitude by up to 1.5e-9 rad, longitude by
+  up to 3.5e-9 rad over 1000 pairs; no `valid` flag changed),
+  `great_circle_waypoint`, `great_circle_waypoints`, `angular_distance`
+  and `compare_great_circle_rhumb`. `great_circle_intersect` did not change
+  on 1000 random inputs; it uses the azimuth only to choose between the two
+  intersections. The caches are now keyed on the exact floats: hit rates
+  depend on exact inputs, where two calls within 1e-10 rad used to share an
+  entry; `get_great_circle_cache_info` and `clear_great_circle_cache` keep
+  their meaning. A cache hit costs 0.1 µs instead of 1.05 µs and a miss
+  1.24 µs instead of 2.11 µs. What to do: nothing, unless you compare
+  against stored v2.11.1 distances (allow 1 mm) or azimuths of pairs
+  closer than about a kilometer.
+
+- **`information_filter` predicts from a singular information matrix with
+  MATLAB's `infoFilterDiscPred` formula.** The singular-`Y` branch
+  inverted `Q + 1e-9 (trace(Q)/n + 1) I`, so every prediction from a
+  partially or fully unknown state carried a uniform 2.0e-9 relative
+  error (3.1e-8 on a 4-state case), even at exact `Q = 0`, and the error
+  stayed in `Y` for the rest of the run. The branch now transcribes
+  `infoFilterDiscPred.m:47-58` (`DInv = F' + Y F^-1 Q`, `Y_pred =
+  DInv \ (Y F^-1)`, `y_pred = DInv \ y`), which inverts neither `Q` nor
+  `Y`. It matches MATLAB fixtures (`tests/fixtures/matlab/info_pred_*.csv`)
+  to 8e-16 relative. This closes the 2.11.1 deferral. A singular `F` still
+  raises `LinAlgError`. What to do: nothing; predictions from a singular
+  information matrix change by 2e-9 to 3e-8 relative on the measured
+  cases.
 
 - **EGM geoid heights, `clenshaw_geoid` and the gravity outputs subtract
   MATLAB's WGS84 reference field, through one helper.** `geoid_height`,
@@ -1102,6 +1051,204 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of 64 us. What to do: nothing, unless you relied on a zero
   horizontal field at the geographic poles.
 
+- `hyp1f1`, `hyp1f1_regularized` and `generalized_hypergeometric` no longer
+  hang at large finite `z`. scipy 1.17.1's `hyp1f1` takes time
+  proportional to `abs(z)` for non-terminating 1F1 at `z > 0` (14 s at
+  1e13, over 60 s from 1e14, e.g. 1F1(0.5; 1.5; 1e15)) and at `z < 0` when
+  `b - a` is a non-positive integer (4 s at -1e12, 36 s at -1e13). It is no
+  longer called at `abs(z) >= 1e9`: non-terminating 1F1 there uses the
+  DLMF 13.7.2 asymptotic expansion, whose Gamma(b)/Gamma(b-a) coefficient
+  is computed without rounding `b - a` into a Gamma argument (Stirling
+  differences, exact sin(pi x) reflection, extended exponent). From
+  `abs(z) = 1e2` the expansion replaces scipy at `z < 0` when `b > 0` and
+  `b - a > 0`; at `1e2 <= z < 1e9` it is used only to prove an overflow,
+  and scipy's finite values are kept. Measured against mpmath (an exact
+  series sum where `b < 0`), `a` in [-60, 60], `abs(b)` up to 1e4; each
+  figure is the maximum over the stated random sample, not a bound: the
+  expansion reached 3.1e-14 relative at `1e2 <= -z < 1e9` (939 points,
+  where scipy reached 2.6e-11 but was better by about 1e-14 at 34 of them)
+  and 1.4e-14 at `-z >= 1e9` for either sign of `b` (two samples, 600 and
+  1,000 points, to 1e13; scipy gave up to 2.4e-12 there); across
+  `z = +-1e2` and `+-1e9` the value moved 2.4e-14 more than mpmath's (20
+  parameter sets). Elsewhere values are scipy's and unchanged, including
+  its errors: up to 3.4e-11 at `z < 0` (b near 6e3), 1.22e-12 at
+  1F1(1; 1000; 1995) and 1.4e-11 at other finite `z > 0` in these
+  samples, and its silent NaN for large parameters (`max(abs(a), abs(b))`
+  above about 150) at `abs(z)` from 1e-300 to 1e4: 14 of the 150,000
+  points below, all with `max(abs(a), abs(b)) >= 277` and `abs(z)` from
+  10 to 1e4, and `hyp1f1(116.18, -146.25, 11.66)`, `hyp1f1(-1401.302,
+  -3092.199, 1950.047)` (an overflow), `hyp1f1(1, 9999.5, -1e-300)`,
+  `hyp1f1(9999.5, 0.5, -1)` and `hyp1f1(-1e4, 1, 1)` return NaN with no
+  warning (the values of the last three are 1, 0.29107 and -0.025079).
+  Near a pole of Gamma(b - a) (the exact `b - a` within 1e-6 of a
+  non-positive integer, but not at one) scipy does not carry `b - a`
+  exactly, and its relative error at `1e2 <= -z < 1e9` reaches
+  `eps * abs(b - a) / d` with `d` the distance to the pole (the maximum
+  over 150 random points with `-z` to 2e4: 2.3e-7 at `d` in [1e-8, 1e-6)
+  and 2.0e-1 below 1e-12). There pytcl now uses the expansion where it
+  certifies (1.1e-14 over the same 150 points; `hyp1f1(25.6, 0.6,
+  -1000)` is 1.047e-66 where scipy gives -0.0) and keeps scipy's value
+  otherwise, as before: scipy is often accurate there (on 2,182 random
+  points with `abs(a) <= 150`, `-z` from 1e2 to 3e3 and the expansion
+  not certifying, within 1e-12 at 1,440 and worse at 742), and its error
+  cannot be predicted from the inputs (a one-ulp shift of `a` often
+  leaves it unchanged; the bound above is exceeded at every accurate
+  point too), so nothing there is turned into NaN. Unfixed scipy values
+  of this kind, disclosed: `hyp1f1(-100.3, -400.3, -5000)` is 0.0 (exact
+  9.366e99; `fl(b - a) = -300`, the exact difference -300 - 1.4e-14),
+  `hyp1f1(12.3, 2.3, -100)` is off by 45%, `hyp1f1(20.1, 0.1, -150)` and
+  `hyp1f1(30.1, 10.1, -300)` have the wrong sign; at `-z < 1e2` scipy
+  loses up to 5.0e-3 at `d` below 1e-12 (150 points) and at `z > 0`
+  3.4e-13 (`hyp1f1(-100.3, -400.3, 500)`). The expansion's own integer tests on
+  `b - a` use the exact difference (TwoSum): with the rounded one,
+  `hyp1f1(-100.3, -400.3, -1e10)`, `hyp1f1(-60.7, -210.7, -1e12)` and
+  `hyp1f1(0.5000000000000001, -4.5, -1e10)` returned 0.0 for 4.4e734
+  (`+inf`), -1.8e578 (`-inf`) and -8.0e-21, at `z = -inf` too; scipy
+  gives the same 0.0 at `-1e10` and `-1e11`. Termination: two grids,
+  17,280 and 11,880 calls with `a` and `b` from -1e4 to 1e4 and `z` from
+  0 to `+-1e300`, `+-inf` and NaN, all return (slowest 0.15 s) and none
+  raises; 16,000 random calls with parameters to 1e8 and `abs(z)` to
+  1e300 raise nothing (slowest 2.2 s, a 308-term exact polynomial at
+  `z = 1e57`). One known regression against 2.11.1: `hyp1f1(-0.5, 1e17,
+  -1e10)` returns NaN where 2.11.1 gave the correct 1.00000005 (`b` past
+  2^53, where `b - a` is not exact). Silent wrong answers fixed on the same path: scipy returns
+  `+inf` for every overflow, so 1F1(-0.5; 1; 800), 1F1(-2.5; 0.5; 800),
+  1F1(-10.5; 1e5; 1e6) and 1F1(4.8699; -264.582; 1307.64) now give
+  `-inf`. A `+-inf` is now returned only when a certified lower bound on
+  the magnitude exceeds the double range: from the expansion's logarithm,
+  from the series tail (past which every term has one sign, so the tail is
+  at least its largest term, less a bound on the terms before it), or from
+  the whole series summed with a certified sign and error bound (directly,
+  or in Kummer's form for `z < 0`, whose rounded `b - a` is accounted
+  for), which is limited to 1e6 terms
+  (`2 max(abs(a), abs(b)) + 6 abs(z) + 100`); a terminating series is
+  summed exactly. The sum itself is known only to within a factor of
+  about 1.5 when its sign is certified, so the bound, not the sum, decides
+  (two internally constructed points with exact value 0.99999998 and
+  0.99999999 times the largest double gave `+inf` from the sum; the
+  bound declines them). A value below the double range is a signed 0.0,
+  as in v2.11.1. Anything unproven is NaN with a `RuntimeWarning`. On
+  150,000 random points (`abs(a)` to 200, `abs(b)` to 1e4, `abs(z)` to
+  1e6) scipy overflowed at 29,630; pytcl returned the proven `+-inf` at
+  29,503 (300, and then 120 more, checked against an exact series sum,
+  all correct)
+  and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5) and
+  none from the gap between the bound and the sum. Past that range the
+  unproven share grows: with `a` and `b` uniform on [-m, m] for m = 200,
+  500 and 1000 and `abs(z)` log-uniform on [1e2, 1e6] with a random sign
+  (1,500 random points each), 0 of 687, 16 of 790 and 87 of 820 scipy
+  overflows are NaN (a second sample of that kind: 0, 11 and 69), from
+  cancellation in the series rather than the cap. Proving an overflow costs a Python-level
+  series sum, so each of those 1,500-point arrays takes 0.12, 0.70 and
+  3.1 s, where 2.11.1 took 0.007, 0.027 and 0.11 s (about 0.2, 0.9 and
+  3.7 ms per overflowing element); finite values are scipy's, at scipy's
+  speed. `hyp1f1` at
+  `z = +-inf` returns the limit (it hung, or gave `+inf` for `1 - z/2`).
+  A terminating pFq whose exact value exceeds the double range
+  (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
+  `OverflowError` and now returns `+-inf`. `hyp1f1_regularized` at a
+  non-positive integer `b = -m` rounds its shifted parameter `a + m + 1`;
+  at `z < 0`, when `1 - a` is within 1e-6 of a non-positive integer and
+  that rounding is inexact, the value's sin(pi a) part is sensitive to
+  it: the sensitivity is measured with a one-ulp shift and NaN with a
+  `RuntimeWarning` is returned where the rounding moves the value by more
+  than 1e-12 (`hyp1f1_regularized(1.0000000000000002, -3, -1e10)` was
+  0.0, the value is -5.33e-25; at `b = -3`, `a = 1 + 2 ulp` the refusal
+  starts at `z = -25`, where v2.11.1 was off by 5e-11, and `z = -10`
+  keeps its 2.4e-15; at `z >= 0` and small `abs(z)` nothing changes:
+  `hyp1f1_regularized(1.0000000000000002, -3, 1)` is e to 3.9e-16, and a
+  100,000-point sample with `abs(z)` to 1e2 is unchanged). Its prefactor
+  `(a)_{m+1} z^{m+1} / (m+1)!` is evaluated in double precision and, for
+  large `m` or `abs(z)`, overflows to NaN or `+-inf` for a finite value
+  (`hyp1f1_regularized(0.5, -150, 3)` is `inf`, the value 1.01e72;
+  `(1.5, -200, 50)` is NaN, 2.9e364), as in v2.11.1; unchanged, on the
+  backlog. 0F1, 2F1, U and the general pFq series were
+  audited and do not hang. No other pytcl module calls these functions.
+  What to do: nothing for calls that hung (they now return) or overflowed
+  (they now carry the true sign); expect NaN with a `RuntimeWarning` where
+  an overflow cannot be proven, which in the samples above was only past
+  the 1e6-term cap (`abs(z)` above about 1.6e5 with scipy overflowing),
+  or at `abs(z) >= 1e9` where the expansion does not reach double
+  precision; parameters that round `b - a` to a non-positive integer now
+  give the value of the exact difference at `abs(z) >= 1e9`, at `-inf`,
+  and at `1e2 <= -z < 1e9` where the expansion certifies, and scipy's
+  value (disclosed above) elsewhere. `hyp1f1_regularized` at a
+  non-positive integer `b` and `z < 0` returns NaN with a
+  `RuntimeWarning` where the rounding of `a + 1 - b` moves the value by
+  more than 1e-12. A certified sum near the 1e6-term cap costs about
+  0.2 s per element (0.4 s at `z < 0`).
+
+- `generalized_hypergeometric` at `z = +inf` or `-inf` returns the limit
+  where one exists (DLMF 16.11) instead of NaN; the rules are tabulated in
+  its docstring. v2.11.1 returned NaN for most non-trivial cases (3F3, 1F2,
+  the terminating 3F2 polynomials, 1F1(-2; 3; z), 0F1), but not all
+  (non-terminating 2F1 gave `inf` at `+inf`), and some answers were wrong:
+  1F1(-1; 2; +inf) gave `+inf` for `1 - z/2` (now `-inf`), and 1F1(-1; -3;
+  -inf) gave `+inf` for `1 + z/3` (now `-inf`), both from scipy's `hyp1f1`,
+  and the terminating 2F1(-2, 1; 3; +inf) gave `-inf` (now `+inf`, the
+  correct limit). 0F1 at `+inf` is now `inf`, and at `-inf` it is 0.0 when
+  `b > 1/2` and NaN otherwise, where v2.11.1 gave NaN for both. A
+  non-terminating 2F1 at `+inf` is now NaN (a branch cut), where scipy gave
+  `inf`, and at `-inf` it is 0.0 where v2.11.1 gave NaN (2F1(1, 2; 3;
+  -inf)). A scalar infinite `z` for 0F1 and 2F1 returns `np.float64` instead
+  of a 0-d array. 1F1 at infinite `z` is now `hyp1f1`'s limit (DLMF 13.7.2),
+  so the two entry points agree: 1F1(-0.5; 1; +inf) and 1F1(1; -1.5; +inf),
+  which hung inside scipy 1.17.1's `hyp1f1` (as large finite `z` did; see
+  the `hyp1f1` entry above), now return their true limits, `-inf` and
+  `+inf`; a terminating series with a pole (`[-2, 1, 1]; [-1, 3]`) raised
+  `ZeroDivisionError` at infinite `z` and now returns NaN (finite `z` still
+  raises). Limits of 0.0 were checked against mpmath at `z = -1e2` and
+  `-1e4`, not beyond. A NaN `z` still gives NaN, and divergent 3F2 and 3F1
+  still raise `ValueError`. Nothing inside pytcl calls
+  `generalized_hypergeometric`. What to do: nothing; NaN results at infinite
+  z become the true limit where one exists.
+
+- **`oblique_stereographic` and `oblique_stereographic_inverse` no longer
+  return NaN for an origin or a point at or next to a pole.** The EPSG
+  9809 forms `(1 + sin) / (1 - sin)` and `asin((w - 1) / (w + 1))` became
+  inf/inf for an origin within a few ulps of pi/2 (`nextafter(pi/2, 0)`,
+  89.9999999 deg) and for a point exactly at a pole, and lost digits
+  nearby; the inverse cancelled catastrophically for a southern origin near
+  -pi/2. They are now evaluated in cancellation-free forms (and the
+  southern inverse in the mirrored northern aspect). Against EPSG 9809 at
+  60 digits, on 3000 random origins with `|lat0| <= 1.55` rad and points
+  within 0.3 rad of them, the error fell from 2.5e-7 m to 6.1e-9 m;
+  values move by at most 2.5e-7 m (8.6e-8 m for `|lat0| < 80` deg), and
+  inverse latitudes by at most 4.6e-11 rad. What to do: nothing.
+
+- `us_standard_atmosphere_1976`'s -5000 m floor is now inclusive and
+  applies to the geometric input altitude, matching Table I of the
+  standard (NOAA-S/T 76-1562), whose first entry is `Z = -5000 m`
+  (`H = -5004 m`, T = 320.676 K, P = 1.7776E+3 mb). v2.11.1 compared the
+  geopotential altitude against -5000 m, so every `z` in [-5000, -4996.07] m
+  warned "below ... floor" (even `z = -4999.0`) and returned the clamped
+  177761.57 Pa: a 75.9 Pa step against the continuous 177685.71 Pa at
+  `z = -4996`. That sliver now returns its own value (177761.57 Pa at
+  -5000 m down to 177687.04 Pa at -4996.07 m) without a warning; below
+  -5000 m it still warns and clamps to the -5000 m entry. `mach_number` and
+  `true_airspeed_from_mach` call it and inherit the change.
+  What to do: nothing; -5000 m to -4996 m no longer warns and is no longer
+  clamped.
+
+- **`threshold_factor` raises its own `ValueError` when the requested Pfa is
+  unreachable for GO, SO and OS.** When `pfa` was below what the threshold
+  search reaches (alpha up to 1e12; e.g. `threshold_factor(1e-15, 2, "so")`),
+  the search gave up silently and scipy's `brentq` raised "f(a) and f(b) must
+  have different signs", which names neither the pfa nor the method. The new
+  message names `pfa`, the method and `n_ref`. scipy's error was already a
+  `ValueError`, so only the message changes. What to do: catch ValueError
+  (previously scipy's bracket error).
+
+- `riccati_post_no_clutter` raised `ValueError` under SciPy 1.16.0
+  through 1.16.2 (scipy gh-23336, fixed in 1.16.3), found by the first
+  run of the new `floors` job. Those releases' batching wrapper passes
+  keyword arrays positionally, so the call's lone `s=` cross term landed
+  in `solve_discrete_are`'s `e` slot. The call now
+  passes `e=None` explicitly; five tests in
+  `tests/validation/test_performance_prediction.py` fail at scipy 1.16.1
+  without it. What to do: nothing; results under other SciPy versions are
+  unchanged.
+
 - **A `float32` sea-level refractivity `ns` gets a float64 decay
   constant.** `cart2ruv_std_refrac`, `ruv2cart_std_refrac`, their
   `_cubature` variants and `std_refrac_bias_approx` derive the decay
@@ -1109,6 +1256,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CRPL formula. v2.11.1 evaluated a NumPy `float32` `ns` in float32, 6.5e-7
   relative off; every other input type gives the identical value. What to
   do: nothing.
+
+### Deprecated
+
+- `pytcl.core.validation.ensure_symmetric` (removal in v3.0.0). It checked
+  *and* symmetrized, while `kalman.matrix_utils.ensure_symmetric` only
+  symmetrizes; two contracts under one name. The new
+  `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  validates and returns the input unchanged. The validators in
+  `core.validation` now use it internally, with unchanged return values.
+  What to do: call `check_symmetric` to validate, or
+  `pytcl.dynamic_estimation.kalman.matrix_utils.ensure_symmetric` to
+  symmetrize.
+
+- `pytcl.gravity.julian_centuries_j2000(mjd)` (removal in v3.0.0). It takes a
+  Modified Julian Date, while `pytcl.astronomical.julian_centuries_j2000(jd)`
+  takes a Julian date; the same name under two argument conventions returns
+  -65.7 instead of 0 when an MJD reaches the astronomical one, with no error.
+  What to do: replace `gravity.julian_centuries_j2000(mjd)` with
+  `astronomical.julian_centuries_j2000(mjd + 2400000.5)`.
+
+### Added
+
+- `pytcl.core.check_symmetric(arr, name="matrix", rtol=1e-10, atol=1e-10)`
+  (also `pytcl.core.validation.check_symmetric`). It validates that `arr` is
+  square and symmetric within the tolerances and returns it unchanged,
+  raising `ValidationError` otherwise; it replaces the check-and-symmetrize
+  contract of the deprecated `ensure_symmetric` (see Deprecated). What to
+  do: nothing.
+
+- `pytcl.core.PytclDeprecationWarning` (also in `pytcl.core.exceptions`),
+  a `DeprecationWarning` subclass that every pytcl deprecation now emits
+  (`SimplifiedThermosphere`, the v1.x compatibility adapters in
+  `pytcl.io.compat`, and `MigrationHelper`). The test suite turns it into
+  an error; the v2.11 rule that was meant to do so never fired, because
+  pytest applies the last matching filter and its module field matched
+  the caller rather than pytcl. What to do: nothing; filters on
+  `DeprecationWarning` still match.
 
 ## [2.11.1] - 2026-10-22
 
