@@ -1133,7 +1133,15 @@ twenty-four EXPERIMENTAL and three DEPRECATED modules also changed.
   29,503 (300, and then 120 more, checked against an exact series sum,
   all correct)
   and NaN at 127, all beyond the 1e6-term cap (`abs(z)` above 1.6e5) and
-  none from the gap between the bound and the sum. `hyp1f1` at
+  none from the gap between the bound and the sum. Past that range the
+  unproven share grows: with `abs(z)` from 1e2 to 1e6 and `abs(a)`,
+  `abs(b)` to 200, 500 and 1000 (1,500 random points each), 0 of 687, 16
+  of 790 and 87 of 820 scipy overflows are NaN, from cancellation in the
+  series rather than the cap. Proving an overflow costs a Python-level
+  series sum, so each of those 1,500-point arrays takes 0.12, 0.70 and
+  3.1 s, where 2.11.1 took 0.007, 0.027 and 0.11 s (about 0.2, 0.9 and
+  3.7 ms per overflowing element); finite values are scipy's, at scipy's
+  speed. `hyp1f1` at
   `z = +-inf` returns the limit (it hung, or gave `+inf` for `1 - z/2`).
   A terminating pFq whose exact value exceeds the double range
   (`generalized_hypergeometric([-5], [], 1e100)`, `(1 - z)^5`) raised
