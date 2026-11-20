@@ -55,6 +55,15 @@ names each would take:
   change alone moved ordinary results by up to 3.3e-13 relative and flipped
   14 of 3000 random geometries to "did not converge" in one branch, because
   the absolute 1e-10 s test sits at the floating-point floor.
+- **`hyp1f1` overflow proofs: speed and coverage.** v2.12.0 returns `+-inf`
+  only for a proven overflow. The proof is a Python-level series sum, so an
+  array of overflowing elements runs 17 to 28 times slower than 2.11.1's
+  scipy pass-through at `abs(a)`, `abs(b)` up to 1000, and with
+  cancellation in the series (`abs(a)`, `abs(b)` above about 200) up to 11%
+  of overflows stay unproven and return NaN with a `RuntimeWarning`. Move
+  the term recurrence into a numba kernel, and prove overflows past the
+  cancellation (for example from the tail beyond `k = ceil(-a)`, or in
+  higher precision).
 - **Pseudo-inverse sites to the unidentifiable-covariance convention.**
   `least_squares.weighted_least_squares` (`pinv(AtWA)`),
   `information_filter.py` and `smoothers.py` still return finite

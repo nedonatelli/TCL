@@ -124,6 +124,10 @@ Next
   ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
   must be run once by someone with ``EGM2008.cof`` before its oracle claims
   count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
+  faster and wider ``hyp1f1`` overflow proofs (a numba term recurrence;
+  v2.12.0's Python-level proof makes overflowing arrays 17 to 28 times
+  slower than 2.11.1 at ``abs(a)``, ``abs(b)`` up to 1000, and up to 11% of
+  overflows with series cancellation stay unproven and return NaN);
   an accurate ``lambert_universal`` near antipodal positions and on the
   long way around nearly parallel ones (``atan2`` transfer angle plus a
   stopping test relative to ``tof``; v2.12.0 rejects ``|sin(dnu)| < 1e-7``
