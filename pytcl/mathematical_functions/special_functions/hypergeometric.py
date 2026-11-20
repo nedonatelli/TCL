@@ -358,7 +358,7 @@ def _certified_series(
     Terms are formed by the term-ratio recurrence in mantissa/exponent form
     (relative error under 8 k eps in term k), up to
     N = 2 max(abs(a), abs(b)) + 6 abs(z) + 100 or, earlier, the first block
-    end N > abs(b) with r <= 1/2 below and a term under 2^-69 of the
+    end N > abs(b) with r <= 1/2 below and a term under 2^-70 of the
     largest. Past N each ratio is at most
     r = (N + abs(a)) abs(z) / ((N - abs(b)) (N + 1)) < 1 (r decreases in N
     for N > abs(b)), so the rest is at most abs(t_N) r / (1 - r). The terms
@@ -430,10 +430,13 @@ def _certified_series(
     dropped = (n + 1 - significant.size) * 2.0 * _TERM_FLOOR
     total = math.fsum(significant.tolist())
     magnitude = math.fsum(np.abs(significant).tolist())
-    r = (n + abs(a)) * abs(z) / ((n - abs(b)) * (n + 1.0))
-    remainder = abs(scaled[-1]) * r / (1.0 - r)
     eps = np.finfo(np.float64).eps
-    rounding = (8.0 * (n + 2) * eps + 2.0 * perturbation) * magnitude
+    # The tail starts from the exact t_n (its rounding and the perturbation
+    # included) and, in Kummer's form, from the exact a.
+    term_error = 8.0 * (n + 2) * eps + 2.0 * perturbation
+    r = (n + abs(a) + a_err) * abs(z) / ((n - abs(b)) * (n + 1.0))
+    remainder = abs(scaled[-1]) * (1.0 + term_error) * r / (1.0 - r)
+    rounding = term_error * magnitude
     error = rounding + remainder + dropped
     if abs(total) <= 2.0 * error:
         return None
