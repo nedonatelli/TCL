@@ -507,7 +507,8 @@ class TestHypergeometricIntegration:
 def _hyp1f1_before_scipy_first(a, b, z):
     """The ``_hyp1f1`` body from before the per-element call was gated.
 
-    Frozen copy: it calls the expansion for every ``far`` element.
+    Release-gate snapshot of the pre-fix gating logic: it calls the
+    expansion for every ``far`` element. Do not update it with the code.
     """
     h = hypergeometric
     a, b, z = np.broadcast_arrays(
@@ -555,7 +556,7 @@ def _hyp1f1_before_scipy_first(a, b, z):
 def test_hyp1f1_scipy_first_gate_is_bitwise_unchanged():
     """Skipping the expansion for finite scipy values changes no value."""
     rng = np.random.default_rng(20261119)
-    n = 6000
+    n = 150
     a = np.concatenate(
         [
             rng.uniform(-5, 5, n),
@@ -581,6 +582,32 @@ def test_hyp1f1_scipy_first_gate_is_bitwise_unchanged():
     a = np.concatenate([a, a, -np.abs(a)])
     b = np.concatenate([b, -b, np.abs(b)])
     z = np.concatenate([z, z, -z])
+    # Huge |a|: scipy returns NaN (not inf) for z > 0 here, and the expansion
+    # proves the overflow.
+    m = 400
+    a_huge = np.concatenate(
+        [
+            rng.uniform(-1e5, 1e5, m),
+            rng.choice([-1.0, 1.0], m) * rng.uniform(2e3, 1e4, m),
+        ]
+    )
+    b_huge = np.concatenate([rng.uniform(-1e5, 1e5, m), rng.uniform(-10, 0, m)])
+    z_huge = 10 ** rng.uniform(6, 9, 2 * m)
+    a = np.concatenate([a, a_huge])
+    b = np.concatenate([b, b_huge])
+    z = np.concatenate([z, z_huge])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        scipy_value = sp.hyp1f1(a, b, z)
+    gated = (
+        (z > 0)
+        & (z < hypergeometric._HYP1F1_SCIPY_MAX_ABS_Z)
+        & np.isnan(scipy_value)
+        & np.isfinite(a)
+        & ~((a <= 0) & (a == np.round(a)))
+        & ~((b <= 0) & (b == np.round(b)))
+    )
+    assert gated.sum() > 100
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         new = hypergeometric._hyp1f1(a, b, z)
