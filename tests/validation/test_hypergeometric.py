@@ -14,10 +14,14 @@ Tests cover:
 - SciPy consistency
 """
 
+import warnings
+
 import numpy as np
 import pytest
+import scipy.special as sp
 from scipy.special import gamma
 
+from pytcl.mathematical_functions.special_functions import hypergeometric
 from pytcl.mathematical_functions.special_functions.hypergeometric import (
     falling_factorial,
     generalized_hypergeometric,
@@ -498,3 +502,116 @@ class TestHypergeometricIntegration:
         result = hyp0f1(1.0, 1.0)
         expected = iv(0, 2.0)
         assert result == pytest.approx(expected, rel=1e-10)
+
+
+def _hyp1f1_before_scipy_first(a, b, z):
+    """The ``_hyp1f1`` body from before the per-element call was gated.
+
+    Release-gate snapshot of the pre-fix gating logic: it calls the
+    expansion for every ``far`` element. Do not update it with the code.
+    """
+    h = hypergeometric
+    a, b, z = np.broadcast_arrays(
+        np.asarray(a, dtype=np.float64),
+        np.asarray(b, dtype=np.float64),
+        np.asarray(z, dtype=np.float64),
+    )
+    finite_params = np.isfinite(a) & np.isfinite(b)
+    terminating = finite_params & (a <= 0) & (a == np.round(a))
+    general = finite_params & ~terminating & ~((b <= 0) & (b == np.round(b)))
+    beyond = np.abs(z) >= h._HYP1F1_SCIPY_MAX_ABS_Z
+    large = general & (np.abs(z) >= h._HYP1F1_ASYMPTOTIC_MIN_ABS_Z)
+    pole_distance = np.full(z.shape, np.inf)
+    pole_distance[finite_params] = h._pole_distance(b[finite_params], a[finite_params])
+    near_pole = (
+        large & (z < 0) & (pole_distance > 0.0) & (pole_distance < h._POLE_DISTANCE)
+    )
+    far = large & (beyond | (z > 0) | ((b > 0) & (b - a > 0)) | near_pole)
+    result = np.full(z.shape, np.nan)
+    for i in np.flatnonzero(far):
+        result.flat[i] = h._hyp1f1_large_z(a.flat[i], b.flat[i], z.flat[i])
+    polynomial_limit = terminating & np.isinf(z)
+    for i in np.flatnonzero(polynomial_limit):
+        result.flat[i] = h._pfq_limit_at_infinity(
+            a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
+        )
+    uncertified = far & np.isnan(result)
+    use_scipy = (~far & ~polynomial_limit) | (uncertified & ~beyond)
+    result[use_scipy] = sp.hyp1f1(a[use_scipy], b[use_scipy], z[use_scipy])
+    scipy_inf = use_scipy & np.isinf(result) & np.isfinite(z)
+    overflowed = scipy_inf & general
+    for i in np.flatnonzero(overflowed):
+        ai, bi, zi = a.flat[i], b.flat[i], z.flat[i]
+        value = h._hyp1f1_large_z(ai, bi, zi, overflowed=True)
+        if np.isnan(value):
+            value = h._certified_overflow(ai, bi, zi)
+        result.flat[i] = value
+    for i in np.flatnonzero(scipy_inf & terminating):
+        result.flat[i] = h._exact_polynomial_value(
+            a.flat[i : i + 1], b.flat[i : i + 1], z.flat[i]
+        )
+    return result
+
+
+def test_hyp1f1_scipy_first_gate_is_bitwise_unchanged():
+    """Skipping the expansion for finite scipy values changes no value."""
+    rng = np.random.default_rng(20261119)
+    n = 150
+    a = np.concatenate(
+        [
+            rng.uniform(-5, 5, n),
+            rng.uniform(-50, 50, n),
+            rng.uniform(-1000, 1000, n),
+            rng.uniform(-8, 8, n).round(),
+        ]
+    )
+    b = np.concatenate(
+        [
+            rng.uniform(0.1, 5, n),
+            rng.uniform(-50, 50, n),
+            rng.uniform(-1000, 1000, n),
+            rng.uniform(1, 700, n),
+        ]
+    )
+    mag = 10 ** rng.uniform(2, 9, 4 * n)
+    mag[: n // 2] = rng.uniform(100, 800, n // 2)
+    sign = np.where(rng.random(4 * n) < 0.5, -1.0, 1.0)
+    z = sign * mag
+    # b - a > 0 and its negation, with b > 0 and its negation, at both signs
+    # of z; the large |a| rows make scipy overflow at moderate z.
+    a = np.concatenate([a, a, -np.abs(a)])
+    b = np.concatenate([b, -b, np.abs(b)])
+    z = np.concatenate([z, z, -z])
+    # Huge |a|: scipy returns NaN (not inf) for z > 0 here, and the expansion
+    # proves the overflow.
+    m = 400
+    a_huge = np.concatenate(
+        [
+            rng.uniform(-1e5, 1e5, m),
+            rng.choice([-1.0, 1.0], m) * rng.uniform(2e3, 1e4, m),
+        ]
+    )
+    b_huge = np.concatenate([rng.uniform(-1e5, 1e5, m), rng.uniform(-10, 0, m)])
+    z_huge = 10 ** rng.uniform(6, 9, 2 * m)
+    a = np.concatenate([a, a_huge])
+    b = np.concatenate([b, b_huge])
+    z = np.concatenate([z, z_huge])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        scipy_value = sp.hyp1f1(a, b, z)
+    gated = (
+        (z > 0)
+        & (z < hypergeometric._HYP1F1_SCIPY_MAX_ABS_Z)
+        & np.isnan(scipy_value)
+        & np.isfinite(a)
+        & ~((a <= 0) & (a == np.round(a)))
+        & ~((b <= 0) & (b == np.round(b)))
+    )
+    assert gated.sum() > 100
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        new = hypergeometric._hyp1f1(a, b, z)
+        old = _hyp1f1_before_scipy_first(a, b, z)
+    assert np.isinf(old).any() and np.isfinite(old).any()
+    assert np.array_equal(new, old, equal_nan=True)
+    assert np.array_equal(np.signbit(new), np.signbit(old))

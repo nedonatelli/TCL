@@ -391,8 +391,9 @@ def factorial(
         Values of n!. With ``exact=False``, a float64 array. With
         ``exact=True``, a Python ``int`` for scalar or 0-d input, an
         ``int64`` array when every value fits, and otherwise an ``object``
-        array of Python ints. Negative ``n`` gives 0; non-integer ``n``
-        raises ``ValueError``.
+        array of Python ints. Negative ``n`` gives 0. A non-integer ``n``
+        raises ``ValueError`` with ``exact=True``; with ``exact=False`` it
+        returns ``gamma(n + 1)``.
 
     Examples
     --------

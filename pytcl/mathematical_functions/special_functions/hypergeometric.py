@@ -109,6 +109,7 @@ _LOG_DOUBLE_TINY = math.log(np.finfo(np.float64).smallest_subnormal)
 _LOG_EPS = math.log(np.finfo(np.float64).eps)
 _LN2 = math.log(2.0)
 _CERTIFIED_SUM_MAX_TERMS = 1_000_000
+_TERM_FLOOR = 2.0**-64
 _ASYMPTOTIC_MAX_TERMS = 200
 # scipy's hyp1f1 at 1e2 <= -z < 1e9 loses up to eps * abs(b - a) / d of its
 # relative accuracy when the exact b - a is a distance d from a pole of
@@ -354,16 +355,20 @@ def _certified_series(
     """Sign of 1F1(a; b; z) and the log of a lower bound on its magnitude
     from its series, or None.
 
-    Every term up to N = 2 max(abs(a), abs(b)) + 6 abs(z) + 100 is formed
-    by the term-ratio recurrence in mantissa/exponent form (relative error
-    under 8 k eps in term k), scaled by the largest term and summed
-    exactly (``math.fsum``). Past N each ratio is at most
-    r = (N + abs(a)) abs(z) / ((N - abs(b)) (N + 1)) < 1, so the rest is at
-    most abs(t_N) r / (1 - r). With E the rounding bound plus that
-    remainder, the sign is certified only when abs(sum) > 2 E, and the
-    magnitude is then at least abs(sum) - E, which is what is returned
-    (the sum itself is known only to within a factor of about 1.5). None
-    otherwise, or when N exceeds ``_CERTIFIED_SUM_MAX_TERMS``.
+    Terms are formed by the term-ratio recurrence in mantissa/exponent form
+    (relative error under 8 k eps in term k), up to
+    N = 2 max(abs(a), abs(b)) + 6 abs(z) + 100 or, earlier, the first block
+    end N > abs(b) with r <= 1/2 below and a term under 2^-70 of the
+    largest. Past N each ratio is at most
+    r = (N + abs(a)) abs(z) / ((N - abs(b)) (N + 1)) < 1 (r decreases in N
+    for N > abs(b)), so the rest is at most abs(t_N) r / (1 - r). The terms
+    are scaled by the largest; those at or above 2^-64 are summed exactly
+    (``math.fsum``) and the others are bounded by their count times 2^-63.
+    With E the rounding bound plus those two, the sign is certified only
+    when abs(sum) > 2 E, and the magnitude is then at least abs(sum) - E,
+    which is what is returned (the sum itself is known only to within a
+    factor of about 1.5). None otherwise, or when the full N exceeds
+    ``_CERTIFIED_SUM_MAX_TERMS``.
 
     ``a_err`` is the magnitude of the rounding error in ``a`` when it is a
     rounded difference (Kummer's form): term k of the exact series is term
@@ -376,39 +381,63 @@ def _certified_series(
     n = math.ceil(2.0 * max(abs(a), abs(b)) + 6.0 * abs(z) + 100.0)
     if n > _CERTIFIED_SUM_MAX_TERMS:
         return None
-    k = np.arange(n, dtype=np.float64)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ratio = (a + k) * z / ((b + k) * (k + 1.0))
     perturbation = 0.0
     if a_err:
+        k = np.arange(n, dtype=np.float64)
         with np.errstate(divide="ignore"):
             perturbation = a_err * float(np.sum(1.0 / np.abs(a + k)))
         if not perturbation <= 1e-2:
             return None
-    rm, re = np.frexp(ratio)
     mant = np.empty(n + 1)
     expo = np.empty(n + 1, dtype=np.int64)
     mant[0], expo[0] = 0.5, 1
     carry_m, carry_e = 0.5, 1
+    top = 1
     for start in range(0, n, 512):
         stop = min(n, start + 512)
-        block_m = carry_m * np.cumprod(rm[start:stop])
-        block_e = carry_e + np.cumsum(re[start:stop])
+        k = np.arange(start, stop, dtype=np.float64)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rm, re = np.frexp((a + k) * z / ((b + k) * (k + 1.0)))
+        block_m = carry_m * np.cumprod(rm)
+        block_e = carry_e + np.cumsum(re)
         bm, be = np.frexp(block_m)
         mant[start + 1 : stop + 1] = bm
         expo[start + 1 : stop + 1] = block_e + be
         carry_m, carry_e = float(bm[-1]), int(block_e[-1] + be[-1])
-    nonzero = mant != 0.0
-    top = int(np.max(expo[nonzero]))
+        block_nonzero = bm != 0.0
+        if np.any(block_nonzero):
+            top = max(top, int(np.max(expo[start + 1 : stop + 1][block_nonzero])))
+        # The tail bound below holds at any n > abs(b) where its ratio bound
+        # r is below 1 (r decreases in n there), and past such an n the terms
+        # shrink, so the sum can stop once the last term is negligible.
+        if (
+            stop < n
+            and stop > abs(b)
+            and (stop + abs(a)) * abs(z) <= 0.5 * (stop - abs(b)) * (stop + 1.0)
+            and (carry_m == 0.0 or carry_e < top - 70)
+        ):
+            n = stop
+            mant, expo = mant[: n + 1], expo[: n + 1]
+            break
     with np.errstate(under="ignore"):
         scaled = np.ldexp(mant, (expo - top).astype(np.int64))
-    total = math.fsum(scaled.tolist())
-    magnitude = math.fsum(np.abs(scaled).tolist())
-    r = (n + abs(a)) * abs(z) / ((n - abs(b)) * (n + 1.0))
-    remainder = abs(scaled[-1]) * r / (1.0 - r)
+    # fsum slows down as the exponent range it holds widens, so terms below
+    # 2^-64 of the largest are left out and bounded instead: each exact term
+    # there is under 2^-63 (its rounding included), and the count is added
+    # to the error.
+    kept = np.abs(scaled) >= _TERM_FLOOR
+    significant = scaled[kept]
+    dropped = (n + 1 - significant.size) * 2.0 * _TERM_FLOOR
+    total = math.fsum(significant.tolist())
+    magnitude = math.fsum(np.abs(significant).tolist())
     eps = np.finfo(np.float64).eps
-    rounding = (8.0 * (n + 2) * eps + 2.0 * perturbation) * magnitude
-    error = rounding + remainder
+    # The tail starts from the exact t_n (its rounding and the perturbation
+    # included) and, in Kummer's form, from the exact a.
+    term_error = 8.0 * (n + 2) * eps + 2.0 * perturbation
+    r = (n + abs(a) + a_err) * abs(z) / ((n - abs(b)) * (n + 1.0))
+    remainder = abs(scaled[-1]) * (1.0 + term_error) * r / (1.0 - r)
+    rounding = term_error * magnitude
+    error = rounding + remainder + dropped
     if abs(total) <= 2.0 * error:
         return None
     return math.copysign(1.0, total), math.log(abs(total) - error) + top * _LN2
@@ -542,7 +571,17 @@ def _hyp1f1(a: ArrayLike, b: ArrayLike, z: ArrayLike) -> NDArray[np.floating]:
     )
     far = large & (beyond | (z > 0) | ((b > 0) & (b - a > 0)) | near_pole)
     result = np.full(z.shape, np.nan)
-    for i in np.flatnonzero(far):
+    # For 0 < z < 1e9 the expansion can only return a proven overflow, so the
+    # call is made only where scipy did not return a finite value (inf, or NaN
+    # for large |a|); a finite scipy value is kept and the call skipped.
+    scipy_first = far & (z > 0) & ~beyond
+    scipy_overflowed = np.zeros(z.shape, dtype=bool)
+    if np.any(scipy_first):
+        scipy_overflowed[scipy_first] = ~np.isfinite(
+            sp.hyp1f1(a[scipy_first], b[scipy_first], z[scipy_first])
+        )
+    expand = (far & ~scipy_first) | scipy_overflowed
+    for i in np.flatnonzero(expand):
         result.flat[i] = _hyp1f1_large_z(a.flat[i], b.flat[i], z.flat[i])
     polynomial_limit = terminating & np.isinf(z)
     for i in np.flatnonzero(polynomial_limit):
