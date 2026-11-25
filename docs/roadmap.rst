@@ -100,45 +100,12 @@ Current State (v2.12.0)
 Next
 ----
 
-* **v2.13.0 planned**: the audit's Tier 4 ports -- matrix permanent,
-  ``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian, Runnalls
-  ``gammaBound``/``KMax``, and the IMM GPB1/GPB2/AMM family; plus a
-  robust interior ``ecef2geodetic`` solver for points near the Earth's
-  center, where on WGS84 ``'direct'`` fails within 4.28e4 m and
-  ``'iterative'`` errs by more than 1 mm within 3.14e5 m (v2.12.0 warns
-  within 4.27e5 m and 1.28e6 m respectively); and the two geomagnetic
-  latitude quantizations near the poles -- the WMM/IGRF cache's default
-  6-decimal latitude key (never closer than 3.3e-7 rad to a pole) and
-  the ``arcsin(z / r)`` geocentric conversion in ``emm``/``wmm`` (geodetic
-  colatitudes below about 1e-8 rad evaluate at the pole); the Vincenty
-  cache's rounding of inputs to 1e-10 rad (about 0.64 mm) in
-  ``navigation.geodesy``; and the inline squared-Mahalanobis copies in
-  ``trackers/multi_target.py``, ``trackers/single_target.py``,
-  ``trackers/mht.py`` and ``clustering/gaussian_mixture.py``; and,
-  pending owner sign-off as an extension beyond MATLAB, both mirror
-  solutions of ``range_only_static_loc_est_np`` for coplanar sensors,
-  which MATLAB's algorithm excludes and v2.12.0 rejects with
-  ``LinAlgError``; and EGM ``gravity_disturbance``, ``gravity_anomaly`` and
-  ``deflection_of_vertical``, which need authoritative EGM2008 reference
-  values before they can have value tests (and
-  ``tests/unit/test_egm_comprehensive.py``, which has never run anywhere,
-  must be run once by someone with ``EGM2008.cof`` before its oracle claims
-  count); ``simple_iri`` checked against IRI-2020 (pending IRI permission);
-  faster and wider ``hyp1f1`` overflow proofs (a numba term recurrence;
-  v2.12.0's Python-level proof makes overflowing arrays 17 to 28 times
-  slower than 2.11.1 at ``abs(a)``, ``abs(b)`` up to 1000, and up to 11% of
-  overflows with series cancellation stay unproven and return NaN);
-  an accurate ``lambert_universal`` near antipodal positions and on the
-  long way around nearly parallel ones (``atan2`` transfer angle plus a
-  stopping test relative to ``tof``; v2.12.0 rejects ``|sin(dnu)| < 1e-7``
-  near ``dnu = pi`` and, on the long way, near ``2 pi``, but near pi loses
-  accuracy above it, 6.8e-3 relative at 1e-7 and 1.1e-3 at 1e-6 for
-  ``|r2| = 1.3 |r1|``, ``tof = 5000`` s, and up to 0.28 relative at ``sin(dnu)`` = 1.1e-7 over ``|r2| / |r1|`` 0.8 to 2 and ``tof`` 1500 to 8000 s;
-  the long way near ``2 pi`` either does not converge or misses by order 1
-  at up to ``sin(dnu)`` of about 8e-5 over ``|r2| / |r1|`` 0.8 to 2 and
-  ``tof`` 1500 to 8000 s); and migration of ``least_squares.weighted_least_squares``,
-  ``information_filter.py`` and ``smoothers.py`` from finite ``pinv``
-  results to the unidentifiable-covariance convention in CONTRIBUTING.md.
+**v2.13.0, planned** (included from ROADMAP.md, so the two cannot drift):
+
+.. include:: ../ROADMAP.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- roadmap-next:start -->
+   :end-before: <!-- roadmap-next:end -->
 
 Long term (unscheduled)
 -----------------------

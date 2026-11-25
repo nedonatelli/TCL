@@ -1,0 +1,25 @@
+name: Changelog
+
+# Separate from ci.yml so that adding or removing the label re-runs only
+# this check, not the test matrix.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    # A PR that changes no behavior (refactor, docstring, release) is
+    # labeled no-changelog; see scripts/check_changelog_entry.py.
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: A pytcl/ change has an Unreleased entry
+        run: python3 scripts/check_changelog_entry.py "origin/${{ github.base_ref }}" HEAD

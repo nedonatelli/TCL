@@ -459,6 +459,11 @@ When porting a function from the original MATLAB library:
    - Write code following style guidelines
    - Add tests
    - Update documentation
+   - Add a `CHANGELOG.md` entry under `## [Unreleased]`, ending with a
+     "What to do:" sentence. The Changelog workflow fails a PR that changes
+     `pytcl/` without adding a line there; a PR that changes no behavior (a
+     refactor, a docstring, a release PR) carries the `no-changelog` label
+     instead.
 
 3. **Run quality checks:**
    ```bash
@@ -529,6 +534,11 @@ Update the version in these files:
 - `ROADMAP.md` - Update version references if applicable
 
 ### 2. Verify Current Metrics
+
+CI's coverage cell fails when its measurement and the figure below differ by
+more than a point (`scripts/check_coverage_claim.py`), and the contract tests
+keep the README, `docs/index.rst` and `docs/roadmap.rst` figures equal to
+it. Take the figure from the release PR's coverage cell, never a local run.
 
 Before release, verify these metrics:
 ```bash
@@ -635,7 +645,11 @@ for f in examples/*.py; do echo "Running $f..."; python "$f" || exit 1; done
 
 ### 6. Update Roadmap Files
 
-Update both `ROADMAP.md` and `docs/roadmap.rst`:
+Update both `ROADMAP.md` and `docs/roadmap.rst`. `docs/roadmap.rst`
+includes the next release's section from `ROADMAP.md`, between the
+`roadmap-next:start` and `roadmap-next:end` markers, so that section is
+edited in `ROADMAP.md` only; at each release, move the markers to the new
+next release's section.
 
 Both files are forward-looking only:
 

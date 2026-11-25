@@ -183,8 +183,15 @@ jobs:
           PYTCL_REQUIRE_EPHEMERIS: "1"
         run: uv run pytest tests/ --cov=pytcl --cov-branch --cov-report=xml --cov-fail-under=92 --benchmark-skip -m "not examples"
 
+      # The contract tests keep every coverage figure equal to CONTRIBUTING's;
+      # this keeps CONTRIBUTING's within a point of what this cell measures
+      # (v2.12.0's release PR merged with v2.11.1's figure).
+      - name: Recorded coverage matches the measurement
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: uv run python scripts/check_coverage_claim.py coverage.xml
+
       # Patch coverage: the lines THIS change touches must be tested. The
-      # global floor (91) lets an individual module rot as long as the
+      # global floor (92) lets an individual module rot as long as the
       # aggregate holds; every wrong-logic bug in the post-v2.5.0 audit --
       # the ZXZ gimbal branch, the ignored parameters, the M-of-N logic --
       # was changed-or-new code that nothing executed. 90 on the diff, with

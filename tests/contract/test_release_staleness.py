@@ -194,6 +194,37 @@ def test_coverage_claims_are_synchronized():
         f"docs/index.rst says {idx and idx.group(1)}%, CONTRIBUTING "
         f"measures {m.group(0)}"
     )
+    exact = f"{m.group(1)}.{m.group(2)}"
+    roadmap = re.search(
+        r"coverage measured honestly \((\d+\.\d+)%", _read("docs/roadmap.rst")
+    )
+    assert roadmap and roadmap.group(1) == exact, (
+        f"docs/roadmap.rst says {roadmap and roadmap.group(1)}%, CONTRIBUTING "
+        f"measures {exact}%"
+    )
+
+
+ROADMAP_START = "<!-- roadmap-next:start -->"
+ROADMAP_END = "<!-- roadmap-next:end -->"
+
+
+def test_docs_roadmap_includes_the_next_release_from_roadmap_md():
+    """docs/roadmap.rst renders ROADMAP.md's next-release section, not a copy.
+
+    It was a hand-maintained mirror, and mirrors drift. The markers must
+    each appear once, in order, around a non-empty section, and the include
+    must name them.
+    """
+    roadmap = _read("ROADMAP.md")
+    assert roadmap.count(ROADMAP_START) == 1 and roadmap.count(ROADMAP_END) == 1
+    body = roadmap[
+        roadmap.index(ROADMAP_START) + len(ROADMAP_START) : roadmap.index(ROADMAP_END)
+    ]
+    assert body.strip().startswith(("-", "The")), "the included section is empty"
+    rst = _read("docs/roadmap.rst")
+    assert ".. include:: ../ROADMAP.md" in rst
+    assert f":start-after: {ROADMAP_START}" in rst
+    assert f":end-before: {ROADMAP_END}" in rst
 
 
 def _contributing_coverage_percent():
@@ -363,14 +394,6 @@ CLAIMED_ABSENT: list = [
                 "k_max",
             ],
         },
-    },
-    {
-        "file": "docs/roadmap.rst",
-        "text": "``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian",
-        "symbols": [
-            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
-            "pytcl.coordinate_systems.state_cart2ruv",
-        ],
     },
     {
         "file": "docs/matlab_parity_inventory.rst",
