@@ -10,7 +10,7 @@ history lives in `CHANGELOG.md
 Current State (v2.12.0)
 -----------------------
 
-* **11,000+ tests** passing; coverage measured honestly (94.6% as CI's
+* **11,000+ tests** passing; coverage measured honestly (95.25% as CI's
   branch-coverage gate measures it, ubuntu-3.11 cell), docstring examples
   run in CI
 * **The audit carry-forward** (v2.12.0): the changes v2.11.1 announced

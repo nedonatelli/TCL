@@ -336,6 +336,50 @@ CLAIMED_ABSENT: list = [
             "pytcl.gravity.get_egm2008_terrain_coeffs",
         ],
     },
+    # The v2.13 ports, named as ROADMAP.md names them.
+    {
+        "file": "ROADMAP.md",
+        "text": "(Ryser's formula); pytcl `matrix_permanent`.",
+        "symbols": [
+            "pytcl.mathematical_functions.combinatorics.matrix_permanent",
+            "pytcl.mathematical_functions.matrix_permanent",
+            "pytcl.mathematical_functions.basic_matrix.matrix_permanent",
+        ],
+    },
+    {
+        "file": "ROADMAP.md",
+        "text": "pytcl `state_cart2ruv`, the inverse of the shipped `state_ruv2cart`.",
+        "symbols": [
+            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
+            "pytcl.coordinate_systems.state_cart2ruv",
+        ],
+    },
+    {
+        "file": "ROADMAP.md",
+        "text": "`reduce_mixture_runnalls` gains `gamma` and `k_max`.",
+        "parameters": {
+            "pytcl.clustering.gaussian_mixture.reduce_mixture_runnalls": [
+                "gamma",
+                "k_max",
+            ],
+        },
+    },
+    {
+        "file": "docs/roadmap.rst",
+        "text": "``stateCart2Ruv``, spherical-harmonic dV/dlon and Hessian",
+        "symbols": [
+            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
+            "pytcl.coordinate_systems.state_cart2ruv",
+        ],
+    },
+    {
+        "file": "docs/matlab_parity_inventory.rst",
+        "text": "``stateCart2Ruv`` (planned\n       for v2.13; pytcl has the inverse ``state_ruv2cart``)",
+        "symbols": [
+            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
+            "pytcl.coordinate_systems.state_cart2ruv",
+        ],
+    },
 ]
 
 

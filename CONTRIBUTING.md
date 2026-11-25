@@ -547,15 +547,15 @@ pytest --cov=pytcl --cov-report=term
 
 Current metrics (v2.12.0), with the function, module and test counts
 re-measured on the v2.12.0 branch:
-- **Functions:** 1,450+ (top-level `def`; measured 1,590 via
+- **Functions:** 1,450+ (top-level `def`; measured 1,596 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 220
-- **Tests:** 11,000+ (all passing; measured 11,611 via
+- **Tests:** 11,000+ (all passing; measured 11,684 via
   `pytest --collect-only`)
-- **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+- **Coverage:** 95.25% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
-  04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
-  conditions. CI gate is `--cov-fail-under=91`
+  a476461, run 44834728521, the v2.12.0 release PR). CI gate is
+  `--cov-fail-under=92`
   (the measurement minus the house 3 points).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
