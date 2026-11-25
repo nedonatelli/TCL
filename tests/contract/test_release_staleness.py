@@ -204,6 +204,29 @@ def test_coverage_claims_are_synchronized():
     )
 
 
+def test_landing_page_metrics_come_from_contributing():
+    """The site's landing page shows CONTRIBUTING's measured figures.
+
+    It carried its own hardcoded coverage (90% while CI measured 95.25%)
+    and a ``def test_`` grep labeled "Test Cases"; both now read the
+    metrics block, and every placeholder in the page must have a value.
+    """
+    sys.path.insert(0, str(REPO / "docs"))
+    try:
+        import project_metadata
+    finally:
+        sys.path.pop(0)
+    recorded = project_metadata.recorded_metrics()
+    assert int(recorded["coverage"]) == math.floor(_contributing_coverage_percent())
+    assert int(recorded["tests"].replace(",", "")) == _recorded_test_count()
+    landing = _read("docs/_static/landing.html")
+    conf = _read("docs/conf.py")
+    for placeholder in set(re.findall(r"@[A-Z_]+@", landing)):
+        assert f'"{placeholder}":' in conf, (
+            f"{placeholder} has no replacement in conf.py"
+        )
+
+
 ROADMAP_START = "<!-- roadmap-next:start -->"
 ROADMAP_END = "<!-- roadmap-next:end -->"
 
