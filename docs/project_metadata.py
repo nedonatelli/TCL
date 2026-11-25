@@ -10,10 +10,10 @@ import re
 from pathlib import Path
 from typing import Any, Dict
 
-# Manually maintained statistics that cannot be auto-calculated
-RELEASE_STATS = {
-    "coverage": "90",
-}
+# Measured figures come from CONTRIBUTING.md's metrics block, which CI's
+# coverage cell and the contract tests keep current; a separate copy here
+# showed 90% on the landing page while CI measured 95.25%.
+CONTRIBUTING = Path(__file__).parent.parent / "CONTRIBUTING.md"
 
 # Project URLs and identifiers. The organization is this port's project --
 # the U.S. Naval Research Laboratory wrote the original MATLAB library and
@@ -130,6 +130,19 @@ def count_test_functions() -> int:
     return count
 
 
+def recorded_metrics() -> Dict[str, str]:
+    """Coverage (whole percent, rounded down) and full-suite test count as
+    CONTRIBUTING.md records them."""
+    text = CONTRIBUTING.read_text(encoding="utf-8")
+    coverage = re.search(r"\*\*Coverage:\*\* (\d+)\.\d+%", text)
+    tests = re.search(r"measured ([\d,]+) via\s+`pytest --collect-only`", text)
+    if coverage is None or tests is None:
+        raise ValueError(
+            "CONTRIBUTING.md's metrics block lost its coverage or test count"
+        )
+    return {"coverage": coverage.group(1), "tests": tests.group(1)}
+
+
 def get_project_metadata() -> Dict[str, str]:
     """Get all project metadata for landing page injection.
 
@@ -142,9 +155,8 @@ def get_project_metadata() -> Dict[str, str]:
         - github_url: GitHub repository URL
         - functions: Function count
         - modules: Module count
-        - tests: Test case count
-        - matlab_parity: MATLAB feature parity percentage
-        - coverage: Code coverage percentage
+        - tests: Full-suite test count (CONTRIBUTING.md)
+        - coverage: Code coverage percentage (CONTRIBUTING.md)
     """
     pyproject = read_pyproject_metadata()
 
@@ -162,9 +174,7 @@ def get_project_metadata() -> Dict[str, str]:
         # Auto-calculated statistics
         "functions": f"{count_public_functions():,}",
         "modules": f"{count_python_modules():,}",
-        "tests": f"{count_test_functions():,}",
-        # Manually maintained statistics
-        "coverage": RELEASE_STATS["coverage"],
+        **recorded_metrics(),
     }
 
     return metadata

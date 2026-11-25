@@ -92,9 +92,8 @@ def copy_landing_page(app, exception):
     Also replaces placeholders with actual project metadata:
     - @VERSION@ → release version
     - @FUNCTIONS@ → function count
-    - @TESTS@ → test case count
+    - @TESTS@ → full-suite test count (CONTRIBUTING.md)
     - @MODULES@ → module count
-    - @MATLAB_PARITY@ → MATLAB feature parity percentage
     - @PACKAGE_NAME@ → PyPI package name
     - @GITHUB_URL@ → GitHub repository URL
     """
