@@ -5,12 +5,12 @@
 [![License: Public Domain](https://img.shields.io/badge/License-Public%20Domain-brightgreen.svg)](https://en.wikipedia.org/wiki/Public_domain)
 [![Linted and formatted with Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Tests](https://img.shields.io/badge/tests-11000%2B%20passing-success.svg)](https://github.com/nedonatelli/TCL)
-[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
+[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](https://github.com/nedonatelli/TCL/actions)
 [![Type Checking](https://img.shields.io/badge/types-ty-blue.svg)](pyproject.toml)
 
 A Python port of the [U.S. Naval Research Laboratory's Tracker Component Library](https://github.com/USNavalResearchLaboratory/TrackerComponentLibrary), a comprehensive collection of algorithms for target tracking, estimation, coordinate systems, and related mathematical functions.
 
-**1,450+ functions** | **220 modules** | **11,000+ tests** | **94% coverage**
+**1,450+ functions** | **220 modules** | **11,000+ tests** | **95% coverage**
 
 ## Overview
 
@@ -86,6 +86,54 @@ pip install -e .
 ```
 
 ## Quick Start
+
+### Track Multiple Targets
+
+```python
+import numpy as np
+from pytcl.dynamic_models import f_constant_velocity, q_constant_velocity
+from pytcl.trackers import MultiTargetTracker, TrackStatus
+
+# Constant-velocity targets in 2-D; the sensor measures position [x, y].
+tracker = MultiTargetTracker(
+    state_dim=4,  # [x, vx, y, vy]
+    meas_dim=2,
+    F=lambda dt: f_constant_velocity(dt, num_dims=2),
+    Q=lambda dt: q_constant_velocity(dt, sigma_a=0.5, num_dims=2),
+    H=np.array([[1.0, 0, 0, 0], [0, 0, 1.0, 0]]),
+    R=np.eye(2) * 4.0,  # measurement noise, m^2
+    gate_probability=0.99,  # chi-squared gate
+    confirm_hits=3,  # detections that confirm a track
+    max_misses=3,  # missed scans before a track is deleted
+)
+
+# Thirty simulated scans: two targets plus one false alarm in each.
+rng = np.random.default_rng(0)
+F = f_constant_velocity(1.0, num_dims=2)
+truth = [np.array([0.0, 10, 0, 5]), np.array([500.0, -8, 300, 0])]
+for scan in range(30):
+    truth = [F @ x for x in truth]
+    detections = [x[[0, 2]] + rng.normal(0, 2, 2) for x in truth]
+    detections.append(rng.uniform(-200, 800, 2))
+    tracks = tracker.process(detections, dt=1.0)
+
+for track in tracks:
+    if track.status is TrackStatus.CONFIRMED:
+        print(track.id, track.state[[0, 2]].round(1))  # truth: (300, 150), (260, 300)
+```
+
+Which tracker:
+
+| Situation | Use |
+|---|---|
+| Separated targets, some clutter | `MultiTargetTracker` (global nearest neighbor) |
+| Crossing or closely spaced targets | `MHTTracker` (multiple hypotheses) |
+| Dense clutter, soft association | `pytcl.assignment_algorithms.jpda_update` in your own loop |
+| One target, always present | `SingleTargetTracker` |
+| One target that may be absent | `bernoulli_predict` / `bernoulli_update` (existence probability) |
+
+The [multi-target tracking tutorial](docs/tutorials/multi_target_tracking.rst)
+and `examples/multi_target_tracking.py` go further.
 
 ### Coordinate Conversions
 

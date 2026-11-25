@@ -54,7 +54,11 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
     "nbsphinx",
+    "myst_parser",
 ]
+
+# myst_parser is loaded for ROADMAP.md's include in roadmap.rst only; the
+# Markdown files under docs/ are not pages (see exclude_patterns).
 
 # nbsphinx settings
 nbsphinx_execute = "never"  # Don't execute notebooks during build
@@ -62,7 +66,7 @@ nbsphinx_allow_errors = True  # Continue build even if notebook has errors
 nbsphinx_kernel_name = "python3"
 
 templates_path = []
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.md"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

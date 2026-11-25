@@ -194,6 +194,37 @@ def test_coverage_claims_are_synchronized():
         f"docs/index.rst says {idx and idx.group(1)}%, CONTRIBUTING "
         f"measures {m.group(0)}"
     )
+    exact = f"{m.group(1)}.{m.group(2)}"
+    roadmap = re.search(
+        r"coverage measured honestly \((\d+\.\d+)%", _read("docs/roadmap.rst")
+    )
+    assert roadmap and roadmap.group(1) == exact, (
+        f"docs/roadmap.rst says {roadmap and roadmap.group(1)}%, CONTRIBUTING "
+        f"measures {exact}%"
+    )
+
+
+ROADMAP_START = "<!-- roadmap-next:start -->"
+ROADMAP_END = "<!-- roadmap-next:end -->"
+
+
+def test_docs_roadmap_includes_the_next_release_from_roadmap_md():
+    """docs/roadmap.rst renders ROADMAP.md's next-release section, not a copy.
+
+    It was a hand-maintained mirror, and mirrors drift. The markers must
+    each appear once, in order, around a non-empty section, and the include
+    must name them.
+    """
+    roadmap = _read("ROADMAP.md")
+    assert roadmap.count(ROADMAP_START) == 1 and roadmap.count(ROADMAP_END) == 1
+    body = roadmap[
+        roadmap.index(ROADMAP_START) + len(ROADMAP_START) : roadmap.index(ROADMAP_END)
+    ]
+    assert body.strip().startswith(("-", "The")), "the included section is empty"
+    rst = _read("docs/roadmap.rst")
+    assert ".. include:: ../ROADMAP.md" in rst
+    assert f":start-after: {ROADMAP_START}" in rst
+    assert f":end-before: {ROADMAP_END}" in rst
 
 
 def _contributing_coverage_percent():
@@ -334,6 +365,42 @@ CLAIMED_ABSENT: list = [
             "pytcl.terrain.get_egm2008_terrain_coeffs",
             "pytcl.gravity.get_earth2014_terrain_coeffs",
             "pytcl.gravity.get_egm2008_terrain_coeffs",
+        ],
+    },
+    # The v2.13 ports, named as ROADMAP.md names them.
+    {
+        "file": "ROADMAP.md",
+        "text": "(Ryser's formula); pytcl `matrix_permanent`.",
+        "symbols": [
+            "pytcl.mathematical_functions.combinatorics.matrix_permanent",
+            "pytcl.mathematical_functions.matrix_permanent",
+            "pytcl.mathematical_functions.basic_matrix.matrix_permanent",
+        ],
+    },
+    {
+        "file": "ROADMAP.md",
+        "text": "pytcl `state_cart2ruv`, the inverse of the shipped `state_ruv2cart`.",
+        "symbols": [
+            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
+            "pytcl.coordinate_systems.state_cart2ruv",
+        ],
+    },
+    {
+        "file": "ROADMAP.md",
+        "text": "`reduce_mixture_runnalls` gains `gamma` and `k_max`.",
+        "parameters": {
+            "pytcl.clustering.gaussian_mixture.reduce_mixture_runnalls": [
+                "gamma",
+                "k_max",
+            ],
+        },
+    },
+    {
+        "file": "docs/matlab_parity_inventory.rst",
+        "text": "``stateCart2Ruv`` (planned\n       for v2.13; pytcl has the inverse ``state_ruv2cart``)",
+        "symbols": [
+            "pytcl.coordinate_systems.conversions.uv.state_cart2ruv",
+            "pytcl.coordinate_systems.state_cart2ruv",
         ],
     },
 ]

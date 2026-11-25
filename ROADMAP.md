@@ -1,6 +1,6 @@
 # TCL (Tracker Component Library) - Development Roadmap
 
-**Current Version:** v2.12.0, released 19 November 2026
+**Current Version:** v2.12.0, released 24 November 2026
 **Test Suite:** 11,000+ tests passing, ty-checked; every exported function is reached by a test with no standing exemptions (enforced by `tests/contract/test_public_api_coverage.py`, so the count tracks the surface automatically)
 **Status:** On parity: the core tracking workflow is fully ported and
 oracle-validated, and the full MATLAB surface is covered at roughly a
@@ -28,6 +28,9 @@ and git history.
 ## Backlog
 
 ### v2.13.0 -- planned
+
+<!-- docs/roadmap.rst includes everything from here to the end marker. -->
+<!-- roadmap-next:start -->
 
 The audit's Tier 4 ports, moved out of v2.12 so that release stays
 correctness-only, plus follow-ups from v2.12. Names are the pytcl
@@ -117,6 +120,8 @@ names each would take:
   its mirror image in the sensors' plane: a least-squares solve on
   `[S_plane, -r]` recovers x, y and `abs(z)` exactly, so the extension
   would return both mirror solutions.
+
+<!-- roadmap-next:end -->
 
 ### Measured backlog (from the MATLAB parity inventory)
 

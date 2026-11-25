@@ -459,6 +459,11 @@ When porting a function from the original MATLAB library:
    - Write code following style guidelines
    - Add tests
    - Update documentation
+   - Add a `CHANGELOG.md` entry under `## [Unreleased]`, ending with a
+     "What to do:" sentence. The Changelog workflow fails a PR that changes
+     `pytcl/` without adding a line there; a PR that changes no behavior (a
+     refactor, a docstring, a release PR) carries the `no-changelog` label
+     instead.
 
 3. **Run quality checks:**
    ```bash
@@ -530,6 +535,11 @@ Update the version in these files:
 
 ### 2. Verify Current Metrics
 
+CI's coverage cell fails when its measurement and the figure below differ by
+more than a point (`scripts/check_coverage_claim.py`), and the contract tests
+keep the README, `docs/index.rst` and `docs/roadmap.rst` figures equal to
+it. Take the figure from the release PR's coverage cell, never a local run.
+
 Before release, verify these metrics:
 ```bash
 # Count functions
@@ -547,15 +557,15 @@ pytest --cov=pytcl --cov-report=term
 
 Current metrics (v2.12.0), with the function, module and test counts
 re-measured on the v2.12.0 branch:
-- **Functions:** 1,450+ (top-level `def`; measured 1,590 via
+- **Functions:** 1,450+ (top-level `def`; measured 1,596 via
   `grep -r "^def " pytcl/ | wc -l`)
 - **Modules:** 220
-- **Tests:** 11,000+ (all passing; measured 11,611 via
+- **Tests:** 11,000+ (all passing; measured 11,684 via
   `pytest --collect-only`)
-- **Coverage:** 94.60% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
+- **Coverage:** 95.25% as CI's gate measures it (`NUMBA_DISABLE_JIT=1`,
   `--cov-branch`, `--extra all`, no MLX -- the ubuntu-3.11 cell at commit
-  04007f1, run 39843508948); 94.65% locally on darwin arm64 under the same
-  conditions. CI gate is `--cov-fail-under=91`
+  a476461, run 44834728521, the v2.12.0 release PR). CI gate is
+  `--cov-fail-under=92`
   (the measurement minus the house 3 points).
 
 An earlier version of this list cited "100% MATLAB Parity (NRLMSISE-00, CEKF,
@@ -635,7 +645,11 @@ for f in examples/*.py; do echo "Running $f..."; python "$f" || exit 1; done
 
 ### 6. Update Roadmap Files
 
-Update both `ROADMAP.md` and `docs/roadmap.rst`:
+Update both `ROADMAP.md` and `docs/roadmap.rst`. `docs/roadmap.rst`
+includes the next release's section from `ROADMAP.md`, between the
+`roadmap-next:start` and `roadmap-next:end` markers, so that section is
+edited in `ROADMAP.md` only; at each release, move the markers to the new
+next release's section.
 
 Both files are forward-looking only:
 
@@ -650,51 +664,45 @@ Both files are forward-looking only:
 - Ensure all new features are documented
 - Rebuild docs locally to verify: `cd docs && make html`
 
-### 8. Create Release Commit and Tag
+### 8. Merge the Release PR, Then Tag the Merge Commit
+
+The release changes land through a pull request like any other change.
+Never commit or push to `main` directly. The release PR empties
+`## [Unreleased]`, so it carries the `no-changelog` label. After it merges:
 
 ```bash
-# Stage all changes
-git add -A
+git fetch origin
+git log --oneline -3 origin/main   # the release PR's merge commit is on main
 
-# Create commit with comprehensive message
-git commit -m "vX.Y.Z: Release description
-
-- Feature 1
-- Feature 2
-- Bug fix 1
-- Documentation updates
-
-Quality metrics:
-- Tests: #### passed
-- Coverage: ##%
-- MATLAB Parity: 100%"
-
-# Create annotated tag with release notes
-git tag -a vX.Y.Z -m "vX.Y.Z - Release Title
-
-Release description and highlights"
-
-# Push commits and tags
-git push origin main
+# Annotated tag on that merge commit, not on a local branch
+git tag -a vX.Y.Z -m "vX.Y.Z - Release Title" <merge-commit>
 git push origin vX.Y.Z
 ```
+
+If the release PR was stacked on another branch, confirm that its commits
+reached `main` before tagging. A stacked PR merged right after its base can
+land on the dead base branch while showing MERGED.
 
 ### 9. Create GitHub Release
 
 ```bash
-# Use GitHub CLI to create release
 gh release create vX.Y.Z --title "vX.Y.Z - Release Title" --notes-file release_notes.md
 ```
 
-### 10. Publish to PyPI (Optional)
+Draft `release_notes.md` from the CHANGELOG section for the release: its
+opening paragraph and numbered list, plus a link to the full entry.
 
-```bash
-# Build distribution
-python -m build
+### 10. Publish to PyPI
 
-# Upload to PyPI (requires credentials)
-twine upload dist/*
-```
+Publishing the GitHub release triggers `.github/workflows/publish.yml`
+(pushing the tag does not). It builds the sdist and one `cp311-abi3` wheel
+per platform with cibuildwheel, runs the tests against each wheel, and
+uploads to PyPI through trusted publishing. Watch the run and check the
+PyPI page: the sdist plus four wheels (manylinux x86_64, manylinux
+aarch64, macOS arm64, Windows AMD64) and the `LicenseRef-NRL-Public-Domain`
+license expression. If GitHub drops the release webhook, run the workflow
+by hand with `gh workflow run publish.yml -f tag=vX.Y.Z`. Do not upload
+with `twine` from a local build.
 
 ## Questions?
 
