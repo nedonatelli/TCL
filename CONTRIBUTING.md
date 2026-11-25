@@ -664,51 +664,45 @@ Both files are forward-looking only:
 - Ensure all new features are documented
 - Rebuild docs locally to verify: `cd docs && make html`
 
-### 8. Create Release Commit and Tag
+### 8. Merge the Release PR, Then Tag the Merge Commit
+
+The release changes land through a pull request like any other change.
+Never commit or push to `main` directly. The release PR empties
+`## [Unreleased]`, so it carries the `no-changelog` label. After it merges:
 
 ```bash
-# Stage all changes
-git add -A
+git fetch origin
+git log --oneline -3 origin/main   # the release PR's merge commit is on main
 
-# Create commit with comprehensive message
-git commit -m "vX.Y.Z: Release description
-
-- Feature 1
-- Feature 2
-- Bug fix 1
-- Documentation updates
-
-Quality metrics:
-- Tests: #### passed
-- Coverage: ##%
-- MATLAB Parity: 100%"
-
-# Create annotated tag with release notes
-git tag -a vX.Y.Z -m "vX.Y.Z - Release Title
-
-Release description and highlights"
-
-# Push commits and tags
-git push origin main
+# Annotated tag on that merge commit, not on a local branch
+git tag -a vX.Y.Z -m "vX.Y.Z - Release Title" <merge-commit>
 git push origin vX.Y.Z
 ```
+
+If the release PR was stacked on another branch, confirm that its commits
+reached `main` before tagging. A stacked PR merged right after its base can
+land on the dead base branch while showing MERGED.
 
 ### 9. Create GitHub Release
 
 ```bash
-# Use GitHub CLI to create release
 gh release create vX.Y.Z --title "vX.Y.Z - Release Title" --notes-file release_notes.md
 ```
 
-### 10. Publish to PyPI (Optional)
+Draft `release_notes.md` from the CHANGELOG section for the release: its
+opening paragraph and numbered list, plus a link to the full entry.
 
-```bash
-# Build distribution
-python -m build
+### 10. Publish to PyPI
 
-# Upload to PyPI (requires credentials)
-twine upload dist/*
-```
+Publishing the GitHub release triggers `.github/workflows/publish.yml`
+(pushing the tag does not). It builds the sdist and one `cp311-abi3` wheel
+per platform with cibuildwheel, runs the tests against each wheel, and
+uploads to PyPI through trusted publishing. Watch the run and check the
+PyPI page: the sdist plus four wheels (manylinux x86_64, manylinux
+aarch64, macOS arm64, Windows AMD64) and the `LicenseRef-NRL-Public-Domain`
+license expression. If GitHub drops the release webhook, run the workflow
+by hand with `gh workflow run publish.yml -f tag=vX.Y.Z`. Do not upload
+with `twine` from a local build.
 
 ## Questions?
 
