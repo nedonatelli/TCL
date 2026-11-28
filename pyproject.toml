@@ -170,6 +170,14 @@ validation = [
     "statsmodels>=0.14",
 ]
 
+[tool.uv]
+# soupsieve 4.0 (the fix for GHSA-mmhr-3c5m-f64f) needs Python >= 3.11.5.
+# Without this floor the resolver serves Python 3.11.0-3.11.4 a 2018
+# beautifulsoup4 (4.6.3, which has no soupsieve dependency) under nbconvert;
+# with it, those versions keep a current bs4 and get soupsieve 3.x instead.
+# Dev tooling only: [tool.uv] is not part of the published metadata.
+constraint-dependencies = ["beautifulsoup4>=4.13"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pytcl*"]
