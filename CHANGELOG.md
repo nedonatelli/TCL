@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.12.0] - 2026-11-24
+## [2.12.0] - 2026-11-27
 
 **This release changes behavior and numerical results.** It is the audit
 carry-forward: the changes 2.11.1 announced for 2.12, the remaining
